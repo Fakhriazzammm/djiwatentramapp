@@ -7,6 +7,6 @@ export const env = createEnv({
 		VITE_CONVEX_URL: z.string().url(),
 		VITE_CONVEX_SITE_URL: z.string().url(),
 	},
-	runtimeEnv: (import.meta as unknown as { env: Record<string, string> }).env,
+	runtimeEnv: import.meta.env,
 	emptyStringAsUndefined: true,
 });
