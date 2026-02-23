@@ -1,0 +1,285 @@
+import { api } from "@tkmpos/backend/convex/_generated/api";
+import type { Doc } from "@tkmpos/backend/convex/_generated/dataModel";
+import { useQuery } from "convex/react";
+import { ArrowDownLeft, ArrowUpRight, Plus, Wallet } from "lucide-react";
+import { useState } from "react";
+import { NewTransactionDialog } from "./new-transaction-dialog";
+
+export function FinanceDashboard() {
+	const [isDialogOpen, setIsDialogOpen] = useState(false);
+	const [filterType, setFilterType] = useState<
+		"income" | "expense" | undefined
+	>(undefined);
+
+	const transactions = useQuery(api.finance.getTransactions, {
+		paginationOpts: { numItems: 20, cursor: null },
+		type: filterType,
+	});
+
+	const summary = useQuery(api.finance.getFinancialSummary, {
+		startDate: undefined,
+		endDate: undefined,
+	});
+
+	const formatCurrency = (amount: number) => {
+		return new Intl.NumberFormat("id-ID", {
+			style: "currency",
+			currency: "IDR",
+			maximumFractionDigits: 0,
+		}).format(amount);
+	};
+
+	const renderTransactionContent = () => {
+		if (!transactions) {
+			return (
+				<div className="p-8 text-center text-muted-foreground">
+					Memuat data...
+				</div>
+			);
+		}
+
+		if (transactions.page.length === 0) {
+			return (
+				<div className="p-12 text-center">
+					<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+						<Wallet className="h-6 w-6 text-muted-foreground" />
+					</div>
+					<p className="font-medium text-muted-foreground">
+						Belum ada transaksi
+					</p>
+				</div>
+			);
+		}
+
+		return (
+			<div className="relative overflow-x-auto">
+				<table className="w-full text-left text-sm">
+					<thead className="bg-muted/50 text-muted-foreground text-xs uppercase">
+						<tr>
+							<th className="px-6 py-3">Tanggal</th>
+							<th className="px-6 py-3">Kategori</th>
+							<th className="px-6 py-3">Keterangan</th>
+							<th className="px-6 py-3">Metode</th>
+							<th className="px-6 py-3 text-right">Jumlah</th>
+						</tr>
+					</thead>
+					<tbody>
+						{!transactions &&
+							["sk1", "sk2", "sk3", "sk4", "sk5"].map((skId) => (
+								<tr className="animate-pulse" key={skId}>
+									<td className="px-6 py-4">
+										<div className="h-4 w-24 rounded bg-muted/50" />
+									</td>
+									<td className="px-6 py-4">
+										<div className="h-4 w-20 rounded bg-muted/50" />
+									</td>
+									<td className="px-6 py-4">
+										<div className="h-4 w-40 rounded bg-muted/50" />
+									</td>
+									<td className="px-6 py-4">
+										<div className="h-4 w-16 rounded bg-muted/50" />
+									</td>
+									<td className="px-6 py-4 text-right">
+										<div className="ml-auto h-4 w-20 rounded bg-muted/50" />
+									</td>
+								</tr>
+							))}
+
+						{transactions &&
+							transactions.page.length > 0 &&
+							transactions.page.map((t: Doc<"financialTransactions">) => (
+								<tr
+									className="border-border/50 border-b hover:bg-muted/30"
+									key={t._id}
+								>
+									<td className="px-6 py-4 font-medium">
+										{new Date(t.date).toLocaleDateString("id-ID", {
+											day: "numeric",
+											month: "short",
+											year: "numeric",
+										})}
+									</td>
+									<td className="px-6 py-4">
+										<span className="rounded-md border bg-background px-2 py-1 font-medium text-xs">
+											{t.category}
+										</span>
+									</td>
+									<td className="px-6 py-4 text-muted-foreground">
+										{t.description || "-"}
+									</td>
+									<td className="px-6 py-4 text-xs">
+										{t.paymentMethod || "CASH"}
+									</td>
+									<td
+										className={`px-6 py-4 text-right font-bold ${
+											t.type === "income" ? "text-green-600" : "text-red-600"
+										}`}
+									>
+										{t.type === "income" ? "+ " : "- "}
+										{formatCurrency(t.amount)}
+									</td>
+								</tr>
+							))}
+
+						{transactions && transactions.page.length === 0 && (
+							<tr>
+								<td className="p-12 text-center" colSpan={5}>
+									<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+										<Wallet className="h-6 w-6 text-muted-foreground" />
+									</div>
+									<p className="font-medium text-muted-foreground">
+										Belum ada transaksi
+									</p>
+								</td>
+							</tr>
+						)}
+					</tbody>
+				</table>
+			</div>
+		);
+	};
+
+	return (
+		<div className="fade-in slide-in-from-bottom-4 animate-in space-y-6 duration-500">
+			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+				<div>
+					<h2 className="font-bold text-2xl tracking-tight">Keuangan</h2>
+					<p className="text-muted-foreground">
+						Monitor arus kas dan laporan keuangan
+					</p>
+				</div>
+				<button
+					className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground transition-all hover:brightness-110"
+					onClick={() => setIsDialogOpen(true)}
+					type="button"
+				>
+					<Plus className="h-4 w-4" /> Catat Transaksi
+				</button>
+			</div>
+
+			{/* Summary Cards */}
+			<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+				<div className="rounded-xl border border-border bg-card p-6">
+					<div className="flex items-center justify-between">
+						<div>
+							<p className="font-medium text-muted-foreground text-sm">
+								Total Pemasukan
+							</p>
+							<div className="mt-1">
+								{summary ? (
+									<h3 className="font-bold text-2xl text-green-600">
+										{formatCurrency(summary.totalIncome)}
+									</h3>
+								) : (
+									<div className="h-8 w-32 animate-pulse rounded bg-muted/50" />
+								)}
+							</div>
+						</div>
+						<div className="rounded-full bg-green-100 p-3 text-green-600 dark:bg-green-900/30">
+							<ArrowDownLeft className="h-6 w-6" />
+						</div>
+					</div>
+				</div>
+
+				<div className="rounded-xl border border-border bg-card p-6">
+					<div className="flex items-center justify-between">
+						<div>
+							<p className="font-medium text-muted-foreground text-sm">
+								Total Pengeluaran
+							</p>
+							<div className="mt-1">
+								{summary ? (
+									<h3 className="font-bold text-2xl text-red-600">
+										{formatCurrency(summary.totalExpense)}
+									</h3>
+								) : (
+									<div className="h-8 w-32 animate-pulse rounded bg-muted/50" />
+								)}
+							</div>
+						</div>
+						<div className="rounded-full bg-red-100 p-3 text-red-600 dark:bg-red-900/30">
+							<ArrowUpRight className="h-6 w-6" />
+						</div>
+					</div>
+				</div>
+
+				<div className="rounded-xl border border-border bg-card p-6">
+					<div className="flex items-center justify-between">
+						<div>
+							<p className="font-medium text-muted-foreground text-sm">
+								Saldo Bersih
+							</p>
+							<div className="mt-1">
+								{summary ? (
+									<h3
+										className={`font-bold text-2xl ${
+											(summary?.netBalance || 0) >= 0
+												? "text-primary"
+												: "text-destructive"
+										}`}
+									>
+										{formatCurrency(summary.netBalance)}
+									</h3>
+								) : (
+									<div className="h-8 w-32 animate-pulse rounded bg-muted/50" />
+								)}
+							</div>
+						</div>
+						<div className="rounded-full bg-blue-100 p-3 text-blue-600 dark:bg-blue-900/30">
+							<Wallet className="h-6 w-6" />
+						</div>
+					</div>
+				</div>
+			</div>
+
+			{/* Transaction List */}
+			<div className="rounded-xl border border-border bg-card">
+				<div className="flex items-center justify-between border-border/50 border-b p-6">
+					<h3 className="font-bold text-lg">Riwayat Transaksi</h3>
+					<div className="flex gap-2">
+						<button
+							className={`rounded-lg px-3 py-1.5 font-medium text-xs transition-colors ${
+								filterType === undefined
+									? "bg-muted text-foreground"
+									: "text-muted-foreground hover:bg-muted/50"
+							}`}
+							onClick={() => setFilterType(undefined)}
+							type="button"
+						>
+							Semua
+						</button>
+						<button
+							className={`rounded-lg px-3 py-1.5 font-medium text-xs transition-colors ${
+								filterType === "income"
+									? "bg-green-100 text-green-700 dark:bg-green-900/30"
+									: "text-muted-foreground hover:bg-muted/50"
+							}`}
+							onClick={() => setFilterType("income")}
+							type="button"
+						>
+							Pemasukan
+						</button>
+						<button
+							className={`rounded-lg px-3 py-1.5 font-medium text-xs transition-colors ${
+								filterType === "expense"
+									? "bg-red-100 text-red-700 dark:bg-red-900/30"
+									: "text-muted-foreground hover:bg-muted/50"
+							}`}
+							onClick={() => setFilterType("expense")}
+							type="button"
+						>
+							Pengeluaran
+						</button>
+					</div>
+				</div>
+
+				<div className="p-0">{renderTransactionContent()}</div>
+			</div>
+
+			<NewTransactionDialog
+				isOpen={isDialogOpen}
+				onClose={() => setIsDialogOpen(false)}
+			/>
+		</div>
+	);
+}

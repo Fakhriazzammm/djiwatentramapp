@@ -1,0 +1,102 @@
+﻿bun : packages\backen
+d\convex\inventory.ts
+:1:1 assist/source/or
+ganizeImports  
+FIXABLE  ÔöüÔöüÔöüÔöü
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+Ôöü
+At line:1 char:1
++ bun x ultracite 
+check > 
+lint_output_fix.txt 
+2>&1
++ ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (package   
+ s\backen...ÔöüÔö    
+üÔöüÔöüÔöü:Strin    
+g) [], RemoteExc    
+eption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+
+  ├ù The imports and 
+exports are not 
+sorted.
+  
+  > 1 Ôöé import { v 
+} from 
+"convex/values";
+      Ôöé ^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^
+^^
+    2 Ôöé import 
+type { Id } from "./_
+generated/dataModel";
+    3 Ôöé import { 
+mutation, query } 
+from "./_generated/se
+rver";
+  
+  i Safe fix: 
+Organize Imports 
+(Biome)
+  
+      1   1 Ôöé   
+import { v } from 
+"convex/values";
+      2   2 Ôöé   
+import type { Id } 
+from "./_generated/da
+taModel";
+      3     Ôöé - imp
+ort┬À{┬Àmutation,┬Àqu
+ery┬À}┬Àfrom┬À"./_gen
+erated/server";
+      4     Ôöé - imp
+ort┬Àtype┬À{┬ÀMutatio
+nCtx┬À}┬Àfrom┬À"./_ge
+nerated/server";
+          3 Ôöé + imp
+ort┬Àtype┬À{┬ÀMutatio
+nCtx┬À}┬Àfrom┬À"./_ge
+nerated/server";
+          4 Ôöé + imp
+ort┬À{┬Àmutation,┬Àqu
+ery┬À}┬Àfrom┬À"./_gen
+erated/server";
+      5   5 Ôöé   
+      6   6 Ôöé   
+export const 
+getInventory = 
+query({
+  
+
+Checked 72 files in 517ms. No fixes applied.
+Found 1 error.
+check ÔöüÔöüÔöüÔöüÔöü
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+ÔöüÔöüÔöüÔöüÔöüÔöüÔöü
+ÔöüÔöüÔöüÔöüÔöü
+
+  ├ù Some errors 
+were emitted while 
+running checks.
+  
+

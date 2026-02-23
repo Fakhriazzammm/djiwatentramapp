@@ -1,0 +1,7 @@
+[build]
+  command = "bun x turbo run build --filter web"
+  publish = "apps/web/dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NETLIFY_SKIP_NEXTJS_RUNTIME = "true"

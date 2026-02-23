@@ -1,0 +1,26 @@
+{
+  "name": "@tkmpos/backend",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "scripts": {
+    "dev": "convex dev",
+    "dev:setup": "convex dev --configure --until-success",
+    "push": "convex deploy",
+    "pull": "convex dev"
+  },
+  "dependencies": {
+    "@convex-dev/better-auth": "catalog:",
+    "better-auth": "catalog:",
+    "convex": "catalog:",
+    "dotenv": "catalog:",
+    "openai": "^6.16.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@tkmpos/config": "workspace:*",
+    "@types/node": "^24.3.0",
+    "typescript": "catalog:"
+  }
+}

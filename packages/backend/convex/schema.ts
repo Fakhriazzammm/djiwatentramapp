@@ -1,0 +1,207 @@
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+	// Categories for Menu
+	categories: defineTable({
+		name: v.string(),
+		order: v.number(),
+	}),
+
+	// Products with variations and pricing
+	products: defineTable({
+		name: v.string(),
+		description: v.optional(v.string()),
+		price: v.number(),
+		promoPrice: v.optional(v.number()),
+		categoryId: v.id("categories"),
+		image: v.optional(v.string()), // URL to storage or external
+		isAvailable: v.boolean(),
+		// Flexible variations structure (e.g., Size, Sugar Level, Toppings)
+		// schema: [{ type: "Size", options: [{ name: "Large", price: 5000 }] }]
+		variations: v.optional(v.any()),
+	}).index("by_category", ["categoryId"]),
+
+	// Inventory Management (FIFO support)
+	inventory: defineTable({
+		ingredientName: v.string(), // e.g., "Milk", "Coffee Beans"
+		unit: v.string(), // e.g., "ml", "gram" (Base unit)
+		quantity: v.number(), // Total current stock in base unit
+		lowStockThreshold: v.number(),
+		displayUnit: v.optional(v.string()), // e.g., "Liter"
+		conversionFactor: v.optional(v.number()), // e.g., 1000
+		baseRecipeId: v.optional(v.id("baseRecipes")), // If this is a pre-mix
+	}),
+
+	// Transactions to track stock in/out for FIFO
+	inventoryTransactions: defineTable({
+		inventoryId: v.id("inventory"),
+		quantity: v.number(), // Positive for restock, Negative for usage
+		type: v.union(
+			v.literal("restock"),
+			v.literal("usage"),
+			v.literal("adjustment"),
+			v.literal("production") // For base recipes
+		),
+		costPerUnit: v.optional(v.number()), // For calculating COGS
+		timestamp: v.number(),
+		notes: v.optional(v.string()),
+		expiryDate: v.optional(v.number()),
+	}).index("by_inventory", ["inventoryId"]),
+
+	// Base Recipes / Compositions (Pre-mixes)
+	baseRecipes: defineTable({
+		name: v.string(),
+		description: v.optional(v.string()),
+		targetUnit: v.string(), // Unit produced (ml, liter, etc.)
+		targetQuantity: v.number(), // Quantity produced in one batch
+		ingredients: v.array(
+			v.object({
+				inventoryId: v.id("inventory"),
+				amount: v.number(),
+			})
+		),
+	}),
+
+	// Financial Transactions
+	financialTransactions: defineTable({
+		type: v.union(v.literal("income"), v.literal("expense")),
+		amount: v.number(),
+		category: v.string(), // e.g. "Sales", "Rent", "Salary"
+		description: v.optional(v.string()),
+		date: v.number(), // Timestamp
+		paymentMethod: v.optional(v.string()),
+		status: v.union(
+			v.literal("completed"),
+			v.literal("pending"),
+			v.literal("cancelled")
+		),
+		orderId: v.optional(v.id("orders")),
+	})
+		.index("by_date", ["date"])
+		.index("by_type", ["type"]),
+
+	// Orders
+	orders: defineTable({
+		orderNumber: v.string(), // Friendly ID e.g., "A-001"
+		items: v.array(
+			v.object({
+				productId: v.id("products"),
+				productName: v.string(),
+				variant: v.optional(v.string()), // description of selected variants
+				quantity: v.number(),
+				price: v.number(),
+			})
+		),
+		totalAmount: v.number(),
+		status: v.union(
+			v.literal("pending"),
+			v.literal("paid"),
+			v.literal("completed"),
+			v.literal("cancelled")
+		),
+		paymentMethod: v.string(), // "qris", "cash", "credit_card"
+		customerName: v.optional(v.string()),
+		createdAt: v.number(),
+		voucherId: v.optional(v.id("discounts")),
+		discountAmount: v.optional(v.number()),
+	})
+		.index("by_status", ["status"])
+		.index("by_createdAt", ["createdAt"]),
+
+	// AI Insights
+	salesInsights: defineTable({
+		date: v.string(), // YYYY-MM-DD
+		summary: v.string(),
+		recommendations: v.array(v.string()),
+		generatedAt: v.number(),
+	}),
+
+	// Site Configuration
+	siteSettings: defineTable({
+		landingIcon: v.optional(v.string()), // Lucide icon name or image URL
+		landingTitle: v.string(),
+		landingDescription: v.string(),
+		landingButtonText: v.string(),
+		logoUrl: v.optional(v.string()),
+		paymentPopupImage: v.optional(v.string()), // URL for POS payment popup
+		storeName: v.optional(v.string()),
+		storeAddress: v.optional(v.string()),
+		storePhone: v.optional(v.string()),
+		receiptFooter: v.optional(v.string()),
+		autoPrint: v.optional(v.boolean()),
+	}),
+
+	// Discounts / Vouchers
+	discounts: defineTable({
+		name: v.string(),
+		code: v.optional(v.string()), // For manual entry if needed, or unique ID
+		type: v.union(
+			v.literal("FIXED"),
+			v.literal("PERCENTAGE"),
+			v.literal("FLAT_PRICE")
+		),
+		value: v.number(),
+		targetType: v.union(
+			v.literal("ALL"),
+			v.literal("CATEGORY"),
+			v.literal("PRODUCT")
+		),
+		targetId: v.optional(v.string()), // ID of category or product (legacy)
+		targetIds: v.optional(v.array(v.string())), // Multiple IDs of category or product
+		formattedId: v.optional(v.string()), // Optional formatted ID for display
+		isActive: v.boolean(),
+		// Advanced Promo Fields
+		minOrderValue: v.optional(v.number()),
+		startDate: v.optional(v.number()), // Timestamp
+		endDate: v.optional(v.number()), // Timestamp
+		startTime: v.optional(v.string()), // "HH:mm"
+		endTime: v.optional(v.string()), // "HH:mm"
+		days: v.optional(v.array(v.number())), // 0-6 (Sun-Sat)
+	}),
+
+	// Variation Presets (Global configurations)
+	variationPresets: defineTable({
+		name: v.string(), // e.g., "Level Pedas", "Ukuran"
+		options: v.array(
+			v.object({
+				name: v.string(), // e.g., "Level 1", "Large"
+				price: v.number(), // Additional price
+			})
+		),
+	}),
+
+	// Recipes linking products/variants to inventory
+	recipes: defineTable({
+		productId: v.id("products"),
+		variantName: v.optional(v.string()), // Optional, if linked to a specific variant
+		ingredients: v.array(
+			v.object({
+				inventoryId: v.id("inventory"),
+				amount: v.number(), // Quantity per item
+			})
+		),
+	})
+		.index("by_product", ["productId"])
+		.index("by_product_variant", ["productId", "variantName"]),
+
+	// Roles for RBAC
+	roles: defineTable({
+		name: v.string(), // e.g., "admin", "cashier"
+		permissions: v.array(v.string()), // e.g., ["manage_users", "view_reports"]
+	}).index("by_name", ["name"]),
+
+	// Users for Custom Auth & Profile
+	users: defineTable({
+		username: v.string(),
+		password: v.optional(v.string()), // Hashed (Optional for Better Auth users)
+		name: v.string(),
+		roleId: v.id("roles"),
+		isActive: v.boolean(),
+		lastLogin: v.optional(v.number()),
+		authUserId: v.optional(v.string()), // ID from Better Auth
+	})
+		.index("by_username", ["username"])
+		.index("by_role", ["roleId"])
+		.index("by_auth_user_id", ["authUserId"]),
+});
