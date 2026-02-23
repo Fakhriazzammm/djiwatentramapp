@@ -12,7 +12,8 @@
       "typescript": "^5",
       "convex": "^1.31.2",
       "better-auth": "1.4.9",
-      "@convex-dev/better-auth": "^0.10.9"
+      "@convex-dev/better-auth": "^0.10.9",
+      "vite": "^6.4.1"
     }
   },
   "type": "module",

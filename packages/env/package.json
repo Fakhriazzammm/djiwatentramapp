@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@tkmpos/config": "workspace:*",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vite": "catalog:"
   }
 }
