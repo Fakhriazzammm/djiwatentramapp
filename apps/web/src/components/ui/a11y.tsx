@@ -173,8 +173,9 @@ export function FocusTrap({ active, children }: FocusTrapProps) {
 				return;
 			}
 
-			const first = focusableElements[0];
-			const last = focusableElements.at(-1);
+			const elements = Array.from(focusableElements);
+			const first = elements[0];
+			const last = elements.at(-1);
 
 			if (e.shiftKey) {
 				if (document.activeElement === first) {
@@ -247,6 +248,7 @@ export function KeyboardNavigable({
 	};
 
 	return (
+		// biome-ignore lint/a11y/noNoninteractiveElementInteractions: fieldset needs keyboard navigation for accessibility
 		<fieldset
 			className={cn("outline-none", className)}
 			onKeyDown={handleKeyDown}
@@ -396,7 +398,7 @@ export function Heading({
 	className,
 	...props
 }: HeadingProps) {
-	const Tag = `h${level}` as keyof JSX.IntrinsicElements;
+	const Tag = `h${level}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 	const visualClass = visualStyles[visualLevel ?? level];
 
 	return (
@@ -451,19 +453,3 @@ export function Aside({ label, children, ...props }: AsideProps) {
 		</aside>
 	);
 }
-
-// ============================================
-// EXPORT ALL
-// ============================================
-
-export type {
-	LiveRegionPoliteness,
-	SkipLinkProps,
-	VisuallyHiddenProps,
-	LiveRegionProps,
-	FocusTrapProps,
-	KeyboardNavigableProps,
-	AnnouncerProps,
-	AccessibleButtonProps,
-	HeadingProps,
-};
