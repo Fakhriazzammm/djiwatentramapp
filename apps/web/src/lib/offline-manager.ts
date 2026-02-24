@@ -4,7 +4,38 @@
  * Mendukung offline mode dengan queue, sync, dan caching.
  */
 
-import { get, type Writable, writable } from "svelte/store";
+// Simple reactive state (replaces svelte/store)
+interface Writable<T> {
+	subscribe(run: (value: T) => void): () => void;
+	update(fn: (value: T) => T): void;
+}
+
+function writable<T>(initial: T): Writable<T> {
+	let value = initial;
+	const subscribers = new Set<(value: T) => void>();
+	return {
+		subscribe(run) {
+			subscribers.add(run);
+			run(value);
+			return () => subscribers.delete(run);
+		},
+		update(fn) {
+			value = fn(value);
+			for (const sub of subscribers) {
+				sub(value);
+			}
+		},
+	};
+}
+
+function get<T>(store: Writable<T>): T {
+	let value = undefined as T;
+	const unsubscribe = store.subscribe((v) => {
+		value = v;
+	});
+	unsubscribe();
+	return value;
+}
 
 // ============================================
 // TYPES
@@ -373,8 +404,4 @@ export function getOfflineQueueSize(): number {
 	return getOfflineManager().getQueueSize();
 }
 
-// ============================================
-// EXPORT ALL
-// ============================================
-
-export type { QueuedAction, OfflineState, OfflineConfig };
+// Types are already exported at their definitions above.

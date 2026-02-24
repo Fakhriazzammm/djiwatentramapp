@@ -208,9 +208,3 @@ export function ProductGrid({
 }
 
 ProductGrid.displayName = "ProductGrid";
-
-// ============================================
-// EXPORT ALL
-// ============================================
-
-export type { ProductCardSkeletonProps, ProductGridProps };

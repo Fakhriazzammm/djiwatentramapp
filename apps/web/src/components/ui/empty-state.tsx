@@ -187,7 +187,8 @@ export function EmptyState({
 					src={illustration}
 					width={128}
 				/>
-			) : showIcon && (icon || Icon) ? (
+			) : null}
+			{!illustration && showIcon && (icon || Icon) ? (
 				<div className="mb-4 text-muted-foreground/30">
 					{icon ?? <Icon className={iconSizes[size]} />}
 				</div>
@@ -396,4 +397,4 @@ export const OfflineState = (props: Omit<EmptyStateProps, "variant">) => (
 // EXPORT ALL
 // ============================================
 
-export { type EmptyStateVariant, type EmptyStateSize, defaultContent };
+export { defaultContent };

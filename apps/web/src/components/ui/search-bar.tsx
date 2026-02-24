@@ -26,7 +26,8 @@ export interface SearchSuggestion {
 	icon?: ReactNode;
 }
 
-export interface SearchBarProps extends HTMLAttributes<HTMLDivElement> {
+export interface SearchBarProps
+	extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
 	/**
 	 * Current search value
 	 */
@@ -147,7 +148,7 @@ export function SearchBar({
 	const [isFocused, setIsFocused] = useState(false);
 	const [selectedIndex, setSelectedIndex] = useState(-1);
 	const inputRef = useRef<HTMLInputElement>(null);
-	const debounceTimerRef = useRef<NodeJS.Timeout>();
+	const debounceTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
 	const isControlled = controlledValue !== undefined;
 	const inputValue = isControlled ? controlledValue : uncontrolledValue;
@@ -203,7 +204,9 @@ export function SearchBar({
 			case "Enter":
 				e.preventDefault();
 				if (selectedIndex >= 0 && items[selectedIndex]) {
-					handleSubmit(items[selectedIndex]?.label || inputValue);
+					const item = items[selectedIndex];
+					const itemLabel = typeof item === "string" ? item : item.label;
+					handleSubmit(itemLabel || inputValue);
 				} else {
 					handleSubmit();
 				}
@@ -421,9 +424,3 @@ export function QuickSearchTrigger({
 }
 
 QuickSearchTrigger.displayName = "QuickSearchTrigger";
-
-// ============================================
-// EXPORT ALL
-// ============================================
-
-export type { SearchSuggestion, SearchBarProps, QuickSearchTriggerProps };
