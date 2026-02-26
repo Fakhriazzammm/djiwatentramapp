@@ -1,4 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { api } from "@tkmpos/backend/convex/_generated/api";
+import { useQuery } from "convex/react";
 import { Coffee, Lock, User } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -15,6 +17,9 @@ function LoginPage() {
 	const [password, setPassword] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+	const settings = useQuery(api.siteSettings.getSettings);
+	const storeName = settings?.storeName || "TKM POS";
 
 	const handleLogin = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -75,7 +80,7 @@ function LoginPage() {
 						<Coffee className="h-6 w-6 text-[#F5F0E1]" />
 					</div>
 					<span className="font-black text-[#F5F0E1] text-xl tracking-tight">
-						TKM POS
+						{storeName}
 					</span>
 				</div>
 
@@ -238,7 +243,7 @@ function LoginPage() {
 					</button>
 
 					<p className="text-center font-bold text-[#4A3728]/30 text-[10px] uppercase tracking-widest">
-						© 2026 TKM POS — BY ZANTARA
+						© 2026 {storeName} — BY ZANTARA
 					</p>
 				</div>
 			</div>
