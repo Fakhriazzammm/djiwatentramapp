@@ -5,6 +5,8 @@ import {
 	useLocation,
 	useNavigate,
 } from "@tanstack/react-router";
+import { api } from "@tkmpos/backend/convex/_generated/api";
+import { useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	Archive,
@@ -46,6 +48,9 @@ function AdminLayout() {
 		return false;
 	});
 
+	const settings = useQuery(api.siteSettings.getSettings);
+	const storeName = settings?.storeName || "TKM Admin";
+
 	useEffect(() => {
 		localStorage.setItem("admin-sidebar-collapsed", String(isCollapsed));
 	}, [isCollapsed]);
@@ -73,7 +78,7 @@ function AdminLayout() {
 								exit={{ opacity: 0, x: -10 }}
 								initial={{ opacity: 0, x: -10 }}
 							>
-								TKM Admin
+								{storeName}
 							</motion.span>
 						)}
 					</AnimatePresence>
