@@ -1,7 +1,7 @@
 import { api } from "@tkmpos/backend/convex/_generated/api";
 import type { Doc } from "@tkmpos/backend/convex/_generated/dataModel";
 import { useQuery } from "convex/react";
-import { ArrowDownLeft, ArrowUpRight, Plus, Wallet } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Calculator, Plus, TrendingUp, Wallet } from "lucide-react";
 import { useState } from "react";
 import { NewTransactionDialog } from "./new-transaction-dialog";
 
@@ -20,6 +20,8 @@ export function FinanceDashboard() {
 		startDate: undefined,
 		endDate: undefined,
 	});
+
+	const hppCogs = useQuery(api.hpp.getOrdersCogs);
 
 	const formatCurrency = (amount: number) => {
 		return new Intl.NumberFormat("id-ID", {
@@ -231,6 +233,76 @@ export function FinanceDashboard() {
 					</div>
 				</div>
 			</div>
+
+			{/* COGS / HPP Analysis */}
+			{hppCogs && hppCogs.matchedOrders > 0 && (
+				<div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent p-6">
+					<h3 className="mb-4 flex items-center gap-2 font-bold text-lg">
+						<Calculator className="h-5 w-5 text-primary" />
+						Analisis Laba Kotor (HPP)
+					</h3>
+					<div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+						<div>
+							<p className="text-muted-foreground text-xs">Revenue Penjualan</p>
+							<p className="font-bold text-lg">{formatCurrency(hppCogs.totalRevenue)}</p>
+						</div>
+						<div>
+							<p className="text-muted-foreground text-xs">Total COGS</p>
+							<p className="font-bold text-lg text-orange-600">{formatCurrency(hppCogs.totalCogs)}</p>
+						</div>
+						<div>
+							<p className="text-muted-foreground text-xs">Laba Kotor</p>
+							<p className={`font-bold text-lg ${hppCogs.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
+								{formatCurrency(hppCogs.totalProfit)}
+							</p>
+						</div>
+						<div>
+							<p className="text-muted-foreground text-xs">Gross Margin</p>
+							<p className="flex items-center gap-1 font-bold text-lg text-primary">
+								<TrendingUp className="h-4 w-4" />
+								{hppCogs.grossMargin.toFixed(1)}%
+							</p>
+							<p className="text-[10px] text-muted-foreground">
+								{hppCogs.matchedOrders} dari {hppCogs.totalCompletedOrders} pesanan
+							</p>
+						</div>
+					</div>
+					{/* Daily Breakdown */}
+					{hppCogs.dailySummary.length > 0 && (
+						<div className="mt-4 border-border/50 border-t pt-4">
+							<h4 className="mb-2 font-semibold text-sm text-muted-foreground">Ringkasan Harian</h4>
+							<div className="space-y-1.5">
+								{hppCogs.dailySummary.slice(0, 7).map((day) => (
+									<div
+										className="flex items-center justify-between rounded border border-border/30 px-3 py-1.5 text-xs"
+										key={day.date}
+									>
+										<span className="font-medium">
+											{new Date(day.date).toLocaleDateString("id-ID", {
+												weekday: "short",
+												day: "numeric",
+												month: "short",
+											})}
+										</span>
+										<div className="flex items-center gap-4">
+											<span className="text-muted-foreground">
+												{day.orders} pesanan
+											</span>
+											<span>Rev: {formatCurrency(day.revenue)}</span>
+											<span className="text-orange-600">
+												COGS: {formatCurrency(day.cogs)}
+											</span>
+											<span className={`font-bold ${day.profit >= 0 ? "text-green-600" : "text-red-600"}`}>
+												Laba: {formatCurrency(day.profit)}
+											</span>
+										</div>
+									</div>
+								))}
+							</div>
+						</div>
+					)}
+				</div>
+			)}
 
 			{/* Transaction List */}
 			<div className="rounded-xl border border-border bg-card">

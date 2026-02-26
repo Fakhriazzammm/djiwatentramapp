@@ -67,6 +67,8 @@ interface Order {
 function AdminOrders() {
 	const allOrders = useQuery(api.orders.getOrders, {});
 	const updateStatus = useMutation(api.orders.updateOrderStatus);
+	const hppProductMap = useQuery(api.hpp.getHppProductMap);
+	const hppCogs = useQuery(api.hpp.getOrdersCogs);
 
 	const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 	const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -159,6 +161,31 @@ function AdminOrders() {
 				</div>
 			</div>
 
+			{/* Profit Summary */}
+			{hppCogs && hppCogs.matchedOrders > 0 && (
+				<div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+					<div className="rounded-lg border border-border bg-card p-3">
+						<p className="text-[10px] text-muted-foreground uppercase">Revenue</p>
+						<p className="font-bold text-lg">{formatrupiah(hppCogs.totalRevenue)}</p>
+					</div>
+					<div className="rounded-lg border border-border bg-card p-3">
+						<p className="text-[10px] text-muted-foreground uppercase">COGS (HPP)</p>
+						<p className="font-bold text-lg text-orange-600">{formatrupiah(hppCogs.totalCogs)}</p>
+					</div>
+					<div className="rounded-lg border border-border bg-card p-3">
+						<p className="text-[10px] text-muted-foreground uppercase">Laba Kotor</p>
+						<p className={`font-bold text-lg ${hppCogs.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
+							{formatrupiah(hppCogs.totalProfit)}
+						</p>
+					</div>
+					<div className="rounded-lg border border-border bg-card p-3">
+						<p className="text-[10px] text-muted-foreground uppercase">Gross Margin</p>
+						<p className="font-bold text-lg text-primary">{hppCogs.grossMargin.toFixed(1)}%</p>
+						<p className="text-[10px] text-muted-foreground">{hppCogs.matchedOrders}/{hppCogs.totalCompletedOrders} pesanan dihitung</p>
+					</div>
+				</div>
+			)}
+
 			{/* Filters */}
 			<div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm md:flex-row md:items-center">
 				<div className="relative flex-1">
@@ -196,6 +223,7 @@ function AdminOrders() {
 								<th className="px-6 py-4">ID Pesanan</th>
 								<th className="px-6 py-4">Pelanggan</th>
 								<th className="px-6 py-4">Total</th>
+								<th className="px-6 py-4">Laba</th>
 								<th className="px-6 py-4">Status</th>
 								<th className="px-6 py-4">Metode</th>
 								<th className="px-6 py-4 text-right">Waktu</th>
@@ -207,7 +235,7 @@ function AdminOrders() {
 								<tr>
 									<td
 										className="h-40 text-center text-muted-foreground"
-										colSpan={7}
+										colSpan={8}
 									>
 										Tidak ada pesanan yang ditemukan.
 									</td>
@@ -238,6 +266,27 @@ function AdminOrders() {
 										</td>
 										<td className="px-6 py-4 font-bold">
 											{formatrupiah(order.totalAmount)}
+										</td>
+										<td className="px-6 py-4">
+											{(() => {
+												if (!hppProductMap) return <span className="text-muted-foreground text-xs">-</span>;
+												let orderCogs = 0;
+												let hasHpp = false;
+												for (const item of order.items) {
+													const hpp = hppProductMap[item.productId];
+													if (hpp) {
+														orderCogs += hpp.hppPerServing * item.quantity;
+														hasHpp = true;
+													}
+												}
+												if (!hasHpp) return <span className="text-muted-foreground text-xs">-</span>;
+												const profit = order.totalAmount - orderCogs;
+												return (
+													<span className={`font-semibold text-xs ${profit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+														{formatrupiah(profit)}
+													</span>
+												);
+											})()}
 										</td>
 										<td className="px-6 py-4">
 											<Badge
@@ -396,6 +445,38 @@ function AdminOrders() {
 													{formatrupiah(selectedOrder.totalAmount)}
 												</span>
 											</div>
+											{/* HPP Profit Analysis */}
+											{hppProductMap && (() => {
+												let orderCogs = 0;
+												let hasHpp = false;
+												for (const item of selectedOrder.items) {
+													const hpp = hppProductMap[item.productId];
+													if (hpp) {
+														orderCogs += hpp.hppPerServing * item.quantity;
+														hasHpp = true;
+													}
+												}
+												if (!hasHpp) return null;
+												const profit = selectedOrder.totalAmount - orderCogs;
+												const margin = selectedOrder.totalAmount > 0
+													? (profit / selectedOrder.totalAmount) * 100
+													: 0;
+												return (
+													<>
+														<div className="my-1.5 border-border/50 border-t" />
+														<div className="flex justify-between text-xs">
+															<span className="text-muted-foreground">HPP (COGS)</span>
+															<span className="font-medium text-orange-600">{formatrupiah(orderCogs)}</span>
+														</div>
+														<div className="flex justify-between text-xs">
+															<span className="font-bold">Laba Kotor</span>
+															<span className={`font-bold ${profit >= 0 ? "text-green-600" : "text-red-600"}`}>
+																{formatrupiah(profit)} ({margin.toFixed(1)}%)
+															</span>
+														</div>
+													</>
+												);
+											})()}
 										</div>
 									</div>
 

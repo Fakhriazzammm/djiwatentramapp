@@ -1,5 +1,29 @@
 import { v } from "convex/values";
+import type { QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+
+// ─── Shared HPP calculation helper (used by multiple queries) ────────────────
+
+function computeHppPerServing(calc: {
+	ingredients: {
+		purchasePrice: number;
+		purchaseQuantity: number;
+		conversionFactor: number;
+		usagePerServing: number;
+	}[];
+	overheadCosts: { costPerServing: number }[];
+}) {
+	const ingredientCost = calc.ingredients.reduce((sum, ing) => {
+		const totalBase = ing.purchaseQuantity * ing.conversionFactor;
+		const costBase = totalBase > 0 ? ing.purchasePrice / totalBase : 0;
+		return sum + costBase * ing.usagePerServing;
+	}, 0);
+	const overheadCost = calc.overheadCosts.reduce(
+		(sum, oh) => sum + oh.costPerServing,
+		0
+	);
+	return ingredientCost + overheadCost;
+}
 
 // Get all HPP calculations
 export const getHppCalculations = query({
@@ -357,5 +381,340 @@ export const syncHppWithInventoryPrices = mutation({
 		}
 
 		return { updatedCount };
+	},
+});
+
+// ─── Dashboard & Analytics ───────────────────────────────────────────────────
+
+/**
+ * Get HPP summary for all products (used by dashboard, products page, orders).
+ * Returns a map of productId → { hppPerServing, sellingPrice, margin, name }
+ */
+export const getHppProductMap = query({
+	args: {},
+	handler: async (ctx) => {
+		const allHpp = await ctx.db.query("hppCalculations").collect();
+		const result: Record<
+			string,
+			{
+				hppId: string;
+				name: string;
+				hppPerServing: number;
+				sellingPrice: number;
+				profitPerServing: number;
+				marginPercent: number;
+			}
+		> = {};
+
+		for (const calc of allHpp) {
+			const hpp = computeHppPerServing(calc);
+			const profit = calc.sellingPrice - hpp;
+			const margin =
+				calc.sellingPrice > 0
+					? (profit / calc.sellingPrice) * 100
+					: 0;
+
+			// Index by productId if linked
+			if (calc.productId) {
+				result[calc.productId] = {
+					hppId: calc._id,
+					name: calc.name,
+					hppPerServing: hpp,
+					sellingPrice: calc.sellingPrice,
+					profitPerServing: profit,
+					marginPercent: margin,
+				};
+			}
+			// Also index by hppId for non-product-linked
+			result[calc._id] = {
+				hppId: calc._id,
+				name: calc.name,
+				hppPerServing: hpp,
+				sellingPrice: calc.sellingPrice,
+				profitPerServing: profit,
+				marginPercent: margin,
+			};
+		}
+
+		return result;
+	},
+});
+
+/**
+ * Dashboard widget: HPP overview stats & rankings.
+ */
+export const getHppDashboardData = query({
+	args: {},
+	handler: async (ctx) => {
+		const allHpp = await ctx.db.query("hppCalculations").collect();
+
+		if (allHpp.length === 0) {
+			return {
+				totalCalculations: 0,
+				avgMargin: 0,
+				lowMarginAlerts: [],
+				topProfit: [],
+				bottomProfit: [],
+			};
+		}
+
+		const analyzed = allHpp.map((calc) => {
+			const hpp = computeHppPerServing(calc);
+			const profit = calc.sellingPrice - hpp;
+			const margin =
+				calc.sellingPrice > 0
+					? (profit / calc.sellingPrice) * 100
+					: 0;
+			return {
+				id: calc._id,
+				name: calc.name,
+				productId: calc.productId,
+				hppPerServing: hpp,
+				sellingPrice: calc.sellingPrice,
+				profitPerServing: profit,
+				marginPercent: margin,
+			};
+		});
+
+		const avgMargin =
+			analyzed.reduce((sum, a) => sum + a.marginPercent, 0) /
+			analyzed.length;
+
+		// Low margin alerts (below 20%)
+		const lowMarginAlerts = analyzed
+			.filter((a) => a.marginPercent < 20 && a.sellingPrice > 0)
+			.sort((a, b) => a.marginPercent - b.marginPercent);
+
+		// Top 5 most profitable
+		const topProfit = [...analyzed]
+			.sort((a, b) => b.profitPerServing - a.profitPerServing)
+			.slice(0, 5);
+
+		// Bottom 5 least profitable
+		const bottomProfit = [...analyzed]
+			.filter((a) => a.sellingPrice > 0)
+			.sort((a, b) => a.profitPerServing - b.profitPerServing)
+			.slice(0, 5);
+
+		return {
+			totalCalculations: allHpp.length,
+			avgMargin,
+			lowMarginAlerts,
+			topProfit,
+			bottomProfit,
+		};
+	},
+});
+
+/**
+ * Calculate estimated COGS for completed/paid orders (used by finance integration).
+ * Matches order items to HPP calculations via productId.
+ */
+export const getOrdersCogs = query({
+	args: {},
+	handler: async (ctx) => {
+		const allHpp = await ctx.db.query("hppCalculations").collect();
+		const orders = await ctx.db.query("orders").order("desc").collect();
+
+		// Build productId → HPP lookup
+		const hppByProduct: Record<string, number> = {};
+		for (const calc of allHpp) {
+			if (calc.productId) {
+				hppByProduct[calc.productId] = computeHppPerServing(calc);
+			}
+		}
+
+		const completedOrders = orders.filter(
+			(o) => o.status === "completed" || o.status === "paid"
+		);
+
+		let totalRevenue = 0;
+		let totalCogs = 0;
+		let matchedOrders = 0;
+
+		const orderProfits: {
+			orderId: string;
+			orderNumber: string;
+			revenue: number;
+			cogs: number;
+			profit: number;
+			createdAt: number;
+		}[] = [];
+
+		for (const order of completedOrders) {
+			let orderCogs = 0;
+			let hasHpp = false;
+			for (const item of order.items) {
+				const hppPerUnit = hppByProduct[item.productId];
+				if (hppPerUnit != null) {
+					orderCogs += hppPerUnit * item.quantity;
+					hasHpp = true;
+				}
+			}
+			if (hasHpp) {
+				matchedOrders++;
+				totalRevenue += order.totalAmount;
+				totalCogs += orderCogs;
+				orderProfits.push({
+					orderId: order._id,
+					orderNumber: order.orderNumber,
+					revenue: order.totalAmount,
+					cogs: orderCogs,
+					profit: order.totalAmount - orderCogs,
+					createdAt: order.createdAt,
+				});
+			}
+		}
+
+		// Group by date for daily summary
+		const dailySummary: Record<
+			string,
+			{ date: string; revenue: number; cogs: number; profit: number; orders: number }
+		> = {};
+		for (const op of orderProfits) {
+			const dateKey = new Date(op.createdAt).toISOString().split("T")[0];
+			if (!dailySummary[dateKey]) {
+				dailySummary[dateKey] = {
+					date: dateKey,
+					revenue: 0,
+					cogs: 0,
+					profit: 0,
+					orders: 0,
+				};
+			}
+			dailySummary[dateKey].revenue += op.revenue;
+			dailySummary[dateKey].cogs += op.cogs;
+			dailySummary[dateKey].profit += op.profit;
+			dailySummary[dateKey].orders++;
+		}
+
+		return {
+			totalRevenue,
+			totalCogs,
+			totalProfit: totalRevenue - totalCogs,
+			grossMargin:
+				totalRevenue > 0
+					? ((totalRevenue - totalCogs) / totalRevenue) * 100
+					: 0,
+			matchedOrders,
+			totalCompletedOrders: completedOrders.length,
+			recentOrderProfits: orderProfits.slice(0, 20),
+			dailySummary: Object.values(dailySummary).sort(
+				(a, b) => b.date.localeCompare(a.date)
+			),
+		};
+	},
+});
+
+/**
+ * Forecasting: estimate future raw material costs based on avg daily usage.
+ */
+export const getHppForecast = query({
+	args: { days: v.optional(v.number()) },
+	handler: async (ctx, args) => {
+		const forecastDays = args.days ?? 30;
+		const allHpp = await ctx.db.query("hppCalculations").collect();
+		const orders = await ctx.db.query("orders").order("desc").collect();
+
+		// Build productId → HPP ingredients lookup
+		const hppByProduct: Record<
+			string,
+			{
+				ingredients: {
+					ingredientName: string;
+					usagePerServing: number;
+					usageUnit: string;
+					costPerServing: number;
+				}[];
+			}
+		> = {};
+
+		for (const calc of allHpp) {
+			if (!calc.productId) continue;
+			hppByProduct[calc.productId] = {
+				ingredients: calc.ingredients.map((ing) => {
+					const totalBase =
+						ing.purchaseQuantity * ing.conversionFactor;
+					const costBase =
+						totalBase > 0 ? ing.purchasePrice / totalBase : 0;
+					return {
+						ingredientName: ing.ingredientName,
+						usagePerServing: ing.usagePerServing,
+						usageUnit: ing.usageUnit,
+						costPerServing: costBase * ing.usagePerServing,
+					};
+				}),
+			};
+		}
+
+		// Calculate avg daily servings per product (last 7 days)
+		const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+		const recentOrders = orders.filter(
+			(o) =>
+				(o.status === "completed" || o.status === "paid") &&
+				o.createdAt >= sevenDaysAgo
+		);
+
+		const dailyUsage: Record<
+			string,
+			{ name: string; totalQty: number; unit: string; totalCost: number }
+		> = {};
+
+		for (const order of recentOrders) {
+			for (const item of order.items) {
+				const hppData = hppByProduct[item.productId];
+				if (!hppData) continue;
+
+				for (const ing of hppData.ingredients) {
+					const key = ing.ingredientName;
+					if (!dailyUsage[key]) {
+						dailyUsage[key] = {
+							name: ing.ingredientName,
+							totalQty: 0,
+							unit: ing.usageUnit,
+							totalCost: 0,
+						};
+					}
+					dailyUsage[key].totalQty +=
+						ing.usagePerServing * item.quantity;
+					dailyUsage[key].totalCost +=
+						ing.costPerServing * item.quantity;
+				}
+			}
+		}
+
+		// Calculate days with orders to get accurate daily avg
+		const daysWithData = Math.max(
+			1,
+			Math.min(
+				7,
+				new Set(
+					recentOrders.map((o) =>
+						new Date(o.createdAt).toISOString().split("T")[0]
+					)
+				).size
+			)
+		);
+
+		const forecast = Object.values(dailyUsage).map((item) => ({
+			ingredientName: item.name,
+			unit: item.unit,
+			avgDailyUsage: item.totalQty / daysWithData,
+			avgDailyCost: item.totalCost / daysWithData,
+			forecastUsage: (item.totalQty / daysWithData) * forecastDays,
+			forecastCost: (item.totalCost / daysWithData) * forecastDays,
+		}));
+
+		forecast.sort((a, b) => b.forecastCost - a.forecastCost);
+
+		return {
+			forecastDays,
+			daysWithData,
+			totalForecastCost: forecast.reduce(
+				(sum, f) => sum + f.forecastCost,
+				0
+			),
+			ingredients: forecast,
+		};
 	},
 });
