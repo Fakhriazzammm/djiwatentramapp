@@ -185,6 +185,37 @@ export default defineSchema({
 		.index("by_product", ["productId"])
 		.index("by_product_variant", ["productId", "variantName"]),
 
+	// HPP Calculations (Harga Pokok Produksi / Cost of Goods Sold)
+	hppCalculations: defineTable({
+		name: v.string(), // Calculation name, e.g., "HPP Susu Coklat per Gelas"
+		description: v.optional(v.string()),
+		// Raw material items used
+		ingredients: v.array(
+			v.object({
+				inventoryId: v.optional(v.id("inventory")), // Link to inventory if available
+				ingredientName: v.string(),
+				purchasePrice: v.number(), // Total purchase price
+				purchaseQuantity: v.number(), // How much purchased
+				purchaseUnit: v.string(), // e.g., "liter", "kg", "box"
+				usagePerServing: v.number(), // Amount used per serving
+				usageUnit: v.string(), // e.g., "ml", "gram"
+				conversionFactor: v.number(), // How many usageUnit in 1 purchaseUnit (e.g., 1 liter = 1000 ml)
+			})
+		),
+		// Overhead costs (packaging, gas, electricity, etc.)
+		overheadCosts: v.array(
+			v.object({
+				name: v.string(), // e.g., "Cup Plastik", "Sedotan", "Gas LPG"
+				costPerServing: v.number(), // Cost per serving
+			})
+		),
+		servingsPerBatch: v.number(), // How many servings produced per batch
+		sellingPrice: v.number(), // Target selling price per serving
+		productId: v.optional(v.id("products")), // Link to a product if applicable
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	}).index("by_product", ["productId"]),
+
 	// Roles for RBAC
 	roles: defineTable({
 		name: v.string(), // e.g., "admin", "cashier"

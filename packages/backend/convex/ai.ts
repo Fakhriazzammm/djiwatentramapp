@@ -160,7 +160,7 @@ export const generateDiscountStrategy = action({
  * Yumi AI Chat - Interactive assistant that can query all database tables
  */
 async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
-	const [products, categories, inventory, orders, discounts, financialSummary] =
+	const [products, categories, inventory, orders, discounts, financialSummary, hppDashboard, hppOrdersCogs] =
 		await Promise.all([
 			ctx.runQuery("products:getAllProductsAdmin" as never),
 			ctx.runQuery("products:getCategories" as never),
@@ -168,6 +168,8 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 			ctx.runQuery("orders:getOrders" as never, {} as never),
 			ctx.runQuery("discounts:getDiscounts" as never),
 			ctx.runQuery("finance:getFinancialSummary" as never, {} as never),
+			ctx.runQuery("hpp:getHppDashboardData" as never),
+			ctx.runQuery("hpp:getOrdersCogs" as never),
 		]);
 
 	const prodList =
@@ -276,15 +278,45 @@ Total Transaksi: ${fin?.transactionCount || 0}
 🎁 PROMOSI/DISKON (${(discounts as unknown[])?.length || 0}):
 ${discountList}
 
+📐 HPP (Harga Pokok Produksi):
+${(() => {
+	const hpp = hppDashboard as {
+		totalCalculations: number;
+		avgMargin: number;
+		lowMarginAlerts: Array<{ name: string; marginPercent: number; profitPerServing: number }>;
+		topProfit: Array<{ name: string; profitPerServing: number; marginPercent: number }>;
+		bottomProfit: Array<{ name: string; profitPerServing: number; marginPercent: number }>;
+	} | undefined;
+	const cogs = hppOrdersCogs as {
+		totalRevenue: number;
+		totalCogs: number;
+		totalProfit: number;
+		grossMargin: number;
+		matchedOrders: number;
+	} | undefined;
+	if (!hpp || hpp.totalCalculations === 0) return "Belum ada kalkulasi HPP";
+	let result = `Total Kalkulasi: ${hpp.totalCalculations}, Rata-rata Margin: ${hpp.avgMargin.toFixed(1)}%\n`;
+	if (hpp.lowMarginAlerts.length > 0) {
+		result += `⚠️ Margin Rendah (<20%): ${hpp.lowMarginAlerts.map((a) => `${a.name} (${a.marginPercent.toFixed(1)}%)`).join(", ")}\n`;
+	}
+	result += `Paling Untung: ${hpp.topProfit.map((a) => `${a.name} (Rp${a.profitPerServing.toFixed(0)}/porsi, ${a.marginPercent.toFixed(1)}%)`).join(", ")}\n`;
+	result += `Paling Rugi: ${hpp.bottomProfit.map((a) => `${a.name} (Rp${a.profitPerServing.toFixed(0)}/porsi, ${a.marginPercent.toFixed(1)}%)`).join(", ")}`;
+	if (cogs) {
+		result += `\nCOGS dari Pesanan: Revenue Rp${cogs.totalRevenue.toLocaleString("id-ID")} - COGS Rp${cogs.totalCogs.toLocaleString("id-ID")} = Laba Kotor Rp${cogs.totalProfit.toLocaleString("id-ID")} (Margin ${cogs.grossMargin.toFixed(1)}%), ${cogs.matchedOrders} pesanan matched`;
+	}
+	return result;
+})()}
+
 == FITUR APLIKASI ==
 - Manajemen Produk & Kategori (CRUD, variasi, upload gambar)
 - Manajemen Inventaris & Stok (FIFO, low-stock alert, resep, base recipe/pre-mix)
 - Pemesanan & POS (buat pesanan, update status, cetak struk Bluetooth)
 - Keuangan (income/expense tracking, laporan periode)
 - Promosi & Diskon (FIXED/PERCENTAGE/FLAT_PRICE, jadwal, target)
+- HPP / Kalkulator Harga Pokok Produksi (perhitungan biaya bahan baku, margin, laba)
 - Manajemen User & Role (RBAC, permissions)
 - Pengaturan Toko (nama, alamat, logo, receipt footer)
-- AI Analytics (prediksi stok, analisis bisnis, rekomendasi produk)`;
+- AI Analytics (prediksi stok, analisis bisnis, rekomendasi produk, analisis HPP)`;
 }
 
 export const yumiChat = action({

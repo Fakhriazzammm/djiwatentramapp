@@ -1,11 +1,15 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "@tkmpos/backend/convex/_generated/api";
 import { useAction, useQuery } from "convex/react";
 import {
 	AlertTriangle,
+	ArrowRight,
+	Calculator,
 	DollarSign,
+	Percent,
 	RefreshCcw,
 	ShoppingBag,
+	TrendingDown,
 	TrendingUp,
 } from "lucide-react";
 import {
@@ -28,6 +32,9 @@ function DashboardPage() {
 	// ... (rest of DashboardPage remains the same, assuming it doesn't use React.xxx)
 	const orders = useQuery(api.orders.getOrders, {});
 	const inventory = useQuery(api.inventory.getInventory);
+	const hppDashboard = useQuery(api.hpp.getHppDashboardData);
+	const hppCogs = useQuery(api.hpp.getOrdersCogs);
+	const hppForecast = useQuery(api.hpp.getHppForecast, { days: 30 });
 	const generateCompanyOverview = useAction(api.ai.generateCompanyOverview);
 	const predictStockOut = useAction(api.ai.predictStockOut);
 	const [insight, setInsight] = useState<string | null>(null);
@@ -150,6 +157,206 @@ function DashboardPage() {
 					}
 				/>
 			</div>
+
+			{/* HPP Dashboard Section */}
+			{hppDashboard && hppDashboard.totalCalculations > 0 && (
+				<div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+					<StatCard
+						icon={<Calculator className="text-primary" />}
+						loading={!hppDashboard}
+						title="HPP Terhitung"
+						value={`${hppDashboard.totalCalculations} Produk`}
+						trend={`Rata-rata margin ${hppDashboard.avgMargin.toFixed(1)}%`}
+					/>
+					<StatCard
+						icon={<Percent className="text-primary" />}
+						loading={!hppCogs}
+						title="Laba Kotor"
+						value={
+							hppCogs
+								? new Intl.NumberFormat("id-ID", {
+										style: "currency",
+										currency: "IDR",
+										maximumFractionDigits: 0,
+									}).format(hppCogs.totalProfit)
+								: "Rp 0"
+						}
+						trend={
+							hppCogs
+								? `Margin ${hppCogs.grossMargin.toFixed(1)}% dari ${hppCogs.matchedOrders} pesanan`
+								: undefined
+						}
+					/>
+					<StatCard
+						icon={<TrendingUp className="text-primary" />}
+						loading={!hppForecast}
+						title="Prediksi Biaya 30 Hari"
+						value={
+							hppForecast
+								? new Intl.NumberFormat("id-ID", {
+										style: "currency",
+										currency: "IDR",
+										maximumFractionDigits: 0,
+									}).format(hppForecast.totalForecastCost)
+								: "Rp 0"
+						}
+						trend={
+							hppForecast
+								? `Berdasarkan ${hppForecast.daysWithData} hari data`
+								: undefined
+						}
+					/>
+					<StatCard
+						alert={
+							(hppDashboard.lowMarginAlerts.length) > 0
+						}
+						icon={
+							hppDashboard.lowMarginAlerts.length > 0 ? (
+								<TrendingDown className="text-destructive" />
+							) : (
+								<TrendingUp className="text-primary" />
+							)
+						}
+						loading={!hppDashboard}
+						title="Margin Rendah"
+						value={
+							hppDashboard.lowMarginAlerts.length > 0
+								? `${hppDashboard.lowMarginAlerts.length} Produk`
+								: "Semua Aman"
+						}
+						trend={
+							hppDashboard.lowMarginAlerts.length > 0
+								? `Terendah: ${hppDashboard.lowMarginAlerts[0]?.marginPercent.toFixed(1)}%`
+								: "Semua margin di atas 20%"
+						}
+					/>
+				</div>
+			)}
+
+			{/* HPP Rankings & Alerts */}
+			{hppDashboard && hppDashboard.totalCalculations > 0 && (
+				<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+					{/* Top Profit Products */}
+					<div className="rounded-xl border border-border/50 bg-card/50 p-4 backdrop-blur-sm">
+						<div className="mb-3 flex items-center justify-between">
+							<h3 className="flex items-center gap-2 font-bold text-base text-foreground">
+								<TrendingUp className="h-4 w-4 text-green-500" />
+								Produk Paling Untung
+							</h3>
+							<Link
+								className="flex items-center gap-1 text-primary text-xs hover:underline"
+								to="/admin/hpp-calculator"
+							>
+								Lihat HPP
+								<ArrowRight className="h-3 w-3" />
+							</Link>
+						</div>
+						<div className="space-y-2">
+							{hppDashboard.topProfit.map((item, i) => (
+								<div
+									className="flex items-center justify-between rounded-lg border border-border/50 p-2 text-sm"
+									key={item.id}
+								>
+									<div className="flex items-center gap-2">
+										<span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 font-bold text-green-700 text-[10px] dark:bg-green-900/30">
+											{i + 1}
+										</span>
+										<span className="font-medium text-xs">
+											{item.name}
+										</span>
+									</div>
+									<div className="flex items-center gap-3 text-xs">
+										<span className="font-bold text-green-600 dark:text-green-400">
+											{new Intl.NumberFormat("id-ID", {
+												style: "currency",
+												currency: "IDR",
+												maximumFractionDigits: 0,
+											}).format(item.profitPerServing)}
+										</span>
+										<span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] text-green-700 dark:bg-green-900/30 dark:text-green-400">
+											{item.marginPercent.toFixed(1)}%
+										</span>
+									</div>
+								</div>
+							))}
+						</div>
+					</div>
+
+					{/* Low Margin Alerts + Forecast */}
+					<div className="space-y-4">
+						{/* Low Margin Alerts */}
+						{hppDashboard.lowMarginAlerts.length > 0 && (
+							<div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
+								<h3 className="mb-2 flex items-center gap-2 font-bold text-amber-800 text-sm dark:text-amber-200">
+									<AlertTriangle className="h-4 w-4" />
+									Peringatan Margin Rendah (&lt;20%)
+								</h3>
+								<div className="space-y-1.5">
+									{hppDashboard.lowMarginAlerts.slice(0, 5).map((item) => (
+										<div
+											className="flex items-center justify-between text-xs"
+											key={item.id}
+										>
+											<span className="text-amber-700 dark:text-amber-300">
+												{item.name}
+											</span>
+											<span className="font-bold text-amber-800 dark:text-amber-200">
+												Margin {item.marginPercent.toFixed(1)}%
+											</span>
+										</div>
+									))}
+								</div>
+							</div>
+						)}
+
+						{/* Forecast */}
+						{hppForecast &&
+							hppForecast.ingredients.length > 0 && (
+								<div className="rounded-xl border border-border/50 bg-card/50 p-4 backdrop-blur-sm">
+									<h3 className="mb-2 flex items-center gap-2 font-bold text-base text-foreground">
+										<Calculator className="h-4 w-4 text-primary" />
+										Prediksi Biaya Bahan 30 Hari
+									</h3>
+									<div className="space-y-1.5">
+										{hppForecast.ingredients.slice(0, 5).map((item) => (
+											<div
+												className="flex items-center justify-between text-xs"
+												key={item.ingredientName}
+											>
+												<span className="text-muted-foreground">
+													{item.ingredientName}{" "}
+													<span className="text-[10px]">
+														(~{new Intl.NumberFormat("id-ID", {
+															maximumFractionDigits: 0,
+														}).format(item.forecastUsage)}{" "}
+														{item.unit})
+													</span>
+												</span>
+												<span className="font-medium">
+													{new Intl.NumberFormat("id-ID", {
+														style: "currency",
+														currency: "IDR",
+														maximumFractionDigits: 0,
+													}).format(item.forecastCost)}
+												</span>
+											</div>
+										))}
+										<div className="mt-1 flex items-center justify-between border-border border-t pt-1 font-bold text-xs">
+											<span>Total Estimasi</span>
+											<span className="text-primary">
+												{new Intl.NumberFormat("id-ID", {
+													style: "currency",
+													currency: "IDR",
+													maximumFractionDigits: 0,
+												}).format(hppForecast.totalForecastCost)}
+											</span>
+										</div>
+									</div>
+								</div>
+							)}
+					</div>
+				</div>
+			)}
 
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
 				{/* Recent Orders */}
