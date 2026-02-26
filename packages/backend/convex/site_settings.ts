@@ -20,7 +20,7 @@ export const getSettings = query({
 				receiptFooter: "Terima kasih atas kunjungan Anda!",
 				autoPrint: false,
 				// App Branding defaults
-				appName: "Murni POS",
+				appName: "Yumi POS",
 				appVersion: "1.0.0",
 				developerName: "Zantara Technology",
 			};

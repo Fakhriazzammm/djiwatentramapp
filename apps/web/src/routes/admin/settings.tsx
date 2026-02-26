@@ -70,7 +70,7 @@ function SettingsPage() {
 		timezone: "UTC+7 (Jakarta)",
 		lowStockAlert: 10,
 		// App Branding
-		appName: "Murni POS",
+		appName: "Yumi POS",
 		appVersion: "1.0.0",
 		developerName: "Zantara Technology",
 	});

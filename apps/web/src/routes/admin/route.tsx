@@ -50,7 +50,7 @@ function AdminLayout() {
 
 	const settings = useQuery(api.siteSettings.getSettings);
 	const storeName = settings?.storeName || "TKM Admin";
-	const appName = settings?.appName || "Murni POS";
+	const appName = settings?.appName || "Yumi POS";
 	const appVersion = settings?.appVersion || "1.0.0";
 	const developerName = settings?.developerName || "Zantara Technology";
 
