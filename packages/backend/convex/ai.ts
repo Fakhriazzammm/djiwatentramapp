@@ -319,7 +319,7 @@ ${(() => {
 				totalCogs: number;
 				totalProfit: number;
 				grossMargin: number;
-				matchOrders: number;
+				matchedOrders: number;
 		  }
 		| undefined;
 	if (!hpp || hpp.totalCalculations === 0) {
@@ -814,3 +814,430 @@ function zodToJsonSchema(zodType: z.ZodTypeAny): Record<string, unknown> {
 
 	return { type: "string" };
 }
+
+// ============================================
+// AI REPORT GENERATOR
+// ============================================
+
+/**
+ * Generate a comprehensive report based on user request
+ */
+export const generateReport = action({
+	args: {
+		reportType: v.union(
+			v.literal("daily"),
+			v.literal("weekly"),
+			v.literal("monthly"),
+			v.literal("custom")
+		),
+		dataSources: v.array(
+			v.union(
+				v.literal("sales"),
+				v.literal("inventory"),
+				v.literal("finance"),
+				v.literal("orders"),
+				v.literal("products"),
+				v.literal("all")
+			)
+		),
+		customPrompt: v.optional(v.string()), // Untuk custom report
+		startDate: v.optional(v.number()), // Timestamp
+		endDate: v.optional(v.number()), // Timestamp
+	},
+	handler: async (ctx, args) => {
+		// Gather requested data
+		const [products, inventory, orders, financialSummary, discounts] =
+			await Promise.all([
+				ctx.runQuery(api.products.getAllProductsAdmin),
+				ctx.runQuery(api.inventory.getInventory),
+				ctx.runQuery(api.orders.getOrders, {}),
+				ctx.runQuery(api.finance.getFinancialSummary, {}),
+				ctx.runQuery(api.discounts.getDiscounts),
+			]);
+
+		const completedOrders = orders.filter(
+			(o) => o.status === "completed" || o.status === "paid"
+		);
+
+		// Calculate report data
+		const reportData: Record<string, unknown> = {};
+
+		// Sales Data
+		if (
+			args.dataSources.includes("sales") ||
+			args.dataSources.includes("all")
+		) {
+			const totalRevenue = completedOrders.reduce(
+				(a, o) => a + o.totalAmount,
+				0
+			);
+			const totalOrdersCount = completedOrders.length;
+			const avgOrderValue =
+				totalOrdersCount > 0 ? totalRevenue / totalOrdersCount : 0;
+
+			// Product sales breakdown
+			const productSales: Record<string, number> = {};
+			for (const order of completedOrders) {
+				for (const item of order.items) {
+					productSales[item.productName] =
+						(productSales[item.productName] || 0) + item.quantity;
+				}
+			}
+			const topProducts = Object.entries(productSales)
+				.sort((a, b) => b[1] - a[1])
+				.slice(0, 5);
+
+			reportData.sales = {
+				totalRevenue,
+				totalOrdersCount,
+				avgOrderValue,
+				topProducts,
+			};
+		}
+
+		// Inventory Data
+		if (
+			args.dataSources.includes("inventory") ||
+			args.dataSources.includes("all")
+		) {
+			const lowStockItems = inventory.filter(
+				(i) => i.quantity <= i.lowStockThreshold
+			);
+			const totalInventoryValue = inventory.length; // Bisa ditambahkan logika perhitungan value
+
+			reportData.inventory = {
+				totalItems: inventory.length,
+				lowStockItems: lowStockItems.map((i) => ({
+					name: i.ingredientName,
+					current: i.quantity,
+					min: i.lowStockThreshold,
+					unit: i.unit,
+				})),
+				outOfStockItems: inventory.filter((i) => i.quantity === 0).length,
+			};
+		}
+
+		// Finance Data
+		if (
+			args.dataSources.includes("finance") ||
+			args.dataSources.includes("all")
+		) {
+			const fin = financialSummary as {
+				totalIncome: number;
+				totalExpense: number;
+				netBalance: number;
+				transactionCount: number;
+			};
+			reportData.finance = {
+				totalIncome: fin.totalIncome,
+				totalExpense: fin.totalExpense,
+				netBalance: fin.netBalance,
+				transactionCount: fin.transactionCount,
+				profitMargin:
+					fin.totalIncome > 0
+						? ((fin.totalIncome - fin.totalExpense) / fin.totalIncome) * 100
+						: 0,
+			};
+		}
+
+		// Orders Data
+		if (
+			args.dataSources.includes("orders") ||
+			args.dataSources.includes("all")
+		) {
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+			const todayOrders = orders.filter((o) => o.createdAt >= today.getTime());
+
+			reportData.orders = {
+				totalOrders: orders.length,
+				completedOrders: completedOrders.length,
+				pendingOrders: orders.filter((o) => o.status === "pending").length,
+				todayOrders: todayOrders.length,
+			};
+		}
+
+		// Products Data
+		if (
+			args.dataSources.includes("products") ||
+			args.dataSources.includes("all")
+		) {
+			const activeProducts = products.filter((p) => p.isAvailable);
+			const inactiveProducts = products.filter((p) => !p.isAvailable);
+
+			reportData.products = {
+				totalProducts: products.length,
+				activeProducts: activeProducts.length,
+				inactiveProducts: inactiveProducts.length,
+				categories: [...new Set(products.map((p) => p.categoryId))].length,
+			};
+		}
+
+		// Generate report based on report type
+		let prompt = "";
+
+		if (args.customPrompt) {
+			prompt = args.customPrompt;
+		} else {
+			switch (args.reportType) {
+				case "daily":
+					prompt =
+						"Buat laporan harian yang mencakup: ringkasan penjualan, stok kritis, dan rekomendasi tindakan untuk hari ini.";
+					break;
+				case "weekly":
+					prompt =
+						"Buat laporan mingguan dengan: analisis tren penjualan, produk terlaris, dan saran optimalisasi untuk minggu ini.";
+					break;
+				case "monthly":
+					prompt =
+						"Buat laporan bulanan lengkap: performa penjualan, analisis keuangan, rekomendasi stok, dan strategi bulan depan.";
+					break;
+				default:
+					prompt = "Buat laporan komprehensif dari data yang tersedia.";
+			}
+		}
+
+		// Add data context to prompt
+		prompt += `\n\nDATA YANG TERSEDIA:\n${JSON.stringify(reportData, null, 2)}`;
+
+		const completion = await getOpenAI().chat.completions.create({
+			model: "gpt-4o-mini",
+			messages: [
+				{
+					role: "system",
+					content:
+						"Kamu adalah analis bisnis yang ahli. Buat laporan yang jelas, terstruktur, dan actionable. Gunakan Bahasa Indonesia. Format dengan bullet points dan emoji.",
+				},
+				{ role: "user", content: prompt },
+			],
+		});
+
+		return completion.choices[0].message.content;
+	},
+});
+
+// ============================================
+// PROACTIVE SUGGESTIONS
+// ============================================
+
+interface ProactiveSuggestion {
+	id: string;
+	type: "low_stock" | "high_stock" | "pending_order" | "trending" | "discount_opp" | "price_opt";
+	title: string;
+	description: string;
+	action: {
+		toolName: string;
+		args: Record<string, unknown>;
+	} | null;
+	priority: "high" | "medium" | "low";
+	createdAt: number;
+}
+
+/**
+ * Get proactive suggestions based on current business state
+ */
+export const getProactiveSuggestions = action({
+	args: {},
+	handler: async (ctx) => {
+		const suggestions: ProactiveSuggestion[] = [];
+		const now = Date.now();
+
+		// Check 1: Low Stock Alerts
+		const inventory = await ctx.runQuery(api.inventory.getInventory);
+		const lowStockItems = inventory.filter(
+			(i) => i.quantity <= i.lowStockThreshold
+		);
+
+		for (const item of lowStockItems) {
+			const percentage = Math.floor(
+				(item.quantity / item.lowStockThreshold) * 100
+			);
+			suggestions.push({
+				id: `low_stock_${item._id}`,
+				type: "low_stock",
+				title: `Stok ${item.ingredientName} menipis!`,
+				description: `Sisa ${item.quantity} ${item.unit} (${percentage}% dari threshold). Segera restock.`,
+				action: {
+					toolName: "addStock",
+					args: {
+						inventoryId: item._id,
+						quantity: item.lowStockThreshold * 2 - item.quantity, // Restock to 2x threshold
+						notes: "Auto-restock dari AI suggestion",
+					},
+				},
+				priority: percentage < 20 ? "high" : "medium",
+				createdAt: now,
+			});
+		}
+
+		// Check 2: Pending Orders
+		const orders = await ctx.runQuery(api.orders.getOrders, {});
+		const pendingOrders = orders.filter((o) => o.status === "pending");
+
+		if (pendingOrders.length > 0) {
+			suggestions.push({
+				id: "pending_orders_bulk",
+				type: "pending_order",
+				title: `${pendingOrders.length} pesanan menunggu diproses`,
+				description:
+					pendingOrders.length === 1
+						? `Pesanan #${pendingOrders[0].orderNumber} menunggu pembayaran.`
+						: `Ada ${pendingOrders.length} pesanan perlu diproses.`,
+				action: null,
+				priority: pendingOrders.length > 3 ? "high" : "medium",
+				createdAt: now,
+			});
+		}
+
+		// Check 3: Trending Products (based on recent completed orders)
+		const completedOrders = orders.filter(
+			(o) => o.status === "completed" || o.status === "paid"
+		);
+		if (completedOrders.length >= 10) {
+			// Get last 7 days orders
+			const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+			const recentOrders = completedOrders.filter(
+				(o) => o.createdAt >= sevenDaysAgo
+			);
+
+			const productSales: Record<string, number> = {};
+			for (const order of recentOrders) {
+				for (const item of order.items) {
+					productSales[item.productName] =
+						(productSales[item.productName] || 0) + item.quantity;
+				}
+			}
+
+			// Find trending products
+			const sortedProducts = Object.entries(productSales)
+				.sort((a, b) => b[1] - a[1])
+				.slice(0, 3);
+
+			if (sortedProducts.length > 0) {
+				const topProduct = sortedProducts[0];
+				suggestions.push({
+					id: `trending_${topProduct[0]}`,
+					type: "trending",
+					title: `Produk trending: ${topProduct[0]}`,
+					description: `${topProduct[0]} terjual ${topProduct[1]} kali minggu ini. Pertimbangkan untuk tambah stok.`,
+					action: {
+						toolName: "addStock",
+						args: { inventoryId: "", quantity: 0, notes: "" }, // Placeholder
+					},
+					priority: "medium",
+					createdAt: now,
+				});
+			}
+		}
+
+		// Check 4: Discount Opportunities (slow-moving products)
+		const products = await ctx.runQuery(api.products.getAllProductsAdmin);
+		const activeProducts = products.filter((p) => p.isAvailable);
+
+		if (activeProducts.length >= 5) {
+			// Get products without recent sales in last 7 days
+			const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+			const recentOrders = orders.filter(
+				(o) => o.createdAt >= sevenDaysAgo
+			);
+
+			const soldProductIds = new Set();
+			for (const order of recentOrders) {
+				for (const item of order.items) {
+					soldProductIds.add(item.productId);
+				}
+			}
+
+			// Slow moving products (available but not sold recently)
+			const slowMovingProducts = activeProducts.filter(
+				(p) => !soldProductIds.has(p._id)
+			);
+
+			if (slowMovingProducts.length > 0) {
+				suggestions.push({
+					id: "discount_opp_bulk",
+					type: "discount_opp",
+					title: "Peluang diskon untuk produk kurang laku",
+					description: `${slowMovingProducts
+						.map((p) => p.name)
+						.slice(0, 3)
+						.join(", ")} belum terjual minggu ini. Pertimbangkan diskon.`,
+					action: {
+						toolName: "createDiscount",
+						args: {
+							name: "Diskon Produk Kurang Laku",
+							type: "PERCENTAGE",
+							value: 20,
+							targetType: "PRODUCT",
+							targetIds: slowMovingProducts.map((p) => p._id),
+							isActive: true,
+						},
+					},
+					priority: "medium",
+					createdAt: now,
+				});
+			}
+		}
+
+		// Check 5: Price Optimization opportunities
+		if (completedOrders.length >= 5) {
+			// Analyze which products have good sales but could be priced higher
+			const productSales: Record<string, { quantity: number; revenue: number }> =
+				{};
+			const productPrices: Record<string, number> = {};
+
+			for (const order of completedOrders) {
+				for (const item of order.items) {
+					if (!productSales[item.productName]) {
+						productSales[item.productName] = {
+							quantity: 0,
+							revenue: 0,
+						};
+					}
+					productSales[item.productName].quantity += item.quantity;
+					productSales[item.productName].revenue +=
+						item.price * item.quantity;
+					productPrices[item.productName] = item.price;
+				}
+			}
+
+			// Find products with good sales but low margin potential
+			for (const [productName, data] of Object.entries(productSales)) {
+				const avgPrice =
+					data.quantity > 0 ? data.revenue / data.quantity : 0;
+				const currentPrice = productPrices[productName] ?? 0;
+
+				// If selling well but price is low compared to market
+				if (
+					data.quantity >= 3 &&
+					avgPrice > currentPrice * 1.2
+				) {
+					suggestions.push({
+						id: `price_opt_${productName}`,
+						type: "price_opt",
+						title: `Peluang optimasi harga: ${productName}`,
+						description: `Harga jual rata-rata Rp${Math.round(
+							avgPrice
+						)}, tapi harga saat ini Rp${currentPrice}. Pertimbangkan kenaikan harga.`,
+						action: null,
+						priority: "low",
+						createdAt: now,
+					});
+				}
+			}
+		}
+
+		// Sort suggestions by priority
+		const priorityOrder = { high: 0, medium: 1, low:2 };
+		suggestions.sort((a, b) => {
+			const priorityA = priorityOrder[a.priority] ?? 1;
+			const priorityB = priorityOrder[b.priority] ?? 1;
+			if (priorityA !== priorityB) {
+				return priorityA - priorityB;
+			}
+			return b.createdAt - a.createdAt;
+		});
+
+		return suggestions.slice(0, 10); // Return top 10 suggestions
+	},
+});

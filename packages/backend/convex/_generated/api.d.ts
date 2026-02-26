@@ -20,6 +20,7 @@ import type * as orders from "../orders.js";
 import type * as private_data from "../private_data.js";
 import type * as products from "../products.js";
 import type * as roles from "../roles.js";
+import type * as scheduledReports from "../scheduledReports.js";
 import type * as seed from "../seed.js";
 import type * as site_settings from "../site_settings.js";
 import type * as toolExecutors from "../toolExecutors.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   private_data: typeof private_data;
   products: typeof products;
   roles: typeof roles;
+  scheduledReports: typeof scheduledReports;
   seed: typeof seed;
   site_settings: typeof site_settings;
   toolExecutors: typeof toolExecutors;

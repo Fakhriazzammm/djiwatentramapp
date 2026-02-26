@@ -239,4 +239,58 @@ export default defineSchema({
 		.index("by_username", ["username"])
 		.index("by_role", ["roleId"])
 		.index("by_auth_user_id", ["authUserId"]),
+
+	// Scheduled Reports for automatic reporting
+	scheduledReports: defineTable({
+		name: v.string(),
+		description: v.optional(v.string()),
+		reportType: v.union(
+			v.literal("daily"),
+			v.literal("weekly"),
+			v.literal("monthly")
+		),
+		dataSources: v.array(v.object({
+			type: v.union(
+				v.literal("sales"),
+				v.literal("inventory"),
+				v.literal("finance"),
+				v.literal("orders"),
+				v.literal("products")
+			),
+			includeDetails: v.optional(v.boolean()),
+		})),
+		schedule: v.object({
+			frequency: v.union(
+				v.literal("daily"),
+				v.literal("weekly"),
+				v.literal("monthly")
+			),
+			hour: v.optional(v.number()),
+			dayOfWeek: v.optional(v.number()),
+			dayOfMonth: v.optional(v.number()),
+		}),
+		format: v.union(v.literal("json"), v.literal("pdf"), v.literal("excel")),
+		delivery: v.object({
+			type: v.union(v.literal("email"), v.literal("download"), v.literal("webhook")),
+			destination: v.string(),
+		}),
+		isActive: v.boolean(),
+		startDate: v.optional(v.number()),
+		endDate: v.optional(v.number()),
+		createdAt: v.number(),
+		lastRun: v.optional(v.number()),
+		lastResult: v.optional(v.string()),
+		nextRunTime: v.optional(v.number()),
+	}),
+
+	// Report Templates for AI-generated reports
+	reportTemplates: defineTable({
+		name: v.string(),
+		description: v.optional(v.string()),
+		template: v.string(), // AI prompt template
+		dataSources: v.array(v.string()), // sales, inventory, finance, etc
+		createdBy: v.optional(v.id("users")),
+		createdAt: v.number(),
+		isActive: v.boolean(),
+	}),
 });
