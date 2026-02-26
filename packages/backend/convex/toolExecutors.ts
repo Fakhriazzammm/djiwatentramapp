@@ -5,13 +5,13 @@
  * Each tool calls the appropriate Convex mutation.
  */
 
-import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
+import { action } from "./_generated/server";
 import { tools } from "./tools";
 
 // Helper to cast string to Convex Id type
-function asId<T extends string>(value: string): any {
+function asId<_T extends string>(value: string): any {
 	return value as any;
 }
 
@@ -55,13 +55,27 @@ export const executeToolCall = action({
 				case "updateProduct": {
 					const parsed = tools.updateProduct.parameters.parse(toolArgs);
 					const updateData: Record<string, unknown> = {};
-					if (parsed.name !== undefined) updateData.name = parsed.name;
-					if (parsed.description !== undefined) updateData.description = parsed.description;
-					if (parsed.price !== undefined) updateData.price = parsed.price;
-					if (parsed.promoPrice !== undefined) updateData.promoPrice = parsed.promoPrice;
-					if (parsed.categoryId !== undefined) updateData.categoryId = asId(parsed.categoryId);
-					if (parsed.image !== undefined) updateData.image = parsed.image;
-					if (parsed.isAvailable !== undefined) updateData.isAvailable = parsed.isAvailable;
+					if (parsed.name !== undefined) {
+						updateData.name = parsed.name;
+					}
+					if (parsed.description !== undefined) {
+						updateData.description = parsed.description;
+					}
+					if (parsed.price !== undefined) {
+						updateData.price = parsed.price;
+					}
+					if (parsed.promoPrice !== undefined) {
+						updateData.promoPrice = parsed.promoPrice;
+					}
+					if (parsed.categoryId !== undefined) {
+						updateData.categoryId = asId(parsed.categoryId);
+					}
+					if (parsed.image !== undefined) {
+						updateData.image = parsed.image;
+					}
+					if (parsed.isAvailable !== undefined) {
+						updateData.isAvailable = parsed.isAvailable;
+					}
 
 					await ctx.runMutation(api.products.updateProduct, {
 						id: asId(parsed.id),
@@ -122,7 +136,11 @@ export const executeToolCall = action({
 						costPerUnit: parsed.costPerUnit,
 						notes: parsed.notes,
 					});
-					result = { success: true, message: `Stok berhasil ditambah ${parsed.quantity} ${parsed.notes || ""}`.trim() };
+					result = {
+						success: true,
+						message:
+							`Stok berhasil ditambah ${parsed.quantity} ${parsed.notes || ""}`.trim(),
+					};
 					break;
 				}
 
@@ -133,7 +151,11 @@ export const executeToolCall = action({
 						quantity: parsed.quantity,
 						notes: parsed.notes,
 					});
-					result = { success: true, message: `Stok berhasil dikurangi ${parsed.quantity} ${parsed.notes || ""}`.trim() };
+					result = {
+						success: true,
+						message:
+							`Stok berhasil dikurangi ${parsed.quantity} ${parsed.notes || ""}`.trim(),
+					};
 					break;
 				}
 
@@ -144,7 +166,11 @@ export const executeToolCall = action({
 						quantity: parsed.quantity,
 						notes: parsed.notes,
 					});
-					result = { success: true, message: `Stok berhasil diatur ke ${parsed.quantity} ${parsed.notes || ""}`.trim() };
+					result = {
+						success: true,
+						message:
+							`Stok berhasil diatur ke ${parsed.quantity} ${parsed.notes || ""}`.trim(),
+					};
 					break;
 				}
 
@@ -153,7 +179,10 @@ export const executeToolCall = action({
 					await ctx.runMutation(api.inventory.deleteInventoryItem, {
 						id: asId(parsed.id),
 					});
-					result = { success: true, message: "Item inventory berhasil dihapus" };
+					result = {
+						success: true,
+						message: "Item inventory berhasil dihapus",
+					};
 					break;
 				}
 
@@ -180,7 +209,10 @@ export const executeToolCall = action({
 						id: asId(parsed.id),
 						status: parsed.status as any,
 					});
-					result = { success: true, message: `Status pesanan berhasil diupdate ke ${parsed.status}` };
+					result = {
+						success: true,
+						message: `Status pesanan berhasil diupdate ke ${parsed.status}`,
+					};
 					break;
 				}
 
@@ -230,13 +262,27 @@ export const executeToolCall = action({
 				case "updateDiscount": {
 					const parsed = tools.updateDiscount.parameters.parse(toolArgs);
 					const updateData: Record<string, unknown> = {};
-					if (parsed.name !== undefined) updateData.name = parsed.name;
-					if (parsed.type !== undefined) updateData.type = parsed.type;
-					if (parsed.value !== undefined) updateData.value = parsed.value;
-					if (parsed.targetType !== undefined) updateData.targetType = parsed.targetType;
-					if (parsed.targetIds !== undefined) updateData.targetIds = parsed.targetIds;
-					if (parsed.isActive !== undefined) updateData.isActive = parsed.isActive;
-					if (parsed.minOrderValue !== undefined) updateData.minOrderValue = parsed.minOrderValue;
+					if (parsed.name !== undefined) {
+						updateData.name = parsed.name;
+					}
+					if (parsed.type !== undefined) {
+						updateData.type = parsed.type;
+					}
+					if (parsed.value !== undefined) {
+						updateData.value = parsed.value;
+					}
+					if (parsed.targetType !== undefined) {
+						updateData.targetType = parsed.targetType;
+					}
+					if (parsed.targetIds !== undefined) {
+						updateData.targetIds = parsed.targetIds;
+					}
+					if (parsed.isActive !== undefined) {
+						updateData.isActive = parsed.isActive;
+					}
+					if (parsed.minOrderValue !== undefined) {
+						updateData.minOrderValue = parsed.minOrderValue;
+					}
 
 					await ctx.runMutation(api.discounts.updateDiscount, {
 						id: asId(parsed.id),
@@ -256,7 +302,10 @@ export const executeToolCall = action({
 							id: asId(parsed.id),
 							isActive: !discount.isActive,
 						});
-						result = { success: true, message: `Diskon berhasil ${discount.isActive ? "dinonaktifkan" : "diaktifkan"}` };
+						result = {
+							success: true,
+							message: `Diskon berhasil ${discount.isActive ? "dinonaktifkan" : "diaktifkan"}`,
+						};
 					} else {
 						throw new Error("Diskon tidak ditemukan");
 					}
@@ -299,8 +348,12 @@ export const executeToolCall = action({
 						servingsPerBatch: parsed.servingsPerBatch,
 						sellingPrice: parsed.sellingPrice,
 					};
-					if (parsed.name !== undefined) hppData.name = parsed.name;
-					if (parsed.description !== undefined) hppData.description = parsed.description;
+					if (parsed.name !== undefined) {
+						hppData.name = parsed.name;
+					}
+					if (parsed.description !== undefined) {
+						hppData.description = parsed.description;
+					}
 					if (parsed.ingredients !== undefined) {
 						hppData.ingredients = parsed.ingredients.map((ing: any) => ({
 							...ing,
@@ -319,7 +372,10 @@ export const executeToolCall = action({
 					}
 
 					await ctx.runMutation(api.hpp.updateHppCalculation, hppData as any);
-					result = { success: true, message: "Kalkulasi HPP berhasil diupdate" };
+					result = {
+						success: true,
+						message: "Kalkulasi HPP berhasil diupdate",
+					};
 					break;
 				}
 
@@ -333,7 +389,8 @@ export const executeToolCall = action({
 				}
 
 				case "syncHppWithInventoryPrices": {
-					const parsed = tools.syncHppWithInventoryPrices.parameters.parse(toolArgs);
+					const parsed =
+						tools.syncHppWithInventoryPrices.parameters.parse(toolArgs);
 					result = await ctx.runMutation(api.hpp.syncHppWithInventoryPrices, {
 						id: asId(parsed.id),
 					});
@@ -344,10 +401,13 @@ export const executeToolCall = action({
 				// STORE SETTINGS TOOLS
 				// ============================================
 				case "updateStoreSettings": {
-					const parsed = tools.updateStoreSettings.parameters.parse(toolArgs);
+					const _parsed = tools.updateStoreSettings.parameters.parse(toolArgs);
 					// Store settings are stored in a different way
 					// For now, just return success
-					result = { success: true, message: "Pengaturan toko berhasil diupdate (simulasi)" };
+					result = {
+						success: true,
+						message: "Pengaturan toko berhasil diupdate (simulasi)",
+					};
 					break;
 				}
 

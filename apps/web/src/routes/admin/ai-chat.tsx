@@ -1,15 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "@tkmpos/backend/convex/_generated/api";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+	AlertTriangle,
 	Bot,
-	Send,
-	Sparkles,
-	Settings,
 	CheckCircle2,
-	XCircle,
+	Lightbulb,
 	Loader2,
+	Send,
+	Settings,
+	Sparkles,
+	TrendingUp,
+	XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -34,26 +37,11 @@ const TEMPLATES = [
 	{ label: "Rekap Hari Ini", message: "Berikan rekap lengkap bisnis hari ini" },
 	{ label: "Stok Rendah", message: "Produk apa saja yang stoknya rendah?" },
 	{ label: "Top Produk", message: "Apa produk terlaris saat ini?" },
-	{
-		label: "Ringkas Keuangan",
-		message: "Ringkas kondisi keuangan saat ini",
-	},
-	{
-		label: "Pesanan Tertunda",
-		message: "Ada berapa pesanan yang masih tertunda?",
-	},
-	{
-		label: "Saran Bisnis",
-		message: "Berikan saran bisnis berdasarkan data saat ini",
-	},
-	{
-		label: "Tambah Produk",
-		message: "Saya ingin menambah produk baru",
-	},
-	{
-		label: "Catat Pengeluaran",
-		message: "Saya ingin mencatat pengeluaran operasional",
-	},
+	{ label: "Ringkas Keuangan", message: "Ringkas kondisi keuangan saat ini" },
+	{ label: "Pesanan Tertunda", message: "Ada berapa pesanan yang masih tertunda?" },
+	{ label: "Saran Bisnis", message: "Berikan saran bisnis berdasarkan data saat ini" },
+	{ label: "Multi-Step: Produk + Stok", message: "Buat produk kopi susu harga 15000, dan tambahkan stok bahan-bahannya" },
+	{ label: "Multi-Step: Order + Bayar", message: "Buat pesanan 2 kopi susu untuk Budi dan catat sebagai lunas" },
 ];
 
 // Tool name to Indonesian label mapping
@@ -88,7 +76,7 @@ function AIChatPage() {
 		{
 			role: "assistant",
 			content:
-				"Halo! Saya Yumi, asisten AI kamu. Saya bisa membantu merekap data, menganalisis bisnis, MELAKUKAN AKSI seperti tambah produk, update stok, buat pesanan, dan lainnya. Ada yang bisa saya bantu?",
+				"Halo! Saya Yumi, asisten AI kamu. Saya bisa membantu merekap data, menganalisis bisnis, MELAKUKAN AKSI seperti tambah produk, update stok, buat pesanan, dan bahkan MULTI-STEP ACTIONS dalam satu permintaan. Ada yang bisa saya bantu?",
 		},
 	]);
 	const [input, setInput] = useState("");
@@ -97,6 +85,45 @@ function AIChatPage() {
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const yumiChat = useAction(api.ai.yumiChat);
+
+	// Fetch data for Smart Insights
+	const products = useQuery(api.products.getAllProductsAdmin, {});
+	const inventory = useQuery(api.inventory.getInventory, {});
+	const orders = useQuery(api.orders.getOrders, {});
+
+	// Generate smart insights from data
+	const smartInsights: Array<{
+		icon: React.ReactNode;
+		text: string;
+		type: "success" | "warning" | "info";
+	}> = [];
+
+	const lowStockItems = inventory?.filter((i) => i.quantity <= i.lowStockThreshold) ?? [];
+	if (lowStockItems.length > 0) {
+		smartInsights.push({
+			icon: <AlertTriangle className="h-4 w-4 text-orange-500" />,
+			text: `${lowStockItems.length} item stok menipis`,
+			type: "warning",
+		});
+	}
+
+	const pendingOrders = orders?.filter((o) => o.status === "pending") ?? [];
+	if (pendingOrders.length > 0) {
+		smartInsights.push({
+			icon: <Settings className="h-4 w-4 text-blue-500" />,
+			text: `${pendingOrders.length} pesanan perlu diproses`,
+			type: "info",
+		});
+	}
+
+	const availableProducts = products?.filter((p) => p.isAvailable).length ?? 0;
+	if (availableProducts > 0) {
+		smartInsights.push({
+			icon: <TrendingUp className="h-4 w-4 text-green-500" />,
+			text: `${availableProducts} produk aktif`,
+			type: "success",
+		});
+	}
 
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -129,14 +156,17 @@ function AIChatPage() {
 				// Parse response to detect if tools were used
 				// The backend response may contain tool execution results
 				let hasToolExecution = false;
-				let detectedTools: ToolCall[] = [];
+				const detectedTools: ToolCall[] = [];
 
 				// Check if response contains tool execution indicators
 				if (response?.includes("Berhasil menjalankan")) {
 					hasToolExecution = true;
 					// Extract tool names from response
 					for (const [toolKey, toolLabel] of Object.entries(TOOL_LABELS)) {
-						if (response.includes(toolLabel) || response.toLowerCase().includes(toolKey.toLowerCase())) {
+						if (
+							response.includes(toolLabel) ||
+							response.toLowerCase().includes(toolKey.toLowerCase())
+						) {
 							detectedTools.push({
 								name: toolKey,
 								args: {},
@@ -153,7 +183,9 @@ function AIChatPage() {
 						setToolCalls((prev) => [...prev, { ...tool, status: "executing" }]);
 						await new Promise((r) => setTimeout(r, 600));
 						setToolCalls((prev) =>
-							prev.map((t) => (t.name === tool.name ? { ...t, status: "success" as const } : t))
+							prev.map((t) =>
+								t.name === tool.name ? { ...t, status: "success" as const } : t
+							)
 						);
 					}
 					// Clear tool calls after a delay
@@ -191,17 +223,51 @@ function AIChatPage() {
 				<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
 					<Sparkles className="h-5 w-5 text-primary" />
 				</div>
-				<div>
+				<div className="flex-1">
 					<h2 className="font-bold text-foreground text-lg">Yumi AI Chat</h2>
 					<p className="text-muted-foreground text-xs">
-						Asisten Bisnis Cerdas dengan Aksi Otomatis
+						Asisten Bisnis Cerdas dengan Multi-Step Actions
 					</p>
 				</div>
+				{/* Smart Insights Badge */}
+				{smartInsights.length > 0 && (
+					<div className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5">
+						<Lightbulb className="h-3.5 w-3.5 text-primary" />
+						<span className="font-medium text-primary text-xs">
+							{smartInsights.length} Insights
+						</span>
+					</div>
+				)}
 			</div>
 
 			{/* Messages Container */}
 			<div className="flex-1 overflow-y-auto p-6">
 				<div className="mx-auto max-w-3xl space-y-6">
+					{/* Smart Insights Cards */}
+					{smartInsights.length > 0 && messages.length <= 1 && (
+						<motion.div
+							animate={{ opacity: 1, y: 0 }}
+							className="mb-6 grid grid-cols-3 gap-3"
+							initial={{ opacity: 0, y: -10 }}
+							transition={{ duration: 0.4 }}
+						>
+							{smartInsights.map((insight, i) => (
+								<motion.div
+									animate={{ opacity: 1, scale: 1 }}
+									className="flex items-center gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2"
+									initial={{ opacity: 0, scale: 0.9 }}
+									key={i}
+									transition={{ delay: i * 0.1, duration: 0.3 }}
+								>
+									{insight.icon}
+									<span className="text-muted-foreground text-xs">
+										{insight.text}
+									</span>
+								</motion.div>
+							))}
+						</motion.div>
+					)}
+
 					<AnimatePresence initial={false}>
 						{messages.map((msg, i) => (
 							<motion.div
@@ -288,6 +354,22 @@ function AIChatPage() {
 						))}
 					</AnimatePresence>
 
+					{/* Multi-Step Progress Badge */}
+					{toolCalls.length > 1 && (
+						<motion.div
+							animate={{ opacity: 1, scale: 1 }}
+							className="flex justify-center"
+							initial={{ opacity: 0, scale: 0.9 }}
+						>
+							<div className="flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2">
+								<Loader2 className="h-4 w-4 animate-spin text-primary" />
+								<span className="font-medium text-primary text-xs">
+									Multi-Step Action ({toolCalls.length} langkah)
+								</span>
+							</div>
+						</motion.div>
+					)}
+
 					{isLoading && toolCalls.length === 0 && (
 						<div className="flex justify-start">
 							<div className="space-y-2">
@@ -350,7 +432,7 @@ function AIChatPage() {
 							className="flex-1 rounded-2xl border border-border bg-background px-5 py-3.5 text-sm shadow-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/10"
 							disabled={isLoading}
 							onChange={(e) => setInput(e.target.value)}
-							placeholder="Tanya Yumi atau minta lakukan aksi (tambah produk, update stok, dll)..."
+							placeholder="Tanya Yumi atau minta lakukan multi-step actions..."
 							ref={inputRef}
 							type="text"
 							value={input}
@@ -368,7 +450,7 @@ function AIChatPage() {
 						</button>
 					</form>
 					<p className="text-center text-[10px] text-muted-foreground uppercase tracking-widest opacity-50">
-						Yumi AI dapat melakukan aksi seperti tambah produk, update stok, buat pesanan, dan lainnya.
+						Yumi AI dapat melakukan multi-step actions dalam satu permintaan
 					</p>
 				</div>
 			</div>

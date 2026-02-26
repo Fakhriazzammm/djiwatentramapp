@@ -1,11 +1,11 @@
 import type { GenericActionCtx } from "convex/server";
 import { v } from "convex/values";
 import OpenAI from "openai";
-import { z } from "zod";
+import type { z } from "zod";
 import { api } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { action } from "./_generated/server";
-import { tools, formatToolResult } from "./tools";
+import { formatToolResult, tools } from "./tools";
 
 // Helper to initialize OpenAI lazily
 const getOpenAI = () => {
@@ -161,6 +161,7 @@ export const generateDiscountStrategy = action({
 
 /**
  * Yumi AI Chat - Interactive assistant that can query all database tables
+ * ENHANCED: Multi-Step Actions + Smart Context
  */
 async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 	const [
@@ -318,7 +319,7 @@ ${(() => {
 				totalCogs: number;
 				totalProfit: number;
 				grossMargin: number;
-				matchedOrders: number;
+				matchOrders: number;
 		  }
 		| undefined;
 	if (!hpp || hpp.totalCalculations === 0) {
@@ -348,6 +349,112 @@ ${(() => {
 - AI Analytics (prediksi stok, analisis bisnis, rekomendasi produk, analisis HPP)`;
 }
 
+/**
+ * Gather Smart Context - Business patterns and insights
+ */
+async function gatherSmartContext(ctx: GenericActionCtx<DataModel>) {
+	const [orders, inventory, products] = await Promise.all([
+		ctx.runQuery(api.orders.getOrders, {}),
+		ctx.runQuery(api.inventory.getInventory),
+		ctx.runQuery(api.products.getAllProductsAdmin),
+	]);
+
+	const insights: string[] = [];
+
+	// Analyze sales patterns
+	const completedOrders = (orders as Array<any>).filter(
+		(o) => o.status === "completed" || o.status === "paid"
+	);
+
+	if (completedOrders.length > 0) {
+		// Best selling products
+		const productSales: Record<string, number> = {};
+		for (const order of completedOrders) {
+			for (const item of order.items) {
+				productSales[item.productName] =
+					(productSales[item.productName] || 0) + item.quantity;
+			}
+		}
+		const topProducts = Object.entries(productSales)
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, 3);
+		if (topProducts.length > 0) {
+			insights.push(
+				`🏆 Produk Terlaris: ${topProducts.map(([name, qty]) => `${name} (${qty})`).join(", ")}`
+			);
+		}
+
+		// Peak hours analysis
+		const hourCounts: Record<number, number> = {};
+		for (const order of completedOrders) {
+			const hour = new Date(order.createdAt).getHours();
+			hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+		}
+		const peakHours = Object.entries(hourCounts)
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, 2);
+		if (peakHours.length > 0) {
+			insights.push(
+				`⏰ Jam Ramai: ${peakHours.map(([h]) => `${h}:00`).join(", ")}`
+			);
+		}
+
+		// Average order value
+		const avgOrderValue =
+			completedOrders.reduce((sum, o) => sum + o.totalAmount, 0) /
+			completedOrders.length;
+		insights.push(
+			`📊 Rata-rata Order: Rp${avgOrderValue.toLocaleString("id-ID")}`
+		);
+	}
+
+	// Low stock alerts
+	const lowStockItems = (inventory as Array<any>).filter(
+		(i) => i.quantity <= i.lowStockThreshold
+	);
+	if (lowStockItems.length > 0) {
+		insights.push(
+			`⚠️ Stok Menipis: ${lowStockItems.map((i) => `${i.ingredientName} (${i.quantity} ${i.unit})`).join(", ")}`
+		);
+	}
+
+	// Products without HPP
+	const productsWithHpp = await ctx.runQuery(api.hpp.getHppProductMap);
+	const productsWithoutHpp = (products as Array<any>).filter(
+		(p) => !productsWithHpp[p._id]
+	);
+	if (productsWithoutHpp.length > 0 && productsWithoutHpp.length <= 5) {
+		insights.push(
+			`📐 Belum Ada HPP: ${productsWithoutHpp.map((p) => p.name).join(", ")}`
+		);
+	}
+
+	// Revenue trends (today vs yesterday)
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+	const yesterday = new Date(today);
+	yesterday.setDate(yesterday.getDate() - 1);
+
+	const todayRevenue = completedOrders
+		.filter((o) => o.createdAt >= today.getTime())
+		.reduce((sum, o) => sum + o.totalAmount, 0);
+	const yesterdayRevenue = completedOrders
+		.filter((o) => o.createdAt >= yesterday.getTime() && o.createdAt < today.getTime())
+		.reduce((sum, o) => sum + o.totalAmount, 0);
+
+	if (yesterdayRevenue > 0) {
+		const change = ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100;
+		const trend = change >= 0 ? "📈 Naik" : "📉 Turun";
+		insights.push(
+			`${trend} ${Math.abs(change).toFixed(1)}% dari kemarin (Hari ini: Rp${todayRevenue.toLocaleString("id-ID")})`
+		);
+	}
+
+	return insights.length > 0
+		? `== SMART INSIGHTS ==\n${insights.join("\n")}`
+		: "== SMART INSIGHTS ==\nBelum cukup data untuk analisis";
+}
+
 export const yumiChat = action({
 	args: {
 		message: v.string(),
@@ -360,6 +467,7 @@ export const yumiChat = action({
 	},
 	handler: async (ctx, args) => {
 		const dbContext = await gatherDatabaseContext(ctx);
+		const smartContext = await gatherSmartContext(ctx);
 
 		// Build tool definitions for OpenAI
 		const openaiTools = Object.entries(tools).map(([name, tool]) => ({
@@ -372,8 +480,7 @@ export const yumiChat = action({
 		}));
 
 		const messages: Array<
-			| OpenAI.ChatCompletionMessageParam
-			| { role: "system"; content: string }
+			OpenAI.ChatCompletionMessageParam | { role: "system"; content: string }
 		> = [
 			{
 				role: "system",
@@ -386,6 +493,7 @@ KEMAMPUAN:
 - Mengetahui seluruh fitur aplikasi dan cara penggunaannya
 - Memberikan saran bisnis berdasarkan data
 - DAPAT MELAKUKAN AKSI: create/update/delete produk, tambah/kurang stok, buat pesanan, catat transaksi keuangan, kelola diskon, dll
+- MULTI-STEP ACTIONS: Dapat melakukan beberapa langkah sekaligus dalam satu permintaan
 
 ATURAN:
 1. Jawab dalam Bahasa Indonesia yang ramah dan profesional
@@ -396,14 +504,25 @@ ATURAN:
 6. Format angka uang dengan "Rp" dan pemisah ribuan
 7. Jika user meminta aksi (tambah produk, update stok, dll), GUNAKAN TOOL yang tersedia
 8. Jangan membuat asumsi nilai - jika ID diperlukan, minta user untuk menyediakannya
+9. Untuk multi-step actions, gunakan beberapa tool sekaligus jika diperlukan
+
+SMART CONTEXT:
+${smartContext}
 
 DATA REAL-TIME:
 ${dbContext}
 
+INSTRUKSI MULTI-STEP ACTIONS:
+- Contoh: "Buat produk kopi susu dan tambah stok bahan-bahannya" -> gunakan createProduct lalu addStock
+- Contoh: "Buat pesanan dan catat sebagai pembayaran" -> gunakan createOrder lalu updateOrderStatus
+- Contoh: "Diskon 20% untuk kategori minuman dan aktifkan" -> gunakan createDiscount dengan isActive:true
+- Lakukan semua langkah yang diperlukan untuk menyelesaikan permintaan user dalam satu sesi
+
 INSTRUKSI TOOL CALLING:
 - Gunakan tool saat user meminta aksi spesifik seperti "tambah produk", "update stok", "buat pesanan", "catat pengeluaran"
 - Setelah menjalankan tool, jelaskan hasilnya dengan ringkas kepada user
-- Jika ada error dari tool, jelaskan masalahnya dan sarankan solusi`,
+- Jika ada error dari tool, jelaskan masalahnya dan sarankan solusi
+- Untuk multi-step actions, lanjutkan dengan langkah berikutnya sampai selesai`,
 			},
 		];
 
@@ -412,64 +531,75 @@ INSTRUKSI TOOL CALLING:
 		}
 		messages.push({ role: "user", content: args.message });
 
-		// First API call
-		let completion = await getOpenAI().chat.completions.create({
-			model: "gpt-4o-mini",
-			messages,
-			tools: openaiTools,
-			tool_choice: "auto",
-			max_tokens: 1000,
-		});
+		// Multi-step tool calling loop - allows AI to chain multiple tool calls
+		let maxIterations = 5;
+		let currentIteration = 0;
 
-		let responseMessage = completion.choices[0].message;
-		let toolResults: Array<{
-			toolCallId: string;
-			toolName: string;
-			result: string;
-		}> = [];
+		while (currentIteration < maxIterations) {
+			currentIteration++;
 
-		// Handle tool calls
-		if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-			// Execute each tool call
-			for (const toolCall of responseMessage.tool_calls) {
-				// Type guard for function calls
-				if (toolCall.type !== "function") continue;
+			const completion = await getOpenAI().chat.completions.create({
+				model: "gpt-4o-mini",
+				messages,
+				tools: openaiTools,
+				tool_choice: currentIteration === 1 ? "auto" : "auto",
+				max_tokens: 1000,
+			});
 
-				const functionName = toolCall.function.name;
-				const functionArgs = JSON.parse(toolCall.function.arguments);
+			const responseMessage = completion.choices[0].message;
 
-				try {
-					const result = await ctx.runAction(api.toolExecutors.executeToolCall, {
-						toolName: functionName,
-						args: functionArgs,
-					});
-
-					const resultStr = result.success
-						? formatToolResult(functionName, result.result)
-						: formatToolResult(functionName, null, result.error);
-
-					toolResults.push({
-						toolCallId: toolCall.id,
-						toolName: functionName,
-						result: resultStr,
-					});
-				} catch (error) {
-					toolResults.push({
-						toolCallId: toolCall.id,
-						toolName: functionName,
-						result: formatToolResult(
-							functionName,
-							null,
-							error instanceof Error ? error.message : String(error)
-						),
-					});
-				}
+			// If no tool calls, return the response
+			if (
+				!responseMessage.tool_calls ||
+				responseMessage.tool_calls.length === 0
+			) {
+				return responseMessage.content;
 			}
 
 			// Add assistant response with tool calls
 			messages.push(responseMessage as OpenAI.ChatCompletionMessageParam);
 
-			// Add tool results
+			// Execute all tool calls in parallel
+			const toolExecutionPromises = responseMessage.tool_calls
+				.filter((tc) => tc.type === "function")
+				.map(async (toolCall) => {
+					const functionName = toolCall.function.name;
+					const functionArgs = JSON.parse(toolCall.function.arguments);
+
+					try {
+						const result = await ctx.runAction(
+							api.toolExecutors.executeToolCall,
+							{
+								toolName: functionName,
+								args: functionArgs,
+							}
+						);
+
+						const resultStr = result.success
+							? formatToolResult(functionName, result.result)
+							: formatToolResult(functionName, null, result.error);
+
+						return {
+							toolCallId: toolCall.id,
+							toolName: functionName,
+							result: resultStr,
+						};
+					} catch (error) {
+						return {
+							toolCallId: toolCall.id,
+							toolName: functionName,
+							result: formatToolResult(
+								functionName,
+								null,
+								error instanceof Error ? error.message : String(error)
+							),
+						};
+					}
+				});
+
+			const toolResults = await Promise.all(toolExecutionPromises);
+
+			// Add tool results to messages
 			for (const toolResult of toolResults) {
 				messages.push({
 					role: "tool",
@@ -479,17 +609,17 @@ INSTRUKSI TOOL CALLING:
 				} as OpenAI.ChatCompletionToolMessageParam);
 			}
 
-			// Get final response
-			const secondCompletion = await getOpenAI().chat.completions.create({
-				model: "gpt-4o-mini",
-				messages,
-				max_tokens: 1000,
-			});
-
-			return secondCompletion.choices[0].message.content;
+			// Continue loop to get next response/action
 		}
 
-		return responseMessage.content;
+		// Fallback: return last message if max iterations reached
+		const finalCompletion = await getOpenAI().chat.completions.create({
+			model: "gpt-4o-mini",
+			messages,
+			max_tokens: 1000,
+		});
+
+		return finalCompletion.choices[0].message.content;
 	},
 });
 
@@ -604,7 +734,9 @@ function zodToJsonSchema(zodType: z.ZodTypeAny): Record<string, unknown> {
 				const elementType = (def as { type?: z.ZodTypeAny }).type;
 				return {
 					type: "array",
-					items: elementType ? zodToJsonSchema(elementType) : { type: "string" },
+					items: elementType
+						? zodToJsonSchema(elementType)
+						: { type: "string" },
 				};
 			}
 
@@ -620,8 +752,7 @@ function zodToJsonSchema(zodType: z.ZodTypeAny): Record<string, unknown> {
 						const isOptional =
 							"_def" in value &&
 							"typeName" in (value._def as { typeName?: string }) &&
-							(value._def as { typeName?: string }).typeName ===
-								"ZodOptional";
+							(value._def as { typeName?: string }).typeName === "ZodOptional";
 
 						if (!isOptional) {
 							required.push(key);
@@ -637,37 +768,44 @@ function zodToJsonSchema(zodType: z.ZodTypeAny): Record<string, unknown> {
 				return { type: "object" };
 			}
 
-			case "ZodOptional":
+			case "ZodOptional": {
 				const innerType = (def as { innerType?: z.ZodTypeAny }).innerType;
 				return innerType ? zodToJsonSchema(innerType) : { type: "string" };
+			}
 
-			case "ZodEnum":
+			case "ZodEnum": {
 				const values = (def as { values?: unknown[] }).values;
 				return {
 					type: "string",
 					enum: values as string[],
 				};
+			}
 
-			case "ZodLiteral":
+			case "ZodLiteral": {
 				const literalValue = (def as { value?: unknown }).value;
 				return {
 					type: typeof literalValue === "string" ? "string" : "number",
 					enum: [literalValue],
 				};
+			}
 
 			case "ZodUnion":
-			case "ZodDiscriminatedUnion":
+			case "ZodDiscriminatedUnion": {
 				const options = (def as { options?: z.ZodTypeAny[] }).options;
 				if (options && options.length > 0) {
 					// For unions, we try to get the common type
 					return zodToJsonSchema(options[0]);
 				}
 				return { type: "string" };
+			}
 
-			case "ZodDefault":
+			case "ZodDefault": {
 				const innerDefaultType = (def as { innerType?: z.ZodTypeAny })
 					.innerType;
-				return innerDefaultType ? zodToJsonSchema(innerDefaultType) : { type: "string" };
+				return innerDefaultType
+					? zodToJsonSchema(innerDefaultType)
+					: { type: "string" };
+			}
 
 			default:
 				return { type: "string" };
