@@ -120,23 +120,24 @@ function SettingsPage() {
 	useEffect(() => {
 		if (siteSettings) {
 			setLandingSettings({
-				landingIcon: siteSettings.landingIcon || "Coffee",
-				landingTitle: siteSettings.landingTitle,
-				landingDescription: siteSettings.landingDescription,
-				landingButtonText: siteSettings.landingButtonText,
-				logoUrl: siteSettings.logoUrl || "",
-				paymentPopupImage: siteSettings.paymentPopupImage || "",
+				landingIcon: siteSettings.landingIcon ?? "Coffee",
+				landingTitle: siteSettings.landingTitle ?? "TKM COFFEE",
+				landingDescription:
+					siteSettings.landingDescription ?? "Pengalaman Kopi Premium",
+				landingButtonText: siteSettings.landingButtonText ?? "Pesan Disini",
+				logoUrl: siteSettings.logoUrl ?? "",
+				paymentPopupImage: siteSettings.paymentPopupImage ?? "",
 			});
 			setSettings((prev) => ({
 				...prev,
-				storeName: siteSettings.storeName || "TKM Coffee",
-				storeAddress: siteSettings.storeAddress || "",
-				storePhone: siteSettings.storePhone || "",
-				receiptFooter: siteSettings.receiptFooter || "Terima kasih!",
-				autoPrint: !!siteSettings.autoPrint,
-				appName: siteSettings.appName || "Murni POS",
-				appVersion: siteSettings.appVersion || "1.0.0",
-				developerName: siteSettings.developerName || "Zantara Technology",
+				storeName: siteSettings.storeName ?? "TKM Coffee",
+				storeAddress: siteSettings.storeAddress ?? "",
+				storePhone: siteSettings.storePhone ?? "",
+				receiptFooter: siteSettings.receiptFooter ?? "Terima kasih!",
+				autoPrint: siteSettings.autoPrint ?? false,
+				appName: siteSettings.appName ?? "Yumi POS",
+				appVersion: siteSettings.appVersion ?? "1.0.0",
+				developerName: siteSettings.developerName ?? "Zantara Technology",
 			}));
 		}
 		setIsConnected(bluetoothPrinter.isConnected());
