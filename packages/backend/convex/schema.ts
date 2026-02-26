@@ -130,6 +130,10 @@ export default defineSchema({
 		storePhone: v.optional(v.string()),
 		receiptFooter: v.optional(v.string()),
 		autoPrint: v.optional(v.boolean()),
+		// App Branding
+		appName: v.optional(v.string()), // e.g., "Murni POS", "TKM POS"
+		appVersion: v.optional(v.string()), // e.g., "1.0.0"
+		developerName: v.optional(v.string()), // e.g., "Zantara Technology"
 	}),
 
 	// Discounts / Vouchers

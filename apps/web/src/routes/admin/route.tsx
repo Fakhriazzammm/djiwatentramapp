@@ -50,6 +50,9 @@ function AdminLayout() {
 
 	const settings = useQuery(api.siteSettings.getSettings);
 	const storeName = settings?.storeName || "TKM Admin";
+	const appName = settings?.appName || "Murni POS";
+	const appVersion = settings?.appVersion || "1.0.0";
+	const developerName = settings?.developerName || "Zantara Technology";
 
 	useEffect(() => {
 		localStorage.setItem("admin-sidebar-collapsed", String(isCollapsed));
@@ -239,8 +242,8 @@ function AdminLayout() {
 
 				{!isAIChat && (
 					<footer className="border-border border-t bg-muted/20 px-4 py-2 text-center text-muted-foreground text-xs">
-						Versi 0.0.01 Murni POS | powered by Yumi POS | Develop by Zantara
-						Technology
+						Versi {appVersion} {appName} | powered by Yumi AI | Develop by{" "}
+						{developerName}
 					</footer>
 				)}
 			</main>

@@ -19,6 +19,10 @@ export const getSettings = query({
 				storePhone: "",
 				receiptFooter: "Terima kasih atas kunjungan Anda!",
 				autoPrint: false,
+				// App Branding defaults
+				appName: "Murni POS",
+				appVersion: "1.0.0",
+				developerName: "Zantara Technology",
 			};
 		}
 
@@ -54,6 +58,10 @@ export const updateSettings = mutation({
 		storePhone: v.optional(v.string()),
 		receiptFooter: v.optional(v.string()),
 		autoPrint: v.optional(v.boolean()),
+		// App Branding
+		appName: v.optional(v.string()),
+		appVersion: v.optional(v.string()),
+		developerName: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const existing = await ctx.db.query("siteSettings").first();

@@ -69,6 +69,10 @@ function SettingsPage() {
 		currency: "IDR",
 		timezone: "UTC+7 (Jakarta)",
 		lowStockAlert: 10,
+		// App Branding
+		appName: "Murni POS",
+		appVersion: "1.0.0",
+		developerName: "Zantara Technology",
 	});
 
 	const [isConnected, setIsConnected] = useState(false);
@@ -130,6 +134,9 @@ function SettingsPage() {
 				storePhone: siteSettings.storePhone || "",
 				receiptFooter: siteSettings.receiptFooter || "Terima kasih!",
 				autoPrint: !!siteSettings.autoPrint,
+				appName: siteSettings.appName || "Murni POS",
+				appVersion: siteSettings.appVersion || "1.0.0",
+				developerName: siteSettings.developerName || "Zantara Technology",
 			}));
 		}
 		setIsConnected(bluetoothPrinter.isConnected());
@@ -155,6 +162,10 @@ function SettingsPage() {
 				storePhone: settings.storePhone,
 				receiptFooter: settings.receiptFooter,
 				autoPrint: settings.autoPrint,
+				// App Branding
+				appName: settings.appName,
+				appVersion: settings.appVersion,
+				developerName: settings.developerName,
 			});
 			toast.success("Pengaturan berhasil disimpan!");
 		} catch (error) {
@@ -942,6 +953,82 @@ function SettingsPage() {
 				{activeTab === "system" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
 						<div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+							{/* Branding Section */}
+							<section className="space-y-8 rounded-2xl border border-border bg-card p-8 shadow-sm">
+								<div className="flex items-center gap-4">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+										<Settings2 className="h-6 w-6" />
+									</div>
+									<div>
+										<h3 className="font-bold text-foreground text-xl tracking-tight">
+											Branding Aplikasi
+										</h3>
+										<p className="text-muted-foreground text-sm">
+											Nama & Info Aplikasi
+										</p>
+									</div>
+								</div>
+
+								<div className="space-y-6">
+									<div className="space-y-2">
+										<label
+											className="font-bold text-foreground text-xs uppercase tracking-widest"
+											htmlFor="appName"
+										>
+											Nama Aplikasi
+										</label>
+										<input
+											className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 font-medium text-foreground text-sm outline-none transition-all focus:border-primary/50 focus:bg-muted/50"
+											id="appName"
+											onChange={(e) =>
+												setSettings({ ...settings, appName: e.target.value })
+											}
+											type="text"
+											value={settings.appName}
+										/>
+									</div>
+
+									<div className="space-y-2">
+										<label
+											className="font-bold text-foreground text-xs uppercase tracking-widest"
+											htmlFor="appVersion"
+										>
+											Versi Aplikasi
+										</label>
+										<input
+											className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 font-medium text-foreground text-sm outline-none transition-all focus:border-primary/50 focus:bg-muted/50"
+											id="appVersion"
+											onChange={(e) =>
+												setSettings({ ...settings, appVersion: e.target.value })
+											}
+											type="text"
+											value={settings.appVersion}
+										/>
+									</div>
+
+									<div className="space-y-2">
+										<label
+											className="font-bold text-foreground text-xs uppercase tracking-widest"
+											htmlFor="developerName"
+										>
+											Nama Developer
+										</label>
+										<input
+											className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 font-medium text-foreground text-sm outline-none transition-all focus:border-primary/50 focus:bg-muted/50"
+											id="developerName"
+											onChange={(e) =>
+												setSettings({
+													...settings,
+													developerName: e.target.value,
+												})
+											}
+											type="text"
+											value={settings.developerName}
+										/>
+									</div>
+								</div>
+							</section>
+
 							<section className="space-y-8 rounded-2xl border border-border bg-card p-8 shadow-sm">
 								<div className="flex items-center gap-4">
 									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
