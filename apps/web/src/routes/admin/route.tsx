@@ -8,6 +8,7 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	Archive,
+	Calculator,
 	ChevronLeft,
 	ChevronRight,
 	ClipboardList,
@@ -128,6 +129,12 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Promosi"
 						to="/admin/discounts"
+					/>
+					<NavLink
+						icon={<Calculator />}
+						isCollapsed={isCollapsed}
+						label="HPP Kalkulator"
+						to="/admin/hpp-calculator"
 					/>
 					<NavLink
 						icon={<Sparkles />}
