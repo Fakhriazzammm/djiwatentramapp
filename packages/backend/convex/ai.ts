@@ -1,9 +1,11 @@
 import type { GenericActionCtx } from "convex/server";
 import { v } from "convex/values";
 import OpenAI from "openai";
+import { z } from "zod";
 import { api } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { action } from "./_generated/server";
+import { tools, formatToolResult } from "./tools";
 
 // Helper to initialize OpenAI lazily
 const getOpenAI = () => {
@@ -359,10 +361,20 @@ export const yumiChat = action({
 	handler: async (ctx, args) => {
 		const dbContext = await gatherDatabaseContext(ctx);
 
-		const messages: Array<{
-			role: "system" | "user" | "assistant";
-			content: string;
-		}> = [
+		// Build tool definitions for OpenAI
+		const openaiTools = Object.entries(tools).map(([name, tool]) => ({
+			type: "function" as const,
+			function: {
+				name,
+				description: tool.description,
+				parameters: toolParametersToJsonSchema(tool.parameters),
+			},
+		}));
+
+		const messages: Array<
+			| OpenAI.ChatCompletionMessageParam
+			| { role: "system"; content: string }
+		> = [
 			{
 				role: "system",
 				content: `Kamu adalah Yumi, asisten AI cerdas untuk aplikasi TKM POS (Point of Sale).
@@ -373,6 +385,7 @@ KEMAMPUAN:
 - Dapat mengambil dan menampilkan data spesifik
 - Mengetahui seluruh fitur aplikasi dan cara penggunaannya
 - Memberikan saran bisnis berdasarkan data
+- DAPAT MELAKUKAN AKSI: create/update/delete produk, tambah/kurang stok, buat pesanan, catat transaksi keuangan, kelola diskon, dll
 
 ATURAN:
 1. Jawab dalam Bahasa Indonesia yang ramah dan profesional
@@ -381,9 +394,16 @@ ATURAN:
 4. Jika ditanya data, berikan angka dan fakta spesifik dari database
 5. Jika ditanya fitur, jelaskan cara penggunaan dengan singkat
 6. Format angka uang dengan "Rp" dan pemisah ribuan
+7. Jika user meminta aksi (tambah produk, update stok, dll), GUNAKAN TOOL yang tersedia
+8. Jangan membuat asumsi nilai - jika ID diperlukan, minta user untuk menyediakannya
 
 DATA REAL-TIME:
-${dbContext}`,
+${dbContext}
+
+INSTRUKSI TOOL CALLING:
+- Gunakan tool saat user meminta aksi spesifik seperti "tambah produk", "update stok", "buat pesanan", "catat pengeluaran"
+- Setelah menjalankan tool, jelaskan hasilnya dengan ringkas kepada user
+- Jika ada error dari tool, jelaskan masalahnya dan sarankan solusi`,
 			},
 		];
 
@@ -392,13 +412,84 @@ ${dbContext}`,
 		}
 		messages.push({ role: "user", content: args.message });
 
-		const completion = await getOpenAI().chat.completions.create({
+		// First API call
+		let completion = await getOpenAI().chat.completions.create({
 			model: "gpt-4o-mini",
 			messages,
+			tools: openaiTools,
+			tool_choice: "auto",
 			max_tokens: 1000,
 		});
 
-		return completion.choices[0].message.content;
+		let responseMessage = completion.choices[0].message;
+		let toolResults: Array<{
+			toolCallId: string;
+			toolName: string;
+			result: string;
+		}> = [];
+
+		// Handle tool calls
+		if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+			// Execute each tool call
+			for (const toolCall of responseMessage.tool_calls) {
+				// Type guard for function calls
+				if (toolCall.type !== "function") continue;
+
+				const functionName = toolCall.function.name;
+				const functionArgs = JSON.parse(toolCall.function.arguments);
+
+				try {
+					const result = await ctx.runAction(api.toolExecutors.executeToolCall, {
+						toolName: functionName,
+						args: functionArgs,
+					});
+
+					const resultStr = result.success
+						? formatToolResult(functionName, result.result)
+						: formatToolResult(functionName, null, result.error);
+
+					toolResults.push({
+						toolCallId: toolCall.id,
+						toolName: functionName,
+						result: resultStr,
+					});
+				} catch (error) {
+					toolResults.push({
+						toolCallId: toolCall.id,
+						toolName: functionName,
+						result: formatToolResult(
+							functionName,
+							null,
+							error instanceof Error ? error.message : String(error)
+						),
+					});
+				}
+			}
+
+			// Add assistant response with tool calls
+			messages.push(responseMessage as OpenAI.ChatCompletionMessageParam);
+
+			// Add tool results
+			for (const toolResult of toolResults) {
+				messages.push({
+					role: "tool",
+					tool_call_id: toolResult.toolCallId,
+					name: toolResult.toolName,
+					content: toolResult.result,
+				} as OpenAI.ChatCompletionToolMessageParam);
+			}
+
+			// Get final response
+			const secondCompletion = await getOpenAI().chat.completions.create({
+				model: "gpt-4o-mini",
+				messages,
+				max_tokens: 1000,
+			});
+
+			return secondCompletion.choices[0].message.content;
+		}
+
+		return responseMessage.content;
 	},
 });
 
@@ -449,3 +540,139 @@ Berikan analisis ringkas dan perbandingannya.`,
 		return completion.choices[0].message.content;
 	},
 });
+
+// ============================================
+// HELPERS
+// ============================================
+
+/**
+ * Convert Zod schema to JSON Schema format for OpenAI function calling
+ */
+function toolParametersToJsonSchema(
+	zodSchema: z.ZodTypeAny
+): Record<string, unknown> {
+	// Get the Zod schema's shape
+	const schema: Record<string, unknown> = {
+		type: "object",
+		properties: {} as Record<string, unknown>,
+		required: [] as string[],
+	};
+
+	if ("_def" in zodSchema && "shape" in zodSchema._def) {
+		const shape = zodSchema._def.shape() as Record<string, z.ZodTypeAny>;
+		const properties: Record<string, unknown> = {};
+		const required: string[] = [];
+
+		for (const [key, value] of Object.entries(shape)) {
+			properties[key] = zodToJsonSchema(value);
+			// Check if the field is optional
+			const isOptional =
+				"_def" in value &&
+				"typeName" in (value._def as { typeName?: string }) &&
+				(value._def as { typeName?: string }).typeName === "ZodOptional";
+
+			if (!isOptional) {
+				required.push(key);
+			}
+		}
+
+		schema.properties = properties;
+		schema.required = required;
+	}
+
+	return schema;
+}
+
+/**
+ * Convert a single Zod type to JSON Schema
+ */
+function zodToJsonSchema(zodType: z.ZodTypeAny): Record<string, unknown> {
+	if ("_def" in zodType) {
+		const def = zodType._def as { typeName?: string };
+
+		switch (def.typeName) {
+			case "ZodString":
+				return { type: "string" };
+
+			case "ZodNumber":
+				return { type: "number" };
+
+			case "ZodBoolean":
+				return { type: "boolean" };
+
+			case "ZodArray": {
+				const elementType = (def as { type?: z.ZodTypeAny }).type;
+				return {
+					type: "array",
+					items: elementType ? zodToJsonSchema(elementType) : { type: "string" },
+				};
+			}
+
+			case "ZodObject": {
+				const shape = (def as { shape?: () => Record<string, z.ZodTypeAny> })
+					.shape;
+				if (shape) {
+					const properties: Record<string, unknown> = {};
+					const required: string[] = [];
+
+					for (const [key, value] of Object.entries(shape())) {
+						properties[key] = zodToJsonSchema(value);
+						const isOptional =
+							"_def" in value &&
+							"typeName" in (value._def as { typeName?: string }) &&
+							(value._def as { typeName?: string }).typeName ===
+								"ZodOptional";
+
+						if (!isOptional) {
+							required.push(key);
+						}
+					}
+
+					return {
+						type: "object",
+						properties,
+						required: required.length > 0 ? required : undefined,
+					};
+				}
+				return { type: "object" };
+			}
+
+			case "ZodOptional":
+				const innerType = (def as { innerType?: z.ZodTypeAny }).innerType;
+				return innerType ? zodToJsonSchema(innerType) : { type: "string" };
+
+			case "ZodEnum":
+				const values = (def as { values?: unknown[] }).values;
+				return {
+					type: "string",
+					enum: values as string[],
+				};
+
+			case "ZodLiteral":
+				const literalValue = (def as { value?: unknown }).value;
+				return {
+					type: typeof literalValue === "string" ? "string" : "number",
+					enum: [literalValue],
+				};
+
+			case "ZodUnion":
+			case "ZodDiscriminatedUnion":
+				const options = (def as { options?: z.ZodTypeAny[] }).options;
+				if (options && options.length > 0) {
+					// For unions, we try to get the common type
+					return zodToJsonSchema(options[0]);
+				}
+				return { type: "string" };
+
+			case "ZodDefault":
+				const innerDefaultType = (def as { innerType?: z.ZodTypeAny })
+					.innerType;
+				return innerDefaultType ? zodToJsonSchema(innerDefaultType) : { type: "string" };
+
+			default:
+				return { type: "string" };
+		}
+	}
+
+	return { type: "string" };
+}
