@@ -1,6 +1,7 @@
 import type { GenericActionCtx } from "convex/server";
 import { v } from "convex/values";
 import OpenAI from "openai";
+import { api } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { action } from "./_generated/server";
 
@@ -160,17 +161,25 @@ export const generateDiscountStrategy = action({
  * Yumi AI Chat - Interactive assistant that can query all database tables
  */
 async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
-	const [products, categories, inventory, orders, discounts, financialSummary, hppDashboard, hppOrdersCogs] =
-		await Promise.all([
-			ctx.runQuery("products:getAllProductsAdmin" as never),
-			ctx.runQuery("products:getCategories" as never),
-			ctx.runQuery("inventory:getInventory" as never),
-			ctx.runQuery("orders:getOrders" as never, {} as never),
-			ctx.runQuery("discounts:getDiscounts" as never),
-			ctx.runQuery("finance:getFinancialSummary" as never, {} as never),
-			ctx.runQuery("hpp:getHppDashboardData" as never),
-			ctx.runQuery("hpp:getOrdersCogs" as never),
-		]);
+	const [
+		products,
+		categories,
+		inventory,
+		orders,
+		discounts,
+		financialSummary,
+		hppDashboard,
+		hppOrdersCogs,
+	] = await Promise.all([
+		ctx.runQuery(api.products.getAllProductsAdmin),
+		ctx.runQuery(api.products.getCategories),
+		ctx.runQuery(api.inventory.getInventory),
+		ctx.runQuery(api.orders.getOrders, {}),
+		ctx.runQuery(api.discounts.getDiscounts),
+		ctx.runQuery(api.finance.getFinancialSummary, {}),
+		ctx.runQuery(api.hpp.getHppDashboardData),
+		ctx.runQuery(api.hpp.getOrdersCogs),
+	]);
 
 	const prodList =
 		(
@@ -280,21 +289,39 @@ ${discountList}
 
 📐 HPP (Harga Pokok Produksi):
 ${(() => {
-	const hpp = hppDashboard as {
-		totalCalculations: number;
-		avgMargin: number;
-		lowMarginAlerts: Array<{ name: string; marginPercent: number; profitPerServing: number }>;
-		topProfit: Array<{ name: string; profitPerServing: number; marginPercent: number }>;
-		bottomProfit: Array<{ name: string; profitPerServing: number; marginPercent: number }>;
-	} | undefined;
-	const cogs = hppOrdersCogs as {
-		totalRevenue: number;
-		totalCogs: number;
-		totalProfit: number;
-		grossMargin: number;
-		matchedOrders: number;
-	} | undefined;
-	if (!hpp || hpp.totalCalculations === 0) return "Belum ada kalkulasi HPP";
+	const hpp = hppDashboard as
+		| {
+				totalCalculations: number;
+				avgMargin: number;
+				lowMarginAlerts: Array<{
+					name: string;
+					marginPercent: number;
+					profitPerServing: number;
+				}>;
+				topProfit: Array<{
+					name: string;
+					profitPerServing: number;
+					marginPercent: number;
+				}>;
+				bottomProfit: Array<{
+					name: string;
+					profitPerServing: number;
+					marginPercent: number;
+				}>;
+		  }
+		| undefined;
+	const cogs = hppOrdersCogs as
+		| {
+				totalRevenue: number;
+				totalCogs: number;
+				totalProfit: number;
+				grossMargin: number;
+				matchedOrders: number;
+		  }
+		| undefined;
+	if (!hpp || hpp.totalCalculations === 0) {
+		return "Belum ada kalkulasi HPP";
+	}
 	let result = `Total Kalkulasi: ${hpp.totalCalculations}, Rata-rata Margin: ${hpp.avgMargin.toFixed(1)}%\n`;
 	if (hpp.lowMarginAlerts.length > 0) {
 		result += `⚠️ Margin Rendah (<20%): ${hpp.lowMarginAlerts.map((a) => `${a.name} (${a.marginPercent.toFixed(1)}%)`).join(", ")}\n`;
