@@ -48,7 +48,7 @@ function AdminLayout() {
 		return false;
 	});
 
-	const settings = useQuery(api.siteSettings.getSettings);
+	const settings = useQuery(api.site_settings.getSettings);
 	const storeName = settings?.storeName || "TKM Admin";
 	const appName = settings?.appName || "Yumi POS";
 	const appVersion = settings?.appVersion || "1.0.0";

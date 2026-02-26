@@ -18,7 +18,7 @@ function LoginPage() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-	const settings = useQuery(api.siteSettings.getSettings);
+	const settings = useQuery(api.site_settings.getSettings);
 	const storeName = settings?.storeName || "TKM POS";
 
 	const handleLogin = async (e: React.FormEvent) => {
