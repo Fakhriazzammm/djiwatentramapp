@@ -20,6 +20,7 @@ import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
+import { Route as AdminHppCalculatorRouteImport } from './routes/admin/hpp-calculator'
 import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting'
 import { Route as AdminDiscountsRouteImport } from './routes/admin/discounts'
 import { Route as AdminAiChatRouteImport } from './routes/admin/ai-chat'
@@ -80,6 +81,11 @@ const AdminInventoryRoute = AdminInventoryRouteImport.update({
   path: '/inventory',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminHppCalculatorRoute = AdminHppCalculatorRouteImport.update({
+  id: '/hpp-calculator',
+  path: '/hpp-calculator',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminForecastingRoute = AdminForecastingRouteImport.update({
   id: '/forecasting',
   path: '/forecasting',
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/forecasting': typeof AdminForecastingRoute
+  '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -127,6 +134,7 @@ export interface FileRoutesByTo {
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/forecasting': typeof AdminForecastingRoute
+  '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -145,6 +153,7 @@ export interface FileRoutesById {
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/forecasting': typeof AdminForecastingRoute
+  '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -164,6 +173,7 @@ export interface FileRouteTypes {
     | '/admin/ai-chat'
     | '/admin/discounts'
     | '/admin/forecasting'
+    | '/admin/hpp-calculator'
     | '/admin/inventory'
     | '/admin/login'
     | '/admin/orders'
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/admin/ai-chat'
     | '/admin/discounts'
     | '/admin/forecasting'
+    | '/admin/hpp-calculator'
     | '/admin/inventory'
     | '/admin/login'
     | '/admin/orders'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/admin/ai-chat'
     | '/admin/discounts'
     | '/admin/forecasting'
+    | '/admin/hpp-calculator'
     | '/admin/inventory'
     | '/admin/login'
     | '/admin/orders'
@@ -292,6 +304,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminInventoryRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/hpp-calculator': {
+      id: '/admin/hpp-calculator'
+      path: '/hpp-calculator'
+      fullPath: '/admin/hpp-calculator'
+      preLoaderRoute: typeof AdminHppCalculatorRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/forecasting': {
       id: '/admin/forecasting'
       path: '/forecasting'
@@ -328,6 +347,7 @@ interface AdminRouteRouteChildren {
   AdminAiChatRoute: typeof AdminAiChatRoute
   AdminDiscountsRoute: typeof AdminDiscountsRoute
   AdminForecastingRoute: typeof AdminForecastingRoute
+  AdminHppCalculatorRoute: typeof AdminHppCalculatorRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
@@ -341,6 +361,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAiChatRoute: AdminAiChatRoute,
   AdminDiscountsRoute: AdminDiscountsRoute,
   AdminForecastingRoute: AdminForecastingRoute,
+  AdminHppCalculatorRoute: AdminHppCalculatorRoute,
   AdminInventoryRoute: AdminInventoryRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminOrdersRoute: AdminOrdersRoute,
