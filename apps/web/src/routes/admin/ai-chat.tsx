@@ -244,6 +244,55 @@ function AIChatPage() {
 			.trim();
 	};
 
+	// Session management functions (defined before sendMessage to avoid initialization issues)
+	const startNewSession = async () => {
+		const today = new Date();
+		const dateStr = today.toLocaleDateString("id-ID", {
+			day: "numeric",
+			month: "short",
+		});
+		const timeStr = today.toLocaleTimeString("id-ID", {
+			hour: "2-digit",
+			minute: "2-digit",
+		});
+
+		try {
+			const result = await createSessionMutation({
+				title: `Chat ${dateStr} ${timeStr}`,
+			});
+			if (result) {
+				setCurrentSessionId(result.sessionId);
+				setMessages([
+					{
+						role: "assistant",
+						content:
+							"Halo! Saya Yumi, asisten AI kamu. Ada yang bisa saya bantu hari ini?",
+					},
+				]);
+				setShowSessionHistory(false);
+			}
+		} catch {
+			toast.error("Gagal membuat sesi baru");
+		}
+	};
+
+	const saveMessage = async (message: ChatMessage) => {
+		if (currentSessionId) {
+			try {
+				await saveConversationMutation({
+					sessionId: currentSessionId,
+					role: message.role,
+					content: message.content,
+					metadata: {
+						imageAttached: !!message.image,
+					},
+				});
+			} catch (error) {
+				console.error("Failed to save message:", error);
+			}
+		}
+	};
+
 	const sendMessage = useCallback(
 		async (text: string, image?: string) => {
 			if (!(text.trim() || image) || isLoading) {
@@ -426,37 +475,6 @@ function AIChatPage() {
 	};
 
 	// Session management
-	const startNewSession = async () => {
-		const today = new Date();
-		const dateStr = today.toLocaleDateString("id-ID", {
-			day: "numeric",
-			month: "short",
-		});
-		const timeStr = today.toLocaleTimeString("id-ID", {
-			hour: "2-digit",
-			minute: "2-digit",
-		});
-
-		try {
-			const result = await createSessionMutation({
-				title: `Chat ${dateStr} ${timeStr}`,
-			});
-			if (result) {
-				setCurrentSessionId(result.sessionId);
-				setMessages([
-					{
-						role: "assistant",
-						content:
-							"Halo! Saya Yumi, asisten AI kamu. Ada yang bisa saya bantu hari ini?",
-					},
-				]);
-				setShowSessionHistory(false);
-			}
-		} catch {
-			toast.error("Gagal membuat sesi baru");
-		}
-	};
-
 	const loadSession = async (sessionId: string) => {
 		setCurrentSessionId(sessionId);
 		setShowSessionHistory(false);
@@ -479,23 +497,6 @@ function AIChatPage() {
 			toast.success("Sesi berhasil dihapus");
 		} catch {
 			toast.error("Gagal menghapus sesi");
-		}
-	};
-
-	const saveMessage = async (message: ChatMessage) => {
-		if (currentSessionId) {
-			try {
-				await saveConversationMutation({
-					sessionId: currentSessionId,
-					role: message.role,
-					content: message.content,
-					metadata: {
-						imageAttached: !!message.image,
-					},
-				});
-			} catch (error) {
-				console.error("Failed to save message:", error);
-			}
 		}
 	};
 
