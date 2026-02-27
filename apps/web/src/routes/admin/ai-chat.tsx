@@ -1,16 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "@tkmpos/backend/convex/_generated/api";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	AlertTriangle,
 	Bot,
 	CheckCircle2,
+	Layers,
 	Lightbulb,
 	Loader2,
 	Send,
 	Settings,
 	Sparkles,
+	Trash2,
 	TrendingUp,
 	XCircle,
 } from "lucide-react";
@@ -31,6 +33,30 @@ interface ToolCall {
 	status: "pending" | "executing" | "success" | "error";
 	result?: string;
 	error?: string;
+}
+
+// Page context options for Yumi
+const PAGE_CONTEXTS = [
+	{ value: "", label: "Semua Fitur" },
+	{ value: "Dasbor - ringkasan bisnis keseluruhan (revenue, pesanan, stok, insights)", label: "Dasbor" },
+	{ value: "Manajemen Produk - CRUD produk, kategori, harga, variasi, promo harga", label: "Produk" },
+	{ value: "Manajemen Inventaris - stok bahan baku, FIFO, threshold stok rendah, resep, base recipe/pre-mix", label: "Inventaris" },
+	{ value: "Keuangan - income/expense tracking, laporan periode, kategori transaksi, metode pembayaran", label: "Keuangan" },
+	{ value: "Manajemen Pesanan - buat/update pesanan, status (pending/paid/completed/cancelled), POS", label: "Pesanan" },
+	{ value: "Promosi & Diskon - buat/kelola diskon FIXED/PERCENTAGE/FLAT_PRICE, jadwal, target produk/kategori", label: "Promosi" },
+	{ value: "HPP Kalkulator - kalkulasi harga pokok produksi, margin profit, biaya bahan baku & overhead", label: "HPP Kalkulator" },
+	{ value: "Pengaturan Toko - nama toko, alamat, logo, receipt footer, konfigurasi aplikasi", label: "Pengaturan" },
+] as const;
+
+// Get or create a stable session ID for chat history
+function getOrCreateSessionId(): string {
+	const key = "yumi-chat-session-id";
+	let sessionId = localStorage.getItem(key);
+	if (!sessionId) {
+		sessionId = `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+		localStorage.setItem(key, sessionId);
+	}
+	return sessionId;
 }
 
 const TEMPLATES = [
@@ -72,19 +98,41 @@ const TOOL_LABELS: Record<string, string> = {
 };
 
 function AIChatPage() {
-	const [messages, setMessages] = useState<ChatMessage[]>([
-		{
-			role: "assistant",
-			content:
-				"Halo! Saya Yumi, asisten AI kamu. Saya bisa membantu merekap data, menganalisis bisnis, MELAKUKAN AKSI seperti tambah produk, update stok, buat pesanan, dan bahkan MULTI-STEP ACTIONS dalam satu permintaan. Ada yang bisa saya bantu?",
-		},
-	]);
+	const [sessionId] = useState(() => getOrCreateSessionId());
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [historyLoaded, setHistoryLoaded] = useState(false);
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
+	const [selectedPage, setSelectedPage] = useState<string>("");
+	const [isClearingHistory, setIsClearingHistory] = useState(false);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const yumiChat = useAction(api.ai.yumiChat);
+	const saveChatMessage = useMutation(api.chatHistory.saveChatMessage);
+	const clearChatHistoryMutation = useMutation(api.chatHistory.clearChatHistory);
+
+	// Load chat history from DB
+	const chatHistoryFromDB = useQuery(api.chatHistory.getChatHistory, { sessionId });
+
+	// Sync DB history into local state on first load
+	useEffect(() => {
+		if (chatHistoryFromDB === undefined || historyLoaded) return;
+		if (chatHistoryFromDB.length > 0) {
+			setMessages(
+				chatHistoryFromDB.map((m) => ({ role: m.role, content: m.content }))
+			);
+		} else {
+			setMessages([
+				{
+					role: "assistant",
+					content:
+						"Halo! Saya Yumi, asisten AI kamu. Saya bisa membantu merekap data, menganalisis bisnis, MELAKUKAN AKSI seperti tambah produk, update stok, buat pesanan, dan bahkan MULTI-STEP ACTIONS dalam satu permintaan. Ada yang bisa saya bantu?",
+				},
+			]);
+		}
+		setHistoryLoaded(true);
+	}, [chatHistoryFromDB, historyLoaded]);
 
 	// Fetch data for Smart Insights
 	const products = useQuery(api.products.getAllProductsAdmin, {});
@@ -141,16 +189,23 @@ function AIChatPage() {
 			setIsLoading(true);
 			setToolCalls([]);
 
+			// Save user message to DB
+			await saveChatMessage({
+				sessionId,
+				role: "user",
+				content: text.trim(),
+				currentPage: selectedPage || undefined,
+			});
+
 			try {
 				const history = messages
 					.filter((m) => m.role === "user" || m.role === "assistant")
 					.map((m) => ({ role: m.role, content: m.content }));
 
-				// Simulate tool execution detection
-				// In a real implementation, the backend would return tool call info
 				const response = await yumiChat({
 					message: text.trim(),
 					history,
+					currentPage: selectedPage || undefined,
 				});
 
 				// Parse response to detect if tools were used
@@ -192,59 +247,128 @@ function AIChatPage() {
 					setTimeout(() => setToolCalls([]), 3000);
 				}
 
+				const assistantContent = response || "Maaf, saya tidak bisa memproses permintaan ini.";
 				setMessages((prev) => [
 					...prev,
-					{
-						role: "assistant",
-						content:
-							response || "Maaf, saya tidak bisa memproses permintaan ini.",
-					},
+					{ role: "assistant", content: assistantContent },
 				]);
+
+				// Save assistant response to DB
+				await saveChatMessage({
+					sessionId,
+					role: "assistant",
+					content: assistantContent,
+					currentPage: selectedPage || undefined,
+				});
 			} catch {
+				const errorContent = "Maaf, terjadi kesalahan. Silakan coba lagi.";
 				setMessages((prev) => [
 					...prev,
-					{
-						role: "assistant",
-						content: "Maaf, terjadi kesalahan. Silakan coba lagi.",
-					},
+					{ role: "assistant", content: errorContent },
 				]);
+				await saveChatMessage({
+					sessionId,
+					role: "assistant",
+					content: errorContent,
+				});
 				setToolCalls([]);
 			} finally {
 				setIsLoading(false);
 			}
 		},
-		[isLoading, messages, yumiChat]
+		[isLoading, messages, yumiChat, saveChatMessage, sessionId, selectedPage]
 	);
+
+	const handleClearHistory = useCallback(async () => {
+		setIsClearingHistory(true);
+		await clearChatHistoryMutation({ sessionId });
+		setMessages([
+			{
+				role: "assistant",
+				content: "Riwayat chat telah dihapus. Ada yang bisa saya bantu?",
+			},
+		]);
+		setIsClearingHistory(false);
+	}, [clearChatHistoryMutation, sessionId]);
 
 	return (
 		<div className="flex h-full flex-col overflow-hidden bg-background">
 			{/* Header */}
-			<div className="flex items-center gap-3 border-border border-b bg-muted/30 px-6 py-4">
-				<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-					<Sparkles className="h-5 w-5 text-primary" />
-				</div>
-				<div className="flex-1">
-					<h2 className="font-bold text-foreground text-lg">Yumi AI Chat</h2>
-					<p className="text-muted-foreground text-xs">
-						Asisten Bisnis Cerdas dengan Multi-Step Actions
-					</p>
-				</div>
-				{/* Smart Insights Badge */}
-				{smartInsights.length > 0 && (
-					<div className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5">
-						<Lightbulb className="h-3.5 w-3.5 text-primary" />
-						<span className="font-medium text-primary text-xs">
-							{smartInsights.length} Insights
-						</span>
+			<div className="flex flex-col gap-3 border-border border-b bg-muted/30 px-6 py-4">
+				<div className="flex items-center gap-3">
+					<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+						<Sparkles className="h-5 w-5 text-primary" />
 					</div>
-				)}
+					<div className="flex-1">
+						<h2 className="font-bold text-foreground text-lg">Yumi AI Chat</h2>
+						<p className="text-muted-foreground text-xs">
+							Asisten Bisnis Cerdas dengan Multi-Step Actions
+						</p>
+					</div>
+					{/* Smart Insights Badge */}
+					{smartInsights.length > 0 && (
+						<div className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5">
+							<Lightbulb className="h-3.5 w-3.5 text-primary" />
+							<span className="font-medium text-primary text-xs">
+								{smartInsights.length} Insights
+							</span>
+						</div>
+					)}
+					{/* Clear History Button */}
+					<button
+						className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-muted-foreground text-xs transition-all hover:border-destructive/50 hover:bg-destructive/5 hover:text-destructive disabled:opacity-40"
+						disabled={isClearingHistory || isLoading}
+						onClick={handleClearHistory}
+						title="Hapus riwayat percakapan"
+						type="button"
+					>
+						{isClearingHistory ? (
+							<Loader2 className="h-3.5 w-3.5 animate-spin" />
+						) : (
+							<Trash2 className="h-3.5 w-3.5" />
+						)}
+						<span>Hapus Riwayat</span>
+					</button>
+				</div>
+
+				{/* Page Context Selector */}
+				<div className="flex items-center gap-2">
+					<Layers className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+					<span className="shrink-0 text-muted-foreground text-xs">Fokus konteks:</span>
+					<div className="scrollbar-none flex gap-1.5 overflow-x-auto">
+						{PAGE_CONTEXTS.map((ctx) => (
+							<button
+								className={`shrink-0 rounded-full px-3 py-1 text-xs transition-all ${
+									selectedPage === ctx.value
+										? "bg-primary text-primary-foreground shadow-sm"
+										: "border border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+								}`}
+								key={ctx.label}
+								onClick={() => setSelectedPage(ctx.value)}
+								type="button"
+							>
+								{ctx.label}
+							</button>
+						))}
+					</div>
+				</div>
 			</div>
 
 			{/* Messages Container */}
 			<div className="flex-1 overflow-y-auto p-6">
 				<div className="mx-auto max-w-3xl space-y-6">
+					{/* Loading history indicator */}
+					{!historyLoaded && (
+						<div className="flex justify-center py-8">
+							<div className="flex items-center gap-2 text-muted-foreground text-xs">
+								<Loader2 className="h-4 w-4 animate-spin" />
+								<span>Memuat riwayat percakapan...</span>
+							</div>
+						</div>
+					)}
+
 					{/* Smart Insights Cards */}
-					{smartInsights.length > 0 && messages.length <= 1 && (
+					{historyLoaded && smartInsights.length > 0 && messages.length <= 1 && (
 						<motion.div
 							animate={{ opacity: 1, y: 0 }}
 							className="mb-6 grid grid-cols-3 gap-3"
@@ -269,7 +393,7 @@ function AIChatPage() {
 					)}
 
 					<AnimatePresence initial={false}>
-						{messages.map((msg, i) => (
+						{historyLoaded && messages.map((msg, i) => (
 							<motion.div
 								animate={{ opacity: 1, y: 0 }}
 								className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}

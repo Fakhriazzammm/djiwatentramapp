@@ -293,4 +293,13 @@ export default defineSchema({
 		createdAt: v.number(),
 		isActive: v.boolean(),
 	}),
+
+	// AI Chat History - persistent conversation per session
+	aiChatHistory: defineTable({
+		sessionId: v.string(), // UUID stored in localStorage per browser
+		role: v.union(v.literal("user"), v.literal("assistant")),
+		content: v.string(),
+		createdAt: v.number(),
+		currentPage: v.optional(v.string()), // page context when message was sent
+	}).index("by_session", ["sessionId"]),
 });

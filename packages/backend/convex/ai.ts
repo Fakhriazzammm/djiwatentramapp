@@ -464,6 +464,7 @@ export const yumiChat = action({
 				content: v.string(),
 			})
 		),
+		currentPage: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const dbContext = await gatherDatabaseContext(ctx);
@@ -522,7 +523,16 @@ INSTRUKSI TOOL CALLING:
 - Gunakan tool saat user meminta aksi spesifik seperti "tambah produk", "update stok", "buat pesanan", "catat pengeluaran"
 - Setelah menjalankan tool, jelaskan hasilnya dengan ringkas kepada user
 - Jika ada error dari tool, jelaskan masalahnya dan sarankan solusi
-- Untuk multi-step actions, lanjutkan dengan langkah berikutnya sampai selesai`,
+- Untuk multi-step actions, lanjutkan dengan langkah berikutnya sampai selesai${
+	args.currentPage
+		? `
+
+KONTEKS HALAMAN AKTIF:
+User saat ini sedang berfokus pada: "${args.currentPage}"
+Prioritaskan informasi, saran, dan aksi yang relevan dengan konteks halaman tersebut.
+Jika pertanyaan user tidak spesifik, arahkan jawaban ke konteks halaman aktif.`
+		: ""
+}`,
 			},
 		];
 
