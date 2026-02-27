@@ -302,4 +302,21 @@ export default defineSchema({
 		createdAt: v.number(),
 		currentPage: v.optional(v.string()), // page context when message was sent
 	}).index("by_session", ["sessionId"]),
+
+	// AI Knowledge Base - Yumi's dynamic and self-expanding knowledge about the app
+	aiKnowledgeBase: defineTable({
+		type: v.union(
+			v.literal("feature"),     // App feature description (e.g., "Keuangan")
+			v.literal("capability"),  // What Yumi can do (e.g., "bisa generate laporan PDF")
+			v.literal("instruction")  // Behavioral rule for Yumi
+		),
+		key: v.string(),       // Unique identifier (e.g., "finance", "inventory")
+		title: v.string(),     // Short display name (e.g., "Manajemen Keuangan")
+		content: v.string(),   // Detailed description included in Yumi's system prompt
+		isActive: v.boolean(), // Whether this knowledge is currently used
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_type", ["type"])
+		.index("by_key", ["key"]),
 });

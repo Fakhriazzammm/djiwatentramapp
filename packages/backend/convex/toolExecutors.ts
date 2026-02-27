@@ -411,6 +411,41 @@ export const executeToolCall = action({
 					break;
 				}
 
+				// ============================================
+				// KNOWLEDGE BASE TOOLS (Self-Learning)
+				// ============================================
+				case "addFeatureKnowledge": {
+					const parsed = tools.addFeatureKnowledge.parameters.parse(toolArgs);
+					result = await ctx.runMutation(api.knowledgeBase.addKnowledge, {
+						type: parsed.type,
+						key: parsed.key,
+						title: parsed.title,
+						content: parsed.content,
+					});
+					break;
+				}
+
+				case "updateFeatureKnowledge": {
+					const parsed =
+						tools.updateFeatureKnowledge.parameters.parse(toolArgs);
+					result = await ctx.runMutation(api.knowledgeBase.updateKnowledge, {
+						key: parsed.key,
+						title: parsed.title,
+						content: parsed.content,
+						isActive: parsed.isActive,
+					});
+					break;
+				}
+
+				case "removeFeatureKnowledge": {
+					const parsed =
+						tools.removeFeatureKnowledge.parameters.parse(toolArgs);
+					result = await ctx.runMutation(api.knowledgeBase.deleteKnowledge, {
+						key: parsed.key,
+					});
+					break;
+				}
+
 				default:
 					return {
 						success: false,

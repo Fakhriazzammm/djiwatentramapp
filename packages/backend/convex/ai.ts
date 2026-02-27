@@ -173,6 +173,7 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		financialSummary,
 		hppDashboard,
 		hppOrdersCogs,
+		rawKnowledge,
 	] = await Promise.all([
 		ctx.runQuery(api.products.getAllProductsAdmin),
 		ctx.runQuery(api.products.getCategories),
@@ -182,7 +183,25 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		ctx.runQuery(api.finance.getFinancialSummary, {}),
 		ctx.runQuery(api.hpp.getHppDashboardData),
 		ctx.runQuery(api.hpp.getOrdersCogs),
+		ctx.runQuery(api.knowledgeBase.getAllActiveKnowledge),
 	]);
+
+	// Auto-seed knowledge base on first use (idempotent)
+	const knowledge = rawKnowledge as Array<{
+		type: string;
+		key: string;
+		title: string;
+		content: string;
+		isActive: boolean;
+	}>;
+	if (knowledge.length === 0) {
+		await ctx.runMutation(api.knowledgeBase.seedDefaultKnowledge);
+		// Re-fetch after seeding
+		const seeded = (await ctx.runQuery(
+			api.knowledgeBase.getAllActiveKnowledge
+		)) as typeof knowledge;
+		knowledge.push(...seeded);
+	}
 
 	const prodList =
 		(
@@ -337,8 +356,14 @@ ${(() => {
 	return result;
 })()}
 
-== FITUR APLIKASI ==
-- Manajemen Produk & Kategori (CRUD, variasi, upload gambar)
+== FITUR APLIKASI (DINAMIS - diperbarui otomatis) ==
+${(() => {
+	const features = knowledge.filter((k) => k.type === "feature");
+	if (features.length > 0) {
+		return features.map((f) => `- ${f.title}: ${f.content}`).join("\n");
+	}
+	// Fallback jika knowledge base kosong
+	return `- Manajemen Produk & Kategori (CRUD, variasi, upload gambar)
 - Manajemen Inventaris & Stok (FIFO, low-stock alert, resep, base recipe/pre-mix)
 - Pemesanan & POS (buat pesanan, update status, cetak struk Bluetooth)
 - Keuangan (income/expense tracking, laporan periode)
@@ -347,6 +372,15 @@ ${(() => {
 - Manajemen User & Role (RBAC, permissions)
 - Pengaturan Toko (nama, alamat, logo, receipt footer)
 - AI Analytics (prediksi stok, analisis bisnis, rekomendasi produk, analisis HPP)`;
+})()}${(() => {
+	const capabilities = knowledge.filter((k) => k.type === "capability");
+	if (capabilities.length === 0) return "";
+	return `\n\n== KEMAMPUAN YUMI (DINAMIS) ==\n${capabilities.map((c) => `- ${c.title}: ${c.content}`).join("\n")}`;
+})()}${(() => {
+	const instructions = knowledge.filter((k) => k.type === "instruction");
+	if (instructions.length === 0) return "";
+	return `\n\n== INSTRUKSI TAMBAHAN ==\n${instructions.map((i) => `- ${i.content}`).join("\n")}`;
+})()}`;
 }
 
 /**
@@ -487,14 +521,15 @@ export const yumiChat = action({
 				role: "system",
 				content: `Kamu adalah Yumi, asisten AI cerdas untuk aplikasi TKM POS (Point of Sale).
 
-KEMAMPUAN:
+KEMAMPUAN INTI:
 - Mengetahui SELURUH data database secara real-time (produk, stok, pesanan, keuangan, promosi)
 - Dapat merekap dan meringkas data (harian, mingguan, bulanan)
 - Dapat mengambil dan menampilkan data spesifik
-- Mengetahui seluruh fitur aplikasi dan cara penggunaannya
+- Mengetahui seluruh fitur aplikasi dan cara penggunaannya (lihat DATA REAL-TIME)
 - Memberikan saran bisnis berdasarkan data
 - DAPAT MELAKUKAN AKSI: create/update/delete produk, tambah/kurang stok, buat pesanan, catat transaksi keuangan, kelola diskon, dll
 - MULTI-STEP ACTIONS: Dapat melakukan beberapa langkah sekaligus dalam satu permintaan
+- SELF-LEARNING: Dapat menyimpan pengetahuan baru ke database menggunakan tool addFeatureKnowledge. Ketika ada fitur baru yang diceritakan user, OTOMATIS simpan ke knowledge base agar Yumi selalu up-to-date
 
 ATURAN:
 1. Jawab dalam Bahasa Indonesia yang ramah dan profesional
@@ -523,7 +558,14 @@ INSTRUKSI TOOL CALLING:
 - Gunakan tool saat user meminta aksi spesifik seperti "tambah produk", "update stok", "buat pesanan", "catat pengeluaran"
 - Setelah menjalankan tool, jelaskan hasilnya dengan ringkas kepada user
 - Jika ada error dari tool, jelaskan masalahnya dan sarankan solusi
-- Untuk multi-step actions, lanjutkan dengan langkah berikutnya sampai selesai${
+- Untuk multi-step actions, lanjutkan dengan langkah berikutnya sampai selesai
+
+INSTRUKSI SELF-LEARNING:
+- Jika user memberitahu kamu tentang fitur baru atau kemampuan baru aplikasi, GUNAKAN tool addFeatureKnowledge untuk menyimpannya ke database
+- Contoh trigger: "ada fitur baru X", "sekarang bisa Y", "tambahkan pengetahuan tentang Z"
+- Setelah menyimpan, konfirmasi: "Oke, pengetahuan tentang [fitur] sudah saya simpan dan akan saya gunakan mulai sekarang"
+- Untuk update pengetahuan yang sudah ada, gunakan updateFeatureKnowledge
+- Untuk hapus pengetahuan yang sudah usang, gunakan removeFeatureKnowledge${
 	args.currentPage
 		? `
 

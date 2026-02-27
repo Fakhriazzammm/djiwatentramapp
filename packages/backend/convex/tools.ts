@@ -454,6 +454,61 @@ export const tools = {
 	},
 
 	// ============================================
+	// KNOWLEDGE BASE TOOLS (Self-Learning)
+	// ============================================
+
+	// Add new feature/capability to Yumi's knowledge
+	addFeatureKnowledge: {
+		description:
+			"Tambahkan pengetahuan baru ke database Yumi agar dia bisa mengetahui dan membantu fitur/kemampuan baru. Gunakan saat ada fitur baru yang perlu dipelajari Yumi.",
+		parameters: z.object({
+			type: z
+				.enum(["feature", "capability", "instruction"])
+				.describe(
+					"Tipe pengetahuan: 'feature' untuk fitur aplikasi, 'capability' untuk kemampuan AI, 'instruction' untuk aturan perilaku"
+				),
+			key: z
+				.string()
+				.min(1, "Key unik wajib diisi")
+				.describe("Identifier unik, contoh: 'laporan_bulanan', 'notif_wa'"),
+			title: z
+				.string()
+				.min(1, "Judul wajib diisi")
+				.describe("Nama pendek fitur/kemampuan, contoh: 'Laporan Bulanan PDF'"),
+			content: z
+				.string()
+				.min(1, "Deskripsi wajib diisi")
+				.describe(
+					"Deskripsi lengkap yang akan dimasukkan ke sistem prompt Yumi"
+				),
+		}),
+	},
+
+	// Update existing knowledge
+	updateFeatureKnowledge: {
+		description:
+			"Update pengetahuan yang sudah ada di database Yumi. Gunakan untuk memperbaiki atau melengkapi deskripsi fitur/kemampuan.",
+		parameters: z.object({
+			key: z.string().min(1, "Key wajib diisi").describe("Key dari entry yang ingin diupdate"),
+			title: z.string().optional().describe("Judul baru (opsional)"),
+			content: z.string().optional().describe("Deskripsi baru (opsional)"),
+			isActive: z
+				.boolean()
+				.optional()
+				.describe("Aktifkan/nonaktifkan knowledge ini"),
+		}),
+	},
+
+	// Remove knowledge entry
+	removeFeatureKnowledge: {
+		description:
+			"Hapus pengetahuan dari database Yumi. Gunakan ketika sebuah fitur sudah tidak ada atau tidak relevan.",
+		parameters: z.object({
+			key: z.string().min(1, "Key wajib diisi").describe("Key dari entry yang ingin dihapus"),
+		}),
+	},
+
+	// ============================================
 	// SITE SETTINGS TOOLS
 	// ============================================
 
