@@ -486,23 +486,32 @@ function ProductsTab({
 										}).format(product.price)}
 									</span>
 									{/* HPP Margin Badge */}
-									{hppProductMap?.[product._id] && (() => {
-										const hpp = hppProductMap[product._id];
-										const marginColor =
-											hpp.marginPercent >= 30
-												? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-												: hpp.marginPercent >= 15
-													? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-													: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
-										return (
-											<span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-semibold text-[10px] ${marginColor}`}>
-												Margin {hpp.marginPercent.toFixed(1)}% · HPP {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(hpp.hppPerServing)}
-											</span>
-										);
-									})()}
+									{hppProductMap?.[product._id] &&
+										(() => {
+											const hpp = hppProductMap[product._id];
+											const marginColor =
+												hpp.marginPercent >= 30
+													? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+													: hpp.marginPercent >= 15
+														? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+														: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+											return (
+												<span
+													className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-semibold text-[10px] ${marginColor}`}
+												>
+													Margin {hpp.marginPercent.toFixed(1)}% · HPP{" "}
+													{new Intl.NumberFormat("id-ID", {
+														style: "currency",
+														currency: "IDR",
+														maximumFractionDigits: 0,
+													}).format(hpp.hppPerServing)}
+												</span>
+											);
+										})()}
 									{/* Warning if price below HPP */}
 									{hppProductMap?.[product._id] &&
-										hppProductMap[product._id].hppPerServing > product.price && (
+										hppProductMap[product._id].hppPerServing >
+											product.price && (
 											<span className="inline-flex items-center gap-0.5 text-[10px] text-red-600 dark:text-red-400">
 												⚠ Harga di bawah HPP!
 											</span>

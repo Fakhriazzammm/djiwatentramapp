@@ -1,7 +1,14 @@
 import { api } from "@tkmpos/backend/convex/_generated/api";
 import type { Doc } from "@tkmpos/backend/convex/_generated/dataModel";
 import { useQuery } from "convex/react";
-import { ArrowDownLeft, ArrowUpRight, Calculator, Plus, TrendingUp, Wallet } from "lucide-react";
+import {
+	ArrowDownLeft,
+	ArrowUpRight,
+	Calculator,
+	Plus,
+	TrendingUp,
+	Wallet,
+} from "lucide-react";
 import { useState } from "react";
 import { NewTransactionDialog } from "./new-transaction-dialog";
 
@@ -244,15 +251,21 @@ export function FinanceDashboard() {
 					<div className="grid grid-cols-1 gap-4 md:grid-cols-4">
 						<div>
 							<p className="text-muted-foreground text-xs">Revenue Penjualan</p>
-							<p className="font-bold text-lg">{formatCurrency(hppCogs.totalRevenue)}</p>
+							<p className="font-bold text-lg">
+								{formatCurrency(hppCogs.totalRevenue)}
+							</p>
 						</div>
 						<div>
 							<p className="text-muted-foreground text-xs">Total COGS</p>
-							<p className="font-bold text-lg text-orange-600">{formatCurrency(hppCogs.totalCogs)}</p>
+							<p className="font-bold text-lg text-orange-600">
+								{formatCurrency(hppCogs.totalCogs)}
+							</p>
 						</div>
 						<div>
 							<p className="text-muted-foreground text-xs">Laba Kotor</p>
-							<p className={`font-bold text-lg ${hppCogs.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
+							<p
+								className={`font-bold text-lg ${hppCogs.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}
+							>
 								{formatCurrency(hppCogs.totalProfit)}
 							</p>
 						</div>
@@ -263,14 +276,17 @@ export function FinanceDashboard() {
 								{hppCogs.grossMargin.toFixed(1)}%
 							</p>
 							<p className="text-[10px] text-muted-foreground">
-								{hppCogs.matchedOrders} dari {hppCogs.totalCompletedOrders} pesanan
+								{hppCogs.matchedOrders} dari {hppCogs.totalCompletedOrders}{" "}
+								pesanan
 							</p>
 						</div>
 					</div>
 					{/* Daily Breakdown */}
 					{hppCogs.dailySummary.length > 0 && (
 						<div className="mt-4 border-border/50 border-t pt-4">
-							<h4 className="mb-2 font-semibold text-sm text-muted-foreground">Ringkasan Harian</h4>
+							<h4 className="mb-2 font-semibold text-muted-foreground text-sm">
+								Ringkasan Harian
+							</h4>
 							<div className="space-y-1.5">
 								{hppCogs.dailySummary.slice(0, 7).map((day) => (
 									<div
@@ -292,7 +308,9 @@ export function FinanceDashboard() {
 											<span className="text-orange-600">
 												COGS: {formatCurrency(day.cogs)}
 											</span>
-											<span className={`font-bold ${day.profit >= 0 ? "text-green-600" : "text-red-600"}`}>
+											<span
+												className={`font-bold ${day.profit >= 0 ? "text-green-600" : "text-red-600"}`}
+											>
 												Laba: {formatCurrency(day.profit)}
 											</span>
 										</div>

@@ -249,16 +249,18 @@ export default defineSchema({
 			v.literal("weekly"),
 			v.literal("monthly")
 		),
-		dataSources: v.array(v.object({
-			type: v.union(
-				v.literal("sales"),
-				v.literal("inventory"),
-				v.literal("finance"),
-				v.literal("orders"),
-				v.literal("products")
-			),
-			includeDetails: v.optional(v.boolean()),
-		})),
+		dataSources: v.array(
+			v.object({
+				type: v.union(
+					v.literal("sales"),
+					v.literal("inventory"),
+					v.literal("finance"),
+					v.literal("orders"),
+					v.literal("products")
+				),
+				includeDetails: v.optional(v.boolean()),
+			})
+		),
 		schedule: v.object({
 			frequency: v.union(
 				v.literal("daily"),
@@ -271,7 +273,11 @@ export default defineSchema({
 		}),
 		format: v.union(v.literal("json"), v.literal("pdf"), v.literal("excel")),
 		delivery: v.object({
-			type: v.union(v.literal("email"), v.literal("download"), v.literal("webhook")),
+			type: v.union(
+				v.literal("email"),
+				v.literal("download"),
+				v.literal("webhook")
+			),
 			destination: v.string(),
 		}),
 		isActive: v.boolean(),
@@ -293,4 +299,183 @@ export default defineSchema({
 		createdAt: v.number(),
 		isActive: v.boolean(),
 	}),
+
+	// ============================================
+	// AI MEMORY & CONTEXT
+	// ============================================
+
+	// Conversation Memory for AI context
+	conversationMemory: defineTable({
+		sessionId: v.string(),
+		role: v.union(v.literal("user"), v.literal("assistant")),
+		content: v.string(),
+		metadata: v.optional(
+			v.object({
+				imageAttached: v.optional(v.boolean()),
+				actionTaken: v.optional(v.string()),
+				entities: v.optional(v.array(v.string())),
+			})
+		),
+		timestamp: v.number(),
+	})
+		.index("by_session", ["sessionId"])
+		.index("by_timestamp", ["timestamp"]),
+
+	// User Preferences learned by AI
+	userPreferences: defineTable({
+		reportFrequency: v.optional(
+			v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"))
+		),
+		notifyLowStock: v.optional(v.boolean()),
+		notifyPendingOrders: v.optional(v.boolean()),
+		suggestedCategories: v.optional(v.array(v.string())),
+		preferredCurrency: v.optional(v.string()),
+		businessHours: v.optional(
+			v.object({
+				start: v.optional(v.number()),
+				end: v.optional(v.number()),
+			})
+		),
+		createdAt: v.optional(v.number()),
+		updatedAt: v.optional(v.number()),
+	}),
+
+	// Follow-up Tasks for AI reminders
+	followUpTasks: defineTable({
+		title: v.string(),
+		description: v.string(),
+		priority: v.union(v.literal("high"), v.literal("medium"), v.literal("low")),
+		status: v.union(
+			v.literal("pending"),
+			v.literal("completed"),
+			v.literal("dismissed")
+		),
+		dueDate: v.optional(v.number()),
+		category: v.union(
+			v.literal("inventory"),
+			v.literal("orders"),
+			v.literal("finance"),
+			v.literal("marketing"),
+			v.literal("other")
+		),
+		actionType: v.union(
+			v.literal("restock"),
+			v.literal("follow_up"),
+			v.literal("review"),
+			v.literal("create"),
+			v.literal("analyze")
+		),
+		actionData: v.optional(v.any()),
+		createdAt: v.number(),
+		completedAt: v.optional(v.number()),
+		completedBy: v.optional(v.string()),
+		dismissalReason: v.optional(v.string()),
+	})
+		.index("by_status", ["status"])
+		.index("by_category", ["category"])
+		.index("by_priority", ["priority"])
+		.index("by_dueDate", ["dueDate"]),
+
+	// User Action Patterns for AI learning
+	userActionPatterns: defineTable({
+		action: v.string(), // e.g., "created_expense", "checked_stock"
+		context: v.optional(
+			v.object({
+				category: v.optional(v.string()),
+				amount: v.optional(v.number()),
+				timeOfDay: v.optional(v.number()),
+				dayOfWeek: v.optional(v.number()),
+			})
+		),
+		timestamp: v.number(),
+	})
+		.index("by_timestamp", ["timestamp"])
+		.index("by_action", ["action"]),
+
+	// AI Predictions & Analytics
+	aiPredictions: defineTable({
+		predictionType: v.union(
+			v.literal("stock_out"),
+			v.literal("busy_hours"),
+			v.literal("revenue"),
+			v.literal("demand")
+		),
+		targetId: v.optional(v.string()), // Product ID, category, etc.
+		targetName: v.optional(v.string()),
+		prediction: v.any(), // Prediction data
+		confidence: v.number(), // 0-1
+		validUntil: v.number(), // When prediction expires
+		createdAt: v.number(),
+		validated: v.optional(v.boolean()), // If prediction was correct
+	})
+		.index("by_type", ["predictionType"])
+		.index("by_validUntil", ["validUntil"]),
+
+	// Anomalies detected by AI
+	anomalies: defineTable({
+		type: v.union(
+			v.literal("unusual_amount"),
+			v.literal("duplicate_transaction"),
+			v.literal("suspicious_pattern"),
+			v.literal("inventory_mismatch")
+		),
+		description: v.string(),
+		severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+		entityId: v.optional(v.string()), // Related transaction/inventory ID
+		entityType: v.optional(v.string()), // "transaction", "inventory", etc.
+		data: v.optional(v.any()), // Additional data
+		status: v.union(
+			v.literal("new"),
+			v.literal("investigating"),
+			v.literal("resolved"),
+			v.literal("false_positive")
+		),
+		createdAt: v.number(),
+		resolvedAt: v.optional(v.number()),
+		resolvedBy: v.optional(v.string()),
+	})
+		.index("by_status", ["status"])
+		.index("by_severity", ["severity"])
+		.index("by_type", ["type"]),
+
+	// Competitor Analysis Data
+	competitorAnalysis: defineTable({
+		competitorName: v.string(),
+		category: v.optional(v.string()), // Product category
+		productName: v.optional(v.string()),
+		theirPrice: v.number(),
+		recommendedPrice: v.number(),
+		recommendation: v.string(), // AI pricing suggestion
+		confidence: v.number(),
+		createdAt: v.number(),
+	})
+		.index("by_category", ["category"])
+		.index("by_competitor", ["competitorName"]),
+
+	// AI Insights Log
+	aiInsightsLog: defineTable({
+		insightType: v.union(
+			v.literal("suggestion"),
+			v.literal("warning"),
+			v.literal("opportunity"),
+			v.literal("prediction")
+		),
+		title: v.string(),
+		content: v.string(),
+		category: v.optional(v.string()),
+		priority: v.union(v.literal("high"), v.literal("medium"), v.literal("low")),
+		status: v.union(
+			v.literal("new"),
+			v.literal("acknowledged"),
+			v.literal("dismissed"),
+			v.literal("implemented")
+		),
+		actionTaken: v.optional(v.string()),
+		createdAt: v.number(),
+		expiresAt: v.optional(v.number()), // For time-sensitive insights
+	})
+		.index("by_status", ["status"])
+		.index("by_category", ["category"])
+		.index("by_priority", ["priority"])
+		.index("by_createdAt", ["createdAt"]),
 });

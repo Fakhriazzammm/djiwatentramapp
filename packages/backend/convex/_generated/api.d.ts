@@ -9,6 +9,7 @@
  */
 
 import type * as ai from "../ai.js";
+import type * as aiMemory from "../aiMemory.js";
 import type * as auth from "../auth.js";
 import type * as discounts from "../discounts.js";
 import type * as finance from "../finance.js";
@@ -35,6 +36,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   ai: typeof ai;
+  aiMemory: typeof aiMemory;
   auth: typeof auth;
   discounts: typeof discounts;
   finance: typeof finance;

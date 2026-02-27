@@ -26,18 +26,13 @@ import {
 	X,
 	Zap,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
 export const Route = createFileRoute("/admin/hpp-calculator")({
 	component: HppCalculatorPage,
@@ -109,7 +104,9 @@ function formatNumber(value: number): string {
 function getCostPerBaseUnit(ingredient: IngredientRow): number {
 	const totalBaseUnits =
 		ingredient.purchaseQuantity * ingredient.conversionFactor;
-	if (totalBaseUnits === 0) return 0;
+	if (totalBaseUnits === 0) {
+		return 0;
+	}
 	return ingredient.purchasePrice / totalBaseUnits;
 }
 
@@ -149,8 +146,8 @@ const COMMON_UNITS = [
 	{ purchase: "box (1L)", usage: "ml", factor: 1000 },
 	{ purchase: "box (500ml)", usage: "ml", factor: 500 },
 	{ purchase: "box (250ml)", usage: "ml", factor: 250 },
-	{ purchase: "karung (25kg)", usage: "gram", factor: 25000 },
-	{ purchase: "karung (50kg)", usage: "gram", factor: 50000 },
+	{ purchase: "karung (25kg)", usage: "gram", factor: 25_000 },
+	{ purchase: "karung (50kg)", usage: "gram", factor: 50_000 },
 	{ purchase: "pack", usage: "pcs", factor: 1 },
 	{ purchase: "lusin", usage: "pcs", factor: 12 },
 	{ purchase: "dus", usage: "pcs", factor: 1 },
@@ -169,13 +166,9 @@ function computeHpp(form: HppFormData): HppCalcResult {
 	const totalHppPerBatch = totalHppPerServing * form.servingsPerBatch;
 	const profitPerServing = form.sellingPrice - totalHppPerServing;
 	const profitMarginPercent =
-		form.sellingPrice > 0
-			? (profitPerServing / form.sellingPrice) * 100
-			: 0;
+		form.sellingPrice > 0 ? (profitPerServing / form.sellingPrice) * 100 : 0;
 	const markupPercent =
-		totalHppPerServing > 0
-			? (profitPerServing / totalHppPerServing) * 100
-			: 0;
+		totalHppPerServing > 0 ? (profitPerServing / totalHppPerServing) * 100 : 0;
 	const breakEvenServings =
 		totalHppPerBatch > 0 && profitPerServing > 0
 			? Math.ceil(totalHppPerBatch / profitPerServing)
@@ -205,8 +198,7 @@ function computeHppFromDoc(calc: Doc<"hppCalculations">) {
 	);
 	const totalHpp = ingredientCost + overheadCost;
 	const profit = calc.sellingPrice - totalHpp;
-	const margin =
-		calc.sellingPrice > 0 ? (profit / calc.sellingPrice) * 100 : 0;
+	const margin = calc.sellingPrice > 0 ? (profit / calc.sellingPrice) * 100 : 0;
 	return { ingredientCost, overheadCost, totalHpp, profit, margin };
 }
 
@@ -236,14 +228,18 @@ function HppCalculatorPage() {
 	const [expandedCard, setExpandedCard] =
 		useState<Id<"hppCalculations"> | null>(null);
 	const [showImportModal, setShowImportModal] = useState(false);
-	const [syncingId, setSyncingId] = useState<Id<"hppCalculations"> | null>(null);
+	const [syncingId, setSyncingId] = useState<Id<"hppCalculations"> | null>(
+		null
+	);
 
 	const calculations = useMemo(() => computeHpp(form), [form]);
 
 	// ─── Check for price changes on saved calculations ─────────────────────
 
 	const priceAlerts = useMemo(() => {
-		if (!hppCalculations || !inventoryCosts) return [];
+		if (!(hppCalculations && inventoryCosts)) {
+			return [];
+		}
 		const alerts: {
 			hppId: Id<"hppCalculations">;
 			hppName: string;
@@ -256,11 +252,15 @@ function HppCalculatorPage() {
 		}[] = [];
 
 		for (const calc of hppCalculations) {
-			const changes: typeof alerts[number]["changes"] = [];
+			const changes: (typeof alerts)[number]["changes"] = [];
 			for (const ing of calc.ingredients) {
-				if (!ing.inventoryId) continue;
+				if (!ing.inventoryId) {
+					continue;
+				}
 				const cost = inventoryCosts[ing.inventoryId];
-				if (!cost?.latestCostPerUnit) continue;
+				if (!cost?.latestCostPerUnit) {
+					continue;
+				}
 
 				const currentPurchasePrice =
 					cost.latestCostPerUnit * ing.conversionFactor;
@@ -276,8 +276,7 @@ function HppCalculatorPage() {
 						oldPrice: ing.purchasePrice,
 						newPrice: currentPurchasePrice,
 						diff:
-							((currentPurchasePrice - ing.purchasePrice) /
-								ing.purchasePrice) *
+							((currentPurchasePrice - ing.purchasePrice) / ing.purchasePrice) *
 							100,
 					});
 				}
@@ -307,35 +306,40 @@ function HppCalculatorPage() {
 		[]
 	);
 
-	const applyUnitPreset = useCallback(
-		(id: string, presetIndex: number) => {
-			const preset = COMMON_UNITS[presetIndex];
-			if (!preset) return;
-			setForm((prev) => ({
-				...prev,
-				ingredients: prev.ingredients.map((ing) =>
-					ing.id === id
-						? {
-								...ing,
-								purchaseUnit: preset.purchase,
-								usageUnit: preset.usage,
-								conversionFactor: preset.factor,
-							}
-						: ing
-				),
-			}));
-		},
-		[]
-	);
+	const applyUnitPreset = useCallback((id: string, presetIndex: number) => {
+		const preset = COMMON_UNITS[presetIndex];
+		if (!preset) {
+			return;
+		}
+		setForm((prev) => ({
+			...prev,
+			ingredients: prev.ingredients.map((ing) =>
+				ing.id === id
+					? {
+							...ing,
+							purchaseUnit: preset.purchase,
+							usageUnit: preset.usage,
+							conversionFactor: preset.factor,
+						}
+					: ing
+			),
+		}));
+	}, []);
 
 	const linkIngredientToInventory = useCallback(
 		(ingredientId: string, inventoryItemId: string) => {
-			if (!inventoryCosts) return;
+			if (!inventoryCosts) {
+				return;
+			}
 			const cost = inventoryCosts[inventoryItemId];
-			if (!cost) return;
+			if (!cost) {
+				return;
+			}
 
 			const invItem = inventory?.find((i) => i._id === inventoryItemId);
-			if (!invItem) return;
+			if (!invItem) {
+				return;
+			}
 
 			const convFactor = invItem.conversionFactor || 1;
 			const displayUnit = invItem.displayUnit || invItem.unit;
@@ -406,26 +410,27 @@ function HppCalculatorPage() {
 
 	// ─── Import from Recipe ───────────────────────────────────────────────────
 
-	const handleImportFromRecipe = useCallback(
-		async (
-			productId: Id<"products">,
-			variantName?: string
-		) => {
+	const _handleImportFromRecipe = useCallback(
+		async (productId: Id<"products">, _variantName?: string) => {
 			// We use the query result reactively, but for import we need to
 			// call via the already-fetched productsWithRecipes + inventoryCosts.
 			// Since generateHppFromRecipe is a query, we use a client-side approach:
 			const product = products?.find((p) => p._id === productId);
-			if (!product) return;
+			if (!product) {
+				return;
+			}
 
 			const recipes = productsWithRecipes?.find(
 				(p) => p.product._id === productId
 			);
-			if (!recipes) return;
+			if (!recipes) {
+				return;
+			}
 
 			// Build ingredients from inventory data
 			// We'll need to call the query via a different approach—
 			// actually let's just build it client-side from the data we already have
-			const allRecipes = await fetch(""); // Not needed, we have the data
+			const _allRecipes = await fetch(""); // Not needed, we have the data
 
 			// Actually, let's use the data we already have
 			toast.info("Mengimpor resep...");
@@ -513,7 +518,9 @@ function HppCalculatorPage() {
 	};
 
 	const handleDelete = async () => {
-		if (!deleteTarget) return;
+		if (!deleteTarget) {
+			return;
+		}
 		try {
 			await deleteHpp({ id: deleteTarget });
 			toast.success("Kalkulasi HPP berhasil dihapus");
@@ -533,9 +540,7 @@ function HppCalculatorPage() {
 		try {
 			const result = await syncPrices({ id });
 			if (result.updatedCount > 0) {
-				toast.success(
-					`${result.updatedCount} harga bahan berhasil diperbarui`
-				);
+				toast.success(`${result.updatedCount} harga bahan berhasil diperbarui`);
 			} else {
 				toast.info("Semua harga sudah sesuai, tidak ada perubahan");
 			}
@@ -552,9 +557,7 @@ function HppCalculatorPage() {
 			{/* Page Header */}
 			<div className="flex items-center justify-between">
 				<div>
-					<h2 className="font-bold text-xl tracking-tight">
-						Kalkulator HPP
-					</h2>
+					<h2 className="font-bold text-xl tracking-tight">Kalkulator HPP</h2>
 					<p className="text-muted-foreground text-sm">
 						Hitung Harga Pokok Produksi bahan baku per porsi/gelas
 					</p>
@@ -566,10 +569,10 @@ function HppCalculatorPage() {
 				<div className="flex flex-col gap-2">
 					{priceAlerts.map((alert) => (
 						<motion.div
-							key={alert.hppId}
 							animate={{ opacity: 1, y: 0 }}
 							className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30"
 							initial={{ opacity: 0, y: -5 }}
+							key={alert.hppId}
 						>
 							<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
 							<div className="flex-1">
@@ -579,18 +582,15 @@ function HppCalculatorPage() {
 								<div className="mt-1 flex flex-col gap-0.5">
 									{alert.changes.map((c) => (
 										<p
+											className="text-[11px] text-amber-700 dark:text-amber-300"
 											key={c.ingredientName}
-											className="text-amber-700 text-[11px] dark:text-amber-300"
 										>
-											{c.ingredientName}:{" "}
-											{formatCurrency(c.oldPrice)}{" "}
+											{c.ingredientName}: {formatCurrency(c.oldPrice)}{" "}
 											<ArrowRight className="inline h-3 w-3" />{" "}
 											{formatCurrency(c.newPrice)}{" "}
 											<span
 												className={
-													c.diff > 0
-														? "text-red-600"
-														: "text-green-600"
+													c.diff > 0 ? "text-red-600" : "text-green-600"
 												}
 											>
 												({c.diff > 0 ? "+" : ""}
@@ -602,9 +602,7 @@ function HppCalculatorPage() {
 							</div>
 							<Button
 								className="shrink-0"
-								onClick={() =>
-									handleSyncPrices(alert.hppId)
-								}
+								onClick={() => handleSyncPrices(alert.hppId)}
 								size="sm"
 								variant="outline"
 							>
@@ -663,40 +661,40 @@ function HppCalculatorPage() {
 
 			{activeTab === "calculator" && (
 				<CalculatorView
-					form={form}
-					setForm={setForm}
+					addIngredient={addIngredient}
+					addOverhead={addOverhead}
+					applyUnitPreset={applyUnitPreset}
 					calculations={calculations}
+					editingId={editingId}
+					form={form}
 					inventory={inventory}
 					inventoryCosts={inventoryCosts}
+					linkIngredientToInventory={linkIngredientToInventory}
+					onReset={handleReset}
+					onSave={handleSave}
 					products={products}
 					productsWithRecipes={productsWithRecipes}
-					editingId={editingId}
-					updateIngredient={updateIngredient}
-					applyUnitPreset={applyUnitPreset}
-					linkIngredientToInventory={linkIngredientToInventory}
-					addIngredient={addIngredient}
 					removeIngredient={removeIngredient}
-					updateOverhead={updateOverhead}
-					addOverhead={addOverhead}
 					removeOverhead={removeOverhead}
-					onSave={handleSave}
-					onReset={handleReset}
-					showImportModal={showImportModal}
+					setForm={setForm}
 					setShowImportModal={setShowImportModal}
+					showImportModal={showImportModal}
+					updateIngredient={updateIngredient}
+					updateOverhead={updateOverhead}
 				/>
 			)}
 
 			{activeTab === "saved" && (
 				<SavedCalculationsView
 					calculations={hppCalculations}
-					products={products}
-					inventoryCosts={inventoryCosts}
 					expandedCard={expandedCard}
-					setExpandedCard={setExpandedCard}
-					onEdit={handleEdit}
-					onDuplicate={handleDuplicate}
+					inventoryCosts={inventoryCosts}
 					onDelete={(id) => setDeleteTarget(id)}
+					onDuplicate={handleDuplicate}
+					onEdit={handleEdit}
 					onSync={handleSyncPrices}
+					products={products}
+					setExpandedCard={setExpandedCard}
 					syncingId={syncingId}
 				/>
 			)}
@@ -733,8 +731,9 @@ function ImportRecipeModal({
 	onClose: () => void;
 }) {
 	const recipes = useQuery(api.inventory.getRecipes);
-	const [selectedProduct, setSelectedProduct] =
-		useState<Id<"products"> | null>(null);
+	const [selectedProduct, setSelectedProduct] = useState<Id<"products"> | null>(
+		null
+	);
 	const [selectedVariant, setSelectedVariant] = useState<string>("");
 
 	const selectedProductData = productsWithRecipes?.find(
@@ -742,7 +741,9 @@ function ImportRecipeModal({
 	);
 
 	const handleImport = () => {
-		if (!selectedProduct || !recipes || !inventory) return;
+		if (!(selectedProduct && recipes && inventory)) {
+			return;
+		}
 
 		// Find the matching recipe
 		const recipe = recipes.find(
@@ -753,9 +754,7 @@ function ImportRecipeModal({
 		// Fallback: try base recipe
 		const recipeToUse =
 			recipe ||
-			recipes.find(
-				(r) => r.productId === selectedProduct && !r.variantName
-			);
+			recipes.find((r) => r.productId === selectedProduct && !r.variantName);
 
 		if (!recipeToUse) {
 			toast.error("Resep tidak ditemukan untuk produk ini");
@@ -763,21 +762,22 @@ function ImportRecipeModal({
 		}
 
 		const product = products?.find((p) => p._id === selectedProduct);
-		if (!product) return;
+		if (!product) {
+			return;
+		}
 
 		// Build ingredient rows from recipe
 		const ingredients: IngredientRow[] = recipeToUse.ingredients
 			.map((recipeIng) => {
-				const invItem = inventory.find(
-					(i) => i._id === recipeIng.inventoryId
-				);
-				if (!invItem) return null;
+				const invItem = inventory.find((i) => i._id === recipeIng.inventoryId);
+				if (!invItem) {
+					return null;
+				}
 
 				const convFactor = invItem.conversionFactor || 1;
 				const displayUnit = invItem.displayUnit || invItem.unit;
 				const costData = inventoryCosts?.[invItem._id];
-				const purchasePrice =
-					(costData?.latestCostPerUnit ?? 0) * convFactor;
+				const purchasePrice = (costData?.latestCostPerUnit ?? 0) * convFactor;
 
 				return {
 					id: generateId(),
@@ -798,9 +798,7 @@ function ImportRecipeModal({
 			return;
 		}
 
-		const variantLabel = selectedVariant
-			? ` (${selectedVariant})`
-			: "";
+		const variantLabel = selectedVariant ? ` (${selectedVariant})` : "";
 
 		onImport({
 			name: `HPP ${product.name}${variantLabel}`,
@@ -839,8 +837,8 @@ function ImportRecipeModal({
 
 				{!productsWithRecipes || productsWithRecipes.length === 0 ? (
 					<div className="py-8 text-center text-muted-foreground text-sm">
-						Belum ada produk dengan resep. Buat resep terlebih dahulu
-						di halaman Produk.
+						Belum ada produk dengan resep. Buat resep terlebih dahulu di halaman
+						Produk.
 					</div>
 				) : (
 					<div className="flex flex-col gap-4">
@@ -848,67 +846,55 @@ function ImportRecipeModal({
 							<Label>Pilih Produk</Label>
 							<select
 								className="h-8 w-full rounded-md border border-input bg-transparent px-2.5 text-xs outline-none transition-colors focus-visible:border-ring"
-								value={selectedProduct || ""}
 								onChange={(e) => {
 									setSelectedProduct(
 										(e.target.value || null) as Id<"products"> | null
 									);
 									setSelectedVariant("");
 								}}
+								value={selectedProduct || ""}
 							>
 								<option value="">-- Pilih produk --</option>
 								{productsWithRecipes.map((p) => (
-									<option
-										key={p.product._id}
-										value={p.product._id}
-									>
-										{p.product.name} ({p.variants.length > 0
+									<option key={p.product._id} value={p.product._id}>
+										{p.product.name} (
+										{p.variants.length > 0
 											? `${p.variants.length + 1} resep`
-											: "1 resep"})
+											: "1 resep"}
+										)
 									</option>
 								))}
 							</select>
 						</div>
 
-						{selectedProductData &&
-							selectedProductData.variants.length > 0 && (
-								<div className="flex flex-col gap-1.5">
-									<Label>Varian (Opsional)</Label>
-									<select
-										className="h-8 w-full rounded-md border border-input bg-transparent px-2.5 text-xs outline-none transition-colors focus-visible:border-ring"
-										value={selectedVariant}
-										onChange={(e) =>
-											setSelectedVariant(e.target.value)
-										}
-									>
-										<option value="">Resep Dasar</option>
-										{selectedProductData.variants.map(
-											(v) => (
-												<option key={v} value={v}>
-													{v}
-												</option>
-											)
-										)}
-									</select>
-								</div>
-							)}
+						{selectedProductData && selectedProductData.variants.length > 0 && (
+							<div className="flex flex-col gap-1.5">
+								<Label>Varian (Opsional)</Label>
+								<select
+									className="h-8 w-full rounded-md border border-input bg-transparent px-2.5 text-xs outline-none transition-colors focus-visible:border-ring"
+									onChange={(e) => setSelectedVariant(e.target.value)}
+									value={selectedVariant}
+								>
+									<option value="">Resep Dasar</option>
+									{selectedProductData.variants.map((v) => (
+										<option key={v} value={v}>
+											{v}
+										</option>
+									))}
+								</select>
+							</div>
+						)}
 
 						{selectedProduct && (
 							<div className="rounded-lg bg-muted/50 p-3 text-xs">
-								<p className="font-medium text-muted-foreground">
-									Informasi:
-								</p>
+								<p className="font-medium text-muted-foreground">Informasi:</p>
 								<ul className="mt-1 list-disc space-y-0.5 pl-4 text-muted-foreground">
+									<li>Bahan baku akan diimpor dari resep produk</li>
 									<li>
-										Bahan baku akan diimpor dari resep produk
+										Harga beli diambil dari transaksi restock terbaru di
+										inventaris
 									</li>
-									<li>
-										Harga beli diambil dari transaksi restock
-										terbaru di inventaris
-									</li>
-									<li>
-										Anda bisa mengedit semua data setelah impor
-									</li>
+									<li>Anda bisa mengedit semua data setelah impor</li>
 								</ul>
 							</div>
 						)}
@@ -917,10 +903,7 @@ function ImportRecipeModal({
 							<Button onClick={onClose} variant="outline">
 								Batal
 							</Button>
-							<Button
-								disabled={!selectedProduct}
-								onClick={handleImport}
-							>
+							<Button disabled={!selectedProduct} onClick={handleImport}>
 								<FileDown className="h-3.5 w-3.5" />
 								Impor Resep
 							</Button>
@@ -1016,88 +999,79 @@ function CalculatorView({
 						<CardContent className="flex flex-col gap-4">
 							<div className="grid gap-4 sm:grid-cols-2">
 								<div className="flex flex-col gap-1.5">
-									<Label htmlFor="hpp-name">
-										Nama Kalkulasi *
-									</Label>
+									<Label htmlFor="hpp-name">Nama Kalkulasi *</Label>
 									<Input
 										id="hpp-name"
-										placeholder="cth: HPP Es Susu Coklat"
-										value={form.name}
 										onChange={(e) =>
 											setForm((prev) => ({
 												...prev,
 												name: e.target.value,
 											}))
 										}
+										placeholder="cth: HPP Es Susu Coklat"
+										value={form.name}
 									/>
 								</div>
 								<div className="flex flex-col gap-1.5">
 									<Label htmlFor="hpp-desc">Deskripsi</Label>
 									<Input
 										id="hpp-desc"
-										placeholder="cth: Perhitungan untuk 1 gelas 300ml"
-										value={form.description}
 										onChange={(e) =>
 											setForm((prev) => ({
 												...prev,
 												description: e.target.value,
 											}))
 										}
+										placeholder="cth: Perhitungan untuk 1 gelas 300ml"
+										value={form.description}
 									/>
 								</div>
 							</div>
 							<div className="grid gap-4 sm:grid-cols-3">
 								<div className="flex flex-col gap-1.5">
-									<Label htmlFor="hpp-servings">
-										Porsi per Batch
-									</Label>
+									<Label htmlFor="hpp-servings">Porsi per Batch</Label>
 									<Input
 										id="hpp-servings"
 										min={1}
-										type="number"
-										value={form.servingsPerBatch || ""}
 										onChange={(e) =>
 											setForm((prev) => ({
 												...prev,
-												servingsPerBatch:
-													Number(e.target.value) || 0,
+												servingsPerBatch: Number(e.target.value) || 0,
 											}))
 										}
+										type="number"
+										value={form.servingsPerBatch || ""}
 									/>
 								</div>
 								<div className="flex flex-col gap-1.5">
-									<Label htmlFor="hpp-selling">
-										Harga Jual /Porsi
-									</Label>
+									<Label htmlFor="hpp-selling">Harga Jual /Porsi</Label>
 									<Input
 										id="hpp-selling"
 										min={0}
-										placeholder="15000"
-										type="number"
-										value={form.sellingPrice || ""}
 										onChange={(e) =>
 											setForm((prev) => ({
 												...prev,
-												sellingPrice:
-													Number(e.target.value) || 0,
+												sellingPrice: Number(e.target.value) || 0,
 											}))
 										}
+										placeholder="15000"
+										type="number"
+										value={form.sellingPrice || ""}
 									/>
 								</div>
 								<div className="flex flex-col gap-1.5">
 									<Label>Produk Terkait</Label>
 									<select
 										className="h-8 w-full rounded-md border border-input bg-transparent px-2.5 text-xs outline-none transition-colors focus-visible:border-ring"
-										value={form.productId || ""}
 										onChange={(e) =>
 											setForm((prev) => ({
 												...prev,
-												productId: (e.target.value ||
-													undefined) as
+												productId: (e.target.value || undefined) as
 													| Id<"products">
 													| undefined,
 											}))
 										}
+										value={form.productId || ""}
 									>
 										<option value="">-- Tidak ada --</option>
 										{products?.map((p) => (
@@ -1119,11 +1093,7 @@ function CalculatorView({
 									<Package className="h-4 w-4 text-primary" />
 									Bahan Baku
 								</span>
-								<Button
-									onClick={addIngredient}
-									size="sm"
-									variant="outline"
-								>
+								<Button onClick={addIngredient} size="sm" variant="outline">
 									<Plus className="h-3.5 w-3.5" />
 									Tambah Bahan
 								</Button>
@@ -1133,15 +1103,15 @@ function CalculatorView({
 							<AnimatePresence mode="popLayout">
 								{form.ingredients.map((ing, idx) => (
 									<motion.div
-										key={ing.id}
 										animate={{ opacity: 1, y: 0 }}
 										className="rounded-lg border border-border bg-muted/30 p-3"
 										exit={{ opacity: 0, y: -10 }}
 										initial={{ opacity: 0, y: 10 }}
+										key={ing.id}
 										layout
 									>
 										<div className="mb-3 flex items-center justify-between">
-											<span className="flex items-center gap-2 font-semibold text-xs text-muted-foreground">
+											<span className="flex items-center gap-2 font-semibold text-muted-foreground text-xs">
 												Bahan #{idx + 1}
 												{ing.inventoryId && (
 													<span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] text-green-700 dark:bg-green-900/30 dark:text-green-400">
@@ -1153,11 +1123,7 @@ function CalculatorView({
 											{form.ingredients.length > 1 && (
 												<button
 													className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-													onClick={() =>
-														removeIngredient(
-															ing.id
-														)
-													}
+													onClick={() => removeIngredient(ing.id)}
 													type="button"
 												>
 													<X className="h-3.5 w-3.5" />
@@ -1171,10 +1137,6 @@ function CalculatorView({
 													Nama Bahan
 												</Label>
 												<Input
-													placeholder="cth: Susu UHT"
-													value={
-														ing.ingredientName
-													}
 													onChange={(e) =>
 														updateIngredient(
 															ing.id,
@@ -1182,37 +1144,28 @@ function CalculatorView({
 															e.target.value
 														)
 													}
+													placeholder="cth: Susu UHT"
+													value={ing.ingredientName}
 												/>
 											</div>
 											<div className="flex flex-col gap-1">
 												<Label className="text-[11px] text-muted-foreground">
-													<Database className="inline h-3 w-3" />{" "}
-													Link ke Inventaris
+													<Database className="inline h-3 w-3" /> Link ke
+													Inventaris
 												</Label>
 												<select
 													className="h-8 w-full rounded-md border border-input bg-transparent px-2.5 text-xs outline-none transition-colors focus-visible:border-ring"
-													value={
-														ing.inventoryId || ""
-													}
 													onChange={(e) => {
 														if (e.target.value) {
-															linkIngredientToInventory(
-																ing.id,
-																e.target.value
-															);
+															linkIngredientToInventory(ing.id, e.target.value);
 														}
 													}}
+													value={ing.inventoryId || ""}
 												>
-													<option value="">
-														-- Manual --
-													</option>
+													<option value="">-- Manual --</option>
 													{inventory?.map((inv) => (
-														<option
-															key={inv._id}
-															value={inv._id}
-														>
-															{inv.ingredientName}{" "}
-															({inv.unit})
+														<option key={inv._id} value={inv._id}>
+															{inv.ingredientName} ({inv.unit})
 														</option>
 													))}
 												</select>
@@ -1223,37 +1176,20 @@ function CalculatorView({
 												</Label>
 												<select
 													className="h-8 w-full rounded-md border border-input bg-transparent px-2.5 text-xs outline-none transition-colors focus-visible:border-ring"
-													value=""
 													onChange={(e) => {
-														if (
-															e.target.value !==
-															""
-														) {
-															applyUnitPreset(
-																ing.id,
-																Number(
-																	e.target
-																		.value
-																)
-															);
+														if (e.target.value !== "") {
+															applyUnitPreset(ing.id, Number(e.target.value));
 														}
 													}}
+													value=""
 												>
-													<option value="">
-														Pilih preset...
-													</option>
-													{COMMON_UNITS.map(
-														(u, i) => (
-															<option
-																key={`${u.purchase}-${u.usage}`}
-																value={i}
-															>
-																{u.purchase} →{" "}
-																{u.usage} (1:
-																{u.factor})
-															</option>
-														)
-													)}
+													<option value="">Pilih preset...</option>
+													{COMMON_UNITS.map((u, i) => (
+														<option key={`${u.purchase}-${u.usage}`} value={i}>
+															{u.purchase} → {u.usage} (1:
+															{u.factor})
+														</option>
+													))}
 												</select>
 											</div>
 										</div>
@@ -1265,20 +1201,16 @@ function CalculatorView({
 												</Label>
 												<Input
 													min={0}
-													placeholder="18000"
-													type="number"
-													value={
-														ing.purchasePrice || ""
-													}
 													onChange={(e) =>
 														updateIngredient(
 															ing.id,
 															"purchasePrice",
-															Number(
-																e.target.value
-															) || 0
+															Number(e.target.value) || 0
 														)
 													}
+													placeholder="18000"
+													type="number"
+													value={ing.purchasePrice || ""}
 												/>
 											</div>
 											<div className="flex flex-col gap-1">
@@ -1287,21 +1219,16 @@ function CalculatorView({
 												</Label>
 												<Input
 													min={0}
-													placeholder="1"
-													type="number"
-													value={
-														ing.purchaseQuantity ||
-														""
-													}
 													onChange={(e) =>
 														updateIngredient(
 															ing.id,
 															"purchaseQuantity",
-															Number(
-																e.target.value
-															) || 0
+															Number(e.target.value) || 0
 														)
 													}
+													placeholder="1"
+													type="number"
+													value={ing.purchaseQuantity || ""}
 												/>
 											</div>
 											<div className="flex flex-col gap-1">
@@ -1309,8 +1236,6 @@ function CalculatorView({
 													Satuan Beli
 												</Label>
 												<Input
-													placeholder="liter"
-													value={ing.purchaseUnit}
 													onChange={(e) =>
 														updateIngredient(
 															ing.id,
@@ -1318,6 +1243,8 @@ function CalculatorView({
 															e.target.value
 														)
 													}
+													placeholder="liter"
+													value={ing.purchaseUnit}
 												/>
 											</div>
 											<div className="flex flex-col gap-1">
@@ -1326,21 +1253,16 @@ function CalculatorView({
 												</Label>
 												<Input
 													min={1}
-													placeholder="1000"
-													type="number"
-													value={
-														ing.conversionFactor ||
-														""
-													}
 													onChange={(e) =>
 														updateIngredient(
 															ing.id,
 															"conversionFactor",
-															Number(
-																e.target.value
-															) || 0
+															Number(e.target.value) || 0
 														)
 													}
+													placeholder="1000"
+													type="number"
+													value={ing.conversionFactor || ""}
 												/>
 											</div>
 										</div>
@@ -1352,21 +1274,16 @@ function CalculatorView({
 												</Label>
 												<Input
 													min={0}
-													placeholder="200"
-													type="number"
-													value={
-														ing.usagePerServing ||
-														""
-													}
 													onChange={(e) =>
 														updateIngredient(
 															ing.id,
 															"usagePerServing",
-															Number(
-																e.target.value
-															) || 0
+															Number(e.target.value) || 0
 														)
 													}
+													placeholder="200"
+													type="number"
+													value={ing.usagePerServing || ""}
 												/>
 											</div>
 											<div className="flex flex-col gap-1">
@@ -1374,8 +1291,6 @@ function CalculatorView({
 													Satuan Pakai
 												</Label>
 												<Input
-													placeholder="ml"
-													value={ing.usageUnit}
 													onChange={(e) =>
 														updateIngredient(
 															ing.id,
@@ -1383,6 +1298,8 @@ function CalculatorView({
 															e.target.value
 														)
 													}
+													placeholder="ml"
+													value={ing.usageUnit}
 												/>
 											</div>
 											<div className="flex flex-col gap-1.5">
@@ -1390,81 +1307,54 @@ function CalculatorView({
 													Biaya /Porsi
 												</Label>
 												<div className="flex h-8 items-center rounded-md bg-primary/5 px-2.5 font-semibold text-primary text-xs">
-													{formatCurrency(
-														getIngredientCostPerServing(
-															ing
-														)
-													)}
+													{formatCurrency(getIngredientCostPerServing(ing))}
 												</div>
 											</div>
 										</div>
 
 										{/* Conversion info */}
-										{ing.purchasePrice > 0 &&
-											ing.conversionFactor > 0 && (
-												<div className="mt-2 flex flex-wrap items-center gap-1.5 rounded bg-blue-50 px-2 py-1.5 text-blue-700 text-[11px] dark:bg-blue-950/30 dark:text-blue-300">
-													<Scale className="h-3 w-3 shrink-0" />
-													<span>
-														1 {ing.purchaseUnit} ={" "}
-														{formatNumber(
-															ing.conversionFactor
-														)}{" "}
-														{ing.usageUnit}
-													</span>
-													<ArrowRight className="h-3 w-3 shrink-0" />
-													<span>
-														Harga per{" "}
-														{ing.usageUnit}:{" "}
-														{formatCurrency(
-															getCostPerBaseUnit(
-																ing
-															)
-														)}
-													</span>
-													{ing.usagePerServing >
-														0 && (
-														<>
-															<ArrowRight className="h-3 w-3 shrink-0" />
-															<span>
-																1{" "}
-																{
-																	ing.purchaseUnit
-																}{" "}
-																={" "}
-																{formatNumber(
-																	(ing.purchaseQuantity *
-																		ing.conversionFactor) /
-																		ing.usagePerServing
-																)}{" "}
-																porsi
-															</span>
-														</>
-													)}
-												</div>
-											)}
+										{ing.purchasePrice > 0 && ing.conversionFactor > 0 && (
+											<div className="mt-2 flex flex-wrap items-center gap-1.5 rounded bg-blue-50 px-2 py-1.5 text-[11px] text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">
+												<Scale className="h-3 w-3 shrink-0" />
+												<span>
+													1 {ing.purchaseUnit} ={" "}
+													{formatNumber(ing.conversionFactor)} {ing.usageUnit}
+												</span>
+												<ArrowRight className="h-3 w-3 shrink-0" />
+												<span>
+													Harga per {ing.usageUnit}:{" "}
+													{formatCurrency(getCostPerBaseUnit(ing))}
+												</span>
+												{ing.usagePerServing > 0 && (
+													<>
+														<ArrowRight className="h-3 w-3 shrink-0" />
+														<span>
+															1 {ing.purchaseUnit} ={" "}
+															{formatNumber(
+																(ing.purchaseQuantity * ing.conversionFactor) /
+																	ing.usagePerServing
+															)}{" "}
+															porsi
+														</span>
+													</>
+												)}
+											</div>
+										)}
 
 										{/* Inventory price info badge */}
-										{ing.inventoryId &&
-											inventoryCosts?.[
-												ing.inventoryId
-											] && (
-												<div className="mt-1.5 flex items-center gap-1.5 rounded bg-green-50 px-2 py-1 text-[11px] text-green-700 dark:bg-green-950/30 dark:text-green-300">
-													<Zap className="h-3 w-3 shrink-0" />
-													<span>
-														Harga inventaris
-														terbaru:{" "}
-														{formatCurrency(
-															(inventoryCosts[
-																ing.inventoryId
-															]
-																?.latestCostPerUnit ??
-																0) *
-																ing.conversionFactor
-														)}
-														/{ing.purchaseUnit}
-													</span>
-												</div>
-											)}
+										{ing.inventoryId && inventoryCosts?.[ing.inventoryId] && (
+											<div className="mt-1.5 flex items-center gap-1.5 rounded bg-green-50 px-2 py-1 text-[11px] text-green-700 dark:bg-green-950/30 dark:text-green-300">
+												<Zap className="h-3 w-3 shrink-0" />
+												<span>
+													Harga inventaris terbaru:{" "}
+													{formatCurrency(
+														(inventoryCosts[ing.inventoryId]
+															?.latestCostPerUnit ?? 0) * ing.conversionFactor
+													)}
+													/{ing.purchaseUnit}
+												</span>
+											</div>
+										)}
 									</motion.div>
 								))}
 							</AnimatePresence>
@@ -1479,79 +1369,61 @@ function CalculatorView({
 									<CircleDollarSign className="h-4 w-4 text-primary" />
 									Biaya Overhead /Porsi
 								</span>
-								<Button
-									onClick={addOverhead}
-									size="sm"
-									variant="outline"
-								>
+								<Button onClick={addOverhead} size="sm" variant="outline">
 									<Plus className="h-3.5 w-3.5" />
 									Tambah Biaya
 								</Button>
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="flex flex-col gap-3">
-							<p className="text-muted-foreground text-[11px]">
-								Biaya tambahan per porsi seperti cup, sedotan,
-								gas, listrik, dll.
+							<p className="text-[11px] text-muted-foreground">
+								Biaya tambahan per porsi seperti cup, sedotan, gas, listrik,
+								dll.
 							</p>
 							<AnimatePresence mode="popLayout">
 								{form.overheadCosts.map((oh, idx) => (
 									<motion.div
-										key={oh.id}
 										animate={{ opacity: 1, x: 0 }}
 										className="flex items-end gap-2"
 										exit={{ opacity: 0, x: -10 }}
 										initial={{ opacity: 0, x: 10 }}
+										key={oh.id}
 										layout
 									>
 										<div className="flex flex-1 flex-col gap-1">
 											<Label className="text-[11px] text-muted-foreground">
-												{idx === 0
-													? "Nama Biaya"
-													: ""}
+												{idx === 0 ? "Nama Biaya" : ""}
 											</Label>
 											<Input
+												onChange={(e) =>
+													updateOverhead(oh.id, "name", e.target.value)
+												}
 												placeholder="cth: Cup Plastik"
 												value={oh.name}
-												onChange={(e) =>
-													updateOverhead(
-														oh.id,
-														"name",
-														e.target.value
-													)
-												}
 											/>
 										</div>
 										<div className="flex w-36 flex-col gap-1">
 											<Label className="text-[11px] text-muted-foreground">
-												{idx === 0
-													? "Biaya /Porsi"
-													: ""}
+												{idx === 0 ? "Biaya /Porsi" : ""}
 											</Label>
 											<Input
 												min={0}
-												placeholder="500"
-												type="number"
-												value={
-													oh.costPerServing || ""
-												}
 												onChange={(e) =>
 													updateOverhead(
 														oh.id,
 														"costPerServing",
-														Number(
-															e.target.value
-														) || 0
+														Number(e.target.value) || 0
 													)
 												}
+												placeholder="500"
+												type="number"
+												value={oh.costPerServing || ""}
 											/>
 										</div>
 										{form.overheadCosts.length > 1 && (
 											<button
 												className="mb-0.5 rounded p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-												onClick={() =>
-													removeOverhead(oh.id)
-												}
+												onClick={() => removeOverhead(oh.id)}
 												type="button"
 											>
 												<X className="h-3.5 w-3.5" />
@@ -1577,15 +1449,15 @@ function CalculatorView({
 						<CardContent className="flex flex-col gap-3">
 							{/* Ingredient cost breakdown */}
 							<div>
-								<p className="mb-1 font-medium text-muted-foreground text-[11px] uppercase tracking-wider">
+								<p className="mb-1 font-medium text-[11px] text-muted-foreground uppercase tracking-wider">
 									Biaya Bahan Baku
 								</p>
 								{form.ingredients
 									.filter((ing) => ing.ingredientName)
 									.map((ing) => (
 										<div
-											key={ing.id}
 											className="flex items-center justify-between py-0.5 text-xs"
+											key={ing.id}
 										>
 											<span className="flex items-center gap-1 text-muted-foreground">
 												{ing.ingredientName}
@@ -1594,52 +1466,38 @@ function CalculatorView({
 												)}
 											</span>
 											<span>
-												{formatCurrency(
-													getIngredientCostPerServing(
-														ing
-													)
-												)}
+												{formatCurrency(getIngredientCostPerServing(ing))}
 											</span>
 										</div>
 									))}
 								<div className="mt-1 flex items-center justify-between border-border border-t pt-1 font-semibold text-xs">
 									<span>Subtotal Bahan</span>
 									<span>
-										{formatCurrency(
-											calculations.ingredientCostPerServing
-										)}
+										{formatCurrency(calculations.ingredientCostPerServing)}
 									</span>
 								</div>
 							</div>
 
 							{/* Overhead breakdown */}
 							<div>
-								<p className="mb-1 font-medium text-muted-foreground text-[11px] uppercase tracking-wider">
+								<p className="mb-1 font-medium text-[11px] text-muted-foreground uppercase tracking-wider">
 									Biaya Overhead
 								</p>
 								{form.overheadCosts
 									.filter((oh) => oh.name)
 									.map((oh) => (
 										<div
-											key={oh.id}
 											className="flex items-center justify-between py-0.5 text-xs"
+											key={oh.id}
 										>
-											<span className="text-muted-foreground">
-												{oh.name}
-											</span>
-											<span>
-												{formatCurrency(
-													oh.costPerServing
-												)}
-											</span>
+											<span className="text-muted-foreground">{oh.name}</span>
+											<span>{formatCurrency(oh.costPerServing)}</span>
 										</div>
 									))}
 								<div className="mt-1 flex items-center justify-between border-border border-t pt-1 font-semibold text-xs">
 									<span>Subtotal Overhead</span>
 									<span>
-										{formatCurrency(
-											calculations.overheadCostPerServing
-										)}
+										{formatCurrency(calculations.overheadCostPerServing)}
 									</span>
 								</div>
 							</div>
@@ -1647,26 +1505,15 @@ function CalculatorView({
 							{/* Total HPP */}
 							<div className="rounded-lg bg-primary/10 p-3">
 								<div className="flex items-center justify-between">
-									<span className="font-bold text-sm">
-										HPP /Porsi
-									</span>
+									<span className="font-bold text-sm">HPP /Porsi</span>
 									<span className="font-bold text-lg text-primary">
-										{formatCurrency(
-											calculations.totalHppPerServing
-										)}
+										{formatCurrency(calculations.totalHppPerServing)}
 									</span>
 								</div>
 								{form.servingsPerBatch > 1 && (
 									<div className="mt-1 flex items-center justify-between text-muted-foreground text-xs">
-										<span>
-											HPP /Batch (
-											{form.servingsPerBatch} porsi)
-										</span>
-										<span>
-											{formatCurrency(
-												calculations.totalHppPerBatch
-											)}
-										</span>
+										<span>HPP /Batch ({form.servingsPerBatch} porsi)</span>
+										<span>{formatCurrency(calculations.totalHppPerBatch)}</span>
 									</div>
 								)}
 							</div>
@@ -1692,39 +1539,26 @@ function CalculatorView({
 							</CardHeader>
 							<CardContent className="flex flex-col gap-2">
 								<div className="flex items-center justify-between text-xs">
-									<span className="text-muted-foreground">
-										Harga Jual
-									</span>
+									<span className="text-muted-foreground">Harga Jual</span>
 									<span className="font-semibold">
 										{formatCurrency(form.sellingPrice)}
 									</span>
 								</div>
 								<div className="flex items-center justify-between text-xs">
-									<span className="text-muted-foreground">
-										HPP
-									</span>
-									<span>
-										{formatCurrency(
-											calculations.totalHppPerServing
-										)}
-									</span>
+									<span className="text-muted-foreground">HPP</span>
+									<span>{formatCurrency(calculations.totalHppPerServing)}</span>
 								</div>
 								<div className="border-border border-t pt-2">
 									<div className="flex items-center justify-between text-xs">
-										<span className="font-semibold">
-											Laba /Porsi
-										</span>
+										<span className="font-semibold">Laba /Porsi</span>
 										<span
 											className={`font-bold text-sm ${
-												calculations.profitPerServing >=
-												0
+												calculations.profitPerServing >= 0
 													? "text-green-600 dark:text-green-400"
 													: "text-red-600 dark:text-red-400"
 											}`}
 										>
-											{formatCurrency(
-												calculations.profitPerServing
-											)}
+											{formatCurrency(calculations.profitPerServing)}
 										</span>
 									</div>
 								</div>
@@ -1733,14 +1567,9 @@ function CalculatorView({
 								<div className="mt-1 flex flex-col gap-2">
 									<div>
 										<div className="mb-1 flex items-center justify-between text-[11px]">
-											<span className="text-muted-foreground">
-												Margin Laba
-											</span>
+											<span className="text-muted-foreground">Margin Laba</span>
 											<span className="font-semibold">
-												{formatNumber(
-													calculations.profitMarginPercent
-												)}
-												%
+												{formatNumber(calculations.profitMarginPercent)}%
 											</span>
 										</div>
 										<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -1749,11 +1578,9 @@ function CalculatorView({
 													width: `${Math.min(Math.max(calculations.profitMarginPercent, 0), 100)}%`,
 												}}
 												className={`h-full rounded-full ${
-													calculations.profitMarginPercent >=
-													30
+													calculations.profitMarginPercent >= 30
 														? "bg-green-500"
-														: calculations.profitMarginPercent >=
-															  15
+														: calculations.profitMarginPercent >= 15
 															? "bg-yellow-500"
 															: "bg-red-500"
 												}`}
@@ -1766,14 +1593,9 @@ function CalculatorView({
 									</div>
 									<div>
 										<div className="mb-1 flex items-center justify-between text-[11px]">
-											<span className="text-muted-foreground">
-												Markup
-											</span>
+											<span className="text-muted-foreground">Markup</span>
 											<span className="font-semibold">
-												{formatNumber(
-													calculations.markupPercent
-												)}
-												%
+												{formatNumber(calculations.markupPercent)}%
 											</span>
 										</div>
 										<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -1795,8 +1617,7 @@ function CalculatorView({
 									<div className="mt-1 rounded bg-muted/50 p-2 text-center text-[11px] text-muted-foreground">
 										Break-even setelah{" "}
 										<span className="font-bold text-foreground">
-											{calculations.breakEvenServings}{" "}
-											porsi
+											{calculations.breakEvenServings} porsi
 										</span>{" "}
 										terjual (dari biaya batch)
 									</div>
@@ -1807,11 +1628,7 @@ function CalculatorView({
 
 					{/* Action Buttons */}
 					<div className="flex gap-2">
-						<Button
-							className="flex-1"
-							onClick={onSave}
-							variant="default"
-						>
+						<Button className="flex-1" onClick={onSave} variant="default">
 							{editingId ? "Perbarui" : "Simpan"} Kalkulasi
 						</Button>
 						<Button onClick={onReset} variant="outline">
@@ -1824,15 +1641,15 @@ function CalculatorView({
 			{/* Import Modal */}
 			{showImportModal && (
 				<ImportRecipeModal
-					productsWithRecipes={productsWithRecipes}
-					inventoryCosts={inventoryCosts}
 					inventory={inventory}
-					products={products}
+					inventoryCosts={inventoryCosts}
+					onClose={() => setShowImportModal(false)}
 					onImport={(data) => {
 						setForm(data);
 						setShowImportModal(false);
 					}}
-					onClose={() => setShowImportModal(false)}
+					products={products}
+					productsWithRecipes={productsWithRecipes}
 				/>
 			)}
 		</>
@@ -1889,11 +1706,8 @@ function SavedCalculationsView({
 	return (
 		<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 			{calculations.map((calc) => {
-				const { totalHpp, profit, margin } =
-					computeHppFromDoc(calc);
-				const linkedProduct = products?.find(
-					(p) => p._id === calc.productId
-				);
+				const { totalHpp, profit, margin } = computeHppFromDoc(calc);
+				const linkedProduct = products?.find((p) => p._id === calc.productId);
 				const isExpanded = expandedCard === calc._id;
 
 				// Check if any ingredient has a price mismatch
@@ -1903,15 +1717,17 @@ function SavedCalculationsView({
 				let hasPriceChange = false;
 				if (hasLinkedIngredients && inventoryCosts) {
 					for (const ing of calc.ingredients) {
-						if (!ing.inventoryId) continue;
+						if (!ing.inventoryId) {
+							continue;
+						}
 						const cost = inventoryCosts[ing.inventoryId];
-						if (!cost?.latestCostPerUnit) continue;
-						const currentPrice =
-							cost.latestCostPerUnit * ing.conversionFactor;
+						if (!cost?.latestCostPerUnit) {
+							continue;
+						}
+						const currentPrice = cost.latestCostPerUnit * ing.conversionFactor;
 						if (
 							ing.purchasePrice > 0 &&
-							Math.abs(currentPrice - ing.purchasePrice) /
-								ing.purchasePrice >
+							Math.abs(currentPrice - ing.purchasePrice) / ing.purchasePrice >
 								0.01
 						) {
 							hasPriceChange = true;
@@ -1922,8 +1738,8 @@ function SavedCalculationsView({
 
 				return (
 					<Card
-						key={calc._id}
 						className={`overflow-hidden ${hasPriceChange ? "border-amber-300 dark:border-amber-800" : ""}`}
+						key={calc._id}
 					>
 						<CardHeader className="border-b">
 							<CardTitle className="flex items-center justify-between">
@@ -1942,11 +1758,7 @@ function SavedCalculationsView({
 								</div>
 								<button
 									className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted"
-									onClick={() =>
-										setExpandedCard(
-											isExpanded ? null : calc._id
-										)
-									}
+									onClick={() => setExpandedCard(isExpanded ? null : calc._id)}
 									title={isExpanded ? "Tutup" : "Detail"}
 									type="button"
 								>
@@ -1986,17 +1798,13 @@ function SavedCalculationsView({
 							</div>
 
 							<div className="flex items-center justify-between text-xs">
-								<span className="text-muted-foreground">
-									Harga Jual
-								</span>
+								<span className="text-muted-foreground">Harga Jual</span>
 								<span className="font-semibold">
 									{formatCurrency(calc.sellingPrice)}
 								</span>
 							</div>
 							<div className="flex items-center justify-between text-xs">
-								<span className="text-muted-foreground">
-									Margin
-								</span>
+								<span className="text-muted-foreground">Margin</span>
 								<span
 									className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-semibold text-[11px] ${
 										margin >= 30
@@ -2016,13 +1824,8 @@ function SavedCalculationsView({
 								<div className="flex items-center gap-1.5 text-[11px] text-green-600 dark:text-green-400">
 									<Link2 className="h-3 w-3" />
 									<span>
-										{
-											calc.ingredients.filter(
-												(i) => i.inventoryId
-											).length
-										}
-										/{calc.ingredients.length} bahan
-										terhubung ke inventaris
+										{calc.ingredients.filter((i) => i.inventoryId).length}/
+										{calc.ingredients.length} bahan terhubung ke inventaris
 									</span>
 								</div>
 							)}
@@ -2045,85 +1848,50 @@ function SavedCalculationsView({
 											</p>
 											{calc.ingredients.map((ing, i) => {
 												const totalBase =
-													ing.purchaseQuantity *
-													ing.conversionFactor;
+													ing.purchaseQuantity * ing.conversionFactor;
 												const costBase =
-													totalBase > 0
-														? ing.purchasePrice /
-															totalBase
-														: 0;
-												const cost =
-													costBase *
-													ing.usagePerServing;
+													totalBase > 0 ? ing.purchasePrice / totalBase : 0;
+												const cost = costBase * ing.usagePerServing;
 
 												// Check price change
 												let priceChanged = false;
 												let latestPrice = 0;
 												if (
 													ing.inventoryId &&
-													inventoryCosts?.[
-														ing.inventoryId
-													]
+													inventoryCosts?.[ing.inventoryId]
 												) {
 													latestPrice =
-														(inventoryCosts[
-															ing.inventoryId
-														]
-															?.latestCostPerUnit ??
-															0) *
-														ing.conversionFactor;
+														(inventoryCosts[ing.inventoryId]
+															?.latestCostPerUnit ?? 0) * ing.conversionFactor;
 													priceChanged =
-														ing.purchasePrice >
-															0 &&
-														Math.abs(
-															latestPrice -
-																ing.purchasePrice
-														) /
+														ing.purchasePrice > 0 &&
+														Math.abs(latestPrice - ing.purchasePrice) /
 															ing.purchasePrice >
 															0.01;
 												}
 
 												return (
 													<div
-														key={`${calc._id}-ing-${i}`}
 														className="flex flex-col gap-0.5"
+														key={`${calc._id}-ing-${i}`}
 													>
 														<div className="flex items-center justify-between text-[11px]">
 															<span className="flex items-center gap-1">
-																{
-																	ing.ingredientName
-																}
+																{ing.ingredientName}
 																<span className="text-muted-foreground">
-																	(
-																	{
-																		ing.usagePerServing
-																	}{" "}
-																	{
-																		ing.usageUnit
-																	}
-																	)
+																	({ing.usagePerServing} {ing.usageUnit})
 																</span>
 																{ing.inventoryId && (
 																	<Link2 className="h-2.5 w-2.5 text-green-500" />
 																)}
 															</span>
-															<span>
-																{formatCurrency(
-																	cost
-																)}
-															</span>
+															<span>{formatCurrency(cost)}</span>
 														</div>
 														{priceChanged && (
 															<div className="flex items-center gap-1 text-[10px] text-amber-600">
 																<AlertTriangle className="h-2.5 w-2.5" />
-																Harga terbaru:{" "}
-																{formatCurrency(
-																	latestPrice
-																)}
-																/
-																{
-																	ing.purchaseUnit
-																}
+																Harga terbaru: {formatCurrency(latestPrice)}/
+																{ing.purchaseUnit}
 															</div>
 														)}
 													</div>
@@ -2134,23 +1902,15 @@ function SavedCalculationsView({
 													<p className="mt-1 font-semibold text-[11px] text-muted-foreground uppercase">
 														Overhead
 													</p>
-													{calc.overheadCosts.map(
-														(oh, i) => (
-															<div
-																key={`${calc._id}-oh-${i}`}
-																className="flex items-center justify-between text-[11px]"
-															>
-																<span>
-																	{oh.name}
-																</span>
-																<span>
-																	{formatCurrency(
-																		oh.costPerServing
-																	)}
-																</span>
-															</div>
-														)
-													)}
+													{calc.overheadCosts.map((oh, i) => (
+														<div
+															className="flex items-center justify-between text-[11px]"
+															key={`${calc._id}-oh-${i}`}
+														>
+															<span>{oh.name}</span>
+															<span>{formatCurrency(oh.costPerServing)}</span>
+														</div>
+													))}
 												</>
 											)}
 											{calc.description && (
@@ -2178,8 +1938,8 @@ function SavedCalculationsView({
 									<Button
 										onClick={() => onSync(calc._id)}
 										size="sm"
-										variant="outline"
 										title="Sync harga inventaris"
+										variant="outline"
 									>
 										<RefreshCw
 											className={`h-3 w-3 ${syncingId === calc._id ? "animate-spin" : ""}`}
@@ -2189,16 +1949,16 @@ function SavedCalculationsView({
 								<Button
 									onClick={() => onDuplicate(calc)}
 									size="sm"
-									variant="outline"
 									title="Duplikasi"
+									variant="outline"
 								>
 									<Copy className="h-3 w-3" />
 								</Button>
 								<Button
 									onClick={() => onDelete(calc._id)}
 									size="sm"
-									variant="destructive"
 									title="Hapus"
+									variant="destructive"
 								>
 									<Trash2 className="h-3 w-3" />
 								</Button>

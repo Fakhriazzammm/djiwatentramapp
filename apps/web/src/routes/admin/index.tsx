@@ -35,14 +35,54 @@ export const Route = createFileRoute("/admin/")({
 
 // Quick access shortcuts for mobile dashboard
 const QUICK_SHORTCUTS = [
-	{ to: "/admin/orders", icon: ClipboardList, label: "Pesanan", color: "bg-blue-500" },
-	{ to: "/admin/products", icon: Package, label: "Produk", color: "bg-emerald-500" },
-	{ to: "/admin/inventory", icon: Archive, label: "Stok", color: "bg-orange-500" },
-	{ to: "/admin/finance", icon: Wallet, label: "Keuangan", color: "bg-violet-500" },
-	{ to: "/admin/discounts", icon: Percent, label: "Promosi", color: "bg-pink-500" },
-	{ to: "/admin/hpp-calculator", icon: Calculator, label: "HPP", color: "bg-cyan-500" },
-	{ to: "/admin/ai-chat", icon: Sparkles, label: "AI Chat", color: "bg-amber-500" },
-	{ to: "/admin/forecasting", icon: TrendingUp, label: "Prediksi", color: "bg-teal-500" },
+	{
+		to: "/admin/orders",
+		icon: ClipboardList,
+		label: "Pesanan",
+		color: "bg-blue-500",
+	},
+	{
+		to: "/admin/products",
+		icon: Package,
+		label: "Produk",
+		color: "bg-emerald-500",
+	},
+	{
+		to: "/admin/inventory",
+		icon: Archive,
+		label: "Stok",
+		color: "bg-orange-500",
+	},
+	{
+		to: "/admin/finance",
+		icon: Wallet,
+		label: "Keuangan",
+		color: "bg-violet-500",
+	},
+	{
+		to: "/admin/discounts",
+		icon: Percent,
+		label: "Promosi",
+		color: "bg-pink-500",
+	},
+	{
+		to: "/admin/hpp-calculator",
+		icon: Calculator,
+		label: "HPP",
+		color: "bg-cyan-500",
+	},
+	{
+		to: "/admin/ai-chat",
+		icon: Sparkles,
+		label: "AI Chat",
+		color: "bg-amber-500",
+	},
+	{
+		to: "/admin/forecasting",
+		icon: TrendingUp,
+		label: "Prediksi",
+		color: "bg-teal-500",
+	},
 ];
 
 function DashboardPage() {
@@ -203,13 +243,14 @@ function DashboardPage() {
 						icon={<Calculator className="text-primary" />}
 						loading={!hppDashboard}
 						title="HPP"
-						value={`${hppDashboard.totalCalculations} Produk`}
 						trend={`Margin ${hppDashboard.avgMargin.toFixed(1)}%`}
+						value={`${hppDashboard.totalCalculations} Produk`}
 					/>
 					<StatCard
 						icon={<Percent className="text-primary" />}
 						loading={!hppCogs}
 						title="Laba Kotor"
+						trend={hppCogs ? `${hppCogs.grossMargin.toFixed(1)}%` : undefined}
 						value={
 							hppCogs
 								? new Intl.NumberFormat("id-ID", {
@@ -219,16 +260,14 @@ function DashboardPage() {
 									}).format(hppCogs.totalProfit)
 								: "Rp 0"
 						}
-						trend={
-							hppCogs
-								? `${hppCogs.grossMargin.toFixed(1)}%`
-								: undefined
-						}
 					/>
 					<StatCard
 						icon={<TrendingUp className="text-primary" />}
 						loading={!hppForecast}
 						title="Prediksi 30H"
+						trend={
+							hppForecast ? `${hppForecast.daysWithData} hari data` : undefined
+						}
 						value={
 							hppForecast
 								? new Intl.NumberFormat("id-ID", {
@@ -238,16 +277,9 @@ function DashboardPage() {
 									}).format(hppForecast.totalForecastCost)
 								: "Rp 0"
 						}
-						trend={
-							hppForecast
-								? `${hppForecast.daysWithData} hari data`
-								: undefined
-						}
 					/>
 					<StatCard
-						alert={
-							(hppDashboard.lowMarginAlerts.length) > 0
-						}
+						alert={hppDashboard.lowMarginAlerts.length > 0}
 						icon={
 							hppDashboard.lowMarginAlerts.length > 0 ? (
 								<TrendingDown className="text-destructive" />
@@ -257,15 +289,15 @@ function DashboardPage() {
 						}
 						loading={!hppDashboard}
 						title="Margin"
-						value={
-							hppDashboard.lowMarginAlerts.length > 0
-								? `${hppDashboard.lowMarginAlerts.length} Rendah`
-								: "Aman"
-						}
 						trend={
 							hppDashboard.lowMarginAlerts.length > 0
 								? `Min: ${hppDashboard.lowMarginAlerts[0]?.marginPercent.toFixed(1)}%`
 								: "Semua > 20%"
+						}
+						value={
+							hppDashboard.lowMarginAlerts.length > 0
+								? `${hppDashboard.lowMarginAlerts.length} Rendah`
+								: "Aman"
 						}
 					/>
 				</div>
@@ -277,7 +309,7 @@ function DashboardPage() {
 					{/* Top Profit Products */}
 					<div className="rounded-xl border border-border/50 bg-card/50 p-3 backdrop-blur-sm md:p-4">
 						<div className="mb-2 flex items-center justify-between md:mb-3">
-							<h3 className="flex items-center gap-2 font-bold text-sm text-foreground md:text-base">
+							<h3 className="flex items-center gap-2 font-bold text-foreground text-sm md:text-base">
 								<TrendingUp className="h-4 w-4 text-green-500" />
 								Produk Paling Untung
 							</h3>
@@ -296,12 +328,10 @@ function DashboardPage() {
 									key={item.id}
 								>
 									<div className="flex items-center gap-2">
-										<span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 font-bold text-green-700 text-[10px] dark:bg-green-900/30">
+										<span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 font-bold text-[10px] text-green-700 dark:bg-green-900/30">
 											{i + 1}
 										</span>
-										<span className="font-medium text-xs">
-											{item.name}
-										</span>
+										<span className="font-medium text-xs">{item.name}</span>
 									</div>
 									<div className="flex items-center gap-2 text-xs md:gap-3">
 										<span className="font-bold text-green-600 dark:text-green-400">
@@ -348,44 +378,43 @@ function DashboardPage() {
 						)}
 
 						{/* Forecast */}
-						{hppForecast &&
-							hppForecast.ingredients.length > 0 && (
-								<div className="rounded-xl border border-border/50 bg-card/50 p-3 backdrop-blur-sm md:p-4">
-									<h3 className="mb-2 flex items-center gap-2 font-bold text-sm text-foreground md:text-base">
-										<Calculator className="h-4 w-4 text-primary" />
-										Biaya Bahan 30 Hari
-									</h3>
-									<div className="space-y-1.5">
-										{hppForecast.ingredients.slice(0, 5).map((item) => (
-											<div
-												className="flex items-center justify-between text-xs"
-												key={item.ingredientName}
-											>
-												<span className="text-muted-foreground">
-													{item.ingredientName}
-												</span>
-												<span className="font-medium">
-													{new Intl.NumberFormat("id-ID", {
-														style: "currency",
-														currency: "IDR",
-														maximumFractionDigits: 0,
-													}).format(item.forecastCost)}
-												</span>
-											</div>
-										))}
-										<div className="mt-1 flex items-center justify-between border-border border-t pt-1 font-bold text-xs">
-											<span>Total</span>
-											<span className="text-primary">
+						{hppForecast && hppForecast.ingredients.length > 0 && (
+							<div className="rounded-xl border border-border/50 bg-card/50 p-3 backdrop-blur-sm md:p-4">
+								<h3 className="mb-2 flex items-center gap-2 font-bold text-foreground text-sm md:text-base">
+									<Calculator className="h-4 w-4 text-primary" />
+									Biaya Bahan 30 Hari
+								</h3>
+								<div className="space-y-1.5">
+									{hppForecast.ingredients.slice(0, 5).map((item) => (
+										<div
+											className="flex items-center justify-between text-xs"
+											key={item.ingredientName}
+										>
+											<span className="text-muted-foreground">
+												{item.ingredientName}
+											</span>
+											<span className="font-medium">
 												{new Intl.NumberFormat("id-ID", {
 													style: "currency",
 													currency: "IDR",
 													maximumFractionDigits: 0,
-												}).format(hppForecast.totalForecastCost)}
+												}).format(item.forecastCost)}
 											</span>
 										</div>
+									))}
+									<div className="mt-1 flex items-center justify-between border-border border-t pt-1 font-bold text-xs">
+										<span>Total</span>
+										<span className="text-primary">
+											{new Intl.NumberFormat("id-ID", {
+												style: "currency",
+												currency: "IDR",
+												maximumFractionDigits: 0,
+											}).format(hppForecast.totalForecastCost)}
+										</span>
 									</div>
 								</div>
-							)}
+							</div>
+						)}
 					</div>
 				</div>
 			)}
@@ -395,7 +424,7 @@ function DashboardPage() {
 				{/* Recent Orders - Card-based on mobile, Table on desktop */}
 				<div className="rounded-xl border border-border/50 bg-card/50 p-3 backdrop-blur-sm md:p-4 lg:col-span-2">
 					<div className="mb-2 flex items-center justify-between md:mb-3">
-						<h3 className="font-bold text-sm text-foreground md:text-base">
+						<h3 className="font-bold text-foreground text-sm md:text-base">
 							Pesanan Terbaru
 						</h3>
 						<Link
@@ -411,7 +440,10 @@ function DashboardPage() {
 					<div className="space-y-2 md:hidden">
 						{!orders &&
 							[1, 2, 3].map((i) => (
-								<div className="animate-pulse rounded-lg border border-border/50 p-3" key={i}>
+								<div
+									className="animate-pulse rounded-lg border border-border/50 p-3"
+									key={i}
+								>
 									<div className="flex items-center justify-between">
 										<div className="h-4 w-16 rounded bg-muted/50" />
 										<div className="h-4 w-20 rounded bg-muted/50" />
@@ -441,19 +473,24 @@ function DashboardPage() {
 									>
 										<div className="min-w-0 flex-1">
 											<div className="flex items-center gap-2">
-												<span className="font-bold text-xs text-foreground">
+												<span className="font-bold text-foreground text-xs">
 													#{order.orderNumber}
 												</span>
-												<span className={`rounded-full px-1.5 py-0.5 font-bold text-[9px] ${statusClass}`}>
+												<span
+													className={`rounded-full px-1.5 py-0.5 font-bold text-[9px] ${statusClass}`}
+												>
 													{statusText}
 												</span>
 											</div>
 											<p className="mt-0.5 truncate text-[11px] text-muted-foreground">
 												{order.customerName || "Tamu"} &middot;{" "}
-												{new Date(order._creationTime).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+												{new Date(order._creationTime).toLocaleTimeString(
+													"id-ID",
+													{ hour: "2-digit", minute: "2-digit" }
+												)}
 											</p>
 										</div>
-										<span className="ml-2 shrink-0 font-bold text-sm text-primary">
+										<span className="ml-2 shrink-0 font-bold text-primary text-sm">
 											{new Intl.NumberFormat("id-ID", {
 												style: "currency",
 												currency: "IDR",
@@ -591,7 +628,7 @@ function DashboardPage() {
 							<TrendingUp className="h-24 w-24" />
 						</div>
 						<div className="mb-2 flex items-center justify-between md:mb-3">
-							<h3 className="flex items-center gap-2 font-bold text-sm text-foreground md:text-base">
+							<h3 className="flex items-center gap-2 font-bold text-foreground text-sm md:text-base">
 								<Sparkles className="h-4 w-4 text-amber-500" />
 								Yumi AI
 							</h3>
@@ -621,7 +658,7 @@ function DashboardPage() {
 					{/* Stock Alerts */}
 					<div className="rounded-xl border border-border/50 bg-card/50 p-3 backdrop-blur-sm md:p-4">
 						<div className="mb-2 flex items-center justify-between">
-							<h3 className="font-bold text-sm text-foreground md:text-base">
+							<h3 className="font-bold text-foreground text-sm md:text-base">
 								Peringatan Stok
 							</h3>
 							<button
@@ -690,7 +727,7 @@ function DashboardPage() {
 								</div>
 							)}
 							{stockPrediction && (
-								<div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-2 text-amber-700 text-[11px] md:mt-3 md:p-3 md:text-xs">
+								<div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-2 text-[11px] text-amber-700 md:mt-3 md:p-3 md:text-xs">
 									<div className="mb-1 font-bold">Prediksi AI:</div>
 									<div className="whitespace-pre-line">{stockPrediction}</div>
 								</div>
@@ -723,7 +760,7 @@ function StatCard({
 			className={`flex flex-col justify-between rounded-xl border p-3 md:p-4 ${alert ? "border-destructive/30 bg-destructive/5" : "border-border/50 bg-card/50"} backdrop-blur-sm`}
 		>
 			<div className="mb-1.5 flex items-start justify-between md:mb-2">
-				<div className="font-medium text-muted-foreground text-[10px] uppercase tracking-wide md:text-xs">
+				<div className="font-medium text-[10px] text-muted-foreground uppercase tracking-wide md:text-xs">
 					{title}
 				</div>
 				<div
@@ -740,12 +777,12 @@ function StatCard({
 				{loading ? (
 					<div className="h-6 w-16 animate-pulse rounded bg-muted/50 md:h-8 md:w-24" />
 				) : (
-					<div className="font-bold text-lg text-foreground tracking-tight md:text-2xl">
+					<div className="font-bold text-foreground text-lg tracking-tight md:text-2xl">
 						{value}
 					</div>
 				)}
 				{trend && !loading && (
-					<div className="mt-0.5 font-medium text-muted-foreground text-[10px] md:mt-1 md:text-xs">
+					<div className="mt-0.5 font-medium text-[10px] text-muted-foreground md:mt-1 md:text-xs">
 						{trend}
 					</div>
 				)}

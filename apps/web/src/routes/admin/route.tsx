@@ -105,7 +105,7 @@ function AdminLayout() {
 	// Close quick menu on route change
 	useEffect(() => {
 		setIsQuickMenuOpen(false);
-	}, [location.pathname]);
+	}, []);
 
 	return (
 		<div className="flex h-full w-full overflow-hidden bg-background">

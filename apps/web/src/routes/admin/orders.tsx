@@ -154,7 +154,9 @@ function AdminOrders() {
 		<div className="fade-in slide-in-from-bottom-4 flex h-full animate-in flex-col space-y-3 duration-500 md:space-y-6">
 			<div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
 				<div>
-					<h2 className="font-bold text-lg tracking-tight md:text-2xl">Riwayat Pesanan</h2>
+					<h2 className="font-bold text-lg tracking-tight md:text-2xl">
+						Riwayat Pesanan
+					</h2>
 					<p className="text-muted-foreground text-xs md:text-sm">
 						Kelola dan pantau semua transaksi pesanan masuk.
 					</p>
@@ -165,22 +167,34 @@ function AdminOrders() {
 			{hppCogs && hppCogs.matchedOrders > 0 && (
 				<div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
 					<div className="rounded-lg border border-border bg-card p-2.5 md:p-3">
-						<p className="text-[10px] text-muted-foreground uppercase">Revenue</p>
-						<p className="font-bold text-sm md:text-lg">{formatrupiah(hppCogs.totalRevenue)}</p>
+						<p className="text-[10px] text-muted-foreground uppercase">
+							Revenue
+						</p>
+						<p className="font-bold text-sm md:text-lg">
+							{formatrupiah(hppCogs.totalRevenue)}
+						</p>
 					</div>
 					<div className="rounded-lg border border-border bg-card p-2.5 md:p-3">
 						<p className="text-[10px] text-muted-foreground uppercase">COGS</p>
-						<p className="font-bold text-sm text-orange-600 md:text-lg">{formatrupiah(hppCogs.totalCogs)}</p>
+						<p className="font-bold text-orange-600 text-sm md:text-lg">
+							{formatrupiah(hppCogs.totalCogs)}
+						</p>
 					</div>
 					<div className="rounded-lg border border-border bg-card p-2.5 md:p-3">
 						<p className="text-[10px] text-muted-foreground uppercase">Laba</p>
-						<p className={`font-bold text-sm md:text-lg ${hppCogs.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
+						<p
+							className={`font-bold text-sm md:text-lg ${hppCogs.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}
+						>
 							{formatrupiah(hppCogs.totalProfit)}
 						</p>
 					</div>
 					<div className="rounded-lg border border-border bg-card p-2.5 md:p-3">
-						<p className="text-[10px] text-muted-foreground uppercase">Margin</p>
-						<p className="font-bold text-sm text-primary md:text-lg">{hppCogs.grossMargin.toFixed(1)}%</p>
+						<p className="text-[10px] text-muted-foreground uppercase">
+							Margin
+						</p>
+						<p className="font-bold text-primary text-sm md:text-lg">
+							{hppCogs.grossMargin.toFixed(1)}%
+						</p>
 					</div>
 				</div>
 			)}
@@ -233,7 +247,7 @@ function AdminOrders() {
 							<div className="flex items-start justify-between">
 								<div className="min-w-0 flex-1">
 									<div className="flex items-center gap-2">
-										<span className="font-bold font-mono text-xs text-primary">
+										<span className="font-bold font-mono text-primary text-xs">
 											#{order.orderNumber}
 										</span>
 										<Badge
@@ -250,7 +264,9 @@ function AdminOrders() {
 									</div>
 								</div>
 								<div className="text-right">
-									<p className="font-bold text-sm">{formatrupiah(order.totalAmount)}</p>
+									<p className="font-bold text-sm">
+										{formatrupiah(order.totalAmount)}
+									</p>
 									<p className="text-[10px] text-muted-foreground">
 										{format(order.createdAt, "dd MMM HH:mm", { locale: id })}
 									</p>
@@ -316,7 +332,13 @@ function AdminOrders() {
 										</td>
 										<td className="px-6 py-4">
 											{(() => {
-												if (!hppProductMap) return <span className="text-muted-foreground text-xs">-</span>;
+												if (!hppProductMap) {
+													return (
+														<span className="text-muted-foreground text-xs">
+															-
+														</span>
+													);
+												}
 												let orderCogs = 0;
 												let hasHpp = false;
 												for (const item of order.items) {
@@ -326,10 +348,18 @@ function AdminOrders() {
 														hasHpp = true;
 													}
 												}
-												if (!hasHpp) return <span className="text-muted-foreground text-xs">-</span>;
+												if (!hasHpp) {
+													return (
+														<span className="text-muted-foreground text-xs">
+															-
+														</span>
+													);
+												}
 												const profit = order.totalAmount - orderCogs;
 												return (
-													<span className={`font-semibold text-xs ${profit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+													<span
+														className={`font-semibold text-xs ${profit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+													>
 														{formatrupiah(profit)}
 													</span>
 												);
@@ -493,37 +523,47 @@ function AdminOrders() {
 												</span>
 											</div>
 											{/* HPP Profit Analysis */}
-											{hppProductMap && (() => {
-												let orderCogs = 0;
-												let hasHpp = false;
-												for (const item of selectedOrder.items) {
-													const hpp = hppProductMap[item.productId];
-													if (hpp) {
-														orderCogs += hpp.hppPerServing * item.quantity;
-														hasHpp = true;
+											{hppProductMap &&
+												(() => {
+													let orderCogs = 0;
+													let hasHpp = false;
+													for (const item of selectedOrder.items) {
+														const hpp = hppProductMap[item.productId];
+														if (hpp) {
+															orderCogs += hpp.hppPerServing * item.quantity;
+															hasHpp = true;
+														}
 													}
-												}
-												if (!hasHpp) return null;
-												const profit = selectedOrder.totalAmount - orderCogs;
-												const margin = selectedOrder.totalAmount > 0
-													? (profit / selectedOrder.totalAmount) * 100
-													: 0;
-												return (
-													<>
-														<div className="my-1.5 border-border/50 border-t" />
-														<div className="flex justify-between text-xs">
-															<span className="text-muted-foreground">HPP (COGS)</span>
-															<span className="font-medium text-orange-600">{formatrupiah(orderCogs)}</span>
-														</div>
-														<div className="flex justify-between text-xs">
-															<span className="font-bold">Laba Kotor</span>
-															<span className={`font-bold ${profit >= 0 ? "text-green-600" : "text-red-600"}`}>
-																{formatrupiah(profit)} ({margin.toFixed(1)}%)
-															</span>
-														</div>
-													</>
-												);
-											})()}
+													if (!hasHpp) {
+														return null;
+													}
+													const profit = selectedOrder.totalAmount - orderCogs;
+													const margin =
+														selectedOrder.totalAmount > 0
+															? (profit / selectedOrder.totalAmount) * 100
+															: 0;
+													return (
+														<>
+															<div className="my-1.5 border-border/50 border-t" />
+															<div className="flex justify-between text-xs">
+																<span className="text-muted-foreground">
+																	HPP (COGS)
+																</span>
+																<span className="font-medium text-orange-600">
+																	{formatrupiah(orderCogs)}
+																</span>
+															</div>
+															<div className="flex justify-between text-xs">
+																<span className="font-bold">Laba Kotor</span>
+																<span
+																	className={`font-bold ${profit >= 0 ? "text-green-600" : "text-red-600"}`}
+																>
+																	{formatrupiah(profit)} ({margin.toFixed(1)}%)
+																</span>
+															</div>
+														</>
+													);
+												})()}
 										</div>
 									</div>
 

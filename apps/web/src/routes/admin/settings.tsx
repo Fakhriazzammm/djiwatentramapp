@@ -280,7 +280,7 @@ function SettingsPage() {
 			{/* Header */}
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h2 className="font-bold text-xl text-foreground tracking-tight md:text-3xl">
+					<h2 className="font-bold text-foreground text-xl tracking-tight md:text-3xl">
 						Pengaturan Sistem
 					</h2>
 					<p className="mt-0.5 text-muted-foreground text-xs md:mt-1 md:text-sm">
@@ -325,7 +325,7 @@ function SettingsPage() {
 									<Layout className="h-6 w-6" />
 								</div>
 								<div>
-									<h3 className="font-bold text-foreground text-base tracking-tight md:text-xl">
+									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
 										Kustomisasi Halaman Utama
 									</h3>
 									<p className="text-muted-foreground text-sm">
@@ -454,7 +454,7 @@ function SettingsPage() {
 									<CreditCard className="h-6 w-6" />
 								</div>
 								<div>
-									<h3 className="font-bold text-foreground text-base tracking-tight md:text-xl">
+									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
 										Konfigurasi POS & Pembayaran
 									</h3>
 									<p className="text-muted-foreground text-sm">
@@ -554,7 +554,7 @@ function SettingsPage() {
 									<MapPin className="h-6 w-6" />
 								</div>
 								<div>
-									<h3 className="font-bold text-foreground text-base tracking-tight md:text-xl">
+									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
 										Informasi & Biaya Toko
 									</h3>
 									<p className="text-muted-foreground text-sm">
@@ -684,7 +684,7 @@ function SettingsPage() {
 									<Users className="h-6 w-6" />
 								</div>
 								<div>
-									<h3 className="font-bold text-foreground text-base tracking-tight md:text-xl">
+									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
 										Manajemen Pengguna & Akses
 									</h3>
 									<p className="text-muted-foreground text-sm">
@@ -961,7 +961,7 @@ function SettingsPage() {
 										<Settings2 className="h-6 w-6" />
 									</div>
 									<div>
-										<h3 className="font-bold text-foreground text-base tracking-tight md:text-xl">
+										<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
 											Branding Aplikasi
 										</h3>
 										<p className="text-muted-foreground text-sm">
@@ -1036,7 +1036,7 @@ function SettingsPage() {
 										<Printer className="h-6 w-6" />
 									</div>
 									<div>
-										<h3 className="font-bold text-foreground text-base tracking-tight md:text-xl">
+										<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
 											Printer & Struk
 										</h3>
 										<p className="text-muted-foreground text-sm">

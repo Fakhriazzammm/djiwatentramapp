@@ -53,7 +53,11 @@ export const createScheduledReport = mutation({
 		format: v.union(v.literal("json"), v.literal("pdf"), v.literal("excel")),
 		// Delivery method
 		delivery: v.object({
-			type: v.union(v.literal("email"), v.literal("download"), v.literal("webhook")),
+			type: v.union(
+				v.literal("email"),
+				v.literal("download"),
+				v.literal("webhook")
+			),
 			destination: v.string(), // Email, URL, atau webhook URL
 		}),
 		isActive: v.boolean(),

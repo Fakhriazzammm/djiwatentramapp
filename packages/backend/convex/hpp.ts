@@ -1,5 +1,4 @@
 import { v } from "convex/values";
-import type { QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 
 // ─── Shared HPP calculation helper (used by multiple queries) ────────────────
@@ -79,9 +78,7 @@ export const getLatestInventoryCosts = query({
 		for (const item of inventory) {
 			const transactions = await ctx.db
 				.query("inventoryTransactions")
-				.withIndex("by_inventory", (q) =>
-					q.eq("inventoryId", item._id)
-				)
+				.withIndex("by_inventory", (q) => q.eq("inventoryId", item._id))
 				.order("desc")
 				.collect();
 
@@ -98,10 +95,7 @@ export const getLatestInventoryCosts = query({
 					(sum, t) => sum + (t.costPerUnit ?? 0) * t.quantity,
 					0
 				);
-				const totalQty = restocks.reduce(
-					(sum, t) => sum + t.quantity,
-					0
-				);
+				const totalQty = restocks.reduce((sum, t) => sum + t.quantity, 0);
 				avgCostPerUnit = totalQty > 0 ? totalCost / totalQty : undefined;
 			}
 
@@ -149,16 +143,22 @@ export const generateHppFromRecipe = query({
 				.first();
 		}
 
-		if (!recipe) return null;
+		if (!recipe) {
+			return null;
+		}
 
 		const product = await ctx.db.get(args.productId);
-		if (!product) return null;
+		if (!product) {
+			return null;
+		}
 
 		// Build ingredients with inventory info and latest costs
 		const ingredients = [];
 		for (const recipeIng of recipe.ingredients) {
 			const invItem = await ctx.db.get(recipeIng.inventoryId);
-			if (!invItem) continue;
+			if (!invItem) {
+				continue;
+			}
 
 			// Get latest restock cost
 			const restocks = await ctx.db
@@ -216,11 +216,11 @@ export const getProductsWithRecipes = query({
 		const results = [];
 		for (const pid of productIds) {
 			const product = await ctx.db.get(pid);
-			if (!product) continue;
+			if (!product) {
+				continue;
+			}
 
-			const productRecipes = recipes.filter(
-				(r) => r.productId === pid
-			);
+			const productRecipes = recipes.filter((r) => r.productId === pid);
 			results.push({
 				product,
 				variants: productRecipes
@@ -325,7 +325,9 @@ export const syncHppWithInventoryPrices = mutation({
 	args: { id: v.id("hppCalculations") },
 	handler: async (ctx, args) => {
 		const hpp = await ctx.db.get(args.id);
-		if (!hpp) throw new Error("HPP calculation not found");
+		if (!hpp) {
+			throw new Error("HPP calculation not found");
+		}
 
 		let updatedCount = 0;
 		const updatedIngredients = [];
@@ -345,9 +347,7 @@ export const syncHppWithInventoryPrices = mutation({
 			// Find latest restock with cost
 			const transactions = await ctx.db
 				.query("inventoryTransactions")
-				.withIndex("by_inventory", (q) =>
-					q.eq("inventoryId", ing.inventoryId!)
-				)
+				.withIndex("by_inventory", (q) => q.eq("inventoryId", ing.inventoryId!))
 				.order("desc")
 				.collect();
 
@@ -410,9 +410,7 @@ export const getHppProductMap = query({
 			const hpp = computeHppPerServing(calc);
 			const profit = calc.sellingPrice - hpp;
 			const margin =
-				calc.sellingPrice > 0
-					? (profit / calc.sellingPrice) * 100
-					: 0;
+				calc.sellingPrice > 0 ? (profit / calc.sellingPrice) * 100 : 0;
 
 			// Index by productId if linked
 			if (calc.productId) {
@@ -462,9 +460,7 @@ export const getHppDashboardData = query({
 			const hpp = computeHppPerServing(calc);
 			const profit = calc.sellingPrice - hpp;
 			const margin =
-				calc.sellingPrice > 0
-					? (profit / calc.sellingPrice) * 100
-					: 0;
+				calc.sellingPrice > 0 ? (profit / calc.sellingPrice) * 100 : 0;
 			return {
 				id: calc._id,
 				name: calc.name,
@@ -477,8 +473,7 @@ export const getHppDashboardData = query({
 		});
 
 		const avgMargin =
-			analyzed.reduce((sum, a) => sum + a.marginPercent, 0) /
-			analyzed.length;
+			analyzed.reduce((sum, a) => sum + a.marginPercent, 0) / analyzed.length;
 
 		// Low margin alerts (below 20%)
 		const lowMarginAlerts = analyzed
@@ -569,7 +564,13 @@ export const getOrdersCogs = query({
 		// Group by date for daily summary
 		const dailySummary: Record<
 			string,
-			{ date: string; revenue: number; cogs: number; profit: number; orders: number }
+			{
+				date: string;
+				revenue: number;
+				cogs: number;
+				profit: number;
+				orders: number;
+			}
 		> = {};
 		for (const op of orderProfits) {
 			const dateKey = new Date(op.createdAt).toISOString().split("T")[0];
@@ -599,8 +600,8 @@ export const getOrdersCogs = query({
 			matchedOrders,
 			totalCompletedOrders: completedOrders.length,
 			recentOrderProfits: orderProfits.slice(0, 20),
-			dailySummary: Object.values(dailySummary).sort(
-				(a, b) => b.date.localeCompare(a.date)
+			dailySummary: Object.values(dailySummary).sort((a, b) =>
+				b.date.localeCompare(a.date)
 			),
 		};
 	},
@@ -630,13 +631,13 @@ export const getHppForecast = query({
 		> = {};
 
 		for (const calc of allHpp) {
-			if (!calc.productId) continue;
+			if (!calc.productId) {
+				continue;
+			}
 			hppByProduct[calc.productId] = {
 				ingredients: calc.ingredients.map((ing) => {
-					const totalBase =
-						ing.purchaseQuantity * ing.conversionFactor;
-					const costBase =
-						totalBase > 0 ? ing.purchasePrice / totalBase : 0;
+					const totalBase = ing.purchaseQuantity * ing.conversionFactor;
+					const costBase = totalBase > 0 ? ing.purchasePrice / totalBase : 0;
 					return {
 						ingredientName: ing.ingredientName,
 						usagePerServing: ing.usagePerServing,
@@ -663,7 +664,9 @@ export const getHppForecast = query({
 		for (const order of recentOrders) {
 			for (const item of order.items) {
 				const hppData = hppByProduct[item.productId];
-				if (!hppData) continue;
+				if (!hppData) {
+					continue;
+				}
 
 				for (const ing of hppData.ingredients) {
 					const key = ing.ingredientName;
@@ -675,10 +678,8 @@ export const getHppForecast = query({
 							totalCost: 0,
 						};
 					}
-					dailyUsage[key].totalQty +=
-						ing.usagePerServing * item.quantity;
-					dailyUsage[key].totalCost +=
-						ing.costPerServing * item.quantity;
+					dailyUsage[key].totalQty += ing.usagePerServing * item.quantity;
+					dailyUsage[key].totalCost += ing.costPerServing * item.quantity;
 				}
 			}
 		}
@@ -689,8 +690,8 @@ export const getHppForecast = query({
 			Math.min(
 				7,
 				new Set(
-					recentOrders.map((o) =>
-						new Date(o.createdAt).toISOString().split("T")[0]
+					recentOrders.map(
+						(o) => new Date(o.createdAt).toISOString().split("T")[0]
 					)
 				).size
 			)
@@ -710,10 +711,7 @@ export const getHppForecast = query({
 		return {
 			forecastDays,
 			daysWithData,
-			totalForecastCost: forecast.reduce(
-				(sum, f) => sum + f.forecastCost,
-				0
-			),
+			totalForecastCost: forecast.reduce((sum, f) => sum + f.forecastCost, 0),
 			ingredients: forecast,
 		};
 	},
