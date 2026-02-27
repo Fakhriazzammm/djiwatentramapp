@@ -417,41 +417,37 @@ function AdminLayout() {
 							: location.pathname.startsWith(item.to);
 						const isCenter = index === 2; // AI Chat at center
 
-						// Center AI button - prominent with floating effect
+						// Center AI button - compact floating style
 						if (isCenter) {
 							return (
 								<Link
-									className="relative -top-3 flex flex-1 flex-col items-center justify-center transition-colors"
+									className="relative -top-1.5 flex flex-1 flex-col items-center justify-center py-1 transition-colors active:scale-95"
 									key={item.to}
 									to={item.to}
 								>
-									{/* Glowing background */}
+									{/* Compact glow background */}
 									<div
-										className={`absolute inset-x-4 top-0 h-14 rounded-2xl transition-all ${
+										className={`absolute inset-x-2 top-0.5 h-10 rounded-xl transition-all ${
 											isActive
-												? "animate-pulse bg-gradient-to-br from-primary via-primary to-accent shadow-lg shadow-primary/50"
-												: "bg-gradient-to-br from-primary via-primary to-accent shadow-lg shadow-primary/30"
+												? "bg-gradient-to-r from-primary to-accent shadow-lg shadow-primary/40"
+												: "bg-gradient-to-r from-primary to-accent shadow-md shadow-primary/20"
 										}`}
 									/>
 									{/* Icon container */}
-									<div className="relative z-10 flex flex-col items-center justify-center gap-0.5">
+									<div className="relative z-10 flex flex-col items-center justify-center gap-0">
 										<div
-											className={`flex h-12 w-12 items-center justify-center rounded-xl transition-all ${
-												isActive ? "bg-white shadow-lg" : "bg-white/90"
+											className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all ${
+												isActive ? "bg-white shadow-md" : "bg-white/95"
 											}`}
 										>
-											<Sparkles
-												className={`h-6 w-6 ${
-													isActive ? "text-primary" : "text-primary"
-												}`}
-											/>
+											<Sparkles className="h-5 w-5 text-primary" />
 										</div>
 										<span
-											className={`font-bold text-[10px] leading-tight ${
-												isActive ? "text-primary" : "text-foreground"
+											className={`mt-0.5 font-semibold text-[9px] leading-none ${
+												isActive ? "text-primary" : "text-foreground/80"
 											}`}
 										>
-											{item.label}
+											AI
 										</span>
 									</div>
 								</Link>
@@ -461,7 +457,7 @@ function AdminLayout() {
 						// Regular navigation items
 						return (
 							<Link
-								className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors"
+								className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-colors active:scale-95"
 								key={item.to}
 								to={item.to}
 							>
@@ -472,10 +468,10 @@ function AdminLayout() {
 											: "text-muted-foreground"
 									}`}
 								>
-									<item.icon className="h-5 w-5" />
+									<item.icon className="h-4 w-4" />
 								</div>
 								<span
-									className={`font-medium text-[10px] leading-tight ${
+									className={`font-medium text-[9px] leading-tight ${
 										isActive ? "text-primary" : "text-muted-foreground"
 									}`}
 								>
@@ -486,13 +482,13 @@ function AdminLayout() {
 					})}
 				</div>
 
-				{/* Quick Menu FAB - positioned at bottom right */}
+				{/* Quick Menu FAB - compact */}
 				<button
-					className="safe-area-bottom fixed right-4 bottom-20 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-accent/30 shadow-lg transition-all hover:scale-105 active:scale-95 md:hidden"
+					className="safe-area-bottom fixed right-3 bottom-20 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-accent/20 shadow-md transition-all hover:scale-105 active:scale-95 md:hidden"
 					onClick={() => setIsQuickMenuOpen(true)}
 					type="button"
 				>
-					<Grid3X3 className="h-5 w-5" />
+					<Grid3X3 className="h-4 w-4" />
 				</button>
 			</nav>
 		</div>
