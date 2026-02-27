@@ -55,17 +55,23 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/forecasting": "Forecasting",
 };
 
-// Bottom nav items (exactly 5 tabs)
+// Bottom nav items (AI at center index 2)
 const BOTTOM_NAV_ITEMS = [
 	{ to: "/admin", icon: LayoutDashboard, label: "Dasbor", exact: true },
 	{ to: "/admin/orders", icon: ClipboardList, label: "Pesanan" },
+	{
+		to: "/admin/ai-chat",
+		icon: Sparkles,
+		label: "AI",
+		exact: true,
+		isCenter: true,
+	},
 	{ to: "/admin/products", icon: Package, label: "Produk" },
-	{ to: "/admin/ai-chat", icon: Sparkles, label: "AI", exact: true },
+	{ to: "/admin/finance", icon: Wallet, label: "Keuangan" },
 ];
 
 // Quick menu items (accessible from bottom sheet)
 const QUICK_MENU_ITEMS = [
-	{ to: "/admin/finance", icon: Wallet, label: "Keuangan" },
 	{ to: "/admin/inventory", icon: Archive, label: "Inventaris" },
 	{ to: "/admin/discounts", icon: Percent, label: "Promosi" },
 	{ to: "/admin/hpp-calculator", icon: Calculator, label: "HPP" },
@@ -395,12 +401,55 @@ function AdminLayout() {
 
 			{/* === MOBILE BOTTOM NAVIGATION === */}
 			<nav className="safe-area-bottom fixed inset-x-0 bottom-0 z-30 border-border border-t bg-background/95 backdrop-blur-md md:hidden">
-				<div className="flex items-stretch justify-around px-1">
-					{BOTTOM_NAV_ITEMS.map((item) => {
+				<div className="flex items-stretch">
+					{BOTTOM_NAV_ITEMS.map((item, index) => {
 						const isActive = item.exact
 							? location.pathname === item.to
 							: location.pathname.startsWith(item.to);
+						const isCenter = index === 2; // AI Chat at center
 
+						// Center AI button - prominent with floating effect
+						if (isCenter) {
+							return (
+								<Link
+									className="relative -top-3 flex flex-1 flex-col items-center justify-center transition-colors"
+									key={item.to}
+									to={item.to}
+								>
+									{/* Glowing background */}
+									<div
+										className={`absolute inset-x-4 top-0 h-14 rounded-2xl transition-all ${
+											isActive
+												? "animate-pulse bg-gradient-to-br from-primary via-primary to-accent shadow-lg shadow-primary/50"
+												: "bg-gradient-to-br from-primary via-primary to-accent shadow-lg shadow-primary/30"
+										}`}
+									/>
+									{/* Icon container */}
+									<div className="relative z-10 flex flex-col items-center justify-center gap-0.5">
+										<div
+											className={`flex h-12 w-12 items-center justify-center rounded-xl transition-all ${
+												isActive ? "bg-white shadow-lg" : "bg-white/90"
+											}`}
+										>
+											<Sparkles
+												className={`h-6 w-6 ${
+													isActive ? "text-primary" : "text-primary"
+												}`}
+											/>
+										</div>
+										<span
+											className={`font-bold text-[10px] leading-tight ${
+												isActive ? "text-primary" : "text-foreground"
+											}`}
+										>
+											{item.label}
+										</span>
+									</div>
+								</Link>
+							);
+						}
+
+						// Regular navigation items
 						return (
 							<Link
 								className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors"
@@ -426,30 +475,16 @@ function AdminLayout() {
 							</Link>
 						);
 					})}
-					{/* Quick Menu Button */}
-					<button
-						className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors"
-						onClick={() => setIsQuickMenuOpen(true)}
-						type="button"
-					>
-						<div
-							className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
-								isQuickMenuOpen
-									? "bg-accent text-accent-foreground shadow-sm"
-									: "text-muted-foreground"
-							}`}
-						>
-							<Grid3X3 className="h-5 w-5" />
-						</div>
-						<span
-							className={`font-medium text-[10px] leading-tight ${
-								isQuickMenuOpen ? "text-accent" : "text-muted-foreground"
-							}`}
-						>
-							Menu
-						</span>
-					</button>
 				</div>
+
+				{/* Quick Menu FAB - positioned at bottom right */}
+				<button
+					className="safe-area-bottom fixed right-4 bottom-20 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-accent/30 shadow-lg transition-all hover:scale-105 active:scale-95 md:hidden"
+					onClick={() => setIsQuickMenuOpen(true)}
+					type="button"
+				>
+					<Grid3X3 className="h-5 w-5" />
+				</button>
 			</nav>
 		</div>
 	);
