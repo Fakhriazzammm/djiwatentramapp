@@ -750,15 +750,15 @@ function InventoryTable({
 	return (
 		<div className="overflow-hidden rounded-xl border border-border bg-card">
 			<div className="overflow-x-auto">
-				<table className="w-full text-left text-sm">
+				<table className="w-full text-left text-xs md:text-sm">
 					<thead>
 						<tr className="border-border border-b bg-muted/30 text-muted-foreground">
 							<th
-								className="cursor-pointer p-4 font-medium transition-colors hover:text-foreground"
+								className="cursor-pointer p-2.5 font-medium transition-colors hover:text-foreground md:p-4"
 								onClick={() => onSort("ingredientName")}
 							>
 								<div className="flex items-center gap-1">
-									Bahan Baku
+									Bahan
 									{sortConfig.key === "ingredientName" &&
 										(sortConfig.direction === "asc" ? (
 											<ArrowUp className="h-3 w-3" />
@@ -993,11 +993,11 @@ function InventoryHeader({
 	) => void;
 }) {
 	return (
-		<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-			<h2 className="font-bold text-2xl">Manajemen Inventaris</h2>
+		<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+			<h2 className="font-bold text-lg md:text-2xl">Inventaris</h2>
 			<div className="flex flex-wrap gap-2">
 				<button
-					className={`rounded-lg px-3 py-2 font-medium text-sm transition-colors ${
+					className={`rounded-lg px-3 py-2 font-medium text-xs transition-colors md:text-sm ${
 						filterLowStock
 							? "border border-destructive/20 bg-destructive/10 text-destructive"
 							: "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -1005,9 +1005,9 @@ function InventoryHeader({
 					onClick={() => onFilterLowStockChange(!filterLowStock)}
 					type="button"
 				>
-					Stok Rendah Only
+					Stok Rendah
 				</button>
-				<div className="relative">
+				<div className="relative flex-1 sm:flex-none">
 					<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 					<input
 						className="w-full rounded-lg border border-border bg-card py-2 pr-4 pl-10 text-sm outline-none transition-all focus:border-primary sm:w-64"
@@ -1017,7 +1017,7 @@ function InventoryHeader({
 					/>
 				</div>
 				<button
-					className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground text-sm hover:brightness-110"
+					className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 font-bold text-primary-foreground text-xs hover:brightness-110 md:gap-2 md:px-4 md:text-sm"
 					onClick={() => onActionTypeChange("create")}
 					type="button"
 				>

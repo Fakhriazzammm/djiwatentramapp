@@ -151,11 +151,11 @@ function AdminOrders() {
 	}
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 flex h-full animate-in flex-col space-y-6 duration-500">
-			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+		<div className="fade-in slide-in-from-bottom-4 flex h-full animate-in flex-col space-y-3 duration-500 md:space-y-6">
+			<div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
 				<div>
-					<h2 className="font-bold text-2xl tracking-tight">Riwayat Pesanan</h2>
-					<p className="text-muted-foreground text-sm">
+					<h2 className="font-bold text-lg tracking-tight md:text-2xl">Riwayat Pesanan</h2>
+					<p className="text-muted-foreground text-xs md:text-sm">
 						Kelola dan pantau semua transaksi pesanan masuk.
 					</p>
 				</div>
@@ -163,44 +163,43 @@ function AdminOrders() {
 
 			{/* Profit Summary */}
 			{hppCogs && hppCogs.matchedOrders > 0 && (
-				<div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-					<div className="rounded-lg border border-border bg-card p-3">
+				<div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+					<div className="rounded-lg border border-border bg-card p-2.5 md:p-3">
 						<p className="text-[10px] text-muted-foreground uppercase">Revenue</p>
-						<p className="font-bold text-lg">{formatrupiah(hppCogs.totalRevenue)}</p>
+						<p className="font-bold text-sm md:text-lg">{formatrupiah(hppCogs.totalRevenue)}</p>
 					</div>
-					<div className="rounded-lg border border-border bg-card p-3">
-						<p className="text-[10px] text-muted-foreground uppercase">COGS (HPP)</p>
-						<p className="font-bold text-lg text-orange-600">{formatrupiah(hppCogs.totalCogs)}</p>
+					<div className="rounded-lg border border-border bg-card p-2.5 md:p-3">
+						<p className="text-[10px] text-muted-foreground uppercase">COGS</p>
+						<p className="font-bold text-sm text-orange-600 md:text-lg">{formatrupiah(hppCogs.totalCogs)}</p>
 					</div>
-					<div className="rounded-lg border border-border bg-card p-3">
-						<p className="text-[10px] text-muted-foreground uppercase">Laba Kotor</p>
-						<p className={`font-bold text-lg ${hppCogs.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
+					<div className="rounded-lg border border-border bg-card p-2.5 md:p-3">
+						<p className="text-[10px] text-muted-foreground uppercase">Laba</p>
+						<p className={`font-bold text-sm md:text-lg ${hppCogs.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
 							{formatrupiah(hppCogs.totalProfit)}
 						</p>
 					</div>
-					<div className="rounded-lg border border-border bg-card p-3">
-						<p className="text-[10px] text-muted-foreground uppercase">Gross Margin</p>
-						<p className="font-bold text-lg text-primary">{hppCogs.grossMargin.toFixed(1)}%</p>
-						<p className="text-[10px] text-muted-foreground">{hppCogs.matchedOrders}/{hppCogs.totalCompletedOrders} pesanan dihitung</p>
+					<div className="rounded-lg border border-border bg-card p-2.5 md:p-3">
+						<p className="text-[10px] text-muted-foreground uppercase">Margin</p>
+						<p className="font-bold text-sm text-primary md:text-lg">{hppCogs.grossMargin.toFixed(1)}%</p>
 					</div>
 				</div>
 			)}
 
-			{/* Filters */}
-			<div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm md:flex-row md:items-center">
+			{/* Filters - compact on mobile */}
+			<div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 shadow-sm md:flex-row md:items-center md:gap-4 md:p-4">
 				<div className="relative flex-1">
 					<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 					<Input
-						className="pl-9"
+						className="h-10 pl-9 text-sm"
 						onChange={(e) => setSearchQuery(e.target.value)}
-						placeholder="Cari ID Pesanan atau Nama Pelanggan..."
+						placeholder="Cari pesanan..."
 						value={searchQuery}
 					/>
 				</div>
 				<div className="flex items-center gap-2">
-					<Filter className="h-4 w-4 text-muted-foreground" />
+					<Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
 					<Select onValueChange={setStatusFilter} value={statusFilter}>
-						<SelectTrigger className="w-[180px]">
+						<SelectTrigger className="w-full md:w-[180px]">
 							<SelectValue placeholder="Status" />
 						</SelectTrigger>
 						<SelectContent>
@@ -214,8 +213,56 @@ function AdminOrders() {
 				</div>
 			</div>
 
-			{/* Orders Table */}
-			<div className="relative flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+			{/* Mobile: Card-based order list */}
+			<div className="flex-1 space-y-2 overflow-y-auto md:hidden">
+				{filteredOrders?.length === 0 ? (
+					<p className="py-12 text-center text-muted-foreground text-sm">
+						Tidak ada pesanan ditemukan.
+					</p>
+				) : (
+					filteredOrders?.map((order) => (
+						<div
+							className="rounded-xl border border-border bg-card p-3 transition-colors active:bg-muted/50"
+							key={order._id}
+							onClick={() => {
+								// @ts-expect-error
+								setSelectedOrder(order);
+								setIsDetailOpen(true);
+							}}
+						>
+							<div className="flex items-start justify-between">
+								<div className="min-w-0 flex-1">
+									<div className="flex items-center gap-2">
+										<span className="font-bold font-mono text-xs text-primary">
+											#{order.orderNumber}
+										</span>
+										<Badge
+											className={`rounded-md px-1.5 py-0 font-normal text-[9px] ${getStatusColor(order.status)}`}
+											variant="outline"
+										>
+											{getStatusLabel(order.status)}
+										</Badge>
+									</div>
+									<div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+										<span>{order.customerName || "Pelanggan Umum"}</span>
+										<span>&middot;</span>
+										<span className="capitalize">{order.paymentMethod}</span>
+									</div>
+								</div>
+								<div className="text-right">
+									<p className="font-bold text-sm">{formatrupiah(order.totalAmount)}</p>
+									<p className="text-[10px] text-muted-foreground">
+										{format(order.createdAt, "dd MMM HH:mm", { locale: id })}
+									</p>
+								</div>
+							</div>
+						</div>
+					))
+				)}
+			</div>
+
+			{/* Desktop: Table view */}
+			<div className="relative hidden flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm md:block">
 				<div className="absolute inset-0 overflow-auto">
 					<table className="w-full text-left text-sm">
 						<thead className="sticky top-0 z-10 bg-muted/50 font-semibold text-muted-foreground text-xs uppercase">
