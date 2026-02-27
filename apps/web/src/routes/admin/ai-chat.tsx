@@ -155,7 +155,7 @@ function AIChatPage() {
 	// const anomalies = useQuery(api.ai.detectAnomalies, {});
 
 	// Follow-up Tasks
-	const pendingTasks = useQuery(api.ai.getPendingTasks, {});
+	const pendingTasks = useQuery(api.aiMemory.getPendingTasks, {});
 
 	// Financial Summary for reports
 	const _financialSummary = useQuery(api.finance.getFinancialSummary, {});
