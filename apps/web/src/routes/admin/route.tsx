@@ -329,7 +329,7 @@ function AdminLayout() {
 						{/* Backdrop */}
 						<motion.div
 							animate={{ opacity: 1 }}
-							className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
+							className="fixed inset-0 z-40 bg-black/50 md:hidden"
 							exit={{ opacity: 0 }}
 							initial={{ opacity: 0 }}
 							onClick={() => setIsQuickMenuOpen(false)}
@@ -337,19 +337,19 @@ function AdminLayout() {
 						{/* Quick Menu Panel */}
 						<motion.div
 							animate={{ y: 0, opacity: 1 }}
-							className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl bg-background px-4 pt-3 pb-8 shadow-2xl md:hidden"
+							className="fixed right-0 bottom-0 left-0 z-50 rounded-t-2xl border-border border-t bg-card px-4 pt-4 pb-6 shadow-2xl md:hidden"
 							exit={{ y: "100%", opacity: 0 }}
 							initial={{ y: "100%", opacity: 0 }}
 							transition={{ type: "spring", damping: 25, stiffness: 300 }}
 						>
 							{/* Handle bar */}
-							<div className="mx-auto mb-4 h-1 w-10 rounded-full bg-muted-foreground/20" />
+							<div className="mx-auto mb-3 h-1 w-10 rounded-full bg-muted" />
 
-							{/* Close button */}
-							<div className="mb-3 flex items-center justify-between">
-								<h3 className="font-bold text-sm">Menu Lainnya</h3>
+							{/* Header */}
+							<div className="mb-4 flex items-center justify-between">
+								<h3 className="font-semibold text-foreground">Menu</h3>
 								<button
-									className="flex h-8 w-8 items-center justify-center rounded-full bg-muted transition-colors active:scale-95"
+									className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80 active:scale-95"
 									onClick={() => setIsQuickMenuOpen(false)}
 									type="button"
 								>
@@ -357,32 +357,32 @@ function AdminLayout() {
 								</button>
 							</div>
 
-							{/* Grid Menu */}
-							<div className="grid grid-cols-4 gap-3">
+							{/* Grid Menu - 2 rows, 4 columns */}
+							<div className="grid grid-cols-4 gap-2">
 								{QUICK_MENU_ITEMS.map((item) => (
 									<Link
-										className="flex flex-col items-center gap-1.5 rounded-xl p-3 transition-colors active:bg-muted"
+										className="flex flex-col items-center gap-1 rounded-lg bg-muted p-2.5 transition-colors active:bg-muted/80"
 										key={item.to}
 										onClick={() => setIsQuickMenuOpen(false)}
 										to={item.to}
 									>
 										<div
-											className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
+											className={`flex h-9 w-9 items-center justify-center rounded-md ${
 												location.pathname === item.to
-													? "bg-primary text-primary-foreground shadow-lg"
-													: "bg-muted text-muted-foreground"
+													? "bg-primary text-primary-foreground"
+													: "bg-background text-foreground"
 											}`}
 										>
-											<item.icon className="h-5 w-5" />
+											<item.icon className="h-4 w-4" />
 										</div>
-										<span className="text-center font-medium text-[11px] text-foreground leading-tight">
+										<span className="text-center font-medium text-[10px] text-foreground leading-tight">
 											{item.label}
 										</span>
 									</Link>
 								))}
-								{/* Logout button in quick menu */}
+								{/* Logout button */}
 								<button
-									className="flex flex-col items-center gap-1.5 rounded-xl p-3 transition-colors active:bg-muted"
+									className="flex flex-col items-center gap-1 rounded-lg bg-destructive/10 p-2.5 transition-colors active:bg-destructive/20"
 									onClick={() => {
 										setIsQuickMenuOpen(false);
 										authClient.signOut({
@@ -395,10 +395,10 @@ function AdminLayout() {
 									}}
 									type="button"
 								>
-									<div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
-										<LogOut className="h-5 w-5" />
+									<div className="flex h-9 w-9 items-center justify-center rounded-md bg-destructive text-destructive-foreground">
+										<LogOut className="h-4 w-4" />
 									</div>
-									<span className="text-center font-medium text-[11px] text-destructive leading-tight">
+									<span className="text-center font-medium text-[10px] text-destructive leading-tight">
 										Keluar
 									</span>
 								</button>
