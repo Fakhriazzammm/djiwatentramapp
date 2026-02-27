@@ -490,9 +490,6 @@ function AIChatPage() {
 							)}
 						</button>
 					</form>
-					<p className="text-center text-[9px] text-muted-foreground uppercase tracking-widest opacity-50 md:text-[10px]">
-						Multi-Step Actions dalam satu permintaan
-					</p>
 				</div>
 			</div>
 		</div>
