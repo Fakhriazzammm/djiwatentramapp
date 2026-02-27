@@ -55,21 +55,21 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/forecasting": "Forecasting",
 };
 
-// Bottom nav items (main 5 tabs)
+// Bottom nav items (exactly 5 tabs)
 const BOTTOM_NAV_ITEMS = [
 	{ to: "/admin", icon: LayoutDashboard, label: "Dasbor", exact: true },
 	{ to: "/admin/orders", icon: ClipboardList, label: "Pesanan" },
 	{ to: "/admin/products", icon: Package, label: "Produk" },
-	{ to: "/admin/finance", icon: Wallet, label: "Keuangan" },
-	{ to: "/admin/settings", icon: Settings, label: "Lainnya" },
+	{ to: "/admin/ai-chat", icon: Sparkles, label: "AI", exact: true },
 ];
 
-// Quick menu items (accessible from "More" or FAB)
+// Quick menu items (accessible from bottom sheet)
 const QUICK_MENU_ITEMS = [
+	{ to: "/admin/finance", icon: Wallet, label: "Keuangan" },
 	{ to: "/admin/inventory", icon: Archive, label: "Inventaris" },
 	{ to: "/admin/discounts", icon: Percent, label: "Promosi" },
 	{ to: "/admin/hpp-calculator", icon: Calculator, label: "HPP" },
-	{ to: "/admin/ai-chat", icon: Sparkles, label: "AI Chat" },
+	{ to: "/admin/forecasting", icon: Grid3X3, label: "Forecast" },
 	{ to: "/admin/settings", icon: Settings, label: "Pengaturan" },
 ];
 
@@ -322,7 +322,7 @@ function AdminLayout() {
 						{/* Quick Menu Panel */}
 						<motion.div
 							animate={{ y: 0, opacity: 1 }}
-							className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl bg-background px-4 pb-8 pt-3 shadow-2xl md:hidden"
+							className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl bg-background px-4 pt-3 pb-8 shadow-2xl md:hidden"
 							exit={{ y: "100%", opacity: 0 }}
 							initial={{ y: "100%", opacity: 0 }}
 							transition={{ type: "spring", damping: 25, stiffness: 300 }}
@@ -360,7 +360,7 @@ function AdminLayout() {
 										>
 											<item.icon className="h-5 w-5" />
 										</div>
-										<span className="text-center font-medium text-[11px] leading-tight text-foreground">
+										<span className="text-center font-medium text-[11px] text-foreground leading-tight">
 											{item.label}
 										</span>
 									</Link>
@@ -383,7 +383,7 @@ function AdminLayout() {
 									<div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
 										<LogOut className="h-5 w-5" />
 									</div>
-									<span className="text-center font-medium text-[11px] leading-tight text-destructive">
+									<span className="text-center font-medium text-[11px] text-destructive leading-tight">
 										Keluar
 									</span>
 								</button>
@@ -394,43 +394,12 @@ function AdminLayout() {
 			</AnimatePresence>
 
 			{/* === MOBILE BOTTOM NAVIGATION === */}
-			<nav className="fixed inset-x-0 bottom-0 z-30 border-border border-t bg-background/95 backdrop-blur-md md:hidden safe-area-bottom">
+			<nav className="safe-area-bottom fixed inset-x-0 bottom-0 z-30 border-border border-t bg-background/95 backdrop-blur-md md:hidden">
 				<div className="flex items-stretch justify-around px-1">
 					{BOTTOM_NAV_ITEMS.map((item) => {
 						const isActive = item.exact
 							? location.pathname === item.to
 							: location.pathname.startsWith(item.to);
-
-						// "Lainnya" tab opens the quick menu
-						if (item.label === "Lainnya") {
-							return (
-								<button
-									className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors"
-									key="more-menu"
-									onClick={() => setIsQuickMenuOpen(true)}
-									type="button"
-								>
-									<div
-										className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
-											isQuickMenuOpen
-												? "bg-primary text-primary-foreground"
-												: "text-muted-foreground"
-										}`}
-									>
-										<Grid3X3 className="h-5 w-5" />
-									</div>
-									<span
-										className={`font-medium text-[10px] leading-tight ${
-											isQuickMenuOpen
-												? "text-primary"
-												: "text-muted-foreground"
-										}`}
-									>
-										Lainnya
-									</span>
-								</button>
-							);
-						}
 
 						return (
 							<Link
@@ -457,6 +426,29 @@ function AdminLayout() {
 							</Link>
 						);
 					})}
+					{/* Quick Menu Button */}
+					<button
+						className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors"
+						onClick={() => setIsQuickMenuOpen(true)}
+						type="button"
+					>
+						<div
+							className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
+								isQuickMenuOpen
+									? "bg-accent text-accent-foreground shadow-sm"
+									: "text-muted-foreground"
+							}`}
+						>
+							<Grid3X3 className="h-5 w-5" />
+						</div>
+						<span
+							className={`font-medium text-[10px] leading-tight ${
+								isQuickMenuOpen ? "text-accent" : "text-muted-foreground"
+							}`}
+						>
+							Menu
+						</span>
+					</button>
 				</div>
 			</nav>
 		</div>
