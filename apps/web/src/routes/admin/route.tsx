@@ -410,41 +410,50 @@ function AdminLayout() {
 
 			{/* === MOBILE BOTTOM NAVIGATION === */}
 			<nav className="safe-area-bottom fixed inset-x-0 bottom-0 z-30 border-border border-t bg-background/95 backdrop-blur-md md:hidden">
-				<div className="flex items-stretch">
+				<div className="flex items-stretch px-2">
 					{BOTTOM_NAV_ITEMS.map((item, index) => {
 						const isActive = item.exact
 							? location.pathname === item.to
 							: location.pathname.startsWith(item.to);
 						const isCenter = index === 2; // AI Chat at center
 
-						// Center AI button - compact floating style
+						// Center AI button - Circular FAB style (Instagram/Tinder)
 						if (isCenter) {
 							return (
 								<Link
-									className="relative -top-1.5 flex flex-1 flex-col items-center justify-center py-1 transition-colors active:scale-95"
+									className="relative -top-4 flex flex-1 justify-center transition-transform active:scale-95"
 									key={item.to}
 									to={item.to}
 								>
-									{/* Compact glow background */}
-									<div
-										className={`absolute inset-x-2 top-0.5 h-10 rounded-xl transition-all ${
-											isActive
-												? "bg-gradient-to-r from-primary to-accent shadow-lg shadow-primary/40"
-												: "bg-gradient-to-r from-primary to-accent shadow-md shadow-primary/20"
-										}`}
-									/>
-									{/* Icon container */}
-									<div className="relative z-10 flex flex-col items-center justify-center gap-0">
+									{/* FAB Container */}
+									<div className="relative">
+										{/* Glow effect */}
 										<div
-											className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all ${
-												isActive ? "bg-white shadow-md" : "bg-white/95"
+											className={`absolute inset-0 rounded-full transition-all duration-300 ${
+												isActive
+													? "animate-pulse bg-primary/40 blur-md"
+													: "bg-primary/20 blur-sm"
+											}`}
+											style={{ width: 56, height: 56 }}
+										/>
+										{/* Main FAB */}
+										<div
+											className={`relative flex h-14 w-14 items-center justify-center rounded-full transition-all duration-300 ${
+												isActive
+													? "scale-105 bg-gradient-to-br from-primary via-primary to-accent shadow-primary/50 shadow-xl"
+													: "bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/30"
 											}`}
 										>
-											<Sparkles className="h-5 w-5 text-primary" />
+											{isActive ? (
+												<Sparkles className="h-6 w-6 animate-spin-slow text-white" />
+											) : (
+												<Sparkles className="h-6 w-6 text-white" />
+											)}
 										</div>
+										{/* Label below FAB */}
 										<span
-											className={`mt-0.5 font-semibold text-[9px] leading-none ${
-												isActive ? "text-primary" : "text-foreground/80"
+											className={`absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-semibold text-[10px] ${
+												isActive ? "text-primary" : "text-muted-foreground"
 											}`}
 										>
 											AI
@@ -457,7 +466,7 @@ function AdminLayout() {
 						// Regular navigation items
 						return (
 							<Link
-								className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-colors active:scale-95"
+								className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
 								key={item.to}
 								to={item.to}
 							>
@@ -482,7 +491,7 @@ function AdminLayout() {
 					})}
 				</div>
 
-				{/* Quick Menu FAB - compact */}
+				{/* Quick Menu FAB */}
 				<button
 					className="safe-area-bottom fixed right-3 bottom-20 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-accent/20 shadow-md transition-all hover:scale-105 active:scale-95 md:hidden"
 					onClick={() => setIsQuickMenuOpen(true)}
