@@ -997,7 +997,7 @@ function AIChatPage() {
 															: "bg-muted text-muted-foreground"
 												}`}
 											>
-												{TrendingUp className="h-4 w-4" />
+												<TrendingUp className="h-4 w-4" />
 											</div>
 											<div className="flex-1">
 												<p className="font-medium text-xs">{product.name}</p>
