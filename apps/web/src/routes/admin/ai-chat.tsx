@@ -431,12 +431,12 @@ function AIChatPage() {
 				</div>
 			</div>
 
-			{/* Content Area */}
+			{/* Content Area - Scrollable */}
 			<div className="flex-1 overflow-y-auto">
 				{activeTab === "chat" && (
 					<>
 						{/* Messages */}
-						<div className="p-4 md:p-6">
+						<div className="p-4 md:p-6 pb-0">
 							<div className="mx-auto max-w-full space-y-4 md:max-w-3xl">
 								{/* Smart Insights Cards */}
 								{smartInsights.length > 0 && messages.length <= 1 && (
@@ -567,105 +567,6 @@ function AIChatPage() {
 									</div>
 								)}
 								<div ref={messagesEndRef} />
-							</div>
-						</div>
-
-						{/* Input Form */}
-						<div className="space-y-3 border-border border-t bg-card p-4">
-							<div className="mx-auto max-w-full space-y-3 md:max-w-3xl">
-								{/* Templates */}
-								<div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
-									{TEMPLATES.map((t) => (
-										<button
-											className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1.5 text-[10px] text-muted-foreground transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
-											disabled={isLoading}
-											key={t.label}
-											onClick={() => sendMessage(t.message)}
-											type="button"
-										>
-											{t.icon}
-											<span className="whitespace-nowrap">{t.label}</span>
-										</button>
-									))}
-								</div>
-
-								{/* Input */}
-								<form
-									className="relative flex items-center gap-2"
-									onSubmit={(e) => {
-										e.preventDefault();
-										sendMessage(input);
-									}}
-								>
-									<input
-										className="flex-1 rounded-full border border-border bg-background px-4 py-2.5 text-sm shadow-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
-										disabled={isLoading}
-										onChange={(e) => setInput(e.target.value)}
-										placeholder="Tanya Yumi..."
-										ref={inputRef}
-										type="text"
-										value={input}
-									/>
-
-									{/* Image Upload */}
-									<input
-										accept="image/*"
-										className="hidden"
-										onChange={handleFileSelect}
-										ref={fileInputRef}
-										type="file"
-									/>
-									<button
-										className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
-										disabled={isLoading}
-										onClick={() => fileInputRef.current?.click()}
-										type="button"
-									>
-										{selectedImage ? (
-											<div className="relative h-full w-full">
-												<img
-													alt="Selected"
-													className="h-full w-full rounded-full object-cover"
-													src={selectedImage}
-												/>
-											</div>
-										) : (
-											<Camera className="h-4 w-4" />
-										)}
-									</button>
-
-									{/* Image preview with remove button */}
-									{selectedImage && (
-										<div className="absolute -top-16 left-0 z-10 flex items-center gap-2">
-											<div className="relative h-12 w-12 overflow-hidden rounded-lg border border-border bg-card">
-												<img
-													alt="Preview"
-													className="h-full w-full object-cover"
-													src={selectedImage}
-												/>
-											</div>
-											<button
-												className="rounded-full bg-destructive/10 p-1 text-destructive transition-colors hover:bg-destructive/20"
-												onClick={handleRemoveImage}
-												type="button"
-											>
-												<X className="h-3 w-3" />
-											</button>
-										</div>
-									)}
-
-									<button
-										className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow transition-all hover:scale-105 hover:bg-primary/90 disabled:opacity-50 disabled:hover:scale-100 md:h-10 md:w-10"
-										disabled={isLoading || !(input.trim() || selectedImage)}
-										type="submit"
-									>
-										{isLoading ? (
-											<Loader2 className="h-4 w-4 animate-spin md:h-5 md:w-5" />
-										) : (
-											<Send className="h-4 w-4 md:h-5 md:w-5" />
-										)}
-									</button>
-								</form>
 							</div>
 						</div>
 					</>
@@ -836,6 +737,107 @@ function AIChatPage() {
 					</div>
 				)}
 			</div>
+
+			{/* Input Form - Fixed at bottom, only for chat tab */}
+			{activeTab === "chat" && (
+				<div className="space-y-3 border-border border-t bg-card p-4">
+					<div className="mx-auto max-w-full space-y-3 md:max-w-3xl">
+						{/* Templates */}
+						<div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
+							{TEMPLATES.map((t) => (
+								<button
+									className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1.5 text-[10px] text-muted-foreground transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+									disabled={isLoading}
+									key={t.label}
+									onClick={() => sendMessage(t.message)}
+									type="button"
+								>
+									{t.icon}
+									<span className="whitespace-nowrap">{t.label}</span>
+								</button>
+							))}
+						</div>
+
+						{/* Input */}
+						<form
+							className="relative flex items-center gap-2"
+							onSubmit={(e) => {
+								e.preventDefault();
+								sendMessage(input);
+							}}
+						>
+							<input
+								className="flex-1 rounded-full border border-border bg-background px-4 py-2.5 text-sm shadow-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+								disabled={isLoading}
+								onChange={(e) => setInput(e.target.value)}
+								placeholder="Tanya Yumi..."
+								ref={inputRef}
+								type="text"
+								value={input}
+							/>
+
+							{/* Image Upload */}
+							<input
+								accept="image/*"
+								className="hidden"
+								onChange={handleFileSelect}
+								ref={fileInputRef}
+								type="file"
+							/>
+							<button
+								className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+								disabled={isLoading}
+								onClick={() => fileInputRef.current?.click()}
+								type="button"
+							>
+								{selectedImage ? (
+									<div className="relative h-full w-full">
+										<img
+											alt="Selected"
+											className="h-full w-full rounded-full object-cover"
+											src={selectedImage}
+										/>
+									</div>
+								) : (
+									<Camera className="h-4 w-4" />
+								)}
+							</button>
+
+							{/* Image preview with remove button */}
+							{selectedImage && (
+								<div className="absolute -top-16 left-0 z-10 flex items-center gap-2">
+									<div className="relative h-12 w-12 overflow-hidden rounded-lg border border-border bg-card">
+										<img
+											alt="Preview"
+											className="h-full w-full object-cover"
+											src={selectedImage}
+										/>
+									</div>
+									<button
+										className="rounded-full bg-destructive/10 p-1 text-destructive transition-colors hover:bg-destructive/20"
+										onClick={handleRemoveImage}
+										type="button"
+									>
+										<X className="h-3 w-3" />
+									</button>
+								</div>
+							)}
+
+							<button
+								className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow transition-all hover:scale-105 hover:bg-primary/90 disabled:opacity-50 disabled:hover:scale-100 md:h-10 md:w-10"
+								disabled={isLoading || !(input.trim() || selectedImage)}
+								type="submit"
+							>
+								{isLoading ? (
+									<Loader2 className="h-4 w-4 animate-spin md:h-5 md:w-5" />
+								) : (
+									<Send className="h-4 w-4 md:h-5 md:w-5" />
+								)}
+							</button>
+						</form>
+					</div>
+				</div>
+			)}
 
 			{/* Image Scanner Modal */}
 			<ImageScanner
