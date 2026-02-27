@@ -15,6 +15,7 @@ import {
 	ChevronRight,
 	ClipboardList,
 	Coffee,
+	Grid3X3,
 	LayoutDashboard,
 	LogOut,
 	Package,
@@ -23,6 +24,7 @@ import {
 	Sparkles,
 	User,
 	Wallet,
+	X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -39,6 +41,38 @@ export const Route = createFileRoute("/admin")({
 	component: AdminLayout,
 });
 
+// Page title map for mobile header
+const PAGE_TITLES: Record<string, string> = {
+	"/admin": "Dasbor",
+	"/admin/products": "Produk",
+	"/admin/inventory": "Inventaris",
+	"/admin/finance": "Keuangan",
+	"/admin/orders": "Pesanan",
+	"/admin/discounts": "Promosi",
+	"/admin/hpp-calculator": "HPP Kalkulator",
+	"/admin/ai-chat": "AI Chat",
+	"/admin/settings": "Pengaturan",
+	"/admin/forecasting": "Forecasting",
+};
+
+// Bottom nav items (main 5 tabs)
+const BOTTOM_NAV_ITEMS = [
+	{ to: "/admin", icon: LayoutDashboard, label: "Dasbor", exact: true },
+	{ to: "/admin/orders", icon: ClipboardList, label: "Pesanan" },
+	{ to: "/admin/products", icon: Package, label: "Produk" },
+	{ to: "/admin/finance", icon: Wallet, label: "Keuangan" },
+	{ to: "/admin/settings", icon: Settings, label: "Lainnya" },
+];
+
+// Quick menu items (accessible from "More" or FAB)
+const QUICK_MENU_ITEMS = [
+	{ to: "/admin/inventory", icon: Archive, label: "Inventaris" },
+	{ to: "/admin/discounts", icon: Percent, label: "Promosi" },
+	{ to: "/admin/hpp-calculator", icon: Calculator, label: "HPP" },
+	{ to: "/admin/ai-chat", icon: Sparkles, label: "AI Chat" },
+	{ to: "/admin/settings", icon: Settings, label: "Pengaturan" },
+];
+
 function AdminLayout() {
 	const navigate = useNavigate();
 	const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -47,6 +81,7 @@ function AdminLayout() {
 		}
 		return false;
 	});
+	const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
 
 	const settings = useQuery(api.site_settings.getSettings);
 	const storeName = settings?.storeName || "TKM Admin";
@@ -60,12 +95,18 @@ function AdminLayout() {
 
 	const location = useLocation();
 	const isAIChat = location.pathname === "/admin/ai-chat";
+	const currentPageTitle = PAGE_TITLES[location.pathname] || "Admin";
+
+	// Close quick menu on route change
+	useEffect(() => {
+		setIsQuickMenuOpen(false);
+	}, [location.pathname]);
 
 	return (
 		<div className="flex h-full w-full overflow-hidden bg-background">
-			{/* Sidebar */}
+			{/* === DESKTOP SIDEBAR (hidden on mobile) === */}
 			<aside
-				className={`relative flex flex-col border-border border-r bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out ${
+				className={`relative hidden flex-col border-border border-r bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out md:flex ${
 					isCollapsed ? "w-16" : "w-64"
 				}`}
 			>
@@ -101,56 +142,56 @@ function AdminLayout() {
 				</button>
 
 				<nav className="flex-1 space-y-1 p-2">
-					<NavLink
+					<DesktopNavLink
 						activeOptions={{ exact: true }}
 						icon={<LayoutDashboard />}
 						isCollapsed={isCollapsed}
 						label="Dasbor"
 						to="/admin"
 					/>
-					<NavLink
+					<DesktopNavLink
 						icon={<Package />}
 						isCollapsed={isCollapsed}
 						label="Produk"
 						to="/admin/products"
 					/>
-					<NavLink
+					<DesktopNavLink
 						icon={<Archive />}
 						isCollapsed={isCollapsed}
 						label="Inventaris"
 						to="/admin/inventory"
 					/>
-					<NavLink
+					<DesktopNavLink
 						icon={<Wallet />}
 						isCollapsed={isCollapsed}
 						label="Keuangan"
 						to="/admin/finance"
 					/>
-					<NavLink
+					<DesktopNavLink
 						icon={<ClipboardList />}
 						isCollapsed={isCollapsed}
 						label="Pesanan"
 						to="/admin/orders"
 					/>
-					<NavLink
+					<DesktopNavLink
 						icon={<Percent />}
 						isCollapsed={isCollapsed}
 						label="Promosi"
 						to="/admin/discounts"
 					/>
-					<NavLink
+					<DesktopNavLink
 						icon={<Calculator />}
 						isCollapsed={isCollapsed}
 						label="HPP Kalkulator"
 						to="/admin/hpp-calculator"
 					/>
-					<NavLink
+					<DesktopNavLink
 						icon={<Sparkles />}
 						isCollapsed={isCollapsed}
 						label="AI Chat"
 						to="/admin/ai-chat"
 					/>
-					<NavLink
+					<DesktopNavLink
 						icon={<Settings />}
 						isCollapsed={isCollapsed}
 						label="Pengaturan"
@@ -183,18 +224,32 @@ function AdminLayout() {
 				</div>
 			</aside>
 
-			{/* Main Content */}
+			{/* === MAIN CONTENT === */}
 			<main className="flex flex-1 flex-col overflow-hidden bg-background">
+				{/* Mobile Header */}
 				{!isAIChat && (
-					<header className="flex h-14 shrink-0 items-center justify-between border-border border-b px-4">
-						<h1 className="font-bold text-lg">Selamat Datang, Admin</h1>
+					<header className="flex h-14 shrink-0 items-center justify-between border-border border-b px-4 md:px-4">
+						{/* Mobile: Show page title + store brand */}
 						<div className="flex items-center gap-3">
+							<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary md:hidden">
+								<Coffee className="h-4 w-4 text-primary-foreground" />
+							</div>
+							<div>
+								<h1 className="font-bold text-base leading-tight md:text-lg">
+									{currentPageTitle}
+								</h1>
+								<p className="text-[10px] text-muted-foreground leading-none md:hidden">
+									{storeName}
+								</p>
+							</div>
+						</div>
+						<div className="flex items-center gap-2">
 							<DropdownMenu>
 								<DropdownMenuTrigger
 									render={(props) => (
 										<button
 											{...props}
-											className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-primary/10 font-bold text-primary text-xs transition-all hover:scale-105 hover:bg-primary/20 active:scale-95"
+											className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-primary/10 font-bold text-primary text-xs transition-all hover:scale-105 hover:bg-primary/20 active:scale-95"
 											type="button"
 										>
 											A
@@ -236,22 +291,180 @@ function AdminLayout() {
 					</header>
 				)}
 
-				<div className={`flex-1 overflow-y-auto ${isAIChat ? "p-0" : "p-4"}`}>
+				{/* Page Content - with bottom padding on mobile for bottom nav */}
+				<div
+					className={`flex-1 overflow-y-auto ${isAIChat ? "p-0 pb-16 md:pb-0" : "p-3 pb-20 md:p-4 md:pb-4"}`}
+				>
 					<Outlet />
 				</div>
 
+				{/* Desktop Footer */}
 				{!isAIChat && (
-					<footer className="border-border border-t bg-muted/20 px-4 py-2 text-center text-muted-foreground text-xs">
+					<footer className="hidden border-border border-t bg-muted/20 px-4 py-2 text-center text-muted-foreground text-xs md:block">
 						Versi {appVersion} {appName} | powered by Yumi AI | Develop by{" "}
 						{developerName}
 					</footer>
 				)}
 			</main>
+
+			{/* === MOBILE QUICK MENU OVERLAY === */}
+			<AnimatePresence>
+				{isQuickMenuOpen && (
+					<>
+						{/* Backdrop */}
+						<motion.div
+							animate={{ opacity: 1 }}
+							className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
+							exit={{ opacity: 0 }}
+							initial={{ opacity: 0 }}
+							onClick={() => setIsQuickMenuOpen(false)}
+						/>
+						{/* Quick Menu Panel */}
+						<motion.div
+							animate={{ y: 0, opacity: 1 }}
+							className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl bg-background px-4 pb-8 pt-3 shadow-2xl md:hidden"
+							exit={{ y: "100%", opacity: 0 }}
+							initial={{ y: "100%", opacity: 0 }}
+							transition={{ type: "spring", damping: 25, stiffness: 300 }}
+						>
+							{/* Handle bar */}
+							<div className="mx-auto mb-4 h-1 w-10 rounded-full bg-muted-foreground/20" />
+
+							{/* Close button */}
+							<div className="mb-3 flex items-center justify-between">
+								<h3 className="font-bold text-sm">Menu Lainnya</h3>
+								<button
+									className="flex h-8 w-8 items-center justify-center rounded-full bg-muted transition-colors active:scale-95"
+									onClick={() => setIsQuickMenuOpen(false)}
+									type="button"
+								>
+									<X className="h-4 w-4" />
+								</button>
+							</div>
+
+							{/* Grid Menu */}
+							<div className="grid grid-cols-4 gap-3">
+								{QUICK_MENU_ITEMS.map((item) => (
+									<Link
+										className="flex flex-col items-center gap-1.5 rounded-xl p-3 transition-colors active:bg-muted"
+										key={item.to}
+										onClick={() => setIsQuickMenuOpen(false)}
+										to={item.to}
+									>
+										<div
+											className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
+												location.pathname === item.to
+													? "bg-primary text-primary-foreground shadow-lg"
+													: "bg-muted text-muted-foreground"
+											}`}
+										>
+											<item.icon className="h-5 w-5" />
+										</div>
+										<span className="text-center font-medium text-[11px] leading-tight text-foreground">
+											{item.label}
+										</span>
+									</Link>
+								))}
+								{/* Logout button in quick menu */}
+								<button
+									className="flex flex-col items-center gap-1.5 rounded-xl p-3 transition-colors active:bg-muted"
+									onClick={() => {
+										setIsQuickMenuOpen(false);
+										authClient.signOut({
+											fetchOptions: {
+												onSuccess: () => {
+													navigate({ to: "/" });
+												},
+											},
+										});
+									}}
+									type="button"
+								>
+									<div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+										<LogOut className="h-5 w-5" />
+									</div>
+									<span className="text-center font-medium text-[11px] leading-tight text-destructive">
+										Keluar
+									</span>
+								</button>
+							</div>
+						</motion.div>
+					</>
+				)}
+			</AnimatePresence>
+
+			{/* === MOBILE BOTTOM NAVIGATION === */}
+			<nav className="fixed inset-x-0 bottom-0 z-30 border-border border-t bg-background/95 backdrop-blur-md md:hidden safe-area-bottom">
+				<div className="flex items-stretch justify-around px-1">
+					{BOTTOM_NAV_ITEMS.map((item) => {
+						const isActive = item.exact
+							? location.pathname === item.to
+							: location.pathname.startsWith(item.to);
+
+						// "Lainnya" tab opens the quick menu
+						if (item.label === "Lainnya") {
+							return (
+								<button
+									className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors"
+									key="more-menu"
+									onClick={() => setIsQuickMenuOpen(true)}
+									type="button"
+								>
+									<div
+										className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
+											isQuickMenuOpen
+												? "bg-primary text-primary-foreground"
+												: "text-muted-foreground"
+										}`}
+									>
+										<Grid3X3 className="h-5 w-5" />
+									</div>
+									<span
+										className={`font-medium text-[10px] leading-tight ${
+											isQuickMenuOpen
+												? "text-primary"
+												: "text-muted-foreground"
+										}`}
+									>
+										Lainnya
+									</span>
+								</button>
+							);
+						}
+
+						return (
+							<Link
+								className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors"
+								key={item.to}
+								to={item.to}
+							>
+								<div
+									className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
+										isActive
+											? "bg-primary text-primary-foreground shadow-sm"
+											: "text-muted-foreground"
+									}`}
+								>
+									<item.icon className="h-5 w-5" />
+								</div>
+								<span
+									className={`font-medium text-[10px] leading-tight ${
+										isActive ? "text-primary" : "text-muted-foreground"
+									}`}
+								>
+									{item.label}
+								</span>
+							</Link>
+						);
+					})}
+				</div>
+			</nav>
 		</div>
 	);
 }
 
-function NavLink({
+/* Desktop Sidebar NavLink (unchanged logic, renamed) */
+function DesktopNavLink({
 	to,
 	icon,
 	label,

@@ -276,31 +276,31 @@ function SettingsPage() {
 	] as const;
 
 	return (
-		<div className="mx-auto max-w-5xl space-y-8">
+		<div className="mx-auto max-w-5xl space-y-4 md:space-y-8">
 			{/* Header */}
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h2 className="font-bold text-3xl text-foreground tracking-tight">
+					<h2 className="font-bold text-xl text-foreground tracking-tight md:text-3xl">
 						Pengaturan Sistem
 					</h2>
-					<p className="mt-1 text-muted-foreground text-sm">
+					<p className="mt-0.5 text-muted-foreground text-xs md:mt-1 md:text-sm">
 						Konfigurasi & Personalisasi Toko
 					</p>
 				</div>
 				<button
-					className="flex items-center justify-center gap-3 rounded-xl bg-primary px-8 py-3.5 font-bold text-primary-foreground transition-all hover:opacity-90 active:scale-95"
+					className="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground text-sm transition-all hover:opacity-90 active:scale-95 md:gap-3 md:px-8 md:py-3.5"
 					onClick={handleSave}
 					type="button"
 				>
-					<Save className="h-4 w-4" /> Simpan Perubahan
+					<Save className="h-4 w-4" /> Simpan
 				</button>
 			</div>
 
-			{/* Tab Switcher */}
-			<div className="no-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-muted/50 p-1.5 shadow-inner">
+			{/* Tab Switcher - horizontal scroll on mobile */}
+			<div className="no-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-muted/50 p-1 shadow-inner md:p-1.5">
 				{tabs.map((tab) => (
 					<button
-						className={`flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-6 py-3 font-bold transition-all ${
+						className={`flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2.5 font-bold transition-all md:flex-1 md:gap-2 md:px-6 md:py-3 ${
 							activeTab === tab.id
 								? "bg-card text-primary shadow-sm"
 								: "text-muted-foreground hover:bg-card/50 hover:text-foreground"
@@ -310,7 +310,7 @@ function SettingsPage() {
 						type="button"
 					>
 						<tab.icon className="h-4 w-4" />
-						<span className="text-sm">{tab.label}</span>
+						<span className="text-xs md:text-sm">{tab.label}</span>
 					</button>
 				))}
 			</div>
@@ -319,13 +319,13 @@ function SettingsPage() {
 			<div className="space-y-6">
 				{activeTab === "landing" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
-						<section className="space-y-8 rounded-2xl border border-border bg-card p-8 shadow-sm">
+						<section className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-sm md:space-y-8 md:p-8">
 							<div className="flex items-center gap-4">
 								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 									<Layout className="h-6 w-6" />
 								</div>
 								<div>
-									<h3 className="font-bold text-foreground text-xl tracking-tight">
+									<h3 className="font-bold text-foreground text-base tracking-tight md:text-xl">
 										Kustomisasi Halaman Utama
 									</h3>
 									<p className="text-muted-foreground text-sm">
@@ -448,13 +448,13 @@ function SettingsPage() {
 
 				{activeTab === "pos" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
-						<section className="space-y-8 rounded-2xl border border-border bg-card p-8 shadow-sm">
+						<section className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-sm md:space-y-8 md:p-8">
 							<div className="flex items-center gap-4">
 								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 									<CreditCard className="h-6 w-6" />
 								</div>
 								<div>
-									<h3 className="font-bold text-foreground text-xl tracking-tight">
+									<h3 className="font-bold text-foreground text-base tracking-tight md:text-xl">
 										Konfigurasi POS & Pembayaran
 									</h3>
 									<p className="text-muted-foreground text-sm">
@@ -548,13 +548,13 @@ function SettingsPage() {
 
 				{activeTab === "store" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
-						<section className="space-y-8 rounded-2xl border border-border bg-card p-8 shadow-sm">
+						<section className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-sm md:space-y-8 md:p-8">
 							<div className="flex items-center gap-4">
 								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 									<MapPin className="h-6 w-6" />
 								</div>
 								<div>
-									<h3 className="font-bold text-foreground text-xl tracking-tight">
+									<h3 className="font-bold text-foreground text-base tracking-tight md:text-xl">
 										Informasi & Biaya Toko
 									</h3>
 									<p className="text-muted-foreground text-sm">
@@ -678,13 +678,13 @@ function SettingsPage() {
 
 				{activeTab === "users" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
-						<section className="space-y-8 rounded-2xl border border-border bg-card p-8 shadow-sm">
+						<section className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-sm md:space-y-8 md:p-8">
 							<div className="flex items-center gap-4">
 								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 									<Users className="h-6 w-6" />
 								</div>
 								<div>
-									<h3 className="font-bold text-foreground text-xl tracking-tight">
+									<h3 className="font-bold text-foreground text-base tracking-tight md:text-xl">
 										Manajemen Pengguna & Akses
 									</h3>
 									<p className="text-muted-foreground text-sm">
@@ -693,9 +693,9 @@ function SettingsPage() {
 								</div>
 							</div>
 
-							<div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+							<div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-2">
 								{/* Create User Form */}
-								<div className="space-y-6 rounded-2xl border border-border/50 bg-muted/30 p-6">
+								<div className="space-y-4 rounded-2xl border border-border/50 bg-muted/30 p-4 md:space-y-6 md:p-6">
 									<div className="flex items-center gap-2 border-border/50 border-b pb-4">
 										<User className="h-4 w-4 text-primary" />
 										<h4 className="font-bold text-foreground text-sm uppercase tracking-wider">
@@ -794,7 +794,7 @@ function SettingsPage() {
 								</div>
 
 								{/* Create Role Form */}
-								<div className="space-y-6 rounded-2xl border border-border/50 bg-muted/30 p-6">
+								<div className="space-y-4 rounded-2xl border border-border/50 bg-muted/30 p-4 md:space-y-6 md:p-6">
 									<div className="flex items-center gap-2 border-border/50 border-b pb-4">
 										<Settings2 className="h-4 w-4 text-primary" />
 										<h4 className="font-bold text-foreground text-sm uppercase tracking-wider">
@@ -955,13 +955,13 @@ function SettingsPage() {
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
 						<div className="grid grid-cols-1 gap-8 md:grid-cols-2">
 							{/* Branding Section */}
-							<section className="space-y-8 rounded-2xl border border-border bg-card p-8 shadow-sm">
+							<section className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-sm md:space-y-8 md:p-8">
 								<div className="flex items-center gap-4">
 									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 										<Settings2 className="h-6 w-6" />
 									</div>
 									<div>
-										<h3 className="font-bold text-foreground text-xl tracking-tight">
+										<h3 className="font-bold text-foreground text-base tracking-tight md:text-xl">
 											Branding Aplikasi
 										</h3>
 										<p className="text-muted-foreground text-sm">
@@ -1030,13 +1030,13 @@ function SettingsPage() {
 								</div>
 							</section>
 
-							<section className="space-y-8 rounded-2xl border border-border bg-card p-8 shadow-sm">
+							<section className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-sm md:space-y-8 md:p-8">
 								<div className="flex items-center gap-4">
 									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 										<Printer className="h-6 w-6" />
 									</div>
 									<div>
-										<h3 className="font-bold text-foreground text-xl tracking-tight">
+										<h3 className="font-bold text-foreground text-base tracking-tight md:text-xl">
 											Printer & Struk
 										</h3>
 										<p className="text-muted-foreground text-sm">
@@ -1101,7 +1101,7 @@ function SettingsPage() {
 								</div>
 							</section>
 
-							<section className="space-y-8 rounded-2xl border border-destructive/10 bg-destructive/5 p-8 shadow-sm">
+							<section className="space-y-5 rounded-2xl border border-destructive/10 bg-destructive/5 p-4 shadow-sm md:space-y-8 md:p-8">
 								<div className="flex items-center gap-4">
 									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
 										<Bell className="h-6 w-6" />

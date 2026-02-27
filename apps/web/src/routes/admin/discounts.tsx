@@ -346,16 +346,16 @@ function AdminDiscountsPage() {
 	}, [discounts, getPromoStatus]);
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 min-h-screen animate-in bg-gradient-to-br from-background via-background to-muted/20 p-4 duration-500 md:p-6 lg:p-8">
+		<div className="fade-in slide-in-from-bottom-4 min-h-screen animate-in bg-gradient-to-br from-background via-background to-muted/20 duration-500">
 			{/* Header Section */}
-			<div className="mb-8">
-				<div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+			<div className="mb-4 md:mb-8">
+				<div className="mb-4 flex flex-wrap items-start justify-between gap-3 md:mb-6 md:gap-4">
 					<div>
-						<h1 className="mb-2 font-bold text-3xl tracking-tight md:text-4xl">
+						<h1 className="mb-1 font-bold text-xl tracking-tight md:mb-2 md:text-3xl lg:text-4xl">
 							Manajemen Diskon
 						</h1>
-						<p className="text-muted-foreground text-sm md:text-base">
-							Kelola promosi dan voucher untuk meningkatkan penjualan
+						<p className="text-muted-foreground text-xs md:text-sm lg:text-base">
+							Kelola promosi dan voucher
 						</p>
 					</div>
 					<div className="flex flex-wrap gap-3">

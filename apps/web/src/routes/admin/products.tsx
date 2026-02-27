@@ -40,11 +40,11 @@ function AdminProductsPage() {
 	>("products");
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 flex animate-in flex-col gap-6 duration-500">
-			<div className="flex items-center justify-between border-border border-b pb-1">
-				<div className="flex gap-2">
+		<div className="fade-in slide-in-from-bottom-4 flex animate-in flex-col gap-3 duration-500 md:gap-6">
+			<div className="no-scrollbar flex items-center justify-between overflow-x-auto border-border border-b pb-1">
+				<div className="flex gap-1 md:gap-2">
 					<button
-						className={`relative px-4 py-2 font-bold text-sm transition-colors ${
+						className={`relative whitespace-nowrap px-3 py-2 font-bold text-xs transition-colors md:px-4 md:text-sm ${
 							activeTab === "products"
 								? "text-primary"
 								: "text-muted-foreground hover:text-foreground"
@@ -61,7 +61,7 @@ function AdminProductsPage() {
 						)}
 					</button>
 					<button
-						className={`relative px-4 py-2 font-bold text-sm transition-colors ${
+						className={`relative whitespace-nowrap px-3 py-2 font-bold text-xs transition-colors md:px-4 md:text-sm ${
 							activeTab === "base-recipes"
 								? "text-primary"
 								: "text-muted-foreground hover:text-foreground"
@@ -78,7 +78,7 @@ function AdminProductsPage() {
 						)}
 					</button>
 					<button
-						className={`relative px-4 py-2 font-bold text-sm transition-colors ${
+						className={`relative whitespace-nowrap px-3 py-2 font-bold text-xs transition-colors md:px-4 md:text-sm ${
 							activeTab === "mixed-recipes"
 								? "text-primary"
 								: "text-muted-foreground hover:text-foreground"
@@ -95,7 +95,7 @@ function AdminProductsPage() {
 						)}
 					</button>
 					<button
-						className={`relative px-4 py-2 font-bold text-sm transition-colors ${
+						className={`relative whitespace-nowrap px-3 py-2 font-bold text-xs transition-colors md:px-4 md:text-sm ${
 							activeTab === "settings"
 								? "text-primary"
 								: "text-muted-foreground hover:text-foreground"
