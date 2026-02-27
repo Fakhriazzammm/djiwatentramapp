@@ -71,7 +71,7 @@ export function NewTransactionDialog({
 	return (
 		<AnimatePresence>
 			{isOpen && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-[#4A3728]/40 p-4 backdrop-blur-md">
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-md">
 					<button
 						aria-label="Tutup dialog"
 						className="absolute inset-0 cursor-default bg-transparent"
@@ -80,30 +80,30 @@ export function NewTransactionDialog({
 					/>
 					<motion.div
 						animate={{ opacity: 1, scale: 1 }}
-						className="relative w-full max-w-lg rounded-[40px] border border-[#4A3728]/10 bg-[#F5F0E1] p-10"
+						className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-card p-8 shadow-2xl"
 						exit={{ opacity: 0, scale: 0.95 }}
 						initial={{ opacity: 0, scale: 0.95 }}
 					>
 						<button
-							className="absolute top-6 right-6 rounded-full bg-[#4A3728]/10 p-2 text-[#4A3728] transition-all hover:bg-[#4A3728]/20"
+							className="absolute top-4 right-4 rounded-full bg-muted p-2 text-muted-foreground transition-all hover:bg-muted/80 hover:text-foreground"
 							onClick={onClose}
 							type="button"
 						>
 							<X className="h-5 w-5" />
 						</button>
 
-						<h3 className="mb-8 font-black text-3xl text-[#4A3728] tracking-tight">
+						<h3 className="mb-6 font-bold text-2xl text-foreground tracking-tight">
 							Catat Transaksi
 						</h3>
 
-						<form className="space-y-6" onSubmit={handleSubmit}>
+						<form className="space-y-5" onSubmit={handleSubmit}>
 							{/* Type Selection */}
-							<div className="flex rounded-[24px] bg-[#E8E1CF] p-1.5 shadow-inner">
+							<div className="flex rounded-xl bg-muted p-1">
 								<button
-									className={`flex-1 rounded-[20px] py-4 font-bold text-[10px] uppercase tracking-widest transition-all ${
+									className={`flex-1 rounded-lg px-4 py-2.5 font-semibold text-xs uppercase tracking-wide transition-all ${
 										formData.type === "income"
-											? "bg-[#4A3728] text-[#F5F0E1]"
-											: "text-[#4A3728]/40 hover:text-[#4A3728]"
+											? "bg-primary text-primary-foreground shadow-sm"
+											: "text-muted-foreground hover:text-foreground"
 									}`}
 									onClick={() => setFormData({ ...formData, type: "income" })}
 									type="button"
@@ -111,10 +111,10 @@ export function NewTransactionDialog({
 									Pemasukan
 								</button>
 								<button
-									className={`flex-1 rounded-[20px] py-4 font-bold text-[10px] uppercase tracking-widest transition-all ${
+									className={`flex-1 rounded-lg px-4 py-2.5 font-semibold text-xs uppercase tracking-wide transition-all ${
 										formData.type === "expense"
-											? "bg-[#4A3728] text-[#F5F0E1]"
-											: "text-[#4A3728]/40 hover:text-[#4A3728]"
+											? "bg-destructive text-destructive-foreground shadow-sm"
+											: "text-muted-foreground hover:text-foreground"
 									}`}
 									onClick={() => setFormData({ ...formData, type: "expense" })}
 									type="button"
@@ -123,17 +123,17 @@ export function NewTransactionDialog({
 								</button>
 							</div>
 
-							<div className="space-y-6">
-								<div className="grid grid-cols-2 gap-5">
-									<div className="space-y-2">
+							<div className="space-y-4">
+								<div className="grid grid-cols-2 gap-4">
+									<div className="space-y-1.5">
 										<label
-											className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+											className="font-medium text-muted-foreground text-xs uppercase tracking-wide"
 											htmlFor={dateId}
 										>
 											Tanggal
 										</label>
 										<input
-											className="w-full rounded-2xl bg-[#E8E1CF] p-4 font-bold text-[#4A3728] text-sm outline-none transition-all focus:ring-2 focus:ring-[#4A3728]/20"
+											className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-medium text-foreground text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
 											id={dateId}
 											onChange={(e) =>
 												setFormData({ ...formData, date: e.target.value })
@@ -143,15 +143,15 @@ export function NewTransactionDialog({
 											value={formData.date}
 										/>
 									</div>
-									<div className="space-y-2">
+									<div className="space-y-1.5">
 										<label
-											className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+											className="font-medium text-muted-foreground text-xs uppercase tracking-wide"
 											htmlFor={amountId}
 										>
 											Nominal
 										</label>
 										<input
-											className="w-full rounded-2xl bg-[#E8E1CF] p-4 font-black text-[#4A3728] text-sm outline-none transition-all focus:ring-2 focus:ring-[#4A3728]/20"
+											className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-semibold text-foreground text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
 											id={amountId}
 											min="0"
 											onChange={(e) =>
@@ -165,15 +165,15 @@ export function NewTransactionDialog({
 									</div>
 								</div>
 
-								<div className="space-y-2">
+								<div className="space-y-1.5">
 									<label
-										className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+										className="font-medium text-muted-foreground text-xs uppercase tracking-wide"
 										htmlFor={categoryId}
 									>
 										Kategori
 									</label>
 									<input
-										className="w-full rounded-2xl bg-[#E8E1CF] p-4 font-bold text-[#4A3728] text-sm outline-none transition-all placeholder:text-[#4A3728]/30 focus:ring-2 focus:ring-[#4A3728]/20"
+										className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-medium text-foreground text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
 										id={categoryId}
 										list="categories"
 										onChange={(e) =>
@@ -193,15 +193,15 @@ export function NewTransactionDialog({
 									</datalist>
 								</div>
 
-								<div className="space-y-2">
+								<div className="space-y-1.5">
 									<label
-										className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+										className="font-medium text-muted-foreground text-xs uppercase tracking-wide"
 										htmlFor={paymentMethodId}
 									>
 										Metode Pembayaran
 									</label>
 									<select
-										className="w-full appearance-none rounded-2xl bg-[#E8E1CF] p-4 font-bold text-[#4A3728] text-sm outline-none transition-all focus:ring-2 focus:ring-[#4A3728]/20"
+										className="w-full appearance-none rounded-lg border border-border bg-background px-3 py-2.5 font-medium text-foreground text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
 										id={paymentMethodId}
 										onChange={(e) =>
 											setFormData({
@@ -218,15 +218,15 @@ export function NewTransactionDialog({
 									</select>
 								</div>
 
-								<div className="space-y-2">
+								<div className="space-y-1.5">
 									<label
-										className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+										className="font-medium text-muted-foreground text-xs uppercase tracking-wide"
 										htmlFor={descriptionId}
 									>
 										Keterangan (Opsional)
 									</label>
 									<textarea
-										className="w-full rounded-2xl bg-[#E8E1CF] p-4 font-medium text-[#4A3728] text-sm outline-none transition-all placeholder:text-[#4A3728]/30 focus:ring-2 focus:ring-[#4A3728]/20"
+										className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-normal text-foreground text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
 										id={descriptionId}
 										onChange={(e) =>
 											setFormData({ ...formData, description: e.target.value })
@@ -238,9 +238,13 @@ export function NewTransactionDialog({
 								</div>
 							</div>
 
-							<div className="pt-4">
+							<div className="pt-2">
 								<button
-									className="w-full rounded-[32px] bg-[#4A3728] py-5 font-bold text-[#F5F0E1] text-[10px] uppercase tracking-[0.2em] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+									className={`w-full rounded-lg py-3.5 font-semibold text-sm uppercase tracking-wide transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 ${
+										formData.type === "income"
+											? "bg-primary text-primary-foreground"
+											: "bg-destructive text-destructive-foreground"
+									}`}
 									disabled={isSubmitting}
 									type="submit"
 								>

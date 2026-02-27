@@ -60,8 +60,8 @@ const variantStyles = {
 	secondary: "bg-secondary/10 text-secondary-foreground hover:bg-secondary/20",
 	ghost: "bg-transparent text-muted-foreground hover:bg-muted/10",
 	danger: "bg-destructive/10 text-destructive hover:bg-destructive/20",
-	warning: "bg-orange-500/10 text-orange-500 hover:bg-orange-500/20",
-	success: "bg-green-500/10 text-green-500 hover:bg-green-500/20",
+	warning: "bg-accent/10 text-accent hover:bg-accent/20",
+	success: "bg-primary/10 text-primary hover:bg-primary/20",
 } as const;
 
 const sizeStyles = {
@@ -221,8 +221,10 @@ const buttonVariantStyles = {
 		"bg-transparent text-muted-foreground hover:bg-muted/10 active:bg-muted/20",
 	danger:
 		"bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/80",
-	warning: "bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700",
-	success: "bg-green-500 text-white hover:bg-green-600 active:bg-green-700",
+	warning:
+		"bg-accent text-accent-foreground hover:bg-accent/90 active:bg-accent/80",
+	success:
+		"bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80",
 } as const;
 
 const _buttonSizeStyles = {

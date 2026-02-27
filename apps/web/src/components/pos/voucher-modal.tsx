@@ -182,14 +182,14 @@ export function VoucherModal({
 														<div
 															className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${
 																discount.type === "PERCENTAGE"
-																	? "bg-green-100"
-																	: "bg-blue-100"
+																	? "bg-primary/10"
+																	: "bg-accent/10"
 															}`}
 														>
 															{discount.type === "PERCENTAGE" ? (
-																<Percent className="h-6 w-6 text-green-600" />
+																<Percent className="h-6 w-6 text-primary" />
 															) : (
-																<Tag className="h-6 w-6 text-blue-600" />
+																<Tag className="h-6 w-6 text-accent" />
 															)}
 														</div>
 														<div>
@@ -235,7 +235,7 @@ export function VoucherModal({
 							{appliedVoucher && (
 								<div className="border-border border-t p-4">
 									<button
-										className="w-full rounded-lg border border-red-200 bg-red-50 py-3 font-semibold text-red-600 text-sm transition-all hover:bg-red-100"
+										className="w-full rounded-lg border border-destructive/20 bg-destructive/10 py-3 font-semibold text-destructive text-sm transition-all hover:bg-destructive/20"
 										onClick={handleRemoveVoucher}
 										type="button"
 									>

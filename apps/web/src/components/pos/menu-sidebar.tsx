@@ -68,15 +68,15 @@ const TABS: TabItem[] = [
 		value: "dashboard",
 		label: "Dashboard",
 		icon: BarChart3,
-		iconColor: "text-blue-500",
+		iconColor: "text-primary",
 	},
-	{ value: "kas", label: "Kas", icon: Wallet, iconColor: "text-emerald-500" },
-	{ value: "stok", label: "Stok", icon: Package, iconColor: "text-amber-500" },
+	{ value: "kas", label: "Kas", icon: Wallet, iconColor: "text-primary" },
+	{ value: "stok", label: "Stok", icon: Package, iconColor: "text-accent" },
 	{
 		value: "yumi",
 		label: "Yumi",
 		icon: Sparkles,
-		iconColor: "text-purple-500",
+		iconColor: "text-secondary",
 	},
 ];
 
@@ -105,7 +105,7 @@ export function MenuSidebar() {
 				>
 					<Menu className="h-5 w-5" />
 					{lowStockCount > 0 && (
-						<span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 font-bold text-[9px] text-white">
+						<span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive font-bold text-[9px] text-destructive-foreground">
 							{lowStockCount > 9 ? "9+" : lowStockCount}
 						</span>
 					)}
@@ -209,36 +209,36 @@ function DashboardTab({ onClose }: { onClose: () => void }) {
 	return (
 		<div className="space-y-4">
 			<div className="grid grid-cols-3 gap-2">
-				<Card className="border-green-200 bg-green-50/50 dark:bg-green-900/10">
+				<Card className="border-primary/20 bg-primary/5">
 					<CardContent className="p-3 text-center">
-						<TrendingUp className="mx-auto mb-1 h-4 w-4 text-green-600" />
-						<p className="text-[9px] text-green-700 uppercase tracking-tight dark:text-green-400">
+						<TrendingUp className="mx-auto mb-1 h-4 w-4 text-primary" />
+						<p className="text-[9px] text-primary/70 uppercase tracking-tight">
 							Pemasukan
 						</p>
-						<p className="font-bold text-green-600 text-sm">
+						<p className="font-bold text-primary text-sm">
 							{formatCurrency(income)}
 						</p>
 					</CardContent>
 				</Card>
-				<Card className="border-red-200 bg-red-50/50 dark:bg-red-900/10">
+				<Card className="border-destructive/20 bg-destructive/5">
 					<CardContent className="p-3 text-center">
-						<TrendingDown className="mx-auto mb-1 h-4 w-4 text-red-600" />
-						<p className="text-[9px] text-red-700 uppercase tracking-tight dark:text-red-400">
+						<TrendingDown className="mx-auto mb-1 h-4 w-4 text-destructive" />
+						<p className="text-[9px] text-destructive/70 uppercase tracking-tight">
 							Pengeluaran
 						</p>
-						<p className="font-bold text-red-600 text-sm">
+						<p className="font-bold text-destructive text-sm">
 							{formatCurrency(expense)}
 						</p>
 					</CardContent>
 				</Card>
-				<Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-900/10">
+				<Card className="border-accent/20 bg-accent/5">
 					<CardContent className="p-3 text-center">
-						<Banknote className="mx-auto mb-1 h-4 w-4 text-blue-600" />
-						<p className="text-[9px] text-blue-700 uppercase tracking-tight dark:text-blue-400">
+						<Banknote className="mx-auto mb-1 h-4 w-4 text-accent" />
+						<p className="text-[9px] text-accent/70 uppercase tracking-tight">
 							Kas Bersih
 						</p>
 						<p
-							className={`font-bold text-sm ${balance >= 0 ? "text-blue-600" : "text-red-600"}`}
+							className={`font-bold text-sm ${balance >= 0 ? "text-primary" : "text-destructive"}`}
 						>
 							{formatCurrency(balance)}
 						</p>
@@ -272,11 +272,11 @@ function DashboardTab({ onClose }: { onClose: () => void }) {
 			</div>
 
 			{(lowStockItems?.length || 0) > 0 && (
-				<Card className="border-red-200 bg-red-50/50 dark:bg-red-900/10">
+				<Card className="border-destructive/20 bg-destructive/5">
 					<CardContent className="p-3">
 						<div className="flex items-center gap-2">
-							<AlertCircle className="h-4 w-4 text-red-500" />
-							<span className="font-medium text-red-700 text-sm dark:text-red-300">
+							<AlertCircle className="h-4 w-4 text-destructive" />
+							<span className="font-medium text-destructive text-sm">
 								{lowStockItems?.length} item stok rendah!
 							</span>
 						</div>
@@ -304,10 +304,10 @@ function DashboardTab({ onClose }: { onClose: () => void }) {
 									<div
 										className={`h-2 w-2 rounded-full ${
 											order.status === "completed" || order.status === "paid"
-												? "bg-green-500"
+												? "bg-primary"
 												: order.status === "pending"
-													? "bg-yellow-500"
-													: "bg-red-500"
+													? "bg-accent"
+													: "bg-destructive"
 										}`}
 									/>
 									<div>
@@ -455,7 +455,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				<button
 					className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-all ${
 						shiftType === "mulai"
-							? "bg-green-500 text-white"
+							? "bg-primary text-primary-foreground"
 							: "text-muted-foreground hover:text-foreground"
 					}`}
 					onClick={() => setShiftType("mulai")}
@@ -466,7 +466,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				<button
 					className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-all ${
 						shiftType === "akhiri"
-							? "bg-red-500 text-white"
+							? "bg-destructive text-destructive-foreground"
 							: "text-muted-foreground hover:text-foreground"
 					}`}
 					onClick={() => setShiftType("akhiri")}
@@ -524,7 +524,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 							<div className="space-y-1 text-xs">
 								<div className="flex justify-between">
 									<span>Pemasukan:</span>
-									<span className="font-bold text-green-600">
+									<span className="font-bold text-primary">
 										{new Intl.NumberFormat("id-ID", {
 											style: "currency",
 											currency: "IDR",
@@ -534,7 +534,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 								</div>
 								<div className="flex justify-between">
 									<span>Pengeluaran:</span>
-									<span className="font-bold text-red-600">
+									<span className="font-bold text-destructive">
 										{new Intl.NumberFormat("id-ID", {
 											style: "currency",
 											currency: "IDR",
@@ -804,7 +804,7 @@ function StokTab({
 							<Icon className="h-3.5 w-3.5" />
 							<span>{tab.label}</span>
 							{tab.badge && tab.badge > 0 && (
-								<span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 font-bold text-[9px] text-white">
+								<span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive font-bold text-[9px] text-destructive-foreground">
 									{tab.badge > 9 ? "9+" : tab.badge}
 								</span>
 							)}
@@ -927,7 +927,7 @@ function InventoryTab({
 							<Card
 								className={`overflow-hidden ${
 									isLowStock
-										? "border-red-200 bg-red-50/30 dark:bg-red-900/10"
+										? "border-destructive/30 bg-destructive/5"
 										: "border-border bg-card/50"
 								}`}
 								key={item._id}
@@ -940,14 +940,14 @@ function InventoryTab({
 													{item.ingredientName}
 												</span>
 												{isLowStock && (
-													<AlertCircle className="h-3 w-3 text-red-500" />
+													<AlertCircle className="h-3 w-3 text-destructive" />
 												)}
 											</div>
 											<div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
 												Stok:{" "}
 												<span
 													className={`font-bold ${
-														isLowStock ? "text-red-500" : "text-foreground"
+														isLowStock ? "text-destructive" : "text-foreground"
 													}`}
 												>
 													{item.displayUnit &&
@@ -995,7 +995,7 @@ function InventoryTab({
 													size="sm"
 													variant="outline"
 												>
-													<Sparkles className="mr-1 h-3 w-3 text-amber-500" />
+													<Sparkles className="mr-1 h-3 w-3 text-accent" />
 													Produksi
 												</Button>
 											)}
@@ -1122,7 +1122,7 @@ function MarketList() {
 		<div className="space-y-3">
 			<div className="flex items-center justify-between">
 				<h3 className="font-bold text-sm">Daftar Belanja</h3>
-				<span className="rounded-full bg-red-100 px-2 py-0.5 font-medium text-[10px] text-red-600 dark:bg-red-900/30 dark:text-red-400">
+				<span className="rounded-full bg-destructive/10 px-2 py-0.5 font-medium text-[10px] text-destructive">
 					{lowStockItems.length} item perlu dibeli
 				</span>
 			</div>
@@ -1138,13 +1138,13 @@ function MarketList() {
 					<div className="space-y-2">
 						{lowStockItems.map((item) => (
 							<Card
-								className="border-red-200 bg-red-50/50 dark:bg-red-900/10"
+								className="border-destructive/30 bg-destructive/5"
 								key={item._id}
 							>
 								<CardContent className="flex items-start gap-3 p-3">
-									<AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+									<AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
 									<div className="flex-1">
-										<div className="font-medium text-red-700 text-sm dark:text-red-300">
+										<div className="font-medium text-destructive text-sm">
 											{item.ingredientName}
 										</div>
 										<div className="text-muted-foreground text-xs">
@@ -1320,7 +1320,7 @@ function YumiAIDashboard() {
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-2">
 					<div className="relative">
-						<div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 shadow-md">
+						<div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent shadow-md">
 							<Sparkles className="h-5 w-5 text-white" />
 						</div>
 						<button
@@ -1340,11 +1340,11 @@ function YumiAIDashboard() {
 			</div>
 
 			<div className="grid grid-cols-2 gap-2">
-				<div className="rounded-lg border border-green-100 bg-green-50/20 p-2 text-center">
-					<p className="text-[9px] text-green-700 uppercase tracking-tight">
+				<div className="rounded-lg border border-primary/20 bg-primary/5 p-2 text-center">
+					<p className="text-[9px] text-primary/70 uppercase tracking-tight">
 						Pemasukan
 					</p>
-					<p className="font-bold text-green-600 text-sm">
+					<p className="font-bold text-primary text-sm">
 						{new Intl.NumberFormat("id-ID", {
 							style: "currency",
 							currency: "IDR",
@@ -1352,11 +1352,11 @@ function YumiAIDashboard() {
 						}).format(income)}
 					</p>
 				</div>
-				<div className="rounded-lg border border-red-100 bg-red-50/20 p-2 text-center">
-					<p className="text-[9px] text-red-700 uppercase tracking-tight">
+				<div className="rounded-lg border border-destructive/20 bg-destructive/5 p-2 text-center">
+					<p className="text-[9px] text-destructive/70 uppercase tracking-tight">
 						Pengeluaran
 					</p>
-					<p className="font-bold text-red-600 text-sm">
+					<p className="font-bold text-destructive text-sm">
 						{new Intl.NumberFormat("id-ID", {
 							style: "currency",
 							currency: "IDR",
@@ -1368,14 +1368,14 @@ function YumiAIDashboard() {
 
 			<div className="space-y-2">
 				{overview ? (
-					<div className="rounded-lg border border-purple-100 bg-purple-50/10 p-3 shadow-inner">
+					<div className="rounded-lg border border-secondary/20 bg-secondary/5 p-3 shadow-inner">
 						<div className="whitespace-pre-line text-foreground/80 text-xs leading-normal">
 							{overview}
 						</div>
 					</div>
 				) : (
-					<div className="flex flex-col items-center justify-center rounded-lg border border-purple-200 border-dashed bg-purple-50/5 p-4 text-center">
-						<Loader2 className="mb-2 h-5 w-5 animate-spin text-purple-400" />
+					<div className="flex flex-col items-center justify-center rounded-lg border border-secondary/30 border-dashed bg-secondary/5 p-4 text-center">
+						<Loader2 className="mb-2 h-5 w-5 animate-spin text-secondary" />
 						<p className="text-[10px] text-muted-foreground">
 							Menganalisis data...
 						</p>
@@ -1391,7 +1391,7 @@ function YumiAIDashboard() {
 					<div className="flex items-center justify-between text-[11px]">
 						<span className="text-muted-foreground">Stok Rendah:</span>
 						<span
-							className={`font-bold ${lowStockItems?.length ? "text-red-500" : "text-green-500"}`}
+							className={`font-bold ${lowStockItems?.length ? "text-destructive" : "text-primary"}`}
 						>
 							{lowStockItems?.length || 0} Item
 						</span>
@@ -1405,7 +1405,7 @@ function YumiAIDashboard() {
 					<div className="mt-1.5 flex items-center justify-between border-border border-t pt-1.5 text-[11px]">
 						<span className="font-medium">Kas Bersih:</span>
 						<span
-							className={`font-bold ${balance >= 0 ? "text-green-600" : "text-red-600"}`}
+							className={`font-bold ${balance >= 0 ? "text-primary" : "text-destructive"}`}
 						>
 							{new Intl.NumberFormat("id-ID", {
 								style: "currency",

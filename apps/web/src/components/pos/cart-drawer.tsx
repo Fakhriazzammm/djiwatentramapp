@@ -246,7 +246,7 @@ export function CartDrawer({
 										<span className="text-muted-foreground text-sm">
 											Diskon
 										</span>
-										<span className="font-medium text-green-600 text-sm">
+										<span className="font-medium text-primary text-sm">
 											-
 											{new Intl.NumberFormat("id-ID", {
 												style: "currency",

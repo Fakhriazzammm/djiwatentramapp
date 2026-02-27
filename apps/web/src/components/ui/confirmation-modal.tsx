@@ -25,21 +25,22 @@ export function ConfirmationModal({
 	const variantConfig = {
 		danger: {
 			icon: Trash2,
-			iconBg: "bg-red-50",
-			iconColor: "text-red-500",
-			confirmBg: "bg-red-500 text-white hover:bg-red-600",
+			iconBg: "bg-destructive/10",
+			iconColor: "text-destructive",
+			confirmBg:
+				"bg-destructive text-destructive-foreground hover:bg-destructive/90",
 		},
 		warning: {
 			icon: AlertTriangle,
-			iconBg: "bg-yellow-50",
-			iconColor: "text-yellow-500",
-			confirmBg: "bg-yellow-500 text-white hover:bg-yellow-600",
+			iconBg: "bg-accent/10",
+			iconColor: "text-accent",
+			confirmBg: "bg-accent text-accent-foreground hover:bg-accent/90",
 		},
 		info: {
-			icon: AlertTriangle, // Fallback
-			iconBg: "bg-blue-50",
-			iconColor: "text-blue-500",
-			confirmBg: "bg-blue-500 text-white hover:bg-blue-600",
+			icon: AlertTriangle,
+			iconBg: "bg-primary/10",
+			iconColor: "text-primary",
+			confirmBg: "bg-primary text-primary-foreground hover:bg-primary/90",
 		},
 	};
 
