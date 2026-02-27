@@ -1,5 +1,5 @@
 /**
- * TKM POS Design System
+ * POS Design System
  *
  * Single source of truth untuk spacing, typography, colors,
  * dan design tokens lainnya.

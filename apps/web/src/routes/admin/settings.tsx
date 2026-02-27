@@ -59,7 +59,7 @@ function SettingsPage() {
 	const deleteRole = useMutation((api as any).roles.deleteRole);
 
 	const [settings, setSettings] = useState({
-		storeName: "TKM Coffee",
+		storeName: "Coffee Shop",
 		storeAddress: "",
 		storePhone: "",
 		receiptFooter: "Terima kasih!",
@@ -80,7 +80,7 @@ function SettingsPage() {
 
 	const [landingSettings, setLandingSettings] = useState({
 		landingIcon: "Coffee",
-		landingTitle: "TKM COFFEE",
+		landingTitle: "COFFEE SHOP",
 		landingDescription: "Pengalaman Kopi Premium",
 		landingButtonText: "Pesan Disini",
 		logoUrl: "",
@@ -121,7 +121,7 @@ function SettingsPage() {
 		if (siteSettings) {
 			setLandingSettings({
 				landingIcon: siteSettings.landingIcon ?? "Coffee",
-				landingTitle: siteSettings.landingTitle ?? "TKM COFFEE",
+				landingTitle: siteSettings.landingTitle ?? "COFFEE SHOP",
 				landingDescription:
 					siteSettings.landingDescription ?? "Pengalaman Kopi Premium",
 				landingButtonText: siteSettings.landingButtonText ?? "Pesan Disini",
@@ -130,7 +130,7 @@ function SettingsPage() {
 			});
 			setSettings((prev) => ({
 				...prev,
-				storeName: siteSettings.storeName ?? "TKM Coffee",
+				storeName: siteSettings.storeName ?? "Coffee Shop",
 				storeAddress: siteSettings.storeAddress ?? "",
 				storePhone: siteSettings.storePhone ?? "",
 				receiptFooter: siteSettings.receiptFooter ?? "Terima kasih!",

@@ -502,8 +502,8 @@ function AIChatPage() {
 
 	// Load conversation when session changes
 	useEffect(() => {
-		if (currentSessionId && loadConversationQuery.data) {
-			const history = loadConversationQuery.data
+		if (currentSessionId && loadConversationQuery) {
+			const history = loadConversationQuery
 				.filter((m) => m.role !== "system")
 				.map((m) => ({
 					role: m.role as "user" | "assistant",
@@ -514,7 +514,7 @@ function AIChatPage() {
 				setMessages(history);
 			}
 		}
-	}, [currentSessionId, loadConversationQuery.data]);
+	}, [currentSessionId, loadConversationQuery]);
 
 	// Get predictions for display (disabled for now - functions not implemented)
 	// const getStockRiskLevel = () => {
@@ -753,7 +753,7 @@ function AIChatPage() {
 							Saran Proaktif AI
 						</h3>
 
-						{!proactiveSuggestions.data || proactiveSuggestions.data.length === 0 ? (
+						{!proactiveSuggestions || proactiveSuggestions.length === 0 ? (
 							<div className="py-8 text-center">
 								<Lightbulb className="mx-auto mb-2 h-12 w-12 text-muted-foreground" />
 								<p className="text-muted-foreground">
@@ -762,7 +762,7 @@ function AIChatPage() {
 							</div>
 						) : (
 							<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-								{proactiveSuggestions.data.map((suggestion: any) => (
+								{proactiveSuggestions.map((suggestion: any) => (
 									<div
 										className={`space-y-2 rounded-xl border p-4 ${
 											suggestion.priority === "high"
@@ -1097,9 +1097,9 @@ function AIChatPage() {
 							</button>
 						</div>
 
-						{pendingTasks.data && pendingTasks.data.length > 0 ? (
+						{pendingTasks && pendingTasks.length > 0 ? (
 							<div className="space-y-3">
-								{pendingTasks.data.map((task: any) => (
+								{pendingTasks.map((task: any) => (
 									<div
 										className={`rounded-lg border p-3 ${
 											task.priority === "high"
@@ -1322,7 +1322,7 @@ function AIChatPage() {
 											Riwayat Chat
 										</h3>
 										<p className="text-muted-foreground text-xs">
-											{chatSessions.data?.length || 0} sesi
+											{chatSessions?.length || 0} sesi
 										</p>
 									</div>
 									<button
@@ -1348,7 +1348,7 @@ function AIChatPage() {
 
 								{/* Session List */}
 								<div className="flex-1 overflow-y-auto p-2 space-y-1">
-									{!chatSessions.data || chatSessions.data.length === 0 ? (
+									{!chatSessions || chatSessions.length === 0 ? (
 										<div className="py-8 text-center">
 											<Bot className="mx-auto mb-2 h-10 w-10 text-muted-foreground" />
 											<p className="text-muted-foreground text-sm">
@@ -1356,7 +1356,7 @@ function AIChatPage() {
 											</p>
 										</div>
 									) : (
-										chatSessions.data.map((session: ChatSession) => (
+										chatSessions.map((session: ChatSession) => (
 											<div
 												className={`group relative rounded-lg border p-3 transition-all cursor-pointer ${
 													currentSessionId === session.sessionId

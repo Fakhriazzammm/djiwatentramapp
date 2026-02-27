@@ -4,12 +4,12 @@ import { mutation, query } from "./_generated/server";
 // Default values
 const DEFAULTS = {
 	landingIcon: "Coffee",
-	landingTitle: "TKM COFFEE",
+	landingTitle: "COFFEE SHOP",
 	landingDescription: "Pengalaman Kopi Premium",
 	landingButtonText: "Pesan Disini",
 	logoUrl: "",
 	paymentPopupImage: "",
-	storeName: "TKM Coffee",
+	storeName: "Coffee Shop",
 	storeAddress: "",
 	storePhone: "",
 	receiptFooter: "Terima kasih atas kunjungan Anda!",

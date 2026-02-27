@@ -78,11 +78,11 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 	head: () => ({
 		meta: [
 			{
-				title: "tkmpos",
+				title: "POS System",
 			},
 			{
 				name: "description",
-				content: "tkmpos is a web application",
+				content: "Point of Sale System",
 			},
 		],
 		links: [

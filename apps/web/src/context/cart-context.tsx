@@ -49,7 +49,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 	const [items, setItems] = useState<CartItem[]>(() => {
 		// Load cart from localStorage on mount
 		if (typeof window !== "undefined") {
-			const savedCart = localStorage.getItem("tkmpos_cart");
+			const savedCart = localStorage.getItem("pos_cart");
 			if (savedCart) {
 				try {
 					return JSON.parse(savedCart);
@@ -64,7 +64,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 	const [appliedVoucher, setAppliedVoucher] = useState<AppliedVoucher | null>(
 		() => {
 			if (typeof window !== "undefined") {
-				const savedVoucher = localStorage.getItem("tkmpos_voucher");
+				const savedVoucher = localStorage.getItem("pos_voucher");
 				if (savedVoucher) {
 					try {
 						return JSON.parse(savedVoucher);
@@ -80,7 +80,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 	// Save cart to localStorage whenever it changes
 	useEffect(() => {
 		if (typeof window !== "undefined") {
-			localStorage.setItem("tkmpos_cart", JSON.stringify(items));
+			localStorage.setItem("pos_cart", JSON.stringify(items));
 		}
 	}, [items]);
 
@@ -88,9 +88,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 	useEffect(() => {
 		if (typeof window !== "undefined") {
 			if (appliedVoucher) {
-				localStorage.setItem("tkmpos_voucher", JSON.stringify(appliedVoucher));
+				localStorage.setItem("pos_voucher", JSON.stringify(appliedVoucher));
 			} else {
-				localStorage.removeItem("tkmpos_voucher");
+				localStorage.removeItem("pos_voucher");
 			}
 		}
 	}, [appliedVoucher]);

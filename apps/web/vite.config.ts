@@ -13,9 +13,9 @@ export default defineConfig({
 		VitePWA({
 			registerType: "autoUpdate",
 			manifest: {
-				name: "tkmpos",
-				short_name: "tkmpos",
-				description: "tkmpos - PWA Application",
+				name: "POS System",
+				short_name: "POS",
+				description: "Point of Sale System - PWA Application",
 				theme_color: "#0c0c0c",
 			},
 			pwaAssets: { disabled: false, config: true },

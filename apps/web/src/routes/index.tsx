@@ -60,7 +60,7 @@ function LandingPage() {
 				</div>
 
 				<h1 className="font-bold text-5xl text-foreground tracking-tight md:text-7xl">
-					{settings?.landingTitle || "TKM COFFEE"}
+					{settings?.landingTitle || "COFFEE SHOP"}
 				</h1>
 				<p className="mx-auto max-w-md font-light text-muted-foreground text-xl tracking-wide md:text-2xl">
 					{settings?.landingDescription || "Pengalaman Kopi Premium"}

@@ -79,7 +79,7 @@ export interface OfflineConfig {
 
 	/**
 	 * Storage key for persisted data
-	 * @default "tkmpos-offline"
+	 * @default "pos-offline"
 	 */
 	storageKey: string;
 
@@ -98,7 +98,7 @@ const DEFAULT_CONFIG: OfflineConfig = {
 	maxRetries: 3,
 	retryInterval: 5000,
 	enabled: true,
-	storageKey: "tkmpos-offline",
+	storageKey: "pos-offline",
 	maxQueueSize: 100,
 };
 

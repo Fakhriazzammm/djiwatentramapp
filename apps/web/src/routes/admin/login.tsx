@@ -147,7 +147,7 @@ function LoginPage() {
 										className="w-full rounded-xl border border-[#4A3728]/5 bg-[#E8E1CF]/30 py-4 pr-4 pl-12 font-bold text-[#4A3728] text-sm outline-none transition-all placeholder:text-[#4A3728]/20 focus:border-primary/20 focus:bg-white focus:ring-4 focus:ring-primary/10"
 										id="username"
 										onChange={(e) => setUsername(e.target.value)}
-										placeholder="admin@tkmpos.id"
+										placeholder="admin@example.com"
 										type="text"
 										value={username}
 									/>
