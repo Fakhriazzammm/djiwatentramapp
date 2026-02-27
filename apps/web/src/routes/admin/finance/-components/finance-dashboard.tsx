@@ -18,8 +18,8 @@ export function FinanceDashboard() {
 		"income" | "expense" | undefined
 	>(undefined);
 
-	const transactions = useQuery(api.finance.getTransactions, {
-		paginationOpts: { numItems: 20, cursor: null },
+	// Get ALL transactions without pagination
+	const transactions = useQuery(api.finance.getAllTransactions, {
 		type: filterType,
 	});
 
@@ -47,7 +47,7 @@ export function FinanceDashboard() {
 			);
 		}
 
-		if (transactions.page.length === 0) {
+		if (transactions.length === 0) {
 			return (
 				<div className="p-12 text-center">
 					<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
@@ -95,8 +95,8 @@ export function FinanceDashboard() {
 							))}
 
 						{transactions &&
-							transactions.page.length > 0 &&
-							transactions.page.map((t: Doc<"financialTransactions">) => (
+							transactions.length > 0 &&
+							transactions.map((t: Doc<"financialTransactions">) => (
 								<tr
 									className="border-border/50 border-b hover:bg-muted/30"
 									key={t._id}
@@ -130,7 +130,7 @@ export function FinanceDashboard() {
 								</tr>
 							))}
 
-						{transactions && transactions.page.length === 0 && (
+						{transactions && transactions.length === 0 && (
 							<tr>
 								<td className="p-12 text-center" colSpan={5}>
 									<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">

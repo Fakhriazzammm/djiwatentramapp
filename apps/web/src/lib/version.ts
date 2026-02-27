@@ -4,7 +4,7 @@ export const APP_VERSION = {
 	// Release version from package.json
 	semantic: "undefined",
 	// Git commit hash (short)
-	commitHash: "212f933",
+	commitHash: "b321c86",
 	// Build timestamp
 	buildDate: "2026-02-27",
 	// Full version string for display

@@ -37,6 +37,40 @@ export const getTransactions = query({
 	},
 });
 
+// Get ALL transactions without pagination (for full detail view)
+export const getAllTransactions = query({
+	args: {
+		type: v.optional(v.union(v.literal("income"), v.literal("expense"))),
+		startDate: v.optional(v.number()),
+		endDate: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const { type, startDate, endDate } = args;
+
+		let q =
+			startDate !== undefined || endDate !== undefined
+				? ctx.db.query("financialTransactions").withIndex("by_date", (q) => {
+						if (startDate !== undefined && endDate !== undefined) {
+							return q.gte("date", startDate).lte("date", endDate);
+						}
+						if (startDate !== undefined) {
+							return q.gte("date", startDate);
+						}
+						if (endDate !== undefined) {
+							return q.lte("date", endDate);
+						}
+						return q;
+					})
+				: ctx.db.query("financialTransactions").withIndex("by_date");
+
+		if (type) {
+			q = q.filter((f) => f.eq(f.field("type"), type));
+		}
+
+		return await q.order("desc").collect();
+	},
+});
+
 // Create a new transaction
 export const createTransaction = mutation({
 	args: {

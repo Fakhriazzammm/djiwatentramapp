@@ -174,6 +174,7 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		financialSummary,
 		hppDashboard,
 		hppOrdersCogs,
+		allTransactions,
 	] = await Promise.all([
 		ctx.runQuery(api.products.getAllProductsAdmin),
 		ctx.runQuery(api.products.getCategories),
@@ -183,6 +184,7 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		ctx.runQuery(api.finance.getFinancialSummary, {}),
 		ctx.runQuery(api.hpp.getHppDashboardData),
 		ctx.runQuery(api.hpp.getOrdersCogs),
+		ctx.runQuery(api.finance.getAllTransactions, {}), // Get ALL transactions with details
 	]);
 
 	const prodList =
@@ -267,6 +269,23 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		  }
 		| undefined;
 
+	// Format ALL transactions in detail (not summarized)
+	const transactionsDetail =
+		(allTransactions as Array<{
+			date: number;
+			type: "income" | "expense";
+			amount: number;
+			category: string;
+			description?: string;
+			paymentMethod?: string;
+			status: string;
+		}>)
+			?.map(
+				(t) =>
+					`• ${new Date(t.date).toLocaleDateString("id-ID")} | ${t.type === "income" ? "PEMASUKAN" : "PENGELUARAN"} | Rp${t.amount.toLocaleString("id-ID")} | ${t.category} | ${t.description || "-"} | ${t.paymentMethod || "CASH"} | ${t.status}`
+			)
+			.join("\n") || "Tidak ada transaksi";
+
 	return `== DATABASE APLIKASI TKM POS ==
 
 📦 PRODUK (${(products as unknown[])?.length || 0}):
@@ -282,11 +301,14 @@ Total Revenue: Rp${totalRevenue.toLocaleString("id-ID")}
 Pesanan Terbaru:
 ${recentOrders}
 
-💰 KEUANGAN:
+💰 KEUANGAN (DETAIL SEMUA TRANSAKSI):
 Pendapatan: Rp${(fin?.totalIncome || 0).toLocaleString("id-ID")}
 Pengeluaran: Rp${(fin?.totalExpense || 0).toLocaleString("id-ID")}
 Saldo Bersih: Rp${(fin?.netBalance || 0).toLocaleString("id-ID")}
 Total Transaksi: ${fin?.transactionCount || 0}
+
+📝 RIWAYAT TRANSAKSI LENGKAP (${(allTransactions as unknown[])?.length || 0} transaksi):
+${transactionsDetail}
 
 🎁 PROMOSI/DISKON (${(discounts as unknown[])?.length || 0}):
 ${discountList}
@@ -849,13 +871,14 @@ export const generateReport = action({
 	},
 	handler: async (ctx, args) => {
 		// Gather requested data
-		const [products, inventory, orders, financialSummary, _discounts] =
+		const [products, inventory, orders, financialSummary, _discounts, allTransactions] =
 			await Promise.all([
 				ctx.runQuery(api.products.getAllProductsAdmin),
 				ctx.runQuery(api.inventory.getInventory),
 				ctx.runQuery(api.orders.getOrders, {}),
 				ctx.runQuery(api.finance.getFinancialSummary, {}),
 				ctx.runQuery(api.discounts.getDiscounts),
+				ctx.runQuery(api.finance.getAllTransactions, {}), // Get ALL transactions
 			]);
 
 		const completedOrders = orders.filter(
@@ -931,11 +954,34 @@ export const generateReport = action({
 				netBalance: number;
 				transactionCount: number;
 			};
+
+			// Include ALL transactions in detail (not summarized)
+			const transactionsList = (allTransactions as Array<{
+				_id: string;
+				date: number;
+				type: "income" | "expense";
+				amount: number;
+				category: string;
+				description?: string;
+				paymentMethod?: string;
+				status: string;
+			}>).map((t) => ({
+				id: t._id,
+				date: new Date(t.date).toLocaleDateString("id-ID"),
+				type: t.type,
+				amount: t.amount,
+				category: t.category,
+				description: t.description || "-",
+				paymentMethod: t.paymentMethod || "CASH",
+				status: t.status,
+			}));
+
 			reportData.finance = {
 				totalIncome: fin.totalIncome,
 				totalExpense: fin.totalExpense,
 				netBalance: fin.netBalance,
 				transactionCount: fin.transactionCount,
+				transactions: transactionsList, // ALL transactions in detail
 				profitMargin:
 					fin.totalIncome > 0
 						? ((fin.totalIncome - fin.totalExpense) / fin.totalIncome) * 100
