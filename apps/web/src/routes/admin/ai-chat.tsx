@@ -199,6 +199,30 @@ function AIChatPage() {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, []);
 
+	// Sanitize AI response - remove markdown formatting
+	const sanitizeResponse = (text: string): string => {
+		if (!text) return "";
+		return text
+			// Remove bold markdown
+			.replace(/\*\*(.*?)\*\*/g, "$1")
+			// Remove italic markdown
+			.replace(/\*(.*?)\*/g, "$1")
+			// Remove heading markdown
+			.replace(/^#+\s+/gm, "")
+			// Remove bullet points (*) and replace with emoji
+			.replace(/^\*\s+/gm, "• ")
+			.replace(/^\-\s+/gm, "• ")
+			// Remove code blocks
+			.replace(/```[\s\S]*?```/g, "")
+			// Remove inline code
+			.replace(/`(.*?)`/g, "$1")
+			// Remove numbered list markdown
+			.replace(/^\d+\.\s+/gm, "")
+			// Clean up extra whitespace
+			.replace(/\n{3,}/g, "\n\n")
+			.trim();
+	};
+
 	const sendMessage = useCallback(
 		async (text: string, image?: string) => {
 			if (!(text.trim() || image) || isLoading) {
@@ -266,8 +290,7 @@ function AIChatPage() {
 					...prev,
 					{
 						role: "assistant",
-						content:
-							response || "Maaf, saya tidak bisa memproses permintaan ini.",
+						content: sanitizeResponse(response) || "Maaf, saya tidak bisa memproses permintaan ini.",
 					},
 				]);
 			} catch {
@@ -342,7 +365,7 @@ function AIChatPage() {
 				},
 				{
 					role: "assistant",
-					content: response || "Tindakan berhasil diproses.",
+					content: sanitizeResponse(response) || "Tindakan berhasil diproses.",
 				},
 			]);
 			toast.success("Tindakan berhasil dieksekusi!");
