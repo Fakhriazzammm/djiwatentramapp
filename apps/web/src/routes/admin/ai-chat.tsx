@@ -150,11 +150,14 @@ function AIChatPage() {
 	const stockPredictions = useQuery(api.ai.predictStockOut, { daysAhead: 7 });
 	const busyHoursPrediction = useQuery(api.ai.predictBusyHours, {});
 	const revenuePrediction = useQuery(api.ai.predictDailyRevenue, { daysAhead: 7 });
+	const trendingProducts = useQuery(api.ai.predictTrendingProducts, { daysAhead: 7 });
+	const bestPromoTime = useQuery(api.ai.predictBestPromoTime, {});
 
 	// Follow-up Tasks
 	const pendingTasks = useQuery(api.aiMemory.getPendingTasks, {});
 	const completeTaskMutation = useMutation(api.aiMemory.completeTask);
 	const dismissTaskMutation = useMutation(api.aiMemory.dismissTask);
+	const autoGenerateTasksMutation = useMutation(api.ai.autoGenerateTasks);
 
 	// Financial Summary for reports
 	const _financialSummary = useQuery(api.finance.getFinancialSummary, {});
@@ -835,67 +838,214 @@ function AIChatPage() {
 								</div>
 							)}
 						</div>
+
+						{/* Trending Products Prediction */}
+						<div className="space-y-3">
+							<div className="flex items-center justify-between">
+								<h4 className="text-muted-foreground text-sm font-semibold">
+									Produk Trending
+								</h4>
+								{trendingProducts && trendingProducts.length > 0 && (
+									<span className="text-muted-foreground text-xs">
+										Berdasarkan growth rate 7 hari terakhir
+									</span>
+								)}
+							</div>
+							{trendingProducts && trendingProducts.length > 0 ? (
+								<div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+									{trendingProducts.slice(0, 4).map((product: any) => (
+										<div
+											className="flex items-center gap-2 rounded-lg border border-border bg-card p-2"
+											key={product._id}
+										>
+											<div
+												className={`flex h-8 w-8 items-center justify-center rounded-full ${
+													product.growthRate > 0
+														? "bg-green-500/20 text-green-600"
+														: product.growthRate < 0
+															? "bg-red-500/20 text-red-600"
+															: "bg-muted text-muted-foreground"
+												}`}
+											>
+												{TrendingUp className="h-4 w-4" />
+											</div>
+											<div className="flex-1">
+												<p className="font-medium text-xs">{product.name}</p>
+												<p className="text-muted-foreground text-[10px]">
+													{product.recentSales} terjual minggu ini
+												</p>
+											</div>
+											<div className="text-right">
+												<p
+													className={`text-xs font-semibold ${
+														product.growthRate > 0
+															? "text-green-600"
+															: "text-red-600"
+													}`}
+												>
+													{product.growthRate > 0 ? "+" : ""}
+													{product.growthRate}%
+												</p>
+											</div>
+										</div>
+									))}
+								</div>
+							) : (
+								<div className="rounded-lg border border-border bg-muted/50 p-3 text-center">
+									<p className="text-muted-foreground text-xs">
+										Belum cukup data untuk analisis trending
+									</p>
+								</div>
+							)}
+						</div>
+
+						{/* Best Promo Time Prediction */}
+						<div className="space-y-3">
+							<h4 className="text-muted-foreground text-sm font-semibold">
+								Waktu Terbaik untuk Promo
+							</h4>
+							{bestPromoTime && bestPromoTime.hasEnoughData ? (
+								<div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+									<div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+										<p className="text-muted-foreground text-[10px]">Hari Terbaik</p>
+										<p className="font-semibold text-sm text-primary">
+											{bestPromoTime.bestDay?.day}
+										</p>
+										<p className="text-muted-foreground text-xs">
+											{bestPromoTime.bestDay?.recommendation}
+										</p>
+									</div>
+									<div className="rounded-lg border border-warning/30 bg-warning/5 p-3">
+										<p className="text-muted-foreground text-[10px]">Hari Butuh Promo</p>
+										<p className="font-semibold text-sm text-warning">
+											{bestPromoTime.worstDay?.day}
+										</p>
+										<p className="text-muted-foreground text-xs">
+											{bestPromoTime.worstDay?.recommendation}
+										</p>
+									</div>
+								</div>
+							) : (
+								<div className="rounded-lg border border-border bg-muted/50 p-3 text-center">
+									<p className="text-muted-foreground text-xs">
+										{bestPromoTime?.message || "Analisis waktu promo akan segera hadir"}
+									</p>
+								</div>
+							)}
+						</div>
 					</div>
 				)}
 
 				{/* Tasks Tab */}
 				{activeTab === "tasks" && (
 					<div className="space-y-4 p-4">
-						<h3 className="mb-4 font-bold text-foreground">Tindak Lanjutan</h3>
+						<div className="mb-4 flex items-center justify-between">
+							<h3 className="font-bold text-foreground">Tindak Lanjutan</h3>
+							<button
+								className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-primary text-xs font-medium transition-colors hover:bg-primary/20 disabled:opacity-50"
+								disabled={isLoading}
+								onClick={async () => {
+									setIsLoading(true);
+									try {
+										const result = await autoGenerateTasksMutation({});
+										if (result) {
+											toast.success(
+												`${result.created} tugas baru berhasil dibuat!`
+											);
+										}
+									} catch {
+										toast.error("Gagal membuat tugas otomatis.");
+									} finally {
+										setIsLoading(false);
+									}
+								}}
+								type="button"
+							>
+								<Sparkles className="h-3.5 w-3.5" />
+								<span>Generate AI Tasks</span>
+							</button>
+						</div>
 
 						{pendingTasks.data && pendingTasks.data.length > 0 ? (
 							<div className="space-y-3">
 								{pendingTasks.data.map((task: any) => (
 									<div
-										className="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
+										className={`rounded-lg border p-3 ${
+											task.priority === "high"
+												? "border-destructive/50 bg-destructive/5"
+												: task.priority === "medium"
+													? "border-warning/50 bg-warning/5"
+													: "border-border bg-card"
+										}`}
 										key={task._id}
 									>
-										<div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-											<Target className="h-4 w-4 text-primary" />
-										</div>
-										<div className="flex-1">
-											<p className="font-medium text-sm">{task.title}</p>
-											<p className="text-muted-foreground text-xs">
-												{task.category}
-											</p>
-										</div>
-										<div className="flex items-center gap-2">
-											<span
-												className={`rounded-full px-2 py-0.5 text-xs ${
+										<div className="flex items-start gap-3">
+											<div
+												className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
 													task.priority === "high"
-														? "bg-destructive text-destructive-foreground"
+														? "bg-destructive/20 text-destructive"
 														: task.priority === "medium"
-															? "bg-warning text-warning-foreground"
-															: "bg-muted text-muted-foreground"
+															? "bg-warning/20 text-warning"
+															: "bg-primary/20 text-primary"
 												}`}
 											>
-												{task.priority === "high"
-													? "Tinggi"
-													: task.priority === "medium"
-														? "Sedang"
-														: "Rendah"}
-											</span>
-											{task.isOverdue && (
-												<span className="ml-1 text-destructive text-xs">
-													Terlambat!
-												</span>
-											)}
-										</div>
-										<div className="flex items-center gap-2">
-											<button
-												className="text-muted-foreground text-xs hover:text-foreground"
-												onClick={() => handleDismissTask(task._id)}
-												type="button"
-											>
-												Abai
-											</button>
-											<button
-												className="rounded bg-primary px-3 py-1 text-primary-foreground text-xs hover:bg-primary/90"
-												onClick={() => handleCompleteTask(task._id)}
-												type="button"
-											>
-												Selesai
-											</button>
+												<Target className="h-4 w-4" />
+											</div>
+											<div className="flex-1 min-w-0">
+												<p className="font-medium text-sm">{task.title}</p>
+												{task.description && (
+													<p className="text-muted-foreground text-xs mt-0.5 line-clamp-2">
+														{task.description}
+													</p>
+												)}
+												<div className="mt-1.5 flex items-center gap-2">
+													<span
+														className={`rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${
+															task.category === "inventory"
+																? "bg-blue-500/20 text-blue-600"
+																: task.category === "orders"
+																	? "bg-purple-500/20 text-purple-600"
+																	: task.category === "finance"
+																		? "bg-green-500/20 text-green-600"
+																		: task.category === "marketing"
+																			? "bg-orange-500/20 text-orange-600"
+																			: "bg-gray-500/20 text-gray-600"
+														}`}
+													>
+														{task.category}
+													</span>
+													{task.dueDate && (
+														<span className="text-muted-foreground text-[10px]">
+															<Calendar className="inline h-2.5 w-2.5 mr-0.5" />
+															{new Date(task.dueDate).toLocaleDateString(
+																"id-ID",
+																{ day: "numeric", month: "short" }
+															)}
+														</span>
+													)}
+													{task.isOverdue && (
+														<span className="text-destructive text-[10px] font-medium">
+															Terlambat!
+														</span>
+													)}
+												</div>
+											</div>
+											<div className="flex items-center gap-2">
+												<button
+													className="rounded-lg bg-primary px-3 py-1.5 text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+													onClick={() => handleCompleteTask(task._id)}
+													type="button"
+												>
+													Selesai
+												</button>
+												<button
+													className="rounded-lg border border-border bg-muted px-3 py-1.5 text-muted-foreground text-xs font-medium hover:bg-muted transition-colors"
+													onClick={() => handleDismissTask(task._id)}
+													type="button"
+												>
+													Abai
+												</button>
+											</div>
 										</div>
 									</div>
 								))}

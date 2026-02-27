@@ -5,7 +5,7 @@ import OpenAI from "openai";
 import type { z } from "zod";
 import { api } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
-import { action, query } from "./_generated/server";
+import { action, mutation, query } from "./_generated/server";
 import { formatToolResult, tools } from "./tools";
 
 // Helper to initialize OpenAI lazily
@@ -1049,7 +1049,11 @@ interface ProactiveSuggestion {
 		| "pending_order"
 		| "trending"
 		| "discount_opp"
-		| "price_opt";
+		| "price_opt"
+		| "hpp_low_margin"
+		| "revenue_opportunity"
+		| "best_promo_day"
+		| "bundle_opportunity";
 	title: string;
 	description: string;
 	action: {
@@ -1246,6 +1250,128 @@ export const getProactiveSuggestions = query({
 						createdAt: now,
 					});
 				}
+			}
+		}
+
+		// Check 6: HPP Low Margin Alert
+		const hppDashboard = await ctx.runQuery(api.hpp.getHppDashboardData);
+		if (hppDashboard && hppDashboard.lowMarginAlerts.length > 0) {
+			const lowMarginCount = hppDashboard.lowMarginAlerts.length;
+			suggestions.push({
+				id: "hpp_low_margin_bulk",
+				type: "hpp_low_margin",
+				title: `${lowMarginCount} produk dengan margin rendah`,
+				description: `${hppDashboard.lowMarginAlerts
+					.slice(0, 3)
+					.map((a) => a.name)
+					.join(", ")} memiliki margin di bawah 20%. Pertimbangkan untuk naikkan harga atau kurangi biaya.`,
+				action: null,
+				priority: "medium",
+				createdAt: now,
+			});
+		}
+
+		// Check 7: Revenue Opportunity - identify best selling days
+		if (completedOrders.length >= 20) {
+			const dayRevenue: Record<number, number> = {};
+			const dayCount: Record<number, number> = {};
+
+			for (const order of completedOrders) {
+				const day = new Date(order.createdAt).getDay();
+				dayRevenue[day] = (dayRevenue[day] || 0) + order.totalAmount;
+				dayCount[day] = (dayCount[day] || 0) + 1;
+			}
+
+			// Find best and worst performing days
+			const dayNames = [
+				"Minggu",
+				"Senin",
+				"Selasa",
+				"Rabu",
+				"Kamis",
+				"Jumat",
+				"Sabtu",
+			];
+			const dayAnalysis = Object.keys(dayRevenue).map((day) => ({
+				day: Number.parseInt(day, 10),
+				dayName: dayNames[Number.parseInt(day, 10)],
+				revenue: dayRevenue[Number.parseInt(day, 10)],
+				orders: dayCount[Number.parseInt(day, 10)],
+			}));
+
+			dayAnalysis.sort((a, b) => b.revenue - a.revenue);
+			const bestDay = dayAnalysis[0];
+			const worstDay = dayAnalysis[dayAnalysis.length - 1];
+
+			if (bestDay && worstDay && bestDay.revenue > worstDay.revenue * 1.5) {
+				suggestions.push({
+					id: "best_promo_day",
+					type: "best_promo_day",
+					title: `${bestDay.dayName} adalah hari terbaik`,
+					description: `Pendapatan tertinggi di ${bestDay.dayName} (Rp${bestDay.revenue.toLocaleString("id-ID")}). Pertimbangkan promosi khusus di hari ini.`,
+					action: null,
+					priority: "low",
+					createdAt: now,
+				});
+			}
+		}
+
+		// Check 8: Bundle Opportunity - products often bought together
+		if (completedOrders.length >= 10) {
+			const productPairs: Record<string, number> = {};
+
+			for (const order of completedOrders) {
+				const items = order.items.map((i) => i.productName).sort();
+				// Count pairs of products in same order
+				for (let i = 0; i < items.length; i++) {
+					for (let j = i + 1; j < items.length; j++) {
+						const pair = `${items[i]} + ${items[j]}`;
+						productPairs[pair] = (productPairs[pair] || 0) + 1;
+					}
+				}
+			}
+
+			// Find most common pairs
+			const topPairs = Object.entries(productPairs)
+				.sort((a, b) => b[1] - a[1])
+				.filter((p) => p[1] >= 3) // At least 3 times together
+				.slice(0, 2);
+
+			for (const [pair, count] of topPairs) {
+				suggestions.push({
+					id: `bundle_${pair.replace(/\s+/g, "_")}`,
+					type: "bundle_opportunity",
+					title: `Buat paket bundle: ${pair}`,
+					description: `Produk ini sering dibeli bersama (${count} kali). Pertimbangkan membuat promo bundle.`,
+					action: null,
+					priority: "low",
+					createdAt: now,
+				});
+			}
+		}
+
+		// Check 9: Revenue Growth Opportunity
+		if (completedOrders.length >= 30) {
+			const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+			const fifteenDaysAgo = now - 15 * 24 * 60 * 60 * 1000;
+
+			const recentRevenue = completedOrders
+				.filter((o) => o.createdAt >= fifteenDaysAgo)
+				.reduce((sum, o) => sum + o.totalAmount, 0);
+			const olderRevenue = completedOrders
+				.filter((o) => o.createdAt >= thirtyDaysAgo && o.createdAt < fifteenDaysAgo)
+				.reduce((sum, o) => sum + o.totalAmount, 0);
+
+			if (recentRevenue > olderRevenue * 1.1) {
+				suggestions.push({
+					id: "revenue_growth",
+					type: "revenue_opportunity",
+					title: "Pendapatan meningkat!",
+					description: `Pendapatan 15 hari terakhir ${(recentRevenue / olderRevenue).toFixed(0)}x lebih tinggi. Pertimbangkan scale up bisnis.`,
+					action: null,
+					priority: "low",
+					createdAt: now,
+				});
 			}
 		}
 
@@ -1496,6 +1622,270 @@ export const predictDailyRevenue = query({
 			trend,
 			predictions,
 			totalAnalyzedDays: dailyValues.length,
+		};
+	},
+});
+
+/**
+ * Predict trending products based on sales velocity
+ */
+export const predictTrendingProducts = query({
+	args: {
+		daysAhead: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const daysAhead = args.daysAhead || 7;
+		const orders = await ctx.runQuery(api.orders.getOrders, {});
+		const products = await ctx.runQuery(api.products.getAllProductsAdmin);
+
+		const completedOrders = orders.filter(
+			(o) => o.status === "completed" || o.status === "paid"
+		);
+
+		// Calculate sales for recent periods
+		const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+		const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+
+		const recentSales: Record<string, number> = {};
+		const previousSales: Record<string, number> = {};
+
+		for (const order of completedOrders) {
+			for (const item of order.items) {
+				if (order.createdAt >= sevenDaysAgo) {
+					recentSales[item.productName] =
+						(recentSales[item.productName] || 0) + item.quantity;
+				} else if (order.createdAt >= fourteenDaysAgo) {
+					previousSales[item.productName] =
+						(previousSales[item.productName] || 0) + item.quantity;
+				}
+			}
+		}
+
+		// Calculate trend for each product
+		const trendingProducts = products
+			.map((product) => {
+				const recentQty = recentSales[product.name] || 0;
+				const previousQty = previousSales[product.name] || 0;
+
+				const growthRate =
+					previousQty > 0 ? (recentQty - previousQty) / previousQty : 0;
+				const velocity = recentQty / 7; // sales per day
+
+				return {
+					...product,
+					recentSales: recentQty,
+					previousSales: previousQty,
+					growthRate: Math.round(growthRate * 100),
+					velocity: Math.round(velocity * 10) / 10,
+					predictedNextWeek:
+						growthRate > 0
+							? Math.round(recentQty * (1 + growthRate))
+							: recentQty,
+				};
+			})
+			.filter((p) => p.recentSales > 0 || p.previousSales > 0)
+			.sort((a, b) => b.growthRate - a.growthRate);
+
+		return trendingProducts.slice(0, 10);
+	},
+});
+
+/**
+ * Predict best time for promotions
+ */
+export const predictBestPromoTime = query({
+	args: {},
+	handler: async (ctx) => {
+		const orders = await ctx.runQuery(api.orders.getOrders, {});
+
+		const completedOrders = orders.filter(
+			(o) => o.status === "completed" || o.status === "paid"
+		);
+
+		if (completedOrders.length < 20) {
+			return {
+				hasEnoughData: false,
+				message: "Belum cukup data untuk analisis",
+			};
+		}
+
+		// Analyze by day of week
+		const dayRevenue: Record<number, { revenue: number; count: number }> = {};
+		const dayNames = [
+			"Minggu",
+			"Senin",
+			"Selasa",
+			"Rabu",
+			"Kamis",
+			"Jumat",
+			"Sabtu",
+		];
+
+		for (const order of completedOrders) {
+			const day = new Date(order.createdAt).getDay();
+			if (!dayRevenue[day]) {
+				dayRevenue[day] = { revenue: 0, count: 0 };
+			}
+			dayRevenue[day].revenue += order.totalAmount;
+			dayRevenue[day].count += 1;
+		}
+
+		const dayAnalysis = Object.entries(dayRevenue).map(([day, data]) => ({
+			day: Number.parseInt(day, 10),
+			dayName: dayNames[Number.parseInt(day, 10)],
+			revenue: data.revenue,
+			count: data.count,
+			avgOrder: data.revenue / data.count,
+		}));
+
+		// Find best and worst days
+		dayAnalysis.sort((a, b) => b.revenue - a.revenue);
+		const bestDay = dayAnalysis[0];
+		const worstDay = dayAnalysis[dayAnalysis.length - 1];
+
+		// Analyze by hour
+		const hourlyRevenue: Record<number, number> = {};
+		for (const order of completedOrders) {
+			const hour = new Date(order.createdAt).getHours();
+			hourlyRevenue[hour] = (hourlyRevenue[hour] || 0) + order.totalAmount;
+		}
+
+		const hourlyAnalysis = Object.entries(hourlyRevenue)
+			.map(([hour, revenue]) => ({
+				hour: Number.parseInt(hour, 10),
+				revenue,
+			}))
+			.sort((a, b) => b.revenue - a.revenue)
+			.slice(0, 3);
+
+		return {
+			hasEnoughData: true,
+			bestDay: {
+				day: bestDay.dayName,
+				revenue: bestDay.revenue,
+				recommendation: `Lakukan promo di ${bestDay.dayName} untuk maksimalkan penjualan`,
+			},
+			worstDay: {
+				day: worstDay.dayName,
+				revenue: worstDay.revenue,
+				recommendation: `Gunakan promo di ${worstDay.dayName} untuk boost penjualan`,
+			},
+			bestHours: hourlyAnalysis.map((h) => ({
+				hour: h.hour,
+				time: `${h.hour}:00`,
+				recommendation: `Promo jam ${h.hour}:00 - ${h.hour + 1}:00`,
+			})),
+		};
+	},
+});
+
+/**
+ * Auto-generate tasks based on business insights
+ */
+export const autoGenerateTasks = mutation({
+	args: {},
+	handler: async (ctx) => {
+		const now = Date.now();
+		const tasks = [];
+
+		// Get business data
+		const inventory = await ctx.runQuery(api.inventory.getInventory);
+		const orders = await ctx.runQuery(api.orders.getOrders, {});
+		const products = await ctx.runQuery(api.products.getAllProductsAdmin);
+		const hppDashboard = await ctx.runQuery(api.hpp.getHppDashboardData);
+
+		// Check for critical low stock
+		const criticalStock = inventory.filter(
+			(i) => i.quantity <= i.lowStockThreshold / 2
+		);
+
+		for (const item of criticalStock) {
+			tasks.push({
+				title: `Restock segera: ${item.ingredientName}`,
+				description: `Stok kritis! Sisa ${item.quantity} ${item.unit}. Threshold: ${item.lowStockThreshold} ${item.unit}`,
+				priority: "high" as const,
+				category: "inventory" as const,
+				actionType: "restock" as const,
+				actionData: { inventoryId: item._id },
+				dueDate: now + 24 * 60 * 60 * 1000, // Due tomorrow
+			});
+		}
+
+		// Check for pending orders > 24 hours
+		const oneDayAgo = now - 24 * 60 * 60 * 1000;
+		const stalePendingOrders = orders.filter(
+			(o) => o.status === "pending" && o.createdAt < oneDayAgo
+		);
+
+		if (stalePendingOrders.length > 0) {
+			tasks.push({
+				title: `Follow up ${stalePendingOrders.length} pesanan tertunda`,
+				description: `${stalePendingOrders.length} pesanan pending > 24 jam. Perlu follow up segera.`,
+				priority: "high" as const,
+				category: "orders" as const,
+				actionType: "follow_up" as const,
+				actionData: { orderIds: stalePendingOrders.map((o) => o._id) },
+				dueDate: now + 4 * 60 * 60 * 1000, // Due in 4 hours
+			});
+		}
+
+		// Check HPP low margin
+		if (hppDashboard && hppDashboard.lowMarginAlerts.length > 0) {
+			tasks.push({
+				title: "Review produk dengan margin rendah",
+				description: `${hppDashboard.lowMarginAlerts.length} produk memiliki margin < 20%. Review harga atau biaya.`,
+				priority: "medium" as const,
+				category: "finance" as const,
+				actionType: "review" as const,
+				actionData: { productIds: hppDashboard.lowMarginAlerts.map((a) => a._id) },
+				dueDate: now + 7 * 24 * 60 * 60 * 1000, // Due in a week
+			});
+		}
+
+		// Check for slow moving products (> 14 days no sales)
+		const fourteenDaysAgo = now - 14 * 24 * 60 * 60 * 1000;
+		const recentOrders = orders.filter((o) => o.createdAt >= fourteenDaysAgo);
+		const soldProductIds = new Set();
+		for (const order of recentOrders) {
+			for (const item of order.items) {
+				soldProductIds.add(item.productId);
+			}
+		}
+
+		const slowMovingProducts = products.filter(
+			(p) => p.isAvailable && !soldProductIds.has(p._id)
+		);
+
+		if (slowMovingProducts.length > 3) {
+			tasks.push({
+				title: "Buat promo untuk produk kurang laku",
+				description: `${slowMovingProducts.length} produk tidak terjual 14 hari. Buat promo diskon.`,
+				priority: "medium" as const,
+				category: "marketing" as const,
+				actionType: "create" as const,
+				actionData: { productIds: slowMovingProducts.map((p) => p._id) },
+				dueDate: now + 3 * 24 * 60 * 60 * 1000, // Due in 3 days
+			});
+		}
+
+		// Create tasks in database
+		const createdTaskIds = [];
+		for (const task of tasks) {
+			const id = await ctx.db.insert("followUpTasks", {
+				...task,
+				status: "pending",
+				createdAt: now,
+			});
+			createdTaskIds.push(id);
+		}
+
+		return {
+			created: createdTaskIds.length,
+			tasks: tasks.map((t) => ({
+				title: t.title,
+				priority: t.priority,
+				category: t.category,
+			})),
 		};
 	},
 });
