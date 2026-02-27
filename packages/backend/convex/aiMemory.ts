@@ -62,6 +62,94 @@ export const getConversationContext = query({
 });
 
 /**
+ * Create a new chat session
+ */
+export const createChatSession = mutation({
+	args: {
+		title: v.string(), // Initial title (usually first message or date)
+	},
+	handler: async (ctx, args) => {
+		const sessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+		const now = Date.now();
+
+		// Return session info without storing - session is created implicitly when first message is sent
+		return {
+			sessionId,
+			title: args.title,
+			createdAt: now,
+		};
+	},
+});
+
+/**
+ * Get all chat sessions
+ */
+export const getChatSessions = query({
+	args: {},
+	handler: async (ctx) => {
+		// Get all conversation memories
+		const memories = await ctx.db
+			.query("conversationMemory")
+			.order("desc")
+			.take(1000); // Get recent 1000 messages
+
+		// Group by session and extract session info
+		const sessionMap = new Map<string, any>();
+
+		for (const memory of memories) {
+			const sid = memory.sessionId;
+			if (!sessionMap.has(sid)) {
+				// Create session from first message
+				sessionMap.set(sid, {
+					sessionId: sid,
+					title:
+						memory.role === "user"
+							? memory.content.slice(0, 30) + (memory.content.length > 30 ? "..." : "")
+							: "Chat",
+					createdAt: memory.timestamp,
+					messageCount: 0,
+				});
+			}
+			// Count all messages
+			const session = sessionMap.get(sid);
+			if (session) {
+				session.messageCount = (session.messageCount || 0) + 1;
+			}
+		}
+
+		// Convert to array and sort by createdAt desc
+		const sessions = Array.from(sessionMap.values()).sort(
+			(a, b) => b.createdAt - a.createdAt
+		);
+
+		// Only return sessions with messages
+		return sessions.filter((s) => s.messageCount > 0);
+	},
+});
+
+/**
+ * Delete a chat session
+ */
+export const deleteChatSession = mutation({
+	args: {
+		sessionId: v.string(),
+	},
+	handler: async (ctx, args) => {
+		// Delete all memories for this session
+		const memories = await ctx.db
+			.query("conversationMemory")
+			.withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+			.collect();
+
+		for (const memory of memories) {
+			await ctx.db.delete(memory._id);
+		}
+
+		return { success: true, deletedCount: memories.length };
+	},
+});
+
+/**
  * Get user preferences learned from conversations
  */
 export const getUserPreferences = query({

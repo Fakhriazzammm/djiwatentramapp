@@ -54,6 +54,13 @@ interface Suggestion {
 
 type TabType = "chat" | "suggestions" | "predictions" | "tasks";
 
+interface ChatSession {
+	sessionId: string;
+	title: string;
+	createdAt: number;
+	messageCount: number;
+}
+
 // Templates with icons
 const TEMPLATES: Array<{
 	label: string;
@@ -132,6 +139,8 @@ function AIChatPage() {
 	const [isImageScannerOpen, setIsImageScannerOpen] = useState(false);
 	const [selectedImage, setSelectedImage] = useState<string | null>(null);
 	const [activeTab, setActiveTab] = useState<TabType>("chat");
+	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+	const [showSessionHistory, setShowSessionHistory] = useState(false);
 
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -142,6 +151,16 @@ function AIChatPage() {
 	const products = useQuery(api.products.getAllProductsAdmin, {});
 	const inventory = useQuery(api.inventory.getInventory, {});
 	const orders = useQuery(api.orders.getOrders, {});
+
+	// Chat Sessions
+	const chatSessions = useQuery(api.aiMemory.getChatSessions, {});
+	const createSessionMutation = useMutation(api.aiMemory.createChatSession);
+	const deleteSessionMutation = useMutation(api.aiMemory.deleteChatSession);
+	const saveConversationMutation = useMutation(api.aiMemory.saveConversationContext);
+	const loadConversationQuery = useQuery(
+		api.aiMemory.getConversationContext,
+		currentSessionId ? { sessionId: currentSessionId } : "skip"
+	);
 
 	// AI Proactive Suggestions
 	const proactiveSuggestions = useQuery(api.ai.getProactiveSuggestions, {});
@@ -231,6 +250,11 @@ function AIChatPage() {
 				return;
 			}
 
+			// Create session if none exists
+			if (!currentSessionId) {
+				await startNewSession();
+			}
+
 			const userMessage: ChatMessage = {
 				role: "user",
 				content: text.trim(),
@@ -288,13 +312,18 @@ function AIChatPage() {
 					setTimeout(() => setToolCalls([]), 3000);
 				}
 
-				setMessages((prev) => [
-					...prev,
-					{
-						role: "assistant",
-						content: sanitizeResponse(response) || "Maaf, saya tidak bisa memproses permintaan ini.",
-					},
-				]);
+				const assistantMessage: ChatMessage = {
+					role: "assistant",
+					content: sanitizeResponse(response) || "Maaf, saya tidak bisa memproses permintaan ini.",
+				};
+
+				setMessages((prev) => [...prev, assistantMessage]);
+
+				// Save messages to Convex
+				if (currentSessionId) {
+					await saveMessage(userMessage);
+					await saveMessage(assistantMessage);
+				}
 			} catch {
 				setMessages((prev) => [
 					...prev,
@@ -308,7 +337,7 @@ function AIChatPage() {
 				setIsLoading(false);
 			}
 		},
-		[isLoading, messages, yumiChat, selectedImage]
+		[isLoading, messages, yumiChat, selectedImage, currentSessionId, startNewSession, saveMessage]
 	);
 
 	const handleFileSelect = useCallback(
@@ -396,6 +425,96 @@ function AIChatPage() {
 		}
 	};
 
+	// Session management
+	const startNewSession = async () => {
+		const today = new Date();
+		const dateStr = today.toLocaleDateString("id-ID", {
+			day: "numeric",
+			month: "short",
+		});
+		const timeStr = today.toLocaleTimeString("id-ID", {
+			hour: "2-digit",
+			minute: "2-digit",
+		});
+
+		try {
+			const result = await createSessionMutation({
+				title: `Chat ${dateStr} ${timeStr}`,
+			});
+			if (result) {
+				setCurrentSessionId(result.sessionId);
+				setMessages([
+					{
+						role: "assistant",
+						content:
+							"Halo! Saya Yumi, asisten AI kamu. Ada yang bisa saya bantu hari ini?",
+					},
+				]);
+				setShowSessionHistory(false);
+			}
+		} catch {
+			toast.error("Gagal membuat sesi baru");
+		}
+	};
+
+	const loadSession = async (sessionId: string) => {
+		setCurrentSessionId(sessionId);
+		setShowSessionHistory(false);
+		// Messages will be loaded via loadConversationQuery
+	};
+
+	const deleteSession = async (sessionId: string) => {
+		try {
+			await deleteSessionMutation({ sessionId });
+			if (currentSessionId === sessionId) {
+				setCurrentSessionId(null);
+				setMessages([
+					{
+						role: "assistant",
+						content:
+							"Halo! Saya Yumi, asisten AI kamu. Ada yang bisa saya bantu hari ini?",
+					},
+				]);
+			}
+			toast.success("Sesi berhasil dihapus");
+		} catch {
+			toast.error("Gagal menghapus sesi");
+		}
+	};
+
+	const saveMessage = async (message: ChatMessage) => {
+		if (currentSessionId) {
+			try {
+				await saveConversationMutation({
+					sessionId: currentSessionId,
+					role: message.role,
+					content: message.content,
+					metadata: {
+						imageAttached: !!message.image,
+					},
+				});
+			} catch (error) {
+				console.error("Failed to save message:", error);
+			}
+		}
+	};
+
+	// Load conversation when session changes
+	useEffect(() => {
+		if (currentSessionId && loadConversationQuery.data) {
+			const history = loadConversationQuery.data
+				.filter((m) => m.role !== "system")
+				.map((m) => ({
+					role: m.role as "user" | "assistant",
+					content: m.content,
+				}));
+
+			if (history.length > 0) {
+				setMessages(history);
+			}
+		}
+	}, [currentSessionId, loadConversationQuery.data]);
+
 	// Get predictions for display (disabled for now - functions not implemented)
 	// const getStockRiskLevel = () => {
 	// 	if (!stockPredictions.data) return "low";
@@ -433,6 +552,17 @@ function AIChatPage() {
 
 				{/* Tabs */}
 				<div className="ml-auto flex gap-1">
+					{/* Chat History Button */}
+					{activeTab === "chat" && (
+						<button
+							className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium text-xs transition-colors text-muted-foreground hover:bg-muted"
+							onClick={() => setShowSessionHistory(!showSessionHistory)}
+							type="button"
+						>
+							<Bot className="h-4 w-4" />
+							<span className="hidden md:inline">Riwayat</span>
+						</button>
+					)}
 					{[
 						{
 							id: "chat" as TabType,
@@ -1162,6 +1292,119 @@ function AIChatPage() {
 					</div>
 				</div>
 			)}
+
+			{/* Chat History Sidebar Panel */}
+			<AnimatePresence>
+				{showSessionHistory && (
+					<>
+						{/* Backdrop */}
+						<motion.div
+							animate={{ opacity: 1 }}
+							className="fixed inset-0 z-40 bg-black/50"
+							exit={{ opacity: 0 }}
+							initial={{ opacity: 0 }}
+							onClick={() => setShowSessionHistory(false)}
+						/>
+						{/* Session History Panel */}
+						<motion.div
+							animate={{ x: 0 }}
+							className="fixed right-0 top-0 bottom-0 z-50 w-80 border-border border-l bg-card shadow-2xl md:rounded-l-2xl"
+							exit={{ x: "100%" }}
+							initial={{ x: "100%" }}
+							transition={{ type: "spring", damping: 25, stiffness: 300 }}
+						>
+							<div className="flex h-full flex-col">
+								{/* Header */}
+								<div className="flex items-center justify-between border-border border-b p-4">
+									<div>
+										<h3 className="font-semibold text-foreground">
+											Riwayat Chat
+										</h3>
+										<p className="text-muted-foreground text-xs">
+											{chatSessions.data?.length || 0} sesi
+										</p>
+									</div>
+									<button
+										className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80"
+										onClick={() => setShowSessionHistory(false)}
+										type="button"
+									>
+										<X className="h-4 w-4" />
+									</button>
+								</div>
+
+								{/* New Chat Button */}
+								<div className="p-3 border-border border-b">
+									<button
+										className="flex w-full items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-primary-foreground text-sm font-medium transition-colors hover:bg-primary/90"
+										onClick={() => startNewSession()}
+										type="button"
+									>
+										<Sparkles className="h-4 w-4" />
+										Chat Baru
+									</button>
+								</div>
+
+								{/* Session List */}
+								<div className="flex-1 overflow-y-auto p-2 space-y-1">
+									{!chatSessions.data || chatSessions.data.length === 0 ? (
+										<div className="py-8 text-center">
+											<Bot className="mx-auto mb-2 h-10 w-10 text-muted-foreground" />
+											<p className="text-muted-foreground text-sm">
+												Belum ada riwayat chat
+											</p>
+										</div>
+									) : (
+										chatSessions.data.map((session: ChatSession) => (
+											<div
+												className={`group relative rounded-lg border p-3 transition-all cursor-pointer ${
+													currentSessionId === session.sessionId
+														? "border-primary bg-primary/5"
+														: "border-border bg-card hover:bg-muted/50"
+												}`}
+												key={session.sessionId}
+												onClick={() => loadSession(session.sessionId)}
+											>
+												<div className="flex items-start justify-between gap-2">
+													<div className="flex-1 min-w-0">
+														<p className="font-medium text-xs text-foreground line-clamp-1">
+															{session.title}
+														</p>
+														<p className="text-muted-foreground text-[10px]">
+															{session.messageCount} pesan
+														</p>
+													</div>
+													<button
+														className="opacity-0 group-hover:opacity-100 transition-opacity"
+														onClick={(e) => {
+															e.stopPropagation();
+															deleteSession(session.sessionId);
+														}}
+														type="button"
+													>
+														<X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+													</button>
+												</div>
+												<p className="text-muted-foreground text-[10px] mt-1">
+													{new Date(session.createdAt).toLocaleDateString(
+														"id-ID",
+														{
+															day: "numeric",
+															month: "short",
+															hour: "2-digit",
+															minute: "2-digit",
+														}
+													)}
+												</p>
+											</div>
+										))
+									)}
+								</div>
+							</div>
+						</motion.div>
+					</>
+				)}
+			</AnimatePresence>
 
 			{/* Image Scanner Modal */}
 			<ImageScanner
