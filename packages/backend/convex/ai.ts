@@ -48,34 +48,6 @@ export const generateInsights = action({
 });
 
 /**
- * Predict if any stock items are likely to run out soon.
- */
-export const predictStockOut = action({
-	args: {
-		inventoryData: v.string(),
-		recentSalesTrend: v.string(),
-	},
-	handler: async (_ctx, args) => {
-		const completion = await getOpenAI().chat.completions.create({
-			model: "gpt-4o-mini",
-			messages: [
-				{
-					role: "system",
-					content:
-						"You are a Supply Chain expert. Based on current inventory and sales trends, predict which items might run out in the next 3 days. Provide confidence level.",
-				},
-				{
-					role: "user",
-					content: `Inventory: ${args.inventoryData}\nSales Trend: ${args.recentSalesTrend}`,
-				},
-			],
-		});
-
-		return completion.choices[0].message.content;
-	},
-});
-
-/**
  * Suggest products to cross-sell to a customer based on their current cart.
  */
 export const getProductRecommendations = action({
@@ -1289,5 +1261,241 @@ export const getProactiveSuggestions = query({
 		});
 
 		return suggestions.slice(0, 10); // Return top 10 suggestions
+	},
+});
+
+// ============================================
+// PREDICTIVE ANALYTICS
+// ============================================
+
+/**
+ * Predict stock-out risk for inventory items
+ */
+export const predictStockOut = query({
+	args: {
+		daysAhead: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const daysAhead = args.daysAhead || 7;
+		const inventory = await ctx.runQuery(api.inventory.getInventory);
+		const orders = await ctx.runQuery(api.orders.getOrders, {});
+
+		const completedOrders = orders.filter(
+			(o) => o.status === "completed" || o.status === "paid"
+		);
+
+		// Calculate daily usage for each inventory item
+		const itemUsage: Record<string, number> = {};
+		const daysToAnalyze = 30; // Analyze last 30 days
+		const cutoffDate = Date.now() - daysToAnalyze * 24 * 60 * 60 * 1000;
+
+		for (const order of completedOrders) {
+			if (order.createdAt < cutoffDate) continue;
+
+			for (const item of order.items) {
+				// This is a simplified calculation
+				const productName = item.productName;
+				itemUsage[productName] = (itemUsage[productName] || 0) + item.quantity;
+			}
+		}
+
+		// Predict which items will run out
+		const predictions = inventory
+			.map((item) => {
+				const dailyUsage = (itemUsage[item.ingredientName] || 0) / daysToAnalyze;
+				const daysUntilEmpty =
+					dailyUsage > 0 ? Math.floor(item.quantity / dailyUsage) : 999;
+
+				return {
+					ingredientName: item.ingredientName,
+					currentStock: item.quantity,
+					unit: item.unit,
+					dailyUsage: Math.round(dailyUsage * 100) / 100,
+					daysUntilEmpty,
+					risk:
+						daysUntilEmpty <= 3
+							? ("high" as const)
+							: daysUntilEmpty <= daysAhead
+								? ("medium" as const)
+								: ("low" as const),
+					recommendedOrder:
+						dailyUsage > 0 ? Math.ceil(dailyUsage * daysAhead * 1.5) : 0,
+				};
+			})
+			.filter((p) => p.risk !== "low")
+			.sort((a, b) => a.daysUntilEmpty - b.daysUntilEmpty);
+
+		return predictions;
+	},
+});
+
+/**
+ * Predict busy hours based on order history
+ */
+export const predictBusyHours = query({
+	args: {},
+	handler: async (ctx) => {
+		const orders = await ctx.runQuery(api.orders.getOrders, {});
+		const completedOrders = orders.filter(
+			(o) => o.status === "completed" || o.status === "paid"
+		);
+
+		// Analyze orders by hour and day of week
+		const hourlyData: Record<number, number> = {};
+		const dailyData: Record<number, number> = {};
+
+		for (const order of completedOrders) {
+			const date = new Date(order.createdAt);
+			const hour = date.getHours();
+			const day = date.getDay();
+
+			hourlyData[hour] = (hourlyData[hour] || 0) + 1;
+			dailyData[day] = (dailyData[day] || 0) + 1;
+		}
+
+		// Find peak hours
+		const hourlyAnalysis = Object.entries(hourlyData)
+			.map(([hour, count]) => ({
+				hour: Number.parseInt(hour, 10),
+				orderCount: count,
+				percentage: Math.round((count / completedOrders.length) * 100),
+			}))
+			.sort((a, b) => b.orderCount - a.orderCount)
+			.slice(0, 5);
+
+		// Find peak days
+		const dayNames = [
+			"Minggu",
+			"Senin",
+			"Selasa",
+			"Rabu",
+			"Kamis",
+			"Jumat",
+			"Sabtu",
+		];
+		const dailyAnalysis = Object.entries(dailyData)
+			.map(([day, count]) => ({
+				day: Number.parseInt(day, 10),
+				dayName: dayNames[Number.parseInt(day, 10)],
+				orderCount: count,
+				percentage: Math.round((count / completedOrders.length) * 100),
+			}))
+			.sort((a, b) => b.orderCount - a.orderCount);
+
+		return {
+			totalOrders: completedOrders.length,
+			peakHours: hourlyAnalysis,
+			peakDays: dailyAnalysis,
+		};
+	},
+});
+
+/**
+ * Predict daily revenue based on historical data
+ */
+export const predictDailyRevenue = query({
+	args: {
+		daysAhead: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const daysAhead = args.daysAhead || 7;
+		const orders = await ctx.runQuery(api.orders.getOrders, {});
+		const completedOrders = orders.filter(
+			(o) => o.status === "completed" || o.status === "paid"
+		);
+
+		// Calculate daily revenue for the past 30 days
+		const dailyRevenue: Record<string, number> = {};
+		const daysToAnalyze = 30;
+		const cutoffDate = Date.now() - daysToAnalyze * 24 * 60 * 60 * 1000;
+
+		for (const order of completedOrders) {
+			if (order.createdAt < cutoffDate) continue;
+
+			const dateKey = new Date(order.createdAt).toISOString().split("T")[0];
+			dailyRevenue[dateKey] = (dailyRevenue[dateKey] || 0) + order.totalAmount;
+		}
+
+		const dailyValues = Object.values(dailyRevenue);
+		const avgDailyRevenue =
+			dailyValues.length > 0
+				? dailyValues.reduce((sum, val) => sum + val, 0) / dailyValues.length
+				: 0;
+
+		// Calculate trend
+		const sortedDates = Object.keys(dailyRevenue).sort();
+		const firstHalf = sortedDates.slice(0, Math.floor(sortedDates.length / 2));
+		const secondHalf = sortedDates.slice(Math.floor(sortedDates.length / 2));
+
+		const firstHalfAvg =
+			firstHalf.length > 0
+				? firstHalf.reduce((sum, date) => sum + dailyRevenue[date], 0) /
+					firstHalf.length
+				: 0;
+		const secondHalfAvg =
+			secondHalf.length > 0
+				? secondHalf.reduce((sum, date) => sum + dailyRevenue[date], 0) /
+					secondHalf.length
+				: 0;
+
+		const trend =
+			secondHalfAvg > firstHalfAvg * 1.05
+				? "increasing"
+				: secondHalfAvg < firstHalfAvg * 0.95
+					? "decreasing"
+					: "stable";
+
+		// Predict next week
+		const predictions = [];
+		const dayNames = [
+			"Minggu",
+			"Senin",
+			"Selasa",
+			"Rabu",
+			"Kamis",
+			"Jumat",
+			"Sabtu",
+		];
+		const today = new Date();
+
+		for (let i = 1; i <= daysAhead; i++) {
+			const futureDate = new Date(today);
+			futureDate.setDate(today.getDate() + i);
+			const dayName = dayNames[futureDate.getDay()];
+			const dateKey = futureDate.toISOString().split("T")[0];
+
+			// Adjust prediction based on trend
+			let predictedAmount = avgDailyRevenue;
+			if (trend === "increasing") {
+				predictedAmount *= 1.05;
+			} else if (trend === "decreasing") {
+				predictedAmount *= 0.95;
+			}
+
+			// Weekend adjustment
+			const dayOfWeek = futureDate.getDay();
+			if (dayOfWeek === 0 || dayOfWeek === 6) {
+				predictedAmount *= 1.2;
+			}
+
+			predictions.push({
+				date: dateKey,
+				dayName,
+				predictedRevenue: Math.round(predictedAmount),
+				confidence:
+					dailyValues.length > 20
+						? "high"
+						: dailyValues.length > 10
+							? "medium"
+							: "low",
+			});
+		}
+
+		return {
+			currentAvgDaily: Math.round(avgDailyRevenue),
+			trend,
+			predictions,
+			totalAnalyzedDays: dailyValues.length,
+		};
 	},
 });

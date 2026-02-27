@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "@tkmpos/backend/convex/_generated/api";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	AlertTriangle,
@@ -146,16 +146,15 @@ function AIChatPage() {
 	// AI Proactive Suggestions
 	const proactiveSuggestions = useQuery(api.ai.getProactiveSuggestions, {});
 
-	// Predictive Analytics (disabled - functions not implemented yet)
-	// const stockPredictions = useQuery(api.ai.predictStockOut, { daysAhead: 7 });
-	// const busyHoursPrediction = useQuery(api.ai.predictBusyHours, {});
-	// const revenuePrediction = useQuery(api.ai.predictDailyRevenue, {});
-
-	// Anomaly Detection (disabled - function not implemented yet)
-	// const anomalies = useQuery(api.ai.detectAnomalies, {});
+	// Predictive Analytics
+	const stockPredictions = useQuery(api.ai.predictStockOut, { daysAhead: 7 });
+	const busyHoursPrediction = useQuery(api.ai.predictBusyHours, {});
+	const revenuePrediction = useQuery(api.ai.predictDailyRevenue, { daysAhead: 7 });
 
 	// Follow-up Tasks
 	const pendingTasks = useQuery(api.aiMemory.getPendingTasks, {});
+	const completeTaskMutation = useMutation(api.aiMemory.completeTask);
+	const dismissTaskMutation = useMutation(api.aiMemory.dismissTask);
 
 	// Financial Summary for reports
 	const _financialSummary = useQuery(api.finance.getFinancialSummary, {});
@@ -341,6 +340,24 @@ function AIChatPage() {
 			fileInputRef.current.value = "";
 		}
 	}, []);
+
+	const handleCompleteTask = async (taskId: string) => {
+		try {
+			await completeTaskMutation({ taskId });
+			toast.success("Tugas berhasil diselesaikan!");
+		} catch {
+			toast.error("Gagal menyelesaikan tugas.");
+		}
+	};
+
+	const handleDismissTask = async (taskId: string) => {
+		try {
+			await dismissTaskMutation({ taskId });
+			toast.success("Tugas berhasil diabaikan.");
+		} catch {
+			toast.error("Gagal mengabaikan tugas.");
+		}
+	};
 
 	const handleExecuteSuggestion = async (suggestion: Suggestion) => {
 		if (!suggestion.action) {
@@ -596,13 +613,13 @@ function AIChatPage() {
 				)}
 
 				{/* Suggestions Tab */}
-				{activeTab === "suggestions" && proactiveSuggestions.data && (
+				{activeTab === "suggestions" && (
 					<div className="space-y-4 p-4">
 						<h3 className="mb-4 font-bold text-foreground">
 							Saran Proaktif AI
 						</h3>
 
-						{proactiveSuggestions.data.length === 0 ? (
+						{!proactiveSuggestions.data || proactiveSuggestions.data.length === 0 ? (
 							<div className="py-8 text-center">
 								<Lightbulb className="mx-auto mb-2 h-12 w-12 text-muted-foreground" />
 								<p className="text-muted-foreground">
@@ -682,14 +699,141 @@ function AIChatPage() {
 					<div className="space-y-4 p-4">
 						<h3 className="mb-4 font-bold text-foreground">Prediksi AI</h3>
 
-						<div className="rounded-xl border border-border bg-card p-8 text-center">
-							<TrendingUp className="mx-auto mb-3 h-12 w-12 text-muted-foreground" />
-							<p className="text-muted-foreground">
-								Fitur prediksi akan segera hadir!
-							</p>
-							<p className="text-muted-foreground text-sm">
-								Prediksi stok habis, jam ramai, dan estimasi pendapatan akan tersedia segera.
-							</p>
+						{/* Stock Out Predictions */}
+						<div className="space-y-3">
+							<h4 className="text-muted-foreground text-sm font-semibold">
+								Prediksi Stok Habis
+							</h4>
+							{stockPredictions && stockPredictions.length > 0 ? (
+								<div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+									{stockPredictions.map((item: any) => (
+										<div
+											className={`rounded-lg border p-3 ${
+												item.risk === "high"
+													? "border-destructive/50 bg-destructive/5"
+													: "border-warning/50 bg-warning/5"
+											}`}
+											key={item.ingredientName}
+										>
+											<div className="flex items-center justify-between">
+												<div>
+													<p className="font-medium text-sm">
+														{item.ingredientName}
+													</p>
+													<p className="text-muted-foreground text-xs">
+														Sisa: {item.currentStock} {item.unit}
+													</p>
+												</div>
+												<div className="text-right">
+													<p className="text-foreground text-xs">
+														{item.daysUntilEmpty <= 1
+															? "Habis hari ini"
+															: item.daysUntilEmpty === 1
+																? "Habis besok"
+																: `Habis dalam ${item.daysUntilEmpty} hari`}
+													</p>
+													<p className="text-muted-foreground text-xs">
+														Pakai: {item.dailyUsage}/hari
+													</p>
+												</div>
+											</div>
+										</div>
+									))}
+								</div>
+							) : (
+								<div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
+									<p className="text-muted-foreground text-sm">
+										Tidak ada item yang berisiko habis dalam 7 hari ke depan
+									</p>
+								</div>
+							)}
+						</div>
+
+						{/* Busy Hours Prediction */}
+						<div className="space-y-3">
+							<h4 className="text-muted-foreground text-sm font-semibold">
+								Jam Ramai
+							</h4>
+							{busyHoursPrediction && busyHoursPrediction.peakHours ? (
+								<div className="grid grid-cols-5 gap-2">
+									{busyHoursPrediction.peakHours.map((hour: any) => (
+										<div
+											className="rounded-lg border border-primary/30 bg-primary/5 p-2 text-center"
+											key={hour.hour}
+										>
+											<p className="font-bold text-primary">
+												{hour.hour}:00
+											</p>
+											<p className="text-muted-foreground text-xs">
+												{hour.percentage}%
+											</p>
+										</div>
+									))}
+								</div>
+							) : (
+								<div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
+									<p className="text-muted-foreground text-sm">
+										Belum cukup data untuk analisis jam ramai
+									</p>
+								</div>
+							)}
+						</div>
+
+						{/* Revenue Prediction */}
+						<div className="space-y-3">
+							<h4 className="text-muted-foreground text-sm font-semibold">
+								Prediksi Pendapatan 7 Hari Kedepan
+							</h4>
+							{revenuePrediction && revenuePrediction.predictions ? (
+								<>
+									<div className="flex items-center gap-2">
+										<p className="text-muted-foreground text-xs">
+											Rata-rata harian saat ini:
+										</p>
+										<p className="font-bold text-foreground text-sm">
+											Rp {revenuePrediction.currentAvgDaily?.toLocaleString("id-ID")}
+										</p>
+										<span
+											className={`rounded-full px-2 py-0.5 text-[10px] ${
+												revenuePrediction.trend === "increasing"
+													? "bg-green-500/20 text-green-600"
+													: revenuePrediction.trend === "decreasing"
+														? "bg-red-500/20 text-red-600"
+														: "bg-muted text-muted-foreground"
+											}`}
+										>
+											{revenuePrediction.trend === "increasing"
+												? "Naik"
+												: revenuePrediction.trend === "decreasing"
+													? "Turun"
+													: "Stabil"}
+										</span>
+									</div>
+									<div className="grid grid-cols-7 gap-2">
+										{revenuePrediction.predictions.map(
+											(pred: any, index: number) => (
+												<div
+													className="rounded-lg border border-border bg-card p-2 text-center"
+													key={pred.date}
+												>
+													<p className="text-muted-foreground text-[10px]">
+														{pred.dayName.slice(0, 3)}
+													</p>
+													<p className="font-medium text-xs">
+														{(pred.predictedRevenue / 1000).toFixed(0)}k
+													</p>
+												</div>
+											)
+										)}
+									</div>
+								</>
+							) : (
+								<div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
+									<p className="text-muted-foreground text-sm">
+										Belum cukup data untuk prediksi pendapatan
+									</p>
+								</div>
+							)}
 						</div>
 					</div>
 				)}
@@ -737,15 +881,22 @@ function AIChatPage() {
 												</span>
 											)}
 										</div>
-										<button
-											className="text-primary text-xs hover:underline"
-											onClick={() => {
-												/* TODO: complete task */
-											}}
-											type="button"
-										>
-											Selesai
-										</button>
+										<div className="flex items-center gap-2">
+											<button
+												className="text-muted-foreground text-xs hover:text-foreground"
+												onClick={() => handleDismissTask(task._id)}
+												type="button"
+											>
+												Abai
+											</button>
+											<button
+												className="rounded bg-primary px-3 py-1 text-primary-foreground text-xs hover:bg-primary/90"
+												onClick={() => handleCompleteTask(task._id)}
+												type="button"
+											>
+												Selesai
+											</button>
+										</div>
 									</div>
 								))}
 							</div>
