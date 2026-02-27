@@ -92,7 +92,7 @@ function DashboardPage() {
 	const hppCogs = useQuery(api.hpp.getOrdersCogs);
 	const hppForecast = useQuery(api.hpp.getHppForecast, { days: 30 });
 	const generateCompanyOverview = useAction(api.ai.generateCompanyOverview);
-	const predictStockOut = useAction(api.ai.predictStockOut);
+	// const predictStockOut = useAction(api.ai.predictStockOut); // Disabled - not fully implemented
 	const [insight, setInsight] = useState<string | null>(null);
 	const [stockPrediction, setStockPrediction] = useState<string | null>(null);
 	const [loadingInsight, setLoadingInsight] = useState(false);
@@ -661,6 +661,7 @@ function DashboardPage() {
 							<h3 className="font-bold text-foreground text-sm md:text-base">
 								Peringatan Stok
 							</h3>
+							{/*
 							<button
 								className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary transition-colors hover:bg-accent disabled:opacity-50"
 								disabled={loadingStockPrediction || !inventory}
@@ -702,6 +703,7 @@ function DashboardPage() {
 									className={`h-3.5 w-3.5 ${loadingStockPrediction ? "animate-spin" : ""}`}
 								/>
 							</button>
+							*/}
 						</div>
 						<div className="space-y-2">
 							{lowStockItems.length > 0 ? (
