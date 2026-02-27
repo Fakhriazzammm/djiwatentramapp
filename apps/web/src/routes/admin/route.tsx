@@ -36,6 +36,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { authClient } from "@/lib/auth-client";
+import { APP_VERSION } from "@/lib/version";
 
 export const Route = createFileRoute("/admin")({
 	component: AdminLayout,
@@ -92,8 +93,6 @@ function AdminLayout() {
 	const settings = useQuery(api.site_settings.getSettings);
 	const storeName = settings?.storeName || "TKM Admin";
 	const appName = settings?.appName || "Yumi POS";
-	const appVersion = settings?.appVersion || "1.0.0";
-	const developerName = settings?.developerName || "Zantara Technology";
 
 	useEffect(() => {
 		localStorage.setItem("admin-sidebar-collapsed", String(isCollapsed));
@@ -304,11 +303,21 @@ function AdminLayout() {
 					<Outlet />
 				</div>
 
-				{/* Desktop Footer */}
+				{/* Footer - visible on both desktop and mobile */}
 				{!isAIChat && (
-					<footer className="hidden border-border border-t bg-muted/20 px-4 py-2 text-center text-muted-foreground text-xs md:block">
-						Versi {appVersion} {appName} | powered by Yumi AI | Develop by{" "}
-						{developerName}
+					<footer className="border-border border-t bg-muted/20 px-4 py-2 text-center text-muted-foreground text-xs">
+						<div className="flex flex-col items-center gap-0.5 md:flex-row md:gap-2">
+							<span>
+								{appName} v{APP_VERSION.semantic}
+								<span className="ml-1 text-muted-foreground/50">
+									({APP_VERSION.commitHash})
+								</span>
+							</span>
+							<span className="hidden md:inline">|</span>
+							<span className="text-[10px]">
+								Build: {APP_VERSION.buildDate}
+							</span>
+						</div>
 					</footer>
 				)}
 			</main>

@@ -19,7 +19,7 @@
   "type": "module",
   "scripts": {
     "dev": "turbo dev",
-    "build": "turbo build",
+    "build": "bash scripts/update-version.sh && turbo build",
     "check-types": "turbo check-types",
     "dev:native": "turbo -F native dev",
     "dev:web": "turbo -F web dev",
@@ -27,6 +27,7 @@
     "dev:setup": "turbo -F @tkmpos/backend dev:setup",
     "convex:push": "turbo -F @tkmpos/backend push",
     "convex:pull": "turbo -F @tkmpos/backend pull",
+    "version": "bash scripts/update-version.sh",
     "prepare": "husky"
   },
   "dependencies": {
