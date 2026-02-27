@@ -51,19 +51,19 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/orders": "Pesanan",
 	"/admin/discounts": "Promosi",
 	"/admin/hpp-calculator": "HPP Kalkulator",
-	"/admin/ai-chat": "AI Chat",
+	"/admin/ai-chat": "Yumi AI",
 	"/admin/settings": "Pengaturan",
 	"/admin/forecasting": "Forecasting",
 };
 
-// Bottom nav items (AI at center index 2)
+// Bottom nav items (Yumi AI at center index 2)
 const BOTTOM_NAV_ITEMS = [
 	{ to: "/admin", icon: LayoutDashboard, label: "Dasbor", exact: true },
 	{ to: "/admin/orders", icon: ClipboardList, label: "Pesanan" },
 	{
 		to: "/admin/ai-chat",
 		icon: Sparkles,
-		label: "AI",
+		label: "Yumi",
 		exact: true,
 		isCenter: true,
 	},
@@ -148,6 +148,12 @@ function AdminLayout() {
 
 				<nav className="flex-1 space-y-1 p-2">
 					<DesktopNavLink
+						icon={<Sparkles />}
+						isCollapsed={isCollapsed}
+						label="Yumi AI"
+						to="/admin/ai-chat"
+					/>
+					<DesktopNavLink
 						activeOptions={{ exact: true }}
 						icon={<LayoutDashboard />}
 						isCollapsed={isCollapsed}
@@ -189,12 +195,6 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="HPP Kalkulator"
 						to="/admin/hpp-calculator"
-					/>
-					<DesktopNavLink
-						icon={<Sparkles />}
-						isCollapsed={isCollapsed}
-						label="AI Chat"
-						to="/admin/ai-chat"
 					/>
 					<DesktopNavLink
 						icon={<Settings />}
