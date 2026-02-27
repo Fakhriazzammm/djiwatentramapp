@@ -146,13 +146,13 @@ function AIChatPage() {
 	// AI Proactive Suggestions
 	const proactiveSuggestions = useQuery(api.ai.getProactiveSuggestions, {});
 
-	// Predictive Analytics
-	const stockPredictions = useQuery(api.ai.predictStockOut, { daysAhead: 7 });
-	const busyHoursPrediction = useQuery(api.ai.predictBusyHours, {});
-	const revenuePrediction = useQuery(api.ai.predictDailyRevenue, {});
+	// Predictive Analytics (disabled - functions not implemented yet)
+	// const stockPredictions = useQuery(api.ai.predictStockOut, { daysAhead: 7 });
+	// const busyHoursPrediction = useQuery(api.ai.predictBusyHours, {});
+	// const revenuePrediction = useQuery(api.ai.predictDailyRevenue, {});
 
-	// Anomaly Detection
-	const anomalies = useQuery(api.ai.detectAnomalies, {});
+	// Anomaly Detection (disabled - function not implemented yet)
+	// const anomalies = useQuery(api.ai.detectAnomalies, {});
 
 	// Follow-up Tasks
 	const pendingTasks = useQuery(api.ai.getPendingTasks, {});
@@ -353,16 +353,12 @@ function AIChatPage() {
 		}
 	};
 
-	// Get predictions for display
-	const getStockRiskLevel = () => {
-		if (!stockPredictions.data) {
-			return "low";
-		}
-		const highRisk = (stockPredictions.data as any[]).filter(
-			(p: any) => p.risk === "high"
-		).length;
-		return highRisk > 0 ? "high" : highRisk > 2 ? "medium" : "low";
-	};
+	// Get predictions for display (disabled for now - functions not implemented)
+	// const getStockRiskLevel = () => {
+	// 	if (!stockPredictions.data) return "low";
+	// 	const highRisk = (stockPredictions.data as any[]).filter((p: any) => p.risk === "high").length;
+	// 	return highRisk > 0 ? "high" : highRisk > 2 ? "medium" : "low";
+	// };
 
 	return (
 		<div className="flex h-full flex-col overflow-hidden bg-background">
@@ -762,158 +758,14 @@ function AIChatPage() {
 					<div className="space-y-4 p-4">
 						<h3 className="mb-4 font-bold text-foreground">Prediksi AI</h3>
 
-						<div className="grid gap-4">
-							{/* Stock-out Prediction */}
-							{stockPredictions.data && (
-								<div className="rounded-xl border border-border bg-card p-4">
-									<div className="mb-3 flex items-center gap-2">
-										<Shield className="h-5 w-5 text-accent" />
-										<h4 className="font-semibold">Prediksi Stok Habis</h4>
-										<span
-											className={`rounded-full px-2 py-0.5 text-xs ${
-												getStockRiskLevel() === "high"
-													? "bg-destructive text-destructive-foreground"
-													: getStockRiskLevel() === "medium"
-														? "bg-warning text-warning-foreground"
-														: "bg-muted text-muted-foreground"
-											}`}
-										>
-											{getStockRiskLevel() === "high"
-												? "Risiko Tinggi"
-												: getStockRiskLevel() === "medium"
-													? "Risiko Sedang"
-													: "Aman"}
-										</span>
-									</div>
-
-									{(stockPredictions.data as any[])
-										.slice(0, 5)
-										.map((item: any) => (
-											<div
-												className="flex items-center justify-between border-border border-b py-2 last:border-0"
-												key={item.inventoryId}
-											>
-												<div>
-													<p className="font-medium text-sm">{item.name}</p>
-													<p className="text-muted-foreground text-xs">
-														{item.dailyUsage}/hari • {item.daysUntilStockOut}{" "}
-														hari tersisa
-													</p>
-												</div>
-												<span
-													className={`font-medium text-xs ${
-														item.risk === "high"
-															? "text-destructive"
-															: item.risk === "medium"
-																? "text-warning"
-																: "text-success"
-													}`}
-												>
-													{item.risk === "high"
-														? "Kritis"
-														: item.risk === "medium"
-															? "Waspada"
-															: "Aman"}
-												</span>
-											</div>
-										))}
-								</div>
-							)}
-
-							{/* Busy Hours Prediction */}
-							{busyHoursPrediction.data && (
-								<div className="rounded-xl border border-border bg-card p-4">
-									<div className="mb-3 flex items-center gap-2">
-										<Calendar className="h-5 w-5 text-primary" />
-										<h4 className="font-semibold">Jam Ramai</h4>
-									</div>
-									<p className="mb-2 text-muted-foreground text-xs">
-										{busyHoursPrediction.data.today}
-									</p>
-									<div className="space-y-2">
-										{(busyHoursPrediction.data.fullDay || [])
-											.slice(0, 8)
-											.map((hour: any) => (
-												<div
-													className="flex items-center gap-2"
-													key={hour.hour}
-												>
-													<span className="w-12 text-muted-foreground text-xs">
-														{hour.hour}:00
-													</span>
-													<div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-														<div
-															className="h-full rounded-full bg-primary"
-															style={{
-																width: `${Math.min(100, (hour.avgOrders / 10) * 100)}%`,
-															}}
-														/>
-													</div>
-													<span className="text-xs">
-														{hour.avgOrders} order
-													</span>
-												</div>
-											))}
-									</div>
-								</div>
-							)}
-
-							{/* Revenue Prediction */}
-							{revenuePrediction.data && (
-								<div className="rounded-xl border border-border bg-card p-4">
-									<div className="mb-3 flex items-center gap-2">
-										<TrendingUp className="h-5 w-5 text-green-500" />
-										<h4 className="font-semibold">
-											Estimasi Pendapatan Hari Ini
-										</h4>
-									</div>
-									<div className="py-2 text-center">
-										<p className="font-bold text-2xl text-foreground">
-											Rp
-											{revenuePrediction.data.predictedRevenue.toLocaleString(
-												"id-ID"
-											)}
-										</p>
-										<p className="text-muted-foreground text-xs">
-											{revenuePrediction.data.trend === "increasing" && "📈"}
-											{revenuePrediction.data.trend === "decreasing" && "📉"}{" "}
-											{revenuePrediction.data.trend === "increasing"
-												? "Tren Naik"
-												: revenuePrediction.data.trend === "decreasing"
-													? "Trend Turun"
-													: "Stabil"}
-											({revenuePrediction.data.trendPercent}%)
-										</p>
-										<p className="mt-1 text-muted-foreground text-xs">
-											{revenuePrediction.data.recommendation}
-										</p>
-									</div>
-									<div className="mt-3 grid grid-cols-2 gap-2">
-										<div className="rounded-lg bg-muted/50 p-2 text-center">
-											<p className="text-[10px] text-muted-foreground">
-												Rata-rata 7 hari
-											</p>
-											<p className="font-semibold text-sm">
-												Rp
-												{revenuePrediction.data.avgLast7Days?.toLocaleString(
-													"id-ID"
-												) || "-"}
-											</p>
-										</div>
-										<div className="rounded-lg bg-muted/50 p-2 text-center">
-											<p className="text-[10px] text-muted-foreground">
-												Confidence
-											</p>
-											<p className="font-semibold text-sm">
-												{Math.round(
-													(revenuePrediction.data.confidence || 0) * 100
-												)}
-												%
-											</p>
-										</div>
-									</div>
-								</div>
-							)}
+						<div className="rounded-xl border border-border bg-card p-8 text-center">
+							<TrendingUp className="mx-auto mb-3 h-12 w-12 text-muted-foreground" />
+							<p className="text-muted-foreground">
+								Fitur prediksi akan segera hadir!
+							</p>
+							<p className="text-muted-foreground text-sm">
+								Prediksi stok habis, jam ramai, dan estimasi pendapatan akan tersedia segera.
+							</p>
 						</div>
 					</div>
 				)}
@@ -979,35 +831,6 @@ function AIChatPage() {
 								<p className="text-muted-foreground">
 									Tidak ada tugas tertunda
 								</p>
-							</div>
-						)}
-
-						{/* Anomaly Alerts */}
-						{anomalies.data && anomalies.data.length > 0 && (
-							<div className="mt-4">
-								<h4 className="mb-2 flex items-center gap-2 font-semibold text-destructive text-sm">
-									<Shield className="h-4 w-4" />
-									Peringatan Anomali
-								</h4>
-								<div className="space-y-2">
-									{(anomalies.data as any[]).slice(0, 3).map((anomaly: any) => (
-										<div
-											className={`rounded-lg border p-3 text-xs ${
-												anomaly.severity === "high"
-													? "border-destructive bg-destructive/5"
-													: "border-warning bg-warning/5"
-											}`}
-											key={anomaly._id}
-										>
-											<p className="font-medium">
-												{anomaly.title || anomaly.description}
-											</p>
-											<p className="text-muted-foreground">
-												{anomaly.description}
-											</p>
-										</div>
-									))}
-								</div>
 							</div>
 						)}
 					</div>
