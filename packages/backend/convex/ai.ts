@@ -5,7 +5,7 @@ import OpenAI from "openai";
 import type { z } from "zod";
 import { api } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
-import { action } from "./_generated/server";
+import { action, query } from "./_generated/server";
 import { formatToolResult, tools } from "./tools";
 
 // Helper to initialize OpenAI lazily
@@ -1091,7 +1091,7 @@ interface ProactiveSuggestion {
 /**
  * Get proactive suggestions based on current business state
  */
-export const getProactiveSuggestions = action({
+export const getProactiveSuggestions = query({
 	args: {},
 	handler: async (ctx) => {
 		const suggestions: ProactiveSuggestion[] = [];
