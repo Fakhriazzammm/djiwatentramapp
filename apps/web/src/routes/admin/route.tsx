@@ -308,9 +308,9 @@ function AdminLayout() {
 					</header>
 				)}
 
-				{/* Page Content - with bottom padding on mobile for bottom nav */}
+				{/* Page Content - AI Chat uses internal scroll, others use page scroll */}
 				<div
-					className={`flex-1 overflow-y-auto ${isAIChat ? "p-0 pb-16 md:pb-0" : "p-3 pb-20 md:p-4 md:pb-4"}`}
+					className={isAIChat ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto p-3 pb-20 md:p-4 md:pb-4"}
 				>
 					<Outlet />
 				</div>
