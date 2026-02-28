@@ -97,6 +97,26 @@ const TEMPLATES: Array<{
 		message: "Berikan saran bisnis berdasarkan data saat ini",
 		icon: <Lightbulb className="h-3.5 w-3.5" />,
 	},
+	{
+		label: "Prediksi Stok",
+		message: "Analisis prediksi stok yang akan habis dalam 7 hari ke depan dan rekomendasikan tindakan",
+		icon: <TrendingUp className="h-3.5 w-3.5" />,
+	},
+	{
+		label: "Analisis Diskon",
+		message: "Analisis efektivitas semua diskon yang aktif dan rekomendasikan strategi promo yang lebih baik",
+		icon: <Sparkles className="h-3.5 w-3.5" />,
+	},
+	{
+		label: "Rekonsiliasi",
+		message: "Lakukan rekonsiliasi keuangan: bandingkan total pesanan selesai dengan pencatatan pemasukan, dan identifikasi selisih jika ada",
+		icon: <Shield className="h-3.5 w-3.5" />,
+	},
+	{
+		label: "Hitung HPP",
+		message: "Tampilkan ringkasan kalkulasi HPP semua produk, mana yang margin-nya rendah dan perlu dioptimalkan?",
+		icon: <Target className="h-3.5 w-3.5" />,
+	},
 ];
 
 const TOOL_LABELS: Record<string, string> = {
@@ -123,6 +143,8 @@ const TOOL_LABELS: Record<string, string> = {
 	deleteHppCalculation: "Hapus Kalkulasi HPP",
 	syncHppWithInventoryPrices: "Sinkronkan Harga HPP",
 	updateStoreSettings: "Update Pengaturan Toko",
+	analyzeDiscountEffectiveness: "Analisis Efektivitas Diskon",
+	createReconciliationTransaction: "Rekonsiliasi Keuangan",
 };
 
 function AIChatPage() {
@@ -130,11 +152,14 @@ function AIChatPage() {
 		{
 			role: "assistant",
 			content:
-				"Halo! Saya Yumi, asisten AI kamu. Saya bisa membantu merekap data, menganalisis bisnis, MELAKUKAN AKSI seperti tambah produk, update stok, buat pesanan, dan bahkan MULTI-STEP ACTIONS dalam satu permintaan. Coba upload foto struk/kwitansi untuk auto-generate data! Sekarang saya dilengkapi dengan fitur PROAKTIF - saya bisa memberi saran dan prediksi berdasarkan data bisnismu!",
+				"Halo! Saya Yumi, asisten AI kamu untuk YUMI POS. Saya bisa membantu merekap data, menganalisis bisnis, MELAKUKAN AKSI seperti tambah produk, update stok, buat pesanan, dan bahkan MULTI-STEP ACTIONS dalam satu permintaan. Sekarang saya dilengkapi dengan Forecasting, Analisis HPP, Efektivitas Diskon, dan Rekonsiliasi Keuangan!",
 		},
 	]);
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
+	const [isStreaming, setIsStreaming] = useState(false);
+	const [streamingContent, setStreamingContent] = useState("");
+	const streamingActiveRef = useRef(false);
 	const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
 	const [isImageScannerOpen, setIsImageScannerOpen] = useState(false);
 	const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -220,6 +245,13 @@ function AIChatPage() {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, []);
 
+	// Auto-scroll while streaming
+	useEffect(() => {
+		if (isStreaming) {
+			messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+		}
+	}, [streamingContent, isStreaming]);
+
 	// Sanitize AI response - remove markdown formatting
 	const sanitizeResponse = (text: string): string => {
 		if (!text) return "";
@@ -243,6 +275,36 @@ function AIChatPage() {
 			.replace(/\n{3,}/g, "\n\n")
 			.trim();
 	};
+
+	// Stream text word by word for realistic streaming effect
+	const streamText = useCallback(
+		(text: string, onComplete: () => void) => {
+			const tokens = text.split(/(\s+)/);
+			let i = 0;
+			streamingActiveRef.current = true;
+			setIsStreaming(true);
+			setStreamingContent("");
+
+			const next = () => {
+				if (!streamingActiveRef.current) return;
+				if (i < tokens.length) {
+					const chunk = tokens[i];
+					setStreamingContent((prev) => prev + chunk);
+					i++;
+					// 20ms for words, 3ms for whitespace → ~50 chars/sec
+					const delay = chunk.trim().length > 0 ? 20 : 3;
+					setTimeout(next, delay);
+				} else {
+					streamingActiveRef.current = false;
+					setIsStreaming(false);
+					setStreamingContent("");
+					onComplete();
+				}
+			};
+			next();
+		},
+		[]
+	);
 
 	// Session management functions (defined before sendMessage to avoid initialization issues)
 	const startNewSession = async () => {
@@ -361,19 +423,29 @@ function AIChatPage() {
 					setTimeout(() => setToolCalls([]), 3000);
 				}
 
-				const assistantMessage: ChatMessage = {
-					role: "assistant",
-					content: sanitizeResponse(response) || "Maaf, saya tidak bisa memproses permintaan ini.",
-				};
+				const sanitized =
+					sanitizeResponse(response) ||
+					"Maaf, saya tidak bisa memproses permintaan ini.";
 
-				setMessages((prev) => [...prev, assistantMessage]);
+				setIsLoading(false);
 
-				// Save messages to Convex
-				if (currentSessionId) {
-					await saveMessage(userMessage);
-					await saveMessage(assistantMessage);
-				}
+				// Stream the response word by word for realistic effect
+				streamText(sanitized, async () => {
+					const assistantMessage: ChatMessage = {
+						role: "assistant",
+						content: sanitized,
+					};
+					setMessages((prev) => [...prev, assistantMessage]);
+					if (currentSessionId) {
+						await saveMessage(userMessage);
+						await saveMessage(assistantMessage);
+					}
+				});
 			} catch {
+				setIsLoading(false);
+				streamingActiveRef.current = false;
+				setIsStreaming(false);
+				setStreamingContent("");
 				setMessages((prev) => [
 					...prev,
 					{
@@ -382,11 +454,9 @@ function AIChatPage() {
 					},
 				]);
 				setToolCalls([]);
-			} finally {
-				setIsLoading(false);
 			}
 		},
-		[isLoading, messages, yumiChat, selectedImage, currentSessionId, startNewSession, saveMessage]
+		[isLoading, messages, yumiChat, selectedImage, currentSessionId, startNewSession, saveMessage, streamText]
 	);
 
 	const handleFileSelect = useCallback(
@@ -733,14 +803,34 @@ function AIChatPage() {
 											<div className="rounded-xl rounded-tl-none border border-border bg-card px-3 py-2">
 												<div className="flex gap-1">
 													<span className="h-1 w-1 animate-bounce rounded-full bg-primary/60" />
-													<span className="h-1 w-1 animate-bounce rounded-full bg-primary/60" />
-													<span className="h-1 w-1 animate-bounce rounded-full bg-primary/60" />
+													<span className="h-1 w-1 animate-bounce rounded-full bg-primary/60" style={{ animationDelay: "0.15s" }} />
+													<span className="h-1 w-1 animate-bounce rounded-full bg-primary/60" style={{ animationDelay: "0.3s" }} />
 												</div>
 											</div>
 										</div>
 									</div>
 								)}
-								<div ref={messagesEndRef} />
+
+								{/* Streaming Message */}
+								{isStreaming && streamingContent && (
+									<div className="flex justify-start">
+										<div className="max-w-[85%] space-y-1 items-start">
+											<div className="flex items-center gap-1.5 px-1">
+												<Bot className="h-3.5 w-3.5 text-primary" />
+												<span className="font-bold text-[10px] text-primary uppercase tracking-wider">
+													Yumi
+												</span>
+											</div>
+											<div className="rounded-xl rounded-tl-none border border-border bg-card px-3 py-2.5 text-sm leading-relaxed md:rounded-2xl md:px-4 md:py-3">
+												<div className="whitespace-pre-line">
+													{streamingContent}
+													<span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-primary" />
+												</div>
+											</div>
+										</div>
+									</div>
+								)}
+<div ref={messagesEndRef} />
 							</div>
 						</div>
 					</>

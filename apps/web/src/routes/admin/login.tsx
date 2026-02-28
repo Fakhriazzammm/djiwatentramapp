@@ -19,7 +19,7 @@ function LoginPage() {
 	const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
 	const settings = useQuery(api.site_settings.getSettings);
-	const storeName = settings?.storeName || "TKM POS";
+	const storeName = settings?.storeName || "YUMI POS";
 
 	const handleLogin = async (e: React.FormEvent) => {
 		e.preventDefault();
