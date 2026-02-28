@@ -2138,7 +2138,57 @@ export const getFinancialReconciliation = query({
 // ============================================
 
 /**
- * Helper: Run OCR on a receipt image using Google Gemini API
+ * Helper: Call Python OCR Service for receipt scanning
+ */
+async function callPythonOCRService(imageDataUrl: string, endpoint: string = "ocr/receipt"): Promise<{
+	success: boolean;
+	type: string;
+	data?: any;
+	raw_text: string;
+	confidence: number;
+	error?: string;
+}> {
+	const ocrServiceUrl = process.env.OCR_SERVICE_URL || "http://localhost:8001";
+
+	try {
+		const response = await fetch(`${ocrServiceUrl}/${endpoint}`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				image: imageDataUrl,
+			}),
+		});
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			console.error("OCR Service Error:", errorText);
+			return {
+				success: false,
+				type: "unknown",
+				data: null,
+				raw_text: "",
+				confidence: 0,
+				error: `OCR Service error: ${response.status}`,
+			};
+		}
+
+		return await response.json();
+	} catch (error) {
+		console.error("OCR Service Connection Error:", error);
+		return {
+			success: false,
+			type: "unknown",
+			data: null,
+			raw_text: "",
+			confidence: 0,
+			error: "OCR Service unavailable",
+		};
+}
+
+/**
+ * Helper: Run OCR on a receipt image using Google Gemini API (direct fetch fallback)
  */
 async function runReceiptOCR(imageDataUrl: string): Promise<{
 	type: "order" | "expense" | "income" | "unknown";
@@ -2153,79 +2203,65 @@ async function runReceiptOCR(imageDataUrl: string): Promise<{
 	confidence: number;
 	rawText: string;
 }> {
-	// Get API key from environment
+	// Try Python OCR Service first
+	console.log("Attempting Python OCR Service...");
+	const pythonResult = await callPythonOCRService(imageDataUrl, "ocr/receipt");
+
+	if (pythonResult.success && pythonResult.type !== "unknown") {
+		console.log("Python OCR Service succeeded");
+		return {
+			type: pythonResult.type as "order" | "expense" | "income" | "unknown",
+			data: pythonResult.data,
+			rawText: pythonResult.raw_text,
+			confidence: pythonResult.confidence,
+		};
+	}
+
+	console.log("Python OCR Service failed, using direct Gemini API fallback...");
+
+	// Fallback: Direct Gemini API call
 	const apiKey = process.env.GEMINI_API_KEY;
 	if (!apiKey) {
 		throw new Error("GEMINI_API_KEY environment variable is not set");
 	}
 
-	// Extract base64 data from data URL
 	const base64Data = imageDataUrl.split(",")[1];
 	if (!base64Data) {
 		throw new Error("Invalid image data URL format");
 	}
 
-	const prompt = `Kamu adalah sistem OCR yang canggih dan akurat untuk membaca struk belanja, kwitansi, dan invoice dalam bahasa Indonesia maupun Inggris.
+	const prompt = `Kamu adalah sistem OCR struk belanja Indonesia yang terpercaya.
 
-Tugasmu:
-1. Baca SEMUA teks dari gambar struk/kwitansi dengan sangat teliti dari atas ke bawah
-2. Identifikasi jenis transaksi berdasarkan konteks
-3. Ekstrak SEMUA item yang tertera di struk (baca sampai selesai)
-4. Identifikasi dan hitung total amount dengan benar
+Baca struk ini dari atas ke bawah lengkap:
+- Setiap item: nama, quantity, harga
+- Total amount (cari angka terbesar di bawah)
+- Payment method, tanggal, nama toko
 
-Jenis transaksi:
-- "expense": pengeluaran/pembelian (belanja bahan, bayar tagihan, pembelian barang)
-- "order": pesanan penjualan (struk kasir toko/restoran yang kamu jual)
-- "income": pemasukan/pendapatan
-- "unknown": tidak dapat diidentifikasi
-
-INSTRUKSI KHUSUS UNTUK MEMBACA STRUK:
-- Baca dari ATAS ke BAWAH secara sistematis
-- Pastikan untuk membaca SEMUA baris item, jangan berhenti di tengah
-- Perhatikan jumlah (quantity), harga satuan, dan subtotal per item
-- Ambil total akhir (biasanya di bagian bawah struk)
-- Catat juga pajak/PPN, diskon, dan kembalian jika ada
-
-PENTING: Kembalikan HANYA JSON valid, tanpa markdown, tanpa kode blok, tanpa teks tambahan apapun.
-
-Format JSON yang harus dikembalikan:
+Output JSON (tanpa markdown):
 {
-  "type": "expense|order|income|unknown",
+  "type": "expense",
   "data": {
-    "amount": total_angka_numerik_tanpa_titik_pemisah,
-    "items": [{"name": "nama_item", "quantity": jumlah_numerik, "price": harga_per_item_numerik}],
-    "category": "kategori seperti: makanan, minuman, bahan_baku, transportasi, listrik, air, gaji, lainnya",
-    "description": "deskripsi singkat transaksi dalam bahasa Indonesia",
-    "paymentMethod": "cash/transfer/qris/kartu_debit/kartu_kredit",
-    "notes": "catatan penting dari struk seperti nomor struk, nama toko, tanggal"
+    "amount": 50000,
+    "items": [{"name": "Nasi", "quantity": 2, "price": 15000}],
+    "category": "makanan",
+    "paymentMethod": "qris",
+    "notes": "Struk #123"
   },
-  "confidence": angka_desimal_0_sampai_1,
-  "rawText": "semua teks yang berhasil dibaca dari struk, dipisahkan baris baru, dari atas sampai bawah lengkap"
-}
-
-Baca struk/kwitansi ini dengan teliti dari atas ke bawah. Ekstrak SEMUA item yang tertera sampai baris terakhir. Pastikan total amount sudah benar dan sesuai dengan yang tertera di struk. Jangan lewatkan item apapun.`;
+  "confidence": 0.9
+}`;
 
 	try {
 		const response = await fetch(
 			`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
 			{
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
+				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					contents: [
 						{
 							parts: [
-								{
-									inline_data: {
-										mime_type: "image/jpeg",
-										data: base64Data,
-									},
-								},
-								{
-									text: prompt,
-								},
+								{ inline_data: { mime_type: "image/jpeg", data: base64Data } },
+								{ text: prompt },
 							],
 						},
 					],
@@ -2240,46 +2276,41 @@ Baca struk/kwitansi ini dengan teliti dari atas ke bawah. Ekstrak SEMUA item yan
 
 		if (!response.ok) {
 			const errorText = await response.text();
-			throw new Error(
-				`Gemini API error: ${response.status} ${response.statusText} - ${errorText}`
-			);
+			throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
 		}
 
 		const result = await response.json();
-
-		// Extract text from Gemini response
 		const content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
 		if (!content) {
 			throw new Error("Empty response from Gemini API");
 		}
 
-		// Bersihkan markdown code blocks jika ada
-		const cleaned = content
-			.replace(/```json\n?/g, "")
-			.replace(/```\n?/g, "")
-			.trim();
-
-		try {
-			const parsed = JSON.parse(cleaned);
-			return {
-				type: parsed.type || "unknown",
-				data: parsed.data || {},
-				confidence:
-					typeof parsed.confidence === "number" ? parsed.confidence : 0.5,
-				rawText: parsed.rawText || content,
-			};
-		} catch {
-			// If JSON parsing fails, try to extract at least the raw text
-			return {
-				type: "unknown",
-				data: {},
-				confidence: 0.3,
-				rawText: content,
-			};
+		// Try to parse JSON from response
+		const jsonMatch = content.match(/\{[\s\S]*?\}/);
+		if (jsonMatch) {
+			try {
+				const parsed = JSON.parse(jsonMatch[0]);
+				return {
+					type: parsed.type || "unknown",
+					data: parsed.data || {},
+					rawText: content,
+					confidence: parsed.confidence || 0.5,
+				};
+			} catch {
+				// JSON parse failed, continue
+			}
 		}
+
+		// Fallback to raw text
+		return {
+			type: "unknown",
+			data: {},
+			rawText: content,
+			confidence: 0.3,
+		};
 	} catch (error) {
-		console.error("OCR Error:", error);
+		console.error("Direct Gemini OCR Error:", error);
 		throw error;
 	}
 }
