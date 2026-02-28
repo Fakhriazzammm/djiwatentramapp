@@ -517,6 +517,7 @@ export const yumiChat = action({
 				content: v.string(),
 			})
 		),
+		image: v.optional(v.string()), // base64 data URL for vision processing
 	},
 	handler: async (ctx, args) => {
 		const dbContext = await gatherDatabaseContext(ctx);
@@ -551,6 +552,7 @@ KEMAMPUAN:
 - HPP KALKULATOR: Bantu hitung Harga Pokok Produksi (HPP), margin, dan analisis profitabilitas per produk
 - ANALISIS DISKON: Evaluasi efektivitas diskon yang aktif, rekomendasikan strategi promo berdasarkan data penjualan
 - REKONSILIASI KEUANGAN: Cross-check pesanan selesai vs transaksi keuangan, identifikasi selisih, bantu rekonsiliasi
+- ANALISIS GAMBAR: Dapat membaca dan menganalisis gambar (foto struk, kwitansi, produk, dll) yang dikirim user. Ekstrak informasi seperti jumlah, item, tanggal, kategori, dan langsung catat ke sistem jika diminta
 
 ATURAN:
 1. Jawab dalam Bahasa Indonesia yang ramah dan profesional
@@ -590,7 +592,28 @@ INSTRUKSI TOOL CALLING:
 		for (const msg of args.history.slice(-10)) {
 			messages.push({ role: msg.role, content: msg.content });
 		}
-		messages.push({ role: "user", content: args.message });
+
+		// Support vision: if image is attached, send as multimodal content
+		if (args.image) {
+			messages.push({
+				role: "user",
+				content: [
+					{
+						type: "text",
+						text: args.message || "Tolong analisis gambar ini dan ekstrak informasi yang relevan.",
+					},
+					{
+						type: "image_url",
+						image_url: {
+							url: args.image,
+							detail: "high",
+						},
+					},
+				],
+			} as OpenAI.ChatCompletionMessageParam);
+		} else {
+			messages.push({ role: "user", content: args.message });
+		}
 
 		// Multi-step tool calling loop - allows AI to chain multiple tool calls
 		const maxIterations = 5;
