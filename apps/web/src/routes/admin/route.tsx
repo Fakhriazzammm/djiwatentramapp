@@ -244,69 +244,67 @@ function AdminLayout() {
 			{/* === MAIN CONTENT === */}
 			<main className="flex flex-1 flex-col overflow-hidden bg-background">
 				{/* Mobile Header */}
-				{!isAIChat && (
-					<header className="flex h-14 shrink-0 items-center justify-between border-border border-b px-4 md:px-4">
-						{/* Mobile: Show page title + store brand */}
-						<div className="flex items-center gap-3">
-							<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary md:hidden">
-								<Coffee className="h-4 w-4 text-primary-foreground" />
-							</div>
-							<div>
-								<h1 className="font-bold text-base leading-tight md:text-lg">
-									{currentPageTitle}
-								</h1>
-								<p className="text-[10px] text-muted-foreground leading-none md:hidden">
-									{storeName}
-								</p>
-							</div>
+				<header className="flex h-14 shrink-0 items-center justify-between border-border border-b px-4 md:px-4">
+					{/* Mobile: Show page title + store brand */}
+					<div className="flex items-center gap-3">
+						<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary md:hidden">
+							<Coffee className="h-4 w-4 text-primary-foreground" />
 						</div>
-						<div className="flex items-center gap-2">
-							<DropdownMenu>
-								<DropdownMenuTrigger
-									render={(props) => (
-										<button
-											{...props}
-											className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-primary/10 font-bold text-primary text-xs transition-all hover:scale-105 hover:bg-primary/20 active:scale-95"
-											type="button"
-										>
-											A
-										</button>
-									)}
-								/>
-								<DropdownMenuContent align="end" className="w-56">
-									<DropdownMenuLabel>Akun Admin</DropdownMenuLabel>
-									<DropdownMenuSeparator />
-									<DropdownMenuItem
-										onClick={() => navigate({ to: "/admin/settings" })}
+						<div>
+							<h1 className="font-bold text-base leading-tight md:text-lg">
+								{currentPageTitle}
+							</h1>
+							<p className="text-[10px] text-muted-foreground leading-none md:hidden">
+								{storeName}
+							</p>
+						</div>
+					</div>
+					<div className="flex items-center gap-2">
+						<DropdownMenu>
+							<DropdownMenuTrigger
+								render={(props) => (
+									<button
+										{...props}
+										className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-primary/10 font-bold text-primary text-xs transition-all hover:scale-105 hover:bg-primary/20 active:scale-95"
+										type="button"
 									>
-										<Settings className="mr-2 h-4 w-4" />
-										<span>Pengaturan</span>
-									</DropdownMenuItem>
-									<DropdownMenuItem onClick={() => navigate({ to: "/admin" })}>
-										<User className="mr-2 h-4 w-4" />
-										<span>Profil</span>
-									</DropdownMenuItem>
-									<DropdownMenuSeparator />
-									<DropdownMenuItem
-										className="text-destructive focus:text-destructive"
-										onClick={() => {
-											authClient.signOut({
-												fetchOptions: {
-													onSuccess: () => {
-														navigate({ to: "/" });
-													},
+										A
+									</button>
+								)}
+							/>
+							<DropdownMenuContent align="end" className="w-56">
+								<DropdownMenuLabel>Akun Admin</DropdownMenuLabel>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem
+									onClick={() => navigate({ to: "/admin/settings" })}
+								>
+									<Settings className="mr-2 h-4 w-4" />
+									<span>Pengaturan</span>
+								</DropdownMenuItem>
+								<DropdownMenuItem onClick={() => navigate({ to: "/admin" })}>
+									<User className="mr-2 h-4 w-4" />
+									<span>Profil</span>
+								</DropdownMenuItem>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem
+									className="text-destructive focus:text-destructive"
+									onClick={() => {
+										authClient.signOut({
+											fetchOptions: {
+												onSuccess: () => {
+													navigate({ to: "/" });
 												},
-											});
-										}}
-									>
-										<LogOut className="mr-2 h-4 w-4" />
-										<span>Keluar</span>
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
-						</div>
-					</header>
-				)}
+											},
+										});
+									}}
+								>
+									<LogOut className="mr-2 h-4 w-4" />
+									<span>Keluar</span>
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
+					</div>
+				</header>
 
 				{/* Page Content - AI Chat uses internal scroll, others use page scroll */}
 				<div
