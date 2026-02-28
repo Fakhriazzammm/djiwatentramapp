@@ -445,6 +445,11 @@
 	padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem);
 }
 
+/* Safe area for padding bottom with mobile navbar offset */
+.pb-safe-with-nav {
+	padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
+}
+
 /* Safe area for padding top */
 .pt-safe-area {
 	padding-top: max(env(safe-area-inset-top, 0px), 0.5rem);

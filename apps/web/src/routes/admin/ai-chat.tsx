@@ -1323,7 +1323,7 @@ function AIChatPage() {
 
 			{/* Input Form - stays fixed at bottom above mobile navbar */}
 			{activeTab === "chat" && (
-				<div className="shrink-0 border-border border-t bg-card px-2 pb-safe pt-2 md:px-4 md:pb-4 md:pt-3">
+				<div className="shrink-0 border-border border-t bg-card px-2 pb-safe-with-nav pt-2 md:px-4 md:pb-4 md:pt-3">
 					<div className="mx-auto max-w-full space-y-2 md:max-w-3xl">
 						{/* Templates */}
 						<div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
