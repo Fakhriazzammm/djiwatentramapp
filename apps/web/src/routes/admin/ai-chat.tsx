@@ -168,7 +168,7 @@ function AIChatPage() {
 	const [showSessionHistory, setShowSessionHistory] = useState(false);
 
 	const messagesEndRef = useRef<HTMLDivElement>(null);
-	const inputRef = useRef<HTMLInputElement>(null);
+	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const yumiChat = useAction(api.ai.yumiChat);
 
@@ -382,12 +382,11 @@ function AIChatPage() {
 					.filter((m) => m.role === "user" || m.role === "assistant")
 					.map((m) => ({ role: m.role, content: m.content }));
 
+				const attachedImage = image || selectedImage || undefined;
 				const response = await yumiChat({
-					message:
-						image || selectedImage
-							? `${text.trim()} [Gambar terlampir: struk/kwitansi untuk diproses]`
-							: text.trim(),
+					message: text.trim() || (attachedImage ? "Tolong analisis gambar ini." : ""),
 					history,
+					image: attachedImage,
 				});
 
 				let hasToolExecution = false;
@@ -1285,8 +1284,8 @@ function AIChatPage() {
 
 			{/* Input Form - Fixed at bottom, only for chat tab */}
 			{activeTab === "chat" && (
-				<div className="space-y-3 border-border border-t bg-card p-4">
-					<div className="mx-auto max-w-full space-y-3 md:max-w-3xl">
+				<div className="border-border border-t bg-card px-3 pb-4 pt-3 md:px-4">
+					<div className="mx-auto max-w-full space-y-2 md:max-w-3xl">
 						{/* Templates */}
 						<div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
 							{TEMPLATES.map((t) => (
@@ -1303,25 +1302,30 @@ function AIChatPage() {
 							))}
 						</div>
 
-						{/* Input */}
-						<form
-							className="relative flex items-center gap-2"
-							onSubmit={(e) => {
-								e.preventDefault();
-								sendMessage(input);
-							}}
-						>
-							<input
-								className="flex-1 rounded-full border border-border bg-background px-4 py-2.5 text-sm shadow-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
-								disabled={isLoading}
-								onChange={(e) => setInput(e.target.value)}
-								placeholder="Tanya Yumi..."
-								ref={inputRef}
-								type="text"
-								value={input}
-							/>
+						{/* ChatGPT/Claude-style Input Box */}
+						<div className="rounded-2xl border border-border bg-background shadow-sm transition-all focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+							{/* Image Preview inside input box */}
+							{selectedImage && (
+								<div className="flex items-center gap-2 border-border border-b px-3 pt-2 pb-2">
+									<div className="relative h-14 w-14 overflow-hidden rounded-xl border border-border bg-muted shadow-sm">
+										<img
+											alt="Preview"
+											className="h-full w-full object-cover"
+											src={selectedImage}
+										/>
+										<button
+											className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white shadow-md transition-opacity hover:opacity-90"
+											onClick={handleRemoveImage}
+											type="button"
+										>
+											<X className="h-3 w-3" />
+										</button>
+									</div>
+									<p className="text-muted-foreground text-xs">Gambar terlampir • AI akan membaca isinya</p>
+								</div>
+							)}
 
-							{/* Image Upload */}
+							{/* Hidden file input */}
 							<input
 								accept="image/*"
 								className="hidden"
@@ -1329,57 +1333,73 @@ function AIChatPage() {
 								ref={fileInputRef}
 								type="file"
 							/>
-							<button
-								className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+
+							{/* Textarea */}
+							<textarea
+								className="max-h-40 min-h-[44px] w-full resize-none bg-transparent px-4 py-3 text-sm leading-relaxed outline-none placeholder:text-muted-foreground disabled:opacity-50"
 								disabled={isLoading}
-								onClick={() => fileInputRef.current?.click()}
-								type="button"
-							>
-								{selectedImage ? (
-									<div className="relative h-full w-full">
-										<img
-											alt="Selected"
-											className="h-full w-full rounded-full object-cover"
-											src={selectedImage}
-										/>
-									</div>
-								) : (
+								onChange={(e) => {
+									setInput(e.target.value);
+									e.target.style.height = "auto";
+									e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
+								}}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" && !e.shiftKey) {
+										e.preventDefault();
+										if (input.trim() || selectedImage) {
+											sendMessage(input);
+											if (inputRef.current) {
+												inputRef.current.style.height = "auto";
+											}
+										}
+									}
+								}}
+								placeholder="Tanya Yumi... (Enter kirim, Shift+Enter baris baru)"
+								ref={inputRef}
+								rows={1}
+								value={input}
+							/>
+
+							{/* Action Bar */}
+							<div className="flex items-center justify-between px-2 pb-2">
+								{/* Left: Camera/File upload */}
+								<button
+									className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+									disabled={isLoading}
+									onClick={() => fileInputRef.current?.click()}
+									title="Upload gambar atau ambil foto"
+									type="button"
+								>
 									<Camera className="h-4 w-4" />
-								)}
-							</button>
+								</button>
 
-							{/* Image preview with remove button */}
-							{selectedImage && (
-								<div className="absolute -top-16 left-0 z-10 flex items-center gap-2">
-									<div className="relative h-12 w-12 overflow-hidden rounded-lg border border-border bg-card">
-										<img
-											alt="Preview"
-											className="h-full w-full object-cover"
-											src={selectedImage}
-										/>
-									</div>
-									<button
-										className="rounded-full bg-destructive/10 p-1 text-destructive transition-colors hover:bg-destructive/20"
-										onClick={handleRemoveImage}
-										type="button"
-									>
-										<X className="h-3 w-3" />
-									</button>
-								</div>
-							)}
+								{/* Right: Send button */}
+								<button
+									className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+									disabled={isLoading || !(input.trim() || selectedImage)}
+									onClick={() => {
+										if (input.trim() || selectedImage) {
+											sendMessage(input);
+											if (inputRef.current) {
+												inputRef.current.style.height = "auto";
+											}
+										}
+									}}
+									title="Kirim pesan"
+									type="button"
+								>
+									{isLoading ? (
+										<Loader2 className="h-4 w-4 animate-spin" />
+									) : (
+										<Send className="h-4 w-4" />
+									)}
+								</button>
+							</div>
+						</div>
 
-							<button
-								className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow transition-all hover:scale-105 hover:bg-primary/90 disabled:opacity-50 disabled:hover:scale-100 md:h-10 md:w-10"
-								disabled={isLoading || !(input.trim() || selectedImage)}
-								type="submit"
-							>
-								{isLoading ? (
-									<Loader2 className="h-4 w-4 animate-spin md:h-5 md:w-5" />
-								) : (
-									<Send className="h-4 w-4 md:h-5 md:w-5" />
-								)}
-							</button>
-						</form>
+						<p className="text-center text-[10px] text-muted-foreground">
+							Yumi AI dapat membuat kesalahan. Selalu verifikasi informasi penting.
+						</p>
 					</div>
 				</div>
 			)}
