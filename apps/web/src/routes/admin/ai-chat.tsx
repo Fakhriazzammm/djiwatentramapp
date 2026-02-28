@@ -441,16 +441,20 @@ function AIChatPage() {
 						await saveMessage(assistantMessage);
 					}
 				});
-			} catch {
+			} catch (error) {
+				console.error("AI chat error:", error);
 				setIsLoading(false);
 				streamingActiveRef.current = false;
 				setIsStreaming(false);
 				setStreamingContent("");
+				const errMsg = error instanceof Error ? error.message : String(error);
 				setMessages((prev) => [
 					...prev,
 					{
 						role: "assistant",
-						content: "Maaf, terjadi kesalahan. Silakan coba lagi.",
+						content: errMsg?.includes("image") || errMsg?.includes("vision") || errMsg?.includes("model")
+							? "Maaf, gagal menganalisis gambar. Pastikan format gambar didukung (JPG/PNG) dan coba lagi."
+							: "Maaf, terjadi kesalahan. Silakan coba lagi.",
 					},
 				]);
 				setToolCalls([]);
