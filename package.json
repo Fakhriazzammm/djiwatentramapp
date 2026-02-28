@@ -20,6 +20,7 @@
   "type": "module",
   "scripts": {
     "dev": "turbo dev",
+    "dev:all": "concurrently \"turbo dev\" \"bun run ocr:dev\"",
     "build": "bash scripts/update-version.sh && turbo build",
     "check-types": "turbo check-types",
     "dev:native": "turbo -F native dev",
@@ -29,7 +30,9 @@
     "convex:push": "turbo -F @tkmpos/backend push",
     "convex:pull": "turbo -F @tkmpos/backend pull",
     "version": "bash scripts/update-version.sh",
-    "prepare": "husky"
+    "prepare": "husky",
+    "ocr:dev": "cd packages/ocr-service && python main.py",
+    "ocr:install": "cd packages/ocr-service && pip install -r requirements.txt"
   },
   "dependencies": {
     "@tkmpos/env": "workspace:*",
