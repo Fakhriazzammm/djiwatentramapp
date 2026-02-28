@@ -2138,7 +2138,7 @@ export const getFinancialReconciliation = query({
 // ============================================
 
 /**
- * Helper: Run OCR on a receipt image using Gemini Vision via Sumopod
+ * Helper: Run OCR on a receipt image using Google Gemini API
  */
 async function runReceiptOCR(imageDataUrl: string): Promise<{
 	type: "order" | "expense" | "income" | "unknown";
@@ -2153,14 +2153,19 @@ async function runReceiptOCR(imageDataUrl: string): Promise<{
 	confidence: number;
 	rawText: string;
 }> {
-	const openai = getOpenAI();
+	// Get API key from environment
+	const apiKey = process.env.GEMINI_API_KEY;
+	if (!apiKey) {
+		throw new Error("GEMINI_API_KEY environment variable is not set");
+	}
 
-	const completion = await openai.chat.completions.create({
-		model: "gemini-2.0-flash-exp-vision",
-		messages: [
-			{
-				role: "system",
-				content: `Kamu adalah sistem OCR yang canggih dan akurat untuk membaca struk belanja, kwitansi, dan invoice dalam bahasa Indonesia maupun Inggris.
+	// Extract base64 data from data URL
+	const base64Data = imageDataUrl.split(",")[1];
+	if (!base64Data) {
+		throw new Error("Invalid image data URL format");
+	}
+
+	const prompt = `Kamu adalah sistem OCR yang canggih dan akurat untuk membaca struk belanja, kwitansi, dan invoice dalam bahasa Indonesia maupun Inggris.
 
 Tugasmu:
 1. Baca SEMUA teks dari gambar struk/kwitansi dengan sangat teliti dari atas ke bawah
@@ -2196,53 +2201,86 @@ Format JSON yang harus dikembalikan:
   },
   "confidence": angka_desimal_0_sampai_1,
   "rawText": "semua teks yang berhasil dibaca dari struk, dipisahkan baris baru, dari atas sampai bawah lengkap"
-}`,
-			},
-			{
-				role: "user",
-				content: [
-					{
-						type: "image_url",
-						image_url: {
-							url: imageDataUrl,
-							detail: "high",
-						},
-					},
-					{
-						type: "text",
-						text: "Baca struk/kwitansi ini dengan teliti dari atas ke bawah. Ekstrak SEMUA item yang tertera sampai baris terakhir. Pastikan total amount sudah benar dan sesuai dengan yang tertera di struk. Jangan lewatkan item apapun.",
-					},
-				],
-			},
-		],
-		max_tokens: 2000,
-		temperature: 0.1,
-	});
+}
 
-	const content = completion.choices[0].message.content || "";
-
-	// Bersihkan markdown code blocks jika ada
-	const cleaned = content
-		.replace(/```json\n?/g, "")
-		.replace(/```\n?/g, "")
-		.trim();
+Baca struk/kwitansi ini dengan teliti dari atas ke bawah. Ekstrak SEMUA item yang tertera sampai baris terakhir. Pastikan total amount sudah benar dan sesuai dengan yang tertera di struk. Jangan lewatkan item apapun.`;
 
 	try {
-		const parsed = JSON.parse(cleaned);
-		return {
-			type: parsed.type || "unknown",
-			data: parsed.data || {},
-			confidence:
-				typeof parsed.confidence === "number" ? parsed.confidence : 0.5,
-			rawText: parsed.rawText || content,
-		};
-	} catch {
-		return {
-			type: "unknown",
-			data: {},
-			confidence: 0,
-			rawText: content,
-		};
+		const response = await fetch(
+			`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+			{
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					contents: [
+						{
+							parts: [
+								{
+									inline_data: {
+										mime_type: "image/jpeg",
+										data: base64Data,
+									},
+								},
+								{
+									text: prompt,
+								},
+							],
+						},
+					],
+					generationConfig: {
+						temperature: 0.1,
+						maxOutputTokens: 2000,
+						responseMimeType: "text/plain",
+					},
+				}),
+			}
+		);
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			throw new Error(
+				`Gemini API error: ${response.status} ${response.statusText} - ${errorText}`
+			);
+		}
+
+		const result = await response.json();
+
+		// Extract text from Gemini response
+		const content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+		if (!content) {
+			throw new Error("Empty response from Gemini API");
+		}
+
+		// Bersihkan markdown code blocks jika ada
+		const cleaned = content
+			.replace(/```json\n?/g, "")
+			.replace(/```\n?/g, "")
+			.trim();
+
+		try {
+			const parsed = JSON.parse(cleaned);
+			return {
+				type: parsed.type || "unknown",
+				data: parsed.data || {},
+				confidence:
+					typeof parsed.confidence === "number" ? parsed.confidence : 0.5,
+				rawText: parsed.rawText || content,
+			};
+		} catch {
+			// If JSON parsing fails, try to extract at least the raw text
+			return {
+				type: "unknown",
+				data: {},
+				confidence: 0.3,
+				rawText: content,
+			};
+		}
+	} catch (error) {
+		console.error("OCR Error:", error);
+		throw error;
 	}
 }
 
