@@ -16,6 +16,7 @@ import {
 	Shield,
 	Sparkles,
 	Target,
+	Trash2,
 	TrendingUp,
 	X,
 	XCircle,
@@ -569,6 +570,45 @@ function AIChatPage() {
 		}
 	};
 
+	const clearCurrentChat = async () => {
+		if (currentSessionId) {
+			try {
+				await deleteSessionMutation({ sessionId: currentSessionId });
+			} catch {
+				// ignore error, still clear UI
+			}
+		}
+		setCurrentSessionId(null);
+		setMessages([
+			{
+				role: "assistant",
+				content:
+					"Halo! Saya Yumi, asisten AI kamu untuk YUMI POS. Saya bisa membantu merekap data, menganalisis bisnis, MELAKUKAN AKSI seperti tambah produk, update stok, buat pesanan, dan bahkan MULTI-STEP ACTIONS dalam satu permintaan. Sekarang saya dilengkapi dengan Forecasting, Analisis HPP, Efektivitas Diskon, dan Rekonsiliasi Keuangan!",
+			},
+		]);
+		toast.success("Chat berhasil dihapus");
+	};
+
+	const deleteAllSessions = async () => {
+		if (!chatSessions || chatSessions.length === 0) return;
+		try {
+			for (const session of chatSessions) {
+				await deleteSessionMutation({ sessionId: session.sessionId });
+			}
+			setCurrentSessionId(null);
+			setMessages([
+				{
+					role: "assistant",
+					content:
+						"Halo! Saya Yumi, asisten AI kamu. Ada yang bisa saya bantu hari ini?",
+				},
+			]);
+			toast.success("Semua riwayat chat berhasil dihapus");
+		} catch {
+			toast.error("Gagal menghapus semua riwayat");
+		}
+	};
+
 	// Load conversation when session changes
 	useEffect(() => {
 		if (currentSessionId && loadConversationQuery) {
@@ -593,7 +633,7 @@ function AIChatPage() {
 	// };
 
 	return (
-		<div className="flex h-full flex-col overflow-hidden bg-background pb-16 md:pb-0">
+		<div className="flex h-full flex-col overflow-hidden bg-background">
 			{/* Tabs */}
 			<div className="flex items-center gap-2 border-border border-b bg-card px-2 py-2">
 				{/* Smart Insights Badge */}
@@ -608,16 +648,27 @@ function AIChatPage() {
 
 				{/* Tabs */}
 				<div className="ml-auto flex gap-1">
-					{/* Chat History Button */}
+					{/* Chat History & Clear buttons */}
 					{activeTab === "chat" && (
-						<button
-							className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium text-xs transition-colors text-muted-foreground hover:bg-muted"
-							onClick={() => setShowSessionHistory(!showSessionHistory)}
-							type="button"
-						>
-							<Bot className="h-4 w-4" />
-							<span className="hidden md:inline">Riwayat</span>
-						</button>
+						<>
+							<button
+								className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium text-xs transition-colors text-muted-foreground hover:bg-muted"
+								onClick={() => setShowSessionHistory(!showSessionHistory)}
+								title="Riwayat chat"
+								type="button"
+							>
+								<Bot className="h-4 w-4" />
+								<span className="hidden md:inline">Riwayat</span>
+							</button>
+							<button
+								className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 font-medium text-xs transition-colors text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+								onClick={clearCurrentChat}
+								title="Hapus chat ini"
+								type="button"
+							>
+								<Trash2 className="h-4 w-4" />
+							</button>
+						</>
 					)}
 					{[
 						{
@@ -661,7 +712,7 @@ function AIChatPage() {
 			</div>
 
 			{/* Content Area - Scrollable */}
-			<div className="flex-1 overflow-y-auto">
+			<div className="min-h-0 flex-1 overflow-y-auto">
 				{activeTab === "chat" && (
 					<>
 						{/* Messages */}
@@ -1268,9 +1319,9 @@ function AIChatPage() {
 				)}
 			</div>
 
-			{/* Input Form - Fixed at bottom, only for chat tab */}
+			{/* Input Form - stays fixed at bottom above mobile navbar */}
 			{activeTab === "chat" && (
-				<div className="border-border border-t bg-card px-3 pb-4 pt-3 md:px-4">
+				<div className="shrink-0 border-border border-t bg-card px-3 pb-20 pt-3 md:px-4 md:pb-4">
 					<div className="mx-auto max-w-full space-y-2 md:max-w-3xl">
 						{/* Templates */}
 						<div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
@@ -1421,13 +1472,26 @@ function AIChatPage() {
 											{chatSessions?.length || 0} sesi
 										</p>
 									</div>
-									<button
-										className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80"
-										onClick={() => setShowSessionHistory(false)}
-										type="button"
-									>
-										<X className="h-4 w-4" />
-									</button>
+									<div className="flex items-center gap-1">
+										{chatSessions && chatSessions.length > 0 && (
+											<button
+												className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-muted-foreground text-xs transition-colors hover:bg-destructive/10 hover:text-destructive"
+												onClick={deleteAllSessions}
+												title="Hapus semua riwayat"
+												type="button"
+											>
+												<Trash2 className="h-3.5 w-3.5" />
+												<span>Hapus Semua</span>
+											</button>
+										)}
+										<button
+											className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80"
+											onClick={() => setShowSessionHistory(false)}
+											type="button"
+										>
+											<X className="h-4 w-4" />
+										</button>
+									</div>
 								</div>
 
 								{/* New Chat Button */}
@@ -1472,14 +1536,15 @@ function AIChatPage() {
 														</p>
 													</div>
 													<button
-														className="opacity-0 group-hover:opacity-100 transition-opacity"
+														className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
 														onClick={(e) => {
 															e.stopPropagation();
 															deleteSession(session.sessionId);
 														}}
+														title="Hapus sesi"
 														type="button"
 													>
-														<X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+														<Trash2 className="h-3.5 w-3.5" />
 													</button>
 												</div>
 												<p className="text-muted-foreground text-[10px] mt-1">
