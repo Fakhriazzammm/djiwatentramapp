@@ -343,8 +343,9 @@ ${(() => {
 		unit: string;
 		lowStockThreshold: number;
 	}>;
-	if (!invArr || invArr.length === 0)
+	if (!invArr || invArr.length === 0) {
 		return "Belum ada data inventory untuk prediksi";
+	}
 	const criticalItems = invArr.filter(
 		(i) => i.quantity <= i.lowStockThreshold * 0.5
 	);
@@ -354,11 +355,13 @@ ${(() => {
 			i.quantity <= i.lowStockThreshold
 	);
 	let forecastSummary = `Stok Kritis (≤50% threshold): ${criticalItems.length} item`;
-	if (criticalItems.length > 0)
+	if (criticalItems.length > 0) {
 		forecastSummary += ` - ${criticalItems.map((i) => `${i.ingredientName} (${i.quantity} ${i.unit})`).join(", ")}`;
+	}
 	forecastSummary += `\nStok Rendah: ${lowItems.length} item`;
-	if (lowItems.length > 0)
+	if (lowItems.length > 0) {
 		forecastSummary += ` - ${lowItems.map((i) => `${i.ingredientName} (${i.quantity} ${i.unit})`).join(", ")}`;
+	}
 	return forecastSummary;
 })()}
 
@@ -372,7 +375,9 @@ ${(() => {
 		isActive: boolean;
 		targetType: string;
 	}>;
-	if (!discountArr || discountArr.length === 0) return "Belum ada diskon";
+	if (!discountArr || discountArr.length === 0) {
+		return "Belum ada diskon";
+	}
 	const activeDiscounts = discountArr.filter((d) => d.isActive);
 	const inactiveDiscounts = discountArr.filter((d) => !d.isActive);
 	let discountAnalysis = `Diskon Aktif: ${activeDiscounts.length}, Nonaktif: ${inactiveDiscounts.length}\n`;
@@ -1424,7 +1429,7 @@ export const getProactiveSuggestions = query({
 
 			dayAnalysis.sort((a, b) => b.revenue - a.revenue);
 			const bestDay = dayAnalysis[0];
-			const worstDay = dayAnalysis[dayAnalysis.length - 1];
+			const worstDay = dayAnalysis.at(-1);
 
 			if (bestDay && worstDay && bestDay.revenue > worstDay.revenue * 1.5) {
 				suggestions.push({
@@ -1541,7 +1546,9 @@ export const predictStockOut = query({
 		const cutoffDate = Date.now() - daysToAnalyze * 24 * 60 * 60 * 1000;
 
 		for (const order of completedOrders) {
-			if (order.createdAt < cutoffDate) continue;
+			if (order.createdAt < cutoffDate) {
+				continue;
+			}
 
 			for (const item of order.items) {
 				// This is a simplified calculation
@@ -1662,7 +1669,9 @@ export const predictDailyRevenue = query({
 		const cutoffDate = Date.now() - daysToAnalyze * 24 * 60 * 60 * 1000;
 
 		for (const order of completedOrders) {
-			if (order.createdAt < cutoffDate) continue;
+			if (order.createdAt < cutoffDate) {
+				continue;
+			}
 
 			const dateKey = new Date(order.createdAt).toISOString().split("T")[0];
 			dailyRevenue[dateKey] = (dailyRevenue[dateKey] || 0) + order.totalAmount;
@@ -1760,7 +1769,7 @@ export const predictTrendingProducts = query({
 		daysAhead: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const daysAhead = args.daysAhead || 7;
+		const _daysAhead = args.daysAhead || 7;
 		const orders = await ctx.runQuery(api.orders.getOrders, {});
 		const products = await ctx.runQuery(api.products.getAllProductsAdmin);
 
@@ -1867,7 +1876,7 @@ export const predictBestPromoTime = query({
 		// Find best and worst days
 		dayAnalysis.sort((a, b) => b.revenue - a.revenue);
 		const bestDay = dayAnalysis[0];
-		const worstDay = dayAnalysis[dayAnalysis.length - 1];
+		const worstDay = dayAnalysis.at(-1);
 
 		// Analyze by hour
 		const hourlyRevenue: Record<number, number> = {};
@@ -2112,16 +2121,16 @@ async function runReceiptOCR(imageDataUrl: string): Promise<{
 	const openai = getOpenAI();
 
 	const completion = await openai.chat.completions.create({
-		model: "gemini-2.0-flash",
+		model: "gemini-2.0-flash-exp-vision",
 		messages: [
 			{
 				role: "system",
 				content: `Kamu adalah sistem OCR yang canggih dan akurat untuk membaca struk belanja, kwitansi, dan invoice dalam bahasa Indonesia maupun Inggris.
 
 Tugasmu:
-1. Baca SEMUA teks dari gambar struk/kwitansi dengan sangat teliti
+1. Baca SEMUA teks dari gambar struk/kwitansi dengan sangat teliti dari atas ke bawah
 2. Identifikasi jenis transaksi berdasarkan konteks
-3. Ekstrak data terstruktur secara akurat
+3. Ekstrak SEMUA item yang tertera di struk (baca sampai selesai)
 4. Identifikasi dan hitung total amount dengan benar
 
 Jenis transaksi:
@@ -2129,6 +2138,13 @@ Jenis transaksi:
 - "order": pesanan penjualan (struk kasir toko/restoran yang kamu jual)
 - "income": pemasukan/pendapatan
 - "unknown": tidak dapat diidentifikasi
+
+INSTRUKSI KHUSUS UNTUK MEMBACA STRUK:
+- Baca dari ATAS ke BAWAH secara sistematis
+- Pastikan untuk membaca SEMUA baris item, jangan berhenti di tengah
+- Perhatikan jumlah (quantity), harga satuan, dan subtotal per item
+- Ambil total akhir (biasanya di bagian bawah struk)
+- Catat juga pajak/PPN, diskon, dan kembalian jika ada
 
 PENTING: Kembalikan HANYA JSON valid, tanpa markdown, tanpa kode blok, tanpa teks tambahan apapun.
 
@@ -2144,7 +2160,7 @@ Format JSON yang harus dikembalikan:
     "notes": "catatan penting dari struk seperti nomor struk, nama toko, tanggal"
   },
   "confidence": angka_desimal_0_sampai_1,
-  "rawText": "semua teks yang berhasil dibaca dari struk, dipisahkan baris baru"
+  "rawText": "semua teks yang berhasil dibaca dari struk, dipisahkan baris baru, dari atas sampai bawah lengkap"
 }`,
 			},
 			{
@@ -2159,12 +2175,12 @@ Format JSON yang harus dikembalikan:
 					},
 					{
 						type: "text",
-						text: "Baca struk/kwitansi ini dengan teliti dan ekstrak semua informasi penting. Pastikan total amount sudah benar dan sesuai dengan yang tertera di struk.",
+						text: "Baca struk/kwitansi ini dengan teliti dari atas ke bawah. Ekstrak SEMUA item yang tertera sampai baris terakhir. Pastikan total amount sudah benar dan sesuai dengan yang tertera di struk. Jangan lewatkan item apapun.",
 					},
 				],
 			},
 		],
-		max_tokens: 1500,
+		max_tokens: 2000,
 		temperature: 0.1,
 	});
 

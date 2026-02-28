@@ -435,6 +435,21 @@
 	padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Safe area for padding bottom (iOS notch/home indicator) */
+.pb-safe-area {
+	padding-bottom: max(env(safe-area-inset-bottom, 0px), 1rem);
+}
+
+/* Safe area for padding bottom - shorter version */
+.pb-safe {
+	padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem);
+}
+
+/* Safe area for padding top */
+.pt-safe-area {
+	padding-top: max(env(safe-area-inset-top, 0px), 0.5rem);
+}
+
 /* Mobile admin card style - compact with touch-friendly targets */
 @media (max-width: 767px) {
 	/* Ensure inputs are at least 40px tall for touch */

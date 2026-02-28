@@ -716,7 +716,7 @@ function AIChatPage() {
 			</div>
 
 			{/* Content Area - Scrollable */}
-			<div className="min-h-0 flex-1 overflow-y-auto">
+			<div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain -webkit-overflow-scrolling-touch">
 				{activeTab === "chat" && (
 					<>
 						{/* Messages */}
@@ -830,7 +830,7 @@ function AIChatPage() {
 									))}
 								</AnimatePresence>
 
-								{/* Typing Indicator */}
+								{/* Typing Indicator - Single subtle pulse */}
 								{isLoading && toolCalls.length === 0 && (
 									<div className="flex justify-start">
 										<div className="space-y-1">
@@ -841,10 +841,8 @@ function AIChatPage() {
 												</span>
 											</div>
 											<div className="rounded-xl rounded-tl-none border border-border bg-card px-3 py-2">
-												<div className="flex gap-1">
-													<span className="h-1 w-1 animate-bounce rounded-full bg-primary/60" />
-													<span className="h-1 w-1 animate-bounce rounded-full bg-primary/60" style={{ animationDelay: "0.15s" }} />
-													<span className="h-1 w-1 animate-bounce rounded-full bg-primary/60" style={{ animationDelay: "0.3s" }} />
+												<div className="flex items-center gap-1">
+													<span className="h-1.5 w-1.5 rounded-full bg-primary/70 animate-pulse" />
 												</div>
 											</div>
 										</div>
@@ -1325,7 +1323,7 @@ function AIChatPage() {
 
 			{/* Input Form - stays fixed at bottom above mobile navbar */}
 			{activeTab === "chat" && (
-				<div className="shrink-0 border-border border-t bg-card px-3 pb-20 pt-3 md:px-4 md:pb-4">
+				<div className="shrink-0 border-border border-t bg-card px-2 pb-safe pt-2 md:px-4 md:pb-4 md:pt-3">
 					<div className="mx-auto max-w-full space-y-2 md:max-w-3xl">
 						{/* Templates */}
 						<div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
@@ -1344,7 +1342,7 @@ function AIChatPage() {
 						</div>
 
 						{/* ChatGPT/Claude-style Input Box */}
-						<div className="rounded-2xl border border-border bg-background shadow-sm transition-all focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+						<div className="relative flex items-end gap-2 rounded-2xl border border-border bg-background p-2 shadow-sm transition-all focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30">
 							{/* Image Preview inside input box */}
 							{selectedImage && (
 								<div className="flex items-center gap-2 border-border border-b px-3 pt-2 pb-2">
@@ -1366,6 +1364,17 @@ function AIChatPage() {
 								</div>
 							)}
 
+							{/* Left: Camera/File upload - inline */}
+							<button
+								className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+								disabled={isLoading}
+								onClick={() => fileInputRef.current?.click()}
+								title="Upload gambar atau ambil foto"
+								type="button"
+							>
+								<Camera className="h-4 w-4" />
+							</button>
+
 							{/* Hidden file input */}
 							<input
 								accept="image/*"
@@ -1377,12 +1386,12 @@ function AIChatPage() {
 
 							{/* Textarea */}
 							<textarea
-								className="max-h-40 min-h-[44px] w-full resize-none bg-transparent px-4 py-3 text-sm leading-relaxed outline-none placeholder:text-muted-foreground disabled:opacity-50"
+								className="max-h-32 min-h-[24px] flex-1 resize-none bg-transparent px-3 py-2 text-sm leading-relaxed outline-none placeholder:text-muted-foreground disabled:opacity-50"
 								disabled={isLoading}
 								onChange={(e) => {
 									setInput(e.target.value);
 									e.target.style.height = "auto";
-									e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
+									e.target.style.height = `${Math.min(e.target.scrollHeight, 128)}px`;
 								}}
 								onKeyDown={(e) => {
 									if (e.key === "Enter" && !e.shiftKey) {
@@ -1395,47 +1404,37 @@ function AIChatPage() {
 										}
 									}
 								}}
-								placeholder="Tanya Yumi... (Enter kirim, Shift+Enter baris baru)"
+								placeholder="Tanya Yumi..."
 								ref={inputRef}
 								rows={1}
 								value={input}
 							/>
 
-							{/* Action Bar */}
-							<div className="flex items-center justify-between px-2 pb-2">
-								{/* Left: Camera/File upload */}
-								<button
-									className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
-									disabled={isLoading}
-									onClick={() => fileInputRef.current?.click()}
-									title="Upload gambar atau ambil foto"
-									type="button"
-								>
-									<Camera className="h-4 w-4" />
-								</button>
-
-								{/* Right: Send button */}
-								<button
-									className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
-									disabled={isLoading || !(input.trim() || selectedImage)}
-									onClick={() => {
-										if (input.trim() || selectedImage) {
-											sendMessage(input);
-											if (inputRef.current) {
-												inputRef.current.style.height = "auto";
-											}
+							{/* Right: Send button */}
+							<button
+								className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all ${
+									input.trim() || selectedImage
+										? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+										: "bg-muted text-muted-foreground"
+								} disabled:cursor-not-allowed disabled:opacity-50`}
+								disabled={isLoading || !(input.trim() || selectedImage)}
+								onClick={() => {
+									if (input.trim() || selectedImage) {
+										sendMessage(input);
+										if (inputRef.current) {
+											inputRef.current.style.height = "auto";
 										}
-									}}
-									title="Kirim pesan"
-									type="button"
-								>
-									{isLoading ? (
-										<Loader2 className="h-4 w-4 animate-spin" />
-									) : (
-										<Send className="h-4 w-4" />
-									)}
-								</button>
-							</div>
+									}
+								}}
+								title="Kirim pesan"
+								type="button"
+							>
+								{isLoading ? (
+									<Loader2 className="h-4 w-4 animate-spin" />
+								) : (
+									<Send className="h-4 w-4" />
+								)}
+							</button>
 						</div>
 
 						<p className="text-center text-[10px] text-muted-foreground">
