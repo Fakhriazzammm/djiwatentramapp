@@ -18,6 +18,7 @@ import {
 	Grid3X3,
 	LayoutDashboard,
 	LogOut,
+	MoreHorizontal,
 	Package,
 	Percent,
 	Settings,
@@ -67,12 +68,23 @@ const BOTTOM_NAV_ITEMS = [
 		exact: true,
 		isCenter: true,
 	},
-	{ to: "/admin/products", icon: Package, label: "Produk" },
 	{ to: "/admin/finance", icon: Wallet, label: "Keuangan" },
+	{ to: "", icon: MoreHorizontal, label: "Lainnya", isMore: true },
+];
+
+// Pages that belong to "Lainnya" menu
+const MORE_MENU_PATHS = [
+	"/admin/products",
+	"/admin/inventory",
+	"/admin/discounts",
+	"/admin/hpp-calculator",
+	"/admin/forecasting",
+	"/admin/settings",
 ];
 
 // Quick menu items (accessible from bottom sheet)
 const QUICK_MENU_ITEMS = [
+	{ to: "/admin/products", icon: Package, label: "Produk" },
 	{ to: "/admin/inventory", icon: Archive, label: "Inventaris" },
 	{ to: "/admin/discounts", icon: Percent, label: "Promosi" },
 	{ to: "/admin/hpp-calculator", icon: Calculator, label: "HPP" },
@@ -412,10 +424,16 @@ function AdminLayout() {
 			<nav className="safe-area-bottom fixed inset-x-0 bottom-0 z-30 border-border border-t bg-background/95 backdrop-blur-md md:hidden">
 				<div className="flex items-stretch px-2">
 					{BOTTOM_NAV_ITEMS.map((item, index) => {
-						const isActive = item.exact
-							? location.pathname === item.to
-							: location.pathname.startsWith(item.to);
 						const isCenter = index === 2; // AI Chat at center
+						const isMore = "isMore" in item && item.isMore;
+
+						const isActive = isMore
+							? MORE_MENU_PATHS.some((p) =>
+									location.pathname.startsWith(p),
+								)
+							: item.exact
+								? location.pathname === item.to
+								: location.pathname.startsWith(item.to);
 
 						// Center AI button - Circular FAB style (Instagram/Tinder)
 						if (isCenter) {
@@ -463,6 +481,37 @@ function AdminLayout() {
 							);
 						}
 
+						// Lainnya button - opens quick menu sheet
+						if (isMore) {
+							return (
+								<button
+									className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
+									key="lainnya"
+									onClick={() => setIsQuickMenuOpen(true)}
+									type="button"
+								>
+									<div
+										className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
+											isActive || isQuickMenuOpen
+												? "bg-primary text-primary-foreground shadow-sm"
+												: "text-muted-foreground"
+										}`}
+									>
+										<item.icon className="h-4 w-4" />
+									</div>
+									<span
+										className={`font-medium text-[9px] leading-tight ${
+											isActive || isQuickMenuOpen
+												? "text-primary"
+												: "text-muted-foreground"
+										}`}
+									>
+										{item.label}
+									</span>
+								</button>
+							);
+						}
+
 						// Regular navigation items
 						return (
 							<Link
@@ -490,15 +539,6 @@ function AdminLayout() {
 						);
 					})}
 				</div>
-
-				{/* Quick Menu FAB */}
-				<button
-					className="safe-area-bottom fixed right-3 bottom-20 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-accent/20 shadow-md transition-all hover:scale-105 active:scale-95 md:hidden"
-					onClick={() => setIsQuickMenuOpen(true)}
-					type="button"
-				>
-					<Grid3X3 className="h-4 w-4" />
-				</button>
 			</nav>
 		</div>
 	);
