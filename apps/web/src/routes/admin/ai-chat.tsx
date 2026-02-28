@@ -1342,11 +1342,11 @@ function AIChatPage() {
 						</div>
 
 						{/* ChatGPT/Claude-style Input Box */}
-						<div className="relative flex items-end gap-2 rounded-2xl border border-border bg-background p-2 shadow-sm transition-all focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30">
-							{/* Image Preview inside input box */}
+						<div className="rounded-2xl border border-border bg-background shadow-sm transition-all focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30">
+							{/* Image Preview inside input box - above input row */}
 							{selectedImage && (
-								<div className="flex items-center gap-2 border-border border-b px-3 pt-2 pb-2">
-									<div className="relative h-14 w-14 overflow-hidden rounded-xl border border-border bg-muted shadow-sm">
+								<div className="flex items-center gap-2 border-border border-b px-3 py-2">
+									<div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-border bg-muted shadow-sm">
 										<img
 											alt="Preview"
 											className="h-full w-full object-cover"
@@ -1360,63 +1360,85 @@ function AIChatPage() {
 											<X className="h-3 w-3" />
 										</button>
 									</div>
-									<p className="text-muted-foreground text-xs">Gambar terlampir • AI akan membaca isinya</p>
+									<p className="text-muted-foreground text-xs flex-1">Gambar terlampir • AI akan membaca isinya</p>
 								</div>
 							)}
 
-							{/* Left: Camera/File upload - inline */}
-							<button
-								className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
-								disabled={isLoading}
-								onClick={() => fileInputRef.current?.click()}
-								title="Upload gambar atau ambil foto"
-								type="button"
-							>
-								<Camera className="h-4 w-4" />
-							</button>
+							{/* Input Row - Camera, Textarea, Send */}
+							<div className="flex items-end gap-2 p-2">
+								{/* Left: Camera/File upload - inline */}
+								<button
+									className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+									disabled={isLoading}
+									onClick={() => fileInputRef.current?.click()}
+									title="Upload gambar atau ambil foto"
+									type="button"
+								>
+									<Camera className="h-4 w-4" />
+								</button>
 
-							{/* Hidden file input */}
-							<input
-								accept="image/*"
-								className="hidden"
-								onChange={handleFileSelect}
-								ref={fileInputRef}
-								type="file"
-							/>
+								{/* Hidden file input */}
+								<input
+									accept="image/*"
+									className="hidden"
+									onChange={handleFileSelect}
+									ref={fileInputRef}
+									type="file"
+								/>
 
-							{/* Textarea */}
-							<textarea
-								className="max-h-32 min-h-[24px] flex-1 resize-none bg-transparent px-3 py-2 text-sm leading-relaxed outline-none placeholder:text-muted-foreground disabled:opacity-50"
-								disabled={isLoading}
-								onChange={(e) => {
-									setInput(e.target.value);
-									e.target.style.height = "auto";
-									e.target.style.height = `${Math.min(e.target.scrollHeight, 128)}px`;
-								}}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" && !e.shiftKey) {
-										e.preventDefault();
+								{/* Textarea */}
+								<textarea
+									className="max-h-32 min-h-[36px] flex-1 resize-none bg-transparent px-3 py-2 text-sm leading-relaxed outline-none placeholder:text-muted-foreground disabled:opacity-50"
+									disabled={isLoading}
+									onChange={(e) => {
+										setInput(e.target.value);
+										e.target.style.height = "auto";
+										e.target.style.height = `${Math.min(e.target.scrollHeight, 128)}px`;
+									}}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" && !e.shiftKey) {
+											e.preventDefault();
+											if (input.trim() || selectedImage) {
+												sendMessage(input);
+												if (inputRef.current) {
+													inputRef.current.style.height = "auto";
+												}
+											}
+										}
+									}}
+									placeholder="Tanya Yumi..."
+									ref={inputRef}
+									rows={1}
+									value={input}
+								/>
+
+								{/* Right: Send button */}
+								<button
+									className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all ${
+										input.trim() || selectedImage
+											? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+											: "bg-muted text-muted-foreground"
+									} disabled:cursor-not-allowed disabled:opacity-50`}
+									disabled={isLoading || !(input.trim() || selectedImage)}
+									onClick={() => {
 										if (input.trim() || selectedImage) {
 											sendMessage(input);
 											if (inputRef.current) {
 												inputRef.current.style.height = "auto";
 											}
 										}
-									}
-								}}
-								placeholder="Tanya Yumi..."
-								ref={inputRef}
-								rows={1}
-								value={input}
-							/>
-
-							{/* Right: Send button */}
-							<button
-								className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all ${
-									input.trim() || selectedImage
-										? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
-										: "bg-muted text-muted-foreground"
-								} disabled:cursor-not-allowed disabled:opacity-50`}
+									}}
+									title="Kirim pesan"
+									type="button"
+								>
+									{isLoading ? (
+										<Loader2 className="h-4 w-4 animate-spin" />
+									) : (
+										<Send className="h-4 w-4" />
+									)}
+								</button>
+							</div>
+						</div>
 								disabled={isLoading || !(input.trim() || selectedImage)}
 								onClick={() => {
 									if (input.trim() || selectedImage) {
