@@ -103,7 +103,7 @@ export class BluetoothPrinterService {
 		const result = encoder
 			.initialize()
 			.align("center")
-			.line(settings.storeName || "TKM POS")
+			.line(settings.storeName || "YUMI POS")
 			.size("normal")
 			.line(settings.storeAddress || "")
 			.line(settings.storePhone || "")

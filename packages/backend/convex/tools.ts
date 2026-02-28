@@ -469,6 +469,43 @@ export const tools = {
 			autoPrint: z.boolean().optional().describe("Otomatis cetak struk"),
 		}),
 	},
+
+	// ============================================
+	// FORECASTING & ANALYTICS TOOLS
+	// ============================================
+
+	// Analyze Discount Effectiveness
+	analyzeDiscountEffectiveness: {
+		description:
+			"Analisis efektivitas semua diskon yang ada. Menampilkan diskon aktif, nonaktif, dan rekomendasikan optimasi strategi promo berdasarkan data penjualan 30 hari terakhir.",
+		parameters: z.object({}),
+	},
+
+	// ============================================
+	// FINANCIAL RECONCILIATION TOOLS
+	// ============================================
+
+	// Create Reconciliation Transaction
+	createReconciliationTransaction: {
+		description:
+			"Buat transaksi keuangan untuk merekonsiliasi selisih antara total pesanan selesai dengan pencatatan pemasukan. Gunakan setelah melakukan analisis rekonsiliasi dan ada selisih yang perlu dicatat.",
+		parameters: z.object({
+			amount: z
+				.number()
+				.positive()
+				.describe("Jumlah selisih yang perlu direkonsiliasi (harus positif)"),
+			description: z
+				.string()
+				.min(1)
+				.describe(
+					"Deskripsi rekonsiliasi, contoh: 'Rekonsiliasi pesanan vs keuangan bulan ini'"
+				),
+			category: z
+				.string()
+				.optional()
+				.describe("Kategori transaksi (default: Rekonsiliasi)"),
+		}),
+	},
 } as const;
 
 // Type for tool calls

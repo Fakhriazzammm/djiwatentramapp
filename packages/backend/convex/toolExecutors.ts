@@ -411,7 +411,36 @@ export const executeToolCall = action({
 					break;
 				}
 
-				default:
+				// ============================================
+			// DISCOUNT EFFECTIVENESS TOOLS
+			// ============================================
+			case "analyzeDiscountEffectiveness": {
+				const discountAnalysis = await ctx.runQuery(
+					api.ai.analyzeDiscountEffectiveness
+				);
+				result = discountAnalysis;
+				break;
+			}
+
+			// ============================================
+			// FINANCIAL RECONCILIATION TOOLS
+			// ============================================
+			case "createReconciliationTransaction": {
+				const parsed =
+					tools.createReconciliationTransaction.parameters.parse(toolArgs);
+				result = await ctx.runMutation(api.finance.createTransaction, {
+					type: "income",
+					amount: parsed.amount,
+					category: parsed.category || "Rekonsiliasi",
+					description: parsed.description,
+					date: Date.now(),
+					paymentMethod: "rekonsiliasi",
+					status: "completed",
+				});
+				break;
+			}
+
+			default:
 					return {
 						success: false,
 						error: `Tool tidak dikenali: ${toolName}`,

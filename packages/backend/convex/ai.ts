@@ -34,7 +34,7 @@ export const generateInsights = action({
 				{
 					role: "system",
 					content:
-						"You are an AI Business Analyst for TKM POS. Analyze sales data and provide 3 bullet points of insights and 1 strategic recommendation.",
+						"You are an AI Business Analyst for YUMI POS. Analyze sales data and provide 3 bullet points of insights and 1 strategic recommendation.",
 				},
 				{
 					role: "user",
@@ -258,7 +258,7 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 			)
 			.join("\n") || "Tidak ada transaksi";
 
-	return `== DATABASE APLIKASI TKM POS ==
+	return `== DATABASE APLIKASI YUMI POS ==
 
 📦 PRODUK (${(products as unknown[])?.length || 0}):
 ${prodList}
@@ -332,13 +332,69 @@ ${(() => {
 	return result;
 })()}
 
+🔮 FORECASTING (PREDIKSI AI):
+${(() => {
+	// Stock risk summary from inventory data
+	const invArr = inventory as Array<{
+		ingredientName: string;
+		quantity: number;
+		unit: string;
+		lowStockThreshold: number;
+	}>;
+	if (!invArr || invArr.length === 0) return "Belum ada data inventory untuk prediksi";
+	const criticalItems = invArr.filter(i => i.quantity <= i.lowStockThreshold * 0.5);
+	const lowItems = invArr.filter(i => i.quantity > i.lowStockThreshold * 0.5 && i.quantity <= i.lowStockThreshold);
+	let forecastSummary = `Stok Kritis (≤50% threshold): ${criticalItems.length} item`;
+	if (criticalItems.length > 0) forecastSummary += ` - ${criticalItems.map(i => `${i.ingredientName} (${i.quantity} ${i.unit})`).join(", ")}`;
+	forecastSummary += `\nStok Rendah: ${lowItems.length} item`;
+	if (lowItems.length > 0) forecastSummary += ` - ${lowItems.map(i => `${i.ingredientName} (${i.quantity} ${i.unit})`).join(", ")}`;
+	return forecastSummary;
+})()}
+
+📊 ANALISIS EFEKTIVITAS DISKON:
+${(() => {
+	const discountArr = discounts as Array<{
+		_id: string;
+		name: string;
+		type: string;
+		value: number;
+		isActive: boolean;
+		targetType: string;
+	}>;
+	if (!discountArr || discountArr.length === 0) return "Belum ada diskon";
+	const activeDiscounts = discountArr.filter(d => d.isActive);
+	const inactiveDiscounts = discountArr.filter(d => !d.isActive);
+	let discountAnalysis = `Diskon Aktif: ${activeDiscounts.length}, Nonaktif: ${inactiveDiscounts.length}\n`;
+	if (activeDiscounts.length > 0) {
+		discountAnalysis += `Detail Aktif: ${activeDiscounts.map(d => `${d.name} (${d.type}: ${d.value}, target: ${d.targetType})`).join("; ")}`;
+	}
+	return discountAnalysis;
+})()}
+
+🔄 REKONSILIASI KEUANGAN:
+${(() => {
+	const orderArr2 = orders as Array<{
+		totalAmount: number;
+		status: string;
+	}>;
+	const paidOrders = orderArr2?.filter(o => o.status === "paid" || o.status === "completed") || [];
+	const orderRevenue = paidOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+	const incomeArr = (allTransactions as Array<{ type: string; amount: number }>)?.filter(t => t.type === "income") || [];
+	const incomeTotal = incomeArr.reduce((sum, t) => sum + t.amount, 0);
+	const gap = orderRevenue - incomeTotal;
+	const gapStatus = Math.abs(gap) < 1000 ? "✅ Seimbang" : gap > 0 ? `⚠️ Selisih: Rp${gap.toLocaleString("id-ID")} (pesanan > catatan keuangan)` : `⚠️ Selisih: Rp${Math.abs(gap).toLocaleString("id-ID")} (catatan keuangan > pesanan)`;
+	return `Total Pesanan Selesai: Rp${orderRevenue.toLocaleString("id-ID")} (${paidOrders.length} pesanan)\nTotal Pemasukan Tercatat: Rp${incomeTotal.toLocaleString("id-ID")} (${incomeArr.length} transaksi)\nStatus: ${gapStatus}`;
+})()}
+
 == FITUR APLIKASI ==
 - Manajemen Produk & Kategori (CRUD, variasi, upload gambar)
 - Manajemen Inventaris & Stok (FIFO, low-stock alert, resep, base recipe/pre-mix)
 - Pemesanan & POS (buat pesanan, update status, cetak struk Bluetooth)
 - Keuangan (income/expense tracking, laporan periode)
-- Promosi & Diskon (FIXED/PERCENTAGE/FLAT_PRICE, jadwal, target)
-- HPP / Kalkulator Harga Pokok Produksi (perhitungan biaya bahan baku, margin, laba)
+- Promosi & Diskon (FIXED/PERCENTAGE/FLAT_PRICE, jadwal, target) - termasuk ANALISIS EFEKTIVITAS DISKON
+- HPP / Kalkulator Harga Pokok Produksi (perhitungan biaya bahan baku, margin, laba) - termasuk SIMULASI HPP BARU
+- Forecasting AI (prediksi stok habis, jam ramai, revenue, produk trending)
+- Rekonsiliasi Keuangan (cross-check pesanan vs transaksi keuangan)
 - Manajemen User & Role (RBAC, permissions)
 - Pengaturan Toko (nama, alamat, logo, receipt footer)
 - AI Analytics (prediksi stok, analisis bisnis, rekomendasi produk, analisis HPP)`;
@@ -481,7 +537,7 @@ export const yumiChat = action({
 		> = [
 			{
 				role: "system",
-				content: `Kamu adalah Yumi, asisten AI cerdas untuk aplikasi TKM POS (Point of Sale).
+				content: `Kamu adalah Yumi, asisten AI cerdas untuk aplikasi YUMI POS (Point of Sale).
 
 KEMAMPUAN:
 - Mengetahui SELURUH data database secara real-time (produk, stok, pesanan, keuangan, promosi)
@@ -491,6 +547,10 @@ KEMAMPUAN:
 - Memberikan saran bisnis berdasarkan data
 - DAPAT MELAKUKAN AKSI: create/update/delete produk, tambah/kurang stok, buat pesanan, catat transaksi keuangan, kelola diskon, dll
 - MULTI-STEP ACTIONS: Dapat melakukan beberapa langkah sekaligus dalam satu permintaan
+- FORECASTING: Analisis prediksi stok habis, jam ramai, revenue, dan produk trending berdasarkan data historis
+- HPP KALKULATOR: Bantu hitung Harga Pokok Produksi (HPP), margin, dan analisis profitabilitas per produk
+- ANALISIS DISKON: Evaluasi efektivitas diskon yang aktif, rekomendasikan strategi promo berdasarkan data penjualan
+- REKONSILIASI KEUANGAN: Cross-check pesanan selesai vs transaksi keuangan, identifikasi selisih, bantu rekonsiliasi
 
 ATURAN:
 1. Jawab dalam Bahasa Indonesia yang ramah dan profesional
@@ -513,6 +573,10 @@ INSTRUKSI MULTI-STEP ACTIONS:
 - Contoh: "Buat produk kopi susu dan tambah stok bahan-bahannya" -> gunakan createProduct lalu addStock
 - Contoh: "Buat pesanan dan catat sebagai pembayaran" -> gunakan createOrder lalu updateOrderStatus
 - Contoh: "Diskon 20% untuk kategori minuman dan aktifkan" -> gunakan createDiscount dengan isActive:true
+- Contoh: "Analisis efektivitas diskon saya" -> gunakan analyzeDiscountEffectiveness lalu jelaskan hasil
+- Contoh: "Rekonsiliasi keuangan bulan ini" -> cek data rekonsiliasi dari context lalu sarankan createReconciliationTransaction jika ada gap
+- Contoh: "Hitung HPP untuk produk X dengan bahan Y dan Z" -> gunakan createHppCalculation
+- Contoh: "Prediksi stok yang akan habis" -> analisis data forecasting dari context dan berikan rekomendasi
 - Lakukan semua langkah yang diperlukan untuk menyelesaikan permintaan user dalam satu sesi
 
 INSTRUKSI TOOL CALLING:
@@ -1886,6 +1950,134 @@ export const autoGenerateTasks = mutation({
 				priority: t.priority,
 				category: t.category,
 			})),
+		};
+	},
+});
+
+// ============================================
+// FINANCIAL RECONCILIATION
+// ============================================
+
+/**
+ * Get financial reconciliation report — cross-check orders vs financial transactions
+ */
+export const getFinancialReconciliation = query({
+	args: {},
+	handler: async (ctx) => {
+		const [orders, allTransactions] = await Promise.all([
+			ctx.runQuery(api.orders.getOrders, {}),
+			ctx.runQuery(api.finance.getAllTransactions, {}),
+		]);
+
+		const paidOrders = orders.filter(
+			(o) => o.status === "paid" || o.status === "completed"
+		);
+		const incomeTransactions = allTransactions.filter(
+			(t) => t.type === "income"
+		);
+
+		const orderRevenue = paidOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+		const incomeTotal = incomeTransactions.reduce(
+			(sum, t) => sum + t.amount,
+			0
+		);
+		const gap = orderRevenue - incomeTotal;
+
+		const todayStart = new Date();
+		todayStart.setHours(0, 0, 0, 0);
+		const todayTs = todayStart.getTime();
+
+		const todayOrders = paidOrders.filter((o) => o.createdAt >= todayTs);
+		const todayOrderRevenue = todayOrders.reduce(
+			(sum, o) => sum + o.totalAmount,
+			0
+		);
+		const todayIncome = incomeTransactions
+			.filter((t) => t.date >= todayTs)
+			.reduce((sum, t) => sum + t.amount, 0);
+		const todayGap = todayOrderRevenue - todayIncome;
+
+		const paymentMethodBreakdown: Record<string, number> = {};
+		for (const order of paidOrders) {
+			const method = order.paymentMethod || "unknown";
+			paymentMethodBreakdown[method] =
+				(paymentMethodBreakdown[method] || 0) + order.totalAmount;
+		}
+
+		return {
+			allTime: {
+				orderRevenue,
+				incomeTotal,
+				gap,
+				paidOrdersCount: paidOrders.length,
+				incomeTransactionCount: incomeTransactions.length,
+				isBalanced: Math.abs(gap) < 1000,
+			},
+			today: {
+				orderRevenue: todayOrderRevenue,
+				incomeTotal: todayIncome,
+				gap: todayGap,
+				ordersCount: todayOrders.length,
+				isBalanced: Math.abs(todayGap) < 1000,
+			},
+			paymentMethodBreakdown,
+		};
+	},
+});
+
+// ============================================
+// DISCOUNT EFFECTIVENESS ANALYSIS
+// ============================================
+
+/**
+ * Analyze discount effectiveness based on orders and active discounts
+ */
+export const analyzeDiscountEffectiveness = query({
+	args: {},
+	handler: async (ctx) => {
+		const [discounts, orders] = await Promise.all([
+			ctx.runQuery(api.discounts.getDiscounts),
+			ctx.runQuery(api.orders.getOrders, {}),
+		]);
+
+		const now = Date.now();
+		const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+		const recentOrders = orders.filter(
+			(o) =>
+				o.createdAt >= thirtyDaysAgo &&
+				(o.status === "completed" || o.status === "paid")
+		);
+
+		const activeDiscounts = discounts.filter((d) => d.isActive);
+		const inactiveDiscounts = discounts.filter((d) => !d.isActive);
+
+		const byType: Record<string, number> = {};
+		for (const d of discounts) {
+			byType[d.type] = (byType[d.type] || 0) + 1;
+		}
+
+		return {
+			summary: {
+				total: discounts.length,
+				active: activeDiscounts.length,
+				inactive: inactiveDiscounts.length,
+			},
+			activeDiscounts: activeDiscounts.map((d) => ({
+				id: d._id,
+				name: d.name,
+				type: d.type,
+				value: d.value,
+				targetType: d.targetType,
+				minOrderValue: d.minOrderValue,
+			})),
+			inactiveDiscounts: inactiveDiscounts.map((d) => ({
+				id: d._id,
+				name: d.name,
+				type: d.type,
+				value: d.value,
+			})),
+			byType,
+			recentOrdersCount: recentOrders.length,
 		};
 	},
 });
