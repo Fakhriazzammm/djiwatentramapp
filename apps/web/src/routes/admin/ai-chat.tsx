@@ -594,22 +594,8 @@ function AIChatPage() {
 
 	return (
 		<div className="flex h-full flex-col overflow-hidden bg-background pb-16 md:pb-0">
-			{/* Header with Tabs */}
-			<div className="flex items-center gap-3 border-border border-b bg-card px-2 py-2">
-				<div className="flex items-center gap-2">
-					<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 md:h-10 md:w-10 md:rounded-full">
-						<Bot className="h-4 w-4 text-primary md:h-5 md:w-5" />
-					</div>
-					<div className="min-w-0">
-						<h2 className="font-bold text-foreground text-sm md:text-base">
-							Yumi AI
-						</h2>
-						<p className="hidden text-muted-foreground text-xs md:block">
-							Asisten Bisnis Cerdas
-						</p>
-					</div>
-				</div>
-
+			{/* Tabs */}
+			<div className="flex items-center gap-2 border-border border-b bg-card px-2 py-2">
 				{/* Smart Insights Badge */}
 				{smartInsights.length > 0 && (
 					<div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1">
@@ -679,7 +665,7 @@ function AIChatPage() {
 				{activeTab === "chat" && (
 					<>
 						{/* Messages */}
-						<div className="p-4 md:p-6 pb-0">
+						<div className="p-4 md:p-6 pb-4">
 							<div className="mx-auto max-w-full space-y-4 md:max-w-3xl">
 								{/* Smart Insights Cards */}
 								{smartInsights.length > 0 && messages.length <= 1 && (
