@@ -1,5 +1,5 @@
 import { api } from "@tkmpos/backend/convex/_generated/api";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	BarChart3,
@@ -60,13 +60,11 @@ export function ImageScanner({
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const streamRef = useRef<MediaStream | null>(null);
 
-	const processReceiptMutation = useMutation(api.ai.processReceipt);
-	const processAndGenerateMutation = useMutation(
-		api.ai.processImageAndGenerate
-	);
-	const batchProcessMutation = useMutation(api.ai.batchProcessReceipts);
-	const batchGenerateMutation = useMutation(api.ai.batchGenerateTransactions);
-	const generateScanReportMutation = useMutation(api.ai.generateScanReport);
+	const processReceiptMutation = useAction(api.ai.processReceipt);
+	const processAndGenerateMutation = useAction(api.ai.processImageAndGenerate);
+	const batchProcessMutation = useAction(api.ai.batchProcessReceipts);
+	const batchGenerateMutation = useAction(api.ai.batchGenerateTransactions);
+	const generateScanReportMutation = useAction(api.ai.generateScanReport);
 
 	// File input handler for single/multiple files
 	const handleFileSelect = useCallback(

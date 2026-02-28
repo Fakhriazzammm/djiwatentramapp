@@ -2049,6 +2049,375 @@ export const getFinancialReconciliation = query({
 });
 
 // ============================================
+// RECEIPT OCR & SCAN FUNCTIONS
+// ============================================
+
+/**
+ * Helper: Run OCR on a receipt image using GPT-4o Vision
+ */
+async function runReceiptOCR(imageDataUrl: string): Promise<{
+	type: "order" | "expense" | "income" | "unknown";
+	data?: {
+		amount?: number;
+		items?: Array<{ name: string; quantity: number; price?: number }>;
+		category?: string;
+		description?: string;
+		paymentMethod?: string;
+		notes?: string;
+	};
+	confidence: number;
+	rawText: string;
+}> {
+	const openai = getOpenAI();
+
+	const completion = await openai.chat.completions.create({
+		model: "gpt-4o",
+		messages: [
+			{
+				role: "system",
+				content: `Kamu adalah sistem OCR yang canggih dan akurat untuk membaca struk belanja, kwitansi, dan invoice dalam bahasa Indonesia maupun Inggris.
+
+Tugasmu:
+1. Baca SEMUA teks dari gambar struk/kwitansi dengan sangat teliti
+2. Identifikasi jenis transaksi berdasarkan konteks
+3. Ekstrak data terstruktur secara akurat
+4. Identifikasi dan hitung total amount dengan benar
+
+Jenis transaksi:
+- "expense": pengeluaran/pembelian (belanja bahan, bayar tagihan, pembelian barang)
+- "order": pesanan penjualan (struk kasir toko/restoran yang kamu jual)
+- "income": pemasukan/pendapatan
+- "unknown": tidak dapat diidentifikasi
+
+PENTING: Kembalikan HANYA JSON valid, tanpa markdown, tanpa kode blok, tanpa teks tambahan apapun.
+
+Format JSON yang harus dikembalikan:
+{
+  "type": "expense|order|income|unknown",
+  "data": {
+    "amount": total_angka_numerik_tanpa_titik_pemisah,
+    "items": [{"name": "nama_item", "quantity": jumlah_numerik, "price": harga_per_item_numerik}],
+    "category": "kategori seperti: makanan, minuman, bahan_baku, transportasi, listrik, air, gaji, lainnya",
+    "description": "deskripsi singkat transaksi dalam bahasa Indonesia",
+    "paymentMethod": "cash/transfer/qris/kartu_debit/kartu_kredit",
+    "notes": "catatan penting dari struk seperti nomor struk, nama toko, tanggal"
+  },
+  "confidence": angka_desimal_0_sampai_1,
+  "rawText": "semua teks yang berhasil dibaca dari struk, dipisahkan baris baru"
+}`,
+			},
+			{
+				role: "user",
+				content: [
+					{
+						type: "image_url",
+						image_url: {
+							url: imageDataUrl,
+							detail: "high",
+						},
+					},
+					{
+						type: "text",
+						text: "Baca struk/kwitansi ini dengan teliti dan ekstrak semua informasi penting. Pastikan total amount sudah benar dan sesuai dengan yang tertera di struk.",
+					},
+				],
+			},
+		],
+		max_tokens: 1500,
+		temperature: 0.1,
+	});
+
+	const content = completion.choices[0].message.content || "";
+
+	// Bersihkan markdown code blocks jika ada
+	const cleaned = content
+		.replace(/```json\n?/g, "")
+		.replace(/```\n?/g, "")
+		.trim();
+
+	try {
+		const parsed = JSON.parse(cleaned);
+		return {
+			type: parsed.type || "unknown",
+			data: parsed.data || {},
+			confidence:
+				typeof parsed.confidence === "number" ? parsed.confidence : 0.5,
+			rawText: parsed.rawText || content,
+		};
+	} catch {
+		return {
+			type: "unknown",
+			data: {},
+			confidence: 0,
+			rawText: content,
+		};
+	}
+}
+
+/**
+ * Proses satu gambar struk menggunakan AI OCR (GPT-4o Vision)
+ */
+export const processReceipt = action({
+	args: {
+		image: v.string(), // base64 data URL
+	},
+	handler: async (_ctx, args) => {
+		return await runReceiptOCR(args.image);
+	},
+});
+
+/**
+ * Proses gambar struk dan langsung buat transaksi keuangan di database
+ */
+export const processImageAndGenerate = action({
+	args: {
+		image: v.string(),
+		generateType: v.union(
+			v.literal("auto"),
+			v.literal("expense"),
+			v.literal("order"),
+			v.literal("income")
+		),
+	},
+	handler: async (ctx, args) => {
+		const scanResult = await runReceiptOCR(args.image);
+
+		if (scanResult.type === "unknown" || !scanResult.data?.amount) {
+			return {
+				success: false,
+				message: "Tidak dapat mengidentifikasi data dari struk. Pastikan gambar jelas dan merupakan struk/kwitansi.",
+				generated: null,
+				scanResult,
+			};
+		}
+
+		const effectiveType =
+			args.generateType === "auto"
+				? scanResult.type === "income"
+					? "income"
+					: "expense"
+				: args.generateType === "order"
+					? "income"
+					: args.generateType;
+
+		if (effectiveType === "expense" || effectiveType === "income") {
+			const txId = await ctx.runMutation(api.finance.createTransaction, {
+				type: effectiveType as "income" | "expense",
+				amount: scanResult.data.amount,
+				category: scanResult.data.category || "Lainnya",
+				description:
+					scanResult.data.description ||
+					scanResult.rawText.slice(0, 200),
+				date: Date.now(),
+				paymentMethod: scanResult.data.paymentMethod || "cash",
+				status: "completed",
+			});
+
+			return {
+				success: true,
+				message: `Berhasil mencatat ${effectiveType === "expense" ? "pengeluaran" : "pemasukan"} sebesar Rp${scanResult.data.amount.toLocaleString("id-ID")}`,
+				generated: {
+					id: txId,
+					type: effectiveType,
+					amount: scanResult.data.amount,
+					category: scanResult.data.category,
+				},
+				scanResult,
+			};
+		}
+
+		return {
+			success: false,
+			message: "Tipe generate tidak didukung untuk struk ini",
+			generated: null,
+			scanResult,
+		};
+	},
+});
+
+/**
+ * Proses beberapa gambar struk sekaligus (batch OCR)
+ */
+export const batchProcessReceipts = action({
+	args: {
+		images: v.array(v.string()),
+	},
+	handler: async (_ctx, args) => {
+		const results = await Promise.allSettled(
+			args.images.map((img) => runReceiptOCR(img))
+		);
+
+		const processedResults = results.map((r) =>
+			r.status === "fulfilled" ? r.value : null
+		);
+
+		const totalProcessed = processedResults.filter(
+			(r) => r !== null && r.type !== "unknown"
+		).length;
+		const totalFailed = processedResults.length - totalProcessed;
+
+		return {
+			results: processedResults,
+			summary: {
+				total: args.images.length,
+				totalProcessed,
+				totalFailed,
+			},
+		};
+	},
+});
+
+/**
+ * Proses beberapa gambar dan langsung buat transaksi untuk semua gambar (batch generate)
+ */
+export const batchGenerateTransactions = action({
+	args: {
+		images: v.array(v.string()),
+		generateType: v.union(
+			v.literal("auto"),
+			v.literal("expense"),
+			v.literal("order"),
+			v.literal("income")
+		),
+	},
+	handler: async (ctx, args) => {
+		const generated: Array<{
+			id: string;
+			type: string;
+			amount: number;
+			category?: string;
+		}> = [];
+		let totalAmount = 0;
+		let totalFailed = 0;
+
+		for (const image of args.images) {
+			try {
+				const scanResult = await runReceiptOCR(image);
+
+				if (scanResult.type === "unknown" || !scanResult.data?.amount) {
+					totalFailed++;
+					continue;
+				}
+
+				const effectiveType =
+					args.generateType === "auto"
+						? scanResult.type === "income"
+							? "income"
+							: "expense"
+						: args.generateType === "order"
+							? "income"
+							: args.generateType;
+
+				if (effectiveType === "expense" || effectiveType === "income") {
+					const txId = await ctx.runMutation(api.finance.createTransaction, {
+						type: effectiveType as "income" | "expense",
+						amount: scanResult.data.amount,
+						category: scanResult.data.category || "Lainnya",
+						description:
+							scanResult.data.description ||
+							scanResult.rawText.slice(0, 200),
+						date: Date.now(),
+						paymentMethod: scanResult.data.paymentMethod || "cash",
+						status: "completed",
+					});
+
+					generated.push({
+						id: txId as string,
+						type: effectiveType,
+						amount: scanResult.data.amount,
+						category: scanResult.data.category,
+					});
+
+					totalAmount += scanResult.data.amount;
+				}
+			} catch {
+				totalFailed++;
+			}
+		}
+
+		return {
+			generated,
+			summary: {
+				total: args.images.length,
+				totalGenerated: generated.length,
+				totalFailed,
+				totalAmount,
+			},
+		};
+	},
+});
+
+/**
+ * Generate laporan scan struk berdasarkan periode (harian/mingguan/bulanan)
+ */
+export const generateScanReport = action({
+	args: {
+		period: v.union(
+			v.literal("daily"),
+			v.literal("weekly"),
+			v.literal("monthly")
+		),
+	},
+	handler: async (ctx, args) => {
+		const now = Date.now();
+		let startDate: number;
+
+		switch (args.period) {
+			case "daily":
+				startDate = now - 24 * 60 * 60 * 1000;
+				break;
+			case "weekly":
+				startDate = now - 7 * 24 * 60 * 60 * 1000;
+				break;
+			case "monthly":
+				startDate = now - 30 * 24 * 60 * 60 * 1000;
+				break;
+		}
+
+		const transactions = await ctx.runQuery(api.finance.getAllTransactions, {
+			type: "expense",
+			startDate,
+			endDate: now,
+		});
+
+		const totalExpense = transactions.reduce(
+			(sum: number, t: any) => sum + t.amount,
+			0
+		);
+		const transactionCount = transactions.length;
+		const avgPerTransaction =
+			transactionCount > 0 ? totalExpense / transactionCount : 0;
+
+		// Group by category
+		const categoryMap: Record<string, number> = {};
+		for (const t of transactions as any[]) {
+			const cat = t.category || "Lainnya";
+			categoryMap[cat] = (categoryMap[cat] || 0) + t.amount;
+		}
+
+		const topCategories = Object.entries(categoryMap)
+			.map(([category, total]) => ({
+				category,
+				total,
+				percentage:
+					totalExpense > 0 ? Math.round((total / totalExpense) * 100) : 0,
+			}))
+			.sort((a, b) => b.total - a.total)
+			.slice(0, 5);
+
+		return {
+			period: args.period,
+			summary: {
+				totalExpense,
+				transactionCount,
+				avgPerTransaction,
+			},
+			topCategories,
+		};
+	},
+});
+
+// ============================================
 // DISCOUNT EFFECTIVENESS ANALYSIS
 // ============================================
 
