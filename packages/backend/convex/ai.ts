@@ -653,13 +653,48 @@ INSTRUKSI TOOL CALLING:
 		while (currentIteration < maxIterations) {
 			currentIteration++;
 
-			const completion = await getOpenAI().chat.completions.create({
-				model: hasImage && currentIteration === 1 ? "gpt-4o" : "gpt-4o-mini",
-				messages,
-				tools: openaiTools,
-				tool_choice: "auto",
-				max_tokens: 1500,
-			});
+			let completion;
+			try {
+				completion = await getOpenAI().chat.completions.create({
+					model: hasImage && currentIteration === 1 ? "gpt-4o" : "gpt-4o-mini",
+					messages,
+					tools: openaiTools,
+					tool_choice: "auto",
+					max_tokens: 2000,
+				});
+			} catch (apiError) {
+				// If vision model fails, try falling back to text-only with Gemini
+				if (hasImage && currentIteration === 1) {
+					console.error("Vision API error, falling back to text-only:", apiError);
+					// Remove image and try with text-only model
+					const textOnlyMessages = messages.map((msg) => {
+						if (typeof msg.content === "object" && Array.isArray(msg.content)) {
+							// Convert multimodal content to text-only
+							const textContent = msg.content.find((c) => c.type === "text");
+							return {
+								...msg,
+								content: textContent?.text || args.message || "Analisis gambar yang diupload.",
+							};
+						}
+						return msg;
+					});
+
+					try {
+						completion = await getOpenAI().chat.completions.create({
+							model: "gpt-4o-mini",
+							messages: textOnlyMessages,
+							tools: openaiTools,
+							tool_choice: "auto",
+							max_tokens: 2000,
+						});
+					} catch (fallbackError) {
+						console.error("Fallback API also failed:", fallbackError);
+						throw new Error("Gagal memproses permintaan. Silakan coba lagi atau gunakan pesan teks saja.");
+					}
+				} else {
+					throw apiError;
+				}
+			}
 
 			const responseMessage = completion.choices[0].message;
 

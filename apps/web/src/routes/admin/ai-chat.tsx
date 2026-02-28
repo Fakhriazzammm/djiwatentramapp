@@ -480,9 +480,49 @@ function AIChatPage() {
 				return;
 			}
 
+			// Process image with compression for better API handling
 			const reader = new FileReader();
-			reader.onload = (e) => {
-				setSelectedImage(e.target?.result as string);
+			reader.onload = (event) => {
+				const img = new Image();
+				img.onload = () => {
+					// Create canvas to resize/compress image
+					const canvas = document.createElement("canvas");
+					const ctx = canvas.getContext("2d");
+					if (!ctx) {
+						// Fallback to original image if canvas fails
+						setSelectedImage(event.target?.result as string);
+						return;
+					}
+
+					// Calculate new dimensions (max 1024px for API compatibility)
+					const maxDimension = 1024;
+					let width = img.width;
+					let height = img.height;
+
+					if (width > maxDimension || height > maxDimension) {
+						if (width > height) {
+							height = Math.round((height * maxDimension) / width);
+							width = maxDimension;
+						} else {
+							width = Math.round((width * maxDimension) / height);
+							height = maxDimension;
+						}
+					}
+
+					canvas.width = width;
+					canvas.height = height;
+
+					// Draw image and compress as JPEG with 0.8 quality
+					ctx.drawImage(img, 0, 0, width, height);
+					const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.8);
+					setSelectedImage(compressedDataUrl);
+				};
+
+				img.onerror = () => {
+					toast.error("Gagal memproses gambar. Silakan coba gambar lain.");
+				};
+
+				img.src = event.target?.result as string;
 			};
 			reader.readAsDataURL(file);
 		},
