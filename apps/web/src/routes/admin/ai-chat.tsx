@@ -594,7 +594,7 @@ function AIChatPage() {
 	// };
 
 	return (
-		<div className="flex h-full flex-col overflow-hidden bg-background">
+		<div className="flex h-full flex-col overflow-hidden bg-background pb-16 md:pb-0">
 			{/* Header with Tabs */}
 			<div className="flex items-center gap-3 border-border border-b bg-card px-2 py-2">
 				<div className="flex items-center gap-2">
