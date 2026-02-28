@@ -619,15 +619,18 @@ INSTRUKSI TOOL CALLING:
 		const maxIterations = 5;
 		let currentIteration = 0;
 
+		// Use gpt-4o for vision (image attached on first iteration), gpt-4o-mini for text-only
+		const hasImage = !!args.image;
+
 		while (currentIteration < maxIterations) {
 			currentIteration++;
 
 			const completion = await getOpenAI().chat.completions.create({
-				model: "gpt-4o-mini",
+				model: hasImage && currentIteration === 1 ? "gpt-4o" : "gpt-4o-mini",
 				messages,
 				tools: openaiTools,
-				tool_choice: currentIteration === 1 ? "auto" : "auto",
-				max_tokens: 1000,
+				tool_choice: "auto",
+				max_tokens: 1500,
 			});
 
 			const responseMessage = completion.choices[0].message;
