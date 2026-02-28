@@ -1479,25 +1479,6 @@ function AIChatPage() {
 								</button>
 							</div>
 						</div>
-								disabled={isLoading || !(input.trim() || selectedImage)}
-								onClick={() => {
-									if (input.trim() || selectedImage) {
-										sendMessage(input);
-										if (inputRef.current) {
-											inputRef.current.style.height = "auto";
-										}
-									}
-								}}
-								title="Kirim pesan"
-								type="button"
-							>
-								{isLoading ? (
-									<Loader2 className="h-4 w-4 animate-spin" />
-								) : (
-									<Send className="h-4 w-4" />
-								)}
-							</button>
-						</div>
 
 						<p className="text-center text-[10px] text-muted-foreground">
 							Yumi AI dapat membuat kesalahan. Selalu verifikasi informasi penting.
