@@ -96,7 +96,16 @@
       "linter": {
         "rules": {
           "style": {
-            "useFilenamingConvention": "off"
+            "useFilenamingConvention": "off",
+            "useBlockStatements": "warn",
+            "useAtIndex": "warn"
+          },
+          "suspicious": {
+            "noExplicitAny": "warn",
+            "noEvolvingTypes": "warn"
+          },
+          "correctness": {
+            "noUnusedVariables": "warn"
           }
         }
       }

@@ -243,15 +243,17 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 
 	// Format ALL transactions in detail (not summarized)
 	const transactionsDetail =
-		(allTransactions as Array<{
-			date: number;
-			type: "income" | "expense";
-			amount: number;
-			category: string;
-			description?: string;
-			paymentMethod?: string;
-			status: string;
-		}>)
+		(
+			allTransactions as Array<{
+				date: number;
+				type: "income" | "expense";
+				amount: number;
+				category: string;
+				description?: string;
+				paymentMethod?: string;
+				status: string;
+			}>
+		)
 			?.map(
 				(t) =>
 					`• ${new Date(t.date).toLocaleDateString("id-ID")} | ${t.type === "income" ? "PEMASUKAN" : "PENGELUARAN"} | Rp${t.amount.toLocaleString("id-ID")} | ${t.category} | ${t.description || "-"} | ${t.paymentMethod || "CASH"} | ${t.status}`
@@ -341,13 +343,22 @@ ${(() => {
 		unit: string;
 		lowStockThreshold: number;
 	}>;
-	if (!invArr || invArr.length === 0) return "Belum ada data inventory untuk prediksi";
-	const criticalItems = invArr.filter(i => i.quantity <= i.lowStockThreshold * 0.5);
-	const lowItems = invArr.filter(i => i.quantity > i.lowStockThreshold * 0.5 && i.quantity <= i.lowStockThreshold);
+	if (!invArr || invArr.length === 0)
+		return "Belum ada data inventory untuk prediksi";
+	const criticalItems = invArr.filter(
+		(i) => i.quantity <= i.lowStockThreshold * 0.5
+	);
+	const lowItems = invArr.filter(
+		(i) =>
+			i.quantity > i.lowStockThreshold * 0.5 &&
+			i.quantity <= i.lowStockThreshold
+	);
 	let forecastSummary = `Stok Kritis (≤50% threshold): ${criticalItems.length} item`;
-	if (criticalItems.length > 0) forecastSummary += ` - ${criticalItems.map(i => `${i.ingredientName} (${i.quantity} ${i.unit})`).join(", ")}`;
+	if (criticalItems.length > 0)
+		forecastSummary += ` - ${criticalItems.map((i) => `${i.ingredientName} (${i.quantity} ${i.unit})`).join(", ")}`;
 	forecastSummary += `\nStok Rendah: ${lowItems.length} item`;
-	if (lowItems.length > 0) forecastSummary += ` - ${lowItems.map(i => `${i.ingredientName} (${i.quantity} ${i.unit})`).join(", ")}`;
+	if (lowItems.length > 0)
+		forecastSummary += ` - ${lowItems.map((i) => `${i.ingredientName} (${i.quantity} ${i.unit})`).join(", ")}`;
 	return forecastSummary;
 })()}
 
@@ -362,11 +373,11 @@ ${(() => {
 		targetType: string;
 	}>;
 	if (!discountArr || discountArr.length === 0) return "Belum ada diskon";
-	const activeDiscounts = discountArr.filter(d => d.isActive);
-	const inactiveDiscounts = discountArr.filter(d => !d.isActive);
+	const activeDiscounts = discountArr.filter((d) => d.isActive);
+	const inactiveDiscounts = discountArr.filter((d) => !d.isActive);
 	let discountAnalysis = `Diskon Aktif: ${activeDiscounts.length}, Nonaktif: ${inactiveDiscounts.length}\n`;
 	if (activeDiscounts.length > 0) {
-		discountAnalysis += `Detail Aktif: ${activeDiscounts.map(d => `${d.name} (${d.type}: ${d.value}, target: ${d.targetType})`).join("; ")}`;
+		discountAnalysis += `Detail Aktif: ${activeDiscounts.map((d) => `${d.name} (${d.type}: ${d.value}, target: ${d.targetType})`).join("; ")}`;
 	}
 	return discountAnalysis;
 })()}
@@ -377,12 +388,22 @@ ${(() => {
 		totalAmount: number;
 		status: string;
 	}>;
-	const paidOrders = orderArr2?.filter(o => o.status === "paid" || o.status === "completed") || [];
+	const paidOrders =
+		orderArr2?.filter((o) => o.status === "paid" || o.status === "completed") ||
+		[];
 	const orderRevenue = paidOrders.reduce((sum, o) => sum + o.totalAmount, 0);
-	const incomeArr = (allTransactions as Array<{ type: string; amount: number }>)?.filter(t => t.type === "income") || [];
+	const incomeArr =
+		(allTransactions as Array<{ type: string; amount: number }>)?.filter(
+			(t) => t.type === "income"
+		) || [];
 	const incomeTotal = incomeArr.reduce((sum, t) => sum + t.amount, 0);
 	const gap = orderRevenue - incomeTotal;
-	const gapStatus = Math.abs(gap) < 1000 ? "✅ Seimbang" : gap > 0 ? `⚠️ Selisih: Rp${gap.toLocaleString("id-ID")} (pesanan > catatan keuangan)` : `⚠️ Selisih: Rp${Math.abs(gap).toLocaleString("id-ID")} (catatan keuangan > pesanan)`;
+	const gapStatus =
+		Math.abs(gap) < 1000
+			? "✅ Seimbang"
+			: gap > 0
+				? `⚠️ Selisih: Rp${gap.toLocaleString("id-ID")} (pesanan > catatan keuangan)`
+				: `⚠️ Selisih: Rp${Math.abs(gap).toLocaleString("id-ID")} (catatan keuangan > pesanan)`;
 	return `Total Pesanan Selesai: Rp${orderRevenue.toLocaleString("id-ID")} (${paidOrders.length} pesanan)\nTotal Pemasukan Tercatat: Rp${incomeTotal.toLocaleString("id-ID")} (${incomeArr.length} transaksi)\nStatus: ${gapStatus}`;
 })()}
 
@@ -600,7 +621,9 @@ INSTRUKSI TOOL CALLING:
 				content: [
 					{
 						type: "text",
-						text: args.message || "Tolong analisis gambar ini dan ekstrak informasi yang relevan.",
+						text:
+							args.message ||
+							"Tolong analisis gambar ini dan ekstrak informasi yang relevan.",
 					},
 					{
 						type: "image_url",
@@ -933,15 +956,21 @@ export const generateReport = action({
 	},
 	handler: async (ctx, args) => {
 		// Gather requested data
-		const [products, inventory, orders, financialSummary, _discounts, allTransactions] =
-			await Promise.all([
-				ctx.runQuery(api.products.getAllProductsAdmin),
-				ctx.runQuery(api.inventory.getInventory),
-				ctx.runQuery(api.orders.getOrders, {}),
-				ctx.runQuery(api.finance.getFinancialSummary, {}),
-				ctx.runQuery(api.discounts.getDiscounts),
-				ctx.runQuery(api.finance.getAllTransactions, {}), // Get ALL transactions
-			]);
+		const [
+			products,
+			inventory,
+			orders,
+			financialSummary,
+			_discounts,
+			allTransactions,
+		] = await Promise.all([
+			ctx.runQuery(api.products.getAllProductsAdmin),
+			ctx.runQuery(api.inventory.getInventory),
+			ctx.runQuery(api.orders.getOrders, {}),
+			ctx.runQuery(api.finance.getFinancialSummary, {}),
+			ctx.runQuery(api.discounts.getDiscounts),
+			ctx.runQuery(api.finance.getAllTransactions, {}), // Get ALL transactions
+		]);
 
 		const completedOrders = orders.filter(
 			(o) => o.status === "completed" || o.status === "paid"
@@ -1018,16 +1047,18 @@ export const generateReport = action({
 			};
 
 			// Include ALL transactions in detail (not summarized)
-			const transactionsList = (allTransactions as Array<{
-				_id: string;
-				date: number;
-				type: "income" | "expense";
-				amount: number;
-				category: string;
-				description?: string;
-				paymentMethod?: string;
-				status: string;
-			}>).map((t) => ({
+			const transactionsList = (
+				allTransactions as Array<{
+					_id: string;
+					date: number;
+					type: "income" | "expense";
+					amount: number;
+					category: string;
+					description?: string;
+					paymentMethod?: string;
+					status: string;
+				}>
+			).map((t) => ({
 				id: t._id,
 				date: new Date(t.date).toLocaleDateString("id-ID"),
 				type: t.type,
@@ -1354,7 +1385,9 @@ export const getProactiveSuggestions = query({
 				description: `${hppDashboard.lowMarginAlerts
 					.slice(0, 3)
 					.map((a) => a.name)
-					.join(", ")} memiliki margin di bawah 20%. Pertimbangkan untuk naikkan harga atau kurangi biaya.`,
+					.join(
+						", "
+					)} memiliki margin di bawah 20%. Pertimbangkan untuk naikkan harga atau kurangi biaya.`,
 				action: null,
 				priority: "medium",
 				createdAt: now,
@@ -1449,7 +1482,9 @@ export const getProactiveSuggestions = query({
 				.filter((o) => o.createdAt >= fifteenDaysAgo)
 				.reduce((sum, o) => sum + o.totalAmount, 0);
 			const olderRevenue = completedOrders
-				.filter((o) => o.createdAt >= thirtyDaysAgo && o.createdAt < fifteenDaysAgo)
+				.filter(
+					(o) => o.createdAt >= thirtyDaysAgo && o.createdAt < fifteenDaysAgo
+				)
 				.reduce((sum, o) => sum + o.totalAmount, 0);
 
 			if (recentRevenue > olderRevenue * 1.1) {
@@ -1518,7 +1553,8 @@ export const predictStockOut = query({
 		// Predict which items will run out
 		const predictions = inventory
 			.map((item) => {
-				const dailyUsage = (itemUsage[item.ingredientName] || 0) / daysToAnalyze;
+				const dailyUsage =
+					(itemUsage[item.ingredientName] || 0) / daysToAnalyze;
 				const daysUntilEmpty =
 					dailyUsage > 0 ? Math.floor(item.quantity / dailyUsage) : 999;
 
@@ -1927,7 +1963,9 @@ export const autoGenerateTasks = mutation({
 				priority: "medium" as const,
 				category: "finance" as const,
 				actionType: "review" as const,
-				actionData: { productIds: hppDashboard.lowMarginAlerts.map((a) => a._id) },
+				actionData: {
+					productIds: hppDashboard.lowMarginAlerts.map((a) => a._id),
+				},
 				dueDate: now + 7 * 24 * 60 * 60 * 1000, // Due in a week
 			});
 		}
@@ -2056,7 +2094,7 @@ export const getFinancialReconciliation = query({
 // ============================================
 
 /**
- * Helper: Run OCR on a receipt image using GPT-4o Vision
+ * Helper: Run OCR on a receipt image using Gemini Vision via Sumopod
  */
 async function runReceiptOCR(imageDataUrl: string): Promise<{
 	type: "order" | "expense" | "income" | "unknown";
@@ -2074,7 +2112,7 @@ async function runReceiptOCR(imageDataUrl: string): Promise<{
 	const openai = getOpenAI();
 
 	const completion = await openai.chat.completions.create({
-		model: "gpt-4o",
+		model: "gemini-2.0-flash",
 		messages: [
 			{
 				role: "system",
@@ -2188,7 +2226,8 @@ export const processImageAndGenerate = action({
 		if (scanResult.type === "unknown" || !scanResult.data?.amount) {
 			return {
 				success: false,
-				message: "Tidak dapat mengidentifikasi data dari struk. Pastikan gambar jelas dan merupakan struk/kwitansi.",
+				message:
+					"Tidak dapat mengidentifikasi data dari struk. Pastikan gambar jelas dan merupakan struk/kwitansi.",
 				generated: null,
 				scanResult,
 			};
@@ -2209,8 +2248,7 @@ export const processImageAndGenerate = action({
 				amount: scanResult.data.amount,
 				category: scanResult.data.category || "Lainnya",
 				description:
-					scanResult.data.description ||
-					scanResult.rawText.slice(0, 200),
+					scanResult.data.description || scanResult.rawText.slice(0, 200),
 				date: Date.now(),
 				paymentMethod: scanResult.data.paymentMethod || "cash",
 				status: "completed",
@@ -2317,8 +2355,7 @@ export const batchGenerateTransactions = action({
 						amount: scanResult.data.amount,
 						category: scanResult.data.category || "Lainnya",
 						description:
-							scanResult.data.description ||
-							scanResult.rawText.slice(0, 200),
+							scanResult.data.description || scanResult.rawText.slice(0, 200),
 						date: Date.now(),
 						paymentMethod: scanResult.data.paymentMethod || "cash",
 						status: "completed",
