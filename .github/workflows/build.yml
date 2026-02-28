@@ -1,0 +1,41 @@
+name: Build & Version
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history needed for commit count versioning
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.4
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Update version (auto-increment from commit count)
+        run: bash scripts/update-version.sh
+
+      - name: Build
+        run: bun run build
+        env:
+          VITE_CONVEX_URL: ${{ secrets.VITE_CONVEX_URL }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
+        with:
+          name: dist
+          path: apps/web/dist/
+          retention-days: 7

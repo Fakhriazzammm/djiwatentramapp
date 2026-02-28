@@ -318,14 +318,11 @@ function AdminLayout() {
 					<footer className="border-border border-t bg-muted/20 px-4 py-2 text-center text-muted-foreground text-xs">
 						<div className="flex flex-col items-center gap-0.5 md:flex-row md:gap-2">
 							<span>
-								{appName} v{APP_VERSION.semantic}
-								<span className="ml-1 text-muted-foreground/50">
-									({APP_VERSION.commitHash})
-								</span>
+								{appName} {APP_VERSION.semantic} by Zantara Technology
 							</span>
-							<span className="hidden md:inline">|</span>
-							<span className="text-[10px]">
-								Build: {APP_VERSION.buildDate}
+							<span className="hidden md:inline text-muted-foreground/40">·</span>
+							<span className="text-[10px] text-muted-foreground/60">
+								{APP_VERSION.buildDate}
 							</span>
 						</div>
 					</footer>
