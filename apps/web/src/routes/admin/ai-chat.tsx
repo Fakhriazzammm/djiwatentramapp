@@ -1563,7 +1563,7 @@ function AIChatPage() {
 					</AnimatePresence>
 
 					{/* ChatGPT/Claude-style Input Box */}
-						<div className="rounded-2xl border border-border bg-background shadow-sm transition-all focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30">
+						<div className="rounded-2xl border border-border bg-background shadow-sm">
 							{/* Image Preview inside input box - above input row */}
 							{selectedImage && (
 								<div className="flex items-center gap-2 border-border border-b px-3 py-2">
