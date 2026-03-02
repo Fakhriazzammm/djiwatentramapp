@@ -619,26 +619,59 @@ INSTRUKSI TOOL CALLING:
 			messages.push({ role: msg.role, content: msg.content });
 		}
 
-		// Support vision: if image is attached, send as multimodal content
+		// Support vision: if image is attached, analyze with Gemini first then include analysis in chat
 		if (args.image) {
-			messages.push({
-				role: "user",
-				content: [
-					{
-						type: "text",
-						text:
-							args.message ||
-							"Tolong analisis gambar ini dan ekstrak informasi yang relevan.",
-					},
-					{
-						type: "image_url",
-						image_url: {
-							url: args.image,
-							detail: "high",
-						},
-					},
-				],
-			} as OpenAI.ChatCompletionMessageParam);
+			let imageAnalysis = "";
+			const geminiApiKey = process.env.GEMINI_API_KEY;
+
+			if (geminiApiKey) {
+				try {
+					const base64Data = args.image.split(",")[1];
+					const mimeMatch = args.image.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+					const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
+
+					if (base64Data) {
+						const geminiResponse = await fetch(
+							`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
+							{
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({
+									contents: [
+										{
+											parts: [
+												{ inline_data: { mime_type: mimeType, data: base64Data } },
+												{
+													text: `Analisis gambar ini secara detail. Jika ini struk/kwitansi/nota, baca semua teks, item, harga, total, tanggal, metode pembayaran. Jika ini gambar produk atau dokumen lain, deskripsikan isinya secara lengkap. Jawab dalam Bahasa Indonesia.`,
+												},
+											],
+										},
+									],
+									generationConfig: {
+										temperature: 0.2,
+										maxOutputTokens: 1500,
+									},
+								}),
+							}
+						);
+
+						if (geminiResponse.ok) {
+							const geminiResult = await geminiResponse.json();
+							imageAnalysis = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text || "";
+						}
+					}
+				} catch (visionError) {
+					console.error("Gemini vision analysis error:", visionError);
+				}
+			}
+
+			// Include image analysis context in the user message
+			const userText = args.message || "Tolong analisis gambar ini dan ekstrak informasi yang relevan.";
+			const messageWithAnalysis = imageAnalysis
+				? `${userText}\n\n[HASIL ANALISIS GAMBAR OLEH VISION AI]:\n${imageAnalysis}`
+				: userText;
+
+			messages.push({ role: "user", content: messageWithAnalysis });
 		} else {
 			messages.push({ role: "user", content: args.message });
 		}
@@ -646,9 +679,6 @@ INSTRUKSI TOOL CALLING:
 		// Multi-step tool calling loop - allows AI to chain multiple tool calls
 		const maxIterations = 5;
 		let currentIteration = 0;
-
-		// Use gpt-4o-mini for all interactions including vision (multimodal)
-		const hasImage = !!args.image;
 
 		while (currentIteration < maxIterations) {
 			currentIteration++;
@@ -663,37 +693,8 @@ INSTRUKSI TOOL CALLING:
 					max_tokens: 2000,
 				});
 			} catch (apiError) {
-				// If vision model fails, try falling back to text-only with Gemini
-				if (hasImage && currentIteration === 1) {
-					console.error("Vision API error, falling back to text-only:", apiError);
-					// Remove image and try with text-only model
-					const textOnlyMessages = messages.map((msg) => {
-						if (typeof msg.content === "object" && Array.isArray(msg.content)) {
-							// Convert multimodal content to text-only
-							const textContent = msg.content.find((c) => c.type === "text");
-							return {
-								...msg,
-								content: textContent?.text || args.message || "Analisis gambar yang diupload.",
-							};
-						}
-						return msg;
-					});
-
-					try {
-						completion = await getOpenAI().chat.completions.create({
-							model: "gpt-4o-mini",
-							messages: textOnlyMessages,
-							tools: openaiTools,
-							tool_choice: "auto",
-							max_tokens: 2000,
-						});
-					} catch (fallbackError) {
-						console.error("Fallback API also failed:", fallbackError);
-						throw new Error("Gagal memproses permintaan. Silakan coba lagi atau gunakan pesan teks saja.");
-					}
-				} else {
-					throw apiError;
-				}
+				console.error("Chat API error:", apiError);
+				throw new Error("Gagal memproses permintaan. Silakan coba lagi.");
 			}
 
 			const responseMessage = completion.choices[0].message;
@@ -2185,6 +2186,7 @@ async function callPythonOCRService(imageDataUrl: string, endpoint: string = "oc
 			confidence: 0,
 			error: "OCR Service unavailable",
 		};
+	}
 }
 
 /**
@@ -2252,7 +2254,7 @@ Output JSON (tanpa markdown):
 
 	try {
 		const response = await fetch(
-			`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+			`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
 			{
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
@@ -2287,7 +2289,8 @@ Output JSON (tanpa markdown):
 		}
 
 		// Try to parse JSON from response
-		const jsonMatch = content.match(/\{[\s\S]*?\}/);
+		const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+		const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
 		if (jsonMatch) {
 			try {
 				const parsed = JSON.parse(jsonMatch[0]);
@@ -2635,22 +2638,31 @@ export const analyzeDiscountEffectiveness = query({
 });
 
 /**
- * Scan gambar dengan AI (gpt-4o-mini) dan ekstrak data terstruktur.
+ * Scan gambar dengan AI (Gemini Vision) dan ekstrak data terstruktur.
  * Mendukung: struk belanja, kwitansi, nota, tulisan tangan, produk, dll.
+ * Menggunakan Gemini API langsung karena mendukung vision/image analysis.
  */
 export const scanImageData = action({
 	args: {
 		image: v.string(), // base64 data URL (maks 800px, kualitas 70%)
 	},
 	handler: async (_ctx, args) => {
-		let completion;
-		try {
-			completion = await getOpenAI().chat.completions.create({
-				model: "gpt-4o-mini",
-				messages: [
-					{
-						role: "system",
-						content: `Kamu adalah AI scanner dokumen keuangan yang ahli menganalisis gambar struk, kwitansi, nota, tulisan, dan dokumen lainnya.
+		const apiKey = process.env.GEMINI_API_KEY;
+		if (!apiKey) {
+			throw new Error("GEMINI_API_KEY environment variable is not set. Diperlukan untuk analisis gambar.");
+		}
+
+		// Extract base64 data from data URL
+		const base64Data = args.image.split(",")[1];
+		if (!base64Data) {
+			throw new Error("Format data URL gambar tidak valid. Pastikan gambar berformat base64.");
+		}
+
+		// Detect MIME type from data URL
+		const mimeMatch = args.image.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+		const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
+
+		const prompt = `Kamu adalah AI scanner dokumen keuangan yang ahli menganalisis gambar struk, kwitansi, nota, tulisan, dan dokumen lainnya.
 
 Analisis gambar dan kembalikan data terstruktur dalam format JSON berikut TANPA teks tambahan apapun:
 {
@@ -2677,41 +2689,95 @@ Aturan penting:
 - Semua angka numerik (bukan string) dalam IDR
 - Baca semua angka dengan teliti, perhatikan pemisah ribuan (titik) dan desimal (koma)
 - Jika gambar bukan dokumen keuangan, tetap analisis dan ekstrak informasi yang tersedia
-- confidence 90-100 jika data jelas terbaca, 60-89 jika sebagian, 0-59 jika tidak jelas`,
-					},
-					{
-						role: "user",
-						content: [
+- confidence 90-100 jika data jelas terbaca, 60-89 jika sebagian, 0-59 jika tidak jelas`;
+
+		let content = "";
+
+		try {
+			const response = await fetch(
+				`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						contents: [
 							{
-								type: "image_url",
-								image_url: {
-									url: args.image,
-									detail: "high",
-								},
-							},
-							{
-								type: "text",
-								text: "Analisis gambar ini dan kembalikan data JSON terstruktur sesuai format yang diminta.",
+								parts: [
+									{ inline_data: { mime_type: mimeType, data: base64Data } },
+									{ text: prompt },
+								],
 							},
 						],
-					},
-				],
-				max_tokens: 1500,
-			});
-		} catch (error) {
-			console.error("scanImageData error:", error);
-			throw new Error(
-				"Gagal menganalisis gambar. Pastikan format gambar didukung (JPG/PNG) dan coba lagi."
+						generationConfig: {
+							temperature: 0.1,
+							maxOutputTokens: 2000,
+							responseMimeType: "text/plain",
+						},
+					}),
+				}
 			);
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.error("Gemini API error:", response.status, errorText);
+				throw new Error(`Gemini API error: ${response.status}`);
+			}
+
+			const result = await response.json();
+			content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+			if (!content) {
+				throw new Error("Empty response from Gemini API");
+			}
+		} catch (error) {
+			console.error("scanImageData Gemini error:", error);
+
+			// Fallback: try OpenAI/SumoPod if Gemini fails
+			try {
+				const completion = await getOpenAI().chat.completions.create({
+					model: "gpt-4o-mini",
+					messages: [
+						{
+							role: "system",
+							content: prompt,
+						},
+						{
+							role: "user",
+							content: [
+								{
+									type: "image_url",
+									image_url: {
+										url: args.image,
+										detail: "high",
+									},
+								},
+								{
+									type: "text",
+									text: "Analisis gambar ini dan kembalikan data JSON terstruktur sesuai format yang diminta.",
+								},
+							],
+						},
+					],
+					max_tokens: 1500,
+				});
+				content = completion.choices[0].message.content ?? "";
+			} catch (fallbackError) {
+				console.error("scanImageData fallback error:", fallbackError);
+				throw new Error(
+					"Gagal menganalisis gambar. Pastikan format gambar didukung (JPG/PNG) dan coba lagi."
+				);
+			}
 		}
 
-		const content = completion.choices[0].message.content ?? "";
+		// Parse JSON from response
 		try {
-			const jsonMatch = content.match(/\{[\s\S]*\}/);
+			// Clean markdown code fences if present
+			const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+			const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
 			if (jsonMatch) {
 				return JSON.parse(jsonMatch[0]);
 			}
-			return JSON.parse(content);
+			return JSON.parse(cleaned);
 		} catch {
 			return {
 				type: "unknown",
