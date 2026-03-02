@@ -1585,19 +1585,8 @@ function AIChatPage() {
 								</div>
 							)}
 
-							{/* Input Row - Camera, Scan, Textarea, Send */}
+							{/* Input Row - Scan, Textarea, Send */}
 							<div className="flex items-end gap-2 p-2">
-								{/* Left: Camera/File upload - inline */}
-								<button
-									className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
-									disabled={isLoading}
-									onClick={() => fileInputRef.current?.click()}
-									title="Lampirkan gambar ke chat"
-									type="button"
-								>
-									<Camera className="h-4 w-4" />
-								</button>
-
 								{/* Scan Button */}
 								<button
 									className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors disabled:opacity-50 ${
