@@ -9,6 +9,7 @@ import {
 	Calendar,
 	Camera,
 	CheckCircle2,
+	Download,
 	FileText,
 	Lightbulb,
 	Loader2,
@@ -491,7 +492,7 @@ function AIChatPage() {
 		[isLoading, messages, yumiChat, selectedImage, currentSessionId, startNewSession, saveMessage, streamText]
 	);
 
-	// Helper: compress image to max 800px, quality 70%
+	// Helper: compress image for AI analysis - balanced quality for OCR readability
 	const compressImage = useCallback(
 		(dataUrl: string): Promise<string> => {
 			return new Promise((resolve) => {
@@ -503,7 +504,7 @@ function AIChatPage() {
 						resolve(dataUrl);
 						return;
 					}
-					const maxDimension = 800;
+					const maxDimension = 1200; // Higher res for better OCR/text reading
 					let { width, height } = img;
 					if (width > maxDimension || height > maxDimension) {
 						if (width > height) {
@@ -517,7 +518,7 @@ function AIChatPage() {
 					canvas.width = width;
 					canvas.height = height;
 					ctx.drawImage(img, 0, 0, width, height);
-					resolve(canvas.toDataURL("image/jpeg", 0.7));
+					resolve(canvas.toDataURL("image/jpeg", 0.85));
 				};
 				img.onerror = () => resolve(dataUrl);
 				img.src = dataUrl;
@@ -590,6 +591,25 @@ function AIChatPage() {
 		setIsScanning(true);
 		try {
 			const result = await scanImageDataAction({ image: scanImage });
+
+			// Build a readable summary from the scan result
+			const parts: string[] = [];
+			if (result.name && result.name !== "Tidak dapat diidentifikasi") {
+				parts.push(`${result.name}`);
+			}
+			if (result.total > 0) {
+				parts.push(`Total: Rp${result.total.toLocaleString("id-ID")}`);
+			}
+			if (result.items && result.items.length > 0) {
+				parts.push(`${result.items.length} item terdeteksi`);
+			}
+			if (result.rawText && (!result.items || result.items.length === 0) && result.total === 0) {
+				parts.push("Teks berhasil diekstrak dari gambar");
+			}
+			const summary = parts.length > 0
+				? `Analisis selesai (${result.confidence}% akurat). ${parts.join(" • ")}`
+				: `Analisis selesai dengan tingkat keyakinan ${result.confidence}%.`;
+
 			// Add user message with image
 			const userMsg: ChatMessage = {
 				role: "user",
@@ -599,7 +619,7 @@ function AIChatPage() {
 			// Add assistant message with structured scan result
 			const assistantMsg: ChatMessage = {
 				role: "assistant",
-				content: result.notes || `Analisis selesai dengan tingkat keyakinan ${result.confidence}%.`,
+				content: result.notes || summary,
 				scanData: result as ScanResultData,
 			};
 			setMessages((prev) => [...prev, userMsg, assistantMsg]);
@@ -608,6 +628,7 @@ function AIChatPage() {
 			if (scanFileInputRef.current) scanFileInputRef.current.value = "";
 			toast.success("Gambar berhasil dianalisis!");
 		} catch (error) {
+			console.error("Scan error:", error);
 			const msg = error instanceof Error ? error.message : "Gagal menganalisis gambar";
 			toast.error(msg);
 		} finally {
@@ -1510,7 +1531,7 @@ function AIChatPage() {
 													Upload foto struk, kwitansi, atau dokumen
 												</p>
 												<p className="text-[10px] text-muted-foreground">
-													JPG, PNG • Maks 5MB • Dikompres otomatis (800px, 70%)
+													JPG, PNG • Maks 5MB • Dikompres otomatis untuk AI
 												</p>
 											</div>
 										</button>
@@ -1820,6 +1841,13 @@ function AIChatPage() {
 // ─── Scan Result Card Component ──────────────────────────────────────────────
 
 function ScanResultCard({ data }: { data: ScanResultData }) {
+	const [isSaving, setIsSaving] = useState(false);
+	const [isSaved, setIsSaved] = useState(false);
+	const [saveType, setSaveType] = useState<"expense" | "income">(
+		data.transactionType === "income" ? "income" : "expense"
+	);
+	const saveToFinanceAction = useAction(api.ai.saveScannedToFinance);
+
 	const typeLabel: Record<string, string> = {
 		receipt: "Struk Belanja",
 		invoice: "Invoice/Faktur",
@@ -1844,6 +1872,47 @@ function ScanResultCard({ data }: { data: ScanResultData }) {
 			: data.confidence >= 50
 				? "text-yellow-600 bg-yellow-500/10"
 				: "text-red-600 bg-red-500/10";
+
+	// Calculate total from items if the main total is 0
+	const calculatedTotal =
+		data.total > 0
+			? data.total
+			: data.items?.reduce(
+					(sum, item) => sum + (item.subtotal || item.price * item.qty || 0),
+					0
+				) ?? 0;
+
+	const handleSaveToFinance = async () => {
+		if (isSaving || isSaved || calculatedTotal <= 0) return;
+		setIsSaving(true);
+		try {
+			const result = await saveToFinanceAction({
+				type: saveType,
+				amount: calculatedTotal,
+				category: data.category || "Lainnya",
+				description: data.name && data.name !== "Tidak dapat diidentifikasi"
+					? `${data.name}${data.notes ? ` - ${data.notes}` : ""}`
+					: data.notes || undefined,
+				paymentMethod: data.paymentMethod !== "unknown" ? data.paymentMethod : undefined,
+				date: data.date || undefined,
+				items: data.items?.map((item) => ({
+					name: item.name,
+					qty: item.qty,
+					price: item.price,
+					subtotal: item.subtotal || item.price * item.qty,
+				})),
+			});
+			if (result.success) {
+				setIsSaved(true);
+				toast.success(result.message);
+			}
+		} catch (error) {
+			const msg = error instanceof Error ? error.message : "Gagal menyimpan ke keuangan";
+			toast.error(msg);
+		} finally {
+			setIsSaving(false);
+		}
+	};
 
 	return (
 		<div className="mt-3 overflow-hidden rounded-xl border border-border bg-background">
@@ -1885,9 +1954,9 @@ function ScanResultCard({ data }: { data: ScanResultData }) {
 							</>
 						)}
 					</div>
-					{data.total > 0 && (
+					{calculatedTotal > 0 && (
 						<span className="font-bold text-foreground text-base">
-							Rp{data.total.toLocaleString("id-ID")}
+							Rp{calculatedTotal.toLocaleString("id-ID")}
 						</span>
 					)}
 				</div>
@@ -1963,6 +2032,81 @@ function ScanResultCard({ data }: { data: ScanResultData }) {
 					<p className="text-[10px] text-muted-foreground italic leading-relaxed">
 						{data.notes}
 					</p>
+				)}
+
+				{/* Raw Text (if no items extracted but has text) */}
+				{data.rawText && (!data.items || data.items.length === 0) && calculatedTotal === 0 && (
+					<div className="rounded-lg border border-border bg-muted/30 p-2.5">
+						<p className="mb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+							Teks yang terbaca
+						</p>
+						<p className="whitespace-pre-line text-[11px] text-foreground leading-relaxed">
+							{data.rawText.slice(0, 500)}
+						</p>
+					</div>
+				)}
+
+				{/* Save to Finance Button */}
+				{calculatedTotal > 0 && (
+					<div className="space-y-2 border-t border-border pt-2.5">
+						{/* Type selector */}
+						{!isSaved && (
+							<div className="flex items-center gap-2">
+								<span className="text-[10px] text-muted-foreground">Simpan sebagai:</span>
+								<div className="flex gap-1">
+									<button
+										className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors ${
+											saveType === "expense"
+												? "bg-red-500/15 text-red-600"
+												: "bg-muted text-muted-foreground hover:bg-muted/80"
+										}`}
+										onClick={() => setSaveType("expense")}
+										type="button"
+									>
+										Pengeluaran
+									</button>
+									<button
+										className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors ${
+											saveType === "income"
+												? "bg-green-500/15 text-green-600"
+												: "bg-muted text-muted-foreground hover:bg-muted/80"
+										}`}
+										onClick={() => setSaveType("income")}
+										type="button"
+									>
+										Pemasukan
+									</button>
+								</div>
+							</div>
+						)}
+						<button
+							className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-2 font-semibold text-xs transition-all disabled:opacity-50 ${
+								isSaved
+									? "bg-green-500/10 text-green-600 cursor-default"
+									: "bg-primary text-primary-foreground hover:bg-primary/90"
+							}`}
+							disabled={isSaving || isSaved}
+							onClick={handleSaveToFinance}
+							type="button"
+						>
+							{isSaving ? (
+								<>
+									<Loader2 className="h-3.5 w-3.5 animate-spin" />
+									Menyimpan...
+								</>
+							) : isSaved ? (
+								<>
+									<CheckCircle2 className="h-3.5 w-3.5" />
+									Tersimpan di Keuangan
+								</>
+							) : (
+								<>
+									<Download className="h-3.5 w-3.5" />
+									Simpan ke Keuangan (Rp{calculatedTotal.toLocaleString("id-ID")})
+								</>
+							)}
+						</button>
+					</div>
 				)}
 			</div>
 		</div>

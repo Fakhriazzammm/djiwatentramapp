@@ -79,8 +79,8 @@ export function ImageScanner({
 					toast.error(`${file.name} bukan file gambar`);
 					return false;
 				}
-				if (file.size > 5 * 1024 * 1024) {
-					toast.error(`${file.name} terlalu besar (maks 5MB)`);
+				if (file.size > 10 * 1024 * 1024) {
+					toast.error(`${file.name} terlalu besar (maks 10MB)`);
 					return false;
 				}
 				return true;

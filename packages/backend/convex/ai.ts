@@ -622,54 +622,41 @@ INSTRUKSI TOOL CALLING:
 		// Support vision: if image is attached, analyze with Gemini first then include analysis in chat
 		if (args.image) {
 			let imageAnalysis = "";
-			const geminiApiKey = process.env.GEMINI_API_KEY;
 
-			if (geminiApiKey) {
-				try {
-					const base64Data = args.image.split(",")[1];
-					const mimeMatch = args.image.match(/^data:(image\/[a-zA-Z+]+);base64,/);
-					const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
+			const visionPrompt = `Analisis gambar ini secara detail dan menyeluruh dalam Bahasa Indonesia.
 
-					if (base64Data) {
-						const geminiResponse = await fetch(
-							`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
-							{
-								method: "POST",
-								headers: { "Content-Type": "application/json" },
-								body: JSON.stringify({
-									contents: [
-										{
-											parts: [
-												{ inline_data: { mime_type: mimeType, data: base64Data } },
-												{
-													text: `Analisis gambar ini secara detail. Jika ini struk/kwitansi/nota, baca semua teks, item, harga, total, tanggal, metode pembayaran. Jika ini gambar produk atau dokumen lain, deskripsikan isinya secara lengkap. Jawab dalam Bahasa Indonesia.`,
-												},
-											],
-										},
-									],
-									generationConfig: {
-										temperature: 0.2,
-										maxOutputTokens: 1500,
-									},
-								}),
-							}
-						);
+Jika gambar adalah struk/kwitansi/nota belanja:
+- Baca SEMUA teks dari atas ke bawah
+- Daftar SEMUA item beserta harga dan jumlahnya
+- Total belanja, subtotal, pajak, diskon
+- Nama toko, tanggal, metode pembayaran
+- Hitung ulang: total = jumlah semua harga item
 
-						if (geminiResponse.ok) {
-							const geminiResult = await geminiResponse.json();
-							imageAnalysis = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text || "";
-						}
-					}
-				} catch (visionError) {
-					console.error("Gemini vision analysis error:", visionError);
-				}
+Jika gambar adalah tulisan tangan:
+- Baca dan transkrip SELURUH tulisan yang ada
+- Identifikasi jika ada angka/nominal uang
+
+Jika gambar adalah dokumen/produk lain:
+- Deskripsikan isinya secara lengkap
+- Ekstrak semua teks yang terlihat
+
+Berikan jawaban yang lengkap dan detail.`;
+
+			const visionResult = await callGeminiVision(args.image, visionPrompt, {
+				temperature: 0.2,
+				maxOutputTokens: 2000,
+			});
+
+			if (visionResult.success) {
+				imageAnalysis = visionResult.content;
+			} else {
+				console.error("Vision analysis failed:", visionResult.error);
+				imageAnalysis = "Gambar diterima namun analisis visual gagal. User mengirim gambar yang perlu dianalisis.";
 			}
 
 			// Include image analysis context in the user message
 			const userText = args.message || "Tolong analisis gambar ini dan ekstrak informasi yang relevan.";
-			const messageWithAnalysis = imageAnalysis
-				? `${userText}\n\n[HASIL ANALISIS GAMBAR OLEH VISION AI]:\n${imageAnalysis}`
-				: userText;
+			const messageWithAnalysis = `${userText}\n\n[HASIL ANALISIS GAMBAR OLEH VISION AI]:\n${imageAnalysis}`;
 
 			messages.push({ role: "user", content: messageWithAnalysis });
 		} else {
@@ -2141,56 +2128,102 @@ export const getFinancialReconciliation = query({
 /**
  * Helper: Call Python OCR Service for receipt scanning
  */
-async function callPythonOCRService(imageDataUrl: string, endpoint: string = "ocr/receipt"): Promise<{
-	success: boolean;
-	type: string;
-	data?: any;
-	raw_text: string;
-	confidence: number;
-	error?: string;
-}> {
-	const ocrServiceUrl = process.env.OCR_SERVICE_URL || "http://localhost:8001";
+/**
+ * Helper: Call Gemini Vision API for image analysis
+ * Used by both OCR and chat vision features
+ */
+async function callGeminiVision(
+	imageDataUrl: string,
+	prompt: string,
+	options?: { temperature?: number; maxOutputTokens?: number; jsonMode?: boolean }
+): Promise<{ success: boolean; content: string; error?: string }> {
+	const apiKey = process.env.GEMINI_API_KEY;
+	if (!apiKey) {
+		return { success: false, content: "", error: "GEMINI_API_KEY tidak dikonfigurasi" };
+	}
+
+	const base64Data = imageDataUrl.split(",")[1];
+	if (!base64Data) {
+		return { success: false, content: "", error: "Format data URL gambar tidak valid" };
+	}
+
+	const mimeMatch = imageDataUrl.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+	const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
 
 	try {
-		const response = await fetch(`${ocrServiceUrl}/${endpoint}`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				image: imageDataUrl,
-			}),
-		});
+		const response = await fetch(
+			`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					contents: [
+						{
+							parts: [
+								{ inline_data: { mime_type: mimeType, data: base64Data } },
+								{ text: prompt },
+							],
+						},
+					],
+					generationConfig: {
+						temperature: options?.temperature ?? 0.1,
+						maxOutputTokens: options?.maxOutputTokens ?? 2500,
+						...(options?.jsonMode ? { responseMimeType: "application/json" } : {}),
+					},
+				}),
+			}
+		);
 
 		if (!response.ok) {
 			const errorText = await response.text();
-			console.error("OCR Service Error:", errorText);
-			return {
-				success: false,
-				type: "unknown",
-				data: null,
-				raw_text: "",
-				confidence: 0,
-				error: `OCR Service error: ${response.status}`,
-			};
+			console.error("Gemini API error:", response.status, errorText);
+			return { success: false, content: "", error: `Gemini API error: ${response.status}` };
 		}
 
-		return await response.json();
+		const result = await response.json();
+		const content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+		if (!content) {
+			return { success: false, content: "", error: "Respons kosong dari Gemini API" };
+		}
+
+		return { success: true, content };
 	} catch (error) {
-		console.error("OCR Service Connection Error:", error);
-		return {
-			success: false,
-			type: "unknown",
-			data: null,
-			raw_text: "",
-			confidence: 0,
-			error: "OCR Service unavailable",
-		};
+		console.error("Gemini Vision error:", error);
+		return { success: false, content: "", error: error instanceof Error ? error.message : String(error) };
 	}
 }
 
 /**
- * Helper: Run OCR on a receipt image using Google Gemini API (direct fetch fallback)
+ * Helper: Parse JSON safely from AI response text
+ */
+function parseJsonFromAIResponse(text: string): any | null {
+	// First try: clean markdown fences and parse
+	const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+
+	// Try direct parse
+	try {
+		return JSON.parse(cleaned);
+	} catch {
+		// continue
+	}
+
+	// Try to find JSON object in text
+	const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+	if (jsonMatch) {
+		try {
+			return JSON.parse(jsonMatch[0]);
+		} catch {
+			// continue
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Helper: Run OCR on a receipt/image using Google Gemini Vision API
+ * Extracts text, items, totals, and categorizes the transaction
  */
 async function runReceiptOCR(imageDataUrl: string): Promise<{
 	type: "order" | "expense" | "income" | "unknown";
@@ -2205,117 +2238,91 @@ async function runReceiptOCR(imageDataUrl: string): Promise<{
 	confidence: number;
 	rawText: string;
 }> {
-	// Try Python OCR Service first
-	console.log("Attempting Python OCR Service...");
-	const pythonResult = await callPythonOCRService(imageDataUrl, "ocr/receipt");
+	const prompt = `Kamu adalah pakar OCR struk belanja & dokumen keuangan Indonesia.
 
-	if (pythonResult.success && pythonResult.type !== "unknown") {
-		console.log("Python OCR Service succeeded");
-		return {
-			type: pythonResult.type as "order" | "expense" | "income" | "unknown",
-			data: pythonResult.data,
-			rawText: pythonResult.raw_text,
-			confidence: pythonResult.confidence,
-		};
-	}
+TUGAS: Baca gambar ini dari atas ke bawah dengan teliti.
 
-	console.log("Python OCR Service failed, using direct Gemini API fallback...");
+LANGKAH ANALISIS:
+1. Baca SEMUA teks pada gambar, huruf per huruf jika perlu
+2. Identifikasi setiap item/barang: nama, jumlah (qty), harga satuan
+3. Hitung dan verifikasi total: jumlahkan semua item, cocokkan dengan total yang tercetak
+4. Identifikasi: nama toko/merchant, tanggal, metode pembayaran
+5. Tentukan jenis: "expense" (pembelian/pengeluaran) atau "income" (penjualan/pemasukan)
 
-	// Fallback: Direct Gemini API call
-	const apiKey = process.env.GEMINI_API_KEY;
-	if (!apiKey) {
-		throw new Error("GEMINI_API_KEY environment variable is not set");
-	}
+ATURAN ANGKA:
+- Semua angka harus numerik (contoh: 50000 bukan "50.000")
+- Jika ada titik sebagai pemisah ribuan, hapus titiknya
+- Total = angka terbesar di bagian bawah struk, atau jumlah semua item
 
-	const base64Data = imageDataUrl.split(",")[1];
-	if (!base64Data) {
-		throw new Error("Invalid image data URL format");
-	}
-
-	const prompt = `Kamu adalah sistem OCR struk belanja Indonesia yang terpercaya.
-
-Baca struk ini dari atas ke bawah lengkap:
-- Setiap item: nama, quantity, harga
-- Total amount (cari angka terbesar di bawah)
-- Payment method, tanggal, nama toko
-
-Output JSON (tanpa markdown):
+Kembalikan HANYA JSON valid:
 {
   "type": "expense",
   "data": {
-    "amount": 50000,
-    "items": [{"name": "Nasi", "quantity": 2, "price": 15000}],
-    "category": "makanan",
-    "paymentMethod": "qris",
-    "notes": "Struk #123"
+    "amount": 85000,
+    "items": [
+      {"name": "Beras 5kg", "quantity": 1, "price": 65000},
+      {"name": "Telur 1kg", "quantity": 2, "price": 10000}
+    ],
+    "category": "belanja",
+    "description": "Belanja di Toko ABC",
+    "paymentMethod": "cash",
+    "notes": "Tanggal: 15/02/2025, Struk #0041"
   },
-  "confidence": 0.9
-}`;
+  "confidence": 0.95
+}
 
-	try {
-		const response = await fetch(
-			`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-			{
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					contents: [
-						{
-							parts: [
-								{ inline_data: { mime_type: "image/jpeg", data: base64Data } },
-								{ text: prompt },
-							],
-						},
-					],
-					generationConfig: {
-						temperature: 0.1,
-						maxOutputTokens: 2000,
-						responseMimeType: "text/plain",
-					},
-				}),
-			}
-		);
+Kategori: makanan, minuman, belanja, bahan_baku, transportasi, tagihan, gaji, hiburan, kesehatan, operasional, lainnya
+Metode bayar: cash, qris, transfer, card, unknown`;
 
-		if (!response.ok) {
-			const errorText = await response.text();
-			throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+	// Use Gemini Vision with JSON mode for reliable structured output
+	const geminiResult = await callGeminiVision(imageDataUrl, prompt, {
+		temperature: 0.1,
+		maxOutputTokens: 2500,
+		jsonMode: true,
+	});
+
+	if (geminiResult.success && geminiResult.content) {
+		const parsed = parseJsonFromAIResponse(geminiResult.content);
+		if (parsed && parsed.type && parsed.type !== "unknown") {
+			return {
+				type: parsed.type as "order" | "expense" | "income" | "unknown",
+				data: parsed.data || {},
+				rawText: geminiResult.content,
+				confidence: parsed.confidence || 0.7,
+			};
+		}
+	}
+
+	// Fallback: retry without JSON mode (some images work better with plain text output)
+	const fallbackResult = await callGeminiVision(imageDataUrl, prompt, {
+		temperature: 0.15,
+		maxOutputTokens: 2500,
+		jsonMode: false,
+	});
+
+	if (fallbackResult.success && fallbackResult.content) {
+		const parsed = parseJsonFromAIResponse(fallbackResult.content);
+		if (parsed) {
+			return {
+				type: (parsed.type as "order" | "expense" | "income" | "unknown") || "unknown",
+				data: parsed.data || {},
+				rawText: fallbackResult.content,
+				confidence: parsed.confidence || 0.5,
+			};
 		}
 
-		const result = await response.json();
-		const content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
-		if (!content) {
-			throw new Error("Empty response from Gemini API");
-		}
-
-		// Try to parse JSON from response
-		const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-		const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-		if (jsonMatch) {
-			try {
-				const parsed = JSON.parse(jsonMatch[0]);
-				return {
-					type: parsed.type || "unknown",
-					data: parsed.data || {},
-					rawText: content,
-					confidence: parsed.confidence || 0.5,
-				};
-			} catch {
-				// JSON parse failed, continue
-			}
-		}
-
-		// Fallback to raw text
+		// Could not parse JSON but got text - return as raw text
 		return {
 			type: "unknown",
-			data: {},
-			rawText: content,
+			data: { description: fallbackResult.content.slice(0, 500) },
+			rawText: fallbackResult.content,
 			confidence: 0.3,
 		};
-	} catch (error) {
-		console.error("Direct Gemini OCR Error:", error);
-		throw error;
 	}
+
+	throw new Error(
+		geminiResult.error || fallbackResult.error || "Gagal menganalisis gambar. Pastikan gambar jelas dan coba lagi."
+	);
 }
 
 /**
@@ -2644,146 +2651,110 @@ export const analyzeDiscountEffectiveness = query({
  */
 export const scanImageData = action({
 	args: {
-		image: v.string(), // base64 data URL (maks 800px, kualitas 70%)
+		image: v.string(), // base64 data URL
 	},
 	handler: async (_ctx, args) => {
-		const apiKey = process.env.GEMINI_API_KEY;
-		if (!apiKey) {
-			throw new Error("GEMINI_API_KEY environment variable is not set. Diperlukan untuk analisis gambar.");
-		}
+		const prompt = `Kamu adalah AI scanner dokumen yang sangat ahli membaca gambar struk belanja, kwitansi, nota, tulisan tangan, dan dokumen lainnya di Indonesia.
 
-		// Extract base64 data from data URL
-		const base64Data = args.image.split(",")[1];
-		if (!base64Data) {
-			throw new Error("Format data URL gambar tidak valid. Pastikan gambar berformat base64.");
-		}
+LANGKAH ANALISIS:
+1. Baca SELURUH teks pada gambar dari atas ke bawah, karakter per karakter jika perlu
+2. Identifikasi jenis dokumen (struk, kwitansi, nota, tulisan tangan, dll)
+3. Ekstrak SEMUA item/barang dengan nama, jumlah, harga satuan, dan subtotal
+4. Hitung total: jumlahkan semua item, verifikasi dengan total yang tercetak
+5. Identifikasi nama toko, tanggal, metode pembayaran
+6. Jika ada tulisan tangan, baca dan transkrip seluruh teks
 
-		// Detect MIME type from data URL
-		const mimeMatch = args.image.match(/^data:(image\/[a-zA-Z+]+);base64,/);
-		const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
+ATURAN ANGKA:
+- Semua angka harus numerik murni (contoh: 85000 bukan "85.000" atau "Rp 85.000")
+- Hapus titik pemisah ribuan (50.000 -> 50000)
+- subtotal per item = qty x price
+- total = jumlah semua subtotal + pajak - diskon
 
-		const prompt = `Kamu adalah AI scanner dokumen keuangan yang ahli menganalisis gambar struk, kwitansi, nota, tulisan, dan dokumen lainnya.
-
-Analisis gambar dan kembalikan data terstruktur dalam format JSON berikut TANPA teks tambahan apapun:
+Kembalikan JSON:
 {
   "type": "receipt|invoice|note|handwriting|product|other",
-  "name": "nama merchant/toko/dokumen yang terdeteksi",
-  "category": "makanan|minuman|belanja|transportasi|tagihan|gaji|hiburan|kesehatan|lainnya",
+  "name": "nama merchant/toko/sumber",
+  "category": "makanan|minuman|belanja|bahan_baku|transportasi|tagihan|gaji|hiburan|kesehatan|operasional|lainnya",
   "transactionType": "expense|income|unknown",
-  "total": angka total dalam Rupiah gunakan 0 jika tidak ada,
-  "subtotal": angka subtotal atau 0,
-  "tax": angka pajak/PPN atau 0,
-  "discount": angka diskon atau 0,
+  "total": 0,
+  "subtotal": 0,
+  "tax": 0,
+  "discount": 0,
   "items": [
-    {"name": "nama item/produk", "qty": 1, "price": 0, "subtotal": 0}
+    {"name": "nama item", "qty": 1, "price": 0, "subtotal": 0}
   ],
-  "date": "tanggal yang terdeteksi dalam format YYYY-MM-DD atau null",
+  "date": "YYYY-MM-DD atau null",
   "paymentMethod": "cash|qris|card|transfer|unknown",
-  "notes": "informasi tambahan penting dari gambar",
-  "confidence": angka 0-100 tingkat keyakinan analisis,
-  "rawText": "semua teks yang dapat dibaca dari gambar"
+  "notes": "informasi penting lainnya",
+  "confidence": 85,
+  "rawText": "semua teks yang terbaca dari gambar"
 }
 
-Aturan penting:
-- Kembalikan HANYA JSON valid, tanpa markdown, tanpa penjelasan
-- Semua angka numerik (bukan string) dalam IDR
-- Baca semua angka dengan teliti, perhatikan pemisah ribuan (titik) dan desimal (koma)
-- Jika gambar bukan dokumen keuangan, tetap analisis dan ekstrak informasi yang tersedia
-- confidence 90-100 jika data jelas terbaca, 60-89 jika sebagian, 0-59 jika tidak jelas`;
+Penting:
+- confidence: 90-100 jelas terbaca, 60-89 sebagian terbaca, di bawah 60 tidak jelas
+- Jika gambar bukan dokumen keuangan, tetap baca teks dan isi rawText
+- Jika ada tulisan tangan pada gambar, baca dan masukkan ke rawText dan notes`;
 
-		let content = "";
+		// Try with JSON mode first for reliable structured output
+		const result = await callGeminiVision(args.image, prompt, {
+			temperature: 0.1,
+			maxOutputTokens: 3000,
+			jsonMode: true,
+		});
 
-		try {
-			const response = await fetch(
-				`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						contents: [
-							{
-								parts: [
-									{ inline_data: { mime_type: mimeType, data: base64Data } },
-									{ text: prompt },
-								],
-							},
-						],
-						generationConfig: {
-							temperature: 0.1,
-							maxOutputTokens: 2000,
-							responseMimeType: "text/plain",
-						},
-					}),
+		if (result.success && result.content) {
+			const parsed = parseJsonFromAIResponse(result.content);
+			if (parsed) {
+				// Validate and fix total calculation
+				if (parsed.items && Array.isArray(parsed.items) && parsed.items.length > 0) {
+					const calculatedTotal = parsed.items.reduce(
+						(sum: number, item: any) => sum + (item.subtotal || (item.qty || 1) * (item.price || 0)),
+						0
+					);
+					// If parsed total is 0 or missing but we have items, use calculated total
+					if ((!parsed.total || parsed.total === 0) && calculatedTotal > 0) {
+						parsed.total = calculatedTotal;
+					}
+					// Fix individual item subtotals if missing
+					for (const item of parsed.items) {
+						if (!item.subtotal && item.price) {
+							item.subtotal = (item.qty || 1) * item.price;
+						}
+					}
 				}
-			);
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				console.error("Gemini API error:", response.status, errorText);
-				throw new Error(`Gemini API error: ${response.status}`);
-			}
-
-			const result = await response.json();
-			content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
-			if (!content) {
-				throw new Error("Empty response from Gemini API");
-			}
-		} catch (error) {
-			console.error("scanImageData Gemini error:", error);
-
-			// Fallback: try OpenAI/SumoPod if Gemini fails
-			try {
-				const completion = await getOpenAI().chat.completions.create({
-					model: "gpt-4o-mini",
-					messages: [
-						{
-							role: "system",
-							content: prompt,
-						},
-						{
-							role: "user",
-							content: [
-								{
-									type: "image_url",
-									image_url: {
-										url: args.image,
-										detail: "high",
-									},
-								},
-								{
-									type: "text",
-									text: "Analisis gambar ini dan kembalikan data JSON terstruktur sesuai format yang diminta.",
-								},
-							],
-						},
-					],
-					max_tokens: 1500,
-				});
-				content = completion.choices[0].message.content ?? "";
-			} catch (fallbackError) {
-				console.error("scanImageData fallback error:", fallbackError);
-				throw new Error(
-					"Gagal menganalisis gambar. Pastikan format gambar didukung (JPG/PNG) dan coba lagi."
-				);
+				return parsed;
 			}
 		}
 
-		// Parse JSON from response
-		try {
-			// Clean markdown code fences if present
-			const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-			const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-			if (jsonMatch) {
-				return JSON.parse(jsonMatch[0]);
+		// Fallback: retry without JSON mode
+		const fallbackResult = await callGeminiVision(args.image, prompt, {
+			temperature: 0.15,
+			maxOutputTokens: 3000,
+			jsonMode: false,
+		});
+
+		if (fallbackResult.success && fallbackResult.content) {
+			const parsed = parseJsonFromAIResponse(fallbackResult.content);
+			if (parsed) {
+				// Same total validation
+				if (parsed.items && Array.isArray(parsed.items) && parsed.items.length > 0) {
+					const calculatedTotal = parsed.items.reduce(
+						(sum: number, item: any) => sum + (item.subtotal || (item.qty || 1) * (item.price || 0)),
+						0
+					);
+					if ((!parsed.total || parsed.total === 0) && calculatedTotal > 0) {
+						parsed.total = calculatedTotal;
+					}
+				}
+				return parsed;
 			}
-			return JSON.parse(cleaned);
-		} catch {
+
+			// Return raw text extraction
 			return {
-				type: "unknown",
-				name: "Tidak dapat diidentifikasi",
+				type: "other",
+				name: "Dokumen",
 				category: "lainnya",
-				transactionType: "unknown",
+				transactionType: "unknown" as const,
 				total: 0,
 				subtotal: 0,
 				tax: 0,
@@ -2791,11 +2762,73 @@ Aturan penting:
 				items: [],
 				date: null,
 				paymentMethod: "unknown",
-				notes:
-					"Gambar berhasil dianalisis namun data tidak dapat diekstrak secara terstruktur.",
-				confidence: 30,
-				rawText: content,
+				notes: "Teks berhasil diekstrak dari gambar.",
+				confidence: 40,
+				rawText: fallbackResult.content,
 			};
 		}
+
+		throw new Error(
+			result.error || "Gagal menganalisis gambar. Pastikan gambar jelas (JPG/PNG) dan coba lagi."
+		);
+	},
+});
+
+/**
+ * Save scanned image data directly to financial transactions
+ * Called from the ScanResultCard "Simpan ke Keuangan" button
+ */
+export const saveScannedToFinance = action({
+	args: {
+		type: v.union(v.literal("income"), v.literal("expense")),
+		amount: v.number(),
+		category: v.string(),
+		description: v.optional(v.string()),
+		paymentMethod: v.optional(v.string()),
+		date: v.optional(v.string()), // YYYY-MM-DD string or null
+		items: v.optional(
+			v.array(
+				v.object({
+					name: v.string(),
+					qty: v.number(),
+					price: v.number(),
+					subtotal: v.number(),
+				})
+			)
+		),
+	},
+	handler: async (ctx, args) => {
+		// Parse date or use current time
+		let dateTimestamp = Date.now();
+		if (args.date) {
+			const parsed = new Date(args.date);
+			if (!Number.isNaN(parsed.getTime())) {
+				dateTimestamp = parsed.getTime();
+			}
+		}
+
+		// Build description from items if not provided
+		let description = args.description || "";
+		if (!description && args.items && args.items.length > 0) {
+			description = args.items
+				.map((item) => `${item.name} x${item.qty} @Rp${item.price.toLocaleString("id-ID")}`)
+				.join(", ");
+		}
+
+		const txId = await ctx.runMutation(api.finance.createTransaction, {
+			type: args.type,
+			amount: args.amount,
+			category: args.category || "Lainnya",
+			description: description.slice(0, 500),
+			date: dateTimestamp,
+			paymentMethod: args.paymentMethod || "cash",
+			status: "completed",
+		});
+
+		return {
+			success: true,
+			transactionId: txId,
+			message: `Berhasil menyimpan ${args.type === "expense" ? "pengeluaran" : "pemasukan"} sebesar Rp${args.amount.toLocaleString("id-ID")} ke keuangan`,
+		};
 	},
 });
