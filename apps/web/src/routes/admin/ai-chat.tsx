@@ -9,14 +9,18 @@ import {
 	Calendar,
 	Camera,
 	CheckCircle2,
+	FileText,
 	Lightbulb,
 	Loader2,
+	Receipt,
+	ScanLine,
 	Send,
 	Settings,
 	Shield,
 	Sparkles,
 	Target,
 	Trash2,
+	TrendingDown,
 	TrendingUp,
 	X,
 	XCircle,
@@ -29,10 +33,28 @@ export const Route = createFileRoute("/admin/ai-chat")({
 	component: AIChatPage,
 });
 
+interface ScanResultData {
+	type: string;
+	name: string;
+	category: string;
+	transactionType: "expense" | "income" | "unknown";
+	total: number;
+	subtotal?: number;
+	tax?: number;
+	discount?: number;
+	items: Array<{ name: string; qty: number; price: number; subtotal: number }>;
+	date?: string | null;
+	paymentMethod: string;
+	notes?: string;
+	confidence: number;
+	rawText?: string;
+}
+
 interface ChatMessage {
 	role: "user" | "assistant";
 	content: string;
 	image?: string;
+	scanData?: ScanResultData;
 }
 
 interface ToolCall {
@@ -168,10 +190,16 @@ function AIChatPage() {
 	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 	const [showSessionHistory, setShowSessionHistory] = useState(false);
 
+	const [showScanPanel, setShowScanPanel] = useState(false);
+	const [scanImage, setScanImage] = useState<string | null>(null);
+	const [isScanning, setIsScanning] = useState(false);
+
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const scanFileInputRef = useRef<HTMLInputElement>(null);
 	const yumiChat = useAction(api.ai.yumiChat);
+	const scanImageDataAction = useAction(api.ai.scanImageData);
 
 	// Fetch data for AI
 	const products = useQuery(api.products.getAllProductsAdmin, {});
@@ -463,42 +491,20 @@ function AIChatPage() {
 		[isLoading, messages, yumiChat, selectedImage, currentSessionId, startNewSession, saveMessage, streamText]
 	);
 
-	const handleFileSelect = useCallback(
-		(e: React.ChangeEvent<HTMLInputElement>) => {
-			const file = e.target.files?.[0];
-			if (!file) {
-				return;
-			}
-
-			if (!file.type.startsWith("image/")) {
-				toast.error("Harap upload file gambar");
-				return;
-			}
-
-			if (file.size > 5 * 1024 * 1024) {
-				toast.error("Ukuran gambar maksimal 5MB");
-				return;
-			}
-
-			// Process image with compression for better API handling
-			const reader = new FileReader();
-			reader.onload = (event) => {
+	// Helper: compress image to max 800px, quality 70%
+	const compressImage = useCallback(
+		(dataUrl: string): Promise<string> => {
+			return new Promise((resolve) => {
 				const img = new Image();
 				img.onload = () => {
-					// Create canvas to resize/compress image
 					const canvas = document.createElement("canvas");
 					const ctx = canvas.getContext("2d");
 					if (!ctx) {
-						// Fallback to original image if canvas fails
-						setSelectedImage(event.target?.result as string);
+						resolve(dataUrl);
 						return;
 					}
-
-					// Calculate new dimensions (max 1024px for API compatibility)
-					const maxDimension = 1024;
-					let width = img.width;
-					let height = img.height;
-
+					const maxDimension = 800;
+					let { width, height } = img;
 					if (width > maxDimension || height > maxDimension) {
 						if (width > height) {
 							height = Math.round((height * maxDimension) / width);
@@ -508,26 +514,106 @@ function AIChatPage() {
 							height = maxDimension;
 						}
 					}
-
 					canvas.width = width;
 					canvas.height = height;
-
-					// Draw image and compress as JPEG with 0.8 quality
 					ctx.drawImage(img, 0, 0, width, height);
-					const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.8);
-					setSelectedImage(compressedDataUrl);
+					resolve(canvas.toDataURL("image/jpeg", 0.7));
 				};
-
-				img.onerror = () => {
-					toast.error("Gagal memproses gambar. Silakan coba gambar lain.");
-				};
-
-				img.src = event.target?.result as string;
-			};
-			reader.readAsDataURL(file);
+				img.onerror = () => resolve(dataUrl);
+				img.src = dataUrl;
+			});
 		},
 		[]
 	);
+
+	const handleFileSelect = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			const file = e.target.files?.[0];
+			if (!file) return;
+
+			if (!file.type.startsWith("image/")) {
+				toast.error("Harap upload file gambar");
+				return;
+			}
+			if (file.size > 5 * 1024 * 1024) {
+				toast.error("Ukuran gambar maksimal 5MB");
+				return;
+			}
+
+			const reader = new FileReader();
+			reader.onload = async (event) => {
+				const raw = event.target?.result as string;
+				try {
+					const compressed = await compressImage(raw);
+					setSelectedImage(compressed);
+				} catch {
+					setSelectedImage(raw);
+				}
+			};
+			reader.onerror = () => toast.error("Gagal memproses gambar. Silakan coba gambar lain.");
+			reader.readAsDataURL(file);
+		},
+		[compressImage]
+	);
+
+	// Scan panel: file select handler
+	const handleScanFileSelect = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			const file = e.target.files?.[0];
+			if (!file) return;
+			if (!file.type.startsWith("image/")) {
+				toast.error("Harap upload file gambar");
+				return;
+			}
+			if (file.size > 5 * 1024 * 1024) {
+				toast.error("Ukuran gambar maksimal 5MB");
+				return;
+			}
+			const reader = new FileReader();
+			reader.onload = async (event) => {
+				const raw = event.target?.result as string;
+				try {
+					const compressed = await compressImage(raw);
+					setScanImage(compressed);
+				} catch {
+					setScanImage(raw);
+				}
+			};
+			reader.readAsDataURL(file);
+		},
+		[compressImage]
+	);
+
+	// Execute AI image scan and add result to chat
+	const handleRunScan = useCallback(async () => {
+		if (!scanImage || isScanning) return;
+		setIsScanning(true);
+		try {
+			const result = await scanImageDataAction({ image: scanImage });
+			// Add user message with image
+			const userMsg: ChatMessage = {
+				role: "user",
+				content: "Scan gambar ini dan analisis datanya.",
+				image: scanImage,
+			};
+			// Add assistant message with structured scan result
+			const assistantMsg: ChatMessage = {
+				role: "assistant",
+				content: result.notes || `Analisis selesai dengan tingkat keyakinan ${result.confidence}%.`,
+				scanData: result as ScanResultData,
+			};
+			setMessages((prev) => [...prev, userMsg, assistantMsg]);
+			setScanImage(null);
+			setShowScanPanel(false);
+			if (scanFileInputRef.current) scanFileInputRef.current.value = "";
+			toast.success("Gambar berhasil dianalisis!");
+		} catch (error) {
+			const msg = error instanceof Error ? error.message : "Gagal menganalisis gambar";
+			toast.error(msg);
+		} finally {
+			setIsScanning(false);
+		}
+	}, [scanImage, isScanning, scanImageDataAction]);
 
 	const handleRemoveImage = useCallback(() => {
 		setSelectedImage(null);
@@ -824,6 +910,9 @@ function AIChatPage() {
 													<div className="whitespace-pre-line">
 														{msg.content}
 													</div>
+													{msg.scanData && (
+														<ScanResultCard data={msg.scanData} />
+													)}
 												</div>
 											</div>
 										</motion.div>
@@ -1381,8 +1470,100 @@ function AIChatPage() {
 							))}
 						</div>
 
-						{/* ChatGPT/Claude-style Input Box */}
-						<div className="rounded-2xl border border-border bg-background shadow-sm transition-all focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30">
+						{/* Scan Panel - shown above input box */}
+					<AnimatePresence>
+						{showScanPanel && (
+							<motion.div
+								animate={{ opacity: 1, y: 0 }}
+								className="mb-2 overflow-hidden rounded-2xl border border-primary/30 bg-primary/5"
+								exit={{ opacity: 0, y: 8 }}
+								initial={{ opacity: 0, y: 8 }}
+								transition={{ duration: 0.2 }}
+							>
+								{/* Panel Header */}
+								<div className="flex items-center justify-between border-border border-b px-3 py-2">
+									<div className="flex items-center gap-1.5">
+										<ScanLine className="h-3.5 w-3.5 text-primary" />
+										<span className="font-semibold text-primary text-xs">Scan & Analisis Gambar AI</span>
+									</div>
+									<button
+										className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
+										onClick={() => { setShowScanPanel(false); setScanImage(null); }}
+										type="button"
+									>
+										<X className="h-3.5 w-3.5" />
+									</button>
+								</div>
+								{/* Panel Body */}
+								<div className="p-3">
+									{!scanImage ? (
+										<button
+											className="flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-background py-5 transition-colors hover:border-primary/60 hover:bg-primary/5"
+											onClick={() => scanFileInputRef.current?.click()}
+											type="button"
+										>
+											<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+												<Camera className="h-5 w-5 text-primary" />
+											</div>
+											<div className="text-center">
+												<p className="font-medium text-foreground text-xs">
+													Upload foto struk, kwitansi, atau dokumen
+												</p>
+												<p className="text-[10px] text-muted-foreground">
+													JPG, PNG • Maks 5MB • Dikompres otomatis (800px, 70%)
+												</p>
+											</div>
+										</button>
+									) : (
+										<div className="space-y-2">
+											<div className="relative overflow-hidden rounded-xl border border-border bg-muted">
+												<img
+													alt="Preview scan"
+													className="h-40 w-full object-contain"
+													src={scanImage}
+												/>
+												<button
+													className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-destructive/90 text-white shadow"
+													onClick={() => { setScanImage(null); if (scanFileInputRef.current) scanFileInputRef.current.value = ""; }}
+													type="button"
+												>
+													<X className="h-3.5 w-3.5" />
+												</button>
+											</div>
+											<button
+												className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 font-semibold text-primary-foreground text-sm disabled:opacity-60"
+												disabled={isScanning}
+												onClick={handleRunScan}
+												type="button"
+											>
+												{isScanning ? (
+													<>
+														<Loader2 className="h-4 w-4 animate-spin" />
+														Menganalisis dengan AI...
+													</>
+												) : (
+													<>
+														<ScanLine className="h-4 w-4" />
+														Scan & Analisis dengan AI
+													</>
+												)}
+											</button>
+										</div>
+									)}
+									<input
+										accept="image/*"
+										className="hidden"
+										onChange={handleScanFileSelect}
+										ref={scanFileInputRef}
+										type="file"
+									/>
+								</div>
+							</motion.div>
+						)}
+					</AnimatePresence>
+
+					{/* ChatGPT/Claude-style Input Box */}
+						<div className="rounded-2xl border border-border bg-background shadow-sm">
 							{/* Image Preview inside input box - above input row */}
 							{selectedImage && (
 								<div className="flex items-center gap-2 border-border border-b px-3 py-2">
@@ -1404,20 +1585,35 @@ function AIChatPage() {
 								</div>
 							)}
 
-							{/* Input Row - Camera, Textarea, Send */}
+							{/* Input Row - Camera, Scan, Textarea, Send */}
 							<div className="flex items-end gap-2 p-2">
 								{/* Left: Camera/File upload - inline */}
 								<button
 									className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
 									disabled={isLoading}
 									onClick={() => fileInputRef.current?.click()}
-									title="Upload gambar atau ambil foto"
+									title="Lampirkan gambar ke chat"
 									type="button"
 								>
 									<Camera className="h-4 w-4" />
 								</button>
 
-								{/* Hidden file input */}
+								{/* Scan Button */}
+								<button
+									className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors disabled:opacity-50 ${
+										showScanPanel
+											? "bg-primary text-primary-foreground"
+											: "text-muted-foreground hover:bg-muted hover:text-foreground"
+									}`}
+									disabled={isLoading}
+									onClick={() => setShowScanPanel((v) => !v)}
+									title="Scan & analisis gambar dengan AI"
+									type="button"
+								>
+									<ScanLine className="h-4 w-4" />
+								</button>
+
+								{/* Hidden file input for chat attachment */}
 								<input
 									accept="image/*"
 									className="hidden"
@@ -1628,6 +1824,158 @@ function AIChatPage() {
 					]);
 				}}
 			/>
+		</div>
+	);
+}
+
+// ─── Scan Result Card Component ──────────────────────────────────────────────
+
+function ScanResultCard({ data }: { data: ScanResultData }) {
+	const typeLabel: Record<string, string> = {
+		receipt: "Struk Belanja",
+		invoice: "Invoice/Faktur",
+		note: "Nota",
+		handwriting: "Tulisan Tangan",
+		product: "Produk",
+		other: "Dokumen",
+		unknown: "Tidak Dikenali",
+	};
+
+	const paymentLabel: Record<string, string> = {
+		cash: "Tunai",
+		qris: "QRIS",
+		card: "Kartu",
+		transfer: "Transfer",
+		unknown: "-",
+	};
+
+	const confidenceColor =
+		data.confidence >= 80
+			? "text-green-600 bg-green-500/10"
+			: data.confidence >= 50
+				? "text-yellow-600 bg-yellow-500/10"
+				: "text-red-600 bg-red-500/10";
+
+	return (
+		<div className="mt-3 overflow-hidden rounded-xl border border-border bg-background">
+			{/* Header */}
+			<div className="flex items-center justify-between border-border border-b bg-muted/40 px-3 py-2">
+				<div className="flex items-center gap-1.5">
+					<Receipt className="h-3.5 w-3.5 text-primary" />
+					<span className="font-semibold text-foreground text-xs">
+						{typeLabel[data.type] ?? "Dokumen"}
+					</span>
+					{data.name && data.name !== "Tidak dapat diidentifikasi" && (
+						<span className="text-muted-foreground text-xs">• {data.name}</span>
+					)}
+				</div>
+				<span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${confidenceColor}`}>
+					{data.confidence}% akurat
+				</span>
+			</div>
+
+			{/* Main Data */}
+			<div className="p-3 space-y-2.5">
+				{/* Transaction Type + Total */}
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-1.5">
+						{data.transactionType === "expense" ? (
+							<>
+								<TrendingDown className="h-4 w-4 text-red-500" />
+								<span className="font-medium text-red-600 text-xs">Pengeluaran</span>
+							</>
+						) : data.transactionType === "income" ? (
+							<>
+								<TrendingUp className="h-4 w-4 text-green-500" />
+								<span className="font-medium text-green-600 text-xs">Pemasukan</span>
+							</>
+						) : (
+							<>
+								<FileText className="h-4 w-4 text-muted-foreground" />
+								<span className="text-muted-foreground text-xs">Tipe tidak dikenali</span>
+							</>
+						)}
+					</div>
+					{data.total > 0 && (
+						<span className="font-bold text-foreground text-base">
+							Rp{data.total.toLocaleString("id-ID")}
+						</span>
+					)}
+				</div>
+
+				{/* Meta info grid */}
+				<div className="grid grid-cols-2 gap-1.5 text-[11px]">
+					{data.category && (
+						<div className="flex flex-col rounded-lg bg-muted/50 px-2.5 py-1.5">
+							<span className="text-muted-foreground">Kategori</span>
+							<span className="font-medium text-foreground capitalize">{data.category}</span>
+						</div>
+					)}
+					{data.paymentMethod && data.paymentMethod !== "unknown" && (
+						<div className="flex flex-col rounded-lg bg-muted/50 px-2.5 py-1.5">
+							<span className="text-muted-foreground">Pembayaran</span>
+							<span className="font-medium text-foreground">{paymentLabel[data.paymentMethod] ?? data.paymentMethod}</span>
+						</div>
+					)}
+					{data.date && (
+						<div className="flex flex-col rounded-lg bg-muted/50 px-2.5 py-1.5">
+							<span className="text-muted-foreground">Tanggal</span>
+							<span className="font-medium text-foreground">{data.date}</span>
+						</div>
+					)}
+					{(data.tax ?? 0) > 0 && (
+						<div className="flex flex-col rounded-lg bg-muted/50 px-2.5 py-1.5">
+							<span className="text-muted-foreground">Pajak</span>
+							<span className="font-medium text-foreground">Rp{(data.tax ?? 0).toLocaleString("id-ID")}</span>
+						</div>
+					)}
+					{(data.discount ?? 0) > 0 && (
+						<div className="flex flex-col rounded-lg bg-muted/50 px-2.5 py-1.5">
+							<span className="text-muted-foreground">Diskon</span>
+							<span className="font-medium text-green-600">-Rp{(data.discount ?? 0).toLocaleString("id-ID")}</span>
+						</div>
+					)}
+					{(data.subtotal ?? 0) > 0 && data.subtotal !== data.total && (
+						<div className="flex flex-col rounded-lg bg-muted/50 px-2.5 py-1.5">
+							<span className="text-muted-foreground">Subtotal</span>
+							<span className="font-medium text-foreground">Rp{(data.subtotal ?? 0).toLocaleString("id-ID")}</span>
+						</div>
+					)}
+				</div>
+
+				{/* Items list */}
+				{data.items && data.items.length > 0 && (
+					<div className="rounded-lg border border-border overflow-hidden">
+						<div className="bg-muted/40 px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+							Item ({data.items.length})
+						</div>
+						<div className="divide-y divide-border">
+							{data.items.map((item, idx) => (
+								<div className="flex items-center justify-between px-2.5 py-1.5" key={idx}>
+									<div className="flex-1 min-w-0">
+										<span className="text-[11px] text-foreground line-clamp-1">{item.name}</span>
+										{item.qty > 1 && (
+											<span className="text-[10px] text-muted-foreground"> x{item.qty}</span>
+										)}
+									</div>
+									{(item.subtotal > 0 || item.price > 0) && (
+										<span className="text-[11px] font-medium text-foreground ml-2 shrink-0">
+											Rp{(item.subtotal || item.price * item.qty || item.price).toLocaleString("id-ID")}
+										</span>
+									)}
+								</div>
+							))}
+						</div>
+					</div>
+				)}
+
+				{/* Notes */}
+				{data.notes && data.notes !== "Gambar berhasil dianalisis namun data tidak dapat diekstrak secara terstruktur." && (
+					<p className="text-[10px] text-muted-foreground italic leading-relaxed">
+						{data.notes}
+					</p>
+				)}
+			</div>
 		</div>
 	);
 }

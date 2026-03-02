@@ -647,7 +647,7 @@ INSTRUKSI TOOL CALLING:
 		const maxIterations = 5;
 		let currentIteration = 0;
 
-		// Use gpt-4o for vision (image attached on first iteration), gpt-4o-mini for text-only
+		// Use gpt-4o-mini for all interactions including vision (multimodal)
 		const hasImage = !!args.image;
 
 		while (currentIteration < maxIterations) {
@@ -656,7 +656,7 @@ INSTRUKSI TOOL CALLING:
 			let completion;
 			try {
 				completion = await getOpenAI().chat.completions.create({
-					model: hasImage && currentIteration === 1 ? "gpt-4o" : "gpt-4o-mini",
+					model: "gpt-4o-mini",
 					messages,
 					tools: openaiTools,
 					tool_choice: "auto",
@@ -2631,5 +2631,205 @@ export const analyzeDiscountEffectiveness = query({
 			byType,
 			recentOrdersCount: recentOrders.length,
 		};
+	},
+});
+
+/**
+ * Scan gambar dengan AI (gpt-4o-mini) dan ekstrak data terstruktur.
+ * Mendukung: struk belanja, kwitansi, nota, tulisan tangan, produk, dll.
+ */
+export const scanImageData = action({
+	args: {
+		image: v.string(), // base64 data URL (maks 800px, kualitas 70%)
+	},
+	handler: async (_ctx, args) => {
+		let completion;
+		try {
+			completion = await getOpenAI().chat.completions.create({
+				model: "gpt-4o-mini",
+				messages: [
+					{
+						role: "system",
+						content: `Kamu adalah AI scanner dokumen keuangan yang ahli menganalisis gambar struk, kwitansi, nota, tulisan, dan dokumen lainnya.
+
+Analisis gambar dan kembalikan data terstruktur dalam format JSON berikut TANPA teks tambahan apapun:
+{
+  "type": "receipt|invoice|note|handwriting|product|other",
+  "name": "nama merchant/toko/dokumen yang terdeteksi",
+  "category": "makanan|minuman|belanja|transportasi|tagihan|gaji|hiburan|kesehatan|lainnya",
+  "transactionType": "expense|income|unknown",
+  "total": angka total dalam Rupiah gunakan 0 jika tidak ada,
+  "subtotal": angka subtotal atau 0,
+  "tax": angka pajak/PPN atau 0,
+  "discount": angka diskon atau 0,
+  "items": [
+    {"name": "nama item/produk", "qty": 1, "price": 0, "subtotal": 0}
+  ],
+  "date": "tanggal yang terdeteksi dalam format YYYY-MM-DD atau null",
+  "paymentMethod": "cash|qris|card|transfer|unknown",
+  "notes": "informasi tambahan penting dari gambar",
+  "confidence": angka 0-100 tingkat keyakinan analisis,
+  "rawText": "semua teks yang dapat dibaca dari gambar"
+}
+
+Aturan penting:
+- Kembalikan HANYA JSON valid, tanpa markdown, tanpa penjelasan
+- Semua angka numerik (bukan string) dalam IDR
+- Baca semua angka dengan teliti, perhatikan pemisah ribuan (titik) dan desimal (koma)
+- Jika gambar bukan dokumen keuangan, tetap analisis dan ekstrak informasi yang tersedia
+- confidence 90-100 jika data jelas terbaca, 60-89 jika sebagian, 0-59 jika tidak jelas`,
+					},
+					{
+						role: "user",
+						content: [
+							{
+								type: "image_url",
+								image_url: {
+									url: args.image,
+									detail: "high",
+								},
+							},
+							{
+								type: "text",
+								text: "Analisis gambar ini dan kembalikan data JSON terstruktur sesuai format yang diminta.",
+							},
+						],
+					},
+				],
+				max_tokens: 1500,
+			});
+		} catch (error) {
+			console.error("scanImageData error:", error);
+			throw new Error(
+				"Gagal menganalisis gambar. Pastikan format gambar didukung (JPG/PNG) dan coba lagi."
+			);
+		}
+
+		const content = completion.choices[0].message.content ?? "";
+		try {
+			const jsonMatch = content.match(/\{[\s\S]*\}/);
+			if (jsonMatch) {
+				return JSON.parse(jsonMatch[0]);
+			}
+			return JSON.parse(content);
+		} catch {
+			return {
+				type: "unknown",
+				name: "Tidak dapat diidentifikasi",
+				category: "lainnya",
+				transactionType: "unknown",
+				total: 0,
+				subtotal: 0,
+				tax: 0,
+				discount: 0,
+				items: [],
+				date: null,
+				paymentMethod: "unknown",
+				notes:
+					"Gambar berhasil dianalisis namun data tidak dapat diekstrak secara terstruktur.",
+				confidence: 30,
+				rawText: content,
+			};
+		}
+	},
+});
+
+/**
+ * Scan gambar dengan AI (gpt-4o-mini) dan ekstrak data terstruktur.
+ * Mendukung: struk belanja, kwitansi, nota, tulisan tangan, produk, dll.
+ */
+export const scanImageData = action({
+	args: {
+		image: v.string(), // base64 data URL (maks 800px, kualitas 70%)
+	},
+	handler: async (_ctx, args) => {
+		let completion;
+		try {
+			completion = await getOpenAI().chat.completions.create({
+				model: "gpt-4o-mini",
+				messages: [
+					{
+						role: "system",
+						content: `Kamu adalah AI scanner dokumen keuangan yang ahli menganalisis gambar struk, kwitansi, nota, tulisan, dan dokumen lainnya.
+
+Analisis gambar dan kembalikan data terstruktur dalam format JSON berikut TANPA teks tambahan apapun:
+{
+  "type": "receipt|invoice|note|handwriting|product|other",
+  "name": "nama merchant/toko/dokumen yang terdeteksi",
+  "category": "makanan|minuman|belanja|transportasi|tagihan|gaji|hiburan|kesehatan|lainnya",
+  "transactionType": "expense|income|unknown",
+  "total": 0,
+  "subtotal": 0,
+  "tax": 0,
+  "discount": 0,
+  "items": [
+    {"name": "nama item/produk", "qty": 1, "price": 0, "subtotal": 0}
+  ],
+  "date": null,
+  "paymentMethod": "cash|qris|card|transfer|unknown",
+  "notes": "informasi tambahan penting dari gambar",
+  "confidence": 0,
+  "rawText": "semua teks yang dapat dibaca dari gambar"
+}
+
+Aturan penting:
+- Kembalikan HANYA JSON valid, tanpa markdown, tanpa penjelasan
+- Semua angka numerik (bukan string) dalam IDR
+- Baca semua angka dengan teliti, perhatikan pemisah ribuan dan desimal
+- Jika gambar bukan dokumen keuangan, tetap analisis dan ekstrak informasi yang tersedia
+- confidence 90-100 jika data jelas terbaca, 60-89 jika sebagian, 0-59 jika tidak jelas`,
+					},
+					{
+						role: "user",
+						content: [
+							{
+								type: "image_url",
+								image_url: {
+									url: args.image,
+									detail: "high",
+								},
+							},
+							{
+								type: "text",
+								text: "Analisis gambar ini dan kembalikan data JSON terstruktur sesuai format yang diminta.",
+							},
+						],
+					},
+				],
+				max_tokens: 1500,
+			});
+		} catch (error) {
+			console.error("scanImageData error:", error);
+			throw new Error(
+				"Gagal menganalisis gambar. Pastikan format gambar didukung (JPG/PNG) dan coba lagi."
+			);
+		}
+
+		const content = completion.choices[0].message.content ?? "";
+		try {
+			const jsonMatch = content.match(/\{[\s\S]*\}/);
+			if (jsonMatch) {
+				return JSON.parse(jsonMatch[0]);
+			}
+			return JSON.parse(content);
+		} catch {
+			return {
+				type: "unknown",
+				name: "Tidak dapat diidentifikasi",
+				category: "lainnya",
+				transactionType: "unknown",
+				total: 0,
+				subtotal: 0,
+				tax: 0,
+				discount: 0,
+				items: [],
+				date: null,
+				paymentMethod: "unknown",
+				notes:
+					"Gambar berhasil dianalisis namun data tidak dapat diekstrak secara terstruktur.",
+				confidence: 30,
+				rawText: content,
+			};
+		}
 	},
 });
