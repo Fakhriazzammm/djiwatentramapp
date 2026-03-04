@@ -8,7 +8,9 @@ import {
 	Bot,
 	Calendar,
 	Camera,
+	Check,
 	CheckCircle2,
+	Copy,
 	FileText,
 	Lightbulb,
 	Loader2,
@@ -193,6 +195,7 @@ function AIChatPage() {
 	const [showScanPanel, setShowScanPanel] = useState(false);
 	const [scanImage, setScanImage] = useState<string | null>(null);
 	const [isScanning, setIsScanning] = useState(false);
+	const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -200,6 +203,16 @@ function AIChatPage() {
 	const scanFileInputRef = useRef<HTMLInputElement>(null);
 	const yumiChat = useAction(api.ai.yumiChat);
 	const scanImageDataAction = useAction(api.ai.scanImageData);
+
+	const handleCopy = useCallback(async (text: string, index: number) => {
+		try {
+			await navigator.clipboard.writeText(text);
+			setCopiedIndex(index);
+			setTimeout(() => setCopiedIndex(null), 2000);
+		} catch {
+			toast.error("Gagal menyalin pesan");
+		}
+	}, []);
 
 	// Fetch data for AI
 	const products = useQuery(api.products.getAllProductsAdmin, {});
@@ -912,6 +925,20 @@ function AIChatPage() {
 													</div>
 													{msg.scanData && (
 														<ScanResultCard data={msg.scanData} />
+													)}
+													{msg.role === "assistant" && (
+														<button
+															className="mt-2 flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+															onClick={() => handleCopy(msg.content, i)}
+															type="button"
+														>
+															{copiedIndex === i ? (
+																<Check className="h-3 w-3 text-green-500" />
+															) : (
+																<Copy className="h-3 w-3" />
+															)}
+															{copiedIndex === i ? "Tersalin" : "Salin"}
+														</button>
 													)}
 												</div>
 											</div>

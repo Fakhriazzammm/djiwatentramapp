@@ -3,6 +3,8 @@ import { useAction } from "convex/react";
 import {
 	ArrowUpCircle,
 	Bot,
+	Check,
+	Copy,
 	Loader2,
 	PlusCircle,
 	Send,
@@ -71,12 +73,23 @@ export function YumiAIChat() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [isStreaming, setIsStreaming] = useState(false);
 	const [streamingContent, setStreamingContent] = useState("");
+	const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 	const streamingActiveRef = useRef(true);
 
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 
 	const yumiChat = useAction(api.ai.yumiChat);
+
+	const handleCopy = useCallback(async (text: string, index: number) => {
+		try {
+			await navigator.clipboard.writeText(text);
+			setCopiedIndex(index);
+			setTimeout(() => setCopiedIndex(null), 2000);
+		} catch {
+			toast.error("Gagal menyalin pesan");
+		}
+	}, []);
 
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -223,6 +236,20 @@ export function YumiAIChat() {
 								</div>
 							)}
 							<div className="whitespace-pre-line">{msg.content}</div>
+							{msg.role === "assistant" && (
+								<button
+									className="mt-1.5 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+									onClick={() => handleCopy(msg.content, i)}
+									type="button"
+								>
+									{copiedIndex === i ? (
+										<Check className="h-3 w-3 text-green-500" />
+									) : (
+										<Copy className="h-3 w-3" />
+									)}
+									{copiedIndex === i ? "Tersalin" : "Salin"}
+								</button>
+							)}
 						</div>
 					</div>
 				))}
