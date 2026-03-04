@@ -2,9 +2,9 @@
 // Last updated: 2026-03-04
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_NUMBER (build = git commit count)
-	semantic: "0.1.118",
+	semantic: "0.1.119",
 	// Git commit hash (short)
-	commitHash: "f9217d6",
+	commitHash: "7b09144",
 	// Build timestamp
 	buildDate: "2026-03-04",
 	// Full version string for display

@@ -14,32 +14,34 @@ export const getDashboardStats = query({
 		const allOrders = await ctx.db.query("orders").collect();
 
 		// Today's orders
-		const todayOrders = allOrders.filter((o) => o.createdAt >= todayStartTs);
+		const todayOrders = allOrders.filter((o) => (o.createdAt ?? 0) >= todayStartTs);
 
 		// Calculate today's revenue (completed + paid orders)
 		const todayRevenue = todayOrders
 			.filter((o) => o.status === "completed" || o.status === "paid")
-			.reduce((sum, o) => sum + o.totalAmount, 0);
+			.reduce((sum, o) => sum + (o.totalAmount ?? 0), 0);
 
 		// Pending orders count
 		const pendingOrders = allOrders.filter((o) => o.status === "pending").length;
 
 		// Get all products
 		const allProducts = await ctx.db.query("products").collect();
-		const activeProducts = allProducts.filter((p) => p.isAvailable).length;
+		const activeProducts = allProducts.filter((p) => p.isAvailable ?? false).length;
 
 		// Get low stock items
 		const inventory = await ctx.db.query("inventory").collect();
-		const lowStockItems = inventory.filter((i) => i.quantity <= i.lowStockThreshold);
+		const lowStockItems = inventory.filter(
+			(i) => (i.quantity ?? 0) <= (i.lowStockThreshold ?? 0),
+		);
 
 		// Get financial summary
 		const transactions = await ctx.db.query("financialTransactions").collect();
 		const totalIncome = transactions
 			.filter((t) => t.type === "income" && t.status === "completed")
-			.reduce((sum, t) => sum + t.amount, 0);
+			.reduce((sum, t) => sum + (t.amount ?? 0), 0);
 		const totalExpense = transactions
 			.filter((t) => t.type === "expense" && t.status === "completed")
-			.reduce((sum, t) => sum + t.amount, 0);
+			.reduce((sum, t) => sum + (t.amount ?? 0), 0);
 
 		// Order status breakdown
 		const orderStatusBreakdown = {
@@ -62,12 +64,15 @@ export const getDashboardStats = query({
 			const dayEndTs = dayEnd.getTime();
 
 			const dayOrders = allOrders.filter(
-				(o) => o.createdAt >= dayStartTs && o.createdAt <= dayEndTs && (o.status === "completed" || o.status === "paid")
+				(o) =>
+					(o.createdAt ?? 0) >= dayStartTs &&
+					(o.createdAt ?? 0) <= dayEndTs &&
+					(o.status === "completed" || o.status === "paid"),
 			);
 
 			last7Days.push({
 				date: dayStart.toLocaleDateString("id-ID", { weekday: "short", day: "numeric" }),
-				revenue: dayOrders.reduce((sum, o) => sum + o.totalAmount, 0),
+				revenue: dayOrders.reduce((sum, o) => sum + (o.totalAmount ?? 0), 0),
 				orders: dayOrders.length,
 			});
 		}
@@ -77,12 +82,14 @@ export const getDashboardStats = query({
 		allOrders
 			.filter((o) => o.status === "completed" || o.status === "paid")
 			.forEach((order) => {
-				order.items.forEach((item) => {
-					if (!productSales[item.productName]) {
-						productSales[item.productName] = { name: item.productName, count: 0, revenue: 0 };
+				const items = Array.isArray(order.items) ? order.items : [];
+				items.forEach((item) => {
+					const productName = item.productName ?? "Unknown";
+					if (!productSales[productName]) {
+						productSales[productName] = { name: productName, count: 0, revenue: 0 };
 					}
-					productSales[item.productName].count += item.quantity;
-					productSales[item.productName].revenue += item.price * item.quantity;
+					productSales[productName].count += item.quantity ?? 0;
+					productSales[productName].revenue += (item.price ?? 0) * (item.quantity ?? 0);
 				});
 			});
 
@@ -92,16 +99,16 @@ export const getDashboardStats = query({
 
 		// Recent orders (last 10)
 		const recentOrders = allOrders
-			.sort((a, b) => b.createdAt - a.createdAt)
+			.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
 			.slice(0, 10)
 			.map((o) => ({
 				_id: o._id,
-				orderNumber: o.orderNumber,
-				totalAmount: o.totalAmount,
+				orderNumber: o.orderNumber ?? "N/A",
+				totalAmount: o.totalAmount ?? 0,
 				status: o.status,
-				createdAt: o.createdAt,
-				customerName: o.customerName,
-				paymentMethod: o.paymentMethod,
+				createdAt: o.createdAt ?? 0,
+				customerName: o.customerName ?? null,
+				paymentMethod: o.paymentMethod ?? null,
 			}));
 
 		return {
@@ -113,10 +120,10 @@ export const getDashboardStats = query({
 			lowStockCount: lowStockItems.length,
 			lowStockItems: lowStockItems.slice(0, 5).map((i) => ({
 				_id: i._id,
-				ingredientName: i.ingredientName,
-				quantity: i.quantity,
-				unit: i.unit,
-				lowStockThreshold: i.lowStockThreshold,
+				ingredientName: i.ingredientName ?? "Unknown",
+				quantity: i.quantity ?? 0,
+				unit: i.unit ?? "",
+				lowStockThreshold: i.lowStockThreshold ?? 0,
 			})),
 			netBalance: totalIncome - totalExpense,
 			totalIncome,

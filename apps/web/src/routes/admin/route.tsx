@@ -11,6 +11,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
 	Archive,
 	Calculator,
+	Calendar,
 	ChevronLeft,
 	ChevronRight,
 	ClipboardList,
@@ -55,6 +56,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/ai-chat": "Yumi AI",
 	"/admin/settings": "Pengaturan",
 	"/admin/forecasting": "Forecasting",
+	"/admin/booking": "Booking",
 };
 
 // Bottom nav items (Yumi AI at center index 2)
@@ -79,6 +81,7 @@ const MORE_MENU_PATHS = [
 	"/admin/discounts",
 	"/admin/hpp-calculator",
 	"/admin/forecasting",
+	"/admin/booking",
 	"/admin/settings",
 ];
 
@@ -89,6 +92,7 @@ const QUICK_MENU_ITEMS = [
 	{ to: "/admin/discounts", icon: Percent, label: "Promosi" },
 	{ to: "/admin/hpp-calculator", icon: Calculator, label: "HPP" },
 	{ to: "/admin/forecasting", icon: Grid3X3, label: "Forecast" },
+	{ to: "/admin/booking", icon: Calendar, label: "Booking" },
 	{ to: "/admin/settings", icon: Settings, label: "Pengaturan" },
 ];
 
@@ -207,6 +211,12 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="HPP Kalkulator"
 						to="/admin/hpp-calculator"
+					/>
+					<DesktopNavLink
+						icon={<Calendar />}
+						isCollapsed={isCollapsed}
+						label="Booking"
+						to="/admin/booking"
 					/>
 					<DesktopNavLink
 						icon={<Settings />}
