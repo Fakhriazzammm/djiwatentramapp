@@ -38,21 +38,13 @@ if (!rootElement.innerHTML) {
 			{convex ? (
 				<ConvexProvider client={convex}>
 					<CartProvider>
-						<div className="flex h-screen w-screen flex-col overflow-hidden bg-background font-sans text-foreground antialiased">
-							<div className="flex-1 overflow-hidden">
-								<RouterProvider router={router} />
-							</div>
-						</div>
+						<RouterProvider router={router} />
 						<Toaster richColors />
 					</CartProvider>
 				</ConvexProvider>
 			) : (
 				<CartProvider>
-					<div className="flex h-screen w-screen flex-col overflow-hidden bg-background font-sans text-foreground antialiased">
-						<div className="flex-1 overflow-hidden">
-							<RouterProvider router={router} />
-						</div>
-					</div>
+					<RouterProvider router={router} />
 					<Toaster richColors />
 				</CartProvider>
 			)}
