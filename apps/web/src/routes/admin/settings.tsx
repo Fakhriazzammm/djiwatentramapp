@@ -171,7 +171,7 @@ function SettingsPage() {
 
 	const handleSave = async () => {
 		try {
-			await updateSiteSettings({
+			const payload = {
 				...landingSettings,
 				storeName: settings.storeName,
 				storeAddress: settings.storeAddress,
@@ -185,11 +185,13 @@ function SettingsPage() {
 				// Mayar Payment Gateway
 				mayarEnabled: paymentSettings.mayarEnabled,
 				mayarTestMode: paymentSettings.mayarTestMode,
-			});
+			};
+			console.log("Saving settings:", payload);
+			await updateSiteSettings(payload);
 			toast.success("Pengaturan berhasil disimpan!");
 		} catch (error) {
-			console.error(error);
-			toast.error("Gagal menyimpan pengaturan");
+			console.error("Save settings error:", error);
+			toast.error(`Gagal menyimpan pengaturan: ${(error as Error).message}`);
 		}
 	};
 
