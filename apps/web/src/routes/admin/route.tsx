@@ -15,6 +15,7 @@ import {
 	ChevronRight,
 	ClipboardList,
 	Coffee,
+	Globe,
 	Grid3X3,
 	LayoutDashboard,
 	LogOut,
@@ -54,6 +55,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/hpp-calculator": "HPP Kalkulator",
 	"/admin/ai-chat": "Yumi AI",
 	"/admin/settings": "Pengaturan",
+	"/admin/booking": "Booking Page",
 	"/admin/forecasting": "Forecasting",
 };
 
@@ -89,6 +91,7 @@ const QUICK_MENU_ITEMS = [
 	{ to: "/admin/discounts", icon: Percent, label: "Promosi" },
 	{ to: "/admin/hpp-calculator", icon: Calculator, label: "HPP" },
 	{ to: "/admin/forecasting", icon: Grid3X3, label: "Forecast" },
+	{ to: "/admin/booking", icon: Globe, label: "Booking" },
 	{ to: "/admin/settings", icon: Settings, label: "Pengaturan" },
 ];
 
@@ -207,6 +210,12 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="HPP Kalkulator"
 						to="/admin/hpp-calculator"
+					/>
+					<DesktopNavLink
+						icon={<Globe />}
+						isCollapsed={isCollapsed}
+						label="Booking"
+						to="/admin/booking"
 					/>
 					<DesktopNavLink
 						icon={<Settings />}
@@ -422,120 +431,180 @@ function AdminLayout() {
 						const isCenter = index === 2; // AI Chat at center
 						const isMore = "isMore" in item && item.isMore;
 
-						const isActive = isMore
-							? MORE_MENU_PATHS.some((p) =>
-									location.pathname.startsWith(p),
-								)
-							: item.exact
-								? location.pathname === item.to
-								: location.pathname.startsWith(item.to);
+						let isActive = false;
+						if (isMore) {
+							isActive = MORE_MENU_PATHS.some((p) =>
+								location.pathname.startsWith(p),
+							);
+						} else if (item.exact) {
+							isActive = location.pathname === item.to;
+						} else {
+							isActive = location.pathname.startsWith(item.to);
+						}
 
 						// Center AI button - Circular FAB style (Instagram/Tinder)
 						if (isCenter) {
 							return (
-								<Link
-									className="relative -top-4 flex flex-1 justify-center transition-transform active:scale-95"
+								<CenterAIButton
 									key={item.to}
 									to={item.to}
-								>
-									{/* FAB Container */}
-									<div className="relative">
-										{/* Glow effect */}
-										<div
-											className={`absolute inset-0 rounded-full transition-all duration-300 ${
-												isActive
-													? "animate-pulse bg-primary/40 blur-md"
-													: "bg-primary/20 blur-sm"
-											}`}
-											style={{ width: 56, height: 56 }}
-										/>
-										{/* Main FAB */}
-										<div
-											className={`relative flex h-14 w-14 items-center justify-center rounded-full transition-all duration-300 ${
-												isActive
-													? "scale-105 bg-gradient-to-br from-primary via-primary to-accent shadow-primary/50 shadow-xl"
-													: "bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/30"
-											}`}
-										>
-											{isActive ? (
-												<Sparkles className="h-6 w-6 animate-spin-slow text-white" />
-											) : (
-												<Sparkles className="h-6 w-6 text-white" />
-											)}
-										</div>
-										{/* Label below FAB */}
-										<span
-											className={`absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-semibold text-[10px] ${
-												isActive ? "text-primary" : "text-muted-foreground"
-											}`}
-										>
-											AI
-										</span>
-									</div>
-								</Link>
+									isActive={isActive}
+								/>
 							);
 						}
 
 						// Lainnya button - opens quick menu sheet
 						if (isMore) {
 							return (
-								<button
-									className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
+								<MoreMenuButton
 									key="lainnya"
+									isActive={isActive}
+									isQuickMenuOpen={isQuickMenuOpen}
 									onClick={() => setIsQuickMenuOpen(true)}
-									type="button"
-								>
-									<div
-										className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
-											isActive || isQuickMenuOpen
-												? "bg-primary text-primary-foreground shadow-sm"
-												: "text-muted-foreground"
-										}`}
-									>
-										<item.icon className="h-4 w-4" />
-									</div>
-									<span
-										className={`font-medium text-[9px] leading-tight ${
-											isActive || isQuickMenuOpen
-												? "text-primary"
-												: "text-muted-foreground"
-										}`}
-									>
-										{item.label}
-									</span>
-								</button>
+									label={item.label}
+									Icon={item.icon}
+								/>
 							);
 						}
 
 						// Regular navigation items
 						return (
-							<Link
-								className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
+							<RegularBottomNavItem
 								key={item.to}
 								to={item.to}
-							>
-								<div
-									className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
-										isActive
-											? "bg-primary text-primary-foreground shadow-sm"
-											: "text-muted-foreground"
-									}`}
-								>
-									<item.icon className="h-4 w-4" />
-								</div>
-								<span
-									className={`font-medium text-[9px] leading-tight ${
-										isActive ? "text-primary" : "text-muted-foreground"
-									}`}
-								>
-									{item.label}
-								</span>
-							</Link>
+								isActive={isActive}
+								label={item.label}
+								Icon={item.icon}
+							/>
 						);
 					})}
 				</div>
 			</nav>
 		</div>
+	);
+}
+
+function CenterAIButton({
+	to,
+	isActive,
+}: { to: string; isActive: boolean }) {
+	return (
+		<Link
+			className="relative -top-4 flex flex-1 justify-center transition-transform active:scale-95"
+			to={to}
+		>
+			{/* FAB Container */}
+			<div className="relative">
+				{/* Glow effect */}
+				<div
+					className={`absolute inset-0 rounded-full transition-all duration-300 ${
+						isActive
+							? "animate-pulse bg-primary/40 blur-md"
+							: "bg-primary/20 blur-sm"
+					}`}
+					style={{ width: 56, height: 56 }}
+				/>
+				{/* Main FAB */}
+				<div
+					className={`relative flex h-14 w-14 items-center justify-center rounded-full transition-all duration-300 ${
+						isActive
+							? "scale-105 bg-gradient-to-br from-primary via-primary to-accent shadow-primary/50 shadow-xl"
+							: "bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/30"
+					}`}
+				>
+					{isActive ? (
+						<Sparkles className="h-6 w-6 animate-spin-slow text-white" />
+					) : (
+						<Sparkles className="h-6 w-6 text-white" />
+					)}
+				</div>
+				{/* Label below FAB */}
+				<span
+					className={`absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-semibold text-[10px] ${
+						isActive ? "text-primary" : "text-muted-foreground"
+					}`}
+				>
+					AI
+				</span>
+			</div>
+		</Link>
+	);
+}
+
+function MoreMenuButton({
+	isActive,
+	isQuickMenuOpen,
+	onClick,
+	label,
+	Icon,
+}: {
+	isActive: boolean;
+	isQuickMenuOpen: boolean;
+	onClick: () => void;
+	label: string;
+	Icon: React.ElementType;
+}) {
+	return (
+		<button
+			className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
+			onClick={onClick}
+			type="button"
+		>
+			<div
+				className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
+					isActive || isQuickMenuOpen
+						? "bg-primary text-primary-foreground shadow-sm"
+						: "text-muted-foreground"
+				}`}
+			>
+				<Icon className="h-4 w-4" />
+			</div>
+			<span
+				className={`font-medium text-[9px] leading-tight ${
+					isActive || isQuickMenuOpen
+						? "text-primary"
+						: "text-muted-foreground"
+				}`}
+			>
+				{label}
+			</span>
+		</button>
+	);
+}
+
+function RegularBottomNavItem({
+	to,
+	isActive,
+	label,
+	Icon,
+}: {
+	to: string;
+	isActive: boolean;
+	label: string;
+	Icon: React.ElementType;
+}) {
+	return (
+		<Link
+			className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
+			to={to}
+		>
+			<div
+				className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
+					isActive
+						? "bg-primary text-primary-foreground shadow-sm"
+						: "text-muted-foreground"
+				}`}
+			>
+				<Icon className="h-4 w-4" />
+			</div>
+			<span
+				className={`font-medium text-[9px] leading-tight ${
+					isActive ? "text-primary" : "text-muted-foreground"
+				}`}
+			>
+				{label}
+			</span>
+		</Link>
 	);
 }
 
