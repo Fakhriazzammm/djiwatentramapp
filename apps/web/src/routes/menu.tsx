@@ -587,11 +587,11 @@ function MenuPage() {
 	};
 
 	return (
-		<div className="flex h-full w-full flex-col overflow-hidden bg-background font-sans text-sm">
+		<div className="flex h-dvh w-full flex-col overflow-hidden bg-background font-sans text-sm">
 			<SkipLink target="main-content" />
 
 			{/* Header / Category Tabs */}
-			<header className="sticky top-0 z-40 shrink-0 border-border border-b bg-background/95 backdrop-blur-sm shadow-sm">
+			<header className="shrink-0 border-border border-b bg-background/95 backdrop-blur-sm shadow-sm">
 				<div className="flex items-center gap-1 px-2 py-1.5 md:px-3 md:py-2">
 					<div
 						className="no-scrollbar flex flex-1 gap-1.5 overflow-x-auto scroll-smooth"
@@ -638,12 +638,12 @@ function MenuPage() {
 			<div className="flex flex-1 overflow-hidden">
 				{/* Product Grid */}
 				<main
-					className="flex-1 overflow-y-auto bg-muted/20 p-2 md:p-3"
+					className="flex-1 overflow-y-auto bg-muted/20 p-2 pb-36 md:pb-2 md:p-3"
 					id="main-content"
 					tabIndex={-1}
 				>
 					{products ? (
-						<div className="grid grid-cols-2 gap-2 pb-[140px] sm:grid-cols-3 md:grid-cols-3 md:pb-0 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+						<div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
 							{products.map((product) => {
 								const { finalPrice } = calculateEffectivePrice(
 									{
