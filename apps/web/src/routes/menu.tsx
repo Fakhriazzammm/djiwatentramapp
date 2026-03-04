@@ -601,10 +601,10 @@ function MenuPage() {
 						<button
 							aria-label="Tampilkan semua kategori"
 							aria-selected={selectedCategory === null}
-							className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 font-medium text-sm transition-all active:scale-95 md:px-4 md:py-2 md:text-base ${
+							className={`shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 font-medium text-sm transition-colors md:px-4 md:py-2 ${
 								selectedCategory === null
-									? "bg-primary text-primary-foreground shadow-sm"
-									: "bg-muted/60 text-foreground hover:bg-muted"
+									? "border-primary bg-primary text-primary-foreground"
+									: "border-border bg-background text-foreground hover:bg-muted"
 							}`}
 							onClick={() => setSelectedCategory(null)}
 							role="tab"
@@ -616,10 +616,10 @@ function MenuPage() {
 							<button
 								aria-label={`Tampilkan kategori ${cat.name}`}
 								aria-selected={selectedCategory === cat._id}
-								className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 font-medium text-sm transition-all active:scale-95 md:px-4 md:py-2 md:text-base ${
+								className={`shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 font-medium text-sm transition-colors md:px-4 md:py-2 ${
 									selectedCategory === cat._id
-										? "bg-primary text-primary-foreground shadow-sm"
-										: "bg-muted/60 text-foreground hover:bg-muted"
+										? "border-primary bg-primary text-primary-foreground"
+										: "border-border bg-background text-foreground hover:bg-muted"
 								}`}
 								key={cat._id}
 								onClick={() => setSelectedCategory(cat._id)}
