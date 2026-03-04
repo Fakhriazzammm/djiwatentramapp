@@ -668,12 +668,12 @@ function MenuPage() {
 											</div>
 										)}
 
-										<div className="relative aspect-square bg-muted md:aspect-[4/3]">
+										<div className="relative aspect-square overflow-hidden bg-muted">
 											{product.image ? (
 												<img
 													alt={product.name}
-													className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-													height={150}
+													className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
+													height={200}
 													loading="lazy"
 													src={product.image}
 													width={200}
