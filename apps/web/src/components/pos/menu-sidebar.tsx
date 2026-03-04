@@ -1,10 +1,11 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import {
 	AlertCircle,
 	Banknote,
 	BarChart3,
+	Bot,
 	ClipboardList,
 	Clock,
 	Loader2,
@@ -14,16 +15,14 @@ import {
 	Package,
 	Pencil,
 	Plus,
-	RefreshCcw,
 	ShoppingCart,
-	Sparkles,
 	SquarePlay,
 	TrendingDown,
 	TrendingUp,
 	Wallet,
 	X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,6 +46,7 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { YumiAIChat } from "@/components/pos/yumi-ai-chat";
 
 interface ConfirmConfig {
 	isOpen: boolean;
@@ -74,9 +74,9 @@ const TABS: TabItem[] = [
 	{ value: "stok", label: "Stok", icon: Package, iconColor: "text-accent" },
 	{
 		value: "yumi",
-		label: "Yumi",
-		icon: Sparkles,
-		iconColor: "text-secondary",
+		label: "Yumi AI",
+		icon: Bot,
+		iconColor: "text-primary",
 	},
 ];
 
@@ -149,8 +149,8 @@ export function MenuSidebar() {
 							<TabsContent className="m-0 h-full p-4" value="stok">
 								<StokTab setConfirmConfig={setConfirmConfig} />
 							</TabsContent>
-							<TabsContent className="m-0 h-full p-4 pb-20" value="yumi">
-								<YumiAIDashboard />
+							<TabsContent className="m-0 h-full p-0" value="yumi">
+								<YumiAIChat />
 							</TabsContent>
 						</div>
 					</Tabs>
@@ -1176,247 +1176,6 @@ function MarketList() {
 					</div>
 				</ScrollArea>
 			)}
-		</div>
-	);
-}
-
-function YumiAIDashboard() {
-	const inventory = useQuery(api.inventory.getInventory);
-	const lowStockItems = useQuery(api.inventory.getLowStockItems);
-	const orders = useQuery(api.orders.getOrders, {});
-
-	const today = new Date();
-	today.setHours(0, 0, 0, 0);
-
-	const financialSummary = useQuery(api.finance.getFinancialSummary, {
-		startDate: today.getTime(),
-	});
-
-	const yesterday = new Date(today);
-	yesterday.setDate(yesterday.getDate() - 1);
-	const yesterdayStart = yesterday.getTime();
-	const yesterdayEnd = today.getTime() - 1;
-
-	const yesterdaySummary = useQuery(api.finance.getFinancialSummary, {
-		startDate: yesterdayStart,
-		endDate: yesterdayEnd,
-	});
-
-	const lastWeek = new Date(today);
-	lastWeek.setDate(lastWeek.getDate() - 7);
-	const lastWeekStart = lastWeek.getTime();
-
-	const lastWeekSummary = useQuery(api.finance.getFinancialSummary, {
-		startDate: lastWeekStart,
-	});
-
-	const generateOverview = useAction(api.ai.generateCompanyOverview);
-
-	const [overview, setOverview] = useState<string | null>(null);
-	const [isLoading, setIsLoading] = useState(false);
-
-	const income = financialSummary?.totalIncome || 0;
-	const expense = financialSummary?.totalExpense || 0;
-	const balance = financialSummary?.netBalance || 0;
-
-	const todayOrders =
-		orders?.filter((o) => o.createdAt >= today.getTime()) || [];
-	const totalSales = todayOrders
-		.filter(
-			(o: Doc<"orders">) => o.status === "paid" || o.status === "completed"
-		)
-		.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
-
-	const handleGenerateOverview = useCallback(async () => {
-		if (isLoading) {
-			return;
-		}
-		setIsLoading(true);
-		try {
-			const financeSummaryData = {
-				income,
-				expense,
-				balance,
-				currency: "IDR",
-			};
-
-			const inventorySummaryData = {
-				totalItems: inventory?.length || 0,
-				lowStockCount: lowStockItems?.length || 0,
-				lowStockNames: lowStockItems?.map((i) => i.ingredientName) || [],
-			};
-
-			const ordersSummaryData = {
-				totalOrders: todayOrders.length,
-				totalSales,
-			};
-
-			const yesterdayOrders =
-				orders?.filter(
-					(o) => o.createdAt >= yesterdayStart && o.createdAt <= yesterdayEnd
-				) || [];
-			const lastWeekOrders =
-				orders?.filter((o) => o.createdAt >= lastWeekStart) || [];
-
-			const comparisonDataObj = {
-				yesterday: {
-					income: yesterdaySummary?.totalIncome || 0,
-					expense: yesterdaySummary?.totalExpense || 0,
-					totalOrders: yesterdayOrders.length,
-				},
-				lastWeek: {
-					income: lastWeekSummary?.totalIncome || 0,
-					expense: lastWeekSummary?.totalExpense || 0,
-					totalOrders: lastWeekOrders.length,
-				},
-			};
-
-			const result = await generateOverview({
-				financeSummary: JSON.stringify(financeSummaryData),
-				inventorySummary: JSON.stringify(inventorySummaryData),
-				ordersSummary: JSON.stringify(ordersSummaryData),
-				comparisonData: JSON.stringify(comparisonDataObj),
-			});
-			setOverview(result);
-		} catch (error) {
-			console.error(error);
-			toast.error("Gagal mendapatkan analisis Yumi");
-		} finally {
-			setIsLoading(false);
-		}
-	}, [
-		isLoading,
-		income,
-		expense,
-		balance,
-		inventory,
-		lowStockItems,
-		todayOrders,
-		totalSales,
-		generateOverview,
-		yesterdayStart,
-		yesterdayEnd,
-		lastWeekStart,
-		yesterdaySummary,
-		lastWeekSummary,
-		orders,
-	]);
-
-	useEffect(() => {
-		if (financialSummary && inventory && orders && !overview && !isLoading) {
-			handleGenerateOverview();
-		}
-	}, [
-		financialSummary,
-		inventory,
-		orders,
-		overview,
-		isLoading,
-		handleGenerateOverview,
-	]);
-
-	return (
-		<div className="space-y-3">
-			<div className="flex items-center justify-between">
-				<div className="flex items-center gap-2">
-					<div className="relative">
-						<div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent shadow-md">
-							<Sparkles className="h-5 w-5 text-white" />
-						</div>
-						<button
-							className="absolute -right-0.5 -bottom-0.5 rounded-full border bg-background p-1 shadow-sm transition-all hover:bg-muted active:scale-95 disabled:opacity-50"
-							disabled={isLoading || !financialSummary || !inventory}
-							onClick={handleGenerateOverview}
-							title="Refresh Analisis"
-							type="button"
-						>
-							<RefreshCcw
-								className={`h-2.5 w-2.5 ${isLoading ? "animate-spin" : ""}`}
-							/>
-						</button>
-					</div>
-					<h3 className="font-bold text-sm">Analisis Yumi</h3>
-				</div>
-			</div>
-
-			<div className="grid grid-cols-2 gap-2">
-				<div className="rounded-lg border border-primary/20 bg-primary/5 p-2 text-center">
-					<p className="text-[9px] text-primary/70 uppercase tracking-tight">
-						Pemasukan
-					</p>
-					<p className="font-bold text-primary text-sm">
-						{new Intl.NumberFormat("id-ID", {
-							style: "currency",
-							currency: "IDR",
-							maximumFractionDigits: 0,
-						}).format(income)}
-					</p>
-				</div>
-				<div className="rounded-lg border border-destructive/20 bg-destructive/5 p-2 text-center">
-					<p className="text-[9px] text-destructive/70 uppercase tracking-tight">
-						Pengeluaran
-					</p>
-					<p className="font-bold text-destructive text-sm">
-						{new Intl.NumberFormat("id-ID", {
-							style: "currency",
-							currency: "IDR",
-							maximumFractionDigits: 0,
-						}).format(expense)}
-					</p>
-				</div>
-			</div>
-
-			<div className="space-y-2">
-				{overview ? (
-					<div className="rounded-lg border border-secondary/20 bg-secondary/5 p-3 shadow-inner">
-						<div className="whitespace-pre-line text-foreground/80 text-xs leading-normal">
-							{overview}
-						</div>
-					</div>
-				) : (
-					<div className="flex flex-col items-center justify-center rounded-lg border border-secondary/30 border-dashed bg-secondary/5 p-4 text-center">
-						<Loader2 className="mb-2 h-5 w-5 animate-spin text-secondary" />
-						<p className="text-[10px] text-muted-foreground">
-							Menganalisis data...
-						</p>
-					</div>
-				)}
-			</div>
-
-			<div className="rounded-lg border border-border bg-muted/30 p-3">
-				<h4 className="mb-2 font-bold text-muted-foreground text-xs uppercase tracking-tight">
-					Status Cepat
-				</h4>
-				<div className="space-y-1.5">
-					<div className="flex items-center justify-between text-[11px]">
-						<span className="text-muted-foreground">Stok Rendah:</span>
-						<span
-							className={`font-bold ${lowStockItems?.length ? "text-destructive" : "text-primary"}`}
-						>
-							{lowStockItems?.length || 0} Item
-						</span>
-					</div>
-					<div className="flex items-center justify-between text-[11px]">
-						<span className="text-muted-foreground">Total Pesanan:</span>
-						<span className="font-bold text-foreground">
-							{todayOrders.length}
-						</span>
-					</div>
-					<div className="mt-1.5 flex items-center justify-between border-border border-t pt-1.5 text-[11px]">
-						<span className="font-medium">Kas Bersih:</span>
-						<span
-							className={`font-bold ${balance >= 0 ? "text-primary" : "text-destructive"}`}
-						>
-							{new Intl.NumberFormat("id-ID", {
-								style: "currency",
-								currency: "IDR",
-								maximumFractionDigits: 0,
-							}).format(balance)}
-						</span>
-					</div>
-				</div>
-			</div>
-			<div className="h-10" />
 		</div>
 	);
 }

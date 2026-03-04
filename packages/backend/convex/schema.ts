@@ -134,6 +134,9 @@ export default defineSchema({
 		appName: v.optional(v.string()), // e.g., "Murni POS", "Yumi POS"
 		appVersion: v.optional(v.string()), // e.g., "1.0.0"
 		developerName: v.optional(v.string()), // e.g., "Zantara Technology"
+		// Mayar Payment Gateway
+		mayarEnabled: v.optional(v.boolean()),
+		mayarTestMode: v.optional(v.boolean()),
 	}),
 
 	// Discounts / Vouchers

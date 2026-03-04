@@ -18,6 +18,9 @@ const DEFAULTS = {
 	appName: "Yumi POS",
 	appVersion: "1.0.0",
 	developerName: "Zantara Technology",
+	// Mayar Payment Gateway defaults
+	mayarEnabled: false,
+	mayarTestMode: true,
 };
 
 export const getSettings = query({
@@ -57,6 +60,9 @@ export const getSettings = query({
 			appName: settings.appName ?? DEFAULTS.appName,
 			appVersion: settings.appVersion ?? DEFAULTS.appVersion,
 			developerName: settings.developerName ?? DEFAULTS.developerName,
+			// Mayar Payment Gateway
+			mayarEnabled: settings.mayarEnabled ?? DEFAULTS.mayarEnabled,
+			mayarTestMode: settings.mayarTestMode ?? DEFAULTS.mayarTestMode,
 		};
 	},
 });
@@ -82,6 +88,9 @@ export const updateSettings = mutation({
 		appName: v.optional(v.string()),
 		appVersion: v.optional(v.string()),
 		developerName: v.optional(v.string()),
+		// Mayar Payment Gateway
+		mayarEnabled: v.optional(v.boolean()),
+		mayarTestMode: v.optional(v.boolean()),
 	},
 	handler: async (ctx, args) => {
 		const existing = await ctx.db.query("siteSettings").first();

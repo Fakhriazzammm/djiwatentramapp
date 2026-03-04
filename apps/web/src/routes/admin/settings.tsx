@@ -10,15 +10,18 @@ import {
 	Printer,
 	Save,
 	Settings2,
+	ShieldCheck,
 	Trash2,
 	User,
 	Users,
+	Wallet,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { authClient } from "@/lib/auth-client";
 import { bluetoothPrinter } from "@/lib/bluetooth-printer";
+import { isMayarConfigured } from "@/lib/mayarGateway";
 
 const AVAILABLE_PERMISSIONS = [
 	{ id: "orders:view", label: "Lihat Pesanan" },
@@ -86,6 +89,13 @@ function SettingsPage() {
 		logoUrl: "",
 		paymentPopupImage: "",
 	});
+
+	const [paymentSettings, setPaymentSettings] = useState({
+		mayarEnabled: false,
+		mayarTestMode: true,
+	});
+
+	const [mayarApiConfigured, setMayarApiConfigured] = useState(false);
 
 	const [activeTab, setActiveTab] = useState<
 		"landing" | "pos" | "store" | "system" | "users"
