@@ -1,5 +1,5 @@
 {
-  "name": "tkmpos",
+  "name": "yumipos",
   "version": "0.1.0",
   "private": true,
   "workspaces": {
@@ -25,23 +25,23 @@
     "check-types": "turbo check-types",
     "dev:native": "turbo -F native dev",
     "dev:web": "turbo -F web dev",
-    "dev:server": "turbo -F @tkmpos/backend dev",
-    "dev:setup": "turbo -F @tkmpos/backend dev:setup",
-    "convex:push": "turbo -F @tkmpos/backend push",
-    "convex:pull": "turbo -F @tkmpos/backend pull",
+    "dev:server": "turbo -F @yumipos/backend dev",
+    "dev:setup": "turbo -F @yumipos/backend dev:setup",
+    "convex:push": "turbo -F @yumipos/backend push",
+    "convex:pull": "turbo -F @yumipos/backend pull",
     "version": "bash scripts/update-version.sh",
     "prepare": "husky",
     "ocr:dev": "cd packages/ocr-service && python main.py",
     "ocr:install": "cd packages/ocr-service && pip install -r requirements.txt"
   },
   "dependencies": {
-    "@tkmpos/env": "workspace:*",
+    "@yumipos/env": "workspace:*",
     "dotenv": "^17.2.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.11",
-    "@tkmpos/config": "workspace:*",
+    "@yumipos/config": "workspace:*",
     "@types/node": "^25.0.10",
     "husky": "latest",
     "lint-staged": "latest",

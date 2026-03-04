@@ -5,7 +5,7 @@ import {
 	useLocation,
 	useNavigate,
 } from "@tanstack/react-router";
-import { api } from "@tkmpos/backend/convex/_generated/api";
+import { api } from "@yumipos/backend/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {

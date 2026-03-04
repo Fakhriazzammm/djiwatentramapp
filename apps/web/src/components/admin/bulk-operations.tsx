@@ -1,5 +1,5 @@
-import { api } from "@tkmpos/backend/convex/_generated/api";
-import type { Id } from "@tkmpos/backend/convex/_generated/dataModel";
+import { api } from "@yumipos/backend/convex/_generated/api";
+import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { Download, Upload } from "lucide-react";
 import Papa from "papaparse";

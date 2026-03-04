@@ -1,4 +1,4 @@
-# UI/UX Implementation Summary - TKM POS
+# UI/UX Implementation Summary - Yumi POS
 
 **Tanggal**: 14 Februari 2026
 **Status**: ✅ INTEGRASI SELESAI

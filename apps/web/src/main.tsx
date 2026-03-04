@@ -19,7 +19,7 @@ async function initApp(el: HTMLElement) {
 			{ default: Loader },
 			{ routeTree },
 		] = await Promise.all([
-			import("@tkmpos/env/web"),
+			import("@yumipos/env/web"),
 			import("convex/react"),
 			import("@convex-dev/better-auth/react"),
 			import("@tanstack/react-router"),

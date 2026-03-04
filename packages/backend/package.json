@@ -1,5 +1,5 @@
 {
-  "name": "@tkmpos/backend",
+  "name": "@yumipos/backend",
   "version": "1.0.0",
   "description": "",
   "license": "ISC",
@@ -19,7 +19,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@tkmpos/config": "workspace:*",
+    "@yumipos/config": "workspace:*",
     "@types/node": "^24.3.0",
     "typescript": "catalog:"
   }

@@ -1,4 +1,4 @@
-# 🤖 Panduan Integrasi OpenClaw Agent ke TKM POS
+# 🤖 Panduan Integrasi OpenClaw Agent ke Yumi POS
 
 ## 📋 Daftar Isi
 1. [Apa itu OpenClaw?](#apa-itu-openclaw)
@@ -19,7 +19,7 @@ OpenClaw adalah AI agent framework yang memungkinkan AI untuk:
 - Memberikan insights dan rekomendasi
 - Mengotomasi workflow bisnis
 
-**Keuntungan untuk TKM POS:**
+**Keuntungan untuk Yumi POS:**
 - AI assistant yang bisa akses real-time data
 - Automasi tasks (restock, pricing, reporting)
 - Predictive analytics yang lebih akurat
@@ -31,7 +31,7 @@ OpenClaw adalah AI agent framework yang memungkinkan AI untuk:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     TKM POS Application                      │
+│                     Yumi POS Application                      │
 ├─────────────────────────────────────────────────────────────┤
 │                                                               │
 │  ┌──────────────┐         ┌──────────────┐                  │
@@ -420,7 +420,7 @@ Buat file: `apps/web/src/components/openclaw/agent-chat.tsx`
 ```typescript
 import { useState } from "react";
 import { useAction } from "convex/react";
-import { api } from "@tkmpos/backend/convex/_generated/api";
+import { api } from "@yumipos/backend/convex/_generated/api";
 import { Send, Bot, User } from "lucide-react";
 import { toast } from "sonner";
 
@@ -857,7 +857,7 @@ agentAnalytics: defineTable({
 
 ## 🎉 Kesimpulan
 
-Dengan integrasi OpenClaw, TKM POS mendapatkan:
+Dengan integrasi OpenClaw, Yumi POS mendapatkan:
 - ✅ AI assistant yang powerful
 - ✅ Natural language interface
 - ✅ Automated workflows

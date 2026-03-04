@@ -626,13 +626,13 @@ INSTRUKSI TOOL CALLING:
 
 			if (geminiApiKey) {
 				try {
-					const base64Data = args.image.split(",")[1];
+					const base64Data = args.image.includes(",") ? args.image.split(",")[1] : args.image;
 					const mimeMatch = args.image.match(/^data:(image\/[a-zA-Z+]+);base64,/);
 					const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
 
 					if (base64Data) {
 						const geminiResponse = await fetch(
-							`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
+							`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
 							{
 								method: "POST",
 								headers: { "Content-Type": "application/json" },
@@ -2653,7 +2653,10 @@ export const scanImageData = action({
 		}
 
 		// Extract base64 data from data URL
-		const base64Data = args.image.split(",")[1];
+		const base64Data = args.image.includes(",")
+			? args.image.split(",")[1]
+			: args.image;
+
 		if (!base64Data) {
 			throw new Error("Format data URL gambar tidak valid. Pastikan gambar berformat base64.");
 		}
@@ -2695,7 +2698,7 @@ Aturan penting:
 
 		try {
 			const response = await fetch(
-				`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+				`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -2711,7 +2714,7 @@ Aturan penting:
 						generationConfig: {
 							temperature: 0.1,
 							maxOutputTokens: 2000,
-							responseMimeType: "text/plain",
+							response_mime_type: "application/json",
 						},
 					}),
 				}

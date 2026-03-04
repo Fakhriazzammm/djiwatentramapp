@@ -5,8 +5,8 @@
  */
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { api } from "@tkmpos/backend/convex/_generated/api";
-import type { Id } from "@tkmpos/backend/convex/_generated/dataModel";
+import { api } from "@yumipos/backend/convex/_generated/api";
+import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";

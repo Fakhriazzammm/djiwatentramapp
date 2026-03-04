@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { createFileRoute } from "@tanstack/react-router";
-import { api } from "@tkmpos/backend/convex/_generated/api";
-import type { Id } from "@tkmpos/backend/convex/_generated/dataModel";
+import { api } from "@yumipos/backend/convex/_generated/api";
+import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale/id";

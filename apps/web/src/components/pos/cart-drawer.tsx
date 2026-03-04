@@ -1,5 +1,5 @@
-import { api } from "@tkmpos/backend/convex/_generated/api";
-import type { Id } from "@tkmpos/backend/convex/_generated/dataModel";
+import { api } from "@yumipos/backend/convex/_generated/api";
+import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, ShoppingBag, Tag, Trash2, X } from "lucide-react";

@@ -1,4 +1,4 @@
-import { api } from "@tkmpos/backend/convex/_generated/api";
+import { api } from "@yumipos/backend/convex/_generated/api";
 import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";

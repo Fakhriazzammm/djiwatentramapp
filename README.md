@@ -1,8 +1,8 @@
-# tkmpos
+# yumipos
 
 This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines React, TanStack Router, Convex, and more.
 
-Refer to [TECHSTACK.md](file:///a:/My-Startup/tkmpos/TECHSTACK.md) for a detailed breakdown of the technologies used in this project.
+Refer to [TECHSTACK.md](file:///a:/My-Startup/djiwatentramapp/TECHSTACK.md) for a detailed breakdown of the technologies used in this project.
 
 ## Features
 
@@ -57,7 +57,7 @@ Your app will connect to the Convex cloud backend automatically.
 ## Project Structure
 
 ```
-tkmpos/
+yumipos/
 ├── apps/
 │   ├── web/         # Frontend application (React + TanStack Router)
 ├── packages/

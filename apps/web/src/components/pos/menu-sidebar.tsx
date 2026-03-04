@@ -1,5 +1,5 @@
-import { api } from "@tkmpos/backend/convex/_generated/api";
-import type { Doc, Id } from "@tkmpos/backend/convex/_generated/dataModel";
+import { api } from "@yumipos/backend/convex/_generated/api";
+import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useAction, useMutation, useQuery } from "convex/react";
 import {
 	AlertCircle,

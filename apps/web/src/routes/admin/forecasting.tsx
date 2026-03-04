@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { api } from "@tkmpos/backend/convex/_generated/api";
-import type { Id } from "@tkmpos/backend/convex/_generated/dataModel";
+import { api } from "@yumipos/backend/convex/_generated/api";
+import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale/id";
 import { useQuery } from "convex/react";

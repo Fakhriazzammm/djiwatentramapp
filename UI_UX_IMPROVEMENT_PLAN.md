@@ -1,4 +1,4 @@
-# 🎨 UI/UX Improvement Plan - TKM POS System
+# 🎨 UI/UX Improvement Plan - Yumi POS System
 
 **Tanggal**: 14 Februari 2026
 **Status**: In Progress 🚧

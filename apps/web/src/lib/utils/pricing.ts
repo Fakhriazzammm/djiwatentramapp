@@ -1,4 +1,4 @@
-import type { Doc, Id } from "@tkmpos/backend/convex/_generated/dataModel";
+import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
 
 export interface PricingResult {
 	finalPrice: number;

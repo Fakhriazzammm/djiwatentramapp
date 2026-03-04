@@ -1,5 +1,5 @@
-import { api } from "@tkmpos/backend/convex/_generated/api";
-import type { Doc } from "@tkmpos/backend/convex/_generated/dataModel";
+import { api } from "@yumipos/backend/convex/_generated/api";
+import type { Doc } from "@yumipos/backend/convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Percent, Tag, Ticket, X } from "lucide-react";

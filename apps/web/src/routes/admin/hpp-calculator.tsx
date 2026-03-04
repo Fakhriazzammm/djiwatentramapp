@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { api } from "@tkmpos/backend/convex/_generated/api";
-import type { Doc, Id } from "@tkmpos/backend/convex/_generated/dataModel";
+import { api } from "@yumipos/backend/convex/_generated/api";
+import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {

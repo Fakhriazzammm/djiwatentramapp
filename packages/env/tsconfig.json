@@ -1,5 +1,5 @@
 {
-  "extends": "@tkmpos/config/tsconfig.base.json",
+  "extends": "@yumipos/config/tsconfig.base.json",
   "compilerOptions": {
     "strictNullChecks": true,
     "types": ["vite/client"]

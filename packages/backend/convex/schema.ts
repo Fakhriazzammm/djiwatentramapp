@@ -131,7 +131,7 @@ export default defineSchema({
 		receiptFooter: v.optional(v.string()),
 		autoPrint: v.optional(v.boolean()),
 		// App Branding
-		appName: v.optional(v.string()), // e.g., "Murni POS", "TKM POS"
+		appName: v.optional(v.string()), // e.g., "Murni POS", "Yumi POS"
 		appVersion: v.optional(v.string()), // e.g., "1.0.0"
 		developerName: v.optional(v.string()), // e.g., "Zantara Technology"
 	}),

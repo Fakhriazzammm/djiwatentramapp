@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { api } from "@tkmpos/backend/convex/_generated/api";
+import { api } from "@yumipos/backend/convex/_generated/api";
 import {
 	Authenticated,
 	AuthLoading,

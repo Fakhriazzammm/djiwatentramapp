@@ -1,4 +1,4 @@
-# 🔗 Menghubungkan Agent OpenClaw yang Sudah Ada ke TKM POS
+# 🔗 Menghubungkan Agent OpenClaw yang Sudah Ada ke Yumi POS
 
 ## 📋 Prerequisites
 
@@ -6,7 +6,7 @@ Anda sudah memiliki:
 - ✅ Agent OpenClaw yang sudah dibuat
 - ✅ Agent ID dari OpenClaw dashboard
 - ✅ API Key dari OpenClaw
-- ✅ Aplikasi TKM POS yang berjalan
+- ✅ Aplikasi Yumi POS yang berjalan
 
 ---
 
@@ -599,7 +599,7 @@ Buat file: `apps/web/src/components/openclaw-chat.tsx`
 ```typescript
 import { useState, useRef, useEffect } from "react";
 import { useAction } from "convex/react";
-import { api } from "@tkmpos/backend/convex/_generated/api";
+import { api } from "@yumipos/backend/convex/_generated/api";
 import { Send, Bot, User, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -964,7 +964,7 @@ console.log({
 
 ## 🎉 Selesai!
 
-Agent OpenClaw Anda sekarang sudah terhubung dengan TKM POS dan bisa:
+Agent OpenClaw Anda sekarang sudah terhubung dengan Yumi POS dan bisa:
 - ✅ Menjawab pertanyaan tentang data bisnis
 - ✅ Mengakses dan query database real-time
 - ✅ Membuat pesanan otomatis

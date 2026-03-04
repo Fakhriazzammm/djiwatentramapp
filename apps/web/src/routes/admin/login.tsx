@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { api } from "@tkmpos/backend/convex/_generated/api";
+import { api } from "@yumipos/backend/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { Coffee, Lock, User } from "lucide-react";
 import { useState } from "react";

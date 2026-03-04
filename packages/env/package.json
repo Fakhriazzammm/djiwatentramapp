@@ -1,5 +1,5 @@
 {
-  "name": "@tkmpos/env",
+  "name": "@yumipos/env",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@tkmpos/config": "workspace:*",
+    "@yumipos/config": "workspace:*",
     "typescript": "catalog:",
     "vite": "catalog:"
   }
