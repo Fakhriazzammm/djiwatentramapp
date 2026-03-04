@@ -16,6 +16,7 @@ import {
 	Pencil,
 	Plus,
 	ShoppingCart,
+	Sparkles,
 	SquarePlay,
 	TrendingDown,
 	TrendingUp,
@@ -149,7 +150,7 @@ export function MenuSidebar() {
 							<TabsContent className="m-0 h-full p-4" value="stok">
 								<StokTab setConfirmConfig={setConfirmConfig} />
 							</TabsContent>
-							<TabsContent className="m-0 h-full p-0" value="yumi">
+							<TabsContent className="m-0 h-[calc(100vh-16rem)] p-0" value="yumi">
 								<YumiAIChat />
 							</TabsContent>
 						</div>
