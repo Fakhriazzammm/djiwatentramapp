@@ -714,9 +714,9 @@ function MenuPage() {
 				{/* Desktop Cart Sidebar */}
 				<aside
 					aria-label="Keranjang belanja"
-					className="z-20 hidden w-[320px] shrink-0 flex-col border-border border-l bg-card shadow-xl md:flex"
+					className="z-20 hidden h-full w-[320px] shrink-0 flex-col border-border border-l bg-card shadow-xl md:flex"
 				>
-					<div className="flex items-center justify-between border-border border-b p-3">
+					<div className="shrink-0 flex items-center justify-between border-border border-b p-3">
 						<h2 className="font-bold text-foreground text-lg">Pesanan</h2>
 						<div className="flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs">
 							<span className="font-medium text-muted-foreground">Item:</span>
@@ -740,7 +740,7 @@ function MenuPage() {
 						)}
 					</div>
 
-					<div className="border-border border-t bg-muted/10 p-4">
+					<div className="shrink-0 border-border border-t bg-muted/10 p-4">
 						<button
 							className="mb-3 flex w-full items-center justify-between rounded-lg border border-emerald-500/50 border-dashed bg-emerald-50 p-2.5 transition-all hover:border-emerald-500 hover:bg-emerald-100"
 							onClick={() => setIsVoucherModalOpen(true)}
