@@ -21,7 +21,7 @@
   "scripts": {
     "dev": "turbo dev",
     "dev:all": "concurrently \"turbo dev\" \"bun run ocr:dev\"",
-    "build": "bash scripts/update-version.sh && turbo build",
+    "build": "node scripts/update-version.mjs && turbo build",
     "check-types": "turbo check-types",
     "dev:native": "turbo -F native dev",
     "dev:web": "turbo -F web dev",
@@ -29,7 +29,7 @@
     "dev:setup": "turbo -F @yumipos/backend dev:setup",
     "convex:push": "turbo -F @yumipos/backend push",
     "convex:pull": "turbo -F @yumipos/backend pull",
-    "version": "bash scripts/update-version.sh",
+    "version": "node scripts/update-version.mjs",
     "prepare": "husky",
     "ocr:dev": "cd packages/ocr-service && python main.py",
     "ocr:install": "cd packages/ocr-service && pip install -r requirements.txt"
