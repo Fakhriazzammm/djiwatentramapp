@@ -1,0 +1,19 @@
+{
+  "name": "@yumipos/backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "convex/schema.ts",
+  "types": "convex/schema.ts",
+  "scripts": {
+    "dev": "convex dev",
+    "push": "convex push",
+    "pull": "convex pull"
+  },
+  "dependencies": {
+    "convex": "catalog:",
+    "@yumipos/config": "workspace:*",
+    "@yumipos/env": "workspace:*",
+    "zod": "catalog:"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "biome check .",
+    "preview": "vite preview",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.15.7",
+    "@yumipos/backend": "workspace:*",
+    "@yumipos/config": "workspace:*",
+    "@yumipos/env": "workspace:*",
+    "convex": "catalog:",
+    "framer-motion": "^11.0.3",
+    "lucide-react": "^0.330.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "sonner": "^1.4.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@tanstack/react-router-devtools": "^1.15.8",
+    "@tanstack/router-plugin": "^1.15.8",
+    "@types/node": "^20.11.17",
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}
