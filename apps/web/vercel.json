@@ -1,4 +1,7 @@
 {
+  "buildCommand": "cd ../.. && bun run build",
+  "outputDirectory": "dist",
+  "installCommand": "cd ../.. && bun install",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
