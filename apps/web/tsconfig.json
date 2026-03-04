@@ -1,24 +1,18 @@
 {
-  "extends": "../../packages/config/tsconfig.base.json",
   "compilerOptions": {
-    "target": "ESNext",
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "types": ["vite/client", "web-bluetooth"],
+    "rootDirs": ["."],
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
-  },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  }
 }

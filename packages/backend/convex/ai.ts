@@ -20,9 +20,6 @@ const getOpenAI = () => {
 	});
 };
 
-const BASE64_IMAGE_REGEX = /^data:(image\/[a-zA-Z+]+);base64,/;
-const JSON_BLOCK_REGEX = /\{[\s\S]*\}/;
-
 /**
  * Analyze sales data to provide high-level insights.
  */
@@ -139,7 +136,6 @@ export const generateDiscountStrategy = action({
  * Yumi AI Chat - Interactive assistant that can query all database tables
  * ENHANCED: Multi-Step Actions + Smart Context
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: legacy code
 async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 	const [
 		products,
@@ -151,7 +147,6 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		hppDashboard,
 		hppOrdersCogs,
 		allTransactions,
-		bookingSettings,
 	] = await Promise.all([
 		ctx.runQuery(api.products.getAllProductsAdmin),
 		ctx.runQuery(api.products.getCategories),
@@ -161,13 +156,8 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		ctx.runQuery(api.finance.getFinancialSummary, {}),
 		ctx.runQuery(api.hpp.getHppDashboardData),
 		ctx.runQuery(api.hpp.getOrdersCogs),
-		ctx.runQuery(api.finance.getAllTransactions, {}),
-		ctx.runQuery(api.booking.getSettings, { slug: "booking" }),
+		ctx.runQuery(api.finance.getAllTransactions, {}), // Get ALL transactions with details
 	]);
-
-	const bookingStatus = bookingSettings
-		? `Halaman Booking: ${bookingSettings.isActive ? "Aktif" : "Nonaktif"} (${bookingSettings.title})\nURL: /booking\nProduk Unggulan: ${bookingSettings.featuredProductIds?.length || 0} item`
-		: "Halaman Booking: Belum dikonfigurasi";
 
 	const prodList =
 		(
@@ -271,9 +261,6 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 			.join("\n") || "Tidak ada transaksi";
 
 	return `== DATABASE APLIKASI YUMI POS ==
-
-🌐 ONLINE BOOKING (LINK IN BIO):
-${bookingStatus}
 
 📦 PRODUK (${(products as unknown[])?.length || 0}):
 ${prodList}
@@ -416,13 +403,12 @@ ${(() => {
 		) || [];
 	const incomeTotal = incomeArr.reduce((sum, t) => sum + t.amount, 0);
 	const gap = orderRevenue - incomeTotal;
-	let gapStatus = "✅ Seimbang";
-	if (Math.abs(gap) >= 1000) {
-		gapStatus =
-			gap > 0
+	const gapStatus =
+		Math.abs(gap) < 1000
+			? "✅ Seimbang"
+			: gap > 0
 				? `⚠️ Selisih: Rp${gap.toLocaleString("id-ID")} (pesanan > catatan keuangan)`
 				: `⚠️ Selisih: Rp${Math.abs(gap).toLocaleString("id-ID")} (catatan keuangan > pesanan)`;
-	}
 	return `Total Pesanan Selesai: Rp${orderRevenue.toLocaleString("id-ID")} (${paidOrders.length} pesanan)\nTotal Pemasukan Tercatat: Rp${incomeTotal.toLocaleString("id-ID")} (${incomeArr.length} transaksi)\nStatus: ${gapStatus}`;
 })()}
 
@@ -443,7 +429,6 @@ ${(() => {
 /**
  * Gather Smart Context - Business patterns and insights
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: legacy code
 async function gatherSmartContext(ctx: GenericActionCtx<DataModel>) {
 	const [orders, inventory, products] = await Promise.all([
 		ctx.runQuery(api.orders.getOrders, {}),
@@ -454,7 +439,6 @@ async function gatherSmartContext(ctx: GenericActionCtx<DataModel>) {
 	const insights: string[] = [];
 
 	// Analyze sales patterns
-	// biome-ignore lint/suspicious/noExplicitAny: legacy code
 	const completedOrders = (orders as any[]).filter(
 		(o) => o.status === "completed" || o.status === "paid"
 	);
@@ -502,7 +486,6 @@ async function gatherSmartContext(ctx: GenericActionCtx<DataModel>) {
 	}
 
 	// Low stock alerts
-	// biome-ignore lint/suspicious/noExplicitAny: legacy code
 	const lowStockItems = (inventory as any[]).filter(
 		(i) => i.quantity <= i.lowStockThreshold
 	);
@@ -514,7 +497,6 @@ async function gatherSmartContext(ctx: GenericActionCtx<DataModel>) {
 
 	// Products without HPP
 	const productsWithHpp = await ctx.runQuery(api.hpp.getHppProductMap);
-	// biome-ignore lint/suspicious/noExplicitAny: legacy code
 	const productsWithoutHpp = (products as any[]).filter(
 		(p) => !productsWithHpp[p._id]
 	);
@@ -563,7 +545,6 @@ export const yumiChat = action({
 		),
 		image: v.optional(v.string()), // base64 data URL for vision processing
 	},
-	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: legacy code
 	handler: async (ctx, args) => {
 		const dbContext = await gatherDatabaseContext(ctx);
 		const smartContext = await gatherSmartContext(ctx);
@@ -646,7 +627,7 @@ INSTRUKSI TOOL CALLING:
 			if (geminiApiKey) {
 				try {
 					const base64Data = args.image.includes(",") ? args.image.split(",")[1] : args.image;
-					const mimeMatch = args.image.match(BASE64_IMAGE_REGEX);
+					const mimeMatch = args.image.match(/^data:(image\/[a-zA-Z+]+);base64,/);
 					const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
 
 					if (base64Data) {
@@ -702,7 +683,7 @@ INSTRUKSI TOOL CALLING:
 		while (currentIteration < maxIterations) {
 			currentIteration++;
 
-			let completion: OpenAI.Chat.Completions.ChatCompletion;
+			let completion;
 			try {
 				completion = await getOpenAI().chat.completions.create({
 					model: "gpt-4o-mini",
@@ -886,7 +867,6 @@ function toolParametersToJsonSchema(
 /**
  * Convert a single Zod type to JSON Schema
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: legacy code
 function zodToJsonSchema(zodType: z.ZodTypeAny): Record<string, unknown> {
 	if ("_def" in zodType) {
 		const def = zodType._def as { typeName?: string };
@@ -1015,7 +995,6 @@ export const generateReport = action({
 		startDate: v.optional(v.number()), // Timestamp
 		endDate: v.optional(v.number()), // Timestamp
 	},
-	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: legacy code
 	handler: async (ctx, args) => {
 		// Gather requested data
 		const [
@@ -1252,7 +1231,6 @@ interface ProactiveSuggestion {
  */
 export const getProactiveSuggestions = query({
 	args: {},
-	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: legacy code
 	handler: async (ctx) => {
 		const suggestions: ProactiveSuggestion[] = [];
 		const now = Date.now();
@@ -1714,7 +1692,6 @@ export const predictDailyRevenue = query({
 	args: {
 		daysAhead: v.optional(v.number()),
 	},
-	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: legacy code
 	handler: async (ctx, args) => {
 		const daysAhead = args.daysAhead || 7;
 		const orders = await ctx.runQuery(api.orders.getOrders, {});
@@ -1760,14 +1737,12 @@ export const predictDailyRevenue = query({
 
 		const trend =
 			secondHalfAvg > firstHalfAvg * 1.05
-							? "increasing"
-							: // biome-ignore lint/style/noNestedTernary: legacy code
-								secondHalfAvg < firstHalfAvg * 0.95
-								? "decreasing"
-								: "stable";
+				? "increasing"
+				: secondHalfAvg < firstHalfAvg * 0.95
+					? "decreasing"
+					: "stable";
 
 		// Predict next week
-		// biome-ignore lint/suspicious/noEvolvingTypes: legacy code
 		const predictions = [];
 		const dayNames = [
 			"Minggu",
@@ -1806,11 +1781,10 @@ export const predictDailyRevenue = query({
 				predictedRevenue: Math.round(predictedAmount),
 				confidence:
 					dailyValues.length > 20
-							? "high"
-							: // biome-ignore lint/style/noNestedTernary: legacy code
-								dailyValues.length > 10
-								? "medium"
-								: "low",
+						? "high"
+						: dailyValues.length > 10
+							? "medium"
+							: "low",
 			});
 		}
 
@@ -1983,7 +1957,6 @@ export const autoGenerateTasks = mutation({
 	args: {},
 	handler: async (ctx) => {
 		const now = Date.now();
-		// biome-ignore lint/suspicious/noEvolvingTypes: legacy code
 		const tasks = [];
 
 		// Get business data
@@ -2069,7 +2042,6 @@ export const autoGenerateTasks = mutation({
 		}
 
 		// Create tasks in database
-		// biome-ignore lint/suspicious/noEvolvingTypes: legacy code
 		const createdTaskIds = [];
 		for (const task of tasks) {
 			const id = await ctx.db.insert("followUpTasks", {
@@ -2172,7 +2144,6 @@ export const getFinancialReconciliation = query({
 async function callPythonOCRService(imageDataUrl: string, endpoint: string = "ocr/receipt"): Promise<{
 	success: boolean;
 	type: string;
-	// biome-ignore lint/suspicious/noExplicitAny: legacy code
 	data?: any;
 	raw_text: string;
 	confidence: number;
@@ -2319,7 +2290,7 @@ Output JSON (tanpa markdown):
 
 		// Try to parse JSON from response
 		const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-		const jsonMatch = cleaned.match(JSON_BLOCK_REGEX);
+		const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
 		if (jsonMatch) {
 			try {
 				const parsed = JSON.parse(jsonMatch[0]);
@@ -2385,14 +2356,14 @@ export const processImageAndGenerate = action({
 			};
 		}
 
-		let effectiveType: "income" | "expense" = "income";
-		if (args.generateType === "auto") {
-			effectiveType = scanResult.type === "income" ? "income" : "expense";
-		} else if (args.generateType === "order") {
-			effectiveType = "income";
-		} else {
-			effectiveType = args.generateType as "income" | "expense";
-		}
+		const effectiveType =
+			args.generateType === "auto"
+				? scanResult.type === "income"
+					? "income"
+					: "expense"
+				: args.generateType === "order"
+					? "income"
+					: args.generateType;
 
 		if (effectiveType === "expense" || effectiveType === "income") {
 			const txId = await ctx.runMutation(api.finance.createTransaction, {
@@ -2492,14 +2463,14 @@ export const batchGenerateTransactions = action({
 					continue;
 				}
 
-				let effectiveType: "income" | "expense" = "income";
-				if (args.generateType === "auto") {
-					effectiveType = scanResult.type === "income" ? "income" : "expense";
-				} else if (args.generateType === "order") {
-					effectiveType = "income";
-				} else {
-					effectiveType = args.generateType as "income" | "expense";
-				}
+				const effectiveType =
+					args.generateType === "auto"
+						? scanResult.type === "income"
+							? "income"
+							: "expense"
+						: args.generateType === "order"
+							? "income"
+							: args.generateType;
 
 				if (effectiveType === "expense" || effectiveType === "income") {
 					const txId = await ctx.runMutation(api.finance.createTransaction, {
@@ -2564,9 +2535,6 @@ export const generateScanReport = action({
 			case "monthly":
 				startDate = now - 30 * 24 * 60 * 60 * 1000;
 				break;
-			default:
-				startDate = now - 24 * 60 * 60 * 1000; // Default to daily
-				break;
 		}
 
 		const transactions = await ctx.runQuery(api.finance.getAllTransactions, {
@@ -2576,7 +2544,6 @@ export const generateScanReport = action({
 		});
 
 		const totalExpense = transactions.reduce(
-			// biome-ignore lint/suspicious/noExplicitAny: legacy code
 			(sum: number, t: any) => sum + t.amount,
 			0
 		);
@@ -2586,7 +2553,6 @@ export const generateScanReport = action({
 
 		// Group by category
 		const categoryMap: Record<string, number> = {};
-		// biome-ignore lint/suspicious/noExplicitAny: legacy code
 		for (const t of transactions as any[]) {
 			const cat = t.category || "Lainnya";
 			categoryMap[cat] = (categoryMap[cat] || 0) + t.amount;
@@ -2680,7 +2646,6 @@ export const scanImageData = action({
 	args: {
 		image: v.string(), // base64 data URL (maks 800px, kualitas 70%)
 	},
-	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: legacy code
 	handler: async (_ctx, args) => {
 		const apiKey = process.env.GEMINI_API_KEY;
 		if (!apiKey) {
@@ -2697,7 +2662,7 @@ export const scanImageData = action({
 		}
 
 		// Detect MIME type from data URL
-		const mimeMatch = args.image.match(BASE64_IMAGE_REGEX);
+		const mimeMatch = args.image.match(/^data:(image\/[a-zA-Z+]+);base64,/);
 		const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
 
 		const prompt = `Kamu adalah AI scanner dokumen keuangan yang ahli menganalisis gambar struk, kwitansi, nota, tulisan, dan dokumen lainnya.
@@ -2811,7 +2776,7 @@ Aturan penting:
 		try {
 			// Clean markdown code fences if present
 			const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-			const jsonMatch = cleaned.match(JSON_BLOCK_REGEX);
+			const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
 			if (jsonMatch) {
 				return JSON.parse(jsonMatch[0]);
 			}

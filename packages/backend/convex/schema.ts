@@ -105,33 +105,9 @@ export default defineSchema({
 		createdAt: v.number(),
 		voucherId: v.optional(v.id("discounts")),
 		discountAmount: v.optional(v.number()),
-		source: v.optional(v.union(v.literal("pos"), v.literal("booking"))),
 	})
 		.index("by_status", ["status"])
 		.index("by_createdAt", ["createdAt"]),
-
-	// Booking Page Configuration
-	bookingSettings: defineTable({
-		slug: v.string(), // "booking"
-		title: v.string(),
-		description: v.optional(v.string()),
-		logoUrl: v.optional(v.string()),
-		bannerUrl: v.optional(v.string()),
-		themeColor: v.optional(v.string()), // Hex color
-		socialLinks: v.optional(
-			v.array(
-				v.object({
-					platform: v.string(), // "instagram", "whatsapp", etc.
-					url: v.string(),
-					label: v.string(),
-				})
-			)
-		),
-		featuredProductIds: v.optional(v.array(v.string())), // List of product IDs to show
-		paymentMethods: v.optional(v.array(v.string())), // "qris", "bank_transfer", "gateway"
-		bankDetails: v.optional(v.string()), // Text for manual transfer
-		isActive: v.boolean(),
-	}).index("by_slug", ["slug"]),
 
 	// AI Insights
 	salesInsights: defineTable({

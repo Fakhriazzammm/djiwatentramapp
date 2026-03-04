@@ -9,12 +9,40 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as MenuImprovedRouteImport } from './routes/menu-improved'
+import { Route as MenuRouteImport } from './routes/menu'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BookingRouteImport } from './routes/booking'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
+import { Route as AdminProductsRouteImport } from './routes/admin/products'
+import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
+import { Route as AdminLoginRouteImport } from './routes/admin/login'
+import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
+import { Route as AdminHppCalculatorRouteImport } from './routes/admin/hpp-calculator'
+import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting'
+import { Route as AdminDiscountsRouteImport } from './routes/admin/discounts'
 import { Route as AdminBookingRouteImport } from './routes/admin/booking'
+import { Route as AdminAiChatRouteImport } from './routes/admin/ai-chat'
+import { Route as AdminFinanceRouteRouteImport } from './routes/admin/finance/route'
 
+const MenuImprovedRoute = MenuImprovedRouteImport.update({
+  id: '/menu-improved',
+  path: '/menu-improved',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MenuRoute = MenuRouteImport.update({
+  id: '/menu',
+  path: '/menu',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BookingRoute = BookingRouteImport.update({
   id: '/booking',
   path: '/booking',
@@ -35,9 +63,59 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminProductsRoute = AdminProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminOrdersRoute = AdminOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminInventoryRoute = AdminInventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminHppCalculatorRoute = AdminHppCalculatorRouteImport.update({
+  id: '/hpp-calculator',
+  path: '/hpp-calculator',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminForecastingRoute = AdminForecastingRouteImport.update({
+  id: '/forecasting',
+  path: '/forecasting',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminDiscountsRoute = AdminDiscountsRouteImport.update({
+  id: '/discounts',
+  path: '/discounts',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminBookingRoute = AdminBookingRouteImport.update({
   id: '/booking',
   path: '/booking',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAiChatRoute = AdminAiChatRouteImport.update({
+  id: '/ai-chat',
+  path: '/ai-chat',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminFinanceRouteRoute = AdminFinanceRouteRouteImport.update({
+  id: '/finance',
+  path: '/finance',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 
@@ -45,13 +123,39 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/booking': typeof BookingRoute
+  '/dashboard': typeof DashboardRoute
+  '/menu': typeof MenuRoute
+  '/menu-improved': typeof MenuImprovedRoute
+  '/admin/finance': typeof AdminFinanceRouteRoute
+  '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/booking': typeof AdminBookingRoute
+  '/admin/discounts': typeof AdminDiscountsRoute
+  '/admin/forecasting': typeof AdminForecastingRoute
+  '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
+  '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/products': typeof AdminProductsRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/booking': typeof BookingRoute
+  '/dashboard': typeof DashboardRoute
+  '/menu': typeof MenuRoute
+  '/menu-improved': typeof MenuImprovedRoute
+  '/admin/finance': typeof AdminFinanceRouteRoute
+  '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/booking': typeof AdminBookingRoute
+  '/admin/discounts': typeof AdminDiscountsRoute
+  '/admin/forecasting': typeof AdminForecastingRoute
+  '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
+  '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/products': typeof AdminProductsRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
@@ -59,25 +163,116 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/booking': typeof BookingRoute
+  '/dashboard': typeof DashboardRoute
+  '/menu': typeof MenuRoute
+  '/menu-improved': typeof MenuImprovedRoute
+  '/admin/finance': typeof AdminFinanceRouteRoute
+  '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/booking': typeof AdminBookingRoute
+  '/admin/discounts': typeof AdminDiscountsRoute
+  '/admin/forecasting': typeof AdminForecastingRoute
+  '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
+  '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/products': typeof AdminProductsRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/booking' | '/admin/booking' | '/admin/'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/booking'
+    | '/dashboard'
+    | '/menu'
+    | '/menu-improved'
+    | '/admin/finance'
+    | '/admin/ai-chat'
+    | '/admin/booking'
+    | '/admin/discounts'
+    | '/admin/forecasting'
+    | '/admin/hpp-calculator'
+    | '/admin/inventory'
+    | '/admin/login'
+    | '/admin/orders'
+    | '/admin/products'
+    | '/admin/settings'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/booking' | '/admin/booking' | '/admin'
-  id: '__root__' | '/' | '/admin' | '/booking' | '/admin/booking' | '/admin/'
+  to:
+    | '/'
+    | '/booking'
+    | '/dashboard'
+    | '/menu'
+    | '/menu-improved'
+    | '/admin/finance'
+    | '/admin/ai-chat'
+    | '/admin/booking'
+    | '/admin/discounts'
+    | '/admin/forecasting'
+    | '/admin/hpp-calculator'
+    | '/admin/inventory'
+    | '/admin/login'
+    | '/admin/orders'
+    | '/admin/products'
+    | '/admin/settings'
+    | '/admin'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/booking'
+    | '/dashboard'
+    | '/menu'
+    | '/menu-improved'
+    | '/admin/finance'
+    | '/admin/ai-chat'
+    | '/admin/booking'
+    | '/admin/discounts'
+    | '/admin/forecasting'
+    | '/admin/hpp-calculator'
+    | '/admin/inventory'
+    | '/admin/login'
+    | '/admin/orders'
+    | '/admin/products'
+    | '/admin/settings'
+    | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   BookingRoute: typeof BookingRoute
+  DashboardRoute: typeof DashboardRoute
+  MenuRoute: typeof MenuRoute
+  MenuImprovedRoute: typeof MenuImprovedRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/menu-improved': {
+      id: '/menu-improved'
+      path: '/menu-improved'
+      fullPath: '/menu-improved'
+      preLoaderRoute: typeof MenuImprovedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/menu': {
+      id: '/menu'
+      path: '/menu'
+      fullPath: '/menu'
+      preLoaderRoute: typeof MenuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/booking': {
       id: '/booking'
       path: '/booking'
@@ -106,6 +301,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/products': {
+      id: '/admin/products'
+      path: '/products'
+      fullPath: '/admin/products'
+      preLoaderRoute: typeof AdminProductsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/orders': {
+      id: '/admin/orders'
+      path: '/orders'
+      fullPath: '/admin/orders'
+      preLoaderRoute: typeof AdminOrdersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/inventory': {
+      id: '/admin/inventory'
+      path: '/inventory'
+      fullPath: '/admin/inventory'
+      preLoaderRoute: typeof AdminInventoryRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/hpp-calculator': {
+      id: '/admin/hpp-calculator'
+      path: '/hpp-calculator'
+      fullPath: '/admin/hpp-calculator'
+      preLoaderRoute: typeof AdminHppCalculatorRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/forecasting': {
+      id: '/admin/forecasting'
+      path: '/forecasting'
+      fullPath: '/admin/forecasting'
+      preLoaderRoute: typeof AdminForecastingRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/discounts': {
+      id: '/admin/discounts'
+      path: '/discounts'
+      fullPath: '/admin/discounts'
+      preLoaderRoute: typeof AdminDiscountsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/booking': {
       id: '/admin/booking'
       path: '/booking'
@@ -113,16 +364,50 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBookingRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/ai-chat': {
+      id: '/admin/ai-chat'
+      path: '/ai-chat'
+      fullPath: '/admin/ai-chat'
+      preLoaderRoute: typeof AdminAiChatRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/finance': {
+      id: '/admin/finance'
+      path: '/finance'
+      fullPath: '/admin/finance'
+      preLoaderRoute: typeof AdminFinanceRouteRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
   }
 }
 
 interface AdminRouteRouteChildren {
+  AdminFinanceRouteRoute: typeof AdminFinanceRouteRoute
+  AdminAiChatRoute: typeof AdminAiChatRoute
   AdminBookingRoute: typeof AdminBookingRoute
+  AdminDiscountsRoute: typeof AdminDiscountsRoute
+  AdminForecastingRoute: typeof AdminForecastingRoute
+  AdminHppCalculatorRoute: typeof AdminHppCalculatorRoute
+  AdminInventoryRoute: typeof AdminInventoryRoute
+  AdminLoginRoute: typeof AdminLoginRoute
+  AdminOrdersRoute: typeof AdminOrdersRoute
+  AdminProductsRoute: typeof AdminProductsRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminFinanceRouteRoute: AdminFinanceRouteRoute,
+  AdminAiChatRoute: AdminAiChatRoute,
   AdminBookingRoute: AdminBookingRoute,
+  AdminDiscountsRoute: AdminDiscountsRoute,
+  AdminForecastingRoute: AdminForecastingRoute,
+  AdminHppCalculatorRoute: AdminHppCalculatorRoute,
+  AdminInventoryRoute: AdminInventoryRoute,
+  AdminLoginRoute: AdminLoginRoute,
+  AdminOrdersRoute: AdminOrdersRoute,
+  AdminProductsRoute: AdminProductsRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 
@@ -134,6 +419,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   BookingRoute: BookingRoute,
+  DashboardRoute: DashboardRoute,
+  MenuRoute: MenuRoute,
+  MenuImprovedRoute: MenuImprovedRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
