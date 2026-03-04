@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@yumipos/env": "workspace:*",
+    "convex": "^1.31.2",
     "dotenv": "^17.2.3",
     "zod": "^3.25.76"
   },
