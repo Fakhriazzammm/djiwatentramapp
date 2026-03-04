@@ -5,8 +5,9 @@ import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import "./index.css";
 
-// Set up Convex client
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+// Set up Convex client (optional - graceful fallback if URL not configured)
+const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
+const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 
 // Set up Router instance
 const router = createRouter({
@@ -29,9 +30,13 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <React.StrictMode>
-      <ConvexProvider client={convex}>
+      {convex ? (
+        <ConvexProvider client={convex}>
+          <RouterProvider router={router} />
+        </ConvexProvider>
+      ) : (
         <RouterProvider router={router} />
-      </ConvexProvider>
+      )}
     </React.StrictMode>
   );
 }
