@@ -591,44 +591,47 @@ function MenuPage() {
 			<SkipLink target="main-content" />
 
 			{/* Header / Category Tabs */}
-			<header className="flex shrink-0 items-center gap-2 border-border border-b bg-background px-2 py-2 shadow-sm md:px-3">
-				<div
-					className="no-scrollbar flex flex-1 gap-1.5 overflow-x-auto"
-					role="tablist"
-				>
-					<button
-						aria-label="Tampilkan semua kategori"
-						aria-selected={selectedCategory === null}
-						className={`touch-target relative whitespace-nowrap rounded-full border px-4 py-2.5 font-semibold text-xs transition-all active:scale-95 md:min-w-[100px] md:px-6 md:py-3 md:text-sm ${
-							selectedCategory === null
-								? "border-primary bg-primary text-primary-foreground shadow-md"
-								: "border-border bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-						}`}
-						onClick={() => setSelectedCategory(null)}
-						role="tab"
-						type="button"
+			<header className="sticky top-0 z-40 shrink-0 border-border border-b bg-background/95 backdrop-blur-sm shadow-sm">
+				<div className="flex items-center gap-1 px-2 py-1.5 md:px-3 md:py-2">
+					<div
+						className="no-scrollbar flex flex-1 gap-1.5 overflow-x-auto scroll-smooth"
+						role="tablist"
+						style={{ WebkitOverflowScrolling: 'touch' }}
 					>
-						Semua
-					</button>
-					{categories?.map((cat, _index) => (
 						<button
-							aria-label={`Tampilkan kategori ${cat.name}`}
-							aria-selected={selectedCategory === cat._id}
-							className={`touch-target relative whitespace-nowrap rounded-full border px-4 py-2.5 font-semibold text-xs transition-all active:scale-95 md:min-w-[100px] md:px-6 md:py-3 md:text-sm ${
-								selectedCategory === cat._id
-									? "border-primary bg-primary text-primary-foreground shadow-md"
-									: "border-border bg-card text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+							aria-label="Tampilkan semua kategori"
+							aria-selected={selectedCategory === null}
+							className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 font-medium text-sm transition-all active:scale-95 md:px-4 md:py-2 md:text-base ${
+								selectedCategory === null
+									? "bg-primary text-primary-foreground shadow-sm"
+									: "bg-muted/60 text-foreground hover:bg-muted"
 							}`}
-							key={cat._id}
-							onClick={() => setSelectedCategory(cat._id)}
+							onClick={() => setSelectedCategory(null)}
 							role="tab"
 							type="button"
 						>
-							{cat.name}
+							Semua
 						</button>
-					))}
+						{categories?.map((cat) => (
+							<button
+								aria-label={`Tampilkan kategori ${cat.name}`}
+								aria-selected={selectedCategory === cat._id}
+								className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 font-medium text-sm transition-all active:scale-95 md:px-4 md:py-2 md:text-base ${
+									selectedCategory === cat._id
+										? "bg-primary text-primary-foreground shadow-sm"
+										: "bg-muted/60 text-foreground hover:bg-muted"
+								}`}
+								key={cat._id}
+								onClick={() => setSelectedCategory(cat._id)}
+								role="tab"
+								type="button"
+							>
+								{cat.name}
+							</button>
+						))}
+					</div>
+					<MenuSidebar />
 				</div>
-				<MenuSidebar />
 			</header>
 
 			{/* Main Content Area */}
