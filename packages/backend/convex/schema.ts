@@ -481,4 +481,27 @@ export default defineSchema({
 		.index("by_category", ["category"])
 		.index("by_priority", ["priority"])
 		.index("by_createdAt", ["createdAt"]),
+
+	// Booking Settings for custom booking pages
+	bookingSettings: defineTable({
+		slug: v.string(),
+		title: v.string(),
+		description: v.optional(v.string()),
+		logoUrl: v.optional(v.string()),
+		bannerUrl: v.optional(v.string()),
+		themeColor: v.optional(v.string()),
+		socialLinks: v.optional(
+			v.array(
+				v.object({
+					platform: v.string(),
+					url: v.string(),
+					label: v.string(),
+				})
+			)
+		),
+		featuredProductIds: v.optional(v.array(v.string())),
+		paymentMethods: v.optional(v.array(v.string())),
+		bankDetails: v.optional(v.string()),
+		isActive: v.boolean(),
+	}).index("by_slug", ["slug"]),
 });
