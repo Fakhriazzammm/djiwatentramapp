@@ -7,6 +7,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { MenuSidebar } from "@/components/pos/menu-sidebar";
 import { PaymentConfirmationModal } from "@/components/pos/payment-modal";
+import { TransactionHistorySidebar } from "@/components/pos/transaction-history-sidebar";
 import { VoucherModal } from "@/components/pos/voucher-modal";
 import { SkipLink } from "@/components/ui/a11y";
 import { EmptyCart } from "@/components/ui/empty-state";
@@ -630,7 +631,10 @@ function MenuPage() {
 							</button>
 						))}
 					</div>
-					<MenuSidebar />
+					<div className="flex shrink-0 items-center gap-1.5">
+						<TransactionHistorySidebar />
+						<MenuSidebar />
+					</div>
 				</div>
 			</header>
 
