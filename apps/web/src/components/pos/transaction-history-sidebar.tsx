@@ -184,7 +184,7 @@ export function TransactionHistorySidebar() {
 			</SheetTrigger>
 			<SheetContent
 				className="flex w-full flex-col p-0 sm:w-[450px]"
-				side="left"
+				side="right"
 			>
 				<SheetHeader className="border-b p-4">
 					<SheetTitle className="flex items-center gap-2">
