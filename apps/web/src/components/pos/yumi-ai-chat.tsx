@@ -69,6 +69,9 @@ export function YumiAIChat() {
 	]);
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
+	const [isStreaming, setIsStreaming] = useState(false);
+	const [streamingContent, setStreamingContent] = useState("");
+	const streamingActiveRef = useRef(true);
 
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -78,6 +81,13 @@ export function YumiAIChat() {
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, [messages]);
+
+	// Auto-scroll while streaming
+	useEffect(() => {
+		if (isStreaming) {
+			messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+		}
+	}, [streamingContent, isStreaming]);
 
 	const sanitizeResponse = (text: string): string => {
 		if (!text) return "";
@@ -93,6 +103,33 @@ export function YumiAIChat() {
 			.replace(/\n{3,}/g, "\n\n")
 			.trim();
 	};
+
+	// Stream text word by word for realistic streaming effect
+	const streamText = useCallback((text: string, onComplete: () => void) => {
+		const tokens = text.split(/(\s+)/);
+		let i = 0;
+		streamingActiveRef.current = true;
+		setIsStreaming(true);
+		setStreamingContent("");
+
+		const next = () => {
+			if (!streamingActiveRef.current) return;
+			if (i < tokens.length) {
+				const chunk = tokens[i];
+				setStreamingContent((prev) => prev + chunk);
+				i++;
+				// 20ms for words, 3ms for whitespace
+				const delay = chunk.trim().length > 0 ? 20 : 3;
+				setTimeout(next, delay);
+			} else {
+				streamingActiveRef.current = false;
+				setIsStreaming(false);
+				setStreamingContent("");
+				onComplete();
+			}
+		};
+		next();
+	}, []);
 
 	const sendMessage = useCallback(
 		async (text: string) => {
@@ -120,15 +157,24 @@ export function YumiAIChat() {
 					sanitizeResponse(response) ||
 					"Maaf, saya tidak bisa memproses permintaan ini.";
 
-				setMessages((prev) => [
-					...prev,
-					{
-						role: "assistant",
-						content: sanitized,
-					},
-				]);
+				setIsLoading(false);
+
+				// Stream the response word by word
+				streamText(sanitized, () => {
+					setMessages((prev) => [
+						...prev,
+						{
+							role: "assistant",
+							content: sanitized,
+						},
+					]);
+				});
 			} catch (error) {
 				console.error("AI chat error:", error);
+				setIsLoading(false);
+				streamingActiveRef.current = false;
+				setIsStreaming(false);
+				setStreamingContent("");
 				setMessages((prev) => [
 					...prev,
 					{
@@ -136,11 +182,9 @@ export function YumiAIChat() {
 						content: "Maaf, terjadi kesalahan. Silakan coba lagi.",
 					},
 				]);
-			} finally {
-				setIsLoading(false);
 			}
 		},
-		[isLoading, messages, yumiChat]
+		[isLoading, messages, yumiChat, streamText]
 	);
 
 	return (
@@ -183,13 +227,30 @@ export function YumiAIChat() {
 					</div>
 				))}
 
-				{isLoading && (
+				{/* Loading indicator */}
+				{isLoading && !isStreaming && (
 					<div className="flex justify-start">
 						<div className="rounded-xl rounded-tl-none border border-border bg-card px-3 py-2">
 							<div className="flex items-center gap-2">
 								<Bot className="h-3 w-3 text-primary" />
 								<Loader2 className="h-3 w-3 animate-spin text-primary" />
 								<span className="text-[10px] text-muted-foreground">Mengetik...</span>
+							</div>
+						</div>
+					</div>
+				)}
+
+				{/* Streaming Message */}
+				{isStreaming && streamingContent && (
+					<div className="flex justify-start">
+						<div className="max-w-[90%] rounded-xl rounded-tl-none border border-border bg-card px-3 py-2 text-xs leading-relaxed">
+							<div className="flex items-center gap-1 mb-1">
+								<Bot className="h-3 w-3 text-primary" />
+								<span className="font-bold text-[10px] text-primary">Yumi</span>
+							</div>
+							<div className="whitespace-pre-line">
+								{streamingContent}
+								<span className="ml-0.5 inline-block h-3 w-0.5 animate-pulse bg-primary" />
 							</div>
 						</div>
 					</div>
@@ -204,7 +265,7 @@ export function YumiAIChat() {
 					{CASIER_TEMPLATES.map((t) => (
 						<button
 							className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-[10px] text-muted-foreground transition-all hover:border-primary hover:bg-primary/10 hover:text-primary disabled:opacity-50"
-							disabled={isLoading}
+							disabled={isLoading || isStreaming}
 							key={t.label}
 							onClick={() => sendMessage(t.message)}
 							type="button"
@@ -219,7 +280,7 @@ export function YumiAIChat() {
 				<div className="flex items-end gap-2 rounded-xl border border-border bg-background p-1.5">
 					<textarea
 						className="max-h-24 min-h-[32px] flex-1 resize-none bg-transparent px-2 py-1.5 text-xs outline-none placeholder:text-muted-foreground disabled:opacity-50"
-						disabled={isLoading}
+						disabled={isLoading || isStreaming}
 						onChange={(e) => {
 							setInput(e.target.value);
 							e.target.style.height = "auto";
@@ -244,7 +305,7 @@ export function YumiAIChat() {
 								? "bg-primary text-primary-foreground hover:bg-primary/90"
 								: "bg-muted text-muted-foreground"
 						} disabled:opacity-50`}
-						disabled={isLoading || !input.trim()}
+						disabled={isLoading || isStreaming || !input.trim()}
 						onClick={() => {
 							if (input.trim()) {
 								sendMessage(input);
@@ -252,7 +313,7 @@ export function YumiAIChat() {
 						}}
 						type="button"
 					>
-						{isLoading ? (
+						{isLoading || isStreaming ? (
 							<Loader2 className="h-4 w-4 animate-spin" />
 						) : (
 							<Send className="h-4 w-4" />

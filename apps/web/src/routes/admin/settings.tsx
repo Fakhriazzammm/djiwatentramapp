@@ -149,8 +149,13 @@ function SettingsPage() {
 				appVersion: siteSettings.appVersion ?? "1.0.0",
 				developerName: siteSettings.developerName ?? "Zantara Technology",
 			}));
+			setPaymentSettings({
+				mayarEnabled: siteSettings.mayarEnabled ?? false,
+				mayarTestMode: siteSettings.mayarTestMode ?? true,
+			});
 		}
 		setIsConnected(bluetoothPrinter.isConnected());
+		setMayarApiConfigured(isMayarConfigured());
 	}, [siteSettings]);
 
 	const handleConnectPrinter = async () => {
@@ -177,6 +182,9 @@ function SettingsPage() {
 				appName: settings.appName,
 				appVersion: settings.appVersion,
 				developerName: settings.developerName,
+				// Mayar Payment Gateway
+				mayarEnabled: paymentSettings.mayarEnabled,
+				mayarTestMode: paymentSettings.mayarTestMode,
 			});
 			toast.success("Pengaturan berhasil disimpan!");
 		} catch (error) {
@@ -550,6 +558,102 @@ function SettingsPage() {
 											</p>
 										</div>
 									</div>
+								</div>
+
+								{/* Mayar Payment Gateway Section */}
+								<div className="space-y-4 rounded-2xl border border-border/50 bg-muted/30 p-4 md:p-6">
+									<div className="flex items-center gap-3 border-border/50 border-b pb-4">
+										<Wallet className="h-5 w-5 text-primary" />
+										<div>
+											<h4 className="font-bold text-foreground text-sm uppercase tracking-wider">
+												Payment Gateway Mayar.id
+											</h4>
+											<p className="text-muted-foreground text-xs">
+												Integrasi pembayaran QRIS otomatis
+											</p>
+										</div>
+									</div>
+
+									{!mayarApiConfigured && (
+										<div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4">
+											<ShieldCheck className="h-5 w-5 text-amber-600" />
+											<p className="text-amber-700 text-xs">
+												API Key Mayar belum dikonfigurasi di environment. Hubungi administrator untuk mengaktifkan fitur ini.
+											</p>
+										</div>
+									)}
+
+									{mayarApiConfigured && (
+										<>
+											<div className="flex items-center justify-between rounded-xl bg-muted/40 p-5 shadow-inner">
+												<div>
+													<span className="block font-bold text-foreground text-sm tracking-tight">
+														Aktifkan Mayar Payment Gateway
+													</span>
+													<span className="text-muted-foreground text-xs">
+														Izinkan pembayaran melalui invoice QRIS Mayar.id
+													</span>
+												</div>
+												<button
+													className={`relative h-7 w-12 rounded-full transition-all duration-300 ${paymentSettings.mayarEnabled ? "bg-primary" : "bg-muted-foreground/20"}`}
+													onClick={() =>
+														setPaymentSettings({
+															...paymentSettings,
+															mayarEnabled: !paymentSettings.mayarEnabled,
+														})
+													}
+													type="button"
+												>
+													<div
+														className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-300 ${paymentSettings.mayarEnabled ? "right-1" : "left-1"}`}
+													/>
+												</button>
+											</div>
+
+											{paymentSettings.mayarEnabled && (
+												<div className="flex items-center justify-between rounded-xl bg-muted/40 p-5 shadow-inner">
+													<div>
+														<span className="block font-bold text-foreground text-sm tracking-tight">
+															Mode Testing (Sandbox)
+														</span>
+														<span className="text-muted-foreground text-xs">
+															Gunakan environment sandbox untuk pengujian
+														</span>
+													</div>
+													<button
+														className={`relative h-7 w-12 rounded-full transition-all duration-300 ${paymentSettings.mayarTestMode ? "bg-amber-500" : "bg-muted-foreground/20"}`}
+														onClick={() =>
+															setPaymentSettings({
+																...paymentSettings,
+																mayarTestMode: !paymentSettings.mayarTestMode,
+															})
+														}
+														type="button"
+													>
+														<div
+															className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-300 ${paymentSettings.mayarTestMode ? "right-1" : "left-1"}`}
+														/>
+													</button>
+												</div>
+											)}
+
+											{paymentSettings.mayarEnabled && paymentSettings.mayarTestMode && (
+												<div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+													<p className="text-amber-700 text-xs">
+														<strong>Mode Sandbox Aktif:</strong> Transaksi tidak akan diproses secara nyata. Pastikan untuk menonaktifkan mode ini saat production.
+													</p>
+												</div>
+											)}
+
+											{paymentSettings.mayarEnabled && !paymentSettings.mayarTestMode && (
+												<div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4">
+													<p className="text-green-700 text-xs">
+														<strong>Mode Production Aktif:</strong> Semua transaksi akan diproses secara nyata melalui Mayar.id
+													</p>
+												</div>
+											)}
+										</>
+									)}
 								</div>
 							</div>
 						</section>
