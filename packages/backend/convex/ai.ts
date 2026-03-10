@@ -2611,166 +2611,124 @@ export const analyzeDiscountEffectiveness = query({
  */
 export const scanImageData = action({
 	args: {
-		image: v.string(), // base64 data URL (maks 800px, kualitas 70%)
+		image: v.string(), // base64 data URL
 	},
 	handler: async (_ctx, args) => {
-		const apiKey = process.env.OPENAI_API_KEY || process.env.SUMOPOD_API_KEY || process.env.GEMINI_API_KEY;
-		if (!apiKey) {
-			console.error("No AI API Keys found (OPENAI_API_KEY, SUMOPOD_API_KEY, or GEMINI_API_KEY)");
+		const geminiApiKey = process.env.GEMINI_API_KEY;
+		const openaiApiKey = process.env.OPENAI_API_KEY || process.env.SUMOPOD_API_KEY;
+
+		if (!geminiApiKey && !openaiApiKey) {
 			throw new ConvexError(
-				"Konfigurasi AI tidak lengkap. Silakan atur SUMOPOD_API_KEY atau GEMINI_API_KEY di dashboard Convex."
+				"Konfigurasi AI tidak lengkap. Silakan atur GEMINI_API_KEY atau SUMOPOD_API_KEY di dashboard Convex."
 			);
 		}
 
-		// Extract base64 data from data URL
-		const base64Data = args.image.includes(",")
-			? args.image.split(",")[1]
-			: args.image;
-
-		if (!base64Data) {
-			throw new Error("Format data URL gambar tidak valid. Pastikan gambar berformat base64.");
-		}
-
-		// Detect MIME type from data URL
+		// Extract base64 data and detect MIME type
+		const base64Data = args.image.includes(",") ? args.image.split(",")[1] : args.image;
 		const mimeMatch = args.image.match(/^data:(image\/[a-zA-Z+]+);base64,/);
 		const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
 
-		const prompt = `Kamu adalah AI scanner dokumen keuangan yang ahli menganalisis gambar struk, kwitansi, nota, tulisan, dan dokumen lainnya.
-
+		const prompt = `Kamu adalah AI scanner dokumen keuangan yang ahli menganalisis gambar struk, kwitansi, nota, dan dokumen lainnya.
 Analisis gambar dan kembalikan data terstruktur dalam format JSON berikut TANPA teks tambahan apapun:
 {
   "type": "receipt|invoice|note|handwriting|product|other",
-  "name": "nama merchant/toko/dokumen yang terdeteksi",
+  "name": "nama merchant/toko yang terdeteksi",
   "category": "makanan|minuman|belanja|transportasi|tagihan|gaji|hiburan|kesehatan|lainnya",
   "transactionType": "expense|income|unknown",
-  "total": angka total dalam Rupiah gunakan 0 jika tidak ada,
+  "total": angka total dalam Rupiah,
   "subtotal": angka subtotal atau 0,
   "tax": angka pajak/PPN atau 0,
   "discount": angka diskon atau 0,
-  "items": [
-    {"name": "nama item/produk", "qty": 1, "price": 0, "subtotal": 0}
-  ],
-  "date": "tanggal yang terdeteksi dalam format YYYY-MM-DD atau null",
+  "items": [{"name": "item", "qty": 1, "price": 0, "subtotal": 0}],
+  "date": "YYYY-MM-DD atau null",
   "paymentMethod": "cash|qris|card|transfer|unknown",
-  "notes": "informasi tambahan penting dari gambar",
-  "confidence": angka 0-100 tingkat keyakinan analisis,
-  "rawText": "semua teks yang dapat dibaca dari gambar"
-}
-
-Aturan penting:
-- Kembalikan HANYA JSON valid, tanpa markdown, tanpa penjelasan
-- Semua angka numerik (bukan string) dalam IDR
-- Baca semua angka dengan teliti, perhatikan pemisah ribuan (titik) dan desimal (koma)
-- Jika gambar bukan dokumen keuangan, tetap analisis dan ekstrak informasi yang tersedia
-- confidence 90-100 jika data jelas terbaca, 60-89 jika sebagian, 0-59 jika tidak jelas`;
+  "notes": "informasi tambahan",
+  "confidence": 0-100,
+  "rawText": "semua teks dari gambar"
+}`;
 
 		let content = "";
+		let lastError = "";
 
-		try {
-			const completion = await getOpenAI().chat.completions.create({
-				model: "gpt-4o-mini",
-				messages: [
+		// Strategy 1: Try Gemini First (Best for Vision/OCR)
+		if (geminiApiKey) {
+			try {
+				const response = await fetch(
+					`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
 					{
-						role: "system",
-						content: prompt,
-					},
-					{
-						role: "user",
-						content: [
-							{
-								type: "image_url",
-								image_url: {
-									url: args.image,
-									detail: "high",
-								},
-							},
-							{
-								type: "text",
-								text: "Analisis gambar ini dan kembalikan data JSON terstruktur sesuai format yang diminta.",
-							},
-						],
-					},
-				],
-				max_tokens: 1500,
-				response_format: { type: "json_object" },
-			});
-			content = completion.choices[0].message.content ?? "";
-
-			if (!content) {
-				throw new Error("Empty response from OpenAI Vision API");
-			}
-		} catch (error) {
-			console.error("scanImageData error:", error);
-
-			// Fallback: try Gemini if OpenAI fails (reverse logic now)
-			const geminiApiKey = process.env.GEMINI_API_KEY;
-			if (geminiApiKey) {
-				try {
-					const response = await fetch(
-						`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
-						{
-							method: "POST",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({
-								contents: [
-									{
-										parts: [
-											{ inline_data: { mime_type: mimeType, data: base64Data } },
-											{ text: prompt },
-										],
-									},
-								],
-								generationConfig: {
-									temperature: 0.1,
-									maxOutputTokens: 2000,
-									responseMimeType: "application/json",
-								},
-							}),
-						}
-					);
-
-					if (response.ok) {
-						const result = await response.json();
-						content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							contents: [{
+								parts: [
+									{ inline_data: { mime_type: mimeType, data: base64Data } },
+									{ text: prompt }
+								]
+							}],
+							generationConfig: {
+								temperature: 0.1,
+								maxOutputTokens: 2000,
+								responseMimeType: "application/json",
+							}
+						})
 					}
-				} catch (geminiError) {
-					console.error("scanImageData Gemini fallback error:", geminiError);
-				}
-			}
-
-			if (!content) {
-				throw new ConvexError(
-					"Gagal menganalisis gambar. Pastikan format gambar didukung (JPG/PNG) dan API Key SumoPod Anda valid."
 				);
+
+				if (response.ok) {
+					const result = await response.json();
+					content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+				} else {
+					lastError = `Gemini API error: ${response.status} ${response.statusText}`;
+				}
+			} catch (e) {
+				lastError = `Gemini connection error: ${e instanceof Error ? e.message : String(e)}`;
 			}
 		}
 
-		// Parse JSON from response
+		// Strategy 2: Fallback to OpenAI/SumoPod
+		if (!content && openaiApiKey) {
+			try {
+				const completion = await getOpenAI().chat.completions.create({
+					model: "gpt-4o-mini",
+					messages: [
+						{ role: "system", content: prompt },
+						{
+							role: "user",
+							content: [
+								{ type: "image_url", image_url: { url: args.image, detail: "high" } },
+								{ type: "text", text: "Ekstrak data JSON dari gambar ini." }
+							]
+						}
+					],
+					max_tokens: 1500,
+					response_format: { type: "json_object" }
+				});
+				content = completion.choices[0].message.content || "";
+			} catch (e) {
+				lastError = `OpenAI error: ${e instanceof Error ? e.message : String(e)}`;
+			}
+		}
+
+		if (!content) {
+			throw new ConvexError(`Gagal menganalisis gambar. ${lastError || "Coba lagi dengan gambar yang lebih jelas."}`);
+		}
+
+		// Safe JSON Parsing
 		try {
-			// Clean markdown code fences if present
 			const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
 			const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-			if (jsonMatch) {
-				return JSON.parse(jsonMatch[0]);
-			}
-			return JSON.parse(cleaned);
-		} catch {
+			return JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
+		} catch (parseError) {
+			console.error("Parse error:", parseError, "Content:", content);
 			return {
 				type: "unknown",
-				name: "Tidak dapat diidentifikasi",
+				name: "Proses Gagal",
 				category: "lainnya",
 				transactionType: "unknown",
 				total: 0,
-				subtotal: 0,
-				tax: 0,
-				discount: 0,
-				items: [],
-				date: null,
-				paymentMethod: "unknown",
-				notes:
-					"Gambar berhasil dianalisis namun data tidak dapat diekstrak secara terstruktur.",
-				confidence: 30,
-				rawText: content,
+				notes: "Gagal memproses detail data secara otomatis. Silakan masukkan data secara manual.",
+				confidence: 10,
+				rawText: content
 			};
 		}
 	},
