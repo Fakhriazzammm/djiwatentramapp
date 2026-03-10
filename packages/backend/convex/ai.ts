@@ -63,98 +63,114 @@ async function callGeminiAPI(
 		return { success: false, text: "", error: "GEMINI_API_KEY belum diatur di dashboard Convex." };
 	}
 
+	// Use latest stable Gemini models with vision support
 	const models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
 	let lastError = "";
 
 	for (const model of models) {
-		try {
-			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+		// Retry up to 2 times per model for transient errors
+		for (let attempt = 0; attempt < 2; attempt++) {
+			try {
+				const controller = new AbortController();
+				const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout
 
-			const response = await fetch(
-				`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					signal: controller.signal,
-					body: JSON.stringify({
-						contents: [{
-							parts: [
-								{ inline_data: { mime_type: mimeType, data: base64Data } },
-								{ text: prompt }
+				console.log(`callGeminiAPI: Trying ${model} (attempt ${attempt + 1}), image size: ${base64Data.length} chars`);
+
+				const response = await fetch(
+					`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+					{
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						signal: controller.signal,
+						body: JSON.stringify({
+							contents: [{
+								parts: [
+									{ inline_data: { mime_type: mimeType, data: base64Data } },
+									{ text: prompt }
+								]
+							}],
+							generationConfig: {
+								temperature: options?.temperature ?? 0.1,
+								maxOutputTokens: options?.maxOutputTokens ?? 8192,
+								responseMimeType: "text/plain",
+							},
+							safetySettings: [
+								{ category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+								{ category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+								{ category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+								{ category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
 							]
-						}],
-						generationConfig: {
-							temperature: options?.temperature ?? 0.1,
-							maxOutputTokens: options?.maxOutputTokens ?? 4096,
-						},
-						safetySettings: [
-							{ category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-							{ category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-							{ category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-							{ category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-						]
-					})
-				}
-			);
+						})
+					}
+				);
 
-			clearTimeout(timeoutId);
+				clearTimeout(timeoutId);
 
-			if (response.ok) {
-				let result;
-				try {
-					result = await response.json();
-				} catch (jsonErr) {
-					lastError = `Gemini ${model}: Invalid JSON response`;
-					console.log(`callGeminiAPI: ${lastError}`, jsonErr);
-					continue;
+				if (response.ok) {
+					let result;
+					try {
+						result = await response.json();
+					} catch (jsonErr) {
+						lastError = `Gemini ${model}: Invalid JSON response from API`;
+						console.log(`callGeminiAPI: ${lastError}`, jsonErr);
+						break; // Try next model
+					}
+
+					// Log the raw response structure for debugging
+					console.log(`callGeminiAPI: ${model} response finishReason:`, result.candidates?.[0]?.finishReason);
+
+					const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+					if (text) {
+						console.log(`callGeminiAPI: Success with ${model}, response length: ${text.length}`);
+						return { success: true, text };
+					}
+					// Check for blocked content
+					const blockReason = result.candidates?.[0]?.finishReason;
+					if (blockReason === "SAFETY" || blockReason === "RECITATION") {
+						lastError = `Gemini ${model}: Content blocked (${blockReason})`;
+						console.log(lastError);
+						break; // Try next model
+					}
+					// Check for prompt feedback block
+					const promptBlock = result.promptFeedback?.blockReason;
+					if (promptBlock) {
+						lastError = `Gemini ${model}: Prompt blocked (${promptBlock})`;
+						console.log(lastError);
+						break; // Try next model
+					}
+					lastError = `Gemini ${model}: Empty response`;
+					break; // Try next model
+				} else {
+					const errorBody = await response.text().catch(() => "");
+					lastError = `Gemini ${model}: ${response.status} - ${errorBody.slice(0, 300)}`;
+					console.log(`callGeminiAPI: ${lastError}`);
+
+					// If 403 (forbidden) - API key issue, no point trying other models
+					if (response.status === 403) {
+						return { success: false, text: "", error: `Gemini API key tidak valid atau tidak memiliki akses. Periksa GEMINI_API_KEY di Convex dashboard.` };
+					}
+					// If 429 (rate limit) or 503 (overloaded), retry after brief wait
+					if ((response.status === 429 || response.status === 503) && attempt === 0) {
+						await new Promise(r => setTimeout(r, 2000));
+						continue; // Retry same model
+					}
+					// If 400 (bad request) - try next model
+					break;
 				}
-				const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
-				if (text) {
-					console.log(`callGeminiAPI: Success with ${model}`);
-					return { success: true, text };
+			} catch (e) {
+				if (e instanceof Error && e.name === "AbortError") {
+					lastError = `Gemini ${model}: Request timeout (45s)`;
+				} else {
+					lastError = `Gemini ${model}: ${e instanceof Error ? e.message : String(e)}`;
 				}
-				// Check for blocked content
-				const blockReason = result.candidates?.[0]?.finishReason;
-				if (blockReason === "SAFETY" || blockReason === "RECITATION") {
-					lastError = `Gemini ${model}: Content blocked (${blockReason})`;
-					console.log(lastError);
-					continue;
-				}
-				// Check for prompt feedback block
-				const promptBlock = result.promptFeedback?.blockReason;
-				if (promptBlock) {
-					lastError = `Gemini ${model}: Prompt blocked (${promptBlock})`;
-					console.log(lastError);
-					continue;
-				}
-				lastError = `Gemini ${model}: Empty response`;
-			} else {
-				const errorBody = await response.text().catch(() => "");
-				lastError = `Gemini ${model}: ${response.status} - ${errorBody.slice(0, 200)}`;
 				console.log(`callGeminiAPI: ${lastError}`);
-				// If 429 (rate limit) or 503 (overloaded), wait briefly and try next model
-				if (response.status === 429 || response.status === 503) {
-					await new Promise(r => setTimeout(r, 1000));
-				}
-				// If 400 (bad request) with this model, try next
-				if (response.status === 400) continue;
-				// If 403 (forbidden) - API key issue, no point trying other models
-				if (response.status === 403) {
-					return { success: false, text: "", error: `Gemini API key tidak valid atau tidak memiliki akses. ${lastError}` };
-				}
+				// Don't retry on abort/timeout, try next model
+				break;
 			}
-		} catch (e) {
-			if (e instanceof Error && e.name === "AbortError") {
-				lastError = `Gemini ${model}: Request timeout (30s)`;
-			} else {
-				lastError = `Gemini ${model}: ${e instanceof Error ? e.message : String(e)}`;
-			}
-			console.log(`callGeminiAPI: ${lastError}`);
 		}
 	}
 
-	return { success: false, text: "", error: lastError };
+	return { success: false, text: "", error: `Semua model Gemini gagal. Error terakhir: ${lastError}` };
 }
 
 /**
@@ -2752,31 +2768,57 @@ export const scanImageData = action({
 				throw new ConvexError("Gambar terlalu besar. Silakan kompres gambar terlebih dahulu (maks 3.5MB).");
 			}
 
-			const prompt = `Kamu adalah AI scanner dokumen keuangan yang ahli menganalisis gambar struk, kwitansi, nota, dan dokumen lainnya.
-Analisis gambar dan kembalikan data terstruktur dalam format JSON berikut TANPA teks tambahan apapun:
+			const prompt = `Kamu adalah AI OCR & scanner dokumen keuangan yang SANGAT TELITI. Tugasmu adalah membaca SETIAP HURUF dan ANGKA dari gambar struk/kwitansi/nota ini.
+
+LANGKAH-LANGKAH:
+1. BACA semua teks yang terlihat di gambar, mulai dari atas ke bawah
+2. IDENTIFIKASI nama toko/merchant dari header
+3. EKSTRAK setiap item beserta qty dan harganya
+4. TEMUKAN total, subtotal, pajak, diskon
+5. IDENTIFIKASI metode pembayaran dan tanggal
+6. VERIFIKASI: jumlahkan semua item dan pastikan cocok dengan total
+
+Kembalikan hasil dalam format JSON ini SAJA (tanpa teks tambahan):
 {
   "type": "receipt|invoice|note|handwriting|product|other",
-  "name": "nama merchant/toko yang terdeteksi",
+  "name": "nama merchant/toko",
   "category": "makanan|minuman|belanja|transportasi|tagihan|gaji|hiburan|kesehatan|lainnya",
   "transactionType": "expense|income|unknown",
-  "total": angka total dalam Rupiah (hanya angka, tanpa titik atau koma),
-  "subtotal": angka subtotal atau 0,
-  "tax": angka pajak/PPN atau 0,
-  "discount": angka diskon atau 0,
-  "items": [{"name": "nama item", "qty": jumlah, "price": harga satuan, "subtotal": qty * price}],
-  "date": "YYYY-MM-DD atau null jika tidak terdeteksi",
+  "total": 0,
+  "subtotal": 0,
+  "tax": 0,
+  "discount": 0,
+  "items": [{"name": "nama item", "qty": 1, "price": 0, "subtotal": 0}],
+  "date": "YYYY-MM-DD",
   "paymentMethod": "cash|qris|card|transfer|unknown",
-  "notes": "informasi tambahan yang relevan",
-  "confidence": angka 0-100 seberapa yakin kamu dengan hasil ekstraksi,
-  "rawText": "semua teks mentah yang terbaca dari gambar"
+  "notes": "catatan tambahan",
+  "confidence": 85,
+  "rawText": "SEMUA teks mentah dari gambar baris per baris",
+  "analysis": "Ringkasan analisis: jenis dokumen, total X item senilai Rp Y, dibayar via Z. Verifikasi: jumlah item = Rp A, total struk = Rp B, selisih = Rp C."
 }
 
-PENTING:
-- Baca SEMUA item dari struk dengan teliti, termasuk qty dan harga masing-masing
-- Total harus sesuai dengan penjumlahan semua item (subtotal + tax - discount)
-- Jika ada item yang tidak terbaca jelas, tetap masukkan dengan confidence rendah
-- Pastikan format angka dalam Rupiah tanpa separator (contoh: 45000 bukan 45.000)
-- HANYA kembalikan JSON, tanpa teks lain di luar JSON`;
+ATURAN ANGKA:
+- Semua angka harga dalam INTEGER Rupiah TANPA titik/koma (contoh: struk tertulis "14.000" -> tulis 14000)
+- "subtotal" per item = qty x price
+- Field "total" = nilai total yang tertera di struk
+- Field "subtotal" = jumlah semua item sebelum pajak/diskon
+
+ATURAN ITEM:
+- Baca SETIAP item, jangan ada yang terlewat
+- Jika qty tidak tertulis, anggap qty = 1
+- Jika harga per item sulit dibaca, estimasi dari konteks
+
+ATURAN rawText:
+- Tulis SEMUA teks yang terbaca dari gambar, per baris, pisahkan dengan \\n
+- Ini penting untuk verifikasi
+
+ATURAN analysis:
+- Tulis ringkasan dalam Bahasa Indonesia
+- Sebutkan: jumlah item, total belanja, metode bayar, tanggal
+- Verifikasi apakah jumlah item cocok dengan total
+- Berikan insight singkat (misal: "Pembelian roti di BreadTalk, 4 item senilai Rp 43.500")
+
+HANYA kembalikan JSON, tanpa teks lain.`;
 
 			// Gunakan Gemini API untuk scan gambar (best for vision/OCR)
 			const geminiResult = await callGeminiAPI(prompt, base64Data, mimeType);
@@ -2808,12 +2850,23 @@ PENTING:
 				throw new ConvexError("AI mengembalikan format data yang tidak valid. Coba lagi dengan gambar yang lebih jelas.");
 			}
 
-			// Validate and fix numeric fields
+			// Validate and fix numeric fields - handles Indonesian number formats
 			const ensureNumber = (val: unknown): number => {
-				if (typeof val === "number") return val;
+				if (typeof val === "number") return Math.round(val);
 				if (typeof val === "string") {
-					const num = Number(val.replace(/[.,\s]/g, ""));
-					return isNaN(num) ? 0 : num;
+					// Handle "14.000" (Indonesian) and "14,000" (English) and "14000"
+					const cleaned = val.replace(/\s/g, "");
+					// If it has dots as thousand separators (e.g., "14.000")
+					if (/^\d{1,3}(\.\d{3})+$/.test(cleaned)) {
+						return Math.round(Number(cleaned.replace(/\./g, "")));
+					}
+					// If it has commas as thousand separators (e.g., "14,000")
+					if (/^\d{1,3}(,\d{3})+$/.test(cleaned)) {
+						return Math.round(Number(cleaned.replace(/,/g, "")));
+					}
+					// General cleanup
+					const num = Number(cleaned.replace(/[.,\s]/g, ""));
+					return isNaN(num) ? 0 : Math.round(num);
 				}
 				return 0;
 			};
@@ -2832,7 +2885,17 @@ PENTING:
 					subtotal: ensureNumber(item.subtotal) || (ensureNumber(item.qty) || 1) * ensureNumber(item.price),
 				}));
 
-				// Recalculate total from items if total seems wrong
+				// Recalculate subtotals per item if they seem off
+				parsed.items = (parsed.items as Array<{ name: string; qty: number; price: number; subtotal: number }>).map((item) => {
+					const expectedSubtotal = item.qty * item.price;
+					// If subtotal doesn't match qty*price and price > 0, recalculate
+					if (item.price > 0 && item.subtotal !== expectedSubtotal && expectedSubtotal > 0) {
+						item.subtotal = expectedSubtotal;
+					}
+					return item;
+				});
+
+				// Recalculate totals from items
 				const itemsTotal = (parsed.items as Array<{ subtotal: number }>).reduce((sum, item) => sum + item.subtotal, 0);
 				if ((parsed.total as number) === 0 && itemsTotal > 0) {
 					parsed.total = itemsTotal + (parsed.tax as number) - (parsed.discount as number);
@@ -2840,8 +2903,31 @@ PENTING:
 				if ((parsed.subtotal as number) === 0 && itemsTotal > 0) {
 					parsed.subtotal = itemsTotal;
 				}
+
+				// Verification: check if items total matches the declared total
+				const declaredTotal = parsed.total as number;
+				const calculatedTotal = itemsTotal + (parsed.tax as number) - (parsed.discount as number);
+				const totalDiff = Math.abs(declaredTotal - calculatedTotal);
+
+				// Build verification info
+				parsed.verification = {
+					itemsSum: itemsTotal,
+					calculatedTotal,
+					declaredTotal,
+					difference: totalDiff,
+					isMatch: totalDiff <= 1, // Allow rounding diff of 1
+					itemCount: (parsed.items as Array<unknown>).length,
+				};
 			} else {
 				parsed.items = [];
+				parsed.verification = {
+					itemsSum: 0,
+					calculatedTotal: parsed.total as number,
+					declaredTotal: parsed.total as number,
+					difference: 0,
+					isMatch: true,
+					itemCount: 0,
+				};
 			}
 
 			parsed.confidence = ensureNumber(parsed.confidence);
@@ -2855,6 +2941,16 @@ PENTING:
 			parsed.paymentMethod = parsed.paymentMethod || "unknown";
 			parsed.rawText = parsed.rawText || "";
 			parsed.notes = parsed.notes || "";
+			parsed.analysis = parsed.analysis || "";
+
+			// Build analysis if Gemini didn't provide one
+			if (!parsed.analysis) {
+				const items = parsed.items as Array<{ name: string; qty: number; subtotal: number }>;
+				const totalQty = items.reduce((sum, i) => sum + i.qty, 0);
+				parsed.analysis = `${parsed.name}: ${items.length} jenis item (${totalQty} unit), total Rp ${(parsed.total as number).toLocaleString("id-ID")}. Bayar: ${parsed.paymentMethod}${parsed.date ? `, Tanggal: ${parsed.date}` : ""}.`;
+			}
+
+			console.log("scanImageData: Success -", (parsed.items as Array<unknown>).length, "items, total:", parsed.total);
 
 			return parsed;
 		} catch (error: unknown) {

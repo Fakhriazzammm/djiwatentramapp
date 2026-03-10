@@ -50,6 +50,15 @@ interface ScanResultData {
 	notes?: string;
 	confidence: number;
 	rawText?: string;
+	analysis?: string;
+	verification?: {
+		itemsSum: number;
+		calculatedTotal: number;
+		declaredTotal: number;
+		difference: number;
+		isMatch: boolean;
+		itemCount: number;
+	};
 }
 
 interface ChatMessage {
@@ -661,42 +670,86 @@ function AIChatPage() {
 				image: scanImage,
 			};
 
-			// Build summary text from scan result
+			// Build rich summary text from scan result
 			const items = result.items as Array<{ name: string; qty: number; price: number; subtotal: number }> | undefined;
+			const verification = result.verification as ScanResultData["verification"];
 			let summaryText = "";
-			if (result.name) summaryText += `**${result.name}**\n`;
+
+			// Header
+			if (result.name) summaryText += `🏪 ${result.name}\n`;
+			if (result.date) summaryText += `📅 ${result.date}\n`;
+			summaryText += "\n";
+
+			// Items detail
 			if (items && items.length > 0) {
-				summaryText += `\n📋 **Detail Item (${items.length} item):**\n`;
+				summaryText += `📋 Detail Item (${items.length} item):\n`;
 				items.forEach((item: { name: string; qty: number; price: number; subtotal: number }, i: number) => {
-					summaryText += `${i + 1}. ${item.name} x${item.qty} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`;
+					const priceStr = `Rp ${item.price.toLocaleString("id-ID")}`;
+					const subtotalStr = `Rp ${item.subtotal.toLocaleString("id-ID")}`;
+					if (item.qty > 1) {
+						summaryText += `  ${i + 1}. ${item.name} (${item.qty} x ${priceStr}) = ${subtotalStr}\n`;
+					} else {
+						summaryText += `  ${i + 1}. ${item.name} = ${subtotalStr}\n`;
+					}
 				});
+				summaryText += "\n";
 			}
-			if (result.subtotal) summaryText += `\nSubtotal: Rp ${Number(result.subtotal).toLocaleString("id-ID")}`;
-			if (result.tax) summaryText += `\nPajak: Rp ${Number(result.tax).toLocaleString("id-ID")}`;
-			if (result.discount) summaryText += `\nDiskon: -Rp ${Number(result.discount).toLocaleString("id-ID")}`;
-			summaryText += `\n\n💰 **Total: Rp ${Number(result.total).toLocaleString("id-ID")}**`;
-			summaryText += `\n\n📊 Keyakinan: ${result.confidence}% | Kategori: ${result.category} | Bayar: ${result.paymentMethod}`;
-			if (result.date) summaryText += ` | Tanggal: ${result.date}`;
+
+			// Financial summary
+			if (result.subtotal && result.subtotal !== result.total) {
+				summaryText += `Subtotal: Rp ${Number(result.subtotal).toLocaleString("id-ID")}\n`;
+			}
+			if (result.tax) summaryText += `Pajak: Rp ${Number(result.tax).toLocaleString("id-ID")}\n`;
+			if (result.discount) summaryText += `Diskon: -Rp ${Number(result.discount).toLocaleString("id-ID")}\n`;
+			summaryText += `💰 TOTAL: Rp ${Number(result.total).toLocaleString("id-ID")}\n`;
+
+			// Payment info
+			const paymentLabels: Record<string, string> = { cash: "Tunai", qris: "QRIS", card: "Kartu", transfer: "Transfer", unknown: "-" };
+			if (result.paymentMethod && result.paymentMethod !== "unknown") {
+				summaryText += `💳 Bayar: ${paymentLabels[result.paymentMethod] || result.paymentMethod}\n`;
+			}
+
+			// Verification
+			summaryText += "\n";
+			if (verification) {
+				if (verification.isMatch) {
+					summaryText += `✅ Verifikasi: Total item (Rp ${verification.itemsSum.toLocaleString("id-ID")}) cocok dengan total struk\n`;
+				} else {
+					summaryText += `⚠️ Verifikasi: Jumlah item Rp ${verification.itemsSum.toLocaleString("id-ID")} vs Total struk Rp ${verification.declaredTotal.toLocaleString("id-ID")} (selisih Rp ${verification.difference.toLocaleString("id-ID")})\n`;
+				}
+			}
+
+			// Analysis
+			if (result.analysis) {
+				summaryText += `\n📊 Analisis: ${result.analysis}\n`;
+			}
+
+			summaryText += `\n🎯 Keyakinan: ${result.confidence}% | Kategori: ${result.category}`;
 
 			// Add assistant message with structured scan result
 			const assistantMsg: ChatMessage = {
 				role: "assistant",
-				content: summaryText || result.notes || `Analisis selesai dengan tingkat keyakinan ${result.confidence}%.`,
+				content: summaryText,
 				scanData: result as ScanResultData,
 			};
 			setMessages((prev) => [...prev, userMsg, assistantMsg]);
 			setScanImage(null);
 			setShowScanPanel(false);
 			if (scanFileInputRef.current) scanFileInputRef.current.value = "";
-			toast.success("Gambar berhasil dianalisis!");
+			toast.success(`Berhasil! ${items?.length || 0} item terdeteksi, total Rp ${Number(result.total).toLocaleString("id-ID")}`);
 		} catch (error: unknown) {
 			// Extract ConvexError message properly
-			let msg = "Gagal menganalisis gambar. Coba lagi.";
+			let msg = "Gagal menganalisis gambar.";
 			if (error && typeof error === "object" && "data" in error) {
 				const convexErr = error as { data: string | { message?: string } };
 				msg = typeof convexErr.data === "string" ? convexErr.data : convexErr.data?.message || msg;
 			} else if (error instanceof Error) {
-				msg = error.message;
+				// Handle Convex "Server Error" specifically
+				if (error.message.includes("Server Error")) {
+					msg = "Gambar terlalu besar atau format tidak didukung. Coba kompres gambar atau gunakan format JPG/PNG.";
+				} else {
+					msg = error.message;
+				}
 			}
 			toast.error(msg);
 			console.error("Scan error:", error);
@@ -1949,6 +2002,8 @@ function ScanResultCard({ data }: { data: ScanResultData }) {
 				? "text-yellow-600 bg-yellow-500/10"
 				: "text-red-600 bg-red-500/10";
 
+	const [showRawText, setShowRawText] = useState(false);
+
 	return (
 		<div className="mt-3 overflow-hidden rounded-xl border border-border bg-background">
 			{/* Header */}
@@ -1958,7 +2013,7 @@ function ScanResultCard({ data }: { data: ScanResultData }) {
 					<span className="font-semibold text-foreground text-xs">
 						{typeLabel[data.type] ?? "Dokumen"}
 					</span>
-					{data.name && data.name !== "Tidak dapat diidentifikasi" && (
+					{data.name && data.name !== "Tidak terdeteksi" && data.name !== "Tidak dapat diidentifikasi" && (
 						<span className="text-muted-foreground text-xs">• {data.name}</span>
 					)}
 				</div>
@@ -2048,7 +2103,7 @@ function ScanResultCard({ data }: { data: ScanResultData }) {
 									<div className="flex-1 min-w-0">
 										<span className="text-[11px] text-foreground line-clamp-1">{item.name}</span>
 										{item.qty > 1 && (
-											<span className="text-[10px] text-muted-foreground"> x{item.qty}</span>
+											<span className="text-[10px] text-muted-foreground ml-1">x{item.qty} @ Rp{item.price.toLocaleString("id-ID")}</span>
 										)}
 									</div>
 									{(item.subtotal > 0 || item.price > 0) && (
@@ -2058,7 +2113,39 @@ function ScanResultCard({ data }: { data: ScanResultData }) {
 									)}
 								</div>
 							))}
+							{/* Items total row */}
+							<div className="flex items-center justify-between px-2.5 py-1.5 bg-muted/30">
+								<span className="text-[11px] font-semibold text-foreground">Total Item</span>
+								<span className="text-[11px] font-bold text-foreground">
+									Rp{data.items.reduce((sum, item) => sum + (item.subtotal || item.price * item.qty), 0).toLocaleString("id-ID")}
+								</span>
+							</div>
 						</div>
+					</div>
+				)}
+
+				{/* Verification */}
+				{data.verification && (
+					<div className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] ${data.verification.isMatch ? "bg-green-500/10 text-green-700" : "bg-yellow-500/10 text-yellow-700"}`}>
+						{data.verification.isMatch ? (
+							<>
+								<CheckCircle2 className="h-3 w-3" />
+								<span>Verifikasi OK: total item cocok dengan total struk</span>
+							</>
+						) : (
+							<>
+								<AlertTriangle className="h-3 w-3" />
+								<span>Selisih Rp{data.verification.difference.toLocaleString("id-ID")} (item: Rp{data.verification.itemsSum.toLocaleString("id-ID")} vs struk: Rp{data.verification.declaredTotal.toLocaleString("id-ID")})</span>
+							</>
+						)}
+					</div>
+				)}
+
+				{/* Analysis */}
+				{data.analysis && (
+					<div className="flex items-start gap-1.5 rounded-lg bg-blue-500/10 px-2.5 py-1.5 text-[10px] text-blue-700">
+						<Lightbulb className="h-3 w-3 mt-0.5 shrink-0" />
+						<span>{data.analysis}</span>
 					</div>
 				)}
 
@@ -2067,6 +2154,24 @@ function ScanResultCard({ data }: { data: ScanResultData }) {
 					<p className="text-[10px] text-muted-foreground italic leading-relaxed">
 						{data.notes}
 					</p>
+				)}
+
+				{/* Raw text toggle */}
+				{data.rawText && (
+					<div>
+						<button
+							className="text-[10px] text-muted-foreground hover:text-foreground transition-colors underline"
+							onClick={() => setShowRawText(!showRawText)}
+							type="button"
+						>
+							{showRawText ? "Sembunyikan teks mentah" : "Lihat teks mentah dari gambar"}
+						</button>
+						{showRawText && (
+							<pre className="mt-1 text-[9px] text-muted-foreground bg-muted/50 p-2 rounded-lg whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
+								{data.rawText}
+							</pre>
+						)}
+					</div>
 				)}
 			</div>
 		</div>
