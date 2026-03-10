@@ -208,100 +208,201 @@ const TOOL_LABELS: Record<string, string> = {
 };
 
 // Keyword-driven contextual quick action button generator
+// Priority-weighted keyword matching: each matched keyword adds to the rule's score.
+// Rules with higher scores are ranked first → prevents cross-context collisions.
 function generateQuickActions(userMsg: string, aiResponse: string): QuickActionButton[] {
-	const text = `${userMsg} ${aiResponse}`.toLowerCase();
-	const matched: QuickActionButton[] = [];
+	// Weight the user's message more (2×) than the AI response so intent is primary
+	const userText = userMsg.toLowerCase();
+	const aiText = aiResponse.toLowerCase();
 	let id = 0;
 
-	const rules: Array<{
-		keys: string[];
+	type Rule = {
+		keys: Array<{ word: string; weight: number }>;
 		buttons: Omit<QuickActionButton, "id">[];
-	}> = [
+	};
+
+	const rules: Rule[] = [
 		{
-			keys: ["produk", "menu", "makanan", "item", "katalog", "harga jual", "tambah produk", "hapus produk", "edit produk"],
-			buttons: [
-				{ label: "Lihat Produk", icon: "🛍️", variant: "product", actionType: "navigate", href: "/admin/products" },
-				{ label: "Tambah Produk", icon: "➕", variant: "product", actionType: "sendPrompt", prompt: "Bantu saya menambahkan produk baru ke katalog" },
+			// Finance context: unique domain terms get extra weight to beat generic "harga"
+			keys: [
+				{ word: "keuangan", weight: 3 },
+				{ word: "pendapatan", weight: 3 },
+				{ word: "pengeluaran", weight: 3 },
+				{ word: "pemasukan", weight: 3 },
+				{ word: "saldo", weight: 2 },
+				{ word: "laporan keuangan", weight: 4 },
+				{ word: "catat transaksi", weight: 4 },
+				{ word: "rekonsiliasi", weight: 4 },
+				{ word: "laba", weight: 2 },
+				{ word: "omset", weight: 3 },
+				{ word: "untung", weight: 2 },
+				{ word: "rugi", weight: 2 },
 			],
-		},
-		{
-			keys: ["pesanan", "order", "pelanggan", "buat pesanan", "transaksi penjualan", "checkout"],
-			buttons: [
-				{ label: "Lihat Pesanan", icon: "📋", variant: "order", actionType: "navigate", href: "/admin/orders" },
-				{ label: "Buat Pesanan", icon: "🛒", variant: "order", actionType: "sendPrompt", prompt: "Bantu saya membuat pesanan baru untuk pelanggan" },
-			],
-		},
-		{
-			keys: ["stok", "inventaris", "bahan", "persediaan", "restock", "habis", "rendah"],
-			buttons: [
-				{ label: "Lihat Inventaris", icon: "📦", variant: "stock", actionType: "navigate", href: "/admin/inventory" },
-				{ label: "Tambah Stok", icon: "⬆️", variant: "stock", actionType: "sendPrompt", prompt: "Bantu saya menambahkan stok inventaris bahan baku" },
-			],
-		},
-		{
-			keys: ["keuangan", "pendapatan", "pengeluaran", "pemasukan", "saldo", "laporan keuangan", "catat transaksi", "rekonsiliasi"],
 			buttons: [
 				{ label: "Lihat Keuangan", icon: "💰", variant: "finance", actionType: "navigate", href: "/admin/finance" },
 				{ label: "Catat Transaksi", icon: "📝", variant: "finance", actionType: "sendPrompt", prompt: "Bantu saya mencatat transaksi keuangan baru" },
 			],
 		},
 		{
-			keys: ["diskon", "promo", "voucher", "potongan harga", "kupon"],
+			keys: [
+				{ word: "produk", weight: 2 },
+				{ word: "menu", weight: 2 },
+				{ word: "makanan", weight: 2 },
+				{ word: "minuman", weight: 2 },
+				{ word: "item", weight: 1 },
+				{ word: "katalog", weight: 3 },
+				{ word: "tambah produk", weight: 4 },
+				{ word: "hapus produk", weight: 4 },
+				{ word: "edit produk", weight: 4 },
+				{ word: "harga jual", weight: 2 },
+				{ word: "kategori produk", weight: 3 },
+			],
+			buttons: [
+				{ label: "Lihat Produk", icon: "🛍️", variant: "product", actionType: "navigate", href: "/admin/products" },
+				{ label: "Tambah Produk", icon: "➕", variant: "product", actionType: "sendPrompt", prompt: "Bantu saya menambahkan produk baru ke katalog" },
+			],
+		},
+		{
+			keys: [
+				{ word: "pesanan", weight: 3 },
+				{ word: "order", weight: 2 },
+				{ word: "pelanggan", weight: 2 },
+				{ word: "buat pesanan", weight: 4 },
+				{ word: "transaksi penjualan", weight: 3 },
+				{ word: "checkout", weight: 3 },
+				{ word: "pembeli", weight: 2 },
+				{ word: "penjualan", weight: 2 },
+			],
+			buttons: [
+				{ label: "Lihat Pesanan", icon: "📋", variant: "order", actionType: "navigate", href: "/admin/orders" },
+				{ label: "Buat Pesanan", icon: "🛒", variant: "order", actionType: "sendPrompt", prompt: "Bantu saya membuat pesanan baru untuk pelanggan" },
+			],
+		},
+		{
+			keys: [
+				{ word: "stok", weight: 3 },
+				{ word: "inventaris", weight: 3 },
+				{ word: "bahan baku", weight: 3 },
+				{ word: "bahan", weight: 1 },
+				{ word: "persediaan", weight: 3 },
+				{ word: "restock", weight: 4 },
+				{ word: "stok habis", weight: 4 },
+				{ word: "stok rendah", weight: 4 },
+				{ word: "kehabisan", weight: 3 },
+				{ word: "supplier", weight: 2 },
+			],
+			buttons: [
+				{ label: "Lihat Inventaris", icon: "📦", variant: "stock", actionType: "navigate", href: "/admin/inventory" },
+				{ label: "Tambah Stok", icon: "⬆️", variant: "stock", actionType: "sendPrompt", prompt: "Bantu saya menambahkan stok inventaris bahan baku" },
+			],
+		},
+		{
+			keys: [
+				{ word: "diskon", weight: 3 },
+				{ word: "promo", weight: 3 },
+				{ word: "voucher", weight: 3 },
+				{ word: "potongan harga", weight: 4 },
+				{ word: "kupon", weight: 3 },
+				{ word: "cashback", weight: 3 },
+				{ word: "promosi", weight: 3 },
+			],
 			buttons: [
 				{ label: "Lihat Diskon", icon: "🏷️", variant: "discount", actionType: "navigate", href: "/admin/discounts" },
 				{ label: "Buat Diskon", icon: "✨", variant: "discount", actionType: "sendPrompt", prompt: "Bantu saya membuat diskon atau promo baru" },
 			],
 		},
 		{
-			keys: ["hpp", "harga pokok", "biaya produksi", "modal", "margin"],
+			keys: [
+				{ word: "hpp", weight: 4 },
+				{ word: "harga pokok", weight: 4 },
+				{ word: "biaya produksi", weight: 4 },
+				{ word: "modal", weight: 2 },
+				{ word: "margin", weight: 3 },
+				{ word: "break even", weight: 4 },
+			],
 			buttons: [
 				{ label: "HPP Kalkulator", icon: "🧮", variant: "misc", actionType: "navigate", href: "/admin/hpp-calculator" },
 			],
 		},
 		{
-			keys: ["prediksi", "forecast", "perkiraan", "tren penjualan", "proyeksi"],
+			keys: [
+				{ word: "prediksi", weight: 4 },
+				{ word: "forecast", weight: 4 },
+				{ word: "perkiraan", weight: 3 },
+				{ word: "tren penjualan", weight: 4 },
+				{ word: "proyeksi", weight: 4 },
+				{ word: "ramalan", weight: 3 },
+			],
 			buttons: [
 				{ label: "Lihat Forecast", icon: "📈", variant: "misc", actionType: "navigate", href: "/admin/forecasting" },
 			],
 		},
 		{
-			keys: ["booking", "reservasi", "jadwal", "meja", "tempat duduk"],
+			keys: [
+				{ word: "booking", weight: 4 },
+				{ word: "reservasi", weight: 4 },
+				{ word: "jadwal", weight: 2 },
+				{ word: "meja", weight: 2 },
+				{ word: "tempat duduk", weight: 3 },
+				{ word: "kapasitas", weight: 2 },
+			],
 			buttons: [
 				{ label: "Lihat Booking", icon: "📅", variant: "misc", actionType: "navigate", href: "/admin/booking" },
 			],
 		},
 		{
-			keys: ["pengaturan", "setting", "profil toko", "nama toko", "jam buka"],
+			keys: [
+				{ word: "pengaturan", weight: 3 },
+				{ word: "setting", weight: 3 },
+				{ word: "profil toko", weight: 4 },
+				{ word: "nama toko", weight: 4 },
+				{ word: "jam buka", weight: 4 },
+				{ word: "alamat", weight: 2 },
+				{ word: "konfigurasi", weight: 3 },
+			],
 			buttons: [
 				{ label: "Pengaturan Toko", icon: "⚙️", variant: "misc", actionType: "navigate", href: "/admin/settings" },
 			],
 		},
 	];
 
+	// Score each rule: user text keywords weighted 2×, AI text weighted 1×
+	const scored = rules.map((rule) => {
+		let score = 0;
+		for (const { word, weight } of rule.keys) {
+			if (userText.includes(word)) score += weight * 2;
+			else if (aiText.includes(word)) score += weight;
+		}
+		return { rule, score };
+	});
+
+	// Sort by score descending, only include rules with at least 1 match
+	const sorted = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score);
+
 	const seen = new Set<string>();
-	for (const rule of rules) {
-		if (rule.keys.some((k) => text.includes(k))) {
-			for (const btn of rule.buttons) {
-				const key = btn.href ?? btn.prompt ?? btn.label;
-				if (!seen.has(key)) {
-					seen.add(key);
-					matched.push({ ...btn, id: `qa-${id++}` });
-				}
+	const result: QuickActionButton[] = [];
+
+	for (const { rule } of sorted) {
+		for (const btn of rule.buttons) {
+			const key = btn.href ?? btn.prompt ?? btn.label;
+			if (!seen.has(key)) {
+				seen.add(key);
+				result.push({ ...btn, id: `qa-${id++}` });
 			}
 		}
+		if (result.length >= 4) break;
 	}
 
-	// Always provide at least a default recap action if nothing matched
-	if (matched.length === 0) {
-		matched.push(
+	// Fallback: smart defaults if nothing matched
+	if (result.length === 0) {
+		return [
 			{ id: `qa-${id++}`, label: "Rekap Hari Ini", icon: "📊", variant: "misc", actionType: "sendPrompt", prompt: "Berikan rekap lengkap bisnis hari ini" },
-			{ id: `qa-${id++}`, label: "Stok Rendah", icon: "⚠️", variant: "stock", actionType: "sendPrompt", prompt: "Tampilkan produk yang stoknya rendah" },
+			{ id: `qa-${id++}`, label: "Stok Rendah", icon: "⚠️", variant: "stock", actionType: "sendPrompt", prompt: "Tampilkan produk yang stoknya rendah atau habis" },
 			{ id: `qa-${id++}`, label: "Lihat Keuangan", icon: "💰", variant: "finance", actionType: "navigate", href: "/admin/finance" },
-		);
+		];
 	}
 
-	// Cap at 4 buttons max
-	return matched.slice(0, 4);
+	return result.slice(0, 4);
 }
 
 function AIChatPage() {
@@ -317,6 +418,7 @@ function AIChatPage() {
 	const [isStreaming, setIsStreaming] = useState(false);
 	const [streamingContent, setStreamingContent] = useState("");
 	const streamingActiveRef = useRef(false);
+	const scrollThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
 	const [isImageScannerOpen, setIsImageScannerOpen] = useState(false);
 	const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -371,10 +473,16 @@ function AIChatPage() {
 	}, [createTransactionMutation, actionButtonLoading, actionButtonDone]);
 
 	const handleQuickAction = useCallback((action: QuickActionButton) => {
-		if (action.actionType === "navigate" && action.href) {
-			navigate({ to: action.href as Parameters<typeof navigate>[0]["to"] });
-		} else if (action.actionType === "sendPrompt" && action.prompt) {
-			sendMessage(action.prompt);
+		try {
+			if (action.actionType === "navigate") {
+				if (!action.href) return;
+				navigate({ to: action.href as Parameters<typeof navigate>[0]["to"] });
+			} else if (action.actionType === "sendPrompt") {
+				if (!action.prompt) return;
+				sendMessage(action.prompt);
+			}
+		} catch {
+			toast.error("Gagal menjalankan aksi. Silakan coba lagi.");
 		}
 	}, [navigate, sendMessage]);
 
@@ -451,11 +559,14 @@ function AIChatPage() {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, []);
 
-	// Auto-scroll while streaming
+	// Auto-scroll while streaming — throttled to 120ms to reduce scroll jank
 	useEffect(() => {
-		if (isStreaming) {
+		if (!isStreaming) return;
+		if (scrollThrottleRef.current) return;
+		scrollThrottleRef.current = setTimeout(() => {
 			messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-		}
+			scrollThrottleRef.current = null;
+		}, 120);
 	}, [streamingContent, isStreaming]);
 
 	// Sanitize AI response - remove markdown formatting and suggestion tags
@@ -598,7 +709,7 @@ function AIChatPage() {
 	);
 
 	// Session management functions (defined before sendMessage to avoid initialization issues)
-	const startNewSession = async () => {
+	const startNewSession = async (): Promise<string | null> => {
 		const today = new Date();
 		const dateStr = today.toLocaleDateString("id-ID", {
 			day: "numeric",
@@ -623,17 +734,20 @@ function AIChatPage() {
 					},
 				]);
 				setShowSessionHistory(false);
+				return result.sessionId;
 			}
 		} catch {
 			toast.error("Gagal membuat sesi baru");
 		}
+		return null;
 	};
 
-	const saveMessage = async (message: ChatMessage) => {
-		if (currentSessionId) {
+	const saveMessage = async (message: ChatMessage, sessionIdOverride?: string) => {
+		const sid = sessionIdOverride ?? currentSessionId;
+		if (sid) {
 			try {
 				await saveConversationMutation({
-					sessionId: currentSessionId,
+					sessionId: sid,
 					role: message.role,
 					content: message.content,
 					metadata: {
@@ -648,19 +762,21 @@ function AIChatPage() {
 
 	const sendMessage = useCallback(
 		async (text: string, image?: string) => {
-			if (!(text.trim() || image || selectedImages.length > 0) || isLoading) {
+			// Guard: also block while streaming to prevent race conditions
+			if (!(text.trim() || image || selectedImages.length > 0) || isLoading || isStreaming) {
 				return;
 			}
 
-			// Create session if none exists
-			if (!currentSessionId) {
-				await startNewSession();
+			// Capture or create session ID synchronously before any state updates
+			let activeSessionId = currentSessionId;
+			if (!activeSessionId) {
+				activeSessionId = await startNewSession();
 			}
 
 			const userMessage: ChatMessage = {
 				role: "user",
 				content: text.trim(),
-				image: image || (selectedImages.length > 0 ? selectedImages[0] : undefined), // Keep for backward compat
+				image: image || (selectedImages.length > 0 ? selectedImages[0] : undefined),
 			};
 			setMessages((prev) => [...prev, userMessage]);
 			setInput("");
@@ -718,11 +834,12 @@ function AIChatPage() {
 					sanitizeResponse(response) ||
 					"Maaf, saya tidak bisa memproses permintaan ini.";
 
-				setIsLoading(false);
-
 				const quickActions = generateQuickActions(text.trim(), sanitized);
-				// Stream the response word by word for realistic effect
+
+				// setIsLoading(false) moved inside callback so the input stays locked
+				// during the full streaming phase, preventing concurrent submissions
 				streamText(sanitized, async () => {
+					setIsLoading(false);
 					const assistantMessage: ChatMessage = {
 						role: "assistant",
 						content: sanitized,
@@ -730,9 +847,10 @@ function AIChatPage() {
 						quickActions,
 					};
 					setMessages((prev) => [...prev, assistantMessage]);
-					if (currentSessionId) {
-						await saveMessage(userMessage);
-						await saveMessage(assistantMessage);
+					// Use captured activeSessionId to avoid stale-closure state
+					if (activeSessionId) {
+						await saveMessage(userMessage, activeSessionId);
+						await saveMessage(assistantMessage, activeSessionId);
 					}
 				});
 			} catch (error) {
@@ -754,7 +872,7 @@ function AIChatPage() {
 				setToolCalls([]);
 			}
 		},
-		[isLoading, messages, yumiChat, selectedImages, currentSessionId, startNewSession, saveMessage, streamText]
+		[isLoading, isStreaming, messages, yumiChat, selectedImages, currentSessionId, startNewSession, saveMessage, streamText]
 	);
 
 	// Helper: compress image for AI scan - optimized for OCR readability
@@ -1321,85 +1439,78 @@ function AIChatPage() {
 													)}
 												</div>
 
-												{/* Smart Suggestion Buttons - Premium Prominent Design */}
-												{msg.role === "assistant" && msg.suggestions && msg.suggestions.length > 0 && (
-													<motion.div 
-														initial={{ opacity: 0, y: 8 }}
+												{/* Unified second bubble: quick actions + AI suggestions */}
+												{msg.role === "assistant" && (msg.quickActions?.length || msg.suggestions?.length) ? (
+													<motion.div
+														initial={{ opacity: 0, y: 10 }}
 														animate={{ opacity: 1, y: 0 }}
-														transition={{ delay: 0.3, duration: 0.4 }}
-														className="mt-4 space-y-2 border-t border-border/50 pt-3"
+														transition={{ delay: 0.4, duration: 0.35 }}
+														className="mt-2 space-y-1.5"
 													>
-														<div className="flex items-center gap-1.5 px-1 mb-1">
-															<Sparkles className="h-3 w-3 text-primary animate-pulse" />
-															<span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-																Saran Aksi
-															</span>
+														<div className="flex items-center gap-1.5 px-1">
+															<Zap className="h-3 w-3 text-amber-500 animate-pulse" />
+															<span className="font-bold text-[10px] text-amber-500 uppercase tracking-wider">Langkah Selanjutnya</span>
 														</div>
-														<div className="flex flex-wrap gap-2">
-															{msg.suggestions.map((suggestion, idx) => (
-																<button
-																	key={idx}
-																	onClick={() => sendMessage(suggestion.prompt)}
-																	className="group flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-xs font-semibold text-primary transition-all hover:scale-105 hover:border-primary/40 hover:bg-primary/10 hover:shadow-md active:scale-95 disabled:opacity-50"
-																	type="button"
-																	disabled={isLoading}
-																>
-																	<div className="flex h-5 w-5 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-																		<Send className="h-2.5 w-2.5" />
-																	</div>
-																	<span>{suggestion.label}</span>
-																</button>
-															))}
-														</div>
-													</motion.div>
-												)}
-													{/* Second bubble: contextual quick actions */}
-													{msg.role === "assistant" && msg.quickActions && msg.quickActions.length > 0 && (
-														<motion.div
-															initial={{ opacity: 0, y: 10 }}
-															animate={{ opacity: 1, y: 0 }}
-															transition={{ delay: 0.5, duration: 0.35 }}
-															className="flex justify-start mt-1"
-														>
-															<div className="max-w-[85%] w-full space-y-1.5">
-																<div className="flex items-center gap-1.5 px-1">
-																	<Zap className="h-3 w-3 text-amber-500 animate-pulse" />
-																	<span className="font-bold text-[10px] text-amber-500 uppercase tracking-wider">Aksi Terkait</span>
+														<div className="rounded-xl rounded-tl-none border border-amber-500/20 bg-amber-50/40 px-3 py-2.5 dark:bg-amber-950/20 md:rounded-2xl md:px-4 md:py-3">
+															{msg.quickActions && msg.quickActions.length > 0 && (
+																<div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+																	{msg.quickActions.map((action) => (
+																		<button
+																			key={action.id}
+																			onClick={() => handleQuickAction(action)}
+																			type="button"
+																			disabled={isLoading || isStreaming}
+																			className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 sm:py-1.5 ${
+																				action.variant === "finance"
+																					? "border-emerald-400/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400"
+																					: action.variant === "order"
+																					? "border-blue-400/40 bg-blue-500/10 text-blue-700 hover:bg-blue-500/20 dark:text-blue-400"
+																					: action.variant === "product"
+																					? "border-purple-400/40 bg-purple-500/10 text-purple-700 hover:bg-purple-500/20 dark:text-purple-400"
+																					: action.variant === "stock"
+																					? "border-orange-400/40 bg-orange-500/10 text-orange-700 hover:bg-orange-500/20 dark:text-orange-400"
+																					: action.variant === "discount"
+																					? "border-pink-400/40 bg-pink-500/10 text-pink-700 hover:bg-pink-500/20 dark:text-pink-400"
+																					: "border-border bg-background text-foreground hover:bg-muted"
+																			}`}
+																		>
+																			<span className="text-sm leading-none">{action.icon}</span>
+																			<span className="flex-1 text-left">{action.label}</span>
+																			{action.actionType === "navigate" && (
+																				<ArrowRight className="h-3 w-3 shrink-0 opacity-60" />
+																			)}
+																		</button>
+																	))}
 																</div>
-																<div className="rounded-xl rounded-tl-none border border-amber-500/20 bg-amber-50/40 dark:bg-amber-950/20 px-3 py-2.5 md:rounded-2xl md:px-4 md:py-3">
-																	<div className="flex flex-wrap gap-2">
-																		{msg.quickActions.map((action) => (
+															)}
+															{msg.suggestions && msg.suggestions.length > 0 && (
+																<>
+																	{msg.quickActions && msg.quickActions.length > 0 && (
+																		<div className="my-2.5 border-t border-amber-500/15" />
+																	)}
+																	<div className="mb-1.5 flex items-center gap-1">
+																		<Sparkles className="h-2.5 w-2.5 text-primary/60" />
+																		<span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Tanya Yumi</span>
+																	</div>
+																	<div className="flex flex-wrap gap-1.5">
+																		{msg.suggestions.map((suggestion, idx) => (
 																			<button
-																				key={action.id}
-																				onClick={() => handleQuickAction(action)}
+																				key={idx}
+																				onClick={() => sendMessage(suggestion.prompt)}
 																				type="button"
-																				disabled={isLoading}
-																				className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all hover:scale-105 active:scale-95 disabled:opacity-50 ${
-																					action.variant === "finance"
-																						? "border-emerald-400/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400"
-																						: action.variant === "order"
-																						? "border-blue-400/40 bg-blue-500/10 text-blue-700 hover:bg-blue-500/20 dark:text-blue-400"
-																						: action.variant === "product"
-																						? "border-purple-400/40 bg-purple-500/10 text-purple-700 hover:bg-purple-500/20 dark:text-purple-400"
-																						: action.variant === "stock"
-																						? "border-orange-400/40 bg-orange-500/10 text-orange-700 hover:bg-orange-500/20 dark:text-orange-400"
-																						: action.variant === "discount"
-																						? "border-pink-400/40 bg-pink-500/10 text-pink-700 hover:bg-pink-500/20 dark:text-pink-400"
-																						: "border-border bg-background text-foreground hover:bg-muted"
-																				}}`}
+																				disabled={isLoading || isStreaming}
+																				className="flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-all hover:scale-105 hover:bg-primary/10 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
 																			>
-																				<span className="text-sm leading-none">{action.icon}</span>
-																				<span>{action.label}</span>
-																				{action.actionType === "navigate" && (
-																					<ArrowRight className="h-3 w-3 opacity-60" />
-																				)}
+																				<Send className="h-2.5 w-2.5 shrink-0" />
+																				<span>{suggestion.label}</span>
 																			</button>
 																		))}
 																	</div>
-																</div>
-															</div>
-														</motion.div>
-													)}
+																</>
+															)}
+														</div>
+													</motion.div>
+												) : null}
 											</div>
 										</motion.div>
 									))}
