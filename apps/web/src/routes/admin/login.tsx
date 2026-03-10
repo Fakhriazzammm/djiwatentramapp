@@ -6,7 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 
-// biome-ignore lint/suspicious/noExplicitAny: Temporary bypass for route typing
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Route = createFileRoute("/admin/login" as any)({
 	component: LoginPage,
 });

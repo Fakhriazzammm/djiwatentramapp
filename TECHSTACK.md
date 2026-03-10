@@ -52,8 +52,7 @@ A serverless backend powered by Convex for real-time data sync and reliability.
 ## 🛠️ Tools & Standards
 
 ### Quality Control
-- **Linting & Formatting**: [Biome](https://biomejs.dev/) (orchestrated via [Ultracite](https://github.com/hyperce/ultracite))
-- **Git Hooks**: [Husky](https://typicode.github.io/husky/) & [lint-staged](https://github.com/lint-staged/lint-staged)
+- **Linting & Formatting**: Prettier / ESLint
 
 ### Environment Management
 - **Type-safe Env**: Custom package in `packages/env` using Zod for validation.

@@ -9,7 +9,8 @@ interface State {
 	error: Error | null;
 }
 
-// biome-ignore lint/style/useReactFunctionComponents: Error boundaries require class components - no function component equivalent exists in React
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - Error boundaries require class components
 export class ErrorBoundary extends Component<Props, State> {
 	constructor(props: Props) {
 		super(props);

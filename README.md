@@ -17,8 +17,9 @@ Refer to [TECHSTACK.md](file:///a:/My-Startup/djiwatentramapp/TECHSTACK.md) for 
 - **Turborepo** - Optimized monorepo build system
 - **PWA** - Progressive Web App support
 - **Tauri** - Build native desktop applications
-- **Biome** - Linting and formatting
-- **Husky** - Git hooks for code quality
+- **TypeScript** - Type safety for frontend and backend
+- **Tailwind CSS** - Modern styling framework
+- **Lucide** - Beautiful icons library
 
 ## Getting Started
 
@@ -51,7 +52,6 @@ Your app will connect to the Convex cloud backend automatically.
 
 ## Git Hooks and Formatting
 
-- Initialize hooks: `bun run prepare`
 - Format and lint fix: `bun run check`
 
 ## Project Structure
@@ -71,7 +71,7 @@ yumipos/
 - `bun run dev:web`: Start only the web application
 - `bun run dev:setup`: Setup and configure your Convex project
 - `bun run check-types`: Check TypeScript types across all apps
-- `bun run check`: Run Biome formatting and linting
+- `bun run check`: Run formatting and linting
 - `bun run convex:push`: Deploy backend to Convex production
 - `bun run convex:pull`: Sync and develop with Convex locally
 - `cd apps/web && bun run generate-pwa-assets`: Generate PWA assets

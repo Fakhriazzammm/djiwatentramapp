@@ -17,7 +17,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
-// biome-ignore lint/suspicious/noExplicitAny: Route not yet in generated route tree
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Route = createFileRoute("/admin/forecasting" as any)({
 	component: ForecastingPage,
 });

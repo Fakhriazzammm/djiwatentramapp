@@ -226,7 +226,7 @@ export const deleteUser = mutation({
 
 // Helper to create role internally
 async function createRoleInternal(
-	// biome-ignore lint/suspicious/noExplicitAny: internal helper
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	ctx: any,
 	name: string,
 	permissions: string[]

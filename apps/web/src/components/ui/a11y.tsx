@@ -248,7 +248,7 @@ export function KeyboardNavigable({
 	};
 
 	return (
-		// biome-ignore lint/a11y/noNoninteractiveElementInteractions: fieldset needs keyboard navigation for accessibility
+		// eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- fieldset needs keyboard navigation for accessibility
 		<fieldset
 			className={cn("outline-none", className)}
 			onKeyDown={handleKeyDown}

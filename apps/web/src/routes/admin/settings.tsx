@@ -46,19 +46,19 @@ function SettingsPage() {
 
 	// Users & Roles
 	// Users & Roles
-	// biome-ignore lint/suspicious/noExplicitAny: API types not ready
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const users = useQuery((api as any).users.getUsers);
-	// biome-ignore lint/suspicious/noExplicitAny: API types not ready
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const roles = useQuery((api as any).roles.getRoles);
-	// biome-ignore lint/suspicious/noExplicitAny: API types not ready
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const _createUser = useMutation((api as any).users.createUser);
-	// biome-ignore lint/suspicious/noExplicitAny: API types not ready
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const _updateUser = useMutation((api as any).users.updateUser);
-	// biome-ignore lint/suspicious/noExplicitAny: API types not ready
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const deleteUser = useMutation((api as any).users.deleteUser);
-	// biome-ignore lint/suspicious/noExplicitAny: API types not ready
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const createRole = useMutation((api as any).roles.createRole);
-	// biome-ignore lint/suspicious/noExplicitAny: API types not ready
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const deleteRole = useMutation((api as any).roles.deleteRole);
 
 	const [settings, setSettings] = useState({
@@ -195,7 +195,7 @@ function SettingsPage() {
 		}
 	};
 
-	// biome-ignore lint/suspicious/noExplicitAny: API types not ready
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const bindProfile = useMutation((api as any).users.bindProfile);
 
 	const handleCreateUser = async () => {
@@ -891,7 +891,7 @@ function SettingsPage() {
 												<option disabled value="">
 													Pilih Role
 												</option>
-												{/* biome-ignore lint/suspicious/noExplicitAny: missing types */}
+												{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
 												{roles?.map((role: any) => (
 													<option key={role._id} value={role._id}>
 														{role.name}
@@ -990,7 +990,7 @@ function SettingsPage() {
 												Daftar Pengguna
 											</h4>
 											<div className="space-y-2">
-												{/* biome-ignore lint/suspicious/noExplicitAny: missing types */}
+												{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
 												{users?.map((user: any) => (
 													<div
 														className="flex items-center justify-between rounded-2xl border border-border bg-background p-4 shadow-sm"
@@ -1030,7 +1030,7 @@ function SettingsPage() {
 												Daftar Role
 											</h4>
 											<div className="flex flex-wrap gap-2">
-												{/* biome-ignore lint/suspicious/noExplicitAny: missing types */}
+												{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
 												{roles?.map((role: any) => (
 													<div
 														className="group flex items-center gap-3 rounded-xl border border-border bg-background py-2.5 pr-2 pl-4 shadow-sm transition-all hover:border-primary/20"

@@ -2,11 +2,13 @@ import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Doc } from "@yumipos/backend/convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 import {
+	ChevronLeft,
 	ClipboardList,
 	History,
 	Loader2,
+	Printer,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -116,6 +118,12 @@ function getDateRange(filter: FilterType): { start: number; end: number } {
 				end: endOfLastMonth.getTime(),
 			};
 		}
+		default: {
+			return {
+				start: today.getTime(),
+				end: today.getTime() + 24 * 60 * 60 * 1000 - 1,
+			};
+		}
 	}
 }
 
@@ -142,6 +150,9 @@ const formatDate = (timestamp: number) =>
 export function TransactionHistorySidebar() {
 	const [isOpen, setIsOpen] = useState(false);
 	const [activeFilter, setActiveFilter] = useState<FilterType>("today");
+	const [selectedOrder, setSelectedOrder] = useState<Doc<"orders"> | null>(
+		null
+	);
 
 	const orders = useQuery(api.orders.getOrders, {});
 
@@ -150,7 +161,7 @@ export function TransactionHistorySidebar() {
 
 		const { start, end } = getDateRange(activeFilter);
 
-		return orders.filter((order) => {
+		return orders.filter((order: Doc<"orders">) => {
 			const orderTime = order.createdAt;
 			return orderTime >= start && orderTime <= end;
 		});
@@ -158,18 +169,24 @@ export function TransactionHistorySidebar() {
 
 	const totalAmount = useMemo(() => {
 		return filteredOrders
-			.filter(
-				(o) => o.status === "paid" || o.status === "completed"
-			)
-			.reduce((acc, o) => acc + o.totalAmount, 0);
+			.filter((o: Doc<"orders">) => o.status === "paid" || o.status === "completed")
+			.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 	}, [filteredOrders]);
 
 	const paidOrdersCount = filteredOrders.filter(
-		(o) => o.status === "paid" || o.status === "completed"
+		(o: Doc<"orders">) => o.status === "paid" || o.status === "completed"
 	).length;
 
 	return (
-		<Sheet onOpenChange={setIsOpen} open={isOpen}>
+		<Sheet
+			onOpenChange={(open) => {
+				setIsOpen(open);
+				if (!open) {
+					setTimeout(() => setSelectedOrder(null), 300);
+				}
+			}}
+			open={isOpen}
+		>
 			<SheetTrigger>
 				<Button
 					className="shrink-0 gap-1.5 bg-background"
@@ -186,80 +203,106 @@ export function TransactionHistorySidebar() {
 				className="flex w-full flex-col p-0 sm:w-[450px]"
 				side="right"
 			>
-				<SheetHeader className="border-b p-4">
-					<SheetTitle className="flex items-center gap-2">
-						<ClipboardList className="h-5 w-5 text-primary" />
-						Riwayat Transaksi
-					</SheetTitle>
-				</SheetHeader>
+				{selectedOrder ? (
+					<OrderDetailView
+						onBack={() => setSelectedOrder(null)}
+						order={selectedOrder}
+					/>
+				) : (
+					<>
+						<SheetHeader className="border-b p-4">
+							<SheetTitle className="flex items-center gap-2">
+								<ClipboardList className="h-5 w-5 text-primary" />
+								Riwayat Transaksi
+							</SheetTitle>
+						</SheetHeader>
 
-				{/* Filter Buttons */}
-				<div className="border-b bg-muted/30 p-3">
-					<div className="flex flex-wrap gap-1.5">
-						{FILTER_OPTIONS.map((option) => (
-							<button
-								className={`rounded-full px-3 py-1.5 font-medium text-xs transition-all ${
-									activeFilter === option.value
-										? "bg-primary text-primary-foreground"
-										: "bg-muted text-muted-foreground hover:bg-muted/80"
-								}`}
-								key={option.value}
-								onClick={() => setActiveFilter(option.value)}
-								type="button"
-							>
-								{option.label}
-							</button>
-						))}
-					</div>
-				</div>
-
-				{/* Orders List */}
-				<div className="flex-1 overflow-hidden">
-					{orders === undefined ? (
-						<div className="flex h-full items-center justify-center">
-							<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-						</div>
-					) : filteredOrders.length === 0 ? (
-						<div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
-							<ClipboardList className="h-12 w-12 text-muted-foreground/30" />
-							<p className="font-medium text-muted-foreground text-sm">
-								Tidak ada transaksi
-							</p>
-							<p className="text-muted-foreground text-xs">
-								{FILTER_OPTIONS.find((f) => f.value === activeFilter)?.label}
-							</p>
-						</div>
-					) : (
-						<ScrollArea className="h-full">
-							<div className="space-y-2 p-3">
-								{filteredOrders.map((order) => (
-									<OrderCard key={order._id} order={order} />
+						{/* Filter Buttons */}
+						<div className="border-b bg-muted/30 p-3">
+							<div className="flex flex-wrap gap-1.5">
+								{FILTER_OPTIONS.map((option) => (
+									<button
+										className={`rounded-full px-3 py-1.5 font-medium text-xs transition-all ${
+											activeFilter === option.value
+												? "bg-primary text-primary-foreground"
+												: "bg-muted text-muted-foreground hover:bg-muted/80"
+										}`}
+										key={option.value}
+										onClick={() => setActiveFilter(option.value)}
+										type="button"
+									>
+										{option.label}
+									</button>
 								))}
 							</div>
-						</ScrollArea>
-					)}
-				</div>
+						</div>
 
-				{/* Total Footer */}
-				<div className="shrink-0 border-t bg-card p-4">
-					<div className="mb-2 flex items-center justify-between">
-						<span className="text-muted-foreground text-sm">
-							{paidOrdersCount} transaksi selesai
-						</span>
-					</div>
-					<div className="flex items-center justify-between">
-						<span className="font-semibold text-foreground">Total Penjualan</span>
-						<span className="font-bold text-primary text-xl">
-							{formatCurrency(totalAmount)}
-						</span>
-					</div>
-				</div>
+						{/* Orders List */}
+						<div className="flex-1 overflow-hidden">
+							{orders === undefined && (
+								<div className="flex h-full items-center justify-center">
+									<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+								</div>
+							)}
+							{orders !== undefined && filteredOrders.length === 0 && (
+								<div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
+									<ClipboardList className="h-12 w-12 text-muted-foreground/30" />
+									<p className="font-medium text-muted-foreground text-sm">
+										Tidak ada transaksi
+									</p>
+									<p className="text-muted-foreground text-xs">
+										{
+											FILTER_OPTIONS.find((f) => f.value === activeFilter)
+												?.label
+										}
+									</p>
+								</div>
+							)}
+							{orders !== undefined && filteredOrders.length > 0 && (
+								<ScrollArea className="h-full">
+									<div className="space-y-2 p-3">
+										{filteredOrders.map((order: Doc<"orders">) => (
+											<OrderCard
+												key={order._id}
+												onClick={() => setSelectedOrder(order)}
+												order={order}
+											/>
+										))}
+									</div>
+								</ScrollArea>
+							)}
+						</div>
+
+						{/* Total Footer */}
+						<div className="shrink-0 border-t bg-card p-4">
+							<div className="mb-2 flex items-center justify-between">
+								<span className="text-muted-foreground text-sm">
+									{paidOrdersCount} transaksi selesai
+								</span>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="font-semibold text-foreground">
+									Total Penjualan
+								</span>
+								<span className="font-bold text-primary text-xl">
+									{formatCurrency(totalAmount)}
+								</span>
+							</div>
+						</div>
+					</>
+				)}
 			</SheetContent>
 		</Sheet>
 	);
 }
 
-function OrderCard({ order }: { order: Doc<"orders"> }) {
+function OrderCard({
+	order,
+	onClick,
+}: {
+	order: Doc<"orders">;
+	onClick: () => void;
+}) {
 	const statusColors: Record<string, string> = {
 		pending: "bg-accent text-accent-foreground",
 		paid: "bg-primary text-primary-foreground",
@@ -275,12 +318,14 @@ function OrderCard({ order }: { order: Doc<"orders"> }) {
 	};
 
 	return (
-		<div className="rounded-lg border bg-card p-3">
+		<button
+			className="w-full cursor-pointer rounded-lg border bg-card p-3 text-left transition-colors hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
+			onClick={onClick}
+			type="button"
+		>
 			<div className="mb-2 flex items-start justify-between">
 				<div>
-					<p className="font-medium text-sm">
-						#{order.orderNumber}
-					</p>
+					<p className="font-medium text-sm">#{order.orderNumber}</p>
 					<p className="text-muted-foreground text-xs">
 						{formatDate(order.createdAt)} - {formatTime(order.createdAt)}
 					</p>
@@ -321,6 +366,131 @@ function OrderCard({ order }: { order: Doc<"orders"> }) {
 					{formatCurrency(order.totalAmount)}
 				</span>
 			</div>
-		</div>
+		</button>
+	);
+}
+
+function OrderDetailView({
+	order,
+	onBack,
+}: {
+	order: Doc<"orders">;
+	onBack: () => void;
+}) {
+	const statusColors: Record<string, string> = {
+		pending: "bg-accent text-accent-foreground",
+		paid: "bg-primary text-primary-foreground",
+		completed: "bg-primary text-primary-foreground",
+		cancelled: "bg-destructive text-destructive-foreground",
+	};
+
+	const statusLabels: Record<string, string> = {
+		pending: "Pending",
+		paid: "Lunas",
+		completed: "Selesai",
+		cancelled: "Batal",
+	};
+
+	return (
+		<>
+			<SheetHeader className="border-b p-4">
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-2">
+						<Button
+							className="-ml-2 h-8 w-8 shrink-0 rounded-full"
+							onClick={onBack}
+							size="icon"
+							variant="ghost"
+						>
+							<ChevronLeft className="h-5 w-5" />
+							<span className="sr-only">Kembali</span>
+						</Button>
+						<SheetTitle className="text-lg">Detail Pesanan</SheetTitle>
+					</div>
+				</div>
+			</SheetHeader>
+
+			<ScrollArea className="flex-1">
+				<div className="space-y-6 p-4">
+					{/* Header Info */}
+					<div className="flex items-start justify-between">
+						<div>
+							<h3 className="font-bold font-mono text-xl">
+								#{order.orderNumber}
+							</h3>
+							<p className="text-muted-foreground text-sm">
+								{formatDate(order.createdAt)} • {formatTime(order.createdAt)}
+							</p>
+						</div>
+						<span
+							className={`rounded-full px-2.5 py-0.5 font-semibold text-xs ${statusColors[order.status] || "bg-muted"}`}
+						>
+							{statusLabels[order.status] || order.status}
+						</span>
+					</div>
+
+					{/* Customer Info */}
+					<div className="space-y-2 rounded-lg border bg-muted/30 p-3 text-sm">
+						<div className="flex justify-between">
+							<span className="text-muted-foreground">Pelanggan</span>
+							<span className="font-medium">{order.customerName || "-"}</span>
+						</div>
+						<div className="flex justify-between">
+							<span className="text-muted-foreground">Metode Pembayaran</span>
+							<span className="font-medium capitalize">
+								{order.paymentMethod}
+							</span>
+						</div>
+					</div>
+
+					{/* Items List */}
+					<div>
+						<h4 className="mb-3 font-semibold text-sm">Daftar Item</h4>
+						<div className="space-y-3">
+							{order.items.map((item, idx) => (
+								<div
+									className="flex justify-between text-sm"
+									key={`${item.productId}-${idx}`}
+								>
+									<div className="flex gap-2">
+										<span className="font-medium">{item.quantity}x</span>
+										<div>
+											<p className="font-medium">{item.productName}</p>
+											{item.variant && (
+												<p className="mt-0.5 text-muted-foreground text-xs">
+													{item.variant}
+												</p>
+											)}
+										</div>
+									</div>
+									<span className="font-medium">
+										{formatCurrency(item.price * item.quantity)}
+									</span>
+								</div>
+							))}
+						</div>
+					</div>
+				</div>
+			</ScrollArea>
+
+			<div className="shrink-0 space-y-4 border-t bg-card p-4">
+				<div className="flex items-center justify-between">
+					<span className="font-semibold text-base">Total Keseluruhan</span>
+					<span className="font-bold text-primary text-xl">
+						{formatCurrency(order.totalAmount)}
+					</span>
+				</div>
+				<Button
+					className="w-full gap-2"
+					onClick={() => {
+						// Optional receipt printing integration can be added here later
+					}}
+					variant="outline"
+				>
+					<Printer className="h-4 w-4" />
+					Cetak Ulang Struk
+				</Button>
+			</div>
+		</>
 	);
 }
