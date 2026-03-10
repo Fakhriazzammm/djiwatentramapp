@@ -2614,122 +2614,198 @@ export const scanImageData = action({
 		image: v.string(), // base64 data URL
 	},
 	handler: async (_ctx, args) => {
-		const geminiApiKey = process.env.GEMINI_API_KEY;
-		const openaiApiKey = process.env.OPENAI_API_KEY || process.env.SUMOPOD_API_KEY;
+		try {
+			const geminiApiKey = process.env.GEMINI_API_KEY;
+			const openaiApiKey = process.env.OPENAI_API_KEY || process.env.SUMOPOD_API_KEY;
 
-		if (!geminiApiKey && !openaiApiKey) {
-			throw new ConvexError(
-				"Konfigurasi AI tidak lengkap. Silakan atur GEMINI_API_KEY atau SUMOPOD_API_KEY di dashboard Convex."
-			);
-		}
+			if (!geminiApiKey && !openaiApiKey) {
+				throw new ConvexError(
+					"Konfigurasi AI tidak lengkap. Silakan atur GEMINI_API_KEY atau SUMOPOD_API_KEY di dashboard Convex."
+				);
+			}
 
-		// Extract base64 data and detect MIME type
-		const base64Data = args.image.includes(",") ? args.image.split(",")[1] : args.image;
-		const mimeMatch = args.image.match(/^data:(image\/[a-zA-Z+]+);base64,/);
-		const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
+			// Validate image data
+			if (!args.image || args.image.length < 100) {
+				throw new ConvexError("Data gambar tidak valid atau terlalu kecil. Silakan upload ulang gambar.");
+			}
 
-		const prompt = `Kamu adalah AI scanner dokumen keuangan yang ahli menganalisis gambar struk, kwitansi, nota, dan dokumen lainnya.
+			// Extract base64 data and detect MIME type
+			const base64Data = args.image.includes(",") ? args.image.split(",")[1] : args.image;
+			const mimeMatch = args.image.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+			const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
+
+			if (!base64Data || base64Data.length < 50) {
+				throw new ConvexError("Data base64 gambar tidak valid. Silakan upload ulang gambar.");
+			}
+
+			const prompt = `Kamu adalah AI scanner dokumen keuangan yang ahli menganalisis gambar struk, kwitansi, nota, dan dokumen lainnya.
 Analisis gambar dan kembalikan data terstruktur dalam format JSON berikut TANPA teks tambahan apapun:
 {
   "type": "receipt|invoice|note|handwriting|product|other",
   "name": "nama merchant/toko yang terdeteksi",
   "category": "makanan|minuman|belanja|transportasi|tagihan|gaji|hiburan|kesehatan|lainnya",
   "transactionType": "expense|income|unknown",
-  "total": angka total dalam Rupiah,
+  "total": angka total dalam Rupiah (hanya angka, tanpa titik atau koma),
   "subtotal": angka subtotal atau 0,
   "tax": angka pajak/PPN atau 0,
   "discount": angka diskon atau 0,
-  "items": [{"name": "item", "qty": 1, "price": 0, "subtotal": 0}],
-  "date": "YYYY-MM-DD atau null",
+  "items": [{"name": "nama item", "qty": jumlah, "price": harga satuan, "subtotal": qty * price}],
+  "date": "YYYY-MM-DD atau null jika tidak terdeteksi",
   "paymentMethod": "cash|qris|card|transfer|unknown",
-  "notes": "informasi tambahan",
-  "confidence": 0-100,
-  "rawText": "semua teks dari gambar"
-}`;
+  "notes": "informasi tambahan yang relevan",
+  "confidence": angka 0-100 seberapa yakin kamu dengan hasil ekstraksi,
+  "rawText": "semua teks mentah yang terbaca dari gambar"
+}
 
-		let content = "";
-		let lastError = "";
+PENTING:
+- Baca SEMUA item dari struk dengan teliti, termasuk qty dan harga masing-masing
+- Total harus sesuai dengan penjumlahan semua item (subtotal + tax - discount)
+- Jika ada item yang tidak terbaca jelas, tetap masukkan dengan confidence rendah
+- Pastikan format angka dalam Rupiah tanpa separator (contoh: 45000 bukan 45.000)`;
 
-		// Strategy 1: Try Gemini First (Best for Vision/OCR)
-		if (geminiApiKey) {
-			try {
-				const response = await fetch(
-					`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
-					{
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							contents: [{
-								parts: [
-									{ inline_data: { mime_type: mimeType, data: base64Data } },
-									{ text: prompt }
-								]
-							}],
-							generationConfig: {
-								temperature: 0.1,
-								maxOutputTokens: 2000,
-								responseMimeType: "application/json",
+			let content = "";
+			let lastError = "";
+
+			// Strategy 1: Try Gemini First (Best for Vision/OCR)
+			if (geminiApiKey) {
+				try {
+					// Try gemini-2.0-flash first, then fallback to gemini-1.5-flash
+					const geminiModels = ["gemini-2.0-flash", "gemini-1.5-flash"];
+					for (const model of geminiModels) {
+						if (content) break;
+						try {
+							const response = await fetch(
+								`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+								{
+									method: "POST",
+									headers: { "Content-Type": "application/json" },
+									body: JSON.stringify({
+										contents: [{
+											parts: [
+												{ inline_data: { mime_type: mimeType, data: base64Data } },
+												{ text: prompt }
+											]
+										}],
+										generationConfig: {
+											temperature: 0.1,
+											maxOutputTokens: 4096,
+										}
+									})
+								}
+							);
+
+							if (response.ok) {
+								const result = await response.json();
+								const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+								if (text) {
+									content = text;
+									console.log(`scanImageData: Success with ${model}`);
+								}
+							} else {
+								const errorBody = await response.text().catch(() => "");
+								lastError = `Gemini ${model} error: ${response.status} ${response.statusText} - ${errorBody.slice(0, 200)}`;
+								console.log(`scanImageData: ${lastError}`);
 							}
-						})
-					}
-				);
-
-				if (response.ok) {
-					const result = await response.json();
-					content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
-				} else {
-					lastError = `Gemini API error: ${response.status} ${response.statusText}`;
-				}
-			} catch (e) {
-				lastError = `Gemini connection error: ${e instanceof Error ? e.message : String(e)}`;
-			}
-		}
-
-		// Strategy 2: Fallback to OpenAI/SumoPod
-		if (!content && openaiApiKey) {
-			try {
-				const completion = await getOpenAI().chat.completions.create({
-					model: "gpt-4o-mini",
-					messages: [
-						{ role: "system", content: prompt },
-						{
-							role: "user",
-							content: [
-								{ type: "image_url", image_url: { url: args.image, detail: "high" } },
-								{ type: "text", text: "Ekstrak data JSON dari gambar ini." }
-							]
+						} catch (e) {
+							lastError = `Gemini ${model} error: ${e instanceof Error ? e.message : String(e)}`;
+							console.log(`scanImageData: ${lastError}`);
 						}
-					],
-					max_tokens: 1500,
-					response_format: { type: "json_object" }
-				});
-				content = completion.choices[0].message.content || "";
-			} catch (e) {
-				lastError = `OpenAI error: ${e instanceof Error ? e.message : String(e)}`;
+					}
+				} catch (e) {
+					lastError = `Gemini connection error: ${e instanceof Error ? e.message : String(e)}`;
+					console.log(`scanImageData: ${lastError}`);
+				}
 			}
-		}
 
-		if (!content) {
-			throw new ConvexError(`Gagal menganalisis gambar. ${lastError || "Coba lagi dengan gambar yang lebih jelas."}`);
-		}
+			// Strategy 2: Fallback to OpenAI/SumoPod
+			if (!content && openaiApiKey) {
+				try {
+					const openai = getOpenAI();
+					const completion = await openai.chat.completions.create({
+						model: "gpt-4o-mini",
+						messages: [
+							{ role: "system", content: prompt },
+							{
+								role: "user",
+								content: [
+									{ type: "image_url", image_url: { url: args.image, detail: "high" } },
+									{ type: "text", text: "Ekstrak data JSON dari gambar struk/nota ini." }
+								]
+							}
+						],
+						max_tokens: 2000,
+						response_format: { type: "json_object" }
+					});
+					content = completion.choices[0]?.message?.content || "";
+				} catch (e) {
+					lastError = `OpenAI error: ${e instanceof Error ? e.message : String(e)}`;
+					console.log(`scanImageData: ${lastError}`);
+				}
+			}
 
-		// Safe JSON Parsing
-		try {
+			if (!content) {
+				throw new ConvexError(`Gagal menganalisis gambar. ${lastError || "Coba lagi dengan gambar yang lebih jelas."}`);
+			}
+
+			// Safe JSON Parsing
 			const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
 			const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-			return JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
-		} catch (parseError) {
-			console.error("Parse error:", parseError, "Content:", content);
-			return {
-				type: "unknown",
-				name: "Proses Gagal",
-				category: "lainnya",
-				transactionType: "unknown",
-				total: 0,
-				notes: "Gagal memproses detail data secara otomatis. Silakan masukkan data secara manual.",
-				confidence: 10,
-				rawText: content
+			if (!jsonMatch) {
+				console.error("scanImageData: No JSON found in response:", content.slice(0, 500));
+				throw new ConvexError("AI tidak dapat mengekstrak data dari gambar. Coba dengan gambar yang lebih jelas.");
+			}
+
+			const parsed = JSON.parse(jsonMatch[0]);
+
+			// Validate and fix numeric fields
+			const ensureNumber = (val: unknown): number => {
+				if (typeof val === "number") return val;
+				if (typeof val === "string") {
+					const num = Number(val.replace(/[.,\s]/g, ""));
+					return isNaN(num) ? 0 : num;
+				}
+				return 0;
 			};
+
+			parsed.total = ensureNumber(parsed.total);
+			parsed.subtotal = ensureNumber(parsed.subtotal);
+			parsed.tax = ensureNumber(parsed.tax);
+			parsed.discount = ensureNumber(parsed.discount);
+
+			// Fix items array
+			if (Array.isArray(parsed.items)) {
+				parsed.items = parsed.items.map((item: Record<string, unknown>) => ({
+					name: String(item.name || "Item tidak dikenal"),
+					qty: ensureNumber(item.qty) || 1,
+					price: ensureNumber(item.price),
+					subtotal: ensureNumber(item.subtotal) || (ensureNumber(item.qty) || 1) * ensureNumber(item.price),
+				}));
+
+				// Recalculate total from items if total seems wrong
+				const itemsTotal = parsed.items.reduce((sum: number, item: { subtotal: number }) => sum + item.subtotal, 0);
+				if (parsed.total === 0 && itemsTotal > 0) {
+					parsed.total = itemsTotal + parsed.tax - parsed.discount;
+				}
+				if (parsed.subtotal === 0 && itemsTotal > 0) {
+					parsed.subtotal = itemsTotal;
+				}
+			} else {
+				parsed.items = [];
+			}
+
+			parsed.confidence = ensureNumber(parsed.confidence);
+			if (parsed.confidence === 0) parsed.confidence = 50;
+
+			return parsed;
+		} catch (error) {
+			// Ensure all errors are ConvexError so they reach the client properly
+			if (error instanceof ConvexError) {
+				throw error;
+			}
+			console.error("scanImageData unhandled error:", error);
+			throw new ConvexError(
+				`Gagal memproses gambar: ${error instanceof Error ? error.message : "Terjadi kesalahan. Coba lagi dengan gambar yang lebih jelas."}`
+			);
 		}
 	},
 });

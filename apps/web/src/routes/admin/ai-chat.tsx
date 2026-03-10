@@ -504,7 +504,7 @@ function AIChatPage() {
 		[isLoading, messages, yumiChat, selectedImage, currentSessionId, startNewSession, saveMessage, streamText]
 	);
 
-	// Helper: compress image to max 800px, quality 70%
+	// Helper: compress image for AI scan - optimized for OCR readability
 	const compressImage = useCallback(
 		(dataUrl: string): Promise<string> => {
 			return new Promise((resolve) => {
@@ -516,7 +516,8 @@ function AIChatPage() {
 						resolve(dataUrl);
 						return;
 					}
-					const maxDimension = 800;
+					// Max 1024px for better OCR readability while keeping size manageable
+					const maxDimension = 1024;
 					let { width, height } = img;
 					if (width > maxDimension || height > maxDimension) {
 						if (width > height) {
@@ -530,7 +531,15 @@ function AIChatPage() {
 					canvas.width = width;
 					canvas.height = height;
 					ctx.drawImage(img, 0, 0, width, height);
-					resolve(canvas.toDataURL("image/jpeg", 0.7));
+					// Use quality 0.8 for better OCR, then check size
+					let quality = 0.8;
+					let result = canvas.toDataURL("image/jpeg", quality);
+					// If still too large (>500KB base64), reduce quality
+					while (result.length > 500_000 && quality > 0.3) {
+						quality -= 0.1;
+						result = canvas.toDataURL("image/jpeg", quality);
+					}
+					resolve(result);
 				};
 				img.onerror = () => resolve(dataUrl);
 				img.src = dataUrl;
@@ -609,10 +618,28 @@ function AIChatPage() {
 				content: "Scan gambar ini dan analisis datanya.",
 				image: scanImage,
 			};
+
+			// Build summary text from scan result
+			const items = result.items as Array<{ name: string; qty: number; price: number; subtotal: number }> | undefined;
+			let summaryText = "";
+			if (result.name) summaryText += `**${result.name}**\n`;
+			if (items && items.length > 0) {
+				summaryText += `\n📋 **Detail Item (${items.length} item):**\n`;
+				items.forEach((item: { name: string; qty: number; price: number; subtotal: number }, i: number) => {
+					summaryText += `${i + 1}. ${item.name} x${item.qty} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`;
+				});
+			}
+			if (result.subtotal) summaryText += `\nSubtotal: Rp ${Number(result.subtotal).toLocaleString("id-ID")}`;
+			if (result.tax) summaryText += `\nPajak: Rp ${Number(result.tax).toLocaleString("id-ID")}`;
+			if (result.discount) summaryText += `\nDiskon: -Rp ${Number(result.discount).toLocaleString("id-ID")}`;
+			summaryText += `\n\n💰 **Total: Rp ${Number(result.total).toLocaleString("id-ID")}**`;
+			summaryText += `\n\n📊 Keyakinan: ${result.confidence}% | Kategori: ${result.category} | Bayar: ${result.paymentMethod}`;
+			if (result.date) summaryText += ` | Tanggal: ${result.date}`;
+
 			// Add assistant message with structured scan result
 			const assistantMsg: ChatMessage = {
 				role: "assistant",
-				content: result.notes || `Analisis selesai dengan tingkat keyakinan ${result.confidence}%.`,
+				content: summaryText || result.notes || `Analisis selesai dengan tingkat keyakinan ${result.confidence}%.`,
 				scanData: result as ScanResultData,
 			};
 			setMessages((prev) => [...prev, userMsg, assistantMsg]);
@@ -620,9 +647,17 @@ function AIChatPage() {
 			setShowScanPanel(false);
 			if (scanFileInputRef.current) scanFileInputRef.current.value = "";
 			toast.success("Gambar berhasil dianalisis!");
-		} catch (error) {
-			const msg = error instanceof Error ? error.message : "Gagal menganalisis gambar";
+		} catch (error: unknown) {
+			// Extract ConvexError message properly
+			let msg = "Gagal menganalisis gambar. Coba lagi.";
+			if (error && typeof error === "object" && "data" in error) {
+				const convexErr = error as { data: string | { message?: string } };
+				msg = typeof convexErr.data === "string" ? convexErr.data : convexErr.data?.message || msg;
+			} else if (error instanceof Error) {
+				msg = error.message;
+			}
 			toast.error(msg);
+			console.error("Scan error:", error);
 		} finally {
 			setIsScanning(false);
 		}
