@@ -1,11 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	AlertTriangle,
+	ArrowRight,
 	Bell,
 	Bot,
+	Zap,
 	Calendar,
 	Camera,
 	Check,
@@ -54,6 +56,16 @@ interface ScanResultData {
 	rawText?: string;
 }
 
+interface QuickActionButton {
+	id: string;
+	label: string;
+	icon: string;
+	variant: "navigate" | "finance" | "order" | "product" | "stock" | "discount" | "misc";
+	actionType: "navigate" | "sendPrompt";
+	href?: string;
+	prompt?: string;
+}
+
 interface ScanActionButton {
 	id: string;
 	label: string;
@@ -79,6 +91,7 @@ interface ChatMessage {
 	scanData?: ScanResultData;
 	suggestions?: Array<{ label: string; prompt: string }>;
 	actionButtons?: ScanActionButton[];
+	quickActions?: QuickActionButton[];
 }
 
 interface ToolCall {
@@ -194,6 +207,103 @@ const TOOL_LABELS: Record<string, string> = {
 	createReconciliationTransaction: "Rekonsiliasi Keuangan",
 };
 
+// Keyword-driven contextual quick action button generator
+function generateQuickActions(userMsg: string, aiResponse: string): QuickActionButton[] {
+	const text = `${userMsg} ${aiResponse}`.toLowerCase();
+	const matched: QuickActionButton[] = [];
+	let id = 0;
+
+	const rules: Array<{
+		keys: string[];
+		buttons: Omit<QuickActionButton, "id">[];
+	}> = [
+		{
+			keys: ["produk", "menu", "makanan", "item", "katalog", "harga jual", "tambah produk", "hapus produk", "edit produk"],
+			buttons: [
+				{ label: "Lihat Produk", icon: "🛍️", variant: "product", actionType: "navigate", href: "/admin/products" },
+				{ label: "Tambah Produk", icon: "➕", variant: "product", actionType: "sendPrompt", prompt: "Bantu saya menambahkan produk baru ke katalog" },
+			],
+		},
+		{
+			keys: ["pesanan", "order", "pelanggan", "buat pesanan", "transaksi penjualan", "checkout"],
+			buttons: [
+				{ label: "Lihat Pesanan", icon: "📋", variant: "order", actionType: "navigate", href: "/admin/orders" },
+				{ label: "Buat Pesanan", icon: "🛒", variant: "order", actionType: "sendPrompt", prompt: "Bantu saya membuat pesanan baru untuk pelanggan" },
+			],
+		},
+		{
+			keys: ["stok", "inventaris", "bahan", "persediaan", "restock", "habis", "rendah"],
+			buttons: [
+				{ label: "Lihat Inventaris", icon: "📦", variant: "stock", actionType: "navigate", href: "/admin/inventory" },
+				{ label: "Tambah Stok", icon: "⬆️", variant: "stock", actionType: "sendPrompt", prompt: "Bantu saya menambahkan stok inventaris bahan baku" },
+			],
+		},
+		{
+			keys: ["keuangan", "pendapatan", "pengeluaran", "pemasukan", "saldo", "laporan keuangan", "catat transaksi", "rekonsiliasi"],
+			buttons: [
+				{ label: "Lihat Keuangan", icon: "💰", variant: "finance", actionType: "navigate", href: "/admin/finance" },
+				{ label: "Catat Transaksi", icon: "📝", variant: "finance", actionType: "sendPrompt", prompt: "Bantu saya mencatat transaksi keuangan baru" },
+			],
+		},
+		{
+			keys: ["diskon", "promo", "voucher", "potongan harga", "kupon"],
+			buttons: [
+				{ label: "Lihat Diskon", icon: "🏷️", variant: "discount", actionType: "navigate", href: "/admin/discounts" },
+				{ label: "Buat Diskon", icon: "✨", variant: "discount", actionType: "sendPrompt", prompt: "Bantu saya membuat diskon atau promo baru" },
+			],
+		},
+		{
+			keys: ["hpp", "harga pokok", "biaya produksi", "modal", "margin"],
+			buttons: [
+				{ label: "HPP Kalkulator", icon: "🧮", variant: "misc", actionType: "navigate", href: "/admin/hpp-calculator" },
+			],
+		},
+		{
+			keys: ["prediksi", "forecast", "perkiraan", "tren penjualan", "proyeksi"],
+			buttons: [
+				{ label: "Lihat Forecast", icon: "📈", variant: "misc", actionType: "navigate", href: "/admin/forecasting" },
+			],
+		},
+		{
+			keys: ["booking", "reservasi", "jadwal", "meja", "tempat duduk"],
+			buttons: [
+				{ label: "Lihat Booking", icon: "📅", variant: "misc", actionType: "navigate", href: "/admin/booking" },
+			],
+		},
+		{
+			keys: ["pengaturan", "setting", "profil toko", "nama toko", "jam buka"],
+			buttons: [
+				{ label: "Pengaturan Toko", icon: "⚙️", variant: "misc", actionType: "navigate", href: "/admin/settings" },
+			],
+		},
+	];
+
+	const seen = new Set<string>();
+	for (const rule of rules) {
+		if (rule.keys.some((k) => text.includes(k))) {
+			for (const btn of rule.buttons) {
+				const key = btn.href ?? btn.prompt ?? btn.label;
+				if (!seen.has(key)) {
+					seen.add(key);
+					matched.push({ ...btn, id: `qa-${id++}` });
+				}
+			}
+		}
+	}
+
+	// Always provide at least a default recap action if nothing matched
+	if (matched.length === 0) {
+		matched.push(
+			{ id: `qa-${id++}`, label: "Rekap Hari Ini", icon: "📊", variant: "misc", actionType: "sendPrompt", prompt: "Berikan rekap lengkap bisnis hari ini" },
+			{ id: `qa-${id++}`, label: "Stok Rendah", icon: "⚠️", variant: "stock", actionType: "sendPrompt", prompt: "Tampilkan produk yang stoknya rendah" },
+			{ id: `qa-${id++}`, label: "Lihat Keuangan", icon: "💰", variant: "finance", actionType: "navigate", href: "/admin/finance" },
+		);
+	}
+
+	// Cap at 4 buttons max
+	return matched.slice(0, 4);
+}
+
 function AIChatPage() {
 	const [messages, setMessages] = useState<ChatMessage[]>([
 		{
@@ -223,6 +333,7 @@ function AIChatPage() {
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const scanFileInputRef = useRef<HTMLInputElement>(null);
+	const navigate = useNavigate();
 	const yumiChat = useAction(api.ai.yumiChat);
 	const scanImageDataAction = useAction(api.ai.scanImageData);
 	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
@@ -258,6 +369,14 @@ function AIChatPage() {
 			});
 		}
 	}, [createTransactionMutation, actionButtonLoading, actionButtonDone]);
+
+	const handleQuickAction = useCallback((action: QuickActionButton) => {
+		if (action.actionType === "navigate" && action.href) {
+			navigate({ to: action.href as Parameters<typeof navigate>[0]["to"] });
+		} else if (action.actionType === "sendPrompt" && action.prompt) {
+			sendMessage(action.prompt);
+		}
+	}, [navigate, sendMessage]);
 
 	// Fetch data for AI
 	const products = useQuery(api.products.getAllProductsAdmin, {});
@@ -601,12 +720,14 @@ function AIChatPage() {
 
 				setIsLoading(false);
 
+				const quickActions = generateQuickActions(text.trim(), sanitized);
 				// Stream the response word by word for realistic effect
 				streamText(sanitized, async () => {
 					const assistantMessage: ChatMessage = {
 						role: "assistant",
 						content: sanitized,
 						suggestions: suggestions,
+						quickActions,
 					};
 					setMessages((prev) => [...prev, assistantMessage]);
 					if (currentSessionId) {
@@ -1232,6 +1353,53 @@ function AIChatPage() {
 														</div>
 													</motion.div>
 												)}
+													{/* Second bubble: contextual quick actions */}
+													{msg.role === "assistant" && msg.quickActions && msg.quickActions.length > 0 && (
+														<motion.div
+															initial={{ opacity: 0, y: 10 }}
+															animate={{ opacity: 1, y: 0 }}
+															transition={{ delay: 0.5, duration: 0.35 }}
+															className="flex justify-start mt-1"
+														>
+															<div className="max-w-[85%] w-full space-y-1.5">
+																<div className="flex items-center gap-1.5 px-1">
+																	<Zap className="h-3 w-3 text-amber-500 animate-pulse" />
+																	<span className="font-bold text-[10px] text-amber-500 uppercase tracking-wider">Aksi Terkait</span>
+																</div>
+																<div className="rounded-xl rounded-tl-none border border-amber-500/20 bg-amber-50/40 dark:bg-amber-950/20 px-3 py-2.5 md:rounded-2xl md:px-4 md:py-3">
+																	<div className="flex flex-wrap gap-2">
+																		{msg.quickActions.map((action) => (
+																			<button
+																				key={action.id}
+																				onClick={() => handleQuickAction(action)}
+																				type="button"
+																				disabled={isLoading}
+																				className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all hover:scale-105 active:scale-95 disabled:opacity-50 ${
+																					action.variant === "finance"
+																						? "border-emerald-400/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400"
+																						: action.variant === "order"
+																						? "border-blue-400/40 bg-blue-500/10 text-blue-700 hover:bg-blue-500/20 dark:text-blue-400"
+																						: action.variant === "product"
+																						? "border-purple-400/40 bg-purple-500/10 text-purple-700 hover:bg-purple-500/20 dark:text-purple-400"
+																						: action.variant === "stock"
+																						? "border-orange-400/40 bg-orange-500/10 text-orange-700 hover:bg-orange-500/20 dark:text-orange-400"
+																						: action.variant === "discount"
+																						? "border-pink-400/40 bg-pink-500/10 text-pink-700 hover:bg-pink-500/20 dark:text-pink-400"
+																						: "border-border bg-background text-foreground hover:bg-muted"
+																				}}`}
+																			>
+																				<span className="text-sm leading-none">{action.icon}</span>
+																				<span>{action.label}</span>
+																				{action.actionType === "navigate" && (
+																					<ArrowRight className="h-3 w-3 opacity-60" />
+																				)}
+																			</button>
+																		))}
+																	</div>
+																</div>
+															</div>
+														</motion.div>
+													)}
 											</div>
 										</motion.div>
 									))}
