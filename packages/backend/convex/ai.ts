@@ -2614,10 +2614,12 @@ export const scanImageData = action({
 		image: v.string(), // base64 data URL (maks 800px, kualitas 70%)
 	},
 	handler: async (_ctx, args) => {
-		const apiKey = process.env.GEMINI_API_KEY;
+		const apiKey = process.env.OPENAI_API_KEY || process.env.SUMOPOD_API_KEY || process.env.GEMINI_API_KEY;
 		if (!apiKey) {
-			console.error("GEMINI_API_KEY is missing");
-			throw new ConvexError("GEMINI_API_KEY environment variable is not set in Convex. Please set it to use AI image analysis.");
+			console.error("No AI API Keys found (OPENAI_API_KEY, SUMOPOD_API_KEY, or GEMINI_API_KEY)");
+			throw new ConvexError(
+				"Konfigurasi AI tidak lengkap. Silakan atur SUMOPOD_API_KEY atau GEMINI_API_KEY di dashboard Convex."
+			);
 		}
 
 		// Extract base64 data from data URL
