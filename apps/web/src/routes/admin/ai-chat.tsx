@@ -37,8 +37,9 @@ export const Route = createFileRoute("/admin/ai-chat")({
 
 interface ScanResultData {
 	type: string;
-	name: string;
+	name: string; // Merchant Name
 	category: string;
+	merchant?: string; // Optional alias for name
 	transactionType: "expense" | "income" | "unknown";
 	total: number;
 	subtotal?: number;
@@ -676,7 +677,7 @@ function AIChatPage() {
 
 				const items = result.items as Array<{ name: string; qty: number; price: number; subtotal: number }> | undefined;
 				let summaryText = "";
-				if (result.name) summaryText += `${result.name}\n`;
+				if (result.name) summaryText += `🏪 Merchant: ${result.name}\n`;
 				if (items && items.length > 0) {
 					summaryText += `\n📋 Detail Item (${items.length} item):\n`;
 					items.forEach((item: { name: string; qty: number; price: number; subtotal: number }, i: number) => {
@@ -687,11 +688,11 @@ function AIChatPage() {
 				if (result.tax) summaryText += `\nPajak: Rp ${Number(result.tax).toLocaleString("id-ID")}`;
 				if (result.discount) summaryText += `\nDiskon: -Rp ${Number(result.discount).toLocaleString("id-ID")}`;
 				summaryText += `\n\n💰 Total: Rp ${Number(result.total).toLocaleString("id-ID")}`;
-				summaryText += `\n\n📊 Keyakinan: ${result.confidence}% | Kategori: ${result.category} | Bayar: ${result.paymentMethod}`;
+				summaryText += `\n\n📊 Keyakinan: ${result.confidence}% | Kategori: ${result.category.replace(/_/g, " ")} | Bayar: ${result.paymentMethod}`;
 				if (result.date) summaryText += ` | Tanggal: ${result.date}`;
 
-				summaryText += `\n\n[SUGGEST: 💰 Simpan ke Pengeluaran | Tolong catat hasil scan ${result.name || ""} sebesar Rp ${result.total.toLocaleString("id-ID")} sebagai pengeluaran]`;
-				summaryText += `\n[SUGGEST: 📈 Simpan ke Pemasukan | Tolong catat hasil scan ${result.name || ""} sebesar Rp ${result.total.toLocaleString("id-ID")} sebagai pemasukan]`;
+				summaryText += `\n\n[SUGGEST: 💰 Simpan ke Pengeluaran | Tolong catat hasil scan dari ${result.name || "Toko"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pengeluaran]`;
+				summaryText += `\n[SUGGEST: 📈 Simpan ke Pemasukan | Tolong catat hasil scan dari ${result.name || "Sumber"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pemasukan]`;
 				summaryText += "\n[SUGGEST: ❌ Batalkan | Batalkan pencatatan ini]";
 
 				const suggestions = extractSuggestions(summaryText);
@@ -1734,7 +1735,29 @@ function AIChatPage() {
 					</AnimatePresence>
 
 					{/* ChatGPT/Claude-style Input Box */}
-						<div className="rounded-2xl border border-border bg-background shadow-sm">
+						<div className="space-y-3">
+							{/* Quick Templates */}
+							{!isScanning && messages.length <= 1 && (
+								<div className="flex w-full items-center gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
+									{TEMPLATES.map((t, i) => (
+										<button
+											className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-primary whitespace-nowrap"
+											key={i}
+											onClick={() => {
+												setInput(t.message);
+												// Opsional: Langsung kirim saat diklik
+												// sendMessage(t.message);
+											}}
+											type="button"
+										>
+											{t.icon}
+											<span>{t.label}</span>
+										</button>
+									))}
+								</div>
+							)}
+
+							<div className="rounded-2xl border border-border bg-background shadow-sm">
 							{/* Multiple Images Preview inside input box */}
 							{selectedImages.length > 0 && (
 								<div className="flex items-center gap-2 border-border border-b px-3 py-2 overflow-x-auto scrollbar-hide">
@@ -1821,13 +1844,13 @@ function AIChatPage() {
 								{/* Right: Send button */}
 								<button
 									className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all ${
-										input.trim() || selectedImage
+										input.trim() || selectedImages.length > 0
 											? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
 											: "bg-muted text-muted-foreground"
 									} disabled:cursor-not-allowed disabled:opacity-50`}
-									disabled={isLoading || !(input.trim() || selectedImage)}
+									disabled={isLoading || !(input.trim() || selectedImages.length > 0)}
 									onClick={() => {
-										if (input.trim() || selectedImage) {
+										if (input.trim() || selectedImages.length > 0) {
 											sendMessage(input);
 											if (inputRef.current) {
 												inputRef.current.style.height = "auto";
@@ -1845,6 +1868,7 @@ function AIChatPage() {
 								</button>
 							</div>
 						</div>
+					</div>
 
 						<p className="text-center text-[10px] text-muted-foreground">
 							Yumi AI dapat membuat kesalahan. Selalu verifikasi informasi penting.

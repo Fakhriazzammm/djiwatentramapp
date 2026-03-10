@@ -225,6 +225,7 @@ export const executeToolCall = action({
 						type: parsed.type as any,
 						amount: parsed.amount,
 						category: parsed.category,
+						merchant: parsed.merchant,
 						description: parsed.description,
 						date: Date.now(),
 						paymentMethod: parsed.paymentMethod,

@@ -721,7 +721,13 @@ INSTRUKSI TOOL CALLING:
 - Gunakan tool saat user meminta aksi spesifik seperti "tambah produk", "update stok", "buat pesanan", "catat pengeluaran"
 - Setelah menjalankan tool, jelaskan hasilnya dengan ringkas kepada user
 - Jika ada error dari tool, jelaskan masalahnya dan sarankan solusi
-- Untuk multi-step actions, lanjutkan dengan langkah berikutnya sampai selesai`,
+- Untuk multi-step actions, lanjutkan dengan langkah berikutnya sampai selesai
+
+INSTRUKSI PENCATATAN KEUANGAN:
+- Saat mencatat transaksi keuangan, gunakan KATEGORI YANG TEPAT dari daftar berikut:
+  makanan_minuman, belanja_stok, peralatan_kantor, transportasi, utilitas_listrik_air, gaji_karyawan, sewa_tempat, pemasaran, pajak, hiburan, kesehatan, pembangunan_renovasi, lainnya
+- SELALU sertakan nama merchant/toko jika diketahui (dari scan struk atau dari input user)
+- Jika user minta catat dari hasil scan: gunakan nama merchant dan kategori yang terdeteksi oleh scanner`,
 			},
 		];
 
@@ -2765,8 +2771,21 @@ export const scanImageData = action({
 
 TUGAS: Analisis gambar dengan kecermatan tinggi dan ekstrak data terstruktur secara lengkap.
 DETAIL YANG HARUS DIEKSTRAK:
-1. Nama Merchant: Identifikasi nama toko/instansi yang mengeluarkan dokumen.
-2. Kategori: Tentukan kategori transaksi (makanan, minuman, belanja, kebutuhan kantor, transportasi, tagihan, kesehatan, hiburan, dll).
+1. Nama Merchant: Identifikasi nama toko/instansi yang mengeluarkan dokumen (misal: Starbucks, Indomaret, PLN, dll).
+2. Kategori: Tentukan kategori transaksi yang Paling Akurat. Pilih dari daftar berikut:
+   - makanan_minuman (restoran, cafe, jajan)
+   - belanja_stok (pembelian bahan baku/stok dagangan)
+   - peralatan_kantor (ATK, furniture kantor)
+   - transportasi (bensin, parkir, ojek online, tiket)
+   - utilitas_listrik_air (biaya bulanan rutin)
+   - gaji_karyawan (slip gaji atau pembayaran upah)
+   - sewa_tempat (sewa gedung/lahan)
+   - pemasaran (iklan, cetak brosur)
+   - pajak (PPN, PPh, atau pajak lainnya)
+   - hiburan (gathering, kado mitra)
+   - kesehatan (asuransi karyawan, obat-obatan)
+   - pembangunan_renovasi (perbaikan gedung)
+   - lainnya (jika benar-benar tidak cocok dengan kategori di atas)
 3. Transaksi: Tipe transaksi (expense/pemasukan/pengeluaran).
 4. Angka Keuangan: 
    - total: Angka akhir yang harus dibayar (angka terbesar).
@@ -2781,7 +2800,7 @@ Kembalikan data dalam format JSON berikut TANPA teks tambahan apapun:
 {
   "type": "receipt|invoice|note|handwriting|product|other",
   "name": "nama merchant yang terdeteksi",
-  "category": "makanan|minuman|belanja|transportasi|tagihan|gaji|hiburan|kesehatan|lainnya",
+  "category": "makanan_minuman|belanja_stok|peralatan_kantor|transportasi|utilitas_listrik_air|gaji_karyawan|sewa_tempat|pemasaran|pajak|hiburan|kesehatan|pembangunan_renovasi|lainnya",
   "transactionType": "expense|income|unknown",
   "total": total_akhir_angka,
   "subtotal": subtotal_angka,
@@ -2800,6 +2819,7 @@ PENTING:
 - Periksa detail pajak dan service charge secara spesifik karena sering muncul di struk restoran.
 - Pastikan semua angka adalah integer murni tanpa pemisah ribuan (contoh: 250000).
 - Jika tulisan tangan, gunakan context untuk menebak kata yang paling masuk akal.
+- Nama merchant harus selalu diisi meskipun hanya terbaca sebagian.
 - HANYA kembalikan JSON.`;
 
 			// Gunakan Gemini API untuk scan gambar (best for vision/OCR)

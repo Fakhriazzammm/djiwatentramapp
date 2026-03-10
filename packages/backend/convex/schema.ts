@@ -68,6 +68,7 @@ export default defineSchema({
 		type: v.union(v.literal("income"), v.literal("expense")),
 		amount: v.number(),
 		category: v.string(), // e.g. "Sales", "Rent", "Salary"
+		merchant: v.optional(v.string()), // Store/Merchant name
 		description: v.optional(v.string()),
 		date: v.number(), // Timestamp
 		paymentMethod: v.optional(v.string()),

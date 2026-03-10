@@ -27,6 +27,7 @@ export function NewTransactionDialog({
 		type: "expense" as "income" | "expense",
 		amount: "",
 		category: "",
+		merchant: "",
 		description: "",
 		date: new Date().toISOString().split("T")[0],
 		paymentMethod: "CASH",
@@ -45,6 +46,7 @@ export function NewTransactionDialog({
 				type: formData.type,
 				amount: Number(formData.amount),
 				category: formData.category,
+				merchant: formData.merchant || undefined,
 				description: formData.description,
 				date: new Date(formData.date).getTime(),
 				paymentMethod: formData.paymentMethod,
@@ -55,6 +57,7 @@ export function NewTransactionDialog({
 				type: "expense",
 				amount: "",
 				category: "",
+				merchant: "",
 				description: "",
 				date: new Date().toISOString().split("T")[0],
 				paymentMethod: "CASH",
@@ -184,13 +187,36 @@ export function NewTransactionDialog({
 										value={formData.category}
 									/>
 									<datalist id="categories">
-										<option value="Penjualan" />
-										<option value="Gaji Karyawan" />
-										<option value="Bahan Baku" />
-										<option value="Listrik & Air" />
-										<option value="Operasional" />
-										<option value="Lainnya" />
+										<option value="makanan_minuman" />
+										<option value="belanja_stok" />
+										<option value="peralatan_kantor" />
+										<option value="transportasi" />
+										<option value="utilitas_listrik_air" />
+										<option value="gaji_karyawan" />
+										<option value="sewa_tempat" />
+										<option value="pemasaran" />
+										<option value="pajak" />
+										<option value="hiburan" />
+										<option value="kesehatan" />
+										<option value="pembangunan_renovasi" />
+										<option value="lainnya" />
 									</datalist>
+								</div>
+
+								<div className="space-y-1.5">
+									<label
+										className="font-medium text-muted-foreground text-xs uppercase tracking-wide"
+									>
+										Merchant/Toko (Opsional)
+									</label>
+									<input
+										className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-medium text-foreground text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
+										onChange={(e) =>
+											setFormData({ ...formData, merchant: e.target.value })
+										}
+										placeholder="Contoh: Indomaret, Starbucks, PLN"
+										value={formData.merchant}
+									/>
 								</div>
 
 								<div className="space-y-1.5">

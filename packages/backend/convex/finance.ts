@@ -77,6 +77,7 @@ export const createTransaction = mutation({
 		type: v.union(v.literal("income"), v.literal("expense")),
 		amount: v.number(),
 		category: v.string(),
+		merchant: v.optional(v.string()),
 		description: v.optional(v.string()),
 		date: v.number(),
 		paymentMethod: v.optional(v.string()),

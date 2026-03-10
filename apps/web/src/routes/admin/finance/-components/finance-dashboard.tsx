@@ -67,6 +67,7 @@ export function FinanceDashboard() {
 						<tr>
 							<th className="px-6 py-3">Tanggal</th>
 							<th className="px-6 py-3">Kategori</th>
+							<th className="px-6 py-3">Merchant/Toko</th>
 							<th className="px-6 py-3">Keterangan</th>
 							<th className="px-6 py-3">Metode</th>
 							<th className="px-6 py-3 text-right">Jumlah</th>
@@ -109,14 +110,24 @@ export function FinanceDashboard() {
 										})}
 									</td>
 									<td className="px-6 py-4">
-										<span className="rounded-md border bg-background px-2 py-1 font-medium text-xs">
-											{t.category}
+										<span className={`inline-flex items-center rounded-md border px-2 py-1 font-medium text-[10px] uppercase tracking-wider ${
+											t.category === "makanan_minuman" ? "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/30 dark:bg-orange-900/20 dark:text-orange-400" :
+											t.category === "belanja_stok" ? "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400" :
+											t.category === "peralatan_kantor" ? "border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-900/30 dark:bg-purple-900/20 dark:text-purple-400" :
+											t.category === "utilitas_listrik_air" ? "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-900/30 dark:bg-yellow-900/20 dark:text-yellow-400" :
+											t.category === "transportasi" ? "border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/30 dark:bg-cyan-900/20 dark:text-cyan-400" :
+											"border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400"
+										}`}>
+											{t.category.replace(/_/g, " ")}
 										</span>
+									</td>
+									<td className="px-6 py-4 font-semibold text-foreground italic">
+										{t.merchant || "Umum"}
 									</td>
 									<td className="px-6 py-4 text-muted-foreground">
 										{t.description || "-"}
 									</td>
-									<td className="px-6 py-4 text-xs">
+									<td className="px-6 py-4 text-xs font-mono">
 										{t.paymentMethod || "CASH"}
 									</td>
 									<td
@@ -132,7 +143,7 @@ export function FinanceDashboard() {
 
 						{transactions && transactions.length === 0 && (
 							<tr>
-								<td className="p-12 text-center" colSpan={5}>
+								<td className="p-12 text-center" colSpan={6}>
 									<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
 										<Wallet className="h-6 w-6 text-muted-foreground" />
 									</div>

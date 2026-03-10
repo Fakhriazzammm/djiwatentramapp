@@ -201,11 +201,12 @@ export const tools = {
 	// Create Transaction
 	createTransaction: {
 		description:
-			"Catat transaksi keuangan (income/expense). Harap sediakan: tipe, jumlah, kategori, dan deskripsi.",
+			"Catat transaksi keuangan (income/expense). Harap sediakan: tipe, jumlah, kategori, merchant/toko (opsional), dan deskripsi.",
 		parameters: z.object({
 			type: z.enum(["income", "expense"]).describe("Tipe transaksi"),
 			amount: z.number().describe("Jumlah uang"),
-			category: z.string().min(1, "Kategori transaksi wajib diisi"),
+			category: z.string().min(1, "Kategori transaksi wajib diisi").describe("Kategori transaksi. Gunakan salah satu: makanan_minuman, belanja_stok, peralatan_kantor, transportasi, utilitas_listrik_air, gaji_karyawan, sewa_tempat, pemasaran, pajak, hiburan, kesehatan, pembangunan_renovasi, lainnya"),
+			merchant: z.string().optional().describe("Nama merchant/toko (opsional, contoh: Indomaret, Starbucks, PLN)"),
 			description: z.string().optional().describe("Deskripsi transaksi"),
 			paymentMethod: z.string().optional().describe("Metode pembayaran"),
 		}),
