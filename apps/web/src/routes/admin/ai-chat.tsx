@@ -424,7 +424,16 @@ function AIChatPage() {
 					.filter((m) => m.role === "user" || m.role === "assistant")
 					.map((m) => ({ role: m.role, content: m.content }));
 
-				const attachedImage = image || selectedImage || undefined;
+				let attachedImage = image || selectedImage || undefined;
+				// Validate image size before sending to Convex (1MB arg limit)
+				if (attachedImage && attachedImage.length > 950_000) {
+					try {
+						attachedImage = await compressImage(attachedImage);
+					} catch {
+						attachedImage = undefined;
+						toast.error("Gambar terlalu besar, dikirim tanpa gambar.");
+					}
+				}
 				const response = await yumiChat({
 					message: text.trim() || (attachedImage ? "Tolong analisis gambar ini." : ""),
 					history,
@@ -501,13 +510,14 @@ function AIChatPage() {
 				setToolCalls([]);
 			}
 		},
-		[isLoading, messages, yumiChat, selectedImage, currentSessionId, startNewSession, saveMessage, streamText]
+		[isLoading, messages, yumiChat, selectedImage, currentSessionId, startNewSession, saveMessage, streamText, compressImage]
 	);
 
 	// Helper: compress image for AI scan - optimized for OCR readability
+	// Convex has a 1MB argument size limit, so we must keep base64 well under that
 	const compressImage = useCallback(
 		(dataUrl: string): Promise<string> => {
-			return new Promise((resolve) => {
+			return new Promise((resolve, reject) => {
 				const img = new Image();
 				img.onload = () => {
 					const canvas = document.createElement("canvas");
@@ -517,7 +527,7 @@ function AIChatPage() {
 						return;
 					}
 					// Max 1024px for better OCR readability while keeping size manageable
-					const maxDimension = 1024;
+					let maxDimension = 1024;
 					let { width, height } = img;
 					if (width > maxDimension || height > maxDimension) {
 						if (width > height) {
@@ -531,17 +541,42 @@ function AIChatPage() {
 					canvas.width = width;
 					canvas.height = height;
 					ctx.drawImage(img, 0, 0, width, height);
-					// Use quality 0.8 for better OCR, then check size
+					// Use quality 0.8 for better OCR, then progressively reduce
+					// Target max 700KB base64 to stay safely under Convex 1MB arg limit
+					const maxBase64Size = 700_000;
 					let quality = 0.8;
 					let result = canvas.toDataURL("image/jpeg", quality);
-					// If still too large (>500KB base64), reduce quality
-					while (result.length > 500_000 && quality > 0.3) {
+					while (result.length > maxBase64Size && quality > 0.2) {
 						quality -= 0.1;
 						result = canvas.toDataURL("image/jpeg", quality);
 					}
+					// If still too large after quality reduction, scale down dimensions
+					if (result.length > maxBase64Size) {
+						maxDimension = 640;
+						width = img.width;
+						height = img.height;
+						if (width > maxDimension || height > maxDimension) {
+							if (width > height) {
+								height = Math.round((height * maxDimension) / width);
+								width = maxDimension;
+							} else {
+								width = Math.round((width * maxDimension) / height);
+								height = maxDimension;
+							}
+						}
+						canvas.width = width;
+						canvas.height = height;
+						ctx.drawImage(img, 0, 0, width, height);
+						result = canvas.toDataURL("image/jpeg", 0.6);
+					}
+					// Final safety check - reject if still too large
+					if (result.length > 950_000) {
+						reject(new Error("Gambar terlalu besar setelah kompresi. Gunakan gambar dengan resolusi lebih kecil."));
+						return;
+					}
 					resolve(result);
 				};
-				img.onerror = () => resolve(dataUrl);
+				img.onerror = () => reject(new Error("Gagal memuat gambar untuk kompresi."));
 				img.src = dataUrl;
 			});
 		},
@@ -568,8 +603,8 @@ function AIChatPage() {
 				try {
 					const compressed = await compressImage(raw);
 					setSelectedImage(compressed);
-				} catch {
-					setSelectedImage(raw);
+				} catch (err) {
+					toast.error(err instanceof Error ? err.message : "Gagal mengompresi gambar. Coba gambar lain.");
 				}
 			};
 			reader.onerror = () => toast.error("Gagal memproses gambar. Silakan coba gambar lain.");
@@ -597,8 +632,8 @@ function AIChatPage() {
 				try {
 					const compressed = await compressImage(raw);
 					setScanImage(compressed);
-				} catch {
-					setScanImage(raw);
+				} catch (err) {
+					toast.error(err instanceof Error ? err.message : "Gagal mengompresi gambar. Coba gambar lain.");
 				}
 			};
 			reader.readAsDataURL(file);
@@ -609,6 +644,13 @@ function AIChatPage() {
 	// Execute AI image scan and add result to chat
 	const handleRunScan = useCallback(async () => {
 		if (!scanImage || isScanning) return;
+
+		// Validate image size before sending to Convex (1MB arg limit)
+		if (scanImage.length > 950_000) {
+			toast.error("Gambar terlalu besar untuk diproses. Silakan gunakan gambar dengan resolusi lebih kecil.");
+			return;
+		}
+
 		setIsScanning(true);
 		try {
 			const result = await scanImageDataAction({ image: scanImage });

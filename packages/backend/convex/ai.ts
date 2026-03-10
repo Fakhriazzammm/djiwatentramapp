@@ -101,7 +101,14 @@ async function callGeminiAPI(
 			clearTimeout(timeoutId);
 
 			if (response.ok) {
-				const result = await response.json();
+				let result;
+				try {
+					result = await response.json();
+				} catch (jsonErr) {
+					lastError = `Gemini ${model}: Invalid JSON response`;
+					console.log(`callGeminiAPI: ${lastError}`, jsonErr);
+					continue;
+				}
 				const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
 				if (text) {
 					console.log(`callGeminiAPI: Success with ${model}`);
@@ -111,6 +118,13 @@ async function callGeminiAPI(
 				const blockReason = result.candidates?.[0]?.finishReason;
 				if (blockReason === "SAFETY" || blockReason === "RECITATION") {
 					lastError = `Gemini ${model}: Content blocked (${blockReason})`;
+					console.log(lastError);
+					continue;
+				}
+				// Check for prompt feedback block
+				const promptBlock = result.promptFeedback?.blockReason;
+				if (promptBlock) {
+					lastError = `Gemini ${model}: Prompt blocked (${promptBlock})`;
 					console.log(lastError);
 					continue;
 				}
@@ -2712,6 +2726,9 @@ export const scanImageData = action({
 				throw new ConvexError("Data gambar tidak valid atau terlalu kecil. Silakan upload ulang gambar.");
 			}
 
+			// Log image size for debugging
+			console.log(`scanImageData: Received image data of ${args.image.length} characters`);
+
 			// Extract base64 data and detect MIME type
 			let base64Data: string;
 			let mimeType: string;
@@ -2730,9 +2747,9 @@ export const scanImageData = action({
 				throw new ConvexError("Data base64 gambar tidak valid. Silakan upload ulang gambar.");
 			}
 
-			// Limit ukuran gambar (max ~10MB base64 ≈ ~7.5MB file)
-			if (base64Data.length > 10_000_000) {
-				throw new ConvexError("Gambar terlalu besar. Maksimal 7.5MB. Silakan kompres gambar terlebih dahulu.");
+			// Limit ukuran gambar (max ~5MB base64 for reliability)
+			if (base64Data.length > 5_000_000) {
+				throw new ConvexError("Gambar terlalu besar. Silakan kompres gambar terlebih dahulu (maks 3.5MB).");
 			}
 
 			const prompt = `Kamu adalah AI scanner dokumen keuangan yang ahli menganalisis gambar struk, kwitansi, nota, dan dokumen lainnya.
@@ -2840,15 +2857,26 @@ PENTING:
 			parsed.notes = parsed.notes || "";
 
 			return parsed;
-		} catch (error) {
+		} catch (error: unknown) {
 			// Ensure all errors are ConvexError so they reach the client properly
 			if (error instanceof ConvexError) {
 				throw error;
 			}
 			console.error("scanImageData unhandled error:", error);
-			throw new ConvexError(
-				`Gagal memproses gambar: ${error instanceof Error ? error.message : "Terjadi kesalahan. Coba lagi dengan gambar yang lebih jelas."}`
-			);
+			// Extract meaningful error message
+			let errorMsg = "Terjadi kesalahan. Coba lagi dengan gambar yang lebih jelas.";
+			if (error instanceof Error) {
+				if (error.message.includes("too large") || error.message.includes("size")) {
+					errorMsg = "Gambar terlalu besar untuk diproses. Silakan kompres gambar atau gunakan resolusi lebih rendah.";
+				} else if (error.message.includes("timeout") || error.message.includes("abort")) {
+					errorMsg = "Waktu pemrosesan habis. Silakan coba lagi dengan gambar yang lebih kecil.";
+				} else if (error.message.includes("fetch") || error.message.includes("network")) {
+					errorMsg = "Gagal menghubungi layanan AI. Silakan coba lagi.";
+				} else {
+					errorMsg = error.message.slice(0, 200);
+				}
+			}
+			throw new ConvexError(`Gagal memproses gambar: ${errorMsg}`);
 		}
 	},
 });
