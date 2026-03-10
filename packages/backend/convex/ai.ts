@@ -646,11 +646,15 @@ export const yumiChat = action({
 				content: v.string(),
 			})
 		),
-		image: v.optional(v.string()), // base64 data URL for vision processing
+		images: v.optional(v.array(v.string())), // multiple base64 data URLs for vision processing
+		image: v.optional(v.string()), // backward compatibility for single image
 	},
 	handler: async (ctx, args) => {
 		const dbContext = await gatherDatabaseContext(ctx);
 		const smartContext = await gatherSmartContext(ctx);
+
+		const allImages = [...(args.images || [])];
+		if (args.image) allImages.push(args.image);
 
 		// Build tool definitions for OpenAI
 		const openaiTools = Object.entries(tools).map(([name, tool]) => ({
@@ -694,8 +698,8 @@ ATURAN:
 8. Jika user meminta aksi (tambah produk, update stok, dll), GUNAKAN TOOL yang tersedia
 9. Jangan membuat asumsi nilai - jika ID diperlukan, minta user untuk menyediakannya
 10. SANGAT PENTING: JANGAN PERNAH gunakan simbol asterisk (*) untuk penekanan atau list. Gunakan teks polos atau emoji.
-11. FITUR SMART SUGGESTIONS: Jika ada aksi lanjutan yang relevan (seperti "Cek Stok", "Buat Pesanan", "Catat Pengeluaran", "Analisis HPP"), tambahkan di akhir jawaban Anda dengan format: [SUGGEST: Label Tombol | Prompt untuk dikirim ke AI]. Anda bisa memberikan lebih dari satu saran jika relevan.
-    Contoh: "Data penjualan hari ini sudah saya rekap. [SUGGEST: Cek Stok Produk | Berikan rincian stok produk terlaris hari ini] [SUGGEST: Saran Promo | Berikan rekomendasi promo untuk meningkatkan transaksi]"
+11. FITUR SMART SUGGESTIONS (UTAMA): JANGAN gunakan bullet points manual (seperti • atau -) untuk memberikan instruksi langkah selanjutnya. Gunakan format [SUGGEST: Label Tombol | Prompt untuk dikirim ke AI] agar user bisa tinggal KLIK tombol tanpa mengetik.
+    Contoh: "Data penjualan hari ini sudah saya rekap. [SUGGEST: 📦 Cek Stok Produk | Berikan rincian stok produk terlaris hari ini] [SUGGEST: 🎁 Berikan Promo | Berikan rekomendasi promo untuk meningkatkan transaksi]"
 
 SMART CONTEXT:
 ${smartContext}
@@ -725,23 +729,28 @@ INSTRUKSI TOOL CALLING:
 			messages.push({ role: msg.role, content: msg.content });
 		}
 
-		// Support vision: if image is attached, include it in the messages for OpenAI
-		if (args.image) {
+		// Support vision: if images are attached, include them in the messages for OpenAI
+		if (allImages.length > 0) {
+			const contentParts: any[] = [
+				{
+					type: "text",
+					text: args.message || "Tolong analisis gambar-gambar ini dan bantu saya dengan informasi di dalamnya.",
+				},
+			];
+
+			for (const imgUrl of allImages) {
+				contentParts.push({
+					type: "image_url",
+					image_url: {
+						url: imgUrl,
+						detail: "auto",
+					},
+				});
+			}
+
 			messages.push({
 				role: "user",
-				content: [
-					{
-						type: "text",
-						text: args.message || "Tolong analisis gambar ini dan bantu saya dengan informasi di dalamnya.",
-					},
-					{
-						type: "image_url",
-						image_url: {
-							url: args.image,
-							detail: "auto",
-						},
-					},
-				],
+				content: contentParts,
 			});
 		} else {
 			messages.push({ role: "user", content: args.message });
@@ -2883,5 +2892,30 @@ PENTING:
 				`Gagal memproses gambar: ${error instanceof Error ? error.message : "Terjadi kesalahan. Coba lagi dengan gambar yang lebih jelas."}`
 			);
 		}
+	},
+});
+
+/**
+ * Scan multiple images in bulk using scanImageData logic for each.
+ */
+export const bulkScanImageData = action({
+	args: {
+		images: v.array(v.string()), // array of base64 data URLs
+	},
+	handler: async (ctx, args) => {
+		const results = await Promise.allSettled(
+			args.images.map((image) => ctx.runAction(api.ai.scanImageData, { image }))
+		);
+
+		return results.map((r, i) => {
+			if (r.status === "fulfilled") {
+				return { success: true as const, data: r.value };
+			}
+			return { 
+				success: false as const, 
+				error: r.reason instanceof Error ? r.reason.message : String(r.reason),
+				index: i 
+			};
+		});
 	},
 });
