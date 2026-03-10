@@ -62,7 +62,7 @@ function ForecastingPage() {
 
 	// Map AI predictions to the StockoutPrediction interface used by the UI
 	const stockoutPredictions: StockoutPrediction[] | undefined =
-		stockoutPredictionsRaw?.map((p) => ({
+		stockoutPredictionsRaw?.map((p: any) => ({
 			inventoryId: p.ingredientName as unknown as Id<"inventory">,
 			ingredientName: p.ingredientName,
 			currentStock: p.currentStock,
@@ -100,9 +100,9 @@ function ForecastingPage() {
 		setLoadingForecast(true);
 		try {
 			// Generate forecast from existing stockout prediction data
-			const item = inventory?.find((i) => i._id === selectedInventory);
+			const item = (inventory as any)?.find((i: any) => i._id === selectedInventory);
 			const prediction = stockoutPredictions?.find(
-				(p) => p.ingredientName === item?.ingredientName
+				(p: any) => p.ingredientName === item?.ingredientName
 			);
 
 			if (item && prediction) {
@@ -562,7 +562,7 @@ function ForecastingPage() {
 							</p>
 						) : (
 							<div className="space-y-2">
-								{busyHours.peakHours.slice(0, 5).map((item) => (
+								{busyHours.peakHours.slice(0, 5).map((item: any) => (
 									<div
 										className="flex items-center gap-3"
 										key={item.hour}

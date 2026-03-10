@@ -304,7 +304,7 @@ function AdminDiscountsPage() {
 			return [];
 		}
 
-		return discounts.filter((d) => {
+		return discounts.filter((d: any) => {
 			// Search filter
 			const matchesSearch =
 				searchQuery === "" ||
@@ -334,13 +334,13 @@ function AdminDiscountsPage() {
 
 		return {
 			total: discounts.length,
-			active: discounts.filter((d) => getPromoStatus(d).label === "Aktif")
+			active: discounts.filter((d: any) => getPromoStatus(d).label === "Aktif")
 				.length,
 			scheduled: discounts.filter(
-				(d) => getPromoStatus(d).label === "Terjadwal"
+				(d: any) => getPromoStatus(d).label === "Terjadwal"
 			).length,
 			expired: discounts.filter(
-				(d) => getPromoStatus(d).label === "Kedaluwarsa"
+				(d: any) => getPromoStatus(d).label === "Kedaluwarsa"
 			).length,
 		};
 	}, [discounts, getPromoStatus]);
@@ -366,12 +366,12 @@ function AdminDiscountsPage() {
 								setLoadingAi(true);
 								try {
 									const salesSummary =
-										orders?.slice(0, 30).map((o) => ({
+										orders?.slice(0, 30).map((o: any) => ({
 											total: o.totalAmount,
 											date: o._creationTime,
 										})) || [];
 									const existingDiscountsData =
-										discounts?.map((d) => ({
+										discounts?.map((d: any) => ({
 											name: d.name,
 											type: d.type,
 											value: d.value,
@@ -588,7 +588,7 @@ function AdminDiscountsPage() {
 			{/* Discounts Grid */}
 			<div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 				<AnimatePresence mode="popLayout">
-					{filteredDiscounts?.map((d, index) => {
+					{filteredDiscounts?.map((d: any, index: number) => {
 						const status = getPromoStatus(d);
 						const StatusIcon = status.icon;
 

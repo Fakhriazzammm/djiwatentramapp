@@ -35,7 +35,7 @@ function AdminDashboard() {
 		);
 	}
 
-	const maxRevenue = Math.max(...stats.revenueLast7Days.map((d) => d.revenue), 1);
+	const maxRevenue = Math.max(...stats.revenueLast7Days.map((d: any) => d.revenue), 1);
 
 	return (
 		<div className="space-y-4 md:space-y-6">
@@ -87,7 +87,7 @@ function AdminDashboard() {
 						</div>
 					</div>
 					<div className="flex items-end justify-between gap-2 h-40">
-						{stats.revenueLast7Days.map((day, i) => (
+						{stats.revenueLast7Days.map((day: any, i: number) => (
 							<div key={i} className="flex flex-1 flex-col items-center gap-2">
 								<div className="relative w-full flex-1 flex items-end">
 									<div
@@ -181,7 +181,7 @@ function AdminDashboard() {
 						</div>
 					) : (
 						<div className="space-y-2">
-							{stats.lowStockItems.map((item) => (
+							{stats.lowStockItems.map((item: any) => (
 								<div
 									key={item._id}
 									className="flex items-center justify-between rounded-lg border border-destructive/20 bg-destructive/5 p-2.5"
@@ -214,7 +214,7 @@ function AdminDashboard() {
 						</div>
 					) : (
 						<div className="space-y-2">
-							{stats.topProducts.map((product, i) => (
+							{stats.topProducts.map((product: any, i: number) => (
 								<div
 									key={product.name}
 									className="flex items-center gap-3 rounded-lg bg-muted/50 p-2.5"
@@ -252,7 +252,7 @@ function AdminDashboard() {
 						</div>
 					) : (
 						<div className="space-y-2">
-							{stats.recentOrders.slice(0, 5).map((order) => (
+							{stats.recentOrders.slice(0, 5).map((order: any) => (
 								<div
 									key={order._id}
 									className="flex items-center justify-between rounded-lg bg-muted/50 p-2.5"

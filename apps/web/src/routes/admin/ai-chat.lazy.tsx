@@ -256,7 +256,7 @@ function AIChatPage() {
 	}> = [];
 
 	const lowStockItems =
-		inventory?.filter((i) => i.quantity <= i.lowStockThreshold) ?? [];
+		inventory?.filter((i: any) => i.quantity <= i.lowStockThreshold) ?? [];
 	if (lowStockItems.length > 0) {
 		smartInsights.push({
 			icon: <AlertTriangle className="h-3.5 w-3.5 text-accent" />,
@@ -265,7 +265,7 @@ function AIChatPage() {
 		});
 	}
 
-	const pendingOrders = orders?.filter((o) => o.status === "pending") ?? [];
+	const pendingOrders = orders?.filter((o: any) => o.status === "pending") ?? [];
 	if (pendingOrders.length > 0) {
 		smartInsights.push({
 			icon: <Bell className="h-3.5 w-3.5 text-primary" />,
@@ -274,7 +274,7 @@ function AIChatPage() {
 		});
 	}
 
-	const availableProducts = products?.filter((p) => p.isAvailable).length ?? 0;
+	const availableProducts = products?.filter((p: any) => p.isAvailable).length ?? 0;
 	if (availableProducts > 0) {
 		smartInsights.push({
 			icon: <TrendingUp className="h-3.5 w-3.5 text-primary" />,
@@ -421,8 +421,8 @@ function AIChatPage() {
 
 			try {
 				const history = messages
-					.filter((m) => m.role === "user" || m.role === "assistant")
-					.map((m) => ({ role: m.role, content: m.content }));
+					.filter((m: any) => m.role === "user" || m.role === "assistant")
+					.map((m: any) => ({ role: m.role, content: m.content }));
 
 				const attachedImage = image || selectedImage || undefined;
 				const response = await yumiChat({
@@ -797,8 +797,8 @@ function AIChatPage() {
 	useEffect(() => {
 		if (currentSessionId && loadConversationQuery) {
 			const history = loadConversationQuery
-				.filter((m) => m.role !== "system")
-				.map((m) => ({
+				.filter((m: any) => m.role !== "system")
+				.map((m: any) => ({
 					role: m.role as "user" | "assistant",
 					content: m.content,
 				}));

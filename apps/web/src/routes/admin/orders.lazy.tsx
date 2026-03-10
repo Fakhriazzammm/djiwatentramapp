@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
@@ -76,7 +75,7 @@ function AdminOrders() {
 	const [isDetailOpen, setIsDetailOpen] = useState(false);
 
 	// Client-side filtering
-	const filteredOrders = allOrders?.filter((order) => {
+	const filteredOrders = allOrders?.filter((order: any) => {
 		const matchesStatus =
 			statusFilter === "all" || order.status === statusFilter;
 		const matchesSearch =
@@ -239,8 +238,7 @@ function AdminOrders() {
 							className="rounded-xl border border-border bg-card p-3 transition-colors active:bg-muted/50"
 							key={order._id}
 							onClick={() => {
-								// @ts-expect-error
-								setSelectedOrder(order);
+								setSelectedOrder(order as any);
 								setIsDetailOpen(true);
 							}}
 						>
@@ -309,8 +307,7 @@ function AdminOrders() {
 										className="group cursor-pointer transition-colors hover:bg-muted/30"
 										key={order._id}
 										onClick={() => {
-											// @ts-expect-error
-											setSelectedOrder(order);
+											setSelectedOrder(order as any);
 											setIsDetailOpen(true);
 										}}
 									>
@@ -389,8 +386,7 @@ function AdminOrders() {
 												className="h-8 w-8 text-muted-foreground hover:text-primary"
 												onClick={(e) => {
 													e.stopPropagation();
-													// @ts-expect-error
-													setSelectedOrder(order);
+													setSelectedOrder(order as any);
 													setIsDetailOpen(true);
 												}}
 												size="icon"

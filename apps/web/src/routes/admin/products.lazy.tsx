@@ -341,13 +341,13 @@ function ProductsTab({
 		if (!presetId) {
 			return;
 		}
-		const preset = variationPresets?.find((v) => v._id === presetId);
+		const preset = variationPresets?.find((v: any) => v._id === presetId);
 		if (!preset) {
 			return;
 		}
 
 		// Check if already exists
-		if (formData.variations.some((v) => v.name === preset.name)) {
+		if (formData.variations.some((v: any) => v.name === preset.name)) {
 			toast.error("Variasi ini sudah ditambahkan");
 			return;
 		}
@@ -358,7 +358,7 @@ function ProductsTab({
 				...formData.variations,
 				{
 					name: preset.name,
-					options: preset.options.map((o) => ({
+					options: preset.options.map((o: any) => ({
 						name: o.name,
 						price: o.price,
 					})),
@@ -431,7 +431,7 @@ function ProductsTab({
 
 				{products &&
 					products.length > 0 &&
-					products.map((product) => (
+					products.map((product: any) => (
 						<div
 							className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
 							key={product._id}
@@ -605,7 +605,7 @@ function ProductsTab({
 												value={formData.categoryId}
 											>
 												<option value="">Pilih Kategori</option>
-												{categories?.map((c) => (
+												{categories?.map((c: any) => (
 													<option key={c._id} value={c._id}>
 														{c.name}
 													</option>
@@ -670,7 +670,7 @@ function ProductsTab({
 													setIsGeneratingDesc(true);
 													try {
 														const category = categories?.find(
-															(c) => c._id === formData.categoryId
+															(c: any) => c._id === formData.categoryId
 														);
 														const desc = await generateDescription({
 															productName: formData.name,
@@ -763,7 +763,7 @@ function ProductsTab({
 												value=""
 											>
 												<option value="">+ Preset</option>
-												{variationPresets?.map((vp) => (
+												{variationPresets?.map((vp: any) => (
 													<option key={vp._id} value={vp._id}>
 														{vp.name}
 													</option>
@@ -771,7 +771,7 @@ function ProductsTab({
 											</select>
 										</div>
 										<div className="flex flex-wrap gap-2">
-											{formData.variations.map((v) => (
+											{formData.variations.map((v: any) => (
 												<div
 													className="flex items-center gap-2 rounded-md bg-[#4A3728] px-4 py-1.5 font-bold text-[#F5F0E1] text-[10px]"
 													key={v.name}
@@ -826,15 +826,15 @@ function ProductsTab({
 											>
 												<option value="">+ Resep/Bahan</option>
 												{(() => {
-													const raw = inventory?.filter((i) => !i.baseRecipeId);
+													const raw = inventory?.filter((i: any) => !i.baseRecipeId);
 													const bases = inventory?.filter(
-														(i) => i.baseRecipeId
+														(i: any) => i.baseRecipeId
 													);
 													return (
 														<>
 															{raw && raw.length > 0 && (
 																<optgroup label="Bahan Mentah">
-																	{raw.map((inv) => (
+																	{raw.map((inv: any) => (
 																		<option key={inv._id} value={inv._id}>
 																			{inv.ingredientName} ({inv.unit})
 																		</option>
@@ -843,7 +843,7 @@ function ProductsTab({
 															)}
 															{bases && bases.length > 0 && (
 																<optgroup label="Resep Base">
-																	{bases.map((inv) => (
+																	{bases.map((inv: any) => (
 																		<option key={inv._id} value={inv._id}>
 																			{inv.ingredientName} ({inv.unit})
 																		</option>
@@ -856,9 +856,9 @@ function ProductsTab({
 											</select>
 										</div>
 										<div className="space-y-3">
-											{recipeData.map((item, idx) => {
+											{recipeData.map((item: any, idx: number) => {
 												const inv = inventory?.find(
-													(i) => i._id === item.inventoryId
+													(i: any) => i._id === item.inventoryId
 												);
 												return (
 													<div
@@ -1144,7 +1144,7 @@ function SettingsTab({
 												isOpen: true,
 												editingId: v._id,
 												name: v.name,
-												options: v.options.map((o) => ({
+												options: v.options.map((o: any) => ({
 													id: Math.random().toString(36).substring(7),
 													name: o.name,
 													price: String(o.price),
@@ -1172,7 +1172,7 @@ function SettingsTab({
 								</div>
 							</div>
 							<div className="flex flex-wrap gap-2">
-								{v.options.map((opt) => (
+								{v.options.map((opt: any) => (
 									<span
 										className="rounded-full bg-background px-2.5 py-1 text-[10px] text-muted-foreground"
 										key={opt.name}
@@ -1557,8 +1557,8 @@ function BaseRecipesTab() {
 							<p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
 								Bahan Komposisi:
 							</p>
-							{recipe.ingredients.map((ing, _i) => {
-								const inv = inventory?.find((v) => v._id === ing.inventoryId);
+							{recipe.ingredients.map((ing: any, _i: number) => {
+								const inv = inventory?.find((v: any) => v._id === ing.inventoryId);
 								return (
 									<div
 										className="flex justify-between text-[11px]"
@@ -1696,8 +1696,8 @@ function BaseRecipesTab() {
 											>
 												<option value="">+ Pilih Bahan</option>
 												{inventory
-													?.filter((i) => !i.baseRecipeId)
-													.map((inv) => (
+													?.filter((i: any) => !i.baseRecipeId)
+													.map((inv: any) => (
 														<option key={inv._id} value={inv._id}>
 															{inv.ingredientName} ({inv.unit})
 														</option>
@@ -1705,9 +1705,9 @@ function BaseRecipesTab() {
 											</select>
 										</div>
 										<div className="space-y-3">
-											{formData.ingredients.map((ing, idx) => {
+											{formData.ingredients.map((ing: any, idx: number) => {
 												const inv = inventory?.find(
-													(v) => v._id === ing.inventoryId
+													(v: any) => v._id === ing.inventoryId
 												);
 												return (
 													<div
@@ -1802,7 +1802,7 @@ function MixedRecipesTab() {
 
 	// Group recipes by productId for easy lookup
 	const recipesByProduct = recipes?.reduce(
-		(acc, recipe) => {
+		(acc: any, recipe: any) => {
 			const productId = recipe.productId;
 			if (!acc[productId]) {
 				acc[productId] = [];
@@ -1830,7 +1830,7 @@ function MixedRecipesTab() {
 						<h3 className="font-bold text-lg">Resep Base (Pre-mix)</h3>
 					</div>
 					<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-						{baseRecipes?.map((recipe) => (
+						{baseRecipes?.map((recipe: any) => (
 							<div
 								className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
 								key={recipe._id}
@@ -1845,7 +1845,7 @@ function MixedRecipesTab() {
 									<p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
 										Komposisi:
 									</p>
-									{recipe.ingredients.map((ing) => {
+									{recipe.ingredients.map((ing: any) => {
 										const inv = inventory?.find(
 											(v) => v._id === ing.inventoryId
 										);
@@ -1881,7 +1881,7 @@ function MixedRecipesTab() {
 						<h3 className="font-bold text-lg">Resep Produk (Menu)</h3>
 					</div>
 					<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-						{products?.map((product) => {
+						{products?.map((product: any) => {
 							// Get recipes for this product from the recipes table
 							const productRecipes = recipesByProduct?.[product._id];
 							if (!productRecipes || productRecipes.length === 0) {
@@ -1903,11 +1903,11 @@ function MixedRecipesTab() {
 										<p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
 											Komposisi:
 										</p>
-										{productRecipes.map((recipe) =>
+										{productRecipes.map((recipe: any) =>
 											recipe.ingredients.map(
 												(ing: { inventoryId: string; amount: number }) => {
 													const inv = inventory?.find(
-														(v) => v._id === ing.inventoryId
+														(v: any) => v._id === ing.inventoryId
 													);
 													return (
 														<div

@@ -76,7 +76,7 @@ function InventoryPage() {
 		if (!inventory) {
 			return [];
 		}
-		const result = inventory.filter((item) => {
+		const result = inventory.filter((item: any) => {
 			const matchesSearch = item.ingredientName
 				.toLowerCase()
 				.includes(searchQuery.toLowerCase());
@@ -86,7 +86,7 @@ function InventoryPage() {
 			return matchesSearch && matchesFilter;
 		});
 
-		result.sort((a, b) => {
+		result.sort((a: any, b: any) => {
 			const aValue = (a[sortConfig.key] as string | number) ?? "";
 			const bValue = (b[sortConfig.key] as string | number) ?? "";
 			if (aValue < bValue) {
@@ -466,7 +466,7 @@ function InventoryModalContent({
 						value={newItem.baseRecipeId}
 					>
 						<option value="">BUKAN RACIKAN / PRE-MIX</option>
-						{baseRecipes?.map((r) => (
+						{baseRecipes?.map((r: any) => (
 							<option key={r._id} value={r._id}>
 								{r.name.toUpperCase()}
 							</option>
@@ -1072,7 +1072,7 @@ function InventoryHistoryModal({
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-[#4A3728]/5">
-								{transactions?.map((t) => (
+								{transactions?.map((t: any) => (
 									<tr
 										className="transition-colors hover:bg-[#E8E1CF]/30"
 										key={t._id}

@@ -155,11 +155,11 @@ const COMMON_UNITS = [
 
 function computeHpp(form: HppFormData): HppCalcResult {
 	const ingredientCostPerServing = form.ingredients.reduce(
-		(sum, ing) => sum + getIngredientCostPerServing(ing),
+		(sum: number, ing: any) => sum + getIngredientCostPerServing(ing),
 		0
 	);
 	const overheadCostPerServing = form.overheadCosts.reduce(
-		(sum, oh) => sum + oh.costPerServing,
+		(sum: number, oh: any) => sum + oh.costPerServing,
 		0
 	);
 	const totalHppPerServing = ingredientCostPerServing + overheadCostPerServing;
@@ -187,13 +187,13 @@ function computeHpp(form: HppFormData): HppCalcResult {
 
 /** Compute HPP for a saved calculation doc */
 function computeHppFromDoc(calc: Doc<"hppCalculations">) {
-	const ingredientCost = calc.ingredients.reduce((sum, ing) => {
+	const ingredientCost = calc.ingredients.reduce((sum: number, ing: any) => {
 		const totalBase = ing.purchaseQuantity * ing.conversionFactor;
 		const costBase = totalBase > 0 ? ing.purchasePrice / totalBase : 0;
 		return sum + costBase * ing.usagePerServing;
 	}, 0);
 	const overheadCost = calc.overheadCosts.reduce(
-		(sum, oh) => sum + oh.costPerServing,
+		(sum: number, oh: any) => sum + oh.costPerServing,
 		0
 	);
 	const totalHpp = ingredientCost + overheadCost;
@@ -313,7 +313,7 @@ function HppCalculatorPage() {
 		}
 		setForm((prev) => ({
 			...prev,
-			ingredients: prev.ingredients.map((ing) =>
+			ingredients: prev.ingredients.map((ing: any) =>
 				ing.id === id
 					? {
 							...ing,
@@ -347,7 +347,7 @@ function HppCalculatorPage() {
 
 			setForm((prev) => ({
 				...prev,
-				ingredients: prev.ingredients.map((ing) =>
+				ingredients: prev.ingredients.map((ing: any) =>
 					ing.id === ingredientId
 						? {
 								...ing,
@@ -386,7 +386,7 @@ function HppCalculatorPage() {
 		(id: string, field: keyof OverheadRow, value: string | number) => {
 			setForm((prev) => ({
 				...prev,
-				overheadCosts: prev.overheadCosts.map((oh) =>
+				overheadCosts: prev.overheadCosts.map((oh: any) =>
 					oh.id === id ? { ...oh, [field]: value } : oh
 				),
 			}));
@@ -404,7 +404,7 @@ function HppCalculatorPage() {
 	const removeOverhead = useCallback((id: string) => {
 		setForm((prev) => ({
 			...prev,
-			overheadCosts: prev.overheadCosts.filter((oh) => oh.id !== id),
+			overheadCosts: prev.overheadCosts.filter((oh: any) => oh.id !== id),
 		}));
 	}, []);
 
@@ -481,11 +481,11 @@ function HppCalculatorPage() {
 		setForm({
 			name: calc.name,
 			description: calc.description || "",
-			ingredients: calc.ingredients.map((ing) => ({
+			ingredients: calc.ingredients.map((ing: any) => ({
 				...ing,
 				id: generateId(),
 			})),
-			overheadCosts: calc.overheadCosts.map((oh) => ({
+			overheadCosts: calc.overheadCosts.map((oh: any) => ({
 				...oh,
 				id: generateId(),
 			})),
@@ -501,11 +501,11 @@ function HppCalculatorPage() {
 		setForm({
 			name: `${calc.name} (Salinan)`,
 			description: calc.description || "",
-			ingredients: calc.ingredients.map((ing) => ({
+			ingredients: calc.ingredients.map((ing: any) => ({
 				...ing,
 				id: generateId(),
 			})),
-			overheadCosts: calc.overheadCosts.map((oh) => ({
+			overheadCosts: calc.overheadCosts.map((oh: any) => ({
 				...oh,
 				id: generateId(),
 			})),
@@ -747,14 +747,14 @@ function ImportRecipeModal({
 
 		// Find the matching recipe
 		const recipe = recipes.find(
-			(r) =>
+			(r: any) =>
 				r.productId === selectedProduct &&
 				(selectedVariant ? r.variantName === selectedVariant : !r.variantName)
 		);
 		// Fallback: try base recipe
 		const recipeToUse =
 			recipe ||
-			recipes.find((r) => r.productId === selectedProduct && !r.variantName);
+			recipes.find((r: any) => r.productId === selectedProduct && !r.variantName);
 
 		if (!recipeToUse) {
 			toast.error("Resep tidak ditemukan untuk produk ini");
@@ -768,7 +768,7 @@ function ImportRecipeModal({
 
 		// Build ingredient rows from recipe
 		const ingredients: IngredientRow[] = recipeToUse.ingredients
-			.map((recipeIng) => {
+			.map((recipeIng: any) => {
 				const invItem = inventory.find((i) => i._id === recipeIng.inventoryId);
 				if (!invItem) {
 					return null;
@@ -1824,7 +1824,7 @@ function SavedCalculationsView({
 								<div className="flex items-center gap-1.5 text-[11px] text-green-600 dark:text-green-400">
 									<Link2 className="h-3 w-3" />
 									<span>
-										{calc.ingredients.filter((i) => i.inventoryId).length}/
+										{calc.ingredients.filter((i: any) => i.inventoryId).length}/
 										{calc.ingredients.length} bahan terhubung ke inventaris
 									</span>
 								</div>
@@ -1846,7 +1846,7 @@ function SavedCalculationsView({
 											<p className="font-semibold text-[11px] text-muted-foreground uppercase">
 												Bahan Baku
 											</p>
-											{calc.ingredients.map((ing, i) => {
+											{calc.ingredients.map((ing: any, i: number) => {
 												const totalBase =
 													ing.purchaseQuantity * ing.conversionFactor;
 												const costBase =
@@ -1902,7 +1902,7 @@ function SavedCalculationsView({
 													<p className="mt-1 font-semibold text-[11px] text-muted-foreground uppercase">
 														Overhead
 													</p>
-													{calc.overheadCosts.map((oh, i) => (
+													{calc.overheadCosts.map((oh: any, i: number) => (
 														<div
 															className="flex items-center justify-between text-[11px]"
 															key={`${calc._id}-oh-${i}`}

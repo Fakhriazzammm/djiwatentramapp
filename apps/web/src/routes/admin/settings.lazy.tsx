@@ -318,7 +318,7 @@ function SettingsPage() {
 
 			{/* Tab Switcher - horizontal scroll on mobile */}
 			<div className="no-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-muted/50 p-1 shadow-inner md:p-1.5">
-				{tabs.map((tab) => (
+				{tabs.map((tab: any) => (
 					<button
 						className={`flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2.5 font-bold transition-all md:flex-1 md:gap-2 md:px-6 md:py-3 ${
 							activeTab === tab.id
@@ -942,7 +942,7 @@ function SettingsPage() {
 												Izin Akses (Permissions)
 											</p>
 											<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-												{AVAILABLE_PERMISSIONS.map((perm) => (
+												{AVAILABLE_PERMISSIONS.map((perm: any) => (
 													<label
 														className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${
 															newRole.permissions.includes(perm.id)
@@ -1029,36 +1029,35 @@ function SettingsPage() {
 											<h4 className="px-2 font-bold text-base text-foreground">
 												Daftar Role
 											</h4>
-											<div className="flex flex-wrap gap-2">
-												{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+											<div className="space-y-2">
 												{roles?.map((role: any) => (
 													<div
-														className="group flex items-center gap-3 rounded-xl border border-border bg-background py-2.5 pr-2 pl-4 shadow-sm transition-all hover:border-primary/20"
+														className="flex items-center justify-between rounded-2xl border border-border bg-background p-4 shadow-sm"
 														key={role._id}
 													>
 														<div>
 															<p className="font-bold text-sm tracking-tight">
 																{role.name}
 															</p>
-															<p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-																{role.permissions.length} Izin
+															<p className="text-[10px] text-muted-foreground">
+																{role.permissions.length} Hak Akses
 															</p>
 														</div>
 														<button
-															className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 lg:opacity-0"
+															className="rounded-lg p-2 text-destructive transition-colors hover:bg-destructive/10"
 															onClick={() => handleDeleteRole(role._id)}
 															type="button"
 														>
-															<Trash2 className="h-3.5 w-3.5" />
+															<Trash2 className="h-4 w-4" />
 														</button>
 													</div>
 												))}
-												{!roles?.length && (
+											</div>
+											{!roles?.length && (
 													<p className="w-full py-8 text-center text-muted-foreground text-sm italic">
 														Belum ada role.
 													</p>
 												)}
-											</div>
 										</div>
 									</div>
 								</div>
