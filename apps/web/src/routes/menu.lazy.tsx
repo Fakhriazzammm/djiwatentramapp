@@ -76,14 +76,14 @@ function CartItemRow({
 			{item.image ? (
 				<img
 					alt={item.name}
-					className="h-12 w-12 shrink-0 rounded-lg object-cover"
-					height={48}
+					className="h-14 w-14 shrink-0 rounded-lg object-cover"
+					height={56}
 					src={item.image}
-					width={48}
+					width={56}
 				/>
 			) : (
-				<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-					<span className="font-bold text-primary/50 text-sm">
+				<div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+					<span className="font-bold text-primary/50 text-base">
 						{item.name.charAt(0)}
 					</span>
 				</div>
@@ -98,39 +98,39 @@ function CartItemRow({
 				</div>
 			</div>
 
-			<div className="flex shrink-0 items-center gap-1.5">
+			<div className="flex shrink-0 items-center gap-2">
 				{item.quantity === 1 ? (
 					<button
 						aria-label={`Hapus ${item.name}`}
-						className="flex h-8 w-8 items-center justify-center rounded-lg bg-destructive/10 text-destructive active:scale-95"
+						className="flex h-10 w-10 items-center justify-center rounded-xl bg-destructive/10 text-destructive active:scale-95 transition-transform"
 						onClick={() => onUpdateQuantity(item.productId, item.variant, -1)}
 						type="button"
 					>
-						<Trash2 className="h-3.5 w-3.5" />
+						<Trash2 className="h-4 w-4" />
 					</button>
 				) : (
 					<button
 						aria-label={`Kurangi jumlah ${item.name}`}
-						className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-foreground active:scale-95"
+						className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-foreground active:scale-95 transition-transform"
 						onClick={() => onUpdateQuantity(item.productId, item.variant, -1)}
 						type="button"
 					>
-						<Minus className="h-3.5 w-3.5" />
+						<Minus className="h-4 w-4" />
 					</button>
 				)}
 				<output
 					aria-live="polite"
-					className="min-w-[2rem] text-center font-bold text-sm"
+					className="min-w-[2.5rem] text-center font-bold text-base"
 				>
 					{item.quantity}
 				</output>
 				<button
 					aria-label={`Tambah jumlah ${item.name}`}
-					className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground active:scale-95"
+					className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground active:scale-95 transition-transform"
 					onClick={() => onUpdateQuantity(item.productId, item.variant, 1)}
 					type="button"
 				>
-					<Plus className="h-3.5 w-3.5" />
+					<Plus className="h-4 w-4" />
 				</button>
 			</div>
 		</div>
@@ -203,18 +203,18 @@ function MobileBottomBar({
 	onOpenVoucher: () => void;
 	onCheckout: () => void;
 }) {
-	return (
+		return (
 		<div className="fixed right-0 bottom-0 left-0 z-50 md:hidden">
 			{appliedVoucher && (
-				<div className="mx-3 mb-1 flex items-center justify-between rounded-t-xl bg-emerald-100 px-3 py-1.5 shadow-sm">
+				<div className="mx-3 mb-1 flex items-center justify-between rounded-t-xl bg-emerald-100 px-4 py-2 shadow-sm">
 					<div className="flex items-center gap-2">
-						<Tag className="h-3 w-3 text-emerald-600" />
-						<span className="font-medium text-emerald-700 text-xs">
+						<Tag className="h-4 w-4 text-emerald-600" />
+						<span className="font-medium text-emerald-700 text-sm">
 							{appliedVoucher.name}
 						</span>
 					</div>
 					<button
-						className="font-medium text-red-500 text-xs active:opacity-70"
+						className="rounded-lg px-3 py-1.5 font-semibold text-red-500 text-xs active:bg-red-50 transition-colors"
 						onClick={onRemoveVoucher}
 						type="button"
 					>
@@ -223,34 +223,34 @@ function MobileBottomBar({
 				</div>
 			)}
 
-			<div className="safe-area-bottom border-border border-t bg-background px-3 pt-2 pb-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
-				<div className="flex items-center gap-2">
+			<div className="safe-area-bottom border-border border-t bg-background px-3 pt-2.5 pb-2.5 shadow-[0_-4px_16px_rgba(0,0,0,0.10)]">
+				<div className="flex items-center gap-2.5">
 					<button
 						aria-label="Lihat keranjang"
-						className="flex min-w-0 flex-1 flex-col justify-center text-left"
+						className="flex min-w-0 flex-1 flex-col justify-center text-left active:opacity-70 transition-opacity"
 						disabled={!hasItems}
 						onClick={onOpenCart}
 						type="button"
 					>
 						{discountAmount > 0 && (
-							<span className="text-[10px] text-muted-foreground line-through">
+							<span className="text-xs text-muted-foreground line-through">
 								{formatCurrency(totalAmount)}
 							</span>
 						)}
-						<span className="font-bold text-base text-foreground">
+						<span className="font-bold text-lg text-foreground">
 							{formatCurrency(finalTotal)}
 						</span>
 					</button>
 
 					<button
 						aria-label={`Keranjang: ${totalItems} item`}
-						className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card active:scale-95"
+						className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-card active:scale-95 transition-transform"
 						onClick={onOpenCart}
 						type="button"
 					>
-						<ShoppingCart className="h-5 w-5 text-foreground" />
+						<ShoppingCart className="h-6 w-6 text-foreground" />
 						{totalItems > 0 && (
-							<span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 font-bold text-[10px] text-primary-foreground shadow">
+							<span className="absolute -top-2 -right-2 flex h-5.5 min-w-5.5 items-center justify-center rounded-full bg-primary px-1.5 font-bold text-[11px] text-primary-foreground shadow-md">
 								{totalItems}
 							</span>
 						)}
@@ -258,16 +258,16 @@ function MobileBottomBar({
 
 					<button
 						aria-label="Pakai voucher"
-						className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-500/50 border-dashed bg-emerald-50 active:scale-95"
+						className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-emerald-500/50 border-dashed bg-emerald-50 active:scale-95 transition-transform"
 						onClick={onOpenVoucher}
 						type="button"
 					>
-						<Tag className="h-4 w-4 text-emerald-600" />
+						<Tag className="h-5 w-5 text-emerald-600" />
 					</button>
 
 					<button
 						aria-label="Bayar pesanan"
-						className="flex h-11 shrink-0 items-center gap-2 rounded-xl bg-primary px-5 font-bold text-primary-foreground shadow-md active:scale-95 disabled:opacity-50"
+						className="flex h-12 shrink-0 items-center gap-2 rounded-xl bg-primary px-6 font-bold text-base text-primary-foreground shadow-lg active:scale-95 transition-transform disabled:opacity-50"
 						disabled={!hasItems || isSubmitting}
 						onClick={onCheckout}
 						type="button"
@@ -336,7 +336,7 @@ function MobileCartDrawer({
 					<div className="flex items-center gap-2">
 						{items.length > 0 && (
 							<button
-								className="rounded-lg px-2 py-1 font-medium text-destructive text-xs active:bg-destructive/10"
+								className="rounded-lg px-3 py-2 font-semibold text-destructive text-sm active:bg-destructive/10 transition-colors"
 								onClick={onClearCart}
 								type="button"
 							>
@@ -345,20 +345,20 @@ function MobileCartDrawer({
 						)}
 						<button
 							aria-label="Tutup keranjang"
-							className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground active:scale-95"
+							className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground active:scale-95 transition-transform"
 							onClick={() => onOpenChange(false)}
 							type="button"
 						>
-							<X className="h-4 w-4" />
+							<X className="h-5 w-5" />
 						</button>
 					</div>
 				</SheetHeader>
 
-				<div className="flex-1 overflow-y-auto px-4 py-2">
+				<div className="flex-1 overflow-y-auto px-4 py-3">
 					{items.length === 0 ? (
 						<EmptyCart className="py-8" size="sm" />
 					) : (
-						<div className="space-y-2">
+						<div className="space-y-3">
 							{items.map((item) => (
 								<CartItemRow
 									item={item}
@@ -398,16 +398,16 @@ function MobileCartDrawer({
 							/>
 						</div>
 
-						<div className="grid grid-cols-4 gap-2">
+						<div className="grid grid-cols-4 gap-2.5">
 							<button
-								className="col-span-1 flex items-center justify-center rounded-xl border border-border bg-background p-3 font-medium text-muted-foreground text-sm active:bg-muted"
+								className="col-span-1 flex items-center justify-center rounded-xl border border-border bg-background p-3.5 font-semibold text-muted-foreground text-sm active:bg-muted transition-colors"
 								onClick={onCancel}
 								type="button"
 							>
 								Batal
 							</button>
 							<button
-								className={`col-span-3 flex items-center justify-center rounded-xl bg-primary p-3 font-bold text-primary-foreground shadow-md active:scale-[0.98] ${
+								className={`col-span-3 flex items-center justify-center rounded-xl bg-primary p-3.5 font-bold text-base text-primary-foreground shadow-lg active:scale-[0.98] transition-transform ${
 									isSubmitting ? "cursor-not-allowed opacity-50" : ""
 								}`}
 								disabled={isSubmitting}
@@ -593,19 +593,19 @@ function MenuPage() {
 
 			{/* Header / Category Tabs */}
 			<header className="shrink-0 border-border border-b bg-background/95 backdrop-blur-sm shadow-sm">
-				<div className="flex items-center gap-1 px-2 py-1.5 md:px-3 md:py-2">
+				<div className="flex items-center gap-2 px-2 py-2 md:px-3 md:py-2">
 					<div
-						className="no-scrollbar flex flex-1 gap-1.5 overflow-x-auto scroll-smooth"
+						className="no-scrollbar flex flex-1 gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory"
 						role="tablist"
 						style={{ WebkitOverflowScrolling: 'touch' }}
 					>
 						<button
 							aria-label="Tampilkan semua kategori"
 							aria-selected={selectedCategory === null}
-							className={`shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 font-medium text-sm transition-colors md:px-4 md:py-2 ${
+							className={`shrink-0 snap-start whitespace-nowrap rounded-xl border px-4 py-2.5 min-h-[44px] font-semibold text-sm transition-all active:scale-95 md:px-5 md:py-2.5 ${
 								selectedCategory === null
-									? "border-primary bg-primary text-primary-foreground"
-									: "border-border bg-background text-foreground hover:bg-muted"
+									? "border-primary bg-primary text-primary-foreground shadow-md"
+									: "border-border bg-background text-foreground hover:bg-muted active:bg-muted"
 							}`}
 							onClick={() => setSelectedCategory(null)}
 							role="tab"
@@ -617,10 +617,10 @@ function MenuPage() {
 							<button
 								aria-label={`Tampilkan kategori ${cat.name}`}
 								aria-selected={selectedCategory === cat._id}
-								className={`shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 font-medium text-sm transition-colors md:px-4 md:py-2 ${
+								className={`shrink-0 snap-start whitespace-nowrap rounded-xl border px-4 py-2.5 min-h-[44px] font-semibold text-sm transition-all active:scale-95 md:px-5 md:py-2.5 ${
 									selectedCategory === cat._id
-										? "border-primary bg-primary text-primary-foreground"
-										: "border-border bg-background text-foreground hover:bg-muted"
+										? "border-primary bg-primary text-primary-foreground shadow-md"
+										: "border-border bg-background text-foreground hover:bg-muted active:bg-muted"
 								}`}
 								key={cat._id}
 								onClick={() => setSelectedCategory(cat._id)}
@@ -631,7 +631,7 @@ function MenuPage() {
 							</button>
 						))}
 					</div>
-					<div className="flex shrink-0 items-center gap-1.5">
+					<div className="flex shrink-0 items-center gap-2">
 						<TransactionHistorySidebar />
 						<MenuSidebar />
 					</div>
@@ -642,12 +642,12 @@ function MenuPage() {
 			<div className="flex flex-1 overflow-hidden">
 				{/* Product Grid */}
 				<main
-					className="flex-1 overflow-y-auto bg-muted/20 p-2 pb-36 md:pb-2 md:p-3"
+					className="flex-1 overflow-y-auto bg-muted/20 p-2 pb-40 md:pb-2 md:p-3"
 					id="main-content"
 					tabIndex={-1}
 				>
 					{products ? (
-						<div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+						<div className="grid grid-cols-3 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
 							{products.map((product) => {
 								const { finalPrice } = calculateEffectivePrice(
 									{
@@ -661,41 +661,41 @@ function MenuPage() {
 
 								return (
 									<button
-										className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card text-left shadow-sm transition-all hover:border-primary/20 hover:shadow-md active:scale-[0.97]"
+										className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card text-left shadow-sm transition-all hover:border-primary/20 hover:shadow-md active:scale-[0.95] active:bg-muted/10"
 										key={product._id}
 										onClick={() => handleAddToCart(product)}
 										type="button"
 									>
 										{cartItem && (
-											<div className="absolute top-1.5 right-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-primary font-bold text-primary-foreground text-xs shadow-md">
+											<div className="absolute top-1.5 right-1.5 z-10 flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1 font-bold text-primary-foreground text-[10px] shadow-md">
 												{cartItem.quantity}
 											</div>
 										)}
 
-										<div className="relative aspect-square overflow-hidden bg-muted">
+										<div className="relative aspect-[4/3] overflow-hidden bg-muted">
 											{product.image ? (
 												<img
 													alt={product.name}
 													className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
-													height={200}
+													height={150}
 													loading="lazy"
 													src={product.image}
 													width={200}
 												/>
 											) : (
 												<div className="flex h-full w-full items-center justify-center bg-primary/5">
-													<span className="font-bold text-3xl text-primary/30">
+													<span className="font-bold text-2xl text-primary/30">
 														{product.name.charAt(0)}
 													</span>
 												</div>
 											)}
 										</div>
 
-										<div className="flex flex-1 flex-col justify-between gap-1 p-2.5 md:p-3">
-											<h3 className="line-clamp-2 font-semibold text-foreground text-xs leading-tight md:text-sm">
+										<div className="flex flex-1 flex-col justify-between gap-0.5 p-2 md:p-3">
+											<h3 className="line-clamp-2 font-semibold text-foreground text-[11px] leading-tight md:text-sm">
 												{product.name}
 											</h3>
-											<span className="font-bold text-primary text-sm md:text-base">
+											<span className="font-bold text-primary text-xs md:text-base">
 												{formatCurrency(finalPrice)}
 											</span>
 										</div>

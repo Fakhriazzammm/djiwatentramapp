@@ -14,6 +14,7 @@ import {
 	FileText,
 	Lightbulb,
 	Loader2,
+	PlusCircle,
 	Receipt,
 	ScanLine,
 	Send,
@@ -726,7 +727,7 @@ function AIChatPage() {
 		} finally {
 			setIsScanning(false);
 		}
-	}, [scanImages, isScanning, bulkScanImageDataAction]);
+	}, [scanImages, isScanning, bulkScanImageDataAction, extractSuggestions, sanitizeResponse]);
 
 	const handleRemoveImage = useCallback(() => {
 		setSelectedImages([]); // Clear all selected images

@@ -1,4 +1,4 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+﻿import { createLazyFileRoute } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -14,6 +14,7 @@ import {
 	FileText,
 	Lightbulb,
 	Loader2,
+	PlusCircle,
 	Receipt,
 	ScanLine,
 	Send,
@@ -37,8 +38,9 @@ export const Route = createLazyFileRoute("/admin/ai-chat")({
 
 interface ScanResultData {
 	type: string;
-	name: string;
+	name: string; // Merchant Name
 	category: string;
+	merchant?: string; // Optional alias for name
 	transactionType: "expense" | "income" | "unknown";
 	total: number;
 	subtotal?: number;
@@ -57,6 +59,7 @@ interface ChatMessage {
 	content: string;
 	image?: string;
 	scanData?: ScanResultData;
+	suggestions?: Array<{ label: string; prompt: string }>;
 }
 
 interface ToolCall {
@@ -187,13 +190,13 @@ function AIChatPage() {
 	const streamingActiveRef = useRef(false);
 	const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
 	const [isImageScannerOpen, setIsImageScannerOpen] = useState(false);
-	const [selectedImage, setSelectedImage] = useState<string | null>(null);
+	const [selectedImages, setSelectedImages] = useState<string[]>([]);
 	const [activeTab, setActiveTab] = useState<TabType>("chat");
 	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 	const [showSessionHistory, setShowSessionHistory] = useState(false);
 
 	const [showScanPanel, setShowScanPanel] = useState(false);
-	const [scanImage, setScanImage] = useState<string | null>(null);
+	const [scanImages, setScanImages] = useState<string[]>([]);
 	const [isScanning, setIsScanning] = useState(false);
 	const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
@@ -203,6 +206,7 @@ function AIChatPage() {
 	const scanFileInputRef = useRef<HTMLInputElement>(null);
 	const yumiChat = useAction(api.ai.yumiChat);
 	const scanImageDataAction = useAction(api.ai.scanImageData);
+	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
 
 	const handleCopy = useCallback(async (text: string, index: number) => {
 		try {
@@ -256,7 +260,7 @@ function AIChatPage() {
 	}> = [];
 
 	const lowStockItems =
-		inventory?.filter((i: any) => i.quantity <= i.lowStockThreshold) ?? [];
+		inventory?.filter((i) => i.quantity <= i.lowStockThreshold) ?? [];
 	if (lowStockItems.length > 0) {
 		smartInsights.push({
 			icon: <AlertTriangle className="h-3.5 w-3.5 text-accent" />,
@@ -265,7 +269,7 @@ function AIChatPage() {
 		});
 	}
 
-	const pendingOrders = orders?.filter((o: any) => o.status === "pending") ?? [];
+	const pendingOrders = orders?.filter((o) => o.status === "pending") ?? [];
 	if (pendingOrders.length > 0) {
 		smartInsights.push({
 			icon: <Bell className="h-3.5 w-3.5 text-primary" />,
@@ -274,7 +278,7 @@ function AIChatPage() {
 		});
 	}
 
-	const availableProducts = products?.filter((p: any) => p.isAvailable).length ?? 0;
+	const availableProducts = products?.filter((p) => p.isAvailable).length ?? 0;
 	if (availableProducts > 0) {
 		smartInsights.push({
 			icon: <TrendingUp className="h-3.5 w-3.5 text-primary" />,
@@ -294,10 +298,12 @@ function AIChatPage() {
 		}
 	}, [streamingContent, isStreaming]);
 
-	// Sanitize AI response - remove markdown formatting
+	// Sanitize AI response - remove markdown formatting and suggestion tags
 	const sanitizeResponse = (text: string): string => {
 		if (!text) return "";
 		return text
+			// Remove suggestions [SUGGEST: Label | Prompt] - will be parsed separately
+			.replace(/\[SUGGEST:\s*(.*?)\s*\|\s*(.*?)\s*\]/g, "")
 			// Remove bold markdown
 			.replace(/\*\*(.*?)\*\*/g, "$1")
 			// Remove italic markdown
@@ -305,8 +311,8 @@ function AIChatPage() {
 			// Remove heading markdown
 			.replace(/^#+\s+/gm, "")
 			// Remove bullet points (*) and replace with emoji
-			.replace(/^\*\s+/gm, "• ")
-			.replace(/^\-\s+/gm, "• ")
+			.replace(/^\*\s+/gm, "â€¢ ")
+			.replace(/^\-\s+/gm, "â€¢ ")
 			// Remove code blocks
 			.replace(/```[\s\S]*?```/g, "")
 			// Remove inline code
@@ -316,6 +322,20 @@ function AIChatPage() {
 			// Clean up extra whitespace
 			.replace(/\n{3,}/g, "\n\n")
 			.trim();
+	};
+
+	// Extract suggestions from raw AI response
+	const extractSuggestions = (text: string): Array<{ label: string; prompt: string }> => {
+		const suggestions: Array<{ label: string; prompt: string }> = [];
+		const regex = /\[SUGGEST:\s*(.*?)\s*\|\s*(.*?)\s*\]/g;
+		let match;
+		while ((match = regex.exec(text)) !== null) {
+			suggestions.push({
+				label: match[1].trim(),
+				prompt: match[2].trim(),
+			});
+		}
+		return suggestions;
 	};
 
 	// Stream text word by word for realistic streaming effect
@@ -333,7 +353,7 @@ function AIChatPage() {
 					const chunk = tokens[i];
 					setStreamingContent((prev) => prev + chunk);
 					i++;
-					// 20ms for words, 3ms for whitespace → ~50 chars/sec
+					// 20ms for words, 3ms for whitespace â†’ ~50 chars/sec
 					const delay = chunk.trim().length > 0 ? 20 : 3;
 					setTimeout(next, delay);
 				} else {
@@ -399,7 +419,7 @@ function AIChatPage() {
 
 	const sendMessage = useCallback(
 		async (text: string, image?: string) => {
-			if (!(text.trim() || image) || isLoading) {
+			if (!(text.trim() || image || selectedImages.length > 0) || isLoading) {
 				return;
 			}
 
@@ -411,24 +431,24 @@ function AIChatPage() {
 			const userMessage: ChatMessage = {
 				role: "user",
 				content: text.trim(),
-				image: image || selectedImage || undefined,
+				image: image || (selectedImages.length > 0 ? selectedImages[0] : undefined), // Keep for backward compat
 			};
 			setMessages((prev) => [...prev, userMessage]);
 			setInput("");
-			setSelectedImage(null);
+			setSelectedImages([]);
 			setIsLoading(true);
 			setToolCalls([]);
 
 			try {
 				const history = messages
-					.filter((m: any) => m.role === "user" || m.role === "assistant")
-					.map((m: any) => ({ role: m.role, content: m.content }));
+					.filter((m) => m.role === "user" || m.role === "assistant")
+					.map((m) => ({ role: m.role, content: m.content }));
 
-				const attachedImage = image || selectedImage || undefined;
+				const attachedImages = image ? [image] : selectedImages;
 				const response = await yumiChat({
-					message: text.trim() || (attachedImage ? "Tolong analisis gambar ini." : ""),
+					message: text.trim() || (attachedImages.length > 0 ? "Tolong analisis gambar-gambar ini." : ""),
 					history,
-					image: attachedImage,
+					images: attachedImages,
 				});
 
 				let hasToolExecution = false;
@@ -464,6 +484,7 @@ function AIChatPage() {
 					setTimeout(() => setToolCalls([]), 3000);
 				}
 
+				const suggestions = extractSuggestions(response);
 				const sanitized =
 					sanitizeResponse(response) ||
 					"Maaf, saya tidak bisa memproses permintaan ini.";
@@ -475,6 +496,7 @@ function AIChatPage() {
 					const assistantMessage: ChatMessage = {
 						role: "assistant",
 						content: sanitized,
+						suggestions: suggestions,
 					};
 					setMessages((prev) => [...prev, assistantMessage]);
 					if (currentSessionId) {
@@ -501,7 +523,7 @@ function AIChatPage() {
 				setToolCalls([]);
 			}
 		},
-		[isLoading, messages, yumiChat, selectedImage, currentSessionId, startNewSession, saveMessage, streamText]
+		[isLoading, messages, yumiChat, selectedImages, currentSessionId, startNewSession, saveMessage, streamText]
 	);
 
 	// Helper: compress image for AI scan - optimized for OCR readability
@@ -550,30 +572,36 @@ function AIChatPage() {
 
 	const handleFileSelect = useCallback(
 		(e: React.ChangeEvent<HTMLInputElement>) => {
-			const file = e.target.files?.[0];
-			if (!file) return;
+			const files = Array.from(e.target.files || []);
+			if (files.length === 0) return;
 
-			if (!file.type.startsWith("image/")) {
-				toast.error("Harap upload file gambar");
-				return;
-			}
-			if (file.size > 5 * 1024 * 1024) {
-				toast.error("Ukuran gambar maksimal 5MB");
-				return;
-			}
-
-			const reader = new FileReader();
-			reader.onload = async (event) => {
-				const raw = event.target?.result as string;
-				try {
-					const compressed = await compressImage(raw);
-					setSelectedImage(compressed);
-				} catch {
-					setSelectedImage(raw);
+			const validFiles = files.filter(file => {
+				if (!file.type.startsWith("image/")) {
+					toast.error(`${file.name} bukan file gambar`);
+					return false;
 				}
-			};
-			reader.onerror = () => toast.error("Gagal memproses gambar. Silakan coba gambar lain.");
-			reader.readAsDataURL(file);
+				if (file.size > 5 * 1024 * 1024) {
+					toast.error(`${file.name} terlalu besar (maks 5MB)`);
+					return false;
+				}
+				return true;
+			});
+
+			validFiles.forEach(file => {
+				const reader = new FileReader();
+				reader.onload = async (event) => {
+					const raw = event.target?.result as string;
+					try {
+						const compressed = await compressImage(raw);
+						setSelectedImages(prev => [...prev, compressed]);
+					} catch {
+						setSelectedImages(prev => [...prev, raw]);
+					}
+				};
+				reader.readAsDataURL(file);
+			});
+			// Clear the input value to allow selecting the same file(s) again
+			e.target.value = '';
 		},
 		[compressImage]
 	);
@@ -581,80 +609,112 @@ function AIChatPage() {
 	// Scan panel: file select handler
 	const handleScanFileSelect = useCallback(
 		(e: React.ChangeEvent<HTMLInputElement>) => {
-			const file = e.target.files?.[0];
-			if (!file) return;
-			if (!file.type.startsWith("image/")) {
-				toast.error("Harap upload file gambar");
-				return;
-			}
-			if (file.size > 5 * 1024 * 1024) {
-				toast.error("Ukuran gambar maksimal 5MB");
-				return;
-			}
-			const reader = new FileReader();
-			reader.onload = async (event) => {
-				const raw = event.target?.result as string;
-				try {
-					const compressed = await compressImage(raw);
-					setScanImage(compressed);
-				} catch {
-					setScanImage(raw);
+			const files = Array.from(e.target.files || []);
+			if (files.length === 0) return;
+
+			const validFiles = files.filter(file => {
+				if (!file.type.startsWith("image/")) {
+					toast.error(`${file.name} bukan file gambar`);
+					return false;
 				}
-			};
-			reader.readAsDataURL(file);
+				if (file.size > 5 * 1024 * 1024) {
+					toast.error(`${file.name} terlalu besar (maks 5MB)`);
+					return false;
+				}
+				return true;
+			});
+
+			validFiles.forEach(file => {
+				const reader = new FileReader();
+				reader.onload = async (event) => {
+					const raw = event.target?.result as string;
+					try {
+						const compressed = await compressImage(raw);
+						setScanImages(prev => [...prev, compressed]);
+					} catch {
+						setScanImages(prev => [...prev, raw]);
+					}
+				};
+				reader.readAsDataURL(file);
+			});
+			// Clear the input value to allow selecting the same file(s) again
+			e.target.value = '';
 		},
 		[compressImage]
 	);
 
 	// Execute AI image scan and add result to chat
 	const handleRunScan = useCallback(async () => {
-		if (!scanImage || isScanning) return;
+		if (scanImages.length === 0 || isScanning) return;
 		setIsScanning(true);
 		try {
-			const result = await scanImageDataAction({ image: scanImage });
-			// Add user message with image
-			const userMsg: ChatMessage = {
-				role: "user",
-				content: "Scan gambar ini dan analisis datanya.",
-				image: scanImage,
-			};
+			const bulkResults = await bulkScanImageDataAction({ images: scanImages });
+			
+			const newMessages: ChatMessage[] = [];
+			
+			for (let i = 0; i < bulkResults.length; i++) {
+				const res = bulkResults[i];
+				const currentImg = scanImages[i];
+				
+				if (!res.success) {
+					newMessages.push({
+						role: "user",
+						content: bulkResults.length > 1 ? `Scan gambar ke-${i+1}` : "Scan gambar ini",
+						image: currentImg,
+					});
+					newMessages.push({
+						role: "assistant",
+						content: `Gagal menganalisis gambar ke-${i+1}: ${res.error || "Terjadi kesalahan."}`,
+					});
+					continue;
+				}
 
-			// Build summary text from scan result - REMOVED BOLD MARKDOWN (*)
-			const items = result.items as Array<{ name: string; qty: number; price: number; subtotal: number }> | undefined;
-			let summaryText = "";
-			if (result.name) summaryText += `${result.name}\n`;
-			if (items && items.length > 0) {
-				summaryText += `\n📋 Detail Item (${items.length} item):\n`;
-				items.forEach((item: { name: string; qty: number; price: number; subtotal: number }, i: number) => {
-					summaryText += `${i + 1}. ${item.name} x${item.qty} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`;
-				});
+				const result = res.data;
+				const userMsg: ChatMessage = {
+					role: "user",
+					content: bulkResults.length > 1 ? `Hasil scan gambar ke-${i+1}:` : "Scan gambar ini dan analisis datanya.",
+					image: currentImg,
+				};
+
+				const items = result.items as Array<{ name: string; qty: number; price: number; subtotal: number }> | undefined;
+				let summaryText = "";
+				if (result.name) summaryText += `ðŸª Merchant: ${result.name}\n`;
+				if (items && items.length > 0) {
+					summaryText += `\nðŸ“‹ Detail Item (${items.length} item):\n`;
+					items.forEach((item: { name: string; qty: number; price: number; subtotal: number }, i: number) => {
+						summaryText += `${i + 1}. ${item.name} x${item.qty} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`;
+					});
+				}
+				if (result.subtotal) summaryText += `\nSubtotal: Rp ${Number(result.subtotal).toLocaleString("id-ID")}`;
+				if (result.tax) summaryText += `\nPajak: Rp ${Number(result.tax).toLocaleString("id-ID")}`;
+				if (result.discount) summaryText += `\nDiskon: -Rp ${Number(result.discount).toLocaleString("id-ID")}`;
+				summaryText += `\n\nðŸ’° Total: Rp ${Number(result.total).toLocaleString("id-ID")}`;
+				summaryText += `\n\nðŸ“Š Keyakinan: ${result.confidence}% | Kategori: ${result.category.replace(/_/g, " ")} | Bayar: ${result.paymentMethod}`;
+				if (result.date) summaryText += ` | Tanggal: ${result.date}`;
+
+				summaryText += `\n\n[SUGGEST: ðŸ’° Simpan ke Pengeluaran | Tolong catat hasil scan dari ${result.name || "Toko"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pengeluaran]`;
+				summaryText += `\n[SUGGEST: ðŸ“ˆ Simpan ke Pemasukan | Tolong catat hasil scan dari ${result.name || "Sumber"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pemasukan]`;
+				summaryText += "\n[SUGGEST: âŒ Batalkan | Batalkan pencatatan ini]";
+
+				const suggestions = extractSuggestions(summaryText);
+				const sanitized = sanitizeResponse(summaryText);
+
+				const assistantMsg: ChatMessage = {
+					role: "assistant",
+					content: sanitized || result.notes || `Analisis selesai dengan tingkat keyakinan ${result.confidence}%.`,
+					scanData: result as ScanResultData,
+					suggestions: suggestions,
+				};
+				
+				newMessages.push(userMsg, assistantMsg);
 			}
-			if (result.subtotal) summaryText += `\nSubtotal: Rp ${Number(result.subtotal).toLocaleString("id-ID")}`;
-			if (result.tax) summaryText += `\nPajak: Rp ${Number(result.tax).toLocaleString("id-ID")}`;
-			if (result.discount) summaryText += `\nDiskon: -Rp ${Number(result.discount).toLocaleString("id-ID")}`;
-			summaryText += `\n\n💰 Total: Rp ${Number(result.total).toLocaleString("id-ID")}`;
-			summaryText += `\n\n📊 Keyakinan: ${result.confidence}% | Kategori: ${result.category} | Bayar: ${result.paymentMethod}`;
-			if (result.date) summaryText += ` | Tanggal: ${result.date}`;
 
-			// Add instructions template after analysis
-			summaryText += "\n\n💡 Apa yang ingin Anda lakukan selanjutnya?";
-			summaryText += "\n• Simpan ke Pengeluaran";
-			summaryText += "\n• Simpan ke Pemasukan";
-			summaryText += "\n• Batalkan";
-
-			// Add assistant message with structured scan result
-			const assistantMsg: ChatMessage = {
-				role: "assistant",
-				content: summaryText || result.notes || `Analisis selesai dengan tingkat keyakinan ${result.confidence}%.`,
-				scanData: result as ScanResultData,
-			};
-			setMessages((prev) => [...prev, userMsg, assistantMsg]);
-			setScanImage(null);
+			setMessages((prev) => [...prev, ...newMessages]);
+			setScanImages([]);
 			setShowScanPanel(false);
 			if (scanFileInputRef.current) scanFileInputRef.current.value = "";
-			toast.success("Gambar berhasil dianalisis!");
+			toast.success(`${bulkResults.length} gambar berhasil dianalisis!`);
 		} catch (error: unknown) {
-			// Extract ConvexError message properly
 			let msg = "Gagal menganalisis gambar. Coba lagi.";
 			if (error && typeof error === "object" && "data" in error) {
 				const convexErr = error as { data: string | { message?: string } };
@@ -667,10 +727,10 @@ function AIChatPage() {
 		} finally {
 			setIsScanning(false);
 		}
-	}, [scanImage, isScanning, scanImageDataAction]);
+	}, [scanImages, isScanning, bulkScanImageDataAction, extractSuggestions, sanitizeResponse]);
 
 	const handleRemoveImage = useCallback(() => {
-		setSelectedImage(null);
+		setSelectedImages([]); // Clear all selected images
 		if (fileInputRef.current) {
 			fileInputRef.current.value = "";
 		}
@@ -797,8 +857,8 @@ function AIChatPage() {
 	useEffect(() => {
 		if (currentSessionId && loadConversationQuery) {
 			const history = loadConversationQuery
-				.filter((m: any) => m.role !== "system")
-				.map((m: any) => ({
+				.filter((m) => m.role !== "system")
+				.map((m) => ({
 					role: m.role as "user" | "assistant",
 					content: m.content,
 				}));
@@ -982,6 +1042,39 @@ function AIChatPage() {
 														</button>
 													)}
 												</div>
+
+												{/* Smart Suggestion Buttons - Premium Prominent Design */}
+												{msg.role === "assistant" && msg.suggestions && msg.suggestions.length > 0 && (
+													<motion.div 
+														initial={{ opacity: 0, y: 8 }}
+														animate={{ opacity: 1, y: 0 }}
+														transition={{ delay: 0.3, duration: 0.4 }}
+														className="mt-4 space-y-2 border-t border-border/50 pt-3"
+													>
+														<div className="flex items-center gap-1.5 px-1 mb-1">
+															<Sparkles className="h-3 w-3 text-primary animate-pulse" />
+															<span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+																Saran Aksi
+															</span>
+														</div>
+														<div className="flex flex-wrap gap-2">
+															{msg.suggestions.map((suggestion, idx) => (
+																<button
+																	key={idx}
+																	onClick={() => sendMessage(suggestion.prompt)}
+																	className="group flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-xs font-semibold text-primary transition-all hover:scale-105 hover:border-primary/40 hover:bg-primary/10 hover:shadow-md active:scale-95 disabled:opacity-50"
+																	type="button"
+																	disabled={isLoading}
+																>
+																	<div className="flex h-5 w-5 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+																		<Send className="h-2.5 w-2.5" />
+																	</div>
+																	<span>{suggestion.label}</span>
+																</button>
+															))}
+														</div>
+													</motion.div>
+												)}
 											</div>
 										</motion.div>
 									))}
@@ -1509,7 +1602,7 @@ function AIChatPage() {
 						) : (
 							<div className="py-8 text-center">
 								<Target className="mx-auto mb-2 h-12 w-12 text-muted-foreground" />
-								<p className="text-muted-foreground">
+								<p className="text-muted-foreground text-sm">
 									Tidak ada tugas tertunda
 								</p>
 							</div>
@@ -1556,7 +1649,7 @@ function AIChatPage() {
 									</div>
 									<button
 										className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
-										onClick={() => { setShowScanPanel(false); setScanImage(null); }}
+										onClick={() => { setShowScanPanel(false); setScanImages([]); }}
 										type="button"
 									>
 										<X className="h-3.5 w-3.5" />
@@ -1564,7 +1657,7 @@ function AIChatPage() {
 								</div>
 								{/* Panel Body */}
 								<div className="p-3">
-									{!scanImage ? (
+									{!scanImages.length ? (
 										<button
 											className="flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-background py-5 transition-colors hover:border-primary/60 hover:bg-primary/5"
 											onClick={() => scanFileInputRef.current?.click()}
@@ -1578,41 +1671,52 @@ function AIChatPage() {
 													Upload foto struk, kwitansi, atau dokumen
 												</p>
 												<p className="text-[10px] text-muted-foreground">
-													JPG, PNG • Maks 5MB • Dikompres otomatis (800px, 70%)
+													JPG, PNG â€¢ Maks 5MB â€¢ Bisa pilih banyak sekaligus
 												</p>
 											</div>
 										</button>
 									) : (
 										<div className="space-y-2">
-											<div className="relative overflow-hidden rounded-xl border border-border bg-muted">
-												<img
-													alt="Preview scan"
-													className="h-40 w-full object-contain"
-													src={scanImage}
-												/>
+											<div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-1">
+												{scanImages.map((img, idx) => (
+													<div className="relative overflow-hidden rounded-xl border border-border bg-muted group" key={idx}>
+														<img
+															alt={`Preview ${idx + 1}`}
+															className="h-24 w-full object-contain"
+															src={img}
+														/>
+														<button
+															className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive/90 text-white shadow opacity-0 group-hover:opacity-100 transition-opacity"
+															onClick={() => { setScanImages(prev => prev.filter((_, i) => i !== idx)); }}
+															type="button"
+														>
+															<X className="h-3 w-3" />
+														</button>
+													</div>
+												))}
 												<button
-													className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-destructive/90 text-white shadow"
-													onClick={() => { setScanImage(null); if (scanFileInputRef.current) scanFileInputRef.current.value = ""; }}
+													className="flex h-24 items-center justify-center rounded-xl border-2 border-dashed border-primary/30 bg-background hover:bg-primary/5 transition-colors"
+													onClick={() => scanFileInputRef.current?.click()}
 													type="button"
 												>
-													<X className="h-3.5 w-3.5" />
+													<PlusCircle className="h-5 w-5 text-primary" />
 												</button>
 											</div>
 											<button
 												className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 font-semibold text-primary-foreground text-sm disabled:opacity-60"
-												disabled={isScanning}
+												disabled={isScanning || scanImages.length === 0}
 												onClick={handleRunScan}
 												type="button"
 											>
 												{isScanning ? (
 													<>
 														<Loader2 className="h-4 w-4 animate-spin" />
-														Menganalisis dengan AI...
+														Menganalisis {scanImages.length} Gambar...
 													</>
 												) : (
 													<>
 														<ScanLine className="h-4 w-4" />
-														Scan & Analisis dengan AI
+														Scan {scanImages.length} Gambar sekaligus
 													</>
 												)}
 											</button>
@@ -1620,6 +1724,7 @@ function AIChatPage() {
 									)}
 									<input
 										accept="image/*"
+										multiple
 										className="hidden"
 										onChange={handleScanFileSelect}
 										ref={scanFileInputRef}
@@ -1631,25 +1736,56 @@ function AIChatPage() {
 					</AnimatePresence>
 
 					{/* ChatGPT/Claude-style Input Box */}
-						<div className="rounded-2xl border border-border bg-background shadow-sm">
-							{/* Image Preview inside input box - above input row */}
-							{selectedImage && (
-								<div className="flex items-center gap-2 border-border border-b px-3 py-2">
-									<div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-border bg-muted shadow-sm">
-										<img
-											alt="Preview"
-											className="h-full w-full object-cover"
-											src={selectedImage}
-										/>
+						<div className="space-y-3">
+							{/* Quick Templates */}
+							{!isScanning && messages.length <= 1 && (
+								<div className="flex w-full items-center gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
+									{TEMPLATES.map((t, i) => (
 										<button
-											className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white shadow-md transition-opacity hover:opacity-90"
-											onClick={handleRemoveImage}
+											className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-primary whitespace-nowrap"
+											key={i}
+											onClick={() => {
+												setInput(t.message);
+												// Opsional: Langsung kirim saat diklik
+												// sendMessage(t.message);
+											}}
 											type="button"
 										>
-											<X className="h-3 w-3" />
+											{t.icon}
+											<span>{t.label}</span>
 										</button>
-									</div>
-									<p className="text-muted-foreground text-xs flex-1">Gambar terlampir • AI akan membaca isinya</p>
+									))}
+								</div>
+							)}
+
+							<div className="rounded-2xl border border-border bg-background shadow-sm">
+							{/* Multiple Images Preview inside input box */}
+							{selectedImages.length > 0 && (
+								<div className="flex items-center gap-2 border-border border-b px-3 py-2 overflow-x-auto scrollbar-hide">
+									{selectedImages.map((img, idx) => (
+										<div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-border bg-muted shadow-sm group" key={idx}>
+											<img
+												alt={`Preview ${idx + 1}`}
+												className="h-full w-full object-cover"
+												src={img}
+											/>
+											<button
+												className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+												onClick={() => setSelectedImages(prev => prev.filter((_, i) => i !== idx))}
+												type="button"
+											>
+												<X className="h-3 w-3" />
+											</button>
+										</div>
+									))}
+									<button
+										className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-dashed border-primary/30 bg-muted/30 hover:bg-primary/5 transition-colors"
+										onClick={() => fileInputRef.current?.click()}
+										type="button"
+									>
+										<PlusCircle className="h-4 w-4 text-primary" />
+									</button>
+									<p className="text-muted-foreground text-[10px] whitespace-nowrap ml-1">{selectedImages.length} gambar terlampir</p>
 								</div>
 							)}
 
@@ -1674,6 +1810,7 @@ function AIChatPage() {
 								<input
 									accept="image/*"
 									className="hidden"
+									multiple
 									onChange={handleFileSelect}
 									ref={fileInputRef}
 									type="file"
@@ -1691,12 +1828,12 @@ function AIChatPage() {
 									onKeyDown={(e) => {
 										if (e.key === "Enter" && !e.shiftKey) {
 											e.preventDefault();
-											if (input.trim() || selectedImage) {
-												sendMessage(input);
-												if (inputRef.current) {
-													inputRef.current.style.height = "auto";
-												}
+											if (input.trim() || selectedImages.length > 0) {
+											sendMessage(input);
+											if (inputRef.current) {
+												inputRef.current.style.height = "auto";
 											}
+										}
 										}
 									}}
 									placeholder="Tanya Yumi..."
@@ -1708,13 +1845,13 @@ function AIChatPage() {
 								{/* Right: Send button */}
 								<button
 									className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all ${
-										input.trim() || selectedImage
+										input.trim() || selectedImages.length > 0
 											? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
 											: "bg-muted text-muted-foreground"
 									} disabled:cursor-not-allowed disabled:opacity-50`}
-									disabled={isLoading || !(input.trim() || selectedImage)}
+									disabled={isLoading || !(input.trim() || selectedImages.length > 0)}
 									onClick={() => {
-										if (input.trim() || selectedImage) {
+										if (input.trim() || selectedImages.length > 0) {
 											sendMessage(input);
 											if (inputRef.current) {
 												inputRef.current.style.height = "auto";
@@ -1732,6 +1869,7 @@ function AIChatPage() {
 								</button>
 							</div>
 						</div>
+					</div>
 
 						<p className="text-center text-[10px] text-muted-foreground">
 							Yumi AI dapat membuat kesalahan. Selalu verifikasi informasi penting.
@@ -1885,7 +2023,7 @@ function AIChatPage() {
 	);
 }
 
-// ─── Scan Result Card Component ──────────────────────────────────────────────
+// â”€â”€â”€ Scan Result Card Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ScanResultCard({ data }: { data: ScanResultData }) {
 	const typeLabel: Record<string, string> = {
@@ -1923,7 +2061,7 @@ function ScanResultCard({ data }: { data: ScanResultData }) {
 						{typeLabel[data.type] ?? "Dokumen"}
 					</span>
 					{data.name && data.name !== "Tidak dapat diidentifikasi" && (
-						<span className="text-muted-foreground text-xs">• {data.name}</span>
+						<span className="text-muted-foreground text-xs">â€¢ {data.name}</span>
 					)}
 				</div>
 				<span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${confidenceColor}`}>
@@ -2038,3 +2176,4 @@ function ScanResultCard({ data }: { data: ScanResultData }) {
 }
 
 export default AIChatPage;
+
