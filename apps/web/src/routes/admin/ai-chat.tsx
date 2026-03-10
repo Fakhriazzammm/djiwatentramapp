@@ -54,12 +54,31 @@ interface ScanResultData {
 	rawText?: string;
 }
 
+interface ScanActionButton {
+	id: string;
+	label: string;
+	icon: string;
+	variant: "expense" | "income" | "stock" | "order";
+	params: {
+		type: "income" | "expense";
+		amount: number;
+		category: string;
+		merchant?: string;
+		description?: string;
+		date: number;
+		paymentMethod?: string;
+		status: "completed";
+	};
+	done?: boolean;
+}
+
 interface ChatMessage {
 	role: "user" | "assistant";
 	content: string;
 	image?: string;
 	scanData?: ScanResultData;
 	suggestions?: Array<{ label: string; prompt: string }>;
+	actionButtons?: ScanActionButton[];
 }
 
 interface ToolCall {
@@ -207,6 +226,9 @@ function AIChatPage() {
 	const yumiChat = useAction(api.ai.yumiChat);
 	const scanImageDataAction = useAction(api.ai.scanImageData);
 	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
+	const createTransactionMutation = useMutation(api.finance.createTransaction);
+	const [actionButtonDone, setActionButtonDone] = useState<Set<string>>(new Set());
+	const [actionButtonLoading, setActionButtonLoading] = useState<Set<string>>(new Set());
 
 	const handleCopy = useCallback(async (text: string, index: number) => {
 		try {
@@ -217,6 +239,25 @@ function AIChatPage() {
 			toast.error("Gagal menyalin pesan");
 		}
 	}, []);
+
+	const handleScanActionButton = useCallback(async (btn: ScanActionButton, messageIdx: number) => {
+		const key = `${messageIdx}-${btn.id}`;
+		if (actionButtonLoading.has(key) || actionButtonDone.has(key)) return;
+		setActionButtonLoading(prev => new Set(prev).add(key));
+		try {
+			await createTransactionMutation(btn.params);
+			toast.success(`Berhasil ${btn.label.toLowerCase()}!`);
+			setActionButtonDone(prev => new Set(prev).add(key));
+		} catch (error) {
+			toast.error(`Gagal: ${error instanceof Error ? error.message : "Terjadi kesalahan"}`);
+		} finally {
+			setActionButtonLoading(prev => {
+				const s = new Set(prev);
+				s.delete(key);
+				return s;
+			});
+		}
+	}, [createTransactionMutation, actionButtonLoading, actionButtonDone]);
 
 	// Fetch data for AI
 	const products = useQuery(api.products.getAllProductsAdmin, {});
@@ -336,6 +377,75 @@ function AIChatPage() {
 			});
 		}
 		return suggestions;
+	};
+
+	// Generate direct action buttons based on scan result context
+	const generateScanActionButtons = (scanData: ScanResultData): ScanActionButton[] => {
+		const categoryMap: Record<string, string> = {
+			makanan_minuman: "Makanan & Minuman",
+			belanja_stok: "Pembelian Stok",
+			peralatan_kantor: "Peralatan Kantor",
+			transportasi: "Transportasi",
+			utilitas_listrik_air: "Utilitas",
+			gaji_karyawan: "Gaji Karyawan",
+			sewa_tempat: "Sewa Tempat",
+			pemasaran: "Pemasaran",
+			pajak: "Pajak",
+			hiburan: "Hiburan",
+			kesehatan: "Kesehatan",
+			pembangunan_renovasi: "Renovasi",
+			lainnya: "Lainnya",
+		};
+		const paymentMap: Record<string, string> = {
+			cash: "cash", qris: "qris", card: "card", transfer: "transfer", unknown: "cash",
+		};
+		const category = categoryMap[scanData.category] ?? scanData.category.replace(/_/g, " ");
+		const paymentMethod = paymentMap[scanData.paymentMethod] ?? "cash";
+		const rawDate = scanData.date ? new Date(scanData.date).getTime() : NaN;
+		const dateTs = Number.isNaN(rawDate) ? Date.now() : rawDate;
+		const baseParams = {
+			amount: scanData.total,
+			category,
+			merchant: scanData.name || undefined,
+			description: scanData.notes ? scanData.notes.slice(0, 200) : undefined,
+			date: dateTs,
+			paymentMethod,
+			status: "completed" as const,
+		};
+		const buttons: ScanActionButton[] = [];
+		const ts = Date.now();
+		if (scanData.transactionType === "expense" || scanData.transactionType === "unknown") {
+			buttons.push({
+				id: `expense-${ts}`,
+				label: "Catat Pengeluaran",
+				icon: "💸",
+				variant: "expense",
+				params: { type: "expense", ...baseParams },
+			});
+		}
+		if (scanData.transactionType === "income" || scanData.transactionType === "unknown") {
+			buttons.push({
+				id: `income-${ts + 1}`,
+				label: "Catat Pemasukan",
+				icon: "💰",
+				variant: "income",
+				params: { type: "income", ...baseParams },
+			});
+		}
+		// If scan contains stock/inventory items
+		if (
+			scanData.type === "product" ||
+			["belanja_stok", "peralatan_kantor"].includes(scanData.category)
+		) {
+			buttons.push({
+				id: `stock-${ts + 2}`,
+				label: "Catat ke Stok",
+				icon: "📦",
+				variant: "stock",
+				params: { type: "expense", ...baseParams, category: "Pembelian Stok" },
+			});
+		}
+		return buttons;
 	};
 
 	// Stream text word by word for realistic streaming effect
@@ -692,18 +802,16 @@ function AIChatPage() {
 				summaryText += `\n\n📊 Keyakinan: ${result.confidence}% | Kategori: ${result.category.replace(/_/g, " ")} | Bayar: ${result.paymentMethod}`;
 				if (result.date) summaryText += ` | Tanggal: ${result.date}`;
 
-				summaryText += `\n\n[SUGGEST: 💰 Simpan ke Pengeluaran | Tolong catat hasil scan dari ${result.name || "Toko"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pengeluaran]`;
-				summaryText += `\n[SUGGEST: 📈 Simpan ke Pemasukan | Tolong catat hasil scan dari ${result.name || "Sumber"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pemasukan]`;
-				summaryText += "\n[SUGGEST: ❌ Batalkan | Batalkan pencatatan ini]";
-
 				const suggestions = extractSuggestions(summaryText);
 				const sanitized = sanitizeResponse(summaryText);
+				const actionButtons = generateScanActionButtons(result as ScanResultData);
 
 				const assistantMsg: ChatMessage = {
 					role: "assistant",
 					content: sanitized || result.notes || `Analisis selesai dengan tingkat keyakinan ${result.confidence}%.`,
 					scanData: result as ScanResultData,
 					suggestions: suggestions,
+					actionButtons,
 				};
 				
 				newMessages.push(userMsg, assistantMsg);
@@ -727,7 +835,7 @@ function AIChatPage() {
 		} finally {
 			setIsScanning(false);
 		}
-	}, [scanImages, isScanning, bulkScanImageDataAction, extractSuggestions, sanitizeResponse]);
+	}, [scanImages, isScanning, bulkScanImageDataAction, extractSuggestions, sanitizeResponse, generateScanActionButtons]);
 
 	const handleRemoveImage = useCallback(() => {
 		setSelectedImages([]); // Clear all selected images
@@ -1026,6 +1134,55 @@ function AIChatPage() {
 													</div>
 													{msg.scanData && (
 														<ScanResultCard data={msg.scanData} />
+													)}
+													{/* Direct Action Buttons - save scan result instantly to app features */}
+													{msg.actionButtons && msg.actionButtons.length > 0 && (
+														<motion.div
+															initial={{ opacity: 0, y: 6 }}
+															animate={{ opacity: 1, y: 0 }}
+															transition={{ delay: 0.15, duration: 0.3 }}
+															className="mt-3 space-y-2 border-t border-border/40 pt-2.5"
+														>
+															<div className="flex items-center gap-1.5 px-0.5 mb-1">
+																<CheckCircle2 className="h-3 w-3 text-emerald-500" />
+																<span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+																	Simpan Langsung
+																</span>
+															</div>
+															<div className="flex flex-wrap gap-2">
+																{msg.actionButtons.map((btn) => {
+																	const key = `${i}-${btn.id}`;
+																	const isLoadingBtn = actionButtonLoading.has(key);
+																	const isDone = actionButtonDone.has(key);
+																	return (
+																		<button
+																			key={btn.id}
+																			onClick={() => handleScanActionButton(btn, i)}
+																			disabled={isLoadingBtn || isDone}
+																			type="button"
+																			className={`group flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-70 ${
+																				isDone
+																					? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 cursor-default"
+																					: btn.variant === "expense"
+																					? "border-red-400/30 bg-red-500/5 text-red-600 hover:bg-red-500/10 hover:border-red-500/40 hover:scale-105 hover:shadow-sm"
+																					: btn.variant === "income"
+																					? "border-emerald-400/30 bg-emerald-500/5 text-emerald-700 hover:bg-emerald-500/10 hover:border-emerald-500/40 hover:scale-105 hover:shadow-sm"
+																					: "border-blue-400/30 bg-blue-500/5 text-blue-700 hover:bg-blue-500/10 hover:border-blue-500/40 hover:scale-105 hover:shadow-sm"
+																			}}`}
+																		>
+																			{isLoadingBtn ? (
+																				<Loader2 className="h-3.5 w-3.5 animate-spin" />
+																			) : isDone ? (
+																				<Check className="h-3.5 w-3.5 text-emerald-500" />
+																			) : (
+																				<span className="text-sm leading-none">{btn.icon}</span>
+																			)}
+																			<span>{isDone ? "Tersimpan!" : btn.label}</span>
+																		</button>
+																	);
+																})}
+															</div>
+														</motion.div>
 													)}
 													{msg.role === "assistant" && (
 														<button
