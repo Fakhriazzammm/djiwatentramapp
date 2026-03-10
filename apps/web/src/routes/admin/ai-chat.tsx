@@ -310,9 +310,9 @@ function AIChatPage() {
 			.replace(/\*(.*?)\*/g, "$1")
 			// Remove heading markdown
 			.replace(/^#+\s+/gm, "")
-			// Remove bullet points (*) and replace with emoji
-			.replace(/^\*\s+/gm, "• ")
-			.replace(/^\-\s+/gm, "• ")
+			// Remove bullet points - strip markers
+			.replace(/^\*\s+/gm, "- ")
+			.replace(/^\-\s+/gm, "- ")
 			// Remove code blocks
 			.replace(/```[\s\S]*?```/g, "")
 			// Remove inline code
@@ -1737,27 +1737,6 @@ function AIChatPage() {
 
 					{/* ChatGPT/Claude-style Input Box */}
 						<div className="space-y-3">
-							{/* Quick Templates */}
-							{!isScanning && messages.length <= 1 && (
-								<div className="flex w-full items-center gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
-									{TEMPLATES.map((t, i) => (
-										<button
-											className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-primary whitespace-nowrap"
-											key={i}
-											onClick={() => {
-												setInput(t.message);
-												// Opsional: Langsung kirim saat diklik
-												// sendMessage(t.message);
-											}}
-											type="button"
-										>
-											{t.icon}
-											<span>{t.label}</span>
-										</button>
-									))}
-								</div>
-							)}
-
 							<div className="rounded-2xl border border-border bg-background shadow-sm">
 							{/* Multiple Images Preview inside input box */}
 							{selectedImages.length > 0 && (
