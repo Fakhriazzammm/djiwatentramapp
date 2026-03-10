@@ -57,6 +57,7 @@ interface ChatMessage {
 	content: string;
 	image?: string;
 	scanData?: ScanResultData;
+	suggestions?: Array<{ label: string; prompt: string }>;
 }
 
 interface ToolCall {
@@ -294,10 +295,12 @@ function AIChatPage() {
 		}
 	}, [streamingContent, isStreaming]);
 
-	// Sanitize AI response - remove markdown formatting
+	// Sanitize AI response - remove markdown formatting and suggestion tags
 	const sanitizeResponse = (text: string): string => {
 		if (!text) return "";
 		return text
+			// Remove suggestions [SUGGEST: Label | Prompt] - will be parsed separately
+			.replace(/\[SUGGEST:\s*(.*?)\s*\|\s*(.*?)\s*\]/g, "")
 			// Remove bold markdown
 			.replace(/\*\*(.*?)\*\*/g, "$1")
 			// Remove italic markdown
@@ -316,6 +319,20 @@ function AIChatPage() {
 			// Clean up extra whitespace
 			.replace(/\n{3,}/g, "\n\n")
 			.trim();
+	};
+
+	// Extract suggestions from raw AI response
+	const extractSuggestions = (text: string): Array<{ label: string; prompt: string }> => {
+		const suggestions: Array<{ label: string; prompt: string }> = [];
+		const regex = /\[SUGGEST:\s*(.*?)\s*\|\s*(.*?)\s*\]/g;
+		let match;
+		while ((match = regex.exec(text)) !== null) {
+			suggestions.push({
+				label: match[1].trim(),
+				prompt: match[2].trim(),
+			});
+		}
+		return suggestions;
 	};
 
 	// Stream text word by word for realistic streaming effect
@@ -464,6 +481,7 @@ function AIChatPage() {
 					setTimeout(() => setToolCalls([]), 3000);
 				}
 
+				const suggestions = extractSuggestions(response);
 				const sanitized =
 					sanitizeResponse(response) ||
 					"Maaf, saya tidak bisa memproses permintaan ini.";
@@ -475,6 +493,7 @@ function AIChatPage() {
 					const assistantMessage: ChatMessage = {
 						role: "assistant",
 						content: sanitized,
+						suggestions: suggestions,
 					};
 					setMessages((prev) => [...prev, assistantMessage]);
 					if (currentSessionId) {
@@ -619,12 +638,12 @@ function AIChatPage() {
 				image: scanImage,
 			};
 
-			// Build summary text from scan result
+			// Build summary text from scan result - REMOVED BOLD MARKDOWN (*)
 			const items = result.items as Array<{ name: string; qty: number; price: number; subtotal: number }> | undefined;
 			let summaryText = "";
-			if (result.name) summaryText += `**${result.name}**\n`;
+			if (result.name) summaryText += `${result.name}\n`;
 			if (items && items.length > 0) {
-				summaryText += `\n📋 **Detail Item (${items.length} item):**\n`;
+				summaryText += `\n📋 Detail Item (${items.length} item):\n`;
 				items.forEach((item: { name: string; qty: number; price: number; subtotal: number }, i: number) => {
 					summaryText += `${i + 1}. ${item.name} x${item.qty} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`;
 				});
@@ -632,15 +651,24 @@ function AIChatPage() {
 			if (result.subtotal) summaryText += `\nSubtotal: Rp ${Number(result.subtotal).toLocaleString("id-ID")}`;
 			if (result.tax) summaryText += `\nPajak: Rp ${Number(result.tax).toLocaleString("id-ID")}`;
 			if (result.discount) summaryText += `\nDiskon: -Rp ${Number(result.discount).toLocaleString("id-ID")}`;
-			summaryText += `\n\n💰 **Total: Rp ${Number(result.total).toLocaleString("id-ID")}**`;
+			summaryText += `\n\n💰 Total: Rp ${Number(result.total).toLocaleString("id-ID")}`;
 			summaryText += `\n\n📊 Keyakinan: ${result.confidence}% | Kategori: ${result.category} | Bayar: ${result.paymentMethod}`;
 			if (result.date) summaryText += ` | Tanggal: ${result.date}`;
+
+			// Add instructions template using the new SUGGEST format
+			summaryText += `\n\n[SUGGEST: 💰 Simpan ke Pengeluaran | Tolong catat hasil scan ${result.name || ""} sebesar Rp ${result.total.toLocaleString("id-ID")} sebagai pengeluaran]`;
+			summaryText += `\n[SUGGEST: 📈 Simpan ke Pemasukan | Tolong catat hasil scan ${result.name || ""} sebesar Rp ${result.total.toLocaleString("id-ID")} sebagai pemasukan]`;
+			summaryText += "\n[SUGGEST: ❌ Batalkan | Batalkan pencatatan ini]";
+
+			const suggestions = extractSuggestions(summaryText);
+			const sanitized = sanitizeResponse(summaryText);
 
 			// Add assistant message with structured scan result
 			const assistantMsg: ChatMessage = {
 				role: "assistant",
-				content: summaryText || result.notes || `Analisis selesai dengan tingkat keyakinan ${result.confidence}%.`,
+				content: sanitized || result.notes || `Analisis selesai dengan tingkat keyakinan ${result.confidence}%.`,
 				scanData: result as ScanResultData,
+				suggestions: suggestions,
 			};
 			setMessages((prev) => [...prev, userMsg, assistantMsg]);
 			setScanImage(null);
@@ -976,6 +1004,29 @@ function AIChatPage() {
 														</button>
 													)}
 												</div>
+
+												{/* Smart Suggestion Buttons */}
+												{msg.role === "assistant" && msg.suggestions && msg.suggestions.length > 0 && (
+													<motion.div 
+														initial={{ opacity: 0, y: 5 }}
+														animate={{ opacity: 1, y: 0 }}
+														transition={{ delay: 0.2, duration: 0.3 }}
+														className="mt-2 flex flex-wrap gap-2"
+													>
+														{msg.suggestions.map((suggestion, idx) => (
+															<button
+																key={idx}
+																onClick={() => sendMessage(suggestion.prompt)}
+																className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-[11px] font-medium text-primary transition-all hover:bg-primary hover:text-primary-foreground md:text-xs"
+																type="button"
+																disabled={isLoading}
+															>
+																<Sparkles className="h-3 w-3" />
+																<span>{suggestion.label}</span>
+															</button>
+														))}
+													</motion.div>
+												)}
 											</div>
 										</motion.div>
 									))}

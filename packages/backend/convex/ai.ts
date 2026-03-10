@@ -693,6 +693,9 @@ ATURAN:
 7. Format angka uang dengan "Rp" dan pemisah ribuan
 8. Jika user meminta aksi (tambah produk, update stok, dll), GUNAKAN TOOL yang tersedia
 9. Jangan membuat asumsi nilai - jika ID diperlukan, minta user untuk menyediakannya
+10. SANGAT PENTING: JANGAN PERNAH gunakan simbol asterisk (*) untuk penekanan atau list. Gunakan teks polos atau emoji.
+11. FITUR SMART SUGGESTIONS: Jika ada aksi lanjutan yang relevan (seperti "Cek Stok", "Buat Pesanan", "Catat Pengeluaran", "Analisis HPP"), tambahkan di akhir jawaban Anda dengan format: [SUGGEST: Label Tombol | Prompt untuk dikirim ke AI]. Anda bisa memberikan lebih dari satu saran jika relevan.
+    Contoh: "Data penjualan hari ini sudah saya rekap. [SUGGEST: Cek Stok Produk | Berikan rincian stok produk terlaris hari ini] [SUGGEST: Saran Promo | Berikan rekomendasi promo untuk meningkatkan transaksi]"
 
 SMART CONTEXT:
 ${smartContext}
