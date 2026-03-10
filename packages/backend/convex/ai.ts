@@ -1,5 +1,5 @@
 // @ts-nocheck
-import type { GenericActionCtx } from "convex/server";
+import { ConvexError, GenericActionCtx } from "convex/server";
 import { v } from "convex/values";
 import OpenAI from "openai";
 import type { z } from "zod";
@@ -2649,7 +2649,8 @@ export const scanImageData = action({
 	handler: async (_ctx, args) => {
 		const apiKey = process.env.GEMINI_API_KEY;
 		if (!apiKey) {
-			throw new Error("GEMINI_API_KEY environment variable is not set. Diperlukan untuk analisis gambar.");
+			console.error("GEMINI_API_KEY is missing");
+			throw new ConvexError("GEMINI_API_KEY environment variable is not set in Convex. Please set it to use AI image analysis.");
 		}
 
 		// Extract base64 data from data URL
@@ -2714,7 +2715,7 @@ Aturan penting:
 						generationConfig: {
 							temperature: 0.1,
 							maxOutputTokens: 2000,
-							response_mime_type: "application/json",
+							responseMimeType: "application/json",
 						},
 					}),
 				}
@@ -2766,8 +2767,8 @@ Aturan penting:
 				content = completion.choices[0].message.content ?? "";
 			} catch (fallbackError) {
 				console.error("scanImageData fallback error:", fallbackError);
-				throw new Error(
-					"Gagal menganalisis gambar. Pastikan format gambar didukung (JPG/PNG) dan coba lagi."
+				throw new ConvexError(
+					"Gagal menganalisis gambar setelah mencoba beberapa metode. Pastikan format gambar didukung (JPG/PNG) dan API Key Anda valid."
 				);
 			}
 		}
