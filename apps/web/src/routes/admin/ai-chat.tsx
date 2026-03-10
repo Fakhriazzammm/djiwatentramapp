@@ -92,6 +92,8 @@ interface ChatMessage {
 	suggestions?: Array<{ label: string; prompt: string }>;
 	actionButtons?: ScanActionButton[];
 	quickActions?: QuickActionButton[];
+	/** Stable ID for AnimatePresence keys — generated at creation time */
+	_msgId?: string;
 }
 
 interface ToolCall {
@@ -208,6 +210,9 @@ const TOOL_LABELS: Record<string, string> = {
 };
 
 // Keyword-driven contextual quick action button generator
+/** Generate a lightweight stable ID for ChatMessage keys */
+const mkMsgId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+
 // Priority-weighted keyword matching: each matched keyword adds to the rule's score.
 // Rules with higher scores are ranked first → prevents cross-context collisions.
 function generateQuickActions(userMsg: string, aiResponse: string): QuickActionButton[] {
@@ -409,6 +414,7 @@ function AIChatPage() {
 	const [messages, setMessages] = useState<ChatMessage[]>([
 		{
 			role: "assistant",
+			_msgId: mkMsgId(),
 			content:
 				"Halo! Saya Yumi, asisten AI kamu untuk YUMI POS. Saya bisa membantu merekap data, menganalisis bisnis, MELAKUKAN AKSI seperti tambah produk, update stok, buat pesanan, dan bahkan MULTI-STEP ACTIONS dalam satu permintaan. Sekarang saya dilengkapi dengan Forecasting, Analisis HPP, Efektivitas Diskon, dan Rekonsiliasi Keuangan!",
 		},
@@ -419,6 +425,8 @@ function AIChatPage() {
 	const [streamingContent, setStreamingContent] = useState("");
 	const streamingActiveRef = useRef(false);
 	const scrollThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	/** Incremented each time sendMessage fires; stale responses are discarded */
+	const requestIdRef = useRef(0);
 	const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
 	const [isImageScannerOpen, setIsImageScannerOpen] = useState(false);
 	const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -766,6 +774,9 @@ function AIChatPage() {
 			if (!(text.trim() || image || selectedImages.length > 0) || isLoading || isStreaming) {
 				return;
 			}
+			// Capture generation ID to discard responses from superseded requests
+			const myRequestId = ++requestIdRef.current;
+
 
 			// Capture or create session ID synchronously before any state updates
 			let activeSessionId = currentSessionId;
@@ -775,6 +786,7 @@ function AIChatPage() {
 
 			const userMessage: ChatMessage = {
 				role: "user",
+				_msgId: mkMsgId(),
 				content: text.trim(),
 				image: image || (selectedImages.length > 0 ? selectedImages[0] : undefined),
 			};
@@ -795,6 +807,9 @@ function AIChatPage() {
 					history,
 					images: attachedImages,
 				});
+
+				// Discard response if a newer request has already been fired
+				if (requestIdRef.current !== myRequestId) return;
 
 				let hasToolExecution = false;
 				const detectedTools: ToolCall[] = [];
@@ -843,6 +858,7 @@ function AIChatPage() {
 					const assistantMessage: ChatMessage = {
 						role: "assistant",
 						content: sanitized,
+					_msgId: mkMsgId(),
 						suggestions: suggestions,
 						quickActions,
 					};
@@ -1208,6 +1224,7 @@ function AIChatPage() {
 				.map((m) => ({
 					role: m.role as "user" | "assistant",
 					content: m.content,
+					_msgId: mkMsgId(),
 				}));
 
 			if (history.length > 0) {
@@ -1336,7 +1353,7 @@ function AIChatPage() {
 											className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
 											exit={{ opacity: 0, scale: 0.95 }}
 											initial={{ opacity: 0, y: 10 }}
-											key={`${msg.role}-${i}`}
+											key={msg._msgId ?? `${msg.role}-${i}`}
 											transition={{ duration: 0.3 }}
 										>
 											<div
@@ -1425,7 +1442,8 @@ function AIChatPage() {
 													)}
 													{msg.role === "assistant" && (
 														<button
-															className="mt-2 flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+															aria-label={copiedIndex === i ? "Pesan tersalin" : "Salin pesan"}
+																className="mt-2 flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 															onClick={() => handleCopy(msg.content, i)}
 															type="button"
 														>
@@ -1445,7 +1463,10 @@ function AIChatPage() {
 														initial={{ opacity: 0, y: 10 }}
 														animate={{ opacity: 1, y: 0 }}
 														transition={{ delay: 0.4, duration: 0.35 }}
-														className="mt-2 space-y-1.5"
+														role="region"
+															aria-label="Langkah selanjutnya dari Yumi"
+															aria-live="polite"
+															className="mt-2 space-y-1.5"
 													>
 														<div className="flex items-center gap-1.5 px-1">
 															<Zap className="h-3 w-3 text-amber-500 animate-pulse" />
@@ -1458,7 +1479,8 @@ function AIChatPage() {
 																		<button
 																			key={action.id}
 																			onClick={() => handleQuickAction(action)}
-																			type="button"
+														aria-label={`${action.label} - ${action.actionType === "navigate" ? "buka halaman" : "kirim ke Yumi"}`}
+														type="button"
 																			disabled={isLoading || isStreaming}
 																			className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 sm:py-1.5 ${
 																				action.variant === "finance"
@@ -1497,6 +1519,7 @@ function AIChatPage() {
 																			<button
 																				key={idx}
 																				onClick={() => sendMessage(suggestion.prompt)}
+																aria-label={`Tanya Yumi: ${suggestion.label}`}
 																				type="button"
 																				disabled={isLoading || isStreaming}
 																				className="flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-all hover:scale-105 hover:bg-primary/10 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
@@ -1558,7 +1581,7 @@ function AIChatPage() {
 
 								{/* Typing Indicator - Single subtle pulse */}
 								{isLoading && toolCalls.length === 0 && (
-									<div className="flex justify-start">
+									<div role="status" aria-label="Yumi sedang memproses" className="flex justify-start">
 										<div className="space-y-1">
 											<div className="flex items-center gap-1.5 px-1">
 												<Bot className="h-3.5 w-3.5 text-primary" />
@@ -1577,7 +1600,7 @@ function AIChatPage() {
 
 								{/* Streaming Message */}
 								{isStreaming && streamingContent && (
-									<div className="flex justify-start">
+									<div aria-label="Yumi sedang mengetik" className="flex justify-start">
 										<div className="max-w-[85%] space-y-1 items-start">
 											<div className="flex items-center gap-1.5 px-1">
 												<Bot className="h-3.5 w-3.5 text-primary" />
@@ -1586,7 +1609,7 @@ function AIChatPage() {
 												</span>
 											</div>
 											<div className="rounded-xl rounded-tl-none border border-border bg-card px-3 py-2.5 text-sm leading-relaxed md:rounded-2xl md:px-4 md:py-3">
-												<div className="whitespace-pre-line">
+												<div aria-live="polite" aria-atomic="false" className="whitespace-pre-line">
 													{streamingContent}
 													<span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-primary" />
 												</div>
