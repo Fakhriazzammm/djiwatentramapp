@@ -2618,9 +2618,11 @@ export const scanImageData = action({
 			const geminiApiKey = process.env.GEMINI_API_KEY;
 			const openaiApiKey = process.env.OPENAI_API_KEY || process.env.SUMOPOD_API_KEY;
 
-			if (!geminiApiKey && !openaiApiKey) {
+			const anthropicKey = process.env.ANTHROPIC_API_KEY;
+			const directOpenAI = process.env.OPENAI_API_KEY;
+			if (!geminiApiKey && !anthropicKey && !directOpenAI && !openaiApiKey) {
 				throw new ConvexError(
-					"Konfigurasi AI tidak lengkap. Silakan atur GEMINI_API_KEY atau SUMOPOD_API_KEY di dashboard Convex."
+					"Konfigurasi AI tidak lengkap. Silakan atur GEMINI_API_KEY, ANTHROPIC_API_KEY, atau OPENAI_API_KEY di dashboard Convex."
 				);
 			}
 
@@ -2717,7 +2719,104 @@ PENTING:
 				}
 			}
 
-			// Strategy 2: Fallback to OpenAI/SumoPod
+			// Strategy 2: Anthropic Claude API (excellent vision/OCR)
+			const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+			if (!content && anthropicApiKey) {
+				try {
+					const response = await fetch("https://api.anthropic.com/v1/messages", {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							"x-api-key": anthropicApiKey,
+							"anthropic-version": "2023-06-01",
+						},
+						body: JSON.stringify({
+							model: "claude-haiku-4-5-20251001",
+							max_tokens: 2048,
+							messages: [
+								{
+									role: "user",
+									content: [
+										{
+											type: "image",
+											source: {
+												type: "base64",
+												media_type: mimeType,
+												data: base64Data,
+											},
+										},
+										{
+											type: "text",
+											text: `${prompt}\n\nKembalikan HANYA JSON tanpa penjelasan apapun.`,
+										},
+									],
+								},
+							],
+						}),
+					});
+
+					if (response.ok) {
+						const result = await response.json();
+						const text = result.content?.[0]?.text || "";
+						if (text) {
+							content = text;
+							console.log("scanImageData: Success with Anthropic Claude");
+						}
+					} else {
+						const errorBody = await response.text().catch(() => "");
+						lastError = `Anthropic error: ${response.status} ${response.statusText} - ${errorBody.slice(0, 200)}`;
+						console.log(`scanImageData: ${lastError}`);
+					}
+				} catch (e) {
+					lastError = `Anthropic error: ${e instanceof Error ? e.message : String(e)}`;
+					console.log(`scanImageData: ${lastError}`);
+				}
+			}
+
+			// Strategy 3: Fallback to OpenAI (direct API, not SumoPod - vision support)
+			const directOpenAIKey = process.env.OPENAI_API_KEY;
+			if (!content && directOpenAIKey) {
+				try {
+					const response = await fetch("https://api.openai.com/v1/chat/completions", {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							"Authorization": `Bearer ${directOpenAIKey}`,
+						},
+						body: JSON.stringify({
+							model: "gpt-4o-mini",
+							max_tokens: 2000,
+							messages: [
+								{ role: "system", content: prompt },
+								{
+									role: "user",
+									content: [
+										{ type: "image_url", image_url: { url: args.image, detail: "high" } },
+										{ type: "text", text: "Ekstrak data JSON dari gambar struk/nota ini. Balas HANYA JSON." }
+									]
+								}
+							],
+						}),
+					});
+					if (response.ok) {
+						const result = await response.json();
+						const text = result.choices?.[0]?.message?.content || "";
+						if (text) {
+							content = text;
+							console.log("scanImageData: Success with OpenAI direct");
+						}
+					} else {
+						const errorBody = await response.text().catch(() => "");
+						lastError = `OpenAI direct error: ${response.status} - ${errorBody.slice(0, 200)}`;
+						console.log(`scanImageData: ${lastError}`);
+					}
+				} catch (e) {
+					lastError = `OpenAI direct error: ${e instanceof Error ? e.message : String(e)}`;
+					console.log(`scanImageData: ${lastError}`);
+				}
+			}
+
+			// Strategy 4: Fallback to SumoPod (OpenAI-compatible custom endpoint)
 			if (!content && openaiApiKey) {
 				try {
 					const openai = getOpenAI();
@@ -2729,16 +2828,16 @@ PENTING:
 								role: "user",
 								content: [
 									{ type: "image_url", image_url: { url: args.image, detail: "high" } },
-									{ type: "text", text: "Ekstrak data JSON dari gambar struk/nota ini." }
+									{ type: "text", text: "Ekstrak data JSON dari gambar struk/nota ini. Balas HANYA JSON." }
 								]
 							}
 						],
 						max_tokens: 2000,
-						response_format: { type: "json_object" }
 					});
 					content = completion.choices[0]?.message?.content || "";
+					if (content) console.log("scanImageData: Success with SumoPod");
 				} catch (e) {
-					lastError = `OpenAI error: ${e instanceof Error ? e.message : String(e)}`;
+					lastError = `SumoPod error: ${e instanceof Error ? e.message : String(e)}`;
 					console.log(`scanImageData: ${lastError}`);
 				}
 			}
