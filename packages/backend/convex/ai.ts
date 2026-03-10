@@ -2315,24 +2315,38 @@ async function runReceiptOCR(imageDataUrl: string): Promise<{
 	const mimeMatch = imageDataUrl.match(/^data:(image\/[a-zA-Z+]+);base64,/);
 	const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
 
-	const prompt = `Kamu adalah sistem OCR struk belanja Indonesia yang terpercaya.
+	const prompt = `Kamu adalah sistem OCR AI tingkat lanjut yang khusus untuk mengekstrak data dari dokumen keuangan Indonesia (termasuk struk belanja, kwitansi, nota, tagihan, dan tulisan tangan).
 
-Baca struk ini dari atas ke bawah lengkap:
-- Setiap item: nama, quantity, harga
-- Total amount (cari angka terbesar di bawah)
-- Payment method, tanggal, nama toko
+Tugas kamu adalah menganalisis gambar dengan sangat teliti dan akurat. Identifikasi detail berikut:
+1. Informasi Merchant: Nama toko, alamat lengkap, nomor telepon, dan nomor NPWP jika ada.
+2. Detail Transaksi: Tanggal, waktu, nomor invoice/transaksi/struk.
+3. Itemized List: Ekstrak SEMUA item dengan kolom: nama item, kuantitas (qty), harga satuan, dan total harga item tersebut. Sertakan juga diskon spesifik item jika ada.
+4. Ringkasan Keuangan: Subtotal, Pajak/PPN, Service Charge (biaya layanan), Diskon (total), dan Total Akhir (angka terbesar di bagian bawah).
+5. Pembayaran: Metode pembayaran (QRIS, Tunai/Cash, Kartu Debit/Kredit, Transfer, dll).
 
-Output JSON (tanpa markdown, HANYA JSON):
+Output harus dalam format JSON murni (TANPA markdown, TANPA penjelasan tambahan):
 {
   "type": "expense",
   "data": {
+    "merchantName": "Nama Merchant",
+    "merchantAddress": "Alamat Merchant",
+    "merchantPhone": "No Telepon",
+    "date": "YYYY-MM-DD",
+    "time": "HH:mm",
+    "invoiceNumber": "No Struk",
     "amount": 50000,
-    "items": [{"name": "Nasi", "quantity": 2, "price": 15000}],
-    "category": "makanan",
-    "paymentMethod": "qris",
-    "notes": "Struk #123"
+    "subtotal": 45000,
+    "tax": 5000,
+    "serviceCharge": 0,
+    "discount": 0,
+    "items": [
+      {"name": "Nama Produk", "quantity": 1, "price": 45000, "total": 45000}
+    ],
+    "category": "makanan|minuman|belanja|transportasi|tagihan|kesehatan|lainnya",
+    "paymentMethod": "qris|cash|debit|credit|transfer|unknown",
+    "notes": "Informasi tambahan"
   },
-  "confidence": 0.9
+  "confidence": 0.95
 }`;
 
 	const geminiResult = await callGeminiAPI(prompt, base64Data, mimeType, { maxOutputTokens: 2000 });
@@ -2735,31 +2749,46 @@ export const scanImageData = action({
 				throw new ConvexError("Gambar terlalu besar. Maksimal 7.5MB. Silakan kompres gambar terlebih dahulu.");
 			}
 
-			const prompt = `Kamu adalah AI scanner dokumen keuangan yang ahli menganalisis gambar struk, kwitansi, nota, dan dokumen lainnya.
-Analisis gambar dan kembalikan data terstruktur dalam format JSON berikut TANPA teks tambahan apapun:
+			const prompt = `Kamu adalah AI scanner dokumen keuangan yang sangat teliti dan ahli dalam menganalisis gambar struk, kwitansi, nota, invoice, dan dokumen lainnya dalam konteks Indonesia.
+
+TUGAS: Analisis gambar dengan kecermatan tinggi dan ekstrak data terstruktur secara lengkap.
+DETAIL YANG HARUS DIEKSTRAK:
+1. Nama Merchant: Identifikasi nama toko/instansi yang mengeluarkan dokumen.
+2. Kategori: Tentukan kategori transaksi (makanan, minuman, belanja, kebutuhan kantor, transportasi, tagihan, kesehatan, hiburan, dll).
+3. Transaksi: Tipe transaksi (expense/pemasukan/pengeluaran).
+4. Angka Keuangan: 
+   - total: Angka akhir yang harus dibayar (angka terbesar).
+   - subtotal: Jumlah sebelum pajak/layanan.
+   - tax: Pajak/PPN.
+   - serviceCharge: Biaya layanan/service.
+   - discount: Total potongan harga.
+5. Daftar Item (Kritis): Ekstrak SEMUA item tanpa kecuali. Untuk setiap item sertakan nama, qty, harga satuan (price), dan subtotal (qty * price).
+6. Metadata: Tanggal (YYYY-MM-DD), waktu, metode pembayaran (cash/qris/debit/credit), nomor struk/invoice.
+
+Kembalikan data dalam format JSON berikut TANPA teks tambahan apapun:
 {
   "type": "receipt|invoice|note|handwriting|product|other",
-  "name": "nama merchant/toko yang terdeteksi",
+  "name": "nama merchant yang terdeteksi",
   "category": "makanan|minuman|belanja|transportasi|tagihan|gaji|hiburan|kesehatan|lainnya",
   "transactionType": "expense|income|unknown",
-  "total": angka total dalam Rupiah (hanya angka, tanpa titik atau koma),
-  "subtotal": angka subtotal atau 0,
-  "tax": angka pajak/PPN atau 0,
-  "discount": angka diskon atau 0,
-  "items": [{"name": "nama item", "qty": jumlah, "price": harga satuan, "subtotal": qty * price}],
-  "date": "YYYY-MM-DD atau null jika tidak terdeteksi",
+  "total": total_akhir_angka,
+  "subtotal": subtotal_angka,
+  "tax": pajak_angka,
+  "serviceCharge": service_charge_angka,
+  "discount": diskon_angka,
+  "items": [{"name": "nama item", "qty": jumlah, "price": harga_satuan, "subtotal": total_per_item}],
+  "date": "YYYY-MM-DD atau null",
   "paymentMethod": "cash|qris|card|transfer|unknown",
-  "notes": "informasi tambahan yang relevan",
-  "confidence": angka 0-100 seberapa yakin kamu dengan hasil ekstraksi,
-  "rawText": "semua teks mentah yang terbaca dari gambar"
+  "notes": "alamat toko, nomor telepon, nomor struk, atau info penting lainnya",
+  "confidence": angka 0-100 tingkat keyakinan,
+  "rawText": "semua teks mentah yang terbaca"
 }
 
 PENTING:
-- Baca SEMUA item dari struk dengan teliti, termasuk qty dan harga masing-masing
-- Total harus sesuai dengan penjumlahan semua item (subtotal + tax - discount)
-- Jika ada item yang tidak terbaca jelas, tetap masukkan dengan confidence rendah
-- Pastikan format angka dalam Rupiah tanpa separator (contoh: 45000 bukan 45.000)
-- HANYA kembalikan JSON, tanpa teks lain di luar JSON`;
+- Periksa detail pajak dan service charge secara spesifik karena sering muncul di struk restoran.
+- Pastikan semua angka adalah integer murni tanpa pemisah ribuan (contoh: 250000).
+- Jika tulisan tangan, gunakan context untuk menebak kata yang paling masuk akal.
+- HANYA kembalikan JSON.`;
 
 			// Gunakan Gemini API untuk scan gambar (best for vision/OCR)
 			const geminiResult = await callGeminiAPI(prompt, base64Data, mimeType);
@@ -2804,6 +2833,7 @@ PENTING:
 			parsed.total = ensureNumber(parsed.total);
 			parsed.subtotal = ensureNumber(parsed.subtotal);
 			parsed.tax = ensureNumber(parsed.tax);
+			parsed.serviceCharge = ensureNumber(parsed.serviceCharge);
 			parsed.discount = ensureNumber(parsed.discount);
 
 			// Fix items array
@@ -2818,7 +2848,7 @@ PENTING:
 				// Recalculate total from items if total seems wrong
 				const itemsTotal = (parsed.items as Array<{ subtotal: number }>).reduce((sum, item) => sum + item.subtotal, 0);
 				if ((parsed.total as number) === 0 && itemsTotal > 0) {
-					parsed.total = itemsTotal + (parsed.tax as number) - (parsed.discount as number);
+					parsed.total = itemsTotal + (parsed.tax as number) + (parsed.serviceCharge as number) - (parsed.discount as number);
 				}
 				if ((parsed.subtotal as number) === 0 && itemsTotal > 0) {
 					parsed.subtotal = itemsTotal;
