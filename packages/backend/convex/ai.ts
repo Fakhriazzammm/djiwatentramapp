@@ -10,13 +10,15 @@ import { formatToolResult, tools } from "./tools";
 
 // Helper to initialize OpenAI lazily
 const getOpenAI = () => {
-	const apiKey = process.env.SUMOPOD_API_KEY;
+	const apiKey = process.env.OPENAI_API_KEY || process.env.SUMOPOD_API_KEY;
+	const baseURL = process.env.OPENAI_BASE_URL || "https://ai.sumopod.com/v1";
+	
 	if (!apiKey) {
-		throw new Error("Missing SUMOPOD_API_KEY environment variable");
+		throw new ConvexError("Missing OPENAI_API_KEY or SUMOPOD_API_KEY environment variable");
 	}
 	return new OpenAI({
 		apiKey,
-		baseURL: "https://ai.sumopod.com/v1",
+		baseURL,
 	});
 };
 
@@ -619,59 +621,24 @@ INSTRUKSI TOOL CALLING:
 			messages.push({ role: msg.role, content: msg.content });
 		}
 
-		// Support vision: if image is attached, analyze with Gemini first then include analysis in chat
+		// Support vision: if image is attached, include it in the messages for OpenAI
 		if (args.image) {
-			let imageAnalysis = "";
-			const geminiApiKey = process.env.GEMINI_API_KEY;
-
-			if (geminiApiKey) {
-				try {
-					const base64Data = args.image.includes(",") ? args.image.split(",")[1] : args.image;
-					const mimeMatch = args.image.match(/^data:(image\/[a-zA-Z+]+);base64,/);
-					const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
-
-					if (base64Data) {
-						const geminiResponse = await fetch(
-							`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
-							{
-								method: "POST",
-								headers: { "Content-Type": "application/json" },
-								body: JSON.stringify({
-									contents: [
-										{
-											parts: [
-												{ inline_data: { mime_type: mimeType, data: base64Data } },
-												{
-													text: `Analisis gambar ini secara detail. Jika ini struk/kwitansi/nota, baca semua teks, item, harga, total, tanggal, metode pembayaran. Jika ini gambar produk atau dokumen lain, deskripsikan isinya secara lengkap. Jawab dalam Bahasa Indonesia.`,
-												},
-											],
-										},
-									],
-									generationConfig: {
-										temperature: 0.2,
-										maxOutputTokens: 1500,
-									},
-								}),
-							}
-						);
-
-						if (geminiResponse.ok) {
-							const geminiResult = await geminiResponse.json();
-							imageAnalysis = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text || "";
-						}
-					}
-				} catch (visionError) {
-					console.error("Gemini vision analysis error:", visionError);
-				}
-			}
-
-			// Include image analysis context in the user message
-			const userText = args.message || "Tolong analisis gambar ini dan ekstrak informasi yang relevan.";
-			const messageWithAnalysis = imageAnalysis
-				? `${userText}\n\n[HASIL ANALISIS GAMBAR OLEH VISION AI]:\n${imageAnalysis}`
-				: userText;
-
-			messages.push({ role: "user", content: messageWithAnalysis });
+			messages.push({
+				role: "user",
+				content: [
+					{
+						type: "text",
+						text: args.message || "Tolong analisis gambar ini dan bantu saya dengan informasi di dalamnya.",
+					},
+					{
+						type: "image_url",
+						image_url: {
+							url: args.image,
+							detail: "auto",
+						},
+					},
+				],
+			});
 		} else {
 			messages.push({ role: "user", content: args.message });
 		}
@@ -2698,77 +2665,80 @@ Aturan penting:
 		let content = "";
 
 		try {
-			const response = await fetch(
-				`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						contents: [
+			const completion = await getOpenAI().chat.completions.create({
+				model: "gpt-4o-mini",
+				messages: [
+					{
+						role: "system",
+						content: prompt,
+					},
+					{
+						role: "user",
+						content: [
 							{
-								parts: [
-									{ inline_data: { mime_type: mimeType, data: base64Data } },
-									{ text: prompt },
-								],
+								type: "image_url",
+								image_url: {
+									url: args.image,
+									detail: "high",
+								},
+							},
+							{
+								type: "text",
+								text: "Analisis gambar ini dan kembalikan data JSON terstruktur sesuai format yang diminta.",
 							},
 						],
-						generationConfig: {
-							temperature: 0.1,
-							maxOutputTokens: 2000,
-							responseMimeType: "application/json",
-						},
-					}),
-				}
-			);
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				console.error("Gemini API error:", response.status, errorText);
-				throw new Error(`Gemini API error: ${response.status}`);
-			}
-
-			const result = await response.json();
-			content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+					},
+				],
+				max_tokens: 1500,
+				response_format: { type: "json_object" },
+			});
+			content = completion.choices[0].message.content ?? "";
 
 			if (!content) {
-				throw new Error("Empty response from Gemini API");
+				throw new Error("Empty response from OpenAI Vision API");
 			}
 		} catch (error) {
-			console.error("scanImageData Gemini error:", error);
+			console.error("scanImageData error:", error);
 
-			// Fallback: try OpenAI/SumoPod if Gemini fails
-			try {
-				const completion = await getOpenAI().chat.completions.create({
-					model: "gpt-4o-mini",
-					messages: [
+			// Fallback: try Gemini if OpenAI fails (reverse logic now)
+			const geminiApiKey = process.env.GEMINI_API_KEY;
+			if (geminiApiKey) {
+				try {
+					const response = await fetch(
+						`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
 						{
-							role: "system",
-							content: prompt,
-						},
-						{
-							role: "user",
-							content: [
-								{
-									type: "image_url",
-									image_url: {
-										url: args.image,
-										detail: "high",
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								contents: [
+									{
+										parts: [
+											{ inline_data: { mime_type: mimeType, data: base64Data } },
+											{ text: prompt },
+										],
 									},
+								],
+								generationConfig: {
+									temperature: 0.1,
+									maxOutputTokens: 2000,
+									responseMimeType: "application/json",
 								},
-								{
-									type: "text",
-									text: "Analisis gambar ini dan kembalikan data JSON terstruktur sesuai format yang diminta.",
-								},
-							],
-						},
-					],
-					max_tokens: 1500,
-				});
-				content = completion.choices[0].message.content ?? "";
-			} catch (fallbackError) {
-				console.error("scanImageData fallback error:", fallbackError);
+							}),
+						}
+					);
+
+					if (response.ok) {
+						const result = await response.json();
+						content = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+					}
+				} catch (geminiError) {
+					console.error("scanImageData Gemini fallback error:", geminiError);
+				}
+			}
+
+			if (!content) {
 				throw new ConvexError(
-					"Gagal menganalisis gambar setelah mencoba beberapa metode. Pastikan format gambar didukung (JPG/PNG) dan API Key Anda valid."
+					"Gagal menganalisis gambar. Pastikan format gambar didukung (JPG/PNG) dan API Key SumoPod Anda valid."
 				);
 			}
 		}
