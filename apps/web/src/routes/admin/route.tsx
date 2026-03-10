@@ -124,7 +124,7 @@ function AdminLayout() {
 	}, []);
 
 	return (
-		<div className="flex h-full w-full overflow-hidden bg-background">
+		<div className="flex h-screen w-full overflow-hidden bg-background">
 			{/* === DESKTOP SIDEBAR (hidden on mobile) === */}
 			<aside
 				className={`relative hidden flex-col border-border border-r bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out md:flex ${
