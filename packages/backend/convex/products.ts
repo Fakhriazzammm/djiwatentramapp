@@ -69,6 +69,7 @@ export const addProduct = mutation({
 		promoPrice: v.optional(v.number()),
 		image: v.optional(v.string()),
 		isAvailable: v.boolean(),
+		menuNumber: v.optional(v.number()),
 		variations: v.optional(v.any()),
 	},
 	handler: async (ctx, args) => {
@@ -87,6 +88,7 @@ export const updateProduct = mutation({
 		categoryId: v.optional(v.id("categories")),
 		image: v.optional(v.string()),
 		isAvailable: v.optional(v.boolean()),
+		menuNumber: v.optional(v.number()),
 		variations: v.optional(v.any()),
 	},
 	handler: async (ctx, args) => {

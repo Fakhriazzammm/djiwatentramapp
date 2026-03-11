@@ -206,6 +206,7 @@ function ProductsTab({
 		categoryId: "",
 		description: "",
 		image: "",
+		menuNumber: "",
 		variations: [] as Variation[],
 	});
 	const [recipeData, setRecipeData] = useState<
@@ -228,6 +229,7 @@ function ProductsTab({
 			categoryId: "",
 			description: "",
 			image: "",
+			menuNumber: "",
 			variations: [],
 		});
 		setRecipeData([]);
@@ -276,6 +278,7 @@ function ProductsTab({
 				categoryId: formData.categoryId as Id<"categories">,
 				description: formData.description,
 				image: imageId,
+				menuNumber: formData.menuNumber ? Number(formData.menuNumber) : undefined,
 				variations: formData.variations,
 			};
 
@@ -318,6 +321,7 @@ function ProductsTab({
 			categoryId: product.categoryId,
 			description: product.description || "",
 			image: product.image || "",
+			menuNumber: product.menuNumber != null ? String(product.menuNumber) : "",
 			variations: (product.variations as Variation[]) || [],
 		});
 		setOriginalStorageId(product.storageId || null);
@@ -472,6 +476,11 @@ function ProductsTab({
 											No Image
 										</div>
 									)}
+									{product.menuNumber != null && (
+										<div className="absolute top-1.5 left-1.5 flex h-5 min-w-5 items-center justify-center rounded px-1 bg-black text-white font-bold text-[9px] leading-none shadow">
+											{product.menuNumber}
+										</div>
+									)}
 									<div className="absolute top-1.5 right-1.5">
 										<button
 											className={`rounded-full p-1 shadow-sm transition-transform hover:scale-110 ${product.isAvailable ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}
@@ -570,6 +579,7 @@ function ProductsTab({
 						<table className="w-full text-left text-sm">
 							<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase font-bold tracking-wider">
 								<tr>
+									<th className="px-4 py-3 text-center w-12">No.</th>
 									<th className="px-4 py-3">Produk</th>
 									<th className="px-4 py-3">Kategori</th>
 									<th className="px-4 py-3">Harga</th>
@@ -581,6 +591,7 @@ function ProductsTab({
 							<tbody className="divide-y divide-border">
 								{!products && Array.from({ length: 5 }).map((_, i) => (
 									<tr className="animate-pulse" key={i}>
+										<td className="px-4 py-3"><div className="mx-auto h-5 w-5 bg-muted rounded" /></td>
 										<td className="px-4 py-3"><div className="h-8 w-32 bg-muted rounded" /></td>
 										<td className="px-4 py-3"><div className="h-4 w-20 bg-muted rounded" /></td>
 										<td className="px-4 py-3"><div className="h-4 w-16 bg-muted rounded" /></td>
@@ -596,6 +607,15 @@ function ProductsTab({
 
 									return (
 										<tr className="group hover:bg-muted/30 transition-colors" key={product._id}>
+											<td className="px-4 py-2 text-center">
+												{product.menuNumber != null ? (
+													<span className="inline-flex h-5 min-w-5 items-center justify-center rounded px-1 bg-black text-white font-bold text-[9px] leading-none">
+														{product.menuNumber}
+													</span>
+												) : (
+													<span className="text-muted-foreground text-[10px]">—</span>
+												)}
+											</td>
 											<td className="px-4 py-2">
 												<div className="flex items-center gap-3">
 													<div className="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-muted">
@@ -685,7 +705,7 @@ function ProductsTab({
 
 								{products && products.length === 0 && (
 									<tr>
-										<td className="py-12 text-center text-muted-foreground" colSpan={6}>
+										<td className="py-12 text-center text-muted-foreground" colSpan={7}>
 											Belum ada produk.
 										</td>
 									</tr>
@@ -702,12 +722,12 @@ function ProductsTab({
 					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
 						<motion.div
 							animate={{ opacity: 1, scale: 1 }}
-							className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-[#4A3728]/10 bg-[#F5F0E1]"
+							className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-border bg-card"
 							exit={{ opacity: 0, scale: 0.95 }}
 							initial={{ opacity: 0, scale: 0.95 }}
 						>
-							<div className="border-[#4A3728]/5 border-b p-8 pb-3">
-								<h3 className="font-bold text-2xl text-[#4A3728] tracking-tight">
+							<div className="border-b border-border p-8 pb-3">
+								<h3 className="font-bold text-2xl text-foreground tracking-tight">
 									{editingId ? "Edit Produk" : "Tambah Produk Baru"}
 								</h3>
 							</div>
@@ -719,13 +739,13 @@ function ProductsTab({
 								<div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto p-8">
 									<div className="space-y-2">
 										<label
-											className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+											className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
 											htmlFor="product-name"
 										>
 											Nama Produk
 										</label>
 										<input
-											className="w-full rounded-md bg-[#E8E1CF] p-4 font-bold text-[#4A3728] text-sm outline-none transition-all placeholder:text-[#4A3728]/30 focus:ring-2 focus:ring-[#4A3728]/20"
+											className="w-full rounded-md bg-muted p-4 font-bold text-foreground text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-ring/20"
 											id="product-name"
 											onChange={(e) =>
 												setFormData({ ...formData, name: e.target.value })
@@ -739,13 +759,13 @@ function ProductsTab({
 									<div className="grid grid-cols-2 gap-5">
 										<div className="col-span-1 space-y-2">
 											<label
-												className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+												className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
 												htmlFor="product-category"
 											>
 												Kategori
 											</label>
 											<select
-												className="w-full appearance-none rounded-md bg-[#E8E1CF] p-4 font-bold text-[#4A3728] text-sm outline-none transition-all focus:ring-2 focus:ring-[#4A3728]/20"
+												className="w-full appearance-none rounded-md bg-muted p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring/20"
 												id="product-category"
 												onChange={(e) =>
 													setFormData({
@@ -766,13 +786,13 @@ function ProductsTab({
 										</div>
 										<div className="col-span-1 space-y-2">
 											<label
-												className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+												className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
 												htmlFor="product-price"
 											>
 												Harga (Rp)
 											</label>
 											<input
-												className="w-full rounded-md bg-[#E8E1CF] p-4 font-bold text-[#4A3728] text-sm outline-none transition-all focus:ring-2 focus:ring-[#4A3728]/20"
+												className="w-full rounded-md bg-muted p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring/20"
 												id="product-price"
 												onChange={(e) =>
 													setFormData({ ...formData, price: e.target.value })
@@ -785,16 +805,39 @@ function ProductsTab({
 										</div>
 									</div>
 
+									<div className="space-y-2">
+										<label
+											className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
+											htmlFor="product-menu-number"
+										>
+											Nomor Menu
+										</label>
+										<input
+											className="w-full rounded-md bg-muted p-4 font-bold text-foreground text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-ring/20"
+											id="product-menu-number"
+											min="1"
+											onChange={(e) =>
+												setFormData({ ...formData, menuNumber: e.target.value })
+											}
+											placeholder="Contoh: 1, 2, 3..."
+											type="number"
+											value={formData.menuNumber}
+										/>
+										<p className="text-muted-foreground text-[10px]">
+											Nomor urut yang tampil di pojok kiri atas thumbnail menu. Kosongkan jika tidak diperlukan.
+										</p>
+									</div>
+
 									<div className="relative space-y-2">
 										<label
-											className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+											className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
 											htmlFor="product-desc"
 										>
 											Deskripsi
 										</label>
 										<div className="relative">
 											<textarea
-												className="h-28 w-full rounded-md bg-[#E8E1CF] p-4 pr-12 font-medium text-[#4A3728] text-sm outline-none transition-all placeholder:text-[#4A3728]/30 focus:ring-2 focus:ring-[#4A3728]/20"
+												className="h-28 w-full rounded-md bg-muted p-4 pr-12 font-medium text-foreground text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-ring/20"
 												id="product-desc"
 												onChange={(e) =>
 													setFormData({
@@ -851,13 +894,13 @@ function ProductsTab({
 
 									<div className="space-y-2">
 										<label
-											className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+											className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
 											htmlFor="product-image-upload"
 										>
 											Gambar Produk
 										</label>
 										{formData.image && !imageFile && (
-											<div className="relative mb-3 h-32 w-full overflow-hidden rounded-md border border-[#4A3728]/10 bg-[#E8E1CF]">
+											<div className="relative mb-3 h-32 w-full overflow-hidden rounded-md border border-border bg-muted">
 												<img
 													alt="Preview"
 													className="h-full w-full object-cover"
@@ -866,7 +909,7 @@ function ProductsTab({
 													width={400}
 												/>
 												<button
-													className="absolute top-2 right-2 rounded-full bg-[#EF4444] p-1.5 text-white transition-all hover:scale-110"
+													className="absolute top-2 right-2 rounded-full bg-destructive p-1.5 text-destructive-foreground transition-all hover:scale-110"
 													onClick={() =>
 														setFormData({ ...formData, image: "" })
 													}
@@ -890,11 +933,11 @@ function ProductsTab({
 												type="file"
 											/>
 											<label
-												className="flex cursor-pointer items-center justify-between rounded-md bg-[#E8E1CF] p-4 font-bold text-[#4A3728]/60 text-xs transition-all hover:bg-[#E8E1CF]/80"
+												className="flex cursor-pointer items-center justify-between rounded-md bg-muted p-4 font-bold text-muted-foreground text-xs transition-all hover:bg-muted/80"
 												htmlFor="product-image-upload"
 											>
 												<span className="flex items-center gap-2">
-													<div className="rounded-lg bg-[#4A3728] px-3 py-1.5 text-[#F5F0E1]">
+													<div className="rounded-lg bg-foreground px-3 py-1.5 text-background">
 														Choose File
 													</div>
 													{imageFile ? imageFile.name : "No file chosen"}
@@ -904,13 +947,13 @@ function ProductsTab({
 									</div>
 
 									{/* Variations Section */}
-									<div className="space-y-4 rounded-lg border border-[#4A3728]/10 bg-[#F0EAD6]/50 p-6">
+									<div className="space-y-4 rounded-lg border border-border bg-muted/30 p-6">
 										<div className="flex items-center justify-between">
-											<h4 className="font-bold text-[#4A3728] text-xs uppercase tracking-widest">
+											<h4 className="font-bold text-foreground text-xs uppercase tracking-widest">
 												Variasi
 											</h4>
 											<select
-												className="rounded-md bg-[#E8E1CF] px-3 py-1.5 font-bold text-[#4A3728] text-[10px] outline-none"
+												className="rounded-md bg-muted px-3 py-1.5 font-bold text-foreground text-[10px] outline-none"
 												onChange={(e) => addVariationFromPreset(e.target.value)}
 												value=""
 											>
@@ -925,12 +968,12 @@ function ProductsTab({
 										<div className="flex flex-wrap gap-2">
 											{formData.variations.map((v: any) => (
 												<div
-													className="flex items-center gap-2 rounded-md bg-[#4A3728] px-4 py-1.5 font-bold text-[#F5F0E1] text-[10px]"
+													className="flex items-center gap-2 rounded-md bg-foreground px-4 py-1.5 font-bold text-background text-[10px]"
 													key={v.name}
 												>
 													<span className="uppercase">{v.name}</span>
 													<button
-														className="text-[#F5F0E1]/60 hover:text-[#EF4444]"
+														className="text-background/60 hover:text-destructive"
 														onClick={() =>
 															removeVariation(
 																formData.variations.findIndex(
@@ -945,7 +988,7 @@ function ProductsTab({
 												</div>
 											))}
 											{formData.variations.length === 0 && (
-												<p className="w-full text-center font-medium text-[#4A3728]/40 text-[10px] italic">
+												<p className="w-full text-center font-medium text-muted-foreground/70 text-[10px] italic">
 													Belum ada variasi
 												</p>
 											)}
@@ -953,13 +996,13 @@ function ProductsTab({
 									</div>
 
 									{/* Recipe Section */}
-									<div className="space-y-4 rounded-lg border border-[#4A3728]/10 bg-[#F0EAD6]/50 p-6">
+									<div className="space-y-4 rounded-lg border border-border bg-muted/30 p-6">
 										<div className="flex items-center justify-between">
-											<h4 className="font-bold text-[#4A3728] text-xs uppercase tracking-widest">
+											<h4 className="font-bold text-foreground text-xs uppercase tracking-widest">
 												Resep
 											</h4>
 											<select
-												className="rounded-md bg-[#E8E1CF] px-3 py-1.5 font-bold text-[#4A3728] text-[10px] outline-none"
+												className="rounded-md bg-muted px-3 py-1.5 font-bold text-foreground text-[10px] outline-none"
 												onChange={(e) => {
 													const invId = e.target.value as Id<"inventory">;
 													if (!invId) {
@@ -1014,15 +1057,15 @@ function ProductsTab({
 												);
 												return (
 													<div
-														className="flex items-center gap-3 rounded-2xl bg-[#E8E1CF]/50 p-3"
+														className="flex items-center gap-3 rounded-2xl bg-muted/50 p-3"
 														key={item.inventoryId}
 													>
-														<span className="flex-1 truncate font-bold text-[#4A3728] text-[11px] uppercase tracking-tight">
+														<span className="flex-1 truncate font-bold text-foreground text-[11px] uppercase tracking-tight">
 															{inv?.ingredientName || "Loading..."}
 														</span>
 														<div className="flex items-center gap-2">
 															<input
-																className="w-20 rounded-xl bg-[#E8E1CF] px-3 py-1.5 font-bold text-[#4A3728] text-xs outline-none focus:ring-1 focus:ring-[#4A3728]/20"
+																className="w-20 rounded-xl bg-muted px-3 py-1.5 font-bold text-foreground text-xs outline-none focus:ring-1 focus:ring-ring/20"
 																onChange={(e) => {
 																	const newData = [...recipeData];
 																	newData[idx].amount = Number(e.target.value);
@@ -1032,12 +1075,12 @@ function ProductsTab({
 																type="number"
 																value={item.amount}
 															/>
-															<span className="min-w-[40px] font-bold text-[#4A3728]/40 text-[10px] uppercase">
+															<span className="min-w-[40px] font-bold text-muted-foreground/70 text-[10px] uppercase">
 																{inv?.unit}
 															</span>
 														</div>
 														<button
-															className="rounded-xl p-2 text-[#EF4444] transition-colors hover:bg-[#EF4444]/10"
+															className="rounded-xl p-2 text-destructive transition-colors hover:bg-destructive/10"
 															onClick={() => {
 																const newData = [...recipeData];
 																newData.splice(idx, 1);
@@ -1051,7 +1094,7 @@ function ProductsTab({
 												);
 											})}
 											{recipeData.length === 0 && (
-												<p className="text-center font-medium text-[#4A3728]/40 text-[10px] italic">
+												<p className="text-center font-medium text-muted-foreground/70 text-[10px] italic">
 													Belum ada resep
 												</p>
 											)}
@@ -1059,16 +1102,16 @@ function ProductsTab({
 									</div>
 								</div>
 
-								<div className="flex gap-6 border-[#4A3728]/5 border-t p-8">
+								<div className="flex gap-6 border-t border-border p-8">
 									<button
-										className="flex-1 rounded-[24px] bg-[#E8E1CF] py-5 font-bold text-[#4A3728] text-[10px] uppercase tracking-widest transition-all hover:bg-[#E8E1CF]/80 active:scale-95"
+										className="flex-1 rounded-[24px] bg-muted py-5 font-bold text-foreground text-[10px] uppercase tracking-widest transition-all hover:bg-muted/80 active:scale-95"
 										onClick={resetForm}
 										type="button"
 									>
 										Batal
 									</button>
 									<button
-										className="flex-1 rounded-[24px] bg-[#4A3728] py-5 font-bold text-[#F5F0E1] text-xs uppercase tracking-[0.2em] shadow-[#4A3728]/20 shadow-xl transition-all hover:brightness-110 active:scale-[0.98]"
+										className="flex-1 rounded-[24px] bg-primary py-5 font-bold text-primary-foreground text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 transition-all hover:brightness-110 active:scale-[0.98]"
 										type="submit"
 									>
 										Simpan

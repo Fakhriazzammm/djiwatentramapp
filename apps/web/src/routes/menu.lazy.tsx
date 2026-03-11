@@ -34,6 +34,7 @@ interface Product {
 	image?: string;
 	description?: string;
 	categoryId?: string;
+	menuNumber?: number;
 }
 
 const formatCurrency = (amount: number) =>
@@ -713,6 +714,11 @@ function MenuPage() {
 										onClick={() => handleAddToCart(product)}
 										type="button"
 									>
+										{product.menuNumber != null && (
+											<div className="absolute top-1.5 left-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded px-1 bg-black text-white font-bold text-[9px] leading-none shadow">
+												{product.menuNumber}
+											</div>
+										)}
 										{cartItem && (
 											<div className="absolute top-1.5 right-1.5 z-10 flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1 font-bold text-primary-foreground text-[10px] shadow-md">
 												{cartItem.quantity}
