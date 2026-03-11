@@ -48,7 +48,7 @@ export function PaymentConfirmationModal({
 			currentTimeVal: now.getHours() * 60 + now.getMinutes(),
 		};
 
-		return allActiveDiscounts.filter((discount) => {
+		return allActiveDiscounts.filter((discount: Doc<"discounts">) => {
 			// Since we don't have a single product here, we check if it applies to ANY item in the cart
 			// or if it's an "ALL" target type.
 			if (discount.targetType === "ALL") {
@@ -139,7 +139,7 @@ export function PaymentConfirmationModal({
 	]);
 
 	const currentDiscount = useMemo(() => {
-		return validDiscounts.find((d) => d._id === selectedDiscountId);
+		return validDiscounts.find((d: Doc<"discounts">) => d._id === selectedDiscountId);
 	}, [validDiscounts, selectedDiscountId]);
 
 	const discountAmount = useMemo(() => {
@@ -233,11 +233,9 @@ export function PaymentConfirmationModal({
 							</div>
 						) : siteSettings?.paymentPopupImage ? (
 							<img
-								alt="QRIS Payment"
-								className="max-h-[140px] w-auto max-w-full rounded-md object-contain shadow-sm"
-								height={300}
+								alt="Banner Pembayaran"
+								className="max-h-[160px] w-auto max-w-full rounded-xl object-contain shadow-md"
 								src={siteSettings.paymentPopupImage}
-								width={300}
 							/>
 						) : (
 							<div className="flex h-24 w-full items-center justify-center rounded-md bg-muted">
@@ -402,7 +400,7 @@ export function PaymentConfirmationModal({
 									value={selectedDiscountId || ""}
 								>
 									<option value="">TANPA VOUCHER / DISKON</option>
-									{validDiscounts.map((d) => (
+									{validDiscounts.map((d: Doc<"discounts">) => (
 										<option key={d._id} value={d._id}>
 											{d.name.toUpperCase()} (
 											{d.type === "PERCENTAGE"

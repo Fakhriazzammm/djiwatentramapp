@@ -26,7 +26,13 @@ export const getSettings = query({
 			if (url) bannerUrl = url;
 		}
 
-		return { ...settings, logoUrl, bannerUrl };
+		let qrisImage = settings.qrisImage;
+		if (qrisImage && !qrisImage.startsWith("http")) {
+			const url = await ctx.storage.getUrl(qrisImage);
+			if (url) qrisImage = url;
+		}
+
+		return { ...settings, logoUrl, bannerUrl, qrisImage };
 	},
 });
 
@@ -46,6 +52,7 @@ export const updateSettings = mutation({
 		featuredProductIds: v.optional(v.array(v.string())),
 		paymentMethods: v.optional(v.array(v.string())),
 		bankDetails: v.optional(v.string()),
+		qrisImage: v.optional(v.string()),
 		isActive: v.boolean(),
 	},
 	handler: async (ctx, args) => {
@@ -60,6 +67,10 @@ export const updateSettings = mutation({
 		}
 		return await ctx.db.insert("bookingSettings", args);
 	},
+});
+
+export const generateUploadUrl = mutation(async (ctx) => {
+	return await ctx.storage.generateUploadUrl();
 });
 
 // ─── Products ─────────────────────────────────────────────────────────────────
@@ -114,6 +125,55 @@ export const setDateCapacity = mutation({
 			});
 		} else {
 			await ctx.db.insert("bookingDateCapacity", args);
+		}
+	},
+});
+
+export const setBulkDateCapacity = mutation({
+	args: {
+		slug: v.string(),
+		startDate: v.string(),
+		endDate: v.string(),
+		maxCapacity: v.number(),
+		notes: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const { slug, startDate, endDate, maxCapacity, notes } = args;
+
+		const start = new Date(startDate);
+		const end = new Date(endDate);
+
+		// Basic safety check: max 1 year
+		const diffTime = Math.abs(end.getTime() - start.getTime());
+		const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+		if (diffDays > 366) {
+			throw new Error("Date range cannot exceed 1 year");
+		}
+
+		const currentDate = new Date(start);
+		while (currentDate <= end) {
+			const dateStr = currentDate.toISOString().split("T")[0];
+
+			const existing = await ctx.db
+				.query("bookingDateCapacity")
+				.withIndex("by_slug_date", (q) => q.eq("slug", slug).eq("date", dateStr))
+				.first();
+
+			if (existing) {
+				await ctx.db.patch(existing._id, {
+					maxCapacity,
+					notes,
+				});
+			} else {
+				await ctx.db.insert("bookingDateCapacity", {
+					slug,
+					date: dateStr,
+					maxCapacity,
+					notes,
+				});
+			}
+
+			currentDate.setDate(currentDate.getDate() + 1);
 		}
 	},
 });
@@ -223,42 +283,59 @@ export const getBookingOrders = query({
 		date: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		const orders = await ctx.db
+		if (args.date) {
+			return await ctx.db
+				.query("bookingOrders")
+				.withIndex("by_slug_date", (q) =>
+					q.eq("slug", args.slug).eq("bookingDate", args.date!)
+				)
+				.order("desc")
+				.collect();
+		}
+
+		return await ctx.db
 			.query("bookingOrders")
 			.withIndex("by_slug", (q) => q.eq("slug", args.slug))
 			.order("desc")
 			.collect();
+	},
+});
 
-		if (args.date) {
-			return orders.filter((o) => o.bookingDate === args.date);
-		}
-		return orders;
+
+export const uploadPaymentProof = mutation({
+	args: {
+		id: v.id("bookingOrders"),
+		storageId: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const { id, storageId } = args;
+		await ctx.db.patch(id, { paymentProofImage: storageId });
 	},
 });
 
 export const getMonthBookingSummary = query({
 	args: { slug: v.string(), yearMonth: v.string() }, // "2024-03"
 	handler: async (ctx, args) => {
-		const allOrders = await ctx.db
+		const start = `${args.yearMonth}-01`;
+		const end = `${args.yearMonth}-31`; // Simplified end range
+
+		const monthOrders = await ctx.db
 			.query("bookingOrders")
-			.withIndex("by_slug", (q) => q.eq("slug", args.slug))
+			.withIndex("by_slug_date", (q) =>
+				q.eq("slug", args.slug).gte("bookingDate", start).lte("bookingDate", end)
+			)
 			.collect();
 
-		const allCapacities = await ctx.db
+		const monthCapacities = await ctx.db
 			.query("bookingDateCapacity")
-			.withIndex("by_slug_date", (q) => q.eq("slug", args.slug))
+			.withIndex("by_slug_date", (q) =>
+				q.eq("slug", args.slug).gte("date", start).lte("date", end)
+			)
 			.collect();
-
-		const monthOrders = allOrders.filter((o) =>
-			o.bookingDate.startsWith(args.yearMonth)
-		);
-		const monthCapacities = allCapacities.filter((c) =>
-			c.date.startsWith(args.yearMonth)
-		);
 
 		const capMap: Record<string, number> = {};
 		monthCapacities.forEach((c) => {
-			capMap[c.date] = c.maxCapacity;
+			if (c.date) capMap[c.date] = c.maxCapacity;
 		});
 
 		const summary: Record<
@@ -267,6 +344,7 @@ export const getMonthBookingSummary = query({
 		> = {};
 
 		monthOrders.forEach((o) => {
+			if (!o.bookingDate) return;
 			if (!summary[o.bookingDate]) {
 				summary[o.bookingDate] = {
 					count: 0,

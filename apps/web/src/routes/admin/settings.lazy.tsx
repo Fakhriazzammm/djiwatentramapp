@@ -203,7 +203,6 @@ function SettingsPage() {
 				paymentMethodsManual: paymentSettings.manualMethods,
 				taxRate: settings.taxRate,
 				serviceChargeRate: settings.serviceChargeRate,
-				qrisImage: landingSettings.qrisImage,
 			};
 			console.log("Saving settings:", payload);
 			await updateSiteSettings(payload);
@@ -699,11 +698,14 @@ function SettingsPage() {
 
 								<div className="space-y-4 pt-4">
 									<label
-										className="font-medium text-muted-foreground text-xs"
+										className="font-medium text-muted-foreground text-xs uppercase tracking-widest"
 										htmlFor="payment-popup-image"
 									>
-										Gambar Popup Pembayaran (QRIS/Promo)
+										Banner Promosi / Branding (Opsional)
 									</label>
+									<p className="text-muted-foreground text-xs -mt-3">
+										Akan muncul di modal pembayaran POS sebagai latar belakang atau banner promosi.
+									</p>
 									<div className="flex flex-col gap-6 sm:flex-row sm:items-center">
 										{landingSettings.paymentPopupImage && (
 											<div className="relative h-48 w-48 overflow-hidden rounded-xl border-4 border-muted bg-muted shadow-inner">

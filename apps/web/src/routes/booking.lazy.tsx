@@ -45,7 +45,7 @@ const MONTH_NAMES = [
 ];
 const DAY_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
-const STEP_LABELS = ["Pilih Menu", "Pilih Tanggal", "Data Diri", "Pembayaran", "Selesai"];
+const STEP_LABELS = ["Pilih Menu", "Pilih Tanggal", "Data Diri", "Pembayaran", "Konfirmasi", "Selesai"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -521,6 +521,8 @@ function BookingPage() {
 	const products = useQuery(api.booking.getBookingProducts, { slug: "booking" });
 	const siteSettings = useQuery(api.site_settings.getSettings);
 	const createBookingOrder = useMutation(api.booking.createBookingOrder);
+	const uploadPaymentProof = useMutation(api.booking.uploadPaymentProof);
+	const generateUploadUrl = useMutation(api.booking.generateUploadUrl);
 
 	const today = new Date();
 	const [calYear, setCalYear] = useState(today.getFullYear());
@@ -544,6 +546,8 @@ function BookingPage() {
 	const [selectedPayment, setSelectedPayment] = useState<string>("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [completedBooking, setCompletedBooking] = useState<any>(null);
+	const [proofImage, setProofImage] = useState<string>("");
+	const [isUploadingProof, setIsUploadingProof] = useState(false);
 
 	const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
 	const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
@@ -623,7 +627,7 @@ function BookingPage() {
 			});
 
 			setStep(4);
-			toast.success("Booking berhasil dibuat!");
+			// toast.success("Booking berhasil dibuat!");
 		} catch (e: any) {
 			toast.error(e?.message || "Gagal membuat booking");
 		} finally {
@@ -634,7 +638,7 @@ function BookingPage() {
 	// ── Fetch the completed booking code ──
 	const latestBooking = useQuery(
 		api.booking.getBookingOrders,
-		step === 4 ? { slug: "booking" } : "skip"
+		step >= 4 ? { slug: "booking" } : "skip"
 	);
 
 	const confirmedBooking =
@@ -665,8 +669,8 @@ function BookingPage() {
 
 	const themeColor = settings.themeColor || "#1a2332";
 
-	// ── Step 4: Confirmation ──
-	if (step === 4) {
+	// ── Step 5: Finished ──
+	if (step === 5) {
 		const booking = confirmedBooking || completedBooking;
 		return (
 			<div className="min-h-screen bg-background">
@@ -743,6 +747,179 @@ function BookingPage() {
 									Download Bukti Booking (JPG)
 								</button>
 							</>
+						)}
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	const handleProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (!file) return;
+
+		setIsUploadingProof(true);
+		try {
+			const postUrl = await generateUploadUrl();
+			const result = await fetch(postUrl, {
+				method: "POST",
+				headers: { "Content-Type": file.type },
+				body: file,
+			});
+			const { storageId } = await result.json();
+			setProofImage(storageId);
+			toast.success("Bukti pembayaran terpilih!");
+		} catch (error) {
+			toast.error("Gagal mengunggah bukti");
+		} finally {
+			setIsUploadingProof(false);
+		}
+	};
+
+	const handleFinishBooking = async () => {
+		const booking = confirmedBooking || completedBooking;
+		if (!booking) return;
+
+		if (selectedPayment === "bank_transfer" && !proofImage) {
+			toast.error("Wajib mengunggah bukti pembayaran");
+			return;
+		}
+
+		setIsSubmitting(true);
+		try {
+			if (proofImage && booking._id) {
+				await uploadPaymentProof({
+					id: booking._id,
+					storageId: proofImage,
+				});
+			}
+			setStep(5);
+			toast.success("Konfirmasi berhasil!");
+		} catch (error) {
+			toast.error("Gagal menyimpan konfirmasi");
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
+	// ── Step 4: Confirmation ──
+	if (step === 4) {
+		const booking = confirmedBooking || completedBooking;
+		const qrisUrl = settings.qrisImage || siteSettings?.qrisImage;
+
+		return (
+			<div className="min-h-screen bg-background">
+				<div
+					className="h-28 w-full"
+					style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}cc)` }}
+				/>
+				<div className="mx-auto max-w-md px-4 -mt-10 pb-16">
+					<div className="rounded-2xl border border-border bg-card p-6 shadow-lg">
+						<h2 className="font-bold text-foreground text-xl text-center mb-6">Konfirmasi Pembayaran</h2>
+
+						{selectedPayment === "qris" && (
+							<div className="space-y-6">
+								<div className="mx-auto h-64 w-64 overflow-hidden rounded-2xl border-2 border-primary/20 p-2 bg-white">
+									{qrisUrl ? (
+										<img alt="QRIS" className="h-full w-full object-contain" src={qrisUrl} />
+									) : (
+										<div className="flex h-full w-full items-center justify-center text-center p-4 text-muted-foreground text-sm">
+											Gambar QRIS belum diatur. Silakan hubungi admin.
+										</div>
+									)}
+								</div>
+								<div className="text-center space-y-2">
+									<p className="font-bold text-sm">Total: {fmt(cartTotal)}</p>
+									<p className="text-xs text-muted-foreground">
+										Silakan scan QRIS di atas dan selesaikan pembayaran.
+									</p>
+								</div>
+								<button
+									className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98]"
+									onClick={() => setStep(5)}
+									style={{ background: themeColor }}
+									type="button"
+								>
+									Saya Sudah Bayar
+								</button>
+							</div>
+						)}
+
+						{selectedPayment === "bank_transfer" && (
+							<div className="space-y-6">
+								<div className="rounded-xl bg-muted/50 p-4 border border-border">
+									<p className="font-bold text-xs text-muted-foreground uppercase tracking-widest mb-2">
+										Transfer Ke:
+									</p>
+									<pre className="whitespace-pre-wrap font-sans text-sm text-foreground leading-relaxed">
+										{settings.bankDetails || "Detail rekening belum diatur."}
+									</pre>
+									<p className="mt-3 font-bold text-sm">Total: {fmt(cartTotal)}</p>
+								</div>
+
+								<div className="space-y-3">
+									<p className="font-bold text-sm">Upload Bukti Transfer *</p>
+									<div className="relative">
+										{proofImage ? (
+											<div className="relative h-40 w-full overflow-hidden rounded-xl border border-primary/30">
+												<img
+													alt="Proof"
+													className="h-full w-full object-cover"
+													src={proofImage.startsWith("http") ? proofImage : undefined}
+												/>
+												<button
+													className="absolute top-2 right-2 rounded-full bg-red-500 p-1.5 text-white"
+													onClick={() => setProofImage("")}
+												>
+													<X className="h-4 w-4" />
+												</button>
+											</div>
+										) : (
+											<label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-all">
+												<Upload className="h-8 w-8 text-muted-foreground mb-2" />
+												<span className="text-xs text-muted-foreground">
+													{isUploadingProof ? "Mengunggah..." : "Pilih Gambar Bukti"}
+												</span>
+												<input
+													accept="image/*"
+													className="hidden"
+													onChange={handleProofUpload}
+													type="file"
+												/>
+											</label>
+										)}
+									</div>
+								</div>
+
+								<button
+									className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+									disabled={!proofImage || isSubmitting}
+									onClick={handleFinishBooking}
+									style={{ background: themeColor }}
+									type="button"
+								>
+									{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Kirim Bukti & Selesaikan"}
+								</button>
+							</div>
+						)}
+
+						{selectedPayment === "cash" && (
+							<div className="space-y-6 text-center">
+								<p className="text-sm text-muted-foreground">
+									Silakan lakukan pembayaran langsung di lokasi (Cash/Tunai).
+								</p>
+								<div className="rounded-xl bg-muted/50 p-4 font-bold" style={{ color: themeColor }}>
+									Total: {fmt(cartTotal)}
+								</div>
+								<button
+									className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98]"
+									onClick={() => setStep(5)}
+									style={{ background: themeColor }}
+									type="button"
+								>
+									Selesaikan Booking
+								</button>
+							</div>
 						)}
 					</div>
 				</div>
@@ -1039,7 +1216,7 @@ function BookingPage() {
 				)}
 
 				{/* ── Fixed Bottom Navigation ── */}
-				{step < 4 && (
+				{step < 5 && (
 					<div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border px-4 pt-3 pb-6 safe-area-bottom shadow-2xl">
 						{/* Cart summary for step 0 */}
 						{step === 0 && cartCount > 0 && (
@@ -1084,6 +1261,7 @@ function BookingPage() {
 								{step === 1 && (selectedDate ? "Lanjut Isi Data Diri →" : "Pilih tanggal dulu")}
 								{step === 2 && "Lanjut ke Pembayaran →"}
 								{step === 3 && (isSubmitting ? "Memproses..." : "Konfirmasi Booking")}
+								{step === 4 && "Menunggu Konfirmasi..."}
 							</button>
 						</div>
 					</div>

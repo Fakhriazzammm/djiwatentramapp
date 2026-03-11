@@ -12,9 +12,12 @@ import {
 	List,
 	Loader2,
 	Save,
+	Search,
 	Settings2,
 	ShoppingBag,
 	Smartphone,
+	Trash2,
+	Upload,
 	Users,
 	X,
 } from "lucide-react";
@@ -338,8 +341,11 @@ function BookingSettingsPage() {
 	const settings = useQuery(api.booking.getSettings, { slug: "booking" });
 	const updateSettings = useMutation(api.booking.updateSettings);
 	const allProducts = useQuery(api.products.getAllProductsAdmin, {});
+	const categories = useQuery(api.products.getCategories, {});
 	const updateBookingStatus = useMutation(api.booking.updateBookingStatus);
 	const setDateCapacity = useMutation(api.booking.setDateCapacity);
+	const setBulkDateCapacity = useMutation(api.booking.setBulkDateCapacity);
+	const generateUploadUrl = useMutation(api.booking.generateUploadUrl);
 	const dateCapacities = useQuery(api.booking.getDateCapacities, { slug: "booking" });
 
 	const today = new Date();
@@ -359,8 +365,14 @@ function BookingSettingsPage() {
 		date: selectedDate ?? undefined,
 	});
 
+	// Products search & filter
+	const [productSearch, setProductSearch] = useState("");
+	const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+
 	// Capacity form
 	const [capDate, setCapDate] = useState(todayStr());
+	const [capEndDate, setCapEndDate] = useState(todayStr());
+	const [isBulk, setIsBulk] = useState(false);
 	const [capValue, setCapValue] = useState("");
 	const [capNotes, setCapNotes] = useState("");
 	const [isSavingCap, setIsSavingCap] = useState(false);
@@ -373,9 +385,9 @@ function BookingSettingsPage() {
 		logoUrl: "",
 		bannerUrl: "",
 		themeColor: "#1a2332",
-		featuredProductIds: [] as string[],
 		paymentMethods: [] as string[],
 		bankDetails: "",
+		qrisImage: "",
 		isActive: true,
 	});
 	const [activeTab, setActiveTab] = useState<
@@ -395,6 +407,7 @@ function BookingSettingsPage() {
 				featuredProductIds: settings.featuredProductIds || [],
 				paymentMethods: settings.paymentMethods || [],
 				bankDetails: settings.bankDetails || "",
+				qrisImage: settings.qrisImage || "",
 				isActive: settings.isActive,
 			});
 		}
@@ -409,6 +422,26 @@ function BookingSettingsPage() {
 			toast.error("Gagal menyimpan pengaturan");
 		} finally {
 			setIsSaving(false);
+		}
+	};
+
+	const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (!file) return;
+
+		const toastId = toast.loading("Mengunggah gambar...");
+		try {
+			const postUrl = await generateUploadUrl();
+			const result = await fetch(postUrl, {
+				method: "POST",
+				headers: { "Content-Type": file.type },
+				body: file,
+			});
+			const { storageId } = await result.json();
+			setFormData((prev) => ({ ...prev, qrisImage: storageId }));
+			toast.success("Gambar berhasil diunggah!", { id: toastId });
+		} catch (error) {
+			toast.error("Gagal mengunggah gambar", { id: toastId });
 		}
 	};
 
@@ -430,19 +463,32 @@ function BookingSettingsPage() {
 	};
 
 	const handleSaveCapacity = async () => {
-		if (!capDate || capValue === "") {
+		if (!capDate || (isBulk && !capEndDate) || capValue === "") {
 			toast.error("Isi tanggal dan kapasitas");
 			return;
 		}
 		setIsSavingCap(true);
 		try {
-			await setDateCapacity({
-				slug: "booking",
-				date: capDate,
-				maxCapacity: Number(capValue),
-				notes: capNotes || undefined,
-			});
-			toast.success(`Kapasitas ${capValue} orang untuk ${formatDate(capDate)} disimpan`);
+			if (isBulk) {
+				await setBulkDateCapacity({
+					slug: "booking",
+					startDate: capDate,
+					endDate: capEndDate,
+					maxCapacity: Number(capValue),
+					notes: capNotes || undefined,
+				});
+				toast.success(
+					`Kapasitas ${capValue} orang untuk periode ${formatDate(capDate)} - ${formatDate(capEndDate)} disimpan`
+				);
+			} else {
+				await setDateCapacity({
+					slug: "booking",
+					date: capDate,
+					maxCapacity: Number(capValue),
+					notes: capNotes || undefined,
+				});
+				toast.success(`Kapasitas ${capValue} orang untuk ${formatDate(capDate)} disimpan`);
+			}
 			setCapValue("");
 			setCapNotes("");
 		} catch {
@@ -464,6 +510,12 @@ function BookingSettingsPage() {
 	const filteredOrders = allOrders?.filter((o) => {
 		if (listFilter === "all") return true;
 		return o.bookingStatus === listFilter;
+	});
+
+	const filteredProducts = allProducts?.filter((p) => {
+		const matchesSearch = p.name.toLowerCase().includes(productSearch.toLowerCase());
+		const matchesCategory = selectedCategoryId === "all" || p.categoryId === selectedCategoryId;
+		return matchesSearch && matchesCategory;
 	});
 
 	return (
@@ -641,45 +693,99 @@ function BookingSettingsPage() {
 							Tentukan maksimal jumlah booking yang diizinkan untuk tanggal tertentu.
 							Isi <span className="font-bold">0</span> untuk kapasitas tidak terbatas.
 						</p>
-						<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-							<div className="space-y-1.5">
-								<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest" htmlFor="cap-date">
-									Tanggal
-								</label>
-								<input
-									className="w-full rounded-xl bg-muted/50 p-3 font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
-									id="cap-date"
-									min={todayStr()}
-									onChange={(e) => setCapDate(e.target.value)}
-									type="date"
-									value={capDate}
-								/>
+						<div className="flex flex-wrap gap-4 items-end">
+							<div className="flex bg-muted/50 rounded-xl p-1 shrink-0">
+								<button
+									className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+										!isBulk
+											? "bg-card text-primary shadow-sm"
+											: "text-muted-foreground hover:text-foreground"
+									}`}
+									onClick={() => setIsBulk(false)}
+									type="button"
+								>
+									Satu Tanggal
+								</button>
+								<button
+									className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+										isBulk
+											? "bg-card text-primary shadow-sm"
+											: "text-muted-foreground hover:text-foreground"
+									}`}
+									onClick={() => setIsBulk(true)}
+									type="button"
+								>
+									Rentang Tanggal
+								</button>
 							</div>
-							<div className="space-y-1.5">
-								<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest" htmlFor="cap-value">
-									Kapasitas (orang)
-								</label>
-								<input
-									className="w-full rounded-xl bg-muted/50 p-3 font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
-									id="cap-value"
-									min="0"
-									onChange={(e) => setCapValue(e.target.value)}
-									placeholder="Contoh: 10"
-									type="number"
-									value={capValue}
-								/>
-							</div>
-							<div className="space-y-1.5">
-								<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest" htmlFor="cap-notes">
-									Catatan (opsional)
-								</label>
-								<input
-									className="w-full rounded-xl bg-muted/50 p-3 font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
-									id="cap-notes"
-									onChange={(e) => setCapNotes(e.target.value)}
-									placeholder="Contoh: Event khusus"
-									value={capNotes}
-								/>
+
+							<div className="flex flex-wrap gap-4 flex-1">
+								<div className="space-y-1.5 flex-1 min-w-[150px]">
+									<label
+										className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
+										htmlFor="cap-date"
+									>
+										{isBulk ? "Mulai Tanggal" : "Tanggal"}
+									</label>
+									<input
+										className="w-full rounded-xl bg-muted/50 p-3 font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
+										id="cap-date"
+										min={todayStr()}
+										onChange={(e) => setCapDate(e.target.value)}
+										type="date"
+										value={capDate}
+									/>
+								</div>
+								{isBulk && (
+									<div className="space-y-1.5 flex-1 min-w-[150px]">
+										<label
+											className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
+											htmlFor="cap-end-date"
+										>
+											Sampai Tanggal
+										</label>
+										<input
+											className="w-full rounded-xl bg-muted/50 p-3 font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
+											id="cap-end-date"
+											min={capDate}
+											onChange={(e) => setCapEndDate(e.target.value)}
+											type="date"
+											value={capEndDate}
+										/>
+									</div>
+								)}
+								<div className="space-y-1.5 min-w-[120px]">
+									<label
+										className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
+										htmlFor="cap-value"
+									>
+										Kapasitas (orang)
+									</label>
+									<input
+										className="w-full rounded-xl bg-muted/50 p-3 font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
+										id="cap-value"
+										min="0"
+										onChange={(e) => setCapValue(e.target.value)}
+										placeholder="Contoh: 10"
+										type="number"
+										value={capValue}
+									/>
+								</div>
+								<div className="space-y-1.5 flex-1 min-w-[150px]">
+									<label
+										className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
+										htmlFor="cap-notes"
+									>
+										Catatan (opsional)
+									</label>
+									<input
+										className="w-full rounded-xl bg-muted/50 p-3 font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
+										id="cap-notes"
+										onChange={(e) => setCapNotes(e.target.value)}
+										placeholder="Contoh: Event khusus"
+										value={capNotes}
+									/>
+								</div>
 							</div>
 						</div>
 						<button
@@ -837,8 +943,33 @@ function BookingSettingsPage() {
 					<p className="text-muted-foreground text-sm">
 						Pilih produk yang tampil di halaman booking. Kosongkan untuk tampilkan semua.
 					</p>
+					<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+						<div className="relative flex-1">
+							<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+							<input
+								className="w-full rounded-xl bg-muted/50 py-2.5 pl-10 pr-4 text-sm font-medium outline-none focus:ring-2 focus:ring-primary/20"
+								onChange={(e) => setProductSearch(e.target.value)}
+								placeholder="Cari produk..."
+								type="text"
+								value={productSearch}
+							/>
+						</div>
+						<select
+							className="rounded-xl bg-muted/50 px-4 py-2.5 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20"
+							onChange={(e) => setSelectedCategoryId(e.target.value)}
+							value={selectedCategoryId}
+						>
+							<option value="all">Semua Kategori</option>
+							{categories?.map((cat: any) => (
+								<option key={cat._id} value={cat._id}>
+									{cat.name}
+								</option>
+							))}
+						</select>
+					</div>
+
 					<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-						{allProducts?.map((product: any) => (
+						{filteredProducts?.map((product: any) => (
 							<button
 								className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-all ${
 									formData.featuredProductIds.includes(product._id)
@@ -924,6 +1055,56 @@ function BookingSettingsPage() {
 							value={formData.bankDetails}
 						/>
 					</div>
+
+					{formData.paymentMethods.includes("qris") && (
+						<div className="space-y-3 pt-4 border-t border-border">
+							<h3 className="font-bold text-sm">Pengaturan QRIS</h3>
+							<div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+								<div className="h-48 w-48 shrink-0 overflow-hidden rounded-xl border border-dashed border-border bg-muted/30 flex items-center justify-center relative group">
+									{formData.qrisImage ? (
+										<>
+											<img
+												alt="QRIS"
+												className="h-full w-full object-contain"
+												src={formData.qrisImage.startsWith("http") ? formData.qrisImage : undefined}
+											/>
+											<button
+												className="absolute top-2 right-2 p-2 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+												onClick={() => setFormData({ ...formData, qrisImage: "" })}
+												type="button"
+											>
+												<Trash2 className="h-4 w-4" />
+											</button>
+										</>
+									) : (
+										<div className="text-center p-4">
+											<Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+											<p className="text-xs text-muted-foreground">Unggah QRIS</p>
+										</div>
+									)}
+								</div>
+								<div className="flex-1 space-y-3">
+									<p className="text-xs text-muted-foreground leading-relaxed">
+										Unggah gambar QRIS statis bisnis Anda. Gambar ini akan ditampilkan kepada pelanggan saat mereka memilih metode pembayaran QRIS.
+									</p>
+									<input
+										accept="image/*"
+										className="hidden"
+										id="qris-upload"
+										onChange={handleImageUpload}
+										type="file"
+									/>
+									<label
+										className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-muted px-4 py-2 text-xs font-bold hover:bg-muted/80 transition-all"
+										htmlFor="qris-upload"
+									>
+										<Upload className="h-3.5 w-3.5" />
+										{formData.qrisImage ? "Ganti Gambar" : "Pilih Gambar"}
+									</label>
+								</div>
+							</div>
+						</div>
+					)}
 				</section>
 			)}
 		</div>

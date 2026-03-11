@@ -524,6 +524,7 @@ export default defineSchema({
 		featuredProductIds: v.optional(v.array(v.string())),
 		paymentMethods: v.optional(v.array(v.string())),
 		bankDetails: v.optional(v.string()),
+		qrisImage: v.optional(v.string()),
 		isActive: v.boolean(),
 	}).index("by_slug", ["slug"]),
 
@@ -557,6 +558,7 @@ export default defineSchema({
 			v.literal("cancelled"),
 			v.literal("completed")
 		),
+		paymentProofImage: v.optional(v.string()),
 		createdAt: v.number(),
 	})
 		.index("by_slug", ["slug"])
