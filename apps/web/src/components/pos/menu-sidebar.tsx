@@ -111,10 +111,10 @@ export function MenuSidebar() {
 		<Sheet onOpenChange={setIsOpen} open={isOpen}>
 			<SheetTrigger>
 				<Button
-					className="relative shrink-0 bg-background"
+					className="relative shrink-0"
 					onClick={() => setIsOpen(true)}
 					size="icon"
-					variant="outline"
+					variant="ghost"
 				>
 					<Menu className="h-5 w-5" />
 					{lowStockCount > 0 && (
@@ -134,7 +134,7 @@ export function MenuSidebar() {
 				</SheetHeader>
 				<div className="flex-1 overflow-hidden">
 					<Tabs className="flex h-full flex-col" value={activeTab} onValueChange={setActiveTab}>
-						<div className="border-b bg-muted/20 px-3 pt-3 pb-2">
+						<div className="bg-muted/20 px-3 pt-3 pb-2">
 							<TabsList className="grid h-16 w-full grid-cols-5 gap-1.5 rounded-xl bg-muted/50 p-1.5">
 								{TABS.map((tab) => {
 									const Icon = tab.icon;
