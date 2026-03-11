@@ -814,7 +814,9 @@ ATURAN:
 10. SANGAT PENTING: JANGAN PERNAH gunakan simbol asterisk (*) untuk penekanan atau list. Gunakan teks polos atau emoji.
 11. FITUR SMART SUGGESTIONS (UTAMA): JANGAN gunakan bullet points manual (seperti 🔹 atau -) untuk memberikan instruksi langkah selanjutnya. Gunakan format [SUGGEST: Label Tombol | Prompt untuk dikirim ke AI] agar user bisa tinggal KLIK tombol tanpa mengetik.
     WAJIB: Selalu sertakan minimal 2-3 saran tombol otomatis [SUGGEST: ...] di akhir SETIAP jawaban kamu, tidak peduli seberapa singkat jawabannya.
+    WAJIB: Jika user mengirim gambar (scan), gunakan data dari scan tersebut untuk memberikan saran aksi yang relevan (seperti simpan transaksi, tambah produk, atau update stok).
     Contoh: "Data penjualan hari ini sudah saya rekap. [SUGGEST: 📦 Cek Stok Produk | Berikan rincian stok produk terlaris hari ini] [SUGGEST: 🎁 Berikan Promo | Berikan rekomendasi promo untuk meningkatkan transaksi]"
+    Contoh (setelah scan struk): "Saya menemukan struk dari Starbucks sebesar Rp 50.000. [SUGGEST: 💰 Catat Pengeluaran | Catat pengeluaran dari Starbucks sebesar Rp 50.000 kategori makanan_minuman] [SUGGEST: 📋 Lihat Detail | Tampilkan detail item dari struk ini]"
 
 SMART CONTEXT:
 ${smartContext}
@@ -2909,7 +2911,7 @@ DETAIL YANG HARUS DIEKSTRAK:
 Kembalikan data dalam format JSON berikut TANPA teks tambahan apapun:
 {
   "type": "receipt|invoice|note|handwriting|product|other",
-  "name": "nama merchant yang terdeteksi",
+  "name": "nama merchant yang terdeteksi atau nama produk jika label produk",
   "category": "makanan_minuman|belanja_stok|peralatan_kantor|transportasi|utilitas_listrik_air|gaji_karyawan|sewa_tempat|pemasaran|pajak|hiburan|kesehatan|pembangunan_renovasi|lainnya",
   "transactionType": "expense|income|unknown",
   "total": total_akhir_angka,
@@ -2921,11 +2923,15 @@ Kembalikan data dalam format JSON berikut TANPA teks tambahan apapun:
   "date": "YYYY-MM-DD atau null",
   "paymentMethod": "cash|qris|card|transfer|unknown",
   "notes": "alamat toko, nomor telepon, nomor struk, atau info penting lainnya",
+  "suggestedAction": "createProduct|addStock|createTransaction|createOrder|none",
   "confidence": angka 0-100 tingkat keyakinan,
   "rawText": "semua teks mentah yang terbaca"
 }
 
 PENTING:
+- Jika gambar adalah label produk, set suggestedAction ke "createProduct" atau "addStock".
+- Jika gambar adalah struk belanja, set suggestedAction ke "createTransaction".
+- Jika gambar adalah pesanan pelanggan, set suggestedAction ke "createOrder".
 - Periksa detail pajak dan service charge secara spesifik karena sering muncul di struk restoran.
 - Pastikan semua angka adalah integer murni tanpa pemisah ribuan (contoh: 250000).
 - Jika tulisan tangan, gunakan context untuk menebak kata yang paling masuk akal.

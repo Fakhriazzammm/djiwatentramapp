@@ -204,6 +204,7 @@ function AIChatPage() {
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const scanFileInputRef = useRef<HTMLInputElement>(null);
+	const cameraInputRef = useRef<HTMLInputElement>(null);
 	const yumiChat = useAction(api.ai.yumiChat);
 	const scanImageDataAction = useAction(api.ai.scanImageData);
 	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
@@ -624,19 +625,31 @@ function AIChatPage() {
 				return true;
 			});
 
-			validFiles.forEach(file => {
-				const reader = new FileReader();
-				reader.onload = async (event) => {
-					const raw = event.target?.result as string;
-					try {
-						const compressed = await compressImage(raw);
-						setScanImages(prev => [...prev, compressed]);
-					} catch {
-						setScanImages(prev => [...prev, raw]);
-					}
-				};
-				reader.readAsDataURL(file);
+			if (validFiles.length === 0) return;
+
+			// Process all files in parallel
+			Promise.all(validFiles.map(file => {
+				return new Promise<string>((resolve) => {
+					const reader = new FileReader();
+					reader.onload = async (event) => {
+						const raw = event.target?.result as string;
+						try {
+							const compressed = await compressImage(raw);
+							resolve(compressed);
+						} catch {
+							resolve(raw);
+						}
+					};
+					reader.readAsDataURL(file);
+				});
+			})).then(newImages => {
+				setScanImages(prev => [...prev, ...newImages]);
+				toast.success(`${newImages.length} gambar ditambahkan ke antrian scan`);
+			}).catch(err => {
+				console.error("Error processing scan files:", err);
+				toast.error("Gagal memproses beberapa gambar");
 			});
+
 			// Clear the input value to allow selecting the same file(s) again
 			e.target.value = '';
 		},
@@ -1660,23 +1673,42 @@ function AIChatPage() {
 								{/* Panel Body */}
 								<div className="p-3">
 									{!scanImages.length ? (
-										<button
-											className="flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-background py-5 transition-colors hover:border-primary/60 hover:bg-primary/5"
-											onClick={() => scanFileInputRef.current?.click()}
-											type="button"
-										>
-											<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-												<Camera className="h-5 w-5 text-primary" />
-											</div>
-											<div className="text-center">
-												<p className="font-medium text-foreground text-xs">
-													Upload foto struk, kwitansi, atau dokumen
-												</p>
-												<p className="text-[10px] text-muted-foreground">
-													JPG, PNG â€¢ Maks 5MB â€¢ Bisa pilih banyak sekaligus
-												</p>
-											</div>
-										</button>
+										<div className="grid grid-cols-2 gap-3">
+											<button
+												className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-background py-5 transition-colors hover:border-primary/60 hover:bg-primary/5"
+												onClick={() => cameraInputRef.current?.click()}
+												type="button"
+											>
+												<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+													<Camera className="h-5 w-5 text-primary" />
+												</div>
+												<div className="text-center">
+													<p className="font-medium text-foreground text-xs">
+														Ambil Foto
+													</p>
+													<p className="text-[10px] text-muted-foreground">
+														Gunakan Kamera
+													</p>
+												</div>
+											</button>
+											<button
+												className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-background py-5 transition-colors hover:border-primary/60 hover:bg-primary/5"
+												onClick={() => scanFileInputRef.current?.click()}
+												type="button"
+											>
+												<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+													<FileText className="h-5 w-5 text-primary" />
+												</div>
+												<div className="text-center">
+													<p className="font-medium text-foreground text-xs">
+														Upload Galeri
+													</p>
+													<p className="text-[10px] text-muted-foreground">
+														Pilih Gambar/File
+													</p>
+												</div>
+											</button>
+										</div>
 									) : (
 										<div className="space-y-2">
 											<div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-1">
@@ -1727,6 +1759,13 @@ function AIChatPage() {
 									<input
 										accept="image/*"
 										capture="environment"
+										className="hidden"
+										onChange={handleScanFileSelect}
+										ref={cameraInputRef}
+										type="file"
+									/>
+									<input
+										accept="image/*"
 										multiple
 										className="hidden"
 										onChange={handleScanFileSelect}
