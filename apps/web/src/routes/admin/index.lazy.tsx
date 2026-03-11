@@ -16,6 +16,8 @@ import {
 	Wallet,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { FinancialTargetPanel } from "./finance/-components/financial-target-panel";
+import { PeriodComparisonCards, TrendChart } from "./finance/-components/finance-charts";
 
 export const Route = createLazyFileRoute("/admin/")({
 	component: AdminDashboard,
@@ -69,6 +71,18 @@ function AdminDashboard() {
 					color={stats.netBalance >= 0 ? "green" : "red"}
 				/>
 			</div>
+
+			{/* Financial Target + Period Comparison */}
+			<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+				<FinancialTargetPanel compact />
+				<div className="space-y-3">
+					<h3 className="font-bold text-base md:text-lg">Perbandingan Bulan Ini vs Lalu</h3>
+					<PeriodComparisonCards />
+				</div>
+			</div>
+
+			{/* Trend Chart */}
+			<TrendChart />
 
 			{/* Charts Row */}
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

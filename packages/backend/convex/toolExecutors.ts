@@ -399,6 +399,32 @@ export const executeToolCall = action({
 				}
 
 				// ============================================
+				// HPP SELLING PRICE UPDATE
+				// ============================================
+				case "updateHppSellingPrice": {
+					const parsed = tools.updateHppSellingPrice.parameters.parse(toolArgs);
+					result = await ctx.runMutation(api.hpp.updateHppSellingPrice, {
+						id: asId(parsed.id),
+						sellingPrice: parsed.sellingPrice,
+					});
+					break;
+				}
+
+				// ============================================
+				// FINANCIAL TARGET TOOLS
+				// ============================================
+				case "setFinancialTarget": {
+					const parsed = tools.setFinancialTarget.parameters.parse(toolArgs);
+					result = await ctx.runMutation(api.finance.setFinancialTarget, {
+						month: parsed.month,
+						targetRevenue: parsed.targetRevenue,
+						targetProfit: parsed.targetProfit,
+						notes: parsed.notes,
+					});
+					break;
+				}
+
+				// ============================================
 				// STORE SETTINGS TOOLS
 				// ============================================
 				case "updateStoreSettings": {

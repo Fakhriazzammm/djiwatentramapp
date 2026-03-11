@@ -250,6 +250,9 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		hppDashboard,
 		hppOrdersCogs,
 		allTransactions,
+		monthlyProgress,
+		periodComparison,
+		hppMarginAnalysis,
 	] = await Promise.all([
 		ctx.runQuery(api.products.getAllProductsAdmin),
 		ctx.runQuery(api.products.getCategories),
@@ -260,6 +263,9 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		ctx.runQuery(api.hpp.getHppDashboardData),
 		ctx.runQuery(api.hpp.getOrdersCogs),
 		ctx.runQuery(api.finance.getAllTransactions, {}), // Get ALL transactions with details
+		ctx.runQuery(api.finance.getCurrentMonthProgress),
+		ctx.runQuery(api.finance.getPeriodComparison),
+		ctx.runQuery(api.hpp.getHppWithMarginAnalysis, {}),
 	]);
 
 	const prodList =
@@ -515,18 +521,63 @@ ${(() => {
 	return `Total Pesanan Selesai: Rp${orderRevenue.toLocaleString("id-ID")} (${paidOrders.length} pesanan)\nTotal Pemasukan Tercatat: Rp${incomeTotal.toLocaleString("id-ID")} (${incomeArr.length} transaksi)\nStatus: ${gapStatus}`;
 })()}
 
+🎯 TARGET KEUANGAN BULAN INI:
+${(() => {
+	const mp = monthlyProgress as any;
+	if (!mp) return "Data target tidak tersedia";
+	if (!mp.hasTarget) return `Belum ada target ditetapkan untuk ${mp.monthLabel}. Gunakan tool setFinancialTarget untuk menetapkan target.`;
+	return [
+		`Bulan: ${mp.monthLabel}`,
+		`Target Omzet: Rp${mp.targetRevenue.toLocaleString("id-ID")}`,
+		mp.targetProfit ? `Target Profit: Rp${(mp.targetProfit as number).toLocaleString("id-ID")}` : "",
+		`Omzet Saat Ini: Rp${mp.currentIncome.toLocaleString("id-ID")}`,
+		`Progress: ${(mp.progressPct as number).toFixed(1)}%`,
+		`Sisa: Rp${mp.remaining.toLocaleString("id-ID")}`,
+		`Hari Tersisa: ${mp.daysRemaining} hari`,
+		`Rate Harian: Rp${Math.round(mp.dailyRate as number).toLocaleString("id-ID")}/hari`,
+		`Proyeksi Bulanan: Rp${Math.round(mp.projectedMonthly as number).toLocaleString("id-ID")}`,
+		mp.insight ? `\nInsight: ${mp.insight}` : "",
+	].filter(Boolean).join("\n");
+})()}
+
+📊 PERBANDINGAN PERIODE:
+${(() => {
+	const pc = periodComparison as any;
+	if (!pc) return "Data perbandingan tidak tersedia";
+	const sign = (v: number) => v >= 0 ? `+${v.toFixed(1)}%` : `${v.toFixed(1)}%`;
+	return [
+		`${pc.current.label}: Pemasukan Rp${pc.current.income.toLocaleString("id-ID")}, Pengeluaran Rp${pc.current.expense.toLocaleString("id-ID")}, Net Rp${pc.current.net.toLocaleString("id-ID")}`,
+		`${pc.previous.label}: Pemasukan Rp${pc.previous.income.toLocaleString("id-ID")}, Pengeluaran Rp${pc.previous.expense.toLocaleString("id-ID")}, Net Rp${pc.previous.net.toLocaleString("id-ID")}`,
+		`Perubahan: Pemasukan ${sign(pc.changes.incomePct)}, Pengeluaran ${sign(pc.changes.expensePct)}, Net ${sign(pc.changes.netPct)}`,
+	].join("\n");
+})()}
+
+📐 ANALISIS MARGIN HPP (DETAIL):
+${(() => {
+	const analysis = hppMarginAnalysis as any[];
+	if (!analysis || analysis.length === 0) return "Belum ada kalkulasi HPP";
+	const lowMargin = analysis.filter((h: any) => h.isLowMargin);
+	const okMargin = analysis.filter((h: any) => !h.isLowMargin);
+	let result = `Total: ${analysis.length} produk, Margin OK: ${okMargin.length}, Perlu Perhatian: ${lowMargin.length}\n`;
+	if (lowMargin.length > 0) {
+		result += `⚠️ Margin Rendah:\n${lowMargin.map((h: any) => `  - ${h.name} (ID: ${h.id}): margin ${(h.currentMarginPercent as number).toFixed(1)}%, harga jual Rp${h.currentSellingPrice.toLocaleString("id-ID")}, rekomendasi Rp${h.recommendedSellingPrice.toLocaleString("id-ID")} (naik Rp${h.priceDiff.toLocaleString("id-ID")})`).join("\n")}`;
+	}
+	return result;
+})()}
+
 == FITUR APLIKASI ==
 - Manajemen Produk & Kategori (CRUD, variasi, upload gambar)
 - Manajemen Inventaris & Stok (FIFO, low-stock alert, resep, base recipe/pre-mix)
 - Pemesanan & POS (buat pesanan, update status, cetak struk Bluetooth)
 - Keuangan (income/expense tracking, laporan periode, laba rugi, arus kas, transaksi detail - tersedia di /admin/finance/reports dengan export PDF/Excel/CSV)
 - Promosi & Diskon (FIXED/PERCENTAGE/FLAT_PRICE, jadwal, target) - termasuk ANALISIS EFEKTIVITAS DISKON
-- HPP / Kalkulator Harga Pokok Produksi (perhitungan biaya bahan baku, margin, laba) - termasuk SIMULASI HPP BARU
+- HPP / Kalkulator Harga Pokok Produksi (perhitungan biaya bahan baku, margin, laba) - termasuk SIMULASI HPP & REKOMENDASI HARGA OTOMATIS
+- Target Keuangan (set target omzet bulanan, tracking progress, AI insight) - gunakan tool setFinancialTarget untuk menetapkan target
 - Forecasting AI (prediksi stok habis, jam ramai, revenue, produk trending)
 - Rekonsiliasi Keuangan (cross-check pesanan vs transaksi keuangan)
 - Manajemen User & Role (RBAC, permissions)
 - Pengaturan Toko (nama, alamat, logo, receipt footer)
-- AI Analytics (prediksi stok, analisis bisnis, rekomendasi produk, analisis HPP)`;
+- AI Analytics (prediksi stok, analisis bisnis, rekomendasi produk, analisis HPP, target keuangan)`;
 }
 
 /**

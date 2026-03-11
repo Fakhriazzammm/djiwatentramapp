@@ -454,6 +454,28 @@ export const tools = {
 		}),
 	},
 
+	// Update HPP Selling Price (actionable from margin alert)
+	updateHppSellingPrice: {
+		description:
+			"Update harga jual produk di kalkulasi HPP. Gunakan setelah melihat alert margin rendah atau dari rekomendasi harga otomatis.",
+		parameters: z.object({
+			id: z.string().min(1, "ID kalkulasi HPP wajib diisi"),
+			sellingPrice: z.number().positive("Harga jual harus lebih dari 0"),
+		}),
+	},
+
+	// Set Financial Target
+	setFinancialTarget: {
+		description:
+			"Set target omzet/pendapatan bulanan. Berikan bulan dalam format YYYY-MM dan target pendapatan. Digunakan untuk tracking progress keuangan.",
+		parameters: z.object({
+			month: z.string().regex(/^\d{4}-\d{2}$/, "Format bulan: YYYY-MM (contoh: 2025-01)"),
+			targetRevenue: z.number().positive("Target pendapatan harus lebih dari 0"),
+			targetProfit: z.number().nonnegative().optional().describe("Target profit bersih (opsional)"),
+			notes: z.string().optional().describe("Catatan target"),
+		}),
+	},
+
 	// ============================================
 	// SITE SETTINGS TOOLS
 	// ============================================
