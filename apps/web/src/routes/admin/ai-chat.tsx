@@ -27,6 +27,7 @@ import {
 	Trash2,
 	TrendingDown,
 	TrendingUp,
+	Wallet,
 	X,
 	XCircle,
 } from "lucide-react";
@@ -175,6 +176,16 @@ const TEMPLATES: Array<{
 		icon: <Shield className="h-3.5 w-3.5" />,
 	},
 	{
+		label: "Laba Rugi",
+		message: "Buatkan laporan laba rugi bulan ini: total pendapatan, total HPP, beban operasional per kategori, laba kotor, dan laba bersih",
+		icon: <TrendingUp className="h-3.5 w-3.5" />,
+	},
+	{
+		label: "Arus Kas",
+		message: "Analisis arus kas bulan ini: total pemasukan vs pengeluaran per hari dan per metode pembayaran",
+		icon: <Wallet className="h-3.5 w-3.5" />,
+	},
+	{
 		label: "Hitung HPP",
 		message: "Tampilkan ringkasan kalkulasi HPP semua produk, mana yang margin-nya rendah dan perlu dioptimalkan?",
 		icon: <Target className="h-3.5 w-3.5" />,
@@ -242,8 +253,15 @@ function generateQuickActions(userMsg: string, aiResponse: string): QuickActionB
 				{ word: "omset", weight: 3 },
 				{ word: "untung", weight: 2 },
 				{ word: "rugi", weight: 2 },
+				{ word: "laba rugi", weight: 5 },
+				{ word: "arus kas", weight: 5 },
+				{ word: "laporan", weight: 2 },
+				{ word: "export", weight: 2 },
+				{ word: "pdf", weight: 2 },
+				{ word: "excel", weight: 2 },
 			],
 			buttons: [
+				{ label: "Laporan Keuangan", icon: "📊", variant: "finance", actionType: "navigate", href: "/admin/finance/reports" },
 				{ label: "Lihat Keuangan", icon: "💰", variant: "finance", actionType: "navigate", href: "/admin/finance" },
 				{ label: "Catat Transaksi", icon: "📝", variant: "finance", actionType: "sendPrompt", prompt: "Bantu saya mencatat transaksi keuangan baru" },
 			],
@@ -403,6 +421,7 @@ function generateQuickActions(userMsg: string, aiResponse: string): QuickActionB
 		return [
 			{ id: `qa-${id++}`, label: "Rekap Hari Ini", icon: "📊", variant: "misc", actionType: "sendPrompt", prompt: "Berikan rekap lengkap bisnis hari ini" },
 			{ id: `qa-${id++}`, label: "Stok Rendah", icon: "⚠️", variant: "stock", actionType: "sendPrompt", prompt: "Tampilkan produk yang stoknya rendah atau habis" },
+			{ id: `qa-${id++}`, label: "Laporan Keuangan", icon: "📊", variant: "finance", actionType: "navigate", href: "/admin/finance/reports" },
 			{ id: `qa-${id++}`, label: "Lihat Keuangan", icon: "💰", variant: "finance", actionType: "navigate", href: "/admin/finance" },
 		];
 	}

@@ -519,7 +519,7 @@ ${(() => {
 - Manajemen Produk & Kategori (CRUD, variasi, upload gambar)
 - Manajemen Inventaris & Stok (FIFO, low-stock alert, resep, base recipe/pre-mix)
 - Pemesanan & POS (buat pesanan, update status, cetak struk Bluetooth)
-- Keuangan (income/expense tracking, laporan periode)
+- Keuangan (income/expense tracking, laporan periode, laba rugi, arus kas, transaksi detail - tersedia di /admin/finance/reports dengan export PDF/Excel/CSV)
 - Promosi & Diskon (FIXED/PERCENTAGE/FLAT_PRICE, jadwal, target) - termasuk ANALISIS EFEKTIVITAS DISKON
 - HPP / Kalkulator Harga Pokok Produksi (perhitungan biaya bahan baku, margin, laba) - termasuk SIMULASI HPP BARU
 - Forecasting AI (prediksi stok habis, jam ramai, revenue, produk trending)
