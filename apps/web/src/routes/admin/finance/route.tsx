@@ -1,6 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { FinanceDashboard } from "./-components/finance-dashboard";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/admin/finance")({
-	component: FinanceDashboard,
+	component: () => <Outlet />,
 });

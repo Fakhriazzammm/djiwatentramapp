@@ -608,6 +608,123 @@ export const getOrdersCogs = query({
 });
 
 /**
+ * Update selling price for HPP calculation (for actionable margin alert).
+ */
+export const updateHppSellingPrice = mutation({
+	args: {
+		id: v.id("hppCalculations"),
+		sellingPrice: v.number(),
+	},
+	handler: async (ctx, args) => {
+		await ctx.db.patch(args.id, {
+			sellingPrice: args.sellingPrice,
+			updatedAt: Date.now(),
+		});
+	},
+});
+
+/**
+ * Simulate what-if scenario: if ingredient prices change by X%, how does it affect profit?
+ * Returns new HPP, new margin, and delta.
+ */
+export const simulateHppPriceChange = query({
+	args: {
+		id: v.id("hppCalculations"),
+		priceChangePercent: v.number(), // e.g. 10 = 10% increase, -5 = 5% decrease
+		ingredientIndex: v.optional(v.number()), // If undefined, apply to ALL ingredients
+	},
+	handler: async (ctx, args) => {
+		const calc = await ctx.db.get(args.id);
+		if (!calc) return null;
+
+		const changeMultiplier = 1 + args.priceChangePercent / 100;
+
+		const simulatedIngredients = calc.ingredients.map((ing, idx) => {
+			if (args.ingredientIndex !== undefined && idx !== args.ingredientIndex) {
+				return ing;
+			}
+			return { ...ing, purchasePrice: ing.purchasePrice * changeMultiplier };
+		});
+
+		const originalHpp = computeHppPerServing(calc);
+		const simulatedHpp = computeHppPerServing({ ...calc, ingredients: simulatedIngredients });
+
+		const originalProfit = calc.sellingPrice - originalHpp;
+		const simulatedProfit = calc.sellingPrice - simulatedHpp;
+		const originalMargin = calc.sellingPrice > 0 ? (originalProfit / calc.sellingPrice) * 100 : 0;
+		const simulatedMargin = calc.sellingPrice > 0 ? (simulatedProfit / calc.sellingPrice) * 100 : 0;
+
+		// Recommended selling price to maintain original margin
+		const recommendedPrice = simulatedHpp / (1 - originalMargin / 100);
+
+		return {
+			hppId: calc._id,
+			name: calc.name,
+			priceChangePercent: args.priceChangePercent,
+			ingredientIndex: args.ingredientIndex,
+			original: {
+				hppPerServing: originalHpp,
+				sellingPrice: calc.sellingPrice,
+				profitPerServing: originalProfit,
+				marginPercent: originalMargin,
+			},
+			simulated: {
+				hppPerServing: simulatedHpp,
+				sellingPrice: calc.sellingPrice,
+				profitPerServing: simulatedProfit,
+				marginPercent: simulatedMargin,
+			},
+			delta: {
+				hppDelta: simulatedHpp - originalHpp,
+				profitDelta: simulatedProfit - originalProfit,
+				marginDelta: simulatedMargin - originalMargin,
+			},
+			recommendedSellingPrice: Math.ceil(recommendedPrice / 100) * 100, // round up to nearest 100
+		};
+	},
+});
+
+/**
+ * Get HPP with target margin analysis - returns all HPP calculations with
+ * recommended selling prices based on target margin.
+ */
+export const getHppWithMarginAnalysis = query({
+	args: { targetMarginPercent: v.optional(v.number()) },
+	handler: async (ctx, args) => {
+		const targetMargin = args.targetMarginPercent ?? 30; // Default 30% margin
+		const allHpp = await ctx.db.query("hppCalculations").collect();
+
+		return allHpp.map((calc) => {
+			const hpp = computeHppPerServing(calc);
+			const currentProfit = calc.sellingPrice - hpp;
+			const currentMargin = calc.sellingPrice > 0 ? (currentProfit / calc.sellingPrice) * 100 : 0;
+
+			// Recommended price: hpp / (1 - targetMargin/100)
+			const recommendedPrice = hpp / (1 - targetMargin / 100);
+			const roundedRecommendedPrice = Math.ceil(recommendedPrice / 100) * 100;
+
+			const isLowMargin = currentMargin < targetMargin;
+			const priceDiff = roundedRecommendedPrice - calc.sellingPrice;
+
+			return {
+				id: calc._id,
+				name: calc.name,
+				productId: calc.productId,
+				hppPerServing: hpp,
+				currentSellingPrice: calc.sellingPrice,
+				currentMarginPercent: currentMargin,
+				currentProfitPerServing: currentProfit,
+				targetMarginPercent: targetMargin,
+				recommendedSellingPrice: roundedRecommendedPrice,
+				priceDiff,
+				isLowMargin,
+				status: currentMargin >= targetMargin ? "ok" : currentMargin >= targetMargin * 0.7 ? "warning" : "critical",
+			};
+		});
+	},
+});
+
+/**
  * Forecasting: estimate future raw material costs based on avg daily usage.
  */
 export const getHppForecast = query({

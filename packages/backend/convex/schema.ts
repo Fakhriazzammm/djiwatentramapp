@@ -483,6 +483,16 @@ export default defineSchema({
 		.index("by_priority", ["priority"])
 		.index("by_createdAt", ["createdAt"]),
 
+	// Financial Targets (monthly revenue goals)
+	financialTargets: defineTable({
+		month: v.string(), // "YYYY-MM" format
+		targetRevenue: v.number(),
+		targetProfit: v.optional(v.number()),
+		notes: v.optional(v.string()),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	}).index("by_month", ["month"]),
+
 	// Booking Settings for custom booking pages
 	bookingSettings: defineTable({
 		slug: v.string(),

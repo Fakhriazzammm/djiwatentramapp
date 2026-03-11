@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
 	AlertTriangle,
 	ArrowRight,
+	BarChart3,
 	Calculator,
 	ChevronDown,
 	ChevronUp,
@@ -21,7 +22,10 @@ import {
 	Plus,
 	RefreshCw,
 	Scale,
+	Sliders,
+	Target,
 	Trash2,
+	TrendingDown,
 	TrendingUp,
 	X,
 	Zap,
@@ -216,7 +220,7 @@ function HppCalculatorPage() {
 	const deleteHpp = useMutation(api.hpp.deleteHppCalculation);
 	const syncPrices = useMutation(api.hpp.syncHppWithInventoryPrices);
 
-	const [activeTab, setActiveTab] = useState<"calculator" | "saved">(
+	const [activeTab, setActiveTab] = useState<"calculator" | "saved" | "analysis">(
 		"calculator"
 	);
 	const [form, setForm] = useState<HppFormData>(INITIAL_FORM);
@@ -657,6 +661,23 @@ function HppCalculatorPage() {
 						/>
 					)}
 				</button>
+				<button
+					className={`relative px-4 py-2 font-bold text-sm transition-colors ${
+						activeTab === "analysis"
+							? "text-primary"
+							: "text-muted-foreground hover:text-foreground"
+					}`}
+					onClick={() => setActiveTab("analysis")}
+					type="button"
+				>
+					Analisis Profit
+					{activeTab === "analysis" && (
+						<motion.div
+							className="absolute right-0 -bottom-[5px] left-0 h-1 bg-primary"
+							layoutId="hppTab"
+						/>
+					)}
+				</button>
 			</div>
 
 			{activeTab === "calculator" && (
@@ -696,6 +717,13 @@ function HppCalculatorPage() {
 					products={products}
 					setExpandedCard={setExpandedCard}
 					syncingId={syncingId}
+				/>
+			)}
+
+			{activeTab === "analysis" && (
+				<HppProfitAnalysisView
+					calculations={hppCalculations}
+					products={products}
 				/>
 			)}
 
@@ -1967,6 +1995,384 @@ function SavedCalculationsView({
 					</Card>
 				);
 			})}
+		</div>
+	);
+}
+
+// ─── HPP Profit Analysis View ─────────────────────────────────────────────────
+
+function HppProfitAnalysisView({
+	calculations,
+	products,
+}: {
+	calculations: Doc<"hppCalculations">[] | undefined;
+	products: any[] | undefined;
+}) {
+	const [targetMargin, setTargetMargin] = useState(30);
+	const [simulateId, setSimulateId] = useState<string | null>(null);
+	const [simChangePercent, setSimChangePercent] = useState(10);
+	const [simIngredientIdx, setSimIngredientIdx] = useState<number | undefined>(undefined);
+
+	const updateSellingPrice = useMutation(api.hpp.updateHppSellingPrice);
+
+	const marginAnalysis = useQuery(api.hpp.getHppWithMarginAnalysis, {
+		targetMarginPercent: targetMargin,
+	});
+
+	const simulation = useQuery(
+		api.hpp.simulateHppPriceChange,
+		simulateId
+			? {
+					id: simulateId as Id<"hppCalculations">,
+					priceChangePercent: simChangePercent,
+					ingredientIndex: simIngredientIdx,
+				}
+			: "skip"
+	);
+
+	const selectedCalc = calculations?.find((c) => c._id === simulateId);
+
+	const formatCurrencyLocal = (v: number) =>
+		new Intl.NumberFormat("id-ID", {
+			style: "currency",
+			currency: "IDR",
+			maximumFractionDigits: 0,
+		}).format(v);
+
+	const handleApplyRecommendedPrice = async (hppId: string, price: number, name: string) => {
+		try {
+			await updateSellingPrice({ id: hppId as Id<"hppCalculations">, sellingPrice: price });
+			toast.success(`Harga jual ${name} berhasil diupdate ke ${formatCurrencyLocal(price)}`);
+		} catch {
+			toast.error("Gagal update harga jual");
+		}
+	};
+
+	if (!marginAnalysis) {
+		return (
+			<div className="flex h-40 items-center justify-center text-muted-foreground text-sm">
+				Memuat analisis...
+			</div>
+		);
+	}
+
+	if (marginAnalysis.length === 0) {
+		return (
+			<div className="flex flex-col items-center gap-3 py-16">
+				<BarChart3 className="h-12 w-12 text-muted-foreground/40" />
+				<p className="font-medium text-muted-foreground text-sm">Belum ada data HPP untuk dianalisis</p>
+			</div>
+		);
+	}
+
+	const lowMargin = marginAnalysis.filter((h) => h.isLowMargin);
+	const okMargin = marginAnalysis.filter((h) => !h.isLowMargin);
+
+	return (
+		<div className="space-y-6">
+			{/* Target Margin Setter */}
+			<div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4">
+				<Target className="h-5 w-5 shrink-0 text-primary" />
+				<div className="flex-1">
+					<p className="font-semibold text-sm">Target Margin</p>
+					<p className="text-muted-foreground text-xs">Set target margin untuk mendapat rekomendasi harga otomatis</p>
+				</div>
+				<div className="flex items-center gap-2">
+					<input
+						type="range"
+						min={5}
+						max={80}
+						step={5}
+						value={targetMargin}
+						onChange={(e) => setTargetMargin(Number(e.target.value))}
+						className="w-32"
+					/>
+					<span className="font-bold text-primary w-10 text-right">{targetMargin}%</span>
+				</div>
+			</div>
+
+			{/* Alert: Low Margin Products */}
+			{lowMargin.length > 0 && (
+				<div className="space-y-3">
+					<div className="flex items-center gap-2">
+						<AlertTriangle className="h-4 w-4 text-amber-500" />
+						<h3 className="font-bold text-base">
+							Alert Margin Rendah ({lowMargin.length} produk di bawah {targetMargin}%)
+						</h3>
+					</div>
+					<div className="grid gap-3 md:grid-cols-2">
+						{lowMargin.map((hpp) => {
+							const linkedProduct = products?.find((p) => p._id === hpp.productId);
+							const statusColor =
+								hpp.status === "critical"
+									? "border-red-300 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20"
+									: "border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-950/20";
+
+							return (
+								<motion.div
+									key={hpp.id}
+									initial={{ opacity: 0, y: 5 }}
+									animate={{ opacity: 1, y: 0 }}
+									className={`rounded-xl border p-4 ${statusColor}`}
+								>
+									<div className="mb-3 flex items-start justify-between">
+										<div>
+											<p className="font-bold text-sm">{hpp.name}</p>
+											{linkedProduct && (
+												<p className="text-[11px] text-muted-foreground">
+													Produk: {linkedProduct.name}
+												</p>
+											)}
+										</div>
+										<span
+											className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+												hpp.status === "critical"
+													? "bg-red-500/20 text-red-600"
+													: "bg-amber-500/20 text-amber-700"
+											}`}
+										>
+											{hpp.currentMarginPercent.toFixed(1)}%
+										</span>
+									</div>
+
+									<div className="grid grid-cols-2 gap-2 mb-3">
+										<div className="rounded-lg bg-background/70 p-2">
+											<p className="text-[10px] text-muted-foreground">HPP/Porsi</p>
+											<p className="font-semibold text-sm">{formatCurrencyLocal(hpp.hppPerServing)}</p>
+										</div>
+										<div className="rounded-lg bg-background/70 p-2">
+											<p className="text-[10px] text-muted-foreground">Harga Jual</p>
+											<p className="font-semibold text-sm">{formatCurrencyLocal(hpp.currentSellingPrice)}</p>
+										</div>
+									</div>
+
+									{/* Recommendation */}
+									<div className="rounded-lg border border-primary/30 bg-primary/5 p-3 mb-3">
+										<div className="flex items-center gap-1.5 mb-1">
+											<TrendingUp className="h-3.5 w-3.5 text-primary" />
+											<p className="text-[11px] font-semibold text-primary">
+												Rekomendasi Harga: {formatCurrencyLocal(hpp.recommendedSellingPrice)}
+											</p>
+										</div>
+										<p className="text-[10px] text-muted-foreground">
+											Naik {formatCurrencyLocal(hpp.priceDiff)} untuk mencapai target margin {targetMargin}%
+										</p>
+									</div>
+
+									{/* Actions */}
+									<div className="flex gap-2">
+										<button
+											onClick={() => handleApplyRecommendedPrice(hpp.id, hpp.recommendedSellingPrice, hpp.name)}
+											className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground hover:brightness-110"
+											type="button"
+										>
+											<TrendingUp className="h-3 w-3" />
+											Terapkan Harga
+										</button>
+										<button
+											onClick={() => setSimulateId(hpp.id)}
+											className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-muted"
+											type="button"
+										>
+											<Sliders className="h-3 w-3" />
+											Simulasi
+										</button>
+									</div>
+								</motion.div>
+							);
+						})}
+					</div>
+				</div>
+			)}
+
+			{/* OK Margin Products */}
+			{okMargin.length > 0 && (
+				<div className="space-y-3">
+					<h3 className="flex items-center gap-2 font-bold text-base">
+						<TrendingUp className="h-4 w-4 text-green-500" />
+						Margin OK ({okMargin.length} produk ≥{targetMargin}%)
+					</h3>
+					<div className="grid gap-2 md:grid-cols-3">
+						{okMargin.map((hpp) => (
+							<div
+								key={hpp.id}
+								className="flex items-center justify-between rounded-lg border border-border bg-card p-3"
+							>
+								<div className="min-w-0">
+									<p className="text-sm font-semibold truncate">{hpp.name}</p>
+									<p className="text-[10px] text-muted-foreground">
+										HPP: {formatCurrencyLocal(hpp.hppPerServing)} | Jual: {formatCurrencyLocal(hpp.currentSellingPrice)}
+									</p>
+								</div>
+								<div className="flex items-center gap-2 ml-2 shrink-0">
+									<span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] font-bold text-green-600">
+										{hpp.currentMarginPercent.toFixed(1)}%
+									</span>
+									<button
+										onClick={() => setSimulateId(hpp.id)}
+										className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted"
+										type="button"
+										title="Simulasi what-if"
+									>
+										<Sliders className="h-3 w-3" />
+									</button>
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
+
+			{/* What-If Simulation Modal */}
+			<AnimatePresence>
+				{simulateId && selectedCalc && (
+					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+						<motion.div
+							initial={{ opacity: 0, scale: 0.95 }}
+							animate={{ opacity: 1, scale: 1 }}
+							exit={{ opacity: 0, scale: 0.95 }}
+							className="relative w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl mx-4 max-h-[90vh] overflow-y-auto"
+						>
+							<div className="mb-5 flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<div className="rounded-lg bg-primary/10 p-2">
+										<Sliders className="h-5 w-5 text-primary" />
+									</div>
+									<div>
+										<h3 className="font-bold text-lg">Simulasi What-If</h3>
+										<p className="text-muted-foreground text-xs">{selectedCalc.name}</p>
+									</div>
+								</div>
+								<button
+									onClick={() => setSimulateId(null)}
+									className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+									type="button"
+								>
+									<X className="h-4 w-4" />
+								</button>
+							</div>
+
+							{/* Simulation Controls */}
+							<div className="space-y-4 mb-5">
+								<div>
+									<label className="mb-2 block text-sm font-medium">
+										Perubahan Harga Bahan Baku
+									</label>
+									<div className="flex items-center gap-3">
+										<input
+											type="range"
+											min={-50}
+											max={100}
+											step={5}
+											value={simChangePercent}
+											onChange={(e) => setSimChangePercent(Number(e.target.value))}
+											className="flex-1"
+										/>
+										<div className="flex items-center gap-1">
+											<input
+												type="number"
+												value={simChangePercent}
+												onChange={(e) => setSimChangePercent(Number(e.target.value))}
+												className="w-16 rounded-lg border border-border bg-background px-2 py-1 text-center text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/40"
+											/>
+											<span className="text-sm font-bold">%</span>
+										</div>
+									</div>
+									<div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+										<span>Turun 50%</span>
+										<span className={simChangePercent > 0 ? "text-red-500 font-medium" : "text-green-500 font-medium"}>
+											{simChangePercent > 0 ? `Naik ${simChangePercent}%` : simChangePercent < 0 ? `Turun ${Math.abs(simChangePercent)}%` : "Tidak ada perubahan"}
+										</span>
+										<span>Naik 100%</span>
+									</div>
+								</div>
+
+								<div>
+									<label className="mb-2 block text-sm font-medium">
+										Bahan yang Berubah
+									</label>
+									<select
+										value={simIngredientIdx ?? "all"}
+										onChange={(e) => setSimIngredientIdx(e.target.value === "all" ? undefined : Number(e.target.value))}
+										className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+									>
+										<option value="all">Semua Bahan Baku</option>
+										{selectedCalc.ingredients.map((ing, idx) => (
+											<option key={idx} value={idx}>{ing.ingredientName}</option>
+										))}
+									</select>
+								</div>
+							</div>
+
+							{/* Simulation Results */}
+							{simulation ? (
+								<div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+									<h4 className="font-bold text-sm">Hasil Simulasi</h4>
+									<div className="grid grid-cols-2 gap-3">
+										<div className="rounded-lg bg-card p-3">
+											<p className="text-[10px] text-muted-foreground mb-1">SEBELUM</p>
+											<p className="text-xs">HPP: <span className="font-bold">{formatCurrencyLocal(simulation.original.hppPerServing)}</span></p>
+											<p className="text-xs">Profit: <span className="font-bold text-green-600">{formatCurrencyLocal(simulation.original.profitPerServing)}</span></p>
+											<p className="text-xs">Margin: <span className="font-bold text-primary">{simulation.original.marginPercent.toFixed(1)}%</span></p>
+										</div>
+										<div className={`rounded-lg p-3 ${simulation.simulated.marginPercent < 0 ? "bg-red-50 dark:bg-red-950/20" : "bg-card"}`}>
+											<p className="text-[10px] text-muted-foreground mb-1">SETELAH</p>
+											<p className="text-xs">HPP: <span className="font-bold">{formatCurrencyLocal(simulation.simulated.hppPerServing)}</span></p>
+											<p className={`text-xs`}>Profit: <span className={`font-bold ${simulation.simulated.profitPerServing >= 0 ? "text-green-600" : "text-red-600"}`}>{formatCurrencyLocal(simulation.simulated.profitPerServing)}</span></p>
+											<p className="text-xs">Margin: <span className={`font-bold ${simulation.simulated.marginPercent >= targetMargin ? "text-green-600" : "text-amber-600"}`}>{simulation.simulated.marginPercent.toFixed(1)}%</span></p>
+										</div>
+									</div>
+
+									{/* Delta */}
+									<div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+										{simulation.delta.profitDelta >= 0 ? (
+											<TrendingUp className="h-4 w-4 text-green-500 shrink-0" />
+										) : (
+											<TrendingDown className="h-4 w-4 text-red-500 shrink-0" />
+										)}
+										<div className="flex-1 text-xs">
+											<span className="text-muted-foreground">Dampak: </span>
+											<span className={`font-bold ${simulation.delta.profitDelta >= 0 ? "text-green-600" : "text-red-600"}`}>
+												{simulation.delta.profitDelta >= 0 ? "+" : ""}{formatCurrencyLocal(simulation.delta.profitDelta)}/porsi
+											</span>
+											<span className="text-muted-foreground ml-2">
+												({simulation.delta.marginDelta >= 0 ? "+" : ""}{simulation.delta.marginDelta.toFixed(1)}% margin)
+											</span>
+										</div>
+									</div>
+
+									{/* Recommendation */}
+									<div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+										<p className="text-[11px] text-primary font-semibold mb-0.5">
+											Harga jual yang disarankan agar margin tetap {simulation.original.marginPercent.toFixed(0)}%:
+										</p>
+										<div className="flex items-center justify-between">
+											<p className="font-bold text-lg text-primary">
+												{formatCurrencyLocal(simulation.recommendedSellingPrice)}
+											</p>
+											<button
+												onClick={() => {
+													handleApplyRecommendedPrice(simulateId!, simulation.recommendedSellingPrice, selectedCalc.name);
+													setSimulateId(null);
+												}}
+												className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:brightness-110"
+												type="button"
+											>
+												<TrendingUp className="h-3 w-3" />
+												Terapkan
+											</button>
+										</div>
+									</div>
+								</div>
+							) : (
+								<div className="flex h-20 items-center justify-center text-muted-foreground text-sm">
+									Memuat simulasi...
+								</div>
+							)}
+						</motion.div>
+					</div>
+				)}
+			</AnimatePresence>
 		</div>
 	);
 }

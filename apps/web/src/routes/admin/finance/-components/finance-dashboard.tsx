@@ -13,6 +13,8 @@ import {
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { NewTransactionDialog } from "./new-transaction-dialog";
+import { FinancialTargetPanel } from "./financial-target-panel";
+import { ExpenseCategoryPieChart, PeriodComparisonCards, TrendChart } from "./finance-charts";
 
 export function FinanceDashboard() {
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -185,6 +187,21 @@ export function FinanceDashboard() {
 						<Plus className="h-4 w-4" /> Catat Transaksi
 					</button>
 				</div>
+			</div>
+
+			{/* Financial Target Panel */}
+			<FinancialTargetPanel />
+
+			{/* Period Comparison */}
+			<div>
+				<h3 className="mb-3 font-bold text-base">Perbandingan Periode</h3>
+				<PeriodComparisonCards />
+			</div>
+
+			{/* Charts Row */}
+			<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+				<TrendChart />
+				<ExpenseCategoryPieChart />
 			</div>
 
 			{/* Summary Cards */}
