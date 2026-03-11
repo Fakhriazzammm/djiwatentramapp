@@ -180,9 +180,15 @@ export function ImageScanner({
 				return newResults;
 			});
 			toast.success(`Gambar ${idx + 1} berhasil diproses!`);
-		} catch (error) {
-			console.error(error);
-			toast.error(`Gagal memproses gambar ${idx + 1}`);
+		} catch (error: any) {
+			let msg = `Gagal memproses gambar ${idx + 1}`;
+			if (error?.data) {
+				msg = typeof error.data === "string" ? error.data : error.data.message || msg;
+			} else if (error?.message) {
+				msg = error.message;
+			}
+			toast.error(msg);
+			console.error("Scan error details:", error);
 		} finally {
 			setIsScanning(false);
 		}
@@ -526,6 +532,7 @@ export function ImageScanner({
 									>
 										<input
 											accept="image/*"
+											capture="environment"
 											className="hidden"
 											multiple
 											onChange={handleFileSelect}

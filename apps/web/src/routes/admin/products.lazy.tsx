@@ -6,6 +6,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
 	CheckCircle2,
 	Edit,
+	LayoutGrid,
+	List,
 	Plus,
 	Sparkles,
 	Trash2,
@@ -13,6 +15,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { BulkOperations } from "../../components/admin/bulk-operations";
 
@@ -214,6 +217,7 @@ function ProductsTab({
 	);
 	const [_isUploading, setIsUploading] = useState(false);
 	const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
+	const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
 	const generateDescription = useAction(api.ai.generateProductDescription);
 
@@ -393,7 +397,27 @@ function ProductsTab({
 	return (
 		<>
 			<div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-				<h2 className="font-bold text-xl">Daftar Produk</h2>
+				<div className="flex items-center gap-3">
+					<h2 className="font-bold text-xl">Produk</h2>
+					<div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-1">
+						<button
+							className={`rounded px-2 py-1 transition-all ${viewMode === "grid" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+							onClick={() => setViewMode("grid")}
+							title="Grid View"
+							type="button"
+						>
+							<LayoutGrid className="h-4 w-4" />
+						</button>
+						<button
+							className={`rounded px-2 py-1 transition-all ${viewMode === "table" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+							onClick={() => setViewMode("table")}
+							title="Table View"
+							type="button"
+						>
+							<List className="h-4 w-4" />
+						</button>
+					</div>
+				</div>
 				<div className="flex flex-wrap items-center gap-2">
 					<BulkOperations />
 					<button
@@ -409,139 +433,268 @@ function ProductsTab({
 				</div>
 			</div>
 
-			<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-				{!products &&
-					["sk1", "sk2", "sk3", "sk4", "sk5", "sk6", "sk7", "sk8"].map(
-						(skId) => (
-							<div
-								className="animate-pulse rounded-xl border border-border bg-card p-4"
-								key={skId}
-							>
-								<div className="aspect-video rounded-lg bg-muted/50" />
-								<div className="mt-3 h-4 w-3/4 rounded bg-muted/50" />
-								<div className="mt-2 h-3 w-1/2 rounded bg-muted/50" />
-								<div className="mt-4 flex items-center justify-between">
-									<div className="h-5 w-20 rounded bg-muted/50" />
-									<div className="h-8 w-16 rounded bg-muted/50" />
-								</div>
-							</div>
-						)
-					)}
-
-				{products &&
-					products.length > 0 &&
-					products.map((product: any) => (
-						<div
-							className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
-							key={product._id}
-						>
-							<div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
-								{product.image ? (
-									<img
-										alt={product.name}
-										className="h-full w-full object-cover"
-										height={225}
-										src={product.image}
-										width={400}
-									/>
-								) : (
-									<div className="flex h-full w-full items-center justify-center text-muted-foreground text-sm">
-										Tidak ada gambar
+			{viewMode === "grid" ? (
+				<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+					{!products &&
+						["sk1", "sk2", "sk3", "sk4", "sk5", "sk6", "sk7", "sk8", "sk9", "sk10"].map(
+							(skId) => (
+								<div
+									className="animate-pulse rounded-xl border border-border bg-card p-3"
+									key={skId}
+								>
+									<div className="aspect-square rounded-lg bg-muted/50" />
+									<div className="mt-2 h-3 w-3/4 rounded bg-muted/50" />
+									<div className="mt-2 h-2 w-1/2 rounded bg-muted/50" />
+									<div className="mt-3 flex items-center justify-between">
+										<div className="h-4 w-12 rounded bg-muted/50" />
+										<div className="h-6 w-12 rounded bg-muted/50" />
 									</div>
-								)}
-								<div className="absolute top-2 right-2 flex gap-1">
-									<button
-										className={`rounded-full p-1 transition-transform hover:scale-110 ${product.isAvailable ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}
-										onClick={() =>
-											toggleAvailability(product._id, product.isAvailable)
-										}
-										type="button"
-									>
-										{product.isAvailable ? (
-											<CheckCircle2 className="h-4 w-4" />
-										) : (
-											<XCircle className="h-4 w-4" />
-										)}
-									</button>
 								</div>
-							</div>
+							)
+						)}
 
-							<div className="flex-1">
-								<h3 className="font-bold text-sm leading-tight">
-									{product.name}
-								</h3>
-								<p className="mt-1 line-clamp-2 text-muted-foreground text-xs">
-									{product.description}
-								</p>
-							</div>
+					{products &&
+						products.length > 0 &&
+						products.map((product: any) => (
+							<div
+								className="group flex flex-col gap-2 rounded-xl border border-border bg-card p-3 transition-all hover:border-primary/20 hover:shadow-sm"
+								key={product._id}
+							>
+								<div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
+									{product.image ? (
+										<img
+											alt={product.name}
+											className="h-full w-full object-cover transition-transform group-hover:scale-105"
+											src={product.image}
+										/>
+									) : (
+										<div className="flex h-full w-full items-center justify-center text-muted-foreground text-[10px]">
+											No Image
+										</div>
+									)}
+									<div className="absolute top-1.5 right-1.5">
+										<button
+											className={`rounded-full p-1 shadow-sm transition-transform hover:scale-110 ${product.isAvailable ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}
+											onClick={() =>
+												toggleAvailability(product._id, product.isAvailable)
+											}
+											type="button"
+										>
+											{product.isAvailable ? (
+												<CheckCircle2 className="h-3 w-3" />
+											) : (
+												<XCircle className="h-3 w-3" />
+											)}
+										</button>
+									</div>
+								</div>
 
-							<div className="mt-1 flex items-center justify-between border-border/50 border-t pt-3">
-								<div className="flex flex-col gap-0.5">
-									<span className="font-bold text-primary text-sm">
-										{new Intl.NumberFormat("id-ID", {
-											style: "currency",
-											currency: "IDR",
-											maximumFractionDigits: 0,
-										}).format(product.price)}
-									</span>
-									{/* HPP Margin Badge */}
-									{hppProductMap?.[product._id] &&
-										(() => {
-											const hpp = hppProductMap[product._id];
-											const marginColor =
-												hpp.marginPercent >= 30
-													? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-													: hpp.marginPercent >= 15
-														? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-														: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
-											return (
-												<span
-													className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-semibold text-[10px] ${marginColor}`}
-												>
-													Margin {hpp.marginPercent.toFixed(1)}% · HPP{" "}
-													{new Intl.NumberFormat("id-ID", {
-														style: "currency",
-														currency: "IDR",
-														maximumFractionDigits: 0,
-													}).format(hpp.hppPerServing)}
-												</span>
-											);
-										})()}
-									{/* Warning if price below HPP */}
-									{hppProductMap?.[product._id] &&
-										hppProductMap[product._id].hppPerServing >
-											product.price && (
-											<span className="inline-flex items-center gap-0.5 text-[10px] text-red-600 dark:text-red-400">
-												⚠ Harga di bawah HPP!
-											</span>
-										)}
+								<div className="flex-1 min-w-0">
+									<h3 className="font-bold text-[13px] leading-tight truncate">
+										{product.name}
+									</h3>
+									<p className="mt-0.5 line-clamp-1 text-muted-foreground text-[11px]">
+										{product.description || "Tanpa deskripsi"}
+									</p>
 								</div>
-								<div className="flex gap-1">
-									<button
-										className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-										onClick={() => handleEdit(product)}
-										type="button"
-									>
-										<Edit className="h-4 w-4" />
-									</button>
-									<button
-										className="rounded-lg p-2 text-destructive transition-colors hover:bg-destructive/10"
-										onClick={() => setDeleteId(product._id)}
-										type="button"
-									>
-										<Trash2 className="h-4 w-4" />
-									</button>
+
+								<div className="mt-1 flex flex-col gap-1.5">
+									<div className="flex items-center justify-between">
+										<span className="font-bold text-primary text-[13px]">
+											{new Intl.NumberFormat("id-ID", {
+												style: "currency",
+												currency: "IDR",
+												maximumFractionDigits: 0,
+											}).format(product.price)}
+										</span>
+										<div className="flex gap-0.5">
+											<button
+												className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+												onClick={() => handleEdit(product)}
+												type="button"
+											>
+												<Edit className="h-3.5 w-3.5" />
+											</button>
+											<button
+												className="rounded-md p-1.5 text-destructive transition-colors hover:bg-destructive/10"
+												onClick={() => setDeleteId(product._id)}
+												type="button"
+											>
+												<Trash2 className="h-3.5 w-3.5" />
+											</button>
+										</div>
+									</div>
+									
+									{hppProductMap?.[product._id] && (
+										<div className="flex flex-col gap-0.5">
+											{(() => {
+												const hpp = hppProductMap[product._id];
+												const isLowMargin = hpp.marginPercent < 30;
+												const isLoss = hpp.hppPerServing > product.price;
+												
+												return (
+													<>
+														<div className={`flex items-center justify-between rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
+															isLoss ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+															isLowMargin ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" :
+															"bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+														}`}>
+															<span>Margin {hpp.marginPercent.toFixed(0)}%</span>
+															<span>{new Intl.NumberFormat("id-ID", {
+																maximumFractionDigits: 0,
+															}).format(hpp.hppPerServing)}</span>
+														</div>
+														{isLoss && (
+															<span className="text-[9px] text-red-600 font-bold animate-pulse">
+																⚠ Harga &lt; HPP
+															</span>
+														)}
+													</>
+												);
+											})()}
+										</div>
+									)}
 								</div>
 							</div>
+						))}
+
+					{products && products.length === 0 && (
+						<div className="col-span-full py-12 text-center text-muted-foreground">
+							Belum ada produk. Klik "Tambah Produk" untuk memulai.
 						</div>
-					))}
+					)}
+				</div>
+			) : (
+				<div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+					<div className="overflow-x-auto">
+						<table className="w-full text-left text-sm">
+							<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase font-bold tracking-wider">
+								<tr>
+									<th className="px-4 py-3">Produk</th>
+									<th className="px-4 py-3">Kategori</th>
+									<th className="px-4 py-3">Harga</th>
+									<th className="px-4 py-3">HPP & Margin</th>
+									<th className="px-4 py-3 text-center">Status</th>
+									<th className="px-4 py-3 text-right">Aksi</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-border">
+								{!products && Array.from({ length: 5 }).map((_, i) => (
+									<tr className="animate-pulse" key={i}>
+										<td className="px-4 py-3"><div className="h-8 w-32 bg-muted rounded" /></td>
+										<td className="px-4 py-3"><div className="h-4 w-20 bg-muted rounded" /></td>
+										<td className="px-4 py-3"><div className="h-4 w-16 bg-muted rounded" /></td>
+										<td className="px-4 py-3"><div className="h-4 w-24 bg-muted rounded" /></td>
+										<td className="px-4 py-3"><div className="mx-auto h-6 w-12 bg-muted rounded" /></td>
+										<td className="px-4 py-3 text-right"><div className="ml-auto h-8 w-16 bg-muted rounded" /></td>
+									</tr>
+								))}
 
-				{products && products.length === 0 && (
-					<div className="col-span-full py-12 text-center text-muted-foreground">
-						Belum ada produk. Klik "Tambah Produk" untuk memulai.
+								{products && products.map((product: any) => {
+									const cat = categories?.find(c => c._id === product.categoryId);
+									const hpp = hppProductMap?.[product._id];
+
+									return (
+										<tr className="group hover:bg-muted/30 transition-colors" key={product._id}>
+											<td className="px-4 py-2">
+												<div className="flex items-center gap-3">
+													<div className="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-muted">
+														{product.image ? (
+															<img alt={product.name} className="h-full w-full object-cover" src={product.image} />
+														) : (
+															<div className="flex h-full w-full items-center justify-center text-[8px] text-muted-foreground">NA</div>
+														)}
+													</div>
+													<div className="min-w-0">
+														<p className="font-bold text-sm leading-none">{product.name}</p>
+														<p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground whitespace-nowrap">
+															{product.description || "Tanpa deskripsi"}
+														</p>
+													</div>
+												</div>
+											</td>
+											<td className="px-4 py-2">
+												<Badge className="font-normal text-[10px] bg-muted text-muted-foreground hover:bg-muted" variant="secondary">
+													{cat?.name || "Uncategorized"}
+												</Badge>
+											</td>
+											<td className="px-4 py-2 font-bold text-primary tabular-nums">
+												{new Intl.NumberFormat("id-ID", {
+													style: "currency",
+													currency: "IDR",
+													maximumFractionDigits: 0,
+												}).format(product.price)}
+											</td>
+											<td className="px-4 py-2">
+												{hpp ? (
+													<div className="flex flex-col gap-0.5">
+														<div className="flex items-center gap-2">
+															<span className={`text-[11px] font-bold ${hpp.marginPercent < 30 ? "text-orange-500" : "text-green-600"}`}>
+																{hpp.marginPercent.toFixed(0)}%
+															</span>
+															<span className="text-[10px] text-muted-foreground tabular-nums">
+																HPP: {new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(hpp.hppPerServing)}
+															</span>
+														</div>
+														{hpp.hppPerServing > product.price && (
+															<span className="text-[9px] font-bold text-red-500 uppercase tracking-tighter">⚠ Under Margin</span>
+														)}
+													</div>
+												) : (
+													<span className="text-muted-foreground text-xs italic">No data</span>
+												)}
+											</td>
+											<td className="px-4 py-2 text-center">
+												<button
+													className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold text-white transition-transform active:scale-95 ${product.isAvailable ? "bg-green-500" : "bg-red-500"}`}
+													onClick={() => toggleAvailability(product._id, product.isAvailable)}
+													type="button"
+												>
+													{product.isAvailable ? (
+														<>
+															<CheckCircle2 className="h-3 w-3" /> <span>On</span>
+														</>
+													) : (
+														<>
+															<XCircle className="h-3 w-3" /> <span>Off</span>
+														</>
+													)}
+												</button>
+											</td>
+											<td className="px-4 py-2 text-right">
+												<div className="flex justify-end gap-1">
+													<button
+														className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+														onClick={() => handleEdit(product)}
+														type="button"
+													>
+														<Edit className="h-3.5 w-3.5" />
+													</button>
+													<button
+														className="rounded-md p-1.5 text-destructive hover:bg-destructive/10 transition-colors"
+														onClick={() => setDeleteId(product._id)}
+														type="button"
+													>
+														<Trash2 className="h-3.5 w-3.5" />
+													</button>
+												</div>
+											</td>
+										</tr>
+									);
+								})}
+
+								{products && products.length === 0 && (
+									<tr>
+										<td className="py-12 text-center text-muted-foreground" colSpan={6}>
+											Belum ada produk.
+										</td>
+									</tr>
+								)}
+							</tbody>
+						</table>
 					</div>
-				)}
-			</div>
+				</div>
+			)}
 
 			{/* Post Modals for Products */}
 			<AnimatePresence>

@@ -1,4 +1,4 @@
-﻿import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -260,7 +260,7 @@ function AIChatPage() {
 	}> = [];
 
 	const lowStockItems =
-		inventory?.filter((i) => i.quantity <= i.lowStockThreshold) ?? [];
+		inventory?.filter((i: any) => i.quantity <= i.lowStockThreshold) ?? [];
 	if (lowStockItems.length > 0) {
 		smartInsights.push({
 			icon: <AlertTriangle className="h-3.5 w-3.5 text-accent" />,
@@ -269,7 +269,7 @@ function AIChatPage() {
 		});
 	}
 
-	const pendingOrders = orders?.filter((o) => o.status === "pending") ?? [];
+	const pendingOrders = orders?.filter((o: any) => o.status === "pending") ?? [];
 	if (pendingOrders.length > 0) {
 		smartInsights.push({
 			icon: <Bell className="h-3.5 w-3.5 text-primary" />,
@@ -278,7 +278,7 @@ function AIChatPage() {
 		});
 	}
 
-	const availableProducts = products?.filter((p) => p.isAvailable).length ?? 0;
+	const availableProducts = products?.filter((p: any) => p.isAvailable).length ?? 0;
 	if (availableProducts > 0) {
 		smartInsights.push({
 			icon: <TrendingUp className="h-3.5 w-3.5 text-primary" />,
@@ -714,16 +714,18 @@ function AIChatPage() {
 			setShowScanPanel(false);
 			if (scanFileInputRef.current) scanFileInputRef.current.value = "";
 			toast.success(`${bulkResults.length} gambar berhasil dianalisis!`);
-		} catch (error: unknown) {
+		} catch (error: any) {
 			let msg = "Gagal menganalisis gambar. Coba lagi.";
-			if (error && typeof error === "object" && "data" in error) {
-				const convexErr = error as { data: string | { message?: string } };
-				msg = typeof convexErr.data === "string" ? convexErr.data : convexErr.data?.message || msg;
-			} else if (error instanceof Error) {
+			
+			// Extract specific ConvexError message if available
+			if (error?.data) {
+				msg = typeof error.data === "string" ? error.data : error.data.message || msg;
+			} else if (error?.message) {
 				msg = error.message;
 			}
+			
 			toast.error(msg);
-			console.error("Scan error:", error);
+			console.error("Scan error details:", error);
 		} finally {
 			setIsScanning(false);
 		}
@@ -857,8 +859,8 @@ function AIChatPage() {
 	useEffect(() => {
 		if (currentSessionId && loadConversationQuery) {
 			const history = loadConversationQuery
-				.filter((m) => m.role !== "system")
-				.map((m) => ({
+				.filter((m: any) => m.role !== "system")
+				.map((m: any) => ({
 					role: m.role as "user" | "assistant",
 					content: m.content,
 				}));
@@ -1724,6 +1726,7 @@ function AIChatPage() {
 									)}
 									<input
 										accept="image/*"
+										capture="environment"
 										multiple
 										className="hidden"
 										onChange={handleScanFileSelect}
@@ -1788,6 +1791,7 @@ function AIChatPage() {
 								{/* Hidden file input for chat attachment */}
 								<input
 									accept="image/*"
+									capture="environment"
 									className="hidden"
 									multiple
 									onChange={handleFileSelect}

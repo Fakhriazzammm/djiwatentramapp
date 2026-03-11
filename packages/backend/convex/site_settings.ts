@@ -27,6 +27,9 @@ const DEFAULTS = {
 		qris: true,
 		transfer: false,
 	},
+	taxRate: 0,
+	serviceChargeRate: 0,
+	qrisImage: "",
 };
 
 export const getSettings = query({
@@ -38,12 +41,20 @@ export const getSettings = query({
 			return DEFAULTS;
 		}
 
-		// Resolve Storage ID to URL if applicable
+		// Resolve Storage IDs to URLs
 		let paymentPopupImage = settings.paymentPopupImage;
 		if (paymentPopupImage && !paymentPopupImage.startsWith("http")) {
 			const url = await ctx.storage.getUrl(paymentPopupImage);
 			if (url) {
 				paymentPopupImage = url;
+			}
+		}
+
+		let qrisImage = settings.qrisImage;
+		if (qrisImage && !qrisImage.startsWith("http")) {
+			const url = await ctx.storage.getUrl(qrisImage);
+			if (url) {
+				qrisImage = url;
 			}
 		}
 
@@ -72,6 +83,9 @@ export const getSettings = query({
 			// Manual Payment
 			paymentMethodsManual:
 				settings.paymentMethodsManual ?? DEFAULTS.paymentMethodsManual,
+			taxRate: settings.taxRate ?? DEFAULTS.taxRate,
+			serviceChargeRate: settings.serviceChargeRate ?? DEFAULTS.serviceChargeRate,
+			qrisImage: qrisImage ?? DEFAULTS.qrisImage,
 		};
 	},
 });
@@ -108,6 +122,9 @@ export const updateSettings = mutation({
 				transfer: v.boolean(),
 			})
 		),
+		taxRate: v.optional(v.number()),
+		serviceChargeRate: v.optional(v.number()),
+		qrisImage: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const existing = await ctx.db.query("siteSettings").first();

@@ -1,6 +1,8 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { Minus, Plus } from "lucide-react";
+import { useQuery } from "convex/react";
+import { Minus, Plus, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { api } from "../../../packages/backend/convex/_generated/api";
 
 export const Route = createLazyFileRoute("/booking")({
 	component: BookingPage,
@@ -14,20 +16,11 @@ interface CartItem {
 }
 
 function BookingPage() {
+	const settings = useQuery(api.booking.getSettings, { slug: "booking" });
+	const products = useQuery(api.booking.getBookingProducts, { slug: "booking" });
+
 	const [cart, setCart] = useState<CartItem[]>([]);
 	const [showCart, setShowCart] = useState(false);
-
-	const settings = {
-		title: "YumiPOS Booking",
-		description: "Pemesanan online mudah dan cepat",
-		isActive: true,
-	};
-
-	const products = [
-		{ _id: "1", name: "Produk 1", price: 25000, description: "Deskripsi produk 1" },
-		{ _id: "2", name: "Produk 2", price: 30000, description: "Deskripsi produk 2" },
-		{ _id: "3", name: "Produk 3", price: 15000, description: "Deskripsi produk 3" },
-	];
 
 	const addToCart = (product: { _id: string; name: string; price: number }) => {
 		setCart((prev) => {
@@ -58,6 +51,17 @@ function BookingPage() {
 
 	const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 	const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+	if (settings === undefined || products === undefined) {
+		return (
+			<div className="flex h-screen items-center justify-center bg-gray-50 p-4">
+				<div className="text-center">
+					<Loader2 className="mx-auto h-12 w-12 animate-spin text-gray-400" />
+					<p className="mt-4 text-gray-500 font-medium">Memuat menu...</p>
+				</div>
+			</div>
+		);
+	}
 
 	if (!settings?.isActive) {
 		return (
@@ -90,7 +94,7 @@ function BookingPage() {
 				<div className="space-y-6">
 					<h2 className="text-lg font-bold text-gray-900">Menu Pilihan</h2>
 					<div className="grid gap-4">
-						{products.map((product) => (
+						{products.map((product: any) => (
 							<div
 								key={product._id}
 								className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm"

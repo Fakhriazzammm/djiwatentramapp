@@ -1,13 +1,19 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { Globe, Link as LinkIcon, Save, ShoppingBag, Smartphone } from "lucide-react";
-import { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { Globe, Link as LinkIcon, Loader2, Save, ShoppingBag, Smartphone } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { api } from "../../../../packages/backend/convex/_generated/api";
 
 export const Route = createLazyFileRoute("/admin/booking")({
 	component: BookingSettingsPage,
 });
 
 function BookingSettingsPage() {
+	const settings = useQuery(api.booking.getSettings, { slug: "booking" });
+	const updateSettings = useMutation(api.booking.updateSettings);
+	const allProducts = useQuery(api.products.getAllProductsAdmin, {});
+
 	const [formData, setFormData] = useState({
 		slug: "booking",
 		title: "",
@@ -22,14 +28,37 @@ function BookingSettingsPage() {
 	});
 
 	const [activeTab, setActiveTab] = useState<"general" | "products" | "payment">("general");
+	const [isSaving, setIsSaving] = useState(false);
+
+	useEffect(() => {
+		if (settings) {
+			setFormData({
+				slug: settings.slug,
+				title: settings.title,
+				description: settings.description || "",
+				logoUrl: settings.logoUrl || "",
+				bannerUrl: settings.bannerUrl || "",
+				themeColor: settings.themeColor || "#000000",
+				featuredProductIds: settings.featuredProductIds || [],
+				paymentMethods: settings.paymentMethods || [],
+				bankDetails: settings.bankDetails || "",
+				isActive: settings.isActive,
+			});
+		}
+	}, [settings]);
 
 	const handleSave = async () => {
 		try {
-			// TODO: Implement save with convex
+			setIsSaving(true);
+			await updateSettings({
+				...formData,
+			});
 			toast.success("Pengaturan halaman booking berhasil disimpan!");
 		} catch (error) {
 			console.error(error);
 			toast.error("Gagal menyimpan pengaturan");
+		} finally {
+			setIsSaving(false);
 		}
 	};
 
@@ -60,11 +89,17 @@ function BookingSettingsPage() {
 						<LinkIcon className="h-4 w-4" /> Buka Halaman
 					</a>
 					<button
-						className="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground text-sm transition-all hover:opacity-90 active:scale-95"
+						className="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground text-sm transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
+						disabled={isSaving}
 						onClick={handleSave}
 						type="button"
 					>
-						<Save className="h-4 w-4" /> Simpan
+						{isSaving ? (
+							<Loader2 className="h-4 w-4 animate-spin" />
+						) : (
+							<Save className="h-4 w-4" />
+						)}
+						{isSaving ? "Menyimpan..." : "Simpan"}
 					</button>
 				</div>
 			</div>
@@ -149,8 +184,57 @@ function BookingSettingsPage() {
 								<p className="text-sm text-muted-foreground">{formData.featuredProductIds.length} produk dipilih</p>
 							</div>
 							<p className="text-muted-foreground text-sm">
-								Produk akan muncul di halaman booking. Hubungkan ke Convex untuk melihat daftar produk.
+								Pilih produk yang ingin anda tampilkan di halaman booking.
 							</p>
+
+							<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+								{allProducts?.map((product: any) => (
+									<button
+										className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-all ${
+											formData.featuredProductIds.includes(product._id)
+												? "border-primary bg-primary/5 ring-1 ring-primary"
+												: "border-border bg-card hover:bg-muted/50"
+										}`}
+										key={product._id}
+										onClick={() => {
+											const isSelected = formData.featuredProductIds.includes(product._id);
+											const newIds = isSelected
+												? formData.featuredProductIds.filter((id) => id !== product._id)
+												: [...formData.featuredProductIds, product._id];
+											setFormData({ ...formData, featuredProductIds: newIds });
+										}}
+										type="button"
+									>
+										<div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
+											{product.image ? (
+												<img alt={product.name} className="h-full w-full object-cover" src={product.image} />
+											) : (
+												<div className="flex h-full w-full items-center justify-center text-lg font-bold text-muted-foreground">
+													{product.name.charAt(0)}
+												</div>
+											)}
+										</div>
+										<div className="min-w-0 flex-1">
+											<p className="truncate font-bold text-sm">{product.name}</p>
+											<p className="font-medium text-muted-foreground text-xs">
+												Rp {product.price.toLocaleString("id-ID")}
+											</p>
+										</div>
+									</button>
+								))}
+								{!allProducts && (
+									<div className="col-span-full py-12 text-center">
+										<Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+										<p className="mt-2 text-sm text-muted-foreground">Memuat produk...</p>
+									</div>
+								)}
+								{allProducts?.length === 0 && (
+									<div className="col-span-full py-12 text-center">
+										<ShoppingBag className="mx-auto h-8 w-8 text-muted-foreground" />
+										<p className="mt-2 text-sm text-muted-foreground">Belum ada produk.</p>
+									</div>
+								)}
+							</div>
 						</div>
 					</section>
 				)}

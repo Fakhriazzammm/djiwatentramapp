@@ -144,6 +144,69 @@ async function callGeminiAPI(
 }
 
 /**
+ * Robust JSON parsing from AI response
+ */
+function parseAIScanJSON(content: string): any {
+	try {
+		// Remove markdown blocks
+		const cleaned = content
+			.replace(/```json\s*/g, "")
+			.replace(/```\s*/g, "")
+			.trim();
+
+		// Find the block starting with { and ending with }
+		const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+		if (!jsonMatch) return null;
+
+		const parsed = JSON.parse(jsonMatch[0]);
+
+		// Sanitize numeric fields common in scans
+		const sanitizeNum = (v: any) => {
+			if (typeof v === 'number') return v;
+			if (typeof v === 'string') {
+				const n = Number(v.replace(/[^0-9.-]/g, ""));
+				return isNaN(n) ? 0 : n;
+			}
+			return 0;
+		};
+
+		if (parsed.data) {
+			if (parsed.data.amount) parsed.data.amount = sanitizeNum(parsed.data.amount);
+			if (parsed.data.total) parsed.data.total = sanitizeNum(parsed.data.total);
+			if (Array.isArray(parsed.data.items)) {
+				parsed.data.items = parsed.data.items.map((item: any) => ({
+					...item,
+					qty: sanitizeNum(item.qty) || 1,
+					price: sanitizeNum(item.price || item.unitPrice),
+					total: sanitizeNum(item.total || item.subtotal),
+				}));
+			}
+		}
+
+		// Top level fields (for scanImageData style)
+		const fields = ['total', 'subtotal', 'tax', 'serviceCharge', 'discount', 'confidence'];
+		fields.forEach(f => {
+			if (parsed[f] !== undefined) parsed[f] = sanitizeNum(parsed[f]);
+		});
+
+		if (Array.isArray(parsed.items)) {
+			parsed.items = parsed.items.map((item: any) => ({
+				...item,
+				qty: sanitizeNum(item.qty) || 1,
+				price: sanitizeNum(item.price),
+				subtotal: sanitizeNum(item.subtotal),
+			}));
+		}
+
+		return parsed;
+	} catch (e) {
+		console.error("parseAIScanJSON error:", e, "Content start:", content.slice(0, 100));
+		return null;
+	}
+}
+
+
+/**
  * Analyze sales data to provide high-level insights.
  */
 export const generateInsights = action({
@@ -2355,102 +2418,97 @@ async function runReceiptOCR(imageDataUrl: string): Promise<{
 		description?: string;
 		paymentMethod?: string;
 		notes?: string;
+		merchantName?: string;
+		date?: string;
 	};
 	confidence: number;
 	rawText: string;
 }> {
-	// Try Python OCR Service first
-	console.log("Attempting Python OCR Service...");
-	const pythonResult = await callPythonOCRService(imageDataUrl, "ocr/receipt");
-
-	if (pythonResult.success && pythonResult.type !== "unknown") {
-		console.log("Python OCR Service succeeded");
-		return {
-			type: pythonResult.type as "order" | "expense" | "income" | "unknown",
-			data: pythonResult.data,
-			rawText: pythonResult.raw_text,
-			confidence: pythonResult.confidence,
-		};
+	// Try Python OCR Service ONLY if it looks like it might be available (localhost check)
+	// In production (cloud), we skip this early to avoid timeouts
+	const isLocal = process.env.OCR_SERVICE_URL?.includes("localhost") || process.env.OCR_SERVICE_URL?.includes("127.0.0.1");
+	
+	if (isLocal) {
+		console.log("Attempting Python OCR Service...");
+		try {
+			const pythonResult = await callPythonOCRService(imageDataUrl, "ocr/receipt");
+			if (pythonResult.success && pythonResult.type !== "unknown") {
+				console.log("Python OCR Service succeeded");
+				return {
+					type: pythonResult.type as "order" | "expense" | "income" | "unknown",
+					data: pythonResult.data,
+					rawText: pythonResult.raw_text,
+					confidence: pythonResult.confidence,
+				};
+			}
+		} catch (e) {
+			console.log("Python OCR Service unreachable, falling back to Gemini.");
+		}
 	}
 
-	console.log("Python OCR Service failed, using Gemini API...");
+	console.log("Using Gemini API for OCR...");
 
 	// Fallback: Use shared Gemini API helper
 	const base64Data = imageDataUrl.includes(",") ? imageDataUrl.split(",")[1] : imageDataUrl;
 	if (!base64Data) {
-		throw new Error("Invalid image data URL format");
+		throw new ConvexError("Format gambar tidak valid (Base64 data missing)");
 	}
 
 	const mimeMatch = imageDataUrl.match(/^data:(image\/[a-zA-Z+]+);base64,/);
 	const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
 
-	const prompt = `Kamu adalah sistem OCR AI tingkat lanjut yang khusus untuk mengekstrak data dari dokumen keuangan Indonesia (termasuk struk belanja, kwitansi, nota, tagihan, dan tulisan tangan).
+	const prompt = `Kamu adalah pakar OCR struk belanja Indonesia yang sangat teliti.
+Tugas kamu adalah mengekstrak data dari struk/kwitansi ini ke dalam format JSON.
 
-Tugas kamu adalah menganalisis gambar dengan sangat teliti dan akurat. Identifikasi detail berikut:
-1. Informasi Merchant: Nama toko, alamat lengkap, nomor telepon, dan nomor NPWP jika ada.
-2. Detail Transaksi: Tanggal, waktu, nomor invoice/transaksi/struk.
-3. Itemized List: Ekstrak SEMUA item dengan kolom: nama item, kuantitas (qty), harga satuan, dan total harga item tersebut. Sertakan juga diskon spesifik item jika ada.
-4. Ringkasan Keuangan: Subtotal, Pajak/PPN, Service Charge (biaya layanan), Diskon (total), dan Total Akhir (angka terbesar di bagian bawah).
-5. Pembayaran: Metode pembayaran (QRIS, Tunai/Cash, Kartu Debit/Kredit, Transfer, dll).
+PENTING:
+1. Baca DARI ATAS KE BAWAH secara lengkap.
+2. Ekstrak Merchant: Nama toko/restoran.
+3. Ekstrak Items: Daftar item, qty, harga satuan, subtotal.
+4. Ekstrak Summary: Subtotal, Pajak, Service Charge, Diskon, dan TOTAL AKHIR.
+5. Kategori: Tentukan kategori yang paling cocok (makanan_minuman, belanja_stok, utilitas, dll).
+6. Tentukan Type: "expense" (pengeluaran) atau "income" (jika ini struk penjualan toko kamu).
 
-Output harus dalam format JSON murni (TANPA markdown, TANPA penjelasan tambahan):
+Output harus JSON murni:
 {
   "type": "expense",
   "data": {
-    "merchantName": "Nama Merchant",
-    "merchantAddress": "Alamat Merchant",
-    "merchantPhone": "No Telepon",
+    "merchantName": "Nama Toko",
+    "amount": 100000,
+    "items": [{"name": "Item A", "quantity": 1, "price": 100000, "total": 100000}],
+    "category": "makanan_minuman",
+    "paymentMethod": "qris",
     "date": "YYYY-MM-DD",
-    "time": "HH:mm",
-    "invoiceNumber": "No Struk",
-    "amount": 50000,
-    "subtotal": 45000,
-    "tax": 5000,
-    "serviceCharge": 0,
-    "discount": 0,
-    "items": [
-      {"name": "Nama Produk", "quantity": 1, "price": 45000, "total": 45000}
-    ],
-    "category": "makanan|minuman|belanja|transportasi|tagihan|kesehatan|lainnya",
-    "paymentMethod": "qris|cash|debit|credit|transfer|unknown",
-    "notes": "Informasi tambahan"
+    "notes": "Alamat/Info tambahan"
   },
-  "confidence": 0.95
+  "confidence": 95
 }`;
 
 	const geminiResult = await callGeminiAPI(prompt, base64Data, mimeType, { maxOutputTokens: 2000 });
 
 	if (!geminiResult.success || !geminiResult.text) {
-		throw new Error(`Gemini OCR gagal: ${geminiResult.error || "Empty response"}`);
+		throw new ConvexError(`Gemini OCR gagal: ${geminiResult.error || "Tidak ada respon dari AI"}`);
 	}
 
-	const content = geminiResult.text;
-
-	// Try to parse JSON from response
-	const cleaned = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-	const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-	if (jsonMatch) {
-		try {
-			const parsed = JSON.parse(jsonMatch[0]);
-			return {
-				type: parsed.type || "unknown",
-				data: parsed.data || {},
-				rawText: content,
-				confidence: parsed.confidence || 0.5,
-			};
-		} catch {
-			// JSON parse failed, continue
-		}
+	const parsed = parseAIScanJSON(geminiResult.text);
+	
+	if (parsed) {
+		return {
+			type: (parsed.type || parsed.transactionType || "unknown") as any,
+			data: parsed.data || parsed,
+			rawText: geminiResult.text,
+			confidence: (parsed.confidence || 50) / 100, // Normalized to 0-1
+		};
 	}
 
-	// Fallback to raw text
+	// Fallback to raw text if parsing failed
 	return {
 		type: "unknown",
 		data: {},
-		rawText: content,
-		confidence: 0.3,
+		rawText: geminiResult.text,
+		confidence: 0.1,
 	};
 }
+
 
 /**
  * Proses satu gambar struk menggunakan AI OCR (GPT-4o Vision)
@@ -2882,89 +2940,28 @@ PENTING:
 				);
 			}
 
-			const content = geminiResult.text;
-
-			// Safe JSON Parsing - handle markdown code blocks
-			const cleaned = content
-				.replace(/```json\s*/g, "")
-				.replace(/```\s*/g, "")
-				.trim();
-			const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-			if (!jsonMatch) {
-				console.error("scanImageData: No JSON found in response:", content.slice(0, 500));
-				throw new ConvexError("AI tidak dapat mengekstrak data dari gambar. Coba dengan gambar yang lebih jelas.");
+			const parsed = parseAIScanJSON(geminiResult.text);
+			if (!parsed) {
+				console.error("scanImageData: parsing failed for:", geminiResult.text.slice(0, 500));
+				throw new ConvexError("AI tidak dapat mengekstrak data dari gambar. Pastikan gambar jelas dan coba lagi.");
 			}
 
-			let parsed: Record<string, unknown>;
-			try {
-				parsed = JSON.parse(jsonMatch[0]);
-			} catch (parseError) {
-				console.error("scanImageData: JSON parse error:", parseError, "Raw:", jsonMatch[0].slice(0, 300));
-				throw new ConvexError("AI mengembalikan format data yang tidak valid. Coba lagi dengan gambar yang lebih jelas.");
-			}
-
-			// Validate and fix numeric fields
-			const ensureNumber = (val: unknown): number => {
-				if (typeof val === "number") return val;
-				if (typeof val === "string") {
-					const num = Number(val.replace(/[.,\s]/g, ""));
-					return isNaN(num) ? 0 : num;
-				}
-				return 0;
+			// Ensure legacy structure for compatibility if needed
+			const result = {
+				...parsed,
+				rawText: parsed.rawText || geminiResult.text,
+				confidence: parsed.confidence || 80,
 			};
 
-			parsed.total = ensureNumber(parsed.total);
-			parsed.subtotal = ensureNumber(parsed.subtotal);
-			parsed.tax = ensureNumber(parsed.tax);
-			parsed.serviceCharge = ensureNumber(parsed.serviceCharge);
-			parsed.discount = ensureNumber(parsed.discount);
-
-			// Fix items array
-			if (Array.isArray(parsed.items)) {
-				parsed.items = (parsed.items as Array<Record<string, unknown>>).map((item) => ({
-					name: String(item.name || "Item tidak dikenal"),
-					qty: ensureNumber(item.qty) || 1,
-					price: ensureNumber(item.price),
-					subtotal: ensureNumber(item.subtotal) || (ensureNumber(item.qty) || 1) * ensureNumber(item.price),
-				}));
-
-				// Recalculate total from items if total seems wrong
-				const itemsTotal = (parsed.items as Array<{ subtotal: number }>).reduce((sum, item) => sum + item.subtotal, 0);
-				if ((parsed.total as number) === 0 && itemsTotal > 0) {
-					parsed.total = itemsTotal + (parsed.tax as number) + (parsed.serviceCharge as number) - (parsed.discount as number);
-				}
-				if ((parsed.subtotal as number) === 0 && itemsTotal > 0) {
-					parsed.subtotal = itemsTotal;
-				}
-			} else {
-				parsed.items = [];
-			}
-
-			parsed.confidence = ensureNumber(parsed.confidence);
-			if ((parsed.confidence as number) === 0) parsed.confidence = 50;
-
-			// Ensure required string fields
-			parsed.type = parsed.type || "other";
-			parsed.name = parsed.name || "Tidak terdeteksi";
-			parsed.category = parsed.category || "lainnya";
-			parsed.transactionType = parsed.transactionType || "unknown";
-			parsed.paymentMethod = parsed.paymentMethod || "unknown";
-			parsed.rawText = parsed.rawText || "";
-			parsed.notes = parsed.notes || "";
-
-			return parsed;
+			return result;
 		} catch (error) {
-			// Ensure all errors are ConvexError so they reach the client properly
-			if (error instanceof ConvexError) {
-				throw error;
-			}
-			console.error("scanImageData unhandled error:", error);
-			throw new ConvexError(
-				`Gagal memproses gambar: ${error instanceof Error ? error.message : "Terjadi kesalahan. Coba lagi dengan gambar yang lebih jelas."}`
-			);
+			if (error instanceof ConvexError) throw error;
+			console.error("scanImageData unexpected error:", error);
+			throw new ConvexError(`Gagal memproses gambar: ${error instanceof Error ? error.message : "Terjadi kesalahan sistem"}`);
 		}
 	},
 });
+
 
 /**
  * Scan multiple images in bulk using scanImageData logic for each.

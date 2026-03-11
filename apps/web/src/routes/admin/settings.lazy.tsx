@@ -67,8 +67,8 @@ function SettingsPage() {
 		storePhone: "",
 		receiptFooter: "Terima kasih!",
 		autoPrint: false,
-		taxRate: 10,
-		serviceCharge: 5,
+		taxRate: 0,
+		serviceChargeRate: 0,
 		currency: "IDR",
 		timezone: "UTC+7 (Jakarta)",
 		lowStockAlert: 10,
@@ -88,6 +88,7 @@ function SettingsPage() {
 		landingButtonText: "Pesan Disini",
 		logoUrl: "",
 		paymentPopupImage: "",
+		qrisImage: "",
 	});
 
 	const [paymentSettings, setPaymentSettings] = useState({
@@ -142,6 +143,7 @@ function SettingsPage() {
 				landingButtonText: siteSettings.landingButtonText ?? "Pesan Disini",
 				logoUrl: siteSettings.logoUrl ?? "",
 				paymentPopupImage: siteSettings.paymentPopupImage ?? "",
+				qrisImage: siteSettings.qrisImage ?? "",
 			});
 			setSettings((prev) => ({
 				...prev,
@@ -150,6 +152,8 @@ function SettingsPage() {
 				storePhone: siteSettings.storePhone ?? "",
 				receiptFooter: siteSettings.receiptFooter ?? "Terima kasih!",
 				autoPrint: siteSettings.autoPrint ?? false,
+				taxRate: siteSettings.taxRate ?? 0,
+				serviceChargeRate: siteSettings.serviceChargeRate ?? 0,
 				appName: siteSettings.appName ?? "Yumi POS",
 				appVersion: siteSettings.appVersion ?? "1.0.0",
 				developerName: siteSettings.developerName ?? "Zantara Technology",
@@ -197,6 +201,9 @@ function SettingsPage() {
 				mayarTestMode: paymentSettings.mayarTestMode,
 				// Manual Payment
 				paymentMethodsManual: paymentSettings.manualMethods,
+				taxRate: settings.taxRate,
+				serviceChargeRate: settings.serviceChargeRate,
+				qrisImage: landingSettings.qrisImage,
 			};
 			console.log("Saving settings:", payload);
 			await updateSiteSettings(payload);
@@ -613,17 +620,80 @@ function SettingsPage() {
 												onChange={(e) =>
 													setSettings({
 														...settings,
-														serviceCharge: Number(e.target.value),
+														serviceChargeRate: Number(e.target.value),
 													})
 												}
 												type="number"
-												value={settings.serviceCharge}
+												value={settings.serviceChargeRate}
 											/>
 											<span className="absolute top-1/2 right-5 -translate-y-1/2 font-bold text-muted-foreground/40">
 												%
 											</span>
 										</div>
 										<p className="text-[10px] text-muted-foreground">Biaya layanan operasional restoran</p>
+									</div>
+								</div>
+
+								{/* QRIS Statis Image Upload */}
+								<div className="space-y-4 pt-4 border-t border-border/50">
+									<label
+										className="font-medium text-muted-foreground text-xs uppercase tracking-widest"
+										htmlFor="qris-image"
+									>
+										Kode QR QRIS Statis
+									</label>
+									<p className="text-muted-foreground text-xs -mt-3">
+										Upload gambar QR Code toko Anda untuk pembayaran QRIS Statis.
+									</p>
+									<div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+										{landingSettings.qrisImage && (
+											<div className="relative h-48 w-48 overflow-hidden rounded-xl border-4 border-muted bg-white shadow-inner flex items-center justify-center p-2">
+												<img
+													alt="QRIS Preview"
+													className="max-h-full max-w-full object-contain"
+													src={landingSettings.qrisImage}
+												/>
+											</div>
+										)}
+										<div className="flex flex-1 flex-col gap-3">
+											<input
+												accept="image/*"
+												className="block w-full text-muted-foreground text-sm file:mr-4 file:rounded-xl file:border-0 file:bg-primary file:px-6 file:py-2.5 file:font-bold file:text-primary-foreground file:text-xs file:transition-all hover:file:opacity-90"
+												id="qris-image"
+												onChange={async (e) => {
+													const file = e.target.files?.[0];
+													if (!file) {
+														return;
+													}
+													try {
+														const postUrl = await generateUploadUrl();
+														const result = await fetch(postUrl, {
+															method: "POST",
+															headers: { "Content-Type": file.type },
+															body: file,
+														});
+														if (!result.ok) {
+															throw new Error("Upload failed");
+														}
+														const { storageId } = await result.json();
+														setLandingSettings({
+															...landingSettings,
+															qrisImage: storageId,
+														});
+														toast.success(
+															"QRIS berhasil diunggah! Klik Simpan untuk mengaktifkan."
+														);
+													} catch (error) {
+														console.error(error);
+														toast.error("Gagal mengupload gambar QRIS");
+													}
+												}}
+												type="file"
+											/>
+											<p className="text-muted-foreground/60 text-xs">
+												Pastikan gambar QR Code terlihat jelas.
+											</p>
+										</div>
 									</div>
 								</div>
 

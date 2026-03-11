@@ -138,7 +138,6 @@ export default defineSchema({
 		// Mayar Payment Gateway
 		mayarEnabled: v.optional(v.boolean()),
 		mayarTestMode: v.optional(v.boolean()),
-		// Manual Payment Methods Configuration
 		paymentMethodsManual: v.optional(
 			v.object({
 				cash: v.boolean(),
@@ -146,6 +145,9 @@ export default defineSchema({
 				transfer: v.boolean(),
 			})
 		),
+		taxRate: v.optional(v.number()),
+		serviceChargeRate: v.optional(v.number()),
+		qrisImage: v.optional(v.string()), 
 	}),
 
 	// Discounts / Vouchers

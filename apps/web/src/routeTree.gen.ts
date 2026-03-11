@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as MenuImprovedRouteImport } from './routes/menu-improved'
 import { Route as MenuRouteImport } from './routes/menu'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BookingRouteImport } from './routes/booking'
@@ -30,11 +29,6 @@ import { Route as AdminFinanceRouteRouteImport } from './routes/admin/finance/ro
 import { Route as AdminFinanceIndexRouteImport } from './routes/admin/finance/index'
 import { Route as AdminFinanceReportsRouteRouteImport } from './routes/admin/finance/reports/route'
 
-const MenuImprovedRoute = MenuImprovedRouteImport.update({
-  id: '/menu-improved',
-  path: '/menu-improved',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/menu-improved.lazy').then((d) => d.Route))
 const MenuRoute = MenuRouteImport.update({
   id: '/menu',
   path: '/menu',
@@ -150,7 +144,6 @@ export interface FileRoutesByFullPath {
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
   '/menu': typeof MenuRoute
-  '/menu-improved': typeof MenuImprovedRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/booking': typeof AdminBookingRoute
@@ -171,7 +164,6 @@ export interface FileRoutesByTo {
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
   '/menu': typeof MenuRoute
-  '/menu-improved': typeof MenuImprovedRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/booking': typeof AdminBookingRoute
   '/admin/discounts': typeof AdminDiscountsRoute
@@ -193,7 +185,6 @@ export interface FileRoutesById {
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
   '/menu': typeof MenuRoute
-  '/menu-improved': typeof MenuImprovedRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/booking': typeof AdminBookingRoute
@@ -217,7 +208,6 @@ export interface FileRouteTypes {
     | '/booking'
     | '/dashboard'
     | '/menu'
-    | '/menu-improved'
     | '/admin/finance'
     | '/admin/ai-chat'
     | '/admin/booking'
@@ -238,7 +228,6 @@ export interface FileRouteTypes {
     | '/booking'
     | '/dashboard'
     | '/menu'
-    | '/menu-improved'
     | '/admin/ai-chat'
     | '/admin/booking'
     | '/admin/discounts'
@@ -259,7 +248,6 @@ export interface FileRouteTypes {
     | '/booking'
     | '/dashboard'
     | '/menu'
-    | '/menu-improved'
     | '/admin/finance'
     | '/admin/ai-chat'
     | '/admin/booking'
@@ -282,18 +270,10 @@ export interface RootRouteChildren {
   BookingRoute: typeof BookingRoute
   DashboardRoute: typeof DashboardRoute
   MenuRoute: typeof MenuRoute
-  MenuImprovedRoute: typeof MenuImprovedRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/menu-improved': {
-      id: '/menu-improved'
-      path: '/menu-improved'
-      fullPath: '/menu-improved'
-      preLoaderRoute: typeof MenuImprovedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/menu': {
       id: '/menu'
       path: '/menu'
@@ -483,7 +463,6 @@ const rootRouteChildren: RootRouteChildren = {
   BookingRoute: BookingRoute,
   DashboardRoute: DashboardRoute,
   MenuRoute: MenuRoute,
-  MenuImprovedRoute: MenuImprovedRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -27,7 +27,7 @@ import {
 	Wallet,
 	X,
 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -200,7 +200,7 @@ function DashboardTab({ onClose, onNavigate }: { onClose: () => void; onNavigate
 	const balance = financialSummary?.netBalance || 0;
 
 	const todayOrders =
-		orders?.filter((o) => o.createdAt >= today.getTime()) || [];
+		orders?.filter((o: Doc<"orders">) => o.createdAt >= today.getTime()) || [];
 	const totalSales = todayOrders
 		.filter(
 			(o: Doc<"orders">) => o.status === "paid" || o.status === "completed"
@@ -321,7 +321,7 @@ function DashboardTab({ onClose, onNavigate }: { onClose: () => void; onNavigate
 					</div>
 				) : (
 					<div className="space-y-2">
-						{recentOrders.map((order) => (
+						{recentOrders.map((order: Doc<"orders">) => (
 							<div
 								className="flex items-center justify-between rounded-lg border bg-muted/30 p-2"
 								key={order._id}
@@ -945,7 +945,7 @@ function InventoryTab({
 			</div>
 			<ScrollArea className="h-[52vh] pr-2">
 				<div className="space-y-2">
-					{inventory.map((item) => {
+					{inventory.map((item: Doc<"inventory">) => {
 						const isEditing = editingId === item._id;
 						const isLowStock = item.quantity <= item.lowStockThreshold;
 
@@ -1162,7 +1162,7 @@ function MarketList() {
 			) : (
 				<ScrollArea className="h-[52vh] pr-2">
 					<div className="space-y-2">
-						{lowStockItems.map((item) => (
+						{lowStockItems.map((item: Doc<"inventory">) => (
 							<Card
 								className="border-destructive/30 bg-destructive/5"
 								key={item._id}

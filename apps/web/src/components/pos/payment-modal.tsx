@@ -168,7 +168,7 @@ export function PaymentConfirmationModal({
 			options.push({ id: "tunai", label: "TUNAI (CASH)" });
 		}
 		if (manualMethods?.qris !== false) {
-			options.push({ id: "qris", label: "QRIS MANUAL" });
+			options.push({ id: "qris", label: "QRIS STATIS" });
 		}
 		if (manualMethods?.transfer !== false) {
 			options.push({ id: "transfer", label: "TRANSFER BANK" });
@@ -217,9 +217,21 @@ export function PaymentConfirmationModal({
 						<X className="h-5 w-5" />
 					</IconButton>
 
-					{/* Image Header */}
 					<div className="flex flex-col items-center justify-center border-border border-b bg-muted/50 p-8 pb-4">
-						{siteSettings?.paymentPopupImage ? (
+						{selectedPaymentMethod === "qris" && siteSettings?.qrisImage ? (
+							<div className="flex flex-col items-center gap-4">
+								<div className="rounded-xl border-4 border-white bg-white p-2 shadow-lg">
+									<img
+										alt="QRIS Statis"
+										className="max-h-[200px] w-auto object-contain"
+										src={siteSettings.qrisImage}
+									/>
+								</div>
+								<p className="font-bold text-primary text-sm tracking-widest">
+									PINDAI UNTUK MEMBAYAR
+								</p>
+							</div>
+						) : siteSettings?.paymentPopupImage ? (
 							<img
 								alt="QRIS Payment"
 								className="max-h-[140px] w-auto max-w-full rounded-md object-contain shadow-sm"
