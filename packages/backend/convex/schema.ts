@@ -526,4 +526,48 @@ export default defineSchema({
 		bankDetails: v.optional(v.string()),
 		isActive: v.boolean(),
 	}).index("by_slug", ["slug"]),
+
+	// Customer booking orders
+	bookingOrders: defineTable({
+		slug: v.string(),
+		bookingCode: v.string(),
+		customerName: v.string(),
+		customerPhone: v.string(),
+		customerEmail: v.string(),
+		notes: v.optional(v.string()),
+		bookingDate: v.string(), // "YYYY-MM-DD"
+		items: v.array(
+			v.object({
+				productId: v.string(),
+				name: v.string(),
+				price: v.number(),
+				quantity: v.number(),
+			})
+		),
+		totalAmount: v.number(),
+		paymentMethod: v.string(),
+		paymentStatus: v.union(
+			v.literal("pending"),
+			v.literal("paid"),
+			v.literal("cancelled")
+		),
+		bookingStatus: v.union(
+			v.literal("pending"),
+			v.literal("confirmed"),
+			v.literal("cancelled"),
+			v.literal("completed")
+		),
+		createdAt: v.number(),
+	})
+		.index("by_slug", ["slug"])
+		.index("by_slug_date", ["slug", "bookingDate"])
+		.index("by_booking_code", ["bookingCode"]),
+
+	// Admin-set capacity limits per date
+	bookingDateCapacity: defineTable({
+		slug: v.string(),
+		date: v.string(), // "YYYY-MM-DD"
+		maxCapacity: v.number(),
+		notes: v.optional(v.string()),
+	}).index("by_slug_date", ["slug", "date"]),
 });
