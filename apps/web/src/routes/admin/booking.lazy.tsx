@@ -364,6 +364,8 @@ function BookingSettingsPage() {
 	const generateUploadUrl = useMutation(api.booking.generateUploadUrl);
 	const dateCapacities = useQuery(api.booking.getDateCapacities, { slug: "booking" });
 
+	const capacitySectionRef = useRef<HTMLDivElement>(null);
+
 	const today = new Date();
 	const [calYear, setCalYear] = useState(today.getFullYear());
 	const [calMonth, setCalMonth] = useState(today.getMonth());
@@ -704,7 +706,7 @@ function BookingSettingsPage() {
 
 			{/* ── CAPACITY TAB ── */}
 			{activeTab === "capacity" && (
-				<div className="space-y-6">
+				<div className="space-y-6" ref={capacitySectionRef}>
 					{/* Add/edit capacity form */}
 					<section className="rounded-2xl border border-border bg-card p-5 space-y-4">
 						<div className="flex items-center gap-2">
@@ -752,7 +754,6 @@ function BookingSettingsPage() {
 									<input
 										className="w-full rounded-xl bg-muted/50 p-3 font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
 										id="cap-date"
-										min={todayStr()}
 										onChange={(e) => setCapDate(e.target.value)}
 										type="date"
 										value={capDate}
@@ -902,11 +903,14 @@ function BookingSettingsPage() {
 														<button
 															className="text-xs text-muted-foreground hover:text-foreground"
 															onClick={() => {
+																setIsBulk(false);
 																setCapDate(cap.date);
 																setCapPeople(String(cap.maxPeople));
 																setCapTables(String(cap.maxTables));
 																setCapPeoplePerTable(String(cap.peoplePerTable));
 																setCapNotes(cap.notes || "");
+																capacitySectionRef.current?.scrollIntoView({ behavior: "smooth" });
+																toast.info(`Mengedit kapasitas ${formatDate(cap.date)}`);
 															}}
 															type="button"
 														>

@@ -137,7 +137,7 @@ function AdminLayout() {
 	const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
 
 	const settings = useQuery(api.site_settings.getSettings);
-	const storeName = settings?.storeName || "TKM Admin";
+	const storeName = settings?.storeName || "Yumi POS";
 	const appName = settings?.appName || "Yumi POS";
 
 	const location = useLocation();

@@ -1,11 +1,16 @@
 import { createLazyFileRoute, Link } from "@tanstack/react-router";
 import { Coffee, Globe, ShoppingCart, Users } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "@yumipos/backend/convex/_generated/api";
 
 export const Route = createLazyFileRoute("/")({
 	component: IndexPage,
 });
 
 function IndexPage() {
+	const settings = useQuery(api.site_settings.getSettings);
+	const appName = settings?.appName || "YumiPOS";
+
 	return (
 		<div className="flex min-h-screen flex-col">
 			{/* Header */}
@@ -15,7 +20,7 @@ function IndexPage() {
 						<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
 							<Coffee className="h-5 w-5 text-primary-foreground" />
 						</div>
-						<span className="font-bold text-xl">YumiPOS</span>
+						<span className="font-bold text-xl">{appName}</span>
 					</div>
 					<nav className="flex items-center gap-2">
 						<Link
@@ -96,7 +101,7 @@ function IndexPage() {
 			{/* Footer */}
 			<footer className="border-t border-border bg-muted/30 px-4 py-6">
 				<div className="mx-auto max-w-6xl text-center text-muted-foreground text-sm">
-					<p>&copy; 2026 YumiPOS. All rights reserved.</p>
+					<p>&copy; 2026 {appName}. All rights reserved.</p>
 				</div>
 			</footer>
 		</div>

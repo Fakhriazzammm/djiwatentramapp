@@ -855,7 +855,7 @@ function BookingPage() {
 								</div>
 								<button
 									className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98]"
-									onClick={() => setStep(5)}
+									onClick={() => setStep(6)}
 									style={{ background: themeColor }}
 									type="button"
 								>
