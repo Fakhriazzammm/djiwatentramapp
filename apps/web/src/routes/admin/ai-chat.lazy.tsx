@@ -311,8 +311,8 @@ function AIChatPage() {
 			// Remove heading markdown
 			.replace(/^#+\s+/gm, "")
 			// Remove bullet points (*) and replace with emoji
-			.replace(/^\*\s+/gm, "â€¢ ")
-			.replace(/^\-\s+/gm, "â€¢ ")
+			.replace(/^\*\s+/gm, "🔹 ")
+			.replace(/^\-\s+/gm, "🔹 ")
 			// Remove code blocks
 			.replace(/```[\s\S]*?```/g, "")
 			// Remove inline code
@@ -678,9 +678,9 @@ function AIChatPage() {
 
 				const items = result.items as Array<{ name: string; qty: number; price: number; subtotal: number }> | undefined;
 				let summaryText = "";
-				if (result.name) summaryText += `ðŸª Merchant: ${result.name}\n`;
+				if (result.name) summaryText += `🍩 Merchant: ${result.name}\n`;
 				if (items && items.length > 0) {
-					summaryText += `\nðŸ“‹ Detail Item (${items.length} item):\n`;
+					summaryText += `\n📋 Detail Item (${items.length} item):\n`;
 					items.forEach((item: { name: string; qty: number; price: number; subtotal: number }, i: number) => {
 						summaryText += `${i + 1}. ${item.name} x${item.qty} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`;
 					});
@@ -688,13 +688,13 @@ function AIChatPage() {
 				if (result.subtotal) summaryText += `\nSubtotal: Rp ${Number(result.subtotal).toLocaleString("id-ID")}`;
 				if (result.tax) summaryText += `\nPajak: Rp ${Number(result.tax).toLocaleString("id-ID")}`;
 				if (result.discount) summaryText += `\nDiskon: -Rp ${Number(result.discount).toLocaleString("id-ID")}`;
-				summaryText += `\n\nðŸ’° Total: Rp ${Number(result.total).toLocaleString("id-ID")}`;
-				summaryText += `\n\nðŸ“Š Keyakinan: ${result.confidence}% | Kategori: ${result.category.replace(/_/g, " ")} | Bayar: ${result.paymentMethod}`;
+				summaryText += `\n\n💰 Total: Rp ${Number(result.total).toLocaleString("id-ID")}`;
+				summaryText += `\n\n📊 Keyakinan: ${result.confidence}% | Kategori: ${result.category.replace(/_/g, " ")} | Bayar: ${result.paymentMethod}`;
 				if (result.date) summaryText += ` | Tanggal: ${result.date}`;
 
-				summaryText += `\n\n[SUGGEST: ðŸ’° Simpan ke Pengeluaran | Tolong catat hasil scan dari ${result.name || "Toko"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pengeluaran]`;
-				summaryText += `\n[SUGGEST: ðŸ“ˆ Simpan ke Pemasukan | Tolong catat hasil scan dari ${result.name || "Sumber"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pemasukan]`;
-				summaryText += "\n[SUGGEST: âŒ Batalkan | Batalkan pencatatan ini]";
+				summaryText += `\n\n[SUGGEST: 💰 Simpan ke Pengeluaran | Tolong catat hasil scan dari ${result.name || "Toko"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pengeluaran]`;
+				summaryText += `\n[SUGGEST: 📈 Simpan ke Pemasukan | Tolong catat hasil scan dari ${result.name || "Sumber"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pemasukan]`;
+				summaryText += "\n[SUGGEST: ❌ Batalkan | Batalkan pencatatan ini]";
 
 				const suggestions = extractSuggestions(summaryText);
 				const sanitized = sanitizeResponse(summaryText);

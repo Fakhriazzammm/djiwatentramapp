@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Globe, Link as LinkIcon, Loader2, Save, ShoppingBag, Smartphone } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { api } from "../../../../packages/backend/convex/_generated/api";
+import { api } from "@yumipos/backend/convex/_generated/api";
 
 export const Route = createLazyFileRoute("/admin/booking")({
 	component: BookingSettingsPage,

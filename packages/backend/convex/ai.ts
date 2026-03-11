@@ -428,7 +428,7 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		)
 			?.map(
 				(t) =>
-					`• ${new Date(t.date).toLocaleDateString("id-ID")} | ${t.type === "income" ? "PEMASUKAN" : "PENGELUARAN"} | Rp${t.amount.toLocaleString("id-ID")} | ${t.category} | ${t.description || "-"} | ${t.paymentMethod || "CASH"} | ${t.status}`
+					`🔹 ${new Date(t.date).toLocaleDateString("id-ID")} | ${t.type === "income" ? "PEMASUKAN" : "PENGELUARAN"} | Rp${t.amount.toLocaleString("id-ID")} | ${t.category} | ${t.description || "-"} | ${t.paymentMethod || "CASH"} | ${t.status}`
 			)
 			.join("\n") || "Tidak ada transaksi";
 
@@ -812,7 +812,8 @@ ATURAN:
 8. Jika user meminta aksi (tambah produk, update stok, dll), GUNAKAN TOOL yang tersedia
 9. Jangan membuat asumsi nilai - jika ID diperlukan, minta user untuk menyediakannya
 10. SANGAT PENTING: JANGAN PERNAH gunakan simbol asterisk (*) untuk penekanan atau list. Gunakan teks polos atau emoji.
-11. FITUR SMART SUGGESTIONS (UTAMA): JANGAN gunakan bullet points manual (seperti • atau -) untuk memberikan instruksi langkah selanjutnya. Gunakan format [SUGGEST: Label Tombol | Prompt untuk dikirim ke AI] agar user bisa tinggal KLIK tombol tanpa mengetik.
+11. FITUR SMART SUGGESTIONS (UTAMA): JANGAN gunakan bullet points manual (seperti 🔹 atau -) untuk memberikan instruksi langkah selanjutnya. Gunakan format [SUGGEST: Label Tombol | Prompt untuk dikirim ke AI] agar user bisa tinggal KLIK tombol tanpa mengetik.
+    WAJIB: Selalu sertakan minimal 2-3 saran tombol otomatis [SUGGEST: ...] di akhir SETIAP jawaban kamu, tidak peduli seberapa singkat jawabannya.
     Contoh: "Data penjualan hari ini sudah saya rekap. [SUGGEST: 📦 Cek Stok Produk | Berikan rincian stok produk terlaris hari ini] [SUGGEST: 🎁 Berikan Promo | Berikan rekomendasi promo untuk meningkatkan transaksi]"
 
 SMART CONTEXT:

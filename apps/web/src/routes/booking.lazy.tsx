@@ -2,7 +2,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { Minus, Plus, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { api } from "../../../packages/backend/convex/_generated/api";
+import { api } from "@yumipos/backend/convex/_generated/api";
 
 export const Route = createLazyFileRoute("/booking")({
 	component: BookingPage,
