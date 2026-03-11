@@ -12,6 +12,7 @@ import {
 	Archive,
 	Calculator,
 	Calendar,
+	ChevronDown,
 	ChevronLeft,
 	ChevronRight,
 	ClipboardList,
@@ -87,15 +88,42 @@ const MORE_MENU_PATHS = [
 	"/admin/settings",
 ];
 
-// Quick menu items (accessible from bottom sheet)
-const QUICK_MENU_ITEMS = [
-	{ to: "/admin/products", icon: Package, label: "Produk" },
-	{ to: "/admin/inventory", icon: Archive, label: "Inventaris" },
-	{ to: "/admin/discounts", icon: Percent, label: "Promosi" },
-	{ to: "/admin/hpp-calculator", icon: Calculator, label: "HPP" },
-	{ to: "/admin/forecasting", icon: Grid3X3, label: "Forecast" },
-	{ to: "/admin/booking", icon: Calendar, label: "Booking" },
-	{ to: "/admin/settings", icon: Settings, label: "Pengaturan" },
+// Quick menu items grouped by section (accessible from bottom sheet)
+const QUICK_MENU_SECTIONS = [
+	{
+		label: "Manajemen",
+		items: [
+			{ to: "/admin/products", icon: Package, label: "Produk" },
+			{ to: "/admin/inventory", icon: Archive, label: "Inventaris" },
+			{ to: "/admin/booking", icon: Calendar, label: "Booking" },
+		],
+	},
+	{
+		label: "Keuangan",
+		items: [
+			{ to: "/admin/finance", icon: Wallet, label: "Keuangan" },
+			{ to: "/admin/finance/reports", icon: FileBarChart, label: "Laporan" },
+			{ to: "/admin/hpp-calculator", icon: Calculator, label: "HPP" },
+		],
+	},
+	{
+		label: "Lainnya",
+		items: [
+			{ to: "/admin/discounts", icon: Percent, label: "Promosi" },
+			{ to: "/admin/forecasting", icon: Grid3X3, label: "Forecast" },
+			{ to: "/admin/settings", icon: Settings, label: "Pengaturan" },
+		],
+	},
+];
+
+// Flat list for backward compat
+const QUICK_MENU_ITEMS = QUICK_MENU_SECTIONS.flatMap((s) => s.items);
+
+// Finance sub-routes for auto-expanding the submenu
+const FINANCE_PATHS = [
+	"/admin/finance",
+	"/admin/finance/reports",
+	"/admin/hpp-calculator",
 ];
 
 function AdminLayout() {
@@ -112,13 +140,34 @@ function AdminLayout() {
 	const storeName = settings?.storeName || "TKM Admin";
 	const appName = settings?.appName || "Yumi POS";
 
+	const location = useLocation();
+	const isAIChat = location.pathname === "/admin/ai-chat";
+	const currentPageTitle = PAGE_TITLES[location.pathname] || "Admin";
+
+	// Auto-open finance submenu if on a finance route
+	const isOnFinancePath = FINANCE_PATHS.some((p) =>
+		location.pathname.startsWith(p),
+	);
+	const [isFinanceOpen, setIsFinanceOpen] = useState(() => {
+		if (typeof window !== "undefined") {
+			const saved = localStorage.getItem("admin-finance-open");
+			if (saved !== null) return saved === "true";
+		}
+		return isOnFinancePath;
+	});
+
+	// Keep finance submenu open when navigating to a finance sub-route
+	useEffect(() => {
+		if (isOnFinancePath) setIsFinanceOpen(true);
+	}, [isOnFinancePath]);
+
 	useEffect(() => {
 		localStorage.setItem("admin-sidebar-collapsed", String(isCollapsed));
 	}, [isCollapsed]);
 
-	const location = useLocation();
-	const isAIChat = location.pathname === "/admin/ai-chat";
-	const currentPageTitle = PAGE_TITLES[location.pathname] || "Admin";
+	useEffect(() => {
+		localStorage.setItem("admin-finance-open", String(isFinanceOpen));
+	}, [isFinanceOpen]);
 
 	// Close quick menu on route change
 	useEffect(() => {
@@ -129,9 +178,8 @@ function AdminLayout() {
 		<div className="flex h-screen w-full overflow-hidden bg-background">
 			{/* === DESKTOP SIDEBAR (hidden on mobile) === */}
 			<aside
-				className={`relative hidden flex-col border-border border-r bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out md:flex ${
-					isCollapsed ? "w-16" : "w-64"
-				}`}
+				className={`relative hidden flex-col border-border border-r bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out md:flex ${isCollapsed ? "w-16" : "w-64"
+					}`}
 			>
 				<div className="flex h-14 items-center gap-2 border-border border-b px-4">
 					<div className="shrink-0 rounded-md bg-primary p-1.5">
@@ -164,13 +212,17 @@ function AdminLayout() {
 					)}
 				</button>
 
-				<nav className="flex-1 space-y-1 p-2">
+				<nav className="flex-1 overflow-y-auto p-2">
+					{/* Yumi AI - standalone at top */}
 					<DesktopNavLink
 						icon={<Sparkles />}
 						isCollapsed={isCollapsed}
 						label="Yumi AI"
 						to="/admin/ai-chat"
 					/>
+
+					{/* UTAMA */}
+					<SidebarSection isCollapsed={isCollapsed} label="Utama" />
 					<DesktopNavLink
 						activeOptions={{ exact: true }}
 						icon={<LayoutDashboard />}
@@ -178,6 +230,15 @@ function AdminLayout() {
 						label="Dasbor"
 						to="/admin"
 					/>
+					<DesktopNavLink
+						icon={<ClipboardList />}
+						isCollapsed={isCollapsed}
+						label="Pesanan"
+						to="/admin/orders"
+					/>
+
+					{/* MANAJEMEN */}
+					<SidebarSection isCollapsed={isCollapsed} label="Manajemen" />
 					<DesktopNavLink
 						icon={<Package />}
 						isCollapsed={isCollapsed}
@@ -191,63 +252,162 @@ function AdminLayout() {
 						to="/admin/inventory"
 					/>
 					<DesktopNavLink
-						icon={<Wallet />}
+						icon={<Calendar />}
 						isCollapsed={isCollapsed}
-						label="Keuangan"
-						to="/admin/finance"
+						label="Booking"
+						to="/admin/booking"
 					/>
-					<DesktopNavLink
-						icon={<FileBarChart />}
-						isCollapsed={isCollapsed}
-						label="Laporan Keuangan"
-						to="/admin/finance/reports"
-					/>
-					<DesktopNavLink
-						icon={<ClipboardList />}
-						isCollapsed={isCollapsed}
-						label="Pesanan"
-						to="/admin/orders"
-					/>
+
+					{/* KEUANGAN - Collapsible */}
+					<SidebarSection isCollapsed={isCollapsed} label="Keuangan" />
+					{isCollapsed ? (
+						<>
+							<DesktopNavLink
+								icon={<Wallet />}
+								isCollapsed={isCollapsed}
+								label="Keuangan"
+								to="/admin/finance"
+							/>
+							<DesktopNavLink
+								icon={<FileBarChart />}
+								isCollapsed={isCollapsed}
+								label="Laporan"
+								to="/admin/finance/reports"
+							/>
+							<DesktopNavLink
+								icon={<Calculator />}
+								isCollapsed={isCollapsed}
+								label="HPP Kalkulator"
+								to="/admin/hpp-calculator"
+							/>
+						</>
+					) : (
+						<>
+							{/* Collapsible parent button */}
+							<button
+								className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all ${isOnFinancePath
+										? "bg-primary/10 text-primary"
+										: "text-muted-foreground hover:bg-muted hover:text-foreground"
+									}`}
+								onClick={() => setIsFinanceOpen(!isFinanceOpen)}
+								type="button"
+							>
+								<span className="shrink-0 [&>svg]:h-5 [&>svg]:w-5">
+									<Wallet />
+								</span>
+								<span className="flex-1 truncate text-left">Keuangan</span>
+								<motion.span
+									animate={{ rotate: isFinanceOpen ? 180 : 0 }}
+									className="shrink-0"
+									transition={{ duration: 0.2 }}
+								>
+									<ChevronDown className="h-4 w-4" />
+								</motion.span>
+							</button>
+
+							{/* Collapsible sub-items */}
+							<AnimatePresence initial={false}>
+								{isFinanceOpen && (
+									<motion.div
+										animate={{ height: "auto", opacity: 1 }}
+										className="overflow-hidden"
+										exit={{ height: 0, opacity: 0 }}
+										initial={{ height: 0, opacity: 0 }}
+										transition={{ duration: 0.2, ease: "easeInOut" }}
+									>
+										<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
+											<DesktopSubNavLink
+												activeOptions={{ exact: true }}
+												icon={<Wallet />}
+												label="Overview"
+												to="/admin/finance"
+											/>
+											<DesktopSubNavLink
+												icon={<FileBarChart />}
+												label="Laporan"
+												to="/admin/finance/reports"
+											/>
+											<DesktopSubNavLink
+												icon={<Calculator />}
+												label="HPP Kalkulator"
+												to="/admin/hpp-calculator"
+											/>
+										</div>
+									</motion.div>
+								)}
+							</AnimatePresence>
+						</>
+					)}
+
+					{/* MARKETING */}
+					<SidebarSection isCollapsed={isCollapsed} label="Marketing" />
 					<DesktopNavLink
 						icon={<Percent />}
 						isCollapsed={isCollapsed}
 						label="Promosi"
 						to="/admin/discounts"
 					/>
-					<DesktopNavLink
-						icon={<Calculator />}
-						isCollapsed={isCollapsed}
-						label="HPP Kalkulator"
-						to="/admin/hpp-calculator"
-					/>
-					<DesktopNavLink
-						icon={<Calendar />}
-						isCollapsed={isCollapsed}
-						label="Booking"
-						to="/admin/booking"
-					/>
+				</nav>
+
+				{/* Footer: User Profile + Pengaturan + Keluar */}
+				<div className="border-border border-t p-2 space-y-1">
+					{/* User Profile */}
+					<div
+						className={`flex items-center gap-2 rounded-md px-2 py-2 ${isCollapsed ? "justify-center" : ""
+							}`}
+					>
+						<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 font-bold text-primary text-xs">
+							A
+						</div>
+						<AnimatePresence>
+							{!isCollapsed && (
+								<motion.div
+									animate={{ opacity: 1, x: 0 }}
+									className="min-w-0 flex-1"
+									exit={{ opacity: 0, x: -5 }}
+									initial={{ opacity: 0, x: -5 }}
+								>
+									<p className="truncate font-medium text-foreground text-sm leading-tight">
+										Admin
+									</p>
+									<p className="truncate text-muted-foreground text-[11px] leading-tight">
+										{storeName}
+									</p>
+								</motion.div>
+							)}
+						</AnimatePresence>
+					</div>
+
+					{/* Pengaturan */}
 					<DesktopNavLink
 						icon={<Settings />}
 						isCollapsed={isCollapsed}
 						label="Pengaturan"
 						to="/admin/settings"
 					/>
-				</nav>
 
-				<div className="border-border border-t p-2">
-					<Link
-						className={`flex w-full items-center gap-2 rounded-md p-2 text-muted-foreground text-xs transition-colors hover:bg-destructive/10 hover:text-destructive ${
-							isCollapsed ? "justify-center" : ""
-						}`}
+					{/* Keluar */}
+					<button
+						className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 font-medium text-muted-foreground text-sm transition-all hover:bg-destructive/10 hover:text-destructive ${isCollapsed ? "justify-center px-0" : ""
+							}`}
+						onClick={() => {
+							authClient.signOut({
+								fetchOptions: {
+									onSuccess: () => {
+										navigate({ to: "/" });
+									},
+								},
+							});
+						}}
 						title={isCollapsed ? "Keluar" : undefined}
-						to="/"
+						type="button"
 					>
-						<LogOut className="h-4 w-4 shrink-0" />
+						<LogOut className="h-5 w-5 shrink-0" />
 						<AnimatePresence>
 							{!isCollapsed && (
 								<motion.span
 									animate={{ opacity: 1, x: 0 }}
-									className="font-medium"
+									className="truncate"
 									exit={{ opacity: 0, x: -5 }}
 									initial={{ opacity: 0, x: -5 }}
 								>
@@ -255,7 +415,7 @@ function AdminLayout() {
 								</motion.span>
 							)}
 						</AnimatePresence>
-					</Link>
+					</button>
 				</div>
 			</aside>
 
@@ -382,51 +542,60 @@ function AdminLayout() {
 								</button>
 							</div>
 
-							{/* Grid Menu - 2 rows, 4 columns */}
-							<div className="grid grid-cols-4 gap-2">
-								{QUICK_MENU_ITEMS.map((item) => (
-									<Link
-										className="flex flex-col items-center gap-1 rounded-lg bg-muted p-2.5 transition-colors active:bg-muted/80"
-										key={item.to}
-										onClick={() => setIsQuickMenuOpen(false)}
-										to={item.to}
-									>
-										<div
-											className={`flex h-9 w-9 items-center justify-center rounded-md ${
-												location.pathname === item.to
-													? "bg-primary text-primary-foreground"
-													: "bg-background text-foreground"
-											}`}
-										>
-											<item.icon className="h-4 w-4" />
+							{/* Grouped Quick Menu */}
+							<div className="space-y-3">
+								{QUICK_MENU_SECTIONS.map((section) => (
+									<div key={section.label}>
+										<p className="mb-1.5 px-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">
+											{section.label}
+										</p>
+										<div className="grid grid-cols-3 gap-2">
+											{section.items.map((item) => (
+												<Link
+													className="flex flex-col items-center gap-1 rounded-lg bg-muted p-2.5 transition-colors active:bg-muted/80"
+													key={item.to}
+													onClick={() => setIsQuickMenuOpen(false)}
+													to={item.to}
+												>
+													<div
+														className={`flex h-9 w-9 items-center justify-center rounded-md ${location.pathname === item.to
+																? "bg-primary text-primary-foreground"
+																: "bg-background text-foreground"
+															}`}
+													>
+														<item.icon className="h-4 w-4" />
+													</div>
+													<span className="text-center font-medium text-[10px] text-foreground leading-tight">
+														{item.label}
+													</span>
+												</Link>
+											))}
 										</div>
-										<span className="text-center font-medium text-[10px] text-foreground leading-tight">
-											{item.label}
-										</span>
-									</Link>
-								))}
-								{/* Logout button */}
-								<button
-									className="flex flex-col items-center gap-1 rounded-lg bg-destructive/10 p-2.5 transition-colors active:bg-destructive/20"
-									onClick={() => {
-										setIsQuickMenuOpen(false);
-										authClient.signOut({
-											fetchOptions: {
-												onSuccess: () => {
-													navigate({ to: "/" });
-												},
-											},
-										});
-									}}
-									type="button"
-								>
-									<div className="flex h-9 w-9 items-center justify-center rounded-md bg-destructive text-destructive-foreground">
-										<LogOut className="h-4 w-4" />
 									</div>
-									<span className="text-center font-medium text-[10px] text-destructive leading-tight">
-										Keluar
-									</span>
-								</button>
+								))}
+
+								{/* Logout button */}
+								<div className="border-border border-t pt-3">
+									<button
+										className="flex w-full items-center justify-center gap-2 rounded-lg bg-destructive/10 p-2.5 transition-colors active:bg-destructive/20"
+										onClick={() => {
+											setIsQuickMenuOpen(false);
+											authClient.signOut({
+												fetchOptions: {
+													onSuccess: () => {
+														navigate({ to: "/" });
+													},
+												},
+											});
+										}}
+										type="button"
+									>
+										<LogOut className="h-4 w-4 text-destructive" />
+										<span className="font-medium text-destructive text-xs">
+											Keluar
+										</span>
+									</button>
+								</div>
 							</div>
 						</motion.div>
 					</>
@@ -442,8 +611,8 @@ function AdminLayout() {
 
 						const isActive = isMore
 							? MORE_MENU_PATHS.some((p) =>
-									location.pathname.startsWith(p),
-								)
+								location.pathname.startsWith(p),
+							)
 							: item.exact
 								? location.pathname === item.to
 								: location.pathname.startsWith(item.to);
@@ -460,20 +629,18 @@ function AdminLayout() {
 									<div className="relative">
 										{/* Glow effect */}
 										<div
-											className={`absolute inset-0 rounded-full transition-all duration-300 ${
-												isActive
+											className={`absolute inset-0 rounded-full transition-all duration-300 ${isActive
 													? "animate-pulse bg-primary/40 blur-md"
 													: "bg-primary/20 blur-sm"
-											}`}
+												}`}
 											style={{ width: 56, height: 56 }}
 										/>
 										{/* Main FAB */}
 										<div
-											className={`relative flex h-14 w-14 items-center justify-center rounded-full transition-all duration-300 ${
-												isActive
+											className={`relative flex h-14 w-14 items-center justify-center rounded-full transition-all duration-300 ${isActive
 													? "scale-105 bg-gradient-to-br from-primary via-primary to-accent shadow-primary/50 shadow-xl"
 													: "bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/30"
-											}`}
+												}`}
 										>
 											{isActive ? (
 												<Sparkles className="h-6 w-6 animate-spin-slow text-white" />
@@ -483,9 +650,8 @@ function AdminLayout() {
 										</div>
 										{/* Label below FAB */}
 										<span
-											className={`absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-semibold text-[10px] ${
-												isActive ? "text-primary" : "text-muted-foreground"
-											}`}
+											className={`absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-semibold text-[10px] ${isActive ? "text-primary" : "text-muted-foreground"
+												}`}
 										>
 											AI
 										</span>
@@ -504,20 +670,18 @@ function AdminLayout() {
 									type="button"
 								>
 									<div
-										className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
-											isActive || isQuickMenuOpen
+										className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${isActive || isQuickMenuOpen
 												? "bg-primary text-primary-foreground shadow-sm"
 												: "text-muted-foreground"
-										}`}
+											}`}
 									>
 										<item.icon className="h-4 w-4" />
 									</div>
 									<span
-										className={`font-medium text-[9px] leading-tight ${
-											isActive || isQuickMenuOpen
+										className={`font-medium text-[9px] leading-tight ${isActive || isQuickMenuOpen
 												? "text-primary"
 												: "text-muted-foreground"
-										}`}
+											}`}
 									>
 										{item.label}
 									</span>
@@ -533,18 +697,16 @@ function AdminLayout() {
 								to={item.to}
 							>
 								<div
-									className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
-										isActive
+									className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${isActive
 											? "bg-primary text-primary-foreground shadow-sm"
 											: "text-muted-foreground"
-									}`}
+										}`}
 								>
 									<item.icon className="h-4 w-4" />
 								</div>
 								<span
-									className={`font-medium text-[9px] leading-tight ${
-										isActive ? "text-primary" : "text-muted-foreground"
-									}`}
+									className={`font-medium text-[9px] leading-tight ${isActive ? "text-primary" : "text-muted-foreground"
+										}`}
 								>
 									{item.label}
 								</span>
@@ -557,7 +719,28 @@ function AdminLayout() {
 	);
 }
 
-/* Desktop Sidebar NavLink (unchanged logic, renamed) */
+/* Sidebar Section Header */
+function SidebarSection({
+	label,
+	isCollapsed,
+}: {
+	label: string;
+	isCollapsed: boolean;
+}) {
+	return (
+		<div className="mt-4 mb-1 first:mt-0">
+			{isCollapsed ? (
+				<div className="mx-auto h-px w-6 rounded-full bg-border" />
+			) : (
+				<span className="px-3 font-semibold text-[10px] text-muted-foreground/70 uppercase tracking-widest">
+					{label}
+				</span>
+			)}
+		</div>
+	);
+}
+
+/* Desktop Sidebar NavLink */
 function DesktopNavLink({
 	to,
 	icon,
@@ -577,9 +760,8 @@ function DesktopNavLink({
 			activeProps={{
 				className: "bg-primary text-primary-foreground shadow-sm",
 			}}
-			className={`flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all ${
-				isCollapsed ? "justify-center px-0" : ""
-			}`}
+			className={`flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all ${isCollapsed ? "justify-center px-0" : ""
+				}`}
 			inactiveProps={{
 				className: "text-muted-foreground hover:bg-muted hover:text-foreground",
 			}}
@@ -599,6 +781,36 @@ function DesktopNavLink({
 					</motion.span>
 				)}
 			</AnimatePresence>
+		</Link>
+	);
+}
+
+/* Desktop Sidebar Sub-NavLink (for collapsible sections) */
+function DesktopSubNavLink({
+	to,
+	icon,
+	label,
+	activeOptions,
+}: {
+	to: string;
+	icon: React.ReactNode;
+	label: string;
+	activeOptions?: { exact?: boolean };
+}) {
+	return (
+		<Link
+			activeOptions={activeOptions}
+			activeProps={{
+				className: "bg-primary/10 text-primary",
+			}}
+			className="flex items-center gap-2 rounded-md px-2 py-1.5 font-medium text-xs transition-all"
+			inactiveProps={{
+				className: "text-muted-foreground hover:bg-muted hover:text-foreground",
+			}}
+			to={to}
+		>
+			<span className="shrink-0 [&>svg]:h-3.5 [&>svg]:w-3.5">{icon}</span>
+			<span className="truncate">{label}</span>
 		</Link>
 	);
 }
