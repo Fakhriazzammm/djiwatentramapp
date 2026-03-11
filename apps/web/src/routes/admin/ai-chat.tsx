@@ -24,6 +24,7 @@ import {
 	Shield,
 	Sparkles,
 	Target,
+	History,
 	Trash2,
 	TrendingDown,
 	TrendingUp,
@@ -34,6 +35,9 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ImageScanner } from "@/components/ai/image-scanner";
+import { ScanEditModal, type ScanEditParams } from "@/components/scan/scan-edit-modal";
+import { ScanSplitModal } from "@/components/scan/scan-split-modal";
+import { ScanHistoryPanel, useScanHistory } from "@/components/scan/scan-history-panel";
 
 export const Route = createFileRoute("/admin/ai-chat")({
 	component: AIChatPage,
@@ -458,6 +462,12 @@ function AIChatPage() {
 	const [isScanning, setIsScanning] = useState(false);
 	const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
+	// Edit / Split / History modals
+	const [editModal, setEditModal] = useState<{ params: ScanEditParams; btnKey: string; messageIdx: number } | null>(null);
+	const [splitModal, setSplitModal] = useState<{ params: ScanEditParams; btnKey: string } | null>(null);
+	const [showScanHistory, setShowScanHistory] = useState(false);
+	const { history: scanHistory, addEntry: addScanHistory, markSaved: markScanSaved, removeEntry: removeScanHistory, clearAll: clearScanHistory } = useScanHistory();
+
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -480,24 +490,50 @@ function AIChatPage() {
 		}
 	}, []);
 
-	const handleScanActionButton = useCallback(async (btn: ScanActionButton, messageIdx: number) => {
+	// Open edit modal instead of saving directly
+	const handleScanActionButton = useCallback((btn: ScanActionButton, messageIdx: number) => {
 		const key = `${messageIdx}-${btn.id}`;
-		if (actionButtonLoading.has(key) || actionButtonDone.has(key)) return;
-		setActionButtonLoading(prev => new Set(prev).add(key));
+		if (actionButtonDone.has(key)) return;
+		setEditModal({ params: btn.params, btnKey: key, messageIdx });
+	}, [actionButtonDone]);
+
+	// Called from ScanEditModal — save a single (possibly edited) transaction
+	const handleSaveFromEditModal = useCallback(async (params: ScanEditParams) => {
+		if (!editModal) return;
+		const { btnKey } = editModal;
+		setActionButtonLoading(prev => new Set(prev).add(btnKey));
 		try {
-			await createTransactionMutation(btn.params);
-			toast.success(`Berhasil ${btn.label.toLowerCase()}!`);
-			setActionButtonDone(prev => new Set(prev).add(key));
+			await createTransactionMutation(params);
+			toast.success("Transaksi berhasil disimpan!");
+			setActionButtonDone(prev => new Set(prev).add(btnKey));
+			markScanSaved(btnKey);
+			setEditModal(null);
 		} catch (error) {
 			toast.error(`Gagal: ${error instanceof Error ? error.message : "Terjadi kesalahan"}`);
 		} finally {
 			setActionButtonLoading(prev => {
 				const s = new Set(prev);
-				s.delete(key);
+				s.delete(btnKey);
 				return s;
 			});
 		}
-	}, [createTransactionMutation, actionButtonLoading, actionButtonDone]);
+	}, [editModal, createTransactionMutation, markScanSaved]);
+
+	// Called from ScanSplitModal — save multiple split transactions
+	const handleSaveFromSplitModal = useCallback(async (splits: ScanEditParams[]) => {
+		if (!splitModal) return;
+		const { btnKey } = splitModal;
+		try {
+			await Promise.all(splits.map((p) => createTransactionMutation(p)));
+			toast.success(`${splits.length} transaksi berhasil disimpan!`);
+			setActionButtonDone(prev => new Set(prev).add(btnKey));
+			markScanSaved(btnKey);
+			setSplitModal(null);
+			setEditModal(null);
+		} catch (error) {
+			toast.error(`Gagal: ${error instanceof Error ? error.message : "Terjadi kesalahan"}`);
+		}
+	}, [splitModal, createTransactionMutation, markScanSaved]);
 
 	const handleQuickAction = useCallback((action: QuickActionButton) => {
 		try {
@@ -1088,6 +1124,17 @@ function AIChatPage() {
 					actionButtons,
 				};
 				
+				// Save to scan history
+				addScanHistory({
+					thumbnail: currentImg,
+					merchant: result.name || "Tidak diketahui",
+					total: Number(result.total) || 0,
+					date: Date.now(),
+					category: result.category?.replace(/_/g, " ") || "Lainnya",
+					transactionType: (result.transactionType as "expense" | "income" | "unknown") || "unknown",
+					saved: false,
+				});
+
 				newMessages.push(userMsg, assistantMsg);
 			}
 
@@ -1109,7 +1156,7 @@ function AIChatPage() {
 		} finally {
 			setIsScanning(false);
 		}
-	}, [scanImages, isScanning, bulkScanImageDataAction, extractSuggestions, sanitizeResponse, generateScanActionButtons]);
+	}, [scanImages, isScanning, bulkScanImageDataAction, extractSuggestions, sanitizeResponse, generateScanActionButtons, addScanHistory]);
 
 	const handleRemoveImage = useCallback(() => {
 		setSelectedImages([]); // Clear all selected images
@@ -1421,7 +1468,7 @@ function AIChatPage() {
 															<div className="flex items-center gap-1.5 px-0.5 mb-1">
 																<CheckCircle2 className="h-3 w-3 text-emerald-500" />
 																<span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-																	Simpan Langsung
+																	Edit & Simpan
 																</span>
 															</div>
 															<div className="flex flex-wrap gap-2">
@@ -1452,7 +1499,7 @@ function AIChatPage() {
 																			) : (
 																				<span className="text-sm leading-none">{btn.icon}</span>
 																			)}
-																			<span>{isDone ? "Tersimpan!" : btn.label}</span>
+																			<span>{isDone ? "Tersimpan!" : "✏️ " + btn.label}</span>
 																		</button>
 																	);
 																})}
@@ -2263,6 +2310,21 @@ function AIChatPage() {
 									<ScanLine className="h-4 w-4" />
 								</button>
 
+								{/* Scan History Button */}
+								<button
+									className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+									onClick={() => setShowScanHistory(true)}
+									title="Riwayat scan"
+									type="button"
+								>
+									<History className="h-4 w-4" />
+									{scanHistory.length > 0 && (
+										<span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[8px] font-bold text-primary-foreground">
+											{scanHistory.length > 9 ? "9+" : scanHistory.length}
+										</span>
+									)}
+								</button>
+
 								{/* Hidden file input for chat attachment */}
 								<input
 									accept="image/*"
@@ -2476,6 +2538,40 @@ function AIChatPage() {
 					]);
 				}}
 			/>
+
+			{/* Edit Modal — validate & correct before save */}
+			{editModal && (
+				<ScanEditModal
+					params={editModal.params}
+					onSave={handleSaveFromEditModal}
+					onSplit={(params) => {
+						splitModal === null && setSplitModal({ params, btnKey: editModal.btnKey });
+					}}
+					onClose={() => setEditModal(null)}
+				/>
+			)}
+
+			{/* Split Modal */}
+			{splitModal && (
+				<ScanSplitModal
+					totalAmount={splitModal.params.amount}
+					transactionType={splitModal.params.type}
+					baseParams={splitModal.params}
+					onSave={handleSaveFromSplitModal}
+					onBack={() => setSplitModal(null)}
+					onClose={() => { setSplitModal(null); setEditModal(null); }}
+				/>
+			)}
+
+			{/* Scan History Panel */}
+			{showScanHistory && (
+				<ScanHistoryPanel
+					history={scanHistory}
+					onRemove={removeScanHistory}
+					onClearAll={clearScanHistory}
+					onClose={() => setShowScanHistory(false)}
+				/>
+			)}
 		</div>
 	);
 }
