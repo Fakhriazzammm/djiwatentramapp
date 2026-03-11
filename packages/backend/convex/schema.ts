@@ -558,8 +558,8 @@ export default defineSchema({
 			v.literal("cancelled"),
 			v.literal("completed")
 		),
-		guestCount: v.number(),
-		tableCount: v.number(),
+		guestCount: v.optional(v.number()),
+		tableCount: v.optional(v.number()),
 		paymentProofImage: v.optional(v.string()),
 		createdAt: v.number(),
 	})
