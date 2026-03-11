@@ -27,6 +27,7 @@ import { Route as AdminDiscountsRouteImport } from './routes/admin/discounts'
 import { Route as AdminBookingRouteImport } from './routes/admin/booking'
 import { Route as AdminAiChatRouteImport } from './routes/admin/ai-chat'
 import { Route as AdminFinanceRouteRouteImport } from './routes/admin/finance/route'
+import { Route as AdminFinanceReportsRouteImport } from './routes/admin/finance/reports/route'
 
 const MenuImprovedRoute = MenuImprovedRouteImport.update({
   id: '/menu-improved',
@@ -118,6 +119,11 @@ const AdminFinanceRouteRoute = AdminFinanceRouteRouteImport.update({
   path: '/finance',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminFinanceReportsRoute = AdminFinanceReportsRouteImport.update({
+  id: '/finance/reports',
+  path: '/finance/reports',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/menu': typeof MenuRoute
   '/menu-improved': typeof MenuImprovedRoute
   '/admin/finance': typeof AdminFinanceRouteRoute
+  '/admin/finance/reports': typeof AdminFinanceReportsRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/booking': typeof AdminBookingRoute
   '/admin/discounts': typeof AdminDiscountsRoute
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/menu': typeof MenuRoute
   '/menu-improved': typeof MenuImprovedRoute
   '/admin/finance': typeof AdminFinanceRouteRoute
+  '/admin/finance/reports': typeof AdminFinanceReportsRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/booking': typeof AdminBookingRoute
   '/admin/discounts': typeof AdminDiscountsRoute
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/menu': typeof MenuRoute
   '/menu-improved': typeof MenuImprovedRoute
   '/admin/finance': typeof AdminFinanceRouteRoute
+  '/admin/finance/reports': typeof AdminFinanceReportsRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/booking': typeof AdminBookingRoute
   '/admin/discounts': typeof AdminDiscountsRoute
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/menu'
     | '/menu-improved'
     | '/admin/finance'
+    | '/admin/finance/reports'
     | '/admin/ai-chat'
     | '/admin/booking'
     | '/admin/discounts'
@@ -208,6 +218,7 @@ export interface FileRouteTypes {
     | '/menu'
     | '/menu-improved'
     | '/admin/finance'
+    | '/admin/finance/reports'
     | '/admin/ai-chat'
     | '/admin/booking'
     | '/admin/discounts'
@@ -228,6 +239,7 @@ export interface FileRouteTypes {
     | '/menu'
     | '/menu-improved'
     | '/admin/finance'
+    | '/admin/finance/reports'
     | '/admin/ai-chat'
     | '/admin/booking'
     | '/admin/discounts'
@@ -378,11 +390,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFinanceRouteRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/finance/reports': {
+      id: '/admin/finance/reports'
+      path: '/finance/reports'
+      fullPath: '/admin/finance/reports'
+      preLoaderRoute: typeof AdminFinanceReportsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
   }
 }
 
 interface AdminRouteRouteChildren {
   AdminFinanceRouteRoute: typeof AdminFinanceRouteRoute
+  AdminFinanceReportsRoute: typeof AdminFinanceReportsRoute
   AdminAiChatRoute: typeof AdminAiChatRoute
   AdminBookingRoute: typeof AdminBookingRoute
   AdminDiscountsRoute: typeof AdminDiscountsRoute
@@ -398,6 +418,7 @@ interface AdminRouteRouteChildren {
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminFinanceRouteRoute: AdminFinanceRouteRoute,
+  AdminFinanceReportsRoute: AdminFinanceReportsRoute,
   AdminAiChatRoute: AdminAiChatRoute,
   AdminBookingRoute: AdminBookingRoute,
   AdminDiscountsRoute: AdminDiscountsRoute,

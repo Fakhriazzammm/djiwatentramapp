@@ -2,6 +2,7 @@ import { api } from "@yumipos/backend/convex/_generated/api";
 import { useAction } from "convex/react";
 import {
 	ArrowUpCircle,
+	BarChart2,
 	Bot,
 	Check,
 	Copy,
@@ -57,6 +58,12 @@ const CASIER_TEMPLATES = [
 		label: "Laporan Kas",
 		message: "Bagaimana kondisi kas hari ini?",
 		icon: <ArrowUpCircle className="h-3.5 w-3.5 text-primary" />,
+		category: "report",
+	},
+	{
+		label: "Laba Rugi",
+		message: "Berikan ringkasan laba rugi hari ini: pendapatan, HPP, beban, dan laba bersih",
+		icon: <BarChart2 className="h-3.5 w-3.5 text-green-600" />,
 		category: "report",
 	},
 ];

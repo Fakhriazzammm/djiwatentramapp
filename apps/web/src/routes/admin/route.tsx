@@ -16,6 +16,7 @@ import {
 	ChevronRight,
 	ClipboardList,
 	Coffee,
+	FileBarChart,
 	Grid3X3,
 	LayoutDashboard,
 	LogOut,
@@ -50,6 +51,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/products": "Produk",
 	"/admin/inventory": "Inventaris",
 	"/admin/finance": "Keuangan",
+	"/admin/finance/reports": "Laporan Keuangan",
 	"/admin/orders": "Pesanan",
 	"/admin/discounts": "Promosi",
 	"/admin/hpp-calculator": "HPP Kalkulator",
@@ -193,6 +195,12 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Keuangan"
 						to="/admin/finance"
+					/>
+					<DesktopNavLink
+						icon={<FileBarChart />}
+						isCollapsed={isCollapsed}
+						label="Laporan Keuangan"
+						to="/admin/finance/reports"
 					/>
 					<DesktopNavLink
 						icon={<ClipboardList />}

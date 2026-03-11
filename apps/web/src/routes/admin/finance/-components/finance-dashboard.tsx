@@ -5,11 +5,13 @@ import {
 	ArrowDownLeft,
 	ArrowUpRight,
 	Calculator,
+	FileBarChart,
 	Plus,
 	TrendingUp,
 	Wallet,
 } from "lucide-react";
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { NewTransactionDialog } from "./new-transaction-dialog";
 
 export function FinanceDashboard() {
@@ -168,13 +170,21 @@ export function FinanceDashboard() {
 						Monitor arus kas dan laporan keuangan
 					</p>
 				</div>
-				<button
-					className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground transition-all hover:brightness-110"
-					onClick={() => setIsDialogOpen(true)}
-					type="button"
-				>
-					<Plus className="h-4 w-4" /> Catat Transaksi
-				</button>
+				<div className="flex gap-2">
+					<Link
+						to="/admin/finance/reports"
+						className="flex items-center gap-2 rounded-lg border border-border bg-muted px-4 py-2 font-medium text-sm text-foreground transition-all hover:bg-muted/70"
+					>
+						<FileBarChart className="h-4 w-4" /> Laporan
+					</Link>
+					<button
+						className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground transition-all hover:brightness-110"
+						onClick={() => setIsDialogOpen(true)}
+						type="button"
+					>
+						<Plus className="h-4 w-4" /> Catat Transaksi
+					</button>
+				</div>
 			</div>
 
 			{/* Summary Cards */}
