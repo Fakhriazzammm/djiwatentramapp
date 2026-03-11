@@ -83,6 +83,7 @@ const TABS: TabItem[] = [
 
 export function MenuSidebar() {
 	const [isOpen, setIsOpen] = useState(false);
+	const [activeTab, setActiveTab] = useState("dashboard");
 	const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig>({
 		isOpen: false,
 		title: "",
@@ -114,26 +115,26 @@ export function MenuSidebar() {
 				</Button>
 			</SheetTrigger>
 			<SheetContent
-				className="flex w-full flex-col p-0 sm:w-[540px]"
+				className="flex w-full flex-col p-0 sm:max-w-[440px]"
 				side="right"
 			>
-				<SheetHeader className="border-b p-6 pb-2">
-					<SheetTitle>Menu Operasional</SheetTitle>
+				<SheetHeader className="border-b px-4 py-3">
+					<SheetTitle className="text-base font-bold">Menu Operasional</SheetTitle>
 				</SheetHeader>
 				<div className="flex-1 overflow-hidden">
-					<Tabs className="flex h-full flex-col" defaultValue="dashboard">
-						<div className="border-b bg-muted/40 px-3">
-							<TabsList className="grid h-12 w-full grid-cols-4 gap-1 bg-muted/10 p-1">
+					<Tabs className="flex h-full flex-col" value={activeTab} onValueChange={setActiveTab}>
+						<div className="border-b bg-muted/20 px-2 pt-2">
+							<TabsList className="grid h-14 w-full grid-cols-4 gap-0.5 rounded-t-lg bg-muted/50 p-1">
 								{TABS.map((tab) => {
 									const Icon = tab.icon;
 									return (
 										<TabsTrigger
-											className="flex h-full flex-col items-center justify-center rounded-md px-0 font-bold text-[10px] transition-all data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm sm:flex-row sm:gap-1 sm:text-xs"
+											className="flex h-full flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1.5 font-medium text-[10px] transition-all data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
 											key={tab.value}
 											value={tab.value}
 										>
-											<Icon className={`h-3.5 w-3.5 ${tab.iconColor}`} />
-											<span>{tab.label}</span>
+											<Icon className="h-4 w-4" />
+											<span className="leading-none">{tab.label}</span>
 										</TabsTrigger>
 									);
 								})}
@@ -141,13 +142,13 @@ export function MenuSidebar() {
 						</div>
 
 						<div className="flex-1 overflow-y-auto bg-background pb-10">
-							<TabsContent className="m-0 h-full p-4" value="dashboard">
-								<DashboardTab onClose={() => setIsOpen(false)} />
+							<TabsContent className="m-0 h-full p-3" value="dashboard">
+								<DashboardTab onClose={() => setIsOpen(false)} onNavigate={setActiveTab} />
 							</TabsContent>
-							<TabsContent className="m-0 h-full p-4" value="kas">
+							<TabsContent className="m-0 h-full p-3" value="kas">
 								<KasTab onClose={() => setIsOpen(false)} />
 							</TabsContent>
-							<TabsContent className="m-0 h-full p-4" value="stok">
+							<TabsContent className="m-0 h-full p-3" value="stok">
 								<StokTab setConfirmConfig={setConfirmConfig} />
 							</TabsContent>
 							<TabsContent className="m-0 h-[calc(100vh-16rem)] p-0" value="yumi">
@@ -169,7 +170,7 @@ export function MenuSidebar() {
 	);
 }
 
-function DashboardTab({ onClose }: { onClose: () => void }) {
+function DashboardTab({ onClose, onNavigate }: { onClose: () => void; onNavigate: (tab: string) => void }) {
 	const orders = useQuery(api.orders.getOrders, {});
 	const lowStockItems = useQuery(api.inventory.getLowStockItems);
 
@@ -207,8 +208,18 @@ function DashboardTab({ onClose }: { onClose: () => void }) {
 			minute: "2-digit",
 		});
 
+	const todayLabel = new Date().toLocaleDateString("id-ID", {
+		weekday: "long",
+		day: "numeric",
+		month: "short",
+	});
+
 	return (
-		<div className="space-y-4">
+		<div className="space-y-3">
+			<div className="flex items-center justify-between">
+				<span className="font-semibold text-foreground text-sm">{todayLabel}</span>
+				<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Live</span>
+			</div>
 			<div className="grid grid-cols-3 gap-2">
 				<Card className="border-primary/20 bg-primary/5">
 					<CardContent className="p-3 text-center">
@@ -335,7 +346,7 @@ function DashboardTab({ onClose }: { onClose: () => void }) {
 				<div className="grid grid-cols-2 gap-2">
 					<Button
 						className="h-auto flex-col gap-1 py-3"
-						onClick={() => onClose()}
+						onClick={() => onNavigate("kas")}
 						variant="outline"
 					>
 						<SquarePlay className="h-4 w-4" />
@@ -369,7 +380,7 @@ function KasTab({ onClose }: { onClose: () => void }) {
 	];
 
 	return (
-		<div className="space-y-4">
+		<div className="space-y-3">
 			<div className="flex gap-1 rounded-lg bg-muted/50 p-1">
 				{subTabs.map((tab) => {
 					const Icon = tab.icon;
@@ -377,7 +388,7 @@ function KasTab({ onClose }: { onClose: () => void }) {
 						<button
 							className={`flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-2 font-medium text-xs transition-all ${
 								activeSubTab === tab.value
-									? "bg-background text-foreground shadow-sm"
+									? "bg-background text-foreground font-semibold shadow-sm"
 									: "text-muted-foreground hover:text-foreground"
 							}`}
 							key={tab.value}
@@ -444,7 +455,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	};
 
 	return (
-		<div className="mx-auto max-w-sm space-y-4 pt-2">
+		<div className="space-y-4 pt-2">
 			<div className="space-y-2 text-center">
 				<h3 className="font-medium text-lg">Manajemen Shift</h3>
 				<p className="text-muted-foreground text-sm">
@@ -601,7 +612,7 @@ function IncomeForm({ onClose }: { onClose: () => void }) {
 	};
 
 	return (
-		<div className="mx-auto max-w-sm space-y-4 pt-2">
+		<div className="space-y-4 pt-2">
 			<div className="space-y-2 text-center">
 				<h3 className="font-medium text-lg">Input Pemasukan</h3>
 				<p className="text-muted-foreground text-sm">
@@ -698,7 +709,7 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 	};
 
 	return (
-		<div className="mx-auto max-w-sm space-y-4 pt-2">
+		<div className="space-y-4 pt-2">
 			<div className="space-y-2 text-center">
 				<h3 className="font-medium text-lg">Input Pengeluaran</h3>
 				<p className="text-muted-foreground text-sm">
@@ -795,7 +806,7 @@ function StokTab({
 						<button
 							className={`relative flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-2 font-medium text-xs transition-all ${
 								activeSubTab === tab.value
-									? "bg-background text-foreground shadow-sm"
+									? "bg-background text-foreground font-semibold shadow-sm"
 									: "text-muted-foreground hover:text-foreground"
 							}`}
 							key={tab.value}
@@ -918,7 +929,7 @@ function InventoryTab({
 					{inventory.length} item
 				</span>
 			</div>
-			<ScrollArea className="h-[55vh] pr-2">
+			<ScrollArea className="h-[52vh] pr-2">
 				<div className="space-y-2">
 					{inventory.map((item) => {
 						const isEditing = editingId === item._id;
@@ -1135,7 +1146,7 @@ function MarketList() {
 					<p className="text-xs">Tidak ada item yang perlu dibeli</p>
 				</div>
 			) : (
-				<ScrollArea className="h-[55vh] pr-2">
+				<ScrollArea className="h-[52vh] pr-2">
 					<div className="space-y-2">
 						{lowStockItems.map((item) => (
 							<Card
