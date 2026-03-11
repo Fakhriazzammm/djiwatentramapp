@@ -558,6 +558,8 @@ export default defineSchema({
 			v.literal("cancelled"),
 			v.literal("completed")
 		),
+		guestCount: v.number(),
+		tableCount: v.number(),
 		paymentProofImage: v.optional(v.string()),
 		createdAt: v.number(),
 	})
@@ -569,7 +571,9 @@ export default defineSchema({
 	bookingDateCapacity: defineTable({
 		slug: v.string(),
 		date: v.string(), // "YYYY-MM-DD"
-		maxCapacity: v.number(),
+		maxPeople: v.number(),
+		maxTables: v.number(),
+		peoplePerTable: v.number(),
 		notes: v.optional(v.string()),
 	}).index("by_slug_date", ["slug", "date"]),
 });

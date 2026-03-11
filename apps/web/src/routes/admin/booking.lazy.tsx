@@ -81,7 +81,15 @@ function AdminCalendar({
 }: {
 	year: number;
 	month: number;
-	summary: Record<string, { count: number; capacity: number; pending: number; confirmed: number }>;
+	summary: Record<string, { 
+		count: number; 
+		maxPeople: number; 
+		maxTables: number; 
+		bookedPeople: number; 
+		bookedTables: number; 
+		pending: number; 
+		confirmed: number 
+	}>;
 	onNavigate: (y: number, m: number) => void;
 	onDayClick: (date: string) => void;
 	selectedDate: string | null;
@@ -144,7 +152,10 @@ function AdminCalendar({
 					const info = summary[dateStr];
 					const isSelected = selectedDate === dateStr;
 					const isToday = dateStr === today;
-					const isFull = info && info.capacity > 0 && info.count >= info.capacity;
+					const isFull = info && (
+						(info.maxPeople > 0 && info.bookedPeople >= info.maxPeople) ||
+						(info.maxTables > 0 && info.bookedTables >= info.maxTables)
+					);
 
 					return (
 						<button
@@ -168,19 +179,24 @@ function AdminCalendar({
 								<div className="mt-1 space-y-0.5">
 									<div
 										className={`rounded px-1 text-[9px] font-bold leading-tight ${
-											isFull
+											info.maxPeople > 0 && info.bookedPeople >= info.maxPeople
 												? "bg-red-100 text-red-700"
 												: "bg-primary/10 text-primary"
 										}`}
 									>
-										{info.count}
-										{info.capacity > 0 ? `/${info.capacity}` : ""} booking
+										{info.bookedPeople}
+										{info.maxPeople > 0 ? `/${info.maxPeople}` : ""}p
 									</div>
-									{info.pending > 0 && (
-										<div className="rounded bg-yellow-100 px-1 text-[9px] text-yellow-700 leading-tight">
-											{info.pending} pending
-										</div>
-									)}
+									<div
+										className={`rounded px-1 text-[9px] font-bold leading-tight ${
+											info.maxTables > 0 && info.bookedTables >= info.maxTables
+												? "bg-purple-100 text-purple-700"
+												: "bg-purple-50 text-purple-600"
+										}`}
+									>
+										{info.bookedTables}
+										{info.maxTables > 0 ? `/${info.maxTables}` : ""}m
+									</div>
 								</div>
 							)}
 						</button>
@@ -373,7 +389,9 @@ function BookingSettingsPage() {
 	const [capDate, setCapDate] = useState(todayStr());
 	const [capEndDate, setCapEndDate] = useState(todayStr());
 	const [isBulk, setIsBulk] = useState(false);
-	const [capValue, setCapValue] = useState("");
+	const [capPeople, setCapPeople] = useState("0");
+	const [capTables, setCapTables] = useState("0");
+	const [capPeoplePerTable, setCapPeoplePerTable] = useState("4");
 	const [capNotes, setCapNotes] = useState("");
 	const [isSavingCap, setIsSavingCap] = useState(false);
 
@@ -388,6 +406,7 @@ function BookingSettingsPage() {
 		paymentMethods: [] as string[],
 		bankDetails: "",
 		qrisImage: "",
+		featuredProductIds: [] as string[],
 		isActive: true,
 	});
 	const [activeTab, setActiveTab] = useState<
@@ -463,8 +482,8 @@ function BookingSettingsPage() {
 	};
 
 	const handleSaveCapacity = async () => {
-		if (!capDate || (isBulk && !capEndDate) || capValue === "") {
-			toast.error("Isi tanggal dan kapasitas");
+		if (!capDate || (isBulk && !capEndDate)) {
+			toast.error("Isi tanggal");
 			return;
 		}
 		setIsSavingCap(true);
@@ -474,22 +493,25 @@ function BookingSettingsPage() {
 					slug: "booking",
 					startDate: capDate,
 					endDate: capEndDate,
-					maxCapacity: Number(capValue),
+					maxPeople: Number(capPeople),
+					maxTables: Number(capTables),
+					peoplePerTable: Number(capPeoplePerTable),
 					notes: capNotes || undefined,
 				});
 				toast.success(
-					`Kapasitas ${capValue} orang untuk periode ${formatDate(capDate)} - ${formatDate(capEndDate)} disimpan`
+					`Kapasitas periode ${formatDate(capDate)} - ${formatDate(capEndDate)} disimpan`
 				);
 			} else {
 				await setDateCapacity({
 					slug: "booking",
 					date: capDate,
-					maxCapacity: Number(capValue),
+					maxPeople: Number(capPeople),
+					maxTables: Number(capTables),
+					peoplePerTable: Number(capPeoplePerTable),
 					notes: capNotes || undefined,
 				});
-				toast.success(`Kapasitas ${capValue} orang untuk ${formatDate(capDate)} disimpan`);
+				toast.success(`Kapasitas untuk ${formatDate(capDate)} disimpan`);
 			}
-			setCapValue("");
 			setCapNotes("");
 		} catch {
 			toast.error("Gagal menyimpan kapasitas");
@@ -507,12 +529,12 @@ function BookingSettingsPage() {
 		{ id: "payment", label: "Pembayaran", icon: Globe },
 	] as const;
 
-	const filteredOrders = allOrders?.filter((o) => {
+	const filteredOrders = allOrders?.filter((o: any) => {
 		if (listFilter === "all") return true;
 		return o.bookingStatus === listFilter;
 	});
 
-	const filteredProducts = allProducts?.filter((p) => {
+	const filteredProducts = allProducts?.filter((p: any) => {
 		const matchesSearch = p.name.toLowerCase().includes(productSearch.toLowerCase());
 		const matchesCategory = selectedCategoryId === "all" || p.categoryId === selectedCategoryId;
 		return matchesSearch && matchesCategory;
@@ -757,18 +779,52 @@ function BookingSettingsPage() {
 								<div className="space-y-1.5 min-w-[120px]">
 									<label
 										className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
-										htmlFor="cap-value"
+										htmlFor="cap-people"
 									>
-										Kapasitas (orang)
+										Kapasitas Orang
 									</label>
 									<input
 										className="w-full rounded-xl bg-muted/50 p-3 font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
-										id="cap-value"
+										id="cap-people"
 										min="0"
-										onChange={(e) => setCapValue(e.target.value)}
+										onChange={(e) => setCapPeople(e.target.value)}
 										placeholder="Contoh: 10"
 										type="number"
-										value={capValue}
+										value={capPeople}
+									/>
+								</div>
+								<div className="space-y-1.5 min-w-[120px]">
+									<label
+										className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
+										htmlFor="cap-tables"
+									>
+										Kapasitas Meja
+									</label>
+									<input
+										className="w-full rounded-xl bg-muted/50 p-3 font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
+										id="cap-tables"
+										min="0"
+										onChange={(e) => setCapTables(e.target.value)}
+										placeholder="Contoh: 5"
+										type="number"
+										value={capTables}
+									/>
+								</div>
+								<div className="space-y-1.5 min-w-[120px]">
+									<label
+										className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
+										htmlFor="cap-per-table"
+									>
+										Orang per Meja
+									</label>
+									<input
+										className="w-full rounded-xl bg-muted/50 p-3 font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
+										id="cap-per-table"
+										min="1"
+										onChange={(e) => setCapPeoplePerTable(e.target.value)}
+										placeholder="Contoh: 4"
+										type="number"
+										value={capPeoplePerTable}
 									/>
 								</div>
 								<div className="space-y-1.5 flex-1 min-w-[150px]">
@@ -828,10 +884,16 @@ function BookingSettingsPage() {
 												<tr className="hover:bg-muted/30" key={cap._id}>
 													<td className="px-4 py-3 font-medium">{formatDate(cap.date)}</td>
 													<td className="px-4 py-3 text-center">
-														<span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 font-bold text-primary text-xs">
-															<Users className="h-3 w-3" />
-															{cap.maxCapacity === 0 ? "∞" : cap.maxCapacity}
-														</span>
+														<div className="flex flex-col gap-1 items-center">
+															<span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-0.5 font-bold text-primary text-[10px]">
+																<Users className="h-3 w-3" />
+																{cap.maxPeople === 0 ? "∞" : cap.maxPeople} org
+															</span>
+															<span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-0.5 font-bold text-purple-700 text-[10px]">
+																<Smartphone className="h-3 w-3 rotate-90" />
+																{cap.maxTables === 0 ? "∞" : cap.maxTables} meja
+															</span>
+														</div>
 													</td>
 													<td className="px-4 py-3 text-muted-foreground text-xs">
 														{cap.notes || "—"}
@@ -841,7 +903,9 @@ function BookingSettingsPage() {
 															className="text-xs text-muted-foreground hover:text-foreground"
 															onClick={() => {
 																setCapDate(cap.date);
-																setCapValue(String(cap.maxCapacity));
+																setCapPeople(String(cap.maxPeople));
+																setCapTables(String(cap.maxTables));
+																setCapPeoplePerTable(String(cap.peoplePerTable));
 																setCapNotes(cap.notes || "");
 															}}
 															type="button"

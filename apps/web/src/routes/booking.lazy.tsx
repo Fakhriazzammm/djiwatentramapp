@@ -11,6 +11,8 @@ import {
 	Minus,
 	Plus,
 	ShoppingBag,
+	Upload,
+	Users,
 	X,
 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
@@ -45,7 +47,7 @@ const MONTH_NAMES = [
 ];
 const DAY_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
-const STEP_LABELS = ["Pilih Menu", "Pilih Tanggal", "Data Diri", "Pembayaran", "Konfirmasi", "Selesai"];
+const STEP_LABELS = ["Jumlah Orang", "Pilih Menu", "Pilih Tanggal", "Data Diri", "Pembayaran", "Konfirmasi", "Selesai"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -349,13 +351,22 @@ function DatePickerCalendar({
 	onSelect,
 	onNavigate,
 	summary,
+	guestCount,
 }: {
 	year: number;
 	month: number;
 	selectedDate: string | null;
 	onSelect: (d: string) => void;
 	onNavigate: (y: number, m: number) => void;
-	summary: Record<string, { count: number; capacity: number }>;
+	summary: Record<string, { 
+		count: number; 
+		maxPeople: number;
+		maxTables: number;
+		peoplePerTable: number;
+		bookedPeople: number;
+		bookedTables: number;
+	}>;
+	guestCount: number;
 }) {
 	const daysInMonth = new Date(year, month + 1, 0).getDate();
 	const firstDay = new Date(year, month, 1).getDay();
@@ -412,8 +423,13 @@ function DatePickerCalendar({
 					const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 					const info = summary[dateStr];
 					const isPast = dateStr < today;
-					const isFull =
-						info && info.capacity > 0 && info.count >= info.capacity;
+					
+					const requiredTables = Math.ceil(guestCount / (info?.peoplePerTable || 4));
+					const isFull = info && (
+						(info.maxPeople > 0 && info.bookedPeople + guestCount > info.maxPeople) ||
+						(info.maxTables > 0 && info.bookedTables + requiredTables > info.maxTables)
+					);
+
 					const isSelected = selectedDate === dateStr;
 					const isAvailable = !isPast && !isFull;
 
@@ -448,8 +464,8 @@ function DatePickerCalendar({
 								>
 									{isFull
 										? "Penuh"
-										: info && info.capacity > 0
-										? `${info.capacity - info.count} sisa`
+										: info && (info.maxPeople > 0 || info.maxTables > 0)
+										? "Tersedia"
 										: "Tersedia"}
 								</span>
 							)}
@@ -535,6 +551,7 @@ function BookingPage() {
 	});
 
 	const [step, setStep] = useState(0);
+	const [guestCount, setGuestCount] = useState(1);
 	const [cart, setCart] = useState<CartItem[]>([]);
 	const [selectedDate, setSelectedDate] = useState<string | null>(null);
 	const [customerForm, setCustomerForm] = useState<CustomerForm>({
@@ -601,6 +618,7 @@ function BookingPage() {
 				customerEmail: customerForm.email,
 				notes: customerForm.notes || undefined,
 				bookingDate: selectedDate,
+				guestCount,
 				items: cart.map((i) => ({
 					productId: i.productId,
 					name: i.name,
@@ -619,6 +637,7 @@ function BookingPage() {
 				customerEmail: customerForm.email,
 				notes: customerForm.notes,
 				bookingDate: selectedDate,
+				guestCount,
 				items: cart.map((i) => ({ name: i.name, price: i.price, quantity: i.quantity })),
 				totalAmount: cartTotal,
 				paymentMethod: selectedPayment,
@@ -626,7 +645,7 @@ function BookingPage() {
 				createdAt: Date.now(),
 			});
 
-			setStep(4);
+			setStep(5);
 			// toast.success("Booking berhasil dibuat!");
 		} catch (e: any) {
 			toast.error(e?.message || "Gagal membuat booking");
@@ -638,7 +657,7 @@ function BookingPage() {
 	// ── Fetch the completed booking code ──
 	const latestBooking = useQuery(
 		api.booking.getBookingOrders,
-		step >= 4 ? { slug: "booking" } : "skip"
+		step >= 5 ? { slug: "booking" } : "skip"
 	);
 
 	const confirmedBooking =
@@ -669,8 +688,8 @@ function BookingPage() {
 
 	const themeColor = settings.themeColor || "#1a2332";
 
-	// ── Step 5: Finished ──
-	if (step === 5) {
+	// ── Step 6: Finished ──
+	if (step === 6) {
 		const booking = confirmedBooking || completedBooking;
 		return (
 			<div className="min-h-screen bg-background">
@@ -793,7 +812,7 @@ function BookingPage() {
 					storageId: proofImage,
 				});
 			}
-			setStep(5);
+			setStep(6);
 			toast.success("Konfirmasi berhasil!");
 		} catch (error) {
 			toast.error("Gagal menyimpan konfirmasi");
@@ -802,8 +821,8 @@ function BookingPage() {
 		}
 	};
 
-	// ── Step 4: Confirmation ──
-	if (step === 4) {
+	// ── Step 5: Confirmation ──
+	if (step === 5) {
 		const booking = confirmedBooking || completedBooking;
 		const qrisUrl = settings.qrisImage || siteSettings?.qrisImage;
 
@@ -913,7 +932,7 @@ function BookingPage() {
 								</div>
 								<button
 									className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98]"
-									onClick={() => setStep(5)}
+									onClick={() => setStep(6)}
 									style={{ background: themeColor }}
 									type="button"
 								>
@@ -953,8 +972,47 @@ function BookingPage() {
 				{/* Step progress */}
 				<StepBar current={step} />
 
-				{/* ── STEP 0: Product Selection ── */}
+				{/* ── STEP 0: Guest Count ── */}
 				{step === 0 && (
+					<div className="space-y-6 pb-32">
+						<h2 className="font-bold text-foreground text-base flex items-center gap-2">
+							<Users className="h-5 w-5" style={{ color: themeColor }} />
+							Jumlah Orang
+						</h2>
+						<div className="rounded-2xl border border-border bg-card p-8 shadow-sm text-center space-y-6">
+							<p className="text-muted-foreground text-sm">
+								Berapa banyak orang yang akan hadir?
+							</p>
+							<div className="flex items-center justify-center gap-6">
+								<button
+									className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card text-foreground transition-all active:scale-95 disabled:opacity-50"
+									disabled={guestCount <= 1}
+									onClick={() => setGuestCount(Math.max(1, guestCount - 1))}
+									type="button"
+								>
+									<Minus className="h-5 w-5" />
+								</button>
+								<span className="text-4xl font-bold w-16" style={{ color: themeColor }}>
+									{guestCount}
+								</span>
+								<button
+									className="flex h-12 w-12 items-center justify-center rounded-full text-white transition-all active:scale-95"
+									onClick={() => setGuestCount(guestCount + 1)}
+									style={{ background: themeColor }}
+									type="button"
+								>
+									<Plus className="h-5 w-5" />
+								</button>
+							</div>
+							<p className="text-xs text-muted-foreground italic">
+								* Kapasitas meja akan menyesuaikan jumlah orang.
+							</p>
+						</div>
+					</div>
+				)}
+
+				{/* ── STEP 1: Product Selection ── */}
+				{step === 1 && (
 					<div className="space-y-4 pb-32">
 						<h2 className="font-bold text-foreground text-base flex items-center gap-2">
 							<ShoppingBag className="h-5 w-5" style={{ color: themeColor }} />
@@ -1036,8 +1094,8 @@ function BookingPage() {
 					</div>
 				)}
 
-				{/* ── STEP 1: Date Picker ── */}
-				{step === 1 && (
+				{/* ── STEP 2: Date Picker ── */}
+				{step === 2 && (
 					<div className="space-y-5 pb-32">
 						<h2 className="font-bold text-foreground text-base flex items-center gap-2">
 							<Calendar className="h-5 w-5" style={{ color: themeColor }} />
@@ -1046,6 +1104,7 @@ function BookingPage() {
 
 						<div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
 							<DatePickerCalendar
+								guestCount={guestCount}
 								month={calMonth}
 								onNavigate={(y, m) => {
 									setCalYear(y);
@@ -1071,8 +1130,8 @@ function BookingPage() {
 					</div>
 				)}
 
-				{/* ── STEP 2: Customer Info ── */}
-				{step === 2 && (
+				{/* ── STEP 3: Customer Info ── */}
+				{step === 3 && (
 					<div className="space-y-4 pb-32">
 						<h2 className="font-bold text-foreground text-base">Data Diri</h2>
 						<div className="rounded-2xl border border-border bg-card p-5 space-y-4 shadow-sm">
@@ -1123,8 +1182,8 @@ function BookingPage() {
 					</div>
 				)}
 
-				{/* ── STEP 3: Payment ── */}
-				{step === 3 && (
+				{/* ── STEP 4: Payment ── */}
+				{step === 4 && (
 					<div className="space-y-4 pb-32">
 						<h2 className="font-bold text-foreground text-base">Konfirmasi & Pembayaran</h2>
 
@@ -1219,7 +1278,7 @@ function BookingPage() {
 				{step < 5 && (
 					<div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border px-4 pt-3 pb-6 safe-area-bottom shadow-2xl">
 						{/* Cart summary for step 0 */}
-						{step === 0 && cartCount > 0 && (
+						{step === 1 && cartCount > 0 && (
 							<div className="mb-3 flex items-center justify-between rounded-xl bg-muted/50 px-4 py-2">
 								<span className="text-muted-foreground text-sm">{cartCount} item</span>
 								<span className="font-bold text-sm" style={{ color: themeColor }}>
@@ -1241,13 +1300,13 @@ function BookingPage() {
 							<button
 								className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-4 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 ${isSubmitting ? "cursor-not-allowed" : ""}`}
 								disabled={
-									(step === 0 && cartCount === 0) ||
-									(step === 1 && !selectedDate) ||
-									(step === 2 && (!customerForm.name || !customerForm.phone || !customerForm.email)) ||
-									(step === 3 && (!selectedPayment || isSubmitting))
+									(step === 1 && cartCount === 0) ||
+									(step === 2 && !selectedDate) ||
+									(step === 3 && (!customerForm.name || !customerForm.phone || !customerForm.email)) ||
+									(step === 4 && (!selectedPayment || isSubmitting))
 								}
 								onClick={() => {
-									if (step === 3) {
+									if (step === 4) {
 										handleSubmitBooking();
 									} else {
 										setStep((s) => s + 1);
@@ -1257,11 +1316,12 @@ function BookingPage() {
 								type="button"
 							>
 								{isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-								{step === 0 && (cartCount === 0 ? "Pilih menu dulu" : "Lanjut Pilih Tanggal →")}
-								{step === 1 && (selectedDate ? "Lanjut Isi Data Diri →" : "Pilih tanggal dulu")}
-								{step === 2 && "Lanjut ke Pembayaran →"}
-								{step === 3 && (isSubmitting ? "Memproses..." : "Konfirmasi Booking")}
-								{step === 4 && "Menunggu Konfirmasi..."}
+								{step === 0 && "Lanjut Pilih Menu →"}
+								{step === 1 && (cartCount === 0 ? "Pilih menu dulu" : "Lanjut Pilih Tanggal →")}
+								{step === 2 && (selectedDate ? "Lanjut Isi Data Diri →" : "Pilih tanggal dulu")}
+								{step === 3 && "Lanjut ke Pembayaran →"}
+								{step === 4 && (isSubmitting ? "Memproses..." : "Konfirmasi Booking")}
+								{step === 5 && "Menunggu Konfirmasi..."}
 							</button>
 						</div>
 					</div>

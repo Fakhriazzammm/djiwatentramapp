@@ -109,7 +109,9 @@ export const setDateCapacity = mutation({
 	args: {
 		slug: v.string(),
 		date: v.string(),
-		maxCapacity: v.number(),
+		maxPeople: v.number(),
+		maxTables: v.number(),
+		peoplePerTable: v.number(),
 		notes: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
@@ -120,7 +122,9 @@ export const setDateCapacity = mutation({
 
 		if (existing) {
 			await ctx.db.patch(existing._id, {
-				maxCapacity: args.maxCapacity,
+				maxPeople: args.maxPeople,
+				maxTables: args.maxTables,
+				peoplePerTable: args.peoplePerTable,
 				notes: args.notes,
 			});
 		} else {
@@ -134,11 +138,13 @@ export const setBulkDateCapacity = mutation({
 		slug: v.string(),
 		startDate: v.string(),
 		endDate: v.string(),
-		maxCapacity: v.number(),
+		maxPeople: v.number(),
+		maxTables: v.number(),
+		peoplePerTable: v.number(),
 		notes: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		const { slug, startDate, endDate, maxCapacity, notes } = args;
+		const { slug, startDate, endDate, maxPeople, maxTables, peoplePerTable, notes } = args;
 
 		const start = new Date(startDate);
 		const end = new Date(endDate);
@@ -161,14 +167,18 @@ export const setBulkDateCapacity = mutation({
 
 			if (existing) {
 				await ctx.db.patch(existing._id, {
-					maxCapacity,
+					maxPeople,
+					maxTables,
+					peoplePerTable,
 					notes,
 				});
 			} else {
 				await ctx.db.insert("bookingDateCapacity", {
 					slug,
 					date: dateStr,
-					maxCapacity,
+					maxPeople,
+					maxTables,
+					peoplePerTable,
 					notes,
 				});
 			}
@@ -205,14 +215,23 @@ export const getDateAvailability = query({
 			)
 			.collect();
 
-		const bookedCount = orders.filter((o) => o.bookingStatus !== "cancelled").length;
-		const maxCapacity = capacity?.maxCapacity ?? 0; // 0 = no limit set
+		const activeOrders = orders.filter((o) => o.bookingStatus !== "cancelled");
+		const totalBookings = activeOrders.length;
+		const bookedPeople = activeOrders.reduce((sum, o) => sum + (o.guestCount ?? 0), 0);
+		const bookedTables = activeOrders.reduce((sum, o) => sum + (o.tableCount ?? 0), 0);
+
+		const maxPeople = capacity?.maxPeople ?? 0;
+		const maxTables = capacity?.maxTables ?? 0;
+		const peoplePerTable = capacity?.peoplePerTable ?? 4;
 
 		return {
-			bookedCount,
-			maxCapacity,
-			isAvailable: maxCapacity === 0 || bookedCount < maxCapacity,
-			remaining: maxCapacity === 0 ? null : Math.max(0, maxCapacity - bookedCount),
+			totalBookings,
+			bookedPeople,
+			bookedTables,
+			maxPeople,
+			maxTables,
+			peoplePerTable,
+			isAvailable: (maxPeople === 0 || bookedPeople < maxPeople) && (maxTables === 0 || bookedTables < maxTables),
 		};
 	},
 });
@@ -227,6 +246,7 @@ export const createBookingOrder = mutation({
 		customerEmail: v.string(),
 		notes: v.optional(v.string()),
 		bookingDate: v.string(),
+		guestCount: v.number(),
 		items: v.array(
 			v.object({
 				productId: v.string(),
@@ -239,26 +259,35 @@ export const createBookingOrder = mutation({
 		paymentMethod: v.string(),
 	},
 	handler: async (ctx, args) => {
-		// Check date capacity
+		const { guestCount } = args;
 		const capacity = await ctx.db
 			.query("bookingDateCapacity")
 			.withIndex("by_slug_date", (q) =>
 				q.eq("slug", args.slug).eq("date", args.bookingDate)
 			)
 			.first();
+		const peoplePerTable = capacity?.peoplePerTable ?? 4;
+		const tableCount = Math.ceil(guestCount / peoplePerTable);
 
-		if (capacity && capacity.maxCapacity > 0) {
+		if (capacity) {
+			const { maxPeople, maxTables } = capacity;
+
 			const existing = await ctx.db
 				.query("bookingOrders")
 				.withIndex("by_slug_date", (q) =>
 					q.eq("slug", args.slug).eq("bookingDate", args.bookingDate)
 				)
 				.collect();
-			const activeCount = existing.filter(
-				(o) => o.bookingStatus !== "cancelled"
-			).length;
-			if (activeCount >= capacity.maxCapacity) {
-				throw new Error("Tanggal ini sudah penuh");
+			
+			const activeOrders = existing.filter((o) => o.bookingStatus !== "cancelled");
+			const totalBookedPeople = activeOrders.reduce((sum, o) => sum + (o.guestCount ?? 0), 0);
+			const totalBookedTables = activeOrders.reduce((sum, o) => sum + (o.tableCount ?? 0), 0);
+
+			if (maxPeople > 0 && totalBookedPeople + guestCount > maxPeople) {
+				throw new Error("Kapasitas orang untuk tanggal ini sudah habis");
+			}
+			if (maxTables > 0 && totalBookedTables + tableCount > maxTables) {
+				throw new Error("Kapasitas meja untuk tanggal ini sudah habis");
 			}
 		}
 
@@ -269,6 +298,7 @@ export const createBookingOrder = mutation({
 
 		return await ctx.db.insert("bookingOrders", {
 			...args,
+			tableCount,
 			bookingCode,
 			paymentStatus: "pending",
 			bookingStatus: "pending",
@@ -333,28 +363,46 @@ export const getMonthBookingSummary = query({
 			)
 			.collect();
 
-		const capMap: Record<string, number> = {};
+		const capMap: Record<string, { people: number; tables: number; perTable: number }> = {};
 		monthCapacities.forEach((c) => {
-			if (c.date) capMap[c.date] = c.maxCapacity;
+			if (c.date) capMap[c.date] = { people: c.maxPeople, tables: c.maxTables, perTable: c.peoplePerTable };
 		});
 
 		const summary: Record<
 			string,
-			{ count: number; capacity: number; pending: number; confirmed: number }
+			{ 
+				count: number; 
+				capacity: number; // For compatibility
+				maxPeople: number;
+				maxTables: number;
+				peoplePerTable: number;
+				bookedPeople: number;
+				bookedTables: number;
+				pending: number; 
+				confirmed: number 
+			}
 		> = {};
 
 		monthOrders.forEach((o) => {
 			if (!o.bookingDate) return;
 			if (!summary[o.bookingDate]) {
+				const cap = capMap[o.bookingDate] || { people: 0, tables: 0, perTable: 4 };
 				summary[o.bookingDate] = {
 					count: 0,
-					capacity: capMap[o.bookingDate] ?? 0,
+					capacity: cap.people, // Use people as primary capacity for display
+					maxPeople: cap.people,
+					maxTables: cap.tables,
+					peoplePerTable: cap.perTable,
+					bookedPeople: 0,
+					bookedTables: 0,
 					pending: 0,
 					confirmed: 0,
 				};
 			}
 			if (o.bookingStatus !== "cancelled") {
 				summary[o.bookingDate].count++;
+				summary[o.bookingDate].bookedPeople += o.guestCount ?? 0;
+				summary[o.bookingDate].bookedTables += o.tableCount ?? 0;
 				if (o.bookingStatus === "pending") summary[o.bookingDate].pending++;
 				if (o.bookingStatus === "confirmed") summary[o.bookingDate].confirmed++;
 			}

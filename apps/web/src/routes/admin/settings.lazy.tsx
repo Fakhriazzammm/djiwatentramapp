@@ -635,15 +635,17 @@ function SettingsPage() {
 
 								{/* QRIS Statis Image Upload */}
 								<div className="space-y-4 pt-4 border-t border-border/50">
-									<label
-										className="font-medium text-muted-foreground text-xs uppercase tracking-widest"
-										htmlFor="qris-image"
-									>
-										Kode QR QRIS Statis
-									</label>
-									<p className="text-muted-foreground text-xs -mt-3">
-										Upload gambar QR Code toko Anda untuk pembayaran QRIS Statis.
-									</p>
+									<div className="space-y-1.5">
+										<label
+											className="block font-medium text-muted-foreground text-xs uppercase tracking-widest"
+											htmlFor="qris-image"
+										>
+											Kode QR QRIS Statis
+										</label>
+										<p className="text-muted-foreground text-xs">
+											Upload gambar QR Code toko Anda untuk pembayaran QRIS Statis.
+										</p>
+									</div>
 									<div className="flex flex-col gap-6 sm:flex-row sm:items-center">
 										{landingSettings.qrisImage && (
 											<div className="relative h-48 w-48 overflow-hidden rounded-xl border-4 border-muted bg-white shadow-inner flex items-center justify-center p-2">
@@ -697,15 +699,17 @@ function SettingsPage() {
 								</div>
 
 								<div className="space-y-4 pt-4">
-									<label
-										className="font-medium text-muted-foreground text-xs uppercase tracking-widest"
-										htmlFor="payment-popup-image"
-									>
-										Banner Promosi / Branding (Opsional)
-									</label>
-									<p className="text-muted-foreground text-xs -mt-3">
-										Akan muncul di modal pembayaran POS sebagai latar belakang atau banner promosi.
-									</p>
+									<div className="space-y-1.5">
+										<label
+											className="block font-medium text-muted-foreground text-xs uppercase tracking-widest"
+											htmlFor="payment-popup-image"
+										>
+											Banner Promosi / Branding (Opsional)
+										</label>
+										<p className="text-muted-foreground text-xs">
+											Akan muncul di modal pembayaran POS sebagai latar belakang atau banner promosi.
+										</p>
+									</div>
 									<div className="flex flex-col gap-6 sm:flex-row sm:items-center">
 										{landingSettings.paymentPopupImage && (
 											<div className="relative h-48 w-48 overflow-hidden rounded-xl border-4 border-muted bg-muted shadow-inner">
