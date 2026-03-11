@@ -63,7 +63,7 @@ async function callGeminiAPI(
 		return { success: false, text: "", error: "GEMINI_API_KEY belum diatur di dashboard Convex." };
 	}
 
-	const models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+	const models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.0-flash-lite"];
 	let lastError = "";
 
 	for (const model of models) {
