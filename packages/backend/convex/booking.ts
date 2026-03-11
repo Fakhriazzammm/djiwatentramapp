@@ -302,7 +302,27 @@ export const updateBookingStatus = mutation({
 		),
 	},
 	handler: async (ctx, args) => {
-		const { id, ...updates } = args;
+		const { id, bookingStatus, paymentStatus } = args;
+
+		// Auto-record financial transaction when payment is confirmed as paid
+		if (paymentStatus === "paid") {
+			const booking = await ctx.db.get(id);
+			if (booking && booking.paymentStatus !== "paid") {
+				await ctx.db.insert("financialTransactions", {
+					type: "income",
+					amount: booking.totalAmount,
+					category: "Booking",
+					description: `Booking #${booking.bookingCode} - ${booking.customerName} (${booking.bookingDate})`,
+					date: Date.now(),
+					paymentMethod: booking.paymentMethod,
+					status: "completed",
+				});
+			}
+		}
+
+		const updates: Record<string, unknown> = {};
+		if (bookingStatus !== undefined) updates.bookingStatus = bookingStatus;
+		if (paymentStatus !== undefined) updates.paymentStatus = paymentStatus;
 		await ctx.db.patch(id, updates);
 	},
 });

@@ -467,6 +467,23 @@ export const executeToolCall = action({
 				break;
 			}
 
+			// ============================================
+			// BOOKING TOOLS
+			// ============================================
+			case "updateBookingStatus": {
+				const parsed = tools.updateBookingStatus.parameters.parse(toolArgs);
+				await ctx.runMutation(api.booking.updateBookingStatus, {
+					id: asId(parsed.id),
+					bookingStatus: parsed.bookingStatus,
+					paymentStatus: parsed.paymentStatus,
+				});
+				result = {
+					success: true,
+					message: `Booking berhasil diupdate${parsed.bookingStatus ? ` - status: ${parsed.bookingStatus}` : ""}${parsed.paymentStatus ? ` - pembayaran: ${parsed.paymentStatus}` : ""}`,
+				};
+				break;
+			}
+
 			default:
 					return {
 						success: false,

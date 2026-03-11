@@ -295,6 +295,27 @@ export const tools = {
 	},
 
 	// ============================================
+	// BOOKING TOOLS
+	// ============================================
+
+	// Update Booking Status
+	updateBookingStatus: {
+		description:
+			"Update status booking. Berikan ID booking dan status baru. Bisa update bookingStatus (pending/confirmed/cancelled/completed) dan/atau paymentStatus (pending/paid/cancelled). Saat paymentStatus diubah ke 'paid', transaksi keuangan otomatis dicatat.",
+		parameters: z.object({
+			id: z.string().min(1, "ID booking wajib diisi"),
+			bookingStatus: z
+				.enum(["pending", "confirmed", "cancelled", "completed"])
+				.optional()
+				.describe("Status booking baru"),
+			paymentStatus: z
+				.enum(["pending", "paid", "cancelled"])
+				.optional()
+				.describe("Status pembayaran baru"),
+		}),
+	},
+
+	// ============================================
 	// USER & ROLE TOOLS
 	// ============================================
 

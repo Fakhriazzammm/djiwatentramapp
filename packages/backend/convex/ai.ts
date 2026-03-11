@@ -316,6 +316,7 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		monthlyProgress,
 		periodComparison,
 		hppMarginAnalysis,
+		bookingOrders,
 	] = await Promise.all([
 		ctx.runQuery(api.products.getAllProductsAdmin),
 		ctx.runQuery(api.products.getCategories),
@@ -329,6 +330,7 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		ctx.runQuery(api.finance.getCurrentMonthProgress),
 		ctx.runQuery(api.finance.getPeriodComparison),
 		ctx.runQuery(api.hpp.getHppWithMarginAnalysis, {}),
+		ctx.runQuery(api.booking.getBookingOrders, { slug: "booking" }),
 	]);
 
 	const prodList =
@@ -628,6 +630,34 @@ ${(() => {
 	return result;
 })()}
 
+📅 BOOKING ONLINE:
+${(() => {
+	const bookingArr = bookingOrders as Array<{
+		bookingCode: string;
+		customerName: string;
+		customerPhone: string;
+		bookingDate: string;
+		totalAmount: number;
+		bookingStatus: string;
+		paymentStatus: string;
+		items: Array<{ name: string; quantity: number; price: number }>;
+		createdAt: number;
+	}>;
+	if (!bookingArr || bookingArr.length === 0) return "Belum ada data booking";
+	const pending = bookingArr.filter((b) => b.bookingStatus === "pending");
+	const confirmed = bookingArr.filter((b) => b.bookingStatus === "confirmed");
+	const completed = bookingArr.filter((b) => b.bookingStatus === "completed");
+	const cancelled = bookingArr.filter((b) => b.bookingStatus === "cancelled");
+	const totalRevenue = bookingArr
+		.filter((b) => b.paymentStatus === "paid")
+		.reduce((sum, b) => sum + b.totalAmount, 0);
+	const recent = bookingArr.slice(0, 10).map(
+		(b) =>
+			`#${b.bookingCode} - ${b.customerName} (${b.customerPhone}) - ${b.bookingDate} - Rp${b.totalAmount.toLocaleString("id-ID")} - ${b.bookingStatus}/${b.paymentStatus}`
+	).join("\n");
+	return `Total: ${bookingArr.length} booking (Pending: ${pending.length}, Dikonfirmasi: ${confirmed.length}, Selesai: ${completed.length}, Dibatalkan: ${cancelled.length})\nTotal Pendapatan Booking: Rp${totalRevenue.toLocaleString("id-ID")}\nBooking Terbaru:\n${recent}`;
+})()}
+
 == FITUR APLIKASI ==
 - Manajemen Produk & Kategori (CRUD, variasi, upload gambar)
 - Manajemen Inventaris & Stok (FIFO, low-stock alert, resep, base recipe/pre-mix)
@@ -640,6 +670,7 @@ ${(() => {
 - Rekonsiliasi Keuangan (cross-check pesanan vs transaksi keuangan)
 - Manajemen User & Role (RBAC, permissions)
 - Pengaturan Toko (nama, alamat, logo, receipt footer)
+- Booking Online (lihat semua reservasi, konfirmasi booking, tandai lunas, batalkan - gunakan tool updateBookingStatus)
 - AI Analytics (prediksi stok, analisis bisnis, rekomendasi produk, analisis HPP, target keuangan)`;
 }
 
