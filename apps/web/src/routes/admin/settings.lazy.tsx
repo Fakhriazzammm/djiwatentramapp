@@ -93,6 +93,11 @@ function SettingsPage() {
 	const [paymentSettings, setPaymentSettings] = useState({
 		mayarEnabled: false,
 		mayarTestMode: true,
+		manualMethods: {
+			cash: true,
+			qris: true,
+			transfer: false,
+		},
 	});
 
 	const [mayarApiConfigured, setMayarApiConfigured] = useState(false);
@@ -152,6 +157,11 @@ function SettingsPage() {
 			setPaymentSettings({
 				mayarEnabled: siteSettings.mayarEnabled ?? false,
 				mayarTestMode: siteSettings.mayarTestMode ?? true,
+				manualMethods: siteSettings.paymentMethodsManual ?? {
+					cash: true,
+					qris: true,
+					transfer: false,
+				},
 			});
 		}
 		setIsConnected(bluetoothPrinter.isConnected());
@@ -185,6 +195,8 @@ function SettingsPage() {
 				// Mayar Payment Gateway
 				mayarEnabled: paymentSettings.mayarEnabled,
 				mayarTestMode: paymentSettings.mayarTestMode,
+				// Manual Payment
+				paymentMethodsManual: paymentSettings.manualMethods,
 			};
 			console.log("Saving settings:", payload);
 			await updateSiteSettings(payload);
@@ -214,7 +226,7 @@ function SettingsPage() {
 			});
 
 			if (result.error) {
-				toast.error(result.error.message || "Gagal mendaftar user");
+				toast.error((result.error as any).message || "Gagal mendaftar user");
 				return;
 			}
 
@@ -484,19 +496,134 @@ function SettingsPage() {
 							</div>
 
 							<div className="space-y-6">
-								<div className="space-y-2">
-									<p className="font-medium text-muted-foreground text-xs">
-										Metode Pembayaran Tersedia
+								<div className="space-y-4 rounded-xl border border-border/50 bg-muted/20 p-5">
+									<p className="font-bold text-foreground text-sm">
+										Metode Pembayaran Kasir (Manual)
 									</p>
-									<div className="flex flex-wrap gap-2 pt-1">
-										{["Tunai", "QRIS", "Transfer Bank"].map((method) => (
-											<span
-												className="rounded-lg bg-muted px-4 py-2 font-bold text-foreground text-xs"
-												key={method}
+									<p className="-mt-3 text-muted-foreground text-xs leading-relaxed">
+										Pilih metode pembayaran yang dapat diterima oleh kasir.
+									</p>
+									<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+										{/* Cash Toggle */}
+										<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-3 shadow-sm">
+											<span className="font-medium text-foreground text-sm">Tunai</span>
+											<button
+												className={`relative h-6 w-10 file:rounded-full transition-all duration-300 rounded-full ${paymentSettings.manualMethods.cash ? "bg-primary" : "bg-muted-foreground/20"}`}
+												onClick={() =>
+													setPaymentSettings({
+														...paymentSettings,
+														manualMethods: {
+															...paymentSettings.manualMethods,
+															cash: !paymentSettings.manualMethods.cash,
+														},
+													})
+												}
+												type="button"
 											>
-												{method}
+												<div
+													className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${paymentSettings.manualMethods.cash ? "right-1" : "left-1"}`}
+												/>
+											</button>
+										</div>
+										{/* QRIS Toggle */}
+										<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-3 shadow-sm">
+											<span className="font-medium text-foreground text-sm">QRIS (Statis)</span>
+											<button
+												className={`relative h-6 w-10 rounded-full transition-all duration-300 ${paymentSettings.manualMethods.qris ? "bg-primary" : "bg-muted-foreground/20"}`}
+												onClick={() =>
+													setPaymentSettings({
+														...paymentSettings,
+														manualMethods: {
+															...paymentSettings.manualMethods,
+															qris: !paymentSettings.manualMethods.qris,
+														},
+													})
+												}
+												type="button"
+											>
+												<div
+													className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${paymentSettings.manualMethods.qris ? "right-1" : "left-1"}`}
+												/>
+											</button>
+										</div>
+										{/* Transfer Toggle */}
+										<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-3 shadow-sm">
+											<span className="font-medium text-foreground text-sm">Transfer Bank</span>
+											<button
+												className={`relative h-6 w-10 rounded-full transition-all duration-300 ${paymentSettings.manualMethods.transfer ? "bg-primary" : "bg-muted-foreground/20"}`}
+												onClick={() =>
+													setPaymentSettings({
+														...paymentSettings,
+														manualMethods: {
+															...paymentSettings.manualMethods,
+															transfer: !paymentSettings.manualMethods.transfer,
+														},
+													})
+												}
+												type="button"
+											>
+												<div
+													className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${paymentSettings.manualMethods.transfer ? "right-1" : "left-1"}`}
+												/>
+											</button>
+										</div>
+									</div>
+								</div>
+
+								{/* Tax and Service Charge Fields */}
+								<div className="grid grid-cols-1 gap-6 md:grid-cols-2 pt-2 border-t border-border/50">
+									<div className="space-y-2">
+										<label
+											className="font-medium text-muted-foreground text-xs uppercase tracking-widest"
+											htmlFor="tax-rate"
+										>
+											Pajak (%)
+										</label>
+										<div className="relative">
+											<input
+												className="w-full rounded-xl bg-muted/50 p-3.5 font-bold text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												id="tax-rate"
+												onChange={(e) =>
+													setSettings({
+														...settings,
+														taxRate: Number(e.target.value),
+													})
+												}
+												type="number"
+												value={settings.taxRate}
+											/>
+											<span className="absolute top-1/2 right-5 -translate-y-1/2 font-bold text-muted-foreground/40">
+												%
 											</span>
-										))}
+										</div>
+										<p className="text-[10px] text-muted-foreground">Pajak Pertambahan Nilai (PPN / PB1)</p>
+									</div>
+
+									<div className="space-y-2">
+										<label
+											className="font-medium text-muted-foreground text-xs uppercase tracking-widest"
+											htmlFor="service-charge"
+										>
+											Service Charge (%)
+										</label>
+										<div className="relative">
+											<input
+												className="w-full rounded-xl bg-muted/50 p-3.5 font-bold text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												id="service-charge"
+												onChange={(e) =>
+													setSettings({
+														...settings,
+														serviceCharge: Number(e.target.value),
+													})
+												}
+												type="number"
+												value={settings.serviceCharge}
+											/>
+											<span className="absolute top-1/2 right-5 -translate-y-1/2 font-bold text-muted-foreground/40">
+												%
+											</span>
+										</div>
+										<p className="text-[10px] text-muted-foreground">Biaya layanan operasional restoran</p>
 									</div>
 								</div>
 
@@ -717,7 +844,7 @@ function SettingsPage() {
 									/>
 								</div>
 
-								<div className="space-y-2">
+								<div className="space-y-2 md:col-span-2">
 									<label
 										className="font-medium text-muted-foreground text-xs"
 										htmlFor="store-phone"
@@ -734,58 +861,6 @@ function SettingsPage() {
 										type="text"
 										value={settings.storePhone}
 									/>
-								</div>
-
-								<div className="space-y-2">
-									<label
-										className="font-medium text-muted-foreground text-xs"
-										htmlFor="tax-rate"
-									>
-										Pajak (%)
-									</label>
-									<div className="relative">
-										<input
-											className="w-full rounded-xl bg-muted/50 p-3.5 font-bold text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-											id="tax-rate"
-											onChange={(e) =>
-												setSettings({
-													...settings,
-													taxRate: Number(e.target.value),
-												})
-											}
-											type="number"
-											value={settings.taxRate}
-										/>
-										<span className="absolute top-1/2 right-5 -translate-y-1/2 font-bold text-muted-foreground/40">
-											%
-										</span>
-									</div>
-								</div>
-
-								<div className="space-y-2">
-									<label
-										className="font-medium text-muted-foreground text-xs"
-										htmlFor="service-charge"
-									>
-										Service Charge (%)
-									</label>
-									<div className="relative">
-										<input
-											className="w-full rounded-xl bg-muted/50 p-3.5 font-bold text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-											id="service-charge"
-											onChange={(e) =>
-												setSettings({
-													...settings,
-													serviceCharge: Number(e.target.value),
-												})
-											}
-											type="number"
-											value={settings.serviceCharge}
-										/>
-										<span className="absolute top-1/2 right-5 -translate-y-1/2 font-bold text-muted-foreground/40">
-											%
-										</span>
-									</div>
 								</div>
 							</div>
 						</section>
@@ -1069,8 +1144,8 @@ function SettingsPage() {
 				{activeTab === "system" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
 						<div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-							{/* Branding Section */}
-							<section className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-sm md:space-y-8 md:p-8">
+							{/* Branding Section (Hidden to prevent confusion with Store Name for general admin) */}
+							<section className="hidden space-y-5 rounded-2xl border border-border bg-card p-4 shadow-sm md:space-y-8 md:p-8">
 								<div className="flex items-center gap-4">
 									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
 										<Settings2 className="h-6 w-6" />
@@ -1212,6 +1287,29 @@ function SettingsPage() {
 												Putuskan Koneksi
 											</button>
 										)}
+									</div>
+									
+									{/* Receipt Footer Field */}
+									<div className="space-y-2 pt-2 border-t border-border/50 mt-4 px-1">
+										<label
+											className="font-medium text-muted-foreground text-xs uppercase tracking-widest"
+											htmlFor="receipt-footer"
+										>
+											Pesan Bawah Struk (Footer)
+										</label>
+										<textarea
+											className="min-h-[80px] w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											id="receipt-footer"
+											onChange={(e) =>
+												setSettings({
+													...settings,
+													receiptFooter: e.target.value,
+												})
+											}
+											placeholder="Terima kasih atas kunjungan Anda! WiFi: KopiKita123"
+											value={settings.receiptFooter}
+										/>
+										<p className="text-[10px] text-muted-foreground leading-relaxed">Pesan ini akan tercetak di bagian bawah setiap struk kasir dan kitchen.</p>
 									</div>
 								</div>
 							</section>

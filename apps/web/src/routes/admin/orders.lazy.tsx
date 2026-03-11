@@ -99,6 +99,7 @@ function AdminOrders() {
 			);
 			// Update the selected order locally to reflect change immediately in UI
 			setSelectedOrder({ ...selectedOrder, status: newStatus });
+
 		} catch (_error) {
 			toast.error("Gagal memperbarui status pesanan");
 		}
@@ -211,7 +212,10 @@ function AdminOrders() {
 				</div>
 				<div className="flex items-center gap-2">
 					<Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
-					<Select onValueChange={setStatusFilter} value={statusFilter}>
+					<Select 
+						onValueChange={(val: string | null) => val && setStatusFilter(val)} 
+						value={statusFilter}
+					>
 						<SelectTrigger className="w-full md:w-[180px]">
 							<SelectValue placeholder="Status" />
 						</SelectTrigger>
@@ -233,7 +237,7 @@ function AdminOrders() {
 						Tidak ada pesanan ditemukan.
 					</p>
 				) : (
-					filteredOrders?.map((order) => (
+					filteredOrders?.map((order: Order) => (
 						<div
 							className="rounded-xl border border-border bg-card p-3 transition-colors active:bg-muted/50"
 							key={order._id}
@@ -302,7 +306,7 @@ function AdminOrders() {
 									</td>
 								</tr>
 							) : (
-								filteredOrders?.map((order) => (
+								filteredOrders?.map((order: Order) => (
 									<tr
 										className="group cursor-pointer transition-colors hover:bg-muted/30"
 										key={order._id}

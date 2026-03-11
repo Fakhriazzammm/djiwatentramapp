@@ -41,11 +41,20 @@ interface CartContextType {
 	applyVoucher: (voucher: AppliedVoucher | null) => void;
 	discountAmount: number;
 	finalTotal: number;
+	taxRate: number;
+	taxAmount: number;
+	serviceChargeRate: number;
+	serviceChargeAmount: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+import { useQuery } from "convex/react";
+import { api } from "@yumipos/backend/convex/_generated/api";
+
 export function CartProvider({ children }: { children: ReactNode }) {
+	const siteSettings = useQuery(api.site_settings.getSettings);
+
 	const [items, setItems] = useState<CartItem[]>(() => {
 		// Load cart from localStorage on mount
 		if (typeof window !== "undefined") {
@@ -177,7 +186,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
 		return discount;
 	}, 0);
 
-	const finalTotal = Math.max(0, totalAmount - discountAmount);
+	const subTotalAfterDiscount = Math.max(0, totalAmount - discountAmount);
+
+	// Calculate Tax & Service Charge
+	const taxRate = siteSettings?.taxRate ?? 0;
+	const serviceChargeRate = siteSettings?.serviceCharge ?? 0;
+
+	// Formula: (Subtotal - Discount) * Rate
+	const serviceChargeAmount = subTotalAfterDiscount * (serviceChargeRate / 100);
+	const taxAmount = subTotalAfterDiscount * (taxRate / 100);
+
+	const finalTotal = subTotalAfterDiscount + serviceChargeAmount + taxAmount;
 
 	return (
 		<CartContext.Provider
@@ -193,6 +212,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 				applyVoucher,
 				discountAmount,
 				finalTotal,
+				taxRate,
+				taxAmount,
+				serviceChargeRate,
+				serviceChargeAmount,
 			}}
 		>
 			{children}

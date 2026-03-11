@@ -12,7 +12,11 @@ import { isDiscountApplicable } from "@/lib/utils/pricing";
 interface PaymentModalProps {
 	isOpen: boolean;
 	onClose: () => void;
-	onConfirm: (finalAmount: number, discountId?: string) => void;
+	onConfirm: (
+		finalAmount: number,
+		discountId?: string,
+		paymentMethod?: string
+	) => void;
 	isSubmitting: boolean;
 }
 
@@ -29,6 +33,7 @@ export function PaymentConfirmationModal({
 	const [selectedDiscountId, setSelectedDiscountId] = useState<string | null>(
 		null
 	);
+	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("tunai");
 
 	// Filter discounts based on time/date/target applicability
 	const validDiscounts = useMemo(() => {
@@ -144,7 +149,48 @@ export function PaymentConfirmationModal({
 		return calculateDiscount(currentDiscount, totalAmount, items);
 	}, [currentDiscount, totalAmount, items, calculateDiscount]);
 
-	const finalTotal = Math.max(0, totalAmount - discountAmount);
+	const subTotalAfterDiscount = Math.max(0, totalAmount - discountAmount);
+
+	const taxRate = siteSettings?.taxRate ?? 0;
+	const serviceChargeRate = siteSettings?.serviceCharge ?? 0;
+
+	const serviceChargeAmount = subTotalAfterDiscount * (serviceChargeRate / 100);
+	const taxAmount = subTotalAfterDiscount * (taxRate / 100);
+
+	const finalTotal = subTotalAfterDiscount + serviceChargeAmount + taxAmount;
+
+	// Opsi Pembayaran Dinamis
+	const paymentOptions = useMemo(() => {
+		const options = [];
+		const manualMethods = siteSettings?.paymentMethodsManual;
+
+		if (manualMethods?.cash !== false) {
+			options.push({ id: "tunai", label: "TUNAI (CASH)" });
+		}
+		if (manualMethods?.qris !== false) {
+			options.push({ id: "qris", label: "QRIS MANUAL" });
+		}
+		if (manualMethods?.transfer !== false) {
+			options.push({ id: "transfer", label: "TRANSFER BANK" });
+		}
+		if (siteSettings?.mayarEnabled) {
+			options.push({ id: "qris_mayar", label: "QRIS DINAMIS (MAYAR)" });
+		}
+
+		// Fallback default
+		if (options.length === 0) {
+			options.push({ id: "tunai", label: "TUNAI (CASH)" });
+		}
+
+		return options;
+	}, [siteSettings]);
+
+	// Set default selection to first available option
+	useMemo(() => {
+		if (paymentOptions.length > 0 && !selectedPaymentMethod) {
+			setSelectedPaymentMethod(paymentOptions[0].id);
+		}
+	}, [paymentOptions, selectedPaymentMethod]);
 
 	if (!isOpen) {
 		return null;
@@ -207,7 +253,7 @@ export function PaymentConfirmationModal({
 							</div>
 
 							{discountAmount > 0 && (
-								<div className="flex items-center justify-between font-medium text-foreground">
+								<div className="flex items-center justify-between font-medium text-green-600">
 									<span className="flex items-center gap-1.5 text-xs uppercase tracking-wide">
 										<Tag className="h-3 w-3" /> Potongan
 									</span>
@@ -222,11 +268,41 @@ export function PaymentConfirmationModal({
 								</div>
 							)}
 
+							{serviceChargeAmount > 0 && (
+								<div className="flex items-center justify-between font-medium text-foreground">
+									<span className="text-xs uppercase tracking-wide text-muted-foreground">
+										Service Charge ({serviceChargeRate}%)
+									</span>
+									<span className="text-sm">
+										{new Intl.NumberFormat("id-ID", {
+											style: "currency",
+											currency: "IDR",
+											maximumFractionDigits: 0,
+										}).format(serviceChargeAmount)}
+									</span>
+								</div>
+							)}
+
+							{taxAmount > 0 && (
+								<div className="flex items-center justify-between font-medium text-foreground">
+									<span className="text-xs uppercase tracking-wide text-muted-foreground">
+										Pajak ({taxRate}%)
+									</span>
+									<span className="text-sm">
+										{new Intl.NumberFormat("id-ID", {
+											style: "currency",
+											currency: "IDR",
+											maximumFractionDigits: 0,
+										}).format(taxAmount)}
+									</span>
+								</div>
+							)}
+
 							<div className="mt-2 flex items-center justify-between border-border border-t pt-3">
 								<span className="font-semibold text-foreground text-xs uppercase tracking-wide">
 									Total Bayar
 								</span>
-								<span className="font-bold text-2xl text-foreground tracking-tight">
+								<span className="font-bold text-2xl text-primary tracking-tight">
 									{new Intl.NumberFormat("id-ID", {
 										style: "currency",
 										currency: "IDR",
@@ -272,6 +348,32 @@ export function PaymentConfirmationModal({
 							</table>
 						</div>
 
+						{/* Payment Method Selection */}
+						<div className="relative">
+							<label
+								className="mb-2 block font-medium text-muted-foreground text-xs uppercase tracking-wide"
+								htmlFor="payment-method-select"
+							>
+								Metode Pembayaran
+							</label>
+							<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+								{paymentOptions.map((opt) => (
+									<button
+										key={opt.id}
+										type="button"
+										onClick={() => setSelectedPaymentMethod(opt.id)}
+										className={`rounded-lg border p-3 text-center text-xs font-bold transition-all ${
+											selectedPaymentMethod === opt.id
+												? "border-primary bg-primary/10 text-primary shadow-sm"
+												: "border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+										}`}
+									>
+										{opt.label}
+									</button>
+								))}
+							</div>
+						</div>
+
 						{/* Discount Dropdown */}
 						{validDiscounts.length > 0 && (
 							<div className="relative">
@@ -279,7 +381,7 @@ export function PaymentConfirmationModal({
 									className="mb-2 block font-medium text-muted-foreground text-xs uppercase tracking-wide"
 									htmlFor="discount-select"
 								>
-									Diskon
+									Pilih Voucher / Diskon Menu
 								</label>
 								<select
 									className="w-full appearance-none rounded-lg border border-border bg-background py-3 pr-12 pl-4 font-medium text-foreground text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
@@ -298,7 +400,7 @@ export function PaymentConfirmationModal({
 										</option>
 									))}
 								</select>
-								<Tag className="pointer-events-none absolute top-9 right-4 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+								<Tag className="pointer-events-none absolute top-[38px] right-4 h-4 w-4 text-muted-foreground" />
 							</div>
 						)}
 
@@ -317,7 +419,11 @@ export function PaymentConfirmationModal({
 								className="flex-[2] rounded-lg bg-primary py-4 font-semibold text-primary-foreground text-sm shadow-lg transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
 								disabled={isSubmitting}
 								onClick={() =>
-									onConfirm(finalTotal, selectedDiscountId || undefined)
+									onConfirm(
+										finalTotal,
+										selectedDiscountId || undefined,
+										selectedPaymentMethod
+									)
 								}
 								type="button"
 							>

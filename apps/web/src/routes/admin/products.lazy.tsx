@@ -320,9 +320,7 @@ function ProductsTab({
 		setEditingId(product._id);
 
 		// Load existing recipe
-		const existingRecipe = recipes?.find(
-			(r) => r.productId === product._id && !r.variantName
-		);
+		const existingRecipe = recipes?.find((recipe: any) => recipe.productId === product._id && !recipe.variantName);
 		if (existingRecipe) {
 			setRecipeData(
 				existingRecipe.ingredients as {
@@ -347,7 +345,8 @@ function ProductsTab({
 		}
 
 		// Check if already exists
-		if (formData.variations.some((v: any) => v.name === preset.name)) {
+		const existing = formData.variations.some((variation: any) => variation.name === preset.name);
+		if (existing) {
 			toast.error("Variasi ini sudah ditambahkan");
 			return;
 		}
@@ -1520,7 +1519,7 @@ function BaseRecipesTab() {
 			</div>
 
 			<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-				{baseRecipes?.map((recipe) => (
+				{baseRecipes?.map((recipe: any) => (
 					<div
 						className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
 						key={recipe._id}
@@ -1847,7 +1846,7 @@ function MixedRecipesTab() {
 									</p>
 									{recipe.ingredients.map((ing: any) => {
 										const inv = inventory?.find(
-											(v) => v._id === ing.inventoryId
+											(v: any) => v._id === ing.inventoryId
 										);
 										return (
 											<div

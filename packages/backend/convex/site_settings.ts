@@ -21,6 +21,12 @@ const DEFAULTS = {
 	// Mayar Payment Gateway defaults
 	mayarEnabled: false,
 	mayarTestMode: true,
+	// Manual Payment Methods
+	paymentMethodsManual: {
+		cash: true,
+		qris: true,
+		transfer: false,
+	},
 };
 
 export const getSettings = query({
@@ -63,6 +69,9 @@ export const getSettings = query({
 			// Mayar Payment Gateway
 			mayarEnabled: settings.mayarEnabled ?? DEFAULTS.mayarEnabled,
 			mayarTestMode: settings.mayarTestMode ?? DEFAULTS.mayarTestMode,
+			// Manual Payment
+			paymentMethodsManual:
+				settings.paymentMethodsManual ?? DEFAULTS.paymentMethodsManual,
 		};
 	},
 });
@@ -91,6 +100,14 @@ export const updateSettings = mutation({
 		// Mayar Payment Gateway
 		mayarEnabled: v.optional(v.boolean()),
 		mayarTestMode: v.optional(v.boolean()),
+		// Manual Payments
+		paymentMethodsManual: v.optional(
+			v.object({
+				cash: v.boolean(),
+				qris: v.boolean(),
+				transfer: v.boolean(),
+			})
+		),
 	},
 	handler: async (ctx, args) => {
 		const existing = await ctx.db.query("siteSettings").first();

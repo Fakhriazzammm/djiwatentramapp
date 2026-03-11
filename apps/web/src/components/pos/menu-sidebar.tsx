@@ -8,6 +8,7 @@ import {
 	Bot,
 	ClipboardList,
 	Clock,
+	CreditCard,
 	Loader2,
 	type LucideIcon,
 	Menu,
@@ -15,6 +16,9 @@ import {
 	Package,
 	Pencil,
 	Plus,
+	Printer,
+	Save,
+	Settings2,
 	ShoppingCart,
 	Sparkles,
 	SquarePlay,
@@ -48,6 +52,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { YumiAIChat } from "@/components/pos/yumi-ai-chat";
+import { bluetoothPrinter } from "@/lib/bluetooth-printer";
 
 interface ConfirmConfig {
 	isOpen: boolean;
@@ -78,6 +83,12 @@ const TABS: TabItem[] = [
 		label: "Yumi AI",
 		icon: Bot,
 		iconColor: "text-primary",
+	},
+	{
+		value: "settings",
+		label: "Pengaturan",
+		icon: Settings2,
+		iconColor: "text-muted-foreground",
 	},
 ];
 
@@ -123,36 +134,39 @@ export function MenuSidebar() {
 				</SheetHeader>
 				<div className="flex-1 overflow-hidden">
 					<Tabs className="flex h-full flex-col" value={activeTab} onValueChange={setActiveTab}>
-						<div className="border-b bg-muted/20 px-2 pt-2">
-							<TabsList className="grid h-14 w-full grid-cols-4 gap-0.5 rounded-t-lg bg-muted/50 p-1">
+						<div className="border-b bg-muted/20 px-3 pt-3 pb-2">
+							<TabsList className="grid h-16 w-full grid-cols-5 gap-1.5 rounded-xl bg-muted/50 p-1.5">
 								{TABS.map((tab) => {
 									const Icon = tab.icon;
 									return (
 										<TabsTrigger
-											className="flex h-full flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1.5 font-medium text-[10px] transition-all data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+											className="relative flex h-full flex-col items-center justify-center gap-1 rounded-lg border-none px-1 py-1 font-medium text-[10px] outline-none transition-all after:hidden hover:bg-muted/50 hover:text-foreground focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm data-active:bg-background data-active:text-primary data-active:shadow-sm sm:text-xs"
 											key={tab.value}
 											value={tab.value}
 										>
-											<Icon className="h-4 w-4" />
-											<span className="leading-none">{tab.label}</span>
+											<Icon className="mb-0.5 h-4 w-4 sm:h-5 sm:w-5" />
+											<span className="leading-none text-[9px] sm:text-[10px]">{tab.label}</span>
 										</TabsTrigger>
 									);
 								})}
 							</TabsList>
 						</div>
 
-						<div className="flex-1 overflow-y-auto bg-background pb-10">
-							<TabsContent className="m-0 h-full p-3" value="dashboard">
+						<div className="flex flex-1 flex-col overflow-hidden bg-background">
+							<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="dashboard">
 								<DashboardTab onClose={() => setIsOpen(false)} onNavigate={setActiveTab} />
 							</TabsContent>
-							<TabsContent className="m-0 h-full p-3" value="kas">
+							<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="kas">
 								<KasTab onClose={() => setIsOpen(false)} />
 							</TabsContent>
-							<TabsContent className="m-0 h-full p-3" value="stok">
+							<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="stok">
 								<StokTab setConfirmConfig={setConfirmConfig} />
 							</TabsContent>
-							<TabsContent className="m-0 h-[calc(100vh-16rem)] p-0" value="yumi">
+							<TabsContent className="m-0 flex-1 overflow-hidden p-0" value="yumi">
 								<YumiAIChat />
+							</TabsContent>
+							<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="settings">
+								<SettingsTab onClose={() => setIsOpen(false)} />
 							</TabsContent>
 						</div>
 					</Tabs>
@@ -1188,6 +1202,179 @@ function MarketList() {
 					</div>
 				</ScrollArea>
 			)}
+		</div>
+	);
+}
+
+function SettingsTab({ onClose }: { onClose: () => void }) {
+	const siteSettings = useQuery(api.site_settings.getSettings);
+	const updateSiteSettings = useMutation(api.site_settings.updateSettings);
+
+	const [isSaving, setIsSaving] = useState(false);
+	const [autoPrint, setAutoPrint] = useState(false);
+	const [isConnected, setIsConnected] = useState(false);
+	const [printerName, setPrinterName] = useState<string | null>(null);
+
+	// Sync local state when siteSettings loads
+	useEffect(() => {
+		if (siteSettings) {
+			setAutoPrint(siteSettings.autoPrint ?? false);
+		}
+		setIsConnected(bluetoothPrinter.isConnected());
+	}, [siteSettings]);
+
+	const handleConnectPrinter = async () => {
+		try {
+			const name = await bluetoothPrinter.connect();
+			setPrinterName(name);
+			setIsConnected(true);
+			toast.success(`Terhubung ke printer: ${name}`);
+		} catch (error) {
+			toast.error((error as Error).message || "Gagal menghubungkan printer");
+		}
+	};
+
+	const handleSave = async () => {
+		setIsSaving(true);
+		try {
+			await updateSiteSettings({
+				autoPrint,
+			});
+			toast.success("Pengaturan POS disimpan!");
+		} catch (error) {
+			toast.error("Gagal menyimpan pengaturan");
+			console.error(error);
+		} finally {
+			setIsSaving(false);
+		}
+	};
+
+	return (
+		<div className="space-y-4 pt-2">
+			<div className="space-y-2 text-center border-b pb-3">
+				<h3 className="font-medium text-lg">Pengaturan Kasir</h3>
+				<p className="text-muted-foreground text-xs px-4">
+					Atur koneksi printer bluetooth dan cetak otomatis langsung dari menu kasir
+				</p>
+			</div>
+
+			<div className="space-y-4 pb-10">
+				{/* Printer Connection Card */}
+				<Card className="border-border bg-card shadow-sm">
+					<CardContent className="p-4 space-y-4">
+						<div className="flex items-center gap-3 border-b border-border/50 pb-3">
+							<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+								<Printer className="h-4 w-4 text-primary" />
+							</div>
+							<div>
+								<h4 className="font-bold text-sm">Printer Bluetooth</h4>
+								<p className="text-[10px] text-muted-foreground">Koneksikan ke printer thermal</p>
+							</div>
+						</div>
+
+						<div className="flex flex-col gap-3">
+							<div className="flex items-center justify-between rounded-lg bg-muted/40 p-3">
+								<div className="flex items-center gap-2">
+									<div
+										className={`h-2.5 w-2.5 rounded-full ${isConnected ? "bg-green-500" : "bg-destructive"}`}
+									/>
+									<span className="text-xs font-medium">
+										{isConnected
+											? `Terhubung: ${printerName || "Printer"}`
+											: "Belum terhubung"}
+									</span>
+								</div>
+								<Button
+									size="sm"
+									variant={isConnected ? "outline" : "default"}
+									onClick={handleConnectPrinter}
+									className="h-7 text-[10px]"
+								>
+									{isConnected ? "Hubungkan Ulang" : "Hubungkan"}
+								</Button>
+							</div>
+
+							{!isConnected && (
+								<p className="text-[10px] text-amber-600 bg-amber-500/10 p-2 rounded border border-amber-500/20">
+									<AlertCircle className="inline h-3 w-3 mr-1" />
+									Pastikan bluetooth & lokasi aktif.
+								</p>
+							)}
+						</div>
+					</CardContent>
+				</Card>
+
+				{/* POS Configuration Card */}
+				<Card className="border-border bg-card shadow-sm">
+					<CardContent className="p-4 space-y-4">
+						<div className="flex items-center gap-3 border-b border-border/50 pb-3">
+							<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+								<CreditCard className="h-4 w-4 text-primary" />
+							</div>
+							<div>
+								<h4 className="font-bold text-sm">Alur Kasir</h4>
+								<p className="text-[10px] text-muted-foreground">Otomatisasi pos & struk</p>
+							</div>
+						</div>
+
+						<div className="flex flex-col gap-4">
+							<div className="flex items-center justify-between">
+								<div className="space-y-0.5 max-w-[70%]">
+									<Label className="text-sm font-medium">Cetak Struk Otomatis</Label>
+									<p className="text-[10px] text-muted-foreground leading-tight">
+										Struk langsung dicetak setelah pembayaran berhasil menggunakan printer aktif
+									</p>
+								</div>
+								<button
+									type="button"
+									onClick={() => setAutoPrint(!autoPrint)}
+									className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ease-in-out ${autoPrint ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+								>
+									<span
+										className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${autoPrint ? 'translate-x-6' : 'translate-x-1'}`}
+									/>
+								</button>
+							</div>
+							
+							<div className="flex items-center justify-between">
+								<div className="space-y-0.5 max-w-[80%]">
+									<Label className="text-sm font-medium">Admin & Pengaturan Lanjut</Label>
+									<p className="text-[10px] text-muted-foreground leading-tight">
+										Buka pengaturan pajak, nama toko, dan integrasi payments di halaman admin
+									</p>
+								</div>
+								<Button
+									size="sm"
+									variant="outline"
+									onClick={() => {
+										onClose();
+										window.location.href = "/admin/settings";
+									}}
+									className="h-7 px-2"
+								>
+									Buka
+								</Button>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+
+				{/* Save Configs Bottom Fixed */}
+				<div className="mt-4 pt-2">
+					<Button
+						className="w-full font-bold shadow-md"
+						disabled={isSaving}
+						onClick={handleSave}
+					>
+						{isSaving ? (
+							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+						) : (
+							<Save className="mr-2 h-4 w-4" />
+						)}
+						{isSaving ? "Menyimpan..." : "Simpan Pengaturan"}
+					</Button>
+				</div>
+			</div>
 		</div>
 	);
 }

@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
+import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { Minus, Plus, ShoppingCart, Tag, Trash2, X } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -143,10 +143,18 @@ function CartItemRow({
 function PriceSummary({
 	totalAmount,
 	discountAmount,
+	taxAmount,
+	serviceChargeAmount,
+	taxRate,
+	serviceChargeRate,
 	finalTotal,
 }: {
 	totalAmount: number;
 	discountAmount: number;
+	taxAmount: number;
+	serviceChargeAmount: number;
+	taxRate: number;
+	serviceChargeRate: number;
 	finalTotal: number;
 }) {
 	return (
@@ -165,7 +173,23 @@ function PriceSummary({
 					</span>
 				</div>
 			)}
-			<div className="flex items-center justify-between border-border border-t pt-1.5">
+			{serviceChargeAmount > 0 && (
+				<div className="flex items-center justify-between">
+					<span className="text-muted-foreground text-sm leading-tight">Service Chg. ({serviceChargeRate}%)</span>
+					<span className="font-medium text-muted-foreground text-sm">
+						{formatCurrency(serviceChargeAmount)}
+					</span>
+				</div>
+			)}
+			{taxAmount > 0 && (
+				<div className="flex items-center justify-between">
+					<span className="text-muted-foreground text-sm">Pajak ({taxRate}%)</span>
+					<span className="font-medium text-muted-foreground text-sm">
+						{formatCurrency(taxAmount)}
+					</span>
+				</div>
+			)}
+			<div className="flex items-center justify-between border-border border-t pt-1.5 mt-1.5">
 				<span className="font-semibold text-foreground">Total</span>
 				<span className="font-bold text-foreground text-xl">
 					{formatCurrency(finalTotal)}
@@ -291,6 +315,10 @@ function MobileCartDrawer({
 	appliedVoucher,
 	totalAmount,
 	discountAmount,
+	taxAmount,
+	serviceChargeAmount,
+	taxRate,
+	serviceChargeRate,
 	finalTotal,
 	isSubmitting,
 	onUpdateQuantity,
@@ -306,6 +334,10 @@ function MobileCartDrawer({
 	appliedVoucher: { name: string } | null;
 	totalAmount: number;
 	discountAmount: number;
+	taxAmount: number;
+	serviceChargeAmount: number;
+	taxRate: number;
+	serviceChargeRate: number;
 	finalTotal: number;
 	isSubmitting: boolean;
 	onUpdateQuantity: (
@@ -394,6 +426,10 @@ function MobileCartDrawer({
 							<PriceSummary
 								discountAmount={discountAmount}
 								finalTotal={finalTotal}
+								serviceChargeAmount={serviceChargeAmount}
+								serviceChargeRate={serviceChargeRate}
+								taxAmount={taxAmount}
+								taxRate={taxRate}
 								totalAmount={totalAmount}
 							/>
 						</div>
@@ -446,6 +482,10 @@ function MenuPage() {
 		applyVoucher,
 		discountAmount,
 		finalTotal,
+		taxAmount,
+		taxRate,
+		serviceChargeAmount,
+		serviceChargeRate,
 	} = useCart();
 	const createOrder = useMutation(api.orders.createOrder);
 	const navigate = useNavigate();
@@ -486,7 +526,11 @@ function MenuPage() {
 		[activeDiscounts, addToCart]
 	);
 
-	const handleCheckout = async (finalAmount?: number, _discountId?: string) => {
+	const handleCheckout = async (
+		finalAmount?: number,
+		_discountId?: string,
+		paymentMethod: string = "tunai"
+	) => {
 		if (items.length === 0) {
 			toast.error("Keranjang kosong. Tambahkan item terlebih dahulu.");
 			return;
@@ -508,7 +552,7 @@ function MenuPage() {
 					price: i.price,
 				})),
 				totalAmount: finalAmount,
-				paymentMethod: "tunai",
+				paymentMethod: paymentMethod,
 				customerName: "Pelanggan",
 			});
 
@@ -522,7 +566,7 @@ function MenuPage() {
 					quantity: i.quantity,
 				})),
 				totalAmount: finalAmount,
-				paymentMethod: "tunai",
+				paymentMethod: paymentMethod,
 				createdAt: Date.now(),
 			};
 
@@ -621,7 +665,7 @@ function MenuPage() {
 					>
 						Semua
 					</button>
-					{categories?.map((cat) => (
+					{categories?.map((cat: Doc<"categories">) => (
 						<button
 							aria-label={`Tampilkan kategori ${cat.name}`}
 							aria-selected={selectedCategory === cat._id}
@@ -770,6 +814,10 @@ function MenuPage() {
 							<PriceSummary
 								discountAmount={discountAmount}
 								finalTotal={finalTotal}
+								serviceChargeAmount={serviceChargeAmount}
+								serviceChargeRate={serviceChargeRate}
+								taxAmount={taxAmount}
+								taxRate={taxRate}
 								totalAmount={totalAmount}
 							/>
 						</div>
@@ -829,11 +877,12 @@ function MenuPage() {
 				onCheckout={() => handleCheckout()}
 				onClearCart={() => clearCart()}
 				onOpenChange={setIsMobileCartOpen}
-				onOpenVoucher={() => {
-					setIsMobileCartOpen(false);
-					setIsVoucherModalOpen(true);
-				}}
+				onOpenVoucher={() => setIsVoucherModalOpen(true)}
 				onUpdateQuantity={updateQuantity}
+				serviceChargeAmount={serviceChargeAmount}
+				serviceChargeRate={serviceChargeRate}
+				taxAmount={taxAmount}
+				taxRate={taxRate}
 				totalAmount={totalAmount}
 				totalItems={totalItems}
 			/>
@@ -846,7 +895,10 @@ function MenuPage() {
 			/>
 
 			<VoucherModal
+				appliedVoucher={appliedVoucher}
+				cartTotal={totalAmount}
 				isOpen={isVoucherModalOpen}
+				onApplyVoucher={applyVoucher}
 				onClose={() => setIsVoucherModalOpen(false)}
 			/>
 		</div>

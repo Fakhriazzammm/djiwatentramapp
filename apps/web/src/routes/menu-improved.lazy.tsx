@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
+import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -30,8 +30,19 @@ function MenuPage() {
 	const [selectedCategory, setSelectedCategory] =
 		useState<Id<"categories"> | null>(null);
 	const [searchQuery, setSearchQuery] = useState("");
-	const { items, addToCart, updateQuantity, totalAmount, clearCart } =
-		useCart();
+	const {
+		items,
+		addToCart,
+		updateQuantity,
+		totalAmount,
+		clearCart,
+		taxAmount,
+		serviceChargeAmount,
+		taxRate,
+		serviceChargeRate,
+		finalTotal,
+		discountAmount,
+	} = useCart();
 	const createOrder = useMutation(api.orders.createOrder);
 	const navigate = useNavigate();
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,7 +88,11 @@ function MenuPage() {
 		[activeDiscounts, addToCart]
 	);
 
-	const handleCheckout = async (finalAmount?: number, _discountId?: string) => {
+	const handleCheckout = async (
+		finalAmount?: number,
+		_discountId?: string,
+		paymentMethod: string = "tunai"
+	) => {
 		if (items.length === 0) {
 			toast.error("Keranjang kosong. Tambahkan item terlebih dahulu.");
 			return;
@@ -100,7 +115,7 @@ function MenuPage() {
 					price: i.price,
 				})),
 				totalAmount: finalAmount,
-				paymentMethod: "tunai",
+				paymentMethod: paymentMethod,
 				customerName: "Pelanggan",
 			});
 
@@ -114,7 +129,7 @@ function MenuPage() {
 					quantity: i.quantity,
 				})),
 				totalAmount: finalAmount,
-				paymentMethod: "tunai",
+				paymentMethod: paymentMethod,
 				createdAt: Date.now(),
 			};
 
@@ -204,7 +219,7 @@ function MenuPage() {
 					>
 						Semua
 					</button>
-					{categories?.map((cat, _index) => (
+					{categories?.map((cat: Doc<"categories">, _index: number) => (
 						<button
 							aria-label={`Tampilkan kategori ${cat.name}`}
 							aria-selected={selectedCategory === cat._id}
@@ -407,7 +422,57 @@ function MenuPage() {
 
 					{/* Footer Actions */}
 					<div className="border-border border-t bg-muted/10 p-4">
-						<div className="mb-4 flex items-end justify-between">
+						<div className="mb-2 flex items-center justify-between text-sm">
+							<span className="text-muted-foreground">Subtotal</span>
+							<span className="font-semibold text-foreground">
+								{new Intl.NumberFormat("id-ID", {
+									style: "currency",
+									currency: "IDR",
+									maximumFractionDigits: 0,
+								}).format(totalAmount)}
+							</span>
+						</div>
+						
+						{discountAmount > 0 && (
+							<div className="mb-2 flex items-center justify-between text-sm text-green-600">
+								<span>Diskon</span>
+								<span className="font-semibold">
+									-{new Intl.NumberFormat("id-ID", {
+										style: "currency",
+										currency: "IDR",
+										maximumFractionDigits: 0,
+									}).format(discountAmount)}
+								</span>
+							</div>
+						)}
+
+						{serviceChargeAmount > 0 && (
+							<div className="mb-2 flex items-center justify-between text-sm text-muted-foreground">
+								<span>Service Chg. ({serviceChargeRate}%)</span>
+								<span className="font-semibold">
+									{new Intl.NumberFormat("id-ID", {
+										style: "currency",
+										currency: "IDR",
+										maximumFractionDigits: 0,
+									}).format(serviceChargeAmount)}
+								</span>
+							</div>
+						)}
+
+						{taxAmount > 0 && (
+							<div className="mb-3 flex items-center justify-between text-sm text-muted-foreground">
+								<span>Pajak ({taxRate}%)</span>
+								<span className="font-semibold">
+									{new Intl.NumberFormat("id-ID", {
+										style: "currency",
+										currency: "IDR",
+										maximumFractionDigits: 0,
+									}).format(taxAmount)}
+								</span>
+							</div>
+						)}
+
+						<div className="mb-4 flex items-end justify-between border-t border-border pt-2 mt-2">
 							<span className="font-medium text-muted-foreground text-sm">
 								Total
 							</span>
@@ -416,7 +481,7 @@ function MenuPage() {
 									style: "currency",
 									currency: "IDR",
 									maximumFractionDigits: 0,
-								}).format(totalAmount)}
+								}).format(finalTotal)}
 							</span>
 						</div>
 
@@ -451,14 +516,14 @@ function MenuPage() {
 				<div className="flex gap-3">
 					<div className="flex flex-1 flex-col justify-center">
 						<span className="text-muted-foreground text-xs">
-							Total Pembayaran
+							Total Tagihan
 						</span>
 						<span className="font-bold text-lg text-primary">
 							{new Intl.NumberFormat("id-ID", {
 								style: "currency",
 								currency: "IDR",
 								maximumFractionDigits: 0,
-							}).format(totalAmount)}
+							}).format(finalTotal)}
 						</span>
 					</div>
 					<button
