@@ -37,7 +37,8 @@ import {
 	FileText,
 	FileSpreadsheet,
 	Image as ImageIcon,
-	MoreVertical
+	MoreVertical,
+	Plus
 } from "lucide-react";
 import {
 	DropdownMenu,
@@ -77,6 +78,58 @@ function formatDate(dateStr: string) {
 
 function todayStr() {
 	return new Date().toISOString().split("T")[0];
+}
+
+function getRangeDates(range: string): { start: string; end: string } {
+	const now = new Date();
+	let start = new Date();
+	let end = new Date();
+
+	switch (range) {
+		case "today":
+			break;
+		case "yesterday":
+			start.setDate(now.getDate() - 1);
+			end.setDate(now.getDate() - 1);
+			break;
+		case "this_week": {
+			const day = now.getDay();
+			const diff = now.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+			start = new Date(now.setDate(diff));
+			end = new Date(start);
+			end.setDate(start.getDate() + 6);
+			break;
+		}
+		case "last_week": {
+			const day = now.getDay();
+			const diff = now.getDate() - day + (day === 0 ? -6 : 1) - 7;
+			start = new Date(now.setDate(diff));
+			end = new Date(start);
+			end.setDate(start.getDate() + 6);
+			break;
+		}
+		case "this_month":
+			start = new Date(now.getFullYear(), now.getMonth(), 1);
+			end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+			break;
+		case "last_month":
+			start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+			end = new Date(now.getFullYear(), now.getMonth(), 0);
+			break;
+		case "this_year":
+			start = new Date(now.getFullYear(), 0, 1);
+			end = new Date(now.getFullYear(), 11, 31);
+			break;
+		case "ytd":
+			start = new Date(now.getFullYear(), 0, 1);
+			end = new Date();
+			break;
+	}
+
+	return {
+		start: start.toISOString().split("T")[0],
+		end: end.toISOString().split("T")[0],
+	};
 }
 
 const STATUS_LABEL: Record<string, string> = {
