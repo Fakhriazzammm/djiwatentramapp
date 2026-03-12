@@ -200,14 +200,19 @@ export function NewTransactionDialog({
 										<input
 											className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-semibold text-foreground text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
 											id={amountId}
-											min="0"
-											onChange={(e) =>
-												setFormData({ ...formData, amount: e.target.value })
-											}
+											inputMode="numeric"
+											onChange={(e) => {
+												const val = e.target.value.replace(/\D/g, "");
+												setFormData({ ...formData, amount: val });
+											}}
 											placeholder="Rp 0"
 											required
-											type="number"
-											value={formData.amount}
+											type="text"
+											value={
+												formData.amount
+													? new Intl.NumberFormat("id-ID").format(Number(formData.amount))
+													: ""
+											}
 										/>
 									</div>
 								</div>
