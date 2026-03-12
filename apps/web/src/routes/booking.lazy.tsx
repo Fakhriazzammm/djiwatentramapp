@@ -535,6 +535,62 @@ function StepBar({ current }: { current: number }) {
 	);
 }
 
+// ─── Wrapper Component for Mobile Look ──
+const MobileWrapper = ({
+	children,
+	title,
+	showHeader = true,
+	step,
+	setStep,
+	themeColor,
+	settings,
+}: {
+	children: React.ReactNode;
+	title?: string;
+	showHeader?: boolean;
+	step: number;
+	setStep: React.Dispatch<React.SetStateAction<number>>;
+	themeColor: string;
+	settings: any;
+}) => (
+	<div className="min-h-screen bg-background flex flex-col items-center">
+		<div className="w-full max-w-md bg-card min-h-screen shadow-2xl flex flex-col relative overflow-x-hidden">
+			{showHeader && (
+				<header className="sticky top-0 z-30 w-full px-4 py-4 flex items-center justify-between bg-background/80 backdrop-blur-md border-b border-border">
+					<div className="flex items-center gap-3">
+						{step > 0 && step < 6 && (
+							<button
+								onClick={() => setStep((s) => s - 1)}
+								className="p-2 hover:bg-muted rounded-full transition-colors"
+							>
+								<ChevronLeft className="h-5 w-5" />
+							</button>
+						)}
+						<div
+							className="h-8 w-8 rounded-lg flex items-center justify-center font-bold text-white text-sm"
+							style={{ background: themeColor }}
+						>
+							{settings.title?.charAt(0) || "D"}
+						</div>
+						<h1 className="font-bold text-sm tracking-tight line-clamp-1">{settings.title}</h1>
+					</div>
+					{step < 5 && (
+						<div className="flex flex-col items-end">
+							<span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+								Step
+							</span>
+							<span className="text-xs font-bold" style={{ color: themeColor }}>
+								{step + 1} of 5
+							</span>
+						</div>
+					)}
+				</header>
+			)}
+			<main className="flex-1 px-4 py-6 overflow-y-auto">{children}</main>
+		</div>
+	</div>
+);
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 function BookingPage() {
@@ -683,44 +739,6 @@ function BookingPage() {
 
 	const themeColor = settings.themeColor || "#1a2332";
 
-	// ── Wrapper Component for Mobile Look ──
-	const MobileWrapper = ({ children, title, showHeader = true }: { children: React.ReactNode, title?: string, showHeader?: boolean }) => (
-		<div className="min-h-screen bg-background flex flex-col items-center">
-			<div className="w-full max-w-md bg-card min-h-screen shadow-2xl flex flex-col relative overflow-x-hidden">
-				{showHeader && (
-					<header className="sticky top-0 z-30 w-full px-4 py-4 flex items-center justify-between bg-background/80 backdrop-blur-md border-b border-border">
-						<div className="flex items-center gap-3">
-							{step > 0 && step < 6 && (
-								<button 
-									onClick={() => setStep(s => s - 1)}
-									className="p-2 hover:bg-muted rounded-full transition-colors"
-								>
-									<ChevronLeft className="h-5 w-5" />
-								</button>
-							)}
-							<div 
-								className="h-8 w-8 rounded-lg flex items-center justify-center font-bold text-white text-sm"
-								style={{ background: themeColor }}
-							>
-								{settings.title?.charAt(0) || "D"}
-							</div>
-							<h1 className="font-bold text-sm tracking-tight line-clamp-1">{settings.title}</h1>
-						</div>
-						{step < 5 && (
-							<div className="flex flex-col items-end">
-								<span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Step</span>
-								<span className="text-xs font-bold" style={{ color: themeColor }}>{step + 1} of 5</span>
-							</div>
-						)}
-					</header>
-				)}
-				<main className="flex-1 px-4 py-6 overflow-y-auto">
-					{children}
-				</main>
-			</div>
-		</div>
-	);
-
 	if (!settings?.isActive) {
 		return (
 			<div className="flex h-screen items-center justify-center bg-background p-6 text-center">
@@ -739,7 +757,7 @@ function BookingPage() {
 	if (step === 6) {
 		const booking = confirmedBooking || completedBooking;
 		return (
-			<MobileWrapper showHeader={false}>
+			<MobileWrapper settings={settings} setStep={setStep} showHeader={false} step={step} themeColor={themeColor}>
 				<div className="flex flex-col items-center justify-center py-8 text-center">
 					<div
 						className="mb-6 flex h-20 w-20 items-center justify-center rounded-full shadow-lg animate-in zoom-in duration-500"
@@ -880,7 +898,7 @@ function BookingPage() {
 	if (step === 6) {
 		const booking = confirmedBooking || completedBooking;
 		return (
-			<MobileWrapper showHeader={false}>
+			<MobileWrapper settings={settings} setStep={setStep} showHeader={false} step={step} themeColor={themeColor}>
 				<div className="flex flex-col items-center justify-center py-8 text-center">
 					<div
 						className="mb-6 flex h-20 w-20 items-center justify-center rounded-full shadow-lg animate-in zoom-in duration-500"
@@ -969,7 +987,7 @@ function BookingPage() {
 		const qrisUrl = settings.qrisImage || siteSettings?.qrisImage;
 
 		return (
-			<MobileWrapper title="Konfirmasi Bayar">
+			<MobileWrapper settings={settings} setStep={setStep} step={step} themeColor={themeColor} title="Konfirmasi Bayar">
 				<div className="flex flex-col gap-6 pb-20">
 					<div className="text-center">
 						<h2 className="font-extrabold text-foreground text-xl tracking-tight">Konfirmasi Pembayaran</h2>
@@ -978,9 +996,36 @@ function BookingPage() {
 
 					{selectedPayment === "qris" && (
 						<div className="space-y-6 animate-in fade-in duration-500">
-							<div className="mx-auto h-72 w-72 overflow-hidden rounded-3xl border-4 border-muted p-3 bg-white shadow-inner">
+							<div className="mx-auto h-72 w-72 overflow-hidden rounded-3xl border-4 border-muted p-3 bg-white shadow-inner flex flex-col items-center justify-center">
 								{qrisUrl ? (
-									<img alt="QRIS" className="h-full w-full object-contain" src={qrisUrl} />
+									<>
+										<img alt="QRIS" className="h-48 w-48 object-contain mb-4" src={qrisUrl} />
+										<button
+											className="flex items-center gap-2 rounded-xl px-4 py-2 font-bold text-[11px] text-white shadow-md transition-all hover:opacity-90 active:scale-95"
+											onClick={async () => {
+												try {
+													const response = await fetch(qrisUrl);
+													const blob = await response.blob();
+													const url = window.URL.createObjectURL(blob);
+													const link = document.createElement("a");
+													link.href = url;
+													link.download = `QRIS-${settings.title || "Payment"}.png`;
+													document.body.appendChild(link);
+													link.click();
+													document.body.removeChild(link);
+													window.URL.revokeObjectURL(url);
+													toast.success("QRIS berhasil diunduh");
+												} catch (err) {
+													toast.error("Gagal mengunduh QRIS");
+												}
+											}}
+											style={{ background: themeColor }}
+											type="button"
+										>
+											<Download className="h-3.5 w-3.5" />
+											Simpan QRIS
+										</button>
+									</>
 								) : (
 									<div className="flex h-full w-full items-center justify-center text-center p-6 text-muted-foreground text-xs italic">
 										QRIS belum tersedia.
@@ -1131,7 +1176,7 @@ function BookingPage() {
 	}
 
 	return (
-		<MobileWrapper title={STEP_LABELS[step]}>
+		<MobileWrapper settings={settings} setStep={setStep} step={step} themeColor={themeColor} title={STEP_LABELS[step]}>
 			<div className="flex flex-col h-full pt-2">
 				<StepBar current={step} />
 
