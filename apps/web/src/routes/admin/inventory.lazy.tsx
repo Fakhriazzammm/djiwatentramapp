@@ -326,14 +326,14 @@ function InventoryModalContent({
 			<div className="space-y-6">
 				<div className="space-y-2">
 					<label
-						className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+						className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
 						htmlFor="ingredientName"
 					>
 						Nama Bahan
 					</label>
 					<input
 						autoFocus
-						className="w-full rounded-md bg-[#E8E1CF] p-4 font-bold text-[#4A3728] text-sm outline-none transition-all placeholder:text-[#4A3728]/30 focus:ring-2 focus:ring-[#4A3728]/20"
+						className="w-full rounded-md bg-background border border-border p-4 font-bold text-foreground text-sm outline-none transition-all placeholder:text-foreground/30 focus:ring-2 focus:ring-ring"
 						id="ingredientName"
 						onChange={(e) =>
 							onNewItemChange({
@@ -349,13 +349,13 @@ function InventoryModalContent({
 				<div className="grid grid-cols-2 gap-5">
 					<div className="space-y-2">
 						<label
-							className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+							className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
 							htmlFor="unit"
 						>
 							Satuan Dasar
 						</label>
 						<select
-							className="w-full appearance-none rounded-md bg-[#E8E1CF] p-4 font-bold text-[#4A3728] text-sm outline-none transition-all focus:ring-2 focus:ring-[#4A3728]/20"
+							className="w-full appearance-none rounded-md bg-background border border-border p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
 							id="unit"
 							onChange={(e) =>
 								onNewItemChange({ ...newItem, unit: e.target.value })
@@ -369,13 +369,13 @@ function InventoryModalContent({
 					</div>
 					<div className="space-y-2">
 						<label
-							className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+							className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
 							htmlFor="quantity"
 						>
 							{actionType === "create" ? "Stok Awal" : "Ambang Rendah"}
 						</label>
 						<input
-							className="w-full rounded-md bg-[#E8E1CF] p-4 font-bold text-[#4A3728] text-sm outline-none transition-all focus:ring-2 focus:ring-[#4A3728]/20"
+							className="w-full rounded-md bg-background border border-border p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
 							id={actionType === "create" ? "quantity" : "editThreshold"}
 							onChange={(e) =>
 								onNewItemChange({
@@ -394,20 +394,20 @@ function InventoryModalContent({
 					</div>
 				</div>
 
-				<div className="space-y-4 rounded-lg border border-[#4A3728]/10 bg-[#F0EAD6]/50 p-6">
-					<p className="font-bold text-[#4A3728] text-[11px] uppercase tracking-widest">
+				<div className="space-y-4 rounded-lg border border-border bg-muted/30 p-6">
+					<p className="font-bold text-foreground text-[11px] uppercase tracking-widest">
 						Konversi Unit (Opsional)
 					</p>
 					<div className="grid grid-cols-2 gap-4">
 						<div className="space-y-1.5">
 							<label
-								className="font-bold text-[#4A3728]/60 text-[9px] uppercase tracking-wider"
+								className="font-bold text-foreground/60 text-[9px] uppercase tracking-wider"
 								htmlFor="displayUnit"
 							>
 								Satuan Tampilan
 							</label>
 							<input
-								className="w-full rounded-md bg-[#E8E1CF] p-3 font-bold text-[#4A3728] text-xs outline-none transition-all focus:ring-1 focus:ring-[#4A3728]/20"
+								className="w-full rounded-md bg-background border border-border p-3 font-bold text-foreground text-xs outline-none transition-all focus:ring-1 focus:ring-ring"
 								id="displayUnit"
 								onChange={(e) =>
 									onNewItemChange({
@@ -421,13 +421,13 @@ function InventoryModalContent({
 						</div>
 						<div className="space-y-1.5">
 							<label
-								className="font-bold text-[#4A3728]/60 text-[9px] uppercase tracking-wider"
+								className="font-bold text-foreground/60 text-[9px] uppercase tracking-wider"
 								htmlFor="conversionFactor"
 							>
 								Isi per 1 Satuan
 							</label>
 							<input
-								className="w-full rounded-md bg-[#E8E1CF] p-3 font-bold text-[#4A3728] text-xs outline-none transition-all focus:ring-1 focus:ring-[#4A3728]/20"
+								className="w-full rounded-md bg-background border border-border p-3 font-bold text-foreground text-xs outline-none transition-all focus:ring-1 focus:ring-ring"
 								id="conversionFactor"
 								onChange={(e) =>
 									onNewItemChange({
@@ -441,7 +441,7 @@ function InventoryModalContent({
 							/>
 						</div>
 					</div>
-					<p className="text-[#4A3728]/50 text-[10px] italic leading-snug">
+					<p className="text-foreground/50 text-[10px] italic leading-snug">
 						* Contoh: Jika Satuan Dasar = ml, Satuan Tampilan = Liter, Isi =
 						1000. Maka 2500 ml akan tampil 2.50 Liter.
 					</p>
@@ -449,13 +449,13 @@ function InventoryModalContent({
 
 				<div className="space-y-2">
 					<label
-						className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+						className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
 						htmlFor="baseRecipeId"
 					>
 						Link ke Resep Base (Produksi)
 					</label>
 					<select
-						className="w-full appearance-none rounded-md bg-[#E8E1CF] p-4 font-bold text-[#4A3728] text-sm outline-none transition-all focus:ring-2 focus:ring-[#4A3728]/20"
+						className="w-full appearance-none rounded-md bg-background border border-border p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
 						id="baseRecipeId"
 						onChange={(e) =>
 							onNewItemChange({
@@ -487,7 +487,7 @@ function InventoryModalContent({
 				<div className="space-y-3">
 					<div className="flex items-center justify-between">
 						<label
-							className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+							className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
 							htmlFor="inventory-amount"
 						>
 							{actionType === "adjust"
@@ -496,7 +496,7 @@ function InventoryModalContent({
 						</label>
 						{selectedItem?.baseRecipeId && actionType === "add" && (
 							<button
-								className="font-bold text-[#4A3728] text-[10px] hover:underline"
+								className="font-bold text-foreground text-[10px] hover:underline"
 								onClick={() => {
 									setConfirmConfig({
 										isOpen: true,
@@ -530,7 +530,7 @@ function InventoryModalContent({
 					</div>
 					<input
 						autoFocus
-						className="w-full rounded-md bg-[#E8E1CF] p-6 font-black text-4xl text-[#4A3728] outline-none ring-[#4A3728]/10 transition-all focus:ring-4"
+						className="w-full rounded-md bg-background border border-border p-6 font-black text-4xl text-foreground outline-none ring-ring transition-all focus:ring-4"
 						id="inventory-amount"
 						onChange={(e) => onAmountChange(e.target.value)}
 						placeholder="0"
@@ -541,13 +541,13 @@ function InventoryModalContent({
 				</div>
 				<div className="space-y-2">
 					<label
-						className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+						className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
 						htmlFor="inventory-notes"
 					>
 						Catatan
 					</label>
 					<input
-						className="w-full rounded-md bg-[#E8E1CF] p-4 font-medium text-[#4A3728] text-sm outline-none transition-all placeholder:text-[#4A3728]/30 focus:ring-2 focus:ring-[#4A3728]/20"
+						className="w-full rounded-md bg-background border border-border p-4 font-medium text-foreground text-sm outline-none transition-all placeholder:text-foreground/30 focus:ring-2 focus:ring-ring"
 						id="inventory-notes"
 						onChange={(e) => onNotesChange(e.target.value)}
 						placeholder="Catatan tambahan..."
@@ -634,15 +634,15 @@ function InventoryActionModal({
 	}
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-[#4A3728]/40 p-4 backdrop-blur-md">
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
 			<motion.div
 				animate={{ opacity: 1, scale: 1 }}
-				className="w-full max-w-xl rounded-xl border border-[#4A3728]/10 bg-[#F5F0E1]"
+				className="w-full max-w-xl rounded-xl border border-border bg-card shadow-2xl"
 				exit={{ opacity: 0, scale: 0.95 }}
 				initial={{ opacity: 0, scale: 0.95 }}
 			>
-				<div className="border-[#4A3728]/5 border-b p-8 pb-3">
-					<h3 className="font-bold text-2xl text-[#4A3728] tracking-tight">
+				<div className="border-border border-b p-8 pb-3">
+					<h3 className="font-bold text-2xl text-foreground tracking-tight">
 						{actionType === "create" && "Tambah Bahan Baru"}
 						{actionType === "edit" && "Edit Bahan Baku"}
 						{actionType === "add" && "Update Stok"}
@@ -655,11 +655,11 @@ function InventoryActionModal({
 				<form className="space-y-6" onSubmit={onSubmit}>
 					<div className="custom-scrollbar max-h-[70vh] overflow-y-auto p-8">
 						{actionType === "delete" ? (
-							<div className="rounded-lg border border-[#EF4444]/20 bg-[#EF4444]/5 p-6 text-center">
+							<div className="rounded-lg border border-destructive/20 bg-destructive/10 p-6 text-center">
 								<p className="font-bold text-[#EF4444] text-sm">
 									Yakin ingin menghapus {selectedItem?.ingredientName}?
 								</p>
-								<p className="mt-2 text-[#EF4444]/60 text-xs">
+								<p className="mt-2 text-destructive/80 text-xs">
 									Tindakan ini tidak dapat dibatalkan.
 								</p>
 							</div>
@@ -682,9 +682,9 @@ function InventoryActionModal({
 						)}
 					</div>
 
-					<div className="flex gap-6 border-[#4A3728]/5 border-t p-8">
+					<div className="flex gap-6 border-border border-t p-8">
 						<button
-							className="flex-1 rounded-md bg-[#E8E1CF] py-5 font-bold text-[#4A3728] text-[10px] uppercase tracking-widest transition-all hover:bg-[#E8E1CF]/80 active:scale-95"
+							className="flex-1 rounded-md bg-background border border-border py-5 font-bold text-foreground text-[10px] uppercase tracking-widest transition-all hover:bg-muted active:scale-95"
 							onClick={() => {
 								onSelectedItemChange(null);
 								onActionTypeChange(null);
@@ -696,8 +696,8 @@ function InventoryActionModal({
 						<button
 							className={`flex-1 rounded-md py-5 font-bold text-xs uppercase tracking-[0.2em] transition-all active:scale-[0.98] ${
 								actionType === "delete"
-									? "bg-[#EF4444] text-white hover:brightness-110"
-									: "bg-[#4A3728] text-[#F5F0E1] hover:brightness-110"
+									? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+									: "bg-primary text-primary-foreground hover:bg-primary/90"
 							}`}
 							type="submit"
 						>
@@ -1040,19 +1040,19 @@ function InventoryHistoryModal({
 	});
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-[#4A3728]/40 p-4 backdrop-blur-md">
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
 			<motion.div
 				animate={{ opacity: 1, scale: 1 }}
-				className="w-full max-w-xl rounded-[40px] border border-[#4A3728]/10 bg-[#F5F0E1]"
+				className="w-full max-w-xl rounded-[40px] border border-border bg-card shadow-2xl"
 				exit={{ opacity: 0, scale: 0.95 }}
 				initial={{ opacity: 0, scale: 0.95 }}
 			>
-				<div className="flex items-center justify-between border-[#4A3728]/5 border-b p-8 pb-4">
-					<h3 className="font-bold text-2xl text-[#4A3728] tracking-tight">
+				<div className="flex items-center justify-between border-border border-b p-8 pb-4">
+					<h3 className="font-bold text-2xl text-foreground tracking-tight">
 						Riwayat: {item.ingredientName}
 					</h3>
 					<button
-						className="rounded-full bg-[#4A3728]/10 p-2 text-[#4A3728] transition-all hover:bg-[#4A3728]/20"
+						className="rounded-full bg-muted p-2 text-foreground transition-all hover:bg-muted/80"
 						onClick={onClose}
 						type="button"
 					>
@@ -1060,10 +1060,10 @@ function InventoryHistoryModal({
 					</button>
 				</div>
 				<div className="p-8">
-					<div className="max-h-[60vh] overflow-y-auto rounded-[32px] border border-[#4A3728]/10 bg-[#F0EAD6]/30">
+					<div className="max-h-[60vh] overflow-y-auto rounded-[32px] border border-border bg-muted/30">
 						<table className="w-full text-left text-xs">
-							<thead className="sticky top-0 border-[#4A3728]/5 border-b bg-[#E8E1CF]">
-								<tr className="text-[#4A3728]/40 uppercase tracking-widest">
+							<thead className="sticky top-0 border-border border-b bg-background border border-border">
+								<tr className="text-foreground/40 uppercase tracking-widest">
 									<th className="p-4 font-bold text-[9px]">Tanggal</th>
 									<th className="p-4 font-bold text-[9px]">Tipe</th>
 									<th className="p-4 text-right font-bold text-[9px]">
@@ -1071,13 +1071,13 @@ function InventoryHistoryModal({
 									</th>
 								</tr>
 							</thead>
-							<tbody className="divide-y divide-[#4A3728]/5">
+							<tbody className="divide-y divide-border">
 								{transactions?.map((t: any) => (
 									<tr
-										className="transition-colors hover:bg-[#E8E1CF]/30"
+										className="transition-colors hover:bg-background border border-border/30"
 										key={t._id}
 									>
-										<td className="whitespace-nowrap p-4 font-bold text-[#4A3728]/60">
+										<td className="whitespace-nowrap p-4 font-bold text-foreground/60">
 											{new Date(t.timestamp).toLocaleString("id-ID", {
 												dateStyle: "short",
 												timeStyle: "short",
@@ -1111,7 +1111,7 @@ function InventoryHistoryModal({
 															{config.label}
 														</span>
 														{t.notes && (
-															<span className="max-w-[140px] truncate text-[#4A3728]/40 text-[10px] italic">
+															<span className="max-w-[140px] truncate text-foreground/40 text-[10px] italic">
 																{t.notes}
 															</span>
 														)}
@@ -1121,7 +1121,7 @@ function InventoryHistoryModal({
 										</td>
 										<td
 											className={`p-4 text-right font-black font-mono text-sm ${
-												t.quantity > 0 ? "text-green-600" : "text-[#EF4444]"
+												t.quantity > 0 ? "text-green-600" : "text-destructive"
 											}`}
 										>
 											{t.quantity > 0 ? "+" : ""}
@@ -1132,7 +1132,7 @@ function InventoryHistoryModal({
 								{transactions?.length === 0 && (
 									<tr>
 										<td
-											className="p-12 text-center font-medium text-[#4A3728]/30 text-sm italic"
+											className="p-12 text-center font-medium text-foreground/30 text-sm italic"
 											colSpan={3}
 										>
 											Belum ada riwayat transaksi.
