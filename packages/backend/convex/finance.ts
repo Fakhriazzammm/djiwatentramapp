@@ -154,19 +154,25 @@ export const getProfitLossReport = query({
 			totalExpense += t.amount;
 		}
 
-		// Penjualan (income from Penjualan category)
+		// Calculate Gross Profit and Net Profit
 		const salesRevenue = incomeByCategory["Penjualan"] || 0;
+		const hppAmount = expenseByCategory["HPP"] || 0;
 		const otherIncome = totalIncome - salesRevenue;
-
-		// Operating expenses (all expense categories)
-		const operatingExpenses = Object.entries(expenseByCategory).map(([category, amount]) => ({
-			category,
-			amount,
-		}));
-
-		const grossProfit = totalIncome;
+		
+		// Gross Profit = Sales - HPP (or just Total Income - HPP depending on business model, 
+		// but typically Gross Profit is Sales Revenue - COGS)
+		const grossProfit = salesRevenue - hppAmount;
 		const netProfit = totalIncome - totalExpense;
 		const netMargin = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0;
+
+		// Filter out HPP from operating expenses for display if needed, 
+		// or keep it to show breakdown. The UI usually wants to see HPP separately.
+		const operatingExpenses = Object.entries(expenseByCategory)
+			.filter(([category]) => category !== "HPP")
+			.map(([category, amount]) => ({
+				category,
+				amount,
+			}));
 
 		return {
 			period: { startDate, endDate },
@@ -177,6 +183,7 @@ export const getProfitLossReport = query({
 				byCategory: incomeByCategory,
 			},
 			expense: {
+				hppAmount,
 				operatingExpenses,
 				total: totalExpense,
 				byCategory: expenseByCategory,

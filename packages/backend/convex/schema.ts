@@ -45,6 +45,7 @@ export default defineSchema({
 			v.literal("production") // For base recipes
 		),
 		costPerUnit: v.optional(v.number()), // For calculating COGS
+		remainingQuantity: v.optional(v.number()), // For FIFO tracking
 		timestamp: v.number(),
 		notes: v.optional(v.string()),
 		expiryDate: v.optional(v.number()),

@@ -130,17 +130,28 @@ export const executeToolCall = action({
 
 				case "addStock": {
 					const parsed = tools.addStock.parameters.parse(toolArgs);
+					const timestamp = parsed.date ? new Date(parsed.date).getTime() : undefined;
+					
 					await ctx.runMutation(api.inventory.addStock, {
 						inventoryId: asId(parsed.inventoryId),
 						quantity: parsed.quantity,
 						costPerUnit: parsed.costPerUnit,
 						notes: parsed.notes,
+						timestamp,
 					});
 					result = {
 						success: true,
 						message:
-							`Stok berhasil ditambah ${parsed.quantity} ${parsed.notes || ""}`.trim(),
+							`Stok berhasil ditambah ${parsed.quantity}${parsed.date ? ` (tanggal: ${parsed.date})` : ""} ${parsed.notes || ""}`.trim(),
 					};
+					break;
+				}
+
+				case "getInventoryBatches": {
+					const parsed = tools.getInventoryBatches.parameters.parse(toolArgs);
+					result = await ctx.runQuery(api.inventory.getInventoryItemBatches, {
+						inventoryId: asId(parsed.inventoryId),
+					});
 					break;
 				}
 

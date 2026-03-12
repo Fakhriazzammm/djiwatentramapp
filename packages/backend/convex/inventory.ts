@@ -50,6 +50,7 @@ export const addStock = mutation({
 		quantity: v.number(), // Amount to add
 		costPerUnit: v.optional(v.number()),
 		notes: v.optional(v.string()),
+		timestamp: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const item = await ctx.db.get(args.inventoryId);
@@ -57,17 +58,20 @@ export const addStock = mutation({
 			throw new Error("Item not found");
 		}
 
+		const timestamp = args.timestamp ?? Date.now();
+
 		// Update total quantity
 		await ctx.db.patch(args.inventoryId, {
 			quantity: item.quantity + args.quantity,
 		});
 
-		// Record transaction
+		// Record transaction with remaining quantity for FIFO
 		await ctx.db.insert("inventoryTransactions", {
 			inventoryId: args.inventoryId,
 			quantity: args.quantity,
+			remainingQuantity: args.quantity,
 			type: "restock",
-			timestamp: Date.now(),
+			timestamp,
 			costPerUnit: args.costPerUnit,
 			notes: args.notes,
 		});
@@ -86,12 +90,15 @@ export const usageStock = mutation({
 			throw new Error("Item not found");
 		}
 
+		// Sequential deduction (FIFO)
+		await consumeStockFifo(ctx, args.inventoryId, args.quantity);
+
 		// Update total quantity
 		await ctx.db.patch(args.inventoryId, {
 			quantity: item.quantity - args.quantity,
 		});
 
-		// Record transaction
+		// Record transaction (summary)
 		await ctx.db.insert("inventoryTransactions", {
 			inventoryId: args.inventoryId,
 			quantity: -args.quantity,
@@ -321,6 +328,17 @@ export const deleteBaseRecipe = mutation({
 	},
 });
 
+export const getInventoryItemBatches = query({
+	args: { inventoryId: v.id("inventory") },
+	handler: async (ctx, args) => {
+		return await ctx.db
+			.query("inventoryTransactions")
+			.withIndex("by_inventory", (q) => q.eq("inventoryId", args.inventoryId))
+			.filter((q) => q.gt(q.field("remainingQuantity"), 0))
+			.collect();
+	},
+});
+
 /**
  * Mutation to "produce" a base recipe.
  * Deducts ingredients from inventory and adds the product to an inventory item.
@@ -352,10 +370,11 @@ export const produceBaseRecipeBatch = mutation({
 			quantity: targetItem.quantity + addedQuantity,
 		});
 
-		// 3. Record transaction
+		// 3. Record transaction with FIFO tracking
 		await ctx.db.insert("inventoryTransactions", {
 			inventoryId: args.inventoryId,
 			quantity: addedQuantity,
+			remainingQuantity: addedQuantity,
 			type: "production",
 			timestamp: Date.now(),
 			notes: args.notes || `Produced from recipe: ${recipe.name}`,
@@ -376,12 +395,15 @@ async function deductIngredients(
 
 		const totalDeduction = ing.amount * multiplier;
 
-		// Update stock
+		// Sequential deduction (FIFO)
+		await consumeStockFifo(ctx, ing.inventoryId, totalDeduction);
+
+		// Update total stock
 		await ctx.db.patch(ing.inventoryId, {
 			quantity: inventoryItem.quantity - totalDeduction,
 		});
 
-		// Record transaction
+		// Record transaction (summary)
 		await ctx.db.insert("inventoryTransactions", {
 			inventoryId: ing.inventoryId,
 			quantity: -totalDeduction,
@@ -390,4 +412,46 @@ async function deductIngredients(
 			notes: "Automated deduction for recipe use/production",
 		});
 	}
+}
+
+/**
+ * Sequential stock consumption from batches (FIFO).
+ * Finds processing/restock transactions with remainingQuantity > 0.
+ */
+async function consumeStockFifo(
+	ctx: MutationCtx,
+	inventoryId: Id<"inventory">,
+	amountToConsume: number
+) {
+	// Find all incoming transactions with remaining stock, oldest first
+	const batches = await ctx.db
+		.query("inventoryTransactions")
+		.withIndex("by_inventory", (q) => q.eq("inventoryId", inventoryId))
+		.filter((q) =>
+			q.or(q.eq(q.field("type"), "restock"), q.eq(q.field("type"), "production"))
+		)
+		.collect();
+
+	// Manual sort because filter might interfere with index order or multiple types
+	const activeBatches = batches
+		.filter((b) => (b.remainingQuantity ?? 0) > 0)
+		.sort((a, b) => a.timestamp - b.timestamp);
+
+	let remainingToDeduct = amountToConsume;
+
+	for (const batch of activeBatches) {
+		if (remainingToDeduct <= 0) break;
+
+		const currentBatchStock = batch.remainingQuantity ?? 0;
+		const deduction = Math.min(currentBatchStock, remainingToDeduct);
+
+		await ctx.db.patch(batch._id, {
+			remainingQuantity: currentBatchStock - deduction,
+		});
+
+		remainingToDeduct -= deduction;
+	}
+
+	// Note: If remainingToDeduct > 0, it means we oversold/overused past known batches.
+	// This can happen with initial stock or manual adjustments.
 }

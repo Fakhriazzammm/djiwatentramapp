@@ -23,8 +23,6 @@ export function ProfitLossReport({ range }: Props) {
 		endDate: range.endDate,
 	});
 
-	const hppCogs = useQuery(api.hpp.getOrdersCogs);
-
 	if (!data) {
 		return (
 			<div className="flex items-center justify-center py-20 text-muted-foreground">
@@ -34,12 +32,13 @@ export function ProfitLossReport({ range }: Props) {
 	}
 
 	const isProfit = data.netProfit >= 0;
+	const hppAmount = (data.expense as any).hppAmount || 0;
 
 	// Chart data: income vs expense categories
 	const chartData = [
 		{ name: "Pendapatan", value: data.income.total, fill: "#22c55e" },
-		...(hppCogs ? [{ name: "HPP/COGS", value: hppCogs.totalCogs, fill: "#f97316" }] : []),
-		{ name: "Beban", value: data.expense.total, fill: "#ef4444" },
+		...(hppAmount > 0 ? [{ name: "HPP/COGS", value: hppAmount, fill: "#f97316" }] : []),
+		{ name: "Beban", value: data.expense.total - hppAmount, fill: "#ef4444" },
 		{ name: "Laba Bersih", value: Math.max(0, data.netProfit), fill: isProfit ? "#3b82f6" : "#94a3b8" },
 	];
 
@@ -53,17 +52,17 @@ export function ProfitLossReport({ range }: Props) {
 					color="green"
 					icon={<TrendingUp className="h-5 w-5" />}
 				/>
-				{hppCogs && (
+				{hppAmount > 0 && (
 					<SummaryCard
 						label="HPP / COGS"
-						value={hppCogs.totalCogs}
+						value={hppAmount}
 						color="orange"
 						icon={<TrendingDown className="h-5 w-5" />}
 					/>
 				)}
 				<SummaryCard
 					label="Total Beban"
-					value={data.expense.total}
+					value={data.expense.total - hppAmount}
 					color="red"
 					icon={<TrendingDown className="h-5 w-5" />}
 				/>
@@ -113,13 +112,13 @@ export function ProfitLossReport({ range }: Props) {
 				</Section>
 
 				{/* HPP */}
-				{hppCogs && hppCogs.totalCogs > 0 && (
+				{hppAmount > 0 && (
 					<Section title="HARGA POKOK PENJUALAN (HPP)" color="orange">
-						<Row label="Total HPP dari pesanan" value={hppCogs.totalCogs} />
-						<TotalRow label="LABA KOTOR" value={hppCogs.totalProfit} color="orange" />
+						<Row label="Total HPP dari pesanan" value={hppAmount} />
+						<TotalRow label="LABA KOTOR" value={data.grossProfit} color="orange" />
 						<div className="flex justify-between items-center px-6 py-1.5 text-xs text-muted-foreground">
 							<span className="pl-4">Gross Margin</span>
-							<span className="font-medium">{hppCogs.grossMargin.toFixed(1)}%</span>
+							<span className="font-medium">{(data.income.salesRevenue > 0 ? (data.grossProfit / data.income.salesRevenue) * 100 : 0).toFixed(1)}%</span>
 						</div>
 					</Section>
 				)}
@@ -130,7 +129,7 @@ export function ProfitLossReport({ range }: Props) {
 						{data.expense.operatingExpenses.map((e: { category: string; amount: number }) => (
 							<Row key={e.category} label={e.category.replace(/_/g, " ")} value={e.amount} indent />
 						))}
-						<TotalRow label="TOTAL BEBAN" value={data.expense.total} color="red" />
+						<TotalRow label="TOTAL BEBAN" value={data.expense.total - hppAmount} color="red" />
 					</Section>
 				)}
 

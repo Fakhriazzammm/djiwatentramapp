@@ -87,7 +87,7 @@ export const tools = {
 	// Add Stock
 	addStock: {
 		description:
-			"Tambah stok barang. Berikan ID inventory, jumlah yang ditambah, dan catatan opsional.",
+			"Tambah stok barang. Berikan ID inventory, jumlah yang ditambah, harga per unit, tanggal masuk (ISO format, opsional), dan catatan opsional.",
 		parameters: z.object({
 			inventoryId: z.string().min(1, "ID inventory wajib diisi"),
 			quantity: z.number().positive("Jumlah harus lebih dari 0"),
@@ -96,7 +96,19 @@ export const tools = {
 				.nonnegative()
 				.optional()
 				.describe("Harga per unit (opsional, untuk FIFO)"),
+			date: z
+				.string()
+				.optional()
+				.describe("Tanggal masuk barang (format ISO, contoh: 2024-01-20, opsional)"),
 			notes: z.string().optional().describe("Catatan tambahan"),
+		}),
+	},
+
+	// Get Inventory Batches
+	getInventoryBatches: {
+		description: "Lihat rincian batch stok yang tersedia untuk suatu item (FIFO). Menampilkan batch mana yang paling lama dan berapa sisanya.",
+		parameters: z.object({
+			inventoryId: z.string().min(1, "ID inventory wajib diisi"),
 		}),
 	},
 

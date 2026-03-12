@@ -73,6 +73,7 @@ export const updateOrderStatus = mutation({
 		const wasPaid = order.status === "paid" || order.status === "completed";
 
 		if (isNowPaid && !wasPaid) {
+			// 1. Record Income Transaction
 			await ctx.db.insert("financialTransactions", {
 				type: "income",
 				amount: order.totalAmount,
@@ -83,10 +84,52 @@ export const updateOrderStatus = mutation({
 				status: "completed",
 				orderId: args.id,
 			});
-		}
 
-		if (isNowPaid && !wasPaid) {
-			// Deduct inventory
+			// 2. Calculate and Record HPP (COGS) Transaction
+			const allHpp = await ctx.db.query("hppCalculations").collect();
+			const hppByProduct: Record<string, number> = {};
+			
+			// Helper to compute HPP from ingredients and overhead
+			const computeHpp = (calc: any) => {
+				const ingredientCost = calc.ingredients.reduce((sum: number, ing: any) => {
+					const totalBase = ing.purchaseQuantity * ing.conversionFactor;
+					const costBase = totalBase > 0 ? ing.purchasePrice / totalBase : 0;
+					return sum + costBase * ing.usagePerServing;
+				}, 0);
+				const overheadCost = calc.overheadCosts.reduce(
+					(sum: number, oh: any) => sum + oh.costPerServing,
+					0
+				);
+				return ingredientCost + overheadCost;
+			};
+
+			for (const calc of allHpp) {
+				if (calc.productId) {
+					hppByProduct[calc.productId] = computeHpp(calc);
+				}
+			}
+
+			let totalOrderCogs = 0;
+			for (const item of order.items) {
+				const hppPerUnit = hppByProduct[item.productId];
+				if (hppPerUnit != null) {
+					totalOrderCogs += hppPerUnit * item.quantity;
+				}
+			}
+
+			if (totalOrderCogs > 0) {
+				await ctx.db.insert("financialTransactions", {
+					type: "expense",
+					amount: totalOrderCogs,
+					category: "HPP",
+					description: `HPP Pesanan #${order.orderNumber}`,
+					date: Date.now(),
+					status: "completed",
+					orderId: args.id,
+				});
+			}
+
+			// 3. Deduct inventory
 			await deductStockForOrderInternal(ctx, {
 				orderId: args.id,
 			});
@@ -96,12 +139,14 @@ export const updateOrderStatus = mutation({
 	},
 });
 
+// Delete an order and its associated financial transactions
 export const deleteOrder = mutation({
 	args: { id: v.id("orders") },
 	handler: async (ctx, args) => {
-		// Delete financial transactions
+		// Delete associated financial transactions (Income and HPP)
 		const transactions = await ctx.db
 			.query("financialTransactions")
+			.withIndex("by_date") // Using an index for better performance if possible, or filter
 			.filter((q) => q.eq(q.field("orderId"), args.id))
 			.collect();
 		

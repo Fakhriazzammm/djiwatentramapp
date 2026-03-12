@@ -45,7 +45,7 @@ function InventoryPage() {
 		null
 	);
 	const [actionType, setActionType] = useState<
-		"add" | "usage" | "history" | "create" | "edit" | "adjust" | "delete" | null
+		"add" | "usage" | "history" | "create" | "edit" | "adjust" | "delete" | "batchInfo" | null
 	>(null);
 	const [amount, setAmount] = useState("");
 	const [filterLowStock, setFilterLowStock] = useState(false);
@@ -59,6 +59,8 @@ function InventoryPage() {
 		baseRecipeId: "" as string,
 	});
 	const [notes, setNotes] = useState("");
+	const [costPerUnit, setCostPerUnit] = useState("");
+	const [entryDate, setEntryDate] = useState(new Date().toISOString().split("T")[0]);
 	const [sortConfig, setSortConfig] = useState<{
 		key: keyof Doc<"inventory">;
 		direction: "asc" | "desc";
@@ -150,7 +152,11 @@ function InventoryPage() {
 		};
 
 		if (type === "add") {
-			await addStock(args);
+			await addStock({
+				...args,
+				costPerUnit: costPerUnit ? Number(costPerUnit) : undefined,
+				timestamp: entryDate ? new Date(entryDate).getTime() : undefined,
+			});
 			toast.success(`Stok ${selected.ingredientName} ditambahkan`);
 		} else if (type === "usage") {
 			await usageStock(args);
@@ -185,6 +191,8 @@ function InventoryPage() {
 			setActionType(null);
 			setAmount("");
 			setNotes("");
+			setCostPerUnit("");
+			setEntryDate(new Date().toISOString().split("T")[0]);
 			setNewItem({
 				ingredientName: "",
 				unit: "gram",
@@ -225,10 +233,14 @@ function InventoryPage() {
 			<InventoryActionModal
 				actionType={actionType}
 				amount={amount}
+				costPerUnit={costPerUnit}
+				entryDate={entryDate}
 				newItem={newItem}
 				notes={notes}
 				onActionTypeChange={setActionType}
 				onAmountChange={setAmount}
+				onCostPerUnitChange={setCostPerUnit}
+				onEntryDateChange={setEntryDate}
 				onNewItemChange={setNewItem}
 				onNotesChange={setNotes}
 				onSelectedItemChange={setSelectedItem}
@@ -243,6 +255,16 @@ function InventoryPage() {
 			{/* History Modal */}
 			{selectedItem && actionType === "history" && (
 				<InventoryHistoryModal
+					item={selectedItem}
+					onClose={() => {
+						setSelectedItem(null);
+						setActionType(null);
+					}}
+				/>
+			)}
+
+			{selectedItem && actionType === "batchInfo" && (
+				<InventoryBatchModal
 					item={selectedItem}
 					onClose={() => {
 						setSelectedItem(null);
@@ -273,13 +295,26 @@ function InventoryModalContent({
 	onAmountChange,
 	notes,
 	onNotesChange,
+	costPerUnit,
+	onCostPerUnitChange,
+	entryDate,
+	onEntryDateChange,
 	baseRecipes,
 	produceBatch,
 	setConfirmConfig,
 }: {
 	selectedItem: Doc<"inventory"> | null;
 	onSelectedItemChange: (item: Doc<"inventory"> | null) => void;
-	actionType: "add" | "usage" | "edit" | "adjust" | "delete" | "create" | null;
+	actionType:
+		| "add"
+		| "usage"
+		| "edit"
+		| "adjust"
+		| "delete"
+		| "create"
+		| "history"
+		| "batchInfo"
+		| null;
 	onActionTypeChange: (
 		type:
 			| "add"
@@ -289,6 +324,7 @@ function InventoryModalContent({
 			| "delete"
 			| "create"
 			| "history"
+			| "batchInfo"
 			| null
 	) => void;
 	newItem: {
@@ -313,6 +349,10 @@ function InventoryModalContent({
 	onAmountChange: (amount: string) => void;
 	notes: string;
 	onNotesChange: (notes: string) => void;
+	costPerUnit: string;
+	onCostPerUnitChange: (cost: string) => void;
+	entryDate: string;
+	onEntryDateChange: (date: string) => void;
 	baseRecipes: Doc<"baseRecipes">[] | undefined;
 	produceBatch: (args: {
 		baseRecipeId: Id<"baseRecipes">;
@@ -539,6 +579,43 @@ function InventoryModalContent({
 						value={amount}
 					/>
 				</div>
+
+				{actionType === "add" && (
+					<div className="grid grid-cols-2 gap-4">
+						<div className="space-y-2">
+							<label
+								className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
+								htmlFor="cost-per-unit"
+							>
+								Harga per Unit (IDR)
+							</label>
+							<input
+								className="w-full rounded-md bg-background border border-border p-4 font-bold text-foreground text-sm outline-none transition-all placeholder:text-foreground/30 focus:ring-2 focus:ring-ring"
+								id="cost-per-unit"
+								onChange={(e) => onCostPerUnitChange(e.target.value)}
+								placeholder="contoh: 50000"
+								type="number"
+								value={costPerUnit}
+							/>
+						</div>
+						<div className="space-y-2">
+							<label
+								className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
+								htmlFor="entry-date"
+							>
+								Tanggal Masuk
+							</label>
+							<input
+								className="w-full rounded-md bg-background border border-border p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
+								id="entry-date"
+								onChange={(e) => onEntryDateChange(e.target.value)}
+								type="date"
+								value={entryDate}
+							/>
+						</div>
+					</div>
+				)}
+
 				<div className="space-y-2">
 					<label
 						className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
@@ -572,6 +649,10 @@ function InventoryActionModal({
 	onAmountChange,
 	notes,
 	onNotesChange,
+	costPerUnit,
+	onCostPerUnitChange,
+	entryDate,
+	onEntryDateChange,
 	onSubmit,
 	setConfirmConfig,
 }: {
@@ -585,6 +666,7 @@ function InventoryActionModal({
 		| "delete"
 		| "create"
 		| "history"
+		| "batchInfo"
 		| null;
 	onActionTypeChange: (
 		type:
@@ -595,6 +677,7 @@ function InventoryActionModal({
 			| "delete"
 			| "create"
 			| "history"
+			| "batchInfo"
 			| null
 	) => void;
 	newItem: {
@@ -619,6 +702,10 @@ function InventoryActionModal({
 	onAmountChange: (amount: string) => void;
 	notes: string;
 	onNotesChange: (notes: string) => void;
+	costPerUnit: string;
+	onCostPerUnitChange: (cost: string) => void;
+	entryDate: string;
+	onEntryDateChange: (date: string) => void;
 	onSubmit: (e: React.FormEvent) => void;
 	setConfirmConfig: (config: ConfirmConfig) => void;
 }) {
@@ -668,10 +755,14 @@ function InventoryActionModal({
 								actionType={actionType}
 								amount={amount}
 								baseRecipes={baseRecipes}
+								costPerUnit={costPerUnit}
+								entryDate={entryDate}
 								newItem={newItem}
 								notes={notes}
 								onActionTypeChange={onActionTypeChange}
 								onAmountChange={onAmountChange}
+								onCostPerUnitChange={onCostPerUnitChange}
+								onEntryDateChange={onEntryDateChange}
 								onNewItemChange={onNewItemChange}
 								onNotesChange={onNotesChange}
 								onSelectedItemChange={onSelectedItemChange}
@@ -732,6 +823,7 @@ function InventoryTable({
 			| "adjust"
 			| "delete"
 			| "history"
+			| "batchInfo"
 			| "create"
 			| null
 	) => void;
@@ -936,6 +1028,17 @@ function InventoryTable({
 													<Trash2 className="h-4 w-4" />
 												</button>
 												<button
+													className="rounded-lg p-2 text-primary transition-colors hover:bg-primary/10"
+													onClick={() => {
+														onSelectedItemChange(item);
+														onActionTypeChange("batchInfo");
+													}}
+													title="Info Batch (FIFO)"
+													type="button"
+												>
+													<AlertCircle className="h-4 w-4" />
+												</button>
+												<button
 													className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted"
 													onClick={() => {
 														onSelectedItemChange(item);
@@ -988,6 +1091,7 @@ function InventoryHeader({
 			| "adjust"
 			| "delete"
 			| "history"
+			| "batchInfo"
 			| "create"
 			| null
 	) => void;
@@ -1141,6 +1245,84 @@ function InventoryHistoryModal({
 								)}
 							</tbody>
 						</table>
+					</div>
+				</div>
+			</motion.div>
+		</div>
+	);
+}
+
+function InventoryBatchModal({
+	item,
+	onClose,
+}: {
+	item: Doc<"inventory">;
+	onClose: () => void;
+}) {
+	const batches = useQuery(api.inventory.getInventoryItemBatches, {
+		inventoryId: item._id,
+	});
+
+	return (
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+			<motion.div
+				animate={{ opacity: 1, scale: 1 }}
+				className="w-full max-w-xl rounded-xl border border-border bg-card shadow-2xl"
+				exit={{ opacity: 0, scale: 0.95 }}
+				initial={{ opacity: 0, scale: 0.95 }}
+			>
+				<div className="flex items-center justify-between border-border border-b p-8 pb-4">
+					<h3 className="font-bold text-2xl text-foreground tracking-tight">
+						Batch Aktif (FIFO): {item.ingredientName}
+					</h3>
+					<button
+						className="rounded-full bg-muted p-2 text-foreground transition-all hover:bg-muted/80"
+						onClick={onClose}
+						type="button"
+					>
+						<Minus className="h-5 w-5 rotate-45" />
+					</button>
+				</div>
+				<div className="p-8">
+					<div className="max-h-[60vh] overflow-y-auto rounded-lg border border-border">
+						<table className="w-full text-left text-xs">
+							<thead className="sticky top-0 bg-muted/50 border-b border-border">
+								<tr className="text-muted-foreground uppercase tracking-wider">
+									<th className="p-4 font-bold">Tanggal Masuk</th>
+									<th className="p-4 font-bold">Harga/Unit</th>
+									<th className="p-4 text-right font-bold">Sisa Stok</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-border">
+								{batches?.map((b: any) => (
+									<tr className="hover:bg-muted/30 transition-colors" key={b._id}>
+										<td className="p-4 font-medium">
+											{new Date(b.timestamp).toLocaleDateString("id-ID", {
+												dateStyle: "medium"
+											})}
+										</td>
+										<td className="p-4">
+											{b.costPerUnit ? `Rp ${b.costPerUnit.toLocaleString()}` : "-"}
+										</td>
+										<td className="p-4 text-right font-bold text-primary">
+											{b.remainingQuantity} {item.unit}
+										</td>
+									</tr>
+								))}
+								{batches?.length === 0 && (
+									<tr>
+										<td className="p-12 text-center text-muted-foreground italic" colSpan={3}>
+											Tidak ada batch aktif. Stok mungkin berasal dari penyesuaian manual.
+										</td>
+									</tr>
+								)}
+							</tbody>
+						</table>
+					</div>
+					<div className="mt-6 rounded-lg bg-blue-50 p-4 dark:bg-blue-950/20">
+						<p className="text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed">
+							<strong>Catatan FIFO:</strong> Penggunaan stok akan secara otomatis mengurangi batch yang paling lama terlebih dahulu (atas ke bawah).
+						</p>
 					</div>
 				</div>
 			</motion.div>
