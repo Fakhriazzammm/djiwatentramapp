@@ -357,6 +357,7 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 	const prodList =
 		(
 			products as Array<{
+				_id: string;
 				name: string;
 				price: number;
 				isAvailable: boolean;
@@ -365,17 +366,19 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		)
 			?.map(
 				(p) =>
-					`${p.name} (Rp${p.price}, ${p.isAvailable ? "tersedia" : "habis"}${p.promoPrice ? `, promo: Rp${p.promoPrice}` : ""})`
+					`${p.name} [ID: ${p._id}] (Rp${p.price}, ${p.isAvailable ? "tersedia" : "habis"}${p.promoPrice ? `, promo: Rp${p.promoPrice}` : ""})`
 			)
 			.join("; ") || "Tidak ada data";
 
 	const catList =
-		(categories as Array<{ name: string }>)?.map((c) => c.name).join(", ") ||
-		"Tidak ada data";
+		(categories as Array<{ _id: string; name: string }>)
+			?.map((c) => `${c.name} [ID: ${c._id}]`)
+			.join(", ") || "Tidak ada data";
 
 	const invList =
 		(
 			inventory as Array<{
+				_id: string;
 				ingredientName: string;
 				quantity: number;
 				unit: string;
@@ -384,7 +387,7 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		)
 			?.map(
 				(i) =>
-					`${i.ingredientName}: ${i.quantity} ${i.unit} (min: ${i.lowStockThreshold})`
+					`${i.ingredientName} [ID: ${i._id}]: ${i.quantity} ${i.unit} (min: ${i.lowStockThreshold})`
 			)
 			.join("; ") || "Tidak ada data";
 
@@ -869,7 +872,7 @@ ATURAN:
 6. Jika ditanya data, berikan angka dan fakta spesifik dari database
 7. Format angka uang dengan "Rp" dan pemisah ribuan
 8. Jika user meminta aksi (tambah produk, update stok, dll), GUNAKAN TOOL yang tersedia
-9. Jangan membuat asumsi nilai - jika ID diperlukan, minta user untuk menyediakannya
+9. Jangan membuat asumsi nilai - jika ID diperlukan, CARI di bagian DATA REAL-TIME/SMART CONTEXT. Jika tidak ditemukan, baru minta user untuk menyediakannya.
 10. SANGAT PENTING: JANGAN PERNAH gunakan simbol asterisk (*) untuk penekanan atau list. Gunakan teks polos atau emoji.
 11. FORMAT LIST DATA (WAJIB): Setiap kali menampilkan list transaksi, keuangan, pesanan, atau data historis lainnya, WAJIB sertakan tanggal atau rentang tanggal di setiap item.
     Gunakan format: [Nomor]. - [Tanggal/Periode] - [Nama Item] - [Jumlah] - [Total Nilai]
