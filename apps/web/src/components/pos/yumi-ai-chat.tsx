@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { ImageScanner } from "@/components/ai/image-scanner";
 import { ScanEditModal, type ScanEditParams } from "@/components/scan/scan-edit-modal";
 import { ScanSplitModal } from "@/components/scan/scan-split-modal";
