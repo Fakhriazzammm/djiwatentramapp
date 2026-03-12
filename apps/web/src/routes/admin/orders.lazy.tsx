@@ -11,6 +11,8 @@ import {
 	Eye,
 	Filter,
 	Loader2,
+	Search,
+	ShoppingBag,
 	User,
 	XCircle,
 	Trash2,
@@ -60,6 +62,9 @@ interface Order {
 	customerName?: string;
 	items: OrderItem[];
 	createdAt: number;
+	type?: string;
+	displayId?: string;
+	[key: string]: any;
 }
 
 function AdminOrders() {

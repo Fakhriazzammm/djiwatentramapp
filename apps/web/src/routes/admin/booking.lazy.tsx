@@ -16,6 +16,8 @@ import {
 	Settings2,
 	ShoppingBag,
 	Smartphone,
+	Trash2,
+	Upload,
 	Users,
 	X,
 	Pencil,
