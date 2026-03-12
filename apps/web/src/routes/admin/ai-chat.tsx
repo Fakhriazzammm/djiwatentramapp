@@ -2322,7 +2322,8 @@ function AIChatPage() {
 										if (e.key === "Enter" && !e.shiftKey) {
 											e.preventDefault();
 											if (input.trim() || selectedImages.length > 0) {
-											sendMessage(input);
+											sendMessage(input);
+
 											if (inputRef.current) {
 												inputRef.current.style.height = "auto";
 											}
@@ -2345,7 +2346,8 @@ function AIChatPage() {
 									disabled={isLoading || !(input.trim() || selectedImages.length > 0)}
 									onClick={() => {
 										if (input.trim() || selectedImages.length > 0) {
-											sendMessage(input);
+											sendMessage(input);
+
 											if (inputRef.current) {
 												inputRef.current.style.height = "auto";
 											}
@@ -2428,7 +2430,8 @@ function AIChatPage() {
 								<div className="p-3 border-border border-b">
 									<button
 										className="flex w-full items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-primary-foreground text-sm font-medium transition-colors hover:bg-primary/90"
-										onClick={() => startNewSession()}
+										onClick={() => startNewSession()}
+
 										type="button"
 									>
 										<Sparkles className="h-4 w-4" />

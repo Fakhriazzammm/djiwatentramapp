@@ -626,6 +626,7 @@ function BookingPage() {
 	const [completedBooking, setCompletedBooking] = useState<any>(null);
 	const [transferredAmount, setTransferredAmount] = useState<string>("");
 	const [proofImage, setProofImage] = useState<string>("");
+	const [proofPreview, setProofPreview] = useState<string>("");
 	const [isUploadingProof, setIsUploadingProof] = useState(false);
 	const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
 
@@ -847,6 +848,10 @@ function BookingPage() {
 		const file = e.target.files?.[0];
 		if (!file) return;
 
+		// Create local preview immediately
+		const previewUrl = URL.createObjectURL(file);
+		setProofPreview(previewUrl);
+
 		setIsUploadingProof(true);
 		try {
 			const postUrl = await generateUploadUrl();
@@ -860,6 +865,7 @@ function BookingPage() {
 			toast.success("Bukti pembayaran terpilih!");
 		} catch (error) {
 			toast.error("Gagal mengunggah bukti");
+			setProofPreview(""); // Clear preview on error
 		} finally {
 			setIsUploadingProof(false);
 		}
@@ -1058,13 +1064,16 @@ function BookingPage() {
 
 								<div className="space-y-2">
 									<label className="font-bold text-foreground text-xs">Bukti Pembayaran *</label>
-									{proofImage ? (
+									{proofImage || proofPreview ? (
 										<div className="relative group h-48 w-full overflow-hidden rounded-3xl border-2 border-primary/20 bg-muted">
-											<img alt="Proof" className="h-full w-full object-cover" src={proofImage.startsWith("http") ? proofImage : undefined} />
+											<img alt="Proof" className="h-full w-full object-cover" src={proofPreview || (proofImage.startsWith("http") ? proofImage : undefined)} />
 											<div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
 												<button
 													className="rounded-full bg-red-500 p-3 text-white shadow-lg active:scale-90 transition-transform"
-													onClick={() => setProofImage("")}
+													onClick={() => {
+														setProofImage("");
+														setProofPreview("");
+													}}
 													type="button"
 												>
 													<X className="h-5 w-5" />
@@ -1114,12 +1123,15 @@ function BookingPage() {
 
 							<div className="space-y-2">
 								<label className="font-bold text-foreground text-xs">Upload Bukti Transfer *</label>
-								{proofImage ? (
+								{proofImage || proofPreview ? (
 									<div className="relative group h-48 w-full overflow-hidden rounded-3xl border-2 border-primary/20 bg-muted">
-										<img alt="Proof" className="h-full w-full object-cover" src={proofImage.startsWith("http") ? proofImage : undefined} />
+										<img alt="Proof" className="h-full w-full object-cover" src={proofPreview || (proofImage.startsWith("http") ? proofImage : undefined)} />
 										<button
 											className="absolute top-3 right-3 rounded-full bg-red-500 p-2 text-white shadow-lg active:scale-90"
-											onClick={() => setProofImage("")}
+											onClick={() => {
+												setProofImage("");
+												setProofPreview("");
+											}}
 											type="button"
 										>
 											<X className="h-4 w-4" />
