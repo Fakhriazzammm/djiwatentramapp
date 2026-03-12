@@ -29,12 +29,7 @@ function IndexPage() {
 						>
 							Booking
 						</Link>
-						<Link
-							className="rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90"
-							to="/admin"
-						>
-							Admin
-						</Link>
+
 					</nav>
 				</div>
 			</header>
