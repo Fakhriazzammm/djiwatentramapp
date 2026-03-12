@@ -741,6 +741,191 @@ function AIChatPage() {
 		return buttons;
 	};
 
+	// Fetch data for AI
+	const products = useQuery(api.products.getAllProductsAdmin, {});
+	const inventory = useQuery(api.inventory.getInventory, {});
+	const orders = useQuery(api.orders.getOrders, {});
+
+	// Chat Sessions
+	const chatSessions = useQuery(api.aiMemory.getChatSessions, {});
+	const createSessionMutation = useMutation(api.aiMemory.createChatSession);
+	const deleteSessionMutation = useMutation(api.aiMemory.deleteChatSession);
+	const saveConversationMutation = useMutation(api.aiMemory.saveConversationContext);
+	const loadConversationQuery = useQuery(
+		api.aiMemory.getConversationContext,
+		currentSessionId ? { sessionId: currentSessionId } : "skip"
+	);
+
+	// AI Proactive Suggestions
+	const proactiveSuggestions = useQuery(api.ai.getProactiveSuggestions, {});
+
+	// Predictive Analytics
+	const stockPredictions = useQuery(api.ai.predictStockOut, { daysAhead: 7 });
+	const busyHoursPrediction = useQuery(api.ai.predictBusyHours, {});
+	const revenuePrediction = useQuery(api.ai.predictDailyRevenue, { daysAhead: 7 });
+	const trendingProducts = useQuery(api.ai.predictTrendingProducts, { daysAhead: 7 });
+	const bestPromoTime = useQuery(api.ai.predictBestPromoTime, {});
+
+	// Follow-up Tasks
+	const pendingTasks = useQuery(api.aiMemory.getPendingTasks, {});
+	const completeTaskMutation = useMutation(api.aiMemory.completeTask);
+	const dismissTaskMutation = useMutation(api.aiMemory.dismissTask);
+	const autoGenerateTasksMutation = useMutation(api.ai.autoGenerateTasks);
+
+	// Financial Summary for reports
+	const _financialSummary = useQuery(api.finance.getFinancialSummary, {});
+
+	// Generate smart insights
+	const smartInsights: Array<{
+		icon: React.ReactNode;
+		text: string;
+		type: "success" | "warning" | "info";
+	}> = [];
+
+	const lowStockItems =
+		inventory?.filter((i: any) => i.quantity <= i.lowStockThreshold) ?? [];
+	if (lowStockItems.length > 0) {
+		smartInsights.push({
+			icon: <AlertTriangle className="h-3.5 w-3.5 text-accent" />,
+			text: `${lowStockItems.length} stok rendah`,
+			type: "warning",
+		});
+	}
+
+	const pendingOrders = orders?.filter((o: any) => o.status === "pending") ?? [];
+	if (pendingOrders.length > 0) {
+		smartInsights.push({
+			icon: <Bell className="h-3.5 w-3.5 text-primary" />,
+			text: `${pendingOrders.length} perlu diproses`,
+			type: "info",
+		});
+	}
+
+	const availableProducts = products?.filter((p: any) => p.isAvailable).length ?? 0;
+
+	useEffect(() => {
+		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+	}, []);
+
+	// Auto-scroll while streaming — throttled to 120ms to reduce scroll jank
+	useEffect(() => {
+		if (!isStreaming) return;
+		if (scrollThrottleRef.current) return;
+		scrollThrottleRef.current = setTimeout(() => {
+			messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+			scrollThrottleRef.current = null;
+		}, 120);
+	}, [streamingContent, isStreaming]);
+
+	// Sanitize AI response - remove markdown formatting and suggestion tags
+	const sanitizeResponse = (text: string): string => {
+		if (!text) return "";
+		return text
+			// Remove suggestions [SUGGEST: Label | Prompt] - will be parsed separately
+			.replace(/\[SUGGEST:\s*(.*?)\s*\|\s*(.*?)\s*\]/g, "")
+			// Remove bold markdown
+			.replace(/\*\*(.*?)\*\*/g, "$1")
+			// Remove italic markdown
+			.replace(/\*(.*?)\*/g, "$1")
+			// Remove heading markdown
+			.replace(/^#+\s+/gm, "")
+			// Remove bullet points - strip markers
+			.replace(/^\*\s+/gm, "- ")
+			.replace(/^\-\s+/gm, "- ")
+			// Remove code blocks
+			.replace(/```[\s\S]*?```/g, "")
+			// Remove inline code
+			.replace(/`(.*?)`/g, "$1")
+			// Remove numbered list markdown
+			.replace(/^\d+\.\s+/gm, "")
+			// Clean up extra whitespace
+			.replace(/\n{3,}/g, "\n\n")
+			.trim();
+	};
+
+	// Extract suggestions from raw AI response
+	const extractSuggestions = (text: string): Array<{ label: string; prompt: string }> => {
+		const suggestions: Array<{ label: string; prompt: string }> = [];
+		const regex = /\[SUGGEST:\s*(.*?)\s*\|\s*(.*?)\s*\]/g;
+		let match;
+		while ((match = regex.exec(text)) !== null) {
+			suggestions.push({
+				label: match[1].trim(),
+				prompt: match[2].trim(),
+			});
+		}
+		return suggestions;
+	};
+
+	// Generate direct action buttons based on scan result context
+	const generateScanActionButtons = (scanData: ScanResultData): ScanActionButton[] => {
+		const categoryMap: Record<string, string> = {
+			makanan_minuman: "Makanan & Minuman",
+			belanja_stok: "Pembelian Stok",
+			peralatan_kantor: "Peralatan Kantor",
+			transportasi: "Transportasi",
+			utilitas_listrik_air: "Utilitas",
+			gaji_karyawan: "Gaji Karyawan",
+			sewa_tempat: "Sewa Tempat",
+			pemasaran: "Pemasaran",
+			pajak: "Pajak",
+			hiburan: "Hiburan",
+			kesehatan: "Kesehatan",
+			pembangunan_renovasi: "Renovasi",
+			lainnya: "Lainnya",
+		};
+		const paymentMap: Record<string, string> = {
+			cash: "cash", qris: "qris", card: "card", transfer: "transfer", unknown: "cash",
+		};
+		const category = categoryMap[scanData.category] ?? scanData.category.replace(/_/g, " ");
+		const paymentMethod = paymentMap[scanData.paymentMethod] ?? "cash";
+		const rawDate = scanData.date ? new Date(scanData.date).getTime() : NaN;
+		const dateTs = Number.isNaN(rawDate) ? Date.now() : rawDate;
+		const baseParams = {
+			amount: scanData.total,
+			category,
+			merchant: scanData.name || undefined,
+			description: scanData.notes ? scanData.notes.slice(0, 200) : undefined,
+			date: dateTs,
+			paymentMethod,
+			status: "completed" as const,
+		};
+		const buttons: ScanActionButton[] = [];
+		const ts = Date.now();
+		if (scanData.transactionType === "expense" || scanData.transactionType === "unknown") {
+			buttons.push({
+				id: `expense-${ts}`,
+				label: "Catat Pengeluaran",
+				icon: "💸",
+				variant: "expense",
+				params: { type: "expense", ...baseParams },
+			});
+		}
+		if (scanData.transactionType === "income" || scanData.transactionType === "unknown") {
+			buttons.push({
+				id: `income-${ts + 1}`,
+				label: "Catat Pemasukan",
+				icon: "💰",
+				variant: "income",
+				params: { type: "income", ...baseParams },
+			});
+		}
+		// If scan contains stock/inventory items
+		if (
+			scanData.type === "product" ||
+			["belanja_stok", "peralatan_kantor"].includes(scanData.category)
+		) {
+			buttons.push({
+				id: `stock-${ts + 2}`,
+				label: "Catat ke Stok",
+				icon: "📦",
+				variant: "stock",
+				params: { type: "expense", ...baseParams, category: "Pembelian Stok" },
+			});
+		}
+		return buttons;
+	};
+
 	// Stream text word by word for realistic streaming effect
 	const streamText = useCallback(
 		(text: string, onComplete: () => void) => {
@@ -769,181 +954,6 @@ function AIChatPage() {
 			next();
 		},
 		[]
-	);
-
-	// Session management functions (defined before sendMessage to avoid initialization issues)
-	const startNewSession = async (): Promise<string | null> => {
-		const today = new Date();
-		const dateStr = today.toLocaleDateString("id-ID", {
-			day: "numeric",
-			month: "short",
-		});
-		const timeStr = today.toLocaleTimeString("id-ID", {
-			hour: "2-digit",
-			minute: "2-digit",
-		});
-
-		try {
-			const result = await createSessionMutation({
-				title: `Chat ${dateStr} ${timeStr}`,
-			});
-			if (result) {
-				setCurrentSessionId(result.sessionId);
-				setMessages([
-					{
-						role: "assistant",
-						content:
-							"Halo! Saya Yumi, asisten AI kamu. Ada yang bisa saya bantu hari ini?",
-					},
-				]);
-				setShowSessionHistory(false);
-				return result.sessionId;
-			}
-		} catch {
-			toast.error("Gagal membuat sesi baru");
-		}
-		return null;
-	};
-
-	const saveMessage = async (message: ChatMessage, sessionIdOverride?: string) => {
-		const sid = sessionIdOverride ?? currentSessionId;
-		if (sid) {
-			try {
-				await saveConversationMutation({
-					sessionId: sid,
-					role: message.role,
-					content: message.content,
-					metadata: {
-						imageAttached: !!message.image,
-					},
-				});
-			} catch (error) {
-				console.error("Failed to save message:", error);
-			}
-		}
-	};
-
-	const sendMessage = useCallback(
-		async (text: string, image?: string) => {
-			// Guard: also block while streaming to prevent race conditions
-			if (!(text.trim() || image || selectedImages.length > 0) || isLoading || isStreaming) {
-				return;
-			}
-			// Capture generation ID to discard responses from superseded requests
-			const myRequestId = ++requestIdRef.current;
-
-
-			// Capture or create session ID synchronously before any state updates
-			let activeSessionId = currentSessionId;
-			if (!activeSessionId) {
-				activeSessionId = await startNewSession();
-			}
-
-			const userMessage: ChatMessage = {
-				role: "user",
-				_msgId: mkMsgId(),
-				content: text.trim(),
-				image: image || (selectedImages.length > 0 ? selectedImages[0] : undefined),
-			};
-			setMessages((prev) => [...prev, userMessage]);
-			setInput("");
-			setSelectedImages([]);
-			setIsLoading(true);
-			setToolCalls([]);
-
-			try {
-				const history = messages
-					.filter((m) => m.role === "user" || m.role === "assistant")
-					.map((m) => ({ role: m.role, content: m.content }));
-
-				const attachedImages = image ? [image] : selectedImages;
-				const response = await yumiChat({
-					message: text.trim() || (attachedImages.length > 0 ? "Tolong analisis gambar-gambar ini." : ""),
-					history,
-					images: attachedImages,
-				});
-
-				// Discard response if a newer request has already been fired
-				if (requestIdRef.current !== myRequestId) return;
-
-				let hasToolExecution = false;
-				const detectedTools: ToolCall[] = [];
-
-				if (response?.includes("Berhasil menjalankan")) {
-					hasToolExecution = true;
-					for (const [toolKey, toolLabel] of Object.entries(TOOL_LABELS)) {
-						if (
-							response.includes(toolLabel) ||
-							response.toLowerCase().includes(toolKey.toLowerCase())
-						) {
-							detectedTools.push({
-								name: toolKey,
-								args: {},
-								status: "success",
-								result: "Berhasil",
-							});
-						}
-					}
-				}
-
-				if (hasToolExecution && detectedTools.length > 0) {
-					for (const tool of detectedTools) {
-						setToolCalls((prev) => [...prev, { ...tool, status: "executing" }]);
-						await new Promise((r) => setTimeout(r, 600));
-						setToolCalls((prev) =>
-							prev.map((t) =>
-								t.name === tool.name ? { ...t, status: "success" as const } : t
-							)
-						);
-					}
-					setTimeout(() => setToolCalls([]), 3000);
-				}
-
-				const suggestions = extractSuggestions(response);
-				const sanitized =
-					sanitizeResponse(response) ||
-					"Maaf, saya tidak bisa memproses permintaan ini.";
-
-				const quickActions = generateQuickActions(text.trim(), sanitized);
-
-				// setIsLoading(false) moved inside callback so the input stays locked
-				// during the full streaming phase, preventing concurrent submissions
-				streamText(sanitized, async () => {
-					setIsLoading(false);
-					const assistantMessage: ChatMessage = {
-						role: "assistant",
-						content: sanitized,
-					_msgId: mkMsgId(),
-						suggestions: suggestions,
-						quickActions,
-					};
-					setMessages((prev) => [...prev, assistantMessage]);
-					// Use captured activeSessionId to avoid stale-closure state
-					if (activeSessionId) {
-						await saveMessage(userMessage, activeSessionId);
-						await saveMessage(assistantMessage, activeSessionId);
-					}
-				});
-			} catch (error) {
-				console.error("AI chat error:", error);
-				setIsLoading(false);
-				streamingActiveRef.current = false;
-				setIsStreaming(false);
-				setStreamingContent("");
-				const errMsg = error instanceof Error ? error.message : String(error);
-				setMessages((prev) => [
-					...prev,
-					{
-						role: "assistant",
-						content: errMsg?.includes("image") || errMsg?.includes("vision") || errMsg?.includes("model")
-							? "Maaf, gagal menganalisis gambar. Pastikan format gambar didukung (JPG/PNG) dan coba lagi."
-							: "Maaf, terjadi kesalahan. Silakan coba lagi.",
-					},
-				]);
-				setToolCalls([]);
-			}
-		},
-		[isLoading, isStreaming, messages, yumiChat, selectedImages, currentSessionId, startNewSession, saveMessage, streamText]
 	);
 
 	// Helper: compress image for AI scan - optimized for OCR readability

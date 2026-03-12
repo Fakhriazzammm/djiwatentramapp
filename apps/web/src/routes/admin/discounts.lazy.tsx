@@ -1022,7 +1022,7 @@ function AdminDiscountsPage() {
 															.toLowerCase()
 															.includes(searchTarget.toLowerCase())
 													)
-													.map((item) => (
+													.map((item: any) => (
 														<button
 															className={`flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-sm transition-all ${
 																formData.targetIds.includes(item._id)

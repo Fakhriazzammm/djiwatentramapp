@@ -178,11 +178,11 @@ export function FocusTrap({ active, children }: FocusTrapProps) {
 			const last = elements.at(-1);
 
 			if (e.shiftKey) {
-				if (document.activeElement === first) {
+				if (document.activeElement === first && last) {
 					e.preventDefault();
 					last.focus();
 				}
-			} else if (document.activeElement === last) {
+			} else if (document.activeElement === last && first) {
 				e.preventDefault();
 				first.focus();
 			}

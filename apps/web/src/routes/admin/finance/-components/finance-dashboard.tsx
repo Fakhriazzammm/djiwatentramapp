@@ -326,7 +326,7 @@ export function FinanceDashboard() {
 								Ringkasan Harian
 							</h4>
 							<div className="space-y-1.5">
-								{hppCogs.dailySummary.slice(0, 7).map((day) => (
+								{hppCogs.dailySummary.slice(0, 7).map((day: any) => (
 									<div
 										className="flex items-center justify-between rounded border border-border/30 px-3 py-1.5 text-xs"
 										key={day.date}

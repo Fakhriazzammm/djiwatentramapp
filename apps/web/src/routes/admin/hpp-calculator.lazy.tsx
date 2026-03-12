@@ -571,7 +571,7 @@ function HppCalculatorPage() {
 			{/* Price Change Alerts */}
 			{priceAlerts.length > 0 && (
 				<div className="flex flex-col gap-2">
-					{priceAlerts.map((alert) => (
+					{priceAlerts.map((alert: any) => (
 						<motion.div
 							animate={{ opacity: 1, y: 0 }}
 							className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30"
@@ -707,7 +707,7 @@ function HppCalculatorPage() {
 
 			{activeTab === "saved" && (
 				<SavedCalculationsView
-					calculations={hppCalculations}
+					calculations={hppCalculations as any}
 					expandedCard={expandedCard}
 					inventoryCosts={inventoryCosts}
 					onDelete={(id) => setDeleteTarget(id)}
@@ -2065,8 +2065,8 @@ function HppProfitAnalysisView({
 		);
 	}
 
-	const lowMargin = marginAnalysis.filter((h) => h.isLowMargin);
-	const okMargin = marginAnalysis.filter((h) => !h.isLowMargin);
+	const lowMargin = marginAnalysis.filter((h: any) => h.isLowMargin);
+	const okMargin = marginAnalysis.filter((h: any) => !h.isLowMargin);
 
 	return (
 		<div className="space-y-6">
