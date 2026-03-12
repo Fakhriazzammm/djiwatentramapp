@@ -146,14 +146,35 @@ export const deleteOrder = mutation({
 		// Delete associated financial transactions (Income and HPP)
 		const transactions = await ctx.db
 			.query("financialTransactions")
-			.withIndex("by_date") // Using an index for better performance if possible, or filter
-			.filter((q) => q.eq(q.field("orderId"), args.id))
 			.collect();
-		
-		for (const tx of transactions) {
+
+		const orderTransactions = transactions.filter((tx) => tx.orderId === args.id);
+
+		for (const tx of orderTransactions) {
 			await ctx.db.delete(tx._id);
 		}
 
 		await ctx.db.delete(args.id);
+	},
+});
+
+// Update an order (customer name, payment method, etc.)
+export const updateOrder = mutation({
+	args: {
+		id: v.id("orders"),
+		customerName: v.optional(v.string()),
+		paymentMethod: v.optional(v.string()),
+		status: v.optional(
+			v.union(
+				v.literal("pending"),
+				v.literal("paid"),
+				v.literal("completed"),
+				v.literal("cancelled")
+			)
+		),
+	},
+	handler: async (ctx, args) => {
+		const { id, ...data } = args;
+		await ctx.db.patch(id, data);
 	},
 });

@@ -97,9 +97,9 @@ export const generateUploadUrl = mutation(async (ctx) => {
 export const updateSettings = mutation({
 	args: {
 		landingIcon: v.optional(v.string()),
-		landingTitle: v.string(),
-		landingDescription: v.string(),
-		landingButtonText: v.string(),
+		landingTitle: v.optional(v.string()),
+		landingDescription: v.optional(v.string()),
+		landingButtonText: v.optional(v.string()),
 		logoUrl: v.optional(v.string()),
 		paymentPopupImage: v.optional(v.string()),
 		storeName: v.optional(v.string()),
@@ -134,7 +134,11 @@ export const updateSettings = mutation({
 			return existing._id;
 		}
 
-		const id = await ctx.db.insert("siteSettings", args);
+		// Use defaults for required fields if it's the first time
+		const id = await ctx.db.insert("siteSettings", {
+			...DEFAULTS,
+			...args,
+		} as any);
 		return id;
 	},
 });

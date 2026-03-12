@@ -85,6 +85,10 @@ export class BluetoothPrinterService {
 		return !!(this.server?.connected && this.characteristic);
 	}
 
+	getDeviceName(): string | null {
+		return this.device?.name || null;
+	}
+
 	async print(
 		order: {
 			orderNumber: string;

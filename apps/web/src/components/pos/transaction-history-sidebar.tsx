@@ -1,16 +1,31 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Doc } from "@yumipos/backend/convex/_generated/dataModel";
-import { useQuery } from "convex/react";
+import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
+import { useMutation, useQuery } from "convex/react";
 import {
 	ChevronLeft,
 	ClipboardList,
 	History,
 	Loader2,
+	Pencil,
 	Printer,
+	Save,
+	Trash2,
+	X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import {
 	Sheet,
 	SheetContent,
@@ -153,8 +168,12 @@ export function TransactionHistorySidebar() {
 	const [selectedOrder, setSelectedOrder] = useState<Doc<"orders"> | null>(
 		null
 	);
+	const [isEditMode, setIsEditMode] = useState(false);
+	const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
 	const orders = useQuery(api.orders.getOrders, {});
+	const updateOrder = useMutation(api.orders.updateOrder);
+	const deleteOrder = useMutation(api.orders.deleteOrder);
 
 	const filteredOrders = useMemo(() => {
 		if (!orders) return [];
@@ -177,122 +196,173 @@ export function TransactionHistorySidebar() {
 		(o: Doc<"orders">) => o.status === "paid" || o.status === "completed"
 	).length;
 
+	const handleUpdateOrder = async (
+		id: Id<"orders">,
+		data: { customerName?: string; paymentMethod?: string; status?: any }
+	) => {
+		try {
+			await updateOrder({ id, ...data });
+			toast.success("Pesanan berhasil diperbarui");
+			setIsEditMode(false);
+			// Update local selected order if it's the one being edited
+			if (selectedOrder && selectedOrder._id === id) {
+				setSelectedOrder({ ...selectedOrder, ...data });
+			}
+		} catch (error) {
+			console.error(error);
+			toast.error("Gagal memperbarui pesanan");
+		}
+	};
+
+	const handleDeleteOrder = async (id: Id<"orders">) => {
+		try {
+			await deleteOrder({ id });
+			toast.success("Pesanan berhasil dihapus");
+			setSelectedOrder(null);
+			setIsConfirmDeleteOpen(false);
+		} catch (error) {
+			console.error(error);
+			toast.error("Gagal menghapus pesanan");
+		}
+	};
+
 	return (
-		<Sheet
-			onOpenChange={(open) => {
-				setIsOpen(open);
-				if (!open) {
-					setTimeout(() => setSelectedOrder(null), 300);
-				}
-			}}
-			open={isOpen}
-		>
-			<SheetTrigger>
-				<Button
-					className="shrink-0 gap-1.5 bg-background"
-					onClick={() => setIsOpen(true)}
-					size="sm"
-					variant="outline"
-				>
-					<History className="h-4 w-4" />
-					<span className="hidden sm:inline">Riwayat</span>
-					<span className="sr-only">Riwayat Transaksi</span>
-				</Button>
-			</SheetTrigger>
-			<SheetContent
-				className="flex w-full flex-col p-0 sm:w-[450px]"
-				side="right"
+		<>
+			<Sheet
+				onOpenChange={(open) => {
+					setIsOpen(open);
+					if (!open) {
+						setTimeout(() => {
+							setSelectedOrder(null);
+							setIsEditMode(false);
+						}, 300);
+					}
+				}}
+				open={isOpen}
 			>
-				{selectedOrder ? (
-					<OrderDetailView
-						onBack={() => setSelectedOrder(null)}
-						order={selectedOrder}
-					/>
-				) : (
-					<>
-						<SheetHeader className="border-b p-4">
-							<SheetTitle className="flex items-center gap-2">
-								<ClipboardList className="h-5 w-5 text-primary" />
-								Riwayat Transaksi
-							</SheetTitle>
-						</SheetHeader>
+				<SheetTrigger>
+					<Button
+						className="shrink-0 gap-1.5 bg-background"
+						onClick={() => setIsOpen(true)}
+						size="sm"
+						variant="outline"
+					>
+						<History className="h-4 w-4" />
+						<span className="hidden sm:inline">Riwayat</span>
+						<span className="sr-only">Riwayat Transaksi</span>
+					</Button>
+				</SheetTrigger>
+				<SheetContent
+					className="flex w-full flex-col p-0 sm:w-[450px]"
+					side="right"
+				>
+					{selectedOrder ? (
+						<OrderDetailView
+							isEditMode={isEditMode}
+							onBack={() => {
+								setSelectedOrder(null);
+								setIsEditMode(false);
+							}}
+							onDelete={() => setIsConfirmDeleteOpen(true)}
+							onEdit={() => setIsEditMode(true)}
+							onSave={(data) => handleUpdateOrder(selectedOrder._id, data)}
+							order={selectedOrder}
+						/>
+					) : (
+						<>
+							<SheetHeader className="border-b p-4">
+								<SheetTitle className="flex items-center gap-2">
+									<ClipboardList className="h-5 w-5 text-primary" />
+									Riwayat Transaksi
+								</SheetTitle>
+							</SheetHeader>
 
-						{/* Filter Buttons */}
-						<div className="border-b bg-muted/30 p-3">
-							<div className="flex flex-wrap gap-1.5">
-								{FILTER_OPTIONS.map((option) => (
-									<button
-										className={`rounded-full px-3 py-1.5 font-medium text-xs transition-all ${
-											activeFilter === option.value
-												? "bg-primary text-primary-foreground"
-												: "bg-muted text-muted-foreground hover:bg-muted/80"
-										}`}
-										key={option.value}
-										onClick={() => setActiveFilter(option.value)}
-										type="button"
-									>
-										{option.label}
-									</button>
-								))}
+							{/* Filter Buttons */}
+							<div className="border-b bg-muted/30 p-3">
+								<div className="flex flex-wrap gap-1.5">
+									{FILTER_OPTIONS.map((option) => (
+										<button
+											className={`rounded-full px-3 py-1.5 font-medium text-xs transition-all ${
+												activeFilter === option.value
+													? "bg-primary text-primary-foreground"
+													: "bg-muted text-muted-foreground hover:bg-muted/80"
+											}`}
+											key={option.value}
+											onClick={() => setActiveFilter(option.value)}
+											type="button"
+										>
+											{option.label}
+										</button>
+									))}
+								</div>
 							</div>
-						</div>
 
-						{/* Orders List */}
-						<div className="flex-1 overflow-hidden">
-							{orders === undefined && (
-								<div className="flex h-full items-center justify-center">
-									<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-								</div>
-							)}
-							{orders !== undefined && filteredOrders.length === 0 && (
-								<div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
-									<ClipboardList className="h-12 w-12 text-muted-foreground/30" />
-									<p className="font-medium text-muted-foreground text-sm">
-										Tidak ada transaksi
-									</p>
-									<p className="text-muted-foreground text-xs">
-										{
-											FILTER_OPTIONS.find((f) => f.value === activeFilter)
-												?.label
-										}
-									</p>
-								</div>
-							)}
-							{orders !== undefined && filteredOrders.length > 0 && (
-								<ScrollArea className="h-full">
-									<div className="space-y-2 p-3">
-										{filteredOrders.map((order: Doc<"orders">) => (
-											<OrderCard
-												key={order._id}
-												onClick={() => setSelectedOrder(order)}
-												order={order}
-											/>
-										))}
+							{/* Orders List */}
+							<div className="flex-1 overflow-hidden">
+								{orders === undefined && (
+									<div className="flex h-full items-center justify-center">
+										<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
 									</div>
-								</ScrollArea>
-							)}
-						</div>
+								)}
+								{orders !== undefined && filteredOrders.length === 0 && (
+									<div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
+										<ClipboardList className="h-12 w-12 text-muted-foreground/30" />
+										<p className="font-medium text-muted-foreground text-sm">
+											Tidak ada transaksi
+										</p>
+										<p className="text-muted-foreground text-xs">
+											{
+												FILTER_OPTIONS.find((f) => f.value === activeFilter)
+													?.label
+											}
+										</p>
+									</div>
+								)}
+								{orders !== undefined && filteredOrders.length > 0 && (
+									<ScrollArea className="h-full">
+										<div className="space-y-2 p-3">
+											{filteredOrders.map((order: Doc<"orders">) => (
+												<OrderCard
+													key={order._id}
+													onClick={() => setSelectedOrder(order)}
+													order={order}
+												/>
+											))}
+										</div>
+									</ScrollArea>
+								)}
+							</div>
 
-						{/* Total Footer */}
-						<div className="shrink-0 border-t bg-card p-4">
-							<div className="mb-2 flex items-center justify-between">
-								<span className="text-muted-foreground text-sm">
-									{paidOrdersCount} transaksi selesai
-								</span>
+							{/* Total Footer */}
+							<div className="shrink-0 border-t bg-card p-4">
+								<div className="mb-2 flex items-center justify-between">
+									<span className="text-muted-foreground text-sm">
+										{paidOrdersCount} transaksi selesai
+									</span>
+								</div>
+								<div className="flex items-center justify-between">
+									<span className="font-semibold text-foreground">
+										Total Penjualan
+									</span>
+									<span className="font-bold text-primary text-xl">
+										{formatCurrency(totalAmount)}
+									</span>
+								</div>
 							</div>
-							<div className="flex items-center justify-between">
-								<span className="font-semibold text-foreground">
-									Total Penjualan
-								</span>
-								<span className="font-bold text-primary text-xl">
-									{formatCurrency(totalAmount)}
-								</span>
-							</div>
-						</div>
-					</>
-				)}
-			</SheetContent>
-		</Sheet>
+						</>
+					)}
+				</SheetContent>
+			</Sheet>
+
+			<ConfirmationModal
+				isOpen={isConfirmDeleteOpen}
+				message="Apakah Anda yakin ingin menghapus pesanan ini? Tindakan ini juga akan menghapus transaksi keuangan terkait."
+				onClose={() => setIsConfirmDeleteOpen(false)}
+				onConfirm={() => selectedOrder && handleDeleteOrder(selectedOrder._id)}
+				title="Hapus Pesanan"
+				variant="danger"
+			/>
+		</>
 	);
 }
 
@@ -373,10 +443,26 @@ function OrderCard({
 function OrderDetailView({
 	order,
 	onBack,
+	onEdit,
+	onDelete,
+	isEditMode,
+	onSave,
 }: {
 	order: Doc<"orders">;
 	onBack: () => void;
+	onEdit: () => void;
+	onDelete: () => void;
+	isEditMode: boolean;
+	onSave: (data: {
+		customerName: string;
+		paymentMethod: string;
+		status: any;
+	}) => void;
 }) {
+	const [customerName, setCustomerName] = useState(order.customerName || "");
+	const [paymentMethod, setPaymentMethod] = useState(order.paymentMethod);
+	const [status, setStatus] = useState(order.status);
+
 	const statusColors: Record<string, string> = {
 		pending: "bg-accent text-accent-foreground",
 		paid: "bg-primary text-primary-foreground",
@@ -407,6 +493,43 @@ function OrderDetailView({
 						</Button>
 						<SheetTitle className="text-lg">Detail Pesanan</SheetTitle>
 					</div>
+					<div className="flex items-center gap-2">
+						{!isEditMode && (
+							<>
+								<Button
+									className="h-8 w-8"
+									onClick={onEdit}
+									size="icon"
+									variant="ghost"
+								>
+									<Pencil className="h-4 w-4" />
+									<span className="sr-only">Edit</span>
+								</Button>
+								<Button
+									className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+									onClick={onDelete}
+									size="icon"
+									variant="ghost"
+								>
+									<Trash2 className="h-4 w-4" />
+									<span className="sr-only">Hapus</span>
+								</Button>
+							</>
+						)}
+						{isEditMode && (
+							<Button
+								className="h-8 w-8"
+								onClick={() => {
+									onSave({ customerName, paymentMethod, status });
+								}}
+								size="icon"
+								variant="ghost"
+							>
+								<Save className="h-4 w-4 text-primary" />
+								<span className="sr-only">Simpan</span>
+							</Button>
+						)}
+					</div>
 				</div>
 			</SheetHeader>
 
@@ -422,24 +545,67 @@ function OrderDetailView({
 								{formatDate(order.createdAt)} • {formatTime(order.createdAt)}
 							</p>
 						</div>
-						<span
-							className={`rounded-full px-2.5 py-0.5 font-semibold text-xs ${statusColors[order.status] || "bg-muted"}`}
-						>
-							{statusLabels[order.status] || order.status}
-						</span>
+						{!isEditMode && (
+							<span
+								className={`rounded-full px-2.5 py-0.5 font-semibold text-xs ${statusColors[order.status] || "bg-muted"}`}
+							>
+								{statusLabels[order.status] || order.status}
+							</span>
+						)}
 					</div>
 
 					{/* Customer Info */}
-					<div className="space-y-2 rounded-lg border bg-muted/30 p-3 text-sm">
-						<div className="flex justify-between">
-							<span className="text-muted-foreground">Pelanggan</span>
-							<span className="font-medium">{order.customerName || "-"}</span>
+					<div className="space-y-4 rounded-lg border bg-muted/30 p-4 text-sm">
+						<div className="space-y-2">
+							<Label className="text-muted-foreground">Pelanggan</Label>
+							{isEditMode ? (
+								<Input
+									onChange={(e) => setCustomerName(e.target.value)}
+									placeholder="Nama Pelanggan"
+									value={customerName}
+								/>
+							) : (
+								<p className="font-medium">{order.customerName || "-"}</p>
+							)}
 						</div>
-						<div className="flex justify-between">
-							<span className="text-muted-foreground">Metode Pembayaran</span>
-							<span className="font-medium capitalize">
-								{order.paymentMethod}
-							</span>
+
+						<div className="space-y-2">
+							<Label className="text-muted-foreground">Metode Pembayaran</Label>
+							{isEditMode ? (
+								<Select onValueChange={setPaymentMethod} value={paymentMethod}>
+									<SelectTrigger>
+										<SelectValue placeholder="Pilih Metode" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="cash">Tunai</SelectItem>
+										<SelectItem value="qris">QRIS</SelectItem>
+										<SelectItem value="transfer">Transfer Bank</SelectItem>
+									</SelectContent>
+								</Select>
+							) : (
+								<p className="font-medium capitalize">{order.paymentMethod}</p>
+							)}
+						</div>
+
+						<div className="space-y-2">
+							<Label className="text-muted-foreground">Status Pesanan</Label>
+							{isEditMode ? (
+								<Select onValueChange={setStatus} value={status}>
+									<SelectTrigger>
+										<SelectValue placeholder="Pilih Status" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="pending">Pending</SelectItem>
+										<SelectItem value="paid">Lunas</SelectItem>
+										<SelectItem value="completed">Selesai</SelectItem>
+										<SelectItem value="cancelled">Batal</SelectItem>
+									</SelectContent>
+								</Select>
+							) : (
+								<p className="font-medium capitalize">
+									{statusLabels[order.status] || order.status}
+								</p>
+							)}
 						</div>
 					</div>
 

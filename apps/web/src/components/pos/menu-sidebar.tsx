@@ -95,6 +95,9 @@ const TABS: TabItem[] = [
 export function MenuSidebar() {
 	const [isOpen, setIsOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState("dashboard");
+	const [selectedOrder, setSelectedOrder] = useState<Doc<"orders"> | null>(null);
+	const [isEditMode, setIsEditMode] = useState(false);
+
 	const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig>({
 		isOpen: false,
 		title: "",
@@ -107,84 +110,304 @@ export function MenuSidebar() {
 	const lowStockItems = useQuery(api.inventory.getLowStockItems);
 	const lowStockCount = lowStockItems?.length || 0;
 
+	const updateOrder = useMutation(api.orders.updateOrder);
+	const deleteOrder = useMutation(api.orders.deleteOrder);
+
+	const handleUpdateOrder = async (
+		id: Id<"orders">,
+		data: { customerName?: string; paymentMethod?: string; status?: any }
+	) => {
+		try {
+			await updateOrder({ id, ...data });
+			toast.success("Pesanan berhasil diperbarui");
+			setIsEditMode(false);
+			if (selectedOrder && selectedOrder._id === id) {
+				setSelectedOrder({ ...selectedOrder, ...data });
+			}
+		} catch (error) {
+			console.error(error);
+			toast.error("Gagal memperbarui pesanan");
+		}
+	};
+
+	const handleDeleteOrder = async (id: Id<"orders">) => {
+		try {
+			await deleteOrder({ id });
+			toast.success("Pesanan berhasil dihapus");
+			setSelectedOrder(null);
+		} catch (error) {
+			console.error(error);
+			toast.error("Gagal menghapus pesanan");
+		}
+	};
+
 	return (
-		<Sheet onOpenChange={setIsOpen} open={isOpen}>
-			<SheetTrigger>
-				<Button
-					className="relative shrink-0"
-					onClick={() => setIsOpen(true)}
-					size="icon"
-					variant="ghost"
+		<>
+			<Sheet onOpenChange={setIsOpen} open={isOpen}>
+				<SheetTrigger>
+					<Button
+						className="relative shrink-0"
+						onClick={() => setIsOpen(true)}
+						size="icon"
+						variant="ghost"
+					>
+						<Menu className="h-5 w-5" />
+						{lowStockCount > 0 && (
+							<span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive font-bold text-[9px] text-destructive-foreground">
+								{lowStockCount > 9 ? "9+" : lowStockCount}
+							</span>
+						)}
+						<span className="sr-only">Menu Operasional</span>
+					</Button>
+				</SheetTrigger>
+				<SheetContent
+					className="flex w-full flex-col p-0 sm:max-w-[440px]"
+					side="right"
 				>
-					<Menu className="h-5 w-5" />
-					{lowStockCount > 0 && (
-						<span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive font-bold text-[9px] text-destructive-foreground">
-							{lowStockCount > 9 ? "9+" : lowStockCount}
-						</span>
-					)}
-					<span className="sr-only">Menu Operasional</span>
-				</Button>
-			</SheetTrigger>
-			<SheetContent
-				className="flex w-full flex-col p-0 sm:max-w-[440px]"
-				side="right"
-			>
-				<SheetHeader className="border-b px-4 py-3">
-					<SheetTitle className="text-base font-bold">Menu Operasional</SheetTitle>
-				</SheetHeader>
-				<div className="flex-1 overflow-hidden">
-					<Tabs className="flex h-full flex-col" value={activeTab} onValueChange={setActiveTab}>
-						<div className="bg-muted/20 px-3 pt-3 pb-2">
-							<TabsList className="grid h-16 w-full grid-cols-5 gap-1.5 rounded-xl bg-muted/50 p-1.5">
-								{TABS.map((tab) => {
-									const Icon = tab.icon;
-									return (
-										<TabsTrigger
-											className="relative flex h-full flex-col items-center justify-center gap-1 rounded-lg border-none px-1 py-1 font-medium text-[10px] outline-none transition-all after:hidden hover:bg-muted/50 hover:text-foreground focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm data-active:bg-background data-active:text-primary data-active:shadow-sm sm:text-xs"
-											key={tab.value}
-											value={tab.value}
-										>
-											<Icon className="mb-0.5 h-4 w-4 sm:h-5 sm:w-5" />
-											<span className="leading-none text-[9px] sm:text-[10px]">{tab.label}</span>
-										</TabsTrigger>
-									);
-								})}
-							</TabsList>
-						</div>
+					<SheetHeader className="border-b px-4 py-3">
+						<SheetTitle className="text-base font-bold">Menu Operasional</SheetTitle>
+					</SheetHeader>
+					<div className="flex-1 overflow-hidden">
+						{selectedOrder ? (
+							<div className="flex h-full flex-col">
+								<div className="flex items-center gap-2 border-b p-4">
+									<Button
+										className="h-8 w-8"
+										onClick={() => {
+											setSelectedOrder(null);
+											setIsEditMode(false);
+										}}
+										size="icon"
+										variant="ghost"
+									>
+										<ChevronLeft className="h-5 w-5" />
+									</Button>
+									<h3 className="font-bold">Detail Pesanan</h3>
+								</div>
+								<div className="flex-1 overflow-y-auto">
+									<OrderSimpleDetail
+										isEditMode={isEditMode}
+										key={selectedOrder._id}
+										onDelete={() => {
+											setConfirmConfig({
+												isOpen: true,
+												title: "Hapus Pesanan",
+												message: "Apakah Anda yakin ingin menghapus pesanan ini?",
+												variant: "danger",
+												onConfirm: () => handleDeleteOrder(selectedOrder._id),
+											});
+										}}
+										onEdit={() => setIsEditMode(true)}
+										onSave={(data) => handleUpdateOrder(selectedOrder._id, data)}
+										order={selectedOrder}
+									/>
+								</div>
+							</div>
+						) : (
+							<Tabs className="flex h-full flex-col" value={activeTab} onValueChange={setActiveTab}>
+								<div className="bg-muted/20 px-3 pt-3 pb-2">
+									<TabsList className="grid h-16 w-full grid-cols-5 gap-1.5 rounded-xl bg-muted/50 p-1.5">
+										{TABS.map((tab) => {
+											const Icon = tab.icon;
+											return (
+												<TabsTrigger
+													className="relative flex h-full flex-col items-center justify-center gap-1 rounded-lg border-none px-1 py-1 font-medium text-[10px] outline-none transition-all after:hidden hover:bg-muted/50 hover:text-foreground focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm data-active:bg-background data-active:text-primary data-active:shadow-sm sm:text-xs"
+													key={tab.value}
+													value={tab.value}
+												>
+													<Icon className="mb-0.5 h-4 w-4 sm:h-5 sm:w-5" />
+													<span className="leading-none text-[9px] sm:text-[10px]">{tab.label}</span>
+												</TabsTrigger>
+											);
+										})}
+									</TabsList>
+								</div>
 
-						<div className="flex flex-1 flex-col overflow-hidden bg-background">
-							<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="dashboard">
-								<DashboardTab onClose={() => setIsOpen(false)} onNavigate={setActiveTab} />
-							</TabsContent>
-							<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="kas">
-								<KasTab onClose={() => setIsOpen(false)} />
-							</TabsContent>
-							<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="stok">
-								<StokTab setConfirmConfig={setConfirmConfig} />
-							</TabsContent>
-							<TabsContent className="m-0 flex-1 overflow-hidden p-0" value="yumi">
-								<YumiAIChat />
-							</TabsContent>
-							<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="settings">
-								<SettingsTab onClose={() => setIsOpen(false)} />
-							</TabsContent>
-						</div>
-					</Tabs>
-				</div>
-			</SheetContent>
+								<div className="flex flex-1 flex-col overflow-hidden bg-background">
+									<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="dashboard">
+										<DashboardTab
+											onClose={() => setIsOpen(false)}
+											onNavigate={setActiveTab}
+											onSelectOrder={setSelectedOrder}
+										/>
+									</TabsContent>
+									<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="kas">
+										<KasTab onClose={() => setIsOpen(false)} />
+									</TabsContent>
+									<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="stok">
+										<StokTab setConfirmConfig={setConfirmConfig} />
+									</TabsContent>
+									<TabsContent className="m-0 flex-1 overflow-hidden p-0" value="yumi">
+										<YumiAIChat />
+									</TabsContent>
+									<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="settings">
+										<SettingsTab onClose={() => setIsOpen(false)} />
+									</TabsContent>
+								</div>
+							</Tabs>
+						)}
+					</div>
+				</SheetContent>
 
-			<ConfirmationModal
-				isOpen={confirmConfig.isOpen}
-				message={confirmConfig.message}
-				onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
-				onConfirm={confirmConfig.onConfirm}
-				title={confirmConfig.title}
-			/>
-		</Sheet>
+				<ConfirmationModal
+					isOpen={confirmConfig.isOpen}
+					message={confirmConfig.message}
+					onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+					onConfirm={confirmConfig.onConfirm}
+					title={confirmConfig.title}
+					variant={confirmConfig.variant}
+				/>
+			</Sheet>
+		</>
 	);
 }
 
-function DashboardTab({ onClose, onNavigate }: { onClose: () => void; onNavigate: (tab: string) => void }) {
+function OrderSimpleDetail({
+	order,
+	isEditMode,
+	onEdit,
+	onDelete,
+	onSave,
+}: {
+	order: Doc<"orders">;
+	isEditMode: boolean;
+	onEdit: () => void;
+	onDelete: () => void;
+	onSave: (data: any) => void;
+}) {
+	const [customerName, setCustomerName] = useState(order.customerName || "");
+	const [paymentMethod, setPaymentMethod] = useState(order.paymentMethod);
+	const [status, setStatus] = useState(order.status);
+
+	const statusLabels: Record<string, string> = {
+		pending: "Pending",
+		paid: "Lunas",
+		completed: "Selesai",
+		cancelled: "Batal",
+	};
+
+	const formatCurrency = (value: number) =>
+		new Intl.NumberFormat("id-ID", {
+			style: "currency",
+			currency: "IDR",
+			maximumFractionDigits: 0,
+		}).format(value);
+
+	return (
+		<div className="space-y-6 p-4">
+			<div className="flex items-start justify-between">
+				<div>
+					<p className="font-mono text-lg font-bold">#{order.orderNumber}</p>
+					<p className="text-xs text-muted-foreground">
+						{new Date(order.createdAt).toLocaleString("id-ID")}
+					</p>
+				</div>
+				<div className="flex gap-1">
+					{!isEditMode ? (
+						<>
+							<Button size="icon" variant="ghost" onClick={onEdit} className="h-8 w-8">
+								<Pencil className="h-4 w-4" />
+							</Button>
+							<Button size="icon" variant="ghost" onClick={onDelete} className="h-8 w-8 text-destructive">
+								<Trash2 className="h-4 w-4" />
+							</Button>
+						</>
+					) : (
+						<Button
+							size="icon"
+							variant="ghost"
+							onClick={() => onSave({ customerName, paymentMethod, status })}
+							className="h-8 w-8 text-primary"
+						>
+							<Save className="h-4 w-4" />
+						</Button>
+					)}
+				</div>
+			</div>
+
+			<div className="space-y-4 rounded-xl border bg-muted/20 p-4">
+				<div className="space-y-1.5">
+					<Label className="text-[10px] uppercase text-muted-foreground">Pelanggan</Label>
+					{isEditMode ? (
+						<Input
+							value={customerName}
+							onChange={(e) => setCustomerName(e.target.value)}
+							className="h-9"
+						/>
+					) : (
+						<p className="font-medium">{order.customerName || "-"}</p>
+					)}
+				</div>
+
+				<div className="space-y-1.5">
+					<Label className="text-[10px] uppercase text-muted-foreground">Metode</Label>
+					{isEditMode ? (
+						<Select value={paymentMethod} onValueChange={setPaymentMethod}>
+							<SelectTrigger className="h-9">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="cash">Tunai</SelectItem>
+								<SelectItem value="qris">QRIS</SelectItem>
+								<SelectItem value="transfer">Transfer</SelectItem>
+							</SelectContent>
+						</Select>
+					) : (
+						<p className="font-medium capitalize">{order.paymentMethod}</p>
+					)}
+				</div>
+
+				<div className="space-y-1.5">
+					<Label className="text-[10px] uppercase text-muted-foreground">Status</Label>
+					{isEditMode ? (
+						<Select value={status} onValueChange={setStatus}>
+							<SelectTrigger className="h-9">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="pending">Pending</SelectItem>
+								<SelectItem value="paid">Lunas</SelectItem>
+								<SelectItem value="completed">Selesai</SelectItem>
+								<SelectItem value="cancelled">Batal</SelectItem>
+							</SelectContent>
+						</Select>
+					) : (
+						<p className="font-medium">{statusLabels[order.status] || order.status}</p>
+					)}
+				</div>
+			</div>
+
+			<div className="space-y-3">
+				<h4 className="text-xs font-bold uppercase text-muted-foreground">Daftar Item</h4>
+				<div className="space-y-2">
+					{order.items.map((item, idx) => (
+						<div key={idx} className="flex justify-between text-sm">
+							<div className="flex gap-2">
+								<span className="font-bold">{item.quantity}x</span>
+								<span>{item.productName}</span>
+							</div>
+							<span className="font-medium">{formatCurrency(item.price * item.quantity)}</span>
+						</div>
+					))}
+				</div>
+				<div className="mt-4 flex justify-between border-t pt-3 font-bold">
+					<span>Total</span>
+					<span className="text-primary">{formatCurrency(order.totalAmount)}</span>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function DashboardTab({
+	onClose,
+	onNavigate,
+	onSelectOrder,
+}: {
+	onClose: () => void;
+	onNavigate: (tab: string) => void;
+	onSelectOrder: (order: Doc<"orders">) => void;
+}) {
 	const orders = useQuery(api.orders.getOrders, {});
 	const lowStockItems = useQuery(api.inventory.getLowStockItems);
 
@@ -322,9 +545,11 @@ function DashboardTab({ onClose, onNavigate }: { onClose: () => void; onNavigate
 				) : (
 					<div className="space-y-2">
 						{recentOrders.map((order: Doc<"orders">) => (
-							<div
-								className="flex items-center justify-between rounded-lg border bg-muted/30 p-2"
+							<button
+								className="flex w-full items-center justify-between rounded-lg border bg-muted/30 p-2 text-left transition-colors hover:bg-muted/50"
 								key={order._id}
+								onClick={() => onSelectOrder(order)}
+								type="button"
 							>
 								<div className="flex items-center gap-2">
 									<div
@@ -349,7 +574,7 @@ function DashboardTab({ onClose, onNavigate }: { onClose: () => void; onNavigate
 								<span className="font-bold text-sm">
 									{formatCurrency(order.totalAmount)}
 								</span>
-							</div>
+							</button>
 						))}
 					</div>
 				)}
@@ -1211,17 +1436,25 @@ function SettingsTab({ onClose }: { onClose: () => void }) {
 	const updateSiteSettings = useMutation(api.site_settings.updateSettings);
 
 	const [isSaving, setIsSaving] = useState(false);
-	const [autoPrint, setAutoPrint] = useState(false);
-	const [isConnected, setIsConnected] = useState(false);
-	const [printerName, setPrinterName] = useState<string | null>(null);
+	const [autoPrint, setAutoPrint] = useState(siteSettings?.autoPrint ?? false);
+	const [isConnected, setIsConnected] = useState(bluetoothPrinter.isConnected());
+	const [printerName, setPrinterName] = useState<string | null>(bluetoothPrinter.getDeviceName());
 
 	// Sync local state when siteSettings loads
 	useEffect(() => {
 		if (siteSettings) {
 			setAutoPrint(siteSettings.autoPrint ?? false);
 		}
-		setIsConnected(bluetoothPrinter.isConnected());
 	}, [siteSettings]);
+
+	useEffect(() => {
+		// Periodically check connection status as it might change outside this component
+		const interval = setInterval(() => {
+			setIsConnected(bluetoothPrinter.isConnected());
+			setPrinterName(bluetoothPrinter.getDeviceName());
+		}, 2000);
+		return () => clearInterval(interval);
+	}, []);
 
 	const handleConnectPrinter = async () => {
 		try {
@@ -1234,19 +1467,28 @@ function SettingsTab({ onClose }: { onClose: () => void }) {
 		}
 	};
 
-	const handleSave = async () => {
+	const handleSave = async (overrides?: Partial<Doc<"siteSettings">>) => {
 		setIsSaving(true);
 		try {
 			await updateSiteSettings({
-				autoPrint,
+				autoPrint: overrides?.autoPrint ?? autoPrint,
 			});
-			toast.success("Pengaturan POS disimpan!");
+			if (!overrides) {
+				toast.success("Pengaturan POS disimpan!");
+			}
 		} catch (error) {
 			toast.error("Gagal menyimpan pengaturan");
 			console.error(error);
 		} finally {
 			setIsSaving(false);
 		}
+	};
+
+	const handleToggleAutoPrint = async () => {
+		const newVal = !autoPrint;
+		setAutoPrint(newVal);
+		await handleSave({ autoPrint: newVal });
+		toast.success(`Cetak otomatis: ${newVal ? "Aktif" : "Nonaktif"}`);
 	};
 
 	return (
@@ -1327,7 +1569,7 @@ function SettingsTab({ onClose }: { onClose: () => void }) {
 								</div>
 								<button
 									type="button"
-									onClick={() => setAutoPrint(!autoPrint)}
+									onClick={handleToggleAutoPrint}
 									className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ease-in-out ${autoPrint ? 'bg-primary' : 'bg-muted-foreground/30'}`}
 								>
 									<span
