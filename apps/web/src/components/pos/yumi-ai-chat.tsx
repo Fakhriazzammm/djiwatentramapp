@@ -219,14 +219,18 @@ export function YumiAIChat() {
 		if (!text) return "";
 		return text
 			.replace(/\[SUGGEST:\s*(.*?)\s*\|\s*(.*?)\s*\]/g, "")
-			.replace(/\*\*(.*?)\*\*/g, "$1")
-			.replace(/\*(.*?)\*/g, "$1")
-			.replace(/^#+\s+/gm, "")
+			.replace(/\*\*(.*?)\*\*/g, "$1") // Remove bold
+			.replace(/\*(.*?)\*/g, "$1") // Remove italic
+			.replace(/__(.*?)__/g, "$1") // Remove underscore bold
+			.replace(/_(.*?)_/g, "$1") // Remove underscore italic
+			.replace(/^#+\s+/gm, "") // Remove headers
 			.replace(/^\*\s+/gm, "• ")
 			.replace(/^\-\s+/gm, "• ")
-			.replace(/```[\s\S]*?```/g, "")
-			.replace(/`(.*?)`/g, "$1")
+			.replace(/```[\s\S]*?```/g, "") // Remove code blocks
+			.replace(/`(.*?)`/g, "$1") // Remove inline code
 			.replace(/^\d+\.\s+/gm, "")
+			.replace(/_/g, " ") // Final pass: replace any remaining underscores with spaces
+			.replace(/\*/g, "") // Final pass: remove any remaining asterisks
 			.replace(/\n{3,}/g, "\n\n")
 			.trim();
 	};
@@ -253,8 +257,16 @@ export function YumiAIChat() {
 		};
 		const category = categoryMap[scanData.category] ?? scanData.category.replace(/_/g, " ");
 		const paymentMethod = paymentMap[scanData.paymentMethod] ?? "cash";
-		const rawDate = scanData.date ? new Date(scanData.date).getTime() : NaN;
-		const dateTs = Number.isNaN(rawDate) ? Date.now() : rawDate;
+		
+		// Parse date from scanData.date (AI extracted) or fallback to current time
+		let dateTs = Date.now();
+		if (scanData.date) {
+			const parsedDate = new Date(scanData.date);
+			if (!Number.isNaN(parsedDate.getTime())) {
+				dateTs = parsedDate.getTime();
+			}
+		}
+
 		const baseParams = {
 			amount: scanData.total,
 			category,

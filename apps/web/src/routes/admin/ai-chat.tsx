@@ -642,17 +642,23 @@ function AIChatPage() {
 			.replace(/\*\*(.*?)\*\*/g, "$1")
 			// Remove italic markdown
 			.replace(/\*(.*?)\*/g, "$1")
+			// Remove underscore markdown
+			.replace(/__(.*?)__/g, "$1")
+			.replace(/_(.*?)_/g, "$1")
 			// Remove heading markdown
 			.replace(/^#+\s+/gm, "")
 			// Remove bullet points - strip markers
-			.replace(/^\*\s+/gm, "- ")
-			.replace(/^\-\s+/gm, "- ")
+			.replace(/^\*\s+/gm, "• ")
+			.replace(/^\-\s+/gm, "• ")
 			// Remove code blocks
 			.replace(/```[\s\S]*?```/g, "")
 			// Remove inline code
 			.replace(/`(.*?)`/g, "$1")
 			// Remove numbered list markdown
 			.replace(/^\d+\.\s+/gm, "")
+			// Final cleanup for underscores and asterisks
+			.replace(/_/g, " ")
+			.replace(/\*/g, "")
 			// Clean up extra whitespace
 			.replace(/\n{3,}/g, "\n\n")
 			.trim();
@@ -694,8 +700,16 @@ function AIChatPage() {
 		};
 		const category = categoryMap[scanData.category] ?? scanData.category.replace(/_/g, " ");
 		const paymentMethod = paymentMap[scanData.paymentMethod] ?? "cash";
-		const rawDate = scanData.date ? new Date(scanData.date).getTime() : NaN;
-		const dateTs = Number.isNaN(rawDate) ? Date.now() : rawDate;
+		
+		// Parse date from scanData.date (AI extracted) or fallback to current time
+		let dateTs = Date.now();
+		if (scanData.date) {
+			const parsedDate = new Date(scanData.date);
+			if (!Number.isNaN(parsedDate.getTime())) {
+				dateTs = parsedDate.getTime();
+			}
+		}
+
 		const baseParams = {
 			amount: scanData.total,
 			category,
