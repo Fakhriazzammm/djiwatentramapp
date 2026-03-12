@@ -303,6 +303,22 @@ function OrderRow({
 					<span className="font-bold text-xs">
 						Rp {order.totalAmount.toLocaleString("id-ID")}
 					</span>
+					
+					{/* Display custom answers in the collapsed row for quick viewing */}
+					{(order as any).customAnswers && (
+						<div className="hidden md:flex items-center gap-2 ml-2 pl-2 border-l border-border/50">
+							{Object.entries((order as any).customAnswers).slice(0, 2).map(([label, answer]: [string, any]) => (
+								<span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-md font-medium max-w-[100px] truncate" key={label} title={`${label}: ${answer}`}>
+									<span className="text-muted-foreground mr-1">{label}:</span>
+									{String(answer)}
+								</span>
+							))}
+							{Object.keys((order as any).customAnswers).length > 2 && (
+								<span className="text-[10px] text-muted-foreground italic">+{Object.keys((order as any).customAnswers).length - 2} lagi</span>
+							)}
+						</div>
+					)}
+					
 					<div className="flex items-center gap-1 ml-2" onClick={(e) => e.stopPropagation()}>
 						<button
 							className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
@@ -349,6 +365,19 @@ function OrderRow({
 								<p className="text-sm font-bold text-emerald-600">
 									Rp {order.transferredAmount.toLocaleString("id-ID")}
 								</p>
+							</div>
+						)}
+						{(order as any).customAnswers && (
+							<div className="col-span-full border-t border-border pt-3 mt-1 space-y-3">
+								<p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Informasi Tambahan</p>
+								<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+									{Object.entries((order as any).customAnswers).map(([label, answer]: [string, any]) => (
+										<div key={label}>
+											<p className="text-[10px] font-bold text-muted-foreground">{label}</p>
+											<p className="text-sm font-medium">{String(answer)}</p>
+										</div>
+									))}
+								</div>
 							</div>
 						)}
 					</div>
@@ -461,9 +490,10 @@ function BookingSettingsPage() {
 	const [sortBy, setBy] = useState<"date" | "name" | "amount">("date");
 	const [sortOrder, setOrder] = useState<"asc" | "desc">("desc");
 	
-	const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split("T")[0];
-	const [startDate, setStartDate] = useState(firstDayOfMonth);
+	// Default to Today for Daftar Booking
+	const [startDate, setStartDate] = useState(todayStr());
 	const [endDate, setEndDate] = useState(todayStr());
+	const [selectedRange, setSelectedRange] = useState("today");
 
 	// Settings form
 	const [formData, setFormData] = useState({
@@ -477,10 +507,11 @@ function BookingSettingsPage() {
 		bankDetails: "",
 		qrisImage: "",
 		featuredProductIds: [] as string[],
+		customFields: [] as any[],
 		isActive: true,
 	});
 	const [activeTab, setActiveTab] = useState<
-		"calendar" | "orders" | "capacity" | "general" | "products" | "payment"
+		"calendar" | "orders" | "capacity" | "general" | "products" | "payment" | "form"
 	>("calendar");
 	const [isSaving, setIsSaving] = useState(false);
 
@@ -526,6 +557,7 @@ function BookingSettingsPage() {
 				paymentMethods: settings.paymentMethods || [],
 				bankDetails: settings.bankDetails || "",
 				qrisImage: settings.qrisImage || "",
+				customFields: settings.customFields || [],
 				isActive: settings.isActive,
 			});
 		}
@@ -666,6 +698,68 @@ function BookingSettingsPage() {
 		}
 	};
 
+	// Create dialog state
+	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+	const [isCreating, setIsCreating] = useState(false);
+	const createBookingOrder = useMutation(api.booking.createBookingOrder);
+	const [createFormData, setCreateFormData] = useState({
+		customerName: "",
+		customerPhone: "",
+		customerEmail: "",
+		bookingDate: todayStr(),
+		guestCount: "2",
+		totalAmount: "0",
+		paymentMethod: "CASH",
+		notes: "",
+	});
+
+	const handleCreateBooking = async () => {
+		if (!createFormData.customerName || !createFormData.customerPhone) {
+			toast.error("Nama dan WhatsApp wajib diisi");
+			return;
+		}
+
+		setIsCreating(true);
+		const tid = toast.loading("Menambahkan booking...");
+		try {
+			await createBookingOrder({
+				slug: "booking",
+				customerName: createFormData.customerName,
+				customerPhone: createFormData.customerPhone,
+				customerEmail: createFormData.customerEmail,
+				bookingDate: createFormData.bookingDate,
+				guestCount: Number(createFormData.guestCount),
+				totalAmount: Number(createFormData.totalAmount),
+				paymentMethod: createFormData.paymentMethod,
+				notes: createFormData.notes || undefined,
+				items: [
+					{
+						productId: "manual",
+						name: "Booking Manual",
+						price: Number(createFormData.totalAmount),
+						quantity: 1,
+					},
+				],
+			});
+			toast.success("Booking berhasil ditambahkan", { id: tid });
+			setIsCreateDialogOpen(false);
+			setCreateFormData({
+				customerName: "",
+				customerPhone: "",
+				customerEmail: "",
+				bookingDate: todayStr(),
+				guestCount: "2",
+				totalAmount: "0",
+				paymentMethod: "CASH",
+				notes: "",
+			});
+		} catch (error: any) {
+			toast.error(error.message || "Gagal menambahkan booking", { id: tid });
+		} finally {
+			setIsCreating(false);
+		}
+	};
+
 	const tabs = [
 		{ id: "calendar", label: "Kalender", icon: Calendar },
 		{ id: "orders", label: "Daftar Booking", icon: List },
@@ -673,6 +767,7 @@ function BookingSettingsPage() {
 		{ id: "general", label: "Tampilan", icon: Smartphone },
 		{ id: "products", label: "Produk", icon: ShoppingBag },
 		{ id: "payment", label: "Pembayaran", icon: Globe },
+		{ id: "form", label: "Formulir", icon: FileText },
 	] as const;
 
 	const filteredOrders = useMemo(() => {
@@ -761,7 +856,7 @@ function BookingSettingsPage() {
 					>
 						<LinkIcon className="h-4 w-4" /> Buka Halaman
 					</a>
-					{(activeTab === "general" || activeTab === "products" || activeTab === "payment") && (
+					{(activeTab === "general" || activeTab === "products" || activeTab === "payment" || activeTab === "form") && (
 						<button
 							className="flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 font-bold text-primary-foreground text-sm hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all"
 							disabled={isSaving}
@@ -883,55 +978,12 @@ function BookingSettingsPage() {
 									onChange={(e) => {
 										const val = e.target.value;
 										if (val === "custom") return;
-										
-										const now = new Date();
-										let start = new Date();
-										let end = new Date();
-										
-										switch (val) {
-											case "today":
-												break;
-											case "yesterday":
-												start.setDate(now.getDate() - 1);
-												end.setDate(now.getDate() - 1);
-												break;
-											case "this_week": {
-												const day = now.getDay();
-												const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-												start = new Date(now.setDate(diff));
-												end = new Date(start);
-												end.setDate(start.getDate() + 6);
-												break;
-											}
-											case "last_week": {
-												const day = now.getDay();
-												const diff = now.getDate() - day + (day === 0 ? -6 : 1) - 7;
-												start = new Date(now.setDate(diff));
-												end = new Date(start);
-												end.setDate(start.getDate() + 6);
-												break;
-											}
-											case "this_month":
-												start = new Date(now.getFullYear(), now.getMonth(), 1);
-												end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-												break;
-											case "last_month":
-												start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-												end = new Date(now.getFullYear(), now.getMonth(), 0);
-												break;
-											case "this_year":
-												start = new Date(now.getFullYear(), 0, 1);
-												end = new Date(now.getFullYear(), 11, 31);
-												break;
-											case "ytd":
-												start = new Date(now.getFullYear(), 0, 1);
-												end = new Date();
-												break;
-										}
-										
-										setStartDate(start.toISOString().split("T")[0]);
-										setEndDate(end.toISOString().split("T")[0]);
+										setSelectedRange(val);
+										const { start, end } = getRangeDates(val);
+										setStartDate(start);
+										setEndDate(end);
 									}}
+									value={selectedRange}
 								>
 									<option value="custom">Kustom</option>
 									<option value="today">Hari Ini</option>
@@ -1009,6 +1061,15 @@ function BookingSettingsPage() {
 										</DropdownMenuItem>
 									</DropdownMenuContent>
 								</DropdownMenu>
+
+								<button
+									className="flex h-11 items-center gap-2 rounded-xl bg-primary px-5 font-bold text-primary-foreground text-sm shadow-sm transition-all hover:opacity-90 active:scale-95"
+									onClick={() => setIsCreateDialogOpen(true)}
+									type="button"
+								>
+									<CalendarIcon className="h-4 w-4" />
+									Tambah Booking
+								</button>
 							</div>
 						</div>
 					</div>
@@ -1531,6 +1592,142 @@ function BookingSettingsPage() {
 				</section>
 			)}
 
+			{/* ── FORM BUILDER TAB ── */}
+			{activeTab === "form" && (
+				<section className="rounded-2xl border border-border bg-card p-5 md:p-8 space-y-6">
+					<div className="flex items-center justify-between">
+						<div>
+							<h3 className="font-bold">Formulir Pendaftaran</h3>
+							<p className="text-muted-foreground text-sm">
+								Atur field tambahan yang ingin ditanyakan kepada pelanggan saat booking.
+							</p>
+						</div>
+						<Button
+							className="rounded-xl font-bold bg-primary"
+							onClick={() => {
+								const newField = {
+									id: Math.random().toString(36).substr(2, 9),
+									label: "Label Baru",
+									type: "text",
+									required: false,
+									placeholder: "",
+									options: [],
+								};
+								setFormData({
+									...formData,
+									customFields: [...(formData.customFields || []), newField],
+								});
+							}}
+							size="sm"
+						>
+							<Plus className="h-4 w-4 mr-2" /> Tambah Field
+						</Button>
+					</div>
+
+					<div className="space-y-4">
+						{formData.customFields?.length === 0 ? (
+							<div className="rounded-xl border border-dashed border-border p-12 text-center text-muted-foreground">
+								Belum ada field tambahan. Klik "Tambah Field" untuk memulai.
+							</div>
+						) : (
+							formData.customFields?.map((field, idx) => (
+								<div className="group relative rounded-2xl border border-border bg-muted/20 p-5 space-y-4" key={field.id}>
+									<button
+										className="absolute -right-2 -top-2 h-8 w-8 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+										onClick={() => {
+											const updated = (formData.customFields || []).filter((_, i) => i !== idx);
+											setFormData({ ...formData, customFields: updated });
+										}}
+										type="button"
+									>
+										<X className="h-4 w-4" />
+									</button>
+
+									<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+										<div className="space-y-1.5">
+											<label className="text-[10px] font-bold text-muted-foreground uppercase">Label</label>
+											<Input
+												className="rounded-xl"
+												onChange={(e) => {
+													const updated = [...(formData.customFields || [])];
+													updated[idx].label = e.target.value;
+													setFormData({ ...formData, customFields: updated });
+												}}
+												value={field.label}
+											/>
+										</div>
+										<div className="space-y-1.5">
+											<label className="text-[10px] font-bold text-muted-foreground uppercase">Tipe Data</label>
+											<select
+												className="w-full rounded-xl border border-input bg-background h-10 px-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+												onChange={(e) => {
+													const updated = [...(formData.customFields || [])];
+													updated[idx].type = e.target.value;
+													setFormData({ ...formData, customFields: updated });
+												}}
+												value={field.type}
+											>
+												<option value="text">Teks Bebas</option>
+												<option value="number">Angka</option>
+												<option value="dropdown">Pilihan (Dropdown)</option>
+												<option value="checkbox">Centang (Checkbox)</option>
+											</select>
+										</div>
+										<div className="space-y-1.5">
+											<label className="text-[10px] font-bold text-muted-foreground uppercase">Wajib Diisi?</label>
+											<div className="flex items-center h-10 px-1">
+												<button
+													className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${field.required ? "bg-primary" : "bg-muted"}`}
+													onClick={() => {
+														const updated = [...(formData.customFields || [])];
+														updated[idx].required = !updated[idx].required;
+														setFormData({ ...formData, customFields: updated });
+													}}
+													type="button"
+												>
+													<span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${field.required ? "translate-x-6" : "translate-x-1"}`} />
+												</button>
+											</div>
+										</div>
+										{field.type !== "checkbox" && (
+											<div className="space-y-1.5">
+												<label className="text-[10px] font-bold text-muted-foreground uppercase">Placeholder</label>
+												<Input
+													className="rounded-xl"
+													onChange={(e) => {
+														const updated = [...(formData.customFields || [])];
+														updated[idx].placeholder = e.target.value;
+														setFormData({ ...formData, customFields: updated });
+													}}
+													placeholder="Tuliskan petunjuk..."
+													value={field.placeholder || ""}
+												/>
+											</div>
+										)}
+									</div>
+
+									{field.type === "dropdown" && (
+										<div className="space-y-2 border-t border-border pt-4">
+											<label className="text-[10px] font-bold text-muted-foreground uppercase">Opsi Pilihan (Pisahkan dengan koma)</label>
+											<Input
+												className="rounded-xl"
+												onChange={(e) => {
+													const updated = [...(formData.customFields || [])];
+													updated[idx].options = e.target.value.split(",").map((s) => s.trim());
+													setFormData({ ...formData, customFields: updated });
+												}}
+												placeholder="Contoh: Pagi, Siang, Malam"
+												value={field.options?.join(", ") || ""}
+											/>
+										</div>
+									)}
+								</div>
+							))
+						)}
+					</div>
+				</section>
+			)}
+
 			{/* Edit Booking Dialog */}
 			<Dialog onOpenChange={setIsEditDialogOpen} open={isEditDialogOpen}>
 				<DialogContent className="sm:max-w-[425px] rounded-2xl">
@@ -1632,6 +1829,130 @@ function BookingSettingsPage() {
 						>
 							{isPatching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
 							Simpan Perubahan
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Create Booking Dialog */}
+			<Dialog onOpenChange={setIsCreateDialogOpen} open={isCreateDialogOpen}>
+				<DialogContent className="sm:max-w-[425px] rounded-2xl">
+					<DialogHeader>
+						<DialogTitle className="text-xl font-bold">Tambah Booking Baru</DialogTitle>
+						<DialogDescription>
+							Input data reservasi baru secara manual
+						</DialogDescription>
+					</DialogHeader>
+					<div className="grid gap-4 py-4">
+						<div className="grid gap-2">
+							<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-name">
+								Nama Pelanggan
+							</Label>
+							<Input
+								className="rounded-xl border-border bg-muted/30 font-medium h-11"
+								id="create-name"
+								onChange={(e) => setCreateFormData({ ...createFormData, customerName: e.target.value })}
+								placeholder="Contoh: Budi Santoso"
+								value={createFormData.customerName}
+							/>
+						</div>
+						<div className="grid grid-cols-2 gap-3">
+							<div className="grid gap-2">
+								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-phone">
+									WhatsApp
+								</Label>
+								<Input
+									className="rounded-xl border-border bg-muted/30 font-medium h-11"
+									id="create-phone"
+									onChange={(e) => setCreateFormData({ ...createFormData, customerPhone: e.target.value })}
+									placeholder="0812..."
+									value={createFormData.customerPhone}
+								/>
+							</div>
+							<div className="grid gap-2">
+								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-date">
+									Tanggal
+								</Label>
+								<Input
+									className="rounded-xl border-border bg-muted/30 font-medium h-11"
+									id="create-date"
+									onChange={(e) => setCreateFormData({ ...createFormData, bookingDate: e.target.value })}
+									type="date"
+									value={createFormData.bookingDate}
+								/>
+							</div>
+						</div>
+						<div className="grid grid-cols-2 gap-3">
+							<div className="grid gap-2">
+								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-guests">
+									Jumlah Orang
+								</Label>
+								<Input
+									className="rounded-xl border-border bg-muted/30 font-medium h-11"
+									id="create-guests"
+									min="1"
+									onChange={(e) => setCreateFormData({ ...createFormData, guestCount: e.target.value })}
+									type="number"
+									value={createFormData.guestCount}
+								/>
+							</div>
+							<div className="grid gap-2">
+								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-method">
+									Metode Bayar
+								</Label>
+								<select
+									className="w-full rounded-xl border border-border bg-muted/30 h-11 px-3 text-sm font-medium outline-none"
+									id="create-method"
+									onChange={(e) => setCreateFormData({ ...createFormData, paymentMethod: e.target.value })}
+									value={createFormData.paymentMethod}
+								>
+									<option value="CASH">Cash</option>
+									<option value="BANK_TRANSFER">Bank Transfer</option>
+									<option value="QRIS">QRIS</option>
+								</select>
+							</div>
+						</div>
+						<div className="grid gap-2">
+							<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-amount">
+								Total Biaya (Rp)
+							</Label>
+							<Input
+								className="rounded-xl border-border bg-muted/30 font-bold h-11 text-primary"
+								id="create-amount"
+								min="0"
+								onChange={(e) => setCreateFormData({ ...createFormData, totalAmount: e.target.value })}
+								type="number"
+								value={createFormData.totalAmount}
+							/>
+						</div>
+						<div className="grid gap-2">
+							<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="create-notes">
+								Catatan
+							</Label>
+							<Textarea
+								className="rounded-xl border-border bg-muted/30 font-medium min-h-[80px]"
+								id="create-notes"
+								onChange={(e) => setCreateFormData({ ...createFormData, notes: e.target.value })}
+								placeholder="Contoh: Meja pojok, alergi kacang..."
+								value={createFormData.notes}
+							/>
+						</div>
+					</div>
+					<DialogFooter className="gap-2 sm:gap-0">
+						<Button
+							className="rounded-xl font-bold h-11"
+							onClick={() => setIsCreateDialogOpen(false)}
+							variant="outline"
+						>
+							Batal
+						</Button>
+						<Button
+							className="rounded-xl font-bold h-11 bg-primary px-6"
+							disabled={isCreating}
+							onClick={handleCreateBooking}
+						>
+							{isCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+							Tambah Booking
 						</Button>
 					</DialogFooter>
 				</DialogContent>

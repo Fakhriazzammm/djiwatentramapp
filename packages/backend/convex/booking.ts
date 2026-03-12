@@ -54,6 +54,18 @@ export const updateSettings = mutation({
 		bankDetails: v.optional(v.string()),
 		qrisImage: v.optional(v.string()),
 		isActive: v.boolean(),
+		customFields: v.optional(
+			v.array(
+				v.object({
+					id: v.string(),
+					label: v.string(),
+					type: v.string(),
+					required: v.boolean(),
+					placeholder: v.optional(v.string()),
+					options: v.optional(v.array(v.string())),
+				})
+			)
+		),
 	},
 	handler: async (ctx, args) => {
 		const existing = await ctx.db
@@ -267,6 +279,7 @@ export const createBookingOrder = mutation({
 		),
 		totalAmount: v.number(),
 		paymentMethod: v.string(),
+		customAnswers: v.optional(v.any()),
 	},
 	handler: async (ctx, args) => {
 		const { guestCount } = args;

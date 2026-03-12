@@ -627,6 +627,7 @@ function BookingPage() {
 	const [transferredAmount, setTransferredAmount] = useState<string>("");
 	const [proofImage, setProofImage] = useState<string>("");
 	const [isUploadingProof, setIsUploadingProof] = useState(false);
+	const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
 
 	const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
 	const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
@@ -689,6 +690,7 @@ function BookingPage() {
 				})),
 				totalAmount: cartTotal,
 				paymentMethod: selectedPayment,
+				customAnswers: Object.keys(customAnswers).length > 0 ? customAnswers : undefined,
 			});
 
 			setCompletedBooking({
@@ -1364,9 +1366,74 @@ function BookingPage() {
 						</div>
 						
 						<div className="space-y-5">
+							{/* Dynamic Custom Fields */}
+							{settings.customFields?.map((field: any) => (
+								<div className="space-y-2 group" key={field.id}>
+									<label
+										className="font-black text-muted-foreground text-[10px] uppercase tracking-widest px-1 transition-colors group-focus-within:text-primary"
+										htmlFor={field.id}
+									>
+										{field.label} {field.required ? "*" : "(OPSIONAL)"}
+									</label>
+									
+									{field.type === "text" && (
+										<input
+											className="w-full rounded-2xl bg-muted/30 p-4 font-bold text-[15px] text-foreground outline-none border-2 border-transparent focus:border-primary/20 focus:bg-background transition-all shadow-sm"
+											id={field.id}
+											onChange={(e) => setCustomAnswers({ ...customAnswers, [field.label]: e.target.value })}
+											placeholder={field.placeholder}
+											required={field.required}
+											type="text"
+											value={customAnswers[field.label] || ""}
+										/>
+									)}
+
+									{field.type === "number" && (
+										<input
+											className="w-full rounded-2xl bg-muted/30 p-4 font-bold text-[15px] text-foreground outline-none border-2 border-transparent focus:border-primary/20 focus:bg-background transition-all shadow-sm"
+											id={field.id}
+											onChange={(e) => setCustomAnswers({ ...customAnswers, [field.label]: e.target.value })}
+											placeholder={field.placeholder}
+											required={field.required}
+											type="number"
+											value={customAnswers[field.label] || ""}
+										/>
+									)}
+
+									{field.type === "dropdown" && (
+										<select
+											className="w-full rounded-2xl border-2 border-transparent bg-muted/30 p-4 font-bold text-[15px] text-foreground outline-none focus:border-primary/20 focus:bg-background transition-all shadow-sm appearance-none"
+											id={field.id}
+											onChange={(e) => setCustomAnswers({ ...customAnswers, [field.label]: e.target.value })}
+											required={field.required}
+											value={customAnswers[field.label] || ""}
+										>
+											<option value="">{field.placeholder || "-- Pilih --"}</option>
+											{field.options?.map((opt: string) => (
+												<option key={opt} value={opt}>{opt}</option>
+											))}
+										</select>
+									)}
+
+									{field.type === "checkbox" && (
+										<label className="flex items-center gap-3 p-4 rounded-2xl bg-muted/30 border-2 border-transparent hover:border-primary/10 transition-all cursor-pointer">
+											<input
+												checked={!!customAnswers[field.label]}
+												className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
+												onChange={(e) => setCustomAnswers({ ...customAnswers, [field.label]: e.target.checked })}
+												type="checkbox"
+											/>
+											<span className="font-bold text-sm text-foreground">Ya, saya setuju</span>
+										</label>
+									)}
+								</div>
+							))}
+
+							<div className="h-px bg-border/50 my-2" />
+
 							{[
 								{ id: "name", label: "NAMA LENGKAP", type: "text", placeholder: "Contoh: John Doe", key: "name" },
-								{ id: "phone", label: "WHATSAPP / TELEPON", type: "tel", placeholder: "08xx-xxxx-xxxx", key: "phone" },
+								{ id: "phone", label: "WHATSAPP / TELEPON", type: "tel", placeholder: "0812...", key: "phone" },
 								{ id: "email", label: "ALAMAT EMAIL", type: "email", placeholder: "nama@email.com", key: "email" },
 							].map(({ id, label, type, placeholder, key }) => (
 								<div className="space-y-2 group" key={id}>
@@ -1508,7 +1575,12 @@ function BookingPage() {
 								disabled={
 									(step === 1 && cartCount === 0) ||
 									(step === 2 && !selectedDate) ||
-									(step === 3 && (!customerForm.name || !customerForm.phone || !customerForm.email)) ||
+									(step === 3 && (
+										!customerForm.name || 
+										!customerForm.phone || 
+										!customerForm.email ||
+										(settings.customFields || []).some((f: any) => f.required && !customAnswers[f.label])
+									)) ||
 									(step === 4 && (!selectedPayment || isSubmitting))
 								}
 								onClick={() => {

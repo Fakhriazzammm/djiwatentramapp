@@ -527,6 +527,18 @@ export default defineSchema({
 		bankDetails: v.optional(v.string()),
 		qrisImage: v.optional(v.string()),
 		isActive: v.boolean(),
+		customFields: v.optional(
+			v.array(
+				v.object({
+					id: v.string(),
+					label: v.string(),
+					type: v.string(), // "text", "number", "dropdown", "checkbox"
+					required: v.boolean(),
+					placeholder: v.optional(v.string()),
+					options: v.optional(v.array(v.string())), // for dropdown
+				})
+			)
+		),
 	}).index("by_slug", ["slug"]),
 
 	// Customer booking orders
@@ -563,6 +575,7 @@ export default defineSchema({
 		tableCount: v.optional(v.number()),
 		paymentProofImage: v.optional(v.string()),
 		transferredAmount: v.optional(v.number()),
+		customAnswers: v.optional(v.any()), // Map of field ID to value
 		createdAt: v.number(),
 	})
 		.index("by_slug", ["slug"])
