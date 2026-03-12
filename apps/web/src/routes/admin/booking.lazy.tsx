@@ -16,10 +16,9 @@ import {
 	Settings2,
 	ShoppingBag,
 	Smartphone,
-	Trash2,
-	Upload,
 	Users,
 	X,
+	Pencil,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -44,6 +43,18 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createLazyFileRoute("/admin/booking")({
 	component: BookingSettingsPage,
@@ -255,6 +266,8 @@ function OrderRow({
 		bookingStatus?: string,
 		paymentStatus?: string
 	) => void;
+	onEdit: (order: any) => void;
+	onDelete: (id: Id<"bookingOrders">) => void;
 }) {
 	const [expanded, setExpanded] = useState(false);
 
@@ -286,6 +299,22 @@ function OrderRow({
 					<span className="font-bold text-xs">
 						Rp {order.totalAmount.toLocaleString("id-ID")}
 					</span>
+					<div className="flex items-center gap-1 ml-2" onClick={(e) => e.stopPropagation()}>
+						<button
+							className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+							onClick={() => onEdit(order)}
+							title="Edit Booking"
+						>
+							<Pencil className="h-3.5 w-3.5" />
+						</button>
+						<button
+							className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-red-500 transition-colors"
+							onClick={() => onDelete(order._id)}
+							title="Hapus Booking"
+						>
+							<Trash2 className="h-3.5 w-3.5" />
+						</button>
+					</div>
 				</div>
 			</div>
 
@@ -402,6 +431,8 @@ function BookingSettingsPage() {
 	const allProducts = useQuery(api.products.getAllProductsAdmin, {});
 	const categories = useQuery(api.products.getCategories, {});
 	const updateBookingStatus = useMutation(api.booking.updateBookingStatus);
+	const patchBookingOrder = useMutation(api.booking.patchBookingOrder);
+	const deleteBookingOrder = useMutation(api.booking.deleteBookingOrder);
 	const setDateCapacity = useMutation(api.booking.setDateCapacity);
 	const setBulkDateCapacity = useMutation(api.booking.setBulkDateCapacity);
 	const generateUploadUrl = useMutation(api.booking.generateUploadUrl);
@@ -414,6 +445,12 @@ function BookingSettingsPage() {
 	const [calMonth, setCalMonth] = useState(today.getMonth());
 	const [selectedDate, setSelectedDate] = useState<string | null>(null);
 	const [listFilter, setListFilter] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
+
+	// Edit dialog state
+	const [editingOrder, setEditingOrder] = useState<any>(null);
+	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+	const [isPatching, setIsPatching] = useState(false);
+	const [editFormData, setEditFormData] = useState<any>({});
 
 	// Search, Sort, Filter State
 	const [searchTerm, setSearchTerm] = useState("");
@@ -536,6 +573,53 @@ function BookingSettingsPage() {
 			toast.success("Status diperbarui");
 		} catch {
 			toast.error("Gagal memperbarui status");
+		}
+	};
+
+	const handleDeleteBooking = async (id: Id<"bookingOrders">) => {
+		if (!confirm("Apakah Anda yakin ingin menghapus booking ini? Tindakan ini tidak dapat dibatalkan.")) return;
+		
+		const tid = toast.loading("Menghapus booking...");
+		try {
+			await deleteBookingOrder({ id });
+			toast.success("Booking berhasil dihapus", { id: tid });
+		} catch {
+			toast.error("Gagal menghapus booking", { id: tid });
+		}
+	};
+
+	const handleEditBooking = (order: any) => {
+		setEditingOrder(order);
+		setEditFormData({
+			customerName: order.customerName,
+			customerPhone: order.customerPhone,
+			customerEmail: order.customerEmail,
+			bookingDate: order.bookingDate,
+			guestCount: order.guestCount,
+			totalAmount: order.totalAmount,
+			notes: order.notes || "",
+		});
+		setIsEditDialogOpen(true);
+	};
+
+	const handleSaveEdit = async () => {
+		if (!editingOrder) return;
+		
+		setIsPatching(true);
+		const tid = toast.loading("Menyimpan perubahan...");
+		try {
+			await patchBookingOrder({
+				id: editingOrder._id,
+				...editFormData,
+				guestCount: Number(editFormData.guestCount),
+				totalAmount: Number(editFormData.totalAmount),
+			});
+			toast.success("Booking berhasil diperbarui", { id: tid });
+			setIsEditDialogOpen(false);
+		} catch {
+			toast.error("Gagal memperbarui booking", { id: tid });
+		} finally {
+			setIsPatching(false);
 		}
 	};
 
@@ -752,6 +836,8 @@ function BookingSettingsPage() {
 											key={order._id}
 											order={order}
 											onUpdateStatus={handleUpdateStatus}
+											onEdit={handleEditBooking}
+											onDelete={handleDeleteBooking}
 										/>
 									))}
 								</div>
@@ -891,6 +977,8 @@ function BookingSettingsPage() {
 									key={order._id}
 									order={order}
 									onUpdateStatus={handleUpdateStatus}
+									onEdit={handleEditBooking}
+									onDelete={handleDeleteBooking}
 								/>
 							))}
 						</div>
@@ -1369,6 +1457,112 @@ function BookingSettingsPage() {
 					)}
 				</section>
 			)}
+
+			{/* Edit Booking Dialog */}
+			<Dialog onOpenChange={setIsEditDialogOpen} open={isEditDialogOpen}>
+				<DialogContent className="sm:max-w-[425px] rounded-2xl">
+					<DialogHeader>
+						<DialogTitle className="text-xl font-bold">Edit Booking</DialogTitle>
+						<DialogDescription>
+							Perbarui rincian reservasi untuk #{editingOrder?.bookingCode}
+						</DialogDescription>
+					</DialogHeader>
+					<div className="grid gap-4 py-4">
+						<div className="grid gap-2">
+							<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="edit-name">
+								Nama Pelanggan
+							</Label>
+							<Input
+								className="rounded-xl border-border bg-muted/30 font-medium h-11"
+								id="edit-name"
+								onChange={(e) => setEditFormData({ ...editFormData, customerName: e.target.value })}
+								value={editFormData.customerName || ""}
+							/>
+						</div>
+						<div className="grid grid-cols-2 gap-3">
+							<div className="grid gap-2">
+								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="edit-phone">
+									WhatsApp
+								</Label>
+								<Input
+									className="rounded-xl border-border bg-muted/30 font-medium h-11"
+									id="edit-phone"
+									onChange={(e) => setEditFormData({ ...editFormData, customerPhone: e.target.value })}
+									value={editFormData.customerPhone || ""}
+								/>
+							</div>
+							<div className="grid gap-2">
+								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="edit-date">
+									Tanggal
+								</Label>
+								<Input
+									className="rounded-xl border-border bg-muted/30 font-medium h-11"
+									id="edit-date"
+									onChange={(e) => setEditFormData({ ...editFormData, bookingDate: e.target.value })}
+									type="date"
+									value={editFormData.bookingDate || ""}
+								/>
+							</div>
+						</div>
+						<div className="grid grid-cols-2 gap-3">
+							<div className="grid gap-2">
+								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="edit-guests">
+									Jumlah Orang
+								</Label>
+								<Input
+									className="rounded-xl border-border bg-muted/30 font-medium h-11"
+									id="edit-guests"
+									min="1"
+									onChange={(e) => setEditFormData({ ...editFormData, guestCount: e.target.value })}
+									type="number"
+									value={editFormData.guestCount || ""}
+								/>
+							</div>
+							<div className="grid gap-2">
+								<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="edit-amount">
+									Total Harga
+								</Label>
+								<Input
+									className="rounded-xl border-border bg-muted/30 font-medium h-11"
+									id="edit-amount"
+									min="0"
+									onChange={(e) => setEditFormData({ ...editFormData, totalAmount: e.target.value })}
+									type="number"
+									value={editFormData.totalAmount || ""}
+								/>
+							</div>
+						</div>
+						<div className="grid gap-2">
+							<Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="edit-notes">
+								Catatan
+							</Label>
+							<Textarea
+								className="rounded-xl border-border bg-muted/30 font-medium min-h-[80px]"
+								id="edit-notes"
+								onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+								value={editFormData.notes || ""}
+							/>
+						</div>
+					</div>
+					<DialogFooter className="gap-2 sm:gap-0">
+						<Button
+							className="rounded-xl font-bold h-11"
+							onClick={() => setIsEditDialogOpen(false)}
+							variant="outline"
+						>
+							Batal
+						</Button>
+						<Button
+							className="rounded-xl font-bold h-11 bg-primary px-6"
+							disabled={isPatching}
+							onClick={handleSaveEdit}
+						>
+							{isPatching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+							Simpan Perubahan
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

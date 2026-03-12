@@ -11,10 +11,9 @@ import {
 	Eye,
 	Filter,
 	Loader2,
-	Search,
-	ShoppingBag,
 	User,
 	XCircle,
+	Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -65,7 +64,13 @@ interface Order {
 
 function AdminOrders() {
 	const allOrders = useQuery(api.orders.getOrders, {});
+	const allBookingOrders = useQuery(api.booking.getBookingOrders, { slug: "booking" });
+	
 	const updateStatus = useMutation(api.orders.updateOrderStatus);
+	const updateBookingStatus = useMutation(api.booking.updateBookingStatus);
+	const deleteOrder = useMutation(api.orders.deleteOrder);
+	const deleteBookingOrder = useMutation(api.booking.deleteBookingOrder);
+	
 	const hppProductMap = useQuery(api.hpp.getHppProductMap);
 	const hppCogs = useQuery(api.hpp.getOrdersCogs);
 
@@ -74,12 +79,37 @@ function AdminOrders() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+	// Unified orders list
+	const unifiedOrders = (() => {
+		if (!allOrders && !allBookingOrders) return undefined;
+		
+		const orders = (allOrders || []).map((o: any) => ({
+			...o,
+			type: "regular",
+			id: o._id,
+			displayId: o.orderNumber,
+			date: o.createdAt,
+		}));
+		
+		const bookings = (allBookingOrders || []).map((b: any) => ({
+			...b,
+			type: "booking",
+			id: b._id,
+			displayId: b.bookingCode,
+			status: b.bookingStatus, // Map bookingStatus to status for filtering
+			date: b.createdAt,
+			orderNumber: b.bookingCode, // For search compatibility
+		}));
+		
+		return [...orders, ...bookings].sort((a, b) => b.date - a.date);
+	})();
+
 	// Client-side filtering
-	const filteredOrders = allOrders?.filter((order: any) => {
+	const filteredOrders = unifiedOrders?.filter((order: any) => {
 		const matchesStatus =
 			statusFilter === "all" || order.status === statusFilter;
 		const matchesSearch =
-			order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			order.displayId.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			(order.customerName || "")
 				.toLowerCase()
 				.includes(searchQuery.toLowerCase());
@@ -93,15 +123,37 @@ function AdminOrders() {
 			return;
 		}
 		try {
-			await updateStatus({ id: selectedOrder._id, status: newStatus });
+			if ((selectedOrder as any).type === "booking") {
+				await updateBookingStatus({ 
+					id: (selectedOrder as any)._id, 
+					bookingStatus: newStatus as any,
+					paymentStatus: newStatus === "paid" ? "paid" : undefined
+				});
+			} else {
+				await updateStatus({ id: selectedOrder._id, status: newStatus });
+			}
 			toast.success(
 				`Status pesanan diperbarui menjadi ${getStatusLabel(newStatus)}`
 			);
-			// Update the selected order locally to reflect change immediately in UI
 			setSelectedOrder({ ...selectedOrder, status: newStatus });
-
 		} catch (_error) {
 			toast.error("Gagal memperbarui status pesanan");
+		}
+	};
+
+	const handleDeleteOrder = async (order: any) => {
+		if (!confirm(`Hapus ${order.type === "booking" ? "booking" : "pesanan"} ini?`)) return;
+		
+		try {
+			if (order.type === "booking") {
+				await deleteBookingOrder({ id: order._id });
+			} else {
+				await deleteOrder({ id: order._id });
+			}
+			toast.success("Berhasil dihapus");
+			setIsDetailOpen(false);
+		} catch (_e) {
+			toast.error("Gagal menghapus");
 		}
 	};
 
@@ -142,7 +194,7 @@ function AdminOrders() {
 		}
 	};
 
-	if (allOrders === undefined) {
+	if (unifiedOrders === undefined) {
 		return (
 			<div className="flex h-full w-full items-center justify-center">
 				<Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -250,8 +302,11 @@ function AdminOrders() {
 								<div className="min-w-0 flex-1">
 									<div className="flex items-center gap-2">
 										<span className="font-bold font-mono text-primary text-xs">
-											#{order.orderNumber}
+											{order.type === "booking" ? "BK-" : "#"}{order.displayId}
 										</span>
+										{order.type === "booking" && (
+											<Badge className="bg-blue-50 text-blue-600 border-blue-200 text-[8px] px-1 py-0" variant="outline">Booking</Badge>
+										)}
 										<Badge
 											className={`rounded-md px-1.5 py-0 font-normal text-[9px] ${getStatusColor(order.status)}`}
 											variant="outline"
@@ -289,8 +344,7 @@ function AdminOrders() {
 								<th className="px-6 py-4">Pelanggan</th>
 								<th className="px-6 py-4">Total</th>
 								<th className="px-6 py-4">Laba</th>
-								<th className="px-6 py-4">Status</th>
-								<th className="px-6 py-4">Metode</th>
+								<th className="px-6 py-4">Tipe</th>
 								<th className="px-6 py-4 text-right">Waktu</th>
 								<th className="px-6 py-4 text-center">Aksi</th>
 							</tr>
@@ -316,7 +370,12 @@ function AdminOrders() {
 										}}
 									>
 										<td className="px-6 py-4 font-medium font-mono text-primary">
-											{order.orderNumber}
+											<div className="flex flex-col">
+												<span>{order.displayId}</span>
+												{order.type === "booking" && (
+													<span className="text-[9px] text-blue-500 font-sans font-bold">BOOKING</span>
+												)}
+											</div>
 										</td>
 										<td className="px-6 py-4">
 											<div className="flex items-center gap-2">
@@ -374,30 +433,43 @@ function AdminOrders() {
 												{getStatusLabel(order.status)}
 											</Badge>
 										</td>
+										<td className="px-6 py-4 capitalize text-xs text-muted-foreground">
+											{order.paymentMethod}
+										</td>
 										<td className="px-6 py-4">
-											<div className="flex items-center gap-2 text-muted-foreground text-xs">
-												<CreditCard className="h-3.5 w-3.5" />
-												<span className="capitalize">
-													{order.paymentMethod}
-												</span>
-											</div>
+											<Badge className={`text-[10px] ${order.type === "booking" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`} variant="outline">
+												{order.type === "booking" ? "Reservasi" : "POS Sales"}
+											</Badge>
 										</td>
 										<td className="px-6 py-4 text-right text-muted-foreground text-xs tabular-nums">
 											{format(order.createdAt, "dd MMM HH:mm", { locale: id })}
 										</td>
 										<td className="px-6 py-4 text-center">
-											<Button
-												className="h-8 w-8 text-muted-foreground hover:text-primary"
-												onClick={(e) => {
-													e.stopPropagation();
-													setSelectedOrder(order as any);
-													setIsDetailOpen(true);
-												}}
-												size="icon"
-												variant="ghost"
-											>
-												<Eye className="h-4 w-4" />
-											</Button>
+											<div className="flex items-center justify-center gap-1">
+												<Button
+													className="h-8 w-8 text-muted-foreground hover:text-primary"
+													onClick={(e) => {
+														e.stopPropagation();
+														setSelectedOrder(order as any);
+														setIsDetailOpen(true);
+													}}
+													size="icon"
+													variant="ghost"
+												>
+													<Eye className="h-4 w-4" />
+												</Button>
+												<Button
+													className="h-8 w-8 text-muted-foreground hover:text-destructive"
+													onClick={(e) => {
+														e.stopPropagation();
+														handleDeleteOrder(order);
+													}}
+													size="icon"
+													variant="ghost"
+												>
+													<Trash2 className="h-4 w-4" />
+												</Button>
+											</div>
 										</td>
 									</tr>
 								))
@@ -421,7 +493,7 @@ function AdminOrders() {
 							</Badge>
 						</div>
 						<SheetDescription className="font-mono text-[10px] text-primary">
-							#{selectedOrder?.orderNumber}
+							{(selectedOrder as any)?.type === "booking" ? "BK-" : "#"}{selectedOrder?.displayId}
 						</SheetDescription>
 					</SheetHeader>
 
@@ -650,13 +722,21 @@ function AdminOrders() {
 								</div>
 							</ScrollArea>
 
-							<div className="border-border border-t p-3">
+							<div className="border-border border-t p-3 flex gap-2">
 								<Button
-									className="h-9 w-full text-xs"
+									className="h-9 flex-1 text-xs"
 									onClick={() => setIsDetailOpen(false)}
 									variant="outline"
 								>
 									Tutup Detail
+								</Button>
+								<Button
+									className="h-9 w-9 text-destructive"
+									onClick={() => handleDeleteOrder(selectedOrder)}
+									variant="ghost"
+									size="icon"
+								>
+									<Trash2 className="h-4 w-4" />
 								</Button>
 							</div>
 						</div>

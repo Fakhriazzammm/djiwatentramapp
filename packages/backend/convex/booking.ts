@@ -383,6 +383,7 @@ export const uploadPaymentProof = mutation({
 				date: Date.now(),
 				paymentMethod: booking.paymentMethod,
 				status: "completed",
+				bookingOrderId: id,
 			});
 		}
 
@@ -493,6 +494,7 @@ export const updateBookingStatus = mutation({
 					date: Date.now(),
 					paymentMethod: booking.paymentMethod,
 					status: "completed",
+					bookingOrderId: id,
 				});
 			}
 		}
@@ -513,5 +515,87 @@ export const getBookingByCode = query({
 				q.eq("bookingCode", args.bookingCode)
 			)
 			.first();
+	},
+});
+
+export const deleteBookingOrder = mutation({
+	args: { id: v.id("bookingOrders") },
+	handler: async (ctx, args) => {
+		// Also delete associated financial transactions
+		const transactions = await ctx.db
+			.query("financialTransactions")
+			.filter((q) => q.eq(q.field("bookingOrderId"), args.id))
+			.collect();
+		
+		for (const tx of transactions) {
+			await ctx.db.delete(tx._id);
+		}
+
+		await ctx.db.delete(args.id);
+	},
+});
+
+export const patchBookingOrder = mutation({
+	args: {
+		id: v.id("bookingOrders"),
+		customerName: v.optional(v.string()),
+		customerPhone: v.optional(v.string()),
+		customerEmail: v.optional(v.string()),
+		notes: v.optional(v.string()),
+		bookingDate: v.optional(v.string()),
+		guestCount: v.optional(v.number()),
+		totalAmount: v.optional(v.number()),
+		paymentMethod: v.optional(v.string()),
+		items: v.optional(v.array(
+			v.object({
+				productId: v.string(),
+				name: v.string(),
+				price: v.number(),
+				quantity: v.number(),
+			})
+		)),
+	},
+	handler: async (ctx, args) => {
+		const { id, ...updates } = args;
+		const filteredUpdates = Object.fromEntries(
+			Object.entries(updates).filter(([, val]) => val !== undefined)
+		);
+		
+		if (updates.guestCount !== undefined) {
+			const booking = await ctx.db.get(id);
+			if (booking) {
+				const capacity = await ctx.db
+					.query("bookingDateCapacity")
+					.withIndex("by_slug_date", (q) =>
+						q.eq("slug", booking.slug).eq("date", updates.bookingDate || booking.bookingDate)
+					)
+					.first();
+				const peoplePerTable = capacity?.peoplePerTable || 4;
+				const tableCount = Math.ceil(updates.guestCount / peoplePerTable);
+				(filteredUpdates as any).tableCount = tableCount;
+			}
+		}
+
+		await ctx.db.patch(id, filteredUpdates);
+
+		// If totalAmount or name updated, update financial transaction too
+		const transactions = await ctx.db
+			.query("financialTransactions")
+			.filter((q) => q.eq(q.field("bookingOrderId"), id))
+			.collect();
+		
+		for (const tx of transactions) {
+			const txUpdates: any = {};
+			if (updates.totalAmount !== undefined) txUpdates.amount = updates.totalAmount;
+			if (updates.customerName !== undefined || updates.bookingDate !== undefined) {
+				const current = await ctx.db.get(id);
+				if (current) {
+					txUpdates.description = `Booking #${current.bookingCode} - ${current.customerName} (${current.bookingDate})`;
+				}
+			}
+			if (Object.keys(txUpdates).length > 0) {
+				await ctx.db.patch(tx._id, txUpdates);
+			}
+		}
 	},
 });

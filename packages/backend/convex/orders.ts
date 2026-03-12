@@ -95,3 +95,20 @@ export const updateOrderStatus = mutation({
 		await ctx.db.patch(args.id, { status: args.status });
 	},
 });
+
+export const deleteOrder = mutation({
+	args: { id: v.id("orders") },
+	handler: async (ctx, args) => {
+		// Delete financial transactions
+		const transactions = await ctx.db
+			.query("financialTransactions")
+			.filter((q) => q.eq(q.field("orderId"), args.id))
+			.collect();
+		
+		for (const tx of transactions) {
+			await ctx.db.delete(tx._id);
+		}
+
+		await ctx.db.delete(args.id);
+	},
+});

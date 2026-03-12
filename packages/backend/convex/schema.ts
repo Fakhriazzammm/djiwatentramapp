@@ -79,6 +79,7 @@ export default defineSchema({
 			v.literal("cancelled")
 		),
 		orderId: v.optional(v.id("orders")),
+		bookingOrderId: v.optional(v.id("bookingOrders")),
 	})
 		.index("by_date", ["date"])
 		.index("by_type", ["type"]),

@@ -9,8 +9,12 @@ import {
 	Plus,
 	TrendingUp,
 	Wallet,
+	Pencil,
+	Trash2,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
+import { useMutation } from "convex/react";
 import { Link } from "@tanstack/react-router";
 import { NewTransactionDialog } from "./new-transaction-dialog";
 import { FinancialTargetPanel } from "./financial-target-panel";
@@ -27,6 +31,9 @@ export function FinanceDashboard() {
 		type: filterType,
 	});
 
+	const deleteTransaction = useMutation(api.finance.deleteTransaction);
+	const updateTransaction = useMutation(api.finance.updateTransaction);
+
 	const summary = useQuery(api.finance.getFinancialSummary, {
 		startDate: undefined,
 		endDate: undefined,
@@ -40,6 +47,16 @@ export function FinanceDashboard() {
 			currency: "IDR",
 			maximumFractionDigits: 0,
 		}).format(amount);
+	};
+
+	const handleDeleteTransaction = async (id: any) => {
+		if (!confirm("Hapus transaksi ini?")) return;
+		try {
+			await deleteTransaction({ id });
+			toast.success("Transaksi dihapus");
+		} catch {
+			toast.error("Gagal menghapus transaksi");
+		}
 	};
 
 	const renderTransactionContent = () => {
@@ -75,6 +92,7 @@ export function FinanceDashboard() {
 							<th className="px-6 py-3">Keterangan</th>
 							<th className="px-6 py-3">Metode</th>
 							<th className="px-6 py-3 text-right">Jumlah</th>
+							<th className="px-6 py-3 text-center">Aksi</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -141,6 +159,17 @@ export function FinanceDashboard() {
 									>
 										{t.type === "income" ? "+ " : "- "}
 										{formatCurrency(t.amount)}
+									</td>
+									<td className="px-6 py-4 text-center">
+										<div className="flex items-center justify-center gap-1">
+											<button
+												className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-red-500 transition-colors"
+												onClick={() => handleDeleteTransaction(t._id)}
+												title="Hapus"
+											>
+												<Trash2 className="h-3.5 w-3.5" />
+											</button>
+										</div>
 									</td>
 								</tr>
 							))}
