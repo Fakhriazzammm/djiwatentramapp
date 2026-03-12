@@ -83,23 +83,33 @@ export const getBookingProducts = query({
 			.withIndex("by_slug", (q) => q.eq("slug", args.slug))
 			.first();
 
+		const products: Doc<"products">[] = [];
 		if (!settings?.featuredProductIds || settings.featuredProductIds.length === 0) {
-			return await ctx.db
+			const allAvailable = await ctx.db
 				.query("products")
 				.filter((q) => q.eq(q.field("isAvailable"), true))
 				.collect();
-		}
-
-		const products: Doc<"products">[] = [];
-		for (const idString of settings.featuredProductIds) {
-			try {
-				const product = await ctx.db.get(idString as Id<"products">);
-				if (product?.isAvailable) products.push(product);
-			} catch (_e) {
-				// ignore invalid IDs
+			products.push(...allAvailable);
+		} else {
+			for (const idString of settings.featuredProductIds) {
+				try {
+					const product = await ctx.db.get(idString as Id<"products">);
+					if (product?.isAvailable) products.push(product);
+				} catch (_e) {
+					// ignore invalid IDs
+				}
 			}
 		}
-		return products;
+
+		return await Promise.all(
+			products.map(async (p) => {
+				if (p.image && !p.image.startsWith("http")) {
+					const url = await ctx.storage.getUrl(p.image);
+					if (url) return { ...p, image: url };
+				}
+				return p;
+			})
+		);
 	},
 });
 
