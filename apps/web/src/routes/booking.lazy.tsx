@@ -494,36 +494,41 @@ function DatePickerCalendar({
 
 function StepBar({ current }: { current: number }) {
 	return (
-		<div className="flex items-center justify-center gap-0 mb-6 px-2">
+		<div className="flex items-center justify-between gap-1 mb-8 px-2 max-w-sm mx-auto">
 			{STEP_LABELS.map((label, i) => (
-				<div className="flex items-center" key={i}>
-					<div className="flex flex-col items-center">
+				<div className="flex flex-1 items-center" key={i}>
+					<div className="flex flex-col items-center flex-1 relative">
 						<div
-							className={`flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold transition-all ${
+							className={`z-10 flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition-all ${
 								i < current
 									? "bg-primary text-primary-foreground"
 									: i === current
-									? "bg-primary text-primary-foreground ring-2 ring-primary/30"
+									? "bg-primary text-primary-foreground ring-4 ring-primary/20 scale-110"
 									: "bg-muted text-muted-foreground"
 							}`}
 						>
-							{i < current ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
+							{i < current ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
 						</div>
+						
+						{/* Progress Line */}
+						{i < STEP_LABELS.length - 1 && (
+							<div 
+								className={`absolute left-1/2 top-3 -z-0 h-[2px] w-full transition-all ${
+									i < current ? "bg-primary" : "bg-muted"
+								}`}
+								style={{ width: "calc(100% + 4px)" }}
+							/>
+						)}
+						
 						<span
-							className={`mt-1 text-[9px] font-bold hidden sm:block whitespace-nowrap ${
-								i === current ? "text-primary" : "text-muted-foreground"
+							className={`mt-2 text-[8px] font-bold uppercase tracking-tighter text-center line-clamp-1 transition-all ${
+								i === current ? "text-primary opacity-100" : "text-muted-foreground opacity-60"
 							}`}
+							style={{ width: '40px' }}
 						>
-							{label}
+							{label.split(' ')[0]}
 						</span>
 					</div>
-					{i < STEP_LABELS.length - 1 && (
-						<div
-							className={`h-0.5 w-8 sm:w-12 transition-all ${
-								i < current ? "bg-primary" : "bg-muted"
-							}`}
-						/>
-					)}
 				</div>
 			))}
 		</div>
@@ -676,10 +681,53 @@ function BookingPage() {
 		);
 	}
 
+	const themeColor = settings.themeColor || "#1a2332";
+
+	// ── Wrapper Component for Mobile Look ──
+	const MobileWrapper = ({ children, title, showHeader = true }: { children: React.ReactNode, title?: string, showHeader?: boolean }) => (
+		<div className="min-h-screen bg-background flex flex-col items-center">
+			<div className="w-full max-w-md bg-card min-h-screen shadow-2xl flex flex-col relative overflow-x-hidden">
+				{showHeader && (
+					<header className="sticky top-0 z-30 w-full px-4 py-4 flex items-center justify-between bg-background/80 backdrop-blur-md border-b border-border">
+						<div className="flex items-center gap-3">
+							{step > 0 && step < 6 && (
+								<button 
+									onClick={() => setStep(s => s - 1)}
+									className="p-2 hover:bg-muted rounded-full transition-colors"
+								>
+									<ChevronLeft className="h-5 w-5" />
+								</button>
+							)}
+							<div 
+								className="h-8 w-8 rounded-lg flex items-center justify-center font-bold text-white text-sm"
+								style={{ background: themeColor }}
+							>
+								{settings.title?.charAt(0) || "D"}
+							</div>
+							<h1 className="font-bold text-sm tracking-tight line-clamp-1">{settings.title}</h1>
+						</div>
+						{step < 5 && (
+							<div className="flex flex-col items-end">
+								<span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Step</span>
+								<span className="text-xs font-bold" style={{ color: themeColor }}>{step + 1} of 5</span>
+							</div>
+						)}
+					</header>
+				)}
+				<main className="flex-1 px-4 py-6 overflow-y-auto">
+					{children}
+				</main>
+			</div>
+		</div>
+	);
+
 	if (!settings?.isActive) {
 		return (
 			<div className="flex h-screen items-center justify-center bg-background p-6 text-center">
-				<div>
+				<div className="max-w-xs">
+					<div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+						<X className="h-8 w-8 text-muted-foreground" />
+					</div>
 					<h1 className="font-bold text-2xl text-foreground">Halaman Tidak Aktif</h1>
 					<p className="mt-2 text-muted-foreground">Maaf, halaman pemesanan sedang tidak tersedia.</p>
 				</div>
@@ -687,90 +735,91 @@ function BookingPage() {
 		);
 	}
 
-	const themeColor = settings.themeColor || "#1a2332";
-
 	// ── Step 6: Finished ──
 	if (step === 6) {
 		const booking = confirmedBooking || completedBooking;
 		return (
-			<div className="min-h-screen bg-background">
-				<div
-					className="h-28 w-full"
-					style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}cc)` }}
-				/>
-				<div className="mx-auto max-w-md px-4 -mt-10 pb-16">
-					<div className="rounded-2xl border border-border bg-card p-6 shadow-lg text-center">
-						<div
-							className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full"
-							style={{ background: `${themeColor}20` }}
-						>
-							<CheckCircle2 className="h-8 w-8" style={{ color: themeColor }} />
-						</div>
-						<h2 className="font-bold text-foreground text-xl">Booking Berhasil!</h2>
-						<p className="mt-1 text-muted-foreground text-sm">
-							Terima kasih, pesanan Anda telah diterima.
-						</p>
-
-						{booking && (
-							<>
-								<div
-									className="mt-4 rounded-xl py-3 px-4 font-mono font-bold text-lg"
-									style={{ background: `${themeColor}15`, color: themeColor }}
-								>
-									#{booking.bookingCode || "—"}
-								</div>
-
-								<div className="mt-4 space-y-2 text-left text-sm">
-									<div className="flex justify-between">
-										<span className="text-muted-foreground">Tanggal</span>
-										<span className="font-medium">{formatDateLong(booking.bookingDate)}</span>
-									</div>
-									<div className="flex justify-between">
-										<span className="text-muted-foreground">Nama</span>
-										<span className="font-medium">{booking.customerName}</span>
-									</div>
-									<div className="flex justify-between">
-										<span className="text-muted-foreground">Total</span>
-										<span className="font-bold">{fmt(booking.totalAmount)}</span>
-									</div>
-									<div className="flex justify-between">
-										<span className="text-muted-foreground">Pembayaran</span>
-										<span className="font-medium capitalize">
-											{booking.paymentMethod?.replace("_", " ")}
-										</span>
-									</div>
-								</div>
-
-								{/* Payment instructions */}
-								{settings.bankDetails && (
-									<div className="mt-4 rounded-xl bg-muted/50 p-4 text-left text-sm">
-										<p className="font-bold text-foreground text-xs uppercase tracking-widest mb-2">
-											Instruksi Pembayaran
-										</p>
-										<pre className="whitespace-pre-wrap font-sans text-muted-foreground text-xs leading-relaxed">
-											{settings.bankDetails}
-										</pre>
-									</div>
-								)}
-
-								<button
-									className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-95"
-									onClick={() => {
-										if (booking) {
-											downloadReceiptJpg(booking, settings, siteSettings ?? null);
-										}
-									}}
-									style={{ background: themeColor }}
-									type="button"
-								>
-									<Download className="h-4 w-4" />
-									Download Bukti Booking (JPG)
-								</button>
-							</>
-						)}
+			<MobileWrapper showHeader={false}>
+				<div className="flex flex-col items-center justify-center py-8 text-center">
+					<div
+						className="mb-6 flex h-20 w-20 items-center justify-center rounded-full shadow-lg animate-in zoom-in duration-500"
+						style={{ background: `${themeColor}20` }}
+					>
+						<CheckCircle2 className="h-10 w-10" style={{ color: themeColor }} />
 					</div>
+					<h2 className="font-extrabold text-foreground text-2xl tracking-tight">Booking Berhasil!</h2>
+					<p className="mt-2 text-muted-foreground text-sm max-w-[240px] mx-auto">
+						Terima kasih, pesanan Anda telah kami terima dan sedang diproses.
+					</p>
+
+					{booking && (
+						<div className="w-full mt-10 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
+							<div
+								className="rounded-2xl py-4 px-6 font-mono font-bold text-2xl shadow-sm border border-border"
+								style={{ background: `${themeColor}08`, color: themeColor }}
+							>
+								#{booking.bookingCode || "—"}
+							</div>
+
+							<div className="space-y-3 text-left bg-muted/30 p-5 rounded-2xl border border-border/50">
+								<div className="flex justify-between items-center text-xs">
+									<span className="text-muted-foreground font-medium">TANGGAL</span>
+									<span className="font-bold text-foreground">{formatDateLong(booking.bookingDate)}</span>
+								</div>
+								<div className="h-px bg-border/50" />
+								<div className="flex justify-between items-center text-xs">
+									<span className="text-muted-foreground font-medium">NAMA</span>
+									<span className="font-bold text-foreground">{booking.customerName}</span>
+								</div>
+								<div className="h-px bg-border/50" />
+								<div className="flex justify-between items-center text-xs">
+									<span className="text-muted-foreground font-medium">TOTAL</span>
+									<span className="font-extrabold text-lg" style={{ color: themeColor }}>{fmt(booking.totalAmount)}</span>
+								</div>
+								<div className="h-px bg-border/50" />
+								<div className="flex justify-between items-center text-xs">
+									<span className="text-muted-foreground font-medium">METODE BAYAR</span>
+									<span className="font-bold text-foreground capitalize">
+										{booking.paymentMethod?.replace("_", " ")}
+									</span>
+								</div>
+							</div>
+
+							{settings.bankDetails && (
+								<div className="rounded-2xl bg-amber-50/50 border border-amber-100 p-5 text-left">
+									<p className="font-bold text-amber-800 text-[10px] uppercase tracking-wider mb-2">
+										Instruksi Pembayaran
+									</p>
+									<p className="whitespace-pre-wrap font-medium text-amber-900/80 text-xs leading-relaxed">
+										{settings.bankDetails}
+									</p>
+								</div>
+							)}
+
+							<button
+								className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 font-bold text-sm text-white shadow-lg transition-all hover:opacity-90 active:scale-95 active:shadow-sm"
+								onClick={() => {
+									if (booking) {
+										downloadReceiptJpg(booking, settings, siteSettings ?? null);
+									}
+								}}
+								style={{ background: themeColor }}
+								type="button"
+							>
+								<Download className="h-4 w-4" />
+								Download Bukti Booking (JPG)
+							</button>
+							
+							<button 
+								className="w-full py-4 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
+								onClick={() => window.location.reload()}
+							>
+								Buat Pesanan Baru
+							</button>
+						</div>
+					)}
 				</div>
-			</div>
+			</MobileWrapper>
 		);
 	}
 
@@ -828,246 +877,303 @@ function BookingPage() {
 		}
 	};
 
-	// ── Step 5: Confirmation ──
+	if (step === 6) {
+		const booking = confirmedBooking || completedBooking;
+		return (
+			<MobileWrapper showHeader={false}>
+				<div className="flex flex-col items-center justify-center py-8 text-center">
+					<div
+						className="mb-6 flex h-20 w-20 items-center justify-center rounded-full shadow-lg animate-in zoom-in duration-500"
+						style={{ background: `${themeColor}20` }}
+					>
+						<CheckCircle2 className="h-10 w-10" style={{ color: themeColor }} />
+					</div>
+					<h2 className="font-extrabold text-foreground text-2xl tracking-tight">Booking Berhasil!</h2>
+					<p className="mt-2 text-muted-foreground text-sm max-w-[240px] mx-auto">
+						Terima kasih, pesanan Anda telah kami terima dan sedang diproses.
+					</p>
+
+					{booking && (
+						<div className="w-full mt-10 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
+							<div
+								className="rounded-2xl py-4 px-6 font-mono font-bold text-2xl shadow-sm border border-border"
+								style={{ background: `${themeColor}08`, color: themeColor }}
+							>
+								#{booking.bookingCode || "—"}
+							</div>
+
+							<div className="space-y-3 text-left bg-muted/30 p-5 rounded-2xl border border-border/50">
+								<div className="flex justify-between items-center text-xs">
+									<span className="text-muted-foreground font-medium">TANGGAL</span>
+									<span className="font-bold text-foreground">{formatDateLong(booking.bookingDate)}</span>
+								</div>
+								<div className="h-px bg-border/50" />
+								<div className="flex justify-between items-center text-xs">
+									<span className="text-muted-foreground font-medium">NAMA</span>
+									<span className="font-bold text-foreground">{booking.customerName}</span>
+								</div>
+								<div className="h-px bg-border/50" />
+								<div className="flex justify-between items-center text-xs">
+									<span className="text-muted-foreground font-medium">TOTAL</span>
+									<span className="font-extrabold text-lg" style={{ color: themeColor }}>{fmt(booking.totalAmount)}</span>
+								</div>
+								<div className="h-px bg-border/50" />
+								<div className="flex justify-between items-center text-xs">
+									<span className="text-muted-foreground font-medium">METODE BAYAR</span>
+									<span className="font-bold text-foreground capitalize">
+										{booking.paymentMethod?.replace("_", " ")}
+									</span>
+								</div>
+							</div>
+
+							{settings.bankDetails && (
+								<div className="rounded-2xl bg-amber-50/50 border border-amber-100 p-5 text-left">
+									<p className="font-bold text-amber-800 text-[10px] uppercase tracking-wider mb-2">
+										Instruksi Pembayaran
+									</p>
+									<p className="whitespace-pre-wrap font-medium text-amber-900/80 text-xs leading-relaxed">
+										{settings.bankDetails}
+									</p>
+								</div>
+							)}
+
+							<button
+								className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 font-bold text-sm text-white shadow-lg transition-all hover:opacity-90 active:scale-95 active:shadow-sm"
+								onClick={() => {
+									if (booking) {
+										downloadReceiptJpg(booking, settings, siteSettings ?? null);
+									}
+								}}
+								style={{ background: themeColor }}
+								type="button"
+							>
+								<Download className="h-4 w-4" />
+								Download Bukti Booking (JPG)
+							</button>
+							
+							<button 
+								className="w-full py-4 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
+								onClick={() => window.location.reload()}
+							>
+								Buat Pesanan Baru
+							</button>
+						</div>
+					)}
+				</div>
+			</MobileWrapper>
+		);
+	}
+
 	if (step === 5) {
 		const booking = confirmedBooking || completedBooking;
 		const qrisUrl = settings.qrisImage || siteSettings?.qrisImage;
 
 		return (
-			<div className="min-h-screen bg-background">
-				<div
-					className="h-28 w-full"
-					style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}cc)` }}
-				/>
-				<div className="mx-auto max-w-md px-4 -mt-10 pb-16">
-					<div className="rounded-2xl border border-border bg-card p-6 shadow-lg">
-						<h2 className="font-bold text-foreground text-xl text-center mb-6">Konfirmasi Pembayaran</h2>
+			<MobileWrapper title="Konfirmasi Bayar">
+				<div className="flex flex-col gap-6 pb-20">
+					<div className="text-center">
+						<h2 className="font-extrabold text-foreground text-xl tracking-tight">Konfirmasi Pembayaran</h2>
+						<p className="text-muted-foreground text-xs mt-1">Selesaikan pembayaran untuk memvalidasi pesanan Anda</p>
+					</div>
 
-						{selectedPayment === "qris" && (
-							<div className="space-y-6">
-								<div className="mx-auto h-64 w-64 overflow-hidden rounded-2xl border-2 border-primary/20 p-2 bg-white">
-									{qrisUrl ? (
-										<img alt="QRIS" className="h-full w-full object-contain" src={qrisUrl} />
-									) : (
-										<div className="flex h-full w-full items-center justify-center text-center p-4 text-muted-foreground text-sm">
-											Gambar QRIS belum diatur. Silakan hubungi admin.
-										</div>
-									)}
-								</div>
-								<div className="text-center space-y-2">
-									<p className="font-bold text-sm">Total Tagihan: {fmt(cartTotal)}</p>
-									<p className="text-xs text-muted-foreground">
-										Silakan scan QRIS di atas dan selesaikan pembayaran.
-									</p>
-								</div>
+					{selectedPayment === "qris" && (
+						<div className="space-y-6 animate-in fade-in duration-500">
+							<div className="mx-auto h-72 w-72 overflow-hidden rounded-3xl border-4 border-muted p-3 bg-white shadow-inner">
+								{qrisUrl ? (
+									<img alt="QRIS" className="h-full w-full object-contain" src={qrisUrl} />
+								) : (
+									<div className="flex h-full w-full items-center justify-center text-center p-6 text-muted-foreground text-xs italic">
+										QRIS belum tersedia.
+									</div>
+								)}
+							</div>
+							
+							<div className="rounded-2xl bg-primary/5 border border-primary/10 p-4 text-center">
+								<p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">TOTAL TAGIHAN</p>
+								<p className="font-extrabold text-2xl" style={{ color: themeColor }}>{fmt(cartTotal)}</p>
+							</div>
 
-								<div className="space-y-4 pt-4 border-t border-border">
-									<div className="space-y-1.5">
-										<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">
-											Nominal yang Ditransfer *
-										</label>
+							<div className="space-y-4 pt-2">
+								<div className="space-y-2">
+									<label className="font-bold text-foreground text-xs">Nominal Transfer *</label>
+									<div className="relative">
+										<span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">Rp</span>
 										<input
-											className="w-full rounded-xl bg-muted/50 p-3.5 font-bold text-foreground outline-none transition-all focus:ring-2"
+											className="w-full rounded-2xl bg-muted/50 pl-11 pr-4 py-4 font-extrabold text-lg text-foreground outline-none border-2 border-transparent focus:border-primary/20 transition-all"
 											onChange={(e) => setTransferredAmount(e.target.value)}
-											placeholder="Masukkan nominal pasti"
-											style={{ "--tw-ring-color": themeColor } as any}
+											placeholder="0"
 											type="number"
 											value={transferredAmount}
 										/>
 									</div>
-
-									<div className="space-y-1.5">
-										<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">
-											Upload Bukti Pembayaran *
-										</label>
-										<div className="relative">
-											{proofImage ? (
-												<div className="relative h-40 w-full overflow-hidden rounded-xl border border-primary/30">
-													<img
-														alt="Proof"
-														className="h-full w-full object-cover"
-														src={proofImage.startsWith("http") ? proofImage : undefined}
-													/>
-													<button
-														className="absolute top-2 right-2 rounded-full bg-red-500 p-1.5 text-white"
-														onClick={() => setProofImage("")}
-														type="button"
-													>
-														<X className="h-4 w-4" />
-													</button>
-												</div>
-											) : (
-												<label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-all">
-													<Upload className="h-8 w-8 text-muted-foreground mb-2" />
-													<span className="text-xs text-muted-foreground">
-														{isUploadingProof ? "Mengunggah..." : "Pilih Gambar Bukti"}
-													</span>
-													<input
-														accept="image/*"
-														className="hidden"
-														onChange={handleProofUpload}
-														type="file"
-													/>
-												</label>
-											)}
-										</div>
-									</div>
+									<p className="text-[10px] text-muted-foreground px-1 italic">* Pastikan nominal sesuai dengan total tagihan</p>
 								</div>
 
-								<button
-									className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-									disabled={!proofImage || !transferredAmount || isSubmitting}
-									onClick={handleFinishBooking}
-									style={{ background: themeColor }}
-									type="button"
-								>
-									{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Kirim Bukti & Selesaikan"}
-								</button>
-							</div>
-						)}
-
-						{selectedPayment === "bank_transfer" && (
-							<div className="space-y-6">
-								<div className="rounded-xl bg-muted/50 p-4 border border-border">
-									<p className="font-bold text-xs text-muted-foreground uppercase tracking-widest mb-2">
-										Transfer Ke:
-									</p>
-									<pre className="whitespace-pre-wrap font-sans text-sm text-foreground leading-relaxed">
-										{settings.bankDetails || "Detail rekening belum diatur."}
-									</pre>
-									<p className="mt-3 font-bold text-sm">Total: {fmt(cartTotal)}</p>
-								</div>
-
-								<div className="space-y-3">
-									<p className="font-bold text-sm">Upload Bukti Transfer *</p>
-									<div className="relative">
-										{proofImage ? (
-											<div className="relative h-40 w-full overflow-hidden rounded-xl border border-primary/30">
-												<img
-													alt="Proof"
-													className="h-full w-full object-cover"
-													src={proofImage.startsWith("http") ? proofImage : undefined}
-												/>
+								<div className="space-y-2">
+									<label className="font-bold text-foreground text-xs">Bukti Pembayaran *</label>
+									{proofImage ? (
+										<div className="relative group h-48 w-full overflow-hidden rounded-3xl border-2 border-primary/20 bg-muted">
+											<img alt="Proof" className="h-full w-full object-cover" src={proofImage.startsWith("http") ? proofImage : undefined} />
+											<div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
 												<button
-													className="absolute top-2 right-2 rounded-full bg-red-500 p-1.5 text-white"
+													className="rounded-full bg-red-500 p-3 text-white shadow-lg active:scale-90 transition-transform"
 													onClick={() => setProofImage("")}
+													type="button"
 												>
-													<X className="h-4 w-4" />
+													<X className="h-5 w-5" />
 												</button>
 											</div>
-										) : (
-											<label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-all">
-												<Upload className="h-8 w-8 text-muted-foreground mb-2" />
-												<span className="text-xs text-muted-foreground">
-													{isUploadingProof ? "Mengunggah..." : "Pilih Gambar Bukti"}
-												</span>
-												<input
-													accept="image/*"
-													className="hidden"
-													onChange={handleProofUpload}
-													type="file"
-												/>
-											</label>
-										)}
+										</div>
+									) : (
+										<label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-muted bg-muted/20 hover:bg-muted/40 hover:border-primary/20 transition-all active:scale-[0.98]">
+											<div className="h-12 w-12 rounded-full bg-background flex items-center justify-center shadow-sm mb-2 border border-border">
+												<Upload className="h-5 w-5 text-primary" />
+											</div>
+											<span className="font-bold text-[11px] text-foreground">
+												{isUploadingProof ? "Mengunggah..." : "Ambil Foto / Pilih File"}
+											</span>
+											<input accept="image/*" className="hidden" onChange={handleProofUpload} type="file" />
+										</label>
+									)}
+								</div>
+							</div>
+
+							<button
+								className="flex w-full items-center justify-center gap-2 rounded-2xl py-4.5 font-extrabold text-sm text-white shadow-xl transition-all hover:opacity-95 active:scale-95 disabled:opacity-50 disabled:shadow-none mt-4"
+								disabled={!proofImage || !transferredAmount || isSubmitting}
+								onClick={handleFinishBooking}
+								style={{ background: themeColor }}
+								type="button"
+							>
+								{isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Kirim Konfirmasi Berhasil"}
+							</button>
+						</div>
+					)}
+
+					{selectedPayment === "bank_transfer" && (
+						<div className="space-y-6 animate-in fade-in duration-500">
+							<div className="rounded-3xl bg-muted/30 p-6 border border-border shadow-sm">
+								<p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest mb-3">Tujuan Transfer</p>
+								<div className="bg-background rounded-2xl p-4 border border-border/50">
+									<pre className="whitespace-pre-wrap font-sans text-xs font-bold text-foreground leading-relaxed">
+										{settings.bankDetails || "Detail rekening belum diatur."}
+									</pre>
+								</div>
+								<div className="mt-4 flex justify-between items-center bg-primary/5 rounded-2xl p-4 border border-primary/10">
+									<span className="text-xs font-bold text-muted-foreground">TOTAL:</span>
+									<span className="font-extrabold text-lg" style={{ color: themeColor }}>{fmt(cartTotal)}</span>
+								</div>
+							</div>
+
+							<div className="space-y-2">
+								<label className="font-bold text-foreground text-xs">Upload Bukti Transfer *</label>
+								{proofImage ? (
+									<div className="relative group h-48 w-full overflow-hidden rounded-3xl border-2 border-primary/20 bg-muted">
+										<img alt="Proof" className="h-full w-full object-cover" src={proofImage.startsWith("http") ? proofImage : undefined} />
+										<button
+											className="absolute top-3 right-3 rounded-full bg-red-500 p-2 text-white shadow-lg active:scale-90"
+											onClick={() => setProofImage("")}
+											type="button"
+										>
+											<X className="h-4 w-4" />
+										</button>
 									</div>
-								</div>
-
-								<button
-									className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-									disabled={!proofImage || isSubmitting}
-									onClick={handleFinishBooking}
-									style={{ background: themeColor }}
-									type="button"
-								>
-									{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Kirim Bukti & Selesaikan"}
-								</button>
+								) : (
+									<label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-muted bg-muted/20 hover:bg-muted/40 transition-all active:scale-[0.98]">
+										<Upload className="h-6 w-6 text-primary mb-2" />
+										<span className="font-bold text-[11px] text-foreground">
+											{isUploadingProof ? "Mengunggah..." : "Pilih Bukti Transfer"}
+										</span>
+										<input accept="image/*" className="hidden" onChange={handleProofUpload} type="file" />
+									</label>
+								)}
 							</div>
-						)}
 
-						{selectedPayment === "cash" && (
-							<div className="space-y-6 text-center">
-								<p className="text-sm text-muted-foreground">
-									Silakan lakukan pembayaran langsung di lokasi (Cash/Tunai).
+							<button
+								className="flex w-full items-center justify-center gap-2 rounded-2xl py-4.5 font-extrabold text-sm text-white shadow-xl transition-all hover:opacity-95 active:scale-95 disabled:opacity-50 mt-4"
+								disabled={!proofImage || isSubmitting}
+								onClick={handleFinishBooking}
+								style={{ background: themeColor }}
+								type="button"
+							>
+								{isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Selesaikan & Kirim Bukti"}
+							</button>
+						</div>
+					)}
+
+					{selectedPayment === "cash" && (
+						<div className="space-y-6 text-center animate-in fade-in duration-500 py-4">
+							<div className="mx-auto h-20 w-20 rounded-full bg-emerald-50 flex items-center justify-center mb-2">
+								<ShoppingBag className="h-10 w-10 text-emerald-500" />
+							</div>
+							<div className="space-y-2">
+								<p className="font-bold text-foreground">Bayar di Tempat</p>
+								<p className="text-xs text-muted-foreground px-4">
+									Silakan lakukan pembayaran langsung di lokasi saat kedatangan.
 								</p>
-								<div className="rounded-xl bg-muted/50 p-4 font-bold" style={{ color: themeColor }}>
-									Total: {fmt(cartTotal)}
-								</div>
-								<button
-									className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98]"
-									onClick={() => setStep(6)}
-									style={{ background: themeColor }}
-									type="button"
-								>
-									Selesaikan Booking
-								</button>
 							</div>
-						)}
-					</div>
+							<div className="rounded-2xl bg-muted/30 p-5 font-extrabold text-xl shadow-inner border border-border" style={{ color: themeColor }}>
+								Total: {fmt(cartTotal)}
+							</div>
+							<button
+								className="flex w-full items-center justify-center gap-2 rounded-2xl py-4.5 font-extrabold text-sm text-white shadow-xl transition-all hover:opacity-95 active:scale-95 mt-4"
+								onClick={() => setStep(6)}
+								style={{ background: themeColor }}
+								type="button"
+							>
+								Konfirmasi Selesai
+							</button>
+						</div>
+					)}
 				</div>
-			</div>
+			</MobileWrapper>
 		);
 	}
 
 	return (
-		<div className="min-h-screen bg-background">
-			{/* Header */}
-			<div
-				className="relative h-32 w-full"
-				style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}cc)` }}
-			/>
-
-			<div className="mx-auto max-w-lg px-4">
-				{/* Brand profile */}
-				<div className="relative -mt-10 mb-6 text-center">
-					<div
-						className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-background shadow-lg font-bold text-3xl text-white"
-						style={{ background: themeColor }}
-					>
-						{settings.title?.charAt(0) || "D"}
-					</div>
-					<h1 className="mt-3 font-bold text-foreground text-xl">{settings.title}</h1>
-					{settings.description && (
-						<p className="mt-1 text-muted-foreground text-sm">{settings.description}</p>
-					)}
-				</div>
-
-				{/* Step progress */}
+		<MobileWrapper title={STEP_LABELS[step]}>
+			<div className="flex flex-col h-full pt-2">
 				<StepBar current={step} />
 
 				{/* ── STEP 0: Guest Count ── */}
 				{step === 0 && (
-					<div className="space-y-6 pb-32">
-						<h2 className="font-bold text-foreground text-base flex items-center gap-2">
-							<Users className="h-5 w-5" style={{ color: themeColor }} />
-							Jumlah Orang
-						</h2>
-						<div className="rounded-2xl border border-border bg-card p-8 shadow-sm text-center space-y-6">
-							<p className="text-muted-foreground text-sm">
-								Berapa banyak orang yang akan hadir?
-							</p>
-							<div className="flex items-center justify-center gap-6">
-								<button
-									className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card text-foreground transition-all active:scale-95 disabled:opacity-50"
-									disabled={guestCount <= 1}
-									onClick={() => setGuestCount(Math.max(1, guestCount - 1))}
-									type="button"
-								>
-									<Minus className="h-5 w-5" />
-								</button>
-								<span className="text-4xl font-bold w-16" style={{ color: themeColor }}>
+					<div className="flex-1 flex flex-col items-center justify-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+						<div className="mb-8 p-4 rounded-3xl bg-primary/5 border border-primary/10">
+							<Users className="h-10 w-10" style={{ color: themeColor }} />
+						</div>
+						<div className="text-center mb-10">
+							<h2 className="font-extrabold text-foreground text-2xl tracking-tight mb-2">Berapa orang?</h2>
+							<p className="text-muted-foreground text-sm">Pilih jumlah tamu yang akan berkunjung</p>
+						</div>
+
+						<div className="flex items-center justify-center gap-8 mb-12 scale-110">
+							<button
+								className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-border bg-card text-foreground transition-all hover:border-primary/30 active:scale-90 disabled:opacity-30 shadow-sm"
+								disabled={guestCount <= 1}
+								onClick={() => setGuestCount(Math.max(1, guestCount - 1))}
+								type="button"
+							>
+								<Minus className="h-6 w-6" />
+							</button>
+							<div className="flex flex-col items-center min-w-[3rem]">
+								<span className="text-6xl font-black tabular-nums tracking-tighter" style={{ color: themeColor }}>
 									{guestCount}
 								</span>
-								<button
-									className="flex h-12 w-12 items-center justify-center rounded-full text-white transition-all active:scale-95"
-									onClick={() => setGuestCount(guestCount + 1)}
-									style={{ background: themeColor }}
-									type="button"
-								>
-									<Plus className="h-5 w-5" />
-								</button>
+								<span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Tamu</span>
 							</div>
-							<p className="text-xs text-muted-foreground italic">
-								* Kapasitas meja akan menyesuaikan jumlah orang.
+							<button
+								className="flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 active:scale-95 mx-auto"
+								onClick={() => setGuestCount(guestCount + 1)}
+								style={{ background: themeColor }}
+								type="button"
+							>
+								<Plus className="h-6 w-6" />
+							</button>
+						</div>
+						
+						<div className="w-full rounded-2xl bg-muted/30 p-4 text-center border border-border/50">
+							<p className="text-[11px] text-muted-foreground leading-relaxed italic">
+								* Kapasitas meja kami akan disesuaikan secara otomatis berdasarkan jumlah tamu yang Anda pilih.
 							</p>
 						</div>
 					</div>
@@ -1075,80 +1181,85 @@ function BookingPage() {
 
 				{/* ── STEP 1: Product Selection ── */}
 				{step === 1 && (
-					<div className="space-y-4 pb-32">
-						<h2 className="font-bold text-foreground text-base flex items-center gap-2">
-							<ShoppingBag className="h-5 w-5" style={{ color: themeColor }} />
-							Pilih Menu / Paket
-						</h2>
+					<div className="space-y-4 pb-24 animate-in fade-in duration-500">
+						<div className="flex items-center justify-between mb-2">
+							<h2 className="font-extrabold text-foreground text-lg tracking-tight">Pilih Menu</h2>
+							<div className="flex items-center gap-1.5 px-3 py-1 bg-primary/5 rounded-full border border-primary/10">
+								<ShoppingBag className="h-3 w-3 text-primary" />
+								<span className="text-[10px] font-bold text-primary">{cartCount} Item dipilih</span>
+							</div>
+						</div>
 
-						<div className="space-y-3">
+						<div className="grid gap-3">
 							{products.map((product: any) => {
 								const cartItem = cart.find((i) => i.productId === product._id);
 								return (
 									<div
-										className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm"
+										className={`flex items-center gap-4 rounded-3xl border p-3.5 transition-all ${
+											cartItem ? 'border-primary/30 bg-primary/[0.02] ring-1 ring-primary/5 shadow-sm' : 'border-border bg-card'
+										}`}
 										key={product._id}
 									>
-										<div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted">
+										<div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-primary/5 border border-border/50 shadow-inner">
 											{product.image ? (
 												<img
 													alt={product.name}
-													className="h-full w-full object-cover"
+													className="h-full w-full object-cover transition-transform hover:scale-110"
 													src={product.image}
 												/>
 											) : (
 												<div
-													className="flex h-full w-full items-center justify-center font-bold text-2xl"
-													style={{ color: themeColor, background: `${themeColor}15` }}
+													className="flex h-full w-full items-center justify-center font-black text-3xl opacity-20"
+													style={{ color: themeColor }}
 												>
 													{product.name.charAt(0)}
 												</div>
 											)}
 										</div>
-										<div className="flex-1 min-w-0">
-											<p className="font-bold text-foreground text-sm leading-tight">
+										<div className="flex-1 min-w-0 pr-2">
+											<p className="font-bold text-foreground text-[15px] leading-tight mb-0.5">
 												{product.name}
 											</p>
-											{product.description && (
-												<p className="text-muted-foreground text-xs line-clamp-1 mt-0.5">
-													{product.description}
-												</p>
-											)}
-											<p className="font-bold text-sm mt-1" style={{ color: themeColor }}>
+											<p className="text-muted-foreground text-[11px] line-clamp-1 mb-2 font-medium">
+												{product.description || "Menu spesial favorit kami"}
+											</p>
+											<p className="font-black text-sm tracking-tight" style={{ color: themeColor }}>
 												{fmt(product.price)}
 											</p>
 										</div>
-										{cartItem ? (
-											<div className="flex items-center gap-2 shrink-0">
+										<div className="shrink-0 flex flex-col items-center gap-1">
+											{cartItem ? (
+												<div className="flex flex-col items-center gap-1.5 p-1 bg-muted/40 rounded-full border border-border/50">
+													<button
+														className="flex h-7 w-7 items-center justify-center rounded-full bg-background border border-border text-foreground transition-all active:scale-95 shadow-sm"
+														onClick={() => updateQty(product._id, -1)}
+														type="button"
+													>
+														<Minus className="h-3.5 w-3.5" />
+													</button>
+													<span className="font-black text-sm w-5 text-center">
+														{cartItem.quantity}
+													</span>
+													<button
+														className="flex h-7 w-7 items-center justify-center rounded-full text-white transition-all active:scale-90 shadow-sm"
+														onClick={() => addToCart(product)}
+														style={{ background: themeColor }}
+														type="button"
+													>
+														<Plus className="h-3.5 w-3.5" />
+													</button>
+												</div>
+											) : (
 												<button
-													className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-foreground transition-all active:scale-95"
-													onClick={() => updateQty(product._id, -1)}
-													type="button"
-												>
-													<Minus className="h-3.5 w-3.5" />
-												</button>
-												<span className="font-bold text-sm w-5 text-center">
-													{cartItem.quantity}
-												</span>
-												<button
-													className="flex h-8 w-8 items-center justify-center rounded-full text-white transition-all active:scale-95"
+													className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg shadow-primary/10 transition-all hover:opacity-90 active:scale-90"
 													onClick={() => addToCart(product)}
 													style={{ background: themeColor }}
 													type="button"
 												>
-													<Plus className="h-3.5 w-3.5" />
+													<Plus className="h-5 w-5" />
 												</button>
-											</div>
-										) : (
-											<button
-												className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition-all hover:opacity-90 active:scale-95"
-												onClick={() => addToCart(product)}
-												style={{ background: themeColor }}
-												type="button"
-											>
-												<Plus className="h-4 w-4" />
-											</button>
-										)}
+											)}
+										</div>
 									</div>
 								);
 							})}
@@ -1158,13 +1269,13 @@ function BookingPage() {
 
 				{/* ── STEP 2: Date Picker ── */}
 				{step === 2 && (
-					<div className="space-y-5 pb-32">
-						<h2 className="font-bold text-foreground text-base flex items-center gap-2">
-							<Calendar className="h-5 w-5" style={{ color: themeColor }} />
-							Pilih Tanggal Booking
-						</h2>
+					<div className="space-y-6 pb-24 animate-in fade-in duration-500">
+						<div className="text-center py-2">
+							<h2 className="font-extrabold text-foreground text-xl tracking-tight mb-1">Pilih Tanggal</h2>
+							<p className="text-muted-foreground text-xs font-medium italic">Ketersediaan meja diperbarui secara realtime</p>
+						</div>
 
-						<div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+						<div className="rounded-[32px] border-2 border-muted bg-card px-4 py-8 shadow-inner-sm">
 							<DatePickerCalendar
 								guestCount={guestCount}
 								month={calMonth}
@@ -1181,12 +1292,19 @@ function BookingPage() {
 
 						{selectedDate && (
 							<div
-								className="rounded-2xl p-4 text-sm font-medium"
-								style={{ background: `${themeColor}15`, color: themeColor }}
+								className="rounded-3xl p-5 border border-primary/10 flex items-center justify-between shadow-sm animate-in zoom-in-95 duration-300"
+								style={{ background: `${themeColor}05` }}
 							>
-								<CheckCircle2 className="inline h-4 w-4 mr-1.5 -mt-0.5" />
-								Tanggal dipilih:{" "}
-								<span className="font-bold">{formatDateLong(selectedDate)}</span>
+								<div className="flex items-center gap-3">
+									<div className="h-10 w-10 rounded-2xl flex items-center justify-center bg-white shadow-sm border border-border/50">
+										<Calendar className="h-5 w-5" style={{ color: themeColor }} />
+									</div>
+									<div className="flex flex-col">
+										<span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">TANGGAL DIPILIH</span>
+										<span className="font-black text-sm" style={{ color: themeColor }}>{formatDateLong(selectedDate)}</span>
+									</div>
+								</div>
+								<CheckCircle2 className="h-6 w-6 text-emerald-500" />
 							</div>
 						)}
 					</div>
@@ -1194,49 +1312,52 @@ function BookingPage() {
 
 				{/* ── STEP 3: Customer Info ── */}
 				{step === 3 && (
-					<div className="space-y-4 pb-32">
-						<h2 className="font-bold text-foreground text-base">Data Diri</h2>
-						<div className="rounded-2xl border border-border bg-card p-5 space-y-4 shadow-sm">
+					<div className="space-y-6 pb-32 animate-in fade-in duration-500">
+						<div className="text-center pt-2">
+							<h2 className="font-extrabold text-foreground text-xl tracking-tight mb-1">Data Diri</h2>
+							<p className="text-muted-foreground text-xs font-medium">Lengkapi informasi untuk pesanan Anda</p>
+						</div>
+						
+						<div className="space-y-5">
 							{[
-								{ id: "name", label: "Nama Lengkap", type: "text", placeholder: "Nama Anda", key: "name" },
-								{ id: "phone", label: "No. Telepon / WhatsApp", type: "tel", placeholder: "08xx-xxxx-xxxx", key: "phone" },
-								{ id: "email", label: "Alamat Email", type: "email", placeholder: "nama@email.com", key: "email" },
+								{ id: "name", label: "NAMA LENGKAP", type: "text", placeholder: "Contoh: John Doe", key: "name" },
+								{ id: "phone", label: "WHATSAPP / TELEPON", type: "tel", placeholder: "08xx-xxxx-xxxx", key: "phone" },
+								{ id: "email", label: "ALAMAT EMAIL", type: "email", placeholder: "nama@email.com", key: "email" },
 							].map(({ id, label, type, placeholder, key }) => (
-								<div className="space-y-1.5" key={id}>
+								<div className="space-y-2 group" key={id}>
 									<label
-										className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
+										className="font-black text-muted-foreground text-[10px] uppercase tracking-widest px-1 transition-colors group-focus-within:text-primary"
 										htmlFor={id}
 									>
 										{label} *
 									</label>
 									<input
-										className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2"
+										className="w-full rounded-2xl bg-muted/30 p-4 font-bold text-[15px] text-foreground outline-none border-2 border-transparent focus:border-primary/20 focus:bg-background transition-all shadow-sm"
 										id={id}
 										onChange={(e) =>
 											setCustomerForm({ ...customerForm, [key]: e.target.value })
 										}
 										placeholder={placeholder}
 										required
-										style={{ "--tw-ring-color": themeColor } as any}
 										type={type}
 										value={(customerForm as any)[key]}
 									/>
 								</div>
 							))}
-							<div className="space-y-1.5">
+							<div className="space-y-2 group">
 								<label
-									className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
+									className="font-black text-muted-foreground text-[10px] uppercase tracking-widest px-1 transition-colors group-focus-within:text-primary"
 									htmlFor="notes"
 								>
-									Catatan / Permintaan Khusus
+									CATATAN KHUSUS (OPSIONAL)
 								</label>
 								<textarea
-									className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all min-h-[80px] resize-none"
+									className="w-full rounded-2xl bg-muted/30 p-4 font-bold text-[15px] text-foreground outline-none border-2 border-transparent focus:border-primary/20 focus:bg-background transition-all min-h-[100px] resize-none shadow-sm"
 									id="notes"
 									onChange={(e) =>
 										setCustomerForm({ ...customerForm, notes: e.target.value })
 									}
-									placeholder="Contoh: Meja untuk 4 orang, alergi kacang..."
+									placeholder="Contoh: Meja pojok, kursi bayi, dll..."
 									value={customerForm.notes}
 								/>
 							</div>
@@ -1244,123 +1365,101 @@ function BookingPage() {
 					</div>
 				)}
 
-				{/* ── STEP 4: Payment ── */}
+				{/* ── STEP 4: Payment Selection & Summary ── */}
 				{step === 4 && (
-					<div className="space-y-4 pb-32">
-						<h2 className="font-bold text-foreground text-base">Konfirmasi & Pembayaran</h2>
+					<div className="space-y-6 pb-40 animate-in fade-in duration-500">
+						<div className="text-center pt-2">
+							<h2 className="font-extrabold text-foreground text-xl tracking-tight mb-1">Review & Bayar</h2>
+							<p className="text-muted-foreground text-xs font-medium">Periksa kembali pesanan Anda</p>
+						</div>
 
-						{/* Order summary */}
-						<div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-3">
-							<p className="font-bold text-xs text-muted-foreground uppercase tracking-widest">Ringkasan Pesanan</p>
-							<div className="space-y-2">
+						{/* Order summary card */}
+						<div className="rounded-[32px] border-2 border-muted bg-card p-6 shadow-sm space-y-5">
+							<div className="flex items-center justify-between border-b border-dashed border-border pb-4">
+								<h3 className="font-black text-xs uppercase tracking-wider text-muted-foreground">Order Kami</h3>
+								<div className="px-3 py-1 bg-muted rounded-full text-[10px] font-bold">{cartCount} Item</div>
+							</div>
+							
+							<div className="space-y-4">
 								{cart.map((item) => (
-									<div className="flex justify-between text-sm" key={item.productId}>
-										<span className="text-foreground">
-											{item.name}{" "}
-											<span className="text-muted-foreground">×{item.quantity}</span>
-										</span>
-										<span className="font-medium">
-											{fmt(item.price * item.quantity)}
-										</span>
+									<div className="flex justify-between items-start gap-4" key={item.productId}>
+										<div className="flex flex-col">
+											<span className="font-bold text-sm text-foreground line-clamp-1">{item.name}</span>
+											<span className="text-[10px] font-bold text-muted-foreground uppercase">{item.quantity} x {fmt(item.price)}</span>
+										</div>
+										<span className="font-black text-sm tabular-nums">{fmt(item.price * item.quantity)}</span>
 									</div>
 								))}
 							</div>
-							<div className="border-t border-border pt-2 flex justify-between font-bold">
-								<span>Total</span>
-								<span style={{ color: themeColor }}>{fmt(cartTotal)}</span>
+
+							<div className="pt-4 border-t-2 border-dashed border-muted flex justify-between items-center">
+								<span className="font-black text-xs text-muted-foreground uppercase">TOTAL TAGIHAN</span>
+								<span className="font-black text-2xl tracking-tighter" style={{ color: themeColor }}>{fmt(cartTotal)}</span>
 							</div>
-							<div className="rounded-xl bg-muted/50 p-3 text-sm space-y-1">
-								<div className="flex justify-between">
-									<span className="text-muted-foreground">Tanggal</span>
-									<span className="font-medium">{selectedDate ? formatDateLong(selectedDate) : "—"}</span>
+							
+							<div className="bg-primary/[0.03] border border-primary/5 rounded-2xl p-4 space-y-1.5 shadow-inner-sm">
+								<div className="flex justify-between items-center text-[11px] font-bold">
+									<span className="text-muted-foreground">TANGGAL:</span>
+									<span className="text-foreground">{selectedDate ? formatDateLong(selectedDate) : "—"}</span>
 								</div>
-								<div className="flex justify-between">
-									<span className="text-muted-foreground">Nama</span>
-									<span className="font-medium">{customerForm.name}</span>
+								<div className="flex justify-between items-center text-[11px] font-bold">
+									<span className="text-muted-foreground">TAMU:</span>
+									<span className="text-foreground">{guestCount} Orang</span>
 								</div>
 							</div>
 						</div>
 
 						{/* Payment method */}
-						<div className="space-y-2">
-							<p className="font-bold text-xs text-muted-foreground uppercase tracking-widest">
-								Metode Pembayaran
-							</p>
-							<div className="space-y-2">
+						<div className="space-y-3 pt-2">
+							<h3 className="font-black text-[10px] text-muted-foreground tracking-widest uppercase px-1">PIlih METODE BAYAR</h3>
+							<div className="grid gap-3">
 								{(settings.paymentMethods && settings.paymentMethods.length > 0
 									? settings.paymentMethods
 									: ["qris", "bank_transfer"]
 								).map((pm: string) => {
 									const labels: Record<string, string> = {
-										qris: "QRIS",
-										bank_transfer: "Transfer Bank",
-										cash: "Cash / Tunai",
+										qris: "QRIS STATIS / DYNAMIC",
+										bank_transfer: "TRANSFER BANK (MANUAL)",
+										cash: "CASH / BAYAR DI TEMPAT",
 									};
+									const isSeld = selectedPayment === pm;
 									return (
 										<button
-											className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-all ${
-												selectedPayment === pm
-													? "ring-1 border-primary bg-primary/5 ring-primary"
-													: "border-border bg-card hover:bg-muted/50"
+											className={`flex w-full items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all ${
+												isSeld
+													? "border-primary/40 bg-primary/[0.03] shadow-sm scale-[1.02]"
+													: "border-muted bg-card hover:bg-muted/30"
 											}`}
 											key={pm}
 											onClick={() => setSelectedPayment(pm)}
 											type="button"
 										>
 											<div
-												className={`h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-													selectedPayment === pm ? "border-primary" : "border-muted-foreground/40"
+												className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+													isSeld ? "border-primary" : "border-muted-foreground/30"
 												}`}
 											>
-												{selectedPayment === pm && (
-													<div className="h-2 w-2 rounded-full bg-primary" />
+												{isSeld && (
+													<div className="h-2.5 w-2.5 rounded-full bg-primary animate-in zoom-in-50" />
 												)}
 											</div>
-											<span className="font-medium text-sm">{labels[pm] || pm}</span>
+											<div className="flex-1">
+												<span className="font-black text-[11px] tracking-tight text-foreground uppercase">{labels[pm] || pm}</span>
+											</div>
 										</button>
 									);
 								})}
 							</div>
 						</div>
-
-						{settings.bankDetails && selectedPayment !== "cash" && (
-							<div className="rounded-xl bg-muted/50 p-4">
-								<p className="font-bold text-xs text-muted-foreground uppercase tracking-widest mb-2">
-									Instruksi Pembayaran
-								</p>
-								<pre className="whitespace-pre-wrap font-sans text-sm text-foreground leading-relaxed">
-									{settings.bankDetails}
-								</pre>
-							</div>
-						)}
 					</div>
 				)}
 
 				{/* ── Fixed Bottom Navigation ── */}
 				{step < 5 && (
-					<div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border px-4 pt-3 pb-6 safe-area-bottom shadow-2xl">
-						{/* Cart summary for step 0 */}
-						{step === 1 && cartCount > 0 && (
-							<div className="mb-3 flex items-center justify-between rounded-xl bg-muted/50 px-4 py-2">
-								<span className="text-muted-foreground text-sm">{cartCount} item</span>
-								<span className="font-bold text-sm" style={{ color: themeColor }}>
-									{fmt(cartTotal)}
-								</span>
-							</div>
-						)}
-
-						<div className="flex gap-3">
-							{step > 0 && (
-								<button
-									className="flex h-13 w-13 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground transition-all active:scale-95"
-									onClick={() => setStep((s) => s - 1)}
-									type="button"
-								>
-									<ChevronLeft className="h-5 w-5" />
-								</button>
-							)}
+					<div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md px-4 pt-4 pb-10 safe-area-bottom shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.15)] border-t border-border/50 z-40 max-w-md mx-auto">
+						<div className="flex gap-4">
 							<button
-								className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-4 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 ${isSubmitting ? "cursor-not-allowed" : ""}`}
+								className={`flex flex-1 items-center justify-center gap-2 rounded-2xl py-4.5 font-black text-sm text-white shadow-xl shadow-primary/20 transition-all hover:opacity-95 active:scale-95 disabled:opacity-40 disabled:shadow-none ${isSubmitting ? "cursor-not-allowed" : ""}`}
 								disabled={
 									(step === 1 && cartCount === 0) ||
 									(step === 2 && !selectedDate) ||
@@ -1378,17 +1477,17 @@ function BookingPage() {
 								type="button"
 							>
 								{isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-								{step === 0 && "Lanjut Pilih Menu →"}
-								{step === 1 && (cartCount === 0 ? "Pilih menu dulu" : "Lanjut Pilih Tanggal →")}
-								{step === 2 && (selectedDate ? "Lanjut Isi Data Diri →" : "Pilih tanggal dulu")}
-								{step === 3 && "Lanjut ke Pembayaran →"}
-								{step === 4 && (isSubmitting ? "Memproses..." : "Konfirmasi Booking")}
-								{step === 5 && "Menunggu Konfirmasi..."}
+								{step === 0 && "LANJUT PILIH MENU"}
+								{step === 1 && (cartCount === 0 ? "Pilih Menu Dulu" : "PILIH TANGGAL DATANG")}
+								{step === 2 && (selectedDate ? "ISI DATA PENERIMA" : "PILIH TANGGAL DULU")}
+								{step === 3 && "LANJUT KE PEMBAYARAN"}
+								{step === 4 && (isSubmitting ? "DIPROSES..." : "KONFIRMASI BOOKING")}
+								<ChevronRight className={`h-4 w-4 ${isSubmitting ? 'hidden' : 'block'}`} />
 							</button>
 						</div>
 					</div>
 				)}
 			</div>
-		</div>
+		</MobileWrapper>
 	);
 }

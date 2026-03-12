@@ -321,23 +321,43 @@ export const getBookingOrders = query({
 	args: {
 		slug: v.string(),
 		date: v.optional(v.string()),
+		startDate: v.optional(v.string()),
+		endDate: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
+		let orders;
 		if (args.date) {
-			return await ctx.db
+			orders = await ctx.db
 				.query("bookingOrders")
 				.withIndex("by_slug_date", (q) =>
 					q.eq("slug", args.slug).eq("bookingDate", args.date!)
 				)
 				.order("desc")
 				.collect();
+		} else if (args.startDate || args.endDate) {
+			let q = ctx.db.query("bookingOrders").withIndex("by_slug_date", (q) => q.eq("slug", args.slug));
+			if (args.startDate) q = q.filter((f) => f.gte(f.field("bookingDate"), args.startDate!));
+			if (args.endDate) q = q.filter((f) => f.lte(f.field("bookingDate"), args.endDate!));
+			orders = await q.order("desc").collect();
+		} else {
+			orders = await ctx.db
+				.query("bookingOrders")
+				.withIndex("by_slug", (q) => q.eq("slug", args.slug))
+				.order("desc")
+				.collect();
 		}
 
-		return await ctx.db
-			.query("bookingOrders")
-			.withIndex("by_slug", (q) => q.eq("slug", args.slug))
-			.order("desc")
-			.collect();
+		return await Promise.all(
+			orders.map(async (order) => {
+				if (order.paymentProofImage && !order.paymentProofImage.startsWith("http")) {
+					const url = await ctx.storage.getUrl(order.paymentProofImage);
+					if (url) {
+						return { ...order, paymentProofImage: url };
+					}
+				}
+				return order;
+			})
+		);
 	},
 });
 

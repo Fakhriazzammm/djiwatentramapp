@@ -21,9 +21,29 @@ import {
 	Users,
 	X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import {
+	exportBookingOrdersExcel,
+	exportBookingOrdersJPG,
+	exportBookingOrdersPDF,
+} from "@/lib/export-utils";
+import { 
+	Download, 
+	ArrowUpDown, 
+	Calendar as CalendarIcon,
+	FileText,
+	FileSpreadsheet,
+	Image as ImageIcon,
+	MoreVertical
+} from "lucide-react";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Route = createLazyFileRoute("/admin/booking")({
 	component: BookingSettingsPage,
@@ -307,15 +327,7 @@ function OrderRow({
 								<img
 									alt="Proof"
 									className="h-full w-full object-contain"
-									src={order.paymentProofImage.startsWith("http") ? order.paymentProofImage : `/api/storage/${order.paymentProofImage}`}
-									onError={(e) => {
-										// Fallback if the storage URL needs prefixing via Convex
-										const target = e.target as HTMLImageElement;
-										if (!target.src.includes("convex")) {
-											// This is a placeholder logic for the demo, in real Convex we'd use useQuery to get URL
-											// But since we are in a pure component, we hope the URL is already resolved or handled by Proxy
-										}
-									}}
+									src={order.paymentProofImage}
 								/>
 							</div>
 						</div>
@@ -403,30 +415,14 @@ function BookingSettingsPage() {
 	const [selectedDate, setSelectedDate] = useState<string | null>(null);
 	const [listFilter, setListFilter] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
 
-	const yearMonth = `${calYear}-${String(calMonth + 1).padStart(2, "0")}`;
-	const summary = useQuery(api.booking.getMonthBookingSummary, {
-		slug: "booking",
-		yearMonth,
-	});
-
-	const allOrders = useQuery(api.booking.getBookingOrders, {
-		slug: "booking",
-		date: selectedDate ?? undefined,
-	});
-
-	// Products search & filter
-	const [productSearch, setProductSearch] = useState("");
-	const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
-
-	// Capacity form
-	const [capDate, setCapDate] = useState(todayStr());
-	const [capEndDate, setCapEndDate] = useState(todayStr());
-	const [isBulk, setIsBulk] = useState(false);
-	const [capPeople, setCapPeople] = useState("0");
-	const [capTables, setCapTables] = useState("0");
-	const [capPeoplePerTable, setCapPeoplePerTable] = useState("4");
-	const [capNotes, setCapNotes] = useState("");
-	const [isSavingCap, setIsSavingCap] = useState(false);
+	// Search, Sort, Filter State
+	const [searchTerm, setSearchTerm] = useState("");
+	const [sortBy, setBy] = useState<"date" | "name" | "amount">("date");
+	const [sortOrder, setOrder] = useState<"asc" | "desc">("desc");
+	
+	const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split("T")[0];
+	const [startDate, setStartDate] = useState(firstDayOfMonth);
+	const [endDate, setEndDate] = useState(todayStr());
 
 	// Settings form
 	const [formData, setFormData] = useState({
@@ -446,6 +442,35 @@ function BookingSettingsPage() {
 		"calendar" | "orders" | "capacity" | "general" | "products" | "payment"
 	>("calendar");
 	const [isSaving, setIsSaving] = useState(false);
+
+	const yearMonth = `${calYear}-${String(calMonth + 1).padStart(2, "0")}`;
+	const summary = useQuery(api.booking.getMonthBookingSummary, {
+		slug: "booking",
+		yearMonth,
+	});
+
+	const allOrders = useQuery(api.booking.getBookingOrders, {
+		slug: "booking",
+		date: selectedDate ?? undefined,
+		startDate: activeTab === "orders" ? startDate : undefined,
+		endDate: activeTab === "orders" ? endDate : undefined,
+	});
+
+	// Products search & filter
+	const [productSearch, setProductSearch] = useState("");
+	const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+
+	// Capacity form
+	const [capDate, setCapDate] = useState(todayStr());
+	const [capEndDate, setCapEndDate] = useState(todayStr());
+	const [isBulk, setIsBulk] = useState(false);
+	const [capPeople, setCapPeople] = useState("0");
+	const [capTables, setCapTables] = useState("0");
+	const [capPeoplePerTable, setCapPeoplePerTable] = useState("4");
+	const [capNotes, setCapNotes] = useState("");
+	const [isSavingCap, setIsSavingCap] = useState(false);
+
+
 
 	useEffect(() => {
 		if (settings) {
@@ -562,10 +587,64 @@ function BookingSettingsPage() {
 		{ id: "payment", label: "Pembayaran", icon: Globe },
 	] as const;
 
-	const filteredOrders = allOrders?.filter((o: any) => {
-		if (listFilter === "all") return true;
-		return o.bookingStatus === listFilter;
-	});
+	const filteredOrders = useMemo(() => {
+		if (!allOrders) return [];
+		
+		return allOrders
+			.filter((o: any) => {
+				const matchesFilter = listFilter === "all" || o.bookingStatus === listFilter;
+				const matchesSearch = 
+					o.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+					o.bookingCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+					o.customerPhone.includes(searchTerm);
+				
+				return matchesFilter && matchesSearch;
+			})
+			.sort((a: any, b: any) => {
+				let comparison = 0;
+				if (sortBy === "date") {
+					comparison = a.bookingDate.localeCompare(b.bookingDate);
+				} else if (sortBy === "name") {
+					comparison = a.customerName.localeCompare(b.customerName);
+				} else if (sortBy === "amount") {
+					comparison = a.totalAmount - b.totalAmount;
+				}
+				return sortOrder === "asc" ? comparison : -comparison;
+			});
+	}, [allOrders, listFilter, searchTerm, sortBy, sortOrder]);
+
+	const handleExport = (format: "pdf" | "csv" | "jpg") => {
+		if (!filteredOrders || filteredOrders.length === 0) {
+			toast.error("Tidak ada data untuk diekspor");
+			return;
+		}
+
+		const period = `${startDate} s/d ${endDate}`;
+		const storeName = settings?.title || "Djiwa Tentram";
+
+		const exportData = filteredOrders.map((o: any) => ({
+			bookingCode: o.bookingCode,
+			customerName: o.customerName,
+			customerPhone: o.customerPhone,
+			customerEmail: o.customerEmail,
+			bookingDate: o.bookingDate,
+			totalAmount: o.totalAmount,
+			paymentMethod: o.paymentMethod,
+			paymentStatus: o.paymentStatus,
+			bookingStatus: o.bookingStatus,
+			guestCount: o.guestCount,
+			createdAt: o.createdAt,
+		}));
+
+		if (format === "pdf") {
+			exportBookingOrdersPDF(exportData, storeName, period);
+		} else if (format === "csv") {
+			exportBookingOrdersExcel(exportData, storeName, period);
+		} else if (format === "jpg") {
+			exportBookingOrdersJPG(exportData, storeName, period);
+		}
+		toast.success(`Ekspor ${format.toUpperCase()} berhasil`);
+	};
 
 	const filteredProducts = allProducts?.filter((p: any) => {
 		const matchesSearch = p.name.toLowerCase().includes(productSearch.toLowerCase());
@@ -691,6 +770,90 @@ function BookingSettingsPage() {
 			{/* ── ORDERS TAB ── */}
 			{activeTab === "orders" && (
 				<div className="space-y-4">
+					{/* Toolbar */}
+					<div className="flex flex-col gap-4 p-4 rounded-2xl border border-border bg-card shadow-sm lg:flex-row lg:items-end">
+						<div className="flex-1 space-y-1.5">
+							<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">Pencarian</label>
+							<div className="relative">
+								<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+								<input
+									className="w-full rounded-xl bg-muted/50 pl-10 pr-4 py-2.5 text-sm font-medium outline-none focus:ring-2 focus:ring-primary/20"
+									onChange={(e) => setSearchTerm(e.target.value)}
+									placeholder="Nama, Kode, atau WhatsApp..."
+									type="text"
+									value={searchTerm}
+								/>
+							</div>
+						</div>
+
+						<div className="grid grid-cols-2 gap-3 lg:w-80">
+							<div className="space-y-1.5">
+								<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">Mulai</label>
+								<input
+									className="w-full rounded-xl bg-muted/50 px-3 py-2.5 text-sm font-medium outline-none"
+									onChange={(e) => setStartDate(e.target.value)}
+									type="date"
+									value={startDate}
+								/>
+							</div>
+							<div className="space-y-1.5">
+								<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">Selesai</label>
+								<input
+									className="w-full rounded-xl bg-muted/50 px-3 py-2.5 text-sm font-medium outline-none"
+									onChange={(e) => setEndDate(e.target.value)}
+									type="date"
+									value={endDate}
+								/>
+							</div>
+						</div>
+
+						<div className="flex gap-2">
+							<div className="flex-1 lg:w-40 space-y-1.5">
+								<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">Urutkan</label>
+								<div className="flex gap-1">
+									<select
+										className="flex-1 rounded-xl bg-muted/50 px-3 py-2.5 text-sm font-bold outline-none appearance-none"
+										onChange={(e) => setBy(e.target.value as any)}
+										value={sortBy}
+									>
+										<option value="date">Tanggal</option>
+										<option value="name">Nama</option>
+										<option value="amount">Nominal</option>
+									</select>
+									<button
+										className="rounded-xl bg-muted/50 px-3 py-2.5 hover:bg-muted transition-colors"
+										onClick={() => setOrder(sortOrder === "asc" ? "desc" : "asc")}
+										type="button"
+									>
+										<ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+									</button>
+								</div>
+							</div>
+
+							<div className="space-y-1.5">
+								<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest invisible">Export</label>
+								<DropdownMenu>
+									<DropdownMenuTrigger
+										className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 font-bold text-white text-sm hover:bg-emerald-700 transition-all shadow-sm"
+									>
+										<Download className="h-4 w-4" /> Export
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end" className="w-48 rounded-xl p-2">
+										<DropdownMenuItem className="rounded-lg font-bold gap-2 cursor-pointer" onClick={() => handleExport("pdf")}>
+											<FileText className="h-4 w-4 text-red-500" /> Export PDF
+										</DropdownMenuItem>
+										<DropdownMenuItem className="rounded-lg font-bold gap-2 cursor-pointer" onClick={() => handleExport("csv")}>
+											<FileSpreadsheet className="h-4 w-4 text-green-600" /> Export CSV (Excel)
+										</DropdownMenuItem>
+										<DropdownMenuItem className="rounded-lg font-bold gap-2 cursor-pointer" onClick={() => handleExport("jpg")}>
+											<ImageIcon className="h-4 w-4 text-blue-500" /> Export JPG Image
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
+							</div>
+						</div>
+					</div>
+
 					<div className="flex flex-wrap items-center gap-2">
 						{(["all", "pending", "confirmed", "cancelled"] as const).map((f) => (
 							<button
@@ -707,8 +870,8 @@ function BookingSettingsPage() {
 							</button>
 						))}
 						{allOrders && (
-							<span className="ml-auto text-muted-foreground text-xs">
-								{filteredOrders?.length ?? 0} booking
+							<span className="ml-auto text-muted-foreground text-xs font-bold bg-muted/30 px-3 py-1 rounded-full">
+								{filteredOrders?.length ?? 0} dari {allOrders.length} booking ditemukan
 							</span>
 						)}
 					</div>

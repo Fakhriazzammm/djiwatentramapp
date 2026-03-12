@@ -426,3 +426,165 @@ export interface TransactionRow {
 	paymentMethod?: string;
 	status: string;
 }
+
+// ─────────────────────────────────────────────
+// BOOKING ORDERS EXPORT
+// ─────────────────────────────────────────────
+
+export interface BookingOrderRow {
+	bookingCode: string;
+	customerName: string;
+	customerPhone: string;
+	customerEmail: string;
+	bookingDate: string;
+	totalAmount: number;
+	paymentMethod: string;
+	paymentStatus: string;
+	bookingStatus: string;
+	guestCount?: number;
+	createdAt: number;
+}
+
+export function exportBookingOrdersPDF(orders: BookingOrderRow[], storeName: string, period: string) {
+	const doc = new jsPDF({ orientation: "landscape" });
+	addPDFHeader(doc, "DAFTAR BOOKING", period, storeName);
+
+	const body = orders.map((o) => [
+		o.bookingCode,
+		o.customerName,
+		new Date(o.bookingDate).toLocaleDateString("id-ID"),
+		o.guestCount || "-",
+		o.paymentMethod.replace("_", " "),
+		o.paymentStatus === "paid" ? "Lunas" : "Belum Bayar",
+		o.bookingStatus.toUpperCase(),
+		formatCurrencyIDR(o.totalAmount),
+	]);
+
+	const total = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+
+	autoTable(doc, {
+		startY: 50,
+		head: [["Kode", "Pelanggan", "Tanggal", "Pax", "Metode", "Pembayaran", "Status", "Total"]],
+		body,
+		foot: [["", "", "", "", "", "", "TOTAL SELESAI", formatCurrencyIDR(total)]],
+		theme: "striped",
+		styles: { fontSize: 8 },
+		headStyles: { fillColor: [16, 185, 129] },
+		footStyles: { fontStyle: "bold" },
+		columnStyles: { 7: { halign: "right" } },
+	});
+
+	doc.save(`daftar-booking-${Date.now()}.pdf`);
+}
+
+export function exportBookingOrdersExcel(orders: BookingOrderRow[], storeName: string, period: string) {
+	const wb = XLSX.utils.book_new();
+
+	const rows: (string | number)[][] = [
+		[storeName],
+		["DAFTAR BOOKING"],
+		[`Periode: ${period}`],
+		[],
+		["Kode", "Nama Pelanggan", "WhatsApp", "Email", "Tanggal", "Pax", "Metode", "Status Bayar", "Status Booking", "Total"],
+		...orders.map((o) => [
+			o.bookingCode,
+			o.customerName,
+			o.customerPhone,
+			o.customerEmail,
+			o.bookingDate,
+			o.guestCount || 0,
+			o.paymentMethod,
+			o.paymentStatus,
+			o.bookingStatus,
+			o.totalAmount,
+		]),
+		[],
+		["", "", "", "", "", "", "", "", "TOTAL", orders.reduce((sum, o) => sum + o.totalAmount, 0)],
+	];
+
+	const ws = XLSX.utils.aoa_to_sheet(rows);
+	ws["!cols"] = [
+		{ wch: 12 }, { wch: 20 }, { wch: 15 }, { wch: 25 },
+		{ wch: 12 }, { wch: 6 }, { wch: 12 }, { wch: 12 },
+		{ wch: 12 }, { wch: 15 }
+	];
+	XLSX.utils.book_append_sheet(wb, ws, "Booking");
+
+	XLSX.writeFile(wb, `daftar-booking-${Date.now()}.xlsx`);
+}
+
+export function exportBookingOrdersJPG(orders: BookingOrderRow[], storeName: string, period: string) {
+	const canvas = document.createElement("canvas");
+	const ctx = canvas.getContext("2d");
+	if (!ctx) return;
+
+	// Simple professional layout
+	canvas.width = 1200;
+	canvas.height = 800 + (orders.length * 40);
+
+	// Background
+	ctx.fillStyle = "#ffffff";
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+	// Header
+	ctx.fillStyle = "#10b981"; // Emerald
+	ctx.fillRect(0, 0, canvas.width, 100);
+
+	ctx.fillStyle = "#ffffff";
+	ctx.font = "bold 32px Arial";
+	ctx.fillText(storeName.toUpperCase(), 40, 60);
+	
+	ctx.font = "20px Arial";
+	ctx.fillText(`DAFTAR BOOKING - ${period}`, 40, 90);
+
+	// Table Header
+	ctx.fillStyle = "#f3f4f6";
+	ctx.fillRect(40, 120, canvas.width - 80, 40);
+
+	ctx.fillStyle = "#374151";
+	ctx.font = "bold 16px Arial";
+	const cols = [
+		{ label: "KODE", x: 60 },
+		{ label: "PELANGGAN", x: 200 },
+		{ label: "TANGGAL", x: 450 },
+		{ label: "PAX", x: 600 },
+		{ label: "METODE", x: 700 },
+		{ label: "PEMBAYARAN", x: 850 },
+		{ label: "TOTAL", x: 1050 },
+	];
+	cols.forEach(c => ctx.fillText(c.label, c.x, 145));
+
+	// Rows
+	let y = 180;
+	ctx.font = "14px Arial";
+	orders.forEach((o, i) => {
+		if (i % 2 === 0) {
+			ctx.fillStyle = "#f9fafb";
+			ctx.fillRect(40, y - 25, canvas.width - 80, 40);
+		}
+		ctx.fillStyle = "#4b5563";
+		ctx.fillText(o.bookingCode, 60, y);
+		ctx.fillText(o.customerName, 200, y);
+		ctx.fillText(o.bookingDate, 450, y);
+		ctx.fillText((o.guestCount || 0).toString(), 640, y);
+		ctx.fillText(o.paymentMethod.replace("_", " "), 700, y);
+		ctx.fillText(o.paymentStatus === "paid" ? "Lunas" : "Menunggu", 850, y);
+		ctx.fillText(formatCurrencyIDR(o.totalAmount), 1050, y);
+		y += 40;
+	});
+
+	// Totals
+	ctx.fillStyle = "#10b981";
+	ctx.fillRect(40, y, canvas.width - 80, 50);
+	ctx.fillStyle = "#ffffff";
+	ctx.font = "bold 18px Arial";
+	const total = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+	ctx.fillText("TOTAL", 60, y + 32);
+	ctx.fillText(formatCurrencyIDR(total), 1050, y + 32);
+
+	// Download
+	const link = document.createElement("a");
+	link.download = `daftar-booking-${Date.now()}.jpg`;
+	link.href = canvas.toDataURL("image/jpeg", 0.9);
+	link.click();
+}
