@@ -63,13 +63,18 @@ async function callGeminiAPI(
 		return { success: false, text: "", error: "GEMINI_API_KEY belum diatur di dashboard Convex." };
 	}
 
-	const models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.0-flash-lite"];
+	const models = [
+		"gemini-1.5-flash",      // Prioritize for speed/availability
+		"gemini-2.0-flash",      // Next best
+		"gemini-2.0-flash-lite", // Experimental/Flash-lite (often has lower limits)
+		"gemini-1.5-pro"         // Last resort (more powerful but higher latency/stricter limits)
+	];
 	let lastError = "";
 
 	for (const model of models) {
 		try {
 			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+			const timeoutId = setTimeout(() => controller.abort(), 35000); // Increased to 35s for Pro model
 
 			const response = await fetch(
 				`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
@@ -119,28 +124,40 @@ async function callGeminiAPI(
 				const errorBody = await response.text().catch(() => "");
 				lastError = `Gemini ${model}: ${response.status} - ${errorBody.slice(0, 200)}`;
 				console.log(`callGeminiAPI: ${lastError}`);
-				// If 429 (rate limit) or 503 (overloaded), wait briefly and try next model
-				if (response.status === 429 || response.status === 503) {
-					await new Promise(r => setTimeout(r, 1000));
+				
+				// Handle specific error codes with backoff/fallback
+				if (response.status === 429 || response.status === 503 || response.status === 500) {
+					// Exponential-ish backoff: Wait 2s before trying another model if it's a rate limit or server error
+					const waitTime = response.status === 429 ? 2000 : 1000;
+					await new Promise(r => setTimeout(r, waitTime));
 				}
-				// If 400 (bad request) with this model, try next
-				if (response.status === 400) continue;
-				// If 403 (forbidden) - API key issue, no point trying other models
-				if (response.status === 403) {
+				
+				// If 403 (forbidden) - API key issue, no point trying other models unless it's a model-specific permission
+				if (response.status === 403 && !errorBody.includes("permission denied on model")) {
 					return { success: false, text: "", error: `Gemini API key tidak valid atau tidak memiliki akses. ${lastError}` };
 				}
+				
+				// Continue to next model for most errors
+				continue;
 			}
 		} catch (e) {
 			if (e instanceof Error && e.name === "AbortError") {
-				lastError = `Gemini ${model}: Request timeout (30s)`;
+				lastError = `Gemini ${model}: Request timeout`;
 			} else {
 				lastError = `Gemini ${model}: ${e instanceof Error ? e.message : String(e)}`;
 			}
 			console.log(`callGeminiAPI: ${lastError}`);
+			// Small delay before next attempt
+			await new Promise(r => setTimeout(r, 500));
 		}
 	}
 
-	return { success: false, text: "", error: lastError };
+	// Final error message if all models failed
+	const finalErrorMessage = lastError.includes("429") 
+		? "Batas penggunaan AI (Quota Exceeded) tercapai di semua model. Silakan coba lagi setelah beberapa menit atau periksa paket Gemini API Anda."
+		: `Gagal menganalisis gambar setelah mencoba berbagai model: ${lastError}`;
+	
+	return { success: false, text: "", error: finalErrorMessage };
 }
 
 /**
@@ -841,6 +858,7 @@ KEMAMPUAN:
 - REKONSILIASI KEUANGAN: Cross-check pesanan selesai vs transaksi keuangan, identifikasi selisih, bantu rekonsiliasi
 - FIFO INVENTORY: Kelola stok berdasarkan tanggal masuk dan harga. Kamu bisa melihat rincian batch stok menggunakan tool getInventoryBatches dan menambah stok dengan tanggal spesifik menggunakan addStock.
 - ANALISIS GAMBAR: Dapat membaca dan menganalisis gambar (foto struk, kwitansi, produk, dll) yang dikirim user. Ekstrak informasi seperti jumlah, item, tanggal, kategori, dan langsung catat ke sistem jika diminta
+- BOOKING & RESERVASI: Kamu dapat membuat booking baru (createBooking) atau bulk booking (bulkCreateBookings) untuk reservasi pelanggan. Pastikan mendapatkan detail pelanggan (nama, telp, email) dan detail booking (tanggal, jumlah tamu, item pesanan).
 
 ATURAN:
 1. Jawab dalam Bahasa Indonesia yang ramah dan profesional
@@ -877,6 +895,7 @@ INSTRUKSI MULTI-STEP ACTIONS:
 - Contoh: "Rekonsiliasi keuangan bulan ini" -> cek data rekonsiliasi dari context lalu sarankan createReconciliationTransaction jika ada gap
 - Contoh: "Hitung HPP untuk produk X dengan bahan Y dan Z" -> gunakan createHppCalculation
 - Contoh: "Prediksi stok yang akan habis" -> analisis data forecasting dari context dan berikan rekomendasi
+- Contoh: "Ada booking baru dari Budi, 0812345, budi@mail.com, untuk besok, 2 orang, pesan Kopi 2 cup" -> gunakan createBooking
 - Lakukan semua langkah yang diperlukan untuk menyelesaikan permintaan user dalam satu sesi
 
 INSTRUKSI TOOL CALLING:
