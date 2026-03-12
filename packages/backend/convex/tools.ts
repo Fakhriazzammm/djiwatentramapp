@@ -327,6 +327,59 @@ export const tools = {
 		}),
 	},
 
+	// Create Booking
+	createBooking: {
+		description:
+			"Buat booking/reservasi baru. Sertakan nama pelanggan, nomor telepon, email, tanggal booking (YYYY-MM-DD), jumlah tamu, total harga, metode pembayaran, dan daftar item yang dipesan.",
+		parameters: z.object({
+			customerName: z.string().min(1, "Nama pelanggan wajib diisi"),
+			customerPhone: z.string().min(1, "Nomor telepon wajib diisi"),
+			customerEmail: z.string().email("Format email tidak valid"),
+			bookingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal: YYYY-MM-DD"),
+			guestCount: z.number().positive("Jumlah tamu harus minimal 1"),
+			totalAmount: z.number().nonnegative(),
+			paymentMethod: z.string().describe("Metode pembayaran (cash, qris, transfer, dll)"),
+			items: z.array(
+				z.object({
+					productId: z.string(),
+					name: z.string(),
+					price: z.number(),
+					quantity: z.number(),
+				})
+			).min(1, "Minimal 1 item harus dipesan"),
+			notes: z.string().optional().describe("Catatan tambahan"),
+			slug: z.string().optional().default("booking").describe("Slug landing page booking"),
+		}),
+	},
+
+	// Bulk Create Bookings
+	bulkCreateBookings: {
+		description: "Buat banyak booking sekaligus. Berguna saat user memberikan daftar pesanan reservasi yang panjang.",
+		parameters: z.object({
+			bookings: z.array(
+				z.object({
+					customerName: z.string(),
+					customerPhone: z.string(),
+					customerEmail: z.string(),
+					bookingDate: z.string(),
+					guestCount: z.number(),
+					totalAmount: z.number(),
+					paymentMethod: z.string(),
+					items: z.array(
+						z.object({
+							productId: z.string(),
+							name: z.string(),
+							price: z.number(),
+							quantity: z.number(),
+						})
+					),
+					notes: z.string().optional(),
+					slug: z.string().optional().default("booking"),
+				})
+			).min(1),
+		}),
+	},
+
 	// ============================================
 	// USER & ROLE TOOLS
 	// ============================================

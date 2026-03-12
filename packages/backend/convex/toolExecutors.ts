@@ -481,19 +481,54 @@ export const executeToolCall = action({
 			// ============================================
 			// BOOKING TOOLS
 			// ============================================
-			case "updateBookingStatus": {
-				const parsed = tools.updateBookingStatus.parameters.parse(toolArgs);
-				await ctx.runMutation(api.booking.updateBookingStatus, {
-					id: asId(parsed.id),
-					bookingStatus: parsed.bookingStatus,
-					paymentStatus: parsed.paymentStatus,
-				});
-				result = {
-					success: true,
-					message: `Booking berhasil diupdate${parsed.bookingStatus ? ` - status: ${parsed.bookingStatus}` : ""}${parsed.paymentStatus ? ` - pembayaran: ${parsed.paymentStatus}` : ""}`,
-				};
-				break;
-			}
+				case "updateBookingStatus": {
+					const parsed = tools.updateBookingStatus.parameters.parse(toolArgs);
+					await ctx.runMutation(api.booking.updateBookingStatus, {
+						id: asId(parsed.id),
+						bookingStatus: parsed.bookingStatus,
+						paymentStatus: parsed.paymentStatus,
+					});
+					result = {
+						success: true,
+						message: `Booking berhasil diupdate${parsed.bookingStatus ? ` - status: ${parsed.bookingStatus}` : ""}${parsed.paymentStatus ? ` - pembayaran: ${parsed.paymentStatus}` : ""}`,
+					};
+					break;
+				}
+
+				case "createBooking": {
+					const parsed = tools.createBooking.parameters.parse(toolArgs);
+					result = await ctx.runMutation(api.booking.createBookingOrder, {
+						customerName: parsed.customerName,
+						customerPhone: parsed.customerPhone,
+						customerEmail: parsed.customerEmail,
+						bookingDate: parsed.bookingDate,
+						guestCount: parsed.guestCount,
+						totalAmount: parsed.totalAmount,
+						paymentMethod: parsed.paymentMethod,
+						items: parsed.items,
+						notes: parsed.notes,
+						slug: parsed.slug || "booking",
+					});
+					break;
+				}
+
+				case "bulkCreateBookings": {
+					const parsed = tools.bulkCreateBookings.parameters.parse(toolArgs);
+					const results = [];
+					for (const booking of parsed.bookings) {
+						const id = await ctx.runMutation(api.booking.createBookingOrder, {
+							...booking,
+							slug: booking.slug || "booking",
+						});
+						results.push(id);
+					}
+					result = {
+						success: true,
+						count: results.length,
+						ids: results,
+					};
+					break;
+				}
 
 			default:
 					return {

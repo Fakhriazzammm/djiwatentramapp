@@ -173,6 +173,8 @@ const TOOL_LABELS: Record<string, string> = {
 	updateStoreSettings: "Update Pengaturan Toko",
 	analyzeDiscountEffectiveness: "Analisis Efektivitas Diskon",
 	createReconciliationTransaction: "Rekonsiliasi Keuangan",
+	createBooking: "Buat Booking",
+	bulkCreateBookings: "Buat Bulk Booking",
 };
 
 function AIChatPage() {
