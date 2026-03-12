@@ -501,18 +501,18 @@ function AIChatPage() {
 	const handleSaveFromEditModal = useCallback(async (params: ScanEditParams) => {
 		if (!editModal) return;
 		const { btnKey } = editModal;
-		setActionButtonLoading(prev => new Set(prev).add(btnKey));
+		setActionButtonLoading(prev => { const s = new Set<string>(prev); s.add(btnKey); return s; });
 		try {
 			await createTransactionMutation(params);
 			toast.success("Transaksi berhasil disimpan!");
-			setActionButtonDone(prev => new Set(prev).add(btnKey));
+			setActionButtonDone(prev => { const s = new Set<string>(prev); s.add(btnKey); return s; });
 			markScanSaved(btnKey);
 			setEditModal(null);
 		} catch (error) {
 			toast.error(`Gagal: ${error instanceof Error ? error.message : "Terjadi kesalahan"}`);
 		} finally {
 			setActionButtonLoading(prev => {
-				const s = new Set(prev);
+				const s = new Set<string>(prev);
 				s.delete(btnKey);
 				return s;
 			});
@@ -526,7 +526,7 @@ function AIChatPage() {
 		try {
 			await Promise.all(splits.map((p) => createTransactionMutation(p)));
 			toast.success(`${splits.length} transaksi berhasil disimpan!`);
-			setActionButtonDone(prev => new Set(prev).add(btnKey));
+			setActionButtonDone(prev => { const s = new Set<string>(prev); s.add(btnKey); return s; });
 			markScanSaved(btnKey);
 			setSplitModal(null);
 			setEditModal(null);
@@ -542,12 +542,12 @@ function AIChatPage() {
 				navigate({ to: action.href as Parameters<typeof navigate>[0]["to"] });
 			} else if (action.actionType === "sendPrompt") {
 				if (!action.prompt) return;
-				sendMessage(action.prompt);
+				sendMessageRef.current(action.prompt);
 			}
 		} catch {
 			toast.error("Gagal menjalankan aksi. Silakan coba lagi.");
 		}
-	}, [navigate, sendMessage]);
+	}, [navigate]);
 
 	// Fetch data for AI
 	const products = useQuery(api.products.getAllProductsAdmin, {});
@@ -591,7 +591,7 @@ function AIChatPage() {
 	}> = [];
 
 	const lowStockItems =
-		inventory?.filter((i) => i.quantity <= i.lowStockThreshold) ?? [];
+		inventory?.filter((i: { quantity: number; lowStockThreshold: number }) => i.quantity <= i.lowStockThreshold) ?? [];
 	if (lowStockItems.length > 0) {
 		smartInsights.push({
 			icon: <AlertTriangle className="h-3.5 w-3.5 text-accent" />,
@@ -600,7 +600,7 @@ function AIChatPage() {
 		});
 	}
 
-	const pendingOrders = orders?.filter((o) => o.status === "pending") ?? [];
+	const pendingOrders = orders?.filter((o: { status: string }) => o.status === "pending") ?? [];
 	if (pendingOrders.length > 0) {
 		smartInsights.push({
 			icon: <Bell className="h-3.5 w-3.5 text-primary" />,
@@ -609,7 +609,7 @@ function AIChatPage() {
 		});
 	}
 
-	const availableProducts = products?.filter((p) => p.isAvailable).length ?? 0;
+	const availableProducts = products?.filter((p: { isAvailable: boolean }) => p.isAvailable).length ?? 0;
 	if (availableProducts > 0) {
 		smartInsights.push({
 			icon: <TrendingUp className="h-3.5 w-3.5 text-primary" />,
@@ -1088,6 +1088,140 @@ function AIChatPage() {
 		toast.success("Chat berhasil dihapus");
 	};
 
+	const startNewSession = () => {
+		setCurrentSessionId(null);
+		setMessages([
+			{
+				role: "assistant",
+				_msgId: mkMsgId(),
+				content:
+					"Halo! Saya Yumi, asisten AI kamu untuk YUMI POS. Saya bisa membantu merekap data, menganalisis bisnis, MELAKUKAN AKSI seperti tambah produk, update stok, buat pesanan, dan bahkan MULTI-STEP ACTIONS dalam satu permintaan. Sekarang saya dilengkapi dengan Forecasting, Analisis HPP, Efektivitas Diskon, dan Rekonsiliasi Keuangan!",
+			},
+		]);
+		setShowSessionHistory(false);
+	};
+
+	// sendMessage function — sends user message to Yumi AI
+	const sendMessage = useCallback(async (text: string) => {
+		const trimmed = text.trim();
+		if (!trimmed && selectedImages.length === 0) return;
+		if (isLoading || isStreaming) return;
+
+		const requestId = ++requestIdRef.current;
+
+		// Create user message
+		const userMessage: ChatMessage = {
+			role: "user",
+			content: trimmed || "(gambar)",
+			image: selectedImages.length > 0 ? selectedImages[0] : undefined,
+			_msgId: mkMsgId(),
+		};
+
+		setMessages(prev => [...prev, userMessage]);
+		setInput("");
+		setSelectedImages([]);
+		setIsLoading(true);
+
+		try {
+			const history = messages
+				.filter(m => m.role === "user" || m.role === "assistant")
+				.slice(-10)
+				.map(m => ({ role: m.role, content: m.content }));
+
+			const response = await yumiChat({
+				message: trimmed,
+				history,
+				images: selectedImages.length > 0 ? selectedImages : undefined,
+			});
+
+			// Stale response guard
+			if (requestId !== requestIdRef.current) return;
+
+			const suggestions = extractSuggestions(response);
+			const sanitized = sanitizeResponse(response);
+			const quickActions = generateQuickActions(trimmed, response);
+
+			const tools = (response.match(/\[TOOL:.*?\]/g) || []).map((t: string) => {
+				const inner = t.slice(6, -1);
+				const [name, ...rest] = inner.split("|");
+				return { name: name.trim(), args: {}, status: "success" as const, result: rest.join("|").trim() };
+			});
+			if (tools.length > 0) setToolCalls(prev => [...prev, ...tools]);
+
+			const finalContent = sanitized || response;
+
+			streamText(finalContent, () => {
+				setMessages(prev => [
+					...prev,
+					{
+						role: "assistant",
+						content: finalContent,
+						suggestions,
+						quickActions,
+						_msgId: mkMsgId(),
+					},
+				]);
+			});
+
+			// Save conversation to session
+			if (currentSessionId) {
+				try {
+					await saveConversationMutation({
+						sessionId: currentSessionId,
+						messages: [
+							{ role: "user", content: trimmed },
+							{ role: "assistant", content: finalContent },
+						],
+					});
+				} catch { /* ignore save error */ }
+			} else {
+				// Auto-create a new session
+				try {
+					const sessionId = await createSessionMutation({
+						title: trimmed.slice(0, 50),
+					});
+					setCurrentSessionId(sessionId);
+					await saveConversationMutation({
+						sessionId,
+						messages: [
+							{ role: "user", content: trimmed },
+							{ role: "assistant", content: finalContent },
+						],
+					});
+				} catch { /* ignore */ }
+			}
+
+			// Auto-generate follow-up tasks
+			try {
+				await autoGenerateTasksMutation({ message: trimmed, response: finalContent });
+			} catch { /* ignore */ }
+
+		} catch (error: unknown) {
+			if (requestId !== requestIdRef.current) return;
+			let errorMsg = "Maaf, terjadi kesalahan. Silakan coba lagi.";
+			if (error && typeof error === "object" && "data" in error) {
+				const convexErr = error as { data: string | { message?: string } };
+				errorMsg = typeof convexErr.data === "string" ? convexErr.data : convexErr.data?.message || errorMsg;
+			} else if (error instanceof Error) {
+				errorMsg = error.message;
+			}
+			setMessages(prev => [
+				...prev,
+				{
+					role: "assistant",
+					content: `⚠️ ${errorMsg}`,
+					_msgId: mkMsgId(),
+				},
+			]);
+		} finally {
+			setIsLoading(false);
+		}
+	}, [messages, selectedImages, isLoading, isStreaming, yumiChat, streamText, extractSuggestions, sanitizeResponse, currentSessionId, saveConversationMutation, createSessionMutation, autoGenerateTasksMutation]);
+
+	// Ref to always access latest sendMessage in callbacks
+	const sendMessageRef = useRef(sendMessage);
+	useEffect(() => { sendMessageRef.current = sendMessage; }, [sendMessage]);
+
 	const deleteAllSessions = async () => {
 		if (!chatSessions || chatSessions.length === 0) return;
 		try {
@@ -1112,8 +1246,8 @@ function AIChatPage() {
 	useEffect(() => {
 		if (currentSessionId && loadConversationQuery) {
 			const history = loadConversationQuery
-				.filter((m) => m.role !== "system")
-				.map((m) => ({
+				.filter((m: { role: string }) => m.role !== "system")
+				.map((m: { role: string; content: string }) => ({
 					role: m.role as "user" | "assistant",
 					content: m.content,
 					_msgId: mkMsgId(),
@@ -1410,7 +1544,7 @@ function AIChatPage() {
 																		{msg.suggestions.map((suggestion, idx) => (
 																			<button
 																				key={idx}
-																				onClick={() => sendMessage(suggestion.prompt)}
+																				onClick={() => sendMessageRef.current(suggestion.prompt)}
 																aria-label={`Tanya Yumi: ${suggestion.label}`}
 																				type="button"
 																				disabled={isLoading || isStreaming}
@@ -1973,7 +2107,7 @@ function AIChatPage() {
 									className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1.5 text-[10px] text-muted-foreground transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
 									disabled={isLoading}
 									key={t.label}
-									onClick={() => sendMessage(t.message)}
+									onClick={() => sendMessageRef.current(t.message)}
 									type="button"
 								>
 									{t.icon}
@@ -2174,7 +2308,7 @@ function AIChatPage() {
 										if (e.key === "Enter" && !e.shiftKey) {
 											e.preventDefault();
 											if (input.trim() || selectedImages.length > 0) {
-											sendMessage(input);
+											sendMessage(input);
 											if (inputRef.current) {
 												inputRef.current.style.height = "auto";
 											}
@@ -2197,7 +2331,7 @@ function AIChatPage() {
 									disabled={isLoading || !(input.trim() || selectedImages.length > 0)}
 									onClick={() => {
 										if (input.trim() || selectedImages.length > 0) {
-											sendMessage(input);
+											sendMessage(input);
 											if (inputRef.current) {
 												inputRef.current.style.height = "auto";
 											}
@@ -2280,7 +2414,7 @@ function AIChatPage() {
 								<div className="p-3 border-border border-b">
 									<button
 										className="flex w-full items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-primary-foreground text-sm font-medium transition-colors hover:bg-primary/90"
-										onClick={() => startNewSession()}
+										onClick={() => startNewSession()}
 										type="button"
 									>
 										<Sparkles className="h-4 w-4" />

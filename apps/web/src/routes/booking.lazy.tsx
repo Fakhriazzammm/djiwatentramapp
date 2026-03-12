@@ -563,6 +563,7 @@ function BookingPage() {
 	const [selectedPayment, setSelectedPayment] = useState<string>("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [completedBooking, setCompletedBooking] = useState<any>(null);
+	const [transferredAmount, setTransferredAmount] = useState<string>("");
 	const [proofImage, setProofImage] = useState<string>("");
 	const [isUploadingProof, setIsUploadingProof] = useState(false);
 
@@ -799,8 +800,13 @@ function BookingPage() {
 		const booking = confirmedBooking || completedBooking;
 		if (!booking) return;
 
-		if (selectedPayment === "bank_transfer" && !proofImage) {
+		if ((selectedPayment === "bank_transfer" || selectedPayment === "qris") && !proofImage) {
 			toast.error("Wajib mengunggah bukti pembayaran");
+			return;
+		}
+
+		if (selectedPayment === "qris" && !transferredAmount) {
+			toast.error("Wajib mengisi nominal transfer");
 			return;
 		}
 
@@ -810,6 +816,7 @@ function BookingPage() {
 				await uploadPaymentProof({
 					id: booking._id,
 					storageId: proofImage,
+					transferredAmount: transferredAmount ? Number(transferredAmount) : undefined,
 				});
 			}
 			setStep(6);
@@ -848,18 +855,73 @@ function BookingPage() {
 									)}
 								</div>
 								<div className="text-center space-y-2">
-									<p className="font-bold text-sm">Total: {fmt(cartTotal)}</p>
+									<p className="font-bold text-sm">Total Tagihan: {fmt(cartTotal)}</p>
 									<p className="text-xs text-muted-foreground">
 										Silakan scan QRIS di atas dan selesaikan pembayaran.
 									</p>
 								</div>
+
+								<div className="space-y-4 pt-4 border-t border-border">
+									<div className="space-y-1.5">
+										<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">
+											Nominal yang Ditransfer *
+										</label>
+										<input
+											className="w-full rounded-xl bg-muted/50 p-3.5 font-bold text-foreground outline-none transition-all focus:ring-2"
+											onChange={(e) => setTransferredAmount(e.target.value)}
+											placeholder="Masukkan nominal pasti"
+											style={{ "--tw-ring-color": themeColor } as any}
+											type="number"
+											value={transferredAmount}
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">
+											Upload Bukti Pembayaran *
+										</label>
+										<div className="relative">
+											{proofImage ? (
+												<div className="relative h-40 w-full overflow-hidden rounded-xl border border-primary/30">
+													<img
+														alt="Proof"
+														className="h-full w-full object-cover"
+														src={proofImage.startsWith("http") ? proofImage : undefined}
+													/>
+													<button
+														className="absolute top-2 right-2 rounded-full bg-red-500 p-1.5 text-white"
+														onClick={() => setProofImage("")}
+														type="button"
+													>
+														<X className="h-4 w-4" />
+													</button>
+												</div>
+											) : (
+												<label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-all">
+													<Upload className="h-8 w-8 text-muted-foreground mb-2" />
+													<span className="text-xs text-muted-foreground">
+														{isUploadingProof ? "Mengunggah..." : "Pilih Gambar Bukti"}
+													</span>
+													<input
+														accept="image/*"
+														className="hidden"
+														onChange={handleProofUpload}
+														type="file"
+													/>
+												</label>
+											)}
+										</div>
+									</div>
+								</div>
+
 								<button
-									className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98]"
-									onClick={() => setStep(6)}
+									className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+									disabled={!proofImage || !transferredAmount || isSubmitting}
+									onClick={handleFinishBooking}
 									style={{ background: themeColor }}
 									type="button"
 								>
-									Saya Sudah Bayar
+									{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Kirim Bukti & Selesaikan"}
 								</button>
 							</div>
 						)}

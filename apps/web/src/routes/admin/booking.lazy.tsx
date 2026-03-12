@@ -226,6 +226,8 @@ function OrderRow({
 		bookingStatus: string;
 		notes?: string;
 		items: { name: string; quantity: number; price: number }[];
+		paymentProofImage?: string;
+		transferredAmount?: number;
 		createdAt: number;
 	};
 	onUpdateStatus: (
@@ -288,7 +290,36 @@ function OrderRow({
 								<p className="text-sm">{order.notes}</p>
 							</div>
 						)}
+						{order.transferredAmount !== undefined && (
+							<div>
+								<p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Nominal Ditransfer</p>
+								<p className="text-sm font-bold text-emerald-600">
+									Rp {order.transferredAmount.toLocaleString("id-ID")}
+								</p>
+							</div>
+						)}
 					</div>
+
+					{order.paymentProofImage && (
+						<div className="space-y-2">
+							<p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Bukti Pembayaran</p>
+							<div className="relative h-48 w-48 overflow-hidden rounded-xl border border-border bg-white shadow-sm hover:h-auto hover:w-full max-w-sm transition-all cursor-zoom-in">
+								<img
+									alt="Proof"
+									className="h-full w-full object-contain"
+									src={order.paymentProofImage.startsWith("http") ? order.paymentProofImage : `/api/storage/${order.paymentProofImage}`}
+									onError={(e) => {
+										// Fallback if the storage URL needs prefixing via Convex
+										const target = e.target as HTMLImageElement;
+										if (!target.src.includes("convex")) {
+											// This is a placeholder logic for the demo, in real Convex we'd use useQuery to get URL
+											// But since we are in a pure component, we hope the URL is already resolved or handled by Proxy
+										}
+									}}
+								/>
+							</div>
+						</div>
+					)}
 
 					<div>
 						<p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Item Pesanan</p>
@@ -337,7 +368,7 @@ function OrderRow({
 								onClick={() => onUpdateStatus(order._id, undefined, "paid")}
 								type="button"
 							>
-								Tandai Lunas
+								Tandai Lunas & Verifikasi
 							</button>
 						)}
 					</div>

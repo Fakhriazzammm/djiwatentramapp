@@ -346,10 +346,31 @@ export const uploadPaymentProof = mutation({
 	args: {
 		id: v.id("bookingOrders"),
 		storageId: v.string(),
+		transferredAmount: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const { id, storageId } = args;
-		await ctx.db.patch(id, { paymentProofImage: storageId });
+		const { id, storageId, transferredAmount } = args;
+		const booking = await ctx.db.get(id);
+		if (!booking) throw new Error("Booking not found");
+
+		// Record financial transaction if not already paid
+		if (booking.paymentStatus !== "paid") {
+			await ctx.db.insert("financialTransactions", {
+				type: "income",
+				amount: transferredAmount || booking.totalAmount,
+				category: "Booking",
+				description: `Booking #${booking.bookingCode} - ${booking.customerName} (QRIS/Transfer)`,
+				date: Date.now(),
+				paymentMethod: booking.paymentMethod,
+				status: "completed",
+			});
+		}
+
+		await ctx.db.patch(id, {
+			paymentProofImage: storageId,
+			transferredAmount,
+			paymentStatus: "paid",
+		});
 	},
 });
 

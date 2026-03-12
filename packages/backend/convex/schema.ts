@@ -561,6 +561,7 @@ export default defineSchema({
 		guestCount: v.optional(v.number()),
 		tableCount: v.optional(v.number()),
 		paymentProofImage: v.optional(v.string()),
+		transferredAmount: v.optional(v.number()),
 		createdAt: v.number(),
 	})
 		.index("by_slug", ["slug"])

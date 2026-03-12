@@ -317,6 +317,8 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		periodComparison,
 		hppMarginAnalysis,
 		bookingOrders,
+		bookingSettings,
+		bookingCapacities,
 	] = await Promise.all([
 		ctx.runQuery(api.products.getAllProductsAdmin),
 		ctx.runQuery(api.products.getCategories),
@@ -331,6 +333,8 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		ctx.runQuery(api.finance.getPeriodComparison),
 		ctx.runQuery(api.hpp.getHppWithMarginAnalysis, {}),
 		ctx.runQuery(api.booking.getBookingOrders, { slug: "booking" }),
+		ctx.runQuery(api.booking.getSettings, { slug: "booking" }),
+		ctx.runQuery(api.booking.getDateCapacities, { slug: "booking" }),
 	]);
 
 	const prodList =
@@ -655,7 +659,10 @@ ${(() => {
 		(b) =>
 			`#${b.bookingCode} - ${b.customerName} (${b.customerPhone}) - ${b.bookingDate} - Rp${b.totalAmount.toLocaleString("id-ID")} - ${b.bookingStatus}/${b.paymentStatus}`
 	).join("\n");
-	return `Total: ${bookingArr.length} booking (Pending: ${pending.length}, Dikonfirmasi: ${confirmed.length}, Selesai: ${completed.length}, Dibatalkan: ${cancelled.length})\nTotal Pendapatan Booking: Rp${totalRevenue.toLocaleString("id-ID")}\nBooking Terbaru:\n${recent}`;
+	const settingsStr = bookingSettings ? `Konfigurasi: ${bookingSettings.title} (${bookingSettings.isActive ? "Aktif" : "Nonaktif"}), Pembayaran: ${bookingSettings.paymentMethods?.join(", ") || "-"}` : "Konfigurasi tidak ditemukan";
+	const capStr = (bookingCapacities as any[])?.length > 0 ? `Kapasitas Khusus: ${(bookingCapacities as any[]).map(c => `${c.date}: ${c.maxPeople} org / ${c.maxTables} meja`).join("; ")}` : "Tidak ada kapasitas khusus";
+
+	return `Total: ${bookingArr.length} booking (Pending: ${pending.length}, Dikonfirmasi: ${confirmed.length}, Selesai: ${completed.length}, Dibatalkan: ${cancelled.length})\nTotal Pendapatan Booking: Rp${totalRevenue.toLocaleString("id-ID")}\n${settingsStr}\n${capStr}\nBooking Terbaru:\n${recent}`;
 })()}
 
 == FITUR APLIKASI ==
