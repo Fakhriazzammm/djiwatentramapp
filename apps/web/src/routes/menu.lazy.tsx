@@ -715,7 +715,7 @@ function MenuPage() {
 										type="button"
 									>
 										{product.menuNumber != null && (
-											<div className="absolute top-1.5 left-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded px-1 bg-black text-white font-bold text-[9px] leading-none shadow">
+											<div className="absolute top-1.5 left-1.5 z-10 flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 bg-black/80 text-white font-bold text-xs leading-none shadow-md">
 												{product.menuNumber}
 											</div>
 										)}

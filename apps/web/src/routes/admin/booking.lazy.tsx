@@ -245,6 +245,8 @@ function AdminCalendar({
 function OrderRow({
 	order,
 	onUpdateStatus,
+	onEdit,
+	onDelete,
 }: {
 	order: {
 		_id: Id<"bookingOrders">;
@@ -874,26 +876,95 @@ function BookingSettingsPage() {
 							</div>
 						</div>
 
-						<div className="grid grid-cols-2 gap-3 lg:w-80">
-							<div className="space-y-1.5">
-								<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">Mulai</label>
-								<input
-									className="w-full rounded-xl bg-muted/50 px-3 py-2.5 text-sm font-medium outline-none"
-									onChange={(e) => setStartDate(e.target.value)}
-									type="date"
-									value={startDate}
-								/>
+						<div className="flex-1 lg:w-40 space-y-1.5">
+								<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">Periode</label>
+								<select
+									className="w-full rounded-xl bg-muted/50 px-3 py-2.5 text-sm font-bold outline-none appearance-none"
+									onChange={(e) => {
+										const val = e.target.value;
+										if (val === "custom") return;
+										
+										const now = new Date();
+										let start = new Date();
+										let end = new Date();
+										
+										switch (val) {
+											case "today":
+												break;
+											case "yesterday":
+												start.setDate(now.getDate() - 1);
+												end.setDate(now.getDate() - 1);
+												break;
+											case "this_week": {
+												const day = now.getDay();
+												const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+												start = new Date(now.setDate(diff));
+												end = new Date(start);
+												end.setDate(start.getDate() + 6);
+												break;
+											}
+											case "last_week": {
+												const day = now.getDay();
+												const diff = now.getDate() - day + (day === 0 ? -6 : 1) - 7;
+												start = new Date(now.setDate(diff));
+												end = new Date(start);
+												end.setDate(start.getDate() + 6);
+												break;
+											}
+											case "this_month":
+												start = new Date(now.getFullYear(), now.getMonth(), 1);
+												end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+												break;
+											case "last_month":
+												start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+												end = new Date(now.getFullYear(), now.getMonth(), 0);
+												break;
+											case "this_year":
+												start = new Date(now.getFullYear(), 0, 1);
+												end = new Date(now.getFullYear(), 11, 31);
+												break;
+											case "ytd":
+												start = new Date(now.getFullYear(), 0, 1);
+												end = new Date();
+												break;
+										}
+										
+										setStartDate(start.toISOString().split("T")[0]);
+										setEndDate(end.toISOString().split("T")[0]);
+									}}
+								>
+									<option value="custom">Kustom</option>
+									<option value="today">Hari Ini</option>
+									<option value="yesterday">Kemarin</option>
+									<option value="this_week">Minggu Ini</option>
+									<option value="last_week">Minggu Lalu</option>
+									<option value="this_month">Bulan Ini</option>
+									<option value="last_month">Bulan Lalu</option>
+									<option value="this_year">Tahun Ini</option>
+									<option value="ytd">YTD (Berjalan)</option>
+								</select>
 							</div>
-							<div className="space-y-1.5">
-								<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">Selesai</label>
-								<input
-									className="w-full rounded-xl bg-muted/50 px-3 py-2.5 text-sm font-medium outline-none"
-									onChange={(e) => setEndDate(e.target.value)}
-									type="date"
-									value={endDate}
-								/>
+
+							<div className="grid grid-cols-2 gap-3 lg:w-80">
+								<div className="space-y-1.5">
+									<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">Mulai</label>
+									<input
+										className="w-full rounded-xl bg-muted/50 px-3 py-2.5 text-sm font-medium outline-none"
+										onChange={(e) => setStartDate(e.target.value)}
+										type="date"
+										value={startDate}
+									/>
+								</div>
+								<div className="space-y-1.5">
+									<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest">Selesai</label>
+									<input
+										className="w-full rounded-xl bg-muted/50 px-3 py-2.5 text-sm font-medium outline-none"
+										onChange={(e) => setEndDate(e.target.value)}
+										type="date"
+										value={endDate}
+									/>
+								</div>
 							</div>
-						</div>
 
 						<div className="flex gap-2">
 							<div className="flex-1 lg:w-40 space-y-1.5">

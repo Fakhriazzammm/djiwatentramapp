@@ -1,9 +1,12 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
-import { Wallet } from "lucide-react";
+import { Wallet, Pencil, Trash2 } from "lucide-react";
 import type { DateRange } from "./period-selector";
 import { formatCurrencyIDR } from "@/lib/export-utils";
+import { NewTransactionDialog } from "../../-components/new-transaction-dialog";
+import { toast } from "sonner";
+import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
 
 const EXPENSE_CATEGORIES = [
 	"makanan_minuman",
@@ -28,6 +31,11 @@ interface Props {
 export function TransactionDetailReport({ range }: Props) {
 	const [filterType, setFilterType] = useState<"income" | "expense" | undefined>(undefined);
 	const [filterCategory, setFilterCategory] = useState<string>("");
+	
+	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+	const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+	
+	const deleteTransaction = useMutation(api.finance.deleteTransaction);
 
 	const data = useQuery(api.finance.getTransactionDetailReport, {
 		startDate: range.startDate,
@@ -51,6 +59,22 @@ export function TransactionDetailReport({ range }: Props) {
 				{category.replace(/_/g, " ")}
 			</span>
 		);
+	};
+
+	const handleDelete = async (id: Id<"financialTransactions">) => {
+		if (!confirm("Apakah Anda yakin ingin menghapus transaksi ini?")) return;
+		try {
+			await deleteTransaction({ id });
+			toast.success("Transaksi berhasil dihapus");
+		} catch (error) {
+			console.error(error);
+			toast.error("Gagal menghapus transaksi");
+		}
+	};
+
+	const handleEdit = (transaction: any) => {
+		setSelectedTransaction(transaction);
+		setIsEditDialogOpen(true);
 	};
 
 	return (
@@ -136,10 +160,11 @@ export function TransactionDetailReport({ range }: Props) {
 									<th className="px-4 py-3 text-left">Metode</th>
 									<th className="px-4 py-3 text-left">Status</th>
 									<th className="px-4 py-3 text-right">Jumlah</th>
+									<th className="px-4 py-3 text-center">Aksi</th>
 								</tr>
 							</thead>
 							<tbody>
-								{(data.transactions as Array<{ _id: string; type: "income" | "expense"; amount: number; category: string; merchant?: string; description?: string; date: number; paymentMethod?: string; status: string }>).map((t) => (
+								{(data.transactions as Array<{ _id: Id<"financialTransactions">; type: "income" | "expense"; amount: number; category: string; merchant?: string; description?: string; date: number; paymentMethod?: string; status: string }>).map((t) => (
 									<tr key={t._id} className="border-b border-border/40 hover:bg-muted/20">
 										<td className="px-4 py-3 font-medium whitespace-nowrap">
 											{new Date(t.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
@@ -169,6 +194,26 @@ export function TransactionDetailReport({ range }: Props) {
 										<td className={`px-4 py-3 text-right font-bold ${t.type === "income" ? "text-green-600" : "text-red-600"}`}>
 											{t.type === "income" ? "+" : "-"}{formatCurrencyIDR(t.amount)}
 										</td>
+										<td className="px-4 py-3">
+											<div className="flex items-center justify-center gap-2">
+												<button
+													type="button"
+													onClick={() => handleEdit(t)}
+													className="p-1.5 text-muted-foreground hover:bg-muted hover:text-primary rounded-md transition-colors"
+													title="Edit"
+												>
+													<Pencil className="h-4 w-4" />
+												</button>
+												<button
+													type="button"
+													onClick={() => handleDelete(t._id)}
+													className="p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive rounded-md transition-colors"
+													title="Hapus"
+												>
+													<Trash2 className="h-4 w-4" />
+												</button>
+											</div>
+										</td>
 									</tr>
 								))}
 							</tbody>
@@ -176,6 +221,15 @@ export function TransactionDetailReport({ range }: Props) {
 					</div>
 				)}
 			</div>
+			
+			<NewTransactionDialog 
+				isOpen={isEditDialogOpen}
+				onClose={() => {
+					setIsEditDialogOpen(false);
+					setSelectedTransaction(null);
+				}}
+				initialData={selectedTransaction}
+			/>
 		</div>
 	);
 }

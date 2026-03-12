@@ -2,19 +2,32 @@ import { api } from "@yumipos/backend/convex/_generated/api";
 import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useState, useEffect } from "react";
 import { toast } from "sonner";
+import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
 
 interface NewTransactionDialogProps {
 	isOpen: boolean;
 	onClose: () => void;
+	initialData?: {
+		_id: Id<"financialTransactions">;
+		type: "income" | "expense";
+		amount: number;
+		category: string;
+		merchant?: string;
+		description?: string;
+		date: number;
+		paymentMethod?: string;
+	};
 }
 
 export function NewTransactionDialog({
 	isOpen,
 	onClose,
+	initialData,
 }: NewTransactionDialogProps) {
 	const createTransaction = useMutation(api.finance.createTransaction);
+	const updateTransaction = useMutation(api.finance.updateTransaction);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const dateId = useId();
@@ -33,6 +46,32 @@ export function NewTransactionDialog({
 		paymentMethod: "CASH",
 	});
 
+	useEffect(() => {
+		if (isOpen) {
+			if (initialData) {
+				setFormData({
+					type: initialData.type,
+					amount: String(initialData.amount),
+					category: initialData.category,
+					merchant: initialData.merchant || "",
+					description: initialData.description || "",
+					date: new Date(initialData.date).toISOString().split("T")[0],
+					paymentMethod: initialData.paymentMethod || "CASH",
+				});
+			} else {
+				setFormData({
+					type: "expense",
+					amount: "",
+					category: "",
+					merchant: "",
+					description: "",
+					date: new Date().toISOString().split("T")[0],
+					paymentMethod: "CASH",
+				});
+			}
+		}
+	}, [isOpen, initialData]);
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!(formData.amount && formData.category)) {
@@ -42,30 +81,35 @@ export function NewTransactionDialog({
 
 		setIsSubmitting(true);
 		try {
-			await createTransaction({
-				type: formData.type,
-				amount: Number(formData.amount),
-				category: formData.category,
-				merchant: formData.merchant || undefined,
-				description: formData.description,
-				date: new Date(formData.date).getTime(),
-				paymentMethod: formData.paymentMethod,
-				status: "completed",
-			});
-			toast.success("Transaksi berhasil disimpan");
-			setFormData({
-				type: "expense",
-				amount: "",
-				category: "",
-				merchant: "",
-				description: "",
-				date: new Date().toISOString().split("T")[0],
-				paymentMethod: "CASH",
-			});
+			if (initialData) {
+				await updateTransaction({
+					id: initialData._id,
+					type: formData.type,
+					amount: Number(formData.amount),
+					category: formData.category,
+					merchant: formData.merchant || undefined,
+					description: formData.description,
+					date: new Date(formData.date).getTime(),
+					paymentMethod: formData.paymentMethod,
+				});
+				toast.success("Transaksi berhasil diperbarui");
+			} else {
+				await createTransaction({
+					type: formData.type,
+					amount: Number(formData.amount),
+					category: formData.category,
+					merchant: formData.merchant || undefined,
+					description: formData.description,
+					date: new Date(formData.date).getTime(),
+					paymentMethod: formData.paymentMethod,
+					status: "completed",
+				});
+				toast.success("Transaksi berhasil disimpan");
+			}
 			onClose();
 		} catch (error) {
 			console.error(error);
-			toast.error("Gagal menyimpan transaksi");
+			toast.error(initialData ? "Gagal memperbarui transaksi" : "Gagal menyimpan transaksi");
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -96,7 +140,7 @@ export function NewTransactionDialog({
 						</button>
 
 						<h3 className="mb-6 font-bold text-2xl text-foreground tracking-tight">
-							Catat Transaksi
+							{initialData ? "Ubah Transaksi" : "Catat Transaksi"}
 						</h3>
 
 						<form className="space-y-5" onSubmit={handleSubmit}>
@@ -274,7 +318,7 @@ export function NewTransactionDialog({
 									disabled={isSubmitting}
 									type="submit"
 								>
-									{isSubmitting ? "MENYIMPAN..." : "SIMPAN TRANSAKSI"}
+									{isSubmitting ? "MENYIMPAN..." : initialData ? "SIMPAN PERUBAHAN" : "SIMPAN TRANSAKSI"}
 								</button>
 							</div>
 						</form>
