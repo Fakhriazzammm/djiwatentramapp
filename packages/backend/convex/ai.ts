@@ -2515,7 +2515,7 @@ async function runReceiptOCR(imageDataUrl: string): Promise<{
 		}
 	}
 
-	console.log("Using Gemini API for OCR...");
+	console.log("Using SumoPod AI (Gemini) for OCR...");
 
 	// Fallback: Use shared Gemini API helper
 	const base64Data = imageDataUrl.includes(",") ? imageDataUrl.split(",")[1] : imageDataUrl;
@@ -2555,7 +2555,7 @@ Output harus JSON murni:
 	const geminiResult = await callGeminiAPI(prompt, base64Data, mimeType, { maxOutputTokens: 2000 });
 
 	if (!geminiResult.success || !geminiResult.text) {
-		throw new ConvexError(`Gemini OCR gagal: ${geminiResult.error || "Tidak ada respon dari AI"}`);
+		throw new ConvexError(`SumoPod OCR gagal: ${geminiResult.error || "Tidak ada respon dari AI"}`);
 	}
 
 	const parsed = parseAIScanJSON(geminiResult.text);
@@ -2899,9 +2899,9 @@ export const analyzeDiscountEffectiveness = query({
 });
 
 /**
- * Scan gambar dengan AI (Gemini Vision) dan ekstrak data terstruktur.
+ * Scan gambar dengan AI (SumoPod Gemini) dan ekstrak data terstruktur.
  * Mendukung: struk belanja, kwitansi, nota, tulisan tangan, produk, dll.
- * Menggunakan Gemini API langsung karena mendukung vision/image analysis.
+ * Menggunakan SumoPod AI (Gemini) untuk stabilitas tinggi.
  */
 export const scanImageData = action({
 	args: {
@@ -2910,10 +2910,10 @@ export const scanImageData = action({
 	handler: async (_ctx, args) => {
 		try {
 			// Validate API key tersedia
-			const geminiApiKey = process.env.GEMINI_API_KEY;
-			if (!geminiApiKey) {
+			const sumoApiKey = process.env.SUMOPOD_API_KEY || process.env.OPENAI_API_KEY;
+			if (!sumoApiKey) {
 				throw new ConvexError(
-					"GEMINI_API_KEY belum diatur. Silakan atur GEMINI_API_KEY di dashboard Convex untuk fitur AI Scan."
+					"SUMOPOD_API_KEY belum diatur. Silakan atur SUMOPOD_API_KEY di dashboard Convex untuk fitur AI Scan."
 				);
 			}
 
@@ -3004,7 +3004,7 @@ PENTING:
 - Nama merchant harus selalu diisi meskipun hanya terbaca sebagian.
 - HANYA kembalikan JSON.`;
 
-			// Gunakan Gemini API untuk scan gambar (best for vision/OCR)
+			// Gunakan SumoPod API (Gemini) untuk scan gambar
 			const geminiResult = await callGeminiAPI(prompt, base64Data, mimeType);
 
 			if (!geminiResult.success || !geminiResult.text) {
