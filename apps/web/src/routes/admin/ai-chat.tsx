@@ -434,22 +434,7 @@ function generateQuickActions(userMsg: string, aiResponse: string): QuickActionB
 }
 
 function AIChatPage() {
-	const [messages, setMessages] = useState<ChatMessage[]>(() => {
-		const hour = new Date().getHours();
-		let greeting = "Halo! Selamat pagi";
-		if (hour >= 11 && hour < 15) greeting = "Halo! Selamat siang";
-		else if (hour >= 15 && hour < 18) greeting = "Halo! Selamat sore";
-		else if (hour >= 18 || hour < 4) greeting = "Halo! Selamat malam";
-		
-		return [
-			{
-				role: "assistant",
-				_msgId: mkMsgId(),
-				content:
-					`${greeting}! Saya Yumi, asisten AI kamu untuk YUMI POS. Saya bisa membantu merekap data, menganalisis bisnis, MELAKUKAN AKSI seperti tambah produk, update stok, buat pesanan, dan bahkan MULTI-STEP ACTIONS dalam satu permintaan. Sekarang saya dilengkapi dengan Forecasting, Analisis HPP, Efektivitas Diskon, dan Rekonsiliasi Keuangan!`,
-			},
-		];
-	});
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [isStreaming, setIsStreaming] = useState(false);

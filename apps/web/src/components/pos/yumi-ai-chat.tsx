@@ -116,21 +116,7 @@ const CASIER_TEMPLATES = [
 ];
 
 export function YumiAIChat() {
-	const [messages, setMessages] = useState<ChatMessage[]>(() => {
-		const hour = new Date().getHours();
-		let greeting = "Halo! Selamat pagi";
-		if (hour >= 11 && hour < 15) greeting = "Halo! Selamat siang";
-		else if (hour >= 15 && hour < 18) greeting = "Halo! Selamat sore";
-		else if (hour >= 18 || hour < 4) greeting = "Halo! Selamat malam";
-
-		return [
-			{
-				role: "assistant",
-				content:
-					`${greeting}! Saya Yumi, asisten AI kamu. Pilih template di bawah atau ketik pesan untuk mencatat transaksi, cek stok, atau lihat laporan.`,
-			},
-		];
-	});
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -516,8 +502,8 @@ export function YumiAIChat() {
 		const runBriefing = async () => {
 			if (briefingAttemptedRef.current) return;
 
-			// Trigger if we have at least one message and it's from assistant
-			if (messages.length > 0 && messages[0].role === "assistant") {
+			// Trigger if we have no messages (new session)
+			if (messages.length === 0) {
 				briefingAttemptedRef.current = true;
 				setIsLoading(true);
 				try {

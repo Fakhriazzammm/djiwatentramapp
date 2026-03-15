@@ -1204,12 +1204,14 @@ export const generateDailyBriefing = action({
 				orders,
 				bookingOrders,
 				comparison,
+				pendingTasks,
 			] = await Promise.all([
 				ctx.runQuery(api.finance.getFinancialSummary, {}),
 				ctx.runQuery(api.inventory.getInventory),
-				ctx.runQuery(api.orders.getOrders, {}),
+				ctx.runQuery(api.orders.getOrders, { limit: 50 }),
 				ctx.runQuery(api.booking.getBookingOrders, { slug: "booking" }),
 				ctx.runQuery(api.finance.getPeriodComparison),
+				ctx.db.query("aiTasks").filter(q => q.eq(q.field("status"), "pending")).collect(),
 			]);
 
 			const lowStockItems = inventory.filter(i => i.quantity <= i.lowStockThreshold);
@@ -1220,6 +1222,16 @@ export const generateDailyBriefing = action({
 				new Date(b.bookingDate).getTime() < today.getTime() + 24 * 60 * 60 * 1000
 			);
 
+			// Calculate a simple "trending product" from recent orders
+			const productSales: Record<string, number> = {};
+			orders.forEach(order => {
+				order.items.forEach(item => {
+					productSales[item.productName] = (productSales[item.productName] || 0) + item.quantity;
+				});
+			});
+			const trendingProduct = Object.entries(productSales)
+				.sort(([, a], [, b]) => b - a)[0]?.[0] || "belum ada data";
+
 			const dataContext = {
 				revenueYesterday: comparison.previousPeriodRevenue,
 				revenueGrowth: comparison.revenueGrowth,
@@ -1227,38 +1239,41 @@ export const generateDailyBriefing = action({
 				lowStockNames: lowStockItems.slice(0, 3).map(i => i.ingredientName).join(", "),
 				todayBookingsCount: todayBookings.length,
 				balance: financeSummary.netBalance,
+				pendingTasksCount: pendingTasks.length,
+				trendingProduct,
 			};
 
 			return await safeSumoPodCall([
 				{
 					role: "system",
 					content: `Kamu adalah Yumi, asisten AI bisnis yang ceria dan proaktif.
-Tugas: Berikan Briefing Bisnis (Dashboard Proaktif) yang singkat, padat, dan sangat informatif bagi pemilik toko.
-Gunakan data riil yang diberikan untuk memberikan ringkasan performa kemarin dan fokus operasional hari ini.
+Tugas: Berikan Briefing Bisnis (Dashboard Proaktif) yang menyeluruh untuk memperkenalkan "seisi aplikasi" kepada pemilik toko.
+Gunakan data riil yang diberikan untuk memberikan ringkasan performa kemarin, status operasional, dan tugas yang tertunda.
 
 FORMAT BRIEFING:
 1. Sapa dengan "${greeting}!".
-2. Ringkasan Omzet: Sebutkan total omzet kemarin dan pertumbuhannya (naik/turun %). Contoh: "Kemarin omzet kita Rp 2jt (naik 10%)".
-3. Operasional Hari Ini: 
-   - Sebutkan jumlah stok kritis jika ada (beserta nama bahannya).
-   - Sebutkan jumlah reservasi/booking untuk hari ini.
-4. Penutup: Kalimat penyemangat singkat.
-5. Tombol Aksi: Berikan saran tombol aksi [SUGGEST: ...].
+2. Performa (Keuangan): Sebutkan omzet kemarin dan pertumbuhannya.
+3. Operasional (Inventaris & Reservasi): Sebutkan stok kritis dan jumlah booking hari ini.
+4. Insights (Produk & Tugas): 
+   - Sebutkan produk yang sedang tren/paling laku.
+   - Ingatkan jumlah tugas (tasks) yang masih pending di tab Tasks.
+5. Penutup: Kalimat motivasi singkat.
+6. Tombol Aksi: Berikan 2-3 saran tombol aksi [SUGGEST: ...] yang mencakup modul berbeda.
 
 ATURAN KETAT:
 - JANGAN gunakan bold (**). Gunakan teks polos.
 - Gunakan emoji yang relevan.
-- Gunakan data dari konteks yang diberikan. Jika data 0, sebutkan dengan cara yang positif.
-- Pastikan informasi spesifik (angka omzet, nama bahan stok rendah, jumlah booking) muncul dengan jelas.`,
+- Gunakan data dari konteks yang diberikan.
+- Buat user merasa Yumi mengawasi seluruh aspek toko (Keuangan, Stok, Pesanan, Reservasi, dan Tugas).`,
 				},
 				{
 					role: "user",
-					content: `Data Bisnis Riil untuk Briefing:
-- Omzet Kemarin: Rp ${dataContext.revenueYesterday.toLocaleString("id-ID")}
-- Pertumbuhan Omzet: ${dataContext.revenueGrowth.toFixed(1)}%
-- Stok Rendah: ${dataContext.lowStockCount} item (${dataContext.lowStockNames || "Semua stok aman"})
-- Reservasi Hari Ini: ${dataContext.todayBookingsCount} booking
-- Saldo Saat Ini: Rp ${dataContext.balance.toLocaleString("id-ID")}`,
+					content: `Data Bisnis Riil (Seluruh Modul):
+- Keuangan: Omzet Kemarin Rp ${dataContext.revenueYesterday.toLocaleString("id-ID")} (${dataContext.revenueGrowth >= 0 ? "naik" : "turun"} ${Math.abs(dataContext.revenueGrowth).toFixed(1)}%), Total Saldo Rp ${dataContext.balance.toLocaleString("id-ID")}
+- Inventaris: ${dataContext.lowStockCount} item stok rendah (${dataContext.lowStockNames || "Semua aman"})
+- Reservasi: ${dataContext.todayBookingsCount} booking hari ini
+- Analitik: Produk terlaris saat ini adalah ${dataContext.trendingProduct}
+- Manajemen Tugas: Ada ${dataContext.pendingTasksCount} tugas menunggu di tab Tasks`,
 				},
 			]);
 		} catch (error) {

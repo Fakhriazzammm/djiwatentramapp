@@ -181,22 +181,7 @@ const TOOL_LABELS: Record<string, string> = {
 };
 
 function AIChatPage() {
-	const [messages, setMessages] = useState<ChatMessage[]>(() => {
-		const hour = new Date().getHours();
-		let greeting = "Halo! Selamat pagi";
-		if (hour >= 11 && hour < 15) greeting = "Halo! Selamat siang";
-		else if (hour >= 15 && hour < 18) greeting = "Halo! Selamat sore";
-		else if (hour >= 18 || hour < 4) greeting = "Halo! Selamat malam";
-		
-		return [
-			{
-				role: "assistant",
-				content:
-					`${greeting}! Saya Yumi, asisten AI kamu untuk YUMI POS. Saya bisa membantu merekap data, menganalisis bisnis, MELAKUKAN AKSI seperti tambah produk, update stok, buat pesanan, dan bahkan MULTI-STEP ACTIONS dalam satu permintaan. Sekarang saya dilengkapi dengan Forecasting, Analisis HPP, Efektivitas Diskon, dan Rekonsiliasi Keuangan!`,
-				_msgId: "welcome",
-			},
-		];
-	});
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [loadingStatus, setLoadingStatus] = useState("");
@@ -360,8 +345,8 @@ function AIChatPage() {
 		const runBriefing = async () => {
 			if (briefingAttemptedRef.current) return;
 			
-			// Trigger if we have at least one message and it's from Yumi (the initial welcome)
-			if (messages.length > 0 && messages[0].role === "assistant") {
+			// Trigger if we have no messages (new session)
+			if (messages.length === 0) {
 				briefingAttemptedRef.current = true;
 				setIsLoading(true);
 				
@@ -481,14 +466,9 @@ function AIChatPage() {
 			});
 			if (result) {
 				setCurrentSessionId(result.sessionId);
-				setMessages([
-					{
-						role: "assistant",
-						content:
-							"Halo! Saya Yumi, asisten AI kamu. Ada yang bisa saya bantu hari ini?",
-						_msgId: "welcome",
-					},
-				]);
+				// Resetting to empty will trigger daily briefing again for the new session
+				briefingAttemptedRef.current = false;
+				setMessages([]);
 				setShowSessionHistory(false);
 			}
 		} catch {
@@ -963,14 +943,8 @@ function AIChatPage() {
 			await deleteSessionMutation({ sessionId });
 			if (currentSessionId === sessionId) {
 				setCurrentSessionId(null);
-				setMessages([
-					{
-						role: "assistant",
-						content:
-							"Halo! Saya Yumi, asisten AI kamu. Ada yang bisa saya bantu hari ini?",
-						_msgId: "welcome-cleared",
-					},
-				]);
+				briefingAttemptedRef.current = false;
+				setMessages([]);
 			}
 			toast.success("Sesi berhasil dihapus");
 		} catch {
@@ -1019,14 +993,8 @@ function AIChatPage() {
 			}
 		}
 		setCurrentSessionId(null);
-		setMessages([
-			{
-				role: "assistant",
-				content:
-					"Halo! Saya Yumi, asisten AI kamu untuk YUMI POS. Saya bisa membantu merekap data, menganalisis bisnis, MELAKUKAN AKSI seperti tambah produk, update stok, buat pesanan, dan bahkan MULTI-STEP ACTIONS dalam satu permintaan. Sekarang saya dilengkapi dengan Forecasting, Analisis HPP, Efektivitas Diskon, dan Rekonsiliasi Keuangan!",
-				_msgId: "welcome-reset",
-			},
-		]);
+		briefingAttemptedRef.current = false;
+		setMessages([]);
 		toast.success("Chat berhasil dihapus");
 	};
 
@@ -1037,14 +1005,8 @@ function AIChatPage() {
 				await deleteSessionMutation({ sessionId: session.sessionId });
 			}
 			setCurrentSessionId(null);
-			setMessages([
-				{
-					role: "assistant",
-					content:
-						"Halo! Saya Yumi, asisten AI kamu. Ada yang bisa saya bantu hari ini?",
-					_msgId: "welcome-all-cleared",
-				},
-			]);
+			briefingAttemptedRef.current = false;
+			setMessages([]);
 			toast.success("Semua riwayat chat berhasil dihapus");
 		} catch {
 			toast.error("Gagal menghapus semua riwayat");
