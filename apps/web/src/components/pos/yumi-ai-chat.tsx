@@ -116,13 +116,21 @@ const CASIER_TEMPLATES = [
 ];
 
 export function YumiAIChat() {
-	const [messages, setMessages] = useState<ChatMessage[]>([
-		{
-			role: "assistant",
-			content:
-				"Halo! Saya Yumi, asisten AI kamu. Pilih template di bawah atau ketik pesan untuk mencatat transaksi, cek stok, atau lihat laporan.",
-		},
-	]);
+	const [messages, setMessages] = useState<ChatMessage[]>(() => {
+		const hour = new Date().getHours();
+		let greeting = "Halo! Selamat pagi";
+		if (hour >= 11 && hour < 15) greeting = "Halo! Selamat siang";
+		else if (hour >= 15 && hour < 18) greeting = "Halo! Selamat sore";
+		else if (hour >= 18 || hour < 4) greeting = "Halo! Selamat malam";
+
+		return [
+			{
+				role: "assistant",
+				content:
+					`${greeting}! Saya Yumi, asisten AI kamu. Pilih template di bawah atau ketik pesan untuk mencatat transaksi, cek stok, atau lihat laporan.`,
+			},
+		];
+	});
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [isStreaming, setIsStreaming] = useState(false);
@@ -506,16 +514,23 @@ export function YumiAIChat() {
 			if (messages.length === 1 && messages[0].content.includes("Halo! Saya Yumi")) {
 				setIsLoading(true);
 				try {
-					const briefing = await generateDailyBriefingAction({});
+					const localHour = new Date().getHours();
+					const briefing = await generateDailyBriefingAction({ localHour });
 					const sanitized = sanitizeResponse(briefing);
 					
+					let fallbackGreeting = "Selamat pagi";
+					if (localHour >= 11 && localHour < 15) fallbackGreeting = "Selamat siang";
+					else if (localHour >= 15 && localHour < 18) fallbackGreeting = "Selamat sore";
+					else if (localHour >= 18 || localHour < 4) fallbackGreeting = "Selamat malam";
+
 					// Stream the briefing
-					streamText(sanitized, () => {
+					const contentToStream = sanitized || `${fallbackGreeting}! Saya siap membantu Anda hari ini.`;
+					streamText(contentToStream, () => {
 						setMessages(prev => [
 							...prev,
 							{
 								role: "assistant",
-								content: sanitized || "Selamat pagi! Saya siap membantu Anda hari ini.",
+								content: contentToStream,
 							}
 						]);
 					});

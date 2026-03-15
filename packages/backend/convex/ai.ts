@@ -1184,9 +1184,19 @@ Berikan analisis ringkas dan perbandingannya.`,
  * Yumi AI - Generate a Daily Morning Briefing
  */
 export const generateDailyBriefing = action({
-	args: {},
-	handler: async (ctx) => {
+	args: {
+		localHour: v.optional(v.number()), // Hour from 0-23
+	},
+	handler: async (ctx, args) => {
 		try {
+			// Determine greeting based on local hour
+			let greeting = "Selamat pagi";
+			if (args.localHour !== undefined) {
+				if (args.localHour >= 11 && args.localHour < 15) greeting = "Selamat siang";
+				else if (args.localHour >= 15 && args.localHour < 18) greeting = "Selamat sore";
+				else if (args.localHour >= 18 || args.localHour < 4) greeting = "Selamat malam";
+			}
+
 			// Gather all relevant data for briefing
 			const [
 				financeSummary,
@@ -1223,11 +1233,11 @@ export const generateDailyBriefing = action({
 				{
 					role: "system",
 					content: `Kamu adalah Yumi, asisten AI bisnis yang ceria dan proaktif.
-Tugas: Berikan Morning Briefing yang singkat, padat, dan menyemangat bagi pemilik toko.
+Tugas: Berikan Briefing Bisnis yang singkat, padat, dan menyemangat bagi pemilik toko.
 Gunakan data yang diberikan untuk memberikan ringkasan performa kemarin dan apa yang harus difokuskan hari ini.
 
 ATURAN:
-1. Sapa dengan "Selamat pagi!".
+1. Sapa dengan "${greeting}!".
 2. JANGAN gunakan bold (**). Gunakan teks polos.
 3. Gunakan emoji.
 4. Akhiri dengan saran tombol aksi [SUGGEST: ...].
@@ -1242,7 +1252,14 @@ ATURAN:
 			]);
 		} catch (error) {
 			console.error("generateDailyBriefing error:", error);
-			return "Selamat pagi! Saya siap membantu Anda mengelola toko hari ini. Ada yang bisa saya bantu?";
+			// Fallback with same logic
+			let greeting = "Selamat pagi";
+			if (args.localHour !== undefined) {
+				if (args.localHour >= 11 && args.localHour < 15) greeting = "Selamat siang";
+				else if (args.localHour >= 15 && args.localHour < 18) greeting = "Selamat sore";
+				else if (args.localHour >= 18 || args.localHour < 4) greeting = "Selamat malam";
+			}
+			return `${greeting}! Saya siap membantu Anda mengelola toko hari ini. Ada yang bisa saya bantu?`;
 		}
 	},
 });

@@ -918,10 +918,11 @@ function BookingPage() {
 		setIsSubmitting(true);
 		try {
 			if (proofImage && booking._id) {
+				const rawAmount = transferredAmount.replace(/[^0-9]/g, "");
 				await uploadPaymentProof({
 					id: booking._id,
 					storageId: proofImage,
-					transferredAmount: transferredAmount ? Number(transferredAmount) : undefined,
+					transferredAmount: rawAmount ? Number(rawAmount) : undefined,
 				});
 			}
 			setStep(6);
@@ -1083,9 +1084,16 @@ function BookingPage() {
 										<span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">Rp</span>
 										<input
 											className="w-full rounded-2xl bg-muted/50 pl-11 pr-4 py-4 font-extrabold text-lg text-foreground outline-none border-2 border-transparent focus:border-primary/20 transition-all"
-											onChange={(e) => setTransferredAmount(e.target.value)}
+											onChange={(e) => {
+												const val = e.target.value.replace(/[^0-9]/g, "");
+												if (val) {
+													setTransferredAmount(new Intl.NumberFormat("id-ID").format(Number(val)));
+												} else {
+													setTransferredAmount("");
+												}
+											}}
 											placeholder="0"
-											type="number"
+											type="text"
 											value={transferredAmount}
 										/>
 									</div>

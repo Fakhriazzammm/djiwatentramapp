@@ -181,14 +181,22 @@ const TOOL_LABELS: Record<string, string> = {
 };
 
 function AIChatPage() {
-	const [messages, setMessages] = useState<ChatMessage[]>([
-		{
-			role: "assistant",
-			content:
-				"Halo! Saya Yumi, asisten AI kamu untuk YUMI POS. Saya bisa membantu merekap data, menganalisis bisnis, MELAKUKAN AKSI seperti tambah produk, update stok, buat pesanan, dan bahkan MULTI-STEP ACTIONS dalam satu permintaan. Sekarang saya dilengkapi dengan Forecasting, Analisis HPP, Efektivitas Diskon, dan Rekonsiliasi Keuangan!",
-			_msgId: "welcome",
-		},
-	]);
+	const [messages, setMessages] = useState<ChatMessage[]>(() => {
+		const hour = new Date().getHours();
+		let greeting = "Halo! Selamat pagi";
+		if (hour >= 11 && hour < 15) greeting = "Halo! Selamat siang";
+		else if (hour >= 15 && hour < 18) greeting = "Halo! Selamat sore";
+		else if (hour >= 18 || hour < 4) greeting = "Halo! Selamat malam";
+		
+		return [
+			{
+				role: "assistant",
+				content:
+					`${greeting}! Saya Yumi, asisten AI kamu untuk YUMI POS. Saya bisa membantu merekap data, menganalisis bisnis, MELAKUKAN AKSI seperti tambah produk, update stok, buat pesanan, dan bahkan MULTI-STEP ACTIONS dalam satu permintaan. Sekarang saya dilengkapi dengan Forecasting, Analisis HPP, Efektivitas Diskon, dan Rekonsiliasi Keuangan!`,
+				_msgId: "welcome",
+			},
+		];
+	});
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [loadingStatus, setLoadingStatus] = useState("");
@@ -289,14 +297,14 @@ function AIChatPage() {
 	);
 
 	// AI Proactive Suggestions
-	const _proactiveSuggestions = useQuery(api.ai.getProactiveSuggestions, {});
+	const proactiveSuggestions = useQuery(api.ai.getProactiveSuggestions, {});
 
 	// Predictive Analytics
-	const _stockPredictions = useQuery(api.ai.predictStockOut, { daysAhead: 7 });
-	const _busyHoursPrediction = useQuery(api.ai.predictBusyHours, {});
-	const _revenuePrediction = useQuery(api.ai.predictDailyRevenue, { daysAhead: 7 });
-	const _trendingProducts = useQuery(api.ai.predictTrendingProducts, { daysAhead: 7 });
-	const _bestPromoTime = useQuery(api.ai.predictBestPromoTime, {});
+	const stockPredictions = useQuery(api.ai.predictStockOut, { daysAhead: 7 });
+	const busyHoursPrediction = useQuery(api.ai.predictBusyHours, {});
+	const revenuePrediction = useQuery(api.ai.predictDailyRevenue, { daysAhead: 7 });
+	const trendingProducts = useQuery(api.ai.predictTrendingProducts, { daysAhead: 7 });
+	const bestPromoTime = useQuery(api.ai.predictBestPromoTime, {});
 
 	// Follow-up Tasks
 	const pendingTasks = useQuery(api.aiMemory.getPendingTasks, {});
@@ -305,7 +313,7 @@ function AIChatPage() {
 	const autoGenerateTasksMutation = useMutation(api.ai.autoGenerateTasks);
 
 	// Financial Summary for reports
-	const _financialSummary = useQuery(api.finance.getFinancialSummary, {});
+	const financialSummary = useQuery(api.finance.getFinancialSummary, {});
 
 	// Generate smart insights
 	const smartInsights: Array<{
@@ -351,17 +359,28 @@ function AIChatPage() {
 		const runBriefing = async () => {
 			if (messages.length === 1 && messages[0]._msgId === "welcome") {
 				setIsLoading(true);
-				setLoadingStatus("Sedang menyiapkan briefing pagi...");
+				const localHour = new Date().getHours();
+				let briefingType = "pagi";
+				if (localHour >= 11 && localHour < 15) briefingType = "siang";
+				else if (localHour >= 15 && localHour < 18) briefingType = "sore";
+				else if (localHour >= 18 || localHour < 4) briefingType = "malam";
+				
+				setLoadingStatus(`Sedang menyiapkan briefing ${briefingType}...`);
 				try {
-					const briefing = await generateDailyBriefingAction({});
+					const briefing = await generateDailyBriefingAction({ localHour });
 					const suggestions = extractSuggestions(briefing);
 					const sanitized = sanitizeResponse(briefing);
 					
+					let fallbackGreeting = "Selamat pagi";
+					if (localHour >= 11 && localHour < 15) fallbackGreeting = "Selamat siang";
+					else if (localHour >= 15 && localHour < 18) fallbackGreeting = "Selamat sore";
+					else if (localHour >= 18 || localHour < 4) fallbackGreeting = "Selamat malam";
+
 					setMessages(prev => [
 						...prev,
 						{
 							role: "assistant",
-							content: sanitized || "Selamat pagi! Saya siap membantu Anda hari ini.",
+							content: sanitized || `${fallbackGreeting}! Saya siap membantu Anda hari ini.`,
 							suggestions: suggestions,
 							_msgId: mkMsgId(),
 						}
