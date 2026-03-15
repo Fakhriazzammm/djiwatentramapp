@@ -42,6 +42,15 @@ export const createDiscount = mutation({
 		startTime: v.optional(v.string()),
 		endTime: v.optional(v.string()),
 		days: v.optional(v.array(v.number())),
+		isHappyHour: v.optional(v.boolean()),
+		productPrices: v.optional(
+			v.array(
+				v.object({
+					productId: v.string(),
+					price: v.number(),
+				})
+			)
+		),
 	},
 	handler: async (ctx, args) => {
 		await ctx.db.insert("discounts", args);
@@ -73,6 +82,15 @@ export const updateDiscount = mutation({
 		startTime: v.optional(v.string()),
 		endTime: v.optional(v.string()),
 		days: v.optional(v.array(v.number())),
+		isHappyHour: v.optional(v.boolean()),
+		productPrices: v.optional(
+			v.array(
+				v.object({
+					productId: v.string(),
+					price: v.number(),
+				})
+			)
+		),
 	},
 	handler: async (ctx, args) => {
 		const { id, ...updates } = args;

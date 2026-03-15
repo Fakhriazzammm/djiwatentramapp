@@ -18,6 +18,7 @@ import {
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { calculateEffectivePrice } from "@/lib/utils/pricing";
 
 export const Route = createLazyFileRoute("/booking")({
 	component: BookingPage,
@@ -597,6 +598,7 @@ const MobileWrapper = ({
 function BookingPage() {
 	const settings = useQuery(api.booking.getSettings, { slug: "booking" });
 	const products = useQuery(api.booking.getBookingProducts, { slug: "booking" });
+	const activeDiscounts = useQuery(api.discounts.getActiveDiscounts);
 	const siteSettings = useQuery(api.site_settings.getSettings);
 	const createBookingOrder = useMutation(api.booking.createBookingOrder);
 	const uploadPaymentProof = useMutation(api.booking.uploadPaymentProof);
@@ -635,7 +637,16 @@ function BookingPage() {
 	const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
 
 	const addToCart = useCallback(
-		(product: { _id: string; name: string; price: number; image?: string }) => {
+		(product: { _id: string; name: string; price: number; image?: string; categoryId: string }) => {
+			const { finalPrice } = calculateEffectivePrice(
+				{
+					_id: product._id,
+					price: product.price,
+					categoryId: product.categoryId || "",
+				},
+				activeDiscounts
+			);
+
 			setCart((prev) => {
 				const existing = prev.find((i) => i.productId === product._id);
 				if (existing) {
@@ -650,14 +661,14 @@ function BookingPage() {
 					{
 						productId: product._id,
 						name: product.name,
-						price: product.price,
+						price: finalPrice,
 						quantity: 1,
 						image: product.image,
 					},
 				];
 			});
 		},
-		[]
+		[activeDiscounts]
 	);
 
 	const updateQty = useCallback((productId: string, delta: number) => {
@@ -1290,10 +1301,21 @@ function BookingPage() {
 						<div className="grid gap-3">
 							{products.map((product: any) => {
 								const cartItem = cart.find((i) => i.productId === product._id);
+								const { finalPrice, isPromo, originalPrice } = calculateEffectivePrice(
+									{
+										_id: product._id,
+										price: product.price,
+										categoryId: product.categoryId || "",
+									},
+									activeDiscounts
+								);
+
 								return (
 									<div
 										className={`flex items-center gap-4 rounded-3xl border p-3.5 transition-all ${
-											cartItem ? 'border-primary/30 bg-primary/[0.02] ring-1 ring-primary/5 shadow-sm' : 'border-border bg-card'
+											cartItem
+												? "border-primary/30 bg-primary/[0.02] ring-1 ring-primary/5 shadow-sm"
+												: "border-border bg-card"
 										}`}
 										key={product._id}
 									>
@@ -1320,9 +1342,19 @@ function BookingPage() {
 											<p className="text-muted-foreground text-[11px] line-clamp-1 mb-2 font-medium">
 												{product.description || "Menu spesial favorit kami"}
 											</p>
-											<p className="font-black text-sm tracking-tight" style={{ color: themeColor }}>
-												{fmt(product.price)}
-											</p>
+											<div className="flex flex-col">
+												{isPromo && (
+													<span className="text-[10px] text-muted-foreground line-through decoration-red-400 decoration-2">
+														{fmt(originalPrice)}
+													</span>
+												)}
+												<p
+													className="font-black text-sm tracking-tight"
+													style={{ color: themeColor }}
+												>
+													{fmt(finalPrice)}
+												</p>
+											</div>
 										</div>
 										<div className="shrink-0 flex flex-col items-center gap-1">
 											{cartItem ? (

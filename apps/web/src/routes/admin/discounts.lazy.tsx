@@ -62,6 +62,8 @@ function AdminDiscountsPage() {
 		startTime: string;
 		endTime: string;
 		days: number[];
+		isHappyHour: boolean;
+		productPrices: { productId: string; price: number }[];
 	}>({
 		name: "",
 		code: "",
@@ -75,6 +77,8 @@ function AdminDiscountsPage() {
 		startTime: "",
 		endTime: "",
 		days: [],
+		isHappyHour: false,
+		productPrices: [],
 	});
 
 	const daysOfWeek = [
@@ -179,6 +183,8 @@ function AdminDiscountsPage() {
 			startTime: formData.startTime || undefined,
 			endTime: formData.endTime || undefined,
 			days: formData.days.length > 0 ? formData.days : undefined,
+			isHappyHour: formData.isHappyHour,
+			productPrices: formData.isHappyHour ? formData.productPrices : undefined,
 		};
 
 		try {
@@ -231,6 +237,8 @@ function AdminDiscountsPage() {
 			startTime: "",
 			endTime: "",
 			days: [],
+			isHappyHour: false,
+			productPrices: [],
 		});
 		setSearchTarget("");
 	};
@@ -256,6 +264,8 @@ function AdminDiscountsPage() {
 			startTime: discount.startTime || "",
 			endTime: discount.endTime || "",
 			days: discount.days || [],
+			isHappyHour: discount.isHappyHour || false,
+			productPrices: discount.productPrices || [],
 		});
 		setIsModalOpen(true);
 	};
@@ -672,13 +682,19 @@ function AdminDiscountsPage() {
 									</div>
 
 									{/* Status Badge */}
-									<div className="mb-4">
+									<div className="mb-4 flex flex-wrap gap-2">
 										<span
 											className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold text-xs ${status.class}`}
 										>
 											<StatusIcon className="h-3 w-3" />
 											{status.label}
 										</span>
+										{d.isHappyHour && (
+											<span className="inline-flex items-center gap-1.5 rounded-full bg-purple-100 px-3 py-1 font-semibold text-purple-700 text-xs dark:bg-purple-900 dark:text-purple-300">
+												<Clock className="h-3 w-3" />
+												Happy Hour
+											</span>
+										)}
 									</div>
 
 									{/* Discount Value */}
@@ -966,6 +982,150 @@ function AdminDiscountsPage() {
 											</div>
 										</div>
 									</div>
+								</div>
+
+								{/* Happy Hour Settings */}
+								<div className="space-y-4 rounded-xl border border-purple-200 bg-purple-50/30 p-4 dark:border-purple-800 dark:bg-purple-900/10">
+									<div className="flex items-center justify-between">
+										<h4 className="flex items-center gap-2 font-semibold text-purple-900 text-sm uppercase tracking-wide dark:text-purple-100">
+											<Clock className="h-4 w-4" />
+											Pengaturan Happy Hour
+										</h4>
+										<label className="relative inline-flex cursor-pointer items-center">
+											<input
+												checked={formData.isHappyHour}
+												className="peer sr-only"
+												onChange={(e) =>
+													setFormData({
+														...formData,
+														isHappyHour: e.target.checked,
+														type: e.target.checked ? "FLAT_PRICE" : formData.type,
+													})
+												}
+												type="checkbox"
+											/>
+											<div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-purple-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:bg-gray-700 dark:peer-focus:ring-purple-800" />
+											<span className="ml-3 font-medium text-purple-900 text-sm dark:text-purple-100">
+												Aktifkan Happy Hour
+											</span>
+										</label>
+									</div>
+
+									{formData.isHappyHour && (
+										<div className="space-y-4 pt-2">
+											<p className="text-muted-foreground text-xs italic">
+												Happy Hour akan memaksa tipe diskon menjadi "Harga
+												Flat". Anda dapat mengatur harga flat untuk setiap
+												produk di bawah ini.
+											</p>
+
+											<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+												<div className="space-y-2">
+													<label className="font-medium text-sm">
+														Harga Flat Global (Opsional)
+													</label>
+													<div className="flex gap-2">
+														<div className="relative flex-1">
+															<input
+																className="w-full rounded-lg border bg-background px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500"
+																onChange={(e) =>
+																	setFormData({
+																		...formData,
+																		value: e.target.value,
+																	})
+																}
+																placeholder="Set harga untuk semua..."
+																type="number"
+																value={formData.value}
+															/>
+															<span className="absolute top-1/2 right-4 -translate-y-1/2 text-muted-foreground text-sm">
+																Rp
+															</span>
+														</div>
+														<button
+															className="rounded-lg bg-purple-600 px-4 py-2 font-semibold text-white text-sm hover:bg-purple-700 active:scale-95"
+															onClick={() => {
+																if (!formData.value) return;
+																const price = Number(formData.value);
+																const newProductPrices = formData.targetIds.map(
+																	(id) => ({ productId: id, price })
+																);
+																setFormData({
+																	...formData,
+																	productPrices: newProductPrices,
+																});
+																toast.success("Harga diterapkan ke semua target");
+															}}
+															type="button"
+														>
+															Terapkan
+														</button>
+													</div>
+												</div>
+											</div>
+
+											{formData.targetType === "PRODUCT" &&
+												formData.targetIds.length > 0 && (
+													<div className="rounded-lg border bg-background p-3 space-y-3">
+														<p className="font-semibold text-xs">
+															Detail Harga per Produk:
+														</p>
+														<div className="max-h-60 overflow-y-auto space-y-2 pr-2">
+															{formData.targetIds.map((id) => {
+																const product = products?.find(
+																	(p) => p._id === id
+																);
+																const currentPrice =
+																	formData.productPrices.find(
+																		(pp) => pp.productId === id
+																	)?.price || "";
+
+																return (
+																	<div
+																		className="flex items-center justify-between gap-4 rounded-md border bg-muted/20 p-2"
+																		key={id}
+																	>
+																		<div className="flex-1 truncate">
+																			<p className="truncate font-medium text-sm">
+																				{product?.name || "Produk tidak dikenal"}
+																			</p>
+																			<p className="text-muted-foreground text-xs">
+																				Harga Normal: Rp{" "}
+																				{product?.price.toLocaleString()}
+																			</p>
+																		</div>
+																		<div className="relative w-32">
+																			<input
+																				className="w-full rounded-md border bg-background px-2 py-1.5 text-right text-sm outline-none focus:ring-2 focus:ring-purple-500"
+																				onChange={(e) => {
+																					const price = Number(e.target.value);
+																					setFormData((prev) => {
+																						const filtered =
+																							prev.productPrices.filter(
+																								(pp) => pp.productId !== id
+																							);
+																						return {
+																							...prev,
+																							productPrices: [
+																								...filtered,
+																								{ productId: id, price },
+																							],
+																						};
+																					});
+																				}}
+																				placeholder="0"
+																				type="number"
+																				value={currentPrice}
+																			/>
+																		</div>
+																	</div>
+																);
+															})}
+														</div>
+													</div>
+												)}
+										</div>
+									)}
 								</div>
 
 								{/* Target Selection */}

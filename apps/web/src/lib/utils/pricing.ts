@@ -87,8 +87,20 @@ export function isDiscountApplicable(
 
 function getPotentialPrice(
 	discount: Doc<"discounts">,
-	originalPrice: number
+	product: { _id: string; price: number; categoryId: string }
 ): number {
+	const originalPrice = product.price;
+
+	// Check for Happy Hour specific product prices
+	if (discount.isHappyHour && discount.productPrices) {
+		const specificPrice = discount.productPrices.find(
+			(pp) => pp.productId === product._id
+		);
+		if (specificPrice) {
+			return specificPrice.price;
+		}
+	}
+
 	if (discount.type === "PERCENTAGE") {
 		return originalPrice * (1 - discount.value / 100);
 	}
@@ -126,12 +138,19 @@ export function calculateEffectivePrice(
 	let bestPrice = originalPrice;
 	let appliedDiscount: Doc<"discounts"> | undefined;
 
-	for (const discount of activeDiscounts) {
+	// Sort discounts: Happy Hour first, then others
+	const sortedDiscounts = [...activeDiscounts].sort((a, b) => {
+		if (a.isHappyHour && !b.isHappyHour) return -1;
+		if (!a.isHappyHour && b.isHappyHour) return 1;
+		return 0;
+	});
+
+	for (const discount of sortedDiscounts) {
 		if (!isDiscountApplicable(discount, product, context)) {
 			continue;
 		}
 
-		const potentialPrice = getPotentialPrice(discount, originalPrice);
+		const potentialPrice = getPotentialPrice(discount, product);
 
 		if (potentialPrice < bestPrice) {
 			bestPrice = potentialPrice;

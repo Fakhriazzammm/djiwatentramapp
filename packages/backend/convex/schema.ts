@@ -179,6 +179,16 @@ export default defineSchema({
 		startTime: v.optional(v.string()), // "HH:mm"
 		endTime: v.optional(v.string()), // "HH:mm"
 		days: v.optional(v.array(v.number())), // 0-6 (Sun-Sat)
+		// Happy Hour specific
+		isHappyHour: v.optional(v.boolean()),
+		productPrices: v.optional(
+			v.array(
+				v.object({
+					productId: v.string(),
+					price: v.number(),
+				})
+			)
+		),
 	}),
 
 	// Variation Presets (Global configurations)
