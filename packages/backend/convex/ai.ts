@@ -60,11 +60,12 @@ async function callGeminiAPI(
 ): Promise<{ success: boolean; text: string; error?: string }> {
 	// Daftar model Gemini yang tersedia di SumoPod (mungkin berbeda nama tergantung provider)
 	const models = [
+		"seed-2-0-lite-free",
+		"seed-2-0-mini",
+		"seed-2-0-mini-free",
 		"google/gemini-2.0-flash-001",
 		"google/gemini-flash-1.5",
 		"google/gemini-pro-1.5",
-		"gemini-1.5-flash",
-		"gemini-1.5-pro",
 	];
 	
 	let lastError = "";
@@ -3007,8 +3008,9 @@ PENTING:
 			const geminiResult = await callGeminiAPI(prompt, base64Data, mimeType);
 
 			if (!geminiResult.success || !geminiResult.text) {
+				console.error("scanImageData: callGeminiAPI failed:", geminiResult.error);
 				throw new ConvexError(
-					`Gagal menganalisis gambar dengan Gemini AI. ${geminiResult.error || "Coba lagi dengan gambar yang lebih jelas."}`
+					`AI SCAN ERROR (V2-SUMOPOD): ${geminiResult.error || "Coba lagi dengan gambar yang lebih jelas."}`
 				);
 			}
 
