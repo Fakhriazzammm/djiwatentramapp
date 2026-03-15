@@ -22,6 +22,29 @@ const getOpenAI = () => {
 	});
 };
 
+/**
+ * Menghilangkan karakter aneh (encoding artifacts seperti â€¢, â€™, dll) 
+ * yang sering muncul dari output AI karena masalah encoding UTF-8/ISO.
+ */
+function sanitizeAIString(str: string): string {
+	if (!str) return "";
+	
+	// Map karakter aneh yang umum ke karakter yang benar atau hapus
+	return str
+		.replace(/â€¢/g, "•")
+		.replace(/â€™/g, "'")
+		.replace(/â€/g, '"')
+		.replace(/â€“/g, "–")
+		.replace(/â€”/g, "—")
+		.replace(/â€¦/g, "…")
+		.replace(/â€˜/g, "'")
+		.replace(/â€œ/g, '"')
+		.replace(/â€\?/g, '"')
+		.replace(/Â/g, "")
+		.replace(/\ufffd/g, "") // Karakter pengganti jika data rusak
+		.trim();
+}
+
 // Safe wrapper untuk panggil SumoPod/OpenAI - mengembalikan pesan error yang user-friendly
 async function safeSumoPodCall(
 	messages: Array<{ role: string; content: string }>,
@@ -34,7 +57,8 @@ async function safeSumoPodCall(
 			messages: messages as Array<OpenAI.ChatCompletionMessageParam>,
 			max_tokens: options?.maxTokens,
 		});
-		return completion.choices[0]?.message?.content || "";
+		const content = completion.choices[0]?.message?.content || "";
+		return sanitizeAIString(content);
 	} catch (error) {
 		console.error("safeSumoPodCall error:", error);
 		const errMsg = error instanceof Error ? error.message : String(error);
@@ -108,7 +132,7 @@ async function callGeminiAPI(
 			const text = completion.choices[0]?.message?.content || "";
 			if (text) {
 				console.log(`callGeminiAPI: Berhasil dengan ${model} via SumoPod`);
-				return { success: true, text };
+				return { success: true, text: sanitizeAIString(text) };
 			}
 			lastError = `Model ${model} memberikan respon kosong`;
 		} catch (error) {
@@ -155,6 +179,22 @@ function parseAIScanJSON(content: string): any {
 
 		const parsed = JSON.parse(jsonMatch[0]);
 
+		// Sanitize all string values in the parsed object
+		const deepSanitize = (obj: any): any => {
+			if (typeof obj === 'string') return sanitizeAIString(obj);
+			if (Array.isArray(obj)) return obj.map(deepSanitize);
+			if (obj !== null && typeof obj === 'object') {
+				const newObj: any = {};
+				for (const key in obj) {
+					newObj[key] = deepSanitize(obj[key]);
+				}
+				return newObj;
+			}
+			return obj;
+		};
+
+		const sanitizedParsed = deepSanitize(parsed);
+
 		// Sanitize numeric fields common in scans
 		const sanitizeNum = (v: any) => {
 			if (typeof v === 'number') return v;
@@ -165,11 +205,11 @@ function parseAIScanJSON(content: string): any {
 			return 0;
 		};
 
-		if (parsed.data) {
-			if (parsed.data.amount) parsed.data.amount = sanitizeNum(parsed.data.amount);
-			if (parsed.data.total) parsed.data.total = sanitizeNum(parsed.data.total);
-			if (Array.isArray(parsed.data.items)) {
-				parsed.data.items = parsed.data.items.map((item: any) => ({
+		if (sanitizedParsed.data) {
+			if (sanitizedParsed.data.amount) sanitizedParsed.data.amount = sanitizeNum(sanitizedParsed.data.amount);
+			if (sanitizedParsed.data.total) sanitizedParsed.data.total = sanitizeNum(sanitizedParsed.data.total);
+			if (Array.isArray(sanitizedParsed.data.items)) {
+				sanitizedParsed.data.items = sanitizedParsed.data.items.map((item: any) => ({
 					...item,
 					qty: sanitizeNum(item.qty) || 1,
 					price: sanitizeNum(item.price || item.unitPrice),
@@ -181,11 +221,11 @@ function parseAIScanJSON(content: string): any {
 		// Top level fields (for scanImageData style)
 		const fields = ['total', 'subtotal', 'tax', 'serviceCharge', 'discount', 'confidence'];
 		fields.forEach(f => {
-			if (parsed[f] !== undefined) parsed[f] = sanitizeNum(parsed[f]);
+			if (sanitizedParsed[f] !== undefined) sanitizedParsed[f] = sanitizeNum(sanitizedParsed[f]);
 		});
 
-		if (Array.isArray(parsed.items)) {
-			parsed.items = parsed.items.map((item: any) => ({
+		if (Array.isArray(sanitizedParsed.items)) {
+			sanitizedParsed.items = sanitizedParsed.items.map((item: any) => ({
 				...item,
 				qty: sanitizeNum(item.qty) || 1,
 				price: sanitizeNum(item.price),
@@ -193,7 +233,7 @@ function parseAIScanJSON(content: string): any {
 			}));
 		}
 
-		return parsed;
+		return sanitizedParsed;
 	} catch (e) {
 		console.error("parseAIScanJSON error:", e, "Content start:", content.slice(0, 100));
 		return null;
