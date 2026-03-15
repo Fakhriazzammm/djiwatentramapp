@@ -219,7 +219,7 @@ function ProductsTab({
 	);
 	const [_isUploading, setIsUploading] = useState(false);
 	const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
-	const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+	const [viewMode, setViewMode] = useState<"grid" | "table">("table");
 
 	const generateDescription = useAction(api.ai.generateProductDescription);
 
@@ -605,7 +605,11 @@ function ProductsTab({
 									const hpp = hppProductMap?.[product._id];
 
 									return (
-										<tr className="group hover:bg-muted/30 transition-colors" key={product._id}>
+										<tr
+											className="group cursor-pointer transition-colors hover:bg-muted/50"
+											key={product._id}
+											onClick={() => handleEdit(product)}
+										>
 											<td className="px-4 py-2 text-center">
 												{product.menuNumber != null ? (
 													<span className="inline-flex h-5 min-w-5 items-center justify-center rounded px-1 bg-black text-white font-bold text-[9px] leading-none">
@@ -624,9 +628,9 @@ function ProductsTab({
 															<div className="flex h-full w-full items-center justify-center text-[8px] text-muted-foreground">NA</div>
 														)}
 													</div>
-													<div className="min-w-0">
-														<p className="font-bold text-sm leading-none">{product.name}</p>
-														<p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground whitespace-nowrap">
+													<div className="min-w-0 max-w-[300px]">
+														<p className="font-bold text-sm leading-none truncate">{product.name}</p>
+														<p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">
 															{product.description || "Tanpa deskripsi"}
 														</p>
 													</div>
@@ -666,7 +670,10 @@ function ProductsTab({
 											<td className="px-4 py-2 text-center">
 												<button
 													className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold text-white transition-transform active:scale-95 ${product.isAvailable ? "bg-green-500" : "bg-red-500"}`}
-													onClick={() => toggleAvailability(product._id, product.isAvailable)}
+													onClick={(e) => {
+														e.stopPropagation();
+														toggleAvailability(product._id, product.isAvailable);
+													}}
 													type="button"
 												>
 													{product.isAvailable ? (
@@ -684,14 +691,20 @@ function ProductsTab({
 												<div className="flex justify-end gap-1">
 													<button
 														className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-														onClick={() => handleEdit(product)}
+														onClick={(e) => {
+															e.stopPropagation();
+															handleEdit(product);
+														}}
 														type="button"
 													>
 														<Edit className="h-3.5 w-3.5" />
 													</button>
 													<button
 														className="rounded-md p-1.5 text-destructive hover:bg-destructive/10 transition-colors"
-														onClick={() => setDeleteId(product._id)}
+														onClick={(e) => {
+															e.stopPropagation();
+															setDeleteId(product._id);
+														}}
 														type="button"
 													>
 														<Trash2 className="h-3.5 w-3.5" />
