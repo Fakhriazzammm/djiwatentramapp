@@ -64,20 +64,23 @@ async function callGeminiAPI(
 	}
 
 	const models = [
-		"gemini-1.5-flash",      // Prioritize for speed/availability
-		"gemini-2.0-flash",      // Next best
-		"gemini-2.0-flash-lite", // Experimental/Flash-lite (often has lower limits)
-		"gemini-1.5-pro"         // Last resort (more powerful but higher latency/stricter limits)
+		{ name: "gemini-1.5-flash", version: "v1" },
+		{ name: "gemini-1.5-flash-8b", version: "v1" },
+		{ name: "gemini-1.5-pro", version: "v1" },
+		{ name: "gemini-2.0-flash", version: "v1beta" },
+		{ name: "gemini-2.0-flash-lite-preview-02-05", version: "v1beta" },
 	];
 	let lastError = "";
+	let allErrors: string[] = [];
 
-	for (const model of models) {
+	for (const modelInfo of models) {
+		const { name: model, version } = modelInfo;
 		try {
 			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 35000); // Increased to 35s for Pro model
+			const timeoutId = setTimeout(() => controller.abort(), 40000); // 40s timeout
 
 			const response = await fetch(
-				`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+				`https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${geminiApiKey}`,
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -109,55 +112,76 @@ async function callGeminiAPI(
 				const result = await response.json();
 				const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
 				if (text) {
-					console.log(`callGeminiAPI: Success with ${model}`);
+					console.log(`callGeminiAPI: Success with ${model} (${version})`);
 					return { success: true, text };
 				}
-				// Check for blocked content
+				
 				const blockReason = result.candidates?.[0]?.finishReason;
-				if (blockReason === "SAFETY" || blockReason === "RECITATION") {
-					lastError = `Gemini ${model}: Content blocked (${blockReason})`;
-					console.log(lastError);
-					continue;
-				}
-				lastError = `Gemini ${model}: Empty response`;
+				lastError = `Gemini ${model}: ${blockReason === "SAFETY" || blockReason === "RECITATION" ? "Content blocked" : "Empty response"}`;
+				allErrors.push(lastError);
 			} else {
 				const errorBody = await response.text().catch(() => "");
-				lastError = `Gemini ${model}: ${response.status} - ${errorBody.slice(0, 200)}`;
+				lastError = `Gemini ${model} (${version}): ${response.status} - ${errorBody.slice(0, 250)}`;
+				allErrors.push(lastError);
 				console.log(`callGeminiAPI: ${lastError}`);
 				
-				// Handle specific error codes with backoff/fallback
-				if (response.status === 429 || response.status === 503 || response.status === 500) {
-					// Exponential-ish backoff: Wait 2s before trying another model if it's a rate limit or server error
-					const waitTime = response.status === 429 ? 2000 : 1000;
-					await new Promise(r => setTimeout(r, waitTime));
+				if (response.status === 429 || response.status === 503) {
+					await new Promise(r => setTimeout(r, 1500));
 				}
 				
-				// If 403 (forbidden) - API key issue, no point trying other models unless it's a model-specific permission
-				if (response.status === 403 && !errorBody.includes("permission denied on model")) {
-					return { success: false, text: "", error: `Gemini API key tidak valid atau tidak memiliki akses. ${lastError}` };
+				if (response.status === 403 && !errorBody.includes("permission denied")) {
+					return { success: false, text: "", error: `API Key issue: ${lastError}` };
 				}
-				
-				// Continue to next model for most errors
-				continue;
 			}
 		} catch (e) {
-			if (e instanceof Error && e.name === "AbortError") {
-				lastError = `Gemini ${model}: Request timeout`;
-			} else {
-				lastError = `Gemini ${model}: ${e instanceof Error ? e.message : String(e)}`;
-			}
+			lastError = `Gemini ${model}: ${e instanceof Error ? e.message : String(e)}`;
+			allErrors.push(lastError);
 			console.log(`callGeminiAPI: ${lastError}`);
-			// Small delay before next attempt
 			await new Promise(r => setTimeout(r, 500));
 		}
 	}
 
-	// Final error message if all models failed
-	const finalErrorMessage = lastError.includes("429") 
-		? "Batas penggunaan AI (Quota Exceeded) tercapai di semua model. Silakan coba lagi setelah beberapa menit atau periksa paket Gemini API Anda."
-		: `Gagal menganalisis gambar setelah mencoba berbagai model: ${lastError}`;
+	// Construct helpful final error message
+	let finalError = `Gagal menganalisis gambar setelah mencoba ${models.length} model. `;
+	if (allErrors.some(e => e.includes("429"))) {
+		finalError += "Batas kuota API (Rate Limit) tercapai. ";
+	} else if (allErrors.every(e => e.includes("404"))) {
+		finalError += "Model tidak ditemukan atau API version tidak sesuai. ";
+	}
+	finalError += `Detail kesalahan terakhir: ${lastError}`;
 	
-	return { success: false, text: "", error: finalErrorMessage };
+	// Fallback ke SumoPod AI jika Gemini gagal
+	console.log("callGeminiAPI: Attempting fallback to SumoPod AI...");
+	try {
+		const sumoPodResult = await safeSumoPodCall([
+			{
+				role: "system",
+				content: "You are an expert OCR and financial document analyzer. Analyze the provided image and extract data in JSON format."
+			},
+			{
+				role: "user",
+				content: [
+					{ type: "text", text: prompt },
+					{
+						type: "image_url",
+						image_url: {
+							url: `data:${mimeType};base64,${base64Data}`
+						}
+					}
+				] as any
+			}
+		], { model: "gpt-4o-mini" });
+
+		if (sumoPodResult) {
+			console.log("callGeminiAPI: Success with SumoPod Fallback");
+			return { success: true, text: sumoPodResult };
+		}
+	} catch (sumoError) {
+		console.error("callGeminiAPI: SumoPod fallback also failed:", sumoError);
+		finalError += `. Fallback SumoPod juga gagal: ${sumoError instanceof Error ? sumoError.message : String(sumoError)}`;
+	}
+
+	return { success: false, text: "", error: finalError };
 }
 
 /**
