@@ -217,6 +217,7 @@ function AIChatPage() {
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const briefingAttemptedRef = useRef(false);
 
 	// Sanitize AI response - remove markdown formatting and suggestion tags
 	const sanitizeResponse = useCallback((text: string): string => {
@@ -357,8 +358,13 @@ function AIChatPage() {
 	// Daily Morning Briefing Initialization
 	useEffect(() => {
 		const runBriefing = async () => {
-			if (messages.length === 1 && messages[0]._msgId === "welcome") {
+			if (briefingAttemptedRef.current) return;
+			
+			// Only trigger if we have exactly 1 message (the welcome message)
+			if (messages.length === 1 && messages[0].role === "assistant" && messages[0].content.includes("Saya Yumi, asisten AI kamu")) {
+				briefingAttemptedRef.current = true;
 				setIsLoading(true);
+				
 				const localHour = new Date().getHours();
 				let briefingType = "pagi";
 				if (localHour >= 11 && localHour < 15) briefingType = "siang";
@@ -366,8 +372,14 @@ function AIChatPage() {
 				else if (localHour >= 18 || localHour < 4) briefingType = "malam";
 				
 				setLoadingStatus(`Sedang menyiapkan briefing ${briefingType}...`);
+				
 				try {
+					// Small delay to ensure everything is initialized
+					await new Promise(resolve => setTimeout(resolve, 1000));
+					
 					const briefing = await generateDailyBriefingAction({ localHour });
+					if (!briefing) return;
+
 					const suggestions = extractSuggestions(briefing);
 					const sanitized = sanitizeResponse(briefing);
 					
@@ -394,7 +406,7 @@ function AIChatPage() {
 			}
 		};
 		runBriefing();
-	}, [generateDailyBriefingAction, extractSuggestions, sanitizeResponse]);
+	}, [generateDailyBriefingAction, extractSuggestions, sanitizeResponse, messages]);
 
 	// Auto-scroll while streaming
 	useEffect(() => {

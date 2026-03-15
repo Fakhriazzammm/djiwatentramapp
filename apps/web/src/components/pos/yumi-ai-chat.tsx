@@ -152,6 +152,7 @@ export function YumiAIChat() {
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const briefingAttemptedRef = useRef(false);
 
 	const yumiChat = useAction(api.ai.yumiChat);
 	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
@@ -511,11 +512,20 @@ export function YumiAIChat() {
 	// Daily Morning Briefing
 	useEffect(() => {
 		const runBriefing = async () => {
-			if (messages.length === 1 && messages[0].role === "assistant" && messages[0].content.includes("Halo! Selamat")) {
+			if (briefingAttemptedRef.current) return;
+
+			// Only trigger if we have exactly 1 message (the welcome message)
+			if (messages.length === 1 && messages[0].role === "assistant" && messages[0].content.includes("Saya Yumi, asisten AI kamu")) {
+				briefingAttemptedRef.current = true;
 				setIsLoading(true);
 				try {
+					// Small delay to ensure everything is initialized
+					await new Promise(resolve => setTimeout(resolve, 1000));
+
 					const localHour = new Date().getHours();
 					const briefing = await generateDailyBriefingAction({ localHour });
+					if (!briefing) return;
+					
 					const sanitized = sanitizeResponse(briefing);
 					
 					let fallbackGreeting = "Selamat pagi";
@@ -543,7 +553,7 @@ export function YumiAIChat() {
 			}
 		};
 		runBriefing();
-	}, [generateDailyBriefingAction]);
+	}, [generateDailyBriefingAction, messages]);
 
 	return (
 		<div className="flex h-full flex-col bg-background">
