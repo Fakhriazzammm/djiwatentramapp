@@ -376,8 +376,7 @@ function AIChatPage() {
 					else if (localHour >= 15 && localHour < 18) fallbackGreeting = "Selamat sore";
 					else if (localHour >= 18 || localHour < 4) fallbackGreeting = "Selamat malam";
 
-					setMessages(prev => [
-						...prev,
+					setMessages([
 						{
 							role: "assistant",
 							content: sanitized || `${fallbackGreeting}! Saya siap membantu Anda hari ini.`,
@@ -394,7 +393,7 @@ function AIChatPage() {
 			}
 		};
 		runBriefing();
-	}, [generateDailyBriefingAction, extractSuggestions, sanitizeResponse, messages.length]);
+	}, [generateDailyBriefingAction, extractSuggestions, sanitizeResponse]);
 
 	// Auto-scroll while streaming
 	useEffect(() => {

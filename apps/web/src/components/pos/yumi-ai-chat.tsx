@@ -511,7 +511,7 @@ export function YumiAIChat() {
 	// Daily Morning Briefing
 	useEffect(() => {
 		const runBriefing = async () => {
-			if (messages.length === 1 && messages[0].content.includes("Halo! Saya Yumi")) {
+			if (messages.length === 1 && messages[0].role === "assistant" && messages[0].content.includes("Halo! Selamat")) {
 				setIsLoading(true);
 				try {
 					const localHour = new Date().getHours();
@@ -523,11 +523,11 @@ export function YumiAIChat() {
 					else if (localHour >= 15 && localHour < 18) fallbackGreeting = "Selamat sore";
 					else if (localHour >= 18 || localHour < 4) fallbackGreeting = "Selamat malam";
 
-					// Stream the briefing
 					const contentToStream = sanitized || `${fallbackGreeting}! Saya siap membantu Anda hari ini.`;
+					
+					// Replace the welcome message with the briefing to avoid double message
 					streamText(contentToStream, () => {
-						setMessages(prev => [
-							...prev,
+						setMessages([
 							{
 								role: "assistant",
 								content: contentToStream,
@@ -542,7 +542,7 @@ export function YumiAIChat() {
 			}
 		};
 		runBriefing();
-	}, [generateDailyBriefingAction, messages.length]);
+	}, [generateDailyBriefingAction]);
 
 	return (
 		<div className="flex h-full flex-col bg-background">
