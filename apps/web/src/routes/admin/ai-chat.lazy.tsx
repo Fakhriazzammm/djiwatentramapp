@@ -360,8 +360,8 @@ function AIChatPage() {
 		const runBriefing = async () => {
 			if (briefingAttemptedRef.current) return;
 			
-			// Only trigger if we have exactly 1 message (the welcome message)
-			if (messages.length === 1 && messages[0].role === "assistant" && messages[0].content.includes("Saya Yumi, asisten AI kamu")) {
+			// Only trigger if we have exactly 1 message and it's the welcome message
+			if (messages.length === 1 && (messages[0]._msgId === "welcome" || messages[0].role === "assistant")) {
 				briefingAttemptedRef.current = true;
 				setIsLoading(true);
 				

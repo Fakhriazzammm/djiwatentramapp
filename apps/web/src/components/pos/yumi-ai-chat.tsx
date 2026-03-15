@@ -514,8 +514,8 @@ export function YumiAIChat() {
 		const runBriefing = async () => {
 			if (briefingAttemptedRef.current) return;
 
-			// Only trigger if we have exactly 1 message (the welcome message)
-			if (messages.length === 1 && messages[0].role === "assistant" && messages[0].content.includes("Saya Yumi, asisten AI kamu")) {
+			// Only trigger if we have exactly 1 message and it's from assistant
+			if (messages.length === 1 && messages[0].role === "assistant") {
 				briefingAttemptedRef.current = true;
 				setIsLoading(true);
 				try {
