@@ -10,11 +10,13 @@ interface SplitRow {
 }
 
 interface Props {
-	totalAmount: number;
-	transactionType: "income" | "expense";
-	baseParams: ScanEditParams;
+	isOpen?: boolean;
+	totalAmount?: number;
+	transactionType?: "income" | "expense";
+	baseParams?: ScanEditParams;
+	params?: ScanEditParams;
 	onSave: (splits: ScanEditParams[]) => Promise<void>;
-	onBack: () => void;
+	onBack?: () => void;
 	onClose: () => void;
 }
 
@@ -52,7 +54,20 @@ function genId() {
 	return `split-${Date.now()}-${_idCounter++}`;
 }
 
-export function ScanSplitModal({ totalAmount, transactionType, baseParams, onSave, onBack, onClose }: Props) {
+export function ScanSplitModal({
+	isOpen,
+	totalAmount: propTotal,
+	transactionType: propType,
+	baseParams: propBase,
+	params,
+	onSave,
+	onBack,
+	onClose,
+}: Props) {
+	const finalBase = params || propBase;
+	const totalAmount = finalBase?.amount ?? propTotal ?? 0;
+	const transactionType = finalBase?.type ?? propType ?? "expense";
+
 	const categories = transactionType === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
 	const [rows, setRows] = useState<SplitRow[]>([
@@ -60,6 +75,8 @@ export function ScanSplitModal({ totalAmount, transactionType, baseParams, onSav
 		{ id: genId(), amount: totalAmount - Math.round(totalAmount / 2), category: categories[1] ?? categories[0], description: "" },
 	]);
 	const [isSaving, setIsSaving] = useState(false);
+
+	if (isOpen === false) return null;
 
 	const allocatedTotal = rows.reduce((s, r) => s + (r.amount || 0), 0);
 	const remaining = totalAmount - allocatedTotal;
@@ -82,14 +99,14 @@ export function ScanSplitModal({ totalAmount, transactionType, baseParams, onSav
 	};
 
 	const handleSave = async () => {
-		if (!isValid) return;
+		if (!isValid || !finalBase) return;
 		setIsSaving(true);
 		try {
 			const splits: ScanEditParams[] = rows.map((r) => ({
-				...baseParams,
+				...finalBase,
 				amount: r.amount,
 				category: r.category,
-				description: r.description || baseParams.description,
+				description: r.description || finalBase.description,
 			}));
 			await onSave(splits);
 		} finally {

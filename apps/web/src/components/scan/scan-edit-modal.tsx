@@ -13,6 +13,7 @@ export interface ScanEditParams {
 }
 
 interface Props {
+	isOpen?: boolean;
 	params: ScanEditParams;
 	onSave: (params: ScanEditParams) => Promise<void>;
 	onSplit: (params: ScanEditParams) => void;
@@ -46,9 +47,11 @@ const INCOME_CATEGORIES = [
 
 const PAYMENT_METHODS = ["cash", "qris", "card", "transfer"];
 
-export function ScanEditModal({ params, onSave, onSplit, onClose }: Props) {
+export function ScanEditModal({ isOpen, params, onSave, onSplit, onClose }: Props) {
 	const [form, setForm] = useState<ScanEditParams>({ ...params });
 	const [isSaving, setIsSaving] = useState(false);
+
+	if (isOpen === false) return null;
 
 	const categories = form.type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 

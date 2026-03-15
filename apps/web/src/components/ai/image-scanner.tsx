@@ -35,6 +35,7 @@ interface ImageScannerProps {
 	isOpen: boolean;
 	onClose: () => void;
 	onDataGenerated?: (type: string, data: any) => void;
+	onScan?: (images: string[]) => void | Promise<void>;
 }
 
 type ScanMode = "single" | "batch";
@@ -43,6 +44,7 @@ export function ImageScanner({
 	isOpen,
 	onClose,
 	onDataGenerated,
+	onScan,
 }: ImageScannerProps) {
 	const [mode, setMode] = useState<ScanMode>("single");
 	const [images, setImages] = useState<string[]>([]);
@@ -740,9 +742,13 @@ export function ImageScanner({
 											<button
 												className="w-full rounded-lg bg-primary py-3 font-semibold text-primary-foreground disabled:opacity-50"
 												disabled={isScanning}
-												onClick={() =>
-													mode === "batch" ? handleScanAll() : handleScan()
-												}
+												onClick={() => {
+													if (onScan) {
+														onScan(images);
+													} else {
+														mode === "batch" ? handleScanAll() : handleScan();
+													}
+												}}
 												type="button"
 											>
 												{isScanning ? (

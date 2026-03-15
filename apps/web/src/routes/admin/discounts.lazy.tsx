@@ -611,20 +611,20 @@ function AdminDiscountsPage() {
 					))
 				) : (
 					<AnimatePresence mode="popLayout">
-						{filteredDiscounts.map((d: any, index: number) => {
-						const status = getPromoStatus(d);
-						const StatusIcon = status.icon;
+						{(filteredDiscounts || []).map((d: any, index: number) => {
+							const status = getPromoStatus(d);
+							const StatusIcon = status.icon;
 
-						return (
-							<motion.div
-								animate={{ opacity: 1, scale: 1 }}
-								className="group relative overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:shadow-lg"
-								exit={{ opacity: 0, scale: 0.9 }}
-								initial={{ opacity: 0, scale: 0.9 }}
-								key={d._id}
-								layout
-								transition={{ delay: index * 0.05 }}
-							>
+							return (
+								<motion.div
+									animate={{ opacity: 1, scale: 1 }}
+									className="group relative overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:shadow-lg"
+									exit={{ opacity: 0, scale: 0.9 }}
+									initial={{ opacity: 0, scale: 0.9 }}
+									key={d._id}
+									layout
+									transition={{ delay: index * 0.05 }}
+								>
 								{/* Gradient Overlay */}
 								<div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 
