@@ -376,7 +376,8 @@ function AIChatPage() {
 					else if (localHour >= 15 && localHour < 18) fallbackGreeting = "Selamat sore";
 					else if (localHour >= 18 || localHour < 4) fallbackGreeting = "Selamat malam";
 
-					setMessages([
+					setMessages(prev => [
+						...prev,
 						{
 							role: "assistant",
 							content: sanitized || `${fallbackGreeting}! Saya siap membantu Anda hari ini.`,

@@ -525,9 +525,10 @@ export function YumiAIChat() {
 
 					const contentToStream = sanitized || `${fallbackGreeting}! Saya siap membantu Anda hari ini.`;
 					
-					// Replace the welcome message with the briefing to avoid double message
+					// Append the briefing as the second message
 					streamText(contentToStream, () => {
-						setMessages([
+						setMessages(prev => [
+							...prev,
 							{
 								role: "assistant",
 								content: contentToStream,
