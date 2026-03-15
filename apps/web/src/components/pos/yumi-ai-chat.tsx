@@ -514,26 +514,23 @@ export function YumiAIChat() {
 		const runBriefing = async () => {
 			if (briefingAttemptedRef.current) return;
 
-			// Only trigger if we have exactly 1 message and it's from assistant
-			if (messages.length === 1 && messages[0].role === "assistant") {
+			// Trigger if we have at least one message and it's from assistant
+			if (messages.length > 0 && messages[0].role === "assistant") {
 				briefingAttemptedRef.current = true;
 				setIsLoading(true);
 				try {
 					// Small delay to ensure everything is initialized
-					await new Promise(resolve => setTimeout(resolve, 1000));
+					await new Promise(resolve => setTimeout(resolve, 1500));
 
 					const localHour = new Date().getHours();
 					const briefing = await generateDailyBriefingAction({ localHour });
-					if (!briefing) return;
-					
-					const sanitized = sanitizeResponse(briefing);
 					
 					let fallbackGreeting = "Selamat pagi";
 					if (localHour >= 11 && localHour < 15) fallbackGreeting = "Selamat siang";
 					else if (localHour >= 15 && localHour < 18) fallbackGreeting = "Selamat sore";
 					else if (localHour >= 18 || localHour < 4) fallbackGreeting = "Selamat malam";
 
-					const contentToStream = sanitized || `${fallbackGreeting}! Saya siap membantu Anda hari ini.`;
+					const contentToStream = briefing ? sanitizeResponse(briefing) : `${fallbackGreeting}! Saya siap membantu Anda mengelola toko hari ini.`;
 					
 					// Append the briefing as the second message
 					streamText(contentToStream, () => {
@@ -547,13 +544,27 @@ export function YumiAIChat() {
 					});
 				} catch (error) {
 					console.error("Briefing error:", error);
+					// Even on error, show a second bubble
+					const localHour = new Date().getHours();
+					let fallbackGreeting = "Selamat pagi";
+					if (localHour >= 11 && localHour < 15) fallbackGreeting = "Selamat siang";
+					else if (localHour >= 15 && localHour < 18) fallbackGreeting = "Selamat sore";
+					else if (localHour >= 18 || localHour < 4) fallbackGreeting = "Selamat malam";
+					
+					setMessages(prev => [
+						...prev,
+						{
+							role: "assistant",
+							content: `${fallbackGreeting}! Saya siap membantu Anda mengelola toko hari ini.`,
+						}
+					]);
 				} finally {
 					setIsLoading(false);
 				}
 			}
 		};
 		runBriefing();
-	}, [generateDailyBriefingAction, messages]);
+	}, [generateDailyBriefingAction, messages.length]);
 
 	return (
 		<div className="flex h-full flex-col bg-background">

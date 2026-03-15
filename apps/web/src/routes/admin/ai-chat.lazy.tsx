@@ -360,8 +360,8 @@ function AIChatPage() {
 		const runBriefing = async () => {
 			if (briefingAttemptedRef.current) return;
 			
-			// Only trigger if we have exactly 1 message and it's the welcome message
-			if (messages.length === 1 && (messages[0]._msgId === "welcome" || messages[0].role === "assistant")) {
+			// Trigger if we have at least one message and it's from Yumi (the initial welcome)
+			if (messages.length > 0 && messages[0].role === "assistant") {
 				briefingAttemptedRef.current = true;
 				setIsLoading(true);
 				
@@ -375,30 +375,44 @@ function AIChatPage() {
 				
 				try {
 					// Small delay to ensure everything is initialized
-					await new Promise(resolve => setTimeout(resolve, 1000));
+					await new Promise(resolve => setTimeout(resolve, 1500));
 					
 					const briefing = await generateDailyBriefingAction({ localHour });
-					if (!briefing) return;
-
-					const suggestions = extractSuggestions(briefing);
-					const sanitized = sanitizeResponse(briefing);
 					
 					let fallbackGreeting = "Selamat pagi";
 					if (localHour >= 11 && localHour < 15) fallbackGreeting = "Selamat siang";
 					else if (localHour >= 15 && localHour < 18) fallbackGreeting = "Selamat sore";
 					else if (localHour >= 18 || localHour < 4) fallbackGreeting = "Selamat malam";
 
+					const suggestions = briefing ? extractSuggestions(briefing) : [];
+					const sanitized = briefing ? sanitizeResponse(briefing) : `${fallbackGreeting}! Saya siap membantu Anda mengelola toko hari ini.`;
+
 					setMessages(prev => [
 						...prev,
 						{
 							role: "assistant",
-							content: sanitized || `${fallbackGreeting}! Saya siap membantu Anda hari ini.`,
+							content: sanitized,
 							suggestions: suggestions,
 							_msgId: mkMsgId(),
 						}
 					]);
 				} catch (error) {
 					console.error("Briefing error:", error);
+					// Even on error, show a second bubble so it doesn't look empty
+					const localHour = new Date().getHours();
+					let fallbackGreeting = "Selamat pagi";
+					if (localHour >= 11 && localHour < 15) fallbackGreeting = "Selamat siang";
+					else if (localHour >= 15 && localHour < 18) fallbackGreeting = "Selamat sore";
+					else if (localHour >= 18 || localHour < 4) fallbackGreeting = "Selamat malam";
+					
+					setMessages(prev => [
+						...prev,
+						{
+							role: "assistant",
+							content: `${fallbackGreeting}! Saya siap membantu Anda mengelola toko hari ini. Apa yang ingin Anda ketahui?`,
+							_msgId: mkMsgId(),
+						}
+					]);
 				} finally {
 					setIsLoading(false);
 					setLoadingStatus("");
@@ -406,7 +420,7 @@ function AIChatPage() {
 			}
 		};
 		runBriefing();
-	}, [generateDailyBriefingAction, extractSuggestions, sanitizeResponse, messages]);
+	}, [generateDailyBriefingAction, extractSuggestions, sanitizeResponse, messages.length]);
 
 	// Auto-scroll while streaming
 	useEffect(() => {
