@@ -33,8 +33,12 @@ export const createOrder = mutation({
 });
 
 export const getOrders = query({
-	args: { status: v.optional(v.string()) }, // status filter
+	args: { 
+		status: v.optional(v.string()),
+		limit: v.optional(v.number()),
+	},
 	handler: async (ctx, args) => {
+		const limit = args.limit ?? 200; // Default limit to prevent slow performance
 		if (args.status) {
 			return await ctx.db
 				.query("orders")
@@ -45,9 +49,9 @@ export const getOrders = query({
 					)
 				)
 				.order("desc")
-				.collect();
+				.take(limit);
 		}
-		return await ctx.db.query("orders").order("desc").collect();
+		return await ctx.db.query("orders").order("desc").take(limit);
 	},
 });
 

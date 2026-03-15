@@ -1658,7 +1658,6 @@ export const getProactiveSuggestions = query({
 
 		// Check 1: Low Stock & Expiry Monitoring
 		const inventory = await ctx.db.query("inventory").collect();
-		const inventoryTransactions = await ctx.db.query("inventoryTransactions").collect();
 
 		for (const item of inventory) {
 			// Low Stock Check
@@ -1684,12 +1683,15 @@ export const getProactiveSuggestions = query({
 				});
 			}
 
-			// Expiry Monitoring (FIFO Batches)
-			const activeBatches = inventoryTransactions.filter(
-				t => t.inventoryId === item._id && (t.remainingQuantity ?? 0) > 0 && t.expiryDate
-			);
+			// Expiry Monitoring (FIFO Batches) - Optimized to query per item
+			const activeBatches = await ctx.db
+				.query("inventoryTransactions")
+				.withIndex("by_inventory", (q) => q.eq("inventoryId", item._id))
+				.filter((q) => q.gt(q.field("remainingQuantity"), 0))
+				.collect();
 
 			for (const batch of activeBatches) {
+				if (!batch.expiryDate) continue;
 				const daysToExpiry = Math.ceil(((batch.expiryDate as number) - now) / (24 * 60 * 60 * 1000));
 				
 				if (daysToExpiry <= 7 && daysToExpiry > 0) {
@@ -1714,9 +1716,11 @@ export const getProactiveSuggestions = query({
 			}
 		}
 
-		// Check 2: Pending Orders
-		const orders = await ctx.db.query("orders").collect();
-		const pendingOrders = orders.filter((o) => o.status === "pending");
+		// Check 2: Pending Orders (Use index)
+		const pendingOrders = await ctx.db
+			.query("orders")
+			.withIndex("by_status", (q) => q.eq("status", "pending"))
+			.collect();
 
 		if (pendingOrders.length > 0) {
 			suggestions.push({
@@ -1733,8 +1737,15 @@ export const getProactiveSuggestions = query({
 			});
 		}
 
-		// Check 3: Trending Products & Forecasting (based on recent completed orders)
-		const completedOrders = orders.filter(
+		// Check 3: Trending Products & Forecasting (last 30 days only for comprehensive insights)
+		const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+		const ordersLast30Days = await ctx.db
+			.query("orders")
+			.withIndex("by_createdAt", (q) => q.gte("createdAt", thirtyDaysAgo))
+			.collect();
+
+		// Filter for only paid/completed orders from the last 30 days
+		const completedOrders = ordersLast30Days.filter(
 			(o) => o.status === "completed" || o.status === "paid"
 		);
 		
@@ -2030,7 +2041,14 @@ export const predictStockOut = query({
 	handler: async (ctx, args) => {
 		const daysAhead = args.daysAhead || 7;
 		const inventory = await ctx.runQuery(api.inventory.getInventory);
-		const orders = await ctx.runQuery(api.orders.getOrders, {});
+		
+		// Optimized: Only fetch orders from last 30 days
+		const daysToAnalyze = 30;
+		const cutoffDate = Date.now() - daysToAnalyze * 24 * 60 * 60 * 1000;
+		const orders = await ctx.db
+			.query("orders")
+			.withIndex("by_createdAt", (q) => q.gte("createdAt", cutoffDate))
+			.collect();
 
 		const completedOrders = orders.filter(
 			(o) => o.status === "completed" || o.status === "paid"
@@ -2038,14 +2056,8 @@ export const predictStockOut = query({
 
 		// Calculate daily usage for each inventory item
 		const itemUsage: Record<string, number> = {};
-		const daysToAnalyze = 30; // Analyze last 30 days
-		const cutoffDate = Date.now() - daysToAnalyze * 24 * 60 * 60 * 1000;
 
 		for (const order of completedOrders) {
-			if (order.createdAt < cutoffDate) {
-				continue;
-			}
-
 			for (const item of order.items) {
 				// This is a simplified calculation
 				const productName = item.productName;
@@ -2090,7 +2102,13 @@ export const predictStockOut = query({
 export const predictBusyHours = query({
 	args: {},
 	handler: async (ctx) => {
-		const orders = await ctx.runQuery(api.orders.getOrders, {});
+		// Optimized: Only fetch orders from last 30 days for busy hours pattern
+		const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+		const orders = await ctx.db
+			.query("orders")
+			.withIndex("by_createdAt", (q) => q.gte("createdAt", thirtyDaysAgo))
+			.collect();
+
 		const completedOrders = orders.filter(
 			(o) => o.status === "completed" || o.status === "paid"
 		);
@@ -2154,21 +2172,22 @@ export const predictDailyRevenue = query({
 	},
 	handler: async (ctx, args) => {
 		const daysAhead = args.daysAhead || 7;
-		const orders = await ctx.runQuery(api.orders.getOrders, {});
+		// Optimized: Only fetch orders from last 45 days for revenue trend analysis
+		const daysToAnalyze = 45;
+		const cutoffDate = Date.now() - daysToAnalyze * 24 * 60 * 60 * 1000;
+		const orders = await ctx.db
+			.query("orders")
+			.withIndex("by_createdAt", (q) => q.gte("createdAt", cutoffDate))
+			.collect();
+
 		const completedOrders = orders.filter(
 			(o) => o.status === "completed" || o.status === "paid"
 		);
 
-		// Calculate daily revenue for the past 30 days
+		// Calculate daily revenue for the fetched period
 		const dailyRevenue: Record<string, number> = {};
-		const daysToAnalyze = 30;
-		const cutoffDate = Date.now() - daysToAnalyze * 24 * 60 * 60 * 1000;
 
 		for (const order of completedOrders) {
-			if (order.createdAt < cutoffDate) {
-				continue;
-			}
-
 			const dateKey = new Date(order.createdAt).toISOString().split("T")[0];
 			dailyRevenue[dateKey] = (dailyRevenue[dateKey] || 0) + order.totalAmount;
 		}
@@ -2266,8 +2285,13 @@ export const predictTrendingProducts = query({
 	},
 	handler: async (ctx, args) => {
 		const _daysAhead = args.daysAhead || 7;
-		const orders = await ctx.runQuery(api.orders.getOrders, {});
-		const products = await ctx.runQuery(api.products.getAllProductsAdmin);
+		// Optimized: Only fetch orders from last 14 days for trending analysis
+		const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+		const orders = await ctx.db
+			.query("orders")
+			.withIndex("by_createdAt", (q) => q.gte("createdAt", fourteenDaysAgo))
+			.collect();
+		const products = await ctx.db.query("products").collect();
 
 		const completedOrders = orders.filter(
 			(o) => o.status === "completed" || o.status === "paid"
@@ -2275,7 +2299,6 @@ export const predictTrendingProducts = query({
 
 		// Calculate sales for recent periods
 		const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-		const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
 
 		const recentSales: Record<string, number> = {};
 		const previousSales: Record<string, number> = {};
@@ -2285,7 +2308,7 @@ export const predictTrendingProducts = query({
 				if (order.createdAt >= sevenDaysAgo) {
 					recentSales[item.productName] =
 						(recentSales[item.productName] || 0) + item.quantity;
-				} else if (order.createdAt >= fourteenDaysAgo) {
+				} else {
 					previousSales[item.productName] =
 						(previousSales[item.productName] || 0) + item.quantity;
 				}
@@ -2327,7 +2350,12 @@ export const predictTrendingProducts = query({
 export const predictBestPromoTime = query({
 	args: {},
 	handler: async (ctx) => {
-		const orders = await ctx.runQuery(api.orders.getOrders, {});
+		// Optimized: Only fetch orders from last 60 days for reliable promotion timing analysis
+		const sixtyDaysAgo = Date.now() - 60 * 24 * 60 * 60 * 1000;
+		const orders = await ctx.db
+			.query("orders")
+			.withIndex("by_createdAt", (q) => q.gte("createdAt", sixtyDaysAgo))
+			.collect();
 
 		const completedOrders = orders.filter(
 			(o) => o.status === "completed" || o.status === "paid"
@@ -2419,10 +2447,16 @@ export const autoGenerateTasks = mutation({
 		const now = Date.now();
 		const tasks = [];
 
-		// Get business data
-		const inventory = await ctx.runQuery(api.inventory.getInventory);
-		const orders = await ctx.runQuery(api.orders.getOrders, {});
-		const products = await ctx.runQuery(api.products.getAllProductsAdmin);
+		// Optimized: Fetch business data efficiently
+		const inventory = await ctx.db.query("inventory").collect();
+		// Only fetch orders from last 30 days for task generation
+		const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+		const orders = await ctx.db
+			.query("orders")
+			.withIndex("by_createdAt", (q) => q.gte("createdAt", thirtyDaysAgo))
+			.collect();
+		const products = await ctx.db.query("products").collect();
+		// For HPP, we still need to run the query
 		const hppDashboard = await ctx.runQuery(api.hpp.getHppDashboardData);
 
 		// Check for critical low stock
