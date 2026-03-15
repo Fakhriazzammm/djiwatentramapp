@@ -133,10 +133,7 @@ export function YumiAIChat() {
 	});
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
-	const [isStreaming, setIsStreaming] = useState(false);
-	const [streamingContent, setStreamingContent] = useState("");
 	const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-	const streamingActiveRef = useRef(true);
 
 	const [isImageScannerOpen, setIsImageScannerOpen] = useState(false);
 	const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -214,6 +211,11 @@ export function YumiAIChat() {
 		}
 	}, [splitModal, createTransactionMutation, markScanSaved]);
 
+	const [streamingContent, setStreamingContent] = useState("");
+	const [isStreaming, setIsStreaming] = useState(false);
+	const streamingActiveRef = useRef(false);
+
+	// Scroll to bottom when messages change
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, [messages]);
@@ -618,7 +620,11 @@ export function YumiAIChat() {
 								</div>
 							)}
 
-							<div className="whitespace-pre-line">{msg.content}</div>
+							<div className="whitespace-pre-line">
+								{i === messages.length - 1 && isStreaming && msg.role === "assistant" 
+									? streamingContent 
+									: msg.content}
+							</div>
 
 							{msg.actionButtons && msg.actionButtons.length > 0 && (
 								<div className="mt-3 flex flex-wrap gap-2 border-t border-border/50 pt-3">

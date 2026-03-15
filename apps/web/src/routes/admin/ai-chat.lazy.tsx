@@ -387,15 +387,18 @@ function AIChatPage() {
 					const suggestions = briefing ? extractSuggestions(briefing) : [];
 					const sanitized = briefing ? sanitizeResponse(briefing) : `${fallbackGreeting}! Saya siap membantu Anda mengelola toko hari ini.`;
 
-					setMessages(prev => [
-						...prev,
-						{
-							role: "assistant",
-							content: sanitized,
-							suggestions: suggestions,
-							_msgId: mkMsgId(),
-						}
-					]);
+					// Use streaming for the briefing
+					streamText(sanitized, () => {
+						setMessages(prev => [
+							...prev,
+							{
+								role: "assistant",
+								content: sanitized,
+								suggestions: suggestions,
+								_msgId: mkMsgId(),
+							}
+						]);
+					});
 				} catch (error) {
 					console.error("Briefing error:", error);
 					// Even on error, show a second bubble so it doesn't look empty
@@ -1220,7 +1223,9 @@ function AIChatPage() {
 														</div>
 													)}
 													<div className="whitespace-pre-line">
-														{msg.content}
+														{i === messages.length - 1 && isStreaming && msg.role === "assistant" 
+															? streamingContent 
+															: msg.content}
 													</div>
 													{msg.scanData && (
 														<ScanResultCard data={msg.scanData} />
