@@ -197,16 +197,13 @@ function AIChatPage() {
 	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 	const [showSessionHistory, setShowSessionHistory] = useState(false);
 
-	const [showScanPanel, setShowScanPanel] = useState(false);
-	const [scanImages, setScanImages] = useState<string[]>([]);
+	const [isScanMode, setIsScanMode] = useState(false);
 	const [isScanning, setIsScanning] = useState(false);
 	const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const scanFileInputRef = useRef<HTMLInputElement>(null);
-	const cameraInputRef = useRef<HTMLInputElement>(null);
 	const yumiChat = useAction(api.ai.yumiChat);
 	const scanImageDataAction = useAction(api.ai.scanImageData);
 	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
@@ -237,14 +234,14 @@ function AIChatPage() {
 	);
 
 	// AI Proactive Suggestions
-	const proactiveSuggestions = useQuery(api.ai.getProactiveSuggestions, {});
+	const _proactiveSuggestions = useQuery(api.ai.getProactiveSuggestions, {});
 
 	// Predictive Analytics
-	const stockPredictions = useQuery(api.ai.predictStockOut, { daysAhead: 7 });
-	const busyHoursPrediction = useQuery(api.ai.predictBusyHours, {});
-	const revenuePrediction = useQuery(api.ai.predictDailyRevenue, { daysAhead: 7 });
-	const trendingProducts = useQuery(api.ai.predictTrendingProducts, { daysAhead: 7 });
-	const bestPromoTime = useQuery(api.ai.predictBestPromoTime, {});
+	const _stockPredictions = useQuery(api.ai.predictStockOut, { daysAhead: 7 });
+	const _busyHoursPrediction = useQuery(api.ai.predictBusyHours, {});
+	const _revenuePrediction = useQuery(api.ai.predictDailyRevenue, { daysAhead: 7 });
+	const _trendingProducts = useQuery(api.ai.predictTrendingProducts, { daysAhead: 7 });
+	const _bestPromoTime = useQuery(api.ai.predictBestPromoTime, {});
 
 	// Follow-up Tasks
 	const pendingTasks = useQuery(api.aiMemory.getPendingTasks, {});
@@ -422,7 +419,16 @@ function AIChatPage() {
 
 	const sendMessage = useCallback(
 		async (text: string, image?: string) => {
-			if (!(text.trim() || image || selectedImages.length > 0) || isLoading) {
+			const trimmed = text.trim();
+			if (!(trimmed || image || selectedImages.length > 0) || isLoading || isScanning) {
+				return;
+			}
+
+			// If in Scan Mode and has images, use the specialized scan logic
+			if (isScanMode && selectedImages.length > 0) {
+				await processImagesWithAI(selectedImages, trimmed);
+				setInput("");
+				setIsScanMode(false);
 				return;
 			}
 
@@ -433,7 +439,7 @@ function AIChatPage() {
 
 			const userMessage: ChatMessage = {
 				role: "user",
-				content: text.trim(),
+				content: trimmed,
 				image: image || (selectedImages.length > 0 ? selectedImages[0] : undefined), // Keep for backward compat
 			};
 			setMessages((prev) => [...prev, userMessage]);
@@ -449,7 +455,7 @@ function AIChatPage() {
 
 				const attachedImages = image ? [image] : selectedImages;
 				const response = await yumiChat({
-					message: text.trim() || (attachedImages.length > 0 ? "Tolong analisis gambar-gambar ini." : ""),
+					message: trimmed || (attachedImages.length > 0 ? "Tolong analisis gambar-gambar ini." : ""),
 					history,
 					images: attachedImages,
 				});
@@ -526,7 +532,7 @@ function AIChatPage() {
 				setToolCalls([]);
 			}
 		},
-		[isLoading, messages, yumiChat, selectedImages, currentSessionId, startNewSession, saveMessage, streamText]
+		[isLoading, isScanning, isScanMode, messages, yumiChat, selectedImages, currentSessionId, startNewSession, saveMessage, streamText, processImagesWithAI]
 	);
 
 	// Helper: compress image for AI scan - optimized for OCR readability
@@ -609,67 +615,19 @@ function AIChatPage() {
 		[compressImage]
 	);
 
-	// Scan panel: file select handler
-	const handleScanFileSelect = useCallback(
-		(e: React.ChangeEvent<HTMLInputElement>) => {
-			const files = Array.from(e.target.files || []);
-			if (files.length === 0) return;
-
-			const validFiles = files.filter(file => {
-				if (!file.type.startsWith("image/")) {
-					toast.error(`${file.name} bukan file gambar`);
-					return false;
-				}
-				if (file.size > 5 * 1024 * 1024) {
-					toast.error(`${file.name} terlalu besar (maks 5MB)`);
-					return false;
-				}
-				return true;
-			});
-
-			if (validFiles.length === 0) return;
-
-			// Process all files in parallel
-			Promise.all(validFiles.map(file => {
-				return new Promise<string>((resolve) => {
-					const reader = new FileReader();
-					reader.onload = async (event) => {
-						const raw = event.target?.result as string;
-						try {
-							const compressed = await compressImage(raw);
-							resolve(compressed);
-						} catch {
-							resolve(raw);
-						}
-					};
-					reader.readAsDataURL(file);
-				});
-			})).then(newImages => {
-				setScanImages(prev => [...prev, ...newImages]);
-				toast.success(`${newImages.length} gambar ditambahkan ke antrian scan`);
-			}).catch(err => {
-				console.error("Error processing scan files:", err);
-				toast.error("Gagal memproses beberapa gambar");
-			});
-
-			// Clear the input value to allow selecting the same file(s) again
-			e.target.value = '';
-		},
-		[compressImage]
-	);
-
 	// Execute AI image scan and add result to chat
-	const handleRunScan = useCallback(async () => {
-		if (scanImages.length === 0 || isScanning) return;
+	const processImagesWithAI = useCallback(async (images: string[], customPrompt?: string) => {
+		if (images.length === 0 || isScanning) return;
 		setIsScanning(true);
+		setIsLoading(true);
 		try {
-			const bulkResults = await bulkScanImageDataAction({ images: scanImages });
+			const bulkResults = await bulkScanImageDataAction({ images });
 			
 			const newMessages: ChatMessage[] = [];
 			
 			for (let i = 0; i < bulkResults.length; i++) {
 				const res = bulkResults[i];
-				const currentImg = scanImages[i];
+				const currentImg = images[i];
 				
 				if (!res.success) {
 					newMessages.push({
@@ -687,7 +645,7 @@ function AIChatPage() {
 				const result = res.data;
 				const userMsg: ChatMessage = {
 					role: "user",
-					content: bulkResults.length > 1 ? `Hasil scan gambar ke-${i+1}:` : "Scan gambar ini dan analisis datanya.",
+					content: customPrompt ? `Hasil scan gambar ke-${i+1} (${customPrompt}):` : (bulkResults.length > 1 ? `Hasil scan gambar ke-${i+1}:` : "Scan gambar ini dan analisis datanya."),
 					image: currentImg,
 				};
 
@@ -725,26 +683,23 @@ function AIChatPage() {
 			}
 
 			setMessages((prev) => [...prev, ...newMessages]);
-			setScanImages([]);
-			setShowScanPanel(false);
-			if (scanFileInputRef.current) scanFileInputRef.current.value = "";
+			setSelectedImages([]);
+			setIsScanMode(false);
 			toast.success(`${bulkResults.length} gambar berhasil dianalisis!`);
 		} catch (error: any) {
 			let msg = "Gagal menganalisis gambar. Coba lagi.";
-			
-			// Extract specific ConvexError message if available
 			if (error?.data) {
 				msg = typeof error.data === "string" ? error.data : error.data.message || msg;
 			} else if (error?.message) {
 				msg = error.message;
 			}
-			
 			toast.error(msg);
 			console.error("Scan error details:", error);
 		} finally {
 			setIsScanning(false);
+			setIsLoading(false);
 		}
-	}, [scanImages, isScanning, bulkScanImageDataAction, extractSuggestions, sanitizeResponse]);
+	}, [isScanning, bulkScanImageDataAction, extractSuggestions, sanitizeResponse]);
 
 	const handleRemoveImage = useCallback(() => {
 		setSelectedImages([]); // Clear all selected images
@@ -1648,9 +1603,9 @@ function AIChatPage() {
 							))}
 						</div>
 
-						{/* Scan Panel - shown above input box */}
+						{/* No more separate Scan Panel, we use the main input */}
 					<AnimatePresence>
-						{showScanPanel && (
+						{isScanMode && selectedImages.length === 0 && (
 							<motion.div
 								animate={{ opacity: 1, y: 0 }}
 								className="mb-2 overflow-hidden rounded-2xl border border-primary/30 bg-primary/5"
@@ -1666,7 +1621,7 @@ function AIChatPage() {
 									</div>
 									<button
 										className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
-										onClick={() => { setShowScanPanel(false); setScanImages([]); }}
+										onClick={() => setIsScanMode(false)}
 										type="button"
 									>
 										<X className="h-3.5 w-3.5" />
@@ -1674,106 +1629,23 @@ function AIChatPage() {
 								</div>
 								{/* Panel Body */}
 								<div className="p-3">
-									{!scanImages.length ? (
-										<div className="grid grid-cols-2 gap-3">
-											<button
-												className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-background py-5 transition-colors hover:border-primary/60 hover:bg-primary/5"
-												onClick={() => cameraInputRef.current?.click()}
-												type="button"
-											>
-												<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-													<Camera className="h-5 w-5 text-primary" />
-												</div>
-												<div className="text-center">
-													<p className="font-medium text-foreground text-xs">
-														Ambil Foto
-													</p>
-													<p className="text-[10px] text-muted-foreground">
-														Gunakan Kamera
-													</p>
-												</div>
-											</button>
-											<button
-												className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-background py-5 transition-colors hover:border-primary/60 hover:bg-primary/5"
-												onClick={() => scanFileInputRef.current?.click()}
-												type="button"
-											>
-												<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-													<FileText className="h-5 w-5 text-primary" />
-												</div>
-												<div className="text-center">
-													<p className="font-medium text-foreground text-xs">
-														Upload Galeri
-													</p>
-													<p className="text-[10px] text-muted-foreground">
-														Pilih Gambar/File
-													</p>
-												</div>
-											</button>
+									<button
+										className="flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-background py-5 transition-colors hover:border-primary/60 hover:bg-primary/5"
+										onClick={() => fileInputRef.current?.click()}
+										type="button"
+									>
+										<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+											<Camera className="h-5 w-5 text-primary" />
 										</div>
-									) : (
-										<div className="space-y-2">
-											<div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-1">
-												{scanImages.map((img, idx) => (
-													<div className="relative overflow-hidden rounded-xl border border-border bg-muted group" key={idx}>
-														<img
-															alt={`Preview ${idx + 1}`}
-															className="h-24 w-full object-contain"
-															src={img}
-														/>
-														<button
-															className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive/90 text-white shadow opacity-0 group-hover:opacity-100 transition-opacity"
-															onClick={() => { setScanImages(prev => prev.filter((_, i) => i !== idx)); }}
-															type="button"
-														>
-															<X className="h-3 w-3" />
-														</button>
-													</div>
-												))}
-												<button
-													className="flex h-24 items-center justify-center rounded-xl border-2 border-dashed border-primary/30 bg-background hover:bg-primary/5 transition-colors"
-													onClick={() => scanFileInputRef.current?.click()}
-													type="button"
-												>
-													<PlusCircle className="h-5 w-5 text-primary" />
-												</button>
-											</div>
-											<button
-												className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 font-semibold text-primary-foreground text-sm disabled:opacity-60"
-												disabled={isScanning || scanImages.length === 0}
-												onClick={handleRunScan}
-												type="button"
-											>
-												{isScanning ? (
-													<>
-														<Loader2 className="h-4 w-4 animate-spin" />
-														Menganalisis {scanImages.length} Gambar...
-													</>
-												) : (
-													<>
-														<ScanLine className="h-4 w-4" />
-														Scan {scanImages.length} Gambar sekaligus
-													</>
-												)}
-											</button>
+										<div className="text-center">
+											<p className="font-medium text-foreground text-xs">
+												Upload foto struk, kwitansi, atau dokumen
+											</p>
+											<p className="text-[10px] text-muted-foreground">
+												JPG, PNG • Maks 5MB • Bisa pilih banyak sekaligus
+											</p>
 										</div>
-									)}
-									<input
-										accept="image/*"
-										capture="environment"
-										className="hidden"
-										onChange={handleScanFileSelect}
-										ref={cameraInputRef}
-										type="file"
-									/>
-									<input
-										accept="image/*"
-										multiple
-										className="hidden"
-										onChange={handleScanFileSelect}
-										ref={scanFileInputRef}
-										type="file"
-									/>
+									</button>
 								</div>
 							</motion.div>
 						)}
@@ -1817,12 +1689,17 @@ function AIChatPage() {
 								{/* Scan Button */}
 								<button
 									className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors disabled:opacity-50 ${
-										showScanPanel
+										isScanMode
 											? "bg-primary text-primary-foreground"
 											: "text-muted-foreground hover:bg-muted hover:text-foreground"
 									}`}
-									disabled={isLoading}
-									onClick={() => setShowScanPanel((v) => !v)}
+									disabled={isLoading || isScanning}
+									onClick={() => {
+										setIsScanMode(!isScanMode);
+										if (!isScanMode && selectedImages.length === 0) {
+											fileInputRef.current?.click();
+										}
+									}}
 									title="Scan & analisis gambar dengan AI"
 									type="button"
 								>
@@ -1860,7 +1737,7 @@ function AIChatPage() {
 										}
 										}
 									}}
-									placeholder="Tanya Yumi..."
+									placeholder={isScanMode ? "Tulis instruksi tambahan untuk scan..." : "Tanya Yumi..."}
 									ref={inputRef}
 									rows={1}
 									value={input}
@@ -1870,10 +1747,10 @@ function AIChatPage() {
 								<button
 									className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all ${
 										input.trim() || selectedImages.length > 0
-											? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+											? (isScanMode ? "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700" : "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90")
 											: "bg-muted text-muted-foreground"
 									} disabled:cursor-not-allowed disabled:opacity-50`}
-									disabled={isLoading || !(input.trim() || selectedImages.length > 0)}
+									disabled={isLoading || isScanning || !(input.trim() || selectedImages.length > 0)}
 									onClick={() => {
 										if (input.trim() || selectedImages.length > 0) {
 											sendMessage(input);
@@ -1882,11 +1759,13 @@ function AIChatPage() {
 											}
 										}
 									}}
-									title="Kirim pesan"
+									title={isScanMode ? "Mulai Scan" : "Kirim pesan"}
 									type="button"
 								>
-									{isLoading ? (
+									{isLoading || isScanning ? (
 										<Loader2 className="h-4 w-4 animate-spin" />
+									) : isScanMode ? (
+										<ScanLine className="h-4 w-4" />
 									) : (
 										<Send className="h-4 w-4" />
 									)}
