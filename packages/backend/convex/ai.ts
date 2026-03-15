@@ -51,137 +51,90 @@ async function safeSumoPodCall(
 	}
 }
 
-// Helper untuk panggil Gemini API langsung (untuk AI Scan Image)
+// Helper untuk panggil Gemini melalui SumoPod AI (untuk AI Scan Image)
 async function callGeminiAPI(
 	prompt: string,
 	base64Data: string,
 	mimeType: string,
 	options?: { temperature?: number; maxOutputTokens?: number }
 ): Promise<{ success: boolean; text: string; error?: string }> {
-	const geminiApiKey = process.env.GEMINI_API_KEY;
-	if (!geminiApiKey) {
-		return { success: false, text: "", error: "GEMINI_API_KEY belum diatur di dashboard Convex." };
-	}
-
+	// Daftar model Gemini yang tersedia di SumoPod (mungkin berbeda nama tergantung provider)
 	const models = [
-		{ name: "gemini-1.5-flash", version: "v1" },
-		{ name: "gemini-1.5-flash-8b", version: "v1" },
-		{ name: "gemini-1.5-pro", version: "v1" },
-		{ name: "gemini-2.0-flash", version: "v1beta" },
-		{ name: "gemini-2.0-flash-lite-preview-02-05", version: "v1beta" },
+		"google/gemini-2.0-flash-001",
+		"google/gemini-flash-1.5",
+		"google/gemini-pro-1.5",
+		"gemini-1.5-flash",
+		"gemini-1.5-pro",
 	];
-	let lastError = "";
-	let allErrors: string[] = [];
-
-	for (const modelInfo of models) {
-		const { name: model, version } = modelInfo;
-		try {
-			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 40000); // 40s timeout
-
-			const response = await fetch(
-				`https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${geminiApiKey}`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					signal: controller.signal,
-					body: JSON.stringify({
-						contents: [{
-							parts: [
-								{ inline_data: { mime_type: mimeType, data: base64Data } },
-								{ text: prompt }
-							]
-						}],
-						generationConfig: {
-							temperature: options?.temperature ?? 0.1,
-							maxOutputTokens: options?.maxOutputTokens ?? 4096,
-						},
-						safetySettings: [
-							{ category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-							{ category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-							{ category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-							{ category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-						]
-					})
-				}
-			);
-
-			clearTimeout(timeoutId);
-
-			if (response.ok) {
-				const result = await response.json();
-				const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
-				if (text) {
-					console.log(`callGeminiAPI: Success with ${model} (${version})`);
-					return { success: true, text };
-				}
-				
-				const blockReason = result.candidates?.[0]?.finishReason;
-				lastError = `Gemini ${model}: ${blockReason === "SAFETY" || blockReason === "RECITATION" ? "Content blocked" : "Empty response"}`;
-				allErrors.push(lastError);
-			} else {
-				const errorBody = await response.text().catch(() => "");
-				lastError = `Gemini ${model} (${version}): ${response.status} - ${errorBody.slice(0, 250)}`;
-				allErrors.push(lastError);
-				console.log(`callGeminiAPI: ${lastError}`);
-				
-				if (response.status === 429 || response.status === 503) {
-					await new Promise(r => setTimeout(r, 1500));
-				}
-				
-				if (response.status === 403 && !errorBody.includes("permission denied")) {
-					return { success: false, text: "", error: `API Key issue: ${lastError}` };
-				}
-			}
-		} catch (e) {
-			lastError = `Gemini ${model}: ${e instanceof Error ? e.message : String(e)}`;
-			allErrors.push(lastError);
-			console.log(`callGeminiAPI: ${lastError}`);
-			await new Promise(r => setTimeout(r, 500));
-		}
-	}
-
-	// Construct helpful final error message
-	let finalError = `Gagal menganalisis gambar setelah mencoba ${models.length} model. `;
-	if (allErrors.some(e => e.includes("429"))) {
-		finalError += "Batas kuota API (Rate Limit) tercapai. ";
-	} else if (allErrors.every(e => e.includes("404"))) {
-		finalError += "Model tidak ditemukan atau API version tidak sesuai. ";
-	}
-	finalError += `Detail kesalahan terakhir: ${lastError}`;
 	
-	// Fallback ke SumoPod AI jika Gemini gagal
-	console.log("callGeminiAPI: Attempting fallback to SumoPod AI...");
+	let lastError = "";
+	let openai;
+	
 	try {
-		const sumoPodResult = await safeSumoPodCall([
-			{
-				role: "system",
-				content: "You are an expert OCR and financial document analyzer. Analyze the provided image and extract data in JSON format."
-			},
-			{
-				role: "user",
-				content: [
-					{ type: "text", text: prompt },
-					{
-						type: "image_url",
-						image_url: {
-							url: `data:${mimeType};base64,${base64Data}`
-						}
-					}
-				] as any
-			}
-		], { model: "gpt-4o-mini" });
-
-		if (sumoPodResult) {
-			console.log("callGeminiAPI: Success with SumoPod Fallback");
-			return { success: true, text: sumoPodResult };
-		}
-	} catch (sumoError) {
-		console.error("callGeminiAPI: SumoPod fallback also failed:", sumoError);
-		finalError += `. Fallback SumoPod juga gagal: ${sumoError instanceof Error ? sumoError.message : String(sumoError)}`;
+		openai = getOpenAI();
+	} catch (e) {
+		return { success: false, text: "", error: e instanceof Error ? e.message : String(e) };
 	}
 
-	return { success: false, text: "", error: finalError };
+	for (const model of models) {
+		try {
+			console.log(`callGeminiAPI: Mencoba model ${model} melalui SumoPod...`);
+			
+			const completion = await openai.chat.completions.create({
+				model: model,
+				messages: [
+					{
+						role: "system",
+						content: "You are an expert OCR and financial document analyzer. Analyze the provided image and extract data in JSON format."
+					},
+					{
+						role: "user",
+						content: [
+							{ type: "text", text: prompt },
+							{
+								type: "image_url",
+								image_url: {
+									url: `data:${mimeType};base64,${base64Data}`
+								}
+							}
+						] as any
+					}
+				],
+				temperature: options?.temperature ?? 0.1,
+				max_tokens: options?.maxOutputTokens ?? 4096,
+			});
+
+			const text = completion.choices[0]?.message?.content || "";
+			if (text) {
+				console.log(`callGeminiAPI: Berhasil dengan ${model} via SumoPod`);
+				return { success: true, text };
+			}
+			lastError = `Model ${model} memberikan respon kosong`;
+		} catch (error) {
+			const errMsg = error instanceof Error ? error.message : String(error);
+			lastError = errMsg;
+			console.error(`callGeminiAPI Error (${model}):`, errMsg);
+			
+			// Jika error 404 (model tidak ditemukan), lanjut ke model berikutnya
+			if (errMsg.includes("404") || errMsg.includes("model_not_found") || errMsg.includes("not found")) {
+				continue;
+			}
+			
+			// Jika error 401 (auth), berhenti karena model lain juga akan gagal
+			if (errMsg.includes("401") || errMsg.includes("Unauthorized") || errMsg.includes("API key")) {
+				break;
+			}
+			
+			// Untuk error lain (429/500), coba model berikutnya
+			await new Promise(r => setTimeout(r, 1000));
+		}
+	}
+
+	return { 
+		success: false, 
+		text: "", 
+		error: `Gagal menganalisis gambar dengan SumoPod (Gemini models). Detail: ${lastError}` 
+	};
 }
 
 /**
