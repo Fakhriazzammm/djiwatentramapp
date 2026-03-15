@@ -372,6 +372,8 @@ async function gatherDatabaseContext(ctx: GenericActionCtx<DataModel>) {
 		ctx.runQuery(api.booking.getDateCapacities, { slug: "booking" }),
 	]);
 
+	const inventoryContext = (inventory as any[]).map(i => `${i.ingredientName} (${i.unit})`).join(", ");
+
 	const prodList =
 		(
 			products as Array<{
@@ -842,6 +844,10 @@ export const yumiChat = action({
 	handler: async (ctx, args) => {
 		const dbContext = await gatherDatabaseContext(ctx);
 		const smartContext = await gatherSmartContext(ctx);
+		
+		// Extract inventory context from dbContext if needed or passed via local variable
+		const inventory = await ctx.runQuery(api.inventory.getInventory);
+		const inventoryContext = inventory.map(i => `${i.ingredientName} (${i.unit})`).join(", ");
 
 		const allImages = [...(args.images || [])];
 		if (args.image) allImages.push(args.image);
@@ -865,6 +871,9 @@ export const yumiChat = action({
 
 WAKTU SEKARANG: ${new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })}
 
+KONTEKS BISNIS SAAT INI:
+- Inventory Terdaftar: ${inventoryContext}
+
 KEMAMPUAN:
 - Mengetahui SELURUH data database secara real-time (produk, stok, pesanan, keuangan, promosi)
 - Dapat merekap dan meringkas data (harian, mingguan, bulanan)
@@ -874,11 +883,15 @@ KEMAMPUAN:
 - DAPAT MELAKUKAN AKSI: create/update/delete produk, tambah/kurang stok (dengan FIFO), buat pesanan, catat transaksi keuangan, kelola diskon, dll
 - MULTI-STEP ACTIONS: Dapat melakukan beberapa langkah sekaligus dalam satu permintaan
 - FORECASTING: Analisis prediksi stok habis, jam ramai, revenue, dan produk trending berdasarkan data historis
-- HPP KALKULATOR: Bantu hitung Harga Pokok Produksi (HPP), margin, dan analisis profitabilitas per produk
+- HPP & HARGA: Kamu dapat menghitung HPP (Harga Pokok Produksi) dan memberikan rekomendasi harga jual baru. Jika user setuju (misal: "Oke, naikkan harga kopi susu jadi 15rb"), gunakan tool updateProduct untuk mengubah harga jual secara otomatis.
+- REKONSILIASI BANK (PROAKTIF): Jika user mengirim foto mutasi rekening atau screenshot M-Banking, kamu HARUS melakukan cross-check dengan data pesanan dan menawarkan tombol aksi konfirmasi pembayaran.
+- KEDALUWARSA & FIFO (PROAKTIF): Pantau data `expiryDate` pada batch inventory. Jika ada barang mendekati kedaluwarsa, sarankan pembuatan promo flash sale untuk menghabiskan stok tersebut.
 - ANALISIS DISKON: Evaluasi efektivitas diskon yang aktif, rekomendasikan strategi promo berdasarkan data penjualan
 - REKONSILIASI KEUANGAN: Cross-check pesanan selesai vs transaksi keuangan, identifikasi selisih, bantu rekonsiliasi
-- FIFO INVENTORY: Kelola stok berdasarkan tanggal masuk dan harga. Kamu bisa melihat rincian batch stok menggunakan tool getInventoryBatches dan menambah stok dengan tanggal spesifik menggunakan addStock.
-- ANALISIS GAMBAR: Dapat membaca dan menganalisis gambar (foto struk, kwitansi, produk, dll) yang dikirim user. Ekstrak informasi seperti jumlah, item, tanggal, kategori, dan langsung catat ke sistem jika diminta
+- FIFO INVENTORY: Kelola stok berdasarkan tanggal masuk dan harga. Kamu bisa melihat rincian batch stok menggunakan tool getInventoryBatches dan menambah stok dengan tanggal spesifik serta TANGGAL KEDALUWARSA menggunakan addStock.
+- ANALISIS GAMBAR: Dapat membaca dan menganalisis gambar (foto struk, kwitansi, produk, mutasi bank, dll) yang dikirim user.
+- INVENTORY EXTRACTION (PROAKTIF): Jika user meminta memasukkan item hasil scan ke inventory, kamu HARUS menentukan satuan (unit) secara otomatis (kg, pcs, porsi, dll) dan kategori yang tepat. JANGAN bertanya kepada user. Cukup beritahu bahwa kamu telah mengisinya secara otomatis.
+- DEEP-LINKING ACTIONS: Setiap kali kamu memberikan hasil analisis scan (struk/invoice/mutasi bank), sertakan tombol aksi langsung menggunakan format [SUGGEST: ...] untuk: 📦 Tambah ke Inventory, 💰 Catat Pengeluaran, 🏷️ Buat Produk, atau ✅ Konfirmasi Pembayaran.
 - BOOKING & RESERVASI: Kamu dapat membuat booking baru (createBooking) atau bulk booking (bulkCreateBookings) untuk reservasi pelanggan. Pastikan mendapatkan detail pelanggan (nama, telp, email) dan detail booking (tanggal, jumlah tamu, item pesanan).
 
 ATURAN:
@@ -899,6 +912,7 @@ ATURAN:
     a. EKSTRAK TANGGAL: Perhatikan format tanggal seperti DD/MM/YYYY, DD-MM-YYYY, atau nama bulan. Pastikan setiap baris diproses dengan tanggalnya masing-masing.
     b. GENERASI OTOMATIS: Untuk field yang tidak ada pada input user, GENERATE SECARA OTOMATIS berdasarkan konteks:
        - KATEGORI: Pilih yang paling cocok dari daftar sistem (makanan_minuman, belanja_stok, dll). Contoh: "Galon" -> makanan_minuman, "Gaji" -> gaji_karyawan.
+       - SATUAN (INVENTORY): Tentukan unit secara otomatis (kg, pcs, dll). JANGAN bertanya ke user.
        - METODE PEMBAYARAN: Jika tidak disebutkan, gunakan default "cash".
        - DESKRIPSI: Gunakan teks asli dari user sebagai deskripsi.
        - STATUS: Gunakan default "completed".
@@ -908,7 +922,13 @@ ATURAN:
     WAJIB: Selalu sertakan minimal 2-3 saran tombol otomatis [SUGGEST: ...] di akhir SETIAP jawaban kamu, tidak peduli seberapa singkat jawabannya.
     WAJIB: Jika user mengirim gambar (scan) atau teks daftar transaksi, gunakan data tersebut untuk memberikan saran aksi yang proaktif (seperti simpan transaksi, tambah produk, atau update stok).
     Contoh: "Data pengeluaran Februari sudah saya deteksi. [SUGGEST: 💰 Simpan Semua ke Sistem | Simpan semua daftar pengeluaran Februari 2026 tadi ke sistem transaksi keuangan saya dengan kategori dan detail otomatis] [SUGGEST: 📊 Lihat Laporan Bulan Ini | Berikan ringkasan total pengeluaran saya untuk bulan Februari 2026]"
-    Contoh (setelah scan struk): "Saya menemukan struk dari Starbucks sebesar Rp 50.000. [SUGGEST: 💰 Catat Pengeluaran | Catat pengeluaran dari Starbucks sebesar Rp 50.000 kategori makanan_minuman] [SUGGEST: 📋 Lihat Detail | Tampilkan detail item dari struk ini]"
+    Contoh (setelah scan struk): "Saya menemukan struk dari Starbucks sebesar Rp 50.000. [SUGGEST: 📦 Tambah ke Inventory | Masukkan semua item dari hasil scan struk ini ke inventory saya dengan detail otomatis] [SUGGEST: 💰 Catat Pengeluaran | Catat pengeluaran dari Starbucks sebesar Rp 50.000 kategori makanan_minuman]"
+14. OTOMATISASI HPP & HARGA (KHUSUS): Jika pengguna bertanya tentang kenaikan harga bahan baku (misal: "Harga susu naik 10%"):
+    a. Identifikasi produk yang menggunakan bahan tersebut.
+    b. Hitung estimasi kenaikan HPP produk tersebut.
+    c. Berikan rekomendasi harga jual baru untuk mempertahankan margin saat ini.
+    d. Tawarkan tombol aksi: [SUGGEST: 📈 Update Harga Semua | Perbarui harga jual semua produk terdampak sesuai saran kamu] atau [SUGGEST: 📈 Update Harga [Nama] | Perbarui harga jual produk [Nama] saja]
+    e. Jika user mengonfirmasi, panggil tool updateProduct untuk mengeksekusi perubahan harga.
 
 SMART CONTEXT:
 ${smartContext}
@@ -917,6 +937,8 @@ DATA REAL-TIME:
 ${dbContext}
 
 INSTRUKSI MULTI-STEP ACTIONS:
+- Contoh: "Harga gula naik 20%, apa efeknya?" -> analisis data HPP dari context, hitung kenaikan, dan sarankan harga baru.
+- Contoh: "Oke, naikkan harga kopi susu jadi 15rb" -> gunakan updateProduct untuk produk terkait.
 - Contoh: "Buat produk kopi susu dan tambah stok bahan-bahannya" -> gunakan createProduct lalu addStock
 - Contoh: "Buat pesanan dan catat sebagai pembayaran" -> gunakan createOrder lalu updateOrderStatus
 - Contoh: "Diskon 20% untuk kategori minuman dan aktifkan" -> gunakan createDiscount dengan isActive:true
@@ -949,7 +971,12 @@ INSTRUKSI PENCATATAN KEUANGAN:
   - pembangunan_renovasi: Renovasi, jasa tukang, material bangunan.
   - lainnya: Biaya umum lainnya.
 - SELALU sertakan nama merchant/toko jika diketahui (dari scan struk atau dari input user)
-- Jika user minta catat dari hasil scan: gunakan nama merchant dan kategori yang terdeteksi oleh scanner`,
+- Jika user minta catat dari hasil scan: gunakan nama merchant dan kategori yang terdeteksi oleh scanner
+
+INSTRUKSI REKONSILIASI BANK:
+- Jika user mengirim screenshot mutasi bank, bandingkan setiap transaksi uang masuk dengan data pesanan (orders) atau transaksi keuangan (finance) yang ada di SMART CONTEXT atau DATA REAL-TIME.
+- Gunakan tool updateOrderStatus untuk menandai pesanan sebagai "paid" jika nominalnya cocok.
+- Jika tidak ada pesanan yang cocok, gunakan tool createTransaction untuk mencatatnya sebagai pemasukan baru dengan kategori yang sesuai.`,
 			},
 		];
 
@@ -1149,6 +1176,73 @@ Berikan analisis ringkas dan perbandingannya.`,
 		} catch (error) {
 			console.error("generateCompanyOverview error:", error);
 			return "Maaf, gagal membuat ringkasan bisnis. Pastikan SUMOPOD_API_KEY sudah diatur di dashboard Convex.";
+		}
+	},
+});
+
+/**
+ * Yumi AI - Generate a Daily Morning Briefing
+ */
+export const generateDailyBriefing = action({
+	args: {},
+	handler: async (ctx) => {
+		try {
+			// Gather all relevant data for briefing
+			const [
+				financeSummary,
+				inventory,
+				orders,
+				bookingOrders,
+				comparison,
+			] = await Promise.all([
+				ctx.runQuery(api.finance.getFinancialSummary, {}),
+				ctx.runQuery(api.inventory.getInventory),
+				ctx.runQuery(api.orders.getOrders, {}),
+				ctx.runQuery(api.booking.getBookingOrders, { slug: "booking" }),
+				ctx.runQuery(api.finance.getPeriodComparison),
+			]);
+
+			const lowStockItems = inventory.filter(i => i.quantity <= i.lowStockThreshold);
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+			const todayBookings = (bookingOrders as any[]).filter(b => 
+				new Date(b.bookingDate).getTime() >= today.getTime() && 
+				new Date(b.bookingDate).getTime() < today.getTime() + 24 * 60 * 60 * 1000
+			);
+
+			const dataContext = {
+				revenueYesterday: comparison.previousPeriodRevenue,
+				revenueGrowth: comparison.revenueGrowth,
+				lowStockCount: lowStockItems.length,
+				lowStockNames: lowStockItems.slice(0, 3).map(i => i.ingredientName).join(", "),
+				todayBookingsCount: todayBookings.length,
+				balance: financeSummary.netBalance,
+			};
+
+			return await safeSumoPodCall([
+				{
+					role: "system",
+					content: `Kamu adalah Yumi, asisten AI bisnis yang ceria dan proaktif.
+Tugas: Berikan Morning Briefing yang singkat, padat, dan menyemangat bagi pemilik toko.
+Gunakan data yang diberikan untuk memberikan ringkasan performa kemarin dan apa yang harus difokuskan hari ini.
+
+ATURAN:
+1. Sapa dengan "Selamat pagi!".
+2. JANGAN gunakan bold (**). Gunakan teks polos.
+3. Gunakan emoji.
+4. Akhiri dengan saran tombol aksi [SUGGEST: ...].
+   - Jika ada stok rendah: [SUGGEST: 📦 Pesan Bahan Baku | Tampilkan daftar belanja untuk bahan yang stoknya rendah]
+   - Jika ada booking: [SUGGEST: 📅 Lihat Reservasi | Tampilkan detail reservasi meja untuk hari ini]
+   - Selalu ada: [SUGGEST: 📊 Laporan Lengkap | Berikan laporan performa bisnis saya secara mendalam]`,
+				},
+				{
+					role: "user",
+					content: `Data Bisnis untuk Briefing: ${JSON.stringify(dataContext)}`,
+				},
+			]);
+		} catch (error) {
+			console.error("generateDailyBriefing error:", error);
+			return "Selamat pagi! Saya siap membantu Anda mengelola toko hari ini. Ada yang bisa saya bantu?";
 		}
 	},
 });
@@ -1541,7 +1635,8 @@ interface ProactiveSuggestion {
 		| "hpp_low_margin"
 		| "revenue_opportunity"
 		| "best_promo_day"
-		| "bundle_opportunity";
+		| "bundle_opportunity"
+		| "expiry_alert";
 	title: string;
 	description: string;
 	action: {
@@ -1561,36 +1656,66 @@ export const getProactiveSuggestions = query({
 		const suggestions: ProactiveSuggestion[] = [];
 		const now = Date.now();
 
-		// Check 1: Low Stock Alerts
-		const inventory = await ctx.runQuery(api.inventory.getInventory);
-		const lowStockItems = inventory.filter(
-			(i) => i.quantity <= i.lowStockThreshold
-		);
+		// Check 1: Low Stock & Expiry Monitoring
+		const inventory = await ctx.db.query("inventory").collect();
+		const inventoryTransactions = await ctx.db.query("inventoryTransactions").collect();
 
-		for (const item of lowStockItems) {
-			const percentage = Math.floor(
-				(item.quantity / item.lowStockThreshold) * 100
-			);
-			suggestions.push({
-				id: `low_stock_${item._id}`,
-				type: "low_stock",
-				title: `Stok ${item.ingredientName} menipis!`,
-				description: `Sisa ${item.quantity} ${item.unit} (${percentage}% dari threshold). Segera restock.`,
-				action: {
-					toolName: "addStock",
-					args: {
-						inventoryId: item._id,
-						quantity: item.lowStockThreshold * 2 - item.quantity, // Restock to 2x threshold
-						notes: "Auto-restock dari AI suggestion",
+		for (const item of inventory) {
+			// Low Stock Check
+			if (item.quantity <= item.lowStockThreshold) {
+				const percentage = Math.floor(
+					(item.quantity / item.lowStockThreshold) * 100
+				);
+				suggestions.push({
+					id: `low_stock_${item._id}`,
+					type: "low_stock",
+					title: `Stok ${item.ingredientName} menipis!`,
+					description: `Sisa ${item.quantity} ${item.unit} (${percentage}% dari threshold). Segera restock.`,
+					action: {
+						toolName: "addStock",
+						args: {
+							inventoryId: item._id,
+							quantity: item.lowStockThreshold * 2 - item.quantity,
+							notes: "Auto-restock dari AI suggestion",
+						},
 					},
-				},
-				priority: percentage < 20 ? "high" : "medium",
-				createdAt: now,
-			});
+					priority: percentage < 20 ? "high" : "medium",
+					createdAt: now,
+				});
+			}
+
+			// Expiry Monitoring (FIFO Batches)
+			const activeBatches = inventoryTransactions.filter(
+				t => t.inventoryId === item._id && (t.remainingQuantity ?? 0) > 0 && t.expiryDate
+			);
+
+			for (const batch of activeBatches) {
+				const daysToExpiry = Math.ceil(((batch.expiryDate as number) - now) / (24 * 60 * 60 * 1000));
+				
+				if (daysToExpiry <= 7 && daysToExpiry > 0) {
+					suggestions.push({
+						id: `expiry_${batch._id}`,
+						type: "expiry_alert",
+						title: `⚠️ Kedaluwarsa Dekat: ${item.ingredientName}`,
+						description: `Batch stok ini (${batch.remainingQuantity} ${item.unit}) akan kedaluwarsa dalam ${daysToExpiry} hari.`,
+						action: {
+							toolName: "createDiscount",
+							args: {
+								name: `Flash Sale: Habiskan Stok ${item.ingredientName}`,
+								type: "PERCENTAGE",
+								value: 50,
+								description: `Promo pembersihan stok hampir kedaluwarsa`
+							},
+						},
+						priority: daysToExpiry <= 3 ? "high" : "medium",
+						createdAt: now,
+					});
+				}
+			}
 		}
 
 		// Check 2: Pending Orders
-		const orders = await ctx.runQuery(api.orders.getOrders, {});
+		const orders = await ctx.db.query("orders").collect();
 		const pendingOrders = orders.filter((o) => o.status === "pending");
 
 		if (pendingOrders.length > 0) {
@@ -1608,86 +1733,95 @@ export const getProactiveSuggestions = query({
 			});
 		}
 
-		// Check 3: Trending Products (based on recent completed orders)
+		// Check 3: Trending Products & Forecasting (based on recent completed orders)
 		const completedOrders = orders.filter(
 			(o) => o.status === "completed" || o.status === "paid"
 		);
+		
 		if (completedOrders.length >= 10) {
-			// Get last 7 days orders
 			const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-			const recentOrders = completedOrders.filter(
-				(o) => o.createdAt >= sevenDaysAgo
-			);
+			const fourteenDaysAgo = now - 14 * 24 * 60 * 60 * 1000;
+			
+			const recentOrders = completedOrders.filter(o => o.createdAt >= sevenDaysAgo);
+			const previousOrders = completedOrders.filter(o => o.createdAt >= fourteenDaysAgo && o.createdAt < sevenDaysAgo);
 
-			const productSales: Record<string, number> = {};
+			const recentSales: Record<string, number> = {};
+			const previousSales: Record<string, number> = {};
+
 			for (const order of recentOrders) {
 				for (const item of order.items) {
-					productSales[item.productName] =
-						(productSales[item.productName] || 0) + item.quantity;
+					recentSales[item.productName] = (recentSales[item.productName] || 0) + item.quantity;
+				}
+			}
+			for (const order of previousOrders) {
+				for (const item of order.items) {
+					previousSales[item.productName] = (previousSales[item.productName] || 0) + item.quantity;
 				}
 			}
 
-			// Find trending products
-			const sortedProducts = Object.entries(productSales)
-				.sort((a, b) => b[1] - a[1])
-				.slice(0, 3);
-
-			if (sortedProducts.length > 0) {
-				const topProduct = sortedProducts[0];
-				suggestions.push({
-					id: `trending_${topProduct[0]}`,
-					type: "trending",
-					title: `Produk trending: ${topProduct[0]}`,
-					description: `${topProduct[0]} terjual ${topProduct[1]} kali minggu ini. Pertimbangkan untuk tambah stok.`,
-					action: {
-						toolName: "addStock",
-						args: { inventoryId: "", quantity: 0, notes: "" }, // Placeholder
-					},
-					priority: "medium",
-					createdAt: now,
-				});
+			// Find trending products with significant growth
+			for (const [productName, recentQty] of Object.entries(recentSales)) {
+				const prevQty = previousSales[productName] || 0;
+				if (prevQty > 0) {
+					const growth = ((recentQty - prevQty) / prevQty) * 100;
+					if (growth >= 30) {
+						suggestions.push({
+							id: `trending_growth_${productName.replace(/\s+/g, "_")}`,
+							type: "trending",
+							title: `Lonjakan Penjualan: ${productName}`,
+							description: `Penjualan ${productName} melonjak ${Math.round(growth)}% minggu ini. Pastikan stok bahan baku aman!`,
+							action: {
+								toolName: "addStock",
+								args: { productName, growth: Math.round(growth) },
+							},
+							priority: "high",
+							createdAt: now,
+						});
+					}
+				}
 			}
 		}
 
-		// Check 4: Discount Opportunities (slow-moving products)
-		const products = await ctx.runQuery(api.products.getAllProductsAdmin);
-		const activeProducts = products.filter((p) => p.isAvailable);
+		// Check 4: Bundle Opportunity (Smart Bundle Forecasting)
+		if (completedOrders.length >= 15) {
+			const productPairs: Record<string, number> = {};
+			const productPrices: Record<string, number> = {};
 
-		if (activeProducts.length >= 5) {
-			// Get products without recent sales in last 7 days
-			const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-			const recentOrders = orders.filter((o) => o.createdAt >= sevenDaysAgo);
-
-			const soldProductIds = new Set();
-			for (const order of recentOrders) {
-				for (const item of order.items) {
-					soldProductIds.add(item.productId);
+			for (const order of completedOrders) {
+				const items = order.items.map(i => {
+					productPrices[i.productName] = i.price;
+					return i.productName;
+				}).sort();
+				
+				for (let i = 0; i < items.length; i++) {
+					for (let j = i + 1; j < items.length; j++) {
+						const pair = `${items[i]} + ${items[j]}`;
+						productPairs[pair] = (productPairs[pair] || 0) + 1;
+					}
 				}
 			}
 
-			// Slow moving products (available but not sold recently)
-			const slowMovingProducts = activeProducts.filter(
-				(p) => !soldProductIds.has(p._id)
-			);
+			const topPairs = Object.entries(productPairs)
+				.sort((a, b) => b[1] - a[1])
+				.filter(p => p[1] >= 3)
+				.slice(0, 2);
 
-			if (slowMovingProducts.length > 0) {
+			for (const [pair, count] of topPairs) {
+				const [p1, p2] = pair.split(" + ");
+				const estimatedBundlePrice = ((productPrices[p1] || 0) + (productPrices[p2] || 0)) * 0.85; // 15% discount
+				
 				suggestions.push({
-					id: "discount_opp_bulk",
-					type: "discount_opp",
-					title: "Peluang diskon untuk produk kurang laku",
-					description: `${slowMovingProducts
-						.map((p) => p.name)
-						.slice(0, 3)
-						.join(", ")} belum terjual minggu ini. Pertimbangkan diskon.`,
+					id: `bundle_opp_${pair.replace(/\s+/g, "_")}`,
+					type: "bundle_opportunity",
+					title: `Peluang Paket Hemat: ${pair}`,
+					description: `Produk ini sering dibeli bersama (${count} kali). Buat paket bundle untuk meningkatkan transaksi!`,
 					action: {
 						toolName: "createDiscount",
-						args: {
-							name: "Diskon Produk Kurang Laku",
-							type: "PERCENTAGE",
-							value: 20,
-							targetType: "PRODUCT",
-							targetIds: slowMovingProducts.map((p) => p._id),
-							isActive: true,
+						args: { 
+							name: `Paket Hemat ${pair}`, 
+							type: "FIXED", 
+							value: Math.round(estimatedBundlePrice),
+							description: `Promo otomatis dari saran Yumi AI`
 						},
 					},
 					priority: "medium",
@@ -2573,6 +2707,7 @@ PENTING:
 1. Baca DARI ATAS KE BAWAH secara lengkap.
 2. Ekstrak Merchant: Nama toko/restoran.
 3. Ekstrak Items: Daftar item, qty, harga satuan, subtotal.
+   - Tentukan satuan (unit) secara otomatis berdasarkan jenis barang (misal: "pcs", "kg", "liter", "porsi", "bungkus", "botol", dll). JANGAN bertanya ke user.
 4. Ekstrak Summary: Subtotal, Pajak, Service Charge, Diskon, dan TOTAL AKHIR.
 5. Kategori: Tentukan kategori yang paling cocok (makanan_minuman, belanja_stok, utilitas, dll).
 6. Tentukan Type: "expense" (pengeluaran) atau "income" (jika ini struk penjualan toko kamu).
@@ -2583,7 +2718,7 @@ Output harus JSON murni:
   "data": {
     "merchantName": "Nama Toko",
     "amount": 100000,
-    "items": [{"name": "Item A", "quantity": 1, "price": 100000, "total": 100000}],
+    "items": [{"name": "Item A", "quantity": 1, "price": 100000, "total": 100000, "unit": "pcs"}],
     "category": "makanan_minuman",
     "paymentMethod": "qris",
     "date": "YYYY-MM-DD",
@@ -3011,7 +3146,8 @@ DETAIL YANG HARUS DIEKSTRAK:
    - tax: Pajak/PPN.
    - serviceCharge: Biaya layanan/service.
    - discount: Total potongan harga.
-5. Daftar Item (Kritis): Ekstrak SEMUA item tanpa kecuali. Untuk setiap item sertakan nama, qty, harga satuan (price), dan subtotal (qty * price).
+5. Daftar Item (Kritis): Ekstrak SEMUA item tanpa kecuali. Untuk setiap item sertakan nama, qty, harga satuan (price), subtotal (qty * price), dan satuan (unit).
+   - Tentukan satuan (unit) secara otomatis berdasarkan jenis barang (misal: "pcs", "kg", "liter", "porsi", "bungkus", "botol", dll). JANGAN biarkan kosong atau bertanya ke user.
 6. Metadata: Tanggal (YYYY-MM-DD), waktu, metode pembayaran (cash/qris/debit/credit), nomor struk/invoice.
 
 Kembalikan data dalam format JSON berikut TANPA teks tambahan apapun:
@@ -3024,8 +3160,8 @@ Kembalikan data dalam format JSON berikut TANPA teks tambahan apapun:
   "subtotal": subtotal_angka,
   "tax": pajak_angka,
   "serviceCharge": service_charge_angka,
-  "discount": diskon_angka,
-  "items": [{"name": "nama item", "qty": jumlah, "price": harga_satuan, "subtotal": total_per_item}],
+  "discount": discount_angka,
+  "items": [{"name": "nama item", "qty": jumlah, "price": harga_satuan, "subtotal": total_per_item, "unit": "pcs|kg|liter|porsi|dll"}],
   "date": "YYYY-MM-DD atau null",
   "paymentMethod": "cash|qris|card|transfer|unknown",
   "notes": "alamat toko, nomor telepon, nomor struk, atau info penting lainnya",
@@ -3035,6 +3171,7 @@ Kembalikan data dalam format JSON berikut TANPA teks tambahan apapun:
 }
 
 PENTING:
+- Satuan (unit) HARUS ditentukan otomatis oleh AI. Gunakan logika umum (contoh: Sayuran biasanya "kg", Barang kemasan "pcs", Minuman "botol"/"porsi"). JANGAN bertanya ke user.
 - Jika gambar adalah label produk, set suggestedAction ke "createProduct" atau "addStock".
 - Jika gambar adalah struk belanja, set suggestedAction ke "createTransaction".
 - Jika gambar adalah pesanan pelanggan, set suggestedAction ke "createOrder".

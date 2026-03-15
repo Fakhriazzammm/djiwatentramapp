@@ -147,6 +147,7 @@ export function YumiAIChat() {
 
 	const yumiChat = useAction(api.ai.yumiChat);
 	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
+	const generateDailyBriefingAction = useAction(api.ai.generateDailyBriefing);
 	const createTransactionMutation = useMutation(api.finance.createTransaction);
 
 	const handleCopy = useCallback(async (text: string, index: number) => {
@@ -498,6 +499,35 @@ export function YumiAIChat() {
 		});
 		e.target.value = '';
 	}, []);
+
+	// Daily Morning Briefing
+	useEffect(() => {
+		const runBriefing = async () => {
+			if (messages.length === 1 && messages[0].content.includes("Halo! Saya Yumi")) {
+				setIsLoading(true);
+				try {
+					const briefing = await generateDailyBriefingAction({});
+					const sanitized = sanitizeResponse(briefing);
+					
+					// Stream the briefing
+					streamText(sanitized, () => {
+						setMessages(prev => [
+							...prev,
+							{
+								role: "assistant",
+								content: sanitized || "Selamat pagi! Saya siap membantu Anda hari ini.",
+							}
+						]);
+					});
+				} catch (error) {
+					console.error("Briefing error:", error);
+				} finally {
+					setIsLoading(false);
+				}
+			}
+		};
+		runBriefing();
+	}, [generateDailyBriefingAction, messages.length]);
 
 	return (
 		<div className="flex h-full flex-col bg-background">

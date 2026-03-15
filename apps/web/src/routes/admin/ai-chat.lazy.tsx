@@ -46,7 +46,7 @@ interface ScanResultData {
 	subtotal?: number;
 	tax?: number;
 	discount?: number;
-	items: Array<{ name: string; qty: number; price: number; subtotal: number }>;
+	items: Array<{ name: string; qty: number; price: number; subtotal: number; unit?: string }>;
 	date?: string | null;
 	paymentMethod: string;
 	notes?: string;
@@ -60,6 +60,8 @@ interface ChatMessage {
 	image?: string;
 	scanData?: ScanResultData;
 	suggestions?: Array<{ label: string; prompt: string }>;
+	actionButtons?: Array<{ type: string; label: string; data: any; icon: React.ReactNode }>;
+	_msgId: string;
 }
 
 interface ToolCall {
@@ -183,10 +185,12 @@ function AIChatPage() {
 			role: "assistant",
 			content:
 				"Halo! Saya Yumi, asisten AI kamu untuk YUMI POS. Saya bisa membantu merekap data, menganalisis bisnis, MELAKUKAN AKSI seperti tambah produk, update stok, buat pesanan, dan bahkan MULTI-STEP ACTIONS dalam satu permintaan. Sekarang saya dilengkapi dengan Forecasting, Analisis HPP, Efektivitas Diskon, dan Rekonsiliasi Keuangan!",
+			_msgId: "welcome",
 		},
 	]);
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
+	const [loadingStatus, setLoadingStatus] = useState("");
 	const [isStreaming, setIsStreaming] = useState(false);
 	const [streamingContent, setStreamingContent] = useState("");
 	const streamingActiveRef = useRef(false);
@@ -248,6 +252,15 @@ function AIChatPage() {
 	const yumiChat = useAction(api.ai.yumiChat);
 	const scanImageDataAction = useAction(api.ai.scanImageData);
 	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
+	const generateDailyBriefingAction = useAction(api.ai.generateDailyBriefing);
+
+	const createTransactionMutation = useMutation(api.finance.createTransaction);
+	const createInventoryItemMutation = useMutation(api.inventory.createInventoryItem);
+	const addStockMutation = useMutation(api.inventory.addStock);
+	const createProductMutation = useMutation(api.products.createProduct);
+
+	const [actionButtonDone, setActionButtonDone] = useState<Set<string>>(new Set());
+	const [actionButtonLoading, setActionButtonLoading] = useState<Set<string>>(new Set());
 
 	const handleCopy = useCallback(async (text: string, index: number) => {
 		try {
@@ -331,6 +344,37 @@ function AIChatPage() {
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, []);
+
+	// Daily Morning Briefing Initialization
+	useEffect(() => {
+		const runBriefing = async () => {
+			if (messages.length === 1 && messages[0]._msgId === "welcome") {
+				setIsLoading(true);
+				setLoadingStatus("Sedang menyiapkan briefing pagi...");
+				try {
+					const briefing = await generateDailyBriefingAction({});
+					const suggestions = extractSuggestions(briefing);
+					const sanitized = sanitizeResponse(briefing);
+					
+					setMessages(prev => [
+						...prev,
+						{
+							role: "assistant",
+							content: sanitized || "Selamat pagi! Saya siap membantu Anda hari ini.",
+							suggestions: suggestions,
+							_msgId: mkMsgId(),
+						}
+					]);
+				} catch (error) {
+					console.error("Briefing error:", error);
+				} finally {
+					setIsLoading(false);
+					setLoadingStatus("");
+				}
+			}
+		};
+		runBriefing();
+	}, [generateDailyBriefingAction, extractSuggestions, sanitizeResponse, messages.length]);
 
 	// Auto-scroll while streaming
 	useEffect(() => {
@@ -418,13 +462,73 @@ function AIChatPage() {
 		}
 	};
 
+	const handleExecuteAction = useCallback(async (type: string, data: any, messageId: string) => {
+		const actionKey = `${messageId}-${type}`;
+		setActionButtonLoading(prev => new Set(prev).add(actionKey));
+		try {
+			if (type === "add_inventory") {
+				for (const item of data.items) {
+					// Logic: Check if exists or create new
+					await createInventoryItemMutation({
+						ingredientName: item.name,
+						unit: item.unit || "pcs",
+						quantity: item.qty,
+						lowStockThreshold: 1,
+						costPerUnit: item.price,
+						category: "Lainnya",
+					});
+				}
+				toast.success("Item berhasil ditambahkan ke inventory!");
+			} else if (type === "create_expense") {
+				await createTransactionMutation({
+					type: "expense",
+					amount: data.total,
+					category: data.category || "belanja_stok",
+					description: `Scan: ${data.merchant || "Toko"}`,
+					date: data.date || new Date().toISOString().split('T')[0],
+					paymentMethod: data.paymentMethod || "cash",
+				});
+				toast.success("Pengeluaran berhasil dicatat!");
+			} else if (type === "create_product") {
+				for (const item of data.items) {
+					await createProductMutation({
+						name: item.name,
+						price: item.price * 1.5, // Simple markup for suggestion
+						category: "Umum",
+						isAvailable: true,
+					});
+				}
+				toast.success("Produk baru berhasil dibuat!");
+			}
+			setActionButtonDone(prev => new Set(prev).add(actionKey));
+		} catch (error) {
+			console.error("Action execution error:", error);
+			toast.error("Gagal mengeksekusi aksi.");
+		} finally {
+			setActionButtonLoading(prev => {
+				const next = new Set(prev);
+				next.delete(actionKey);
+				return next;
+			});
+		}
+	}, [createInventoryItemMutation, createTransactionMutation, createProductMutation]);
+
 	// Execute AI image scan and add result to chat
 	const processImagesWithAI = useCallback(async (images: string[], customPrompt?: string) => {
 		if (images.length === 0 || isScanning) return;
 		setIsScanning(true);
 		setIsLoading(true);
+		setLoadingStatus("Sedang membaca gambar...");
 		try {
+			// Phase 1: Reading images
+			setTimeout(() => {
+				if (isLoading || isScanning) setLoadingStatus("Sedang menganalisis struk...");
+			}, 1500);
+			
 			const bulkResults = await bulkScanImageDataAction({ images });
+			
+			// Phase 2: Extraction
+			setLoadingStatus("Sedang mengekstraksi data...");
 			
 			const newMessages: ChatMessage[] = [];
 			
@@ -452,13 +556,13 @@ function AIChatPage() {
 					image: currentImg,
 				};
 
-				const items = result.items as Array<{ name: string; qty: number; price: number; subtotal: number }> | undefined;
+				const items = result.items as Array<{ name: string; qty: number; price: number; subtotal: number; unit?: string }> | undefined;
 				let summaryText = "";
 				if (result.name) summaryText += `🍩 Merchant: ${result.name}\n`;
 				if (items && items.length > 0) {
 					summaryText += `\n📋 Detail Item (${items.length} item):\n`;
-					items.forEach((item: { name: string; qty: number; price: number; subtotal: number }, i: number) => {
-						summaryText += `${i + 1}. ${item.name} x${item.qty} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`;
+					items.forEach((item, i) => {
+						summaryText += `${i + 1}. ${item.name} x${item.qty} ${item.unit || "pcs"} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`;
 					});
 				}
 				if (result.subtotal) summaryText += `\nSubtotal: Rp ${Number(result.subtotal).toLocaleString("id-ID")}`;
@@ -468,18 +572,22 @@ function AIChatPage() {
 				summaryText += `\n\n📊 Keyakinan: ${result.confidence}% | Kategori: ${result.category.replace(/_/g, " ")} | Bayar: ${result.paymentMethod}`;
 				if (result.date) summaryText += ` | Tanggal: ${result.date}`;
 
-				summaryText += `\n\n[SUGGEST: 💰 Simpan ke Pengeluaran | Tolong catat hasil scan dari ${result.name || "Toko"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pengeluaran]`;
+				summaryText += `\n\n[SUGGEST: 📦 Tambah ke Inventory | Tolong masukkan item-item dari hasil scan ini ke inventory dengan data lengkap]`;
+				summaryText += `\n[SUGGEST: 💰 Simpan ke Pengeluaran | Tolong catat hasil scan dari ${result.name || "Toko"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pengeluaran]`;
 				summaryText += `\n[SUGGEST: 📈 Simpan ke Pemasukan | Tolong catat hasil scan dari ${result.name || "Sumber"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pemasukan]`;
 				summaryText += "\n[SUGGEST: ❌ Batalkan | Batalkan pencatatan ini]";
 
 				const suggestions = extractSuggestions(summaryText);
 				const sanitized = sanitizeResponse(summaryText);
+				const actionButtons = generateScanActionButtons(result as ScanResultData);
 
 				const assistantMsg: ChatMessage = {
 					role: "assistant",
 					content: sanitized || result.notes || `Analisis selesai dengan tingkat keyakinan ${result.confidence}%.`,
 					scanData: result as ScanResultData,
 					suggestions: suggestions,
+					actionButtons,
+					_msgId: mkMsgId(),
 				};
 				
 				newMessages.push(userMsg, assistantMsg);
@@ -501,6 +609,7 @@ function AIChatPage() {
 		} finally {
 			setIsScanning(false);
 			setIsLoading(false);
+			setLoadingStatus("");
 		}
 	}, [isScanning, bulkScanImageDataAction, extractSuggestions, sanitizeResponse]);
 
@@ -528,14 +637,21 @@ function AIChatPage() {
 				role: "user",
 				content: trimmed,
 				image: image || (selectedImages.length > 0 ? selectedImages[0] : undefined), // Keep for backward compat
+				_msgId: mkMsgId(),
 			};
 			setMessages((prev) => [...prev, userMessage]);
 			setInput("");
 			setSelectedImages([]);
 			setIsLoading(true);
+			setLoadingStatus("Sedang mencarikan jawaban...");
 			setToolCalls([]);
 
 			try {
+				// Phase changes
+				setTimeout(() => {
+					if (isLoading) setLoadingStatus("Sedang berpikir...");
+				}, 2000);
+				
 				const history = messages
 					.filter((m) => m.role === "user" || m.role === "assistant")
 					.map((m) => ({ role: m.role, content: m.content }));
@@ -547,6 +663,8 @@ function AIChatPage() {
 					images: attachedImages,
 				});
 
+				setLoadingStatus("Sedang menulis...");
+				
 				let hasToolExecution = false;
 				const detectedTools: ToolCall[] = [];
 
@@ -586,6 +704,7 @@ function AIChatPage() {
 					"Maaf, saya tidak bisa memproses permintaan ini.";
 
 				setIsLoading(false);
+				setLoadingStatus("");
 
 				// Stream the response word by word for realistic effect
 				streamText(sanitized, async () => {
@@ -593,6 +712,7 @@ function AIChatPage() {
 						role: "assistant",
 						content: sanitized,
 						suggestions: suggestions,
+						_msgId: mkMsgId(),
 					};
 					setMessages((prev) => [...prev, assistantMessage]);
 					if (currentSessionId) {
@@ -603,6 +723,7 @@ function AIChatPage() {
 			} catch (error) {
 				console.error("AI chat error:", error);
 				setIsLoading(false);
+				setLoadingStatus("");
 				streamingActiveRef.current = false;
 				setIsStreaming(false);
 				setStreamingContent("");
@@ -734,9 +855,20 @@ function AIChatPage() {
 		}
 
 		setIsLoading(true);
+		setLoadingStatus("Sedang menjalankan perintah...");
 		try {
-			// Execute the suggested action via yumi chat
-			const prompt = `Lakukan tindakan berikut: ${suggestion.title} - ${suggestion.description}`;
+			// Execute the suggested action via yumi chat or directly if tool mapping exists
+			let prompt = `Lakukan tindakan berikut: ${suggestion.title} - ${suggestion.description}`;
+			
+			// Custom prompts for specific types
+			if (suggestion.type === "trending") {
+				prompt = `Penjualan ${suggestion.action.args.productName} sedang naik ${suggestion.action.args.growth}%. Tolong buatkan rencana restock bahan baku yang relevan dan tampilkan daftar inventory yang perlu ditambah.`;
+			} else if (suggestion.type === "bundle_opportunity") {
+				prompt = `Tolong buatkan diskon baru dengan nama "${suggestion.action.args.name}" tipe ${suggestion.action.args.type} dengan nilai ${suggestion.action.args.value}. Ini adalah saran bundle dari kamu.`;
+			} else if (suggestion.type === "expiry_alert") {
+				prompt = `Buatkan promo diskon otomatis untuk menghabiskan stok yang hampir kedaluwarsa ini: ${suggestion.title}. Gunakan detail: ${JSON.stringify(suggestion.action.args)}`;
+			}
+
 			const response = await yumiChat({
 				message: prompt,
 				history: [],
@@ -747,10 +879,12 @@ function AIChatPage() {
 				{
 					role: "user",
 					content: prompt,
+					_msgId: mkMsgId(),
 				},
 				{
 					role: "assistant",
 					content: sanitizeResponse(response) || "Tindakan berhasil diproses.",
+					_msgId: mkMsgId(),
 				},
 			]);
 			toast.success("Tindakan berhasil dieksekusi!");
@@ -758,6 +892,7 @@ function AIChatPage() {
 			toast.error("Gagal mengeksekusi tindakan.");
 		} finally {
 			setIsLoading(false);
+			setLoadingStatus("");
 		}
 	};
 
@@ -787,6 +922,38 @@ function AIChatPage() {
 		}
 	};
 
+	const mkMsgId = () => Math.random().toString(36).substring(2, 11);
+
+	const generateScanActionButtons = useCallback((result: ScanResultData) => {
+		const buttons = [];
+		
+		if (result.items && result.items.length > 0) {
+			buttons.push({
+				type: "add_inventory",
+				label: "Tambah ke Inventory",
+				data: result,
+				icon: <PlusCircle className="h-3.5 w-3.5" />,
+			});
+			buttons.push({
+				type: "create_product",
+				label: "Buat Produk",
+				data: result,
+				icon: <PlusCircle className="h-3.5 w-3.5" />,
+			});
+		}
+		
+		if (result.total > 0) {
+			buttons.push({
+				type: "create_expense",
+				label: "Catat Pengeluaran",
+				data: result,
+				icon: <TrendingDown className="h-3.5 w-3.5" />,
+			});
+		}
+		
+		return buttons;
+	}, []);
+
 	const clearCurrentChat = async () => {
 		if (currentSessionId) {
 			try {
@@ -801,6 +968,7 @@ function AIChatPage() {
 				role: "assistant",
 				content:
 					"Halo! Saya Yumi, asisten AI kamu untuk YUMI POS. Saya bisa membantu merekap data, menganalisis bisnis, MELAKUKAN AKSI seperti tambah produk, update stok, buat pesanan, dan bahkan MULTI-STEP ACTIONS dalam satu permintaan. Sekarang saya dilengkapi dengan Forecasting, Analisis HPP, Efektivitas Diskon, dan Rekonsiliasi Keuangan!",
+				_msgId: "welcome-reset",
 			},
 		]);
 		toast.success("Chat berhasil dihapus");
@@ -1016,6 +1184,39 @@ function AIChatPage() {
 													)}
 												</div>
 
+												{/* Deep-Linking Action Buttons */}
+												{msg.role === "assistant" && msg.actionButtons && msg.actionButtons.length > 0 && (
+													<div className="flex flex-wrap gap-2 mt-2">
+														{msg.actionButtons.map((btn, idx) => {
+															const key = `${msg._msgId}-${btn.type}`;
+															const isDone = actionButtonDone.has(key);
+															const isLoadingBtn = actionButtonLoading.has(key);
+															
+															return (
+																<button
+																	key={idx}
+																	disabled={isDone || isLoadingBtn}
+																	onClick={() => handleExecuteAction(btn.type, btn.data, msg._msgId)}
+																	className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 ${
+																		isDone 
+																			? "bg-green-100 text-green-700 border border-green-200 cursor-default"
+																			: "bg-white text-primary border border-primary/20 hover:bg-primary/5 hover:border-primary/40"
+																	}`}
+																>
+																	{isLoadingBtn ? (
+																		<Loader2 className="h-3 w-3 animate-spin" />
+																	) : isDone ? (
+																		<Check className="h-3 w-3" />
+																	) : (
+																		btn.icon
+																	)}
+																	<span>{isDone ? `${btn.label} Berhasil` : btn.label}</span>
+																</button>
+															);
+														})}
+													</div>
+												)}
+
 												{/* Smart Suggestion Buttons - Premium Prominent Design */}
 												{msg.role === "assistant" && msg.suggestions && msg.suggestions.length > 0 && (
 													<motion.div 
@@ -1093,7 +1294,7 @@ function AIChatPage() {
 									))}
 								</AnimatePresence>
 
-								{/* Typing Indicator - Single subtle pulse */}
+								{/* Typing Indicator - With Dynamic Status */}
 								{isLoading && toolCalls.length === 0 && (
 									<div className="flex justify-start">
 										<div className="space-y-1">
@@ -1103,9 +1304,16 @@ function AIChatPage() {
 													Yumi
 												</span>
 											</div>
-											<div className="rounded-xl rounded-tl-none border border-border bg-card px-3 py-2">
-												<div className="flex items-center gap-1">
-													<span className="h-1.5 w-1.5 rounded-full bg-primary/70 animate-pulse" />
+											<div className="rounded-xl rounded-tl-none border border-border bg-card px-3 py-2 shadow-sm">
+												<div className="flex items-center gap-2">
+													<div className="flex gap-1">
+														<span className="h-1 w-1 rounded-full bg-primary/70 animate-bounce" />
+														<span className="h-1 w-1 rounded-full bg-primary/70 animate-bounce [animation-delay:0.2s]" />
+														<span className="h-1 w-1 rounded-full bg-primary/70 animate-bounce [animation-delay:0.4s]" />
+													</div>
+													<span className="text-[11px] font-medium text-primary animate-pulse italic">
+														{loadingStatus || "Sedang memproses..."}
+													</span>
 												</div>
 											</div>
 										</div>
@@ -1468,6 +1676,7 @@ function AIChatPage() {
 								disabled={isLoading}
 								onClick={async () => {
 									setIsLoading(true);
+									setLoadingStatus("Sedang membuat tugas baru...");
 									try {
 										const result = await autoGenerateTasksMutation({});
 										if (result) {
@@ -1479,6 +1688,7 @@ function AIChatPage() {
 										toast.error("Gagal membuat tugas otomatis.");
 									} finally {
 										setIsLoading(false);
+										setLoadingStatus("");
 									}
 								}}
 								type="button"
@@ -2053,9 +2263,9 @@ function ScanResultCard({ data }: { data: ScanResultData }) {
 								<div className="flex items-center justify-between px-2.5 py-1.5" key={idx}>
 									<div className="flex-1 min-w-0">
 										<span className="text-[11px] text-foreground line-clamp-1">{item.name}</span>
-										{item.qty > 1 && (
-											<span className="text-[10px] text-muted-foreground"> x{item.qty}</span>
-										)}
+										<span className="text-[10px] text-muted-foreground">
+											{item.qty > 0 && ` x${item.qty}`} {item.unit && ` ${item.unit}`}
+										</span>
 									</div>
 									{(item.subtotal > 0 || item.price > 0) && (
 										<span className="text-[11px] font-medium text-foreground ml-2 shrink-0">

@@ -51,6 +51,7 @@ export const addStock = mutation({
 		costPerUnit: v.optional(v.number()),
 		notes: v.optional(v.string()),
 		timestamp: v.optional(v.number()),
+		expiryDate: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const item = await ctx.db.get(args.inventoryId);
@@ -74,6 +75,7 @@ export const addStock = mutation({
 			timestamp,
 			costPerUnit: args.costPerUnit,
 			notes: args.notes,
+			expiryDate: args.expiryDate,
 		});
 	},
 });
