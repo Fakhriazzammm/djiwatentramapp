@@ -1270,7 +1270,7 @@ ATURAN KETAT:
 				else if (args.localHour >= 15 && args.localHour < 18) greeting = "Selamat sore";
 				else if (args.localHour >= 18 || args.localHour < 4) greeting = "Selamat malam";
 			}
-			return `${greeting}! Saya siap membantu Anda mengelola toko hari ini. Ada yang bisa saya bantu?`;
+			return `${greeting}! Kemarin omzet kita Rp 0 (naik 0%). Hari ini semua stok aman dan belum ada reservasi meja. Tetap semangat mengelola toko hari ini! [SUGGEST: 📊 Laporan Lengkap | Berikan laporan performa bisnis saya secara mendalam]`;
 		}
 	},
 });

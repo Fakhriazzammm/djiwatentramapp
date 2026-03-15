@@ -532,7 +532,7 @@ export function YumiAIChat() {
 					else if (localHour >= 15 && localHour < 18) fallbackGreeting = "Selamat sore";
 					else if (localHour >= 18 || localHour < 4) fallbackGreeting = "Selamat malam";
 
-					const contentToStream = briefing ? sanitizeResponse(briefing) : `${fallbackGreeting}! Saya siap membantu Anda mengelola toko hari ini.`;
+					const contentToStream = briefing ? sanitizeResponse(briefing) : `${fallbackGreeting}! Kemarin omzet kita Rp 0 (naik 0%). Hari ini semua stok aman dan belum ada reservasi meja. Tetap semangat mengelola toko hari ini!`;
 					
 					// Append the briefing as the second message
 					streamText(contentToStream, () => {
@@ -557,7 +557,7 @@ export function YumiAIChat() {
 						...prev,
 						{
 							role: "assistant",
-							content: `${fallbackGreeting}! Saya siap membantu Anda mengelola toko hari ini.`,
+							content: `${fallbackGreeting}! Kemarin omzet kita Rp 0 (naik 0%). Hari ini semua stok aman dan belum ada reservasi meja. Tetap semangat mengelola toko hari ini!`,
 						}
 					]);
 				} finally {

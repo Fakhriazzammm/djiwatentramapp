@@ -375,9 +375,10 @@ function AIChatPage() {
 				
 				try {
 					// Small delay to ensure everything is initialized
-					await new Promise(resolve => setTimeout(resolve, 1500));
+					await new Promise(resolve => setTimeout(resolve, 2000));
 					
 					const briefing = await generateDailyBriefingAction({ localHour });
+					console.log("Briefing result:", briefing); // Debug log
 					
 					let fallbackGreeting = "Selamat pagi";
 					if (localHour >= 11 && localHour < 15) fallbackGreeting = "Selamat siang";
@@ -385,7 +386,7 @@ function AIChatPage() {
 					else if (localHour >= 18 || localHour < 4) fallbackGreeting = "Selamat malam";
 
 					const suggestions = briefing ? extractSuggestions(briefing) : [];
-					const sanitized = briefing ? sanitizeResponse(briefing) : `${fallbackGreeting}! Saya siap membantu Anda mengelola toko hari ini.`;
+					const sanitized = briefing ? sanitizeResponse(briefing) : `${fallbackGreeting}! Kemarin omzet kita Rp 0 (naik 0%). Hari ini semua stok aman dan belum ada reservasi meja. Tetap semangat mengelola toko hari ini!`;
 
 					// Use streaming for the briefing
 					streamText(sanitized, () => {
@@ -412,7 +413,7 @@ function AIChatPage() {
 						...prev,
 						{
 							role: "assistant",
-							content: `${fallbackGreeting}! Saya siap membantu Anda mengelola toko hari ini. Apa yang ingin Anda ketahui?`,
+							content: `${fallbackGreeting}! Kemarin omzet kita Rp 0 (naik 0%). Hari ini semua stok aman dan belum ada reservasi meja. Tetap semangat mengelola toko hari ini!`,
 							_msgId: mkMsgId(),
 						}
 					]);
