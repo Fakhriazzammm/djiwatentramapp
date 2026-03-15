@@ -610,21 +610,22 @@ function AdminDiscountsPage() {
 						</div>
 					))
 				) : (
-					<AnimatePresence mode="popLayout">
-						{(filteredDiscounts || []).map((d: any, index: number) => {
-							const status = getPromoStatus(d);
-							const StatusIcon = status.icon;
+					<>
+						<AnimatePresence mode="popLayout">
+							{(filteredDiscounts || []).map((d: any, index: number) => {
+								const status = getPromoStatus(d);
+								const StatusIcon = status.icon;
 
-							return (
-								<motion.div
-									animate={{ opacity: 1, scale: 1 }}
-									className="group relative overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:shadow-lg"
-									exit={{ opacity: 0, scale: 0.9 }}
-									initial={{ opacity: 0, scale: 0.9 }}
-									key={d._id}
-									layout
-									transition={{ delay: index * 0.05 }}
-								>
+								return (
+									<motion.div
+										animate={{ opacity: 1, scale: 1 }}
+										className="group relative overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:shadow-lg"
+										exit={{ opacity: 0, scale: 0.9 }}
+										initial={{ opacity: 0, scale: 0.9 }}
+										key={d._id}
+										layout
+										transition={{ delay: index * 0.05 }}
+									>
 								{/* Gradient Overlay */}
 								<div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 
@@ -780,44 +781,46 @@ function AdminDiscountsPage() {
 									</div>
 								</div>
 							</motion.div>
-						);
-					})}
-				</AnimatePresence>
+								);
+							})}
+						</AnimatePresence>
 
-				{/* Empty State */}
-				{filteredDiscounts?.length === 0 && (
-					<motion.div
-						animate={{ opacity: 1 }}
-						className="col-span-full py-20 text-center"
-						initial={{ opacity: 0 }}
-					>
-						<div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-muted">
-							<Tag className="h-10 w-10 text-muted-foreground" />
-						</div>
-						<h3 className="mb-2 font-bold text-lg">
-							{searchQuery || filterStatus !== "all" || filterType !== "all"
-								? "Tidak ada diskon yang cocok"
-								: "Belum ada diskon"}
-						</h3>
-						<p className="mb-6 text-muted-foreground text-sm">
-							{searchQuery || filterStatus !== "all" || filterType !== "all"
-								? "Coba ubah filter atau kata kunci pencarian"
-								: "Mulai buat diskon pertama Anda untuk meningkatkan penjualan"}
-						</p>
-						{!searchQuery && filterStatus === "all" && filterType === "all" && (
-							<button
-								className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-lg transition-all hover:scale-105"
-								onClick={() => {
-									resetForm();
-									setIsModalOpen(true);
-								}}
-								type="button"
+						{/* Empty State */}
+						{filteredDiscounts?.length === 0 && (
+							<motion.div
+								animate={{ opacity: 1 }}
+								className="col-span-full py-20 text-center"
+								initial={{ opacity: 0 }}
 							>
-								<Plus className="h-4 w-4" />
-								Buat Diskon Pertama
-							</button>
+								<div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-muted">
+									<Tag className="h-10 w-10 text-muted-foreground" />
+								</div>
+								<h3 className="mb-2 font-bold text-lg">
+									{searchQuery || filterStatus !== "all" || filterType !== "all"
+										? "Tidak ada diskon yang cocok"
+										: "Belum ada diskon"}
+								</h3>
+								<p className="mb-6 text-muted-foreground text-sm">
+									{searchQuery || filterStatus !== "all" || filterType !== "all"
+										? "Coba ubah filter atau kata kunci pencarian"
+										: "Mulai buat diskon pertama Anda untuk meningkatkan penjualan"}
+								</p>
+								{!searchQuery && filterStatus === "all" && filterType === "all" && (
+									<button
+										className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-lg transition-all hover:scale-105"
+										onClick={() => {
+											resetForm();
+											setIsModalOpen(true);
+										}}
+										type="button"
+									>
+										<Plus className="h-4 w-4" />
+										Buat Diskon Pertama
+									</button>
+								)}
+							</motion.div>
 						)}
-					</motion.div>
+					</>
 				)}
 			</div>
 
