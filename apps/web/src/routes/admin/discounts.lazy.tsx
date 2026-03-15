@@ -768,7 +768,7 @@ function AdminDiscountsPage() {
 										{/* Days */}
 										{d.days && d.days.length > 0 && (
 											<div className="flex flex-wrap gap-1">
-												{d.days.map((dayId) => (
+												{d.days.map((dayId: number) => (
 													<span
 														className="rounded bg-muted px-2 py-0.5 font-semibold text-[10px] uppercase"
 														key={dayId}
@@ -1024,12 +1024,12 @@ function AdminDiscountsPage() {
 																? categories || []
 																: products || [];
 														const filteredIds = items
-															.filter((item) =>
+															.filter((item: any) =>
 																item.name
 																	.toLowerCase()
 																	.includes(searchTarget.toLowerCase())
 															)
-															.map((item) => item._id);
+															.map((item: any) => item._id);
 														toggleAllTargets(filteredIds);
 													}}
 													type="button"
@@ -1043,7 +1043,7 @@ function AdminDiscountsPage() {
 													? categories
 													: products
 												)
-													?.filter((item) =>
+													?.filter((item: any) =>
 														item.name
 															.toLowerCase()
 															.includes(searchTarget.toLowerCase())

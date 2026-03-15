@@ -482,6 +482,7 @@ function AIChatPage() {
 						role: "assistant",
 						content:
 							"Halo! Saya Yumi, asisten AI kamu. Ada yang bisa saya bantu hari ini?",
+						_msgId: "welcome",
 					},
 				]);
 				setShowSessionHistory(false);
@@ -587,10 +588,12 @@ function AIChatPage() {
 						role: "user",
 						content: bulkResults.length > 1 ? `Scan gambar ke-${i+1}` : "Scan gambar ini",
 						image: currentImg,
+						_msgId: mkMsgId(),
 					});
 					newMessages.push({
 						role: "assistant",
 						content: `Gagal menganalisis gambar ke-${i+1}: ${res.error || "Terjadi kesalahan."}`,
+						_msgId: mkMsgId(),
 					});
 					continue;
 				}
@@ -600,6 +603,7 @@ function AIChatPage() {
 					role: "user",
 					content: customPrompt ? `Hasil scan gambar ke-${i+1} (${customPrompt}):` : (bulkResults.length > 1 ? `Hasil scan gambar ke-${i+1}:` : "Scan gambar ini dan analisis datanya."),
 					image: currentImg,
+					_msgId: mkMsgId(),
 				};
 
 				const items = result.items as Array<{ name: string; qty: number; price: number; subtotal: number; unit?: string }> | undefined;
@@ -781,6 +785,7 @@ function AIChatPage() {
 						content: errMsg?.includes("image") || errMsg?.includes("vision") || errMsg?.includes("model")
 							? "Maaf, gagal menganalisis gambar. Pastikan format gambar didukung (JPG/PNG) dan coba lagi."
 							: "Maaf, terjadi kesalahan. Silakan coba lagi.",
+						_msgId: mkMsgId(),
 					},
 				]);
 				setToolCalls([]);
@@ -959,6 +964,7 @@ function AIChatPage() {
 						role: "assistant",
 						content:
 							"Halo! Saya Yumi, asisten AI kamu. Ada yang bisa saya bantu hari ini?",
+						_msgId: "welcome-cleared",
 					},
 				]);
 			}
@@ -1032,6 +1038,7 @@ function AIChatPage() {
 					role: "assistant",
 					content:
 						"Halo! Saya Yumi, asisten AI kamu. Ada yang bisa saya bantu hari ini?",
+					_msgId: "welcome-all-cleared",
 				},
 			]);
 			toast.success("Semua riwayat chat berhasil dihapus");
@@ -1051,7 +1058,11 @@ function AIChatPage() {
 				}));
 
 			if (history.length > 0) {
-				setMessages(history);
+				const historyWithIds = history.map((m: any) => ({
+					...m,
+					_msgId: m._msgId || mkMsgId(),
+				}));
+				setMessages(historyWithIds);
 			}
 		}
 	}, [currentSessionId, loadConversationQuery]);
@@ -2191,6 +2202,7 @@ function AIChatPage() {
 						{
 							role: "assistant",
 							content: `Berhasil membuat ${type} dengan data: ${JSON.stringify(data)}`,
+							_msgId: mkMsgId(),
 						},
 					]);
 				}}

@@ -1233,21 +1233,32 @@ export const generateDailyBriefing = action({
 				{
 					role: "system",
 					content: `Kamu adalah Yumi, asisten AI bisnis yang ceria dan proaktif.
-Tugas: Berikan Briefing Bisnis yang singkat, padat, dan menyemangat bagi pemilik toko.
-Gunakan data yang diberikan untuk memberikan ringkasan performa kemarin dan apa yang harus difokuskan hari ini.
+Tugas: Berikan Briefing Bisnis (Dashboard Proaktif) yang singkat, padat, dan sangat informatif bagi pemilik toko.
+Gunakan data riil yang diberikan untuk memberikan ringkasan performa kemarin dan fokus operasional hari ini.
 
-ATURAN:
+FORMAT BRIEFING:
 1. Sapa dengan "${greeting}!".
-2. JANGAN gunakan bold (**). Gunakan teks polos.
-3. Gunakan emoji.
-4. Akhiri dengan saran tombol aksi [SUGGEST: ...].
-   - Jika ada stok rendah: [SUGGEST: 📦 Pesan Bahan Baku | Tampilkan daftar belanja untuk bahan yang stoknya rendah]
-   - Jika ada booking: [SUGGEST: 📅 Lihat Reservasi | Tampilkan detail reservasi meja untuk hari ini]
-   - Selalu ada: [SUGGEST: 📊 Laporan Lengkap | Berikan laporan performa bisnis saya secara mendalam]`,
+2. Ringkasan Omzet: Sebutkan total omzet kemarin dan pertumbuhannya (naik/turun %). Contoh: "Kemarin omzet kita Rp 2jt (naik 10%)".
+3. Operasional Hari Ini: 
+   - Sebutkan jumlah stok kritis jika ada (beserta nama bahannya).
+   - Sebutkan jumlah reservasi/booking untuk hari ini.
+4. Penutup: Kalimat penyemangat singkat.
+5. Tombol Aksi: Berikan saran tombol aksi [SUGGEST: ...].
+
+ATURAN KETAT:
+- JANGAN gunakan bold (**). Gunakan teks polos.
+- Gunakan emoji yang relevan.
+- Gunakan data dari konteks yang diberikan. Jika data 0, sebutkan dengan cara yang positif.
+- Pastikan informasi spesifik (angka omzet, nama bahan stok rendah, jumlah booking) muncul dengan jelas.`,
 				},
 				{
 					role: "user",
-					content: `Data Bisnis untuk Briefing: ${JSON.stringify(dataContext)}`,
+					content: `Data Bisnis Riil untuk Briefing:
+- Omzet Kemarin: Rp ${dataContext.revenueYesterday.toLocaleString("id-ID")}
+- Pertumbuhan Omzet: ${dataContext.revenueGrowth.toFixed(1)}%
+- Stok Rendah: ${dataContext.lowStockCount} item (${dataContext.lowStockNames || "Semua stok aman"})
+- Reservasi Hari Ini: ${dataContext.todayBookingsCount} booking
+- Saldo Saat Ini: Rp ${dataContext.balance.toLocaleString("id-ID")}`,
 				},
 			]);
 		} catch (error) {
