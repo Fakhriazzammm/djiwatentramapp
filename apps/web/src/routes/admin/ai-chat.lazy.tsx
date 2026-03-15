@@ -204,6 +204,47 @@ function AIChatPage() {
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	// Sanitize AI response - remove markdown formatting and suggestion tags
+	const sanitizeResponse = useCallback((text: string): string => {
+		if (!text) return "";
+		return text
+			// Remove suggestions [SUGGEST: Label | Prompt] - will be parsed separately
+			.replace(/\[SUGGEST:\s*(.*?)\s*\|\s*(.*?)\s*\]/g, "")
+			// Remove bold markdown
+			.replace(/\*\*(.*?)\*\*/g, "$1")
+			// Remove italic markdown
+			.replace(/\*(.*?)\*/g, "$1")
+			// Remove heading markdown
+			.replace(/^#+\s+/gm, "")
+			// Remove bullet points (*) and replace with emoji
+			.replace(/^\*\s+/gm, "🔹 ")
+			.replace(/^\-\s+/gm, "🔹 ")
+			// Remove code blocks
+			.replace(/```[\s\S]*?```/g, "")
+			// Remove inline code
+			.replace(/`(.*?)`/g, "$1")
+			// Remove numbered list markdown
+			.replace(/^\d+\.\s+/gm, "")
+			// Clean up extra whitespace
+			.replace(/\n{3,}/g, "\n\n")
+			.trim();
+	}, []);
+
+	// Extract suggestions from raw AI response
+	const extractSuggestions = useCallback((text: string): Array<{ label: string; prompt: string }> => {
+		const suggestions: Array<{ label: string; prompt: string }> = [];
+		const regex = /\[SUGGEST:\s*(.*?)\s*\|\s*(.*?)\s*\]/g;
+		let match;
+		while ((match = regex.exec(text)) !== null) {
+			suggestions.push({
+				label: match[1].trim(),
+				prompt: match[2].trim(),
+			});
+		}
+		return suggestions;
+	}, []);
+
 	const yumiChat = useAction(api.ai.yumiChat);
 	const scanImageDataAction = useAction(api.ai.scanImageData);
 	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
@@ -298,46 +339,6 @@ function AIChatPage() {
 		}
 	}, [streamingContent, isStreaming]);
 
-	// Sanitize AI response - remove markdown formatting and suggestion tags
-	const sanitizeResponse = (text: string): string => {
-		if (!text) return "";
-		return text
-			// Remove suggestions [SUGGEST: Label | Prompt] - will be parsed separately
-			.replace(/\[SUGGEST:\s*(.*?)\s*\|\s*(.*?)\s*\]/g, "")
-			// Remove bold markdown
-			.replace(/\*\*(.*?)\*\*/g, "$1")
-			// Remove italic markdown
-			.replace(/\*(.*?)\*/g, "$1")
-			// Remove heading markdown
-			.replace(/^#+\s+/gm, "")
-			// Remove bullet points (*) and replace with emoji
-			.replace(/^\*\s+/gm, "🔹 ")
-			.replace(/^\-\s+/gm, "🔹 ")
-			// Remove code blocks
-			.replace(/```[\s\S]*?```/g, "")
-			// Remove inline code
-			.replace(/`(.*?)`/g, "$1")
-			// Remove numbered list markdown
-			.replace(/^\d+\.\s+/gm, "")
-			// Clean up extra whitespace
-			.replace(/\n{3,}/g, "\n\n")
-			.trim();
-	};
-
-	// Extract suggestions from raw AI response
-	const extractSuggestions = (text: string): Array<{ label: string; prompt: string }> => {
-		const suggestions: Array<{ label: string; prompt: string }> = [];
-		const regex = /\[SUGGEST:\s*(.*?)\s*\|\s*(.*?)\s*\]/g;
-		let match;
-		while ((match = regex.exec(text)) !== null) {
-			suggestions.push({
-				label: match[1].trim(),
-				prompt: match[2].trim(),
-			});
-		}
-		return suggestions;
-	};
-
 	// Stream text word by word for realistic streaming effect
 	const streamText = useCallback(
 		(text: string, onComplete: () => void) => {
@@ -416,6 +417,92 @@ function AIChatPage() {
 			}
 		}
 	};
+
+	// Execute AI image scan and add result to chat
+	const processImagesWithAI = useCallback(async (images: string[], customPrompt?: string) => {
+		if (images.length === 0 || isScanning) return;
+		setIsScanning(true);
+		setIsLoading(true);
+		try {
+			const bulkResults = await bulkScanImageDataAction({ images });
+			
+			const newMessages: ChatMessage[] = [];
+			
+			for (let i = 0; i < bulkResults.length; i++) {
+				const res = bulkResults[i];
+				const currentImg = images[i];
+				
+				if (!res.success) {
+					newMessages.push({
+						role: "user",
+						content: bulkResults.length > 1 ? `Scan gambar ke-${i+1}` : "Scan gambar ini",
+						image: currentImg,
+					});
+					newMessages.push({
+						role: "assistant",
+						content: `Gagal menganalisis gambar ke-${i+1}: ${res.error || "Terjadi kesalahan."}`,
+					});
+					continue;
+				}
+
+				const result = res.data;
+				const userMsg: ChatMessage = {
+					role: "user",
+					content: customPrompt ? `Hasil scan gambar ke-${i+1} (${customPrompt}):` : (bulkResults.length > 1 ? `Hasil scan gambar ke-${i+1}:` : "Scan gambar ini dan analisis datanya."),
+					image: currentImg,
+				};
+
+				const items = result.items as Array<{ name: string; qty: number; price: number; subtotal: number }> | undefined;
+				let summaryText = "";
+				if (result.name) summaryText += `🍩 Merchant: ${result.name}\n`;
+				if (items && items.length > 0) {
+					summaryText += `\n📋 Detail Item (${items.length} item):\n`;
+					items.forEach((item: { name: string; qty: number; price: number; subtotal: number }, i: number) => {
+						summaryText += `${i + 1}. ${item.name} x${item.qty} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`;
+					});
+				}
+				if (result.subtotal) summaryText += `\nSubtotal: Rp ${Number(result.subtotal).toLocaleString("id-ID")}`;
+				if (result.tax) summaryText += `\nPajak: Rp ${Number(result.tax).toLocaleString("id-ID")}`;
+				if (result.discount) summaryText += `\nDiskon: -Rp ${Number(result.discount).toLocaleString("id-ID")}`;
+				summaryText += `\n\n💰 Total: Rp ${Number(result.total).toLocaleString("id-ID")}`;
+				summaryText += `\n\n📊 Keyakinan: ${result.confidence}% | Kategori: ${result.category.replace(/_/g, " ")} | Bayar: ${result.paymentMethod}`;
+				if (result.date) summaryText += ` | Tanggal: ${result.date}`;
+
+				summaryText += `\n\n[SUGGEST: 💰 Simpan ke Pengeluaran | Tolong catat hasil scan dari ${result.name || "Toko"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pengeluaran]`;
+				summaryText += `\n[SUGGEST: 📈 Simpan ke Pemasukan | Tolong catat hasil scan dari ${result.name || "Sumber"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pemasukan]`;
+				summaryText += "\n[SUGGEST: ❌ Batalkan | Batalkan pencatatan ini]";
+
+				const suggestions = extractSuggestions(summaryText);
+				const sanitized = sanitizeResponse(summaryText);
+
+				const assistantMsg: ChatMessage = {
+					role: "assistant",
+					content: sanitized || result.notes || `Analisis selesai dengan tingkat keyakinan ${result.confidence}%.`,
+					scanData: result as ScanResultData,
+					suggestions: suggestions,
+				};
+				
+				newMessages.push(userMsg, assistantMsg);
+			}
+
+			setMessages((prev) => [...prev, ...newMessages]);
+			setSelectedImages([]);
+			setIsScanMode(false);
+			toast.success(`${bulkResults.length} gambar berhasil dianalisis!`);
+		} catch (error: any) {
+			let msg = "Gagal menganalisis gambar. Coba lagi.";
+			if (error?.data) {
+				msg = typeof error.data === "string" ? error.data : error.data.message || msg;
+			} else if (error?.message) {
+				msg = error.message;
+			}
+			toast.error(msg);
+			console.error("Scan error details:", error);
+		} finally {
+			setIsScanning(false);
+			setIsLoading(false);
+		}
+	}, [isScanning, bulkScanImageDataAction, extractSuggestions, sanitizeResponse]);
 
 	const sendMessage = useCallback(
 		async (text: string, image?: string) => {
@@ -614,92 +701,6 @@ function AIChatPage() {
 		},
 		[compressImage]
 	);
-
-	// Execute AI image scan and add result to chat
-	const processImagesWithAI = useCallback(async (images: string[], customPrompt?: string) => {
-		if (images.length === 0 || isScanning) return;
-		setIsScanning(true);
-		setIsLoading(true);
-		try {
-			const bulkResults = await bulkScanImageDataAction({ images });
-			
-			const newMessages: ChatMessage[] = [];
-			
-			for (let i = 0; i < bulkResults.length; i++) {
-				const res = bulkResults[i];
-				const currentImg = images[i];
-				
-				if (!res.success) {
-					newMessages.push({
-						role: "user",
-						content: bulkResults.length > 1 ? `Scan gambar ke-${i+1}` : "Scan gambar ini",
-						image: currentImg,
-					});
-					newMessages.push({
-						role: "assistant",
-						content: `Gagal menganalisis gambar ke-${i+1}: ${res.error || "Terjadi kesalahan."}`,
-					});
-					continue;
-				}
-
-				const result = res.data;
-				const userMsg: ChatMessage = {
-					role: "user",
-					content: customPrompt ? `Hasil scan gambar ke-${i+1} (${customPrompt}):` : (bulkResults.length > 1 ? `Hasil scan gambar ke-${i+1}:` : "Scan gambar ini dan analisis datanya."),
-					image: currentImg,
-				};
-
-				const items = result.items as Array<{ name: string; qty: number; price: number; subtotal: number }> | undefined;
-				let summaryText = "";
-				if (result.name) summaryText += `🍩 Merchant: ${result.name}\n`;
-				if (items && items.length > 0) {
-					summaryText += `\n📋 Detail Item (${items.length} item):\n`;
-					items.forEach((item: { name: string; qty: number; price: number; subtotal: number }, i: number) => {
-						summaryText += `${i + 1}. ${item.name} x${item.qty} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`;
-					});
-				}
-				if (result.subtotal) summaryText += `\nSubtotal: Rp ${Number(result.subtotal).toLocaleString("id-ID")}`;
-				if (result.tax) summaryText += `\nPajak: Rp ${Number(result.tax).toLocaleString("id-ID")}`;
-				if (result.discount) summaryText += `\nDiskon: -Rp ${Number(result.discount).toLocaleString("id-ID")}`;
-				summaryText += `\n\n💰 Total: Rp ${Number(result.total).toLocaleString("id-ID")}`;
-				summaryText += `\n\n📊 Keyakinan: ${result.confidence}% | Kategori: ${result.category.replace(/_/g, " ")} | Bayar: ${result.paymentMethod}`;
-				if (result.date) summaryText += ` | Tanggal: ${result.date}`;
-
-				summaryText += `\n\n[SUGGEST: 💰 Simpan ke Pengeluaran | Tolong catat hasil scan dari ${result.name || "Toko"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pengeluaran]`;
-				summaryText += `\n[SUGGEST: 📈 Simpan ke Pemasukan | Tolong catat hasil scan dari ${result.name || "Sumber"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pemasukan]`;
-				summaryText += "\n[SUGGEST: ❌ Batalkan | Batalkan pencatatan ini]";
-
-				const suggestions = extractSuggestions(summaryText);
-				const sanitized = sanitizeResponse(summaryText);
-
-				const assistantMsg: ChatMessage = {
-					role: "assistant",
-					content: sanitized || result.notes || `Analisis selesai dengan tingkat keyakinan ${result.confidence}%.`,
-					scanData: result as ScanResultData,
-					suggestions: suggestions,
-				};
-				
-				newMessages.push(userMsg, assistantMsg);
-			}
-
-			setMessages((prev) => [...prev, ...newMessages]);
-			setSelectedImages([]);
-			setIsScanMode(false);
-			toast.success(`${bulkResults.length} gambar berhasil dianalisis!`);
-		} catch (error: any) {
-			let msg = "Gagal menganalisis gambar. Coba lagi.";
-			if (error?.data) {
-				msg = typeof error.data === "string" ? error.data : error.data.message || msg;
-			} else if (error?.message) {
-				msg = error.message;
-			}
-			toast.error(msg);
-			console.error("Scan error details:", error);
-		} finally {
-			setIsScanning(false);
-			setIsLoading(false);
-		}
-	}, [isScanning, bulkScanImageDataAction, extractSuggestions, sanitizeResponse]);
 
 	const handleRemoveImage = useCallback(() => {
 		setSelectedImages([]); // Clear all selected images
