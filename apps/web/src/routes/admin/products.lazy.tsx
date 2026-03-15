@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { BulkOperations } from "../../components/admin/bulk-operations";
@@ -440,22 +441,20 @@ function ProductsTab({
 			{viewMode === "grid" ? (
 				<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
 					{!products &&
-						["sk1", "sk2", "sk3", "sk4", "sk5", "sk6", "sk7", "sk8", "sk9", "sk10"].map(
-							(skId) => (
-								<div
-									className="animate-pulse rounded-xl border border-border bg-card p-3"
-									key={skId}
-								>
-									<div className="aspect-square rounded-lg bg-muted/50" />
-									<div className="mt-2 h-3 w-3/4 rounded bg-muted/50" />
-									<div className="mt-2 h-2 w-1/2 rounded bg-muted/50" />
-									<div className="mt-3 flex items-center justify-between">
-										<div className="h-4 w-12 rounded bg-muted/50" />
-										<div className="h-6 w-12 rounded bg-muted/50" />
-									</div>
+						Array.from({ length: 10 }).map((_, i) => (
+							<div
+								className="rounded-xl border border-border bg-card p-3"
+								key={i}
+							>
+								<Skeleton className="aspect-square w-full rounded-lg" />
+								<Skeleton className="mt-2 h-3 w-3/4" />
+								<Skeleton className="mt-2 h-2 w-1/2" />
+								<div className="mt-3 flex items-center justify-between">
+									<Skeleton className="h-4 w-12" />
+									<Skeleton className="h-6 w-12" />
 								</div>
-							)
-						)}
+							</div>
+						))}
 
 					{products &&
 						products.length > 0 &&
@@ -590,14 +589,14 @@ function ProductsTab({
 							</thead>
 							<tbody className="divide-y divide-border">
 								{!products && Array.from({ length: 5 }).map((_, i) => (
-									<tr className="animate-pulse" key={i}>
-										<td className="px-4 py-3"><div className="mx-auto h-5 w-5 bg-muted rounded" /></td>
-										<td className="px-4 py-3"><div className="h-8 w-32 bg-muted rounded" /></td>
-										<td className="px-4 py-3"><div className="h-4 w-20 bg-muted rounded" /></td>
-										<td className="px-4 py-3"><div className="h-4 w-16 bg-muted rounded" /></td>
-										<td className="px-4 py-3"><div className="h-4 w-24 bg-muted rounded" /></td>
-										<td className="px-4 py-3"><div className="mx-auto h-6 w-12 bg-muted rounded" /></td>
-										<td className="px-4 py-3 text-right"><div className="ml-auto h-8 w-16 bg-muted rounded" /></td>
+									<tr key={i}>
+										<td className="px-4 py-3"><Skeleton className="mx-auto h-5 w-5" /></td>
+										<td className="px-4 py-3"><Skeleton className="h-8 w-32" /></td>
+										<td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
+										<td className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
+										<td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+										<td className="px-4 py-3 text-center"><Skeleton className="mx-auto h-6 w-12" /></td>
+										<td className="px-4 py-3 text-right"><Skeleton className="ml-auto h-8 w-16" /></td>
 									</tr>
 								))}
 

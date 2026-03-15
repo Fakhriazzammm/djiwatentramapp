@@ -1,6 +1,7 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { ArrowDownLeft, ArrowUpRight, Wallet } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	AreaChart,
 	Area,
@@ -27,8 +28,20 @@ export function CashFlowReport({ range }: Props) {
 
 	if (!data) {
 		return (
-			<div className="flex items-center justify-center py-20 text-muted-foreground">
-				Memuat data...
+			<div className="space-y-6">
+				<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+					{Array.from({ length: 3 }).map((_, i) => (
+						<div key={i} className="rounded-xl border border-border bg-card p-5 space-y-3">
+							<Skeleton className="h-3 w-24" />
+							<Skeleton className="h-6 w-32" />
+						</div>
+					))}
+				</div>
+				<Skeleton className="h-[300px] w-full rounded-xl" />
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+					<Skeleton className="h-64 w-full rounded-xl" />
+					<Skeleton className="h-64 w-full rounded-xl" />
+				</div>
 			</div>
 		);
 	}

@@ -2,6 +2,7 @@ import { api } from "@yumipos/backend/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { Wallet, Pencil, Trash2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { DateRange } from "./period-selector";
 import { formatCurrencyIDR } from "@/lib/export-utils";
 import { NewTransactionDialog } from "../../-components/new-transaction-dialog";
@@ -141,7 +142,17 @@ export function TransactionDetailReport({ range }: Props) {
 			{/* Table */}
 			<div className="rounded-xl border border-border bg-card overflow-hidden">
 				{!data ? (
-					<div className="flex items-center justify-center py-20 text-muted-foreground">Memuat data...</div>
+					<div className="p-4 space-y-4">
+						{Array.from({ length: 8 }).map((_, i) => (
+							<div key={i} className="flex items-center justify-between">
+								<Skeleton className="h-4 w-24" />
+								<Skeleton className="h-4 w-20" />
+								<Skeleton className="h-4 w-32" />
+								<Skeleton className="h-4 w-48" />
+								<Skeleton className="h-4 w-24" />
+							</div>
+						))}
+					</div>
 				) : data.transactions.length === 0 ? (
 					<div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
 						<Wallet className="h-10 w-10 mb-3 opacity-30" />

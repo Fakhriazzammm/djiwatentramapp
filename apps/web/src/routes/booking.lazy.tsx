@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createLazyFileRoute("/booking")({
 	component: BookingPage,
@@ -731,10 +732,39 @@ function BookingPage() {
 	// Loading
 	if (settings === undefined || products === undefined) {
 		return (
-			<div className="flex h-screen items-center justify-center bg-background">
-				<div className="text-center">
-					<Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" />
-					<p className="mt-3 font-medium text-muted-foreground text-sm">Memuat halaman booking...</p>
+			<div className="min-h-screen bg-background flex flex-col items-center">
+				<div className="w-full max-w-md bg-card min-h-screen shadow-2xl flex flex-col relative overflow-x-hidden">
+					<header className="sticky top-0 z-30 w-full px-4 py-4 flex items-center justify-between bg-background/80 backdrop-blur-md border-b border-border">
+						<div className="flex items-center gap-3">
+							<Skeleton className="h-8 w-8 rounded-lg" />
+							<Skeleton className="h-5 w-32" />
+						</div>
+						<div className="flex flex-col items-end">
+							<Skeleton className="h-2 w-8 mb-1" />
+							<Skeleton className="h-3 w-12" />
+						</div>
+					</header>
+					<main className="flex-1 px-4 py-6 space-y-6">
+						<div className="space-y-2">
+							<Skeleton className="h-6 w-48" />
+							<Skeleton className="h-4 w-full" />
+						</div>
+						<div className="grid grid-cols-2 gap-4">
+							<Skeleton className="h-32 w-full rounded-2xl" />
+							<Skeleton className="h-32 w-full rounded-2xl" />
+						</div>
+						<div className="space-y-4">
+							{Array.from({ length: 3 }).map((_, i) => (
+								<div key={i} className="flex gap-4 items-center">
+									<Skeleton className="h-16 w-16 rounded-xl" />
+									<div className="flex-1 space-y-2">
+										<Skeleton className="h-4 w-3/4" />
+										<Skeleton className="h-3 w-1/2" />
+									</div>
+								</div>
+							))}
+						</div>
+					</main>
 				</div>
 			</div>
 		);

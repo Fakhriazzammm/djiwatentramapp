@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { authClient } from "@/lib/auth-client";
 import { bluetoothPrinter } from "@/lib/bluetooth-printer";
@@ -1141,8 +1142,20 @@ function SettingsPage() {
 												Daftar Pengguna
 											</h4>
 											<div className="space-y-2">
-												{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-												{users?.map((user: any) => (
+												{!users ? (
+													Array.from({ length: 3 }).map((_, i) => (
+														<div className="flex items-center justify-between rounded-2xl border border-border bg-background p-4 shadow-sm" key={i}>
+															<div className="flex items-center gap-3">
+																<Skeleton className="h-10 w-10 rounded-full" />
+																<div className="space-y-2">
+																	<Skeleton className="h-4 w-24" />
+																	<Skeleton className="h-3 w-32" />
+																</div>
+															</div>
+															<Skeleton className="h-8 w-8 rounded-lg" />
+														</div>
+													))
+												) : users.map((user: any) => (
 													<div
 														className="flex items-center justify-between rounded-2xl border border-border bg-background p-4 shadow-sm"
 														key={user._id}
@@ -1181,7 +1194,17 @@ function SettingsPage() {
 												Daftar Role
 											</h4>
 											<div className="space-y-2">
-												{roles?.map((role: any) => (
+												{!roles ? (
+													Array.from({ length: 3 }).map((_, i) => (
+														<div className="flex items-center justify-between rounded-2xl border border-border bg-background p-4 shadow-sm" key={i}>
+															<div className="space-y-2">
+																<Skeleton className="h-4 w-24" />
+																<Skeleton className="h-3 w-48" />
+															</div>
+															<Skeleton className="h-8 w-8 rounded-lg" />
+														</div>
+													))
+												) : roles.map((role: any) => (
 													<div
 														className="flex items-center justify-between rounded-2xl border border-border bg-background p-4 shadow-sm"
 														key={role._id}

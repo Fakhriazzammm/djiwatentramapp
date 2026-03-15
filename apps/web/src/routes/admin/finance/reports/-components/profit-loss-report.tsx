@@ -1,6 +1,7 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { TrendingDown, TrendingUp } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	BarChart,
 	Bar,
@@ -25,8 +26,17 @@ export function ProfitLossReport({ range }: Props) {
 
 	if (!data) {
 		return (
-			<div className="flex items-center justify-center py-20 text-muted-foreground">
-				Memuat data...
+			<div className="space-y-6">
+				<div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+					{Array.from({ length: 4 }).map((_, i) => (
+						<div key={i} className="rounded-xl border border-border bg-card p-4 space-y-3">
+							<Skeleton className="h-3 w-20" />
+							<Skeleton className="h-6 w-32" />
+						</div>
+					))}
+				</div>
+				<Skeleton className="h-64 w-full rounded-xl" />
+				<Skeleton className="h-96 w-full rounded-xl" />
 			</div>
 		);
 	}

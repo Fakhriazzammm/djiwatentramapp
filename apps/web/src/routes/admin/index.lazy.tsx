@@ -16,6 +16,7 @@ import {
 	Wallet,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { Skeleton } from "@/components/ui/skeleton";
 import { FinancialTargetPanel } from "./finance/-components/financial-target-panel";
 import { PeriodComparisonCards, TrendChart } from "./finance/-components/finance-charts";
 
@@ -28,10 +29,40 @@ function AdminDashboard() {
 
 	if (stats === undefined) {
 		return (
-			<div className="flex h-[60vh] items-center justify-center">
-				<div className="flex flex-col items-center gap-3">
-					<Loader2 className="h-8 w-8 animate-spin text-primary" />
-					<p className="text-muted-foreground text-sm">Memuat data dashboard...</p>
+			<div className="space-y-4 md:space-y-6">
+				{/* Stats Cards Skeleton */}
+				<div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+					{Array.from({ length: 4 }).map((_, i) => (
+						<div key={i} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+							<div className="flex items-center justify-between mb-3">
+								<Skeleton className="h-5 w-5 rounded-md" />
+								<Skeleton className="h-4 w-12 rounded-full" />
+							</div>
+							<Skeleton className="h-4 w-24 mb-2" />
+							<Skeleton className="h-7 w-32" />
+						</div>
+					))}
+				</div>
+
+				{/* Financial Target + Period Comparison Skeleton */}
+				<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+					<Skeleton className="h-[200px] w-full rounded-2xl" />
+					<div className="space-y-3">
+						<Skeleton className="h-6 w-48" />
+						<div className="grid grid-cols-2 gap-3">
+							<Skeleton className="h-[120px] w-full rounded-2xl" />
+							<Skeleton className="h-[120px] w-full rounded-2xl" />
+						</div>
+					</div>
+				</div>
+
+				{/* Trend Chart Skeleton */}
+				<Skeleton className="h-[300px] w-full rounded-2xl" />
+
+				{/* Charts Row Skeleton */}
+				<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+					<Skeleton className="h-[250px] w-full rounded-2xl" />
+					<Skeleton className="h-[250px] w-full rounded-2xl" />
 				</div>
 			</div>
 		);

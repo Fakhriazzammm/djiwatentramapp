@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Route = createLazyFileRoute("/admin/forecasting" as any)({
@@ -279,14 +280,14 @@ function ForecastingPage() {
 				</div>
 				<div className="divide-y divide-border">
 					{!stockoutPredictions &&
-						[1, 2, 3].map((i) => (
-							<div className="animate-pulse p-4" key={i}>
+						Array.from({ length: 3 }).map((_, i) => (
+							<div className="p-4" key={i}>
 								<div className="flex items-center justify-between">
 									<div className="flex-1 space-y-2">
-										<div className="h-4 w-32 rounded bg-muted/50" />
-										<div className="h-3 w-48 rounded bg-muted/50" />
+										<Skeleton className="h-4 w-32" />
+										<Skeleton className="h-3 w-48" />
 									</div>
-									<div className="h-8 w-24 rounded bg-muted/50" />
+									<Skeleton className="h-8 w-24" />
 								</div>
 							</div>
 						))}

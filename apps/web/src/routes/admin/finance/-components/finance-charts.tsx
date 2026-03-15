@@ -1,6 +1,7 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Bar,
 	BarChart,
@@ -53,7 +54,7 @@ export function PeriodComparisonCards() {
 		return (
 			<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
 				{[1, 2, 3].map((i) => (
-					<div key={i} className="h-24 animate-pulse rounded-xl bg-muted/50" />
+					<Skeleton key={i} className="h-24 rounded-xl" />
 				))}
 			</div>
 		);

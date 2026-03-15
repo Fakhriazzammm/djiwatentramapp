@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { Input } from "@/components/ui/input";
@@ -300,8 +301,23 @@ export function TransactionHistorySidebar() {
 							{/* Orders List */}
 							<div className="flex-1 overflow-hidden">
 								{orders === undefined && (
-									<div className="flex h-full items-center justify-center">
-										<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+									<div className="space-y-2 p-3">
+										{Array.from({ length: 6 }).map((_, i) => (
+											<div key={i} className="rounded-lg border bg-card p-3 space-y-3">
+												<div className="flex justify-between">
+													<Skeleton className="h-4 w-16" />
+													<Skeleton className="h-4 w-20" />
+												</div>
+												<div className="space-y-1">
+													<Skeleton className="h-3 w-full" />
+													<Skeleton className="h-3 w-2/3" />
+												</div>
+												<div className="flex justify-between border-t pt-2">
+													<Skeleton className="h-3 w-12" />
+													<Skeleton className="h-4 w-20" />
+												</div>
+											</div>
+										))}
 									</div>
 								)}
 								{orders !== undefined && filteredOrders.length === 0 && (

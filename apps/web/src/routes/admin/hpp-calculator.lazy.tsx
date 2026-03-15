@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
@@ -1711,8 +1712,30 @@ function SavedCalculationsView({
 }) {
 	if (!calculations) {
 		return (
-			<div className="py-12 text-center text-muted-foreground text-sm">
-				Memuat data...
+			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+				{Array.from({ length: 6 }).map((_, i) => (
+					<Card className="overflow-hidden" key={i}>
+						<CardHeader className="border-b">
+							<div className="flex justify-between items-center">
+								<div className="space-y-2 flex-1">
+									<Skeleton className="h-4 w-3/4" />
+									<Skeleton className="h-3 w-1/2" />
+								</div>
+								<Skeleton className="h-8 w-8 rounded-lg" />
+							</div>
+						</CardHeader>
+						<CardContent className="p-4 space-y-4">
+							<div className="flex justify-between">
+								<Skeleton className="h-10 w-24 rounded-lg" />
+								<Skeleton className="h-10 w-24 rounded-lg" />
+							</div>
+							<div className="space-y-2">
+								<Skeleton className="h-3 w-full" />
+								<Skeleton className="h-3 w-2/3" />
+							</div>
+						</CardContent>
+					</Card>
+				))}
 			</div>
 		);
 	}

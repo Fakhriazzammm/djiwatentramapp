@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ImageScanner } from "@/components/ai/image-scanner";
 
 export const Route = createLazyFileRoute("/admin/ai-chat")({
@@ -1352,7 +1353,23 @@ function AIChatPage() {
 							Saran Proaktif AI
 						</h3>
 
-						{!proactiveSuggestions || proactiveSuggestions.length === 0 ? (
+						{!proactiveSuggestions ? (
+							<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+								{Array.from({ length: 4 }).map((_, i) => (
+									<div className="rounded-xl border border-border bg-muted/50 p-4 space-y-3" key={i}>
+										<div className="flex items-center gap-2">
+											<Skeleton className="h-4 w-4 rounded-full" />
+											<Skeleton className="h-4 w-32" />
+										</div>
+										<Skeleton className="h-3 w-full" />
+										<Skeleton className="h-3 w-2/3" />
+										<div className="flex justify-end pt-2">
+											<Skeleton className="h-8 w-24 rounded-lg" />
+										</div>
+									</div>
+								))}
+							</div>
+						) : proactiveSuggestions.length === 0 ? (
 							<div className="py-8 text-center">
 								<Lightbulb className="mx-auto mb-2 h-12 w-12 text-muted-foreground" />
 								<p className="text-muted-foreground">

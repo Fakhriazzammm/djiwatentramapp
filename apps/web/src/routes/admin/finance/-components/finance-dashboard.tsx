@@ -16,6 +16,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useMutation } from "convex/react";
 import { Link } from "@tanstack/react-router";
+import { Skeleton } from "@/components/ui/skeleton";
 import { NewTransactionDialog } from "./new-transaction-dialog";
 import { FinancialTargetPanel } from "./financial-target-panel";
 import { ExpenseCategoryPieChart, PeriodComparisonCards, TrendChart } from "./finance-charts";
@@ -62,8 +63,20 @@ export function FinanceDashboard() {
 	const renderTransactionContent = () => {
 		if (!transactions) {
 			return (
-				<div className="p-8 text-center text-muted-foreground">
-					Memuat data...
+				<div className="divide-y divide-border">
+					{Array.from({ length: 5 }).map((_, i) => (
+						<div key={i} className="flex items-center justify-between p-4">
+							<div className="flex items-center gap-4 flex-1">
+								<Skeleton className="h-4 w-24" />
+								<Skeleton className="h-4 w-32" />
+								<Skeleton className="h-4 w-48" />
+							</div>
+							<div className="flex items-center gap-4">
+								<Skeleton className="h-4 w-20" />
+								<Skeleton className="h-8 w-16" />
+							</div>
+						</div>
+					))}
 				</div>
 			);
 		}
@@ -96,34 +109,11 @@ export function FinanceDashboard() {
 						</tr>
 					</thead>
 					<tbody>
-						{!transactions &&
-							["sk1", "sk2", "sk3", "sk4", "sk5"].map((skId) => (
-								<tr className="animate-pulse" key={skId}>
-									<td className="px-6 py-4">
-										<div className="h-4 w-24 rounded bg-muted/50" />
-									</td>
-									<td className="px-6 py-4">
-										<div className="h-4 w-20 rounded bg-muted/50" />
-									</td>
-									<td className="px-6 py-4">
-										<div className="h-4 w-40 rounded bg-muted/50" />
-									</td>
-									<td className="px-6 py-4">
-										<div className="h-4 w-16 rounded bg-muted/50" />
-									</td>
-									<td className="px-6 py-4 text-right">
-										<div className="ml-auto h-4 w-20 rounded bg-muted/50" />
-									</td>
-								</tr>
-							))}
-
-						{transactions &&
-							transactions.length > 0 &&
-							transactions.map((t: Doc<"financialTransactions">) => (
-								<tr
-									className="border-border/50 border-b hover:bg-muted/30"
-									key={t._id}
-								>
+						{transactions.map((t: Doc<"financialTransactions">) => (
+							<tr
+								className="group border-border border-b transition-colors hover:bg-muted/30"
+								key={t._id}
+							>
 									<td className="px-6 py-4 font-medium">
 										{new Date(t.date).toLocaleDateString("id-ID", {
 											day: "numeric",
@@ -243,11 +233,11 @@ export function FinanceDashboard() {
 							</p>
 							<div className="mt-1">
 								{summary ? (
-									<h3 className="font-bold text-2xl text-green-600">
+									<h3 className="font-bold text-2xl text-primary">
 										{formatCurrency(summary.totalIncome)}
 									</h3>
 								) : (
-									<div className="h-8 w-32 animate-pulse rounded bg-muted/50" />
+									<Skeleton className="h-8 w-32" />
 								)}
 							</div>
 						</div>
@@ -269,7 +259,7 @@ export function FinanceDashboard() {
 										{formatCurrency(summary.totalExpense)}
 									</h3>
 								) : (
-									<div className="h-8 w-32 animate-pulse rounded bg-muted/50" />
+									<Skeleton className="h-8 w-32" />
 								)}
 							</div>
 						</div>
@@ -297,7 +287,7 @@ export function FinanceDashboard() {
 										{formatCurrency(summary.netBalance)}
 									</h3>
 								) : (
-									<div className="h-8 w-32 animate-pulse rounded bg-muted/50" />
+									<Skeleton className="h-8 w-32" />
 								)}
 							</div>
 						</div>

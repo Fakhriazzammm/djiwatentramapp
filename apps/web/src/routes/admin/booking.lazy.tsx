@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
 	exportBookingOrdersExcel,
@@ -1150,8 +1151,19 @@ function BookingSettingsPage() {
 					</div>
 
 					{!allOrders ? (
-						<div className="flex justify-center py-12">
-							<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+						<div className="space-y-3">
+							{Array.from({ length: 5 }).map((_, i) => (
+								<div key={i} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+									<div className="space-y-2">
+										<Skeleton className="h-4 w-32" />
+										<Skeleton className="h-3 w-48" />
+									</div>
+									<div className="flex gap-2">
+										<Skeleton className="h-8 w-16 rounded-lg" />
+										<Skeleton className="h-8 w-16 rounded-lg" />
+									</div>
+								</div>
+							))}
 						</div>
 					) : filteredOrders?.length === 0 ? (
 						<div className="rounded-xl border border-border bg-card py-14 text-center text-muted-foreground text-sm">
@@ -1506,7 +1518,17 @@ function BookingSettingsPage() {
 					</div>
 
 					<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-						{filteredProducts?.map((product: any) => (
+						{!allProducts ? (
+							Array.from({ length: 6 }).map((_, i) => (
+								<div className="flex items-center gap-3 rounded-xl border border-border p-4" key={i}>
+									<Skeleton className="h-12 w-12 rounded-lg" />
+									<div className="flex-1 space-y-2">
+										<Skeleton className="h-4 w-3/4" />
+										<Skeleton className="h-3 w-1/2" />
+									</div>
+								</div>
+							))
+						) : filteredProducts?.map((product: any) => (
 							<button
 								className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-all ${
 									formData.featuredProductIds.includes(product._id)

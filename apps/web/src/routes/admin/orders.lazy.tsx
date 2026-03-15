@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -201,8 +202,64 @@ function AdminOrders() {
 
 	if (unifiedOrders === undefined) {
 		return (
-			<div className="flex h-full w-full items-center justify-center">
-				<Loader2 className="h-8 w-8 animate-spin text-primary" />
+			<div className="space-y-4 md:space-y-6">
+				<div>
+					<Skeleton className="h-8 w-48 mb-2" />
+					<Skeleton className="h-4 w-64" />
+				</div>
+
+				{/* Profit Summary Skeleton */}
+				<div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+					{Array.from({ length: 4 }).map((_, i) => (
+						<div key={i} className="rounded-lg border border-border bg-card p-2.5 md:p-3">
+							<Skeleton className="h-3 w-16 mb-2" />
+							<Skeleton className="h-6 w-24" />
+						</div>
+					))}
+				</div>
+
+				{/* Filters Skeleton */}
+				<div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 md:flex-row md:items-center md:gap-4 md:p-4">
+					<Skeleton className="h-10 flex-1 rounded-md" />
+					<Skeleton className="h-10 w-full md:w-[180px] rounded-md" />
+				</div>
+
+				{/* Table/List Skeleton */}
+				<div className="rounded-xl border border-border bg-card overflow-hidden">
+					<div className="hidden md:block">
+						<div className="bg-muted/50 p-4 flex justify-between">
+							{Array.from({ length: 6 }).map((_, i) => (
+								<Skeleton key={i} className="h-4 w-20" />
+							))}
+						</div>
+						<div className="divide-y divide-border">
+							{Array.from({ length: 5 }).map((_, i) => (
+								<div key={i} className="p-4 flex justify-between items-center">
+									<Skeleton className="h-4 w-24" />
+									<Skeleton className="h-4 w-32" />
+									<Skeleton className="h-4 w-20" />
+									<Skeleton className="h-4 w-16" />
+									<Skeleton className="h-4 w-24" />
+									<Skeleton className="h-8 w-20" />
+								</div>
+							))}
+						</div>
+					</div>
+					<div className="md:hidden space-y-2 p-2">
+						{Array.from({ length: 5 }).map((_, i) => (
+							<div key={i} className="p-3 border border-border rounded-xl">
+								<div className="flex justify-between mb-2">
+									<Skeleton className="h-4 w-24" />
+									<Skeleton className="h-4 w-20" />
+								</div>
+								<div className="flex justify-between">
+									<Skeleton className="h-3 w-32" />
+									<Skeleton className="h-3 w-16" />
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
 			</div>
 		);
 	}

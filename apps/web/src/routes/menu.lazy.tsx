@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Minus, Plus, ShoppingCart, Tag, Trash2, X } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { MenuSidebar } from "@/components/pos/menu-sidebar";
 import { PaymentConfirmationModal } from "@/components/pos/payment-modal";
 import { TransactionHistorySidebar } from "@/components/pos/transaction-history-sidebar";
@@ -666,23 +667,27 @@ function MenuPage() {
 					>
 						Semua
 					</button>
-					{categories?.map((cat: Doc<"categories">) => (
-						<button
-							aria-label={`Tampilkan kategori ${cat.name}`}
-							aria-selected={selectedCategory === cat._id}
-							className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5 font-medium text-xs transition-all active:scale-95 ${
-								selectedCategory === cat._id
-									? "border-primary bg-primary text-primary-foreground shadow-sm"
-									: "border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-							}`}
-							key={cat._id}
-							onClick={() => setSelectedCategory(cat._id)}
-							role="tab"
-							type="button"
-						>
-							{cat.name}
-						</button>
-					))}
+					{categories
+						? categories.map((cat: Doc<"categories">) => (
+								<button
+									aria-label={`Tampilkan kategori ${cat.name}`}
+									aria-selected={selectedCategory === cat._id}
+									className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5 font-medium text-xs transition-all active:scale-95 ${
+										selectedCategory === cat._id
+											? "border-primary bg-primary text-primary-foreground shadow-sm"
+											: "border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+									}`}
+									key={cat._id}
+									onClick={() => setSelectedCategory(cat._id)}
+									role="tab"
+									type="button"
+								>
+									{cat.name}
+								</button>
+							))
+						: Array.from({ length: 5 }).map((_, i) => (
+								<Skeleton className="h-7 w-20 shrink-0 rounded-full" key={i} />
+							))}
 				</div>
 			</header>
 
@@ -757,13 +762,16 @@ function MenuPage() {
 							})}
 						</div>
 					) : (
-						<div className="flex h-full items-center justify-center">
-							<div className="flex flex-col items-center gap-3">
-								<div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-								<span className="font-medium text-muted-foreground text-sm">
-									Memuat Menu...
-								</span>
-							</div>
+						<div className="grid grid-cols-3 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+							{Array.from({ length: 12 }).map((_, i) => (
+								<div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-0 overflow-hidden" key={i}>
+									<Skeleton className="aspect-[4/3] w-full" />
+									<div className="p-2 space-y-2">
+										<Skeleton className="h-3 w-3/4" />
+										<Skeleton className="h-4 w-1/2" />
+									</div>
+								</div>
+							))}
 						</div>
 					)}
 				</main>

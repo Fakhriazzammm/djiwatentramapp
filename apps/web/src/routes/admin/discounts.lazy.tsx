@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createLazyFileRoute("/admin/discounts")({
 	component: AdminDiscountsPage,
@@ -587,8 +588,30 @@ function AdminDiscountsPage() {
 
 			{/* Discounts Grid */}
 			<div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-				<AnimatePresence mode="popLayout">
-					{filteredDiscounts?.map((d: any, index: number) => {
+				{!discounts ? (
+					Array.from({ length: 6 }).map((_, i) => (
+						<div key={i} className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
+							<div className="flex justify-between">
+								<div className="space-y-2 flex-1">
+									<Skeleton className="h-6 w-3/4" />
+									<Skeleton className="h-4 w-1/2" />
+								</div>
+								<div className="flex gap-2">
+									<Skeleton className="h-8 w-8 rounded-lg" />
+									<Skeleton className="h-8 w-8 rounded-lg" />
+								</div>
+							</div>
+							<Skeleton className="h-6 w-24 rounded-full" />
+							<Skeleton className="h-20 w-full rounded-lg" />
+							<div className="space-y-2">
+								<Skeleton className="h-4 w-full" />
+								<Skeleton className="h-4 w-2/3" />
+							</div>
+						</div>
+					))
+				) : (
+					<AnimatePresence mode="popLayout">
+						{filteredDiscounts.map((d: any, index: number) => {
 						const status = getPromoStatus(d);
 						const StatusIcon = status.icon;
 

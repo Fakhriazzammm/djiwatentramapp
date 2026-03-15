@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
 interface ConfirmConfig {
@@ -880,33 +881,27 @@ function InventoryTable({
 					</thead>
 					<tbody className="divide-y divide-border">
 						{!inventory &&
-							[
-								"sk1",
-								"sk2",
-								"sk3",
-								"sk4",
-								"sk5",
-								"sk6",
-								"sk7",
-								"sk8",
-								"sk9",
-								"sk10",
-							].map((skId) => (
-								<tr className="animate-pulse" key={skId}>
+							Array.from({ length: 8 }).map((_, i) => (
+								<tr key={i}>
 									<td className="p-4">
-										<div className="h-4 w-32 rounded bg-muted/50" />
+										<Skeleton className="h-4 w-32" />
 									</td>
 									<td className="p-4">
-										<div className="mx-auto h-8 w-16 rounded bg-muted/50" />
+										<Skeleton className="mx-auto h-8 w-16" />
 									</td>
 									<td className="p-4">
-										<div className="mx-auto h-4 w-12 rounded bg-muted/50" />
+										<Skeleton className="mx-auto h-4 w-12" />
 									</td>
 									<td className="p-4">
-										<div className="h-4 w-20 rounded bg-muted/50" />
+										<Skeleton className="h-4 w-20" />
 									</td>
 									<td className="p-4 text-right">
-										<div className="ml-auto h-8 w-32 rounded bg-muted/50" />
+										<div className="flex justify-end gap-1">
+											<Skeleton className="h-8 w-8 rounded-lg" />
+											<Skeleton className="h-8 w-8 rounded-lg" />
+											<Skeleton className="h-8 w-8 rounded-lg" />
+											<Skeleton className="h-8 w-8 rounded-lg" />
+										</div>
 									</td>
 								</tr>
 							))}
