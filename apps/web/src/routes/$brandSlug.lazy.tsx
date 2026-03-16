@@ -7,6 +7,7 @@ import {
 	ChevronLeft,
 	Minus,
 	Plus,
+	Search,
 	ShoppingBag,
 	ShoppingCart,
 	Trash2,
@@ -14,7 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { calculateEffectivePrice } from "@/lib/utils/pricing";
+import { calculateEffectivePrice, isFreeRefillActive } from "@/lib/utils/pricing";
 
 export const Route = createLazyFileRoute("/$brandSlug")({
 	component: CustomerMenuPage,
@@ -398,6 +399,16 @@ function CustomerMenuPage() {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [orderNumber, setOrderNumber] = useState<string | null>(null);
 
+	// Menu number search
+	const [menuSearch, setMenuSearch] = useState("");
+	const [menuSearchFeedback, setMenuSearchFeedback] = useState("");
+	const allProducts = useQuery(api.products.getProducts, {});
+
+	// Free refill popup
+	const [showFreeRefillPopup, setShowFreeRefillPopup] = useState(false);
+	const [freeRefillPromo, setFreeRefillPromo] = useState<any | null>(null);
+	const freeRefillShownRef = useRef(false);
+
 	// Category scroll ref
 	const categoryScrollRef = useRef<HTMLDivElement>(null);
 
@@ -552,6 +563,59 @@ function CustomerMenuPage() {
 		initialPayMethodSet.current = true;
 	}
 
+	// Free refill popup: show once when active discounts load
+	useEffect(() => {
+		if (!activeDiscounts || freeRefillShownRef.current) return;
+		const now = new Date();
+		const context = {
+			currentTimestamp: now.getTime(),
+			currentDay: now.getDay(),
+			currentTimeVal: now.getHours() * 60 + now.getMinutes(),
+		};
+		const activeRefill = activeDiscounts.find((d) => isFreeRefillActive(d, context));
+		if (activeRefill) {
+			freeRefillShownRef.current = true;
+			setFreeRefillPromo(activeRefill);
+			setShowFreeRefillPopup(true);
+		}
+	}, [activeDiscounts]);
+
+	// Menu number search: auto-add after 600ms of inactivity
+	useEffect(() => {
+		if (!menuSearch.trim() || !allProducts) return;
+		const timer = setTimeout(() => {
+			const num = parseInt(menuSearch, 10);
+			if (isNaN(num) || num <= 0) return;
+			const found = allProducts.find((p) => p.menuNumber === num);
+			if (!found) {
+				setMenuSearchFeedback("Nomor menu tidak ditemukan");
+				setTimeout(() => setMenuSearchFeedback(""), 2000);
+				return;
+			}
+			const hasVariations = found.variations && found.variations.length > 0;
+			if (hasVariations) {
+				setDetailProduct(found);
+			} else {
+				const pricing = calculateEffectivePrice(
+					{ _id: found._id, price: found.price, categoryId: found.categoryId },
+					activeDiscounts,
+				);
+				addToCart({
+					productId: found._id,
+					name: found.name,
+					price: pricing.finalPrice,
+					quantity: 1,
+					image: found.image,
+					categoryId: found.categoryId,
+				});
+			}
+			setMenuSearch("");
+			setMenuSearchFeedback(`"${found.name}" ditambahkan ke keranjang!`);
+			setTimeout(() => setMenuSearchFeedback(""), 2500);
+		}, 600);
+		return () => clearTimeout(timer);
+	}, [menuSearch, allProducts, activeDiscounts]);
+
 	const isLoading = products === undefined || categories === undefined;
 
 	return (
@@ -594,6 +658,47 @@ function CustomerMenuPage() {
 								{totalItems}
 							</span>
 						</button>
+					)}
+				</div>
+
+				{/* Menu Number Search */}
+				<div className="px-4 pb-2">
+					<div className="relative flex items-center">
+						<Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
+						<input
+							type="number"
+							inputMode="numeric"
+							min="1"
+							value={menuSearch}
+							onChange={(e) => setMenuSearch(e.target.value)}
+							placeholder="Cari nomor menu, otomatis tambah ke keranjang..."
+							className="w-full rounded-xl border border-border bg-muted/50 py-2 pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors"
+							aria-label="Cari menu berdasarkan nomor"
+						/>
+						{menuSearch && (
+							<button
+								type="button"
+								onClick={() => {
+									setMenuSearch("");
+									setMenuSearchFeedback("");
+								}}
+								className="absolute right-3 flex items-center justify-center"
+								aria-label="Hapus pencarian"
+							>
+								<X className="h-4 w-4 text-muted-foreground" />
+							</button>
+						)}
+					</div>
+					{menuSearchFeedback && (
+						<p
+							className={`mt-1 text-xs font-medium ${
+								menuSearchFeedback.includes("tidak ditemukan")
+									? "text-red-500"
+									: "text-green-600"
+							}`}
+						>
+							{menuSearchFeedback}
+						</p>
 					)}
 				</div>
 
@@ -699,6 +804,11 @@ function CustomerMenuPage() {
 
 									{/* Info */}
 									<div className="flex flex-1 flex-col justify-between p-2.5">
+										{product.menuNumber != null && (
+											<span className="mb-1 inline-block rounded-md bg-muted px-1.5 py-0.5 font-bold text-[10px] text-muted-foreground leading-none">
+												#{product.menuNumber}
+											</span>
+										)}
 										<p className="line-clamp-2 font-semibold text-foreground text-sm leading-tight">
 											{product.name}
 										</p>
@@ -1055,6 +1165,77 @@ function CustomerMenuPage() {
 							</button>
 						</div>
 					)}
+				</SheetContent>
+			</Sheet>
+
+			{/* ── Free Refill Popup ── */}
+			<Sheet
+				open={showFreeRefillPopup}
+				onOpenChange={(o) => !o && setShowFreeRefillPopup(false)}
+			>
+				<SheetContent side="bottom" className="p-0 rounded-t-2xl">
+					<div className="px-5 pt-6 pb-8 space-y-5">
+						{/* Header */}
+						<div className="text-center space-y-2">
+							<div className="text-4xl">🎉</div>
+							<h2 className="font-bold text-foreground text-xl">
+								{freeRefillPromo?.name ?? "Promo Free Refill!"}
+							</h2>
+							<p className="text-muted-foreground text-sm leading-relaxed">
+								Ada promo{" "}
+								<span className="font-semibold text-foreground">
+									Free Refill Minuman
+								</span>{" "}
+								yang sedang aktif sekarang.{" "}
+								{freeRefillPromo?.refillPrice
+									? `Tambahkan dengan harga ${fmt(freeRefillPromo.refillPrice)}.`
+									: "Tambahkan secara gratis!"}
+							</p>
+						</div>
+
+						{/* Price chip */}
+						<div className="flex justify-center">
+							<span
+								className="rounded-full px-4 py-1.5 text-sm font-bold text-white"
+								style={{ background: themeColor ?? "var(--color-primary)" }}
+							>
+								{freeRefillPromo?.refillPrice
+									? fmt(freeRefillPromo.refillPrice)
+									: "GRATIS"}
+							</span>
+						</div>
+
+						{/* Actions */}
+						<div className="flex flex-col gap-2.5">
+							<button
+								type="button"
+								onClick={() => {
+									if (freeRefillPromo) {
+										addToCart({
+											productId: "promo-free-refill",
+											name: "Add-on: Free Refill Minuman",
+											price: freeRefillPromo.refillPrice ?? 0,
+											quantity: 1,
+											categoryId: "",
+										});
+										setSheetView("cart");
+									}
+									setShowFreeRefillPopup(false);
+								}}
+								className="w-full rounded-2xl py-3.5 font-bold text-white text-base shadow-md active:opacity-90 transition-opacity"
+								style={{ background: themeColor ?? "var(--color-primary)" }}
+							>
+								Tambahkan Free Refill
+							</button>
+							<button
+								type="button"
+								onClick={() => setShowFreeRefillPopup(false)}
+								className="w-full rounded-2xl border border-border bg-card py-3.5 font-semibold text-foreground text-base active:bg-muted transition-colors"
+							>
+								Lewati
+							</button>
+						</div>
+					</div>
 				</SheetContent>
 			</Sheet>
 		</div>
