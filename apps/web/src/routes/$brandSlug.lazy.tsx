@@ -661,47 +661,6 @@ function CustomerMenuPage() {
 					)}
 				</div>
 
-				{/* Menu Number Search */}
-				<div className="px-4 pb-2">
-					<div className="relative flex items-center">
-						<Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
-						<input
-							type="number"
-							inputMode="numeric"
-							min="1"
-							value={menuSearch}
-							onChange={(e) => setMenuSearch(e.target.value)}
-							placeholder="Cari nomor menu, otomatis tambah ke keranjang..."
-							className="w-full rounded-xl border border-border bg-muted/50 py-2 pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors"
-							aria-label="Cari menu berdasarkan nomor"
-						/>
-						{menuSearch && (
-							<button
-								type="button"
-								onClick={() => {
-									setMenuSearch("");
-									setMenuSearchFeedback("");
-								}}
-								className="absolute right-3 flex items-center justify-center"
-								aria-label="Hapus pencarian"
-							>
-								<X className="h-4 w-4 text-muted-foreground" />
-							</button>
-						)}
-					</div>
-					{menuSearchFeedback && (
-						<p
-							className={`mt-1 text-xs font-medium ${
-								menuSearchFeedback.includes("tidak ditemukan")
-									? "text-red-500"
-									: "text-green-600"
-							}`}
-						>
-							{menuSearchFeedback}
-						</p>
-					)}
-				</div>
-
 				{/* Category Tabs */}
 				<div
 					ref={categoryScrollRef}
@@ -736,7 +695,52 @@ function CustomerMenuPage() {
 			</header>
 
 			{/* ── Product Grid ── */}
-			<main className="flex-1 px-3 py-4 pb-28">
+			<main className="flex-1 px-3 pb-28">
+				{/* Menu Number Search */}
+				<div className="pt-3 pb-2">
+					<p className="mb-1.5 text-xs font-medium text-muted-foreground">
+						Cari dengan nomor menu
+					</p>
+					<div className="relative flex items-center">
+						<Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
+						<input
+							type="number"
+							inputMode="numeric"
+							min="1"
+							value={menuSearch}
+							onChange={(e) => setMenuSearch(e.target.value)}
+							placeholder="Ketuk nomor menu..."
+							className="w-full rounded-xl border border-border bg-muted/50 py-2.5 pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors"
+							aria-label="Cari menu berdasarkan nomor"
+						/>
+						{menuSearch && (
+							<button
+								type="button"
+								onClick={() => {
+									setMenuSearch("");
+									setMenuSearchFeedback("");
+								}}
+								className="absolute right-3 flex items-center justify-center"
+								aria-label="Hapus pencarian"
+							>
+								<X className="h-4 w-4 text-muted-foreground" />
+							</button>
+						)}
+					</div>
+					{menuSearchFeedback && (
+						<p
+							className={`mt-1 text-xs font-medium ${
+								menuSearchFeedback.includes("tidak ditemukan")
+									? "text-red-500"
+									: "text-green-600"
+							}`}
+						>
+							{menuSearchFeedback}
+						</p>
+					)}
+				</div>
+
+				{/* Grid */}
 				{isLoading ? (
 					<div className="grid grid-cols-2 gap-3">
 						{Array.from({ length: 6 }).map((_, i) => (
