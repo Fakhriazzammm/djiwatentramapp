@@ -167,3 +167,51 @@ export function calculateEffectivePrice(
 		appliedDiscountId: appliedDiscount?._id,
 	};
 }
+
+export function isFreeRefillActive(
+	discount: Doc<"discounts">,
+	context: DiscountContext
+): boolean {
+	if (!discount.isActive || !discount.isFreeRefill) {
+		return false;
+	}
+
+	// Date and Day check
+	if (discount.startDate && context.currentTimestamp < discount.startDate) {
+		return false;
+	}
+	if (discount.endDate) {
+		const endOfDay = new Date(discount.endDate);
+		endOfDay.setHours(23, 59, 59, 999);
+		if (context.currentTimestamp > endOfDay.getTime()) {
+			return false;
+		}
+	}
+	if (
+		discount.days &&
+		discount.days.length > 0 &&
+		!discount.days.includes(context.currentDay)
+	) {
+		return false;
+	}
+
+	// Refill availability logic
+	if (discount.refillAvailability === "HAPPY_HOUR") {
+		// Only active if within discount's own Happy Hour time
+		if (discount.startTime && discount.endTime) {
+			const [startH, startM] = discount.startTime.split(":").map(Number);
+			const [endH, endM] = discount.endTime.split(":").map(Number);
+			const startTimeVal = startH * 60 + startM;
+			const endTimeVal = endH * 60 + endM;
+
+			if (
+				context.currentTimeVal < startTimeVal ||
+				context.currentTimeVal > endTimeVal
+			) {
+				return false;
+			}
+		}
+	}
+
+	return true;
+}

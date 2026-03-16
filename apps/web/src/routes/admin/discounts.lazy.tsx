@@ -64,6 +64,9 @@ function AdminDiscountsPage() {
 		days: number[];
 		isHappyHour: boolean;
 		productPrices: { productId: string; price: number }[];
+		isFreeRefill: boolean;
+		refillPrice: string;
+		refillAvailability: "ALWAYS" | "HAPPY_HOUR";
 	}>({
 		name: "",
 		code: "",
@@ -79,6 +82,9 @@ function AdminDiscountsPage() {
 		days: [],
 		isHappyHour: false,
 		productPrices: [],
+		isFreeRefill: false,
+		refillPrice: "20000",
+		refillAvailability: "ALWAYS",
 	});
 
 	const daysOfWeek = [
@@ -185,6 +191,9 @@ function AdminDiscountsPage() {
 			days: formData.days.length > 0 ? formData.days : undefined,
 			isHappyHour: formData.isHappyHour,
 			productPrices: formData.isHappyHour ? formData.productPrices : undefined,
+			isFreeRefill: formData.isFreeRefill,
+			refillPrice: formData.isFreeRefill ? Number(formData.refillPrice) : undefined,
+			refillAvailability: formData.isFreeRefill ? formData.refillAvailability : undefined,
 		};
 
 		try {
@@ -239,6 +248,9 @@ function AdminDiscountsPage() {
 			days: [],
 			isHappyHour: false,
 			productPrices: [],
+			isFreeRefill: false,
+			refillPrice: "20000",
+			refillAvailability: "ALWAYS",
 		});
 		setSearchTarget("");
 	};
@@ -266,6 +278,9 @@ function AdminDiscountsPage() {
 			days: discount.days || [],
 			isHappyHour: discount.isHappyHour || false,
 			productPrices: discount.productPrices || [],
+			isFreeRefill: discount.isFreeRefill || false,
+			refillPrice: String(discount.refillPrice || "20000"),
+			refillAvailability: discount.refillAvailability || "ALWAYS",
 		});
 		setIsModalOpen(true);
 	};
@@ -693,6 +708,12 @@ function AdminDiscountsPage() {
 											<span className="inline-flex items-center gap-1.5 rounded-full bg-purple-100 px-3 py-1 font-semibold text-purple-700 text-xs dark:bg-purple-900 dark:text-purple-300">
 												<Clock className="h-3 w-3" />
 												Happy Hour
+											</span>
+										)}
+										{d.isFreeRefill && (
+											<span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 font-semibold text-blue-700 text-xs dark:bg-blue-900 dark:text-blue-300">
+												<Sparkles className="h-3 w-3" />
+												Free Refill
 											</span>
 										)}
 									</div>
@@ -1124,6 +1145,90 @@ function AdminDiscountsPage() {
 														</div>
 													</div>
 												)}
+										</div>
+									)}
+								</div>
+
+								{/* Free Refill Settings */}
+								<div className="space-y-4 rounded-xl border border-blue-200 bg-blue-50/30 p-4 dark:border-blue-800 dark:bg-blue-900/10">
+									<div className="flex items-center justify-between">
+										<h4 className="flex items-center gap-2 font-semibold text-blue-900 text-sm uppercase tracking-wide dark:text-blue-100">
+											<Sparkles className="h-4 w-4" />
+											Promo Free Refill
+										</h4>
+										<label className="relative inline-flex cursor-pointer items-center">
+											<input
+												checked={formData.isFreeRefill}
+												className="peer sr-only"
+												onChange={(e) =>
+													setFormData({
+														...formData,
+														isFreeRefill: e.target.checked,
+													})
+												}
+												type="checkbox"
+											/>
+											<div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:bg-gray-700 dark:peer-focus:ring-blue-800" />
+											<span className="ml-3 font-medium text-blue-900 text-sm dark:text-blue-100">
+												Aktifkan Free Refill
+											</span>
+										</label>
+									</div>
+
+									{formData.isFreeRefill && (
+										<div className="space-y-4 pt-2">
+											<p className="text-muted-foreground text-xs italic">
+												Jika aktif, sistem akan secara otomatis menambahkan
+												item "Free Refill" ke keranjang saat checkout.
+											</p>
+
+											<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+												<div className="space-y-2">
+													<label className="font-medium text-sm">
+														Harga Add-on Refill
+													</label>
+													<div className="relative">
+														<input
+															className="w-full rounded-lg border bg-background px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+															onChange={(e) =>
+																setFormData({
+																	...formData,
+																	refillPrice: e.target.value,
+																})
+															}
+															placeholder="20000"
+															type="number"
+															value={formData.refillPrice}
+														/>
+														<span className="absolute top-1/2 right-4 -translate-y-1/2 text-muted-foreground text-sm">
+															Rp
+														</span>
+													</div>
+												</div>
+
+												<div className="space-y-2">
+													<label className="font-medium text-sm">
+														Ketersediaan Promo
+													</label>
+													<select
+														className="w-full rounded-lg border bg-background px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+														onChange={(e) =>
+															setFormData({
+																...formData,
+																refillAvailability: e.target.value as
+																	| "ALWAYS"
+																	| "HAPPY_HOUR",
+															})
+														}
+														value={formData.refillAvailability}
+													>
+														<option value="ALWAYS">Tersedia 24 Jam</option>
+														<option value="HAPPY_HOUR">
+															Hanya Saat Happy Hour
+														</option>
+													</select>
+												</div>
+											</div>
 										</div>
 									)}
 								</div>

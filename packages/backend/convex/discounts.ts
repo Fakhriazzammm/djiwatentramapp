@@ -51,6 +51,11 @@ export const createDiscount = mutation({
 				})
 			)
 		),
+		isFreeRefill: v.optional(v.boolean()),
+		refillPrice: v.optional(v.number()),
+		refillAvailability: v.optional(
+			v.union(v.literal("ALWAYS"), v.literal("HAPPY_HOUR"))
+		),
 	},
 	handler: async (ctx, args) => {
 		await ctx.db.insert("discounts", args);
@@ -90,6 +95,11 @@ export const updateDiscount = mutation({
 					price: v.number(),
 				})
 			)
+		),
+		isFreeRefill: v.optional(v.boolean()),
+		refillPrice: v.optional(v.number()),
+		refillAvailability: v.optional(
+			v.union(v.literal("ALWAYS"), v.literal("HAPPY_HOUR"))
 		),
 	},
 	handler: async (ctx, args) => {

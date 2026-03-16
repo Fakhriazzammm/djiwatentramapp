@@ -18,7 +18,10 @@ import {
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { calculateEffectivePrice } from "@/lib/utils/pricing";
+import {
+	calculateEffectivePrice,
+	isFreeRefillActive,
+} from "@/lib/utils/pricing";
 
 export const Route = createLazyFileRoute("/booking")({
 	component: BookingPage,
@@ -632,6 +635,47 @@ function BookingPage() {
 	const [proofPreview, setProofPreview] = useState<string>("");
 	const [isUploadingProof, setIsUploadingProof] = useState(false);
 	const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
+
+	// Automatic Free Refill Logic for Booking
+	useEffect(() => {
+		if (!activeDiscounts) return;
+
+		const now = new Date();
+		const context = {
+			currentTimestamp: now.getTime(),
+			currentDay: now.getDay(),
+			currentTimeVal: now.getHours() * 60 + now.getMinutes(),
+		};
+
+		const activeRefillPromo = activeDiscounts.find((d) =>
+			isFreeRefillActive(d, context)
+		);
+
+		const refillId = "promo-free-refill";
+		const hasRefillInCart = cart.some((i) => i.productId === refillId);
+		const otherItemsCount = cart.filter((i) => i.productId !== refillId).length;
+
+		if (activeRefillPromo && otherItemsCount > 0) {
+			const refillPrice = activeRefillPromo.refillPrice || 20000;
+			const currentRefill = cart.find((i) => i.productId === refillId);
+
+			if (!currentRefill || currentRefill.price !== refillPrice || currentRefill.quantity !== 1) {
+				const refillItem: CartItem = {
+					productId: refillId,
+					name: "Add-on: Free Refill Minuman",
+					price: refillPrice,
+					quantity: 1,
+				};
+
+				setCart((prev) => {
+					const filtered = prev.filter((i) => i.productId !== refillId);
+					return [...filtered, refillItem];
+				});
+			}
+		} else if (hasRefillInCart) {
+			setCart((prev) => prev.filter((i) => i.productId !== refillId));
+		}
+	}, [activeDiscounts, cart]);
 
 	const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
 	const cartCount = cart.reduce((s, i) => s + i.quantity, 0);

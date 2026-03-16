@@ -189,6 +189,12 @@ export default defineSchema({
 				})
 			)
 		),
+		// Free Refill Promo specific
+		isFreeRefill: v.optional(v.boolean()),
+		refillPrice: v.optional(v.number()),
+		refillAvailability: v.optional(
+			v.union(v.literal("ALWAYS"), v.literal("HAPPY_HOUR"))
+		),
 	}),
 
 	// Variation Presets (Global configurations)

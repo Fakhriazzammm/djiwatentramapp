@@ -51,9 +51,11 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 import { useQuery } from "convex/react";
 import { api } from "@yumipos/backend/convex/_generated/api";
+import { isDiscountApplicable, isFreeRefillActive } from "@/lib/utils/pricing";
 
 export function CartProvider({ children }: { children: ReactNode }) {
 	const siteSettings = useQuery(api.site_settings.getSettings);
+	const activeDiscounts = useQuery(api.discounts.getActiveDiscounts);
 
 	const [items, setItems] = useState<CartItem[]>(() => {
 		// Load cart from localStorage on mount
@@ -103,6 +105,51 @@ export function CartProvider({ children }: { children: ReactNode }) {
 			}
 		}
 	}, [appliedVoucher]);
+
+	// Automatic Free Refill Logic
+	useEffect(() => {
+		if (!activeDiscounts) return;
+
+		const now = new Date();
+		const context = {
+			currentTimestamp: now.getTime(),
+			currentDay: now.getDay(),
+			currentTimeVal: now.getHours() * 60 + now.getMinutes(),
+		};
+
+		// Find if any Free Refill promo is currently active
+		const activeRefillPromo = activeDiscounts.find((d) =>
+			isFreeRefillActive(d, context)
+		);
+
+		const refillId = "promo-free-refill";
+		const hasRefillInCart = items.some((i) => i.productId === refillId);
+		const otherItemsCount = items.filter((i) => i.productId !== refillId).length;
+
+		if (activeRefillPromo && otherItemsCount > 0) {
+			// Add if not present or price/quantity changed
+			const refillPrice = activeRefillPromo.refillPrice || 20000;
+			const currentRefill = items.find((i) => i.productId === refillId);
+
+			if (!currentRefill || currentRefill.price !== refillPrice || currentRefill.quantity !== 1) {
+				const refillItem: CartItem = {
+					productId: refillId,
+					name: "Add-on: Free Refill Minuman",
+					price: refillPrice,
+					quantity: 1,
+					category: "Promo",
+				};
+
+				setItems((prev) => {
+					const filtered = prev.filter((i) => i.productId !== refillId);
+					return [...filtered, refillItem];
+				});
+			}
+		} else if (hasRefillInCart) {
+			// Remove if no active promo or no other items in cart
+			setItems((prev) => prev.filter((i) => i.productId !== refillId));
+		}
+	}, [activeDiscounts, items]);
 
 	const addToCart = (newItem: CartItem) => {
 		setItems((prev) => {
