@@ -35,6 +35,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ImageScanner } from "@/components/ai/image-scanner";
+import { compressImageDataUrl, isOversized } from "@/lib/image-compress";
 import { ScanEditModal, type ScanEditParams } from "@/components/scan/scan-edit-modal";
 import { ScanSplitModal } from "@/components/scan/scan-split-modal";
 import { ScanHistoryPanel, useScanHistory } from "@/components/scan/scan-history-panel";
@@ -831,19 +832,22 @@ function AIChatPage() {
 					toast.error(`${file.name} bukan file gambar`);
 					return false;
 				}
-				if (file.size > 5 * 1024 * 1024) {
-					toast.error(`${file.name} terlalu besar (maks 5MB)`);
-					return false;
-				}
 				return true;
 			});
+
+			const oversized = validFiles.filter(isOversized);
+			if (oversized.length > 0) {
+				toast.info(
+					`${oversized.length} gambar melebihi 5MB, sedang dikompress otomatis...`
+				);
+			}
 
 			validFiles.forEach(file => {
 				const reader = new FileReader();
 				reader.onload = async (event) => {
 					const raw = event.target?.result as string;
 					try {
-						const compressed = await compressImage(raw);
+						const compressed = await compressImageDataUrl(raw);
 						setSelectedImages(prev => [...prev, compressed]);
 					} catch {
 						setSelectedImages(prev => [...prev, raw]);
