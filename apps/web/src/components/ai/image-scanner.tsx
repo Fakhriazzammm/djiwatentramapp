@@ -1,4 +1,5 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
+import { compressFileToLimit, isOversized } from "@/lib/image-compress";
 import { useAction } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -81,10 +82,6 @@ export function ImageScanner({
 					toast.error(`${file.name} bukan file gambar`);
 					return false;
 				}
-				if (file.size > 5 * 1024 * 1024) {
-					toast.error(`${file.name} terlalu besar (maks 5MB)`);
-					return false;
-				}
 				return true;
 			});
 
@@ -92,14 +89,15 @@ export function ImageScanner({
 				return;
 			}
 
-			// Read all files
-			const promises = validFiles.map((file) => {
-				return new Promise<string>((resolve) => {
-					const reader = new FileReader();
-					reader.onload = (e) => resolve(e.target?.result as string);
-					reader.readAsDataURL(file);
-				});
-			});
+			const oversized = validFiles.filter(isOversized);
+			if (oversized.length > 0) {
+				toast.info(
+					`${oversized.length} gambar melebihi 5MB, sedang dikompress otomatis...`
+				);
+			}
+
+			// Read and compress all files to fit within 5MB limit
+			const promises = validFiles.map((file) => compressFileToLimit(file));
 
 			Promise.all(promises).then((imageDataUrls) => {
 				setImages(imageDataUrls);

@@ -22,6 +22,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ImageScanner } from "@/components/ai/image-scanner";
+import { compressFileToLimit, isOversized } from "@/lib/image-compress";
 import { ScanEditModal, type ScanEditParams } from "@/components/scan/scan-edit-modal";
 import { ScanSplitModal } from "@/components/scan/scan-split-modal";
 import { useScanHistory } from "@/components/scan/scan-history-panel";
@@ -486,13 +487,29 @@ export function YumiAIChat() {
 		const files = Array.from(e.target.files || []);
 		if (files.length === 0) return;
 
-		files.forEach(file => {
-			if (!file.type.startsWith("image/")) return;
-			const reader = new FileReader();
-			reader.onload = (event) => {
-				setSelectedImages(prev => [...prev, event.target?.result as string]);
-			};
-			reader.readAsDataURL(file);
+		const validFiles = files.filter(file => {
+			if (!file.type.startsWith("image/")) return false;
+			return true;
+		});
+
+		const oversized = validFiles.filter(isOversized);
+		if (oversized.length > 0) {
+			toast.info(
+				`${oversized.length} gambar melebihi 5MB, sedang dikompress otomatis...`
+			);
+		}
+
+		validFiles.forEach(file => {
+			compressFileToLimit(file).then(dataUrl => {
+				setSelectedImages(prev => [...prev, dataUrl]);
+			}).catch(() => {
+				// Fallback: read without compression
+				const reader = new FileReader();
+				reader.onload = (event) => {
+					setSelectedImages(prev => [...prev, event.target?.result as string]);
+				};
+				reader.readAsDataURL(file);
+			});
 		});
 		e.target.value = '';
 	}, []);
