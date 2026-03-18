@@ -102,3 +102,18 @@ export async function compressFileToLimit(file: File): Promise<string> {
 export function isOversized(file: File): boolean {
 	return file.size > MAX_FILE_BYTES;
 }
+
+/**
+ * Convert a base64 dataURL to a Blob synchronously.
+ * More reliable than `fetch(dataUrl).then(r => r.blob())` on iOS Safari.
+ */
+export function dataURLtoBlob(dataUrl: string): Blob {
+	const [header, data] = dataUrl.split(",");
+	const mime = header.match(/:(.*?);/)![1];
+	const binaryStr = atob(data);
+	const bytes = new Uint8Array(binaryStr.length);
+	for (let i = 0; i < binaryStr.length; i++) {
+		bytes[i] = binaryStr.charCodeAt(i);
+	}
+	return new Blob([bytes], { type: mime });
+}
