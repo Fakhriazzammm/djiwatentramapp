@@ -2,6 +2,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import {
+	AlertCircle,
 	Calendar,
 	CheckCircle2,
 	ChevronLeft,
@@ -635,6 +636,7 @@ function BookingPage() {
 	const [proofImage, setProofImage] = useState<string>("");
 	const [proofPreview, setProofPreview] = useState<string>("");
 	const [isUploadingProof, setIsUploadingProof] = useState(false);
+	const [proofUploadError, setProofUploadError] = useState(false);
 	const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
 
 	// Automatic Free Refill Logic for Booking
@@ -937,6 +939,9 @@ function BookingPage() {
 		// Reset input so the same file can be re-selected if needed
 		e.target.value = "";
 
+		// Clear previous upload state before starting a new one
+		setProofImage("");
+		setProofUploadError(false);
 		setIsUploadingProof(true);
 		try {
 			let uploadBlob: Blob = file;
@@ -968,8 +973,9 @@ function BookingPage() {
 			toast.success("Bukti pembayaran terpilih!");
 		} catch (error) {
 			toast.dismiss("compress");
-			toast.error("Gagal mengunggah bukti");
+			toast.error("Gagal mengunggah bukti. Silakan coba lagi.");
 			setProofPreview("");
+			setProofUploadError(true);
 		} finally {
 			setIsUploadingProof(false);
 		}
@@ -1185,6 +1191,7 @@ function BookingPage() {
 													onClick={() => {
 														setProofImage("");
 														setProofPreview("");
+														setProofUploadError(false);
 													}}
 													type="button"
 												>
@@ -1193,22 +1200,37 @@ function BookingPage() {
 											</div>
 										</div>
 									) : (
-										<label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-muted bg-muted/20 hover:bg-muted/40 hover:border-primary/20 transition-all active:scale-[0.98]">
-											<div className="h-12 w-12 rounded-full bg-background flex items-center justify-center shadow-sm mb-2 border border-border">
-												<Upload className="h-5 w-5 text-primary" />
+										<label className={`flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed transition-all active:scale-[0.98] ${proofUploadError ? "border-red-400 bg-red-50 dark:bg-red-950/20 hover:bg-red-100/60" : "border-muted bg-muted/20 hover:bg-muted/40 hover:border-primary/20"}`}>
+											<div className={`h-12 w-12 rounded-full flex items-center justify-center shadow-sm mb-2 border ${proofUploadError ? "bg-red-100 dark:bg-red-900/30 border-red-300" : "bg-background border-border"}`}>
+												{proofUploadError
+													? <AlertCircle className="h-5 w-5 text-red-500" />
+													: <Upload className="h-5 w-5 text-primary" />
+												}
 											</div>
-											<span className="font-bold text-[11px] text-foreground">
-												{isUploadingProof ? "Mengunggah..." : "Ambil Foto / Pilih File"}
+											<span className={`font-bold text-[11px] ${proofUploadError ? "text-red-500" : "text-foreground"}`}>
+												{isUploadingProof ? "Mengunggah..." : proofUploadError ? "Gagal! Ketuk untuk coba lagi" : "Ambil Foto / Pilih File"}
 											</span>
 											<input accept="image/*" className="hidden" onChange={handleProofUpload} type="file" />
 										</label>
+									)}
+									{proofUploadError && !isUploadingProof && (
+										<p className="flex items-center gap-1.5 text-[11px] font-semibold text-red-500 px-1">
+											<AlertCircle className="h-3.5 w-3.5 shrink-0" />
+											Unggahan gambar gagal. Wajib upload bukti pembayaran sebelum submit.
+										</p>
+									)}
+									{isUploadingProof && (
+										<p className="flex items-center gap-1.5 text-[11px] text-muted-foreground px-1">
+											<Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+											Sedang mengunggah gambar, harap tunggu...
+										</p>
 									)}
 								</div>
 							</div>
 
 							<button
 								className="flex w-full items-center justify-center gap-2 rounded-2xl py-4.5 font-extrabold text-sm text-white shadow-xl transition-all hover:opacity-95 active:scale-95 disabled:opacity-50 disabled:shadow-none mt-4"
-								disabled={!proofImage || !transferredAmount || isSubmitting}
+								disabled={!proofImage || !transferredAmount || isSubmitting || isUploadingProof}
 								onClick={handleFinishBooking}
 								style={{ background: themeColor }}
 								type="button"
@@ -1243,6 +1265,7 @@ function BookingPage() {
 											onClick={() => {
 												setProofImage("");
 												setProofPreview("");
+												setProofUploadError(false);
 											}}
 											type="button"
 										>
@@ -1250,19 +1273,34 @@ function BookingPage() {
 										</button>
 									</div>
 								) : (
-									<label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-muted bg-muted/20 hover:bg-muted/40 transition-all active:scale-[0.98]">
-										<Upload className="h-6 w-6 text-primary mb-2" />
-										<span className="font-bold text-[11px] text-foreground">
-											{isUploadingProof ? "Mengunggah..." : "Pilih Bukti Transfer"}
+									<label className={`flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed transition-all active:scale-[0.98] ${proofUploadError ? "border-red-400 bg-red-50 dark:bg-red-950/20 hover:bg-red-100/60" : "border-muted bg-muted/20 hover:bg-muted/40"}`}>
+										{proofUploadError
+											? <AlertCircle className="h-6 w-6 text-red-500 mb-2" />
+											: <Upload className="h-6 w-6 text-primary mb-2" />
+										}
+										<span className={`font-bold text-[11px] ${proofUploadError ? "text-red-500" : "text-foreground"}`}>
+											{isUploadingProof ? "Mengunggah..." : proofUploadError ? "Gagal! Ketuk untuk coba lagi" : "Pilih Bukti Transfer"}
 										</span>
 										<input accept="image/*" className="hidden" onChange={handleProofUpload} type="file" />
 									</label>
+								)}
+								{proofUploadError && !isUploadingProof && (
+									<p className="flex items-center gap-1.5 text-[11px] font-semibold text-red-500 px-1">
+										<AlertCircle className="h-3.5 w-3.5 shrink-0" />
+										Unggahan gambar gagal. Wajib upload bukti transfer sebelum submit.
+									</p>
+								)}
+								{isUploadingProof && (
+									<p className="flex items-center gap-1.5 text-[11px] text-muted-foreground px-1">
+										<Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+										Sedang mengunggah gambar, harap tunggu...
+									</p>
 								)}
 							</div>
 
 							<button
 								className="flex w-full items-center justify-center gap-2 rounded-2xl py-4.5 font-extrabold text-sm text-white shadow-xl transition-all hover:opacity-95 active:scale-95 disabled:opacity-50 mt-4"
-								disabled={!proofImage || isSubmitting}
+								disabled={!proofImage || isSubmitting || isUploadingProof}
 								onClick={handleFinishBooking}
 								style={{ background: themeColor }}
 								type="button"
