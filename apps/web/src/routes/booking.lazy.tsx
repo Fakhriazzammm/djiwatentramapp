@@ -22,6 +22,7 @@ import {
 	calculateEffectivePrice,
 	isFreeRefillActive,
 } from "@/lib/utils/pricing";
+import { compressFileToLimit, isOversized } from "@/lib/image-compress";
 
 export const Route = createLazyFileRoute("/booking")({
 	component: BookingPage,
@@ -936,17 +937,29 @@ function BookingPage() {
 		// Reset input so the same file can be re-selected if needed
 		e.target.value = "";
 
-		// Create local preview immediately
-		const previewUrl = URL.createObjectURL(file);
-		setProofPreview(previewUrl);
-
 		setIsUploadingProof(true);
 		try {
+			let uploadBlob: Blob = file;
+			let contentType = file.type || "image/jpeg";
+
+			if (isOversized(file)) {
+				toast.loading("Mengompresi gambar...", { id: "compress" });
+				const compressed = await compressFileToLimit(file);
+				toast.dismiss("compress");
+				// Convert compressed dataURL back to Blob for upload
+				uploadBlob = await fetch(compressed).then((r) => r.blob());
+				contentType = "image/jpeg";
+				// Use compressed dataURL as preview
+				setProofPreview(compressed);
+			} else {
+				setProofPreview(URL.createObjectURL(file));
+			}
+
 			const postUrl = await generateUploadUrl();
 			const result = await fetch(postUrl, {
 				method: "POST",
-				headers: { "Content-Type": file.type },
-				body: file,
+				headers: { "Content-Type": contentType },
+				body: uploadBlob,
 			});
 			if (!result.ok) throw new Error(`Upload gagal: ${result.status}`);
 			const { storageId } = await result.json();
@@ -954,8 +967,9 @@ function BookingPage() {
 			setProofImage(storageId);
 			toast.success("Bukti pembayaran terpilih!");
 		} catch (error) {
+			toast.dismiss("compress");
 			toast.error("Gagal mengunggah bukti");
-			setProofPreview(""); // Clear preview on error
+			setProofPreview("");
 		} finally {
 			setIsUploadingProof(false);
 		}
