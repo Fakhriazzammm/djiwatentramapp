@@ -2,6 +2,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
+import { compressFileToLimit, isOversized } from "@/lib/image-compress";
 import {
 	Calendar,
 	Check,
@@ -635,11 +636,20 @@ function BookingSettingsPage() {
 
 		const toastId = toast.loading("Mengunggah gambar...");
 		try {
+			let uploadBlob: Blob = file;
+			let contentType = file.type || "image/jpeg";
+			if (isOversized(file)) {
+				toast.loading("Mengompresi gambar...", { id: toastId });
+				const compressed = await compressFileToLimit(file);
+				uploadBlob = await fetch(compressed).then((r) => r.blob());
+				contentType = "image/jpeg";
+				toast.loading("Mengunggah gambar...", { id: toastId });
+			}
 			const postUrl = await generateUploadUrl();
 			const result = await fetch(postUrl, {
 				method: "POST",
-				headers: { "Content-Type": file.type },
-				body: file,
+				headers: { "Content-Type": contentType },
+				body: uploadBlob,
 			});
 			const { storageId } = await result.json();
 			setFormData((prev) => ({ ...prev, qrisImage: storageId }));

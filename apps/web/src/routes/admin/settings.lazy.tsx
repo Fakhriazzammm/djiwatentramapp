@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { compressFileToLimit, isOversized } from "@/lib/image-compress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { authClient } from "@/lib/auth-client";
@@ -668,11 +669,20 @@ function SettingsPage() {
 														return;
 													}
 													try {
+														let uploadBlob: Blob = file;
+														let contentType = file.type || "image/jpeg";
+														if (isOversized(file)) {
+															toast.loading("Mengompresi gambar...", { id: "compress-qris" });
+															const compressed = await compressFileToLimit(file);
+															toast.dismiss("compress-qris");
+															uploadBlob = await fetch(compressed).then((r) => r.blob());
+															contentType = "image/jpeg";
+														}
 														const postUrl = await generateUploadUrl();
 														const result = await fetch(postUrl, {
 															method: "POST",
-															headers: { "Content-Type": file.type },
-															body: file,
+															headers: { "Content-Type": contentType },
+															body: uploadBlob,
 														});
 														if (!result.ok) {
 															throw new Error("Upload failed");
@@ -686,6 +696,7 @@ function SettingsPage() {
 															"QRIS berhasil diunggah! Klik Simpan untuk mengaktifkan."
 														);
 													} catch (error) {
+														toast.dismiss("compress-qris");
 														console.error(error);
 														toast.error("Gagal mengupload gambar QRIS");
 													}
@@ -734,11 +745,20 @@ function SettingsPage() {
 														return;
 													}
 													try {
+														let uploadBlob: Blob = file;
+														let contentType = file.type || "image/jpeg";
+														if (isOversized(file)) {
+															toast.loading("Mengompresi gambar...", { id: "compress-popup" });
+															const compressed = await compressFileToLimit(file);
+															toast.dismiss("compress-popup");
+															uploadBlob = await fetch(compressed).then((r) => r.blob());
+															contentType = "image/jpeg";
+														}
 														const postUrl = await generateUploadUrl();
 														const result = await fetch(postUrl, {
 															method: "POST",
-															headers: { "Content-Type": file.type },
-															body: file,
+															headers: { "Content-Type": contentType },
+															body: uploadBlob,
 														});
 														if (!result.ok) {
 															throw new Error("Upload failed");
@@ -753,6 +773,7 @@ function SettingsPage() {
 															"Selesai! Klik Simpan untuk memperbarui."
 														);
 													} catch (error) {
+														toast.dismiss("compress-popup");
 														console.error(error);
 														toast.error("Gagal mengupload gambar");
 													}
