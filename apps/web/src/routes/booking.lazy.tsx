@@ -23,7 +23,7 @@ import {
 	calculateEffectivePrice,
 	isFreeRefillActive,
 } from "@/lib/utils/pricing";
-import { compressFileToLimit, isOversized } from "@/lib/image-compress";
+import { compressFileToLimit, dataURLtoBlob, isOversized } from "@/lib/image-compress";
 
 export const Route = createLazyFileRoute("/booking")({
 	component: BookingPage,
@@ -946,34 +946,54 @@ function BookingPage() {
 		try {
 			let uploadBlob: Blob = file;
 			let contentType = file.type || "image/jpeg";
+			let previewUrl = URL.createObjectURL(file);
 
 			if (isOversized(file)) {
 				toast.loading("Mengompresi gambar...", { id: "compress" });
 				const compressed = await compressFileToLimit(file);
 				toast.dismiss("compress");
-				// Convert compressed dataURL back to Blob for upload
-				uploadBlob = await fetch(compressed).then((r) => r.blob());
+				// Use reliable synchronous dataURL→Blob conversion (fetch(dataUrl) fails on iOS Safari)
+				uploadBlob = dataURLtoBlob(compressed);
 				contentType = "image/jpeg";
-				// Use compressed dataURL as preview
-				setProofPreview(compressed);
-			} else {
-				setProofPreview(URL.createObjectURL(file));
+				previewUrl = compressed;
 			}
 
-			const postUrl = await generateUploadUrl();
-			const result = await fetch(postUrl, {
-				method: "POST",
-				headers: { "Content-Type": contentType },
-				body: uploadBlob,
-			});
-			if (!result.ok) throw new Error(`Upload gagal: ${result.status}`);
-			const { storageId } = await result.json();
-			if (!storageId) throw new Error("storageId tidak ditemukan");
-			setProofImage(storageId);
+			// Show preview immediately so user sees their selection
+			setProofPreview(previewUrl);
+
+			// Attempt upload with a single retry on failure
+			let storageId: string | undefined;
+			for (let attempt = 1; attempt <= 2; attempt++) {
+				const postUrl = await generateUploadUrl();
+				const controller = new AbortController();
+				const timeoutId = setTimeout(() => controller.abort(), 60_000);
+				try {
+					const result = await fetch(postUrl, {
+						method: "POST",
+						headers: { "Content-Type": contentType },
+						body: uploadBlob,
+						signal: controller.signal,
+					});
+					clearTimeout(timeoutId);
+					if (!result.ok) throw new Error(`Upload gagal: ${result.status}`);
+					const json = await result.json();
+					if (!json.storageId) throw new Error("storageId tidak ditemukan");
+					storageId = json.storageId;
+					break;
+				} catch (err) {
+					clearTimeout(timeoutId);
+					if (attempt === 2) throw err;
+					// Wait briefly before retry
+					await new Promise((res) => setTimeout(res, 1500));
+				}
+			}
+
+			setProofImage(storageId!);
 			toast.success("Bukti pembayaran terpilih!");
 		} catch (error) {
 			toast.dismiss("compress");
-			toast.error("Gagal mengunggah bukti. Silakan coba lagi.");
+			const isTimeout = error instanceof Error && error.name === "AbortError";
+			toast.error(isTimeout ? "Koneksi timeout. Silakan coba lagi." : "Gagal mengunggah bukti. Silakan coba lagi.");
 			setProofPreview("");
 			setProofUploadError(true);
 		} finally {
