@@ -53,6 +53,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/inventory": "Inventaris",
 	"/admin/finance": "Keuangan",
 	"/admin/finance/reports": "Laporan Keuangan",
+	"/admin/finance/transactions": "Riwayat Transaksi",
 	"/admin/orders": "Pesanan",
 	"/admin/discounts": "Promosi",
 	"/admin/hpp-calculator": "HPP Kalkulator",
@@ -102,6 +103,7 @@ const QUICK_MENU_SECTIONS = [
 		label: "Keuangan",
 		items: [
 			{ to: "/admin/finance", icon: Wallet, label: "Keuangan" },
+			{ to: "/admin/finance/transactions", icon: ClipboardList, label: "Transaksi" },
 			{ to: "/admin/finance/reports", icon: FileBarChart, label: "Laporan" },
 			{ to: "/admin/hpp-calculator", icon: Calculator, label: "HPP" },
 		],
@@ -123,6 +125,7 @@ const QUICK_MENU_ITEMS = QUICK_MENU_SECTIONS.flatMap((s) => s.items);
 const FINANCE_PATHS = [
 	"/admin/finance",
 	"/admin/finance/reports",
+	"/admin/finance/transactions",
 	"/admin/hpp-calculator",
 ];
 
@@ -269,6 +272,12 @@ function AdminLayout() {
 								to="/admin/finance"
 							/>
 							<DesktopNavLink
+								icon={<ClipboardList />}
+								isCollapsed={isCollapsed}
+								label="Transaksi"
+								to="/admin/finance/transactions"
+							/>
+							<DesktopNavLink
 								icon={<FileBarChart />}
 								isCollapsed={isCollapsed}
 								label="Laporan"
@@ -321,6 +330,11 @@ function AdminLayout() {
 												icon={<Wallet />}
 												label="Overview"
 												to="/admin/finance"
+											/>
+											<DesktopSubNavLink
+												icon={<ClipboardList />}
+												label="Transaksi"
+												to="/admin/finance/transactions"
 											/>
 											<DesktopSubNavLink
 												icon={<FileBarChart />}

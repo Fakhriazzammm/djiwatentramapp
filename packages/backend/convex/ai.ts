@@ -1197,29 +1197,35 @@ export const generateDailyBriefing = action({
 				else if (args.localHour >= 18 || args.localHour < 4) greeting = "Selamat malam";
 			}
 
+			// Get time ranges for today and yesterday
+			const now = new Date();
+			const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+			const yesterdayStart = todayStart - 24 * 60 * 60 * 1000;
+			const yesterdayEnd = todayStart - 1;
+
 			// Gather all relevant data for briefing
 			const [
 				financeSummary,
+				todayFinance,
+				yesterdayFinance,
 				inventory,
 				orders,
 				bookingOrders,
-				comparison,
 				pendingTasks,
 			] = await Promise.all([
-				ctx.runQuery(api.finance.getFinancialSummary, {}),
+				ctx.runQuery(api.finance.getFinancialSummary, {}), // Overall balance
+				ctx.runQuery(api.finance.getFinancialSummary, { startDate: todayStart }),
+				ctx.runQuery(api.finance.getFinancialSummary, { startDate: yesterdayStart, endDate: yesterdayEnd }),
 				ctx.runQuery(api.inventory.getInventory),
 				ctx.runQuery(api.orders.getOrders, { limit: 50 }),
 				ctx.runQuery(api.booking.getBookingOrders, { slug: "booking" }),
-				ctx.runQuery(api.finance.getPeriodComparison),
 				ctx.db.query("aiTasks").filter(q => q.eq(q.field("status"), "pending")).collect(),
 			]);
 
 			const lowStockItems = inventory.filter(i => i.quantity <= i.lowStockThreshold);
-			const today = new Date();
-			today.setHours(0, 0, 0, 0);
 			const todayBookings = (bookingOrders as any[]).filter(b => 
-				new Date(b.bookingDate).getTime() >= today.getTime() && 
-				new Date(b.bookingDate).getTime() < today.getTime() + 24 * 60 * 60 * 1000
+				new Date(b.bookingDate).getTime() >= todayStart && 
+				new Date(b.bookingDate).getTime() < todayStart + 24 * 60 * 60 * 1000
 			);
 
 			// Calculate a simple "trending product" from recent orders
@@ -1232,9 +1238,17 @@ export const generateDailyBriefing = action({
 			const trendingProduct = Object.entries(productSales)
 				.sort(([, a], [, b]) => b - a)[0]?.[0] || "belum ada data";
 
+			// Calculate growth today vs yesterday
+			const revenueToday = todayFinance.totalIncome;
+			const revenueYesterday = yesterdayFinance.totalIncome;
+			const revenueGrowth = revenueYesterday === 0 
+				? (revenueToday > 0 ? 100 : 0) 
+				: ((revenueToday - revenueYesterday) / revenueYesterday) * 100;
+
 			const dataContext = {
-				revenueYesterday: comparison.previousPeriodRevenue,
-				revenueGrowth: comparison.revenueGrowth,
+				revenueToday,
+				revenueYesterday,
+				revenueGrowth,
 				lowStockCount: lowStockItems.length,
 				lowStockNames: lowStockItems.slice(0, 3).map(i => i.ingredientName).join(", "),
 				todayBookingsCount: todayBookings.length,
@@ -1248,11 +1262,13 @@ export const generateDailyBriefing = action({
 					role: "system",
 					content: `Kamu adalah Yumi, asisten AI bisnis yang ceria dan proaktif.
 Tugas: Berikan Briefing Bisnis (Dashboard Proaktif) yang menyeluruh untuk memperkenalkan "seisi aplikasi" kepada pemilik toko.
-Gunakan data riil yang diberikan untuk memberikan ringkasan performa kemarin, status operasional, dan tugas yang tertunda.
+Gunakan data riil yang diberikan untuk memberikan ringkasan performa hari ini, kemarin, status operasional, dan tugas yang tertunda.
 
 FORMAT BRIEFING:
 1. Sapa dengan "${greeting}!".
-2. Performa (Keuangan): Sebutkan omzet kemarin dan pertumbuhannya.
+2. Performa (Keuangan): 
+   - Sebutkan omzet hari ini (berjalan) dan bandingkan dengan omzet kemarin.
+   - Sebutkan total saldo kas saat ini.
 3. Operasional (Inventaris & Reservasi): Sebutkan stok kritis dan jumlah booking hari ini.
 4. Insights (Produk & Tugas): 
    - Sebutkan produk yang sedang tren/paling laku.
@@ -1269,7 +1285,7 @@ ATURAN KETAT:
 				{
 					role: "user",
 					content: `Data Bisnis Riil (Seluruh Modul):
-- Keuangan: Omzet Kemarin Rp ${dataContext.revenueYesterday.toLocaleString("id-ID")} (${dataContext.revenueGrowth >= 0 ? "naik" : "turun"} ${Math.abs(dataContext.revenueGrowth).toFixed(1)}%), Total Saldo Rp ${dataContext.balance.toLocaleString("id-ID")}
+- Keuangan: Omzet Hari Ini Rp ${dataContext.revenueToday.toLocaleString("id-ID")}, Omzet Kemarin Rp ${dataContext.revenueYesterday.toLocaleString("id-ID")} (${dataContext.revenueGrowth >= 0 ? "naik" : "turun"} ${Math.abs(dataContext.revenueGrowth).toFixed(1)}% dari kemarin), Total Saldo Rp ${dataContext.balance.toLocaleString("id-ID")}
 - Inventaris: ${dataContext.lowStockCount} item stok rendah (${dataContext.lowStockNames || "Semua aman"})
 - Reservasi: ${dataContext.todayBookingsCount} booking hari ini
 - Analitik: Produk terlaris saat ini adalah ${dataContext.trendingProduct}

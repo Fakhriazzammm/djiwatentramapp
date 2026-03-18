@@ -103,6 +103,10 @@ export const createTransaction = mutation({
 			v.literal("pending"),
 			v.literal("cancelled")
 		),
+		attachmentUrl: v.optional(v.string()),
+		isRecurring: v.optional(v.boolean()),
+		recurringInterval: v.optional(v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"))),
+		tags: v.optional(v.array(v.string())),
 	},
 	handler: async (ctx, args) => {
 		const id = await ctx.db.insert("financialTransactions", args);
@@ -352,6 +356,10 @@ export const updateTransaction = mutation({
 		date: v.optional(v.number()),
 		paymentMethod: v.optional(v.string()),
 		status: v.optional(v.union(v.literal("completed"), v.literal("pending"), v.literal("cancelled"))),
+		attachmentUrl: v.optional(v.string()),
+		isRecurring: v.optional(v.boolean()),
+		recurringInterval: v.optional(v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"))),
+		tags: v.optional(v.array(v.string())),
 	},
 	handler: async (ctx, args) => {
 		const { id, ...data } = args;

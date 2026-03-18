@@ -1,30 +1,24 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useState } from "react";
-import { Download, FileSpreadsheet, FileText, Printer, TrendingUp, Wallet, ArrowLeftRight } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Printer, TrendingUp, ArrowLeftRight } from "lucide-react";
 import { PeriodSelector, getRangeFromPeriod, type PeriodOption, type DateRange } from "./period-selector";
 import { ProfitLossReport } from "./profit-loss-report";
 import { CashFlowReport } from "./cash-flow-report";
-import { TransactionDetailReport } from "./transaction-detail-report";
 import {
 	exportProfitLossPDF,
 	exportCashFlowPDF,
-	exportTransactionsPDF,
 	exportProfitLossExcel,
 	exportCashFlowExcel,
-	exportTransactionsExcel,
-	exportTransactionsCSV,
 	type ProfitLossData,
 	type CashFlowData,
-	type TransactionRow,
 } from "@/lib/export-utils";
 
-type ReportTab = "profit_loss" | "cash_flow" | "transactions";
+type ReportTab = "profit_loss" | "cash_flow";
 
 const TABS: { value: ReportTab; label: string; icon: React.ReactNode }[] = [
 	{ value: "profit_loss", label: "Laba Rugi", icon: <TrendingUp className="h-4 w-4" /> },
 	{ value: "cash_flow", label: "Arus Kas", icon: <ArrowLeftRight className="h-4 w-4" /> },
-	{ value: "transactions", label: "Transaksi Detail", icon: <Wallet className="h-4 w-4" /> },
 ];
 
 export function FinancialReports() {
@@ -45,10 +39,6 @@ export function FinancialReports() {
 		startDate: dateRange.startDate,
 		endDate: dateRange.endDate,
 	});
-	const txData = useQuery(api.finance.getTransactionDetailReport, {
-		startDate: dateRange.startDate,
-		endDate: dateRange.endDate,
-	});
 
 	const handlePeriodChange = (p: PeriodOption, range: DateRange) => {
 		setPeriod(p);
@@ -64,12 +54,6 @@ export function FinancialReports() {
 			} else if (activeTab === "cash_flow" && cfData) {
 				if (format === "pdf") exportCashFlowPDF(cfData as CashFlowData, storeName, dateRange.label);
 				else exportCashFlowExcel(cfData as CashFlowData, storeName, dateRange.label);
-			} else if (activeTab === "transactions" && txData) {
-				const transactions = txData.transactions as TransactionRow[];
-				const totals = { totalIncome: txData.totalIncome, totalExpense: txData.totalExpense, netBalance: txData.netBalance };
-				if (format === "pdf") exportTransactionsPDF(transactions, storeName, dateRange.label, totals);
-				else if (format === "excel") exportTransactionsExcel(transactions, storeName, dateRange.label, totals);
-				else exportTransactionsCSV(transactions, dateRange.label);
 			}
 		} finally {
 			setIsExporting(false);
@@ -81,8 +65,7 @@ export function FinancialReports() {
 	};
 
 	const canExport = (activeTab === "profit_loss" && !!plData) ||
-		(activeTab === "cash_flow" && !!cfData) ||
-		(activeTab === "transactions" && !!txData);
+		(activeTab === "cash_flow" && !!cfData);
 
 	return (
 		<div className="fade-in slide-in-from-bottom-4 animate-in space-y-6 duration-500">
@@ -114,17 +97,6 @@ export function FinancialReports() {
 						<FileSpreadsheet className="h-3.5 w-3.5" />
 						Excel
 					</button>
-					{activeTab === "transactions" && (
-						<button
-							type="button"
-							onClick={() => handleExport("csv")}
-							disabled={!canExport || isExporting}
-							className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-40 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400"
-						>
-							<Download className="h-3.5 w-3.5" />
-							CSV
-						</button>
-					)}
 					<button
 						type="button"
 						onClick={handlePrint}
@@ -167,7 +139,6 @@ export function FinancialReports() {
 			<div id="report-content">
 				{activeTab === "profit_loss" && <ProfitLossReport range={dateRange} />}
 				{activeTab === "cash_flow" && <CashFlowReport range={dateRange} />}
-				{activeTab === "transactions" && <TransactionDetailReport range={dateRange} />}
 			</div>
 		</div>
 	);

@@ -1094,7 +1094,7 @@ function AdminDiscountsPage() {
 														<div className="max-h-60 overflow-y-auto space-y-2 pr-2">
 															{formData.targetIds.map((id) => {
 																const product = products?.find(
-																	(p) => p._id === id
+																	(p: any) => p._id === id
 																);
 																const currentPrice =
 																	formData.productPrices.find(

@@ -81,6 +81,10 @@ export default defineSchema({
 		),
 		orderId: v.optional(v.id("orders")),
 		bookingOrderId: v.optional(v.id("bookingOrders")),
+		attachmentUrl: v.optional(v.string()),
+		isRecurring: v.optional(v.boolean()),
+		recurringInterval: v.optional(v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"))),
+		tags: v.optional(v.array(v.string())),
 	})
 		.index("by_date", ["date"])
 		.index("by_type", ["type"]),
