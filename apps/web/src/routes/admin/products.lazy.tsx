@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { compressFileToLimit, isOversized } from "@/lib/image-compress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
@@ -242,11 +243,22 @@ function ProductsTab({
 
 	const handleImageUpload = async () => {
 		if (imageFile) {
+			let uploadBlob: Blob = imageFile;
+			let contentType = imageFile.type || "image/jpeg";
+
+			if (isOversized(imageFile)) {
+				toast.loading("Mengompresi gambar...", { id: "compress-product" });
+				const compressed = await compressFileToLimit(imageFile);
+				toast.dismiss("compress-product");
+				uploadBlob = await fetch(compressed).then((r) => r.blob());
+				contentType = "image/jpeg";
+			}
+
 			const postUrl = await generateUploadUrl();
 			const result = await fetch(postUrl, {
 				method: "POST",
-				headers: { "Content-Type": imageFile.type },
-				body: imageFile,
+				headers: { "Content-Type": contentType },
+				body: uploadBlob,
 			});
 
 			if (!result.ok) {
