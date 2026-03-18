@@ -933,6 +933,9 @@ function BookingPage() {
 		const file = e.target.files?.[0];
 		if (!file) return;
 
+		// Reset input so the same file can be re-selected if needed
+		e.target.value = "";
+
 		// Create local preview immediately
 		const previewUrl = URL.createObjectURL(file);
 		setProofPreview(previewUrl);
@@ -945,7 +948,9 @@ function BookingPage() {
 				headers: { "Content-Type": file.type },
 				body: file,
 			});
+			if (!result.ok) throw new Error(`Upload gagal: ${result.status}`);
 			const { storageId } = await result.json();
+			if (!storageId) throw new Error("storageId tidak ditemukan");
 			setProofImage(storageId);
 			toast.success("Bukti pembayaran terpilih!");
 		} catch (error) {
