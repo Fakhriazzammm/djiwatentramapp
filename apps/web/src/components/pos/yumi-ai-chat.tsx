@@ -73,6 +73,12 @@ interface ChatMessage {
 
 const CASIER_TEMPLATES = [
 	{
+		label: "Briefing Bisnis",
+		message: "Berikan briefing status bisnis saya saat ini",
+		icon: <Sparkles className="h-3.5 w-3.5 text-primary" />,
+		category: "report",
+	},
+	{
 		label: "Pemasukan",
 		message: "Saya ingin mencatat pemasukan",
 		icon: <TrendingUp className="h-3.5 w-3.5 text-primary" />,
@@ -140,7 +146,7 @@ export function YumiAIChat() {
 
 	const yumiChat = useAction(api.ai.yumiChat);
 	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
-	const generateDailyBriefingAction = useAction(api.ai.generateDailyBriefing);
+	const generateBusinessBriefingAction = useAction(api.ai.generateBusinessBriefing);
 	const createTransactionMutation = useMutation(api.finance.createTransaction);
 
 	const handleCopy = useCallback(async (text: string, index: number) => {
@@ -443,6 +449,26 @@ export function YumiAIChat() {
 					.filter((m) => m.role === "user" || m.role === "assistant")
 					.map((m) => ({ role: m.role, content: m.content }));
 
+				// Special handling for briefing request
+				if (text.toLowerCase().includes("briefing") || text.toLowerCase().includes("status bisnis")) {
+					const localHour = new Date().getHours();
+					const briefing = await generateBusinessBriefingAction({ localHour });
+					if (briefing) {
+						const sanitized = sanitizeResponse(briefing);
+						setIsLoading(false);
+						streamText(sanitized, () => {
+							setMessages((prev) => [
+								...prev,
+								{
+									role: "assistant",
+									content: sanitized,
+								},
+							]);
+						});
+						return;
+					}
+				}
+
 				const response = await yumiChat({
 					message: text.trim(),
 					image,
@@ -514,7 +540,7 @@ export function YumiAIChat() {
 		e.target.value = '';
 	}, []);
 
-	// Daily Morning Briefing
+	// Business Status Briefing
 	useEffect(() => {
 		const runBriefing = async () => {
 			if (briefingAttemptedRef.current) return;
@@ -528,14 +554,21 @@ export function YumiAIChat() {
 					await new Promise(resolve => setTimeout(resolve, 1500));
 
 					const localHour = new Date().getHours();
-					const briefing = await generateDailyBriefingAction({ localHour });
+					const briefing = await generateBusinessBriefingAction({ localHour });
 					
 					let fallbackGreeting = "Selamat pagi";
 					if (localHour >= 11 && localHour < 15) fallbackGreeting = "Selamat siang";
 					else if (localHour >= 15 && localHour < 18) fallbackGreeting = "Selamat sore";
 					else if (localHour >= 18 || localHour < 4) fallbackGreeting = "Selamat malam";
 
-					const contentToStream = briefing ? sanitizeResponse(briefing) : `${fallbackGreeting}! Kemarin omzet kita Rp 0 (naik 0%). Hari ini semua stok aman dan belum ada reservasi meja. Tetap semangat mengelola toko hari ini!`;
+					const contentToStream = briefing ? sanitizeResponse(briefing) : `${fallbackGreeting}! Senang bertemu Anda lagi. Saya siap membantu mengelola toko hari ini.
+
+📊 STATUS BISNIS:
+• Omzet Kemarin: Rp 0
+• Stok: Semua aman
+• Reservasi: Tidak ada booking hari ini
+
+Apa yang ingin Anda lakukan sekarang? [SUGGEST: 📊 Laporan Lengkap | Berikan laporan performa bisnis saya secara mendalam]`;
 					
 					// Append the briefing as the second message
 					streamText(contentToStream, () => {
@@ -560,7 +593,14 @@ export function YumiAIChat() {
 						...prev,
 						{
 							role: "assistant",
-							content: `${fallbackGreeting}! Kemarin omzet kita Rp 0 (naik 0%). Hari ini semua stok aman dan belum ada reservasi meja. Tetap semangat mengelola toko hari ini!`,
+							content: `${fallbackGreeting}! Senang bertemu Anda lagi. Saya siap membantu mengelola toko hari ini.
+
+📊 STATUS BISNIS:
+• Omzet Kemarin: Rp 0
+• Stok: Semua aman
+• Reservasi: Tidak ada booking hari ini
+
+Apa yang ingin Anda lakukan sekarang? [SUGGEST: 📊 Laporan Lengkap | Berikan laporan performa bisnis saya secara mendalam]`,
 						}
 					]);
 				} finally {
@@ -569,7 +609,7 @@ export function YumiAIChat() {
 			}
 		};
 		runBriefing();
-	}, [generateDailyBriefingAction, messages.length]);
+	}, [generateBusinessBriefingAction, messages.length]);
 
 	return (
 		<div className="flex h-full flex-col bg-background">

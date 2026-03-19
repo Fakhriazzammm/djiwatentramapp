@@ -127,7 +127,7 @@ export function TransactionsView() {
 						<span className="text-2xl font-bold text-green-600">
 							{txData ? formatCurrencyIDR(txData.totalIncome) : "Rp0"}
 						</span>
-						<span className="text-[10px] text-muted-foreground mt-1">Dari {txData?.transactions.filter(t => t.type === 'income').length || 0} transaksi</span>
+						<span className="text-[10px] text-muted-foreground mt-1">Dari {txData?.transactions.filter((t: any) => t.type === 'income').length || 0} transaksi</span>
 					</div>
 				</div>
 
@@ -142,7 +142,7 @@ export function TransactionsView() {
 						<span className="text-2xl font-bold text-red-600">
 							{txData ? formatCurrencyIDR(txData.totalExpense) : "Rp0"}
 						</span>
-						<span className="text-[10px] text-muted-foreground mt-1">Dari {txData?.transactions.filter(t => t.type === 'expense').length || 0} transaksi</span>
+						<span className="text-[10px] text-muted-foreground mt-1">Dari {txData?.transactions.filter((t: any) => t.type === 'expense').length || 0} transaksi</span>
 					</div>
 				</div>
 

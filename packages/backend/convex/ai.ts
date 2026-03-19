@@ -244,6 +244,19 @@ function parseAIScanJSON(content: string): any {
 /**
  * Analyze sales data to provide high-level insights.
  */
+/**
+ * Get all pending follow-up tasks
+ */
+export const getPendingTasks = query({
+	args: {},
+	handler: async (ctx) => {
+		return await ctx.db
+			.query("followUpTasks")
+			.withIndex("by_status", (q) => q.eq("status", "pending"))
+			.collect();
+	},
+});
+
 export const generateInsights = action({
 	args: {
 		salesData: v.string(), // JSON string of recent orders
@@ -1181,9 +1194,9 @@ Berikan analisis ringkas dan perbandingannya.`,
 });
 
 /**
- * Yumi AI - Generate a Daily Morning Briefing
+ * Yumi AI - Generate a Business Status Briefing (Anytime)
  */
-export const generateDailyBriefing = action({
+export const generateBusinessBriefing = action({
 	args: {
 		localHour: v.optional(v.number()), // Hour from 0-23
 	},
@@ -1219,21 +1232,22 @@ export const generateDailyBriefing = action({
 				ctx.runQuery(api.inventory.getInventory),
 				ctx.runQuery(api.orders.getOrders, { limit: 50 }),
 				ctx.runQuery(api.booking.getBookingOrders, { slug: "booking" }),
-				ctx.db.query("aiTasks").filter(q => q.eq(q.field("status"), "pending")).collect(),
+				ctx.runQuery(api.ai.getPendingTasks),
 			]);
 
 			const lowStockItems = inventory.filter(i => i.quantity <= i.lowStockThreshold);
 			const todayBookings = (bookingOrders as any[]).filter(b => 
-				new Date(b.bookingDate).getTime() >= todayStart && 
-				new Date(b.bookingDate).getTime() < todayStart + 24 * 60 * 60 * 1000
+				b.bookingDate === new Date(todayStart).toISOString().split("T")[0]
 			);
 
 			// Calculate a simple "trending product" from recent orders
 			const productSales: Record<string, number> = {};
 			orders.forEach(order => {
-				order.items.forEach(item => {
-					productSales[item.productName] = (productSales[item.productName] || 0) + item.quantity;
-				});
+				if (order.status === "paid" || order.status === "completed") {
+					order.items.forEach(item => {
+						productSales[item.productName] = (productSales[item.productName] || 0) + item.quantity;
+					});
+				}
 			});
 			const trendingProduct = Object.entries(productSales)
 				.sort(([, a], [, b]) => b - a)[0]?.[0] || "belum ada data";
@@ -1250,46 +1264,56 @@ export const generateDailyBriefing = action({
 				revenueYesterday,
 				revenueGrowth,
 				lowStockCount: lowStockItems.length,
-				lowStockNames: lowStockItems.slice(0, 3).map(i => i.ingredientName).join(", "),
+				lowStockNames: lowStockItems.slice(0, 5).map(i => `${i.ingredientName} (${i.quantity} ${i.unit})`).join(", "),
 				todayBookingsCount: todayBookings.length,
+				todayBookingsNames: todayBookings.slice(0, 3).map(b => `${b.customerName} (${b.guestCount} org)`).join(", "),
 				balance: financeSummary.netBalance,
 				pendingTasksCount: pendingTasks.length,
+				pendingTasksTitles: (pendingTasks as any[]).slice(0, 3).map(t => t.title).join(", "),
 				trendingProduct,
 			};
 
 			return await safeSumoPodCall([
 				{
 					role: "system",
-					content: `Kamu adalah Yumi, asisten AI bisnis yang ceria dan proaktif.
-Tugas: Berikan Briefing Bisnis (Dashboard Proaktif) yang menyeluruh untuk memperkenalkan "seisi aplikasi" kepada pemilik toko.
-Gunakan data riil yang diberikan untuk memberikan ringkasan performa hari ini, kemarin, status operasional, dan tugas yang tertunda.
+					content: `Kamu adalah Yumi, asisten AI bisnis yang ceria, proaktif, dan SANGAT DETAIL.
+Tugas: Berikan Briefing Bisnis (Status Real-time) yang menyeluruh dan informatif untuk pemilik toko.
+Gunakan data riil yang diberikan untuk memberikan ringkasan performa yang mendalam. Briefing ini bisa diberikan kapan saja (pagi, siang, sore, atau malam).
 
-FORMAT BRIEFING:
+FORMAT BRIEFING (WAJIB):
 1. Sapa dengan "${greeting}!".
-2. Performa (Keuangan): 
-   - Sebutkan omzet hari ini (berjalan) dan bandingkan dengan omzet kemarin.
-   - Sebutkan total saldo kas saat ini.
-3. Operasional (Inventaris & Reservasi): Sebutkan stok kritis dan jumlah booking hari ini.
-4. Insights (Produk & Tugas): 
-   - Sebutkan produk yang sedang tren/paling laku.
-   - Ingatkan jumlah tugas (tasks) yang masih pending di tab Tasks.
-5. Penutup: Kalimat motivasi singkat.
-6. Tombol Aksi: Berikan 2-3 saran tombol aksi [SUGGEST: ...] yang mencakup modul berbeda.
+2. 📊 STATUS BISNIS (SAAT INI):
+   - Berikan ringkasan satu kalimat tentang kondisi toko saat ini (misal: "Toko sedang sibuk", "Omzet hari ini sangat baik", dll).
+3. 💰 PERFORMA KEUANGAN: 
+   - Omzet hari ini vs kemarin (sebutkan angka riil & persentase kenaikan/penurunan).
+   - Total saldo kas bersih saat ini.
+4. 📦 OPERASIONAL & STOK: 
+   - Sebutkan item stok yang kritis secara spesifik (nama & sisa jumlah).
+   - Beritahu jika semua stok aman.
+5. 📅 RESERVASI HARI INI: 
+   - Sebutkan jumlah booking hari ini.
+   - Jika ada booking, sebutkan nama-nama pelanggan pertama dan jumlah tamunya.
+6. 📊 INSIGHTS & ANALITIK: 
+   - Sebutkan produk yang paling laku hari ini.
+   - Informasikan jumlah tugas yang masih pending dan sebutkan judul tugas teratas.
+7. ✨ PENUTUP: Kalimat motivasi singkat yang disesuaikan dengan kondisi bisnis.
+8. 🚀 TOMBOL AKSI: Berikan 3-4 saran tombol aksi [SUGGEST: ...] yang relevan dengan data (contoh: [SUGGEST: 📦 Belanja Stok | Ingatkan saya untuk belanja stok yang hampir habis], [SUGGEST: 📈 Analisis Omzet | Mengapa omzet hari ini berubah dibanding kemarin?]).
 
 ATURAN KETAT:
-- JANGAN gunakan bold (**). Gunakan teks polos.
-- Gunakan emoji yang relevan.
-- Gunakan data dari konteks yang diberikan.
-- Buat user merasa Yumi mengawasi seluruh aspek toko (Keuangan, Stok, Pesanan, Reservasi, dan Tugas).`,
+- JANGAN gunakan bold (**). Gunakan TEKS BIASA.
+- Gunakan emoji yang banyak dan relevan agar menarik dibaca.
+- JANGAN gunakan format markdown list. Gunakan bullet emoji seperti • atau 🔹.
+- Pastikan semua angka uang diformat dengan Rp dan pemisah ribuan.
+- Berikan rincian nama item/pelanggan, jangan hanya angka.`,
 				},
 				{
 					role: "user",
-					content: `Data Bisnis Riil (Seluruh Modul):
-- Keuangan: Omzet Hari Ini Rp ${dataContext.revenueToday.toLocaleString("id-ID")}, Omzet Kemarin Rp ${dataContext.revenueYesterday.toLocaleString("id-ID")} (${dataContext.revenueGrowth >= 0 ? "naik" : "turun"} ${Math.abs(dataContext.revenueGrowth).toFixed(1)}% dari kemarin), Total Saldo Rp ${dataContext.balance.toLocaleString("id-ID")}
-- Inventaris: ${dataContext.lowStockCount} item stok rendah (${dataContext.lowStockNames || "Semua aman"})
-- Reservasi: ${dataContext.todayBookingsCount} booking hari ini
+					content: `Data Bisnis Riil (DETAIL):
+- Keuangan: Omzet Hari Ini Rp ${dataContext.revenueToday.toLocaleString("id-ID")}, Omzet Kemarin Rp ${dataContext.revenueYesterday.toLocaleString("id-ID")} (${dataContext.revenueGrowth >= 0 ? "naik" : "turun"} ${Math.abs(dataContext.revenueGrowth).toFixed(1)}% dari kemarin), Total Saldo Bersih Rp ${dataContext.balance.toLocaleString("id-ID")}
+- Inventaris: ${dataContext.lowStockCount} item stok rendah (${dataContext.lowStockNames || "Semua stok aman"})
+- Reservasi: ${dataContext.todayBookingsCount} booking hari ini ${dataContext.todayBookingsNames ? `(${dataContext.todayBookingsNames})` : ""}
 - Analitik: Produk terlaris saat ini adalah ${dataContext.trendingProduct}
-- Manajemen Tugas: Ada ${dataContext.pendingTasksCount} tugas menunggu di tab Tasks`,
+- Manajemen Tugas: Ada ${dataContext.pendingTasksCount} tugas menunggu ${dataContext.pendingTasksTitles ? `(${dataContext.pendingTasksTitles})` : ""}`,
 				},
 			]);
 		} catch (error) {
@@ -1301,7 +1325,14 @@ ATURAN KETAT:
 				else if (args.localHour >= 15 && args.localHour < 18) greeting = "Selamat sore";
 				else if (args.localHour >= 18 || args.localHour < 4) greeting = "Selamat malam";
 			}
-			return `${greeting}! Kemarin omzet kita Rp 0 (naik 0%). Hari ini semua stok aman dan belum ada reservasi meja. Tetap semangat mengelola toko hari ini! [SUGGEST: 📊 Laporan Lengkap | Berikan laporan performa bisnis saya secara mendalam]`;
+			return `${greeting}! Senang bertemu Anda lagi. Saya siap membantu mengelola toko hari ini.
+
+📊 STATUS BISNIS:
+• Omzet Kemarin: Rp 0
+• Stok: Semua aman
+• Reservasi: Tidak ada booking hari ini
+
+Apa yang ingin Anda lakukan sekarang? [SUGGEST: 📊 Laporan Lengkap | Berikan laporan performa bisnis saya secara mendalam] [SUGGEST: 📦 Cek Stok Rendah | Item apa saja yang stoknya hampir habis?] [SUGGEST: 📅 Cek Reservasi | Tampilkan daftar booking untuk hari ini]`;
 		}
 	},
 });

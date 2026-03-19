@@ -22,6 +22,7 @@ import {
 	ShoppingCart,
 	Sparkles,
 	SquarePlay,
+	Trash2,
 	TrendingDown,
 	TrendingUp,
 	Wallet,
@@ -49,6 +50,12 @@ import {
 	SheetTitle,
 	SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { YumiAIChat } from "@/components/pos/yumi-ai-chat";
@@ -168,22 +175,68 @@ export function MenuSidebar() {
 						<SheetTitle className="text-base font-bold">Menu Operasional</SheetTitle>
 					</SheetHeader>
 					<div className="flex-1 overflow-hidden">
-						{selectedOrder ? (
-							<div className="flex h-full flex-col">
-								<div className="flex items-center gap-2 border-b p-4">
-									<Button
-										className="h-8 w-8"
-										onClick={() => {
-											setSelectedOrder(null);
-											setIsEditMode(false);
-										}}
-										size="icon"
-										variant="ghost"
-									>
-										<ChevronLeft className="h-5 w-5" />
-									</Button>
-									<h3 className="font-bold">Detail Pesanan</h3>
-								</div>
+						<Tabs className="flex h-full flex-col" value={activeTab} onValueChange={setActiveTab}>
+							<div className="bg-muted/20 px-3 pt-3 pb-2">
+								<TabsList className="grid h-16 w-full grid-cols-5 gap-1.5 rounded-xl bg-muted/50 p-1.5">
+									{TABS.map((tab) => {
+										const Icon = tab.icon;
+										return (
+											<TabsTrigger
+												className="relative flex h-full flex-col items-center justify-center gap-1 rounded-lg border-none px-1 py-1 font-medium text-[10px] outline-none transition-all after:hidden hover:bg-muted/50 hover:text-foreground focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm data-active:bg-background data-active:text-primary data-active:shadow-sm sm:text-xs"
+												key={tab.value}
+												value={tab.value}
+											>
+												<Icon className="mb-0.5 h-4 w-4 sm:h-5 sm:w-5" />
+												<span className="leading-none text-[9px] sm:text-[10px]">{tab.label}</span>
+											</TabsTrigger>
+										);
+									})}
+								</TabsList>
+							</div>
+
+							<div className="flex flex-1 flex-col overflow-hidden bg-background">
+								<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="dashboard">
+									<DashboardTab
+										onClose={() => setIsOpen(false)}
+										onNavigate={setActiveTab}
+										onSelectOrder={setSelectedOrder}
+									/>
+								</TabsContent>
+								<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="kas">
+									<KasTab onClose={() => setIsOpen(false)} />
+								</TabsContent>
+								<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="stok">
+									<StokTab setConfirmConfig={setConfirmConfig} />
+								</TabsContent>
+								<TabsContent className="m-0 flex-1 overflow-hidden p-0" value="yumi">
+									<YumiAIChat />
+								</TabsContent>
+								<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="settings">
+									<SettingsTab onClose={() => setIsOpen(false)} />
+								</TabsContent>
+							</div>
+						</Tabs>
+					</div>
+				</SheetContent>
+
+				<Dialog
+					onOpenChange={(open) => {
+						if (!open) {
+							setSelectedOrder(null);
+							setIsEditMode(false);
+						}
+					}}
+					open={!!selectedOrder}
+				>
+					<DialogContent className="max-w-md p-0 overflow-hidden sm:max-w-[440px]">
+						{selectedOrder && (
+							<div className="flex flex-col max-h-[90vh]">
+								<DialogHeader className="border-b p-4">
+									<DialogTitle className="flex items-center gap-2">
+										<ClipboardList className="h-5 w-5 text-primary" />
+										Detail Pesanan
+									</DialogTitle>
+								</DialogHeader>
 								<div className="flex-1 overflow-y-auto">
 									<OrderSimpleDetail
 										isEditMode={isEditMode}
@@ -203,51 +256,9 @@ export function MenuSidebar() {
 									/>
 								</div>
 							</div>
-						) : (
-							<Tabs className="flex h-full flex-col" value={activeTab} onValueChange={setActiveTab}>
-								<div className="bg-muted/20 px-3 pt-3 pb-2">
-									<TabsList className="grid h-16 w-full grid-cols-5 gap-1.5 rounded-xl bg-muted/50 p-1.5">
-										{TABS.map((tab) => {
-											const Icon = tab.icon;
-											return (
-												<TabsTrigger
-													className="relative flex h-full flex-col items-center justify-center gap-1 rounded-lg border-none px-1 py-1 font-medium text-[10px] outline-none transition-all after:hidden hover:bg-muted/50 hover:text-foreground focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm data-active:bg-background data-active:text-primary data-active:shadow-sm sm:text-xs"
-													key={tab.value}
-													value={tab.value}
-												>
-													<Icon className="mb-0.5 h-4 w-4 sm:h-5 sm:w-5" />
-													<span className="leading-none text-[9px] sm:text-[10px]">{tab.label}</span>
-												</TabsTrigger>
-											);
-										})}
-									</TabsList>
-								</div>
-
-								<div className="flex flex-1 flex-col overflow-hidden bg-background">
-									<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="dashboard">
-										<DashboardTab
-											onClose={() => setIsOpen(false)}
-											onNavigate={setActiveTab}
-											onSelectOrder={setSelectedOrder}
-										/>
-									</TabsContent>
-									<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="kas">
-										<KasTab onClose={() => setIsOpen(false)} />
-									</TabsContent>
-									<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="stok">
-										<StokTab setConfirmConfig={setConfirmConfig} />
-									</TabsContent>
-									<TabsContent className="m-0 flex-1 overflow-hidden p-0" value="yumi">
-										<YumiAIChat />
-									</TabsContent>
-									<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="settings">
-										<SettingsTab onClose={() => setIsOpen(false)} />
-									</TabsContent>
-								</div>
-							</Tabs>
 						)}
-					</div>
-				</SheetContent>
+					</DialogContent>
+				</Dialog>
 
 				<ConfirmationModal
 					isOpen={confirmConfig.isOpen}
@@ -380,7 +391,7 @@ function OrderSimpleDetail({
 			<div className="space-y-3">
 				<h4 className="text-xs font-bold uppercase text-muted-foreground">Daftar Item</h4>
 				<div className="space-y-2">
-					{order.items.map((item, idx) => (
+					{order.items.map((item: { quantity: number; productName: string; price: number }, idx: number) => (
 						<div key={idx} className="flex justify-between text-sm">
 							<div className="flex gap-2">
 								<span className="font-bold">{item.quantity}x</span>

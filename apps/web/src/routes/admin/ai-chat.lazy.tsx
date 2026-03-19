@@ -99,6 +99,11 @@ const TEMPLATES: Array<{
 	icon: React.ReactNode;
 }> = [
 	{
+		label: "Briefing Bisnis",
+		message: "Berikan briefing status bisnis saya saat ini",
+		icon: <Sparkles className="h-3.5 w-3.5" />,
+	},
+	{
 		label: "Rekap Hari Ini",
 		message: "Berikan rekap lengkap bisnis hari ini",
 		icon: <TrendingUp className="h-3.5 w-3.5" />,
@@ -195,6 +200,8 @@ function AIChatPage() {
 	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 	const [showSessionHistory, setShowSessionHistory] = useState(false);
 
+	const mkMsgId = () => Math.random().toString(36).substring(2, 11);
+
 	const [isScanMode, setIsScanMode] = useState(false);
 	const [isScanning, setIsScanning] = useState(false);
 	const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -247,8 +254,7 @@ function AIChatPage() {
 	const yumiChat = useAction(api.ai.yumiChat);
 	const scanImageDataAction = useAction(api.ai.scanImageData);
 	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
-	const generateDailyBriefingAction = useAction(api.ai.generateDailyBriefing);
-
+	const generateBusinessBriefingAction = useAction(api.ai.generateBusinessBriefing);
 	const createTransactionMutation = useMutation(api.finance.createTransaction);
 	const createInventoryItemMutation = useMutation(api.inventory.createInventoryItem);
 	const addStockMutation = useMutation(api.inventory.addStock);
@@ -340,7 +346,7 @@ function AIChatPage() {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, []);
 
-	// Daily Morning Briefing Initialization
+	// Business Status Briefing Initialization
 	useEffect(() => {
 		const runBriefing = async () => {
 			if (briefingAttemptedRef.current) return;
@@ -362,7 +368,7 @@ function AIChatPage() {
 					// Small delay to ensure everything is initialized
 					await new Promise(resolve => setTimeout(resolve, 2000));
 					
-					const briefing = await generateDailyBriefingAction({ localHour });
+					const briefing = await generateBusinessBriefingAction({ localHour });
 					console.log("Briefing result:", briefing); // Debug log
 					
 					let fallbackGreeting = "Selamat pagi";
@@ -370,8 +376,15 @@ function AIChatPage() {
 					else if (localHour >= 15 && localHour < 18) fallbackGreeting = "Selamat sore";
 					else if (localHour >= 18 || localHour < 4) fallbackGreeting = "Selamat malam";
 
-					const suggestions = briefing ? extractSuggestions(briefing) : [];
-					const sanitized = briefing ? sanitizeResponse(briefing) : `${fallbackGreeting}! Kemarin omzet kita Rp 0 (naik 0%). Hari ini semua stok aman dan belum ada reservasi meja. Tetap semangat mengelola toko hari ini!`;
+					const suggestions = briefing ? extractSuggestions(briefing) : [{ label: "📊 Laporan Lengkap", prompt: "Berikan laporan performa bisnis saya secara mendalam" }];
+					const sanitized = briefing ? sanitizeResponse(briefing) : `${fallbackGreeting}! Senang bertemu Anda lagi. Saya siap membantu mengelola toko hari ini.
+
+📊 STATUS BISNIS:
+• Omzet Kemarin: Rp 0
+• Stok: Semua aman
+• Reservasi: Tidak ada booking hari ini
+
+Apa yang ingin Anda lakukan sekarang?`;
 
 					// Use streaming for the briefing
 					streamText(sanitized, () => {
@@ -398,7 +411,15 @@ function AIChatPage() {
 						...prev,
 						{
 							role: "assistant",
-							content: `${fallbackGreeting}! Kemarin omzet kita Rp 0 (naik 0%). Hari ini semua stok aman dan belum ada reservasi meja. Tetap semangat mengelola toko hari ini!`,
+							content: `${fallbackGreeting}! Senang bertemu Anda lagi. Saya siap membantu mengelola toko hari ini.
+
+📊 STATUS BISNIS:
+• Omzet Kemarin: Rp 0
+• Stok: Semua aman
+• Reservasi: Tidak ada booking hari ini
+
+Apa yang ingin Anda lakukan sekarang?`,
+							suggestions: [{ label: "📊 Laporan Lengkap", prompt: "Berikan laporan performa bisnis saya secara mendalam" }],
 							_msgId: mkMsgId(),
 						}
 					]);
@@ -409,7 +430,7 @@ function AIChatPage() {
 			}
 		};
 		runBriefing();
-	}, [generateDailyBriefingAction, extractSuggestions, sanitizeResponse, messages.length]);
+	}, [generateBusinessBriefingAction, extractSuggestions, sanitizeResponse, messages.length]);
 
 	// Auto-scroll while streaming
 	useEffect(() => {
@@ -495,7 +516,11 @@ function AIChatPage() {
 
 	const handleExecuteAction = useCallback(async (type: string, data: any, messageId: string) => {
 		const actionKey = `${messageId}-${type}`;
-		setActionButtonLoading(prev => new Set(prev).add(actionKey));
+		setActionButtonLoading(prev => {
+			const next = new Set<string>(prev);
+			next.add(actionKey);
+			return next;
+		});
 		try {
 			if (type === "add_inventory") {
 				for (const item of data.items) {
@@ -531,13 +556,17 @@ function AIChatPage() {
 				}
 				toast.success("Produk baru berhasil dibuat!");
 			}
-			setActionButtonDone(prev => new Set(prev).add(actionKey));
+			setActionButtonDone(prev => {
+				const next = new Set<string>(prev);
+				next.add(actionKey);
+				return next;
+			});
 		} catch (error) {
 			console.error("Action execution error:", error);
 			toast.error("Gagal mengeksekusi aksi.");
 		} finally {
 			setActionButtonLoading(prev => {
-				const next = new Set(prev);
+				const next = new Set<string>(prev);
 				next.delete(actionKey);
 				return next;
 			});
@@ -689,6 +718,29 @@ function AIChatPage() {
 				const history = messages
 					.filter((m) => m.role === "user" || m.role === "assistant")
 					.map((m) => ({ role: m.role, content: m.content }));
+
+				// Special handling for briefing request
+				if (trimmed.toLowerCase().includes("briefing") || trimmed.toLowerCase().includes("status bisnis")) {
+					const localHour = new Date().getHours();
+					const briefing = await generateBusinessBriefingAction({ localHour });
+					if (briefing) {
+						const suggestions = extractSuggestions(briefing);
+						const sanitized = sanitizeResponse(briefing);
+						setIsLoading(false);
+						setLoadingStatus("");
+						streamText(sanitized, () => {
+							const assistantMsg: ChatMessage = {
+								role: "assistant",
+								content: sanitized,
+								suggestions,
+								_msgId: mkMsgId(),
+							};
+							setMessages((prev) => [...prev, assistantMsg]);
+							saveMessage(assistantMsg);
+						});
+						return;
+					}
+				}
 
 				const attachedImages = image ? [image] : selectedImages;
 				const response = await yumiChat({
@@ -951,8 +1003,6 @@ function AIChatPage() {
 			toast.error("Gagal menghapus sesi");
 		}
 	};
-
-	const mkMsgId = () => Math.random().toString(36).substring(2, 11);
 
 	const generateScanActionButtons = useCallback((result: ScanResultData) => {
 		const buttons = [];
