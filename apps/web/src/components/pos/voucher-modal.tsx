@@ -3,6 +3,8 @@ import type { Doc } from "@yumipos/backend/convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Percent, Tag, Ticket, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { AppliedVoucher } from "@/context/cart-context";
 
 interface VoucherModalProps {
@@ -79,6 +81,12 @@ export function VoucherModal({
 	onApplyVoucher,
 	cartTotal,
 }: VoucherModalProps) {
+	const [mounted, setMounted] = useState(false);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+
 	const allDiscounts = useQuery(api.discounts.getDiscounts);
 
 	const availableVouchers =
@@ -103,20 +111,20 @@ export function VoucherModal({
 		onApplyVoucher(null);
 	};
 
-	return (
+	const modalContent = (
 		<AnimatePresence>
 			{isOpen && (
 				<>
 					<motion.div
 						animate={{ opacity: 1 }}
-						className="fixed inset-0 z-[900] bg-black/60 backdrop-blur-md"
+						className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-md"
 						exit={{ opacity: 0 }}
 						initial={{ opacity: 0 }}
 						onClick={onClose}
 					/>
 					<motion.div
 						animate={{ opacity: 1, y: 0 }}
-						className="fixed right-0 bottom-0 left-0 z-[1000] mx-auto max-w-md rounded-t-3xl border border-border bg-card shadow-2xl"
+						className="fixed right-0 bottom-0 left-0 z-[9999] mx-auto max-w-md rounded-t-3xl border border-border bg-card shadow-2xl"
 						exit={{ opacity: 0, y: 100 }}
 						initial={{ opacity: 0, y: 100 }}
 						transition={{ type: "spring", damping: 25, stiffness: 300 }}
@@ -249,4 +257,8 @@ export function VoucherModal({
 			)}
 		</AnimatePresence>
 	);
+
+	if (!mounted) return null;
+
+	return createPortal(modalContent, document.body);
 }

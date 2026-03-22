@@ -1,5 +1,6 @@
 import { Check, Loader2, Minus, Plus, Scissors, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { ScanEditParams } from "./scan-edit-modal";
 
 interface SplitRow {
@@ -64,6 +65,12 @@ export function ScanSplitModal({
 	onBack,
 	onClose,
 }: Props) {
+	const [mounted, setMounted] = useState(false);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+
 	const finalBase = params || propBase;
 	const totalAmount = finalBase?.amount ?? propTotal ?? 0;
 	const transactionType = finalBase?.type ?? propType ?? "expense";
@@ -121,7 +128,7 @@ export function ScanSplitModal({
 			? "text-orange-500"
 			: "text-red-600";
 
-	return (
+	const modalContent = (
 		<div className="fixed inset-0 z-[1000] flex items-end justify-center sm:items-center p-4">
 			<div className="fixed inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
 			<div className="relative z-[1001] w-full max-w-md rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
@@ -248,4 +255,8 @@ export function ScanSplitModal({
 			</div>
 		</div>
 	);
+
+	if (!isOpen || !mounted) return null;
+
+	return createPortal(modalContent, document.body);
 }

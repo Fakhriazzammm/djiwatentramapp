@@ -1,5 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, Trash2, X } from "lucide-react";
+import { AlertTriangle, Trash2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { useEffect, useState } from "react";
 
 interface ConfirmationModalProps {
 	isOpen: boolean;
@@ -22,6 +24,12 @@ export function ConfirmationModal({
 	cancelText = "Batal",
 	variant = "danger",
 }: ConfirmationModalProps) {
+	const [mounted, setMounted] = useState(false);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+
 	const variantConfig = {
 		danger: {
 			icon: Trash2,
@@ -47,10 +55,10 @@ export function ConfirmationModal({
 	const config = variantConfig[variant];
 	const Icon = config.icon;
 
-	return (
+	const modalContent = (
 		<AnimatePresence>
 			{isOpen && (
-				<div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+				<div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
 					{/* Backdrop */}
 					<motion.div
 						animate={{ opacity: 1 }}
@@ -102,4 +110,8 @@ export function ConfirmationModal({
 			)}
 		</AnimatePresence>
 	);
+
+	if (!mounted) return null;
+
+	return createPortal(modalContent, document.body);
 }

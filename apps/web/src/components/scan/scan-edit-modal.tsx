@@ -1,5 +1,7 @@
 import { Check, Edit3, Loader2, Scissors, X } from "lucide-react";
-import { useState } from "react";
+import { Check, Edit3, Loader2, Scissors, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 export interface ScanEditParams {
 	type: "income" | "expense";
@@ -48,7 +50,12 @@ const INCOME_CATEGORIES = [
 const PAYMENT_METHODS = ["cash", "qris", "card", "transfer"];
 
 export function ScanEditModal({ isOpen, params, onSave, onSplit, onClose }: Props) {
-	const [form, setForm] = useState<ScanEditParams>({ ...params });
+	const [mounted, setMounted] = useState(false);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+
 	const [isSaving, setIsSaving] = useState(false);
 
 	if (isOpen === false) return null;
@@ -69,7 +76,7 @@ export function ScanEditModal({ isOpen, params, onSave, onSplit, onClose }: Prop
 		? new Date(form.date).toISOString().slice(0, 10)
 		: new Date().toISOString().slice(0, 10);
 
-	return (
+	const modalContent = (
 		<div className="fixed inset-0 z-[1000] flex items-end justify-center sm:items-center p-4">
 			<div className="fixed inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
 			<div className="relative z-[1001] w-full max-w-md rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
@@ -241,4 +248,8 @@ export function ScanEditModal({ isOpen, params, onSave, onSplit, onClose }: Prop
 			</div>
 		</div>
 	);
+
+	if (!isOpen || !mounted) return null;
+
+	return createPortal(modalContent, document.body);
 }

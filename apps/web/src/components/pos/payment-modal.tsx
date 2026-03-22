@@ -16,6 +16,7 @@ import {
 	ShoppingBag
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { IconButton } from "@/components/ui/icon";
 import { ShimmerSkeleton } from "@/components/ui/loading-state";
 import { useCart } from "@/context/cart-context";
@@ -44,6 +45,12 @@ export function PaymentConfirmationModal({
 	onConfirm,
 	isSubmitting,
 }: PaymentModalProps) {
+	const [mounted, setMounted] = useState(false);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+
 	const { items, totalAmount } = useCart();
 	const allActiveDiscounts = useQuery(api.discounts.getActiveDiscounts);
 	const siteSettings = useQuery(api.site_settings.getSettings);
@@ -237,15 +244,16 @@ export function PaymentConfirmationModal({
 		return null;
 	}
 
-	return (
+	const modalContent = (
 		<AnimatePresence>
-			<div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-md">
-				<motion.div
-					animate={{ opacity: 1, scale: 1, y: 0 }}
-					className="relative flex w-full max-w-md max-h-[95vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
-					exit={{ opacity: 0, scale: 0.95, y: 10 }}
-					initial={{ opacity: 0, scale: 0.95, y: 10 }}
-				>
+			{isOpen && (
+				<div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-md">
+					<motion.div
+						animate={{ opacity: 1, scale: 1, y: 0 }}
+						className="relative flex w-full max-w-md max-h-[95vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+						exit={{ opacity: 0, scale: 0.95, y: 10 }}
+						initial={{ opacity: 0, scale: 0.95, y: 10 }}
+					>
 					{/* Close Button */}
 					<IconButton
 						aria-label="Tutup modal pembayaran"
@@ -608,6 +616,11 @@ export function PaymentConfirmationModal({
 					</div>
 				</motion.div>
 			</div>
+			)}
 		</AnimatePresence>
 	);
+
+	if (!mounted) return null;
+
+	return createPortal(modalContent, document.body);
 }

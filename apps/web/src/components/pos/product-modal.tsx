@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, ShoppingCart, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { IconButton } from "@/components/ui/icon";
 import { useCart } from "@/context/cart-context";
 
@@ -21,6 +22,12 @@ export function ProductModal({
 	isOpen: boolean;
 	onClose: () => void;
 }) {
+	const [mounted, setMounted] = useState(false);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+
 	const [quantity, setQuantity] = useState(1);
 	const [variant, setVariant] = useState({ size: "Regular", temp: "Iced" });
 	const { addToCart } = useCart();
@@ -44,14 +51,14 @@ export function ProductModal({
 	const updateSize = (size: string) => setVariant({ ...variant, size });
 	const updateTemp = (temp: string) => setVariant({ ...variant, temp });
 
-	return (
+	const modalContent = (
 		<AnimatePresence>
 			{isOpen && product && (
 				<>
 					{/* Backdrop */}
 					<motion.div
 						animate={{ opacity: 1 }}
-						className="fixed inset-0 z-[900] bg-black/60 backdrop-blur-md"
+						className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-md"
 						exit={{ opacity: 0 }}
 						initial={{ opacity: 0 }}
 						onClick={onClose}
@@ -62,7 +69,7 @@ export function ProductModal({
 						animate={{ opacity: 1, scale: 1, y: 0 }}
 						aria-labelledby="product-modal-title"
 						aria-modal="true"
-						className="fixed inset-0 z-[1000] m-auto flex h-fit max-h-[90vh] w-[90%] max-w-lg flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+						className="fixed inset-0 z-[9999] m-auto flex h-fit max-h-[90vh] w-[90%] max-w-lg flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
 						exit={{ opacity: 0, scale: 0.9, y: 20 }}
 						initial={{ opacity: 0, scale: 0.9, y: 20 }}
 						role="dialog"
@@ -213,4 +220,8 @@ export function ProductModal({
 			)}
 		</AnimatePresence>
 	);
+
+	if (!mounted) return null;
+
+	return createPortal(modalContent, document.body);
 }
