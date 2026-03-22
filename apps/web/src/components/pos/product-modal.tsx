@@ -51,7 +51,7 @@ export function ProductModal({
 					{/* Backdrop */}
 					<motion.div
 						animate={{ opacity: 1 }}
-						className="fixed inset-0 z-40 bg-black/40 backdrop-blur-md"
+						className="fixed inset-0 z-[900] bg-black/60 backdrop-blur-md"
 						exit={{ opacity: 0 }}
 						initial={{ opacity: 0 }}
 						onClick={onClose}
@@ -62,7 +62,7 @@ export function ProductModal({
 						animate={{ opacity: 1, scale: 1, y: 0 }}
 						aria-labelledby="product-modal-title"
 						aria-modal="true"
-						className="fixed inset-0 z-50 m-auto flex h-fit max-h-[90vh] w-[90%] max-w-lg flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+						className="fixed inset-0 z-[1000] m-auto flex h-fit max-h-[90vh] w-[90%] max-w-lg flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
 						exit={{ opacity: 0, scale: 0.9, y: 20 }}
 						initial={{ opacity: 0, scale: 0.9, y: 20 }}
 						role="dialog"

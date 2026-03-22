@@ -82,7 +82,7 @@ export function VoucherModal({
 	const allDiscounts = useQuery(api.discounts.getDiscounts);
 
 	const availableVouchers =
-		allDiscounts?.filter((d) => isVoucherAvailable(d).available) || [];
+		allDiscounts?.filter((d: Doc<"discounts">) => isVoucherAvailable(d).available) || [];
 
 	const handleSelectVoucher = (discount: Doc<"discounts">) => {
 		if (appliedVoucher?._id === discount._id) {
@@ -109,14 +109,14 @@ export function VoucherModal({
 				<>
 					<motion.div
 						animate={{ opacity: 1 }}
-						className="fixed inset-0 z-50 bg-black/40 backdrop-blur-md"
+						className="fixed inset-0 z-[900] bg-black/60 backdrop-blur-md"
 						exit={{ opacity: 0 }}
 						initial={{ opacity: 0 }}
 						onClick={onClose}
 					/>
 					<motion.div
 						animate={{ opacity: 1, y: 0 }}
-						className="fixed right-0 bottom-0 left-0 z-50 mx-auto max-w-md rounded-t-3xl border border-border bg-card shadow-2xl"
+						className="fixed right-0 bottom-0 left-0 z-[1000] mx-auto max-w-md rounded-t-3xl border border-border bg-card shadow-2xl"
 						exit={{ opacity: 0, y: 100 }}
 						initial={{ opacity: 0, y: 100 }}
 						transition={{ type: "spring", damping: 25, stiffness: 300 }}
@@ -156,7 +156,7 @@ export function VoucherModal({
 										</p>
 									</div>
 								) : (
-									availableVouchers.map((discount) => {
+									availableVouchers.map((discount: Doc<"discounts">) => {
 										const isSelected = appliedVoucher?._id === discount._id;
 										const meetsMinOrder = discount.minOrderValue
 											? cartTotal >= discount.minOrderValue

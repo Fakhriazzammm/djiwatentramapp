@@ -239,7 +239,7 @@ export function PaymentConfirmationModal({
 
 	return (
 		<AnimatePresence>
-			<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-sm">
+			<div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-md">
 				<motion.div
 					animate={{ opacity: 1, scale: 1, y: 0 }}
 					className="relative flex w-full max-w-md max-h-[95vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"

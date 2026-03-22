@@ -34,7 +34,7 @@ import {
 	SheetTitle,
 	SheetTrigger,
 } from "@/components/ui/sheet";
-import { bluetoothPrinter } from "@/lib/bluetooth-printer";
+import { bluetoothPrinter, type OrderItem } from "@/lib/bluetooth-printer";
 
 type FilterType =
 	| "today"
@@ -239,20 +239,28 @@ export function TransactionHistorySidebar() {
 
 		try {
 			toast.loading("Mencetak struk...", { id: "printing" });
+			const items = order.items.map((i: (typeof order.items)[0]) => ({
+				productId: i.productId,
+				name: i.productName,
+				variant: i.variant,
+				price: i.price,
+				quantity: i.quantity,
+			}));
+			const subtotal = items.reduce((sum: number, item: OrderItem) => sum + item.price * item.quantity, 0);
+
 			await bluetoothPrinter.print(
 				{
 					orderNumber: order.orderNumber,
-					items: order.items.map((i: (typeof order.items)[0]) => ({
-						productId: i.productId,
-						name: i.productName,
-						variant: i.variant,
-						price: i.price,
-						quantity: i.quantity,
-					})),
+					items,
 					totalAmount: order.totalAmount,
+					subtotal,
+					discountAmount: order.discountAmount,
 					paymentMethod: order.paymentMethod,
 					createdAt: order.createdAt,
 					customerName: order.customerName,
+					orderType: order.orderType,
+					tableNumber: order.tableNumber,
+					notes: order.notes,
 				},
 				{
 					storeName: siteSettings.storeName,
@@ -581,7 +589,6 @@ function OrderDetailView({
 									variant="ghost"
 								>
 									<Trash2 className="h-4 w-4" />
-									<span className="sr-only">Hapus</span>
 								</Button>
 							</>
 						)}
@@ -641,7 +648,7 @@ function OrderDetailView({
 						<div className="space-y-2">
 							<Label className="text-muted-foreground">Metode Pembayaran</Label>
 							{isEditMode ? (
-								<Select onValueChange={(v: string) => setPaymentMethod(v)} value={paymentMethod}>
+								<Select onValueChange={(v) => v && setPaymentMethod(v)} value={paymentMethod}>
 									<SelectTrigger>
 										<SelectValue placeholder="Pilih Metode" />
 									</SelectTrigger>
@@ -659,7 +666,7 @@ function OrderDetailView({
 						<div className="space-y-2">
 							<Label className="text-muted-foreground">Status Pesanan</Label>
 							{isEditMode ? (
-								<Select onValueChange={(v: any) => setStatus(v)} value={status}>
+								<Select onValueChange={(v) => v && setStatus(v as any)} value={status}>
 									<SelectTrigger>
 										<SelectValue placeholder="Pilih Status" />
 									</SelectTrigger>

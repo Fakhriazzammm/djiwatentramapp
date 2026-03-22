@@ -153,6 +153,12 @@ export class BluetoothPrinterService {
 			createdAt: number;
 			customerName?: string;
 			notes?: string;
+			orderType?: string;
+			tableNumber?: string;
+			subtotal?: number;
+			discountAmount?: number;
+			taxAmount?: number;
+			serviceChargeAmount?: number;
 		},
 		settings: ReceiptSettings
 	) {
@@ -183,13 +189,11 @@ export class BluetoothPrinterService {
 		const fontSize = settings.receiptFontSize || "normal";
 		if (fontSize === "large") {
 			result.size("double");
-		} else if (fontSize === "small") {
-			result.size("normal"); // esc-pos-encoder doesn't have "small" size easily via size()
 		} else {
 			result.size("normal");
 		}
 
-		result.line(headerText);
+		result.bold(true).line(headerText).bold(false);
 		result.size("normal"); // Reset size for rest of receipt
 
 		// Address & Phone
@@ -201,69 +205,107 @@ export class BluetoothPrinterService {
 		}
 
 		result.line("--------------------------------");
+		
+		// Order Summary Row (Order No & Date)
 		result.align("left");
-
-		// Order Info
 		if (settings.receiptShowOrderNumber) {
-			result.line(`No. Antrian: ${order.orderNumber}`);
+			result.line(`ID: ${order.orderNumber}`);
 		}
 		
-		result.line(`Tgl: ${new Date(order.createdAt).toLocaleString("id-ID")}`);
-		result.line(`Metode: ${order.paymentMethod.toUpperCase()}`);
+		const dateStr = new Date(order.createdAt).toLocaleString("id-ID", {
+			day: "2-digit",
+			month: "2-digit",
+			year: "2-digit",
+			hour: "2-digit",
+			minute: "2-digit"
+		});
+		
+		result.line(`TGL: ${dateStr}`);
+		result.line(`METODE: ${order.paymentMethod.toUpperCase()}`);
 
 		// Order Type & Table
-		if (order.orderType) {
-			const typeLabel = order.orderType === "dine_in" ? "MAKAN DI SINI" : "BAWA PULANG";
+		const orderType = order.orderType || settings.orderType;
+		const tableNumber = order.tableNumber || settings.tableNumber;
+		
+		if (orderType) {
+			const typeLabel = orderType === "dine_in" ? "MAKAN DI SINI" : "BAWA PULANG";
 			result.bold(true).line(typeLabel).bold(false);
 		}
 		
-		if (order.tableNumber) {
-			result.line(`Meja: ${order.tableNumber}`);
+		if (tableNumber) {
+			result.line(`MEJA: ${tableNumber}`);
 		}
 
 		// Customer Name
 		if (settings.receiptShowCustomerName && order.customerName) {
-			result.line(`Pelanggan: ${order.customerName}`);
+			result.line(`PELANGGAN: ${order.customerName.toUpperCase()}`);
 		}
 
 		result.line("--------------------------------");
 
+		// Items Header (Optional but makes it look pro)
+		// result.line("QTY  ITEM                TOTAL");
+
 		// Items
 		for (const item of order.items) {
-			const name =
-				item.name.length > 20 ? `${item.name.substring(0, 17)}...` : item.name;
-			const priceStr = new Intl.NumberFormat("id-ID").format(item.price);
-			const totalStr = new Intl.NumberFormat("id-ID").format(
-				item.price * item.quantity
-			);
-
-			result.line(`${name}`);
-			result.line(
-				`${item.quantity} x ${priceStr.padStart(10)}    ${totalStr.padStart(10)}`
-			);
+			const qtyStr = `${item.quantity}x`.padEnd(4);
+			const priceStr = new Intl.NumberFormat("id-ID").format(item.price * item.quantity);
+			
+			// Compact multi-line for items
+			result.bold(true).line(item.name.toUpperCase()).bold(false);
+			
+			// Details line: "1x @15.000             15.000"
+			const unitPrice = `@${new Intl.NumberFormat("id-ID").format(item.price)}`;
+			const detailsLine = `${qtyStr} ${unitPrice.padEnd(10)} ${priceStr.padStart(15)}`;
+			result.line(detailsLine);
 		}
+
+		result.line("--------------------------------");
+
+		// Breakdown (Subtotal, Discount, Tax, etc.)
+		const formatCurrency = (val: number) => new Intl.NumberFormat("id-ID").format(val);
+		const padLabel = (label: string, val: string) => {
+			const spaces = 32 - label.length - val.length;
+			return label + " ".repeat(Math.max(1, spaces)) + val;
+		};
+
+		if (order.subtotal !== undefined) {
+			result.line(padLabel("SUBTOTAL", formatCurrency(order.subtotal)));
+		}
+
+		if (order.discountAmount && order.discountAmount > 0) {
+			result.line(padLabel("DISKON", `-${formatCurrency(order.discountAmount)}`));
+		}
+
+		if (order.serviceChargeAmount && order.serviceChargeAmount > 0) {
+			result.line(padLabel("LAYANAN", formatCurrency(order.serviceChargeAmount)));
+		}
+
+		if (order.taxAmount && order.taxAmount > 0) {
+			result.line(padLabel("PAJAK", formatCurrency(order.taxAmount)));
+		}
+
+		// Final Total
+		result
+			.line("--------------------------------")
+			.bold(true)
+			.line(padLabel("TOTAL", `Rp ${formatCurrency(order.totalAmount)}`))
+			.bold(false);
 
 		// Notes
 		if (settings.receiptShowNotes && order.notes) {
-			result.line("--------------------------------");
+			result.line(" ");
 			result.bold(true).line("CATATAN:").bold(false);
 			result.line(order.notes);
 		}
 
+		// Footer
 		result
-			.line("--------------------------------")
-			.align("right")
-			.bold(true)
-			.line(
-				`TOTAL: Rp ${new Intl.NumberFormat("id-ID").format(order.totalAmount)}`
-			)
-			.bold(false)
+			.line(" ")
 			.align("center")
+			.line(settings.receiptFooter || "TERIMA KASIH!")
 			.line(" ")
-			.line(settings.receiptFooter || "Terima Kasih!")
 			.line(" ")
-			.line(" ")
-			.line(" ") // Additional spacing before cut
 			.cut();
 
 		const buffer = result.encode();

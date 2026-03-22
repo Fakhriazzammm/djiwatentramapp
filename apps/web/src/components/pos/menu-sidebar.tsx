@@ -353,7 +353,7 @@ function OrderSimpleDetail({
 				<div className="space-y-1.5">
 					<Label className="text-[10px] uppercase text-muted-foreground">Metode</Label>
 					{isEditMode ? (
-						<Select value={paymentMethod} onValueChange={(v: string) => setPaymentMethod(v)}>
+						<Select value={paymentMethod} onValueChange={(v) => v && setPaymentMethod(v)}>
 							<SelectTrigger className="h-9">
 								<SelectValue />
 							</SelectTrigger>
@@ -371,7 +371,7 @@ function OrderSimpleDetail({
 				<div className="space-y-1.5">
 					<Label className="text-[10px] uppercase text-muted-foreground">Status</Label>
 					{isEditMode ? (
-						<Select value={status} onValueChange={(v: any) => setStatus(v)}>
+						<Select value={status} onValueChange={(v) => v && setStatus(v as any)}>
 							<SelectTrigger className="h-9">
 								<SelectValue />
 							</SelectTrigger>

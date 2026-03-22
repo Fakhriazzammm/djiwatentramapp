@@ -737,7 +737,7 @@ function MenuPage() {
 			});
 
 			const orderDetails = {
-				orderNumber: `ORD-${Date.now().toString().slice(-4)}`,
+				orderNumber: `ORDER-${Date.now().toString().slice(-4)}`,
 				items: items.map((i) => ({
 					productId: i.productId,
 					name: i.name,
@@ -746,11 +746,17 @@ function MenuPage() {
 					quantity: i.quantity,
 				})),
 				totalAmount: finalAmount,
+				subtotal: totalAmount,
+				discountAmount,
+				taxAmount,
+				serviceChargeAmount,
 				paymentMethod: paymentMethod,
 				createdAt: Date.now(),
-				customerName: "Pelanggan",
-				tableNumber: extraOrderData?.tableNumber,
+				customerName: extraOrderData?.tableNumber
+					? `Meja ${extraOrderData.tableNumber}`
+					: "Pelanggan",
 				orderType: extraOrderData?.orderType,
+				tableNumber: extraOrderData?.tableNumber,
 				notes: extraOrderData?.notes,
 			};
 

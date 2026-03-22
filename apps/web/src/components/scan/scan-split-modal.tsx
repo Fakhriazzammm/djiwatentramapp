@@ -122,9 +122,9 @@ export function ScanSplitModal({
 			: "text-red-600";
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-			<div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-			<div className="relative z-50 w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
+		<div className="fixed inset-0 z-[1000] flex items-end justify-center sm:items-center p-4">
+			<div className="fixed inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
+			<div className="relative z-[1001] w-full max-w-md rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
 				{/* Header */}
 				<div className="flex items-center justify-between border-b border-border px-4 py-3">
 					<div className="flex items-center gap-2">
