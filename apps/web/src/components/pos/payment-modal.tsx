@@ -53,29 +53,6 @@ export function PaymentConfirmationModal({
 	);
 	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("tunai");
 	
-	// New Fields
-	const [orderType, setOrderType] = useState<"dine_in" | "takeaway">("dine_in");
-	const [tableNumber, setTableNumber] = useState("");
-	const [notes, setNotes] = useState("");
-	const [autoComplete, setAutoComplete] = useState(true);
-
-	// Cash Assistant State
-	const [cashReceived, setCashReceived] = useState<number | "">("");
-	const [changeAmount, setChangeAmount] = useState<number>(0);
-
-	// Calculate change whenever cashReceived or finalTotal changes
-	useEffect(() => {
-		if (typeof cashReceived === "number" && cashReceived >= finalTotal) {
-			setChangeAmount(cashReceived - finalTotal);
-		} else {
-			setChangeAmount(0);
-		}
-	}, [cashReceived, finalTotal]);
-
-	const handleQuickCash = (amount: number) => {
-		setCashReceived(amount);
-	};
-
 	// Filter discounts based on time/date/target applicability
 	const validDiscounts = useMemo(() => {
 		if (!allActiveDiscounts) {
@@ -199,6 +176,29 @@ export function PaymentConfirmationModal({
 	const taxAmount = subTotalAfterDiscount * (taxRate / 100);
 
 	const finalTotal = subTotalAfterDiscount + serviceChargeAmount + taxAmount;
+
+	// New Fields
+	const [orderType, setOrderType] = useState<"dine_in" | "takeaway">("dine_in");
+	const [tableNumber, setTableNumber] = useState("");
+	const [notes, setNotes] = useState("");
+	const [autoComplete, setAutoComplete] = useState(true);
+
+	// Cash Assistant State
+	const [cashReceived, setCashReceived] = useState<number | "">("");
+	const [changeAmount, setChangeAmount] = useState<number>(0);
+
+	// Calculate change whenever cashReceived or finalTotal changes
+	useEffect(() => {
+		if (typeof cashReceived === "number" && cashReceived >= finalTotal) {
+			setChangeAmount(cashReceived - finalTotal);
+		} else {
+			setChangeAmount(0);
+		}
+	}, [cashReceived, finalTotal]);
+
+	const handleQuickCash = (amount: number) => {
+		setCashReceived(amount);
+	};
 
 	// Opsi Pembayaran Dinamis
 	const paymentOptions = useMemo(() => {

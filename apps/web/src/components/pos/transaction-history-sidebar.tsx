@@ -5,7 +5,7 @@ import {
 	ChevronLeft,
 	ClipboardList,
 	History,
-	Loader,
+	Loader2,
 	Pencil,
 	Printer,
 	Save,

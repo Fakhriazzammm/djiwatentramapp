@@ -42,20 +42,6 @@ const formatCurrency = (amount: number) =>
 		maximumFractionDigits: 0,
 	}).format(amount);
 
-function getPayButtonLabel(
-	isSubmitting: boolean,
-	hasItems: boolean,
-	totalItems: number
-) {
-	if (isSubmitting) {
-		return "...";
-	}
-	if (hasItems) {
-		return `Bayar (${totalItems})`;
-	}
-	return "Bayar";
-}
-
 // ============================================
 // Cart Item Row
 // ============================================
@@ -570,56 +556,69 @@ function MobileCartDrawer({
 }
 
 // ============================================
-// Flying Item Animation
-// ============================================
-function FlyingItem({ 
-	startPos, 
-	targetPos, 
-	image, 
-	onComplete 
-}: { 
-	startPos: { x: number, y: number }, 
-	targetPos: { x: number, y: number }, 
-	image?: string,
-	onComplete: () => void 
-}) {
-	return (
-		<motion.div
-			initial={{ 
-				x: startPos.x, 
-				y: startPos.y, 
-				scale: 1, 
-				opacity: 1,
-				zIndex: 100 
-			}}
-			animate={{ 
-				x: targetPos.x - 20, 
-				y: targetPos.y - 20, 
-				scale: 0.2, 
-				opacity: 0.5,
-				transition: { 
-					duration: 0.6, 
-					ease: [0.16, 1, 0.3, 1] // Custom cubic-bezier for smooth arc-like feel
-				}
-			}}
-			onAnimationComplete={onComplete}
-			className="fixed left-0 top-0 pointer-events-none"
-		>
-			<div className="h-16 w-16 overflow-hidden rounded-full border-2 border-primary bg-white shadow-xl flex items-center justify-center">
-				{image ? (
-					<img src={image} alt="" className="h-full w-full object-cover" />
-				) : (
-					<div className="h-full w-full bg-primary/10" />
-				)}
-			</div>
-		</motion.div>
-	);
+
+function getPayButtonLabel(
+	isSubmitting: boolean,
+	hasItems: boolean,
+	totalItems: number
+) {
+	if (isSubmitting) {
+		return "Memproses...";
+	}
+	if (!hasItems) {
+		return "Bayar";
+	}
+	return `Bayar (${totalItems} Item)`;
 }
 
-// ============================================
-// Main Page
-// ============================================
 function MenuPage() {
+	// ============================================
+	// Flying Item Animation
+	// ============================================
+	function FlyingItem({ 
+		startPos, 
+		targetPos, 
+		image, 
+		onComplete 
+	}: { 
+		startPos: { x: number, y: number }, 
+		targetPos: { x: number, y: number }, 
+		image?: string,
+		onComplete: () => void 
+	}) {
+		return (
+			<motion.div
+				initial={{ 
+					x: startPos.x, 
+					y: startPos.y, 
+					scale: 1, 
+					opacity: 1,
+					zIndex: 100 
+				}}
+				animate={{ 
+					x: targetPos.x - 20, 
+					y: targetPos.y - 20, 
+					scale: 0.2, 
+					opacity: 0.5,
+					transition: { 
+						duration: 0.6, 
+						ease: [0.16, 1, 0.3, 1] // Custom cubic-bezier for smooth arc-like feel
+					}
+				}}
+				onAnimationComplete={onComplete}
+				className="fixed left-0 top-0 pointer-events-none"
+			>
+				<div className="h-16 w-16 overflow-hidden rounded-full border-2 border-primary bg-white shadow-xl flex items-center justify-center">
+					{image ? (
+						<img src={image} alt="" className="h-full w-full object-cover" />
+					) : (
+						<div className="h-full w-full bg-primary/10" />
+					)}
+				</div>
+			</motion.div>
+		);
+	}
+
 	const categories = useQuery(api.products.getCategories);
 	const siteSettings = useQuery(api.site_settings.getSettings);
 	const activeDiscounts = useQuery(api.discounts.getActiveDiscounts);

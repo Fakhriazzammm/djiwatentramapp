@@ -1,5 +1,5 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import {
 	ArrowUpCircle,
 	BarChart2,
@@ -71,58 +71,59 @@ interface ChatMessage {
 	actionButtons?: ScanActionButton[];
 }
 
-const CASIER_TEMPLATES = [
-	{
-		label: "Briefing Bisnis",
-		message: "Berikan briefing status bisnis saya saat ini",
-		icon: <Sparkles className="h-3.5 w-3.5 text-primary" />,
-		category: "report",
-	},
-	{
-		label: "Pemasukan",
-		message: "Saya ingin mencatat pemasukan",
-		icon: <TrendingUp className="h-3.5 w-3.5 text-primary" />,
-		category: "income",
-	},
-	{
-		label: "Pengeluaran",
-		message: "Saya ingin mencatat pengeluaran",
-		icon: <TrendingDown className="h-3.5 w-3.5 text-destructive" />,
-		category: "expense",
-	},
-	{
-		label: "Stok Habis",
-		message: "Item stok apa saja yang hampir habis?",
-		icon: <ShoppingCart className="h-3.5 w-3.5 text-accent" />,
-		category: "stock",
-	},
-	{
-		label: "Rekap Hari Ini",
-		message: "Berikan rekap penjualan hari ini",
-		icon: <Wallet className="h-3.5 w-3.5 text-primary" />,
-		category: "report",
-	},
-	{
-		label: "Tambah Stok",
-		message: "Saya ingin menambah stok item",
-		icon: <PlusCircle className="h-3.5 w-3.5 text-primary" />,
-		category: "stock",
-	},
-	{
-		label: "Laporan Kas",
-		message: "Bagaimana kondisi kas hari ini?",
-		icon: <ArrowUpCircle className="h-3.5 w-3.5 text-primary" />,
-		category: "report",
-	},
-	{
-		label: "Laba Rugi",
-		message: "Berikan ringkasan laba rugi hari ini: pendapatan, HPP, beban, dan laba bersih",
-		icon: <BarChart2 className="h-3.5 w-3.5 text-green-600" />,
-		category: "report",
-	},
-];
-
 export function YumiAIChat() {
+	const siteSettings = useQuery(api.site_settings.getSettings);
+
+	const CASIER_TEMPLATES = [
+		{
+			label: "Briefing Bisnis",
+			message: "Berikan briefing status bisnis saya saat ini",
+			icon: <Sparkles className="h-3.5 w-3.5 text-primary" />,
+			category: "report",
+		},
+		{
+			label: "Pemasukan",
+			message: "Saya ingin mencatat pemasukan",
+			icon: <TrendingUp className="h-3.5 w-3.5 text-primary" />,
+			category: "income",
+		},
+		{
+			label: "Pengeluaran",
+			message: "Saya ingin mencatat pengeluaran",
+			icon: <TrendingDown className="h-3.5 w-3.5 text-destructive" />,
+			category: "expense",
+		},
+		{
+			label: "Stok Habis",
+			message: "Item stok apa saja yang hampir habis?",
+			icon: <ShoppingCart className="h-3.5 w-3.5 text-accent" />,
+			category: "stock",
+		},
+		{
+			label: "Rekap Hari Ini",
+			message: "Berikan rekap penjualan saya hari ini",
+			icon: <BarChart2 className="h-3.5 w-3.5 text-primary" />,
+			category: "report",
+		},
+		{
+			label: "Tambah Stok",
+			message: "Saya ingin menambah stok item",
+			icon: <PlusCircle className="h-3.5 w-3.5 text-primary" />,
+			category: "stock",
+		},
+		{
+			label: "Laporan Kas",
+			message: "Bagaimana kondisi kas hari ini?",
+			icon: <ArrowUpCircle className="h-3.5 w-3.5 text-primary" />,
+			category: "report",
+		},
+		{
+			label: "Laba Rugi",
+			message: "Berikan ringkasan laba rugi hari ini: pendapatan, HPP, beban, dan laba bersih",
+			icon: <BarChart2 className="h-3.5 w-3.5 text-green-600" />,
+			category: "report",
+		},
+	];
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);

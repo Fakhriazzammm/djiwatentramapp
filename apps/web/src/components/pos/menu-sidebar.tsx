@@ -76,30 +76,30 @@ interface TabItem {
 	iconColor: string;
 }
 
-const TABS: TabItem[] = [
-	{
-		value: "dashboard",
-		label: "Dashboard",
-		icon: BarChart3,
-		iconColor: "text-primary",
-	},
-	{ value: "kas", label: "Kas", icon: Wallet, iconColor: "text-primary" },
-	{ value: "stok", label: "Stok", icon: Package, iconColor: "text-accent" },
-	{
-		value: "yumi",
-		label: "Yumi AI",
-		icon: Bot,
-		iconColor: "text-primary",
-	},
-	{
-		value: "settings",
-		label: "Pengaturan",
-		icon: Settings2,
-		iconColor: "text-muted-foreground",
-	},
-];
-
 export function MenuSidebar() {
+	const TABS: TabItem[] = [
+		{
+			value: "dashboard",
+			label: "Dashboard",
+			icon: BarChart3,
+			iconColor: "text-primary",
+		},
+		{ value: "kas", label: "Kas", icon: Wallet, iconColor: "text-primary" },
+		{ value: "stok", label: "Stok", icon: Package, iconColor: "text-accent" },
+		{
+			value: "yumi",
+			label: "Yumi AI",
+			icon: Bot,
+			iconColor: "text-primary",
+		},
+		{
+			value: "settings",
+			label: "Pengaturan",
+			icon: Settings2,
+			iconColor: "text-muted-foreground",
+		},
+	];
+
 	const [isOpen, setIsOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState("dashboard");
 	const [selectedOrder, setSelectedOrder] = useState<Doc<"orders"> | null>(null);

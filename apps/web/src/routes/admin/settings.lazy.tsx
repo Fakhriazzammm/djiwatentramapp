@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import {
 	Bell,
 	CreditCard,
-	Layout,
+	Layout as LayoutIcon,
 	MapPin,
 	Printer,
 	Save,
@@ -1441,7 +1441,7 @@ function SettingsPage() {
 							<section className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-sm md:space-y-8 md:p-8">
 								<div className="flex items-center gap-4">
 									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-										<Layout className="h-6 w-6" />
+										<LayoutIcon className="h-6 w-6" />
 									</div>
 									<div>
 										<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
