@@ -7,7 +7,7 @@ import {
 	X, 
 	Wallet, 
 	QrCode, 
-	BuildingBank, 
+	Landmark, 
 	Zap, 
 	ChevronRight, 
 	Calculator,
@@ -439,7 +439,7 @@ export function PaymentConfirmationModal({
 									const isSelected = selectedPaymentMethod === opt.id;
 									let Icon = Wallet;
 									if (opt.id === "qris" || opt.id === "qris_mayar") Icon = QrCode;
-									if (opt.id === "transfer") Icon = BuildingBank;
+									if (opt.id === "transfer") Icon = Landmark;
 
 									return (
 										<button
