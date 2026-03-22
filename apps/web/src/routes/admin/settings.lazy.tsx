@@ -1438,29 +1438,6 @@ function SettingsPage() {
 											</button>
 										)}
 									</div>
-									
-									{/* Receipt Footer Field */}
-									<div className="space-y-2 pt-2 border-t border-border/50 mt-4 px-1">
-										<label
-											className="font-medium text-muted-foreground text-xs uppercase tracking-widest"
-											htmlFor="receipt-footer"
-										>
-											Pesan Bawah Struk (Footer)
-										</label>
-										<textarea
-											className="min-h-[80px] w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-											id="receipt-footer"
-											onChange={(e) =>
-												setSettings({
-													...settings,
-													receiptFooter: e.target.value,
-												})
-											}
-											placeholder="Terima kasih atas kunjungan Anda! WiFi: KopiKita123"
-											value={settings.receiptFooter}
-										/>
-										<p className="text-[10px] text-muted-foreground leading-relaxed">Pesan ini akan tercetak di bagian bawah setiap struk kasir dan kitchen.</p>
-									</div>
 								</div>
 							</section>
 
@@ -1496,6 +1473,25 @@ function SettingsPage() {
 										<p className="text-[10px] text-muted-foreground">Jika diisi, teks ini akan menggantikan Nama Toko di bagian paling atas struk.</p>
 									</div>
 
+									{/* Footer Text */}
+									<div className="space-y-2">
+										<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+											Teks Footer Kustom
+										</label>
+										<textarea
+											className="min-h-[80px] w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											onChange={(e) =>
+												setSettings({
+													...settings,
+													receiptFooter: e.target.value,
+												})
+											}
+											placeholder="Terima kasih atas kunjungan Anda!"
+											value={settings.receiptFooter}
+										/>
+										<p className="text-[10px] text-muted-foreground leading-relaxed">Pesan ini akan tercetak di bagian bawah setiap struk kasir dan kitchen.</p>
+									</div>
+
 									{/* Font Size */}
 									<div className="space-y-2">
 										<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
@@ -1518,74 +1514,86 @@ function SettingsPage() {
 										
 										<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 											{/* Show Logo */}
-											<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-3 shadow-sm">
-												<span className="font-medium text-foreground text-sm">Logo Toko</span>
+											<div 
+												className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
+												onClick={() => setSettings({ ...settings, receiptShowLogo: !settings.receiptShowLogo })}
+											>
+												<span className="font-bold text-foreground text-sm uppercase tracking-tight">Logo Toko</span>
 												<button
-													className={`relative h-6 w-10 rounded-full transition-all duration-300 ${settings.receiptShowLogo ? "bg-primary" : "bg-muted-foreground/20"}`}
-													onClick={() => setSettings({ ...settings, receiptShowLogo: !settings.receiptShowLogo })}
+													className={`relative h-7 w-12 rounded-full transition-all duration-300 ${settings.receiptShowLogo ? "bg-primary" : "bg-muted-foreground/20"}`}
 													type="button"
 												>
-													<div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowLogo ? "right-1" : "left-1"}`} />
+													<div className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowLogo ? "right-1" : "left-1"}`} />
 												</button>
 											</div>
 
 											{/* Show Address */}
-											<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-3 shadow-sm">
-												<span className="font-medium text-foreground text-sm">Alamat Toko</span>
+											<div 
+												className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
+												onClick={() => setSettings({ ...settings, receiptShowAddress: !settings.receiptShowAddress })}
+											>
+												<span className="font-bold text-foreground text-sm uppercase tracking-tight">Alamat Toko</span>
 												<button
-													className={`relative h-6 w-10 rounded-full transition-all duration-300 ${settings.receiptShowAddress ? "bg-primary" : "bg-muted-foreground/20"}`}
-													onClick={() => setSettings({ ...settings, receiptShowAddress: !settings.receiptShowAddress })}
+													className={`relative h-7 w-12 rounded-full transition-all duration-300 ${settings.receiptShowAddress ? "bg-primary" : "bg-muted-foreground/20"}`}
 													type="button"
 												>
-													<div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowAddress ? "right-1" : "left-1"}`} />
+													<div className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowAddress ? "right-1" : "left-1"}`} />
 												</button>
 											</div>
 
 											{/* Show Phone */}
-											<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-3 shadow-sm">
-												<span className="font-medium text-foreground text-sm">Nomor Telepon</span>
+											<div 
+												className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
+												onClick={() => setSettings({ ...settings, receiptShowPhone: !settings.receiptShowPhone })}
+											>
+												<span className="font-bold text-foreground text-sm uppercase tracking-tight">Nomor Telepon</span>
 												<button
-													className={`relative h-6 w-10 rounded-full transition-all duration-300 ${settings.receiptShowPhone ? "bg-primary" : "bg-muted-foreground/20"}`}
-													onClick={() => setSettings({ ...settings, receiptShowPhone: !settings.receiptShowPhone })}
+													className={`relative h-7 w-12 rounded-full transition-all duration-300 ${settings.receiptShowPhone ? "bg-primary" : "bg-muted-foreground/20"}`}
 													type="button"
 												>
-													<div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowPhone ? "right-1" : "left-1"}`} />
+													<div className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowPhone ? "right-1" : "left-1"}`} />
 												</button>
 											</div>
 
 											{/* Show Order Number */}
-											<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-3 shadow-sm">
-												<span className="font-medium text-foreground text-sm">Nomor Antrian</span>
+											<div 
+												className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
+												onClick={() => setSettings({ ...settings, receiptShowOrderNumber: !settings.receiptShowOrderNumber })}
+											>
+												<span className="font-bold text-foreground text-sm uppercase tracking-tight">Nomor Antrian</span>
 												<button
-													className={`relative h-6 w-10 rounded-full transition-all duration-300 ${settings.receiptShowOrderNumber ? "bg-primary" : "bg-muted-foreground/20"}`}
-													onClick={() => setSettings({ ...settings, receiptShowOrderNumber: !settings.receiptShowOrderNumber })}
+													className={`relative h-7 w-12 rounded-full transition-all duration-300 ${settings.receiptShowOrderNumber ? "bg-primary" : "bg-muted-foreground/20"}`}
 													type="button"
 												>
-													<div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowOrderNumber ? "right-1" : "left-1"}`} />
+													<div className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowOrderNumber ? "right-1" : "left-1"}`} />
 												</button>
 											</div>
 
 											{/* Show Customer Name */}
-											<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-3 shadow-sm">
-												<span className="font-medium text-foreground text-sm">Nama Pelanggan</span>
+											<div 
+												className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
+												onClick={() => setSettings({ ...settings, receiptShowCustomerName: !settings.receiptShowCustomerName })}
+											>
+												<span className="font-bold text-foreground text-sm uppercase tracking-tight">Nama Pelanggan</span>
 												<button
-													className={`relative h-6 w-10 rounded-full transition-all duration-300 ${settings.receiptShowCustomerName ? "bg-primary" : "bg-muted-foreground/20"}`}
-													onClick={() => setSettings({ ...settings, receiptShowCustomerName: !settings.receiptShowCustomerName })}
+													className={`relative h-7 w-12 rounded-full transition-all duration-300 ${settings.receiptShowCustomerName ? "bg-primary" : "bg-muted-foreground/20"}`}
 													type="button"
 												>
-													<div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowCustomerName ? "right-1" : "left-1"}`} />
+													<div className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowCustomerName ? "right-1" : "left-1"}`} />
 												</button>
 											</div>
 
 											{/* Show Notes */}
-											<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-3 shadow-sm">
-												<span className="font-medium text-foreground text-sm">Catatan Pesanan</span>
+											<div 
+												className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
+												onClick={() => setSettings({ ...settings, receiptShowNotes: !settings.receiptShowNotes })}
+											>
+												<span className="font-bold text-foreground text-sm uppercase tracking-tight">Catatan Pesanan</span>
 												<button
-													className={`relative h-6 w-10 rounded-full transition-all duration-300 ${settings.receiptShowNotes ? "bg-primary" : "bg-muted-foreground/20"}`}
-													onClick={() => setSettings({ ...settings, receiptShowNotes: !settings.receiptShowNotes })}
+													className={`relative h-7 w-12 rounded-full transition-all duration-300 ${settings.receiptShowNotes ? "bg-primary" : "bg-muted-foreground/20"}`}
 													type="button"
 												>
-													<div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowNotes ? "right-1" : "left-1"}`} />
+													<div className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowNotes ? "right-1" : "left-1"}`} />
 												</button>
 											</div>
 										</div>

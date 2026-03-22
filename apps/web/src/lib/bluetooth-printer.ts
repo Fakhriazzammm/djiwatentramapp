@@ -22,6 +22,9 @@ export interface ReceiptSettings {
 	receiptShowCustomerName?: boolean;
 	receiptShowNotes?: boolean;
 	receiptFontSize?: string;
+	tableNumber?: string;
+	orderType?: string;
+	notes?: string;
 }
 
 export class BluetoothPrinterService {
@@ -36,13 +39,14 @@ export class BluetoothPrinterService {
 
 		try {
 			this.device = await navigator.bluetooth.requestDevice({
-				filters: [
-					{ services: ["000018f0-0000-1000-8000-00805f9b34fb"] }, // Generic POS service
-					{ services: ["e7e11001-49d2-4cc3-a291-0016260c533c"] }, // Some printers
-				],
+				acceptAllDevices: true,
 				optionalServices: [
-					"000018f0-0000-1000-8000-00805f9b34fb",
-					"e7e11001-49d2-4cc3-a291-0016260c533c",
+					"000018f0-0000-1000-8000-00805f9b34fb", // Generic POS service
+					"000018f1-0000-1000-8000-00805f9b34fb",
+					"e7e11001-49d2-4cc3-a291-0016260c533c", // Some printers
+					"0000ff00-0000-1000-8000-00805f9b34fb", // Custom
+					"0000af00-0000-1000-8000-00805f9b34fb", // Custom
+					"00004953-0000-1000-8000-00805f9b34fb", // Custom
 				],
 			});
 
@@ -56,21 +60,35 @@ export class BluetoothPrinterService {
 			const services = await this.server.getPrimaryServices();
 			let writeCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
 
+			// Priority for characteristics: writeWithoutResponse > write
 			for (const service of services) {
 				const characteristics = await service.getCharacteristics();
+				
+				// First pass: look for writeWithoutResponse
 				for (const char of characteristics) {
-					if (char.properties.write || char.properties.writeWithoutResponse) {
+					if (char.properties.writeWithoutResponse) {
 						writeCharacteristic = char;
 						break;
 					}
 				}
+				
+				// Second pass: if not found, look for write
+				if (!writeCharacteristic) {
+					for (const char of characteristics) {
+						if (char.properties.write) {
+							writeCharacteristic = char;
+							break;
+						}
+					}
+				}
+				
 				if (writeCharacteristic) {
 					break;
 				}
 			}
 
 			if (!writeCharacteristic) {
-				throw new Error("Printer characteristic tidak ditemukan.");
+				throw new Error("Karakteristik printer tidak ditemukan. Pastikan perangkat adalah printer thermal bluetooth.");
 			}
 
 			this.characteristic = writeCharacteristic;
@@ -193,6 +211,16 @@ export class BluetoothPrinterService {
 		result.line(`Tgl: ${new Date(order.createdAt).toLocaleString("id-ID")}`);
 		result.line(`Metode: ${order.paymentMethod.toUpperCase()}`);
 
+		// Order Type & Table
+		if (order.orderType) {
+			const typeLabel = order.orderType === "dine_in" ? "MAKAN DI SINI" : "BAWA PULANG";
+			result.bold(true).line(typeLabel).bold(false);
+		}
+		
+		if (order.tableNumber) {
+			result.line(`Meja: ${order.tableNumber}`);
+		}
+
 		// Customer Name
 		if (settings.receiptShowCustomerName && order.customerName) {
 			result.line(`Pelanggan: ${order.customerName}`);
@@ -218,7 +246,8 @@ export class BluetoothPrinterService {
 		// Notes
 		if (settings.receiptShowNotes && order.notes) {
 			result.line("--------------------------------");
-			result.line(`Catatan: ${order.notes}`);
+			result.bold(true).line("CATATAN:").bold(false);
+			result.line(order.notes);
 		}
 
 		result
@@ -234,15 +263,23 @@ export class BluetoothPrinterService {
 			.line(settings.receiptFooter || "Terima Kasih!")
 			.line(" ")
 			.line(" ")
-			.cut()
-			.encode();
+			.line(" ") // Additional spacing before cut
+			.cut();
 
-		// Split the buffer into chunks of 20 bytes (standard BLE MTU)
 		const buffer = result.encode();
 		const chunkSize = 20;
+
 		for (let i = 0; i < buffer.length; i += chunkSize) {
 			const chunk = buffer.slice(i, i + chunkSize);
-			await this.characteristic.writeValue(chunk);
+			
+			if (this.characteristic.properties.writeWithoutResponse) {
+				await this.characteristic.writeValueWithoutResponse(chunk);
+			} else {
+				await this.characteristic.writeValue(chunk);
+			}
+			
+			// Small delay to prevent buffer overflow on slower printers
+			await new Promise((resolve) => setTimeout(resolve, 10));
 		}
 	}
 }

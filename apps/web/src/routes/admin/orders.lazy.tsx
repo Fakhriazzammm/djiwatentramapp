@@ -376,10 +376,18 @@ function AdminOrders() {
 											{getStatusLabel(order.status)}
 										</Badge>
 									</div>
-									<div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+									<div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
 										<span>{order.customerName || "Pelanggan Umum"}</span>
 										<span>&middot;</span>
 										<span className="capitalize">{order.paymentMethod}</span>
+										{order.orderType && (
+											<>
+												<span>&middot;</span>
+												<span className="font-bold text-primary uppercase">
+													{order.orderType === "dine_in" ? `Meja ${order.tableNumber || "-"}` : "Takeaway"}
+												</span>
+											</>
+										)}
 									</div>
 								</div>
 								<div className="text-right">
@@ -440,13 +448,20 @@ function AdminOrders() {
 											</div>
 										</td>
 										<td className="px-6 py-4">
-											<div className="flex items-center gap-2">
-												<div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] text-primary">
-													<User className="h-3 w-3" />
+											<div className="flex flex-col gap-1">
+												<div className="flex items-center gap-2">
+													<div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] text-primary">
+														<User className="h-3 w-3" />
+													</div>
+													<span className="font-medium">
+														{order.customerName || "Pelanggan Umum"}
+													</span>
 												</div>
-												<span className="font-medium">
-													{order.customerName || "Pelanggan Umum"}
-												</span>
+												{order.orderType && (
+													<span className="text-[10px] font-bold text-primary uppercase ml-8">
+														{order.orderType === "dine_in" ? `Meja ${order.tableNumber || "-"}` : "Takeaway"}
+													</span>
+												)}
 											</div>
 										</td>
 										<td className="px-6 py-4 font-bold">
@@ -595,6 +610,12 @@ function AdminOrders() {
 									</Card>
 
 									{/* Items List */}
+									{selectedOrder.notes && (
+										<div className="rounded-lg border border-primary/20 bg-primary/5 p-3 mb-4">
+											<p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Catatan Pesanan</p>
+											<p className="text-sm italic text-foreground">"{selectedOrder.notes}"</p>
+										</div>
+									)}
 									<div className="space-y-2">
 										<h4 className="flex items-center gap-2 font-semibold text-xs">
 											<ShoppingBag className="h-3.5 w-3.5 text-primary" />

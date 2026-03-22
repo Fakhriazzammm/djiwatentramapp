@@ -242,7 +242,7 @@ export function TransactionHistorySidebar() {
 			await bluetoothPrinter.print(
 				{
 					orderNumber: order.orderNumber,
-					items: order.items.map((i) => ({
+					items: order.items.map((i: (typeof order.items)[0]) => ({
 						productId: i.productId,
 						name: i.productName,
 						variant: i.variant,
@@ -353,7 +353,7 @@ export function TransactionHistorySidebar() {
 							<div className="flex-1 overflow-hidden">
 								{orders === undefined && (
 									<div className="space-y-2 p-3">
-										{Array.from({ length: 6 }).map((_, i) => (
+										{Array.from({ length: 6 }).map((_, i: number) => (
 											<div key={i} className="rounded-lg border bg-card p-3 space-y-3">
 												<div className="flex justify-between">
 													<Skeleton className="h-4 w-16" />
@@ -477,7 +477,7 @@ function OrderCard({
 			</div>
 
 			<div className="mb-2 space-y-1">
-				{order.items.slice(0, 3).map((item, idx) => (
+				{order.items.slice(0, 3).map((item: (typeof order.items)[0], idx: number) => (
 					<div
 						className="flex items-center justify-between text-xs"
 						key={`${item.productId}-${idx}`}
@@ -641,7 +641,7 @@ function OrderDetailView({
 						<div className="space-y-2">
 							<Label className="text-muted-foreground">Metode Pembayaran</Label>
 							{isEditMode ? (
-								<Select onValueChange={setPaymentMethod} value={paymentMethod}>
+								<Select onValueChange={(v: string) => setPaymentMethod(v)} value={paymentMethod}>
 									<SelectTrigger>
 										<SelectValue placeholder="Pilih Metode" />
 									</SelectTrigger>
@@ -659,7 +659,7 @@ function OrderDetailView({
 						<div className="space-y-2">
 							<Label className="text-muted-foreground">Status Pesanan</Label>
 							{isEditMode ? (
-								<Select onValueChange={setStatus} value={status}>
+								<Select onValueChange={(v: any) => setStatus(v)} value={status}>
 									<SelectTrigger>
 										<SelectValue placeholder="Pilih Status" />
 									</SelectTrigger>
@@ -682,7 +682,7 @@ function OrderDetailView({
 					<div>
 						<h4 className="mb-3 font-semibold text-sm">Daftar Item</h4>
 						<div className="space-y-3">
-							{order.items.map((item, idx) => (
+							{order.items.map((item: (typeof order.items)[0], idx: number) => (
 								<div
 									className="flex justify-between text-sm"
 									key={`${item.productId}-${idx}`}

@@ -110,6 +110,9 @@ export default defineSchema({
 		),
 		paymentMethod: v.string(), // "qris", "cash", "credit_card"
 		customerName: v.optional(v.string()),
+		tableNumber: v.optional(v.string()),
+		orderType: v.optional(v.union(v.literal("dine_in"), v.literal("takeaway"))),
+		notes: v.optional(v.string()),
 		createdAt: v.number(),
 		voucherId: v.optional(v.id("discounts")),
 		discountAmount: v.optional(v.number()),

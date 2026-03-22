@@ -2,6 +2,7 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, ShoppingCart, Tag, Trash2, X } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -154,31 +155,42 @@ function ReceiptItemRow({
 	) => void;
 }) {
 	return (
-		<div className="group relative flex flex-col py-2 font-mono text-xs">
-			<div className="flex justify-between items-start">
+		<div className="group relative flex flex-col py-3 font-mono text-xs border-b border-dashed border-border/30 last:border-0">
+			<div className="flex justify-between items-start mb-1">
 				<div className="flex-1 pr-2">
-					<span className="uppercase">{item.name}</span>
-					{item.variant && <p className="text-[10px] text-muted-foreground">{item.variant}</p>}
+					<span className="uppercase font-bold tracking-tight">{item.name}</span>
+					{item.variant && <p className="text-[10px] text-muted-foreground mt-0.5">{item.variant}</p>}
 				</div>
-				<div className="flex items-center gap-2 bg-background/80 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 -top-1 shadow-sm border border-border z-10">
+				<span className="font-bold shrink-0 text-sm">{formatCurrency(item.price * item.quantity)}</span>
+			</div>
+			
+			<div className="flex justify-between items-center mt-1">
+				<div className="text-[10px] text-muted-foreground italic">
+					{item.quantity} x {formatCurrency(item.price)}
+				</div>
+				
+				{/* Touch-friendly Controls */}
+				<div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg border border-border/50">
 					<button
-						className="p-1 hover:text-destructive"
+						aria-label="Kurangi"
+						className="flex h-9 w-9 items-center justify-center rounded-md bg-white text-foreground shadow-sm active:bg-muted active:scale-90 transition-all"
 						onClick={() => onUpdateQuantity(item.productId, item.variant, -1)}
 					>
-						{item.quantity === 1 ? <Trash2 className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+						{item.quantity === 1 ? (
+							<Trash2 className="h-4 w-4 text-destructive" />
+						) : (
+							<Minus className="h-4 w-4" />
+						)}
 					</button>
-					<span className="font-bold min-w-[1rem] text-center">{item.quantity}</span>
+					<span className="font-bold min-w-[2rem] text-center text-sm">{item.quantity}</span>
 					<button
-						className="p-1 hover:text-primary"
+						aria-label="Tambah"
+						className="flex h-9 w-9 items-center justify-center rounded-md bg-white text-foreground shadow-sm active:bg-muted active:scale-90 transition-all"
 						onClick={() => onUpdateQuantity(item.productId, item.variant, 1)}
 					>
-						<Plus className="h-3 w-3" />
+						<Plus className="h-4 w-4 text-primary" />
 					</button>
 				</div>
-				<span className="font-bold shrink-0">{formatCurrency(item.price * item.quantity)}</span>
-			</div>
-			<div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
-				<span>{item.quantity} x {formatCurrency(item.price)}</span>
 			</div>
 		</div>
 	);
@@ -467,7 +479,7 @@ function MobileCartDrawer({
 					<div className="flex items-center gap-2">
 						{items.length > 0 && (
 							<button
-								className="rounded-lg px-3 py-2 font-bold text-destructive text-xs uppercase tracking-wider active:bg-destructive/10 transition-colors"
+								className="rounded-lg px-4 py-2.5 font-bold text-destructive text-xs uppercase tracking-wider active:bg-destructive/10 transition-colors"
 								onClick={onClearCart}
 								type="button"
 							>
@@ -562,6 +574,53 @@ function MobileCartDrawer({
 }
 
 // ============================================
+// Flying Item Animation
+// ============================================
+function FlyingItem({ 
+	startPos, 
+	targetPos, 
+	image, 
+	onComplete 
+}: { 
+	startPos: { x: number, y: number }, 
+	targetPos: { x: number, y: number }, 
+	image?: string,
+	onComplete: () => void 
+}) {
+	return (
+		<motion.div
+			initial={{ 
+				x: startPos.x, 
+				y: startPos.y, 
+				scale: 1, 
+				opacity: 1,
+				zIndex: 100 
+			}}
+			animate={{ 
+				x: targetPos.x - 20, 
+				y: targetPos.y - 20, 
+				scale: 0.2, 
+				opacity: 0.5,
+				transition: { 
+					duration: 0.6, 
+					ease: [0.16, 1, 0.3, 1] // Custom cubic-bezier for smooth arc-like feel
+				}
+			}}
+			onAnimationComplete={onComplete}
+			className="fixed left-0 top-0 pointer-events-none"
+		>
+			<div className="h-16 w-16 overflow-hidden rounded-full border-2 border-primary bg-white shadow-xl flex items-center justify-center">
+				{image ? (
+					<img src={image} alt="" className="h-full w-full object-cover" />
+				) : (
+					<div className="h-full w-full bg-primary/10" />
+				)}
+			</div>
+		</motion.div>
+	);
+}
+
+// ============================================
 // Main Page
 // ============================================
 function MenuPage() {
@@ -592,6 +651,9 @@ function MenuPage() {
 	const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 	const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
 	const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+	
+	// Animation state
+	const [flyingItems, setFlyingItems] = useState<{ id: number, start: { x: number, y: number }, image?: string }[]>([]);
 
 	const totalItems = items.reduce((acc: number, i) => acc + i.quantity, 0);
 
@@ -600,7 +662,17 @@ function MenuPage() {
 	}) as (Product & { categoryId: string })[] | undefined;
 
 	const handleAddToCart = useCallback(
-		(product: Product) => {
+		(product: Product, event?: React.MouseEvent) => {
+			// Trigger animation if we have event coordinates
+			if (event) {
+				const newItem = {
+					id: Date.now(),
+					start: { x: event.clientX, y: event.clientY },
+					image: product.image
+				};
+				setFlyingItems(prev => [...prev, newItem]);
+			}
+
 			const { finalPrice } = calculateEffectivePrice(
 				{
 					_id: product._id,
@@ -617,9 +689,9 @@ function MenuPage() {
 				quantity: 1,
 				image: product.image,
 			});
-			toast.success(`${product.name} ditambahkan ke keranjang`, {
+			toast.success(`${product.name} ditambahkan`, {
 				position: "bottom-left",
-				duration: 1000,
+				duration: 800,
 			});
 		},
 		[activeDiscounts, addToCart]
@@ -628,7 +700,13 @@ function MenuPage() {
 	const handleCheckout = async (
 		finalAmount?: number,
 		_discountId?: string,
-		paymentMethod: string = "tunai"
+		paymentMethod: string = "tunai",
+		extraOrderData?: {
+			tableNumber?: string;
+			orderType?: "dine_in" | "takeaway";
+			notes?: string;
+			autoComplete?: boolean;
+		}
 	) => {
 		if (items.length === 0) {
 			toast.error("Keranjang kosong. Tambahkan item terlebih dahulu.");
@@ -653,6 +731,10 @@ function MenuPage() {
 				totalAmount: finalAmount,
 				paymentMethod: paymentMethod,
 				customerName: "Pelanggan",
+				tableNumber: extraOrderData?.tableNumber,
+				orderType: extraOrderData?.orderType,
+				notes: extraOrderData?.notes,
+				autoComplete: extraOrderData?.autoComplete,
 			});
 
 			const orderDetails = {
@@ -667,6 +749,10 @@ function MenuPage() {
 				totalAmount: finalAmount,
 				paymentMethod: paymentMethod,
 				createdAt: Date.now(),
+				customerName: "Pelanggan",
+				tableNumber: extraOrderData?.tableNumber,
+				orderType: extraOrderData?.orderType,
+				notes: extraOrderData?.notes,
 			};
 
 			if (siteSettings?.autoPrint && bluetoothPrinter.isConnected()) {
@@ -771,7 +857,7 @@ function MenuPage() {
 					<button
 						aria-label="Tampilkan semua kategori"
 						aria-selected={selectedCategory === null}
-						className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5 font-medium text-xs transition-all active:scale-95 ${
+						className={`shrink-0 whitespace-nowrap rounded-full border px-5 py-2.5 font-bold text-xs transition-all active:scale-95 ${
 							selectedCategory === null
 								? "border-primary bg-primary text-primary-foreground shadow-sm"
 								: "border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -787,7 +873,7 @@ function MenuPage() {
 								<button
 									aria-label={`Tampilkan kategori ${cat.name}`}
 									aria-selected={selectedCategory === cat._id}
-									className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5 font-medium text-xs transition-all active:scale-95 ${
+									className={`shrink-0 whitespace-nowrap rounded-full border px-5 py-2.5 font-bold text-xs transition-all active:scale-95 ${
 										selectedCategory === cat._id
 											? "border-primary bg-primary text-primary-foreground shadow-sm"
 											: "border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -831,7 +917,7 @@ function MenuPage() {
 									<button
 										className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card text-left shadow-sm transition-all hover:border-primary/20 hover:shadow-md active:scale-[0.95] active:bg-muted/10"
 										key={product._id}
-										onClick={() => handleAddToCart(product)}
+										onClick={(e) => handleAddToCart(product, e)}
 										type="button"
 									>
 										{product.menuNumber != null && (
@@ -895,6 +981,7 @@ function MenuPage() {
 				<aside
 					aria-label="Keranjang belanja"
 					className="z-20 hidden h-full w-[340px] shrink-0 flex-col border-border border-l bg-muted/30 shadow-xl md:flex"
+					id="cart-sidebar"
 				>
 					<div className="flex flex-1 flex-col overflow-hidden m-4 rounded-xl border border-border bg-white shadow-inner">
 						{/* Receipt Header */}
@@ -941,6 +1028,14 @@ function MenuPage() {
 
 						{/* Receipt Footer & Summary */}
 						<div className="shrink-0 p-6 pt-2 bg-white font-mono">
+							{/* Order Info (Preview) */}
+							<div className="mb-2 text-[10px] space-y-0.5">
+								<p>TIPE: {appliedVoucher ? "PROMO" : "REGULER"}</p>
+								{items.length > 0 && (
+									<p className="text-primary font-bold">READY TO PRINT</p>
+								)}
+							</div>
+							
 							<div className="mb-4">
 								<ReceiptPriceSummary
 									discountAmount={discountAmount}
@@ -1050,11 +1145,28 @@ function MenuPage() {
 			/>
 
 			<PaymentConfirmationModal
-				isOpen={isPaymentModalOpen}
 				isSubmitting={isSubmitting}
+				isOpen={isPaymentModalOpen}
 				onClose={() => setIsPaymentModalOpen(false)}
-				onConfirm={handleCheckout}
+				onConfirm={(amount, discId, method, extra) => 
+					handleCheckout(amount, discId, method, extra)
+				}
 			/>
+
+			<AnimatePresence>
+				{flyingItems.map(item => (
+					<FlyingItem
+						key={item.id}
+						startPos={item.start}
+						targetPos={{ 
+							x: window.innerWidth > 768 ? window.innerWidth - 170 : window.innerWidth - 50, 
+							y: window.innerWidth > 768 ? 300 : window.innerHeight - 50 
+						}}
+						image={item.image}
+						onComplete={() => setFlyingItems(prev => prev.filter(i => i.id !== item.id))}
+					/>
+				))}
+			</AnimatePresence>
 
 			<VoucherModal
 				appliedVoucher={appliedVoucher}

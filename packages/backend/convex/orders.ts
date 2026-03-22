@@ -17,17 +17,47 @@ export const createOrder = mutation({
 		totalAmount: v.number(),
 		paymentMethod: v.string(),
 		customerName: v.optional(v.string()),
+		tableNumber: v.optional(v.string()),
+		orderType: v.optional(v.union(v.literal("dine_in"), v.literal("takeaway"))),
+		notes: v.optional(v.string()),
 		voucherId: v.optional(v.id("discounts")),
 		discountAmount: v.optional(v.number()),
+		autoComplete: v.optional(v.boolean()), // If true, set status to 'paid' immediately
 	},
 	handler: async (ctx, args) => {
+		const { autoComplete, ...orderData } = args;
 		const orderNumber = `ORD-${Date.now().toString().slice(-4)}`;
+		
 		const orderId = await ctx.db.insert("orders", {
-			...args,
+			...orderData,
 			orderNumber,
-			status: "pending",
+			status: autoComplete ? "paid" : "pending",
 			createdAt: Date.now(),
 		});
+
+		// If autoComplete is true, trigger the financial & inventory logic
+		if (autoComplete) {
+			// We can't call updateOrderStatus mutation directly from here efficiently, 
+			// but we can trigger its logic or let a separate process handle it.
+			// For simplicity in Convex, we should probably refactor the logic into an internal function.
+			// But for now, let's at least record the basic transaction.
+			
+			// 1. Record Income Transaction
+			await ctx.db.insert("financialTransactions", {
+				type: "income",
+				amount: args.totalAmount,
+				category: "Penjualan",
+				description: `Penjualan Langsung Pesanan #${orderNumber}`,
+				date: Date.now(),
+				paymentMethod: args.paymentMethod,
+				status: "completed",
+				orderId,
+			});
+
+			// 2. Deduct inventory (internal call)
+			await deductStockForOrderInternal(ctx, { orderId });
+		}
+
 		return orderId;
 	},
 });

@@ -2,8 +2,20 @@ import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Doc } from "@yumipos/backend/convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Tag, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { 
+	Tag, 
+	X, 
+	Wallet, 
+	QrCode, 
+	BuildingBank, 
+	Zap, 
+	ChevronRight, 
+	Calculator,
+	Info,
+	Coffee,
+	ShoppingBag
+} from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
 import { IconButton } from "@/components/ui/icon";
 import { ShimmerSkeleton } from "@/components/ui/loading-state";
 import { useCart } from "@/context/cart-context";
@@ -15,7 +27,13 @@ interface PaymentModalProps {
 	onConfirm: (
 		finalAmount: number,
 		discountId?: string,
-		paymentMethod?: string
+		paymentMethod?: string,
+		orderData?: {
+			tableNumber?: string;
+			orderType?: "dine_in" | "takeaway";
+			notes?: string;
+			autoComplete?: boolean;
+		}
 	) => void;
 	isSubmitting: boolean;
 }
@@ -34,6 +52,29 @@ export function PaymentConfirmationModal({
 		null
 	);
 	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("tunai");
+	
+	// New Fields
+	const [orderType, setOrderType] = useState<"dine_in" | "takeaway">("dine_in");
+	const [tableNumber, setTableNumber] = useState("");
+	const [notes, setNotes] = useState("");
+	const [autoComplete, setAutoComplete] = useState(true);
+
+	// Cash Assistant State
+	const [cashReceived, setCashReceived] = useState<number | "">("");
+	const [changeAmount, setChangeAmount] = useState<number>(0);
+
+	// Calculate change whenever cashReceived or finalTotal changes
+	useEffect(() => {
+		if (typeof cashReceived === "number" && cashReceived >= finalTotal) {
+			setChangeAmount(cashReceived - finalTotal);
+		} else {
+			setChangeAmount(0);
+		}
+	}, [cashReceived, finalTotal]);
+
+	const handleQuickCash = (amount: number) => {
+		setCashReceived(amount);
+	};
 
 	// Filter discounts based on time/date/target applicability
 	const validDiscounts = useMemo(() => {
@@ -246,207 +287,344 @@ export function PaymentConfirmationModal({
 						)}
 					</div>
 
-					<div className="space-y-6 p-8">
-						{/* Billing Section */}
-						<div className="space-y-3 rounded-lg border border-border bg-muted/50 p-6">
-							<div className="flex items-center justify-between">
-								<span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-									Subtotal
-								</span>
-								<span className="font-semibold text-foreground text-sm">
-									{new Intl.NumberFormat("id-ID", {
-										style: "currency",
-										currency: "IDR",
-										maximumFractionDigits: 0,
-									}).format(totalAmount)}
-								</span>
+					<div className="space-y-6 p-8 overflow-y-auto max-h-[75vh]">
+						{/* --- SECTION: ORDER INFO --- */}
+						<div className="space-y-4">
+							<div className="flex items-center gap-2 mb-2">
+								<Info className="h-4 w-4 text-primary" />
+								<h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Informasi Pesanan</h3>
+							</div>
+							
+							{/* Dine-in / Takeaway Toggle */}
+							<div className="grid grid-cols-2 gap-3 p-1 rounded-xl bg-muted/30 border border-border/50">
+								<button
+									type="button"
+									onClick={() => setOrderType("dine_in")}
+									className={`flex items-center justify-center gap-2 py-3 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all ${orderType === "dine_in" ? 'bg-white shadow-sm text-primary border border-border' : 'text-muted-foreground'}`}
+								>
+									<Coffee className="h-3 w-3" />
+									Makan di Sini
+								</button>
+								<button
+									type="button"
+									onClick={() => setOrderType("takeaway")}
+									className={`flex items-center justify-center gap-2 py-3 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all ${orderType === "takeaway" ? 'bg-white shadow-sm text-primary border border-border' : 'text-muted-foreground'}`}
+								>
+									<ShoppingBag className="h-3 w-3" />
+									Bawa Pulang
+								</button>
 							</div>
 
-							{discountAmount > 0 && (
-								<div className="flex items-center justify-between font-medium text-green-600">
-									<span className="flex items-center gap-1.5 text-xs uppercase tracking-wide">
-										<Tag className="h-3 w-3" /> Potongan
-									</span>
-									<span className="text-sm">
-										-
-										{new Intl.NumberFormat("id-ID", {
-											style: "currency",
-											currency: "IDR",
-											maximumFractionDigits: 0,
-										}).format(discountAmount)}
-									</span>
+							{/* Table Number & Notes Row */}
+							<div className="grid grid-cols-2 gap-4">
+								<div className="space-y-2">
+									<label className="block font-medium text-muted-foreground text-[10px] uppercase tracking-widest">
+										Nomor Meja
+									</label>
+									<input
+										className={`w-full rounded-xl border border-border bg-background p-3 text-sm font-bold outline-none transition-all focus:ring-2 focus:ring-primary/20 ${orderType === 'takeaway' ? 'opacity-50 cursor-not-allowed' : ''}`}
+										disabled={orderType === 'takeaway'}
+										onChange={(e) => setTableNumber(e.target.value)}
+										placeholder="No. Meja"
+										type="text"
+										value={tableNumber}
+									/>
 								</div>
-							)}
-
-							{serviceChargeAmount > 0 && (
-								<div className="flex items-center justify-between font-medium text-foreground">
-									<span className="text-xs uppercase tracking-wide text-muted-foreground">
-										Service Charge ({serviceChargeRate}%)
-									</span>
-									<span className="text-sm">
-										{new Intl.NumberFormat("id-ID", {
-											style: "currency",
-											currency: "IDR",
-											maximumFractionDigits: 0,
-										}).format(serviceChargeAmount)}
-									</span>
+								<div className="space-y-2">
+									<label className="block font-medium text-muted-foreground text-[10px] uppercase tracking-widest">
+										Catatan
+									</label>
+									<input
+										className="w-full rounded-xl border border-border bg-background p-3 text-sm font-medium outline-none transition-all focus:ring-2 focus:ring-primary/20"
+										onChange={(e) => setNotes(e.target.value)}
+										placeholder="Contoh: Tanpa Es"
+										type="text"
+										value={notes}
+									/>
 								</div>
-							)}
-
-							{taxAmount > 0 && (
-								<div className="flex items-center justify-between font-medium text-foreground">
-									<span className="text-xs uppercase tracking-wide text-muted-foreground">
-										Pajak ({taxRate}%)
-									</span>
-									<span className="text-sm">
-										{new Intl.NumberFormat("id-ID", {
-											style: "currency",
-											currency: "IDR",
-											maximumFractionDigits: 0,
-										}).format(taxAmount)}
-									</span>
-								</div>
-							)}
-
-							<div className="mt-2 flex items-center justify-between border-border border-t pt-3">
-								<span className="font-semibold text-foreground text-xs uppercase tracking-wide">
-									Total Bayar
-								</span>
-								<span className="font-bold text-2xl text-primary tracking-tight">
-									{new Intl.NumberFormat("id-ID", {
-										style: "currency",
-										currency: "IDR",
-										maximumFractionDigits: 0,
-									}).format(finalTotal)}
-								</span>
 							</div>
 						</div>
 
-						{/* Items Summary */}
-						<div className="max-h-[140px] overflow-y-auto rounded-lg border border-border bg-muted/30 p-4">
-							<table className="w-full text-xs">
-								<thead className="text-muted-foreground uppercase">
-									<tr className="border-border border-b text-[10px]">
-										<th className="pb-2 text-left font-medium tracking-wide">
-											Pesanan
-										</th>
-										<th className="pb-2 text-center font-medium tracking-wide">
-											Qty
-										</th>
-										<th className="pb-2 text-right font-medium tracking-wide">
-											Total
-										</th>
-									</tr>
-								</thead>
-								<tbody className="divide-y divide-border">
-									{items.map((item, idx) => (
-										<tr key={`${item.productId}-${idx}`}>
-											<td className="py-2.5 font-medium text-foreground uppercase tracking-tight">
-												{item.name}
-											</td>
-											<td className="py-2.5 text-center font-medium text-muted-foreground">
-												{item.quantity}
-											</td>
-											<td className="py-2.5 text-right font-medium text-foreground">
-												{new Intl.NumberFormat("id-ID").format(
-													item.price * item.quantity
-												)}
-											</td>
-										</tr>
-									))}
-								</tbody>
-							</table>
+						{/* --- SECTION: BILLING --- */}
+						<div className="space-y-4 pt-4 border-t border-dashed border-border/50">
+							<div className="flex items-center gap-2 mb-2">
+								<Calculator className="h-4 w-4 text-primary" />
+								<h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ringkasan Pembayaran</h3>
+							</div>
+
+							<div className="space-y-3 rounded-xl border border-border bg-muted/50 p-6 shadow-inner">
+								<div className="flex items-center justify-between">
+									<span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+										Subtotal
+									</span>
+									<span className="font-semibold text-foreground text-sm">
+										{new Intl.NumberFormat("id-ID", {
+											style: "currency",
+											currency: "IDR",
+											maximumFractionDigits: 0,
+										}).format(totalAmount)}
+									</span>
+								</div>
+
+								{discountAmount > 0 && (
+									<div className="flex items-center justify-between font-medium text-green-600">
+										<span className="flex items-center gap-1.5 text-xs uppercase tracking-wide">
+											<Tag className="h-3 w-3" /> Potongan
+										</span>
+										<span className="text-sm">
+											-
+											{new Intl.NumberFormat("id-ID", {
+												style: "currency",
+												currency: "IDR",
+												maximumFractionDigits: 0,
+											}).format(discountAmount)}
+										</span>
+									</div>
+								)}
+
+								{serviceChargeAmount > 0 && (
+									<div className="flex items-center justify-between font-medium text-foreground">
+										<span className="text-xs uppercase tracking-wide text-muted-foreground">
+											Service Charge ({serviceChargeRate}%)
+										</span>
+										<span className="text-sm">
+											{new Intl.NumberFormat("id-ID", {
+												style: "currency",
+												currency: "IDR",
+												maximumFractionDigits: 0,
+											}).format(serviceChargeAmount)}
+										</span>
+									</div>
+								)}
+
+								{taxAmount > 0 && (
+									<div className="flex items-center justify-between font-medium text-foreground">
+										<span className="text-xs uppercase tracking-wide text-muted-foreground">
+											Pajak ({taxRate}%)
+										</span>
+										<span className="text-sm">
+											{new Intl.NumberFormat("id-ID", {
+												style: "currency",
+												currency: "IDR",
+												maximumFractionDigits: 0,
+											}).format(taxAmount)}
+										</span>
+									</div>
+								)}
+
+								<div className="mt-2 flex items-center justify-between border-border border-t pt-3">
+									<span className="font-semibold text-foreground text-xs uppercase tracking-wide">
+										Total Bayar
+									</span>
+									<span className="font-bold text-3xl text-primary tracking-tight">
+										{new Intl.NumberFormat("id-ID", {
+											style: "currency",
+											currency: "IDR",
+											maximumFractionDigits: 0,
+										}).format(finalTotal)}
+									</span>
+								</div>
+							</div>
 						</div>
 
-						{/* Payment Method Selection */}
-						<div className="relative">
-							<label
-								className="mb-2 block font-medium text-muted-foreground text-xs uppercase tracking-wide"
-								htmlFor="payment-method-select"
+						{/* --- SECTION: PAYMENT METHODS --- */}
+						<div className="space-y-4 pt-4 border-t border-dashed border-border/50">
+							<div className="flex items-center gap-2 mb-2">
+								<Wallet className="h-4 w-4 text-primary" />
+								<h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Metode Pembayaran</h3>
+							</div>
+
+							<div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+								{paymentOptions.map((opt) => {
+									const isSelected = selectedPaymentMethod === opt.id;
+									let Icon = Wallet;
+									if (opt.id === "qris" || opt.id === "qris_mayar") Icon = QrCode;
+									if (opt.id === "transfer") Icon = BuildingBank;
+
+									return (
+										<button
+											key={opt.id}
+											type="button"
+											onClick={() => setSelectedPaymentMethod(opt.id)}
+											className={`flex flex-col items-center justify-center gap-3 rounded-xl border p-4 transition-all active:scale-95 ${
+												isSelected
+													? "border-primary bg-primary/10 text-primary shadow-sm"
+													: "border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+											}`}
+										>
+											<Icon className={`h-6 w-6 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+											<span className="text-[9px] font-bold uppercase tracking-wider text-center leading-tight">
+												{opt.label}
+											</span>
+										</button>
+									);
+								})}
+							</div>
+						</div>
+
+						{/* --- SECTION: CASH ASSISTANT --- */}
+						{selectedPaymentMethod === "tunai" && (
+							<motion.div 
+								initial={{ opacity: 0, y: 10 }}
+								animate={{ opacity: 1, y: 0 }}
+								className="space-y-4 pt-4 border-t border-dashed border-border/50 bg-primary/5 -mx-8 px-8 py-6"
 							>
-								Metode Pembayaran
-							</label>
-							<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-								{paymentOptions.map((opt) => (
-									<button
-										key={opt.id}
-										type="button"
-										onClick={() => setSelectedPaymentMethod(opt.id)}
-										className={`rounded-lg border p-3 text-center text-xs font-bold transition-all ${
-											selectedPaymentMethod === opt.id
-												? "border-primary bg-primary/10 text-primary shadow-sm"
-												: "border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-										}`}
-									>
-										{opt.label}
-									</button>
-								))}
-							</div>
-						</div>
+								<div className="flex items-center justify-between">
+									<div className="flex items-center gap-2">
+										<Zap className="h-4 w-4 text-primary" />
+										<h3 className="text-xs font-bold uppercase tracking-widest text-primary">Kalkulator Tunai</h3>
+									</div>
+									{changeAmount > 0 && (
+										<div className="flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-green-700">
+											<span className="text-[10px] font-bold uppercase">Kembalian:</span>
+											<span className="text-sm font-bold">
+												{new Intl.NumberFormat("id-ID").format(changeAmount)}
+											</span>
+										</div>
+									)}
+								</div>
 
-						{/* Discount Dropdown */}
-						{validDiscounts.length > 0 && (
-							<div className="relative">
-								<label
-									className="mb-2 block font-medium text-muted-foreground text-xs uppercase tracking-wide"
-									htmlFor="discount-select"
-								>
-									Pilih Voucher / Diskon Menu
-								</label>
-								<select
-									className="w-full appearance-none rounded-lg border border-border bg-background py-3 pr-12 pl-4 font-medium text-foreground text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
-									id="discount-select"
-									onChange={(e) => setSelectedDiscountId(e.target.value)}
-									value={selectedDiscountId || ""}
-								>
-									<option value="">TANPA VOUCHER / DISKON</option>
-									{validDiscounts.map((d: Doc<"discounts">) => (
-										<option key={d._id} value={d._id}>
-											{d.name.toUpperCase()} (
-											{d.type === "PERCENTAGE"
-												? `${d.value}%`
-												: `RP ${d.value}`}
-											)
-										</option>
-									))}
-								</select>
-								<Tag className="pointer-events-none absolute top-[38px] right-4 h-4 w-4 text-muted-foreground" />
-							</div>
+								<div className="grid grid-cols-2 gap-4">
+									<div className="space-y-2">
+										<label className="block font-medium text-primary/70 text-[10px] uppercase tracking-widest">
+											Uang Diterima
+										</label>
+										<div className="relative">
+											<span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-sm">Rp</span>
+											<input
+												className="w-full rounded-xl border-2 border-primary/20 bg-background py-3 pl-10 pr-4 text-lg font-bold text-primary outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
+												onChange={(e) => {
+													const val = e.target.value.replace(/\D/g, "");
+													setCashReceived(val === "" ? "" : parseInt(val));
+												}}
+												placeholder="0"
+												type="text"
+												value={cashReceived === "" ? "" : new Intl.NumberFormat("id-ID").format(cashReceived)}
+											/>
+										</div>
+									</div>
+									<div className="flex flex-col gap-2">
+										<label className="block font-medium text-primary/70 text-[10px] uppercase tracking-widest">
+											Nominal Cepat
+										</label>
+										<div className="grid grid-cols-2 gap-2">
+											{[50000, 100000].map(amount => (
+												<button
+													key={amount}
+													type="button"
+													onClick={() => handleQuickCash(amount)}
+													className="rounded-lg border border-primary/20 bg-white py-2 text-[10px] font-bold text-primary transition-all hover:bg-primary hover:text-white active:scale-95 shadow-sm"
+												>
+													{amount / 1000}K
+												</button>
+											))}
+											<button
+												type="button"
+												onClick={() => handleQuickCash(finalTotal)}
+												className="col-span-2 rounded-lg border border-primary bg-primary/10 py-2 text-[10px] font-bold text-primary transition-all hover:bg-primary hover:text-white active:scale-95 shadow-sm"
+											>
+												UANG PAS
+											</button>
+										</div>
+									</div>
+								</div>
+							</motion.div>
 						)}
 
-						{/* Primary Actions */}
-						<div className="flex gap-4">
-							<button
-								className="flex-1 rounded-lg bg-muted py-4 font-medium text-foreground text-sm transition-all hover:bg-muted/80 active:scale-[0.98]"
-								disabled={isSubmitting}
-								onClick={onClose}
-								type="button"
-							>
-								Batal
-							</button>
-							<button
-								aria-label="Konfirmasi pembayaran"
-								className="flex-[2] rounded-lg bg-primary py-4 font-semibold text-primary-foreground text-sm shadow-lg transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50"
-								disabled={isSubmitting}
-								onClick={() =>
-									onConfirm(
-										finalTotal,
-										selectedDiscountId || undefined,
-										selectedPaymentMethod
-									)
-								}
-								type="button"
-							>
-								{isSubmitting ? (
-									<span className="flex items-center gap-2">
-										<ShimmerSkeleton className="h-4 w-4" shape="circle" />
-										MEMPROSES...
-									</span>
-								) : (
-									"BAYAR SEKARANG"
-								)}
-							</button>
+						{/* Voucher & Auto Complete */}
+						<div className="space-y-4 pt-4 border-t border-dashed border-border/50">
+							{/* Discount Dropdown */}
+							{validDiscounts.length > 0 && (
+								<div className="relative">
+									<label
+										className="mb-2 block font-medium text-muted-foreground text-[10px] uppercase tracking-wide"
+										htmlFor="discount-select"
+									>
+										Pilih Voucher / Diskon Menu
+									</label>
+									<select
+										className="w-full appearance-none rounded-xl border border-border bg-background py-3 pr-12 pl-4 font-medium text-foreground text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
+										id="discount-select"
+										onChange={(e) => setSelectedDiscountId(e.target.value)}
+										value={selectedDiscountId || ""}
+									>
+										<option value="">TANPA VOUCHER / DISKON</option>
+										{validDiscounts.map((d: Doc<"discounts">) => (
+											<option key={d._id} value={d._id}>
+												{d.name.toUpperCase()} (
+												{d.type === "PERCENTAGE"
+													? `${d.value}%`
+													: `RP ${d.value}`}
+												)
+											</option>
+										))}
+									</select>
+									<Tag className="pointer-events-none absolute top-[38px] right-4 h-4 w-4 text-muted-foreground" />
+								</div>
+							)}
+
+							{/* Auto Complete Toggle */}
+							<div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/10">
+								<div className="space-y-0.5">
+									<div className="flex items-center gap-1.5">
+										<span className="block font-bold text-primary text-[10px] uppercase tracking-widest">Otomatis Lunas</span>
+										<div className="h-1 w-1 rounded-full bg-primary/30" />
+										<span className="text-[9px] text-muted-foreground italic">Instant Settlement</span>
+									</div>
+									<p className="text-[10px] text-muted-foreground leading-tight">Potong stok & catat keuangan langsung</p>
+								</div>
+								<button
+									className={`relative h-6 w-11 rounded-full transition-all duration-300 ${autoComplete ? "bg-primary" : "bg-muted-foreground/20"}`}
+									onClick={() => setAutoComplete(!autoComplete)}
+									type="button"
+								>
+									<div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${autoComplete ? "right-1" : "left-1"}`} />
+								</button>
+							</div>
 						</div>
+					</div>
+
+					{/* Fixed Footer Actions */}
+					<div className="border-t border-border bg-muted/30 p-6 flex gap-4">
+						<button
+							className="flex-1 rounded-xl bg-white border border-border py-4 font-bold text-muted-foreground text-xs uppercase tracking-widest transition-all hover:bg-muted active:scale-[0.98] shadow-sm"
+							disabled={isSubmitting}
+							onClick={onClose}
+							type="button"
+						>
+							Batal
+						</button>
+						<button
+							aria-label="Konfirmasi pembayaran"
+							className="flex-[2] rounded-xl bg-primary py-4 font-bold text-primary-foreground text-sm uppercase tracking-widest shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+							disabled={isSubmitting}
+							onClick={() =>
+								onConfirm(
+									finalTotal,
+									selectedDiscountId || undefined,
+									selectedPaymentMethod,
+									{
+										tableNumber,
+										orderType,
+										notes,
+										autoComplete
+									}
+								)
+							}
+							type="button"
+						>
+							{isSubmitting ? (
+								<>
+									<ShimmerSkeleton className="h-4 w-4" shape="circle" />
+									<span>MEMPROSES...</span>
+								</>
+							) : (
+								<>
+									<span>BAYAR SEKARANG</span>
+									<ChevronRight className="h-4 w-4" />
+								</>
+							)}
+						</button>
 					</div>
 				</motion.div>
 			</div>

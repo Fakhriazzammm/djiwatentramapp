@@ -353,7 +353,7 @@ function OrderSimpleDetail({
 				<div className="space-y-1.5">
 					<Label className="text-[10px] uppercase text-muted-foreground">Metode</Label>
 					{isEditMode ? (
-						<Select value={paymentMethod} onValueChange={setPaymentMethod}>
+						<Select value={paymentMethod} onValueChange={(v: string) => setPaymentMethod(v)}>
 							<SelectTrigger className="h-9">
 								<SelectValue />
 							</SelectTrigger>
@@ -371,7 +371,7 @@ function OrderSimpleDetail({
 				<div className="space-y-1.5">
 					<Label className="text-[10px] uppercase text-muted-foreground">Status</Label>
 					{isEditMode ? (
-						<Select value={status} onValueChange={setStatus}>
+						<Select value={status} onValueChange={(v: any) => setStatus(v)}>
 							<SelectTrigger className="h-9">
 								<SelectValue />
 							</SelectTrigger>
@@ -1617,7 +1617,7 @@ function SettingsTab({ onClose }: { onClose: () => void }) {
 					<Button
 						className="w-full font-bold shadow-md"
 						disabled={isSaving}
-						onClick={handleSave}
+						onClick={() => handleSave()}
 					>
 						{isSaving ? (
 							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
