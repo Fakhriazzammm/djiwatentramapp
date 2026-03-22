@@ -239,105 +239,105 @@ export function PaymentConfirmationModal({
 
 	return (
 		<AnimatePresence>
-			<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-md">
+			<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-sm">
 				<motion.div
-					animate={{ opacity: 1, scale: 1 }}
-					className="relative flex w-full max-w-lg flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
-					exit={{ opacity: 0, scale: 0.95 }}
-					initial={{ opacity: 0, scale: 0.95 }}
+					animate={{ opacity: 1, scale: 1, y: 0 }}
+					className="relative flex w-full max-w-md max-h-[95vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+					exit={{ opacity: 0, scale: 0.95, y: 10 }}
+					initial={{ opacity: 0, scale: 0.95, y: 10 }}
 				>
 					{/* Close Button */}
 					<IconButton
 						aria-label="Tutup modal pembayaran"
-						className="absolute top-4 right-4 z-10"
-						iconSize="lg"
+						className="absolute top-3 right-3 z-20 bg-background/50 backdrop-blur-md hover:bg-background"
+						iconSize="sm"
 						onClick={onClose}
 						size="sm"
 						variant="ghost"
 					>
-						<X className="h-5 w-5" />
+						<X className="h-4 w-4" />
 					</IconButton>
 
-					<div className="flex flex-col items-center justify-center border-border border-b bg-muted/50 p-8 pb-4">
+					<div className="flex flex-col items-center justify-center border-border border-b bg-muted/30 p-4 sm:p-6">
 						{selectedPaymentMethod === "qris" && siteSettings?.qrisImage ? (
-							<div className="flex flex-col items-center gap-4">
-								<div className="rounded-xl border-4 border-white bg-white p-2 shadow-lg">
+							<div className="flex flex-col items-center gap-2">
+								<div className="rounded-lg border-2 border-white bg-white p-1.5 shadow-md">
 									<img
 										alt="QRIS Statis"
-										className="max-h-[200px] w-auto object-contain"
+										className="max-h-[140px] w-auto object-contain"
 										src={siteSettings.qrisImage}
 									/>
 								</div>
-								<p className="font-bold text-primary text-sm tracking-widest">
+								<p className="font-bold text-primary text-[10px] tracking-widest uppercase">
 									PINDAI UNTUK MEMBAYAR
 								</p>
 							</div>
 						) : siteSettings?.paymentPopupImage ? (
 							<img
 								alt="Banner Pembayaran"
-								className="max-h-[160px] w-auto max-w-full rounded-xl object-contain shadow-md"
+								className="max-h-[120px] w-auto max-w-full rounded-lg object-contain shadow-sm"
 								src={siteSettings.paymentPopupImage}
 							/>
 						) : (
-							<div className="flex h-24 w-full items-center justify-center rounded-md bg-muted">
-								<span className="font-medium text-muted-foreground text-xs uppercase tracking-wider">
+							<div className="flex h-16 w-full items-center justify-center rounded-lg bg-muted/50 border border-dashed border-border">
+								<span className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest opacity-60">
 									Sistem Pembayaran
 								</span>
 							</div>
 						)}
 					</div>
 
-					<div className="space-y-6 p-8 overflow-y-auto max-h-[75vh]">
+					<div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 scrollbar-thin">
 						{/* --- SECTION: ORDER INFO --- */}
-						<div className="space-y-4">
-							<div className="flex items-center gap-2 mb-2">
-								<Info className="h-4 w-4 text-primary" />
-								<h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Informasi Pesanan</h3>
+						<div className="space-y-3">
+							<div className="flex items-center gap-2">
+								<Info className="h-3.5 w-3.5 text-primary/70" />
+								<h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">Informasi Pesanan</h3>
 							</div>
 							
 							{/* Dine-in / Takeaway Toggle */}
-							<div className="grid grid-cols-2 gap-3 p-1 rounded-xl bg-muted/30 border border-border/50">
+							<div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-muted/30 border border-border/50">
 								<button
 									type="button"
 									onClick={() => setOrderType("dine_in")}
-									className={`flex items-center justify-center gap-2 py-3 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all ${orderType === "dine_in" ? 'bg-white shadow-sm text-primary border border-border' : 'text-muted-foreground'}`}
+									className={`flex items-center justify-center gap-1.5 py-2 rounded-lg font-bold text-[9px] uppercase tracking-wider transition-all ${orderType === "dine_in" ? 'bg-background shadow-sm text-primary border border-border/50' : 'text-muted-foreground hover:text-foreground'}`}
 								>
 									<Coffee className="h-3 w-3" />
-									Makan di Sini
+									Dine In
 								</button>
 								<button
 									type="button"
 									onClick={() => setOrderType("takeaway")}
-									className={`flex items-center justify-center gap-2 py-3 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all ${orderType === "takeaway" ? 'bg-white shadow-sm text-primary border border-border' : 'text-muted-foreground'}`}
+									className={`flex items-center justify-center gap-1.5 py-2 rounded-lg font-bold text-[9px] uppercase tracking-wider transition-all ${orderType === "takeaway" ? 'bg-background shadow-sm text-primary border border-border/50' : 'text-muted-foreground hover:text-foreground'}`}
 								>
 									<ShoppingBag className="h-3 w-3" />
-									Bawa Pulang
+									Takeaway
 								</button>
 							</div>
 
 							{/* Table Number & Notes Row */}
-							<div className="grid grid-cols-2 gap-4">
-								<div className="space-y-2">
-									<label className="block font-medium text-muted-foreground text-[10px] uppercase tracking-widest">
-										Nomor Meja
+							<div className="grid grid-cols-2 gap-3">
+								<div className="space-y-1.5">
+									<label className="block font-bold text-muted-foreground/60 text-[9px] uppercase tracking-widest ml-1">
+										Meja
 									</label>
 									<input
-										className={`w-full rounded-xl border border-border bg-background p-3 text-sm font-bold outline-none transition-all focus:ring-2 focus:ring-primary/20 ${orderType === 'takeaway' ? 'opacity-50 cursor-not-allowed' : ''}`}
+										className={`w-full rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-bold outline-none transition-all focus:border-primary/50 focus:ring-4 focus:ring-primary/5 ${orderType === 'takeaway' ? 'opacity-40 cursor-not-allowed bg-muted' : ''}`}
 										disabled={orderType === 'takeaway'}
 										onChange={(e) => setTableNumber(e.target.value)}
-										placeholder="No. Meja"
+										placeholder="No."
 										type="text"
 										value={tableNumber}
 									/>
 								</div>
-								<div className="space-y-2">
-									<label className="block font-medium text-muted-foreground text-[10px] uppercase tracking-widest">
+								<div className="space-y-1.5">
+									<label className="block font-bold text-muted-foreground/60 text-[9px] uppercase tracking-widest ml-1">
 										Catatan
 									</label>
 									<input
-										className="w-full rounded-xl border border-border bg-background p-3 text-sm font-medium outline-none transition-all focus:ring-2 focus:ring-primary/20"
+										className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-medium outline-none transition-all focus:border-primary/50 focus:ring-4 focus:ring-primary/5"
 										onChange={(e) => setNotes(e.target.value)}
-										placeholder="Contoh: Tanpa Es"
+										placeholder="Tanpa Es..."
 										type="text"
 										value={notes}
 									/>
@@ -345,96 +345,14 @@ export function PaymentConfirmationModal({
 							</div>
 						</div>
 
-						{/* --- SECTION: BILLING --- */}
-						<div className="space-y-4 pt-4 border-t border-dashed border-border/50">
-							<div className="flex items-center gap-2 mb-2">
-								<Calculator className="h-4 w-4 text-primary" />
-								<h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ringkasan Pembayaran</h3>
-							</div>
-
-							<div className="space-y-3 rounded-xl border border-border bg-muted/50 p-6 shadow-inner">
-								<div className="flex items-center justify-between">
-									<span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-										Subtotal
-									</span>
-									<span className="font-semibold text-foreground text-sm">
-										{new Intl.NumberFormat("id-ID", {
-											style: "currency",
-											currency: "IDR",
-											maximumFractionDigits: 0,
-										}).format(totalAmount)}
-									</span>
-								</div>
-
-								{discountAmount > 0 && (
-									<div className="flex items-center justify-between font-medium text-green-600">
-										<span className="flex items-center gap-1.5 text-xs uppercase tracking-wide">
-											<Tag className="h-3 w-3" /> Potongan
-										</span>
-										<span className="text-sm">
-											-
-											{new Intl.NumberFormat("id-ID", {
-												style: "currency",
-												currency: "IDR",
-												maximumFractionDigits: 0,
-											}).format(discountAmount)}
-										</span>
-									</div>
-								)}
-
-								{serviceChargeAmount > 0 && (
-									<div className="flex items-center justify-between font-medium text-foreground">
-										<span className="text-xs uppercase tracking-wide text-muted-foreground">
-											Service Charge ({serviceChargeRate}%)
-										</span>
-										<span className="text-sm">
-											{new Intl.NumberFormat("id-ID", {
-												style: "currency",
-												currency: "IDR",
-												maximumFractionDigits: 0,
-											}).format(serviceChargeAmount)}
-										</span>
-									</div>
-								)}
-
-								{taxAmount > 0 && (
-									<div className="flex items-center justify-between font-medium text-foreground">
-										<span className="text-xs uppercase tracking-wide text-muted-foreground">
-											Pajak ({taxRate}%)
-										</span>
-										<span className="text-sm">
-											{new Intl.NumberFormat("id-ID", {
-												style: "currency",
-												currency: "IDR",
-												maximumFractionDigits: 0,
-											}).format(taxAmount)}
-										</span>
-									</div>
-								)}
-
-								<div className="mt-2 flex items-center justify-between border-border border-t pt-3">
-									<span className="font-semibold text-foreground text-xs uppercase tracking-wide">
-										Total Bayar
-									</span>
-									<span className="font-bold text-3xl text-primary tracking-tight">
-										{new Intl.NumberFormat("id-ID", {
-											style: "currency",
-											currency: "IDR",
-											maximumFractionDigits: 0,
-										}).format(finalTotal)}
-									</span>
-								</div>
-							</div>
-						</div>
-
 						{/* --- SECTION: PAYMENT METHODS --- */}
-						<div className="space-y-4 pt-4 border-t border-dashed border-border/50">
-							<div className="flex items-center gap-2 mb-2">
-								<Wallet className="h-4 w-4 text-primary" />
-								<h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Metode Pembayaran</h3>
+						<div className="space-y-3 pt-4 border-t border-dashed border-border/50">
+							<div className="flex items-center gap-2">
+								<Wallet className="h-3.5 w-3.5 text-primary/70" />
+								<h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">Metode Pembayaran</h3>
 							</div>
 
-							<div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+							<div className="grid grid-cols-2 gap-2">
 								{paymentOptions.map((opt) => {
 									const isSelected = selectedPaymentMethod === opt.id;
 									let Icon = Wallet;
@@ -446,14 +364,16 @@ export function PaymentConfirmationModal({
 											key={opt.id}
 											type="button"
 											onClick={() => setSelectedPaymentMethod(opt.id)}
-											className={`flex flex-col items-center justify-center gap-3 rounded-xl border p-4 transition-all active:scale-95 ${
+											className={`flex items-center gap-3 rounded-xl border px-3 py-3 transition-all active:scale-95 ${
 												isSelected
-													? "border-primary bg-primary/10 text-primary shadow-sm"
-													: "border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+													? "border-primary bg-primary/5 text-primary shadow-sm"
+													: "border-border bg-background text-muted-foreground hover:bg-muted/30 hover:text-foreground"
 											}`}
 										>
-											<Icon className={`h-6 w-6 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
-											<span className="text-[9px] font-bold uppercase tracking-wider text-center leading-tight">
+											<div className={`flex h-8 w-8 items-center justify-center rounded-lg ${isSelected ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>
+												<Icon className="h-4 w-4" />
+											</div>
+											<span className="text-[9px] font-bold uppercase tracking-wider text-left leading-tight">
 												{opt.label}
 											</span>
 										</button>
@@ -465,34 +385,34 @@ export function PaymentConfirmationModal({
 						{/* --- SECTION: CASH ASSISTANT --- */}
 						{selectedPaymentMethod === "tunai" && (
 							<motion.div 
-								initial={{ opacity: 0, y: 10 }}
-								animate={{ opacity: 1, y: 0 }}
-								className="space-y-4 pt-4 border-t border-dashed border-border/50 bg-primary/5 -mx-8 px-8 py-6"
+								initial={{ opacity: 0, scale: 0.98 }}
+								animate={{ opacity: 1, scale: 1 }}
+								className="space-y-3 rounded-2xl bg-primary/5 border border-primary/10 p-4"
 							>
-								<div className="flex items-center justify-between">
+								<div className="flex items-center justify-between mb-1">
 									<div className="flex items-center gap-2">
-										<Zap className="h-4 w-4 text-primary" />
-										<h3 className="text-xs font-bold uppercase tracking-widest text-primary">Kalkulator Tunai</h3>
+										<Zap className="h-3.5 w-3.5 text-primary" />
+										<h3 className="text-[10px] font-bold uppercase tracking-widest text-primary">Kalkulator Tunai</h3>
 									</div>
 									{changeAmount > 0 && (
-										<div className="flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-green-700">
-											<span className="text-[10px] font-bold uppercase">Kembalian:</span>
-											<span className="text-sm font-bold">
+										<div className="flex items-center gap-1.5 rounded-full bg-green-500 px-2.5 py-1 text-white shadow-sm shadow-green-200">
+											<span className="text-[8px] font-bold uppercase tracking-tighter">Kembali:</span>
+											<span className="text-[11px] font-black">
 												{new Intl.NumberFormat("id-ID").format(changeAmount)}
 											</span>
 										</div>
 									)}
 								</div>
 
-								<div className="grid grid-cols-2 gap-4">
-									<div className="space-y-2">
-										<label className="block font-medium text-primary/70 text-[10px] uppercase tracking-widest">
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<div className="space-y-1.5">
+										<label className="block font-bold text-primary/60 text-[9px] uppercase tracking-widest ml-1">
 											Uang Diterima
 										</label>
 										<div className="relative">
-											<span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-sm">Rp</span>
+											<span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-primary/40 text-[10px]">Rp</span>
 											<input
-												className="w-full rounded-xl border-2 border-primary/20 bg-background py-3 pl-10 pr-4 text-lg font-bold text-primary outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
+												className="w-full rounded-xl border-2 border-primary/20 bg-background py-2.5 pl-8 pr-3 text-sm font-black text-primary outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/5"
 												onChange={(e) => {
 													const val = e.target.value.replace(/\D/g, "");
 													setCashReceived(val === "" ? "" : parseInt(val));
@@ -503,17 +423,17 @@ export function PaymentConfirmationModal({
 											/>
 										</div>
 									</div>
-									<div className="flex flex-col gap-2">
-										<label className="block font-medium text-primary/70 text-[10px] uppercase tracking-widest">
+									<div className="space-y-1.5">
+										<label className="block font-bold text-primary/60 text-[9px] uppercase tracking-widest ml-1">
 											Nominal Cepat
 										</label>
-										<div className="grid grid-cols-2 gap-2">
+										<div className="grid grid-cols-3 gap-1.5">
 											{[50000, 100000].map(amount => (
 												<button
 													key={amount}
 													type="button"
 													onClick={() => handleQuickCash(amount)}
-													className="rounded-lg border border-primary/20 bg-white py-2 text-[10px] font-bold text-primary transition-all hover:bg-primary hover:text-white active:scale-95 shadow-sm"
+													className="rounded-lg border border-primary/20 bg-background py-2 text-[9px] font-black text-primary transition-all hover:bg-primary hover:text-white active:scale-90 shadow-sm"
 												>
 													{amount / 1000}K
 												</button>
@@ -521,9 +441,9 @@ export function PaymentConfirmationModal({
 											<button
 												type="button"
 												onClick={() => handleQuickCash(finalTotal)}
-												className="col-span-2 rounded-lg border border-primary bg-primary/10 py-2 text-[10px] font-bold text-primary transition-all hover:bg-primary hover:text-white active:scale-95 shadow-sm"
+												className="rounded-lg border border-primary bg-primary py-2 text-[8px] font-black text-white transition-all hover:opacity-90 active:scale-90 shadow-md shadow-primary/20"
 											>
-												UANG PAS
+												PAS
 											</button>
 										</div>
 									</div>
@@ -531,24 +451,84 @@ export function PaymentConfirmationModal({
 							</motion.div>
 						)}
 
+						{/* --- SECTION: BILLING SUMMARY --- */}
+						<div className="space-y-3 pt-4 border-t border-dashed border-border/50">
+							<div className="flex items-center gap-2">
+								<Calculator className="h-3.5 w-3.5 text-primary/70" />
+								<h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">Ringkasan Biaya</h3>
+							</div>
+
+							<div className="space-y-2 rounded-xl border border-border bg-muted/20 p-4">
+								<div className="flex items-center justify-between text-[10px] text-muted-foreground">
+									<span className="font-medium uppercase tracking-wide">Subtotal</span>
+									<span className="font-bold text-foreground">
+										{new Intl.NumberFormat("id-ID", {
+											style: "currency",
+											currency: "IDR",
+											maximumFractionDigits: 0,
+										}).format(totalAmount)}
+									</span>
+								</div>
+
+								{discountAmount > 0 && (
+									<div className="flex items-center justify-between text-[10px] text-green-600 font-bold">
+										<span className="flex items-center gap-1 uppercase tracking-wide">
+											<Tag className="h-2.5 w-2.5" /> Potongan
+										</span>
+										<span>
+											-{new Intl.NumberFormat("id-ID", {
+												style: "currency",
+												currency: "IDR",
+												maximumFractionDigits: 0,
+											}).format(discountAmount)}
+										</span>
+									</div>
+								)}
+
+								{(serviceChargeAmount > 0 || taxAmount > 0) && (
+									<div className="flex items-center justify-between text-[9px] text-muted-foreground/70 border-t border-border/50 pt-2">
+										<span className="uppercase tracking-tighter">Biaya Tambahan (Pajak & Layanan)</span>
+										<span className="font-bold">
+											{new Intl.NumberFormat("id-ID", {
+												style: "currency",
+												currency: "IDR",
+												maximumFractionDigits: 0,
+											}).format(serviceChargeAmount + taxAmount)}
+										</span>
+									</div>
+								)}
+
+								<div className="mt-1 flex items-center justify-between border-t-2 border-primary/10 pt-2">
+									<span className="font-black text-primary text-[10px] uppercase tracking-widest">Total Bayar</span>
+									<span className="font-black text-2xl text-primary tracking-tighter">
+										{new Intl.NumberFormat("id-ID", {
+											style: "currency",
+											currency: "IDR",
+											maximumFractionDigits: 0,
+										}).format(finalTotal)}
+									</span>
+								</div>
+							</div>
+						</div>
+
 						{/* Voucher & Auto Complete */}
-						<div className="space-y-4 pt-4 border-t border-dashed border-border/50">
+						<div className="space-y-3 pt-2">
 							{/* Discount Dropdown */}
 							{validDiscounts.length > 0 && (
 								<div className="relative">
 									<label
-										className="mb-2 block font-medium text-muted-foreground text-[10px] uppercase tracking-wide"
+										className="mb-1.5 block font-bold text-muted-foreground/60 text-[9px] uppercase tracking-widest ml-1"
 										htmlFor="discount-select"
 									>
-										Pilih Voucher / Diskon Menu
+										Voucher / Promo
 									</label>
 									<select
-										className="w-full appearance-none rounded-xl border border-border bg-background py-3 pr-12 pl-4 font-medium text-foreground text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
+										className="w-full appearance-none rounded-xl border border-border bg-background py-2.5 pr-10 pl-3 font-bold text-foreground text-[10px] outline-none transition-all focus:border-primary/50 focus:ring-4 focus:ring-primary/5"
 										id="discount-select"
 										onChange={(e) => setSelectedDiscountId(e.target.value)}
 										value={selectedDiscountId || ""}
 									>
-										<option value="">TANPA VOUCHER / DISKON</option>
+										<option value="">TANPA VOUCHER</option>
 										{validDiscounts.map((d: Doc<"discounts">) => (
 											<option key={d._id} value={d._id}>
 												{d.name.toUpperCase()} (
@@ -559,35 +539,38 @@ export function PaymentConfirmationModal({
 											</option>
 										))}
 									</select>
-									<Tag className="pointer-events-none absolute top-[38px] right-4 h-4 w-4 text-muted-foreground" />
+									<Tag className="pointer-events-none absolute bottom-2.5 right-3 h-3.5 w-3.5 text-muted-foreground/40" />
 								</div>
 							)}
 
 							{/* Auto Complete Toggle */}
-							<div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/10">
-								<div className="space-y-0.5">
-									<div className="flex items-center gap-1.5">
-										<span className="block font-bold text-primary text-[10px] uppercase tracking-widest">Otomatis Lunas</span>
-										<div className="h-1 w-1 rounded-full bg-primary/30" />
-										<span className="text-[9px] text-muted-foreground italic">Instant Settlement</span>
+							<div className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/10">
+								<div className="flex items-center gap-3">
+									<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+										<Zap className="h-3.5 w-3.5" />
 									</div>
-									<p className="text-[10px] text-muted-foreground leading-tight">Potong stok & catat keuangan langsung</p>
+									<div className="space-y-0.5">
+										<div className="flex items-center gap-1.5">
+											<span className="block font-black text-primary text-[9px] uppercase tracking-widest">Otomatis Lunas</span>
+										</div>
+										<p className="text-[8px] text-muted-foreground font-medium leading-none">Instant Settlement & Stok</p>
+									</div>
 								</div>
 								<button
-									className={`relative h-6 w-11 rounded-full transition-all duration-300 ${autoComplete ? "bg-primary" : "bg-muted-foreground/20"}`}
+									className={`relative h-5 w-9 rounded-full transition-all duration-300 ${autoComplete ? "bg-primary shadow-sm shadow-primary/20" : "bg-muted-foreground/20"}`}
 									onClick={() => setAutoComplete(!autoComplete)}
 									type="button"
 								>
-									<div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${autoComplete ? "right-1" : "left-1"}`} />
+									<div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${autoComplete ? "right-0.5" : "left-0.5"}`} />
 								</button>
 							</div>
 						</div>
 					</div>
 
 					{/* Fixed Footer Actions */}
-					<div className="border-t border-border bg-muted/30 p-6 flex gap-4">
+					<div className="border-t border-border bg-muted/10 p-4 sm:p-5 flex gap-3">
 						<button
-							className="flex-1 rounded-xl bg-white border border-border py-4 font-bold text-muted-foreground text-xs uppercase tracking-widest transition-all hover:bg-muted active:scale-[0.98] shadow-sm"
+							className="flex-1 rounded-xl bg-background border border-border py-3.5 font-bold text-muted-foreground text-[10px] uppercase tracking-widest transition-all hover:bg-muted active:scale-95"
 							disabled={isSubmitting}
 							onClick={onClose}
 							type="button"
@@ -596,7 +579,7 @@ export function PaymentConfirmationModal({
 						</button>
 						<button
 							aria-label="Konfirmasi pembayaran"
-							className="flex-[2] rounded-xl bg-primary py-4 font-bold text-primary-foreground text-sm uppercase tracking-widest shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+							className="flex-[2] rounded-xl bg-primary py-3.5 font-black text-primary-foreground text-xs uppercase tracking-widest shadow-lg shadow-primary/20 transition-all hover:opacity-90 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
 							disabled={isSubmitting}
 							onClick={() =>
 								onConfirm(
@@ -614,14 +597,11 @@ export function PaymentConfirmationModal({
 							type="button"
 						>
 							{isSubmitting ? (
-								<>
-									<ShimmerSkeleton className="h-4 w-4" shape="circle" />
-									<span>MEMPROSES...</span>
-								</>
+								<ShimmerSkeleton className="h-4 w-20" />
 							) : (
 								<>
-									<span>BAYAR SEKARANG</span>
-									<ChevronRight className="h-4 w-4" />
+									<span>KONFIRMASI BAYAR</span>
+									<ChevronRight className="h-3.5 w-3.5" />
 								</>
 							)}
 						</button>
