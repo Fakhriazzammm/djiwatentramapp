@@ -24,10 +24,6 @@ import { useCart } from "@/context/cart-context";
 import { bluetoothPrinter } from "@/lib/bluetooth-printer";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
 
-export const Route = createLazyFileRoute("/menu")({
-	component: MenuPage,
-});
-
 interface Product {
 	_id: string;
 	name: string;
@@ -1182,3 +1178,7 @@ function MenuPage() {
 		</div>
 	);
 }
+
+export const Route = createLazyFileRoute("/menu")({
+	component: MenuPage,
+});

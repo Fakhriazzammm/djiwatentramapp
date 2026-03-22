@@ -36,10 +36,6 @@ const AVAILABLE_PERMISSIONS = [
 	{ id: "users:manage", label: "Kelola User & Role" },
 ];
 
-export const Route = createLazyFileRoute("/admin/settings")({
-	component: SettingsPage,
-});
-
 function SettingsPage() {
 	// Site Settings
 	const siteSettings = useQuery(api.site_settings.getSettings);
@@ -1707,3 +1703,7 @@ function SettingsPage() {
 		</div>
 	);
 }
+
+export const Route = createLazyFileRoute("/admin/settings")({
+	component: SettingsPage,
+});
