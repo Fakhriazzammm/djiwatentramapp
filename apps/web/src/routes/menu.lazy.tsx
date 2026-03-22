@@ -4,7 +4,7 @@ import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, ShoppingCart, Tag, Trash2, X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MenuSidebar } from "@/components/pos/menu-sidebar";
@@ -655,11 +655,15 @@ function MenuPage() {
 	// Animation state
 	const [flyingItems, setFlyingItems] = useState<{ id: number, start: { x: number, y: number }, image?: string }[]>([]);
 
-	const totalItems = items.reduce((acc: number, i) => acc + i.quantity, 0);
-
 	const products = useQuery(api.products.getProducts, {
 		categoryId: selectedCategory ?? undefined,
 	}) as (Product & { categoryId: string })[] | undefined;
+
+	// Optimization: Pre-calculate cart state to avoid re-renders
+	const { totalItems, hasItems } = useMemo(() => ({
+		totalItems: items.reduce((acc: number, i) => acc + i.quantity, 0),
+		hasItems: items.length > 0,
+	}), [items]);
 
 	const handleAddToCart = useCallback(
 		(product: Product, event?: React.MouseEvent) => {
