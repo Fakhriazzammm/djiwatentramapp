@@ -30,6 +30,16 @@ const DEFAULTS = {
 	taxRate: 0,
 	serviceChargeRate: 0,
 	qrisImage: "",
+	// Receipt defaults
+	receiptLogo: "",
+	receiptHeader: "",
+	receiptShowLogo: true,
+	receiptShowAddress: true,
+	receiptShowPhone: true,
+	receiptShowOrderNumber: true,
+	receiptShowCustomerName: true,
+	receiptShowNotes: true,
+	receiptFontSize: "normal",
 };
 
 export const getSettings = query({
@@ -86,6 +96,16 @@ export const getSettings = query({
 			taxRate: settings.taxRate ?? DEFAULTS.taxRate,
 			serviceChargeRate: settings.serviceChargeRate ?? DEFAULTS.serviceChargeRate,
 			qrisImage: qrisImage ?? DEFAULTS.qrisImage,
+			// Receipt Settings
+			receiptLogo: settings.receiptLogo ?? DEFAULTS.receiptLogo,
+			receiptHeader: settings.receiptHeader ?? DEFAULTS.receiptHeader,
+			receiptShowLogo: settings.receiptShowLogo ?? DEFAULTS.receiptShowLogo,
+			receiptShowAddress: settings.receiptShowAddress ?? DEFAULTS.receiptShowAddress,
+			receiptShowPhone: settings.receiptShowPhone ?? DEFAULTS.receiptShowPhone,
+			receiptShowOrderNumber: settings.receiptShowOrderNumber ?? DEFAULTS.receiptShowOrderNumber,
+			receiptShowCustomerName: settings.receiptShowCustomerName ?? DEFAULTS.receiptShowCustomerName,
+			receiptShowNotes: settings.receiptShowNotes ?? DEFAULTS.receiptShowNotes,
+			receiptFontSize: settings.receiptFontSize ?? DEFAULTS.receiptFontSize,
 		};
 	},
 });
@@ -125,6 +145,16 @@ export const updateSettings = mutation({
 		taxRate: v.optional(v.number()),
 		serviceChargeRate: v.optional(v.number()),
 		qrisImage: v.optional(v.string()),
+		// Receipt Settings
+		receiptLogo: v.optional(v.string()),
+		receiptHeader: v.optional(v.string()),
+		receiptShowLogo: v.optional(v.boolean()),
+		receiptShowAddress: v.optional(v.boolean()),
+		receiptShowPhone: v.optional(v.boolean()),
+		receiptShowOrderNumber: v.optional(v.boolean()),
+		receiptShowCustomerName: v.optional(v.boolean()),
+		receiptShowNotes: v.optional(v.boolean()),
+		receiptFontSize: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const existing = await ctx.db.query("siteSettings").first();

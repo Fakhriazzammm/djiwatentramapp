@@ -78,6 +78,16 @@ function SettingsPage() {
 		appName: "Yumi POS",
 		appVersion: "1.0.0",
 		developerName: "Zantara Technology",
+		// Receipt Customization
+		receiptLogo: "",
+		receiptHeader: "",
+		receiptShowLogo: true,
+		receiptShowAddress: true,
+		receiptShowPhone: true,
+		receiptShowOrderNumber: true,
+		receiptShowCustomerName: true,
+		receiptShowNotes: true,
+		receiptFontSize: "normal",
 	});
 
 	const [isConnected, setIsConnected] = useState(false);
@@ -159,6 +169,16 @@ function SettingsPage() {
 				appName: siteSettings.appName ?? "Yumi POS",
 				appVersion: siteSettings.appVersion ?? "1.0.0",
 				developerName: siteSettings.developerName ?? "Zantara Technology",
+				// Receipt Customization
+				receiptLogo: siteSettings.receiptLogo ?? "",
+				receiptHeader: siteSettings.receiptHeader ?? "",
+				receiptShowLogo: siteSettings.receiptShowLogo ?? true,
+				receiptShowAddress: siteSettings.receiptShowAddress ?? true,
+				receiptShowPhone: siteSettings.receiptShowPhone ?? true,
+				receiptShowOrderNumber: siteSettings.receiptShowOrderNumber ?? true,
+				receiptShowCustomerName: siteSettings.receiptShowCustomerName ?? true,
+				receiptShowNotes: siteSettings.receiptShowNotes ?? true,
+				receiptFontSize: siteSettings.receiptFontSize ?? "normal",
 			}));
 			setPaymentSettings({
 				mayarEnabled: siteSettings.mayarEnabled ?? false,
@@ -205,6 +225,16 @@ function SettingsPage() {
 				paymentMethodsManual: paymentSettings.manualMethods,
 				taxRate: settings.taxRate,
 				serviceChargeRate: settings.serviceChargeRate,
+				// Receipt Customization
+				receiptLogo: settings.receiptLogo,
+				receiptHeader: settings.receiptHeader,
+				receiptShowLogo: settings.receiptShowLogo,
+				receiptShowAddress: settings.receiptShowAddress,
+				receiptShowPhone: settings.receiptShowPhone,
+				receiptShowOrderNumber: settings.receiptShowOrderNumber,
+				receiptShowCustomerName: settings.receiptShowCustomerName,
+				receiptShowNotes: settings.receiptShowNotes,
+				receiptFontSize: settings.receiptFontSize,
 			};
 			console.log("Saving settings:", payload);
 			await updateSiteSettings(payload);
@@ -1430,6 +1460,194 @@ function SettingsPage() {
 											value={settings.receiptFooter}
 										/>
 										<p className="text-[10px] text-muted-foreground leading-relaxed">Pesan ini akan tercetak di bagian bawah setiap struk kasir dan kitchen.</p>
+									</div>
+								</div>
+							</section>
+
+							{/* Receipt Design Customization Section */}
+							<section className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-sm md:space-y-8 md:p-8">
+								<div className="flex items-center gap-4">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+										<Layout className="h-6 w-6" />
+									</div>
+									<div>
+										<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
+											Desain & Layout Struk
+										</h3>
+										<p className="text-muted-foreground text-sm">
+											Kustomisasi Tampilan Struk Fisik
+										</p>
+									</div>
+								</div>
+
+								<div className="space-y-6">
+									{/* Header Text */}
+									<div className="space-y-2">
+										<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+											Teks Header Kustom (Opsional)
+										</label>
+										<input
+											className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											onChange={(e) => setSettings({ ...settings, receiptHeader: e.target.value })}
+											placeholder="Kosongkan untuk menggunakan Nama Toko"
+											type="text"
+											value={settings.receiptHeader}
+										/>
+										<p className="text-[10px] text-muted-foreground">Jika diisi, teks ini akan menggantikan Nama Toko di bagian paling atas struk.</p>
+									</div>
+
+									{/* Font Size */}
+									<div className="space-y-2">
+										<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+											Ukuran Font
+										</label>
+										<select
+											className="w-full appearance-none rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											onChange={(e) => setSettings({ ...settings, receiptFontSize: e.target.value })}
+											value={settings.receiptFontSize}
+										>
+											<option value="small">Kecil</option>
+											<option value="normal">Normal</option>
+											<option value="large">Besar</option>
+										</select>
+									</div>
+
+									{/* Visibility Toggles */}
+									<div className="space-y-3 pt-4 border-t border-border/50">
+										<p className="font-bold text-foreground text-xs uppercase tracking-widest">Tampilkan Informasi</p>
+										
+										<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+											{/* Show Logo */}
+											<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-3 shadow-sm">
+												<span className="font-medium text-foreground text-sm">Logo Toko</span>
+												<button
+													className={`relative h-6 w-10 rounded-full transition-all duration-300 ${settings.receiptShowLogo ? "bg-primary" : "bg-muted-foreground/20"}`}
+													onClick={() => setSettings({ ...settings, receiptShowLogo: !settings.receiptShowLogo })}
+													type="button"
+												>
+													<div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowLogo ? "right-1" : "left-1"}`} />
+												</button>
+											</div>
+
+											{/* Show Address */}
+											<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-3 shadow-sm">
+												<span className="font-medium text-foreground text-sm">Alamat Toko</span>
+												<button
+													className={`relative h-6 w-10 rounded-full transition-all duration-300 ${settings.receiptShowAddress ? "bg-primary" : "bg-muted-foreground/20"}`}
+													onClick={() => setSettings({ ...settings, receiptShowAddress: !settings.receiptShowAddress })}
+													type="button"
+												>
+													<div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowAddress ? "right-1" : "left-1"}`} />
+												</button>
+											</div>
+
+											{/* Show Phone */}
+											<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-3 shadow-sm">
+												<span className="font-medium text-foreground text-sm">Nomor Telepon</span>
+												<button
+													className={`relative h-6 w-10 rounded-full transition-all duration-300 ${settings.receiptShowPhone ? "bg-primary" : "bg-muted-foreground/20"}`}
+													onClick={() => setSettings({ ...settings, receiptShowPhone: !settings.receiptShowPhone })}
+													type="button"
+												>
+													<div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowPhone ? "right-1" : "left-1"}`} />
+												</button>
+											</div>
+
+											{/* Show Order Number */}
+											<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-3 shadow-sm">
+												<span className="font-medium text-foreground text-sm">Nomor Antrian</span>
+												<button
+													className={`relative h-6 w-10 rounded-full transition-all duration-300 ${settings.receiptShowOrderNumber ? "bg-primary" : "bg-muted-foreground/20"}`}
+													onClick={() => setSettings({ ...settings, receiptShowOrderNumber: !settings.receiptShowOrderNumber })}
+													type="button"
+												>
+													<div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowOrderNumber ? "right-1" : "left-1"}`} />
+												</button>
+											</div>
+
+											{/* Show Customer Name */}
+											<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-3 shadow-sm">
+												<span className="font-medium text-foreground text-sm">Nama Pelanggan</span>
+												<button
+													className={`relative h-6 w-10 rounded-full transition-all duration-300 ${settings.receiptShowCustomerName ? "bg-primary" : "bg-muted-foreground/20"}`}
+													onClick={() => setSettings({ ...settings, receiptShowCustomerName: !settings.receiptShowCustomerName })}
+													type="button"
+												>
+													<div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowCustomerName ? "right-1" : "left-1"}`} />
+												</button>
+											</div>
+
+											{/* Show Notes */}
+											<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-3 shadow-sm">
+												<span className="font-medium text-foreground text-sm">Catatan Pesanan</span>
+												<button
+													className={`relative h-6 w-10 rounded-full transition-all duration-300 ${settings.receiptShowNotes ? "bg-primary" : "bg-muted-foreground/20"}`}
+													onClick={() => setSettings({ ...settings, receiptShowNotes: !settings.receiptShowNotes })}
+													type="button"
+												>
+													<div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowNotes ? "right-1" : "left-1"}`} />
+												</button>
+											</div>
+										</div>
+									</div>
+
+									{/* Logo Upload specifically for Receipt (if different from landing) */}
+									<div className="space-y-4 pt-4 border-t border-border/50">
+										<div className="space-y-1.5">
+											<label className="block font-medium text-muted-foreground text-xs uppercase tracking-widest">
+												Logo Khusus Struk (Hitam Putih / 1-bit)
+											</label>
+											<p className="text-muted-foreground text-xs">
+												Gunakan gambar logo dengan kontras tinggi untuk hasil terbaik pada printer termal.
+											</p>
+										</div>
+										<div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+											{settings.receiptLogo && (
+												<div className="relative h-32 w-32 overflow-hidden rounded-xl border-4 border-muted bg-white shadow-inner flex items-center justify-center p-2">
+													<img
+														alt="Receipt Logo Preview"
+														className="max-h-full max-w-full object-contain grayscale"
+														src={settings.receiptLogo}
+													/>
+												</div>
+											)}
+											<div className="flex flex-1 flex-col gap-3">
+												<input
+													accept="image/*"
+													className="block w-full text-muted-foreground text-sm file:mr-4 file:rounded-xl file:border-0 file:bg-primary file:px-6 file:py-2.5 file:font-bold file:text-primary-foreground file:text-xs file:transition-all hover:file:opacity-90"
+													onChange={async (e) => {
+														const file = e.target.files?.[0];
+														if (!file) return;
+														try {
+															let uploadBlob: Blob = file;
+															let contentType = file.type || "image/jpeg";
+															if (isOversized(file)) {
+																toast.loading("Mengompresi gambar...", { id: "compress-receipt-logo" });
+																const compressed = await compressFileToLimit(file);
+																toast.dismiss("compress-receipt-logo");
+																uploadBlob = await fetch(compressed).then((r) => r.blob());
+																contentType = "image/jpeg";
+															}
+															const postUrl = await generateUploadUrl();
+															const result = await fetch(postUrl, {
+																method: "POST",
+																headers: { "Content-Type": contentType },
+																body: uploadBlob,
+															});
+															if (!result.ok) throw new Error("Upload failed");
+															const { storageId } = await result.json();
+															setSettings({ ...settings, receiptLogo: storageId });
+															toast.success("Logo struk berhasil diunggah!");
+														} catch (error) {
+															toast.dismiss("compress-receipt-logo");
+															console.error(error);
+															toast.error("Gagal mengupload logo struk");
+														}
+													}}
+													type="file"
+												/>
+											</div>
+										</div>
 									</div>
 								</div>
 							</section>

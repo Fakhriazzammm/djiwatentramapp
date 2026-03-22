@@ -34,6 +34,7 @@ import {
 	SheetTitle,
 	SheetTrigger,
 } from "@/components/ui/sheet";
+import { bluetoothPrinter } from "@/lib/bluetooth-printer";
 
 type FilterType =
 	| "today"
@@ -173,6 +174,7 @@ export function TransactionHistorySidebar() {
 	const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
 	const orders = useQuery(api.orders.getOrders, {});
+	const siteSettings = useQuery(api.site_settings.getSettings);
 	const updateOrder = useMutation(api.orders.updateOrder);
 	const deleteOrder = useMutation(api.orders.deleteOrder);
 
@@ -227,6 +229,54 @@ export function TransactionHistorySidebar() {
 		}
 	};
 
+	const handlePrintOrder = async (order: Doc<"orders">) => {
+		if (!bluetoothPrinter.isConnected()) {
+			toast.error("Printer tidak terhubung. Silakan hubungkan di Pengaturan.");
+			return;
+		}
+
+		if (!siteSettings) return;
+
+		try {
+			toast.loading("Mencetak struk...", { id: "printing" });
+			await bluetoothPrinter.print(
+				{
+					orderNumber: order.orderNumber,
+					items: order.items.map((i) => ({
+						productId: i.productId,
+						name: i.productName,
+						variant: i.variant,
+						price: i.price,
+						quantity: i.quantity,
+					})),
+					totalAmount: order.totalAmount,
+					paymentMethod: order.paymentMethod,
+					createdAt: order.createdAt,
+					customerName: order.customerName,
+				},
+				{
+					storeName: siteSettings.storeName,
+					storeAddress: siteSettings.storeAddress,
+					storePhone: siteSettings.storePhone,
+					receiptFooter: siteSettings.receiptFooter,
+					receiptLogo: siteSettings.receiptLogo,
+					receiptHeader: siteSettings.receiptHeader,
+					receiptShowLogo: siteSettings.receiptShowLogo,
+					receiptShowAddress: siteSettings.receiptShowAddress,
+					receiptShowPhone: siteSettings.receiptShowPhone,
+					receiptShowOrderNumber: siteSettings.receiptShowOrderNumber,
+					receiptShowCustomerName: siteSettings.receiptShowCustomerName,
+					receiptShowNotes: siteSettings.receiptShowNotes,
+					receiptFontSize: siteSettings.receiptFontSize,
+				}
+			);
+			toast.success("Struk sedang dicetak", { id: "printing" });
+		} catch (error) {
+			console.error("Print failed:", error);
+			toast.error("Gagal mencetak struk.", { id: "printing" });
+		}
+	};
+
 	return (
 		<>
 			<Sheet
@@ -266,6 +316,7 @@ export function TransactionHistorySidebar() {
 							}}
 							onDelete={() => setIsConfirmDeleteOpen(true)}
 							onEdit={() => setIsEditMode(true)}
+							onPrint={() => handlePrintOrder(selectedOrder)}
 							onSave={(data) => handleUpdateOrder(selectedOrder._id, data)}
 							order={selectedOrder}
 						/>
@@ -463,6 +514,7 @@ function OrderDetailView({
 	onDelete,
 	isEditMode,
 	onSave,
+	onPrint,
 }: {
 	order: Doc<"orders">;
 	onBack: () => void;
@@ -474,6 +526,7 @@ function OrderDetailView({
 		paymentMethod: string;
 		status: any;
 	}) => void;
+	onPrint: () => void;
 }) {
 	const [customerName, setCustomerName] = useState(order.customerName || "");
 	const [paymentMethod, setPaymentMethod] = useState(order.paymentMethod);
@@ -664,9 +717,7 @@ function OrderDetailView({
 				</div>
 				<Button
 					className="w-full gap-2"
-					onClick={() => {
-						// Optional receipt printing integration can be added here later
-					}}
+					onClick={onPrint}
 					variant="outline"
 				>
 					<Printer className="h-4 w-4" />

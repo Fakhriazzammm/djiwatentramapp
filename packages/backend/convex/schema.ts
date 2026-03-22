@@ -155,6 +155,16 @@ export default defineSchema({
 		taxRate: v.optional(v.number()),
 		serviceChargeRate: v.optional(v.number()),
 		qrisImage: v.optional(v.string()), 
+		// Receipt Customization
+		receiptLogo: v.optional(v.string()),
+		receiptHeader: v.optional(v.string()),
+		receiptShowLogo: v.optional(v.boolean()),
+		receiptShowAddress: v.optional(v.boolean()),
+		receiptShowPhone: v.optional(v.boolean()),
+		receiptShowOrderNumber: v.optional(v.boolean()),
+		receiptShowCustomerName: v.optional(v.boolean()),
+		receiptShowNotes: v.optional(v.boolean()),
+		receiptFontSize: v.optional(v.string()),
 	}),
 
 	// Discounts / Vouchers

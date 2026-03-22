@@ -140,7 +140,104 @@ function CartItemRow({
 }
 
 // ============================================
-// Price Summary
+// Receipt Item Row (Simplified for Sidebar)
+// ============================================
+function ReceiptItemRow({
+	item,
+	onUpdateQuantity,
+}: {
+	item: CartItem;
+	onUpdateQuantity: (
+		productId: string,
+		variant: string | undefined,
+		delta: number
+	) => void;
+}) {
+	return (
+		<div className="group relative flex flex-col py-2 font-mono text-xs">
+			<div className="flex justify-between items-start">
+				<div className="flex-1 pr-2">
+					<span className="uppercase">{item.name}</span>
+					{item.variant && <p className="text-[10px] text-muted-foreground">{item.variant}</p>}
+				</div>
+				<div className="flex items-center gap-2 bg-background/80 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 -top-1 shadow-sm border border-border z-10">
+					<button
+						className="p-1 hover:text-destructive"
+						onClick={() => onUpdateQuantity(item.productId, item.variant, -1)}
+					>
+						{item.quantity === 1 ? <Trash2 className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+					</button>
+					<span className="font-bold min-w-[1rem] text-center">{item.quantity}</span>
+					<button
+						className="p-1 hover:text-primary"
+						onClick={() => onUpdateQuantity(item.productId, item.variant, 1)}
+					>
+						<Plus className="h-3 w-3" />
+					</button>
+				</div>
+				<span className="font-bold shrink-0">{formatCurrency(item.price * item.quantity)}</span>
+			</div>
+			<div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+				<span>{item.quantity} x {formatCurrency(item.price)}</span>
+			</div>
+		</div>
+	);
+}
+
+// ============================================
+// Receipt Style Price Summary
+// ============================================
+function ReceiptPriceSummary({
+	totalAmount,
+	discountAmount,
+	taxAmount,
+	serviceChargeAmount,
+	taxRate,
+	serviceChargeRate,
+	finalTotal,
+}: {
+	totalAmount: number;
+	discountAmount: number;
+	taxAmount: number;
+	serviceChargeAmount: number;
+	taxRate: number;
+	serviceChargeRate: number;
+	finalTotal: number;
+}) {
+	return (
+		<div className="space-y-1 font-mono text-xs border-t border-dashed pt-3">
+			<div className="flex justify-between">
+				<span>SUBTOTAL</span>
+				<span>{formatCurrency(totalAmount)}</span>
+			</div>
+			{discountAmount > 0 && (
+				<div className="flex justify-between text-green-600">
+					<span>DISKON</span>
+					<span>-{formatCurrency(discountAmount)}</span>
+				</div>
+			)}
+			{serviceChargeAmount > 0 && (
+				<div className="flex justify-between">
+					<span>SC ({serviceChargeRate}%)</span>
+					<span>{formatCurrency(serviceChargeAmount)}</span>
+				</div>
+			)}
+			{taxAmount > 0 && (
+				<div className="flex justify-between">
+					<span>PAJAK ({taxRate}%)</span>
+					<span>{formatCurrency(taxAmount)}</span>
+				</div>
+			)}
+			<div className="flex justify-between border-t border-double pt-2 mt-2 font-bold text-sm">
+				<span>TOTAL</span>
+				<span>{formatCurrency(finalTotal)}</span>
+			</div>
+		</div>
+	);
+}
+
+// ============================================
+// Price Summary (Original)
 // ============================================
 function PriceSummary({
 	totalAmount,
@@ -365,16 +462,16 @@ function MobileCartDrawer({
 
 				<SheetHeader className="flex-row items-center justify-between px-4 pt-1 pb-2">
 					<SheetTitle className="font-bold text-foreground text-lg">
-						Keranjang ({totalItems})
+						Pesanan ({totalItems})
 					</SheetTitle>
 					<div className="flex items-center gap-2">
 						{items.length > 0 && (
 							<button
-								className="rounded-lg px-3 py-2 font-semibold text-destructive text-sm active:bg-destructive/10 transition-colors"
+								className="rounded-lg px-3 py-2 font-bold text-destructive text-xs uppercase tracking-wider active:bg-destructive/10 transition-colors"
 								onClick={onClearCart}
 								type="button"
 							>
-								Hapus Semua
+								Hapus
 							</button>
 						)}
 						<button
@@ -388,13 +485,13 @@ function MobileCartDrawer({
 					</div>
 				</SheetHeader>
 
-				<div className="flex-1 overflow-y-auto px-4 py-3">
+				<div className="flex-1 overflow-y-auto px-6 py-3 bg-white mx-4 my-2 rounded-xl border border-border shadow-inner">
 					{items.length === 0 ? (
 						<EmptyCart className="py-8" size="sm" />
 					) : (
-						<div className="space-y-3">
+						<div className="divide-y divide-dashed divide-border/50">
 							{items.map((item) => (
-								<CartItemRow
+								<ReceiptItemRow
 									item={item}
 									key={`${item.productId}-${item.variant}`}
 									onUpdateQuantity={onUpdateQuantity}
@@ -407,25 +504,25 @@ function MobileCartDrawer({
 				{items.length > 0 && (
 					<div className="safe-area-bottom border-border border-t bg-background px-4 pt-3 pb-3">
 						<button
-							className="mb-3 flex w-full items-center justify-between rounded-lg border border-emerald-500/50 border-dashed bg-emerald-50 p-2.5 active:bg-emerald-100"
+							className="mb-4 flex w-full items-center justify-between rounded-xl border border-emerald-500/30 border-dashed bg-emerald-50 p-3 active:bg-emerald-100"
 							onClick={onOpenVoucher}
 							type="button"
 						>
 							<div className="flex items-center gap-2">
 								<Tag className="h-4 w-4 text-emerald-600" />
-								<span className="font-medium text-emerald-700 text-sm">
+								<span className="font-bold text-emerald-700 text-xs uppercase tracking-wider">
 									{appliedVoucher ? appliedVoucher.name : "Pakai Voucher"}
 								</span>
 							</div>
 							{appliedVoucher && (
-								<span className="rounded-full bg-emerald-600 px-2 py-0.5 font-semibold text-white text-xs">
-									Terpasang
+								<span className="rounded-full bg-emerald-600 px-2 py-0.5 font-bold text-white text-[10px] uppercase">
+									Aktif
 								</span>
 							)}
 						</button>
 
-						<div className="mb-3">
-							<PriceSummary
+						<div className="mb-4 px-2">
+							<ReceiptPriceSummary
 								discountAmount={discountAmount}
 								finalTotal={finalTotal}
 								serviceChargeAmount={serviceChargeAmount}
@@ -436,16 +533,16 @@ function MobileCartDrawer({
 							/>
 						</div>
 
-						<div className="grid grid-cols-4 gap-2.5">
+						<div className="grid grid-cols-4 gap-3">
 							<button
-								className="col-span-1 flex items-center justify-center rounded-xl border border-border bg-background p-3.5 font-semibold text-muted-foreground text-sm active:bg-muted transition-colors"
+								className="col-span-1 flex items-center justify-center rounded-xl border border-border bg-background p-4 font-bold text-muted-foreground text-xs uppercase tracking-widest active:bg-muted transition-colors"
 								onClick={onCancel}
 								type="button"
 							>
 								Batal
 							</button>
 							<button
-								className={`col-span-3 flex items-center justify-center rounded-xl bg-primary p-3.5 font-bold text-base text-primary-foreground shadow-lg active:scale-[0.98] transition-transform ${
+								className={`col-span-3 flex items-center justify-center rounded-xl bg-primary p-4 font-bold text-sm text-primary-foreground uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform ${
 									isSubmitting ? "cursor-not-allowed opacity-50" : ""
 								}`}
 								disabled={isSubmitting}
@@ -453,7 +550,7 @@ function MobileCartDrawer({
 								type="button"
 							>
 								{isSubmitting
-									? "Memproses..."
+									? "..."
 									: `Bayar ${formatCurrency(finalTotal)}`}
 							</button>
 						</div>
@@ -579,6 +676,15 @@ function MenuPage() {
 						storeAddress: siteSettings.storeAddress,
 						storePhone: siteSettings.storePhone,
 						receiptFooter: siteSettings.receiptFooter,
+						receiptLogo: siteSettings.receiptLogo,
+						receiptHeader: siteSettings.receiptHeader,
+						receiptShowLogo: siteSettings.receiptShowLogo,
+						receiptShowAddress: siteSettings.receiptShowAddress,
+						receiptShowPhone: siteSettings.receiptShowPhone,
+						receiptShowOrderNumber: siteSettings.receiptShowOrderNumber,
+						receiptShowCustomerName: siteSettings.receiptShowCustomerName,
+						receiptShowNotes: siteSettings.receiptShowNotes,
+						receiptFontSize: siteSettings.receiptFontSize,
 					});
 					toast.success("Struk dicetak otomatis");
 				} catch (printError) {
@@ -608,6 +714,15 @@ function MenuPage() {
 								storeAddress: siteSettings?.storeAddress,
 								storePhone: siteSettings?.storePhone,
 								receiptFooter: siteSettings?.receiptFooter,
+								receiptLogo: siteSettings?.receiptLogo,
+								receiptHeader: siteSettings?.receiptHeader,
+								receiptShowLogo: siteSettings?.receiptShowLogo,
+								receiptShowAddress: siteSettings?.receiptShowAddress,
+								receiptShowPhone: siteSettings?.receiptShowPhone,
+								receiptShowOrderNumber: siteSettings?.receiptShowOrderNumber,
+								receiptShowCustomerName: siteSettings?.receiptShowCustomerName,
+								receiptShowNotes: siteSettings?.receiptShowNotes,
+								receiptFontSize: siteSettings?.receiptFontSize,
 							});
 							toast.success("Struk sedang dicetak");
 						} catch (_e) {
@@ -779,66 +894,98 @@ function MenuPage() {
 				{/* Desktop Cart Sidebar */}
 				<aside
 					aria-label="Keranjang belanja"
-					className="z-20 hidden h-full w-[320px] shrink-0 flex-col border-border border-l bg-card shadow-xl md:flex"
+					className="z-20 hidden h-full w-[340px] shrink-0 flex-col border-border border-l bg-muted/30 shadow-xl md:flex"
 				>
-					<div className="shrink-0 flex items-center justify-between border-border border-b p-3">
-						<h2 className="font-bold text-foreground text-lg">Pesanan</h2>
-						<div className="flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs">
-							<span className="font-medium text-muted-foreground">Item:</span>
-							<span className="font-bold text-foreground">{totalItems}</span>
+					<div className="flex flex-1 flex-col overflow-hidden m-4 rounded-xl border border-border bg-white shadow-inner">
+						{/* Receipt Header */}
+						<div className="shrink-0 flex flex-col items-center p-6 text-center font-mono">
+							{siteSettings?.receiptShowLogo && siteSettings?.receiptLogo && (
+								<img 
+									src={siteSettings.receiptLogo} 
+									alt="Logo" 
+									className="h-16 w-auto mb-3 grayscale contrast-125"
+								/>
+							)}
+							<h2 className={`font-bold uppercase tracking-tight ${siteSettings?.receiptFontSize === 'large' ? 'text-xl' : siteSettings?.receiptFontSize === 'small' ? 'text-sm' : 'text-base'}`}>
+								{siteSettings?.receiptHeader || siteSettings?.storeName || "YUMI POS"}
+							</h2>
+							{siteSettings?.receiptShowAddress && siteSettings?.storeAddress && (
+								<p className="text-[10px] text-muted-foreground mt-1 max-w-[200px] leading-tight">
+									{siteSettings.storeAddress}
+								</p>
+							)}
+							{siteSettings?.receiptShowPhone && siteSettings?.storePhone && (
+								<p className="text-[10px] text-muted-foreground">
+									Telp: {siteSettings.storePhone}
+								</p>
+							)}
+							<div className="w-full border-b border-dashed border-border mt-4" />
+						</div>
+
+						{/* Receipt Items */}
+						<div className="flex-1 overflow-y-auto px-6 py-2 scrollbar-thin scrollbar-thumb-muted">
+							{items.length === 0 ? (
+								<EmptyCart className="h-full justify-center" size="md" />
+							) : (
+								<div className="divide-y divide-dashed divide-border/50">
+									{items.map((item) => (
+										<ReceiptItemRow
+											item={item}
+											key={`${item.productId}-${item.variant}`}
+											onUpdateQuantity={updateQuantity}
+										/>
+									))}
+								</div>
+							)}
+						</div>
+
+						{/* Receipt Footer & Summary */}
+						<div className="shrink-0 p-6 pt-2 bg-white font-mono">
+							<div className="mb-4">
+								<ReceiptPriceSummary
+									discountAmount={discountAmount}
+									finalTotal={finalTotal}
+									serviceChargeAmount={serviceChargeAmount}
+									serviceChargeRate={serviceChargeRate}
+									taxAmount={taxAmount}
+									taxRate={taxRate}
+									totalAmount={totalAmount}
+								/>
+							</div>
+
+							<div className="text-center border-t border-dashed border-border pt-4 mb-2">
+								<p className="text-[10px] text-muted-foreground uppercase leading-relaxed">
+									{siteSettings?.receiptFooter || "Terima Kasih Atas Kunjungan Anda!"}
+								</p>
+							</div>
 						</div>
 					</div>
 
-					<div className="flex-1 overflow-y-auto p-3">
-						{items.length === 0 ? (
-							<EmptyCart className="h-full justify-center" size="md" />
-						) : (
-							<div className="space-y-2">
-								{items.map((item) => (
-									<CartItemRow
-										item={item}
-										key={`${item.productId}-${item.variant}`}
-										onUpdateQuantity={updateQuantity}
-									/>
-								))}
-							</div>
-						)}
-					</div>
-
-					<div className="shrink-0 border-border border-t bg-muted/10 p-4">
+					{/* CTA Buttons - Fixed at bottom of sidebar */}
+					<div className="shrink-0 p-4 pt-0">
 						<button
-							className="mb-3 flex w-full items-center justify-between rounded-lg border border-emerald-500/50 border-dashed bg-emerald-50 p-2.5 transition-all hover:border-emerald-500 hover:bg-emerald-100"
+							className="mb-3 flex w-full items-center justify-between rounded-xl border border-emerald-500/30 border-dashed bg-emerald-50/50 px-4 py-3 transition-all hover:border-emerald-500 hover:bg-emerald-50 active:scale-[0.98]"
 							onClick={() => setIsVoucherModalOpen(true)}
 							type="button"
 						>
 							<div className="flex items-center gap-2">
 								<Tag className="h-4 w-4 text-emerald-600" />
-								<span className="font-medium text-emerald-700 text-sm">
-									{appliedVoucher ? appliedVoucher.name : "Pakai Voucher"}
+								<span className="font-bold text-emerald-700 text-xs uppercase tracking-wider">
+									{appliedVoucher ? appliedVoucher.name : "Voucher / Diskon"}
 								</span>
 							</div>
-							{appliedVoucher && (
-								<span className="rounded-full bg-emerald-600 px-2 py-0.5 font-semibold text-white text-xs">
-									Terpasang
+							{appliedVoucher ? (
+								<span className="rounded-full bg-emerald-600 px-2 py-0.5 font-bold text-white text-[10px]">
+									TERPASANG
 								</span>
+							) : (
+								<Plus className="h-3 w-3 text-emerald-400" />
 							)}
 						</button>
 
-						<div className="mb-3">
-							<PriceSummary
-								discountAmount={discountAmount}
-								finalTotal={finalTotal}
-								serviceChargeAmount={serviceChargeAmount}
-								serviceChargeRate={serviceChargeRate}
-								taxAmount={taxAmount}
-								taxRate={taxRate}
-								totalAmount={totalAmount}
-							/>
-						</div>
-
-						<div className="grid grid-cols-4 gap-2">
+						<div className="grid grid-cols-4 gap-3">
 							<button
-								className="col-span-1 flex items-center justify-center rounded-lg border border-border bg-background p-3 font-medium text-muted-foreground text-sm transition-colors hover:bg-muted active:bg-muted/80"
+								className="col-span-1 flex items-center justify-center rounded-xl border border-border bg-white p-3.5 font-bold text-muted-foreground text-xs uppercase tracking-widest transition-all hover:bg-muted active:scale-95"
 								onClick={handleCancelAction}
 								type="button"
 							>
@@ -846,7 +993,7 @@ function MenuPage() {
 							</button>
 							<button
 								aria-label="Bayar pesanan"
-								className={`col-span-3 flex items-center justify-center rounded-lg bg-primary p-3 font-bold text-primary-foreground shadow-md transition-all hover:bg-primary/90 hover:shadow-lg active:scale-[0.98] ${
+								className={`col-span-3 flex items-center justify-center rounded-xl bg-primary p-3.5 font-bold text-primary-foreground text-sm uppercase tracking-widest shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-xl active:scale-[0.98] ${
 									items.length === 0 || isSubmitting
 										? "cursor-not-allowed opacity-50"
 										: ""
@@ -860,6 +1007,7 @@ function MenuPage() {
 						</div>
 					</div>
 				</aside>
+
 			</div>
 
 			{/* Mobile Bottom Bar */}

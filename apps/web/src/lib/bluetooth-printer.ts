@@ -13,6 +13,15 @@ export interface ReceiptSettings {
 	storeAddress?: string;
 	storePhone?: string;
 	receiptFooter?: string;
+	receiptLogo?: string;
+	receiptHeader?: string;
+	receiptShowLogo?: boolean;
+	receiptShowAddress?: boolean;
+	receiptShowPhone?: boolean;
+	receiptShowOrderNumber?: boolean;
+	receiptShowCustomerName?: boolean;
+	receiptShowNotes?: boolean;
+	receiptFontSize?: string;
 }
 
 export class BluetoothPrinterService {
@@ -89,6 +98,34 @@ export class BluetoothPrinterService {
 		return this.device?.name || null;
 	}
 
+	private async _loadImage(url: string): Promise<ImageData> {
+		return new Promise((resolve, reject) => {
+			const img = new Image();
+			img.crossOrigin = "anonymous";
+			img.onload = () => {
+				const canvas = document.createElement("canvas");
+				// Thermal printers usually have 384 or 576 dots width. 
+				// Let's scale to a reasonable width like 128 or 192.
+				const scale = 192 / img.width;
+				canvas.width = 192;
+				canvas.height = img.height * scale;
+				const ctx = canvas.getContext("2d");
+				if (!ctx) {
+					reject(new Error("Could not get canvas context"));
+					return;
+				}
+				ctx.fillStyle = "white";
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+				ctx.filter = "grayscale(100%)";
+				ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+				const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+				resolve(imageData);
+			};
+			img.onerror = reject;
+			img.src = url;
+		});
+	}
+
 	async print(
 		order: {
 			orderNumber: string;
@@ -96,6 +133,8 @@ export class BluetoothPrinterService {
 			totalAmount: number;
 			paymentMethod: string;
 			createdAt: number;
+			customerName?: string;
+			notes?: string;
 		},
 		settings: ReceiptSettings
 	) {
@@ -104,20 +143,64 @@ export class BluetoothPrinterService {
 		}
 
 		const encoder = new EscPosEncoder();
-		const result = encoder
-			.initialize()
-			.align("center")
-			.line(settings.storeName || "YUMI POS")
-			.size("normal")
-			.line(settings.storeAddress || "")
-			.line(settings.storePhone || "")
-			.line("--------------------------------")
-			.align("left")
-			.line(`No. Antrian: ${order.orderNumber}`)
-			.line(`Tgl: ${new Date(order.createdAt).toLocaleString("id-ID")}`)
-			.line(`Metode: ${order.paymentMethod.toUpperCase()}`)
-			.line("--------------------------------");
+		const result = encoder.initialize();
 
+		// Alignment and Logo
+		result.align("center");
+
+		if (settings.receiptShowLogo && settings.receiptLogo) {
+			try {
+				const imageData = await this._loadImage(settings.receiptLogo);
+				result.image(imageData, imageData.width, imageData.height, "atkinson", 128);
+				result.line(" "); // Extra line after logo
+			} catch (err) {
+				console.error("Failed to print logo:", err);
+			}
+		}
+
+		// Header / Store Name
+		const headerText = settings.receiptHeader || settings.storeName || "YUMI POS";
+		
+		// Font Size handling
+		const fontSize = settings.receiptFontSize || "normal";
+		if (fontSize === "large") {
+			result.size("double");
+		} else if (fontSize === "small") {
+			result.size("normal"); // esc-pos-encoder doesn't have "small" size easily via size()
+		} else {
+			result.size("normal");
+		}
+
+		result.line(headerText);
+		result.size("normal"); // Reset size for rest of receipt
+
+		// Address & Phone
+		if (settings.receiptShowAddress && settings.storeAddress) {
+			result.line(settings.storeAddress);
+		}
+		if (settings.receiptShowPhone && settings.storePhone) {
+			result.line(settings.storePhone);
+		}
+
+		result.line("--------------------------------");
+		result.align("left");
+
+		// Order Info
+		if (settings.receiptShowOrderNumber) {
+			result.line(`No. Antrian: ${order.orderNumber}`);
+		}
+		
+		result.line(`Tgl: ${new Date(order.createdAt).toLocaleString("id-ID")}`);
+		result.line(`Metode: ${order.paymentMethod.toUpperCase()}`);
+
+		// Customer Name
+		if (settings.receiptShowCustomerName && order.customerName) {
+			result.line(`Pelanggan: ${order.customerName}`);
+		}
+
+		result.line("--------------------------------");
+
+		// Items
 		for (const item of order.items) {
 			const name =
 				item.name.length > 20 ? `${item.name.substring(0, 17)}...` : item.name;
@@ -130,6 +213,12 @@ export class BluetoothPrinterService {
 			result.line(
 				`${item.quantity} x ${priceStr.padStart(10)}    ${totalStr.padStart(10)}`
 			);
+		}
+
+		// Notes
+		if (settings.receiptShowNotes && order.notes) {
+			result.line("--------------------------------");
+			result.line(`Catatan: ${order.notes}`);
 		}
 
 		result

@@ -152,7 +152,7 @@ export function PaymentConfirmationModal({
 	const subTotalAfterDiscount = Math.max(0, totalAmount - discountAmount);
 
 	const taxRate = siteSettings?.taxRate ?? 0;
-	const serviceChargeRate = siteSettings?.serviceCharge ?? 0;
+	const serviceChargeRate = siteSettings?.serviceChargeRate ?? 0;
 
 	const serviceChargeAmount = subTotalAfterDiscount * (serviceChargeRate / 100);
 	const taxAmount = subTotalAfterDiscount * (taxRate / 100);
