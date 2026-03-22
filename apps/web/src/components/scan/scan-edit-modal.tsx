@@ -1,5 +1,4 @@
 import { Check, Edit3, Loader2, Scissors, X } from "lucide-react";
-import { Check, Edit3, Loader2, Scissors, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 
