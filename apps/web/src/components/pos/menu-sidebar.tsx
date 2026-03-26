@@ -80,11 +80,13 @@ interface TabItem {
 export function MenuSidebar({ 
 	triggerOpen, 
 	onOpenChange,
-	initialTab = "dashboard" 
+	initialTab = "dashboard",
+	hideTabs = false
 }: { 
 	triggerOpen?: boolean; 
 	onOpenChange?: (open: boolean) => void;
 	initialTab?: string;
+	hideTabs?: boolean;
 }) {
 	const TABS: TabItem[] = [
 		{
@@ -288,23 +290,25 @@ export function MenuSidebar({
 					</SheetHeader>
 					<div className="flex-1 overflow-hidden">
 						<Tabs className="flex h-full flex-col" value={activeTab} onValueChange={setActiveTab}>
-							<div className="bg-muted/20 px-3 pt-3 pb-2">
-								<TabsList className="grid h-16 w-full grid-cols-5 gap-1.5 rounded-xl bg-muted/50 p-1.5">
-									{TABS.map((tab) => {
-										const Icon = tab.icon;
-										return (
-											<TabsTrigger
-												className="relative flex h-full flex-col items-center justify-center gap-1 rounded-lg border-none px-1 py-1 font-medium text-[10px] outline-none transition-all after:hidden hover:bg-muted/50 hover:text-foreground focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm data-active:bg-background data-active:text-primary data-active:shadow-sm sm:text-xs"
-												key={tab.value}
-												value={tab.value}
-											>
-												<Icon className="mb-0.5 h-4 w-4 sm:h-5 sm:w-5" />
-												<span className="leading-none text-[9px] sm:text-[10px]">{tab.label}</span>
-											</TabsTrigger>
-										);
-									})}
-								</TabsList>
-							</div>
+							{!hideTabs && (
+								<div className="bg-muted/20 px-3 pt-3 pb-2">
+									<TabsList className="grid h-16 w-full grid-cols-5 gap-1.5 rounded-xl bg-muted/50 p-1.5">
+										{TABS.map((tab) => {
+											const Icon = tab.icon;
+											return (
+												<TabsTrigger
+													className="relative flex h-full flex-col items-center justify-center gap-1 rounded-lg border-none px-1 py-1 font-medium text-[10px] outline-none transition-all after:hidden hover:bg-muted/50 hover:text-foreground focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm data-active:bg-background data-active:text-primary data-active:shadow-sm sm:text-xs"
+													key={tab.value}
+													value={tab.value}
+												>
+													<Icon className="mb-0.5 h-4 w-4 sm:h-5 sm:w-5" />
+													<span className="leading-none text-[9px] sm:text-[10px]">{tab.label}</span>
+												</TabsTrigger>
+											);
+										})}
+									</TabsList>
+								</div>
+							)}
 
 							<div className="flex flex-1 flex-col overflow-hidden bg-background">
 								<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="dashboard">

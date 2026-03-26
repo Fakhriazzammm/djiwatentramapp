@@ -354,28 +354,37 @@ function AdminDashboard() {
 					<div className="rounded-xl bg-green-500/10 p-4">
 						<div className="flex items-center gap-2 text-green-500">
 							<ArrowUpRight className="h-4 w-4" />
-							<span className="text-xs font-medium">Total Pemasukan</span>
+							<span className="text-xs font-medium">Pemasukan Hari Ini</span>
 						</div>
 						<p className="mt-2 font-bold text-lg text-green-600">
-							Rp {stats.totalIncome.toLocaleString("id-ID")}
+							Rp {stats.todayIncome.toLocaleString("id-ID")}
+						</p>
+						<p className="text-[10px] text-muted-foreground mt-1">
+							Total: Rp {stats.totalIncome.toLocaleString("id-ID")}
 						</p>
 					</div>
 					<div className="rounded-xl bg-red-500/10 p-4">
 						<div className="flex items-center gap-2 text-red-500">
 							<ArrowDownRight className="h-4 w-4" />
-							<span className="text-xs font-medium">Total Pengeluaran</span>
+							<span className="text-xs font-medium">Pengeluaran Hari Ini</span>
 						</div>
 						<p className="mt-2 font-bold text-lg text-red-600">
-							Rp {stats.totalExpense.toLocaleString("id-ID")}
+							Rp {stats.todayExpense.toLocaleString("id-ID")}
+						</p>
+						<p className="text-[10px] text-muted-foreground mt-1">
+							Total: Rp {stats.totalExpense.toLocaleString("id-ID")}
 						</p>
 					</div>
 					<div className="rounded-xl bg-primary/10 p-4">
 						<div className="flex items-center gap-2 text-primary">
 							<Wallet className="h-4 w-4" />
-							<span className="text-xs font-medium">Saldo Bersih</span>
+							<span className="text-xs font-medium">Saldo Bersih (Total)</span>
 						</div>
 						<p className={`mt-2 font-bold text-lg ${stats.netBalance >= 0 ? "text-primary" : "text-red-500"}`}>
 							Rp {stats.netBalance.toLocaleString("id-ID")}
+						</p>
+						<p className="text-[10px] text-muted-foreground mt-1">
+							Hari Ini: Rp {(stats.todayIncome - stats.todayExpense).toLocaleString("id-ID")}
 						</p>
 					</div>
 					<div className="rounded-xl bg-accent/10 p-4">

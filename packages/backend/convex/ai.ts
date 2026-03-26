@@ -817,23 +817,73 @@ async function gatherSmartContext(ctx: GenericActionCtx<DataModel>) {
 	// Revenue trends (today vs yesterday)
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
+	const todayTs = today.getTime();
+	
 	const yesterday = new Date(today);
 	yesterday.setDate(yesterday.getDate() - 1);
+	const yesterdayTs = yesterday.getTime();
 
-	const todayRevenue = completedOrders
-		.filter((o) => o.createdAt >= today.getTime())
-		.reduce((sum, o) => sum + o.totalAmount, 0);
-	const yesterdayRevenue = completedOrders
-		.filter(
-			(o) => o.createdAt >= yesterday.getTime() && o.createdAt < today.getTime()
-		)
-		.reduce((sum, o) => sum + o.totalAmount, 0);
+	const weekStart = new Date(today);
+	weekStart.setDate(today.getDate() - today.getDay());
+	const weekStartTs = weekStart.getTime();
 
-	if (yesterdayRevenue > 0) {
-		const change = ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100;
+	const lastWeekStart = new Date(weekStart);
+	lastWeekStart.setDate(weekStart.getDate() - 7);
+	const lastWeekStartTs = lastWeekStart.getTime();
+
+	const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+	const monthStartTs = monthStart.getTime();
+
+	const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+	const lastMonthStartTs = lastMonthStart.getTime();
+	const lastMonthEndTs = monthStartTs - 1;
+
+	const getStats = (txs: any[], orders: any[], start: number, end: number = Date.now()) => {
+		const filteredTxs = txs.filter(t => t.date >= start && t.date <= end && t.status === "completed");
+		const income = filteredTxs.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
+		const expense = filteredTxs.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+		const filteredOrders = orders.filter(o => o.createdAt >= start && o.createdAt <= end && (o.status === "paid" || o.status === "completed"));
+		const orderRev = filteredOrders.reduce((s, o) => s + o.totalAmount, 0);
+		return { income, expense, orderRev, count: filteredOrders.length };
+	};
+
+	const allTransactions = await ctx.runQuery(api.finance.getAllTransactions, {});
+	const txArr = allTransactions as any[];
+	const ordArr = completedOrders as any[];
+
+	const sToday = getStats(txArr, ordArr, todayTs);
+	const sYesterday = getStats(txArr, ordArr, yesterdayTs, todayTs - 1);
+	const sThisWeek = getStats(txArr, ordArr, weekStartTs);
+	const sLastWeek = getStats(txArr, ordArr, lastWeekStartTs, weekStartTs - 1);
+	const sThisMonth = getStats(txArr, ordArr, monthStartTs);
+	const sLastMonth = getStats(txArr, ordArr, lastMonthStartTs, lastMonthEndTs);
+
+	// Product Categories Count
+	const prodArr = products as any[];
+	const catArr = categories as any[];
+	const categoryCounts = catArr.map(c => {
+		const count = prodArr.filter(p => p.categoryId === c._id).length;
+		return `${c.name}: ${count} produk`;
+	}).join(", ");
+
+	insights.push(`📅 REKAPITULASI DETAIL (Waktu Sekarang: ${new Date().toLocaleString("id-ID")}):`);
+	insights.push(`  - JUMLAH PRODUK PER KATEGORI: ${categoryCounts}`);
+	
+	const formatRecap = (label: string, s: any) => 
+		`  - ${label}: Pemasukan Rp${s.income.toLocaleString("id-ID")}, Pengeluaran Rp${s.expense.toLocaleString("id-ID")}, Pesanan Rp${s.orderRev.toLocaleString("id-ID")} (${s.count} order)`;
+
+	insights.push(formatRecap("HARI INI", sToday));
+	insights.push(formatRecap("KEMARIN", sYesterday));
+	insights.push(formatRecap("MINGGU INI", sThisWeek));
+	insights.push(formatRecap("MINGGU LALU", sLastWeek));
+	insights.push(formatRecap("BULAN INI", sThisMonth));
+	insights.push(formatRecap("BULAN LALU", sLastMonth));
+
+	if (sYesterday.orderRev > 0) {
+		const change = ((sToday.orderRev - sYesterday.orderRev) / sYesterday.orderRev) * 100;
 		const trend = change >= 0 ? "📈 Naik" : "📉 Turun";
 		insights.push(
-			`${trend} ${Math.abs(change).toFixed(1)}% dari kemarin (Hari ini: Rp${todayRevenue.toLocaleString("id-ID")})`
+			`${trend} ${Math.abs(change).toFixed(1)}% dari kemarin (Revenue Pesanan)`
 		);
 	}
 

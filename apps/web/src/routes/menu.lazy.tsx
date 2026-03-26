@@ -3,7 +3,7 @@ import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { BarChart3, ChevronRight, Minus, Plus, Printer, Save, Settings2, ShoppingCart, Tag, Trash2, Wallet, X } from "lucide-react";
+import { BarChart3, Bot, ChevronRight, History, Minus, Plus, Printer, Save, Settings2, ShoppingCart, Tag, Trash2, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -1134,7 +1134,7 @@ function MenuPage() {
 					<span className="font-bold text-foreground text-base">Menu</span>
 					<div className="flex shrink-0 items-center gap-1.5">
 						{/* Mobile direct buttons - replaced hamburger */}
-						<div className="flex md:hidden items-center gap-1">
+						<div className="flex md:hidden items-center gap-0.5">
 							<Button
 								variant="ghost"
 								size="icon"
@@ -1146,6 +1146,19 @@ function MenuPage() {
 							>
 								<BarChart3 className="h-5 w-5" />
 							</Button>
+
+							<TransactionHistorySidebar 
+								trigger={
+									<Button
+										variant="ghost"
+										size="icon"
+										className="h-9 w-9 rounded-full text-muted-foreground hover:text-primary active:scale-95 transition-all"
+									>
+										<History className="h-5 w-5" />
+									</Button>
+								}
+							/>
+
 							<Button
 								variant="ghost"
 								size="icon"
@@ -1171,6 +1184,17 @@ function MenuPage() {
 							<Button
 								variant="ghost"
 								size="icon"
+								className="h-9 w-9 rounded-full text-primary hover:bg-primary/5 active:scale-95 transition-all"
+								onClick={() => {
+									setMenuSidebarTab("yumi");
+									setIsMenuSidebarOpen(true);
+								}}
+							>
+								<Bot className="h-5 w-5 text-primary" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon"
 								className="h-9 w-9 rounded-full text-muted-foreground hover:text-primary active:scale-95 transition-all"
 								onClick={() => {
 									setMenuSidebarTab("settings");
@@ -1181,15 +1205,19 @@ function MenuPage() {
 							</Button>
 						</div>
 						
-						<TransactionHistorySidebar />
-						<div className="hidden md:block">
+						{/* Desktop Navigation */}
+						<div className="hidden md:flex items-center gap-1.5">
+							<TransactionHistorySidebar />
 							<MenuSidebar />
 						</div>
+
+						{/* Hidden Sidebar for Mobile Triggers */}
 						<div className="md:hidden invisible pointer-events-none fixed">
 							<MenuSidebar 
 								triggerOpen={isMenuSidebarOpen} 
 								onOpenChange={setIsMenuSidebarOpen}
 								initialTab={menuSidebarTab}
+								hideTabs={true}
 							/>
 						</div>
 					</div>

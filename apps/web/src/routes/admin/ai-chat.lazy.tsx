@@ -104,8 +104,8 @@ const TEMPLATES: Array<{
 		icon: <Sparkles className="h-3.5 w-3.5" />,
 	},
 	{
-		label: "Rekap Hari Ini",
-		message: "Berikan rekap lengkap bisnis hari ini",
+		label: "Rekap Lengkap",
+		message: "Berikan rekapitulasi detail bisnis saya: jumlah produk per kategori, pemasukan, pengeluaran, dan jumlah pesanan untuk periode: hari ini, kemarin, minggu ini, minggu lalu, bulan ini, dan bulan lalu.",
 		icon: <TrendingUp className="h-3.5 w-3.5" />,
 	},
 	{

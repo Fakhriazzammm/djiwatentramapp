@@ -164,7 +164,7 @@ const formatDate = (timestamp: number) =>
 		year: "numeric",
 	});
 
-export function TransactionHistorySidebar() {
+export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactElement }) {
 	const [isOpen, setIsOpen] = useState(false);
 	const [activeFilter, setActiveFilter] = useState<FilterType>("today");
 	const [selectedOrder, setSelectedOrder] = useState<Doc<"orders"> | null>(
@@ -299,18 +299,22 @@ export function TransactionHistorySidebar() {
 				}}
 				open={isOpen}
 			>
-				<SheetTrigger>
-					<Button
-						className="shrink-0 gap-1.5 bg-background"
-						onClick={() => setIsOpen(true)}
-						size="sm"
-						variant="outline"
-					>
-						<History className="h-4 w-4" />
-						<span className="hidden sm:inline">Riwayat</span>
-						<span className="sr-only">Riwayat Transaksi</span>
-					</Button>
-				</SheetTrigger>
+				<SheetTrigger
+					render={
+						trigger || (
+							<Button
+								className="shrink-0 gap-1.5 bg-background"
+								onClick={() => setIsOpen(true)}
+								size="sm"
+								variant="outline"
+							>
+								<History className="h-4 w-4" />
+								<span className="hidden sm:inline">Riwayat</span>
+								<span className="sr-only">Riwayat Transaksi</span>
+							</Button>
+						)
+					}
+				/>
 				<SheetContent
 					className="flex w-full flex-col p-0 sm:w-[450px]"
 					side="right"

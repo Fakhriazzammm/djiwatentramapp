@@ -36,6 +36,15 @@ export const getDashboardStats = query({
 
 		// Get financial summary
 		const transactions = await ctx.db.query("financialTransactions").collect();
+		
+		const todayIncome = transactions
+			.filter((t) => t.type === "income" && t.status === "completed" && (t.date ?? 0) >= todayStartTs)
+			.reduce((sum, t) => sum + (t.amount ?? 0), 0);
+		
+		const todayExpense = transactions
+			.filter((t) => t.type === "expense" && t.status === "completed" && (t.date ?? 0) >= todayStartTs)
+			.reduce((sum, t) => sum + (t.amount ?? 0), 0);
+
 		const totalIncome = transactions
 			.filter((t) => t.type === "income" && t.status === "completed")
 			.reduce((sum, t) => sum + (t.amount ?? 0), 0);
@@ -128,6 +137,8 @@ export const getDashboardStats = query({
 			netBalance: totalIncome - totalExpense,
 			totalIncome,
 			totalExpense,
+			todayIncome,
+			todayExpense,
 			orderStatusBreakdown,
 			revenueLast7Days: last7Days,
 			topProducts,

@@ -100,8 +100,8 @@ export function YumiAIChat() {
 			category: "stock",
 		},
 		{
-			label: "Rekap Hari Ini",
-			message: "Berikan rekap penjualan saya hari ini",
+			label: "Rekap Lengkap",
+			message: "Berikan rekapitulasi detail bisnis saya: jumlah produk per kategori, pemasukan, pengeluaran, dan jumlah pesanan untuk periode: hari ini, kemarin, minggu ini, minggu lalu, bulan ini, dan bulan lalu.",
 			icon: <BarChart2 className="h-3.5 w-3.5 text-primary" />,
 			category: "report",
 		},
