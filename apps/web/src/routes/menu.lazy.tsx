@@ -1094,12 +1094,25 @@ function MenuPage() {
 			<div className="flex flex-1 overflow-hidden">
 				{/* Product Grid */}
 				<main
-					className="flex-1 overflow-y-auto bg-muted/20 p-2 pb-40 md:pb-2 md:p-3"
+					className={`flex-1 overflow-y-auto bg-muted/20 p-2 pb-40 md:pb-2 md:p-3 transition-all ${
+						!customerInfo.isSubmitted ? "blur-[2px] pointer-events-none opacity-50" : ""
+					}`}
 					id="main-content"
 					tabIndex={-1}
 				>
 					{products ? (
 						<div className="grid grid-cols-3 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+							{!customerInfo.isSubmitted && (
+								<div className="fixed inset-0 z-30 flex items-center justify-center p-6 md:hidden">
+									<Button 
+										className="h-16 w-full rounded-2xl bg-primary font-black text-lg uppercase tracking-widest shadow-2xl"
+										onClick={() => setIsMobileCartOpen(true)}
+									>
+										<User className="mr-3 h-6 w-6" />
+										Mulai Pesanan
+									</Button>
+								</div>
+							)}
 							{products.map((product) => {
 								const { finalPrice } = calculateEffectivePrice(
 									{
@@ -1181,40 +1194,40 @@ function MenuPage() {
 					className="z-20 hidden h-full w-[340px] shrink-0 flex-col border-border border-l bg-muted/30 shadow-xl md:flex"
 					id="cart-sidebar"
 				>
-					<div className="flex flex-1 flex-col overflow-hidden m-4 rounded-xl border border-border bg-white shadow-inner">
-						{/* Receipt Header */}
-						<div className="shrink-0 flex flex-col items-center p-6 text-center font-mono">
-							{siteSettings?.receiptShowLogo && siteSettings?.receiptLogo && (
-								<img 
-									src={siteSettings.receiptLogo} 
-									alt="Logo" 
-									className="h-16 w-auto mb-3 grayscale contrast-125"
-								/>
-							)}
-							<h2 className={`font-bold uppercase tracking-tight ${siteSettings?.receiptFontSize === 'large' ? 'text-xl' : siteSettings?.receiptFontSize === 'small' ? 'text-sm' : 'text-base'}`}>
-								{siteSettings?.receiptHeader || siteSettings?.storeName || "YUMI POS"}
-							</h2>
-							{siteSettings?.receiptShowAddress && siteSettings?.storeAddress && (
-								<p className="text-[10px] text-muted-foreground mt-1 max-w-[200px] leading-tight">
-									{siteSettings.storeAddress}
-								</p>
-							)}
-							{siteSettings?.receiptShowPhone && siteSettings?.storePhone && (
-								<p className="text-[10px] text-muted-foreground">
-									Telp: {siteSettings.storePhone}
-								</p>
-							)}
-							<div className="w-full border-b border-dashed border-border mt-4" />
+					{!customerInfo.isSubmitted ? (
+						<div className="flex flex-1 flex-col p-6 m-4 rounded-xl border border-border bg-white shadow-inner overflow-y-auto">
+							<CustomerInfoForm />
 						</div>
-
-						{/* Receipt Items */}
-						<div className="flex-1 overflow-y-auto px-6 py-2 scrollbar-thin scrollbar-thumb-muted">
-							{!customerInfo.isSubmitted ? (
-								<div className="mb-6">
-									<CustomerInfoForm />
+					) : (
+						<>
+							<div className="flex flex-1 flex-col overflow-hidden m-4 rounded-xl border border-border bg-white shadow-inner">
+								{/* Receipt Header */}
+								<div className="shrink-0 flex flex-col items-center p-6 text-center font-mono">
+									{siteSettings?.receiptShowLogo && siteSettings?.receiptLogo && (
+										<img 
+										src={siteSettings.receiptLogo} 
+										alt="Logo" 
+										className="h-16 w-auto mb-3 grayscale contrast-125"
+										/>
+									)}
+									<h2 className={`font-bold uppercase tracking-tight ${siteSettings?.receiptFontSize === 'large' ? 'text-xl' : siteSettings?.receiptFontSize === 'small' ? 'text-sm' : 'text-base'}`}>
+										{siteSettings?.receiptHeader || siteSettings?.storeName || "YUMI POS"}
+									</h2>
+									{siteSettings?.receiptShowAddress && siteSettings?.storeAddress && (
+										<p className="text-[10px] text-muted-foreground mt-1 max-w-[200px] leading-tight">
+											{siteSettings.storeAddress}
+										</p>
+									)}
+									{siteSettings?.receiptShowPhone && siteSettings?.storePhone && (
+										<p className="text-[10px] text-muted-foreground">
+											Telp: {siteSettings.storePhone}
+										</p>
+									)}
+									<div className="w-full border-b border-dashed border-border mt-4" />
 								</div>
-							) : (
-								<>
+
+								{/* Receipt Items */}
+								<div className="flex-1 overflow-y-auto px-6 py-2 scrollbar-thin scrollbar-thumb-muted">
 									{/* Customer Summary on Top of Receipt */}
 									<div className="mb-4 rounded-2xl border border-border bg-muted/30 p-4">
 										<div className="flex items-start justify-between">
@@ -1261,86 +1274,86 @@ function MenuPage() {
 											))}
 										</div>
 									)}
-								</>
-							)}
-						</div>
+								</div>
 
-						{/* Receipt Footer & Summary */}
-						<div className="shrink-0 p-6 pt-2 bg-white font-mono">
-							{/* Order Info (Preview) */}
-							<div className="mb-2 text-[10px] space-y-0.5">
-								<p>TIPE: {appliedVoucher ? "PROMO" : "REGULER"}</p>
-								{items.length > 0 && (
-									<p className="text-primary font-bold">READY TO PRINT</p>
-								)}
-							</div>
-							
-							<div className="mb-4">
-								<ReceiptPriceSummary
-									discountAmount={discountAmount}
-									finalTotal={finalTotal}
-									paymentDetails={paymentDetails}
-									serviceChargeAmount={serviceChargeAmount}
-									serviceChargeRate={serviceChargeRate}
-									taxAmount={taxAmount}
-									taxRate={taxRate}
-									totalAmount={totalAmount}
-								/>
+								{/* Receipt Footer & Summary */}
+								<div className="shrink-0 p-6 pt-2 bg-white font-mono">
+									{/* Order Info (Preview) */}
+									<div className="mb-2 text-[10px] space-y-0.5">
+										<p>TIPE: {appliedVoucher ? "PROMO" : "REGULER"}</p>
+										{items.length > 0 && (
+											<p className="text-primary font-bold">READY TO PRINT</p>
+										)}
+									</div>
+									
+									<div className="mb-4">
+										<ReceiptPriceSummary
+											discountAmount={discountAmount}
+											finalTotal={finalTotal}
+											paymentDetails={paymentDetails}
+											serviceChargeAmount={serviceChargeAmount}
+											serviceChargeRate={serviceChargeRate}
+											taxAmount={taxAmount}
+											taxRate={taxRate}
+											totalAmount={totalAmount}
+										/>
+									</div>
+
+									<div className="text-center border-t border-dashed border-border pt-4 mb-2">
+										<p className="text-[10px] text-muted-foreground uppercase leading-relaxed">
+											{siteSettings?.receiptFooter || "Terima Kasih Atas Kunjungan Anda!"}
+										</p>
+									</div>
+								</div>
 							</div>
 
-							<div className="text-center border-t border-dashed border-border pt-4 mb-2">
-								<p className="text-[10px] text-muted-foreground uppercase leading-relaxed">
-									{siteSettings?.receiptFooter || "Terima Kasih Atas Kunjungan Anda!"}
-								</p>
-							</div>
-						</div>
-					</div>
+							{/* CTA Buttons - Fixed at bottom of sidebar */}
+							<div className="shrink-0 p-4 pt-0">
+								<button
+									className="mb-3 flex w-full items-center justify-between rounded-xl border border-emerald-500/30 border-dashed bg-emerald-50/50 px-4 py-3 transition-all hover:border-emerald-500 hover:bg-emerald-50 active:scale-[0.98]"
+									onClick={() => setIsVoucherModalOpen(true)}
+									type="button"
+								>
+									<div className="flex items-center gap-2">
+										<Tag className="h-4 w-4 text-emerald-600" />
+										<span className="font-bold text-emerald-700 text-xs uppercase tracking-wider">
+											{appliedVoucher ? appliedVoucher.name : "Voucher / Diskon"}
+										</span>
+									</div>
+									{appliedVoucher ? (
+										<span className="rounded-full bg-emerald-600 px-2 py-0.5 font-bold text-white text-[10px]">
+											TERPASANG
+										</span>
+									) : (
+										<Plus className="h-3 w-3 text-emerald-400" />
+									)}
+								</button>
 
-					{/* CTA Buttons - Fixed at bottom of sidebar */}
-					<div className="shrink-0 p-4 pt-0">
-						<button
-							className="mb-3 flex w-full items-center justify-between rounded-xl border border-emerald-500/30 border-dashed bg-emerald-50/50 px-4 py-3 transition-all hover:border-emerald-500 hover:bg-emerald-50 active:scale-[0.98]"
-							onClick={() => setIsVoucherModalOpen(true)}
-							type="button"
-						>
-							<div className="flex items-center gap-2">
-								<Tag className="h-4 w-4 text-emerald-600" />
-								<span className="font-bold text-emerald-700 text-xs uppercase tracking-wider">
-									{appliedVoucher ? appliedVoucher.name : "Voucher / Diskon"}
-								</span>
+								<div className="grid grid-cols-4 gap-3">
+									<button
+										className="col-span-1 flex items-center justify-center rounded-xl border border-border bg-white p-3.5 font-bold text-muted-foreground text-xs uppercase tracking-widest transition-all hover:bg-muted active:scale-95"
+										onClick={handleCancelAction}
+										type="button"
+									>
+										Batal
+									</button>
+									<button
+										aria-label="Bayar pesanan"
+										className={`col-span-3 flex items-center justify-center rounded-xl bg-primary p-3.5 font-bold text-primary-foreground text-sm uppercase tracking-widest shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-xl active:scale-[0.98] ${
+											items.length === 0 || isSubmitting
+												? "cursor-not-allowed opacity-50"
+												: ""
+										}`}
+										disabled={items.length === 0 || isSubmitting}
+										onClick={() => handleCheckout()}
+										type="button"
+									>
+										{isSubmitting ? "Memproses..." : "Bayar Sekarang"}
+									</button>
+								</div>
 							</div>
-							{appliedVoucher ? (
-								<span className="rounded-full bg-emerald-600 px-2 py-0.5 font-bold text-white text-[10px]">
-									TERPASANG
-								</span>
-							) : (
-								<Plus className="h-3 w-3 text-emerald-400" />
-							)}
-						</button>
-
-						<div className="grid grid-cols-4 gap-3">
-							<button
-								className="col-span-1 flex items-center justify-center rounded-xl border border-border bg-white p-3.5 font-bold text-muted-foreground text-xs uppercase tracking-widest transition-all hover:bg-muted active:scale-95"
-								onClick={handleCancelAction}
-								type="button"
-							>
-								Batal
-							</button>
-							<button
-								aria-label="Bayar pesanan"
-								className={`col-span-3 flex items-center justify-center rounded-xl bg-primary p-3.5 font-bold text-primary-foreground text-sm uppercase tracking-widest shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-xl active:scale-[0.98] ${
-									items.length === 0 || isSubmitting
-										? "cursor-not-allowed opacity-50"
-										: ""
-								}`}
-								disabled={items.length === 0 || isSubmitting}
-								onClick={() => handleCheckout()}
-								type="button"
-							>
-								{isSubmitting ? "Memproses..." : "Bayar Sekarang"}
-							</button>
-						</div>
-					</div>
+						</>
+					)}
 				</aside>
 
 			</div>
