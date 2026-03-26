@@ -60,6 +60,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { YumiAIChat } from "@/components/pos/yumi-ai-chat";
 import { bluetoothPrinter } from "@/lib/bluetooth-printer";
+import { useCart } from "@/context/cart-context";
 
 interface ConfirmConfig {
 	isOpen: boolean;
@@ -84,6 +85,7 @@ export function MenuSidebar() {
 			icon: BarChart3,
 			iconColor: "text-primary",
 		},
+		{ value: "parkir", label: "Simpan Orderan", icon: ShoppingCart, iconColor: "text-orange-500" },
 		{ value: "kas", label: "Kas", icon: Wallet, iconColor: "text-primary" },
 		{ value: "stok", label: "Stok", icon: Package, iconColor: "text-accent" },
 		{
@@ -104,6 +106,7 @@ export function MenuSidebar() {
 	const [activeTab, setActiveTab] = useState("dashboard");
 	const [selectedOrder, setSelectedOrder] = useState<Doc<"orders"> | null>(null);
 	const [isEditMode, setIsEditMode] = useState(false);
+	const [isParkDialogOpen, setIsParkDialogOpen] = useState(false);
 
 	const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig>({
 		isOpen: false,
@@ -119,6 +122,44 @@ export function MenuSidebar() {
 
 	const updateOrder = useMutation(api.orders.updateOrder);
 	const deleteOrder = useMutation(api.orders.deleteOrder);
+	const createOrder = useMutation(api.orders.createOrder);
+	const { items, totalAmount, clearCart, appliedVoucher, discountAmount, customerInfo } = useCart();
+
+	const handleParkOrder = async (data: { customerName: string; tableNumber: string; notes: string }) => {
+		if (items.length === 0) {
+			toast.error("Keranjang kosong");
+			return;
+		}
+
+		try {
+			await createOrder({
+				items: items.map((i) => ({
+					productId: i.productId as Id<"products">,
+					productName: i.name,
+					variant: i.variant,
+					quantity: i.quantity,
+					price: i.price,
+				})),
+				totalAmount,
+				paymentMethod: "cash",
+				customerName: data.customerName || customerInfo.name,
+				tableNumber: data.tableNumber || customerInfo.tableNumber,
+				notes: data.notes || customerInfo.notes,
+				orderType: customerInfo.orderType,
+				voucherId: appliedVoucher?._id as Id<"discounts"> | undefined,
+				discountAmount,
+				autoComplete: false,
+			});
+			
+			toast.success("Pesanan disimpan");
+			clearCart();
+			setIsParkDialogOpen(false);
+			setIsOpen(false);
+		} catch (error) {
+			console.error(error);
+			toast.error("Gagal menyimpan pesanan");
+		}
+	};
 
 	const handleUpdateOrder = async (
 		id: Id<"orders">,
@@ -134,6 +175,50 @@ export function MenuSidebar() {
 		} catch (error) {
 			console.error(error);
 			toast.error("Gagal memperbarui pesanan");
+		}
+	};
+
+	const { setCart, updateCustomerInfo } = useCart();
+	const allDiscounts = useQuery(api.discounts.getActiveDiscounts);
+
+	const handleRestoreOrder = async (order: Doc<"orders">) => {
+		try {
+			const cartItems = order.items.map((i: any) => ({
+				productId: i.productId,
+				name: i.productName,
+				variant: i.variant,
+				quantity: i.quantity,
+				price: i.price,
+			}));
+
+			let voucher = null;
+			if (order.voucherId && allDiscounts) {
+				const found = allDiscounts.find((d: any) => d._id === order.voucherId);
+				if (found) {
+					voucher = {
+						_id: found._id,
+						name: found.name,
+						type: found.type,
+						value: found.value,
+						targetType: found.targetType,
+						targetIds: found.targetIds,
+					};
+				}
+			}
+
+			setCart(cartItems, voucher);
+			updateCustomerInfo({
+				name: order.customerName || "",
+				tableNumber: order.tableNumber || "",
+				orderType: (order.orderType as any) || "dine_in",
+				notes: order.notes || "",
+			});
+			await deleteOrder({ id: order._id });
+			toast.success("Pesanan dipulihkan ke keranjang");
+			setIsOpen(false);
+		} catch (error) {
+			console.error(error);
+			toast.error("Gagal memulihkan pesanan");
 		}
 	};
 
@@ -200,6 +285,13 @@ export function MenuSidebar() {
 										onClose={() => setIsOpen(false)}
 										onNavigate={setActiveTab}
 										onSelectOrder={setSelectedOrder}
+										onParkOrder={() => setIsParkDialogOpen(true)}
+									/>
+								</TabsContent>
+								<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="parkir">
+									<ParkirTab
+										onClose={() => setIsOpen(false)}
+										onRestore={handleRestoreOrder}
 									/>
 								</TabsContent>
 								<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="kas">
@@ -268,8 +360,101 @@ export function MenuSidebar() {
 					title={confirmConfig.title}
 					variant={confirmConfig.variant}
 				/>
+
+				<ParkOrderDialog
+					isOpen={isParkDialogOpen}
+					onClose={() => setIsParkDialogOpen(false)}
+					onPark={handleParkOrder}
+				/>
 			</Sheet>
 		</>
+	);
+}
+
+function ParkOrderDialog({
+	isOpen,
+	onClose,
+	onPark,
+}: {
+	isOpen: boolean;
+	onClose: () => void;
+	onPark: (data: {
+		customerName: string;
+		tableNumber: string;
+		notes: string;
+	}) => void;
+}) {
+	const { customerInfo } = useCart();
+	const [customerName, setCustomerName] = useState("");
+	const [tableNumber, setTableNumber] = useState("");
+	const [notes, setNotes] = useState("");
+
+	useEffect(() => {
+		if (isOpen) {
+			setCustomerName(customerInfo.name);
+			setTableNumber(customerInfo.tableNumber);
+			setNotes(customerInfo.notes);
+		}
+	}, [isOpen, customerInfo]);
+
+	return (
+		<Dialog onOpenChange={onClose} open={isOpen}>
+			<DialogContent className="max-w-sm rounded-2xl p-6">
+				<DialogHeader>
+					<DialogTitle className="flex items-center gap-2">
+						<Clock className="h-5 w-5 text-orange-500" />
+						Simpan Orderan (Tunda)
+					</DialogTitle>
+				</DialogHeader>
+
+				<div className="space-y-4 pt-4">
+					<div className="space-y-2">
+						<Label className="text-xs uppercase text-muted-foreground">
+							Nama Pelanggan (Opsional)
+						</Label>
+						<Input
+							onChange={(e) => setCustomerName(e.target.value)}
+							placeholder="e.g. Budi"
+							value={customerName}
+						/>
+					</div>
+
+					<div className="space-y-2">
+						<Label className="text-xs uppercase text-muted-foreground">
+							Nomor Meja (Opsional)
+						</Label>
+						<Input
+							onChange={(e) => setTableNumber(e.target.value)}
+							placeholder="e.g. 05"
+							value={tableNumber}
+						/>
+					</div>
+
+					<div className="space-y-2">
+						<Label className="text-xs uppercase text-muted-foreground">
+							Catatan Tambahan
+						</Label>
+						<Textarea
+							onChange={(e) => setNotes(e.target.value)}
+							placeholder="Catatan untuk pesanan ini..."
+							value={notes}
+						/>
+					</div>
+
+					<div className="grid grid-cols-2 gap-3 pt-2">
+						<Button onClick={onClose} variant="outline">
+							Batal
+						</Button>
+						<Button
+							className="bg-orange-500 hover:bg-orange-600"
+							onClick={() => onPark({ customerName, tableNumber, notes })}
+						>
+							Simpan Orderan
+						</Button>
+					</div>
+				</div>
+			</DialogContent>
+		</Dialog>
 	);
 }
 
@@ -414,10 +599,12 @@ function DashboardTab({
 	onClose,
 	onNavigate,
 	onSelectOrder,
+	onParkOrder,
 }: {
 	onClose: () => void;
 	onNavigate: (tab: string) => void;
 	onSelectOrder: (order: Doc<"orders">) => void;
+	onParkOrder: () => void;
 }) {
 	const orders = useQuery(api.orders.getOrders, {});
 	const lowStockItems = useQuery(api.inventory.getLowStockItems);
@@ -604,7 +791,7 @@ function DashboardTab({
 					</Button>
 					<Button
 						className="h-auto flex-col gap-1 py-3"
-						onClick={() => onClose()}
+						onClick={onParkOrder}
 						variant="outline"
 					>
 						<Clock className="h-4 w-4" />
@@ -612,6 +799,108 @@ function DashboardTab({
 					</Button>
 				</div>
 			</div>
+
+			<div className="h-6" />
+		</div>
+	);
+}
+
+function ParkirTab({
+	onClose,
+	onRestore,
+}: {
+	onClose: () => void;
+	onRestore: (order: Doc<"orders">) => void;
+}) {
+	const orders = useQuery(api.orders.getOrders, { status: "pending" });
+
+	const formatCurrency = (value: number) =>
+		new Intl.NumberFormat("id-ID", {
+			style: "currency",
+			currency: "IDR",
+			maximumFractionDigits: 0,
+		}).format(value);
+
+	const formatTime = (timestamp: number) =>
+		new Date(timestamp).toLocaleTimeString("id-ID", {
+			hour: "2-digit",
+			minute: "2-digit",
+		});
+
+	return (
+		<div className="space-y-4 pt-2">
+			<div className="space-y-2 text-center">
+				<h3 className="font-medium text-lg">Simpan Orderan (Antrean)</h3>
+				<p className="text-muted-foreground text-sm">
+					Daftar pesanan yang ditunda atau belum dibayar.
+				</p>
+			</div>
+
+			{orders === undefined ? (
+				<div className="flex flex-col items-center justify-center py-10 gap-3">
+					<Loader2 className="h-6 w-6 animate-spin text-primary" />
+					<p className="text-xs text-muted-foreground">Memuat antrean...</p>
+				</div>
+			) : orders.length === 0 ? (
+				<div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-2xl bg-muted/30">
+					<ShoppingCart className="h-10 w-10 text-muted-foreground/30 mb-3" />
+					<p className="font-medium text-sm text-muted-foreground">Antrean Kosong</p>
+					<p className="text-[10px] text-muted-foreground/60">Semua pesanan sudah selesai</p>
+				</div>
+			) : (
+				<div className="grid gap-3">
+					{orders.map((order: Doc<"orders">) => (
+						<Card
+							className="group relative overflow-hidden border-border transition-all hover:border-orange-500/50 hover:shadow-md"
+							key={order._id}
+						>
+							<CardContent className="p-4">
+								<div className="flex items-start justify-between mb-3">
+									<div className="space-y-1">
+										<div className="flex items-center gap-2">
+											<span className="font-mono text-sm font-bold text-primary">
+												#{order.orderNumber}
+											</span>
+											<span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-600 uppercase tracking-tighter">
+												DISIMPAN
+											</span>
+										</div>
+										<p className="font-bold text-foreground">
+											{order.customerName || "Pelanggan Tanpa Nama"}
+										</p>
+										{order.tableNumber && (
+											<p className="text-[10px] text-muted-foreground">
+												MEJA: <span className="font-bold text-foreground">{order.tableNumber}</span>
+											</p>
+										)}
+									</div>
+									<div className="text-right">
+										<p className="text-[10px] text-muted-foreground mb-1">
+											{formatTime(order.createdAt)}
+										</p>
+										<p className="font-bold text-primary">
+											{formatCurrency(order.totalAmount)}
+										</p>
+									</div>
+								</div>
+
+								<div className="flex items-center justify-between border-t border-dashed border-border/50 pt-3">
+									<div className="text-[10px] text-muted-foreground">
+										{order.items.length} item • {order.items.reduce((acc: number, i: any) => acc + i.quantity, 0)} qty
+									</div>
+									<Button
+										className="h-8 rounded-lg bg-orange-500 px-3 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm hover:bg-orange-600 active:scale-95"
+										onClick={() => onRestore(order)}
+										size="sm"
+									>
+										Pulihkan Order
+									</Button>
+								</div>
+							</CardContent>
+						</Card>
+					))}
+				</div>
+			)}
 
 			<div className="h-6" />
 		</div>

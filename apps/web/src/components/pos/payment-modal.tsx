@@ -51,7 +51,7 @@ export function PaymentConfirmationModal({
 		setMounted(true);
 	}, []);
 
-	const { items, totalAmount } = useCart();
+	const { items, totalAmount, customerInfo } = useCart();
 	const allActiveDiscounts = useQuery(api.discounts.getActiveDiscounts);
 	const siteSettings = useQuery(api.site_settings.getSettings);
 
@@ -184,13 +184,10 @@ export function PaymentConfirmationModal({
 
 	const finalTotal = subTotalAfterDiscount + serviceChargeAmount + taxAmount;
 
-	// New Fields
-	const [orderType, setOrderType] = useState<"dine_in" | "takeaway">("dine_in");
-	const [tableNumber, setTableNumber] = useState("");
-	const [notes, setNotes] = useState("");
+	// Remove redundant fields that are now in CartContext
 	const [autoComplete, setAutoComplete] = useState(true);
 
-	// Cash Assistant State
+	// Cash Assistant State...
 	const [cashReceived, setCashReceived] = useState<number | "">("");
 	const [changeAmount, setChangeAmount] = useState<number>(0);
 
@@ -296,59 +293,23 @@ export function PaymentConfirmationModal({
 					</div>
 
 					<div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 scrollbar-thin">
-						{/* --- SECTION: ORDER INFO --- */}
+						{/* --- SECTION: ORDER INFO SUMMARY --- */}
 						<div className="space-y-3">
 							<div className="flex items-center gap-2">
 								<Info className="h-3.5 w-3.5 text-primary/70" />
-								<h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">Informasi Pesanan</h3>
+								<h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">Ringkasan Pesanan</h3>
 							</div>
 							
-							{/* Dine-in / Takeaway Toggle */}
-							<div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-muted/30 border border-border/50">
-								<button
-									type="button"
-									onClick={() => setOrderType("dine_in")}
-									className={`flex items-center justify-center gap-1.5 py-2 rounded-lg font-bold text-[9px] uppercase tracking-wider transition-all ${orderType === "dine_in" ? 'bg-background shadow-sm text-primary border border-border/50' : 'text-muted-foreground hover:text-foreground'}`}
-								>
-									<Coffee className="h-3 w-3" />
-									Dine In
-								</button>
-								<button
-									type="button"
-									onClick={() => setOrderType("takeaway")}
-									className={`flex items-center justify-center gap-1.5 py-2 rounded-lg font-bold text-[9px] uppercase tracking-wider transition-all ${orderType === "takeaway" ? 'bg-background shadow-sm text-primary border border-border/50' : 'text-muted-foreground hover:text-foreground'}`}
-								>
-									<ShoppingBag className="h-3 w-3" />
-									Takeaway
-								</button>
-							</div>
-
-							{/* Table Number & Notes Row */}
-							<div className="grid grid-cols-2 gap-3">
-								<div className="space-y-1.5">
-									<label className="block font-bold text-muted-foreground/60 text-[9px] uppercase tracking-widest ml-1">
-										Meja
-									</label>
-									<input
-										className={`w-full rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-bold outline-none transition-all focus:border-primary/50 focus:ring-4 focus:ring-primary/5 ${orderType === 'takeaway' ? 'opacity-40 cursor-not-allowed bg-muted' : ''}`}
-										disabled={orderType === 'takeaway'}
-										onChange={(e) => setTableNumber(e.target.value)}
-										placeholder="No."
-										type="text"
-										value={tableNumber}
-									/>
+							<div className="grid grid-cols-2 gap-2 rounded-xl bg-muted/30 border border-border/50 p-3">
+								<div className="space-y-1">
+									<p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Pelanggan</p>
+									<p className="text-xs font-bold text-foreground truncate">{customerInfo.name || "Pelanggan Umum"}</p>
 								</div>
-								<div className="space-y-1.5">
-									<label className="block font-bold text-muted-foreground/60 text-[9px] uppercase tracking-widest ml-1">
-										Catatan
-									</label>
-									<input
-										className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-medium outline-none transition-all focus:border-primary/50 focus:ring-4 focus:ring-primary/5"
-										onChange={(e) => setNotes(e.target.value)}
-										placeholder="Tanpa Es..."
-										type="text"
-										value={notes}
-									/>
+								<div className="space-y-1 text-right">
+									<p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Tipe / Meja</p>
+									<p className="text-xs font-bold text-foreground">
+										{customerInfo.orderType === 'dine_in' ? `Dine In / ${customerInfo.tableNumber || '-'}` : 'Takeaway'}
+									</p>
 								</div>
 							</div>
 						</div>
@@ -481,7 +442,7 @@ export function PaymentConfirmationModal({
 								{discountAmount > 0 && (
 									<div className="flex items-center justify-between text-[10px] text-green-600 font-bold">
 										<span className="flex items-center gap-1 uppercase tracking-wide">
-											<Tag className="h-2.5 w-2.5" /> Potongan
+											<Tag className="h-2.5 w-2.5" /> Potongan Voucher
 										</span>
 										<span>
 											-{new Intl.NumberFormat("id-ID", {
@@ -516,6 +477,19 @@ export function PaymentConfirmationModal({
 										}).format(finalTotal)}
 									</span>
 								</div>
+
+								{selectedPaymentMethod === "tunai" && cashReceived !== "" && (
+									<div className="mt-2 flex items-center justify-between border-t border-dashed border-primary/20 pt-2 text-emerald-600">
+										<span className="font-bold text-[9px] uppercase tracking-widest">Uang Kembali</span>
+										<span className="font-black text-lg tracking-tighter">
+											{new Intl.NumberFormat("id-ID", {
+												style: "currency",
+												currency: "IDR",
+												maximumFractionDigits: 0,
+											}).format(changeAmount)}
+										</span>
+									</div>
+								)}
 							</div>
 						</div>
 
@@ -528,7 +502,7 @@ export function PaymentConfirmationModal({
 										className="mb-1.5 block font-bold text-muted-foreground/60 text-[9px] uppercase tracking-widest ml-1"
 										htmlFor="discount-select"
 									>
-										Voucher / Promo
+										Pilih Voucher Lain
 									</label>
 									<select
 										className="w-full appearance-none rounded-xl border border-border bg-background py-2.5 pr-10 pl-3 font-bold text-foreground text-[10px] outline-none transition-all focus:border-primary/50 focus:ring-4 focus:ring-primary/5"
@@ -595,9 +569,6 @@ export function PaymentConfirmationModal({
 									selectedDiscountId || undefined,
 									selectedPaymentMethod,
 									{
-										tableNumber,
-										orderType,
-										notes,
 										autoComplete
 									}
 								)

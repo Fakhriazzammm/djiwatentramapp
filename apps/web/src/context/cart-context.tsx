@@ -39,12 +39,21 @@ interface CartContextType {
 	totalItems: number;
 	appliedVoucher: AppliedVoucher | null;
 	applyVoucher: (voucher: AppliedVoucher | null) => void;
+	setCart: (items: CartItem[], voucher?: AppliedVoucher | null) => void;
 	discountAmount: number;
 	finalTotal: number;
 	taxRate: number;
 	taxAmount: number;
 	serviceChargeRate: number;
 	serviceChargeAmount: number;
+	customerInfo: {
+		name: string;
+		orderType: "dine_in" | "takeaway";
+		tableNumber: string;
+		notes: string;
+		isFreeRefill: boolean;
+	};
+	updateCustomerInfo: (info: Partial<CartContextType["customerInfo"]>) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -88,6 +97,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
 		}
 	);
 
+	const [customerInfo, setCustomerInfo] = useState<{
+		name: string;
+		orderType: "dine_in" | "takeaway";
+		tableNumber: string;
+		notes: string;
+		isFreeRefill: boolean;
+	}>({
+		name: "",
+		orderType: "dine_in",
+		tableNumber: "",
+		notes: "",
+		isFreeRefill: false,
+	});
+
+	const updateCustomerInfo = (info: Partial<typeof customerInfo>) => {
+		setCustomerInfo((prev) => ({ ...prev, ...info }));
+	};
+
 	// Save cart to localStorage whenever it changes
 	useEffect(() => {
 		if (typeof window !== "undefined") {
@@ -118,7 +145,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 		};
 
 		// Find if any Free Refill promo is currently active
-		const activeRefillPromo = activeDiscounts.find((d) =>
+		const activeRefillPromo = activeDiscounts.find((d: any) =>
 			isFreeRefillActive(d, context)
 		);
 
@@ -126,7 +153,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 		const hasRefillInCart = items.some((i) => i.productId === refillId);
 		const otherItemsCount = items.filter((i) => i.productId !== refillId).length;
 
-		if (activeRefillPromo && otherItemsCount > 0) {
+		if (activeRefillPromo && otherItemsCount > 0 && customerInfo.isFreeRefill) {
 			// Add if not present or price/quantity changed
 			const refillPrice = activeRefillPromo.refillPrice || 20000;
 			const currentRefill = items.find((i) => i.productId === refillId);
@@ -146,10 +173,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 				});
 			}
 		} else if (hasRefillInCart) {
-			// Remove if no active promo or no other items in cart
+			// Remove if no active promo, no other items, or customerInfo.isFreeRefill is false
 			setItems((prev) => prev.filter((i) => i.productId !== refillId));
 		}
-	}, [activeDiscounts, items]);
+	}, [activeDiscounts, items, customerInfo.isFreeRefill]);
 
 	const addToCart = (newItem: CartItem) => {
 		setItems((prev) => {
@@ -194,6 +221,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
 	const clearCart = () => {
 		setItems([]);
 		setAppliedVoucher(null);
+		setCustomerInfo({
+			name: "",
+			orderType: "dine_in",
+			tableNumber: "",
+			notes: "",
+			isFreeRefill: false,
+		});
+	};
+
+	const setCart = (newItems: CartItem[], voucher: AppliedVoucher | null = null) => {
+		setItems(newItems);
+		setAppliedVoucher(voucher);
 	};
 
 	const applyVoucher = (voucher: AppliedVoucher | null) => {
@@ -257,6 +296,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 				totalItems,
 				appliedVoucher,
 				applyVoucher,
+				setCart,
+				customerInfo,
+				updateCustomerInfo,
 				discountAmount,
 				finalTotal,
 				taxRate,

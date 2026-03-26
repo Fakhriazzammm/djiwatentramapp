@@ -19,6 +19,17 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { 
+	Coffee, 
+	ShoppingBag, 
+	User, 
+	Hash, 
+	MessageSquare,
+	Zap,
+	AlertCircle
+} from "lucide-react";
 import type { CartItem } from "@/context/cart-context";
 import { useCart } from "@/context/cart-context";
 import { bluetoothPrinter } from "@/lib/bluetooth-printer";
@@ -321,75 +332,162 @@ function MobileBottomBar({
 	onCheckout: () => void;
 }) {
 		return (
-		<div className="fixed right-0 bottom-0 left-0 z-50 md:hidden">
-			{appliedVoucher && (
-				<div className="mx-3 mb-1 flex items-center justify-between rounded-t-xl bg-emerald-100 px-4 py-2 shadow-sm">
-					<div className="flex items-center gap-2">
-						<Tag className="h-4 w-4 text-emerald-600" />
-						<span className="font-medium text-emerald-700 text-sm">
-							{appliedVoucher.name}
+		<div className="safe-area-bottom border-border border-t bg-background px-3 pt-2.5 pb-2.5 shadow-[0_-4px_16px_rgba(0,0,0,0.10)]">
+			<div className="flex items-center gap-2.5">
+				<button
+					aria-label="Lihat keranjang"
+					className="flex min-w-0 flex-1 flex-col justify-center text-left active:opacity-70 transition-opacity"
+					disabled={!hasItems}
+					onClick={onOpenCart}
+					type="button"
+				>
+					{discountAmount > 0 && (
+						<span className="text-xs text-muted-foreground line-through">
+							{formatCurrency(totalAmount)}
 						</span>
-					</div>
-					<button
-						className="rounded-lg px-3 py-1.5 font-semibold text-red-500 text-xs active:bg-red-50 transition-colors"
-						onClick={onRemoveVoucher}
-						type="button"
-					>
-						Hapus
-					</button>
+					)}
+					<span className="font-bold text-lg text-foreground">
+						{formatCurrency(finalTotal)}
+					</span>
+				</button>
+
+				<button
+					aria-label={`Keranjang: ${totalItems} item`}
+					className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-card active:scale-95 transition-transform"
+					onClick={onOpenCart}
+					type="button"
+				>
+					<ShoppingCart className="h-6 w-6 text-foreground" />
+					{totalItems > 0 && (
+						<span className="absolute -top-2 -right-2 flex h-5.5 min-w-5.5 items-center justify-center rounded-full bg-primary px-1.5 font-bold text-[11px] text-primary-foreground shadow-md">
+							{totalItems}
+						</span>
+					)}
+				</button>
+
+				<button
+					aria-label="Pakai voucher"
+					className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-emerald-500/50 border-dashed bg-emerald-50 active:scale-95 transition-transform"
+					onClick={onOpenVoucher}
+					type="button"
+				>
+					<Tag className="h-5 w-5 text-emerald-600" />
+				</button>
+
+				<button
+					aria-label="Bayar pesanan"
+					className="flex h-12 shrink-0 items-center gap-2 rounded-xl bg-primary px-6 font-bold text-base text-primary-foreground shadow-lg active:scale-95 transition-transform disabled:opacity-50"
+					disabled={!hasItems || isSubmitting}
+					onClick={onCheckout}
+					type="button"
+				>
+					{getPayButtonLabel(isSubmitting, hasItems, totalItems)}
+				</button>
+			</div>
+		</div>
+	);
+}
+
+// ============================================
+// Customer Info Form
+// ============================================
+function CustomerInfoForm() {
+	const { customerInfo, updateCustomerInfo } = useCart();
+
+	return (
+		<div className="mb-4 space-y-4 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-6">
+			<div className="flex items-center gap-2 border-b border-border/50 pb-3">
+				<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+					<User className="h-4 w-4 text-primary" />
 				</div>
-			)}
+				<h3 className="font-bold text-sm uppercase tracking-wider text-foreground">
+					Informasi Pelanggan
+				</h3>
+			</div>
 
-			<div className="safe-area-bottom border-border border-t bg-background px-3 pt-2.5 pb-2.5 shadow-[0_-4px_16px_rgba(0,0,0,0.10)]">
-				<div className="flex items-center gap-2.5">
+			<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+				<div className="space-y-1.5">
+					<Label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+						<User className="h-3 w-3" /> Nama Pelanggan
+					</Label>
+					<Input
+						className="h-10 rounded-xl border-border/50 bg-muted/20 font-medium focus:bg-background"
+						onChange={(e) => updateCustomerInfo({ name: e.target.value })}
+						placeholder="Input nama..."
+						value={customerInfo.name}
+					/>
+				</div>
+
+				<div className="space-y-1.5">
+					<Label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+						<Coffee className="h-3 w-3" /> Tipe Pesanan
+					</Label>
+					<div className="grid grid-cols-2 gap-2 rounded-xl border border-border/50 bg-muted/20 p-1">
+						<button
+							className={`flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-[10px] font-bold uppercase transition-all ${
+								customerInfo.orderType === "dine_in"
+									? "bg-background text-primary shadow-sm"
+									: "text-muted-foreground hover:text-foreground"
+							}`}
+							onClick={() => updateCustomerInfo({ orderType: "dine_in" })}
+							type="button"
+						>
+							<Coffee className="h-3 w-3" /> Dine In
+						</button>
+						<button
+							className={`flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-[10px] font-bold uppercase transition-all ${
+								customerInfo.orderType === "takeaway"
+									? "bg-background text-primary shadow-sm"
+									: "text-muted-foreground hover:text-foreground"
+							}`}
+							onClick={() => updateCustomerInfo({ orderType: "takeaway" })}
+							type="button"
+						>
+							<ShoppingBag className="h-3 w-3" /> Takeaway
+						</button>
+					</div>
+				</div>
+
+				<div className="space-y-1.5">
+					<Label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+						<Hash className="h-3 w-3" /> Nomor Meja
+					</Label>
+					<Input
+						className={`h-10 rounded-xl border-border/50 bg-muted/20 font-bold focus:bg-background ${
+							customerInfo.orderType === "takeaway"
+								? "cursor-not-allowed opacity-50"
+								: ""
+						}`}
+						disabled={customerInfo.orderType === "takeaway"}
+						onChange={(e) => updateCustomerInfo({ tableNumber: e.target.value })}
+						placeholder="No. Meja"
+						value={customerInfo.tableNumber}
+					/>
+				</div>
+
+				<div className="space-y-1.5">
+					<Label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+						<Zap className="h-3 w-3" /> Free Refill?
+					</Label>
 					<button
-						aria-label="Lihat keranjang"
-						className="flex min-w-0 flex-1 flex-col justify-center text-left active:opacity-70 transition-opacity"
-						disabled={!hasItems}
-						onClick={onOpenCart}
+						className={`flex h-10 w-full items-center justify-between rounded-xl border px-4 transition-all ${
+							customerInfo.isFreeRefill
+								? "border-emerald-500/50 bg-emerald-50 text-emerald-700 shadow-sm"
+								: "border-border/50 bg-muted/20 text-muted-foreground hover:text-foreground"
+						}`}
+						onClick={() =>
+							updateCustomerInfo({ isFreeRefill: !customerInfo.isFreeRefill })
+						}
 						type="button"
 					>
-						{discountAmount > 0 && (
-							<span className="text-xs text-muted-foreground line-through">
-								{formatCurrency(totalAmount)}
-							</span>
-						)}
-						<span className="font-bold text-lg text-foreground">
-							{formatCurrency(finalTotal)}
+						<span className="text-[10px] font-bold uppercase tracking-widest">
+							{customerInfo.isFreeRefill ? "AKTIF" : "TIDAK AKTIF"}
 						</span>
-					</button>
-
-					<button
-						aria-label={`Keranjang: ${totalItems} item`}
-						className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-card active:scale-95 transition-transform"
-						onClick={onOpenCart}
-						type="button"
-					>
-						<ShoppingCart className="h-6 w-6 text-foreground" />
-						{totalItems > 0 && (
-							<span className="absolute -top-2 -right-2 flex h-5.5 min-w-5.5 items-center justify-center rounded-full bg-primary px-1.5 font-bold text-[11px] text-primary-foreground shadow-md">
-								{totalItems}
-							</span>
-						)}
-					</button>
-
-					<button
-						aria-label="Pakai voucher"
-						className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-emerald-500/50 border-dashed bg-emerald-50 active:scale-95 transition-transform"
-						onClick={onOpenVoucher}
-						type="button"
-					>
-						<Tag className="h-5 w-5 text-emerald-600" />
-					</button>
-
-					<button
-						aria-label="Bayar pesanan"
-						className="flex h-12 shrink-0 items-center gap-2 rounded-xl bg-primary px-6 font-bold text-base text-primary-foreground shadow-lg active:scale-95 transition-transform disabled:opacity-50"
-						disabled={!hasItems || isSubmitting}
-						onClick={onCheckout}
-						type="button"
-					>
-						{getPayButtonLabel(isSubmitting, hasItems, totalItems)}
+						<div
+							className={`h-2 w-2 rounded-full ${
+								customerInfo.isFreeRefill ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/30"
+							}`}
+						/>
 					</button>
 				</div>
 			</div>
@@ -639,6 +737,7 @@ function MenuPage() {
 		taxRate,
 		serviceChargeAmount,
 		serviceChargeRate,
+		customerInfo,
 	} = useCart();
 	const createOrder = useMutation(api.orders.createOrder);
 	const navigate = useNavigate();
@@ -718,6 +817,8 @@ function MenuPage() {
 		}
 
 		setIsSubmitting(true);
+		const { name: custName, orderType: custOrderType, tableNumber: custTable, notes: custNotes } = customerInfo;
+
 		try {
 			await createOrder({
 				items: items.map((i) => ({
@@ -729,10 +830,10 @@ function MenuPage() {
 				})),
 				totalAmount: finalAmount,
 				paymentMethod: paymentMethod,
-				customerName: "Pelanggan",
-				tableNumber: extraOrderData?.tableNumber,
-				orderType: extraOrderData?.orderType,
-				notes: extraOrderData?.notes,
+				customerName: custName || "Pelanggan",
+				tableNumber: extraOrderData?.tableNumber || custTable,
+				orderType: extraOrderData?.orderType || custOrderType,
+				notes: extraOrderData?.notes || custNotes,
 				autoComplete: extraOrderData?.autoComplete,
 			});
 
@@ -752,12 +853,10 @@ function MenuPage() {
 				serviceChargeAmount,
 				paymentMethod: paymentMethod,
 				createdAt: Date.now(),
-				customerName: extraOrderData?.tableNumber
-					? `Meja ${extraOrderData.tableNumber}`
-					: "Pelanggan",
-				orderType: extraOrderData?.orderType,
-				tableNumber: extraOrderData?.tableNumber,
-				notes: extraOrderData?.notes,
+				customerName: custName || (custTable ? `Meja ${custTable}` : "Pelanggan"),
+				orderType: custOrderType,
+				tableNumber: custTable,
+				notes: custNotes,
 			};
 
 			if (siteSettings?.autoPrint && bluetoothPrinter.isConnected()) {
@@ -905,6 +1004,7 @@ function MenuPage() {
 					id="main-content"
 					tabIndex={-1}
 				>
+					<CustomerInfoForm />
 					{products ? (
 						<div className="grid grid-cols-3 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
 							{products.map((product) => {
