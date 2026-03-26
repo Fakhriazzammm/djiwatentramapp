@@ -336,6 +336,7 @@ function MobileBottomBar({
 	totalItems,
 	isSubmitting,
 	hasItems,
+	isSubmitted,
 	onRemoveVoucher,
 	onOpenCart,
 	onOpenVoucher,
@@ -348,18 +349,18 @@ function MobileBottomBar({
 	totalItems: number;
 	isSubmitting: boolean;
 	hasItems: boolean;
+	isSubmitted: boolean;
 	onRemoveVoucher: () => void;
 	onOpenCart: () => void;
 	onOpenVoucher: () => void;
 	onCheckout: () => void;
 }) {
 	return (
-		<div className="fixed bottom-0 left-0 right-0 z-50 md:hidden safe-area-bottom border-border border-t bg-background px-3 pt-2.5 pb-2.5 shadow-[0_-4px_16px_rgba(0,0,0,0.10)]">
+		<div className="fixed bottom-0 left-0 right-0 z-[60] md:hidden safe-area-bottom border-border border-t bg-background px-3 pt-2.5 pb-2.5 shadow-[0_-4px_16px_rgba(0,0,0,0.10)]">
 			<div className="flex items-center gap-2.5">
 				<button
 					aria-label="Lihat keranjang"
 					className="flex min-w-0 flex-1 flex-col justify-center text-left active:opacity-70 transition-opacity"
-					disabled={!hasItems}
 					onClick={onOpenCart}
 					type="button"
 				>
@@ -399,11 +400,11 @@ function MobileBottomBar({
 				<button
 					aria-label="Bayar pesanan"
 					className="flex h-12 shrink-0 items-center gap-2 rounded-xl bg-primary px-6 font-bold text-base text-primary-foreground shadow-lg active:scale-95 transition-transform disabled:opacity-50"
-					disabled={!hasItems || isSubmitting}
+					disabled={isSubmitting}
 					onClick={onCheckout}
 					type="button"
 				>
-					{getPayButtonLabel(isSubmitting, hasItems, totalItems)}
+					{getPayButtonLabel(isSubmitting, hasItems, totalItems, isSubmitted)}
 				</button>
 			</div>
 		</div>
@@ -413,8 +414,15 @@ function MobileBottomBar({
 // ============================================
 // Customer Info Form
 // ============================================
-function CustomerInfoForm() {
+function CustomerInfoForm({ onSuccess }: { onSuccess?: () => void }) {
 	const { customerInfo, updateCustomerInfo } = useCart();
+
+	const handleSubmit = () => {
+		updateCustomerInfo({ isSubmitted: true });
+		if (onSuccess) {
+			onSuccess();
+		}
+	};
 
 	return (
 		<div className="flex flex-col h-full overflow-hidden">
@@ -533,7 +541,7 @@ function CustomerInfoForm() {
 				<Button
 					className="h-12 w-full rounded-xl bg-primary font-black text-[11px] uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-95 transition-all"
 					disabled={!customerInfo.name || (customerInfo.orderType === 'dine_in' && !customerInfo.tableNumber)}
-					onClick={() => updateCustomerInfo({ isSubmitted: true })}
+					onClick={handleSubmit}
 				>
 					<span>Lanjut Pilih Menu</span>
 					<ChevronRight className="ml-1.5 h-3.5 w-3.5" />
@@ -597,142 +605,144 @@ function MobileCartDrawer({
 	const { customerInfo, updateCustomerInfo } = useCart();
 
 	return (
-		<Sheet onOpenChange={onOpenChange} open={isOpen}>
-			<SheetContent
-				className="flex max-h-[85vh] flex-col rounded-t-2xl md:hidden"
-				showCloseButton={false}
-				side="bottom"
-			>
-				<div className="flex justify-center pt-2 pb-1">
-					<div className="h-1 w-10 rounded-full bg-muted-foreground/20" />
-				</div>
-
-				<SheetHeader className="flex-row items-center justify-between px-4 pt-1 pb-2">
-					<SheetTitle className="font-bold text-foreground text-lg">
-						{!customerInfo.isSubmitted ? "Data Pelanggan" : `Pesanan (${totalItems})`}
-					</SheetTitle>
-					<div className="flex items-center gap-2">
-						{items.length > 0 && customerInfo.isSubmitted && (
+		<AnimatePresence>
+			{isOpen && (
+				<motion.div
+					initial={{ opacity: 0, y: "100%" }}
+					animate={{ opacity: 1, y: 0 }}
+					exit={{ opacity: 0, y: "100%" }}
+					transition={{ type: "spring", damping: 25, stiffness: 200 }}
+					className="fixed inset-0 z-[100] flex flex-col bg-background md:hidden"
+				>
+					<div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-4">
+						<div className="flex items-center gap-3">
 							<button
-								className="rounded-lg px-4 py-2.5 font-bold text-destructive text-xs uppercase tracking-wider active:bg-destructive/10 transition-colors"
-								onClick={onClearCart}
+								aria-label="Tutup"
+								className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground active:scale-95 transition-transform"
+								onClick={() => onOpenChange(false)}
 								type="button"
 							>
-								Hapus
+								<X className="h-5 w-5" />
 							</button>
-						)}
-						<button
-							aria-label="Tutup keranjang"
-							className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground active:scale-95 transition-transform"
-							onClick={() => onOpenChange(false)}
-							type="button"
-						>
-							<X className="h-5 w-5" />
-						</button>
-					</div>
-				</SheetHeader>
-
-				<div className="flex-1 overflow-y-auto px-6 py-3 bg-white mx-4 my-2 rounded-xl border border-border shadow-inner">
-					{!customerInfo.isSubmitted ? (
-						<div className="mb-6">
-							<CustomerInfoForm />
+							<h2 className="font-bold text-foreground text-lg">
+								{!customerInfo.isSubmitted ? "Data Pelanggan" : `Pesanan (${totalItems})`}
+							</h2>
 						</div>
-					) : (
-						<>
-							{/* Customer Summary Mobile */}
-							<div className="mb-4 rounded-xl border border-border bg-muted/30 p-3">
-								<div className="flex items-center justify-between">
-									<div className="space-y-0.5">
-										<p className="text-[10px] font-black text-primary uppercase tracking-widest">
-											{customerInfo.orderType === 'dine_in' ? `Dine In / Meja ${customerInfo.tableNumber}` : 'Takeaway'}
-										</p>
-										<p className="font-black text-sm uppercase">{customerInfo.name}</p>
-									</div>
-									<Button
-										className="h-8 w-8 p-0 rounded-lg"
-										onClick={() => updateCustomerInfo({ isSubmitted: false })}
-										variant="outline"
-									>
-										<User className="h-3.5 w-3.5" />
-									</Button>
-								</div>
-							</div>
+						<div className="flex items-center gap-2">
+							{items.length > 0 && customerInfo.isSubmitted && (
+								<button
+									className="rounded-lg px-4 py-2.5 font-bold text-destructive text-xs uppercase tracking-wider active:bg-destructive/10 transition-colors"
+									onClick={onClearCart}
+									type="button"
+								>
+									Hapus
+								</button>
+							)}
+						</div>
+					</div>
 
-							{items.length === 0 ? (
-								<EmptyCart className="py-8" size="sm" />
+					<div className="flex-1 overflow-y-auto bg-muted/5 p-4">
+						<div className="mx-auto w-full max-w-lg rounded-2xl border border-border bg-white p-6 shadow-sm">
+							{!customerInfo.isSubmitted ? (
+								<CustomerInfoForm onSuccess={() => onOpenChange(false)} />
 							) : (
-								<div className="divide-y divide-dashed divide-border/50">
-									{items.map((item) => (
-										<ReceiptItemRow
-											item={item}
-											key={`${item.productId}-${item.variant}`}
-											onUpdateQuantity={onUpdateQuantity}
-										/>
-									))}
-								</div>
+								<>
+									{/* Customer Summary Mobile */}
+									<div className="mb-4 rounded-xl border border-border bg-muted/30 p-3">
+										<div className="flex items-center justify-between">
+											<div className="space-y-0.5">
+												<p className="text-[10px] font-black text-primary uppercase tracking-widest">
+													{customerInfo.orderType === 'dine_in' ? `Dine In / Meja ${customerInfo.tableNumber}` : 'Takeaway'}
+												</p>
+												<p className="font-black text-sm uppercase">{customerInfo.name}</p>
+											</div>
+											<Button
+												className="h-8 w-8 p-0 rounded-lg"
+												onClick={() => updateCustomerInfo({ isSubmitted: false })}
+												variant="outline"
+											>
+												<User className="h-3.5 w-3.5" />
+											</Button>
+										</div>
+									</div>
+
+									{items.length === 0 ? (
+										<EmptyCart className="py-12" size="sm" />
+									) : (
+										<div className="divide-y divide-dashed divide-border/50">
+											{items.map((item) => (
+												<ReceiptItemRow
+													item={item}
+													key={`${item.productId}-${item.variant}`}
+													onUpdateQuantity={onUpdateQuantity}
+												/>
+											))}
+										</div>
+									)}
+								</>
 							)}
-						</>
-					)}
-				</div>
-
-				{items.length > 0 && customerInfo.isSubmitted && (
-					<div className="safe-area-bottom border-border border-t bg-background px-4 pt-3 pb-3">
-						<button
-							className="mb-4 flex w-full items-center justify-between rounded-xl border border-emerald-500/30 border-dashed bg-emerald-50 p-3 active:bg-emerald-100"
-							onClick={onOpenVoucher}
-							type="button"
-						>
-							<div className="flex items-center gap-2">
-								<Tag className="h-4 w-4 text-emerald-600" />
-								<span className="font-bold text-emerald-700 text-xs uppercase tracking-wider">
-									{appliedVoucher ? appliedVoucher.name : "Pakai Voucher"}
-								</span>
-							</div>
-							{appliedVoucher && (
-								<span className="rounded-full bg-emerald-600 px-2 py-0.5 font-bold text-white text-[10px] uppercase">
-									Aktif
-								</span>
-							)}
-						</button>
-
-						<div className="mb-4 px-2">
-							<ReceiptPriceSummary
-								discountAmount={discountAmount}
-								finalTotal={finalTotal}
-								paymentDetails={paymentDetails}
-								serviceChargeAmount={serviceChargeAmount}
-								serviceChargeRate={serviceChargeRate}
-								taxAmount={taxAmount}
-								taxRate={taxRate}
-								totalAmount={totalAmount}
-							/>
-						</div>
-
-						<div className="grid grid-cols-4 gap-3">
-							<button
-								className="col-span-1 flex items-center justify-center rounded-xl border border-border bg-background p-4 font-bold text-muted-foreground text-xs uppercase tracking-widest active:bg-muted transition-colors"
-								onClick={onCancel}
-								type="button"
-							>
-								Batal
-							</button>
-							<button
-								className={`col-span-3 flex items-center justify-center rounded-xl bg-primary p-4 font-bold text-sm text-primary-foreground uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform ${
-									isSubmitting ? "cursor-not-allowed opacity-50" : ""
-								}`}
-								disabled={isSubmitting}
-								onClick={onCheckout}
-								type="button"
-							>
-								{isSubmitting
-									? "..."
-									: `Bayar ${formatCurrency(finalTotal)}`}
-							</button>
 						</div>
 					</div>
-				)}
-			</SheetContent>
-		</Sheet>
+
+					{items.length > 0 && customerInfo.isSubmitted && (
+						<div className="safe-area-bottom border-border border-t bg-background p-4 shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
+							<button
+								className="mb-4 flex w-full items-center justify-between rounded-xl border border-emerald-500/30 border-dashed bg-emerald-50 p-3 active:bg-emerald-100"
+								onClick={onOpenVoucher}
+								type="button"
+							>
+								<div className="flex items-center gap-2">
+									<Tag className="h-4 w-4 text-emerald-600" />
+									<span className="font-bold text-emerald-700 text-xs uppercase tracking-wider">
+										{appliedVoucher ? appliedVoucher.name : "Pakai Voucher"}
+									</span>
+								</div>
+								{appliedVoucher && (
+									<span className="rounded-full bg-emerald-600 px-2 py-0.5 font-bold text-white text-[10px] uppercase">
+										Aktif
+									</span>
+								)}
+							</button>
+
+							<div className="mb-4 px-2">
+								<ReceiptPriceSummary
+									discountAmount={discountAmount}
+									finalTotal={finalTotal}
+									paymentDetails={paymentDetails}
+									serviceChargeAmount={serviceChargeAmount}
+									serviceChargeRate={serviceChargeRate}
+									taxAmount={taxAmount}
+									taxRate={taxRate}
+									totalAmount={totalAmount}
+								/>
+							</div>
+
+							<div className="grid grid-cols-4 gap-3">
+								<button
+									className="col-span-1 flex items-center justify-center rounded-xl border border-border bg-background p-4 font-bold text-muted-foreground text-xs uppercase tracking-widest active:bg-muted transition-colors"
+									onClick={onCancel}
+									type="button"
+								>
+									Batal
+								</button>
+								<button
+									className={`col-span-3 flex items-center justify-center rounded-xl bg-primary p-4 font-bold text-sm text-primary-foreground uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform ${
+										isSubmitting ? "cursor-not-allowed opacity-50" : ""
+									}`}
+									disabled={isSubmitting}
+									onClick={onCheckout}
+									type="button"
+								>
+									{isSubmitting
+										? "..."
+										: `Bayar ${formatCurrency(finalTotal)}`}
+								</button>
+							</div>
+						</div>
+					)}
+				</motion.div>
+			)}
+		</AnimatePresence>
 	);
 }
 
@@ -741,10 +751,14 @@ function MobileCartDrawer({
 function getPayButtonLabel(
 	isSubmitting: boolean,
 	hasItems: boolean,
-	totalItems: number
+	totalItems: number,
+	isSubmitted?: boolean
 ) {
 	if (isSubmitting) {
 		return "Memproses...";
+	}
+	if (!isSubmitted) {
+		return "Isi Data";
 	}
 	if (!hasItems) {
 		return "Bayar";
@@ -1046,7 +1060,7 @@ function MenuPage() {
 			<SkipLink target="main-content" />
 
 			{/* Header - Top bar + Category filter */}
-			<header className="shrink-0 border-border border-b bg-background/95 backdrop-blur-sm shadow-sm">
+			<header className="sticky top-0 z-[60] shrink-0 border-border border-b bg-background/95 backdrop-blur-sm shadow-sm">
 				{/* Top row: title + action buttons */}
 				<div className="flex items-center justify-between gap-2 px-3 py-2">
 					<span className="font-bold text-foreground text-base">Menu</span>
@@ -1100,28 +1114,17 @@ function MenuPage() {
 			</header>
 
 			{/* Main Content Area */}
-			<div className="flex flex-1 overflow-hidden">
+			<div className="relative flex flex-1 overflow-hidden">
 				{/* Product Grid */}
 				<main
 					className={`flex-1 overflow-y-auto bg-muted/20 p-2 pb-40 md:pb-2 md:p-3 transition-all ${
-						!customerInfo.isSubmitted && typeof window !== "undefined" && window.innerWidth > 768 ? "blur-[2px] pointer-events-none opacity-50" : ""
+						!customerInfo.isSubmitted ? "blur-[8px] pointer-events-none opacity-40" : ""
 					}`}
 					id="main-content"
 					tabIndex={-1}
 				>
 					{products ? (
-						<div className="relative grid grid-cols-3 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-							{!customerInfo.isSubmitted && (
-								<div className="pointer-events-auto fixed inset-0 z-30 flex items-center justify-center p-6 md:hidden">
-									<Button 
-										className="h-16 w-full rounded-2xl bg-primary font-black text-lg uppercase tracking-widest shadow-2xl active:scale-95 transition-transform"
-										onClick={() => setIsMobileCartOpen(true)}
-									>
-										<User className="mr-3 h-6 w-6" />
-										Mulai Pesanan
-									</Button>
-								</div>
-							)}
+						<div className="grid grid-cols-3 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
 							{products.map((product) => {
 								const { finalPrice } = calculateEffectivePrice(
 									{
@@ -1196,9 +1199,9 @@ function MenuPage() {
 						</div>
 					)}
 				</main>
-
-				{/* Desktop Cart Sidebar */}
-				<aside
+  
+ 				{/* Desktop Cart Sidebar */}
+ 				<aside
 					aria-label="Keranjang belanja"
 					className="z-20 hidden h-full w-[340px] shrink-0 flex-col border-border border-l bg-muted/30 shadow-xl md:flex"
 					id="cart-sidebar"
@@ -1375,7 +1378,14 @@ function MenuPage() {
 					finalTotal={finalTotal}
 					hasItems={items.length > 0}
 					isSubmitting={isSubmitting}
-					onCheckout={() => handleCheckout()}
+					isSubmitted={customerInfo.isSubmitted}
+					onCheckout={() => {
+						if (!customerInfo.isSubmitted) {
+							setIsMobileCartOpen(true);
+						} else {
+							handleCheckout();
+						}
+					}}
 					onOpenCart={() => setIsMobileCartOpen(true)}
 					onOpenVoucher={() => setIsVoucherModalOpen(true)}
 					onRemoveVoucher={() => applyVoucher(null)}
