@@ -1104,17 +1104,17 @@ function MenuPage() {
 				{/* Product Grid */}
 				<main
 					className={`flex-1 overflow-y-auto bg-muted/20 p-2 pb-40 md:pb-2 md:p-3 transition-all ${
-						!customerInfo.isSubmitted && window.innerWidth > 768 ? "blur-[2px] pointer-events-none opacity-50" : ""
+						!customerInfo.isSubmitted && typeof window !== "undefined" && window.innerWidth > 768 ? "blur-[2px] pointer-events-none opacity-50" : ""
 					}`}
 					id="main-content"
 					tabIndex={-1}
 				>
 					{products ? (
-						<div className="grid grid-cols-3 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+						<div className="relative grid grid-cols-3 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
 							{!customerInfo.isSubmitted && (
-								<div className="fixed inset-0 z-30 flex items-center justify-center p-6 md:hidden">
+								<div className="pointer-events-auto fixed inset-0 z-30 flex items-center justify-center p-6 md:hidden">
 									<Button 
-										className="h-16 w-full rounded-2xl bg-primary font-black text-lg uppercase tracking-widest shadow-2xl"
+										className="h-16 w-full rounded-2xl bg-primary font-black text-lg uppercase tracking-widest shadow-2xl active:scale-95 transition-transform"
 										onClick={() => setIsMobileCartOpen(true)}
 									>
 										<User className="mr-3 h-6 w-6" />
