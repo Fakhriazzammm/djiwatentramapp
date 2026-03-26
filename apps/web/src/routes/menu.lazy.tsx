@@ -854,6 +854,21 @@ function MenuPage() {
 
 	// Check printer connection status periodically
 	useEffect(() => {
+		// Initial auto-connect attempt
+		const tryAutoConnect = async () => {
+			try {
+				const name = await bluetoothPrinter.autoConnect();
+				if (name) {
+					console.log(`Auto-connected to printer: ${name}`);
+					setIsPrinterConnected(true);
+				}
+			} catch (err) {
+				console.warn("Initial auto-connect attempt failed", err);
+			}
+		};
+		
+		tryAutoConnect();
+
 		const checkConnection = () => {
 			setIsPrinterConnected(bluetoothPrinter.isConnected());
 		};

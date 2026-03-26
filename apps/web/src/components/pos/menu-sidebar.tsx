@@ -935,42 +935,126 @@ function ParkirTab({
 }
 
 function KasTab({ onClose }: { onClose: () => void }) {
-	const [activeSubTab, setActiveSubTab] = useState<
-		"shift" | "masuk" | "keluar"
-	>("shift");
+	const [activeForm, setActiveForm] = useState<
+		"menu" | "shift" | "masuk" | "keluar"
+	>("menu");
 
-	const subTabs = [
-		{ value: "shift" as const, label: "Shift", icon: SquarePlay },
-		{ value: "masuk" as const, label: "Masuk", icon: TrendingUp },
-		{ value: "keluar" as const, label: "Keluar", icon: TrendingDown },
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+	const financialSummary = useQuery(api.finance.getFinancialSummary, {
+		startDate: today.getTime(),
+	});
+
+	const formatCurrency = (value: number) =>
+		new Intl.NumberFormat("id-ID", {
+			style: "currency",
+			currency: "IDR",
+			maximumFractionDigits: 0,
+		}).format(value);
+
+	const ACTIONS = [
+		{ id: "shift" as const, label: "Manajemen Shift", icon: SquarePlay, color: "text-primary", bg: "bg-primary/10" },
+		{ id: "masuk" as const, label: "Input Pemasukan", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
+		{ id: "keluar" as const, label: "Input Pengeluaran", icon: TrendingDown, color: "text-rose-600", bg: "bg-rose-50" },
 	];
 
+	if (activeForm !== "menu") {
+		return (
+			<div className="space-y-4">
+				<Button 
+					variant="ghost" 
+					size="sm" 
+					onClick={() => setActiveForm("menu")}
+					className="h-8 px-2 text-muted-foreground hover:text-foreground"
+				>
+					<X className="mr-2 h-4 w-4" />
+					Kembali ke Kas
+				</Button>
+				{activeForm === "shift" && <ShiftManagement onClose={onClose} />}
+				{activeForm === "masuk" && <IncomeForm onClose={onClose} />}
+				{activeForm === "keluar" && <ExpenseForm onClose={onClose} />}
+			</div>
+		);
+	}
+
 	return (
-		<div className="space-y-3">
-			<div className="flex gap-1 rounded-lg bg-muted/50 p-1">
-				{subTabs.map((tab) => {
-					const Icon = tab.icon;
-					return (
-						<button
-							className={`flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-2 font-medium text-xs transition-all ${
-								activeSubTab === tab.value
-									? "bg-background text-foreground font-semibold shadow-sm"
-									: "text-muted-foreground hover:text-foreground"
-							}`}
-							key={tab.value}
-							onClick={() => setActiveSubTab(tab.value)}
-							type="button"
-						>
-							<Icon className="h-3.5 w-3.5" />
-							<span>{tab.label}</span>
-						</button>
-					);
-				})}
+		<div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+			{/* Financial Summary Header */}
+			<div className="space-y-3">
+				<div className="flex items-center justify-between">
+					<h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Status Kas Hari Ini</h3>
+					<span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full uppercase tracking-tighter">Aktif</span>
+				</div>
+				
+				<Card className="overflow-hidden border-none bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-none">
+					<CardContent className="p-4">
+						<div className="space-y-3">
+							<div className="flex justify-between items-end">
+								<div className="space-y-0.5">
+									<p className="text-[10px] font-bold text-muted-foreground uppercase">Saldo Kasir</p>
+									<p className="text-2xl font-black tracking-tighter text-primary">
+										{formatCurrency(financialSummary?.netBalance || 0)}
+									</p>
+								</div>
+								<div className="text-right">
+									<p className="text-[9px] font-bold text-muted-foreground uppercase">Transaksi</p>
+									<p className="font-bold text-sm">{financialSummary?.totalTransactions || 0}</p>
+								</div>
+							</div>
+							
+							<div className="grid grid-cols-2 gap-3 pt-3 border-t border-primary/10">
+								<div className="space-y-0.5">
+									<p className="text-[9px] font-bold text-emerald-600 uppercase">Pemasukan (+)</p>
+									<p className="font-bold text-xs">{formatCurrency(financialSummary?.totalIncome || 0)}</p>
+								</div>
+								<div className="space-y-0.5 text-right">
+									<p className="text-[9px] font-bold text-rose-600 uppercase">Pengeluaran (-)</p>
+									<p className="font-bold text-xs">{formatCurrency(financialSummary?.totalExpense || 0)}</p>
+								</div>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
 			</div>
 
-			{activeSubTab === "shift" && <ShiftManagement onClose={onClose} />}
-			{activeSubTab === "masuk" && <IncomeForm onClose={onClose} />}
-			{activeSubTab === "keluar" && <ExpenseForm onClose={onClose} />}
+			{/* Quick Actions Grid */}
+			<div className="space-y-3">
+				<h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Aksi Cepat</h3>
+				<div className="grid grid-cols-1 gap-2.5">
+					{ACTIONS.map((action) => {
+						const Icon = action.icon;
+						return (
+							<button
+								key={action.id}
+								onClick={() => setActiveForm(action.id)}
+								className="flex items-center gap-4 p-4 w-full rounded-2xl border border-border bg-white text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md active:scale-[0.98]"
+								type="button"
+							>
+								<div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${action.bg}`}>
+									<Icon className={`h-6 w-6 ${action.color}`} />
+								</div>
+								<div className="flex-1">
+									<p className="font-black text-sm text-foreground uppercase tracking-tight">{action.label}</p>
+									<p className="text-[10px] text-muted-foreground font-medium">
+										{action.id === 'shift' ? 'Mulai atau akhiri jam operasional' : 
+										 action.id === 'masuk' ? 'Tambah modal atau setoran manual' : 
+										 'Catat biaya operasional harian'}
+									</p>
+								</div>
+								<Plus className="h-4 w-4 text-muted-foreground/30" />
+							</button>
+						);
+					})}
+				</div>
+			</div>
+
+			{/* Info Tip */}
+			<div className="flex items-start gap-2 rounded-xl bg-amber-50 p-3 border border-amber-100">
+				<AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+				<p className="text-[10px] text-amber-800 leading-relaxed font-medium">
+					Pastikan setiap uang yang masuk atau keluar dari kasir dicatat agar laporan harian tetap akurat dan seimbang.
+				</p>
+			</div>
 		</div>
 	);
 }
