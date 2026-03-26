@@ -596,25 +596,48 @@ ${(() => {
 	return forecastSummary;
 })()}
 
-📊 ANALISIS EFEKTIVITAS DISKON:
+📊 ANALISIS EFEKTIVITAS DISKON & PROMO:
 ${(() => {
 	const discountArr = discounts as Array<{
 		_id: string;
 		name: string;
+		code?: string;
 		type: string;
 		value: number;
 		isActive: boolean;
 		targetType: string;
+		isHappyHour?: boolean;
+		isFreeRefill?: boolean;
+		refillPrice?: number;
+		productPrices?: Array<{ productId: string; price: number }>;
 	}>;
 	if (!discountArr || discountArr.length === 0) {
-		return "Belum ada diskon";
+		return "Belum ada diskon atau promo";
 	}
 	const activeDiscounts = discountArr.filter((d) => d.isActive);
 	const inactiveDiscounts = discountArr.filter((d) => !d.isActive);
-	let discountAnalysis = `Diskon Aktif: ${activeDiscounts.length}, Nonaktif: ${inactiveDiscounts.length}\n`;
+	
+	const formatPromo = (d: typeof discountArr[0]) => {
+		let detail = `${d.name}${d.code ? ` [Kode: ${d.code}]` : ""} (${d.type}: ${d.value})`;
+		if (d.isHappyHour) detail += " [HAPPY HOUR]";
+		if (d.isFreeRefill) detail += ` [FREE REFILL: Rp${(d.refillPrice || 0).toLocaleString("id-ID")}]`;
+		if (d.productPrices && d.productPrices.length > 0) detail += ` (${d.productPrices.length} produk terdampak)`;
+		return detail;
+	};
+
+	let discountAnalysis = `Promo Aktif: ${activeDiscounts.length}, Nonaktif: ${inactiveDiscounts.length}\n`;
 	if (activeDiscounts.length > 0) {
-		discountAnalysis += `Detail Aktif: ${activeDiscounts.map((d) => `${d.name} (${d.type}: ${d.value}, target: ${d.targetType})`).join("; ")}`;
+		discountAnalysis += `Detail Promo Aktif:\n${activeDiscounts.map((d) => `• ${formatPromo(d)}`).join("\n")}`;
 	}
+	
+	// Tambahkan statistik penggunaan voucher dari pesanan jika ada
+	const orderArr = orders as any[];
+	const ordersWithVoucher = orderArr.filter(o => o.voucherId && (o.status === "paid" || o.status === "completed"));
+	if (ordersWithVoucher.length > 0) {
+		const totalVoucherValue = ordersWithVoucher.reduce((sum, o) => sum + (o.discountAmount || 0), 0);
+		discountAnalysis += `\n\nStatistik Penggunaan Voucher (Lunas):\n• Total Penggunaan: ${ordersWithVoucher.length} kali\n• Total Potongan: Rp${totalVoucherValue.toLocaleString("id-ID")}`;
+	}
+
 	return discountAnalysis;
 })()}
 
