@@ -159,6 +159,8 @@ export class BluetoothPrinterService {
 			discountAmount?: number;
 			taxAmount?: number;
 			serviceChargeAmount?: number;
+			cashReceived?: number;
+			changeAmount?: number;
 		},
 		settings: ReceiptSettings
 	) {
@@ -289,8 +291,16 @@ export class BluetoothPrinterService {
 		result
 			.line("--------------------------------")
 			.bold(true)
-			.line(padLabel("TOTAL", `Rp ${formatCurrency(order.totalAmount)}`))
+			.line(padLabel("TOTAL BAYAR", `Rp ${formatCurrency(order.totalAmount)}`))
 			.bold(false);
+
+		// Cash & Change Details
+		if (order.cashReceived !== undefined && order.cashReceived > 0) {
+			result.line(padLabel("BAYAR TUNAI", formatCurrency(order.cashReceived)));
+			if (order.changeAmount !== undefined && order.changeAmount > 0) {
+				result.bold(true).line(padLabel("KEMBALIAN", formatCurrency(order.changeAmount))).bold(false);
+			}
+		}
 
 		// Notes
 		if (settings.receiptShowNotes && order.notes) {
@@ -303,7 +313,8 @@ export class BluetoothPrinterService {
 		result
 			.line(" ")
 			.align("center")
-			.line(settings.receiptFooter || "TERIMA KASIH!")
+			.line("--------------------------------")
+			.line(settings.receiptFooter || "TERIMA KASIH ATAS KUNJUNGAN ANDA!")
 			.line(" ")
 			.line(" ")
 			.cut();

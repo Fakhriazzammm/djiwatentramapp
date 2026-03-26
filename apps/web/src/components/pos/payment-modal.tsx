@@ -569,7 +569,9 @@ export function PaymentConfirmationModal({
 									selectedDiscountId || undefined,
 									selectedPaymentMethod,
 									{
-										autoComplete
+										autoComplete,
+										cashReceived: typeof cashReceived === "number" ? cashReceived : 0,
+										changeAmount: changeAmount
 									}
 								)
 							}

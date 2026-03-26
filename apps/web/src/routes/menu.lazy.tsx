@@ -3,9 +3,10 @@ import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Minus, Plus, ShoppingCart, Tag, Trash2, X } from "lucide-react";
+import { ChevronRight, Minus, Plus, ShoppingCart, Tag, Trash2, X } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MenuSidebar } from "@/components/pos/menu-sidebar";
 import { PaymentConfirmationModal } from "@/components/pos/payment-modal";
@@ -200,6 +201,7 @@ function ReceiptPriceSummary({
 	taxRate,
 	serviceChargeRate,
 	finalTotal,
+	paymentDetails,
 }: {
 	totalAmount: number;
 	discountAmount: number;
@@ -208,35 +210,55 @@ function ReceiptPriceSummary({
 	taxRate: number;
 	serviceChargeRate: number;
 	finalTotal: number;
+	paymentDetails?: {
+		cashReceived?: number;
+		changeAmount?: number;
+	};
 }) {
 	return (
-		<div className="space-y-1 font-mono text-xs border-t border-dashed pt-3">
+		<div className="space-y-1 font-mono text-[10px] border-t border-dashed border-border/50 pt-3">
 			<div className="flex justify-between">
-				<span>SUBTOTAL</span>
-				<span>{formatCurrency(totalAmount)}</span>
+				<span className="text-muted-foreground uppercase">Subtotal</span>
+				<span className="font-bold">{formatCurrency(totalAmount)}</span>
 			</div>
 			{discountAmount > 0 && (
-				<div className="flex justify-between text-green-600">
-					<span>DISKON</span>
+				<div className="flex justify-between text-emerald-600 font-bold">
+					<span className="uppercase">Potongan Voucher</span>
 					<span>-{formatCurrency(discountAmount)}</span>
 				</div>
 			)}
 			{serviceChargeAmount > 0 && (
-				<div className="flex justify-between">
-					<span>SC ({serviceChargeRate}%)</span>
+				<div className="flex justify-between text-muted-foreground">
+					<span className="uppercase">Service ({serviceChargeRate}%)</span>
 					<span>{formatCurrency(serviceChargeAmount)}</span>
 				</div>
 			)}
 			{taxAmount > 0 && (
-				<div className="flex justify-between">
-					<span>PAJAK ({taxRate}%)</span>
+				<div className="flex justify-between text-muted-foreground">
+					<span className="uppercase">Pajak ({taxRate}%)</span>
 					<span>{formatCurrency(taxAmount)}</span>
 				</div>
 			)}
-			<div className="flex justify-between border-t border-double pt-2 mt-2 font-bold text-sm">
-				<span>TOTAL</span>
+			
+			<div className="flex justify-between border-t-2 border-double border-border/50 pt-2 mt-2 font-black text-sm text-primary tracking-tighter">
+				<span className="uppercase">Total Bayar</span>
 				<span>{formatCurrency(finalTotal)}</span>
 			</div>
+
+			{paymentDetails?.cashReceived !== undefined && paymentDetails.cashReceived > 0 && (
+				<div className="space-y-1 pt-2 mt-2 border-t border-dashed border-border/30">
+					<div className="flex justify-between text-muted-foreground">
+						<span className="uppercase">Bayar Tunai</span>
+						<span>{formatCurrency(paymentDetails.cashReceived)}</span>
+					</div>
+					{paymentDetails.changeAmount !== undefined && paymentDetails.changeAmount > 0 && (
+						<div className="flex justify-between text-emerald-600 font-black">
+							<span className="uppercase">Kembalian</span>
+							<span>{formatCurrency(paymentDetails.changeAmount)}</span>
+						</div>
+					)}
+				</div>
+			)}
 		</div>
 	);
 }
@@ -331,8 +353,8 @@ function MobileBottomBar({
 	onOpenVoucher: () => void;
 	onCheckout: () => void;
 }) {
-		return (
-		<div className="safe-area-bottom border-border border-t bg-background px-3 pt-2.5 pb-2.5 shadow-[0_-4px_16px_rgba(0,0,0,0.10)]">
+	return (
+		<div className="fixed bottom-0 left-0 right-0 z-50 md:hidden safe-area-bottom border-border border-t bg-background px-3 pt-2.5 pb-2.5 shadow-[0_-4px_16px_rgba(0,0,0,0.10)]">
 			<div className="flex items-center gap-2.5">
 				<button
 					aria-label="Lihat keranjang"
@@ -395,93 +417,125 @@ function CustomerInfoForm() {
 	const { customerInfo, updateCustomerInfo } = useCart();
 
 	return (
-		<div className="space-y-4 rounded-xl border border-border bg-muted/30 p-4 shadow-sm">
-			<div className="flex items-center gap-2 border-b border-border/50 pb-2">
-				<User className="h-3.5 w-3.5 text-primary" />
-				<h3 className="text-[10px] font-bold uppercase tracking-widest text-foreground">
-					Informasi Pelanggan
-				</h3>
-			</div>
-
-			<div className="grid grid-cols-1 gap-3">
-				<div className="space-y-1">
-					<Label className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
-						Nama
-					</Label>
-					<Input
-						className="h-9 rounded-lg border-border/50 bg-background text-xs font-medium focus:ring-1"
-						onChange={(e) => updateCustomerInfo({ name: e.target.value })}
-						placeholder="Input nama..."
-						value={customerInfo.name}
-					/>
+		<div className="flex flex-col h-full">
+			<div className="flex-1 space-y-6">
+				<div className="space-y-2 border-b border-border pb-4">
+					<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+						<User className="h-5 w-5 text-primary" />
+					</div>
+					<h3 className="font-black text-lg uppercase tracking-tight text-foreground">
+						Informasi Pelanggan
+					</h3>
+					<p className="text-xs text-muted-foreground font-medium">
+						Silakan isi data pelanggan sebelum memilih menu
+					</p>
 				</div>
 
-				<div className="grid grid-cols-2 gap-2">
-					<div className="space-y-1">
-						<Label className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
-							Tipe
+				<div className="space-y-5">
+					<div className="space-y-2">
+						<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">
+							Nama Pelanggan
 						</Label>
-						<div className="grid grid-cols-2 gap-1 rounded-lg border border-border/50 bg-background p-0.5">
+						<Input
+							className="h-12 rounded-xl border-border/60 bg-background text-sm font-bold focus:ring-2 focus:ring-primary/20"
+							onChange={(e) => updateCustomerInfo({ name: e.target.value })}
+							placeholder="e.g. Budi Santoso"
+							value={customerInfo.name}
+						/>
+					</div>
+
+					<div className="space-y-2">
+						<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">
+							Tipe Pesanan
+						</Label>
+						<div className="grid grid-cols-2 gap-2 rounded-xl border border-border/60 bg-muted/30 p-1">
 							<button
-								className={`flex items-center justify-center rounded-md py-1 text-[8px] font-bold uppercase transition-all ${
+								className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-[10px] font-black uppercase transition-all ${
 									customerInfo.orderType === "dine_in"
-										? "bg-primary text-primary-foreground shadow-sm"
+										? "bg-background text-primary shadow-sm border border-border/50"
 										: "text-muted-foreground hover:text-foreground"
 								}`}
 								onClick={() => updateCustomerInfo({ orderType: "dine_in" })}
 								type="button"
 							>
+								<Coffee className="h-3.5 w-3.5" />
 								Dine In
 							</button>
 							<button
-								className={`flex items-center justify-center rounded-md py-1 text-[8px] font-bold uppercase transition-all ${
+								className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-[10px] font-black uppercase transition-all ${
 									customerInfo.orderType === "takeaway"
-										? "bg-primary text-primary-foreground shadow-sm"
+										? "bg-background text-primary shadow-sm border border-border/50"
 										: "text-muted-foreground hover:text-foreground"
 								}`}
 								onClick={() => updateCustomerInfo({ orderType: "takeaway" })}
 								type="button"
 							>
-								Take
+								<ShoppingBag className="h-3.5 w-3.5" />
+								Takeaway
 							</button>
 						</div>
 					</div>
 
-					<div className="space-y-1">
-						<Label className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
-							Meja
+					{customerInfo.orderType === "dine_in" && (
+						<div className="space-y-2">
+							<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">
+								Nomor Meja
+							</Label>
+							<Input
+								className="h-12 rounded-xl border-border/60 bg-background text-center text-lg font-black focus:ring-2 focus:ring-primary/20"
+								onChange={(e) => updateCustomerInfo({ tableNumber: e.target.value })}
+								placeholder="00"
+								value={customerInfo.tableNumber}
+							/>
+						</div>
+					)}
+
+					<div className="space-y-2">
+						<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">
+							Catatan Tambahan
 						</Label>
 						<Input
-							className={`h-9 rounded-lg border-border/50 bg-background text-xs font-bold ${
-								customerInfo.orderType === "takeaway" ? "opacity-30" : ""
-							}`}
-							disabled={customerInfo.orderType === "takeaway"}
-							onChange={(e) => updateCustomerInfo({ tableNumber: e.target.value })}
-							placeholder="No"
-							value={customerInfo.tableNumber}
+							className="h-12 rounded-xl border-border/60 bg-background text-xs font-medium focus:ring-2 focus:ring-primary/20"
+							onChange={(e) => updateCustomerInfo({ notes: e.target.value })}
+							placeholder="e.g. Less sugar, extra ice..."
+							value={customerInfo.notes}
 						/>
 					</div>
-				</div>
 
-				<div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-500/20 bg-emerald-50/50 p-2">
-					<div className="flex items-center gap-1.5">
-						<Zap className={`h-3 w-3 ${customerInfo.isFreeRefill ? "text-emerald-500" : "text-muted-foreground/40"}`} />
-						<span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
-							Free Refill
-						</span>
+					<div className="flex items-center justify-between rounded-2xl border border-emerald-500/20 bg-emerald-50/40 p-4">
+						<div className="space-y-1">
+							<div className="flex items-center gap-2">
+								<Zap className={`h-4 w-4 ${customerInfo.isFreeRefill ? "text-emerald-500" : "text-muted-foreground/40"}`} />
+								<span className="text-[10px] font-black uppercase tracking-widest text-emerald-800/80">
+									Free Refill Minuman
+								</span>
+							</div>
+							<p className="text-[9px] text-emerald-600 font-medium">Berikan isi ulang gratis untuk pelanggan ini</p>
+						</div>
+						<button
+							className={`relative h-6 w-11 rounded-full transition-all duration-300 ${
+								customerInfo.isFreeRefill ? "bg-emerald-500 shadow-md shadow-emerald-200" : "bg-muted-foreground/20"
+							}`}
+							onClick={() =>
+								updateCustomerInfo({ isFreeRefill: !customerInfo.isFreeRefill })
+							}
+							type="button"
+						>
+							<div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${customerInfo.isFreeRefill ? "right-1" : "left-1"}`} />
+						</button>
 					</div>
-					<button
-						className={`h-5 w-10 rounded-full transition-all ${
-							customerInfo.isFreeRefill ? "bg-emerald-500" : "bg-muted-foreground/20"
-						}`}
-						onClick={() =>
-							updateCustomerInfo({ isFreeRefill: !customerInfo.isFreeRefill })
-						}
-						type="button"
-					>
-						<div className={`h-4 w-4 rounded-full bg-white transition-all ${customerInfo.isFreeRefill ? "translate-x-5" : "translate-x-1"}`} />
-					</button>
 				</div>
+			</div>
+
+			<div className="pt-6">
+				<Button
+					className="h-14 w-full rounded-2xl bg-primary font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 active:scale-95 transition-all"
+					disabled={!customerInfo.name || (customerInfo.orderType === 'dine_in' && !customerInfo.tableNumber)}
+					onClick={() => updateCustomerInfo({ isSubmitted: true })}
+				>
+					<span>Lanjut Pilih Menu</span>
+					<ChevronRight className="ml-2 h-4 w-4" />
+				</Button>
 			</div>
 		</div>
 	);
@@ -509,6 +563,7 @@ function MobileCartDrawer({
 	onOpenVoucher,
 	onCancel,
 	onCheckout,
+	paymentDetails,
 }: {
 	isOpen: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -532,7 +587,13 @@ function MobileCartDrawer({
 	onOpenVoucher: () => void;
 	onCancel: () => void;
 	onCheckout: () => void;
+	paymentDetails?: {
+		cashReceived?: number;
+		changeAmount?: number;
+	};
 }) {
+	const { customerInfo, updateCustomerInfo } = useCart();
+
 	return (
 		<Sheet onOpenChange={onOpenChange} open={isOpen}>
 			<SheetContent
@@ -546,10 +607,10 @@ function MobileCartDrawer({
 
 				<SheetHeader className="flex-row items-center justify-between px-4 pt-1 pb-2">
 					<SheetTitle className="font-bold text-foreground text-lg">
-						Pesanan ({totalItems})
+						{!customerInfo.isSubmitted ? "Data Pelanggan" : `Pesanan (${totalItems})`}
 					</SheetTitle>
 					<div className="flex items-center gap-2">
-						{items.length > 0 && (
+						{items.length > 0 && customerInfo.isSubmitted && (
 							<button
 								className="rounded-lg px-4 py-2.5 font-bold text-destructive text-xs uppercase tracking-wider active:bg-destructive/10 transition-colors"
 								onClick={onClearCart}
@@ -570,27 +631,49 @@ function MobileCartDrawer({
 				</SheetHeader>
 
 				<div className="flex-1 overflow-y-auto px-6 py-3 bg-white mx-4 my-2 rounded-xl border border-border shadow-inner">
-					{/* Customer Info Form di Mobile Drawer */}
-					<div className="mb-6">
-						<CustomerInfoForm />
-					</div>
-
-					{items.length === 0 ? (
-						<EmptyCart className="py-8" size="sm" />
-					) : (
-						<div className="divide-y divide-dashed divide-border/50">
-							{items.map((item) => (
-								<ReceiptItemRow
-									item={item}
-									key={`${item.productId}-${item.variant}`}
-									onUpdateQuantity={onUpdateQuantity}
-								/>
-							))}
+					{!customerInfo.isSubmitted ? (
+						<div className="mb-6">
+							<CustomerInfoForm />
 						</div>
+					) : (
+						<>
+							{/* Customer Summary Mobile */}
+							<div className="mb-4 rounded-xl border border-border bg-muted/30 p-3">
+								<div className="flex items-center justify-between">
+									<div className="space-y-0.5">
+										<p className="text-[10px] font-black text-primary uppercase tracking-widest">
+											{customerInfo.orderType === 'dine_in' ? `Dine In / Meja ${customerInfo.tableNumber}` : 'Takeaway'}
+										</p>
+										<p className="font-black text-sm uppercase">{customerInfo.name}</p>
+									</div>
+									<Button
+										className="h-8 w-8 p-0 rounded-lg"
+										onClick={() => updateCustomerInfo({ isSubmitted: false })}
+										variant="outline"
+									>
+										<User className="h-3.5 w-3.5" />
+									</Button>
+								</div>
+							</div>
+
+							{items.length === 0 ? (
+								<EmptyCart className="py-8" size="sm" />
+							) : (
+								<div className="divide-y divide-dashed divide-border/50">
+									{items.map((item) => (
+										<ReceiptItemRow
+											item={item}
+											key={`${item.productId}-${item.variant}`}
+											onUpdateQuantity={onUpdateQuantity}
+										/>
+									))}
+								</div>
+							)}
+						</>
 					)}
 				</div>
 
-				{items.length > 0 && (
+				{items.length > 0 && customerInfo.isSubmitted && (
 					<div className="safe-area-bottom border-border border-t bg-background px-4 pt-3 pb-3">
 						<button
 							className="mb-4 flex w-full items-center justify-between rounded-xl border border-emerald-500/30 border-dashed bg-emerald-50 p-3 active:bg-emerald-100"
@@ -614,6 +697,7 @@ function MobileCartDrawer({
 							<ReceiptPriceSummary
 								discountAmount={discountAmount}
 								finalTotal={finalTotal}
+								paymentDetails={paymentDetails}
 								serviceChargeAmount={serviceChargeAmount}
 								serviceChargeRate={serviceChargeRate}
 								taxAmount={taxAmount}
@@ -735,10 +819,15 @@ function MenuPage() {
 		serviceChargeAmount,
 		serviceChargeRate,
 		customerInfo,
+		updateCustomerInfo,
 	} = useCart();
 	const createOrder = useMutation(api.orders.createOrder);
 	const navigate = useNavigate();
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [paymentDetails, setPaymentDetails] = useState<{
+		cashReceived?: number;
+		changeAmount?: number;
+	}>({});
 	const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 	const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
 	const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
@@ -797,10 +886,9 @@ function MenuPage() {
 		_discountId?: string,
 		paymentMethod: string = "tunai",
 		extraOrderData?: {
-			tableNumber?: string;
-			orderType?: "dine_in" | "takeaway";
-			notes?: string;
 			autoComplete?: boolean;
+			cashReceived?: number;
+			changeAmount?: number;
 		}
 	) => {
 		if (items.length === 0) {
@@ -814,6 +902,13 @@ function MenuPage() {
 		}
 
 		setIsSubmitting(true);
+		if (extraOrderData?.cashReceived) {
+			setPaymentDetails({
+				cashReceived: extraOrderData.cashReceived,
+				changeAmount: extraOrderData.changeAmount,
+			});
+		}
+
 		const { name: custName, orderType: custOrderType, tableNumber: custTable, notes: custNotes } = customerInfo;
 
 		try {
@@ -828,9 +923,9 @@ function MenuPage() {
 				totalAmount: finalAmount,
 				paymentMethod: paymentMethod,
 				customerName: custName || "Pelanggan",
-				tableNumber: extraOrderData?.tableNumber || custTable,
-				orderType: extraOrderData?.orderType || custOrderType,
-				notes: extraOrderData?.notes || custNotes,
+				tableNumber: custTable,
+				orderType: (custOrderType as any),
+				notes: custNotes,
 				autoComplete: extraOrderData?.autoComplete,
 			});
 
@@ -854,6 +949,8 @@ function MenuPage() {
 				orderType: custOrderType,
 				tableNumber: custTable,
 				notes: custNotes,
+				cashReceived: extraOrderData?.cashReceived,
+				changeAmount: extraOrderData?.changeAmount,
 			};
 
 			if (siteSettings?.autoPrint && bluetoothPrinter.isConnected()) {
@@ -1112,23 +1209,59 @@ function MenuPage() {
 
 						{/* Receipt Items */}
 						<div className="flex-1 overflow-y-auto px-6 py-2 scrollbar-thin scrollbar-thumb-muted">
-							{/* Customer Info Form di Sidebar */}
-							<div className="mb-6">
-								<CustomerInfoForm />
-							</div>
-
-							{items.length === 0 ? (
-								<EmptyCart className="h-full justify-center" size="md" />
-							) : (
-								<div className="divide-y divide-dashed divide-border/50">
-									{items.map((item) => (
-										<ReceiptItemRow
-											item={item}
-											key={`${item.productId}-${item.variant}`}
-											onUpdateQuantity={updateQuantity}
-										/>
-									))}
+							{!customerInfo.isSubmitted ? (
+								<div className="mb-6">
+									<CustomerInfoForm />
 								</div>
+							) : (
+								<>
+									{/* Customer Summary on Top of Receipt */}
+									<div className="mb-4 rounded-2xl border border-border bg-muted/30 p-4">
+										<div className="flex items-start justify-between">
+											<div className="space-y-1">
+												<div className="flex items-center gap-2">
+													<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-black text-primary uppercase tracking-tighter">
+														{customerInfo.orderType === 'dine_in' ? 'Dine In' : 'Takeaway'}
+													</span>
+													{customerInfo.tableNumber && (
+														<span className="font-black text-xs text-foreground">
+															MEJA {customerInfo.tableNumber}
+														</span>
+													)}
+												</div>
+												<p className="font-black text-sm text-foreground uppercase tracking-tight">
+													{customerInfo.name}
+												</p>
+												{customerInfo.notes && (
+													<p className="text-[10px] text-muted-foreground italic">
+														"{customerInfo.notes}"
+													</p>
+												)}
+											</div>
+											<button
+												className="rounded-lg bg-background p-2 text-muted-foreground border border-border hover:text-primary transition-colors"
+												onClick={() => updateCustomerInfo({ isSubmitted: false })}
+												type="button"
+											>
+												<User className="h-3.5 w-3.5" />
+											</button>
+										</div>
+									</div>
+
+									{items.length === 0 ? (
+										<EmptyCart className="h-full justify-center" size="md" />
+									) : (
+										<div className="divide-y divide-dashed divide-border/50">
+											{items.map((item) => (
+												<ReceiptItemRow
+													item={item}
+													key={`${item.productId}-${item.variant}`}
+													onUpdateQuantity={updateQuantity}
+												/>
+											))}
+										</div>
+									)}
+								</>
 							)}
 						</div>
 
@@ -1146,6 +1279,7 @@ function MenuPage() {
 								<ReceiptPriceSummary
 									discountAmount={discountAmount}
 									finalTotal={finalTotal}
+									paymentDetails={paymentDetails}
 									serviceChargeAmount={serviceChargeAmount}
 									serviceChargeRate={serviceChargeRate}
 									taxAmount={taxAmount}
@@ -1211,20 +1345,22 @@ function MenuPage() {
 
 			</div>
 
-			{/* Mobile Bottom Bar - Hapus footer bayar */}
-			{/* <MobileBottomBar
-				appliedVoucher={appliedVoucher}
-				discountAmount={discountAmount}
-				finalTotal={finalTotal}
-				hasItems={items.length > 0}
-				isSubmitting={isSubmitting}
-				onCheckout={() => handleCheckout()}
-				onOpenCart={() => setIsMobileCartOpen(true)}
-				onOpenVoucher={() => setIsVoucherModalOpen(true)}
-				onRemoveVoucher={() => applyVoucher(null)}
-				totalAmount={totalAmount}
-				totalItems={totalItems}
-			/> */}
+			{/* Mobile Bottom Bar - Hanya muncul jika info pelanggan sudah disubmit */}
+			{customerInfo.isSubmitted && (
+				<MobileBottomBar
+					appliedVoucher={appliedVoucher}
+					discountAmount={discountAmount}
+					finalTotal={finalTotal}
+					hasItems={items.length > 0}
+					isSubmitting={isSubmitting}
+					onCheckout={() => handleCheckout()}
+					onOpenCart={() => setIsMobileCartOpen(true)}
+					onOpenVoucher={() => setIsVoucherModalOpen(true)}
+					onRemoveVoucher={() => applyVoucher(null)}
+					totalAmount={totalAmount}
+					totalItems={totalItems}
+				/>
+			)}
 
 			<MobileCartDrawer
 				appliedVoucher={appliedVoucher}
@@ -1242,6 +1378,7 @@ function MenuPage() {
 				onOpenChange={setIsMobileCartOpen}
 				onOpenVoucher={() => setIsVoucherModalOpen(true)}
 				onUpdateQuantity={updateQuantity}
+				paymentDetails={paymentDetails}
 				serviceChargeAmount={serviceChargeAmount}
 				serviceChargeRate={serviceChargeRate}
 				taxAmount={taxAmount}

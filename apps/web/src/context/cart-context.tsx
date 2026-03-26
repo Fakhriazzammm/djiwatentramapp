@@ -52,6 +52,7 @@ interface CartContextType {
 		tableNumber: string;
 		notes: string;
 		isFreeRefill: boolean;
+		isSubmitted: boolean;
 	};
 	updateCustomerInfo: (info: Partial<CartContextType["customerInfo"]>) => void;
 }
@@ -103,12 +104,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
 		tableNumber: string;
 		notes: string;
 		isFreeRefill: boolean;
+		isSubmitted: boolean;
 	}>({
 		name: "",
 		orderType: "dine_in",
 		tableNumber: "",
 		notes: "",
 		isFreeRefill: false,
+		isSubmitted: false,
 	});
 
 	const updateCustomerInfo = (info: Partial<typeof customerInfo>) => {
@@ -227,6 +230,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 			tableNumber: "",
 			notes: "",
 			isFreeRefill: false,
+			isSubmitted: false,
 		});
 	};
 
