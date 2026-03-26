@@ -417,40 +417,42 @@ function CustomerInfoForm() {
 	const { customerInfo, updateCustomerInfo } = useCart();
 
 	return (
-		<div className="flex flex-col h-full">
-			<div className="flex-1 space-y-6">
-				<div className="space-y-2 border-b border-border pb-4">
-					<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-						<User className="h-5 w-5 text-primary" />
+		<div className="flex flex-col h-full overflow-hidden">
+			<div className="flex-1 space-y-4">
+				<div className="space-y-1 border-b border-border pb-3">
+					<div className="flex items-center gap-2">
+						<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+							<User className="h-4 w-4 text-primary" />
+						</div>
+						<h3 className="font-black text-base uppercase tracking-tight text-foreground">
+							Informasi Pelanggan
+						</h3>
 					</div>
-					<h3 className="font-black text-lg uppercase tracking-tight text-foreground">
-						Informasi Pelanggan
-					</h3>
-					<p className="text-xs text-muted-foreground font-medium">
+					<p className="text-[10px] text-muted-foreground font-medium">
 						Silakan isi data pelanggan sebelum memilih menu
 					</p>
 				</div>
 
-				<div className="space-y-5">
-					<div className="space-y-2">
-						<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">
+				<div className="space-y-3.5">
+					<div className="space-y-1.5">
+						<Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
 							Nama Pelanggan
 						</Label>
 						<Input
-							className="h-12 rounded-xl border-border/60 bg-background text-sm font-bold focus:ring-2 focus:ring-primary/20"
+							className="h-10 rounded-xl border-border/60 bg-background text-xs font-bold focus:ring-2 focus:ring-primary/20"
 							onChange={(e) => updateCustomerInfo({ name: e.target.value })}
 							placeholder="e.g. Budi Santoso"
 							value={customerInfo.name}
 						/>
 					</div>
 
-					<div className="space-y-2">
-						<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">
+					<div className="space-y-1.5">
+						<Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
 							Tipe Pesanan
 						</Label>
-						<div className="grid grid-cols-2 gap-2 rounded-xl border border-border/60 bg-muted/30 p-1">
+						<div className="grid grid-cols-2 gap-1.5 rounded-xl border border-border/60 bg-muted/30 p-1">
 							<button
-								className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-[10px] font-black uppercase transition-all ${
+								className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-[9px] font-black uppercase transition-all ${
 									customerInfo.orderType === "dine_in"
 										? "bg-background text-primary shadow-sm border border-border/50"
 										: "text-muted-foreground hover:text-foreground"
@@ -458,11 +460,11 @@ function CustomerInfoForm() {
 								onClick={() => updateCustomerInfo({ orderType: "dine_in" })}
 								type="button"
 							>
-								<Coffee className="h-3.5 w-3.5" />
+								<Coffee className="h-3 w-3" />
 								Dine In
 							</button>
 							<button
-								className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-[10px] font-black uppercase transition-all ${
+								className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-[9px] font-black uppercase transition-all ${
 									customerInfo.orderType === "takeaway"
 										? "bg-background text-primary shadow-sm border border-border/50"
 										: "text-muted-foreground hover:text-foreground"
@@ -470,19 +472,19 @@ function CustomerInfoForm() {
 								onClick={() => updateCustomerInfo({ orderType: "takeaway" })}
 								type="button"
 							>
-								<ShoppingBag className="h-3.5 w-3.5" />
+								<ShoppingBag className="h-3 w-3" />
 								Takeaway
 							</button>
 						</div>
 					</div>
 
 					{customerInfo.orderType === "dine_in" && (
-						<div className="space-y-2">
-							<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">
+						<div className="space-y-1.5">
+							<Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
 								Nomor Meja
 							</Label>
 							<Input
-								className="h-12 rounded-xl border-border/60 bg-background text-center text-lg font-black focus:ring-2 focus:ring-primary/20"
+								className="h-10 rounded-xl border-border/60 bg-background text-center text-base font-black focus:ring-2 focus:ring-primary/20"
 								onChange={(e) => updateCustomerInfo({ tableNumber: e.target.value })}
 								placeholder="00"
 								value={customerInfo.tableNumber}
@@ -490,51 +492,51 @@ function CustomerInfoForm() {
 						</div>
 					)}
 
-					<div className="space-y-2">
-						<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">
+					<div className="space-y-1.5">
+						<Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
 							Catatan Tambahan
 						</Label>
 						<Input
-							className="h-12 rounded-xl border-border/60 bg-background text-xs font-medium focus:ring-2 focus:ring-primary/20"
+							className="h-10 rounded-xl border-border/60 bg-background text-[10px] font-medium focus:ring-2 focus:ring-primary/20"
 							onChange={(e) => updateCustomerInfo({ notes: e.target.value })}
 							placeholder="e.g. Less sugar, extra ice..."
 							value={customerInfo.notes}
 						/>
 					</div>
 
-					<div className="flex items-center justify-between rounded-2xl border border-emerald-500/20 bg-emerald-50/40 p-4">
-						<div className="space-y-1">
-							<div className="flex items-center gap-2">
-								<Zap className={`h-4 w-4 ${customerInfo.isFreeRefill ? "text-emerald-500" : "text-muted-foreground/40"}`} />
-								<span className="text-[10px] font-black uppercase tracking-widest text-emerald-800/80">
-									Free Refill Minuman
+					<div className="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-50/40 p-3">
+						<div className="space-y-0.5">
+							<div className="flex items-center gap-1.5">
+								<Zap className={`h-3 w-3 ${customerInfo.isFreeRefill ? "text-emerald-500" : "text-muted-foreground/40"}`} />
+								<span className="text-[9px] font-black uppercase tracking-widest text-emerald-800/80">
+									Free Refill
 								</span>
 							</div>
-							<p className="text-[9px] text-emerald-600 font-medium">Berikan isi ulang gratis untuk pelanggan ini</p>
+							<p className="text-[8px] text-emerald-600 font-medium">Isi ulang gratis</p>
 						</div>
 						<button
-							className={`relative h-6 w-11 rounded-full transition-all duration-300 ${
-								customerInfo.isFreeRefill ? "bg-emerald-500 shadow-md shadow-emerald-200" : "bg-muted-foreground/20"
+							className={`relative h-5 w-9 rounded-full transition-all duration-300 ${
+								customerInfo.isFreeRefill ? "bg-emerald-500 shadow-sm" : "bg-muted-foreground/20"
 							}`}
 							onClick={() =>
 								updateCustomerInfo({ isFreeRefill: !customerInfo.isFreeRefill })
 							}
 							type="button"
 						>
-							<div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${customerInfo.isFreeRefill ? "right-1" : "left-1"}`} />
+							<div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${customerInfo.isFreeRefill ? "right-0.5" : "left-0.5"}`} />
 						</button>
 					</div>
 				</div>
 			</div>
 
-			<div className="pt-6">
+			<div className="pt-4">
 				<Button
-					className="h-14 w-full rounded-2xl bg-primary font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 active:scale-95 transition-all"
+					className="h-12 w-full rounded-xl bg-primary font-black text-[11px] uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-95 transition-all"
 					disabled={!customerInfo.name || (customerInfo.orderType === 'dine_in' && !customerInfo.tableNumber)}
 					onClick={() => updateCustomerInfo({ isSubmitted: true })}
 				>
 					<span>Lanjut Pilih Menu</span>
-					<ChevronRight className="ml-2 h-4 w-4" />
+					<ChevronRight className="ml-1.5 h-3.5 w-3.5" />
 				</Button>
 			</div>
 		</div>
@@ -831,6 +833,13 @@ function MenuPage() {
 	const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 	const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
 	const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+
+	// Auto open customer info drawer on mobile at start
+	useEffect(() => {
+		if (typeof window !== "undefined" && window.innerWidth < 768 && !customerInfo.isSubmitted && items.length === 0) {
+			setIsMobileCartOpen(true);
+		}
+	}, []);
 	
 	// Animation state
 	const [flyingItems, setFlyingItems] = useState<{ id: number, start: { x: number, y: number }, image?: string }[]>([]);
@@ -1095,7 +1104,7 @@ function MenuPage() {
 				{/* Product Grid */}
 				<main
 					className={`flex-1 overflow-y-auto bg-muted/20 p-2 pb-40 md:pb-2 md:p-3 transition-all ${
-						!customerInfo.isSubmitted ? "blur-[2px] pointer-events-none opacity-50" : ""
+						!customerInfo.isSubmitted && window.innerWidth > 768 ? "blur-[2px] pointer-events-none opacity-50" : ""
 					}`}
 					id="main-content"
 					tabIndex={-1}
@@ -1358,8 +1367,8 @@ function MenuPage() {
 
 			</div>
 
-			{/* Mobile Bottom Bar - Hanya muncul jika info pelanggan sudah disubmit */}
-			{customerInfo.isSubmitted && (
+			{/* Mobile Bottom Bar - Selalu muncul di mobile */}
+			<div className="md:hidden">
 				<MobileBottomBar
 					appliedVoucher={appliedVoucher}
 					discountAmount={discountAmount}
@@ -1373,7 +1382,7 @@ function MenuPage() {
 					totalAmount={totalAmount}
 					totalItems={totalItems}
 				/>
-			)}
+			</div>
 
 			<MobileCartDrawer
 				appliedVoucher={appliedVoucher}
