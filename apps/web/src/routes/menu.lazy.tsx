@@ -3,7 +3,7 @@ import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronRight, Minus, Plus, ShoppingCart, Tag, Trash2, X } from "lucide-react";
+import { BarChart3, ChevronRight, Minus, Plus, Printer, Save, Settings2, ShoppingCart, Tag, Trash2, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -847,6 +847,22 @@ function MenuPage() {
 	const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 	const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
 	const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+	const [searchQuery, setSearchQuery] = useState("");
+	const [isMenuSidebarOpen, setIsMenuSidebarOpen] = useState(false);
+	const [menuSidebarTab, setMenuSidebarTab] = useState("dashboard");
+	const [isPrinterConnected, setIsPrinterConnected] = useState(false);
+
+	// Check printer connection status periodically
+	useEffect(() => {
+		const checkConnection = () => {
+			setIsPrinterConnected(bluetoothPrinter.isConnected());
+		};
+
+		checkConnection();
+		const interval = setInterval(checkConnection, 3000); // Check every 3 seconds
+
+		return () => clearInterval(interval);
+	}, []);
 
 	// Auto open customer info drawer on mobile at start
 	useEffect(() => {
@@ -861,6 +877,16 @@ function MenuPage() {
 	const products = useQuery(api.products.getProducts, {
 		categoryId: selectedCategory ?? undefined,
 	}) as (Product & { categoryId: string })[] | undefined;
+
+	const filteredProducts = useMemo(() => {
+		if (!products) return undefined;
+		if (!searchQuery.trim()) return products;
+		const query = searchQuery.toLowerCase();
+		return products.filter(p => 
+			p.name.toLowerCase().includes(query) || 
+			p.menuNumber?.toString().includes(query)
+		);
+	}, [products, searchQuery]);
 
 	// Optimization: Pre-calculate cart state to avoid re-renders
 	const { totalItems, hasItems } = useMemo(() => ({
@@ -1061,12 +1087,96 @@ function MenuPage() {
 
 			{/* Header - Top bar + Category filter */}
 			<header className="sticky top-0 z-[60] shrink-0 border-border border-b bg-background/95 backdrop-blur-sm shadow-sm">
+				{/* Printer Warning Banner */}
+				{!isPrinterConnected && (
+					<div className="bg-destructive/10 border-b border-destructive/20 px-3 py-1.5">
+						<div className="flex items-center justify-between gap-2 max-w-lg mx-auto">
+							<div className="flex items-center gap-2">
+								<div className="flex h-5 w-5 animate-pulse items-center justify-center rounded-full bg-destructive/20">
+									<Printer className="h-3 w-3 text-destructive" />
+								</div>
+								<p className="text-[10px] font-bold text-destructive uppercase tracking-tight">
+									Printer Belum Terhubung
+								</p>
+							</div>
+							<Button 
+								variant="ghost" 
+								size="sm" 
+								className="h-6 px-2 text-[9px] font-black uppercase text-destructive hover:bg-destructive/10"
+								onClick={() => {
+									setMenuSidebarTab("settings");
+									setIsMenuSidebarOpen(true);
+								}}
+							>
+								Hubungkan
+							</Button>
+						</div>
+					</div>
+				)}
+
 				{/* Top row: title + action buttons */}
 				<div className="flex items-center justify-between gap-2 px-3 py-2">
 					<span className="font-bold text-foreground text-base">Menu</span>
 					<div className="flex shrink-0 items-center gap-1.5">
+						{/* Mobile direct buttons - replaced hamburger */}
+						<div className="flex md:hidden items-center gap-1">
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-9 w-9 rounded-full text-muted-foreground hover:text-primary active:scale-95 transition-all"
+								onClick={() => {
+									setMenuSidebarTab("dashboard");
+									setIsMenuSidebarOpen(true);
+								}}
+							>
+								<BarChart3 className="h-5 w-5" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-9 w-9 rounded-full text-orange-500 hover:bg-orange-50 active:scale-95 transition-all"
+								onClick={() => {
+									setMenuSidebarTab("parkir");
+									setIsMenuSidebarOpen(true);
+								}}
+							>
+								<ShoppingCart className="h-5 w-5" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-9 w-9 rounded-full text-primary hover:bg-primary/5 active:scale-95 transition-all"
+								onClick={() => {
+									setMenuSidebarTab("kas");
+									setIsMenuSidebarOpen(true);
+								}}
+							>
+								<Wallet className="h-5 w-5" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-9 w-9 rounded-full text-muted-foreground hover:text-primary active:scale-95 transition-all"
+								onClick={() => {
+									setMenuSidebarTab("settings");
+									setIsMenuSidebarOpen(true);
+								}}
+							>
+								<Settings2 className="h-5 w-5" />
+							</Button>
+						</div>
+						
 						<TransactionHistorySidebar />
-						<MenuSidebar />
+						<div className="hidden md:block">
+							<MenuSidebar />
+						</div>
+						<div className="md:hidden invisible pointer-events-none fixed">
+							<MenuSidebar 
+								triggerOpen={isMenuSidebarOpen} 
+								onOpenChange={setIsMenuSidebarOpen}
+								initialTab={menuSidebarTab}
+							/>
+						</div>
 					</div>
 				</div>
 				{/* Category filter row - full width, compact pills */}
@@ -1111,6 +1221,31 @@ function MenuPage() {
 								<Skeleton className="h-7 w-20 shrink-0 rounded-full" key={i} />
 							))}
 				</div>
+
+				{/* Search Bar Feature */}
+				<div className="px-3 pb-2.5">
+					<div className="relative group">
+						<div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+							<ShoppingCart className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+						</div>
+						<Input
+							type="text"
+							placeholder="Cari menu atau nomor..."
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							className="h-10 pl-9 pr-4 rounded-xl border-border/60 bg-muted/30 focus:bg-background transition-all text-sm font-medium focus:ring-2 focus:ring-primary/20"
+							style={{ fontSize: '16px' }} // Critical: 16px font-size prevents iOS auto-zoom
+						/>
+						{searchQuery && (
+							<button 
+								onClick={() => setSearchQuery("")}
+								className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground active:scale-90 transition-all"
+							>
+								<X className="h-4 w-4" />
+							</button>
+						)}
+					</div>
+				</div>
 			</header>
 
 			{/* Main Content Area */}
@@ -1123,9 +1258,9 @@ function MenuPage() {
 					id="main-content"
 					tabIndex={-1}
 				>
-					{products ? (
+					{filteredProducts ? (
 						<div className="grid grid-cols-3 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-							{products.map((product) => {
+							{filteredProducts.map((product) => {
 								const { finalPrice } = calculateEffectivePrice(
 									{
 										_id: product._id,

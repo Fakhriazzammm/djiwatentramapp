@@ -77,7 +77,15 @@ interface TabItem {
 	iconColor: string;
 }
 
-export function MenuSidebar() {
+export function MenuSidebar({ 
+	triggerOpen, 
+	onOpenChange,
+	initialTab = "dashboard" 
+}: { 
+	triggerOpen?: boolean; 
+	onOpenChange?: (open: boolean) => void;
+	initialTab?: string;
+}) {
 	const TABS: TabItem[] = [
 		{
 			value: "dashboard",
@@ -103,7 +111,26 @@ export function MenuSidebar() {
 	];
 
 	const [isOpen, setIsOpen] = useState(false);
-	const [activeTab, setActiveTab] = useState("dashboard");
+	const [activeTab, setActiveTab] = useState(initialTab);
+
+	useEffect(() => {
+		if (triggerOpen !== undefined) {
+			setIsOpen(triggerOpen);
+		}
+	}, [triggerOpen]);
+
+	useEffect(() => {
+		if (initialTab) {
+			setActiveTab(initialTab);
+		}
+	}, [initialTab]);
+
+	const handleOpenChange = (open: boolean) => {
+		setIsOpen(open);
+		if (onOpenChange) {
+			onOpenChange(open);
+		}
+	};
 	const [selectedOrder, setSelectedOrder] = useState<Doc<"orders"> | null>(null);
 	const [isEditMode, setIsEditMode] = useState(false);
 	const [isParkDialogOpen, setIsParkDialogOpen] = useState(false);
@@ -235,7 +262,7 @@ export function MenuSidebar() {
 
 	return (
 		<>
-			<Sheet onOpenChange={setIsOpen} open={isOpen}>
+			<Sheet onOpenChange={handleOpenChange} open={isOpen}>
 				<SheetTrigger>
 					<Button
 						className="relative shrink-0"
