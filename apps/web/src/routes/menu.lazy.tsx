@@ -395,99 +395,91 @@ function CustomerInfoForm() {
 	const { customerInfo, updateCustomerInfo } = useCart();
 
 	return (
-		<div className="mb-4 space-y-4 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-6">
-			<div className="flex items-center gap-2 border-b border-border/50 pb-3">
-				<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-					<User className="h-4 w-4 text-primary" />
-				</div>
-				<h3 className="font-bold text-sm uppercase tracking-wider text-foreground">
+		<div className="space-y-4 rounded-xl border border-border bg-muted/30 p-4 shadow-sm">
+			<div className="flex items-center gap-2 border-b border-border/50 pb-2">
+				<User className="h-3.5 w-3.5 text-primary" />
+				<h3 className="text-[10px] font-bold uppercase tracking-widest text-foreground">
 					Informasi Pelanggan
 				</h3>
 			</div>
 
-			<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				<div className="space-y-1.5">
-					<Label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
-						<User className="h-3 w-3" /> Nama Pelanggan
+			<div className="grid grid-cols-1 gap-3">
+				<div className="space-y-1">
+					<Label className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
+						Nama
 					</Label>
 					<Input
-						className="h-10 rounded-xl border-border/50 bg-muted/20 font-medium focus:bg-background"
+						className="h-9 rounded-lg border-border/50 bg-background text-xs font-medium focus:ring-1"
 						onChange={(e) => updateCustomerInfo({ name: e.target.value })}
 						placeholder="Input nama..."
 						value={customerInfo.name}
 					/>
 				</div>
 
-				<div className="space-y-1.5">
-					<Label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
-						<Coffee className="h-3 w-3" /> Tipe Pesanan
-					</Label>
-					<div className="grid grid-cols-2 gap-2 rounded-xl border border-border/50 bg-muted/20 p-1">
-						<button
-							className={`flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-[10px] font-bold uppercase transition-all ${
-								customerInfo.orderType === "dine_in"
-									? "bg-background text-primary shadow-sm"
-									: "text-muted-foreground hover:text-foreground"
+				<div className="grid grid-cols-2 gap-2">
+					<div className="space-y-1">
+						<Label className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
+							Tipe
+						</Label>
+						<div className="grid grid-cols-2 gap-1 rounded-lg border border-border/50 bg-background p-0.5">
+							<button
+								className={`flex items-center justify-center rounded-md py-1 text-[8px] font-bold uppercase transition-all ${
+									customerInfo.orderType === "dine_in"
+										? "bg-primary text-primary-foreground shadow-sm"
+										: "text-muted-foreground hover:text-foreground"
+								}`}
+								onClick={() => updateCustomerInfo({ orderType: "dine_in" })}
+								type="button"
+							>
+								Dine In
+							</button>
+							<button
+								className={`flex items-center justify-center rounded-md py-1 text-[8px] font-bold uppercase transition-all ${
+									customerInfo.orderType === "takeaway"
+										? "bg-primary text-primary-foreground shadow-sm"
+										: "text-muted-foreground hover:text-foreground"
+								}`}
+								onClick={() => updateCustomerInfo({ orderType: "takeaway" })}
+								type="button"
+							>
+								Take
+							</button>
+						</div>
+					</div>
+
+					<div className="space-y-1">
+						<Label className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
+							Meja
+						</Label>
+						<Input
+							className={`h-9 rounded-lg border-border/50 bg-background text-xs font-bold ${
+								customerInfo.orderType === "takeaway" ? "opacity-30" : ""
 							}`}
-							onClick={() => updateCustomerInfo({ orderType: "dine_in" })}
-							type="button"
-						>
-							<Coffee className="h-3 w-3" /> Dine In
-						</button>
-						<button
-							className={`flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-[10px] font-bold uppercase transition-all ${
-								customerInfo.orderType === "takeaway"
-									? "bg-background text-primary shadow-sm"
-									: "text-muted-foreground hover:text-foreground"
-							}`}
-							onClick={() => updateCustomerInfo({ orderType: "takeaway" })}
-							type="button"
-						>
-							<ShoppingBag className="h-3 w-3" /> Takeaway
-						</button>
+							disabled={customerInfo.orderType === "takeaway"}
+							onChange={(e) => updateCustomerInfo({ tableNumber: e.target.value })}
+							placeholder="No"
+							value={customerInfo.tableNumber}
+						/>
 					</div>
 				</div>
 
-				<div className="space-y-1.5">
-					<Label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
-						<Hash className="h-3 w-3" /> Nomor Meja
-					</Label>
-					<Input
-						className={`h-10 rounded-xl border-border/50 bg-muted/20 font-bold focus:bg-background ${
-							customerInfo.orderType === "takeaway"
-								? "cursor-not-allowed opacity-50"
-								: ""
-						}`}
-						disabled={customerInfo.orderType === "takeaway"}
-						onChange={(e) => updateCustomerInfo({ tableNumber: e.target.value })}
-						placeholder="No. Meja"
-						value={customerInfo.tableNumber}
-					/>
-				</div>
-
-				<div className="space-y-1.5">
-					<Label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
-						<Zap className="h-3 w-3" /> Free Refill?
-					</Label>
+				<div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-500/20 bg-emerald-50/50 p-2">
+					<div className="flex items-center gap-1.5">
+						<Zap className={`h-3 w-3 ${customerInfo.isFreeRefill ? "text-emerald-500" : "text-muted-foreground/40"}`} />
+						<span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">
+							Free Refill
+						</span>
+					</div>
 					<button
-						className={`flex h-10 w-full items-center justify-between rounded-xl border px-4 transition-all ${
-							customerInfo.isFreeRefill
-								? "border-emerald-500/50 bg-emerald-50 text-emerald-700 shadow-sm"
-								: "border-border/50 bg-muted/20 text-muted-foreground hover:text-foreground"
+						className={`h-5 w-10 rounded-full transition-all ${
+							customerInfo.isFreeRefill ? "bg-emerald-500" : "bg-muted-foreground/20"
 						}`}
 						onClick={() =>
 							updateCustomerInfo({ isFreeRefill: !customerInfo.isFreeRefill })
 						}
 						type="button"
 					>
-						<span className="text-[10px] font-bold uppercase tracking-widest">
-							{customerInfo.isFreeRefill ? "AKTIF" : "TIDAK AKTIF"}
-						</span>
-						<div
-							className={`h-2 w-2 rounded-full ${
-								customerInfo.isFreeRefill ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/30"
-							}`}
-						/>
+						<div className={`h-4 w-4 rounded-full bg-white transition-all ${customerInfo.isFreeRefill ? "translate-x-5" : "translate-x-1"}`} />
 					</button>
 				</div>
 			</div>
@@ -578,6 +570,11 @@ function MobileCartDrawer({
 				</SheetHeader>
 
 				<div className="flex-1 overflow-y-auto px-6 py-3 bg-white mx-4 my-2 rounded-xl border border-border shadow-inner">
+					{/* Customer Info Form di Mobile Drawer */}
+					<div className="mb-6">
+						<CustomerInfoForm />
+					</div>
+
 					{items.length === 0 ? (
 						<EmptyCart className="py-8" size="sm" />
 					) : (
@@ -1004,7 +1001,6 @@ function MenuPage() {
 					id="main-content"
 					tabIndex={-1}
 				>
-					<CustomerInfoForm />
 					{products ? (
 						<div className="grid grid-cols-3 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
 							{products.map((product) => {
@@ -1116,6 +1112,11 @@ function MenuPage() {
 
 						{/* Receipt Items */}
 						<div className="flex-1 overflow-y-auto px-6 py-2 scrollbar-thin scrollbar-thumb-muted">
+							{/* Customer Info Form di Sidebar */}
+							<div className="mb-6">
+								<CustomerInfoForm />
+							</div>
+
 							{items.length === 0 ? (
 								<EmptyCart className="h-full justify-center" size="md" />
 							) : (
@@ -1210,8 +1211,8 @@ function MenuPage() {
 
 			</div>
 
-			{/* Mobile Bottom Bar */}
-			<MobileBottomBar
+			{/* Mobile Bottom Bar - Hapus footer bayar */}
+			{/* <MobileBottomBar
 				appliedVoucher={appliedVoucher}
 				discountAmount={discountAmount}
 				finalTotal={finalTotal}
@@ -1223,7 +1224,7 @@ function MenuPage() {
 				onRemoveVoucher={() => applyVoucher(null)}
 				totalAmount={totalAmount}
 				totalItems={totalItems}
-			/>
+			/> */}
 
 			<MobileCartDrawer
 				appliedVoucher={appliedVoucher}
