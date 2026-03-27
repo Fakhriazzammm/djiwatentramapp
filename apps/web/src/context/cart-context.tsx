@@ -5,6 +5,9 @@ import {
 	useEffect,
 	useState,
 } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@yumipos/backend/convex/_generated/api";
+import { isDiscountApplicable, isFreeRefillActive } from "@/lib/utils/pricing";
 
 export interface CartItem {
 	productId: string;
@@ -58,10 +61,6 @@ interface CartContextType {
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
-
-import { useQuery } from "convex/react";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { isDiscountApplicable, isFreeRefillActive } from "@/lib/utils/pricing";
 
 export function CartProvider({ children }: { children: ReactNode }) {
 	const siteSettings = useQuery(api.site_settings.getSettings);
