@@ -955,7 +955,7 @@ function MenuPage() {
 		},
 		onShiftArrow: (direction) => {
 			if (!categories) return;
-			const currentIndex = selectedCategory === null ? -1 : categories.findIndex(c => c._id === selectedCategory);
+			const currentIndex = selectedCategory === null ? -1 : categories.findIndex((c: Doc<"categories">) => c._id === selectedCategory);
 			let nextIndex;
 			if (direction === "right") {
 				nextIndex = currentIndex + 1 >= categories.length ? -1 : currentIndex + 1;
