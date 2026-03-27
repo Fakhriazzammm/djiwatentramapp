@@ -222,12 +222,12 @@ function MenuPage() {
 					break;
 				default:
 					// Check if it's one of the sidebar menu tabs
-					if (sidebarMenuItems.some(item => item.id === action)) {
+					if (SIDEBAR_MENU_ITEMS.some(item => item.id === action)) {
 						handleOpenSidebar(action);
 					}
 			}
 		},
-		[sidebarMenuItems]
+		[]
 	);
 
 	const handleFocusZoneChange = useCallback((zone: FocusZone) => {
