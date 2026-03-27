@@ -36,6 +36,16 @@ export const Route = createLazyFileRoute("/menu")({
 // Grid columns for responsive layout
 const GRID_COLUMNS = 4; // Desktop: 4 columns
 
+// Menu Sidebar items for the header
+const SIDEBAR_MENU_ITEMS = [
+	{ id: "dashboard", label: "Dashboard", icon: BarChart3 },
+	{ id: "parkir", label: "Simpan Orderan", icon: ShoppingCart },
+	{ id: "kas", label: "Kas", icon: Wallet },
+	{ id: "stok", label: "Stok", icon: Package },
+	{ id: "yumi", label: "Chat AI", icon: Bot },
+	{ id: "settings", label: "Pengaturan", icon: Settings2 },
+];
+
 function MenuPage() {
 	// Queries
 	const siteSettings = useQuery(api.site_settings.getSettings);
