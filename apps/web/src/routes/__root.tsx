@@ -1,9 +1,15 @@
 import { Outlet, createRootRoute } from "@tanstack/react-router";
+import { useGlobalKeyboardNavigation } from "../hooks/useGlobalKeyboardNavigation";
 
-export const Route = createRootRoute({
-	component: () => (
+function RootComponent() {
+	useGlobalKeyboardNavigation();
+	return (
 		<div className="min-h-screen bg-background font-sans text-foreground antialiased">
 			<Outlet />
 		</div>
-	),
+	);
+}
+
+export const Route = createRootRoute({
+	component: RootComponent,
 });
