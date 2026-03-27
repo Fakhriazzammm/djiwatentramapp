@@ -426,8 +426,8 @@ function CustomerInfoForm({ onSuccess }: { onSuccess?: () => void }) {
 	};
 
 	return (
-		<div className="flex flex-col h-full overflow-hidden">
-			<div className="flex-1 space-y-4">
+		<div className="flex flex-col">
+			<div className="space-y-4">
 				<div className="space-y-1 border-b border-border pb-3">
 					<div className="flex items-center gap-2">
 						<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
