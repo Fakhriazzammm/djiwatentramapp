@@ -247,13 +247,13 @@ function MenuPage() {
 			onHeaderAction: (action) => {
 				// If action is a number string, it's a sidebar menu index
 				const index = parseInt(action);
-				if (!isNaN(index) && sidebarMenuItems[index]) {
-					handleOpenSidebar(sidebarMenuItems[index].id);
+				if (!isNaN(index) && SIDEBAR_MENU_ITEMS[index]) {
+					handleOpenSidebar(SIDEBAR_MENU_ITEMS[index].id);
 				} else {
 					handleHeaderAction(action);
 				}
 			},
-			headerItemCount: 1 + sidebarMenuItems.length, // 1 for logo + menu buttons
+			headerItemCount: 1 + SIDEBAR_MENU_ITEMS.length, // 1 for logo + menu buttons
 			cartItemCount: totalItems,
 			onCartOpen: () => setIsCartOpen(true),
 			onCartClose: () => setIsCartOpen(false),
@@ -353,16 +353,6 @@ function MenuPage() {
 
 	const isLoading = products === undefined || categories === undefined;
 
-	// Menu Sidebar items for the header
-	const sidebarMenuItems = [
-		{ id: "dashboard", label: "Dashboard", icon: BarChart3 },
-		{ id: "parkir", label: "Simpan Orderan", icon: ShoppingCart },
-		{ id: "kas", label: "Kas", icon: Wallet },
-		{ id: "stok", label: "Stok", icon: Package },
-		{ id: "yumi", label: "Chat AI", icon: Bot },
-		{ id: "settings", label: "Pengaturan", icon: Settings2 },
-	];
-
 	const handleOpenSidebar = (tabId: string) => {
 		setActiveSidebarTab(tabId);
 		setIsSidebarOpen(true);
@@ -412,7 +402,7 @@ function MenuPage() {
 
 						{/* Navigation Buttons from Hamburger */}
 						<div className="flex items-center gap-1 overflow-x-auto scrollbar-none pb-1 -mb-1">
-							{sidebarMenuItems.map((item, index) => {
+							{SIDEBAR_MENU_ITEMS.map((item, index) => {
 								const Icon = item.icon;
 								const isFocused = isZoneFocused("header") && focusedHeaderIndex === index + 1;
 								const isActive = activeSidebarTab === item.id && isSidebarOpen;
