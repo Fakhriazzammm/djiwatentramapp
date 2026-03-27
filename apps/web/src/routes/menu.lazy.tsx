@@ -1186,20 +1186,20 @@ function MenuPage() {
 			<header className="sticky top-0 z-[60] shrink-0 border-border border-b bg-background/95 backdrop-blur-sm shadow-sm">
 				{/* Printer Warning Banner */}
 				{!isPrinterConnected && (
-					<div className="bg-destructive/10 border-b border-destructive/20 px-3 py-1.5">
+					<div className="bg-destructive/10 border-b border-destructive/20 px-3 py-1">
 						<div className="flex items-center justify-between gap-2 max-w-lg mx-auto">
 							<div className="flex items-center gap-2">
 								<div className="flex h-5 w-5 animate-pulse items-center justify-center rounded-full bg-destructive/20">
 									<Printer className="h-3 w-3 text-destructive" />
 								</div>
-								<p className="text-[10px] font-bold text-destructive uppercase tracking-tight">
+								<p className="text-[9px] font-bold text-destructive uppercase tracking-tight">
 									Printer Belum Terhubung
 								</p>
 							</div>
 							<Button 
 								variant="ghost" 
 								size="sm" 
-								className="h-6 px-2 text-[9px] font-black uppercase text-destructive hover:bg-destructive/10"
+								className="h-5 px-1.5 text-[8px] font-black uppercase text-destructive hover:bg-destructive/10"
 								onClick={() => {
 									setMenuSidebarTab("settings");
 									setIsMenuSidebarOpen(true);
@@ -1212,21 +1212,21 @@ function MenuPage() {
 				)}
 
 				{/* Top row: title + action buttons */}
-				<div className="flex items-center justify-between gap-2 px-3 py-2">
-					<span className="font-bold text-foreground text-base">Menu</span>
+				<div className="flex items-center justify-between gap-2 px-3 py-1">
+					<span className="font-bold text-foreground text-sm">Menu</span>
 					<div className="flex shrink-0 items-center gap-1.5">
 						{/* Mobile direct buttons - replaced hamburger */}
 						<div className="flex md:hidden items-center gap-0.5">
 							<Button
 								variant="ghost"
 								size="icon"
-								className="h-9 w-9 rounded-full text-muted-foreground hover:text-primary active:scale-95 transition-all"
+								className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary active:scale-95 transition-all"
 								onClick={() => {
 									setMenuSidebarTab("dashboard");
 									setIsMenuSidebarOpen(true);
 								}}
 							>
-								<BarChart3 className="h-5 w-5" />
+								<BarChart3 className="h-4 w-4" />
 							</Button>
 
 							<TransactionHistorySidebar 
@@ -1234,9 +1234,9 @@ function MenuPage() {
 									<Button
 										variant="ghost"
 										size="icon"
-										className="h-9 w-9 rounded-full text-muted-foreground hover:text-primary active:scale-95 transition-all"
+										className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary active:scale-95 transition-all"
 									>
-										<History className="h-5 w-5" />
+										<History className="h-4 w-4" />
 									</Button>
 								}
 							/>
@@ -1244,46 +1244,46 @@ function MenuPage() {
 							<Button
 								variant="ghost"
 								size="icon"
-								className="h-9 w-9 rounded-full text-orange-500 hover:bg-orange-50 active:scale-95 transition-all"
+								className="h-8 w-8 rounded-full text-orange-500 hover:bg-orange-50 active:scale-95 transition-all"
 								onClick={() => {
 									setMenuSidebarTab("parkir");
 									setIsMenuSidebarOpen(true);
 								}}
 							>
-								<ShoppingCart className="h-5 w-5" />
+								<ShoppingCart className="h-4 w-4" />
 							</Button>
 							<Button
 								variant="ghost"
 								size="icon"
-								className="h-9 w-9 rounded-full text-primary hover:bg-primary/5 active:scale-95 transition-all"
+								className="h-8 w-8 rounded-full text-primary hover:bg-primary/5 active:scale-95 transition-all"
 								onClick={() => {
 									setMenuSidebarTab("kas");
 									setIsMenuSidebarOpen(true);
 								}}
 							>
-								<Wallet className="h-5 w-5" />
+								<Wallet className="h-4 w-4" />
 							</Button>
 							<Button
 								variant="ghost"
 								size="icon"
-								className="h-9 w-9 rounded-full text-primary hover:bg-primary/5 active:scale-95 transition-all"
+								className="h-8 w-8 rounded-full text-primary hover:bg-primary/5 active:scale-95 transition-all"
 								onClick={() => {
 									setMenuSidebarTab("yumi");
 									setIsMenuSidebarOpen(true);
 								}}
 							>
-								<Bot className="h-5 w-5 text-primary" />
+								<Bot className="h-4 w-4 text-primary" />
 							</Button>
 							<Button
 								variant="ghost"
 								size="icon"
-								className="h-9 w-9 rounded-full text-muted-foreground hover:text-primary active:scale-95 transition-all"
+								className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary active:scale-95 transition-all"
 								onClick={() => {
 									setMenuSidebarTab("settings");
 									setIsMenuSidebarOpen(true);
 								}}
 							>
-								<Settings2 className="h-5 w-5" />
+								<Settings2 className="h-4 w-4" />
 							</Button>
 						</div>
 						
@@ -1306,14 +1306,14 @@ function MenuPage() {
 				</div>
 				{/* Category filter row - full width, compact pills */}
 				<div
-					className="no-scrollbar flex gap-1.5 overflow-x-auto px-3 pb-2 scroll-smooth"
+					className="no-scrollbar flex gap-1.5 overflow-x-auto px-3 pb-1 scroll-smooth"
 					role="tablist"
 					style={{ WebkitOverflowScrolling: 'touch' }}
 				>
 					<button
 						aria-label="Tampilkan semua kategori"
 						aria-selected={selectedCategory === null}
-						className={`shrink-0 whitespace-nowrap rounded-full border px-5 py-2.5 font-bold text-xs transition-all active:scale-95 ${
+						className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5 font-bold text-[11px] transition-all active:scale-95 ${
 							selectedCategory === null
 								? "border-primary bg-primary text-primary-foreground shadow-sm"
 								: "border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -1329,7 +1329,7 @@ function MenuPage() {
 								<button
 									aria-label={`Tampilkan kategori ${cat.name}`}
 									aria-selected={selectedCategory === cat._id}
-									className={`shrink-0 whitespace-nowrap rounded-full border px-5 py-2.5 font-bold text-xs transition-all active:scale-95 ${
+									className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5 font-bold text-[11px] transition-all active:scale-95 ${
 										selectedCategory === cat._id
 											? "border-primary bg-primary text-primary-foreground shadow-sm"
 											: "border-border bg-card text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -1343,12 +1343,12 @@ function MenuPage() {
 								</button>
 							))
 						: Array.from({ length: 5 }).map((_, i) => (
-								<Skeleton className="h-7 w-20 shrink-0 rounded-full" key={i} />
+								<Skeleton className="h-6 w-20 shrink-0 rounded-full" key={i} />
 							))}
 				</div>
 
 				{/* Search Bar Feature */}
-				<div className="px-3 pb-2.5">
+				<div className="px-3 pb-2">
 					<div className="relative group">
 						<div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
 							<ShoppingCart className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
@@ -1359,7 +1359,7 @@ function MenuPage() {
 							placeholder="Cari menu atau nomor..."
 							value={searchQuery}
 							onChange={(e) => setSearchQuery(e.target.value)}
-							className="h-10 pl-9 pr-4 rounded-xl border-border/60 bg-muted/30 focus:bg-background transition-all text-sm font-medium focus:ring-2 focus:ring-primary/20"
+							className="h-9 pl-8 pr-4 rounded-xl border-border/60 bg-muted/30 focus:bg-background transition-all text-sm font-medium focus:ring-2 focus:ring-primary/20"
 							style={{ fontSize: '16px' }} // Critical: 16px font-size prevents iOS auto-zoom
 						/>
 						{searchQuery && (
@@ -1385,7 +1385,7 @@ function MenuPage() {
 					tabIndex={-1}
 				>
 					{/* Keyboard Shortcuts Hint */}
-					<div className="hidden md:flex items-center gap-4 mb-3 px-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+					<div className="hidden md:flex items-center gap-4 mb-1.5 px-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
 						<div className="flex items-center gap-1.5">
 							<span className="rounded bg-muted-foreground/10 px-1.5 py-0.5 border border-border">↑↓←→</span>
 							Pilih
