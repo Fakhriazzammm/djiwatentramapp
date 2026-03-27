@@ -4,8 +4,9 @@ import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BarChart3, Bot, ChevronRight, History, Minus, Plus, Printer, Save, Settings2, ShoppingCart, Tag, Trash2, Wallet, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useKeyboardNavigation } from "@/hooks/use-keyboard-navigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MenuSidebar } from "@/components/pos/menu-sidebar";
@@ -903,6 +904,87 @@ function MenuPage() {
 		);
 	}, [products, searchQuery]);
 
+	// ============================================
+	// Keyboard Navigation
+	// ============================================
+	const searchInputRef = useRef<HTMLInputElement>(null);
+	const productGridRef = useRef<HTMLDivElement>(null);
+
+	const getGridColumns = useCallback(() => {
+		if (typeof window === "undefined") return 3;
+		if (window.innerWidth >= 1536) return 6; // 2xl
+		if (window.innerWidth >= 1280) return 5; // xl
+		if (window.innerWidth >= 1024) return 4; // lg
+		return 3; // md, sm, mobile
+	}, []);
+
+	const [gridCols, setGridCols] = useState(getGridColumns());
+
+	useEffect(() => {
+		const handleResize = () => setGridCols(getGridColumns());
+		window.addEventListener("resize", handleResize);
+		return () => window.removeEventListener("resize", handleResize);
+	}, [getGridColumns]);
+
+	const { selectedIndex, setSelectedIndex } = useKeyboardNavigation({
+		itemCount: filteredProducts?.length ?? 0,
+		gridColumns: gridCols,
+		enabled: customerInfo.isSubmitted && !isPaymentModalOpen && !isVoucherModalOpen && !isMenuSidebarOpen,
+		onSelect: (index) => {
+			const productElements = productGridRef.current?.children;
+			if (productElements && productElements[index]) {
+				productElements[index].scrollIntoView({
+					behavior: "smooth",
+					block: "nearest",
+				});
+			}
+		},
+		onEnter: (index) => {
+			if (filteredProducts && filteredProducts[index]) {
+				handleAddToCart(filteredProducts[index]);
+			}
+		},
+		onBackspace: (index) => {
+			if (filteredProducts && filteredProducts[index]) {
+				const product = filteredProducts[index];
+				const cartItem = items.find((i) => i.productId === product._id);
+				if (cartItem) {
+					updateQuantity(product._id, cartItem.variant, -1);
+				}
+			}
+		},
+		onShiftArrow: (direction) => {
+			if (!categories) return;
+			const currentIndex = selectedCategory === null ? -1 : categories.findIndex(c => c._id === selectedCategory);
+			let nextIndex;
+			if (direction === "right") {
+				nextIndex = currentIndex + 1 >= categories.length ? -1 : currentIndex + 1;
+			} else {
+				nextIndex = currentIndex - 1 < -1 ? categories.length - 1 : currentIndex - 1;
+			}
+			setSelectedCategory(nextIndex === -1 ? null : categories[nextIndex]._id);
+		},
+		onSearch: () => {
+			searchInputRef.current?.focus();
+		},
+		onCheckout: () => {
+			handleCheckout();
+		},
+		onEscape: () => {
+			if (searchQuery) {
+				setSearchQuery("");
+			} else if (isPaymentModalOpen) {
+				setIsPaymentModalOpen(false);
+			} else if (isVoucherModalOpen) {
+				setIsVoucherModalOpen(false);
+			} else if (isMenuSidebarOpen) {
+				setIsMenuSidebarOpen(false);
+			} else {
+				setSelectedIndex(-1);
+			}
+		},
+	});
+
 	// Optimization: Pre-calculate cart state to avoid re-renders
 	const { totalItems, hasItems } = useMemo(() => ({
 		totalItems: items.reduce((acc: number, i) => acc + i.quantity, 0),
@@ -1272,6 +1354,7 @@ function MenuPage() {
 							<ShoppingCart className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
 						</div>
 						<Input
+							ref={searchInputRef}
 							type="text"
 							placeholder="Cari menu atau nomor..."
 							value={searchQuery}
@@ -1301,9 +1384,40 @@ function MenuPage() {
 					id="main-content"
 					tabIndex={-1}
 				>
+					{/* Keyboard Shortcuts Hint */}
+					<div className="hidden md:flex items-center gap-4 mb-3 px-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+						<div className="flex items-center gap-1.5">
+							<span className="rounded bg-muted-foreground/10 px-1.5 py-0.5 border border-border">↑↓←→</span>
+							Pilih
+						</div>
+						<div className="flex items-center gap-1.5">
+							<span className="rounded bg-muted-foreground/10 px-1.5 py-0.5 border border-border">ENTER</span>
+							Tambah
+						</div>
+						<div className="flex items-center gap-1.5">
+							<span className="rounded bg-muted-foreground/10 px-1.5 py-0.5 border border-border">BACKSPACE</span>
+							Kurang
+						</div>
+						<div className="flex items-center gap-1.5">
+							<span className="rounded bg-muted-foreground/10 px-1.5 py-0.5 border border-border">SHIFT + ←→</span>
+							Kategori
+						</div>
+						<div className="flex items-center gap-1.5">
+							<span className="rounded bg-muted-foreground/10 px-1.5 py-0.5 border border-border">ALT + ENTER</span>
+							Bayar
+						</div>
+						<div className="flex items-center gap-1.5">
+							<span className="rounded bg-muted-foreground/10 px-1.5 py-0.5 border border-border">/</span>
+							Cari
+						</div>
+					</div>
+
 					{filteredProducts ? (
-						<div className="grid grid-cols-3 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-							{filteredProducts.map((product) => {
+						<div 
+							ref={productGridRef}
+							className="grid grid-cols-3 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+						>
+							{filteredProducts.map((product, idx) => {
 								const { finalPrice } = calculateEffectivePrice(
 									{
 										_id: product._id,
@@ -1313,12 +1427,20 @@ function MenuPage() {
 									activeDiscounts
 								);
 								const cartItem = items.find((i) => i.productId === product._id);
+								const isSelected = selectedIndex === idx;
 
 								return (
 									<button
-										className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card text-left shadow-sm transition-all hover:border-primary/20 hover:shadow-md active:scale-[0.95] active:bg-muted/10"
+										className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border shadow-sm transition-all hover:border-primary/20 hover:shadow-md active:scale-[0.95] active:bg-muted/10 ${
+											isSelected 
+												? "ring-2 ring-primary ring-offset-2 border-primary bg-primary/5 shadow-lg scale-[1.02] z-10" 
+												: "border-border bg-card"
+										}`}
 										key={product._id}
-										onClick={(e) => handleAddToCart(product, e)}
+										onClick={(e) => {
+											setSelectedIndex(idx);
+											handleAddToCart(product, e);
+										}}
 										type="button"
 									>
 										{product.menuNumber != null && (
@@ -1381,16 +1503,16 @@ function MenuPage() {
  				{/* Desktop Cart Sidebar */}
  				<aside
 					aria-label="Keranjang belanja"
-					className="z-20 hidden h-full w-[340px] shrink-0 flex-col border-border border-l bg-muted/30 shadow-xl md:flex"
+					className="z-20 hidden h-full w-[340px] shrink-0 flex-col border-border border-l bg-muted/30 shadow-xl md:flex p-4"
 					id="cart-sidebar"
 				>
 					{!customerInfo.isSubmitted ? (
-						<div className="flex flex-1 flex-col p-6 m-4 rounded-xl border border-border bg-white shadow-inner overflow-y-auto">
+						<div className="flex flex-1 flex-col p-6 rounded-xl border border-border bg-white shadow-inner overflow-y-auto">
 							<CustomerInfoForm />
 						</div>
 					) : (
 						<>
-							<div className="flex flex-1 flex-col overflow-hidden m-4 rounded-xl border border-border bg-white shadow-inner">
+							<div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border bg-white shadow-inner">
 								{/* Receipt Header */}
 								<div className="shrink-0 flex flex-col items-center p-6 text-center font-mono">
 									{siteSettings?.receiptShowLogo && siteSettings?.receiptLogo && (
@@ -1498,7 +1620,7 @@ function MenuPage() {
 							</div>
 
 							{/* CTA Buttons - Fixed at bottom of sidebar */}
-							<div className="shrink-0 p-4 pt-0">
+							<div className="shrink-0 pt-4">
 								<button
 									className="mb-3 flex w-full items-center justify-between rounded-xl border border-emerald-500/30 border-dashed bg-emerald-50/50 px-4 py-3 transition-all hover:border-emerald-500 hover:bg-emerald-50 active:scale-[0.98]"
 									onClick={() => setIsVoucherModalOpen(true)}
