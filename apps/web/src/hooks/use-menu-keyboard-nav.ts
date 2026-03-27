@@ -38,7 +38,8 @@ export interface MenuKeyboardNavConfig {
 	onCategoryChange: (direction: "left" | "right") => void;
 	
 	// Header
-	onHeaderAction: (action: "menu" | "back" | "search") => void;
+	onHeaderAction: (action: "menu" | "back" | "search" | string) => void;
+	headerItemCount?: number;
 	
 	// Cart
 	cartItemCount: number;
@@ -56,6 +57,7 @@ export interface MenuKeyboardNavConfig {
 export interface MenuKeyboardNavReturn {
 	focusZone: FocusZone;
 	focusedIndex: number;
+	focusedHeaderIndex: number;
 	setFocusZone: (zone: FocusZone) => void;
 	setFocusedIndex: (index: number) => void;
 	isZoneFocused: (zone: FocusZone) => boolean;
@@ -75,6 +77,7 @@ export function useMenuKeyboardNav({
 	onCartClose,
 	onCartItemRemove,
 	onFocusZoneChange,
+	headerItemCount = 3,
 	enabled = true,
 }: MenuKeyboardNavConfig): MenuKeyboardNavReturn {
 	const [focusZone, setFocusZone] = useState<FocusZone>("header");
@@ -83,9 +86,6 @@ export function useMenuKeyboardNav({
 	const [focusedHeaderIndex, setFocusedHeaderIndex] = useState(0);
 	
 	const isInputFocused = useRef(false);
-	
-	// Header items: 0 = back, 1 = logo/title, 2 = menu sidebar
-	const headerItemCount = 3;
 	
 	// Track if we're in an input
 	const checkInputFocus = useCallback(() => {
@@ -350,12 +350,20 @@ export function useMenuKeyboardNav({
 		const handleEnter = (shiftKey: boolean) => {
 			switch (focusZone) {
 				case "header":
-					if (focusedHeaderIndex === 0) {
-						onHeaderAction("back");
-					} else if (focusedHeaderIndex === 1) {
-						// Logo/title - no action
-					} else if (focusedHeaderIndex === 2) {
-						onHeaderAction("menu");
+					if (headerItemCount > 3) {
+						// Custom header items navigation
+						// Assuming 0 is logo (no action) and 1+ are sidebarMenuItems
+						if (focusedHeaderIndex >= 1) {
+							onHeaderAction(String(focusedHeaderIndex - 1)); // Pass index as string for now
+						}
+					} else {
+						if (focusedHeaderIndex === 0) {
+							onHeaderAction("back");
+						} else if (focusedHeaderIndex === 1) {
+							// Logo/title - no action
+						} else if (focusedHeaderIndex === 2) {
+							onHeaderAction("menu");
+						}
 					}
 					break;
 					
@@ -493,6 +501,7 @@ export function useMenuKeyboardNav({
 	return {
 		focusZone,
 		focusedIndex,
+		focusedHeaderIndex,
 		setFocusZone,
 		setFocusedIndex,
 		isZoneFocused,

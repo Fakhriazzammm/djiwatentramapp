@@ -1,14 +1,19 @@
-import { createLazyFileRoute, Link } from "@tanstack/react-router";
+import { createLazyFileRoute } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import {
-	ArrowLeft,
+	BarChart3,
+	Bot,
 	Coffee,
 	Minus,
+	Package,
 	Plus,
 	Search,
+	Settings2,
 	ShoppingBag,
+	ShoppingCart,
+	Wallet,
 	X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -59,6 +64,8 @@ function MenuPage() {
 	const [isCartOpen, setIsCartOpen] = useState(false);
 	const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+	const [activeSidebarTab, setActiveSidebarTab] = useState("dashboard");
 	const [keyboardFocusZone, setKeyboardFocusZone] = useState<FocusZone>("header");
 	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
 
@@ -186,13 +193,13 @@ function MenuPage() {
 	);
 
 	const handleHeaderAction = useCallback(
-		(action: "menu" | "back" | "search") => {
+		(action: "menu" | "back" | "search" | string) => {
 			switch (action) {
 				case "back":
-					window.history.back();
+					// Back button is removed
 					break;
 				case "menu":
-					// Menu sidebar will handle this
+					setIsSidebarOpen(true);
 					break;
 				case "search":
 					const searchInput = document.querySelector(
@@ -202,9 +209,14 @@ function MenuPage() {
 						searchInput.focus();
 					}
 					break;
+				default:
+					// Check if it's one of the sidebar menu tabs
+					if (sidebarMenuItems.some(item => item.id === action)) {
+						handleOpenSidebar(action);
+					}
 			}
 		},
-		[]
+		[sidebarMenuItems]
 	);
 
 	const handleFocusZoneChange = useCallback((zone: FocusZone) => {
@@ -212,7 +224,7 @@ function MenuPage() {
 	}, []);
 
 	// Initialize keyboard navigation
-	const { focusZone, focusedIndex, setFocusZone, setFocusedIndex, isZoneFocused } =
+	const { focusZone, focusedIndex, focusedHeaderIndex, setFocusZone, setFocusedIndex, isZoneFocused } =
 		useMenuKeyboardNav({
 			productCount: filteredProducts?.length || 0,
 			gridColumns: GRID_COLUMNS,
@@ -221,7 +233,16 @@ function MenuPage() {
 			categoryCount: categoryList.length,
 			onCategorySelect: handleCategorySelect,
 			onCategoryChange: handleCategoryChange,
-			onHeaderAction: handleHeaderAction,
+			onHeaderAction: (action) => {
+				// If action is a number string, it's a sidebar menu index
+				const index = parseInt(action);
+				if (!isNaN(index) && sidebarMenuItems[index]) {
+					handleOpenSidebar(sidebarMenuItems[index].id);
+				} else {
+					handleHeaderAction(action);
+				}
+			},
+			headerItemCount: 1 + sidebarMenuItems.length, // 1 for logo + menu buttons
 			cartItemCount: totalItems,
 			onCartOpen: () => setIsCartOpen(true),
 			onCartClose: () => setIsCartOpen(false),
@@ -321,6 +342,21 @@ function MenuPage() {
 
 	const isLoading = products === undefined || categories === undefined;
 
+	// Menu Sidebar items for the header
+	const sidebarMenuItems = [
+		{ id: "dashboard", label: "Dashboard", icon: BarChart3 },
+		{ id: "parkir", label: "Simpan Orderan", icon: ShoppingCart },
+		{ id: "kas", label: "Kas", icon: Wallet },
+		{ id: "stok", label: "Stok", icon: Package },
+		{ id: "yumi", label: "Chat AI", icon: Bot },
+		{ id: "settings", label: "Pengaturan", icon: Settings2 },
+	];
+
+	const handleOpenSidebar = (tabId: string) => {
+		setActiveSidebarTab(tabId);
+		setIsSidebarOpen(true);
+	};
+
 	return (
 		<div className="flex h-screen flex-col bg-background overflow-hidden">
 			{/* === HEADER === */}
@@ -331,22 +367,14 @@ function MenuPage() {
 					isZoneFocused("header") && "ring-2 ring-primary ring-inset"
 				)}
 			>
-				<div className="flex items-center gap-3 px-4 py-3">
-					{/* Back button */}
-					<Link
-						to="/"
-						className={cn(
-							"flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card transition-colors",
-							"hover:bg-muted active:scale-95",
-							isZoneFocused("header") && focusZone === "header" && "bg-primary text-primary-foreground"
-						)}
-						tabIndex={isZoneFocused("header") ? 0 : -1}
-					>
-						<ArrowLeft className="h-4 w-4" />
-					</Link>
-
+				<div className="flex items-center gap-4 px-4 py-3">
 					{/* Logo & Store name */}
-					<div className="flex items-center gap-2 min-w-0 flex-1">
+					<div 
+						className={cn(
+							"flex items-center gap-2 min-w-0 flex-1 rounded-lg transition-all",
+							isZoneFocused("header") && focusedHeaderIndex === 0 && "ring-2 ring-primary ring-offset-4"
+						)}
+					>
 						{logoUrl ? (
 							<img
 								src={logoUrl}
@@ -369,8 +397,40 @@ function MenuPage() {
 						</div>
 					</div>
 
-					{/* Menu Sidebar Trigger */}
-					<MenuSidebar />
+					{/* Navigation Buttons from Hamburger */}
+					<div className="flex items-center gap-1 overflow-x-auto scrollbar-none pb-1 -mb-1">
+						{sidebarMenuItems.map((item, index) => {
+							const Icon = item.icon;
+							const isFocused = isZoneFocused("header") && focusedHeaderIndex === index + 1;
+							const isActive = activeSidebarTab === item.id && isSidebarOpen;
+							
+							return (
+								<button
+									key={item.id}
+									onClick={() => handleOpenSidebar(item.id)}
+									className={cn(
+										"flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-1.5 transition-all shrink-0",
+										"hover:bg-muted active:scale-95",
+										isActive
+											? "bg-muted ring-2 ring-primary ring-inset text-primary"
+											: "text-muted-foreground hover:text-foreground",
+										isFocused && "bg-muted ring-2 ring-primary ring-inset"
+									)}
+								>
+									<Icon className="h-5 w-5" />
+									<span className="text-[10px] font-medium leading-none whitespace-nowrap">{item.label}</span>
+								</button>
+							);
+						})}
+					</div>
+
+					{/* Hidden MenuSidebar for control */}
+					<MenuSidebar 
+						hideTrigger
+						triggerOpen={isSidebarOpen} 
+						onOpenChange={setIsSidebarOpen} 
+						initialTab={activeSidebarTab}
+					/>
 				</div>
 
 				{/* Search Bar */}

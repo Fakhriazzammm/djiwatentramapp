@@ -81,12 +81,14 @@ export function MenuSidebar({
 	triggerOpen, 
 	onOpenChange,
 	initialTab = "dashboard",
-	hideTabs = false
+	hideTabs = false,
+	hideTrigger = false
 }: { 
 	triggerOpen?: boolean; 
 	onOpenChange?: (open: boolean) => void;
 	initialTab?: string;
 	hideTabs?: boolean;
+	hideTrigger?: boolean;
 }) {
 	const TABS: TabItem[] = [
 		{
@@ -265,22 +267,24 @@ export function MenuSidebar({
 	return (
 		<>
 			<Sheet onOpenChange={handleOpenChange} open={isOpen}>
-				<SheetTrigger>
-					<Button
-						className="relative shrink-0"
-						onClick={() => setIsOpen(true)}
-						size="icon"
-						variant="ghost"
-					>
-						<Menu className="h-5 w-5" />
-						{lowStockCount > 0 && (
-							<span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive font-bold text-[9px] text-destructive-foreground">
-								{lowStockCount > 9 ? "9+" : lowStockCount}
-							</span>
-						)}
-						<span className="sr-only">Menu Operasional</span>
-					</Button>
-				</SheetTrigger>
+				{!hideTrigger && (
+					<SheetTrigger>
+						<Button
+							className="relative shrink-0"
+							onClick={() => setIsOpen(true)}
+							size="icon"
+							variant="ghost"
+						>
+							<Menu className="h-5 w-5" />
+							{lowStockCount > 0 && (
+								<span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive font-bold text-[9px] text-destructive-foreground">
+									{lowStockCount > 9 ? "9+" : lowStockCount}
+								</span>
+							)}
+							<span className="sr-only">Menu Operasional</span>
+						</Button>
+					</SheetTrigger>
+				)}
 				<SheetContent
 					className="flex w-full flex-col p-0 sm:max-w-[440px]"
 					side="right"
