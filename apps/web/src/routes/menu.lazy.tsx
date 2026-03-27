@@ -418,6 +418,33 @@ function MobileBottomBar({
 function CustomerInfoForm({ onSuccess }: { onSuccess?: () => void }) {
 	const { customerInfo, updateCustomerInfo } = useCart();
 
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (["ArrowDown", "ArrowUp"].includes(e.key)) {
+			const focusables = Array.from(
+				e.currentTarget.querySelectorAll('input, button:not([disabled])')
+			) as HTMLElement[];
+			const currentIndex = focusables.indexOf(document.activeElement as HTMLElement);
+			
+			if (currentIndex !== -1) {
+				e.preventDefault();
+				const nextIndex = e.key === "ArrowDown" 
+					? (currentIndex + 1) % focusables.length 
+					: (currentIndex - 1 + focusables.length) % focusables.length;
+				focusables[nextIndex].focus();
+			}
+		} else if (e.key === "Enter" && !e.shiftKey && !e.altKey) {
+			const active = document.activeElement;
+			if (active instanceof HTMLInputElement && active.placeholder.includes("Budi")) {
+				// If on Name, move to next (Order Type buttons)
+				const buttons = e.currentTarget.querySelectorAll('button');
+				if (buttons.length > 0) {
+					e.preventDefault();
+					(buttons[0] as HTMLElement).focus();
+				}
+			}
+		}
+	};
+
 	const handleSubmit = () => {
 		updateCustomerInfo({ isSubmitted: true });
 		if (onSuccess) {
@@ -426,7 +453,7 @@ function CustomerInfoForm({ onSuccess }: { onSuccess?: () => void }) {
 	};
 
 	return (
-		<div className="flex flex-col">
+		<div className="flex flex-col" onKeyDown={handleKeyDown}>
 			<div className="space-y-4">
 				<div className="space-y-1 border-b border-border pb-3">
 					<div className="flex items-center gap-2">
@@ -929,7 +956,7 @@ function MenuPage() {
 	const { selectedIndex, setSelectedIndex } = useKeyboardNavigation({
 		itemCount: filteredProducts?.length ?? 0,
 		gridColumns: gridCols,
-		enabled: customerInfo.isSubmitted && !isPaymentModalOpen && !isVoucherModalOpen && !isMenuSidebarOpen,
+		enabled: !isPaymentModalOpen && !isVoucherModalOpen && !isMenuSidebarOpen,
 		onSelect: (index) => {
 			const productElements = productGridRef.current?.children;
 			if (productElements && productElements[index]) {
@@ -1309,6 +1336,19 @@ function MenuPage() {
 					className="no-scrollbar flex gap-1.5 overflow-x-auto px-3 pb-1 scroll-smooth"
 					role="tablist"
 					style={{ WebkitOverflowScrolling: 'touch' }}
+					onKeyDown={(e) => {
+						if (["ArrowLeft", "ArrowRight"].includes(e.key)) {
+							const buttons = Array.from(e.currentTarget.querySelectorAll('button')) as HTMLElement[];
+							const curr = buttons.indexOf(document.activeElement as HTMLElement);
+							if (curr !== -1) {
+								e.preventDefault();
+								const nextIndex = e.key === "ArrowRight" 
+									? (curr + 1) % buttons.length 
+									: (curr - 1 + buttons.length) % buttons.length;
+								buttons[nextIndex].focus();
+							}
+						}
+					}}
 				>
 					<button
 						aria-label="Tampilkan semua kategori"

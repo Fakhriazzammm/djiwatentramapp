@@ -41,9 +41,16 @@ export function useKeyboardNavigation({
 			const isInput =
 				e.target instanceof HTMLInputElement ||
 				e.target instanceof HTMLTextAreaElement;
+			const isSingleLineInput = e.target instanceof HTMLInputElement && !["textarea", "range"].includes(e.target.type);
 
-			if (isInput && e.key !== "Escape" && e.key !== "Enter" && e.key !== "Tab") {
-				return;
+			if (isInput) {
+				// For single line inputs, allow Up/Down to fall through to navigation
+				// (usually used to move between form fields)
+				if (isSingleLineInput && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+					// Continue to switch
+				} else if (e.key !== "Escape" && e.key !== "Enter" && e.key !== "Tab") {
+					return;
+				}
 			}
 
 			if (itemCount === 0 && !["/", "Escape", "Enter"].includes(e.key)) return;
