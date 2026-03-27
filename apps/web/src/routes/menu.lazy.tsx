@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { MenuSidebar } from "@/components/pos/menu-sidebar";
 import { CartDrawer } from "@/components/pos/cart-drawer";
+import { CheckoutSidebar } from "@/components/pos/checkout-sidebar";
 import { PaymentConfirmationModal } from "@/components/pos/payment-modal";
 import { useMenuKeyboardNav, type FocusZone } from "@/hooks/use-menu-keyboard-nav";
 import { useCart } from "@/context/cart-context";
@@ -358,267 +359,275 @@ function MenuPage() {
 	};
 
 	return (
-		<div className="flex h-screen flex-col bg-background overflow-hidden">
-			{/* === HEADER === */}
-			<header
-				ref={headerRef}
-				className={cn(
-					"sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm shrink-0",
-					isZoneFocused("header") && "ring-2 ring-primary ring-inset"
-				)}
-			>
-				<div className="flex items-center gap-4 px-4 py-3">
-					{/* Logo & Store name */}
-					<div 
-						className={cn(
-							"flex items-center gap-2 min-w-0 flex-1 rounded-lg transition-all",
-							isZoneFocused("header") && focusedHeaderIndex === 0 && "ring-2 ring-primary ring-offset-4"
-						)}
-					>
-						{logoUrl ? (
-							<img
-								src={logoUrl}
-								alt={storeName}
-								className="h-9 w-9 shrink-0 rounded-lg object-contain"
-							/>
-						) : (
-							<div
-								className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-bold text-white text-sm"
-								style={{ background: themeColor ?? "var(--color-primary)" }}
-							>
-								<Coffee className="h-4 w-4" />
+		<div className="flex h-screen flex-row bg-background overflow-hidden">
+			{/* LEFT CONTENT: Menu Area */}
+			<div className="flex flex-1 flex-col overflow-hidden">
+				{/* === HEADER === */}
+				<header
+					ref={headerRef}
+					className={cn(
+						"sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm shrink-0",
+						isZoneFocused("header") && "ring-2 ring-primary ring-inset"
+					)}
+				>
+					<div className="flex items-center gap-4 px-4 py-3">
+						{/* Logo & Store name */}
+						<div 
+							className={cn(
+								"flex items-center gap-2 min-w-0 flex-1 rounded-lg transition-all",
+								isZoneFocused("header") && focusedHeaderIndex === 0 && "ring-2 ring-primary ring-offset-4"
+							)}
+						>
+							{logoUrl ? (
+								<img
+									src={logoUrl}
+									alt={storeName}
+									className="h-9 w-9 shrink-0 rounded-lg object-contain"
+								/>
+							) : (
+								<div
+									className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-bold text-white text-sm"
+									style={{ background: themeColor ?? "var(--color-primary)" }}
+								>
+									<Coffee className="h-4 w-4" />
+								</div>
+							)}
+							<div className="min-w-0">
+								<h1 className="truncate font-bold text-foreground text-base leading-tight">
+									{storeName}
+								</h1>
+								<p className="text-muted-foreground text-xs">POS Menu</p>
 							</div>
-						)}
-						<div className="min-w-0">
-							<h1 className="truncate font-bold text-foreground text-base leading-tight">
-								{storeName}
-							</h1>
-							<p className="text-muted-foreground text-xs">POS Menu</p>
+						</div>
+
+						{/* Navigation Buttons from Hamburger */}
+						<div className="flex items-center gap-1 overflow-x-auto scrollbar-none pb-1 -mb-1">
+							{sidebarMenuItems.map((item, index) => {
+								const Icon = item.icon;
+								const isFocused = isZoneFocused("header") && focusedHeaderIndex === index + 1;
+								const isActive = activeSidebarTab === item.id && isSidebarOpen;
+								
+								return (
+									<button
+										key={item.id}
+										onClick={() => handleOpenSidebar(item.id)}
+										className={cn(
+											"flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-1.5 transition-all shrink-0",
+											"hover:bg-muted active:scale-95",
+											isActive
+												? "bg-muted ring-2 ring-primary ring-inset text-primary"
+												: "text-muted-foreground hover:text-foreground",
+											isFocused && "bg-muted ring-2 ring-primary ring-inset"
+										)}
+									>
+										<Icon className="h-5 w-5" />
+										<span className="text-[10px] font-medium leading-none whitespace-nowrap">{item.label}</span>
+									</button>
+								);
+							})}
+						</div>
+
+						{/* Hidden MenuSidebar for control */}
+						<MenuSidebar 
+							hideTrigger
+							triggerOpen={isSidebarOpen} 
+							onOpenChange={setIsSidebarOpen} 
+							initialTab={activeSidebarTab}
+						/>
+					</div>
+
+					{/* Search Bar */}
+					<div className="px-4 pb-3">
+						<div className="relative flex items-center">
+							<Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
+							<Input
+								type="text"
+								placeholder="Cari produk... (tekan /)"
+								value={searchQuery}
+								onChange={(e) => setSearchQuery(e.target.value)}
+								onFocus={() => setIsSearchFocused(true)}
+								onBlur={() => setIsSearchFocused(false)}
+								className="pl-9 pr-9"
+							/>
+							{searchQuery && (
+								<button
+									type="button"
+									onClick={() => setSearchQuery("")}
+									className="absolute right-3 flex items-center justify-center"
+								>
+									<X className="h-4 w-4 text-muted-foreground" />
+								</button>
+							)}
 						</div>
 					</div>
 
-					{/* Navigation Buttons from Hamburger */}
-					<div className="flex items-center gap-1 overflow-x-auto scrollbar-none pb-1 -mb-1">
-						{sidebarMenuItems.map((item, index) => {
-							const Icon = item.icon;
-							const isFocused = isZoneFocused("header") && focusedHeaderIndex === index + 1;
-							const isActive = activeSidebarTab === item.id && isSidebarOpen;
-							
+					{/* Category Tabs */}
+					<div
+						ref={categoryScrollRef}
+						className={cn(
+							"flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-none",
+							isZoneFocused("categories") && "ring-2 ring-primary ring-inset rounded-lg mx-2"
+						)}
+					>
+						{categoryList.map((cat, index) => {
+							const isActive = activeCategoryId === cat._id || (cat._id === "all" && !activeCategoryId);
+							const isFocused = isZoneFocused("categories") && focusedCategoryIndex === index;
 							return (
 								<button
-									key={item.id}
-									onClick={() => handleOpenSidebar(item.id)}
+									key={cat._id}
+									type="button"
+									onClick={() => handleCategorySelect(index)}
 									className={cn(
-										"flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-1.5 transition-all shrink-0",
-										"hover:bg-muted active:scale-95",
+										"shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-all",
 										isActive
-											? "bg-muted ring-2 ring-primary ring-inset text-primary"
-											: "text-muted-foreground hover:text-foreground",
-										isFocused && "bg-muted ring-2 ring-primary ring-inset"
+											? "bg-primary text-primary-foreground shadow-sm"
+											: "bg-muted text-muted-foreground hover:bg-muted/80",
+										isFocused && "ring-2 ring-primary ring-offset-2"
 									)}
 								>
-									<Icon className="h-5 w-5" />
-									<span className="text-[10px] font-medium leading-none whitespace-nowrap">{item.label}</span>
+									{cat.name}
 								</button>
 							);
 						})}
 					</div>
+				</header>
 
-					{/* Hidden MenuSidebar for control */}
-					<MenuSidebar 
-						hideTrigger
-						triggerOpen={isSidebarOpen} 
-						onOpenChange={setIsSidebarOpen} 
-						initialTab={activeSidebarTab}
-					/>
-				</div>
+				{/* === PRODUCT GRID === */}
+				<main className="flex-1 overflow-y-auto pb-24">
+					<div
+						ref={productGridRef}
+						className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 p-3"
+					>
+						{isLoading ? (
+							// Loading skeletons
+							Array.from({ length: 8 }).map((_, i) => (
+								<div
+									key={i}
+									className="animate-pulse rounded-2xl bg-muted h-52"
+								/>
+							))
+						) : filteredProducts?.length === 0 ? (
+							// Empty state
+							<div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
+								<ShoppingBag className="mb-3 h-12 w-12 text-muted-foreground/30" />
+								<p className="font-medium text-muted-foreground">
+									{searchQuery ? "Produk tidak ditemukan" : "Menu kosong"}
+								</p>
+								<p className="text-muted-foreground/60 text-sm">
+									{searchQuery
+										? "Coba kata kunci lain"
+										: "Belum ada produk tersedia"}
+								</p>
+							</div>
+						) : (
+							// Product cards
+							filteredProducts?.map((product, index) => {
+								const pricing = calculateEffectivePrice(
+									{
+										_id: product._id,
+										price: product.price,
+										categoryId: product.categoryId,
+									},
+									activeDiscounts
+								);
+								const cartQty = getCartQty(product._id);
+								const isFocused = isZoneFocused("products") && focusedIndex === index;
 
-				{/* Search Bar */}
-				<div className="px-4 pb-3">
-					<div className="relative flex items-center">
-						<Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
-						<Input
-							type="text"
-							placeholder="Cari produk... (tekan /)"
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-							onFocus={() => setIsSearchFocused(true)}
-							onBlur={() => setIsSearchFocused(false)}
-							className="pl-9 pr-9"
-						/>
-						{searchQuery && (
-							<button
-								type="button"
-								onClick={() => setSearchQuery("")}
-								className="absolute right-3 flex items-center justify-center"
-							>
-								<X className="h-4 w-4 text-muted-foreground" />
-							</button>
-						)}
-					</div>
-				</div>
-
-				{/* Category Tabs */}
-				<div
-					ref={categoryScrollRef}
-					className={cn(
-						"flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-none",
-						isZoneFocused("categories") && "ring-2 ring-primary ring-inset rounded-lg mx-2"
-					)}
-				>
-					{categoryList.map((cat, index) => {
-						const isActive = activeCategoryId === cat._id || (cat._id === "all" && !activeCategoryId);
-						const isFocused = isZoneFocused("categories") && focusedCategoryIndex === index;
-						return (
-							<button
-								key={cat._id}
-								type="button"
-								onClick={() => handleCategorySelect(index)}
-								className={cn(
-									"shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-all",
-									isActive
-										? "bg-primary text-primary-foreground shadow-sm"
-										: "bg-muted text-muted-foreground hover:bg-muted/80",
-									isFocused && "ring-2 ring-primary ring-offset-2"
-								)}
-							>
-								{cat.name}
-							</button>
-						);
-					})}
-				</div>
-			</header>
-
-			{/* === PRODUCT GRID === */}
-			<main className="flex-1 overflow-y-auto pb-24">
-				<div
-					ref={productGridRef}
-					className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-3"
-				>
-					{isLoading ? (
-						// Loading skeletons
-						Array.from({ length: 8 }).map((_, i) => (
-							<div
-								key={i}
-								className="animate-pulse rounded-2xl bg-muted h-52"
-							/>
-						))
-					) : filteredProducts?.length === 0 ? (
-						// Empty state
-						<div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
-							<ShoppingBag className="mb-3 h-12 w-12 text-muted-foreground/30" />
-							<p className="font-medium text-muted-foreground">
-								{searchQuery ? "Produk tidak ditemukan" : "Menu kosong"}
-							</p>
-							<p className="text-muted-foreground/60 text-sm">
-								{searchQuery
-									? "Coba kata kunci lain"
-									: "Belum ada produk tersedia"}
-							</p>
-						</div>
-					) : (
-						// Product cards
-						filteredProducts?.map((product, index) => {
-							const pricing = calculateEffectivePrice(
-								{
-									_id: product._id,
-									price: product.price,
-									categoryId: product.categoryId,
-								},
-								activeDiscounts
-							);
-							const cartQty = getCartQty(product._id);
-							const isFocused = isZoneFocused("products") && focusedIndex === index;
-
-							return (
-								<button
-									key={product._id}
-									data-product-index={index}
-									type="button"
-									onClick={() => handleProductClick(product)}
-									className={cn(
-										"group relative flex flex-col overflow-hidden rounded-2xl border bg-card shadow-sm text-left",
-										"transition-all active:scale-[0.97]",
-										isFocused && "ring-2 ring-primary ring-offset-2 shadow-lg"
-									)}
-								>
-									{/* Image */}
-									<div className="relative h-36 w-full bg-muted">
-										{product.image ? (
-											<img
-												src={product.image}
-												alt={product.name}
-												className="h-full w-full object-cover"
-												loading="lazy"
-											/>
-										) : (
-											<div className="flex h-full items-center justify-center">
-												<ShoppingBag className="h-10 w-10 text-muted-foreground/25" />
-											</div>
+								return (
+									<button
+										key={product._id}
+										data-product-index={index}
+										type="button"
+										onClick={() => handleProductClick(product)}
+										className={cn(
+											"group relative flex flex-col overflow-hidden rounded-2xl border bg-card shadow-sm text-left",
+											"transition-all active:scale-[0.97]",
+											isFocused && "ring-2 ring-primary ring-offset-2 shadow-lg"
 										)}
+									>
+										{/* Image */}
+										<div className="relative h-36 w-full bg-muted">
+											{product.image ? (
+												<img
+													src={product.image}
+													alt={product.name}
+													className="h-full w-full object-cover"
+													loading="lazy"
+												/>
+											) : (
+												<div className="flex h-full items-center justify-center">
+													<ShoppingBag className="h-10 w-10 text-muted-foreground/25" />
+												</div>
+											)}
 
-										{/* Promo badge */}
-										{pricing.isPromo && (
-											<span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-0.5 font-bold text-white text-[10px] shadow">
-												PROMO
-											</span>
-										)}
+											{/* Promo badge */}
+											{pricing.isPromo && (
+												<span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-0.5 font-bold text-white text-[10px] shadow">
+													PROMO
+												</span>
+											)}
 
-										{/* Cart quantity badge */}
-										{cartQty > 0 && (
-											<span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary font-bold text-[11px] text-primary-foreground shadow">
-												{cartQty}
-											</span>
-										)}
+											{/* Cart quantity badge */}
+											{cartQty > 0 && (
+												<span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary font-bold text-[11px] text-primary-foreground shadow">
+													{cartQty}
+												</span>
+											)}
 
-										{/* Keyboard focus indicator */}
-										{isFocused && (
-											<div className="absolute inset-0 border-2 border-primary rounded-t-2xl pointer-events-none" />
-										)}
-									</div>
+											{/* Keyboard focus indicator */}
+											{isFocused && (
+												<div className="absolute inset-0 border-2 border-primary rounded-t-2xl pointer-events-none" />
+											)}
+										</div>
 
-									{/* Info */}
-									<div className="flex flex-1 flex-col justify-between p-2.5">
-										{product.menuNumber != null && (
-											<span className="mb-1 inline-block rounded-md bg-muted px-1.5 py-0.5 font-bold text-[10px] text-muted-foreground leading-none">
-												#{product.menuNumber}
-											</span>
-										)}
-										<p className="line-clamp-2 font-semibold text-foreground text-sm leading-tight">
-											{product.name}
-										</p>
-										<div className="mt-1.5 flex items-end justify-between gap-1">
-											<div>
-												{pricing.isPromo && (
-													<p className="text-muted-foreground text-xs line-through leading-none">
-														{fmt(pricing.originalPrice)}
+										{/* Info */}
+										<div className="flex flex-1 flex-col justify-between p-2.5">
+											{product.menuNumber != null && (
+												<span className="mb-1 inline-block rounded-md bg-muted px-1.5 py-0.5 font-bold text-[10px] text-muted-foreground leading-none">
+													#{product.menuNumber}
+												</span>
+											)}
+											<p className="line-clamp-2 font-semibold text-foreground text-sm leading-tight">
+												{product.name}
+											</p>
+											<div className="mt-1.5 flex items-end justify-between gap-1">
+												<div>
+													{pricing.isPromo && (
+														<p className="text-muted-foreground text-xs line-through leading-none">
+															{fmt(pricing.originalPrice)}
+														</p>
+													)}
+													<p
+														className="font-bold text-sm"
+														style={{ color: themeColor ?? "var(--color-primary)" }}
+													>
+														{fmt(pricing.finalPrice)}
 													</p>
-												)}
-												<p
-													className="font-bold text-sm"
-													style={{ color: themeColor ?? "var(--color-primary)" }}
+												</div>
+												<div
+													className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white shadow-sm"
+													style={{ background: themeColor ?? "var(--color-primary)" }}
 												>
-													{fmt(pricing.finalPrice)}
-												</p>
-											</div>
-											<div
-												className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white shadow-sm"
-												style={{ background: themeColor ?? "var(--color-primary)" }}
-											>
-												<Plus className="h-4 w-4" />
+													<Plus className="h-4 w-4" />
+												</div>
 											</div>
 										</div>
-									</div>
-								</button>
-							);
-						})
-					)}
-				</div>
-			</main>
+									</button>
+								);
+							})
+						)}
+					</div>
+				</main>
+			</div>
 
-			{/* === CART BUTTON (Floating) === */}
+			{/* RIGHT CONTENT: Checkout Sidebar (Desktop/Tablet) */}
+			<div className="hidden md:block w-[320px] lg:w-[380px] shrink-0 overflow-hidden">
+				<CheckoutSidebar onCheckout={() => setIsPaymentOpen(true)} />
+			</div>
+
+			{/* === CART BUTTON (Floating Mobile) === */}
 			{totalItems > 0 && (
-				<div className="fixed bottom-4 left-4 right-4 z-20 px-3">
+				<div className="fixed bottom-4 left-4 right-4 z-20 px-3 md:hidden">
 					<button
 						type="button"
 						onClick={() => setIsCartOpen(true)}
