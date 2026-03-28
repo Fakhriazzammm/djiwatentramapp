@@ -229,6 +229,8 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 		}
 	};
 
+	const shiftStatus = useQuery(api.finance.getShiftStatus);
+
 	const handlePrintOrder = async (order: Doc<"orders">) => {
 		if (!bluetoothPrinter.isConnected()) {
 			toast.error("Printer tidak terhubung. Silakan hubungkan di Pengaturan.");
@@ -261,6 +263,8 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 					orderType: order.orderType,
 					tableNumber: order.tableNumber,
 					notes: order.notes,
+					cashierName: shiftStatus?.shiftInfo?.cashierName || undefined,
+					shiftName: shiftStatus?.shiftInfo?.shiftName || undefined,
 				},
 				{
 					storeName: siteSettings.storeName,

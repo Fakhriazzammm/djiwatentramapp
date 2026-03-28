@@ -38,6 +38,7 @@ const DEFAULTS = {
 	receiptShowPhone: true,
 	receiptShowOrderNumber: true,
 	receiptShowCustomerName: true,
+	receiptShowCashierName: true,
 	receiptShowNotes: true,
 	receiptFontSize: "normal",
 };
@@ -104,6 +105,7 @@ export const getSettings = query({
 			receiptShowPhone: settings.receiptShowPhone ?? DEFAULTS.receiptShowPhone,
 			receiptShowOrderNumber: settings.receiptShowOrderNumber ?? DEFAULTS.receiptShowOrderNumber,
 			receiptShowCustomerName: settings.receiptShowCustomerName ?? DEFAULTS.receiptShowCustomerName,
+			receiptShowCashierName: settings.receiptShowCashierName ?? DEFAULTS.receiptShowCashierName,
 			receiptShowNotes: settings.receiptShowNotes ?? DEFAULTS.receiptShowNotes,
 			receiptFontSize: settings.receiptFontSize ?? DEFAULTS.receiptFontSize,
 		};
@@ -153,6 +155,7 @@ export const updateSettings = mutation({
 		receiptShowPhone: v.optional(v.boolean()),
 		receiptShowOrderNumber: v.optional(v.boolean()),
 		receiptShowCustomerName: v.optional(v.boolean()),
+		receiptShowCashierName: v.optional(v.boolean()),
 		receiptShowNotes: v.optional(v.boolean()),
 		receiptFontSize: v.optional(v.string()),
 	},

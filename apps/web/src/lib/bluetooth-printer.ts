@@ -21,6 +21,7 @@ export interface ReceiptSettings {
 	receiptShowOrderNumber?: boolean;
 	receiptShowCustomerName?: boolean;
 	receiptShowNotes?: boolean;
+	receiptShowCashierName?: boolean;
 	receiptFontSize?: string;
 	tableNumber?: string;
 	orderType?: string;
@@ -203,6 +204,8 @@ export class BluetoothPrinterService {
 			serviceChargeAmount?: number;
 			cashReceived?: number;
 			changeAmount?: number;
+			cashierName?: string;
+			shiftName?: string;
 		},
 		settings: ReceiptSettings
 	) {
@@ -259,13 +262,18 @@ export class BluetoothPrinterService {
 		const dateStr = new Date(order.createdAt).toLocaleString("id-ID", {
 			day: "2-digit",
 			month: "2-digit",
-			year: "2-digit",
+			year: "numeric",
 			hour: "2-digit",
 			minute: "2-digit"
 		});
 		
 		result.line(`TGL: ${dateStr}`);
 		result.line(`METODE: ${order.paymentMethod.toUpperCase()}`);
+
+		// Shift Info & Cashier (if available and settings allow)
+		if (order.cashierName && (settings.receiptShowCashierName !== false)) {
+			result.line(`KASIR: ${order.cashierName.toUpperCase()}`);
+		}
 
 		// Order Type & Table
 		const orderType = order.orderType || settings.orderType;
@@ -296,11 +304,29 @@ export class BluetoothPrinterService {
 			const priceStr = new Intl.NumberFormat("id-ID").format(item.price * item.quantity);
 			
 			// Compact multi-line for items
-			result.bold(true).line(item.name.toUpperCase()).bold(false);
+			// We ensure item name does not exceed 32 characters to prevent weird wrapping
+			const maxNameLength = 32;
+			let itemName = item.name.toUpperCase();
+			if (itemName.length > maxNameLength) {
+				itemName = itemName.substring(0, maxNameLength);
+			}
+			result.bold(true).line(itemName).bold(false);
 			
 			// Details line: "1x @15.000             15.000"
 			const unitPrice = `@${new Intl.NumberFormat("id-ID").format(item.price)}`;
-			const detailsLine = `${qtyStr} ${unitPrice.padEnd(10)} ${priceStr.padStart(15)}`;
+			
+			// To ensure it perfectly fits 32 chars:
+			// "4x  " (4 chars) + "@15.000   " (10 chars) + "         15.000" (18 chars) = 32
+			const leftPart = `${qtyStr} ${unitPrice}`;
+			let safeLeftPart = leftPart;
+			
+			// Truncate left part if it's too long
+			if (safeLeftPart.length + priceStr.length + 1 > 32) {
+				safeLeftPart = safeLeftPart.substring(0, 32 - priceStr.length - 1);
+			}
+			
+			const spaces = 32 - safeLeftPart.length - priceStr.length;
+			const detailsLine = safeLeftPart + " ".repeat(Math.max(1, spaces)) + priceStr;
 			result.line(detailsLine);
 		}
 
@@ -308,9 +334,20 @@ export class BluetoothPrinterService {
 
 		// Breakdown (Subtotal, Discount, Tax, etc.)
 		const formatCurrency = (val: number) => new Intl.NumberFormat("id-ID").format(val);
+		
+		// Utility function to pad label and value so they fit in exactly 32 chars
+		// If label is too long, it will be truncated.
 		const padLabel = (label: string, val: string) => {
-			const spaces = 32 - label.length - val.length;
-			return label + " ".repeat(Math.max(1, spaces)) + val;
+			const MAX_WIDTH = 32;
+			let safeLabel = label;
+			
+			// If total length exceeds MAX_WIDTH, we must truncate the label
+			if (label.length + val.length + 1 > MAX_WIDTH) {
+				safeLabel = label.substring(0, MAX_WIDTH - val.length - 1);
+			}
+			
+			const spaces = MAX_WIDTH - safeLabel.length - val.length;
+			return safeLabel + " ".repeat(Math.max(1, spaces)) + val;
 		};
 
 		if (order.subtotal !== undefined) {

@@ -82,6 +82,7 @@ function SettingsPage() {
 		receiptShowPhone: true,
 		receiptShowOrderNumber: true,
 		receiptShowCustomerName: true,
+		receiptShowCashierName: true,
 		receiptShowNotes: true,
 		receiptFontSize: "normal",
 	});
@@ -173,6 +174,7 @@ function SettingsPage() {
 				receiptShowPhone: siteSettings.receiptShowPhone ?? true,
 				receiptShowOrderNumber: siteSettings.receiptShowOrderNumber ?? true,
 				receiptShowCustomerName: siteSettings.receiptShowCustomerName ?? true,
+				receiptShowCashierName: siteSettings.receiptShowCashierName ?? true,
 				receiptShowNotes: siteSettings.receiptShowNotes ?? true,
 				receiptFontSize: siteSettings.receiptFontSize ?? "normal",
 			}));
@@ -1576,6 +1578,20 @@ function SettingsPage() {
 													type="button"
 												>
 													<div className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowCustomerName ? "right-1" : "left-1"}`} />
+												</button>
+											</div>
+
+											{/* Show Cashier & Shift Info */}
+											<div 
+												className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-4 shadow-sm cursor-pointer active:bg-muted/30 transition-colors"
+												onClick={() => setSettings({ ...settings, receiptShowCashierName: !settings.receiptShowCashierName })}
+											>
+												<span className="font-bold text-foreground text-sm uppercase tracking-tight">Info Kasir & Shift</span>
+												<button
+													className={`relative h-7 w-12 rounded-full transition-all duration-300 ${settings.receiptShowCashierName ? "bg-primary" : "bg-muted-foreground/20"}`}
+													type="button"
+												>
+													<div className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.receiptShowCashierName ? "right-1" : "left-1"}`} />
 												</button>
 											</div>
 

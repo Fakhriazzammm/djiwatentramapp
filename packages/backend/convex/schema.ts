@@ -167,6 +167,7 @@ export default defineSchema({
 		receiptShowPhone: v.optional(v.boolean()),
 		receiptShowOrderNumber: v.optional(v.boolean()),
 		receiptShowCustomerName: v.optional(v.boolean()),
+		receiptShowCashierName: v.optional(v.boolean()),
 		receiptShowNotes: v.optional(v.boolean()),
 		receiptFontSize: v.optional(v.string()),
 	}),
