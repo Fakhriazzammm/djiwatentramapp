@@ -80,7 +80,9 @@ export function CheckoutSidebar({
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
-	const [activeStep, setActiveStep] = useState<"customer" | "menu" | "payment">(initialStep);
+	const [activeStep, setActiveStep] = useState<"customer" | "menu" | "payment">(
+		initialStep || (customerInfo.isSubmitted ? "menu" : "customer")
+	);
 	
 	// Payment State
 	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("tunai");
@@ -111,10 +113,10 @@ export function CheckoutSidebar({
 
 	// Reset to step 1 when cart is cleared (after successful payment)
 	useEffect(() => {
-		if (items.length === 0 && activeStep !== "customer") {
+		if (items.length === 0 && !customerInfo.isSubmitted && activeStep !== "customer") {
 			setActiveStep("customer");
 		}
-	}, [items.length, activeStep]);
+	}, [items.length, activeStep, customerInfo.isSubmitted]);
 
 	// Calculate Change
 	useEffect(() => {
@@ -349,7 +351,14 @@ export function CheckoutSidebar({
 							
 							<div className="pt-4">
 								<Button 
-									onClick={() => setActiveStep("menu")}
+									onClick={() => {
+										updateCustomerInfo({ isSubmitted: true });
+										if (items.length === 0 && onClose) {
+											onClose();
+										} else {
+											setActiveStep("menu");
+										}
+									}}
 									className="w-full h-11 text-xs font-bold shadow-md"
 								>
 									Lanjut Pilih Menu <ChevronRight className="ml-2 h-4 w-4" />

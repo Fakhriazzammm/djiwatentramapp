@@ -125,10 +125,10 @@ export function MenuSidebar({
 	}, [triggerOpen]);
 
 	useEffect(() => {
-		if (initialTab) {
+		if (initialTab && isOpen) {
 			setActiveTab(initialTab);
 		}
-	}, [initialTab]);
+	}, [initialTab, isOpen]);
 
 	const handleOpenChange = (open: boolean) => {
 		setIsOpen(open);
@@ -1079,7 +1079,7 @@ function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) =
 					<SelectTrigger className="h-8 text-xs flex-1">
 						<SelectValue placeholder="Pilih Waktu" />
 					</SelectTrigger>
-					<SelectContent>
+					<SelectContent className="z-[9999]">
 						<SelectItem value="today">Hari Ini</SelectItem>
 						<SelectItem value="yesterday">Kemarin</SelectItem>
 						<SelectItem value="this_week">Minggu Ini</SelectItem>
@@ -1093,7 +1093,7 @@ function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) =
 					<SelectTrigger className="h-8 text-xs w-[120px]">
 						<SelectValue placeholder="Urutkan" />
 					</SelectTrigger>
-					<SelectContent>
+					<SelectContent className="z-[9999]">
 						<SelectItem value="desc">Terbaru</SelectItem>
 						<SelectItem value="asc">Terlama</SelectItem>
 					</SelectContent>

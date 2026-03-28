@@ -36,7 +36,6 @@ export function CartDrawer({
 							onConfirmPayment={onConfirmPayment}
 							isSubmitting={isSubmitting}
 							onClose={onClose}
-							initialStep="menu"
 						/>
 					</motion.div>
 				</>

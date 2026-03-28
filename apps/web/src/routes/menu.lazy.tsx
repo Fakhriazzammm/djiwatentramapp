@@ -101,6 +101,15 @@ function MenuPage() {
 		return () => window.removeEventListener("resize", updateColumns);
 	}, []);
 
+	// Auto-open customer info step on mobile if not submitted
+	useEffect(() => {
+		if (typeof window !== "undefined" && window.innerWidth < 768) {
+			if (!customerInfo.isSubmitted && cartItems.length === 0) {
+				setIsCartOpen(true);
+			}
+		}
+	}, [customerInfo.isSubmitted, cartItems.length]);
+
 	// Refs for scrolling
 	const categoryScrollRef = useRef<HTMLDivElement>(null);
 	const productGridRef = useRef<HTMLDivElement>(null);
@@ -472,7 +481,10 @@ function MenuPage() {
 								return (
 									<button
 										key={item.id}
-										onClick={() => handleOpenSidebar(item.id)}
+										onClick={() => {
+											setActiveSidebarTab(item.id);
+											setIsSidebarOpen(true);
+										}}
 										className={cn(
 											"flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-1.5 transition-all shrink-0 min-w-[4rem]",
 											"hover:bg-muted active:scale-95",
@@ -481,6 +493,7 @@ function MenuPage() {
 												: "text-muted-foreground hover:text-foreground",
 											isFocused && "bg-muted ring-2 ring-primary ring-inset"
 										)}
+										type="button"
 									>
 										<Icon className="h-4 w-4 sm:h-5 sm:w-5" />
 										<span className="text-[9px] sm:text-[10px] font-medium leading-none whitespace-nowrap">{item.label}</span>
@@ -694,7 +707,7 @@ function MenuPage() {
 			</div>
 
 			{/* === CART BUTTON (Floating Mobile) === */}
-			{totalItems > 0 && (
+			{(totalItems > 0 || !customerInfo.isSubmitted) && (
 				<div className="fixed bottom-4 left-4 right-4 z-20 px-3 md:hidden">
 					<button
 						type="button"
@@ -706,13 +719,21 @@ function MenuPage() {
 						)}
 						style={{ background: themeColor ?? "var(--color-primary)" }}
 					>
-						<div className="flex items-center gap-2.5">
-							<span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/25 text-sm">
-								{totalItems}
-							</span>
-							<span className="text-sm">Lihat Keranjang</span>
-						</div>
-						<span className="text-base">{fmt(finalTotal)}</span>
+						{totalItems > 0 ? (
+							<>
+								<div className="flex items-center gap-2.5">
+									<span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/25 text-sm">
+										{totalItems}
+									</span>
+									<span className="text-sm">Lihat Keranjang</span>
+								</div>
+								<span className="text-base">{fmt(finalTotal)}</span>
+							</>
+						) : (
+							<div className="flex w-full items-center justify-center gap-2">
+								<span className="text-sm">Mulai Pesanan</span>
+							</div>
+						)}
 					</button>
 				</div>
 			)}
