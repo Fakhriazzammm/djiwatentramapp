@@ -19,7 +19,8 @@ import {
 	Zap,
 	Tag,
 	Coffee,
-	X
+	X,
+	Printer
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import { useQuery } from "convex/react";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { isDiscountApplicable } from "@/lib/utils/pricing";
 import type { Doc } from "@yumipos/backend/convex/_generated/dataModel";
+import { bluetoothPrinter } from "@/lib/bluetooth-printer";
 
 export function CheckoutSidebar({ 
 	onConfirmPayment,
@@ -87,12 +89,25 @@ export function CheckoutSidebar({
 	const [autoComplete, setAutoComplete] = useState(false);
 	const [selectedDiscountId, setSelectedDiscountId] = useState<string | null>(appliedVoucher?._id || null);
 
+	// Printer State
+	const [isPrinterConnected, setIsPrinterConnected] = useState(bluetoothPrinter.isConnected());
+	const [currentTime, setCurrentTime] = useState(new Date());
+
 	const fmt = (n: number) =>
 		new Intl.NumberFormat("id-ID", {
 			style: "currency",
 			currency: "IDR",
 			maximumFractionDigits: 0,
 		}).format(n);
+
+	// Periodically check printer connection and update time
+	useEffect(() => {
+		const interval = setInterval(() => {
+			setIsPrinterConnected(bluetoothPrinter.isConnected());
+			setCurrentTime(new Date());
+		}, 3000);
+		return () => clearInterval(interval);
+	}, []);
 
 	// Reset to step 1 when cart is cleared (after successful payment)
 	useEffect(() => {
@@ -179,8 +194,42 @@ export function CheckoutSidebar({
 
 	return (
 		<div className="flex h-full flex-col border-l border-border bg-[#f8f9fa] dark:bg-background shadow-sm relative">
+			{/* Shift & Printer Status Header */}
+			<div className="flex flex-col border-b border-border bg-muted/50 px-3 py-2 text-[10px] font-medium gap-1.5 shadow-sm z-10">
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-1.5 text-muted-foreground">
+						<span className={cn("flex h-2 w-2 rounded-full", isShiftOpen ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]")} />
+						<span>{isShiftOpen ? "Shift Aktif" : "Shift Tutup"}</span>
+						{isShiftOpen && shiftStatus?.latestMulai ? (
+							<>
+								<span className="opacity-50">•</span>
+								<span className="font-mono">{currentTime.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+							</>
+						) : null}
+					</div>
+					<div className={cn("flex items-center gap-1", isPrinterConnected ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")}>
+						<Printer className="h-3 w-3" />
+						<span className="text-[9px] uppercase tracking-wider font-bold">
+							{isPrinterConnected ? "Printer ON" : "Printer OFF"}
+						</span>
+					</div>
+				</div>
+				{isShiftOpen && shiftStatus?.shiftInfo?.cashierName && (
+					<div className="flex items-center gap-1 text-muted-foreground text-[9px] ml-3.5">
+						<User className="h-2.5 w-2.5" />
+						<span>{shiftStatus.shiftInfo.cashierName}</span>
+						{shiftStatus.shiftInfo.shiftName && (
+							<>
+								<span className="opacity-50">•</span>
+								<span>{shiftStatus.shiftInfo.shiftName}</span>
+							</>
+						)}
+					</div>
+				)}
+			</div>
+
 			{/* Progress Header */}
-			<div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
+			<div className="flex items-center justify-between border-b border-border bg-background px-4 py-3">
 				<div className="flex items-center gap-1.5 flex-1">
 					<div className="flex items-center gap-2">
 						<div className={cn(

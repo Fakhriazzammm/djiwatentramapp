@@ -383,11 +383,24 @@ export const getShiftStatus = query({
 		// Find latest shift related transactions today
 		let latestMulai = 0;
 		let latestAkhir = 0;
+		let shiftInfo = null;
 
 		for (const t of transactions) {
 			if (t.status === "completed") {
 				if (t.category === "Modal Awal" && t.date > latestMulai) {
 					latestMulai = t.date;
+					// Parse description to extract cashier and shift name if available
+					// Format is "Kasir: Name | Shift: Shift Name | Tim: Members"
+					if (t.description) {
+						const parts = t.description.split(" | ");
+						const cashierPart = parts.find(p => p.startsWith("Kasir: "));
+						const shiftPart = parts.find(p => p.startsWith("Shift: "));
+						
+						shiftInfo = {
+							cashierName: cashierPart ? cashierPart.replace("Kasir: ", "") : null,
+							shiftName: shiftPart ? shiftPart.replace("Shift: ", "") : null,
+						};
+					}
 				}
 				if (t.category === "Setoran Akhir" && t.date > latestAkhir) {
 					latestAkhir = t.date;
@@ -402,7 +415,8 @@ export const getShiftStatus = query({
 		return {
 			isOpen,
 			latestMulai,
-			latestAkhir
+			latestAkhir,
+			shiftInfo: isOpen ? shiftInfo : null
 		};
 	},
 });

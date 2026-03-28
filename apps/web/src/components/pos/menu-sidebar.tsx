@@ -1303,6 +1303,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [amount, setAmount] = useState("");
 	const [cashInRegister, setCashInRegister] = useState("");
 	const [notes, setNotes] = useState("");
+	const [cashierName, setCashierName] = useState("");
+	const [shiftName, setShiftName] = useState("Shift Pagi");
+	const [teamMembers, setTeamMembers] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const today = new Date();
@@ -1314,17 +1317,31 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!amount) {
-			toast.error("Masukkan jumlah modal");
+			toast.error("Masukkan jumlah uang");
+			return;
+		}
+
+		if (shiftType === "mulai" && !cashierName) {
+			toast.error("Nama kasir wajib diisi");
 			return;
 		}
 
 		setIsSubmitting(true);
 		try {
+			const descParts = [];
+			if (cashierName) descParts.push(`Kasir: ${cashierName}`);
+			if (shiftName) descParts.push(`Shift: ${shiftName}`);
+			if (teamMembers) descParts.push(`Tim: ${teamMembers}`);
+			if (notes) descParts.push(`Catatan: ${notes}`);
+			if (shiftType === "akhiri" && cashInRegister) descParts.push(`Fisik Laci: Rp ${new Intl.NumberFormat("id-ID").format(Number(cashInRegister))}`);
+
+			const finalDescription = descParts.length > 0 ? descParts.join(" | ") : (shiftType === "mulai" ? "Mulai Shift" : "Akhiri Shift");
+
 			await createTransaction({
 				type: "income",
 				amount: Number(amount),
 				category: shiftType === "mulai" ? "Modal Awal" : "Setoran Akhir",
-				description: `${shiftType === "mulai" ? "Mulai Shift" : "Akhiri Shift"} - ${notes || "Tanpa catatan"}`,
+				description: finalDescription,
 				date: Date.now(),
 				status: "completed",
 				paymentMethod: "tunai",
@@ -1333,6 +1350,8 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			setAmount("");
 			setCashInRegister("");
 			setNotes("");
+			setCashierName("");
+			setTeamMembers("");
 			onClose();
 		} catch (error) {
 			console.error(error);
@@ -1377,12 +1396,50 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			</div>
 
 			<form className="space-y-4" onSubmit={handleSubmit}>
+				{shiftType === "mulai" && (
+					<>
+						<div className="grid grid-cols-2 gap-3">
+							<div className="space-y-2">
+								<Label>Nama Kasir <span className="text-destructive">*</span></Label>
+								<Input
+									placeholder="Contoh: Budi"
+									value={cashierName}
+									onChange={(e) => setCashierName(e.target.value)}
+									required
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label>Shift</Label>
+								<Select value={shiftName} onValueChange={(v) => setShiftName(v || "Shift Pagi")}>
+									<SelectTrigger>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="Shift Pagi">Pagi</SelectItem>
+										<SelectItem value="Shift Siang">Siang</SelectItem>
+										<SelectItem value="Shift Malam">Malam</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+						</div>
+						<div className="space-y-2">
+							<Label>Tim yang Bertugas (Opsional)</Label>
+							<Input
+								placeholder="Contoh: Andi (Barista), Siska (Waiter)"
+								value={teamMembers}
+								onChange={(e) => setTeamMembers(e.target.value)}
+							/>
+							<p className="text-[10px] text-muted-foreground">Catat nama rekan tim lain yang bekerja di shift ini.</p>
+						</div>
+					</>
+				)}
+
 				<div className="space-y-2">
 					<Label>
-						{shiftType === "mulai" ? "Modal Awal (Rp)" : "Setoran (Rp)"}
+						{shiftType === "mulai" ? "Modal Kembalian (Rp)" : "Setoran Bersih (Rp)"}
 					</Label>
 					<Input
-						className="text-lg"
+						className="text-lg font-bold"
 						min={0}
 						onChange={(e) => setAmount(e.target.value)}
 						placeholder="0"
@@ -1394,15 +1451,16 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 
 				{shiftType === "akhiri" && (
 					<div className="space-y-2">
-						<Label>Uang di Kasir (Rp)</Label>
+						<Label>Uang Fisik di Laci (Rp)</Label>
 						<Input
-							className="text-lg"
+							className="text-lg font-bold"
 							min={0}
 							onChange={(e) => setCashInRegister(e.target.value)}
 							placeholder="0"
 							type="number"
 							value={cashInRegister}
 						/>
+						<p className="text-[10px] text-muted-foreground">Hitung seluruh uang fisik di laci kasir saat ini.</p>
 					</div>
 				)}
 
@@ -1410,7 +1468,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					<Label>Catatan (Opsional)</Label>
 					<Textarea
 						onChange={(e) => setNotes(e.target.value)}
-						placeholder="Nama kasir, catatan tambahan..."
+						placeholder={shiftType === "mulai" ? "Catatan tambahan..." : "Contoh: Ada selisih uang, mati lampu, dll"}
 						value={notes}
 					/>
 				</div>
