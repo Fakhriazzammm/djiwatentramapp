@@ -1,4 +1,5 @@
 import { useCart } from "@/context/cart-context";
+import { toast } from "sonner";
 import { 
 	User, 
 	Table, 
@@ -74,6 +75,8 @@ export function CheckoutSidebar({
 
 	const siteSettings = useQuery(api.site_settings.getSettings);
 	const allActiveDiscounts = useQuery(api.discounts.getActiveDiscounts);
+	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
 	const [activeStep, setActiveStep] = useState<"customer" | "menu" | "payment">(initialStep);
 	
@@ -442,6 +445,10 @@ export function CheckoutSidebar({
 								</Button>
 								<Button 
 									onClick={() => {
+										if (!isShiftOpen) {
+											toast.error("Buka shift terlebih dahulu di Dashboard");
+											return;
+										}
 										if (onConfirmPayment) {
 											onConfirmPayment(
 												finalTotal,
@@ -455,15 +462,21 @@ export function CheckoutSidebar({
 											);
 										}
 									}}
-									disabled={items.length === 0 || isSubmitting}
+									disabled={items.length === 0 || isSubmitting || !isShiftOpen}
 									className="flex-1 h-12 text-[11px] sm:text-xs font-bold bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm"
 									variant="secondary"
 								>
 									{isSubmitting ? "Menyimpan..." : "Simpan Pesanan"}
 								</Button>
 								<Button 
-									onClick={() => setActiveStep("payment")}
-									disabled={items.length === 0}
+									onClick={() => {
+										if (!isShiftOpen) {
+											toast.error("Buka shift terlebih dahulu di Dashboard");
+											return;
+										}
+										setActiveStep("payment");
+									}}
+									disabled={items.length === 0 || !isShiftOpen}
 									className="flex-1 h-12 text-[11px] sm:text-xs font-bold shadow-md"
 								>
 									Lanjut Bayar <ChevronRight className="ml-1 h-4 w-4" />

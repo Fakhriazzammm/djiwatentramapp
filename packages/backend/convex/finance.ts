@@ -368,6 +368,45 @@ export const updateTransaction = mutation({
 	},
 });
 
+// Get shift status for today
+export const getShiftStatus = query({
+	handler: async (ctx) => {
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		const startOfDay = today.getTime();
+
+		const transactions = await ctx.db
+			.query("financialTransactions")
+			.withIndex("by_date", (q) => q.gte("date", startOfDay))
+			.collect();
+
+		// Find latest shift related transactions today
+		let latestMulai = 0;
+		let latestAkhir = 0;
+
+		for (const t of transactions) {
+			if (t.status === "completed") {
+				if (t.category === "Modal Awal" && t.date > latestMulai) {
+					latestMulai = t.date;
+				}
+				if (t.category === "Setoran Akhir" && t.date > latestAkhir) {
+					latestAkhir = t.date;
+				}
+			}
+		}
+
+		// Shift is open if we have a Modal Awal that is newer than Setoran Akhir
+		// or if we have Modal Awal and no Setoran Akhir today
+		const isOpen = latestMulai > 0 && latestMulai >= latestAkhir;
+
+		return {
+			isOpen,
+			latestMulai,
+			latestAkhir
+		};
+	},
+});
+
 // Get financial summary for a period
 export const getFinancialSummary = query({
 	args: {

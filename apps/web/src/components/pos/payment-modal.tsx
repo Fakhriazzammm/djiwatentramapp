@@ -34,6 +34,8 @@ interface PaymentModalProps {
 			orderType?: "dine_in" | "takeaway";
 			notes?: string;
 			autoComplete?: boolean;
+			cashReceived?: number;
+			changeAmount?: number;
 		}
 	) => void;
 	isSubmitting: boolean;

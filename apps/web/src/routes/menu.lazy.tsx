@@ -80,6 +80,9 @@ function MenuPage() {
 	const [keyboardFocusZone, setKeyboardFocusZone] = useState<FocusZone>("header");
 	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
 
+	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const isShiftOpen = shiftStatus?.isOpen ?? false;
+
 	// Responsive grid columns
 	const [gridColumns, setGridColumns] = useState(4);
 
@@ -373,6 +376,10 @@ function MenuPage() {
 				changeAmount?: number;
 			}
 		) => {
+			if (!isShiftOpen) {
+				toast.error("Buka shift terlebih dahulu di Dashboard");
+				return;
+			}
 			if (cartItems.length === 0) return;
 			setIsSubmitting(true);
 			try {
@@ -404,7 +411,7 @@ function MenuPage() {
 				setIsSubmitting(false);
 			}
 		},
-		[cartItems, createOrder, clearCart, totalAmount, taxAmount, serviceChargeAmount, customerInfo.name]
+		[cartItems, createOrder, clearCart, totalAmount, taxAmount, serviceChargeAmount, customerInfo.name, isShiftOpen]
 	);
 
 	const isLoading = products === undefined || categories === undefined;

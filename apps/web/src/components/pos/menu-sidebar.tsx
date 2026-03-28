@@ -28,7 +28,7 @@ import {
 	Wallet,
 	X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -156,8 +156,14 @@ export function MenuSidebar({
 	const deleteOrder = useMutation(api.orders.deleteOrder);
 	const createOrder = useMutation(api.orders.createOrder);
 	const { items, totalAmount, clearCart, appliedVoucher, discountAmount, customerInfo } = useCart();
+	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
 	const handleParkOrder = async (data: { customerName: string; tableNumber: string; notes: string }) => {
+		if (!isShiftOpen) {
+			toast.error("Buka shift terlebih dahulu di Dashboard");
+			return;
+		}
 		if (items.length === 0) {
 			toast.error("Keranjang kosong");
 			return;
@@ -269,20 +275,14 @@ export function MenuSidebar({
 		<>
 			<Sheet onOpenChange={handleOpenChange} open={isOpen}>
 				{!hideTrigger && (
-					<SheetTrigger asChild>
-						<Button
-							className="relative shrink-0"
-							size="icon"
-							variant="ghost"
-						>
-							<Menu className="h-5 w-5" />
-							{lowStockCount > 0 && (
-								<span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive font-bold text-[9px] text-destructive-foreground">
-									{lowStockCount > 9 ? "9+" : lowStockCount}
-								</span>
-							)}
-							<span className="sr-only">Menu Operasional</span>
-						</Button>
+					<SheetTrigger className="relative shrink-0 flex h-9 w-9 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+						<Menu className="h-5 w-5" />
+						{lowStockCount > 0 && (
+							<span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive font-bold text-[9px] text-destructive-foreground">
+								{lowStockCount > 9 ? "9+" : lowStockCount}
+							</span>
+						)}
+						<span className="sr-only">Menu Operasional</span>
 					</SheetTrigger>
 				)}
 				<SheetContent
@@ -654,6 +654,7 @@ function DashboardTab({
 }) {
 	const orders = useQuery(api.orders.getOrders, {});
 	const lowStockItems = useQuery(api.inventory.getLowStockItems);
+	const [showShiftManagement, setShowShiftManagement] = useState(false);
 
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
@@ -661,6 +662,9 @@ function DashboardTab({
 	const financialSummary = useQuery(api.finance.getFinancialSummary, {
 		startDate: today.getTime(),
 	});
+
+	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
 	const income = financialSummary?.totalIncome || 0;
 	const expense = financialSummary?.totalExpense || 0;
@@ -695,12 +699,53 @@ function DashboardTab({
 		month: "short",
 	});
 
+	if (showShiftManagement) {
+		return (
+			<div className="space-y-4">
+				<Button 
+					variant="ghost" 
+					size="sm" 
+					onClick={() => setShowShiftManagement(false)}
+					className="h-8 px-2 text-muted-foreground hover:text-foreground"
+				>
+					<X className="mr-2 h-4 w-4" />
+					Kembali ke Dashboard
+				</Button>
+				<ShiftManagement onClose={() => setShowShiftManagement(false)} />
+			</div>
+		);
+	}
+
 	return (
 		<div className="space-y-3">
 			<div className="flex items-center justify-between">
 				<span className="font-semibold text-foreground text-sm">{todayLabel}</span>
 				<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Live</span>
 			</div>
+
+			{/* Shift Status Card */}
+			<Card className="border-border bg-muted/30 overflow-hidden">
+				<div className="flex items-center justify-between p-3">
+					<div className="flex items-center gap-3">
+						<div className={`p-2 rounded-full ${isShiftOpen ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+							<SquarePlay className="h-4 w-4" />
+						</div>
+						<div>
+							<p className="font-bold text-sm">Status Shift</p>
+							<p className="text-[10px] text-muted-foreground uppercase">{isShiftOpen ? "Aktif (Sedang Berjalan)" : "Tutup (Belum Mulai)"}</p>
+						</div>
+					</div>
+					<Button 
+						size="sm" 
+						variant={isShiftOpen ? "outline" : "default"}
+						onClick={() => setShowShiftManagement(true)}
+						className="text-xs h-8"
+					>
+						{isShiftOpen ? "Tutup Shift" : "Buka Shift"}
+					</Button>
+				</div>
+			</Card>
+
 			<div className="grid grid-cols-3 gap-2">
 				<Card className="border-primary/20 bg-primary/5">
 					<CardContent className="p-3 text-center">
@@ -956,6 +1001,9 @@ function ParkirTab({
 function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) => void }) {
 	const orders = useQuery(api.orders.getOrders, {});
 	
+	const [timeFilter, setTimeFilter] = useState("today"); // today, yesterday, this_week, last_week, this_month, last_month
+	const [sortOrder, setSortOrder] = useState("desc"); // desc, asc
+
 	const formatCurrency = (value: number) =>
 		new Intl.NumberFormat("id-ID", {
 			style: "currency",
@@ -975,6 +1023,48 @@ function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) =
 			month: "short",
 		});
 
+	const filteredOrders = useMemo(() => {
+		if (!orders) return [];
+
+		let filtered = [...orders];
+		const now = new Date();
+		const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+		const yesterdayStart = todayStart - 86400000;
+		const currentDayOfWeek = now.getDay() || 7; // Make Sunday 7
+		const thisWeekStart = todayStart - (currentDayOfWeek - 1) * 86400000;
+		const lastWeekStart = thisWeekStart - 7 * 86400000;
+		const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+		const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
+
+		switch (timeFilter) {
+			case "today":
+				filtered = filtered.filter((o) => o.createdAt >= todayStart);
+				break;
+			case "yesterday":
+				filtered = filtered.filter((o) => o.createdAt >= yesterdayStart && o.createdAt < todayStart);
+				break;
+			case "this_week":
+				filtered = filtered.filter((o) => o.createdAt >= thisWeekStart);
+				break;
+			case "last_week":
+				filtered = filtered.filter((o) => o.createdAt >= lastWeekStart && o.createdAt < thisWeekStart);
+				break;
+			case "this_month":
+				filtered = filtered.filter((o) => o.createdAt >= thisMonthStart);
+				break;
+			case "last_month":
+				filtered = filtered.filter((o) => o.createdAt >= lastMonthStart && o.createdAt < thisMonthStart);
+				break;
+		}
+
+		filtered.sort((a, b) => {
+			if (sortOrder === "asc") return a.createdAt - b.createdAt;
+			return b.createdAt - a.createdAt; // desc
+		});
+
+		return filtered;
+	}, [orders, timeFilter, sortOrder]);
+
 	return (
 		<div className="space-y-4 pt-2">
 			<div className="space-y-2 text-center">
@@ -984,19 +1074,45 @@ function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) =
 				</p>
 			</div>
 
+			<div className="flex items-center gap-2">
+				<Select value={timeFilter} onValueChange={(v) => setTimeFilter(v || "today")}>
+					<SelectTrigger className="h-8 text-xs flex-1">
+						<SelectValue placeholder="Pilih Waktu" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="today">Hari Ini</SelectItem>
+						<SelectItem value="yesterday">Kemarin</SelectItem>
+						<SelectItem value="this_week">Minggu Ini</SelectItem>
+						<SelectItem value="last_week">Minggu Kemarin</SelectItem>
+						<SelectItem value="this_month">Bulan Ini</SelectItem>
+						<SelectItem value="last_month">Bulan Kemarin</SelectItem>
+						<SelectItem value="all">Semua Waktu</SelectItem>
+					</SelectContent>
+				</Select>
+				<Select value={sortOrder} onValueChange={(v) => setSortOrder(v || "desc")}>
+					<SelectTrigger className="h-8 text-xs w-[120px]">
+						<SelectValue placeholder="Urutkan" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="desc">Terbaru</SelectItem>
+						<SelectItem value="asc">Terlama</SelectItem>
+					</SelectContent>
+				</Select>
+			</div>
+
 			{orders === undefined ? (
 				<div className="flex flex-col items-center justify-center py-10 gap-3">
 					<Loader2 className="h-6 w-6 animate-spin text-primary" />
 					<p className="text-xs text-muted-foreground">Memuat riwayat...</p>
 				</div>
-			) : orders.length === 0 ? (
+			) : filteredOrders.length === 0 ? (
 				<div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-2xl bg-muted/30">
 					<ClipboardList className="h-10 w-10 text-muted-foreground/30 mb-3" />
 					<p className="font-medium text-sm text-muted-foreground">Belum Ada Transaksi</p>
 				</div>
 			) : (
 				<div className="space-y-2">
-					{orders.map((order: Doc<"orders">) => (
+					{filteredOrders.map((order: Doc<"orders">) => (
 						<button
 							key={order._id}
 							onClick={() => onSelectOrder(order)}
@@ -1054,7 +1170,7 @@ function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) =
 
 function KasTab({ onClose }: { onClose: () => void }) {
 	const [activeForm, setActiveForm] = useState<
-		"menu" | "shift" | "masuk" | "keluar"
+		"menu" | "masuk" | "keluar"
 	>("menu");
 
 	const today = new Date();
@@ -1062,6 +1178,9 @@ function KasTab({ onClose }: { onClose: () => void }) {
 	const financialSummary = useQuery(api.finance.getFinancialSummary, {
 		startDate: today.getTime(),
 	});
+
+	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
 	const formatCurrency = (value: number) =>
 		new Intl.NumberFormat("id-ID", {
@@ -1071,7 +1190,6 @@ function KasTab({ onClose }: { onClose: () => void }) {
 		}).format(value);
 
 	const ACTIONS = [
-		{ id: "shift" as const, label: "Manajemen Shift", icon: SquarePlay, color: "text-primary", bg: "bg-primary/10" },
 		{ id: "masuk" as const, label: "Input Pemasukan", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
 		{ id: "keluar" as const, label: "Input Pengeluaran", icon: TrendingDown, color: "text-rose-600", bg: "bg-rose-50" },
 	];
@@ -1088,7 +1206,6 @@ function KasTab({ onClose }: { onClose: () => void }) {
 					<X className="mr-2 h-4 w-4" />
 					Kembali ke Kas
 				</Button>
-				{activeForm === "shift" && <ShiftManagement onClose={onClose} />}
 				{activeForm === "masuk" && <IncomeForm onClose={onClose} />}
 				{activeForm === "keluar" && <ExpenseForm onClose={onClose} />}
 			</div>
@@ -1101,7 +1218,11 @@ function KasTab({ onClose }: { onClose: () => void }) {
 			<div className="space-y-3">
 				<div className="flex items-center justify-between">
 					<h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Status Kas Hari Ini</h3>
-					<span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full uppercase tracking-tighter">Aktif</span>
+					{isShiftOpen ? (
+						<span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full uppercase tracking-tighter">Shift Aktif</span>
+					) : (
+						<span className="text-[10px] font-bold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full uppercase tracking-tighter">Shift Tutup</span>
+					)}
 				</div>
 				
 				<Card className="overflow-hidden border-none bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-none">
@@ -1154,8 +1275,7 @@ function KasTab({ onClose }: { onClose: () => void }) {
 								<div className="flex-1">
 									<p className="font-black text-sm text-foreground uppercase tracking-tight">{action.label}</p>
 									<p className="text-[10px] text-muted-foreground font-medium">
-										{action.id === 'shift' ? 'Mulai atau akhiri jam operasional' : 
-										 action.id === 'masuk' ? 'Tambah modal atau setoran manual' : 
+										{action.id === 'masuk' ? 'Tambah modal atau setoran manual' : 
 										 'Catat biaya operasional harian'}
 									</p>
 								</div>
