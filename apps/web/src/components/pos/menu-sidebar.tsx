@@ -866,45 +866,6 @@ function DashboardTab({
 							.join('\n');
 						if (!topProductsText) topProductsText = "-";
 
-						const shiftOrders = shiftStatus?.shiftInfo?.startTime ? todayOrders.filter((o: Doc<"orders">) => o.createdAt >= shiftStatus.shiftInfo!.startTime) : [];
-
-						// 1. Shift specific calculation
-						const shiftCash = shiftOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed' && o.paymentMethod === 'cash')
-							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
-							
-						const shiftQris = shiftOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed' && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
-							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
-							
-						const shiftItems = shiftOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed')
-							.reduce((acc: number, o: Doc<"orders">) => {
-								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
-							}, 0);
-							
-						const shiftRevenue = shiftCash + shiftQris;
-
-						// Shift products by category
-						const shiftItemsByCategory: Record<string, number> = {};
-						shiftOrders.filter((o: Doc<"orders">) => o.status === 'completed').forEach((o: Doc<"orders">) => {
-							o.items.forEach((item: any) => {
-								const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
-								shiftItemsByCategory[cat] = (shiftItemsByCategory[cat] || 0) + item.quantity;
-							});
-						});
-						let shiftProductsText = Object.entries(shiftItemsByCategory)
-							.map(([cat, qty]) => `- ${cat}: ${qty}`)
-							.join('\n');
-						if (!shiftProductsText) shiftProductsText = "-";
-
-						// Shift expenses
-						const shiftTransactions = shiftStatus?.shiftInfo?.startTime ? todayTransactions?.filter((t: any) => t.date >= shiftStatus.shiftInfo!.startTime) : [];
-						let shiftExpenseVal = 0;
-						shiftTransactions?.filter((t: any) => t.type === 'expense' && t.status === 'completed').forEach((t: any) => {
-							shiftExpenseVal += t.amount;
-						});
-
 						const modalAwal = todayTransactions
 							?.filter((t: any) => t.type === 'income' && t.category?.toLowerCase().includes('modal'))
 							.reduce((acc: number, t: any) => acc + t.amount, 0) || 0;
@@ -1112,7 +1073,7 @@ Total Produk Terjual: ${totalItems}`;
 						
 						todayOrders.filter((o: Doc<"orders">) => o.status === 'completed').forEach((o: Doc<"orders">) => {
 							o.items.forEach((item: any) => {
-								const cat = item.category || 'Lainnya';
+								const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
 								const name = item.productName || 'Unknown';
 								itemsByCategory[cat] = (itemsByCategory[cat] || 0) + item.quantity;
 								itemsByName[name] = (itemsByName[name] || 0) + item.quantity;
@@ -1132,6 +1093,36 @@ Total Produk Terjual: ${totalItems}`;
 							.map(([name, qty]) => `- ${name}: ${qty}`)
 							.join('\n');
 						if (!topProductsText) topProductsText = "-";
+
+						const shiftOrders = shiftStatus?.shiftInfo?.startTime ? todayOrders.filter((o: Doc<"orders">) => o.createdAt >= shiftStatus.shiftInfo!.startTime) : [];
+						const shiftCash = shiftOrders
+							.filter((o: Doc<"orders">) => o.status === 'completed' && o.paymentMethod === 'cash')
+							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+						const shiftQris = shiftOrders
+							.filter((o: Doc<"orders">) => o.status === 'completed' && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
+							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+						const shiftItems = shiftOrders
+							.filter((o: Doc<"orders">) => o.status === 'completed')
+							.reduce((acc: number, o: Doc<"orders">) => {
+								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
+							}, 0);
+						const shiftRevenue = shiftCash + shiftQris;
+						const shiftItemsByCategory: Record<string, number> = {};
+						shiftOrders.filter((o: Doc<"orders">) => o.status === 'completed').forEach((o: Doc<"orders">) => {
+							o.items.forEach((item: any) => {
+								const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
+								shiftItemsByCategory[cat] = (shiftItemsByCategory[cat] || 0) + item.quantity;
+							});
+						});
+						let shiftProductsText = Object.entries(shiftItemsByCategory)
+							.map(([cat, qty]) => `- ${cat}: ${qty}`)
+							.join('\n');
+						if (!shiftProductsText) shiftProductsText = "-";
+						const shiftTransactions = shiftStatus?.shiftInfo?.startTime ? todayTransactions?.filter((t: any) => t.date >= shiftStatus.shiftInfo!.startTime) : [];
+						let shiftExpenseVal = 0;
+						shiftTransactions?.filter((t: any) => t.type === 'expense' && t.status === 'completed').forEach((t: any) => {
+							shiftExpenseVal += t.amount;
+						});
 
 						const modalAwal = todayTransactions
 							?.filter((t: any) => t.type === 'income' && t.category?.toLowerCase().includes('modal'))
