@@ -1409,17 +1409,13 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label>Shift</Label>
-								<Select value={shiftName} onValueChange={(v) => setShiftName(v || "Shift Pagi")}>
-									<SelectTrigger>
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="Shift Pagi">Pagi</SelectItem>
-										<SelectItem value="Shift Siang">Siang</SelectItem>
-										<SelectItem value="Shift Malam">Malam</SelectItem>
-									</SelectContent>
-								</Select>
+								<Label>Shift <span className="text-destructive">*</span></Label>
+								<Input
+									placeholder="Contoh: Shift Pagi"
+									value={shiftName}
+									onChange={(e) => setShiftName(e.target.value)}
+									required
+								/>
 							</div>
 						</div>
 						<div className="space-y-2">
@@ -1568,21 +1564,13 @@ function IncomeForm({ onClose }: { onClose: () => void }) {
 
 			<form className="space-y-4" onSubmit={handleSubmit}>
 				<div className="space-y-2">
-					<Label>Kategori</Label>
-					<Select
-						onValueChange={(val) => setCategory(val || "")}
+					<Label>Kategori <span className="text-destructive">*</span></Label>
+					<Input
+						placeholder="Contoh: Shift Pagi, Modal Awal"
 						value={category}
-					>
-						<SelectTrigger>
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="Shift Pagi">Shift Pagi</SelectItem>
-							<SelectItem value="Shift Sore">Shift Sore</SelectItem>
-							<SelectItem value="Modal Awal">Modal Awal</SelectItem>
-							<SelectItem value="Lainnya">Lainnya</SelectItem>
-						</SelectContent>
-					</Select>
+						onChange={(e) => setCategory(e.target.value)}
+						required
+					/>
 				</div>
 
 				<div className="space-y-2">
@@ -1665,23 +1653,13 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 
 			<form className="space-y-4" onSubmit={handleSubmit}>
 				<div className="space-y-2">
-					<Label>Kategori</Label>
-					<Select
-						onValueChange={(val) => setCategory(val || "")}
+					<Label>Kategori <span className="text-destructive">*</span></Label>
+					<Input
+						placeholder="Contoh: Bahan Baku, Operasional"
 						value={category}
-					>
-						<SelectTrigger>
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="Bahan Baku">Bahan Baku (Pasar)</SelectItem>
-							<SelectItem value="Operasional">
-								Operasional (Es/Galon/Gas)
-							</SelectItem>
-							<SelectItem value="Konsumsi">Konsumsi Pegawai</SelectItem>
-							<SelectItem value="Lainnya">Lainnya</SelectItem>
-						</SelectContent>
-					</Select>
+						onChange={(e) => setCategory(e.target.value)}
+						required
+					/>
 				</div>
 
 				<div className="space-y-2">
