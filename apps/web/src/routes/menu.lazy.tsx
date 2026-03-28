@@ -235,7 +235,7 @@ function MenuPage() {
 	}, []);
 
 	// Initialize keyboard navigation
-	const { focusZone, focusedIndex, focusedHeaderIndex, setFocusZone, setFocusedIndex, isZoneFocused } =
+	const { focusZone, focusedIndex, focusedHeaderIndex, setFocusZone, setFocusedIndex, isZoneFocused, isKeyboardActive } =
 		useMenuKeyboardNav({
 			productCount: filteredProducts?.length || 0,
 			gridColumns: GRID_COLUMNS,
@@ -367,7 +367,7 @@ function MenuPage() {
 					ref={headerRef}
 					className={cn(
 						"sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm shrink-0",
-						isZoneFocused("header") && "ring-2 ring-primary ring-inset"
+						isKeyboardActive && isZoneFocused("header") && "ring-2 ring-primary ring-inset"
 					)}
 				>
 					<div className="flex items-center gap-4 px-4 py-3">
@@ -375,7 +375,7 @@ function MenuPage() {
 						<div 
 							className={cn(
 								"flex items-center gap-2 min-w-0 flex-1 rounded-lg transition-all",
-								isZoneFocused("header") && focusedHeaderIndex === 0 && "ring-2 ring-primary ring-offset-4"
+								isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === 0 && "ring-2 ring-primary ring-offset-4"
 							)}
 						>
 							{logoUrl ? (
@@ -404,7 +404,7 @@ function MenuPage() {
 						<div className="flex items-center gap-1 overflow-x-auto scrollbar-none pb-1 -mb-1">
 							{SIDEBAR_MENU_ITEMS.map((item, index) => {
 								const Icon = item.icon;
-								const isFocused = isZoneFocused("header") && focusedHeaderIndex === index + 1;
+								const isFocused = isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === index + 1;
 								const isActive = activeSidebarTab === item.id && isSidebarOpen;
 								
 								return (
@@ -466,12 +466,12 @@ function MenuPage() {
 						ref={categoryScrollRef}
 						className={cn(
 							"flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-none",
-							isZoneFocused("categories") && "ring-2 ring-primary ring-inset rounded-lg mx-2"
+							isKeyboardActive && isZoneFocused("categories") && "ring-2 ring-primary ring-inset rounded-lg mx-2"
 						)}
 					>
 						{categoryList.map((cat, index) => {
 							const isActive = activeCategoryId === cat._id || (cat._id === "all" && !activeCategoryId);
-							const isFocused = isZoneFocused("categories") && focusedCategoryIndex === index;
+							const isFocused = isKeyboardActive && isZoneFocused("categories") && focusedCategoryIndex === index;
 							return (
 								<button
 									key={cat._id}
@@ -531,7 +531,7 @@ function MenuPage() {
 									activeDiscounts
 								);
 								const cartQty = getCartQty(product._id);
-								const isFocused = isZoneFocused("products") && focusedIndex === index;
+								const isFocused = isKeyboardActive && isZoneFocused("products") && focusedIndex === index;
 
 								return (
 									<button
@@ -634,7 +634,7 @@ function MenuPage() {
 						className={cn(
 							"flex w-full items-center justify-between rounded-2xl px-4 py-3.5 font-bold text-white shadow-lg",
 							"transition-all active:opacity-90",
-							isZoneFocused("cart") && "ring-2 ring-white ring-offset-2 ring-offset-primary"
+							isKeyboardActive && isZoneFocused("cart") && "ring-2 ring-white ring-offset-2 ring-offset-primary"
 						)}
 						style={{ background: themeColor ?? "var(--color-primary)" }}
 					>

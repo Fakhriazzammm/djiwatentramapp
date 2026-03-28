@@ -61,6 +61,7 @@ export interface MenuKeyboardNavReturn {
 	setFocusZone: (zone: FocusZone) => void;
 	setFocusedIndex: (index: number) => void;
 	isZoneFocused: (zone: FocusZone) => boolean;
+	isKeyboardActive: boolean;
 }
 
 export function useMenuKeyboardNav({
@@ -84,6 +85,7 @@ export function useMenuKeyboardNav({
 	const [focusedIndex, setFocusedIndex] = useState(0);
 	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
 	const [focusedHeaderIndex, setFocusedHeaderIndex] = useState(0);
+	const [isKeyboardActive, setIsKeyboardActive] = useState(false);
 	
 	const isInputFocused = useRef(false);
 	
@@ -106,8 +108,10 @@ export function useMenuKeyboardNav({
 	// Main keyboard handler
 	useEffect(() => {
 		if (!enabled) return;
-		
+
 		const handleKeyDown = (e: KeyboardEvent) => {
+			setIsKeyboardActive(true);
+			
 			// Check if we're in an input
 			isInputFocused.current = checkInputFocus();
 			
@@ -463,8 +467,16 @@ export function useMenuKeyboardNav({
 			}
 		};
 		
+		const handleMouseDown = () => {
+			setIsKeyboardActive(false);
+		};
+
 		window.addEventListener("keydown", handleKeyDown);
-		return () => window.removeEventListener("keydown", handleKeyDown);
+		window.addEventListener("mousedown", handleMouseDown);
+		return () => {
+			window.removeEventListener("keydown", handleKeyDown);
+			window.removeEventListener("mousedown", handleMouseDown);
+		};
 	}, [
 		enabled,
 		focusZone,
@@ -505,5 +517,6 @@ export function useMenuKeyboardNav({
 		setFocusZone,
 		setFocusedIndex,
 		isZoneFocused,
+		isKeyboardActive,
 	};
 }
