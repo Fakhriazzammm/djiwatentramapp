@@ -863,7 +863,6 @@ ${productsText}
 
 Kasir: ${shiftStatus?.shiftInfo?.cashierName || 'Belum Buka Shift'}
 ⸻ 
-
 💰 TOTAL REVENUE HARIAN: 
 Rp. ${totalRevenue.toLocaleString("id-ID")}
 📦 TOTAL PRODUK TERJUAL: ${totalItems}
