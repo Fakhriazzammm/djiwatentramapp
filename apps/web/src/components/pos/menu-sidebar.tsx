@@ -870,7 +870,7 @@ Rp. ${totalRevenue.toLocaleString("id-ID")}
 ⭐ TOP 3 PRODUK TERLARIS:
 ${topProductsText}
 ⸻ 
-📝 RINGKASAN PENGELUARAN (Berdasarkan Kategori)
+📝 RINGKASAN PENGELUARAN
 ${expensesText}
 Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
 ⸻ 
