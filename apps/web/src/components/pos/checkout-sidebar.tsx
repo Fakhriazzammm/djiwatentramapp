@@ -175,7 +175,7 @@ export function CheckoutSidebar({
 	};
 
 	return (
-		<div className="flex h-full flex-col border-l border-border bg-card shadow-sm relative">
+		<div className="flex h-full flex-col border-l border-border bg-[#f8f9fa] dark:bg-background shadow-sm relative">
 			{/* Progress Header */}
 			<div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
 				<div className="flex items-center gap-1.5 flex-1">
@@ -368,11 +368,25 @@ export function CheckoutSidebar({
 							)}
 
 							{/* Struk Design */}
-							<div className="mt-4 rounded-xl border border-border bg-background p-4 space-y-3 font-mono shadow-sm overflow-hidden relative">
-								{/* Receipt top edge */}
-								<div className="absolute top-0 left-0 right-0 h-1 bg-[radial-gradient(circle,transparent_0,transparent_4px,var(--border)_4px,var(--border)_5px,transparent_5px)] bg-[length:10px_10px] bg-repeat-x" />
+							<div className="mt-6 relative bg-background p-5 space-y-4 font-mono rounded-lg border border-border/50 shadow-sm">
+								{/* Top wavy edge */}
+								<div 
+									className="absolute -top-1.5 left-0 right-0 h-3 w-full bg-repeat-x z-10" 
+									style={{ 
+										backgroundImage: "radial-gradient(circle at 6px 0px, transparent 0, transparent 4px, var(--background) 4px, var(--background) 6px)", 
+										backgroundSize: "12px 12px" 
+									}} 
+								/>
+								{/* Border overlay for top wavy edge */}
+								<div 
+									className="absolute -top-[7px] left-0 right-0 h-3 w-full bg-repeat-x pointer-events-none" 
+									style={{ 
+										backgroundImage: "radial-gradient(circle at 6px 0px, transparent 0, transparent 4px, var(--border) 4.5px, transparent 5.5px)", 
+										backgroundSize: "12px 12px" 
+									}} 
+								/>
 								
-								<div className="space-y-1.5 text-[11px]">
+								<div className="space-y-2 text-xs">
 									<div className="flex justify-between">
 										<span className="text-muted-foreground">Subtotal</span>
 										<span className="font-bold">{fmt(totalAmount)}</span>
@@ -395,16 +409,33 @@ export function CheckoutSidebar({
 
 								<Separator className="border-dashed" />
 
-								<div className="flex justify-between items-center py-1">
-									<span className="text-xs font-black uppercase tracking-widest">Total</span>
+								<div className="flex justify-between items-center py-2 font-sans">
+									<span className="text-sm font-black uppercase tracking-widest">TOTAL</span>
 									<span className="text-xl font-black text-primary tracking-tighter">{fmt(finalTotal)}</span>
 								</div>
+								
+								{/* Bottom wavy edge */}
+								<div 
+									className="absolute -bottom-1.5 left-0 right-0 h-3 w-full bg-repeat-x z-10" 
+									style={{ 
+										backgroundImage: "radial-gradient(circle at 6px 12px, transparent 0, transparent 4px, var(--background) 4px, var(--background) 6px)", 
+										backgroundSize: "12px 12px" 
+									}} 
+								/>
+								{/* Border overlay for bottom wavy edge */}
+								<div 
+									className="absolute -bottom-[7px] left-0 right-0 h-3 w-full bg-repeat-x pointer-events-none" 
+									style={{ 
+										backgroundImage: "radial-gradient(circle at 6px 12px, transparent 0, transparent 4px, var(--border) 4.5px, transparent 5.5px)", 
+										backgroundSize: "12px 12px" 
+									}} 
+								/>
 							</div>
 
-							<div className="flex gap-2 pt-2">
+							<div className="flex gap-3 pt-4">
 								<Button 
 									onClick={() => setActiveStep("customer")}
-									className="w-1/3 h-11 text-xs font-bold"
+									className="w-[120px] h-12 text-sm font-bold bg-background text-foreground hover:bg-muted"
 									variant="outline"
 								>
 									Kembali
@@ -412,7 +443,7 @@ export function CheckoutSidebar({
 								<Button 
 									onClick={() => setActiveStep("payment")}
 									disabled={items.length === 0}
-									className="flex-1 h-11 text-xs font-bold shadow-md"
+									className="flex-1 h-12 text-sm font-bold shadow-md"
 								>
 									Lanjut Pembayaran <ChevronRight className="ml-2 h-4 w-4" />
 								</Button>

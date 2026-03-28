@@ -321,19 +321,19 @@ export class BluetoothPrinterService {
 			result.line(padLabel("DISKON", `-${formatCurrency(order.discountAmount)}`));
 		}
 
-		if (order.serviceChargeAmount && order.serviceChargeAmount > 0) {
-			result.line(padLabel("LAYANAN", formatCurrency(order.serviceChargeAmount)));
-		}
-
 		if (order.taxAmount && order.taxAmount > 0) {
 			result.line(padLabel("PAJAK", formatCurrency(order.taxAmount)));
+		}
+
+		if (order.serviceChargeAmount && order.serviceChargeAmount > 0) {
+			result.line(padLabel("SERVICE CHARGE", formatCurrency(order.serviceChargeAmount)));
 		}
 
 		// Final Total
 		result
 			.line("--------------------------------")
 			.bold(true)
-			.line(padLabel("TOTAL BAYAR", `Rp ${formatCurrency(order.totalAmount)}`))
+			.line(padLabel("TOTAL", `Rp ${formatCurrency(order.totalAmount)}`))
 			.bold(false);
 
 		// Cash & Change Details

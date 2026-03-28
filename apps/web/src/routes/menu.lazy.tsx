@@ -99,10 +99,27 @@ function MenuPage() {
 	const filteredProducts = useMemo(() => {
 		if (!searchQuery.trim()) return products;
 		if (!allProducts) return [];
-		return allProducts.filter((p) =>
-			p.name.toLowerCase().includes(searchQuery.toLowerCase())
-		);
-	}, [searchQuery, products, allProducts]);
+		
+		const query = searchQuery.toLowerCase();
+		return allProducts.filter((p) => {
+			const matchName = p.name.toLowerCase().includes(query);
+			const matchMenuNumber = p.menuNumber?.toString().includes(query);
+			
+			// Match category name
+			let matchCategory = false;
+			if (p.categoryId && categories) {
+				const category = categories.find((c: any) => c._id === p.categoryId);
+				if (category && category.name.toLowerCase().includes(query)) {
+					matchCategory = true;
+				}
+			}
+			
+			// Match description
+			const matchDescription = p.description?.toLowerCase().includes(query);
+			
+			return matchName || matchMenuNumber || matchCategory || matchDescription;
+		});
+	}, [searchQuery, products, allProducts, categories]);
 
 	// Store info
 	const storeName = siteSettings?.storeName || "YumiPOS";
