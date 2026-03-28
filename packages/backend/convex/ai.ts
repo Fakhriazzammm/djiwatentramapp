@@ -1016,6 +1016,46 @@ ATURAN:
     d. Tawarkan tombol aksi: [SUGGEST: 📈 Update Harga Semua | Perbarui harga jual semua produk terdampak sesuai saran kamu] atau [SUGGEST: 📈 Update Harga [Nama] | Perbarui harga jual produk [Nama] saja]
     e. Jika user mengonfirmasi, panggil tool updateProduct untuk mengeksekusi perubahan harga.
 
+15. RINGKASAN HARIAN (KHUSUS): Jika pengguna meminta "Ringkasan Harian", "Laporan Harian", "Daily Revenue Report", atau semacamnya, WAJIB format hasilnya PERSIS seperti template berikut, jangan gunakan format lain. Ambil data transaksi keuangan dan pesanan hari ini menggunakan tool (seperti getAllTransactions dan getOrders), lalu hitung total dan kategorikan:
+
+📊 Daily Revenue Report 
+Djiwa Tentram Koffie & TB Warman - 
+📅 Tanggal: [Tanggal Hari Ini, misal 28/03/2026]
+⸻ 
+👥 SHIFT 1 [Atau nama shift]
+Modal Kasir: Rp. [Jumlah Modal Awal]
+Cash/Kasir: Rp. [Jumlah Cash dari Pesanan + Pemasukan Manual Cash]
+Debit/QRIS: Rp. [Jumlah QRIS/Transfer dari Pesanan + Pemasukan Manual Transfer]
+Delivery Online : Rp. [Jumlah dari pesanan GrabFood/GoFood/ShopeeFood/dll jika ada, atau 0]
+Total Revenue Shift 1: Rp. [Total Semua Pemasukan Shift 1]
+Produk Terjual: [Jumlah Total Item Produk]
+Shift 1 : [Nama Kasir]
+⸻ 
+[Jika ada Shift 2, tambahkan bagian yang sama untuk Shift 2]
+
+💰 TOTAL REVENUE HARIAN: 
+Rp. [Grand Total Pemasukan Hari Ini]
+📦 TOTAL PRODUK TERJUAL : [Total Produk Semua Shift]
+⸻ 
+📝 RINGKASAN PENGELUARAN (Berdasarkan Kategori)
+[Kategori 1, misal Bahan Baku]: Rp. [Total Pengeluaran Kategori 1]
+   - [Nama Item 1]: Rp. [Nominal]
+   - [Nama Item 2]: Rp. [Nominal]
+[Kategori 2, misal Operasional]: Rp. [Total Pengeluaran Kategori 2]
+   - [Nama Item 1]: Rp. [Nominal]
+[Kategori Lainnya]: Rp. [Total Pengeluaran Kategori Lainnya]
+   - [Nama Item 1]: Rp. [Nominal]
+Total Pengeluaran: Rp. [Total Semua Pengeluaran]
+⸻ 
+📝 RINGKASAN HARIAN 
+[Tanggal Singkat, misal 28/03/26] : 
+Grand Total Revenue: Rp. [Grand Total]
+Total Pengeluaran: Rp. [Total Pengeluaran]
+Kas Bersih (Net): Rp. [Total Revenue - Total Pengeluaran]
+Total Produk Terjual : [Total Produk Semua Shift]
+
+Pastikan semua angka dihitung dengan benar dari data hari ini. Rincikan kategori pengeluaran dan berikan bullet point daftar item pengeluaran spesifik di bawah tiap kategori.
+
 SMART CONTEXT:
 ${smartContext}
 

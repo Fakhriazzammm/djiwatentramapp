@@ -160,6 +160,12 @@ export function MenuSidebar({
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
+	const today = useMemo(() => {
+		const d = new Date();
+		d.setHours(0, 0, 0, 0);
+		return d;
+	}, []);
+
 	const todayTransactions = useQuery(api.finance.getAllTransactions, {
 		startDate: today.getTime(),
 	});
@@ -331,6 +337,7 @@ export function MenuSidebar({
 									onNavigate={setActiveTab}
 									onSelectOrder={setSelectedOrder}
 									onParkOrder={() => setIsParkDialogOpen(true)}
+									todayTransactions={todayTransactions}
 								/>
 							)}
 							{activeTab === "parkir" && (
@@ -651,11 +658,13 @@ function DashboardTab({
 	onNavigate,
 	onSelectOrder,
 	onParkOrder,
+	todayTransactions,
 }: {
 	onClose: () => void;
 	onNavigate: (tab: string) => void;
 	onSelectOrder: (order: Doc<"orders">) => void;
 	onParkOrder: () => void;
+	todayTransactions: any;
 }) {
 	const orders = useQuery(api.orders.getOrders, {});
 	const lowStockItems = useQuery(api.inventory.getLowStockItems);
@@ -935,22 +944,22 @@ function DashboardTab({
 						
 						// Basic calculation from todayOrders and todayTransactions
 						const totalCash = todayOrders
-							.filter(o => o.status === 'completed' && o.paymentMethod === 'cash')
-							.reduce((acc, o) => acc + o.totalAmount, 0);
+							.filter((o: Doc<"orders">) => o.status === 'completed' && o.paymentMethod === 'cash')
+							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 							
 						const totalQris = todayOrders
-							.filter(o => o.status === 'completed' && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
-							.reduce((acc, o) => acc + o.totalAmount, 0);
+							.filter((o: Doc<"orders">) => o.status === 'completed' && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
+							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 							
 						const totalItems = todayOrders
-							.filter(o => o.status === 'completed')
-							.reduce((acc, o) => {
+							.filter((o: Doc<"orders">) => o.status === 'completed')
+							.reduce((acc: number, o: Doc<"orders">) => {
 								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
 							}, 0);
 
 						const modalAwal = todayTransactions
-							?.filter(t => t.type === 'income' && t.category?.toLowerCase().includes('modal'))
-							.reduce((acc, t) => acc + t.amount, 0) || 0;
+							?.filter((t: any) => t.type === 'income' && t.category?.toLowerCase().includes('modal'))
+							.reduce((acc: number, t: any) => acc + t.amount, 0) || 0;
 
 						const text = `📊 Daily Revenue Report 
 Djiwa Tentram Koffie - 
