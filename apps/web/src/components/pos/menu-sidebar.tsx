@@ -286,10 +286,11 @@ export function MenuSidebar({
 					</SheetTrigger>
 				)}
 				<SheetContent
-				className="flex w-full flex-col gap-0 border-l border-border bg-muted/10 p-0 sm:max-w-md md:w-[480px] z-[100]"
+				className="flex !max-w-none !w-full h-[100dvh] flex-col gap-0 border-0 bg-muted/10 p-0 z-[100] sm:!max-w-none md:!w-full"
+				side="bottom"
 				showCloseButton={false}
 			>
-				<div className="flex flex-1 flex-col overflow-hidden bg-background relative">
+				<div className="flex flex-1 flex-col overflow-hidden bg-background relative mx-auto w-full max-w-5xl shadow-2xl">
 					{/* Dynamic Header based on active tab */}
 					<div className="flex items-center justify-between border-b border-border bg-card px-4 py-3 shrink-0">
 						<div className="flex items-center gap-2">
@@ -305,7 +306,7 @@ export function MenuSidebar({
 						<Button 
 							variant="ghost" 
 							size="sm" 
-							className="h-8 w-8 p-0 rounded-full shrink-0" 
+							className="h-8 w-8 p-0 rounded-full shrink-0 bg-muted/50 hover:bg-muted" 
 							onClick={() => {
 								setIsOpen(false);
 								onOpenChange?.(false);

@@ -101,7 +101,7 @@ function MenuPage() {
 		if (!allProducts) return [];
 		
 		const query = searchQuery.toLowerCase();
-		return allProducts.filter((p) => {
+		return allProducts.filter((p: any) => {
 			const matchName = p.name.toLowerCase().includes(query);
 			const matchMenuNumber = p.menuNumber?.toString().includes(query);
 			
@@ -128,7 +128,24 @@ function MenuPage() {
 
 	// Category list including "Semua"
 	const categoryList = useMemo(() => {
-		return [{ _id: "all", name: "Semua" }, ...(categories || [])];
+		if (!categories) return [{ _id: "all", name: "Semua" }];
+		
+		// Sort categories to put sub-categories right after their parents
+		const parents = categories.filter((c: any) => !c.parentId);
+		const sortedCategories: any[] = [];
+		
+		parents.forEach((parent: any) => {
+			sortedCategories.push(parent);
+			const subs = categories.filter((c: any) => c.parentId === parent._id);
+			if (subs.length > 0) {
+				sortedCategories.push(...subs.map((sub: any) => ({
+					...sub,
+					name: `↳ ${sub.name}`
+				})));
+			}
+		});
+
+		return [{ _id: "all", name: "Semua" }, ...sortedCategories];
 	}, [categories]);
 
 	// Scroll category into view
@@ -392,11 +409,11 @@ function MenuPage() {
 						isKeyboardActive && isZoneFocused("header") && "ring-2 ring-primary ring-inset"
 					)}
 				>
-					<div className="flex items-center gap-4 px-4 py-3">
+					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 px-3 sm:px-4 py-2 sm:py-3">
 						{/* Logo & Store name */}
 						<div 
 							className={cn(
-								"flex items-center gap-2 min-w-0 flex-1 rounded-lg transition-all",
+								"flex items-center gap-2 min-w-0 shrink-0 rounded-lg transition-all",
 								isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === 0 && "ring-2 ring-primary ring-offset-4"
 							)}
 						>
@@ -404,26 +421,26 @@ function MenuPage() {
 								<img
 									src={logoUrl}
 									alt={storeName}
-									className="h-9 w-9 shrink-0 rounded-lg object-contain"
+									className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-lg object-contain"
 								/>
 							) : (
 								<div
-									className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-bold text-white text-sm"
+									className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg font-bold text-white text-sm"
 									style={{ background: themeColor ?? "var(--color-primary)" }}
 								>
 									<Coffee className="h-4 w-4" />
 								</div>
 							)}
 							<div className="min-w-0">
-								<h1 className="truncate font-bold text-foreground text-base leading-tight">
+								<h1 className="truncate font-bold text-foreground text-sm sm:text-base leading-tight">
 									{storeName}
 								</h1>
-								<p className="text-muted-foreground text-xs">POS Menu</p>
+								<p className="text-muted-foreground text-[10px] sm:text-xs">POS Menu</p>
 							</div>
 						</div>
 
 						{/* Navigation Buttons from Hamburger */}
-						<div className="flex items-center gap-1 overflow-x-auto scrollbar-none pb-1 -mb-1">
+						<div className="flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-none pb-1 sm:pb-0 -mb-1 sm:mb-0 mask-fade-edges min-w-0 flex-1 sm:justify-end">
 							{SIDEBAR_MENU_ITEMS.map((item, index) => {
 								const Icon = item.icon;
 								const isFocused = isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === index + 1;
@@ -434,7 +451,7 @@ function MenuPage() {
 										key={item.id}
 										onClick={() => handleOpenSidebar(item.id)}
 										className={cn(
-											"flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-1.5 transition-all shrink-0",
+											"flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-1.5 transition-all shrink-0 min-w-[4rem]",
 											"hover:bg-muted active:scale-95",
 											isActive
 												? "bg-muted ring-2 ring-primary ring-inset text-primary"
@@ -442,8 +459,8 @@ function MenuPage() {
 											isFocused && "bg-muted ring-2 ring-primary ring-inset"
 										)}
 									>
-										<Icon className="h-5 w-5" />
-										<span className="text-[10px] font-medium leading-none whitespace-nowrap">{item.label}</span>
+										<Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+										<span className="text-[9px] sm:text-[10px] font-medium leading-none whitespace-nowrap">{item.label}</span>
 									</button>
 								);
 							})}
@@ -543,7 +560,7 @@ function MenuPage() {
 							</div>
 						) : (
 							// Product cards
-							filteredProducts?.map((product, index) => {
+							filteredProducts?.map((product: any, index: number) => {
 								const pricing = calculateEffectivePrice(
 									{
 										_id: product._id,

@@ -801,10 +801,15 @@ function ProductsTab({
 												value={formData.categoryId}
 											>
 												<option value="">Pilih Kategori</option>
-												{categories?.map((c: any) => (
-													<option key={c._id} value={c._id}>
-														{c.name}
-													</option>
+												{categories?.filter(c => !c.parentId).map((parent: any) => (
+													<optgroup key={parent._id} label={parent.name}>
+														<option value={parent._id}>{parent.name} (Utama)</option>
+														{categories?.filter(c => c.parentId === parent._id).map((sub: any) => (
+															<option key={sub._id} value={sub._id}>
+																↳ {sub.name}
+															</option>
+														))}
+													</optgroup>
 												))}
 											</select>
 										</div>
@@ -1241,7 +1246,8 @@ function SettingsTab({
 		isOpen: boolean;
 		editingId: Id<"categories"> | null;
 		name: string;
-	}>({ isOpen: false, editingId: null, name: "" });
+		parentId?: Id<"categories"> | null;
+	}>({ isOpen: false, editingId: null, name: "", parentId: null });
 
 	const [variationModal, setVariationModal] = useState<{
 		isOpen: boolean;
@@ -1278,13 +1284,17 @@ function SettingsTab({
 				await updateCategory({
 					id: categoryModal.editingId,
 					name: categoryModal.name,
+					parentId: categoryModal.parentId || undefined,
 				});
 				toast.success("Kategori diperbarui");
 			} else {
-				await createCategory({ name: categoryModal.name });
+				await createCategory({ 
+					name: categoryModal.name,
+					parentId: categoryModal.parentId || undefined,
+				});
 				toast.success("Kategori ditambahkan");
 			}
-			setCategoryModal({ isOpen: false, editingId: null, name: "" });
+			setCategoryModal({ isOpen: false, editingId: null, name: "", parentId: null });
 		} catch (_error) {
 			toast.error("Gagal menyimpan kategori");
 		}
@@ -1342,41 +1352,87 @@ function SettingsTab({
 					</button>
 				</div>
 				<div className="space-y-2">
-					{categories?.map((c) => (
-						<div
-							className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
-							key={c._id}
-						>
-							<span className="font-medium text-sm">{c.name}</span>
-							<div className="flex gap-1">
-								<button
-									className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
-									onClick={() =>
-										setCategoryModal({
-											isOpen: true,
-											editingId: c._id,
-											name: c.name,
-										})
-									}
-									type="button"
-								>
-									<Edit className="h-4 w-4" />
-								</button>
-								<button
-									className="rounded-md p-1.5 text-destructive hover:bg-destructive/10"
-									onClick={() =>
-										setConfirmConfig({
-											isOpen: true,
-											title: "Hapus Kategori?",
-											message: `Hapus kategori "${c.name}"? Produk dalam kategori ini mungkin akan terpengaruh.`,
-											onConfirm: () => deleteCategory({ id: c._id }),
-										})
-									}
-									type="button"
-								>
-									<Trash2 className="h-4 w-4" />
-								</button>
+					{categories?.filter(c => !c.parentId).map((c) => (
+						<div key={c._id} className="space-y-2">
+							<div
+								className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
+							>
+								<span className="font-medium text-sm">{c.name}</span>
+								<div className="flex gap-1">
+									<button
+										className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
+										onClick={() =>
+											setCategoryModal({
+												isOpen: true,
+												editingId: c._id,
+												name: c.name,
+												parentId: c.parentId,
+											})
+										}
+										type="button"
+									>
+										<Edit className="h-4 w-4" />
+									</button>
+									<button
+										className="rounded-md p-1.5 text-destructive hover:bg-destructive/10"
+										onClick={() =>
+											setConfirmConfig({
+												isOpen: true,
+												title: "Hapus Kategori?",
+												message: `Hapus kategori "${c.name}"? Produk dalam kategori ini mungkin akan terpengaruh.`,
+												onConfirm: () => deleteCategory({ id: c._id }),
+											})
+										}
+										type="button"
+									>
+										<Trash2 className="h-4 w-4" />
+									</button>
+								</div>
 							</div>
+							
+							{/* Render Sub-categories */}
+							{categories.filter(sub => sub.parentId === c._id).length > 0 && (
+								<div className="ml-6 space-y-2 border-l-2 border-border pl-4">
+									{categories.filter(sub => sub.parentId === c._id).map(sub => (
+										<div
+											className="flex items-center justify-between rounded-lg bg-muted/30 p-2"
+											key={sub._id}
+										>
+											<span className="text-sm text-muted-foreground">{sub.name}</span>
+											<div className="flex gap-1">
+												<button
+													className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+													onClick={() =>
+														setCategoryModal({
+															isOpen: true,
+															editingId: sub._id,
+															name: sub.name,
+															parentId: sub.parentId,
+														})
+													}
+													type="button"
+												>
+													<Edit className="h-3.5 w-3.5" />
+												</button>
+												<button
+													className="rounded-md p-1 text-destructive hover:bg-destructive/10"
+													onClick={() =>
+														setConfirmConfig({
+															isOpen: true,
+															title: "Hapus Sub-Kategori?",
+															message: `Hapus sub-kategori "${sub.name}"?`,
+															onConfirm: () => deleteCategory({ id: sub._id }),
+														})
+													}
+													type="button"
+												>
+													<Trash2 className="h-3.5 w-3.5" />
+												</button>
+											</div>
+										</div>
+									))}
+								</div>
+							)}
 						</div>
 					))}
 				</div>
@@ -1503,6 +1559,34 @@ function SettingsTab({
 										value={categoryModal.name}
 									/>
 								</div>
+								
+								<div className="space-y-2">
+									<label
+										className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
+										htmlFor="cat-parent"
+									>
+										Sub dari Kategori (Opsional)
+									</label>
+									<select
+										className="w-full rounded-2xl bg-muted p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+										id="cat-parent"
+										onChange={(e) =>
+											setCategoryModal({
+												...categoryModal,
+												parentId: e.target.value ? (e.target.value as Id<"categories">) : null,
+											})
+										}
+										value={categoryModal.parentId || ""}
+									>
+										<option value="">- Tidak ada (Kategori Utama) -</option>
+										{categories?.filter((c) => c._id !== categoryModal.editingId && !c.parentId).map((c) => (
+											<option key={c._id} value={c._id}>
+												{c.name}
+											</option>
+										))}
+									</select>
+								</div>
+
 								<div className="flex gap-4">
 									<button
 										className="flex-1 rounded-[20px] bg-muted py-4 font-bold text-foreground text-[10px] uppercase tracking-widest transition-all hover:bg-muted/80 active:scale-95"

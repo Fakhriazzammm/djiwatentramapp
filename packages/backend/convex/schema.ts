@@ -6,6 +6,7 @@ export default defineSchema({
 	categories: defineTable({
 		name: v.string(),
 		order: v.number(),
+		parentId: v.optional(v.id("categories")), // For Sub-Categories
 	}),
 
 	// Products with variations and pricing

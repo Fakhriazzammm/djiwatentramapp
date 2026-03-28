@@ -140,6 +140,7 @@ export const createCategory = mutation({
 	args: {
 		name: v.string(),
 		order: v.optional(v.number()),
+		parentId: v.optional(v.id("categories")),
 	},
 	handler: async (ctx, args) => {
 		// Check if category already exists
@@ -164,6 +165,7 @@ export const createCategory = mutation({
 		return await ctx.db.insert("categories", {
 			name: args.name,
 			order,
+			parentId: args.parentId,
 		});
 	},
 });
@@ -174,6 +176,7 @@ export const updateCategory = mutation({
 		id: v.id("categories"),
 		name: v.optional(v.string()),
 		order: v.optional(v.number()),
+		parentId: v.optional(v.id("categories")),
 	},
 	handler: async (ctx, args) => {
 		const { id, ...updates } = args;
