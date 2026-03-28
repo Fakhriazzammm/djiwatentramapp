@@ -737,6 +737,117 @@ function DashboardTab({
 				<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Live</span>
 			</div>
 
+			{/* Shift Status Card & Report - Moved to top */}
+			<div className="space-y-3">
+				<Card className="border-border bg-muted/30 overflow-hidden shadow-sm">
+					<div className="flex items-center justify-between p-3">
+						<div className="flex items-center gap-3">
+							<div className={`p-2 rounded-full ${isShiftOpen ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+								<SquarePlay className="h-4 w-4" />
+							</div>
+							<div>
+								<div className="flex items-center gap-2">
+									<p className="font-bold text-sm">Status Shift</p>
+									{isShiftOpen && shiftStatus?.shiftInfo?.shiftName && (
+										<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-bold text-primary uppercase tracking-tighter">
+											{shiftStatus.shiftInfo.shiftName}
+										</span>
+									)}
+								</div>
+								<p className="text-[10px] text-muted-foreground uppercase mt-0.5">
+									{isShiftOpen 
+										? `Aktif • Kasir: ${shiftStatus?.shiftInfo?.cashierName || 'Kasir'}` 
+										: "Tutup (Belum Mulai)"}
+								</p>
+							</div>
+						</div>
+						<Button 
+							size="sm" 
+							variant={isShiftOpen ? "outline" : "default"}
+							onClick={() => setShowShiftManagement(true)}
+							className="text-xs h-8"
+						>
+							{isShiftOpen ? "Tutup Shift" : "Buka Shift"}
+						</Button>
+					</div>
+				</Card>
+
+				<h3 className="font-bold text-sm">Ringkasan Hari Ini</h3>
+				<Card className="border-border bg-card shadow-sm text-xs font-mono whitespace-pre-wrap p-4 overflow-x-auto">
+					{(() => {
+						const dateStr = new Date().toLocaleDateString('id-ID', {
+							day: '2-digit', month: '2-digit', year: 'numeric'
+						});
+
+						const totalCash = todayOrders
+							.filter((o: Doc<"orders">) => o.status === 'completed' && o.paymentMethod === 'cash')
+							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+							
+						const totalQris = todayOrders
+							.filter((o: Doc<"orders">) => o.status === 'completed' && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
+							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+							
+						const totalItems = todayOrders
+							.filter((o: Doc<"orders">) => o.status === 'completed')
+							.reduce((acc: number, o: Doc<"orders">) => {
+								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
+							}, 0);
+
+						const modalAwal = todayTransactions
+							?.filter((t: any) => t.type === 'income' && t.category?.toLowerCase().includes('modal'))
+							.reduce((acc: number, t: any) => acc + t.amount, 0) || 0;
+
+						// Calculate expenses by category
+						const expensesByCategory: Record<string, number> = {};
+						let totalExpenseVal = 0;
+						
+						todayTransactions?.filter((t: any) => t.type === 'expense' && t.status === 'completed').forEach((t: any) => {
+							const cat = t.category || 'Lainnya';
+							expensesByCategory[cat] = (expensesByCategory[cat] || 0) + t.amount;
+							totalExpenseVal += t.amount;
+						});
+
+						const totalRevenue = totalCash + totalQris;
+						const netBalance = totalRevenue - totalExpenseVal;
+
+						let expensesText = Object.entries(expensesByCategory)
+							.map(([cat, amount]) => `${cat}: Rp. ${amount.toLocaleString("id-ID")}`)
+							.join('\n');
+							
+						if (!expensesText) expensesText = "Tidak ada pengeluaran hari ini";
+
+						return `📊 Daily Revenue Report 
+Djiwa Tentram Koffie - 
+📅 Tanggal: ${dateStr} 
+⸻ 
+👥 ${shiftStatus?.shiftInfo?.shiftName?.toUpperCase() || 'SHIFT 1'}
+Modal Kasir: Rp. ${modalAwal.toLocaleString("id-ID")}
+Cash/Kasir: Rp. ${totalCash.toLocaleString("id-ID")}
+Debit/QRIS: Rp. ${totalQris.toLocaleString("id-ID")}
+Delivery Online: Rp. 0
+Total Revenue ${shiftStatus?.shiftInfo?.shiftName || 'Shift 1'}: Rp. ${totalRevenue.toLocaleString("id-ID")}
+Produk Terjual: ${totalItems}
+Shift: ${shiftStatus?.shiftInfo?.cashierName || 'Kasir'}
+⸻ 
+
+💰 TOTAL REVENUE HARIAN: 
+Rp. ${totalRevenue.toLocaleString("id-ID")}
+📦 TOTAL PRODUK TERJUAL: ${totalItems}
+⸻ 
+📝 RINGKASAN PENGELUARAN (Berdasarkan Kategori)
+${expensesText}
+Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
+⸻ 
+📝 RINGKASAN HARIAN 
+${dateStr} : 
+Grand Total Revenue: Rp. ${totalRevenue.toLocaleString("id-ID")}
+Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
+Kas Bersih (Net): Rp. ${netBalance.toLocaleString("id-ID")}
+Total Produk Terjual: ${totalItems}`;
+					})()}
+				</Card>
+			</div>
+
 			<div className="space-y-3">
 				<div className="flex items-center justify-between">
 					<h3 className="font-bold text-sm">Aksi Cepat</h3>
@@ -774,95 +885,6 @@ function DashboardTab({
 						<Package className="h-4 w-4 text-accent" />
 						<span className="text-[10px] font-semibold">Update Stok</span>
 					</Button>
-				</div>
-			</div>
-
-			{/* Shift Status Card */}
-			<Card className="border-border bg-muted/30 overflow-hidden shadow-sm">
-				<div className="flex items-center justify-between p-3">
-					<div className="flex items-center gap-3">
-						<div className={`p-2 rounded-full ${isShiftOpen ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-							<SquarePlay className="h-4 w-4" />
-						</div>
-						<div>
-							<p className="font-bold text-sm">Status Shift</p>
-							<p className="text-[10px] text-muted-foreground uppercase">{isShiftOpen ? "Aktif (Sedang Berjalan)" : "Tutup (Belum Mulai)"}</p>
-						</div>
-					</div>
-					<Button 
-						size="sm" 
-						variant={isShiftOpen ? "outline" : "default"}
-						onClick={() => setShowShiftManagement(true)}
-						className="text-xs h-8"
-					>
-						{isShiftOpen ? "Tutup Shift" : "Buka Shift"}
-					</Button>
-				</div>
-			</Card>
-
-			<div className="space-y-3">
-				<h3 className="font-bold text-sm">Ringkasan Hari Ini</h3>
-				<div className="grid grid-cols-3 gap-2">
-					<Card className="border-primary/20 bg-primary/5 shadow-sm">
-						<CardContent className="p-3 text-center">
-							<TrendingUp className="mx-auto mb-1 h-4 w-4 text-primary" />
-							<p className="text-[9px] text-primary/70 uppercase tracking-tight font-semibold">
-								Pemasukan
-							</p>
-							<p className="font-bold text-primary text-sm mt-0.5">
-								{formatCurrency(income)}
-							</p>
-						</CardContent>
-					</Card>
-					<Card className="border-destructive/20 bg-destructive/5 shadow-sm">
-						<CardContent className="p-3 text-center">
-							<TrendingDown className="mx-auto mb-1 h-4 w-4 text-destructive" />
-							<p className="text-[9px] text-destructive/70 uppercase tracking-tight font-semibold">
-								Pengeluaran
-							</p>
-							<p className="font-bold text-destructive text-sm mt-0.5">
-								{formatCurrency(expense)}
-							</p>
-						</CardContent>
-					</Card>
-					<Card className="border-accent/20 bg-accent/5 shadow-sm">
-						<CardContent className="p-3 text-center">
-							<Banknote className="mx-auto mb-1 h-4 w-4 text-accent" />
-							<p className="text-[9px] text-accent/70 uppercase tracking-tight font-semibold">
-								Kas Bersih
-							</p>
-							<p
-								className={`font-bold text-sm mt-0.5 ${balance >= 0 ? "text-primary" : "text-destructive"}`}
-							>
-								{formatCurrency(balance)}
-							</p>
-						</CardContent>
-					</Card>
-				</div>
-
-				<div className="grid grid-cols-2 gap-2">
-					<Card className="border-border bg-muted/30 shadow-sm">
-						<CardContent className="p-3 text-center">
-							<ClipboardList className="mx-auto mb-1.5 h-5 w-5 text-muted-foreground" />
-							<p className="font-bold text-foreground text-xl">
-								{todayOrders.length}
-							</p>
-							<p className="text-[9px] text-muted-foreground uppercase font-semibold mt-0.5">
-								Pesanan Hari Ini
-							</p>
-						</CardContent>
-					</Card>
-					<Card className="border-border bg-muted/30 shadow-sm">
-						<CardContent className="p-3 text-center">
-							<Wallet className="mx-auto mb-1.5 h-5 w-5 text-muted-foreground" />
-							<p className="font-bold text-foreground text-xl">
-								{formatCurrency(totalSales)}
-							</p>
-							<p className="text-[9px] text-muted-foreground uppercase font-semibold mt-0.5">
-								Total Penjualan
-							</p>
-						</CardContent>
-					</Card>
 				</div>
 			</div>
 
