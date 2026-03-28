@@ -451,37 +451,55 @@ function MenuPage() {
 			{/* LEFT CONTENT: Menu Area */}
 			<div className="flex flex-1 flex-col overflow-hidden">
 				{/* Shift & Printer Status Header */}
-				<div className="flex flex-col border-b border-border bg-muted/50 px-3 py-1.5 text-[10px] font-medium gap-1 shadow-sm z-40 shrink-0">
-					<div className="flex items-center justify-between">
-						<div className="flex items-center gap-1.5 text-muted-foreground">
-							<span className={cn("flex h-2 w-2 rounded-full", isShiftOpen ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]")} />
-							<span>{isShiftOpen ? "Shift Aktif" : "Shift Tutup"}</span>
-							{isShiftOpen && shiftStatus?.latestMulai ? (
-								<>
-									<span className="opacity-50">•</span>
-									<span className="font-mono">{currentTime.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
-								</>
-							) : null}
+				<div className="flex items-center justify-between border-b border-border bg-muted/50 px-4 py-1.5 text-[11px] font-medium shadow-sm z-40 shrink-0">
+					<div className="flex items-center gap-4">
+						{/* Shift Status */}
+						<div className="flex items-center gap-1.5">
+							<span className={cn("flex h-2.5 w-2.5 rounded-full", isShiftOpen ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]")} />
+							<span className="text-muted-foreground">{isShiftOpen ? "Shift Aktif" : "Shift Tutup"}</span>
 						</div>
-						<div className={cn("flex items-center gap-1", isPrinterConnected ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")}>
-							<Printer className="h-3 w-3" />
-							<span className="text-[9px] uppercase tracking-wider font-bold">
-								{isPrinterConnected ? "Printer ON" : "Printer OFF"}
-							</span>
-						</div>
+
+						{/* Time & Date */}
+						{isShiftOpen && (
+							<>
+								<div className="h-3 w-px bg-border" />
+								<div className="flex items-center gap-1.5 text-muted-foreground">
+									<Clock className="h-3 w-3" />
+									<span>
+										{currentTime.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+									</span>
+									<span className="font-mono ml-1 font-bold">
+										{currentTime.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+									</span>
+								</div>
+							</>
+						)}
+
+						{/* Cashier Info */}
+						{isShiftOpen && shiftStatus?.shiftInfo?.cashierName && (
+							<>
+								<div className="h-3 w-px bg-border" />
+								<div className="flex items-center gap-1.5 text-muted-foreground">
+									<User className="h-3 w-3" />
+									<span>{shiftStatus.shiftInfo.cashierName}</span>
+									{shiftStatus.shiftInfo.shiftName && (
+										<>
+											<span className="opacity-50">•</span>
+											<span className="font-semibold text-foreground/70">{shiftStatus.shiftInfo.shiftName}</span>
+										</>
+									)}
+								</div>
+							</>
+						)}
 					</div>
-					{isShiftOpen && shiftStatus?.shiftInfo?.cashierName && (
-						<div className="flex items-center gap-1 text-muted-foreground text-[9px] ml-3.5">
-							<User className="h-2.5 w-2.5" />
-							<span>{shiftStatus.shiftInfo.cashierName}</span>
-							{shiftStatus.shiftInfo.shiftName && (
-								<>
-									<span className="opacity-50">•</span>
-									<span>{shiftStatus.shiftInfo.shiftName}</span>
-								</>
-							)}
-						</div>
-					)}
+
+					{/* Printer Status */}
+					<div className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-md", isPrinterConnected ? "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400" : "bg-muted text-muted-foreground")}>
+						<Printer className="h-3 w-3" />
+						<span className="uppercase tracking-wider font-bold">
+							{isPrinterConnected ? "Printer ON" : "Printer OFF"}
+						</span>
+					</div>
 				</div>
 
 				{/* === HEADER === */}
