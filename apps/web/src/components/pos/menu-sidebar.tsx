@@ -98,6 +98,7 @@ export function MenuSidebar({
 			iconColor: "text-primary",
 		},
 		{ value: "parkir", label: "Simpan Orderan", icon: ShoppingCart, iconColor: "text-orange-500" },
+		{ value: "history", label: "Riwayat Order", icon: Clock, iconColor: "text-blue-500" },
 		{ value: "kas", label: "Kas", icon: Wallet, iconColor: "text-primary" },
 		{ value: "stok", label: "Stok", icon: Package, iconColor: "text-accent" },
 		{
@@ -331,6 +332,11 @@ export function MenuSidebar({
 								<ParkirTab
 									onClose={() => setIsOpen(false)}
 									onRestore={handleRestoreOrder}
+								/>
+							)}
+							{activeTab === "history" && (
+								<HistoryTab
+									onSelectOrder={setSelectedOrder}
 								/>
 							)}
 							{activeTab === "kas" && (
@@ -942,6 +948,105 @@ function ParkirTab({
 				</div>
 			)}
 
+			<div className="h-6" />
+		</div>
+	);
+}
+
+function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) => void }) {
+	const orders = useQuery(api.orders.getOrders, {});
+	
+	const formatCurrency = (value: number) =>
+		new Intl.NumberFormat("id-ID", {
+			style: "currency",
+			currency: "IDR",
+			maximumFractionDigits: 0,
+		}).format(value);
+
+	const formatTime = (timestamp: number) =>
+		new Date(timestamp).toLocaleTimeString("id-ID", {
+			hour: "2-digit",
+			minute: "2-digit",
+		});
+
+	const formatDate = (timestamp: number) =>
+		new Date(timestamp).toLocaleDateString("id-ID", {
+			day: "numeric",
+			month: "short",
+		});
+
+	return (
+		<div className="space-y-4 pt-2">
+			<div className="space-y-2 text-center">
+				<h3 className="font-medium text-lg">Riwayat Order</h3>
+				<p className="text-muted-foreground text-sm">
+					Daftar pesanan terbaru Anda.
+				</p>
+			</div>
+
+			{orders === undefined ? (
+				<div className="flex flex-col items-center justify-center py-10 gap-3">
+					<Loader2 className="h-6 w-6 animate-spin text-primary" />
+					<p className="text-xs text-muted-foreground">Memuat riwayat...</p>
+				</div>
+			) : orders.length === 0 ? (
+				<div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-2xl bg-muted/30">
+					<ClipboardList className="h-10 w-10 text-muted-foreground/30 mb-3" />
+					<p className="font-medium text-sm text-muted-foreground">Belum Ada Transaksi</p>
+				</div>
+			) : (
+				<div className="space-y-2">
+					{orders.map((order: Doc<"orders">) => (
+						<button
+							key={order._id}
+							onClick={() => onSelectOrder(order)}
+							className="flex w-full items-center justify-between rounded-xl border bg-card p-3 text-left transition-all hover:border-primary/50 hover:shadow-sm active:scale-[0.98]"
+							type="button"
+						>
+							<div className="flex items-center gap-3">
+								<div
+									className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+										order.status === "completed" || order.status === "paid"
+											? "bg-emerald-100 text-emerald-600"
+											: order.status === "pending"
+												? "bg-orange-100 text-orange-600"
+												: "bg-rose-100 text-rose-600"
+									}`}
+								>
+									<ClipboardList className="h-5 w-5" />
+								</div>
+								<div>
+									<div className="flex items-center gap-2">
+										<p className="font-bold text-sm">#{order.orderNumber}</p>
+										<span className={`text-[9px] font-bold uppercase tracking-wider ${
+											order.status === "completed" || order.status === "paid" ? "text-emerald-600" :
+											order.status === "pending" ? "text-orange-600" : "text-rose-600"
+										}`}>
+											{order.status === "paid" ? "Lunas" : 
+											 order.status === "completed" ? "Selesai" : 
+											 order.status === "pending" ? "Pending" : "Batal"}
+										</span>
+									</div>
+									<p className="text-[10px] text-muted-foreground">
+										{formatDate(order.createdAt)} • {formatTime(order.createdAt)}
+									</p>
+									<p className="text-xs font-medium mt-0.5">
+										{order.customerName || "Tanpa Nama"}
+									</p>
+								</div>
+							</div>
+							<div className="text-right">
+								<p className="font-bold text-primary">
+									{formatCurrency(order.totalAmount)}
+								</p>
+								<p className="text-[10px] text-muted-foreground mt-1">
+									{order.items?.length || 0} item
+								</p>
+							</div>
+						</button>
+					))}
+				</div>
+			)}
 			<div className="h-6" />
 		</div>
 	);

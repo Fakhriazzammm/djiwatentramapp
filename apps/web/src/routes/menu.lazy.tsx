@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import {
 	BarChart3,
 	Bot,
+	Clock,
 	Coffee,
 	Minus,
 	Package,
@@ -37,6 +38,7 @@ export const Route = createLazyFileRoute("/menu")({
 const SIDEBAR_MENU_ITEMS = [
 	{ id: "dashboard", label: "Dashboard", icon: BarChart3 },
 	{ id: "parkir", label: "Simpan Orderan", icon: ShoppingCart },
+	{ id: "history", label: "Riwayat Order", icon: Clock },
 	{ id: "kas", label: "Kas", icon: Wallet },
 	{ id: "stok", label: "Stok", icon: Package },
 	{ id: "yumi", label: "Chat AI", icon: Bot },
