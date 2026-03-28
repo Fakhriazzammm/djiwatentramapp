@@ -33,9 +33,6 @@ export const Route = createLazyFileRoute("/menu")({
 	component: MenuPage,
 });
 
-// Grid columns for responsive layout
-const GRID_COLUMNS = 4; // Desktop: 4 columns
-
 // Menu Sidebar items for the header
 const SIDEBAR_MENU_ITEMS = [
 	{ id: "dashboard", label: "Dashboard", icon: BarChart3 },
@@ -80,6 +77,24 @@ function MenuPage() {
 	const [activeSidebarTab, setActiveSidebarTab] = useState("dashboard");
 	const [keyboardFocusZone, setKeyboardFocusZone] = useState<FocusZone>("header");
 	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
+
+	// Responsive grid columns
+	const [gridColumns, setGridColumns] = useState(4);
+
+	useEffect(() => {
+		const updateColumns = () => {
+			const width = window.innerWidth;
+			if (width >= 1536) setGridColumns(5); // 2xl
+			else if (width >= 1280) setGridColumns(4); // xl
+			else if (width >= 1024) setGridColumns(3); // lg
+			else if (width >= 768) setGridColumns(2); // md
+			else if (width >= 640) setGridColumns(3); // sm
+			else setGridColumns(2); // default
+		};
+		updateColumns();
+		window.addEventListener("resize", updateColumns);
+		return () => window.removeEventListener("resize", updateColumns);
+	}, []);
 
 	// Refs for scrolling
 	const categoryScrollRef = useRef<HTMLDivElement>(null);
@@ -273,7 +288,7 @@ function MenuPage() {
 	const { focusZone, focusedIndex, focusedHeaderIndex, setFocusZone, setFocusedIndex, isZoneFocused, isKeyboardActive } =
 		useMenuKeyboardNav({
 			productCount: filteredProducts?.length || 0,
-			gridColumns: GRID_COLUMNS,
+			gridColumns,
 			onProductSelect: handleProductSelect,
 			onProductActivate: handleProductActivate,
 			categoryCount: categoryList.length,
@@ -486,6 +501,16 @@ function MenuPage() {
 								onChange={(e) => setSearchQuery(e.target.value)}
 								onFocus={() => setIsSearchFocused(true)}
 								onBlur={() => setIsSearchFocused(false)}
+								onKeyDown={(e) => {
+									if (e.key === "ArrowDown" && filteredProducts?.length) {
+										e.preventDefault();
+										e.currentTarget.blur();
+										setFocusZone("products");
+										setFocusedIndex(0);
+									} else if (e.key === "Escape") {
+										e.currentTarget.blur();
+									}
+								}}
 								className="pl-9 pr-9"
 							/>
 							{searchQuery && (
@@ -642,12 +667,6 @@ function MenuPage() {
 													>
 														{fmt(pricing.finalPrice)}
 													</p>
-												</div>
-												<div
-													className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white shadow-sm"
-													style={{ background: themeColor ?? "var(--color-primary)" }}
-												>
-													<Plus className="h-4 w-4" />
 												</div>
 											</div>
 										</div>
