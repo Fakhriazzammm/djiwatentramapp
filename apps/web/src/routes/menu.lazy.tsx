@@ -65,6 +65,7 @@ function MenuPage() {
 		finalTotal,
 		taxAmount,
 		serviceChargeAmount,
+		customerInfo,
 	} = useCart();
 
 	// Local state
@@ -306,7 +307,7 @@ function MenuPage() {
 		}
 	};
 
-	// Handle order submission from payment modal
+	// Handle order submission from payment modal or sidebar
 	const handlePaymentConfirm = useCallback(
 		async (
 			finalAmount: number,
@@ -317,6 +318,8 @@ function MenuPage() {
 				orderType?: "dine_in" | "takeaway";
 				notes?: string;
 				autoComplete?: boolean;
+				cashReceived?: number;
+				changeAmount?: number;
 			}
 		) => {
 			if (cartItems.length === 0) return;
@@ -332,7 +335,9 @@ function MenuPage() {
 					})),
 					totalAmount: finalAmount,
 					paymentMethod: (paymentMethod as "cash" | "qris" | "transfer") || "cash",
-					customerName: "Kasir",
+					customerName: customerInfo.name || "Pelanggan",
+					tableNumber: orderData?.tableNumber,
+					orderType: orderData?.orderType,
 					voucherId: discountId as Id<"discounts"> | undefined,
 					discountAmount: totalAmount - finalAmount + taxAmount + serviceChargeAmount,
 					autoComplete: orderData?.autoComplete,
@@ -348,7 +353,7 @@ function MenuPage() {
 				setIsSubmitting(false);
 			}
 		},
-		[cartItems, createOrder, clearCart, totalAmount, taxAmount, serviceChargeAmount]
+		[cartItems, createOrder, clearCart, totalAmount, taxAmount, serviceChargeAmount, customerInfo.name]
 	);
 
 	const isLoading = products === undefined || categories === undefined;
@@ -621,8 +626,11 @@ function MenuPage() {
 			</div>
 
 			{/* RIGHT CONTENT: Checkout Sidebar (Desktop/Tablet) */}
-			<div className="hidden md:block w-[320px] lg:w-[380px] shrink-0 overflow-hidden">
-				<CheckoutSidebar onCheckout={() => setIsPaymentOpen(true)} />
+			<div className="hidden md:block w-[320px] lg:w-[380px] shrink-0 overflow-hidden relative">
+				<CheckoutSidebar 
+					onConfirmPayment={handlePaymentConfirm} 
+					isSubmitting={isSubmitting} 
+				/>
 			</div>
 
 			{/* === CART BUTTON (Floating Mobile) === */}
@@ -669,6 +677,8 @@ function MenuPage() {
 			<CartDrawer
 				isOpen={isCartOpen}
 				onClose={() => setIsCartOpen(false)}
+				onConfirmPayment={handlePaymentConfirm}
+				isSubmitting={isSubmitting}
 			/>
 
 			{/* === PAYMENT MODAL === */}

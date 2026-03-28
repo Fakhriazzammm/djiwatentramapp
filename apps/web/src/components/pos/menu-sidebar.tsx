@@ -286,65 +286,69 @@ export function MenuSidebar({
 					</SheetTrigger>
 				)}
 				<SheetContent
-					className="flex w-full flex-col p-0 sm:max-w-[440px]"
-					side="right"
-				>
-					<SheetHeader className="border-b px-4 py-3">
-						<SheetTitle className="text-base font-bold">Menu Operasional</SheetTitle>
-					</SheetHeader>
-					<div className="flex-1 overflow-hidden">
-						<Tabs className="flex h-full flex-col" value={activeTab} onValueChange={setActiveTab}>
-							{!hideTabs && (
-								<div className="bg-muted/20 px-3 pt-3 pb-2">
-									<TabsList className="grid h-16 w-full grid-cols-5 gap-1.5 rounded-xl bg-muted/50 p-1.5">
-										{TABS.map((tab) => {
-											const Icon = tab.icon;
-											return (
-												<TabsTrigger
-													className="relative flex h-full flex-col items-center justify-center gap-1 rounded-lg border-none px-1 py-1 font-medium text-[10px] outline-none transition-all after:hidden hover:bg-muted/50 hover:text-foreground focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm data-active:bg-background data-active:text-primary data-active:shadow-sm sm:text-xs"
-													key={tab.value}
-													value={tab.value}
-												>
-													<Icon className="mb-0.5 h-4 w-4 sm:h-5 sm:w-5" />
-													<span className="leading-none text-[9px] sm:text-[10px]">{tab.label}</span>
-												</TabsTrigger>
-											);
-										})}
-									</TabsList>
+				className="flex w-full flex-col gap-0 border-l border-border bg-muted/10 p-0 sm:max-w-md md:w-[480px] z-[100]"
+				showCloseButton={false}
+			>
+				<div className="flex flex-1 flex-col overflow-hidden bg-background relative">
+					{/* Dynamic Header based on active tab */}
+					<div className="flex items-center justify-between border-b border-border bg-card px-4 py-3 shrink-0">
+						<div className="flex items-center gap-2">
+							{TABS.map(tab => tab.value === activeTab && (
+								<div key={tab.value} className="flex items-center gap-2 fade-in animate-in slide-in-from-left-2 duration-300">
+									<div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-muted ${tab.iconColor}`}>
+										<tab.icon className="h-4 w-4" />
+									</div>
+									<h2 className="font-bold text-sm uppercase tracking-wider">{tab.label}</h2>
 								</div>
-							)}
-
-							<div className="flex flex-1 flex-col overflow-hidden bg-background">
-								<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="dashboard">
-									<DashboardTab
-										onClose={() => setIsOpen(false)}
-										onNavigate={setActiveTab}
-										onSelectOrder={setSelectedOrder}
-										onParkOrder={() => setIsParkDialogOpen(true)}
-									/>
-								</TabsContent>
-								<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="parkir">
-									<ParkirTab
-										onClose={() => setIsOpen(false)}
-										onRestore={handleRestoreOrder}
-									/>
-								</TabsContent>
-								<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="kas">
-									<KasTab onClose={() => setIsOpen(false)} />
-								</TabsContent>
-								<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="stok">
-									<StokTab setConfirmConfig={setConfirmConfig} />
-								</TabsContent>
-								<TabsContent className="m-0 flex-1 overflow-hidden p-0" value="yumi">
-									<YumiAIChat />
-								</TabsContent>
-								<TabsContent className="m-0 flex-1 overflow-y-auto p-3 pb-10" value="settings">
-									<SettingsTab onClose={() => setIsOpen(false)} />
-								</TabsContent>
-							</div>
-						</Tabs>
+							))}
+						</div>
+						<Button 
+							variant="ghost" 
+							size="sm" 
+							className="h-8 w-8 p-0 rounded-full shrink-0" 
+							onClick={() => {
+								setIsOpen(false);
+								onOpenChange?.(false);
+							}}
+							aria-label="Tutup"
+						>
+							<X className="h-4 w-4" />
+						</Button>
 					</div>
-				</SheetContent>
+
+					{/* Content Area - Full height */}
+					<div className="flex-1 overflow-y-auto p-4 bg-background">
+						{activeTab === "dashboard" && (
+							<DashboardTab
+								onClose={() => setIsOpen(false)}
+								onNavigate={setActiveTab}
+								onSelectOrder={setSelectedOrder}
+								onParkOrder={() => setIsParkDialogOpen(true)}
+							/>
+						)}
+						{activeTab === "parkir" && (
+							<ParkirTab
+								onClose={() => setIsOpen(false)}
+								onRestore={handleRestoreOrder}
+							/>
+						)}
+						{activeTab === "kas" && (
+							<KasTab onClose={() => setIsOpen(false)} />
+						)}
+						{activeTab === "stok" && (
+							<StokTab setConfirmConfig={setConfirmConfig} />
+						)}
+						{activeTab === "yumi" && (
+							<div className="-mx-4 -mt-4 h-[calc(100%+2rem)]">
+								<YumiAIChat />
+							</div>
+						)}
+						{activeTab === "settings" && (
+							<SettingsTab onClose={() => setIsOpen(false)} />
+						)}
+					</div>
+				</div>
+			</SheetContent>
 
 				<Dialog
 					onOpenChange={(open) => {
