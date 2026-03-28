@@ -679,6 +679,7 @@ function DashboardTab({
 
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
+	const siteSettings = useQuery(api.site_settings.getSettings);
 
 	const income = financialSummary?.totalIncome || 0;
 	const expense = financialSummary?.totalExpense || 0;
@@ -793,6 +794,33 @@ function DashboardTab({
 								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
 							}, 0);
 
+						// Calculate products sold by category
+						const itemsByCategory: Record<string, number> = {};
+						const itemsByName: Record<string, number> = {};
+						
+						todayOrders.filter((o: Doc<"orders">) => o.status === 'completed').forEach((o: Doc<"orders">) => {
+							o.items.forEach((item: any) => {
+								const cat = item.category || 'Lainnya';
+								const name = item.productName || 'Unknown';
+								itemsByCategory[cat] = (itemsByCategory[cat] || 0) + item.quantity;
+								itemsByName[name] = (itemsByName[name] || 0) + item.quantity;
+							});
+						});
+
+						const sortedProducts = Object.entries(itemsByName)
+							.sort((a, b) => b[1] - a[1])
+							.slice(0, 3); // Top 3 products
+
+						let productsText = Object.entries(itemsByCategory)
+							.map(([cat, qty]) => `${cat}: ${qty}`)
+							.join('\n');
+						if (!productsText) productsText = "-";
+
+						let topProductsText = sortedProducts
+							.map(([name, qty]) => `- ${name}: ${qty}`)
+							.join('\n');
+						if (!topProductsText) topProductsText = "-";
+
 						const modalAwal = todayTransactions
 							?.filter((t: any) => t.type === 'income' && t.category?.toLowerCase().includes('modal'))
 							.reduce((acc: number, t: any) => acc + t.amount, 0) || 0;
@@ -816,23 +844,32 @@ function DashboardTab({
 							
 						if (!expensesText) expensesText = "Tidak ada pengeluaran hari ini";
 
+						const shopName = siteSettings?.shopName || "YUMI POS";
+
 						return `📊 Daily Revenue Report 
-Djiwa Tentram Koffie - 
+${shopName} - 
 📅 Tanggal: ${dateStr} 
 ⸻ 
-👥 ${shiftStatus?.shiftInfo?.shiftName?.toUpperCase() || 'SHIFT 1'}
+👥 ${shiftStatus?.shiftInfo?.shiftName?.toUpperCase() || 'SHIFT SAAT INI'}
 Modal Kasir: Rp. ${modalAwal.toLocaleString("id-ID")}
 Cash/Kasir: Rp. ${totalCash.toLocaleString("id-ID")}
 Debit/QRIS: Rp. ${totalQris.toLocaleString("id-ID")}
 Delivery Online: Rp. 0
-Total Revenue ${shiftStatus?.shiftInfo?.shiftName || 'Shift 1'}: Rp. ${totalRevenue.toLocaleString("id-ID")}
+Total Revenue ${shiftStatus?.shiftInfo?.shiftName || 'Shift'}: Rp. ${totalRevenue.toLocaleString("id-ID")}
+
 Produk Terjual: ${totalItems}
-Shift: ${shiftStatus?.shiftInfo?.cashierName || 'Kasir'}
+Rincian Produk:
+${productsText}
+
+Kasir: ${shiftStatus?.shiftInfo?.cashierName || 'Belum Buka Shift'}
 ⸻ 
 
 💰 TOTAL REVENUE HARIAN: 
 Rp. ${totalRevenue.toLocaleString("id-ID")}
 📦 TOTAL PRODUK TERJUAL: ${totalItems}
+
+⭐ TOP 3 PRODUK TERLARIS:
+${topProductsText}
 ⸻ 
 📝 RINGKASAN PENGELUARAN (Berdasarkan Kategori)
 ${expensesText}
@@ -983,8 +1020,10 @@ Total Produk Terjual: ${totalItems}`;
 							?.filter((t: any) => t.type === 'income' && t.category?.toLowerCase().includes('modal'))
 							.reduce((acc: number, t: any) => acc + t.amount, 0) || 0;
 
+						const shopName = siteSettings?.shopName || "YUMI POS";
+
 						const text = `📊 Daily Revenue Report 
-Djiwa Tentram Koffie - 
+${shopName} - 
 📅 Tanggal: ${dateStr} 
 ⸻ 
 👥 ${shiftStatus?.shiftInfo?.shiftName?.toUpperCase() || 'SHIFT 1'}

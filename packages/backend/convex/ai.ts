@@ -1019,7 +1019,7 @@ ATURAN:
 15. RINGKASAN HARIAN (KHUSUS): Jika pengguna meminta "Ringkasan Harian", "Laporan Harian", "Daily Revenue Report", atau semacamnya, WAJIB format hasilnya PERSIS seperti template berikut, jangan gunakan format lain. Ambil data transaksi keuangan dan pesanan hari ini menggunakan tool (seperti getAllTransactions dan getOrders), lalu hitung total dan kategorikan:
 
 📊 Daily Revenue Report 
-Djiwa Tentram Koffie & TB Warman - 
+[Nama Toko (Dari Data Settings) atau "YUMI POS"] - 
 📅 Tanggal: [Tanggal Hari Ini, misal 28/03/2026]
 ⸻ 
 👥 SHIFT 1 [Atau nama shift]
