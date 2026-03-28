@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImageScanner } from "@/components/ai/image-scanner";
 
@@ -62,7 +63,14 @@ interface ChatMessage {
 	scanData?: ScanResultData;
 	suggestions?: Array<{ label: string; prompt: string }>;
 	actionButtons?: Array<{ type: string; label: string; data: any; icon: React.ReactNode }>;
+	genericActions?: GenericActionButton[];
 	_msgId: string;
+}
+
+interface GenericActionButton {
+	id: string;
+	label: string;
+	prompt: string;
 }
 
 interface ToolCall {
@@ -215,8 +223,10 @@ function AIChatPage() {
 	const sanitizeResponse = useCallback((text: string): string => {
 		if (!text) return "";
 		return text
+			.replace(/🚀 TOMBOL AKSI:[\s\S]*/, "")
 			// Remove suggestions [SUGGEST: Label | Prompt] - will be parsed separately
 			.replace(/\[SUGGEST:\s*(.*?)\s*\|\s*(.*?)\s*\]/g, "")
+			.replace(/\[AKSI:\s*(.*?)\s*\|\s*(.*?)\s*\]/g, "")
 			// Remove bold markdown
 			.replace(/\*\*(.*?)\*\*/g, "$1")
 			// Remove italic markdown
@@ -251,13 +261,33 @@ function AIChatPage() {
 		return suggestions;
 	}, []);
 
+	const extractGenericActions = useCallback((text: string): GenericActionButton[] => {
+		const actions: GenericActionButton[] = [];
+		const regex = /🚀 TOMBOL AKSI:([\s\S]*)/;
+		const match = text.match(regex);
+
+		if (match && match[1]) {
+			const actionLines = match[1].trim().split('\n');
+			actionLines.forEach((line, index) => {
+				const actionMatch = line.match(/\*\s*(.*?)\s*\|\s*(.*)/);
+				if (actionMatch) {
+					actions.push({
+						id: `gen-action-${Date.now()}-${index}`,
+						label: actionMatch[1].trim(),
+						prompt: actionMatch[2].trim(),
+					});
+				}
+			});
+		}
+
+		return actions;
+	}, []);
+
 	const yumiChat = useAction(api.ai.yumiChat);
 	const scanImageDataAction = useAction(api.ai.scanImageData);
 	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
 	const generateBusinessBriefingAction = useAction(api.ai.generateBusinessBriefing);
-	const createTransactionMutation = useMutation(api.finance.createTransaction);
-	const createInventoryItemMutation = useMutation(api.inventory.createInventoryItem);
-	const addStockMutation = useMutation(api.inventory.addStock);
+	const recordStockPurchaseMutation = useMutation(api.stockPurchases.recordStockPurchase);
 	const createProductMutation = useMutation(api.products.createProduct);
 
 	const [actionButtonDone, setActionButtonDone] = useState<Set<string>>(new Set());
@@ -377,14 +407,7 @@ function AIChatPage() {
 					else if (localHour >= 18 || localHour < 4) fallbackGreeting = "Selamat malam";
 
 					const suggestions = briefing ? extractSuggestions(briefing) : [{ label: "📊 Laporan Lengkap", prompt: "Berikan laporan performa bisnis saya secara mendalam" }];
-					const sanitized = briefing ? sanitizeResponse(briefing) : `${fallbackGreeting}! Senang bertemu Anda lagi. Saya siap membantu mengelola toko hari ini.
-
-📊 STATUS BISNIS:
-• Omzet Kemarin: Rp 0
-• Stok: Semua aman
-• Reservasi: Tidak ada booking hari ini
-
-Apa yang ingin Anda lakukan sekarang?`;
+					const sanitized = briefing ? sanitizeResponse(briefing) : `${fallbackGreeting}! Senang bertemu Anda lagi. Saya siap membantu mengelola toko hari ini.\n\n📊 STATUS BISNIS:\n• Omzet Kemarin: Rp 0\n• Stok: Semua aman\n• Reservasi: Tidak ada booking hari ini\n\nApa yang ingin Anda lakukan sekarang?`;
 
 					// Use streaming for the briefing
 					streamText(sanitized, () => {
@@ -411,14 +434,7 @@ Apa yang ingin Anda lakukan sekarang?`;
 						...prev,
 						{
 							role: "assistant",
-							content: `${fallbackGreeting}! Senang bertemu Anda lagi. Saya siap membantu mengelola toko hari ini.
-
-📊 STATUS BISNIS:
-• Omzet Kemarin: Rp 0
-• Stok: Semua aman
-• Reservasi: Tidak ada booking hari ini
-
-Apa yang ingin Anda lakukan sekarang?`,
+							content: `${fallbackGreeting}! Senang bertemu Anda lagi. Saya siap membantu mengelola toko hari ini.\n\n📊 STATUS BISNIS:\n• Omzet Kemarin: Rp 0\n• Stok: Semua aman\n• Reservasi: Tidak ada booking hari ini\n\nApa yang ingin Anda lakukan sekarang?`,
 							suggestions: [{ label: "📊 Laporan Lengkap", prompt: "Berikan laporan performa bisnis saya secara mendalam" }],
 							_msgId: mkMsgId(),
 						}
@@ -522,29 +538,9 @@ Apa yang ingin Anda lakukan sekarang?`,
 			return next;
 		});
 		try {
-			if (type === "add_inventory") {
-				for (const item of data.items) {
-					// Logic: Check if exists or create new
-					await createInventoryItemMutation({
-						ingredientName: item.name,
-						unit: item.unit || "pcs",
-						quantity: item.qty,
-						lowStockThreshold: 1,
-						costPerUnit: item.price,
-						category: "Lainnya",
-					});
-				}
-				toast.success("Item berhasil ditambahkan ke inventory!");
-			} else if (type === "create_expense") {
-				await createTransactionMutation({
-					type: "expense",
-					amount: data.total,
-					category: data.category || "belanja_stok",
-					description: `Scan: ${data.merchant || "Toko"}`,
-					date: data.date || new Date().toISOString().split('T')[0],
-					paymentMethod: data.paymentMethod || "cash",
-				});
-				toast.success("Pengeluaran berhasil dicatat!");
+			if (type === "record_stock_purchase") {
+        await recordStockPurchaseMutation({ purchaseData: data });
+				toast.success("Pembelian berhasil dicatat dan stok telah diperbarui!");
 			} else if (type === "create_product") {
 				for (const item of data.items) {
 					await createProductMutation({
@@ -571,7 +567,7 @@ Apa yang ingin Anda lakukan sekarang?`,
 				return next;
 			});
 		}
-	}, [createInventoryItemMutation, createTransactionMutation, createProductMutation]);
+	}, [recordStockPurchaseMutation, createProductMutation]);
 
 	// Execute AI image scan and add result to chat
 	const processImagesWithAI = useCallback(async (images: string[], customPrompt?: string) => {
@@ -785,6 +781,7 @@ Apa yang ingin Anda lakukan sekarang?`,
 				}
 
 				const suggestions = extractSuggestions(response);
+				const genericActions = extractGenericActions(response);
 				const sanitized =
 					sanitizeResponse(response) ||
 					"Maaf, saya tidak bisa memproses permintaan ini.";
@@ -798,6 +795,7 @@ Apa yang ingin Anda lakukan sekarang?`,
 						role: "assistant",
 						content: sanitized,
 						suggestions: suggestions,
+						genericActions: genericActions,
 						_msgId: mkMsgId(),
 					};
 					setMessages((prev) => [...prev, assistantMessage]);
@@ -987,1399 +985,453 @@ Apa yang ingin Anda lakukan sekarang?`,
 	const loadSession = async (sessionId: string) => {
 		setCurrentSessionId(sessionId);
 		setShowSessionHistory(false);
-		// Messages will be loaded via loadConversationQuery
+		// Load messages for this session
+		// This part is handled by the `loadConversationQuery` useEffect
 	};
 
-	const deleteSession = async (sessionId: string) => {
+	useEffect(() => {
+		if (loadConversationQuery) {
+			const loadedMessages: ChatMessage[] = (loadConversationQuery as any).map((item: any) => ({
+				role: item.role,
+				content: item.content,
+				_msgId: item._id,
+				// Note: Suggestions/actions are not stored, they are generated on-the-fly
+			}));
+			setMessages(loadedMessages);
+		}
+	}, [loadConversationQuery]);
+
+	const handleDeleteSession = async (sessionId: string) => {
 		try {
 			await deleteSessionMutation({ sessionId });
 			if (currentSessionId === sessionId) {
 				setCurrentSessionId(null);
-				briefingAttemptedRef.current = false;
 				setMessages([]);
 			}
-			toast.success("Sesi berhasil dihapus");
+			toast.success("Sesi berhasil dihapus.");
 		} catch {
-			toast.error("Gagal menghapus sesi");
+			toast.error("Gagal menghapus sesi.");
 		}
 	};
 
-	const generateScanActionButtons = useCallback((result: ScanResultData) => {
-		const buttons = [];
-		
-		if (result.items && result.items.length > 0) {
-			buttons.push({
-				type: "add_inventory",
-				label: "Tambah ke Inventory",
-				data: result,
-				icon: <PlusCircle className="h-3.5 w-3.5" />,
-			});
-			buttons.push({
-				type: "create_product",
-				label: "Buat Produk",
-				data: result,
-				icon: <PlusCircle className="h-3.5 w-3.5" />,
-			});
-		}
-		
-		if (result.total > 0) {
-			buttons.push({
-				type: "create_expense",
-				label: "Catat Pengeluaran",
-				data: result,
-				icon: <TrendingDown className="h-3.5 w-3.5" />,
-			});
-		}
-		
-		return buttons;
-	}, []);
-
-	const clearCurrentChat = async () => {
-		if (currentSessionId) {
-			try {
-				await deleteSessionMutation({ sessionId: currentSessionId });
-			} catch {
-				// ignore error, still clear UI
-			}
-		}
-		setCurrentSessionId(null);
-		briefingAttemptedRef.current = false;
-		setMessages([]);
-		toast.success("Chat berhasil dihapus");
-	};
-
-	const deleteAllSessions = async () => {
-		if (!chatSessions || chatSessions.length === 0) return;
-		try {
-			for (const session of chatSessions) {
-				await deleteSessionMutation({ sessionId: session.sessionId });
-			}
-			setCurrentSessionId(null);
-			briefingAttemptedRef.current = false;
-			setMessages([]);
-			toast.success("Semua riwayat chat berhasil dihapus");
-		} catch {
-			toast.error("Gagal menghapus semua riwayat");
+	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+		if (e.key === "Enter" && !e.shiftKey) {
+			e.preventDefault();
+			sendMessage(input);
 		}
 	};
 
-	// Load conversation when session changes
+	// Focus input when switching to chat tab
 	useEffect(() => {
-		if (currentSessionId && loadConversationQuery) {
-			const history = loadConversationQuery
-				.filter((m: any) => m.role !== "system")
-				.map((m: any) => ({
-					role: m.role as "user" | "assistant",
-					content: m.content,
-				}));
-
-			if (history.length > 0) {
-				const historyWithIds = history.map((m: any) => ({
-					...m,
-					_msgId: m._msgId || mkMsgId(),
-				}));
-				setMessages(historyWithIds);
-			}
+		if (activeTab === "chat") {
+			inputRef.current?.focus();
 		}
-	}, [currentSessionId, loadConversationQuery]);
-
-	// Get predictions for display (disabled for now - functions not implemented)
-	// const getStockRiskLevel = () => {
-	// 	if (!stockPredictions.data) return "low";
-	// 	const highRisk = (stockPredictions.data as any[]).filter((p: any) => p.risk === "high").length;
-	// 	return highRisk > 0 ? "high" : highRisk > 2 ? "medium" : "low";
-	// };
+	}, [activeTab]);
 
 	return (
-		<div className="flex h-full flex-col overflow-hidden bg-background">
-			{/* Tabs */}
-			<div className="flex items-center gap-2 border-border border-b bg-card px-2 py-2">
-				{/* Smart Insights Badge */}
-				{smartInsights.length > 0 && (
-					<div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1">
-						<Lightbulb className="h-3 w-3 text-primary" />
-						<span className="font-medium text-[10px] text-primary">
-							{smartInsights.length}
-						</span>
-					</div>
-				)}
-
-				{/* Tabs */}
-				<div className="ml-auto flex gap-1">
-					{/* Chat History & Clear buttons */}
-					{activeTab === "chat" && (
-						<>
-							<button
-								className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium text-xs transition-colors text-muted-foreground hover:bg-muted"
-								onClick={() => setShowSessionHistory(!showSessionHistory)}
-								title="Riwayat chat"
-								type="button"
-							>
-								<Bot className="h-4 w-4" />
-								<span className="hidden md:inline">Riwayat</span>
-							</button>
-							<button
-								className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 font-medium text-xs transition-colors text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-								onClick={clearCurrentChat}
-								title="Hapus chat ini"
-								type="button"
-							>
-								<Trash2 className="h-4 w-4" />
-							</button>
-						</>
-					)}
-					{[
-						{
-							id: "chat" as TabType,
-							label: "Chat",
-							icon: <Bot className="h-4 w-4" />,
-						},
-						{
-							id: "suggestions" as TabType,
-							label: "Saran",
-							icon: <Lightbulb className="h-4 w-4" />,
-						},
-						{
-							id: "predictions" as TabType,
-							label: "Prediksi",
-							icon: <TrendingUp className="h-4 w-4" />,
-						},
-						{
-							id: "tasks" as TabType,
-							label: "Tasks",
-							icon: <Target className="h-4 w-4" />,
-						},
-					].map((tab) => (
-						<button
-							className={`rounded-lg px-3 py-1.5 font-medium text-xs transition-colors ${
-								activeTab === tab.id
-									? "bg-primary text-primary-foreground"
-									: "text-muted-foreground hover:bg-muted"
-							}`}
-							key={tab.id}
-							onClick={() => setActiveTab(tab.id)}
-							type="button"
-						>
-							<span className="flex items-center gap-1">
-								{tab.icon}
-								<span className="hidden md:inline">{tab.label}</span>
-							</span>
-						</button>
-					))}
-				</div>
-			</div>
-
-			{/* Content Area - Scrollable */}
-			<div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain -webkit-overflow-scrolling-touch">
-				{activeTab === "chat" && (
-					<>
-						{/* Messages */}
-						<div className="p-4 md:p-6 pb-4">
-							<div className="mx-auto max-w-full space-y-4 md:max-w-3xl">
-								{/* Smart Insights Cards */}
-								{smartInsights.length > 0 && messages.length <= 1 && (
-									<div className="mb-4 grid grid-cols-3 gap-2 md:gap-3">
-										{smartInsights.map((insight, i) => (
-											<motion.div
-												animate={{ opacity: 1, scale: 1 }}
-												className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-2 py-2 md:gap-2 md:rounded-xl md:px-3 md:py-2"
-												initial={{ opacity: 0, scale: 0.9 }}
-												key={i}
-												transition={{ delay: i * 0.1, duration: 0.3 }}
-											>
-												{insight.icon}
-												<span className="text-[10px] text-muted-foreground md:text-xs">
-													{insight.text}
-												</span>
-											</motion.div>
-										))}
-									</div>
-								)}
-
-								<AnimatePresence initial={false}>
-									{messages.map((msg, i) => (
-										<motion.div
-											animate={{ opacity: 1, y: 0 }}
-											className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-											exit={{ opacity: 0, scale: 0.95 }}
-											initial={{ opacity: 0, y: 10 }}
-											key={`${msg.role}-${i}`}
-											transition={{ duration: 0.3 }}
-										>
-											<div
-												className={`max-w-[85%] space-y-1 md:space-y-2 ${
-													msg.role === "user" ? "items-end" : "items-start"
-												}`}
-											>
-												{msg.role === "assistant" && (
-													<div className="flex items-center gap-1.5 px-1">
-														<Bot className="h-3.5 w-3.5 text-primary md:h-4 md:w-4" />
-														<span className="font-bold text-[10px] text-primary uppercase tracking-wider md:text-xs">
-															Yumi
-														</span>
-													</div>
-												)}
-												<div
-													className={`rounded-xl px-3 py-2.5 text-sm leading-relaxed md:rounded-2xl md:px-4 md:py-3 ${
-														msg.role === "user"
-															? "rounded-tr-none bg-primary text-primary-foreground"
-															: "rounded-tl-none border border-border bg-card text-foreground"
-													}`}
-												>
-													{msg.image && (
-														<div className="mb-2 overflow-hidden rounded-lg">
-															<img
-																alt="Uploaded image"
-																className="h-auto max-h-48 w-full object-contain"
-																src={msg.image}
-															/>
-														</div>
-													)}
-													<div className="whitespace-pre-line">
-														{i === messages.length - 1 && isStreaming && msg.role === "assistant" 
-															? streamingContent 
-															: msg.content}
-													</div>
-													{msg.scanData && (
-														<ScanResultCard data={msg.scanData} />
-													)}
-													{msg.role === "assistant" && (
-														<button
-															className="mt-2 flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-															onClick={() => handleCopy(msg.content, i)}
-															type="button"
-														>
-															{copiedIndex === i ? (
-																<Check className="h-3 w-3 text-green-500" />
-															) : (
-																<Copy className="h-3 w-3" />
-															)}
-															{copiedIndex === i ? "Tersalin" : "Salin"}
-														</button>
-													)}
-												</div>
-
-												{/* Deep-Linking Action Buttons */}
-												{msg.role === "assistant" && msg.actionButtons && msg.actionButtons.length > 0 && (
-													<div className="flex flex-wrap gap-2 mt-2">
-														{msg.actionButtons.map((btn, idx) => {
-															const key = `${msg._msgId}-${btn.type}`;
-															const isDone = actionButtonDone.has(key);
-															const isLoadingBtn = actionButtonLoading.has(key);
-															
-															return (
-																<button
-																	key={idx}
-																	disabled={isDone || isLoadingBtn}
-																	onClick={() => handleExecuteAction(btn.type, btn.data, msg._msgId)}
-																	className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 ${
-																		isDone 
-																			? "bg-green-100 text-green-700 border border-green-200 cursor-default"
-																			: "bg-white text-primary border border-primary/20 hover:bg-primary/5 hover:border-primary/40"
-																	}`}
-																>
-																	{isLoadingBtn ? (
-																		<Loader2 className="h-3 w-3 animate-spin" />
-																	) : isDone ? (
-																		<Check className="h-3 w-3" />
-																	) : (
-																		btn.icon
-																	)}
-																	<span>{isDone ? `${btn.label} Berhasil` : btn.label}</span>
-																</button>
-															);
-														})}
-													</div>
-												)}
-
-												{/* Smart Suggestion Buttons - Premium Prominent Design */}
-												{msg.role === "assistant" && msg.suggestions && msg.suggestions.length > 0 && (
-													<motion.div 
-														initial={{ opacity: 0, y: 8 }}
-														animate={{ opacity: 1, y: 0 }}
-														transition={{ delay: 0.3, duration: 0.4 }}
-														className="mt-4 space-y-2 border-t border-border/50 pt-3"
-													>
-														<div className="flex items-center gap-1.5 px-1 mb-1">
-															<Sparkles className="h-3 w-3 text-primary animate-pulse" />
-															<span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-																Saran Aksi
-															</span>
-														</div>
-														<div className="flex flex-wrap gap-2">
-															{msg.suggestions.map((suggestion, idx) => (
-																<button
-																	key={idx}
-																	onClick={() => sendMessage(suggestion.prompt)}
-																	className="group flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-xs font-semibold text-primary transition-all hover:scale-105 hover:border-primary/40 hover:bg-primary/10 hover:shadow-md active:scale-95 disabled:opacity-50"
-																	type="button"
-																	disabled={isLoading}
-																>
-																	<div className="flex h-5 w-5 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-																		<Send className="h-2.5 w-2.5" />
-																	</div>
-																	<span>{suggestion.label}</span>
-																</button>
-															))}
-														</div>
-													</motion.div>
-												)}
-											</div>
-										</motion.div>
-									))}
-								</AnimatePresence>
-
-								{/* Tool Execution Indicator */}
-								<AnimatePresence>
-									{toolCalls.map((tool, i) => (
-										<motion.div
-											animate={{ opacity: 1, x: 0 }}
-											exit={{ opacity: 0, x: -20 }}
-											initial={{ opacity: 0, x: -20 }}
-											key={i}
-											transition={{ duration: 0.3 }}
-										>
-											<div className="flex items-start gap-2">
-												<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
-													{tool.status === "executing" ? (
-														<Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-													) : tool.status === "success" ? (
-														<CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-													) : (
-														<XCircle className="h-3.5 w-3.5 text-destructive" />
-													)}
-												</div>
-												<div className="flex-1 rounded-lg border border-border bg-muted/50 px-3 py-2">
-													<div className="flex items-center gap-2">
-														<Settings className="h-3 w-3 text-primary" />
-														<span className="font-medium text-[10px] text-foreground">
-															{TOOL_LABELS[tool.name] || tool.name}
-														</span>
-														<span className="text-[10px] text-muted-foreground">
-															{tool.status === "executing"
-																? "eksekusi..."
-																: tool.status === "success"
-																	? "berhasil"
-																	: "gagal"}
-														</span>
-													</div>
-												</div>
-											</div>
-										</motion.div>
-									))}
-								</AnimatePresence>
-
-								{/* Typing Indicator - With Dynamic Status */}
-								{isLoading && toolCalls.length === 0 && (
-									<div className="flex justify-start">
-										<div className="space-y-1">
-											<div className="flex items-center gap-1.5 px-1">
-												<Bot className="h-3.5 w-3.5 text-primary" />
-												<span className="font-bold text-[10px] text-primary uppercase tracking-wider">
-													Yumi
-												</span>
-											</div>
-											<div className="rounded-xl rounded-tl-none border border-border bg-card px-3 py-2 shadow-sm">
-												<div className="flex items-center gap-2">
-													<div className="flex gap-1">
-														<span className="h-1 w-1 rounded-full bg-primary/70 animate-bounce" />
-														<span className="h-1 w-1 rounded-full bg-primary/70 animate-bounce [animation-delay:0.2s]" />
-														<span className="h-1 w-1 rounded-full bg-primary/70 animate-bounce [animation-delay:0.4s]" />
-													</div>
-													<span className="text-[11px] font-medium text-primary animate-pulse italic">
-														{loadingStatus || "Sedang memproses..."}
-													</span>
-												</div>
-											</div>
-										</div>
-									</div>
-								)}
-
-								{/* Streaming Message */}
-								{isStreaming && streamingContent && (
-									<div className="flex justify-start">
-										<div className="max-w-[85%] space-y-1 items-start">
-											<div className="flex items-center gap-1.5 px-1">
-												<Bot className="h-3.5 w-3.5 text-primary" />
-												<span className="font-bold text-[10px] text-primary uppercase tracking-wider">
-													Yumi
-												</span>
-											</div>
-											<div className="rounded-xl rounded-tl-none border border-border bg-card px-3 py-2.5 text-sm leading-relaxed md:rounded-2xl md:px-4 md:py-3">
-												<div className="whitespace-pre-line">
-													{streamingContent}
-													<span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-primary" />
-												</div>
-											</div>
-										</div>
-									</div>
-								)}
-<div ref={messagesEndRef} />
-							</div>
-						</div>
-					</>
-				)}
-
-				{/* Suggestions Tab */}
-				{activeTab === "suggestions" && (
-					<div className="space-y-4 p-4">
-						<h3 className="mb-4 font-bold text-foreground">
-							Saran Proaktif AI
-						</h3>
-
-						{!proactiveSuggestions ? (
-							<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-								{Array.from({ length: 4 }).map((_, i) => (
-									<div className="rounded-xl border border-border bg-muted/50 p-4 space-y-3" key={i}>
-										<div className="flex items-center gap-2">
-											<Skeleton className="h-4 w-4 rounded-full" />
-											<Skeleton className="h-4 w-32" />
-										</div>
-										<Skeleton className="h-3 w-full" />
-										<Skeleton className="h-3 w-2/3" />
-										<div className="flex justify-end pt-2">
-											<Skeleton className="h-8 w-24 rounded-lg" />
-										</div>
-									</div>
-								))}
-							</div>
-						) : proactiveSuggestions.length === 0 ? (
-							<div className="py-8 text-center">
-								<Lightbulb className="mx-auto mb-2 h-12 w-12 text-muted-foreground" />
-								<p className="text-muted-foreground">
-									Tidak ada saran saat ini. Semua berjalan lancar!
-								</p>
-							</div>
-						) : (
-							<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-								{proactiveSuggestions.map((suggestion: any) => (
-									<div
-										className={`space-y-2 rounded-xl border p-4 ${
-											suggestion.priority === "high"
-												? "border-destructive/50 bg-destructive/5"
-												: suggestion.priority === "medium"
-													? "border-warning/50 bg-warning/5"
-													: "border-border bg-muted/50"
-										}`}
-										key={suggestion.id}
-									>
-										<div className="flex items-start justify-between">
-											<div className="flex items-center gap-2">
-												{suggestion.type === "low_stock" && (
-													<AlertTriangle className="h-4 w-4 text-accent" />
-												)}
-												{suggestion.type === "pending_order" && (
-													<Bell className="h-4 w-4 text-primary" />
-												)}
-												{suggestion.type === "stock_prediction" && (
-													<TrendingUp className="h-4 w-4 text-purple-500" />
-												)}
-												{suggestion.type === "promo_opportunity" && (
-													<Sparkles className="h-4 w-4 text-green-500" />
-												)}
-												<p className="font-semibold text-sm">
-													{suggestion.title}
-												</p>
-											</div>
-											<span
-												className={`rounded-full px-2 py-0.5 text-[10px] ${
-													suggestion.priority === "high"
-														? "bg-destructive text-destructive-foreground"
-														: suggestion.priority === "medium"
-															? "bg-warning text-warning-foreground"
-															: "bg-muted text-muted-foreground"
-												}`}
-											>
-												{suggestion.priority === "high"
-													? "Penting"
-													: suggestion.priority === "medium"
-														? "Sedang"
-														: "Biasa"}
-											</span>
-										</div>
-										<p className="text-muted-foreground text-xs">
-											{suggestion.description}
-										</p>
-
-										{suggestion.action && (
-											<button
-												className="mt-2 w-full rounded-lg bg-primary py-2 font-semibold text-primary-foreground text-xs hover:bg-primary/90 disabled:opacity-50"
-												disabled={isLoading}
-												onClick={() => handleExecuteSuggestion(suggestion)}
-												type="button"
-											>
-												Lakukan
-											</button>
-										)}
-									</div>
-								))}
-							</div>
-						)}
-					</div>
-				)}
-
-				{/* Predictions Tab */}
-				{activeTab === "predictions" && (
-					<div className="space-y-4 p-4">
-						<h3 className="mb-4 font-bold text-foreground">Prediksi AI</h3>
-
-						{/* Stock Out Predictions */}
-						<div className="space-y-3">
-							<h4 className="text-muted-foreground text-sm font-semibold">
-								Prediksi Stok Habis
-							</h4>
-							{stockPredictions && stockPredictions.length > 0 ? (
-								<div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-									{stockPredictions.map((item: any) => (
-										<div
-											className={`rounded-lg border p-3 ${
-												item.risk === "high"
-													? "border-destructive/50 bg-destructive/5"
-													: "border-warning/50 bg-warning/5"
-											}`}
-											key={item.ingredientName}
-										>
-											<div className="flex items-center justify-between">
-												<div>
-													<p className="font-medium text-sm">
-														{item.ingredientName}
-													</p>
-													<p className="text-muted-foreground text-xs">
-														Sisa: {item.currentStock} {item.unit}
-													</p>
-												</div>
-												<div className="text-right">
-													<p className="text-foreground text-xs">
-														{item.daysUntilEmpty <= 1
-															? "Habis hari ini"
-															: item.daysUntilEmpty === 1
-																? "Habis besok"
-																: `Habis dalam ${item.daysUntilEmpty} hari`}
-													</p>
-													<p className="text-muted-foreground text-xs">
-														Pakai: {item.dailyUsage}/hari
-													</p>
-												</div>
-											</div>
-										</div>
-									))}
-								</div>
-							) : (
-								<div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
-									<p className="text-muted-foreground text-sm">
-										Tidak ada item yang berisiko habis dalam 7 hari ke depan
-									</p>
-								</div>
-							)}
-						</div>
-
-						{/* Busy Hours Prediction */}
-						<div className="space-y-3">
-							<h4 className="text-muted-foreground text-sm font-semibold">
-								Jam Ramai
-							</h4>
-							{busyHoursPrediction && busyHoursPrediction.peakHours ? (
-								<div className="grid grid-cols-5 gap-2">
-									{busyHoursPrediction.peakHours.map((hour: any) => (
-										<div
-											className="rounded-lg border border-primary/30 bg-primary/5 p-2 text-center"
-											key={hour.hour}
-										>
-											<p className="font-bold text-primary">
-												{hour.hour}:00
-											</p>
-											<p className="text-muted-foreground text-xs">
-												{hour.percentage}%
-											</p>
-										</div>
-									))}
-								</div>
-							) : (
-								<div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
-									<p className="text-muted-foreground text-sm">
-										Belum cukup data untuk analisis jam ramai
-									</p>
-								</div>
-							)}
-						</div>
-
-						{/* Revenue Prediction */}
-						<div className="space-y-3">
-							<h4 className="text-muted-foreground text-sm font-semibold">
-								Prediksi Pendapatan 7 Hari Kedepan
-							</h4>
-							{revenuePrediction && revenuePrediction.predictions ? (
-								<>
-									<div className="flex items-center gap-2">
-										<p className="text-muted-foreground text-xs">
-											Rata-rata harian saat ini:
-										</p>
-										<p className="font-bold text-foreground text-sm">
-											Rp {revenuePrediction.currentAvgDaily?.toLocaleString("id-ID")}
-										</p>
-										<span
-											className={`rounded-full px-2 py-0.5 text-[10px] ${
-												revenuePrediction.trend === "increasing"
-													? "bg-green-500/20 text-green-600"
-													: revenuePrediction.trend === "decreasing"
-														? "bg-red-500/20 text-red-600"
-														: "bg-muted text-muted-foreground"
-											}`}
-										>
-											{revenuePrediction.trend === "increasing"
-												? "Naik"
-												: revenuePrediction.trend === "decreasing"
-													? "Turun"
-													: "Stabil"}
-										</span>
-									</div>
-									<div className="grid grid-cols-7 gap-2">
-										{revenuePrediction.predictions.map(
-											(pred: any, index: number) => (
-												<div
-													className="rounded-lg border border-border bg-card p-2 text-center"
-													key={pred.date}
-												>
-													<p className="text-muted-foreground text-[10px]">
-														{pred.dayName.slice(0, 3)}
-													</p>
-													<p className="font-medium text-xs">
-														{(pred.predictedRevenue / 1000).toFixed(0)}k
-													</p>
-												</div>
-											)
-										)}
-									</div>
-								</>
-							) : (
-								<div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
-									<p className="text-muted-foreground text-sm">
-										Belum cukup data untuk prediksi pendapatan
-									</p>
-								</div>
-							)}
-						</div>
-
-						{/* Trending Products Prediction */}
-						<div className="space-y-3">
-							<div className="flex items-center justify-between">
-								<h4 className="text-muted-foreground text-sm font-semibold">
-									Produk Trending
-								</h4>
-								{trendingProducts && trendingProducts.length > 0 && (
-									<span className="text-muted-foreground text-xs">
-										Berdasarkan growth rate 7 hari terakhir
-									</span>
-								)}
-							</div>
-							{trendingProducts && trendingProducts.length > 0 ? (
-								<div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-									{trendingProducts.slice(0, 4).map((product: any) => (
-										<div
-											className="flex items-center gap-2 rounded-lg border border-border bg-card p-2"
-											key={product._id}
-										>
-											<div
-												className={`flex h-8 w-8 items-center justify-center rounded-full ${
-													product.growthRate > 0
-														? "bg-green-500/20 text-green-600"
-														: product.growthRate < 0
-															? "bg-red-500/20 text-red-600"
-															: "bg-muted text-muted-foreground"
-												}`}
-											>
-												<TrendingUp className="h-4 w-4" />
-											</div>
-											<div className="flex-1">
-												<p className="font-medium text-xs">{product.name}</p>
-												<p className="text-muted-foreground text-[10px]">
-													{product.recentSales} terjual minggu ini
-												</p>
-											</div>
-											<div className="text-right">
-												<p
-													className={`text-xs font-semibold ${
-														product.growthRate > 0
-															? "text-green-600"
-															: "text-red-600"
-													}`}
-												>
-													{product.growthRate > 0 ? "+" : ""}
-													{product.growthRate}%
-												</p>
-											</div>
-										</div>
-									))}
-								</div>
-							) : (
-								<div className="rounded-lg border border-border bg-muted/50 p-3 text-center">
-									<p className="text-muted-foreground text-xs">
-										Belum cukup data untuk analisis trending
-									</p>
-								</div>
-							)}
-						</div>
-
-						{/* Best Promo Time Prediction */}
-						<div className="space-y-3">
-							<h4 className="text-muted-foreground text-sm font-semibold">
-								Waktu Terbaik untuk Promo
-							</h4>
-							{bestPromoTime && bestPromoTime.hasEnoughData ? (
-								<div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-									<div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
-										<p className="text-muted-foreground text-[10px]">Hari Terbaik</p>
-										<p className="font-semibold text-sm text-primary">
-											{bestPromoTime.bestDay?.day}
-										</p>
-										<p className="text-muted-foreground text-xs">
-											{bestPromoTime.bestDay?.recommendation}
-										</p>
-									</div>
-									<div className="rounded-lg border border-warning/30 bg-warning/5 p-3">
-										<p className="text-muted-foreground text-[10px]">Hari Butuh Promo</p>
-										<p className="font-semibold text-sm text-warning">
-											{bestPromoTime.worstDay?.day}
-										</p>
-										<p className="text-muted-foreground text-xs">
-											{bestPromoTime.worstDay?.recommendation}
-										</p>
-									</div>
-								</div>
-							) : (
-								<div className="rounded-lg border border-border bg-muted/50 p-3 text-center">
-									<p className="text-muted-foreground text-xs">
-										{bestPromoTime?.message || "Analisis waktu promo akan segera hadir"}
-									</p>
-								</div>
-							)}
-						</div>
-					</div>
-				)}
-
-				{/* Tasks Tab */}
-				{activeTab === "tasks" && (
-					<div className="space-y-4 p-4">
-						<div className="mb-4 flex items-center justify-between">
-							<h3 className="font-bold text-foreground">Tindak Lanjutan</h3>
-							<button
-								className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-primary text-xs font-medium transition-colors hover:bg-primary/20 disabled:opacity-50"
-								disabled={isLoading}
-								onClick={async () => {
-									setIsLoading(true);
-									setLoadingStatus("Sedang membuat tugas baru...");
-									try {
-										const result = await autoGenerateTasksMutation({});
-										if (result) {
-											toast.success(
-												`${result.created} tugas baru berhasil dibuat!`
-											);
-										}
-									} catch {
-										toast.error("Gagal membuat tugas otomatis.");
-									} finally {
-										setIsLoading(false);
-										setLoadingStatus("");
-									}
-								}}
-								type="button"
-							>
-								<Sparkles className="h-3.5 w-3.5" />
-								<span>Generate AI Tasks</span>
-							</button>
-						</div>
-
-						{pendingTasks && pendingTasks.length > 0 ? (
-							<div className="space-y-3">
-								{pendingTasks.map((task: any) => (
-									<div
-										className={`rounded-lg border p-3 ${
-											task.priority === "high"
-												? "border-destructive/50 bg-destructive/5"
-												: task.priority === "medium"
-													? "border-warning/50 bg-warning/5"
-													: "border-border bg-card"
-										}`}
-										key={task._id}
-									>
-										<div className="flex items-start gap-3">
-											<div
-												className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-													task.priority === "high"
-														? "bg-destructive/20 text-destructive"
-														: task.priority === "medium"
-															? "bg-warning/20 text-warning"
-															: "bg-primary/20 text-primary"
-												}`}
-											>
-												<Target className="h-4 w-4" />
-											</div>
-											<div className="flex-1 min-w-0">
-												<p className="font-medium text-sm">{task.title}</p>
-												{task.description && (
-													<p className="text-muted-foreground text-xs mt-0.5 line-clamp-2">
-														{task.description}
-													</p>
-												)}
-												<div className="mt-1.5 flex items-center gap-2">
-													<span
-														className={`rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${
-															task.category === "inventory"
-																? "bg-blue-500/20 text-blue-600"
-																: task.category === "orders"
-																	? "bg-purple-500/20 text-purple-600"
-																	: task.category === "finance"
-																		? "bg-green-500/20 text-green-600"
-																		: task.category === "marketing"
-																			? "bg-orange-500/20 text-orange-600"
-																			: "bg-gray-500/20 text-gray-600"
-														}`}
-													>
-														{task.category}
-													</span>
-													{task.dueDate && (
-														<span className="text-muted-foreground text-[10px]">
-															<Calendar className="inline h-2.5 w-2.5 mr-0.5" />
-															{new Date(task.dueDate).toLocaleDateString(
-																"id-ID",
-																{ day: "numeric", month: "short" }
-															)}
-														</span>
-													)}
-													{task.isOverdue && (
-														<span className="text-destructive text-[10px] font-medium">
-															Terlambat!
-														</span>
-													)}
-												</div>
-											</div>
-											<div className="flex items-center gap-2">
-												<button
-													className="rounded-lg bg-primary px-3 py-1.5 text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
-													onClick={() => handleCompleteTask(task._id)}
-													type="button"
-												>
-													Selesai
-												</button>
-												<button
-													className="rounded-lg border border-border bg-muted px-3 py-1.5 text-muted-foreground text-xs font-medium hover:bg-muted transition-colors"
-													onClick={() => handleDismissTask(task._id)}
-													type="button"
-												>
-													Abai
-												</button>
-											</div>
-										</div>
-									</div>
-								))}
-							</div>
-						) : (
-							<div className="py-8 text-center">
-								<Target className="mx-auto mb-2 h-12 w-12 text-muted-foreground" />
-								<p className="text-muted-foreground text-sm">
-									Tidak ada tugas tertunda
-								</p>
-							</div>
-						)}
-					</div>
-				)}
-			</div>
-
-			{/* Input Form - stays fixed at bottom above mobile navbar */}
-			{activeTab === "chat" && (
-				<div className="shrink-0 border-border border-t bg-card px-2 pb-safe-with-nav pt-2 md:px-4 md:pb-4 md:pt-3">
-					<div className="mx-auto max-w-full space-y-2 md:max-w-3xl">
-						{/* Templates */}
-						<div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
-							{TEMPLATES.map((t) => (
-								<button
-									className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1.5 text-[10px] text-muted-foreground transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
-									disabled={isLoading}
-									key={t.label}
-									onClick={() => sendMessage(t.message)}
-									type="button"
-								>
-									{t.icon}
-									<span className="whitespace-nowrap">{t.label}</span>
-								</button>
-							))}
-						</div>
-
-						{/* No more separate Scan Panel, we use the main input */}
-					<AnimatePresence>
-						{isScanMode && selectedImages.length === 0 && (
-							<motion.div
-								animate={{ opacity: 1, y: 0 }}
-								className="mb-2 overflow-hidden rounded-2xl border border-primary/30 bg-primary/5"
-								exit={{ opacity: 0, y: 8 }}
-								initial={{ opacity: 0, y: 8 }}
-								transition={{ duration: 0.2 }}
-							>
-								{/* Panel Header */}
-								<div className="flex items-center justify-between border-border border-b px-3 py-2">
-									<div className="flex items-center gap-1.5">
-										<ScanLine className="h-3.5 w-3.5 text-primary" />
-										<span className="font-semibold text-primary text-xs">Scan & Analisis Gambar AI</span>
-									</div>
-									<button
-										className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
-										onClick={() => setIsScanMode(false)}
-										type="button"
-									>
-										<X className="h-3.5 w-3.5" />
-									</button>
-								</div>
-								{/* Panel Body */}
-								<div className="p-3">
-									<button
-										className="flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-background py-5 transition-colors hover:border-primary/60 hover:bg-primary/5"
-										onClick={() => fileInputRef.current?.click()}
-										type="button"
-									>
-										<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-											<Camera className="h-5 w-5 text-primary" />
-										</div>
-										<div className="text-center">
-											<p className="font-medium text-foreground text-xs">
-												Upload foto struk, kwitansi, atau dokumen
-											</p>
-											<p className="text-[10px] text-muted-foreground">
-												JPG, PNG • Maks 5MB • Bisa pilih banyak sekaligus
-											</p>
-										</div>
-									</button>
-								</div>
-							</motion.div>
-						)}
-					</AnimatePresence>
-
-					{/* ChatGPT/Claude-style Input Box */}
-						<div className="space-y-3">
-							<div className="rounded-2xl border border-border bg-background shadow-sm">
-							{/* Multiple Images Preview inside input box */}
-							{selectedImages.length > 0 && (
-								<div className="flex items-center gap-2 border-border border-b px-3 py-2 overflow-x-auto scrollbar-hide">
-									{selectedImages.map((img, idx) => (
-										<div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-border bg-muted shadow-sm group" key={idx}>
-											<img
-												alt={`Preview ${idx + 1}`}
-												className="h-full w-full object-cover"
-												src={img}
-											/>
-											<button
-												className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
-												onClick={() => setSelectedImages(prev => prev.filter((_, i) => i !== idx))}
-												type="button"
-											>
-												<X className="h-3 w-3" />
-											</button>
-										</div>
-									))}
-									<button
-										className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-dashed border-primary/30 bg-muted/30 hover:bg-primary/5 transition-colors"
-										onClick={() => fileInputRef.current?.click()}
-										type="button"
-									>
-										<PlusCircle className="h-4 w-4 text-primary" />
-									</button>
-									<p className="text-muted-foreground text-[10px] whitespace-nowrap ml-1">{selectedImages.length} gambar terlampir</p>
-								</div>
-							)}
-
-							{/* Input Row - Scan, Textarea, Send */}
-							<div className="flex items-end gap-2 p-2">
-								{/* Scan Button */}
-								<button
-									className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors disabled:opacity-50 ${
-										isScanMode
-											? "bg-primary text-primary-foreground"
-											: "text-muted-foreground hover:bg-muted hover:text-foreground"
-									}`}
-									disabled={isLoading || isScanning}
-									onClick={() => {
-										setIsScanMode(!isScanMode);
-										if (!isScanMode && selectedImages.length === 0) {
-											fileInputRef.current?.click();
-										}
-									}}
-									title="Scan & analisis gambar dengan AI"
-									type="button"
-								>
-									<ScanLine className="h-4 w-4" />
-								</button>
-
-								{/* Hidden file input for chat attachment */}
-								<input
-									accept="image/*"
-									capture="environment"
-									className="hidden"
-									multiple
-									onChange={handleFileSelect}
-									ref={fileInputRef}
-									type="file"
-								/>
-
-								{/* Textarea */}
-								<textarea
-									className="max-h-32 min-h-[36px] flex-1 resize-none bg-transparent px-3 py-2 text-sm leading-relaxed outline-none placeholder:text-muted-foreground disabled:opacity-50"
-									disabled={isLoading}
-									onChange={(e) => {
-										setInput(e.target.value);
-										e.target.style.height = "auto";
-										e.target.style.height = `${Math.min(e.target.scrollHeight, 128)}px`;
-									}}
-									onKeyDown={(e) => {
-										if (e.key === "Enter" && !e.shiftKey) {
-											e.preventDefault();
-											if (input.trim() || selectedImages.length > 0) {
-											sendMessage(input);
-											if (inputRef.current) {
-												inputRef.current.style.height = "auto";
-											}
-										}
-										}
-									}}
-									placeholder={isScanMode ? "Tulis instruksi tambahan untuk scan..." : "Tanya Yumi..."}
-									ref={inputRef}
-									rows={1}
-									value={input}
-								/>
-
-								{/* Right: Send button */}
-								<button
-									className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all ${
-										input.trim() || selectedImages.length > 0
-											? (isScanMode ? "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700" : "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90")
-											: "bg-muted text-muted-foreground"
-									} disabled:cursor-not-allowed disabled:opacity-50`}
-									disabled={isLoading || isScanning || !(input.trim() || selectedImages.length > 0)}
-									onClick={() => {
-										if (input.trim() || selectedImages.length > 0) {
-											sendMessage(input);
-											if (inputRef.current) {
-												inputRef.current.style.height = "auto";
-											}
-										}
-									}}
-									title={isScanMode ? "Mulai Scan" : "Kirim pesan"}
-									type="button"
-								>
-									{isLoading || isScanning ? (
-										<Loader2 className="h-4 w-4 animate-spin" />
-									) : isScanMode ? (
-										<ScanLine className="h-4 w-4" />
-									) : (
-										<Send className="h-4 w-4" />
-									)}
-								</button>
-							</div>
-						</div>
-					</div>
-
-						<p className="text-center text-[10px] text-muted-foreground">
-							Yumi AI dapat membuat kesalahan. Selalu verifikasi informasi penting.
-						</p>
-					</div>
-				</div>
-			)}
-
-			{/* Chat History Sidebar Panel */}
+		<div className="flex h-[calc(100vh-57px)] bg-background">
+			{/* Left Panel: Session History */}
 			<AnimatePresence>
 				{showSessionHistory && (
-					<>
-						{/* Backdrop */}
-						<motion.div
-							animate={{ opacity: 1 }}
-							className="fixed inset-0 z-40 bg-black/50"
-							exit={{ opacity: 0 }}
-							initial={{ opacity: 0 }}
-							onClick={() => setShowSessionHistory(false)}
-						/>
-						{/* Session History Panel */}
-						<motion.div
-							animate={{ x: 0 }}
-							className="fixed right-0 top-0 bottom-0 z-50 w-80 border-border border-l bg-card shadow-2xl md:rounded-l-2xl"
-							exit={{ x: "100%" }}
-							initial={{ x: "100%" }}
-							transition={{ type: "spring", damping: 25, stiffness: 300 }}
-						>
-							<div className="flex h-full flex-col">
-								{/* Header */}
-								<div className="flex items-center justify-between border-border border-b p-4">
-									<div>
-										<h3 className="font-semibold text-foreground">
-											Riwayat Chat
-										</h3>
-										<p className="text-muted-foreground text-xs">
-											{chatSessions?.length || 0} sesi
-										</p>
+					<motion.div
+						initial={{ x: "-100%", opacity: 0 }}
+						animate={{ x: 0, opacity: 1 }}
+						exit={{ x: "-100%", opacity: 0 }}
+						transition={{ duration: 0.3, ease: "easeInOut" }}
+						className="w-64 border-r bg-card flex flex-col"
+					>
+						<div className="p-4 border-b">
+							<h2 className="text-lg font-semibold">Riwayat Chat</h2>
+						</div>
+						<div className="flex-1 overflow-y-auto">
+							{chatSessions?.map((session) => (
+								<div
+									key={session.sessionId}
+									className={`p-3 cursor-pointer hover:bg-muted ${currentSessionId === session.sessionId ? "bg-muted" : ""}`}
+									onClick={() => loadSession(session.sessionId)}
+								>
+									<div className="flex justify-between items-center">
+										<p className="text-sm font-medium truncate flex-1 pr-2">{session.title}</p>
+										<Trash2
+											className="h-4 w-4 text-muted-foreground hover:text-destructive"
+											onClick={(e) => {
+												e.stopPropagation();
+												handleDeleteSession(session.sessionId);
+											}}
+										/>
 									</div>
-									<div className="flex items-center gap-1">
-										{chatSessions && chatSessions.length > 0 && (
-											<button
-												className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-muted-foreground text-xs transition-colors hover:bg-destructive/10 hover:text-destructive"
-												onClick={deleteAllSessions}
-												title="Hapus semua riwayat"
-												type="button"
-											>
-												<Trash2 className="h-3.5 w-3.5" />
-												<span>Hapus Semua</span>
-											</button>
-										)}
-										<button
-											className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80"
-											onClick={() => setShowSessionHistory(false)}
-											type="button"
-										>
-											<X className="h-4 w-4" />
-										</button>
-									</div>
+									<p className="text-xs text-muted-foreground">
+										{new Date(session.createdAt).toLocaleString("id-ID")}
+									</p>
 								</div>
-
-								{/* New Chat Button */}
-								<div className="p-3 border-border border-b">
-									<button
-										className="flex w-full items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-primary-foreground text-sm font-medium transition-colors hover:bg-primary/90"
-										onClick={() => startNewSession()}
-										type="button"
-									>
-										<Sparkles className="h-4 w-4" />
-										Chat Baru
-									</button>
-								</div>
-
-								{/* Session List */}
-								<div className="flex-1 overflow-y-auto p-2 space-y-1">
-									{!chatSessions || chatSessions.length === 0 ? (
-										<div className="py-8 text-center">
-											<Bot className="mx-auto mb-2 h-10 w-10 text-muted-foreground" />
-											<p className="text-muted-foreground text-sm">
-												Belum ada riwayat chat
-											</p>
-										</div>
-									) : (
-										chatSessions.map((session: ChatSession) => (
-											<div
-												className={`group relative rounded-lg border p-3 transition-all cursor-pointer ${
-													currentSessionId === session.sessionId
-														? "border-primary bg-primary/5"
-														: "border-border bg-card hover:bg-muted/50"
-												}`}
-												key={session.sessionId}
-												onClick={() => loadSession(session.sessionId)}
-											>
-												<div className="flex items-start justify-between gap-2">
-													<div className="flex-1 min-w-0">
-														<p className="font-medium text-xs text-foreground line-clamp-1">
-															{session.title}
-														</p>
-														<p className="text-muted-foreground text-[10px]">
-															{session.messageCount} pesan
-														</p>
-													</div>
-													<button
-														className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-														onClick={(e) => {
-															e.stopPropagation();
-															deleteSession(session.sessionId);
-														}}
-														title="Hapus sesi"
-														type="button"
-													>
-														<Trash2 className="h-3.5 w-3.5" />
-													</button>
-												</div>
-												<p className="text-muted-foreground text-[10px] mt-1">
-													{new Date(session.createdAt).toLocaleDateString(
-														"id-ID",
-														{
-															day: "numeric",
-															month: "short",
-															hour: "2-digit",
-															minute: "2-digit",
-														}
-													)}
-												</p>
-											</div>
-										))
-									)}
-								</div>
-							</div>
-						</motion.div>
-					</>
+							))}
+						</div>
+						<div className="p-2 border-t">
+							<Button variant="outline" className="w-full" onClick={startNewSession}>
+								<PlusCircle className="h-4 w-4 mr-2" />
+								Sesi Baru
+							</Button>
+						</div>
+					</motion.div>
 				)}
 			</AnimatePresence>
 
-			{/* Image Scanner Modal */}
-			<ImageScanner
-				isOpen={isImageScannerOpen}
-				onClose={() => setIsImageScannerOpen(false)}
-				onDataGenerated={(type, data) => {
-					setMessages((prev) => [
-						...prev,
-						{
-							role: "assistant",
-							content: `Berhasil membuat ${type} dengan data: ${JSON.stringify(data)}`,
-							_msgId: mkMsgId(),
-						},
-					]);
-				}}
-			/>
-		</div>
-	);
-}
-
-// â”€â”€â”€ Scan Result Card Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-function ScanResultCard({ data }: { data: ScanResultData }) {
-	const typeLabel: Record<string, string> = {
-		receipt: "Struk Belanja",
-		invoice: "Invoice/Faktur",
-		note: "Nota",
-		handwriting: "Tulisan Tangan",
-		product: "Produk",
-		other: "Dokumen",
-		unknown: "Tidak Dikenali",
-	};
-
-	const paymentLabel: Record<string, string> = {
-		cash: "Tunai",
-		qris: "QRIS",
-		card: "Kartu",
-		transfer: "Transfer",
-		unknown: "-",
-	};
-
-	const confidenceColor =
-		data.confidence >= 80
-			? "text-green-600 bg-green-500/10"
-			: data.confidence >= 50
-				? "text-yellow-600 bg-yellow-500/10"
-				: "text-red-600 bg-red-500/10";
-
-	return (
-		<div className="mt-3 overflow-hidden rounded-xl border border-border bg-background">
-			{/* Header */}
-			<div className="flex items-center justify-between border-border border-b bg-muted/40 px-3 py-2">
-				<div className="flex items-center gap-1.5">
-					<Receipt className="h-3.5 w-3.5 text-primary" />
-					<span className="font-semibold text-foreground text-xs">
-						{typeLabel[data.type] ?? "Dokumen"}
-					</span>
-					{data.name && data.name !== "Tidak dapat diidentifikasi" && (
-						<span className="text-muted-foreground text-xs">â€¢ {data.name}</span>
-					)}
-				</div>
-				<span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${confidenceColor}`}>
-					{data.confidence}% akurat
-				</span>
-			</div>
-
-			{/* Main Data */}
-			<div className="p-3 space-y-2.5">
-				{/* Transaction Type + Total */}
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-1.5">
-						{data.transactionType === "expense" ? (
-							<>
-								<TrendingDown className="h-4 w-4 text-red-500" />
-								<span className="font-medium text-red-600 text-xs">Pengeluaran</span>
-							</>
-						) : data.transactionType === "income" ? (
-							<>
-								<TrendingUp className="h-4 w-4 text-green-500" />
-								<span className="font-medium text-green-600 text-xs">Pemasukan</span>
-							</>
-						) : (
-							<>
-								<FileText className="h-4 w-4 text-muted-foreground" />
-								<span className="text-muted-foreground text-xs">Tipe tidak dikenali</span>
-							</>
-						)}
+			{/* Main Chat Panel */}
+			<div className="flex-1 flex flex-col">
+				<header className="flex items-center justify-between p-4 border-b">
+					<div className="flex items-center gap-4">
+						<Button variant="ghost" size="icon" onClick={() => setShowSessionHistory(!showSessionHistory)}>
+							<Calendar className="h-5 w-5" />
+						</Button>
+						<div>
+							<h1 className="text-xl font-bold">Yumi AI</h1>
+							<p className="text-sm text-muted-foreground">Asisten bisnis pribadi Anda</p>
+						</div>
 					</div>
-					{data.total > 0 && (
-						<span className="font-bold text-foreground text-base">
-							Rp{data.total.toLocaleString("id-ID")}
-						</span>
-					)}
+					<div className="flex items-center gap-2">
+						{smartInsights.map((insight, i) => (
+							<div key={i} className={`flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-full
+								${insight.type === "success" ? "bg-green-100 text-green-800" : ""}
+								${insight.type === "warning" ? "bg-amber-100 text-amber-800" : ""}
+								${insight.type === "info" ? "bg-blue-100 text-blue-800" : ""}`}
+							>
+								{insight.icon}
+								{insight.text}
+							</div>
+						))}
+					</div>
+				</header>
+
+				{/* Tab Navigation */}
+				<div className="flex border-b">
+					<TabButton name="chat" activeTab={activeTab} setActiveTab={setActiveTab} count={messages.length}>Chat</TabButton>
+					<TabButton name="suggestions" activeTab={activeTab} setActiveTab={setActiveTab} count={proactiveSuggestions?.length}>Saran AI</TabButton>
+					<TabButton name="predictions" activeTab={activeTab} setActiveTab={setActiveTab} count={5}>Prediksi</TabButton>
+					<TabButton name="tasks" activeTab={activeTab} setActiveTab={setActiveTab} count={pendingTasks?.length}>Tugas</TabButton>
 				</div>
 
-				{/* Meta info grid */}
-				<div className="grid grid-cols-2 gap-1.5 text-[11px]">
-					{data.category && (
-						<div className="flex flex-col rounded-lg bg-muted/50 px-2.5 py-1.5">
-							<span className="text-muted-foreground">Kategori</span>
-							<span className="font-medium text-foreground capitalize">{data.category}</span>
-						</div>
-					)}
-					{data.paymentMethod && data.paymentMethod !== "unknown" && (
-						<div className="flex flex-col rounded-lg bg-muted/50 px-2.5 py-1.5">
-							<span className="text-muted-foreground">Pembayaran</span>
-							<span className="font-medium text-foreground">{paymentLabel[data.paymentMethod] ?? data.paymentMethod}</span>
-						</div>
-					)}
-					{data.date && (
-						<div className="flex flex-col rounded-lg bg-muted/50 px-2.5 py-1.5">
-							<span className="text-muted-foreground">Tanggal</span>
-							<span className="font-medium text-foreground">{data.date}</span>
-						</div>
-					)}
-					{(data.tax ?? 0) > 0 && (
-						<div className="flex flex-col rounded-lg bg-muted/50 px-2.5 py-1.5">
-							<span className="text-muted-foreground">Pajak</span>
-							<span className="font-medium text-foreground">Rp{(data.tax ?? 0).toLocaleString("id-ID")}</span>
-						</div>
-					)}
-					{(data.discount ?? 0) > 0 && (
-						<div className="flex flex-col rounded-lg bg-muted/50 px-2.5 py-1.5">
-							<span className="text-muted-foreground">Diskon</span>
-							<span className="font-medium text-green-600">-Rp{(data.discount ?? 0).toLocaleString("id-ID")}</span>
-						</div>
-					)}
-					{(data.subtotal ?? 0) > 0 && data.subtotal !== data.total && (
-						<div className="flex flex-col rounded-lg bg-muted/50 px-2.5 py-1.5">
-							<span className="text-muted-foreground">Subtotal</span>
-							<span className="font-medium text-foreground">Rp{(data.subtotal ?? 0).toLocaleString("id-ID")}</span>
-						</div>
-					)}
-				</div>
-
-				{/* Items list */}
-				{data.items && data.items.length > 0 && (
-					<div className="rounded-lg border border-border overflow-hidden">
-						<div className="bg-muted/40 px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-							Item ({data.items.length})
-						</div>
-						<div className="divide-y divide-border">
-							{data.items.map((item, idx) => (
-								<div className="flex items-center justify-between px-2.5 py-1.5" key={idx}>
-									<div className="flex-1 min-w-0">
-										<span className="text-[11px] text-foreground line-clamp-1">{item.name}</span>
-										<span className="text-[10px] text-muted-foreground">
-											{item.qty > 0 && ` x${item.qty}`} {item.unit && ` ${item.unit}`}
-										</span>
+				{/* Content Area */}
+				<div className="flex-1 overflow-hidden">
+					<AnimatePresence mode="wait">
+						<motion.div
+							key={activeTab}
+							initial={{ opacity: 0, y: 10 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: -10 }}
+							transition={{ duration: 0.2 }}
+							className="h-full"
+						>
+							{activeTab === "chat" && (
+								<div className="flex flex-col h-full">
+									{/* Chat Messages */}
+									<div className="flex-1 overflow-y-auto p-6 space-y-6">
+										{messages.map((msg, index) => (
+											<div key={msg._msgId} className={`flex items-start gap-4 ${msg.role === "user" ? "justify-end" : ""}`}>
+												{msg.role === "assistant" && (
+													<div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+														<Bot className="h-5 w-5 text-primary" />
+													</div>
+												)}
+												<div className={`max-w-2xl w-fit rounded-lg px-4 py-3 ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+													{msg.image && (
+														<div className="mb-2">
+															<img src={msg.image} alt="Lampiran" className="rounded-lg max-h-48" />
+														</div>
+													)}
+													<p className="whitespace-pre-wrap text-sm">
+														{index === messages.length - 1 && isStreaming && msg.role === "assistant"
+															? streamingContent
+															: msg.content}
+														{index === messages.length - 1 && isLoading && !isStreaming && msg.role === "assistant" && (
+															<Loader2 className="h-4 w-4 animate-spin inline-block ml-2" />
+														)}
+													</p>
+													{msg.suggestions && msg.suggestions.length > 0 && (
+														<div className="mt-3 flex flex-wrap gap-2 border-t border-border/50 pt-3">
+															{msg.suggestions.map((s, i) => (
+																<button
+																	key={i}
+																	onClick={() => sendMessage(s.prompt)}
+																	className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary transition-all hover:bg-primary hover:text-white active:scale-95 border border-primary/20"
+																>
+																	{s.label}
+																</button>
+															))}
+														</div>
+													)}
+													{msg.genericActions && msg.genericActions.length > 0 && (
+														<div className="mt-2 pt-2 border-t border-border">
+															<p className="text-xs font-medium text-muted-foreground mb-2">🚀 TOMBOL AKSI:</p>
+															<div className="flex flex-wrap gap-2">
+																{msg.genericActions.map((action) => (
+																	<Button
+																		key={action.id}
+																		variant="outline"
+																		size="sm"
+																		className="text-xs h-auto py-1 px-2"
+																		onClick={() => sendMessage(action.prompt)}
+																	>
+																		{action.label}
+																	</Button>
+																))}
+															</div>
+														</div>
+													)}
+													{msg.role === "assistant" && (
+														<div className="mt-2 flex items-center gap-2">
+															<Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(msg.content, index)}>
+																{copiedIndex === index ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+															</Button>
+														</div>
+													)}
+												</div>
+											</div>
+										))}
+										{isLoading && (
+											<div className="flex items-start gap-4">
+												<div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+													<Bot className="h-5 w-5 text-primary" />
+												</div>
+												<div className="max-w-2xl w-fit rounded-lg px-4 py-3 bg-muted">
+													<div className="flex items-center gap-2 text-sm">
+														<Loader2 className="h-4 w-4 animate-spin" />
+														<span>{loadingStatus || "Sedang berpikir..."}</span>
+													</div>
+												</div>
+											</div>
+										)}
+										<div ref={messagesEndRef} />
 									</div>
-									{(item.subtotal > 0 || item.price > 0) && (
-										<span className="text-[11px] font-medium text-foreground ml-2 shrink-0">
-											Rp{(item.subtotal || item.price * item.qty || item.price).toLocaleString("id-ID")}
-										</span>
-									)}
-								</div>
-							))}
-						</div>
-					</div>
-				)}
 
-				{/* Notes */}
-				{data.notes && data.notes !== "Gambar berhasil dianalisis namun data tidak dapat diekstrak secara terstruktur." && (
-					<p className="text-[10px] text-muted-foreground italic leading-relaxed">
-						{data.notes}
-					</p>
-				)}
+									{/* Chat Input */}
+									<div className="p-4 border-t bg-background">
+										{/* Templates */}
+										{!isScanMode && messages.length <= 1 && (
+											<div className="mb-3 flex flex-wrap items-center gap-2">
+												{TEMPLATES.map((template, i) => (
+													<button
+														key={i}
+														onClick={() => sendMessage(template.message)}
+														className="flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-muted-foreground/20"
+													>
+														{template.icon}
+														{template.label}
+													</button>
+												))}
+											</div>
+										)}
+
+										{/* Tool Calls UI */}
+										{toolCalls.length > 0 && (
+											<div className="mb-2 p-2 border rounded-lg bg-muted/50">
+												<p className="text-xs font-semibold mb-1">Tool Execution:</p>
+												<div className="flex flex-wrap gap-2">
+													{toolCalls.map((tool, i) => (
+														<div key={i} className="flex items-center gap-1.5 text-xs bg-background border rounded-md px-2 py-1">
+															{tool.status === "executing" && <Loader2 className="h-3 w-3 animate-spin" />}
+															{tool.status === "success" && <CheckCircle2 className="h-3 w-3 text-green-500" />}
+															{tool.status === "error" && <XCircle className="h-3 w-3 text-destructive" />}
+															<span>{TOOL_LABELS[tool.name] || tool.name}</span>
+														</div>
+													))}
+												</div>
+											</div>
+										)}
+
+										{/* Selected Images Preview */}
+										{selectedImages.length > 0 && (
+											<div className="mb-2 p-2 border rounded-lg">
+												<div className="flex items-center justify-between mb-1">
+													<p className="text-xs font-semibold">Lampiran ({selectedImages.length})</p>
+													<Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleRemoveImage}>
+														<Trash2 className="h-4 w-4" />
+													</Button>
+												</div>
+												<div className="flex gap-2 overflow-x-auto">
+													{selectedImages.map((img, i) => (
+														<img key={i} src={img} className="h-16 w-16 object-cover rounded-md" />
+													))}
+												</div>
+											</div>
+										)}
+
+										<div className="relative">
+											<textarea
+												ref={inputRef}
+												value={input}
+												onChange={(e) => setInput(e.target.value)}
+												onKeyDown={handleKeyDown}
+												placeholder={isScanMode ? "Ketikkan instruksi untuk gambar yang di-scan..." : "Ketik pesan atau / untuk melihat perintah..."}
+												className="w-full resize-none rounded-lg border py-3 pl-12 pr-20 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
+												rows={1}
+											/>
+											<div className="absolute inset-y-0 left-0 flex items-center pl-3">
+												<Button variant={isScanMode ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setIsScanMode(!isScanMode)}>
+													<ScanLine className={`h-5 w-5 ${isScanMode ? "" : "text-muted-foreground"}`} />
+												</Button>
+												<Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
+													<Camera className="h-5 w-5 text-muted-foreground" />
+												</Button>
+												<input
+													type="file"
+													ref={fileInputRef}
+													className="hidden"
+													accept="image/*"
+													multiple
+													onChange={handleFileSelect}
+												/>
+											</div>
+											<div className="absolute inset-y-0 right-0 flex items-center pr-3">
+												<Button
+													type="submit"
+													size="icon"
+													className="h-8 w-8"
+													onClick={() => sendMessage(input)}
+													disabled={isLoading || isScanning || (!input.trim() && selectedImages.length === 0)}
+												>
+													<Send className="h-4 w-4" />
+												</Button>
+											</div>
+										</div>
+									</div>
+								</div>
+							)}
+							{activeTab === "suggestions" && <SuggestionsPanel suggestions={proactiveSuggestions} onExecute={handleExecuteSuggestion} />}
+							{activeTab === "predictions" && (
+								<PredictionsPanel
+									stockPredictions={stockPredictions}
+									busyHours={busyHoursPrediction}
+									revenue={revenuePrediction}
+									trending={trendingProducts}
+									promoTime={bestPromoTime}
+								/>
+							)}
+							{activeTab === "tasks" && <TasksPanel tasks={pendingTasks} onComplete={handleCompleteTask} onDismiss={handleDismissTask} />}
+						</motion.div>
+					</AnimatePresence>
+				</div>
 			</div>
 		</div>
 	);
 }
 
-export default AIChatPage;
+// ... Rest of the components (TabButton, SuggestionsPanel, etc.) remain the same
 
+const TabButton = ({ name, activeTab, setActiveTab, count, children }: { name: TabType, activeTab: TabType, setActiveTab: (t: TabType) => void, count?: number, children: React.ReactNode }) => (
+	<button
+		onClick={() => setActiveTab(name)}
+		className={`px-4 py-2 text-sm font-medium relative ${activeTab === name ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:bg-muted"}`}
+	>
+		{children}
+		{count !== undefined && count > 0 && (
+			<span className="absolute top-1 right-1 h-4 w-4 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px]">
+				{count}
+			</span>
+		)}
+	</button>
+);
+
+const SuggestionsPanel = ({ suggestions, onExecute }: { suggestions: any, onExecute: (s: Suggestion) => void }) => {
+	if (!suggestions || suggestions.length === 0) {
+		return <div className="p-6 text-center text-muted-foreground">Tidak ada saran untuk saat ini.</div>;
+	}
+	return (
+		<div className="p-6 space-y-4 overflow-y-auto h-full">
+			{suggestions.map((s: Suggestion) => (
+				<div key={s.id} className="p-4 border rounded-lg bg-card">
+					<div className="flex justify-between items-start">
+						<div>
+							<p className="font-semibold">{s.title}</p>
+							<p className="text-sm text-muted-foreground">{s.description}</p>
+						</div>
+						<span className={`text-xs font-bold px-2 py-1 rounded-full ${
+							s.priority === "high" ? "bg-red-100 text-red-800" :
+							s.priority === "medium" ? "bg-yellow-100 text-yellow-800" :
+							"bg-blue-100 text-blue-800"
+						}`}>
+							{s.priority}
+						</span>
+					</div>
+					{s.action && (
+						<div className="mt-3 pt-3 border-t">
+							<Button size="sm" onClick={() => onExecute(s)}>Jalankan Aksi</Button>
+						</div>
+					)}
+				</div>
+			))}
+		</div>
+	);
+};
+
+const PredictionsPanel = ({ stockPredictions, busyHours, revenue, trending, promoTime }: { stockPredictions: any, busyHours: any, revenue: any, trending: any, promoTime: any }) => (
+	<div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto h-full">
+		<PredictionCard title="Prediksi Stok Habis (7 Hari)">
+			{stockPredictions?.length > 0 ? (
+				<ul className="space-y-2">
+					{stockPredictions.map((p: any) => (
+						<li key={p.productId} className="text-sm flex justify-between">
+							<span>{p.productName}</span>
+							<span className="font-bold">sisa {p.currentStock}</span>
+						</li>
+					))}
+				</ul>
+			) : <p className="text-sm text-muted-foreground">Stok aman.</p>}
+		</PredictionCard>
+		<PredictionCard title="Prediksi Jam Sibuk Hari Ini">
+			{busyHours?.length > 0 ? (
+				<p className="text-sm">{busyHours.join(", ")}</p>
+			) : <p className="text-sm text-muted-foreground">Data tidak cukup.</p>}
+		</PredictionCard>
+		<PredictionCard title="Prediksi Pendapatan (7 Hari)">
+			{revenue ? (
+				<p className="text-2xl font-bold text-green-600">Rp {revenue.predictedRevenue.toLocaleString("id-ID")}</p>
+			) : <p className="text-sm text-muted-foreground">Data tidak cukup.</p>}
+		</PredictionCard>
+		<PredictionCard title="Produk Tren (7 Hari)">
+			{trending?.length > 0 ? (
+				<ul className="space-y-2">
+					{trending.map((p: any) => (
+						<li key={p.productId} className="text-sm flex justify-between">
+							<span>{p.productName}</span>
+							<span className="font-bold text-green-600">+{p.growthPercentage}%</span>
+						</li>
+					))}
+				</ul>
+			) : <p className="text-sm text-muted-foreground">Tidak ada tren signifikan.</p>}
+		</PredictionCard>
+		<PredictionCard title="Waktu Promo Terbaik">
+			{promoTime ? (
+				<p className="text-sm">Hari: <span className="font-bold">{promoTime.bestDay}</span>, Jam: <span className="font-bold">{promoTime.bestHour}:00</span></p>
+			) : <p className="text-sm text-muted-foreground">Data tidak cukup.</p>}
+		</PredictionCard>
+	</div>
+);
+
+const PredictionCard = ({ title, children }: { title: string, children: React.ReactNode }) => (
+	<div className="p-4 border rounded-lg bg-card">
+		<h3 className="font-semibold mb-2">{title}</h3>
+		{children}
+	</div>
+);
+
+const TasksPanel = ({ tasks, onComplete, onDismiss }: { tasks: any, onComplete: (id: string) => void, onDismiss: (id: string) => void }) => {
+	if (!tasks || tasks.length === 0) {
+		return <div className="p-6 text-center text-muted-foreground">Tidak ada tugas yang perlu ditindaklanjuti.</div>;
+	}
+	return (
+		<div className="p-6 space-y-4 overflow-y-auto h-full">
+			{tasks.map((task: any) => (
+				<div key={task._id} className="p-4 border rounded-lg bg-card flex justify-between items-center">
+					<div>
+						<p className="font-semibold">{task.title}</p>
+						<p className="text-sm text-muted-foreground">{task.description}</p>
+					</div>
+					<div className="flex gap-2">
+						<Button size="sm" variant="outline" onClick={() => onComplete(task._id)}>Selesai</Button>
+						<Button size="sm" variant="ghost" onClick={() => onDismiss(task._id)}>Abaikan</Button>
+					</div>
+				</div>
+			))}
+		</div>
+	);
+};

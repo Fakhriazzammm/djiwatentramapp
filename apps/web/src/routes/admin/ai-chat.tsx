@@ -72,6 +72,13 @@ interface QuickActionButton {
 	prompt?: string;
 }
 
+interface GenericActionButton {
+	id: string;
+	label: string;
+	prompt: string;
+}
+
+
 interface ScanActionButton {
 	id: string;
 	label: string;
@@ -98,6 +105,7 @@ interface ChatMessage {
 	suggestions?: Array<{ label: string; prompt: string }>;
 	actionButtons?: ScanActionButton[];
 	quickActions?: QuickActionButton[];
+	genericActions?: GenericActionButton[];
 	/** Stable ID for AnimatePresence keys — generated at creation time */
 	_msgId?: string;
 }
@@ -630,6 +638,8 @@ function AIChatPage() {
 		return text
 			// Remove suggestions [SUGGEST: Label | Prompt] - will be parsed separately
 			.replace(/\[SUGGEST:\s*(.*?)\s*\|\s*(.*?)\s*\]/g, "")
+			// Remove action buttons [AKSI: Label | Prompt]
+			.replace(/\[AKSI:\s*(.*?)\s*\|\s*(.*?)\s*\]/g, "")
 			// Remove bold markdown
 			.replace(/\*\*(.*?)\*\*/g, "$1")
 			// Remove italic markdown
@@ -668,6 +678,29 @@ function AIChatPage() {
 			});
 		}
 		return suggestions;
+	};
+
+	// Extract generic action buttons from raw AI response
+	const extractGenericActions = (text: string): GenericActionButton[] => {
+		const actions: GenericActionButton[] = [];
+		const regex = /🚀 TOMBOL AKSI:([\s\S]*)/;
+		const match = text.match(regex);
+
+		if (match && match[1]) {
+			const actionLines = match[1].trim().split('\n');
+			actionLines.forEach((line, index) => {
+				const actionMatch = line.match(/\*\s*(.*?)\s*\|\s*(.*)/);
+				if (actionMatch) {
+					actions.push({
+						id: `gen-action-${Date.now()}-${index}`,
+						label: actionMatch[1].trim(),
+						prompt: actionMatch[2].trim(),
+					});
+				}
+			});
+		}
+
+		return actions;
 	};
 
 	// Generate direct action buttons based on scan result context
@@ -1123,6 +1156,8 @@ function AIChatPage() {
 			if (requestId !== requestIdRef.current) return;
 
 			const suggestions = extractSuggestions(response);
+			const genericActions = extractGenericActions(response);
+
 			const sanitized = sanitizeResponse(response);
 			const quickActions = generateQuickActions(trimmed, response);
 
@@ -1143,6 +1178,7 @@ function AIChatPage() {
 						content: finalContent,
 						suggestions,
 						quickActions,
+						genericActions,
 						_msgId: mkMsgId(),
 					},
 				]);
@@ -1537,6 +1573,32 @@ function AIChatPage() {
 																			>
 																				<Send className="h-2.5 w-2.5 shrink-0" />
 																				<span>{suggestion.label}</span>
+																			</button>
+																		))}
+																	</div>
+																</>
+															)}
+															{msg.genericActions && msg.genericActions.length > 0 && (
+																<>
+																	{(msg.quickActions || msg.suggestions) && (msg.quickActions?.length || 0) + (msg.suggestions?.length || 0) > 0 && (
+																		<div className="my-2.5 border-t border-amber-500/15" />
+																	)}
+																	<div className="mb-1.5 flex items-center gap-1">
+																		<Sparkles className="h-2.5 w-2.5 text-blue-500/60" />
+																		<span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Tombol Aksi</span>
+																	</div>
+																	<div className="flex flex-wrap gap-1.5">
+																		{msg.genericActions.map((action, idx) => (
+																			<button
+																				key={idx}
+																				onClick={() => sendMessageRef.current(action.prompt)}
+																				aria-label={`Aksi: ${action.label}`}
+																				type="button"
+																				disabled={isLoading || isStreaming}
+																				className="flex items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-1.5 text-xs font-medium text-blue-600 transition-all hover:scale-105 hover:bg-blue-500/10 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+																			>
+																				<Send className="h-2.5 w-2.5 shrink-0" />
+																				<span>{action.label}</span>
 																			</button>
 																		))}
 																	</div>

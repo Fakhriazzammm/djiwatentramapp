@@ -63,12 +63,19 @@ interface ScanActionButton {
 	done?: boolean;
 }
 
+interface GenericActionButton {
+	id: string;
+	label: string;
+	prompt: string;
+}
+
 interface ChatMessage {
 	role: "user" | "assistant";
 	content: string;
 	image?: string;
 	scanData?: ScanResultData;
 	actionButtons?: ScanActionButton[];
+	genericActions?: GenericActionButton[];
 }
 
 export function YumiAIChat() {
@@ -224,6 +231,7 @@ export function YumiAIChat() {
 	const sanitizeResponse = (text: string): string => {
 		if (!text) return "";
 		return text
+			.replace(/🚀 TOMBOL AKSI:[\s\S]*/, "")
 			.replace(/\[SUGGEST:\s*(.*?)\s*\|\s*(.*?)\s*\]/g, "")
 			.replace(/\*\*(.*?)\*\*/g, "$1") // Remove bold
 			.replace(/\*(.*?)\*/g, "$1") // Remove italic
@@ -240,6 +248,28 @@ export function YumiAIChat() {
 			.replace(/\n{3,}/g, "\n\n")
 			.trim();
 	};
+
+	const extractGenericActions = (text: string): GenericActionButton[] => {
+		const actions: GenericActionButton[] = [];
+		const regex = /🚀 TOMBOL AKSI:([\s\S]*)/;
+		const match = text.match(regex);
+
+		if (match && match[1]) {
+			const actionLines = match[1].trim().split('\n');
+			actionLines.forEach((line, index) => {
+				const actionMatch = line.match(/\*\s*(.*?)\s*\|\s*(.*)/);
+				if (actionMatch) {
+					actions.push({
+						id: `gen-action-${Date.now()}-${index}`,
+						label: actionMatch[1].trim(),
+						prompt: actionMatch[2].trim(),
+					});
+				}
+			});
+		}
+		return actions;
+	};
+
 
 	// Generate direct action buttons based on scan result context
 	const generateScanActionButtons = (scanData: ScanResultData): ScanActionButton[] => {
@@ -476,6 +506,7 @@ export function YumiAIChat() {
 					history,
 				});
 
+				const genericActions = extractGenericActions(response);
 				const sanitized =
 					sanitizeResponse(response) ||
 					"Maaf, saya tidak bisa memproses permintaan ini.";
@@ -489,6 +520,7 @@ export function YumiAIChat() {
 						{
 							role: "assistant",
 							content: sanitized,
+							genericActions,
 						},
 					]);
 				});
@@ -699,6 +731,25 @@ Apa yang ingin Anda lakukan sekarang? [SUGGEST: 📊 Laporan Lengkap | Berikan l
 											</button>
 										);
 									})}
+								</div>
+							)}
+
+							{msg.genericActions && msg.genericActions.length > 0 && (
+								<div className="mt-2 pt-2 border-t border-border">
+									<p className="text-xs font-medium text-muted-foreground mb-2">🚀 TOMBOL AKSI:</p>
+									<div className="flex flex-wrap gap-2">
+										{msg.genericActions.map((action) => (
+											<Button
+												key={action.id}
+												variant="outline"
+												size="sm"
+												className="text-xs h-auto py-1 px-2"
+												onClick={() => sendMessage(action.prompt)}
+											>
+												{action.label}
+											</Button>
+										))}
+									</div>
 								</div>
 							)}
 
