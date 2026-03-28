@@ -27,6 +27,7 @@ import {
 	TrendingUp,
 	Wallet,
 	X,
+	Copy
 } from "lucide-react";
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
@@ -158,6 +159,10 @@ export function MenuSidebar({
 	const { items, totalAmount, clearCart, appliedVoucher, discountAmount, customerInfo } = useCart();
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
+
+	const todayTransactions = useQuery(api.finance.getAllTransactions, {
+		startDate: today.getTime(),
+	});
 
 	const handleParkOrder = async (data: { customerName: string; tableNumber: string; notes: string }) => {
 		if (!isShiftOpen) {
@@ -723,8 +728,48 @@ function DashboardTab({
 				<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Live</span>
 			</div>
 
+			<div className="space-y-3">
+				<div className="flex items-center justify-between">
+					<h3 className="font-bold text-sm">Aksi Cepat</h3>
+				</div>
+				<div className="grid grid-cols-2 gap-2">
+					<Button
+						className="h-auto flex-col gap-1.5 py-3 border-border shadow-sm hover:border-primary/50 hover:bg-primary/5 transition-all active:scale-95"
+						onClick={() => onNavigate("kas")}
+						variant="outline"
+					>
+						<SquarePlay className="h-4 w-4 text-primary" />
+						<span className="text-[10px] font-semibold">Mulai Shift</span>
+					</Button>
+					<Button
+						className="h-auto flex-col gap-1.5 py-3 border-border shadow-sm hover:border-orange-500/50 hover:bg-orange-500/5 transition-all active:scale-95"
+						onClick={onParkOrder}
+						variant="outline"
+					>
+						<Clock className="h-4 w-4 text-orange-500" />
+						<span className="text-[10px] font-semibold">Tunda Order</span>
+					</Button>
+					<Button
+						className="h-auto flex-col gap-1.5 py-3 border-border shadow-sm hover:border-blue-500/50 hover:bg-blue-500/5 transition-all active:scale-95"
+						onClick={() => onNavigate("yumi")}
+						variant="outline"
+					>
+						<Bot className="h-4 w-4 text-blue-500" />
+						<span className="text-[10px] font-semibold">Tanya AI</span>
+					</Button>
+					<Button
+						className="h-auto flex-col gap-1.5 py-3 border-border shadow-sm hover:border-accent/50 hover:bg-accent/5 transition-all active:scale-95"
+						onClick={() => onNavigate("stok")}
+						variant="outline"
+					>
+						<Package className="h-4 w-4 text-accent" />
+						<span className="text-[10px] font-semibold">Update Stok</span>
+					</Button>
+				</div>
+			</div>
+
 			{/* Shift Status Card */}
-			<Card className="border-border bg-muted/30 overflow-hidden">
+			<Card className="border-border bg-muted/30 overflow-hidden shadow-sm">
 				<div className="flex items-center justify-between p-3">
 					<div className="flex items-center gap-3">
 						<div className={`p-2 rounded-full ${isShiftOpen ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
@@ -746,67 +791,70 @@ function DashboardTab({
 				</div>
 			</Card>
 
-			<div className="grid grid-cols-3 gap-2">
-				<Card className="border-primary/20 bg-primary/5">
-					<CardContent className="p-3 text-center">
-						<TrendingUp className="mx-auto mb-1 h-4 w-4 text-primary" />
-						<p className="text-[9px] text-primary/70 uppercase tracking-tight">
-							Pemasukan
-						</p>
-						<p className="font-bold text-primary text-sm">
-							{formatCurrency(income)}
-						</p>
-					</CardContent>
-				</Card>
-				<Card className="border-destructive/20 bg-destructive/5">
-					<CardContent className="p-3 text-center">
-						<TrendingDown className="mx-auto mb-1 h-4 w-4 text-destructive" />
-						<p className="text-[9px] text-destructive/70 uppercase tracking-tight">
-							Pengeluaran
-						</p>
-						<p className="font-bold text-destructive text-sm">
-							{formatCurrency(expense)}
-						</p>
-					</CardContent>
-				</Card>
-				<Card className="border-accent/20 bg-accent/5">
-					<CardContent className="p-3 text-center">
-						<Banknote className="mx-auto mb-1 h-4 w-4 text-accent" />
-						<p className="text-[9px] text-accent/70 uppercase tracking-tight">
-							Kas Bersih
-						</p>
-						<p
-							className={`font-bold text-sm ${balance >= 0 ? "text-primary" : "text-destructive"}`}
-						>
-							{formatCurrency(balance)}
-						</p>
-					</CardContent>
-				</Card>
-			</div>
+			<div className="space-y-3">
+				<h3 className="font-bold text-sm">Ringkasan Hari Ini</h3>
+				<div className="grid grid-cols-3 gap-2">
+					<Card className="border-primary/20 bg-primary/5 shadow-sm">
+						<CardContent className="p-3 text-center">
+							<TrendingUp className="mx-auto mb-1 h-4 w-4 text-primary" />
+							<p className="text-[9px] text-primary/70 uppercase tracking-tight font-semibold">
+								Pemasukan
+							</p>
+							<p className="font-bold text-primary text-sm mt-0.5">
+								{formatCurrency(income)}
+							</p>
+						</CardContent>
+					</Card>
+					<Card className="border-destructive/20 bg-destructive/5 shadow-sm">
+						<CardContent className="p-3 text-center">
+							<TrendingDown className="mx-auto mb-1 h-4 w-4 text-destructive" />
+							<p className="text-[9px] text-destructive/70 uppercase tracking-tight font-semibold">
+								Pengeluaran
+							</p>
+							<p className="font-bold text-destructive text-sm mt-0.5">
+								{formatCurrency(expense)}
+							</p>
+						</CardContent>
+					</Card>
+					<Card className="border-accent/20 bg-accent/5 shadow-sm">
+						<CardContent className="p-3 text-center">
+							<Banknote className="mx-auto mb-1 h-4 w-4 text-accent" />
+							<p className="text-[9px] text-accent/70 uppercase tracking-tight font-semibold">
+								Kas Bersih
+							</p>
+							<p
+								className={`font-bold text-sm mt-0.5 ${balance >= 0 ? "text-primary" : "text-destructive"}`}
+							>
+								{formatCurrency(balance)}
+							</p>
+						</CardContent>
+					</Card>
+				</div>
 
-			<div className="grid grid-cols-2 gap-2">
-				<Card className="border-border bg-muted/30">
-					<CardContent className="p-3 text-center">
-						<ClipboardList className="mx-auto mb-1 h-4 w-4 text-muted-foreground" />
-						<p className="font-bold text-foreground text-lg">
-							{todayOrders.length}
-						</p>
-						<p className="text-[9px] text-muted-foreground uppercase">
-							Pesanan Hari Ini
-						</p>
-					</CardContent>
-				</Card>
-				<Card className="border-border bg-muted/30">
-					<CardContent className="p-3 text-center">
-						<Wallet className="mx-auto mb-1 h-4 w-4 text-muted-foreground" />
-						<p className="font-bold text-foreground text-lg">
-							{formatCurrency(totalSales)}
-						</p>
-						<p className="text-[9px] text-muted-foreground uppercase">
-							Total Penjualan
-						</p>
-					</CardContent>
-				</Card>
+				<div className="grid grid-cols-2 gap-2">
+					<Card className="border-border bg-muted/30 shadow-sm">
+						<CardContent className="p-3 text-center">
+							<ClipboardList className="mx-auto mb-1.5 h-5 w-5 text-muted-foreground" />
+							<p className="font-bold text-foreground text-xl">
+								{todayOrders.length}
+							</p>
+							<p className="text-[9px] text-muted-foreground uppercase font-semibold mt-0.5">
+								Pesanan Hari Ini
+							</p>
+						</CardContent>
+					</Card>
+					<Card className="border-border bg-muted/30 shadow-sm">
+						<CardContent className="p-3 text-center">
+							<Wallet className="mx-auto mb-1.5 h-5 w-5 text-muted-foreground" />
+							<p className="font-bold text-foreground text-xl">
+								{formatCurrency(totalSales)}
+							</p>
+							<p className="text-[9px] text-muted-foreground uppercase font-semibold mt-0.5">
+								Total Penjualan
+							</p>
+						</CardContent>
+					</Card>
+				</div>
 			</div>
 
 			{(lowStockItems?.length || 0) > 0 && (
@@ -825,7 +873,12 @@ function DashboardTab({
 			<div className="space-y-2">
 				<div className="flex items-center justify-between">
 					<h3 className="font-bold text-sm">Transaksi Terakhir</h3>
-					<span className="text-[10px] text-muted-foreground">5 terbaru</span>
+					<button 
+						className="text-[10px] text-primary hover:underline font-medium"
+						onClick={() => onNavigate("history")}
+					>
+						Lihat Semua
+					</button>
 				</div>
 				{recentOrders.length === 0 ? (
 					<div className="rounded-lg border border-dashed py-6 text-center text-muted-foreground text-sm">
@@ -869,26 +922,66 @@ function DashboardTab({
 				)}
 			</div>
 
-			<div className="space-y-2">
-				<h3 className="font-bold text-sm">Aksi Cepat</h3>
-				<div className="grid grid-cols-2 gap-2">
-					<Button
-						className="h-auto flex-col gap-1 py-3"
-						onClick={() => onNavigate("kas")}
-						variant="outline"
-					>
-						<SquarePlay className="h-4 w-4" />
-						<span className="text-[10px]">Mulai Shift</span>
-					</Button>
-					<Button
-						className="h-auto flex-col gap-1 py-3"
-						onClick={onParkOrder}
-						variant="outline"
-					>
-						<Clock className="h-4 w-4" />
-						<span className="text-[10px]">Tunda Order</span>
-					</Button>
-				</div>
+			<div className="pt-2">
+				<Button 
+					variant="outline" 
+					className="w-full h-10 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary transition-all font-semibold shadow-sm"
+					onClick={() => {
+						// Format tanggal: DD/MM/YYYY
+						const now = new Date();
+						const dateStr = now.toLocaleDateString('id-ID', {
+							day: '2-digit', month: '2-digit', year: 'numeric'
+						});
+						
+						// Basic calculation from todayOrders and todayTransactions
+						const totalCash = todayOrders
+							.filter(o => o.status === 'completed' && o.paymentMethod === 'cash')
+							.reduce((acc, o) => acc + o.totalAmount, 0);
+							
+						const totalQris = todayOrders
+							.filter(o => o.status === 'completed' && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
+							.reduce((acc, o) => acc + o.totalAmount, 0);
+							
+						const totalItems = todayOrders
+							.filter(o => o.status === 'completed')
+							.reduce((acc, o) => {
+								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
+							}, 0);
+
+						const modalAwal = todayTransactions
+							?.filter(t => t.type === 'income' && t.category?.toLowerCase().includes('modal'))
+							.reduce((acc, t) => acc + t.amount, 0) || 0;
+
+						const text = `📊 Daily Revenue Report 
+Djiwa Tentram Koffie - 
+📅 Tanggal: ${dateStr} 
+⸻ 
+👥 ${shiftStatus?.shiftInfo?.shiftName?.toUpperCase() || 'SHIFT 1'}
+Modal Kasir: Rp. ${modalAwal.toLocaleString("id-ID")}
+Tunai: Rp. ${totalCash.toLocaleString("id-ID")}
+Debit/QRIS: Rp. ${totalQris.toLocaleString("id-ID")}
+Delivery Online: Rp. 0
+Total Revenue ${shiftStatus?.shiftInfo?.shiftName || 'Shift 1'}: Rp. ${(totalCash + totalQris).toLocaleString("id-ID")}
+Produk Terjual: ${totalItems}
+Shift: ${shiftStatus?.shiftInfo?.cashierName || 'Kasir'}
+⸻ 
+
+💰 TOTAL REVENUE HARIAN: 
+Rp. ${(totalCash + totalQris).toLocaleString("id-ID")}
+📦 TOTAL PRODUK TERJUAL: ${totalItems}
+⸻ 
+📝 RINGKASAN HARIAN 
+${dateStr} : 
+Grand Total Revenue: Rp. ${(totalCash + totalQris).toLocaleString("id-ID")}
+Total Produk Terjual: ${totalItems}`;
+
+						navigator.clipboard.writeText(text);
+						toast.success("Laporan Harian Berhasil Disalin!");
+					}}
+				>
+					<Copy className="mr-2 h-4 w-4" />
+					Salin Laporan Harian
+				</Button>
 			</div>
 
 			<div className="h-6" />
