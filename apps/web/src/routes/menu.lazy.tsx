@@ -16,6 +16,8 @@ import {
 	ShoppingCart,
 	Wallet,
 	X,
+	Printer,
+	User
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -28,6 +30,7 @@ import { PaymentConfirmationModal } from "@/components/pos/payment-modal";
 import { useMenuKeyboardNav, type FocusZone } from "@/hooks/use-menu-keyboard-nav";
 import { useCart } from "@/context/cart-context";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
+import { bluetoothPrinter } from "@/lib/bluetooth-printer";
 import { cn } from "@/lib/utils";
 
 export const Route = createLazyFileRoute("/menu")({
@@ -82,6 +85,19 @@ function MenuPage() {
 
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
+
+	// Printer State
+	const [isPrinterConnected, setIsPrinterConnected] = useState(bluetoothPrinter.isConnected());
+	const [currentTime, setCurrentTime] = useState(new Date());
+
+	// Periodically check printer connection and update time
+	useEffect(() => {
+		const interval = setInterval(() => {
+			setIsPrinterConnected(bluetoothPrinter.isConnected());
+			setCurrentTime(new Date());
+		}, 3000);
+		return () => clearInterval(interval);
+	}, []);
 
 	// Responsive grid columns
 	const [gridColumns, setGridColumns] = useState(4);
@@ -434,6 +450,40 @@ function MenuPage() {
 		<div className="flex h-screen flex-row bg-background overflow-hidden">
 			{/* LEFT CONTENT: Menu Area */}
 			<div className="flex flex-1 flex-col overflow-hidden">
+				{/* Shift & Printer Status Header */}
+				<div className="flex flex-col border-b border-border bg-muted/50 px-3 py-1.5 text-[10px] font-medium gap-1 shadow-sm z-40 shrink-0">
+					<div className="flex items-center justify-between">
+						<div className="flex items-center gap-1.5 text-muted-foreground">
+							<span className={cn("flex h-2 w-2 rounded-full", isShiftOpen ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]")} />
+							<span>{isShiftOpen ? "Shift Aktif" : "Shift Tutup"}</span>
+							{isShiftOpen && shiftStatus?.latestMulai ? (
+								<>
+									<span className="opacity-50">•</span>
+									<span className="font-mono">{currentTime.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+								</>
+							) : null}
+						</div>
+						<div className={cn("flex items-center gap-1", isPrinterConnected ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground")}>
+							<Printer className="h-3 w-3" />
+							<span className="text-[9px] uppercase tracking-wider font-bold">
+								{isPrinterConnected ? "Printer ON" : "Printer OFF"}
+							</span>
+						</div>
+					</div>
+					{isShiftOpen && shiftStatus?.shiftInfo?.cashierName && (
+						<div className="flex items-center gap-1 text-muted-foreground text-[9px] ml-3.5">
+							<User className="h-2.5 w-2.5" />
+							<span>{shiftStatus.shiftInfo.cashierName}</span>
+							{shiftStatus.shiftInfo.shiftName && (
+								<>
+									<span className="opacity-50">•</span>
+									<span>{shiftStatus.shiftInfo.shiftName}</span>
+								</>
+							)}
+						</div>
+					)}
+				</div>
+
 				{/* === HEADER === */}
 				<header
 					ref={headerRef}
@@ -647,7 +697,7 @@ function MenuPage() {
 											{/* Promo badge */}
 											{pricing.isPromo && (
 												<span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-0.5 font-bold text-white text-[10px] shadow">
-													PROMO
+													{pricing.isHappyHour ? "HAPPY HOUR" : "PROMO"}
 												</span>
 											)}
 

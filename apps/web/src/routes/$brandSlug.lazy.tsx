@@ -794,7 +794,7 @@ function CustomerMenuPage() {
 										{/* Promo badge */}
 										{pricing.isPromo && (
 											<span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-0.5 font-bold text-white text-[10px] shadow">
-												PROMO
+												{pricing.isHappyHour ? "HAPPY HOUR" : "PROMO"}
 											</span>
 										)}
 

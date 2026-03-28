@@ -7,6 +7,7 @@ export interface PricingResult {
 	discountName?: string;
 	isPromo: boolean;
 	appliedDiscountId?: Id<"discounts">;
+	isHappyHour?: boolean;
 }
 
 export interface DiscountContext {
@@ -125,6 +126,7 @@ export function calculateEffectivePrice(
 			originalPrice,
 			discountAmount: 0,
 			isPromo: false,
+			isHappyHour: false,
 		};
 	}
 
@@ -165,6 +167,7 @@ export function calculateEffectivePrice(
 		discountName: appliedDiscount?.name,
 		isPromo: bestPrice < originalPrice,
 		appliedDiscountId: appliedDiscount?._id,
+		isHappyHour: appliedDiscount?.isHappyHour ?? false,
 	};
 }
 
