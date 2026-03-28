@@ -451,24 +451,27 @@ function MenuPage() {
 			{/* LEFT CONTENT: Menu Area */}
 			<div className="flex flex-1 flex-col overflow-hidden">
 				{/* Shift & Printer Status Header */}
-				<div className="flex items-center justify-between border-b border-border bg-muted/50 px-4 py-1.5 text-[11px] font-medium shadow-sm z-40 shrink-0">
-					<div className="flex items-center gap-4">
+				<div className="flex items-center justify-between border-b border-border bg-muted/50 px-2 sm:px-4 py-1.5 text-[9px] sm:text-[11px] font-medium shadow-sm z-40 shrink-0 overflow-x-auto scrollbar-none">
+					<div className="flex items-center gap-2 sm:gap-4 whitespace-nowrap min-w-max pr-2">
 						{/* Shift Status */}
 						<div className="flex items-center gap-1.5">
-							<span className={cn("flex h-2.5 w-2.5 rounded-full", isShiftOpen ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]")} />
+							<span className={cn("flex h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full shrink-0", isShiftOpen ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]")} />
 							<span className="text-muted-foreground">{isShiftOpen ? "Shift Aktif" : "Shift Tutup"}</span>
 						</div>
 
 						{/* Time & Date */}
 						{isShiftOpen && (
 							<>
-								<div className="h-3 w-px bg-border" />
-								<div className="flex items-center gap-1.5 text-muted-foreground">
-									<Clock className="h-3 w-3" />
-									<span>
+								<div className="h-3 w-px bg-border shrink-0" />
+								<div className="flex items-center gap-1 sm:gap-1.5 text-muted-foreground">
+									<Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
+									<span className="hidden sm:inline">
 										{currentTime.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
 									</span>
-									<span className="font-mono ml-1 font-bold">
+									<span className="sm:hidden">
+										{currentTime.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "2-digit" })}
+									</span>
+									<span className="font-mono ml-0.5 sm:ml-1 font-bold">
 										{currentTime.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
 									</span>
 								</div>
@@ -478,14 +481,14 @@ function MenuPage() {
 						{/* Cashier Info */}
 						{isShiftOpen && shiftStatus?.shiftInfo?.cashierName && (
 							<>
-								<div className="h-3 w-px bg-border" />
-								<div className="flex items-center gap-1.5 text-muted-foreground">
-									<User className="h-3 w-3" />
-									<span>{shiftStatus.shiftInfo.cashierName}</span>
+								<div className="h-3 w-px bg-border shrink-0" />
+								<div className="flex items-center gap-1 sm:gap-1.5 text-muted-foreground">
+									<User className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
+									<span className="truncate max-w-[60px] sm:max-w-none">{shiftStatus.shiftInfo.cashierName}</span>
 									{shiftStatus.shiftInfo.shiftName && (
 										<>
 											<span className="opacity-50">•</span>
-											<span className="font-semibold text-foreground/70">{shiftStatus.shiftInfo.shiftName}</span>
+											<span className="font-semibold text-foreground/70 truncate max-w-[60px] sm:max-w-none">{shiftStatus.shiftInfo.shiftName}</span>
 										</>
 									)}
 								</div>
@@ -494,10 +497,10 @@ function MenuPage() {
 					</div>
 
 					{/* Printer Status */}
-					<div className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-md", isPrinterConnected ? "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400" : "bg-muted text-muted-foreground")}>
-						<Printer className="h-3 w-3" />
+					<div className={cn("flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-0.5 rounded-md shrink-0 ml-auto", isPrinterConnected ? "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400" : "bg-muted text-muted-foreground")}>
+						<Printer className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
 						<span className="uppercase tracking-wider font-bold">
-							{isPrinterConnected ? "Printer ON" : "Printer OFF"}
+							{isPrinterConnected ? "ON" : "OFF"}
 						</span>
 					</div>
 				</div>
