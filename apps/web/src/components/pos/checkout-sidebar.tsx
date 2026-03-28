@@ -432,20 +432,41 @@ export function CheckoutSidebar({
 								/>
 							</div>
 
-							<div className="flex gap-3 pt-4">
+							<div className="flex gap-2 pt-4">
 								<Button 
 									onClick={() => setActiveStep("customer")}
-									className="w-[120px] h-12 text-sm font-bold bg-background text-foreground hover:bg-muted"
+									className="w-[90px] shrink-0 h-12 text-sm font-bold bg-background text-foreground hover:bg-muted"
 									variant="outline"
 								>
 									Kembali
 								</Button>
 								<Button 
+									onClick={() => {
+										if (onConfirmPayment) {
+											onConfirmPayment(
+												finalTotal,
+												undefined,
+												"cash",
+												{
+													tableNumber: customerInfo.tableNumber,
+													orderType: customerInfo.orderType,
+													autoComplete: false,
+												}
+											);
+										}
+									}}
+									disabled={items.length === 0 || isSubmitting}
+									className="flex-1 h-12 text-[11px] sm:text-xs font-bold bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm"
+									variant="secondary"
+								>
+									{isSubmitting ? "Menyimpan..." : "Simpan Pesanan"}
+								</Button>
+								<Button 
 									onClick={() => setActiveStep("payment")}
 									disabled={items.length === 0}
-									className="flex-1 h-12 text-sm font-bold shadow-md"
+									className="flex-1 h-12 text-[11px] sm:text-xs font-bold shadow-md"
 								>
-									Lanjut Pembayaran <ChevronRight className="ml-2 h-4 w-4" />
+									Lanjut Bayar <ChevronRight className="ml-1 h-4 w-4" />
 								</Button>
 							</div>
 						</div>
