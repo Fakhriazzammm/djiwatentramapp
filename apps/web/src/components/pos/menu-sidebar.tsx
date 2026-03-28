@@ -170,6 +170,8 @@ export function MenuSidebar({
 		startDate: today.getTime(),
 	});
 
+	const categories = useQuery(api.products.getCategories);
+
 	const handleParkOrder = async (data: { customerName: string; tableNumber: string; notes: string }) => {
 		if (!isShiftOpen) {
 			toast.error("Buka shift terlebih dahulu di Dashboard");
@@ -338,6 +340,7 @@ export function MenuSidebar({
 									onSelectOrder={setSelectedOrder}
 									onParkOrder={() => setIsParkDialogOpen(true)}
 									todayTransactions={todayTransactions}
+									categoriesList={categories}
 								/>
 							)}
 							{activeTab === "parkir" && (
@@ -659,12 +662,14 @@ function DashboardTab({
 	onSelectOrder,
 	onParkOrder,
 	todayTransactions,
+	categoriesList,
 }: {
 	onClose: () => void;
 	onNavigate: (tab: string) => void;
 	onSelectOrder: (order: Doc<"orders">) => void;
 	onParkOrder: () => void;
 	todayTransactions: any;
+	categoriesList: any;
 }) {
 	const orders = useQuery(api.orders.getOrders, {});
 	const lowStockItems = useQuery(api.inventory.getLowStockItems);
@@ -780,6 +785,46 @@ function DashboardTab({
 							day: '2-digit', month: '2-digit', year: 'numeric'
 						});
 
+						const shiftOrders = shiftStatus?.shiftInfo?.startTime ? todayOrders.filter((o: Doc<"orders">) => o.createdAt >= shiftStatus.shiftInfo!.startTime) : [];
+
+						// 1. Shift specific calculation
+						const shiftCash = shiftOrders
+							.filter((o: Doc<"orders">) => o.status === 'completed' && o.paymentMethod === 'cash')
+							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+							
+						const shiftQris = shiftOrders
+							.filter((o: Doc<"orders">) => o.status === 'completed' && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
+							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+							
+						const shiftItems = shiftOrders
+							.filter((o: Doc<"orders">) => o.status === 'completed')
+							.reduce((acc: number, o: Doc<"orders">) => {
+								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
+							}, 0);
+							
+						const shiftRevenue = shiftCash + shiftQris;
+
+						// Shift products by category
+						const shiftItemsByCategory: Record<string, number> = {};
+						shiftOrders.filter((o: Doc<"orders">) => o.status === 'completed').forEach((o: Doc<"orders">) => {
+							o.items.forEach((item: any) => {
+								const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
+								shiftItemsByCategory[cat] = (shiftItemsByCategory[cat] || 0) + item.quantity;
+							});
+						});
+						let shiftProductsText = Object.entries(shiftItemsByCategory)
+							.map(([cat, qty]) => `- ${cat}: ${qty}`)
+							.join('\n');
+						if (!shiftProductsText) shiftProductsText = "-";
+
+						// Shift expenses
+						const shiftTransactions = shiftStatus?.shiftInfo?.startTime ? todayTransactions?.filter((t: any) => t.date >= shiftStatus.shiftInfo!.startTime) : [];
+						let shiftExpenseVal = 0;
+						shiftTransactions?.filter((t: any) => t.type === 'expense' && t.status === 'completed').forEach((t: any) => {
+							shiftExpenseVal += t.amount;
+						});
+
+						// 2. Daily calculation
 						const totalCash = todayOrders
 							.filter((o: Doc<"orders">) => o.status === 'completed' && o.paymentMethod === 'cash')
 							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
@@ -794,13 +839,13 @@ function DashboardTab({
 								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
 							}, 0);
 
-						// Calculate products sold by category
+						// Calculate products sold by category (Daily)
 						const itemsByCategory: Record<string, number> = {};
 						const itemsByName: Record<string, number> = {};
 						
 						todayOrders.filter((o: Doc<"orders">) => o.status === 'completed').forEach((o: Doc<"orders">) => {
 							o.items.forEach((item: any) => {
-								const cat = item.category || 'Lainnya';
+								const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
 								const name = item.productName || 'Unknown';
 								itemsByCategory[cat] = (itemsByCategory[cat] || 0) + item.quantity;
 								itemsByName[name] = (itemsByName[name] || 0) + item.quantity;
@@ -812,7 +857,7 @@ function DashboardTab({
 							.slice(0, 3); // Top 3 products
 
 						let productsText = Object.entries(itemsByCategory)
-							.map(([cat, qty]) => `${cat}: ${qty}`)
+							.map(([cat, qty]) => `- ${cat}: ${qty}`)
 							.join('\n');
 						if (!productsText) productsText = "-";
 
@@ -820,6 +865,45 @@ function DashboardTab({
 							.map(([name, qty]) => `- ${name}: ${qty}`)
 							.join('\n');
 						if (!topProductsText) topProductsText = "-";
+
+						const shiftOrders = shiftStatus?.shiftInfo?.startTime ? todayOrders.filter((o: Doc<"orders">) => o.createdAt >= shiftStatus.shiftInfo!.startTime) : [];
+
+						// 1. Shift specific calculation
+						const shiftCash = shiftOrders
+							.filter((o: Doc<"orders">) => o.status === 'completed' && o.paymentMethod === 'cash')
+							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+							
+						const shiftQris = shiftOrders
+							.filter((o: Doc<"orders">) => o.status === 'completed' && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
+							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+							
+						const shiftItems = shiftOrders
+							.filter((o: Doc<"orders">) => o.status === 'completed')
+							.reduce((acc: number, o: Doc<"orders">) => {
+								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
+							}, 0);
+							
+						const shiftRevenue = shiftCash + shiftQris;
+
+						// Shift products by category
+						const shiftItemsByCategory: Record<string, number> = {};
+						shiftOrders.filter((o: Doc<"orders">) => o.status === 'completed').forEach((o: Doc<"orders">) => {
+							o.items.forEach((item: any) => {
+								const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
+								shiftItemsByCategory[cat] = (shiftItemsByCategory[cat] || 0) + item.quantity;
+							});
+						});
+						let shiftProductsText = Object.entries(shiftItemsByCategory)
+							.map(([cat, qty]) => `- ${cat}: ${qty}`)
+							.join('\n');
+						if (!shiftProductsText) shiftProductsText = "-";
+
+						// Shift expenses
+						const shiftTransactions = shiftStatus?.shiftInfo?.startTime ? todayTransactions?.filter((t: any) => t.date >= shiftStatus.shiftInfo!.startTime) : [];
+						let shiftExpenseVal = 0;
+						shiftTransactions?.filter((t: any) => t.type === 'expense' && t.status === 'completed').forEach((t: any) => {
+							shiftExpenseVal += t.amount;
+						});
 
 						const modalAwal = todayTransactions
 							?.filter((t: any) => t.type === 'income' && t.category?.toLowerCase().includes('modal'))
@@ -852,25 +936,30 @@ ${shopName} -
 ⸻ 
 👥 ${shiftStatus?.shiftInfo?.shiftName?.toUpperCase() || 'SHIFT SAAT INI'}
 Modal Kasir: Rp. ${modalAwal.toLocaleString("id-ID")}
-Cash/Kasir: Rp. ${totalCash.toLocaleString("id-ID")}
-Debit/QRIS: Rp. ${totalQris.toLocaleString("id-ID")}
+Cash/Kasir: Rp. ${shiftCash.toLocaleString("id-ID")}
+Debit/QRIS: Rp. ${shiftQris.toLocaleString("id-ID")}
 Delivery Online: Rp. 0
-Total Revenue ${shiftStatus?.shiftInfo?.shiftName || 'Shift'}: Rp. ${totalRevenue.toLocaleString("id-ID")}
+Total Revenue ${shiftStatus?.shiftInfo?.shiftName || 'Shift'}: Rp. ${shiftRevenue.toLocaleString("id-ID")}
 
-Produk Terjual: ${totalItems}
+Produk Terjual: ${shiftItems}
 Rincian Produk:
-${productsText}
+${shiftProductsText}
+
+Pengeluaran Shift: Rp. ${shiftExpenseVal.toLocaleString("id-ID")}
 
 Kasir: ${shiftStatus?.shiftInfo?.cashierName || 'Belum Buka Shift'}
 ⸻ 
+
 💰 TOTAL REVENUE HARIAN: 
 Rp. ${totalRevenue.toLocaleString("id-ID")}
 📦 TOTAL PRODUK TERJUAL: ${totalItems}
+Rincian Produk Harian:
+${productsText}
 
-⭐ TOP 3 PRODUK TERLARIS:
+⭐ TOP 3 PRODUK TERLARIS (HARIAN):
 ${topProductsText}
 ⸻ 
-📝 RINGKASAN PENGELUARAN
+📝 RINGKASAN PENGELUARAN HARIAN
 ${expensesText}
 Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
 ⸻ 
@@ -1014,10 +1103,57 @@ Total Produk Terjual: ${totalItems}`;
 							.reduce((acc: number, o: Doc<"orders">) => {
 								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
 							}, 0);
+							
+						const totalRevenue = totalCash + totalQris;
+
+						// Calculate products sold by category (Daily)
+						const itemsByCategory: Record<string, number> = {};
+						const itemsByName: Record<string, number> = {};
+						
+						todayOrders.filter((o: Doc<"orders">) => o.status === 'completed').forEach((o: Doc<"orders">) => {
+							o.items.forEach((item: any) => {
+								const cat = item.category || 'Lainnya';
+								const name = item.productName || 'Unknown';
+								itemsByCategory[cat] = (itemsByCategory[cat] || 0) + item.quantity;
+								itemsByName[name] = (itemsByName[name] || 0) + item.quantity;
+							});
+						});
+
+						const sortedProducts = Object.entries(itemsByName)
+							.sort((a, b) => b[1] - a[1])
+							.slice(0, 3); // Top 3 products
+
+						let productsText = Object.entries(itemsByCategory)
+							.map(([cat, qty]) => `${cat}: ${qty}`)
+							.join('\n');
+						if (!productsText) productsText = "-";
+
+						let topProductsText = sortedProducts
+							.map(([name, qty]) => `- ${name}: ${qty}`)
+							.join('\n');
+						if (!topProductsText) topProductsText = "-";
 
 						const modalAwal = todayTransactions
 							?.filter((t: any) => t.type === 'income' && t.category?.toLowerCase().includes('modal'))
 							.reduce((acc: number, t: any) => acc + t.amount, 0) || 0;
+
+						// Calculate expenses by category
+						const expensesByCategory: Record<string, number> = {};
+						let totalExpenseVal = 0;
+						
+						todayTransactions?.filter((t: any) => t.type === 'expense' && t.status === 'completed').forEach((t: any) => {
+							const cat = t.category || 'Lainnya';
+							expensesByCategory[cat] = (expensesByCategory[cat] || 0) + t.amount;
+							totalExpenseVal += t.amount;
+						});
+
+						const netBalance = totalRevenue - totalExpenseVal;
+
+						let expensesText = Object.entries(expensesByCategory)
+							.map(([cat, amount]) => `${cat}: Rp. ${amount.toLocaleString("id-ID")}`)
+							.join('\n');
+							
+						if (!expensesText) expensesText = "Tidak ada pengeluaran hari ini";
 
 						const shopName = siteSettings?.shopName || "YUMI POS";
 
@@ -1025,23 +1161,40 @@ Total Produk Terjual: ${totalItems}`;
 ${shopName} - 
 📅 Tanggal: ${dateStr} 
 ⸻ 
-👥 ${shiftStatus?.shiftInfo?.shiftName?.toUpperCase() || 'SHIFT 1'}
+👥 ${shiftStatus?.shiftInfo?.shiftName?.toUpperCase() || 'SHIFT SAAT INI'}
 Modal Kasir: Rp. ${modalAwal.toLocaleString("id-ID")}
-Tunai: Rp. ${totalCash.toLocaleString("id-ID")}
-Debit/QRIS: Rp. ${totalQris.toLocaleString("id-ID")}
+Cash/Kasir: Rp. ${shiftCash.toLocaleString("id-ID")}
+Debit/QRIS: Rp. ${shiftQris.toLocaleString("id-ID")}
 Delivery Online: Rp. 0
-Total Revenue ${shiftStatus?.shiftInfo?.shiftName || 'Shift 1'}: Rp. ${(totalCash + totalQris).toLocaleString("id-ID")}
-Produk Terjual: ${totalItems}
-Shift: ${shiftStatus?.shiftInfo?.cashierName || 'Kasir'}
+Total Revenue ${shiftStatus?.shiftInfo?.shiftName || 'Shift'}: Rp. ${shiftRevenue.toLocaleString("id-ID")}
+
+Produk Terjual: ${shiftItems}
+Rincian Produk:
+${shiftProductsText}
+
+Pengeluaran Shift: Rp. ${shiftExpenseVal.toLocaleString("id-ID")}
+
+Kasir: ${shiftStatus?.shiftInfo?.cashierName || 'Belum Buka Shift'}
 ⸻ 
 
 💰 TOTAL REVENUE HARIAN: 
-Rp. ${(totalCash + totalQris).toLocaleString("id-ID")}
+Rp. ${totalRevenue.toLocaleString("id-ID")}
 📦 TOTAL PRODUK TERJUAL: ${totalItems}
+Rincian Produk Harian:
+${productsText}
+
+⭐ TOP 3 PRODUK TERLARIS (HARIAN):
+${topProductsText}
+⸻ 
+📝 RINGKASAN PENGELUARAN HARIAN
+${expensesText}
+Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
 ⸻ 
 📝 RINGKASAN HARIAN 
 ${dateStr} : 
-Grand Total Revenue: Rp. ${(totalCash + totalQris).toLocaleString("id-ID")}
+Grand Total Revenue: Rp. ${totalRevenue.toLocaleString("id-ID")}
+Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
+Kas Bersih (Net): Rp. ${netBalance.toLocaleString("id-ID")}
 Total Produk Terjual: ${totalItems}`;
 
 						navigator.clipboard.writeText(text);
