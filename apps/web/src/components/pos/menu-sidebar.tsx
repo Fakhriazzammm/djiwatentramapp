@@ -266,9 +266,9 @@ export function MenuSidebar({
 
 	return (
 		<>
-			<Dialog onOpenChange={handleOpenChange} open={isOpen}>
+			<Sheet onOpenChange={handleOpenChange} open={isOpen}>
 				{!hideTrigger && (
-					<DialogTrigger asChild>
+					<SheetTrigger asChild>
 						<Button
 							className="relative shrink-0"
 							size="icon"
@@ -282,14 +282,15 @@ export function MenuSidebar({
 							)}
 							<span className="sr-only">Menu Operasional</span>
 						</Button>
-					</DialogTrigger>
+					</SheetTrigger>
 				)}
-				<DialogContent
-					className="flex flex-col gap-0 p-0 sm:max-w-4xl w-[95vw] h-[90vh] sm:h-[85vh] overflow-hidden rounded-2xl border-0 shadow-2xl"
+				<SheetContent
+					side="right"
+					className="flex flex-col gap-0 p-0 w-full sm:max-w-md overflow-hidden border-l shadow-2xl"
 					showCloseButton={false}
 				>
-					<DialogTitle className="sr-only">Menu Navigasi</DialogTitle>
-					<div className="flex flex-1 flex-col overflow-hidden bg-background relative w-full">
+					<SheetTitle className="sr-only">Menu Navigasi</SheetTitle>
+					<div className="flex flex-1 flex-col overflow-hidden bg-background relative w-full h-full">
 						{/* Dynamic Header based on active tab */}
 						<div className="flex items-center justify-between border-b border-border bg-card px-4 py-3 shrink-0">
 							<div className="flex items-center gap-2">
@@ -348,8 +349,8 @@ export function MenuSidebar({
 							)}
 						</div>
 					</div>
-				</DialogContent>
-			</Dialog>
+				</SheetContent>
+			</Sheet>
 
 				<Dialog
 					onOpenChange={(open) => {
@@ -406,7 +407,6 @@ export function MenuSidebar({
 					onClose={() => setIsParkDialogOpen(false)}
 					onPark={handleParkOrder}
 				/>
-			</Sheet>
 		</>
 	);
 }

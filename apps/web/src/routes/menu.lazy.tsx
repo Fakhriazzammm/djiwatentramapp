@@ -420,8 +420,7 @@ function MenuPage() {
 				<header
 					ref={headerRef}
 					className={cn(
-						"sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm shrink-0",
-						isKeyboardActive && isZoneFocused("header") && "ring-2 ring-primary ring-inset"
+						"sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm shrink-0"
 					)}
 				>
 					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 px-3 sm:px-4 py-2 sm:py-3">
@@ -511,7 +510,7 @@ function MenuPage() {
 										e.currentTarget.blur();
 									}
 								}}
-								className="pl-9 pr-9"
+								className="pl-9 pr-9 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-primary"
 							/>
 							{searchQuery && (
 								<button
@@ -529,8 +528,7 @@ function MenuPage() {
 					<div
 						ref={categoryScrollRef}
 						className={cn(
-							"flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-none",
-							isKeyboardActive && isZoneFocused("categories") && "ring-2 ring-primary ring-inset rounded-lg mx-2"
+							"flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-none"
 						)}
 					>
 						{categoryList.map((cat, index) => {
