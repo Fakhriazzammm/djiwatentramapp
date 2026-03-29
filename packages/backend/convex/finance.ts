@@ -126,7 +126,7 @@ export const getProfitLossReport = query({
 		const { startDate, endDate } = args;
 		const q = await fetchTransactionsInternal(ctx, { ...args, status: "completed" });
 		const transactions = await q.collect();
-		const completed = transactions.filter((t) => t.status === "completed");
+		const completed = transactions.filter((t) => t.status === "completed" && t.category !== "Modal Awal" && t.category !== "Setoran Akhir");
 
 		// Income breakdown by category
 		const incomeByCategory: Record<string, number> = {};
@@ -280,6 +280,7 @@ export const getTransactionDetailReport = query({
 		let totalExpense = 0;
 		for (const t of transactions) {
 			if (t.status === "completed") {
+				if (t.category === "Modal Awal" || t.category === "Setoran Akhir") continue;
 				if (t.type === "income") totalIncome += t.amount;
 				else totalExpense += t.amount;
 			}
@@ -353,13 +354,16 @@ export const getShiftStatus = query({
 				if (t.category === "Modal Awal") {
 					let parsedCashier = null;
 					let parsedShift = null;
+					let parsedTeam = null;
 					if (t.description) {
 						const parts = t.description.split(" | ");
 						const cashierPart = parts.find(p => p.startsWith("Kasir: "));
 						const shiftPart = parts.find(p => p.startsWith("Shift: "));
+						const teamPart = parts.find(p => p.startsWith("Tim: "));
 						
 						parsedCashier = cashierPart ? cashierPart.replace("Kasir: ", "") : null;
 						parsedShift = shiftPart ? shiftPart.replace("Shift: ", "") : null;
+						parsedTeam = teamPart ? teamPart.replace("Tim: ", "") : null;
 					}
 					
 					currentShiftObj = {
@@ -367,6 +371,7 @@ export const getShiftStatus = query({
 						endTime: null,
 						cashierName: parsedCashier,
 						shiftName: parsedShift,
+						teamMembers: parsedTeam,
 					};
 					allShifts.push(currentShiftObj);
 
@@ -422,13 +427,16 @@ export const getHistoricalShifts = query({
 				if (t.category === "Modal Awal") {
 					let parsedCashier = null;
 					let parsedShift = null;
+					let parsedTeam = null;
 					if (t.description) {
 						const parts = t.description.split(" | ");
 						const cashierPart = parts.find(p => p.startsWith("Kasir: "));
 						const shiftPart = parts.find(p => p.startsWith("Shift: "));
+						const teamPart = parts.find(p => p.startsWith("Tim: "));
 						
 						parsedCashier = cashierPart ? cashierPart.replace("Kasir: ", "") : null;
 						parsedShift = shiftPart ? shiftPart.replace("Shift: ", "") : null;
+						parsedTeam = teamPart ? teamPart.replace("Tim: ", "") : null;
 					}
 					
 					currentShiftObj = {
@@ -438,6 +446,7 @@ export const getHistoricalShifts = query({
 						cashierName: parsedCashier,
 						shiftName: parsedShift,
 						modalAwal: t.amount,
+						teamMembers: parsedTeam,
 					};
 					allShifts.push(currentShiftObj);
 				}
@@ -469,6 +478,7 @@ export const getFinancialSummary = query({
 
 		for (const t of transactions) {
 			if (t.status === "completed") {
+				if (t.category === "Modal Awal" || t.category === "Setoran Akhir") continue;
 				if (t.type === "income") {
 					totalIncome += t.amount;
 				} else if (t.type === "expense") {
@@ -489,7 +499,7 @@ export const getFinancialSummary = query({
 // ─── Monthly/Weekly Trend ───────────────────────────────────────────────────
 
 // Get monthly income vs expense trend for last N months
-export const getMonthlyTrends = query({
+export const getMonthlyTrend = query({
 	args: { months: v.optional(v.number()) },
 	handler: async (ctx, args) => {
 		const n = args.months ?? 6;
@@ -517,6 +527,7 @@ export const getMonthlyTrends = query({
 			let expense = 0;
 			for (const t of transactions) {
 				if (t.status !== "completed") continue;
+				if (t.category === "Modal Awal" || t.category === "Setoran Akhir") continue;
 				if (t.type === "income") income += t.amount;
 				else expense += t.amount;
 			}
@@ -559,6 +570,7 @@ export const getWeeklyTrend = query({
 			let expense = 0;
 			for (const t of transactions) {
 				if (t.status !== "completed") continue;
+				if (t.category === "Modal Awal" || t.category === "Setoran Akhir") continue;
 				if (t.type === "income") income += t.amount;
 				else expense += t.amount;
 			}
@@ -596,6 +608,7 @@ export const getPeriodComparison = query({
 			let expense = 0;
 			for (const t of txs) {
 				if (t.status !== "completed") continue;
+				if (t.category === "Modal Awal" || t.category === "Setoran Akhir") continue;
 				if (t.type === "income") income += t.amount;
 				else expense += t.amount;
 			}
@@ -651,6 +664,7 @@ export const getExpenseCategoryBreakdown = query({
 
 		for (const t of transactions) {
 			if (t.status !== "completed") continue;
+			if (t.category === "Modal Awal" || t.category === "Setoran Akhir") continue;
 			if (t.type === "expense") {
 				expenseByCategory[t.category] = (expenseByCategory[t.category] || 0) + t.amount;
 				totalExpense += t.amount;
@@ -763,6 +777,7 @@ export const getCurrentMonthProgress = query({
 		let expense = 0;
 		for (const t of transactions) {
 			if (t.status !== "completed") continue;
+			if (t.category === "Modal Awal" || t.category === "Setoran Akhir") continue;
 			if (t.type === "income") income += t.amount;
 			else expense += t.amount;
 		}

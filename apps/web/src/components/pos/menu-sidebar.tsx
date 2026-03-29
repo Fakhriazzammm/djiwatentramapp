@@ -674,6 +674,7 @@ function DashboardTab({
 }) {
 	const orders = useQuery(api.orders.getOrders, {});
 	const lowStockItems = useQuery(api.inventory.getLowStockItems);
+	const products = useQuery(api.products.getProducts, {});
 
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
@@ -788,19 +789,30 @@ function DashboardTab({
 						const shiftRevenue = shiftCash + shiftQris;
 
 						// Shift products by category
-						const shiftItemsByCategory: Record<string, number> = {};
+						const shiftItemsByCatAndProd: Record<string, Record<string, number>> = {};
 						const shiftItemsByName: Record<string, number> = {};
 						shiftOrders.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid').forEach((o: Doc<"orders">) => {
 							o.items.forEach((item: any) => {
-								const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
-								shiftItemsByCategory[cat] = (shiftItemsByCategory[cat] || 0) + item.quantity;
-								shiftItemsByName[item.productName || 'Unknown'] = (shiftItemsByName[item.productName || 'Unknown'] || 0) + item.quantity;
+								const product = products?.find((p: any) => p._id === item.productId);
+								const cat = categoriesList?.find((c: any) => c._id === product?.categoryId)?.name || 'Lainnya';
+								const name = item.productName || 'Unknown';
+								
+								if (!shiftItemsByCatAndProd[cat]) shiftItemsByCatAndProd[cat] = {};
+								shiftItemsByCatAndProd[cat][name] = (shiftItemsByCatAndProd[cat][name] || 0) + item.quantity;
+								shiftItemsByName[name] = (shiftItemsByName[name] || 0) + item.quantity;
 							});
 						});
-						let shiftProductsText = Object.entries(shiftItemsByCategory)
-							.map(([cat, qty]) => `- ${cat}: ${qty}`)
-							.join('\n');
+						
+						let shiftProductsText = "";
+						Object.entries(shiftItemsByCatAndProd).forEach(([cat, prods]) => {
+							const catTotal = Object.values(prods).reduce((a, b) => a + b, 0);
+							shiftProductsText += `- ${cat} (${catTotal}):\n`;
+							Object.entries(prods).forEach(([name, qty]) => {
+								shiftProductsText += `  • ${name}: ${qty}\n`;
+							});
+						});
 						if (!shiftProductsText) shiftProductsText = "-";
+						else shiftProductsText = shiftProductsText.trimEnd();
 						
 						const shiftTopProducts = Object.entries(shiftItemsByName)
 							.sort((a, b) => b[1] - a[1])
@@ -832,14 +844,17 @@ function DashboardTab({
 							}, 0);
 
 						// Calculate products sold by category (Daily)
-						const itemsByCategory: Record<string, number> = {};
+						const itemsByCatAndProd: Record<string, Record<string, number>> = {};
 						const itemsByName: Record<string, number> = {};
 						
 						todayOrders.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid').forEach((o: Doc<"orders">) => {
 							o.items.forEach((item: any) => {
-								const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
+								const product = products?.find((p: any) => p._id === item.productId);
+								const cat = categoriesList?.find((c: any) => c._id === product?.categoryId)?.name || 'Lainnya';
 								const name = item.productName || 'Unknown';
-								itemsByCategory[cat] = (itemsByCategory[cat] || 0) + item.quantity;
+								
+								if (!itemsByCatAndProd[cat]) itemsByCatAndProd[cat] = {};
+								itemsByCatAndProd[cat][name] = (itemsByCatAndProd[cat][name] || 0) + item.quantity;
 								itemsByName[name] = (itemsByName[name] || 0) + item.quantity;
 							});
 						});
@@ -848,10 +863,16 @@ function DashboardTab({
 							.sort((a, b) => b[1] - a[1])
 							.slice(0, 3); // Top 3 products
 
-						let productsText = Object.entries(itemsByCategory)
-							.map(([cat, qty]) => `- ${cat}: ${qty}`)
-							.join('\n');
+						let productsText = "";
+						Object.entries(itemsByCatAndProd).forEach(([cat, prods]) => {
+							const catTotal = Object.values(prods).reduce((a, b) => a + b, 0);
+							productsText += `- ${cat} (${catTotal}):\n`;
+							Object.entries(prods).forEach(([name, qty]) => {
+								productsText += `  • ${name}: ${qty}\n`;
+							});
+						});
 						if (!productsText) productsText = "-";
+						else productsText = productsText.trimEnd();
 
 						let topProductsText = sortedProducts
 							.map(([name, qty]) => `- ${name}: ${qty}`)
@@ -909,20 +930,31 @@ function DashboardTab({
 								const sRevenue = sCash + sQris;
 
 								// Shift products
-								const sItemsByCategory: Record<string, number> = {};
+								const sItemsByCatAndProd: Record<string, Record<string, number>> = {};
 								const sItemsByName: Record<string, number> = {};
 
 								sOrders.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid').forEach((o: Doc<"orders">) => {
 									o.items.forEach((item: any) => {
-										const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
-										sItemsByCategory[cat] = (sItemsByCategory[cat] || 0) + item.quantity;
-										sItemsByName[item.name] = (sItemsByName[item.name] || 0) + item.quantity;
+										const product = products?.find((p: any) => p._id === item.productId);
+										const cat = categoriesList?.find((c: any) => c._id === product?.categoryId)?.name || 'Lainnya';
+										const name = item.productName || 'Unknown';
+										
+										if (!sItemsByCatAndProd[cat]) sItemsByCatAndProd[cat] = {};
+										sItemsByCatAndProd[cat][name] = (sItemsByCatAndProd[cat][name] || 0) + item.quantity;
+										sItemsByName[name] = (sItemsByName[name] || 0) + item.quantity;
 									});
 								});
-								let sProductsText = Object.entries(sItemsByCategory)
-									.map(([cat, qty]) => `- ${cat}: ${qty}`)
-									.join('\n');
+								
+								let sProductsText = "";
+								Object.entries(sItemsByCatAndProd).forEach(([cat, prods]) => {
+									const catTotal = Object.values(prods).reduce((a, b) => a + b, 0);
+									sProductsText += `- ${cat} (${catTotal}):\n`;
+									Object.entries(prods).forEach(([name, qty]) => {
+										sProductsText += `  • ${name}: ${qty}\n`;
+									});
+								});
 								if (!sProductsText) sProductsText = "-";
+								else sProductsText = sProductsText.trimEnd();
 
 								const sTopProducts = Object.entries(sItemsByName)
 									.sort((a, b) => b[1] - a[1])
@@ -942,6 +974,7 @@ function DashboardTab({
 
 								const isCurrentActive = shiftObj.endTime === null;
 								const statusLabel = isCurrentActive ? " (AKTIF)" : " (SELESAI)";
+								const teamLabel = shiftObj.teamMembers ? `\nTim: ${shiftObj.teamMembers}` : '';
 
 								allShiftsText += `👥 ${shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`}${statusLabel}
 Modal Kasir: Rp. ${sModalVal.toLocaleString("id-ID")}
@@ -959,7 +992,7 @@ ${sTopProductsText}
 
 Pengeluaran Shift: Rp. ${sExpenseVal.toLocaleString("id-ID")}
 
-Kasir: ${shiftObj.cashierName || 'Kasir'}
+Kasir: ${shiftObj.cashierName || 'Kasir'}${teamLabel}
 ⸻\n`;
 							});
 						} else {
