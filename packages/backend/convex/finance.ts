@@ -502,42 +502,47 @@ export const getFinancialSummary = query({
 export const getMonthlyTrend = query({
 	args: { months: v.optional(v.number()) },
 	handler: async (ctx, args) => {
-		const n = args.months ?? 6;
-		const now = new Date();
-		const result: Array<{
-			label: string;
-			month: string;
-			income: number;
-			expense: number;
-			net: number;
-		}> = [];
+		try {
+			const n = args.months ?? 6;
+			const now = new Date();
+			const result: Array<{
+				label: string;
+				month: string;
+				income: number;
+				expense: number;
+				net: number;
+			}> = [];
 
-		for (let i = n - 1; i >= 0; i--) {
-			const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-			const year = d.getFullYear();
-			const month = d.getMonth();
-			const { start, end } = getMonthRange(year, month);
+			for (let i = n - 1; i >= 0; i--) {
+				const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+				const year = d.getFullYear();
+				const month = d.getMonth();
+				const { start, end } = getMonthRange(year, month);
 
-			const transactions = await ctx.db
-				.query("financialTransactions")
-				.withIndex("by_date", (q) => q.gte("date", start).lte("date", end))
-				.collect();
+				const transactions = await ctx.db
+					.query("financialTransactions")
+					.withIndex("by_date", (q) => q.gte("date", start).lte("date", end))
+					.collect();
 
-			let income = 0;
-			let expense = 0;
-			for (const t of transactions) {
-				if (t.status !== "completed") continue;
-				if (t.category === "Modal Awal" || t.category === "Setoran Akhir") continue;
-				if (t.type === "income") income += t.amount;
-				else expense += t.amount;
+				let income = 0;
+				let expense = 0;
+				for (const t of transactions) {
+					if (t.status !== "completed") continue;
+					if (t.category === "Modal Awal" || t.category === "Setoran Akhir") continue;
+					if (t.type === "income") income += t.amount;
+					else expense += t.amount;
+				}
+
+				const monthStr = `${year}-${String(month + 1).padStart(2, "0")}`;
+				const label = d.toLocaleDateString("id-ID", { month: "short", year: "2-digit" });
+				result.push({ label, month: monthStr, income, expense, net: income - expense });
 			}
 
-			const monthStr = `${year}-${String(month + 1).padStart(2, "0")}`;
-			const label = d.toLocaleDateString("id-ID", { month: "short", year: "2-digit" });
-			result.push({ label, month: monthStr, income, expense, net: income - expense });
+			return result;
+		} catch (error) {
+			console.error("Error in getMonthlyTrend:", error);
+			throw new Error(error instanceof Error ? error.message : "Unknown error in getMonthlyTrend");
 		}
-
-		return result;
 	},
 });
 
