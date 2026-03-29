@@ -463,13 +463,13 @@ function MenuPage() {
 							</p>
 							<button
 								onClick={() => {
-									setActiveSidebarTab("kas");
+									setActiveSidebarTab("dashboard");
 									setIsSidebarOpen(true);
 								}}
 								className="flex items-center justify-center gap-2 rounded-xl bg-primary px-8 py-4 font-bold text-primary-foreground text-sm transition-all hover:opacity-90 active:scale-95 w-full shadow-lg shadow-primary/20"
 								type="button"
 							>
-								<Wallet className="h-4 w-4" /> Buka Shift Sekarang
+								<BarChart3 className="h-4 w-4" /> Buka Shift Sekarang
 							</button>
 						</div>
 					</div>
