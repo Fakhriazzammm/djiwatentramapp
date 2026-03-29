@@ -52,6 +52,11 @@ export function TransactionDetailReport({ range }: Props) {
 		category: filterCategory || undefined,
 	});
 
+	const historicalShifts = useQuery(api.finance.getHistoricalShifts, {
+		startDate: range.startDate,
+		endDate: range.endDate,
+	});
+
 	// Client-side filtering for search and amount range
 	const filteredTransactions = useMemo(() => {
 		if (!data?.transactions) return [];
@@ -269,6 +274,7 @@ export function TransactionDetailReport({ range }: Props) {
 					<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase tracking-wider font-bold">
 						<tr>
 							<th className="px-4 py-3">Tanggal</th>
+							<th className="px-4 py-3">Shift</th>
 							<th className="px-4 py-3">Merchant/Keterangan</th>
 							<th className="px-4 py-3">Kategori</th>
 							<th className="px-4 py-3">Metode</th>
@@ -280,12 +286,12 @@ export function TransactionDetailReport({ range }: Props) {
 						{!data ? (
 							Array.from({ length: 5 }).map((_, i) => (
 								<tr key={i}>
-									<td colSpan={6} className="px-4 py-4"><Skeleton className="h-4 w-full" /></td>
+									<td colSpan={7} className="px-4 py-4"><Skeleton className="h-4 w-full" /></td>
 								</tr>
 							))
 						) : filteredTransactions.length === 0 ? (
 							<tr>
-								<td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+								<td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
 									<div className="flex flex-col items-center gap-2">
 										<Wallet className="h-8 w-8 opacity-20" />
 										<p>Tidak ada transaksi ditemukan</p>
@@ -293,20 +299,38 @@ export function TransactionDetailReport({ range }: Props) {
 								</td>
 							</tr>
 						) : (
-							filteredTransactions.map((t: any) => (
-								<tr key={t._id} className="group hover:bg-muted/30 transition-colors">
-									<td className="px-4 py-4 whitespace-nowrap">
-										<div className="flex flex-col">
-											<span className="font-medium text-foreground">
-												{format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}
-											</span>
-											<span className="text-[10px] text-muted-foreground">
-												{format(new Date(t.date), "HH:mm")}
-											</span>
-										</div>
-									</td>
-									<td className="px-4 py-4">
-										<div className="flex flex-col max-w-[200px]">
+							filteredTransactions.map((t: any) => {
+								let shiftName = "-";
+								if (historicalShifts) {
+									const shift = historicalShifts.find((s: any) => t.date >= s.startTime && (!s.endTime || t.date <= s.endTime));
+									if (shift) {
+										shiftName = shift.shiftName || "Shift Aktif";
+									}
+								}
+
+								return (
+									<tr key={t._id} className="group hover:bg-muted/30 transition-colors">
+										<td className="px-4 py-4 whitespace-nowrap">
+											<div className="flex flex-col">
+												<span className="font-medium text-foreground">
+													{format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}
+												</span>
+												<span className="text-[10px] text-muted-foreground">
+													{format(new Date(t.date), "HH:mm")}
+												</span>
+											</div>
+										</td>
+										<td className="px-4 py-4">
+											{shiftName !== "-" ? (
+												<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary uppercase">
+													{shiftName}
+												</span>
+											) : (
+												<span className="text-muted-foreground text-xs">-</span>
+											)}
+										</td>
+										<td className="px-4 py-4">
+											<div className="flex flex-col max-w-[200px]">
 											<span className="font-semibold text-foreground truncate">
 												{t.merchant || "Umum"}
 											</span>
@@ -329,25 +353,26 @@ export function TransactionDetailReport({ range }: Props) {
 										</span>
 									</td>
 									<td className="px-4 py-4 text-right whitespace-nowrap">
-										<div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-											<button
-												onClick={() => handleEdit(t)}
-												className="p-1.5 rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-												title="Ubah"
-											>
-												<Pencil className="h-4 w-4" />
-											</button>
-											<button
-												onClick={() => handleDelete(t._id)}
-												className="p-1.5 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-												title="Hapus"
-											>
-												<Trash2 className="h-4 w-4" />
-											</button>
-										</div>
-									</td>
-								</tr>
-							))
+											<div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+												<button
+													onClick={() => handleEdit(t)}
+													className="p-1.5 rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+													title="Ubah"
+												>
+													<Pencil className="h-4 w-4" />
+												</button>
+												<button
+													onClick={() => handleDelete(t._id)}
+													className="p-1.5 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+													title="Hapus"
+												>
+													<Trash2 className="h-4 w-4" />
+												</button>
+											</div>
+										</td>
+									</tr>
+								);
+							})
 						)}
 					</tbody>
 				</table>

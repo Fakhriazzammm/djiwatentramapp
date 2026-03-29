@@ -146,7 +146,8 @@ export const getProfitLossReport = query({
 		const incomeByCategory: Record<string, number> = {};
 		let totalIncome = 0;
 		for (const t of completed.filter((t) => t.type === "income")) {
-			incomeByCategory[t.category] = (incomeByCategory[t.category] || 0) + t.amount;
+			const cat = t.category || "Lainnya";
+			incomeByCategory[cat] = (incomeByCategory[cat] || 0) + t.amount;
 			totalIncome += t.amount;
 		}
 
@@ -154,7 +155,8 @@ export const getProfitLossReport = query({
 		const expenseByCategory: Record<string, number> = {};
 		let totalExpense = 0;
 		for (const t of completed.filter((t) => t.type === "expense")) {
-			expenseByCategory[t.category] = (expenseByCategory[t.category] || 0) + t.amount;
+			const cat = t.category || "Lainnya";
+			expenseByCategory[cat] = (expenseByCategory[cat] || 0) + t.amount;
 			totalExpense += t.amount;
 		}
 
@@ -163,16 +165,21 @@ export const getProfitLossReport = query({
 		const hppAmount = expenseByCategory["HPP"] || 0;
 		const otherIncome = totalIncome - salesRevenue;
 		
-		// Gross Profit = Sales - HPP (or just Total Income - HPP depending on business model, 
-		// but typically Gross Profit is Sales Revenue - COGS)
+		// Gross Profit = Sales - HPP
 		const grossProfit = salesRevenue - hppAmount;
 		const netProfit = totalIncome - totalExpense;
 		const netMargin = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0;
 
-		// Filter out HPP from operating expenses for display if needed, 
-		// or keep it to show breakdown. The UI usually wants to see HPP separately.
+		// Detailed Operating Expenses
 		const operatingExpenses = Object.entries(expenseByCategory)
 			.filter(([category]) => category !== "HPP")
+			.map(([category, amount]) => ({
+				category,
+				amount,
+			}));
+
+		// Detailed Income Sources (excluding Sales if you want them separated, or just list all)
+		const incomeSources = Object.entries(incomeByCategory)
 			.map(([category, amount]) => ({
 				category,
 				amount,
@@ -185,6 +192,7 @@ export const getProfitLossReport = query({
 				otherIncome,
 				total: totalIncome,
 				byCategory: incomeByCategory,
+				sources: incomeSources,
 			},
 			expense: {
 				hppAmount,
@@ -385,25 +393,49 @@ export const getShiftStatus = query({
 		let latestAkhir = 0;
 		let shiftInfo = null;
 
-		for (const t of transactions) {
+		// Track all shifts for today
+		const allShifts: any[] = [];
+		const sortedTx = [...transactions].sort((a, b) => a.date - b.date);
+		
+		let currentShiftObj: any = null;
+
+		for (const t of sortedTx) {
 			if (t.status === "completed") {
-				if (t.category === "Modal Awal" && t.date > latestMulai) {
-					latestMulai = t.date;
-					// Parse description to extract cashier and shift name if available
-					// Format is "Kasir: Name | Shift: Shift Name | Tim: Members"
+				if (t.category === "Modal Awal") {
+					let parsedCashier = null;
+					let parsedShift = null;
 					if (t.description) {
 						const parts = t.description.split(" | ");
 						const cashierPart = parts.find(p => p.startsWith("Kasir: "));
 						const shiftPart = parts.find(p => p.startsWith("Shift: "));
 						
+						parsedCashier = cashierPart ? cashierPart.replace("Kasir: ", "") : null;
+						parsedShift = shiftPart ? shiftPart.replace("Shift: ", "") : null;
+					}
+					
+					currentShiftObj = {
+						startTime: t.date,
+						endTime: null,
+						cashierName: parsedCashier,
+						shiftName: parsedShift,
+					};
+					allShifts.push(currentShiftObj);
+
+					if (t.date > latestMulai) {
+						latestMulai = t.date;
 						shiftInfo = {
-							cashierName: cashierPart ? cashierPart.replace("Kasir: ", "") : null,
-							shiftName: shiftPart ? shiftPart.replace("Shift: ", "") : null,
+							cashierName: parsedCashier,
+							shiftName: parsedShift,
 						};
 					}
 				}
-				if (t.category === "Setoran Akhir" && t.date > latestAkhir) {
-					latestAkhir = t.date;
+				if (t.category === "Setoran Akhir") {
+					if (currentShiftObj && !currentShiftObj.endTime) {
+						currentShiftObj.endTime = t.date;
+					}
+					if (t.date > latestAkhir) {
+						latestAkhir = t.date;
+					}
 				}
 			}
 		}
@@ -416,8 +448,78 @@ export const getShiftStatus = query({
 			isOpen,
 			latestMulai,
 			latestAkhir,
-			shiftInfo: isOpen ? shiftInfo : null
+			shiftInfo: isOpen ? shiftInfo : null,
+			allShifts // Return all shifts found today
 		};
+	},
+});
+
+// Get historical shifts for a date range
+export const getHistoricalShifts = query({
+	args: {
+		startDate: v.optional(v.number()),
+		endDate: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const { startDate, endDate } = args;
+
+		let q =
+			startDate !== undefined || endDate !== undefined
+				? ctx.db.query("financialTransactions").withIndex("by_date", (q) => {
+						if (startDate !== undefined && endDate !== undefined) {
+							return q.gte("date", startDate).lte("date", endDate);
+						}
+						if (startDate !== undefined) {
+							return q.gte("date", startDate);
+						}
+						if (endDate !== undefined) {
+							return q.lte("date", endDate);
+						}
+						return q;
+					})
+				: ctx.db.query("financialTransactions").withIndex("by_date");
+
+		const transactions = await q.collect();
+
+		const allShifts: any[] = [];
+		const sortedTx = [...transactions].sort((a, b) => a.date - b.date);
+		
+		let currentShiftObj: any = null;
+
+		for (const t of sortedTx) {
+			if (t.status === "completed") {
+				if (t.category === "Modal Awal") {
+					let parsedCashier = null;
+					let parsedShift = null;
+					if (t.description) {
+						const parts = t.description.split(" | ");
+						const cashierPart = parts.find(p => p.startsWith("Kasir: "));
+						const shiftPart = parts.find(p => p.startsWith("Shift: "));
+						
+						parsedCashier = cashierPart ? cashierPart.replace("Kasir: ", "") : null;
+						parsedShift = shiftPart ? shiftPart.replace("Shift: ", "") : null;
+					}
+					
+					currentShiftObj = {
+						id: t._id,
+						startTime: t.date,
+						endTime: null,
+						cashierName: parsedCashier,
+						shiftName: parsedShift,
+						modalAwal: t.amount,
+					};
+					allShifts.push(currentShiftObj);
+				}
+				if (t.category === "Setoran Akhir") {
+					if (currentShiftObj && !currentShiftObj.endTime) {
+						currentShiftObj.endTime = t.date;
+						currentShiftObj.setoranAkhir = t.amount;
+					}
+				}
+			}
+		}
+
+		return allShifts.sort((a, b) => b.startTime - a.startTime); // newest first
 	},
 });
 

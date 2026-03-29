@@ -1,24 +1,27 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useState } from "react";
-import { Download, FileSpreadsheet, FileText, Printer, TrendingUp, ArrowLeftRight } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Printer, TrendingUp, ArrowLeftRight, Users, Image as ImageIcon } from "lucide-react";
 import { PeriodSelector, getRangeFromPeriod, type PeriodOption, type DateRange } from "./period-selector";
 import { ProfitLossReport } from "./profit-loss-report";
 import { CashFlowReport } from "./cash-flow-report";
+import { ShiftReport } from "./shift-report";
 import {
 	exportProfitLossPDF,
 	exportCashFlowPDF,
 	exportProfitLossExcel,
 	exportCashFlowExcel,
+	exportProfitLossJPG,
 	type ProfitLossData,
 	type CashFlowData,
 } from "@/lib/export-utils";
 
-type ReportTab = "profit_loss" | "cash_flow";
+type ReportTab = "profit_loss" | "cash_flow" | "shift";
 
 const TABS: { value: ReportTab; label: string; icon: React.ReactNode }[] = [
 	{ value: "profit_loss", label: "Laba Rugi", icon: <TrendingUp className="h-4 w-4" /> },
 	{ value: "cash_flow", label: "Arus Kas", icon: <ArrowLeftRight className="h-4 w-4" /> },
+	{ value: "shift", label: "Laporan Shift", icon: <Users className="h-4 w-4" /> },
 ];
 
 export function FinancialReports() {
@@ -45,12 +48,13 @@ export function FinancialReports() {
 		setDateRange(range);
 	};
 
-	const handleExport = async (format: "pdf" | "excel" | "csv") => {
+	const handleExport = async (format: "pdf" | "excel" | "csv" | "jpg") => {
 		setIsExporting(true);
 		try {
 			if (activeTab === "profit_loss" && plData) {
 				if (format === "pdf") exportProfitLossPDF(plData as ProfitLossData, storeName, dateRange.label);
-				else exportProfitLossExcel(plData as ProfitLossData, storeName, dateRange.label);
+				else if (format === "excel") exportProfitLossExcel(plData as ProfitLossData, storeName, dateRange.label);
+				else if (format === "jpg") exportProfitLossJPG(plData as ProfitLossData, storeName, dateRange.label);
 			} else if (activeTab === "cash_flow" && cfData) {
 				if (format === "pdf") exportCashFlowPDF(cfData as CashFlowData, storeName, dateRange.label);
 				else exportCashFlowExcel(cfData as CashFlowData, storeName, dateRange.label);
@@ -99,6 +103,15 @@ export function FinancialReports() {
 					</button>
 					<button
 						type="button"
+						onClick={() => handleExport("jpg")}
+						disabled={!canExport || isExporting || activeTab !== "profit_loss"}
+						className="flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-medium text-purple-700 transition-colors hover:bg-purple-100 disabled:opacity-40 dark:border-purple-900/30 dark:bg-purple-900/20 dark:text-purple-400"
+					>
+						<ImageIcon className="h-3.5 w-3.5" />
+						JPG
+					</button>
+					<button
+						type="button"
 						onClick={handlePrint}
 						className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/70"
 					>
@@ -139,6 +152,7 @@ export function FinancialReports() {
 			<div id="report-content">
 				{activeTab === "profit_loss" && <ProfitLossReport range={dateRange} />}
 				{activeTab === "cash_flow" && <CashFlowReport range={dateRange} />}
+				{activeTab === "shift" && <ShiftReport range={dateRange} />}
 			</div>
 		</div>
 	);

@@ -32,6 +32,8 @@ export function FinanceDashboard() {
 		type: filterType,
 	});
 
+	const historicalShifts = useQuery(api.finance.getHistoricalShifts, {});
+
 	const deleteTransaction = useMutation(api.finance.deleteTransaction);
 	const updateTransaction = useMutation(api.finance.updateTransaction);
 
@@ -100,6 +102,7 @@ export function FinanceDashboard() {
 					<thead className="bg-muted/50 text-muted-foreground text-xs uppercase">
 						<tr>
 							<th className="px-6 py-3">Tanggal</th>
+							<th className="px-6 py-3">Shift</th>
 							<th className="px-6 py-3">Kategori</th>
 							<th className="px-6 py-3">Merchant/Toko</th>
 							<th className="px-6 py-3">Keterangan</th>
@@ -109,19 +112,41 @@ export function FinanceDashboard() {
 						</tr>
 					</thead>
 					<tbody>
-						{transactions.map((t: Doc<"financialTransactions">) => (
-							<tr
-								className="group border-border border-b transition-colors hover:bg-muted/30"
-								key={t._id}
-							>
-									<td className="px-6 py-4 font-medium">
-										{new Date(t.date).toLocaleDateString("id-ID", {
-											day: "numeric",
-											month: "short",
-											year: "numeric",
-										})}
-									</td>
-									<td className="px-6 py-4">
+						{transactions.map((t: Doc<"financialTransactions">) => {
+							// Determine shift
+							let shiftName = "-";
+							if (historicalShifts) {
+								const shift = historicalShifts.find((s: any) => t.date >= s.startTime && (!s.endTime || t.date <= s.endTime));
+								if (shift) {
+									shiftName = shift.shiftName || "Shift Aktif";
+								}
+							}
+
+							return (
+								<tr
+									className="group border-border border-b transition-colors hover:bg-muted/30"
+									key={t._id}
+								>
+										<td className="px-6 py-4 font-medium">
+											{new Date(t.date).toLocaleDateString("id-ID", {
+												day: "numeric",
+												month: "short",
+												year: "numeric",
+											})}
+											<div className="text-[10px] text-muted-foreground mt-0.5">
+												{new Date(t.date).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+											</div>
+										</td>
+										<td className="px-6 py-4">
+											{shiftName !== "-" ? (
+												<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary uppercase">
+													{shiftName}
+												</span>
+											) : (
+												<span className="text-muted-foreground text-xs">-</span>
+											)}
+										</td>
+										<td className="px-6 py-4">
 										<span className={`inline-flex items-center rounded-md border px-2 py-1 font-medium text-[10px] uppercase tracking-wider ${
 											t.category === "makanan_minuman" ? "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/30 dark:bg-orange-900/20 dark:text-orange-400" :
 											t.category === "belanja_stok" ? "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400" :
@@ -162,7 +187,8 @@ export function FinanceDashboard() {
 										</div>
 									</td>
 								</tr>
-							))}
+							);
+						})}
 
 						{transactions && transactions.length === 0 && (
 							<tr>

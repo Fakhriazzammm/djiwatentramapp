@@ -47,13 +47,15 @@ export function exportProfitLossPDF(data: ProfitLossData, storeName: string, per
 
 	const incomeRows: (string | number)[][] = [];
 	if (data.income.salesRevenue > 0) {
-		incomeRows.push(["  Penjualan", formatCurrencyIDR(data.income.salesRevenue)]);
+		incomeRows.push(["  Penjualan (Dari Pesanan)", formatCurrencyIDR(data.income.salesRevenue)]);
 	}
-	Object.entries(data.income.byCategory)
-		.filter(([cat]) => cat !== "Penjualan")
-		.forEach(([cat, amt]) => {
-			incomeRows.push([`  ${cat.replace(/_/g, " ")}`, formatCurrencyIDR(amt)]);
-		});
+	if (data.income.sources) {
+		data.income.sources
+			.filter((s) => s.category !== "Penjualan")
+			.forEach((s) => {
+				incomeRows.push([`  ${s.category.replace(/_/g, " ")}`, formatCurrencyIDR(s.amount)]);
+			});
+	}
 	incomeRows.push(["TOTAL PENDAPATAN", formatCurrencyIDR(data.income.total)]);
 
 	autoTable(doc, {
@@ -233,6 +235,95 @@ export function exportTransactionsPDF(
 // EXCEL EXPORT
 // ─────────────────────────────────────────────
 
+export function exportProfitLossJPG(data: ProfitLossData, storeName: string, period: string) {
+	const canvas = document.createElement("canvas");
+	const ctx = canvas.getContext("2d");
+	if (!ctx) return;
+
+	canvas.width = 800;
+	// Calculate dynamic height based on rows
+	let numRows = 8; // Headers, totals, etc.
+	if (data.income.salesRevenue > 0) numRows++;
+	if (data.income.sources) numRows += data.income.sources.filter(s => s.category !== "Penjualan").length;
+	numRows += data.expense.operatingExpenses.length;
+	
+	canvas.height = 300 + (numRows * 40);
+
+	// Background
+	ctx.fillStyle = "#ffffff";
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+	// Header
+	ctx.fillStyle = "#10b981"; // Emerald
+	ctx.fillRect(0, 0, canvas.width, 100);
+
+	ctx.fillStyle = "#ffffff";
+	ctx.font = "bold 32px Arial";
+	ctx.fillText(storeName.toUpperCase(), 40, 60);
+	
+	ctx.font = "20px Arial";
+	ctx.fillText(`LAPORAN LABA RUGI - ${period}`, 40, 90);
+
+	let y = 150;
+	const drawSection = (title: string, color: string) => {
+		ctx.fillStyle = color;
+		ctx.font = "bold 16px Arial";
+		ctx.fillText(title, 40, y);
+		y += 30;
+	};
+
+	const drawRow = (label: string, value: string, isIndent: boolean = false, isBold: boolean = false) => {
+		ctx.fillStyle = "#374151";
+		ctx.font = `${isBold ? "bold" : "normal"} 14px Arial`;
+		ctx.fillText(label, isIndent ? 70 : 40, y);
+		ctx.fillText(value, canvas.width - 200, y);
+		y += 30;
+	};
+
+	// Income
+	drawSection("PENDAPATAN", "#10b981");
+	if (data.income.salesRevenue > 0) {
+		drawRow("Penjualan (Dari Pesanan)", formatCurrencyIDR(data.income.salesRevenue), true);
+	}
+	if (data.income.sources) {
+		data.income.sources.filter(s => s.category !== "Penjualan").forEach(s => {
+			drawRow(s.category.replace(/_/g, " "), formatCurrencyIDR(s.amount), true);
+		});
+	}
+	ctx.fillStyle = "#f0fdf4";
+	ctx.fillRect(40, y - 20, canvas.width - 80, 40);
+	drawRow("TOTAL PENDAPATAN", formatCurrencyIDR(data.income.total), false, true);
+	y += 20;
+
+	// Expenses
+	drawSection("BEBAN OPERASIONAL", "#ef4444");
+	data.expense.operatingExpenses.forEach(e => {
+		drawRow(e.category.replace(/_/g, " "), formatCurrencyIDR(e.amount), true);
+	});
+	ctx.fillStyle = "#fef2f2";
+	ctx.fillRect(40, y - 20, canvas.width - 80, 40);
+	drawRow("TOTAL BEBAN", formatCurrencyIDR(data.expense.total), false, true);
+	y += 40;
+
+	// Net Profit
+	const isProfit = data.netProfit >= 0;
+	ctx.fillStyle = isProfit ? "#d1fae5" : "#fee2e2";
+	ctx.fillRect(40, y - 20, canvas.width - 80, 80);
+	
+	ctx.fillStyle = isProfit ? "#047857" : "#b91c1c";
+	ctx.font = "bold 20px Arial";
+	ctx.fillText("LABA BERSIH", 60, y + 10);
+	ctx.fillText(formatCurrencyIDR(data.netProfit), canvas.width - 200, y + 10);
+	
+	ctx.font = "14px Arial";
+	ctx.fillText(`Margin Bersih: ${data.netMargin.toFixed(1)}%`, 60, y + 40);
+
+	// Download
+	const link = document.createElement("a");
+	link.download = `laporan-laba-rugi-${Date.now()}.jpg`;
+	link.href = canvas.toDataURL("image/jpeg", 0.9);
+	link.click();
+}
 export function exportProfitLossExcel(data: ProfitLossData, storeName: string, period: string) {
 	const wb = XLSX.utils.book_new();
 
@@ -245,10 +336,12 @@ export function exportProfitLossExcel(data: ProfitLossData, storeName: string, p
 		["PENDAPATAN", ""],
 	];
 	if (data.income.salesRevenue > 0) {
-		summaryRows.push(["  Penjualan", data.income.salesRevenue]);
+		summaryRows.push(["  Penjualan (Dari Pesanan)", data.income.salesRevenue]);
 	}
-	for (const [cat, amt] of Object.entries(data.income.byCategory).filter(([c]) => c !== "Penjualan")) {
-		summaryRows.push([`  ${cat.replace(/_/g, " ")}`, amt as number]);
+	if (data.income.sources) {
+		for (const s of data.income.sources.filter((s) => s.category !== "Penjualan")) {
+			summaryRows.push([`  ${s.category.replace(/_/g, " ")}`, s.amount]);
+		}
 	}
 	summaryRows.push(["TOTAL PENDAPATAN", data.income.total]);
 	summaryRows.push([]);
@@ -388,8 +481,10 @@ export interface ProfitLossData {
 		otherIncome: number;
 		total: number;
 		byCategory: Record<string, number>;
+		sources?: { category: string; amount: number }[];
 	};
 	expense: {
+		hppAmount?: number;
 		operatingExpenses: { category: string; amount: number }[];
 		total: number;
 		byCategory: Record<string, number>;

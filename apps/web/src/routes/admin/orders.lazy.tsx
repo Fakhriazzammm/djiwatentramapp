@@ -79,6 +79,7 @@ function AdminOrders() {
 	
 	const hppProductMap = useQuery(api.hpp.getHppProductMap);
 	const hppCogs = useQuery(api.hpp.getOrdersCogs);
+	const historicalShifts = useQuery(api.finance.getHistoricalShifts, {});
 
 	const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 	const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -411,6 +412,7 @@ function AdminOrders() {
 						<thead className="sticky top-0 z-10 bg-muted/50 font-semibold text-muted-foreground text-xs uppercase">
 							<tr>
 								<th className="px-6 py-4">ID Pesanan</th>
+								<th className="px-6 py-4">Shift/Kasir</th>
 								<th className="px-6 py-4">Pelanggan</th>
 								<th className="px-6 py-4">Total</th>
 								<th className="px-6 py-4">Laba</th>
@@ -430,24 +432,42 @@ function AdminOrders() {
 									</td>
 								</tr>
 							) : (
-								filteredOrders?.map((order: Order) => (
-									<tr
-										className="group cursor-pointer transition-colors hover:bg-muted/30"
-										key={order._id}
-										onClick={() => {
-											setSelectedOrder(order as any);
-											setIsDetailOpen(true);
-										}}
-									>
-										<td className="px-6 py-4 font-medium font-mono text-primary">
-											<div className="flex flex-col">
-												<span>{order.displayId}</span>
-												{order.type === "booking" && (
-													<span className="text-[9px] text-blue-500 font-sans font-bold">BOOKING</span>
+								filteredOrders?.map((order: Order) => {
+									let shiftName = "-";
+									if (historicalShifts) {
+										const shift = historicalShifts.find((s: any) => order.createdAt >= s.startTime && (!s.endTime || order.createdAt <= s.endTime));
+										if (shift) {
+											shiftName = shift.shiftName || "Shift Aktif";
+										}
+									}
+
+									return (
+										<tr
+											className="group cursor-pointer transition-colors hover:bg-muted/30"
+											key={order._id}
+											onClick={() => {
+												setSelectedOrder(order as any);
+												setIsDetailOpen(true);
+											}}
+										>
+											<td className="px-6 py-4 font-medium font-mono text-primary">
+												<div className="flex flex-col">
+													<span>{order.displayId}</span>
+													{order.type === "booking" && (
+														<span className="text-[9px] text-blue-500 font-sans font-bold">BOOKING</span>
+													)}
+												</div>
+											</td>
+											<td className="px-6 py-4">
+												{shiftName !== "-" ? (
+													<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary uppercase">
+														{shiftName}
+													</span>
+												) : (
+													<span className="text-muted-foreground text-xs">-</span>
 												)}
-											</div>
-										</td>
-										<td className="px-6 py-4">
+											</td>
+											<td className="px-6 py-4">
 											<div className="flex flex-col gap-1">
 												<div className="flex items-center gap-2">
 													<div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] text-primary">
@@ -522,34 +542,35 @@ function AdminOrders() {
 											{format(order.createdAt, "dd MMM HH:mm", { locale: id })}
 										</td>
 										<td className="px-6 py-4 text-center">
-											<div className="flex items-center justify-center gap-1">
-												<Button
-													className="h-8 w-8 text-muted-foreground hover:text-primary"
-													onClick={(e) => {
-														e.stopPropagation();
-														setSelectedOrder(order as any);
-														setIsDetailOpen(true);
-													}}
-													size="icon"
-													variant="ghost"
-												>
-													<Eye className="h-4 w-4" />
-												</Button>
-												<Button
-													className="h-8 w-8 text-muted-foreground hover:text-destructive"
-													onClick={(e) => {
-														e.stopPropagation();
-														handleDeleteOrder(order);
-													}}
-													size="icon"
-													variant="ghost"
-												>
-													<Trash2 className="h-4 w-4" />
-												</Button>
-											</div>
-										</td>
-									</tr>
-								))
+												<div className="flex items-center justify-center gap-1">
+													<Button
+														className="h-8 w-8 text-muted-foreground hover:text-primary"
+														onClick={(e) => {
+															e.stopPropagation();
+															setSelectedOrder(order as any);
+															setIsDetailOpen(true);
+														}}
+														size="icon"
+														variant="ghost"
+													>
+														<Eye className="h-4 w-4" />
+													</Button>
+													<Button
+														className="h-8 w-8 text-muted-foreground hover:text-destructive"
+														onClick={(e) => {
+															e.stopPropagation();
+															handleDeleteOrder(order);
+														}}
+														size="icon"
+														variant="ghost"
+													>
+														<Trash2 className="h-4 w-4" />
+													</Button>
+												</div>
+											</td>
+										</tr>
+									);
+								})
 							)}
 						</tbody>
 					</table>

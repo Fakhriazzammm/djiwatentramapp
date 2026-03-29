@@ -111,13 +111,13 @@ export function ProfitLossReport({ range }: Props) {
 				{/* Pendapatan */}
 				<Section title="PENDAPATAN" color="green">
 					{data.income.salesRevenue > 0 && (
-						<Row label="Penjualan (dari pesanan)" value={data.income.salesRevenue} />
+						<Row label="Penjualan (Dari Pesanan)" value={data.income.salesRevenue} />
 					)}
-					{Object.entries(data.income.byCategory)
-						.filter(([cat]) => cat !== "Penjualan")
-						.map(([cat, amt]) => (
-							<Row key={cat} label={cat.replace(/_/g, " ")} value={amt as number} indent />
-						))}
+					{data.income.sources && data.income.sources.map((s: { category: string; amount: number }) => (
+						s.category !== "Penjualan" && (
+							<Row key={s.category} label={s.category.replace(/_/g, " ")} value={s.amount} indent />
+						)
+					))}
 					<TotalRow label="TOTAL PENDAPATAN" value={data.income.total} color="green" />
 				</Section>
 

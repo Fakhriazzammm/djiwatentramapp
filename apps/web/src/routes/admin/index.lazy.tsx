@@ -20,12 +20,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FinancialTargetPanel } from "./finance/-components/financial-target-panel";
 import { PeriodComparisonCards, TrendChart } from "./finance/-components/finance-charts";
 
+import { formatCurrencyIDR } from "@/lib/export-utils";
+
 export const Route = createLazyFileRoute("/admin/")({
-	component: AdminDashboard,
+	component: DashboardAdmin,
 });
 
-function AdminDashboard() {
+function DashboardAdmin() {
 	const stats = useQuery(api.dashboard.getDashboardStats);
+	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const todayOrders = useQuery(api.orders.getOrders, {});
 
 	if (stats === undefined) {
 		return (
@@ -102,6 +106,76 @@ function AdminDashboard() {
 					color={stats.netBalance >= 0 ? "green" : "red"}
 				/>
 			</div>
+
+			{/* Shift Information (Added for shift-level visibility) */}
+			{shiftStatus?.allShifts && shiftStatus.allShifts.length > 0 && (
+				<motion.div
+					className="rounded-2xl border border-border bg-card p-4 shadow-sm"
+					initial={{ opacity: 0, y: 20 }}
+					animate={{ opacity: 1, y: 0 }}
+				>
+					<h3 className="mb-3 font-bold text-base">Status Shift Hari Ini</h3>
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+						{shiftStatus.allShifts.map((shift: any, i: number) => {
+							const isActive = !shift.endTime;
+							const sEnd = shift.endTime || Date.now();
+							
+							// Calculate Shift Cash & QRIS
+							let sCash = 0;
+							let sQris = 0;
+							let sRevenue = 0;
+							
+							if (todayOrders) {
+								todayOrders.forEach((o: any) => {
+									if ((o.status === "completed" || o.status === "paid") && o.createdAt >= shift.startTime && o.createdAt <= sEnd) {
+										sRevenue += o.totalAmount;
+										if (o.paymentMethod === 'cash') sCash += o.totalAmount;
+										if (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer') sQris += o.totalAmount;
+									}
+								});
+							}
+
+							return (
+								<div key={i} className={`p-3 rounded-xl border ${isActive ? 'border-emerald-200 bg-emerald-50' : 'border-border bg-muted/30'}`}>
+									<div className="flex justify-between items-start mb-2">
+										<div>
+											<p className="font-bold text-sm">{shift.shiftName || `Shift ${i + 1}`}</p>
+											<p className="text-xs text-muted-foreground">Kasir: {shift.cashierName || 'Unknown'}</p>
+										</div>
+										<span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>
+											{isActive ? 'AKTIF' : 'SELESAI'}
+										</span>
+									</div>
+									<div className="space-y-1 text-xs mt-2 pt-2 border-t border-border/50">
+										<div className="flex justify-between">
+											<span className="text-muted-foreground">Cash/Kasir:</span>
+											<span className="font-medium">{formatCurrencyIDR(sCash)}</span>
+										</div>
+										<div className="flex justify-between">
+											<span className="text-muted-foreground">Debit/QRIS:</span>
+											<span className="font-medium">{formatCurrencyIDR(sQris)}</span>
+										</div>
+										<div className="flex justify-between pt-1 mt-1 border-t border-dashed border-border/50">
+											<span className="text-muted-foreground font-semibold">Total Revenue:</span>
+											<span className="font-bold text-primary">{formatCurrencyIDR(sRevenue)}</span>
+										</div>
+										<div className="flex justify-between pt-1 mt-1 border-t border-border/50">
+											<span className="text-muted-foreground">Modal Awal:</span>
+											<span className="font-medium">{formatCurrencyIDR(shift.modalAwal || 0)}</span>
+										</div>
+										{shift.setoranAkhir !== undefined && (
+											<div className="flex justify-between">
+												<span className="text-muted-foreground">Fisik Laci:</span>
+												<span className="font-medium text-emerald-600">{formatCurrencyIDR(shift.setoranAkhir)}</span>
+											</div>
+										)}
+									</div>
+								</div>
+							);
+						})}
+					</div>
+				</motion.div>
+			)}
 
 			{/* Financial Target + Period Comparison */}
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

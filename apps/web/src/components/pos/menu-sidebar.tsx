@@ -62,6 +62,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { YumiAIChat } from "@/components/pos/yumi-ai-chat";
 import { bluetoothPrinter } from "@/lib/bluetooth-printer";
 import { useCart } from "@/context/cart-context";
+import { cn } from "@/lib/utils";
 
 interface ConfirmConfig {
 	isOpen: boolean;
@@ -100,7 +101,7 @@ export function MenuSidebar({
 		},
 		{ value: "parkir", label: "Simpan Orderan", icon: ShoppingCart, iconColor: "text-orange-500" },
 		{ value: "history", label: "Riwayat Order", icon: Clock, iconColor: "text-blue-500" },
-		{ value: "kas", label: "Kas", icon: Wallet, iconColor: "text-primary" },
+		{ value: "kas", label: "Shift & Kas", icon: Wallet, iconColor: "text-primary" },
 		{ value: "stok", label: "Stok", icon: Package, iconColor: "text-accent" },
 		{
 			value: "yumi",
@@ -673,7 +674,6 @@ function DashboardTab({
 }) {
 	const orders = useQuery(api.orders.getOrders, {});
 	const lowStockItems = useQuery(api.inventory.getLowStockItems);
-	const [showShiftManagement, setShowShiftManagement] = useState(false);
 
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
@@ -719,23 +719,6 @@ function DashboardTab({
 		month: "short",
 	});
 
-	if (showShiftManagement) {
-		return (
-			<div className="space-y-4">
-				<Button 
-					variant="ghost" 
-					size="sm" 
-					onClick={() => setShowShiftManagement(false)}
-					className="h-8 px-2 text-muted-foreground hover:text-foreground"
-				>
-					<X className="mr-2 h-4 w-4" />
-					Kembali ke Dashboard
-				</Button>
-				<ShiftManagement onClose={() => setShowShiftManagement(false)} />
-			</div>
-		);
-	}
-
 	return (
 		<div className="space-y-3">
 			<div className="flex items-center justify-between">
@@ -770,10 +753,10 @@ function DashboardTab({
 						<Button 
 							size="sm" 
 							variant={isShiftOpen ? "outline" : "default"}
-							onClick={() => setShowShiftManagement(true)}
+							onClick={() => onNavigate("kas")}
 							className="text-xs h-8"
 						>
-							{isShiftOpen ? "Tutup Shift" : "Buka Shift"}
+							{isShiftOpen ? "Kelola Shift" : "Buka Shift"}
 						</Button>
 					</div>
 				</Card>
@@ -806,16 +789,25 @@ function DashboardTab({
 
 						// Shift products by category
 						const shiftItemsByCategory: Record<string, number> = {};
+						const shiftItemsByName: Record<string, number> = {};
 						shiftOrders.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid').forEach((o: Doc<"orders">) => {
 							o.items.forEach((item: any) => {
 								const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
 								shiftItemsByCategory[cat] = (shiftItemsByCategory[cat] || 0) + item.quantity;
+								shiftItemsByName[item.productName || 'Unknown'] = (shiftItemsByName[item.productName || 'Unknown'] || 0) + item.quantity;
 							});
 						});
 						let shiftProductsText = Object.entries(shiftItemsByCategory)
 							.map(([cat, qty]) => `- ${cat}: ${qty}`)
 							.join('\n');
 						if (!shiftProductsText) shiftProductsText = "-";
+						
+						const shiftTopProducts = Object.entries(shiftItemsByName)
+							.sort((a, b) => b[1] - a[1])
+							.slice(0, 3);
+						let shiftTopProductsText = shiftTopProducts.length > 0
+							? shiftTopProducts.map(([name, qty]) => `- ${name}: ${qty}`).join('\n')
+							: "-";
 
 						// Shift expenses
 						const shiftTransactions = shiftStatus?.latestMulai ? todayTransactions?.filter((t: any) => t.date >= shiftStatus.latestMulai) : [];
@@ -867,7 +859,7 @@ function DashboardTab({
 						if (!topProductsText) topProductsText = "-";
 
 						const modalAwal = todayTransactions
-							?.filter((t: any) => t.type === 'income' && t.category?.toLowerCase().includes('modal'))
+							?.filter((t: any) => t.type === 'income' && t.category?.toLowerCase().includes('modal') && t.date >= (shiftStatus?.latestMulai || 0))
 							.reduce((acc: number, t: any) => acc + t.amount, 0) || 0;
 
 						// Calculate expenses by category
@@ -891,26 +883,96 @@ function DashboardTab({
 
 						const shopName = siteSettings?.shopName || "YUMI POS";
 
+						// --- GENERATE SHIFTS TEXT ---
+						let allShiftsText = "";
+						
+						if (shiftStatus?.allShifts && shiftStatus.allShifts.length > 0) {
+							shiftStatus.allShifts.forEach((shiftObj: any, index: number) => {
+								const sStart = shiftObj.startTime;
+								const sEnd = shiftObj.endTime || Date.now(); // If open, until now
+								
+								// Shift specific calculation
+								const sOrders = todayOrders.filter((o: Doc<"orders">) => o.createdAt >= sStart && o.createdAt <= sEnd);
+								
+								const sCash = sOrders
+									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod === 'cash')
+									.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+									
+								const sQris = sOrders
+									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
+									.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+									
+								const sItems = sOrders
+									.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
+									.reduce((acc: number, o: Doc<"orders">) => acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0), 0);
+									
+								const sRevenue = sCash + sQris;
+
+								// Shift products
+								const sItemsByCategory: Record<string, number> = {};
+								const sItemsByName: Record<string, number> = {};
+
+								sOrders.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid').forEach((o: Doc<"orders">) => {
+									o.items.forEach((item: any) => {
+										const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
+										sItemsByCategory[cat] = (sItemsByCategory[cat] || 0) + item.quantity;
+										sItemsByName[item.name] = (sItemsByName[item.name] || 0) + item.quantity;
+									});
+								});
+								let sProductsText = Object.entries(sItemsByCategory)
+									.map(([cat, qty]) => `- ${cat}: ${qty}`)
+									.join('\n');
+								if (!sProductsText) sProductsText = "-";
+
+								const sTopProducts = Object.entries(sItemsByName)
+									.sort((a, b) => b[1] - a[1])
+									.slice(0, 3);
+								let sTopProductsText = sTopProducts.length > 0
+									? sTopProducts.map(([name, qty]) => `- ${name}: ${qty}`).join('\n')
+									: "-";
+
+								// Shift expenses & modal
+								const sTransactions = todayTransactions?.filter((t: any) => t.date >= sStart && t.date <= sEnd) || [];
+								let sExpenseVal = 0;
+								let sModalVal = 0;
+								sTransactions.filter((t: any) => t.status === 'completed').forEach((t: any) => {
+									if (t.type === 'expense') sExpenseVal += t.amount;
+									if (t.type === 'income' && t.category?.toLowerCase().includes('modal')) sModalVal += t.amount;
+								});
+
+								const isCurrentActive = shiftObj.endTime === null;
+								const statusLabel = isCurrentActive ? " (AKTIF)" : " (SELESAI)";
+
+								allShiftsText += `👥 ${shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`}${statusLabel}
+Modal Kasir: Rp. ${sModalVal.toLocaleString("id-ID")}
+Cash/Kasir: Rp. ${sCash.toLocaleString("id-ID")}
+Debit/QRIS: Rp. ${sQris.toLocaleString("id-ID")}
+Delivery Online: Rp. 0
+Total Revenue ${shiftObj.shiftName || 'Shift'}: Rp. ${sRevenue.toLocaleString("id-ID")}
+
+Produk Terjual: ${sItems}
+Rincian Produk:
+${sProductsText}
+
+⭐ TOP 3 PRODUK TERLARIS (SHIFT INI):
+${sTopProductsText}
+
+Pengeluaran Shift: Rp. ${sExpenseVal.toLocaleString("id-ID")}
+
+Kasir: ${shiftObj.cashierName || 'Kasir'}
+⸻\n`;
+							});
+						} else {
+							// Fallback if no shifts found
+							allShiftsText = `👥 BELUM ADA SHIFT
+⸻\n`;
+						}
+
 						return `📊 Daily Revenue Report 
 ${shopName} - 
 📅 Tanggal: ${dateStr} 
 ⸻ 
-👥 ${shiftStatus?.shiftInfo?.shiftName?.toUpperCase() || 'SHIFT SAAT INI'}
-Modal Kasir: Rp. ${modalAwal.toLocaleString("id-ID")}
-Cash/Kasir: Rp. ${shiftCash.toLocaleString("id-ID")}
-Debit/QRIS: Rp. ${shiftQris.toLocaleString("id-ID")}
-Delivery Online: Rp. 0
-Total Revenue ${shiftStatus?.shiftInfo?.shiftName || 'Shift'}: Rp. ${shiftRevenue.toLocaleString("id-ID")}
-
-Produk Terjual: ${shiftItems}
-Rincian Produk:
-${shiftProductsText}
-
-Pengeluaran Shift: Rp. ${shiftExpenseVal.toLocaleString("id-ID")}
-
-Kasir: ${shiftStatus?.shiftInfo?.cashierName || 'Belum Buka Shift'}
-⸻ 
-
+${allShiftsText}
 💰 TOTAL REVENUE HARIAN: 
 Rp. ${totalRevenue.toLocaleString("id-ID")}
 📦 TOTAL PRODUK TERJUAL: ${totalItems}
@@ -1108,16 +1170,26 @@ Total Produk Terjual: ${totalItems}`;
 							}, 0);
 						const shiftRevenue = shiftCash + shiftQris;
 						const shiftItemsByCategory: Record<string, number> = {};
+						const shiftItemsByName: Record<string, number> = {};
 						shiftOrders.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid').forEach((o: Doc<"orders">) => {
 							o.items.forEach((item: any) => {
 								const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
 								shiftItemsByCategory[cat] = (shiftItemsByCategory[cat] || 0) + item.quantity;
+								shiftItemsByName[item.productName || 'Unknown'] = (shiftItemsByName[item.productName || 'Unknown'] || 0) + item.quantity;
 							});
 						});
 						let shiftProductsText = Object.entries(shiftItemsByCategory)
 							.map(([cat, qty]) => `- ${cat}: ${qty}`)
 							.join('\n');
 						if (!shiftProductsText) shiftProductsText = "-";
+						
+						const shiftTopProducts = Object.entries(shiftItemsByName)
+							.sort((a, b) => b[1] - a[1])
+							.slice(0, 3);
+						let shiftTopProductsText = shiftTopProducts.length > 0
+							? shiftTopProducts.map(([name, qty]) => `- ${name}: ${qty}`).join('\n')
+							: "-";
+
 						const shiftTransactions = shiftStatus?.latestMulai ? todayTransactions?.filter((t: any) => t.date >= shiftStatus.latestMulai) : [];
 						let shiftExpenseVal = 0;
 						shiftTransactions?.filter((t: any) => t.type === 'expense' && t.status === 'completed').forEach((t: any) => {
@@ -1125,7 +1197,7 @@ Total Produk Terjual: ${totalItems}`;
 						});
 
 						const modalAwal = todayTransactions
-							?.filter((t: any) => t.type === 'income' && t.category?.toLowerCase().includes('modal'))
+							?.filter((t: any) => t.type === 'income' && t.category?.toLowerCase().includes('modal') && t.date >= (shiftStatus?.latestMulai || 0))
 							.reduce((acc: number, t: any) => acc + t.amount, 0) || 0;
 
 						// Calculate expenses by category
@@ -1148,26 +1220,87 @@ Total Produk Terjual: ${totalItems}`;
 
 						const shopName = siteSettings?.shopName || "YUMI POS";
 
+						// --- GENERATE SHIFTS TEXT FOR COPY ---
+						let allShiftsCopyText = "";
+						
+						if (shiftStatus?.allShifts && shiftStatus.allShifts.length > 0) {
+							shiftStatus.allShifts.forEach((shiftObj: any, index: number) => {
+								const sStart = shiftObj.startTime;
+								const sEnd = shiftObj.endTime || Date.now();
+								
+								const sOrders = todayOrders.filter((o: Doc<"orders">) => o.createdAt >= sStart && o.createdAt <= sEnd);
+								const sCash = sOrders
+									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod === 'cash')
+									.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+								const sQris = sOrders
+									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
+									.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+								const sItems = sOrders
+									.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
+									.reduce((acc: number, o: Doc<"orders">) => acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0), 0);
+								const sRevenue = sCash + sQris;
+
+								const sItemsByCategory: Record<string, number> = {};
+								const sItemsByName: Record<string, number> = {};
+								
+								sOrders.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid').forEach((o: Doc<"orders">) => {
+									o.items.forEach((item: any) => {
+										const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
+										sItemsByCategory[cat] = (sItemsByCategory[cat] || 0) + item.quantity;
+										sItemsByName[item.name] = (sItemsByName[item.name] || 0) + item.quantity;
+									});
+								});
+								let sProductsText = Object.entries(sItemsByCategory)
+									.map(([cat, qty]) => `- ${cat}: ${qty}`)
+									.join('\n');
+								if (!sProductsText) sProductsText = "-";
+
+								const sTopProducts = Object.entries(sItemsByName)
+									.sort((a, b) => b[1] - a[1])
+									.slice(0, 3);
+								let sTopProductsText = sTopProducts.length > 0
+									? sTopProducts.map(([name, qty]) => `- ${name}: ${qty}`).join('\n')
+									: "-";
+
+								const sTransactions = todayTransactions?.filter((t: any) => t.date >= sStart && t.date <= sEnd) || [];
+								let sExpenseVal = 0;
+								let sModalVal = 0;
+								sTransactions.filter((t: any) => t.status === 'completed').forEach((t: any) => {
+									if (t.type === 'expense') sExpenseVal += t.amount;
+									if (t.type === 'income' && t.category?.toLowerCase().includes('modal')) sModalVal += t.amount;
+								});
+
+								const isCurrentActive = shiftObj.endTime === null;
+								const statusLabel = isCurrentActive ? " (AKTIF)" : " (SELESAI)";
+
+								allShiftsCopyText += `👥 ${shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`}${statusLabel}
+Modal Kasir: Rp. ${sModalVal.toLocaleString("id-ID")}
+Cash/Kasir: Rp. ${sCash.toLocaleString("id-ID")}
+Debit/QRIS: Rp. ${sQris.toLocaleString("id-ID")}
+Delivery Online: Rp. 0
+Total Revenue ${shiftObj.shiftName || 'Shift'}: Rp. ${sRevenue.toLocaleString("id-ID")}
+
+Produk Terjual: ${sItems}
+Rincian Produk:
+${sProductsText}
+
+⭐ TOP 3 PRODUK TERLARIS (SHIFT INI):
+${sTopProductsText}
+
+Pengeluaran Shift: Rp. ${sExpenseVal.toLocaleString("id-ID")}
+
+Kasir: ${shiftObj.cashierName || 'Kasir'}
+⸻\n`;
+							});
+						} else {
+							allShiftsCopyText = `👥 BELUM ADA SHIFT\n⸻\n`;
+						}
+
 						const text = `📊 Daily Revenue Report 
 ${shopName} - 
 📅 Tanggal: ${dateStr} 
 ⸻ 
-👥 ${shiftStatus?.shiftInfo?.shiftName?.toUpperCase() || 'SHIFT SAAT INI'}
-Modal Kasir: Rp. ${modalAwal.toLocaleString("id-ID")}
-Cash/Kasir: Rp. ${shiftCash.toLocaleString("id-ID")}
-Debit/QRIS: Rp. ${shiftQris.toLocaleString("id-ID")}
-Delivery Online: Rp. 0
-Total Revenue ${shiftStatus?.shiftInfo?.shiftName || 'Shift'}: Rp. ${shiftRevenue.toLocaleString("id-ID")}
-
-Produk Terjual: ${shiftItems}
-Rincian Produk:
-${shiftProductsText}
-
-Pengeluaran Shift: Rp. ${shiftExpenseVal.toLocaleString("id-ID")}
-
-Kasir: ${shiftStatus?.shiftInfo?.cashierName || 'Belum Buka Shift'}
-⸻ 
-
+${allShiftsCopyText}
 💰 TOTAL REVENUE HARIAN: 
 Rp. ${totalRevenue.toLocaleString("id-ID")}
 📦 TOTAL PRODUK TERJUAL: ${totalItems}
@@ -1476,12 +1609,12 @@ function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) =
 
 function KasTab({ onClose }: { onClose: () => void }) {
 	const [activeForm, setActiveForm] = useState<
-		"menu" | "masuk" | "keluar"
+		"menu" | "masuk" | "keluar" | "shift"
 	>("menu");
 
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
-	const financialSummary = useQuery(api.finance.getFinancialSummary, {
+	const todayTransactions = useQuery(api.finance.getAllTransactions, {
 		startDate: today.getTime(),
 	});
 
@@ -1495,9 +1628,33 @@ function KasTab({ onClose }: { onClose: () => void }) {
 			maximumFractionDigits: 0,
 		}).format(value);
 
+	// Calculate SHIFT specific summary (not daily)
+	let shiftIncome = 0;
+	let shiftExpense = 0;
+	let modalAwal = 0;
+
+	if (isShiftOpen && shiftStatus?.latestMulai) {
+		const shiftTxs = todayTransactions?.filter((t: any) => t.date >= shiftStatus.latestMulai) || [];
+		shiftTxs.filter((t: any) => t.status === 'completed').forEach((t: any) => {
+			if (t.type === 'income') {
+				shiftIncome += t.amount;
+				if (t.category?.toLowerCase().includes('modal')) {
+					modalAwal += t.amount;
+				}
+			} else if (t.type === 'expense') {
+				shiftExpense += t.amount;
+			}
+		});
+	}
+
+	const shiftNetBalance = shiftIncome - shiftExpense;
+	const shiftTransactionCount = isShiftOpen && shiftStatus?.latestMulai 
+		? (todayTransactions?.filter((t: any) => t.date >= shiftStatus.latestMulai && t.status === 'completed').length || 0)
+		: 0;
+
 	const ACTIONS = [
-		{ id: "masuk" as const, label: "Input Pemasukan", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
-		{ id: "keluar" as const, label: "Input Pengeluaran", icon: TrendingDown, color: "text-rose-600", bg: "bg-rose-50" },
+		{ id: "masuk" as const, label: "Input Pemasukan", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50", disabled: !isShiftOpen },
+		{ id: "keluar" as const, label: "Input Pengeluaran", icon: TrendingDown, color: "text-rose-600", bg: "bg-rose-50", disabled: !isShiftOpen },
 	];
 
 	if (activeForm !== "menu") {
@@ -1510,79 +1667,117 @@ function KasTab({ onClose }: { onClose: () => void }) {
 					className="h-8 px-2 text-muted-foreground hover:text-foreground"
 				>
 					<X className="mr-2 h-4 w-4" />
-					Kembali ke Kas
+					Kembali
 				</Button>
-				{activeForm === "masuk" && <IncomeForm onClose={onClose} />}
-				{activeForm === "keluar" && <ExpenseForm onClose={onClose} />}
+				{activeForm === "masuk" && <IncomeForm onClose={() => setActiveForm("menu")} />}
+				{activeForm === "keluar" && <ExpenseForm onClose={() => setActiveForm("menu")} />}
+				{activeForm === "shift" && <ShiftManagement onClose={() => setActiveForm("menu")} />}
+			</div>
+		);
+	}
+
+	if (!isShiftOpen) {
+		return (
+			<div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+				<div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted border-4 border-background shadow-sm">
+					<Wallet className="h-10 w-10 text-muted-foreground/50" />
+				</div>
+				<div className="space-y-2">
+					<h3 className="font-black text-xl tracking-tight">Shift Kasir Tertutup</h3>
+					<p className="text-muted-foreground text-sm leading-relaxed max-w-[250px] mx-auto">
+						Anda harus membuka shift terlebih dahulu untuk mulai mencatat arus kas dan melayani pelanggan.
+					</p>
+				</div>
+				<Button 
+					size="lg" 
+					className="w-full font-bold shadow-md active:scale-95 transition-all"
+					onClick={() => setActiveForm("shift")}
+				>
+					<SquarePlay className="mr-2 h-5 w-5" />
+					Buka Shift Sekarang
+				</Button>
 			</div>
 		);
 	}
 
 	return (
 		<div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
-			{/* Financial Summary Header */}
-			<div className="space-y-3">
-				<div className="flex items-center justify-between">
-					<h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Status Kas Hari Ini</h3>
-					{isShiftOpen ? (
-						<span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full uppercase tracking-tighter">Shift Aktif</span>
-					) : (
-						<span className="text-[10px] font-bold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full uppercase tracking-tighter">Shift Tutup</span>
-					)}
+			{/* Shift Header Actions */}
+			<div className="flex items-center justify-between">
+				<div>
+					<h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Laci Kasir</h3>
+					<p className="text-[10px] font-bold text-emerald-600 mt-0.5">SHIFT AKTIF • {shiftStatus?.shiftInfo?.cashierName || "Kasir"}</p>
 				</div>
-				
-				<Card className="overflow-hidden border-none bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-none">
-					<CardContent className="p-4">
-						<div className="space-y-3">
-							<div className="flex justify-between items-end">
-								<div className="space-y-0.5">
-									<p className="text-[10px] font-bold text-muted-foreground uppercase">Saldo Kasir</p>
-									<p className="text-2xl font-black tracking-tighter text-primary">
-										{formatCurrency(financialSummary?.netBalance || 0)}
-									</p>
-								</div>
-								<div className="text-right">
-									<p className="text-[9px] font-bold text-muted-foreground uppercase">Transaksi</p>
-									<p className="font-bold text-sm">{financialSummary?.totalTransactions || 0}</p>
-								</div>
+				<Button 
+					variant="destructive" 
+					size="sm" 
+					className="h-8 text-[10px] font-bold shadow-sm"
+					onClick={() => setActiveForm("shift")}
+				>
+					Akhiri Shift
+				</Button>
+			</div>
+			
+			<Card className="overflow-hidden border-border bg-card shadow-sm">
+				<CardContent className="p-4">
+					<div className="space-y-4">
+						<div className="flex justify-between items-end">
+							<div className="space-y-1">
+								<p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+									<Wallet className="h-3 w-3" /> Estimasi Uang Laci
+								</p>
+								<p className="text-2xl font-black tracking-tighter text-primary">
+									{formatCurrency(shiftNetBalance)}
+								</p>
 							</div>
-							
-							<div className="grid grid-cols-2 gap-3 pt-3 border-t border-primary/10">
-								<div className="space-y-0.5">
-									<p className="text-[9px] font-bold text-emerald-600 uppercase">Pemasukan (+)</p>
-									<p className="font-bold text-xs">{formatCurrency(financialSummary?.totalIncome || 0)}</p>
-								</div>
-								<div className="space-y-0.5 text-right">
-									<p className="text-[9px] font-bold text-rose-600 uppercase">Pengeluaran (-)</p>
-									<p className="font-bold text-xs">{formatCurrency(financialSummary?.totalExpense || 0)}</p>
-								</div>
+							<div className="text-right">
+								<p className="text-[9px] font-bold text-muted-foreground uppercase">Transaksi Shift</p>
+								<p className="font-bold text-sm">{shiftTransactionCount}</p>
 							</div>
 						</div>
-					</CardContent>
-				</Card>
-			</div>
+						
+						<div className="grid grid-cols-2 gap-3 pt-4 border-t border-border/50">
+							<div className="space-y-1">
+								<p className="text-[9px] font-bold text-emerald-600 uppercase">Total Masuk (+)</p>
+								<p className="font-bold text-xs">{formatCurrency(shiftIncome)}</p>
+								<p className="text-[9px] text-muted-foreground mt-0.5">(Termasuk modal {formatCurrency(modalAwal)})</p>
+							</div>
+							<div className="space-y-1 text-right">
+								<p className="text-[9px] font-bold text-rose-600 uppercase">Total Keluar (-)</p>
+								<p className="font-bold text-xs">{formatCurrency(shiftExpense)}</p>
+							</div>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
 
 			{/* Quick Actions Grid */}
 			<div className="space-y-3">
-				<h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Aksi Cepat</h3>
+				<h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Pencatatan Kas Manual</h3>
 				<div className="grid grid-cols-1 gap-2.5">
 					{ACTIONS.map((action) => {
 						const Icon = action.icon;
 						return (
 							<button
 								key={action.id}
+								disabled={action.disabled}
 								onClick={() => setActiveForm(action.id)}
-								className="flex items-center gap-4 p-4 w-full rounded-2xl border border-border bg-white text-left shadow-sm transition-all hover:border-primary/30 hover:shadow-md active:scale-[0.98]"
+								className={cn(
+									"flex items-center gap-4 p-4 w-full rounded-2xl border text-left transition-all",
+									action.disabled 
+										? "opacity-50 cursor-not-allowed bg-muted/50 border-border" 
+										: "bg-card border-border shadow-sm hover:border-primary/30 hover:shadow-md active:scale-[0.98]"
+								)}
 								type="button"
 							>
-								<div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${action.bg}`}>
+								<div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${action.bg} ${action.disabled ? 'grayscale' : ''}`}>
 									<Icon className={`h-6 w-6 ${action.color}`} />
 								</div>
 								<div className="flex-1">
 									<p className="font-black text-sm text-foreground uppercase tracking-tight">{action.label}</p>
-									<p className="text-[10px] text-muted-foreground font-medium">
-										{action.id === 'masuk' ? 'Tambah modal atau setoran manual' : 
-										 'Catat biaya operasional harian'}
+									<p className="text-[10px] text-muted-foreground font-medium mt-0.5">
+										{action.id === 'masuk' ? 'Catat tambahan modal / uang masuk manual' : 
+										 'Catat biaya operasional (beli es, galon, dll)'}
 									</p>
 								</div>
 								<Plus className="h-4 w-4 text-muted-foreground/30" />
@@ -1596,7 +1791,7 @@ function KasTab({ onClose }: { onClose: () => void }) {
 			<div className="flex items-start gap-2 rounded-xl bg-amber-50 p-3 border border-amber-100">
 				<AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
 				<p className="text-[10px] text-amber-800 leading-relaxed font-medium">
-					Pastikan setiap uang yang masuk atau keluar dari kasir dicatat agar laporan harian tetap akurat dan seimbang.
+					Selalu catat pengeluaran operasional (seperti beli bahan baku mendadak) melalui menu ini agar perhitungan "Estimasi Uang Laci" tetap akurat saat tutup shift.
 				</p>
 			</div>
 		</div>
