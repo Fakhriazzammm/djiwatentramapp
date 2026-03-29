@@ -621,19 +621,22 @@ function AIChatPage() {
 				if (items && items.length > 0) {
 					summaryText += `\n📋 Detail Item (${items.length} item):\n`;
 					items.forEach((item, i) => {
-						summaryText += `${i + 1}. ${item.name} x${item.qty} ${item.unit || "pcs"} = Rp ${item.subtotal.toLocaleString("id-ID")}\n`;
+						const safeSubtotal = typeof item.subtotal === 'number' ? item.subtotal : 0;
+						summaryText += `${i + 1}. ${item.name} x${item.qty} ${item.unit || "pcs"} = Rp ${safeSubtotal.toLocaleString("id-ID")}\n`;
 					});
 				}
-				if (result.subtotal) summaryText += `\nSubtotal: Rp ${Number(result.subtotal).toLocaleString("id-ID")}`;
-				if (result.tax) summaryText += `\nPajak: Rp ${Number(result.tax).toLocaleString("id-ID")}`;
-				if (result.discount) summaryText += `\nDiskon: -Rp ${Number(result.discount).toLocaleString("id-ID")}`;
-				summaryText += `\n\n💰 Total: Rp ${Number(result.total).toLocaleString("id-ID")}`;
-				summaryText += `\n\n📊 Keyakinan: ${result.confidence}% | Kategori: ${result.category.replace(/_/g, " ")} | Bayar: ${result.paymentMethod}`;
+				if (result.subtotal) summaryText += `\nSubtotal: Rp ${Number(result.subtotal || 0).toLocaleString("id-ID")}`;
+				if (result.tax) summaryText += `\nPajak: Rp ${Number(result.tax || 0).toLocaleString("id-ID")}`;
+				if (result.discount) summaryText += `\nDiskon: -Rp ${Number(result.discount || 0).toLocaleString("id-ID")}`;
+				
+				const totalValue = typeof result.total === 'number' ? result.total : Number(result.total || 0);
+				summaryText += `\n\n💰 Total: Rp ${totalValue.toLocaleString("id-ID")}`;
+				summaryText += `\n\n📊 Keyakinan: ${result.confidence}% | Kategori: ${result.category?.replace(/_/g, " ") || "Umum"} | Bayar: ${result.paymentMethod || "Cash"}`;
 				if (result.date) summaryText += ` | Tanggal: ${result.date}`;
 
 				summaryText += `\n\n[SUGGEST: 📦 Tambah ke Inventory | Tolong masukkan item-item dari hasil scan ini ke inventory dengan data lengkap]`;
-				summaryText += `\n[SUGGEST: 💰 Simpan ke Pengeluaran | Tolong catat hasil scan dari ${result.name || "Toko"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pengeluaran]`;
-				summaryText += `\n[SUGGEST: 📈 Simpan ke Pemasukan | Tolong catat hasil scan dari ${result.name || "Sumber"} sebesar Rp ${result.total.toLocaleString("id-ID")} dengan kategori ${result.category} sebagai pemasukan]`;
+				summaryText += `\n[SUGGEST: 💰 Simpan ke Pengeluaran | Tolong catat hasil scan dari ${result.name || "Toko"} sebesar Rp ${totalValue.toLocaleString("id-ID")} dengan kategori ${result.category || "Lainnya"} sebagai pengeluaran]`;
+				summaryText += `\n[SUGGEST: 📈 Simpan ke Pemasukan | Tolong catat hasil scan dari ${result.name || "Sumber"} sebesar Rp ${totalValue.toLocaleString("id-ID")} dengan kategori ${result.category || "Lainnya"} sebagai pemasukan]`;
 				summaryText += "\n[SUGGEST: ❌ Batalkan | Batalkan pencatatan ini]";
 
 				const suggestions = extractSuggestions(summaryText);
@@ -1326,12 +1329,12 @@ function AIChatPage() {
 const TabButton = ({ name, activeTab, setActiveTab, count, children }: { name: TabType, activeTab: TabType, setActiveTab: (t: TabType) => void, count?: number, children: React.ReactNode }) => (
 	<button
 		onClick={() => setActiveTab(name)}
-		className={`px-4 py-2 text-sm font-medium relative ${activeTab === name ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:bg-muted"}`}
+		className={`px-4 py-2 text-sm font-medium flex items-center gap-2 whitespace-nowrap transition-colors ${activeTab === name ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
 	>
 		{children}
 		{count !== undefined && count > 0 && (
-			<span className="absolute top-1 right-1 h-4 w-4 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px]">
-				{count}
+			<span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+				{count > 99 ? '99+' : count}
 			</span>
 		)}
 	</button>
@@ -1372,41 +1375,41 @@ const SuggestionsPanel = ({ suggestions, onExecute }: { suggestions: any, onExec
 const PredictionsPanel = ({ stockPredictions, busyHours, revenue, trending, promoTime }: { stockPredictions: any, busyHours: any, revenue: any, trending: any, promoTime: any }) => (
 	<div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto h-full">
 		<PredictionCard title="Prediksi Stok Habis (7 Hari)">
-			{stockPredictions?.length > 0 ? (
+			{Array.isArray(stockPredictions) && stockPredictions.length > 0 ? (
 				<ul className="space-y-2">
 					{stockPredictions.map((p: any) => (
 						<li key={p.productId} className="text-sm flex justify-between">
 							<span>{p.productName}</span>
-							<span className="font-bold">sisa {p.currentStock}</span>
+							<span className="font-bold">sisa {p.currentStock ?? 0}</span>
 						</li>
 					))}
 				</ul>
 			) : <p className="text-sm text-muted-foreground">Stok aman.</p>}
 		</PredictionCard>
 		<PredictionCard title="Prediksi Jam Sibuk Hari Ini">
-			{busyHours?.length > 0 ? (
+			{Array.isArray(busyHours) && busyHours.length > 0 ? (
 				<p className="text-sm">{busyHours.join(", ")}</p>
 			) : <p className="text-sm text-muted-foreground">Data tidak cukup.</p>}
 		</PredictionCard>
 		<PredictionCard title="Prediksi Pendapatan (7 Hari)">
-			{revenue ? (
+			{revenue && typeof revenue.predictedRevenue === 'number' ? (
 				<p className="text-2xl font-bold text-green-600">Rp {revenue.predictedRevenue.toLocaleString("id-ID")}</p>
 			) : <p className="text-sm text-muted-foreground">Data tidak cukup.</p>}
 		</PredictionCard>
 		<PredictionCard title="Produk Tren (7 Hari)">
-			{trending?.length > 0 ? (
+			{Array.isArray(trending) && trending.length > 0 ? (
 				<ul className="space-y-2">
 					{trending.map((p: any) => (
 						<li key={p.productId} className="text-sm flex justify-between">
 							<span>{p.productName}</span>
-							<span className="font-bold text-green-600">+{p.growthPercentage}%</span>
+							<span className="font-bold text-green-600">+{p.growthPercentage ?? 0}%</span>
 						</li>
 					))}
 				</ul>
 			) : <p className="text-sm text-muted-foreground">Tidak ada tren signifikan.</p>}
 		</PredictionCard>
 		<PredictionCard title="Waktu Promo Terbaik">
-			{promoTime ? (
+			{promoTime && promoTime.bestDay && promoTime.bestHour !== undefined ? (
 				<p className="text-sm">Hari: <span className="font-bold">{promoTime.bestDay}</span>, Jam: <span className="font-bold">{promoTime.bestHour}:00</span></p>
 			) : <p className="text-sm text-muted-foreground">Data tidak cukup.</p>}
 		</PredictionCard>
