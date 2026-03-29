@@ -1397,30 +1397,23 @@ function AIChatPage() {
 									{messages.map((msg, i) => (
 										<motion.div
 											animate={{ opacity: 1, y: 0 }}
-											className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+											className={`flex mb-5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
 											exit={{ opacity: 0, scale: 0.95 }}
 											initial={{ opacity: 0, y: 10 }}
 											key={msg._msgId ?? `${msg.role}-${i}`}
 											transition={{ duration: 0.3 }}
 										>
-											<div
-												className={`max-w-[85%] space-y-1 md:space-y-2 ${
-													msg.role === "user" ? "items-end" : "items-start"
-												}`}
-											>
+											<div className={`flex w-full max-w-[85%] md:max-w-[75%] gap-3 md:gap-4 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
 												{msg.role === "assistant" && (
-													<div className="flex items-center gap-1.5 px-1">
-														<Bot className="h-3.5 w-3.5 text-primary md:h-4 md:w-4" />
-														<span className="font-bold text-[10px] text-primary uppercase tracking-wider md:text-xs">
-															Yumi
-														</span>
+													<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background mt-0.5">
+														<Bot className="h-4 w-4 md:h-5 md:w-5 text-primary" />
 													</div>
 												)}
 												<div
-													className={`rounded-xl px-3 py-2.5 text-sm leading-relaxed md:rounded-2xl md:px-4 md:py-3 ${
+													className={`flex-1 text-sm leading-relaxed ${
 														msg.role === "user"
-															? "rounded-tr-none bg-primary text-primary-foreground"
-															: "rounded-tl-none border border-border bg-card text-foreground"
+															? "rounded-[24px] bg-muted px-5 py-3 text-foreground"
+															: "text-foreground pt-1.5"
 													}`}
 												>
 													{msg.image && (
@@ -1654,17 +1647,14 @@ function AIChatPage() {
 
 								{/* Typing Indicator - Single subtle pulse */}
 								{isLoading && toolCalls.length === 0 && (
-									<div role="status" aria-label="Yumi sedang memproses" className="flex justify-start">
-										<div className="space-y-1">
-											<div className="flex items-center gap-1.5 px-1">
-												<Bot className="h-3.5 w-3.5 text-primary" />
-												<span className="font-bold text-[10px] text-primary uppercase tracking-wider">
-													Yumi
-												</span>
+									<div role="status" aria-label="Yumi sedang memproses" className="flex justify-start mb-5">
+										<div className="flex w-full max-w-[85%] md:max-w-[75%] gap-3 md:gap-4 flex-row">
+											<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background mt-0.5">
+												<Bot className="h-4 w-4 md:h-5 md:w-5 text-primary" />
 											</div>
-											<div className="rounded-xl rounded-tl-none border border-border bg-card px-3 py-2">
+											<div className="flex-1 text-sm leading-relaxed pt-3">
 												<div className="flex items-center gap-1">
-													<span className="h-1.5 w-1.5 rounded-full bg-primary/70 animate-pulse" />
+													<span className="h-2 w-2 rounded-full bg-primary/70 animate-pulse" />
 												</div>
 											</div>
 										</div>
@@ -1673,16 +1663,13 @@ function AIChatPage() {
 
 								{/* Streaming Message */}
 								{isStreaming && streamingContent && (
-									<div aria-label="Yumi sedang mengetik" className="flex justify-start">
-										<div className="max-w-[85%] space-y-1 items-start">
-											<div className="flex items-center gap-1.5 px-1">
-												<Bot className="h-3.5 w-3.5 text-primary" />
-												<span className="font-bold text-[10px] text-primary uppercase tracking-wider">
-													Yumi
-												</span>
+									<div aria-label="Yumi sedang mengetik" className="flex justify-start mb-5">
+										<div className="flex w-full max-w-[85%] md:max-w-[75%] gap-3 md:gap-4 flex-row">
+											<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background mt-0.5">
+												<Bot className="h-4 w-4 md:h-5 md:w-5 text-primary" />
 											</div>
-											<div className="rounded-xl rounded-tl-none border border-border bg-card px-3 py-2.5 text-sm leading-relaxed md:rounded-2xl md:px-4 md:py-3">
-												<div aria-live="polite" aria-atomic="false" className="whitespace-pre-line">
+											<div className="flex-1 text-sm leading-relaxed pt-1.5">
+												<div aria-live="polite" aria-atomic="false" className="whitespace-pre-line text-foreground">
 													{streamingContent}
 													<span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-primary" />
 												</div>
@@ -2143,10 +2130,10 @@ function AIChatPage() {
 				)}
 			</div>
 
-			{/* Input Form - stays fixed at bottom above mobile navbar */}
+			{/* Input Form - floating container */}
 			{activeTab === "chat" && (
-				<div className="shrink-0 border-border border-t bg-card px-2 pb-safe-with-nav pt-2 md:px-4 md:pb-4 md:pt-3">
-					<div className="mx-auto max-w-full space-y-2 md:max-w-3xl">
+				<div className="shrink-0 bg-transparent px-2 pb-safe-with-nav pt-2 md:px-4 md:pb-6 md:pt-4">
+					<div className="mx-auto max-w-full space-y-2 md:max-w-3xl relative">
 						{/* Templates */}
 						<div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1">
 							{TEMPLATES.map((t) => (
@@ -2212,8 +2199,8 @@ function AIChatPage() {
 					</AnimatePresence>
 
 					{/* ChatGPT/Claude-style Input Box */}
-						<div className="space-y-3">
-							<div className="rounded-2xl border border-border bg-background shadow-sm">
+						<div className="space-y-3 relative z-10">
+							<div className="rounded-[28px] border border-border bg-card shadow-lg transition-shadow bg-background focus-within:shadow-xl">
 							{/* Multiple Images Preview inside input box */}
 							{selectedImages.length > 0 && (
 								<div className="flex items-center gap-2 border-border border-b px-3 py-2 overflow-x-auto scrollbar-hide">
@@ -2319,37 +2306,39 @@ function AIChatPage() {
 									value={input}
 								/>
 
-								{/* Right: Send button */}
-								<button
-									className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all ${
-										input.trim() || selectedImages.length > 0
-											? (isScanMode ? "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700" : "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90")
-											: "bg-muted text-muted-foreground"
-									} disabled:cursor-not-allowed disabled:opacity-50`}
-									disabled={isLoading || isScanning || !(input.trim() || selectedImages.length > 0)}
-									onClick={() => {
-										if (input.trim() || selectedImages.length > 0) {
-											sendMessage(input);
+									{/* Right: Send button */}
+									<div className="self-center">
+										<button
+											className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all ${
+												input.trim() || selectedImages.length > 0
+													? (isScanMode ? "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700" : "bg-primary text-primary-foreground shadow-sm hover:shadow-md")
+													: "bg-muted text-muted-foreground"
+											} disabled:cursor-not-allowed disabled:opacity-50`}
+											disabled={isLoading || isScanning || !(input.trim() || selectedImages.length > 0)}
+											onClick={() => {
+												if (input.trim() || selectedImages.length > 0) {
+													sendMessage(input);
 
-											if (inputRef.current) {
-												inputRef.current.style.height = "auto";
-											}
-										}
-									}}
-									title={isScanMode ? "Mulai Scan" : "Kirim pesan"}
-									type="button"
-								>
-									{isLoading || isScanning ? (
-										<Loader2 className="h-4 w-4 animate-spin" />
-									) : isScanMode ? (
-										<ScanLine className="h-4 w-4" />
-									) : (
-										<Send className="h-4 w-4" />
-									)}
-								</button>
+													if (inputRef.current) {
+														inputRef.current.style.height = "auto";
+													}
+												}
+											}}
+											title={isScanMode ? "Mulai Scan" : "Kirim pesan"}
+											type="button"
+										>
+											{isLoading || isScanning ? (
+												<Loader2 className="h-4 w-4 animate-spin" />
+											) : isScanMode ? (
+												<ScanLine className="h-4 w-4" />
+											) : (
+												<Send className="h-4 w-4" />
+											)}
+										</button>
+									</div>
+								</div>
 							</div>
 						</div>
-					</div>
 
 						<p className="text-center text-[10px] text-muted-foreground">
 							Yumi AI dapat membuat kesalahan. Selalu verifikasi informasi penting.

@@ -638,14 +638,12 @@ function AIChatPage() {
 
 				const suggestions = extractSuggestions(summaryText);
 				const sanitized = sanitizeResponse(summaryText);
-				const actionButtons = generateScanActionButtons(result as ScanResultData);
 
 				const assistantMsg: ChatMessage = {
 					role: "assistant",
 					content: sanitized || result.notes || `Analisis selesai dengan tingkat keyakinan ${result.confidence}%.`,
 					scanData: result as ScanResultData,
 					suggestions: suggestions,
-					actionButtons,
 					_msgId: mkMsgId(),
 				};
 				
@@ -1044,7 +1042,7 @@ function AIChatPage() {
 							<h2 className="text-lg font-semibold">Riwayat Chat</h2>
 						</div>
 						<div className="flex-1 overflow-y-auto">
-							{chatSessions?.map((session) => (
+							{chatSessions?.map((session: any) => (
 								<div
 									key={session.sessionId}
 									className={`p-3 cursor-pointer hover:bg-muted ${currentSessionId === session.sessionId ? "bg-muted" : ""}`}
@@ -1126,13 +1124,14 @@ function AIChatPage() {
 									{/* Chat Messages */}
 									<div className="flex-1 overflow-y-auto p-6 space-y-6">
 										{messages.map((msg, index) => (
-											<div key={msg._msgId} className={`flex items-start gap-4 ${msg.role === "user" ? "justify-end" : ""}`}>
+											<div key={msg._msgId} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-6`}>
+												<div className={`flex w-full max-w-[85%] md:max-w-[75%] gap-3 md:gap-4 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
 												{msg.role === "assistant" && (
-													<div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-														<Bot className="h-5 w-5 text-primary" />
+													<div className="flex-shrink-0 h-8 w-8 rounded-full border border-border bg-background flex items-center justify-center mt-0.5">
+														<Bot className="h-4 w-4 md:h-5 md:w-5 text-primary" />
 													</div>
 												)}
-												<div className={`max-w-2xl w-fit rounded-lg px-4 py-3 ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+												<div className={`flex-1 text-sm leading-relaxed ${msg.role === "user" ? "rounded-[24px] bg-muted px-5 py-3 text-foreground" : "text-foreground pt-1.5"}`}>
 													{msg.image && (
 														<div className="mb-2">
 															<img src={msg.image} alt="Lampiran" className="rounded-lg max-h-48" />
@@ -1186,16 +1185,19 @@ function AIChatPage() {
 													)}
 												</div>
 											</div>
+											</div>
 										))}
 										{isLoading && (
-											<div className="flex items-start gap-4">
-												<div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-													<Bot className="h-5 w-5 text-primary" />
-												</div>
-												<div className="max-w-2xl w-fit rounded-lg px-4 py-3 bg-muted">
-													<div className="flex items-center gap-2 text-sm">
-														<Loader2 className="h-4 w-4 animate-spin" />
-														<span>{loadingStatus || "Sedang berpikir..."}</span>
+											<div className="flex justify-start mb-6">
+												<div className="flex w-full max-w-[85%] md:max-w-[75%] gap-3 md:gap-4 flex-row">
+													<div className="flex-shrink-0 h-8 w-8 rounded-full border border-border bg-background flex items-center justify-center mt-0.5">
+														<Bot className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+													</div>
+													<div className="flex-1 text-sm leading-relaxed pt-3">
+														<div className="flex items-center gap-2 text-sm text-foreground">
+															<Loader2 className="h-4 w-4 animate-spin" />
+															<span>{loadingStatus || "Sedang berpikir..."}</span>
+														</div>
 													</div>
 												</div>
 											</div>
@@ -1204,7 +1206,7 @@ function AIChatPage() {
 									</div>
 
 									{/* Chat Input */}
-									<div className="p-4 border-t bg-background">
+									<div className="p-4 bg-transparent pb-6 relative z-10">
 										{/* Templates */}
 										{!isScanMode && messages.length <= 1 && (
 											<div className="mb-3 flex flex-wrap items-center gap-2">
@@ -1255,21 +1257,21 @@ function AIChatPage() {
 											</div>
 										)}
 
-										<div className="relative">
+										<div className="relative rounded-[28px] border border-border shadow-lg transition-shadow bg-background focus-within:shadow-xl">
 											<textarea
 												ref={inputRef}
 												value={input}
 												onChange={(e) => setInput(e.target.value)}
 												onKeyDown={handleKeyDown}
 												placeholder={isScanMode ? "Ketikkan instruksi untuk gambar yang di-scan..." : "Ketik pesan atau / untuk melihat perintah..."}
-												className="w-full resize-none rounded-lg border py-3 pl-12 pr-20 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
+												className="w-full resize-none rounded-[28px] bg-transparent py-4 pl-[88px] pr-16 text-sm focus:outline-none"
 												rows={1}
 											/>
 											<div className="absolute inset-y-0 left-0 flex items-center pl-3">
-												<Button variant={isScanMode ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setIsScanMode(!isScanMode)}>
+												<Button variant={isScanMode ? "default" : "ghost"} size="icon" className="h-9 w-9 rounded-full" onClick={() => setIsScanMode(!isScanMode)}>
 													<ScanLine className={`h-5 w-5 ${isScanMode ? "" : "text-muted-foreground"}`} />
 												</Button>
-												<Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => fileInputRef.current?.click()}>
+												<Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => fileInputRef.current?.click()}>
 													<Camera className="h-5 w-5 text-muted-foreground" />
 												</Button>
 												<input
@@ -1285,11 +1287,15 @@ function AIChatPage() {
 												<Button
 													type="submit"
 													size="icon"
-													className="h-8 w-8"
+													className={`h-9 w-9 rounded-full transition-all ${
+														input.trim() || selectedImages.length > 0
+															? (isScanMode ? "bg-emerald-600 text-white" : "bg-primary text-primary-foreground")
+															: "bg-muted text-muted-foreground"
+													}`}
 													onClick={() => sendMessage(input)}
 													disabled={isLoading || isScanning || (!input.trim() && selectedImages.length === 0)}
 												>
-													<Send className="h-4 w-4" />
+													{isLoading || isScanning ? <Loader2 className="h-4 w-4 animate-spin" /> : isScanMode ? <ScanLine className="h-4 w-4" /> : <Send className="h-4 w-4" />}
 												</Button>
 											</div>
 										</div>

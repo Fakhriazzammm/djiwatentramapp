@@ -409,24 +409,25 @@ function AdminOrders() {
 			<div className="relative hidden flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm md:block">
 				<div className="absolute inset-0 overflow-auto">
 					<table className="w-full text-left text-sm">
-						<thead className="sticky top-0 z-10 bg-muted/50 font-semibold text-muted-foreground text-xs uppercase">
+						<thead className="sticky top-0 z-10 bg-muted/50 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider">
 							<tr>
-								<th className="px-6 py-4">ID Pesanan</th>
-								<th className="px-6 py-4">Shift/Kasir</th>
-								<th className="px-6 py-4">Pelanggan</th>
-								<th className="px-6 py-4">Total</th>
-								<th className="px-6 py-4">Laba</th>
-								<th className="px-6 py-4">Tipe</th>
-								<th className="px-6 py-4 text-right">Waktu</th>
-								<th className="px-6 py-4 text-center">Aksi</th>
+								<th className="px-4 py-3">ID Pesanan</th>
+								<th className="px-4 py-3">Shift</th>
+								<th className="px-4 py-3">Pelanggan</th>
+								<th className="px-4 py-3 text-right">Total</th>
+								<th className="px-4 py-3 text-right">Laba</th>
+								<th className="px-4 py-3 text-center">Status</th>
+								<th className="px-4 py-3">Tipe/Metode</th>
+								<th className="px-4 py-3 text-right">Waktu</th>
+								<th className="px-4 py-3 text-center">Aksi</th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-border">
-							{filteredOrders?.length === 0 ? (
+							{filteredOrders?.length === 0 ?
 								<tr>
 									<td
 										className="h-40 text-center text-muted-foreground"
-										colSpan={8}
+										colSpan={9}
 									>
 										Tidak ada pesanan yang ditemukan.
 									</td>
@@ -450,7 +451,7 @@ function AdminOrders() {
 												setIsDetailOpen(true);
 											}}
 										>
-											<td className="px-6 py-4 font-medium font-mono text-primary">
+											<td className="px-4 py-3 font-medium font-mono text-primary text-xs">
 												<div className="flex flex-col">
 													<span>{order.displayId}</span>
 													{order.type === "booking" && (
@@ -458,36 +459,36 @@ function AdminOrders() {
 													)}
 												</div>
 											</td>
-											<td className="px-6 py-4">
+											<td className="px-4 py-3">
 												{shiftName !== "-" ? (
-													<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary uppercase">
+													<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-[9px] font-bold text-primary uppercase">
 														{shiftName}
 													</span>
 												) : (
 													<span className="text-muted-foreground text-xs">-</span>
 												)}
 											</td>
-											<td className="px-6 py-4">
-											<div className="flex flex-col gap-1">
-												<div className="flex items-center gap-2">
-													<div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] text-primary">
+											<td className="px-4 py-3">
+											<div className="flex flex-col gap-0.5">
+												<div className="flex items-center gap-1.5">
+													<div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[9px] text-primary">
 														<User className="h-3 w-3" />
 													</div>
-													<span className="font-medium">
+													<span className="font-medium text-xs truncate max-w-[120px]">
 														{order.customerName || "Pelanggan Umum"}
 													</span>
 												</div>
 												{order.orderType && (
-													<span className="text-[10px] font-bold text-primary uppercase ml-8">
+													<span className="text-[9px] font-bold text-primary uppercase ml-6">
 														{order.orderType === "dine_in" ? `Meja ${order.tableNumber || "-"}` : "Takeaway"}
 													</span>
 												)}
 											</div>
 										</td>
-										<td className="px-6 py-4 font-bold">
+										<td className="px-4 py-3 font-bold text-xs text-right whitespace-nowrap">
 											{formatrupiah(order.totalAmount)}
 										</td>
-										<td className="px-6 py-4">
+										<td className="px-4 py-3 text-right whitespace-nowrap">
 											{(() => {
 												if (!hppProductMap) {
 													return (
@@ -515,36 +516,41 @@ function AdminOrders() {
 												const profit = order.totalAmount - orderCogs;
 												return (
 													<span
-														className={`font-semibold text-xs ${profit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+														className={`font-semibold text-[11px] ${profit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
 													>
 														{formatrupiah(profit)}
 													</span>
 												);
 											})()}
 										</td>
-										<td className="px-6 py-4">
+										<td className="px-4 py-3 text-center">
 											<Badge
-												className={`rounded-md px-2 py-0.5 font-normal ${getStatusColor(order.status)}`}
+												className={`rounded-md px-1.5 py-0 font-normal text-[10px] ${getStatusColor(order.status)}`}
 												variant="outline"
 											>
 												{getStatusLabel(order.status)}
 											</Badge>
 										</td>
-										<td className="px-6 py-4 capitalize text-xs text-muted-foreground">
-											{order.paymentMethod}
+										<td className="px-4 py-3">
+											<div className="flex flex-col gap-0.5">
+												<Badge className={`text-[9px] w-fit px-1.5 py-0 ${order.type === "booking" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`} variant="outline">
+													{order.type === "booking" ? "Reservasi" : "POS"}
+												</Badge>
+												<span className="capitalize text-[10px] text-muted-foreground font-medium">
+													{order.paymentMethod}
+												</span>
+											</div>
 										</td>
-										<td className="px-6 py-4">
-											<Badge className={`text-[10px] ${order.type === "booking" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`} variant="outline">
-												{order.type === "booking" ? "Reservasi" : "POS Sales"}
-											</Badge>
+										<td className="px-4 py-3 text-right text-muted-foreground text-[10px] tabular-nums whitespace-nowrap">
+											<div className="flex flex-col">
+												<span>{format(order.createdAt, "dd MMM", { locale: id })}</span>
+												<span>{format(order.createdAt, "HH:mm", { locale: id })}</span>
+											</div>
 										</td>
-										<td className="px-6 py-4 text-right text-muted-foreground text-xs tabular-nums">
-											{format(order.createdAt, "dd MMM HH:mm", { locale: id })}
-										</td>
-										<td className="px-6 py-4 text-center">
-												<div className="flex items-center justify-center gap-1">
+										<td className="px-4 py-3 text-center">
+												<div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
 													<Button
-														className="h-8 w-8 text-muted-foreground hover:text-primary"
+														className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
 														onClick={(e) => {
 															e.stopPropagation();
 															setSelectedOrder(order as any);
@@ -552,19 +558,21 @@ function AdminOrders() {
 														}}
 														size="icon"
 														variant="ghost"
+														title="Detail"
 													>
-														<Eye className="h-4 w-4" />
+														<Eye className="h-3.5 w-3.5" />
 													</Button>
 													<Button
-														className="h-8 w-8 text-muted-foreground hover:text-destructive"
+														className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
 														onClick={(e) => {
 															e.stopPropagation();
 															handleDeleteOrder(order);
 														}}
 														size="icon"
 														variant="ghost"
+														title="Hapus"
 													>
-														<Trash2 className="h-4 w-4" />
+														<Trash2 className="h-3.5 w-3.5" />
 													</Button>
 												</div>
 											</td>

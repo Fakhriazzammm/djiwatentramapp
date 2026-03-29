@@ -23,6 +23,7 @@ import { ExpenseCategoryPieChart, PeriodComparisonCards, TrendChart } from "./fi
 
 export function FinanceDashboard() {
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
+	const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
 	const [filterType, setFilterType] = useState<
 		"income" | "expense" | undefined
 	>(undefined);
@@ -97,18 +98,17 @@ export function FinanceDashboard() {
 		}
 
 		return (
-			<div className="relative overflow-x-auto">
-				<table className="w-full text-left text-sm">
+			<div className="relative overflow-x-auto rounded-xl border border-border">
+				<table className="w-full text-left text-sm whitespace-nowrap">
 					<thead className="bg-muted/50 text-muted-foreground text-xs uppercase">
 						<tr>
-							<th className="px-6 py-3">Tanggal</th>
-							<th className="px-6 py-3">Shift</th>
-							<th className="px-6 py-3">Kategori</th>
-							<th className="px-6 py-3">Merchant/Toko</th>
-							<th className="px-6 py-3">Keterangan</th>
-							<th className="px-6 py-3">Metode</th>
-							<th className="px-6 py-3 text-right">Jumlah</th>
-							<th className="px-6 py-3 text-center">Aksi</th>
+							<th className="px-4 py-3">Tanggal</th>
+							<th className="px-4 py-3">Shift</th>
+							<th className="px-4 py-3">Merchant/Keterangan</th>
+							<th className="px-4 py-3">Kategori</th>
+							<th className="px-4 py-3">Metode</th>
+							<th className="px-4 py-3 text-right">Nominal</th>
+							<th className="px-4 py-3 text-center">Aksi</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -127,7 +127,7 @@ export function FinanceDashboard() {
 									className="group border-border border-b transition-colors hover:bg-muted/30"
 									key={t._id}
 								>
-										<td className="px-6 py-4 font-medium">
+										<td className="px-4 py-3 font-medium">
 											{new Date(t.date).toLocaleDateString("id-ID", {
 												day: "numeric",
 												month: "short",
@@ -137,7 +137,7 @@ export function FinanceDashboard() {
 												{new Date(t.date).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
 											</div>
 										</td>
-										<td className="px-6 py-4">
+										<td className="px-4 py-3">
 											{shiftName !== "-" ? (
 												<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary uppercase">
 													{shiftName}
@@ -146,7 +146,15 @@ export function FinanceDashboard() {
 												<span className="text-muted-foreground text-xs">-</span>
 											)}
 										</td>
-										<td className="px-6 py-4">
+										<td className="px-4 py-3 max-w-[200px] md:max-w-[300px]">
+											<div className="font-semibold text-foreground truncate" title={t.merchant || "Umum"}>
+												{t.merchant || "Umum"}
+											</div>
+											<div className="text-xs text-muted-foreground truncate" title={t.description || "-"}>
+												{t.description || "-"}
+											</div>
+										</td>
+										<td className="px-4 py-3">
 										<span className={`inline-flex items-center rounded-md border px-2 py-1 font-medium text-[10px] uppercase tracking-wider ${
 											t.category === "makanan_minuman" ? "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/30 dark:bg-orange-900/20 dark:text-orange-400" :
 											t.category === "belanja_stok" ? "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400" :
@@ -158,25 +166,29 @@ export function FinanceDashboard() {
 											{t.category.replace(/_/g, " ")}
 										</span>
 									</td>
-									<td className="px-6 py-4 font-semibold text-foreground italic">
-										{t.merchant || "Umum"}
-									</td>
-									<td className="px-6 py-4 text-muted-foreground">
-										{t.description || "-"}
-									</td>
-									<td className="px-6 py-4 text-xs font-mono">
+									<td className="px-4 py-3 text-xs font-mono uppercase">
 										{t.paymentMethod || "CASH"}
 									</td>
 									<td
-										className={`px-6 py-4 text-right font-bold ${
+										className={`px-4 py-3 text-right font-bold ${
 											t.type === "income" ? "text-green-600" : "text-red-600"
 										}`}
 									>
 										{t.type === "income" ? "+ " : "- "}
 										{formatCurrency(t.amount)}
 									</td>
-									<td className="px-6 py-4 text-center">
+									<td className="px-4 py-3 text-center">
 										<div className="flex items-center justify-center gap-1">
+											<button
+												className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+												onClick={() => {
+													setSelectedTransaction(t);
+													setIsDialogOpen(true);
+												}}
+												title="Edit"
+											>
+												<Pencil className="h-3.5 w-3.5" />
+											</button>
 											<button
 												className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-red-500 transition-colors"
 												onClick={() => handleDeleteTransaction(t._id)}
@@ -192,7 +204,7 @@ export function FinanceDashboard() {
 
 						{transactions && transactions.length === 0 && (
 							<tr>
-								<td className="p-12 text-center" colSpan={6}>
+								<td className="p-12 text-center" colSpan={7}>
 									<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
 										<Wallet className="h-6 w-6 text-muted-foreground" />
 									</div>
@@ -451,7 +463,11 @@ export function FinanceDashboard() {
 
 			<NewTransactionDialog
 				isOpen={isDialogOpen}
-				onClose={() => setIsDialogOpen(false)}
+				onClose={() => {
+					setIsDialogOpen(false);
+					setSelectedTransaction(null);
+				}}
+				transaction={selectedTransaction}
 			/>
 		</div>
 	);

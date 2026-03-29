@@ -3,7 +3,9 @@ import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 
-export const recordStockPurchase = mutation({
+const defineMutation: any = mutation;
+
+export const recordStockPurchase = defineMutation({
   args: {
     purchaseData: v.object({
       total: v.number(),
@@ -17,12 +19,13 @@ export const recordStockPurchase = mutation({
       }))
     }),
   },
-  handler: async (ctx, { purchaseData }): Promise<{
+  handler: async (ctx: any, args: any): Promise<{
     transactionId: string | null;
     updatedCount: number;
     createdCount: number;
     message: string;
   }> => {
+    const { purchaseData } = args;
     // Step 1: Record the entire purchase as a single expense transaction.
     const payload = {
       type: "expense" as const,

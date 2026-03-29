@@ -1,6 +1,6 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, QueryCtx } from "./_generated/server";
 
 // Helper to get start/end of a month
 function getMonthRange(year: number, month: number) {
@@ -19,6 +19,50 @@ function getWeekStart(date: Date): Date {
 	return d;
 }
 
+/**
+ * Shared internal helper to fetch financial transactions with common filters
+ */
+async function fetchTransactionsInternal(
+	ctx: QueryCtx,
+	args: {
+		type?: "income" | "expense";
+		startDate?: number;
+		endDate?: number;
+		category?: string;
+		status?: "completed" | "pending" | "cancelled";
+	}
+) {
+	const { type, startDate, endDate, category, status } = args;
+
+	let q =
+		startDate !== undefined || endDate !== undefined
+			? ctx.db.query("financialTransactions").withIndex("by_date", (q) => {
+					if (startDate !== undefined && endDate !== undefined) {
+						return q.gte("date", startDate).lte("date", endDate);
+					}
+					if (startDate !== undefined) {
+						return q.gte("date", startDate);
+					}
+					if (endDate !== undefined) {
+						return q.lte("date", endDate);
+					}
+					return q;
+				})
+			: ctx.db.query("financialTransactions").withIndex("by_date");
+
+	if (type) {
+		q = q.filter((f) => f.eq(f.field("type"), type));
+	}
+	if (category) {
+		q = q.filter((f) => f.eq(f.field("category"), category));
+	}
+	if (status) {
+		q = q.filter((f) => f.eq(f.field("status"), status));
+	}
+
+	return q;
+}
+
 // Get transactions with optional filtering and pagination
 export const getTransactions = query({
 	args: {
@@ -28,29 +72,8 @@ export const getTransactions = query({
 		endDate: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const { type, startDate, endDate, paginationOpts } = args;
-
-		let q =
-			startDate !== undefined || endDate !== undefined
-				? ctx.db.query("financialTransactions").withIndex("by_date", (q) => {
-						if (startDate !== undefined && endDate !== undefined) {
-							return q.gte("date", startDate).lte("date", endDate);
-						}
-						if (startDate !== undefined) {
-							return q.gte("date", startDate);
-						}
-						if (endDate !== undefined) {
-							return q.lte("date", endDate);
-						}
-						return q;
-					})
-				: ctx.db.query("financialTransactions").withIndex("by_date");
-
-		if (type) {
-			q = q.filter((f) => f.eq(f.field("type"), type));
-		}
-
-		return await q.order("desc").paginate(paginationOpts);
+		const q = await fetchTransactionsInternal(ctx, args);
+		return await q.order("desc").paginate(args.paginationOpts);
 	},
 });
 
@@ -62,28 +85,7 @@ export const getAllTransactions = query({
 		endDate: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const { type, startDate, endDate } = args;
-
-		let q =
-			startDate !== undefined || endDate !== undefined
-				? ctx.db.query("financialTransactions").withIndex("by_date", (q) => {
-						if (startDate !== undefined && endDate !== undefined) {
-							return q.gte("date", startDate).lte("date", endDate);
-						}
-						if (startDate !== undefined) {
-							return q.gte("date", startDate);
-						}
-						if (endDate !== undefined) {
-							return q.lte("date", endDate);
-						}
-						return q;
-					})
-				: ctx.db.query("financialTransactions").withIndex("by_date");
-
-		if (type) {
-			q = q.filter((f) => f.eq(f.field("type"), type));
-		}
-
+		const q = await fetchTransactionsInternal(ctx, args);
 		return await q.order("desc").collect();
 	},
 });
@@ -122,23 +124,7 @@ export const getProfitLossReport = query({
 	},
 	handler: async (ctx, args) => {
 		const { startDate, endDate } = args;
-
-		const q =
-			startDate !== undefined || endDate !== undefined
-				? ctx.db.query("financialTransactions").withIndex("by_date", (q) => {
-						if (startDate !== undefined && endDate !== undefined) {
-							return q.gte("date", startDate).lte("date", endDate);
-						}
-						if (startDate !== undefined) {
-							return q.gte("date", startDate);
-						}
-						if (endDate !== undefined) {
-							return q.lte("date", endDate);
-						}
-						return q;
-					})
-				: ctx.db.query("financialTransactions").withIndex("by_date");
-
+		const q = await fetchTransactionsInternal(ctx, { ...args, status: "completed" });
 		const transactions = await q.collect();
 		const completed = transactions.filter((t) => t.status === "completed");
 
@@ -161,8 +147,9 @@ export const getProfitLossReport = query({
 		}
 
 		// Calculate Gross Profit and Net Profit
-		const salesRevenue = incomeByCategory["Penjualan"] || 0;
-		const hppAmount = expenseByCategory["HPP"] || 0;
+		// Map various category names to standard report terms
+		const salesRevenue = (incomeByCategory["Penjualan"] || 0) + (incomeByCategory["Sales"] || 0);
+		const hppAmount = (expenseByCategory["HPP"] || 0) + (expenseByCategory["belanja_stok"] || 0) + (expenseByCategory["COGS"] || 0);
 		const otherIncome = totalIncome - salesRevenue;
 		
 		// Gross Profit = Sales - HPP
@@ -216,23 +203,7 @@ export const getCashFlowReport = query({
 	},
 	handler: async (ctx, args) => {
 		const { startDate, endDate } = args;
-
-		const q =
-			startDate !== undefined || endDate !== undefined
-				? ctx.db.query("financialTransactions").withIndex("by_date", (q) => {
-						if (startDate !== undefined && endDate !== undefined) {
-							return q.gte("date", startDate).lte("date", endDate);
-						}
-						if (startDate !== undefined) {
-							return q.gte("date", startDate);
-						}
-						if (endDate !== undefined) {
-							return q.lte("date", endDate);
-						}
-						return q;
-					})
-				: ctx.db.query("financialTransactions").withIndex("by_date");
-
+		const q = await fetchTransactionsInternal(ctx, { ...args, status: "completed" });
 		const transactions = await q.order("asc").collect();
 		const completed = transactions.filter((t) => t.status === "completed");
 
@@ -302,27 +273,7 @@ export const getTransactionDetailReport = query({
 		category: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		const { startDate, endDate, type, category } = args;
-
-		let q =
-			startDate !== undefined || endDate !== undefined
-				? ctx.db.query("financialTransactions").withIndex("by_date", (q) => {
-						if (startDate !== undefined && endDate !== undefined) {
-							return q.gte("date", startDate).lte("date", endDate);
-						}
-						if (startDate !== undefined) {
-							return q.gte("date", startDate);
-						}
-						if (endDate !== undefined) {
-							return q.lte("date", endDate);
-						}
-						return q;
-					})
-				: ctx.db.query("financialTransactions").withIndex("by_date");
-
-		if (type) q = q.filter((f) => f.eq(f.field("type"), type));
-		if (category) q = q.filter((f) => f.eq(f.field("category"), category));
-
+		const q = await fetchTransactionsInternal(ctx, args);
 		const transactions = await q.order("desc").collect();
 
 		let totalIncome = 0;
@@ -376,24 +327,22 @@ export const updateTransaction = mutation({
 	},
 });
 
-// Get shift status for today
+// Get shift status
 export const getShiftStatus = query({
 	handler: async (ctx) => {
-		const today = new Date();
-		today.setHours(0, 0, 0, 0);
-		const startOfDay = today.getTime();
+		const now = new Date();
+		const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime();
+		const sevenDaysAgo = todayStart - 7 * 24 * 60 * 60 * 1000;
 
-		const transactions = await ctx.db
-			.query("financialTransactions")
-			.withIndex("by_date", (q) => q.gte("date", startOfDay))
-			.collect();
+		// Fetch last 7 days to find open shifts that might have started yesterday
+		const transactions = await (await fetchTransactionsInternal(ctx, { startDate: sevenDaysAgo })).collect();
 
-		// Find latest shift related transactions today
+		// Find latest shift related transactions
 		let latestMulai = 0;
 		let latestAkhir = 0;
 		let shiftInfo = null;
 
-		// Track all shifts for today
+		// Track all shifts found in the period
 		const allShifts: any[] = [];
 		const sortedTx = [...transactions].sort((a, b) => a.date - b.date);
 		
@@ -441,15 +390,14 @@ export const getShiftStatus = query({
 		}
 
 		// Shift is open if we have a Modal Awal that is newer than Setoran Akhir
-		// or if we have Modal Awal and no Setoran Akhir today
-		const isOpen = latestMulai > 0 && latestMulai >= latestAkhir;
+		const isOpen = latestMulai > 0 && latestMulai > latestAkhir;
 
 		return {
 			isOpen,
 			latestMulai,
 			latestAkhir,
 			shiftInfo: isOpen ? shiftInfo : null,
-			allShifts // Return all shifts found today
+			allShifts: allShifts.filter(s => s.startTime >= todayStart) // Only return today's shifts for the list
 		};
 	},
 });
@@ -461,24 +409,7 @@ export const getHistoricalShifts = query({
 		endDate: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const { startDate, endDate } = args;
-
-		let q =
-			startDate !== undefined || endDate !== undefined
-				? ctx.db.query("financialTransactions").withIndex("by_date", (q) => {
-						if (startDate !== undefined && endDate !== undefined) {
-							return q.gte("date", startDate).lte("date", endDate);
-						}
-						if (startDate !== undefined) {
-							return q.gte("date", startDate);
-						}
-						if (endDate !== undefined) {
-							return q.lte("date", endDate);
-						}
-						return q;
-					})
-				: ctx.db.query("financialTransactions").withIndex("by_date");
-
+		const q = await fetchTransactionsInternal(ctx, args);
 		const transactions = await q.collect();
 
 		const allShifts: any[] = [];
@@ -530,24 +461,7 @@ export const getFinancialSummary = query({
 		endDate: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const { startDate, endDate } = args;
-
-		const q =
-			startDate !== undefined || endDate !== undefined
-				? ctx.db.query("financialTransactions").withIndex("by_date", (q) => {
-						if (startDate !== undefined && endDate !== undefined) {
-							return q.gte("date", startDate).lte("date", endDate);
-						}
-						if (startDate !== undefined) {
-							return q.gte("date", startDate);
-						}
-						if (endDate !== undefined) {
-							return q.lte("date", endDate);
-						}
-						return q;
-					})
-				: ctx.db.query("financialTransactions");
-
+		const q = await fetchTransactionsInternal(ctx, { ...args, status: "completed" });
 		const transactions = await q.collect();
 
 		let totalIncome = 0;
@@ -575,7 +489,7 @@ export const getFinancialSummary = query({
 // ─── Monthly/Weekly Trend ───────────────────────────────────────────────────
 
 // Get monthly income vs expense trend for last N months
-export const getMonthlyTrend = query({
+export const getMonthlyTrends = query({
 	args: { months: v.optional(v.number()) },
 	handler: async (ctx, args) => {
 		const n = args.months ?? 6;
@@ -673,8 +587,8 @@ export const getPeriodComparison = query({
 		const { start: prevStart, end: prevEnd } = getMonthRange(prevDate.getFullYear(), prevDate.getMonth());
 
 		const [currTransactions, prevTransactions] = await Promise.all([
-			ctx.db.query("financialTransactions").withIndex("by_date", (q) => q.gte("date", currStart).lte("date", currEnd)).collect(),
-			ctx.db.query("financialTransactions").withIndex("by_date", (q) => q.gte("date", prevStart).lte("date", prevEnd)).collect(),
+			(await fetchTransactionsInternal(ctx, { startDate: currStart, endDate: currEnd, status: "completed" })).collect(),
+			(await fetchTransactionsInternal(ctx, { startDate: prevStart, endDate: prevEnd, status: "completed" })).collect(),
 		]);
 
 		function summarize(txs: typeof currTransactions) {
@@ -728,10 +642,7 @@ export const getExpenseCategoryBreakdown = query({
 		const start = startDate ?? defaultStart;
 		const end = endDate ?? Date.now();
 
-		const transactions = await ctx.db
-			.query("financialTransactions")
-			.withIndex("by_date", (q) => q.gte("date", start).lte("date", end))
-			.collect();
+		const transactions = await (await fetchTransactionsInternal(ctx, { startDate: start, endDate: end, status: "completed" })).collect();
 
 		const expenseByCategory: Record<string, number> = {};
 		const incomeByCategory: Record<string, number> = {};
@@ -772,7 +683,7 @@ export const getExpenseCategoryBreakdown = query({
 // ─── Financial Targets ────────────────────────────────────────────────────────
 
 // Get financial target for a specific month
-export const getFinancialTarget = query({
+export const getFinancialTargets = query({
 	args: { month: v.optional(v.string()) },
 	handler: async (ctx, args) => {
 		const now = new Date();
@@ -845,7 +756,7 @@ export const getCurrentMonthProgress = query({
 
 		const [target, transactions] = await Promise.all([
 			ctx.db.query("financialTargets").withIndex("by_month", (q) => q.eq("month", month)).first(),
-			ctx.db.query("financialTransactions").withIndex("by_date", (q) => q.gte("date", start).lte("date", end)).collect(),
+			(await fetchTransactionsInternal(ctx, { startDate: start, endDate: end, status: "completed" })).collect(),
 		]);
 
 		let income = 0;
