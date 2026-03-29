@@ -447,9 +447,34 @@ function MenuPage() {
 	};
 
 	return (
-		<div className="flex h-screen flex-row bg-background overflow-hidden">
+		<div className="flex h-screen flex-row bg-background overflow-hidden relative">
 			{/* LEFT CONTENT: Menu Area */}
-			<div className="flex flex-1 flex-col overflow-hidden">
+			<div className="flex flex-1 flex-col overflow-hidden relative">
+				{/* Shift Closed Overlay */}
+				{!isShiftOpen && (
+					<div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+						<div className="flex flex-col items-center justify-center p-8 text-center max-w-md bg-card rounded-3xl shadow-2xl border border-border/50">
+							<div className="flex h-20 w-20 items-center justify-center rounded-full bg-rose-100 text-rose-600 mb-6">
+								<Wallet className="h-10 w-10" />
+							</div>
+							<h2 className="text-2xl font-black tracking-tight mb-2">Shift Kasir Tertutup</h2>
+							<p className="text-muted-foreground text-sm mb-8 leading-relaxed">
+								Anda belum bisa menggunakan aplikasi kasir. Silakan buka shift terlebih dahulu untuk mulai melayani pelanggan dan mencatat transaksi.
+							</p>
+							<button
+								onClick={() => {
+									setActiveSidebarTab("kas");
+									setIsSidebarOpen(true);
+								}}
+								className="flex items-center justify-center gap-2 rounded-xl bg-primary px-8 py-4 font-bold text-primary-foreground text-sm transition-all hover:opacity-90 active:scale-95 w-full shadow-lg shadow-primary/20"
+								type="button"
+							>
+								<Wallet className="h-4 w-4" /> Buka Shift Sekarang
+							</button>
+						</div>
+					</div>
+				)}
+
 				{/* Shift & Printer Status Header */}
 				<div className="flex items-center justify-between border-b border-border bg-muted/50 px-2 sm:px-4 py-1.5 text-[9px] sm:text-[11px] font-medium shadow-sm z-40 shrink-0 overflow-x-auto scrollbar-none">
 					<div className="flex items-center gap-2 sm:gap-4 whitespace-nowrap min-w-max pr-2">
@@ -549,26 +574,38 @@ function MenuPage() {
 								const isFocused = isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === index + 1;
 								const isActive = activeSidebarTab === item.id && isSidebarOpen;
 								
+								// Highlight "dashboard" button if shift is closed
+								const needsAttention = !isShiftOpen && item.id === "dashboard";
+								
 								return (
-									<button
-										key={item.id}
-										onClick={() => {
-											setActiveSidebarTab(item.id);
-											setIsSidebarOpen(true);
-										}}
-										className={cn(
-											"flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-1.5 transition-all shrink-0 min-w-[4rem]",
-											"hover:bg-muted active:scale-95",
-											isActive
-												? "bg-muted ring-2 ring-primary ring-inset text-primary"
-												: "text-muted-foreground hover:text-foreground",
-											isFocused && "bg-muted ring-2 ring-primary ring-inset"
+									<div key={item.id} className="relative">
+										{needsAttention && (
+											<span className="absolute -top-1 -right-1 flex h-3 w-3">
+												<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+												<span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500 border border-white"></span>
+											</span>
 										)}
-										type="button"
-									>
-										<Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-										<span className="text-[9px] sm:text-[10px] font-medium leading-none whitespace-nowrap">{item.label}</span>
-									</button>
+										<button
+											onClick={() => {
+												setActiveSidebarTab(item.id);
+												setIsSidebarOpen(true);
+											}}
+											className={cn(
+												"flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-1.5 transition-all shrink-0 min-w-[4rem]",
+												"hover:bg-muted active:scale-95",
+												isActive
+													? "bg-muted ring-2 ring-primary ring-inset text-primary"
+													: needsAttention 
+														? "bg-rose-50 text-rose-600 hover:bg-rose-100" 
+														: "text-muted-foreground hover:text-foreground",
+												isFocused && "bg-muted ring-2 ring-primary ring-inset"
+											)}
+											type="button"
+										>
+											<Icon className={cn("h-4 w-4 sm:h-5 sm:w-5", needsAttention && "animate-pulse")} />
+											<span className="text-[9px] sm:text-[10px] font-medium leading-none whitespace-nowrap">{item.label}</span>
+										</button>
+									</div>
 								);
 							})}
 						</div>

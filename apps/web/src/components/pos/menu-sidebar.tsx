@@ -785,19 +785,19 @@ function DashboardTab({
 							day: '2-digit', month: '2-digit', year: 'numeric'
 						});
 
-						const shiftOrders = shiftStatus?.shiftInfo?.startTime ? todayOrders.filter((o: Doc<"orders">) => o.createdAt >= shiftStatus.shiftInfo!.startTime) : [];
+						const shiftOrders = shiftStatus?.latestMulai ? todayOrders.filter((o: Doc<"orders">) => o.createdAt >= shiftStatus.latestMulai) : [];
 
 						// 1. Shift specific calculation
 						const shiftCash = shiftOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed' && o.paymentMethod === 'cash')
+							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod === 'cash')
 							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 							
 						const shiftQris = shiftOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed' && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
+							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
 							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 							
 						const shiftItems = shiftOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed')
+							.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
 							.reduce((acc: number, o: Doc<"orders">) => {
 								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
 							}, 0);
@@ -806,7 +806,7 @@ function DashboardTab({
 
 						// Shift products by category
 						const shiftItemsByCategory: Record<string, number> = {};
-						shiftOrders.filter((o: Doc<"orders">) => o.status === 'completed').forEach((o: Doc<"orders">) => {
+						shiftOrders.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid').forEach((o: Doc<"orders">) => {
 							o.items.forEach((item: any) => {
 								const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
 								shiftItemsByCategory[cat] = (shiftItemsByCategory[cat] || 0) + item.quantity;
@@ -818,7 +818,7 @@ function DashboardTab({
 						if (!shiftProductsText) shiftProductsText = "-";
 
 						// Shift expenses
-						const shiftTransactions = shiftStatus?.shiftInfo?.startTime ? todayTransactions?.filter((t: any) => t.date >= shiftStatus.shiftInfo!.startTime) : [];
+						const shiftTransactions = shiftStatus?.latestMulai ? todayTransactions?.filter((t: any) => t.date >= shiftStatus.latestMulai) : [];
 						let shiftExpenseVal = 0;
 						shiftTransactions?.filter((t: any) => t.type === 'expense' && t.status === 'completed').forEach((t: any) => {
 							shiftExpenseVal += t.amount;
@@ -826,15 +826,15 @@ function DashboardTab({
 
 						// 2. Daily calculation
 						const totalCash = todayOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed' && o.paymentMethod === 'cash')
+							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod === 'cash')
 							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 							
 						const totalQris = todayOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed' && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
+							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
 							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 							
 						const totalItems = todayOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed')
+							.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
 							.reduce((acc: number, o: Doc<"orders">) => {
 								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
 							}, 0);
@@ -843,7 +843,7 @@ function DashboardTab({
 						const itemsByCategory: Record<string, number> = {};
 						const itemsByName: Record<string, number> = {};
 						
-						todayOrders.filter((o: Doc<"orders">) => o.status === 'completed').forEach((o: Doc<"orders">) => {
+						todayOrders.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid').forEach((o: Doc<"orders">) => {
 							o.items.forEach((item: any) => {
 								const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
 								const name = item.productName || 'Unknown';
@@ -1052,15 +1052,15 @@ Total Produk Terjual: ${totalItems}`;
 						
 						// Basic calculation from todayOrders and todayTransactions
 						const totalCash = todayOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed' && o.paymentMethod === 'cash')
+							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod === 'cash')
 							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 							
 						const totalQris = todayOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed' && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
+							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
 							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 							
 						const totalItems = todayOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed')
+							.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
 							.reduce((acc: number, o: Doc<"orders">) => {
 								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
 							}, 0);
@@ -1071,7 +1071,7 @@ Total Produk Terjual: ${totalItems}`;
 						const itemsByCategory: Record<string, number> = {};
 						const itemsByName: Record<string, number> = {};
 						
-						todayOrders.filter((o: Doc<"orders">) => o.status === 'completed').forEach((o: Doc<"orders">) => {
+						todayOrders.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid').forEach((o: Doc<"orders">) => {
 							o.items.forEach((item: any) => {
 								const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
 								const name = item.productName || 'Unknown';
@@ -1094,21 +1094,21 @@ Total Produk Terjual: ${totalItems}`;
 							.join('\n');
 						if (!topProductsText) topProductsText = "-";
 
-						const shiftOrders = shiftStatus?.shiftInfo?.startTime ? todayOrders.filter((o: Doc<"orders">) => o.createdAt >= shiftStatus.shiftInfo!.startTime) : [];
+						const shiftOrders = shiftStatus?.latestMulai ? todayOrders.filter((o: Doc<"orders">) => o.createdAt >= shiftStatus.latestMulai) : [];
 						const shiftCash = shiftOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed' && o.paymentMethod === 'cash')
+							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod === 'cash')
 							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 						const shiftQris = shiftOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed' && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
+							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
 							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 						const shiftItems = shiftOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed')
+							.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
 							.reduce((acc: number, o: Doc<"orders">) => {
 								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
 							}, 0);
 						const shiftRevenue = shiftCash + shiftQris;
 						const shiftItemsByCategory: Record<string, number> = {};
-						shiftOrders.filter((o: Doc<"orders">) => o.status === 'completed').forEach((o: Doc<"orders">) => {
+						shiftOrders.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid').forEach((o: Doc<"orders">) => {
 							o.items.forEach((item: any) => {
 								const cat = categoriesList?.find((c: any) => c._id === item.categoryId)?.name || 'Lainnya';
 								shiftItemsByCategory[cat] = (shiftItemsByCategory[cat] || 0) + item.quantity;
@@ -1118,7 +1118,7 @@ Total Produk Terjual: ${totalItems}`;
 							.map(([cat, qty]) => `- ${cat}: ${qty}`)
 							.join('\n');
 						if (!shiftProductsText) shiftProductsText = "-";
-						const shiftTransactions = shiftStatus?.shiftInfo?.startTime ? todayTransactions?.filter((t: any) => t.date >= shiftStatus.shiftInfo!.startTime) : [];
+						const shiftTransactions = shiftStatus?.latestMulai ? todayTransactions?.filter((t: any) => t.date >= shiftStatus.latestMulai) : [];
 						let shiftExpenseVal = 0;
 						shiftTransactions?.filter((t: any) => t.type === 'expense' && t.status === 'completed').forEach((t: any) => {
 							shiftExpenseVal += t.amount;
@@ -1614,11 +1614,47 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [teamMembers, setTeamMembers] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
+	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const todayOrders = useQuery(api.orders.getOrders, {});
+
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
-	const financialSummary = useQuery(api.finance.getFinancialSummary, {
+	const todayTransactions = useQuery(api.finance.getAllTransactions, {
 		startDate: today.getTime(),
 	});
+
+	// Calculate shift summary
+	let shiftIncome = 0;
+	let shiftExpense = 0;
+	let shiftCash = 0;
+	let shiftQris = 0;
+	let modalAwal = 0;
+	let shiftItems = 0;
+
+	if (shiftStatus?.latestMulai) {
+		const shiftTxs = todayTransactions?.filter((t: any) => t.date >= shiftStatus.latestMulai) || [];
+		shiftTxs.filter((t: any) => t.status === 'completed').forEach((t: any) => {
+			if (t.type === 'income') {
+				shiftIncome += t.amount;
+				if (t.category?.toLowerCase().includes('modal')) {
+					modalAwal += t.amount;
+				}
+			} else if (t.type === 'expense') {
+				shiftExpense += t.amount;
+			}
+		});
+
+		const shiftOrdersData = todayOrders?.filter((o: Doc<"orders">) => o.createdAt >= shiftStatus.latestMulai) || [];
+		shiftCash = shiftOrdersData
+			.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod === 'cash')
+			.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+		shiftQris = shiftOrdersData
+			.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
+			.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+		shiftItems = shiftOrdersData
+			.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
+			.reduce((acc: number, o: Doc<"orders">) => acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0), 0);
+	}
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -1640,6 +1676,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			if (teamMembers) descParts.push(`Tim: ${teamMembers}`);
 			if (notes) descParts.push(`Catatan: ${notes}`);
 			if (shiftType === "akhiri" && cashInRegister) descParts.push(`Fisik Laci: Rp ${new Intl.NumberFormat("id-ID").format(Number(cashInRegister))}`);
+
+			if (shiftType === "akhiri" && shiftStatus?.latestMulai) {
+				const summaryText = `\n[RINGKASAN SHIFT]\nModal: Rp ${modalAwal.toLocaleString('id-ID')}\nCash: Rp ${shiftCash.toLocaleString('id-ID')}\nQRIS: Rp ${shiftQris.toLocaleString('id-ID')}\nTotal Revenue: Rp ${(shiftCash + shiftQris).toLocaleString('id-ID')}\nPengeluaran: Rp ${shiftExpense.toLocaleString('id-ID')}\nProduk Terjual: ${shiftItems}`;
+				descParts.push(summaryText);
+			}
 
 			const finalDescription = descParts.length > 0 ? descParts.join(" | ") : (shiftType === "mulai" ? "Mulai Shift" : "Akhiri Shift");
 
@@ -1775,21 +1816,21 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					/>
 				</div>
 
-				{financialSummary && shiftType === "akhiri" && (
+				{shiftType === "akhiri" && shiftStatus?.latestMulai && (
 					<Card className="border-border bg-muted/30">
 						<CardContent className="p-3">
 							<p className="mb-1 text-[10px] text-muted-foreground uppercase">
-								Ringkasan Hari Ini
+								Ringkasan Shift Ini
 							</p>
 							<div className="space-y-1 text-xs">
 								<div className="flex justify-between">
-									<span>Pemasukan:</span>
+									<span>Total Revenue:</span>
 									<span className="font-bold text-primary">
 										{new Intl.NumberFormat("id-ID", {
 											style: "currency",
 											currency: "IDR",
 											maximumFractionDigits: 0,
-										}).format(financialSummary.totalIncome || 0)}
+										}).format(shiftCash + shiftQris)}
 									</span>
 								</div>
 								<div className="flex justify-between">
@@ -1799,8 +1840,12 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 											style: "currency",
 											currency: "IDR",
 											maximumFractionDigits: 0,
-										}).format(financialSummary.totalExpense || 0)}
+										}).format(shiftExpense)}
 									</span>
+								</div>
+								<div className="flex justify-between border-t border-border pt-1 mt-1">
+									<span className="text-[10px] text-muted-foreground">Produk Terjual:</span>
+									<span className="font-bold">{shiftItems}</span>
 								</div>
 							</div>
 						</CardContent>
