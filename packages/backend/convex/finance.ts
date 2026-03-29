@@ -239,7 +239,7 @@ export const getCashFlowReport = query({
 		// Group by date
 		const dailyMap: Record<string, { inflow: number; outflow: number; date: string }> = {};
 		for (const t of completed) {
-			const date = new Date(t.date).toISOString().split("T")[0];
+			const date = new Date(t.date).toISOString().split("T")[0] as string;
 			if (!dailyMap[date]) {
 				dailyMap[date] = { inflow: 0, outflow: 0, date };
 			}
@@ -649,7 +649,7 @@ export const getWeeklyTrend = query({
 				else expense += t.amount;
 			}
 
-			const weekStartStr = weekStartDate.toISOString().split("T")[0];
+			const weekStartStr = weekStartDate.toISOString().split("T")[0] as string;
 			const label = weekStartDate.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
 			result.push({ label, weekStart: weekStartStr, income, expense, net: income - expense });
 		}

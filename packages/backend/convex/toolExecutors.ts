@@ -10,6 +10,8 @@ import { api } from "./_generated/api";
 import { action } from "./_generated/server";
 import { tools } from "./tools";
 
+const defineAction: any = action;
+
 // Helper to cast string to Convex Id type
 function asId<_T extends string>(value: string): any {
 	return value as any;
@@ -23,12 +25,12 @@ function asId<_T extends string>(value: string): any {
  * Execute a single tool call
  * Routes the tool call to the appropriate mutation
  */
-export const executeToolCall = action({
+export const executeToolCall = defineAction({
 	args: {
 		toolName: v.string(),
 		args: v.any(),
 	},
-	handler: async (ctx, args) => {
+	handler: async (ctx: any, args: any) => {
 		const { toolName, args: toolArgs } = args;
 
 		try {

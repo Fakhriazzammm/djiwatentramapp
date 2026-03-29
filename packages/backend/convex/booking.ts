@@ -180,7 +180,7 @@ export const setBulkDateCapacity = mutation({
 
 		const currentDate = new Date(start);
 		while (currentDate <= end) {
-			const dateStr = currentDate.toISOString().split("T")[0];
+			const dateStr = currentDate.toISOString().split("T")[0] as string;
 
 			const existing = await ctx.db
 				.query("bookingDateCapacity")
@@ -465,11 +465,11 @@ export const getMonthBookingSummary = query({
 				};
 			}
 			if (o.bookingStatus !== "cancelled") {
-				summary[o.bookingDate].count++;
-				summary[o.bookingDate].bookedPeople += o.guestCount ?? 0;
-				summary[o.bookingDate].bookedTables += o.tableCount ?? 0;
-				if (o.bookingStatus === "pending") summary[o.bookingDate].pending++;
-				if (o.bookingStatus === "confirmed") summary[o.bookingDate].confirmed++;
+				summary[o.bookingDate]!.count++;
+				summary[o.bookingDate]!.bookedPeople += o.guestCount ?? 0;
+				summary[o.bookingDate]!.bookedTables += o.tableCount ?? 0;
+				if (o.bookingStatus === "pending") summary[o.bookingDate]!.pending++;
+				if (o.bookingStatus === "confirmed") summary[o.bookingDate]!.confirmed++;
 			}
 		});
 

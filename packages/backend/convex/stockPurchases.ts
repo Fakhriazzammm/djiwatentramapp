@@ -10,27 +10,30 @@ export const recordStockPurchase = mutation({
       merchant: v.optional(v.string()),
       date: v.number(),
       paymentMethod: v.string(),
-      items: v.array(
-        v.object({
-          name: v.string(),
-          qty: v.number(),
-          price: v.number(),
-          subtotal: v.number(),
-        })
-      ),
+      items: v.array(v.object({
+        name: v.string(),
+        qty: v.number(),
+        price: v.number()
+      }))
     }),
   },
-  handler: async (ctx, { purchaseData }) => {
+  handler: async (ctx, { purchaseData }): Promise<{
+    transactionId: string | null;
+    updatedCount: number;
+    createdCount: number;
+    message: string;
+  }> => {
     // Step 1: Record the entire purchase as a single expense transaction.
-    const transactionId = await ctx.runMutation(internal.finance.createTransaction, {
-      type: "expense",
+    const payload = {
+      type: "expense" as const,
       amount: purchaseData.total,
       category: "Pembelian Stok",
       description: `Pembelian stok dari ${purchaseData.merchant || "Supplier"}`,
       date: purchaseData.date,
       paymentMethod: purchaseData.paymentMethod,
-      status: "completed",
-    });
+      status: "completed" as const,
+    };
+    const transactionId = await ctx.runMutation(internal.finance.createTransaction, payload);
 
     if (!transactionId) {
       throw new Error("Failed to create expense transaction.");
@@ -43,7 +46,7 @@ export const recordStockPurchase = mutation({
     // Step 2: Process each item to update or create inventory.
     for (const item of purchaseData.items) {
       const existingItem = allInventory.find(
-        (invItem) => invItem.ingredientName.toLowerCase() === item.name.toLowerCase()
+        (invItem: any) => invItem.ingredientName.toLowerCase() === item.name.toLowerCase()
       );
 
       if (existingItem) {

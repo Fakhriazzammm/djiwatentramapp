@@ -573,7 +573,7 @@ export const getOrdersCogs = query({
 			}
 		> = {};
 		for (const op of orderProfits) {
-			const dateKey = new Date(op.createdAt).toISOString().split("T")[0];
+			const dateKey = new Date(op.createdAt).toISOString().split("T")[0] as string;
 			if (!dailySummary[dateKey]) {
 				dailySummary[dateKey] = {
 					date: dateKey,

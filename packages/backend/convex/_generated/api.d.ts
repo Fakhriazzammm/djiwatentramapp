@@ -26,6 +26,7 @@ import type * as roles from "../roles.js";
 import type * as scheduledReports from "../scheduledReports.js";
 import type * as seed from "../seed.js";
 import type * as site_settings from "../site_settings.js";
+import type * as stockPurchases from "../stockPurchases.js";
 import type * as toolExecutors from "../toolExecutors.js";
 import type * as tools from "../tools.js";
 import type * as users from "../users.js";
@@ -55,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   scheduledReports: typeof scheduledReports;
   seed: typeof seed;
   site_settings: typeof site_settings;
+  stockPurchases: typeof stockPurchases;
   toolExecutors: typeof toolExecutors;
   tools: typeof tools;
   users: typeof users;
