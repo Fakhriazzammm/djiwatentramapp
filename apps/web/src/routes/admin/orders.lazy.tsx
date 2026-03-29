@@ -423,7 +423,7 @@ function AdminOrders() {
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-border">
-							{filteredOrders?.length === 0 ?
+							{filteredOrders?.length === 0 ? (
 								<tr>
 									<td
 										className="h-40 text-center text-muted-foreground"
