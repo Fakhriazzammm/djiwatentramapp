@@ -5,90 +5,137 @@ import { query } from "./_generated/server";
 export const getDashboardStats = query({
 	args: {},
 	handler: async (ctx) => {
+		const WIB_OFFSET = 7 * 60 * 60 * 1000; // UTC+7
 		const now = Date.now();
-		const todayStart = new Date();
-		todayStart.setHours(0, 0, 0, 0);
-		const todayStartTs = todayStart.getTime();
+		
+		// Calculate "Today" start in WIB
+		const nowWib = new Date(now + WIB_OFFSET);
+		const todayStartWib = new Date(nowWib.getFullYear(), nowWib.getMonth(), nowWib.getDate());
+		const todayStartTs = todayStartWib.getTime() - WIB_OFFSET;
 
-		// Get all orders
-		const allOrders = await ctx.db.query("orders").collect();
+		const todayEndWib = new Date(nowWib.getFullYear(), nowWib.getMonth(), nowWib.getDate(), 23, 59, 59, 999);
+		const todayEndTs = todayEndWib.getTime() - WIB_OFFSET;
 
-		// Today's orders
-		const todayOrders = allOrders.filter((o) => (o.createdAt ?? 0) >= todayStartTs);
+		// 1. Get today's POS orders (Indexed)
+		const todayOrders = await ctx.db
+			.query("orders")
+			.withIndex("by_createdAt", (q) => q.gte("createdAt", todayStartTs).lte("createdAt", todayEndTs))
+			.collect();
 
-		// Calculate today's revenue (completed + paid orders)
-		const todayRevenue = todayOrders
+		// 2. Get today's bookings (Indexed)
+		const todayBookings = await ctx.db
+			.query("bookingOrders")
+			.withIndex("by_createdAt", (q) => q.gte("createdAt", todayStartTs).lte("createdAt", todayEndTs))
+			.collect();
+
+		// Calculate today's revenue (completed + paid)
+		const todayPosRevenue = todayOrders
 			.filter((o) => o.status === "completed" || o.status === "paid")
 			.reduce((sum, o) => sum + (o.totalAmount ?? 0), 0);
+		
+		const todayBookingRevenue = todayBookings
+			.filter((b) => b.paymentStatus === "paid" || b.bookingStatus === "confirmed" || b.bookingStatus === "completed")
+			.reduce((sum, b) => sum + (b.totalAmount ?? 0), 0);
 
-		// Pending orders count
-		const pendingOrders = allOrders.filter((o) => o.status === "pending").length;
+		const todayRevenue = todayPosRevenue + todayBookingRevenue;
 
-		// Get all products
+		// 3. Pending orders count (Indexed)
+		const pendingOrders = (await ctx.db
+			.query("orders")
+			.withIndex("by_status", (q) => q.eq("status", "pending"))
+			.collect()).length;
+
+		// 4. Products stats
 		const allProducts = await ctx.db.query("products").collect();
 		const activeProducts = allProducts.filter((p) => p.isAvailable ?? false).length;
 
-		// Get low stock items
+		// 5. Low stock items
 		const inventory = await ctx.db.query("inventory").collect();
 		const lowStockItems = inventory.filter(
 			(i) => (i.quantity ?? 0) <= (i.lowStockThreshold ?? 0),
 		);
 
-		// Get financial summary
-		const transactions = await ctx.db.query("financialTransactions").collect();
+		// 6. Financial summary (Indexed)
+		const todayTransactions = await ctx.db
+			.query("financialTransactions")
+			.withIndex("by_date", (q) => q.gte("date", todayStartTs).lte("date", todayEndTs))
+			.collect();
 		
-		const todayIncome = transactions
-			.filter((t) => t.type === "income" && t.status === "completed" && (t.date ?? 0) >= todayStartTs)
-			.reduce((sum, t) => sum + (t.amount ?? 0), 0);
-		
-		const todayExpense = transactions
-			.filter((t) => t.type === "expense" && t.status === "completed" && (t.date ?? 0) >= todayStartTs)
-			.reduce((sum, t) => sum + (t.amount ?? 0), 0);
-
-		const totalIncome = transactions
+		const todayIncome = todayTransactions
 			.filter((t) => t.type === "income" && t.status === "completed")
 			.reduce((sum, t) => sum + (t.amount ?? 0), 0);
-		const totalExpense = transactions
+		
+		const todayExpense = todayTransactions
 			.filter((t) => t.type === "expense" && t.status === "completed")
 			.reduce((sum, t) => sum + (t.amount ?? 0), 0);
 
-		// Order status breakdown
+		// Global totals (This might stay slow until we have aggregates, but let's at least use indexes)
+		const allIncomeTx = await ctx.db
+			.query("financialTransactions")
+			.withIndex("by_type", (q) => q.eq("type", "income"))
+			.collect();
+		const allExpenseTx = await ctx.db
+			.query("financialTransactions")
+			.withIndex("by_type", (q) => q.eq("type", "expense"))
+			.collect();
+
+		const totalIncome = allIncomeTx
+			.filter((t) => t.status === "completed")
+			.reduce((sum, t) => sum + (t.amount ?? 0), 0);
+		const totalExpense = allExpenseTx
+			.filter((t) => t.status === "completed")
+			.reduce((sum, t) => sum + (t.amount ?? 0), 0);
+
+		// Order status breakdown (Individual queries or filter all)
 		const orderStatusBreakdown = {
-			pending: allOrders.filter((o) => o.status === "pending").length,
-			paid: allOrders.filter((o) => o.status === "paid").length,
-			completed: allOrders.filter((o) => o.status === "completed").length,
-			cancelled: allOrders.filter((o) => o.status === "cancelled").length,
+			pending: pendingOrders,
+			paid: (await ctx.db.query("orders").withIndex("by_status", (q) => q.eq("status", "paid")).collect()).length,
+			completed: (await ctx.db.query("orders").withIndex("by_status", (q) => q.eq("status", "completed")).collect()).length,
+			cancelled: (await ctx.db.query("orders").withIndex("by_status", (q) => q.eq("status", "cancelled")).collect()).length,
 		};
 
-		// Revenue last 7 days
+		// Revenue last 7 days (Using WIB boundaries and individual indexed queries)
 		const last7Days: { date: string; revenue: number; orders: number }[] = [];
 		for (let i = 6; i >= 0; i--) {
-			const dayStart = new Date();
-			dayStart.setDate(dayStart.getDate() - i);
-			dayStart.setHours(0, 0, 0, 0);
-			const dayStartTs = dayStart.getTime();
+			const dayWib = new Date(nowWib);
+			dayWib.setDate(dayWib.getDate() - i);
+			
+			const dStartWib = new Date(dayWib.getFullYear(), dayWib.getMonth(), dayWib.getDate());
+			const dStartTs = dStartWib.getTime() - WIB_OFFSET;
 
-			const dayEnd = new Date(dayStart);
-			dayEnd.setHours(23, 59, 59, 999);
-			const dayEndTs = dayEnd.getTime();
+			const dEndWib = new Date(dayWib.getFullYear(), dayWib.getMonth(), dayWib.getDate(), 23, 59, 59, 999);
+			const dEndTs = dEndWib.getTime() - WIB_OFFSET;
 
-			const dayOrders = allOrders.filter(
-				(o) =>
-					(o.createdAt ?? 0) >= dayStartTs &&
-					(o.createdAt ?? 0) <= dayEndTs &&
-					(o.status === "completed" || o.status === "paid"),
-			);
+			const dayOrders = await ctx.db
+				.query("orders")
+				.withIndex("by_createdAt", (q) => q.gte("createdAt", dStartTs).lte("createdAt", dEndTs))
+				.collect();
+
+			const dayBookings = await ctx.db
+				.query("bookingOrders")
+				.withIndex("by_createdAt", (q) => q.gte("createdAt", dStartTs).lte("createdAt", dEndTs))
+				.collect();
+
+			const validOrders = dayOrders.filter((o) => o.status === "completed" || o.status === "paid");
+			const validBookings = dayBookings.filter((b) => b.paymentStatus === "paid" || b.bookingStatus === "confirmed" || b.bookingStatus === "completed");
 
 			last7Days.push({
-				date: dayStart.toLocaleDateString("id-ID", { weekday: "short", day: "numeric" }),
-				revenue: dayOrders.reduce((sum, o) => sum + (o.totalAmount ?? 0), 0),
-				orders: dayOrders.length,
+				date: dStartWib.toLocaleDateString("id-ID", { weekday: "short", day: "numeric" }),
+				revenue: validOrders.reduce((sum, o) => sum + (o.totalAmount ?? 0), 0) + 
+						 validBookings.reduce((sum, b) => sum + (b.totalAmount ?? 0), 0),
+				orders: validOrders.length + validBookings.length,
 			});
 		}
 
-		// Top selling products (from completed orders)
+		// Top selling products (from completed/paid orders today/recent - let's stay with recent 50 orders for better perf)
+		const recentOrdersForProducts = await ctx.db
+			.query("orders")
+			.withIndex("by_createdAt")
+			.order("desc")
+			.take(100);
+
 		const productSales: Record<string, { name: string; count: number; revenue: number }> = {};
-		allOrders
+		recentOrdersForProducts
 			.filter((o) => o.status === "completed" || o.status === "paid")
 			.forEach((order) => {
 				const items = Array.isArray(order.items) ? order.items : [];
@@ -107,9 +154,11 @@ export const getDashboardStats = query({
 			.slice(0, 5);
 
 		// Recent orders (last 10)
-		const recentOrders = allOrders
-			.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
-			.slice(0, 10)
+		const recentOrders = (await ctx.db
+			.query("orders")
+			.withIndex("by_createdAt")
+			.order("desc")
+			.take(10))
 			.map((o) => ({
 				_id: o._id,
 				orderNumber: o.orderNumber ?? "N/A",
@@ -121,8 +170,10 @@ export const getDashboardStats = query({
 			}));
 
 		return {
-			todayOrders: todayOrders.length,
+			todayOrders: todayOrders.length + todayBookings.length,
 			todayRevenue,
+			todayPosRevenue,
+			todayBookingRevenue,
 			pendingOrders,
 			activeProducts,
 			totalProducts: allProducts.length,

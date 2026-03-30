@@ -616,7 +616,8 @@ export default defineSchema({
 	})
 		.index("by_slug", ["slug"])
 		.index("by_slug_date", ["slug", "bookingDate"])
-		.index("by_booking_code", ["bookingCode"]),
+		.index("by_booking_code", ["bookingCode"])
+		.index("by_createdAt", ["createdAt"]),
 
 	// Admin-set capacity limits per date
 	bookingDateCapacity: defineTable({

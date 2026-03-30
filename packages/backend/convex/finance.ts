@@ -331,23 +331,24 @@ export const updateTransaction = mutation({
 // Get shift status
 export const getShiftStatus = query({
 	handler: async (ctx) => {
-		const now = new Date();
-		const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime();
-		const sevenDaysAgo = todayStart - 7 * 24 * 60 * 60 * 1000;
+		const now = Date.now();
+		const WIB_OFFSET = 7 * 60 * 60 * 1000;
+		const nowWib = new Date(now + WIB_OFFSET);
+		const todayStartWib = new Date(nowWib.getFullYear(), nowWib.getMonth(), nowWib.getDate());
+		const todayStartTs = todayStartWib.getTime() - WIB_OFFSET;
+		const sevenDaysAgo = todayStartTs - 7 * 24 * 60 * 60 * 1000;
 
-		// Fetch last 7 days to find open shifts that might have started yesterday
+		// Fetch last 7 days of transactions to find shifts
 		const transactions = await (await fetchTransactionsInternal(ctx, { startDate: sevenDaysAgo })).collect();
 
-		// Find latest shift related transactions
-		let latestMulai = 0;
-		let latestAkhir = 0;
-		let shiftInfo = null;
-
-		// Track all shifts found in the period
+		// Track all shifts found
 		const allShifts: any[] = [];
 		const sortedTx = [...transactions].sort((a, b) => a.date - b.date);
 		
 		let currentShiftObj: any = null;
+		let latestMulai = 0;
+		let latestAkhir = 0;
+		let shiftInfo = null;
 
 		for (const t of sortedTx) {
 			if (t.status === "completed") {
@@ -372,6 +373,7 @@ export const getShiftStatus = query({
 						cashierName: parsedCashier,
 						shiftName: parsedShift,
 						teamMembers: parsedTeam,
+						modalAwal: t.amount,
 					};
 					allShifts.push(currentShiftObj);
 
@@ -386,12 +388,58 @@ export const getShiftStatus = query({
 				if (t.category === "Setoran Akhir") {
 					if (currentShiftObj && !currentShiftObj.endTime) {
 						currentShiftObj.endTime = t.date;
+						currentShiftObj.setoranAkhir = t.amount;
 					}
 					if (t.date > latestAkhir) {
 						latestAkhir = t.date;
 					}
 				}
 			}
+		}
+
+		// Filter for today's shifts and calculate revenue for each
+		const todayShifts = allShifts.filter(s => s.startTime >= todayStartTs);
+		
+		for (const shift of todayShifts) {
+			const sEnd = shift.endTime || now;
+			
+			// Get orders in this shift
+			const shiftOrders = await ctx.db
+				.query("orders")
+				.withIndex("by_createdAt", (q) => q.gte("createdAt", shift.startTime).lte("createdAt", sEnd))
+				.collect();
+			
+			// Get bookings in this shift
+			const shiftBookings = await ctx.db
+				.query("bookingOrders")
+				.withIndex("by_createdAt", (q) => q.gte("createdAt", shift.startTime).lte("createdAt", sEnd))
+				.collect();
+			
+			let sCash = 0;
+			let sQris = 0;
+			let sRevenue = 0;
+
+			// Add POS revenue
+			shiftOrders.forEach((o) => {
+				if (o.status === "completed" || o.status === "paid") {
+					sRevenue += o.totalAmount;
+					if (o.paymentMethod === 'cash') sCash += o.totalAmount;
+					if (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer') sQris += o.totalAmount;
+				}
+			});
+
+			// Add Booking revenue
+			shiftBookings.forEach((b) => {
+				if (b.paymentStatus === "paid" || b.bookingStatus === "confirmed" || b.bookingStatus === "completed") {
+					sRevenue += b.totalAmount;
+					if (b.paymentMethod === 'cash') sCash += b.totalAmount;
+					if (b.paymentMethod === 'qris' || b.paymentMethod === 'transfer' || b.paymentMethod === 'mayar') sQris += b.totalAmount;
+				}
+			});
+
+			shift.revenue = sRevenue;
+			shift.cashRevenue = sCash;
+			shift.qrisRevenue = sQris;
 		}
 
 		// Shift is open if we have a Modal Awal that is newer than Setoran Akhir
@@ -402,7 +450,7 @@ export const getShiftStatus = query({
 			latestMulai,
 			latestAkhir,
 			shiftInfo: isOpen ? shiftInfo : null,
-			allShifts: allShifts.filter(s => s.startTime >= todayStart) // Only return today's shifts for the list
+			allShifts: todayShifts
 		};
 	},
 });
