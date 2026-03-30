@@ -36,11 +36,10 @@ import { isDiscountApplicable } from "@/lib/utils/pricing";
 import type { Doc } from "@yumipos/backend/convex/_generated/dataModel";
 import { bluetoothPrinter } from "@/lib/bluetooth-printer";
 
-export function CheckoutSidebar({ 
-	onConfirmPayment,
-	isSubmitting = false,
-	onClose,
-	initialStep = "customer"
+	onClose?: () => void;
+	initialStep?: "customer" | "menu" | "payment";
+	lastOrderId?: string | null;
+	onPrintLastOrder?: () => void;
 }: { 
 	onConfirmPayment?: (
 		finalAmount: number,
@@ -58,6 +57,8 @@ export function CheckoutSidebar({
 	isSubmitting?: boolean;
 	onClose?: () => void;
 	initialStep?: "customer" | "menu" | "payment";
+	lastOrderId?: string | null;
+	onPrintLastOrder?: () => void;
 }) {
 	const {
 		items,
@@ -210,17 +211,30 @@ export function CheckoutSidebar({
 						<span className={cn("text-xs font-medium", activeStep === "payment" ? "text-foreground" : "text-muted-foreground")}>Bayar</span>
 					</div>
 				</div>
-				{onClose && (
-					<Button 
-						variant="ghost" 
-						size="sm" 
-						className="h-8 w-8 p-0 rounded-full shrink-0 ml-2" 
-						onClick={onClose}
-						aria-label="Tutup"
-					>
-						<X className="h-4 w-4" />
-					</Button>
-				)}
+				<div className="flex items-center gap-1">
+					{lastOrderId && onPrintLastOrder && (
+						<Button
+							variant="outline"
+							size="sm"
+							className="h-8 px-2 gap-1.5 text-[10px] font-bold border-primary/20 bg-primary/5 text-primary hover:bg-primary/10"
+							onClick={onPrintLastOrder}
+						>
+							<Printer className="h-3 w-3" />
+							Struk Terakhir
+						</Button>
+					)}
+					{onClose && (
+						<Button 
+							variant="ghost" 
+							size="sm" 
+							className="h-8 w-8 p-0 rounded-full shrink-0" 
+							onClick={onClose}
+							aria-label="Tutup"
+						>
+							<X className="h-4 w-4" />
+						</Button>
+					)}
+				</div>
 			</div>
 
 			<ScrollArea className="flex-1">

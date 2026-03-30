@@ -62,6 +62,13 @@ export const createOrder = mutation({
 	},
 });
 
+export const getOrder = query({
+	args: { id: v.id("orders") },
+	handler: async (ctx, args) => {
+		return await ctx.db.get(args.id);
+	},
+});
+
 export const getOrders = query({
 	args: { 
 		status: v.optional(v.string()),

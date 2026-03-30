@@ -60,7 +60,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { YumiAIChat } from "@/components/pos/yumi-ai-chat";
-import { bluetoothPrinter } from "@/lib/bluetooth-printer";
+import { bluetoothPrinter, type OrderItem } from "@/lib/bluetooth-printer";
 import { useCart } from "@/context/cart-context";
 import { cn } from "@/lib/utils";
 
@@ -158,6 +158,7 @@ export function MenuSidebar({
 	const deleteOrder = useMutation(api.orders.deleteOrder);
 	const createOrder = useMutation(api.orders.createOrder);
 	const { items, totalAmount, clearCart, appliedVoucher, discountAmount, customerInfo } = useCart();
+	const siteSettings = useQuery(api.site_settings.getSettings);
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
@@ -284,6 +285,64 @@ export function MenuSidebar({
 			toast.error("Gagal menghapus pesanan");
 		}
 	};
+	
+	const handlePrintOrder = async (order: Doc<"orders">) => {
+		if (!bluetoothPrinter.isConnected()) {
+			toast.error("Printer tidak terhubung. Silakan hubungkan di Pengaturan.");
+			return;
+		}
+
+		if (!siteSettings) return;
+
+		try {
+			toast.loading("Mencetak struk...", { id: "printing" });
+			const items = order.items.map((i: any) => ({
+				productId: i.productId,
+				name: i.productName,
+				variant: i.variant,
+				price: i.price,
+				quantity: i.quantity,
+			}));
+			const subtotal = items.reduce((sum: number, item: OrderItem) => sum + item.price * item.quantity, 0);
+
+			await bluetoothPrinter.print(
+				{
+					orderNumber: order.orderNumber,
+					items,
+					totalAmount: order.totalAmount,
+					subtotal,
+					discountAmount: order.discountAmount,
+					paymentMethod: order.paymentMethod,
+					createdAt: order.createdAt,
+					customerName: order.customerName,
+					orderType: order.orderType,
+					tableNumber: order.tableNumber,
+					notes: order.notes,
+					cashierName: shiftStatus?.shiftInfo?.cashierName || undefined,
+					shiftName: shiftStatus?.shiftInfo?.shiftName || undefined,
+				},
+				{
+					storeName: siteSettings.storeName,
+					storeAddress: siteSettings.storeAddress,
+					storePhone: siteSettings.storePhone,
+					receiptFooter: siteSettings.receiptFooter,
+					receiptLogo: siteSettings.receiptLogo,
+					receiptHeader: siteSettings.receiptHeader,
+					receiptShowLogo: siteSettings.receiptShowLogo,
+					receiptShowAddress: siteSettings.receiptShowAddress,
+					receiptShowPhone: siteSettings.receiptShowPhone,
+					receiptShowOrderNumber: siteSettings.receiptShowOrderNumber,
+					receiptShowCustomerName: siteSettings.receiptShowCustomerName,
+					receiptShowNotes: siteSettings.receiptShowNotes,
+					receiptFontSize: siteSettings.receiptFontSize,
+				}
+			);
+			toast.success("Struk sedang dicetak", { id: "printing" });
+		} catch (error) {
+			console.error("Print failed:", error);
+			toast.error("Gagal mencetak struk.", { id: "printing" });
+		}
+	};
 
 	return (
 		<>
@@ -348,6 +407,7 @@ export function MenuSidebar({
 								<ParkirTab
 									onClose={() => setIsOpen(false)}
 									onRestore={handleRestoreOrder}
+									onPrint={handlePrintOrder}
 								/>
 							)}
 							{activeTab === "history" && (
@@ -407,6 +467,7 @@ export function MenuSidebar({
 										}}
 										onEdit={() => setIsEditMode(true)}
 										onSave={(data) => handleUpdateOrder(selectedOrder._id, data)}
+										onPrint={() => handlePrintOrder(selectedOrder)}
 										order={selectedOrder}
 									/>
 								</div>
@@ -526,12 +587,14 @@ function OrderSimpleDetail({
 	onEdit,
 	onDelete,
 	onSave,
+	onPrint,
 }: {
 	order: Doc<"orders">;
 	isEditMode: boolean;
 	onEdit: () => void;
 	onDelete: () => void;
 	onSave: (data: any) => void;
+	onPrint?: () => void;
 }) {
 	const [customerName, setCustomerName] = useState(order.customerName || "");
 	const [paymentMethod, setPaymentMethod] = useState(order.paymentMethod);
@@ -578,6 +641,17 @@ function OrderSimpleDetail({
 							className="h-8 w-8 text-primary"
 						>
 							<Save className="h-4 w-4" />
+						</Button>
+					)}
+					{!isEditMode && onPrint && (
+						<Button
+							size="icon"
+							variant="ghost"
+							onClick={onPrint}
+							className="h-8 w-8 text-primary hover:bg-primary/10"
+							title="Cetak Struk"
+						>
+							<Printer className="h-4 w-4" />
 						</Button>
 					)}
 				</div>
@@ -1371,9 +1445,11 @@ Total Produk Terjual: ${totalItems}`;
 function ParkirTab({
 	onClose,
 	onRestore,
+	onPrint,
 }: {
 	onClose: () => void;
 	onRestore: (order: Doc<"orders">) => void;
+	onPrint?: (order: Doc<"orders">) => void;
 }) {
 	const orders = useQuery(api.orders.getOrders, { status: "pending" });
 
@@ -1451,13 +1527,26 @@ function ParkirTab({
 									<div className="text-[10px] text-muted-foreground">
 										{order.items.length} item • {order.items.reduce((acc: number, i: any) => acc + i.quantity, 0)} qty
 									</div>
-									<Button
-										className="h-8 rounded-lg bg-orange-500 px-3 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm hover:bg-orange-600 active:scale-95"
-										onClick={() => onRestore(order)}
-										size="sm"
-									>
-										Pulihkan Order
-									</Button>
+									<div className="flex items-center gap-2">
+										{onPrint && (
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+												onClick={() => onPrint(order)}
+												title="Cetak Struk"
+											>
+												<Printer className="h-4 w-4" />
+											</Button>
+										)}
+										<Button
+											className="h-8 rounded-lg bg-orange-500 px-3 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm hover:bg-orange-600 active:scale-95"
+											onClick={() => onRestore(order)}
+											size="sm"
+										>
+											Pulihkan Order
+										</Button>
+									</div>
 								</div>
 							</CardContent>
 						</Card>

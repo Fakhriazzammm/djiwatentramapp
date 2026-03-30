@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useConvex } from "convex/react";
 import {
 	BarChart3,
 	Bot,
@@ -30,7 +30,7 @@ import { PaymentConfirmationModal } from "@/components/pos/payment-modal";
 import { useMenuKeyboardNav, type FocusZone } from "@/hooks/use-menu-keyboard-nav";
 import { useCart } from "@/context/cart-context";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
-import { bluetoothPrinter } from "@/lib/bluetooth-printer";
+import { bluetoothPrinter, type OrderItem } from "@/lib/bluetooth-printer";
 import { cn } from "@/lib/utils";
 
 export const Route = createLazyFileRoute("/menu")({
@@ -50,6 +50,7 @@ const SIDEBAR_MENU_ITEMS = [
 
 function MenuPage() {
 	// Queries
+	const convex = useConvex();
 	const siteSettings = useQuery(api.site_settings.getSettings);
 	const categories = useQuery(api.products.getCategories);
 	const activeDiscounts = useQuery(api.discounts.getActiveDiscounts);
@@ -82,6 +83,7 @@ function MenuPage() {
 	const [activeSidebarTab, setActiveSidebarTab] = useState("dashboard");
 	const [keyboardFocusZone, setKeyboardFocusZone] = useState<FocusZone>("header");
 	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
+	const [lastOrderId, setLastOrderId] = useState<Id<"orders"> | null>(null);
 
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
@@ -386,6 +388,68 @@ function MenuPage() {
 		}
 	};
 
+	const handlePrint = useCallback(async (orderId: Id<"orders">) => {
+		if (!bluetoothPrinter.isConnected()) {
+			return;
+		}
+
+		if (!siteSettings) return;
+
+		try {
+			const order = await convex.query(api.orders.getOrder, { id: orderId });
+			if (!order) return;
+
+			toast.loading("Mencetak struk...", { id: "printing" });
+			
+			const items = order.items.map((i: any) => ({
+				productId: i.productId,
+				name: i.productName,
+				variant: i.variant,
+				price: i.price,
+				quantity: i.quantity,
+			}));
+			
+			const subtotal = items.reduce((sum: number, item: OrderItem) => sum + item.price * item.quantity, 0);
+
+			await bluetoothPrinter.print(
+				{
+					orderNumber: order.orderNumber,
+					items,
+					totalAmount: order.totalAmount,
+					subtotal,
+					discountAmount: order.discountAmount,
+					paymentMethod: order.paymentMethod,
+					createdAt: order.createdAt,
+					customerName: order.customerName,
+					orderType: order.orderType,
+					tableNumber: order.tableNumber,
+					notes: order.notes,
+					cashierName: shiftStatus?.shiftInfo?.cashierName || undefined,
+					shiftName: shiftStatus?.shiftInfo?.shiftName || undefined,
+				},
+				{
+					storeName: siteSettings.storeName,
+					storeAddress: siteSettings.storeAddress,
+					storePhone: siteSettings.storePhone,
+					receiptFooter: siteSettings.receiptFooter,
+					receiptLogo: siteSettings.receiptLogo,
+					receiptHeader: siteSettings.receiptHeader,
+					receiptShowLogo: siteSettings.receiptShowLogo,
+					receiptShowAddress: siteSettings.receiptShowAddress,
+					receiptShowPhone: siteSettings.receiptShowPhone,
+					receiptShowOrderNumber: siteSettings.receiptShowOrderNumber,
+					receiptShowCustomerName: siteSettings.receiptShowCustomerName,
+					receiptShowNotes: siteSettings.receiptShowNotes,
+					receiptFontSize: siteSettings.receiptFontSize,
+				}
+			);
+			toast.success("Struk berhasil dicetak", { id: "printing" });
+		} catch (error) {
+			console.error("Print failed:", error);
+			toast.error("Gagal mencetak struk.", { id: "printing" });
+		}
+	}, [convex, siteSettings, shiftStatus]);
+
 	// Handle order submission from payment modal or sidebar
 	const handlePaymentConfirm = useCallback(
 		async (
@@ -408,7 +472,7 @@ function MenuPage() {
 			if (cartItems.length === 0) return;
 			setIsSubmitting(true);
 			try {
-				await createOrder({
+				const orderId = await createOrder({
 					items: cartItems.map((i) => ({
 						productId: i.productId as Id<"products">,
 						productName: i.name,
@@ -425,7 +489,19 @@ function MenuPage() {
 					discountAmount: totalAmount - finalAmount + taxAmount + serviceChargeAmount,
 					autoComplete: orderData?.autoComplete,
 				});
+
 				toast.success("Pesanan berhasil dibuat!");
+				setLastOrderId(orderId);
+				
+				// Attempt to print receipt
+				if (bluetoothPrinter.isConnected()) {
+					handlePrint(orderId);
+				} else {
+					toast.info("Pesanan disimpan. Hubungkan printer untuk cetak struk.", {
+						description: "Gunakan menu Riwayat untuk cetak ulang nanti."
+					});
+				}
+
 				clearCart();
 				setIsPaymentOpen(false);
 				setIsCartOpen(false);
@@ -436,7 +512,7 @@ function MenuPage() {
 				setIsSubmitting(false);
 			}
 		},
-		[cartItems, createOrder, clearCart, totalAmount, taxAmount, serviceChargeAmount, customerInfo.name, isShiftOpen]
+		[cartItems, createOrder, clearCart, totalAmount, taxAmount, serviceChargeAmount, customerInfo.name, isShiftOpen, handlePrint]
 	);
 
 	const isLoading = products === undefined || categories === undefined;
@@ -811,6 +887,8 @@ function MenuPage() {
 				<CheckoutSidebar 
 					onConfirmPayment={handlePaymentConfirm} 
 					isSubmitting={isSubmitting} 
+					lastOrderId={lastOrderId}
+					onPrintLastOrder={() => lastOrderId && handlePrint(lastOrderId)}
 				/>
 			</div>
 
@@ -868,6 +946,8 @@ function MenuPage() {
 				onClose={() => setIsCartOpen(false)}
 				onConfirmPayment={handlePaymentConfirm}
 				isSubmitting={isSubmitting}
+				lastOrderId={lastOrderId}
+				onPrintLastOrder={() => lastOrderId && handlePrint(lastOrderId)}
 			/>
 
 			{/* === PAYMENT MODAL === */}
