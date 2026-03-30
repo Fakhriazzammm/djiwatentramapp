@@ -1941,7 +1941,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	
 	// Cash Breakdown State
 	const [breakdown, setBreakdown] = useState<Record<string, number>>({
-		"100000": 0, "50000": 0, "20000": 0, "10000": 0, "5000": 0, "2000": 0, "1000": 0, "500": 0, "200": 0, "100": 0
+		bill100000: 0, bill50000: 0, bill20000: 0, bill10000: 0, bill5000: 0, bill2000: 0, bill1000: 0, bill500: 0, bill200: 0, bill100: 0
 	});
 
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
@@ -1996,7 +1996,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	}
 
 	const calculateBreakdownTotal = () => {
-		return Object.entries(breakdown).reduce((sum, [val, count]) => sum + (Number(val) * count), 0);
+		return Object.entries(breakdown).reduce((sum, [val, count]) => sum + (Number(val.replace('bill', '')) * (count || 0)), 0);
 	};
 
 	// When breakdown changes, update cashInRegister
@@ -2175,7 +2175,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 							<div className="grid grid-cols-2 gap-2">
 								{Object.keys(breakdown).map((val) => (
 									<div key={val} className="flex items-center gap-2 group">
-										<div className="w-12 text-[10px] font-black text-muted-foreground shrink-0">{Number(val) >= 1000 ? `${Number(val)/1000}k` : val}</div>
+										<div className="w-12 text-[10px] font-black text-muted-foreground shrink-0">
+											{Number(val.replace('bill', '')) >= 1000 ? `${Number(val.replace('bill', ''))/1000}k` : val.replace('bill', '')}
+										</div>
 										<Input
 											type="number"
 											min={0}
