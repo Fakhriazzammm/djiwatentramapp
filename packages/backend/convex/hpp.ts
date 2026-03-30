@@ -506,10 +506,34 @@ export const getHppDashboardData = query({
  * Matches order items to HPP calculations via productId.
  */
 export const getOrdersCogs = query({
-	args: {},
-	handler: async (ctx) => {
+	args: {
+		startDate: v.optional(v.number()),
+		endDate: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
 		const allHpp = await ctx.db.query("hppCalculations").collect();
-		const orders = await ctx.db.query("orders").order("desc").collect();
+		
+		let orders;
+		if (args.startDate !== undefined && args.endDate !== undefined) {
+			orders = await ctx.db
+				.query("orders")
+				.withIndex("by_createdAt", (q) =>
+					q.gte("createdAt", args.startDate!).lte("createdAt", args.endDate!)
+				)
+				.collect();
+		} else if (args.startDate !== undefined) {
+			orders = await ctx.db
+				.query("orders")
+				.withIndex("by_createdAt", (q) => q.gte("createdAt", args.startDate!))
+				.collect();
+		} else if (args.endDate !== undefined) {
+			orders = await ctx.db
+				.query("orders")
+				.withIndex("by_createdAt", (q) => q.lte("createdAt", args.endDate!))
+				.collect();
+		} else {
+			orders = await ctx.db.query("orders").order("desc").collect();
+		}
 
 		// Build productId → HPP lookup
 		const hppByProduct: Record<string, number> = {};
@@ -539,7 +563,8 @@ export const getOrdersCogs = query({
 		for (const order of completedOrders) {
 			let orderCogs = 0;
 			let hasHpp = false;
-			for (const item of order.items) {
+			const items = Array.isArray(order.items) ? order.items : [];
+			for (const item of items) {
 				const hppPerUnit = hppByProduct[item.productId];
 				if (hppPerUnit != null) {
 					orderCogs += hppPerUnit * item.quantity;

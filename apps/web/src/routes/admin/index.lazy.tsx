@@ -1,4 +1,4 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, Link } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useQuery } from "convex/react";
 import {

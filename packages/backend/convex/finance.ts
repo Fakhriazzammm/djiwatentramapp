@@ -328,129 +328,245 @@ export const updateTransaction = mutation({
 	},
 });
 
-// Get shift status
+// Start a new shift
+export const startShift = mutation({
+	args: {
+		cashierName: v.string(),
+		shiftName: v.string(),
+		teamMembers: v.optional(v.string()),
+		startingCash: v.number(),
+		notes: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const now = Date.now();
+		
+		// 1. Create entry in shifts table
+		const shiftId = await ctx.db.insert("shifts", {
+			...args,
+			startTime: now,
+		});
+
+		// 2. Create financial transaction for Modal Awal (Legacy compatibility)
+		const descParts = [];
+		descParts.push(`Kasir: ${args.cashierName}`);
+		descParts.push(`Shift: ${args.shiftName}`);
+		if (args.teamMembers) descParts.push(`Tim: ${args.teamMembers}`);
+		if (args.notes) descParts.push(`Catatan: ${args.notes}`);
+		
+		await ctx.db.insert("financialTransactions", {
+			type: "income",
+			amount: args.startingCash,
+			category: "Modal Awal",
+			description: descParts.join(" | "),
+			date: now,
+			status: "completed",
+			paymentMethod: "tunai",
+		});
+
+		return shiftId;
+	},
+});
+
+// End an ongoing shift
+export const endShift = mutation({
+	args: {
+		shiftId: v.id("shifts"),
+		endingCashPhysical: v.number(),
+		nonCashConfirmed: v.number(),
+		cashBreakdown: v.optional(
+			v.object({
+				bill100000: v.number(),
+				bill50000: v.number(),
+				bill20000: v.number(),
+				bill10000: v.number(),
+				bill5000: v.number(),
+				bill2000: v.number(),
+				bill1000: v.number(),
+				bill500: v.number(),
+				bill200: v.number(),
+				bill100: v.number(),
+			})
+		),
+		notes: v.optional(v.string()),
+		closingTasks: v.optional(v.array(v.string())),
+	},
+	handler: async (ctx, args) => {
+		const now = Date.now();
+		const shift = await ctx.db.get(args.shiftId);
+		if (!shift) throw new Error("Shift not found");
+		if (shift.endTime) throw new Error("Shift already ended");
+
+		// 1. Calculate shift statistics
+		const startTime = shift.startTime;
+		const endTime = now;
+
+		// Orders in this shift
+		const orders = await ctx.db
+			.query("orders")
+			.withIndex("by_createdAt", (q) => q.gte("createdAt", startTime).lte("createdAt", endTime))
+			.collect();
+		
+		const bookings = await ctx.db
+			.query("bookingOrders")
+			.withIndex("by_createdAt", (q) => q.gte("createdAt", startTime).lte("createdAt", endTime))
+			.collect();
+
+		const shiftTransactions = await ctx.db
+			.query("financialTransactions")
+			.withIndex("by_date", (q) => q.gte("date", startTime).lte("date", endTime))
+			.collect();
+
+		let totalRevenue = 0;
+		let cashRevenue = 0;
+		let qrisRevenue = 0;
+		let totalItemsSold = 0;
+
+		orders.forEach((o) => {
+			if (o.status === "completed" || o.status === "paid") {
+				totalRevenue += o.totalAmount;
+				if (o.paymentMethod === 'cash') cashRevenue += o.totalAmount;
+				else qrisRevenue += o.totalAmount;
+				totalItemsSold += (o.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
+			}
+		});
+
+		bookings.forEach((b) => {
+			if (b.paymentStatus === "paid" || b.bookingStatus === "confirmed" || b.bookingStatus === "completed") {
+				totalRevenue += b.totalAmount;
+				if (b.paymentMethod === 'cash') cashRevenue += b.totalAmount;
+				else qrisRevenue += b.totalAmount;
+				totalItemsSold += (b.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
+			}
+		});
+
+		let totalExpenses = 0;
+		shiftTransactions.forEach((t) => {
+			if (t.type === "expense" && t.status === "completed") {
+				totalExpenses += t.amount;
+			}
+		});
+
+		const endingCashExpected = shift.startingCash + cashRevenue - totalExpenses;
+		const nonCashExpected = qrisRevenue;
+
+		// 2. Update shifts table
+		await ctx.db.patch(args.shiftId, {
+			endTime,
+			endingCashPhysical: args.endingCashPhysical,
+			endingCashExpected,
+			nonCashConfirmed: args.nonCashConfirmed,
+			nonCashExpected,
+			cashBreakdown: args.cashBreakdown,
+			notes: args.notes,
+			closingTasks: args.closingTasks,
+			summary: {
+				totalRevenue,
+				totalExpenses,
+				totalItemsSold,
+				cashRevenue,
+				qrisRevenue,
+			},
+		});
+
+		// 3. Create financial transaction for Setoran Akhir (Legacy compatibility)
+		const summaryText = `\n[RINGKASAN SHIFT]\nModal: Rp ${shift.startingCash.toLocaleString('id-ID')}\nCash: Rp ${cashRevenue.toLocaleString('id-ID')}\nQRIS: Rp ${qrisRevenue.toLocaleString('id-ID')}\nTotal Revenue: Rp ${totalRevenue.toLocaleString('id-ID')}\nPengeluaran: Rp ${totalExpenses.toLocaleString('id-ID')}\nProduk Terjual: ${totalItemsSold}`;
+		
+		await ctx.db.insert("financialTransactions", {
+			type: "income",
+			amount: args.endingCashPhysical,
+			category: "Setoran Akhir",
+			description: (args.notes || "Akhiri Shift") + summaryText,
+			date: now,
+			status: "completed",
+			paymentMethod: "tunai",
+		});
+
+		return args.shiftId;
+	},
+});
+
+// Get ongoing shift if any
+export const getOngoingShift = query({
+	handler: async (ctx) => {
+		return await ctx.db
+			.query("shifts")
+			.withIndex("by_endTime", (q) => q.eq("endTime", undefined))
+			.first();
+	},
+});
+
+// Get shift status (Updated to use shifts table)
 export const getShiftStatus = query({
 	handler: async (ctx) => {
+		const ongoingShift = await ctx.db
+			.query("shifts")
+			.withIndex("by_endTime", (q) => q.eq("endTime", undefined))
+			.first();
+
+		if (ongoingShift) {
+			return {
+				isOpen: true,
+				latestMulai: ongoingShift.startTime,
+				latestAkhir: 0,
+				shiftInfo: {
+					cashierName: ongoingShift.cashierName,
+					shiftName: ongoingShift.shiftName,
+					shiftId: ongoingShift._id,
+				},
+				ongoingShift,
+			};
+		}
+
+		// If no ongoing shift in new table, check legacy transactions for today
 		const now = Date.now();
 		const WIB_OFFSET = 7 * 60 * 60 * 1000;
 		const nowWib = new Date(now + WIB_OFFSET);
 		const todayStartWib = new Date(nowWib.getFullYear(), nowWib.getMonth(), nowWib.getDate());
 		const todayStartTs = todayStartWib.getTime() - WIB_OFFSET;
-		const sevenDaysAgo = todayStartTs - 7 * 24 * 60 * 60 * 1000;
 
-		// Fetch last 7 days of transactions to find shifts
-		const transactions = await (await fetchTransactionsInternal(ctx, { startDate: sevenDaysAgo })).collect();
+		const lastTx = await ctx.db
+			.query("financialTransactions")
+			.withIndex("by_date", (q) => q.gte("date", todayStartTs))
+			.order("desc")
+			.collect();
 
-		// Track all shifts found
-		const allShifts: any[] = [];
-		const sortedTx = [...transactions].sort((a, b) => a.date - b.date);
-		
-		let currentShiftObj: any = null;
-		let latestMulai = 0;
-		let latestAkhir = 0;
+		const latestMulaiTx = lastTx.find(t => t.category === "Modal Awal");
+		const latestAkhirTx = lastTx.find(t => t.category === "Setoran Akhir");
+
+		const latestMulai = latestMulaiTx?.date ?? 0;
+		const latestAkhir = latestAkhirTx?.date ?? 0;
+		const isOpen = latestMulai > latestAkhir;
+
 		let shiftInfo = null;
-
-		for (const t of sortedTx) {
-			if (t.status === "completed") {
-				if (t.category === "Modal Awal") {
-					let parsedCashier = null;
-					let parsedShift = null;
-					let parsedTeam = null;
-					if (t.description) {
-						const parts = t.description.split(" | ");
-						const cashierPart = parts.find(p => p.startsWith("Kasir: "));
-						const shiftPart = parts.find(p => p.startsWith("Shift: "));
-						const teamPart = parts.find(p => p.startsWith("Tim: "));
-						
-						parsedCashier = cashierPart ? cashierPart.replace("Kasir: ", "") : null;
-						parsedShift = shiftPart ? shiftPart.replace("Shift: ", "") : null;
-						parsedTeam = teamPart ? teamPart.replace("Tim: ", "") : null;
-					}
-					
-					currentShiftObj = {
-						startTime: t.date,
-						endTime: null,
-						cashierName: parsedCashier,
-						shiftName: parsedShift,
-						teamMembers: parsedTeam,
-						modalAwal: t.amount,
-					};
-					allShifts.push(currentShiftObj);
-
-					if (t.date > latestMulai) {
-						latestMulai = t.date;
-						shiftInfo = {
-							cashierName: parsedCashier,
-							shiftName: parsedShift,
-						};
-					}
-				}
-				if (t.category === "Setoran Akhir") {
-					if (currentShiftObj && !currentShiftObj.endTime) {
-						currentShiftObj.endTime = t.date;
-						currentShiftObj.setoranAkhir = t.amount;
-					}
-					if (t.date > latestAkhir) {
-						latestAkhir = t.date;
-					}
-				}
-			}
+		if (isOpen && latestMulaiTx?.description) {
+			const parts = latestMulaiTx.description.split(" | ");
+			const cashierPart = parts.find(p => p.startsWith("Kasir: "));
+			const shiftPart = parts.find(p => p.startsWith("Shift: "));
+			shiftInfo = {
+				cashierName: cashierPart ? cashierPart.replace("Kasir: ", "") : null,
+				shiftName: shiftPart ? shiftPart.replace("Shift: ", "") : null,
+			};
 		}
 
-		// Filter for today's shifts and calculate revenue for each
-		const todayShifts = allShifts.filter(s => s.startTime >= todayStartTs);
-		
-		for (const shift of todayShifts) {
-			const sEnd = shift.endTime || now;
-			
-			// Get orders in this shift
-			const shiftOrders = await ctx.db
-				.query("orders")
-				.withIndex("by_createdAt", (q) => q.gte("createdAt", shift.startTime).lte("createdAt", sEnd))
-				.collect();
-			
-			// Get bookings in this shift
-			const shiftBookings = await ctx.db
-				.query("bookingOrders")
-				.withIndex("by_createdAt", (q) => q.gte("createdAt", shift.startTime).lte("createdAt", sEnd))
-				.collect();
-			
-			let sCash = 0;
-			let sQris = 0;
-			let sRevenue = 0;
-
-			// Add POS revenue
-			shiftOrders.forEach((o) => {
-				if (o.status === "completed" || o.status === "paid") {
-					sRevenue += o.totalAmount;
-					if (o.paymentMethod === 'cash') sCash += o.totalAmount;
-					if (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer') sQris += o.totalAmount;
-				}
-			});
-
-			// Add Booking revenue
-			shiftBookings.forEach((b) => {
-				if (b.paymentStatus === "paid" || b.bookingStatus === "confirmed" || b.bookingStatus === "completed") {
-					sRevenue += b.totalAmount;
-					if (b.paymentMethod === 'cash') sCash += b.totalAmount;
-					if (b.paymentMethod === 'qris' || b.paymentMethod === 'transfer' || b.paymentMethod === 'mayar') sQris += b.totalAmount;
-				}
-			});
-
-			shift.revenue = sRevenue;
-			shift.cashRevenue = sCash;
-			shift.qrisRevenue = sQris;
-		}
-
-		// Shift is open if we have a Modal Awal that is newer than Setoran Akhir
-		const isOpen = latestMulai > 0 && latestMulai > latestAkhir;
+		// Also fetch all shifts for the dashboard (compatibility)
+		const allShifts = await ctx.db
+			.query("shifts")
+			.withIndex("by_startTime", q => q.gte("startTime", todayStartTs))
+			.collect();
 
 		return {
 			isOpen,
 			latestMulai,
 			latestAkhir,
-			shiftInfo: isOpen ? shiftInfo : null,
-			allShifts: todayShifts
+			shiftInfo,
+			allShifts: allShifts.map(s => ({
+				...s,
+				revenue: s.summary?.totalRevenue ?? 0,
+				cashRevenue: s.summary?.cashRevenue ?? 0,
+				qrisRevenue: s.summary?.qrisRevenue ?? 0,
+				modalAwal: s.startingCash,
+				setoranAkhir: s.endingCashPhysical,
+			})),
 		};
 	},
 });

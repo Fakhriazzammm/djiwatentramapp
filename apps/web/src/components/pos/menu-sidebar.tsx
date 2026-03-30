@@ -22,6 +22,7 @@ import {
 	ShoppingCart,
 	Sparkles,
 	SquarePlay,
+	SquarePower,
 	Trash2,
 	TrendingDown,
 	TrendingUp,
@@ -1921,15 +1922,27 @@ function KasTab({ onClose }: { onClose: () => void }) {
 }
 
 function ShiftManagement({ onClose }: { onClose: () => void }) {
-	const createTransaction = useMutation(api.finance.createTransaction);
+	const startShift = useMutation(api.finance.startShift);
+	const endShift = useMutation(api.finance.endShift);
+	
 	const [shiftType, setShiftType] = useState<"mulai" | "akhiri">("mulai");
+	
+	// Mulai Shift State
 	const [amount, setAmount] = useState("");
-	const [cashInRegister, setCashInRegister] = useState("");
-	const [notes, setNotes] = useState("");
 	const [cashierName, setCashierName] = useState("");
 	const [shiftName, setShiftName] = useState("Shift Pagi");
 	const [teamMembers, setTeamMembers] = useState("");
+	
+	// Akhiri Shift State
+	const [cashInRegister, setCashInRegister] = useState("");
+	const [nonCashConfirmed, setNonCashConfirmed] = useState("");
+	const [notes, setNotes] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	
+	// Cash Breakdown State
+	const [breakdown, setBreakdown] = useState<Record<string, number>>({
+		"100000": 0, "50000": 0, "20000": 0, "10000": 0, "5000": 0, "2000": 0, "1000": 0, "500": 0, "200": 0, "100": 0
+	});
 
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
 	const todayOrders = useQuery(api.orders.getOrders, {});
@@ -1940,7 +1953,16 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		startDate: today.getTime(),
 	});
 
-	// Calculate shift summary
+	// Compatibility: If shift is open, set type to 'akhiri'
+	useEffect(() => {
+		if (shiftStatus?.isOpen) {
+			setShiftType("akhiri");
+		} else {
+			setShiftType("mulai");
+		}
+	}, [shiftStatus?.isOpen]);
+
+	// Auto-calculated shift summary for UI display
 	let shiftIncome = 0;
 	let shiftExpense = 0;
 	let shiftCash = 0;
@@ -1973,53 +1995,62 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			.reduce((acc: number, o: Doc<"orders">) => acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0), 0);
 	}
 
+	const calculateBreakdownTotal = () => {
+		return Object.entries(breakdown).reduce((sum, [val, count]) => sum + (Number(val) * count), 0);
+	};
+
+	// When breakdown changes, update cashInRegister
+	useEffect(() => {
+		const total = calculateBreakdownTotal();
+		if (total > 0) setCashInRegister(total.toString());
+	}, [breakdown]);
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!amount) {
-			toast.error("Masukkan jumlah uang");
-			return;
-		}
-
-		if (shiftType === "mulai" && !cashierName) {
-			toast.error("Nama kasir wajib diisi");
-			return;
-		}
-
+		
 		setIsSubmitting(true);
 		try {
-			const descParts = [];
-			if (cashierName) descParts.push(`Kasir: ${cashierName}`);
-			if (shiftName) descParts.push(`Shift: ${shiftName}`);
-			if (teamMembers) descParts.push(`Tim: ${teamMembers}`);
-			if (notes) descParts.push(`Catatan: ${notes}`);
-			if (shiftType === "akhiri" && cashInRegister) descParts.push(`Fisik Laci: Rp ${new Intl.NumberFormat("id-ID").format(Number(cashInRegister))}`);
-
-			if (shiftType === "akhiri" && shiftStatus?.latestMulai) {
-				const summaryText = `\n[RINGKASAN SHIFT]\nModal: Rp ${modalAwal.toLocaleString('id-ID')}\nCash: Rp ${shiftCash.toLocaleString('id-ID')}\nQRIS: Rp ${shiftQris.toLocaleString('id-ID')}\nTotal Revenue: Rp ${(shiftCash + shiftQris).toLocaleString('id-ID')}\nPengeluaran: Rp ${shiftExpense.toLocaleString('id-ID')}\nProduk Terjual: ${shiftItems}`;
-				descParts.push(summaryText);
+			if (shiftType === "mulai") {
+				if (!amount || !cashierName) {
+					toast.error("Nama kasir dan modal awal wajib diisi");
+					setIsSubmitting(false);
+					return;
+				}
+				await startShift({
+					cashierName,
+					shiftName,
+					teamMembers,
+					startingCash: Number(amount),
+					notes,
+				});
+				toast.success("Shift berhasil dimulai");
+			} else {
+				if (!shiftStatus?.shiftInfo?.shiftId) {
+					// Fallback if it's a legacy shift without ID
+					toast.error("Shift ini dimulai dari versi lama. Mohon gunakan tombol legacy.");
+					setIsSubmitting(false);
+					return;
+				}
+				await endShift({
+					shiftId: shiftStatus.shiftInfo.shiftId as Id<"shifts">,
+					endingCashPhysical: Number(cashInRegister),
+					nonCashConfirmed: Number(nonCashConfirmed),
+					cashBreakdown: breakdown as any,
+					notes,
+				});
+				toast.success("Shift berhasil diakhiri");
 			}
-
-			const finalDescription = descParts.length > 0 ? descParts.join(" | ") : (shiftType === "mulai" ? "Mulai Shift" : "Akhiri Shift");
-
-			await createTransaction({
-				type: "income",
-				amount: Number(amount),
-				category: shiftType === "mulai" ? "Modal Awal" : "Setoran Akhir",
-				description: finalDescription,
-				date: Date.now(),
-				status: "completed",
-				paymentMethod: "tunai",
-			});
-			toast.success(shiftType === "mulai" ? "Shift dimulai" : "Shift diakhiri");
+			
 			setAmount("");
 			setCashInRegister("");
+			setNonCashConfirmed("");
 			setNotes("");
 			setCashierName("");
 			setTeamMembers("");
 			onClose();
 		} catch (error) {
 			console.error(error);
-			toast.error("Gagal menyimpan data shift");
+			toast.error("Gagal memproses data shift");
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -2028,157 +2059,195 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	return (
 		<div className="space-y-4 pt-2">
 			<div className="space-y-2 text-center">
-				<h3 className="font-medium text-lg">Manajemen Shift</h3>
-				<p className="text-muted-foreground text-sm">
-					Catat modal awal/akhir shift kasir
+				<h3 className="font-bold text-lg tracking-tight">Manajemen Shift</h3>
+				<p className="text-muted-foreground text-[11px] font-medium">
+					Pencatatan arus kas operasional harian
 				</p>
 			</div>
 
-			<div className="flex gap-2 rounded-lg bg-muted/50 p-1">
+			<div className="flex gap-2 rounded-xl bg-muted/50 p-1">
 				<button
-					className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-all ${
+					className={`flex-1 rounded-lg px-3 py-2 font-bold text-xs transition-all ${
 						shiftType === "mulai"
-							? "bg-primary text-primary-foreground"
-							: "text-muted-foreground hover:text-foreground"
+							? "bg-primary text-white shadow-sm"
+							: "text-muted-foreground hover:text-foreground opacity-50 grayscale pointer-events-none"
 					}`}
-					onClick={() => setShiftType("mulai")}
 					type="button"
 				>
 					Mulai Shift
 				</button>
 				<button
-					className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-all ${
+					className={`flex-1 rounded-lg px-3 py-2 font-bold text-xs transition-all ${
 						shiftType === "akhiri"
-							? "bg-destructive text-destructive-foreground"
-							: "text-muted-foreground hover:text-foreground"
+							? "bg-destructive text-white shadow-sm"
+							: "text-muted-foreground hover:text-foreground opacity-50 grayscale pointer-events-none"
 					}`}
-					onClick={() => setShiftType("akhiri")}
 					type="button"
 				>
 					Akhiri Shift
 				</button>
 			</div>
 
-			<form className="space-y-4" onSubmit={handleSubmit}>
-				{shiftType === "mulai" && (
+			<form className="space-y-5" onSubmit={handleSubmit}>
+				{shiftType === "mulai" ? (
 					<>
 						<div className="grid grid-cols-2 gap-3">
-							<div className="space-y-2">
-								<Label>Nama Kasir <span className="text-destructive">*</span></Label>
+							<div className="space-y-1.5">
+								<Label className="text-[10px] font-bold uppercase text-muted-foreground">Kasir <span className="text-destructive">*</span></Label>
 								<Input
-									placeholder="Contoh: Budi"
+									placeholder="Nama Kasir"
+									className="h-9 text-xs"
 									value={cashierName}
 									onChange={(e) => setCashierName(e.target.value)}
 									required
 								/>
 							</div>
-							<div className="space-y-2">
-								<Label>Shift <span className="text-destructive">*</span></Label>
+							<div className="space-y-1.5">
+								<Label className="text-[10px] font-bold uppercase text-muted-foreground">Shift <span className="text-destructive">*</span></Label>
 								<Input
-									placeholder="Contoh: Shift Pagi"
+									placeholder="Nama Shift"
+									className="h-9 text-xs"
 									value={shiftName}
 									onChange={(e) => setShiftName(e.target.value)}
 									required
 								/>
 							</div>
 						</div>
-						<div className="space-y-2">
-							<Label>Tim yang Bertugas (Opsional)</Label>
+						<div className="space-y-1.5">
+							<Label className="text-[10px] font-bold uppercase text-muted-foreground">Tim Bertugas (Opsional)</Label>
 							<Input
-								placeholder="Contoh: Andi (Barista), Siska (Waiter)"
+								placeholder="Andi (Barista), Budi (Waiter)"
+								className="h-9 text-xs"
 								value={teamMembers}
 								onChange={(e) => setTeamMembers(e.target.value)}
 							/>
-							<p className="text-[10px] text-muted-foreground">Catat nama rekan tim lain yang bekerja di shift ini.</p>
+						</div>
+						<div className="space-y-1.5">
+							<Label className="text-[10px] font-bold uppercase text-muted-foreground">Modal Awal (Rp) <span className="text-destructive">*</span></Label>
+							<div className="relative">
+								<span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">Rp</span>
+								<Input
+									className="pl-9 h-11 text-lg font-black tracking-tighter"
+									min={0}
+									onChange={(e) => setAmount(e.target.value)}
+									placeholder="0"
+									required
+									type="number"
+									value={amount}
+								/>
+							</div>
 						</div>
 					</>
-				)}
+				) : (
+					/* AKHIRI SHIFT UI */
+					<div className="space-y-6">
+						{/* Ringkasan Real-time */}
+						<Card className="border-border bg-emerald-50/30 overflow-hidden">
+							<CardContent className="p-4">
+								<div className="flex justify-between items-center mb-3">
+									<h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-700 flex items-center gap-1.5">
+										<TrendingUp className="h-3 w-3" /> Ringkasan Shift Ini
+									</h4>
+								</div>
+								<div className="grid grid-cols-2 gap-4">
+									<div className="space-y-1">
+										<p className="text-[9px] font-bold text-muted-foreground/70 uppercase">Cash (Laci)</p>
+										<p className="text-sm font-black text-emerald-700">Rp {shiftCash.toLocaleString('id-ID')}</p>
+									</div>
+									<div className="space-y-1 text-right">
+										<p className="text-[9px] font-bold text-muted-foreground/70 uppercase">Non-Tunai</p>
+										<p className="text-sm font-black text-primary">Rp {shiftQris.toLocaleString('id-ID')}</p>
+									</div>
+								</div>
+								<div className="mt-3 pt-3 border-t border-emerald-100 flex justify-between items-center">
+									<p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Saran Setoran Fisik:</p>
+									<p className="text-xs font-black text-foreground">Rp {(shiftStatus?.ongoingShift?.startingCash + shiftCash - shiftExpense).toLocaleString('id-ID')}</p>
+								</div>
+							</CardContent>
+						</Card>
 
-				<div className="space-y-2">
-					<Label>
-						{shiftType === "mulai" ? "Modal Kembalian (Rp)" : "Setoran Bersih (Rp)"}
-					</Label>
-					<Input
-						className="text-lg font-bold"
-						min={0}
-						onChange={(e) => setAmount(e.target.value)}
-						placeholder="0"
-						required
-						type="number"
-						value={amount}
-					/>
-				</div>
+						{/* Pecahan Uang Section */}
+						<div className="space-y-3">
+							<div className="flex items-center justify-between">
+								<Label className="text-[10px] font-bold uppercase text-muted-foreground">Pecahan Uang Kertas & Logam</Label>
+								<div className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Automated</div>
+							</div>
+							<div className="grid grid-cols-2 gap-2">
+								{Object.keys(breakdown).map((val) => (
+									<div key={val} className="flex items-center gap-2 group">
+										<div className="w-12 text-[10px] font-black text-muted-foreground shrink-0">{Number(val) >= 1000 ? `${Number(val)/1000}k` : val}</div>
+										<Input
+											type="number"
+											min={0}
+											placeholder="0"
+											className="h-8 text-[11px] font-bold text-center group-hover:border-primary/50"
+											value={breakdown[val] || ""}
+											onChange={(e) => setBreakdown({...breakdown, [val]: Number(e.target.value)})}
+										/>
+									</div>
+								))}
+							</div>
+						</div>
 
-				{shiftType === "akhiri" && (
-					<div className="space-y-2">
-						<Label>Uang Fisik di Laci (Rp)</Label>
-						<Input
-							className="text-lg font-bold"
-							min={0}
-							onChange={(e) => setCashInRegister(e.target.value)}
-							placeholder="0"
-							type="number"
-							value={cashInRegister}
-						/>
-						<p className="text-[10px] text-muted-foreground">Hitung seluruh uang fisik di laci kasir saat ini.</p>
+						{/* Actual Inputs */}
+						<div className="space-y-4 pt-2">
+							<div className="space-y-1.5">
+								<Label className="text-[10px] font-bold uppercase text-muted-foreground">Total Uang Fisik (Laci)</Label>
+								<div className="relative">
+									<span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">Rp</span>
+									<Input
+										className="pl-9 h-11 text-lg font-black tracking-tighter bg-muted/30"
+										min={0}
+										readOnly
+										placeholder="0"
+										type="number"
+										value={cashInRegister}
+									/>
+								</div>
+								<p className="text-[9px] text-muted-foreground italic font-medium">* Terisi otomatis dari input pecahan di atas</p>
+							</div>
+
+							<div className="space-y-1.5">
+								<Label className="text-[10px] font-bold uppercase text-muted-foreground">Konfirmasi QRIS/EDC (Rp)</Label>
+								<div className="relative">
+									<span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">Rp</span>
+									<Input
+										className="pl-9 h-11 text-lg font-black tracking-tighter border-primary/20"
+										min={0}
+										onChange={(e) => setNonCashConfirmed(e.target.value)}
+										placeholder="Input sesuai EDC/Dashboard"
+										type="number"
+										value={nonCashConfirmed}
+									/>
+								</div>
+								<p className="text-[9px] text-muted-foreground font-medium flex items-center gap-1 mt-1">
+									<AlertCircle className="h-3 w-3 text-amber-500" /> Masukkan total dari dashboard provider (misal: Mayar/EDC).
+								</p>
+							</div>
+						</div>
 					</div>
 				)}
 
-				<div className="space-y-2">
-					<Label>Catatan (Opsional)</Label>
+				<div className="space-y-1.5 pt-2">
+					<Label className="text-[10px] font-bold uppercase text-muted-foreground">Catatan / Kendala Shift</Label>
 					<Textarea
-						onChange={(e) => setNotes(e.target.value)}
-						placeholder={shiftType === "mulai" ? "Catatan tambahan..." : "Contoh: Ada selisih uang, mati lampu, dll"}
+						placeholder="Contoh: Selisih uang Rp 2.000, barang rusak, dsb..."
+						className="text-xs resize-none min-h-[80px]"
 						value={notes}
+						onChange={(e) => setNotes(e.target.value)}
 					/>
 				</div>
 
-				{shiftType === "akhiri" && shiftStatus?.latestMulai && (
-					<Card className="border-border bg-muted/30">
-						<CardContent className="p-3">
-							<p className="mb-1 text-[10px] text-muted-foreground uppercase">
-								Ringkasan Shift Ini
-							</p>
-							<div className="space-y-1 text-xs">
-								<div className="flex justify-between">
-									<span>Total Revenue:</span>
-									<span className="font-bold text-primary">
-										{new Intl.NumberFormat("id-ID", {
-											style: "currency",
-											currency: "IDR",
-											maximumFractionDigits: 0,
-										}).format(shiftCash + shiftQris)}
-									</span>
-								</div>
-								<div className="flex justify-between">
-									<span>Pengeluaran:</span>
-									<span className="font-bold text-destructive">
-										{new Intl.NumberFormat("id-ID", {
-											style: "currency",
-											currency: "IDR",
-											maximumFractionDigits: 0,
-										}).format(shiftExpense)}
-									</span>
-								</div>
-								<div className="flex justify-between border-t border-border pt-1 mt-1">
-									<span className="text-[10px] text-muted-foreground">Produk Terjual:</span>
-									<span className="font-bold">{shiftItems}</span>
-								</div>
-							</div>
-						</CardContent>
-					</Card>
-				)}
-
 				<Button
-					className="w-full"
+					className={`w-full h-11 font-black uppercase tracking-widest text-xs shadow-lg transition-all active:scale-95 ${shiftType === 'mulai' ? 'bg-primary hover:bg-primary/90' : 'bg-destructive hover:bg-destructive/90'}`}
 					disabled={isSubmitting}
 					type="submit"
-					variant={shiftType === "mulai" ? "default" : "destructive"}
 				>
 					{isSubmitting ? (
-						<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-					) : null}
-					{shiftType === "mulai" ? "Mulai Shift" : "Akhiri Shift"}
+						<Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />
+					) : (
+						shiftType === "mulai" ? <div className="flex items-center gap-2"><SquarePlay className="h-4 w-4" /> Buka Shift</div> : <div className="flex items-center gap-2"><SquarePower className="h-4 w-4" /> Akhiri & Cetak Laporan</div>
+					)}
 				</Button>
 			</form>
 		</div>

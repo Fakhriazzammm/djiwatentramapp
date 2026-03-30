@@ -12,82 +12,78 @@ export function ShiftTargetBanner() {
 	const { shiftProgress, dailyProgress, isShiftMet, isDailyMet, shiftTarget, shiftCollected, dailyTarget, dailyCollected } = progress;
 
 	return (
-		<div className="px-4 py-2">
+		<div className="px-4 py-1.5">
 			<motion.div 
-				initial={{ opacity: 0, y: -10 }}
+				initial={{ opacity: 0, y: -8 }}
 				animate={{ opacity: 1, y: 0 }}
-				className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 p-3 shadow-lg shadow-slate-900/10 border border-white/5"
+				className="relative overflow-hidden rounded-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-2.5 shadow-sm border border-slate-200/60 dark:border-white/5"
 			>
-				{/* Background Decoration */}
-				<div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
-				<div className="absolute -left-4 -bottom-4 h-24 w-24 rounded-full bg-blue-500/10 blur-2xl" />
-
-				<div className="relative flex flex-col md:flex-row items-center justify-between gap-4">
+				<div className="relative flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-6">
 					{/* Left: Shift Progress */}
-					<div className="flex flex-1 items-center gap-4 w-full">
-						<div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isShiftMet ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-white/10 text-white/70'}`}>
-							{isShiftMet ? <CheckCircle2 className="h-5 w-5" /> : <Target className="h-5 w-5" />}
+					<div className="flex flex-1 items-center gap-3 w-full">
+						<div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isShiftMet ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' : 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/50'}`}>
+							{isShiftMet ? <CheckCircle2 className="h-4 w-4" /> : <Target className="h-4 w-4" />}
 						</div>
-						<div className="flex flex-1 flex-col gap-1.5 min-w-0">
+						<div className="flex flex-1 flex-col gap-1 min-w-0">
 							<div className="flex items-center justify-between">
-								<span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Target Sesi Ini</span>
-								<span className={`text-[10px] font-bold ${isShiftMet ? 'text-emerald-400' : 'text-primary'}`}>
+								<span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-white/40">Target Sesi Ini</span>
+								<span className={`text-[10px] font-black ${isShiftMet ? 'text-emerald-600 dark:text-emerald-400' : 'text-primary'}`}>
 									{shiftProgress.toFixed(0)}%
 								</span>
 							</div>
-							<div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+							<div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
 								<motion.div 
 									initial={{ width: 0 }}
 									animate={{ width: `${shiftProgress}%` }}
-									className={`h-full rounded-full transition-all duration-1000 ${isShiftMet ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)]'}`}
+									className={`h-full rounded-full transition-all duration-1000 ${isShiftMet ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'bg-primary shadow-[0_0_8px_rgba(var(--primary),0.3)]'}`}
 								/>
 							</div>
-							<div className="flex items-center justify-between text-[9px] font-medium text-white/40">
+							<div className="flex items-center justify-between text-[8px] font-bold text-slate-400 dark:text-white/30 uppercase tracking-tighter">
 								<span>{formatCurrencyIDR(shiftCollected)}</span>
-								<span>{formatCurrencyIDR(shiftTarget)}</span>
+								<span className="opacity-50">Tgt: {formatCurrencyIDR(shiftTarget)}</span>
 							</div>
 						</div>
 					</div>
 
 					{/* Divider (Desktop) */}
-					<div className="hidden md:block h-10 w-px bg-white/10" />
+					<div className="hidden sm:block h-8 w-px bg-slate-200 dark:bg-white/10" />
 
 					{/* Right: Daily Progress */}
-					<div className="flex flex-1 items-center gap-4 w-full">
-						<div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isDailyMet ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/10 text-white/70'}`}>
-							{isDailyMet ? <CheckCircle2 className="h-5 w-5" /> : <TrendingUp className="h-5 w-5" />}
+					<div className="flex flex-1 items-center gap-3 w-full">
+						<div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${isDailyMet ? 'bg-blue-500 text-white shadow-md shadow-blue-500/20' : 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/50'}`}>
+							{isDailyMet ? <CheckCircle2 className="h-4 w-4" /> : <TrendingUp className="h-4 w-4" />}
 						</div>
-						<div className="flex flex-1 flex-col gap-1.5 min-w-0">
+						<div className="flex flex-1 flex-col gap-1 min-w-0">
 							<div className="flex items-center justify-between">
-								<span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Target Hari Ini</span>
-								<span className={`text-[10px] font-bold ${isDailyMet ? 'text-blue-400' : 'text-blue-400/80'}`}>
+								<span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-white/40">Target Hari Ini</span>
+								<span className={`text-[10px] font-black ${isDailyMet ? 'text-blue-600 dark:text-blue-400' : 'text-blue-500/80'}`}>
 									{dailyProgress.toFixed(0)}%
 								</span>
 							</div>
-							<div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+							<div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
 								<motion.div 
 									initial={{ width: 0 }}
 									animate={{ width: `${dailyProgress}%` }}
-									className={`h-full rounded-full transition-all duration-1000 ${isDailyMet ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'bg-blue-500/60 shadow-[0_0_8px_rgba(59,130,246,0.3)]'}`}
+									className={`h-full rounded-full transition-all duration-1000 ${isDailyMet ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.3)]' : 'bg-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.2)]'}`}
 								/>
 							</div>
-							<div className="flex items-center justify-between text-[9px] font-medium text-white/40">
+							<div className="flex items-center justify-between text-[8px] font-bold text-slate-400 dark:text-white/30 uppercase tracking-tighter">
 								<span>{formatCurrencyIDR(dailyCollected)}</span>
-								<span>{formatCurrencyIDR(dailyTarget)}</span>
+								<span className="opacity-50">Tgt: {formatCurrencyIDR(dailyTarget)}</span>
 							</div>
 						</div>
 					</div>
 
-					{/* Floating Achievement Banner */}
+					{/* Achievement Badge */}
 					<AnimatePresence>
 						{(isShiftMet || isDailyMet) && (
 							<motion.div 
-								initial={{ opacity: 0, scale: 0.8, x: 20 }}
+								initial={{ opacity: 0, scale: 0.8, x: 10 }}
 								animate={{ opacity: 1, scale: 1, x: 0 }}
-								className="shrink-0 flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/30 rounded-xl px-3 py-1.5"
+								className="shrink-0 flex items-center gap-1.5 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-lg px-2 py-1"
 							>
-								<div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-								<span className="text-[10px] font-black text-emerald-400 uppercase tracking-tighter">Target Tercapai! 🔥</span>
+								<div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+								<span className="text-[9px] font-black uppercase tracking-tight">Tercapai! 🔥</span>
 							</motion.div>
 						)}
 					</AnimatePresence>

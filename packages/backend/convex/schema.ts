@@ -540,6 +540,47 @@ export default defineSchema({
 		createdAt: v.number(),
 		updatedAt: v.number(),
 	}).index("by_month", ["month"]),
+	
+	// Shift Management
+	shifts: defineTable({
+		cashierName: v.string(),
+		shiftName: v.string(),
+		teamMembers: v.optional(v.string()),
+		startTime: v.number(),
+		endTime: v.optional(v.number()),
+		startingCash: v.number(), // Modal Awal
+		endingCashPhysical: v.optional(v.number()), // Uang Fisik di Laci
+		endingCashExpected: v.optional(v.number()), // Calculated by system
+		nonCashConfirmed: v.optional(v.number()), // Manual input for QRIS/EDC
+		nonCashExpected: v.optional(v.number()), // Calculated by system
+		cashBreakdown: v.optional(
+			v.object({
+				bill100000: v.number(),
+				bill50000: v.number(),
+				bill20000: v.number(),
+				bill10000: v.number(),
+				bill5000: v.number(),
+				bill2000: v.number(),
+				bill1000: v.number(),
+				bill500: v.number(),
+				bill200: v.number(),
+				bill100: v.number(),
+			})
+		),
+		notes: v.optional(v.string()),
+		closingTasks: v.optional(v.array(v.string())),
+		summary: v.optional(
+			v.object({
+				totalRevenue: v.number(),
+				totalExpenses: v.number(),
+				totalItemsSold: v.number(),
+				cashRevenue: v.number(),
+				qrisRevenue: v.number(),
+			})
+		),
+	})
+		.index("by_startTime", ["startTime"])
+		.index("by_endTime", ["endTime"]),
 
 	// Booking Settings for custom booking pages
 	bookingSettings: defineTable({
