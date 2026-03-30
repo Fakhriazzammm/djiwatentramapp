@@ -63,75 +63,88 @@ export function PeriodComparisonCards() {
 	const items = [
 		{
 			label: "Pemasukan",
+			icon: <TrendingUp className="h-4 w-4" />,
 			curr: comparison.current.income,
 			prev: comparison.previous.income,
 			pct: comparison.changes.incomePct,
-			colorUp: "text-green-600",
-			colorDown: "text-red-600",
-			bg: "bg-green-500/10",
+			colorUp: "text-emerald-600",
+			colorDown: "text-rose-600",
+			bg: "bg-emerald-500/5",
+			border: "border-emerald-500/10",
 		},
 		{
 			label: "Pengeluaran",
+			icon: <TrendingDown className="h-4 w-4" />,
 			curr: comparison.current.expense,
 			prev: comparison.previous.expense,
 			pct: comparison.changes.expensePct,
-			colorUp: "text-red-600", // spending up is bad
-			colorDown: "text-green-600",
-			bg: "bg-red-500/10",
+			colorUp: "text-rose-600", // spending up is bad
+			colorDown: "text-emerald-600",
+			bg: "bg-rose-500/5",
+			border: "border-rose-500/10",
 		},
 		{
 			label: "Saldo Bersih",
+			icon: <TrendingUp className="h-4 w-4" />,
 			curr: comparison.current.net,
 			prev: comparison.previous.net,
 			pct: comparison.changes.netPct,
 			colorUp: "text-primary",
 			colorDown: "text-destructive",
-			bg: "bg-primary/10",
+			bg: "bg-primary/5",
+			border: "border-primary/10",
 		},
 	];
 
 	return (
-		<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+		<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 			{items.map((item) => {
 				const isUp = item.pct >= 0;
-				// For expense, up is bad; for income/net, up is good
 				const isPositive = item.label === "Pengeluaran" ? !isUp : isUp;
 
 				return (
 					<div
 						key={item.label}
-						className="rounded-xl border border-border bg-card p-4"
+						className={`rounded-2xl border ${item.border} ${item.bg} p-3.5 flex flex-col justify-between transition-all hover:bg-white dark:hover:bg-slate-900 group`}
 					>
-						<div className="mb-2 flex items-center justify-between">
-							<span className="text-muted-foreground text-xs font-medium">
-								{item.label}
-							</span>
+						<div className="flex items-center justify-between mb-3">
+							<div className="flex items-center gap-2">
+								<div className={`p-1.5 rounded-lg ${item.bg} text-foreground/70 group-hover:bg-primary/10 transition-colors`}>
+									{item.icon}
+								</div>
+								<span className="text-muted-foreground text-[11px] font-bold uppercase tracking-tight">
+									{item.label}
+								</span>
+							</div>
 							<span
-								className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+								className={`flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
 									isPositive
-										? "bg-green-500/10 text-green-600"
-										: "bg-red-500/10 text-red-600"
+										? "bg-emerald-500/15 text-emerald-600"
+										: "bg-rose-500/15 text-rose-600"
 								}`}
 							>
 								{isUp ? (
-									<TrendingUp className="h-2.5 w-2.5" />
+									<TrendingUp className="h-2 w-2" />
 								) : (
-									<TrendingDown className="h-2.5 w-2.5" />
+									<TrendingDown className="h-2 w-2" />
 								)}
 								{Math.abs(item.pct).toFixed(1)}%
 							</span>
 						</div>
-						<p className={`font-bold text-xl ${isPositive ? item.colorUp : item.colorDown}`}>
-							{formatFull(item.curr)}
-						</p>
-						<div className="mt-1 flex items-center gap-1">
-							<span className="text-muted-foreground text-[10px]">
-								Bulan lalu: {formatFull(item.prev)}
-							</span>
+						
+						<div className="space-y-1">
+							<p className={`font-bold text-lg leading-none ${isPositive ? item.colorUp : item.colorDown}`}>
+								{formatFull(item.curr)}
+							</p>
+							<div className="flex items-baseline justify-between gap-2 overflow-hidden">
+								<span className="text-muted-foreground text-[10px] font-medium truncate">
+									Lalu: {formatFull(item.prev)}
+								</span>
+								<span className="text-slate-400 text-[9px] font-medium shrink-0 italic">
+									{new Date().getMonth() === 0 ? "Des" : "Prev"} vs Curr
+								</span>
+							</div>
 						</div>
-						<p className="mt-0.5 text-[10px] text-muted-foreground">
-							{comparison.current.label} vs {comparison.previous.label}
-						</p>
 					</div>
 				);
 			})}
@@ -142,13 +155,14 @@ export function PeriodComparisonCards() {
 // ─── Trend Chart ──────────────────────────────────────────────────────────────
 
 export function TrendChart() {
-	const [mode, setMode] = useState<"monthly" | "weekly">("monthly");
+	const [mode, setMode] = useState<"monthly" | "weekly" | "daily">("daily");
 	const [chartType, setChartType] = useState<"bar" | "line">("bar");
 
 	const monthly = useQuery(api.finance.getMonthlyTrend, { months: 6 });
 	const weekly = useQuery(api.finance.getWeeklyTrend, { weeks: 8 });
+	const daily = useQuery(api.finance.getDailyTrend, { days: 14 });
 
-	const data = mode === "monthly" ? monthly : weekly;
+	const data = mode === "monthly" ? monthly : mode === "weekly" ? weekly : daily;
 
 	if (!data) {
 		return (
@@ -177,7 +191,7 @@ export function TrendChart() {
 				<div className="flex gap-1.5">
 					{/* Period Toggle */}
 					<div className="flex rounded-lg border border-border overflow-hidden text-xs">
-						{(["monthly", "weekly"] as const).map((m) => (
+						{(["monthly", "weekly", "daily"] as const).map((m) => (
 							<button
 								key={m}
 								type="button"
@@ -188,7 +202,7 @@ export function TrendChart() {
 										: "text-muted-foreground hover:bg-muted"
 								}`}
 							>
-								{m === "monthly" ? "Bulanan" : "Mingguan"}
+								{m === "monthly" ? "Bulanan" : m === "weekly" ? "Mingguan" : "Harian"}
 							</button>
 						))}
 					</div>

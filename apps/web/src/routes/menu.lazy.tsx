@@ -32,6 +32,7 @@ import { useCart } from "@/context/cart-context";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
 import { bluetoothPrinter, type OrderItem } from "@/lib/bluetooth-printer";
 import { cn } from "@/lib/utils";
+import { ShiftTargetBanner } from "@/components/pos/ShiftTargetBanner";
 
 export const Route = createLazyFileRoute("/menu")({
 	component: MenuPage,
@@ -605,6 +606,9 @@ function MenuPage() {
 						</span>
 					</div>
 				</div>
+
+				{/* Shift Target Progress Banner */}
+				{isShiftOpen && <ShiftTargetBanner />}
 
 				{/* === HEADER === */}
 				<header

@@ -637,6 +637,207 @@ export const getWeeklyTrend = query({
 	},
 });
 
+// Get daily income vs expense trend for last N days
+export const getDailyTrend = query({
+	args: { days: v.optional(v.number()) },
+	handler: async (ctx, args) => {
+		const n = args.days ?? 14;
+		const now = new Date();
+		const startRange = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (n - 1), 0, 0, 0, 0).getTime();
+		const endRange = now.getTime();
+
+		const transactions = await ctx.db
+			.query("financialTransactions")
+			.withIndex("by_date", (q) => q.gte("date", startRange).lte("date", endRange))
+			.collect();
+
+		const dailyMap: Record<string, { income: number; expense: number }> = {};
+		
+		for (const t of transactions) {
+			if (t.status !== "completed") continue;
+			if (t.category === "Modal Awal" || t.category === "Setoran Akhir") continue;
+			
+			const d = new Date(t.date);
+			const dateStr = d.toISOString().split("T")[0] as string;
+			if (!dailyMap[dateStr]) {
+				dailyMap[dateStr] = { income: 0, expense: 0 };
+			}
+			if (t.type === "income") dailyMap[dateStr].income += t.amount;
+			else dailyMap[dateStr].expense += t.amount;
+		}
+
+		const result: Array<{
+			label: string;
+			date: string;
+			income: number;
+			expense: number;
+			net: number;
+		}> = [];
+
+		for (let i = n - 1; i >= 0; i--) {
+			const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+			const dateStr = d.toISOString().split("T")[0] as string;
+			const income = dailyMap[dateStr]?.income ?? 0;
+			const expense = dailyMap[dateStr]?.expense ?? 0;
+			const label = d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+			result.push({ label, date: dateStr, income, expense, net: income - expense });
+		}
+
+		return result;
+	},
+});
+
+// Get details for a specific shift/period
+export const getShiftDetails = query({
+	args: {
+		startTime: v.number(),
+		endTime: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const endTime = args.endTime ?? Date.now();
+		const { startTime } = args;
+
+		// 1. Fetch POS orders (Indexed by createdAt)
+		const orders = await ctx.db
+			.query("orders")
+			.withIndex("by_createdAt", (q) => q.gte("createdAt", startTime).lte("createdAt", endTime))
+			.collect();
+
+		// 2. Fetch bookings (Indexed by createdAt)
+		const bookings = await ctx.db
+			.query("bookingOrders")
+			.withIndex("by_createdAt", (q) => q.gte("createdAt", startTime).lte("createdAt", endTime))
+			.collect();
+
+		// Aggregations
+		let posRevenue = 0;
+		let bookingRevenue = 0;
+		const paymentMethods: Record<string, number> = {};
+
+		orders.filter(o => o.status === "completed" || o.status === "paid").forEach(o => {
+			posRevenue += o.totalAmount;
+			const method = o.paymentMethod || "unknown";
+			paymentMethods[method] = (paymentMethods[method] || 0) + o.totalAmount;
+		});
+
+		bookings.filter(b => b.paymentStatus === "paid" || b.bookingStatus === "confirmed" || b.bookingStatus === "completed").forEach(b => {
+			bookingRevenue += b.totalAmount;
+			const method = b.paymentMethod || "unknown";
+			paymentMethods[method] = (paymentMethods[method] || 0) + b.totalAmount;
+		});
+
+		return {
+			startTime,
+			endTime,
+			posRevenue,
+			bookingRevenue,
+			totalRevenue: posRevenue + bookingRevenue,
+			paymentMethods,
+			orderCount: orders.length,
+			bookingCount: bookings.length,
+			recentTransactions: [
+				...orders.map(o => ({ type: "pos", id: o._id, amount: o.totalAmount, status: o.status, time: o.createdAt, name: o.orderNumber })),
+				...bookings.map(b => ({ type: "booking", id: b._id, amount: b.totalAmount, status: b.paymentStatus, time: b.createdAt, name: b.customerName }))
+			].sort((a, b) => b.time - a.time).slice(0, 50)
+		};
+	},
+});
+
+// Get daily and shift-based target progress
+export const getShiftTargetProgress = query({
+	args: {},
+	handler: async (ctx) => {
+		const now = new Date();
+		const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+		// 1. Get Monthly Target
+		const target = await ctx.db
+			.query("financialTargets")
+			.withIndex("by_month", (q) => q.eq("month", monthStr))
+			.first();
+
+		if (!target) return null;
+
+		// 2. Calculate Daily Target
+		const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+		const dailyTarget = target.targetRevenue / daysInMonth;
+
+		// 3. Get Current Daily Revenue
+		// Local date range for today
+		const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+		const todayEnd = todayStart + 24 * 60 * 60 * 1000 - 1;
+
+		const todayPosOrders = await ctx.db
+			.query("orders")
+			.withIndex("by_createdAt", (q) => q.gte("createdAt", todayStart).lte("createdAt", todayEnd))
+			.collect();
+
+		const todayBookingOrders = await ctx.db
+			.query("bookingOrders")
+			.withIndex("by_createdAt", (q) => q.gte("createdAt", todayStart).lte("createdAt", todayEnd))
+			.collect();
+
+		const dailyCollected =
+			todayPosOrders
+				.filter((o) => o.status === "completed" || o.status === "paid")
+				.reduce((s, o) => s + o.totalAmount, 0) +
+			todayBookingOrders
+				.filter(
+					(b) =>
+						b.paymentStatus === "paid" ||
+						b.bookingStatus === "confirmed" ||
+						b.bookingStatus === "completed"
+				)
+				.reduce((s, b) => s + b.totalAmount, 0);
+
+		// 4. Calculate Shift Target (assuming 2 shifts per day: Pagi & Malam)
+		const shiftsPerDay = 2;
+		const shiftTarget = dailyTarget / shiftsPerDay;
+
+		// 5. Get Current Shift Progress
+		// We find the latest "Modal Awal" (which opens a shift)
+		const latestModalAwal = await ctx.db
+			.query("financialTransactions")
+			.withIndex("by_type", (q) => q.eq("type", "income"))
+			.filter((q) => q.eq(q.field("category"), "Modal Awal"))
+			.order("desc")
+			.first();
+
+		let shiftStartTime = todayStart;
+		if (latestModalAwal && latestModalAwal.date > todayStart) {
+			shiftStartTime = latestModalAwal.date;
+		}
+
+		const shiftPosOrders = todayPosOrders.filter((o) => o.createdAt >= shiftStartTime);
+		const shiftBookingOrders = todayBookingOrders.filter((b) => b.createdAt >= shiftStartTime);
+
+		const shiftCollected =
+			shiftPosOrders
+				.filter((o) => o.status === "completed" || o.status === "paid")
+				.reduce((s, o) => s + o.totalAmount, 0) +
+			shiftBookingOrders
+				.filter(
+					(b) =>
+						b.paymentStatus === "paid" ||
+						b.bookingStatus === "confirmed" ||
+						b.bookingStatus === "completed"
+				)
+				.reduce((s, b) => s + b.totalAmount, 0);
+
+		return {
+			monthStr,
+			dailyTarget,
+			dailyCollected,
+			dailyProgress: Math.min((dailyCollected / dailyTarget) * 100, 100),
+			shiftTarget,
+			shiftCollected,
+			shiftProgress: Math.min((shiftCollected / shiftTarget) * 100, 100),
+			isDailyMet: dailyCollected >= dailyTarget,
+			isShiftMet: shiftCollected >= shiftTarget,
+		};
+	},
+});
+
 // Compare two periods: current vs previous
 export const getPeriodComparison = query({
 	args: {},
@@ -846,6 +1047,27 @@ export const getCurrentMonthProgress = query({
 		const remaining = Math.max(0, targetRevenue - income);
 		const progressPct = targetRevenue > 0 ? Math.min(100, (income / targetRevenue) * 100) : 0;
 
+		const dailyTarget = targetRevenue / daysInMonth;
+		const shiftTarget = dailyTarget / 2; // Assuming 2 shifts per day
+
+		// Today's starts for daily progress
+		const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+		const todayTransactions = transactions.filter(t => t.date >= todayStart);
+		const dailyCollected = todayTransactions
+			.filter(t => t.type === "income" && t.category !== "Modal Awal" && t.category !== "Setoran Akhir")
+			.reduce((s, t) => s + t.amount, 0);
+
+		// Current shift progress (since last Modal Awal)
+		const latestModalAwal = transactions
+			.filter(t => t.category === "Modal Awal" && t.type === "income")
+			.sort((a, b) => b.date - a.date)[0];
+		
+		const shiftStart = latestModalAwal ? Math.max(latestModalAwal.date, todayStart) : todayStart;
+		const shiftTransactions = todayTransactions.filter(t => t.date >= shiftStart);
+		const shiftCollected = shiftTransactions
+			.filter(t => t.type === "income" && t.category !== "Modal Awal" && t.category !== "Setoran Akhir")
+			.reduce((s, t) => s + t.amount, 0);
+
 		return {
 			month,
 			monthLabel: now.toLocaleDateString("id-ID", { month: "long", year: "numeric" }),
@@ -859,6 +1081,10 @@ export const getCurrentMonthProgress = query({
 			daysRemaining,
 			dailyRate,
 			projectedMonthly,
+			dailyTarget,
+			dailyCollected,
+			shiftTarget,
+			shiftCollected,
 			hasTarget: !!target,
 			insight: (() => {
 				if (!target) return null;

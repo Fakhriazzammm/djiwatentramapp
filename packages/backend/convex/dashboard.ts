@@ -151,7 +151,7 @@ export const getDashboardStats = query({
 
 		const topProducts = Object.values(productSales)
 			.sort((a, b) => b.count - a.count)
-			.slice(0, 5);
+			.slice(0, 10);
 
 		// Recent orders (last 10)
 		const recentOrders = (await ctx.db
@@ -178,7 +178,7 @@ export const getDashboardStats = query({
 			activeProducts,
 			totalProducts: allProducts.length,
 			lowStockCount: lowStockItems.length,
-			lowStockItems: lowStockItems.slice(0, 5).map((i) => ({
+			lowStockItems: lowStockItems.slice(0, 10).map((i) => ({
 				_id: i._id,
 				ingredientName: i.ingredientName ?? "Unknown",
 				quantity: i.quantity ?? 0,

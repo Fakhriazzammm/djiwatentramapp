@@ -19,9 +19,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FinancialTargetPanel } from "./finance/-components/financial-target-panel";
 import { PeriodComparisonCards, TrendChart } from "./finance/-components/finance-charts";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { formatCurrencyIDR } from "@/lib/export-utils";
 import { useMutation } from "convex/react";
+import { ShiftDetailModal } from "./-components/ShiftDetailModal";
 
 export const Route = createLazyFileRoute("/admin/")({
 	component: DashboardAdmin,
@@ -30,6 +31,8 @@ export const Route = createLazyFileRoute("/admin/")({
 function DashboardAdmin() {
 	const stats = useQuery(api.dashboard.getDashboardStats);
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const [selectedShift, setSelectedShift] = useState<any>(null);
+	const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
 
 	if (stats === undefined || shiftStatus === undefined) {
 		return (
@@ -129,7 +132,14 @@ function DashboardAdmin() {
 							const isActive = !shift.endTime;
 							
 							return (
-								<div key={i} className={`p-4 rounded-2xl border transition-all hover:shadow-md ${isActive ? 'border-emerald-200 bg-emerald-50/50 ring-1 ring-emerald-100' : 'border-border bg-muted/20'}`}>
+								<div 
+									key={i} 
+									onClick={() => {
+										setSelectedShift(shift);
+										setIsShiftModalOpen(true);
+									}}
+									className={`p-4 rounded-2xl border transition-all hover:shadow-md cursor-pointer active:scale-[0.98] ${isActive ? 'border-emerald-200 bg-emerald-50/50 ring-1 ring-emerald-100' : 'border-border bg-muted/20'}`}
+								>
 									<div className="flex justify-between items-start mb-3">
 										<div>
 											<p className="font-bold text-sm text-foreground">{shift.shiftName || `Shift ${i + 1}`}</p>
@@ -138,7 +148,7 @@ function DashboardAdmin() {
 												{shift.cashierName || 'Unknown'}
 											</p>
 										</div>
-										<span className={`text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded-full uppercase ${isActive ? 'bg-emerald-500 text-white shadow-sm' : 'bg-slate-200 text-slate-600'}`}>
+										<span className={`text-[9px] font-bold tracking-wider px-2 py-0.5 rounded-full uppercase ${isActive ? 'bg-emerald-500 text-white shadow-sm' : 'bg-slate-200 text-slate-600'}`}>
 											{isActive ? 'Ongoing' : 'Closed'}
 										</span>
 									</div>
@@ -153,7 +163,7 @@ function DashboardAdmin() {
 										</div>
 										<div className="flex justify-between pt-2 mt-1 border-t border-dashed border-border/60">
 											<span className="text-muted-foreground font-semibold">Subtotal:</span>
-											<span className="font-bold text-primary">{formatCurrencyIDR(shift.revenue)}</span>
+											<span className="font-semibold text-primary">{formatCurrencyIDR(shift.revenue)}</span>
 										</div>
 										<div className="flex justify-between pt-2 mt-1 border-t border-border/40 text-[10px]">
 											<span className="text-muted-foreground">Modal Awal:</span>
@@ -170,6 +180,12 @@ function DashboardAdmin() {
 							);
 						})}
 					</div>
+
+					<ShiftDetailModal 
+						shift={selectedShift}
+						isOpen={isShiftModalOpen}
+						onOpenChange={setIsShiftModalOpen}
+					/>
 				</motion.div>
 			)}
 
@@ -214,7 +230,7 @@ function DashboardAdmin() {
 										transition={{ duration: 0.6, delay: i * 0.08, ease: "easeOut" }}
 									>
 										{day.revenue > 0 && (
-											<div className="absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] font-bold text-primary bg-primary/5 px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-primary/10">
+											<div className="absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-primary bg-primary/5 px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-primary/10">
 												{formatCurrencyIDR(day.revenue)}
 											</div>
 										)}
@@ -268,7 +284,7 @@ function DashboardAdmin() {
 					<div className="mt-6 pt-4 border-t border-border/50">
 						<div className="flex justify-between items-center text-sm">
 							<span className="text-muted-foreground font-medium">Total Volume Pesanan</span>
-							<span className="font-bold text-lg">
+							<span className="font-semibold text-lg">
 								{stats.orderStatusBreakdown.pending +
 									stats.orderStatusBreakdown.paid +
 									stats.orderStatusBreakdown.completed +
@@ -293,7 +309,7 @@ function DashboardAdmin() {
 							<p className="text-xs text-muted-foreground">Persediaan Rendah</p>
 						</div>
 						{stats.lowStockCount > 0 && (
-							<span className="rounded-full bg-destructive text-destructive-foreground px-2.5 py-1 text-[10px] font-bold shadow-sm">
+							<span className="rounded-full bg-destructive text-destructive-foreground px-2.5 py-1 text-[10px] font-semibold shadow-sm">
 								{stats.lowStockCount}
 							</span>
 						)}
@@ -304,22 +320,23 @@ function DashboardAdmin() {
 							<p className="text-muted-foreground text-sm font-medium">Inventori Aman</p>
 						</div>
 					) : (
-						<div className="space-y-2.5">
+						<div className="space-y-1.5">
 							{stats.lowStockItems.map((item: any) => (
-								<div
+								<Link
 									key={item._id}
-									className="flex items-center justify-between rounded-xl border border-destructive/10 bg-destructive/5 p-3 group hover:bg-destructive/10 transition-colors"
+									to="/admin/inventory"
+									className="flex items-center justify-between rounded-xl border border-destructive/10 bg-destructive/5 p-2 group hover:bg-destructive/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
 								>
-									<div className="flex items-center gap-3">
-										<div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
-											<AlertTriangle className="w-4 h-4 text-destructive" />
+									<div className="flex items-center gap-2">
+										<div className="w-7 h-7 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
+											<AlertTriangle className="w-3.5 h-3.5 text-destructive" />
 										</div>
-										<span className="text-sm font-semibold truncate max-w-[120px]">{item.ingredientName}</span>
+										<span className="text-xs font-semibold truncate max-w-[140px]">{item.ingredientName}</span>
 									</div>
-									<span className="text-xs font-bold text-destructive bg-white/50 px-2 py-1 rounded-md">
+									<span className="text-[10px] font-bold text-destructive bg-white/50 px-1.5 py-0.5 rounded-md shrink-0">
 										{item.quantity}/{item.lowStockThreshold} {item.unit}
 									</span>
-								</div>
+								</Link>
 							))}
 						</div>
 					)}
@@ -339,25 +356,26 @@ function DashboardAdmin() {
 							<p className="text-muted-foreground text-sm font-medium">Belum ada tren</p>
 						</div>
 					) : (
-						<div className="space-y-3">
+						<div className="space-y-1.5">
 							{stats.topProducts.map((product: any, i: number) => (
-								<div
+								<Link
 									key={product.name}
-									className="flex items-center gap-4 rounded-2xl bg-muted/30 p-3 hover:bg-muted/50 transition-colors group"
+									to="/admin/products"
+									className="flex items-center gap-3 rounded-xl bg-muted/30 p-2 hover:bg-muted/50 transition-all hover:scale-[1.02] active:scale-[0.98] group"
 								>
-									<div className="w-8 h-8 shrink-0 flex items-center justify-center rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-sm group-hover:scale-110 transition-transform">
+									<div className="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg bg-primary text-primary-foreground text-[10px] font-bold shadow-sm">
 										{i + 1}
 									</div>
 									<div className="flex-1 min-w-0">
-										<p className="text-sm font-bold truncate text-foreground">{product.name}</p>
-										<p className="text-[10px] font-medium text-muted-foreground">
+										<p className="text-xs font-bold truncate text-foreground">{product.name}</p>
+										<p className="text-[9px] font-medium text-muted-foreground">
 											{product.count} unit terjual
 										</p>
 									</div>
-									<span className="text-xs font-black text-primary bg-primary/10 px-2 py-1 rounded-lg">
+									<span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-lg shrink-0">
 										{(product.revenue / 1000).toFixed(0)}k
 									</span>
-								</div>
+								</Link>
 							))}
 						</div>
 					)}
@@ -377,15 +395,16 @@ function DashboardAdmin() {
 							<p className="text-muted-foreground text-sm font-medium">Data kosong</p>
 						</div>
 					) : (
-						<div className="space-y-3">
-							{stats.recentOrders.slice(0, 5).map((order: any) => (
-								<div
+						<div className="space-y-1.5">
+							{stats.recentOrders.map((order: any) => (
+								<Link
 									key={order._id}
-									className="flex items-center justify-between rounded-xl bg-muted/30 p-3 hover:bg-muted/50 transition-colors border border-transparent hover:border-border"
+									to="/admin/orders"
+									className="flex items-center justify-between rounded-xl bg-muted/30 p-2 hover:bg-muted/50 transition-all hover:scale-[1.02] active:scale-[0.98] border border-transparent hover:border-border"
 								>
 									<div className="flex-1 min-w-0">
-										<p className="text-sm font-bold text-foreground">#{order.orderNumber}</p>
-										<p className="text-[10px] font-medium text-muted-foreground flex items-center gap-1 mt-0.5">
+										<p className="text-xs font-bold text-foreground">#{order.orderNumber}</p>
+										<p className="text-[9px] font-medium text-muted-foreground flex items-center gap-1 mt-0.5">
 											<Clock className="w-2.5 h-2.5" />
 											{new Date(order.createdAt).toLocaleTimeString("id-ID", {
 												hour: "2-digit",
@@ -393,12 +412,12 @@ function DashboardAdmin() {
 											})}
 										</p>
 									</div>
-									<div className="text-right">
-										<p className="text-sm font-black text-foreground">
+									<div className="text-right shrink-0">
+										<p className="text-xs font-bold text-foreground">
 											{formatCurrencyIDR(order.totalAmount)}
 										</p>
 										<span
-											className={`text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-md ${
+											className={`text-[8px] font-bold uppercase tracking-tighter px-1 py-0.5 rounded-md ${
 												order.status === "completed"
 													? "bg-green-100 text-green-700"
 													: order.status === "paid"
@@ -417,7 +436,7 @@ function DashboardAdmin() {
 														: "Batal"}
 										</span>
 									</div>
-								</div>
+								</Link>
 							))}
 						</div>
 					)}
@@ -441,7 +460,7 @@ function DashboardAdmin() {
 							</div>
 							<span className="text-xs font-bold uppercase tracking-wider">Inflow Hari Ini</span>
 						</div>
-						<p className="font-black text-2xl text-emerald-700 tracking-tight">
+						<p className="font-bold text-2xl text-emerald-700 tracking-tight">
 							{formatCurrencyIDR(stats.todayIncome)}
 						</p>
 						<p className="text-[10px] text-emerald-600/70 mt-1 font-medium">
@@ -456,7 +475,7 @@ function DashboardAdmin() {
 							</div>
 							<span className="text-xs font-bold uppercase tracking-wider">Outflow Hari Ini</span>
 						</div>
-						<p className="font-black text-2xl text-rose-700 tracking-tight">
+						<p className="font-bold text-2xl text-rose-700 tracking-tight">
 							{formatCurrencyIDR(stats.todayExpense)}
 						</p>
 						<p className="text-[10px] text-rose-600/70 mt-1 font-medium font-bold">
@@ -471,7 +490,7 @@ function DashboardAdmin() {
 							</div>
 							<span className="text-xs font-bold uppercase tracking-wider">Net Balance</span>
 						</div>
-						<p className={`font-black text-2xl tracking-tight ${stats.netBalance >= 0 ? "text-indigo-700" : "text-rose-700"}`}>
+						<p className={`font-bold text-2xl tracking-tight ${stats.netBalance >= 0 ? "text-indigo-700" : "text-rose-700"}`}>
 							{formatCurrencyIDR(stats.netBalance)}
 						</p>
 						<p className="text-[10px] text-indigo-600/70 mt-1 font-medium italic">
@@ -486,7 +505,7 @@ function DashboardAdmin() {
 							</div>
 							<span className="text-xs font-bold uppercase tracking-wider">Avg Ticket</span>
 						</div>
-						<p className="font-black text-2xl text-amber-700 tracking-tight">
+						<p className="font-bold text-2xl text-amber-700 tracking-tight">
 							{formatCurrencyIDR(stats.todayOrders > 0 ? Math.round(stats.todayRevenue / stats.todayOrders) : 0)}
 						</p>
 						<p className="text-[10px] text-amber-600/70 mt-1 font-medium">
@@ -559,16 +578,16 @@ function StatCard({
 					{icon}
 				</div>
 				{trend && (
-					<div className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-full ${trend === "up" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"} shadow-sm`}>
+					<div className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-tighter px-2 py-0.5 rounded-full ${trend === "up" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"} shadow-sm`}>
 						{trend === "up" ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
 						{trend === "up" ? "Gain" : "Loss"}
 					</div>
 				)}
 			</div>
 			<p className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">{label}</p>
-			<p className="mt-1 font-black text-xl tracking-tight text-foreground">{value}</p>
+			<p className="mt-1 font-bold text-xl tracking-tight text-foreground">{value}</p>
 			{subLabel && (
-				<p className="text-muted-foreground text-[10px] mt-1 line-clamp-1 font-medium">{subLabel}</p>
+				<p className="text-muted-foreground text-[10px] mt-1 line-clamp-1 font-semibold">{subLabel}</p>
 			)}
 		</motion.div>
 	);

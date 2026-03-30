@@ -28,22 +28,84 @@ export function FinanceDashboard() {
 		"income" | "expense" | undefined
 	>(undefined);
 
-	// Get ALL transactions without pagination
+	const [selectedRange, setSelectedRange] = useState("month");
+	const [startDate, setStartDate] = useState<number | undefined>(() => {
+		const now = new Date();
+		return new Date(now.getFullYear(), now.getMonth(), 1).getTime(); // Default: This Month
+	});
+	const [endDate, setEndDate] = useState<number | undefined>(undefined);
+
+	const handleRangeChange = (range: string) => {
+		setSelectedRange(range);
+		const now = new Date();
+		const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+		switch (range) {
+			case "today":
+				setStartDate(today);
+				setEndDate(undefined);
+				break;
+			case "yesterday":
+				const yesterday = today - 24 * 60 * 60 * 1000;
+				setStartDate(yesterday);
+				setEndDate(yesterday + 24 * 60 * 60 * 1000 - 1);
+				break;
+			case "this_week":
+				const d = new Date(now);
+				const day = d.getDay();
+				const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
+				const weekStart = new Date(d.setDate(diff)).setHours(0, 0, 0, 0);
+				setStartDate(weekStart);
+				setEndDate(undefined);
+				break;
+			case "last_week":
+				const d2 = new Date(now);
+				const day2 = d2.getDay();
+				const diff2 = d2.getDate() - day2 + (day2 === 0 ? -13 : -6);
+				const lastWeekStart = new Date(d2.setDate(diff2)).setHours(0, 0, 0, 0);
+				setStartDate(lastWeekStart);
+				setEndDate(lastWeekStart + 7 * 24 * 60 * 60 * 1000 - 1);
+				break;
+			case "month":
+				setStartDate(new Date(now.getFullYear(), now.getMonth(), 1).getTime());
+				setEndDate(undefined);
+				break;
+			case "last_month":
+				const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
+				const lastOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0).setHours(23, 59, 59, 999);
+				setStartDate(firstOfLastMonth);
+				setEndDate(lastOfLastMonth);
+				break;
+			default:
+				setStartDate(undefined);
+				setEndDate(undefined);
+		}
+	};
+
+	// Get ALL transactions with range
 	const transactions = useQuery(api.finance.getAllTransactions, {
 		type: filterType,
+		startDate,
+		endDate,
 	});
 
-	const historicalShifts = useQuery(api.finance.getHistoricalShifts, {});
+	const historicalShifts = useQuery(api.finance.getHistoricalShifts, {
+		startDate,
+		endDate,
+	});
 
 	const deleteTransaction = useMutation(api.finance.deleteTransaction);
 	const updateTransaction = useMutation(api.finance.updateTransaction);
 
 	const summary = useQuery(api.finance.getFinancialSummary, {
-		startDate: undefined,
-		endDate: undefined,
+		startDate,
+		endDate,
 	});
 
-	const hppCogs = useQuery(api.hpp.getOrdersCogs);
+	const hppCogs = useQuery(api.hpp.getOrdersCogs, {
+		startDate,
+		endDate,
+	});
 
 	const formatCurrency = (amount: number) => {
 		return new Intl.NumberFormat("id-ID", {
@@ -244,6 +306,31 @@ export function FinanceDashboard() {
 						<Plus className="h-4 w-4" /> Catat Transaksi
 					</button>
 				</div>
+			</div>
+
+			{/* Date Range Filter */}
+			<div className="flex flex-wrap gap-2 pb-2">
+				{[
+					{ id: "today", label: "Hari Ini" },
+					{ id: "yesterday", label: "Kemarin" },
+					{ id: "this_week", label: "Minggu Ini" },
+					{ id: "last_week", label: "Minggu Kemarin" },
+					{ id: "month", label: "Bulan Ini" },
+					{ id: "last_month", label: "Bulan Kemarin" },
+				].map((range) => (
+					<button
+						key={range.id}
+						onClick={() => handleRangeChange(range.id)}
+						className={`rounded-lg px-4 py-2 font-medium text-xs transition-all ${
+							selectedRange === range.id
+								? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+								: "bg-muted text-muted-foreground hover:bg-muted/70"
+						}`}
+						type="button"
+					>
+						{range.label}
+					</button>
+				))}
 			</div>
 
 			{/* Financial Target Panel */}

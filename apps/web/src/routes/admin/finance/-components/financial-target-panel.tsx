@@ -8,6 +8,7 @@ import {
 	Target,
 	TrendingUp,
 	X,
+	Clock,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -369,6 +370,52 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 							<TrendingUp className="h-3.5 w-3.5 mt-0.5 shrink-0" />
 						)}
 						<span>{progress.insight}</span>
+					</div>
+				)}
+
+				{!compact && (
+					<div className="mt-6 space-y-4 pt-4 border-t border-border/50">
+						<div className="space-y-2">
+							<div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+								<div className="flex items-center gap-1.5">
+									<Clock className="w-3 h-3" />
+									Target Per Sesi
+								</div>
+								<span>{Math.round((progress.shiftCollected / progress.shiftTarget) * 100)}%</span>
+							</div>
+							<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
+								<motion.div
+									className="h-full bg-primary"
+									initial={{ width: 0 }}
+									animate={{ width: `${Math.min(100, (progress.shiftCollected / progress.shiftTarget) * 100)}%` }}
+								/>
+							</div>
+							<div className="flex items-center justify-between text-[10px] text-muted-foreground font-medium">
+								<span>{formatCurrency(progress.shiftCollected)}</span>
+								<span>{formatCurrency(progress.shiftTarget)}</span>
+							</div>
+						</div>
+
+						<div className="space-y-2">
+							<div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+								<div className="flex items-center gap-1.5">
+									<Target className="w-3 h-3" />
+									Target Per Hari
+								</div>
+								<span>{Math.round((progress.dailyCollected / progress.dailyTarget) * 100)}%</span>
+							</div>
+							<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
+								<motion.div
+									className="h-full bg-blue-500"
+									initial={{ width: 0 }}
+									animate={{ width: `${Math.min(100, (progress.dailyCollected / progress.dailyTarget) * 100)}%` }}
+								/>
+							</div>
+							<div className="flex items-center justify-between text-[10px] text-muted-foreground font-medium">
+								<span>{formatCurrency(progress.dailyCollected)}</span>
+								<span>{formatCurrency(progress.dailyTarget)}</span>
+							</div>
+						</div>
 					</div>
 				)}
 			</div>
