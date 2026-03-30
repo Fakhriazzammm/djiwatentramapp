@@ -36,10 +36,13 @@ import { isDiscountApplicable } from "@/lib/utils/pricing";
 import type { Doc } from "@yumipos/backend/convex/_generated/dataModel";
 import { bluetoothPrinter } from "@/lib/bluetooth-printer";
 
-	onClose?: () => void;
-	initialStep?: "customer" | "menu" | "payment";
-	lastOrderId?: string | null;
-	onPrintLastOrder?: () => void;
+export function CheckoutSidebar({ 
+	onConfirmPayment,
+	isSubmitting = false,
+	onClose,
+	initialStep = "customer",
+	lastOrderId,
+	onPrintLastOrder
 }: { 
 	onConfirmPayment?: (
 		finalAmount: number,
