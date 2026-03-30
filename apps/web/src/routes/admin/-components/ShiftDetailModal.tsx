@@ -133,7 +133,9 @@ export function ShiftDetailModal({ shift, isOpen, onOpenChange }: ShiftDetailMod
 									{Object.entries(shift.cashBreakdown).map(([val, count]: [string, any]) => (
 										count > 0 && (
 											<div key={val} className="p-2 rounded-xl bg-muted/20 border border-border/40 text-center">
-												<p className="text-[9px] font-bold text-muted-foreground uppercase">{Number(val) >= 1000 ? `${Number(val)/1000}k` : val}</p>
+												<p className="text-[9px] font-bold text-muted-foreground uppercase">
+													{Number(val.replace('bill', '')) >= 1000 ? `${Number(val.replace('bill', ''))/1000}k` : val.replace('bill', '')}
+												</p>
 												<p className="text-xs font-black">{count}x</p>
 											</div>
 										)
