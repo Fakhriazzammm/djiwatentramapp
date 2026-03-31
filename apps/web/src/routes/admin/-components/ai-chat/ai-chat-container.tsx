@@ -476,20 +476,20 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 			</AnimatePresence>
 
 			<div className={`flex-1 flex flex-col min-w-0 bg-background ${isPOS ? "" : "shadow-2xl"} relative z-10 transition-all duration-500 overflow-hidden`}>
-				<header className={`flex items-center justify-between ${isPOS ? "p-2" : "p-2.5"} border-b border-border/80 bg-background/50 backdrop-blur-xl sticky top-0 z-20`}>
-					<div className="flex items-center gap-3">
+				<header className={`flex items-center justify-between ${isPOS ? "p-1.5" : "p-2"} border-b border-border/80 bg-background/50 backdrop-blur-xl sticky top-0 z-20`}>
+					<div className="flex items-center gap-2">
 						{!isPOS && (
-							<Button variant="ghost" size="icon" className="md:h-10 md:w-10 rounded-full hover:bg-muted" onClick={() => setShowSessionHistory(!showSessionHistory)}>
-								<Calendar className="h-5 w-5" />
+							<Button variant="ghost" size="icon" className="md:h-8 md:w-8 rounded-full hover:bg-muted" onClick={() => setShowSessionHistory(!showSessionHistory)}>
+								<Calendar className="h-4 w-4" />
 							</Button>
 						)}
 						{isPOS && (
-							<div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent shadow-sm">
-								<Sparkles className="h-4 w-4 text-white" />
+							<div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent shadow-sm">
+								<Sparkles className="h-3.5 w-3.5 text-white" />
 							</div>
 						)}
 						<div className="min-w-0">
-							<h1 className={`${isPOS ? "text-sm" : "text-base md:text-lg"} font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent`}>Yumi AI</h1>
+							<h1 className={`${isPOS ? "text-xs" : "text-sm md:text-base"} font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent`}>Yumi AI</h1>
 							<p className={`text-[10px] ${isPOS ? "" : "md:text-xs"} text-muted-foreground font-medium uppercase tracking-widest ${isPOS ? "" : "hidden md:block"}`}>
 								{isPOS ? "Asisten Kasir Cerdas" : "Asisten Bisnis Cerdas"}
 							</p>
@@ -497,7 +497,7 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 					</div>
 					<div className="flex items-center gap-2">
 						{!isPOS && smartInsights.map((insight, i) => (
-							<div key={i} className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border shadow-sm transition-all hover:scale-105
+							<div key={i} className={`flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border shadow-sm transition-all hover:scale-105
 								${insight.type === "success" ? "bg-green-50 text-green-700 border-green-100" : ""}
 								${insight.type === "warning" ? "bg-amber-50 text-amber-700 border-amber-100" : ""}
 								${insight.type === "info" ? "bg-blue-50 text-blue-700 border-blue-100" : ""}`}
@@ -507,8 +507,8 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 							</div>
 						))}
 						{isPOS && onClose && (
-							<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={onClose}>
-								<X className="h-4 w-4" />
+							<Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={onClose}>
+								<X className="h-3.5 w-3.5" />
 							</Button>
 						)}
 					</div>
@@ -520,7 +520,7 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 							<button
 								key={tab}
 								onClick={() => setActiveTab(tab)}
-								className={`px-4 py-2 text-xs md:text-sm font-bold uppercase tracking-widest transition-all relative ${activeTab === tab ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"}`}
+								className={`px-3 py-1.5 text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all relative ${activeTab === tab ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"}`}
 							>
 								{tab === "chat" ? "Konsultasi" : tab === "suggestions" ? "Saran AI" : tab === "predictions" ? "Prediksi" : "Tugas"}
 								{activeTab === tab && (
@@ -543,14 +543,14 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 						>
 							{activeTab === "chat" && (
 								<div className="flex flex-col h-full">
-									<div className={`flex-1 overflow-y-auto ${isPOS ? "p-2.5" : "p-3 md:p-5"} space-y-2 custom-scrollbar scroll-smooth`}>
+									<div className={`flex-1 overflow-y-auto ${isPOS ? "p-2" : "p-2 md:p-3"} space-y-1.5 custom-scrollbar scroll-smooth`}>
 										{messages.length === 0 && !isLoading && (
-											<div className={`h-full flex flex-col items-center justify-center text-center ${isPOS ? "p-4" : "p-8"} animate-in fade-in zoom-in duration-700`}>
-												<div className={`${isPOS ? "p-3" : "p-4"} bg-primary/5 rounded-full mb-4 ring-1 ring-primary/20 shadow-inner`}>
-													<Bot className={`${isPOS ? "h-6 w-6" : "h-10 w-10"} text-primary animate-pulse`} />
+											<div className={`h-full flex flex-col items-center justify-center text-center ${isPOS ? "p-3" : "p-6"} animate-in fade-in zoom-in duration-700`}>
+												<div className={`${isPOS ? "p-2" : "p-3"} bg-primary/5 rounded-full mb-3 ring-1 ring-primary/20 shadow-inner`}>
+													<Bot className={`${isPOS ? "h-5 w-5" : "h-8 w-8"} text-primary animate-pulse`} />
 												</div>
-												<h3 className={`${isPOS ? "text-lg" : "text-xl"} font-bold text-foreground mb-2`}>Halo, Selamat Datang!</h3>
-												<p className="text-muted-foreground max-w-sm mb-6 text-xs">
+												<h3 className={`${isPOS ? "text-base" : "text-lg"} font-bold text-foreground mb-1.5`}>Halo, Selamat Datang!</h3>
+												<p className="text-muted-foreground max-w-xs mb-4 text-[11px]">
 													{isPOS ? "Kasir siap membantu operasional toko Anda." : "Saya adalah asisten bisnis Anda. Silakan tanya apa saja tentang stok, keuangan, atau performa toko Anda."}
 												</p>
 											</div>
@@ -574,7 +574,7 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 												onExport={handleExport}
 											/>
 										))}
-										<div ref={messagesEndRef} className="h-4" />
+										<div ref={messagesEndRef} className="h-2" />
 									</div>
 
 									<ChatInput 

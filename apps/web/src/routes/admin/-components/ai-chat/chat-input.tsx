@@ -54,15 +54,15 @@ export const ChatInput = ({
 	const templates = mode === "admin" ? ADMIN_TEMPLATES : CASIER_TEMPLATES;
 
 	return (
-		<div className="p-3 bg-background/80 backdrop-blur-md border-t border-border shadow-lg relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+		<div className="p-2 bg-background/80 backdrop-blur-md border-t border-border shadow-lg relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
 			{/* Templates */}
 			{showTemplates && !isScanMode && (
-				<div className="mb-4 flex flex-nowrap overflow-x-auto gap-2 pb-2 custom-scrollbar scroll-smooth no-scrollbar">
+				<div className="mb-2 flex flex-nowrap overflow-x-auto gap-2 pb-1.5 custom-scrollbar scroll-smooth no-scrollbar">
 					{templates.map((template, i) => (
 						<button
 							key={i}
 							onClick={() => onSendMessage(template.message)}
-							className="flex items-center gap-2 rounded-xl bg-muted/60 px-3 py-1.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-all active:scale-95 whitespace-nowrap border border-border/40 shadow-sm"
+							className="flex items-center gap-1.5 rounded-xl bg-muted/60 px-2 py-1 text-[10px] font-semibold hover:bg-primary/10 hover:text-primary transition-all active:scale-95 whitespace-nowrap border border-border/40 shadow-sm"
 						>
 							<span className="text-primary">{typeof template.icon === 'string' ? template.icon : template.icon}</span>
 							<span className="text-foreground">{template.label}</span>
@@ -73,11 +73,11 @@ export const ChatInput = ({
 
 			{/* Tool Calls UI */}
 			{toolCalls.length > 0 && (
-				<div className="mb-3 p-3 border border-border/60 rounded-xl bg-muted/30 shadow-inner">
-					<p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Eksekusi Tool</p>
+				<div className="mb-2 p-2 border border-border/60 rounded-xl bg-muted/30 shadow-inner">
+					<p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Eksekusi Tool</p>
 					<div className="flex flex-wrap gap-2">
 						{toolCalls.map((tool, i) => (
-							<div key={i} className="flex items-center gap-2 text-[11px] bg-background border border-border/60 rounded-lg px-2.5 py-1.5 shadow-sm">
+							<div key={i} className="flex items-center gap-1.5 text-[10px] bg-background border border-border/60 rounded-lg px-2 py-1 shadow-sm">
 								{tool.status === "executing" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
 								{tool.status === "success" && <span className="text-green-500">✅</span>}
 								{tool.status === "error" && <span className="text-destructive">❌</span>}
@@ -90,9 +90,9 @@ export const ChatInput = ({
 
 			{/* Selected Images Preview */}
 			{selectedImages.length > 0 && (
-				<div className="mb-3 p-3 border border-border/60 rounded-xl bg-muted/10 shadow-inner relative group">
-					<div className="flex items-center justify-between mb-2">
-						<p className="text-[10px] font-bold text-primary uppercase tracking-widest px-2 py-0.5 bg-primary/5 rounded-full ring-1 ring-primary/20">
+				<div className="mb-2 p-2 border border-border/60 rounded-xl bg-muted/10 shadow-inner relative group">
+					<div className="flex items-center justify-between mb-1.5">
+						<p className="text-[9px] font-bold text-primary uppercase tracking-widest px-1.5 py-0.5 bg-primary/5 rounded-full ring-1 ring-primary/20">
 							Lampiran ({selectedImages.length})
 						</p>
 						<button 
@@ -116,26 +116,26 @@ export const ChatInput = ({
 				</div>
 			)}
 
-			<div className="flex items-end gap-3 max-w-5xl mx-auto">
-				<div className="relative flex-1 flex flex-col min-h-[56px] rounded-[24px] border border-border/80 shadow-md transition-all bg-muted/30 focus-within:bg-background focus-within:shadow-xl focus-within:border-primary/40 group">
-					<div className="absolute left-3 bottom-2 flex items-center gap-1.5 opacity-80 transition-opacity focus-within:opacity-100 pb-0.5">
+			<div className="flex items-end gap-2.5 max-w-5xl mx-auto">
+				<div className="relative flex-1 flex flex-col min-h-[44px] rounded-[20px] border border-border/80 shadow-md transition-all bg-muted/30 focus-within:bg-background focus-within:shadow-xl focus-within:border-primary/40 group">
+					<div className="absolute left-2.5 bottom-1.5 flex items-center gap-1 opacity-80 transition-opacity focus-within:opacity-100 pb-0.5">
 						<Button 
 							variant={isScanMode ? "default" : "ghost"} 
 							size="icon" 
-							className={`h-10 w-10 rounded-full transition-all duration-300 ${isScanMode ? "bg-emerald-600 hover:bg-emerald-700 shadow-md scale-105" : "text-muted-foreground hover:text-primary hover:bg-primary/10"}`} 
+							className={`h-8 w-8 rounded-full transition-all duration-300 ${isScanMode ? "bg-emerald-600 hover:bg-emerald-700 shadow-md scale-105" : "text-muted-foreground hover:text-primary hover:bg-primary/10"}`} 
 							onClick={() => setIsScanMode(!isScanMode)}
 							title={isScanMode ? "Mode Scan Aktif" : "Aktifkan Mode Scan Gambar"}
 						>
-							<ScanLine className="h-5 w-5" />
+							<ScanLine className="h-4 w-4" />
 						</Button>
 						<Button 
 							variant="ghost" 
 							size="icon" 
-							className="h-10 w-10 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" 
+							className="h-8 w-8 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" 
 							onClick={() => fileInputRef.current?.click()}
 							title="Unggah Gambar"
 						>
-							<Camera className="h-5 w-5" />
+							<Camera className="h-4 w-4" />
 						</Button>
 						<input
 							type="file"
@@ -152,8 +152,8 @@ export const ChatInput = ({
 						value={input}
 						onChange={(e) => setInput(e.target.value)}
 						onKeyDown={onKeyDown}
-						placeholder={isScanMode ? "Tuliskan instruksi untuk analisis gambar..." : "Tanya Yumi AI tentang bisnismu..."}
-						className="w-full resize-none bg-transparent py-3 pl-[100px] pr-[64px] text-sm focus:outline-none scroll-m-1 min-h-[48px] max-h-[30vh]"
+						placeholder={isScanMode ? "Instruksi analisis..." : "Tanya Yumi AI..."}
+						className="w-full resize-none bg-transparent py-2.5 pl-[72px] pr-[44px] text-xs focus:outline-none scroll-m-1 min-h-[44px] max-h-[30vh]"
 						rows={1}
 						onInput={(e) => {
 							const target = e.target as HTMLTextAreaElement;
@@ -162,11 +162,11 @@ export const ChatInput = ({
 						}}
 					/>
 					
-					<div className="absolute right-3 bottom-2.5 opacity-80 focus-within:opacity-100">
+					<div className="absolute right-2 bottom-1.5 opacity-80 focus-within:opacity-100">
 						<Button
 							type="submit"
 							size="icon"
-							className={`h-10 w-10 rounded-full transition-all duration-300 ${
+							className={`h-8 w-8 rounded-full transition-all duration-300 ${
 								input.trim() || selectedImages.length > 0
 									? (isScanMode ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg scale-105" : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg scale-105")
 									: "bg-muted/50 text-muted-foreground cursor-not-allowed"
@@ -175,17 +175,17 @@ export const ChatInput = ({
 							disabled={isLoading || isScanning || (!input.trim() && selectedImages.length === 0)}
 						>
 							{isLoading || isScanning ? (
-								<Loader2 className="h-5 w-5 animate-spin" />
+								<Loader2 className="h-4 w-4 animate-spin" />
 							) : (
-								<Send className="h-5 w-5 translate-x-0.5" />
+								<Send className="h-4 w-4 translate-x-0.5" />
 							)}
 						</Button>
 					</div>
 				</div>
 			</div>
 			
-			<div className="mt-2 text-center">
-				<p className="text-[10px] text-muted-foreground/60 font-medium tracking-tight">
+			<div className="mt-1.5 text-center">
+				<p className="text-[9px] text-muted-foreground/60 font-medium tracking-tight">
 					Yumi AI dapat membuat kesalahan. Periksa informasi penting.
 				</p>
 			</div>
