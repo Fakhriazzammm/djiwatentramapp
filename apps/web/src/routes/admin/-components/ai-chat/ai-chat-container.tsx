@@ -1,0 +1,612 @@
+import { api } from "@yumipos/backend/convex/_generated/api";
+import { useAction, useMutation, useQuery } from "convex/react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Bot, Calendar, Sparkles, AlertTriangle, Bell, TrendingUp, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { useNavigate } from "@tanstack/react-router";
+
+import { Button } from "@/components/ui/button";
+import { ImageScanner } from "@/components/ai/image-scanner";
+import { ScanEditModal, type ScanEditParams } from "@/components/scan/scan-edit-modal";
+import { ScanSplitModal } from "@/components/scan/scan-split-modal";
+import { ScanHistoryPanel, useScanHistory } from "@/components/scan/scan-history-panel";
+
+// Internal Sub-components & Utils
+import type { ChatMessage, ToolCall, Suggestion, TabType, ChatSession, QuickActionButton, ScanActionButton, ScanResultData, ChatMode } from "./types";
+import { mkMsgId, toRupiah, TOOL_LABELS, generateQuickActions, generateScanActionButtons, extractSuggestions, extractGenericActions, extractChartData, extractExportData } from "./utils";
+import { exportReport } from "./report-exporter";
+import { MessageBubble } from "./message-bubble";
+import { ChatInput } from "./chat-input";
+import { SessionHistory } from "./session-history";
+import { PredictionsPanel } from "./predictions-panel";
+import { SuggestionsPanel } from "./suggestions-panel";
+import { TasksPanel } from "./tasks-panel";
+
+interface AIChatContainerProps {
+	mode?: ChatMode;
+	onClose?: () => void;
+}
+
+export default function AIChatContainer({ mode = "admin", onClose }: AIChatContainerProps) {
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [input, setInput] = useState("");
+	const [isLoading, setIsLoading] = useState(false);
+	const [isStreaming, setIsStreaming] = useState(false);
+	const [streamingContent, setStreamingContent] = useState("");
+	const streamingActiveRef = useRef(false);
+	const scrollThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
+	const [isImageScannerOpen, setIsImageScannerOpen] = useState(false);
+	const [selectedImages, setSelectedImages] = useState<string[]>([]);
+	const [activeTab, setActiveTab] = useState<TabType>("chat");
+	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+	const [showSessionHistory, setShowSessionHistory] = useState(false);
+	const [isScanMode, setIsScanMode] = useState(false);
+	const [isScanning, setIsScanning] = useState(false);
+	const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+	const briefingAttemptedRef = useRef(false);
+
+	// Modals & History
+	const [editModal, setEditModal] = useState<{ params: ScanEditParams; btnKey: string; messageIdx: number } | null>(null);
+	const [splitModal, setSplitModal] = useState<{ params: ScanEditParams; btnKey: string } | null>(null);
+	const [showScanHistory, setShowScanHistory] = useState(false);
+	const { history: scanHistory, addEntry: addScanHistory, markSaved: markScanSaved, removeEntry: removeScanHistory, clearAll: clearScanHistory } = useScanHistory();
+
+	const messagesEndRef = useRef<HTMLDivElement>(null);
+	const inputRef = useRef<HTMLTextAreaElement>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
+	const navigate = useNavigate();
+
+	// Actions & Mutations
+	const yumiChat = useAction(api.ai.yumiChat);
+	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
+	const generateBusinessBriefingAction = useAction(api.ai.generateBusinessBriefing);
+	
+	const createTransactionMutation = useMutation(api.finance.createTransaction);
+	const createSessionMutation = useMutation(api.aiMemory.createChatSession);
+	const deleteSessionMutation = useMutation(api.aiMemory.deleteChatSession);
+	const saveConversationMutation = useMutation(api.aiMemory.saveConversationContext);
+	const completeTaskMutation = useMutation(api.aiMemory.completeTask);
+	const dismissTaskMutation = useMutation(api.aiMemory.dismissTask);
+	const recordStockPurchaseMutation = useMutation(api.stockPurchases.recordStockPurchase);
+	const createProductMutation = useMutation(api.products.createProduct);
+
+	const [actionButtonDone, setActionButtonDone] = useState<Set<string>>(new Set());
+	const [actionButtonLoading, setActionButtonLoading] = useState<Set<string>>(new Set());
+
+	// Queries
+	const chatSessions = useQuery(api.aiMemory.getChatSessions, {});
+	const loadConversationQuery = useQuery(
+		api.aiMemory.getConversationContext,
+		currentSessionId ? { sessionId: currentSessionId } : "skip"
+	);
+	const proactiveSuggestions = useQuery(api.ai.getProactiveSuggestions, {});
+	const stockPredictions = useQuery(api.ai.predictStockOut, { daysAhead: 7 });
+	const busyHoursPrediction = useQuery(api.ai.predictBusyHours, {});
+	const revenuePrediction = useQuery(api.ai.predictDailyRevenue, { daysAhead: 7 });
+	const trendingProducts = useQuery(api.ai.predictTrendingProducts, { daysAhead: 7 });
+	const bestPromoTime = useQuery(api.ai.predictBestPromoTime, {});
+	const pendingTasks = useQuery(api.aiMemory.getPendingTasks, {});
+	const inventory = useQuery(api.inventory.getInventory, {});
+	const products = useQuery(api.products.getAllProductsAdmin, {});
+	const orders = useQuery(api.orders.getOrders, {});
+
+	// Auto-scroll while streaming
+	useEffect(() => {
+		if (!isStreaming) return;
+		if (scrollThrottleRef.current) return;
+		scrollThrottleRef.current = setTimeout(() => {
+			messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+			scrollThrottleRef.current = null;
+		}, 120);
+	}, [streamingContent, isStreaming]);
+
+	// Load session messages
+	useEffect(() => {
+		if (loadConversationQuery) {
+			const loadedMessages: ChatMessage[] = (loadConversationQuery as any).map((item: any) => ({
+				role: item.role,
+				content: item.content,
+				_msgId: item._id,
+			}));
+			setMessages(loadedMessages);
+		}
+	}, [loadConversationQuery]);
+
+	// Helper for session management
+	const startNewSession = useCallback(async () => {
+		try {
+			const sessionId = await createSessionMutation({ 
+				title: "Percakapan Baru " + new Date().toLocaleTimeString("id-ID")
+			});
+			setCurrentSessionId(sessionId);
+			setMessages([]);
+			setToolCalls([]);
+			return sessionId;
+		} catch (error) {
+			toast.error("Gagal membuat sesi baru");
+			return null;
+		}
+	}, [createSessionMutation]);
+
+	const loadSession = useCallback((sessionId: string) => {
+		setCurrentSessionId(sessionId);
+		setShowSessionHistory(false);
+	}, []);
+
+	const deleteSession = useCallback(async (sessionId: string) => {
+		try {
+			await deleteSessionMutation({ sessionId });
+			if (currentSessionId === sessionId) {
+				setCurrentSessionId(null);
+				setMessages([]);
+			}
+			toast.success("Sesi berhasil dihapus");
+		} catch (error) {
+			toast.error("Gagal menghapus sesi");
+		}
+	}, [currentSessionId, deleteSessionMutation]);
+
+	// Image compression helper
+	const compressImage = useCallback((dataUrl: string): Promise<string> => {
+		return new Promise((resolve) => {
+			const img = new Image();
+			img.onload = () => {
+				const canvas = document.createElement("canvas");
+				const ctx = canvas.getContext("2d");
+				if (!ctx) { resolve(dataUrl); return; }
+				const maxDimension = 1024;
+				let { width, height } = img;
+				if (width > maxDimension || height > maxDimension) {
+					if (width > height) { height = Math.round((height * maxDimension) / width); width = maxDimension;
+					} else { width = Math.round((width * maxDimension) / height); height = maxDimension; }
+				}
+				canvas.width = width;
+				canvas.height = height;
+				ctx.drawImage(img, 0, 0, width, height);
+				let quality = 0.8;
+				let result = canvas.toDataURL("image/jpeg", quality);
+				while (result.length > 500_000 && quality > 0.3) {
+					quality -= 0.1;
+					result = canvas.toDataURL("image/jpeg", quality);
+				}
+				resolve(result);
+			};
+			img.onerror = () => resolve(dataUrl);
+			img.src = dataUrl;
+		});
+	}, []);
+
+	const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+		const files = Array.from(e.target.files || []);
+		if (files.length === 0) return;
+		files.forEach(file => {
+			if (!file.type.startsWith("image/")) { toast.error(`${file.name} bukan gambar`); return; }
+			const reader = new FileReader();
+			reader.onload = async (event) => {
+				const raw = event.target?.result as string;
+				const compressed = await compressImage(raw);
+				setSelectedImages(prev => [...prev, compressed]);
+			};
+			reader.readAsDataURL(file);
+		});
+		e.target.value = '';
+	}, [compressImage]);
+
+	// Proactive Nudge & Briefing Logic
+	const runDailyBriefing = useCallback(async () => {
+		if (briefingAttemptedRef.current) return;
+		
+		// If queries aren't loaded yet, wait (except if they are null/undefined)
+		if (inventory === undefined || orders === undefined) return;
+		
+		briefingAttemptedRef.current = true;
+		
+		try {
+			const lowStockItems = inventory?.filter((i: any) => i.quantity <= i.lowStockThreshold) || [];
+			const pendingOrderCount = orders?.filter((o: any) => o.status === "pending").length || 0;
+			
+			let context = "";
+			if (lowStockItems.length > 0) {
+				context += `\nKRITIS: Ada ${lowStockItems.length} item stok rendah: ${lowStockItems.slice(0,3).map((i:any)=>i.name).join(", ")}.`;
+			}
+			if (pendingOrderCount > 0) {
+				context += `\nPERHATIAN: Ada ${pendingOrderCount} pesanan baru yang belum diproses.`;
+			}
+
+			const localHour = new Date().getHours();
+			const briefing = await generateBusinessBriefingAction({ localHour, context: context || undefined });
+			
+			if (briefing) {
+				const assistantMsg: ChatMessage = {
+					role: "assistant",
+					content: briefing,
+					suggestions: extractSuggestions(briefing),
+					chartData: extractChartData(briefing),
+					exportData: extractExportData(briefing),
+					_msgId: mkMsgId(),
+				};
+				setMessages(prev => [...prev, assistantMsg]);
+			}
+		} catch (error) {
+			console.error("Briefing error:", error);
+		}
+	}, [generateBusinessBriefingAction, inventory, orders]);
+
+	useEffect(() => {
+		if (activeTab === "chat" && messages.length === 0 && !isLoading) {
+			runDailyBriefing();
+		}
+	}, [activeTab, messages.length, isLoading, runDailyBriefing]);
+
+	// Image Scanning Logic
+	const processImagesWithAI = useCallback(async (images: string[], customPrompt?: string) => {
+		if (isScanning) return;
+		setIsScanning(true);
+		setIsLoading(true);
+		setToolCalls([]);
+
+		try {
+			const res = await bulkScanImageDataAction({ images });
+			if (!res || !res.length) throw new Error("Gagal menganalisis gambar");
+
+			const newMessages: ChatMessage[] = [];
+			for (let i = 0; i < res.length; i++) {
+				const scanData = res[i].data;
+				if (!scanData) continue;
+
+				const itemsStr = scanData.items?.length 
+					? `\n📋 Detail Item (${scanData.items.length} item):\n` + scanData.items.map((item: any, idx: number) => `${idx + 1}. ${item.name} x${item.qty} = Rp ${toRupiah(item.subtotal)}`).join("\n")
+					: "";
+
+				const assistantContent = `🍩 Merchant: ${scanData.name || "Toko"}${itemsStr}\n\n💰 Total: Rp ${toRupiah(scanData.total)}\n📊 Keyakinan: ${scanData.confidence}% | Kategori: ${scanData.category?.replace(/_/g, " ") || "Umum"}`;
+
+				const assistantMsg: ChatMessage = {
+					role: "assistant",
+					content: assistantContent,
+					scanData,
+					actionButtons: generateScanActionButtons(scanData),
+					_msgId: mkMsgId(),
+				};
+				newMessages.push(assistantMsg);
+				addScanHistory({ ...scanData, id: assistantMsg._msgId!, timestamp: Date.now() });
+			}
+
+			setMessages(prev => [...prev, ...newMessages]);
+			setSelectedImages([]);
+			setIsScanMode(false);
+			toast.success(`${res.length} gambar berhasil dianalisis`);
+		} catch (error: any) {
+			toast.error(error.message || "Gagal menganalisis gambar");
+		} finally {
+			setIsScanning(false);
+			setIsLoading(false);
+		}
+	}, [isScanning, bulkScanImageDataAction, addScanHistory]);
+
+	// Main Messaging Logic
+	const streamText = useCallback((text: string, onComplete: () => void) => {
+		const tokens = text.split(/(\s+)/);
+		let i = 0;
+		streamingActiveRef.current = true;
+		setIsStreaming(true);
+		setStreamingContent("");
+		const next = () => {
+			if (!streamingActiveRef.current) return;
+			if (i < tokens.length) {
+				const chunk = tokens[i];
+				setStreamingContent(prev => prev + chunk);
+				i++;
+				setTimeout(next, chunk.trim().length > 0 ? 25 : 5);
+			} else {
+				setIsStreaming(false);
+				onComplete();
+			}
+		};
+		next();
+	}, []);
+
+	const sendMessage = useCallback(async (text: string) => {
+		const trimmed = text.trim();
+		if (!(trimmed || selectedImages.length > 0) || isLoading || isScanning) return;
+
+		if (isScanMode && selectedImages.length > 0) {
+			await processImagesWithAI(selectedImages, trimmed);
+			setInput("");
+			return;
+		}
+
+		let sessionId = currentSessionId;
+		if (!sessionId && mode === "admin") {
+			sessionId = await startNewSession();
+			if (!sessionId) return;
+		}
+
+		const userMsg: ChatMessage = { role: "user", content: trimmed, image: selectedImages[0], _msgId: mkMsgId() };
+		setMessages(prev => [...prev, userMsg]);
+		setInput("");
+		setSelectedImages([]);
+		setIsLoading(true);
+		
+		try {
+			const history = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
+			const response = await yumiChat({ 
+				message: trimmed, 
+				history, 
+				images: selectedImages.length > 0 ? selectedImages : (userMsg.image ? [userMsg.image] : undefined) 
+			});
+			
+			const suggestions = extractSuggestions(response);
+			const quickActions = generateQuickActions(trimmed, response);
+			const genericActions = extractGenericActions(response);
+			const chartData = extractChartData(response);
+			const exportData = extractExportData(response);
+			
+			streamText(response, async () => {
+				const assistantMsg: ChatMessage = { role: "assistant", content: response, suggestions, quickActions, genericActions, chartData, exportData, _msgId: mkMsgId() };
+				setMessages(prev => [...prev, assistantMsg]);
+				if (mode === "admin" && sessionId) {
+					await saveConversationMutation({ sessionId: sessionId!, role: "user", content: trimmed });
+					await saveConversationMutation({ sessionId: sessionId!, role: "assistant", content: response });
+				}
+			});
+		} catch (error) {
+			toast.error("Gagal mendapatkan respons AI");
+			setIsLoading(false);
+		} finally {
+			setIsLoading(false);
+		}
+	}, [currentSessionId, selectedImages, isLoading, isScanning, isScanMode, messages, yumiChat, startNewSession, streamText, saveConversationMutation, processImagesWithAI, mode]);
+
+	// Handlers for interactive elements
+	const handleCopy = useCallback((text: string, index: number) => {
+		navigator.clipboard.writeText(text);
+		setCopiedIndex(index);
+		setTimeout(() => setCopiedIndex(null), 2000);
+	}, []);
+
+	const handleQuickAction = useCallback((action: QuickActionButton) => {
+		if (action.actionType === "navigate" && action.href) {
+			navigate({ to: action.href as any });
+		} else if (action.actionType === "sendPrompt" && action.prompt) {
+			sendMessage(action.prompt);
+		}
+	}, [navigate, sendMessage]);
+
+	const handleScanAction = useCallback((btn: ScanActionButton, messageIdx: number) => {
+		const key = `${messageIdx}-${btn.id}`;
+		if (actionButtonDone.has(key)) return;
+		setEditModal({ params: btn.params, btnKey: key, messageIdx });
+	}, [actionButtonDone]);
+
+	const handleSaveFromEditModal = useCallback(async (params: ScanEditParams) => {
+		if (!editModal) return;
+		const { btnKey } = editModal;
+		setActionButtonLoading(prev => { const s = new Set<string>(prev); s.add(btnKey); return s; });
+		try {
+			await createTransactionMutation(params);
+			toast.success("Berhasil disimpan!");
+			setActionButtonDone(prev => { const s = new Set<string>(prev); s.add(btnKey); return s; });
+			markScanSaved(btnKey);
+			setEditModal(null);
+		} catch (error) { toast.error("Gagal menyimpan");
+		} finally { setActionButtonLoading(prev => { const s = new Set<string>(prev); s.delete(btnKey); return s; }); }
+	}, [editModal, createTransactionMutation, markScanSaved]);
+
+	const handleSaveFromSplitModal = useCallback(async (splits: ScanEditParams[]) => {
+		if (!splitModal) return;
+		try {
+			await Promise.all(splits.map(p => createTransactionMutation(p)));
+			toast.success("Semua split berhasil disimpan!");
+			setActionButtonDone(prev => { const s = new Set<string>(prev); s.add(splitModal.btnKey); return s; });
+			markScanSaved(splitModal.btnKey);
+			setSplitModal(null); setEditModal(null);
+		} catch (error) { toast.error("Gagal menyimpan split"); }
+	}, [splitModal, createTransactionMutation, markScanSaved]);
+
+	const handleExecuteSuggestion = async (s: Suggestion) => {
+		setIsLoading(true);
+		try {
+			if (s.action?.type === "record_stock_purchase") {
+				await recordStockPurchaseMutation(s.action.args);
+				toast.success("Stok berhasil dicatat!");
+			} else if (s.action?.type === "create_product") {
+				await createProductMutation(s.action.args);
+				toast.success("Produk berhasil dibuat!");
+			} else {
+				await sendMessage(`Lakukan saran ini: ${s.title}`);
+			}
+		} catch (error) { toast.error("Gagal mengeksekusi saran"); }
+		finally { setIsLoading(false); }
+	};
+
+	const handleExport = useCallback(async (format: any, dataIdx: number) => {
+		const msg = messages[dataIdx];
+		if (!msg?.exportData) return;
+		try {
+			toast.info(`Sedang menyiapkan ${format.toUpperCase()}...`);
+			await exportReport(msg.exportData, format);
+			toast.success("Laporan berhasil diunduh");
+		} catch (error) {
+			toast.error("Gagal mengunduh laporan");
+		}
+	}, [messages]);
+
+	const handleCompleteTask = async (taskId: string) => {
+		try { await completeTaskMutation({ taskId }); toast.success("Tugas selesai!"); } catch { toast.error("Gagal"); }
+	};
+
+	const handleDismissTask = async (taskId: string) => {
+		try { await dismissTaskMutation({ taskId }); toast.success("Tugas diabaikan"); } catch { toast.error("Gagal"); }
+	};
+
+	// Smart insights generation
+	const smartInsights: Array<any> = [];
+	const lowStockCount = inventory?.filter((i: any) => i.quantity <= i.lowStockThreshold)?.length ?? 0;
+	if (lowStockCount > 0) smartInsights.push({ icon: <AlertTriangle className="h-3.5 w-3.5" />, text: `${lowStockCount} stok rendah`, type: "warning" });
+	const pendingOrderCount = orders?.filter((o: any) => o.status === "pending")?.length ?? 0;
+	if (pendingOrderCount > 0) smartInsights.push({ icon: <Bell className="h-3.5 w-3.5" />, text: `${pendingOrderCount} pesanan baru`, type: "info" });
+
+	const isPOS = mode === "pos";
+
+	return (
+		<div className={`flex ${isPOS ? "h-full w-full" : "h-[calc(100vh-57px)]"} bg-background overflow-hidden relative font-sans text-foreground`}>
+			<AnimatePresence>
+				{showSessionHistory && !isPOS && (
+					<motion.div
+						initial={{ x: "-100%", opacity: 0 }}
+						animate={{ x: 0, opacity: 1 }}
+						exit={{ x: "-100%", opacity: 0 }}
+						transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+						className="absolute inset-y-0 left-0 z-50 w-72 md:relative md:w-64"
+					>
+						<SessionHistory 
+							sessions={chatSessions as any} 
+							currentSessionId={currentSessionId}
+							onLoad={loadSession}
+							onDelete={deleteSession}
+							onStartNew={startNewSession}
+						/>
+					</motion.div>
+				)}
+			</AnimatePresence>
+
+			<div className={`flex-1 flex flex-col min-w-0 bg-background ${isPOS ? "" : "shadow-2xl"} relative z-10 transition-all duration-500 overflow-hidden`}>
+				<header className={`flex items-center justify-between ${isPOS ? "p-3" : "p-4"} border-b border-border/80 bg-background/50 backdrop-blur-xl sticky top-0 z-20`}>
+					<div className="flex items-center gap-3">
+						{!isPOS && (
+							<Button variant="ghost" size="icon" className="md:h-10 md:w-10 rounded-full hover:bg-muted" onClick={() => setShowSessionHistory(!showSessionHistory)}>
+								<Calendar className="h-5 w-5" />
+							</Button>
+						)}
+						{isPOS && (
+							<div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent shadow-sm">
+								<Sparkles className="h-4 w-4 text-white" />
+							</div>
+						)}
+						<div className="min-w-0">
+							<h1 className={`${isPOS ? "text-sm" : "text-lg md:text-xl"} font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent`}>Yumi AI</h1>
+							<p className={`text-[10px] ${isPOS ? "" : "md:text-xs"} text-muted-foreground font-medium uppercase tracking-widest ${isPOS ? "" : "hidden md:block"}`}>
+								{isPOS ? "Asisten Kasir Cerdas" : "Asisten Bisnis Cerdas"}
+							</p>
+						</div>
+					</div>
+					<div className="flex items-center gap-2">
+						{!isPOS && smartInsights.map((insight, i) => (
+							<div key={i} className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border shadow-sm transition-all hover:scale-105
+								${insight.type === "success" ? "bg-green-50 text-green-700 border-green-100" : ""}
+								${insight.type === "warning" ? "bg-amber-50 text-amber-700 border-amber-100" : ""}
+								${insight.type === "info" ? "bg-blue-50 text-blue-700 border-blue-100" : ""}`}
+							>
+								{insight.icon}
+								<span className="hidden sm:inline">{insight.text}</span>
+							</div>
+						))}
+						{isPOS && onClose && (
+							<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={onClose}>
+								<X className="h-4 w-4" />
+							</Button>
+						)}
+					</div>
+				</header>
+
+				{!isPOS && (
+					<nav className="flex border-b border-border/60 bg-muted/5 scrollbar-none overflow-x-auto whitespace-nowrap">
+						{(["chat", "suggestions", "predictions", "tasks"] as TabType[]).map(tab => (
+							<button
+								key={tab}
+								onClick={() => setActiveTab(tab)}
+								className={`px-6 py-3 text-xs md:text-sm font-bold uppercase tracking-widest transition-all relative ${activeTab === tab ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"}`}
+							>
+								{tab === "chat" ? "Konsultasi" : tab === "suggestions" ? "Saran AI" : tab === "predictions" ? "Prediksi" : "Tugas"}
+								{activeTab === tab && (
+									<motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary shadow-[0_-2px_8px_rgba(var(--primary),0.4)]" />
+								)}
+							</button>
+						))}
+					</nav>
+				)}
+
+				<main className="flex-1 overflow-hidden relative bg-muted/5">
+					<AnimatePresence mode="wait">
+						<motion.div
+							key={activeTab}
+							initial={{ opacity: 0, y: 15 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: -15 }}
+							transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+							className="h-full"
+						>
+							{activeTab === "chat" && (
+								<div className="flex flex-col h-full">
+									<div className={`flex-1 overflow-y-auto ${isPOS ? "p-3" : "p-4 md:p-8"} space-y-2 custom-scrollbar scroll-smooth`}>
+										{messages.length === 0 && !isLoading && (
+											<div className={`h-full flex flex-col items-center justify-center text-center ${isPOS ? "p-4" : "p-8"} animate-in fade-in zoom-in duration-700`}>
+												<div className={`${isPOS ? "p-4" : "p-6"} bg-primary/5 rounded-full mb-6 ring-1 ring-primary/20 shadow-inner`}>
+													<Bot className={`${isPOS ? "h-8 w-8" : "h-12 w-12"} text-primary animate-pulse`} />
+												</div>
+												<h3 className={`${isPOS ? "text-lg" : "text-2xl"} font-bold text-foreground mb-2`}>Halo, Selamat Datang!</h3>
+												<p className="text-muted-foreground max-w-sm mb-8 text-sm">
+													{isPOS ? "Kasir siap membantu operasional toko Anda." : "Saya adalah asisten bisnis Anda. Silakan tanya apa saja tentang stok, keuangan, atau performa toko Anda."}
+												</p>
+											</div>
+										)}
+										{messages.map((msg, idx) => (
+											<MessageBubble 
+												key={msg._msgId || idx}
+												msg={msg}
+												index={idx}
+												isLast={idx === messages.length - 1}
+												isLoading={isLoading}
+												isStreaming={isStreaming}
+												streamingContent={streamingContent}
+												copiedIndex={copiedIndex}
+												actionButtonDone={actionButtonDone}
+												actionButtonLoading={actionButtonLoading}
+												onCopy={handleCopy}
+												onScanAction={handleScanAction}
+												onQuickAction={handleQuickAction}
+												onSendMessage={sendMessage}
+												onExport={handleExport}
+											/>
+										))}
+										<div ref={messagesEndRef} className="h-4" />
+									</div>
+
+									<ChatInput 
+										mode={mode}
+										input={input}
+										setInput={setInput}
+										isLoading={isLoading}
+										isScanning={isScanning}
+										isScanMode={isScanMode}
+										setIsScanMode={setIsScanMode}
+										selectedImages={selectedImages}
+										onRemoveImage={() => { setSelectedImages([]); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+										onFileSelect={handleFileSelect}
+										onSendMessage={sendMessage}
+										onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
+										toolCalls={toolCalls}
+										fileInputRef={fileInputRef}
+										inputRef={inputRef}
+										showTemplates={messages.length < 2}
+									/>
+								</div>
+							)}
+							{activeTab === "suggestions" && <SuggestionsPanel suggestions={proactiveSuggestions as any} onExecute={handleExecuteSuggestion} />}
+							{activeTab === "predictions" && <PredictionsPanel stockPredictions={stockPredictions} busyHours={busyHoursPrediction} revenue={revenuePrediction} trending={trendingProducts} promoTime={bestPromoTime} />}
+							{activeTab === "tasks" && <TasksPanel tasks={pendingTasks as any} onComplete={handleCompleteTask} onDismiss={handleDismissTask} />}
+						</motion.div>
+					</AnimatePresence>
+				</main>
+			</div>
+
+			{/* Modals & Overlays */}
+			<ImageScanner isOpen={isImageScannerOpen} onClose={() => setIsImageScannerOpen(false)} onDataGenerated={(type, data) => setMessages(prev => [...prev, { role: "assistant", content: `Berhasil membuat ${type} dengan data terstruktur.`, _msgId: mkMsgId() }])} />
+			{editModal && <ScanEditModal params={editModal.params} onSave={handleSaveFromEditModal} onSplit={p => splitModal === null && setSplitModal({ params: p, btnKey: editModal.btnKey })} onClose={() => setEditModal(null)} />}
+			{splitModal && <ScanSplitModal totalAmount={splitModal.params.amount} transactionType={splitModal.params.type} baseParams={splitModal.params} onSave={handleSaveFromSplitModal} onBack={() => setSplitModal(null)} onClose={() => { setSplitModal(null); setEditModal(null); }} />}
+			{showScanHistory && <ScanHistoryPanel history={scanHistory} onRemove={removeScanHistory} onClearAll={clearScanHistory} onClose={() => setShowScanHistory(false)} />}
+		</div>
+	);
+}

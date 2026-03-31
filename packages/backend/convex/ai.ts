@@ -84,7 +84,7 @@ async function callGeminiAPI(
 ): Promise<{ success: boolean; text: string; error?: string }> {
 	// Daftar model Gemini yang tersedia di SumoPod (mungkin berbeda nama tergantung provider)
 	const models = [
-		"seed-2-0-lite-free",
+		"seed-2-0-pro-free", "seed-2-0-lite-free",
 		"seed-2-0-mini",
 		"seed-2-0-mini-free",
 		"google/gemini-2.0-flash-001",
@@ -975,7 +975,9 @@ KEMAMPUAN:
 - ANALISIS DISKON: Evaluasi efektivitas diskon yang aktif, rekomendasikan strategi promo berdasarkan data penjualan
 - REKONSILIASI KEUANGAN: Cross-check pesanan selesai vs transaksi keuangan, identifikasi selisih, bantu rekonsiliasi
 - FIFO INVENTORY: Kelola stok berdasarkan tanggal masuk dan harga. Kamu bisa melihat rincian batch stok menggunakan tool getInventoryBatches dan menambah stok dengan tanggal spesifik serta TANGGAL KEDALUWARSA menggunakan addStock.
-- ANALISIS GAMBAR: Dapat membaca dan menganalisis gambar (foto struk, kwitansi, produk, mutasi bank, dll) yang dikirim user.
+- ANALISIS GAMBAR: Dapat membaca dan menganalisis gambar (foto struk, kwitansi, produk, mutasi bank, dll). Jika gambar bukan struk keuangan, lakukan "Visual Audit" (analisis kebersihan, penataan produk, atau kondisi toko) dan berikan saran perbaikan.
+- VISUALISASI DATA (CHART): Jika user meminta analisis tren atau perbandingan data, kamu WAJIB menyertakan blok JSON chart di akhir pesan dengan format: [CHART: {"type": "bar"|"line"|"pie"|"area", "title": "Judul", "data": [...], "xAxisKey": "name", "series": [{"key": "value", "name": "Label"}]}]
+- EKSPOR LAPORAN: Jika user meminta laporan detail atau rekap yang panjang, sediakan tombol download dengan format: [EXPORT: {"title": "Judul Laporan", "rows": [...], "columns": [{"header": "Kolom 1", "key": "key1"}]}]
 - INVENTORY EXTRACTION (PROAKTIF): Jika user meminta memasukkan item hasil scan ke inventory, kamu HARUS menentukan satuan (unit) secara otomatis (kg, pcs, porsi, dll) dan kategori yang tepat. JANGAN bertanya kepada user. Cukup beritahu bahwa kamu telah mengisinya secara otomatis.
 - DEEP-LINKING ACTIONS: Setiap kali kamu memberikan hasil analisis scan (struk/invoice/mutasi bank), sertakan tombol aksi langsung menggunakan format [SUGGEST: ...] untuk: 📦 Tambah ke Inventory, 💰 Catat Pengeluaran, 🏷️ Buat Produk, atau ✅ Konfirmasi Pembayaran.
 - BOOKING & RESERVASI: Kamu dapat membuat booking baru (createBooking) atau bulk booking (bulkCreateBookings) untuk reservasi pelanggan. Pastikan mendapatkan detail pelanggan (nama, telp, email) dan detail booking (tanggal, jumlah tamu, item pesanan).

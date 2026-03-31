@@ -56,6 +56,11 @@ export function ScanEditModal({ isOpen, params, onSave, onSplit, onClose }: Prop
 	}, []);
 
 	const [isSaving, setIsSaving] = useState(false);
+	const [form, setForm] = useState<ScanEditParams>(params);
+
+	useEffect(() => {
+		setForm(params);
+	}, [params]);
 
 	if (isOpen === false) return null;
 
