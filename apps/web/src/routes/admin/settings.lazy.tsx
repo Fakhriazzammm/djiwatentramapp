@@ -18,7 +18,7 @@ import {
 	Users,
 	Wallet,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { compressFileToLimit, isOversized } from "@/lib/image-compress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,6 +45,150 @@ function buildShiftSchedules(
 			closeTime: existing?.closeTime ?? (index === 0 ? "15:00" : ""),
 		};
 	});
+}
+
+function ReceiptPreview({
+	settings,
+	storeName,
+	storeAddress,
+	storePhone,
+	logoSrc,
+}: {
+	settings: {
+		receiptFooter: string;
+		receiptLogo: string;
+		receiptHeader: string;
+		receiptShowLogo: boolean;
+		receiptShowAddress: boolean;
+		receiptShowPhone: boolean;
+		receiptShowOrderNumber: boolean;
+		receiptShowCustomerName: boolean;
+		receiptShowCashierName: boolean;
+		receiptShowNotes: boolean;
+		receiptFontSize: string;
+	};
+	storeName: string;
+	storeAddress: string;
+	storePhone: string;
+	logoSrc?: string;
+}) {
+	const fontClass = useMemo(() => {
+		if (settings.receiptFontSize === "small") return "text-[10px]";
+		if (settings.receiptFontSize === "large") return "text-sm";
+		return "text-[11px]";
+	}, [settings.receiptFontSize]);
+
+	const headerText = settings.receiptHeader || storeName || "YUMI POS";
+	const items = [
+		{ qty: 2, name: "ES KOPI SUSU", total: "36.000" },
+		{ qty: 1, name: "CROISSANT BUTTER", total: "18.000" },
+	];
+
+	return (
+		<div className="space-y-3 rounded-2xl border border-border/60 bg-muted/20 p-4">
+			<div className="flex items-center justify-between gap-3">
+				<div>
+					<h4 className="font-bold text-foreground text-sm uppercase tracking-wider">
+						Preview Struk
+					</h4>
+					<p className="text-muted-foreground text-xs">
+						Tampilan berubah real-time sesuai pengaturan saat ini.
+					</p>
+				</div>
+				<span className="rounded-full bg-primary/10 px-3 py-1 font-bold text-[10px] uppercase tracking-widest text-primary">
+					Realtime
+				</span>
+			</div>
+
+			<div className="flex justify-center">
+				<div className="w-full max-w-[320px] rounded-[28px] bg-zinc-900 p-3 shadow-2xl">
+					<div className="rounded-[20px] bg-white px-4 py-5 shadow-inner">
+						<div className={`font-mono text-zinc-900 ${fontClass}`}>
+							<div className="space-y-1 text-center">
+								{settings.receiptShowLogo && logoSrc ? (
+									<div className="flex justify-center pb-1">
+										<img
+											alt="Preview logo struk"
+											className="max-h-14 max-w-[96px] object-contain grayscale"
+											src={logoSrc}
+										/>
+									</div>
+								) : null}
+								<p className="font-bold uppercase tracking-wide">
+									{headerText}
+								</p>
+								{settings.receiptShowAddress && storeAddress ? (
+									<p>{storeAddress}</p>
+								) : null}
+								{settings.receiptShowPhone && storePhone ? (
+									<p>{storePhone}</p>
+								) : null}
+							</div>
+
+							<div className="my-3 border-zinc-300 border-t border-dashed" />
+
+							<div className="space-y-1">
+								{settings.receiptShowOrderNumber ? (
+									<p>ID: A-1024</p>
+								) : null}
+								{settings.receiptShowCashierName ? (
+									<p>KASIR: RINA • SHIFT PAGI</p>
+								) : null}
+								<p>31/03/2026 14:25 | CASH</p>
+								<p>MEJA: 07</p>
+								{settings.receiptShowCustomerName ? (
+									<p>PELANGGAN: BAPAK ANDI</p>
+								) : null}
+							</div>
+
+							<div className="my-3 border-zinc-300 border-t border-dashed" />
+
+							<div className="space-y-1.5">
+								{items.map((item) => (
+									<div className="flex items-start justify-between gap-3" key={item.name}>
+										<span className="max-w-[70%]">
+											{item.qty}x {item.name}
+										</span>
+										<span>{item.total}</span>
+									</div>
+								))}
+							</div>
+
+							<div className="my-3 border-zinc-300 border-t border-dashed" />
+
+							<div className="space-y-1">
+								<div className="flex justify-between gap-3">
+									<span>SUBTOTAL</span>
+									<span>54.000</span>
+								</div>
+								<div className="flex justify-between gap-3 font-bold">
+									<span>TOTAL</span>
+									<span>Rp 54.000</span>
+								</div>
+							</div>
+
+							{settings.receiptShowNotes ? (
+								<>
+									<div className="my-3 border-zinc-300 border-t border-dashed" />
+									<div className="space-y-1">
+										<p className="font-bold">CATATAN:</p>
+										<p>Less sugar, tanpa sedotan.</p>
+									</div>
+								</>
+							) : null}
+
+							<div className="my-3 border-zinc-300 border-t border-dashed" />
+
+							<div className="space-y-1 text-center">
+								<p>{settings.receiptFooter || "Terima kasih atas kunjungan Anda!"}</p>
+								<p className="text-[9px] text-zinc-500">preview only</p>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	);
 }
 
 const AVAILABLE_PERMISSIONS = [
@@ -1227,7 +1371,7 @@ function SettingsPage() {
 												type="number"
 												value={shiftSettings.reminderMinutesBeforeClose}
 											/>
-											<span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-sm">
+											<span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-sm">
 												menit
 											</span>
 										</div>
@@ -1246,7 +1390,7 @@ function SettingsPage() {
 									</div>
 									<div className="max-w-xs">
 										<div className="relative">
-											<span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-sm">
+											<span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-sm">
 												Rp
 											</span>
 											<input
@@ -1731,6 +1875,26 @@ function SettingsPage() {
 								</div>
 
 								<div className="space-y-6">
+									<ReceiptPreview
+										settings={{
+											receiptFooter: settings.receiptFooter,
+											receiptLogo: settings.receiptLogo,
+											receiptHeader: settings.receiptHeader,
+											receiptShowLogo: settings.receiptShowLogo,
+											receiptShowAddress: settings.receiptShowAddress,
+											receiptShowPhone: settings.receiptShowPhone,
+											receiptShowOrderNumber: settings.receiptShowOrderNumber,
+											receiptShowCustomerName: settings.receiptShowCustomerName,
+											receiptShowCashierName: settings.receiptShowCashierName,
+											receiptShowNotes: settings.receiptShowNotes,
+											receiptFontSize: settings.receiptFontSize,
+										}}
+										storeName={settings.storeName}
+										storeAddress={settings.storeAddress}
+										storePhone={settings.storePhone}
+										logoSrc={localPreviews.receiptLogo || settings.receiptLogo}
+									/>
+
 									{/* Header Text */}
 									<div className="space-y-2">
 										<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
