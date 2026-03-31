@@ -23,6 +23,15 @@ export function ShiftDetailModal({ shift, isOpen, onOpenChange }: ShiftDetailMod
 		isOpen && shift ? { startTime: shift.startTime, endTime: shift.endTime } : "skip"
 	);
 
+	const cashRevenue = details?.cashRevenue ?? shift.cashRevenue ?? 0;
+	const qrisRevenue = details?.qrisRevenue ?? shift.qrisRevenue ?? 0;
+	const totalRevenue = details?.totalRevenue ?? shift.revenue ?? 0;
+	const endingCashExpected = details?.endingCashExpected ?? shift.endingCashExpected ?? 0;
+	const endingCashPhysical = details?.endingCashPhysical ?? shift.endingCashPhysical ?? 0;
+	const nonCashExpected = details?.nonCashExpected ?? shift.nonCashExpected ?? qrisRevenue;
+	const nonCashConfirmed = details?.nonCashConfirmed ?? shift.nonCashConfirmed ?? 0;
+	const cashBreakdown = details?.cashBreakdown ?? shift.cashBreakdown;
+
 	if (!shift) return null;
 
 	return (
@@ -71,23 +80,25 @@ export function ShiftDetailModal({ shift, isOpen, onOpenChange }: ShiftDetailMod
 										</div>
 										<span className="text-sm font-semibold">Subtotal</span>
 									</div>
-									<span className="text-sm font-bold text-primary">{formatCurrencyIDR(shift.revenue)}</span>
+									<span className="text-sm font-bold text-primary">{formatCurrencyIDR(totalRevenue)}</span>
 								</div>
 								<div className="grid grid-cols-2 gap-3">
 									<div className="p-3 rounded-2xl bg-muted/30 border border-border/50">
 										<p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-1">Tunai/Laci</p>
-										<p className="text-sm font-bold">{formatCurrencyIDR(shift.cashRevenue)}</p>
+										<p className="text-sm font-bold">{formatCurrencyIDR(cashRevenue)}</p>
 									</div>
 									<div className="p-3 rounded-2xl bg-muted/30 border border-border/50">
 										<p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-1">E-Wallet/QRIS</p>
-										<p className="text-sm font-bold">{formatCurrencyIDR(shift.qrisRevenue)}</p>
+										<p className="text-sm font-bold">{formatCurrencyIDR(qrisRevenue)}</p>
 									</div>
 								</div>
 							</div>
 						</div>
 
 						{/* Audit & Reconciliation */}
-						{(shift.endingCashPhysical !== undefined || shift.nonCashConfirmed !== undefined) && (
+						{(details?.shiftDoc?.startingCash !== undefined ||
+							shift.endingCashPhysical !== undefined ||
+							shift.nonCashConfirmed !== undefined) && (
 							<div className="space-y-4 md:col-span-2">
 								<h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/70">
 									Audit & Rekonsiliasi
@@ -97,12 +108,12 @@ export function ShiftDetailModal({ shift, isOpen, onOpenChange }: ShiftDetailMod
 										<p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-2">Selisih Kas (Tunai)</p>
 										<div className="flex justify-between items-end">
 											<div>
-												<p className="text-[10px] text-muted-foreground">Ekspektasi: {formatCurrencyIDR(shift.endingCashExpected || 0)}</p>
-												<p className="text-sm font-bold">Fisik: {formatCurrencyIDR(shift.endingCashPhysical || 0)}</p>
+												<p className="text-[10px] text-muted-foreground">Ekspektasi: {formatCurrencyIDR(endingCashExpected)}</p>
+												<p className="text-sm font-bold">Fisik: {formatCurrencyIDR(endingCashPhysical)}</p>
 											</div>
-											<div className={`px-2 py-0.5 rounded text-[10px] font-bold ${((shift.endingCashPhysical || 0) - (shift.endingCashExpected || 0)) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-												{((shift.endingCashPhysical || 0) - (shift.endingCashExpected || 0)) >= 0 ? '+' : ''}
-												{formatCurrencyIDR((shift.endingCashPhysical || 0) - (shift.endingCashExpected || 0))}
+											<div className={`px-2 py-0.5 rounded text-[10px] font-bold ${(endingCashPhysical - endingCashExpected) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+												{(endingCashPhysical - endingCashExpected) >= 0 ? '+' : ''}
+												{formatCurrencyIDR(endingCashPhysical - endingCashExpected)}
 											</div>
 										</div>
 									</div>
@@ -110,12 +121,12 @@ export function ShiftDetailModal({ shift, isOpen, onOpenChange }: ShiftDetailMod
 										<p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-2">Konfirmasi Non-Tunai</p>
 										<div className="flex justify-between items-end">
 											<div>
-												<p className="text-[10px] text-muted-foreground">Sistem: {formatCurrencyIDR(shift.nonCashExpected || 0)}</p>
-												<p className="text-sm font-bold">Konfirmasi: {formatCurrencyIDR(shift.nonCashConfirmed || 0)}</p>
+												<p className="text-[10px] text-muted-foreground">Sistem: {formatCurrencyIDR(nonCashExpected)}</p>
+												<p className="text-sm font-bold">Konfirmasi: {formatCurrencyIDR(nonCashConfirmed)}</p>
 											</div>
-											<div className={`px-2 py-0.5 rounded text-[10px] font-bold ${((shift.nonCashConfirmed || 0) - (shift.nonCashExpected || 0)) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-												{((shift.nonCashConfirmed || 0) - (shift.nonCashExpected || 0)) >= 0 ? '+' : ''}
-												{formatCurrencyIDR((shift.nonCashConfirmed || 0) - (shift.nonCashExpected || 0))}
+											<div className={`px-2 py-0.5 rounded text-[10px] font-bold ${(nonCashConfirmed - nonCashExpected) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+												{(nonCashConfirmed - nonCashExpected) >= 0 ? '+' : ''}
+												{formatCurrencyIDR(nonCashConfirmed - nonCashExpected)}
 											</div>
 										</div>
 									</div>
@@ -124,13 +135,13 @@ export function ShiftDetailModal({ shift, isOpen, onOpenChange }: ShiftDetailMod
 						)}
 
 						{/* Cash Breakdown */}
-						{shift.cashBreakdown && (
+						{cashBreakdown && (
 							<div className="space-y-4 md:col-span-2">
 								<h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/70">
 									Rincian Pecahan Uang
 								</h4>
 								<div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-									{Object.entries(shift.cashBreakdown).map(([val, count]: [string, any]) => (
+									{Object.entries(cashBreakdown).map(([val, count]: [string, any]) => (
 										count > 0 && (
 											<div key={val} className="p-2 rounded-xl bg-muted/20 border border-border/40 text-center">
 												<p className="text-[9px] font-bold text-muted-foreground uppercase">

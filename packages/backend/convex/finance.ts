@@ -20,6 +20,20 @@ function getWeekStart(date: Date): Date {
 	return d;
 }
 
+function normalizePaymentMethod(method?: string | null) {
+	return (method || "").trim().toLowerCase();
+}
+
+function isCashMethod(method?: string | null) {
+	const normalized = normalizePaymentMethod(method);
+	return normalized === "cash" || normalized === "tunai";
+}
+
+function isNonCashMethod(method?: string | null) {
+	const normalized = normalizePaymentMethod(method);
+	return normalized === "qris" || normalized === "transfer" || normalized === "bank_transfer";
+}
+
 /**
  * Shared internal helper to fetch financial transactions with common filters
  */
@@ -62,6 +76,68 @@ async function fetchTransactionsInternal(
 	}
 
 	return q;
+}
+
+async function buildShiftSummary(
+	ctx: QueryCtx,
+	startTime: number,
+	endTime: number
+) {
+	const orders = await ctx.db
+		.query("orders")
+		.withIndex("by_createdAt", (q) => q.gte("createdAt", startTime).lte("createdAt", endTime))
+		.collect();
+
+	const bookings = await ctx.db
+		.query("bookingOrders")
+		.withIndex("by_createdAt", (q) => q.gte("createdAt", startTime).lte("createdAt", endTime))
+		.collect();
+
+	const shiftTransactions = await ctx.db
+		.query("financialTransactions")
+		.withIndex("by_date", (q) => q.gte("date", startTime).lte("date", endTime))
+		.collect();
+
+	let totalRevenue = 0;
+	let cashRevenue = 0;
+	let qrisRevenue = 0;
+	let totalItemsSold = 0;
+	let totalDiscount = 0;
+	let totalExpenses = 0;
+
+	orders.forEach((o) => {
+		if (o.status === "completed" || o.status === "paid") {
+			totalRevenue += o.totalAmount;
+			totalDiscount += o.discountAmount || 0;
+			if (isCashMethod(o.paymentMethod)) cashRevenue += o.totalAmount;
+			else if (isNonCashMethod(o.paymentMethod)) qrisRevenue += o.totalAmount;
+			totalItemsSold += (o.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
+		}
+	});
+
+	bookings.forEach((b) => {
+		if (b.paymentStatus === "paid" || b.bookingStatus === "confirmed" || b.bookingStatus === "completed") {
+			totalRevenue += b.totalAmount;
+			if (isCashMethod(b.paymentMethod)) cashRevenue += b.totalAmount;
+			else if (isNonCashMethod(b.paymentMethod)) qrisRevenue += b.totalAmount;
+			totalItemsSold += (b.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
+		}
+	});
+
+	shiftTransactions.forEach((t) => {
+		if (t.type === "expense" && t.status === "completed") {
+			totalExpenses += t.amount;
+		}
+	});
+
+	return {
+		totalRevenue,
+		totalExpenses,
+		totalItemsSold,
+		cashRevenue,
+		qrisRevenue,
+		totalDiscount,
+	};
 }
 
 // Get transactions with optional filtering and pagination
@@ -419,53 +495,14 @@ export const endShift = mutation({
 		const startTime = shift.startTime;
 		const endTime = now;
 
-		// Orders in this shift
-		const orders = await ctx.db
-			.query("orders")
-			.withIndex("by_createdAt", (q) => q.gte("createdAt", startTime).lte("createdAt", endTime))
-			.collect();
-		
-		const bookings = await ctx.db
-			.query("bookingOrders")
-			.withIndex("by_createdAt", (q) => q.gte("createdAt", startTime).lte("createdAt", endTime))
-			.collect();
-
-		const shiftTransactions = await ctx.db
-			.query("financialTransactions")
-			.withIndex("by_date", (q) => q.gte("date", startTime).lte("date", endTime))
-			.collect();
-
-		let totalRevenue = 0;
-		let cashRevenue = 0;
-		let qrisRevenue = 0;
-		let totalItemsSold = 0;
-		let totalDiscount = 0;
-
-		orders.forEach((o) => {
-			if (o.status === "completed" || o.status === "paid") {
-				totalRevenue += o.totalAmount;
-				totalDiscount += (o.discountAmount || 0);
-				if (o.paymentMethod === 'cash') cashRevenue += o.totalAmount;
-				else qrisRevenue += o.totalAmount;
-				totalItemsSold += (o.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
-			}
-		});
-
-		bookings.forEach((b) => {
-			if (b.paymentStatus === "paid" || b.bookingStatus === "confirmed" || b.bookingStatus === "completed") {
-				totalRevenue += b.totalAmount;
-				if (b.paymentMethod === 'cash') cashRevenue += b.totalAmount;
-				else qrisRevenue += b.totalAmount;
-				totalItemsSold += (b.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
-			}
-		});
-
-		let totalExpenses = 0;
-		shiftTransactions.forEach((t) => {
-			if (t.type === "expense" && t.status === "completed") {
-				totalExpenses += t.amount;
-			}
-		});
+		const {
+			totalRevenue,
+			totalExpenses,
+			totalItemsSold,
+			cashRevenue,
+			qrisRevenue,
+			totalDiscount,
+		} = await buildShiftSummary(ctx, startTime, endTime);
 
 		const endingCashExpected = shift.startingCash + cashRevenue - totalExpenses;
 		const nonCashExpected = qrisRevenue;
@@ -536,15 +573,23 @@ export const getShiftStatus = query({
 			.withIndex("by_startTime", q => q.gte("startTime", todayStartTs))
 			.collect();
 
-		const allShifts = allShiftsRaw.map(s => ({
-			...s,
-			revenue: s.summary?.totalRevenue ?? 0,
-			cashRevenue: s.summary?.cashRevenue ?? 0,
-			qrisRevenue: s.summary?.qrisRevenue ?? 0,
-			totalDiscount: s.summary?.totalDiscount ?? 0,
-			modalAwal: s.startingCash,
-			setoranAkhir: s.endingCashPhysical,
-		}));
+		const allShifts = await Promise.all(
+			allShiftsRaw.map(async (s) => {
+				const computedSummary =
+					s.summary ??
+					(await buildShiftSummary(ctx, s.startTime, s.endTime ?? now));
+
+				return {
+					...s,
+					revenue: computedSummary.totalRevenue ?? 0,
+					cashRevenue: computedSummary.cashRevenue ?? 0,
+					qrisRevenue: computedSummary.qrisRevenue ?? 0,
+					totalDiscount: computedSummary.totalDiscount ?? 0,
+					modalAwal: s.startingCash,
+					setoranAkhir: s.endingCashPhysical,
+				};
+			})
+		);
 
 		if (ongoingShift) {
 			return {
@@ -837,6 +882,10 @@ export const getShiftDetails = query({
 	handler: async (ctx, args) => {
 		const endTime = args.endTime ?? Date.now();
 		const { startTime } = args;
+		const shiftDoc = await ctx.db
+			.query("shifts")
+			.withIndex("by_startTime", (q) => q.eq("startTime", startTime))
+			.first();
 
 		// 1. Fetch POS orders (Indexed by createdAt)
 		const orders = await ctx.db
@@ -850,29 +899,48 @@ export const getShiftDetails = query({
 			.withIndex("by_createdAt", (q) => q.gte("createdAt", startTime).lte("createdAt", endTime))
 			.collect();
 
-		// Aggregations
-		let posRevenue = 0;
-		let bookingRevenue = 0;
+		const summary = await buildShiftSummary(ctx, startTime, endTime);
+		const posRevenue = orders
+			.filter((o) => o.status === "completed" || o.status === "paid")
+			.reduce((sum, o) => sum + o.totalAmount, 0);
+		const bookingRevenue = bookings
+			.filter(
+				(b) =>
+					b.paymentStatus === "paid" ||
+					b.bookingStatus === "confirmed" ||
+					b.bookingStatus === "completed"
+			)
+			.reduce((sum, b) => sum + b.totalAmount, 0);
 		const paymentMethods: Record<string, number> = {};
 
 		orders.filter(o => o.status === "completed" || o.status === "paid").forEach(o => {
-			posRevenue += o.totalAmount;
-			const method = o.paymentMethod || "unknown";
+			const method = normalizePaymentMethod(o.paymentMethod) || "unknown";
 			paymentMethods[method] = (paymentMethods[method] || 0) + o.totalAmount;
 		});
 
 		bookings.filter(b => b.paymentStatus === "paid" || b.bookingStatus === "confirmed" || b.bookingStatus === "completed").forEach(b => {
-			bookingRevenue += b.totalAmount;
-			const method = b.paymentMethod || "unknown";
+			const method = normalizePaymentMethod(b.paymentMethod) || "unknown";
 			paymentMethods[method] = (paymentMethods[method] || 0) + b.totalAmount;
 		});
 
 		return {
 			startTime,
 			endTime,
+			shiftDoc,
 			posRevenue,
 			bookingRevenue,
 			totalRevenue: posRevenue + bookingRevenue,
+			cashRevenue: summary.cashRevenue,
+			qrisRevenue: summary.qrisRevenue,
+			totalDiscount: summary.totalDiscount,
+			totalExpenses: summary.totalExpenses,
+			endingCashExpected:
+				shiftDoc?.endingCashExpected ??
+				(shiftDoc ? shiftDoc.startingCash + summary.cashRevenue - summary.totalExpenses : 0),
+			endingCashPhysical: shiftDoc?.endingCashPhysical,
+			nonCashExpected: shiftDoc?.nonCashExpected ?? summary.qrisRevenue,
+			nonCashConfirmed: shiftDoc?.nonCashConfirmed,
+			cashBreakdown: shiftDoc?.cashBreakdown,
 			paymentMethods,
 			orderCount: orders.length,
 			bookingCount: bookings.length,

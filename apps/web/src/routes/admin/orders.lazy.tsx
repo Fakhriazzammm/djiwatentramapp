@@ -2,7 +2,18 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
-import { format } from "date-fns";
+import {
+	endOfDay,
+	endOfMonth,
+	endOfWeek,
+	format,
+	startOfDay,
+	startOfMonth,
+	startOfWeek,
+	subDays,
+	subMonths,
+	subWeeks,
+} from "date-fns";
 import { id } from "date-fns/locale/id";
 import {
 	CheckCircle,
@@ -68,6 +79,27 @@ interface Order {
 	[key: string]: any;
 }
 
+type QuickDateFilter =
+	| "all"
+	| "today"
+	| "yesterday"
+	| "thisWeek"
+	| "lastWeek"
+	| "thisMonth"
+	| "lastMonth";
+
+const quickDateFilterOptions: Array<{
+	value: QuickDateFilter;
+	label: string;
+}> = [
+	{ value: "today", label: "Hari Ini" },
+	{ value: "yesterday", label: "Kemarin" },
+	{ value: "thisWeek", label: "Minggu Ini" },
+	{ value: "lastWeek", label: "Minggu Kemarin" },
+	{ value: "thisMonth", label: "Bulan Ini" },
+	{ value: "lastMonth", label: "Bulan Kemarin" },
+];
+
 function AdminOrders() {
 	const allOrders = useQuery(api.orders.getOrders, {});
 	const allBookingOrders = useQuery(api.booking.getBookingOrders, { slug: "booking" });
@@ -84,7 +116,54 @@ function AdminOrders() {
 	const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 	const [statusFilter, setStatusFilter] = useState<string>("all");
 	const [searchQuery, setSearchQuery] = useState("");
+	const [quickDateFilter, setQuickDateFilter] =
+		useState<QuickDateFilter>("all");
 	const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+	const getQuickDateRange = (filter: QuickDateFilter) => {
+		const now = new Date();
+
+		switch (filter) {
+			case "today":
+				return {
+					start: startOfDay(now).getTime(),
+					end: endOfDay(now).getTime(),
+				};
+			case "yesterday": {
+				const yesterday = subDays(now, 1);
+				return {
+					start: startOfDay(yesterday).getTime(),
+					end: endOfDay(yesterday).getTime(),
+				};
+			}
+			case "thisWeek":
+				return {
+					start: startOfWeek(now, { weekStartsOn: 1 }).getTime(),
+					end: endOfWeek(now, { weekStartsOn: 1 }).getTime(),
+				};
+			case "lastWeek": {
+				const lastWeek = subWeeks(now, 1);
+				return {
+					start: startOfWeek(lastWeek, { weekStartsOn: 1 }).getTime(),
+					end: endOfWeek(lastWeek, { weekStartsOn: 1 }).getTime(),
+				};
+			}
+			case "thisMonth":
+				return {
+					start: startOfMonth(now).getTime(),
+					end: endOfMonth(now).getTime(),
+				};
+			case "lastMonth": {
+				const lastMonth = subMonths(now, 1);
+				return {
+					start: startOfMonth(lastMonth).getTime(),
+					end: endOfMonth(lastMonth).getTime(),
+				};
+			}
+			default:
+				return null;
+		}
+	};
 
 	// Unified orders list
 	const unifiedOrders = (() => {
@@ -120,7 +199,12 @@ function AdminOrders() {
 			(order.customerName || "")
 				.toLowerCase()
 				.includes(searchQuery.toLowerCase());
-		return matchesStatus && matchesSearch;
+		const activeDateRange = getQuickDateRange(quickDateFilter);
+		const matchesQuickDate =
+			!activeDateRange ||
+			(order.createdAt >= activeDateRange.start &&
+				order.createdAt <= activeDateRange.end);
+		return matchesStatus && matchesSearch && matchesQuickDate;
 	});
 
 	const handleStatusUpdate = async (
@@ -315,7 +399,31 @@ function AdminOrders() {
 			)}
 
 			{/* Filters - compact on mobile */}
-			<div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 shadow-sm md:flex-row md:items-center md:gap-4 md:p-4">
+			<div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-sm md:gap-4 md:p-4">
+				<div className="flex flex-wrap gap-2">
+					<Button
+						className="h-8 rounded-full px-3 text-xs"
+						onClick={() => setQuickDateFilter("all")}
+						size="sm"
+						variant={quickDateFilter === "all" ? "default" : "outline"}
+					>
+						Semua Tanggal
+					</Button>
+					{quickDateFilterOptions.map((option) => (
+						<Button
+							className="h-8 rounded-full px-3 text-xs"
+							key={option.value}
+							onClick={() => setQuickDateFilter(option.value)}
+							size="sm"
+							variant={
+								quickDateFilter === option.value ? "default" : "outline"
+							}
+						>
+							{option.label}
+						</Button>
+					))}
+				</div>
+				<div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
 				<div className="relative flex-1">
 					<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 					<Input
@@ -342,6 +450,7 @@ function AdminOrders() {
 							<SelectItem value="cancelled">Dibatalkan</SelectItem>
 						</SelectContent>
 					</Select>
+				</div>
 				</div>
 			</div>
 

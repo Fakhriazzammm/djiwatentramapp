@@ -1,6 +1,76 @@
 import EscPosEncoder from "esc-pos-encoder";
 
-const RECEIPT_LINE_WIDTH = 28; // Safest for 58mm printers. Reduced from 30 to prevent any wrapping.
+const RECEIPT_LINE_WIDTH = 32;
+const RECEIPT_HEADER_WIDTH = 24;
+
+const formatReceiptCurrency = (value: number) =>
+	new Intl.NumberFormat("id-ID").format(Math.round(value || 0));
+
+const normalizeReceiptText = (value?: string | null) =>
+	(value || "")
+		.replace(/\r\n/g, "\n")
+		.replace(/\s+/g, " ")
+		.trim();
+
+const wrapReceiptText = (value: string, width: number) => {
+	const text = normalizeReceiptText(value);
+	if (!text) return [];
+
+	const words = text.split(" ");
+	const lines: string[] = [];
+	let currentLine = "";
+
+	for (const word of words) {
+		if (word.length > width) {
+			if (currentLine) {
+				lines.push(currentLine);
+				currentLine = "";
+			}
+
+			for (let i = 0; i < word.length; i += width) {
+				lines.push(word.slice(i, i + width));
+			}
+			continue;
+		}
+
+		const candidate = currentLine ? `${currentLine} ${word}` : word;
+		if (candidate.length <= width) {
+			currentLine = candidate;
+			continue;
+		}
+
+		if (currentLine) {
+			lines.push(currentLine);
+		}
+		currentLine = word;
+	}
+
+	if (currentLine) {
+		lines.push(currentLine);
+	}
+
+	return lines;
+};
+
+const buildKeyValueLine = (label: string, value: string, width = RECEIPT_LINE_WIDTH) => {
+	const safeLabel = normalizeReceiptText(label);
+	const safeValue = normalizeReceiptText(value);
+
+	if (!safeLabel) return safeValue;
+	if (!safeValue) return safeLabel;
+
+	if (safeLabel.length + safeValue.length + 1 <= width) {
+		return `${safeLabel}${" ".repeat(width - safeLabel.length - safeValue.length)}${safeValue}`;
+	}
+
+	const allowedLabelWidth = Math.max(8, width - safeValue.length - 1);
+	const trimmedLabel =
+		safeLabel.length > allowedLabelWidth
+			? `${safeLabel.slice(0, Math.max(0, allowedLabelWidth - 1))}…`
+			: safeLabel;
+
+	return `${trimmedLabel}${" ".repeat(Math.max(1, width - trimmedLabel.length - safeValue.length))}${safeValue}`;
+};
 
 export interface OrderItem {
 	productId: string;
@@ -217,24 +287,34 @@ export class BluetoothPrinterService {
 
 		const encoder = new EscPosEncoder();
 		const result = encoder.initialize();
+		const separator = "-".repeat(RECEIPT_LINE_WIDTH);
+		const headerSeparator = "=".repeat(RECEIPT_LINE_WIDTH);
+		const printWrappedLines = (text: string, width = RECEIPT_LINE_WIDTH) => {
+			for (const line of wrapReceiptText(text, width)) {
+				result.line(line);
+			}
+		};
+		const printCenteredLines = (text: string, width = RECEIPT_HEADER_WIDTH) => {
+			for (const line of wrapReceiptText(text, width)) {
+				result.line(line);
+			}
+		};
+		const printKeyValue = (label: string, value: string) => {
+			result.line(buildKeyValueLine(label, value));
+		};
 
-		// Alignment and Logo
 		result.align("center");
 
 		if (settings.receiptShowLogo && settings.receiptLogo) {
 			try {
 				const imageData = await this._loadImage(settings.receiptLogo);
 				result.image(imageData, imageData.width, imageData.height, "atkinson", 128);
-				// Extra line removed for compactness
 			} catch (err) {
 				console.error("Failed to print logo:", err);
 			}
 		}
 
-		// Header / Store Name
 		const headerText = settings.receiptHeader || settings.storeName || "YUMI POS";
-		
-		// Font Size handling
 		const fontSize = settings.receiptFontSize || "normal";
 		if (fontSize === "large") {
 			(result as any).size("double");
@@ -242,166 +322,129 @@ export class BluetoothPrinterService {
 			result.size("normal");
 		}
 
-		result.bold(true).line(headerText).bold(false);
-		result.size("normal"); // Reset size for rest of receipt
+		result.bold(true);
+		printCenteredLines(headerText.toUpperCase(), RECEIPT_HEADER_WIDTH);
+		result.bold(false);
+		result.size("normal");
 
-		// Address & Phone
 		if (settings.receiptShowAddress && settings.storeAddress) {
-			result.line(settings.storeAddress);
+			printCenteredLines(settings.storeAddress, RECEIPT_HEADER_WIDTH);
 		}
 		if (settings.receiptShowPhone && settings.storePhone) {
-			result.line(settings.storePhone);
+			printCenteredLines(settings.storePhone, RECEIPT_HEADER_WIDTH);
 		}
 
-		const separator = "-".repeat(RECEIPT_LINE_WIDTH);
-		result.line(separator);
-		
-		// ID, Date, Method combined for compactness
+		result.line(headerSeparator);
+		result.align("left");
+
 		if (settings.receiptShowOrderNumber) {
-			const cashierPart = order.cashierName && (settings.receiptShowCashierName !== false) 
-				? ` | KASIR: ${order.cashierName.toUpperCase()}`
-				: "";
-			
-			const idLine = `ID: ${order.orderNumber}${cashierPart}`;
-			if (idLine.length <= RECEIPT_LINE_WIDTH) {
-				result.line(idLine);
-			} else {
-				result.line(`ID: ${order.orderNumber}`);
-				if (cashierPart) result.line(`KASIR: ${order.cashierName?.toUpperCase()}`);
-			}
-		} else if (order.cashierName && (settings.receiptShowCashierName !== false)) {
-			result.line(`KASIR: ${order.cashierName.toUpperCase()}`);
+			printKeyValue("ID", order.orderNumber.toUpperCase());
 		}
-		
+
+		if (order.cashierName && settings.receiptShowCashierName !== false) {
+			printKeyValue("KASIR", order.cashierName.toUpperCase());
+		}
+		if (order.shiftName && settings.receiptShowCashierName !== false) {
+			printKeyValue("SHIFT", order.shiftName.toUpperCase());
+		}
+
 		const dateStr = new Date(order.createdAt).toLocaleString("id-ID", {
 			day: "2-digit",
 			month: "2-digit",
 			year: "numeric",
 			hour: "2-digit",
-			minute: "2-digit"
+			minute: "2-digit",
 		});
-		
-		const metaLine = `${dateStr} | ${order.paymentMethod.toUpperCase()}`;
-		if (metaLine.length <= RECEIPT_LINE_WIDTH) {
-			result.line(metaLine);
-		} else {
-			result.line(dateStr);
-			result.line(`METODE: ${order.paymentMethod.toUpperCase()}`);
-		}
+		printKeyValue("WAKTU", dateStr);
+		printKeyValue("BAYAR", order.paymentMethod.toUpperCase());
 
-		// Order Type & Table
 		const orderType = order.orderType || settings.orderType;
 		const tableNumber = order.tableNumber || settings.tableNumber;
-		
+
 		if (orderType) {
 			const typeLabel = orderType === "dine_in" ? "MAKAN DI SINI" : "BAWA PULANG";
-			result.bold(true).line(typeLabel).bold(false);
-		}
-		
-		if (tableNumber) {
-			result.line(`MEJA: ${tableNumber}`);
+			printKeyValue("TIPE", typeLabel);
 		}
 
-		// Customer Name
+		if (tableNumber) {
+			printKeyValue("MEJA", tableNumber);
+		}
+
 		if (settings.receiptShowCustomerName && order.customerName) {
-			result.line(`PELANGGAN: ${order.customerName.toUpperCase()}`);
+			printKeyValue("PELANGGAN", order.customerName.toUpperCase());
 		}
 
 		result.line(separator);
+		printKeyValue("ITEM", "TOTAL");
+		result.line(separator);
 
-		// Items Header (Optional but makes it look pro)
-		// result.line("QTY  ITEM                TOTAL");
-
-		// Items
 		for (const item of order.items) {
-			const qtyStr = `${item.quantity}x`;
-			const priceStr = new Intl.NumberFormat("id-ID").format(item.price * item.quantity);
-			const itemName = item.name.toUpperCase();
-			const variantText = item.variant?.trim();
-			
-			// Responsive 1-line or 2-line layout
-			const totalReservedWidth = qtyStr.length + priceStr.length + 2; // qtx + space + name + space + price
-			if (itemName.length + totalReservedWidth <= RECEIPT_LINE_WIDTH) {
-				const spaces = RECEIPT_LINE_WIDTH - qtyStr.length - itemName.length - priceStr.length;
-				result.line(`${qtyStr} ${itemName}${" ".repeat(Math.max(1, spaces))}${priceStr}`);
-			} else {
-				// 2-line layout for long names
-				result.bold(true).line(itemName.substring(0, RECEIPT_LINE_WIDTH)).bold(false);
-				const leftPart = `${qtyStr} @${new Intl.NumberFormat("id-ID").format(item.price)}`;
-				const spaces = RECEIPT_LINE_WIDTH - leftPart.length - priceStr.length;
-				result.line(`${leftPart}${" ".repeat(Math.max(1, spaces))}${priceStr}`);
+			const totalStr = formatReceiptCurrency(item.price * item.quantity);
+			const nameLines = wrapReceiptText(item.name.toUpperCase(), RECEIPT_LINE_WIDTH - totalStr.length - 1);
+			const firstNameLine = nameLines.shift() || item.name.toUpperCase().slice(0, RECEIPT_LINE_WIDTH);
+			result.bold(true).line(buildKeyValueLine(firstNameLine, totalStr)).bold(false);
+			for (const extraLine of nameLines) {
+				result.line(extraLine);
 			}
 
+			const qtyDetail = `${item.quantity} x ${formatReceiptCurrency(item.price)}`;
+			result.line(`  ${qtyDetail}`);
+
+			const variantText = normalizeReceiptText(item.variant);
 			if (variantText) {
-				const variantLines = variantText.toUpperCase().match(new RegExp(`.{1,${Math.max(8, RECEIPT_LINE_WIDTH - 4)}}`, "g")) || [];
-				for (const line of variantLines) {
-					result.line(`   > ${line}`);
+				for (const line of wrapReceiptText(variantText, RECEIPT_LINE_WIDTH - 4)) {
+					result.line(`  + ${line}`);
 				}
 			}
 		}
 
-		// Breakdown (Subtotal, Discount, Tax, etc.)
-		const formatCurrency = (val: number) => new Intl.NumberFormat("id-ID").format(val);
-		
-		// Utility function to pad label and value so they fit in exactly the line width
-		// If label is too long, it will be truncated.
-		const padLabel = (label: string, val: string) => {
-			const MAX_WIDTH = RECEIPT_LINE_WIDTH;
-			let safeLabel = label;
-			
-			// If total length exceeds MAX_WIDTH, we must truncate the label
-			if (label.length + val.length + 1 > MAX_WIDTH) {
-				safeLabel = label.substring(0, MAX_WIDTH - val.length - 1);
-			}
-			
-			const spaces = MAX_WIDTH - safeLabel.length - val.length;
-			return safeLabel + " ".repeat(Math.max(1, spaces)) + val;
-		};
-
 		result.line(separator);
 
 		if (order.subtotal !== undefined) {
-			result.line(padLabel("SUBTOTAL", formatCurrency(order.subtotal)));
+			printKeyValue("SUBTOTAL", formatReceiptCurrency(order.subtotal));
 		}
 
 		if (order.discountAmount && order.discountAmount > 0) {
-			result.line(padLabel("DISKON", `-${formatCurrency(order.discountAmount)}`));
+			printKeyValue("DISKON", `-${formatReceiptCurrency(order.discountAmount)}`);
 		}
 
 		if (order.taxAmount && order.taxAmount > 0) {
-			result.line(padLabel("PAJAK", formatCurrency(order.taxAmount)));
+			printKeyValue("PAJAK", formatReceiptCurrency(order.taxAmount));
 		}
 
 		if (order.serviceChargeAmount && order.serviceChargeAmount > 0) {
-			result.line(padLabel("SERVICE CHARGE", formatCurrency(order.serviceChargeAmount)));
+			printKeyValue("SERVICE", formatReceiptCurrency(order.serviceChargeAmount));
 		}
 
-		// Final Total
 		result
 			.line(separator)
 			.bold(true)
-			.line(padLabel("TOTAL", `Rp ${formatCurrency(order.totalAmount)}`))
+			.line(buildKeyValueLine("TOTAL", `RP ${formatReceiptCurrency(order.totalAmount)}`))
 			.bold(false);
 
-		// Cash & Change Details
 		if (order.cashReceived !== undefined && order.cashReceived > 0) {
-			result.line(padLabel("BAYAR TUNAI", formatCurrency(order.cashReceived)));
+			printKeyValue("TUNAI", formatReceiptCurrency(order.cashReceived));
 			if (order.changeAmount !== undefined && order.changeAmount > 0) {
-				result.bold(true).line(padLabel("KEMBALIAN", formatCurrency(order.changeAmount))).bold(false);
+				result
+					.bold(true)
+					.line(buildKeyValueLine("KEMBALI", formatReceiptCurrency(order.changeAmount)))
+					.bold(false);
 			}
 		}
 
-		// Notes
 		if (settings.receiptShowNotes && order.notes) {
-			result.line(" ");
-			result.bold(true).line("CATATAN:").bold(false);
-			result.line(order.notes);
+			result.line(separator);
+			result.bold(true).line("CATATAN").bold(false);
+			printWrappedLines(order.notes);
 		}
 
-		// Footer
+		result.align("center");
 		result
 			.line(separator)
-			.line(settings.receiptFooter || "TERIMA KASIH ATAS KUNJUNGAN ANDA!")
+			.bold(true);
+		printCenteredLines(settings.receiptFooter || "TERIMA KASIH ATAS KUNJUNGAN ANDA!", RECEIPT_HEADER_WIDTH);
+		result
+			.bold(false)
 			.line(" ")
 			.cut();
 

@@ -74,28 +74,40 @@ function ReceiptPreview({
 }) {
 	const fontClass = useMemo(() => {
 		if (settings.receiptFontSize === "small") return "text-[10px]";
-		if (settings.receiptFontSize === "large") return "text-sm";
+		if (settings.receiptFontSize === "large") return "text-[12px]";
 		return "text-[11px]";
 	}, [settings.receiptFontSize]);
 
 	const headerText = settings.receiptHeader || storeName || "YUMI POS";
 	const items = [
 		{
-			qty: 2,
-			name: "ES KOPI SUSU",
+			qty: 1,
+			name: "TENTREM KOFFIE CLASSIC",
 			variant: "Size Large, Less Sugar, Oat Milk",
-			total: "36.000",
+			price: "25.000",
+			total: "25.000",
 		},
 		{
-			qty: 1,
+			qty: 2,
 			name: "CROISSANT BUTTER",
 			variant: "Hangat",
-			total: "18.000",
+			price: "18.000",
+			total: "36.000",
 		},
 	];
+	const infoRows = [
+		settings.receiptShowOrderNumber ? ["ID", "ORD-6034"] : null,
+		settings.receiptShowCashierName ? ["KASIR", "AYU"] : null,
+		settings.receiptShowCashierName ? ["SHIFT", "SORE"] : null,
+		["WAKTU", "31/03/2026 15:09"],
+		["BAYAR", "QRIS"],
+		["TIPE", "MAKAN DI SINI"],
+		["MEJA", "07"],
+		settings.receiptShowCustomerName ? ["PELANGGAN", "PELANGGAN UMUM"] : null,
+	].filter(Boolean) as Array<[string, string]>;
 
 	return (
-		<div className="space-y-3 rounded-2xl border border-border/60 bg-muted/20 p-4">
+		<div className="space-y-4 rounded-[28px] border border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,244,245,0.92))] p-4 shadow-sm">
 			<div className="flex items-center justify-between gap-3">
 				<div>
 					<h4 className="font-bold text-foreground text-sm uppercase tracking-wider">
@@ -111,60 +123,67 @@ function ReceiptPreview({
 			</div>
 
 			<div className="flex justify-center">
-				<div className="w-full max-w-[320px] rounded-[28px] bg-zinc-900 p-3 shadow-2xl">
-					<div className="rounded-[20px] bg-white px-4 py-5 shadow-inner">
-						<div className={`font-mono text-zinc-900 ${fontClass}`}>
-							<div className="space-y-1 text-center">
+				<div className="w-full max-w-[330px] rounded-[30px] bg-[radial-gradient(circle_at_top,#3f3f46,#18181b_68%)] p-3 shadow-[0_24px_70px_rgba(15,23,42,0.28)]">
+					<div className="rounded-[22px] bg-white px-4 py-5 shadow-inner">
+						<div className={`font-mono text-zinc-900 leading-relaxed ${fontClass}`}>
+							<div className="space-y-1.5 text-center">
 								{settings.receiptShowLogo && logoSrc ? (
 									<div className="flex justify-center pb-1">
 										<img
 											alt="Preview logo struk"
-											className="max-h-14 max-w-[96px] object-contain grayscale"
+											className="max-h-14 max-w-[92px] object-contain grayscale contrast-125"
 											src={logoSrc}
 										/>
 									</div>
 								) : null}
-								<p className="font-bold uppercase tracking-wide">
+								<p className="font-bold text-[13px] uppercase tracking-[0.22em]">
 									{headerText}
 								</p>
 								{settings.receiptShowAddress && storeAddress ? (
-									<p>{storeAddress}</p>
+									<p className="text-[10px] leading-snug text-zinc-600">
+										{storeAddress}
+									</p>
 								) : null}
 								{settings.receiptShowPhone && storePhone ? (
-									<p>{storePhone}</p>
+									<p className="text-[10px] text-zinc-600">{storePhone}</p>
 								) : null}
 							</div>
 
 							<div className="my-3 border-zinc-300 border-t border-dashed" />
 
 							<div className="space-y-1">
-								{settings.receiptShowOrderNumber ? (
-									<p>ID: A-1024</p>
-								) : null}
-								{settings.receiptShowCashierName ? (
-									<p>KASIR: RINA • SHIFT PAGI</p>
-								) : null}
-								<p>31/03/2026 14:25 | CASH</p>
-								<p>MEJA: 07</p>
-								{settings.receiptShowCustomerName ? (
-									<p>PELANGGAN: BAPAK ANDI</p>
-								) : null}
+								{infoRows.map(([label, value]) => (
+									<div className="flex items-start justify-between gap-3" key={label}>
+										<span className="text-zinc-500">{label}</span>
+										<span className="max-w-[58%] text-right font-semibold">
+											{value}
+										</span>
+									</div>
+								))}
 							</div>
 
 							<div className="my-3 border-zinc-300 border-t border-dashed" />
 
 							<div className="space-y-1.5">
+								<div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+									<span>Item</span>
+									<span>Total</span>
+								</div>
+								<div className="border-zinc-300 border-t border-dashed" />
 								{items.map((item) => (
-									<div className="space-y-1" key={item.name}>
+									<div className="space-y-1.5" key={item.name}>
 										<div className="flex items-start justify-between gap-3">
-											<span className="max-w-[70%]">
-												{item.qty}x {item.name}
+											<span className="max-w-[72%] font-bold uppercase leading-snug">
+												{item.name}
 											</span>
-											<span>{item.total}</span>
+											<span className="shrink-0 font-bold">{item.total}</span>
 										</div>
+										<p className="text-zinc-500">
+											{item.qty} x {item.price}
+										</p>
 										{item.variant ? (
-											<p className="pl-3 text-[10px] text-zinc-500">
-												&gt; {item.variant}
+											<p className="pl-3 text-[10px] leading-snug text-zinc-500">
+												+ {item.variant}
 											</p>
 										) : null}
 									</div>
@@ -175,12 +194,17 @@ function ReceiptPreview({
 
 							<div className="space-y-1">
 								<div className="flex justify-between gap-3">
-									<span>SUBTOTAL</span>
-									<span>54.000</span>
+									<span className="text-zinc-600">SUBTOTAL</span>
+									<span>61.000</span>
 								</div>
-								<div className="flex justify-between gap-3 font-bold">
+								<div className="flex justify-between gap-3">
+									<span className="text-zinc-600">DISKON</span>
+									<span>-0</span>
+								</div>
+								<div className="border-zinc-300 border-t border-dashed pt-1" />
+								<div className="flex justify-between gap-3 font-bold text-[13px]">
 									<span>TOTAL</span>
-									<span>Rp 54.000</span>
+									<span>RP 61.000</span>
 								</div>
 							</div>
 
@@ -188,17 +212,25 @@ function ReceiptPreview({
 								<>
 									<div className="my-3 border-zinc-300 border-t border-dashed" />
 									<div className="space-y-1">
-										<p className="font-bold">CATATAN:</p>
-										<p>Less sugar, tanpa sedotan.</p>
+										<p className="font-bold uppercase tracking-[0.2em]">
+											Catatan
+										</p>
+										<p className="leading-snug text-zinc-600">
+											Pastikan less sugar dan tanpa sedotan.
+										</p>
 									</div>
 								</>
 							) : null}
 
 							<div className="my-3 border-zinc-300 border-t border-dashed" />
 
-							<div className="space-y-1 text-center">
-								<p>{settings.receiptFooter || "Terima kasih atas kunjungan Anda!"}</p>
-								<p className="text-[9px] text-zinc-500">preview only</p>
+							<div className="space-y-1.5 text-center">
+								<p className="font-bold uppercase tracking-[0.22em]">
+									{settings.receiptFooter || "Terima kasih atas kunjungan Anda!"}
+								</p>
+								<p className="text-[9px] uppercase tracking-[0.18em] text-zinc-400">
+									preview thermal 58mm
+								</p>
 							</div>
 						</div>
 					</div>
