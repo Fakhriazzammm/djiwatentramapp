@@ -860,7 +860,7 @@ function DashboardTab({
 
 						// 1. Daily calculation (Total for all orders today)
 						const totalCash = todayOrders
-							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod === 'cash')
+							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'cash' || o.paymentMethod === 'tunai'))
 							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 							
 						const totalQris = todayOrders
@@ -868,7 +868,7 @@ function DashboardTab({
 							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 							
 						const totalOther = todayOrders
-							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod !== 'cash' && o.paymentMethod !== 'qris' && o.paymentMethod !== 'transfer')
+							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod !== 'cash' && o.paymentMethod !== 'tunai' && o.paymentMethod !== 'qris' && o.paymentMethod !== 'transfer')
 							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 							
 						const totalItems = todayOrders
@@ -946,7 +946,7 @@ function DashboardTab({
 								const sOrders = todayOrders.filter((o: Doc<"orders">) => o.createdAt >= sStart && o.createdAt <= sEnd);
 								
 								const sCash = sOrders
-									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod === 'cash')
+									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'cash' || o.paymentMethod === 'tunai'))
 									.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 									
 								const sQris = sOrders
@@ -954,7 +954,7 @@ function DashboardTab({
 									.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 									
 								const sOther = sOrders
-									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod !== 'cash' && o.paymentMethod !== 'qris' && o.paymentMethod !== 'transfer')
+									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod !== 'cash' && o.paymentMethod !== 'tunai' && o.paymentMethod !== 'qris' && o.paymentMethod !== 'transfer')
 									.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 									
 								const sItems = sOrders
@@ -1181,7 +1181,7 @@ Total Produk Terjual: ${totalItems}`;
 						
 						// 1. Daily calculation (Total for all orders today)
 						const totalCash = todayOrders
-							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod === 'cash')
+							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'cash' || o.paymentMethod === 'tunai'))
 							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 							
 						const totalQris = todayOrders
@@ -1189,7 +1189,7 @@ Total Produk Terjual: ${totalItems}`;
 							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 							
 						const totalOther = todayOrders
-							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod !== 'cash' && o.paymentMethod !== 'qris' && o.paymentMethod !== 'transfer')
+							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod !== 'cash' && o.paymentMethod !== 'tunai' && o.paymentMethod !== 'qris' && o.paymentMethod !== 'transfer')
 							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 							
 						const totalItems = todayOrders
@@ -1266,13 +1266,13 @@ Total Produk Terjual: ${totalItems}`;
 								
 								const sOrders = todayOrders.filter((o: Doc<"orders">) => o.createdAt >= sStart && o.createdAt <= sEnd);
 								const sCash = sOrders
-									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod === 'cash')
+									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'cash' || o.paymentMethod === 'tunai'))
 									.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 								const sQris = sOrders
 									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
 									.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 								const sOther = sOrders
-									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod !== 'cash' && o.paymentMethod !== 'qris' && o.paymentMethod !== 'transfer')
+									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod !== 'cash' && o.paymentMethod !== 'tunai' && o.paymentMethod !== 'qris' && o.paymentMethod !== 'transfer')
 									.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 								const sItems = sOrders
 									.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
