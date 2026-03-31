@@ -41,6 +41,10 @@ const DEFAULTS = {
 	receiptShowCashierName: true,
 	receiptShowNotes: true,
 	receiptFontSize: "normal",
+	shiftSettings: {
+		predefinedShifts: [],
+		defaultStartingCash: 0,
+	},
 };
 
 export const getSettings = query({
@@ -124,6 +128,7 @@ export const getSettings = query({
 			receiptShowCashierName: settings.receiptShowCashierName ?? DEFAULTS.receiptShowCashierName,
 			receiptShowNotes: settings.receiptShowNotes ?? DEFAULTS.receiptShowNotes,
 			receiptFontSize: settings.receiptFontSize ?? DEFAULTS.receiptFontSize,
+			shiftSettings: settings.shiftSettings ?? DEFAULTS.shiftSettings,
 		};
 	},
 });
@@ -174,6 +179,12 @@ export const updateSettings = mutation({
 		receiptShowCashierName: v.optional(v.boolean()),
 		receiptShowNotes: v.optional(v.boolean()),
 		receiptFontSize: v.optional(v.string()),
+		shiftSettings: v.optional(
+			v.object({
+				predefinedShifts: v.optional(v.array(v.string())),
+				defaultStartingCash: v.optional(v.number()),
+			})
+		),
 	},
 	handler: async (ctx, args) => {
 		const existing = await ctx.db.query("siteSettings").first();

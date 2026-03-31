@@ -170,6 +170,12 @@ export default defineSchema({
 		receiptShowCashierName: v.optional(v.boolean()),
 		receiptShowNotes: v.optional(v.boolean()),
 		receiptFontSize: v.optional(v.string()),
+		shiftSettings: v.optional(
+			v.object({
+				predefinedShifts: v.optional(v.array(v.string())),
+				defaultStartingCash: v.optional(v.number()),
+			})
+		),
 	}),
 
 	// Discounts / Vouchers

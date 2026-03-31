@@ -1928,6 +1928,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	});
 
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const siteSettings = useQuery(api.site_settings.getSettings);
 	const todayOrders = useQuery(api.orders.getOrders, {});
 
 	const today = new Date();
@@ -1944,6 +1945,21 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			setShiftType("mulai");
 		}
 	}, [shiftStatus?.isOpen]);
+
+	// Auto-fill default starting cash and first predefined shift
+	useEffect(() => {
+		if (shiftType === "mulai" && siteSettings?.shiftSettings) {
+			if (siteSettings.shiftSettings.defaultStartingCash && !amount) {
+				setAmount(siteSettings.shiftSettings.defaultStartingCash.toString());
+			}
+			if (
+				siteSettings.shiftSettings.predefinedShifts?.length &&
+				(!shiftName || shiftName === "Shift Pagi")
+			) {
+				setShiftName(siteSettings.shiftSettings.predefinedShifts[0]);
+			}
+		}
+	}, [shiftType, siteSettings, amount, shiftName]);
 
 	// Auto-calculated shift summary for UI display
 	let shiftIncome = 0;
@@ -2087,13 +2103,37 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 							</div>
 							<div className="space-y-1.5">
 								<Label className="text-[10px] font-bold uppercase text-muted-foreground">Shift <span className="text-destructive">*</span></Label>
-								<Input
-									placeholder="Nama Shift"
-									className="h-9 text-xs"
-									value={shiftName}
-									onChange={(e) => setShiftName(e.target.value)}
-									required
-								/>
+								{siteSettings?.shiftSettings?.predefinedShifts?.length ? (
+									<Select value={shiftName} onValueChange={(val) => setShiftName(val || "")}>
+										<SelectTrigger className="h-9 text-xs">
+											<SelectValue placeholder="Pilih Shift" />
+										</SelectTrigger>
+										<SelectContent className="z-[9999]">
+											{siteSettings.shiftSettings.predefinedShifts.map((name: string) => (
+												<SelectItem key={name} value={name}>
+													{name}
+												</SelectItem>
+											))}
+											<SelectItem value="CUSTOM">-- Lainnya --</SelectItem>
+										</SelectContent>
+									</Select>
+								) : (
+									<Input
+										placeholder="Nama Shift"
+										className="h-9 text-xs"
+										value={shiftName}
+										onChange={(e) => setShiftName(e.target.value)}
+										required
+									/>
+								)}
+								{shiftName === "CUSTOM" && (
+									<Input
+										placeholder="Masukkan nama shift custom"
+										className="h-9 text-xs mt-2"
+										onChange={(e) => setShiftName(e.target.value)}
+										autoFocus
+									/>
+								)}
 							</div>
 						</div>
 						<div className="space-y-1.5">

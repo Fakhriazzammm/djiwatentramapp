@@ -8,10 +8,12 @@ import {
 	Layout,
 	MapPin,
 	Printer,
+	Clock,
 	Save,
 	Settings2,
 	ShieldCheck,
 	Trash2,
+	Plus,
 	User,
 	Users,
 	Wallet,
@@ -110,12 +112,17 @@ function SettingsPage() {
 		},
 	});
 
+	const [shiftSettings, setShiftSettings] = useState({
+		predefinedShifts: [] as string[],
+		defaultStartingCash: 0,
+	});
+
 	const [mayarApiConfigured, setMayarApiConfigured] = useState(false);
 
 	const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
 
 	const [activeTab, setActiveTab] = useState<
-		"landing" | "pos" | "store" | "system" | "users"
+		"landing" | "pos" | "store" | "system" | "users" | "shifts"
 	>("landing");
 
 	// User/Role Form States
@@ -189,6 +196,10 @@ function SettingsPage() {
 					transfer: false,
 				},
 			});
+			setShiftSettings({
+				predefinedShifts: siteSettings.shiftSettings?.predefinedShifts ?? [],
+				defaultStartingCash: siteSettings.shiftSettings?.defaultStartingCash ?? 0,
+			});
 		}
 		setIsConnected(bluetoothPrinter.isConnected());
 		setMayarApiConfigured(isMayarConfigured());
@@ -235,6 +246,7 @@ function SettingsPage() {
 				receiptShowCustomerName: settings.receiptShowCustomerName,
 				receiptShowNotes: settings.receiptShowNotes,
 				receiptFontSize: settings.receiptFontSize,
+				shiftSettings: shiftSettings,
 			};
 			console.log("Saving settings:", payload);
 			await updateSiteSettings(payload);
@@ -341,6 +353,7 @@ function SettingsPage() {
 		{ id: "landing", label: "Halaman Utama", icon: Layout },
 		{ id: "pos", label: "Konfigurasi POS", icon: CreditCard },
 		{ id: "store", label: "Informasi Toko", icon: MapPin },
+		{ id: "shifts", label: "Manajemen Shift", icon: Clock },
 		{ id: "users", label: "Pengguna & Akses", icon: Users },
 		{ id: "system", label: "Sistem & Perangkat", icon: Settings2 },
 	] as const;
@@ -993,6 +1006,121 @@ function SettingsPage() {
 										type="text"
 										value={settings.storePhone}
 									/>
+								</div>
+							</div>
+						</section>
+					</div>
+				)}
+
+				{activeTab === "shifts" && (
+					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
+						<section className="space-y-6 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-8">
+							<div className="flex items-center gap-4">
+								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+									<Clock className="h-6 w-6" />
+								</div>
+								<div>
+									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
+										Manajemen Shift
+									</h3>
+									<p className="text-muted-foreground text-sm">
+										Atur shift kerja dan modal awal default
+									</p>
+								</div>
+							</div>
+
+							<div className="space-y-8">
+								{/* Predefined Shifts */}
+								<div className="space-y-4">
+									<div className="flex items-center justify-between">
+										<div className="space-y-1">
+											<h4 className="font-bold text-foreground text-sm uppercase tracking-wider">
+												Daftar Shift
+											</h4>
+											<p className="text-muted-foreground text-xs">
+												Shift yang dapat dipilih oleh kasir saat mulai bertugas.
+											</p>
+										</div>
+										<button
+											onClick={() => {
+												const name = window.prompt("Masukkan nama shift baru:");
+												if (name) {
+													setShiftSettings({
+														...shiftSettings,
+														predefinedShifts: [...shiftSettings.predefinedShifts, name],
+													});
+												}
+											}}
+											className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5 font-bold text-primary text-xs transition-all hover:bg-primary/20"
+											type="button"
+										>
+											<Plus className="h-3 w-3" /> Tambah Shift
+										</button>
+									</div>
+
+									<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+										{shiftSettings.predefinedShifts.map((shift, index) => (
+											<div
+												key={index}
+												className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-4 py-3"
+											>
+												<span className="font-bold text-foreground text-sm">
+													{shift}
+												</span>
+												<button
+													onClick={() => {
+														const newShifts = [...shiftSettings.predefinedShifts];
+														newShifts.splice(index, 1);
+														setShiftSettings({
+															...shiftSettings,
+															predefinedShifts: newShifts,
+														});
+													}}
+													className="text-muted-foreground hover:text-destructive transition-colors"
+													type="button"
+												>
+													<Trash2 className="h-4 w-4" />
+												</button>
+											</div>
+										))}
+										{shiftSettings.predefinedShifts.length === 0 && (
+											<div className="col-span-full py-8 text-center border-2 border-dashed border-border rounded-xl">
+												<p className="text-muted-foreground text-sm">
+													Belum ada shift yang terdaftar.
+												</p>
+											</div>
+										)}
+									</div>
+								</div>
+
+								{/* Default Starting Cash */}
+								<div className="space-y-4 pt-6 border-t border-border">
+									<div className="space-y-1">
+										<h4 className="font-bold text-foreground text-sm uppercase tracking-wider">
+											Modal Awal Default
+										</h4>
+										<p className="text-muted-foreground text-xs">
+											Jumlah modal awal otomatis yang terisi saat kasir membuka shift baru.
+										</p>
+									</div>
+									<div className="max-w-xs">
+										<div className="relative">
+											<span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-sm">
+												Rp
+											</span>
+											<input
+												className="w-full rounded-xl bg-muted/50 py-3.5 pl-11 pr-4 font-black text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												onChange={(e) =>
+													setShiftSettings({
+														...shiftSettings,
+														defaultStartingCash: Number(e.target.value),
+													})
+												}
+												type="number"
+												value={shiftSettings.defaultStartingCash}
+											/>
+										</div>
+									</div>
 								</div>
 							</div>
 						</section>
