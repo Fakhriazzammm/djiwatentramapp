@@ -174,6 +174,16 @@ export default defineSchema({
 			v.object({
 				predefinedShifts: v.optional(v.array(v.string())),
 				defaultStartingCash: v.optional(v.number()),
+				reminderMinutesBeforeClose: v.optional(v.number()),
+				shiftSchedules: v.optional(
+					v.array(
+						v.object({
+							name: v.string(),
+							openTime: v.optional(v.string()),
+							closeTime: v.optional(v.string()),
+						})
+					)
+				),
 			})
 		),
 	}),

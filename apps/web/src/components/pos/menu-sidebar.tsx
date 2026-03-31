@@ -1930,6 +1930,12 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
 	const siteSettings = useQuery(api.site_settings.getSettings);
 	const todayOrders = useQuery(api.orders.getOrders, {});
+	const selectedShiftSchedule = useMemo(() => {
+		return siteSettings?.shiftSettings?.shiftSchedules?.find(
+			(schedule: { name: string; openTime?: string; closeTime?: string }) =>
+				schedule.name === shiftName
+		);
+	}, [siteSettings?.shiftSettings?.shiftSchedules, shiftName]);
 
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
@@ -2133,6 +2139,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 										onChange={(e) => setShiftName(e.target.value)}
 										autoFocus
 									/>
+								)}
+								{selectedShiftSchedule?.openTime && selectedShiftSchedule?.closeTime && (
+									<p className="text-[10px] font-semibold text-primary mt-1">
+										Jadwal shift: {selectedShiftSchedule.openTime} - {selectedShiftSchedule.closeTime}
+									</p>
 								)}
 							</div>
 						</div>

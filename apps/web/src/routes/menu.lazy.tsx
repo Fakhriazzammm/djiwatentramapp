@@ -22,6 +22,13 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { MenuSidebar } from "@/components/pos/menu-sidebar";
 import { CartDrawer } from "@/components/pos/cart-drawer";
@@ -48,6 +55,31 @@ const SIDEBAR_MENU_ITEMS = [
 	{ id: "yumi", label: "Chat AI", icon: Bot },
 	{ id: "settings", label: "Pengaturan", icon: Settings2 },
 ];
+
+type ShiftSchedule = {
+	name: string;
+	openTime?: string;
+	closeTime?: string;
+};
+
+function parseTimeToMinutes(time?: string) {
+	if (!time || !time.includes(":")) return null;
+	const [hours, minutes] = time.split(":").map(Number);
+	if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+	return hours * 60 + minutes;
+}
+
+function formatClockTime(time?: string) {
+	return time || "--:--";
+}
+
+function getShiftSchedule(
+	schedules: ShiftSchedule[] | undefined,
+	shiftName?: string | null
+) {
+	if (!shiftName || !schedules?.length) return null;
+	return schedules.find((schedule) => schedule.name === shiftName) ?? null;
+}
 
 function MenuPage() {
 	// Queries
@@ -92,6 +124,8 @@ function MenuPage() {
 	// Printer State
 	const [isPrinterConnected, setIsPrinterConnected] = useState(bluetoothPrinter.isConnected());
 	const [currentTime, setCurrentTime] = useState(new Date());
+	const [shiftReminderOpen, setShiftReminderOpen] = useState(false);
+	const [shiftReminderState, setShiftReminderState] = useState<"soon" | "overdue" | null>(null);
 
 	// Periodically check printer connection and update time
 	useEffect(() => {
@@ -101,6 +135,59 @@ function MenuPage() {
 		}, 3000);
 		return () => clearInterval(interval);
 	}, []);
+
+	const activeShiftSchedule = useMemo(
+		() =>
+			getShiftSchedule(
+				siteSettings?.shiftSettings?.shiftSchedules as ShiftSchedule[] | undefined,
+				shiftStatus?.shiftInfo?.shiftName
+			),
+		[siteSettings?.shiftSettings?.shiftSchedules, shiftStatus?.shiftInfo?.shiftName]
+	);
+
+	const shiftReminderMinutes = Math.max(
+		1,
+		siteSettings?.shiftSettings?.reminderMinutesBeforeClose ?? 15
+	);
+
+	useEffect(() => {
+		if (!isShiftOpen || !activeShiftSchedule?.closeTime) {
+			setShiftReminderState(null);
+			setShiftReminderOpen(false);
+			return;
+		}
+
+		const closeMinutes = parseTimeToMinutes(activeShiftSchedule.closeTime);
+		if (closeMinutes == null) {
+			setShiftReminderState(null);
+			setShiftReminderOpen(false);
+			return;
+		}
+
+		const nowMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+		const minutesUntilClose = closeMinutes - nowMinutes;
+		const nextState =
+			minutesUntilClose < 0
+				? "overdue"
+				: minutesUntilClose <= shiftReminderMinutes
+					? "soon"
+					: null;
+
+		setShiftReminderState((prev) => {
+			if (nextState && prev !== nextState) {
+				setShiftReminderOpen(true);
+			}
+			if (!nextState) {
+				setShiftReminderOpen(false);
+			}
+			return nextState;
+		});
+	}, [
+		activeShiftSchedule?.closeTime,
+		currentTime,
+		isShiftOpen,
+		shiftReminderMinutes,
+	]);
 
 	// Responsive grid columns
 	const [gridColumns, setGridColumns] = useState(4);
@@ -596,6 +683,16 @@ function MenuPage() {
 								</div>
 							</>
 						)}
+
+						{isShiftOpen && activeShiftSchedule?.closeTime && (
+							<>
+								<div className="h-3 w-px bg-border shrink-0" />
+								<div className="flex items-center gap-1 sm:gap-1.5 text-muted-foreground">
+									<Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
+									<span>Tutup {formatClockTime(activeShiftSchedule.closeTime)}</span>
+								</div>
+							</>
+						)}
 					</div>
 
 					{/* Printer Status */}
@@ -961,6 +1058,69 @@ function MenuPage() {
 				isSubmitting={isSubmitting}
 				onConfirm={handlePaymentConfirm}
 			/>
+
+			<Dialog open={shiftReminderOpen} onOpenChange={setShiftReminderOpen}>
+				<DialogContent className="max-w-md">
+					<DialogHeader>
+						<DialogTitle className="text-lg font-black tracking-tight">
+							{shiftReminderState === "overdue"
+								? "Shift Sudah Lewat Jam Tutup"
+								: "Shift Akan Segera Ditutup"}
+						</DialogTitle>
+						<DialogDescription className="text-sm">
+							{shiftReminderState === "overdue"
+								? `Shift ${shiftStatus?.shiftInfo?.shiftName || ""} sudah melewati jam tutup ${formatClockTime(
+										activeShiftSchedule?.closeTime
+								  )}. Kasir sebaiknya segera tutup shift.`
+								: `Shift ${shiftStatus?.shiftInfo?.shiftName || ""} akan tutup pada ${formatClockTime(
+										activeShiftSchedule?.closeTime
+								  )}. Popup ini muncul ${shiftReminderMinutes} menit sebelumnya agar kasir bisa bersiap.`}
+						</DialogDescription>
+					</DialogHeader>
+
+					<div className="rounded-2xl border border-border bg-muted/40 p-4 text-sm">
+						<div className="flex items-center justify-between gap-3">
+							<span className="text-muted-foreground">Kasir</span>
+							<span className="font-bold text-foreground">
+								{shiftStatus?.shiftInfo?.cashierName || "-"}
+							</span>
+						</div>
+						<div className="mt-2 flex items-center justify-between gap-3">
+							<span className="text-muted-foreground">Jam buka</span>
+							<span className="font-bold text-foreground">
+								{formatClockTime(activeShiftSchedule?.openTime)}
+							</span>
+						</div>
+						<div className="mt-2 flex items-center justify-between gap-3">
+							<span className="text-muted-foreground">Jam tutup</span>
+							<span className="font-bold text-foreground">
+								{formatClockTime(activeShiftSchedule?.closeTime)}
+							</span>
+						</div>
+					</div>
+
+					<div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+						<button
+							type="button"
+							onClick={() => setShiftReminderOpen(false)}
+							className="rounded-xl border border-border px-4 py-2.5 font-bold text-foreground transition-all hover:bg-muted"
+						>
+							Nanti Lagi
+						</button>
+						<button
+							type="button"
+							onClick={() => {
+								setShiftReminderOpen(false);
+								setActiveSidebarTab("kas");
+								setIsSidebarOpen(true);
+							}}
+							className="rounded-xl bg-primary px-4 py-2.5 font-bold text-primary-foreground transition-all hover:opacity-90"
+						>
+							Buka Panel Shift
+						</button>
+					</div>
+				</DialogContent>
+			</Dialog>
 
 			{/* === KEYBOARD SHORTCUT HINTS === */}
 			<div className="fixed bottom-1 right-2 z-10 hidden md:block">

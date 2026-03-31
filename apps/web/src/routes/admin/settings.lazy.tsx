@@ -27,6 +27,26 @@ import { authClient } from "@/lib/auth-client";
 import { bluetoothPrinter } from "@/lib/bluetooth-printer";
 import { isMayarConfigured } from "@/lib/mayarGateway";
 
+type ShiftSchedule = {
+	name: string;
+	openTime?: string;
+	closeTime?: string;
+};
+
+function buildShiftSchedules(
+	predefinedShifts: string[],
+	existingSchedules: ShiftSchedule[] = []
+): ShiftSchedule[] {
+	return predefinedShifts.map((name, index) => {
+		const existing = existingSchedules.find((schedule) => schedule.name === name);
+		return {
+			name,
+			openTime: existing?.openTime ?? (index === 0 ? "07:00" : ""),
+			closeTime: existing?.closeTime ?? (index === 0 ? "15:00" : ""),
+		};
+	});
+}
+
 const AVAILABLE_PERMISSIONS = [
 	{ id: "orders:view", label: "Lihat Pesanan" },
 	{ id: "orders:create", label: "Buat Pesanan" },
@@ -115,6 +135,8 @@ function SettingsPage() {
 	const [shiftSettings, setShiftSettings] = useState({
 		predefinedShifts: [] as string[],
 		defaultStartingCash: 0,
+		reminderMinutesBeforeClose: 15,
+		shiftSchedules: [] as ShiftSchedule[],
 	});
 
 	const [mayarApiConfigured, setMayarApiConfigured] = useState(false);
@@ -199,6 +221,12 @@ function SettingsPage() {
 			setShiftSettings({
 				predefinedShifts: siteSettings.shiftSettings?.predefinedShifts ?? [],
 				defaultStartingCash: siteSettings.shiftSettings?.defaultStartingCash ?? 0,
+				reminderMinutesBeforeClose:
+					siteSettings.shiftSettings?.reminderMinutesBeforeClose ?? 15,
+				shiftSchedules: buildShiftSchedules(
+					siteSettings.shiftSettings?.predefinedShifts ?? [],
+					siteSettings.shiftSettings?.shiftSchedules ?? []
+				),
 			});
 		}
 		setIsConnected(bluetoothPrinter.isConnected());
@@ -246,7 +274,13 @@ function SettingsPage() {
 				receiptShowCustomerName: settings.receiptShowCustomerName,
 				receiptShowNotes: settings.receiptShowNotes,
 				receiptFontSize: settings.receiptFontSize,
-				shiftSettings: shiftSettings,
+				shiftSettings: {
+					...shiftSettings,
+					shiftSchedules: buildShiftSchedules(
+						shiftSettings.predefinedShifts,
+						shiftSettings.shiftSchedules
+					),
+				},
 			};
 			console.log("Saving settings:", payload);
 			await updateSiteSettings(payload);
@@ -347,6 +381,14 @@ function SettingsPage() {
 				}
 			},
 		});
+	};
+
+	const syncShiftSettings = (predefinedShifts: string[], schedules?: ShiftSchedule[]) => {
+		setShiftSettings((prev) => ({
+			...prev,
+			predefinedShifts,
+			shiftSchedules: buildShiftSchedules(predefinedShifts, schedules ?? prev.shiftSchedules),
+		}));
 	};
 
 	const tabs = [
@@ -1024,7 +1066,7 @@ function SettingsPage() {
 										Manajemen Shift
 									</h3>
 									<p className="text-muted-foreground text-sm">
-										Atur shift kerja dan modal awal default
+										Atur shift kerja, jam operasional, dan popup pengingat kasir
 									</p>
 								</div>
 							</div>
@@ -1043,12 +1085,14 @@ function SettingsPage() {
 										</div>
 										<button
 											onClick={() => {
-												const name = window.prompt("Masukkan nama shift baru:");
+												const rawName = window.prompt("Masukkan nama shift baru:");
+												const name = rawName?.trim();
 												if (name) {
-													setShiftSettings({
-														...shiftSettings,
-														predefinedShifts: [...shiftSettings.predefinedShifts, name],
-													});
+													const nextShifts = [...shiftSettings.predefinedShifts, name];
+													syncShiftSettings(nextShifts, [
+														...shiftSettings.shiftSchedules,
+														{ name, openTime: "", closeTime: "" },
+													]);
 												}
 											}}
 											className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5 font-bold text-primary text-xs transition-all hover:bg-primary/20"
@@ -1058,31 +1102,98 @@ function SettingsPage() {
 										</button>
 									</div>
 
-									<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-										{shiftSettings.predefinedShifts.map((shift, index) => (
+									<div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+										{shiftSettings.predefinedShifts.map((shift, index) => {
+											const schedule =
+												shiftSettings.shiftSchedules.find(
+													(item) => item.name === shift
+												) ?? {
+													name: shift,
+													openTime: "",
+													closeTime: "",
+												};
+											return (
 											<div
 												key={index}
-												className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-4 py-3"
+												className="space-y-4 rounded-xl border border-border bg-muted/30 px-4 py-4"
 											>
-												<span className="font-bold text-foreground text-sm">
-													{shift}
-												</span>
-												<button
-													onClick={() => {
-														const newShifts = [...shiftSettings.predefinedShifts];
-														newShifts.splice(index, 1);
-														setShiftSettings({
-															...shiftSettings,
-															predefinedShifts: newShifts,
-														});
-													}}
-													className="text-muted-foreground hover:text-destructive transition-colors"
-													type="button"
-												>
-													<Trash2 className="h-4 w-4" />
-												</button>
+												<div className="flex items-start justify-between gap-3">
+													<div>
+														<p className="font-bold text-foreground text-sm">
+															{shift}
+														</p>
+														<p className="text-[11px] text-muted-foreground">
+															Pilih jam buka dan tutup shift ini.
+														</p>
+													</div>
+													<button
+														onClick={() => {
+															const newShifts = [...shiftSettings.predefinedShifts];
+															newShifts.splice(index, 1);
+															syncShiftSettings(
+																newShifts,
+																shiftSettings.shiftSchedules.filter(
+																	(item) => item.name !== shift
+																)
+															);
+														}}
+														className="text-muted-foreground hover:text-destructive transition-colors"
+														type="button"
+													>
+														<Trash2 className="h-4 w-4" />
+													</button>
+												</div>
+												<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+													<div className="space-y-1.5">
+														<label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+															Jam Buka
+														</label>
+														<input
+															className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-semibold text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+															type="time"
+															value={schedule.openTime ?? ""}
+															onChange={(e) =>
+																setShiftSettings((prev) => ({
+																	...prev,
+																	shiftSchedules: buildShiftSchedules(
+																		prev.predefinedShifts,
+																		prev.shiftSchedules.map((item) =>
+																			item.name === shift
+																				? { ...item, openTime: e.target.value }
+																				: item
+																		)
+																	),
+																}))
+															}
+														/>
+													</div>
+													<div className="space-y-1.5">
+														<label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+															Jam Tutup
+														</label>
+														<input
+															className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-semibold text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+															type="time"
+															value={schedule.closeTime ?? ""}
+															onChange={(e) =>
+																setShiftSettings((prev) => ({
+																	...prev,
+																	shiftSchedules: buildShiftSchedules(
+																		prev.predefinedShifts,
+																		prev.shiftSchedules.map((item) =>
+																			item.name === shift
+																				? { ...item, closeTime: e.target.value }
+																				: item
+																		)
+																	),
+																}))
+															}
+														/>
+													</div>
+												</div>
 											</div>
-										))}
+											);
+										})}
 										{shiftSettings.predefinedShifts.length === 0 && (
 											<div className="col-span-full py-8 text-center border-2 border-dashed border-border rounded-xl">
 												<p className="text-muted-foreground text-sm">
@@ -1090,6 +1201,36 @@ function SettingsPage() {
 												</p>
 											</div>
 										)}
+									</div>
+								</div>
+
+								<div className="space-y-4 pt-6 border-t border-border">
+									<div className="space-y-1">
+										<h4 className="font-bold text-foreground text-sm uppercase tracking-wider">
+											Popup Pengingat Tutup Shift
+										</h4>
+										<p className="text-muted-foreground text-xs">
+											Kasir di halaman menu akan mendapat popup beberapa menit sebelum jam tutup.
+										</p>
+									</div>
+									<div className="max-w-xs">
+										<div className="relative">
+											<input
+												className="w-full rounded-xl bg-muted/50 py-3.5 pl-4 pr-20 font-black text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												min={1}
+												onChange={(e) =>
+													setShiftSettings({
+														...shiftSettings,
+														reminderMinutesBeforeClose: Number(e.target.value),
+													})
+												}
+												type="number"
+												value={shiftSettings.reminderMinutesBeforeClose}
+											/>
+											<span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-sm">
+												menit
+											</span>
+										</div>
 									</div>
 								</div>
 
