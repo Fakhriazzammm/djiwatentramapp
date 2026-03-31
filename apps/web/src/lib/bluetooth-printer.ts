@@ -1,5 +1,7 @@
 import EscPosEncoder from "esc-pos-encoder";
 
+const RECEIPT_LINE_WIDTH = 28; // Safest for 58mm printers. Reduced from 30 to prevent any wrapping.
+
 export interface OrderItem {
 	productId: string;
 	name: string;
@@ -223,7 +225,7 @@ export class BluetoothPrinterService {
 			try {
 				const imageData = await this._loadImage(settings.receiptLogo);
 				result.image(imageData, imageData.width, imageData.height, "atkinson", 128);
-				result.line(" "); // Extra line after logo
+				// Extra line removed for compactness
 			} catch (err) {
 				console.error("Failed to print logo:", err);
 			}
@@ -235,7 +237,7 @@ export class BluetoothPrinterService {
 		// Font Size handling
 		const fontSize = settings.receiptFontSize || "normal";
 		if (fontSize === "large") {
-			result.size("double");
+			(result as any).size("double");
 		} else {
 			result.size("normal");
 		}
@@ -251,12 +253,24 @@ export class BluetoothPrinterService {
 			result.line(settings.storePhone);
 		}
 
-		result.line("--------------------------------");
+		const separator = "-".repeat(RECEIPT_LINE_WIDTH);
+		result.line(separator);
 		
-		// Order Summary Row (Order No & Date)
-		result.align("left");
+		// ID, Date, Method combined for compactness
 		if (settings.receiptShowOrderNumber) {
-			result.line(`ID: ${order.orderNumber}`);
+			const cashierPart = order.cashierName && (settings.receiptShowCashierName !== false) 
+				? ` | KASIR: ${order.cashierName.toUpperCase()}`
+				: "";
+			
+			const idLine = `ID: ${order.orderNumber}${cashierPart}`;
+			if (idLine.length <= RECEIPT_LINE_WIDTH) {
+				result.line(idLine);
+			} else {
+				result.line(`ID: ${order.orderNumber}`);
+				if (cashierPart) result.line(`KASIR: ${order.cashierName?.toUpperCase()}`);
+			}
+		} else if (order.cashierName && (settings.receiptShowCashierName !== false)) {
+			result.line(`KASIR: ${order.cashierName.toUpperCase()}`);
 		}
 		
 		const dateStr = new Date(order.createdAt).toLocaleString("id-ID", {
@@ -267,12 +281,12 @@ export class BluetoothPrinterService {
 			minute: "2-digit"
 		});
 		
-		result.line(`TGL: ${dateStr}`);
-		result.line(`METODE: ${order.paymentMethod.toUpperCase()}`);
-
-		// Shift Info & Cashier (if available and settings allow)
-		if (order.cashierName && (settings.receiptShowCashierName !== false)) {
-			result.line(`KASIR: ${order.cashierName.toUpperCase()}`);
+		const metaLine = `${dateStr} | ${order.paymentMethod.toUpperCase()}`;
+		if (metaLine.length <= RECEIPT_LINE_WIDTH) {
+			result.line(metaLine);
+		} else {
+			result.line(dateStr);
+			result.line(`METODE: ${order.paymentMethod.toUpperCase()}`);
 		}
 
 		// Order Type & Table
@@ -293,52 +307,38 @@ export class BluetoothPrinterService {
 			result.line(`PELANGGAN: ${order.customerName.toUpperCase()}`);
 		}
 
-		result.line("--------------------------------");
+		result.line(separator);
 
 		// Items Header (Optional but makes it look pro)
 		// result.line("QTY  ITEM                TOTAL");
 
 		// Items
 		for (const item of order.items) {
-			const qtyStr = `${item.quantity}x`.padEnd(4);
+			const qtyStr = `${item.quantity}x`;
 			const priceStr = new Intl.NumberFormat("id-ID").format(item.price * item.quantity);
+			const itemName = item.name.toUpperCase();
 			
-			// Compact multi-line for items
-			// We ensure item name does not exceed 32 characters to prevent weird wrapping
-			const maxNameLength = 32;
-			let itemName = item.name.toUpperCase();
-			if (itemName.length > maxNameLength) {
-				itemName = itemName.substring(0, maxNameLength);
+			// Responsive 1-line or 2-line layout
+			const totalReservedWidth = qtyStr.length + priceStr.length + 2; // qtx + space + name + space + price
+			if (itemName.length + totalReservedWidth <= RECEIPT_LINE_WIDTH) {
+				const spaces = RECEIPT_LINE_WIDTH - qtyStr.length - itemName.length - priceStr.length;
+				result.line(`${qtyStr} ${itemName}${" ".repeat(Math.max(1, spaces))}${priceStr}`);
+			} else {
+				// 2-line layout for long names
+				result.bold(true).line(itemName.substring(0, RECEIPT_LINE_WIDTH)).bold(false);
+				const leftPart = `${qtyStr} @${new Intl.NumberFormat("id-ID").format(item.price)}`;
+				const spaces = RECEIPT_LINE_WIDTH - leftPart.length - priceStr.length;
+				result.line(`${leftPart}${" ".repeat(Math.max(1, spaces))}${priceStr}`);
 			}
-			result.bold(true).line(itemName).bold(false);
-			
-			// Details line: "1x @15.000             15.000"
-			const unitPrice = `@${new Intl.NumberFormat("id-ID").format(item.price)}`;
-			
-			// To ensure it perfectly fits 32 chars:
-			// "4x  " (4 chars) + "@15.000   " (10 chars) + "         15.000" (18 chars) = 32
-			const leftPart = `${qtyStr} ${unitPrice}`;
-			let safeLeftPart = leftPart;
-			
-			// Truncate left part if it's too long
-			if (safeLeftPart.length + priceStr.length + 1 > 32) {
-				safeLeftPart = safeLeftPart.substring(0, 32 - priceStr.length - 1);
-			}
-			
-			const spaces = 32 - safeLeftPart.length - priceStr.length;
-			const detailsLine = safeLeftPart + " ".repeat(Math.max(1, spaces)) + priceStr;
-			result.line(detailsLine);
 		}
-
-		result.line("--------------------------------");
 
 		// Breakdown (Subtotal, Discount, Tax, etc.)
 		const formatCurrency = (val: number) => new Intl.NumberFormat("id-ID").format(val);
 		
-		// Utility function to pad label and value so they fit in exactly 32 chars
+		// Utility function to pad label and value so they fit in exactly the line width
 		// If label is too long, it will be truncated.
 		const padLabel = (label: string, val: string) => {
-			const MAX_WIDTH = 32;
+			const MAX_WIDTH = RECEIPT_LINE_WIDTH;
 			let safeLabel = label;
 			
 			// If total length exceeds MAX_WIDTH, we must truncate the label
@@ -349,6 +349,8 @@ export class BluetoothPrinterService {
 			const spaces = MAX_WIDTH - safeLabel.length - val.length;
 			return safeLabel + " ".repeat(Math.max(1, spaces)) + val;
 		};
+
+		result.line(separator);
 
 		if (order.subtotal !== undefined) {
 			result.line(padLabel("SUBTOTAL", formatCurrency(order.subtotal)));
@@ -368,7 +370,7 @@ export class BluetoothPrinterService {
 
 		// Final Total
 		result
-			.line("--------------------------------")
+			.line(separator)
 			.bold(true)
 			.line(padLabel("TOTAL", `Rp ${formatCurrency(order.totalAmount)}`))
 			.bold(false);
@@ -390,11 +392,8 @@ export class BluetoothPrinterService {
 
 		// Footer
 		result
-			.line(" ")
-			.align("center")
-			.line("--------------------------------")
+			.line(separator)
 			.line(settings.receiptFooter || "TERIMA KASIH ATAS KUNJUNGAN ANDA!")
-			.line(" ")
 			.line(" ")
 			.cut();
 
