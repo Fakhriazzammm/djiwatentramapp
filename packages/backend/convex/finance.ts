@@ -2,6 +2,12 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
+import {
+	getBookingFinancialSnapshot,
+	getOrderFinancialSnapshot,
+	isSettledBooking,
+	isSettledOrder,
+} from "./financialMetrics";
 
 // Helper to get start/end of a month
 function getMonthRange(year: number, month: number) {
@@ -106,20 +112,22 @@ async function buildShiftSummary(
 	let totalExpenses = 0;
 
 	orders.forEach((o) => {
-		if (o.status === "completed" || o.status === "paid") {
-			totalRevenue += o.totalAmount;
-			totalDiscount += o.discountAmount || 0;
-			if (isCashMethod(o.paymentMethod)) cashRevenue += o.totalAmount;
-			else if (isNonCashMethod(o.paymentMethod)) qrisRevenue += o.totalAmount;
+		if (isSettledOrder(o)) {
+			const snapshot = getOrderFinancialSnapshot(o);
+			totalRevenue += snapshot.finalCollected;
+			totalDiscount += snapshot.discount;
+			if (isCashMethod(o.paymentMethod)) cashRevenue += snapshot.finalCollected;
+			else if (isNonCashMethod(o.paymentMethod)) qrisRevenue += snapshot.finalCollected;
 			totalItemsSold += (o.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
 		}
 	});
 
 	bookings.forEach((b) => {
-		if (b.paymentStatus === "paid" || b.bookingStatus === "confirmed" || b.bookingStatus === "completed") {
-			totalRevenue += b.totalAmount;
-			if (isCashMethod(b.paymentMethod)) cashRevenue += b.totalAmount;
-			else if (isNonCashMethod(b.paymentMethod)) qrisRevenue += b.totalAmount;
+		if (isSettledBooking(b)) {
+			const snapshot = getBookingFinancialSnapshot(b);
+			totalRevenue += snapshot.finalCollected;
+			if (isCashMethod(b.paymentMethod)) cashRevenue += snapshot.finalCollected;
+			else if (isNonCashMethod(b.paymentMethod)) qrisRevenue += snapshot.finalCollected;
 			totalItemsSold += (b.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
 		}
 	});
@@ -225,9 +233,11 @@ export const getProfitLossReport = query({
 			})
 			.collect();
 
-		const totalDiscount = ordersInPeriod
-			.filter((o) => o.status === "completed" || o.status === "paid")
-			.reduce((sum, o) => sum + (o.discountAmount || 0), 0);
+		const settledOrdersInPeriod = ordersInPeriod.filter(isSettledOrder);
+		const totalDiscount = settledOrdersInPeriod.reduce(
+			(sum, order) => sum + getOrderFinancialSnapshot(order).discount,
+			0
+		);
 
 		// Expense breakdown by category
 		const expenseByCategory: Record<string, number> = {};
@@ -240,7 +250,10 @@ export const getProfitLossReport = query({
 
 		// Calculate Gross Profit and Net Profit
 		// Map various category names to standard report terms
-		const netSalesRevenue = (incomeByCategory["Penjualan"] || 0) + (incomeByCategory["Sales"] || 0);
+		const netSalesRevenue = settledOrdersInPeriod.reduce(
+			(sum, order) => sum + getOrderFinancialSnapshot(order).netSales,
+			0
+		);
 		const grossSalesRevenue = netSalesRevenue + totalDiscount;
 		const hppAmount = (expenseByCategory["HPP"] || 0) + (expenseByCategory["belanja_stok"] || 0) + (expenseByCategory["COGS"] || 0);
 		const otherIncome = totalIncome - netSalesRevenue;

@@ -67,6 +67,7 @@ export function CheckoutSidebar({
 		items,
 		updateQuantity,
 		totalAmount,
+		grossAmount,
 		totalItems,
 		customerInfo,
 		updateCustomerInfo,
@@ -167,6 +168,34 @@ export function CheckoutSidebar({
 			);
 		});
 	}, [allActiveDiscounts, items]);
+
+	useEffect(() => {
+		if (!allActiveDiscounts) return;
+
+		if (!selectedDiscountId) {
+			if (appliedVoucher) {
+				applyVoucher(null);
+			}
+			return;
+		}
+
+		const selectedVoucher =
+			allActiveDiscounts.find((discount: Doc<"discounts">) => discount._id === selectedDiscountId) || null;
+
+		if (!selectedVoucher) {
+			applyVoucher(null);
+			return;
+		}
+
+		applyVoucher({
+			_id: selectedVoucher._id,
+			name: selectedVoucher.name,
+			type: selectedVoucher.type,
+			value: selectedVoucher.value,
+			targetType: selectedVoucher.targetType,
+			targetIds: (selectedVoucher as { targetIds?: string[] }).targetIds,
+		});
+	}, [selectedDiscountId, allActiveDiscounts, appliedVoucher, applyVoucher]);
 
 	const handleConfirmPayment = () => {
 		if (onConfirmPayment) {
@@ -420,7 +449,7 @@ export function CheckoutSidebar({
 								<div className="space-y-2 text-xs">
 									<div className="flex justify-between">
 										<span className="text-muted-foreground">Subtotal</span>
-										<span className="font-bold">{fmt(totalAmount)}</span>
+										<span className="font-bold">{fmt(grossAmount)}</span>
 									</div>
 									{discountAmount > 0 && (
 										<div className="flex justify-between text-primary">

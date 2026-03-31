@@ -23,6 +23,8 @@ export const createOrder = mutation({
 		notes: v.optional(v.string()),
 		voucherId: v.optional(v.id("discounts")),
 		discountAmount: v.optional(v.number()),
+		taxAmount: v.optional(v.number()),
+		serviceChargeAmount: v.optional(v.number()),
 		autoComplete: v.optional(v.boolean()), // If true, set status to 'paid' immediately
 	},
 	handler: async (ctx, args) => {

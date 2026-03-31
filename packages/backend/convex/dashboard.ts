@@ -1,5 +1,11 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
+import {
+	getBookingFinancialSnapshot,
+	getOrderFinancialSnapshot,
+	isSettledBooking,
+	isSettledOrder,
+} from "./financialMetrics";
 
 // Get dashboard statistics
 export const getDashboardStats = query({
@@ -29,19 +35,50 @@ export const getDashboardStats = query({
 			.collect();
 
 		// Calculate today's revenue (completed + paid)
-		const todayPosRevenue = todayOrders
-			.filter((o) => o.status === "completed" || o.status === "paid")
-			.reduce((sum, o) => sum + (o.totalAmount ?? 0), 0);
+		const settledTodayOrders = todayOrders.filter(isSettledOrder);
+		const todayPosRevenue = settledTodayOrders.reduce(
+			(sum, order) => sum + getOrderFinancialSnapshot(order).finalCollected,
+			0
+		);
 		
-		const todayBookingRevenue = todayBookings
-			.filter((b) => b.paymentStatus === "paid" || b.bookingStatus === "confirmed" || b.bookingStatus === "completed")
-			.reduce((sum, b) => sum + (b.totalAmount ?? 0), 0);
+		const settledTodayBookings = todayBookings.filter(isSettledBooking);
+		const todayBookingRevenue = settledTodayBookings.reduce(
+			(sum, booking) => sum + getBookingFinancialSnapshot(booking).finalCollected,
+			0
+		);
 		
-		const todayDiscount = todayOrders
-			.filter((o) => o.status === "completed" || o.status === "paid")
-			.reduce((sum, o) => sum + (o.discountAmount ?? 0), 0);
+		const todayDiscount = settledTodayOrders.reduce(
+			(sum, order) => sum + getOrderFinancialSnapshot(order).discount,
+			0
+		);
 
 		const todayRevenue = todayPosRevenue + todayBookingRevenue;
+		const todayShifts = await ctx.db
+			.query("shifts")
+			.withIndex("by_startTime", (q) => q.gte("startTime", todayStartTs).lte("startTime", todayEndTs))
+			.collect();
+
+		const cashDiscrepancySummary = todayShifts.reduce(
+			(summary, shift) => {
+				const cashGap =
+					(shift.endingCashPhysical ?? 0) - (shift.endingCashExpected ?? 0);
+				const nonCashGap =
+					(shift.nonCashConfirmed ?? 0) - (shift.nonCashExpected ?? 0);
+
+				return {
+					totalPhysicalGap: summary.totalPhysicalGap + cashGap,
+					totalNonCashGap: summary.totalNonCashGap + nonCashGap,
+					highRiskShiftCount:
+						summary.highRiskShiftCount +
+						(Math.abs(cashGap) >= 50000 || Math.abs(nonCashGap) >= 50000 ? 1 : 0),
+				};
+			},
+			{
+				totalPhysicalGap: 0,
+				totalNonCashGap: 0,
+				highRiskShiftCount: 0,
+			}
+		);
 
 		// 3. Pending orders count (Indexed)
 		const pendingOrders = (await ctx.db
@@ -120,14 +157,25 @@ export const getDashboardStats = query({
 				.withIndex("by_createdAt", (q) => q.gte("createdAt", dStartTs).lte("createdAt", dEndTs))
 				.collect();
 
-			const validOrders = dayOrders.filter((o) => o.status === "completed" || o.status === "paid");
-			const validBookings = dayBookings.filter((b) => b.paymentStatus === "paid" || b.bookingStatus === "confirmed" || b.bookingStatus === "completed");
+			const validOrders = dayOrders.filter(isSettledOrder);
+			const validBookings = dayBookings.filter(isSettledBooking);
+
+			const dayRevenue = validOrders.reduce(
+				(sum, order) => sum + getOrderFinancialSnapshot(order).finalCollected,
+				0
+			) + validBookings.reduce(
+				(sum, booking) => sum + getBookingFinancialSnapshot(booking).finalCollected,
+				0
+			);
+			const dayDiscount = validOrders.reduce(
+				(sum, order) => sum + getOrderFinancialSnapshot(order).discount,
+				0
+			);
 
 			last7Days.push({
 				date: dStartWib.toLocaleDateString("id-ID", { weekday: "short", day: "numeric" }),
-				revenue: validOrders.reduce((sum, o) => sum + (o.totalAmount ?? 0), 0) + 
-						 validBookings.reduce((sum, b) => sum + (b.totalAmount ?? 0), 0),
-				discount: validOrders.reduce((sum, o) => sum + (o.discountAmount ?? 0), 0),
+				revenue: dayRevenue,
+				discount: dayDiscount,
 				orders: validOrders.length + validBookings.length,
 			});
 		}
@@ -174,6 +222,59 @@ export const getDashboardStats = query({
 				paymentMethod: o.paymentMethod ?? null,
 			}));
 
+		const pendingNonCashOrders = todayOrders.filter(
+			(order) =>
+				order.status === "pending" &&
+				(order.paymentMethod === "qris" || order.paymentMethod === "transfer")
+		);
+
+		const anomalies = [
+			...todayShifts
+				.filter((shift) => {
+					const cashGap =
+						(shift.endingCashPhysical ?? 0) - (shift.endingCashExpected ?? 0);
+					const nonCashGap =
+						(shift.nonCashConfirmed ?? 0) - (shift.nonCashExpected ?? 0);
+					return Math.abs(cashGap) >= 10000 || Math.abs(nonCashGap) >= 10000;
+				})
+				.slice(0, 3)
+				.map((shift) => {
+					const cashGap =
+						(shift.endingCashPhysical ?? 0) - (shift.endingCashExpected ?? 0);
+					const nonCashGap =
+						(shift.nonCashConfirmed ?? 0) - (shift.nonCashExpected ?? 0);
+					return {
+						type: "shift_discrepancy",
+						severity:
+							Math.abs(cashGap) >= 50000 || Math.abs(nonCashGap) >= 50000
+								? "high"
+								: "medium",
+						title: `${shift.shiftName || "Shift"} selisih rekonsiliasi`,
+						description: `Kas ${cashGap >= 0 ? "+" : ""}${cashGap.toLocaleString("id-ID")} | Non-tunai ${nonCashGap >= 0 ? "+" : ""}${nonCashGap.toLocaleString("id-ID")}`,
+					};
+				}),
+			...(pendingNonCashOrders.length > 0
+				? [
+						{
+							type: "payment_reconciliation",
+							severity: "medium",
+							title: "Pembayaran non-tunai belum selesai",
+							description: `${pendingNonCashOrders.length} order QRIS/transfer masih pending hari ini`,
+						},
+				  ]
+				: []),
+			...(todayDiscount > 0 && todayRevenue > 0 && todayDiscount / (todayRevenue + todayDiscount) > 0.25
+				? [
+						{
+							type: "discount_spike",
+							severity: "medium",
+							title: "Potongan diskon relatif tinggi",
+							description: `Diskon hari ini ${((todayDiscount / (todayRevenue + todayDiscount)) * 100).toFixed(1)}% dari gross sales`,
+						},
+				  ]
+				: []),
+		].slice(0, 4);
+
 		return {
 			todayOrders: todayOrders.length + todayBookings.length,
 			todayRevenue,
@@ -200,6 +301,12 @@ export const getDashboardStats = query({
 			revenueLast7Days: last7Days,
 			topProducts,
 			recentOrders,
+			cashDiscrepancySummary,
+			paymentReconciliation: {
+				pendingNonCashCount: pendingNonCashOrders.length,
+				pendingNonCashAmount: pendingNonCashOrders.reduce((sum, order) => sum + (order.totalAmount ?? 0), 0),
+			},
+			anomalies,
 		};
 	},
 });

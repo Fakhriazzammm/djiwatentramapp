@@ -520,6 +520,8 @@ function CustomerMenuPage() {
 					originalPrice: i.originalPrice,
 				})),
 				totalAmount: total,
+				taxAmount: tax,
+				serviceChargeAmount: serviceCharge,
 				paymentMethod,
 				customerName: customerLabel,
 				discountAmount: cart.reduce(

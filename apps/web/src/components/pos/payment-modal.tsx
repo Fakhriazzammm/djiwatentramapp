@@ -53,7 +53,18 @@ export function PaymentConfirmationModal({
 		setMounted(true);
 	}, []);
 
-	const { items, totalAmount, customerInfo } = useCart();
+	const {
+		items,
+		totalAmount,
+		grossAmount,
+		discountAmount: totalDiscountAmount,
+		finalTotal,
+		taxAmount,
+		serviceChargeAmount,
+		appliedVoucher,
+		applyVoucher,
+		customerInfo,
+	} = useCart();
 	const allActiveDiscounts = useQuery(api.discounts.getActiveDiscounts);
 	const siteSettings = useQuery(api.site_settings.getSettings);
 
@@ -142,7 +153,7 @@ export function PaymentConfirmationModal({
 	}, []);
 
 	// Auto-select best discount from VALID discounts only
-	useMemo(() => {
+	useEffect(() => {
 		if (validDiscounts.length > 0 && !selectedDiscountId) {
 			let bestDetails = { id: null as string | null, amount: 0 };
 
@@ -169,22 +180,28 @@ export function PaymentConfirmationModal({
 		return validDiscounts.find((d: Doc<"discounts">) => d._id === selectedDiscountId);
 	}, [validDiscounts, selectedDiscountId]);
 
-	const discountAmount = useMemo(() => {
-		if (!currentDiscount) {
-			return 0;
+	useEffect(() => {
+		if (!selectedDiscountId) {
+			if (appliedVoucher) {
+				applyVoucher(null);
+			}
+			return;
 		}
-		return calculateDiscount(currentDiscount, totalAmount, items);
-	}, [currentDiscount, totalAmount, items, calculateDiscount]);
 
-	const subTotalAfterDiscount = Math.max(0, totalAmount - discountAmount);
+		if (!currentDiscount) {
+			applyVoucher(null);
+			return;
+		}
 
-	const taxRate = siteSettings?.taxRate ?? 0;
-	const serviceChargeRate = siteSettings?.serviceChargeRate ?? 0;
-
-	const serviceChargeAmount = subTotalAfterDiscount * (serviceChargeRate / 100);
-	const taxAmount = subTotalAfterDiscount * (taxRate / 100);
-
-	const finalTotal = subTotalAfterDiscount + serviceChargeAmount + taxAmount;
+		applyVoucher({
+			_id: currentDiscount._id,
+			name: currentDiscount.name,
+			type: currentDiscount.type,
+			value: currentDiscount.value,
+			targetType: currentDiscount.targetType,
+			targetIds: (currentDiscount as { targetIds?: string[] }).targetIds,
+		});
+	}, [selectedDiscountId, currentDiscount, appliedVoucher, applyVoucher]);
 
 	// Remove redundant fields that are now in CartContext
 	const [autoComplete, setAutoComplete] = useState(true);
@@ -437,11 +454,11 @@ export function PaymentConfirmationModal({
 											style: "currency",
 											currency: "IDR",
 											maximumFractionDigits: 0,
-										}).format(totalAmount)}
+										}).format(grossAmount)}
 									</span>
 								</div>
 
-								{discountAmount > 0 && (
+								{totalDiscountAmount > 0 && (
 									<div className="flex items-center justify-between text-[10px] text-green-600 font-bold">
 										<span className="flex items-center gap-1 uppercase tracking-wide">
 											<Tag className="h-2.5 w-2.5" /> Potongan Voucher
@@ -451,7 +468,7 @@ export function PaymentConfirmationModal({
 												style: "currency",
 												currency: "IDR",
 												maximumFractionDigits: 0,
-											}).format(discountAmount)}
+											}).format(totalDiscountAmount)}
 										</span>
 									</div>
 								)}

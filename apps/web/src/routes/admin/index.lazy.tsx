@@ -114,6 +114,83 @@ function DashboardAdmin() {
 				/>
 			</div>
 
+			<div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+				<motion.div
+					className="rounded-3xl border border-border bg-card p-6 shadow-sm"
+					initial={{ opacity: 0, y: 20 }}
+					animate={{ opacity: 1, y: 0 }}
+				>
+					<div className="flex items-center justify-between mb-4">
+						<h3 className="font-bold text-lg tracking-tight flex items-center gap-2">
+							<AlertTriangle className="w-5 h-5 text-amber-500" />
+							Selisih Kas & Rekonsiliasi
+						</h3>
+						<span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md font-medium">
+							{stats.cashDiscrepancySummary.highRiskShiftCount} risiko tinggi
+						</span>
+					</div>
+					<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+						<div className="rounded-2xl border border-border bg-muted/20 p-4">
+							<p className="text-[10px] uppercase font-bold text-muted-foreground">Gap Kas Fisik</p>
+							<p className={`mt-2 text-lg font-black ${stats.cashDiscrepancySummary.totalPhysicalGap === 0 ? "text-emerald-600" : "text-rose-600"}`}>
+								{formatCurrencyIDR(stats.cashDiscrepancySummary.totalPhysicalGap)}
+							</p>
+						</div>
+						<div className="rounded-2xl border border-border bg-muted/20 p-4">
+							<p className="text-[10px] uppercase font-bold text-muted-foreground">Gap Non-Tunai</p>
+							<p className={`mt-2 text-lg font-black ${stats.cashDiscrepancySummary.totalNonCashGap === 0 ? "text-emerald-600" : "text-rose-600"}`}>
+								{formatCurrencyIDR(stats.cashDiscrepancySummary.totalNonCashGap)}
+							</p>
+						</div>
+						<div className="rounded-2xl border border-border bg-muted/20 p-4">
+							<p className="text-[10px] uppercase font-bold text-muted-foreground">Pending QRIS/TF</p>
+							<p className="mt-2 text-lg font-black text-amber-600">
+								{stats.paymentReconciliation.pendingNonCashCount}
+							</p>
+							<p className="text-[10px] text-muted-foreground">
+								{formatCurrencyIDR(stats.paymentReconciliation.pendingNonCashAmount)}
+							</p>
+						</div>
+					</div>
+				</motion.div>
+
+				<motion.div
+					className="rounded-3xl border border-border bg-card p-6 shadow-sm"
+					initial={{ opacity: 0, y: 20 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ delay: 0.05 }}
+				>
+					<div className="flex items-center justify-between mb-4">
+						<h3 className="font-bold text-lg tracking-tight flex items-center gap-2">
+							<AlertTriangle className="w-5 h-5 text-rose-500" />
+							Anomali Otomatis
+						</h3>
+						<span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md font-medium">
+							{stats.anomalies.length} temuan
+						</span>
+					</div>
+					<div className="space-y-3">
+						{stats.anomalies.length === 0 ? (
+							<div className="rounded-2xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
+								Belum ada anomali penting terdeteksi hari ini.
+							</div>
+						) : (
+							stats.anomalies.map((anomaly: any, index: number) => (
+								<div key={`${anomaly.type}-${index}`} className="rounded-2xl border border-border bg-muted/20 p-4">
+									<div className="flex items-center justify-between gap-3">
+										<p className="font-bold text-sm">{anomaly.title}</p>
+										<span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${anomaly.severity === "high" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}>
+											{anomaly.severity}
+										</span>
+									</div>
+									<p className="mt-2 text-xs text-muted-foreground">{anomaly.description}</p>
+								</div>
+							))
+						)}
+					</div>
+				</motion.div>
+			</div>
+
 			{/* Shift Information */}
 			{validShifts.length > 0 && (
 				<motion.div

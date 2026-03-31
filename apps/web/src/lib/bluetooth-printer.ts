@@ -105,6 +105,30 @@ export class BluetoothPrinterService {
 	private device: BluetoothDevice | null = null;
 	private server: BluetoothRemoteGATTServer | null = null;
 	private characteristic: BluetoothRemoteGATTCharacteristic | null = null;
+	private lastPrintedPayload:
+		| {
+				order: {
+					orderNumber: string;
+					items: OrderItem[];
+					totalAmount: number;
+					paymentMethod: string;
+					createdAt: number;
+					customerName?: string;
+					notes?: string;
+					orderType?: string;
+					tableNumber?: string;
+					subtotal?: number;
+					discountAmount?: number;
+					taxAmount?: number;
+					serviceChargeAmount?: number;
+					cashReceived?: number;
+					changeAmount?: number;
+					cashierName?: string;
+					shiftName?: string;
+				};
+				settings: ReceiptSettings;
+		  }
+		| null = null;
 	private optionalServices = [
 		"000018f0-0000-1000-8000-00805f9b34fb", // Generic POS service
 		"000018f1-0000-1000-8000-00805f9b34fb",
@@ -228,6 +252,15 @@ export class BluetoothPrinterService {
 		return !!(this.server?.connected && this.characteristic);
 	}
 
+	getStatus() {
+		return {
+			connected: this.isConnected(),
+			deviceName: this.getDeviceName(),
+			canReconnect: typeof navigator !== "undefined" && !!navigator.bluetooth?.getDevices,
+			hasReprintData: !!this.lastPrintedPayload,
+		};
+	}
+
 	getDeviceName(): string | null {
 		return this.device?.name || null;
 	}
@@ -282,6 +315,10 @@ export class BluetoothPrinterService {
 		},
 		settings: ReceiptSettings
 	) {
+		if (!(this.isConnected() && this.characteristic)) {
+			await this.autoConnect();
+		}
+
 		if (!(this.isConnected() && this.characteristic)) {
 			throw new Error("Printer tidak terhubung.");
 		}
@@ -454,16 +491,41 @@ export class BluetoothPrinterService {
 
 		for (let i = 0; i < buffer.length; i += chunkSize) {
 			const chunk = buffer.slice(i, i + chunkSize);
-			
-			if (this.characteristic.properties.writeWithoutResponse) {
-				await this.characteristic.writeValueWithoutResponse(chunk);
-			} else {
-				await this.characteristic.writeValue(chunk);
+			let attempts = 0;
+			let sent = false;
+
+			while (!sent && attempts < 3) {
+				try {
+					if (this.characteristic.properties.writeWithoutResponse) {
+						await this.characteristic.writeValueWithoutResponse(chunk);
+					} else {
+						await this.characteristic.writeValue(chunk);
+					}
+					sent = true;
+				} catch (error) {
+					attempts++;
+					if (attempts >= 3) {
+						throw error;
+					}
+					await new Promise((resolve) => setTimeout(resolve, 150));
+				}
 			}
-			
-			// Small delay to prevent buffer overflow on slower printers
+
 			await new Promise((resolve) => setTimeout(resolve, 10));
 		}
+
+		this.lastPrintedPayload = {
+			order: structuredClone(order),
+			settings: structuredClone(settings),
+		};
+	}
+
+	async reprintLastReceipt() {
+		if (!this.lastPrintedPayload) {
+			throw new Error("Belum ada struk terakhir untuk dicetak ulang.");
+		}
+
+		await this.print(this.lastPrintedPayload.order, this.lastPrintedPayload.settings);
 	}
 }
 

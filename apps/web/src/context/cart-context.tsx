@@ -40,11 +40,14 @@ interface CartContextType {
 	) => void;
 	clearCart: () => void;
 	totalAmount: number;
+	grossAmount: number;
 	totalItems: number;
 	appliedVoucher: AppliedVoucher | null;
 	applyVoucher: (voucher: AppliedVoucher | null) => void;
 	setCart: (items: CartItem[], voucher?: AppliedVoucher | null) => void;
 	discountAmount: number;
+	promoDiscountAmount: number;
+	voucherDiscountAmount: number;
 	finalTotal: number;
 	taxRate: number;
 	taxAmount: number;
@@ -243,6 +246,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 		setAppliedVoucher(voucher);
 	};
 
+	const grossAmount = items.reduce(
+		(sum, i) => sum + (i.originalPrice ?? i.price) * i.quantity,
+		0
+	);
 	const totalAmount = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 	const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
 
@@ -280,11 +287,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 	const discountAmount = promoDiscountAmount + voucherDiscountAmount;
 
-	const subTotalAfterDiscount = Math.max(0, totalAmount - discountAmount);
+	const subTotalAfterDiscount = Math.max(0, totalAmount - voucherDiscountAmount);
 
 	// Calculate Tax & Service Charge
 	const taxRate = siteSettings?.taxRate ?? 0;
-	const serviceChargeRate = siteSettings?.serviceCharge ?? 0;
+	const serviceChargeRate = siteSettings?.serviceChargeRate ?? 0;
 
 	// Formula: (Subtotal - Discount) * Rate
 	const serviceChargeAmount = subTotalAfterDiscount * (serviceChargeRate / 100);
@@ -301,6 +308,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 				updateQuantity,
 				clearCart,
 				totalAmount,
+				grossAmount,
 				totalItems,
 				appliedVoucher,
 				applyVoucher,
@@ -308,6 +316,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 				customerInfo,
 				updateCustomerInfo,
 				discountAmount,
+				promoDiscountAmount,
+				voucherDiscountAmount,
 				finalTotal,
 				taxRate,
 				taxAmount,

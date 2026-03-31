@@ -118,6 +118,8 @@ export default defineSchema({
 		createdAt: v.number(),
 		voucherId: v.optional(v.id("discounts")),
 		discountAmount: v.optional(v.number()),
+		taxAmount: v.optional(v.number()),
+		serviceChargeAmount: v.optional(v.number()),
 	})
 		.index("by_status", ["status"])
 		.index("by_createdAt", ["createdAt"]),

@@ -50,6 +50,8 @@ export interface QueuedAction {
 	maxRetries: number;
 }
 
+type ActionExecutor = (action: QueuedAction) => Promise<void>;
+
 export interface OfflineState {
 	isOnline: boolean;
 	isOfflineMode: boolean;
@@ -109,7 +111,9 @@ const DEFAULT_CONFIG: OfflineConfig = {
 export class OfflineManager {
 	private readonly config: OfflineConfig;
 	private readonly state: Writable<OfflineState>;
-	private readonly retryTimer: NodeJS.Timeout | null = null;
+	private retryTimer: NodeJS.Timeout | null = null;
+	private readonly executors = new Map<QueuedAction["type"], ActionExecutor>();
+	private isSyncing = false;
 
 	constructor(config: Partial<OfflineConfig> = {}) {
 		this.config = { ...DEFAULT_CONFIG, ...config };
@@ -147,6 +151,10 @@ export class OfflineManager {
 
 	subscribe(run: (state: OfflineState) => void): () => void {
 		return this.state.subscribe(run);
+	}
+
+	registerExecutor(type: QueuedAction["type"], executor: ActionExecutor): void {
+		this.executors.set(type, executor);
 	}
 
 	// ============================================
@@ -233,6 +241,9 @@ export class OfflineManager {
 	// ============================================
 
 	async syncQueuedActions(): Promise<void> {
+		if (this.isSyncing) {
+			return;
+		}
 		if (!this.getState().isOnline) {
 			console.log("[OfflineManager] Still offline, skipping sync");
 			return;
@@ -247,63 +258,68 @@ export class OfflineManager {
 		}
 
 		console.log(`[OfflineManager] Syncing ${queuedActions.length} actions...`);
+		this.isSyncing = true;
 
 		let syncedCount = 0;
 		let failedCount = 0;
 
-		for (const action of queuedActions) {
-			try {
-				await this.executeAction(action);
-				this.removeAction(action.id);
-				syncedCount++;
-			} catch (error) {
-				console.error(`[OfflineManager] Failed to sync ${action.id}:`, error);
-
-				// Increment retry count
-				action.retries++;
-
-				if (action.retries >= action.maxRetries) {
-					console.error(
-						`[OfflineManager] Max retries exceeded for ${action.id}`
-					);
-					// Remove from queue but could be moved to failed actions
+		try {
+			for (const action of queuedActions) {
+				try {
+					await this.executeAction(action);
 					this.removeAction(action.id);
-					failedCount++;
+					syncedCount++;
+				} catch (error) {
+					console.error(`[OfflineManager] Failed to sync ${action.id}:`, error);
+
+					// Increment retry count
+					action.retries++;
+
+					if (action.retries >= action.maxRetries) {
+						console.error(
+							`[OfflineManager] Max retries exceeded for ${action.id}`
+						);
+						this.removeAction(action.id);
+						failedCount++;
+					}
 				}
 			}
+		} finally {
+			this.isSyncing = false;
+			this.setState({
+				lastSyncTime: Date.now(),
+				pendingSyncCount: this.getState().queuedActions.length,
+			});
 		}
-
-		this.setState({
-			lastSyncTime: Date.now(),
-			pendingSyncCount: this.getState().queuedActions.length,
-		});
 
 		console.log(
 			`[OfflineManager] Sync complete: ${syncedCount} synced, ${failedCount} failed`
 		);
 	}
 
-	private executeAction(action: QueuedAction): void {
-		// This should be implemented by the consuming app
-		// using actual API calls
+	private async executeAction(action: QueuedAction): Promise<void> {
 		console.log(
 			`[OfflineManager] Executing action: ${action.type}`,
 			action.data
 		);
 
-		// Example implementation:
-		switch (action.type) {
-			case "createOrder":
-				// await api.orders.createOrder(action.data);
-				break;
-			// Add other action types as needed
-			default:
-				console.warn(`[OfflineManager] Unknown action type: ${action.type}`);
+		const executor = this.executors.get(action.type);
+		if (!executor) {
+			throw new Error(`No executor registered for ${action.type}`);
 		}
+
+		await executor(action);
 	}
 
 	private startSyncWhenOnline(): void {
-		// Already handled by event listener
+		if (this.retryTimer) {
+			clearInterval(this.retryTimer);
+		}
+		this.retryTimer = setInterval(() => {
+			if (this.getState().isOnline && this.getState().queuedActions.length > 0) {
+				void this.syncQueuedActions();
+			}
+		}, this.config.retryInterval);
 	}
 
 	// ============================================
@@ -364,7 +380,7 @@ export class OfflineManager {
 
 	cleanup(): void {
 		if (this.retryTimer) {
-			clearTimeout(this.retryTimer);
+			clearInterval(this.retryTimer);
 		}
 		// Remove event listeners is handled by page unload
 	}

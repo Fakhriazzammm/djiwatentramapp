@@ -40,6 +40,7 @@ import { calculateEffectivePrice } from "@/lib/utils/pricing";
 import { bluetoothPrinter, type OrderItem } from "@/lib/bluetooth-printer";
 import { cn } from "@/lib/utils";
 import { ShiftTargetBanner } from "@/components/pos/ShiftTargetBanner";
+import { getOfflineManager, queueOfflineAction } from "@/lib/offline-manager";
 
 export const Route = createLazyFileRoute("/menu")({
 	component: MenuPage,
@@ -97,6 +98,7 @@ function MenuPage() {
 		updateQuantity,
 		clearCart,
 		totalAmount,
+		discountAmount,
 		totalItems,
 		finalTotal,
 		taxAmount,
@@ -117,6 +119,7 @@ function MenuPage() {
 	const [keyboardFocusZone, setKeyboardFocusZone] = useState<FocusZone>("header");
 	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
 	const [lastOrderId, setLastOrderId] = useState<Id<"orders"> | null>(null);
+	const [offlinePendingCount, setOfflinePendingCount] = useState(0);
 
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
@@ -135,6 +138,17 @@ function MenuPage() {
 		}, 3000);
 		return () => clearInterval(interval);
 	}, []);
+
+	useEffect(() => {
+		const offlineManager = getOfflineManager();
+		offlineManager.registerExecutor("createOrder", async (action) => {
+			await convex.mutation(api.orders.createOrder, action.data as any);
+		});
+
+		return offlineManager.subscribe((state) => {
+			setOfflinePendingCount(state.pendingSyncCount);
+		});
+	}, [convex]);
 
 	const activeShiftSchedule = useMemo(
 		() =>
@@ -566,7 +580,7 @@ function MenuPage() {
 			if (cartItems.length === 0) return;
 			setIsSubmitting(true);
 			try {
-				const orderId = await createOrder({
+				const orderPayload = {
 					items: cartItems.map((i) => ({
 						productId: i.productId as Id<"products">,
 						productName: i.name,
@@ -581,12 +595,22 @@ function MenuPage() {
 					tableNumber: orderData?.tableNumber,
 					orderType: orderData?.orderType,
 					voucherId: discountId as Id<"discounts"> | undefined,
-					discountAmount: cartItems.reduce(
-						(sum, item) => sum + Math.max(0, (item.originalPrice ?? item.price) - item.price) * item.quantity,
-						0
-					) + (totalAmount - finalAmount + taxAmount + serviceChargeAmount),
+					discountAmount,
+					taxAmount,
+					serviceChargeAmount,
 					autoComplete: orderData?.autoComplete,
-				});
+				};
+
+				if (!navigator.onLine) {
+					queueOfflineAction("createOrder", orderPayload);
+					toast.warning("Offline: pesanan masuk antrean sinkronisasi");
+					clearCart();
+					setIsPaymentOpen(false);
+					setIsCartOpen(false);
+					return;
+				}
+
+				const orderId = await createOrder(orderPayload);
 
 				toast.success("Pesanan berhasil dibuat!");
 				setLastOrderId(orderId);
@@ -610,7 +634,7 @@ function MenuPage() {
 				setIsSubmitting(false);
 			}
 		},
-		[cartItems, createOrder, clearCart, totalAmount, taxAmount, serviceChargeAmount, customerInfo.name, isShiftOpen, handlePrint]
+		[cartItems, createOrder, clearCart, discountAmount, taxAmount, serviceChargeAmount, customerInfo.name, isShiftOpen, handlePrint]
 	);
 
 	const isLoading = products === undefined || categories === undefined;
