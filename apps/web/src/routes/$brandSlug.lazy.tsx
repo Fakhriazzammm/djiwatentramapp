@@ -5,6 +5,8 @@ import { useMutation, useQuery } from "convex/react";
 import {
 	CheckCircle,
 	ChevronLeft,
+	House,
+	LayoutGrid,
 	Minus,
 	Plus,
 	Search,
@@ -40,6 +42,7 @@ interface VariationGroup {
 }
 
 type SheetView = "cart" | "checkout" | "qris" | "transfer" | "success" | null;
+type MobileNavTab = "home" | "category" | "search" | "cart";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -408,6 +411,7 @@ function CustomerMenuPage() {
 	const [paymentMethod, setPaymentMethod] = useState<"cash" | "qris" | "transfer">("cash");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [orderNumber, setOrderNumber] = useState<string | null>(null);
+	const [activeNavTab, setActiveNavTab] = useState<MobileNavTab>("home");
 
 	// Menu number search
 	const [menuSearch, setMenuSearch] = useState("");
@@ -421,6 +425,10 @@ function CustomerMenuPage() {
 
 	// Category scroll ref
 	const categoryScrollRef = useRef<HTMLDivElement>(null);
+	const heroSectionRef = useRef<HTMLDivElement>(null);
+	const categorySectionRef = useRef<HTMLDivElement>(null);
+	const searchSectionRef = useRef<HTMLDivElement>(null);
+	const productSectionRef = useRef<HTMLDivElement>(null);
 
 	// Brand display info
 	const storeName =
@@ -642,6 +650,22 @@ function CustomerMenuPage() {
 
 	const isLoading = products === undefined || categories === undefined;
 
+	const scrollToSection = (ref: { current: HTMLDivElement | null }, tab: MobileNavTab) => {
+		ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+		setActiveNavTab(tab);
+	};
+
+	useEffect(() => {
+		if (sheetView === "cart" || sheetView === "checkout") {
+			setActiveNavTab("cart");
+			return;
+		}
+
+		if (totalItems === 0 && activeNavTab === "cart") {
+			setActiveNavTab("home");
+		}
+	}, [sheetView, totalItems, activeNavTab]);
+
 	return (
 		<div className="flex min-h-screen flex-col bg-background">
 			{/* ── Header ── */}
@@ -685,7 +709,7 @@ function CustomerMenuPage() {
 					)}
 				</div>
 
-				<div className="grid grid-cols-1 gap-2 px-4 pb-3 sm:grid-cols-3">
+				<div ref={heroSectionRef} className="grid grid-cols-1 gap-2 px-4 pb-3 sm:grid-cols-3">
 					<div className="rounded-2xl border border-border/70 bg-muted/25 px-3 py-2.5">
 						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
 							Order Online
@@ -714,11 +738,12 @@ function CustomerMenuPage() {
 				</div>
 
 				{/* Category Tabs */}
-				<div
-					ref={categoryScrollRef}
-					className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-none"
-				>
-					<button
+				<div ref={categorySectionRef} className="px-4 pb-3">
+					<div
+						ref={categoryScrollRef}
+						className="flex gap-2 overflow-x-auto scrollbar-none"
+					>
+						<button
 						type="button"
 						onClick={() => setActiveCategoryId(null)}
 						className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
@@ -728,9 +753,9 @@ function CustomerMenuPage() {
 						}`}
 					>
 						Semua
-					</button>
-					{categories?.map((cat) => (
-						<button
+						</button>
+						{categories?.map((cat) => (
+							<button
 							key={cat._id}
 							type="button"
 							onClick={() => setActiveCategoryId(cat._id)}
@@ -739,17 +764,18 @@ function CustomerMenuPage() {
 									? "bg-primary text-primary-foreground shadow-sm"
 									: "bg-muted text-muted-foreground"
 							}`}
-						>
-							{cat.name}
-						</button>
-					))}
+							>
+								{cat.name}
+							</button>
+						))}
+					</div>
 				</div>
 			</header>
 
 			{/* ── Product Grid ── */}
-			<main className="flex-1 px-3 pb-28">
+			<main className="flex-1 px-3 pb-48 sm:pb-32">
 				{/* Menu Number Search */}
-				<div className="pt-3 pb-2">
+				<div ref={searchSectionRef} className="pt-3 pb-2">
 					<p className="mb-1.5 text-xs font-medium text-muted-foreground">
 						Cari dengan nomor menu
 					</p>
@@ -793,6 +819,7 @@ function CustomerMenuPage() {
 				</div>
 
 				{/* Grid */}
+				<div ref={productSectionRef}>
 				{isLoading ? (
 					<div className="grid grid-cols-2 gap-3">
 						{Array.from({ length: 6 }).map((_, i) => (
@@ -895,11 +922,79 @@ function CustomerMenuPage() {
 						})}
 					</div>
 				)}
+				</div>
 			</main>
+
+			<div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/95 px-3 pb-3 pt-2 backdrop-blur-xl sm:hidden">
+				<div className="mx-auto max-w-md rounded-[2rem] border border-border/80 bg-card/95 p-2 shadow-[0_-10px_30px_rgba(15,23,42,0.08)]">
+					<div className="grid grid-cols-4 gap-1">
+						<button
+							type="button"
+							onClick={() => scrollToSection(heroSectionRef, "home")}
+							className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold transition-colors ${
+								activeNavTab === "home"
+									? "bg-primary text-primary-foreground shadow-sm"
+									: "text-muted-foreground"
+							}`}
+						>
+							<House className="h-4 w-4" />
+							<span>Beranda</span>
+						</button>
+						<button
+							type="button"
+							onClick={() => scrollToSection(categorySectionRef, "category")}
+							className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold transition-colors ${
+								activeNavTab === "category"
+									? "bg-primary text-primary-foreground shadow-sm"
+									: "text-muted-foreground"
+							}`}
+						>
+							<LayoutGrid className="h-4 w-4" />
+							<span>Kategori</span>
+						</button>
+						<button
+							type="button"
+							onClick={() => scrollToSection(searchSectionRef, "search")}
+							className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold transition-colors ${
+								activeNavTab === "search"
+									? "bg-primary text-primary-foreground shadow-sm"
+									: "text-muted-foreground"
+							}`}
+						>
+							<Search className="h-4 w-4" />
+							<span>Cari</span>
+						</button>
+						<button
+							type="button"
+							onClick={() => {
+								setActiveNavTab("cart");
+								if (totalItems > 0) {
+									setSheetView("cart");
+								} else {
+									scrollToSection(productSectionRef, "cart");
+								}
+							}}
+							className={`relative flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold transition-colors ${
+								activeNavTab === "cart"
+									? "bg-primary text-primary-foreground shadow-sm"
+									: "text-muted-foreground"
+							}`}
+						>
+							<ShoppingCart className="h-4 w-4" />
+							<span>Keranjang</span>
+							{totalItems > 0 && (
+								<span className="absolute right-3 top-1.5 flex min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
+									{totalItems}
+								</span>
+							)}
+						</button>
+					</div>
+				</div>
+			</div>
 
 			{/* ── Bottom Bar ── */}
 			{totalItems > 0 && (
-				<div className="fixed bottom-0 left-0 right-0 z-20 border-t border-border bg-background/95 backdrop-blur-sm px-4 pt-3 pb-5 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+				<div className="fixed bottom-[5.75rem] left-0 right-0 z-20 px-4 sm:bottom-0 sm:border-t sm:border-border sm:bg-background/95 sm:pt-3 sm:pb-5 sm:backdrop-blur-sm sm:shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
 					<button
 						type="button"
 						onClick={() => setSheetView("cart")}
