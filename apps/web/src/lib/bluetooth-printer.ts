@@ -317,6 +317,7 @@ export class BluetoothPrinterService {
 			const qtyStr = `${item.quantity}x`;
 			const priceStr = new Intl.NumberFormat("id-ID").format(item.price * item.quantity);
 			const itemName = item.name.toUpperCase();
+			const variantText = item.variant?.trim();
 			
 			// Responsive 1-line or 2-line layout
 			const totalReservedWidth = qtyStr.length + priceStr.length + 2; // qtx + space + name + space + price
@@ -329,6 +330,13 @@ export class BluetoothPrinterService {
 				const leftPart = `${qtyStr} @${new Intl.NumberFormat("id-ID").format(item.price)}`;
 				const spaces = RECEIPT_LINE_WIDTH - leftPart.length - priceStr.length;
 				result.line(`${leftPart}${" ".repeat(Math.max(1, spaces))}${priceStr}`);
+			}
+
+			if (variantText) {
+				const variantLines = variantText.toUpperCase().match(new RegExp(`.{1,${Math.max(8, RECEIPT_LINE_WIDTH - 4)}}`, "g")) || [];
+				for (const line of variantLines) {
+					result.line(`   > ${line}`);
+				}
 			}
 		}
 

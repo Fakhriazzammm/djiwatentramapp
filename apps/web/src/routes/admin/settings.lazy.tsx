@@ -80,8 +80,18 @@ function ReceiptPreview({
 
 	const headerText = settings.receiptHeader || storeName || "YUMI POS";
 	const items = [
-		{ qty: 2, name: "ES KOPI SUSU", total: "36.000" },
-		{ qty: 1, name: "CROISSANT BUTTER", total: "18.000" },
+		{
+			qty: 2,
+			name: "ES KOPI SUSU",
+			variant: "Size Large, Less Sugar, Oat Milk",
+			total: "36.000",
+		},
+		{
+			qty: 1,
+			name: "CROISSANT BUTTER",
+			variant: "Hangat",
+			total: "18.000",
+		},
 	];
 
 	return (
@@ -145,11 +155,18 @@ function ReceiptPreview({
 
 							<div className="space-y-1.5">
 								{items.map((item) => (
-									<div className="flex items-start justify-between gap-3" key={item.name}>
-										<span className="max-w-[70%]">
-											{item.qty}x {item.name}
-										</span>
-										<span>{item.total}</span>
+									<div className="space-y-1" key={item.name}>
+										<div className="flex items-start justify-between gap-3">
+											<span className="max-w-[70%]">
+												{item.qty}x {item.name}
+											</span>
+											<span>{item.total}</span>
+										</div>
+										{item.variant ? (
+											<p className="pl-3 text-[10px] text-zinc-500">
+												&gt; {item.variant}
+											</p>
+										) : null}
 									</div>
 								))}
 							</div>
