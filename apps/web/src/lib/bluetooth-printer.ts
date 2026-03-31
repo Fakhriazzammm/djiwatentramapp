@@ -77,6 +77,7 @@ export interface OrderItem {
 	name: string;
 	variant?: string;
 	price: number;
+	originalPrice?: number;
 	quantity: number;
 }
 

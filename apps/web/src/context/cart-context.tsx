@@ -13,6 +13,7 @@ export interface CartItem {
 	productId: string;
 	name: string;
 	price: number;
+	originalPrice?: number;
 	quantity: number;
 	variant?: string; // e.g. "Large, Less Sugar"
 	image?: string;
@@ -245,13 +246,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
 	const totalAmount = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 	const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
 
-	// Calculate discount amount based on voucher type and target
-	const discountAmount = items.reduce((discount, item) => {
+	const promoDiscountAmount = items.reduce((discount, item) => {
+		const originalPrice = item.originalPrice ?? item.price;
+		return discount + Math.max(0, originalPrice - item.price) * item.quantity;
+	}, 0);
+
+	const eligibleVoucherSubtotal = items.reduce((subtotal, item) => {
 		if (!appliedVoucher) {
-			return discount;
+			return subtotal;
 		}
 
-		// Check if item is eligible for discount
 		const isEligible =
 			appliedVoucher.targetType === "ALL" ||
 			(appliedVoucher.targetType === "CATEGORY" &&
@@ -260,20 +264,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
 				appliedVoucher.targetIds?.includes(item.productId));
 
 		if (!isEligible) {
-			return discount;
+			return subtotal;
 		}
 
-		const itemTotal = item.price * item.quantity;
-
-		if (appliedVoucher.type === "PERCENTAGE") {
-			return discount + itemTotal * (appliedVoucher.value / 100);
-		}
-		if (appliedVoucher.type === "FIXED") {
-			return discount + appliedVoucher.value;
-		}
-		// FLAT_PRICE - not typically a discount, skip
-		return discount;
+		return subtotal + item.price * item.quantity;
 	}, 0);
+
+	const voucherDiscountAmount = !appliedVoucher
+		? 0
+		: appliedVoucher.type === "PERCENTAGE"
+			? eligibleVoucherSubtotal * (appliedVoucher.value / 100)
+			: appliedVoucher.type === "FIXED"
+				? Math.min(appliedVoucher.value, eligibleVoucherSubtotal)
+				: 0;
+
+	const discountAmount = promoDiscountAmount + voucherDiscountAmount;
 
 	const subTotalAfterDiscount = Math.max(0, totalAmount - discountAmount);
 

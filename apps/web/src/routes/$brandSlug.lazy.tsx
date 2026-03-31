@@ -27,6 +27,7 @@ interface CustomerCartItem {
 	productId: string;
 	name: string;
 	price: number;
+	originalPrice?: number;
 	quantity: number;
 	variant?: string;
 	image?: string;
@@ -110,6 +111,7 @@ function ProductDetailSheet({
 			productId: product._id,
 			name: product.name,
 			price: unitPrice,
+			originalPrice: pricing.originalPrice + variantPrice,
 			quantity: qty,
 			variant: variantLabel || undefined,
 			image: product.image,
@@ -482,6 +484,7 @@ function CustomerMenuPage() {
 				productId: product._id,
 				name: product.name,
 				price: pricing.finalPrice,
+				originalPrice: pricing.originalPrice,
 				quantity: 1,
 				image: product.image,
 				categoryId: product.categoryId,
@@ -514,10 +517,15 @@ function CustomerMenuPage() {
 					variant: i.variant,
 					quantity: i.quantity,
 					price: i.price,
+					originalPrice: i.originalPrice,
 				})),
 				totalAmount: total,
 				paymentMethod,
 				customerName: customerLabel,
+				discountAmount: cart.reduce(
+					(sum, item) => sum + Math.max(0, (item.originalPrice ?? item.price) - item.price) * item.quantity,
+					0
+				),
 			});
 
 			// Derive order number from id (last 6 chars of Convex ID)
@@ -604,6 +612,7 @@ function CustomerMenuPage() {
 					productId: found._id,
 					name: found.name,
 					price: pricing.finalPrice,
+					originalPrice: pricing.originalPrice,
 					quantity: 1,
 					image: found.image,
 					categoryId: found.categoryId,

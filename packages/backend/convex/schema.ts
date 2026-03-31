@@ -100,6 +100,7 @@ export default defineSchema({
 				variant: v.optional(v.string()), // description of selected variants
 				quantity: v.number(),
 				price: v.number(),
+				originalPrice: v.optional(v.number()),
 			})
 		),
 		totalAmount: v.number(),

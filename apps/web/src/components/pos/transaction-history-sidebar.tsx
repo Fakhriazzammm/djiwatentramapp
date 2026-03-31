@@ -246,9 +246,13 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 				name: i.productName,
 				variant: i.variant,
 				price: i.price,
+				originalPrice: i.originalPrice,
 				quantity: i.quantity,
 			}));
-			const subtotal = items.reduce((sum: number, item: OrderItem) => sum + item.price * item.quantity, 0);
+			const subtotal = items.reduce(
+				(sum: number, item: OrderItem) => sum + (item.originalPrice ?? item.price) * item.quantity,
+				0
+			);
 
 			await bluetoothPrinter.print(
 				{

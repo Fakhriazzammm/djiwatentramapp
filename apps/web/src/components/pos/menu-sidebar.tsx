@@ -194,6 +194,7 @@ export function MenuSidebar({
 					variant: i.variant,
 					quantity: i.quantity,
 					price: i.price,
+					originalPrice: i.originalPrice,
 				})),
 				totalAmount,
 				paymentMethod: "cash",
@@ -244,6 +245,7 @@ export function MenuSidebar({
 				variant: i.variant,
 				quantity: i.quantity,
 				price: i.price,
+				originalPrice: i.originalPrice,
 			}));
 
 			let voucher = null;

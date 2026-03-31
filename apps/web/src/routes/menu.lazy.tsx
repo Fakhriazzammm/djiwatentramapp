@@ -335,6 +335,7 @@ function MenuPage() {
 						productId: product._id,
 						name: product.name,
 						price: pricing.finalPrice,
+						originalPrice: pricing.originalPrice,
 						quantity: 1,
 						image: product.image,
 						category: product.categoryId,
@@ -468,6 +469,7 @@ function MenuPage() {
 				productId: product._id,
 				name: product.name,
 				price: pricing.finalPrice,
+				originalPrice: pricing.originalPrice,
 				quantity: 1,
 				image: product.image,
 				category: product.categoryId,
@@ -494,10 +496,14 @@ function MenuPage() {
 				name: i.productName,
 				variant: i.variant,
 				price: i.price,
+				originalPrice: i.originalPrice,
 				quantity: i.quantity,
 			}));
 			
-			const subtotal = items.reduce((sum: number, item: OrderItem) => sum + item.price * item.quantity, 0);
+			const subtotal = items.reduce(
+				(sum: number, item: OrderItem) => sum + (item.originalPrice ?? item.price) * item.quantity,
+				0
+			);
 
 			await bluetoothPrinter.print(
 				{
@@ -567,6 +573,7 @@ function MenuPage() {
 						variant: i.variant,
 						quantity: i.quantity,
 						price: i.price,
+						originalPrice: i.originalPrice,
 					})),
 					totalAmount: finalAmount,
 					paymentMethod: (paymentMethod as "cash" | "qris" | "transfer") || "cash",
@@ -574,7 +581,10 @@ function MenuPage() {
 					tableNumber: orderData?.tableNumber,
 					orderType: orderData?.orderType,
 					voucherId: discountId as Id<"discounts"> | undefined,
-					discountAmount: totalAmount - finalAmount + taxAmount + serviceChargeAmount,
+					discountAmount: cartItems.reduce(
+						(sum, item) => sum + Math.max(0, (item.originalPrice ?? item.price) - item.price) * item.quantity,
+						0
+					) + (totalAmount - finalAmount + taxAmount + serviceChargeAmount),
 					autoComplete: orderData?.autoComplete,
 				});
 
