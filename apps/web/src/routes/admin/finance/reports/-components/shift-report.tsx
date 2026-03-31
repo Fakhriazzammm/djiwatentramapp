@@ -61,6 +61,7 @@ export function ShiftReport({ range }: Props) {
 
 				// Calculate Shift Revenue & Items
 				let shiftRevenue = 0;
+				let shiftDiscount = 0;
 				let shiftCash = 0;
 				let shiftQris = 0;
 				let shiftItems = 0;
@@ -70,6 +71,7 @@ export function ShiftReport({ range }: Props) {
 				orders.forEach((o: any) => {
 					if ((o.status === "completed" || o.status === "paid") && o.createdAt >= shift.startTime && o.createdAt <= sEnd) {
 						shiftRevenue += o.totalAmount;
+						shiftDiscount += (o.discountAmount || 0);
 						if (o.paymentMethod === 'cash') shiftCash += o.totalAmount;
 						if (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer') shiftQris += o.totalAmount;
 
@@ -114,8 +116,12 @@ export function ShiftReport({ range }: Props) {
 								<p className="font-semibold">{formatCurrencyIDR(shift.modalAwal || 0)}</p>
 							</div>
 							<div>
-								<p className="text-xs text-muted-foreground mb-1">Total Penjualan (Revenue)</p>
+								<p className="text-xs text-muted-foreground mb-1">Total Penjualan (Net)</p>
 								<p className="font-semibold text-green-600">+{formatCurrencyIDR(shiftRevenue)}</p>
+							</div>
+							<div>
+								<p className="text-xs text-muted-foreground mb-1">Potongan Diskon</p>
+								<p className="font-semibold text-orange-600">-{formatCurrencyIDR(shiftDiscount)}</p>
 							</div>
 							<div>
 								<p className="text-xs text-muted-foreground mb-1">Total Pengeluaran</p>

@@ -700,8 +700,25 @@ function AdminOrders() {
 												</span>
 											</div>
 											<div className="my-1.5 border-border/50 border-t" />
+											<div className="flex justify-between text-xs">
+												<span className="text-muted-foreground">
+													Subtotal (Bruto)
+												</span>
+												<span className="font-medium">
+													{formatrupiah(selectedOrder.totalAmount + (selectedOrder.discountAmount || 0))}
+												</span>
+											</div>
+											<div className="flex justify-between text-xs mt-1">
+												<span className="text-muted-foreground">
+													Potongan (Diskon)
+												</span>
+												<span className="font-medium text-orange-600">
+													-{formatrupiah(selectedOrder.discountAmount || 0)}
+												</span>
+											</div>
+											<div className="my-1.5 border-border/50 border-t" />
 											<div className="flex justify-between text-sm">
-												<span className="font-bold">Total Pembayaran</span>
+												<span className="font-bold">Total Pembayaran (Net)</span>
 												<span className="font-bold text-primary">
 													{formatrupiah(selectedOrder.totalAmount)}
 												</span>

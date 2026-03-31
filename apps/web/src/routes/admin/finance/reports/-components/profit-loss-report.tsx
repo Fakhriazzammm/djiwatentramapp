@@ -110,11 +110,23 @@ export function ProfitLossReport({ range }: Props) {
 
 				{/* Pendapatan */}
 				<Section title="PENDAPATAN" color="green">
-					{data.income.salesRevenue > 0 && (
-						<Row label="Penjualan (Dari Pesanan)" value={data.income.salesRevenue} />
-					)}
+					<div className="px-6 py-2">
+						<div className="flex justify-between items-center text-sm mb-1">
+							<span className="text-muted-foreground font-medium">Penjualan Bruto (Kotor)</span>
+							<span className="font-semibold">{formatCurrencyIDR(data.income.grossSalesRevenue)}</span>
+						</div>
+						<div className="flex justify-between items-center text-xs text-orange-600 mb-2">
+							<span className="italic pl-4">Potongan Diskon/Voucher</span>
+							<span className="font-medium">-{formatCurrencyIDR(data.income.totalDiscount)}</span>
+						</div>
+						<div className="flex justify-between items-center text-sm pt-2 border-t border-border/50">
+							<span className="font-bold">PENJUALAN BERSIH (NET)</span>
+							<span className="font-bold text-green-600">{formatCurrencyIDR(data.income.salesRevenue)}</span>
+						</div>
+					</div>
+
 					{data.income.sources && data.income.sources.map((s: { category: string; amount: number }) => (
-						s.category !== "Penjualan" && (
+						s.category !== "Penjualan" && s.category !== "Sales" && (
 							<Row key={s.category} label={s.category.replace(/_/g, " ")} value={s.amount} indent />
 						)
 					))}

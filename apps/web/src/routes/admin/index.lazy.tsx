@@ -91,7 +91,7 @@ function DashboardAdmin() {
 					icon={<DollarSign className="w-5 h-5" />}
 					label="Pendapatan Hari Ini"
 					value={formatCurrencyIDR(stats.todayRevenue)}
-					subLabel={`POS: ${formatCurrencyIDR(stats.todayPosRevenue)} | Book: ${formatCurrencyIDR(stats.todayBookingRevenue)}`}
+					subLabel={`Potongan: ${formatCurrencyIDR(stats.todayDiscount || 0)} | Net: ${formatCurrencyIDR(stats.todayRevenue)}`}
 					color="green"
 				/>
 				<StatCard
@@ -161,8 +161,12 @@ function DashboardAdmin() {
 											<span className="text-muted-foreground">E-Wallet/QRIS:</span>
 											<span className="font-medium text-foreground">{formatCurrencyIDR(shift.qrisRevenue)}</span>
 										</div>
+										<div className="flex justify-between items-center text-[10px] text-orange-600">
+											<span className="opacity-70 italic">Potongan Diskon:</span>
+											<span>-{formatCurrencyIDR(shift.totalDiscount || 0)}</span>
+										</div>
 										<div className="flex justify-between pt-2 mt-1 border-t border-dashed border-border/60">
-											<span className="text-muted-foreground font-semibold">Subtotal:</span>
+											<span className="text-muted-foreground font-semibold">Net Revenue:</span>
 											<span className="font-semibold text-primary">{formatCurrencyIDR(shift.revenue)}</span>
 										</div>
 										<div className="flex justify-between pt-2 mt-1 border-t border-border/40 text-[10px]">

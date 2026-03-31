@@ -36,6 +36,10 @@ export const getDashboardStats = query({
 		const todayBookingRevenue = todayBookings
 			.filter((b) => b.paymentStatus === "paid" || b.bookingStatus === "confirmed" || b.bookingStatus === "completed")
 			.reduce((sum, b) => sum + (b.totalAmount ?? 0), 0);
+		
+		const todayDiscount = todayOrders
+			.filter((o) => o.status === "completed" || o.status === "paid")
+			.reduce((sum, o) => sum + (o.discountAmount ?? 0), 0);
 
 		const todayRevenue = todayPosRevenue + todayBookingRevenue;
 
@@ -95,7 +99,7 @@ export const getDashboardStats = query({
 		};
 
 		// Revenue last 7 days (Using WIB boundaries and individual indexed queries)
-		const last7Days: { date: string; revenue: number; orders: number }[] = [];
+		const last7Days: { date: string; revenue: number; discount: number; orders: number }[] = [];
 		for (let i = 6; i >= 0; i--) {
 			const dayWib = new Date(nowWib);
 			dayWib.setDate(dayWib.getDate() - i);
@@ -123,6 +127,7 @@ export const getDashboardStats = query({
 				date: dStartWib.toLocaleDateString("id-ID", { weekday: "short", day: "numeric" }),
 				revenue: validOrders.reduce((sum, o) => sum + (o.totalAmount ?? 0), 0) + 
 						 validBookings.reduce((sum, b) => sum + (b.totalAmount ?? 0), 0),
+				discount: validOrders.reduce((sum, o) => sum + (o.discountAmount ?? 0), 0),
 				orders: validOrders.length + validBookings.length,
 			});
 		}
@@ -174,6 +179,7 @@ export const getDashboardStats = query({
 			todayRevenue,
 			todayPosRevenue,
 			todayBookingRevenue,
+			todayDiscount,
 			pendingOrders,
 			activeProducts,
 			totalProducts: allProducts.length,

@@ -576,6 +576,7 @@ export default defineSchema({
 				totalItemsSold: v.number(),
 				cashRevenue: v.number(),
 				qrisRevenue: v.number(),
+				totalDiscount: v.number(),
 			})
 		),
 	})

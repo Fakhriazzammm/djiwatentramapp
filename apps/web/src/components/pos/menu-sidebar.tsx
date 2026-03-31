@@ -924,6 +924,10 @@ function DashboardTab({
 						});
 
 						const totalRevenue = totalCash + totalQris + totalOther;
+						const totalDiscountAmount = todayOrders
+							.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
+							.reduce((acc: number, o: Doc<"orders">) => acc + (o.discountAmount || 0), 0);
+						const totalGrossRevenue = totalRevenue + totalDiscountAmount;
 						const netBalance = totalRevenue - totalExpenseVal;
 
 						let expensesText = Object.entries(expensesByCategory)
@@ -932,7 +936,7 @@ function DashboardTab({
 							
 						if (!expensesText) expensesText = "Tidak ada pengeluaran hari ini";
 
-						const shopName = siteSettings?.shopName || "YUMI POS";
+						const shopName = siteSettings?.storeName || "YUMI POS";
 
 						// --- GENERATE SHIFTS TEXT ---
 						let allShiftsText = "";
@@ -960,8 +964,13 @@ function DashboardTab({
 								const sItems = sOrders
 									.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
 									.reduce((acc: number, o: Doc<"orders">) => acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0), 0);
-									
+								
+								const sDiscountAmount = sOrders
+									.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
+									.reduce((acc: number, o: Doc<"orders">) => acc + (o.discountAmount || 0), 0);
+								
 								const sRevenue = sCash + sQris + sOther;
+								const sGrossRevenue = sRevenue + sDiscountAmount;
 
 								// Shift products
 								const sItemsByCatAndProd: Record<string, Record<string, number>> = {};
@@ -1015,7 +1024,10 @@ Modal Kasir: Rp. ${sModalVal.toLocaleString("id-ID")}
 Tunai: Rp. ${sCash.toLocaleString("id-ID")}
 Debit/QRIS: Rp. ${sQris.toLocaleString("id-ID")}
 Lainnya (Poin/Lain): Rp. ${sOther.toLocaleString("id-ID")}
-Total Revenue ${shiftObj.shiftName || 'Shift'}: Rp. ${sRevenue.toLocaleString("id-ID")}
+
+Total Penjualan Bruto: Rp. ${sGrossRevenue.toLocaleString("id-ID")}
+Total Potongan (Diskon): Rp. ${sDiscountAmount.toLocaleString("id-ID")}
+Total Revenue Bersih ${shiftObj.shiftName || 'Shift'}: Rp. ${sRevenue.toLocaleString("id-ID")}
 
 Produk Terjual: ${sItems}
 Rincian Produk:
@@ -1040,9 +1052,13 @@ ${shopName} -
 📅 Tanggal: ${dateStr} 
 ⸻ 
 ${allShiftsText}
-💰 TOTAL REVENUE HARIAN: 
+💰 TOTAL REVENUE HARIAN (NET): 
 Rp. ${totalRevenue.toLocaleString("id-ID")}
 📦 TOTAL PRODUK TERJUAL: ${totalItems}
+Total Penjualan Bruto (Gross): Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
+Total Potongan (Diskon/Voucher): Rp. ${totalDiscountAmount.toLocaleString("id-ID")}
+Net Revenue Harian: Rp. ${totalRevenue.toLocaleString("id-ID")}
+
 Rincian Produk Harian:
 ${productsText}
 
@@ -1055,7 +1071,9 @@ Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
 ⸻ 
 📝 RINGKASAN HARIAN 
 ${dateStr} : 
-Grand Total Revenue: Rp. ${totalRevenue.toLocaleString("id-ID")}
+Grand Total Revenue (Net): Rp. ${totalRevenue.toLocaleString("id-ID")}
+Total Penjualan Bruto: Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
+Total Potongan: Rp. ${totalDiscountAmount.toLocaleString("id-ID")}
 Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
 Kas Bersih (Net): Rp. ${netBalance.toLocaleString("id-ID")}
 Total Produk Terjual: ${totalItems}`;
@@ -1198,7 +1216,12 @@ Total Produk Terjual: ${totalItems}`;
 								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
 							}, 0);
 
+						const totalDiscountAmount = todayOrders
+							.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
+							.reduce((acc: number, o: Doc<"orders">) => acc + (o.discountAmount || 0), 0);
+
 						const totalRevenue = totalCash + totalQris + totalOther;
+						const totalGrossRevenue = totalRevenue + totalDiscountAmount;
 
 						// Calculate products sold by category (Daily)
 						const itemsByCatAndProd: Record<string, Record<string, number>> = {};
@@ -1254,7 +1277,7 @@ Total Produk Terjual: ${totalItems}`;
 							
 						if (!expensesText) expensesText = "Tidak ada pengeluaran hari ini";
 
-						const shopName = siteSettings?.shopName || "YUMI POS";
+						const shopName = siteSettings?.storeName || "YUMI POS";
 
 						// --- GENERATE SHIFTS TEXT FOR COPY ---
 						let allShiftsCopyText = "";
@@ -1278,7 +1301,12 @@ Total Produk Terjual: ${totalItems}`;
 									.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
 									.reduce((acc: number, o: Doc<"orders">) => acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0), 0);
 								
+								const sDiscountAmount = sOrders
+									.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
+									.reduce((acc: number, o: Doc<"orders">) => acc + (o.discountAmount || 0), 0);
+
 								const sRevenue = sCash + sQris + sOther;
+								const sGrossRevenue = sRevenue + sDiscountAmount;
 
 								const sItemsByCatAndProd: Record<string, Record<string, number>> = {};
 								const sItemsByName: Record<string, number> = {};
@@ -1329,7 +1357,10 @@ Modal Kasir: Rp. ${sModalVal.toLocaleString("id-ID")}
 Tunai: Rp. ${sCash.toLocaleString("id-ID")}
 Debit/QRIS: Rp. ${sQris.toLocaleString("id-ID")}
 Lainnya (Poin/Lain): Rp. ${sOther.toLocaleString("id-ID")}
-Total Revenue ${shiftObj.shiftName || 'Shift'}: Rp. ${sRevenue.toLocaleString("id-ID")}
+
+Total Penjualan Bruto (Shift): Rp. ${sGrossRevenue.toLocaleString("id-ID")}
+Total Potongan (Diskon): Rp. ${sDiscountAmount.toLocaleString("id-ID")}
+Total Revenue Bersih ${shiftObj.shiftName || 'Shift'}: Rp. ${sRevenue.toLocaleString("id-ID")}
 
 Produk Terjual: ${sItems}
 Rincian Produk:
@@ -1347,14 +1378,21 @@ Kasir: ${shiftObj.cashierName || 'Kasir'}
 							allShiftsCopyText = `👥 BELUM ADA SHIFT\n⸻\n`;
 						}
 
+						// No redeclaration needed here, already declared at lines 1219-1224
+
+
 						const text = `📊 Daily Revenue Report 
 ${shopName} - 
 📅 Tanggal: ${dateStr} 
 ⸻ 
 ${allShiftsCopyText}
-💰 TOTAL REVENUE HARIAN: 
+💰 TOTAL REVENUE HARIAN (NET): 
 Rp. ${totalRevenue.toLocaleString("id-ID")}
 📦 TOTAL PRODUK TERJUAL: ${totalItems}
+Total Penjualan Bruto (Gross): Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
+Total Potongan (Diskon/Voucher): Rp. ${totalDiscountAmount.toLocaleString("id-ID")}
+Net Revenue Harian: Rp. ${totalRevenue.toLocaleString("id-ID")}
+
 Rincian Produk Harian:
 ${productsText}
 
@@ -1367,7 +1405,9 @@ Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
 ⸻ 
 📝 RINGKASAN HARIAN 
 ${dateStr} : 
-Grand Total Revenue: Rp. ${totalRevenue.toLocaleString("id-ID")}
+Grand Total Revenue (Net): Rp. ${totalRevenue.toLocaleString("id-ID")}
+Total Penjualan Bruto: Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
+Total Potongan: Rp. ${totalDiscountAmount.toLocaleString("id-ID")}
 Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
 Kas Bersih (Net): Rp. ${netBalance.toLocaleString("id-ID")}
 Total Produk Terjual: ${totalItems}`;

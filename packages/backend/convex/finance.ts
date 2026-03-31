@@ -137,6 +137,21 @@ export const getProfitLossReport = query({
 			totalIncome += t.amount;
 		}
 
+		// Fetch orders in period to calculate discounts
+		const ordersInPeriod = await ctx.db
+			.query("orders")
+			.withIndex("by_createdAt", (q) => {
+				if (startDate !== undefined && endDate !== undefined) return q.gte("createdAt", startDate).lte("createdAt", endDate);
+				if (startDate !== undefined) return q.gte("createdAt", startDate);
+				if (endDate !== undefined) return q.lte("createdAt", endDate);
+				return q;
+			})
+			.collect();
+
+		const totalDiscount = ordersInPeriod
+			.filter((o) => o.status === "completed" || o.status === "paid")
+			.reduce((sum, o) => sum + (o.discountAmount || 0), 0);
+
 		// Expense breakdown by category
 		const expenseByCategory: Record<string, number> = {};
 		let totalExpense = 0;
@@ -148,12 +163,13 @@ export const getProfitLossReport = query({
 
 		// Calculate Gross Profit and Net Profit
 		// Map various category names to standard report terms
-		const salesRevenue = (incomeByCategory["Penjualan"] || 0) + (incomeByCategory["Sales"] || 0);
+		const netSalesRevenue = (incomeByCategory["Penjualan"] || 0) + (incomeByCategory["Sales"] || 0);
+		const grossSalesRevenue = netSalesRevenue + totalDiscount;
 		const hppAmount = (expenseByCategory["HPP"] || 0) + (expenseByCategory["belanja_stok"] || 0) + (expenseByCategory["COGS"] || 0);
-		const otherIncome = totalIncome - salesRevenue;
+		const otherIncome = totalIncome - netSalesRevenue;
 		
-		// Gross Profit = Sales - HPP
-		const grossProfit = salesRevenue - hppAmount;
+		// Gross Profit = Net Sales - HPP (or Gross Sales - Discount - HPP)
+		const grossProfit = netSalesRevenue - hppAmount;
 		const netProfit = totalIncome - totalExpense;
 		const netMargin = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0;
 
@@ -175,7 +191,9 @@ export const getProfitLossReport = query({
 		return {
 			period: { startDate, endDate },
 			income: {
-				salesRevenue,
+				salesRevenue: netSalesRevenue,
+				grossSalesRevenue,
+				totalDiscount,
 				otherIncome,
 				total: totalIncome,
 				byCategory: incomeByCategory,
@@ -420,10 +438,12 @@ export const endShift = mutation({
 		let cashRevenue = 0;
 		let qrisRevenue = 0;
 		let totalItemsSold = 0;
+		let totalDiscount = 0;
 
 		orders.forEach((o) => {
 			if (o.status === "completed" || o.status === "paid") {
 				totalRevenue += o.totalAmount;
+				totalDiscount += (o.discountAmount || 0);
 				if (o.paymentMethod === 'cash') cashRevenue += o.totalAmount;
 				else qrisRevenue += o.totalAmount;
 				totalItemsSold += (o.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
@@ -465,11 +485,12 @@ export const endShift = mutation({
 				totalItemsSold,
 				cashRevenue,
 				qrisRevenue,
+				totalDiscount,
 			},
 		});
 
 		// 3. Create financial transaction for Setoran Akhir (Legacy compatibility)
-		const summaryText = `\n[RINGKASAN SHIFT]\nModal: Rp ${shift.startingCash.toLocaleString('id-ID')}\nCash: Rp ${cashRevenue.toLocaleString('id-ID')}\nQRIS: Rp ${qrisRevenue.toLocaleString('id-ID')}\nTotal Revenue: Rp ${totalRevenue.toLocaleString('id-ID')}\nPengeluaran: Rp ${totalExpenses.toLocaleString('id-ID')}\nProduk Terjual: ${totalItemsSold}`;
+		const summaryText = `\n[RINGKASAN SHIFT]\nModal: Rp ${shift.startingCash.toLocaleString('id-ID')}\nCash: Rp ${cashRevenue.toLocaleString('id-ID')}\nQRIS: Rp ${qrisRevenue.toLocaleString('id-ID')}\nDiskon: Rp ${totalDiscount.toLocaleString('id-ID')}\nTotal Revenue (Net): Rp ${totalRevenue.toLocaleString('id-ID')}\nPengeluaran: Rp ${totalExpenses.toLocaleString('id-ID')}\nProduk Terjual: ${totalItemsSold}`;
 		
 		await ctx.db.insert("financialTransactions", {
 			type: "income",
@@ -519,6 +540,7 @@ export const getShiftStatus = query({
 			revenue: s.summary?.totalRevenue ?? 0,
 			cashRevenue: s.summary?.cashRevenue ?? 0,
 			qrisRevenue: s.summary?.qrisRevenue ?? 0,
+			totalDiscount: s.summary?.totalDiscount ?? 0,
 			modalAwal: s.startingCash,
 			setoranAkhir: s.endingCashPhysical,
 		}));
