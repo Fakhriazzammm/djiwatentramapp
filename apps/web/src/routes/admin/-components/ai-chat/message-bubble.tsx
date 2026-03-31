@@ -41,7 +41,7 @@ export const MessageBubble = ({
 	const isAssistant = msg.role === "assistant";
 	
 	return (
-		<div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-4 w-full animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+		<div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-4 w-full animate-in fade-in slide-in-from-bottom-2 duration-300 group`}>
 			<div className={`flex w-full max-w-[90%] md:max-w-[80%] gap-3 md:gap-4 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
 				{isAssistant && (
 					<div className="flex-shrink-0 h-8 w-8 rounded-full border border-primary/20 bg-primary/5 flex items-center justify-center mt-0.5 shadow-sm">
@@ -152,21 +152,23 @@ export const MessageBubble = ({
 					)}
 
 					{msg.suggestions && msg.suggestions.length > 0 && (
-						<div className="mt-4 flex flex-wrap gap-1.5">
+						<div className="mt-4 flex flex-wrap gap-2">
 							{msg.suggestions.map((s, i) => (
-								<button
+								<Button
 									key={i}
+									variant="outline"
+									size="sm"
+									className="h-7 text-[10px] font-bold px-3 rounded-full border-primary/20 text-primary hover:bg-primary/10 transition-all active:scale-95 whitespace-nowrap shadow-sm"
 									onClick={() => onSendMessage(s.prompt)}
-									className="text-[11px] px-2.5 py-1 rounded-full bg-muted border border-border hover:bg-primary/5 hover:border-primary/20 hover:text-primary transition-all active:scale-95 whitespace-nowrap"
 								>
-									{s.label}
-								</button>
+									✨ {s.label}
+								</Button>
 							))}
 						</div>
 					)}
 
 					{isAssistant && !isStreaming && (
-						<div className="mt-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+						<div className="mt-2 flex items-center gap-2 opacity-20 hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
 							<Button 
 								variant="ghost" 
 								size="icon" 

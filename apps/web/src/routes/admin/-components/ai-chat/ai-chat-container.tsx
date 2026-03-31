@@ -117,13 +117,14 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 	// Helper for session management
 	const startNewSession = useCallback(async () => {
 		try {
-			const sessionId = await createSessionMutation({ 
+			const result = await createSessionMutation({ 
 				title: "Percakapan Baru " + new Date().toLocaleTimeString("id-ID")
 			});
-			setCurrentSessionId(sessionId);
+			const sid = (result as any).sessionId || result;
+			setCurrentSessionId(sid);
 			setMessages([]);
 			setToolCalls([]);
-			return sessionId;
+			return sid;
 		} catch (error) {
 			toast.error("Gagal membuat sesi baru");
 			return null;
