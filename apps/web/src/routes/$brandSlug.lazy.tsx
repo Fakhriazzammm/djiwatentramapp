@@ -326,6 +326,7 @@ function CartItemRow({
 
 function PriceSummary({
 	subtotal,
+	discount,
 	tax,
 	serviceCharge,
 	taxRate,
@@ -333,6 +334,7 @@ function PriceSummary({
 	total,
 }: {
 	subtotal: number;
+	discount?: number;
 	tax: number;
 	serviceCharge: number;
 	taxRate: number;
@@ -345,6 +347,12 @@ function PriceSummary({
 				<span className="text-muted-foreground">Subtotal</span>
 				<span className="font-medium">{fmt(subtotal)}</span>
 			</div>
+			{discount ? (
+				<div className="flex justify-between text-sm">
+					<span className="text-orange-600">Promo / Happy Hour</span>
+					<span className="font-medium text-orange-600">-{fmt(discount)}</span>
+				</div>
+			) : null}
 			{serviceCharge > 0 && (
 				<div className="flex justify-between text-sm">
 					<span className="text-muted-foreground">Servis ({serviceChargeRate}%)</span>
@@ -431,6 +439,11 @@ function CustomerMenuPage() {
 
 	// Pricing calculations
 	const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+	const grossSubtotal = cart.reduce(
+		(sum, item) => sum + (item.originalPrice ?? item.price) * item.quantity,
+		0
+	);
+	const promoDiscountAmount = Math.max(0, grossSubtotal - subtotal);
 	const taxRate = siteSettings?.taxRate ?? 0;
 	const serviceChargeRate = siteSettings?.serviceChargeRate ?? 0;
 	const serviceCharge = subtotal * (serviceChargeRate / 100);
@@ -655,7 +668,7 @@ function CustomerMenuPage() {
 						<h1 className="truncate font-bold text-foreground text-base leading-tight">
 							{storeName}
 						</h1>
-						<p className="text-muted-foreground text-xs">Menu Digital</p>
+						<p className="text-muted-foreground text-xs">Order Online untuk pelanggan</p>
 					</div>
 					{totalItems > 0 && (
 						<button
@@ -670,6 +683,34 @@ function CustomerMenuPage() {
 							</span>
 						</button>
 					)}
+				</div>
+
+				<div className="grid grid-cols-1 gap-2 px-4 pb-3 sm:grid-cols-3">
+					<div className="rounded-2xl border border-border/70 bg-muted/25 px-3 py-2.5">
+						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+							Order Online
+						</p>
+						<p className="mt-1 text-sm font-bold text-foreground">Scan, pilih menu, lalu checkout</p>
+						<p className="text-[11px] text-muted-foreground">Tidak perlu antre lama di kasir</p>
+					</div>
+					<div className="rounded-2xl border border-orange-200 bg-orange-50/70 px-3 py-2.5">
+						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-orange-700/80">
+							Promo Tersimpan
+						</p>
+						<p className="mt-1 text-sm font-bold text-orange-700">
+							Hemat {fmt(promoDiscountAmount)}
+						</p>
+						<p className="text-[11px] text-orange-700/80">
+							Happy hour dan promo item tampil otomatis di total
+						</p>
+					</div>
+					<div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 px-3 py-2.5">
+						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700/80">
+							Ringkasan Keranjang
+						</p>
+						<p className="mt-1 text-sm font-bold text-emerald-700">{totalItems} item • {fmt(total)}</p>
+						<p className="text-[11px] text-emerald-700/80">Sudah termasuk pajak dan service bila aktif</p>
+					</div>
 				</div>
 
 				{/* Category Tabs */}
@@ -869,7 +910,14 @@ function CustomerMenuPage() {
 							<span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/25 text-sm">
 								{totalItems}
 							</span>
-							<span className="text-sm">Lihat Keranjang</span>
+							<div className="text-left">
+								<p className="text-sm leading-none">Lihat Keranjang</p>
+								{promoDiscountAmount > 0 ? (
+									<p className="mt-1 text-[11px] font-medium text-white/80">
+										Hemat {fmt(promoDiscountAmount)}
+									</p>
+								) : null}
+							</div>
 						</div>
 						<span className="text-base">{fmt(total)}</span>
 					</button>
@@ -918,7 +966,8 @@ function CustomerMenuPage() {
 
 							<div className="border-t border-border px-4 pt-3 pb-5 space-y-3 shrink-0">
 								<PriceSummary
-									subtotal={subtotal}
+									subtotal={grossSubtotal}
+									discount={promoDiscountAmount}
 									tax={tax}
 									serviceCharge={serviceCharge}
 									taxRate={taxRate}
@@ -1030,7 +1079,8 @@ function CustomerMenuPage() {
 
 								{/* Order summary */}
 								<PriceSummary
-									subtotal={subtotal}
+									subtotal={grossSubtotal}
+									discount={promoDiscountAmount}
 									tax={tax}
 									serviceCharge={serviceCharge}
 									taxRate={taxRate}

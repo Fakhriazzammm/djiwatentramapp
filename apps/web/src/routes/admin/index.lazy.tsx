@@ -82,6 +82,39 @@ function DashboardAdmin() {
 
 	return (
 		<div className="space-y-6 md:space-y-8 pb-10">
+			<div className="rounded-[2rem] border border-border bg-[linear-gradient(135deg,rgba(15,23,42,0.02),rgba(59,130,246,0.07),rgba(16,185,129,0.04))] p-6 shadow-sm">
+				<div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+					<div className="max-w-2xl">
+						<p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary/80">
+							Admin Control Center
+						</p>
+						<h1 className="mt-2 text-2xl font-black tracking-tight text-foreground md:text-3xl">
+							Pusat pantau operasional, keuangan, dan anomali harian
+						</h1>
+						<p className="mt-2 text-sm leading-6 text-muted-foreground">
+							Satu dashboard untuk memantau pesanan, selisih kas, pembayaran non-tunai, dan sesi kasir yang butuh perhatian.
+						</p>
+					</div>
+					<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+						<div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
+							<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Anomali</p>
+							<p className="mt-1 text-xl font-black text-foreground">{stats.anomalies.length}</p>
+							<p className="text-[11px] text-muted-foreground">Temuan otomatis hari ini</p>
+						</div>
+						<div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3">
+							<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-700/80">Rekonsiliasi</p>
+							<p className="mt-1 text-xl font-black text-amber-700">{stats.paymentReconciliation.pendingNonCashCount}</p>
+							<p className="text-[11px] text-amber-700/80">Pembayaran non-tunai pending</p>
+						</div>
+						<div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3">
+							<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700/80">Pendapatan 7 Hari</p>
+							<p className="mt-1 text-xl font-black text-emerald-700">{formatCurrencyIDR(sevenDayRevenue)}</p>
+							<p className="text-[11px] text-emerald-700/80">Akumulasi net sales mingguan</p>
+						</div>
+					</div>
+				</div>
+			</div>
+
 			{/* Stats Cards */}
 			<div className="grid grid-cols-2 gap-4 md:grid-cols-4">
 				<StatCard

@@ -638,6 +638,8 @@ function MenuPage() {
 	);
 
 	const isLoading = products === undefined || categories === undefined;
+	const cartDiscountPreview = Math.max(0, discountAmount || 0);
+	const printerStatus = bluetoothPrinter.getStatus();
 
 	const handleOpenSidebar = (tabId: string) => {
 		setActiveSidebarTab(tabId);
@@ -674,67 +676,44 @@ function MenuPage() {
 				)}
 
 				{/* Shift & Printer Status Header */}
-				<div className="flex items-center justify-between border-b border-border bg-muted/50 px-2 sm:px-4 py-1.5 text-[9px] sm:text-[11px] font-medium shadow-sm z-40 shrink-0 overflow-x-auto scrollbar-none">
-					<div className="flex items-center gap-2 sm:gap-4 whitespace-nowrap min-w-max pr-2">
-						{/* Shift Status */}
-						<div className="flex items-center gap-1.5">
-							<span className={cn("flex h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full shrink-0", isShiftOpen ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]")} />
-							<span className="text-muted-foreground">{isShiftOpen ? "Shift Aktif" : "Shift Tutup"}</span>
+				<div className="border-b border-border bg-[linear-gradient(90deg,rgba(15,23,42,0.02),rgba(14,165,233,0.04),rgba(16,185,129,0.02))] px-3 py-2 shadow-sm z-40 shrink-0">
+					<div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold sm:text-[11px]">
+						<div className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-sky-700">
+							Kasir Workspace
 						</div>
-
-						{/* Time & Date */}
-						{isShiftOpen && (
-							<>
-								<div className="h-3 w-px bg-border shrink-0" />
-								<div className="flex items-center gap-1 sm:gap-1.5 text-muted-foreground">
-									<Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
-									<span className="hidden sm:inline">
-										{currentTime.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-									</span>
-									<span className="sm:hidden">
-										{currentTime.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "2-digit" })}
-									</span>
-									<span className="font-mono ml-0.5 sm:ml-1 font-bold">
-										{currentTime.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-									</span>
-								</div>
-							</>
-						)}
-
-						{/* Cashier Info */}
+						<div className={cn("flex items-center gap-1.5 rounded-full px-2.5 py-1", isShiftOpen ? "border border-emerald-200 bg-emerald-50 text-emerald-700" : "border border-rose-200 bg-rose-50 text-rose-700")}>
+							<span className={cn("h-2 w-2 rounded-full", isShiftOpen ? "bg-emerald-500" : "bg-rose-500")} />
+							<span>{isShiftOpen ? "Shift Aktif" : "Shift Tutup"}</span>
+						</div>
+						<div className="flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">
+							<Clock className="h-3 w-3 shrink-0" />
+							<span className="font-mono text-foreground">
+								{currentTime.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+							</span>
+						</div>
 						{isShiftOpen && shiftStatus?.shiftInfo?.cashierName && (
-							<>
-								<div className="h-3 w-px bg-border shrink-0" />
-								<div className="flex items-center gap-1 sm:gap-1.5 text-muted-foreground">
-									<User className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
-									<span className="truncate max-w-[60px] sm:max-w-none">{shiftStatus.shiftInfo.cashierName}</span>
-									{shiftStatus.shiftInfo.shiftName && (
-										<>
-											<span className="opacity-50">•</span>
-											<span className="font-semibold text-foreground/70 truncate max-w-[60px] sm:max-w-none">{shiftStatus.shiftInfo.shiftName}</span>
-										</>
-									)}
-								</div>
-							</>
+							<div className="flex items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-muted-foreground">
+								<User className="h-3 w-3 shrink-0" />
+								<span className="truncate max-w-[160px] text-foreground">
+									{shiftStatus.shiftInfo.cashierName}
+									{shiftStatus.shiftInfo.shiftName ? ` • ${shiftStatus.shiftInfo.shiftName}` : ""}
+								</span>
+							</div>
 						)}
-
 						{isShiftOpen && activeShiftSchedule?.closeTime && (
-							<>
-								<div className="h-3 w-px bg-border shrink-0" />
-								<div className="flex items-center gap-1 sm:gap-1.5 text-muted-foreground">
-									<Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
-									<span>Tutup {formatClockTime(activeShiftSchedule.closeTime)}</span>
-								</div>
-							</>
+							<div className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">
+								Tutup {formatClockTime(activeShiftSchedule.closeTime)}
+							</div>
 						)}
-					</div>
-
-					{/* Printer Status */}
-					<div className={cn("flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-0.5 rounded-md shrink-0 ml-auto", isPrinterConnected ? "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400" : "bg-muted text-muted-foreground")}>
-						<Printer className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
-						<span className="uppercase tracking-wider font-bold">
-							{isPrinterConnected ? "ON" : "OFF"}
-						</span>
+						{offlinePendingCount > 0 && (
+							<div className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-700">
+								Queue {offlinePendingCount}
+							</div>
+						)}
+						<div className={cn("flex items-center gap-1.5 rounded-full px-2.5 py-1", isPrinterConnected ? "border border-blue-200 bg-blue-50 text-blue-700" : "border border-border bg-background text-muted-foreground")}>
+							<Printer className="h-3 w-3 shrink-0" />
+							<span>{isPrinterConnected ? `Printer ${printerStatus.deviceName ?? "Tersambung"}` : "Printer Belum Tersambung"}</span>
+						</div>
 					</div>
 				</div>
 
@@ -774,7 +753,7 @@ function MenuPage() {
 								<h1 className="truncate font-bold text-foreground text-sm sm:text-base leading-tight">
 									{storeName}
 								</h1>
-								<p className="text-muted-foreground text-[10px] sm:text-xs">POS Menu</p>
+								<p className="text-muted-foreground text-[10px] sm:text-xs">POS Kasir dengan sinkron offline dan kontrol shift</p>
 							</div>
 						</div>
 
@@ -828,6 +807,36 @@ function MenuPage() {
 							onOpenChange={setIsSidebarOpen} 
 							initialTab={activeSidebarTab}
 						/>
+					</div>
+
+					<div className="grid grid-cols-1 gap-2 border-t border-border/60 px-4 py-3 sm:grid-cols-3">
+						<div className="rounded-2xl border border-border/70 bg-muted/20 px-3 py-2.5">
+							<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+								Transaksi Aktif
+							</p>
+							<p className="mt-1 text-base font-black text-foreground">{totalItems} item</p>
+							<p className="text-[11px] text-muted-foreground">
+								{customerInfo.isSubmitted ? `Customer: ${customerInfo.name || "Pelanggan"}` : "Isi data customer sebelum checkout"}
+							</p>
+						</div>
+						<div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 px-3 py-2.5">
+							<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700/80">
+								Total Bayar
+							</p>
+							<p className="mt-1 text-base font-black text-emerald-700">{fmt(finalTotal)}</p>
+							<p className="text-[11px] text-emerald-700/80">
+								Tax {fmt(taxAmount)} • Service {fmt(serviceChargeAmount)}
+							</p>
+						</div>
+						<div className="rounded-2xl border border-orange-200 bg-orange-50/70 px-3 py-2.5">
+							<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-orange-700/80">
+								Potongan Transaksi
+							</p>
+							<p className="mt-1 text-base font-black text-orange-700">{fmt(cartDiscountPreview)}</p>
+							<p className="text-[11px] text-orange-700/80">
+								Happy hour, promo item, dan voucher dihitung otomatis
+							</p>
+						</div>
 					</div>
 
 					{/* Search Bar */}
