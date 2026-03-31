@@ -1006,13 +1006,13 @@ function DashboardTab({
 									if (t.type === 'income' && t.category?.toLowerCase().includes('modal')) sModalVal += t.amount;
 								});
 
-								const isCurrentActive = shiftObj.endTime === null;
+								const isCurrentActive = !shiftObj.endTime;
 								const statusLabel = isCurrentActive ? " (AKTIF)" : " (SELESAI)";
 								const teamLabel = shiftObj.teamMembers ? `\nTim: ${shiftObj.teamMembers}` : '';
 
 								allShiftsText += `👥 ${shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`}${statusLabel}
 Modal Kasir: Rp. ${sModalVal.toLocaleString("id-ID")}
-Cash/Kasir: Rp. ${sCash.toLocaleString("id-ID")}
+Tunai: Rp. ${sCash.toLocaleString("id-ID")}
 Debit/QRIS: Rp. ${sQris.toLocaleString("id-ID")}
 Lainnya (Poin/Lain): Rp. ${sOther.toLocaleString("id-ID")}
 Total Revenue ${shiftObj.shiftName || 'Shift'}: Rp. ${sRevenue.toLocaleString("id-ID")}
@@ -1321,12 +1321,12 @@ Total Produk Terjual: ${totalItems}`;
 									if (t.type === 'income' && t.category?.toLowerCase().includes('modal')) sModalVal += t.amount;
 								});
 
-								const isCurrentActive = shiftObj.endTime === null;
+								const isCurrentActive = !shiftObj.endTime;
 								const statusLabel = isCurrentActive ? " (AKTIF)" : " (SELESAI)";
 
 								allShiftsCopyText += `👥 ${shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`}${statusLabel}
 Modal Kasir: Rp. ${sModalVal.toLocaleString("id-ID")}
-Cash/Kasir: Rp. ${sCash.toLocaleString("id-ID")}
+Tunai: Rp. ${sCash.toLocaleString("id-ID")}
 Debit/QRIS: Rp. ${sQris.toLocaleString("id-ID")}
 Lainnya (Poin/Lain): Rp. ${sOther.toLocaleString("id-ID")}
 Total Revenue ${shiftObj.shiftName || 'Shift'}: Rp. ${sRevenue.toLocaleString("id-ID")}

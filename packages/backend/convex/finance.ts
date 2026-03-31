@@ -503,6 +503,26 @@ export const getShiftStatus = query({
 			.withIndex("by_endTime", (q) => q.eq("endTime", undefined))
 			.first();
 
+		const now = Date.now();
+		const WIB_OFFSET = 7 * 60 * 60 * 1000;
+		const nowWib = new Date(now + WIB_OFFSET);
+		const todayStartWib = new Date(nowWib.getFullYear(), nowWib.getMonth(), nowWib.getDate());
+		const todayStartTs = todayStartWib.getTime() - WIB_OFFSET;
+
+		const allShiftsRaw = await ctx.db
+			.query("shifts")
+			.withIndex("by_startTime", q => q.gte("startTime", todayStartTs))
+			.collect();
+
+		const allShifts = allShiftsRaw.map(s => ({
+			...s,
+			revenue: s.summary?.totalRevenue ?? 0,
+			cashRevenue: s.summary?.cashRevenue ?? 0,
+			qrisRevenue: s.summary?.qrisRevenue ?? 0,
+			modalAwal: s.startingCash,
+			setoranAkhir: s.endingCashPhysical,
+		}));
+
 		if (ongoingShift) {
 			return {
 				isOpen: true,
@@ -514,16 +534,11 @@ export const getShiftStatus = query({
 					shiftId: ongoingShift._id,
 				},
 				ongoingShift,
+				allShifts,
 			};
 		}
 
 		// If no ongoing shift in new table, check legacy transactions for today
-		const now = Date.now();
-		const WIB_OFFSET = 7 * 60 * 60 * 1000;
-		const nowWib = new Date(now + WIB_OFFSET);
-		const todayStartWib = new Date(nowWib.getFullYear(), nowWib.getMonth(), nowWib.getDate());
-		const todayStartTs = todayStartWib.getTime() - WIB_OFFSET;
-
 		const lastTx = await ctx.db
 			.query("financialTransactions")
 			.withIndex("by_date", (q) => q.gte("date", todayStartTs))
@@ -548,25 +563,12 @@ export const getShiftStatus = query({
 			};
 		}
 
-		// Also fetch all shifts for the dashboard (compatibility)
-		const allShifts = await ctx.db
-			.query("shifts")
-			.withIndex("by_startTime", q => q.gte("startTime", todayStartTs))
-			.collect();
-
 		return {
 			isOpen,
 			latestMulai,
 			latestAkhir,
 			shiftInfo,
-			allShifts: allShifts.map(s => ({
-				...s,
-				revenue: s.summary?.totalRevenue ?? 0,
-				cashRevenue: s.summary?.cashRevenue ?? 0,
-				qrisRevenue: s.summary?.qrisRevenue ?? 0,
-				modalAwal: s.startingCash,
-				setoranAkhir: s.endingCashPhysical,
-			})),
+			allShifts,
 		};
 	},
 });
