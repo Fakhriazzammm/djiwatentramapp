@@ -161,7 +161,7 @@ export function FinanceDashboard() {
 
 		return (
 			<div className="relative overflow-x-auto rounded-xl border border-border">
-				<table className="w-full text-left text-sm whitespace-nowrap">
+				<table className="w-full text-left text-sm">
 					<thead className="bg-muted/50 text-muted-foreground text-xs uppercase">
 						<tr>
 							<th className="px-4 py-3">Tanggal</th>
@@ -186,8 +186,12 @@ export function FinanceDashboard() {
 
 							return (
 								<tr
-									className="group border-border border-b transition-colors hover:bg-muted/30"
+									className="group border-border border-b transition-colors hover:bg-muted/30 cursor-pointer"
 									key={t._id}
+									onClick={() => {
+										setSelectedTransaction(t);
+										setIsDialogOpen(true);
+									}}
 								>
 										<td className="px-4 py-3 font-medium">
 											{new Date(t.date).toLocaleDateString("id-ID", {
@@ -243,7 +247,8 @@ export function FinanceDashboard() {
 										<div className="flex items-center justify-center gap-1">
 											<button
 												className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
-												onClick={() => {
+												onClick={(e) => {
+													e.stopPropagation();
 													setSelectedTransaction(t);
 													setIsDialogOpen(true);
 												}}
@@ -253,7 +258,10 @@ export function FinanceDashboard() {
 											</button>
 											<button
 												className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-red-500 transition-colors"
-												onClick={() => handleDeleteTransaction(t._id)}
+												onClick={(e) => {
+													e.stopPropagation();
+													handleDeleteTransaction(t._id);
+												}}
 												title="Hapus"
 											>
 												<Trash2 className="h-3.5 w-3.5" />

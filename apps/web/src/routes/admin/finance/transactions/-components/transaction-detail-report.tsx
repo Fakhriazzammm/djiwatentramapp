@@ -271,7 +271,7 @@ export function TransactionDetailReport({ range }: Props) {
 			{/* Transactions Table */}
 			<div className="rounded-xl border border-border overflow-hidden">
 				<div className="overflow-x-auto">
-					<table className="w-full text-left text-sm border-collapse min-w-[600px]">
+					<table className="w-full text-left text-sm">
 						<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase tracking-wider font-bold">
 							<tr>
 								<th className="px-4 py-3">Tanggal</th>
@@ -310,8 +310,8 @@ export function TransactionDetailReport({ range }: Props) {
 									}
 
 									return (
-										<tr key={t._id} className="group hover:bg-muted/30 transition-colors">
-											<td className="px-4 py-3 whitespace-nowrap">
+										<tr key={t._id} className="group hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => handleEdit(t)}>
+											<td className="px-4 py-3">
 												<div className="flex flex-col">
 													<span className="font-medium text-foreground text-xs">
 														{format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}
@@ -321,7 +321,7 @@ export function TransactionDetailReport({ range }: Props) {
 													</span>
 												</div>
 											</td>
-											<td className="px-4 py-3 whitespace-nowrap">
+											<td className="px-4 py-3">
 												{shiftName !== "-" ? (
 													<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-[9px] font-bold text-primary uppercase">
 														{shiftName}
@@ -340,30 +340,36 @@ export function TransactionDetailReport({ range }: Props) {
 												</span>
 											</div>
 										</td>
-										<td className="px-4 py-3 whitespace-nowrap">
+										<td className="px-4 py-3">
 											{categoryBadge(t.category, t.type)}
 										</td>
-										<td className="px-4 py-3 whitespace-nowrap">
+										<td className="px-4 py-3">
 											<span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
 												{t.paymentMethod || "Cash"}
 											</span>
 										</td>
-										<td className="px-4 py-3 text-right whitespace-nowrap">
+										<td className="px-4 py-3 text-right">
 											<span className={`font-bold text-xs ${t.type === "income" ? "text-green-600" : "text-red-600"}`}>
 												{t.type === "income" ? "+" : "-"} {formatCurrencyIDR(t.amount)}
 											</span>
 										</td>
-										<td className="px-4 py-3 text-center whitespace-nowrap">
+										<td className="px-4 py-3 text-center">
 												<div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
 													<button
-														onClick={() => handleEdit(t)}
+														onClick={(e) => {
+															e.stopPropagation();
+															handleEdit(t);
+														}}
 														className="p-1.5 rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
 														title="Ubah"
 													>
 														<Pencil className="h-4 w-4" />
 													</button>
 													<button
-														onClick={() => handleDelete(t._id)}
+														onClick={(e) => {
+															e.stopPropagation();
+															handleDelete(t._id);
+														}}
 														className="p-1.5 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
 														title="Hapus"
 													>
