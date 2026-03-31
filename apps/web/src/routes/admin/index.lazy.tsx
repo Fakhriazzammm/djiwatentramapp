@@ -82,36 +82,36 @@ function DashboardAdmin() {
 
 	return (
 		<div className="space-y-6 md:space-y-8 pb-10">
-			<div className="rounded-[2rem] border border-border bg-[linear-gradient(135deg,rgba(15,23,42,0.02),rgba(59,130,246,0.07),rgba(16,185,129,0.04))] p-5 shadow-sm md:p-6">
-				<div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.95fr)] xl:items-stretch">
+			<div className="rounded-[1.75rem] border border-border bg-[linear-gradient(135deg,rgba(15,23,42,0.02),rgba(59,130,246,0.07),rgba(16,185,129,0.04))] p-4 shadow-sm md:p-5">
+				<div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.95fr)] xl:items-center">
 					<div className="max-w-3xl">
 						<p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary/80">
 							Admin Control Center
 						</p>
-						<h1 className="mt-2 text-2xl font-black tracking-tight text-foreground md:text-3xl">
+						<h1 className="mt-2 text-xl font-black tracking-tight text-foreground md:text-2xl xl:max-w-2xl">
 							Pusat pantau operasional, keuangan, dan anomali harian
 						</h1>
-						<p className="mt-2 text-sm leading-6 text-muted-foreground">
+						<p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
 							Satu dashboard untuk memantau pesanan, selisih kas, pembayaran non-tunai, dan sesi kasir yang butuh perhatian.
 						</p>
 					</div>
-					<div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:self-end">
-						<div className="rounded-3xl border border-slate-200 bg-white/90 px-4 py-4 shadow-sm">
+					<div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:self-auto">
+						<div className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm">
 							<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">Anomali</p>
-							<p className="mt-3 text-3xl font-black leading-none text-slate-900">{stats.anomalies.length}</p>
-							<p className="mt-2 text-sm leading-5 text-slate-600">Temuan otomatis hari ini</p>
+							<p className="mt-2 text-2xl font-black leading-none text-slate-900">{stats.anomalies.length}</p>
+							<p className="mt-2 text-xs leading-5 text-slate-600">Temuan otomatis hari ini</p>
 						</div>
-						<div className="rounded-3xl border border-amber-200 bg-amber-50/90 px-4 py-4 shadow-sm">
+						<div className="rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 shadow-sm">
 							<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-700/80">Rekonsiliasi</p>
-							<p className="mt-3 text-3xl font-black leading-none text-amber-700">{stats.paymentReconciliation.pendingNonCashCount}</p>
-							<p className="mt-2 text-sm leading-5 text-amber-700/80">Pembayaran non-tunai pending</p>
+							<p className="mt-2 text-2xl font-black leading-none text-amber-700">{stats.paymentReconciliation.pendingNonCashCount}</p>
+							<p className="mt-2 text-xs leading-5 text-amber-700/80">Pembayaran non-tunai pending</p>
 						</div>
-						<div className="rounded-3xl border border-emerald-200 bg-emerald-50/90 px-4 py-4 shadow-sm sm:col-span-3 xl:col-span-1">
+						<div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 shadow-sm sm:col-span-3 xl:col-span-1">
 							<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-700/80">Pendapatan 7 Hari</p>
-							<p className="mt-3 text-2xl font-black leading-tight text-emerald-700 break-words md:text-3xl">
+							<p className="mt-2 text-xl font-black leading-tight text-emerald-700 break-words md:text-2xl">
 								{formatCurrencyIDR(sevenDayRevenue)}
 							</p>
-							<p className="mt-2 text-sm leading-5 text-emerald-700/80">Akumulasi net sales mingguan</p>
+							<p className="mt-2 text-xs leading-5 text-emerald-700/80">Akumulasi net sales mingguan</p>
 						</div>
 					</div>
 				</div>

@@ -673,83 +673,86 @@ function CustomerMenuPage() {
 				className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm"
 				style={themeColor ? { borderBottomColor: `${themeColor}40` } : undefined}
 			>
-				<div className="flex items-center gap-3 px-4 py-3">
+				<div className="flex items-center gap-3 px-4 pb-2 pt-3">
 					{logoUrl ? (
 						<img
 							src={logoUrl}
 							alt={storeName}
-							className="h-9 w-9 shrink-0 rounded-lg object-contain"
+							className="h-11 w-11 shrink-0 rounded-2xl object-contain shadow-sm"
 						/>
 					) : (
 						<div
-							className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-bold text-white text-sm"
+							className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl font-bold text-white text-base shadow-sm"
 							style={{ background: themeColor ?? "var(--color-primary)" }}
 						>
 							{storeName.charAt(0).toUpperCase()}
 						</div>
 					)}
 					<div className="min-w-0 flex-1">
-						<h1 className="truncate font-bold text-foreground text-base leading-tight">
+						<h1 className="truncate font-bold text-foreground text-[1.05rem] leading-tight">
 							{storeName}
 						</h1>
-						<p className="text-muted-foreground text-xs">Order Online untuk pelanggan</p>
+						<p className="text-muted-foreground text-xs">Pesan cepat tanpa antre di kasir</p>
 					</div>
-					{totalItems > 0 && (
-						<button
-							type="button"
-							onClick={() => setSheetView("cart")}
-							aria-label={`Keranjang: ${totalItems} item`}
-							className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card active:scale-95 transition-transform"
-						>
-							<ShoppingCart className="h-5 w-5 text-foreground" />
+					<button
+						type="button"
+						onClick={() => setSheetView("cart")}
+						aria-label={`Keranjang: ${totalItems} item`}
+						className="relative flex h-11 min-w-11 items-center justify-center rounded-2xl border border-border bg-card px-3 shadow-sm active:scale-95 transition-transform"
+					>
+						<ShoppingCart className="h-5 w-5 text-foreground" />
+						{totalItems > 0 && (
 							<span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 font-bold text-[10px] text-primary-foreground shadow">
 								{totalItems}
 							</span>
-						</button>
-					)}
+						)}
+					</button>
 				</div>
 
-				<div ref={heroSectionRef} className="grid grid-cols-1 gap-2 px-4 pb-3 sm:grid-cols-3">
-					<div className="rounded-2xl border border-border/70 bg-muted/25 px-3 py-2.5">
+				<div ref={heroSectionRef} className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-none">
+					<div className="min-w-[150px] rounded-2xl border border-border/70 bg-muted/25 px-3 py-2.5">
 						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
 							Order Online
 						</p>
-						<p className="mt-1 text-sm font-bold text-foreground">Scan, pilih menu, lalu checkout</p>
-						<p className="text-[11px] text-muted-foreground">Tidak perlu antre lama di kasir</p>
+						<p className="mt-1 text-xs font-bold text-foreground">Pilih menu dan checkout cepat</p>
+						<p className="text-[11px] text-muted-foreground">Tanpa antre lama</p>
 					</div>
-					<div className="rounded-2xl border border-orange-200 bg-orange-50/70 px-3 py-2.5">
+					<div className="min-w-[140px] rounded-2xl border border-orange-200 bg-orange-50/70 px-3 py-2.5">
 						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-orange-700/80">
-							Promo Tersimpan
+							Hemat
 						</p>
 						<p className="mt-1 text-sm font-bold text-orange-700">
 							Hemat {fmt(promoDiscountAmount)}
 						</p>
 						<p className="text-[11px] text-orange-700/80">
-							Happy hour dan promo item tampil otomatis di total
+							Promo & happy hour aktif
 						</p>
 					</div>
-					<div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 px-3 py-2.5">
+					<div className="min-w-[168px] rounded-2xl border border-emerald-200 bg-emerald-50/70 px-3 py-2.5">
 						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700/80">
-							Ringkasan Keranjang
+							Keranjang
 						</p>
 						<p className="mt-1 text-sm font-bold text-emerald-700">{totalItems} item • {fmt(total)}</p>
-						<p className="text-[11px] text-emerald-700/80">Sudah termasuk pajak dan service bila aktif</p>
+						<p className="text-[11px] text-emerald-700/80">Total live termasuk pajak</p>
 					</div>
 				</div>
 
 				{/* Category Tabs */}
-				<div ref={categorySectionRef} className="px-4 pb-3">
+				<div ref={categorySectionRef} className="border-t border-border/60 px-4 pb-3 pt-2">
 					<div
 						ref={categoryScrollRef}
 						className="flex gap-2 overflow-x-auto scrollbar-none"
 					>
 						<button
 						type="button"
-						onClick={() => setActiveCategoryId(null)}
-						className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+						onClick={() => {
+							setActiveCategoryId(null);
+							setActiveNavTab("category");
+						}}
+						className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
 							activeCategoryId === null
 								? "bg-primary text-primary-foreground shadow-sm"
-								: "bg-muted text-muted-foreground"
+								: "bg-muted/70 text-muted-foreground"
 						}`}
 					>
 						Semua
@@ -758,11 +761,14 @@ function CustomerMenuPage() {
 							<button
 							key={cat._id}
 							type="button"
-							onClick={() => setActiveCategoryId(cat._id)}
-							className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+							onClick={() => {
+								setActiveCategoryId(cat._id);
+								setActiveNavTab("category");
+							}}
+							className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
 								activeCategoryId === cat._id
 									? "bg-primary text-primary-foreground shadow-sm"
-									: "bg-muted text-muted-foreground"
+									: "bg-muted/70 text-muted-foreground"
 							}`}
 							>
 								{cat.name}
@@ -773,49 +779,23 @@ function CustomerMenuPage() {
 			</header>
 
 			{/* ── Product Grid ── */}
-			<main className="flex-1 px-3 pb-48 sm:pb-32">
-				{/* Menu Number Search */}
-				<div ref={searchSectionRef} className="pt-3 pb-2">
-					<p className="mb-1.5 text-xs font-medium text-muted-foreground">
-						Cari dengan nomor menu
-					</p>
-					<div className="relative flex items-center">
-						<Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
-						<input
-							type="number"
-							inputMode="numeric"
-							min="1"
-							value={menuSearch}
-							onChange={(e) => setMenuSearch(e.target.value)}
-							placeholder="Ketuk nomor menu..."
-							className="w-full rounded-xl border border-border bg-muted/50 py-2.5 pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors"
-							aria-label="Cari menu berdasarkan nomor"
-						/>
-						{menuSearch && (
-							<button
-								type="button"
-								onClick={() => {
-									setMenuSearch("");
-									setMenuSearchFeedback("");
-								}}
-								className="absolute right-3 flex items-center justify-center"
-								aria-label="Hapus pencarian"
-							>
-								<X className="h-4 w-4 text-muted-foreground" />
-							</button>
-						)}
-					</div>
-					{menuSearchFeedback && (
-						<p
-							className={`mt-1 text-xs font-medium ${
-								menuSearchFeedback.includes("tidak ditemukan")
-									? "text-red-500"
-									: "text-green-600"
-							}`}
-						>
-							{menuSearchFeedback}
+			<main className="flex-1 px-3 pb-48 pt-3 sm:pb-32">
+				<div ref={searchSectionRef} className="mb-3 flex items-center justify-between px-1">
+					<div>
+						<p className="text-sm font-bold text-foreground">
+							{activeCategoryId
+								? categories?.find((cat) => cat._id === activeCategoryId)?.name ?? "Menu Pilihan"
+								: "Menu Pilihan"}
 						</p>
-					)}
+						<p className="text-xs text-muted-foreground">
+							{products?.length ?? 0} menu tersedia hari ini
+						</p>
+					</div>
+					{promoDiscountAmount > 0 ? (
+						<div className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-semibold text-orange-700">
+							Hemat {fmt(promoDiscountAmount)}
+						</div>
+					) : null}
 				</div>
 
 				{/* Grid */}
@@ -853,11 +833,11 @@ function CustomerMenuPage() {
 									key={product._id}
 									type="button"
 									onClick={() => handleProductTap(product)}
-									className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm active:scale-[0.97] transition-transform text-left"
+									className="group relative flex flex-col overflow-hidden rounded-[1.35rem] border border-border bg-card shadow-sm active:scale-[0.97] transition-transform text-left"
 									aria-label={`${product.name}, ${fmt(pricing.finalPrice)}`}
 								>
 									{/* Image */}
-									<div className="relative h-36 w-full bg-muted">
+									<div className="relative h-32 w-full bg-muted">
 										{product.image ? (
 											<img
 												src={product.image}
@@ -892,7 +872,7 @@ function CustomerMenuPage() {
 												#{product.menuNumber}
 											</span>
 										)}
-										<p className="line-clamp-2 font-semibold text-foreground text-sm leading-tight">
+										<p className="line-clamp-2 font-semibold text-foreground text-[13px] leading-tight">
 											{product.name}
 										</p>
 										<div className="mt-1.5 flex items-end justify-between gap-1">
@@ -903,7 +883,7 @@ function CustomerMenuPage() {
 													</p>
 												)}
 												<p
-													className="font-bold text-sm"
+													className="font-bold text-[13px]"
 													style={{ color: themeColor ?? "var(--color-primary)" }}
 												>
 													{fmt(pricing.finalPrice)}
