@@ -41,14 +41,14 @@ export const MessageBubble = ({
 	const isAssistant = msg.role === "assistant";
 	
 	return (
-		<div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-6 w-full animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+		<div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-4 w-full animate-in fade-in slide-in-from-bottom-2 duration-300`}>
 			<div className={`flex w-full max-w-[90%] md:max-w-[80%] gap-3 md:gap-4 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
 				{isAssistant && (
 					<div className="flex-shrink-0 h-8 w-8 rounded-full border border-primary/20 bg-primary/5 flex items-center justify-center mt-0.5 shadow-sm">
 						<Bot className="h-4 w-4 md:h-5 md:w-5 text-primary" />
 					</div>
 				)}
-				<div className={`flex-1 text-sm leading-relaxed ${msg.role === "user" ? "rounded-2xl rounded-tr-none bg-primary px-4 py-2.5 text-primary-foreground shadow-md" : "text-foreground pt-1.5"}`}>
+				<div className={`flex-1 text-sm leading-relaxed ${msg.role === "user" ? "rounded-2xl rounded-tr-none bg-primary px-3.5 py-2 text-primary-foreground shadow-md" : "text-foreground pt-1"}`}>
 					{msg.image && (
 						<div className="mb-3">
 							<img src={msg.image} alt="Lampiran" className="rounded-xl max-h-64 object-contain border border-border shadow-sm" />

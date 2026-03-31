@@ -54,7 +54,7 @@ export const ChatInput = ({
 	const templates = mode === "admin" ? ADMIN_TEMPLATES : CASIER_TEMPLATES;
 
 	return (
-		<div className="p-4 bg-background/80 backdrop-blur-md border-t border-border shadow-lg relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+		<div className="p-3 bg-background/80 backdrop-blur-md border-t border-border shadow-lg relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
 			{/* Templates */}
 			{showTemplates && !isScanMode && (
 				<div className="mb-4 flex flex-nowrap overflow-x-auto gap-2 pb-2 custom-scrollbar scroll-smooth no-scrollbar">
@@ -62,7 +62,7 @@ export const ChatInput = ({
 						<button
 							key={i}
 							onClick={() => onSendMessage(template.message)}
-							className="flex items-center gap-2 rounded-xl bg-muted/60 px-4 py-2 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-all active:scale-95 whitespace-nowrap border border-border/40 shadow-sm"
+							className="flex items-center gap-2 rounded-xl bg-muted/60 px-3 py-1.5 text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-all active:scale-95 whitespace-nowrap border border-border/40 shadow-sm"
 						>
 							<span className="text-primary">{typeof template.icon === 'string' ? template.icon : template.icon}</span>
 							<span className="text-foreground">{template.label}</span>
@@ -153,7 +153,7 @@ export const ChatInput = ({
 						onChange={(e) => setInput(e.target.value)}
 						onKeyDown={onKeyDown}
 						placeholder={isScanMode ? "Tuliskan instruksi untuk analisis gambar..." : "Tanya Yumi AI tentang bisnismu..."}
-						className="w-full resize-none bg-transparent py-[18px] pl-[100px] pr-[64px] text-sm focus:outline-none scroll-m-1 min-h-[56px] max-h-[30vh]"
+						className="w-full resize-none bg-transparent py-3 pl-[100px] pr-[64px] text-sm focus:outline-none scroll-m-1 min-h-[48px] max-h-[30vh]"
 						rows={1}
 						onInput={(e) => {
 							const target = e.target as HTMLTextAreaElement;

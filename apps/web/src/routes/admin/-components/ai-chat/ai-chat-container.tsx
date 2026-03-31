@@ -14,7 +14,7 @@ import { ScanHistoryPanel, useScanHistory } from "@/components/scan/scan-history
 
 // Internal Sub-components & Utils
 import type { ChatMessage, ToolCall, Suggestion, TabType, ChatSession, QuickActionButton, ScanActionButton, ScanResultData, ChatMode } from "./types";
-import { mkMsgId, toRupiah, TOOL_LABELS, generateQuickActions, generateScanActionButtons, extractSuggestions, extractGenericActions, extractChartData, extractExportData } from "./utils";
+import { mkMsgId, toRupiah, TOOL_LABELS, generateQuickActions, generateScanActionButtons, extractSuggestions, extractGenericActions, extractChartData, extractExportData, sanitizeResponse } from "./utils";
 import { exportReport } from "./report-exporter";
 import { MessageBubble } from "./message-bubble";
 import { ChatInput } from "./chat-input";
@@ -219,9 +219,10 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 			const briefing = await generateBusinessBriefingAction({ localHour, context: context || undefined });
 			
 			if (briefing) {
+				const sanitizedBriefing = sanitizeResponse(briefing);
 				const assistantMsg: ChatMessage = {
 					role: "assistant",
-					content: briefing,
+					content: sanitizedBriefing,
 					suggestions: extractSuggestions(briefing),
 					chartData: extractChartData(briefing),
 					exportData: extractExportData(briefing),
@@ -342,13 +343,14 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 			const genericActions = extractGenericActions(response);
 			const chartData = extractChartData(response);
 			const exportData = extractExportData(response);
+			const sanitizedResponse = sanitizeResponse(response);
 			
-			streamText(response, async () => {
-				const assistantMsg: ChatMessage = { role: "assistant", content: response, suggestions, quickActions, genericActions, chartData, exportData, _msgId: mkMsgId() };
+			streamText(sanitizedResponse, async () => {
+				const assistantMsg: ChatMessage = { role: "assistant", content: sanitizedResponse, suggestions, quickActions, genericActions, chartData, exportData, _msgId: mkMsgId() };
 				setMessages(prev => [...prev, assistantMsg]);
 				if (mode === "admin" && sessionId) {
 					await saveConversationMutation({ sessionId: sessionId!, role: "user", content: trimmed });
-					await saveConversationMutation({ sessionId: sessionId!, role: "assistant", content: response });
+					await saveConversationMutation({ sessionId: sessionId!, role: "assistant", content: sanitizedResponse });
 				}
 			});
 		} catch (error) {
@@ -473,7 +475,7 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 			</AnimatePresence>
 
 			<div className={`flex-1 flex flex-col min-w-0 bg-background ${isPOS ? "" : "shadow-2xl"} relative z-10 transition-all duration-500 overflow-hidden`}>
-				<header className={`flex items-center justify-between ${isPOS ? "p-3" : "p-4"} border-b border-border/80 bg-background/50 backdrop-blur-xl sticky top-0 z-20`}>
+				<header className={`flex items-center justify-between ${isPOS ? "p-2" : "p-2.5"} border-b border-border/80 bg-background/50 backdrop-blur-xl sticky top-0 z-20`}>
 					<div className="flex items-center gap-3">
 						{!isPOS && (
 							<Button variant="ghost" size="icon" className="md:h-10 md:w-10 rounded-full hover:bg-muted" onClick={() => setShowSessionHistory(!showSessionHistory)}>
@@ -517,7 +519,7 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 							<button
 								key={tab}
 								onClick={() => setActiveTab(tab)}
-								className={`px-6 py-3 text-xs md:text-sm font-bold uppercase tracking-widest transition-all relative ${activeTab === tab ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"}`}
+								className={`px-4 py-2 text-xs md:text-sm font-bold uppercase tracking-widest transition-all relative ${activeTab === tab ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"}`}
 							>
 								{tab === "chat" ? "Konsultasi" : tab === "suggestions" ? "Saran AI" : tab === "predictions" ? "Prediksi" : "Tugas"}
 								{activeTab === tab && (
@@ -540,14 +542,14 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 						>
 							{activeTab === "chat" && (
 								<div className="flex flex-col h-full">
-									<div className={`flex-1 overflow-y-auto ${isPOS ? "p-3" : "p-4 md:p-8"} space-y-2 custom-scrollbar scroll-smooth`}>
+									<div className={`flex-1 overflow-y-auto ${isPOS ? "p-2.5" : "p-3 md:p-5"} space-y-2 custom-scrollbar scroll-smooth`}>
 										{messages.length === 0 && !isLoading && (
 											<div className={`h-full flex flex-col items-center justify-center text-center ${isPOS ? "p-4" : "p-8"} animate-in fade-in zoom-in duration-700`}>
-												<div className={`${isPOS ? "p-4" : "p-6"} bg-primary/5 rounded-full mb-6 ring-1 ring-primary/20 shadow-inner`}>
-													<Bot className={`${isPOS ? "h-8 w-8" : "h-12 w-12"} text-primary animate-pulse`} />
+												<div className={`${isPOS ? "p-3" : "p-4"} bg-primary/5 rounded-full mb-4 ring-1 ring-primary/20 shadow-inner`}>
+													<Bot className={`${isPOS ? "h-6 w-6" : "h-10 w-10"} text-primary animate-pulse`} />
 												</div>
 												<h3 className={`${isPOS ? "text-lg" : "text-xl"} font-bold text-foreground mb-2`}>Halo, Selamat Datang!</h3>
-												<p className="text-muted-foreground max-w-sm mb-8 text-xs">
+												<p className="text-muted-foreground max-w-sm mb-6 text-xs">
 													{isPOS ? "Kasir siap membantu operasional toko Anda." : "Saya adalah asisten bisnis Anda. Silakan tanya apa saja tentang stok, keuangan, atau performa toko Anda."}
 												</p>
 											</div>
