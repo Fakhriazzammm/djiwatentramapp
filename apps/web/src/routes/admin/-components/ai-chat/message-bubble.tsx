@@ -55,7 +55,7 @@ export const MessageBubble = ({
 						</div>
 					)}
 					
-					<div className="whitespace-pre-wrap text-sm md:text-[15px] leading-relaxed">
+					<div className="whitespace-pre-wrap text-xs md:text-sm leading-relaxed">
 						{isLast && isStreaming && isAssistant
 							? streamingContent
 							: msg.content}

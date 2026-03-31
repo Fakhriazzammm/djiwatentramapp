@@ -486,7 +486,7 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 							</div>
 						)}
 						<div className="min-w-0">
-							<h1 className={`${isPOS ? "text-sm" : "text-lg md:text-xl"} font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent`}>Yumi AI</h1>
+							<h1 className={`${isPOS ? "text-sm" : "text-base md:text-lg"} font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent`}>Yumi AI</h1>
 							<p className={`text-[10px] ${isPOS ? "" : "md:text-xs"} text-muted-foreground font-medium uppercase tracking-widest ${isPOS ? "" : "hidden md:block"}`}>
 								{isPOS ? "Asisten Kasir Cerdas" : "Asisten Bisnis Cerdas"}
 							</p>
@@ -546,8 +546,8 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 												<div className={`${isPOS ? "p-4" : "p-6"} bg-primary/5 rounded-full mb-6 ring-1 ring-primary/20 shadow-inner`}>
 													<Bot className={`${isPOS ? "h-8 w-8" : "h-12 w-12"} text-primary animate-pulse`} />
 												</div>
-												<h3 className={`${isPOS ? "text-lg" : "text-2xl"} font-bold text-foreground mb-2`}>Halo, Selamat Datang!</h3>
-												<p className="text-muted-foreground max-w-sm mb-8 text-sm">
+												<h3 className={`${isPOS ? "text-lg" : "text-xl"} font-bold text-foreground mb-2`}>Halo, Selamat Datang!</h3>
+												<p className="text-muted-foreground max-w-sm mb-8 text-xs">
 													{isPOS ? "Kasir siap membantu operasional toko Anda." : "Saya adalah asisten bisnis Anda. Silakan tanya apa saja tentang stok, keuangan, atau performa toko Anda."}
 												</p>
 											</div>

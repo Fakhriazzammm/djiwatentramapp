@@ -13,11 +13,25 @@ export const getProducts = query({
 
 		let products: Doc<"products">[];
 		if (categoryId) {
-			products = await ctx.db
-				.query("products")
-				.withIndex("by_category", (q) => q.eq("categoryId", categoryId))
-				.filter((q) => q.eq(q.field("isAvailable"), true))
+			// Get all sub-categories for this category
+			const subCategories = await ctx.db
+				.query("categories")
+				.filter((q) => q.eq(q.field("parentId"), categoryId))
 				.collect();
+
+			const categoryIds = [categoryId, ...subCategories.map((c) => c._id)];
+
+			// Fetch products for all these categories
+			const productsList = await Promise.all(
+				categoryIds.map((id) =>
+					ctx.db
+						.query("products")
+						.withIndex("by_category", (q) => q.eq("categoryId", id))
+						.filter((q) => q.eq(q.field("isAvailable"), true))
+						.collect()
+				)
+			);
+			products = productsList.flat();
 		} else {
 			products = await query.collect();
 		}

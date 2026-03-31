@@ -153,7 +153,7 @@ export const ChatInput = ({
 						onChange={(e) => setInput(e.target.value)}
 						onKeyDown={onKeyDown}
 						placeholder={isScanMode ? "Tuliskan instruksi untuk analisis gambar..." : "Tanya Yumi AI tentang bisnismu..."}
-						className="w-full resize-none bg-transparent py-[18px] pl-[100px] pr-[64px] text-[15px] focus:outline-none scroll-m-1 min-h-[56px] max-h-[30vh]"
+						className="w-full resize-none bg-transparent py-[18px] pl-[100px] pr-[64px] text-sm focus:outline-none scroll-m-1 min-h-[56px] max-h-[30vh]"
 						rows={1}
 						onInput={(e) => {
 							const target = e.target as HTMLTextAreaElement;
