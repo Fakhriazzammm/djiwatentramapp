@@ -69,6 +69,22 @@ export const getSettings = query({
 			}
 		}
 
+		let receiptLogo = settings.receiptLogo;
+		if (receiptLogo && !receiptLogo.startsWith("http")) {
+			const url = await ctx.storage.getUrl(receiptLogo);
+			if (url) {
+				receiptLogo = url;
+			}
+		}
+
+		let logoUrl = settings.logoUrl;
+		if (logoUrl && logoUrl.length > 0 && !logoUrl.startsWith("http")) {
+			const url = await ctx.storage.getUrl(logoUrl);
+			if (url) {
+				logoUrl = url;
+			}
+		}
+
 		// Return settings with fallbacks for new fields
 		return {
 			landingIcon: settings.landingIcon ?? DEFAULTS.landingIcon,
@@ -77,7 +93,7 @@ export const getSettings = query({
 				settings.landingDescription ?? DEFAULTS.landingDescription,
 			landingButtonText:
 				settings.landingButtonText ?? DEFAULTS.landingButtonText,
-			logoUrl: settings.logoUrl ?? DEFAULTS.logoUrl,
+			logoUrl: logoUrl ?? DEFAULTS.logoUrl,
 			paymentPopupImage: paymentPopupImage ?? DEFAULTS.paymentPopupImage,
 			storeName: settings.storeName ?? DEFAULTS.storeName,
 			storeAddress: settings.storeAddress ?? DEFAULTS.storeAddress,
@@ -98,7 +114,7 @@ export const getSettings = query({
 			serviceChargeRate: settings.serviceChargeRate ?? DEFAULTS.serviceChargeRate,
 			qrisImage: qrisImage ?? DEFAULTS.qrisImage,
 			// Receipt Settings
-			receiptLogo: settings.receiptLogo ?? DEFAULTS.receiptLogo,
+			receiptLogo: receiptLogo ?? DEFAULTS.receiptLogo,
 			receiptHeader: settings.receiptHeader ?? DEFAULTS.receiptHeader,
 			receiptShowLogo: settings.receiptShowLogo ?? DEFAULTS.receiptShowLogo,
 			receiptShowAddress: settings.receiptShowAddress ?? DEFAULTS.receiptShowAddress,

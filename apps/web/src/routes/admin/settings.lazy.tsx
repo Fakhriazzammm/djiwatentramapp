@@ -112,6 +112,8 @@ function SettingsPage() {
 
 	const [mayarApiConfigured, setMayarApiConfigured] = useState(false);
 
+	const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
+
 	const [activeTab, setActiveTab] = useState<
 		"landing" | "pos" | "store" | "system" | "users"
 	>("landing");
@@ -677,12 +679,12 @@ function SettingsPage() {
 										</p>
 									</div>
 									<div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-										{landingSettings.qrisImage && (
+										{ (localPreviews.qrisImage || landingSettings.qrisImage) && (
 											<div className="relative h-48 w-48 overflow-hidden rounded-xl border-4 border-muted bg-white shadow-inner flex items-center justify-center p-2">
 												<img
 													alt="QRIS Preview"
 													className="max-h-full max-w-full object-contain"
-													src={landingSettings.qrisImage}
+													src={localPreviews.qrisImage || landingSettings.qrisImage}
 												/>
 											</div>
 										)}
@@ -716,6 +718,8 @@ function SettingsPage() {
 															throw new Error("Upload failed");
 														}
 														const { storageId } = await result.json();
+														const previewUrl = URL.createObjectURL(uploadBlob);
+														setLocalPreviews(prev => ({ ...prev, qrisImage: previewUrl }));
 														setLandingSettings({
 															...landingSettings,
 															qrisImage: storageId,
@@ -751,13 +755,13 @@ function SettingsPage() {
 										</p>
 									</div>
 									<div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-										{landingSettings.paymentPopupImage && (
+										{ (localPreviews.paymentPopupImage || landingSettings.paymentPopupImage) && (
 											<div className="relative h-48 w-48 overflow-hidden rounded-xl border-4 border-muted bg-muted shadow-inner">
 												<img
 													alt="Popup Preview"
 													className="h-full w-full object-cover"
 													height={192}
-													src={landingSettings.paymentPopupImage}
+													src={localPreviews.paymentPopupImage || landingSettings.paymentPopupImage}
 													width={192}
 												/>
 											</div>
@@ -792,6 +796,8 @@ function SettingsPage() {
 															throw new Error("Upload failed");
 														}
 														const { storageId } = await result.json();
+														const previewUrl = URL.createObjectURL(uploadBlob);
+														setLocalPreviews(prev => ({ ...prev, paymentPopupImage: previewUrl }));
 														setLandingSettings({
 															...landingSettings,
 															paymentPopupImage: storageId,
@@ -1622,12 +1628,12 @@ function SettingsPage() {
 											</p>
 										</div>
 										<div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-											{settings.receiptLogo && (
+											{ (localPreviews.receiptLogo || settings.receiptLogo) && (
 												<div className="relative h-32 w-32 overflow-hidden rounded-xl border-4 border-muted bg-white shadow-inner flex items-center justify-center p-2">
 													<img
 														alt="Receipt Logo Preview"
 														className="max-h-full max-w-full object-contain grayscale"
-														src={settings.receiptLogo}
+														src={localPreviews.receiptLogo || settings.receiptLogo}
 													/>
 												</div>
 											)}
@@ -1656,6 +1662,8 @@ function SettingsPage() {
 															});
 															if (!result.ok) throw new Error("Upload failed");
 															const { storageId } = await result.json();
+															const previewUrl = URL.createObjectURL(uploadBlob);
+															setLocalPreviews(prev => ({ ...prev, receiptLogo: previewUrl }));
 															setSettings({ ...settings, receiptLogo: storageId });
 															toast.success("Logo struk berhasil diunggah!");
 														} catch (error) {
