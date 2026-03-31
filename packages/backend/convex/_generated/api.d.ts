@@ -15,6 +15,7 @@ import type * as booking from "../booking.js";
 import type * as dashboard from "../dashboard.js";
 import type * as discounts from "../discounts.js";
 import type * as finance from "../finance.js";
+import type * as financialMetrics from "../financialMetrics.js";
 import type * as health_check from "../health_check.js";
 import type * as hpp from "../hpp.js";
 import type * as http from "../http.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   dashboard: typeof dashboard;
   discounts: typeof discounts;
   finance: typeof finance;
+  financialMetrics: typeof financialMetrics;
   health_check: typeof health_check;
   hpp: typeof hpp;
   http: typeof http;
