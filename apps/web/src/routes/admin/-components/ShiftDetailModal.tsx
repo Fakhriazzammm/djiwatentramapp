@@ -23,6 +23,8 @@ export function ShiftDetailModal({ shift, isOpen, onOpenChange }: ShiftDetailMod
 		isOpen && shift ? { startTime: shift.startTime, endTime: shift.endTime } : "skip"
 	);
 
+	if (!shift) return null;
+
 	const cashRevenue = details?.cashRevenue ?? shift.cashRevenue ?? 0;
 	const qrisRevenue = details?.qrisRevenue ?? shift.qrisRevenue ?? 0;
 	const totalRevenue = details?.totalRevenue ?? shift.revenue ?? 0;
@@ -31,8 +33,6 @@ export function ShiftDetailModal({ shift, isOpen, onOpenChange }: ShiftDetailMod
 	const nonCashExpected = details?.nonCashExpected ?? shift.nonCashExpected ?? qrisRevenue;
 	const nonCashConfirmed = details?.nonCashConfirmed ?? shift.nonCashConfirmed ?? 0;
 	const cashBreakdown = details?.cashBreakdown ?? shift.cashBreakdown;
-
-	if (!shift) return null;
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onOpenChange}>

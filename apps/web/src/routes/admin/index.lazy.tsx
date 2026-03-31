@@ -33,6 +33,10 @@ function DashboardAdmin() {
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
 	const [selectedShift, setSelectedShift] = useState<any>(null);
 	const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+	const validShifts = useMemo(
+		() => shiftStatus?.allShifts?.filter((shift: any) => shift != null) ?? [],
+		[shiftStatus?.allShifts]
+	);
 
 	if (stats === undefined || shiftStatus === undefined) {
 		return (
@@ -111,7 +115,7 @@ function DashboardAdmin() {
 			</div>
 
 			{/* Shift Information */}
-			{shiftStatus?.allShifts && shiftStatus.allShifts.length > 0 && (
+			{validShifts.length > 0 && (
 				<motion.div
 					className="rounded-3xl border border-border bg-card p-6 shadow-sm overflow-hidden relative"
 					initial={{ opacity: 0, y: 20 }}
@@ -124,11 +128,11 @@ function DashboardAdmin() {
 							Sesi Kasir Hari Ini
 						</h3>
 						<span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md font-medium">
-							{shiftStatus.allShifts.length} Sesi
+							{validShifts.length} Sesi
 						</span>
 					</div>
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-						{shiftStatus.allShifts.map((shift: any, i: number) => {
+						{validShifts.map((shift: any, i: number) => {
 							const isActive = !shift.endTime;
 							
 							return (
