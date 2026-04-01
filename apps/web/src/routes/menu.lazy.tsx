@@ -864,21 +864,6 @@ function MenuPage() {
 					initialTab={activeSidebarTab}
 				/>
 
-				{/* Compact Summary Row - Only show on mobile (md:hidden) because desktop has it in the sidebar */}
-				<div className="md:hidden grid grid-cols-3 gap-2 border-t border-border/60 bg-muted/5 px-4 py-2.5">
-					<div className="rounded-xl border border-border/70 bg-background px-2.5 py-1.5 shadow-sm">
-						<p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground opacity-70">Item</p>
-						<p className="text-xs font-black text-foreground leading-tight">{totalItems}</p>
-					</div>
-					<div className="rounded-xl border border-emerald-100 bg-emerald-50/50 px-2.5 py-1.5 shadow-sm">
-						<p className="text-[8px] font-black uppercase tracking-widest text-emerald-700/70">Total</p>
-						<p className="text-xs font-black text-emerald-700 leading-tight">{fmt(finalTotal)}</p>
-					</div>
-					<div className="rounded-xl border border-orange-100 bg-orange-50/50 px-2.5 py-1.5 shadow-sm">
-						<p className="text-[8px] font-black uppercase tracking-widest text-orange-700/70">Diskon</p>
-						<p className="text-xs font-black text-orange-700 leading-tight">{fmt(cartDiscountPreview)}</p>
-					</div>
-				</div>
 
 				{/* Search & Categories Bar - Now more compact */}
 				<div className="flex flex-col gap-0 border-b border-border/50 bg-background/50 backdrop-blur-sm">
