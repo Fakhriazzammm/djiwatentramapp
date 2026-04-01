@@ -690,39 +690,39 @@ function MenuPage() {
 				)}
 
 				{/* Shift & Printer Status Header */}
-				<div className="border-b border-border bg-muted/30 px-3 py-1 shadow-sm z-40 shrink-0 overflow-hidden">
-					<div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-2.5 text-[8px] font-black uppercase tracking-tight text-muted-foreground/80 sm:text-[9px]">
-						<div className="flex flex-nowrap items-center gap-2.5 shrink-0">
-							<div className="flex items-center gap-1 grayscale opacity-60">
-								<Coffee className="h-2.5 w-2.5" />
+				<div className="border-b border-border bg-muted/40 px-2 sm:px-3 py-1.5 shadow-sm z-40 shrink-0 w-full overflow-hidden">
+					<div className="flex flex-nowrap items-center justify-between w-full text-[10px] sm:text-xs font-medium text-muted-foreground/80 overflow-hidden">
+						<div className="flex flex-nowrap items-center gap-1.5 sm:gap-2.5 shrink-0 min-w-0">
+							<div className="hidden sm:flex items-center gap-1 grayscale opacity-60">
+								<Coffee className="h-3 w-3" />
 								<span className="whitespace-nowrap leading-none">Workspace Kasir</span>
 							</div>
 							<div className={cn("flex flex-nowrap items-center gap-1 px-1.5 py-0.5 rounded-md", isShiftOpen ? "bg-emerald-50 text-emerald-600 shadow-[0_0_8px_rgba(16,185,129,0.1)]" : "bg-rose-50 text-rose-600")}>
-								<span className={cn("h-1.5 w-1.5 rounded-full", isShiftOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
-								<span className="whitespace-nowrap leading-none">{isShiftOpen ? "Shift Aktif" : "Shift Tutup"}</span>
+								<span className={cn("h-1.5 w-1.5 rounded-full shrink-0", isShiftOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
+								<span className="whitespace-nowrap leading-none font-semibold text-[9px] sm:text-[10px] uppercase tracking-wider">{isShiftOpen ? "Shift Aktif" : "Shift Tutup"}</span>
 							</div>
 							{isShiftOpen && shiftStatus?.shiftInfo?.cashierName && (
-								<div className="flex flex-nowrap items-center gap-1 opacity-75">
-									<User className="h-2.5 w-2.5 shrink-0" />
-									<span className="whitespace-nowrap leading-none">
+								<div className="flex flex-nowrap items-center gap-1 opacity-75 min-w-0">
+									<User className="h-3 w-3 shrink-0" />
+									<span className="whitespace-nowrap leading-none truncate max-w-[80px] sm:max-w-[150px]">
 										{shiftStatus.shiftInfo.cashierName}
 										{shiftStatus.shiftInfo.shiftName ? ` • ${shiftStatus.shiftInfo.shiftName}` : ""}
 									</span>
 								</div>
 							)}
 						</div>
-						<div className="flex flex-nowrap items-center gap-2.5 shrink-0">
+						<div className="flex flex-nowrap items-center gap-1.5 sm:gap-2.5 shrink-0">
 							<div className="flex flex-nowrap items-center gap-1 opacity-75">
-								<Clock className="h-2.5 w-2.5 shrink-0" />
+								<Clock className="h-3 w-3 shrink-0" />
 								<span className="whitespace-nowrap leading-none">{currentTime.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
 							</div>
 							<div className={cn("flex flex-nowrap items-center gap-1 px-1.5 py-0.5 rounded-md whitespace-nowrap", isPrinterConnected ? "bg-blue-50 text-blue-600 shadow-[0_0_8px_rgba(59,130,246,0.1)]" : "bg-muted text-muted-foreground")}>
-								<Printer className="h-2.5 w-2.5 shrink-0" />
-								<span className="leading-none">{isPrinterConnected ? "Printer Siap" : "Printer Offline"}</span>
+								<Printer className="h-3 w-3 shrink-0" />
+								<span className="leading-none text-[9px] sm:text-[10px] font-semibold">{isPrinterConnected ? "Printer Siap" : "Offline"}</span>
 							</div>
 							{offlinePendingCount > 0 && (
-								<div className="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-md whitespace-nowrap leading-none">
-									Queue {offlinePendingCount}
+								<div className="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-md whitespace-nowrap leading-none font-semibold text-[9px]">
+									Sync {offlinePendingCount}
 								</div>
 							)}
 						</div>
