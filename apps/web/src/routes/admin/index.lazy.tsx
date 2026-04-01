@@ -40,7 +40,23 @@ function DashboardAdmin() {
 
 	if (stats === undefined || shiftStatus === undefined) {
 		return (
-			<div className="space-y-4 md:space-y-6 animate-pulse">
+			<div className="space-y-6 md:space-y-8 animate-pulse pb-10">
+				{/* Top Card Skeleton (Compact) */}
+				<div className="rounded-2xl border border-border bg-card/50 p-4 shadow-sm">
+					<div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+						<div className="space-y-3">
+							<Skeleton className="h-4 w-32 rounded-md" />
+							<Skeleton className="h-8 w-64 rounded-md" />
+							<Skeleton className="h-4 w-96 rounded-md" />
+						</div>
+						<div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:w-[480px]">
+							<Skeleton className="h-[70px] w-full rounded-xl" />
+							<Skeleton className="h-[70px] w-full rounded-xl" />
+							<Skeleton className="h-[70px] w-full rounded-xl" />
+						</div>
+					</div>
+				</div>
+
 				{/* Stats Cards Skeleton */}
 				<div className="grid grid-cols-2 gap-4 md:grid-cols-4">
 					{Array.from({ length: 4 }).map((_, i) => (
@@ -49,30 +65,18 @@ function DashboardAdmin() {
 								<Skeleton className="h-10 w-10 rounded-xl" />
 								<Skeleton className="h-4 w-12 rounded-full" />
 							</div>
-							<Skeleton className="h-4 w-24 mb-2" />
+							<Skeleton className="h-5 w-24 mb-2" />
 							<Skeleton className="h-8 w-32" />
 						</div>
 					))}
 				</div>
 
 				<div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-					<Skeleton className="h-[240px] w-full rounded-3xl" />
-					<div className="space-y-4">
-						<Skeleton className="h-6 w-48" />
-						<div className="grid grid-cols-2 gap-4">
-							<Skeleton className="h-[140px] w-full rounded-3xl" />
-							<Skeleton className="h-[140px] w-full rounded-3xl" />
-						</div>
-					</div>
+					<Skeleton className="h-[250px] w-full rounded-3xl" />
+					<Skeleton className="h-[250px] w-full rounded-3xl" />
 				</div>
 
 				<Skeleton className="h-[350px] w-full rounded-3xl" />
-
-				<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-					<Skeleton className="h-[300px] w-full rounded-3xl" />
-					<Skeleton className="h-[300px] w-full rounded-3xl" />
-					<Skeleton className="h-[300px] w-full rounded-3xl" />
-				</div>
 			</div>
 		);
 	}
@@ -82,36 +86,46 @@ function DashboardAdmin() {
 
 	return (
 		<div className="space-y-6 md:space-y-8 pb-10">
-			<div className="rounded-[1.75rem] border border-border bg-[linear-gradient(135deg,rgba(15,23,42,0.02),rgba(59,130,246,0.07),rgba(16,185,129,0.04))] p-4 shadow-sm md:p-5">
-				<div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.95fr)] xl:items-center">
-					<div className="max-w-3xl">
-						<p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary/80">
-							Admin Control Center
-						</p>
-						<h1 className="mt-2 text-xl font-black tracking-tight text-foreground md:text-2xl xl:max-w-2xl">
-							Pusat pantau operasional, keuangan, dan anomali harian
+			<div className="rounded-2xl border border-border bg-[linear-gradient(135deg,rgba(15,23,42,0.01),rgba(59,130,246,0.03),rgba(16,185,129,0.02))] p-3 shadow-sm md:p-3.5">
+				<div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+					<div className="min-w-0">
+						<div className="flex items-center gap-2">
+							<span className="flex h-5 w-5 items-center justify-center rounded bg-primary/10">
+								<TrendingUp className="h-3 w-3 text-primary" />
+							</span>
+							<p className="text-[10px] font-black uppercase tracking-widest text-primary/70">
+								Admin Control Center
+							</p>
+						</div>
+						<h1 className="mt-1.5 text-lg font-black tracking-tight text-foreground md:text-xl">
+							Pusat Pantau Operasional
 						</h1>
-						<p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-							Satu dashboard untuk memantau pesanan, selisih kas, pembayaran non-tunai, dan sesi kasir yang butuh perhatian.
+						<p className="mt-1 text-[11px] font-medium leading-relaxed text-muted-foreground opacity-80 max-w-xl">
+							Monitor pesanan, selisih kas, dan anomali harian dalam satu dashboard ringkas.
 						</p>
 					</div>
-					<div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:self-auto">
-						<div className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm">
-							<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">Anomali</p>
-							<p className="mt-2 text-2xl font-black leading-none text-slate-900">{stats.anomalies.length}</p>
-							<p className="mt-2 text-xs leading-5 text-slate-600">Temuan otomatis hari ini</p>
+					<div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3 lg:w-[480px]">
+						<div className="rounded-xl border border-slate-200/60 bg-white/60 px-3 py-2 shadow-sm backdrop-blur-sm">
+							<p className="text-[9px] font-bold uppercase tracking-wider text-slate-500/80">Anomali</p>
+							<div className="mt-1 flex items-baseline gap-1.5">
+								<p className="text-xl font-black text-slate-900">{stats.anomalies.length}</p>
+								<p className="text-[9px] text-slate-500 font-bold uppercase">Temuan</p>
+							</div>
 						</div>
-						<div className="rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 shadow-sm">
-							<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-700/80">Rekonsiliasi</p>
-							<p className="mt-2 text-2xl font-black leading-none text-amber-700">{stats.paymentReconciliation.pendingNonCashCount}</p>
-							<p className="mt-2 text-xs leading-5 text-amber-700/80">Pembayaran non-tunai pending</p>
+						<div className="rounded-xl border border-amber-200/60 bg-amber-50/60 px-3 py-2 shadow-sm backdrop-blur-sm">
+							<p className="text-[9px] font-bold uppercase tracking-wider text-amber-700/80">Reconcile</p>
+							<div className="mt-1 flex items-baseline gap-1.5">
+								<p className="text-xl font-black text-amber-700">{stats.paymentReconciliation.pendingNonCashCount}</p>
+								<p className="text-[9px] text-amber-700 font-bold uppercase">Pending</p>
+							</div>
 						</div>
-						<div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 px-4 py-3 shadow-sm sm:col-span-3 xl:col-span-1">
-							<p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-700/80">Pendapatan 7 Hari</p>
-							<p className="mt-2 text-xl font-black leading-tight text-emerald-700 break-words md:text-2xl">
-								{formatCurrencyIDR(sevenDayRevenue)}
-							</p>
-							<p className="mt-2 text-xs leading-5 text-emerald-700/80">Akumulasi net sales mingguan</p>
+						<div className="rounded-xl border border-emerald-200/60 bg-emerald-50/60 px-3 py-2 shadow-sm backdrop-blur-sm">
+							<p className="text-[9px] font-bold uppercase tracking-wider text-emerald-700/80">Revenue 7D</p>
+							<div className="mt-1 flex items-baseline gap-1">
+								<p className="text-lg font-black text-emerald-700">
+									{formatCurrencyIDR(sevenDayRevenue)}
+								</p>
+							</div>
 						</div>
 					</div>
 				</div>

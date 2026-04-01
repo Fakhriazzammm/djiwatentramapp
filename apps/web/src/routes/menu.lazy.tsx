@@ -1057,7 +1057,7 @@ function MenuPage() {
 				</main>
 
 				{/* === BOTTOM NAVIGATION BAR (Sticky) === */}
-				<div className="sticky bottom-0 z-40 w-full border-t border-border bg-background/90 backdrop-blur-xl shrink-0 safe-area-bottom shadow-[0_-5px_15px_rgba(0,0,0,0.03)] px-3 py-1.5 sm:py-2">
+				<div className="sticky bottom-0 z-40 w-full border-t border-border bg-background/95 backdrop-blur-xl shrink-0 pb-safe-area shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-4 pt-3 sm:pt-4">
 					<div className="flex items-center justify-around max-w-lg mx-auto sm:max-w-none gap-1 sm:gap-2">
 						{SIDEBAR_MENU_ITEMS.map((item, index) => {
 							const Icon = item.icon;
@@ -1111,7 +1111,7 @@ function MenuPage() {
 
 			{/* === CART BUTTON (Floating Mobile) === */}
 			{(totalItems > 0 || !customerInfo.isSubmitted) && (
-				<div className="fixed bottom-16 left-4 right-4 z-20 px-3 md:hidden">
+				<div className="fixed bottom-28 left-4 right-4 z-20 px-3 md:hidden">
 					<button
 						type="button"
 						onClick={() => setIsCartOpen(true)}
