@@ -33,6 +33,8 @@ function BarMonitorPage() {
 	
 	const allProducts = useQuery(api.products.getAllProductsAdmin);
 	const allCategories = useQuery(api.products.getCategories);
+	const inventory = useQuery(api.inventory.getInventory);
+	const recipes = useQuery(api.inventory.getRecipes);
 
 	const products = useMemo(() => {
 		if (!allProducts || !allCategories) return undefined;
@@ -113,7 +115,7 @@ function BarMonitorPage() {
 							initial={{ opacity: 0, y: 10 }}
 							key="stock-tab"
 						>
-							<FastStockTable products={products} />
+							<FastStockTable inventory={inventory} products={products} recipes={recipes} />
 						</motion.div>
 					)}
 				</AnimatePresence>
@@ -338,7 +340,15 @@ function KanbanCard({
 	);
 }
 
-function FastStockTable({ products }: { products: any[] | undefined }) {
+function FastStockTable({ 
+	products, 
+	inventory, 
+	recipes 
+}: { 
+	products: any[] | undefined;
+	inventory: any[] | undefined;
+	recipes: any[] | undefined;
+}) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [editForm, setEditForm] = useState<any>({});
@@ -353,23 +363,22 @@ function FastStockTable({ products }: { products: any[] | undefined }) {
 
 	if (products.length === 0) {
 		return (
-			<div className="flex h-[60vh] flex-col items-center justify-center gap-4 text-center">
-				<div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-300">
-					<Database className="h-8 w-8" />
+			<div className="flex h-[60vh] flex-col items-center justify-center gap-6 text-center">
+				<div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-slate-300">
+					<Utensils className="h-10 w-10" />
 				</div>
 				<div className="space-y-2">
-					<h3 className="font-black text-slate-800">Daftar Minuman Kosong</h3>
-					<p className="max-w-[240px] text-slate-500 text-xs">Produk bar belum terdaftar di track ini.</p>
+					<h3 className="font-black text-xl text-slate-800 tracking-tight">Katalog Bar Kosong</h3>
+					<p className="max-w-[280px] font-medium text-slate-500 text-sm leading-relaxed">
+						Belum ada produk yang dikategorikan sebagai menu bar. Silakan atur kategori produk di Dashboard.
+					</p>
 				</div>
-				<button
-					className="mt-4 rounded-2xl bg-slate-800 px-6 py-3 font-black text-[10px] uppercase tracking-widest text-white shadow-xl transition-all active:scale-95"
-					onClick={async () => {
-						const res = await seedData({ track: "bar" });
-						toast.success(res.message);
-					}}
+				<Link
+					className="flex items-center gap-2 rounded-2xl bg-indigo-600 px-8 py-4 font-black text-xs uppercase tracking-widest text-white shadow-xl transition-all active:scale-95"
+					to="/admin/products"
 				>
-					Seed Data Produk
-				</button>
+					<Search className="h-4 w-4" /> Buka Menu Produk
+				</Link>
 			</div>
 		);
 	}
@@ -430,117 +439,171 @@ function FastStockTable({ products }: { products: any[] | undefined }) {
 				<input
 					className="w-full rounded-[24px] border-none bg-white p-4 pl-12 font-bold text-slate-800 shadow-sm ring-1 ring-slate-200 outline-none transition-all focus:ring-2 focus:ring-indigo-100"
 					onChange={(e) => setSearchQuery(e.target.value)}
-					placeholder="Cari produk bar..."
+					placeholder="Cari menu bar..."
 					type="text"
 					value={searchQuery}
 				/>
 			</div>
 
-			{/* High-Speed Table - Card List on Mobile, Table on Desktop */}
 			<div className="space-y-3">
-				{filteredProducts.map((product) => (
-					<motion.div 
-						className={`overflow-hidden rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm transition-all ${editingId === product._id ? "ring-2 ring-indigo-200" : ""}`} 
-						key={product._id}
-						layout
-					>
-						{editingId === product._id ? (
-							<div className="space-y-4">
-								<div className="flex items-center gap-3">
-									<input 
-										autoFocus
-										className="flex-1 rounded-xl bg-slate-50 p-3 font-bold text-slate-800 ring-1 ring-slate-200"
-										onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-										value={editForm.name}
-									/>
-								</div>
-								<div className="flex items-center gap-2">
-									<div className="flex-1">
-										<p className="mb-1 ml-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Harga</p>
+				{filteredProducts.map((product) => {
+					const recipe = recipes?.find((r: any) => r.productId === product._id && !r.variantName);
+					
+					// Calculate potential portions based on inventory
+					let potentialStock: number | null = null;
+					if (recipe && inventory) {
+						const stockLimits = recipe.ingredients.map((ing: any) => {
+							const invItem = inventory.find((i: any) => i._id === ing.inventoryId);
+							if (!invItem) return 0;
+							return Math.floor(invItem.quantity / ing.amount);
+						});
+						potentialStock = Math.min(...stockLimits);
+					}
+
+					return (
+						<motion.div 
+							className={`overflow-hidden rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm transition-all ${editingId === product._id ? "ring-2 ring-indigo-500/20" : ""}`} 
+							key={product._id}
+							layout
+						>
+							{editingId === product._id ? (
+								<div className="space-y-4">
+									<div className="flex items-center gap-3">
 										<input 
-											className="w-full rounded-xl bg-slate-50 p-3 font-bold text-indigo-600 ring-1 ring-slate-200"
-											onChange={(e) => setEditForm({ ...editForm, price: Number(e.target.value) })}
-											type="number"
-											value={editForm.price}
+											autoFocus
+											className="flex-1 rounded-xl bg-slate-50 p-3 font-bold text-slate-800 ring-1 ring-slate-200"
+											onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+											value={editForm.name}
 										/>
 									</div>
-									<div className="flex-1">
-										<p className="mb-1 ml-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Stok</p>
-										<div className="flex items-center gap-1 rounded-xl bg-slate-50 p-1 ring-1 ring-slate-200">
-											<button 
-												className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-slate-600 shadow-sm"
-												onClick={() => setEditForm({ ...editForm, quantity: Math.max(0, editForm.quantity - 1) })}
-											>
-												<Minus className="h-4 w-4" />
-											</button>
+									<div className="flex items-center gap-2">
+										<div className="flex-1">
+											<p className="mb-1 ml-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Harga</p>
 											<input 
-												className="w-full bg-transparent text-center font-black text-slate-800 outline-none"
-												onChange={(e) => setEditForm({ ...editForm, quantity: Number(e.target.value) })}
+												className="w-full rounded-xl bg-slate-50 p-3 font-bold text-indigo-600 ring-1 ring-slate-200"
+												onChange={(e) => setEditForm({ ...editForm, price: Number(e.target.value) })}
 												type="number"
-												value={editForm.quantity}
+												value={editForm.price}
 											/>
-											<button 
-												className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-slate-600 shadow-sm"
-												onClick={() => setEditForm({ ...editForm, quantity: editForm.quantity + 1 })}
+										</div>
+										<div className="flex-1">
+											<p className="mb-1 ml-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Siap Saji</p>
+											<div className="flex items-center gap-1 rounded-xl bg-slate-50 p-1 ring-1 ring-slate-200">
+												<button 
+													className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-slate-600 shadow-sm"
+													onClick={() => setEditForm({ ...editForm, quantity: Math.max(0, editForm.quantity - 1) })}
+												>
+													<Minus className="h-4 w-4" />
+												</button>
+												<input 
+													className="w-full bg-transparent text-center font-black text-slate-800 outline-none"
+													onChange={(e) => setEditForm({ ...editForm, quantity: Number(e.target.value) })}
+													type="number"
+													value={editForm.quantity}
+												/>
+												<button 
+													className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-slate-600 shadow-sm"
+													onClick={() => setEditForm({ ...editForm, quantity: editForm.quantity + 1 })}
+												>
+													<Plus className="h-4 w-4" />
+												</button>
+											</div>
+										</div>
+									</div>
+									<div className="flex gap-2 pt-2">
+										<button
+											className="flex-1 rounded-2xl bg-indigo-600 py-3 font-black text-xs text-white shadow-xl transition-all active:scale-95"
+											onClick={() => handleSave(product._id)}
+										>
+											SIMPAN
+										</button>
+										<button
+											className="rounded-2xl bg-slate-100 px-6 py-3 font-black text-xs text-slate-400"
+											onClick={() => setEditingId(null)}
+										>
+											BATAL
+										</button>
+									</div>
+								</div>
+							) : (
+								<div className="flex flex-col gap-4">
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-3">
+											<div className="h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-slate-100">
+												{product.image ? (
+													<img alt={product.name} className="h-full w-full object-cover" src={product.image} />
+												) : (
+													<div className="flex h-full w-full items-center justify-center bg-slate-100 text-slate-400">
+														<Utensils className="h-5 w-5" />
+													</div>
+												)}
+											</div>
+											<div>
+												<h4 className="font-bold text-slate-800 leading-tight">{product.name}</h4>
+												<div className="mt-1 flex items-center gap-2 font-bold text-[10px] uppercase tracking-widest">
+													<span className="text-indigo-600">Rp {product.price.toLocaleString()}</span>
+													{product.quantity > 0 && (
+														<>
+															<span className="text-slate-300">•</span>
+															<span className="text-green-600">Ready: {product.quantity}</span>
+														</>
+													)}
+												</div>
+											</div>
+										</div>
+										
+										<div className="flex items-center gap-2">
+											<button
+												className={`flex h-10 items-center gap-1 rounded-xl px-3 font-black text-[10px] uppercase tracking-wider transition-all active:scale-95 ${
+													product.isAvailable 
+														? "bg-green-50 text-green-600 ring-1 ring-green-100" 
+														: "bg-red-50 text-red-600 ring-1 ring-red-100"
+												}`}
+												onClick={() => handleToggleAvailability(product)}
 											>
-												<Plus className="h-4 w-4" />
+												{product.isAvailable ? "AKTIF" : "OFF"}
+											</button>
+											<button
+												className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400 ring-1 ring-slate-100 transition-all active:scale-95"
+												onClick={() => handleEdit(product)}
+											>
+												<RotateCcw className="h-4 w-4" />
 											</button>
 										</div>
 									</div>
-								</div>
-								<div className="flex gap-2 pt-2">
-									<button
-										className="flex-1 rounded-2xl bg-slate-800 py-3 font-black text-xs text-white shadow-xl transition-all active:scale-95"
-										onClick={() => handleSave(product._id)}
-									>
-										SIMPAN
-									</button>
-									<button
-										className="rounded-2xl bg-slate-100 px-6 py-3 font-black text-xs text-slate-400"
-										onClick={() => setEditingId(null)}
-									>
-										BATAL
-									</button>
-								</div>
-							</div>
-						) : (
-							<div className="flex items-center justify-between">
-								<div className="flex items-center gap-3">
-									<div className="h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-slate-100">
-										{product.image && <img alt={product.name} className="h-full w-full object-cover" src={product.image} />}
-									</div>
-									<div>
-										<h4 className="font-bold text-slate-800 leading-tight">{product.name}</h4>
-										<div className="mt-1 flex items-center gap-1.5 font-bold text-[10px] uppercase tracking-widest">
-											<span className="text-secondary">Rp {product.price.toLocaleString()}</span>
-											<span className="text-slate-300">•</span>
-											<span className={product.quantity <= 10 ? "text-red-500" : "text-slate-400"}>Stok: {product.quantity || 0}</span>
+
+									{/* Inventory Integration Section */}
+									{recipe && (
+										<div className="flex flex-col gap-2 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-100">
+											<div className="flex items-center justify-between">
+												<span className="font-black text-[9px] text-slate-400 uppercase tracking-widest">Ketersediaan Bahan (Inventory)</span>
+												<div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black ${potentialStock === 0 ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
+													POTENSI: {potentialStock} PORSI
+												</div>
+											</div>
+											<div className="flex flex-wrap gap-1.5 mt-1">
+												{recipe.ingredients.map((ing: any) => {
+													const invItem = inventory?.find((i: any) => i._id === ing.inventoryId);
+													const isLow = invItem ? invItem.quantity < (invItem.lowStockThreshold || 10) : true;
+													return (
+														<div 
+															className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-bold ${isLow ? "bg-red-50 text-red-600 ring-1 ring-red-100" : "bg-white text-slate-600 ring-1 ring-slate-100"}`} 
+															key={ing.inventoryId}
+														>
+															{invItem?.ingredientName || "Unknown"}
+															<span className="opacity-50">•</span>
+															{invItem ? `${invItem.quantity} ${invItem.unit}` : "Kosong"}
+														</div>
+													);
+												})}
+											</div>
 										</div>
-									</div>
+									)}
 								</div>
-								
-								<div className="flex items-center gap-2">
-									<button
-										className={`flex h-10 items-center gap-1 rounded-xl px-3 font-black text-[10px] uppercase tracking-wider transition-all active:scale-95 ${
-											product.isAvailable 
-												? "bg-green-50 text-green-600 ring-1 ring-green-100" 
-												: "bg-slate-50 text-slate-400 ring-1 ring-slate-100"
-										}`}
-										onClick={() => handleToggleAvailability(product)}
-									>
-										{product.isAvailable ? "ADA" : "HABIS"}
-									</button>
-									<button
-										className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400 ring-1 ring-slate-100 transition-all active:scale-95"
-										onClick={() => handleEdit(product)}
-									>
-										<RotateCcw className="h-4 w-4" />
-									</button>
-								</div>
-							</div>
-						)}
-					</motion.div>
-				))}
+							)}
+						</motion.div>
+					);
+				})}
 			</div>
 		</div>
 	);
