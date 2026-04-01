@@ -675,45 +675,7 @@ function MenuPage() {
 					</div>
 				)}
 
-				{/* Shift & Printer Status Header - COMPACT */}
-				<div className="border-b border-border bg-muted/30 px-3 py-1 shadow-sm z-40 shrink-0">
-					<div className="flex flex-wrap items-center justify-between gap-2 text-[9px] font-bold uppercase tracking-tight text-muted-foreground/80 sm:text-[10px]">
-						<div className="flex items-center gap-3">
-							<div className="flex items-center gap-1.5 grayscale opacity-70">
-								<Coffee className="h-3 w-3" />
-								<span>Workspace Kasir</span>
-							</div>
-							<div className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded-md", isShiftOpen ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
-								<span className={cn("h-1.5 w-1.5 rounded-full", isShiftOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
-								<span>{isShiftOpen ? "Shift Aktif" : "Shift Tutup"}</span>
-							</div>
-							{isShiftOpen && shiftStatus?.shiftInfo?.cashierName && (
-								<div className="flex items-center gap-1 opacity-80">
-									<User className="h-3 w-3 shrink-0" />
-									<span className="truncate max-w-[120px]">
-										{shiftStatus.shiftInfo.cashierName}
-										{shiftStatus.shiftInfo.shiftName ? ` • ${shiftStatus.shiftInfo.shiftName}` : ""}
-									</span>
-								</div>
-							)}
-						</div>
-						<div className="flex items-center gap-3">
-							<div className="flex items-center gap-1 opacity-80">
-								<Clock className="h-3 w-3 shrink-0" />
-								<span>{currentTime.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
-							</div>
-							<div className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded-md", isPrinterConnected ? "bg-blue-50 text-blue-600" : "bg-muted text-muted-foreground")}>
-								<Printer className="h-3 w-3 shrink-0" />
-								<span>{isPrinterConnected ? "Printer Siap" : "Printer Offline"}</span>
-							</div>
-							{offlinePendingCount > 0 && (
-								<div className="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-md">
-									Antrean: {offlinePendingCount}
-								</div>
-							)}
-						</div>
-					</div>
-				</div>
+
 
 				{/* Shift Target Progress Banner */}
 				{isShiftOpen && <ShiftTargetBanner />}
@@ -725,38 +687,74 @@ function MenuPage() {
 						"sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm shrink-0"
 					)}
 				>
-					<div className="flex items-center justify-between gap-4 px-4 py-2 sm:py-2.5">
-						{/* Logo & Store name */}
+					<div className="flex items-center justify-between gap-3 px-3 py-1.5 sm:py-2">
+						{/* --- LEFT: Logo & Store Name --- */}
 						<div 
 							className={cn(
-								"flex items-center gap-2.5 min-w-0 shrink-0 rounded-lg transition-all",
+								"flex items-center gap-2 min-w-0 shrink-0 rounded-lg transition-all",
 								isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === 0 && "ring-2 ring-primary ring-offset-4"
 							)}
 						>
 							<div
-								className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl font-bold text-white shadow-sm ring-1 ring-black/5"
+								className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg font-bold text-white shadow-sm ring-1 ring-black/5"
 								style={{ background: themeColor ?? "var(--color-primary)" }}
 							>
 								{logoUrl ? (
 									<img
 										src={logoUrl}
 										alt={storeName}
-										className="h-full w-full rounded-xl object-contain"
+										className="h-full w-full rounded-lg object-contain"
 									/>
 								) : (
-									<Coffee className="h-4 w-4" />
+									<Coffee className="h-3.5 w-3.5" />
 								)}
 							</div>
 							<div className="min-w-0">
-								<h1 className="truncate font-black text-foreground text-sm uppercase tracking-tight leading-none">
+								<h1 className="truncate font-black text-foreground text-xs uppercase tracking-tight leading-none">
 									{storeName}
 								</h1>
-								<p className="text-muted-foreground text-[8px] uppercase font-bold tracking-widest mt-0.5 sm:mt-1 opacity-60">POS Kasir & Inventory</p>
+								<p className="text-muted-foreground text-[7px] uppercase font-bold tracking-[0.1em] mt-0.5 opacity-50 hidden sm:block">POS & Inventory</p>
 							</div>
 						</div>
 
-						{/* Navigation Buttons from Hamburger - Compact desktop row */}
-						<div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto scrollbar-none mask-fade-edges min-w-0 flex-1 justify-end">
+						{/* --- CENTER: Status Indicators (Compact Badges) --- */}
+						<div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto scrollbar-none mask-fade-edges min-w-0 flex-1 justify-center px-2">
+							{/* Shift Badge */}
+							<div className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-tight", isShiftOpen ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-rose-50 text-rose-600 border border-rose-100")}>
+								<span className={cn("h-1 w-1 rounded-full", isShiftOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
+								<span>{isShiftOpen ? (shiftStatus?.shiftInfo?.shiftName || "Shift Aktif") : "Shift Tutup"}</span>
+							</div>
+
+							{/* Cashier Info - Desktop Only */}
+							{isShiftOpen && shiftStatus?.shiftInfo?.cashierName && (
+								<div className="hidden md:flex items-center gap-1 text-[8px] font-bold uppercase text-muted-foreground opacity-80 border-l border-border pl-2">
+									<User className="h-2.5 w-2.5" />
+									<span className="truncate max-w-[80px]">{shiftStatus.shiftInfo.cashierName}</span>
+								</div>
+							)}
+
+							{/* Clock */}
+							<div className="flex items-center gap-1 text-[8px] font-black font-mono text-muted-foreground opacity-70 border-l border-border pl-2">
+								<Clock className="h-2.5 w-2.5" />
+								<span>{currentTime.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+							</div>
+
+							{/* Printer Status */}
+							<div className={cn("flex items-center gap-1 px-1 py-0.5 rounded-md text-[8px] font-bold uppercase", isPrinterConnected ? "text-blue-600 bg-blue-50/50" : "text-muted-foreground/50")}>
+								<Printer className="h-2.5 w-2.5" />
+								<span className="hidden sm:inline">{isPrinterConnected ? "Ready" : "Offline"}</span>
+							</div>
+
+							{/* Offline Queue */}
+							{offlinePendingCount > 0 && (
+								<div className="bg-amber-50 text-amber-600 px-1 py-0.5 rounded-md text-[8px] font-bold border border-amber-100">
+									Q: {offlinePendingCount}
+								</div>
+							)}
+						</div>
+
+						{/* --- RIGHT: Navigation Buttons --- */}
+						<div className="flex items-center gap-0.5 sm:gap-1 scrollbar-none mask-fade-edges min-w-0 justify-end">
 							{SIDEBAR_MENU_ITEMS.map((item, index) => {
 								const Icon = item.icon;
 								const isFocused = isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === index + 1;
@@ -765,19 +763,13 @@ function MenuPage() {
 								
 								return (
 									<div key={item.id} className="relative">
-										{needsAttention && (
-											<span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-												<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-												<span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-											</span>
-										)}
 										<button
 											onClick={() => {
 												setActiveSidebarTab(item.id);
 												setIsSidebarOpen(true);
 											}}
 											className={cn(
-												"flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-all shrink-0",
+												"flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-all shrink-0",
 												"hover:bg-muted active:scale-95",
 												isActive
 													? "bg-primary text-primary-foreground shadow-sm"
@@ -787,10 +779,17 @@ function MenuPage() {
 												isFocused && "ring-2 ring-primary ring-inset"
 											)}
 											type="button"
+											title={item.label}
 										>
-											<Icon className={cn("h-4 w-4", needsAttention && "animate-pulse")} />
-											<span className="text-[10px] font-bold tracking-tight uppercase hidden lg:block">{item.label}</span>
+											<Icon className={cn("h-3.5 w-3.5")} />
+											<span className="text-[9px] font-black tracking-tight uppercase hidden xl:block">{item.label}</span>
 										</button>
+										{needsAttention && (
+											<span className="absolute top-0.5 right-0.5 flex h-1.5 w-1.5">
+												<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+												<span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-500"></span>
+											</span>
+										)}
 									</div>
 								);
 							})}
