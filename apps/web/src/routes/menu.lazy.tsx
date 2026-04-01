@@ -289,36 +289,33 @@ function MenuPage() {
 	const logoUrl = siteSettings?.logoUrl;
 	const themeColor = siteSettings?.themeColor;
 
-	// Category list including "Semua" - Now dynamically expanded based on active category
-	const categoryList = useMemo(() => {
-		if (!categories) return [{ _id: "all", name: "Semua" }];
+	// Derive active parent ID
+	const activeParentId = useMemo(() => {
+		if (!categories || !activeCategoryId || activeCategoryId === "all") return null;
+		const activeCat = categories.find((c: any) => c._id === activeCategoryId);
+		if (activeCat) {
+			return activeCat.parentId ? activeCat.parentId : activeCat._id;
+		}
+		return null;
+	}, [categories, activeCategoryId]);
+
+	// Category lists for Point 2: Main tabs vs Local chips
+	const { categoryTabs, activeSubcategories, activeParentName } = useMemo(() => {
+		if (!categories) return { categoryTabs: [{ _id: "all", name: "Semua" }], activeSubcategories: [], activeParentName: "" };
 		
 		const parents = categories.filter((c: any) => !c.parentId);
-		const result: any[] = [{ _id: "all", name: "Semua" }];
+		const tabs = [{ _id: "all", name: "Semua" }, ...parents];
 		
-		let activeParentId = null;
-		if (activeCategoryId && activeCategoryId !== "all") {
-			const activeCat = categories.find((c: any) => c._id === activeCategoryId);
-			if (activeCat) {
-				activeParentId = activeCat.parentId ? activeCat.parentId : activeCat._id;
-			}
+		let subs: any[] = [];
+		let parentName = "";
+		if (activeParentId) {
+			subs = categories.filter((c: any) => c.parentId === activeParentId);
+			const parent = categories.find((c: any) => c._id === activeParentId);
+			if (parent) parentName = parent.name;
 		}
 
-		parents.forEach((parent: any) => {
-			result.push(parent);
-			if (activeParentId === parent._id) {
-				const subs = categories.filter((c: any) => c.parentId === parent._id);
-				if (subs.length > 0) {
-					result.push(...subs.map((sub: any) => ({
-						...sub,
-						name: `↳ ${sub.name}`
-					})));
-				}
-			}
-		});
-
-		return result;
-	}, [categories, activeCategoryId]);
+		return { categoryTabs: tabs, activeSubcategories: subs, activeParentName: parentName };
+	}, [categories, activeParentId]);
 
 	// Scroll category into view
 	const scrollCategoryIntoView = useCallback((index: number) => {
@@ -391,24 +388,24 @@ function MenuPage() {
 			if (index === 0) {
 				setActiveCategoryId(null);
 			} else {
-				const cat = categoryList[index];
-				if (cat._id !== "all") {
+				const cat = categoryTabs[index];
+				if (cat && cat._id !== "all") {
 					setActiveCategoryId(cat._id);
 				}
 			}
 		},
-		[categoryList, scrollCategoryIntoView]
+		[categoryTabs, scrollCategoryIntoView]
 	);
 
 	const handleCategoryChange = useCallback(
 		(direction: "left" | "right") => {
 			scrollCategoryIntoView(
 				direction === "right"
-					? Math.min(focusedCategoryIndex + 1, categoryList.length - 1)
+					? Math.min(focusedCategoryIndex + 1, categoryTabs.length - 1)
 					: Math.max(focusedCategoryIndex - 1, 0)
 			);
 		},
-		[focusedCategoryIndex, categoryList.length, scrollCategoryIntoView]
+		[focusedCategoryIndex, categoryTabs.length, scrollCategoryIntoView]
 	);
 
 	const handleHeaderAction = useCallback(
@@ -449,7 +446,7 @@ function MenuPage() {
 			gridColumns,
 			onProductSelect: handleProductSelect,
 			onProductActivate: handleProductActivate,
-			categoryCount: categoryList.length,
+			categoryCount: categoryTabs.length,
 			onCategorySelect: handleCategorySelect,
 			onCategoryChange: handleCategoryChange,
 			onHeaderAction: (action) => {
@@ -891,48 +888,73 @@ function MenuPage() {
 						</div>
 					</div>
 
-					{/* Category Tabs - Thin & Minimalist (Animated Expansion) */}
+					{/* Category Tabs - Top Header (Main Categories Only) */}
 					<div
 						ref={categoryScrollRef}
 						className={cn(
-							"flex overflow-x-auto px-4 pb-2.5 scrollbar-none mask-fade-edges"
+							"flex gap-1.5 overflow-x-auto px-4 pb-2.5 scrollbar-none mask-fade-edges"
 						)}
 					>
-						<AnimatePresence mode="popLayout">
-							{categoryList.map((cat, index) => {
-								const isActive = activeCategoryId === cat._id || (cat._id === "all" && !activeCategoryId);
-								const isFocused = isKeyboardActive && isZoneFocused("categories") && focusedCategoryIndex === index;
-								const isSub = cat?.name?.startsWith("↳");
-								
-								return (
-									<motion.button
-										layout
-										initial={{ opacity: 0, scale: 0.8, width: 0, marginRight: 0, paddingLeft: 0, paddingRight: 0 }}
-										animate={{ opacity: 1, scale: 1, width: "auto", marginRight: 6, paddingLeft: 14, paddingRight: 14 }}
-										exit={{ opacity: 0, scale: 0.8, width: 0, marginRight: 0, paddingLeft: 0, paddingRight: 0 }}
-										transition={{ duration: 0.2, ease: "easeOut" }}
-										key={cat._id}
-										type="button"
-										onClick={() => handleCategorySelect(index)}
-										className={cn(
-											"shrink-0 rounded-lg py-1.5 text-[10px] font-black uppercase tracking-wider whitespace-nowrap overflow-hidden inline-flex items-center justify-center will-change-[width,opacity,transform]",
-											isActive
-												? "bg-primary text-primary-foreground shadow-md ring-1 ring-primary"
-												: isSub 
-													? "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-transparent shadow-none"
-													: "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50",
-											isFocused && "ring-2 ring-primary ring-offset-2 transition-shadow"
-										)}
-									>
-										{cat.name}
-									</motion.button>
-								);
-							})}
-						</AnimatePresence>
+						{categoryTabs.map((cat, index) => {
+							const isActive = activeParentId === cat._id || (cat._id === "all" && !activeParentId);
+							const isFocused = isKeyboardActive && isZoneFocused("categories") && focusedCategoryIndex === index;
+							
+							return (
+								<button
+									key={cat._id}
+									type="button"
+									onClick={() => handleCategorySelect(index)}
+									className={cn(
+										"shrink-0 rounded-lg py-1.5 px-3.5 text-[11px] font-bold uppercase tracking-wide whitespace-nowrap inline-flex items-center justify-center transition-all",
+										isActive
+											? "bg-primary text-primary-foreground shadow-md ring-1 ring-primary"
+											: "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50",
+										isFocused && "ring-2 ring-primary ring-offset-2 transition-shadow"
+									)}
+								>
+									{cat.name}
+								</button>
+							);
+						})}
 					</div>
 				</div>
 
-				<main className="flex-1 overflow-y-auto pb-24 bg-muted/10">
+				<main className="flex-1 overflow-y-auto pb-24 bg-muted/10 relative">
+					{/* Local Subcategory Chips */}
+					{activeSubcategories.length > 0 && (
+						<div className="sticky top-0 z-20 bg-muted/10/80 backdrop-blur-md px-3 pt-3 pb-1 border-b border-border/20 shadow-sm -mt-2">
+							<div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-2 mask-fade-edges">
+								<button
+									type="button"
+									onClick={() => setActiveCategoryId(activeParentId)}
+									className={cn(
+										"shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold whitespace-nowrap transition-all shadow-sm border",
+										activeCategoryId === activeParentId
+											? "bg-white text-foreground border-border/60 scale-100"
+											: "bg-muted/30 text-muted-foreground hover:bg-white/60 border-transparent hover:text-foreground scale-[0.98]"
+									)}
+								>
+									Semua {activeParentName}
+								</button>
+								{activeSubcategories.map((sub: any) => (
+									<button
+										key={sub._id}
+										type="button"
+										onClick={() => setActiveCategoryId(sub._id)}
+										className={cn(
+											"shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold whitespace-nowrap transition-all shadow-sm border",
+											activeCategoryId === sub._id
+												? "bg-white text-foreground border-border/60 scale-100"
+												: "bg-muted/30 text-muted-foreground hover:bg-white/60 border-transparent hover:text-foreground scale-[0.98]"
+										)}
+									>
+										{sub.name}
+									</button>
+								))}
+							</div>
+						</div>
+					)}
+
 					<div
 						ref={productGridRef}
 						className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-2 p-3"
