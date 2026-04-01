@@ -30,7 +30,21 @@ export const Route = createLazyFileRoute("/admin/kitchen" as any)({
 function KitchenMonitorPage() {
 	const { tab = "orders" } = Route.useSearch() as { tab?: string };
 	const orders = useQuery(api.kitchenBar.getTrackOrders, { track: "kitchen" });
-	const products = useQuery(api.kitchenBar.getTrackProducts, { track: "kitchen" });
+	
+	const allProducts = useQuery(api.products.getAllProductsAdmin);
+	const allCategories = useQuery(api.products.getCategories);
+
+	const products = useMemo(() => {
+		if (!allProducts || !allCategories) return undefined;
+		
+		const trackCategoryIds = new Set(
+			allCategories
+				.filter((c: any) => c.track === "kitchen" || (c.parentId && allCategories.find((p: any) => p._id === c.parentId)?.track === "kitchen"))
+				.map((c: any) => c._id)
+		);
+
+		return allProducts.filter((p: any) => trackCategoryIds.has(p.categoryId));
+	}, [allProducts, allCategories]);
 
 	return (
 		<div className="flex h-full flex-col bg-slate-50/50 pb-12 md:pb-0">
