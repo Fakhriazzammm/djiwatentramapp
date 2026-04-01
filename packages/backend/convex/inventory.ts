@@ -251,7 +251,15 @@ export async function deductStockForOrderInternal(
 	}
 
 	for (const item of order.items) {
-		// Find recipe for this product + variant
+		// 1. Deduct direct product quantity
+		const product = await ctx.db.get(item.productId);
+		if (product && typeof product.quantity === "number") {
+			await ctx.db.patch(item.productId, {
+				quantity: Math.max(0, product.quantity - item.quantity),
+			});
+		}
+
+		// 2. Find recipe for this product + variant and deduct ingredients
 		const recipe = await ctx.db
 			.query("recipes")
 			.withIndex("by_product_variant", (q) =>
