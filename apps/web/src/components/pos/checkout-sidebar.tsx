@@ -216,54 +216,54 @@ export function CheckoutSidebar({
 
 	return (
 		<div className="flex h-full flex-col border-l border-border bg-[#f8f9fa] dark:bg-background shadow-sm relative">
-			{/* Progress Header */}
-			<div className="flex items-center justify-between border-b border-border bg-background px-4 py-3">
-				<div className="flex items-center gap-1.5 flex-1">
-					<div className="flex items-center gap-2">
+			{/* Progress Header - COMPACT */}
+			<div className="flex items-center justify-between border-b border-border bg-background px-4 py-2 sm:py-2.5">
+				<div className="flex items-center gap-1 flex-1">
+					<div className="flex items-center gap-1.5">
 						<div className={cn(
-							"flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold",
-							activeStep === "customer" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+							"flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-black",
+							activeStep === "customer" ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground"
 						)}>1</div>
-						<span className={cn("text-xs font-medium", activeStep === "customer" ? "text-foreground" : "text-muted-foreground")}>Info</span>
+						<span className={cn("text-[10px] font-bold uppercase tracking-tight", activeStep === "customer" ? "text-foreground" : "text-muted-foreground")}>Info</span>
 					</div>
-					<ChevronRight className="h-3 w-3 text-muted-foreground mx-1" />
-					<div className="flex items-center gap-2">
+					<ChevronRight className="h-3 w-3 text-muted-foreground/40 mx-0.5" />
+					<div className="flex items-center gap-1.5">
 						<div className={cn(
-							"flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold",
-							activeStep === "menu" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+							"flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-black",
+							activeStep === "menu" ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground"
 						)}>2</div>
-						<span className={cn("text-xs font-medium", activeStep === "menu" ? "text-foreground" : "text-muted-foreground")}>Menu</span>
+						<span className={cn("text-[10px] font-bold uppercase tracking-tight", activeStep === "menu" ? "text-foreground" : "text-muted-foreground")}>Menu</span>
 					</div>
-					<ChevronRight className="h-3 w-3 text-muted-foreground mx-1" />
-					<div className="flex items-center gap-2">
+					<ChevronRight className="h-3 w-3 text-muted-foreground/40 mx-0.5" />
+					<div className="flex items-center gap-1.5">
 						<div className={cn(
-							"flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold",
-							activeStep === "payment" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+							"flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-black",
+							activeStep === "payment" ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground"
 						)}>3</div>
-						<span className={cn("text-xs font-medium", activeStep === "payment" ? "text-foreground" : "text-muted-foreground")}>Bayar</span>
+						<span className={cn("text-[10px] font-bold uppercase tracking-tight", activeStep === "payment" ? "text-foreground" : "text-muted-foreground")}>Bayar</span>
 					</div>
 				</div>
-				<div className="flex items-center gap-1">
+				<div className="flex items-center gap-1 text-muted-foreground">
 					{lastOrderId && onPrintLastOrder && (
 						<Button
 							variant="outline"
 							size="sm"
-							className="h-8 px-2 gap-1.5 text-[10px] font-bold border-primary/20 bg-primary/5 text-primary hover:bg-primary/10"
+							className="h-7 px-2 gap-1.5 text-[9px] font-black uppercase tracking-tight border-primary/20 bg-primary/5 text-primary hover:bg-primary/10"
 							onClick={onPrintLastOrder}
 						>
 							<Printer className="h-3 w-3" />
-							Struk Terakhir
+							Struk
 						</Button>
 					)}
 					{onClose && (
 						<Button 
 							variant="ghost" 
 							size="sm" 
-							className="h-8 w-8 p-0 rounded-full shrink-0" 
+							className="h-7 w-7 p-0 rounded-full shrink-0" 
 							onClick={onClose}
 							aria-label="Tutup"
 						>
-							<X className="h-4 w-4" />
+							<X className="h-3.5 w-3.5" />
 						</Button>
 					)}
 				</div>
