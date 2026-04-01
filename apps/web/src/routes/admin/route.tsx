@@ -653,7 +653,8 @@ function AdminLayout() {
 			</AnimatePresence>
 
 			{/* === MOBILE BOTTOM NAVIGATION === */}
-			<nav className="safe-area-bottom fixed inset-x-0 bottom-0 z-30 border-border border-t bg-background/95 backdrop-blur-md md:hidden">
+			{!isOperational && (
+				<nav className="safe-area-bottom fixed inset-x-0 bottom-0 z-30 border-border border-t bg-background/95 backdrop-blur-md md:hidden">
 				<div className="flex items-stretch px-2">
 					{BOTTOM_NAV_ITEMS.map((item, index) => {
 						const isCenter = index === 2; // AI Chat at center
@@ -765,6 +766,7 @@ function AdminLayout() {
 					})}
 				</div>
 			</nav>
+			)}
 
 			{/* === MOBILE OPERATIONAL BOTTOM NAVIGATION === */}
 			{isOperational && (
@@ -772,7 +774,7 @@ function AdminLayout() {
 					<div className="flex items-stretch px-2">
 						<Link
 							className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
-							to="/admin"
+							to="/menu"
 						>
 							<div className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground">
 								<ArrowLeft className="h-4 w-4" />
