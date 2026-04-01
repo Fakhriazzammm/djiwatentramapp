@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Send, ScanLine, Camera, Trash2, Loader2, Sparkles, AlertTriangle, Lightbulb, Settings, TrendingUp, Wallet, Target, Shield, Mic, MicOff } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { ArrowUp, ScanLine, Camera, Trash2, Loader2, Sparkles, AlertTriangle, Settings, TrendingUp, Wallet, Target, Mic, MicOff, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ToolCall, ChatMode } from "./types";
 import { TOOL_LABELS, CASIER_TEMPLATES } from "./utils";
@@ -39,31 +38,17 @@ const SpeechRecognition = (typeof window !== "undefined")
 	: null;
 
 export const ChatInput = ({
-	mode,
-	input,
-	setInput,
-	isLoading,
-	isScanning,
-	isScanMode,
-	setIsScanMode,
-	selectedImages,
-	onRemoveImage,
-	onFileSelect,
-	onSendMessage,
-	onKeyDown,
-	toolCalls,
-	fileInputRef,
-	inputRef,
-	showTemplates
+	mode, input, setInput, isLoading, isScanning, isScanMode, setIsScanMode,
+	selectedImages, onRemoveImage, onFileSelect, onSendMessage, onKeyDown,
+	toolCalls, fileInputRef, inputRef, showTemplates
 }: ChatInputProps) => {
 	const templates = mode === "admin" ? ADMIN_TEMPLATES : CASIER_TEMPLATES;
 	const [isListening, setIsListening] = useState(false);
 	const [speechSupported, setSpeechSupported] = useState(false);
 	const recognitionRef = useRef<any>(null);
+	const cameraInputRef = useRef<HTMLInputElement>(null);
 
-	useEffect(() => {
-		setSpeechSupported(!!SpeechRecognition);
-	}, []);
+	useEffect(() => { setSpeechSupported(!!SpeechRecognition); }, []);
 
 	const startListening = useCallback(() => {
 		if (!SpeechRecognition || isListening) return;
@@ -71,7 +56,6 @@ export const ChatInput = ({
 		recognition.lang = "id-ID";
 		recognition.continuous = false;
 		recognition.interimResults = true;
-
 		recognition.onresult = (event: any) => {
 			let transcript = "";
 			for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -79,181 +63,136 @@ export const ChatInput = ({
 			}
 			setInput(transcript);
 		};
-
-		recognition.onend = () => {
-			setIsListening(false);
-		};
-
-		recognition.onerror = () => {
-			setIsListening(false);
-		};
-
+		recognition.onend = () => setIsListening(false);
+		recognition.onerror = () => setIsListening(false);
 		recognitionRef.current = recognition;
 		recognition.start();
 		setIsListening(true);
 	}, [isListening, setInput]);
 
 	const stopListening = useCallback(() => {
-		if (recognitionRef.current) {
-			recognitionRef.current.stop();
-		}
+		if (recognitionRef.current) recognitionRef.current.stop();
 		setIsListening(false);
 	}, []);
 
+	const canSend = input.trim() || selectedImages.length > 0;
+
 	return (
-		<div className="p-1.5 bg-background/80 backdrop-blur-md border-t border-border shadow-lg relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-			{/* Templates */}
+		<div className="mx-auto w-full max-w-3xl">
 			{showTemplates && !isScanMode && (
-				<div className="mb-1.5 flex flex-nowrap overflow-x-auto gap-1.5 pb-1 custom-scrollbar scroll-smooth no-scrollbar">
+				<div className="mb-3 flex flex-wrap gap-2 justify-center">
 					{templates.map((template, i) => (
 						<button
 							key={i}
 							onClick={() => onSendMessage(template.message)}
-							className="flex items-center gap-1 rounded-xl bg-muted/60 px-1.5 py-0.5 text-[9px] font-semibold hover:bg-primary/10 hover:text-primary transition-all active:scale-95 whitespace-nowrap border border-border/40 shadow-sm"
+							className="flex items-center gap-1.5 rounded-full border border-border/50 bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-[0.97]"
+							type="button"
 						>
-							<span className="text-primary">{typeof template.icon === 'string' ? template.icon : template.icon}</span>
-							<span className="text-foreground">{template.label}</span>
+							{template.icon}
+							{template.label}
 						</button>
 					))}
 				</div>
 			)}
 
-			{/* Tool Calls UI */}
-			{toolCalls.length > 0 && (
-				<div className="mb-2 p-2 border border-border/60 rounded-xl bg-muted/30 shadow-inner">
-					<p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Eksekusi Tool</p>
-					<div className="flex flex-wrap gap-2">
-						{toolCalls.map((tool, i) => (
-							<div key={i} className="flex items-center gap-1.5 text-[10px] bg-background border border-border/60 rounded-lg px-2 py-1 shadow-sm">
-								{tool.status === "executing" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-								{tool.status === "success" && <span className="text-green-500">✅</span>}
-								{tool.status === "error" && <span className="text-destructive">❌</span>}
-								<span className="font-semibold text-foreground">{TOOL_LABELS[tool.name] || tool.name}</span>
-							</div>
-						))}
+			<div className={`rounded-2xl border shadow-lg overflow-hidden transition-all bg-background ${
+				isScanMode ? "border-emerald-300 shadow-emerald-50" : "border-border/60"
+			} focus-within:shadow-xl focus-within:border-primary/20`}>
+				{isScanMode && (
+					<div className="border-b border-emerald-200 bg-emerald-50 px-4 py-1.5 flex items-center gap-2">
+						<ScanLine className="h-3.5 w-3.5 text-emerald-600" />
+						<span className="text-xs font-medium text-emerald-700">Mode Scan — Unggah struk atau faktur untuk dianalisis</span>
 					</div>
-				</div>
-			)}
+				)}
 
-			{/* Selected Images Preview */}
-			{selectedImages.length > 0 && (
-				<div className="mb-2 p-2 border border-border/60 rounded-xl bg-muted/10 shadow-inner relative group">
-					<div className="flex items-center justify-between mb-1.5">
-						<p className="text-[9px] font-bold text-primary uppercase tracking-widest px-1.5 py-0.5 bg-primary/5 rounded-full ring-1 ring-primary/20">
-							Lampiran ({selectedImages.length})
-						</p>
-						<button 
-							className="h-6 w-6 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors" 
-							onClick={onRemoveImage}
-							title="Hapus semua"
-							type="button"
-						>
-							<Trash2 className="h-3.5 w-3.5" />
-						</button>
-					</div>
-					<div className="flex gap-3 overflow-x-auto pb-1 custom-scrollbar scroll-smooth">
-						{selectedImages.map((img, i) => (
-							<div key={i} className="relative group/img flex-shrink-0">
-								<img src={img} className="h-24 w-24 object-cover rounded-xl border border-border/60 shadow-sm" alt={`Preview ${i}`} />
-								<div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
-									<ScanLine className="h-5 w-5 text-white" />
+				{toolCalls.length > 0 && (
+					<div className="border-b border-border/40 px-4 py-2.5 bg-muted/20">
+						<div className="flex flex-wrap gap-2">
+							{toolCalls.map((tool, i) => (
+								<div key={i} className="flex items-center gap-1.5 text-xs bg-background rounded-full px-3 py-1 border border-border/40">
+									{tool.status === "executing" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+									{tool.status === "success" && <span className="text-green-500 text-xs">✓</span>}
+									{tool.status === "error" && <span className="text-destructive text-xs">✗</span>}
+									<span className="font-medium">{TOOL_LABELS[tool.name] || tool.name}</span>
 								</div>
-							</div>
-						))}
+							))}
+						</div>
 					</div>
-				</div>
-			)}
+				)}
 
-			<div className="flex items-end gap-2 max-w-4xl mx-auto">
-				<div className="relative flex-1 flex flex-col min-h-[38px] rounded-2xl border border-border/80 shadow-md transition-all bg-muted/30 focus-within:bg-background focus-within:shadow-xl focus-within:border-primary/40 group">
-					<div className="absolute left-2 bottom-1 flex items-center gap-0.5 opacity-80 transition-opacity focus-within:opacity-100 pb-0.5">
-						<Button 
-							variant={isScanMode ? "default" : "ghost"} 
-							size="icon" 
-							className={`h-7 w-7 rounded-full transition-all duration-300 ${isScanMode ? "bg-emerald-600 hover:bg-emerald-700 shadow-md scale-105" : "text-muted-foreground hover:text-primary hover:bg-primary/10"}`} 
-							onClick={() => setIsScanMode(!isScanMode)}
-							title={isScanMode ? "Mode Scan Aktif" : "Aktifkan Mode Scan Gambar"}
-						>
-							<ScanLine className="h-3.5 w-3.5" />
-						</Button>
-						<Button 
-							variant="ghost" 
-							size="icon" 
-							className="h-7 w-7 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" 
-							onClick={() => fileInputRef.current?.click()}
-							title="Unggah Gambar"
-						>
-							<Camera className="h-3.5 w-3.5" />
-						</Button>
-						<input
-							type="file"
-							ref={fileInputRef}
-							className="hidden"
-							accept="image/*"
-							multiple
-							onChange={onFileSelect}
-						/>
+				{selectedImages.length > 0 && (
+					<div className="border-b border-border/40 px-4 py-2.5">
+						<div className="flex items-center justify-between mb-2">
+							<span className="text-[11px] font-medium text-muted-foreground">{selectedImages.length} lampiran</span>
+							<button onClick={onRemoveImage} className="h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" type="button">
+								<Trash2 className="h-3.5 w-3.5" />
+							</button>
+						</div>
+						<div className="flex gap-2 overflow-x-auto pb-1">
+							{selectedImages.map((img, i) => (
+								<div key={i} className="relative flex-shrink-0">
+									<img src={img} className="h-20 w-20 object-cover rounded-xl border border-border/40" alt="" />
+								</div>
+							))}
+						</div>
 					</div>
-					
-					<textarea
-						ref={inputRef}
-						value={input}
-						onChange={(e) => setInput(e.target.value)}
-						onKeyDown={onKeyDown}
-						placeholder={isListening ? "Mendengarkan..." : isScanMode ? "Instruksi analisis..." : "Tanya Yumi AI..."}
-						className={`w-full resize-none bg-transparent py-2 pl-[66px] pr-9 text-xs focus:outline-none scroll-m-1 min-h-[38px] max-h-[30vh] ${isListening ? "placeholder:text-primary" : ""}`}
-						rows={1}
-						onInput={(e) => {
-							const target = e.target as HTMLTextAreaElement;
-							target.style.height = 'auto';
-							target.style.height = `${Math.min(target.scrollHeight, 200)}px`;
-						}}
-					/>
-					
-					<div className="absolute right-1.5 bottom-1 flex items-center gap-0.5">
-						{/* Voice input button */}
+				)}
+
+				<textarea
+					ref={inputRef}
+					value={input}
+					onChange={(e) => setInput(e.target.value)}
+					onKeyDown={onKeyDown}
+					placeholder={isListening ? "Mendengarkan..." : isScanMode ? "Instruksi analisis gambar..." : "Tanya Yumi AI..."}
+					className="w-full resize-none bg-transparent px-4 py-3 text-sm focus:outline-none min-h-[24px] max-h-[200px] placeholder:text-muted-foreground/50"
+					rows={1}
+					onInput={(e) => {
+						const target = e.target as HTMLTextAreaElement;
+						target.style.height = 'auto';
+						target.style.height = `${Math.min(target.scrollHeight, 200)}px`;
+					}}
+				/>
+
+				<div className="flex items-center justify-between px-3 pb-2.5">
+					<div className="flex items-center gap-0.5">
+						<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" onClick={() => fileInputRef.current?.click()} title="Upload file" type="button">
+							<Paperclip className="h-[18px] w-[18px]" />
+						</Button>
+						<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" onClick={() => cameraInputRef.current?.click()} title="Ambil foto" type="button">
+							<Camera className="h-[18px] w-[18px]" />
+						</Button>
+						<Button variant="ghost" size="icon" className={`h-8 w-8 rounded-full transition-colors ${isScanMode ? "text-emerald-600 bg-emerald-50 hover:bg-emerald-100" : "text-muted-foreground hover:text-foreground"}`} onClick={() => setIsScanMode(!isScanMode)} title={isScanMode ? "Nonaktifkan mode scan" : "Mode scan"} type="button">
+							<ScanLine className="h-[18px] w-[18px]" />
+						</Button>
+						<input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={onFileSelect} />
+						<input type="file" ref={cameraInputRef} className="hidden" accept="image/*" capture="environment" onChange={onFileSelect} />
+					</div>
+					<div className="flex items-center gap-0.5">
 						{speechSupported && (
-							<Button
-								type="button"
-								size="icon"
-								className={`h-7 w-7 rounded-full transition-all duration-300 ${
-									isListening 
-										? "bg-red-500 hover:bg-red-600 text-white shadow-lg scale-110 animate-pulse" 
-										: "text-muted-foreground hover:text-primary hover:bg-primary/10"
-								}`}
-								onClick={isListening ? stopListening : startListening}
-								title={isListening ? "Berhenti mendengarkan" : "Input suara (Bahasa Indonesia)"}
-							>
-								{isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+							<Button variant="ghost" size="icon" className={`h-8 w-8 rounded-full transition-all ${isListening ? "text-red-500 bg-red-50 scale-110" : "text-muted-foreground hover:text-foreground"}`} onClick={isListening ? stopListening : startListening} title={isListening ? "Berhenti mendengarkan" : "Input suara"} type="button">
+								{isListening ? <MicOff className="h-[18px] w-[18px]" /> : <Mic className="h-[18px] w-[18px]" />}
 							</Button>
 						)}
-						{/* Send button */}
 						<Button
-							type="submit"
 							size="icon"
-							className={`h-7 w-7 rounded-full transition-all duration-300 ${
-								input.trim() || selectedImages.length > 0
-									? (isScanMode ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg scale-105" : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg scale-105")
-									: "bg-muted/50 text-muted-foreground cursor-not-allowed"
+							className={`h-8 w-8 rounded-full transition-all ${
+								canSend && !isLoading && !isScanning
+									? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm cursor-pointer"
+									: "bg-muted text-muted-foreground cursor-not-allowed"
 							}`}
 							onClick={() => onSendMessage(input)}
-							disabled={isLoading || isScanning || (!input.trim() && selectedImages.length === 0)}
+							disabled={isLoading || isScanning || !canSend}
+							type="button"
 						>
-							{isLoading || isScanning ? (
-								<Loader2 className="h-3.5 w-3.5 animate-spin" />
-							) : (
-								<Send className="h-3.5 w-3.5 translate-x-0.5" />
-							)}
+							{isLoading || isScanning ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.5} />}
 						</Button>
 					</div>
 				</div>
 			</div>
-			
-			<div className="mt-1.5 text-center">
-				<p className="text-[9px] text-muted-foreground/60 font-medium tracking-tight">
-					Yumi AI dapat membuat kesalahan. Periksa informasi penting.
-				</p>
-			</div>
+
+			<p className="mt-2 text-center text-[11px] text-muted-foreground/40">
+				Yumi AI dapat membuat kesalahan. Periksa informasi penting.
+			</p>
 		</div>
 	);
 };

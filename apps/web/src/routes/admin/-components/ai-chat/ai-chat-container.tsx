@@ -1,7 +1,7 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bot, Calendar, Clock, Sparkles, AlertTriangle, Bell, TrendingUp, X, ChevronUp, ChevronDown } from "lucide-react";
+import { Bot, Calendar, Sparkles, Bell, TrendingUp, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
@@ -13,7 +13,6 @@ import { ScanEditModal, type ScanEditParams } from "@/components/scan/scan-edit-
 import { ScanSplitModal } from "@/components/scan/scan-split-modal";
 import { ScanHistoryPanel, useScanHistory } from "@/components/scan/scan-history-panel";
 
-// Internal Sub-components & Utils
 import type { ChatMessage, ToolCall, Suggestion, TabType, ChatSession, QuickActionButton, ScanActionButton, ScanResultData, ChatMode } from "./types";
 import { mkMsgId, toRupiah, TOOL_LABELS, generateQuickActions, generateScanActionButtons, extractSuggestions, extractGenericActions, extractChartData, extractExportData, sanitizeResponse } from "./utils";
 import { exportReport } from "./report-exporter";
@@ -46,10 +45,8 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 	const [isScanMode, setIsScanMode] = useState(false);
 	const [isScanning, setIsScanning] = useState(false);
 	const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-	const [isInsightPanelExpanded, setIsInsightPanelExpanded] = useState(false);
 	const briefingAttemptedRef = useRef(false);
 
-	// Modals & History
 	const [editModal, setEditModal] = useState<{ params: ScanEditParams; btnKey: string; messageIdx: number } | null>(null);
 	const [splitModal, setSplitModal] = useState<{ params: ScanEditParams; btnKey: string } | null>(null);
 	const [showScanHistory, setShowScanHistory] = useState(false);
@@ -60,12 +57,12 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const navigate = useNavigate();
 
-	// Actions & Mutations
 	const yumiChat = useAction(api.ai.yumiChat);
 	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
 	const generateBusinessBriefingAction = useAction(api.ai.generateBusinessBriefing);
 	
 	const createTransactionMutation = useMutation(api.finance.createTransaction);
+	const deleteTransactionMutation = useMutation(api.finance.deleteTransaction);
 	const createSessionMutation = useMutation(api.aiMemory.createChatSession);
 	const deleteSessionMutation = useMutation(api.aiMemory.deleteChatSession);
 	const saveConversationMutation = useMutation(api.aiMemory.saveConversationContext);
@@ -73,11 +70,22 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 	const dismissTaskMutation = useMutation(api.aiMemory.dismissTask);
 	const recordStockPurchaseMutation = useMutation(api.stockPurchases.recordStockPurchase);
 	const createProductMutation = useMutation(api.products.createProduct);
+	const updateProductMutation = useMutation(api.products.updateProduct);
+	const createDiscountMutation = useMutation(api.discounts.createDiscount);
+	const toggleDiscountMutation = useMutation(api.discounts.updateDiscount);
+	const createOrderMutation = useMutation(api.orders.createOrder);
+	const updateOrderStatusMutation = useMutation(api.orders.updateOrderStatus);
+	const createBookingOrderMutation = useMutation(api.booking.createBookingOrder);
+	const updateBookingStatusMutation = useMutation(api.booking.updateBookingStatus);
+	const createInventoryItemMutation = useMutation(api.inventory.createInventoryItem);
+	const addStockMutation = useMutation(api.inventory.addStock);
+	const setFinancialTargetMutation = useMutation(api.finance.setFinancialTarget);
+	const startShiftMutation = useMutation(api.finance.startShift);
+	const endShiftMutation = useMutation(api.finance.endShift);
 
 	const [actionButtonDone, setActionButtonDone] = useState<Set<string>>(new Set());
 	const [actionButtonLoading, setActionButtonLoading] = useState<Set<string>>(new Set());
 
-	// Queries
 	const chatSessions = useQuery(api.aiMemory.getChatSessions, {});
 	const loadConversationQuery = useQuery(
 		api.aiMemory.getConversationContext,
@@ -91,10 +99,8 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 	const bestPromoTime = useQuery(api.ai.predictBestPromoTime, {});
 	const pendingTasks = useQuery(api.aiMemory.getPendingTasks, {});
 	const inventory = useQuery(api.inventory.getInventory, {});
-	const products = useQuery(api.products.getAllProductsAdmin, {});
 	const orders = useQuery(api.orders.getOrders, {});
 
-	// Auto-scroll while streaming
 	useEffect(() => {
 		if (!isStreaming) return;
 		if (scrollThrottleRef.current) return;
@@ -104,7 +110,6 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 		}, 120);
 	}, [streamingContent, isStreaming]);
 
-	// Load session messages
 	useEffect(() => {
 		if (loadConversationQuery) {
 			const loadedMessages: ChatMessage[] = (loadConversationQuery as any).map((item: any) => ({
@@ -116,7 +121,6 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 		}
 	}, [loadConversationQuery]);
 
-	// Helper for session management
 	const startNewSession = useCallback(async () => {
 		try {
 			const result = await createSessionMutation({ 
@@ -152,7 +156,6 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 		}
 	}, [currentSessionId, deleteSessionMutation]);
 
-	// Image compression helper
 	const compressImage = useCallback((dataUrl: string): Promise<string> => {
 		return new Promise((resolve) => {
 			const img = new Image();
@@ -198,25 +201,16 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 		e.target.value = '';
 	}, [compressImage]);
 
-	// Proactive Nudge & Briefing Logic
 	const runDailyBriefing = useCallback(async () => {
 		if (briefingAttemptedRef.current) return;
-		
-		// Wait for essential data before attempting briefing
 		if (inventory === undefined || orders === undefined) return;
-		
-		// If both are null/empty, we can still run a general greeting/briefing
-		// but we want to ensure we've at least tried to load them.
 		const isDataLoaded = inventory !== undefined && orders !== undefined;
 		if (!isDataLoaded) return;
-		
 		briefingAttemptedRef.current = true;
 		setIsLoading(true);
-		
 		try {
 			const lowStockItems = inventory?.filter((i: any) => i.quantity <= i.lowStockThreshold) || [];
 			const pendingOrderCount = orders?.filter((o: any) => o.status === "pending").length || 0;
-			
 			let context = "";
 			if (lowStockItems.length > 0) {
 				context += `\nKRITIS: Ada ${lowStockItems.length} item stok rendah: ${lowStockItems.slice(0,3).map((i:any)=>i.name).join(", ")}.`;
@@ -224,10 +218,8 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 			if (pendingOrderCount > 0) {
 				context += `\nPERHATIAN: Ada ${pendingOrderCount} pesanan baru yang belum diproses.`;
 			}
-
 			const localHour = new Date().getHours();
 			const briefing = await generateBusinessBriefingAction({ localHour, context: context || undefined });
-			
 			if (briefing) {
 				const sanitizedBriefing = sanitizeResponse(briefing);
 				const assistantMsg: ChatMessage = {
@@ -239,7 +231,6 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 					_msgId: mkMsgId(),
 				};
 				setMessages(prev => {
-					// Final double-check: only add if we're still empty to avoid duplicates
 					if (prev.length > 0) return prev;
 					return [assistantMsg];
 				});
@@ -252,37 +243,30 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 	}, [generateBusinessBriefingAction, inventory, orders]);
 
 	useEffect(() => {
-		// Only run briefing in Chat tab, if no messages exist, and not currently loading something else
 		if (activeTab === "chat" && messages.length === 0 && !isLoading && !isStreaming) {
 			const timer = setTimeout(() => {
 				runDailyBriefing();
-			}, 100); // Shorter delay for immediate response
+			}, 100);
 			return () => clearTimeout(timer);
 		}
 	}, [activeTab, messages.length, isLoading, isStreaming, runDailyBriefing]);
 
-	// Image Scanning Logic
 	const processImagesWithAI = useCallback(async (images: string[], customPrompt?: string) => {
 		if (isScanning) return;
 		setIsScanning(true);
 		setIsLoading(true);
 		setToolCalls([]);
-
 		try {
 			const res = await bulkScanImageDataAction({ images });
 			if (!res || !res.length) throw new Error("Gagal menganalisis gambar");
-
 			const newMessages: ChatMessage[] = [];
 			for (let i = 0; i < res.length; i++) {
 				const scanData = res[i].data;
 				if (!scanData) continue;
-
 				const itemsStr = scanData.items?.length 
 					? `\n📋 Detail Item (${scanData.items.length} item):\n` + scanData.items.map((item: any, idx: number) => `${idx + 1}. ${item.name} x${item.qty} = Rp ${toRupiah(item.subtotal)}`).join("\n")
 					: "";
-
 				const assistantContent = `🍩 Merchant: ${scanData.name || "Toko"}${itemsStr}\n\n💰 Total: Rp ${toRupiah(scanData.total)}\n📊 Keyakinan: ${scanData.confidence}% | Kategori: ${scanData.category?.replace(/_/g, " ") || "Umum"}`;
-
 				const assistantMsg: ChatMessage = {
 					role: "assistant",
 					content: assistantContent,
@@ -293,7 +277,6 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 				newMessages.push(assistantMsg);
 				addScanHistory({ ...scanData, id: assistantMsg._msgId!, timestamp: Date.now() });
 			}
-
 			setMessages(prev => [...prev, ...newMessages]);
 			setSelectedImages([]);
 			setIsScanMode(false);
@@ -306,7 +289,6 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 		}
 	}, [isScanning, bulkScanImageDataAction, addScanHistory]);
 
-	// Main Messaging Logic
 	const streamText = useCallback((text: string, onComplete: () => void) => {
 		const tokens = text.split(/(\s+)/);
 		let i = 0;
@@ -331,25 +313,21 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 	const sendMessage = useCallback(async (text: string) => {
 		const trimmed = text.trim();
 		if (!(trimmed || selectedImages.length > 0) || isLoading || isScanning) return;
-
 		if (isScanMode && selectedImages.length > 0) {
 			await processImagesWithAI(selectedImages, trimmed);
 			setInput("");
 			return;
 		}
-
 		let sessionId = currentSessionId;
 		if (!sessionId && mode === "admin") {
 			sessionId = await startNewSession();
 			if (!sessionId) return;
 		}
-
 		const userMsg: ChatMessage = { role: "user", content: trimmed, image: selectedImages[0], _msgId: mkMsgId() };
 		setMessages(prev => [...prev, userMsg]);
 		setInput("");
 		setSelectedImages([]);
 		setIsLoading(true);
-		
 		try {
 			const history = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
 			const response = await yumiChat({ 
@@ -357,14 +335,12 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 				history, 
 				images: selectedImages.length > 0 ? selectedImages : (userMsg.image ? [userMsg.image] : undefined) 
 			});
-			
 			const suggestions = extractSuggestions(response);
 			const quickActions = generateQuickActions(trimmed, response);
 			const genericActions = extractGenericActions(response);
 			const chartData = extractChartData(response);
 			const exportData = extractExportData(response);
 			const sanitizedResponse = sanitizeResponse(response);
-			
 			streamText(sanitizedResponse, async () => {
 				const assistantMsg: ChatMessage = { role: "assistant", content: sanitizedResponse, suggestions, quickActions, genericActions, chartData, exportData, _msgId: mkMsgId() };
 				setMessages(prev => [...prev, assistantMsg]);
@@ -381,7 +357,6 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 		}
 	}, [currentSessionId, selectedImages, isLoading, isScanning, isScanMode, messages, yumiChat, startNewSession, streamText, saveConversationMutation, processImagesWithAI, mode]);
 
-	// Handlers for interactive elements
 	const handleCopy = useCallback((text: string, index: number) => {
 		navigator.clipboard.writeText(text);
 		setCopiedIndex(index);
@@ -430,17 +405,85 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 	const handleExecuteSuggestion = async (s: Suggestion) => {
 		setIsLoading(true);
 		try {
-			if (s.action?.type === "record_stock_purchase") {
-				await recordStockPurchaseMutation(s.action.args);
-				toast.success("Stok berhasil dicatat!");
-			} else if (s.action?.type === "create_product") {
-				await createProductMutation(s.action.args);
-				toast.success("Produk berhasil dibuat!");
-			} else {
+			if (!s.action?.type) {
 				await sendMessage(`Lakukan saran ini: ${s.title}`);
+				return;
 			}
-		} catch (error) { toast.error("Gagal mengeksekusi saran"); }
-		finally { setIsLoading(false); }
+			switch (s.action.type) {
+				case "record_stock_purchase":
+					await recordStockPurchaseMutation(s.action.args);
+					toast.success("Stok berhasil dicatat!");
+					break;
+				case "create_product":
+					await createProductMutation(s.action.args);
+					toast.success("Produk berhasil dibuat!");
+					break;
+				case "update_product":
+					await updateProductMutation(s.action.args);
+					toast.success("Produk berhasil diperbarui!");
+					break;
+				case "update_product_price":
+					await updateProductMutation(s.action.args);
+					toast.success("Harga produk berhasil diperbarui!");
+					break;
+				case "create_discount":
+					await createDiscountMutation(s.action.args);
+					toast.success("Diskon berhasil dibuat!");
+					break;
+				case "toggle_discount":
+					await toggleDiscountMutation(s.action.args);
+					toast.success("Status diskon berhasil diubah!");
+					break;
+				case "create_order":
+					await createOrderMutation(s.action.args);
+					toast.success("Pesanan berhasil dibuat!");
+					break;
+				case "update_order_status":
+					await updateOrderStatusMutation(s.action.args);
+					toast.success("Status pesanan berhasil diperbarui!");
+					break;
+				case "create_booking":
+					await createBookingOrderMutation(s.action.args);
+					toast.success("Booking berhasil dibuat!");
+					break;
+				case "update_booking_status":
+					await updateBookingStatusMutation(s.action.args);
+					toast.success("Status booking berhasil diperbarui!");
+					break;
+				case "create_transaction":
+					await createTransactionMutation(s.action.args);
+					toast.success("Transaksi berhasil dicatat!");
+					break;
+				case "delete_transaction":
+					await deleteTransactionMutation(s.action.args);
+					toast.success("Transaksi berhasil dihapus!");
+					break;
+				case "create_inventory_item":
+					await createInventoryItemMutation(s.action.args);
+					toast.success("Item inventaris berhasil dibuat!");
+					break;
+				case "add_stock":
+					await addStockMutation(s.action.args);
+					toast.success("Stok berhasil ditambahkan!");
+					break;
+				case "set_financial_target":
+					await setFinancialTargetMutation(s.action.args);
+					toast.success("Target keuangan berhasil ditetapkan!");
+					break;
+				case "start_shift":
+					await startShiftMutation(s.action.args);
+					toast.success("Shift berhasil dimulai!");
+					break;
+				case "end_shift":
+					await endShiftMutation(s.action.args);
+					toast.success("Shift berhasil diakhiri!");
+					break;
+				default:
+					await sendMessage(`Lakukan saran ini: ${s.title}`);
+			}
+		} catch (error: any) {
+			toast.error(error?.message || "Gagal mengeksekusi saran");
+		} finally { setIsLoading(false); }
 	};
 
 	const handleExport = useCallback(async (format: any, dataIdx: number) => {
@@ -463,353 +506,236 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 		try { await dismissTaskMutation({ taskId }); toast.success("Tugas diabaikan"); } catch { toast.error("Gagal"); }
 	};
 
-	// Smart insights generation
-	const smartInsights: Array<any> = [];
-	const lowStockCount = inventory?.filter((i: any) => i.quantity <= i.lowStockThreshold)?.length ?? 0;
-	if (lowStockCount > 0) smartInsights.push({ icon: <AlertTriangle className="h-3.5 w-3.5" />, text: `${lowStockCount} stok rendah`, type: "warning" });
-	const pendingOrderCount = orders?.filter((o: any) => o.status === "pending")?.length ?? 0;
-	if (pendingOrderCount > 0) smartInsights.push({ icon: <Bell className="h-3.5 w-3.5" />, text: `${pendingOrderCount} pesanan baru`, type: "info" });
-
 	const isPOS = mode === "pos";
 
-	// Get site settings for theme color and store info
-	const siteSettings = useQuery(api.site_settings.getSettings);
-	const storeName = siteSettings?.storeName || "YumiPOS";
-	const logoUrl = siteSettings?.logoUrl;
-	const themeColor = siteSettings?.themeColor;
-	const currentTime = new Date();
-
-	// Navigation items for bottom bar
-	const BOTTOM_NAV_ITEMS = [
-		{ id: "chat", label: "Konsultasi", icon: Bot },
-		{ id: "suggestions", label: "Saran AI", icon: Sparkles },
+	const TAB_ITEMS = [
+		{ id: "chat", label: "Chat", icon: Bot },
+		{ id: "suggestions", label: "Saran", icon: Sparkles },
 		{ id: "predictions", label: "Prediksi", icon: TrendingUp },
 		{ id: "tasks", label: "Tugas", icon: Bell },
 	];
 
 	return (
-		<div className={`flex ${isPOS ? "h-full w-full" : "h-[100dvh] pb-[72px] md:pb-0"} bg-background overflow-hidden relative font-sans text-foreground`}>
-			{/* STATUS HEADER */}
-			<div className="border-b border-border bg-muted/40 px-2 sm:px-3 py-1.5 shadow-sm z-40 shrink-0 w-full overflow-hidden">
-				<div className="flex flex-nowrap items-center justify-between w-full text-[10px] sm:text-xs font-medium text-muted-foreground/80 overflow-hidden">
-					<div className="flex flex-nowrap items-center gap-1.5 sm:gap-2.5 shrink-0 min-w-0">
-						<div className="flex items-center gap-1">
-							<div
-								className="flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-lg font-bold text-white shadow-sm ring-1 ring-black/5"
-								style={{ background: themeColor ?? "var(--color-primary)" }}
-							>
-								{logoUrl ? (
-									<img
-										src={logoUrl}
-										alt={storeName}
-										className="h-full w-full rounded-lg object-contain"
-								/>
-							) : (
-									<Sparkles className="h-3.5 w-3.5" />
-							)}
-							</div>
-							<span className="whitespace-nowrap leading-none font-semibold text-[9px] sm:text-[10px] uppercase tracking-wider">{storeName}</span>
-						</div>
-					</div>
-					<div className="flex flex-nowrap items-center gap-1.5 sm:gap-2.5 shrink-0">
-						<div className="flex flex-nowrap items-center gap-1 opacity-75">
-							<Clock className="h-3 w-3 shrink-0" />
-							<span className="whitespace-nowrap leading-none">{currentTime.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
-						</div>
-						{lowStockCount > 0 && (
-							<div className="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-md whitespace-nowrap leading-none font-semibold text-[9px]">
-								{lowStockCount} stok rendah
-							</div>
-						)}
-						{pendingOrderCount > 0 && (
-							<div className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-md whitespace-nowrap leading-none font-semibold text-[9px]">
-								{pendingOrderCount} pesanan baru
-							</div>
-						)}
-					</div>
-				</div>
-			</div>
-
-			{/* LEFT SIDEBAR: Session History */}
+		<div className={cn("flex flex-col bg-background overflow-hidden relative", isPOS ? "h-full w-full" : "h-[100dvh]")}>
+			{/* Session History Sidebar */}
 			{!isPOS && (
 				<AnimatePresence>
 					{showSessionHistory && (
-						<motion.div
-							initial={{ x: "-100%", opacity: 0 }}
-							animate={{ x: 0, opacity: 1 }}
-							exit={{ x: "-100%", opacity: 0 }}
-							transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-							className="absolute inset-y-0 left-0 z-50 w-72 md:relative md:w-80 bg-background border-r border-border shadow-xl"
-						>
-							<div className="flex flex-col h-full">
-								<div className="flex items-center justify-between p-4 border-b border-border/50 bg-muted/30">
-									<h2 className="text-sm font-black uppercase tracking-widest text-foreground">Riwayat Sesi</h2>
-									<button
-										onClick={() => setShowSessionHistory(false)}
-										className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted transition-colors"
-										type="button"
-									>
-										<X className="h-4 w-4" />
-									</button>
+						<>
+							<motion.div
+								initial={{ opacity: 0 }}
+								animate={{ opacity: 1 }}
+								exit={{ opacity: 0 }}
+								className="absolute inset-0 bg-black/20 z-40"
+								onClick={() => setShowSessionHistory(false)}
+							/>
+							<motion.div
+								initial={{ x: "-100%" }}
+								animate={{ x: 0 }}
+								exit={{ x: "-100%" }}
+								transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+								className="absolute inset-y-0 left-0 z-50 w-80 bg-background border-r border-border shadow-xl"
+							>
+								<div className="flex flex-col h-full">
+									<div className="flex items-center justify-between p-4 border-b border-border">
+										<h2 className="text-sm font-semibold">Riwayat Sesi</h2>
+										<button onClick={() => setShowSessionHistory(false)} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors" type="button">
+											<X className="h-4 w-4" />
+										</button>
+									</div>
+									<div className="flex-1 overflow-y-auto">
+										<SessionHistory 
+											sessions={chatSessions as any} 
+											currentSessionId={currentSessionId}
+											onLoad={loadSession}
+											onDelete={deleteSession}
+											onStartNew={startNewSession}
+										/>
+									</div>
 								</div>
-								<div className="flex-1 overflow-y-auto custom-scrollbar">
-									<SessionHistory 
-										sessions={chatSessions as any} 
-										currentSessionId={currentSessionId}
-										onLoad={loadSession}
-										onDelete={deleteSession}
-										onStartNew={startNewSession}
-									/>
-								</div>
-							</div>
-						</motion.div>
+							</motion.div>
+						</>
 					)}
 				</AnimatePresence>
 			)}
 
-			{/* MAIN CONTENT HEADER */}
-			<header className={`flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background/50 backdrop-blur-xl sticky top-0 z-20`}>
-				<div className="flex items-center gap-2.5 min-w-0">
+			{/* Header */}
+			<header className="flex items-center justify-between px-4 py-2.5 border-b border-border/50 bg-background shrink-0 z-20">
+				<div className="flex items-center gap-2.5">
 					{!isPOS && (
-						<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted" onClick={() => setShowSessionHistory(!showSessionHistory)}>
+						<Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setShowSessionHistory(!showSessionHistory)} type="button">
 							<Calendar className="h-4 w-4" />
 						</Button>
 					)}
-					<div className="min-w-0">
-						<h1 className="text-sm md:text-base font-black tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Yumi AI</h1>
-						<p className={`text-[10px] md:text-xs text-muted-foreground font-medium uppercase tracking-widest ${isPOS ? "" : "hidden md:block"}`}>
-							{isPOS ? "Asisten Kasir Cerdas" : "Asisten Bisnis Cerdas"}
-						</p>
+					<div className="flex items-center gap-2">
+						<div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10">
+							<Bot className="h-4 w-4 text-primary" />
+						</div>
+						<div>
+							<h1 className="text-sm font-semibold leading-tight">Yumi AI</h1>
+							<p className="text-[10px] text-muted-foreground leading-tight">
+								{isPOS ? "Asisten Kasir" : "Asisten Bisnis"}
+							</p>
+						</div>
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
+					{!isPOS && (
+						<div className="flex items-center gap-0.5 bg-muted/60 rounded-full p-0.5">
+							{TAB_ITEMS.map((item) => {
+								const Icon = item.icon;
+								return (
+									<button
+										key={item.id}
+										onClick={() => setActiveTab(item.id as TabType)}
+										className={cn(
+											"flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all",
+											activeTab === item.id
+												? "bg-background shadow-sm text-foreground"
+												: "text-muted-foreground hover:text-foreground"
+										)}
+										type="button"
+									>
+										<Icon className="h-3.5 w-3.5" />
+										<span className="hidden md:inline">{item.label}</span>
+									</button>
+								);
+							})}
+						</div>
+					)}
 					{isPOS && onClose && (
-						<Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={onClose}>
-							<X className="h-3.5 w-3.5" />
+						<Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={onClose} type="button">
+							<X className="h-4 w-4" />
 						</Button>
 					)}
 				</div>
 			</header>
 
-			{/* AI INSIGHTS PANEL */}
-			{!isPOS && (
-				<div className="border-t border-border/50 bg-muted/10 px-4 py-2.5 transition-all">
-					<div className="flex items-center justify-between mb-2">
-						<div className="flex items-center gap-1.5">
-							<Sparkles className="h-3.5 w-3.5 text-primary" strokeWidth={2.5} />
-							<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">AI Insights</span>
-						</div>
-						<button 
-							onClick={() => setIsInsightPanelExpanded(!isInsightPanelExpanded)}
-							className="flex items-center gap-1.5 rounded-full border-2 border-primary/20 px-3 py-1 hover:bg-primary/5 text-primary transition-all active:scale-95"
-							type="button"
-						>
-							<span className="text-[8px] font-bold uppercase tracking-widest">Detail</span>
-							{isInsightPanelExpanded ? <ChevronUp className="h-3 w-3" strokeWidth={3} /> : <ChevronDown className="h-3 w-3" strokeWidth={3} />}
-						</button>
-					</div>
-
-					<div className="grid grid-cols-2 gap-4">
-						{/* Chat Messages */}
-						<div className="space-y-1">
-							<div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-widest text-muted-foreground/80 mb-0.5">
-								<span>Percakapan</span>
-								<span>{messages.length}</span>
-							</div>
-							<div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
-								<div className="h-full bg-primary" style={{ width: `${Math.min(100, messages.length)}%` }} />
-							</div>
-							<AnimatePresence>
-								{isInsightPanelExpanded && (
-									<motion.p 
-										initial={{ opacity: 0, height: 0 }}
-										animate={{ opacity: 1, height: "auto" }}
-										exit={{ opacity: 0, height: 0 }}
-										className="text-[9px] font-bold text-muted-foreground/60 leading-none pt-1"
-									>
-										{messages.length} pesan
-									</motion.p>
-								)}
-							</AnimatePresence>
-						</div>
-
-						{/* Tasks Progress */}
-						<div className="space-y-1">
-							<div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-widest text-muted-foreground/80 mb-0.5">
-								<span>Tugas</span>
-								<span>{pendingTasks ? `${pendingTasks.length} pending` : "0"}</span>
-							</div>
-							<div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
-								<div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.2)]" style={{ width: `${Math.max(0, pendingTasks ? 100 - (pendingTasks.length * 10) : 100)}%` }} />
-							</div>
-							<AnimatePresence>
-								{isInsightPanelExpanded && (
-									<motion.p 
-										initial={{ opacity: 0, height: 0 }}
-										animate={{ opacity: 1, height: "auto" }}
-										exit={{ opacity: 0, height: 0 }}
-										className="text-[9px] font-bold text-muted-foreground/60 leading-none pt-1"
-									>
-										{pendingTasks ? `${pendingTasks.length} tugas pending` : "Semua tugas selesai"}
-									</motion.p>
-								)}
-							</AnimatePresence>
-						</div>
-					</div>
-				</div>
-			)}
-
-			{!isPOS && (
-					<nav className="flex border-b border-border/60 bg-background/95 backdrop-blur-md scrollbar-none overflow-x-auto whitespace-nowrap sticky top-[85px] z-30 shadow-sm">
-						{BOTTOM_NAV_ITEMS.map((item) => {
-							const Icon = item.icon;
-							return (
-								<button
-									key={item.id}
-									onClick={() => setActiveTab(item.id as TabType)}
-									className={`flex items-center gap-2 px-4 py-2.5 text-[10px] sm:text-xs font-bold uppercase tracking-widest transition-all relative shrink-0 ${
-										activeTab === item.id ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-									}`}
-								>
-									<Icon className="h-4 w-4" />
-									{item.label}
-									{activeTab === item.id && (
-										<motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary shadow-[0_-2px_8px_rgba(var(--primary),0.4)]" />
+			{/* Main Content */}
+			<main className="flex-1 overflow-hidden relative">
+				<AnimatePresence mode="wait">
+					<motion.div
+						key={activeTab}
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						transition={{ duration: 0.15 }}
+						className="h-full"
+					>
+						{activeTab === "chat" && (
+							<div className="flex flex-col h-full">
+								<div className="flex-1 overflow-y-auto scroll-smooth">
+									{messages.length === 0 ? (
+										<div className="h-full flex flex-col items-center justify-center px-4">
+											{!isLoading ? (
+												<>
+													<div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mb-4">
+														<Bot className="h-7 w-7 text-primary" />
+													</div>
+													<h3 className="text-lg font-semibold mb-1.5">Apa yang bisa saya bantu?</h3>
+													<p className="text-sm text-muted-foreground max-w-md mb-8 text-center">
+														{isPOS
+															? "Kasir siap membantu operasional toko Anda."
+															: "Tanya apa saja tentang stok, keuangan, prediksi, atau performa toko Anda."
+														}
+													</p>
+												<div className={`grid grid-cols-2 gap-2 w-full ${isPOS ? "max-w-xs" : "max-w-lg"}`}>
+														{isPOS ? (
+															<>
+																<button onClick={() => sendMessage("Catat pengeluaran")} className="rounded-xl border border-border/60 bg-background px-4 py-3 text-xs font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
+																	<span className="text-base">💰</span><p className="mt-1">Catat Pengeluaran</p>
+																</button>
+																<button onClick={() => sendMessage("Ringkas pesanan hari ini")} className="rounded-xl border border-border/60 bg-background px-4 py-3 text-xs font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
+																	<span className="text-base">📋</span><p className="mt-1">Ringkas Pesanan</p>
+																</button>
+																<button onClick={() => sendMessage("Berapa total pendapatan hari ini?")} className="rounded-xl border border-border/60 bg-background px-4 py-3 text-xs font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
+																	<span className="text-base">💵</span><p className="mt-1">Total Pendapatan</p>
+																</button>
+																<button onClick={() => sendMessage("Scan struk belanja")} className="rounded-xl border border-border/60 bg-background px-4 py-3 text-xs font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
+																	<span className="text-base">📸</span><p className="mt-1">Scan Struk</p>
+																</button>
+															</>
+														) : (
+															<>
+																<button onClick={() => sendMessage("Bagaimana performa toko hari ini?")} className="rounded-xl border border-border/60 bg-background px-4 py-3 text-xs font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
+																	<span className="text-base">📊</span><p className="mt-1">Performa Hari Ini</p>
+																</button>
+																<button onClick={() => sendMessage("Apa saja stok yang rendah?")} className="rounded-xl border border-border/60 bg-background px-4 py-3 text-xs font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
+																	<span className="text-base">⚠️</span><p className="mt-1">Cek Stok Rendah</p>
+																</button>
+																<button onClick={() => sendMessage("Buatkan laporan laba rugi bulan ini")} className="rounded-xl border border-border/60 bg-background px-4 py-3 text-xs font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
+																	<span className="text-base">📈</span><p className="mt-1">Laporan Laba Rugi</p>
+																</button>
+																<button onClick={() => sendMessage("Prediksi jam sibuk besok")} className="rounded-xl border border-border/60 bg-background px-4 py-3 text-xs font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
+																	<span className="text-base">🔮</span><p className="mt-1">Prediksi Jam Sibuk</p>
+																</button>
+															</>
+														)}
+													</div>
+												</>
+											) : (
+												<div className="flex gap-1.5">
+													<span className="h-2 w-2 bg-primary/40 animate-bounce rounded-full" />
+													<span className="h-2 w-2 bg-primary/40 animate-bounce [animation-delay:150ms] rounded-full" />
+													<span className="h-2 w-2 bg-primary/40 animate-bounce [animation-delay:300ms] rounded-full" />
+												</div>
+											)}
+										</div>
+									) : (
+										<div className="mx-auto max-w-3xl px-4 py-4">
+											{messages.map((msg, idx) => (
+												<MessageBubble 
+													key={msg._msgId || idx}
+													msg={msg}
+													index={idx}
+													isLast={idx === messages.length - 1}
+													isLoading={isLoading}
+													isStreaming={isStreaming}
+													streamingContent={streamingContent}
+													copiedIndex={copiedIndex}
+													actionButtonDone={actionButtonDone}
+													actionButtonLoading={actionButtonLoading}
+													onCopy={handleCopy}
+													onScanAction={handleScanAction}
+													onQuickAction={handleQuickAction}
+													onSendMessage={sendMessage}
+													onExport={handleExport}
+												/>
+											))}
+											<div ref={messagesEndRef} className="h-4" />
+										</div>
 									)}
-								</button>
-							);
-						})}
-					</nav>
-				)}
-
-				<main className="flex-1 overflow-hidden relative bg-muted/10">
-					<AnimatePresence mode="wait">
-						<motion.div
-							key={activeTab}
-							initial={{ opacity: 0, y: 15 }}
-							animate={{ opacity: 1, y: 0 }}
-							exit={{ opacity: 0, y: -15 }}
-							transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-							className="h-full"
-						>
-							{activeTab === "chat" && (
-								<div className="flex flex-col h-full">
-									<div className={`flex-1 overflow-y-auto ${isPOS ? "p-2" : "p-3 md:p-4"} space-y-2 custom-scrollbar scroll-smooth`}>
-										{messages.length === 0 && !isLoading && (
-											<div className={`h-full flex flex-col items-center justify-center text-center ${isPOS ? "p-3" : "p-8"} animate-in fade-in zoom-in duration-700`}>
-												<div className={`flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary/10 to-accent/10 mb-4 ring-1 ring-primary/20 shadow-lg`}>
-													<Bot className={`${isPOS ? "h-7 w-7" : "h-10 w-10"} text-primary animate-pulse`} />
-												</div>
-												<h3 className={`${isPOS ? "text-base" : "text-xl"} font-black text-foreground mb-2`}>Halo, Selamat Datang!</h3>
-												<p className="text-muted-foreground max-w-sm mb-6 text-xs sm:text-sm leading-relaxed">
-													{isPOS ? "Kasir siap membantu operasional toko Anda dengan cepat dan efisien." : "Saya adalah asisten bisnis cerdas Anda. Tanya apa saja tentang stok, keuangan, prediksi, atau performa toko Anda."}
-												</p>
-												<div className="flex flex-wrap gap-2 justify-center">
-													<button 
-														onClick={() => sendMessage("Bagaimana performa toko hari ini?")}
-														className="rounded-full bg-primary/10 text-primary px-4 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-widest border border-primary/20 hover:bg-primary/20 transition-all active:scale-95"
-														type="button"
-													>
-														Performa Hari Ini
-													</button>
-													<button 
-														onClick={() => sendMessage("Apa saja stok yang rendah?")}
-														className="rounded-full bg-amber-50 text-amber-600 px-4 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-widest border border-amber-100 hover:bg-amber-100 transition-all active:scale-95"
-														type="button"
-													>
-														Cek Stok Rendah
-													</button>
-												</div>
-											</div>
-										)}
-										{messages.map((msg, idx) => (
-											<MessageBubble 
-												key={msg._msgId || idx}
-												msg={msg}
-												index={idx}
-												isLast={idx === messages.length - 1}
-												isLoading={isLoading}
-												isStreaming={isStreaming}
-												streamingContent={streamingContent}
-												copiedIndex={copiedIndex}
-												actionButtonDone={actionButtonDone}
-												actionButtonLoading={actionButtonLoading}
-												onCopy={handleCopy}
-												onScanAction={handleScanAction}
-												onQuickAction={handleQuickAction}
-												onSendMessage={sendMessage}
-												onExport={handleExport}
-											/>
-										))}
-										<div ref={messagesEndRef} className="h-2" />
-									</div>
-
-									<div className={`p-3 sm:p-4 border-t border-border/50 bg-background/50 backdrop-blur-xl sticky bottom-0 z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]`}>
-										<ChatInput 
-											mode={mode}
-											input={input}
-											setInput={setInput}
-											isLoading={isLoading}
-											isScanning={isScanning}
-											isScanMode={isScanMode}
-											setIsScanMode={setIsScanMode}
-											selectedImages={selectedImages}
-											onRemoveImage={() => { setSelectedImages([]); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-											onFileSelect={handleFileSelect}
-											onSendMessage={sendMessage}
-											onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
-											toolCalls={toolCalls}
-											fileInputRef={fileInputRef}
-											inputRef={inputRef}
-											showTemplates={messages.length < 2}
-										/>
-									</div>
 								</div>
-							)}
-							{activeTab === "suggestions" && <SuggestionsPanel suggestions={proactiveSuggestions as any} onExecute={handleExecuteSuggestion} />}
-							{activeTab === "predictions" && <PredictionsPanel stockPredictions={stockPredictions} busyHours={busyHoursPrediction} revenue={revenuePrediction} trending={trendingProducts} promoTime={bestPromoTime} />}
-							{activeTab === "tasks" && <TasksPanel tasks={pendingTasks as any} onComplete={handleCompleteTask} onDismiss={handleDismissTask} />}
-						</motion.div>
-					</AnimatePresence>
-				</main>
 
-			{/* === BOTTOM NAVIGATION BAR (Fixed) === */}
-			{!isPOS && (
-				<div className="shrink-0 w-full border-t border-border bg-background/95 backdrop-blur-xl pb-safe-area shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-4 pt-3 sm:pt-4 fixed bottom-0 left-0 right-0 z-30">
-					<div className="flex items-center justify-around max-w-lg mx-auto sm:max-w-none gap-1 sm:gap-2">
-						{BOTTOM_NAV_ITEMS.map((item) => {
-							const Icon = item.icon;
-							const isActive = activeTab === item.id;
-							return (
-								<button
-									key={item.id}
-									onClick={() => setActiveTab(item.id as TabType)}
-									className={cn(
-										"flex flex-col items-center gap-1 min-w-[50px] transition-all",
-										isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
-									)}
-									type="button"
-								>
-									<div className={cn(
-										"flex h-8 w-8 items-center justify-center rounded-lg transition-all",
-										isActive ? "bg-primary/10" : "bg-transparent hover:bg-muted/50"
-									)}>
-										<Icon className="h-4.5 w-4.5" />
-									</div>
-									<span className="text-[8px] font-bold uppercase tracking-tight leading-none text-center block sm:hidden">
-										{item.label.split(' ')[0]}
-									</span>
-									<span className="text-[9px] font-bold uppercase tracking-tight leading-none text-center hidden sm:block">
-										{item.label}
-									</span>
-								</button>
-							);
-						})}
-					</div>
-				</div>
-			)}
+								<div className="shrink-0 bg-gradient-to-t from-background via-background/95 to-transparent pt-2 pb-3 px-3">
+									<ChatInput 
+										mode={mode}
+										input={input}
+										setInput={setInput}
+										isLoading={isLoading}
+										isScanning={isScanning}
+										isScanMode={isScanMode}
+										setIsScanMode={setIsScanMode}
+										selectedImages={selectedImages}
+										onRemoveImage={() => { setSelectedImages([]); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+										onFileSelect={handleFileSelect}
+										onSendMessage={sendMessage}
+										onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
+										toolCalls={toolCalls}
+										fileInputRef={fileInputRef}
+										inputRef={inputRef}
+										showTemplates={messages.length < 2}
+									/>
+								</div>
+							</div>
+						)}
+						{activeTab === "suggestions" && <SuggestionsPanel suggestions={proactiveSuggestions as any} onExecute={handleExecuteSuggestion} />}
+						{activeTab === "predictions" && <PredictionsPanel stockPredictions={stockPredictions} busyHours={busyHoursPrediction} revenue={revenuePrediction} trending={trendingProducts} promoTime={bestPromoTime} />}
+						{activeTab === "tasks" && <TasksPanel tasks={pendingTasks as any} onComplete={handleCompleteTask} onDismiss={handleDismissTask} />}
+					</motion.div>
+				</AnimatePresence>
+			</main>
 
-			{/* Modals & Overlays */}
 			<ImageScanner isOpen={isImageScannerOpen} onClose={() => setIsImageScannerOpen(false)} onDataGenerated={(type, data) => setMessages(prev => [...prev, { role: "assistant", content: `Berhasil membuat ${type} dengan data terstruktur.`, _msgId: mkMsgId() }])} />
 			{editModal && <ScanEditModal params={editModal.params} onSave={handleSaveFromEditModal} onSplit={p => splitModal === null && setSplitModal({ params: p, btnKey: editModal.btnKey })} onClose={() => setEditModal(null)} />}
 			{splitModal && <ScanSplitModal totalAmount={splitModal.params.amount} transactionType={splitModal.params.type} baseParams={splitModal.params} onSave={handleSaveFromSplitModal} onBack={() => setSplitModal(null)} onClose={() => { setSplitModal(null); setEditModal(null); }} />}
