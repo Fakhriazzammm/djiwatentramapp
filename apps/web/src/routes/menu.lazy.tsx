@@ -1044,6 +1044,18 @@ function MenuPage() {
 												</span>
 											)}
 
+											{/* Stock Badge Overlay */}
+											<span className={cn(
+												"absolute right-2 bottom-2 rounded px-1.5 py-0.5 font-bold text-[10px] shadow-sm transition-all",
+												(product.quantity ?? 0) <= 0 
+													? "bg-slate-500 text-white" 
+													: (product.quantity ?? 0) <= 2 
+														? "bg-rose-600 text-white animate-pulse" 
+														: "bg-blue-600 text-white"
+											)}>
+												{(product.quantity ?? 0) <= 0 ? "Habis" : `Stok: ${product.quantity}`}
+											</span>
+
 											{/* Keyboard focus indicator */}
 											{isFocused && (
 												<div className="absolute inset-0 border-2 border-primary rounded-t-2xl pointer-events-none" />

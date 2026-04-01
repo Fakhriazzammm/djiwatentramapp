@@ -18,6 +18,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { calculateEffectivePrice, isFreeRefillActive } from "@/lib/utils/pricing";
+import { cn } from "@/lib/utils";
 
 export const Route = createLazyFileRoute("/$brandSlug")({
 	component: CustomerMenuPage,
@@ -69,6 +70,7 @@ function ProductDetailSheet({
 		description?: string;
 		categoryId: string;
 		menuNumber?: number;
+		quantity?: number;
 		variations?: VariationGroup[];
 	} | null;
 	activeDiscounts: any[] | undefined;
@@ -153,6 +155,18 @@ function ProductDetailSheet({
 												#{product.menuNumber}
 											</span>
 										)}
+
+										{/* Stock Badge Overlay */}
+										<span className={cn(
+											"absolute right-2 bottom-2 rounded px-1.5 py-0.5 font-bold text-[10px] shadow-sm transition-all",
+											(product.quantity ?? 0) <= 0 
+												? "bg-slate-500 text-white" 
+												: (product.quantity ?? 0) <= 2 
+													? "bg-rose-600 text-white animate-pulse" 
+													: "bg-blue-600 text-white"
+										)}>
+											{(product.quantity ?? 0) <= 0 ? "Habis" : `Stok: ${product.quantity}`}
+										</span>
 									</div>
 
 									{/* Info */}
@@ -904,6 +918,18 @@ function CustomerMenuPage() {
 												#{product.menuNumber}
 											</span>
 										)}
+
+										{/* Stock Badge Overlay */}
+										<span className={cn(
+											"absolute right-2 bottom-2 rounded px-1.5 py-0.5 font-bold text-[10px] shadow-sm transition-all",
+											(product.quantity ?? 0) <= 0 
+												? "bg-slate-500 text-white" 
+												: (product.quantity ?? 0) <= 2 
+													? "bg-rose-600 text-white animate-pulse" 
+													: "bg-blue-600 text-white"
+										)}>
+											{(product.quantity ?? 0) <= 0 ? "Habis" : `Stok: ${product.quantity}`}
+										</span>
 									</div>
 
 									{/* Info */}
