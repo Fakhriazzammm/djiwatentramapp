@@ -124,6 +124,7 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 			setCurrentSessionId(sid);
 			setMessages([]);
 			setToolCalls([]);
+			briefingAttemptedRef.current = false;
 			return sid;
 		} catch (error) {
 			toast.error("Gagal membuat sesi baru");
@@ -208,6 +209,7 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 		if (!isDataLoaded) return;
 		
 		briefingAttemptedRef.current = true;
+		setIsLoading(true);
 		
 		try {
 			const lowStockItems = inventory?.filter((i: any) => i.quantity <= i.lowStockThreshold) || [];
@@ -242,6 +244,8 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 			}
 		} catch (error) {
 			console.error("Briefing error:", error);
+		} finally {
+			setIsLoading(false);
 		}
 	}, [generateBusinessBriefingAction, inventory, orders]);
 
@@ -250,7 +254,7 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 		if (activeTab === "chat" && messages.length === 0 && !isLoading && !isStreaming) {
 			const timer = setTimeout(() => {
 				runDailyBriefing();
-			}, 500); // Small delay to ensure other initializations are settled
+			}, 100); // Shorter delay for immediate response
 			return () => clearTimeout(timer);
 		}
 	}, [activeTab, messages.length, isLoading, isStreaming, runDailyBriefing]);
@@ -467,7 +471,7 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 	const isPOS = mode === "pos";
 
 	return (
-		<div className={`flex ${isPOS ? "h-full w-full" : "h-[calc(100vh-57px)]"} bg-background overflow-hidden relative font-sans text-foreground`}>
+		<div className={`flex ${isPOS ? "h-full w-full" : "h-[calc(100vh-57px)] pb-[72px] md:pb-0"} bg-background overflow-hidden relative font-sans text-foreground`}>
 			<AnimatePresence>
 				{showSessionHistory && !isPOS && (
 					<motion.div
