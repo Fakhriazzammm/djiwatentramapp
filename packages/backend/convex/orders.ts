@@ -13,6 +13,7 @@ export const createOrder = mutation({
 				quantity: v.number(),
 				price: v.number(),
 				originalPrice: v.optional(v.number()),
+				status: v.optional(v.union(v.literal("pending"), v.literal("preparing"), v.literal("ready"))),
 			})
 		),
 		totalAmount: v.number(),

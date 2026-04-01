@@ -68,6 +68,7 @@ function ProductDetailSheet({
 		image?: string;
 		description?: string;
 		categoryId: string;
+		menuNumber?: number;
 		variations?: VariationGroup[];
 	} | null;
 	activeDiscounts: any[] | undefined;
@@ -146,9 +147,15 @@ function ProductDetailSheet({
 				>
 					<X className="h-4 w-4" />
 				</button>
-			</div>
+										{/* Menu Number Overlay */}
+										{product.menuNumber != null && (
+											<span className="absolute left-2 bottom-2 rounded px-1.5 py-0.5 bg-black/60 backdrop-blur-sm font-bold text-[10px] text-white shadow-sm">
+												#{product.menuNumber}
+											</span>
+										)}
+									</div>
 
-			{/* Info */}
+									{/* Info */}
 			<div className="flex flex-col gap-3 p-4">
 				<div>
 					<h2 className="font-bold text-foreground text-xl">{product.name}</h2>
@@ -396,6 +403,33 @@ function CustomerMenuPage() {
 			: undefined,
 	});
 
+	// Derive active parent ID
+	const activeParentId = useMemo(() => {
+		if (!categories || !activeCategoryId) return null;
+		const activeCat = categories.find((c: any) => c._id === activeCategoryId);
+		if (activeCat) {
+			return activeCat.parentId ? activeCat.parentId : activeCat._id;
+		}
+		return null;
+	}, [categories, activeCategoryId]);
+
+	// Category lists for Point 2: Main tabs vs Local chips
+	const { categoryTabs, activeSubcategories, activeParentName } = useMemo(() => {
+		if (!categories) return { categoryTabs: [], activeSubcategories: [], activeParentName: "" };
+		
+		const parents = categories.filter((c: any) => !c.parentId);
+		
+		let subs: any[] = [];
+		let parentName = "";
+		if (activeParentId) {
+			subs = categories.filter((c: any) => c.parentId === activeParentId);
+			const parent = categories.find((c: any) => c._id === activeParentId);
+			if (parent) parentName = parent.name;
+		}
+
+		return { categoryTabs: parents, activeSubcategories: subs, activeParentName: parentName };
+	}, [categories, activeParentId]);
+
 	// Cart state
 	const [cart, setCart] = useState<CustomerCartItem[]>([]);
 
@@ -603,7 +637,7 @@ function CustomerMenuPage() {
 			currentDay: now.getDay(),
 			currentTimeVal: now.getHours() * 60 + now.getMinutes(),
 		};
-		const activeRefill = activeDiscounts.find((d) => isFreeRefillActive(d, context));
+		const activeRefill = activeDiscounts.find((d: any) => isFreeRefillActive(d, context));
 		if (activeRefill) {
 			freeRefillShownRef.current = true;
 			setFreeRefillPromo(activeRefill);
@@ -617,7 +651,7 @@ function CustomerMenuPage() {
 		const timer = setTimeout(() => {
 			const num = parseInt(menuSearch, 10);
 			if (isNaN(num) || num <= 0) return;
-			const found = allProducts.find((p) => p.menuNumber === num);
+			const found = allProducts.find((p: any) => p.menuNumber === num);
 			if (!found) {
 				setMenuSearchFeedback("Nomor menu tidak ditemukan");
 				setTimeout(() => setMenuSearchFeedback(""), 2000);
@@ -750,14 +784,14 @@ function CustomerMenuPage() {
 							setActiveNavTab("category");
 						}}
 						className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
-							activeCategoryId === null
+							activeParentId === null
 								? "bg-primary text-primary-foreground shadow-sm"
 								: "bg-muted/70 text-muted-foreground"
 						}`}
 					>
 						Semua
 						</button>
-						{categories?.map((cat) => (
+						{categoryTabs.map((cat: any) => { const isActive = activeParentId === cat._id; return (
 							<button
 							key={cat._id}
 							type="button"
@@ -766,14 +800,15 @@ function CustomerMenuPage() {
 								setActiveNavTab("category");
 							}}
 							className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
-								activeCategoryId === cat._id
+								isActive
 									? "bg-primary text-primary-foreground shadow-sm"
 									: "bg-muted/70 text-muted-foreground"
 							}`}
 							>
 								{cat.name}
-							</button>
-						))}
+								</button>
+							);
+						})}
 					</div>
 				</div>
 			</header>
@@ -784,7 +819,7 @@ function CustomerMenuPage() {
 					<div>
 						<p className="text-sm font-bold text-foreground">
 							{activeCategoryId
-								? categories?.find((cat) => cat._id === activeCategoryId)?.name ?? "Menu Pilihan"
+								? categories?.find((cat: any) => cat._id === activeCategoryId)?.name ?? "Menu Pilihan"
 								: "Menu Pilihan"}
 						</p>
 						<p className="text-xs text-muted-foreground">
@@ -817,7 +852,7 @@ function CustomerMenuPage() {
 					</div>
 				) : (
 					<div className="grid grid-cols-2 gap-3">
-						{products?.map((product) => {
+						{products?.map((product: any) => {
 							const pricing = calculateEffectivePrice(
 								{
 									_id: product._id,
@@ -837,7 +872,7 @@ function CustomerMenuPage() {
 									aria-label={`${product.name}, ${fmt(pricing.finalPrice)}`}
 								>
 									{/* Image */}
-									<div className="relative h-32 w-full bg-muted">
+									<div className="relative h-32 w-full bg-muted shrink-0">
 										{product.image ? (
 											<img
 												src={product.image}
@@ -863,31 +898,32 @@ function CustomerMenuPage() {
 												{cartQty}
 											</span>
 										)}
-									</div>
-
-									{/* Info */}
-									<div className="flex flex-1 flex-col justify-between p-2.5">
+										{/* Menu Number Overlay */}
 										{product.menuNumber != null && (
-											<span className="mb-1 inline-block rounded-md bg-muted px-1.5 py-0.5 font-bold text-[10px] text-muted-foreground leading-none">
+											<span className="absolute left-2 bottom-2 rounded px-1.5 py-0.5 bg-black/60 backdrop-blur-sm font-bold text-[10px] text-white shadow-sm">
 												#{product.menuNumber}
 											</span>
 										)}
-										<p className="line-clamp-2 font-semibold text-foreground text-[13px] leading-tight">
+									</div>
+
+									{/* Info */}
+									<div className="flex flex-1 flex-col justify-between p-2.5 pt-2">
+										<p className="line-clamp-2 font-bold text-foreground text-[13px] leading-tight">
 											{product.name}
 										</p>
-										<div className="mt-1.5 flex items-end justify-between gap-1">
-											<div>
-												{pricing.isPromo && (
-													<p className="text-muted-foreground text-xs line-through leading-none">
-														{fmt(pricing.originalPrice)}
-													</p>
-												)}
+										<div className="mt-1.5 flex items-center justify-between gap-1">
+											<div className="flex flex-1 flex-wrap items-center gap-1.5 z-[1]">
 												<p
-													className="font-bold text-[13px]"
+													className="font-black text-[13px] leading-none"
 													style={{ color: themeColor ?? "var(--color-primary)" }}
 												>
 													{fmt(pricing.finalPrice)}
 												</p>
+												{pricing.isPromo && (
+													<p className="text-muted-foreground/70 text-[9px] font-semibold line-through leading-none">
+														{fmt(pricing.originalPrice)}
+													</p>
+												)}
 											</div>
 											<div
 												className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white shadow-sm"

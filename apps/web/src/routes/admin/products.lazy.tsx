@@ -1247,7 +1247,8 @@ function SettingsTab({
 		editingId: Id<"categories"> | null;
 		name: string;
 		parentId?: Id<"categories"> | null;
-	}>({ isOpen: false, editingId: null, name: "", parentId: null });
+		track?: "kitchen" | "bar" | null;
+	}>({ isOpen: false, editingId: null, name: "", parentId: null, track: null });
 
 	const [variationModal, setVariationModal] = useState<{
 		isOpen: boolean;
@@ -1285,16 +1286,18 @@ function SettingsTab({
 					id: categoryModal.editingId,
 					name: categoryModal.name,
 					parentId: categoryModal.parentId || undefined,
+					track: categoryModal.track || undefined,
 				});
 				toast.success("Kategori diperbarui");
 			} else {
 				await createCategory({ 
 					name: categoryModal.name,
 					parentId: categoryModal.parentId || undefined,
+					track: categoryModal.track || undefined,
 				});
 				toast.success("Kategori ditambahkan");
 			}
-			setCategoryModal({ isOpen: false, editingId: null, name: "", parentId: null });
+			setCategoryModal({ isOpen: false, editingId: null, name: "", parentId: null, track: null });
 		} catch (_error) {
 			toast.error("Gagal menyimpan kategori");
 		}
@@ -1344,7 +1347,7 @@ function SettingsTab({
 					<button
 						className="rounded-lg bg-primary/10 px-3 py-1.5 font-bold text-primary text-xs hover:bg-primary/20"
 						onClick={() =>
-							setCategoryModal({ isOpen: true, editingId: null, name: "" })
+							setCategoryModal({ isOpen: true, editingId: null, name: "", track: null })
 						}
 						type="button"
 					>
@@ -1367,6 +1370,7 @@ function SettingsTab({
 												editingId: c._id,
 												name: c.name,
 												parentId: c.parentId,
+												track: c.track as any,
 											})
 										}
 										type="button"
@@ -1408,6 +1412,7 @@ function SettingsTab({
 															editingId: sub._id,
 															name: sub.name,
 															parentId: sub.parentId,
+															track: sub.track as any,
 														})
 													}
 													type="button"
@@ -1585,6 +1590,56 @@ function SettingsTab({
 											</option>
 										))}
 									</select>
+								</div>
+
+								<div className="space-y-2">
+									<label
+										className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
+										htmlFor="cat-track"
+									>
+										Track Order (Monitor)
+									</label>
+									<div className="flex gap-2">
+										<button
+											className={`flex-1 rounded-xl py-3 font-bold text-xs transition-all ${
+												categoryModal.track === "kitchen"
+													? "bg-primary text-primary-foreground shadow-sm"
+													: "bg-muted text-muted-foreground hover:bg-muted/80"
+											}`}
+											onClick={() =>
+												setCategoryModal({ ...categoryModal, track: "kitchen" })
+											}
+											type="button"
+										>
+											Kitchen
+										</button>
+										<button
+											className={`flex-1 rounded-xl py-3 font-bold text-xs transition-all ${
+												categoryModal.track === "bar"
+													? "bg-primary text-primary-foreground shadow-sm"
+													: "bg-muted text-muted-foreground hover:bg-muted/80"
+											}`}
+											onClick={() =>
+												setCategoryModal({ ...categoryModal, track: "bar" })
+											}
+											type="button"
+										>
+											Bar
+										</button>
+										<button
+											className={`flex-1 rounded-xl py-3 font-bold text-xs transition-all ${
+												!categoryModal.track
+													? "bg-primary text-primary-foreground shadow-sm"
+													: "bg-muted text-muted-foreground hover:bg-muted/80"
+											}`}
+											onClick={() =>
+												setCategoryModal({ ...categoryModal, track: null })
+											}
+											type="button"
+										>
+											None
+										</button>
+									</div>
 								</div>
 
 								<div className="flex gap-4">

@@ -7,6 +7,7 @@ export default defineSchema({
 		name: v.string(),
 		order: v.number(),
 		parentId: v.optional(v.id("categories")), // For Sub-Categories
+		track: v.optional(v.union(v.literal("kitchen"), v.literal("bar"))),
 	}),
 
 	// Products with variations and pricing
@@ -101,6 +102,7 @@ export default defineSchema({
 				quantity: v.number(),
 				price: v.number(),
 				originalPrice: v.optional(v.number()),
+				status: v.optional(v.union(v.literal("pending"), v.literal("preparing"), v.literal("ready"))),
 			})
 		),
 		totalAmount: v.number(),

@@ -10,8 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MenuRouteImport } from './routes/menu'
+import { Route as KitchenRouteImport } from './routes/kitchen'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BookingRouteImport } from './routes/booking'
+import { Route as BarRouteImport } from './routes/bar'
 import { Route as BrandSlugRouteImport } from './routes/$brandSlug'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -36,6 +38,11 @@ const MenuRoute = MenuRouteImport.update({
   path: '/menu',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/menu.lazy').then((d) => d.Route))
+const KitchenRoute = KitchenRouteImport.update({
+  id: '/kitchen',
+  path: '/kitchen',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/kitchen.lazy').then((d) => d.Route))
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -46,6 +53,11 @@ const BookingRoute = BookingRouteImport.update({
   path: '/booking',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/booking.lazy').then((d) => d.Route))
+const BarRoute = BarRouteImport.update({
+  id: '/bar',
+  path: '/bar',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/bar.lazy').then((d) => d.Route))
 const BrandSlugRoute = BrandSlugRouteImport.update({
   id: '/$brandSlug',
   path: '/$brandSlug',
@@ -155,8 +167,10 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/$brandSlug': typeof BrandSlugRoute
+  '/bar': typeof BarRoute
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
+  '/kitchen': typeof KitchenRoute
   '/menu': typeof MenuRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
@@ -177,8 +191,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$brandSlug': typeof BrandSlugRoute
+  '/bar': typeof BarRoute
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
+  '/kitchen': typeof KitchenRoute
   '/menu': typeof MenuRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/booking': typeof AdminBookingRoute
@@ -200,8 +216,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/$brandSlug': typeof BrandSlugRoute
+  '/bar': typeof BarRoute
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
+  '/kitchen': typeof KitchenRoute
   '/menu': typeof MenuRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
@@ -225,8 +243,10 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/$brandSlug'
+    | '/bar'
     | '/booking'
     | '/dashboard'
+    | '/kitchen'
     | '/menu'
     | '/admin/finance'
     | '/admin/ai-chat'
@@ -247,8 +267,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$brandSlug'
+    | '/bar'
     | '/booking'
     | '/dashboard'
+    | '/kitchen'
     | '/menu'
     | '/admin/ai-chat'
     | '/admin/booking'
@@ -269,8 +291,10 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/$brandSlug'
+    | '/bar'
     | '/booking'
     | '/dashboard'
+    | '/kitchen'
     | '/menu'
     | '/admin/finance'
     | '/admin/ai-chat'
@@ -293,8 +317,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   BrandSlugRoute: typeof BrandSlugRoute
+  BarRoute: typeof BarRoute
   BookingRoute: typeof BookingRoute
   DashboardRoute: typeof DashboardRoute
+  KitchenRoute: typeof KitchenRoute
   MenuRoute: typeof MenuRoute
 }
 
@@ -305,6 +331,13 @@ declare module '@tanstack/react-router' {
       path: '/menu'
       fullPath: '/menu'
       preLoaderRoute: typeof MenuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kitchen': {
+      id: '/kitchen'
+      path: '/kitchen'
+      fullPath: '/kitchen'
+      preLoaderRoute: typeof KitchenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -319,6 +352,13 @@ declare module '@tanstack/react-router' {
       path: '/booking'
       fullPath: '/booking'
       preLoaderRoute: typeof BookingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bar': {
+      id: '/bar'
+      path: '/bar'
+      fullPath: '/bar'
+      preLoaderRoute: typeof BarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$brandSlug': {
@@ -503,8 +543,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   BrandSlugRoute: BrandSlugRoute,
+  BarRoute: BarRoute,
   BookingRoute: BookingRoute,
   DashboardRoute: DashboardRoute,
+  KitchenRoute: KitchenRoute,
   MenuRoute: MenuRoute,
 }
 export const routeTree = rootRouteImport

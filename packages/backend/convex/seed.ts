@@ -5,11 +5,11 @@ export const seed = internalMutation({
 	handler: async (ctx) => {
 		// 1. Categories
 		const categories = [
-			{ name: "Promo Musiman", order: 0 },
-			{ name: "Kopi", order: 1 },
-			{ name: "Non-Kopi", order: 2 },
-			{ name: "Cemilan", order: 3 },
-			{ name: "Makanan Utama", order: 4 },
+			{ name: "Promo Musiman", order: 0, track: "kitchen" as const },
+			{ name: "Kopi", order: 1, track: "bar" as const },
+			{ name: "Non-Kopi", order: 2, track: "bar" as const },
+			{ name: "Cemilan", order: 3, track: "kitchen" as const },
+			{ name: "Makanan Utama", order: 4, track: "kitchen" as const },
 		];
 
 		const categoryIds = new Map();
@@ -20,6 +20,8 @@ export const seed = internalMutation({
 				.first();
 			if (existing) {
 				categoryIds.set(cat.name, existing._id);
+				// Update existing with track if missing
+				await ctx.db.patch(existing._id, { track: cat.track });
 			} else {
 				const id = await ctx.db.insert("categories", cat);
 				categoryIds.set(cat.name, id);

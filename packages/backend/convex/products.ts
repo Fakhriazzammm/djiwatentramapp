@@ -155,6 +155,7 @@ export const createCategory = mutation({
 		name: v.string(),
 		order: v.optional(v.number()),
 		parentId: v.optional(v.id("categories")),
+		track: v.optional(v.union(v.literal("kitchen"), v.literal("bar"))),
 	},
 	handler: async (ctx, args) => {
 		// Check if category already exists
@@ -180,6 +181,7 @@ export const createCategory = mutation({
 			name: args.name,
 			order,
 			parentId: args.parentId,
+			track: args.track,
 		});
 	},
 });
@@ -191,6 +193,7 @@ export const updateCategory = mutation({
 		name: v.optional(v.string()),
 		order: v.optional(v.number()),
 		parentId: v.optional(v.id("categories")),
+		track: v.optional(v.union(v.literal("kitchen"), v.literal("bar"))),
 	},
 	handler: async (ctx, args) => {
 		const { id, ...updates } = args;
