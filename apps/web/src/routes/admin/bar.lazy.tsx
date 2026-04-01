@@ -115,7 +115,7 @@ function BarMonitorPage() {
 							initial={{ opacity: 0, y: 10 }}
 							key="stock-tab"
 						>
-							<FastStockTable inventory={inventory} products={products} recipes={recipes} />
+							<FastStockTable categories={allCategories} inventory={inventory} products={products} recipes={recipes} />
 						</motion.div>
 					)}
 				</AnimatePresence>
@@ -333,11 +333,13 @@ function KanbanCard({
 function FastStockTable({ 
 	products, 
 	inventory, 
-	recipes 
+	recipes,
+	categories
 }: { 
 	products: any[] | undefined;
 	inventory: any[] | undefined;
 	recipes: any[] | undefined;
+	categories: any[] | undefined;
 }) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [editingId, setEditingId] = useState<string | null>(null);
@@ -373,6 +375,17 @@ function FastStockTable({
 	}
 
 	const filteredProducts = products.filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+	const groupedProducts = useMemo(() => {
+		const groups: Record<string, any[]> = {};
+		filteredProducts.forEach((product) => {
+			const category = categories?.find((c: any) => c._id === product.categoryId);
+			const categoryName = category?.name || "Uncategorized";
+			if (!groups[categoryName]) groups[categoryName] = [];
+			groups[categoryName].push(product);
+		});
+		return groups;
+	}, [filteredProducts, categories]);
 
 	const handleEdit = (product: any) => {
 		setEditingId(product._id);
@@ -434,177 +447,187 @@ function FastStockTable({
 				/>
 			</div>
 
-			<div className="space-y-3">
-				{filteredProducts.map((product) => {
-					const recipe = recipes?.find((r: any) => r.productId === product._id && !r.variantName);
-					
-					// Calculate potential portions based on inventory
-					let potentialStock: number | null = null;
-					if (recipe && inventory) {
-						const stockLimits = recipe.ingredients.map((ing: any) => {
-							const invItem = inventory.find((i: any) => i._id === ing.inventoryId);
-							if (!invItem) return 0;
-							return Math.floor(invItem.quantity / ing.amount);
-						});
-						potentialStock = Math.min(...stockLimits);
-					}
+			<div className="space-y-8">
+				{Object.entries(groupedProducts).map(([categoryName, items]) => (
+					<div className="space-y-3" key={categoryName}>
+						<div className="flex items-center gap-3 px-2">
+							<div className="h-px flex-1 bg-slate-200" />
+							<h3 className="font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">{categoryName}</h3>
+							<div className="h-px flex-1 bg-slate-200" />
+						</div>
+						
+						{items.map((product) => {
+							const recipe = recipes?.find((r: any) => r.productId === product._id && !r.variantName);
+							
+							// Calculate potential portions based on inventory
+							let potentialStock: number | null = null;
+							if (recipe && inventory) {
+								const stockLimits = recipe.ingredients.map((ing: any) => {
+									const invItem = inventory.find((i: any) => i._id === ing.inventoryId);
+									if (!invItem) return 0;
+									return Math.floor(invItem.quantity / ing.amount);
+								});
+								potentialStock = Math.min(...stockLimits);
+							}
 
-					return (
-						<motion.div 
-							className={`overflow-hidden rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm transition-all ${editingId === product._id ? "ring-2 ring-indigo-500/20" : ""}`} 
-							key={product._id}
-							layout
-						>
-							{editingId === product._id ? (
-								<div className="space-y-4">
-									<div className="flex items-center gap-3">
-										<input 
-											autoFocus
-											className="flex-1 rounded-xl bg-slate-50 p-3 font-bold text-slate-800 ring-1 ring-slate-200"
-											onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-											value={editForm.name}
-										/>
-									</div>
-									<div className="flex items-center gap-2">
-										<div className="flex-1">
-											<p className="mb-1 ml-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Harga</p>
-											<input 
-												className="w-full rounded-xl bg-slate-50 p-3 font-bold text-indigo-600 ring-1 ring-slate-200"
-												onChange={(e) => setEditForm({ ...editForm, price: Number(e.target.value) })}
-												type="number"
-												value={editForm.price}
-											/>
-										</div>
-										<div className="flex-1">
-											<p className="mb-1 ml-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Siap Saji</p>
-											<div className="flex items-center gap-1 rounded-xl bg-slate-50 p-1 ring-1 ring-slate-200">
-												<button 
-													className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-slate-600 shadow-sm"
-													onClick={() => setEditForm({ ...editForm, quantity: Math.max(0, editForm.quantity - 1) })}
-												>
-													<Minus className="h-4 w-4" />
-												</button>
+							return (
+								<motion.div 
+									className={`overflow-hidden rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm transition-all ${editingId === product._id ? "ring-2 ring-indigo-500/20" : ""}`} 
+									key={product._id}
+									layout
+								>
+									{editingId === product._id ? (
+										<div className="space-y-4">
+											<div className="flex items-center gap-3">
 												<input 
-													className="w-full bg-transparent text-center font-black text-slate-800 outline-none"
-													onChange={(e) => setEditForm({ ...editForm, quantity: Number(e.target.value) })}
-													type="number"
-													value={editForm.quantity}
+													autoFocus
+													className="flex-1 rounded-xl bg-slate-50 p-3 font-bold text-slate-800 ring-1 ring-slate-200"
+													onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+													value={editForm.name}
 												/>
-												<button 
-													className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-slate-600 shadow-sm"
-													onClick={() => setEditForm({ ...editForm, quantity: editForm.quantity + 1 })}
+											</div>
+											<div className="flex items-center gap-2">
+												<div className="flex-1">
+													<p className="mb-1 ml-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Harga</p>
+													<input 
+														className="w-full rounded-xl bg-slate-50 p-3 font-bold text-indigo-600 ring-1 ring-slate-200"
+														onChange={(e) => setEditForm({ ...editForm, price: Number(e.target.value) })}
+														type="number"
+														value={editForm.price}
+													/>
+												</div>
+												<div className="flex-1">
+													<p className="mb-1 ml-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Siap Saji</p>
+													<div className="flex items-center gap-1 rounded-xl bg-slate-50 p-1 ring-1 ring-slate-200">
+														<button 
+															className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-slate-600 shadow-sm"
+															onClick={() => setEditForm({ ...editForm, quantity: Math.max(0, editForm.quantity - 1) })}
+														>
+															<Minus className="h-4 w-4" />
+														</button>
+														<input 
+															className="w-full bg-transparent text-center font-black text-slate-800 outline-none"
+															onChange={(e) => setEditForm({ ...editForm, quantity: Number(e.target.value) })}
+															type="number"
+															value={editForm.quantity}
+														/>
+														<button 
+															className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-slate-600 shadow-sm"
+															onClick={() => setEditForm({ ...editForm, quantity: editForm.quantity + 1 })}
+														>
+															<Plus className="h-4 w-4" />
+														</button>
+													</div>
+												</div>
+											</div>
+											<div className="flex gap-2 pt-2">
+												<button
+													className="flex-1 rounded-2xl bg-indigo-600 py-3 font-black text-xs text-white shadow-xl transition-all active:scale-95"
+													onClick={() => handleSave(product._id)}
 												>
-													<Plus className="h-4 w-4" />
+													SIMPAN
+												</button>
+												<button
+													className="rounded-2xl bg-slate-100 px-6 py-3 font-black text-xs text-slate-400"
+													onClick={() => setEditingId(null)}
+												>
+													BATAL
 												</button>
 											</div>
 										</div>
-									</div>
-									<div className="flex gap-2 pt-2">
-										<button
-											className="flex-1 rounded-2xl bg-indigo-600 py-3 font-black text-xs text-white shadow-xl transition-all active:scale-95"
-											onClick={() => handleSave(product._id)}
-										>
-											SIMPAN
-										</button>
-										<button
-											className="rounded-2xl bg-slate-100 px-6 py-3 font-black text-xs text-slate-400"
-											onClick={() => setEditingId(null)}
-										>
-											BATAL
-										</button>
-									</div>
-								</div>
-							) : (
-								<div className="flex flex-col gap-4">
-									<div className="flex items-center justify-between">
-										<div className="flex items-center gap-3">
-											<div className="h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-slate-100">
-												{product.image ? (
-													<img alt={product.name} className="h-full w-full object-cover" src={product.image} />
-												) : (
-													<div className="flex h-full w-full items-center justify-center bg-slate-100 text-slate-400">
-														<Utensils className="h-5 w-5" />
-													</div>
-												)}
-											</div>
-											<div>
-												<h4 className="font-bold text-slate-800 leading-tight">{product.name}</h4>
-												<div className="mt-1 flex items-center gap-2 font-bold text-[10px] uppercase tracking-widest">
-													<span className="text-indigo-600">Rp {product.price.toLocaleString()}</span>
-													<span className="text-slate-300">•</span>
-													<div className="flex items-center gap-1.5">
-														<span className={product.quantity <= 0 ? "text-red-500" : "text-green-600"}>Ready: {product.quantity}</span>
-														<div className="flex items-center gap-1 ml-1">
-															<button 
-																className="flex h-5 w-5 items-center justify-center rounded bg-slate-100 text-slate-500 shadow-sm active:scale-90"
-																onClick={() => updateProduct({ id: product._id, quantity: Math.max(0, (product.quantity || 0) - 1) })}
-															>
-																<Minus className="h-3 w-3" />
-															</button>
-															<button 
-																className="flex h-5 w-5 items-center justify-center rounded bg-indigo-600 text-white shadow-sm active:scale-90"
-																onClick={() => updateProduct({ id: product._id, quantity: (product.quantity || 0) + 1 })}
-															>
-																<Plus className="h-3 w-3" />
-															</button>
-														</div>
-													</div>
-												</div>
-											</div>
-										</div>
-										
-										<div className="flex items-center gap-2">
-											<button
-												className={`flex h-10 items-center gap-1 rounded-xl px-3 font-black text-[10px] uppercase tracking-wider transition-all active:scale-95 ${
-													product.isAvailable 
-														? "bg-green-50 text-green-600 ring-1 ring-green-100" 
-														: "bg-red-50 text-red-600 ring-1 ring-red-100"
-												}`}
-												onClick={() => handleToggleAvailability(product)}
-											>
-												{product.isAvailable ? "AKTIF" : "OFF"}
-											</button>
-											<button
-												className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400 ring-1 ring-slate-100 transition-all active:scale-95"
-												onClick={() => handleEdit(product)}
-											>
-												<RotateCcw className="h-4 w-4" />
-											</button>
-										</div>
-									</div>
-
-									{/* Inventory Integration Section */}
-									{recipe && (
-										<div className="flex flex-col gap-2 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-100">
+									) : (
+										<div className="flex flex-col gap-4">
 											<div className="flex items-center justify-between">
-												<span className="font-black text-[9px] text-slate-400 uppercase tracking-widest">Ketersediaan Bahan (Inventory)</span>
-												<div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black ${potentialStock === 0 ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
-													POTENSI: {potentialStock} PORSI
+												<div className="flex items-center gap-3">
+													<div className="h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-slate-100">
+														{product.image ? (
+															<img alt={product.name} className="h-full w-full object-cover" src={product.image} />
+														) : (
+															<div className="flex h-full w-full items-center justify-center bg-slate-100 text-slate-400">
+																<Utensils className="h-5 w-5" />
+															</div>
+														)}
+													</div>
+													<div>
+														<h4 className="font-bold text-slate-800 leading-tight">{product.name}</h4>
+														<div className="mt-1 flex items-center gap-2 font-bold text-[10px] uppercase tracking-widest">
+															<span className="text-indigo-600">Rp {product.price.toLocaleString()}</span>
+															<span className="text-slate-300">•</span>
+															<div className="flex items-center gap-1.5">
+																<span className={product.quantity <= 0 ? "text-red-500" : "text-green-600"}>Ready: {product.quantity}</span>
+																<div className="flex items-center gap-1 ml-1">
+																	<button 
+																		className="flex h-5 w-5 items-center justify-center rounded bg-slate-100 text-slate-500 shadow-sm active:scale-90"
+																		onClick={() => updateProduct({ id: product._id, quantity: Math.max(0, (product.quantity || 0) - 1) })}
+																	>
+																		<Minus className="h-3 w-3" />
+																	</button>
+																	<button 
+																		className="flex h-5 w-5 items-center justify-center rounded bg-indigo-600 text-white shadow-sm active:scale-90"
+																		onClick={() => updateProduct({ id: product._id, quantity: (product.quantity || 0) + 1 })}
+																	>
+																		<Plus className="h-3 w-3" />
+																	</button>
+																</div>
+															</div>
+														</div>
+													</div>
+												</div>
+												
+												<div className="flex items-center gap-2">
+													<button
+														className={`flex h-10 items-center gap-1 rounded-xl px-3 font-black text-[10px] uppercase tracking-wider transition-all active:scale-95 ${
+															product.isAvailable 
+																? "bg-green-50 text-green-600 ring-1 ring-green-100" 
+																: "bg-red-50 text-red-600 ring-1 ring-red-100"
+														}`}
+														onClick={() => handleToggleAvailability(product)}
+													>
+														{product.isAvailable ? "AKTIF" : "OFF"}
+													</button>
+													<button
+														className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400 ring-1 ring-slate-100 transition-all active:scale-95"
+														onClick={() => handleEdit(product)}
+													>
+														<RotateCcw className="h-4 w-4" />
+													</button>
 												</div>
 											</div>
-											<div className="flex flex-wrap gap-1.5 mt-1">
-												{recipe.ingredients.map((ing: any) => {
-													const invItem = inventory?.find((i: any) => i._id === ing.inventoryId);
-													const isLow = invItem ? invItem.quantity < (invItem.lowStockThreshold || 10) : true;
-													return (
-														<div 
-															className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-bold ${isLow ? "bg-red-50 text-red-600 ring-1 ring-red-100" : "bg-white text-slate-600 ring-1 ring-slate-100"}`} 
-															key={ing.inventoryId}
-														>
-															{invItem?.ingredientName || "Unknown"}
-															<span className="opacity-50">•</span>
-															{invItem ? `${invItem.quantity} ${invItem.unit}` : "Kosong"}
+
+											{/* Inventory Integration Section */}
+											{recipe && (
+												<div className="flex flex-col gap-2 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-100">
+													<div className="flex items-center justify-between">
+														<span className="font-black text-[9px] text-slate-400 uppercase tracking-widest">Ketersediaan Bahan (Inventory)</span>
+														<div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black ${potentialStock === 0 ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
+															POTENSI: {potentialStock} PORSI
 														</div>
-													);
-												})}
-											</div>
+													</div>
+													<div className="flex flex-wrap gap-1.5 mt-1">
+														{recipe.ingredients.map((ing: any) => {
+															const invItem = inventory?.find((i: any) => i._id === ing.inventoryId);
+															const isLow = invItem ? invItem.quantity < (invItem.lowStockThreshold || 10) : true;
+															return (
+																<div 
+																	className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-bold ${isLow ? "bg-red-50 text-red-600 ring-1 ring-red-100" : "bg-white text-slate-600 ring-1 ring-slate-100"}`} 
+																	key={ing.inventoryId}
+																>
+																	{invItem?.ingredientName || "Unknown"}
+																	<span className="opacity-50">•</span>
+																	{invItem ? `${invItem.quantity} ${invItem.unit}` : "Kosong"}
+																</div>
+															);
+														})}
+													</div>
+												</div>
+											)}
 										</div>
 									)}
-								</div>
-							)}
-						</motion.div>
-					);
-				})}
+								</motion.div>
+							);
+						})}
+					</div>
+				))}
 			</div>
 		</div>
 	);
