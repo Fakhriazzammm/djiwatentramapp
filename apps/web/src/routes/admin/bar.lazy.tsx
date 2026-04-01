@@ -348,6 +348,23 @@ function FastStockTable({
 	const updateProduct = useMutation(api.products.updateProduct);
 	const deleteProduct = useMutation(api.products.deleteProduct);
 
+	const filteredProducts = useMemo(() => {
+		if (!products) return [];
+		return products.filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+	}, [products, searchQuery]);
+
+	const groupedProducts = useMemo(() => {
+		if (!products) return {};
+		const groups: Record<string, any[]> = {};
+		filteredProducts.forEach((product) => {
+			const category = categories?.find((c: any) => c._id === product.categoryId);
+			const categoryName = category?.name || "Uncategorized";
+			if (!groups[categoryName]) groups[categoryName] = [];
+			groups[categoryName].push(product);
+		});
+		return groups;
+	}, [filteredProducts, categories, products]);
+
 	if (!products) {
 		return <div className="space-y-4">{Array.from({ length: 5 }).map((_, i) => <div className="h-16 animate-pulse rounded-2xl bg-slate-100" key={i} />)}</div>;
 	}
@@ -373,19 +390,6 @@ function FastStockTable({
 			</div>
 		);
 	}
-
-	const filteredProducts = products.filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
-
-	const groupedProducts = useMemo(() => {
-		const groups: Record<string, any[]> = {};
-		filteredProducts.forEach((product) => {
-			const category = categories?.find((c: any) => c._id === product.categoryId);
-			const categoryName = category?.name || "Uncategorized";
-			if (!groups[categoryName]) groups[categoryName] = [];
-			groups[categoryName].push(product);
-		});
-		return groups;
-	}, [filteredProducts, categories]);
 
 	const handleEdit = (product: any) => {
 		setEditingId(product._id);
