@@ -691,7 +691,7 @@ function MenuPage() {
 
 				{/* Shift & Printer Status Header */}
 				<div className="border-b border-border bg-muted/30 px-3 py-1 shadow-sm z-40 shrink-0 overflow-hidden">
-					<div className="flex flex-nowrap items-center justify-between gap-2.5 text-[8px] font-black uppercase tracking-tight text-muted-foreground/80 sm:text-[9px] overflow-x-auto scrollbar-none">
+					<div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-2.5 text-[8px] font-black uppercase tracking-tight text-muted-foreground/80 sm:text-[9px]">
 						<div className="flex flex-nowrap items-center gap-2.5 shrink-0">
 							<div className="flex items-center gap-1 grayscale opacity-60">
 								<Coffee className="h-2.5 w-2.5" />
@@ -735,82 +735,6 @@ function MenuPage() {
 						"sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm shrink-0"
 					)}
 				>
-					{/* TARGET PERFORMANCE PANEL (Above Logo) */}
-					{progress && progress.hasTarget && (
-						<div className="border-b border-border/50 bg-muted/20 px-4 py-1.5 transition-all">
-							<div className="flex items-center justify-between mb-1">
-								<div className="flex items-center gap-1.5">
-									<TrendingUp className="h-3 w-3 text-primary" />
-									<span className="text-[10px] font-black uppercase tracking-tight text-foreground/70">Target Performance</span>
-								</div>
-								<button 
-									onClick={() => setIsTargetExpanded(!isTargetExpanded)}
-									className="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-muted text-primary transition-all active:scale-95"
-									type="button"
-								>
-									<span className="text-[9px] font-bold uppercase tracking-tight">Detail</span>
-									{isTargetExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-								</button>
-							</div>
-
-							<div className="grid grid-cols-2 gap-4">
-								{/* Shift Progress */}
-								<div className="space-y-1">
-									<div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-tighter text-muted-foreground/80">
-										<span>Shift</span>
-										<span>{Math.round((progress.shiftCollected / (progress.shiftTarget || 1)) * 100)}%</span>
-									</div>
-									<div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
-										<motion.div 
-											className="h-full bg-primary"
-											initial={{ width: 0 }}
-											animate={{ width: `${Math.min(100, (progress.shiftCollected / (progress.shiftTarget || 1)) * 100)}%` }}
-										/>
-									</div>
-									<AnimatePresence>
-										{isTargetExpanded && (
-											<motion.p 
-												initial={{ opacity: 0, height: 0 }}
-												animate={{ opacity: 1, height: "auto" }}
-												exit={{ opacity: 0, height: 0 }}
-												className="text-[8px] font-bold text-muted-foreground/60 leading-none pt-0.5"
-											>
-												{fmt(progress.shiftCollected)} / {fmt(progress.shiftTarget)}
-											</motion.p>
-										)}
-									</AnimatePresence>
-								</div>
-
-								{/* Daily Progress */}
-								<div className="space-y-1">
-									<div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-tighter text-muted-foreground/80">
-										<span>Harian</span>
-										<span>{Math.round((progress.dailyCollected / (progress.dailyTarget || 1)) * 100)}%</span>
-									</div>
-									<div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
-										<motion.div 
-											className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.2)]"
-											initial={{ width: 0 }}
-											animate={{ width: `${Math.min(100, (progress.dailyCollected / (progress.dailyTarget || 1)) * 100)}%` }}
-										/>
-									</div>
-									<AnimatePresence>
-										{isTargetExpanded && (
-											<motion.p 
-												initial={{ opacity: 0, height: 0 }}
-												animate={{ opacity: 1, height: "auto" }}
-												exit={{ opacity: 0, height: 0 }}
-												className="text-[8px] font-bold text-muted-foreground/60 leading-none pt-0.5"
-											>
-												{fmt(progress.dailyCollected)} / {fmt(progress.dailyTarget)}
-											</motion.p>
-										)}
-									</AnimatePresence>
-								</div>
-							</div>
-						</div>
-					)}
-
 					<div className="flex flex-col px-4 py-2 gap-1.5">
 						{/* ROW 1: Logo & Store name */}
 						<div 
@@ -854,6 +778,82 @@ function MenuPage() {
 							)}
 						</div>
 					</div>
+
+					{/* TARGET PERFORMANCE PANEL (Below Logo) */}
+					{progress && progress.hasTarget && (
+						<div className="border-t border-border/50 bg-muted/10 px-4 py-2.5 transition-all">
+							<div className="flex items-center justify-between mb-2">
+								<div className="flex items-center gap-1.5">
+									<TrendingUp className="h-3.5 w-3.5 text-primary" strokeWidth={2.5} />
+									<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">Target Performance</span>
+								</div>
+								<button 
+									onClick={() => setIsTargetExpanded(!isTargetExpanded)}
+									className="flex items-center gap-1.5 rounded-full border-2 border-primary/20 px-3 py-1 hover:bg-primary/5 text-primary transition-all active:scale-95"
+									type="button"
+								>
+									<span className="text-[8px] font-bold uppercase tracking-widest">Detail</span>
+									{isTargetExpanded ? <ChevronUp className="h-3 w-3" strokeWidth={3} /> : <ChevronDown className="h-3 w-3" strokeWidth={3} />}
+								</button>
+							</div>
+
+							<div className="grid grid-cols-2 gap-4">
+								{/* Shift Progress */}
+								<div className="space-y-1">
+									<div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-widest text-muted-foreground/80 mb-0.5">
+										<span>Shift</span>
+										<span>{Math.round((progress.shiftCollected / (progress.shiftTarget || 1)) * 100)}%</span>
+									</div>
+									<div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
+										<motion.div 
+											className="h-full bg-primary"
+											initial={{ width: 0 }}
+											animate={{ width: `${Math.min(100, (progress.shiftCollected / (progress.shiftTarget || 1)) * 100)}%` }}
+										/>
+									</div>
+									<AnimatePresence>
+										{isTargetExpanded && (
+											<motion.p 
+												initial={{ opacity: 0, height: 0 }}
+												animate={{ opacity: 1, height: "auto" }}
+												exit={{ opacity: 0, height: 0 }}
+												className="text-[9px] font-bold text-muted-foreground/60 leading-none pt-1"
+											>
+												{fmt(progress.shiftCollected)} / {fmt(progress.shiftTarget)}
+											</motion.p>
+										)}
+									</AnimatePresence>
+								</div>
+
+								{/* Daily Progress */}
+								<div className="space-y-1">
+									<div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-widest text-muted-foreground/80 mb-0.5">
+										<span>Harian</span>
+										<span>{Math.round((progress.dailyCollected / (progress.dailyTarget || 1)) * 100)}%</span>
+									</div>
+									<div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
+										<motion.div 
+											className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.2)]"
+											initial={{ width: 0 }}
+											animate={{ width: `${Math.min(100, (progress.dailyCollected / (progress.dailyTarget || 1)) * 100)}%` }}
+										/>
+									</div>
+									<AnimatePresence>
+										{isTargetExpanded && (
+											<motion.p 
+												initial={{ opacity: 0, height: 0 }}
+												animate={{ opacity: 1, height: "auto" }}
+												exit={{ opacity: 0, height: 0 }}
+												className="text-[9px] font-bold text-muted-foreground/60 leading-none pt-1"
+											>
+												{fmt(progress.dailyCollected)} / {fmt(progress.dailyTarget)}
+											</motion.p>
+										)}
+									</AnimatePresence>
+								</div>
+							</div>
+						</div>
+					)}
 				</header>
 
 				{/* Hidden MenuSidebar for control */}
