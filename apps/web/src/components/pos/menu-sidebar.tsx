@@ -396,42 +396,62 @@ export function MenuSidebar({
 						</div>
 
 						{/* Content Area - Full height */}
-						<div className="flex-1 overflow-y-auto p-4 bg-background">
+						<div className="flex-1 flex flex-col bg-background overflow-hidden relative">
 							{activeTab === "dashboard" && (
-								<DashboardTab
-									onClose={() => setIsOpen(false)}
-									onNavigate={setActiveTab}
-									onSelectOrder={setSelectedOrder}
-									onParkOrder={() => setIsParkDialogOpen(true)}
-									todayTransactions={todayTransactions}
-									categoriesList={categories}
-								/>
+								<ScrollArea className="flex-1">
+									<div className="p-4">
+										<DashboardTab
+											onClose={() => setIsOpen(false)}
+											onNavigate={setActiveTab}
+											onSelectOrder={setSelectedOrder}
+											onParkOrder={() => setIsParkDialogOpen(true)}
+											todayTransactions={todayTransactions}
+											categoriesList={categories}
+										/>
+									</div>
+								</ScrollArea>
 							)}
 							{activeTab === "parkir" && (
-								<ParkirTab
-									onClose={() => setIsOpen(false)}
-									onRestore={handleRestoreOrder}
-									onPrint={handlePrintOrder}
-								/>
+								<ScrollArea className="flex-1">
+									<div className="p-4">
+										<ParkirTab
+											onClose={() => setIsOpen(false)}
+											onRestore={handleRestoreOrder}
+											onPrint={handlePrintOrder}
+										/>
+									</div>
+								</ScrollArea>
 							)}
 							{activeTab === "history" && (
-								<HistoryTab
-									onSelectOrder={setSelectedOrder}
-								/>
+								<ScrollArea className="flex-1">
+									<div className="p-4">
+										<HistoryTab
+											onSelectOrder={setSelectedOrder}
+										/>
+									</div>
+								</ScrollArea>
 							)}
 							{activeTab === "kas" && (
-								<KasTab onClose={() => setIsOpen(false)} />
+								<ScrollArea className="flex-1">
+									<div className="p-4">
+										<KasTab onClose={() => setIsOpen(false)} />
+									</div>
+								</ScrollArea>
 							)}
 							{activeTab === "stok" && (
 								<StokTab setConfirmConfig={setConfirmConfig} />
 							)}
 							{activeTab === "yumi" && (
-								<div className="-mx-4 -mt-4 h-[calc(100%+2rem)]">
+								<div className="h-full">
 									<YumiAIChat />
 								</div>
 							)}
 							{activeTab === "settings" && (
-								<SettingsTab onClose={() => setIsOpen(false)} />
+								<ScrollArea className="flex-1">
+									<div className="p-4">
+										<SettingsTab onClose={() => setIsOpen(false)} />
+									</div>
+								</ScrollArea>
 							)}
 						</div>
 					</div>
@@ -2497,8 +2517,8 @@ function StokTab({
 	];
 
 	return (
-		<div className="space-y-4">
-			<div className="flex gap-1 rounded-lg bg-muted/50 p-1">
+		<div className="flex-1 flex flex-col gap-4 p-4 overflow-hidden min-h-0">
+			<div className="flex shrink-0 gap-1 rounded-lg bg-muted/50 p-1">
 				{subTabs.map((tab) => {
 					const Icon = tab.icon;
 					return (
@@ -2621,14 +2641,14 @@ function InventoryTab({
 	}
 
 	return (
-		<div className="space-y-3">
-			<div className="flex items-center justify-between">
+		<div className="flex-1 flex flex-col gap-3 min-h-0">
+			<div className="flex items-center justify-between shrink-0">
 				<h3 className="font-bold text-sm">Update Stok</h3>
 				<span className="text-[10px] text-muted-foreground">
 					{inventory.length} item
 				</span>
 			</div>
-			<ScrollArea className="h-[52vh] pr-2">
+			<ScrollArea className="flex-1 pr-2">
 				<div className="space-y-2">
 					{inventory.map((item: Doc<"inventory">) => {
 						const isEditing = editingId === item._id;
@@ -2830,8 +2850,8 @@ function MarketList() {
 	}
 
 	return (
-		<div className="space-y-3">
-			<div className="flex items-center justify-between">
+		<div className="flex-1 flex flex-col gap-3 min-h-0">
+			<div className="flex items-center justify-between shrink-0">
 				<h3 className="font-bold text-sm">Daftar Belanja</h3>
 				<span className="rounded-full bg-destructive/10 px-2 py-0.5 font-medium text-[10px] text-destructive">
 					{lowStockItems.length} item perlu dibeli
@@ -2839,13 +2859,13 @@ function MarketList() {
 			</div>
 
 			{lowStockItems.length === 0 ? (
-				<div className="rounded-lg border border-dashed py-10 text-center text-muted-foreground">
+				<div className="shrink-0 rounded-lg border border-dashed py-10 text-center text-muted-foreground">
 					<Package className="mx-auto mb-2 h-10 w-10 opacity-20" />
 					<p className="font-medium">Stok aman semua!</p>
 					<p className="text-xs">Tidak ada item yang perlu dibeli</p>
 				</div>
 			) : (
-				<ScrollArea className="h-[52vh] pr-2">
+				<ScrollArea className="flex-1 pr-2">
 					<div className="space-y-2">
 						{lowStockItems.map((item: Doc<"inventory">) => (
 							<Card
