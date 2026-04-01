@@ -1009,7 +1009,7 @@ function MenuPage() {
 										)}
 									>
 										{/* Image */}
-										<div className="relative h-36 w-full bg-muted">
+										<div className="relative h-32 w-full bg-muted shrink-0">
 											{product.image ? (
 												<img
 													src={product.image}
@@ -1037,6 +1037,13 @@ function MenuPage() {
 												</span>
 											)}
 
+											{/* Menu Number Overlay */}
+											{product.menuNumber != null && (
+												<span className="absolute left-2 bottom-2 rounded px-1.5 py-0.5 bg-black/60 backdrop-blur-sm font-bold text-[10px] text-white shadow-sm">
+													#{product.menuNumber}
+												</span>
+											)}
+
 											{/* Keyboard focus indicator */}
 											{isFocused && (
 												<div className="absolute inset-0 border-2 border-primary rounded-t-2xl pointer-events-none" />
@@ -1044,29 +1051,22 @@ function MenuPage() {
 										</div>
 
 										{/* Info */}
-										<div className="flex flex-1 flex-col justify-between p-2.5">
-											{product.menuNumber != null && (
-												<span className="mb-1 inline-block rounded-md bg-muted px-1.5 py-0.5 font-bold text-[10px] text-muted-foreground leading-none">
-													#{product.menuNumber}
-												</span>
-											)}
-											<p className="line-clamp-2 font-semibold text-foreground text-sm leading-tight">
+										<div className="flex flex-1 flex-col justify-between p-2.5 pt-2">
+											<p className="line-clamp-2 font-bold text-foreground text-[13px] leading-tight">
 												{product.name}
 											</p>
-											<div className="mt-1.5 flex items-end justify-between gap-1">
-												<div>
-													{pricing.isPromo && (
-														<p className="text-muted-foreground text-xs line-through leading-none">
-															{fmt(pricing.originalPrice)}
-														</p>
-													)}
-													<p
-														className="font-bold text-sm"
-														style={{ color: themeColor ?? "var(--color-primary)" }}
-													>
-														{fmt(pricing.finalPrice)}
+											<div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+												<p
+													className="font-black text-sm leading-none"
+													style={{ color: themeColor ?? "var(--color-primary)" }}
+												>
+													{fmt(pricing.finalPrice)}
+												</p>
+												{pricing.isPromo && (
+													<p className="text-muted-foreground/70 text-[10px] font-semibold line-through leading-none">
+														{fmt(pricing.originalPrice)}
 													</p>
-												</div>
+												)}
 											</div>
 										</div>
 									</button>
