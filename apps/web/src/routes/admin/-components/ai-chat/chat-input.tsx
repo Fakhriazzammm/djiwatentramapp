@@ -1,5 +1,6 @@
-import React from "react";
-import { Send, ScanLine, Camera, Trash2, Loader2, Sparkles, AlertTriangle, Lightbulb, Settings, TrendingUp, Wallet, Target, Shield } from "lucide-react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Send, ScanLine, Camera, Trash2, Loader2, Sparkles, AlertTriangle, Lightbulb, Settings, TrendingUp, Wallet, Target, Shield, Mic, MicOff } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import type { ToolCall, ChatMode } from "./types";
 import { TOOL_LABELS, CASIER_TEMPLATES } from "./utils";
@@ -33,6 +34,10 @@ const ADMIN_TEMPLATES = [
 	{ label: "Hitung HPP", message: "Tampilkan ringkasan kalkulasi HPP semua produk", icon: <Target className="h-3.5 w-3.5" /> },
 ];
 
+const SpeechRecognition = (typeof window !== "undefined")
+	? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) as any
+	: null;
+
 export const ChatInput = ({
 	mode,
 	input,
@@ -52,6 +57,48 @@ export const ChatInput = ({
 	showTemplates
 }: ChatInputProps) => {
 	const templates = mode === "admin" ? ADMIN_TEMPLATES : CASIER_TEMPLATES;
+	const [isListening, setIsListening] = useState(false);
+	const [speechSupported, setSpeechSupported] = useState(false);
+	const recognitionRef = useRef<any>(null);
+
+	useEffect(() => {
+		setSpeechSupported(!!SpeechRecognition);
+	}, []);
+
+	const startListening = useCallback(() => {
+		if (!SpeechRecognition || isListening) return;
+		const recognition = new SpeechRecognition();
+		recognition.lang = "id-ID";
+		recognition.continuous = false;
+		recognition.interimResults = true;
+
+		recognition.onresult = (event: any) => {
+			let transcript = "";
+			for (let i = event.resultIndex; i < event.results.length; i++) {
+				transcript += event.results[i][0].transcript;
+			}
+			setInput(transcript);
+		};
+
+		recognition.onend = () => {
+			setIsListening(false);
+		};
+
+		recognition.onerror = () => {
+			setIsListening(false);
+		};
+
+		recognitionRef.current = recognition;
+		recognition.start();
+		setIsListening(true);
+	}, [isListening, setInput]);
+
+	const stopListening = useCallback(() => {
+		if (recognitionRef.current) {
+			recognitionRef.current.stop();
+		}
+		setIsListening(false);
+	}, []);
 
 	return (
 		<div className="p-1.5 bg-background/80 backdrop-blur-md border-t border-border shadow-lg relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -99,6 +146,7 @@ export const ChatInput = ({
 							className="h-6 w-6 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors" 
 							onClick={onRemoveImage}
 							title="Hapus semua"
+							type="button"
 						>
 							<Trash2 className="h-3.5 w-3.5" />
 						</button>
@@ -152,8 +200,8 @@ export const ChatInput = ({
 						value={input}
 						onChange={(e) => setInput(e.target.value)}
 						onKeyDown={onKeyDown}
-						placeholder={isScanMode ? "Instruksi analisis..." : "Tanya Yumi AI..."}
-						className="w-full resize-none bg-transparent py-2 pl-[66px] pr-9 text-xs focus:outline-none scroll-m-1 min-h-[38px] max-h-[30vh]"
+						placeholder={isListening ? "Mendengarkan..." : isScanMode ? "Instruksi analisis..." : "Tanya Yumi AI..."}
+						className={`w-full resize-none bg-transparent py-2 pl-[66px] pr-9 text-xs focus:outline-none scroll-m-1 min-h-[38px] max-h-[30vh] ${isListening ? "placeholder:text-primary" : ""}`}
 						rows={1}
 						onInput={(e) => {
 							const target = e.target as HTMLTextAreaElement;
@@ -162,7 +210,24 @@ export const ChatInput = ({
 						}}
 					/>
 					
-					<div className="absolute right-1.5 bottom-1 opacity-80 focus-within:opacity-100">
+					<div className="absolute right-1.5 bottom-1 flex items-center gap-0.5">
+						{/* Voice input button */}
+						{speechSupported && (
+							<Button
+								type="button"
+								size="icon"
+								className={`h-7 w-7 rounded-full transition-all duration-300 ${
+									isListening 
+										? "bg-red-500 hover:bg-red-600 text-white shadow-lg scale-110 animate-pulse" 
+										: "text-muted-foreground hover:text-primary hover:bg-primary/10"
+								}`}
+								onClick={isListening ? stopListening : startListening}
+								title={isListening ? "Berhenti mendengarkan" : "Input suara (Bahasa Indonesia)"}
+							>
+								{isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+							</Button>
+						)}
+						{/* Send button */}
 						<Button
 							type="submit"
 							size="icon"

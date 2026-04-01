@@ -1,10 +1,11 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bot, Calendar, Sparkles, AlertTriangle, Bell, TrendingUp, X } from "lucide-react";
+import { Bot, Calendar, Clock, Sparkles, AlertTriangle, Bell, TrendingUp, X, ChevronUp, ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
+import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { ImageScanner } from "@/components/ai/image-scanner";
@@ -45,6 +46,7 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 	const [isScanMode, setIsScanMode] = useState(false);
 	const [isScanning, setIsScanning] = useState(false);
 	const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+	const [isInsightPanelExpanded, setIsInsightPanelExpanded] = useState(false);
 	const briefingAttemptedRef = useRef(false);
 
 	// Modals & History
@@ -470,85 +472,217 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 
 	const isPOS = mode === "pos";
 
-	return (
-		<div className={`flex ${isPOS ? "h-full w-full" : "h-[calc(100vh-57px)] pb-[72px] md:pb-0"} bg-background overflow-hidden relative font-sans text-foreground`}>
-			<AnimatePresence>
-				{showSessionHistory && !isPOS && (
-					<motion.div
-						initial={{ x: "-100%", opacity: 0 }}
-						animate={{ x: 0, opacity: 1 }}
-						exit={{ x: "-100%", opacity: 0 }}
-						transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-						className="absolute inset-y-0 left-0 z-50 w-72 md:relative md:w-64"
-					>
-						<SessionHistory 
-							sessions={chatSessions as any} 
-							currentSessionId={currentSessionId}
-							onLoad={loadSession}
-							onDelete={deleteSession}
-							onStartNew={startNewSession}
-						/>
-					</motion.div>
-				)}
-			</AnimatePresence>
+	// Get site settings for theme color and store info
+	const siteSettings = useQuery(api.site_settings.getSettings);
+	const storeName = siteSettings?.storeName || "YumiPOS";
+	const logoUrl = siteSettings?.logoUrl;
+	const themeColor = siteSettings?.themeColor;
+	const currentTime = new Date();
 
-			<div className={`flex-1 flex flex-col min-w-0 bg-background ${isPOS ? "" : "shadow-2xl"} relative z-10 transition-all duration-500 overflow-hidden`}>
-				<header className={`flex items-center justify-between ${isPOS ? "p-1.5" : "p-2"} border-b border-border/80 bg-background/50 backdrop-blur-xl sticky top-0 z-20`}>
-					<div className="flex items-center gap-2">
-						{!isPOS && (
-							<Button variant="ghost" size="icon" className="md:h-8 md:w-8 rounded-full hover:bg-muted" onClick={() => setShowSessionHistory(!showSessionHistory)}>
-								<Calendar className="h-4 w-4" />
-							</Button>
-						)}
-						{isPOS && (
-							<div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent shadow-sm">
-								<Sparkles className="h-3.5 w-3.5 text-white" />
+	// Navigation items for bottom bar
+	const BOTTOM_NAV_ITEMS = [
+		{ id: "chat", label: "Konsultasi", icon: Bot },
+		{ id: "suggestions", label: "Saran AI", icon: Sparkles },
+		{ id: "predictions", label: "Prediksi", icon: TrendingUp },
+		{ id: "tasks", label: "Tugas", icon: Bell },
+	];
+
+	return (
+		<div className={`flex ${isPOS ? "h-full w-full" : "h-[100dvh] pb-[72px] md:pb-0"} bg-background overflow-hidden relative font-sans text-foreground`}>
+			{/* STATUS HEADER */}
+			<div className="border-b border-border bg-muted/40 px-2 sm:px-3 py-1.5 shadow-sm z-40 shrink-0 w-full overflow-hidden">
+				<div className="flex flex-nowrap items-center justify-between w-full text-[10px] sm:text-xs font-medium text-muted-foreground/80 overflow-hidden">
+					<div className="flex flex-nowrap items-center gap-1.5 sm:gap-2.5 shrink-0 min-w-0">
+						<div className="flex items-center gap-1">
+							<div
+								className="flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-lg font-bold text-white shadow-sm ring-1 ring-black/5"
+								style={{ background: themeColor ?? "var(--color-primary)" }}
+							>
+								{logoUrl ? (
+									<img
+										src={logoUrl}
+										alt={storeName}
+										className="h-full w-full rounded-lg object-contain"
+								/>
+							) : (
+									<Sparkles className="h-3.5 w-3.5" />
+							)}
 							</div>
-						)}
-						<div className="min-w-0">
-							<h1 className={`${isPOS ? "text-xs" : "text-sm md:text-base"} font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent`}>Yumi AI</h1>
-							<p className={`text-[10px] ${isPOS ? "" : "md:text-xs"} text-muted-foreground font-medium uppercase tracking-widest ${isPOS ? "" : "hidden md:block"}`}>
-								{isPOS ? "Asisten Kasir Cerdas" : "Asisten Bisnis Cerdas"}
-							</p>
+							<span className="whitespace-nowrap leading-none font-semibold text-[9px] sm:text-[10px] uppercase tracking-wider">{storeName}</span>
 						</div>
 					</div>
-					<div className="flex items-center gap-2">
-						{!isPOS && smartInsights.map((insight, i) => (
-							<div key={i} className={`flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border shadow-sm transition-all hover:scale-105
-								${insight.type === "success" ? "bg-green-50 text-green-700 border-green-100" : ""}
-								${insight.type === "warning" ? "bg-amber-50 text-amber-700 border-amber-100" : ""}
-								${insight.type === "info" ? "bg-blue-50 text-blue-700 border-blue-100" : ""}`}
-							>
-								{insight.icon}
-								<span className="hidden sm:inline">{insight.text}</span>
+					<div className="flex flex-nowrap items-center gap-1.5 sm:gap-2.5 shrink-0">
+						<div className="flex flex-nowrap items-center gap-1 opacity-75">
+							<Clock className="h-3 w-3 shrink-0" />
+							<span className="whitespace-nowrap leading-none">{currentTime.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+						</div>
+						{lowStockCount > 0 && (
+							<div className="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-md whitespace-nowrap leading-none font-semibold text-[9px]">
+								{lowStockCount} stok rendah
 							</div>
-						))}
-						{isPOS && onClose && (
-							<Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={onClose}>
-								<X className="h-3.5 w-3.5" />
-							</Button>
+						)}
+						{pendingOrderCount > 0 && (
+							<div className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-md whitespace-nowrap leading-none font-semibold text-[9px]">
+								{pendingOrderCount} pesanan baru
+							</div>
 						)}
 					</div>
-				</header>
+				</div>
+			</div>
 
-				{!isPOS && (
-					<nav className="flex border-b border-border/60 bg-muted/5 scrollbar-none overflow-x-auto whitespace-nowrap">
-						{(["chat", "suggestions", "predictions", "tasks"] as TabType[]).map(tab => (
-							<button
-								key={tab}
-								onClick={() => setActiveTab(tab)}
-								className={`px-3 py-1.5 text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all relative ${activeTab === tab ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"}`}
-							>
-								{tab === "chat" ? "Konsultasi" : tab === "suggestions" ? "Saran AI" : tab === "predictions" ? "Prediksi" : "Tugas"}
-								{activeTab === tab && (
-									<motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary shadow-[0_-2px_8px_rgba(var(--primary),0.4)]" />
+			{/* LEFT SIDEBAR: Session History */}
+			{!isPOS && (
+				<AnimatePresence>
+					{showSessionHistory && (
+						<motion.div
+							initial={{ x: "-100%", opacity: 0 }}
+							animate={{ x: 0, opacity: 1 }}
+							exit={{ x: "-100%", opacity: 0 }}
+							transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+							className="absolute inset-y-0 left-0 z-50 w-72 md:relative md:w-80 bg-background border-r border-border shadow-xl"
+						>
+							<div className="flex flex-col h-full">
+								<div className="flex items-center justify-between p-4 border-b border-border/50 bg-muted/30">
+									<h2 className="text-sm font-black uppercase tracking-widest text-foreground">Riwayat Sesi</h2>
+									<button
+										onClick={() => setShowSessionHistory(false)}
+										className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted transition-colors"
+										type="button"
+									>
+										<X className="h-4 w-4" />
+									</button>
+								</div>
+								<div className="flex-1 overflow-y-auto custom-scrollbar">
+									<SessionHistory 
+										sessions={chatSessions as any} 
+										currentSessionId={currentSessionId}
+										onLoad={loadSession}
+										onDelete={deleteSession}
+										onStartNew={startNewSession}
+									/>
+								</div>
+							</div>
+						</motion.div>
+					)}
+				</AnimatePresence>
+			)}
+
+			{/* MAIN CONTENT HEADER */}
+			<header className={`flex items-center justify-between px-4 py-2 border-b border-border/80 bg-background/50 backdrop-blur-xl sticky top-0 z-20`}>
+				<div className="flex items-center gap-2.5 min-w-0">
+					{!isPOS && (
+						<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted" onClick={() => setShowSessionHistory(!showSessionHistory)}>
+							<Calendar className="h-4 w-4" />
+						</Button>
+					)}
+					<div className="min-w-0">
+						<h1 className="text-sm md:text-base font-black tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Yumi AI</h1>
+						<p className={`text-[10px] md:text-xs text-muted-foreground font-medium uppercase tracking-widest ${isPOS ? "" : "hidden md:block"}`}>
+							{isPOS ? "Asisten Kasir Cerdas" : "Asisten Bisnis Cerdas"}
+						</p>
+					</div>
+				</div>
+				<div className="flex items-center gap-2">
+					{isPOS && onClose && (
+						<Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={onClose}>
+							<X className="h-3.5 w-3.5" />
+						</Button>
+					)}
+				</div>
+			</header>
+
+			{/* AI INSIGHTS PANEL */}
+			{!isPOS && (
+				<div className="border-t border-border/50 bg-muted/10 px-4 py-2.5 transition-all">
+					<div className="flex items-center justify-between mb-2">
+						<div className="flex items-center gap-1.5">
+							<Sparkles className="h-3.5 w-3.5 text-primary" strokeWidth={2.5} />
+							<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">AI Insights</span>
+						</div>
+						<button 
+							onClick={() => setIsInsightPanelExpanded(!isInsightPanelExpanded)}
+							className="flex items-center gap-1.5 rounded-full border-2 border-primary/20 px-3 py-1 hover:bg-primary/5 text-primary transition-all active:scale-95"
+							type="button"
+						>
+							<span className="text-[8px] font-bold uppercase tracking-widest">Detail</span>
+							{isInsightPanelExpanded ? <ChevronUp className="h-3 w-3" strokeWidth={3} /> : <ChevronDown className="h-3 w-3" strokeWidth={3} />}
+						</button>
+					</div>
+
+					<div className="grid grid-cols-2 gap-4">
+						{/* Chat Messages */}
+						<div className="space-y-1">
+							<div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-widest text-muted-foreground/80 mb-0.5">
+								<span>Percakapan</span>
+								<span>{messages.length}</span>
+							</div>
+							<div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
+								<div className="h-full bg-primary" style={{ width: `${Math.min(100, messages.length)}%` }} />
+							</div>
+							<AnimatePresence>
+								{isInsightPanelExpanded && (
+									<motion.p 
+										initial={{ opacity: 0, height: 0 }}
+										animate={{ opacity: 1, height: "auto" }}
+										exit={{ opacity: 0, height: 0 }}
+										className="text-[9px] font-bold text-muted-foreground/60 leading-none pt-1"
+									>
+										{messages.length} pesan
+									</motion.p>
 								)}
-							</button>
-						))}
+							</AnimatePresence>
+						</div>
+
+						{/* Tasks Progress */}
+						<div className="space-y-1">
+							<div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-widest text-muted-foreground/80 mb-0.5">
+								<span>Tugas</span>
+								<span>{pendingTasks ? `${pendingTasks.length} pending` : "0"}</span>
+							</div>
+							<div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
+								<div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.2)]" style={{ width: `${Math.max(0, pendingTasks ? 100 - (pendingTasks.length * 10) : 100)}%` }} />
+							</div>
+							<AnimatePresence>
+								{isInsightPanelExpanded && (
+									<motion.p 
+										initial={{ opacity: 0, height: 0 }}
+										animate={{ opacity: 1, height: "auto" }}
+										exit={{ opacity: 0, height: 0 }}
+										className="text-[9px] font-bold text-muted-foreground/60 leading-none pt-1"
+									>
+										{pendingTasks ? `${pendingTasks.length} tugas pending` : "Semua tugas selesai"}
+									</motion.p>
+								)}
+							</AnimatePresence>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{!isPOS && (
+					<nav className="flex border-b border-border/60 bg-background/95 backdrop-blur-md scrollbar-none overflow-x-auto whitespace-nowrap sticky top-[85px] z-30 shadow-sm">
+						{BOTTOM_NAV_ITEMS.map((item) => {
+							const Icon = item.icon;
+							return (
+								<button
+									key={item.id}
+									onClick={() => setActiveTab(item.id as TabType)}
+									className={`flex items-center gap-2 px-4 py-2.5 text-[10px] sm:text-xs font-bold uppercase tracking-widest transition-all relative shrink-0 ${
+										activeTab === item.id ? "text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+									}`}
+								>
+									<Icon className="h-4 w-4" />
+									{item.label}
+									{activeTab === item.id && (
+										<motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary shadow-[0_-2px_8px_rgba(var(--primary),0.4)]" />
+									)}
+								</button>
+							);
+						})}
 					</nav>
 				)}
 
-				<main className="flex-1 overflow-hidden relative bg-muted/5">
+				<main className="flex-1 overflow-hidden relative bg-muted/10">
 					<AnimatePresence mode="wait">
 						<motion.div
 							key={activeTab}
@@ -560,16 +694,32 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 						>
 							{activeTab === "chat" && (
 								<div className="flex flex-col h-full">
-									<div className={`flex-1 overflow-y-auto ${isPOS ? "p-2" : "p-2 md:p-3"} space-y-1.5 custom-scrollbar scroll-smooth`}>
+									<div className={`flex-1 overflow-y-auto ${isPOS ? "p-2" : "p-3 md:p-4"} space-y-2 custom-scrollbar scroll-smooth`}>
 										{messages.length === 0 && !isLoading && (
-											<div className={`h-full flex flex-col items-center justify-center text-center ${isPOS ? "p-3" : "p-6"} animate-in fade-in zoom-in duration-700`}>
-												<div className={`${isPOS ? "p-2" : "p-3"} bg-primary/5 rounded-full mb-3 ring-1 ring-primary/20 shadow-inner`}>
-													<Bot className={`${isPOS ? "h-5 w-5" : "h-8 w-8"} text-primary animate-pulse`} />
+											<div className={`h-full flex flex-col items-center justify-center text-center ${isPOS ? "p-3" : "p-8"} animate-in fade-in zoom-in duration-700`}>
+												<div className={`flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary/10 to-accent/10 mb-4 ring-1 ring-primary/20 shadow-lg`}>
+													<Bot className={`${isPOS ? "h-7 w-7" : "h-10 w-10"} text-primary animate-pulse`} />
 												</div>
-												<h3 className={`${isPOS ? "text-base" : "text-lg"} font-bold text-foreground mb-1.5`}>Halo, Selamat Datang!</h3>
-												<p className="text-muted-foreground max-w-xs mb-4 text-[11px]">
-													{isPOS ? "Kasir siap membantu operasional toko Anda." : "Saya adalah asisten bisnis Anda. Silakan tanya apa saja tentang stok, keuangan, atau performa toko Anda."}
+												<h3 className={`${isPOS ? "text-base" : "text-xl"} font-black text-foreground mb-2`}>Halo, Selamat Datang!</h3>
+												<p className="text-muted-foreground max-w-sm mb-6 text-xs sm:text-sm leading-relaxed">
+													{isPOS ? "Kasir siap membantu operasional toko Anda dengan cepat dan efisien." : "Saya adalah asisten bisnis cerdas Anda. Tanya apa saja tentang stok, keuangan, prediksi, atau performa toko Anda."}
 												</p>
+												<div className="flex flex-wrap gap-2 justify-center">
+													<button 
+														onClick={() => sendMessage("Bagaimana performa toko hari ini?")}
+														className="rounded-full bg-primary/10 text-primary px-4 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-widest border border-primary/20 hover:bg-primary/20 transition-all active:scale-95"
+														type="button"
+													>
+														Performa Hari Ini
+													</button>
+													<button 
+														onClick={() => sendMessage("Apa saja stok yang rendah?")}
+														className="rounded-full bg-amber-50 text-amber-600 px-4 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-widest border border-amber-100 hover:bg-amber-100 transition-all active:scale-95"
+														type="button"
+													>
+														Cek Stok Rendah
+													</button>
+												</div>
 											</div>
 										)}
 										{messages.map((msg, idx) => (
@@ -594,24 +744,26 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 										<div ref={messagesEndRef} className="h-2" />
 									</div>
 
-									<ChatInput 
-										mode={mode}
-										input={input}
-										setInput={setInput}
-										isLoading={isLoading}
-										isScanning={isScanning}
-										isScanMode={isScanMode}
-										setIsScanMode={setIsScanMode}
-										selectedImages={selectedImages}
-										onRemoveImage={() => { setSelectedImages([]); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-										onFileSelect={handleFileSelect}
-										onSendMessage={sendMessage}
-										onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
-										toolCalls={toolCalls}
-										fileInputRef={fileInputRef}
-										inputRef={inputRef}
-										showTemplates={messages.length < 2}
-									/>
+									<div className={`p-3 sm:p-4 border-t border-border/50 bg-background/50 backdrop-blur-xl sticky bottom-0 z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]`}>
+										<ChatInput 
+											mode={mode}
+											input={input}
+											setInput={setInput}
+											isLoading={isLoading}
+											isScanning={isScanning}
+											isScanMode={isScanMode}
+											setIsScanMode={setIsScanMode}
+											selectedImages={selectedImages}
+											onRemoveImage={() => { setSelectedImages([]); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+											onFileSelect={handleFileSelect}
+											onSendMessage={sendMessage}
+											onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
+											toolCalls={toolCalls}
+											fileInputRef={fileInputRef}
+											inputRef={inputRef}
+											showTemplates={messages.length < 2}
+										/>
+									</div>
 								</div>
 							)}
 							{activeTab === "suggestions" && <SuggestionsPanel suggestions={proactiveSuggestions as any} onExecute={handleExecuteSuggestion} />}
@@ -620,7 +772,42 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 						</motion.div>
 					</AnimatePresence>
 				</main>
-			</div>
+
+			{/* === BOTTOM NAVIGATION BAR (Fixed) === */}
+			{!isPOS && (
+				<div className="shrink-0 w-full border-t border-border bg-background/95 backdrop-blur-xl pb-safe-area shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-4 pt-3 sm:pt-4 fixed bottom-0 left-0 right-0 z-30">
+					<div className="flex items-center justify-around max-w-lg mx-auto sm:max-w-none gap-1 sm:gap-2">
+						{BOTTOM_NAV_ITEMS.map((item) => {
+							const Icon = item.icon;
+							const isActive = activeTab === item.id;
+							return (
+								<button
+									key={item.id}
+									onClick={() => setActiveTab(item.id as TabType)}
+									className={cn(
+										"flex flex-col items-center gap-1 min-w-[50px] transition-all",
+										isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+									)}
+									type="button"
+								>
+									<div className={cn(
+										"flex h-8 w-8 items-center justify-center rounded-lg transition-all",
+										isActive ? "bg-primary/10" : "bg-transparent hover:bg-muted/50"
+									)}>
+										<Icon className="h-4.5 w-4.5" />
+									</div>
+									<span className="text-[8px] font-bold uppercase tracking-tight leading-none text-center block sm:hidden">
+										{item.label.split(' ')[0]}
+									</span>
+									<span className="text-[9px] font-bold uppercase tracking-tight leading-none text-center hidden sm:block">
+										{item.label}
+									</span>
+								</button>
+							);
+						})}
+					</div>
+				</div>
+			)}
 
 			{/* Modals & Overlays */}
 			<ImageScanner isOpen={isImageScannerOpen} onClose={() => setIsImageScannerOpen(false)} onDataGenerated={(type, data) => setMessages(prev => [...prev, { role: "assistant", content: `Berhasil membuat ${type} dengan data terstruktur.`, _msgId: mkMsgId() }])} />
