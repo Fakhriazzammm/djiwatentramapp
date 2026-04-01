@@ -456,15 +456,28 @@ function FastStockTable({
 
 	const handleBulkUpdate = async (updates: any) => {
 		if (selectedIds.size === 0) return;
+		
+		// Validation: Ensure numbers are valid
+		if (updates.quantity !== undefined && (isNaN(updates.quantity) || updates.quantity === null)) {
+			toast.error("Jumlah stok tidak valid");
+			return;
+		}
+
+		// Sanitize: Remove undefined/null fields to keep mutation args clean
+		const cleanUpdates = Object.fromEntries(
+			Object.entries(updates).filter(([_, v]) => v !== undefined && v !== null)
+		);
+
 		try {
 			await bulkUpdate({
 				ids: Array.from(selectedIds) as any,
-				updates,
+				updates: cleanUpdates,
 			});
 			toast.success(`Berhasil memperbarui ${selectedIds.size} produk`);
 			setSelectedIds(new Set());
-		} catch (error) {
-			toast.error("Gagal melakukan pembaruan massal");
+		} catch (error: any) {
+			console.error("Bulk update error:", error);
+			toast.error(`Gagal melakukan pembaruan massal: ${error.message || "Kesalahan tidak dikenal"}`);
 		}
 	};
 
