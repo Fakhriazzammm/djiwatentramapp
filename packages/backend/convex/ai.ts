@@ -754,17 +754,20 @@ ${(() => {
 - Manajemen User & Role (RBAC, permissions)
 - Pengaturan Toko (nama, alamat, logo, receipt footer)
 - Booking Online (lihat semua reservasi, konfirmasi booking, tandai lunas, batalkan - gunakan tool updateBookingStatus)
-- AI Analytics (prediksi stok, analisis bisnis, rekomendasi produk, analisis HPP, target keuangan)`;
+- AI Analytics (prediksi stok, analisis bisnis, rekomendasi produk, analisis HPP, target keuangan)
+- Reporting & Insights (PDF, Excel, CSV, automated scheduled reports)
+- Dashboard Kontrol (monitoring real-time order status, stock alerts, finance charts)`;
 }
 
 /**
  * Gather Smart Context - Business patterns and insights
  */
 async function gatherSmartContext(ctx: GenericActionCtx<DataModel>) {
-	const [orders, inventory, products] = await Promise.all([
+	const [orders, inventory, products, categories] = await Promise.all([
 		ctx.runQuery(api.orders.getOrders, {}),
 		ctx.runQuery(api.inventory.getInventory),
 		ctx.runQuery(api.products.getAllProductsAdmin),
+		ctx.runQuery(api.products.getCategories),
 	]);
 
 	const insights: string[] = [];

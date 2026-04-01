@@ -130,3 +130,49 @@ export const toggleProductAvailability = mutation({
     await ctx.db.patch(args.productId, { isAvailable: args.isAvailable });
   },
 });
+
+// Admin: Seed Sample Operational Data
+export const seedOperationalData = mutation({
+  args: { track: v.union(v.literal("kitchen"), v.literal("bar")) },
+  handler: async (ctx, args) => {
+    const { track } = args;
+    
+    // Check if categories already exist for this track
+    const existing = await ctx.db
+      .query("categories")
+      .filter((q) => q.eq(q.field("track"), track))
+      .first();
+    
+    if (existing) return { message: "Data already exists" };
+
+    // Create a base category
+    const categoryId = await ctx.db.insert("categories", {
+      name: track === "kitchen" ? "Makanan Utama" : "Minuman Segar",
+      order: 0,
+      track,
+    });
+
+    // Create sample products
+    const samples = track === "kitchen" 
+      ? [
+          { name: "Nasi Goreng Spesial", price: 25000, quantity: 50 },
+          { name: "Ayam Bakar Madu", price: 35000, quantity: 30 },
+          { name: "Sate Ayam (10 Tusuk)", price: 28000, quantity: 40 },
+        ]
+      : [
+          { name: "Es Teh Manis", price: 5000, quantity: 100 },
+          { name: "Es Jeruk Peras", price: 12000, quantity: 50 },
+          { name: "Kopi Susu Gula Aren", price: 18000, quantity: 60 },
+        ];
+
+    for (const item of samples) {
+      await ctx.db.insert("products", {
+        ...item,
+        categoryId,
+        isAvailable: true,
+      });
+    }
+
+    return { message: "Sample data created successfully" };
+  },
+});
