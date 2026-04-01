@@ -4,7 +4,7 @@ import { ConvexError, v } from "convex/values";
 import OpenAI from "openai";
 import type { z } from "zod";
 import { api } from "./_generated/api";
-import type { DataModel } from "./_generated/dataModel";
+import type { DataModel, Id } from "./_generated/dataModel";
 import { action, mutation, query } from "./_generated/server";
 import { formatToolResult, tools } from "./tools";
 
@@ -918,8 +918,62 @@ async function gatherSmartContext(ctx: GenericActionCtx<DataModel>) {
 		: "== SMART INSIGHTS ==\nBelum cukup data untuk analisis";
 }
 
+// === STREAMING BUFFERS ===
+
+export const initStreamingMessage = mutation({
+	args: { sessionId: v.string() },
+	handler: async (ctx, args) => {
+		// Clean up old ones for this session
+		const existing = await ctx.db
+			.query("streamingMessages")
+			.withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+			.collect();
+		
+		for (const doc of existing) {
+			await ctx.db.delete(doc._id);
+		}
+
+		return await ctx.db.insert("streamingMessages", {
+			sessionId: args.sessionId,
+			content: "",
+			status: "streaming",
+			lastUpdated: Date.now(),
+		});
+	},
+});
+
+export const updateStreamingMessage = mutation({
+	args: { 
+		streamingId: v.id("streamingMessages"), 
+		chunk: v.string(),
+		isFinal: v.optional(v.boolean()) 
+	},
+	handler: async (ctx, args) => {
+		const doc = await ctx.db.get(args.streamingId);
+		if (!doc) return;
+		
+		await ctx.db.patch(args.streamingId, {
+			content: doc.content + args.chunk,
+			status: args.isFinal ? "completed" : "streaming",
+			lastUpdated: Date.now(),
+		});
+	},
+});
+
+export const getStreamingMessage = query({
+	args: { sessionId: v.string() },
+	handler: async (ctx, args) => {
+		return await ctx.db
+			.query("streamingMessages")
+			.withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+			.order("desc")
+			.first();
+	},
+});
+
 export const yumiChat = action({
 	args: {
+		sessionId: v.optional(v.string()),
 		message: v.string(),
 		history: v.array(
 			v.object({
@@ -1153,22 +1207,153 @@ INSTRUKSI REKONSILIASI BANK:
 			return "Maaf, layanan AI sedang tidak tersedia. Pastikan SUMOPOD_API_KEY sudah diatur di dashboard Convex.";
 		}
 
+		// Initialize streaming message if sessionId is provided
+		let streamingId: Id<"streamingMessages"> | null = null;
+		if (args.sessionId) {
+			streamingId = await ctx.runMutation(api.ai.initStreamingMessage, {
+				sessionId: args.sessionId,
+			});
+		}
+
 		while (currentIteration < maxIterations) {
 			currentIteration++;
-
 			let completion;
 			try {
-				completion = await openai.chat.completions.create({
-					model: "gpt-4o-mini",
-					messages,
-					tools: openaiTools,
-					tool_choice: "auto",
-					max_tokens: 2000,
-				});
+				if (currentIteration === 1) {
+					// First iteration: use streaming for content
+					const response = await openai.chat.completions.create({
+						model: "gpt-4o-mini",
+						messages,
+						tools: openaiTools,
+						tool_choice: "auto",
+						stream: true,
+					});
+
+					let fullContent = "";
+					let toolCalls: any[] = [];
+
+					for await (const chunk of response) {
+						const delta = chunk.choices[0]?.delta;
+						if (!delta) continue;
+						
+						if (delta.content) {
+							fullContent += delta.content;
+							if (streamingId) {
+								await ctx.runMutation(api.ai.updateStreamingMessage, {
+									streamingId,
+									chunk: delta.content,
+								});
+							}
+						}
+						
+						if (delta.tool_calls) {
+							for (const tc of delta.tool_calls) {
+								if (!toolCalls[tc.index]) {
+									toolCalls[tc.index] = { id: tc.id, function: { name: "", arguments: "" }, type: "function" };
+								}
+								if (tc.id) toolCalls[tc.index].id = tc.id;
+								if (tc.function?.name) toolCalls[tc.index].function.name += tc.function.name;
+								if (tc.function?.arguments) toolCalls[tc.index].function.arguments += tc.function.arguments;
+							}
+						}
+					}
+
+					const finalToolCalls = toolCalls.filter(tc => tc.id);
+					
+					// Finalize streaming for this pass
+					if (streamingId && fullContent) {
+						await ctx.runMutation(api.ai.updateStreamingMessage, {
+							streamingId,
+							chunk: "",
+							isFinal: finalToolCalls.length === 0, // Final ONLY if no tools are called
+						});
+					}
+
+					if (finalToolCalls.length === 0) return fullContent;
+
+					const assistantMsg = { role: "assistant", content: fullContent || null, tool_calls: finalToolCalls };
+					messages.push(assistantMsg as OpenAI.ChatCompletionMessageParam);
+
+					const toolExecutionPromises = finalToolCalls.map(async (tc) => {
+						try {
+							const result = await ctx.runAction(api.toolExecutors.executeToolCall, {
+								toolName: tc.function.name,
+								args: JSON.parse(tc.function.arguments),
+							});
+							return {
+								role: "tool",
+								tool_call_id: tc.id,
+								name: tc.function.name,
+								content: result.success ? formatToolResult(tc.function.name, result.result) : formatToolResult(tc.function.name, null, result.error),
+							};
+						} catch (e) {
+							return {
+								role: "tool",
+								tool_call_id: tc.id,
+								name: tc.function.name,
+								content: formatToolResult(tc.function.name, null, String(e)),
+							};
+						}
+					});
+					
+					const toolResults = await Promise.all(toolExecutionPromises);
+					for (const res of toolResults) {
+						messages.push(res as OpenAI.ChatCompletionToolMessageParam);
+					}
+					
+				} else {
+					// Subsequent iterations for tool chain results (non-streaming to save complexity)
+					completion = await openai.chat.completions.create({
+						model: "gpt-4o-mini",
+						messages,
+						tools: openaiTools,
+						max_tokens: 1000,
+					});
+
+					const responseMessage = completion.choices[0].message;
+					if (!responseMessage.tool_calls || responseMessage.tool_calls.length === 0) {
+						if (streamingId && responseMessage.content) {
+							await ctx.runMutation(api.ai.updateStreamingMessage, {
+								streamingId,
+								chunk: "\n\n" + responseMessage.content,
+								isFinal: true,
+							});
+						}
+						return responseMessage.content;
+					}
+
+					messages.push(responseMessage as OpenAI.ChatCompletionMessageParam);
+					
+					const toolExecutionPromises = responseMessage.tool_calls.map(async (tc) => {
+						try {
+							const result = await ctx.runAction(api.toolExecutors.executeToolCall, {
+								toolName: tc.function.name,
+								args: JSON.parse(tc.function.arguments),
+							});
+							return {
+								role: "tool",
+								tool_call_id: tc.id,
+								name: tc.function.name,
+								content: result.success ? formatToolResult(tc.function.name, result.result) : formatToolResult(tc.function.name, null, result.error),
+							};
+						} catch (e) {
+							return {
+								role: "tool",
+								tool_call_id: tc.id,
+								name: tc.function.name,
+								content: formatToolResult(tc.function.name, null, String(e)),
+							};
+						}
+					});
+					
+					const toolResults = await Promise.all(toolExecutionPromises);
+					for (const res of toolResults) {
+						messages.push(res as OpenAI.ChatCompletionToolMessageParam);
+					}
+				}
 			} catch (apiError) {
 				console.error("yumiChat API error:", apiError);
 				const errMsg = apiError instanceof Error ? apiError.message : String(apiError);
-				// Berikan pesan error yang informatif
 				if (errMsg.includes("401") || errMsg.includes("Unauthorized")) {
 					return "Maaf, API key tidak valid. Silakan periksa SUMOPOD_API_KEY di dashboard Convex.";
 				}
@@ -1180,71 +1365,6 @@ INSTRUKSI REKONSILIASI BANK:
 				}
 				return "Maaf, terjadi kesalahan saat memproses permintaan. Silakan coba lagi.";
 			}
-
-			const responseMessage = completion.choices[0].message;
-
-			// If no tool calls, return the response
-			if (
-				!responseMessage.tool_calls ||
-				responseMessage.tool_calls.length === 0
-			) {
-				return responseMessage.content;
-			}
-
-			// Add assistant response with tool calls
-			messages.push(responseMessage as OpenAI.ChatCompletionMessageParam);
-
-			// Execute all tool calls in parallel
-			const toolExecutionPromises = responseMessage.tool_calls
-				.filter((tc) => tc.type === "function")
-				.map(async (toolCall) => {
-					const functionName = toolCall.function.name;
-					const functionArgs = JSON.parse(toolCall.function.arguments);
-
-					try {
-						const result = await ctx.runAction(
-							api.toolExecutors.executeToolCall,
-							{
-								toolName: functionName,
-								args: functionArgs,
-							}
-						);
-
-						const resultStr = result.success
-							? formatToolResult(functionName, result.result)
-							: formatToolResult(functionName, null, result.error);
-
-						return {
-							toolCallId: toolCall.id,
-							toolName: functionName,
-							result: resultStr,
-						};
-					} catch (error) {
-						return {
-							toolCallId: toolCall.id,
-							toolName: functionName,
-							result: formatToolResult(
-								functionName,
-								null,
-								error instanceof Error ? error.message : String(error)
-							),
-						};
-					}
-				});
-
-			const toolResults = await Promise.all(toolExecutionPromises);
-
-			// Add tool results to messages
-			for (const toolResult of toolResults) {
-				messages.push({
-					role: "tool",
-					tool_call_id: toolResult.toolCallId,
-					name: toolResult.toolName,
-					content: toolResult.result,
-				} as OpenAI.ChatCompletionToolMessageParam);
-			}
-
-			// Continue loop to get next response/action
 		}
 
 		// Fallback: return last message if max iterations reached
@@ -1254,7 +1374,16 @@ INSTRUKSI REKONSILIASI BANK:
 				messages,
 				max_tokens: 1000,
 			});
-			return finalCompletion.choices[0].message.content;
+			const finalContent = finalCompletion.choices[0].message.content;
+			
+			if (streamingId && finalContent) {
+				await ctx.runMutation(api.ai.updateStreamingMessage, {
+					streamingId,
+					chunk: "\n\n(Tugas dihentikan karena terlalu panjang)\n" + finalContent,
+					isFinal: true,
+				});
+			}
+			return finalContent;
 		} catch (finalError) {
 			console.error("yumiChat final completion error:", finalError);
 			return "Maaf, terjadi kesalahan saat menyelesaikan respons. Silakan coba lagi.";

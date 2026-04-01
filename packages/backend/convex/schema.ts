@@ -395,6 +395,14 @@ export default defineSchema({
 		.index("by_session", ["sessionId"])
 		.index("by_timestamp", ["timestamp"]),
 
+	// Buffer for real-time AI streaming
+	streamingMessages: defineTable({
+		sessionId: v.string(),
+		content: v.string(),
+		status: v.union(v.literal("streaming"), v.literal("completed"), v.literal("error")),
+		lastUpdated: v.number(),
+	}).index("by_session", ["sessionId"]),
+
 	// User Preferences learned by AI
 	userPreferences: defineTable({
 		reportFrequency: v.optional(
