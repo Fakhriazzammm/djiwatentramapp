@@ -690,7 +690,7 @@ function MenuPage() {
 							{isShiftOpen && shiftStatus?.shiftInfo?.cashierName && (
 								<div className="flex flex-nowrap items-center gap-1 opacity-75">
 									<User className="h-2.5 w-2.5 shrink-0" />
-									<span className="truncate max-w-[80px] whitespace-nowrap leading-none">
+									<span className="whitespace-nowrap leading-none">
 										{shiftStatus.shiftInfo.cashierName}
 										{shiftStatus.shiftInfo.shiftName ? ` • ${shiftStatus.shiftInfo.shiftName}` : ""}
 									</span>
