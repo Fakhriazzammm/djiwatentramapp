@@ -199,8 +199,13 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 	const runDailyBriefing = useCallback(async () => {
 		if (briefingAttemptedRef.current) return;
 		
-		// If queries aren't loaded yet, wait (except if they are null/undefined)
+		// Wait for essential data before attempting briefing
 		if (inventory === undefined || orders === undefined) return;
+		
+		// If both are null/empty, we can still run a general greeting/briefing
+		// but we want to ensure we've at least tried to load them.
+		const isDataLoaded = inventory !== undefined && orders !== undefined;
+		if (!isDataLoaded) return;
 		
 		briefingAttemptedRef.current = true;
 		
@@ -229,7 +234,11 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 					exportData: extractExportData(briefing),
 					_msgId: mkMsgId(),
 				};
-				setMessages(prev => [...prev, assistantMsg]);
+				setMessages(prev => {
+					// Final double-check: only add if we're still empty to avoid duplicates
+					if (prev.length > 0) return prev;
+					return [assistantMsg];
+				});
 			}
 		} catch (error) {
 			console.error("Briefing error:", error);
@@ -237,10 +246,14 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 	}, [generateBusinessBriefingAction, inventory, orders]);
 
 	useEffect(() => {
-		if (activeTab === "chat" && messages.length === 0 && !isLoading) {
-			runDailyBriefing();
+		// Only run briefing in Chat tab, if no messages exist, and not currently loading something else
+		if (activeTab === "chat" && messages.length === 0 && !isLoading && !isStreaming) {
+			const timer = setTimeout(() => {
+				runDailyBriefing();
+			}, 500); // Small delay to ensure other initializations are settled
+			return () => clearTimeout(timer);
 		}
-	}, [activeTab, messages.length, isLoading, runDailyBriefing]);
+	}, [activeTab, messages.length, isLoading, isStreaming, runDailyBriefing]);
 
 	// Image Scanning Logic
 	const processImagesWithAI = useCallback(async (images: string[], customPrompt?: string) => {

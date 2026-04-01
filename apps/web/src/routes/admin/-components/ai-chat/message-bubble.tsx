@@ -44,23 +44,31 @@ export const MessageBubble = ({
 		<div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-2.5 w-full animate-in fade-in slide-in-from-bottom-2 duration-300 group`}>
 			<div className={`flex w-full max-w-[92%] md:max-w-[85%] gap-2 md:gap-3 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
 				{isAssistant && (
-					<div className="flex-shrink-0 h-7 w-7 rounded-full border border-primary/20 bg-primary/5 flex items-center justify-center mt-0.5 shadow-sm">
-						<Bot className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary" />
+					<div className="flex-shrink-0 h-8 w-8 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mt-1 shadow-inner group-hover:scale-110 transition-transform duration-300">
+						<Bot className="h-4 w-4 text-primary" />
 					</div>
 				)}
-				<div className={`flex-1 text-sm leading-relaxed ${msg.role === "user" ? "rounded-2xl rounded-tr-none bg-primary px-2.5 py-1.5 text-primary-foreground shadow-md" : "text-foreground pt-0.5"}`}>
+				<div className={`flex-1 transition-all duration-300 ${
+					msg.role === "user" 
+						? "rounded-[22px] rounded-tr-[4px] bg-gradient-to-br from-primary via-primary to-primary/90 px-4 py-2.5 text-primary-foreground shadow-lg shadow-primary/15 border border-white/10" 
+						: "bg-card/40 backdrop-blur-md border border-border/60 rounded-[22px] rounded-tl-[4px] px-4 py-3 shadow-sm hover:shadow-md hover:bg-card/60"
+				}`}>
 					{msg.image && (
 						<div className="mb-3">
 							<img src={msg.image} alt="Lampiran" className="rounded-xl max-h-64 object-contain border border-border shadow-sm" />
 						</div>
 					)}
 					
-					<div className="whitespace-pre-wrap text-[11px] md:text-xs leading-relaxed">
+					<div className={`whitespace-pre-wrap text-[12px] md:text-[13px] leading-relaxed tracking-tight ${msg.role === "user" ? "font-medium" : "text-foreground/90"}`}>
 						{isLast && isStreaming && isAssistant
 							? streamingContent
 							: msg.content}
 						{isLast && isLoading && !isStreaming && isAssistant && (
-							<span className="inline-block ml-2 w-1.5 h-4 bg-primary/40 animate-pulse rounded-full align-middle"></span>
+							<span className="inline-flex ml-1.5 gap-1 items-center pb-0.5">
+								<span className="w-1.5 h-1.5 bg-primary animate-bounce rounded-full"></span>
+								<span className="w-1.5 h-1.5 bg-primary animate-bounce [animation-delay:0.2s] rounded-full"></span>
+								<span className="w-1.5 h-1.5 bg-primary animate-bounce [animation-delay:0.4s] rounded-full"></span>
+							</span>
 						)}
 					</div>
 
@@ -152,13 +160,13 @@ export const MessageBubble = ({
 					)}
 
 					{msg.suggestions && msg.suggestions.length > 0 && (
-						<div className="mt-2.5 flex flex-wrap gap-1.5">
+						<div className="mt-3 flex flex-wrap gap-2">
 							{msg.suggestions.map((s, i) => (
 								<Button
 									key={i}
 									variant="outline"
 									size="sm"
-									className="h-6.5 text-[9px] font-bold px-2.5 rounded-full border-primary/20 text-primary hover:bg-primary/10 transition-all active:scale-95 whitespace-nowrap shadow-sm"
+									className="h-8 text-[10px] font-bold px-3.5 rounded-full border-primary/20 bg-background/50 text-primary hover:bg-primary hover:text-white hover:border-primary transition-all active:scale-95 whitespace-nowrap shadow-sm"
 									onClick={() => onSendMessage(s.prompt)}
 								>
 									✨ {s.label}
