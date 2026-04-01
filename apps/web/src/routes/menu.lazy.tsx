@@ -17,8 +17,12 @@ import {
 	Wallet,
 	X,
 	Printer,
-	User
+	User,
+	TrendingUp,
+	ChevronUp,
+	ChevronDown
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -41,6 +45,13 @@ import { bluetoothPrinter, type OrderItem } from "@/lib/bluetooth-printer";
 import { cn } from "@/lib/utils";
 import { ShiftTargetBanner } from "@/components/pos/ShiftTargetBanner";
 import { getOfflineManager, queueOfflineAction } from "@/lib/offline-manager";
+
+const fmt = (n: number) =>
+	new Intl.NumberFormat("id-ID", {
+		style: "currency",
+		currency: "IDR",
+		maximumFractionDigits: 0,
+	}).format(n);
 
 export const Route = createLazyFileRoute("/menu")({
 	component: MenuPage,
@@ -205,6 +216,9 @@ function MenuPage() {
 
 	// Responsive grid columns
 	const [gridColumns, setGridColumns] = useState(4);
+	const [isTargetExpanded, setIsTargetExpanded] = useState(false);
+	const [isSearchActive, setIsSearchActive] = useState(false);
+	const progress = useQuery(api.finance.getCurrentMonthProgress);
 
 	useEffect(() => {
 		const updateColumns = () => {
@@ -675,7 +689,7 @@ function MenuPage() {
 					</div>
 				)}
 
-				{/* Shift & Printer Status Header - EXTRA COMPACT SINGLE LINE */}
+				{/* Shift & Printer Status Header */}
 				<div className="border-b border-border bg-muted/30 px-3 py-1 shadow-sm z-40 shrink-0 overflow-hidden">
 					<div className="flex flex-nowrap items-center justify-between gap-2.5 text-[8px] font-black uppercase tracking-tight text-muted-foreground/80 sm:text-[9px] overflow-x-auto scrollbar-none">
 						<div className="flex flex-nowrap items-center gap-2.5 shrink-0">
@@ -715,16 +729,88 @@ function MenuPage() {
 					</div>
 				</div>
 
-				{/* Shift Target Progress Banner */}
-				{isShiftOpen && <ShiftTargetBanner />}
-
-				{/* === HEADER === */}
 				<header
 					ref={headerRef}
 					className={cn(
 						"sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm shrink-0"
 					)}
 				>
+					{/* TARGET PERFORMANCE PANEL (Above Logo) */}
+					{progress && progress.hasTarget && (
+						<div className="border-b border-border/50 bg-muted/20 px-4 py-1.5 transition-all">
+							<div className="flex items-center justify-between mb-1">
+								<div className="flex items-center gap-1.5">
+									<TrendingUp className="h-3 w-3 text-primary" />
+									<span className="text-[10px] font-black uppercase tracking-tight text-foreground/70">Target Performance</span>
+								</div>
+								<button 
+									onClick={() => setIsTargetExpanded(!isTargetExpanded)}
+									className="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-muted text-primary transition-all active:scale-95"
+									type="button"
+								>
+									<span className="text-[9px] font-bold uppercase tracking-tight">Detail</span>
+									{isTargetExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+								</button>
+							</div>
+
+							<div className="grid grid-cols-2 gap-4">
+								{/* Shift Progress */}
+								<div className="space-y-1">
+									<div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-tighter text-muted-foreground/80">
+										<span>Shift</span>
+										<span>{Math.round((progress.shiftCollected / (progress.shiftTarget || 1)) * 100)}%</span>
+									</div>
+									<div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
+										<motion.div 
+											className="h-full bg-primary"
+											initial={{ width: 0 }}
+											animate={{ width: `${Math.min(100, (progress.shiftCollected / (progress.shiftTarget || 1)) * 100)}%` }}
+										/>
+									</div>
+									<AnimatePresence>
+										{isTargetExpanded && (
+											<motion.p 
+												initial={{ opacity: 0, height: 0 }}
+												animate={{ opacity: 1, height: "auto" }}
+												exit={{ opacity: 0, height: 0 }}
+												className="text-[8px] font-bold text-muted-foreground/60 leading-none pt-0.5"
+											>
+												{fmt(progress.shiftCollected)} / {fmt(progress.shiftTarget)}
+											</motion.p>
+										)}
+									</AnimatePresence>
+								</div>
+
+								{/* Daily Progress */}
+								<div className="space-y-1">
+									<div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-tighter text-muted-foreground/80">
+										<span>Harian</span>
+										<span>{Math.round((progress.dailyCollected / (progress.dailyTarget || 1)) * 100)}%</span>
+									</div>
+									<div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
+										<motion.div 
+											className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.2)]"
+											initial={{ width: 0 }}
+											animate={{ width: `${Math.min(100, (progress.dailyCollected / (progress.dailyTarget || 1)) * 100)}%` }}
+										/>
+									</div>
+									<AnimatePresence>
+										{isTargetExpanded && (
+											<motion.p 
+												initial={{ opacity: 0, height: 0 }}
+												animate={{ opacity: 1, height: "auto" }}
+												exit={{ opacity: 0, height: 0 }}
+												className="text-[8px] font-bold text-muted-foreground/60 leading-none pt-0.5"
+											>
+												{fmt(progress.dailyCollected)} / {fmt(progress.dailyTarget)}
+											</motion.p>
+										)}
+									</AnimatePresence>
+								</div>
+							</div>
+						</div>
+					)}
+
 					<div className="flex flex-col px-4 py-2 gap-1.5">
 						{/* ROW 1: Logo & Store name */}
 						<div 
@@ -756,76 +842,46 @@ function MenuPage() {
 								</div>
 							</div>
 
-							{/* Additional quick actions or status could go here */}
-						</div>
-
-						{/* ROW 2: Navigation Buttons (Below Logo) */}
-						<div className="flex items-center gap-1 sm:gap-1 overflow-x-auto scrollbar-none mask-fade-edges -mx-1 px-1">
-							{SIDEBAR_MENU_ITEMS.map((item, index) => {
-								const Icon = item.icon;
-								const isFocused = isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === index + 1;
-								const isActive = activeSidebarTab === item.id && isSidebarOpen;
-								const needsAttention = !isShiftOpen && item.id === "dashboard";
-								
-								return (
-									<div key={item.id} className="relative">
-										{needsAttention && (
-											<span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-												<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-												<span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-											</span>
-										)}
-										<button
-											onClick={() => {
-												setActiveSidebarTab(item.id);
-												setIsSidebarOpen(true);
-											}}
-											className={cn(
-												"flex items-center gap-1.5 rounded-md px-2 py-1.5 transition-all shrink-0",
-												"hover:bg-muted active:scale-95",
-												isActive
-													? "bg-primary/10 text-primary ring-1 ring-primary/20"
-													: needsAttention 
-														? "bg-rose-50 text-rose-600 hover:bg-rose-100" 
-														: "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-												isFocused && "ring-1 ring-primary"
-											)}
-											type="button"
-										>
-											<Icon className={cn("h-3.5 w-3.5", needsAttention && "animate-pulse")} />
-											<span className="text-[9px] font-bold tracking-tight uppercase">{item.label}</span>
-										</button>
-									</div>
-								);
-							})}
-						</div>
-
-						{/* Hidden MenuSidebar for control */}
-						<MenuSidebar 
-							hideTrigger
-							triggerOpen={isSidebarOpen} 
-							onOpenChange={setIsSidebarOpen} 
-							initialTab={activeSidebarTab}
-						/>
-					</div>
-
-					{/* Compact Summary Row - Only show on mobile (md:hidden) because desktop has it in the sidebar */}
-					<div className="md:hidden grid grid-cols-3 gap-2 border-t border-border/60 bg-muted/5 px-4 py-2.5">
-						<div className="rounded-xl border border-border/70 bg-background px-2.5 py-1.5 shadow-sm">
-							<p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground opacity-70">Item</p>
-							<p className="text-xs font-black text-foreground leading-tight">{totalItems}</p>
-						</div>
-						<div className="rounded-xl border border-emerald-100 bg-emerald-50/50 px-2.5 py-1.5 shadow-sm">
-							<p className="text-[8px] font-black uppercase tracking-widest text-emerald-700/70">Total</p>
-							<p className="text-xs font-black text-emerald-700 leading-tight">{fmt(finalTotal)}</p>
-						</div>
-						<div className="rounded-xl border border-orange-100 bg-orange-50/50 px-2.5 py-1.5 shadow-sm">
-							<p className="text-[8px] font-black uppercase tracking-widest text-orange-700/70">Diskon</p>
-							<p className="text-xs font-black text-orange-700 leading-tight">{fmt(cartDiscountPreview)}</p>
+							{/* Search Trigger for Mobile */}
+							{!isSearchActive && (
+								<button 
+									onClick={() => setIsSearchActive(true)}
+									className="flex h-7 w-7 items-center justify-center rounded-full bg-muted/40 hover:bg-muted text-muted-foreground lg:hidden"
+									type="button"
+								>
+									<Search className="h-3.5 w-3.5" />
+								</button>
+							)}
 						</div>
 					</div>
+				</header>
 
-					{/* Search & Categories Bar - Now more compact */}
+				{/* Hidden MenuSidebar for control */}
+				<MenuSidebar 
+					hideTrigger
+					triggerOpen={isSidebarOpen} 
+					onOpenChange={setIsSidebarOpen} 
+					initialTab={activeSidebarTab}
+				/>
+
+				{/* Compact Summary Row - Only show on mobile (md:hidden) because desktop has it in the sidebar */}
+				<div className="md:hidden grid grid-cols-3 gap-2 border-t border-border/60 bg-muted/5 px-4 py-2.5">
+					<div className="rounded-xl border border-border/70 bg-background px-2.5 py-1.5 shadow-sm">
+						<p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground opacity-70">Item</p>
+						<p className="text-xs font-black text-foreground leading-tight">{totalItems}</p>
+					</div>
+					<div className="rounded-xl border border-emerald-100 bg-emerald-50/50 px-2.5 py-1.5 shadow-sm">
+						<p className="text-[8px] font-black uppercase tracking-widest text-emerald-700/70">Total</p>
+						<p className="text-xs font-black text-emerald-700 leading-tight">{fmt(finalTotal)}</p>
+					</div>
+					<div className="rounded-xl border border-orange-100 bg-orange-50/50 px-2.5 py-1.5 shadow-sm">
+						<p className="text-[8px] font-black uppercase tracking-widest text-orange-700/70">Diskon</p>
+						<p className="text-xs font-black text-orange-700 leading-tight">{fmt(cartDiscountPreview)}</p>
+					</div>
+				</div>
+
+				{/* Search & Categories Bar - Now more compact */}
+				<div className="flex flex-col gap-0 border-b border-border/50 bg-background/50 backdrop-blur-sm">
 					<div className="px-4 py-2 sm:py-2.5 flex flex-col sm:flex-row gap-2 sm:items-center">
 						<div className="relative flex-1 group">
 							<Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground transition-colors group-focus-within:text-primary" />
@@ -848,8 +904,6 @@ function MenuPage() {
 								</button>
 							)}
 						</div>
-						
-						{/* Inline Category Tabs for Desktop - Move categories here? No, keep them separate but thin */}
 					</div>
 
 					{/* Category Tabs - Thin & Minimalist */}
@@ -880,7 +934,7 @@ function MenuPage() {
 							);
 						})}
 					</div>
-				</header>
+				</div>
 
 				<main className="flex-1 overflow-y-auto pb-24 bg-muted/10">
 					<div
@@ -1001,6 +1055,48 @@ function MenuPage() {
 						)}
 					</div>
 				</main>
+
+				{/* === BOTTOM NAVIGATION BAR (Sticky) === */}
+				<div className="sticky bottom-0 z-40 w-full border-t border-border bg-background/90 backdrop-blur-xl shrink-0 safe-area-bottom shadow-[0_-5px_15px_rgba(0,0,0,0.03)] px-3 py-1.5 sm:py-2">
+					<div className="flex items-center justify-around max-w-lg mx-auto sm:max-w-none gap-1 sm:gap-2">
+						{SIDEBAR_MENU_ITEMS.map((item, index) => {
+							const Icon = item.icon;
+							const isFocused = isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === index + 1;
+							const isActive = isSidebarOpen && activeSidebarTab === item.id;
+							const needsAttention = item.id === "shift" && !isShiftOpen;
+
+							return (
+								<button
+									key={item.id}
+									onClick={() => {
+										setActiveSidebarTab(item.id);
+										setIsSidebarOpen(true);
+									}}
+									className={cn(
+										"flex flex-col items-center gap-1 min-w-[50px] transition-all",
+										isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
+										isFocused && "ring-1 ring-primary rounded-md p-0.5"
+									)}
+									type="button"
+								>
+									<div className={cn(
+										"flex h-8 w-8 items-center justify-center rounded-lg transition-all",
+										isActive ? "bg-primary/10" : "bg-transparent hover:bg-muted/50",
+										needsAttention && "bg-rose-50 text-rose-600 shadow-[0_0_10px_rgba(225,29,72,0.2)]"
+									)}>
+										<Icon className={cn("h-4.5 w-4.5", needsAttention && "animate-bounce")} />
+									</div>
+									<span className="text-[8px] font-bold uppercase tracking-tight leading-none text-center block sm:hidden">
+										{item.label.split(' ')[0]}
+									</span>
+									<span className="text-[9px] font-bold uppercase tracking-tight leading-none text-center hidden sm:block">
+										{item.label}
+									</span>
+								</button>
+							);
+						})}
+					</div>
+				</div>
 			</div>
 
 			{/* RIGHT CONTENT: Checkout Sidebar (Desktop/Tablet) */}
@@ -1015,14 +1111,13 @@ function MenuPage() {
 
 			{/* === CART BUTTON (Floating Mobile) === */}
 			{(totalItems > 0 || !customerInfo.isSubmitted) && (
-				<div className="fixed bottom-4 left-4 right-4 z-20 px-3 md:hidden">
+				<div className="fixed bottom-16 left-4 right-4 z-20 px-3 md:hidden">
 					<button
 						type="button"
 						onClick={() => setIsCartOpen(true)}
 						className={cn(
 							"flex w-full items-center justify-between rounded-2xl px-4 py-3.5 font-bold text-white shadow-lg",
-							"transition-all active:opacity-90",
-							isKeyboardActive && isZoneFocused("cart") && "ring-2 ring-white ring-offset-2 ring-offset-primary"
+							"transition-all active:opacity-90 active:scale-[0.98]",
 						)}
 						style={{ background: themeColor ?? "var(--color-primary)" }}
 					>
@@ -1038,7 +1133,7 @@ function MenuPage() {
 							</>
 						) : (
 							<div className="flex w-full items-center justify-center gap-2">
-								<span className="text-sm">Mulai Pesanan</span>
+								<span className="text-sm uppercase tracking-widest font-black">Mulai Pesanan</span>
 							</div>
 						)}
 					</button>
@@ -1216,13 +1311,6 @@ function ProductDetailSheet({
 			category: product.categoryId,
 		});
 	};
-
-	const fmt = (n: number) =>
-		new Intl.NumberFormat("id-ID", {
-			style: "currency",
-			currency: "IDR",
-			maximumFractionDigits: 0,
-		}).format(n);
 
 	return (
 		<div className="flex flex-col">
