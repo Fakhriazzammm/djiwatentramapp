@@ -1088,8 +1088,9 @@ function MenuPage() {
 					</div>
 				</div>
 
-				{/* === BOTTOM NAVIGATION BAR (Sticky) === */}
-				<div className="sticky bottom-0 z-40 w-full border-t border-border bg-background/95 backdrop-blur-xl shrink-0 pb-safe-area shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-4 pt-3 sm:pt-4">
+				</main>
+				{/* === BOTTOM NAVIGATION BAR (Fixed) === */}
+				<div className="shrink-0 w-full border-t border-border bg-background/95 backdrop-blur-xl pb-safe-area shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-4 pt-3 sm:pt-4">
 					<div className="flex items-center justify-around max-w-lg mx-auto sm:max-w-none gap-1 sm:gap-2">
 						{SIDEBAR_MENU_ITEMS.map((item, index) => {
 							const Icon = item.icon;
@@ -1129,7 +1130,6 @@ function MenuPage() {
 						})}
 					</div>
 				</div>
-				</main>
 			</div>
 
 			{/* RIGHT CONTENT: Checkout Sidebar (Desktop/Tablet) */}
