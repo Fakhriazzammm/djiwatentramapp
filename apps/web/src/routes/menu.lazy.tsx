@@ -289,27 +289,36 @@ function MenuPage() {
 	const logoUrl = siteSettings?.logoUrl;
 	const themeColor = siteSettings?.themeColor;
 
-	// Category list including "Semua"
+	// Category list including "Semua" - Now dynamically expanded based on active category
 	const categoryList = useMemo(() => {
 		if (!categories) return [{ _id: "all", name: "Semua" }];
 		
-		// Sort categories to put sub-categories right after their parents
 		const parents = categories.filter((c: any) => !c.parentId);
-		const sortedCategories: any[] = [];
+		const result: any[] = [{ _id: "all", name: "Semua" }];
 		
+		let activeParentId = null;
+		if (activeCategoryId && activeCategoryId !== "all") {
+			const activeCat = categories.find((c: any) => c._id === activeCategoryId);
+			if (activeCat) {
+				activeParentId = activeCat.parentId ? activeCat.parentId : activeCat._id;
+			}
+		}
+
 		parents.forEach((parent: any) => {
-			sortedCategories.push(parent);
-			const subs = categories.filter((c: any) => c.parentId === parent._id);
-			if (subs.length > 0) {
-				sortedCategories.push(...subs.map((sub: any) => ({
-					...sub,
-					name: `↳ ${sub.name}`
-				})));
+			result.push(parent);
+			if (activeParentId === parent._id) {
+				const subs = categories.filter((c: any) => c.parentId === parent._id);
+				if (subs.length > 0) {
+					result.push(...subs.map((sub: any) => ({
+						...sub,
+						name: `↳ ${sub.name}`
+					})));
+				}
 			}
 		});
 
-		return [{ _id: "all", name: "Semua" }, ...sortedCategories];
-	}, [categories]);
+		return result;
+	}, [categories, activeCategoryId]);
 
 	// Scroll category into view
 	const scrollCategoryIntoView = useCallback((index: number) => {
@@ -702,9 +711,9 @@ function MenuPage() {
 								<span className="whitespace-nowrap leading-none font-semibold text-[9px] sm:text-[10px] uppercase tracking-wider">{isShiftOpen ? "Shift Aktif" : "Shift Tutup"}</span>
 							</div>
 							{isShiftOpen && shiftStatus?.shiftInfo?.cashierName && (
-								<div className="flex flex-nowrap items-center gap-1 opacity-75 min-w-0">
+								<div className="flex flex-nowrap items-center gap-1 opacity-75 shrink-0">
 									<User className="h-3 w-3 shrink-0" />
-									<span className="whitespace-nowrap leading-none truncate max-w-[80px] sm:max-w-[150px]">
+									<span className="whitespace-nowrap leading-none">
 										{shiftStatus.shiftInfo.cashierName}
 										{shiftStatus.shiftInfo.shiftName ? ` • ${shiftStatus.shiftInfo.shiftName}` : ""}
 									</span>
@@ -766,16 +775,7 @@ function MenuPage() {
 								</div>
 							</div>
 
-							{/* Search Trigger for Mobile */}
-							{!isSearchActive && (
-								<button 
-									onClick={() => setIsSearchActive(true)}
-									className="flex h-7 w-7 items-center justify-center rounded-full bg-muted/40 hover:bg-muted text-muted-foreground lg:hidden"
-									type="button"
-								>
-									<Search className="h-3.5 w-3.5" />
-								</button>
-							)}
+
 						</div>
 					</div>
 
@@ -891,33 +891,44 @@ function MenuPage() {
 						</div>
 					</div>
 
-					{/* Category Tabs - Thin & Minimalist */}
+					{/* Category Tabs - Thin & Minimalist (Animated Expansion) */}
 					<div
 						ref={categoryScrollRef}
 						className={cn(
-							"flex gap-1.5 overflow-x-auto px-4 pb-2.5 scrollbar-none mask-fade-edges"
+							"flex overflow-x-auto px-4 pb-2.5 scrollbar-none mask-fade-edges"
 						)}
 					>
-						{categoryList.map((cat, index) => {
-							const isActive = activeCategoryId === cat._id || (cat._id === "all" && !activeCategoryId);
-							const isFocused = isKeyboardActive && isZoneFocused("categories") && focusedCategoryIndex === index;
-							return (
-								<button
-									key={cat._id}
-									type="button"
-									onClick={() => handleCategorySelect(index)}
-									className={cn(
-										"shrink-0 rounded-lg px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all",
-										isActive
-											? "bg-primary text-primary-foreground shadow-md ring-1 ring-primary"
-											: "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50",
-										isFocused && "ring-2 ring-primary ring-offset-2"
-									)}
-								>
-									{cat.name}
-								</button>
-							);
-						})}
+						<AnimatePresence mode="popLayout">
+							{categoryList.map((cat, index) => {
+								const isActive = activeCategoryId === cat._id || (cat._id === "all" && !activeCategoryId);
+								const isFocused = isKeyboardActive && isZoneFocused("categories") && focusedCategoryIndex === index;
+								const isSub = cat?.name?.startsWith("↳");
+								
+								return (
+									<motion.button
+										layout
+										initial={{ opacity: 0, scale: 0.8, width: 0, marginRight: 0, paddingLeft: 0, paddingRight: 0 }}
+										animate={{ opacity: 1, scale: 1, width: "auto", marginRight: 6, paddingLeft: 14, paddingRight: 14 }}
+										exit={{ opacity: 0, scale: 0.8, width: 0, marginRight: 0, paddingLeft: 0, paddingRight: 0 }}
+										transition={{ duration: 0.2, ease: "easeOut" }}
+										key={cat._id}
+										type="button"
+										onClick={() => handleCategorySelect(index)}
+										className={cn(
+											"shrink-0 rounded-lg py-1.5 text-[10px] font-black uppercase tracking-wider whitespace-nowrap overflow-hidden inline-flex items-center justify-center will-change-[width,opacity,transform]",
+											isActive
+												? "bg-primary text-primary-foreground shadow-md ring-1 ring-primary"
+												: isSub 
+													? "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-transparent shadow-none"
+													: "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50",
+											isFocused && "ring-2 ring-primary ring-offset-2 transition-shadow"
+										)}
+									>
+										{cat.name}
+									</motion.button>
+								);
+							})}
+						</AnimatePresence>
 					</div>
 				</div>
 
