@@ -667,7 +667,7 @@ function MenuPage() {
 	};
 
 	return (
-		<div className="flex h-screen flex-row bg-background overflow-hidden relative">
+		<div className="flex h-[100dvh] flex-row bg-background overflow-hidden relative">
 			{/* LEFT CONTENT: Menu Area */}
 			<div className="flex flex-1 flex-col overflow-hidden relative">
 				{/* Shift Closed Overlay */}
@@ -735,12 +735,14 @@ function MenuPage() {
 					</div>
 				</div>
 
-				<header
-					ref={headerRef}
-					className={cn(
-						"sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-sm shrink-0"
-					)}
-				>
+				{/* MAIN Y-SCROLL CONTAINER */}
+				<main className="flex-1 overflow-y-auto bg-muted/10 relative">
+					<header
+						ref={headerRef}
+						className={cn(
+							"bg-background shrink-0"
+						)}
+					>
 					<div className="flex flex-col px-4 py-2 gap-1.5">
 						{/* ROW 1: Logo & Store name */}
 						<div 
@@ -862,8 +864,8 @@ function MenuPage() {
 				/>
 
 
-				{/* Search & Categories Bar - Now more compact */}
-				<div className="flex flex-col gap-0 border-b border-border/50 bg-background/50 backdrop-blur-sm">
+				{/* STICKY CONTROL AREA (Search, Categories, Subcategories) */}
+				<div className="sticky top-0 z-30 flex flex-col gap-0 border-b border-border/20 bg-background/95 backdrop-blur-md shadow-sm transition-all pb-1">
 					<div className="px-4 py-2 sm:py-2.5 flex flex-col sm:flex-row gap-2 sm:items-center">
 						<div className="relative flex-1 group">
 							<Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground transition-colors group-focus-within:text-primary" />
@@ -917,21 +919,19 @@ function MenuPage() {
 							);
 						})}
 					</div>
-				</div>
 
-				<main className="flex-1 overflow-y-auto pb-24 bg-muted/10 relative">
 					{/* Local Subcategory Chips */}
 					{activeSubcategories.length > 0 && (
-						<div className="sticky top-0 z-20 bg-muted/10/80 backdrop-blur-md px-3 pt-3 pb-1 border-b border-border/20 shadow-sm -mt-2">
-							<div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-2 mask-fade-edges">
+						<div className="bg-muted/40 border-t border-border/40 px-3 pt-2.5 pb-2.5">
+							<div className="flex items-center gap-2 overflow-x-auto scrollbar-none mask-fade-edges">
 								<button
 									type="button"
 									onClick={() => setActiveCategoryId(activeParentId)}
 									className={cn(
 										"shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold whitespace-nowrap transition-all shadow-sm border",
 										activeCategoryId === activeParentId
-											? "bg-white text-foreground border-border/60 scale-100"
-											: "bg-muted/30 text-muted-foreground hover:bg-white/60 border-transparent hover:text-foreground scale-[0.98]"
+											? "bg-white text-foreground border-border/60 scale-100 ring-1 ring-border/50"
+											: "bg-background/60 text-muted-foreground hover:bg-white/80 border-transparent hover:text-foreground scale-[0.98]"
 									)}
 								>
 									Semua {activeParentName}
@@ -944,8 +944,8 @@ function MenuPage() {
 										className={cn(
 											"shrink-0 rounded-full px-3 py-1.5 text-[10px] font-bold whitespace-nowrap transition-all shadow-sm border",
 											activeCategoryId === sub._id
-												? "bg-white text-foreground border-border/60 scale-100"
-												: "bg-muted/30 text-muted-foreground hover:bg-white/60 border-transparent hover:text-foreground scale-[0.98]"
+												? "bg-white text-foreground border-border/60 scale-100 ring-1 ring-border/50"
+												: "bg-background/60 text-muted-foreground hover:bg-white/80 border-transparent hover:text-foreground scale-[0.98]"
 										)}
 									>
 										{sub.name}
@@ -954,7 +954,9 @@ function MenuPage() {
 							</div>
 						</div>
 					)}
+				</div>
 
+				<div className="pb-32">
 					<div
 						ref={productGridRef}
 						className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-2 p-3"
@@ -1072,7 +1074,7 @@ function MenuPage() {
 							})
 						)}
 					</div>
-				</main>
+				</div>
 
 				{/* === BOTTOM NAVIGATION BAR (Sticky) === */}
 				<div className="sticky bottom-0 z-40 w-full border-t border-border bg-background/95 backdrop-blur-xl shrink-0 pb-safe-area shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-4 pt-3 sm:pt-4">
@@ -1115,6 +1117,7 @@ function MenuPage() {
 						})}
 					</div>
 				</div>
+				</main>
 			</div>
 
 			{/* RIGHT CONTENT: Checkout Sidebar (Desktop/Tablet) */}
