@@ -53,7 +53,7 @@ async function safeSumoPodCall(
 	try {
 		const openai = getOpenAI();
 		const completion = await openai.chat.completions.create({
-			model: options?.model || "gpt-4o-mini",
+			model: options?.model || "gpt-4o",
 			messages: messages as Array<OpenAI.ChatCompletionMessageParam>,
 			max_tokens: options?.maxTokens,
 		});
@@ -84,12 +84,7 @@ async function callGeminiAPI(
 ): Promise<{ success: boolean; text: string; error?: string }> {
 	// Daftar model Gemini yang tersedia di SumoPod (mungkin berbeda nama tergantung provider)
 	const models = [
-		"seed-2-0-pro-free", "seed-2-0-lite-free",
-		"seed-2-0-mini",
-		"seed-2-0-mini-free",
-		"google/gemini-2.0-flash-001",
-		"google/gemini-flash-1.5",
-		"google/gemini-pro-1.5",
+		"seed-2-0-pro-free",
 	];
 	
 	let lastError = "";
@@ -1222,7 +1217,7 @@ INSTRUKSI REKONSILIASI BANK:
 				if (currentIteration === 1) {
 					// First iteration: use streaming for content
 					const response = await openai.chat.completions.create({
-						model: "gpt-4o-mini",
+						model: "gpt-4o",
 						messages,
 						tools: openaiTools,
 						tool_choice: "auto",
@@ -1304,7 +1299,7 @@ INSTRUKSI REKONSILIASI BANK:
 				} else {
 					// Subsequent iterations for tool chain results (non-streaming to save complexity)
 					completion = await openai.chat.completions.create({
-						model: "gpt-4o-mini",
+						model: "gpt-4o",
 						messages,
 						tools: openaiTools,
 						max_tokens: 1000,
@@ -1370,7 +1365,7 @@ INSTRUKSI REKONSILIASI BANK:
 		// Fallback: return last message if max iterations reached
 		try {
 			const finalCompletion = await openai.chat.completions.create({
-				model: "gpt-4o-mini",
+				model: "gpt-4o",
 				messages,
 				max_tokens: 1000,
 			});
