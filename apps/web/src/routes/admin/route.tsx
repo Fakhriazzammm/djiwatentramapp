@@ -4,6 +4,7 @@ import {
 	Outlet,
 	useLocation,
 	useNavigate,
+	useSearch,
 } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useQuery } from "convex/react";
@@ -31,6 +32,7 @@ import {
 	User,
 	Wallet,
 	X,
+	ArrowLeft,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -131,6 +133,8 @@ const QUICK_MENU_SECTIONS = [
 	},
 ];
 
+const OPERATIONAL_PATHS = ["/admin/kitchen", "/admin/bar"];
+
 // Flat list for backward compat
 const QUICK_MENU_ITEMS = QUICK_MENU_SECTIONS.flatMap((s) => s.items);
 
@@ -157,7 +161,11 @@ function AdminLayout() {
 	const appName = settings?.appName || "Yumi POS";
 
 	const location = useLocation();
+	// Use non-strict search to avoid type errors during route tree generation
+	const search = useSearch({ strict: false }) as any;
+	
 	const isAIChat = location.pathname === "/admin/ai-chat";
+	const isOperational = OPERATIONAL_PATHS.some(p => location.pathname.startsWith(p));
 	const currentPageTitle = PAGE_TITLES[location.pathname] || "Admin";
 
 	// Auto-open finance submenu if on a finance route
@@ -757,6 +765,75 @@ function AdminLayout() {
 					})}
 				</div>
 			</nav>
+
+			{/* === MOBILE OPERATIONAL BOTTOM NAVIGATION === */}
+			{isOperational && (
+				<nav className="safe-area-bottom fixed inset-x-0 bottom-0 z-40 border-border border-t bg-background/95 backdrop-blur-md md:hidden">
+					<div className="flex items-stretch px-2">
+						<Link
+							className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
+							to="/admin"
+						>
+							<div className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground">
+								<ArrowLeft className="h-4 w-4" />
+							</div>
+							<span className="font-medium text-[9px] leading-tight text-muted-foreground">
+								Kembali
+							</span>
+						</Link>
+						
+						<Link
+							className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
+							search={{ tab: "orders" } as any}
+							to={location.pathname as any}
+						>
+							<div
+								className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
+									search.tab !== "stock"
+										? "bg-primary text-primary-foreground shadow-sm"
+										: "text-muted-foreground"
+								}`}
+							>
+								<ClipboardList className="h-4 w-4" />
+							</div>
+							<span
+								className={`font-medium text-[9px] leading-tight ${
+									search.tab !== "stock"
+										? "text-primary"
+										: "text-muted-foreground"
+								}`}
+							>
+								Pesanan
+							</span>
+						</Link>
+
+						<Link
+							className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
+							search={{ tab: "stock" } as any}
+							to={location.pathname as any}
+						>
+							<div
+								className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
+									search.tab === "stock"
+										? "bg-primary text-primary-foreground shadow-sm"
+										: "text-muted-foreground"
+								}`}
+							>
+								<Package className="h-4 w-4" />
+							</div>
+							<span
+								className={`font-medium text-[9px] leading-tight ${
+									search.tab === "stock"
+										? "text-primary"
+										: "text-muted-foreground"
+								}`}
+							>
+								Stok
+							</span>
+						</Link>
+					</div>
+				</nav>
+			)}
 		</div>
 	);
 }

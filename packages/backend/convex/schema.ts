@@ -19,6 +19,7 @@ export default defineSchema({
 		categoryId: v.id("categories"),
 		image: v.optional(v.string()), // URL to storage or external
 		isAvailable: v.boolean(),
+		quantity: v.optional(v.number()), // Jumlah stok tersisa
 		menuNumber: v.optional(v.number()), // Nomor urut di menu
 		// Flexible variations structure (e.g., Size, Sugar Level, Toppings)
 		// schema: [{ type: "Size", options: [{ name: "Large", price: 5000 }] }]

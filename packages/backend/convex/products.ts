@@ -83,6 +83,7 @@ export const addProduct = mutation({
 		promoPrice: v.optional(v.number()),
 		image: v.optional(v.string()),
 		isAvailable: v.boolean(),
+		quantity: v.optional(v.number()),
 		menuNumber: v.optional(v.number()),
 		variations: v.optional(v.any()),
 	},
@@ -102,6 +103,7 @@ export const updateProduct = mutation({
 		categoryId: v.optional(v.id("categories")),
 		image: v.optional(v.string()),
 		isAvailable: v.optional(v.boolean()),
+		quantity: v.optional(v.number()),
 		menuNumber: v.optional(v.number()),
 		variations: v.optional(v.any()),
 	},
@@ -123,6 +125,7 @@ export const bulkCreateProducts = mutation({
 				categoryId: v.id("categories"),
 				image: v.optional(v.string()), // URL
 				isAvailable: v.boolean(),
+				quantity: v.optional(v.number()),
 			})
 		),
 	},
