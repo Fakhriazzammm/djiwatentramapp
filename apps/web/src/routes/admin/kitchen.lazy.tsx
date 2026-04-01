@@ -53,7 +53,7 @@ function KitchenMonitorPage() {
 	}, [allProducts, allCategories]);
 
 	return (
-		<div className="flex h-full flex-col bg-slate-50/50 pb-12 md:pb-0">
+		<div className="flex h-full flex-col bg-slate-50">
 			{/* Header - App Like */}
 			<div className="sticky top-0 z-30 flex flex-col gap-3 border-b bg-background/80 px-4 py-3 backdrop-blur-md">
 				<div className="flex items-center justify-between">
@@ -114,7 +114,7 @@ function KitchenMonitorPage() {
 					) : (
 						<motion.div
 							animate={{ opacity: 1, y: 0 }}
-							className="p-4"
+							className="p-4 pb-32"
 							exit={{ opacity: 0, y: 10 }}
 							initial={{ opacity: 0, y: 10 }}
 							key="stock-tab"
@@ -715,7 +715,7 @@ function FastStockTable({
 				{selectedIds.size > 0 && (
 					<motion.div 
 						animate={{ y: 0, opacity: 1 }}
-						className="fixed bottom-6 left-4 right-4 z-50 flex items-center justify-between rounded-[32px] bg-slate-900/95 p-2 pl-6 shadow-2xl backdrop-blur-lg ring-1 ring-white/10 md:left-auto md:right-8 md:w-[600px]"
+						className="fixed bottom-24 left-4 right-4 z-50 flex items-center justify-between rounded-[32px] bg-slate-900/95 p-2 pl-6 shadow-2xl backdrop-blur-lg ring-1 ring-white/10 md:bottom-8 md:left-auto md:right-8 md:w-[600px]"
 						exit={{ y: 100, opacity: 0 }}
 						initial={{ y: 100, opacity: 0 }}
 					>

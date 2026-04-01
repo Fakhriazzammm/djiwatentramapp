@@ -534,9 +534,9 @@ function AdminLayout() {
 					</div>
 				</header>
 
-				{/* Page Content - AI Chat uses internal scroll, others use page scroll */}
+				{/* Page Content - AI Chat and Operational views use internal scroll, others use page scroll */}
 				<div
-					className={isAIChat ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto p-3 pb-20 md:p-4 md:pb-4"}
+					className={(isAIChat || isOperational) ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto p-3 pb-20 md:p-4 md:pb-4"}
 				>
 					<Outlet />
 				</div>
