@@ -29,7 +29,9 @@ import {
 	Wallet,
 	X,
 	Copy,
-	RefreshCw
+	RefreshCw,
+	ChefHat,
+	CupSoda
 } from "lucide-react";
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { toast } from "sonner";
@@ -2544,10 +2546,31 @@ function StokTab({
 				})}
 			</div>
 
-			{activeSubTab === "update" && (
-				<InventoryTab setConfirmConfig={setConfirmConfig} />
-			)}
-			{activeSubTab === "beli" && <MarketList />}
+			<div className="flex-1 overflow-hidden">
+				{activeSubTab === "update" && (
+					<InventoryTab setConfirmConfig={setConfirmConfig} />
+				)}
+				{activeSubTab === "beli" && <MarketList />}
+			</div>
+
+			<div className="grid grid-cols-2 gap-2 mt-auto pt-4 border-t shrink-0">
+				<Button 
+					variant="outline" 
+					className="h-12 flex-col gap-1 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-all font-bold"
+					onClick={() => window.location.href = "/admin/kitchen"}
+				>
+					<ChefHat className="h-4 w-4" />
+					<span className="text-[10px] uppercase tracking-wider">Monitor Dapur</span>
+				</Button>
+				<Button 
+					variant="outline" 
+					className="h-12 flex-col gap-1 border-orange-500/20 bg-orange-500/5 text-orange-600 hover:bg-orange-500/10 transition-all font-bold"
+					onClick={() => window.location.href = "/admin/bar"}
+				>
+					<CupSoda className="h-4 w-4" />
+					<span className="text-[10px] uppercase tracking-wider">Monitor Bar</span>
+				</Button>
+			</div>
 		</div>
 	);
 }
