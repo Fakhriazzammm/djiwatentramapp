@@ -17,6 +17,8 @@ import {
 	ChevronRight,
 	ClipboardList,
 	Coffee,
+	ChefHat,
+	Beer,
 	FileBarChart,
 	Grid3X3,
 	LayoutDashboard,
@@ -61,6 +63,8 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/settings": "Pengaturan",
 	"/admin/forecasting": "Forecasting",
 	"/admin/booking": "Booking",
+	"/admin/kitchen": "Dapur",
+	"/admin/bar": "Bar",
 };
 
 // Bottom nav items (Yumi AI at center index 2)
@@ -86,6 +90,8 @@ const MORE_MENU_PATHS = [
 	"/admin/hpp-calculator",
 	"/admin/forecasting",
 	"/admin/booking",
+	"/admin/kitchen",
+	"/admin/bar",
 	"/admin/settings",
 ];
 
@@ -106,6 +112,13 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/finance/transactions", icon: ClipboardList, label: "Transaksi" },
 			{ to: "/admin/finance/reports", icon: FileBarChart, label: "Laporan" },
 			{ to: "/admin/hpp-calculator", icon: Calculator, label: "HPP" },
+		],
+	},
+	{
+		label: "Operasional",
+		items: [
+			{ to: "/admin/kitchen", icon: ChefHat, label: "Dapur" },
+			{ to: "/admin/bar", icon: Beer, label: "Bar" },
 		],
 	},
 	{
@@ -259,6 +272,21 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Booking"
 						to="/admin/booking"
+					/>
+
+					{/* OPERASIONAL */}
+					<SidebarSection isCollapsed={isCollapsed} label="Operasional" />
+					<DesktopNavLink
+						icon={<ChefHat />}
+						isCollapsed={isCollapsed}
+						label="Dapur"
+						to="/admin/kitchen"
+					/>
+					<DesktopNavLink
+						icon={<Beer />}
+						isCollapsed={isCollapsed}
+						label="Bar"
+						to="/admin/bar"
 					/>
 
 					{/* KEUANGAN - Collapsible */}
