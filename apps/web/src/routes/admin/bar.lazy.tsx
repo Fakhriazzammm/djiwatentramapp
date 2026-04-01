@@ -138,7 +138,6 @@ interface KanbanItem {
 }
 
 function ItemsKanban({ orders }: { orders: any[] | undefined }) {
-	const seedData = useMutation(api.kitchenBar.seedOperationalData);
 	const updateStatus = useMutation(api.kitchenBar.updateOrderItemStatus);
 
 	// Flatten orders into individual items
@@ -176,23 +175,14 @@ function ItemsKanban({ orders }: { orders: any[] | undefined }) {
 		return (
 			<div className="flex h-[70vh] flex-col items-center justify-center gap-6 p-10 text-center">
 				<div className="flex h-24 w-24 items-center justify-center rounded-full bg-slate-200 text-slate-400">
-					<Database className="h-10 w-10" />
+					<ClipboardList className="h-10 w-10" />
 				</div>
 				<div className="space-y-2">
-					<h3 className="font-black text-xl text-slate-800 tracking-tight">Antrian Bar Kosong</h3>
+					<h3 className="font-black text-xl text-slate-800 tracking-tight">Tidak Ada Pesanan Aktif</h3>
 					<p className="max-w-[280px] font-medium text-slate-500 text-sm leading-relaxed">
-						Layar monitor bar Anda sedang kosong. Ingin mencoba simulasi dengan data contoh?
+						Pesanan pelanggan atau kasir akan muncul di sini secara otomatis.
 					</p>
 				</div>
-				<button
-					className="flex items-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3 font-black text-xs uppercase tracking-widest text-white shadow-xl shadow-indigo-100 transition-all active:scale-95"
-					onClick={async () => {
-						const res = await seedData({ track: "bar" });
-						toast.success(res.message);
-					}}
-				>
-					Generate Test Data
-				</button>
 			</div>
 		);
 	}
@@ -352,7 +342,6 @@ function FastStockTable({
 	const [searchQuery, setSearchQuery] = useState("");
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [editForm, setEditForm] = useState<any>({});
-	const seedData = useMutation(api.kitchenBar.seedOperationalData);
 
 	const updateProduct = useMutation(api.products.updateProduct);
 	const deleteProduct = useMutation(api.products.deleteProduct);
@@ -542,12 +531,24 @@ function FastStockTable({
 												<h4 className="font-bold text-slate-800 leading-tight">{product.name}</h4>
 												<div className="mt-1 flex items-center gap-2 font-bold text-[10px] uppercase tracking-widest">
 													<span className="text-indigo-600">Rp {product.price.toLocaleString()}</span>
-													{product.quantity > 0 && (
-														<>
-															<span className="text-slate-300">•</span>
-															<span className="text-green-600">Ready: {product.quantity}</span>
-														</>
-													)}
+													<span className="text-slate-300">•</span>
+													<div className="flex items-center gap-1.5">
+														<span className={product.quantity <= 0 ? "text-red-500" : "text-green-600"}>Ready: {product.quantity}</span>
+														<div className="flex items-center gap-1 ml-1">
+															<button 
+																className="flex h-5 w-5 items-center justify-center rounded bg-slate-100 text-slate-500 shadow-sm active:scale-90"
+																onClick={() => updateProduct({ id: product._id, quantity: Math.max(0, (product.quantity || 0) - 1) })}
+															>
+																<Minus className="h-3 w-3" />
+															</button>
+															<button 
+																className="flex h-5 w-5 items-center justify-center rounded bg-indigo-600 text-white shadow-sm active:scale-90"
+																onClick={() => updateProduct({ id: product._id, quantity: (product.quantity || 0) + 1 })}
+															>
+																<Plus className="h-3 w-3" />
+															</button>
+														</div>
+													</div>
 												</div>
 											</div>
 										</div>
