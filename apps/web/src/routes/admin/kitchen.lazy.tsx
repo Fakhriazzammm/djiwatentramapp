@@ -348,9 +348,12 @@ function FastStockTable({
 	const [searchQuery, setSearchQuery] = useState("");
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [editForm, setEditForm] = useState<any>({});
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+	const [bulkQuantity, setBulkQuantity] = useState<number>(0);
 
 	const updateProduct = useMutation(api.products.updateProduct);
 	const deleteProduct = useMutation(api.products.deleteProduct);
+	const bulkUpdate = useMutation(api.products.bulkUpdateProducts);
 
 	const filteredProducts = useMemo(() => {
 		if (!products) return [];
@@ -430,19 +433,43 @@ function FastStockTable({
 		}
 	};
 
-	const handleDelete = async (id: any) => {
-		if (window.confirm("Apakah Anda yakin ingin menghapus produk ini secara permanen?")) {
-			try {
-				await deleteProduct({ id });
-				toast.success("Produk dihapus");
-			} catch (error) {
-				toast.error("Gagal menghapus produk");
-			}
+	const handleToggleSelect = (id: string) => {
+		const newSelected = new Set<string>(selectedIds);
+		if (newSelected.has(id)) {
+			newSelected.delete(id);
+		} else {
+			newSelected.add(id);
+		}
+		setSelectedIds(newSelected);
+	};
+
+	const handleSelectAllCategory = (items: any[]) => {
+		const allSelected = items.every((i) => selectedIds.has(i._id));
+		const newSelected = new Set<string>(selectedIds);
+		if (allSelected) {
+			items.forEach((i) => newSelected.delete(i._id));
+		} else {
+			items.forEach((i) => newSelected.add(i._id));
+		}
+		setSelectedIds(newSelected);
+	};
+
+	const handleBulkUpdate = async (updates: any) => {
+		if (selectedIds.size === 0) return;
+		try {
+			await bulkUpdate({
+				ids: Array.from(selectedIds) as any,
+				updates,
+			});
+			toast.success(`Berhasil memperbarui ${selectedIds.size} produk`);
+			setSelectedIds(new Set());
+		} catch (error) {
+			toast.error("Gagal melakukan pembaruan massal");
 		}
 	};
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="relative flex flex-col gap-4">
 			{/* Search - Mobile Friendlier */}
 			<div className="relative">
 				<Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
@@ -458,9 +485,21 @@ function FastStockTable({
 			<div className="space-y-8">
 				{Object.entries(groupedProducts).map(([categoryName, items]) => (
 					<div className="space-y-3" key={categoryName}>
-						<div className="flex items-center gap-3 px-2">
+						<div className="flex items-center justify-between px-2">
 							<div className="h-px flex-1 bg-slate-200" />
-							<h3 className="font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">{categoryName}</h3>
+							<div className="flex items-center gap-2 px-4">
+								<button 
+									className={`flex h-5 w-5 items-center justify-center rounded-md border transition-all ${
+										items.every(i => selectedIds.has(i._id)) 
+											? "bg-orange-600 border-orange-600 text-white" 
+											: "bg-white border-slate-300"
+									}`}
+									onClick={() => handleSelectAllCategory(items)}
+								>
+									{items.every(i => selectedIds.has(i._id)) && <Check className="h-3 w-3" />}
+								</button>
+								<h3 className="font-black text-[10px] text-slate-400 uppercase tracking-[0.2em]">{categoryName}</h3>
+							</div>
 							<div className="h-px flex-1 bg-slate-200" />
 						</div>
 						
@@ -480,11 +519,30 @@ function FastStockTable({
 
 							return (
 								<motion.div 
-									className={`overflow-hidden rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm transition-all ${editingId === product._id ? "ring-2 ring-orange-500/20" : ""}`} 
+									className={`group relative overflow-hidden rounded-[24px] border bg-white p-4 shadow-sm transition-all ${
+										selectedIds.has(product._id) ? "border-orange-200 bg-orange-50/20" : "border-slate-200"
+									} ${editingId === product._id ? "ring-2 ring-orange-500/20" : ""}`} 
 									key={product._id}
 									layout
 								>
-									{editingId === product._id ? (
+									{/* Checkbox Trigger Area */}
+									{!editingId && (
+										<div 
+											className="absolute top-0 left-0 bottom-0 w-12 cursor-pointer z-10 flex items-center justify-center"
+											onClick={() => handleToggleSelect(product._id)}
+										>
+											<div className={`h-5 w-5 rounded-lg border transition-all flex items-center justify-center ${
+												selectedIds.has(product._id) 
+													? "bg-orange-600 border-orange-600 text-white shadow-md shadow-orange-100" 
+													: "bg-slate-50 border-slate-200 group-hover:border-orange-300"
+											}`}>
+												{selectedIds.has(product._id) && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+											</div>
+										</div>
+									)}
+
+									<div className={!editingId ? "pl-10" : ""}>
+										{editingId === product._id ? (
 										<div className="space-y-4">
 											<div className="flex items-center gap-3">
 												<input 
@@ -630,13 +688,66 @@ function FastStockTable({
 												</div>
 											)}
 										</div>
-									)}
+										)}
+									</div>
 								</motion.div>
 							);
 						})}
 					</div>
 				))}
 			</div>
+
+			{/* Floating Bulk Action Bar */}
+			<AnimatePresence>
+				{selectedIds.size > 0 && (
+					<motion.div 
+						animate={{ y: 0, opacity: 1 }}
+						className="fixed bottom-6 left-4 right-4 z-50 flex items-center justify-between rounded-[32px] bg-slate-900/95 p-2 pl-6 shadow-2xl backdrop-blur-lg ring-1 ring-white/10 md:left-auto md:right-8 md:w-[600px]"
+						exit={{ y: 100, opacity: 0 }}
+						initial={{ y: 100, opacity: 0 }}
+					>
+						<div className="flex flex-col">
+							<span className="font-black text-white text-xs uppercase tracking-widest">{selectedIds.size} Dipilih</span>
+							<button onClick={() => setSelectedIds(new Set())} className="text-left font-bold text-[10px] text-slate-400 hover:text-orange-400">Batal Selesksi</button>
+						</div>
+
+						<div className="flex items-center gap-2">
+							<div className="flex items-center gap-1 rounded-2xl bg-white/10 p-1">
+								<input 
+									className="w-12 bg-transparent text-center font-black text-white text-sm outline-none"
+									onChange={(e) => setBulkQuantity(Number(e.target.value))}
+									placeholder="Stok"
+									type="number"
+									value={bulkQuantity}
+								/>
+								<button 
+									className="rounded-xl bg-orange-600 px-3 py-2 font-black text-[10px] text-white transition-all active:scale-95"
+									onClick={() => handleBulkUpdate({ quantity: bulkQuantity })}
+								>
+									SET STOK
+								</button>
+							</div>
+
+							<div className="h-8 w-px bg-white/10 mx-1" />
+
+							<div className="flex items-center gap-1">
+								<button 
+									className="rounded-xl bg-green-500/20 px-3 py-2.5 font-black text-[10px] text-green-400 transition-all hover:bg-green-500 hover:text-white active:scale-95"
+									onClick={() => handleBulkUpdate({ isAvailable: true })}
+								>
+									AKTIFKAN
+								</button>
+								<button 
+									className="rounded-xl bg-red-500/20 px-3 py-2.5 font-black text-[10px] text-red-400 transition-all hover:bg-red-500 hover:text-white active:scale-95"
+									onClick={() => handleBulkUpdate({ isAvailable: false })}
+								>
+									NON-AKTIF
+								</button>
+							</div>
+						</div>
+					</motion.div>
+				)}
+			</AnimatePresence>
 		</div>
 	);
 }

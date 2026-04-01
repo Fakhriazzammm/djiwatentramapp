@@ -263,3 +263,19 @@ export const deleteVariationPreset = mutation({
 		await ctx.db.delete(args.id);
 	},
 });
+// Admin: Bulk Update Products
+export const bulkUpdateProducts = mutation({
+	args: {
+		ids: v.array(v.id("products")),
+		updates: v.object({
+			isAvailable: v.optional(v.boolean()),
+			quantity: v.optional(v.number()),
+		}),
+	},
+	handler: async (ctx, args) => {
+		const { ids, updates } = args;
+		for (const id of ids) {
+			await ctx.db.patch(id, updates);
+		}
+	},
+});
