@@ -39,13 +39,17 @@ function BarMonitorPage() {
 	const products = useMemo(() => {
 		if (!allProducts || !allCategories) return undefined;
 		
-		const trackCategoryIds = new Set(
-			allCategories
-				.filter((c: any) => c.track === "bar" || (c.parentId && allCategories.find((p: any) => p._id === c.parentId)?.track === "bar"))
-				.map((c: any) => c._id)
-		);
+		const isBarCategory = (catId: any): boolean => {
+			const cat = allCategories.find((c: any) => c._id === catId);
+			if (!cat) return false;
+			// Check if this is the root "Minuman" category
+			if (!cat.parentId && cat.name.toLowerCase().includes("minuman")) return true;
+			// If it has a parent, check the parent recursively
+			if (cat.parentId) return isBarCategory(cat.parentId);
+			return false;
+		};
 
-		return allProducts.filter((p: any) => trackCategoryIds.has(p.categoryId));
+		return allProducts.filter((p: any) => isBarCategory(p.categoryId));
 	}, [allProducts, allCategories]);
 
 	return (

@@ -39,13 +39,17 @@ function KitchenMonitorPage() {
 	const products = useMemo(() => {
 		if (!allProducts || !allCategories) return undefined;
 		
-		const trackCategoryIds = new Set(
-			allCategories
-				.filter((c: any) => c.track === "kitchen" || (c.parentId && allCategories.find((p: any) => p._id === c.parentId)?.track === "kitchen"))
-				.map((c: any) => c._id)
-		);
+		const isKitchenCategory = (catId: any): boolean => {
+			const cat = allCategories.find((c: any) => c._id === catId);
+			if (!cat) return false;
+			// Check if this is the root "Makanan" category
+			if (!cat.parentId && cat.name.toLowerCase().includes("makanan")) return true;
+			// If it has a parent, check the parent recursively
+			if (cat.parentId) return isKitchenCategory(cat.parentId);
+			return false;
+		};
 
-		return allProducts.filter((p: any) => trackCategoryIds.has(p.categoryId));
+		return allProducts.filter((p: any) => isKitchenCategory(p.categoryId));
 	}, [allProducts, allCategories]);
 
 	return (
