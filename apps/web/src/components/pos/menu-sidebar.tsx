@@ -2094,9 +2094,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				</p>
 			</div>
 
-			<div className="flex gap-0.5 rounded-md bg-muted/50 p-0.5">
+			<div className="flex gap-px rounded-sm bg-muted/50 p-px">
 				<button
-					className={`flex-1 rounded px-1.5 py-1 font-bold text-[10px] transition-all ${
+					className={`flex-1 rounded-sm px-0.5 py-0.5 font-bold text-[8px] transition-all ${
 						shiftType === "mulai"
 							? "bg-primary text-white shadow-sm"
 							: "text-muted-foreground hover:text-foreground opacity-50 grayscale pointer-events-none"
@@ -2106,7 +2106,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					Mulai Shift
 				</button>
 				<button
-					className={`flex-1 rounded px-1.5 py-1 font-bold text-[10px] transition-all ${
+					className={`flex-1 rounded-sm px-0.5 py-0.5 font-bold text-[8px] transition-all ${
 						shiftType === "akhiri"
 							? "bg-destructive text-white shadow-sm"
 							: "text-muted-foreground hover:text-foreground opacity-50 grayscale pointer-events-none"

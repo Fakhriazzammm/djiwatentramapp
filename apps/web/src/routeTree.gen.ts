@@ -10,10 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MenuRouteImport } from './routes/menu'
-import { Route as KitchenRouteImport } from './routes/kitchen'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BookingRouteImport } from './routes/booking'
-import { Route as BarRouteImport } from './routes/bar'
 import { Route as BrandSlugRouteImport } from './routes/$brandSlug'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -22,11 +20,13 @@ import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
+import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
 import { Route as AdminHppCalculatorRouteImport } from './routes/admin/hpp-calculator'
 import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting'
 import { Route as AdminDiscountsRouteImport } from './routes/admin/discounts'
 import { Route as AdminBookingRouteImport } from './routes/admin/booking'
+import { Route as AdminBarRouteImport } from './routes/admin/bar'
 import { Route as AdminAiChatRouteImport } from './routes/admin/ai-chat'
 import { Route as AdminFinanceRouteRouteImport } from './routes/admin/finance/route'
 import { Route as AdminFinanceIndexRouteImport } from './routes/admin/finance/index'
@@ -38,11 +38,6 @@ const MenuRoute = MenuRouteImport.update({
   path: '/menu',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/menu.lazy').then((d) => d.Route))
-const KitchenRoute = KitchenRouteImport.update({
-  id: '/kitchen',
-  path: '/kitchen',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/kitchen.lazy').then((d) => d.Route))
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -53,11 +48,6 @@ const BookingRoute = BookingRouteImport.update({
   path: '/booking',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/booking.lazy').then((d) => d.Route))
-const BarRoute = BarRouteImport.update({
-  id: '/bar',
-  path: '/bar',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/bar.lazy').then((d) => d.Route))
 const BrandSlugRoute = BrandSlugRouteImport.update({
   id: '/$brandSlug',
   path: '/$brandSlug',
@@ -102,6 +92,11 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminKitchenRoute = AdminKitchenRouteImport.update({
+  id: '/kitchen',
+  path: '/kitchen',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() => import('./routes/admin/kitchen.lazy').then((d) => d.Route))
 const AdminInventoryRoute = AdminInventoryRouteImport.update({
   id: '/inventory',
   path: '/inventory',
@@ -135,6 +130,11 @@ const AdminBookingRoute = AdminBookingRouteImport.update({
   path: '/booking',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() => import('./routes/admin/booking.lazy').then((d) => d.Route))
+const AdminBarRoute = AdminBarRouteImport.update({
+  id: '/bar',
+  path: '/bar',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() => import('./routes/admin/bar.lazy').then((d) => d.Route))
 const AdminAiChatRoute = AdminAiChatRouteImport.update({
   id: '/ai-chat',
   path: '/ai-chat',
@@ -167,18 +167,18 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/$brandSlug': typeof BrandSlugRoute
-  '/bar': typeof BarRoute
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
-  '/kitchen': typeof KitchenRoute
   '/menu': typeof MenuRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
+  '/admin/bar': typeof AdminBarRoute
   '/admin/booking': typeof AdminBookingRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
@@ -191,17 +191,17 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$brandSlug': typeof BrandSlugRoute
-  '/bar': typeof BarRoute
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
-  '/kitchen': typeof KitchenRoute
   '/menu': typeof MenuRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
+  '/admin/bar': typeof AdminBarRoute
   '/admin/booking': typeof AdminBookingRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
@@ -216,18 +216,18 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/$brandSlug': typeof BrandSlugRoute
-  '/bar': typeof BarRoute
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
-  '/kitchen': typeof KitchenRoute
   '/menu': typeof MenuRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
+  '/admin/bar': typeof AdminBarRoute
   '/admin/booking': typeof AdminBookingRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
@@ -243,18 +243,18 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/$brandSlug'
-    | '/bar'
     | '/booking'
     | '/dashboard'
-    | '/kitchen'
     | '/menu'
     | '/admin/finance'
     | '/admin/ai-chat'
+    | '/admin/bar'
     | '/admin/booking'
     | '/admin/discounts'
     | '/admin/forecasting'
     | '/admin/hpp-calculator'
     | '/admin/inventory'
+    | '/admin/kitchen'
     | '/admin/login'
     | '/admin/orders'
     | '/admin/products'
@@ -267,17 +267,17 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$brandSlug'
-    | '/bar'
     | '/booking'
     | '/dashboard'
-    | '/kitchen'
     | '/menu'
     | '/admin/ai-chat'
+    | '/admin/bar'
     | '/admin/booking'
     | '/admin/discounts'
     | '/admin/forecasting'
     | '/admin/hpp-calculator'
     | '/admin/inventory'
+    | '/admin/kitchen'
     | '/admin/login'
     | '/admin/orders'
     | '/admin/products'
@@ -291,18 +291,18 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/$brandSlug'
-    | '/bar'
     | '/booking'
     | '/dashboard'
-    | '/kitchen'
     | '/menu'
     | '/admin/finance'
     | '/admin/ai-chat'
+    | '/admin/bar'
     | '/admin/booking'
     | '/admin/discounts'
     | '/admin/forecasting'
     | '/admin/hpp-calculator'
     | '/admin/inventory'
+    | '/admin/kitchen'
     | '/admin/login'
     | '/admin/orders'
     | '/admin/products'
@@ -317,10 +317,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   BrandSlugRoute: typeof BrandSlugRoute
-  BarRoute: typeof BarRoute
   BookingRoute: typeof BookingRoute
   DashboardRoute: typeof DashboardRoute
-  KitchenRoute: typeof KitchenRoute
   MenuRoute: typeof MenuRoute
 }
 
@@ -331,13 +329,6 @@ declare module '@tanstack/react-router' {
       path: '/menu'
       fullPath: '/menu'
       preLoaderRoute: typeof MenuRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/kitchen': {
-      id: '/kitchen'
-      path: '/kitchen'
-      fullPath: '/kitchen'
-      preLoaderRoute: typeof KitchenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -352,13 +343,6 @@ declare module '@tanstack/react-router' {
       path: '/booking'
       fullPath: '/booking'
       preLoaderRoute: typeof BookingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/bar': {
-      id: '/bar'
-      path: '/bar'
-      fullPath: '/bar'
-      preLoaderRoute: typeof BarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$brandSlug': {
@@ -417,6 +401,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/kitchen': {
+      id: '/admin/kitchen'
+      path: '/kitchen'
+      fullPath: '/admin/kitchen'
+      preLoaderRoute: typeof AdminKitchenRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/inventory': {
       id: '/admin/inventory'
       path: '/inventory'
@@ -450,6 +441,13 @@ declare module '@tanstack/react-router' {
       path: '/booking'
       fullPath: '/admin/booking'
       preLoaderRoute: typeof AdminBookingRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/bar': {
+      id: '/admin/bar'
+      path: '/bar'
+      fullPath: '/admin/bar'
+      preLoaderRoute: typeof AdminBarRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/ai-chat': {
@@ -508,11 +506,13 @@ const AdminFinanceRouteRouteWithChildren =
 interface AdminRouteRouteChildren {
   AdminFinanceRouteRoute: typeof AdminFinanceRouteRouteWithChildren
   AdminAiChatRoute: typeof AdminAiChatRoute
+  AdminBarRoute: typeof AdminBarRoute
   AdminBookingRoute: typeof AdminBookingRoute
   AdminDiscountsRoute: typeof AdminDiscountsRoute
   AdminForecastingRoute: typeof AdminForecastingRoute
   AdminHppCalculatorRoute: typeof AdminHppCalculatorRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
+  AdminKitchenRoute: typeof AdminKitchenRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
@@ -523,11 +523,13 @@ interface AdminRouteRouteChildren {
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminFinanceRouteRoute: AdminFinanceRouteRouteWithChildren,
   AdminAiChatRoute: AdminAiChatRoute,
+  AdminBarRoute: AdminBarRoute,
   AdminBookingRoute: AdminBookingRoute,
   AdminDiscountsRoute: AdminDiscountsRoute,
   AdminForecastingRoute: AdminForecastingRoute,
   AdminHppCalculatorRoute: AdminHppCalculatorRoute,
   AdminInventoryRoute: AdminInventoryRoute,
+  AdminKitchenRoute: AdminKitchenRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
@@ -543,10 +545,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   BrandSlugRoute: BrandSlugRoute,
-  BarRoute: BarRoute,
   BookingRoute: BookingRoute,
   DashboardRoute: DashboardRoute,
-  KitchenRoute: KitchenRoute,
   MenuRoute: MenuRoute,
 }
 export const routeTree = rootRouteImport
