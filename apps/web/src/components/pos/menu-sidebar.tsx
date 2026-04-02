@@ -1573,9 +1573,11 @@ function ParkirTab({
 
 function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) => void }) {
 	const orders = useQuery(api.orders.getOrders, {});
-	
-	const [timeFilter, setTimeFilter] = useState("today"); // today, yesterday, this_week, last_week, this_month, last_month
-	const [sortOrder, setSortOrder] = useState("desc"); // desc, asc
+	const shiftStatus = useQuery(api.finance.getShiftStatus);
+
+	const [timeFilter, setTimeFilter] = useState("today");
+	const [sortOrder, setSortOrder] = useState("desc");
+	const [shiftFilter, setShiftFilter] = useState("active");
 
 	const formatCurrency = (value: number) =>
 		new Intl.NumberFormat("id-ID", {
@@ -1596,54 +1598,144 @@ function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) =
 			month: "short",
 		});
 
+	const shifts = useMemo(() => shiftStatus?.allShifts ?? [], [shiftStatus?.allShifts]);
+
+	const getShiftForOrder = useCallback(
+		(orderCreatedAt: number) =>
+			shifts.find((shift: any) => {
+				const shiftEnd = shift.endTime ?? Date.now();
+				return orderCreatedAt >= shift.startTime && orderCreatedAt <= shiftEnd;
+			}),
+		[shifts]
+	);
+
 	const filteredOrders = useMemo(() => {
 		if (!orders) return [];
 
 		let filtered = [...orders];
 		const now = new Date();
-		const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+		const todayStart = new Date(
+			now.getFullYear(),
+			now.getMonth(),
+			now.getDate()
+		).getTime();
 		const yesterdayStart = todayStart - 86400000;
-		const currentDayOfWeek = now.getDay() || 7; // Make Sunday 7
+		const currentDayOfWeek = now.getDay() || 7;
 		const thisWeekStart = todayStart - (currentDayOfWeek - 1) * 86400000;
 		const lastWeekStart = thisWeekStart - 7 * 86400000;
-		const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-		const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
+		const thisMonthStart = new Date(
+			now.getFullYear(),
+			now.getMonth(),
+			1
+		).getTime();
+		const lastMonthStart = new Date(
+			now.getFullYear(),
+			now.getMonth() - 1,
+			1
+		).getTime();
 
 		switch (timeFilter) {
 			case "today":
 				filtered = filtered.filter((o) => o.createdAt >= todayStart);
 				break;
 			case "yesterday":
-				filtered = filtered.filter((o) => o.createdAt >= yesterdayStart && o.createdAt < todayStart);
+				filtered = filtered.filter(
+					(o) => o.createdAt >= yesterdayStart && o.createdAt < todayStart
+				);
 				break;
 			case "this_week":
 				filtered = filtered.filter((o) => o.createdAt >= thisWeekStart);
 				break;
 			case "last_week":
-				filtered = filtered.filter((o) => o.createdAt >= lastWeekStart && o.createdAt < thisWeekStart);
+				filtered = filtered.filter(
+					(o) => o.createdAt >= lastWeekStart && o.createdAt < thisWeekStart
+				);
 				break;
 			case "this_month":
 				filtered = filtered.filter((o) => o.createdAt >= thisMonthStart);
 				break;
 			case "last_month":
-				filtered = filtered.filter((o) => o.createdAt >= lastMonthStart && o.createdAt < thisMonthStart);
+				filtered = filtered.filter(
+					(o) => o.createdAt >= lastMonthStart && o.createdAt < thisMonthStart
+				);
 				break;
+		}
+
+		if (shiftFilter === "active") {
+			const activeShift = shifts.find((shift: any) => !shift.endTime);
+			if (!activeShift) {
+				return [];
+			}
+			const activeShiftEnd = activeShift.endTime ?? Date.now();
+			filtered = filtered.filter(
+				(o) =>
+					o.createdAt >= activeShift.startTime &&
+					o.createdAt <= activeShiftEnd
+			);
+		} else if (shiftFilter !== "all") {
+			const selectedShift = shifts.find((shift: any) => shift._id === shiftFilter);
+			if (!selectedShift) {
+				return [];
+			}
+			const selectedShiftEnd = selectedShift.endTime ?? Date.now();
+			filtered = filtered.filter(
+				(o) =>
+					o.createdAt >= selectedShift.startTime &&
+					o.createdAt <= selectedShiftEnd
+			);
 		}
 
 		filtered.sort((a, b) => {
 			if (sortOrder === "asc") return a.createdAt - b.createdAt;
-			return b.createdAt - a.createdAt; // desc
+			return b.createdAt - a.createdAt;
 		});
 
 		return filtered;
-	}, [orders, timeFilter, sortOrder]);
+	}, [orders, shiftFilter, shifts, sortOrder, timeFilter]);
+
+	const activeShiftName =
+		shifts.find((shift: any) => !shift.endTime)?.shiftName ??
+		shiftStatus?.shiftInfo?.shiftName;
 
 	return (
 		<div className="space-y-4 pt-2">
 			<div className="space-y-2 text-center">
 				<h3 className="font-medium text-lg">Riwayat Order</h3>
 				<p className="text-muted-foreground text-sm">
-					Daftar pesanan terbaru Anda.
+					Riwayat pesanan dibedakan per shift agar tidak tercampur.
+				</p>
+			</div>
+
+			<div className="rounded-2xl border bg-muted/30 p-3">
+				<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+					Shift
+				</p>
+				<div className="mt-2">
+					<Select value={shiftFilter} onValueChange={(v) => setShiftFilter(v || "active")}>
+						<SelectTrigger className="h-8 text-xs bg-background">
+							<SelectValue placeholder="Pilih Shift" />
+						</SelectTrigger>
+						<SelectContent className="z-[9999]">
+							<SelectItem value="active">
+								{activeShiftName ? `Shift Aktif: ${activeShiftName}` : "Shift Aktif"}
+							</SelectItem>
+							<SelectItem value="all">Semua Shift</SelectItem>
+							{shifts.map((shift: any) => (
+								<SelectItem key={shift._id} value={shift._id}>
+									{shift.shiftName || "Tanpa Nama"} • {shift.cashierName || "Kasir"}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+				<p className="mt-2 text-[11px] text-muted-foreground">
+					{shiftFilter === "active"
+						? activeShiftName
+							? `Menampilkan order untuk ${activeShiftName}.`
+							: "Belum ada shift aktif."
+						: shiftFilter === "all"
+							? "Menampilkan order dari semua shift yang tercatat hari ini."
+							: "Menampilkan order dari shift yang dipilih."}
 				</p>
 			</div>
 
@@ -1674,66 +1766,90 @@ function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) =
 			</div>
 
 			{orders === undefined ? (
-				<div className="flex flex-col items-center justify-center py-10 gap-3">
+				<div className="flex flex-col items-center justify-center gap-3 py-10">
 					<Loader2 className="h-6 w-6 animate-spin text-primary" />
 					<p className="text-xs text-muted-foreground">Memuat riwayat...</p>
 				</div>
 			) : filteredOrders.length === 0 ? (
-				<div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-2xl bg-muted/30">
-					<ClipboardList className="h-10 w-10 text-muted-foreground/30 mb-3" />
+				<div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-muted/30 py-12">
+					<ClipboardList className="mb-3 h-10 w-10 text-muted-foreground/30" />
 					<p className="font-medium text-sm text-muted-foreground">Belum Ada Transaksi</p>
+					<p className="mt-1 text-[11px] text-muted-foreground">
+						Coba ganti filter shift atau rentang waktu.
+					</p>
 				</div>
 			) : (
 				<div className="space-y-2">
-					{filteredOrders.map((order: Doc<"orders">) => (
-						<button
-							key={order._id}
-							onClick={() => onSelectOrder(order)}
-							className="flex w-full items-center justify-between rounded-xl border bg-card p-3 text-left transition-all hover:border-primary/50 hover:shadow-sm active:scale-[0.98]"
-							type="button"
-						>
-							<div className="flex items-center gap-3">
-								<div
-									className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-										order.status === "completed" || order.status === "paid"
-											? "bg-emerald-100 text-emerald-600"
-											: order.status === "pending"
-												? "bg-orange-100 text-orange-600"
-												: "bg-rose-100 text-rose-600"
-									}`}
-								>
-									<ClipboardList className="h-5 w-5" />
-								</div>
-								<div>
-									<div className="flex items-center gap-2">
-										<p className="font-bold text-sm">#{order.orderNumber}</p>
-										<span className={`text-[9px] font-bold uppercase tracking-wider ${
-											order.status === "completed" || order.status === "paid" ? "text-emerald-600" :
-											order.status === "pending" ? "text-orange-600" : "text-rose-600"
-										}`}>
-											{order.status === "paid" ? "Lunas" : 
-											 order.status === "completed" ? "Selesai" : 
-											 order.status === "pending" ? "Pending" : "Batal"}
-										</span>
+					{filteredOrders.map((order: Doc<"orders">) => {
+						const matchedShift = getShiftForOrder(order.createdAt) as any;
+						const shiftLabel = matchedShift?.shiftName || "Di luar shift";
+						const shiftMeta = matchedShift?.cashierName
+							? `${shiftLabel} • ${matchedShift.cashierName}`
+							: shiftLabel;
+
+						return (
+							<button
+								key={order._id}
+								onClick={() => onSelectOrder(order)}
+								className="flex w-full items-center justify-between rounded-xl border bg-card p-3 text-left transition-all hover:border-primary/50 hover:shadow-sm active:scale-[0.98]"
+								type="button"
+							>
+								<div className="flex items-center gap-3">
+									<div
+										className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+											order.status === "completed" || order.status === "paid"
+												? "bg-emerald-100 text-emerald-600"
+												: order.status === "pending"
+													? "bg-orange-100 text-orange-600"
+													: "bg-rose-100 text-rose-600"
+										}`}
+									>
+										<ClipboardList className="h-5 w-5" />
 									</div>
-									<p className="text-[10px] text-muted-foreground">
-										{formatDate(order.createdAt)} • {formatTime(order.createdAt)}
+									<div>
+										<div className="flex items-center gap-2 flex-wrap">
+											<p className="font-bold text-sm">#{order.orderNumber}</p>
+											<span className={`text-[9px] font-bold uppercase tracking-wider ${
+												order.status === "completed" || order.status === "paid"
+													? "text-emerald-600"
+													: order.status === "pending"
+														? "text-orange-600"
+														: "text-rose-600"
+											}`}>
+												{order.status === "paid"
+													? "Lunas"
+													: order.status === "completed"
+														? "Selesai"
+														: order.status === "pending"
+															? "Pending"
+															: "Batal"}
+											</span>
+											<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
+												{shiftLabel}
+											</span>
+										</div>
+										<p className="text-[10px] text-muted-foreground">
+											{formatDate(order.createdAt)} • {formatTime(order.createdAt)}
+										</p>
+										<p className="mt-0.5 text-[10px] font-medium text-muted-foreground">
+											{shiftMeta}
+										</p>
+										<p className="mt-0.5 text-xs font-medium">
+											{order.customerName || "Tanpa Nama"}
+										</p>
+									</div>
+								</div>
+								<div className="text-right">
+									<p className="font-bold text-primary">
+										{formatCurrency(order.totalAmount)}
 									</p>
-									<p className="text-xs font-medium mt-0.5">
-										{order.customerName || "Tanpa Nama"}
+									<p className="mt-1 text-[10px] text-muted-foreground">
+										{order.items?.length || 0} item
 									</p>
 								</div>
-							</div>
-							<div className="text-right">
-								<p className="font-bold text-primary">
-									{formatCurrency(order.totalAmount)}
-								</p>
-								<p className="text-[10px] text-muted-foreground mt-1">
-									{order.items?.length || 0} item
-								</p>
-							</div>
-						</button>
-					))}
+							</button>
+						);
+					})}
 				</div>
 			)}
 			<div className="h-6" />
