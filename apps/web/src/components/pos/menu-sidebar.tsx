@@ -435,7 +435,7 @@ export function MenuSidebar({
 							)}
 							{activeTab === "kas" && (
 								<div className="flex-1 overflow-y-auto min-h-0 bg-background scrollbar-thin">
-									<div className="p-4 pb-32">
+									<div className="p-4 pb-12">
 										<KasTab onClose={() => setIsOpen(false)} />
 									</div>
 								</div>
@@ -1942,6 +1942,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [amount, setAmount] = useState("");
 	const [cashierName, setCashierName] = useState("");
 	const [shiftName, setShiftName] = useState("Shift Pagi");
+	const [isCustomShift, setIsCustomShift] = useState(false);
 	const [teamMembers, setTeamMembers] = useState("");
 	
 	// Akhiri Shift State
@@ -2038,6 +2039,24 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		if (total > 0) setCashInRegister(total.toString());
 	}, [breakdown]);
 
+	const handleAutofill = () => {
+		const expectedTotal = (shiftStatus?.ongoingShift?.startingCash || 0) + shiftCash - shiftExpense;
+		if (expectedTotal <= 0) return;
+
+		const denominations = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100];
+		const nextBreakdown: Record<string, number> = {};
+		let remaining = expectedTotal;
+
+		denominations.forEach((den) => {
+			const count = Math.floor(remaining / den);
+			nextBreakdown[`bill${den}`] = count;
+			remaining %= den;
+		});
+
+		setBreakdown(nextBreakdown as any);
+		toast.info("Pecahan diisi otomatis sesuai estimasi laci");
+	};
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		
@@ -2121,7 +2140,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				</button>
 			</div>
 
-			<form className="space-y-3 pb-12" onSubmit={handleSubmit}>
+			<form className="space-y-3 pb-6" onSubmit={handleSubmit}>
 				{shiftType === "mulai" ? (
 					<>
 						<div className="grid grid-cols-2 gap-3">
@@ -2138,7 +2157,18 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 							<div className="space-y-1.5">
 								<Label className="text-[10px] font-bold uppercase text-muted-foreground">Shift <span className="text-destructive">*</span></Label>
 								{siteSettings?.shiftSettings?.predefinedShifts?.length ? (
-									<Select value={shiftName} onValueChange={(val) => setShiftName(val || "")}>
+									<Select 
+										value={isCustomShift ? "CUSTOM" : shiftName} 
+										onValueChange={(val) => {
+											if (val === "CUSTOM") {
+												setIsCustomShift(true);
+												setShiftName("");
+											} else {
+												setIsCustomShift(false);
+												setShiftName(val || "");
+											}
+										}}
+									>
 										<SelectTrigger className="h-9 text-xs">
 											<SelectValue placeholder="Pilih Shift" />
 										</SelectTrigger>
@@ -2160,10 +2190,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 										required
 									/>
 								)}
-								{shiftName === "CUSTOM" && (
+								{isCustomShift && (
 									<Input
 										placeholder="Masukkan nama shift custom"
 										className="h-9 text-xs mt-2"
+										value={shiftName}
 										onChange={(e) => setShiftName(e.target.value)}
 										autoFocus
 									/>
@@ -2232,7 +2263,13 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 						<div className="space-y-1.5">
 							<div className="flex items-center justify-between">
 								<Label className="text-[9px] font-bold uppercase text-muted-foreground">Pecahan Uang Kertas & Logam</Label>
-								<div className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Automated</div>
+								<button 
+									type="button"
+									onClick={handleAutofill}
+									className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full hover:bg-primary/20 transition-colors"
+								>
+									Auto-fill
+								</button>
 							</div>
 							<div className="grid grid-cols-2 gap-1">
 								{Object.keys(breakdown).map((val) => (
@@ -2262,10 +2299,10 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 									<Input
 										className="pl-8 h-9 text-sm font-black tracking-tighter bg-muted/30"
 										min={0}
-										readOnly
 										placeholder="0"
 										type="number"
 										value={cashInRegister}
+										onChange={(e) => setCashInRegister(e.target.value)}
 									/>
 								</div>
 								<p className="text-[8px] text-muted-foreground italic font-medium">* Otomatis dari input pecahan</p>
@@ -2314,7 +2351,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					)}
 				</Button>
 			</form>
-			<div className="h-20 shrink-0" />
+			<div className="h-6 shrink-0" />
 		</div>
 	);
 }
