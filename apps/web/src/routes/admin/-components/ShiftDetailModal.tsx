@@ -7,9 +7,8 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { formatCurrencyIDR } from "@/lib/export-utils";
-import { Clock, DollarSign, Receipt, ShoppingBag, User } from "lucide-react";
+import { Clock, Receipt, ShoppingBag } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ShiftDetailModalProps {
 	shift: any;
@@ -36,166 +35,142 @@ export function ShiftDetailModal({ shift, isOpen, onOpenChange }: ShiftDetailMod
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-3xl bg-background/95 backdrop-blur-xl">
-				<DialogHeader className="p-6 pb-4 bg-primary/5 border-b border-primary/10">
+			<DialogContent className="max-w-3xl h-[85vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-2xl bg-background/95 backdrop-blur-xl">
+				{/* Header - Compact */}
+				<div className="shrink-0 p-4 bg-primary/5 border-b border-primary/10">
 					<div className="flex items-center justify-between">
-						<div>
-							<DialogTitle className="text-2xl font-bold tracking-tight text-primary">
+						<div className="flex-1 min-w-0">
+							<DialogTitle className="text-lg font-bold tracking-tight text-primary mb-1">
 								Ringkasan Sesi
 							</DialogTitle>
-							<div className="flex items-center gap-2 mt-1.5 text-muted-foreground text-xs font-medium">
-								<Clock className="w-3.5 h-3.5" />
-								<span>
-									{new Date(shift.startTime).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })}
+							<div className="flex items-center gap-2 text-muted-foreground text-[10px]">
+								<Clock className="w-3 h-3" />
+								<span className="truncate">
+									{new Date(shift.startTime).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
 								</span>
-								<span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+								<span className="w-px h-3 bg-muted-foreground/30" />
 								<span>
 									{new Date(shift.startTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
 									{' - '}
-									{shift.endTime 
+									{shift.endTime
 										? new Date(shift.endTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
 										: "Sekarang"
 									}
 								</span>
 							</div>
 						</div>
-						<div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${!shift.endTime ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-slate-200 text-slate-600'}`}>
-							{!shift.endTime ? 'Sedang Berjalan' : 'Selesai'}
+						<div className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${!shift.endTime ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' : 'bg-slate-200 text-slate-600'}`}>
+							{!shift.endTime ? 'Berjalan' : 'Selesai'}
 						</div>
 					</div>
-				</DialogHeader>
+				</div>
 
-				<ScrollArea className="flex-1 p-6">
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-						{/* Revenue Stats */}
-						<div className="space-y-4">
-							<h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/70">
-								Ringkasan Finansial
-							</h4>
-							<div className="space-y-3">
-								<div className="flex items-center justify-between p-3 rounded-2xl bg-muted/30 border border-border/50">
-									<div className="flex items-center gap-3">
-										<div className="p-2 rounded-xl bg-primary/10 text-primary">
-											<DollarSign className="w-4 h-4" />
-										</div>
-										<span className="text-sm font-semibold">Subtotal</span>
-									</div>
-									<span className="text-sm font-bold text-primary">{formatCurrencyIDR(totalRevenue)}</span>
-								</div>
-								<div className="grid grid-cols-2 gap-3">
-									<div className="p-3 rounded-2xl bg-muted/30 border border-border/50">
-										<p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-1">Tunai/Laci</p>
-										<p className="text-sm font-bold">{formatCurrencyIDR(cashRevenue)}</p>
-									</div>
-									<div className="p-3 rounded-2xl bg-muted/30 border border-border/50">
-										<p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-1">E-Wallet/QRIS</p>
-										<p className="text-sm font-bold">{formatCurrencyIDR(qrisRevenue)}</p>
-									</div>
-								</div>
-							</div>
+				{/* Scrollable Content */}
+				<div className="flex-1 overflow-y-auto p-4 space-y-3">
+					{/* Stats Grid - 4 columns */}
+					<div className="grid grid-cols-4 gap-2">
+						<div className="bg-muted/30 rounded-lg p-2 text-center">
+							<p className="text-[8px] font-bold text-muted-foreground/70 uppercase mb-1">Total</p>
+							<p className="text-xs font-bold text-primary">{formatCurrencyIDR(totalRevenue, true)}</p>
 						</div>
-
-						{/* Audit & Reconciliation */}
-						{(details?.shiftDoc?.startingCash !== undefined ||
-							shift.endingCashPhysical !== undefined ||
-							shift.nonCashConfirmed !== undefined) && (
-							<div className="space-y-4 md:col-span-2">
-								<h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/70">
-									Audit & Rekonsiliasi
-								</h4>
-								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-									<div className="p-4 rounded-2xl bg-muted/30 border border-border/50">
-										<p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-2">Selisih Kas (Tunai)</p>
-										<div className="flex justify-between items-end">
-											<div>
-												<p className="text-[10px] text-muted-foreground">Ekspektasi: {formatCurrencyIDR(endingCashExpected)}</p>
-												<p className="text-sm font-bold">Fisik: {formatCurrencyIDR(endingCashPhysical)}</p>
-											</div>
-											<div className={`px-2 py-0.5 rounded text-[10px] font-bold ${(endingCashPhysical - endingCashExpected) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-												{(endingCashPhysical - endingCashExpected) >= 0 ? '+' : ''}
-												{formatCurrencyIDR(endingCashPhysical - endingCashExpected)}
-											</div>
-										</div>
-									</div>
-									<div className="p-4 rounded-2xl bg-muted/30 border border-border/50">
-										<p className="text-[10px] font-bold text-muted-foreground/70 uppercase mb-2">Konfirmasi Non-Tunai</p>
-										<div className="flex justify-between items-end">
-											<div>
-												<p className="text-[10px] text-muted-foreground">Sistem: {formatCurrencyIDR(nonCashExpected)}</p>
-												<p className="text-sm font-bold">Konfirmasi: {formatCurrencyIDR(nonCashConfirmed)}</p>
-											</div>
-											<div className={`px-2 py-0.5 rounded text-[10px] font-bold ${(nonCashConfirmed - nonCashExpected) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-												{(nonCashConfirmed - nonCashExpected) >= 0 ? '+' : ''}
-												{formatCurrencyIDR(nonCashConfirmed - nonCashExpected)}
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
-						)}
-
-						{/* Cash Breakdown */}
-						{cashBreakdown && (
-							<div className="space-y-4 md:col-span-2">
-								<h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/70">
-									Rincian Pecahan Uang
-								</h4>
-								<div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-									{Object.entries(cashBreakdown).map(([val, count]: [string, any]) => (
-										count > 0 && (
-											<div key={val} className="p-2 rounded-xl bg-muted/20 border border-border/40 text-center">
-												<p className="text-[9px] font-bold text-muted-foreground uppercase">
-													{Number(val.replace('bill', '')) >= 1000 ? `${Number(val.replace('bill', ''))/1000}k` : val.replace('bill', '')}
-												</p>
-												<p className="text-xs font-black">{count}x</p>
-											</div>
-										)
-									))}
-								</div>
-							</div>
-						)}
+						<div className="bg-emerald-50/50 rounded-lg p-2 text-center border border-emerald-100/50">
+							<p className="text-[8px] font-bold text-emerald-700/70 uppercase mb-1">Tunai</p>
+							<p className="text-xs font-bold text-emerald-700">{formatCurrencyIDR(cashRevenue, true)}</p>
+						</div>
+						<div className="bg-blue-50/50 rounded-lg p-2 text-center border border-blue-100/50">
+							<p className="text-[8px] font-bold text-blue-700/70 uppercase mb-1">QRIS</p>
+							<p className="text-xs font-bold text-blue-700">{formatCurrencyIDR(qrisRevenue, true)}</p>
+						</div>
+						<div className="bg-orange-50/50 rounded-lg p-2 text-center border border-orange-100/50">
+							<p className="text-[8px] font-bold text-orange-700/70 uppercase mb-1">Item</p>
+							<p className="text-xs font-bold text-orange-700">{details?.orderCount ?? 0}</p>
+						</div>
 					</div>
 
-					{/* Recent Transactions */}
-					<div className="space-y-4">
-						<div className="flex items-center justify-between">
-							<h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/70">
-								Transaksi Terakhir
-							</h4>
-							<span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-								Sesi Ini
-							</span>
+					{/* Audit & Reconciliation - Compact */}
+					{(details?.shiftDoc?.startingCash !== undefined ||
+						shift.endingCashPhysical !== undefined ||
+						shift.nonCashConfirmed !== undefined) && (
+						<div className="grid grid-cols-2 gap-2">
+							<div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+								<p className="text-[9px] font-bold text-muted-foreground/70 uppercase mb-2">Selisih Tunai</p>
+								<div className="flex justify-between items-end">
+									<div>
+										<p className="text-[9px] text-muted-foreground">Ekspektasi: {formatCurrencyIDR(endingCashExpected, true)}</p>
+										<p className="text-xs font-bold">Fisik: {formatCurrencyIDR(endingCashPhysical, true)}</p>
+									</div>
+									<div className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${(endingCashPhysical - endingCashExpected) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+										{(endingCashPhysical - endingCashExpected) >= 0 ? '+' : ''}{formatCurrencyIDR(endingCashPhysical - endingCashExpected, true)}
+									</div>
+								</div>
+							</div>
+							<div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+								<p className="text-[9px] font-bold text-muted-foreground/70 uppercase mb-2">Non-Tunai</p>
+								<div className="flex justify-between items-end">
+									<div>
+										<p className="text-[9px] text-muted-foreground">Sistem: {formatCurrencyIDR(nonCashExpected, true)}</p>
+										<p className="text-xs font-bold">Konfirmasi: {formatCurrencyIDR(nonCashConfirmed, true)}</p>
+									</div>
+									<div className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${(nonCashConfirmed - nonCashExpected) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+										{(nonCashConfirmed - nonCashExpected) >= 0 ? '+' : ''}{formatCurrencyIDR(nonCashConfirmed - nonCashExpected, true)}
+									</div>
+								</div>
+							</div>
 						</div>
-						
+					)}
+
+					{/* Cash Breakdown - Compact */}
+					{cashBreakdown && (
+						<div>
+							<h4 className="text-[9px] font-bold uppercase text-muted-foreground/70 mb-2">Pecahan Uang</h4>
+							<div className="grid grid-cols-5 gap-1">
+								{Object.entries(cashBreakdown).map(([val, count]: [string, any]) => (
+									count > 0 && (
+										<div key={val} className="p-1.5 rounded-lg bg-muted/20 border border-border/40 text-center">
+											<p className="text-[8px] font-bold text-muted-foreground uppercase">
+												{Number(val.replace('bill', '')) >= 1000 ? `${Number(val.replace('bill', ''))/1000}k` : val.replace('bill', '')}
+											</p>
+											<p className="text-[10px] font-black">{count}x</p>
+										</div>
+									)
+								))}
+							</div>
+						</div>
+					)}
+
+					{/* Recent Transactions - Compact list */}
+					<div>
+						<div className="flex items-center justify-between mb-2">
+							<h4 className="text-[9px] font-bold uppercase text-muted-foreground/70">Transaksi Terakhir</h4>
+							<span className="text-[8px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Sesi Ini</span>
+						</div>
+
 						{details === undefined ? (
-							<div className="space-y-2">
-								{[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}
+							<div className="space-y-1">
+								{[1, 2, 3].map(i => <Skeleton key={i} className="h-8 w-full rounded-lg" />)}
 							</div>
 						) : !details || details.recentTransactions.length === 0 ? (
-							<div className="py-10 text-center bg-muted/20 rounded-2xl border border-dashed border-border">
-								<Receipt className="w-10 h-10 text-muted-foreground/20 mx-auto mb-2" />
-								<p className="text-sm text-muted-foreground font-medium">Belum ada transaksi</p>
+							<div className="py-6 text-center bg-muted/20 rounded-lg border border-dashed border-border">
+								<Receipt className="w-8 h-8 text-muted-foreground/20 mx-auto mb-1" />
+								<p className="text-[10px] text-muted-foreground font-medium">Belum ada transaksi</p>
 							</div>
 						) : (
-							<div className="grid grid-cols-1 gap-2">
-								{details.recentTransactions.map((tx: any) => (
-									<div key={tx.id} className="flex items-center justify-between p-3 rounded-xl bg-muted/30 transition-colors hover:bg-muted/50 border border-transparent hover:border-border/50">
-										<div className="flex items-center gap-3">
-											<div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${tx.type === 'pos' ? 'bg-primary/10 text-primary' : 'bg-orange-500/10 text-orange-600'}`}>
-												{tx.type === 'pos' ? <ShoppingBag className="w-4 h-4" /> : <Receipt className="w-4 h-4" />}
+							<div className="space-y-1">
+								{details.recentTransactions.slice(0, 8).map((tx: any) => (
+									<div key={tx.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 hover:bg-muted/40 transition-colors border border-transparent">
+										<div className="flex items-center gap-2 flex-1 min-w-0">
+											<div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${tx.type === 'pos' ? 'bg-primary/10 text-primary' : 'bg-orange-500/10 text-orange-600'}`}>
+												{tx.type === 'pos' ? <ShoppingBag className="w-3 h-3" /> : <Receipt className="w-3 h-3" />}
 											</div>
-											<div>
-												<p className="text-xs font-bold text-foreground truncate max-w-[120px]">
+											<div className="min-w-0 flex-1">
+												<p className="text-[10px] font-bold text-foreground truncate">
 													{tx.type === 'pos' ? `#${tx.name}` : tx.name}
-												</p>
-												<p className="text-[9px] text-muted-foreground">
-													{new Date(tx.time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
 												</p>
 											</div>
 										</div>
-										<div className="text-right">
-											<p className="text-xs font-bold text-foreground">{formatCurrencyIDR(tx.amount)}</p>
-											<span className={`text-[8px] font-bold uppercase tracking-tighter px-1 py-0.5 rounded-md ${
+										<div className="flex items-center gap-2 ml-2 shrink-0">
+											<p className="text-[10px] font-bold text-foreground">{formatCurrencyIDR(tx.amount, true)}</p>
+											<span className={`text-[7px] font-bold uppercase tracking-tighter px-1 py-0.5 rounded ${
 												tx.status === 'completed' || tx.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
 											}`}>
 												{tx.status}
@@ -206,14 +181,15 @@ export function ShiftDetailModal({ shift, isOpen, onOpenChange }: ShiftDetailMod
 							</div>
 						)}
 					</div>
-				</ScrollArea>
+				</div>
 
-				<div className="p-6 bg-muted/10 border-t border-border/40">
+				{/* Footer - Compact */}
+				<div className="shrink-0 p-4 bg-muted/10 border-t border-border/40">
 					<button
 						onClick={() => onOpenChange(false)}
-						className="w-full py-3 bg-primary text-primary-foreground rounded-2xl font-bold text-sm shadow-lg shadow-primary/20 hover:brightness-110 active:scale-[0.98] transition-all"
+						className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl font-bold text-xs shadow-md shadow-primary/20 hover:brightness-110 active:scale-[0.98] transition-all"
 					>
-						Tutup Ringkasan
+						Tutup
 					</button>
 				</div>
 			</DialogContent>

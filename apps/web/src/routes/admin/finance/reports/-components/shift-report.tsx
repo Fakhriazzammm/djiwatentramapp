@@ -45,12 +45,12 @@ export function ShiftReport({ range }: Props) {
 	}
 
 	return (
-		<div className="space-y-4">
+		<div className="space-y-3">
 			{shifts.map((shift: any) => {
 				const isCurrentActive = !shift.endTime;
 				const statusLabel = isCurrentActive ? "AKTIF" : "SELESAI";
 				const sEnd = shift.endTime || Date.now();
-				
+
 				// Calculate Shift Expenses
 				let shiftExpense = 0;
 				transactions.transactions?.forEach((t: any) => {
@@ -89,96 +89,88 @@ export function ShiftReport({ range }: Props) {
 					.slice(0, 3);
 
 				return (
-					<div key={shift.id} className={`rounded-xl border p-5 ${isCurrentActive ? 'border-emerald-200 bg-emerald-50' : 'border-border bg-card'}`}>
-						<div className="flex justify-between items-start mb-4 pb-4 border-b border-border/50">
-							<div>
-								<div className="flex items-center gap-2 mb-1">
-									<h3 className="font-bold text-lg">{shift.shiftName || "Shift"}</h3>
-									<span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isCurrentActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>
+					<div key={shift.id} className={`rounded-lg border p-3 ${isCurrentActive ? 'border-emerald-200 bg-emerald-50' : 'border-border bg-card'}`}>
+						{/* Header - Compact */}
+						<div className="flex items-center justify-between mb-2 pb-2 border-b border-border/50">
+							<div className="flex items-center gap-2 flex-1 min-w-0">
+								<div className="flex items-center gap-1.5 min-w-0 flex-1">
+									<span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${isCurrentActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>
 										{statusLabel}
 									</span>
+									<h3 className="font-bold text-sm truncate">{shift.shiftName || "Shift"}</h3>
 								</div>
-								<div className="text-sm text-muted-foreground">
-									<p>Kasir: <span className="font-medium text-foreground">{shift.cashierName || "Unknown"}</span></p>
-									<p>Mulai: {new Date(shift.startTime).toLocaleString("id-ID")}</p>
-									{shift.endTime && <p>Selesai: {new Date(shift.endTime).toLocaleString("id-ID")}</p>}
-								</div>
-							</div>
-							<div className="text-right">
-								<p className="text-xs text-muted-foreground mb-1">Produk Terjual</p>
-								<p className="font-bold text-xl">{shiftItems} <span className="text-sm font-normal text-muted-foreground">item</span></p>
-							</div>
-						</div>
-						
-						<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 pb-4 border-b border-border/50">
-							<div>
-								<p className="text-xs text-muted-foreground mb-1">Modal Awal</p>
-								<p className="font-semibold">{formatCurrencyIDR(shift.modalAwal || 0)}</p>
-							</div>
-							<div>
-								<p className="text-xs text-muted-foreground mb-1">Total Penjualan (Net)</p>
-								<p className="font-semibold text-green-600">+{formatCurrencyIDR(shiftRevenue)}</p>
-							</div>
-							<div>
-								<p className="text-xs text-muted-foreground mb-1">Potongan Diskon</p>
-								<p className="font-semibold text-orange-600">-{formatCurrencyIDR(shiftDiscount)}</p>
-							</div>
-							<div>
-								<p className="text-xs text-muted-foreground mb-1">Total Pengeluaran</p>
-								<p className="font-semibold text-red-600">-{formatCurrencyIDR(shiftExpense)}</p>
-							</div>
-							<div>
-								<p className="text-xs text-muted-foreground mb-1">Setoran Akhir (Fisik Laci)</p>
-								<p className="font-semibold text-primary">{shift.setoranAkhir !== undefined ? formatCurrencyIDR(shift.setoranAkhir) : "-"}</p>
+								<span className="text-xs text-muted-foreground whitespace-nowrap">{shiftItems} item</span>
 							</div>
 						</div>
 
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+						{/* Subheader - Time & Cashier */}
+						<div className="flex items-center justify-between mb-2 text-[10px] text-muted-foreground">
+							<div className="flex items-center gap-1">
+								<span className="font-medium">{shift.cashierName || "Unknown"}</span>
+								<span className="w-px h-3 bg-border/30" />
+								<span>{new Date(shift.startTime).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' })}</span>
+							</div>
+							<div className="text-[10px]">
+								{new Date(shift.startTime).toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' })}
+								{shift.endTime && ` - ${new Date(shift.endTime).toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' })}`}
+							</div>
+						</div>
+
+						{/* Stats Grid - More compact */}
+						<div className="grid grid-cols-3 gap-2 mb-2">
+							<div className="bg-muted/30 rounded-lg p-1.5 text-center">
+								<p className="text-[8px] font-bold text-muted-foreground/70 uppercase mb-0.5">Modal</p>
+								<p className="text-xs font-semibold">{formatCurrencyIDR(shift.modalAwal || 0, true)}</p>
+							</div>
+							<div className="bg-emerald-50/50 rounded-lg p-1.5 text-center border border-emerald-100/50">
+								<p className="text-[8px] font-bold text-emerald-700/70 uppercase mb-0.5">Net Sales</p>
+								<p className="text-xs font-bold text-emerald-700">{formatCurrencyIDR(shiftRevenue, true)}</p>
+							</div>
+							<div className="bg-red-50/50 rounded-lg p-1.5 text-center border border-red-100/50">
+								<p className="text-[8px] font-bold text-red-700/70 uppercase mb-0.5">Expense</p>
+								<p className="text-xs font-bold text-red-700">{formatCurrencyIDR(shiftExpense, true)}</p>
+							</div>
+						</div>
+
+						{/* Secondary Stats */}
+						<div className="grid grid-cols-2 gap-2 mb-2">
+							<div className="flex justify-between items-center px-2 py-1 bg-muted/20 rounded">
+								<span className="text-[10px] text-muted-foreground">Diskon:</span>
+								<span className="text-[10px] font-semibold text-orange-600">-{formatCurrencyIDR(shiftDiscount, true)}</span>
+							</div>
+							<div className="flex justify-between items-center px-2 py-1 bg-muted/20 rounded">
+								<span className="text-[10px] text-muted-foreground">Setoran:</span>
+								<span className="text-[10px] font-semibold text-primary">{shift.setoranAkhir !== undefined ? formatCurrencyIDR(shift.setoranAkhir, true) : "-"}</span>
+							</div>
+						</div>
+
+						{/* Payment Methods & Top Products - Side by side */}
+						<div className="grid grid-cols-2 gap-2">
 							<div>
-								<h4 className="font-semibold text-sm mb-2">Metode Pembayaran</h4>
-								<div className="space-y-1 text-sm">
-									<div className="flex justify-between">
-										<span className="text-muted-foreground">Cash/Kasir:</span>
-										<span className="font-medium">{formatCurrencyIDR(shiftCash)}</span>
+								<h4 className="text-[9px] font-bold uppercase text-muted-foreground/70 mb-1">Pembayaran</h4>
+								<div className="space-y-0.5">
+									<div className="flex justify-between text-[10px]">
+										<span className="text-muted-foreground">Cash:</span>
+										<span className="font-semibold">{formatCurrencyIDR(shiftCash, true)}</span>
 									</div>
-									<div className="flex justify-between">
-										<span className="text-muted-foreground">Debit/QRIS:</span>
-										<span className="font-medium">{formatCurrencyIDR(shiftQris)}</span>
-									</div>
-									<div className="flex justify-between">
-										<span className="text-muted-foreground">Delivery Online:</span>
-										<span className="font-medium">Rp 0</span>
+									<div className="flex justify-between text-[10px]">
+										<span className="text-muted-foreground">QRIS:</span>
+										<span className="font-semibold">{formatCurrencyIDR(shiftQris, true)}</span>
 									</div>
 								</div>
 							</div>
 							<div>
-								<h4 className="font-semibold text-sm mb-2">Rincian Produk Terjual</h4>
-								{Object.keys(itemsByCategory).length > 0 ? (
-									<div className="space-y-1 text-sm">
-										{Object.entries(itemsByCategory).map(([cat, qty]) => (
-											<div key={cat} className="flex justify-between">
-												<span className="text-muted-foreground">{cat}:</span>
-												<span className="font-medium">{qty} item</span>
-											</div>
-										))}
-									</div>
-								) : (
-									<p className="text-sm text-muted-foreground">-</p>
-								)}
-								
-								<h4 className="font-semibold text-sm mb-2 mt-4 text-amber-600 flex items-center gap-1"><Star className="h-4 w-4" /> Top 3 Produk (Shift Ini)</h4>
-								{topProducts.length > 0 ? (
-									<div className="space-y-1 text-sm">
-										{topProducts.map(([name, qty]) => (
-											<div key={name} className="flex justify-between">
-												<span className="text-muted-foreground">{name}:</span>
-												<span className="font-medium">{qty} item</span>
-											</div>
-										))}
-									</div>
-								) : (
-									<p className="text-sm text-muted-foreground">-</p>
-								)}
+								<h4 className="text-[9px] font-bold uppercase text-amber-600/80 mb-1 flex items-center gap-0.5"><Star className="h-3 w-3" /> Top 3</h4>
+								<div className="space-y-0.5">
+									{topProducts.length > 0 ? topProducts.map(([name, qty]) => (
+										<div key={name} className="flex justify-between text-[10px]">
+											<span className="text-muted-foreground truncate max-w-[80px]">{name}</span>
+											<span className="font-medium text-foreground">{qty}</span>
+										</div>
+									)) : (
+										<p className="text-[10px] text-muted-foreground">-</p>
+									)}
+								</div>
 							</div>
 						</div>
 					</div>

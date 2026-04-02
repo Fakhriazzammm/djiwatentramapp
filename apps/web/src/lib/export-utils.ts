@@ -3,12 +3,22 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 
-export const formatCurrencyIDR = (amount: number) =>
-	new Intl.NumberFormat("id-ID", {
+export const formatCurrencyIDR = (amount: number, short: boolean = false) => {
+	if (short) {
+		if (amount >= 1000000) {
+			return `Rp${(amount / 1000000).toFixed(1)}jt`;
+		}
+		if (amount >= 1000) {
+			return `Rp${(amount / 1000).toFixed(0)}rb`;
+		}
+		return `Rp${amount}`;
+	}
+	return new Intl.NumberFormat("id-ID", {
 		style: "currency",
 		currency: "IDR",
 		maximumFractionDigits: 0,
 	}).format(amount);
+};
 
 // ─────────────────────────────────────────────
 // PDF EXPORT
