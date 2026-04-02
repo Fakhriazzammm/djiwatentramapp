@@ -85,7 +85,7 @@ export const ChatInput = ({
 						<button
 							key={i}
 							onClick={() => onSendMessage(template.message)}
-							className="flex items-center gap-1.5 rounded-full border border-border/50 bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-[0.97]"
+							className="flex items-center gap-1.5 rounded-full border border-border/50 bg-background px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-[0.97]"
 							type="button"
 						>
 							{template.icon}
@@ -131,7 +131,7 @@ export const ChatInput = ({
 						<div className="flex gap-2 overflow-x-auto pb-1">
 							{selectedImages.map((img, i) => (
 								<div key={i} className="relative flex-shrink-0">
-									<img src={img} className="h-20 w-20 object-cover rounded-xl border border-border/40" alt="" />
+									<img src={img} className="h-16 w-16 object-cover rounded-xl border border-border/40" alt="" />
 								</div>
 							))}
 						</div>
@@ -190,7 +190,7 @@ export const ChatInput = ({
 				</div>
 			</div>
 
-			<p className="mt-2 text-center text-[11px] text-muted-foreground/40">
+			<p className="mt-1.5 text-center text-[11px] text-muted-foreground/40">
 				Yumi AI dapat membuat kesalahan. Periksa informasi penting.
 			</p>
 		</div>
