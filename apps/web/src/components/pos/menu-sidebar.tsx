@@ -435,7 +435,7 @@ export function MenuSidebar({
 							)}
 							{activeTab === "kas" && (
 								<ScrollArea className="flex-1">
-									<div className="p-4">
+									<div className="p-4 pb-24">
 										<KasTab onClose={() => setIsOpen(false)} />
 									</div>
 								</ScrollArea>
@@ -1793,7 +1793,7 @@ function KasTab({ onClose }: { onClose: () => void }) {
 
 	if (activeForm !== "menu") {
 		return (
-			<div className="space-y-4">
+			<div className="space-y-4 pb-12">
 				<Button 
 					variant="ghost" 
 					size="sm" 
@@ -2121,7 +2121,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				</button>
 			</div>
 
-			<form className="space-y-3" onSubmit={handleSubmit}>
+			<form className="space-y-3 pb-8" onSubmit={handleSubmit}>
 				{shiftType === "mulai" ? (
 					<>
 						<div className="grid grid-cols-2 gap-3">
@@ -2314,6 +2314,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					)}
 				</Button>
 			</form>
+			<div className="h-12 shrink-0" />
 		</div>
 	);
 }
