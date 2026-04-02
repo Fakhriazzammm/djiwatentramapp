@@ -75,86 +75,54 @@ async function safeSumoPodCall(
 	}
 }
 
-// Helper untuk panggil Gemini melalui SumoPod AI (untuk AI Scan Image)
-async function callGeminiAPI(
+// Helper untuk panggil Vision API (seed-2.0-pro-free by ByteDance) melalui SumoPod AI (untuk scan gambar/OCR)
+async function callVisionAPI(
 	prompt: string,
 	base64Data: string,
 	mimeType: string,
 	options?: { temperature?: number; maxOutputTokens?: number }
 ): Promise<{ success: boolean; text: string; error?: string }> {
-	// Daftar model Gemini yang tersedia di SumoPod (mungkin berbeda nama tergantung provider)
-	const models = [
-		"seed-2-0-pro-free",
-	];
-	
-	let lastError = "";
-	let openai;
-	
 	try {
-		openai = getOpenAI();
-	} catch (e) {
-		return { success: false, text: "", error: e instanceof Error ? e.message : String(e) };
-	}
-
-	for (const model of models) {
-		try {
-			console.log(`callGeminiAPI: Mencoba model ${model} melalui SumoPod...`);
-			
-			const completion = await openai.chat.completions.create({
-				model: model,
-				messages: [
-					{
-						role: "system",
-						content: "You are an expert OCR and financial document analyzer. Analyze the provided image and extract data in JSON format."
-					},
-					{
-						role: "user",
-						content: [
-							{ type: "text", text: prompt },
-							{
-								type: "image_url",
-								image_url: {
-									url: `data:${mimeType};base64,${base64Data}`
-								}
+		const openai = getOpenAI();
+		
+		const completion = await openai.chat.completions.create({
+			model: "seed-2-0-pro-free",
+			messages: [
+				{
+					role: "system",
+					content: "You are an expert OCR and visual document analyzer. Analyze the provided image and extract data in JSON format."
+				},
+				{
+					role: "user",
+					content: [
+						{ type: "text", text: prompt },
+						{
+							type: "image_url",
+							image_url: {
+								url: `data:${mimeType};base64,${base64Data}`
 							}
-						] as any
-					}
-				],
-				temperature: options?.temperature ?? 0.1,
-				max_tokens: options?.maxOutputTokens ?? 4096,
-			});
+						}
+					] as any
+				}
+			],
+			temperature: options?.temperature ?? 0.1,
+			max_tokens: options?.maxOutputTokens ?? 4096,
+		});
 
-			const text = completion.choices[0]?.message?.content || "";
-			if (text) {
-				console.log(`callGeminiAPI: Berhasil dengan ${model} via SumoPod`);
-				return { success: true, text: sanitizeAIString(text) };
-			}
-			lastError = `Model ${model} memberikan respon kosong`;
-		} catch (error) {
-			const errMsg = error instanceof Error ? error.message : String(error);
-			lastError = errMsg;
-			console.error(`callGeminiAPI Error (${model}):`, errMsg);
-			
-			// Jika error 404 (model tidak ditemukan), lanjut ke model berikutnya
-			if (errMsg.includes("404") || errMsg.includes("model_not_found") || errMsg.includes("not found")) {
-				continue;
-			}
-			
-			// Jika error 401 (auth), berhenti karena model lain juga akan gagal
-			if (errMsg.includes("401") || errMsg.includes("Unauthorized") || errMsg.includes("API key")) {
-				break;
-			}
-			
-			// Untuk error lain (429/500), coba model berikutnya
-			await new Promise(r => setTimeout(r, 1000));
+		const text = completion.choices[0]?.message?.content || "";
+		if (text) {
+			return { success: true, text: sanitizeAIString(text) };
 		}
+		return { success: false, text: "", error: "Model memberikan respon kosong" };
+	} catch (error) {
+		const errMsg = error instanceof Error ? error.message : String(error);
+		console.error("callVisionAPI error:", errMsg);
+		return { 
+			success: false, 
+			text: "", 
+			error: `Gagal menganalisis gambar: ${errMsg}` 
+		};
 	}
-
-	return { 
-		success: false, 
-		text: "", 
-		error: `Gagal menganalisis gambar dengan SumoPod (Gemini models). Detail: ${lastError}` 
-	};
 }
 
 /**
@@ -3016,7 +2984,7 @@ async function callPythonOCRService(imageDataUrl: string, endpoint: string = "oc
 }
 
 /**
- * Helper: Run OCR on a receipt image using Google Gemini API
+ * Helper: Run OCR on a receipt image using seed-2.0-pro-free Vision API via SumoPod
  */
 async function runReceiptOCR(imageDataUrl: string): Promise<{
 	type: "order" | "expense" | "income" | "unknown";
@@ -3051,13 +3019,13 @@ async function runReceiptOCR(imageDataUrl: string): Promise<{
 				};
 			}
 		} catch (e) {
-			console.log("Python OCR Service unreachable, falling back to Gemini.");
+			console.log("Python OCR Service unreachable, falling back to seed-2.0-pro-free Vision API.");
 		}
 	}
 
-	console.log("Using SumoPod AI (Gemini) for OCR...");
+	console.log("Using SumoPod AI (seed-2.0-pro-free) for OCR...");
 
-	// Fallback: Use shared Gemini API helper
+	// Use shared Vision API helper
 	const base64Data = imageDataUrl.includes(",") ? imageDataUrl.split(",")[1] : imageDataUrl;
 	if (!base64Data) {
 		throw new ConvexError("Format gambar tidak valid (Base64 data missing)");
@@ -3093,20 +3061,20 @@ Output harus JSON murni:
   "confidence": 95
 }`;
 
-	const geminiResult = await callGeminiAPI(prompt, base64Data, mimeType, { maxOutputTokens: 2000 });
+	const visionResult = await callVisionAPI(prompt, base64Data, mimeType, { maxOutputTokens: 2000 });
 
-	if (!geminiResult.success || !geminiResult.text) {
-		throw new ConvexError(`SumoPod OCR gagal: ${geminiResult.error || "Tidak ada respon dari AI"}`);
+	if (!visionResult.success || !visionResult.text) {
+		throw new ConvexError(`Vision OCR gagal: ${visionResult.error || "Tidak ada respon dari AI"}`);
 	}
 
-	const parsed = parseAIScanJSON(geminiResult.text);
+	const parsed = parseAIScanJSON(visionResult.text);
 	
 	if (parsed) {
 		return {
 			type: (parsed.type || parsed.transactionType || "unknown") as any,
 			data: parsed.data || parsed,
-			rawText: geminiResult.text,
-			confidence: (parsed.confidence || 50) / 100, // Normalized to 0-1
+			rawText: visionResult.text,
+			confidence: (parsed.confidence || 50) / 100,
 		};
 	}
 
@@ -3114,7 +3082,7 @@ Output harus JSON murni:
 	return {
 		type: "unknown",
 		data: {},
-		rawText: geminiResult.text,
+		rawText: visionResult.text,
 		confidence: 0.1,
 	};
 }
@@ -3440,9 +3408,9 @@ export const analyzeDiscountEffectiveness = query({
 });
 
 /**
- * Scan gambar dengan AI (SumoPod Gemini) dan ekstrak data terstruktur.
+ * Scan gambar dengan AI (seed-2.0-pro-free by ByteDance via SumoPod) dan ekstrak data terstruktur.
  * Mendukung: struk belanja, kwitansi, nota, tulisan tangan, produk, dll.
- * Menggunakan SumoPod AI (Gemini) untuk stabilitas tinggi.
+ * Menggunakan SumoPod AI (seed-2.0-pro-free by ByteDance) untuk stabilitas tinggi.
  */
 export const scanImageData = action({
 	args: {
@@ -3547,26 +3515,26 @@ PENTING:
 - Nama merchant harus selalu diisi meskipun hanya terbaca sebagian.
 - HANYA kembalikan JSON.`;
 
-			// Gunakan SumoPod API (Gemini) untuk scan gambar
-			const geminiResult = await callGeminiAPI(prompt, base64Data, mimeType);
+			// Gunakan SumoPod API (seed-2.0-pro-free) untuk scan gambar
+			const visionResult = await callVisionAPI(prompt, base64Data, mimeType);
 
-			if (!geminiResult.success || !geminiResult.text) {
-				console.error("scanImageData: callGeminiAPI failed:", geminiResult.error);
+			if (!visionResult.success || !visionResult.text) {
+				console.error("scanImageData: callVisionAPI failed:", visionResult.error);
 				throw new ConvexError(
-					`AI SCAN ERROR (V2-SUMOPOD): ${geminiResult.error || "Coba lagi dengan gambar yang lebih jelas."}`
+					`AI SCAN ERROR: ${visionResult.error || "Coba lagi dengan gambar yang lebih jelas."}`
 				);
 			}
 
-			const parsed = parseAIScanJSON(geminiResult.text);
+			const parsed = parseAIScanJSON(visionResult.text);
 			if (!parsed) {
-				console.error("scanImageData: parsing failed for:", geminiResult.text.slice(0, 500));
+				console.error("scanImageData: parsing failed for:", visionResult.text.slice(0, 500));
 				throw new ConvexError("AI tidak dapat mengekstrak data dari gambar. Pastikan gambar jelas dan coba lagi.");
 			}
 
 			// Ensure legacy structure for compatibility if needed
 			const result = {
 				...parsed,
-				rawText: parsed.rawText || geminiResult.text,
+				rawText: parsed.rawText || visionResult.text,
 				confidence: parsed.confidence || 80,
 			};
 
