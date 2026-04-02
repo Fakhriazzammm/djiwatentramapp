@@ -400,8 +400,8 @@ export function MenuSidebar({
 						{/* Content Area - Full height */}
 						<div className="flex-1 flex flex-col bg-background overflow-hidden relative">
 							{activeTab === "dashboard" && (
-								<ScrollArea className="flex-1">
-									<div className="p-4">
+								<div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin bg-background">
+									<div className="p-4 pb-20">
 										<DashboardTab
 											onClose={() => setIsOpen(false)}
 											onNavigate={setActiveTab}
@@ -411,27 +411,27 @@ export function MenuSidebar({
 											categoriesList={categories}
 										/>
 									</div>
-								</ScrollArea>
+								</div>
 							)}
 							{activeTab === "parkir" && (
-								<ScrollArea className="flex-1">
-									<div className="p-4">
+								<div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin bg-background">
+									<div className="p-4 pb-20">
 										<ParkirTab
 											onClose={() => setIsOpen(false)}
 											onRestore={handleRestoreOrder}
 											onPrint={handlePrintOrder}
 										/>
 									</div>
-								</ScrollArea>
+								</div>
 							)}
 							{activeTab === "history" && (
-								<ScrollArea className="flex-1">
-									<div className="p-4">
+								<div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin bg-background">
+									<div className="p-4 pb-20">
 										<HistoryTab
 											onSelectOrder={setSelectedOrder}
 										/>
 									</div>
-								</ScrollArea>
+								</div>
 							)}
 							{activeTab === "kas" && (
 								<div className="flex-1 overflow-y-auto min-h-0 bg-background scrollbar-thin">
@@ -441,11 +441,11 @@ export function MenuSidebar({
 								</div>
 							)}
 							{activeTab === "stok" && (
-								<ScrollArea className="flex-1">
-									<div className="p-4">
+								<div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin bg-background">
+									<div className="p-4 pb-20">
 										<StokTab setConfirmConfig={setConfirmConfig} />
 									</div>
-								</ScrollArea>
+								</div>
 							)}
 							{activeTab === "yumi" && (
 								<div className="h-full">
@@ -453,11 +453,11 @@ export function MenuSidebar({
 								</div>
 							)}
 							{activeTab === "settings" && (
-								<ScrollArea className="flex-1">
-									<div className="p-4">
+								<div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin bg-background">
+									<div className="p-4 pb-20">
 										<SettingsTab onClose={() => setIsOpen(false)} />
 									</div>
-								</ScrollArea>
+								</div>
 							)}
 						</div>
 					</div>
@@ -2713,7 +2713,7 @@ function InventoryTab({
 					{inventory.length} item
 				</span>
 			</div>
-			<ScrollArea className="flex-1 pr-2">
+			<div className="flex-1 overflow-y-auto pr-2 min-h-0 scrollbar-thin pb-12">
 				<div className="space-y-2">
 					{inventory.map((item: Doc<"inventory">) => {
 						const isEditing = editingId === item._id;
@@ -2902,7 +2902,7 @@ function InventoryTab({
 						);
 					})}
 				</div>
-			</ScrollArea>
+			</div>
 		</div>
 	);
 }
@@ -2930,7 +2930,7 @@ function MarketList() {
 					<p className="text-xs">Tidak ada item yang perlu dibeli</p>
 				</div>
 			) : (
-				<ScrollArea className="flex-1 pr-2">
+				<div className="flex-1 overflow-y-auto pr-2 min-h-0 scrollbar-thin pb-12">
 					<div className="space-y-2">
 						{lowStockItems.map((item: Doc<"inventory">) => (
 							<Card
@@ -2970,7 +2970,7 @@ function MarketList() {
 							</Card>
 						))}
 					</div>
-				</ScrollArea>
+				</div>
 			)}
 		</div>
 	);
