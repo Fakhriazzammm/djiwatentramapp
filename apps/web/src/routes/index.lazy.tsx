@@ -10,6 +10,11 @@ export const Route = createLazyFileRoute("/")({
 function IndexPage() {
 	const settings = useQuery(api.site_settings.getSettings);
 	const appName = settings?.appName || "YumiPOS";
+	const headerLogoUrl = settings?.headerLogoUrl || settings?.logoUrl || "";
+	const landingTitle = settings?.landingTitle || "Point of Sale Modern untuk Bisnis Anda";
+	const landingDescription =
+		settings?.landingDescription ||
+		"Kelola penjualan, inventori, dan laporan keuangan dalam satu aplikasi yang mudah digunakan.";
 
 	return (
 		<div className="flex min-h-screen flex-col">
@@ -17,9 +22,19 @@ function IndexPage() {
 			<header className="border-b border-border bg-card px-4 py-4">
 				<div className="mx-auto flex max-w-6xl items-center justify-between">
 					<div className="flex items-center gap-2">
-						<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-							<Coffee className="h-5 w-5 text-primary-foreground" />
-						</div>
+						{headerLogoUrl ? (
+							<div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-card p-1">
+								<img
+									alt={`${appName} logo`}
+									className="h-full w-full object-contain"
+									src={headerLogoUrl}
+								/>
+							</div>
+						) : (
+							<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+								<Coffee className="h-5 w-5 text-primary-foreground" />
+							</div>
+						)}
 						<span className="font-bold text-xl">{appName}</span>
 					</div>
 					<nav className="flex items-center gap-2">
@@ -38,10 +53,10 @@ function IndexPage() {
 			<section className="flex flex-1 items-center justify-center bg-gradient-to-br from-muted/50 to-background px-4 py-16">
 				<div className="mx-auto max-w-3xl text-center">
 					<h1 className="mb-4 font-bold text-4xl text-foreground tracking-tight md:text-5xl lg:text-6xl">
-						Point of Sale Modern untuk Bisnis Anda
+						{landingTitle}
 					</h1>
 					<p className="mb-8 text-muted-foreground text-lg md:text-xl">
-						Kelola penjualan, inventori, dan laporan keuangan dalam satu aplikasi yang mudah digunakan.
+						{landingDescription}
 					</p>
 					<div className="flex flex-col justify-center gap-3 sm:flex-row">
 						<Link

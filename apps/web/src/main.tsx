@@ -5,6 +5,7 @@ import { routeTree } from "./routeTree.gen";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CartProvider } from "@/context/cart-context";
+import { registerSW } from "virtual:pwa-register";
 import "./index.css";
 
 // Set up Convex client (optional - graceful fallback if URL not configured)
@@ -26,6 +27,8 @@ declare module "@tanstack/react-router" {
 }
 
 const rootElement = document.getElementById("root")!;
+registerSW();
+
 if (!rootElement.innerHTML) {
 	const root = ReactDOM.createRoot(rootElement);
 	root.render(

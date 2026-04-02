@@ -8,6 +8,18 @@ const DEFAULTS = {
 	landingDescription: "Pengalaman Kopi Premium",
 	landingButtonText: "Pesan Disini",
 	logoUrl: "",
+	headerLogoUrl: "",
+	faviconUrl: "",
+	pwaIcon192Url: "",
+	pwaIcon512Url: "",
+	pwaMaskableIconUrl: "",
+	seoMetaTitle: "",
+	seoMetaDescription: "",
+	seoMetaKeywords: "",
+	seoShareTitle: "",
+	seoShareDescription: "",
+	seoShareImageUrl: "",
+	seoCanonicalUrl: "",
 	paymentPopupImage: "",
 	storeName: "Coffee Shop",
 	storeAddress: "",
@@ -58,38 +70,24 @@ export const getSettings = query({
 			return DEFAULTS;
 		}
 
+		const resolveStorageUrl = async (value?: string) => {
+			if (!value) return value;
+			if (value.startsWith("http")) return value;
+			const url = await ctx.storage.getUrl(value);
+			return url ?? value;
+		};
+
 		// Resolve Storage IDs to URLs
-		let paymentPopupImage = settings.paymentPopupImage;
-		if (paymentPopupImage && !paymentPopupImage.startsWith("http")) {
-			const url = await ctx.storage.getUrl(paymentPopupImage);
-			if (url) {
-				paymentPopupImage = url;
-			}
-		}
-
-		let qrisImage = settings.qrisImage;
-		if (qrisImage && !qrisImage.startsWith("http")) {
-			const url = await ctx.storage.getUrl(qrisImage);
-			if (url) {
-				qrisImage = url;
-			}
-		}
-
-		let receiptLogo = settings.receiptLogo;
-		if (receiptLogo && !receiptLogo.startsWith("http")) {
-			const url = await ctx.storage.getUrl(receiptLogo);
-			if (url) {
-				receiptLogo = url;
-			}
-		}
-
-		let logoUrl = settings.logoUrl;
-		if (logoUrl && logoUrl.length > 0 && !logoUrl.startsWith("http")) {
-			const url = await ctx.storage.getUrl(logoUrl);
-			if (url) {
-				logoUrl = url;
-			}
-		}
+		const paymentPopupImage = await resolveStorageUrl(settings.paymentPopupImage);
+		const qrisImage = await resolveStorageUrl(settings.qrisImage);
+		const receiptLogo = await resolveStorageUrl(settings.receiptLogo);
+		const logoUrl = await resolveStorageUrl(settings.logoUrl);
+		const headerLogoUrl = await resolveStorageUrl(settings.headerLogoUrl);
+		const faviconUrl = await resolveStorageUrl(settings.faviconUrl);
+		const pwaIcon192Url = await resolveStorageUrl(settings.pwaIcon192Url);
+		const pwaIcon512Url = await resolveStorageUrl(settings.pwaIcon512Url);
+		const pwaMaskableIconUrl = await resolveStorageUrl(settings.pwaMaskableIconUrl);
+		const seoShareImageUrl = await resolveStorageUrl(settings.seoShareImageUrl);
 
 		// Return settings with fallbacks for new fields
 		return {
@@ -100,6 +98,20 @@ export const getSettings = query({
 			landingButtonText:
 				settings.landingButtonText ?? DEFAULTS.landingButtonText,
 			logoUrl: logoUrl ?? DEFAULTS.logoUrl,
+			headerLogoUrl: headerLogoUrl ?? DEFAULTS.headerLogoUrl,
+			faviconUrl: faviconUrl ?? DEFAULTS.faviconUrl,
+			pwaIcon192Url: pwaIcon192Url ?? DEFAULTS.pwaIcon192Url,
+			pwaIcon512Url: pwaIcon512Url ?? DEFAULTS.pwaIcon512Url,
+			pwaMaskableIconUrl: pwaMaskableIconUrl ?? DEFAULTS.pwaMaskableIconUrl,
+			seoMetaTitle: settings.seoMetaTitle ?? DEFAULTS.seoMetaTitle,
+			seoMetaDescription:
+				settings.seoMetaDescription ?? DEFAULTS.seoMetaDescription,
+			seoMetaKeywords: settings.seoMetaKeywords ?? DEFAULTS.seoMetaKeywords,
+			seoShareTitle: settings.seoShareTitle ?? DEFAULTS.seoShareTitle,
+			seoShareDescription:
+				settings.seoShareDescription ?? DEFAULTS.seoShareDescription,
+			seoShareImageUrl: seoShareImageUrl ?? DEFAULTS.seoShareImageUrl,
+			seoCanonicalUrl: settings.seoCanonicalUrl ?? DEFAULTS.seoCanonicalUrl,
 			paymentPopupImage: paymentPopupImage ?? DEFAULTS.paymentPopupImage,
 			storeName: settings.storeName ?? DEFAULTS.storeName,
 			storeAddress: settings.storeAddress ?? DEFAULTS.storeAddress,
@@ -146,6 +158,18 @@ export const updateSettings = mutation({
 		landingDescription: v.optional(v.string()),
 		landingButtonText: v.optional(v.string()),
 		logoUrl: v.optional(v.string()),
+		headerLogoUrl: v.optional(v.string()),
+		faviconUrl: v.optional(v.string()),
+		pwaIcon192Url: v.optional(v.string()),
+		pwaIcon512Url: v.optional(v.string()),
+		pwaMaskableIconUrl: v.optional(v.string()),
+		seoMetaTitle: v.optional(v.string()),
+		seoMetaDescription: v.optional(v.string()),
+		seoMetaKeywords: v.optional(v.string()),
+		seoShareTitle: v.optional(v.string()),
+		seoShareDescription: v.optional(v.string()),
+		seoShareImageUrl: v.optional(v.string()),
+		seoCanonicalUrl: v.optional(v.string()),
 		paymentPopupImage: v.optional(v.string()),
 		storeName: v.optional(v.string()),
 		storeAddress: v.optional(v.string()),

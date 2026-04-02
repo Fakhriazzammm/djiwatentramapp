@@ -4,6 +4,7 @@ import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import {
 	Bell,
+	Globe,
 	CreditCard,
 	Layout,
 	MapPin,
@@ -289,6 +290,18 @@ function SettingsPage() {
 		appName: "Yumi POS",
 		appVersion: "1.0.0",
 		developerName: "Zantara Technology",
+		headerLogoUrl: "",
+		faviconUrl: "",
+		pwaIcon192Url: "",
+		pwaIcon512Url: "",
+		pwaMaskableIconUrl: "",
+		seoMetaTitle: "",
+		seoMetaDescription: "",
+		seoMetaKeywords: "",
+		seoShareTitle: "",
+		seoShareDescription: "",
+		seoShareImageUrl: "",
+		seoCanonicalUrl: "",
 		// Receipt Customization
 		receiptLogo: "",
 		receiptHeader: "",
@@ -337,7 +350,7 @@ function SettingsPage() {
 	const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
 
 	const [activeTab, setActiveTab] = useState<
-		"landing" | "pos" | "store" | "system" | "users" | "shifts"
+		"landing" | "pos" | "store" | "branding" | "system" | "users" | "shifts"
 	>("landing");
 
 	// User/Role Form States
@@ -390,6 +403,18 @@ function SettingsPage() {
 				appName: siteSettings.appName ?? "Yumi POS",
 				appVersion: siteSettings.appVersion ?? "1.0.0",
 				developerName: siteSettings.developerName ?? "Zantara Technology",
+				headerLogoUrl: siteSettings.headerLogoUrl ?? "",
+				faviconUrl: siteSettings.faviconUrl ?? "",
+				pwaIcon192Url: siteSettings.pwaIcon192Url ?? "",
+				pwaIcon512Url: siteSettings.pwaIcon512Url ?? "",
+				pwaMaskableIconUrl: siteSettings.pwaMaskableIconUrl ?? "",
+				seoMetaTitle: siteSettings.seoMetaTitle ?? "",
+				seoMetaDescription: siteSettings.seoMetaDescription ?? "",
+				seoMetaKeywords: siteSettings.seoMetaKeywords ?? "",
+				seoShareTitle: siteSettings.seoShareTitle ?? "",
+				seoShareDescription: siteSettings.seoShareDescription ?? "",
+				seoShareImageUrl: siteSettings.seoShareImageUrl ?? "",
+				seoCanonicalUrl: siteSettings.seoCanonicalUrl ?? "",
 				// Receipt Customization
 				receiptLogo: siteSettings.receiptLogo ?? "",
 				receiptHeader: siteSettings.receiptHeader ?? "",
@@ -450,6 +475,18 @@ function SettingsPage() {
 				appName: settings.appName,
 				appVersion: settings.appVersion,
 				developerName: settings.developerName,
+				headerLogoUrl: settings.headerLogoUrl,
+				faviconUrl: settings.faviconUrl,
+				pwaIcon192Url: settings.pwaIcon192Url,
+				pwaIcon512Url: settings.pwaIcon512Url,
+				pwaMaskableIconUrl: settings.pwaMaskableIconUrl,
+				seoMetaTitle: settings.seoMetaTitle,
+				seoMetaDescription: settings.seoMetaDescription,
+				seoMetaKeywords: settings.seoMetaKeywords,
+				seoShareTitle: settings.seoShareTitle,
+				seoShareDescription: settings.seoShareDescription,
+				seoShareImageUrl: settings.seoShareImageUrl,
+				seoCanonicalUrl: settings.seoCanonicalUrl,
 				// Mayar Payment Gateway
 				mayarEnabled: paymentSettings.mayarEnabled,
 				mayarTestMode: paymentSettings.mayarTestMode,
@@ -465,6 +502,7 @@ function SettingsPage() {
 				receiptShowPhone: settings.receiptShowPhone,
 				receiptShowOrderNumber: settings.receiptShowOrderNumber,
 				receiptShowCustomerName: settings.receiptShowCustomerName,
+				receiptShowCashierName: settings.receiptShowCashierName,
 				receiptShowNotes: settings.receiptShowNotes,
 				receiptFontSize: settings.receiptFontSize,
 				shiftSettings: {
@@ -584,10 +622,38 @@ function SettingsPage() {
 		}));
 	};
 
+	const uploadImageSetting = async (file: File, previewKey: string) => {
+		let uploadBlob: Blob = file;
+		let contentType = file.type || "image/jpeg";
+		if (isOversized(file)) {
+			toast.loading("Mengompresi gambar...", { id: `compress-${previewKey}` });
+			const compressed = await compressFileToLimit(file);
+			toast.dismiss(`compress-${previewKey}`);
+			uploadBlob = await fetch(compressed).then((r) => r.blob());
+			contentType = "image/jpeg";
+		}
+
+		const postUrl = await generateUploadUrl();
+		const result = await fetch(postUrl, {
+			method: "POST",
+			headers: { "Content-Type": contentType },
+			body: uploadBlob,
+		});
+		if (!result.ok) {
+			throw new Error("Upload failed");
+		}
+
+		const { storageId } = await result.json();
+		const previewUrl = URL.createObjectURL(uploadBlob);
+		setLocalPreviews((prev) => ({ ...prev, [previewKey]: previewUrl }));
+		return storageId as string;
+	};
+
 	const tabs = [
 		{ id: "landing", label: "Halaman Utama", icon: Layout },
 		{ id: "pos", label: "Konfigurasi POS", icon: CreditCard },
 		{ id: "store", label: "Informasi Toko", icon: MapPin },
+		{ id: "branding", label: "Branding & SEO", icon: Globe },
 		{ id: "shifts", label: "Manajemen Shift", icon: Clock },
 		{ id: "users", label: "Pengguna & Akses", icon: Users },
 		{ id: "system", label: "Sistem & Perangkat", icon: Settings2 },
@@ -1244,6 +1310,337 @@ function SettingsPage() {
 								</div>
 							</div>
 						</section>
+					</div>
+				)}
+
+				{activeTab === "branding" && (
+					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
+						<div className="space-y-6">
+							<section className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-sm md:space-y-8 md:p-8">
+								<div className="flex items-center gap-4">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+										<Globe className="h-6 w-6" />
+									</div>
+									<div>
+										<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
+											Branding Aplikasi
+										</h3>
+										<p className="text-muted-foreground text-sm">
+											Logo header, favicon, dan icon PWA
+										</p>
+									</div>
+								</div>
+
+								<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+									<div className="space-y-2 md:col-span-2">
+										<label className="font-medium text-muted-foreground text-xs" htmlFor="appName">
+											Nama Aplikasi
+										</label>
+										<input
+											className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											id="appName"
+											onChange={(e) => setSettings({ ...settings, appName: e.target.value })}
+											type="text"
+											value={settings.appName}
+										/>
+									</div>
+
+									<div className="space-y-2">
+										<label className="font-medium text-muted-foreground text-xs" htmlFor="appVersion">
+											Versi Aplikasi
+										</label>
+										<input
+											className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											id="appVersion"
+											onChange={(e) => setSettings({ ...settings, appVersion: e.target.value })}
+											type="text"
+											value={settings.appVersion}
+										/>
+									</div>
+
+									<div className="space-y-2">
+										<label className="font-medium text-muted-foreground text-xs" htmlFor="developerName">
+											Nama Developer
+										</label>
+										<input
+											className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											id="developerName"
+											onChange={(e) => setSettings({ ...settings, developerName: e.target.value })}
+											type="text"
+											value={settings.developerName}
+										/>
+									</div>
+								</div>
+
+								<div className="space-y-5 border-border/50 border-t pt-5">
+									<div className="space-y-2">
+										<label className="font-medium text-muted-foreground text-xs" htmlFor="header-logo-url">
+											Logo Header
+										</label>
+										<input
+											className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											id="header-logo-url"
+											onChange={(e) => setSettings({ ...settings, headerLogoUrl: e.target.value })}
+											placeholder="https://example.com/logo-header.png"
+											type="text"
+											value={settings.headerLogoUrl}
+										/>
+									</div>
+
+									<div className="flex flex-col gap-4 md:flex-row md:items-center">
+										{(localPreviews.headerLogoUrl || settings.headerLogoUrl) && (
+											<div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl border bg-background p-2">
+												<img
+													alt="Preview logo header"
+													className="max-h-full max-w-full object-contain"
+													src={localPreviews.headerLogoUrl || settings.headerLogoUrl}
+												/>
+											</div>
+										)}
+										<input
+											accept="image/*"
+											className="block w-full text-muted-foreground text-sm file:mr-4 file:rounded-xl file:border-0 file:bg-primary file:px-6 file:py-2.5 file:font-bold file:text-primary-foreground file:text-xs file:transition-all hover:file:opacity-90"
+											onChange={async (e) => {
+												const file = e.target.files?.[0];
+												if (!file) return;
+												try {
+													const storageId = await uploadImageSetting(file, "headerLogoUrl");
+													setSettings((prev) => ({ ...prev, headerLogoUrl: storageId }));
+													toast.success("Logo header berhasil diunggah");
+												} catch (error) {
+													toast.dismiss("compress-headerLogoUrl");
+													console.error(error);
+													toast.error("Gagal mengunggah logo header");
+												}
+											}}
+											type="file"
+										/>
+									</div>
+								</div>
+
+								<div className="grid grid-cols-1 gap-6 border-border/50 border-t pt-5 md:grid-cols-3">
+									{[
+										{
+											id: "faviconUrl",
+											label: "Favicon",
+											placeholder: "https://example.com/favicon.png",
+											hint: "Akan dipakai untuk tab browser.",
+										},
+										{
+											id: "pwaIcon192Url",
+											label: "Icon PWA 192x192",
+											placeholder: "https://example.com/pwa-192.png",
+											hint: "Dipakai untuk install shortcut.",
+										},
+										{
+											id: "pwaIcon512Url",
+											label: "Icon PWA 512x512",
+											placeholder: "https://example.com/pwa-512.png",
+											hint: "Dipakai untuk splash screen.",
+										},
+									].map((item) => (
+										<div className="space-y-3" key={item.id}>
+											<label className="font-medium text-muted-foreground text-xs" htmlFor={item.id}>
+												{item.label}
+											</label>
+											<input
+												className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												id={item.id}
+												onChange={(e) =>
+													setSettings({ ...settings, [item.id]: e.target.value })
+												}
+												placeholder={item.placeholder}
+												type="text"
+												value={(settings as any)[item.id]}
+											/>
+											<input
+												accept="image/*"
+												className="block w-full text-muted-foreground text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:font-bold file:text-primary-foreground"
+												onChange={async (e) => {
+													const file = e.target.files?.[0];
+													if (!file) return;
+													try {
+														const storageId = await uploadImageSetting(file, item.id);
+														setSettings((prev) => ({ ...prev, [item.id]: storageId }));
+														toast.success(`${item.label} berhasil diunggah`);
+													} catch (error) {
+														toast.dismiss(`compress-${item.id}`);
+														console.error(error);
+														toast.error(`Gagal mengunggah ${item.label}`);
+													}
+												}}
+												type="file"
+											/>
+											<p className="text-[10px] text-muted-foreground">{item.hint}</p>
+										</div>
+									))}
+								</div>
+
+								<div className="space-y-2">
+									<label className="font-medium text-muted-foreground text-xs" htmlFor="pwaMaskableIconUrl">
+										Icon PWA Maskable 512x512
+									</label>
+									<input
+										className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+										id="pwaMaskableIconUrl"
+										onChange={(e) => setSettings({ ...settings, pwaMaskableIconUrl: e.target.value })}
+										placeholder="https://example.com/pwa-maskable-512.png"
+										type="text"
+										value={settings.pwaMaskableIconUrl}
+									/>
+									<input
+										accept="image/*"
+										className="block w-full text-muted-foreground text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:font-bold file:text-primary-foreground"
+										onChange={async (e) => {
+											const file = e.target.files?.[0];
+											if (!file) return;
+											try {
+												const storageId = await uploadImageSetting(file, "pwaMaskableIconUrl");
+												setSettings((prev) => ({ ...prev, pwaMaskableIconUrl: storageId }));
+												toast.success("Icon maskable berhasil diunggah");
+											} catch (error) {
+												toast.dismiss("compress-pwaMaskableIconUrl");
+												console.error(error);
+												toast.error("Gagal mengunggah icon maskable");
+											}
+										}}
+										type="file"
+									/>
+								</div>
+							</section>
+
+							<section className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-sm md:space-y-8 md:p-8">
+								<div className="flex items-center gap-4">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+										<Globe className="h-6 w-6" />
+									</div>
+									<div>
+										<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
+											Share Link & SEO
+										</h3>
+										<p className="text-muted-foreground text-sm">
+											Meta title, description, Open Graph, dan Twitter Card
+										</p>
+									</div>
+								</div>
+
+								<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+									<div className="space-y-2 md:col-span-2">
+										<label className="font-medium text-muted-foreground text-xs" htmlFor="seoMetaTitle">
+											SEO Meta Title
+										</label>
+										<input
+											className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											id="seoMetaTitle"
+											onChange={(e) => setSettings({ ...settings, seoMetaTitle: e.target.value })}
+											placeholder="Judul halaman untuk Google"
+											type="text"
+											value={settings.seoMetaTitle}
+										/>
+									</div>
+
+									<div className="space-y-2 md:col-span-2">
+										<label className="font-medium text-muted-foreground text-xs" htmlFor="seoMetaDescription">
+											SEO Meta Description
+										</label>
+										<textarea
+											className="min-h-[100px] w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											id="seoMetaDescription"
+											onChange={(e) => setSettings({ ...settings, seoMetaDescription: e.target.value })}
+											placeholder="Deskripsi singkat untuk mesin pencari"
+											value={settings.seoMetaDescription}
+										/>
+									</div>
+
+									<div className="space-y-2 md:col-span-2">
+										<label className="font-medium text-muted-foreground text-xs" htmlFor="seoMetaKeywords">
+											SEO Keywords
+										</label>
+										<input
+											className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											id="seoMetaKeywords"
+											onChange={(e) => setSettings({ ...settings, seoMetaKeywords: e.target.value })}
+											placeholder="pos, kasir, coffee shop, restoran"
+											type="text"
+											value={settings.seoMetaKeywords}
+										/>
+									</div>
+
+									<div className="space-y-2 md:col-span-2">
+										<label className="font-medium text-muted-foreground text-xs" htmlFor="seoCanonicalUrl">
+											Canonical URL
+										</label>
+										<input
+											className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											id="seoCanonicalUrl"
+											onChange={(e) => setSettings({ ...settings, seoCanonicalUrl: e.target.value })}
+											placeholder="https://domainbisnis.com/"
+											type="url"
+											value={settings.seoCanonicalUrl}
+										/>
+									</div>
+
+									<div className="space-y-2">
+										<label className="font-medium text-muted-foreground text-xs" htmlFor="seoShareTitle">
+											Share Title (OG/Twitter)
+										</label>
+										<input
+											className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											id="seoShareTitle"
+											onChange={(e) => setSettings({ ...settings, seoShareTitle: e.target.value })}
+											placeholder="Judul saat link dibagikan"
+											type="text"
+											value={settings.seoShareTitle}
+										/>
+									</div>
+
+									<div className="space-y-2">
+										<label className="font-medium text-muted-foreground text-xs" htmlFor="seoShareImageUrl">
+											Share Image (OG/Twitter)
+										</label>
+										<input
+											className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											id="seoShareImageUrl"
+											onChange={(e) => setSettings({ ...settings, seoShareImageUrl: e.target.value })}
+											placeholder="https://domain.com/share-image.png"
+											type="text"
+											value={settings.seoShareImageUrl}
+										/>
+										<input
+											accept="image/*"
+											className="block w-full text-muted-foreground text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:font-bold file:text-primary-foreground"
+											onChange={async (e) => {
+												const file = e.target.files?.[0];
+												if (!file) return;
+												try {
+													const storageId = await uploadImageSetting(file, "seoShareImageUrl");
+													setSettings((prev) => ({ ...prev, seoShareImageUrl: storageId }));
+													toast.success("Share image berhasil diunggah");
+												} catch (error) {
+													toast.dismiss("compress-seoShareImageUrl");
+													console.error(error);
+													toast.error("Gagal mengunggah share image");
+												}
+											}}
+											type="file"
+										/>
+									</div>
+
+									<div className="space-y-2 md:col-span-2">
+										<label className="font-medium text-muted-foreground text-xs" htmlFor="seoShareDescription">
+											Share Description (OG/Twitter)
+										</label>
+										<textarea
+											className="min-h-[100px] w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+											id="seoShareDescription"
+											onChange={(e) => setSettings({ ...settings, seoShareDescription: e.target.value })}
+											placeholder="Deskripsi saat link dibagikan ke WhatsApp, Telegram, dll."
+											value={settings.seoShareDescription}
+										/>
+									</div>
+								</div>
+							</section>
+						</div>
 					</div>
 				)}
 

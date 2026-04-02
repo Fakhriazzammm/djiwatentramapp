@@ -159,6 +159,8 @@ function AdminLayout() {
 	const settings = useQuery(api.site_settings.getSettings);
 	const storeName = settings?.storeName || "Yumi POS";
 	const appName = settings?.appName || "Yumi POS";
+	const developerName = settings?.developerName || "Zantara Technology";
+	const headerLogoUrl = settings?.headerLogoUrl || settings?.logoUrl || "";
 
 	const location = useLocation();
 	// Use non-strict search to avoid type errors during route tree generation
@@ -206,9 +208,19 @@ function AdminLayout() {
 					}`}
 			>
 				<div className="flex h-14 items-center gap-2 border-border border-b px-4">
-					<div className="shrink-0 rounded-md bg-primary p-1.5">
-						<Coffee className="h-4 w-4 text-primary-foreground" />
-					</div>
+					{headerLogoUrl ? (
+						<div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-background p-1">
+							<img
+								alt={`${storeName} logo`}
+								className="h-full w-full object-contain"
+								src={headerLogoUrl}
+							/>
+						</div>
+					) : (
+						<div className="shrink-0 rounded-md bg-primary p-1.5">
+							<Coffee className="h-4 w-4 text-primary-foreground" />
+						</div>
+					)}
 					<AnimatePresence>
 						{!isCollapsed && (
 							<motion.span
@@ -476,7 +488,15 @@ function AdminLayout() {
 					{/* Mobile: Show page title + store brand */}
 					<div className="flex items-center gap-3">
 						<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary md:hidden">
-							<Coffee className="h-4 w-4 text-primary-foreground" />
+							{headerLogoUrl ? (
+								<img
+									alt={`${storeName} logo`}
+									className="h-6 w-6 object-contain"
+									src={headerLogoUrl}
+								/>
+							) : (
+								<Coffee className="h-4 w-4 text-primary-foreground" />
+							)}
 						</div>
 						<div>
 							<h1 className="font-bold text-base leading-tight md:text-lg">
@@ -546,7 +566,7 @@ function AdminLayout() {
 					<footer className="border-border border-t bg-muted/20 px-4 py-2 text-center text-muted-foreground text-xs">
 						<div className="flex flex-col items-center gap-0.5 md:flex-row md:gap-2">
 							<span>
-								{appName} {APP_VERSION.semantic} by Zantara Technology
+								{appName} {APP_VERSION.semantic} by {developerName}
 							</span>
 							<span className="hidden md:inline text-muted-foreground/40">·</span>
 							<span className="text-[10px] text-muted-foreground/60">
