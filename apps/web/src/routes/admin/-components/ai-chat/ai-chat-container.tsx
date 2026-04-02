@@ -729,6 +729,7 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 									/>
 								</div>
 							</div>
+						</div>
 						)}
 						{activeTab === "suggestions" && <SuggestionsPanel suggestions={proactiveSuggestions as any} onExecute={handleExecuteSuggestion} />}
 						{activeTab === "predictions" && <PredictionsPanel stockPredictions={stockPredictions} busyHours={busyHoursPrediction} revenue={revenuePrediction} trending={trendingProducts} promoTime={bestPromoTime} />}
