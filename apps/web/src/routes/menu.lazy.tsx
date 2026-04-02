@@ -1090,8 +1090,8 @@ function MenuPage() {
 
 				</main>
 				{/* === BOTTOM NAVIGATION BAR (Fixed) === */}
-				<div className="shrink-0 w-full border-t border-border bg-background/95 backdrop-blur-xl pb-safe-area shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-4 pt-3 sm:pt-4">
-					<div className="flex items-center justify-around max-w-lg mx-auto sm:max-w-none gap-1 sm:gap-2">
+				<div className="shrink-0 w-full border-t border-border bg-background/95 backdrop-blur-xl pb-safe-area shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-3 pt-2 sm:pt-3">
+					<div className="flex items-center justify-around max-w-lg mx-auto sm:max-w-none gap-0.5 sm:gap-1">
 						{SIDEBAR_MENU_ITEMS.map((item, index) => {
 							const Icon = item.icon;
 							const isFocused = isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === index + 1;
@@ -1106,23 +1106,23 @@ function MenuPage() {
 										setIsSidebarOpen(true);
 									}}
 									className={cn(
-										"flex flex-col items-center gap-1 min-w-[50px] transition-all",
+										"flex flex-col items-center gap-0.5 min-w-[40px] transition-all",
 										isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
 										isFocused && "ring-1 ring-primary rounded-md p-0.5"
 									)}
 									type="button"
 								>
 									<div className={cn(
-										"flex h-8 w-8 items-center justify-center rounded-lg transition-all",
+										"flex h-7 w-7 items-center justify-center rounded-lg transition-all",
 										isActive ? "bg-primary/10" : "bg-transparent hover:bg-muted/50",
 										needsAttention && "bg-rose-50 text-rose-600 shadow-[0_0_10px_rgba(225,29,72,0.2)]"
 									)}>
-										<Icon className={cn("h-4.5 w-4.5", needsAttention && "animate-bounce")} />
+										<Icon className={cn("h-4 w-4", needsAttention && "animate-bounce")} />
 									</div>
-									<span className="text-[8px] font-bold uppercase tracking-tight leading-none text-center block sm:hidden">
+									<span className="text-[7px] font-bold uppercase tracking-tight leading-none text-center block sm:hidden">
 										{item.label.split(' ')[0]}
 									</span>
-									<span className="text-[9px] font-bold uppercase tracking-tight leading-none text-center hidden sm:block">
+									<span className="text-[8px] font-bold uppercase tracking-tight leading-none text-center hidden sm:block">
 										{item.label}
 									</span>
 								</button>
