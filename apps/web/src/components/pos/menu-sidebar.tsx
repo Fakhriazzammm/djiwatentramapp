@@ -441,7 +441,11 @@ export function MenuSidebar({
 								</ScrollArea>
 							)}
 							{activeTab === "stok" && (
-								<StokTab setConfirmConfig={setConfirmConfig} />
+								<ScrollArea className="flex-1">
+									<div className="p-4">
+										<StokTab setConfirmConfig={setConfirmConfig} />
+									</div>
+								</ScrollArea>
 							)}
 							{activeTab === "yumi" && (
 								<div className="h-full">
@@ -2094,9 +2098,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				</p>
 			</div>
 
-			<div className="flex gap-px rounded-sm bg-muted/50 p-px">
+			<div className="flex gap-1 rounded-lg bg-muted/50 p-1">
 				<button
-					className={`flex-1 rounded-sm px-0.5 py-0.5 font-bold text-[8px] transition-all ${
+					className={`flex-1 rounded-md px-3 py-2 font-black text-xs transition-all ${
 						shiftType === "mulai"
 							? "bg-primary text-white shadow-sm"
 							: "text-muted-foreground hover:text-foreground opacity-50 grayscale pointer-events-none"
@@ -2106,7 +2110,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					Mulai Shift
 				</button>
 				<button
-					className={`flex-1 rounded-sm px-0.5 py-0.5 font-bold text-[8px] transition-all ${
+					className={`flex-1 rounded-md px-3 py-2 font-black text-xs transition-all ${
 						shiftType === "akhiri"
 							? "bg-destructive text-white shadow-sm"
 							: "text-muted-foreground hover:text-foreground opacity-50 grayscale pointer-events-none"
