@@ -881,6 +881,203 @@ async function gatherSmartContext(ctx: GenericActionCtx<DataModel>) {
 		: "== SMART INSIGHTS ==\nBelum cukup data untuk analisis";
 }
 
+type ParsedBulkFinanceEntry = {
+	date: number;
+	type: "income" | "expense";
+	amount: number;
+	category: string;
+	merchant?: string;
+	description: string;
+	paymentMethod: string;
+	rawLine: string;
+};
+
+type ParsedBulkFinanceResult = {
+	entries: ParsedBulkFinanceEntry[];
+	defaultYear: number;
+};
+
+function parseRupiahAmount(raw: string): number {
+	if (!raw) return 0;
+	const normalized = raw
+		.replace(/rp\.?/gi, "")
+		.replace(/\s+/g, "")
+		.replace(/[^0-9,.-]/g, "")
+		.replace(/\.(?=\d{3}(\D|$))/g, "")
+		.replace(/,/g, ".");
+	const amount = Number.parseFloat(normalized);
+	return Number.isFinite(amount) ? Math.round(amount) : 0;
+}
+
+function buildTimestampAtNoonJakarta(year: number, month: number, day: number): number {
+	// Store at 12:00 UTC to reduce day-shift risk when viewed across time zones.
+	return Date.UTC(year, month - 1, day, 12, 0, 0, 0);
+}
+
+function inferTransactionType(text: string): "income" | "expense" {
+	const t = text.toLowerCase();
+	const incomeKeywords = ["pemasukan", "pendapatan", "omzet", "omset", "penjualan", "revenue", "masuk", "setoran", "income"];
+	return incomeKeywords.some((k) => t.includes(k)) ? "income" : "expense";
+}
+
+function inferFinanceCategory(text: string): string {
+	const t = text.toLowerCase();
+	if (/(belanja|kulak|stok|bahan baku|supplier|purchasing)/.test(t)) return "belanja_stok";
+	if (/(bensin|parkir|kurir|ojek|transport|grab|gojek|maxim)/.test(t)) return "transportasi";
+	if (/(galon|air mineral|le mineral|es batu|konsumsi|jajan|nasi|lauk|minuman|makanan)/.test(t)) return "makanan_minuman";
+	if (/(listrik|air|pdam|wifi|internet|sampah|utilitas|operasional bulanan|keamanan)/.test(t)) return "utilitas_listrik_air";
+	if (/(atk|pembersih|sunlight|sapu|kain pel|peralatan|alat)/.test(t)) return "peralatan_kantor";
+	if (/(gaji|upah|thr|bonus|uang makan karyawan)/.test(t)) return "gaji_karyawan";
+	if (/(sewa)/.test(t)) return "sewa_tempat";
+	if (/(iklan|promosi|marketing|pemasaran|brosur|banner)/.test(t)) return "pemasaran";
+	if (/(ppn|pph|pajak|retribusi)/.test(t)) return "pajak";
+	if (/(obat|p3k|kesehatan)/.test(t)) return "kesehatan";
+	if (/(renovasi|material|tukang|pembangunan|perbaikan)/.test(t)) return "pembangunan_renovasi";
+	return "lainnya";
+}
+
+function parseDateFromLine(line: string, fallbackYear: number): { ts: number; year: number } | null {
+	const cleaned = line.toLowerCase().trim();
+	const monthMap: Record<string, number> = {
+		januari: 1, januarii: 1, jan: 1,
+		februari: 2, feb: 2,
+		maret: 3, mar: 3,
+		april: 4, apr: 4,
+		mei: 5,
+		juni: 6, jun: 6,
+		juli: 7, jul: 7,
+		agustus: 8, agu: 8, ags: 8,
+		september: 9, sep: 9,
+		oktober: 10, okt: 10,
+		november: 11, nov: 11,
+		desember: 12, des: 12,
+	};
+
+	const slashDate = cleaned.match(/(?:^|[\s,])(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?(?:$|[\s,])/);
+	if (slashDate) {
+		const day = Number.parseInt(slashDate[1], 10);
+		const month = Number.parseInt(slashDate[2], 10);
+		let year = slashDate[3] ? Number.parseInt(slashDate[3], 10) : fallbackYear;
+		if (year < 100) year += 2000;
+		if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+			return { ts: buildTimestampAtNoonJakarta(year, month, day), year };
+		}
+	}
+
+	const namedDate = cleaned.match(
+		/(?:^|[\s,])(\d{1,2})\s+([a-zA-Z]+)\s+(\d{2,4})(?:$|[\s,])/
+	);
+	if (namedDate) {
+		const day = Number.parseInt(namedDate[1], 10);
+		const monthRaw = namedDate[2].toLowerCase();
+		const month = monthMap[monthRaw];
+		let year = Number.parseInt(namedDate[3], 10);
+		if (year < 100) year += 2000;
+		if (month && day >= 1 && day <= 31) {
+			return { ts: buildTimestampAtNoonJakarta(year, month, day), year };
+		}
+	}
+
+	return null;
+}
+
+function parseBulkFinancialReport(message: string): ParsedBulkFinanceResult | null {
+	if (!message || message.trim().length < 10) return null;
+
+	const yearMatch = message.match(/\b(20\d{2}|19\d{2})\b/);
+	let defaultYear = yearMatch ? Number.parseInt(yearMatch[1], 10) : new Date().getFullYear();
+	let currentDateTs: number | null = null;
+	const entries: ParsedBulkFinanceEntry[] = [];
+
+	const lines = message
+		.replace(/\r/g, "")
+		.split("\n")
+		.map((l) => l.trim())
+		.filter(Boolean);
+
+	for (const raw of lines) {
+		const line = raw
+			.replace(/^[\*\-\u2022>\s]+/, "")
+			.replace(/\s{2,}/g, " ")
+			.trim();
+		if (!line) continue;
+		if (/^total\b/i.test(line) || /^total\s+rekap/i.test(line)) continue;
+		if (/^report\b/i.test(line)) continue;
+
+		const detectedDate = parseDateFromLine(line, defaultYear);
+		if (detectedDate && !/rp\s*[0-9]/i.test(line)) {
+			currentDateTs = detectedDate.ts;
+			defaultYear = detectedDate.year;
+			continue;
+		}
+
+		const amountMatch = line.match(/rp\.?\s*([0-9][0-9.,]*)/i);
+		if (!amountMatch) continue;
+		if (!currentDateTs) continue;
+
+		const amount = parseRupiahAmount(amountMatch[1]);
+		if (amount <= 0) continue;
+
+		const leftSide = line.split(/rp\.?/i)[0]?.trim() || line;
+		const label = leftSide.replace(/[:\-]\s*$/, "").trim();
+		const noteMatch = line.match(/\(([^)]+)\)/);
+		const notes = noteMatch?.[1]?.trim();
+		const normalizedText = `${label} ${notes || ""}`.trim();
+		const type = inferTransactionType(normalizedText);
+		const category = inferFinanceCategory(normalizedText);
+		const merchant = label && !/^(operasional|belanja|pengeluaran|pemasukan|lainnya)$/i.test(label) ? label : undefined;
+
+		entries.push({
+			date: currentDateTs,
+			type,
+			amount,
+			category,
+			merchant,
+			description: notes ? `${label} (${notes})` : label,
+			paymentMethod: "cash",
+			rawLine: raw,
+		});
+	}
+
+	if (entries.length === 0) return null;
+	return { entries, defaultYear };
+}
+
+function formatBulkFinancialContext(parsed: ParsedBulkFinanceResult | null): string {
+	if (!parsed || parsed.entries.length === 0) return "";
+	const groupedByDate = new Map<string, ParsedBulkFinanceEntry[]>();
+	for (const e of parsed.entries) {
+		const key = new Date(e.date).toISOString().slice(0, 10);
+		if (!groupedByDate.has(key)) groupedByDate.set(key, []);
+		groupedByDate.get(key)!.push(e);
+	}
+	const incomeTotal = parsed.entries
+		.filter((e) => e.type === "income")
+		.reduce((sum, e) => sum + e.amount, 0);
+	const expenseTotal = parsed.entries
+		.filter((e) => e.type === "expense")
+		.reduce((sum, e) => sum + e.amount, 0);
+	const sample = parsed.entries
+		.slice(0, 10)
+		.map((e, idx) => `${idx + 1}. - ${new Date(e.date).toLocaleDateString("id-ID")} - ${e.description || e.category} - ${e.type} - Rp${e.amount.toLocaleString("id-ID")} - ${e.category}`)
+		.join("\n");
+	return [
+		`Terdeteksi ${parsed.entries.length} transaksi bulk dari ${groupedByDate.size} tanggal.`,
+		`Total pemasukan terdeteksi: Rp${incomeTotal.toLocaleString("id-ID")}`,
+		`Total pengeluaran terdeteksi: Rp${expenseTotal.toLocaleString("id-ID")}`,
+		`Contoh data terstruktur:\n${sample}`,
+	].join("\n");
+}
+
+function shouldAutoImportBulkFinance(message: string, parsed: ParsedBulkFinanceResult | null): boolean {
+	if (!parsed || parsed.entries.length === 0) return false;
+	const text = (message || "").toLowerCase();
+	if (/(jangan|hanya analisis|preview|contoh|simulasi)/.test(text)) return false;
+	if (/(catat|simpan|import|masukkan|generate|proses|buatkan)/.test(text)) return true;
+	if (parsed.entries.length >= 5 && /(report|rekap|purchasing|harian|bulanan)/.test(text)) return true;
+	return false;
+}
+
 // === STREAMING BUFFERS ===
 
 export const initStreamingMessage = mutation({
@@ -968,10 +1165,80 @@ export const yumiChat = action({
 			}> = []
 		) => ({ content, toolCalls });
 
+		const parsedBulkFinance = parseBulkFinancialReport(args.message);
+		const bulkFinanceContext = formatBulkFinancialContext(parsedBulkFinance);
+		if (shouldAutoImportBulkFinance(args.message, parsedBulkFinance)) {
+			const toolCalls: Array<{
+				name: string;
+				status: "success" | "error";
+				args?: Record<string, unknown>;
+				result?: string;
+				error?: string;
+			}> = [];
+			let createdCount = 0;
+			let failedCount = 0;
+			let incomeTotal = 0;
+			let expenseTotal = 0;
+			for (const tx of parsedBulkFinance!.entries) {
+				try {
+					await ctx.runMutation(api.finance.createTransaction, {
+						type: tx.type,
+						amount: tx.amount,
+						category: tx.category,
+						merchant: tx.merchant,
+						description: tx.description || tx.rawLine,
+						date: tx.date,
+						paymentMethod: tx.paymentMethod || "cash",
+						status: "completed",
+					});
+					createdCount++;
+					if (tx.type === "income") incomeTotal += tx.amount;
+					else expenseTotal += tx.amount;
+					toolCalls.push({
+						name: "createTransaction",
+						status: "success",
+						args: {
+							type: tx.type,
+							amount: tx.amount,
+							category: tx.category,
+							date: tx.date,
+						},
+						result: "ok",
+					});
+				} catch (e) {
+					failedCount++;
+					toolCalls.push({
+						name: "createTransaction",
+						status: "error",
+						args: {
+							type: tx.type,
+							amount: tx.amount,
+							category: tx.category,
+							date: tx.date,
+						},
+						error: String(e),
+					});
+				}
+			}
+
+			const dateSet = new Set(parsedBulkFinance!.entries.map((e) => new Date(e.date).toISOString().slice(0, 10)));
+			const summary = [
+				`Bulk keuangan berhasil diproses.`,
+				`Total data terdeteksi: ${parsedBulkFinance!.entries.length} transaksi dari ${dateSet.size} tanggal.`,
+				`Berhasil disimpan: ${createdCount} transaksi.`,
+				failedCount > 0 ? `Gagal disimpan: ${failedCount} transaksi.` : "Semua transaksi berhasil disimpan.",
+				`Total pemasukan tersimpan: Rp${incomeTotal.toLocaleString("id-ID")}`,
+				`Total pengeluaran tersimpan: Rp${expenseTotal.toLocaleString("id-ID")}`,
+				`[SUGGEST: 📊 Lihat Laporan Keuangan | Tampilkan ringkasan keuangan bulan ini dari data terbaru]`,
+				`[SUGGEST: 🔎 Audit Data Tersimpan | Cek ulang transaksi yang baru saya simpan dari bulk report]`,
+				`[SUGGEST: 🧾 Rekap Pengeluaran per Kategori | Tampilkan rekap pengeluaran per kategori untuk tanggal yang baru diinput]`,
+			].join("\n");
+
+			return finalizeResponse(summary, toolCalls);
+		}
+
 		const dbContext = await gatherDatabaseContext(ctx);
 		const smartContext = await gatherSmartContext(ctx);
-		
-		// Extract inventory context from dbContext if needed or passed via local variable
 		const inventory = await ctx.runQuery(api.inventory.getInventory);
 		const inventoryContext = inventory.map(i => `${i.ingredientName} (${i.unit})`).join(", ");
 
@@ -1037,6 +1304,7 @@ ATURAN:
 11. FORMAT LIST DATA (WAJIB): Untuk list transaksi, keuangan, pesanan, atau data historis lainnya, sertakan tanggal atau rentang tanggal di setiap item. Aturan ini boleh memakai nomor dan tanda minus sesuai format berikut.
     Gunakan format: [Nomor]. - [Tanggal/Periode] - [Nama Item] - [Jumlah] - [Total Nilai]
     Contoh: 1. - 01-28 Feb 2026 - Air Mineral - 110 - Rp 550.000
+11b. Jika ada template laporan khusus yang meminta nomor atau tanda minus, ikuti template khusus tersebut. Aturan ini mengalahkan aturan list biasa.
 12. FLEKSIBILITAS PARSING & GENERASI OTOMATIS (PROAKTIF): Kamu adalah pakar ekstraksi data yang sangat cerdas. Jika pengguna memberikan daftar data mentah (seperti daftar pengeluaran harian Februari 2026), kamu harus:
     a. EKSTRAK TANGGAL: Perhatikan format tanggal seperti DD/MM/YYYY, DD-MM-YYYY, atau nama bulan. Pastikan setiap baris diproses dengan tanggalnya masing-masing.
     b. GENERASI OTOMATIS: Untuk field yang tidak ada pada input user, GENERATE SECARA OTOMATIS berdasarkan konteks:
@@ -1104,6 +1372,7 @@ ${smartContext}
 
 DATA REAL-TIME:
 ${dbContext}
+${bulkFinanceContext ? `\nHASIL EKSTRAKSI BULK INPUT USER:\n${bulkFinanceContext}` : ""}
 
 INSTRUKSI MULTI-STEP ACTIONS:
 - Contoh: "Harga gula naik 20%, apa efeknya?" -> analisis data HPP dari context, hitung kenaikan, dan sarankan harga baru.

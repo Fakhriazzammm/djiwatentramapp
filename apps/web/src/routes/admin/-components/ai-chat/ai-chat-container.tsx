@@ -548,7 +548,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	];
 
 	return (
-		<div className={cn("flex flex-col bg-background overflow-hidden relative", isPOS ? "h-full w-full" : "h-[100dvh]")}>
+		<div className={cn("relative flex min-h-0 flex-col overflow-hidden bg-background", isPOS ? "h-full w-full" : "h-[100svh] max-h-[100svh] w-full")}>
 			{/* Session History Sidebar */}
 			{!isPOS && (
 				<AnimatePresence>
@@ -644,7 +644,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			</header>
 
 			{/* Main Content */}
-			<main className="flex-1 overflow-hidden relative">
+			<main className="relative min-h-0 flex-1 overflow-hidden">
 				<AnimatePresence mode="wait">
 					<motion.div
 						key={activeTab}
@@ -655,8 +655,8 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 						className="h-full"
 					>
 						{activeTab === "chat" && (
-							<div className="flex flex-col h-full">
-								<div className="flex-1 overflow-y-auto scroll-smooth">
+							<div className="flex h-full min-h-0 flex-col">
+								<div className="min-h-0 flex-1 overflow-y-auto scroll-smooth overscroll-contain">
 									{messages.length === 0 ? (
 										<div className="h-full flex flex-col items-center justify-center px-4">
 											{!isLoading ? (
@@ -714,7 +714,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 											)}
 										</div>
 									) : (
-										<div className="mx-auto max-w-3xl px-4 py-4">
+										<div className="mx-auto max-w-3xl px-3 py-3 md:px-4 md:py-4">
 											{messages.map((msg, idx) => (
 												<MessageBubble 
 													key={msg._msgId || idx}
@@ -734,13 +734,13 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 													onExport={handleExport}
 												/>
 											))}
-											<div ref={messagesEndRef} className="h-4" />
+											<div ref={messagesEndRef} className="h-24 md:h-28" />
 										</div>
 									)}
 								</div>
 
-								<div className="shrink-0 border-t border-border/50 bg-background pb-[max(0.25rem,env(safe-area-inset-bottom))]">
-								<div className="px-3 pt-2 pb-1">
+								<div className="sticky bottom-0 z-20 shrink-0 border-t border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+								<div className="px-2 pt-2 pb-1 md:px-3">
 									<ChatInput 
 										mode={mode}
 										input={input}

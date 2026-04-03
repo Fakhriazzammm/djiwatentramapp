@@ -234,15 +234,21 @@ export const executeToolCall = defineAction({
 				// ============================================
 				case "createTransaction": {
 					const parsed = tools.createTransaction.parameters.parse(toolArgs);
+					const resolvedDate =
+						typeof parsed.date === "number"
+							? parsed.date
+							: typeof parsed.date === "string" && parsed.date.trim()
+								? new Date(parsed.date).getTime()
+								: Date.now();
 					result = await ctx.runMutation(api.finance.createTransaction, {
 						type: parsed.type as any,
 						amount: parsed.amount,
 						category: parsed.category,
 						merchant: parsed.merchant,
 						description: parsed.description,
-						date: Date.now(),
-						paymentMethod: parsed.paymentMethod,
-						status: "completed",
+						date: Number.isFinite(resolvedDate) ? resolvedDate : Date.now(),
+						paymentMethod: parsed.paymentMethod || "cash",
+						status: parsed.status || "completed",
 					});
 					break;
 				}

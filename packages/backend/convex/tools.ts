@@ -221,6 +221,8 @@ export const tools = {
 			merchant: z.string().optional().describe("Nama merchant/toko (opsional, contoh: Indomaret, Starbucks, PLN)"),
 			description: z.string().optional().describe("Deskripsi transaksi"),
 			paymentMethod: z.string().optional().describe("Metode pembayaran"),
+			date: z.union([z.number(), z.string()]).optional().describe("Tanggal transaksi (timestamp ms atau ISO date string, opsional)"),
+			status: z.enum(["completed", "pending", "cancelled"]).optional().describe("Status transaksi (default: completed)"),
 		}),
 	},
 

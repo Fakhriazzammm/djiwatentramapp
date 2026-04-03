@@ -80,12 +80,12 @@ export const ChatInput = ({
 	return (
 		<div className="mx-auto w-full max-w-3xl pb-[max(0.5rem,env(safe-area-inset-bottom))]">
 			{showTemplates && !isScanMode && (
-				<div className="mb-3 flex flex-wrap gap-2 justify-center">
+				<div className="mb-2 flex gap-1.5 overflow-x-auto pb-1 md:mb-3 md:flex-wrap md:justify-center md:gap-2">
 					{templates.map((template, i) => (
 						<button
 							key={i}
 							onClick={() => onSendMessage(template.message)}
-							className="flex items-center gap-1.5 rounded-full border border-border/50 bg-background px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-[0.97]"
+							className="flex shrink-0 items-center gap-1.5 rounded-full border border-border/50 bg-background px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-[0.97]"
 							type="button"
 						>
 							{template.icon}
@@ -95,7 +95,7 @@ export const ChatInput = ({
 				</div>
 			)}
 
-			<div className={`rounded-2xl border shadow-lg overflow-hidden transition-all bg-background ${
+			<div className={`overflow-hidden rounded-2xl border bg-background shadow-lg transition-all ${
 				isScanMode ? "border-emerald-300 shadow-emerald-50" : "border-border/60"
 			} focus-within:shadow-xl focus-within:border-primary/20`}>
 				{isScanMode && (
@@ -144,7 +144,7 @@ export const ChatInput = ({
 					onChange={(e) => setInput(e.target.value)}
 					onKeyDown={onKeyDown}
 					placeholder={isListening ? "Mendengarkan..." : isScanMode ? "Instruksi analisis gambar..." : "Tanya Yumi AI..."}
-					className="w-full resize-none bg-transparent px-4 py-3 text-sm focus:outline-none min-h-[24px] max-h-[200px] placeholder:text-muted-foreground/50"
+					className="min-h-[24px] max-h-[160px] w-full resize-none bg-transparent px-3 py-2.5 text-sm focus:outline-none placeholder:text-muted-foreground/50 md:max-h-[200px] md:px-4 md:py-3"
 					rows={1}
 					onInput={(e) => {
 						const target = e.target as HTMLTextAreaElement;
@@ -153,15 +153,15 @@ export const ChatInput = ({
 					}}
 				/>
 
-				<div className="flex items-center justify-between px-3 pb-3">
+				<div className="flex items-center justify-between px-2.5 pb-2.5 md:px-3 md:pb-3">
 					<div className="flex items-center gap-0.5">
-						<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" onClick={() => fileInputRef.current?.click()} title="Upload file" type="button">
+						<Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground md:h-8 md:w-8" onClick={() => fileInputRef.current?.click()} title="Upload file" type="button">
 							<Paperclip className="h-[18px] w-[18px]" />
 						</Button>
-						<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" onClick={() => cameraInputRef.current?.click()} title="Ambil foto" type="button">
+						<Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground md:h-8 md:w-8" onClick={() => cameraInputRef.current?.click()} title="Ambil foto" type="button">
 							<Camera className="h-[18px] w-[18px]" />
 						</Button>
-						<Button variant="ghost" size="icon" className={`h-8 w-8 rounded-full transition-colors ${isScanMode ? "text-emerald-600 bg-emerald-50 hover:bg-emerald-100" : "text-muted-foreground hover:text-foreground"}`} onClick={() => setIsScanMode(!isScanMode)} title={isScanMode ? "Nonaktifkan mode scan" : "Mode scan"} type="button">
+						<Button variant="ghost" size="icon" className={`h-7 w-7 rounded-full transition-colors md:h-8 md:w-8 ${isScanMode ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100" : "text-muted-foreground hover:text-foreground"}`} onClick={() => setIsScanMode(!isScanMode)} title={isScanMode ? "Nonaktifkan mode scan" : "Mode scan"} type="button">
 							<ScanLine className="h-[18px] w-[18px]" />
 						</Button>
 						<input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={onFileSelect} />
@@ -169,13 +169,13 @@ export const ChatInput = ({
 					</div>
 					<div className="flex items-center gap-0.5">
 						{speechSupported && (
-							<Button variant="ghost" size="icon" className={`h-8 w-8 rounded-full transition-all ${isListening ? "text-red-500 bg-red-50 scale-110" : "text-muted-foreground hover:text-foreground"}`} onClick={isListening ? stopListening : startListening} title={isListening ? "Berhenti mendengarkan" : "Input suara"} type="button">
+							<Button variant="ghost" size="icon" className={`h-7 w-7 rounded-full transition-all md:h-8 md:w-8 ${isListening ? "scale-110 bg-red-50 text-red-500" : "text-muted-foreground hover:text-foreground"}`} onClick={isListening ? stopListening : startListening} title={isListening ? "Berhenti mendengarkan" : "Input suara"} type="button">
 								{isListening ? <MicOff className="h-[18px] w-[18px]" /> : <Mic className="h-[18px] w-[18px]" />}
 							</Button>
 						)}
 						<Button
 							size="icon"
-							className={`h-8 w-8 rounded-full transition-all ${
+							className={`h-7 w-7 rounded-full transition-all md:h-8 md:w-8 ${
 								canSend && !isLoading && !isScanning
 									? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm cursor-pointer"
 									: "bg-muted text-muted-foreground cursor-not-allowed"
