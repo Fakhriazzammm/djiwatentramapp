@@ -1005,10 +1005,10 @@ function parseBulkFinancialReport(message: string): ParsedBulkFinanceResult | nu
 		if (/^report\b/i.test(line)) continue;
 
 		const detectedDate = parseDateFromLine(line, defaultYear);
-		if (detectedDate && !/rp\s*[0-9]/i.test(line)) {
+		if (detectedDate) {
 			currentDateTs = detectedDate.ts;
 			defaultYear = detectedDate.year;
-			continue;
+			if (!/rp\s*[0-9]/i.test(line)) continue;
 		}
 
 		const amountMatch = line.match(/rp\.?\s*([0-9][0-9.,]*)/i);
