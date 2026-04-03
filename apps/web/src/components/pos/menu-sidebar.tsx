@@ -71,7 +71,10 @@ import {
 } from "@/lib/bluetooth-printer";
 import { useCart } from "@/context/cart-context";
 import { cn } from "@/lib/utils";
-import { buildReceiptMetaFromOrder } from "@/lib/receipt-data";
+import {
+	buildReceiptMetaFromCart,
+	buildReceiptMetaFromOrder,
+} from "@/lib/receipt-data";
 
 interface ConfirmConfig {
 	isOpen: boolean;
@@ -166,7 +169,18 @@ export function MenuSidebar({
 	const updateOrder = useMutation(api.orders.updateOrder);
 	const deleteOrder = useMutation(api.orders.deleteOrder);
 	const createOrder = useMutation(api.orders.createOrder);
-	const { items, totalAmount, clearCart, appliedVoucher, discountAmount, customerInfo } = useCart();
+	const {
+		items,
+		finalTotal,
+		clearCart,
+		appliedVoucher,
+		discountAmount,
+		promoDiscountAmount,
+		voucherDiscountAmount,
+		taxAmount,
+		serviceChargeAmount,
+		customerInfo,
+	} = useCart();
 	const siteSettings = useQuery(api.site_settings.getSettings);
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
@@ -203,7 +217,7 @@ export function MenuSidebar({
 					price: i.price,
 					originalPrice: i.originalPrice,
 				})),
-				totalAmount,
+				totalAmount: finalTotal,
 				paymentMethod: "cash",
 				customerName: data.customerName || customerInfo.name,
 				tableNumber: data.tableNumber || customerInfo.tableNumber,
@@ -211,6 +225,18 @@ export function MenuSidebar({
 				orderType: customerInfo.orderType,
 				voucherId: appliedVoucher?._id as Id<"discounts"> | undefined,
 				discountAmount,
+				taxAmount,
+				serviceChargeAmount,
+				receiptMeta: buildReceiptMetaFromCart({
+					items,
+					allDiscounts,
+					appliedVoucher,
+					promoDiscountAmount,
+					voucherDiscountAmount,
+					taxAmount,
+					serviceChargeAmount,
+				}),
+				isOpenBill: true,
 				autoComplete: false,
 			});
 			
