@@ -1101,7 +1101,7 @@ function MenuPage() {
 							<div className="flex items-center justify-between mb-2">
 								<div className="flex items-center gap-1.5">
 									<TrendingUp className="h-3.5 w-3.5 text-primary" strokeWidth={2.5} />
-									<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">Target Performance</span>
+									<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">Target Bonus</span>
 								</div>
 								<button 
 									onClick={() => setIsTargetExpanded(!isTargetExpanded)}
@@ -1629,7 +1629,12 @@ function ProductDetailSheet({
 	useEffect(() => {
 		if (product) {
 			setQuantity(1);
-			setSelectedVariants({});
+			const defaultVariants = Object.fromEntries(
+				(product.variations ?? [])
+					.map((group: any) => [group.type, group.options?.[0]?.name])
+					.filter((entry: [string | undefined, string | undefined]): entry is [string, string] => Boolean(entry[0] && entry[1]))
+			);
+			setSelectedVariants(defaultVariants);
 		}
 	}, [product]);
 
@@ -1653,6 +1658,11 @@ function ProductDetailSheet({
 
 	const unitPrice = pricing.finalPrice + variantPrice;
 	const totalPrice = unitPrice * quantity;
+	const variationGroups = product.variations ?? [];
+	const hasVariations = variationGroups.length > 0;
+	const isSelectionComplete = variationGroups.every(
+		(group: any) => !group.options?.length || Boolean(selectedVariants[group.type])
+	);
 
 	const variantLabel = Object.entries(selectedVariants)
 		.map(([, v]) => v)
@@ -1671,60 +1681,70 @@ function ProductDetailSheet({
 	};
 
 	return (
-		<div className="flex flex-col">
-			{/* Product Image */}
-			<div className="relative h-52 w-full bg-muted shrink-0">
-				<MenuImageWithSkeleton
-					src={product.image}
-					alt={product.name}
-					loading="eager"
-					iconClassName="h-16 w-16 text-muted-foreground/30"
-				/>
-				<button
-					type="button"
-					onClick={onClose}
-					className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white"
-					aria-label="Tutup"
-				>
-					<X className="h-4 w-4" />
-				</button>
-			</div>
-
-			{/* Info */}
-			<div className="flex flex-col gap-3 p-4">
-				<div>
-					<h2 className="font-bold text-foreground text-xl">{product.name}</h2>
-					{product.description && (
-						<p className="mt-1 text-muted-foreground text-sm leading-snug">
-							{product.description}
+		<div className="flex flex-col bg-background">
+			<div className="sticky top-0 z-10 border-b border-border/60 bg-background/95 px-4 pb-4 pt-4 backdrop-blur">
+				<div className="flex items-start justify-between gap-3">
+					<div className="min-w-0">
+						<p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary/80">
+							Pilih Variasi
 						</p>
-					)}
-					<div className="mt-2 flex items-center gap-2">
-						{pricing.isPromo && (
-							<span className="text-muted-foreground text-sm line-through">
-								{fmt(pricing.originalPrice)}
-							</span>
-						)}
-						<span className="font-bold text-primary text-xl">
-							{fmt(pricing.finalPrice)}
-						</span>
-						{pricing.isPromo && pricing.discountName && (
-							<span className="rounded-full bg-red-100 px-2 py-0.5 font-medium text-red-600 text-xs">
-								{pricing.discountName}
-							</span>
+						<h2 className="mt-1 text-xl font-black leading-tight text-foreground">
+							{product.name}
+						</h2>
+						{product.description && (
+							<p className="mt-1 line-clamp-2 text-sm leading-snug text-muted-foreground">
+								{product.description}
+							</p>
 						)}
 					</div>
+					<button
+						type="button"
+						onClick={onClose}
+						className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:bg-muted"
+						aria-label="Tutup"
+					>
+						<X className="h-4 w-4" />
+					</button>
 				</div>
 
-				{/* Variations */}
-				{product.variations && product.variations.length > 0 && (
-					<div className="space-y-3">
-						{product.variations.map((group: any) => (
-							<div key={group.type}>
-								<p className="mb-1.5 font-semibold text-foreground text-sm">
-									{group.type}
-								</p>
-								<div className="flex flex-wrap gap-2">
+				<div className="mt-3 flex flex-wrap items-center gap-2">
+					<div className="rounded-2xl bg-primary/10 px-3 py-2">
+						<div className="flex items-center gap-2">
+							{pricing.isPromo && (
+								<span className="text-xs font-semibold text-muted-foreground line-through">
+									{fmt(pricing.originalPrice)}
+								</span>
+							)}
+							<span className="text-lg font-black text-primary">
+								{fmt(pricing.finalPrice)}
+							</span>
+						</div>
+					</div>
+					{pricing.isPromo && pricing.discountName && (
+						<span className="rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-600">
+							{pricing.discountName}
+						</span>
+					)}
+					{variantLabel && (
+						<span className="rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground">
+							{variantLabel}
+						</span>
+					)}
+				</div>
+			</div>
+
+			<div className="flex flex-col gap-4 px-4 py-4">
+				{hasVariations && (
+					<div className="space-y-4">
+						{variationGroups.map((group: any) => (
+							<div key={group.type} className="rounded-2xl border border-border/70 bg-card p-3">
+								<div className="mb-2 flex items-center justify-between gap-3">
+									<p className="text-sm font-bold text-foreground">{group.type}</p>
+									<span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+										{selectedVariants[group.type] ? "Dipilih" : "Pilih"}
+									</span>
+								</div>
+								<div className="grid grid-cols-2 gap-2">
 									{group.options.map((opt: any) => {
 										const selected = selectedVariants[group.type] === opt.name;
 										return (
@@ -1737,16 +1757,24 @@ function ProductDetailSheet({
 														[group.type]: opt.name,
 													}))
 												}
-												className={`rounded-xl border px-3 py-1.5 text-sm transition-colors ${
+												className={cn(
+													"rounded-2xl border px-3 py-3 text-left transition-all",
 													selected
-														? "border-primary bg-primary text-primary-foreground font-semibold"
-														: "border-border bg-card text-foreground"
-												}`}
-											>
-												{opt.name}
-												{opt.price > 0 && (
-													<span className="ml-1 opacity-75">+{fmt(opt.price)}</span>
+														? "border-primary bg-primary text-primary-foreground shadow-md"
+														: "border-border bg-background text-foreground hover:border-primary/40 hover:bg-muted/50"
 												)}
+											>
+												<div className="flex items-center justify-between gap-2">
+													<span className="text-sm font-bold leading-tight">{opt.name}</span>
+													<span
+														className={cn(
+															"text-[11px] font-semibold",
+															selected ? "text-primary-foreground/85" : "text-muted-foreground"
+														)}
+													>
+														{opt.price > 0 ? `+${fmt(opt.price)}` : "Default"}
+													</span>
+												</div>
 											</button>
 										);
 									})}
@@ -1756,40 +1784,64 @@ function ProductDetailSheet({
 					</div>
 				)}
 
-				{/* Quantity + Add */}
-				<div className="flex items-center gap-3">
-					<div className="flex items-center gap-2 rounded-xl border border-border bg-card p-1">
-						<button
-							type="button"
-							onClick={() => setQuantity(Math.max(1, quantity - 1))}
-							className="flex h-9 w-9 items-center justify-center rounded-lg text-foreground active:bg-muted transition-colors"
-							aria-label="Kurangi"
-						>
-							<Minus className="h-4 w-4" />
-						</button>
-						<span className="min-w-[2rem] text-center font-bold text-base">
-							{quantity}
-						</span>
-						<button
-							type="button"
-							onClick={() => setQuantity(quantity + 1)}
-							className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground active:opacity-80 transition-opacity"
-							aria-label="Tambah"
-						>
-							<Plus className="h-4 w-4" />
-						</button>
+				<div className="rounded-2xl border border-border/70 bg-card p-3">
+					<div className="flex items-center justify-between gap-3">
+						<div>
+							<p className="text-sm font-bold text-foreground">Jumlah</p>
+							<p className="text-xs text-muted-foreground">
+								Atur porsi sebelum tambah ke keranjang
+							</p>
+						</div>
+						<div className="flex items-center gap-2 rounded-2xl bg-muted/50 p-1">
+							<button
+								type="button"
+								onClick={() => setQuantity(Math.max(1, quantity - 1))}
+								className="flex h-10 w-10 items-center justify-center rounded-xl bg-background text-foreground shadow-sm transition-colors hover:bg-muted"
+								aria-label="Kurangi"
+							>
+								<Minus className="h-4 w-4" />
+							</button>
+							<span className="min-w-[2.5rem] text-center text-lg font-black text-foreground">
+								{quantity}
+							</span>
+							<button
+								type="button"
+								onClick={() => setQuantity(quantity + 1)}
+								className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
+								aria-label="Tambah"
+							>
+								<Plus className="h-4 w-4" />
+							</button>
+						</div>
 					</div>
-
-					<button
-						type="button"
-						onClick={handleAdd}
-						className="flex flex-1 items-center justify-between rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground shadow-md active:opacity-80 transition-opacity"
-					>
-						<span>Tambah ke Keranjang</span>
-						<span>{fmt(totalPrice)}</span>
-					</button>
 				</div>
+			</div>
+
+			<div className="sticky bottom-0 z-10 border-t border-border/60 bg-background/95 px-4 pb-5 pt-3 backdrop-blur">
+				<div className="mb-3 flex items-center justify-between rounded-2xl bg-muted/40 px-3 py-2">
+					<div>
+						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+							Total
+						</p>
+						<p className="text-lg font-black text-foreground">{fmt(totalPrice)}</p>
+					</div>
+					<div className="text-right text-[11px] text-muted-foreground">
+						<p>{quantity} item</p>
+						<p>{variantLabel || "Tanpa variasi tambahan"}</p>
+					</div>
+				</div>
+
+				<button
+					type="button"
+					onClick={handleAdd}
+					disabled={!isSelectionComplete}
+					className="flex w-full items-center justify-between rounded-2xl bg-primary px-4 py-3.5 font-bold text-primary-foreground shadow-md transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+				>
+					<span>Tambah ke Keranjang</span>
+					<span>{fmt(totalPrice)}</span>
+				</button>
 			</div>
 		</div>
 	);
 }
+

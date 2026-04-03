@@ -1783,11 +1783,14 @@ function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) =
 								{activeShiftName ? `Shift Aktif: ${activeShiftName}` : "Shift Aktif"}
 							</SelectItem>
 							<SelectItem value="all">Semua Shift</SelectItem>
-							{shifts.map((shift: any) => (
-								<SelectItem key={shift._id} value={shift._id}>
-									{shift.shiftName || "Tanpa Nama"} • {shift.cashierName || "Kasir"}
-								</SelectItem>
-							))}
+							{shifts.map((shift: any) => {
+								const shiftOptionLabel = `${shift.shiftName || "Tanpa Nama"} - ${shift.cashierName || "Kasir"}`;
+								return (
+									<SelectItem key={shift._id} value={shift._id}>
+										{shiftOptionLabel}
+									</SelectItem>
+								);
+							})}
 						</SelectContent>
 					</Select>
 				</div>
@@ -1847,8 +1850,8 @@ function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) =
 						const matchedShift = getShiftForOrder(order.createdAt) as any;
 						const shiftLabel = matchedShift?.shiftName || "Di luar shift";
 						const shiftMeta = matchedShift?.cashierName
-							? `${shiftLabel} • ${matchedShift.cashierName}`
-							: shiftLabel;
+							? `Kasir: ${matchedShift.cashierName}`
+							: "Kasir tidak tercatat";
 
 						return (
 							<button
@@ -1892,7 +1895,7 @@ function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) =
 											</span>
 										</div>
 										<p className="text-[10px] text-muted-foreground">
-											{formatDate(order.createdAt)} • {formatTime(order.createdAt)}
+											{formatDate(order.createdAt)} - {formatTime(order.createdAt)}
 										</p>
 										<p className="mt-0.5 text-[10px] font-medium text-muted-foreground">
 											{shiftMeta}
