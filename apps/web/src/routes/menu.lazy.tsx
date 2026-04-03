@@ -26,6 +26,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Dialog,
 	DialogContent,
@@ -76,6 +77,10 @@ const SIDEBAR_MENU_ITEMS = [
 	{ id: "settings", label: "Pengaturan", icon: Settings2 },
 ];
 
+const INITIAL_PRODUCTS_BATCH = 12;
+const LOAD_MORE_PRODUCTS_BATCH = 8;
+const LOAD_MORE_DELAY_MS = 180;
+
 type ShiftSchedule = {
 	name: string;
 	openTime?: string;
@@ -99,6 +104,26 @@ function getShiftSchedule(
 ) {
 	if (!shiftName || !schedules?.length) return null;
 	return schedules.find((schedule) => schedule.name === shiftName) ?? null;
+}
+
+function MenuProductCardSkeleton() {
+	return (
+		<div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+			<div className="relative h-32 w-full bg-muted shrink-0">
+				<Skeleton className="h-full w-full rounded-none" />
+				<Skeleton className="absolute left-2 top-2 h-5 w-20 rounded-full bg-muted-foreground/20" />
+				<Skeleton className="absolute left-2 bottom-2 h-5 w-12 rounded bg-muted-foreground/20" />
+				<Skeleton className="absolute right-2 bottom-2 h-5 w-14 rounded bg-muted-foreground/20" />
+			</div>
+			<div className="flex flex-col gap-2 p-2.5 pt-2">
+				<Skeleton className="h-4 w-4/5" />
+				<div className="flex items-center gap-1.5">
+					<Skeleton className="h-5 w-24" />
+					<Skeleton className="h-3 w-16" />
+				</div>
+			</div>
+		</div>
+	);
 }
 
 function MenuPage() {
@@ -144,6 +169,8 @@ function MenuPage() {
 	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
 	const [lastOrderId, setLastOrderId] = useState<Id<"orders"> | null>(null);
 	const [offlinePendingCount, setOfflinePendingCount] = useState(0);
+	const [visibleProductsCount, setVisibleProductsCount] = useState(INITIAL_PRODUCTS_BATCH);
+	const [isLoadingMoreProducts, setIsLoadingMoreProducts] = useState(false);
 
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
@@ -284,6 +311,9 @@ function MenuPage() {
 	const categoryScrollRef = useRef<HTMLDivElement>(null);
 	const productGridRef = useRef<HTMLDivElement>(null);
 	const headerRef = useRef<HTMLDivElement>(null);
+	const mainScrollRef = useRef<HTMLElement>(null);
+	const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
+	const isLoadingMoreRef = useRef(false);
 
 	// Products query with category filter
 	const products = useQuery(
@@ -319,6 +349,13 @@ function MenuPage() {
 			return matchName || matchMenuNumber || matchCategory || matchDescription;
 		});
 	}, [searchQuery, products, allProducts, categories]);
+	const isLoading = products === undefined || categories === undefined;
+	const filteredProductsLength = filteredProducts?.length ?? 0;
+	const displayedProducts = useMemo(
+		() => (filteredProducts ?? []).slice(0, visibleProductsCount),
+		[filteredProducts, visibleProductsCount]
+	);
+	const hasMoreProducts = displayedProducts.length < filteredProductsLength;
 
 	// Store info
 	const storeName = siteSettings?.storeName || "YumiPOS";
@@ -443,6 +480,54 @@ function MenuPage() {
 		},
 		[focusedCategoryIndex, categoryTabs.length, scrollCategoryIntoView]
 	);
+
+	useEffect(() => {
+		setVisibleProductsCount(
+			Math.min(INITIAL_PRODUCTS_BATCH, filteredProductsLength)
+		);
+		setIsLoadingMoreProducts(false);
+		isLoadingMoreRef.current = false;
+	}, [activeCategoryId, filteredProductsLength, searchQuery]);
+
+	useEffect(() => {
+		const root = mainScrollRef.current;
+		const trigger = loadMoreTriggerRef.current;
+		if (!root || !trigger || isLoading || !hasMoreProducts) return;
+
+		let timeoutId: number | undefined;
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				const entry = entries[0];
+				if (!entry?.isIntersecting || isLoadingMoreRef.current) return;
+
+				isLoadingMoreRef.current = true;
+				setIsLoadingMoreProducts(true);
+				timeoutId = window.setTimeout(() => {
+					setVisibleProductsCount((prev) =>
+						Math.min(prev + LOAD_MORE_PRODUCTS_BATCH, filteredProductsLength)
+					);
+					setIsLoadingMoreProducts(false);
+					isLoadingMoreRef.current = false;
+					timeoutId = undefined;
+				}, LOAD_MORE_DELAY_MS);
+			},
+			{
+				root,
+				rootMargin: "220px 0px 220px 0px",
+				threshold: 0.01,
+			}
+		);
+
+		observer.observe(trigger);
+
+		return () => {
+			observer.disconnect();
+			if (timeoutId != null) {
+				window.clearTimeout(timeoutId);
+			}
+		};
+	}, [filteredProductsLength, hasMoreProducts, isLoading]);
 
 	const handleHeaderAction = useCallback(
 		(action: "menu" | "back" | "search" | string) => {
@@ -834,7 +919,6 @@ function MenuPage() {
 			]
 		);
 
-	const isLoading = products === undefined || categories === undefined;
 	const cartDiscountPreview = Math.max(0, discountAmount || 0);
 	const printerStatus = bluetoothPrinter.getStatus();
 
@@ -913,7 +997,10 @@ function MenuPage() {
 				</div>
 
 				{/* MAIN Y-SCROLL CONTAINER */}
-				<main className="flex-1 overflow-y-auto bg-muted/10 relative">
+				<main
+					ref={mainScrollRef}
+					className="flex-1 overflow-y-auto scroll-smooth bg-muted/10 relative"
+				>
 					<header
 						ref={headerRef}
 						className={cn(
@@ -1140,11 +1227,8 @@ function MenuPage() {
 					>
 						{isLoading ? (
 							// Loading skeletons
-							Array.from({ length: 8 }).map((_, i) => (
-								<div
-									key={i}
-									className="animate-pulse rounded-2xl bg-muted h-52"
-								/>
+							Array.from({ length: INITIAL_PRODUCTS_BATCH }).map((_, i) => (
+								<MenuProductCardSkeleton key={i} />
 							))
 						) : filteredProducts?.length === 0 ? (
 							// Empty state
@@ -1161,7 +1245,7 @@ function MenuPage() {
 							</div>
 						) : (
 							// Product cards
-							filteredProducts?.map((product: any, index: number) => {
+							displayedProducts.map((product: any, index: number) => {
 								const pricing = calculateEffectivePrice(
 									{
 										_id: product._id,
@@ -1261,6 +1345,20 @@ function MenuPage() {
 									</button>
 								);
 							})
+						)}
+						{!isLoading && hasMoreProducts && (
+							<div className="col-span-full py-1">
+								<div
+									ref={loadMoreTriggerRef}
+									className="h-6 w-full"
+									aria-hidden="true"
+								/>
+							</div>
+						)}
+						{!isLoading && isLoadingMoreProducts && (
+							Array.from({ length: 4 }).map((_, index) => (
+								<MenuProductCardSkeleton key={`load-more-${index}`} />
+							))
 						)}
 					</div>
 				</div>
