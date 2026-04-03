@@ -141,40 +141,69 @@ function MenuImageWithSkeleton({
 	iconClassName = "h-10 w-10 text-muted-foreground/25",
 	loading = "lazy",
 }: MenuImageWithSkeletonProps) {
-	const [isLoaded, setIsLoaded] = useState(false);
-	const [hasError, setHasError] = useState(false);
+	const [imageState, setImageState] = useState<"loading" | "loaded" | "error">(
+		src ? "loading" : "error"
+	);
 
 	useEffect(() => {
-		setIsLoaded(false);
-		setHasError(false);
+		if (!src) {
+			setImageState("error");
+			return;
+		}
+
+		setImageState("loading");
+
+		const img = new Image();
+		img.decoding = "async";
+		img.src = src;
+
+		const handleLoad = () => setImageState("loaded");
+		const handleError = () => setImageState("error");
+
+		if (img.complete && img.naturalWidth > 0) {
+			setImageState("loaded");
+			return;
+		}
+
+		img.onload = handleLoad;
+		img.onerror = handleError;
+
+		return () => {
+			img.onload = null;
+			img.onerror = null;
+		};
 	}, [src]);
 
-	if (!src || hasError) {
+	if (!src || imageState === "error") {
 		return (
-			<div className="flex h-full items-center justify-center">
+			<div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-muted/60 text-muted-foreground/50">
 				<ShoppingBag className={iconClassName} />
+				<span className="text-[10px] font-semibold uppercase tracking-wide">
+					Tanpa Gambar
+				</span>
 			</div>
 		);
 	}
 
 	return (
 		<>
-			{!isLoaded && (
-				<Skeleton className="absolute inset-0 h-full w-full rounded-none" />
+			{imageState === "loading" && (
+				<div className="absolute inset-0 flex h-full w-full items-center justify-center bg-muted/70">
+					<Skeleton className="absolute inset-0 h-full w-full rounded-none" />
+					<ShoppingBag className="relative z-[1] h-8 w-8 text-muted-foreground/35" />
+				</div>
 			)}
-			<img
-				src={src}
-				alt={alt}
-				className={cn(
-					"h-full w-full object-cover transition-opacity duration-300",
-					!isLoaded && "opacity-0",
-					isLoaded && "opacity-100",
-					imageClassName
-				)}
-				loading={loading}
-				onLoad={() => setIsLoaded(true)}
-				onError={() => setHasError(true)}
-			/>
+			{imageState === "loaded" && (
+				<img
+					src={src}
+					alt={alt}
+					className={cn(
+						"absolute inset-0 h-full w-full object-cover",
+						imageClassName
+					)}
+					loading={loading}
+				/>
+			)}
 		</>
 	);
 }
