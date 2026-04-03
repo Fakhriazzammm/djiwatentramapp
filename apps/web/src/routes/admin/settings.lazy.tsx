@@ -25,7 +25,10 @@ import { compressFileToLimit, isOversized } from "@/lib/image-compress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { authClient } from "@/lib/auth-client";
-import { bluetoothPrinter } from "@/lib/bluetooth-printer";
+import {
+	bluetoothPrinter,
+	type ReceiptPrintMode,
+} from "@/lib/bluetooth-printer";
 import { isMayarConfigured } from "@/lib/mayarGateway";
 
 type ShiftSchedule = {
@@ -54,6 +57,7 @@ function ReceiptPreview({
 	storeAddress,
 	storePhone,
 	logoSrc,
+	mode,
 }: {
 	settings: {
 		receiptFooter: string;
@@ -72,6 +76,7 @@ function ReceiptPreview({
 	storeAddress: string;
 	storePhone: string;
 	logoSrc?: string;
+	mode: ReceiptPrintMode;
 }) {
 	const fontClass = useMemo(() => {
 		if (settings.receiptFontSize === "small") return "text-[10px]";
@@ -80,7 +85,7 @@ function ReceiptPreview({
 	}, [settings.receiptFontSize]);
 
 	const headerText = settings.receiptHeader || storeName || "YUMI POS";
-	const items = [
+	const paidItems = [
 		{
 			qty: 1,
 			name: "TENTREM KOFFIE CLASSIC",
@@ -96,16 +101,37 @@ function ReceiptPreview({
 			total: "36.000",
 		},
 	];
+	const kitchenItems = [
+		{ qty: 2, name: "TENTREM KOFFIE CLASSIC", variant: "Less Sugar, Oat Milk" },
+		{ qty: 1, name: "CROISSANT BUTTER", variant: "Hangat" },
+	];
 	const infoRows = [
 		settings.receiptShowOrderNumber ? ["ID", "ORD-6034"] : null,
 		settings.receiptShowCashierName ? ["KASIR", "AYU"] : null,
 		settings.receiptShowCashierName ? ["SHIFT", "SORE"] : null,
 		["WAKTU", "31/03/2026 15:09"],
-		["BAYAR", "QRIS"],
+		mode === "paid" ? ["BAYAR", "QRIS"] : null,
+		mode === "open_bill" ? ["STATUS", "OPEN BILL"] : null,
 		["TIPE", "MAKAN DI SINI"],
 		["MEJA", "07"],
 		settings.receiptShowCustomerName ? ["PELANGGAN", "PELANGGAN UMUM"] : null,
 	].filter(Boolean) as Array<[string, string]>;
+	const statusLabel =
+		mode === "kitchen"
+			? "TIKET KITCHEN"
+			: mode === "open_bill"
+				? "OPEN BILL"
+				: "LUNAS";
+	const statusTone =
+		mode === "kitchen"
+			? "bg-amber-100 text-amber-700"
+			: mode === "open_bill"
+				? "bg-orange-100 text-orange-700"
+				: "bg-emerald-100 text-emerald-700";
+	const promotionLabels =
+		mode === "kitchen"
+			? []
+			: ["HAPPY HOUR - KOPI SORE", "VOUCHER - MEMBER 10%"];
 
 	return (
 		<div className="space-y-4 rounded-[28px] border border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,244,245,0.92))] p-4 shadow-sm">
@@ -115,12 +141,17 @@ function ReceiptPreview({
 						Preview Struk
 					</h4>
 					<p className="text-muted-foreground text-xs">
-						Tampilan berubah real-time sesuai pengaturan saat ini.
+						Tampilan {mode === "kitchen" ? "tiket kitchen" : "struk"} berubah real-time sesuai pengaturan saat ini.
 					</p>
 				</div>
-				<span className="rounded-full bg-primary/10 px-3 py-1 font-bold text-[10px] uppercase tracking-widest text-primary">
-					Realtime
-				</span>
+				<div className="flex items-center gap-2">
+					<span className={`rounded-full px-3 py-1 font-bold text-[10px] uppercase tracking-widest ${statusTone}`}>
+						{statusLabel}
+					</span>
+					<span className="rounded-full bg-primary/10 px-3 py-1 font-bold text-[10px] uppercase tracking-widest text-primary">
+						Realtime
+					</span>
+				</div>
 			</div>
 
 			<div className="flex justify-center">
@@ -165,49 +196,91 @@ function ReceiptPreview({
 
 							<div className="my-3 border-zinc-300 border-t border-dashed" />
 
-							<div className="space-y-1.5">
-								<div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
-									<span>Item</span>
-									<span>Total</span>
-								</div>
-								<div className="border-zinc-300 border-t border-dashed" />
-								{items.map((item) => (
-									<div className="space-y-1.5" key={item.name}>
-										<div className="flex items-start justify-between gap-3">
-											<span className="max-w-[72%] font-bold uppercase leading-snug">
-												{item.name}
-											</span>
-											<span className="shrink-0 font-bold">{item.total}</span>
-										</div>
-										<p className="text-zinc-500">
-											{item.qty} x {item.price}
-										</p>
-										{item.variant ? (
-											<p className="pl-3 text-[10px] leading-snug text-zinc-500">
-												+ {item.variant}
+							{promotionLabels.length > 0 ? (
+								<>
+									<div className="space-y-1.5 text-center">
+										{promotionLabels.map((label) => (
+											<p className="font-bold text-[10px] uppercase tracking-[0.2em] text-zinc-700" key={label}>
+												{label}
 											</p>
-										) : null}
+										))}
 									</div>
-								))}
-							</div>
+									<div className="my-3 border-zinc-300 border-t border-dashed" />
+								</>
+							) : null}
 
-							<div className="my-3 border-zinc-300 border-t border-dashed" />
+							{mode === "kitchen" ? (
+								<div className="space-y-2">
+									<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+										Item Yang Dibuat
+									</p>
+									<div className="border-zinc-300 border-t border-dashed" />
+									{kitchenItems.map((item) => (
+										<div className="space-y-1.5" key={item.name}>
+											<p className="font-bold uppercase leading-snug">
+												{item.qty}x {item.name}
+											</p>
+											<p className="pl-3 text-[10px] leading-snug text-zinc-500">
+												- {item.variant}
+											</p>
+										</div>
+									))}
+								</div>
+							) : (
+								<>
+									<div className="space-y-1.5">
+										<div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+											<span>Item</span>
+											<span>Total</span>
+										</div>
+										<div className="border-zinc-300 border-t border-dashed" />
+										{paidItems.map((item) => (
+											<div className="space-y-1.5" key={item.name}>
+												<div className="flex items-start justify-between gap-3">
+													<span className="max-w-[72%] font-bold uppercase leading-snug">
+														{item.name}
+													</span>
+													<span className="shrink-0 font-bold">{item.total}</span>
+												</div>
+												<p className="text-zinc-500">
+													{item.qty} x {item.price}
+												</p>
+												{item.variant ? (
+													<p className="pl-3 text-[10px] leading-snug text-zinc-500">
+														+ {item.variant}
+													</p>
+												) : null}
+											</div>
+										))}
+									</div>
 
-							<div className="space-y-1">
-								<div className="flex justify-between gap-3">
-									<span className="text-zinc-600">SUBTOTAL</span>
-									<span>61.000</span>
-								</div>
-								<div className="flex justify-between gap-3">
-									<span className="text-zinc-600">DISKON</span>
-									<span>-0</span>
-								</div>
-								<div className="border-zinc-300 border-t border-dashed pt-1" />
-								<div className="flex justify-between gap-3 font-bold text-[13px]">
-									<span>TOTAL</span>
-									<span>RP 61.000</span>
-								</div>
-							</div>
+									<div className="my-3 border-zinc-300 border-t border-dashed" />
+
+									<div className="space-y-1">
+										<div className="flex justify-between gap-3">
+											<span className="text-zinc-600">SUBTOTAL</span>
+											<span>61.000</span>
+										</div>
+										<div className="flex justify-between gap-3 text-zinc-700">
+											<span>PROMO / HAPPY HOUR</span>
+											<span>-RP 5.000</span>
+										</div>
+										<div className="flex justify-between gap-3 text-zinc-700">
+											<span>VOUCHER MEMBER</span>
+											<span>-RP 6.100</span>
+										</div>
+										<div className="flex justify-between gap-3">
+											<span className="text-zinc-600">PAJAK</span>
+											<span>RP 0</span>
+										</div>
+										<div className="border-zinc-300 border-t border-dashed pt-1" />
+										<div className="flex justify-between gap-3 font-bold text-[13px]">
+											<span>TOTAL</span>
+											<span>{mode === "open_bill" ? "RP 49.900" : "RP 49.900"}</span>
+										</div>
+									</div>
+								</>
+							)}
 
 							{settings.receiptShowNotes ? (
 								<>
@@ -230,7 +303,7 @@ function ReceiptPreview({
 									{settings.receiptFooter || "Terima kasih atas kunjungan Anda!"}
 								</p>
 								<p className="text-[9px] uppercase tracking-[0.18em] text-zinc-400">
-									preview thermal 58mm
+									{mode === "kitchen" ? "tiket produksi 58mm" : "preview thermal 58mm"}
 								</p>
 							</div>
 						</div>
@@ -291,7 +364,9 @@ function SettingsPage() {
 		storePhone: "",
 		resendFromEmail: "",
 		receiptFooter: "Terima kasih!",
-		autoPrint: false,
+		autoPrint: true,
+		autoPrintKitchenReceipt: true,
+		allowOpenBillPrint: true,
 		taxRate: 0,
 		serviceChargeRate: 0,
 		currency: "IDR",
@@ -328,6 +403,8 @@ function SettingsPage() {
 
 	const [isConnected, setIsConnected] = useState(false);
 	const [printerName, setPrinterName] = useState<string | null>(null);
+	const [receiptPreviewMode, setReceiptPreviewMode] =
+		useState<ReceiptPrintMode>("paid");
 
 	const [landingSettings, setLandingSettings] = useState({
 		landingIcon: "Coffee",
@@ -420,7 +497,9 @@ function SettingsPage() {
 				storePhone: siteSettings.storePhone ?? "",
 				resendFromEmail: siteSettings.resendFromEmail ?? "",
 				receiptFooter: siteSettings.receiptFooter ?? "Terima kasih!",
-				autoPrint: siteSettings.autoPrint ?? false,
+				autoPrint: siteSettings.autoPrint ?? true,
+				autoPrintKitchenReceipt: siteSettings.autoPrintKitchenReceipt ?? true,
+				allowOpenBillPrint: siteSettings.allowOpenBillPrint ?? true,
 				taxRate: siteSettings.taxRate ?? 0,
 				serviceChargeRate: siteSettings.serviceChargeRate ?? 0,
 				appName: siteSettings.appName ?? "Yumi POS",
@@ -471,6 +550,7 @@ function SettingsPage() {
 			});
 		}
 		setIsConnected(bluetoothPrinter.isConnected());
+		setPrinterName(bluetoothPrinter.getDeviceName());
 		setMayarApiConfigured(isMayarConfigured());
 	}, [siteSettings]);
 
@@ -500,6 +580,8 @@ function SettingsPage() {
 				resendFromEmail: normalizeEmail(settings.resendFromEmail),
 				receiptFooter: settings.receiptFooter,
 				autoPrint: settings.autoPrint,
+				autoPrintKitchenReceipt: settings.autoPrintKitchenReceipt,
+				allowOpenBillPrint: settings.allowOpenBillPrint,
 				// App Branding
 				appName: settings.appName,
 				appVersion: settings.appVersion,
@@ -2346,10 +2428,10 @@ function SettingsPage() {
 									<div className="flex items-center justify-between rounded-xl bg-muted/40 p-5 shadow-inner">
 										<div>
 											<span className="block font-bold text-foreground text-sm tracking-tight">
-												Cetak Otomatis
+												Cetak Struk Lunas Otomatis
 											</span>
 											<span className="text-muted-foreground text-xs">
-												Cetak Struk per Transaksi
+												Struk reguler langsung tercetak setelah pembayaran
 											</span>
 										</div>
 										<button
@@ -2364,6 +2446,56 @@ function SettingsPage() {
 										>
 											<div
 												className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.autoPrint ? "right-1" : "left-1"}`}
+											/>
+										</button>
+									</div>
+
+									<div className="flex items-center justify-between rounded-xl bg-muted/40 p-5 shadow-inner">
+										<div>
+											<span className="block font-bold text-foreground text-sm tracking-tight">
+												Cetak Tiket Kitchen Otomatis
+											</span>
+											<span className="text-muted-foreground text-xs">
+												Setelah checkout, cetak tiket produksi tanpa harga
+											</span>
+										</div>
+										<button
+											className={`relative h-7 w-12 rounded-full transition-all duration-300 ${settings.autoPrintKitchenReceipt ? "bg-primary" : "bg-muted-foreground/20"}`}
+											onClick={() =>
+												setSettings({
+													...settings,
+													autoPrintKitchenReceipt: !settings.autoPrintKitchenReceipt,
+												})
+											}
+											type="button"
+										>
+											<div
+												className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.autoPrintKitchenReceipt ? "right-1" : "left-1"}`}
+											/>
+										</button>
+									</div>
+
+									<div className="flex items-center justify-between rounded-xl bg-muted/40 p-5 shadow-inner">
+										<div>
+											<span className="block font-bold text-foreground text-sm tracking-tight">
+												Izinkan Print Open Bill
+											</span>
+											<span className="text-muted-foreground text-xs">
+												Tampilkan tombol print di step menu dan Simpan Orderan
+											</span>
+										</div>
+										<button
+											className={`relative h-7 w-12 rounded-full transition-all duration-300 ${settings.allowOpenBillPrint ? "bg-primary" : "bg-muted-foreground/20"}`}
+											onClick={() =>
+												setSettings({
+													...settings,
+													allowOpenBillPrint: !settings.allowOpenBillPrint,
+												})
+											}
+											type="button"
+										>
+											<div
+												className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-300 ${settings.allowOpenBillPrint ? "right-1" : "left-1"}`}
 											/>
 										</button>
 									</div>
@@ -2388,6 +2520,7 @@ function SettingsPage() {
 												onClick={() => {
 													bluetoothPrinter.disconnect();
 													setIsConnected(false);
+													setPrinterName(null);
 												}}
 												type="button"
 											>
@@ -2415,6 +2548,29 @@ function SettingsPage() {
 								</div>
 
 								<div className="space-y-6">
+									<div className="grid grid-cols-3 gap-2">
+										{[
+											{ id: "paid", label: "Lunas" },
+											{ id: "open_bill", label: "Open Bill" },
+											{ id: "kitchen", label: "Kitchen" },
+										].map((option) => (
+											<button
+												key={option.id}
+												type="button"
+												onClick={() =>
+													setReceiptPreviewMode(option.id as ReceiptPrintMode)
+												}
+												className={`rounded-xl border px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all ${
+													receiptPreviewMode === option.id
+														? "border-primary bg-primary text-primary-foreground shadow-sm"
+														: "border-border bg-background text-muted-foreground hover:bg-muted/40"
+												}`}
+											>
+												{option.label}
+											</button>
+										))}
+									</div>
+
 									<ReceiptPreview
 										settings={{
 											receiptFooter: settings.receiptFooter,
@@ -2433,6 +2589,7 @@ function SettingsPage() {
 										storeAddress={settings.storeAddress}
 										storePhone={settings.storePhone}
 										logoSrc={localPreviews.receiptLogo || settings.receiptLogo}
+										mode={receiptPreviewMode}
 									/>
 
 									{/* Header Text */}

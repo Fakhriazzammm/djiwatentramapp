@@ -8,6 +8,8 @@ export function CartDrawer({
 	isSubmitting,
 	lastOrderId,
 	onPrintLastOrder,
+	onPrintOpenBill,
+	canPrintOpenBill,
 }: {
 	isOpen: boolean;
 	onClose: () => void;
@@ -15,6 +17,8 @@ export function CartDrawer({
 	isSubmitting?: boolean;
 	lastOrderId?: string | null;
 	onPrintLastOrder?: () => void;
+	onPrintOpenBill?: () => void;
+	canPrintOpenBill?: boolean;
 }) {
 	return (
 		<AnimatePresence>
@@ -42,6 +46,8 @@ export function CartDrawer({
 							onClose={onClose}
 							lastOrderId={lastOrderId}
 							onPrintLastOrder={onPrintLastOrder}
+							onPrintOpenBill={onPrintOpenBill}
+							canPrintOpenBill={canPrintOpenBill}
 						/>
 					</motion.div>
 				</>

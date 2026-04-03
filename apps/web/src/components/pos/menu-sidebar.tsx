@@ -64,9 +64,14 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { YumiAIChat } from "@/components/pos/yumi-ai-chat";
-import { bluetoothPrinter, type OrderItem } from "@/lib/bluetooth-printer";
+import {
+	bluetoothPrinter,
+	type OrderItem,
+	type ReceiptPrintMode,
+} from "@/lib/bluetooth-printer";
 import { useCart } from "@/context/cart-context";
 import { cn } from "@/lib/utils";
+import { buildReceiptMetaFromOrder } from "@/lib/receipt-data";
 
 interface ConfirmConfig {
 	isOpen: boolean;
@@ -237,7 +242,7 @@ export function MenuSidebar({
 	};
 
 	const { setCart, updateCustomerInfo } = useCart();
-	const allDiscounts = useQuery(api.discounts.getActiveDiscounts);
+	const allDiscounts = useQuery(api.discounts.getDiscounts);
 
 	const handleRestoreOrder = async (order: Doc<"orders">) => {
 		try {
@@ -293,15 +298,17 @@ export function MenuSidebar({
 	};
 	
 	const handlePrintOrder = async (order: Doc<"orders">) => {
-		if (!bluetoothPrinter.isConnected()) {
-			toast.error("Printer tidak terhubung. Silakan hubungkan di Pengaturan.");
-			return;
-		}
-
 		if (!siteSettings) return;
 
 		try {
-			toast.loading("Mencetak struk...", { id: "printing" });
+			if (!bluetoothPrinter.isConnected()) {
+				await bluetoothPrinter.autoReconnectIfNeeded(0);
+			}
+
+			toast.loading(
+				order.status === "pending" ? "Mencetak open bill..." : "Mencetak struk...",
+				{ id: "printing" }
+			);
 			const items = order.items.map((i: any) => ({
 				productId: i.productId,
 				name: i.productName,
@@ -310,6 +317,8 @@ export function MenuSidebar({
 				quantity: i.quantity,
 			}));
 			const subtotal = items.reduce((sum: number, item: OrderItem) => sum + item.price * item.quantity, 0);
+			const receiptMode: ReceiptPrintMode =
+				order.status === "pending" ? "open_bill" : "paid";
 
 			await bluetoothPrinter.print(
 				{
@@ -326,6 +335,19 @@ export function MenuSidebar({
 					notes: order.notes,
 					cashierName: shiftStatus?.shiftInfo?.cashierName || undefined,
 					shiftName: shiftStatus?.shiftInfo?.shiftName || undefined,
+					receiptMode,
+					paymentStatusLabel: receiptMode === "open_bill" ? "OPEN BILL" : "LUNAS",
+					receiptMeta: buildReceiptMetaFromOrder({
+						order: {
+							discountAmount: order.discountAmount,
+							taxAmount: order.taxAmount,
+							serviceChargeAmount: order.serviceChargeAmount,
+							voucherId: order.voucherId,
+							receiptMeta: (order as { receiptMeta?: any }).receiptMeta,
+							items,
+						},
+						allDiscounts,
+					}),
 				},
 				{
 					storeName: siteSettings.storeName,
@@ -339,11 +361,17 @@ export function MenuSidebar({
 					receiptShowPhone: siteSettings.receiptShowPhone,
 					receiptShowOrderNumber: siteSettings.receiptShowOrderNumber,
 					receiptShowCustomerName: siteSettings.receiptShowCustomerName,
+					receiptShowCashierName: siteSettings.receiptShowCashierName,
 					receiptShowNotes: siteSettings.receiptShowNotes,
 					receiptFontSize: siteSettings.receiptFontSize,
 				}
 			);
-			toast.success("Struk sedang dicetak", { id: "printing" });
+			toast.success(
+				order.status === "pending"
+					? "Open bill sedang dicetak"
+					: "Struk sedang dicetak",
+				{ id: "printing" }
+			);
 		} catch (error) {
 			console.error("Print failed:", error);
 			toast.error("Gagal mencetak struk.", { id: "printing" });
@@ -419,7 +447,11 @@ export function MenuSidebar({
 										<ParkirTab
 											onClose={() => setIsOpen(false)}
 											onRestore={handleRestoreOrder}
-											onPrint={handlePrintOrder}
+											onPrint={
+												siteSettings?.allowOpenBillPrint !== false
+													? handlePrintOrder
+													: undefined
+											}
 										/>
 									</div>
 								</div>
@@ -679,7 +711,7 @@ function OrderSimpleDetail({
 							variant="ghost"
 							onClick={onPrint}
 							className="h-8 w-8 text-primary hover:bg-primary/10"
-							title="Cetak Struk"
+							title={order.status === "pending" ? "Cetak Open Bill" : "Cetak Struk Lunas"}
 						>
 							<Printer className="h-4 w-4" />
 						</Button>
@@ -1546,7 +1578,7 @@ function ParkirTab({
 												size="icon"
 												className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
 												onClick={() => onPrint(order)}
-												title="Cetak Struk"
+												title="Cetak Open Bill"
 											>
 												<Printer className="h-4 w-4" />
 											</Button>

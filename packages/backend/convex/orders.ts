@@ -26,21 +26,40 @@ export const createOrder = mutation({
 		discountAmount: v.optional(v.number()),
 		taxAmount: v.optional(v.number()),
 		serviceChargeAmount: v.optional(v.number()),
+		receiptMeta: v.optional(
+			v.object({
+				promotionLabels: v.optional(v.array(v.string())),
+				adjustmentLines: v.optional(
+					v.array(
+						v.object({
+							label: v.string(),
+							amount: v.number(),
+						})
+					)
+				),
+			})
+		),
+		isOpenBill: v.optional(v.boolean()),
 		autoComplete: v.optional(v.boolean()), // If true, set status to 'paid' immediately
 	},
 	handler: async (ctx, args) => {
-		const { autoComplete, ...orderData } = args;
+		const { autoComplete, isOpenBill, ...orderData } = args;
 		const orderNumber = `ORD-${Date.now().toString().slice(-4)}`;
+		const nextStatus = isOpenBill
+			? "pending"
+			: autoComplete
+				? "completed"
+				: "paid";
 		
 		const orderId = await ctx.db.insert("orders", {
 			...orderData,
 			orderNumber,
-			status: autoComplete ? "paid" : "pending",
+			status: nextStatus,
 			createdAt: Date.now(),
 		});
 
-		// If autoComplete is true, trigger the financial & inventory logic
-		if (autoComplete) {
+		// Paid and completed orders should immediately record finance and stock.
+		if (!isOpenBill) {
 			// We can't call updateOrderStatus mutation directly from here efficiently, 
 			// but we can trigger its logic or let a separate process handle it.
 			// For simplicity in Convex, we should probably refactor the logic into an internal function.
@@ -51,7 +70,7 @@ export const createOrder = mutation({
 				type: "income",
 				amount: args.totalAmount,
 				category: "Penjualan",
-				description: `Penjualan Langsung Pesanan #${orderNumber}`,
+				description: `Penjualan Pesanan #${orderNumber}`,
 				date: Date.now(),
 				paymentMethod: args.paymentMethod,
 				status: "completed",

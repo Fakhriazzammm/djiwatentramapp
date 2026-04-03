@@ -34,6 +34,7 @@ interface PaymentModalProps {
 			orderType?: "dine_in" | "takeaway";
 			notes?: string;
 			autoComplete?: boolean;
+			isOpenBill?: boolean;
 			cashReceived?: number;
 			changeAmount?: number;
 		}
@@ -588,7 +589,11 @@ export function PaymentConfirmationModal({
 									selectedDiscountId || undefined,
 									selectedPaymentMethod,
 									{
+										tableNumber: customerInfo.tableNumber,
+										orderType: customerInfo.orderType,
+										notes: customerInfo.notes,
 										autoComplete,
+										isOpenBill: false,
 										cashReceived: typeof cashReceived === "number" ? cashReceived : 0,
 										changeAmount: changeAmount
 									}

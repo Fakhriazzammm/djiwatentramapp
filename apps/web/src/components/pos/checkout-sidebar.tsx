@@ -38,7 +38,9 @@ export function CheckoutSidebar({
 	onClose,
 	initialStep = "customer",
 	lastOrderId,
-	onPrintLastOrder
+	onPrintLastOrder,
+	onPrintOpenBill,
+	canPrintOpenBill = true,
 }: { 
 	onConfirmPayment?: (
 		finalAmount: number,
@@ -49,6 +51,7 @@ export function CheckoutSidebar({
 			orderType?: "dine_in" | "takeaway";
 			notes?: string;
 			autoComplete?: boolean;
+			isOpenBill?: boolean;
 			cashReceived?: number;
 			changeAmount?: number;
 		}
@@ -58,6 +61,8 @@ export function CheckoutSidebar({
 	initialStep?: "customer" | "menu" | "payment";
 	lastOrderId?: string | null;
 	onPrintLastOrder?: () => void;
+	onPrintOpenBill?: () => void;
+	canPrintOpenBill?: boolean;
 }) {
 	const {
 		items,
@@ -232,6 +237,7 @@ export function CheckoutSidebar({
 					tableNumber: customerInfo.tableNumber,
 					orderType: customerInfo.orderType,
 					autoComplete,
+					isOpenBill: false,
 					cashReceived: typeof cashReceived === "number" ? cashReceived : 0,
 					changeAmount: changeAmount
 				}
@@ -253,6 +259,7 @@ export function CheckoutSidebar({
 					tableNumber: customerInfo.tableNumber,
 					orderType: customerInfo.orderType,
 					autoComplete: false,
+					isOpenBill: true,
 				}
 			);
 		}
@@ -715,6 +722,17 @@ export function CheckoutSidebar({
 
 				{activeStep === "menu" && (
 					<div className="flex gap-2">
+						{canPrintOpenBill && onPrintOpenBill && (
+								<Button
+									onClick={onPrintOpenBill}
+									disabled={items.length === 0}
+									className="h-11 w-11 shrink-0 px-0"
+									title="Cetak Open Bill"
+									variant="outline"
+								>
+									<Printer className="h-4 w-4" />
+							</Button>
+						)}
 						<Button
 							onClick={() => setActiveStep("customer")}
 							className="h-11 w-[92px] shrink-0 text-xs font-bold bg-background text-foreground hover:bg-muted"

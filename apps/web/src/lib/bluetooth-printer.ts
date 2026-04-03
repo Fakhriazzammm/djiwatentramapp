@@ -7,6 +7,12 @@ const BLUETOOTH_PRINTER_DEVICE_ID_KEY = "pos_bluetooth_printer_device_id";
 const formatReceiptCurrency = (value: number) =>
 	new Intl.NumberFormat("id-ID").format(Math.round(value || 0));
 
+const formatReceiptAmount = (value: number) => {
+	const amount = Math.abs(value || 0);
+	const prefix = value < 0 ? "-RP " : "RP ";
+	return `${prefix}${formatReceiptCurrency(amount)}`;
+};
+
 const normalizeReceiptText = (value?: string | null) =>
 	(value || "")
 		.replace(/\r\n/g, "\n")
@@ -53,7 +59,11 @@ const wrapReceiptText = (value: string, width: number) => {
 	return lines;
 };
 
-const buildKeyValueLine = (label: string, value: string, width = RECEIPT_LINE_WIDTH) => {
+const buildKeyValueLine = (
+	label: string,
+	value: string,
+	width = RECEIPT_LINE_WIDTH
+) => {
 	const safeLabel = normalizeReceiptText(label);
 	const safeValue = normalizeReceiptText(value);
 
@@ -67,7 +77,7 @@ const buildKeyValueLine = (label: string, value: string, width = RECEIPT_LINE_WI
 	const allowedLabelWidth = Math.max(8, width - safeValue.length - 1);
 	const trimmedLabel =
 		safeLabel.length > allowedLabelWidth
-			? `${safeLabel.slice(0, Math.max(0, allowedLabelWidth - 1))}…`
+			? `${safeLabel.slice(0, Math.max(0, allowedLabelWidth - 3))}...`
 			: safeLabel;
 
 	return `${trimmedLabel}${" ".repeat(Math.max(1, width - trimmedLabel.length - safeValue.length))}${safeValue}`;
@@ -80,6 +90,41 @@ export interface OrderItem {
 	price: number;
 	originalPrice?: number;
 	quantity: number;
+}
+
+export type ReceiptPrintMode = "open_bill" | "paid" | "kitchen";
+
+export interface ReceiptAdjustmentLine {
+	label: string;
+	amount: number;
+}
+
+export interface ReceiptMeta {
+	promotionLabels?: string[];
+	adjustmentLines?: ReceiptAdjustmentLine[];
+}
+
+export interface ReceiptOrderPayload {
+	orderNumber: string;
+	items: OrderItem[];
+	totalAmount: number;
+	paymentMethod: string;
+	createdAt: number;
+	customerName?: string;
+	notes?: string;
+	orderType?: string;
+	tableNumber?: string;
+	subtotal?: number;
+	discountAmount?: number;
+	taxAmount?: number;
+	serviceChargeAmount?: number;
+	cashReceived?: number;
+	changeAmount?: number;
+	cashierName?: string;
+	shiftName?: string;
+	receiptMode?: ReceiptPrintMode;
+	paymentStatusLabel?: string;
+	receiptMeta?: ReceiptMeta;
 }
 
 export interface ReceiptSettings {
@@ -110,35 +155,17 @@ export class BluetoothPrinterService {
 	private lastAutoConnectAttemptAt = 0;
 	private lastPrintedPayload:
 		| {
-				order: {
-					orderNumber: string;
-					items: OrderItem[];
-					totalAmount: number;
-					paymentMethod: string;
-					createdAt: number;
-					customerName?: string;
-					notes?: string;
-					orderType?: string;
-					tableNumber?: string;
-					subtotal?: number;
-					discountAmount?: number;
-					taxAmount?: number;
-					serviceChargeAmount?: number;
-					cashReceived?: number;
-					changeAmount?: number;
-					cashierName?: string;
-					shiftName?: string;
-				};
+				order: ReceiptOrderPayload;
 				settings: ReceiptSettings;
 		  }
 		| null = null;
 	private optionalServices = [
-		"000018f0-0000-1000-8000-00805f9b34fb", // Generic POS service
+		"000018f0-0000-1000-8000-00805f9b34fb",
 		"000018f1-0000-1000-8000-00805f9b34fb",
-		"e7e11001-49d2-4cc3-a291-0016260c533c", // Some printers
-		"0000ff00-0000-1000-8000-00805f9b34fb", // Custom
-		"0000af00-0000-1000-8000-00805f9b34fb", // Custom
-		"00004953-0000-1000-8000-00805f9b34fb", // Custom
+		"e7e11001-49d2-4cc3-a291-0016260c533c",
+		"0000ff00-0000-1000-8000-00805f9b34fb",
+		"0000af00-0000-1000-8000-00805f9b34fb",
+		"00004953-0000-1000-8000-00805f9b34fb",
 	];
 
 	async connect(): Promise<string> {
@@ -152,7 +179,6 @@ export class BluetoothPrinterService {
 				optionalServices: this.optionalServices,
 			});
 			this.persistDeviceId(this.device.id);
-
 			return await this.establishConnection();
 		} catch (error) {
 			console.error("Bluetooth connection error:", error);
@@ -202,8 +228,7 @@ export class BluetoothPrinterService {
 				(preferredDeviceId
 					? devices.find((device) => device.id === preferredDeviceId)
 					: null) ?? devices[0];
-			
-			// If it's already connected, just return the name
+
 			if (this.device.gatt?.connected && this.characteristic) {
 				this.persistDeviceId(this.device.id);
 				return this.device.name || "Bluetooth Printer";
@@ -237,24 +262,19 @@ export class BluetoothPrinterService {
 		}
 
 		this.server = await this.device.gatt.connect();
-
-		// Try to find the printer service and characteristic
 		const services = await this.server.getPrimaryServices();
 		let writeCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
 
-		// Priority for characteristics: writeWithoutResponse > write
 		for (const service of services) {
 			const characteristics = await service.getCharacteristics();
-			
-			// First pass: look for writeWithoutResponse
+
 			for (const char of characteristics) {
 				if (char.properties.writeWithoutResponse) {
 					writeCharacteristic = char;
 					break;
 				}
 			}
-			
-			// Second pass: if not found, look for write
+
 			if (!writeCharacteristic) {
 				for (const char of characteristics) {
 					if (char.properties.write) {
@@ -263,24 +283,24 @@ export class BluetoothPrinterService {
 					}
 				}
 			}
-			
+
 			if (writeCharacteristic) {
 				break;
 			}
 		}
 
 		if (!writeCharacteristic) {
-			throw new Error("Karakteristik printer tidak ditemukan. Pastikan perangkat adalah printer thermal bluetooth.");
+			throw new Error(
+				"Karakteristik printer tidak ditemukan. Pastikan perangkat adalah printer thermal bluetooth."
+			);
 		}
 
 		this.characteristic = writeCharacteristic;
-		
-		// Add disconnect listener to handle manual disconnects or out of range
-		this.device.addEventListener('gattserverdisconnected', () => {
+
+		this.device.addEventListener("gattserverdisconnected", () => {
 			console.warn("Bluetooth printer disconnected.");
 			this.server = null;
 			this.characteristic = null;
-			// Keep device reference and attempt reconnect automatically.
 			setTimeout(() => {
 				void this.autoReconnectIfNeeded(0);
 			}, 600);
@@ -306,7 +326,8 @@ export class BluetoothPrinterService {
 		return {
 			connected: this.isConnected(),
 			deviceName: this.getDeviceName(),
-			canReconnect: typeof navigator !== "undefined" && !!navigator.bluetooth?.getDevices,
+			canReconnect:
+				typeof navigator !== "undefined" && !!navigator.bluetooth?.getDevices,
 			hasReprintData: !!this.lastPrintedPayload,
 		};
 	}
@@ -315,14 +336,12 @@ export class BluetoothPrinterService {
 		return this.device?.name || null;
 	}
 
-	private async _loadImage(url: string): Promise<ImageData> {
+	private async loadImage(url: string): Promise<ImageData> {
 		return new Promise((resolve, reject) => {
 			const img = new Image();
 			img.crossOrigin = "anonymous";
 			img.onload = () => {
 				const canvas = document.createElement("canvas");
-				// Thermal printers usually have 384 or 576 dots width. 
-				// Let's scale to a reasonable width like 128 or 192.
 				const scale = 192 / img.width;
 				canvas.width = 192;
 				canvas.height = img.height * scale;
@@ -335,208 +354,18 @@ export class BluetoothPrinterService {
 				ctx.fillRect(0, 0, canvas.width, canvas.height);
 				ctx.filter = "grayscale(100%)";
 				ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-				const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-				resolve(imageData);
+				resolve(ctx.getImageData(0, 0, canvas.width, canvas.height));
 			};
 			img.onerror = reject;
 			img.src = url;
 		});
 	}
 
-	async print(
-		order: {
-			orderNumber: string;
-			items: OrderItem[];
-			totalAmount: number;
-			paymentMethod: string;
-			createdAt: number;
-			customerName?: string;
-			notes?: string;
-			orderType?: string;
-			tableNumber?: string;
-			subtotal?: number;
-			discountAmount?: number;
-			taxAmount?: number;
-			serviceChargeAmount?: number;
-			cashReceived?: number;
-			changeAmount?: number;
-			cashierName?: string;
-			shiftName?: string;
-		},
-		settings: ReceiptSettings
-	) {
-		if (!(this.isConnected() && this.characteristic)) {
-			await this.autoConnect();
-		}
-
-		if (!(this.isConnected() && this.characteristic)) {
+	private async writeBuffer(buffer: Uint8Array) {
+		if (!this.characteristic) {
 			throw new Error("Printer tidak terhubung.");
 		}
 
-		const encoder = new EscPosEncoder();
-		const result = encoder.initialize();
-		const separator = "-".repeat(RECEIPT_LINE_WIDTH);
-		const headerSeparator = "=".repeat(RECEIPT_LINE_WIDTH);
-		const printWrappedLines = (text: string, width = RECEIPT_LINE_WIDTH) => {
-			for (const line of wrapReceiptText(text, width)) {
-				result.line(line);
-			}
-		};
-		const printCenteredLines = (text: string, width = RECEIPT_HEADER_WIDTH) => {
-			for (const line of wrapReceiptText(text, width)) {
-				result.line(line);
-			}
-		};
-		const printKeyValue = (label: string, value: string) => {
-			result.line(buildKeyValueLine(label, value));
-		};
-
-		result.align("center");
-
-		if (settings.receiptShowLogo && settings.receiptLogo) {
-			try {
-				const imageData = await this._loadImage(settings.receiptLogo);
-				result.image(imageData, imageData.width, imageData.height, "atkinson", 128);
-			} catch (err) {
-				console.error("Failed to print logo:", err);
-			}
-		}
-
-		const headerText = settings.receiptHeader || settings.storeName || "YUMI POS";
-		const fontSize = settings.receiptFontSize || "normal";
-		if (fontSize === "large") {
-			(result as any).size("double");
-		} else {
-			result.size("normal");
-		}
-
-		result.bold(true);
-		printCenteredLines(headerText.toUpperCase(), RECEIPT_HEADER_WIDTH);
-		result.bold(false);
-		result.size("normal");
-
-		if (settings.receiptShowAddress && settings.storeAddress) {
-			printCenteredLines(settings.storeAddress, RECEIPT_HEADER_WIDTH);
-		}
-		if (settings.receiptShowPhone && settings.storePhone) {
-			printCenteredLines(settings.storePhone, RECEIPT_HEADER_WIDTH);
-		}
-
-		result.line(headerSeparator);
-		result.align("left");
-
-		if (settings.receiptShowOrderNumber) {
-			printKeyValue("ID", order.orderNumber.toUpperCase());
-		}
-
-		if (order.cashierName && settings.receiptShowCashierName !== false) {
-			printKeyValue("KASIR", order.cashierName.toUpperCase());
-		}
-		if (order.shiftName && settings.receiptShowCashierName !== false) {
-			printKeyValue("SHIFT", order.shiftName.toUpperCase());
-		}
-
-		const dateStr = new Date(order.createdAt).toLocaleString("id-ID", {
-			day: "2-digit",
-			month: "2-digit",
-			year: "numeric",
-			hour: "2-digit",
-			minute: "2-digit",
-		});
-		printKeyValue("WAKTU", dateStr);
-		printKeyValue("BAYAR", order.paymentMethod.toUpperCase());
-
-		const orderType = order.orderType || settings.orderType;
-		const tableNumber = order.tableNumber || settings.tableNumber;
-
-		if (orderType) {
-			const typeLabel = orderType === "dine_in" ? "MAKAN DI SINI" : "BAWA PULANG";
-			printKeyValue("TIPE", typeLabel);
-		}
-
-		if (tableNumber) {
-			printKeyValue("MEJA", tableNumber);
-		}
-
-		if (settings.receiptShowCustomerName && order.customerName) {
-			printKeyValue("PELANGGAN", order.customerName.toUpperCase());
-		}
-
-		result.line(separator);
-		printKeyValue("ITEM", "TOTAL");
-		result.line(separator);
-
-		for (const item of order.items) {
-			const totalStr = formatReceiptCurrency(item.price * item.quantity);
-			const nameLines = wrapReceiptText(item.name.toUpperCase(), RECEIPT_LINE_WIDTH - totalStr.length - 1);
-			const firstNameLine = nameLines.shift() || item.name.toUpperCase().slice(0, RECEIPT_LINE_WIDTH);
-			result.bold(true).line(buildKeyValueLine(firstNameLine, totalStr)).bold(false);
-			for (const extraLine of nameLines) {
-				result.line(extraLine);
-			}
-
-			const qtyDetail = `${item.quantity} x ${formatReceiptCurrency(item.price)}`;
-			result.line(`  ${qtyDetail}`);
-
-			const variantText = normalizeReceiptText(item.variant);
-			if (variantText) {
-				for (const line of wrapReceiptText(variantText, RECEIPT_LINE_WIDTH - 4)) {
-					result.line(`  + ${line}`);
-				}
-			}
-		}
-
-		result.line(separator);
-
-		if (order.subtotal !== undefined) {
-			printKeyValue("SUBTOTAL", formatReceiptCurrency(order.subtotal));
-		}
-
-		if (order.discountAmount && order.discountAmount > 0) {
-			printKeyValue("DISKON", `-${formatReceiptCurrency(order.discountAmount)}`);
-		}
-
-		if (order.taxAmount && order.taxAmount > 0) {
-			printKeyValue("PAJAK", formatReceiptCurrency(order.taxAmount));
-		}
-
-		if (order.serviceChargeAmount && order.serviceChargeAmount > 0) {
-			printKeyValue("SERVICE", formatReceiptCurrency(order.serviceChargeAmount));
-		}
-
-		result
-			.line(separator)
-			.bold(true)
-			.line(buildKeyValueLine("TOTAL", `RP ${formatReceiptCurrency(order.totalAmount)}`))
-			.bold(false);
-
-		if (order.cashReceived !== undefined && order.cashReceived > 0) {
-			printKeyValue("TUNAI", formatReceiptCurrency(order.cashReceived));
-			if (order.changeAmount !== undefined && order.changeAmount > 0) {
-				result
-					.bold(true)
-					.line(buildKeyValueLine("KEMBALI", formatReceiptCurrency(order.changeAmount)))
-					.bold(false);
-			}
-		}
-
-		if (settings.receiptShowNotes && order.notes) {
-			result.line(separator);
-			result.bold(true).line("CATATAN").bold(false);
-			printWrappedLines(order.notes);
-		}
-
-		result.align("center");
-		result
-			.line(separator)
-			.bold(true);
-		printCenteredLines(settings.receiptFooter || "TERIMA KASIH ATAS KUNJUNGAN ANDA!", RECEIPT_HEADER_WIDTH);
-		result
-			.bold(false)
-			.line(" ")
-			.cut();
-
-		const buffer = result.encode();
 		const chunkSize = 20;
 
 		for (let i = 0; i < buffer.length; i += chunkSize) {
@@ -563,6 +392,248 @@ export class BluetoothPrinterService {
 
 			await new Promise((resolve) => setTimeout(resolve, 10));
 		}
+	}
+
+	async print(order: ReceiptOrderPayload, settings: ReceiptSettings) {
+		if (!(this.isConnected() && this.characteristic)) {
+			await this.autoConnect();
+		}
+
+		if (!(this.isConnected() && this.characteristic)) {
+			throw new Error("Printer tidak terhubung.");
+		}
+
+		const encoder = new EscPosEncoder();
+		const result = encoder.initialize();
+		const separator = "-".repeat(RECEIPT_LINE_WIDTH);
+		const headerSeparator = "=".repeat(RECEIPT_LINE_WIDTH);
+		const mode = order.receiptMode ?? "paid";
+		const footerText =
+			settings.receiptFooter || "TERIMA KASIH ATAS KUNJUNGAN ANDA!";
+
+		const printWrappedLines = (text: string, width = RECEIPT_LINE_WIDTH) => {
+			for (const line of wrapReceiptText(text, width)) {
+				result.line(line);
+			}
+		};
+
+		const printCenteredLines = (
+			text: string,
+			width = RECEIPT_HEADER_WIDTH
+		) => {
+			for (const line of wrapReceiptText(text, width)) {
+				result.line(line);
+			}
+		};
+
+		const printKeyValue = (label: string, value: string) => {
+			result.line(buildKeyValueLine(label, value));
+		};
+
+		result.align("center");
+
+		if (settings.receiptShowLogo && settings.receiptLogo) {
+			try {
+				const imageData = await this.loadImage(settings.receiptLogo);
+				result.image(imageData, imageData.width, imageData.height, "atkinson", 128);
+			} catch (error) {
+				console.error("Failed to print logo:", error);
+			}
+		}
+
+		const headerText = settings.receiptHeader || settings.storeName || "YUMI POS";
+		const fontSize = settings.receiptFontSize || "normal";
+		if (fontSize === "large") {
+			(result as { size: (value: string) => void }).size("double");
+		} else {
+			result.size("normal");
+		}
+
+		result.bold(true);
+		printCenteredLines(headerText.toUpperCase(), RECEIPT_HEADER_WIDTH);
+		result.bold(false);
+		result.size("normal");
+
+		if (settings.receiptShowAddress && settings.storeAddress) {
+			printCenteredLines(settings.storeAddress, RECEIPT_HEADER_WIDTH);
+		}
+		if (settings.receiptShowPhone && settings.storePhone) {
+			printCenteredLines(settings.storePhone, RECEIPT_HEADER_WIDTH);
+		}
+
+		result.line(headerSeparator);
+		result.align("center");
+		result.bold(true);
+
+		if (mode === "open_bill") {
+			printCenteredLines("OPEN BILL", RECEIPT_HEADER_WIDTH);
+			printCenteredLines("BELUM LUNAS", RECEIPT_HEADER_WIDTH);
+		} else if (mode === "kitchen") {
+			printCenteredLines("TIKET KITCHEN", RECEIPT_HEADER_WIDTH);
+			printCenteredLines("PRODUK YANG HARUS DIBUAT", RECEIPT_HEADER_WIDTH);
+		} else {
+			printCenteredLines(order.paymentStatusLabel || "LUNAS", RECEIPT_HEADER_WIDTH);
+		}
+
+		result.bold(false);
+		result.align("left");
+		result.line(headerSeparator);
+
+		if (settings.receiptShowOrderNumber !== false) {
+			printKeyValue("ID", order.orderNumber.toUpperCase());
+		}
+
+		if (order.cashierName && settings.receiptShowCashierName !== false) {
+			printKeyValue("KASIR", order.cashierName.toUpperCase());
+		}
+		if (order.shiftName && settings.receiptShowCashierName !== false) {
+			printKeyValue("SHIFT", order.shiftName.toUpperCase());
+		}
+
+		const dateStr = new Date(order.createdAt).toLocaleString("id-ID", {
+			day: "2-digit",
+			month: "2-digit",
+			year: "numeric",
+			hour: "2-digit",
+			minute: "2-digit",
+		});
+		printKeyValue("WAKTU", dateStr);
+
+		if (mode === "paid") {
+			printKeyValue("STATUS", order.paymentStatusLabel || "LUNAS");
+			printKeyValue("BAYAR", order.paymentMethod.toUpperCase());
+		} else if (mode === "open_bill") {
+			printKeyValue("STATUS", "OPEN BILL");
+		}
+
+		const orderType = order.orderType || settings.orderType;
+		const tableNumber = order.tableNumber || settings.tableNumber;
+
+		if (orderType) {
+			printKeyValue(
+				"TIPE",
+				orderType === "dine_in" ? "MAKAN DI SINI" : "BAWA PULANG"
+			);
+		}
+
+		if (tableNumber) {
+			printKeyValue("MEJA", tableNumber);
+		}
+
+		if (settings.receiptShowCustomerName && order.customerName) {
+			printKeyValue("PELANGGAN", order.customerName.toUpperCase());
+		}
+
+		if (mode !== "kitchen" && order.receiptMeta?.promotionLabels?.length) {
+			result.line(separator);
+			result.align("center");
+			result.bold(true);
+			for (const label of order.receiptMeta.promotionLabels) {
+				printCenteredLines(label.toUpperCase(), RECEIPT_HEADER_WIDTH);
+			}
+			result.bold(false);
+			result.align("left");
+		}
+
+		result.line(separator);
+
+		if (mode === "kitchen") {
+			result.bold(true).line("ITEM YANG DIBUAT").bold(false);
+			result.line(separator);
+
+			for (const item of order.items) {
+				const itemLabel = `${item.quantity}x ${item.name.toUpperCase()}`;
+				for (const line of wrapReceiptText(itemLabel, RECEIPT_LINE_WIDTH)) {
+					result.bold(true).line(line).bold(false);
+				}
+
+				const variantText = normalizeReceiptText(item.variant);
+				if (variantText) {
+					for (const line of wrapReceiptText(variantText, RECEIPT_LINE_WIDTH - 3)) {
+						result.line(`- ${line}`);
+					}
+				}
+
+				result.line(" ");
+			}
+		} else {
+			printKeyValue("ITEM", "TOTAL");
+			result.line(separator);
+
+			for (const item of order.items) {
+				const totalStr = formatReceiptCurrency(item.price * item.quantity);
+				const nameLines = wrapReceiptText(
+					item.name.toUpperCase(),
+					RECEIPT_LINE_WIDTH - totalStr.length - 1
+				);
+				const firstNameLine =
+					nameLines.shift() || item.name.toUpperCase().slice(0, RECEIPT_LINE_WIDTH);
+
+				result.bold(true).line(buildKeyValueLine(firstNameLine, totalStr)).bold(false);
+				for (const extraLine of nameLines) {
+					result.line(extraLine);
+				}
+
+				result.line(`  ${item.quantity} x ${formatReceiptCurrency(item.price)}`);
+
+				const variantText = normalizeReceiptText(item.variant);
+				if (variantText) {
+					for (const line of wrapReceiptText(variantText, RECEIPT_LINE_WIDTH - 4)) {
+						result.line(`  + ${line}`);
+					}
+				}
+			}
+
+			result.line(separator);
+
+			if (order.subtotal !== undefined) {
+				printKeyValue("SUBTOTAL", formatReceiptAmount(order.subtotal));
+			}
+
+			for (const adjustment of order.receiptMeta?.adjustmentLines || []) {
+				printKeyValue(adjustment.label.toUpperCase(), formatReceiptAmount(adjustment.amount));
+			}
+
+			if (
+				(order.receiptMeta?.adjustmentLines?.length ?? 0) === 0 &&
+				(order.discountAmount ?? 0) > 0
+			) {
+				printKeyValue("DISKON", formatReceiptAmount(-(order.discountAmount ?? 0)));
+			}
+
+			result
+				.line(separator)
+				.bold(true)
+				.line(buildKeyValueLine("TOTAL", formatReceiptAmount(order.totalAmount)))
+				.bold(false);
+
+			if (mode === "paid" && order.cashReceived !== undefined && order.cashReceived > 0) {
+				printKeyValue("TUNAI", formatReceiptAmount(order.cashReceived));
+				if (order.changeAmount !== undefined && order.changeAmount > 0) {
+					result
+						.bold(true)
+						.line(buildKeyValueLine("KEMBALI", formatReceiptAmount(order.changeAmount)))
+						.bold(false);
+				}
+			}
+		}
+
+		if (settings.receiptShowNotes && order.notes) {
+			result.line(separator);
+			result.bold(true).line("CATATAN").bold(false);
+			printWrappedLines(order.notes);
+		}
+
+		result.align("center");
+		result.line(separator).bold(true);
+		printCenteredLines(footerText.toUpperCase(), RECEIPT_HEADER_WIDTH);
+		if (mode === "kitchen") {
+			printCenteredLines("TANPA HARGA - UNTUK PRODUKSI", RECEIPT_HEADER_WIDTH);
+		}
+		result.bold(false).line(" ").cut();
+
+		const buffer = result.encode();
+		await this.writeBuffer(buffer);
 
 		this.lastPrintedPayload = {
 			order: structuredClone(order),

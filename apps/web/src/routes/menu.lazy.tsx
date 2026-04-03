@@ -41,10 +41,18 @@ import { PaymentConfirmationModal } from "@/components/pos/payment-modal";
 import { useMenuKeyboardNav, type FocusZone } from "@/hooks/use-menu-keyboard-nav";
 import { useCart } from "@/context/cart-context";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
-import { bluetoothPrinter, type OrderItem } from "@/lib/bluetooth-printer";
+import {
+	bluetoothPrinter,
+	type OrderItem,
+	type ReceiptPrintMode,
+} from "@/lib/bluetooth-printer";
 import { cn } from "@/lib/utils";
 import { ShiftTargetBanner } from "@/components/pos/ShiftTargetBanner";
 import { getOfflineManager, queueOfflineAction } from "@/lib/offline-manager";
+import {
+	buildReceiptMetaFromCart,
+	buildReceiptMetaFromOrder,
+} from "@/lib/receipt-data";
 
 const fmt = (n: number) =>
 	new Intl.NumberFormat("id-ID", {
@@ -99,6 +107,7 @@ function MenuPage() {
 	const siteSettings = useQuery(api.site_settings.getSettings);
 	const categories = useQuery(api.products.getCategories);
 	const activeDiscounts = useQuery(api.discounts.getActiveDiscounts);
+	const allDiscounts = useQuery(api.discounts.getDiscounts);
 	const createOrder = useMutation(api.orders.createOrder);
 
 	// Cart context
@@ -108,12 +117,16 @@ function MenuPage() {
 		removeFromCart,
 		updateQuantity,
 		clearCart,
+		grossAmount,
 		totalAmount,
 		discountAmount,
+		promoDiscountAmount,
 		totalItems,
 		finalTotal,
 		taxAmount,
 		serviceChargeAmount,
+		voucherDiscountAmount,
+		appliedVoucher,
 		customerInfo,
 	} = useCart();
 
@@ -535,7 +548,10 @@ function MenuPage() {
 		}
 	};
 
-	const handlePrint = useCallback(async (orderId: Id<"orders">) => {
+	const handlePrint = useCallback(async (
+		orderId: Id<"orders">,
+		modeOverride?: ReceiptPrintMode
+	) => {
 		if (!siteSettings) return;
 
 		try {
@@ -561,22 +577,111 @@ function MenuPage() {
 				(sum: number, item: OrderItem) => sum + (item.originalPrice ?? item.price) * item.quantity,
 				0
 			);
+			const receiptMode =
+				modeOverride ?? (order.status === "pending" ? "open_bill" : "paid");
+			const paymentStatusLabel =
+				receiptMode === "kitchen"
+					? "TIKET KITCHEN"
+					: receiptMode === "open_bill"
+						? "OPEN BILL"
+						: "LUNAS";
+
+				await bluetoothPrinter.print(
+					{
+						orderNumber: order.orderNumber,
+						items,
+						totalAmount: order.totalAmount,
+						subtotal,
+						discountAmount: order.discountAmount,
+						paymentMethod: order.paymentMethod,
+						createdAt: order.createdAt,
+						customerName: order.customerName,
+						orderType: order.orderType,
+						tableNumber: order.tableNumber,
+						notes: order.notes,
+						cashierName: shiftStatus?.shiftInfo?.cashierName || undefined,
+						shiftName: shiftStatus?.shiftInfo?.shiftName || undefined,
+						receiptMode,
+						paymentStatusLabel,
+						receiptMeta: buildReceiptMetaFromOrder({
+							order: {
+								discountAmount: order.discountAmount,
+								taxAmount: order.taxAmount,
+								serviceChargeAmount: order.serviceChargeAmount,
+								voucherId: order.voucherId,
+								receiptMeta: (order as { receiptMeta?: any }).receiptMeta,
+								items,
+							},
+							allDiscounts,
+						}),
+					},
+					{
+						storeName: siteSettings.storeName,
+						storeAddress: siteSettings.storeAddress,
+						storePhone: siteSettings.storePhone,
+						receiptFooter: siteSettings.receiptFooter,
+						receiptLogo: siteSettings.receiptLogo,
+						receiptHeader: siteSettings.receiptHeader,
+						receiptShowLogo: siteSettings.receiptShowLogo,
+						receiptShowAddress: siteSettings.receiptShowAddress,
+						receiptShowPhone: siteSettings.receiptShowPhone,
+						receiptShowOrderNumber: siteSettings.receiptShowOrderNumber,
+						receiptShowCustomerName: siteSettings.receiptShowCustomerName,
+						receiptShowCashierName: siteSettings.receiptShowCashierName,
+						receiptShowNotes: siteSettings.receiptShowNotes,
+						receiptFontSize: siteSettings.receiptFontSize,
+					}
+				);
+			toast.success("Struk berhasil dicetak", { id: "printing" });
+		} catch (error) {
+			console.error("Print failed:", error);
+			toast.error("Gagal mencetak struk.", { id: "printing" });
+		}
+	}, [allDiscounts, convex, siteSettings, shiftStatus]);
+
+	const handlePrintCurrentOpenBill = useCallback(async () => {
+		if (!siteSettings || cartItems.length === 0) return;
+
+		try {
+			if (!bluetoothPrinter.isConnected()) {
+				await bluetoothPrinter.autoReconnectIfNeeded(0);
+			}
+
+			toast.loading("Mencetak open bill...", { id: "printing-open-bill" });
+			const items = cartItems.map((item) => ({
+				productId: item.productId,
+				name: item.name,
+				variant: item.variant,
+				price: item.price,
+				originalPrice: item.originalPrice,
+				quantity: item.quantity,
+			}));
 
 			await bluetoothPrinter.print(
 				{
-					orderNumber: order.orderNumber,
+					orderNumber: `OPEN-${Date.now().toString().slice(-4)}`,
 					items,
-					totalAmount: order.totalAmount,
-					subtotal,
-					discountAmount: order.discountAmount,
-					paymentMethod: order.paymentMethod,
-					createdAt: order.createdAt,
-					customerName: order.customerName,
-					orderType: order.orderType,
-					tableNumber: order.tableNumber,
-					notes: order.notes,
+					totalAmount: finalTotal,
+					subtotal: grossAmount,
+					paymentMethod: "open_bill",
+					createdAt: Date.now(),
+					customerName: customerInfo.name || "Pelanggan",
+					orderType: customerInfo.orderType,
+					tableNumber: customerInfo.tableNumber,
+					notes: customerInfo.notes,
 					cashierName: shiftStatus?.shiftInfo?.cashierName || undefined,
 					shiftName: shiftStatus?.shiftInfo?.shiftName || undefined,
+					receiptMode: "open_bill",
+					paymentStatusLabel: "OPEN BILL",
+					receiptMeta: buildReceiptMetaFromCart({
+						items: cartItems,
+						allDiscounts: activeDiscounts,
+						appliedVoucher,
+						promoDiscountAmount,
+						voucherDiscountAmount,
+						taxAmount,
+						serviceChargeAmount,
+					}),
 				},
 				{
 					storeName: siteSettings.storeName,
@@ -591,15 +696,32 @@ function MenuPage() {
 					receiptShowOrderNumber: siteSettings.receiptShowOrderNumber,
 					receiptShowCustomerName: siteSettings.receiptShowCustomerName,
 					receiptShowNotes: siteSettings.receiptShowNotes,
+					receiptShowCashierName: siteSettings.receiptShowCashierName,
 					receiptFontSize: siteSettings.receiptFontSize,
 				}
 			);
-			toast.success("Struk berhasil dicetak", { id: "printing" });
+			toast.success("Open bill berhasil dicetak", { id: "printing-open-bill" });
 		} catch (error) {
-			console.error("Print failed:", error);
-			toast.error("Gagal mencetak struk.", { id: "printing" });
+			console.error("Open bill print failed:", error);
+			toast.error("Gagal mencetak open bill.", { id: "printing-open-bill" });
 		}
-	}, [convex, siteSettings, shiftStatus]);
+	}, [
+		activeDiscounts,
+		appliedVoucher,
+		cartItems,
+		customerInfo.name,
+		customerInfo.notes,
+		customerInfo.orderType,
+		customerInfo.tableNumber,
+		finalTotal,
+		grossAmount,
+		promoDiscountAmount,
+		serviceChargeAmount,
+		siteSettings,
+		shiftStatus,
+		taxAmount,
+		voucherDiscountAmount,
+	]);
 
 	// Handle order submission from payment modal or sidebar
 	const handlePaymentConfirm = useCallback(
@@ -612,6 +734,7 @@ function MenuPage() {
 				orderType?: "dine_in" | "takeaway";
 				notes?: string;
 				autoComplete?: boolean;
+				isOpenBill?: boolean;
 				cashReceived?: number;
 				changeAmount?: number;
 			}
@@ -623,24 +746,35 @@ function MenuPage() {
 			if (cartItems.length === 0) return;
 			setIsSubmitting(true);
 			try {
-				const orderPayload = {
-					items: cartItems.map((i) => ({
-						productId: i.productId as Id<"products">,
-						productName: i.name,
-						variant: i.variant,
-						quantity: i.quantity,
-						price: i.price,
-						originalPrice: i.originalPrice,
-					})),
-					totalAmount: finalAmount,
-					paymentMethod: (paymentMethod as "cash" | "qris" | "transfer") || "cash",
-					customerName: customerInfo.name || "Pelanggan",
-					tableNumber: orderData?.tableNumber,
-					orderType: orderData?.orderType,
-					voucherId: discountId as Id<"discounts"> | undefined,
-					discountAmount,
-					taxAmount,
-					serviceChargeAmount,
+					const orderPayload = {
+						items: cartItems.map((i) => ({
+							productId: i.productId as Id<"products">,
+							productName: i.name,
+							variant: i.variant,
+							quantity: i.quantity,
+							price: i.price,
+							originalPrice: i.originalPrice,
+						})),
+						totalAmount: finalAmount,
+						paymentMethod: (paymentMethod as "cash" | "qris" | "transfer") || "cash",
+						customerName: customerInfo.name || "Pelanggan",
+						tableNumber: orderData?.tableNumber,
+						orderType: orderData?.orderType,
+						notes: orderData?.notes || customerInfo.notes,
+						voucherId: discountId as Id<"discounts"> | undefined,
+						discountAmount,
+						taxAmount,
+						serviceChargeAmount,
+					receiptMeta: buildReceiptMetaFromCart({
+						items: cartItems,
+						allDiscounts: activeDiscounts,
+						appliedVoucher,
+						promoDiscountAmount,
+						voucherDiscountAmount,
+						taxAmount,
+						serviceChargeAmount,
+					}),
+					isOpenBill: orderData?.isOpenBill,
 					autoComplete: orderData?.autoComplete,
 				};
 
@@ -655,11 +789,20 @@ function MenuPage() {
 
 				const orderId = await createOrder(orderPayload);
 
-				toast.success("Pesanan berhasil dibuat!");
-				setLastOrderId(orderId);
-				
-				// Attempt auto reconnect + print receipt.
-				void handlePrint(orderId);
+				if (orderData?.isOpenBill) {
+					toast.success("Open bill berhasil disimpan!");
+					setLastOrderId(orderId);
+				} else {
+					toast.success("Pesanan berhasil dibuat!");
+					setLastOrderId(orderId);
+
+					if (siteSettings?.autoPrint !== false) {
+						void handlePrint(orderId, "paid");
+					}
+					if (siteSettings?.autoPrintKitchenReceipt !== false) {
+						void handlePrint(orderId, "kitchen");
+					}
+				}
 
 				clearCart();
 				setIsPaymentOpen(false);
@@ -671,8 +814,25 @@ function MenuPage() {
 				setIsSubmitting(false);
 			}
 		},
-		[cartItems, createOrder, clearCart, discountAmount, taxAmount, serviceChargeAmount, customerInfo.name, isShiftOpen, handlePrint]
-	);
+		[
+			activeDiscounts,
+			appliedVoucher,
+			cartItems,
+			createOrder,
+			clearCart,
+			discountAmount,
+			handlePrint,
+			isShiftOpen,
+			promoDiscountAmount,
+			serviceChargeAmount,
+			siteSettings?.autoPrint,
+			siteSettings?.autoPrintKitchenReceipt,
+			taxAmount,
+			voucherDiscountAmount,
+				customerInfo.name,
+				customerInfo.notes,
+			]
+		);
 
 	const isLoading = products === undefined || categories === undefined;
 	const cartDiscountPreview = Math.max(0, discountAmount || 0);
@@ -1156,6 +1316,8 @@ function MenuPage() {
 					isSubmitting={isSubmitting} 
 					lastOrderId={lastOrderId}
 					onPrintLastOrder={() => lastOrderId && handlePrint(lastOrderId)}
+					onPrintOpenBill={handlePrintCurrentOpenBill}
+					canPrintOpenBill={siteSettings?.allowOpenBillPrint !== false}
 				/>
 			</div>
 
@@ -1214,6 +1376,8 @@ function MenuPage() {
 				isSubmitting={isSubmitting}
 				lastOrderId={lastOrderId}
 				onPrintLastOrder={() => lastOrderId && handlePrint(lastOrderId)}
+				onPrintOpenBill={handlePrintCurrentOpenBill}
+				canPrintOpenBill={siteSettings?.allowOpenBillPrint !== false}
 			/>
 
 			{/* === PAYMENT MODAL === */}

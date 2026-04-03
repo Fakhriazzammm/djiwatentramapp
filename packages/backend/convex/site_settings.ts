@@ -26,7 +26,9 @@ const DEFAULTS = {
 	storePhone: "",
 	resendFromEmail: "",
 	receiptFooter: "Terima kasih atas kunjungan Anda!",
-	autoPrint: false,
+	autoPrint: true,
+	autoPrintKitchenReceipt: true,
+	allowOpenBillPrint: true,
 	// App Branding defaults
 	appName: "Yumi POS",
 	appVersion: "1.0.0",
@@ -120,6 +122,10 @@ export const getSettings = query({
 			resendFromEmail: settings.resendFromEmail ?? DEFAULTS.resendFromEmail,
 			receiptFooter: settings.receiptFooter ?? DEFAULTS.receiptFooter,
 			autoPrint: settings.autoPrint ?? DEFAULTS.autoPrint,
+			autoPrintKitchenReceipt:
+				settings.autoPrintKitchenReceipt ?? DEFAULTS.autoPrintKitchenReceipt,
+			allowOpenBillPrint:
+				settings.allowOpenBillPrint ?? DEFAULTS.allowOpenBillPrint,
 			// App Branding with fallbacks
 			appName: settings.appName ?? DEFAULTS.appName,
 			appVersion: settings.appVersion ?? DEFAULTS.appVersion,
@@ -179,6 +185,8 @@ export const updateSettings = mutation({
 		resendFromEmail: v.optional(v.string()),
 		receiptFooter: v.optional(v.string()),
 		autoPrint: v.optional(v.boolean()),
+		autoPrintKitchenReceipt: v.optional(v.boolean()),
+		allowOpenBillPrint: v.optional(v.boolean()),
 		// App Branding
 		appName: v.optional(v.string()),
 		appVersion: v.optional(v.string()),

@@ -123,6 +123,19 @@ export default defineSchema({
 		discountAmount: v.optional(v.number()),
 		taxAmount: v.optional(v.number()),
 		serviceChargeAmount: v.optional(v.number()),
+		receiptMeta: v.optional(
+			v.object({
+				promotionLabels: v.optional(v.array(v.string())),
+				adjustmentLines: v.optional(
+					v.array(
+						v.object({
+							label: v.string(),
+							amount: v.number(),
+						})
+					)
+				),
+			})
+		),
 	})
 		.index("by_status", ["status"])
 		.index("by_createdAt", ["createdAt"]),
@@ -161,6 +174,8 @@ export default defineSchema({
 		resendFromEmail: v.optional(v.string()),
 		receiptFooter: v.optional(v.string()),
 		autoPrint: v.optional(v.boolean()),
+		autoPrintKitchenReceipt: v.optional(v.boolean()),
+		allowOpenBillPrint: v.optional(v.boolean()),
 		// App Branding
 		appName: v.optional(v.string()), // e.g., "Murni POS", "Yumi POS"
 		appVersion: v.optional(v.string()), // e.g., "1.0.0"
