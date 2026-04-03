@@ -721,8 +721,9 @@ export function CheckoutSidebar({
 				)}
 
 				{activeStep === "menu" && (
-					<div className="flex gap-2">
-						{canPrintOpenBill && onPrintOpenBill && (
+					<div className="grid gap-2">
+						<div className="flex gap-2">
+							{canPrintOpenBill && onPrintOpenBill && (
 								<Button
 									onClick={onPrintOpenBill}
 									disabled={items.length === 0}
@@ -731,36 +732,42 @@ export function CheckoutSidebar({
 									variant="outline"
 								>
 									<Printer className="h-4 w-4" />
+								</Button>
+							)}
+							<Button
+								onClick={() => setActiveStep("customer")}
+								className="h-11 flex-1 text-xs font-bold bg-background text-foreground hover:bg-muted"
+								variant="outline"
+							>
+								Kembali
 							</Button>
-						)}
-						<Button
-							onClick={() => setActiveStep("customer")}
-							className="h-11 w-[92px] shrink-0 text-xs font-bold bg-background text-foreground hover:bg-muted"
-							variant="outline"
-						>
-							Kembali
-						</Button>
-						<Button
-							onClick={handleSaveOrderQuick}
-							disabled={items.length === 0 || isSubmitting || !isShiftOpen}
-							className="h-11 flex-1 text-[11px] sm:text-xs font-bold bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm"
-							variant="secondary"
-						>
-							{isSubmitting ? "Menyimpan..." : "Simpan Pesanan"}
-						</Button>
-						<Button
-							onClick={() => {
-								if (!isShiftOpen) {
-									toast.error("Buka shift terlebih dahulu di Dashboard");
-									return;
-								}
-								setActiveStep("payment");
-							}}
-							disabled={items.length === 0 || !isShiftOpen}
-							className="h-11 flex-1 text-[11px] sm:text-xs font-bold shadow-md"
-						>
-							Lanjut Bayar <ChevronRight className="ml-1 h-4 w-4" />
-						</Button>
+						</div>
+						<div className="grid grid-cols-2 gap-2">
+							<Button
+								onClick={handleSaveOrderQuick}
+								disabled={items.length === 0 || isSubmitting || !isShiftOpen}
+								className="h-11 min-w-0 px-3 text-[11px] sm:text-xs font-bold bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm"
+								variant="secondary"
+							>
+								<span className="truncate">
+									{isSubmitting ? "Menyimpan..." : "Simpan Pesanan"}
+								</span>
+							</Button>
+							<Button
+								onClick={() => {
+									if (!isShiftOpen) {
+										toast.error("Buka shift terlebih dahulu di Dashboard");
+										return;
+									}
+									setActiveStep("payment");
+								}}
+								disabled={items.length === 0 || !isShiftOpen}
+								className="h-11 min-w-0 px-3 text-[11px] sm:text-xs font-bold shadow-md"
+							>
+								<span className="truncate">Lanjut Bayar</span>
+								<ChevronRight className="ml-1 h-4 w-4 shrink-0" />
+							</Button>
+						</div>
 					</div>
 				)}
 
