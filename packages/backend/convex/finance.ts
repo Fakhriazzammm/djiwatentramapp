@@ -9,6 +9,55 @@ import {
 	isSettledOrder,
 } from "./financialMetrics";
 
+type ProductLookup = Record<
+	string,
+	{
+		productName: string;
+		categoryName: string;
+	}
+>;
+
+type ShiftReportDetail = {
+	totalRevenue: number;
+	totalGrossSales: number;
+	totalDiscount: number;
+	totalExpenses: number;
+	totalItemsSold: number;
+	posRevenue: number;
+	bookingRevenue: number;
+	cashRevenue: number;
+	qrisRevenue: number;
+	otherRevenue: number;
+	orderCount: number;
+	bookingCount: number;
+	paymentMethods: Record<string, number>;
+	productBreakdown: Array<{
+		categoryName: string;
+		totalQuantity: number;
+		items: Array<{
+			productName: string;
+			quantity: number;
+		}>;
+	}>;
+	topProducts: Array<{
+		productName: string;
+		quantity: number;
+	}>;
+	expenseBreakdown: Array<{
+		category: string;
+		amount: number;
+	}>;
+	recentTransactions: Array<{
+		type: "pos" | "booking";
+		id: string;
+		amount: number;
+		status: string;
+		time: number;
+		name: string;
+		paymentMethod?: string;
+	}>;
+};
+
 // Helper to get start/end of a month
 function getMonthRange(year: number, month: number) {
 	const start = new Date(year, month, 1, 0, 0, 0, 0).getTime();
@@ -145,6 +194,261 @@ async function buildShiftSummary(
 		cashRevenue,
 		qrisRevenue,
 		totalDiscount,
+	};
+}
+
+async function buildProductLookup(ctx: QueryCtx): Promise<ProductLookup> {
+	const [categories, products] = await Promise.all([
+		ctx.db.query("categories").collect(),
+		ctx.db.query("products").collect(),
+	]);
+
+	const categoryMap = new Map(
+		categories.map((category) => [category._id, category.name]),
+	);
+
+	return products.reduce<ProductLookup>((lookup, product) => {
+		lookup[product._id] = {
+			productName: product.name,
+			categoryName: categoryMap.get(product.categoryId) ?? "Lainnya",
+		};
+		return lookup;
+	}, {});
+}
+
+async function buildShiftReportDetail(
+	ctx: QueryCtx,
+	startTime: number,
+	endTime: number,
+	productLookup: ProductLookup,
+	shiftDoc?: {
+		summary?: {
+			totalRevenue: number;
+			totalExpenses: number;
+			totalItemsSold: number;
+			cashRevenue: number;
+			qrisRevenue: number;
+			totalDiscount: number;
+		};
+	},
+): Promise<ShiftReportDetail> {
+	const [orders, bookings, shiftTransactions] = await Promise.all([
+		ctx.db
+			.query("orders")
+			.withIndex("by_createdAt", (q) =>
+				q.gte("createdAt", startTime).lte("createdAt", endTime),
+			)
+			.collect(),
+		ctx.db
+			.query("bookingOrders")
+			.withIndex("by_createdAt", (q) =>
+				q.gte("createdAt", startTime).lte("createdAt", endTime),
+			)
+			.collect(),
+		ctx.db
+			.query("financialTransactions")
+			.withIndex("by_date", (q) => q.gte("date", startTime).lte("date", endTime))
+			.collect(),
+	]);
+
+	const productItems = new Map<
+		string,
+		{ productName: string; categoryName: string; quantity: number }
+	>();
+	const paymentMethods: Record<string, number> = {};
+	const expenseByCategory: Record<string, number> = {};
+	let totalGrossSales = 0;
+	let totalRevenue = 0;
+	let totalDiscount = 0;
+	let cashRevenue = 0;
+	let qrisRevenue = 0;
+	let otherRevenue = 0;
+	let totalItemsSold = 0;
+	let totalExpenses = 0;
+	let posRevenue = 0;
+	let bookingRevenue = 0;
+
+	const accumulatePayment = (method: string | null | undefined, amount: number) => {
+		const normalized = normalizePaymentMethod(method) || "lainnya";
+		paymentMethods[normalized] = (paymentMethods[normalized] || 0) + amount;
+
+		if (isCashMethod(normalized)) {
+			cashRevenue += amount;
+			return;
+		}
+
+		if (isNonCashMethod(normalized)) {
+			qrisRevenue += amount;
+			return;
+		}
+
+		otherRevenue += amount;
+	};
+
+	const addProductItem = (
+		productKey: string,
+		productName: string,
+		categoryName: string,
+		quantity: number,
+	) => {
+		const existing = productItems.get(productKey);
+		if (existing) {
+			existing.quantity += quantity;
+			return;
+		}
+
+		productItems.set(productKey, {
+			productName,
+			categoryName,
+			quantity,
+		});
+	};
+
+	for (const order of orders) {
+		if (!isSettledOrder(order)) continue;
+
+		const snapshot = getOrderFinancialSnapshot(order);
+		posRevenue += snapshot.finalCollected;
+		totalRevenue += snapshot.finalCollected;
+		totalGrossSales += snapshot.grossSales;
+		totalDiscount += snapshot.discount;
+		accumulatePayment(order.paymentMethod, snapshot.finalCollected);
+
+		for (const item of order.items || []) {
+			const quantity = item.quantity || 0;
+			const lookup =
+				productLookup[item.productId] ??
+				productLookup[String(item.productId)] ?? {
+					productName: item.productName,
+					categoryName: "Lainnya",
+				};
+
+			totalItemsSold += quantity;
+			addProductItem(
+				`${item.productId}`,
+				item.productName || lookup.productName,
+				lookup.categoryName,
+				quantity,
+			);
+		}
+	}
+
+	for (const booking of bookings) {
+		if (!isSettledBooking(booking)) continue;
+
+		const snapshot = getBookingFinancialSnapshot(booking);
+		bookingRevenue += snapshot.finalCollected;
+		totalRevenue += snapshot.finalCollected;
+		totalGrossSales += snapshot.grossSales;
+		accumulatePayment(booking.paymentMethod, snapshot.finalCollected);
+
+		for (const item of booking.items || []) {
+			const quantity = item.quantity || 0;
+			totalItemsSold += quantity;
+			addProductItem(
+				`booking:${item.productId}:${item.name}`,
+				item.name,
+				"Booking",
+				quantity,
+			);
+		}
+	}
+
+	for (const transaction of shiftTransactions) {
+		if (transaction.type !== "expense" || transaction.status !== "completed") {
+			continue;
+		}
+
+		totalExpenses += transaction.amount;
+		expenseByCategory[transaction.category] =
+			(expenseByCategory[transaction.category] || 0) + transaction.amount;
+	}
+
+	const groupedCategories = new Map<
+		string,
+		{ totalQuantity: number; items: Array<{ productName: string; quantity: number }> }
+	>();
+
+	for (const item of productItems.values()) {
+		const category = groupedCategories.get(item.categoryName) ?? {
+			totalQuantity: 0,
+			items: [],
+		};
+
+		category.totalQuantity += item.quantity;
+		category.items.push({
+			productName: item.productName,
+			quantity: item.quantity,
+		});
+		groupedCategories.set(item.categoryName, category);
+	}
+
+	const productBreakdown = Array.from(groupedCategories.entries())
+		.map(([categoryName, value]) => ({
+			categoryName,
+			totalQuantity: value.totalQuantity,
+			items: value.items.sort((a, b) => b.quantity - a.quantity),
+		}))
+		.sort((a, b) => b.totalQuantity - a.totalQuantity);
+
+	const topProducts = Array.from(productItems.values())
+		.sort((a, b) => b.quantity - a.quantity)
+		.slice(0, 3)
+		.map((item) => ({
+			productName: item.productName,
+			quantity: item.quantity,
+		}));
+
+	const recentTransactions = [
+		...orders
+			.filter(isSettledOrder)
+			.map((order) => ({
+				type: "pos" as const,
+				id: `${order._id}`,
+				amount: order.totalAmount,
+				status: order.status,
+				time: order.createdAt,
+				name: order.orderNumber,
+				paymentMethod: order.paymentMethod,
+			})),
+		...bookings
+			.filter(isSettledBooking)
+			.map((booking) => ({
+				type: "booking" as const,
+				id: `${booking._id}`,
+				amount: booking.totalAmount,
+				status: booking.paymentStatus ?? booking.bookingStatus,
+				time: booking.createdAt,
+				name: booking.customerName,
+				paymentMethod: booking.paymentMethod,
+			})),
+	]
+		.sort((a, b) => b.time - a.time)
+		.slice(0, 50);
+
+	return {
+		totalRevenue: shiftDoc?.summary?.totalRevenue ?? totalRevenue,
+		totalGrossSales,
+		totalDiscount: shiftDoc?.summary?.totalDiscount ?? totalDiscount,
+		totalExpenses: shiftDoc?.summary?.totalExpenses ?? totalExpenses,
+		totalItemsSold: shiftDoc?.summary?.totalItemsSold ?? totalItemsSold,
+		posRevenue,
+		bookingRevenue,
+		cashRevenue: shiftDoc?.summary?.cashRevenue ?? cashRevenue,
+		qrisRevenue: shiftDoc?.summary?.qrisRevenue ?? qrisRevenue,
+		otherRevenue,
+		orderCount: orders.filter(isSettledOrder).length,
+		bookingCount: bookings.filter(isSettledBooking).length,
+		paymentMethods,
+		productBreakdown,
+		topProducts,
+		expenseBreakdown: Object.entries(expenseByCategory)
+			.map(([category, amount]) => ({
+				category,
+				amount,
+			}))
+			.sort((a, b) => b.amount - a.amount),
+		recentTransactions,
 	};
 }
 
@@ -723,6 +1027,75 @@ export const getHistoricalShifts = query({
 	},
 });
 
+export const getShiftReportTable = query({
+	args: {
+		startDate: v.optional(v.number()),
+		endDate: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const now = Date.now();
+		const endBoundary = args.endDate ?? now;
+		const shiftsQuery =
+			args.startDate !== undefined || args.endDate !== undefined
+				? ctx.db.query("shifts").withIndex("by_startTime", (q) => {
+						if (args.startDate !== undefined && args.endDate !== undefined) {
+							return q.gte("startTime", args.startDate).lte("startTime", args.endDate);
+						}
+						if (args.startDate !== undefined) {
+							return q.gte("startTime", args.startDate);
+						}
+						if (args.endDate !== undefined) {
+							return q.lte("startTime", args.endDate);
+						}
+						return q;
+				  })
+				: ctx.db.query("shifts").withIndex("by_startTime");
+
+		const shifts = await shiftsQuery.order("desc").collect();
+		const productLookup = await buildProductLookup(ctx);
+
+		return await Promise.all(
+			shifts.map(async (shift) => {
+				const effectiveEndTime = shift.endTime ?? Math.min(endBoundary, now);
+				const detail = await buildShiftReportDetail(
+					ctx,
+					shift.startTime,
+					effectiveEndTime,
+					productLookup,
+					shift,
+				);
+
+				return {
+					shiftId: shift._id,
+					shiftName: shift.shiftName,
+					cashierName: shift.cashierName,
+					teamMembers: shift.teamMembers ?? "",
+					startTime: shift.startTime,
+					endTime: shift.endTime,
+					status: shift.endTime ? "SELESAI" : "AKTIF",
+					startingCash: shift.startingCash,
+					cashRevenue: detail.cashRevenue,
+					qrisRevenue: detail.qrisRevenue,
+					otherRevenue: detail.otherRevenue,
+					totalGrossSales: detail.totalGrossSales,
+					totalDiscount: detail.totalDiscount,
+					totalRevenue: detail.totalRevenue,
+					totalExpenses: detail.totalExpenses,
+					totalItemsSold: detail.totalItemsSold,
+					orderCount: detail.orderCount,
+					bookingCount: detail.bookingCount,
+					endingCashExpected:
+						shift.endingCashExpected ??
+						shift.startingCash + detail.cashRevenue - detail.totalExpenses,
+					endingCashPhysical: shift.endingCashPhysical,
+					nonCashExpected: shift.nonCashExpected ?? detail.qrisRevenue,
+					nonCashConfirmed: shift.nonCashConfirmed,
+				};
+			}),
+		);
+	},
+});
+
 // Get financial summary for a period
 export const getFinancialSummary = query({
 	args: {
@@ -908,72 +1281,49 @@ export const getShiftDetails = query({
 	handler: async (ctx, args) => {
 		const endTime = args.endTime ?? Date.now();
 		const { startTime } = args;
+		const productLookup = await buildProductLookup(ctx);
 		const shiftDoc = await ctx.db
 			.query("shifts")
 			.withIndex("by_startTime", (q) => q.eq("startTime", startTime))
 			.first();
-
-		// 1. Fetch POS orders (Indexed by createdAt)
-		const orders = await ctx.db
-			.query("orders")
-			.withIndex("by_createdAt", (q) => q.gte("createdAt", startTime).lte("createdAt", endTime))
-			.collect();
-
-		// 2. Fetch bookings (Indexed by createdAt)
-		const bookings = await ctx.db
-			.query("bookingOrders")
-			.withIndex("by_createdAt", (q) => q.gte("createdAt", startTime).lte("createdAt", endTime))
-			.collect();
-
-		const summary = await buildShiftSummary(ctx, startTime, endTime);
-		const posRevenue = orders
-			.filter((o) => o.status === "completed" || o.status === "paid")
-			.reduce((sum, o) => sum + o.totalAmount, 0);
-		const bookingRevenue = bookings
-			.filter(
-				(b) =>
-					b.paymentStatus === "paid" ||
-					b.bookingStatus === "confirmed" ||
-					b.bookingStatus === "completed"
-			)
-			.reduce((sum, b) => sum + b.totalAmount, 0);
-		const paymentMethods: Record<string, number> = {};
-
-		orders.filter(o => o.status === "completed" || o.status === "paid").forEach(o => {
-			const method = normalizePaymentMethod(o.paymentMethod) || "unknown";
-			paymentMethods[method] = (paymentMethods[method] || 0) + o.totalAmount;
-		});
-
-		bookings.filter(b => b.paymentStatus === "paid" || b.bookingStatus === "confirmed" || b.bookingStatus === "completed").forEach(b => {
-			const method = normalizePaymentMethod(b.paymentMethod) || "unknown";
-			paymentMethods[method] = (paymentMethods[method] || 0) + b.totalAmount;
-		});
+		const detail = await buildShiftReportDetail(
+			ctx,
+			startTime,
+			endTime,
+			productLookup,
+			shiftDoc ?? undefined,
+		);
 
 		return {
 			startTime,
 			endTime,
 			shiftDoc,
-			posRevenue,
-			bookingRevenue,
-			totalRevenue: posRevenue + bookingRevenue,
-			cashRevenue: summary.cashRevenue,
-			qrisRevenue: summary.qrisRevenue,
-			totalDiscount: summary.totalDiscount,
-			totalExpenses: summary.totalExpenses,
+			posRevenue: detail.posRevenue,
+			bookingRevenue: detail.bookingRevenue,
+			totalRevenue: detail.totalRevenue,
+			totalGrossSales: detail.totalGrossSales,
+			cashRevenue: detail.cashRevenue,
+			qrisRevenue: detail.qrisRevenue,
+			otherRevenue: detail.otherRevenue,
+			totalDiscount: detail.totalDiscount,
+			totalExpenses: detail.totalExpenses,
+			totalItemsSold: detail.totalItemsSold,
 			endingCashExpected:
 				shiftDoc?.endingCashExpected ??
-				(shiftDoc ? shiftDoc.startingCash + summary.cashRevenue - summary.totalExpenses : 0),
+				(shiftDoc
+					? shiftDoc.startingCash + detail.cashRevenue - detail.totalExpenses
+					: 0),
 			endingCashPhysical: shiftDoc?.endingCashPhysical,
-			nonCashExpected: shiftDoc?.nonCashExpected ?? summary.qrisRevenue,
+			nonCashExpected: shiftDoc?.nonCashExpected ?? detail.qrisRevenue,
 			nonCashConfirmed: shiftDoc?.nonCashConfirmed,
 			cashBreakdown: shiftDoc?.cashBreakdown,
-			paymentMethods,
-			orderCount: orders.length,
-			bookingCount: bookings.length,
-			recentTransactions: [
-				...orders.map(o => ({ type: "pos", id: o._id, amount: o.totalAmount, status: o.status, time: o.createdAt, name: o.orderNumber })),
-				...bookings.map(b => ({ type: "booking", id: b._id, amount: b.totalAmount, status: b.paymentStatus, time: b.createdAt, name: b.customerName }))
-			].sort((a, b) => b.time - a.time).slice(0, 50)
+			paymentMethods: detail.paymentMethods,
+			orderCount: detail.orderCount,
+			bookingCount: detail.bookingCount,
+			productBreakdown: detail.productBreakdown,
+			topProducts: detail.topProducts,
+			expenseBreakdown: detail.expenseBreakdown,
+			recentTransactions: detail.recentTransactions,
 		};
 	},
 });

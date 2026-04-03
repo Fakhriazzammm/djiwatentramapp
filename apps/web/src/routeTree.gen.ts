@@ -30,6 +30,7 @@ import { Route as AdminBarRouteImport } from './routes/admin/bar'
 import { Route as AdminAiChatRouteImport } from './routes/admin/ai-chat'
 import { Route as AdminFinanceRouteRouteImport } from './routes/admin/finance/route'
 import { Route as AdminFinanceIndexRouteImport } from './routes/admin/finance/index'
+import { Route as AdminFinanceShiftReportsRouteImport } from './routes/admin/finance/shift-reports'
 import { Route as AdminFinanceTransactionsRouteRouteImport } from './routes/admin/finance/transactions/route'
 import { Route as AdminFinanceReportsRouteRouteImport } from './routes/admin/finance/reports/route'
 
@@ -150,6 +151,12 @@ const AdminFinanceIndexRoute = AdminFinanceIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminFinanceRouteRoute,
 } as any)
+const AdminFinanceShiftReportsRoute =
+  AdminFinanceShiftReportsRouteImport.update({
+    id: '/shift-reports',
+    path: '/shift-reports',
+    getParentRoute: () => AdminFinanceRouteRoute,
+  } as any)
 const AdminFinanceTransactionsRouteRoute =
   AdminFinanceTransactionsRouteRouteImport.update({
     id: '/transactions',
@@ -186,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
+  '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
 }
 export interface FileRoutesByTo {
@@ -209,6 +217,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
+  '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/finance': typeof AdminFinanceIndexRoute
 }
 export interface FileRoutesById {
@@ -235,6 +244,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
+  '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
 }
 export interface FileRouteTypes {
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
+    | '/admin/finance/shift-reports'
     | '/admin/finance/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -285,6 +296,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
+    | '/admin/finance/shift-reports'
     | '/admin/finance'
   id:
     | '__root__'
@@ -310,6 +322,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
+    | '/admin/finance/shift-reports'
     | '/admin/finance/'
   fileRoutesById: FileRoutesById
 }
@@ -471,6 +484,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFinanceIndexRouteImport
       parentRoute: typeof AdminFinanceRouteRoute
     }
+    '/admin/finance/shift-reports': {
+      id: '/admin/finance/shift-reports'
+      path: '/shift-reports'
+      fullPath: '/admin/finance/shift-reports'
+      preLoaderRoute: typeof AdminFinanceShiftReportsRouteImport
+      parentRoute: typeof AdminFinanceRouteRoute
+    }
     '/admin/finance/transactions': {
       id: '/admin/finance/transactions'
       path: '/transactions'
@@ -491,12 +511,14 @@ declare module '@tanstack/react-router' {
 interface AdminFinanceRouteRouteChildren {
   AdminFinanceReportsRouteRoute: typeof AdminFinanceReportsRouteRoute
   AdminFinanceTransactionsRouteRoute: typeof AdminFinanceTransactionsRouteRoute
+  AdminFinanceShiftReportsRoute: typeof AdminFinanceShiftReportsRoute
   AdminFinanceIndexRoute: typeof AdminFinanceIndexRoute
 }
 
 const AdminFinanceRouteRouteChildren: AdminFinanceRouteRouteChildren = {
   AdminFinanceReportsRouteRoute: AdminFinanceReportsRouteRoute,
   AdminFinanceTransactionsRouteRoute: AdminFinanceTransactionsRouteRoute,
+  AdminFinanceShiftReportsRoute: AdminFinanceShiftReportsRoute,
   AdminFinanceIndexRoute: AdminFinanceIndexRoute,
 }
 

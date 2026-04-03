@@ -30,6 +30,7 @@ import {
 	Settings,
 	Sparkles,
 	User,
+	Users,
 	Wallet,
 	X,
 	ArrowLeft,
@@ -57,6 +58,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/inventory": "Inventaris",
 	"/admin/finance": "Keuangan",
 	"/admin/finance/reports": "Laporan Keuangan",
+	"/admin/finance/shift-reports": "Laporan Shift",
 	"/admin/finance/transactions": "Riwayat Transaksi",
 	"/admin/orders": "Pesanan",
 	"/admin/discounts": "Promosi",
@@ -113,6 +115,7 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/finance", icon: Wallet, label: "Keuangan" },
 			{ to: "/admin/finance/transactions", icon: ClipboardList, label: "Transaksi" },
 			{ to: "/admin/finance/reports", icon: FileBarChart, label: "Laporan" },
+			{ to: "/admin/finance/shift-reports", icon: Users, label: "Laporan Shift" },
 			{ to: "/admin/hpp-calculator", icon: Calculator, label: "HPP" },
 		],
 	},
@@ -142,6 +145,7 @@ const QUICK_MENU_ITEMS = QUICK_MENU_SECTIONS.flatMap((s) => s.items);
 const FINANCE_PATHS = [
 	"/admin/finance",
 	"/admin/finance/reports",
+	"/admin/finance/shift-reports",
 	"/admin/finance/transactions",
 	"/admin/hpp-calculator",
 ];
@@ -332,6 +336,12 @@ function AdminLayout() {
 								to="/admin/finance/reports"
 							/>
 							<DesktopNavLink
+								icon={<Users />}
+								isCollapsed={isCollapsed}
+								label="Laporan Shift"
+								to="/admin/finance/shift-reports"
+							/>
+							<DesktopNavLink
 								icon={<Calculator />}
 								isCollapsed={isCollapsed}
 								label="HPP Kalkulator"
@@ -388,6 +398,11 @@ function AdminLayout() {
 												icon={<FileBarChart />}
 												label="Laporan"
 												to="/admin/finance/reports"
+											/>
+											<DesktopSubNavLink
+												icon={<Users />}
+												label="Laporan Shift"
+												to="/admin/finance/shift-reports"
 											/>
 											<DesktopSubNavLink
 												icon={<Calculator />}
