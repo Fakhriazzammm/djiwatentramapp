@@ -93,7 +93,11 @@ export function FinancialReports() {
 			toast.success("Laporan berhasil dikirim ke email admin");
 		} catch (error) {
 			console.error("Daily summary email failed:", error);
-			toast.error("Gagal kirim email laporan. Cek konfigurasi Resend.");
+			const message =
+				error instanceof Error
+					? error.message
+					: "Gagal kirim email laporan. Cek konfigurasi Resend.";
+			toast.error(message);
 		} finally {
 			setIsSendingEmail(false);
 		}

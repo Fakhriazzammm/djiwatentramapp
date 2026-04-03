@@ -25,6 +25,7 @@ import type * as orders from "../orders.js";
 import type * as private_data from "../private_data.js";
 import type * as products from "../products.js";
 import type * as reportsEmail from "../reportsEmail.js";
+import type * as resendWebhook from "../resendWebhook.js";
 import type * as roles from "../roles.js";
 import type * as scheduledReports from "../scheduledReports.js";
 import type * as seed from "../seed.js";
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   private_data: typeof private_data;
   products: typeof products;
   reportsEmail: typeof reportsEmail;
+  resendWebhook: typeof resendWebhook;
   roles: typeof roles;
   scheduledReports: typeof scheduledReports;
   seed: typeof seed;

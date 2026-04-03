@@ -2230,8 +2230,12 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				} catch (emailError) {
 					console.error("Shift report email failed:", emailError);
 					toast.success("Shift berhasil diakhiri");
+					const message =
+						emailError instanceof Error
+							? emailError.message
+							: "Laporan shift gagal dikirim email. Cek konfigurasi Resend.";
 					toast.warning(
-						"Laporan shift gagal dikirim email. Cek konfigurasi Resend."
+						message
 					);
 				}
 			}

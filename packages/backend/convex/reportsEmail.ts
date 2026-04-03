@@ -77,28 +77,55 @@ async function sendEmail(params: {
 		: "onboarding@resend.dev";
 	const to = await getRecipients(params.ctx, params.to);
 
+	const requestPayload = {
+		from,
+		to,
+		subject: params.subject,
+		html: params.html,
+		text: params.text,
+	};
+
 	const response = await fetch(RESEND_ENDPOINT, {
 		method: "POST",
 		headers: {
 			Authorization: `Bearer ${apiKey}`,
 			"Content-Type": "application/json",
 		},
-		body: JSON.stringify({
-			from,
-			to,
-			subject: params.subject,
-			html: params.html,
-			text: params.text,
-		}),
+		body: JSON.stringify(requestPayload),
 	});
 
 	const result = await response.json();
 	if (!response.ok) {
-		const message =
+		const rawMessage =
 			typeof result?.message === "string"
 				? result.message
 				: "Gagal mengirim email via Resend.";
-		throw new ConvexError(message);
+		const sandboxMatch = rawMessage.match(/\(([^\s@]+@[^\s@]+\.[^\s@]+)\)/);
+		if (rawMessage.includes("You can only send testing emails to your own email address") && sandboxMatch) {
+			const sandboxRecipient = sandboxMatch[1].toLowerCase();
+			const retryResponse = await fetch(RESEND_ENDPOINT, {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${apiKey}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					...requestPayload,
+					to: [sandboxRecipient],
+				}),
+			});
+			const retryResult = await retryResponse.json();
+			if (retryResponse.ok) {
+				return {
+					...retryResult,
+					_fallbackRecipient: sandboxRecipient,
+				};
+			}
+			throw new ConvexError(
+				`Resend masih mode testing. Email hanya bisa dikirim ke ${sandboxRecipient}.`
+			);
+		}
+		throw new ConvexError(rawMessage);
 	}
 
 	return result;

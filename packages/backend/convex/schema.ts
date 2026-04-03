@@ -713,4 +713,19 @@ export default defineSchema({
 		peoplePerTable: v.number(),
 		notes: v.optional(v.string()),
 	}).index("by_slug_date", ["slug", "date"]),
+
+	// Resend webhook events (delivery status, bounce, complaint, dll)
+	resendWebhookEvents: defineTable({
+		provider: v.literal("resend"),
+		eventType: v.string(),
+		emailId: v.optional(v.string()),
+		webhookId: v.optional(v.string()),
+		createdAt: v.optional(v.number()),
+		receivedAt: v.number(),
+		signatureValid: v.boolean(),
+		payload: v.any(),
+	})
+		.index("by_eventType", ["eventType"])
+		.index("by_emailId", ["emailId"])
+		.index("by_receivedAt", ["receivedAt"]),
 });
