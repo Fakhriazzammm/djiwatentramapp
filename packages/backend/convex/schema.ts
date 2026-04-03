@@ -158,6 +158,7 @@ export default defineSchema({
 		storeName: v.optional(v.string()),
 		storeAddress: v.optional(v.string()),
 		storePhone: v.optional(v.string()),
+		resendFromEmail: v.optional(v.string()),
 		receiptFooter: v.optional(v.string()),
 		autoPrint: v.optional(v.boolean()),
 		// App Branding

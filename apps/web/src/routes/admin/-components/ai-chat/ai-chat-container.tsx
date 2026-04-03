@@ -236,7 +236,10 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			const pendingOrderCount = orders?.filter((o: any) => o.status === "pending").length || 0;
 			let context = "";
 			if (lowStockItems.length > 0) {
-				context += `\nKRITIS: Ada ${lowStockItems.length} item stok rendah: ${lowStockItems.slice(0,3).map((i:any)=>i.name).join(", ")}.`;
+				context += `\nKRITIS: Ada ${lowStockItems.length} item stok rendah: ${lowStockItems
+					.slice(0, 3)
+					.map((i: any) => i.ingredientName || i.name || "Item")
+					.join(", ")}.`;
 			}
 			if (pendingOrderCount > 0) {
 				context += `\nPERHATIAN: Ada ${pendingOrderCount} pesanan baru yang belum diproses.`;

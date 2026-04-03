@@ -1,6 +1,6 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import {
 	AlertCircle,
 	Banknote,
@@ -2051,6 +2051,7 @@ function KasTab({ onClose }: { onClose: () => void }) {
 function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const startShift = useMutation(api.finance.startShift);
 	const endShift = useMutation(api.finance.endShift);
+	const sendShiftClosureEmail = useAction(api.reportsEmail.sendShiftClosureEmail);
 	
 	const [shiftType, setShiftType] = useState<"mulai" | "akhiri">("mulai");
 	
@@ -2206,7 +2207,33 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					cashBreakdown: breakdown as any,
 					notes,
 				});
-				toast.success("Shift berhasil diakhiri");
+				try {
+					await sendShiftClosureEmail({
+						storeName: siteSettings?.storeName || "Toko",
+						shiftName:
+							shiftStatus?.shiftInfo?.shiftName || shiftName || "Shift",
+						cashierName:
+							shiftStatus?.shiftInfo?.cashierName || cashierName || "Kasir",
+						startTime: shiftStatus?.ongoingShift?.startTime || Date.now(),
+						endTime: Date.now(),
+						startingCash: shiftStatus?.ongoingShift?.startingCash || 0,
+						endingCashPhysical: Number(cashInRegister),
+						totalRevenue: shiftCash + shiftQris,
+						totalExpenses: shiftExpense,
+						totalItemsSold: shiftItems,
+						cashRevenue: shiftCash,
+						qrisRevenue: shiftQris,
+						totalDiscount: 0,
+						notes,
+					});
+					toast.success("Shift berhasil diakhiri dan email laporan terkirim");
+				} catch (emailError) {
+					console.error("Shift report email failed:", emailError);
+					toast.success("Shift berhasil diakhiri");
+					toast.warning(
+						"Laporan shift gagal dikirim email. Cek konfigurasi Resend."
+					);
+				}
 			}
 			
 			setAmount("");

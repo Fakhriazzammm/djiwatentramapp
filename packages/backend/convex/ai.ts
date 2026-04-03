@@ -2239,78 +2239,138 @@ export const generateBusinessBriefing = action({
 		context: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		try {
-			// Determine greeting based on local hour
-			let greeting = "Selamat pagi";
-			if (args.localHour !== undefined) {
-				if (args.localHour >= 11 && args.localHour < 15) greeting = "Selamat siang";
-				else if (args.localHour >= 15 && args.localHour < 18) greeting = "Selamat sore";
-				else if (args.localHour >= 18 || args.localHour < 4) greeting = "Selamat malam";
+		// Determine greeting based on local hour
+		let greeting = "Selamat pagi";
+		if (args.localHour !== undefined) {
+			if (args.localHour >= 11 && args.localHour < 15) greeting = "Selamat siang";
+			else if (args.localHour >= 15 && args.localHour < 18) greeting = "Selamat sore";
+			else if (args.localHour >= 18 || args.localHour < 4) greeting = "Selamat malam";
+		}
+
+		// Get time ranges for today and yesterday
+		const now = new Date();
+		const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+		const yesterdayStart = todayStart - 24 * 60 * 60 * 1000;
+		const yesterdayEnd = todayStart - 1;
+		const todayIso = new Date(todayStart).toISOString().split("T")[0];
+
+		const formatCurrency = (value: number) => `Rp ${Math.round(value || 0).toLocaleString("id-ID")}`;
+		const formatPercent = (value: number) => `${Math.abs(value || 0).toFixed(1)}%`;
+
+		// Gather all relevant data once so fallback can still be complete
+		const [
+			financeSummary,
+			todayFinance,
+			yesterdayFinance,
+			inventory,
+			orders,
+			bookingOrdersRaw,
+			pendingTasks,
+		] = await Promise.all([
+			ctx.runQuery(api.finance.getFinancialSummary, {}),
+			ctx.runQuery(api.finance.getFinancialSummary, { startDate: todayStart }),
+			ctx.runQuery(api.finance.getFinancialSummary, { startDate: yesterdayStart, endDate: yesterdayEnd }),
+			ctx.runQuery(api.inventory.getInventory),
+			ctx.runQuery(api.orders.getOrders, { limit: 50 }),
+			ctx.runQuery(api.booking.getBookingOrders, { slug: "booking" }),
+			ctx.runQuery(api.ai.getPendingTasks),
+		]);
+
+		const bookingOrders = Array.isArray(bookingOrdersRaw) ? bookingOrdersRaw : [];
+		const lowStockItems = inventory.filter((i) => i.quantity <= i.lowStockThreshold);
+		const todayBookings = bookingOrders.filter((b: any) => b.bookingDate === todayIso);
+
+		const productSales: Record<string, number> = {};
+		orders.forEach((order) => {
+			if (order.status === "paid" || order.status === "completed") {
+				order.items.forEach((item) => {
+					productSales[item.productName] = (productSales[item.productName] || 0) + item.quantity;
+				});
 			}
+		});
+		const trendingProduct = Object.entries(productSales)
+			.sort(([, a], [, b]) => b - a)[0]?.[0] || "belum ada data";
 
-			// Get time ranges for today and yesterday
-			const now = new Date();
-			const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-			const yesterdayStart = todayStart - 24 * 60 * 60 * 1000;
-			const yesterdayEnd = todayStart - 1;
-
-			// Gather all relevant data for briefing
-			const [
-				financeSummary,
-				todayFinance,
-				yesterdayFinance,
-				inventory,
-				orders,
-				bookingOrders,
-				pendingTasks,
-			] = await Promise.all([
-				ctx.runQuery(api.finance.getFinancialSummary, {}), // Overall balance
-				ctx.runQuery(api.finance.getFinancialSummary, { startDate: todayStart }),
-				ctx.runQuery(api.finance.getFinancialSummary, { startDate: yesterdayStart, endDate: yesterdayEnd }),
-				ctx.runQuery(api.inventory.getInventory),
-				ctx.runQuery(api.orders.getOrders, { limit: 50 }),
-				ctx.runQuery(api.booking.getBookingOrders, { slug: "booking" }),
-				ctx.runQuery(api.ai.getPendingTasks),
-			]);
-
-			const lowStockItems = inventory.filter(i => i.quantity <= i.lowStockThreshold);
-			const todayBookings = (bookingOrders as any[]).filter(b => 
-				b.bookingDate === new Date(todayStart).toISOString().split("T")[0]
-			);
-
-			// Calculate a simple "trending product" from recent orders
-			const productSales: Record<string, number> = {};
-			orders.forEach(order => {
-				if (order.status === "paid" || order.status === "completed") {
-					order.items.forEach(item => {
-						productSales[item.productName] = (productSales[item.productName] || 0) + item.quantity;
-					});
-				}
-			});
-			const trendingProduct = Object.entries(productSales)
-				.sort(([, a], [, b]) => b - a)[0]?.[0] || "belum ada data";
-
-			// Calculate growth today vs yesterday
-			const revenueToday = todayFinance.totalIncome;
-			const revenueYesterday = yesterdayFinance.totalIncome;
-			const revenueGrowth = revenueYesterday === 0 
-				? (revenueToday > 0 ? 100 : 0) 
+		const revenueToday = todayFinance.totalIncome || 0;
+		const revenueYesterday = yesterdayFinance.totalIncome || 0;
+		const revenueGrowth =
+			revenueYesterday === 0
+				? revenueToday > 0
+					? 100
+					: 0
 				: ((revenueToday - revenueYesterday) / revenueYesterday) * 100;
 
-			const dataContext = {
-				revenueToday,
-				revenueYesterday,
-				revenueGrowth,
-				lowStockCount: lowStockItems.length,
-				lowStockNames: lowStockItems.slice(0, 5).map(i => `${i.ingredientName} (${i.quantity} ${i.unit})`).join(", "),
-				todayBookingsCount: todayBookings.length,
-				todayBookingsNames: todayBookings.slice(0, 3).map(b => `${b.customerName} (${b.guestCount} org)`).join(", "),
-				balance: financeSummary.netBalance,
-				pendingTasksCount: pendingTasks.length,
-				pendingTasksTitles: (pendingTasks as any[]).slice(0, 3).map(t => t.title).join(", "),
-				trendingProduct,
-			};
+		const dataContext = {
+			revenueToday,
+			revenueYesterday,
+			revenueGrowth,
+			lowStockCount: lowStockItems.length,
+			lowStockNames: lowStockItems
+				.slice(0, 5)
+				.map((i) => `${i.ingredientName} (${i.quantity} ${i.unit})`)
+				.join(", "),
+			todayBookingsCount: todayBookings.length,
+			todayBookingsNames: todayBookings
+				.slice(0, 3)
+				.map((b: any) => `${b.customerName} (${b.guestCount} org)`)
+				.join(", "),
+			balance: financeSummary.netBalance || 0,
+			pendingTasksCount: pendingTasks.length,
+			pendingTasksTitles: (pendingTasks as any[])
+				.slice(0, 3)
+				.map((t) => t.title)
+				.join(", "),
+			trendingProduct,
+		};
 
+		const actionSuggestions = [
+			"[SUGGEST: Laporan Lengkap | Berikan laporan performa bisnis saya secara mendalam]",
+			dataContext.lowStockCount > 0
+				? "[SUGGEST: Belanja Stok | Ingatkan saya belanja stok untuk item kritis sekarang]"
+				: "[SUGGEST: Cek Stok Rendah | Item apa saja yang stoknya hampir habis?]",
+			dataContext.todayBookingsCount > 0
+				? "[SUGGEST: Tinjau Reservasi | Tampilkan daftar booking hari ini dan status pembayarannya]"
+				: "[SUGGEST: Cek Reservasi | Tampilkan daftar booking untuk hari ini]",
+			"[SUGGEST: Analisis Omzet | Mengapa omzet hari ini berubah dibanding kemarin?]",
+		];
+
+		const fallbackBriefing = `${greeting}! Senang bertemu Anda lagi. Saya siap membantu mengelola toko hari ini.
+
+STATUS BISNIS (SAAT INI):
+- Kondisi saat ini: ${revenueToday > 0 ? "Penjualan sudah berjalan dan ada transaksi masuk hari ini." : "Aktivitas penjualan hari ini masih rendah, saatnya dorong penjualan."}
+
+PERFORMA KEUANGAN:
+- Omzet hari ini: ${formatCurrency(dataContext.revenueToday)}
+- Omzet kemarin: ${formatCurrency(dataContext.revenueYesterday)} (${dataContext.revenueGrowth >= 0 ? "naik" : "turun"} ${formatPercent(dataContext.revenueGrowth)})
+- Saldo kas bersih: ${formatCurrency(dataContext.balance)}
+
+OPERASIONAL & STOK:
+- ${
+			dataContext.lowStockCount > 0
+				? `Ada ${dataContext.lowStockCount} item stok rendah: ${dataContext.lowStockNames}`
+				: "Semua stok aman, tidak ada item kritis saat ini."
+		}
+
+RESERVASI HARI INI:
+- Jumlah booking: ${dataContext.todayBookingsCount}
+- ${
+			dataContext.todayBookingsCount > 0
+				? `Pelanggan terdekat: ${dataContext.todayBookingsNames}`
+				: "Belum ada reservasi untuk hari ini."
+		}
+
+INSIGHTS & ANALITIK:
+- Produk terlaris saat ini: ${dataContext.trendingProduct}
+- Tugas pending: ${dataContext.pendingTasksCount}${
+			dataContext.pendingTasksTitles ? ` (${dataContext.pendingTasksTitles})` : ""
+		}
+
+PENUTUP:
+Tetap semangat, performa bisnis Anda sudah terpantau dan siap dioptimalkan hari ini.
+
+Apa yang ingin Anda lakukan sekarang? ${actionSuggestions.join(" ")}`;
+
+		try {
 			return await safeSumoPodCall([
 				{
 					role: "system",
@@ -2320,27 +2380,27 @@ Gunakan data riil yang diberikan untuk memberikan ringkasan performa yang mendal
 
 FORMAT BRIEFING (WAJIB):
 1. Sapa dengan "${greeting}!".
-2. 📊 STATUS BISNIS (SAAT INI):
+2. STATUS BISNIS (SAAT INI):
    - Berikan ringkasan satu kalimat tentang kondisi toko saat ini (misal: "Toko sedang sibuk", "Omzet hari ini sangat baik", dll).
-3. 💰 PERFORMA KEUANGAN: 
+3. PERFORMA KEUANGAN: 
    - Omzet hari ini vs kemarin (sebutkan angka riil & persentase kenaikan/penurunan).
    - Total saldo kas bersih saat ini.
-4. 📦 OPERASIONAL & STOK: 
+4. OPERASIONAL & STOK: 
    - Sebutkan item stok yang kritis secara spesifik (nama & sisa jumlah).
    - Beritahu jika semua stok aman.
-5. 📅 RESERVASI HARI INI: 
+5. RESERVASI HARI INI: 
    - Sebutkan jumlah booking hari ini.
    - Jika ada booking, sebutkan nama-nama pelanggan pertama dan jumlah tamunya.
-6. 📊 INSIGHTS & ANALITIK: 
+6. INSIGHTS & ANALITIK: 
    - Sebutkan produk yang paling laku hari ini.
    - Informasikan jumlah tugas yang masih pending dan sebutkan judul tugas teratas.
-7. ✨ PENUTUP: Kalimat motivasi singkat yang disesuaikan dengan kondisi bisnis.
-8. 🚀 TOMBOL AKSI: Berikan 3-4 saran tombol aksi [SUGGEST: ...] yang relevan dengan data (contoh: [SUGGEST: 📦 Belanja Stok | Ingatkan saya untuk belanja stok yang hampir habis], [SUGGEST: 📈 Analisis Omzet | Mengapa omzet hari ini berubah dibanding kemarin?]).
+7. PENUTUP: Kalimat motivasi singkat yang disesuaikan dengan kondisi bisnis.
+8. TOMBOL AKSI: Berikan 3-4 saran tombol aksi [SUGGEST: ...] yang relevan dengan data (contoh: [SUGGEST: Belanja Stok | Ingatkan saya untuk belanja stok yang hampir habis], [SUGGEST: Analisis Omzet | Mengapa omzet hari ini berubah dibanding kemarin?]).
 
 ATURAN KETAT:
 - JANGAN gunakan bold (**). Gunakan TEKS BIASA.
 - Gunakan emoji yang banyak dan relevan agar menarik dibaca.
-- JANGAN gunakan format markdown list. Gunakan bullet emoji seperti • atau 🔹.
+- JANGAN gunakan format markdown list. Gunakan bullet sederhana seperti "-".
 - Pastikan semua angka uang diformat dengan Rp dan pemisah ribuan.
 - Berikan rincian nama item/pelanggan, jangan hanya angka.`,
 				},
@@ -2357,21 +2417,7 @@ ${args.context ? `- Konteks Tambahan: ${args.context}` : ""}`,
 			]);
 		} catch (error) {
 			console.error("generateDailyBriefing error:", error);
-			// Fallback with same logic
-			let greeting = "Selamat pagi";
-			if (args.localHour !== undefined) {
-				if (args.localHour >= 11 && args.localHour < 15) greeting = "Selamat siang";
-				else if (args.localHour >= 15 && args.localHour < 18) greeting = "Selamat sore";
-				else if (args.localHour >= 18 || args.localHour < 4) greeting = "Selamat malam";
-			}
-			return `${greeting}! Senang bertemu Anda lagi. Saya siap membantu mengelola toko hari ini.
-
-📊 STATUS BISNIS:
-• Omzet Kemarin: Rp 0
-• Stok: Semua aman
-• Reservasi: Tidak ada booking hari ini
-
-Apa yang ingin Anda lakukan sekarang? [SUGGEST: 📊 Laporan Lengkap | Berikan laporan performa bisnis saya secara mendalam] [SUGGEST: 📦 Cek Stok Rendah | Item apa saja yang stoknya hampir habis?] [SUGGEST: 📅 Cek Reservasi | Tampilkan daftar booking untuk hari ini]`;
+			return fallbackBriefing;
 		}
 	},
 });

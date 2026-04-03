@@ -1,11 +1,12 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
-import { useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { useState } from "react";
-import { Download, FileSpreadsheet, FileText, Printer, TrendingUp, ArrowLeftRight, Users, Image as ImageIcon } from "lucide-react";
+import { FileSpreadsheet, FileText, Printer, TrendingUp, ArrowLeftRight, Users, Image as ImageIcon, Mail } from "lucide-react";
 import { PeriodSelector, getRangeFromPeriod, type PeriodOption, type DateRange } from "./period-selector";
 import { ProfitLossReport } from "./profit-loss-report";
 import { CashFlowReport } from "./cash-flow-report";
 import { ShiftReport } from "./shift-report";
+import { toast } from "sonner";
 import {
 	exportProfitLossPDF,
 	exportCashFlowPDF,
@@ -29,6 +30,8 @@ export function FinancialReports() {
 	const [period, setPeriod] = useState<PeriodOption>("this_month");
 	const [dateRange, setDateRange] = useState<DateRange>(getRangeFromPeriod("this_month"));
 	const [isExporting, setIsExporting] = useState(false);
+	const [isSendingEmail, setIsSendingEmail] = useState(false);
+	const sendDailySummaryEmail = useAction(api.reportsEmail.sendDailySummaryEmail);
 
 	const settings = useQuery(api.site_settings.getSettings);
 	const storeName = settings?.storeName || "Toko";
@@ -66,6 +69,34 @@ export function FinancialReports() {
 
 	const handlePrint = () => {
 		window.print();
+	};
+
+	const handleSendEmail = async () => {
+		if (!plData || !cfData) {
+			toast.error("Data laporan belum siap");
+			return;
+		}
+
+		setIsSendingEmail(true);
+		try {
+			await sendDailySummaryEmail({
+				storeName,
+				periodLabel: dateRange.label,
+				totalIncome: plData.income.total,
+				totalExpense: plData.expense.total,
+				netProfit: plData.netProfit,
+				totalInflow: cfData.totalInflow,
+				totalOutflow: cfData.totalOutflow,
+				netCashFlow: cfData.netCashFlow,
+				transactionCount: plData.transactionCount || 0,
+			});
+			toast.success("Laporan berhasil dikirim ke email admin");
+		} catch (error) {
+			console.error("Daily summary email failed:", error);
+			toast.error("Gagal kirim email laporan. Cek konfigurasi Resend.");
+		} finally {
+			setIsSendingEmail(false);
+		}
 	};
 
 	const canExport = (activeTab === "profit_loss" && !!plData) ||
@@ -117,6 +148,15 @@ export function FinancialReports() {
 					>
 						<Printer className="h-3.5 w-3.5" />
 						Print
+					</button>
+					<button
+						type="button"
+						onClick={handleSendEmail}
+						disabled={!plData || !cfData || isSendingEmail}
+						className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-40 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400"
+					>
+						<Mail className="h-3.5 w-3.5" />
+						{isSendingEmail ? "Mengirim..." : "Kirim Email"}
 					</button>
 				</div>
 			</div>

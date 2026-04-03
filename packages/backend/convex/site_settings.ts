@@ -24,6 +24,7 @@ const DEFAULTS = {
 	storeName: "Coffee Shop",
 	storeAddress: "",
 	storePhone: "",
+	resendFromEmail: "",
 	receiptFooter: "Terima kasih atas kunjungan Anda!",
 	autoPrint: false,
 	// App Branding defaults
@@ -116,6 +117,7 @@ export const getSettings = query({
 			storeName: settings.storeName ?? DEFAULTS.storeName,
 			storeAddress: settings.storeAddress ?? DEFAULTS.storeAddress,
 			storePhone: settings.storePhone ?? DEFAULTS.storePhone,
+			resendFromEmail: settings.resendFromEmail ?? DEFAULTS.resendFromEmail,
 			receiptFooter: settings.receiptFooter ?? DEFAULTS.receiptFooter,
 			autoPrint: settings.autoPrint ?? DEFAULTS.autoPrint,
 			// App Branding with fallbacks
@@ -174,6 +176,7 @@ export const updateSettings = mutation({
 		storeName: v.optional(v.string()),
 		storeAddress: v.optional(v.string()),
 		storePhone: v.optional(v.string()),
+		resendFromEmail: v.optional(v.string()),
 		receiptFooter: v.optional(v.string()),
 		autoPrint: v.optional(v.boolean()),
 		// App Branding

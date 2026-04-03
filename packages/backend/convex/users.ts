@@ -1,6 +1,16 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeEmail(email: string) {
+	return email.trim().toLowerCase();
+}
+
+function isValidEmail(email: string) {
+	return EMAIL_REGEX.test(email);
+}
+
 // Simple password hashing (MVP: In production use bcrypt/argon2 via external action)
 // For now we store as plain text or simple hash to avoid heavy dependencies on Convex runtime without Actions
 // IMPORTANT: For a real app, use an Action to hash passwords safely.
@@ -17,10 +27,41 @@ export const getUsers = query({
 				return {
 					...user,
 					roleName: role?.name || "Unknown",
+					email: user.username,
 				};
 			})
 		);
 		return usersWithRoles;
+	},
+});
+
+export const getReportRecipientEmails = query({
+	args: {},
+	handler: async (ctx) => {
+		const [users, roles] = await Promise.all([
+			ctx.db.query("users").collect(),
+			ctx.db.query("roles").collect(),
+		]);
+
+		const roleMap = new Map(roles.map((role) => [role._id, role]));
+		const adminUsers = users.filter((user) => {
+			const role = roleMap.get(user.roleId);
+			if (!role) return false;
+			const roleName = (role.name || "").toLowerCase();
+			const isAdminRole =
+				roleName.includes("admin") || role.permissions.includes("all");
+			return isAdminRole && user.isActive;
+		});
+
+		const recipients = Array.from(
+			new Set(
+				adminUsers
+					.map((user) => normalizeEmail(user.username))
+					.filter((email) => isValidEmail(email))
+			)
+		);
+
+		return recipients;
 	},
 });
 
@@ -103,15 +144,21 @@ export const createUser = mutation({
 		authUserId: v.optional(v.string()), // Optional bind immediately
 	},
 	handler: async (ctx, args) => {
+		const username = normalizeEmail(args.username);
+		if (!isValidEmail(username)) {
+			throw new Error("Username harus berupa email yang valid");
+		}
+
 		const existing = await ctx.db
 			.query("users")
-			.withIndex("by_username", (q) => q.eq("username", args.username))
+			.withIndex("by_username", (q) => q.eq("username", username))
 			.first();
 		if (existing) {
 			throw new Error("Username already taken");
 		}
 		return await ctx.db.insert("users", {
 			...args,
+			username,
 			password: args.password || "", // Default empty if not provided
 			isActive: true, // Default active
 		});
@@ -126,6 +173,11 @@ export const bindProfile = mutation({
 		roleId: v.optional(v.id("roles")), // Optional default role
 	},
 	handler: async (ctx, args) => {
+		const email = normalizeEmail(args.email);
+		if (!isValidEmail(email)) {
+			throw new Error("Email tidak valid");
+		}
+
 		// Owner email for auto-admin assignment
 		const OWNER_EMAIL = "fakhriazzamm@gmail.com";
 
@@ -142,7 +194,7 @@ export const bindProfile = mutation({
 		// Check if username (email) exists to link
 		const existingByEmail = await ctx.db
 			.query("users")
-			.withIndex("by_username", (q) => q.eq("username", args.email))
+			.withIndex("by_username", (q) => q.eq("username", email))
 			.first();
 
 		if (existingByEmail) {
@@ -158,7 +210,7 @@ export const bindProfile = mutation({
 		let roleId = args.roleId;
 
 		// Auto-assign admin role for owner email
-		if (args.email === OWNER_EMAIL) {
+		if (email === OWNER_EMAIL) {
 			const adminRole = await ctx.db
 				.query("roles")
 				.withIndex("by_name", (q) => q.eq("name", "admin"))
@@ -191,7 +243,7 @@ export const bindProfile = mutation({
 		}
 
 		return await ctx.db.insert("users", {
-			username: args.email,
+			username: email,
 			name: args.name,
 			roleId,
 			authUserId: args.authUserId,

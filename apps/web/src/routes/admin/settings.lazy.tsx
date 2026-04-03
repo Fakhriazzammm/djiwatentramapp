@@ -252,6 +252,16 @@ const AVAILABLE_PERMISSIONS = [
 	{ id: "users:manage", label: "Kelola User & Role" },
 ];
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeEmail(email: string) {
+	return email.trim().toLowerCase();
+}
+
+function isValidEmail(email: string) {
+	return EMAIL_REGEX.test(normalizeEmail(email));
+}
+
 function SettingsPage() {
 	// Site Settings
 	const siteSettings = useQuery(api.site_settings.getSettings);
@@ -279,6 +289,7 @@ function SettingsPage() {
 		storeName: "Coffee Shop",
 		storeAddress: "",
 		storePhone: "",
+		resendFromEmail: "",
 		receiptFooter: "Terima kasih!",
 		autoPrint: false,
 		taxRate: 0,
@@ -379,6 +390,17 @@ function SettingsPage() {
 		},
 	});
 
+	const reportRecipients = useMemo(() => {
+		if (!users) return [];
+		return users
+			.filter((user: any) => {
+				const roleName = (user.roleName || "").toLowerCase();
+				return user.isActive && roleName.includes("admin");
+			})
+			.map((user: any) => normalizeEmail(user.username || user.email || ""))
+			.filter((email: string) => isValidEmail(email));
+	}, [users]);
+
 	useEffect(() => {
 		if (siteSettings) {
 			setLandingSettings({
@@ -396,6 +418,7 @@ function SettingsPage() {
 				storeName: siteSettings.storeName ?? "Coffee Shop",
 				storeAddress: siteSettings.storeAddress ?? "",
 				storePhone: siteSettings.storePhone ?? "",
+				resendFromEmail: siteSettings.resendFromEmail ?? "",
 				receiptFooter: siteSettings.receiptFooter ?? "Terima kasih!",
 				autoPrint: siteSettings.autoPrint ?? false,
 				taxRate: siteSettings.taxRate ?? 0,
@@ -463,12 +486,18 @@ function SettingsPage() {
 	};
 
 	const handleSave = async () => {
+		if (settings.resendFromEmail && !isValidEmail(settings.resendFromEmail)) {
+			toast.error("RESEND_FROM_EMAIL harus berupa alamat email yang valid");
+			return;
+		}
+
 		try {
 			const payload = {
 				...landingSettings,
 				storeName: settings.storeName,
 				storeAddress: settings.storeAddress,
 				storePhone: settings.storePhone,
+				resendFromEmail: normalizeEmail(settings.resendFromEmail),
 				receiptFooter: settings.receiptFooter,
 				autoPrint: settings.autoPrint,
 				// App Branding
@@ -526,16 +555,21 @@ function SettingsPage() {
 	const bindProfile = useMutation((api as any).users.bindProfile);
 
 	const handleCreateUser = async () => {
+		const normalizedEmail = normalizeEmail(newUser.username);
 		if (
-			!(newUser.username && newUser.password && newUser.name && newUser.roleId)
+			!(normalizedEmail && newUser.password && newUser.name && newUser.roleId)
 		) {
 			toast.error("Mohon lengkapi data user");
+			return;
+		}
+		if (!isValidEmail(normalizedEmail)) {
+			toast.error("Username harus berupa email yang valid");
 			return;
 		}
 		try {
 			// 1. Create User in Better Auth
 			const result = await authClient.signUp.email({
-				email: newUser.username, // Using username as email
+				email: normalizedEmail, // Using username as email
 				password: newUser.password,
 				name: newUser.name,
 			});
@@ -550,7 +584,7 @@ function SettingsPage() {
 				await bindProfile({
 					authUserId: result.data.user.id,
 					name: newUser.name,
-					email: newUser.username,
+					email: normalizedEmail,
 					roleId: newUser.roleId as Id<"roles">,
 				});
 				setNewUser({ username: "", password: "", name: "", roleId: "" });
@@ -1885,6 +1919,48 @@ function SettingsPage() {
 										</h4>
 									</div>
 									<div className="space-y-4">
+										<div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300">
+											<p className="font-semibold">Integrasi Resend</p>
+											<p className="mt-1">
+												Email laporan otomatis diambil dari pengguna <strong>role admin</strong> yang <strong>aktif</strong>.
+											</p>
+											<p className="mt-1">
+												Penerima saat ini:{" "}
+												{reportRecipients.length > 0
+													? reportRecipients.join(", ")
+													: "Belum ada admin aktif dengan email valid."}
+											</p>
+											<div className="mt-3 space-y-1.5">
+												<label
+													className="block font-medium text-[11px]"
+													htmlFor="resend-from-email"
+												>
+													RESEND_FROM_EMAIL (Pengirim)
+												</label>
+												<input
+													className="w-full rounded-lg border border-blue-200 bg-white/90 p-2 text-xs outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-900/40"
+													id="resend-from-email"
+													onChange={(e) =>
+														setSettings({
+															...settings,
+															resendFromEmail: normalizeEmail(e.target.value),
+														})
+													}
+													placeholder="reports@domainkamu.com"
+													type="email"
+													value={settings.resendFromEmail}
+												/>
+												<p className="text-[11px] opacity-80">
+													Wajib gunakan email/domain yang sudah verified di Resend.
+												</p>
+												{settings.resendFromEmail &&
+												!isValidEmail(settings.resendFromEmail) ? (
+													<p className="text-[11px] text-red-600 dark:text-red-400">
+														Format email pengirim belum valid.
+													</p>
+												) : null}
+											</div>
+										</div>
 										<div className="space-y-1.5">
 											<label
 												className="font-medium text-muted-foreground text-xs"
@@ -1914,12 +1990,20 @@ function SettingsPage() {
 												className="w-full rounded-xl bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
 												id="reg-username"
 												onChange={(e) =>
-													setNewUser({ ...newUser, username: e.target.value })
+													setNewUser({
+														...newUser,
+														username: normalizeEmail(e.target.value),
+													})
 												}
 												placeholder="budi@example.com"
-												type="text"
+												type="email"
 												value={newUser.username}
 											/>
+											{newUser.username && !isValidEmail(newUser.username) ? (
+												<p className="text-[11px] text-destructive">
+													Format email belum valid.
+												</p>
+											) : null}
 										</div>
 										<div className="space-y-2">
 											<label
@@ -2083,7 +2167,7 @@ function SettingsPage() {
 																	{user.name}
 																</p>
 																<p className="text-muted-foreground text-xs">
-																	{user.email}
+																	{user.username}
 																</p>
 															</div>
 														</div>
