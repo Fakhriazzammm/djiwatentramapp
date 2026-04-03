@@ -141,13 +141,36 @@ function MenuPage() {
 	const [shiftReminderOpen, setShiftReminderOpen] = useState(false);
 	const [shiftReminderState, setShiftReminderState] = useState<"soon" | "overdue" | null>(null);
 
-	// Periodically check printer connection and update time
+	// Periodically check printer connection and attempt silent auto reconnect.
 	useEffect(() => {
+		let cancelled = false;
+		let checking = false;
+
+		const tick = async () => {
+			if (checking) return;
+			checking = true;
+			try {
+				if (!bluetoothPrinter.isConnected()) {
+					await bluetoothPrinter.autoReconnectIfNeeded();
+				}
+				if (!cancelled) {
+					setIsPrinterConnected(bluetoothPrinter.isConnected());
+					setCurrentTime(new Date());
+				}
+			} finally {
+				checking = false;
+			}
+		};
+
+		void tick();
 		const interval = setInterval(() => {
-			setIsPrinterConnected(bluetoothPrinter.isConnected());
-			setCurrentTime(new Date());
+			void tick();
 		}, 3000);
-		return () => clearInterval(interval);
+
+		return () => {
+			cancelled = true;
+			clearInterval(interval);
+		};
 	}, []);
 
 	useEffect(() => {
@@ -513,13 +536,13 @@ function MenuPage() {
 	};
 
 	const handlePrint = useCallback(async (orderId: Id<"orders">) => {
-		if (!bluetoothPrinter.isConnected()) {
-			return;
-		}
-
 		if (!siteSettings) return;
 
 		try {
+			if (!bluetoothPrinter.isConnected()) {
+				await bluetoothPrinter.autoReconnectIfNeeded(0);
+			}
+
 			const order = await convex.query(api.orders.getOrder, { id: orderId });
 			if (!order) return;
 
@@ -635,14 +658,8 @@ function MenuPage() {
 				toast.success("Pesanan berhasil dibuat!");
 				setLastOrderId(orderId);
 				
-				// Attempt to print receipt
-				if (bluetoothPrinter.isConnected()) {
-					handlePrint(orderId);
-				} else {
-					toast.info("Pesanan disimpan. Hubungkan printer untuk cetak struk.", {
-						description: "Gunakan menu Riwayat untuk cetak ulang nanti."
-					});
-				}
+				// Attempt auto reconnect + print receipt.
+				void handlePrint(orderId);
 
 				clearCart();
 				setIsPaymentOpen(false);

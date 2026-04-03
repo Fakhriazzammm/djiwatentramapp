@@ -2,7 +2,6 @@ import { useCart } from "@/context/cart-context";
 import { toast } from "sonner";
 import { 
 	User, 
-	Table, 
 	ShoppingBag, 
 	Trash2, 
 	Minus, 
@@ -10,8 +9,6 @@ import {
 	CreditCard,
 	ChevronRight,
 	ChevronLeft,
-	Info,
-	Store,
 	Wallet,
 	QrCode,
 	Banknote,
@@ -34,7 +31,6 @@ import { useQuery } from "convex/react";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { isDiscountApplicable } from "@/lib/utils/pricing";
 import type { Doc } from "@yumipos/backend/convex/_generated/dataModel";
-import { bluetoothPrinter } from "@/lib/bluetooth-printer";
 
 export function CheckoutSidebar({ 
 	onConfirmPayment,
@@ -66,12 +62,12 @@ export function CheckoutSidebar({
 	const {
 		items,
 		updateQuantity,
-		totalAmount,
 		grossAmount,
 		totalItems,
 		customerInfo,
 		updateCustomerInfo,
-		discountAmount,
+		promoDiscountAmount,
+		voucherDiscountAmount,
 		finalTotal,
 		taxAmount,
 		serviceChargeAmount,
@@ -169,6 +165,35 @@ export function CheckoutSidebar({
 		});
 	}, [allActiveDiscounts, items]);
 
+	const activeMarketingPromos = useMemo(() => {
+		if (!allActiveDiscounts || items.length === 0 || promoDiscountAmount <= 0) {
+			return [] as string[];
+		}
+
+		const now = new Date();
+		const context = {
+			currentTimestamp: now.getTime(),
+			currentDay: now.getDay(),
+			currentTimeVal: now.getHours() * 60 + now.getMinutes(),
+		};
+
+		const labels = allActiveDiscounts
+			.filter((discount: Doc<"discounts">) => discount._id !== selectedDiscountId)
+			.filter((discount: Doc<"discounts">) => {
+				if (discount.targetType === "ALL") {
+					return isDiscountApplicable(discount, { _id: "", price: 0, categoryId: "" }, context);
+				}
+				return items.some((item) =>
+					isDiscountApplicable(discount, { _id: item.productId, price: item.price, categoryId: item.category || "" }, context)
+				);
+			})
+			.map((discount: Doc<"discounts">) =>
+				discount.isHappyHour ? `Happy Hour - ${discount.name}` : `Promo Marketing - ${discount.name}`
+			);
+
+		return [...new Set(labels)];
+	}, [allActiveDiscounts, items, promoDiscountAmount, selectedDiscountId]);
+
 	useEffect(() => {
 		if (!allActiveDiscounts) return;
 
@@ -209,6 +234,25 @@ export function CheckoutSidebar({
 					autoComplete,
 					cashReceived: typeof cashReceived === "number" ? cashReceived : 0,
 					changeAmount: changeAmount
+				}
+			);
+		}
+	};
+
+	const handleSaveOrderQuick = () => {
+		if (!isShiftOpen) {
+			toast.error("Buka shift terlebih dahulu di Dashboard");
+			return;
+		}
+		if (onConfirmPayment) {
+			onConfirmPayment(
+				finalTotal,
+				undefined,
+				"cash",
+				{
+					tableNumber: customerInfo.tableNumber,
+					orderType: customerInfo.orderType,
+					autoComplete: false,
 				}
 			);
 		}
@@ -269,8 +313,8 @@ export function CheckoutSidebar({
 				</div>
 			</div>
 
-			<ScrollArea className="flex-1">
-				<div className="p-4 space-y-6">
+			<ScrollArea className="flex-1 min-h-0">
+				<div className={cn("p-4 space-y-6", activeStep === "payment" ? "pb-24" : "pb-20")}>
 					{/* Section 1: Informasi Pelanggan */}
 					{activeStep === "customer" && (
 						<div className="space-y-4 fade-in animate-in slide-in-from-right-4 duration-300">
@@ -348,21 +392,6 @@ export function CheckoutSidebar({
 								</div>
 							</div>
 							
-							<div className="pt-4">
-								<Button 
-									onClick={() => {
-										updateCustomerInfo({ isSubmitted: true });
-										if (items.length === 0 && onClose) {
-											onClose();
-										} else {
-											setActiveStep("menu");
-										}
-									}}
-									className="w-full h-11 text-xs font-bold shadow-md"
-								>
-									Lanjut Pilih Menu <ChevronRight className="ml-2 h-4 w-4" />
-								</Button>
-							</div>
 						</div>
 					)}
 
@@ -427,124 +456,73 @@ export function CheckoutSidebar({
 								</div>
 							)}
 
-							{/* Struk Design */}
-							<div className="mt-6 relative bg-background p-5 space-y-4 font-mono rounded-lg border border-border/50 shadow-sm">
-								{/* Top wavy edge */}
-								<div 
-									className="absolute -top-1.5 left-0 right-0 h-3 w-full bg-repeat-x z-10" 
-									style={{ 
-										backgroundImage: "radial-gradient(circle at 6px 0px, transparent 0, transparent 4px, var(--background) 4px, var(--background) 6px)", 
-										backgroundSize: "12px 12px" 
-									}} 
-								/>
-								{/* Border overlay for top wavy edge */}
-								<div 
-									className="absolute -top-[7px] left-0 right-0 h-3 w-full bg-repeat-x pointer-events-none" 
-									style={{ 
-										backgroundImage: "radial-gradient(circle at 6px 0px, transparent 0, transparent 4px, var(--border) 4.5px, transparent 5.5px)", 
-										backgroundSize: "12px 12px" 
-									}} 
-								/>
-								
-								<div className="space-y-2 text-xs">
-									<div className="flex justify-between">
+							{/* Struk Compact */}
+							<div className="mt-4 rounded-xl border border-border/70 bg-background p-3 sm:p-4 shadow-sm">
+								<div className="space-y-1 text-center">
+									<p className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+										Ringkasan Struk
+									</p>
+									<p className="text-[11px] font-black uppercase tracking-wide text-foreground">
+										Subtotal, Promo, Pajak, dan Total
+									</p>
+								</div>
+
+								{(activeMarketingPromos.length > 0 || appliedVoucher) && (
+									<div className="mt-3 rounded-lg bg-primary/5 px-3 py-2 text-center">
+										{activeMarketingPromos.map((promo) => (
+											<p key={promo} className="text-[9px] font-bold uppercase tracking-wider text-primary">
+												{promo}
+											</p>
+										))}
+										{appliedVoucher && (
+											<p className="text-[9px] font-bold uppercase tracking-wider text-primary">
+												Voucher - {appliedVoucher.name}
+											</p>
+										)}
+									</div>
+								)}
+
+								<div className="mt-3 space-y-1.5 text-[11px] sm:text-xs">
+									<div className="flex items-center justify-between">
 										<span className="text-muted-foreground">Subtotal</span>
 										<span className="font-bold">{fmt(grossAmount)}</span>
 									</div>
-									{discountAmount > 0 && (
-										<div className="flex justify-between text-primary">
-											<span>Diskon</span>
-											<span className="font-bold">-{fmt(discountAmount)}</span>
+									{promoDiscountAmount > 0 && (
+										<div className="flex items-center justify-between text-primary">
+											<span>Promo / Marketing</span>
+											<span className="font-bold">-{fmt(promoDiscountAmount)}</span>
 										</div>
 									)}
-									<div className="flex justify-between text-muted-foreground">
+									{voucherDiscountAmount > 0 && (
+										<div className="flex items-center justify-between text-primary">
+											<span>Diskon Voucher</span>
+											<span className="font-bold">-{fmt(voucherDiscountAmount)}</span>
+										</div>
+									)}
+									<div className="flex items-center justify-between text-muted-foreground">
 										<span>Pajak</span>
 										<span>{fmt(taxAmount)}</span>
 									</div>
-									<div className="flex justify-between text-muted-foreground">
+									<div className="flex items-center justify-between text-muted-foreground">
 										<span>Service Charge</span>
 										<span>{fmt(serviceChargeAmount)}</span>
 									</div>
 								</div>
 
-								<Separator className="border-dashed" />
+								<Separator className="my-2 border-dashed" />
 
-								<div className="flex justify-between items-center py-2 font-sans">
-									<span className="text-sm font-black uppercase tracking-widest">TOTAL</span>
-									<span className="text-xl font-black text-primary tracking-tighter">{fmt(finalTotal)}</span>
+								<div className="flex items-center justify-between font-sans">
+									<span className="text-xs sm:text-sm font-black uppercase tracking-widest">Total</span>
+									<span className="text-lg sm:text-xl font-black text-primary tracking-tight">{fmt(finalTotal)}</span>
 								</div>
-								
-								{/* Bottom wavy edge */}
-								<div 
-									className="absolute -bottom-1.5 left-0 right-0 h-3 w-full bg-repeat-x z-10" 
-									style={{ 
-										backgroundImage: "radial-gradient(circle at 6px 12px, transparent 0, transparent 4px, var(--background) 4px, var(--background) 6px)", 
-										backgroundSize: "12px 12px" 
-									}} 
-								/>
-								{/* Border overlay for bottom wavy edge */}
-								<div 
-									className="absolute -bottom-[7px] left-0 right-0 h-3 w-full bg-repeat-x pointer-events-none" 
-									style={{ 
-										backgroundImage: "radial-gradient(circle at 6px 12px, transparent 0, transparent 4px, var(--border) 4.5px, transparent 5.5px)", 
-										backgroundSize: "12px 12px" 
-									}} 
-								/>
 							</div>
 
-							<div className="flex gap-2 pt-4">
-								<Button 
-									onClick={() => setActiveStep("customer")}
-									className="w-[90px] shrink-0 h-12 text-sm font-bold bg-background text-foreground hover:bg-muted"
-									variant="outline"
-								>
-									Kembali
-								</Button>
-								<Button 
-									onClick={() => {
-										if (!isShiftOpen) {
-											toast.error("Buka shift terlebih dahulu di Dashboard");
-											return;
-										}
-										if (onConfirmPayment) {
-											onConfirmPayment(
-												finalTotal,
-												undefined,
-												"cash",
-												{
-													tableNumber: customerInfo.tableNumber,
-													orderType: customerInfo.orderType,
-													autoComplete: false,
-												}
-											);
-										}
-									}}
-									disabled={items.length === 0 || isSubmitting || !isShiftOpen}
-									className="flex-1 h-12 text-[11px] sm:text-xs font-bold bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm"
-									variant="secondary"
-								>
-									{isSubmitting ? "Menyimpan..." : "Simpan Pesanan"}
-								</Button>
-								<Button 
-									onClick={() => {
-										if (!isShiftOpen) {
-											toast.error("Buka shift terlebih dahulu di Dashboard");
-											return;
-										}
-										setActiveStep("payment");
-									}}
-									disabled={items.length === 0 || !isShiftOpen}
-									className="flex-1 h-12 text-[11px] sm:text-xs font-bold shadow-md"
-								>
-									Lanjut Bayar <ChevronRight className="ml-1 h-4 w-4" />
-								</Button>
-							</div>
 						</div>
 					)}
 
 					{/* Section 3: Ringkasan & Pembayaran */}
 					{activeStep === "payment" && (
-						<div className="space-y-4 fade-in animate-in slide-in-from-right-4 duration-300 pb-20">
+						<div className="space-y-4 fade-in animate-in slide-in-from-right-4 duration-300">
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
 									<CreditCard className="h-4 w-4 text-primary" />
@@ -718,10 +696,58 @@ export function CheckoutSidebar({
 				</div>
 			</ScrollArea>
 
-			{/* Fixed Footer Payment Button */}
-			{activeStep === "payment" && (
-				<div className="p-3 border-t border-border bg-card shadow-[0_-4px_12px_rgba(0,0,0,0.05)] absolute bottom-0 left-0 right-0 z-10">
-					<Button 
+			<div className="border-t border-border bg-card p-3 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+				{activeStep === "customer" && (
+					<Button
+						onClick={() => {
+							updateCustomerInfo({ isSubmitted: true });
+							if (items.length === 0 && onClose) {
+								onClose();
+							} else {
+								setActiveStep("menu");
+							}
+						}}
+						className="h-11 w-full text-xs font-bold shadow-md"
+					>
+						Lanjut Pilih Menu <ChevronRight className="ml-2 h-4 w-4" />
+					</Button>
+				)}
+
+				{activeStep === "menu" && (
+					<div className="flex gap-2">
+						<Button
+							onClick={() => setActiveStep("customer")}
+							className="h-11 w-[92px] shrink-0 text-xs font-bold bg-background text-foreground hover:bg-muted"
+							variant="outline"
+						>
+							Kembali
+						</Button>
+						<Button
+							onClick={handleSaveOrderQuick}
+							disabled={items.length === 0 || isSubmitting || !isShiftOpen}
+							className="h-11 flex-1 text-[11px] sm:text-xs font-bold bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm"
+							variant="secondary"
+						>
+							{isSubmitting ? "Menyimpan..." : "Simpan Pesanan"}
+						</Button>
+						<Button
+							onClick={() => {
+								if (!isShiftOpen) {
+									toast.error("Buka shift terlebih dahulu di Dashboard");
+									return;
+								}
+								setActiveStep("payment");
+							}}
+							disabled={items.length === 0 || !isShiftOpen}
+							className="h-11 flex-1 text-[11px] sm:text-xs font-bold shadow-md"
+						>
+							Lanjut Bayar <ChevronRight className="ml-1 h-4 w-4" />
+						</Button>
+					</div>
+				)}
+
+				{activeStep === "payment" && (
+					<Button
 						onClick={handleConfirmPayment}
 						disabled={items.length === 0 || isSubmitting || (selectedPaymentMethod === "tunai" && typeof cashReceived === "number" && cashReceived < finalTotal)}
 						className="w-full h-10 text-xs font-black uppercase tracking-widest shadow-lg active:scale-[0.98] transition-all"
@@ -733,8 +759,8 @@ export function CheckoutSidebar({
 							"Konfirmasi Bayar"
 						)}
 					</Button>
-				</div>
-			)}
+				)}
+			</div>
 		</div>
 	);
 }

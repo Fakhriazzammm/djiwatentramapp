@@ -2,6 +2,7 @@ import EscPosEncoder from "esc-pos-encoder";
 
 const RECEIPT_LINE_WIDTH = 32;
 const RECEIPT_HEADER_WIDTH = 24;
+const BLUETOOTH_PRINTER_DEVICE_ID_KEY = "pos_bluetooth_printer_device_id";
 
 const formatReceiptCurrency = (value: number) =>
 	new Intl.NumberFormat("id-ID").format(Math.round(value || 0));
@@ -105,6 +106,8 @@ export class BluetoothPrinterService {
 	private device: BluetoothDevice | null = null;
 	private server: BluetoothRemoteGATTServer | null = null;
 	private characteristic: BluetoothRemoteGATTCharacteristic | null = null;
+	private autoConnectPromise: Promise<string | null> | null = null;
+	private lastAutoConnectAttemptAt = 0;
 	private lastPrintedPayload:
 		| {
 				order: {
@@ -148,6 +151,7 @@ export class BluetoothPrinterService {
 				acceptAllDevices: true,
 				optionalServices: this.optionalServices,
 			});
+			this.persistDeviceId(this.device.id);
 
 			return await this.establishConnection();
 		} catch (error) {
@@ -161,20 +165,53 @@ export class BluetoothPrinterService {
 			return null;
 		}
 
+		if (this.autoConnectPromise) {
+			return this.autoConnectPromise;
+		}
+
+		this.lastAutoConnectAttemptAt = Date.now();
+		this.autoConnectPromise = this.performAutoConnect();
+
+		try {
+			return await this.autoConnectPromise;
+		} finally {
+			this.autoConnectPromise = null;
+		}
+	}
+
+	async autoReconnectIfNeeded(minIntervalMs = 2500): Promise<boolean> {
+		if (this.isConnected()) return true;
+		if (Date.now() - this.lastAutoConnectAttemptAt < minIntervalMs) {
+			return this.isConnected();
+		}
+		await this.autoConnect();
+		return this.isConnected();
+	}
+
+	private async performAutoConnect(): Promise<string | null> {
+		if (!navigator.bluetooth || !navigator.bluetooth.getDevices) {
+			return null;
+		}
+
 		try {
 			const devices = await navigator.bluetooth.getDevices();
 			if (devices.length === 0) return null;
 
-			// Try to connect to the first available previously paired device
-			// Usually, for a POS system, there's only one printer.
-			this.device = devices[0];
+			const preferredDeviceId = this.getPersistedDeviceId();
+			this.device =
+				(preferredDeviceId
+					? devices.find((device) => device.id === preferredDeviceId)
+					: null) ?? devices[0];
 			
 			// If it's already connected, just return the name
 			if (this.device.gatt?.connected && this.characteristic) {
+				this.persistDeviceId(this.device.id);
 				return this.device.name || "Bluetooth Printer";
 			}
 
-			return await this.establishConnection();
+			const name = await this.establishConnection();
+			this.persistDeviceId(this.device.id);
+			return name;
 		} catch (error) {
 			console.warn("Auto-connect failed:", error);
 			this.device = null;
@@ -182,6 +219,16 @@ export class BluetoothPrinterService {
 			this.characteristic = null;
 			return null;
 		}
+	}
+
+	private getPersistedDeviceId(): string | null {
+		if (typeof window === "undefined") return null;
+		return window.localStorage.getItem(BLUETOOTH_PRINTER_DEVICE_ID_KEY);
+	}
+
+	private persistDeviceId(deviceId?: string | null) {
+		if (typeof window === "undefined" || !deviceId) return;
+		window.localStorage.setItem(BLUETOOTH_PRINTER_DEVICE_ID_KEY, deviceId);
 	}
 
 	private async establishConnection(): Promise<string> {
@@ -233,7 +280,10 @@ export class BluetoothPrinterService {
 			console.warn("Bluetooth printer disconnected.");
 			this.server = null;
 			this.characteristic = null;
-			// Don't null the device so autoConnect can try again
+			// Keep device reference and attempt reconnect automatically.
+			setTimeout(() => {
+				void this.autoReconnectIfNeeded(0);
+			}, 600);
 		});
 
 		return this.device.name || "Bluetooth Printer";
