@@ -43,6 +43,7 @@ export default defineConfig({
 			},
 			workbox: {
 				navigateFallback: "/index.html",
+				maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
 			},
 		}),
 	],
