@@ -567,32 +567,42 @@ function SettingsPage() {
 			return;
 		}
 		try {
-			// 1. Create User in Better Auth
-			const result = await authClient.signUp.email({
-				email: normalizedEmail, // Using username as email
+			// Primary source of truth: always persist user profile to Convex first.
+			const createdUserId = await _createUser({
+				username: normalizedEmail,
 				password: newUser.password,
 				name: newUser.name,
+				roleId: newUser.roleId as Id<"roles">,
 			});
 
-			if (result.error) {
-				toast.error((result.error as any).message || "Gagal mendaftar user");
-				return;
+			// Best effort sync to external auth provider.
+			try {
+				const result = await authClient.signUp.email({
+					email: normalizedEmail,
+					password: newUser.password,
+					name: newUser.name,
+				});
+				const authUserId = result?.data?.user?.id;
+				// Ignore known local stub id to prevent all users binding to the same auth id.
+				if (authUserId && authUserId !== "test-id") {
+					await bindProfile({
+						authUserId,
+						name: newUser.name,
+						email: normalizedEmail,
+						roleId: newUser.roleId as Id<"roles">,
+					});
+				}
+			} catch (_authError) {
+				// Do not fail the whole flow: profile is already created and can be managed from admin.
 			}
 
-			// 2. Bind to Profile with Role
-			if (result.data) {
-				await bindProfile({
-					authUserId: result.data.user.id,
-					name: newUser.name,
-					email: normalizedEmail,
-					roleId: newUser.roleId as Id<"roles">,
-				});
+			if (createdUserId) {
 				setNewUser({ username: "", password: "", name: "", roleId: "" });
-				toast.success("User berhasil dibuat dan didaftarkan!");
+				toast.success("User berhasil dibuat!");
 			}
 		} catch (error) {
 			console.error(error);
-			toast.error("Gagal membuat user");
+			toast.error((error as Error).message || "Gagal membuat user");
 		}
 	};
 
