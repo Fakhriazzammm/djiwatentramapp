@@ -314,9 +314,14 @@ export function MenuSidebar({
 				name: i.productName,
 				variant: i.variant,
 				price: i.price,
+				originalPrice: i.originalPrice,
 				quantity: i.quantity,
 			}));
-			const subtotal = items.reduce((sum: number, item: OrderItem) => sum + item.price * item.quantity, 0);
+			const subtotal = items.reduce(
+				(sum: number, item: OrderItem) =>
+					sum + (item.originalPrice ?? item.price) * item.quantity,
+				0
+			);
 			const receiptMode: ReceiptPrintMode =
 				order.status === "pending" ? "open_bill" : "paid";
 
