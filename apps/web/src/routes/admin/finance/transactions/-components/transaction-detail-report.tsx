@@ -1,8 +1,9 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Wallet, Pencil, Trash2, Search, Filter, ArrowUpDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { DateRange } from "../../reports/-components/period-selector";
 import { formatCurrencyIDR } from "@/lib/export-utils";
 import { NewTransactionDialog } from "../../-components/new-transaction-dialog";
@@ -42,8 +43,10 @@ export function TransactionDetailReport({ range }: Props) {
 	
 	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 	const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+	const [selectedTransactionIds, setSelectedTransactionIds] = useState<Set<Id<"financialTransactions">>>(new Set());
 	
 	const deleteTransaction = useMutation(api.finance.deleteTransaction);
+	const deleteTransactionsBulk = useMutation(api.finance.deleteTransactionsBulk);
 
 	const data = useQuery(api.finance.getTransactionDetailReport, {
 		startDate: range.startDate,
@@ -93,6 +96,27 @@ export function TransactionDetailReport({ range }: Props) {
 		return result;
 	}, [data?.transactions, searchQuery, minAmount, maxAmount, sortBy, sortOrder]);
 
+	const filteredTransactionIds = useMemo(
+		() => filteredTransactions.map((transaction) => transaction._id as Id<"financialTransactions">),
+		[filteredTransactions]
+	);
+
+	const selectedVisibleCount = useMemo(
+		() => filteredTransactionIds.filter((id) => selectedTransactionIds.has(id)).length,
+		[filteredTransactionIds, selectedTransactionIds]
+	);
+
+	const allVisibleSelected = filteredTransactionIds.length > 0 && selectedVisibleCount === filteredTransactionIds.length;
+
+	useEffect(() => {
+		setSelectedTransactionIds((prev) => {
+			if (prev.size === 0) return prev;
+			const filteredIdSet = new Set(filteredTransactionIds);
+			const next = new Set([...prev].filter((id) => filteredIdSet.has(id)));
+			return next.size === prev.size ? prev : next;
+		});
+	}, [filteredTransactionIds]);
+
 	const categoryBadge = (category: string, type: string) => {
 		const colorMap: Record<string, string> = {
 			makanan_minuman: "border-orange-200 bg-orange-50 text-orange-700",
@@ -114,10 +138,59 @@ export function TransactionDetailReport({ range }: Props) {
 		if (!confirm("Apakah Anda yakin ingin menghapus transaksi ini?")) return;
 		try {
 			await deleteTransaction({ id });
+			setSelectedTransactionIds((prev) => {
+				if (!prev.has(id)) return prev;
+				const next = new Set(prev);
+				next.delete(id);
+				return next;
+			});
 			toast.success("Transaksi berhasil dihapus");
 		} catch (error) {
 			console.error(error);
 			toast.error("Gagal menghapus transaksi");
+		}
+	};
+
+	const handleToggleRow = (id: Id<"financialTransactions">) => {
+		setSelectedTransactionIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) {
+				next.delete(id);
+			} else {
+				next.add(id);
+			}
+			return next;
+		});
+	};
+
+	const handleToggleSelectAll = () => {
+		setSelectedTransactionIds((prev) => {
+			const next = new Set(prev);
+			if (allVisibleSelected) {
+				for (const id of filteredTransactionIds) {
+					next.delete(id);
+				}
+			} else {
+				for (const id of filteredTransactionIds) {
+					next.add(id);
+				}
+			}
+			return next;
+		});
+	};
+
+	const handleBulkDelete = async () => {
+		const idsToDelete = filteredTransactionIds.filter((id) => selectedTransactionIds.has(id));
+		if (idsToDelete.length === 0) return;
+		if (!confirm(`Hapus ${idsToDelete.length} transaksi terpilih? Aksi ini tidak dapat dibatalkan.`)) return;
+
+		try {
+			await deleteTransactionsBulk({ ids: idsToDelete });
+			setSelectedTransactionIds(new Set());
+			toast.success(`${idsToDelete.length} transaksi berhasil dihapus`);
+		} catch (error) {
+			console.error(error);
+			toast.error("Gagal menghapus transaksi terpilih");
 		}
 	};
 
@@ -268,12 +341,47 @@ export function TransactionDetailReport({ range }: Props) {
 				</div>
 			)}
 
+			{selectedVisibleCount > 0 && (
+				<div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+					<p className="text-sm text-foreground">
+						<span className="font-semibold">{selectedVisibleCount}</span> transaksi dipilih
+					</p>
+					<div className="flex items-center gap-2">
+						<button
+							type="button"
+							onClick={() => setSelectedTransactionIds(new Set())}
+							className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+						>
+							Batal Pilih
+						</button>
+						<button
+							type="button"
+							onClick={handleBulkDelete}
+							className="inline-flex items-center gap-1.5 rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground transition-colors hover:bg-destructive/90"
+						>
+							<Trash2 className="h-3.5 w-3.5" />
+							Hapus Terpilih
+						</button>
+					</div>
+				</div>
+			)}
+
 			{/* Transactions Table */}
 			<div className="rounded-xl border border-border overflow-hidden">
 				<div className="overflow-x-auto">
 					<table className="w-full text-left text-sm">
 						<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase tracking-wider font-bold">
 							<tr>
+								<th className="px-4 py-3">
+									<div className="flex items-center justify-center">
+										<Checkbox
+											checked={allVisibleSelected}
+											onCheckedChange={handleToggleSelectAll}
+											aria-label="Pilih semua transaksi di tabel"
+											disabled={filteredTransactionIds.length === 0}
+										/>
+									</div>
+								</th>
 								<th className="px-4 py-3">Tanggal</th>
 								<th className="px-4 py-3">Shift</th>
 								<th className="px-4 py-3">Merchant/Keterangan</th>
@@ -287,12 +395,12 @@ export function TransactionDetailReport({ range }: Props) {
 							{!data ? (
 								Array.from({ length: 5 }).map((_, i) => (
 									<tr key={i}>
-										<td colSpan={7} className="px-4 py-4"><Skeleton className="h-4 w-full" /></td>
+										<td colSpan={8} className="px-4 py-4"><Skeleton className="h-4 w-full" /></td>
 									</tr>
 								))
 							) : filteredTransactions.length === 0 ? (
 								<tr>
-									<td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+									<td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
 										<div className="flex flex-col items-center gap-2">
 											<Wallet className="h-8 w-8 opacity-20" />
 											<p>Tidak ada transaksi ditemukan</p>
@@ -311,6 +419,15 @@ export function TransactionDetailReport({ range }: Props) {
 
 									return (
 										<tr key={t._id} className="group hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => handleEdit(t)}>
+											<td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+												<div className="flex items-center justify-center">
+													<Checkbox
+														checked={selectedTransactionIds.has(t._id)}
+														onCheckedChange={() => handleToggleRow(t._id)}
+														aria-label={`Pilih transaksi ${t.merchant || "Umum"} tanggal ${format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}`}
+													/>
+												</div>
+											</td>
 											<td className="px-4 py-3">
 												<div className="flex flex-col">
 													<span className="font-medium text-foreground text-xs">

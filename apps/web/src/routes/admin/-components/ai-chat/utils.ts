@@ -278,13 +278,16 @@ export function generateQuickActions(userMsg: string, aiResponse: string): Quick
 
 export const extractSuggestions = (text: string): Array<{ label: string; prompt: string }> => {
 	const suggestions: Array<{ label: string; prompt: string }> = [];
+	const seen = new Set<string>();
 	const regex = /\[SUGGEST:\s*(.*?)\s*\|\s*(.*?)\s*\]/g;
 	let match;
 	while ((match = regex.exec(text)) !== null) {
-		suggestions.push({
-			label: match[1].trim(),
-			prompt: match[2].trim(),
-		});
+		const label = match[1].trim();
+		const prompt = match[2].trim();
+		const key = `${label.toLowerCase()}|${prompt.toLowerCase()}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		suggestions.push({ label, prompt });
 	}
 	return suggestions;
 };

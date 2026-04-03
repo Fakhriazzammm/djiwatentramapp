@@ -412,6 +412,19 @@ export const deleteTransaction = mutation({
 	},
 });
 
+// Bulk delete transactions
+export const deleteTransactionsBulk = mutation({
+	args: {
+		ids: v.array(v.id("financialTransactions")),
+	},
+	handler: async (ctx, args) => {
+		for (const id of args.ids) {
+			await ctx.db.delete(id);
+		}
+		return { deletedCount: args.ids.length };
+	},
+});
+
 // Update a transaction
 export const updateTransaction = mutation({
 	args: {

@@ -1078,6 +1078,517 @@ function shouldAutoImportBulkFinance(message: string, parsed: ParsedBulkFinanceR
 	return false;
 }
 
+type BulkProductRow = { name: string; price: number; categoryName?: string; description?: string; isAvailable?: boolean };
+type BulkInventoryRow = { ingredientName: string; quantity: number; unit?: string; lowStockThreshold?: number; costPerUnit?: number; notes?: string; date?: number };
+type BulkBookingRow = { customerName: string; customerPhone: string; customerEmail?: string; bookingDate: string; guestCount: number; itemName?: string; quantity?: number; totalAmount?: number; paymentMethod?: string; notes?: string };
+type BulkDiscountRow = { name: string; type: "FIXED" | "PERCENTAGE" | "FLAT_PRICE"; value: number; targetType: "ALL" | "CATEGORY" | "PRODUCT"; targetName?: string; isActive?: boolean; minOrderValue?: number };
+type BulkOrderStatusRow = { orderRef: string; status: "pending" | "paid" | "completed" | "cancelled" };
+type BulkTargetRow = { month: string; targetRevenue: number; targetProfit?: number; notes?: string };
+type BulkShiftStartRow = { cashierName: string; shiftName: string; startingCash: number; teamMembers?: string; notes?: string };
+type BulkShiftEndRow = { endingCashPhysical: number; nonCashConfirmed: number; notes?: string };
+
+type UniversalBulkParsed = {
+	products: BulkProductRow[];
+	inventory: BulkInventoryRow[];
+	bookings: BulkBookingRow[];
+	discounts: BulkDiscountRow[];
+	orderStatuses: BulkOrderStatusRow[];
+	targets: BulkTargetRow[];
+	shiftStarts: BulkShiftStartRow[];
+	shiftEnds: BulkShiftEndRow[];
+};
+
+function normText(value: string): string {
+	return (value || "").toLowerCase().trim();
+}
+
+function parseNumberLoose(value?: string): number {
+	if (!value) return 0;
+	const cleaned = value
+		.replace(/rp\.?/gi, "")
+		.replace(/\s+/g, "")
+		.replace(/[^0-9,.-]/g, "")
+		.replace(/\.(?=\d{3}(\D|$))/g, "")
+		.replace(/,/g, ".");
+	const num = Number.parseFloat(cleaned);
+	return Number.isFinite(num) ? num : 0;
+}
+
+function splitByAny(raw: string): string[] {
+	return raw
+		.split(/[|;,]/)
+		.map((s) => s.trim())
+		.filter(Boolean);
+}
+
+function parseKeyValues(raw: string): Record<string, string> {
+	const out: Record<string, string> = {};
+	for (const part of splitByAny(raw)) {
+		const m = part.match(/^([a-zA-Z_ ]+)\s*[:=]\s*(.+)$/);
+		if (!m) continue;
+		out[normText(m[1]).replace(/\s+/g, "_")] = m[2].trim();
+	}
+	return out;
+}
+
+function toBookingDateString(ts?: number): string {
+	const d = ts ? new Date(ts) : new Date();
+	return d.toISOString().slice(0, 10);
+}
+
+function parseBulkUniversalData(message: string): UniversalBulkParsed {
+	const result: UniversalBulkParsed = {
+		products: [],
+		inventory: [],
+		bookings: [],
+		discounts: [],
+		orderStatuses: [],
+		targets: [],
+		shiftStarts: [],
+		shiftEnds: [],
+	};
+
+	const lines = message
+		.replace(/\r/g, "")
+		.split("\n")
+		.map((l) => l.trim())
+		.filter(Boolean);
+
+	for (const rawLine of lines) {
+		const line = rawLine.replace(/^[\-\*\u2022>\s]+/, "").trim();
+		if (!line) continue;
+		const lower = normText(line);
+		const kv = parseKeyValues(line);
+
+		// Product bulk
+		if (/(^produk\b|^product\b|produk:|menu:)/.test(lower) || (/(harga|price)/.test(lower) && /(kategori|category)/.test(lower))) {
+			const segments = splitByAny(line.replace(/^produk[:\-\s]*/i, ""));
+			const name = kv.nama || kv.name || segments[0];
+			const price = parseNumberLoose(kv.harga || kv.price || segments.find((s) => /rp|^\d[\d.,]*$/.test(normText(s))) || "");
+			const categoryName = kv.kategori || kv.category || segments[2];
+			if (name && price > 0) {
+				result.products.push({
+					name: name.trim(),
+					price,
+					categoryName: categoryName?.trim(),
+					description: kv.deskripsi || kv.description,
+					isAvailable: !/(nonaktif|off|disable|tidak aktif)/.test(lower),
+				});
+			}
+			continue;
+		}
+
+		// Inventory bulk
+		if (/(^stok\b|inventory:|bahan:|restock|tambah stok)/.test(lower) || (/qty|jumlah/.test(lower) && /unit|pcs|kg|gr|liter|ml/.test(lower))) {
+			const core = line.replace(/^(stok|inventory|bahan)[:\-\s]*/i, "");
+			const segments = splitByAny(core);
+			const qtyUnit = (kv.qty || kv.jumlah || segments.find((s) => /(\d+(\.\d+)?)\s*(kg|gr|gram|pcs|pack|liter|ml|botol|karung|dus)?/i.test(s)) || "").match(/(\d+(\.\d+)?)\s*(kg|gr|gram|pcs|pack|liter|ml|botol|karung|dus)?/i);
+			const quantity = qtyUnit ? Number.parseFloat(qtyUnit[1]) : parseNumberLoose(kv.qty || kv.jumlah || "");
+			const unit = (kv.unit || (qtyUnit ? qtyUnit[3] : "") || "pcs").toLowerCase();
+			const ingredientName = (kv.nama || kv.bahan || kv.name || segments[0] || "").trim();
+			const costPerUnit = parseNumberLoose(kv.harga || kv.price || kv.biaya || "");
+			const lowStock = parseNumberLoose(kv.threshold || kv.low_stock || "");
+			const parsedDate = parseDateFromLine(line, new Date().getFullYear());
+			if (ingredientName && quantity > 0) {
+				result.inventory.push({
+					ingredientName,
+					quantity,
+					unit,
+					costPerUnit: costPerUnit > 0 ? costPerUnit : undefined,
+					lowStockThreshold: lowStock > 0 ? lowStock : Math.max(1, Math.floor(quantity * 0.2)),
+					notes: kv.catatan || kv.notes,
+					date: parsedDate?.ts,
+				});
+			}
+			continue;
+		}
+
+		// Booking bulk
+		if (/(^booking\b|^reservasi\b|booking:|reservasi:)/.test(lower)) {
+			const segments = splitByAny(line.replace(/^(booking|reservasi)[:\-\s]*/i, ""));
+			const name = (kv.nama || kv.customer || kv.customer_name || segments[0] || "").trim();
+			const phone = (kv.telp || kv.phone || kv.hp || segments.find((s) => /08\d{7,}|^\+?\d{8,}$/.test(s.replace(/\s+/g, ""))) || "").trim();
+			const parsedDate = parseDateFromLine(line, new Date().getFullYear());
+			const bookingDate = kv.tanggal || kv.date || (parsedDate ? toBookingDateString(parsedDate.ts) : "");
+			const guestCount = parseNumberLoose(kv.tamu || kv.guest || kv.guest_count || segments.find((s) => /(\d+)\s*(orang|pax|guest|tamu)/i.test(s)) || "");
+			const qty = parseNumberLoose(kv.qty || kv.jumlah || "");
+			const total = parseNumberLoose(kv.total || kv.amount || "");
+			if (name && phone && bookingDate) {
+				result.bookings.push({
+					customerName: name,
+					customerPhone: phone,
+					customerEmail: kv.email,
+					bookingDate,
+					guestCount: guestCount > 0 ? guestCount : 1,
+					itemName: kv.item || kv.menu,
+					quantity: qty > 0 ? qty : 1,
+					totalAmount: total > 0 ? total : undefined,
+					paymentMethod: kv.payment || kv.pembayaran || "cash",
+					notes: kv.catatan || kv.notes,
+				});
+			}
+			continue;
+		}
+
+		// Discount bulk
+		if (/(^promo\b|^diskon\b|promo:|diskon:)/.test(lower)) {
+			const segments = splitByAny(line.replace(/^(promo|diskon)[:\-\s]*/i, ""));
+			const name = (kv.nama || kv.name || segments[0] || "").trim();
+			const pctMatch = line.match(/(\d+(\.\d+)?)\s*%/);
+			const value = pctMatch ? Number.parseFloat(pctMatch[1]) : parseNumberLoose(kv.nilai || kv.value || segments[1] || "");
+			const typeRaw = normText(kv.type || (pctMatch ? "percentage" : "fixed"));
+			const type: "FIXED" | "PERCENTAGE" | "FLAT_PRICE" =
+				typeRaw.includes("flat") ? "FLAT_PRICE" : typeRaw.includes("percent") || pctMatch ? "PERCENTAGE" : "FIXED";
+			const targetRaw = normText(kv.target || kv.target_type || "all");
+			const targetType: "ALL" | "CATEGORY" | "PRODUCT" =
+				targetRaw.includes("kategori") || targetRaw.includes("category") ? "CATEGORY" : targetRaw.includes("produk") || targetRaw.includes("product") ? "PRODUCT" : "ALL";
+			const targetName = kv.target_name || kv.kategori || kv.produk || segments[2];
+			if (name && value > 0) {
+				result.discounts.push({
+					name,
+					type,
+					value,
+					targetType,
+					targetName: targetName?.trim(),
+					isActive: !/(nonaktif|off|disable|false)/.test(lower),
+					minOrderValue: parseNumberLoose(kv.min || kv.min_order || ""),
+				});
+			}
+			continue;
+		}
+
+		// Order status bulk
+		if (/(^order\b|status order|ubah status)/.test(lower) || /ord-\d+/i.test(line)) {
+			const statusMatch = lower.match(/\b(pending|paid|completed|cancelled)\b/);
+			const refMatch = line.match(/(ORD-\d+)/i);
+			const ref = refMatch?.[1] || kv.order || kv.order_number || kv.id;
+			const status = (statusMatch?.[1] || kv.status || "").toLowerCase();
+			if (ref && ["pending", "paid", "completed", "cancelled"].includes(status)) {
+				result.orderStatuses.push({
+					orderRef: ref.trim(),
+					status: status as any,
+				});
+			}
+			continue;
+		}
+
+		// Financial target bulk
+		if (/(target keuangan|target omzet|set target|target:)/.test(lower)) {
+			const monthMatch = line.match(/\b(20\d{2})[-\/](0[1-9]|1[0-2])\b/);
+			const month = kv.bulan || kv.month || (monthMatch ? `${monthMatch[1]}-${monthMatch[2]}` : "");
+			const targetRevenue = parseNumberLoose(kv.target || kv.target_revenue || kv.omzet || kv.revenue || "");
+			const targetProfit = parseNumberLoose(kv.profit || kv.target_profit || "");
+			if (month && targetRevenue > 0) {
+				result.targets.push({
+					month,
+					targetRevenue,
+					targetProfit: targetProfit > 0 ? targetProfit : undefined,
+					notes: kv.catatan || kv.notes,
+				});
+			}
+			continue;
+		}
+
+		// Shift start bulk
+		if (/(mulai shift|start shift|buka shift)/.test(lower)) {
+			const cashierName = kv.kasir || kv.cashier || "Kasir";
+			const shiftName = kv.shift || "Shift";
+			const startingCash = parseNumberLoose(kv.modal || kv.starting_cash || kv.cash || "");
+			if (startingCash > 0) {
+				result.shiftStarts.push({
+					cashierName,
+					shiftName,
+					startingCash,
+					teamMembers: kv.tim || kv.team,
+					notes: kv.catatan || kv.notes,
+				});
+			}
+			continue;
+		}
+
+		// Shift end bulk
+		if (/(akhiri shift|end shift|tutup shift)/.test(lower)) {
+			const endingCashPhysical = parseNumberLoose(kv.kas || kv.ending_cash || kv.cash || "");
+			const nonCashConfirmed = parseNumberLoose(kv.noncash || kv.qris || kv.transfer || "0");
+			if (endingCashPhysical > 0 || nonCashConfirmed > 0) {
+				result.shiftEnds.push({
+					endingCashPhysical,
+					nonCashConfirmed,
+					notes: kv.catatan || kv.notes,
+				});
+			}
+		}
+	}
+
+	return result;
+}
+
+function shouldAutoImportUniversalBulk(message: string, parsed: UniversalBulkParsed): boolean {
+	const total =
+		parsed.products.length +
+		parsed.inventory.length +
+		parsed.bookings.length +
+		parsed.discounts.length +
+		parsed.orderStatuses.length +
+		parsed.targets.length +
+		parsed.shiftStarts.length +
+		parsed.shiftEnds.length;
+	if (total === 0) return false;
+	const text = normText(message);
+	if (/(jangan|hanya analisis|preview|simulasi|contoh)/.test(text)) return false;
+	return /(bulk|catat|simpan|import|masukkan|proses|generate|buatkan|jalankan)/.test(text) || total >= 2;
+}
+
+async function executeUniversalBulkImport(
+	ctx: GenericActionCtx<DataModel>,
+	parsed: UniversalBulkParsed
+): Promise<{
+	summary: string;
+	toolCalls: Array<{
+		name: string;
+		status: "success" | "error";
+		args?: Record<string, unknown>;
+		result?: string;
+		error?: string;
+	}>;
+} | null> {
+	const totalParsed =
+		parsed.products.length +
+		parsed.inventory.length +
+		parsed.bookings.length +
+		parsed.discounts.length +
+		parsed.orderStatuses.length +
+		parsed.targets.length +
+		parsed.shiftStarts.length +
+		parsed.shiftEnds.length;
+	if (totalParsed === 0) return null;
+
+	const toolCalls: Array<{
+		name: string;
+		status: "success" | "error";
+		args?: Record<string, unknown>;
+		result?: string;
+		error?: string;
+	}> = [];
+
+	const categories = (await ctx.runQuery(api.products.getCategories)) as Array<{ _id: Id<"categories">; name: string }>;
+	const products = (await ctx.runQuery(api.products.getAllProductsAdmin, {})) as Array<{ _id: Id<"products">; name: string; price: number; categoryId: Id<"categories">; isAvailable: boolean }>;
+	const inventory = (await ctx.runQuery(api.inventory.getInventory)) as Array<{ _id: Id<"inventory">; ingredientName: string; unit: string; lowStockThreshold: number }>;
+	const orders = (await ctx.runQuery(api.orders.getOrders, {})) as Array<{ _id: Id<"orders">; orderNumber?: string }>;
+	const bookingSettings = await ctx.db.query("bookingSettings").first();
+
+	let countProduct = 0;
+	let countInventory = 0;
+	let countBooking = 0;
+	let countDiscount = 0;
+	let countOrderStatus = 0;
+	let countTarget = 0;
+	let countShiftStart = 0;
+	let countShiftEnd = 0;
+	let failed = 0;
+
+	// Products
+	for (const row of parsed.products) {
+		try {
+			let category = categories.find((c) => normText(c.name) === normText(row.categoryName || ""));
+			if (!category) category = categories[0];
+			if (!category) throw new Error("Kategori produk belum tersedia");
+			await ctx.runMutation(api.products.addProduct, {
+				name: row.name,
+				description: row.description,
+				price: row.price,
+				categoryId: category._id,
+				isAvailable: row.isAvailable ?? true,
+			});
+			countProduct++;
+			toolCalls.push({ name: "createProduct", status: "success", args: { name: row.name, price: row.price, categoryId: category._id } });
+		} catch (e) {
+			failed++;
+			toolCalls.push({ name: "createProduct", status: "error", args: { name: row.name }, error: String(e) });
+		}
+	}
+
+	// Inventory
+	for (const row of parsed.inventory) {
+		try {
+			const existing = inventory.find((i) => normText(i.ingredientName) === normText(row.ingredientName));
+			let inventoryId = existing?._id;
+			if (!inventoryId) {
+				inventoryId = await ctx.runMutation(api.inventory.createInventoryItem, {
+					ingredientName: row.ingredientName,
+					unit: row.unit || "pcs",
+					quantity: 0,
+					lowStockThreshold: row.lowStockThreshold ?? 1,
+				});
+			}
+			await ctx.runMutation(api.inventory.addStock, {
+				inventoryId,
+				quantity: row.quantity,
+				costPerUnit: row.costPerUnit,
+				notes: row.notes,
+				timestamp: row.date,
+			});
+			countInventory++;
+			toolCalls.push({ name: "addStock", status: "success", args: { ingredientName: row.ingredientName, quantity: row.quantity } });
+		} catch (e) {
+			failed++;
+			toolCalls.push({ name: "addStock", status: "error", args: { ingredientName: row.ingredientName }, error: String(e) });
+		}
+	}
+
+	// Bookings
+	for (const row of parsed.bookings) {
+		try {
+			const slug = bookingSettings?.slug || "booking";
+			const matchedProduct = row.itemName
+				? products.find((p) => normText(p.name) === normText(row.itemName!))
+				: undefined;
+			const qty = row.quantity && row.quantity > 0 ? row.quantity : 1;
+			const unitPrice = matchedProduct?.price || (row.totalAmount ? Math.max(1, Math.round(row.totalAmount / qty)) : 10000);
+			const totalAmount = row.totalAmount || unitPrice * qty;
+			await ctx.runMutation(api.booking.createBookingOrder, {
+				slug,
+				customerName: row.customerName,
+				customerPhone: row.customerPhone,
+				customerEmail: row.customerEmail || `${row.customerPhone.replace(/\D/g, "") || "customer"}@booking.local`,
+				notes: row.notes,
+				bookingDate: row.bookingDate,
+				guestCount: row.guestCount,
+				items: [
+					{
+						productId: matchedProduct?._id || "manual-item",
+						name: matchedProduct?.name || row.itemName || "Paket Reservasi",
+						price: unitPrice,
+						quantity: qty,
+					},
+				],
+				totalAmount,
+				paymentMethod: row.paymentMethod || "cash",
+			});
+			countBooking++;
+			toolCalls.push({ name: "createBooking", status: "success", args: { customerName: row.customerName, bookingDate: row.bookingDate } });
+		} catch (e) {
+			failed++;
+			toolCalls.push({ name: "createBooking", status: "error", args: { customerName: row.customerName }, error: String(e) });
+		}
+	}
+
+	// Discounts
+	for (const row of parsed.discounts) {
+		try {
+			let targetIds: string[] | undefined;
+			if (row.targetType === "CATEGORY" && row.targetName) {
+				const category = categories.find((c) => normText(c.name) === normText(row.targetName!));
+				if (category) targetIds = [category._id];
+			}
+			if (row.targetType === "PRODUCT" && row.targetName) {
+				const product = products.find((p) => normText(p.name) === normText(row.targetName!));
+				if (product) targetIds = [product._id];
+			}
+			await ctx.runMutation(api.discounts.createDiscount, {
+				name: row.name,
+				type: row.type,
+				value: row.value,
+				targetType: row.targetType,
+				targetIds,
+				isActive: row.isActive ?? true,
+				minOrderValue: row.minOrderValue,
+			});
+			countDiscount++;
+			toolCalls.push({ name: "createDiscount", status: "success", args: { name: row.name, type: row.type, value: row.value } });
+		} catch (e) {
+			failed++;
+			toolCalls.push({ name: "createDiscount", status: "error", args: { name: row.name }, error: String(e) });
+		}
+	}
+
+	// Order Status updates
+	for (const row of parsed.orderStatuses) {
+		try {
+			const order = orders.find((o) => normText(o.orderNumber || "") === normText(row.orderRef));
+			if (!order) throw new Error(`Order ${row.orderRef} tidak ditemukan`);
+			await ctx.runMutation(api.orders.updateOrderStatus, { id: order._id, status: row.status });
+			countOrderStatus++;
+			toolCalls.push({ name: "updateOrderStatus", status: "success", args: { orderRef: row.orderRef, status: row.status } });
+		} catch (e) {
+			failed++;
+			toolCalls.push({ name: "updateOrderStatus", status: "error", args: { orderRef: row.orderRef, status: row.status }, error: String(e) });
+		}
+	}
+
+	// Financial targets
+	for (const row of parsed.targets) {
+		try {
+			await ctx.runMutation(api.finance.setFinancialTarget, {
+				month: row.month,
+				targetRevenue: row.targetRevenue,
+				targetProfit: row.targetProfit,
+				notes: row.notes,
+			});
+			countTarget++;
+			toolCalls.push({ name: "setFinancialTarget", status: "success", args: { month: row.month, targetRevenue: row.targetRevenue } });
+		} catch (e) {
+			failed++;
+			toolCalls.push({ name: "setFinancialTarget", status: "error", args: { month: row.month }, error: String(e) });
+		}
+	}
+
+	// Shift start
+	for (const row of parsed.shiftStarts) {
+		try {
+			await ctx.runMutation(api.finance.startShift, {
+				cashierName: row.cashierName,
+				shiftName: row.shiftName,
+				teamMembers: row.teamMembers,
+				startingCash: row.startingCash,
+				notes: row.notes,
+			});
+			countShiftStart++;
+			toolCalls.push({ name: "startShift", status: "success", args: { cashierName: row.cashierName, shiftName: row.shiftName } });
+		} catch (e) {
+			failed++;
+			toolCalls.push({ name: "startShift", status: "error", args: { cashierName: row.cashierName }, error: String(e) });
+		}
+	}
+
+	// Shift end
+	for (const row of parsed.shiftEnds) {
+		try {
+			const ongoing = await ctx.runQuery(api.finance.getOngoingShift, {});
+			if (!ongoing) throw new Error("Tidak ada shift aktif");
+			await ctx.runMutation(api.finance.endShift, {
+				shiftId: (ongoing as any)._id,
+				endingCashPhysical: row.endingCashPhysical,
+				nonCashConfirmed: row.nonCashConfirmed,
+				notes: row.notes,
+			});
+			countShiftEnd++;
+			toolCalls.push({ name: "endShift", status: "success", args: { shiftId: (ongoing as any)._id } });
+		} catch (e) {
+			failed++;
+			toolCalls.push({ name: "endShift", status: "error", error: String(e) });
+		}
+	}
+
+	const summary = [
+		"Bulk fitur aplikasi berhasil diproses.",
+		`Produk dibuat: ${countProduct}`,
+		`Stok diproses: ${countInventory}`,
+		`Booking dibuat: ${countBooking}`,
+		`Promo/diskon dibuat: ${countDiscount}`,
+		`Status order diupdate: ${countOrderStatus}`,
+		`Target keuangan di-set: ${countTarget}`,
+		`Shift dimulai: ${countShiftStart}`,
+		`Shift diakhiri: ${countShiftEnd}`,
+		`Gagal: ${failed}`,
+		`[SUGGEST: 📊 Cek Ringkasan Keuangan | Tampilkan ringkasan keuangan terbaru setelah bulk proses]`,
+		`[SUGGEST: 📦 Cek Inventory Terbaru | Tampilkan item inventory dan perubahan stok setelah bulk proses]`,
+		`[SUGGEST: 📋 Audit Hasil Bulk | Tunjukkan daftar data yang berhasil dan yang gagal agar bisa diperbaiki]`,
+	].join("\n");
+
+	return { summary, toolCalls };
+}
+
 // === STREAMING BUFFERS ===
 
 export const initStreamingMessage = mutation({
@@ -1164,6 +1675,14 @@ export const yumiChat = action({
 				error?: string;
 			}> = []
 		) => ({ content, toolCalls });
+
+		const parsedUniversalBulk = parseBulkUniversalData(args.message);
+		if (shouldAutoImportUniversalBulk(args.message, parsedUniversalBulk)) {
+			const universalResult = await executeUniversalBulkImport(ctx, parsedUniversalBulk);
+			if (universalResult) {
+				return finalizeResponse(universalResult.summary, universalResult.toolCalls);
+			}
+		}
 
 		const parsedBulkFinance = parseBulkFinancialReport(args.message);
 		const bulkFinanceContext = formatBulkFinancialContext(parsedBulkFinance);
@@ -2622,9 +3141,19 @@ export const getProactiveSuggestions = query({
 			}
 		}
 
+		// De-duplicate similar suggestions (same type + title + description)
+		const dedupedSuggestions: ProactiveSuggestion[] = [];
+		const dedupeKeys = new Set<string>();
+		for (const suggestion of suggestions) {
+			const key = `${suggestion.type}|${suggestion.title.trim().toLowerCase()}|${suggestion.description.trim().toLowerCase()}`;
+			if (dedupeKeys.has(key)) continue;
+			dedupeKeys.add(key);
+			dedupedSuggestions.push(suggestion);
+		}
+
 		// Sort suggestions by priority
 		const priorityOrder = { high: 0, medium: 1, low: 2 };
-		suggestions.sort((a, b) => {
+		dedupedSuggestions.sort((a, b) => {
 			const priorityA = priorityOrder[a.priority] ?? 1;
 			const priorityB = priorityOrder[b.priority] ?? 1;
 			if (priorityA !== priorityB) {
@@ -2633,7 +3162,7 @@ export const getProactiveSuggestions = query({
 			return b.createdAt - a.createdAt;
 		});
 
-		return suggestions.slice(0, 10); // Return top 10 suggestions
+		return dedupedSuggestions.slice(0, 10); // Return top 10 suggestions
 	},
 });
 
