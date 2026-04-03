@@ -469,9 +469,9 @@ export function CheckoutSidebar({
 
 								{(activeMarketingPromos.length > 0 || appliedVoucher) && (
 									<div className="mt-3 rounded-lg bg-primary/5 px-3 py-2 text-center">
-										{activeMarketingPromos.map((promo) => (
-											<p key={promo} className="text-[9px] font-bold uppercase tracking-wider text-primary">
-												{promo}
+										{activeMarketingPromos.map((promo, index) => (
+											<p key={`${index}-${String(promo)}`} className="text-[9px] font-bold uppercase tracking-wider text-primary">
+												{String(promo)}
 											</p>
 										))}
 										{appliedVoucher && (
@@ -656,7 +656,7 @@ export function CheckoutSidebar({
 										>
 											<option value="">TANPA VOUCHER</option>
 											{validDiscounts.map((d: Doc<"discounts">) => (
-												<option key={d._id} value={d._id}>
+												<option key={String(d._id)} value={String(d._id)}>
 													{d.name.toUpperCase()} (
 													{d.type === "PERCENTAGE"
 														? `${d.value}%`
