@@ -266,43 +266,42 @@ export function CheckoutSidebar({
 	};
 
 	return (
-		<div className="flex h-full flex-col border-l border-border bg-[#f8f9fa] dark:bg-background shadow-sm relative">
-			{/* Progress Header - COMPACT */}
-			<div className="flex items-center justify-between border-b border-border bg-background px-4 py-2 sm:py-2.5">
-				<div className="flex items-center gap-1 flex-1">
-					<div className="flex items-center gap-1.5">
+		<div className="relative flex h-full flex-col border-l border-border bg-[#f8f9fa] shadow-sm dark:bg-background">
+			<div className="flex items-center justify-between border-b border-border bg-background px-4 py-3 sm:px-5 sm:py-3.5">
+				<div className="flex items-center gap-2 sm:gap-2.5 flex-1">
+					<div className="flex items-center gap-2">
 						<div className={cn(
-							"flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-black",
-							activeStep === "customer" ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground"
+							"flex h-8 w-8 items-center justify-center rounded-full text-xs font-black transition-all",
+							activeStep === "customer" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
 						)}>1</div>
-						<span className={cn("text-[10px] font-bold uppercase tracking-tight", activeStep === "customer" ? "text-foreground" : "text-muted-foreground")}>Info</span>
+						<span className={cn("text-sm font-black uppercase tracking-wide", activeStep === "customer" ? "text-foreground" : "text-muted-foreground")}>Info</span>
 					</div>
-					<ChevronRight className="h-3 w-3 text-muted-foreground/40 mx-0.5" />
-					<div className="flex items-center gap-1.5">
+					<ChevronRight className="mx-0.5 h-4 w-4 text-muted-foreground/40" />
+					<div className="flex items-center gap-2">
 						<div className={cn(
-							"flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-black",
-							activeStep === "menu" ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground"
+							"flex h-8 w-8 items-center justify-center rounded-full text-xs font-black transition-all",
+							activeStep === "menu" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
 						)}>2</div>
-						<span className={cn("text-[10px] font-bold uppercase tracking-tight", activeStep === "menu" ? "text-foreground" : "text-muted-foreground")}>Menu</span>
+						<span className={cn("text-sm font-black uppercase tracking-wide", activeStep === "menu" ? "text-foreground" : "text-muted-foreground")}>Menu</span>
 					</div>
-					<ChevronRight className="h-3 w-3 text-muted-foreground/40 mx-0.5" />
-					<div className="flex items-center gap-1.5">
+					<ChevronRight className="mx-0.5 h-4 w-4 text-muted-foreground/40" />
+					<div className="flex items-center gap-2">
 						<div className={cn(
-							"flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-black",
-							activeStep === "payment" ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground"
+							"flex h-8 w-8 items-center justify-center rounded-full text-xs font-black transition-all",
+							activeStep === "payment" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
 						)}>3</div>
-						<span className={cn("text-[10px] font-bold uppercase tracking-tight", activeStep === "payment" ? "text-foreground" : "text-muted-foreground")}>Bayar</span>
+						<span className={cn("text-sm font-black uppercase tracking-wide", activeStep === "payment" ? "text-foreground" : "text-muted-foreground")}>Bayar</span>
 					</div>
 				</div>
-				<div className="flex items-center gap-1 text-muted-foreground">
+				<div className="flex items-center gap-2 text-muted-foreground">
 					{lastOrderId && onPrintLastOrder && (
 						<Button
 							variant="outline"
 							size="sm"
-							className="h-7 px-2 gap-1.5 text-[9px] font-black uppercase tracking-tight border-primary/20 bg-primary/5 text-primary hover:bg-primary/10"
+							className="h-9 gap-2 rounded-xl border-primary/20 bg-primary/5 px-3 text-[11px] font-black uppercase tracking-wide text-primary hover:bg-primary/10"
 							onClick={onPrintLastOrder}
 						>
-							<Printer className="h-3 w-3" />
+							<Printer className="h-3.5 w-3.5" />
 							Struk
 						</Button>
 					)}
@@ -310,91 +309,122 @@ export function CheckoutSidebar({
 						<Button 
 							variant="ghost" 
 							size="sm" 
-							className="h-7 w-7 p-0 rounded-full shrink-0" 
+							className="h-9 w-9 shrink-0 rounded-full p-0" 
 							onClick={onClose}
 							aria-label="Tutup"
 						>
-							<X className="h-3.5 w-3.5" />
+							<X className="h-4.5 w-4.5" />
 						</Button>
 					)}
 				</div>
 			</div>
 
 			<ScrollArea className="flex-1 min-h-0">
-				<div className={cn("p-4 space-y-6", activeStep === "payment" ? "pb-24" : "pb-20")}>
+				<div className={cn("space-y-7 p-4 sm:p-5", activeStep === "payment" ? "pb-24" : "pb-20")}>
 					{/* Section 1: Informasi Pelanggan */}
 					{activeStep === "customer" && (
-						<div className="space-y-4 fade-in animate-in slide-in-from-right-4 duration-300">
-							<div className="flex items-center gap-2">
-								<User className="h-4 w-4 text-primary" />
-								<h3 className="text-sm font-bold uppercase tracking-wider">Informasi Pelanggan</h3>
+						<div className="fade-in animate-in space-y-5 duration-300 slide-in-from-right-4">
+							<div className="rounded-[1.75rem] border border-primary/10 bg-white px-4 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+								<div className="flex items-start gap-3">
+									<div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+										<User className="h-5 w-5" />
+									</div>
+									<div>
+										<h3 className="text-xl font-black uppercase tracking-wide text-foreground">
+											Informasi Pelanggan
+										</h3>
+										<p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+											Isi data singkat pelanggan sebelum lanjut pilih menu dan pembayaran.
+										</p>
+									</div>
+								</div>
 							</div>
 							
-							<div className="grid gap-3">
-								<div className="space-y-1.5">
-									<Label htmlFor="customer-name" className="text-[10px] uppercase text-muted-foreground font-bold">Nama Pelanggan</Label>
+							<div className="grid gap-4">
+								<div className="space-y-2">
+									<Label htmlFor="customer-name" className="text-xs font-black uppercase tracking-[0.18em] text-muted-foreground">Nama Pelanggan</Label>
 									<Input 
 										id="customer-name"
-										placeholder="Nama..."
+										placeholder="Masukkan nama pelanggan"
 										value={customerInfo.name}
 										onChange={(e) => updateCustomerInfo({ name: e.target.value })}
-										className="h-9 text-sm"
+										className="h-14 rounded-2xl border-border/70 bg-white px-4 text-lg font-semibold placeholder:text-base placeholder:font-medium"
 									/>
 								</div>
 
-								<div className="grid grid-cols-2 gap-3">
-									<div className="space-y-1.5">
-										<Label className="text-[10px] uppercase text-muted-foreground font-bold">Tipe Order</Label>
-										<div className="flex gap-1 rounded-lg border border-input p-1 bg-background">
+								<div className={cn(
+									"grid gap-4",
+									customerInfo.orderType === "dine_in" ? "grid-cols-2" : "grid-cols-1"
+								)}>
+									<div className="space-y-2">
+										<Label className="text-xs font-black uppercase tracking-[0.18em] text-muted-foreground">Tipe Order</Label>
+										<div className="grid grid-cols-2 gap-2 rounded-[1.35rem] border border-border/70 bg-white p-2 shadow-sm">
 											<button 
+												type="button"
 												onClick={() => updateCustomerInfo({ orderType: "dine_in" })}
 												className={cn(
-													"flex-1 rounded-md py-1 text-[10px] font-bold transition-all",
-													customerInfo.orderType === "dine_in" ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-muted text-muted-foreground"
+													"flex min-h-[52px] items-center justify-center rounded-2xl px-3 text-base font-black transition-all",
+													customerInfo.orderType === "dine_in"
+														? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+														: "text-muted-foreground hover:bg-muted"
 												)}
 											>Dine In</button>
 											<button 
+												type="button"
 												onClick={() => updateCustomerInfo({ orderType: "takeaway" })}
 												className={cn(
-													"flex-1 rounded-md py-1 text-[10px] font-bold transition-all",
-													customerInfo.orderType === "takeaway" ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-muted text-muted-foreground"
+													"flex min-h-[52px] items-center justify-center rounded-2xl px-3 text-base font-black transition-all",
+													customerInfo.orderType === "takeaway"
+														? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+														: "text-muted-foreground hover:bg-muted"
 												)}
 											>Takeaway</button>
 										</div>
 									</div>
 									{customerInfo.orderType === "dine_in" && (
-										<div className="space-y-1.5">
-											<Label htmlFor="table-number" className="text-[10px] uppercase text-muted-foreground font-bold">No. Meja</Label>
+										<div className="space-y-2">
+											<Label htmlFor="table-number" className="text-xs font-black uppercase tracking-[0.18em] text-muted-foreground">No. Meja</Label>
 											<Input 
 												id="table-number"
 												placeholder="01"
 												value={customerInfo.tableNumber}
 												onChange={(e) => updateCustomerInfo({ tableNumber: e.target.value })}
-												className="h-9 text-sm"
+												className="h-14 rounded-2xl border-border/70 bg-white px-4 text-lg font-black tracking-wide placeholder:text-base placeholder:font-medium"
 											/>
 										</div>
 									)}
 								</div>
 
 								{/* Free Refill Toggle */}
-								<div className="mt-2 flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/10">
-									<div className="flex items-center gap-3">
-										<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-											<Coffee className="h-3.5 w-3.5" />
+								<div className="mt-1 flex items-center justify-between rounded-[1.5rem] border border-primary/15 bg-gradient-to-r from-primary/[0.08] via-sky-50 to-background p-4 shadow-sm">
+									<div className="flex items-center gap-3.5">
+										<div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+											<Coffee className="h-5 w-5" />
 										</div>
-										<div className="space-y-0.5">
-											<div className="flex items-center gap-1.5">
-												<span className="block font-black text-primary text-[10px] uppercase tracking-widest">Free Refill Minuman</span>
-											</div>
-											<p className="text-[8px] text-muted-foreground font-medium leading-none">Otomatis masuk ke keranjang</p>
+										<div className="space-y-1">
+											<span className="block text-base font-black uppercase tracking-[0.14em] text-primary">
+												Free Refill Minuman
+											</span>
+											<p className="text-sm font-medium leading-snug text-muted-foreground">
+												Aktifkan jika add-on refill ingin otomatis masuk ke keranjang.
+											</p>
 										</div>
 									</div>
 									<button
-										className={`relative h-5 w-9 rounded-full transition-all duration-300 ${customerInfo.isFreeRefill ? "bg-primary shadow-sm shadow-primary/20" : "bg-muted-foreground/20"}`}
+										aria-label="Toggle free refill"
+										className={cn(
+											"relative h-8 w-14 shrink-0 rounded-full transition-all duration-300",
+											customerInfo.isFreeRefill
+												? "bg-primary shadow-md shadow-primary/20"
+												: "bg-muted-foreground/20"
+										)}
 										onClick={() => updateCustomerInfo({ isFreeRefill: !customerInfo.isFreeRefill })}
 										type="button"
 									>
-										<div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${customerInfo.isFreeRefill ? "right-0.5" : "left-0.5"}`} />
+										<div className={cn(
+											"absolute top-1 h-6 w-6 rounded-full bg-white shadow-md transition-all duration-300",
+											customerInfo.isFreeRefill ? "right-1" : "left-1"
+										)} />
 									</button>
 								</div>
 							</div>
