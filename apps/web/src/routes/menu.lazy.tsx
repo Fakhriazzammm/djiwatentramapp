@@ -126,6 +126,59 @@ function MenuProductCardSkeleton() {
 	);
 }
 
+type MenuImageWithSkeletonProps = {
+	src?: string | null;
+	alt: string;
+	imageClassName?: string;
+	iconClassName?: string;
+	loading?: "eager" | "lazy";
+};
+
+function MenuImageWithSkeleton({
+	src,
+	alt,
+	imageClassName,
+	iconClassName = "h-10 w-10 text-muted-foreground/25",
+	loading = "lazy",
+}: MenuImageWithSkeletonProps) {
+	const [isLoaded, setIsLoaded] = useState(false);
+	const [hasError, setHasError] = useState(false);
+
+	useEffect(() => {
+		setIsLoaded(false);
+		setHasError(false);
+	}, [src]);
+
+	if (!src || hasError) {
+		return (
+			<div className="flex h-full items-center justify-center">
+				<ShoppingBag className={iconClassName} />
+			</div>
+		);
+	}
+
+	return (
+		<>
+			{!isLoaded && (
+				<Skeleton className="absolute inset-0 h-full w-full rounded-none" />
+			)}
+			<img
+				src={src}
+				alt={alt}
+				className={cn(
+					"h-full w-full object-cover transition-opacity duration-300",
+					!isLoaded && "opacity-0",
+					isLoaded && "opacity-100",
+					imageClassName
+				)}
+				loading={loading}
+				onLoad={() => setIsLoaded(true)}
+				onError={() => setHasError(true)}
+			/>
+		</>
+	);
+}
+
 function MenuPage() {
 	// Queries
 	const convex = useConvex();
@@ -1271,18 +1324,11 @@ function MenuPage() {
 									>
 										{/* Image */}
 										<div className="relative h-32 w-full bg-muted shrink-0">
-											{product.image ? (
-												<img
-													src={product.image}
-													alt={product.name}
-													className="h-full w-full object-cover"
-													loading="lazy"
-												/>
-											) : (
-												<div className="flex h-full items-center justify-center">
-													<ShoppingBag className="h-10 w-10 text-muted-foreground/25" />
-												</div>
-											)}
+											<MenuImageWithSkeleton
+												src={product.image}
+												alt={product.name}
+												loading="lazy"
+											/>
 
 											{/* Promo badge */}
 											{pricing.isPromo && (
@@ -1628,17 +1674,12 @@ function ProductDetailSheet({
 		<div className="flex flex-col">
 			{/* Product Image */}
 			<div className="relative h-52 w-full bg-muted shrink-0">
-				{product.image ? (
-					<img
-						src={product.image}
-						alt={product.name}
-						className="h-full w-full object-cover"
-					/>
-				) : (
-					<div className="flex h-full items-center justify-center">
-						<ShoppingBag className="h-16 w-16 text-muted-foreground/30" />
-					</div>
-				)}
+				<MenuImageWithSkeleton
+					src={product.image}
+					alt={product.name}
+					loading="eager"
+					iconClassName="h-16 w-16 text-muted-foreground/30"
+				/>
 				<button
 					type="button"
 					onClick={onClose}
