@@ -739,8 +739,8 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 									)}
 								</div>
 
-								<div className="shrink-0 bg-background border-t border-border/50">
-								<div className="px-3 py-2">
+								<div className="shrink-0 border-t border-border/50 bg-background pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+								<div className="px-3 pt-2 pb-1">
 									<ChatInput 
 										mode={mode}
 										input={input}

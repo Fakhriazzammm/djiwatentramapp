@@ -78,7 +78,7 @@ export const ChatInput = ({
 	const canSend = input.trim() || selectedImages.length > 0;
 
 	return (
-		<div className="mx-auto w-full max-w-3xl">
+		<div className="mx-auto w-full max-w-3xl pb-[max(0.5rem,env(safe-area-inset-bottom))]">
 			{showTemplates && !isScanMode && (
 				<div className="mb-3 flex flex-wrap gap-2 justify-center">
 					{templates.map((template, i) => (
@@ -153,7 +153,7 @@ export const ChatInput = ({
 					}}
 				/>
 
-				<div className="flex items-center justify-between px-3 pb-2.5">
+				<div className="flex items-center justify-between px-3 pb-3">
 					<div className="flex items-center gap-0.5">
 						<Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground" onClick={() => fileInputRef.current?.click()} title="Upload file" type="button">
 							<Paperclip className="h-[18px] w-[18px]" />

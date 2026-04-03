@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
 	Bot,
 	Check,
@@ -60,6 +60,7 @@ export const MessageBubble = ({
 	const isAssistant = msg.role === "assistant";
 	const [isCollapsed, setIsCollapsed] = useState(true);
 	const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+	const [thinkingStep, setThinkingStep] = useState(0);
 
 	const displayContent = useMemo(() => {
 		if (isLast && isStreaming && isAssistant) return streamingContent;
@@ -72,6 +73,21 @@ export const MessageBubble = ({
 	const handleFeedback = (type: "up" | "down") => {
 		setFeedback(prev => (prev === type ? null : type));
 	};
+
+	useEffect(() => {
+		if (!isAssistant || (!isLoading && !isStreaming)) return;
+		const timer = window.setInterval(() => {
+			setThinkingStep(prev => (prev + 1) % 3);
+		}, 1400);
+		return () => window.clearInterval(timer);
+	}, [isAssistant, isLoading, isStreaming]);
+
+	const thinkingLabels = [
+		"Yumi sedang memahami pertanyaan",
+		"Yumi sedang menganalisis data",
+		"Yumi sedang menyiapkan jawaban",
+	];
+	const activityLabel = isStreaming ? "Yumi sedang mengetik jawaban" : thinkingLabels[thinkingStep];
 
 	if (!isAssistant) {
 		return (
@@ -98,6 +114,16 @@ export const MessageBubble = ({
 						<Bot className="h-4 w-4 text-primary" />
 					</div>
 					<div className="min-w-0 flex-1 rounded-3xl border border-border/60 bg-card px-4 py-3 shadow-sm">
+						{isLast && (isLoading || isStreaming) && (
+							<div className="mb-2 flex items-center gap-2 text-[11px] font-medium text-primary/80">
+								<div className="flex items-center gap-1">
+									<span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" />
+									<span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse [animation-delay:180ms]" />
+									<span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse [animation-delay:360ms]" />
+								</div>
+								<span className="tracking-[0.01em]">{activityLabel}</span>
+							</div>
+						)}
 						<div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
 							{visibleContent}
 							{isLast && isLoading && !isStreaming && (
