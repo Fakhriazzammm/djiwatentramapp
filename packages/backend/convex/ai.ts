@@ -949,6 +949,14 @@ export const yumiChat = action({
 		image: v.optional(v.string()), // backward compatibility for single image
 	},
 	handler: async (ctx, args) => {
+		const safeSerialize = (value: unknown) => {
+			try {
+				return JSON.stringify(value);
+			} catch {
+				return "[Unserializable tool result]";
+			}
+		};
+
 		const finalizeResponse = (
 			content: string,
 			toolCalls: Array<{
@@ -1228,7 +1236,7 @@ INSTRUKSI REKONSILIASI BANK:
 						name: tc.function.name,
 						status: result.success ? "success" : "error",
 						args: parsedArgs,
-						result: result.success ? JSON.stringify(result.result) : undefined,
+						result: result.success ? safeSerialize(result.result) : undefined,
 						error: result.success ? undefined : String(result.error),
 					});
 					return {

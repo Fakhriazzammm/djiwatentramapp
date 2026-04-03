@@ -339,21 +339,31 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 		setToolCalls([]);
 		try {
 			const history = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
-			const response = await yumiChat({ 
+			const rawResponse = await yumiChat({ 
 				sessionId: requestSessionId,
 				message: trimmed, 
 				history, 
 				images: selectedImages.length > 0 ? selectedImages : (userMsg.image ? [userMsg.image] : undefined),
 				contextHint: contextHint || undefined,
 			});
-			const responseText = response.content;
+			const responseText = typeof rawResponse === "string"
+				? rawResponse
+				: typeof rawResponse?.content === "string"
+					? rawResponse.content
+					: "";
+			const normalizedToolCalls = Array.isArray((rawResponse as any)?.toolCalls)
+				? (rawResponse as any).toolCalls
+				: [];
+			if (!responseText) {
+				throw new Error("Respons AI kosong atau tidak valid");
+			}
 			const suggestions = extractSuggestions(responseText);
 			const quickActions = generateQuickActions(trimmed, responseText);
 			const genericActions = extractGenericActions(responseText);
 			const chartData = extractChartData(responseText);
 			const exportData = extractExportData(responseText);
 			const sanitizedResponse = sanitizeResponse(responseText);
-			setToolCalls(response.toolCalls);
+			setToolCalls(normalizedToolCalls);
 			setMessages(prev => prev.map(msg => (
 				msg._msgId === pendingAssistantId
 					? { role: "assistant", content: sanitizedResponse, suggestions, quickActions, genericActions, chartData, exportData, _msgId: pendingAssistantId }
@@ -363,8 +373,13 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 				await saveConversationMutation({ sessionId: sessionId!, role: "user", content: trimmed });
 				await saveConversationMutation({ sessionId: sessionId!, role: "assistant", content: sanitizedResponse });
 			}
-		} catch (error) {
-			toast.error("Gagal mendapatkan respons AI");
+		} catch (error: any) {
+			console.error("sendMessage error:", error);
+			const message =
+				error?.data?.message ||
+				error?.message ||
+				"Gagal mendapatkan respons AI";
+			toast.error(message);
 			setMessages(prev => prev.filter(msg => msg._msgId !== pendingAssistantId));
 		} finally {
 			streamingActiveRef.current = false;
