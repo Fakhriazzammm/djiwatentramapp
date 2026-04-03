@@ -2,6 +2,7 @@ import EscPosEncoder from "esc-pos-encoder";
 
 const RECEIPT_LINE_WIDTH = 32;
 const RECEIPT_HEADER_WIDTH = 24;
+const RECEIPT_SEPARATOR_WIDTH = 28;
 const BLUETOOTH_PRINTER_DEVICE_ID_KEY = "pos_bluetooth_printer_device_id";
 
 const formatReceiptCurrency = (value: number) =>
@@ -405,8 +406,8 @@ export class BluetoothPrinterService {
 
 		const encoder = new EscPosEncoder();
 		const result = encoder.initialize();
-		const separator = "-".repeat(RECEIPT_LINE_WIDTH);
-		const headerSeparator = "=".repeat(RECEIPT_LINE_WIDTH);
+		const separator = "-".repeat(RECEIPT_SEPARATOR_WIDTH);
+		const headerSeparator = "=".repeat(RECEIPT_SEPARATOR_WIDTH);
 		const mode = order.receiptMode ?? "paid";
 		const footerText =
 			settings.receiptFooter || "TERIMA KASIH ATAS KUNJUNGAN ANDA!";
@@ -428,6 +429,12 @@ export class BluetoothPrinterService {
 
 		const printKeyValue = (label: string, value: string) => {
 			result.line(buildKeyValueLine(label, value));
+		};
+
+		const printSeparator = (char: "-" | "=" = "-", nextAlign: "left" | "center" = "left") => {
+			result.align("left");
+			result.line(char === "=" ? headerSeparator : separator);
+			result.align(nextAlign);
 		};
 
 		result.align("center");
@@ -461,8 +468,7 @@ export class BluetoothPrinterService {
 			printCenteredLines(settings.storePhone, RECEIPT_HEADER_WIDTH);
 		}
 
-		result.line(headerSeparator);
-		result.align("center");
+		printSeparator("=", "center");
 		result.bold(true);
 
 		if (mode === "open_bill") {
@@ -477,7 +483,7 @@ export class BluetoothPrinterService {
 
 		result.bold(false);
 		result.align("left");
-		result.line(headerSeparator);
+		printSeparator("=");
 
 		if (settings.receiptShowOrderNumber !== false) {
 			printKeyValue("ID", order.orderNumber.toUpperCase());
@@ -525,7 +531,7 @@ export class BluetoothPrinterService {
 		}
 
 		if (mode !== "kitchen" && order.receiptMeta?.promotionLabels?.length) {
-			result.line(separator);
+			printSeparator("-");
 			result.align("center");
 			result.bold(true);
 			for (const label of order.receiptMeta.promotionLabels) {
@@ -535,11 +541,11 @@ export class BluetoothPrinterService {
 			result.align("left");
 		}
 
-		result.line(separator);
+		printSeparator("-");
 
 		if (mode === "kitchen") {
 			result.bold(true).line("ITEM YANG DIBUAT").bold(false);
-			result.line(separator);
+			printSeparator("-");
 
 			for (const item of order.items) {
 				const itemLabel = `${item.quantity}x ${item.name.toUpperCase()}`;
@@ -558,7 +564,7 @@ export class BluetoothPrinterService {
 			}
 		} else {
 			printKeyValue("ITEM", "TOTAL");
-			result.line(separator);
+			printSeparator("-");
 
 			for (const item of order.items) {
 				const totalStr = formatReceiptCurrency(item.price * item.quantity);
@@ -584,7 +590,7 @@ export class BluetoothPrinterService {
 				}
 			}
 
-			result.line(separator);
+			printSeparator("-");
 
 			if (order.subtotal !== undefined) {
 				printKeyValue("SUBTOTAL", formatReceiptAmount(order.subtotal));
@@ -601,11 +607,8 @@ export class BluetoothPrinterService {
 				printKeyValue("DISKON", formatReceiptAmount(-(order.discountAmount ?? 0)));
 			}
 
-			result
-				.line(separator)
-				.bold(true)
-				.line(buildKeyValueLine("TOTAL", formatReceiptAmount(order.totalAmount)))
-				.bold(false);
+			printSeparator("-");
+			result.bold(true).line(buildKeyValueLine("TOTAL", formatReceiptAmount(order.totalAmount))).bold(false);
 
 			if (mode === "paid" && order.cashReceived !== undefined && order.cashReceived > 0) {
 				printKeyValue("TUNAI", formatReceiptAmount(order.cashReceived));
@@ -619,13 +622,14 @@ export class BluetoothPrinterService {
 		}
 
 		if (settings.receiptShowNotes && order.notes) {
-			result.line(separator);
+			printSeparator("-");
 			result.bold(true).line("CATATAN").bold(false);
 			printWrappedLines(order.notes);
 		}
 
 		result.align("center");
-		result.line(separator).bold(true);
+		printSeparator("-", "center");
+		result.bold(true);
 		printCenteredLines(footerText.toUpperCase(), RECEIPT_HEADER_WIDTH);
 		if (mode === "kitchen") {
 			printCenteredLines("TANPA HARGA - UNTUK PRODUKSI", RECEIPT_HEADER_WIDTH);
