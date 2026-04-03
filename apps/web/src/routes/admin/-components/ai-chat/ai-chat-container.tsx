@@ -26,14 +26,16 @@ import { TasksPanel } from "./tasks-panel";
 interface AIChatContainerProps {
 	mode?: ChatMode;
 	onClose?: () => void;
+	contextHint?: string;
 }
 
-export default function AIChatContainer({ mode = "admin", onClose }: AIChatContainerProps) {
+export default function AIChatContainer({ mode = "admin", onClose, contextHint }: AIChatContainerProps) {
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [isStreaming, setIsStreaming] = useState(false);
 	const [streamingContent, setStreamingContent] = useState("");
+	const [streamSessionId, setStreamSessionId] = useState<string | null>(null);
 	const streamingActiveRef = useRef(false);
 	const scrollThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
@@ -91,6 +93,10 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 		api.aiMemory.getConversationContext,
 		currentSessionId ? { sessionId: currentSessionId } : "skip"
 	);
+	const streamingMessage = useQuery(
+		api.ai.getStreamingMessage,
+		streamSessionId ? { sessionId: streamSessionId } : "skip"
+	);
 	const proactiveSuggestions = useQuery(api.ai.getProactiveSuggestions, {});
 	const stockPredictions = useQuery(api.ai.predictStockOut, { daysAhead: 7 });
 	const busyHoursPrediction = useQuery(api.ai.predictBusyHours, {});
@@ -121,6 +127,20 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 		}
 	}, [loadConversationQuery]);
 
+	useEffect(() => {
+		if (!streamSessionId || !streamingMessage) return;
+		if (streamingMessage.status === "streaming" || (isLoading && streamingMessage.content)) {
+			streamingActiveRef.current = true;
+			setIsStreaming(true);
+			setStreamingContent(streamingMessage.content);
+			return;
+		}
+		if (streamingMessage.status === "completed") {
+			streamingActiveRef.current = false;
+			setIsStreaming(false);
+		}
+	}, [streamSessionId, streamingMessage, isLoading]);
+
 	const startNewSession = useCallback(async () => {
 		try {
 			const result = await createSessionMutation({ 
@@ -128,6 +148,7 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 			});
 			const sid = (result as any).sessionId || result;
 			setCurrentSessionId(sid);
+			setStreamSessionId(sid);
 			setMessages([]);
 			setToolCalls([]);
 			briefingAttemptedRef.current = false;
@@ -140,6 +161,7 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 
 	const loadSession = useCallback((sessionId: string) => {
 		setCurrentSessionId(sessionId);
+		setStreamSessionId(sessionId);
 		setShowSessionHistory(false);
 	}, []);
 
@@ -148,6 +170,7 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 			await deleteSessionMutation({ sessionId });
 			if (currentSessionId === sessionId) {
 				setCurrentSessionId(null);
+				setStreamSessionId(null);
 				setMessages([]);
 			}
 			toast.success("Sesi berhasil dihapus");
@@ -221,13 +244,14 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 			const localHour = new Date().getHours();
 			const briefing = await generateBusinessBriefingAction({ localHour, context: context || undefined });
 			if (briefing) {
-				const sanitizedBriefing = sanitizeResponse(briefing);
+				const briefingText = typeof briefing === "string" ? briefing : briefing.content;
+				const sanitizedBriefing = sanitizeResponse(briefingText);
 				const assistantMsg: ChatMessage = {
 					role: "assistant",
 					content: sanitizedBriefing,
-					suggestions: extractSuggestions(briefing),
-					chartData: extractChartData(briefing),
-					exportData: extractExportData(briefing),
+					suggestions: extractSuggestions(briefingText),
+					chartData: extractChartData(briefingText),
+					exportData: extractExportData(briefingText),
 					_msgId: mkMsgId(),
 				};
 				setMessages(prev => {
@@ -289,27 +313,6 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 		}
 	}, [isScanning, bulkScanImageDataAction, addScanHistory]);
 
-	const streamText = useCallback((text: string, onComplete: () => void) => {
-		const tokens = text.split(/(\s+)/);
-		let i = 0;
-		streamingActiveRef.current = true;
-		setIsStreaming(true);
-		setStreamingContent("");
-		const next = () => {
-			if (!streamingActiveRef.current) return;
-			if (i < tokens.length) {
-				const chunk = tokens[i];
-				setStreamingContent(prev => prev + chunk);
-				i++;
-				setTimeout(next, chunk.trim().length > 0 ? 25 : 5);
-			} else {
-				setIsStreaming(false);
-				onComplete();
-			}
-		};
-		next();
-	}, []);
-
 	const sendMessage = useCallback(async (text: string) => {
 		const trimmed = text.trim();
 		if (!(trimmed || selectedImages.length > 0) || isLoading || isScanning) return;
@@ -324,38 +327,52 @@ export default function AIChatContainer({ mode = "admin", onClose }: AIChatConta
 			if (!sessionId) return;
 		}
 		const userMsg: ChatMessage = { role: "user", content: trimmed, image: selectedImages[0], _msgId: mkMsgId() };
-		setMessages(prev => [...prev, userMsg]);
+		const requestSessionId = sessionId ?? `pos-${mkMsgId()}`;
+		const pendingAssistantId = mkMsgId();
+		setStreamSessionId(requestSessionId);
+		setMessages(prev => [...prev, userMsg, { role: "assistant", content: "", _msgId: pendingAssistantId }]);
 		setInput("");
 		setSelectedImages([]);
 		setIsLoading(true);
+		setIsStreaming(false);
+		setStreamingContent("");
+		setToolCalls([]);
 		try {
 			const history = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
 			const response = await yumiChat({ 
+				sessionId: requestSessionId,
 				message: trimmed, 
 				history, 
-				images: selectedImages.length > 0 ? selectedImages : (userMsg.image ? [userMsg.image] : undefined) 
+				images: selectedImages.length > 0 ? selectedImages : (userMsg.image ? [userMsg.image] : undefined),
+				contextHint: contextHint || undefined,
 			});
-			const suggestions = extractSuggestions(response);
-			const quickActions = generateQuickActions(trimmed, response);
-			const genericActions = extractGenericActions(response);
-			const chartData = extractChartData(response);
-			const exportData = extractExportData(response);
-			const sanitizedResponse = sanitizeResponse(response);
-			streamText(sanitizedResponse, async () => {
-				const assistantMsg: ChatMessage = { role: "assistant", content: sanitizedResponse, suggestions, quickActions, genericActions, chartData, exportData, _msgId: mkMsgId() };
-				setMessages(prev => [...prev, assistantMsg]);
-				if (mode === "admin" && sessionId) {
-					await saveConversationMutation({ sessionId: sessionId!, role: "user", content: trimmed });
-					await saveConversationMutation({ sessionId: sessionId!, role: "assistant", content: sanitizedResponse });
-				}
-			});
+			const responseText = response.content;
+			const suggestions = extractSuggestions(responseText);
+			const quickActions = generateQuickActions(trimmed, responseText);
+			const genericActions = extractGenericActions(responseText);
+			const chartData = extractChartData(responseText);
+			const exportData = extractExportData(responseText);
+			const sanitizedResponse = sanitizeResponse(responseText);
+			setToolCalls(response.toolCalls);
+			setMessages(prev => prev.map(msg => (
+				msg._msgId === pendingAssistantId
+					? { role: "assistant", content: sanitizedResponse, suggestions, quickActions, genericActions, chartData, exportData, _msgId: pendingAssistantId }
+					: msg
+			)));
+			if (mode === "admin" && sessionId) {
+				await saveConversationMutation({ sessionId: sessionId!, role: "user", content: trimmed });
+				await saveConversationMutation({ sessionId: sessionId!, role: "assistant", content: sanitizedResponse });
+			}
 		} catch (error) {
 			toast.error("Gagal mendapatkan respons AI");
-			setIsLoading(false);
+			setMessages(prev => prev.filter(msg => msg._msgId !== pendingAssistantId));
 		} finally {
+			streamingActiveRef.current = false;
+			setIsStreaming(false);
+			setStreamingContent("");
 			setIsLoading(false);
 		}
-	}, [currentSessionId, selectedImages, isLoading, isScanning, isScanMode, messages, yumiChat, startNewSession, streamText, saveConversationMutation, processImagesWithAI, mode]);
+	}, [currentSessionId, selectedImages, isLoading, isScanning, isScanMode, messages, yumiChat, startNewSession, saveConversationMutation, processImagesWithAI, mode, contextHint]);
 
 	const handleCopy = useCallback((text: string, index: number) => {
 		navigator.clipboard.writeText(text);

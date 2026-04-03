@@ -87,7 +87,7 @@ export interface ChatMessage {
 
 export interface ToolCall {
 	name: string;
-	args: Record<string, unknown>;
+	args?: Record<string, unknown>;
 	status: "pending" | "executing" | "success" | "error";
 	result?: string;
 	error?: string;

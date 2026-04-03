@@ -45,5 +45,5 @@ export function YumiAIChat({ onClose, cartItems, shiftId }: YumiAIChatProps) {
 		setContextHint(hints.length > 0 ? hints.join(" | ") : null);
 	}, [cartItems, inventory, pendingOrders, shiftId]);
 
-	return <AIChatContainer mode="pos" onClose={onClose} />;
+	return <AIChatContainer mode="pos" onClose={onClose} contextHint={contextHint ?? undefined} />;
 }

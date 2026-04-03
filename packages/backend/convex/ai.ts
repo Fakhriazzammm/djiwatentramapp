@@ -938,6 +938,7 @@ export const yumiChat = action({
 	args: {
 		sessionId: v.optional(v.string()),
 		message: v.string(),
+		contextHint: v.optional(v.string()),
 		history: v.array(
 			v.object({
 				role: v.union(v.literal("user"), v.literal("assistant")),
@@ -948,6 +949,17 @@ export const yumiChat = action({
 		image: v.optional(v.string()), // backward compatibility for single image
 	},
 	handler: async (ctx, args) => {
+		const finalizeResponse = (
+			content: string,
+			toolCalls: Array<{
+				name: string;
+				status: "success" | "error";
+				args?: Record<string, unknown>;
+				result?: string;
+				error?: string;
+			}> = []
+		) => ({ content, toolCalls });
+
 		const dbContext = await gatherDatabaseContext(ctx);
 		const smartContext = await gatherSmartContext(ctx);
 		
@@ -979,6 +991,7 @@ WAKTU SEKARANG: ${new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" 
 
 KONTEKS BISNIS SAAT INI:
 - Inventory Terdaftar: ${inventoryContext}
+${args.contextHint ? `- Konteks kasir aktif: ${args.contextHint}` : ""}
 
 KEMAMPUAN:
 - Mengetahui SELURUH data database secara real-time (produk, stok, pesanan, keuangan, promosi)
@@ -1004,8 +1017,8 @@ KEMAMPUAN:
 
 ATURAN:
 1. Jawab dalam Bahasa Indonesia yang ramah dan profesional
-2. JANGAN gunakan format markdown atau rich text APA PUN: dilarang keras menggunakan bold (**), italic (* atau _), heading (#), bullet points manual (-), numbering, atau code blocks.
-3. JANGAN PERNAH menggunakan simbol asterisk (*) atau underscore (_) untuk penekanan, dekorasi, atau list. Gunakan teks polos atau emoji.
+2. Gunakan teks polos. Jangan gunakan markdown dekoratif seperti bold (**), italic, heading (#), atau code block.
+3. Jangan gunakan simbol asterisk (*) atau underscore (_) untuk penekanan atau dekorasi.
 4. Jika menyebutkan kategori (seperti makanan minuman, belanja stok), JANGAN gunakan underscore. Gunakan spasi biasa (contoh: "makanan minuman", bukan "makanan_minuman").
 5. Berikan jawaban yang ringkas, padat, dan langsung ke poin.
 6. Jika membuat list, gunakan emoji bullet seperti • atau emoji lain, bukan tanda minus, asterisk, atau nomor.
@@ -1013,7 +1026,7 @@ ATURAN:
 8. Format angka uang dengan "Rp" dan pemisah ribuan.
 9. Jika user meminta aksi (tambah produk, update stok, dll), GUNAKAN TOOL yang tersedia.
 10. SANGAT PENTING: Pastikan output adalah TEKS POLOS (Plain Text) yang bersih dari simbol-simbol formatting teknis.
-11. FORMAT LIST DATA (WAJIB): Setiap kali menampilkan list transaksi, keuangan, pesanan, atau data historis lainnya, WAJIB sertakan tanggal atau rentang tanggal di setiap item.
+11. FORMAT LIST DATA (WAJIB): Untuk list transaksi, keuangan, pesanan, atau data historis lainnya, sertakan tanggal atau rentang tanggal di setiap item. Aturan ini boleh memakai nomor dan tanda minus sesuai format berikut.
     Gunakan format: [Nomor]. - [Tanggal/Periode] - [Nama Item] - [Jumlah] - [Total Nilai]
     Contoh: 1. - 01-28 Feb 2026 - Air Mineral - 110 - Rp 550.000
 12. FLEKSIBILITAS PARSING & GENERASI OTOMATIS (PROAKTIF): Kamu adalah pakar ekstraksi data yang sangat cerdas. Jika pengguna memberikan daftar data mentah (seperti daftar pengeluaran harian Februari 2026), kamu harus:
@@ -1167,7 +1180,7 @@ INSTRUKSI REKONSILIASI BANK:
 			openai = getOpenAI();
 		} catch (e) {
 			console.error("yumiChat: Failed to initialize OpenAI/SumoPod:", e);
-			return "Maaf, layanan AI sedang tidak tersedia. Pastikan SUMOPOD_API_KEY sudah diatur di dashboard Convex.";
+			return finalizeResponse("Maaf, layanan AI sedang tidak tersedia. Pastikan SUMOPOD_API_KEY sudah diatur di dashboard Convex.");
 		}
 
 		// Initialize streaming message if sessionId is provided
@@ -1177,6 +1190,74 @@ INSTRUKSI REKONSILIASI BANK:
 				sessionId: args.sessionId,
 			});
 		}
+
+		const executedToolCalls: Array<{
+			name: string;
+			status: "success" | "error";
+			args?: Record<string, unknown>;
+			result?: string;
+			error?: string;
+		}> = [];
+
+		const executeToolCalls = async (incomingToolCalls: any[]) => {
+			const toolResults = await Promise.all(incomingToolCalls.map(async (tc) => {
+				let parsedArgs: Record<string, unknown> = {};
+				try {
+					parsedArgs = tc.function?.arguments ? JSON.parse(tc.function.arguments) : {};
+				} catch (parseError) {
+					const errorMessage = `Argumen tool tidak valid: ${String(parseError)}`;
+					executedToolCalls.push({
+						name: tc.function.name,
+						status: "error",
+						error: errorMessage,
+					});
+					return {
+						role: "tool",
+						tool_call_id: tc.id,
+						name: tc.function.name,
+						content: formatToolResult(tc.function.name, null, errorMessage),
+					};
+				}
+
+				try {
+					const result = await ctx.runAction(api.toolExecutors.executeToolCall, {
+						toolName: tc.function.name,
+						args: parsedArgs,
+					});
+					executedToolCalls.push({
+						name: tc.function.name,
+						status: result.success ? "success" : "error",
+						args: parsedArgs,
+						result: result.success ? JSON.stringify(result.result) : undefined,
+						error: result.success ? undefined : String(result.error),
+					});
+					return {
+						role: "tool",
+						tool_call_id: tc.id,
+						name: tc.function.name,
+						content: result.success ? formatToolResult(tc.function.name, result.result) : formatToolResult(tc.function.name, null, result.error),
+					};
+				} catch (e) {
+					const errorMessage = String(e);
+					executedToolCalls.push({
+						name: tc.function.name,
+						status: "error",
+						args: parsedArgs,
+						error: errorMessage,
+					});
+					return {
+						role: "tool",
+						tool_call_id: tc.id,
+						name: tc.function.name,
+						content: formatToolResult(tc.function.name, null, errorMessage),
+					};
+				}
+			}));
+
+			for (const res of toolResults) {
+				messages.push(res as OpenAI.ChatCompletionToolMessageParam);
+			}
+		};
 
 		while (currentIteration < maxIterations) {
 			currentIteration++;
@@ -1232,37 +1313,12 @@ INSTRUKSI REKONSILIASI BANK:
 						});
 					}
 
-					if (finalToolCalls.length === 0) return fullContent;
+					if (finalToolCalls.length === 0) return finalizeResponse(fullContent, executedToolCalls);
 
 					const assistantMsg = { role: "assistant", content: fullContent || null, tool_calls: finalToolCalls };
 					messages.push(assistantMsg as OpenAI.ChatCompletionMessageParam);
 
-					const toolExecutionPromises = finalToolCalls.map(async (tc) => {
-						try {
-							const result = await ctx.runAction(api.toolExecutors.executeToolCall, {
-								toolName: tc.function.name,
-								args: JSON.parse(tc.function.arguments),
-							});
-							return {
-								role: "tool",
-								tool_call_id: tc.id,
-								name: tc.function.name,
-								content: result.success ? formatToolResult(tc.function.name, result.result) : formatToolResult(tc.function.name, null, result.error),
-							};
-						} catch (e) {
-							return {
-								role: "tool",
-								tool_call_id: tc.id,
-								name: tc.function.name,
-								content: formatToolResult(tc.function.name, null, String(e)),
-							};
-						}
-					});
-					
-					const toolResults = await Promise.all(toolExecutionPromises);
-					for (const res of toolResults) {
-						messages.push(res as OpenAI.ChatCompletionToolMessageParam);
-					}
+					await executeToolCalls(finalToolCalls);
 					
 				} else {
 					// Subsequent iterations for tool chain results (non-streaming to save complexity)
@@ -1282,51 +1338,26 @@ INSTRUKSI REKONSILIASI BANK:
 								isFinal: true,
 							});
 						}
-						return responseMessage.content;
+						return finalizeResponse(responseMessage.content ?? "", executedToolCalls);
 					}
 
 					messages.push(responseMessage as OpenAI.ChatCompletionMessageParam);
 					
-					const toolExecutionPromises = responseMessage.tool_calls.map(async (tc) => {
-						try {
-							const result = await ctx.runAction(api.toolExecutors.executeToolCall, {
-								toolName: tc.function.name,
-								args: JSON.parse(tc.function.arguments),
-							});
-							return {
-								role: "tool",
-								tool_call_id: tc.id,
-								name: tc.function.name,
-								content: result.success ? formatToolResult(tc.function.name, result.result) : formatToolResult(tc.function.name, null, result.error),
-							};
-						} catch (e) {
-							return {
-								role: "tool",
-								tool_call_id: tc.id,
-								name: tc.function.name,
-								content: formatToolResult(tc.function.name, null, String(e)),
-							};
-						}
-					});
-					
-					const toolResults = await Promise.all(toolExecutionPromises);
-					for (const res of toolResults) {
-						messages.push(res as OpenAI.ChatCompletionToolMessageParam);
-					}
+					await executeToolCalls(responseMessage.tool_calls);
 				}
 			} catch (apiError) {
 				console.error("yumiChat API error:", apiError);
 				const errMsg = apiError instanceof Error ? apiError.message : String(apiError);
 				if (errMsg.includes("401") || errMsg.includes("Unauthorized")) {
-					return "Maaf, API key tidak valid. Silakan periksa SUMOPOD_API_KEY di dashboard Convex.";
+					return finalizeResponse("Maaf, API key tidak valid. Silakan periksa SUMOPOD_API_KEY di dashboard Convex.", executedToolCalls);
 				}
 				if (errMsg.includes("429") || errMsg.includes("rate limit")) {
-					return "Maaf, batas penggunaan API tercapai. Silakan coba lagi dalam beberapa saat.";
+					return finalizeResponse("Maaf, batas penggunaan API tercapai. Silakan coba lagi dalam beberapa saat.", executedToolCalls);
 				}
 				if (errMsg.includes("timeout") || errMsg.includes("ECONNREFUSED")) {
-					return "Maaf, koneksi ke server AI gagal. Silakan coba lagi.";
+					return finalizeResponse("Maaf, koneksi ke server AI gagal. Silakan coba lagi.", executedToolCalls);
 				}
-				return "Maaf, terjadi kesalahan saat memproses permintaan. Silakan coba lagi.";
+				return finalizeResponse("Maaf, terjadi kesalahan saat memproses permintaan. Silakan coba lagi.", executedToolCalls);
 			}
 		}
 
@@ -1346,10 +1377,10 @@ INSTRUKSI REKONSILIASI BANK:
 					isFinal: true,
 				});
 			}
-			return finalContent;
+			return finalizeResponse(finalContent ?? "", executedToolCalls);
 		} catch (finalError) {
 			console.error("yumiChat final completion error:", finalError);
-			return "Maaf, terjadi kesalahan saat menyelesaikan respons. Silakan coba lagi.";
+			return finalizeResponse("Maaf, terjadi kesalahan saat menyelesaikan respons. Silakan coba lagi.", executedToolCalls);
 		}
 	},
 });
@@ -1409,6 +1440,7 @@ Berikan analisis ringkas dan perbandingannya.`,
 export const generateBusinessBriefing = action({
 	args: {
 		localHour: v.optional(v.number()), // Hour from 0-23
+		context: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		try {
@@ -1523,7 +1555,8 @@ ATURAN KETAT:
 - Inventaris: ${dataContext.lowStockCount} item stok rendah (${dataContext.lowStockNames || "Semua stok aman"})
 - Reservasi: ${dataContext.todayBookingsCount} booking hari ini ${dataContext.todayBookingsNames ? `(${dataContext.todayBookingsNames})` : ""}
 - Analitik: Produk terlaris saat ini adalah ${dataContext.trendingProduct}
-- Manajemen Tugas: Ada ${dataContext.pendingTasksCount} tugas menunggu ${dataContext.pendingTasksTitles ? `(${dataContext.pendingTasksTitles})` : ""}`,
+- Manajemen Tugas: Ada ${dataContext.pendingTasksCount} tugas menunggu ${dataContext.pendingTasksTitles ? `(${dataContext.pendingTasksTitles})` : ""}
+${args.context ? `- Konteks Tambahan: ${args.context}` : ""}`,
 				},
 			]);
 		} catch (error) {
