@@ -379,6 +379,7 @@ export function TransactionDetailReport({ range }: Props) {
 											onCheckedChange={handleToggleSelectAll}
 											aria-label="Pilih semua transaksi di tabel"
 											disabled={filteredTransactionIds.length === 0}
+											className="rounded-sm border-muted-foreground/40 bg-background data-checked:border-primary data-checked:bg-primary"
 										/>
 									</div>
 								</th>
@@ -425,6 +426,7 @@ export function TransactionDetailReport({ range }: Props) {
 														checked={selectedTransactionIds.has(t._id)}
 														onCheckedChange={() => handleToggleRow(t._id)}
 														aria-label={`Pilih transaksi ${t.merchant || "Umum"} tanggal ${format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}`}
+														className="rounded-sm border-muted-foreground/40 bg-background data-checked:border-primary data-checked:bg-primary"
 													/>
 												</div>
 											</td>
