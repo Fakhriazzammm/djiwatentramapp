@@ -75,6 +75,69 @@ function getWeekStart(date: Date): Date {
 	return d;
 }
 
+function getMonthKey(timestamp: number) {
+	const date = new Date(timestamp);
+	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getLocalDateKey(timestamp: number) {
+	const date = new Date(timestamp);
+	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+		date.getDate(),
+	).padStart(2, "0")}`;
+}
+
+function getDaysInMonth(timestamp: number) {
+	const date = new Date(timestamp);
+	return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+}
+
+function buildShiftTargetSummary(args: {
+	targetRevenue?: number;
+	shiftsPerDay: number;
+	timestamp: number;
+	shiftRevenue: number;
+	dailyCollected: number;
+}) {
+	const { targetRevenue, shiftsPerDay, timestamp, shiftRevenue, dailyCollected } = args;
+
+	if (!targetRevenue || targetRevenue <= 0) {
+		return {
+			hasTarget: false,
+			targetMonth: getMonthKey(timestamp),
+			dailyTarget: 0,
+			shiftTarget: 0,
+			dailyCollected,
+			shiftCollected: shiftRevenue,
+			dailyTargetProgress: 0,
+			shiftTargetProgress: 0,
+			isDailyTargetMet: false,
+			isShiftTargetMet: false,
+		};
+	}
+
+	const dailyTarget = targetRevenue / getDaysInMonth(timestamp);
+	const safeShiftsPerDay = Math.max(1, shiftsPerDay);
+	const shiftTarget = dailyTarget / safeShiftsPerDay;
+	const dailyTargetProgress =
+		dailyTarget > 0 ? Math.min((dailyCollected / dailyTarget) * 100, 100) : 0;
+	const shiftTargetProgress =
+		shiftTarget > 0 ? Math.min((shiftRevenue / shiftTarget) * 100, 100) : 0;
+
+	return {
+		hasTarget: true,
+		targetMonth: getMonthKey(timestamp),
+		dailyTarget,
+		shiftTarget,
+		dailyCollected,
+		shiftCollected: shiftRevenue,
+		dailyTargetProgress,
+		shiftTargetProgress,
+		isDailyTargetMet: dailyCollected >= dailyTarget,
+		isShiftTargetMet: shiftRevenue >= shiftTarget,
+	};
+}
+
 function normalizePaymentMethod(method?: string | null) {
 	return (method || "").trim().toLowerCase();
 }
@@ -1302,8 +1365,13 @@ export const getShiftReportTable = query({
 
 		const shifts = await shiftsQuery.order("desc").collect();
 		const productLookup = await buildProductLookup(ctx);
+		const siteSettings = await ctx.db.query("siteSettings").first();
+		const shiftsPerDay = Math.max(
+			1,
+			siteSettings?.shiftSettings?.predefinedShifts?.length || 2,
+		);
 
-		return await Promise.all(
+		const rows = await Promise.all(
 			shifts.map(async (shift) => {
 				const effectiveEndTime = shift.endTime ?? Math.min(endBoundary, now);
 				const detail = await buildShiftReportDetail(
@@ -1342,6 +1410,42 @@ export const getShiftReportTable = query({
 				};
 			}),
 		);
+
+		const dateRevenueMap = rows.reduce<Record<string, number>>((acc, row) => {
+			const dateKey = getLocalDateKey(row.startTime);
+			acc[dateKey] = (acc[dateKey] ?? 0) + row.totalRevenue;
+			return acc;
+		}, {});
+
+		const monthKeys = Array.from(new Set(rows.map((row) => getMonthKey(row.startTime))));
+		const targets = await Promise.all(
+			monthKeys.map(async (month) => {
+				const target = await ctx.db
+					.query("financialTargets")
+					.withIndex("by_month", (q) => q.eq("month", month))
+					.first();
+				return [month, target] as const;
+			}),
+		);
+		const targetMap = new Map(targets);
+
+		return rows.map((row) => {
+			const dateKey = getLocalDateKey(row.startTime);
+			const monthKey = getMonthKey(row.startTime);
+			const targetDoc = targetMap.get(monthKey);
+			const targetSummary = buildShiftTargetSummary({
+				targetRevenue: targetDoc?.targetRevenue,
+				shiftsPerDay,
+				timestamp: row.startTime,
+				shiftRevenue: row.totalRevenue,
+				dailyCollected: dateRevenueMap[dateKey] ?? row.totalRevenue,
+			});
+
+			return {
+				...row,
+				...targetSummary,
+			};
+		});
 	},
 });
 
@@ -1542,6 +1646,61 @@ export const getShiftDetails = query({
 			productLookup,
 			shiftDoc ?? undefined,
 		);
+		const siteSettings = await ctx.db.query("siteSettings").first();
+		const shiftsPerDay = Math.max(
+			1,
+			siteSettings?.shiftSettings?.predefinedShifts?.length || 2,
+		);
+		const monthKey = getMonthKey(startTime);
+		const targetDoc = await ctx.db
+			.query("financialTargets")
+			.withIndex("by_month", (q) => q.eq("month", monthKey))
+			.first();
+		const dayStart = new Date(
+			new Date(startTime).getFullYear(),
+			new Date(startTime).getMonth(),
+			new Date(startTime).getDate(),
+			0,
+			0,
+			0,
+			0,
+		).getTime();
+		const dayEnd = new Date(
+			new Date(startTime).getFullYear(),
+			new Date(startTime).getMonth(),
+			new Date(startTime).getDate(),
+			23,
+			59,
+			59,
+			999,
+		).getTime();
+		const sameDayShifts = await ctx.db
+			.query("shifts")
+			.withIndex("by_startTime", (q) => q.gte("startTime", dayStart).lte("startTime", dayEnd))
+			.collect();
+		const dailyShiftDetails = await Promise.all(
+			sameDayShifts.map(async (shift) => {
+				const shiftEnd = shift.endTime ?? Date.now();
+				return await buildShiftReportDetail(
+					ctx,
+					shift.startTime,
+					shiftEnd,
+					productLookup,
+					shift,
+				);
+			}),
+		);
+		const dailyCollected = dailyShiftDetails.reduce(
+			(sum, shiftDetail) => sum + shiftDetail.totalRevenue,
+			0,
+		);
+		const targetSummary = buildShiftTargetSummary({
+			targetRevenue: targetDoc?.targetRevenue,
+			shiftsPerDay,
+			timestamp: startTime,
+			shiftRevenue: detail.totalRevenue,
+			dailyCollected,
+		});
 
 		return {
 			startTime,
@@ -1578,6 +1737,7 @@ export const getShiftDetails = query({
 			topProducts: detail.topProducts,
 			expenseBreakdown: detail.expenseBreakdown,
 			recentTransactions: detail.recentTransactions,
+			...targetSummary,
 		};
 	},
 });

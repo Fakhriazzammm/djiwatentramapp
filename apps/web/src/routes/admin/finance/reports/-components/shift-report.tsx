@@ -46,6 +46,16 @@ type ShiftRow = {
 	endingCashPhysical?: number;
 	nonCashExpected: number;
 	nonCashConfirmed?: number;
+	hasTarget?: boolean;
+	targetMonth?: string;
+	dailyTarget?: number;
+	shiftTarget?: number;
+	dailyCollected?: number;
+	shiftCollected?: number;
+	dailyTargetProgress?: number;
+	shiftTargetProgress?: number;
+	isDailyTargetMet?: boolean;
+	isShiftTargetMet?: boolean;
 };
 
 function formatDateTime(timestamp: number, withTime = false) {
@@ -120,6 +130,20 @@ function buildShiftSummaryText(shift: ShiftRow, details: any) {
 	}
 
 	lines.push("");
+	if (shift.hasTarget) {
+		lines.push("STATUS TARGET:");
+		lines.push(
+			`- Target Shift: ${formatCurrencyIDR(shift.shiftTarget ?? 0)} (${shift.isShiftTargetMet ? "Tercapai" : "Belum Tercapai"})`,
+		);
+		lines.push(
+			`- Target Harian: ${formatCurrencyIDR(shift.dailyTarget ?? 0)} (${shift.isDailyTargetMet ? "Tercapai" : "Belum Tercapai"})`,
+		);
+		lines.push(
+			`- Revenue Harian: ${formatCurrencyIDR(shift.dailyCollected ?? 0)}`,
+		);
+		lines.push("");
+	}
+
 	lines.push(`Pengeluaran Shift: ${formatCurrencyIDR(shift.totalExpenses)}`);
 	if (expenseBreakdown.length > 0) {
 		for (const expense of expenseBreakdown) {
@@ -302,6 +326,7 @@ export function ShiftReport({ range }: Props) {
 									<TableHead>Bruto</TableHead>
 									<TableHead>Diskon</TableHead>
 									<TableHead>Net</TableHead>
+									<TableHead>Target</TableHead>
 									<TableHead>Pengeluaran</TableHead>
 									<TableHead>Produk</TableHead>
 									<TableHead>Aksi</TableHead>
@@ -356,6 +381,9 @@ export function ShiftReport({ range }: Props) {
 											</TableCell>
 											<TableCell className="whitespace-nowrap font-bold text-primary">
 												{formatCurrencyIDR(shift.totalRevenue, true)}
+											</TableCell>
+											<TableCell>
+												<TargetStatusCell shift={shift} />
 											</TableCell>
 											<TableCell className="whitespace-nowrap text-rose-700">
 												{formatCurrencyIDR(shift.totalExpenses, true)}
@@ -446,6 +474,37 @@ export function ShiftReport({ range }: Props) {
 											selectedShift.endTime,
 										)}`}
 									/>
+								</div>
+
+								<div className="rounded-2xl border border-border bg-muted/20 p-3">
+									<div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+										<TrendingUp className="h-3.5 w-3.5" />
+										Status Target
+									</div>
+									{selectedShift.hasTarget ? (
+										<div className="grid gap-3 sm:grid-cols-2">
+											<DetailBlock
+												title="Target Shift"
+												items={[
+													["Target", formatCurrencyIDR(selectedShift.shiftTarget ?? 0)],
+													["Revenue Shift", formatCurrencyIDR(selectedShift.shiftCollected ?? selectedShift.totalRevenue)],
+													["Status", selectedShift.isShiftTargetMet ? "Target Tercapai" : "Target Tidak Tercapai"],
+												]}
+											/>
+											<DetailBlock
+												title="Target Harian"
+												items={[
+													["Target Harian", formatCurrencyIDR(selectedShift.dailyTarget ?? 0)],
+													["Revenue Harian", formatCurrencyIDR(selectedShift.dailyCollected ?? 0)],
+													["Status", selectedShift.isDailyTargetMet ? "Target Tercapai" : "Target Tidak Tercapai"],
+												]}
+											/>
+										</div>
+									) : (
+										<p className="text-sm text-muted-foreground">
+											Belum ada target keuangan bulanan untuk periode shift ini.
+										</p>
+									)}
 								</div>
 
 								<div className="grid gap-3 sm:grid-cols-2">
@@ -648,6 +707,63 @@ function MiniStat({
 				{label}
 			</div>
 			<p className="mt-2 text-base font-bold text-foreground">{value}</p>
+		</div>
+	);
+}
+
+function TargetStatusCell({ shift }: { shift: ShiftRow }) {
+	if (!shift.hasTarget) {
+		return (
+			<div className="whitespace-nowrap text-xs text-muted-foreground">
+				Belum ada target
+			</div>
+		);
+	}
+
+	return (
+		<div className="flex min-w-[200px] flex-col gap-1.5 whitespace-nowrap">
+			<TargetBadge
+				label="Shift"
+				met={!!shift.isShiftTargetMet}
+				current={shift.shiftCollected ?? shift.totalRevenue}
+				target={shift.shiftTarget ?? 0}
+			/>
+			<TargetBadge
+				label="Harian"
+				met={!!shift.isDailyTargetMet}
+				current={shift.dailyCollected ?? 0}
+				target={shift.dailyTarget ?? 0}
+			/>
+		</div>
+	);
+}
+
+function TargetBadge({
+	label,
+	met,
+	current,
+	target,
+}: {
+	label: string;
+	met: boolean;
+	current: number;
+	target: number;
+}) {
+	return (
+		<div
+			className={`rounded-xl border px-2.5 py-2 text-[11px] ${
+				met
+					? "border-emerald-200 bg-emerald-50 text-emerald-700"
+					: "border-rose-200 bg-rose-50 text-rose-700"
+			}`}
+		>
+			<div className="flex items-center justify-between gap-2 font-bold">
+				<span>{label}</span>
+				<span>{met ? "Target Tercapai" : "Target Tidak Tercapai"}</span>
+			</div>
+			<div className="mt-1 text-[10px] font-medium opacity-90">
+				{formatCurrencyIDR(current, true)} / {formatCurrencyIDR(target, true)}
+			</div>
 		</div>
 	);
 }

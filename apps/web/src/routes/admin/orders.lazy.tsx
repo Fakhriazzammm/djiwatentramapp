@@ -28,7 +28,7 @@ import {
 	XCircle,
 	Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +79,15 @@ interface Order {
 	[key: string]: any;
 }
 
+function normalizeReferenceCode(value?: string | null) {
+	return String(value || "")
+		.trim()
+		.replace(/^#/, "")
+		.replace(/^BK-/i, "")
+		.replace(/\s+/g, "")
+		.toUpperCase();
+}
+
 type QuickDateFilter =
 	| "all"
 	| "today"
@@ -119,6 +128,7 @@ function AdminOrders() {
 	const [quickDateFilter, setQuickDateFilter] =
 		useState<QuickDateFilter>("all");
 	const [isDetailOpen, setIsDetailOpen] = useState(false);
+	const [hasAppliedFocus, setHasAppliedFocus] = useState(false);
 
 	const getQuickDateRange = (filter: QuickDateFilter) => {
 		const now = new Date();
@@ -206,6 +216,55 @@ function AdminOrders() {
 				order.createdAt <= activeDateRange.end);
 		return matchesStatus && matchesSearch && matchesQuickDate;
 	});
+
+	useEffect(() => {
+		if (hasAppliedFocus || !unifiedOrders) {
+			return;
+		}
+
+		const params = new URLSearchParams(window.location.search);
+		const focusBooking = params.get("focusBooking");
+		const focusOrder = params.get("focusOrder");
+		const focusValue = focusBooking || focusOrder;
+
+		if (!focusValue) {
+			setHasAppliedFocus(true);
+			return;
+		}
+
+		const normalizedTarget = normalizeReferenceCode(focusValue);
+		const matchedOrder = unifiedOrders.find((order: any) => {
+			if (focusBooking && order.type !== "booking") {
+				return false;
+			}
+
+			const candidates = [
+				order.displayId,
+				order.orderNumber,
+				order.bookingCode,
+				order._id,
+			];
+
+			return candidates.some(
+				(candidate) => normalizeReferenceCode(String(candidate || "")) === normalizedTarget
+			);
+		});
+
+		setStatusFilter("all");
+		setQuickDateFilter("all");
+		setSearchQuery(focusValue);
+
+		if (matchedOrder) {
+			setSelectedOrder(matchedOrder as any);
+			setIsDetailOpen(true);
+		}
+
+		const nextUrl = new URL(window.location.href);
+		nextUrl.searchParams.delete("focusOrder");
+		nextUrl.searchParams.delete("focusBooking");
+		window.history.replaceState({}, "", nextUrl.toString());
+		setHasAppliedFocus(true);
+	}, [hasAppliedFocus, unifiedOrders]);
 
 	const handleStatusUpdate = async (
 		newStatus: "pending" | "paid" | "completed" | "cancelled"
