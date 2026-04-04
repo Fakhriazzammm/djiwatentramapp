@@ -13,11 +13,13 @@ import {
 	Save,
 	Settings2,
 	ShieldCheck,
+	Pencil,
 	Trash2,
 	Plus,
 	User,
 	Users,
 	Wallet,
+	X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -356,6 +358,8 @@ function SettingsPage() {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const createRole = useMutation((api as any).roles.createRole);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const updateRole = useMutation((api as any).roles.updateRole);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const deleteRole = useMutation((api as any).roles.deleteRole);
 
 	const [settings, setSettings] = useState({
@@ -453,6 +457,18 @@ function SettingsPage() {
 		name: "",
 		permissions: [] as string[],
 	});
+	const [editingUser, setEditingUser] = useState<{
+		id: Id<"users">;
+		name: string;
+		username: string;
+		roleId: Id<"roles"> | "";
+		isActive: boolean;
+	} | null>(null);
+	const [editingRole, setEditingRole] = useState<{
+		id: Id<"roles">;
+		name: string;
+		permissions: string[];
+	} | null>(null);
 	const [confirmConfig, setConfirmConfig] = useState<{
 		isOpen: boolean;
 		title: string;
@@ -688,6 +704,80 @@ function SettingsPage() {
 		} catch (error) {
 			console.error(error);
 			toast.error((error as Error).message || "Gagal membuat user");
+		}
+	};
+
+	const handleStartEditUser = (user: any) => {
+		setEditingUser({
+			id: user._id,
+			name: user.name || "",
+			username: user.username || "",
+			roleId: user.roleId || "",
+			isActive: user.isActive ?? true,
+		});
+	};
+
+	const handleSaveEditUser = async () => {
+		if (!editingUser) return;
+		const normalizedEmail = normalizeEmail(editingUser.username);
+
+		if (!editingUser.name.trim()) {
+			toast.error("Nama pengguna wajib diisi");
+			return;
+		}
+
+		if (!isValidEmail(normalizedEmail)) {
+			toast.error("Email pengguna tidak valid");
+			return;
+		}
+
+		if (!editingUser.roleId) {
+			toast.error("Role pengguna wajib dipilih");
+			return;
+		}
+
+		try {
+			await _updateUser({
+				id: editingUser.id,
+				name: editingUser.name.trim(),
+				username: normalizedEmail,
+				roleId: editingUser.roleId as Id<"roles">,
+				isActive: editingUser.isActive,
+			});
+			toast.success("Pengguna berhasil diperbarui");
+			setEditingUser(null);
+		} catch (error) {
+			console.error(error);
+			toast.error((error as Error).message || "Gagal memperbarui pengguna");
+		}
+	};
+
+	const handleStartEditRole = (role: any) => {
+		setEditingRole({
+			id: role._id,
+			name: role.name || "",
+			permissions: role.permissions || [],
+		});
+	};
+
+	const handleSaveEditRole = async () => {
+		if (!editingRole) return;
+		if (!editingRole.name.trim()) {
+			toast.error("Nama role wajib diisi");
+			return;
+		}
+
+		try {
+			await updateRole({
+				id: editingRole.id,
+				name: editingRole.name.trim(),
+				permissions: editingRole.permissions,
+			});
+			toast.success("Role berhasil diperbarui");
+			setEditingRole(null);
+		} catch (error) {
+			console.error(error);
+			toast.error((error as Error).message || "Gagal memperbarui role");
 		}
 	};
 
@@ -2257,6 +2347,127 @@ function SettingsPage() {
 											<h4 className="px-2 font-bold text-base text-foreground">
 												Daftar Pengguna
 											</h4>
+											{editingUser && (
+												<div className="space-y-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
+													<div className="flex items-center justify-between gap-3">
+														<div className="space-y-1">
+															<p className="font-bold text-sm text-foreground">Edit Pengguna</p>
+															<p className="text-xs text-muted-foreground">
+																Perbarui data akun pengguna yang dipilih.
+															</p>
+														</div>
+														<button
+															className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+															onClick={() => setEditingUser(null)}
+															type="button"
+														>
+															<X className="h-4 w-4" />
+														</button>
+													</div>
+													<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+														<div className="space-y-1.5">
+															<label className="font-medium text-muted-foreground text-xs">
+																Nama Lengkap
+															</label>
+															<input
+																className="w-full rounded-xl border border-border bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+																onChange={(e) =>
+																	setEditingUser({
+																		...editingUser,
+																		name: e.target.value,
+																	})
+																}
+																type="text"
+																value={editingUser.name}
+															/>
+														</div>
+														<div className="space-y-1.5">
+															<label className="font-medium text-muted-foreground text-xs">
+																Email / Username
+															</label>
+															<input
+																className="w-full rounded-xl border border-border bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+																onChange={(e) =>
+																	setEditingUser({
+																		...editingUser,
+																		username: e.target.value,
+																	})
+																}
+																type="email"
+																value={editingUser.username}
+															/>
+														</div>
+														<div className="space-y-1.5">
+															<label className="font-medium text-muted-foreground text-xs">
+																Role
+															</label>
+															<select
+																className="w-full rounded-xl border border-border bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+																onChange={(e) =>
+																	setEditingUser({
+																		...editingUser,
+																		roleId: e.target.value as Id<"roles">,
+																	})
+																}
+																value={editingUser.roleId}
+															>
+																<option value="">Pilih role</option>
+																{roles?.map((role: any) => (
+																	<option key={role._id} value={role._id}>
+																		{role.name}
+																	</option>
+																))}
+															</select>
+														</div>
+														<div className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3">
+															<div>
+																<p className="font-medium text-sm text-foreground">
+																	Status Aktif
+																</p>
+																<p className="text-xs text-muted-foreground">
+																	Pengguna nonaktif tidak bisa login.
+																</p>
+															</div>
+															<button
+																className={`relative h-6 w-10 rounded-full transition-all duration-300 ${
+																	editingUser.isActive
+																		? "bg-primary"
+																		: "bg-muted-foreground/20"
+																}`}
+																onClick={() =>
+																	setEditingUser({
+																		...editingUser,
+																		isActive: !editingUser.isActive,
+																	})
+																}
+																type="button"
+															>
+																<div
+																	className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${
+																		editingUser.isActive ? "right-1" : "left-1"
+																	}`}
+																/>
+															</button>
+														</div>
+													</div>
+													<div className="flex justify-end gap-2">
+														<button
+															className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-background"
+															onClick={() => setEditingUser(null)}
+															type="button"
+														>
+															Batal
+														</button>
+														<button
+															className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground text-sm transition-all hover:opacity-90"
+															onClick={handleSaveEditUser}
+															type="button"
+														>
+															Simpan Perubahan
+														</button>
+													</div>
+												</div>
+											)}
 											<div className="space-y-2">
 												{!users ? (
 													Array.from({ length: 3 }).map((_, i) => (
@@ -2289,13 +2500,22 @@ function SettingsPage() {
 																</p>
 															</div>
 														</div>
-														<button
-															className="rounded-xl p-2.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-															onClick={() => handleDeleteUser(user._id)}
-															type="button"
-														>
-															<Trash2 className="h-4 w-4" />
-														</button>
+														<div className="flex items-center gap-1">
+															<button
+																className="rounded-xl p-2.5 text-primary transition-colors hover:bg-primary/10"
+																onClick={() => handleStartEditUser(user)}
+																type="button"
+															>
+																<Pencil className="h-4 w-4" />
+															</button>
+															<button
+																className="rounded-xl p-2.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+																onClick={() => handleDeleteUser(user._id)}
+																type="button"
+															>
+																<Trash2 className="h-4 w-4" />
+															</button>
+														</div>
 													</div>
 												))}
 												{!users?.length && (
@@ -2309,6 +2529,94 @@ function SettingsPage() {
 											<h4 className="px-2 font-bold text-base text-foreground">
 												Daftar Role
 											</h4>
+											{editingRole && (
+												<div className="space-y-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
+													<div className="flex items-center justify-between gap-3">
+														<div className="space-y-1">
+															<p className="font-bold text-sm text-foreground">Edit Role</p>
+															<p className="text-xs text-muted-foreground">
+																Perbarui nama role dan hak akses yang dimiliki.
+															</p>
+														</div>
+														<button
+															className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+															onClick={() => setEditingRole(null)}
+															type="button"
+														>
+															<X className="h-4 w-4" />
+														</button>
+													</div>
+													<div className="space-y-2">
+														<label className="font-medium text-muted-foreground text-xs">
+															Nama Role
+														</label>
+														<input
+															className="w-full rounded-xl border border-border bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+															onChange={(e) =>
+																setEditingRole({
+																	...editingRole,
+																	name: e.target.value,
+																})
+															}
+															type="text"
+															value={editingRole.name}
+														/>
+													</div>
+													<div className="space-y-3">
+														<p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
+															Izin Akses
+														</p>
+														<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+															{AVAILABLE_PERMISSIONS.map((perm: any) => (
+																<label
+																	className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${
+																		editingRole.permissions.includes(perm.id)
+																			? "border-primary/30 bg-primary/5 text-primary"
+																			: "border-border/50 bg-background text-muted-foreground hover:border-border"
+																	}`}
+																	key={perm.id}
+																>
+																	<input
+																		checked={editingRole.permissions.includes(perm.id)}
+																		className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20"
+																		onChange={(e) => {
+																			const nextPermissions = e.target.checked
+																				? [...editingRole.permissions, perm.id]
+																				: editingRole.permissions.filter(
+																						(id) => id !== perm.id,
+																				  );
+																			setEditingRole({
+																				...editingRole,
+																				permissions: nextPermissions,
+																			});
+																		}}
+																		type="checkbox"
+																	/>
+																	<span className="font-medium text-xs">
+																		{perm.label}
+																	</span>
+																</label>
+															))}
+														</div>
+													</div>
+													<div className="flex justify-end gap-2">
+														<button
+															className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-background"
+															onClick={() => setEditingRole(null)}
+															type="button"
+														>
+															Batal
+														</button>
+														<button
+															className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground text-sm transition-all hover:opacity-90"
+															onClick={handleSaveEditRole}
+															type="button"
+														>
+															Simpan Perubahan
+														</button>
+													</div>
+												</div>
+											)}
 											<div className="space-y-2">
 												{!roles ? (
 													Array.from({ length: 3 }).map((_, i) => (
@@ -2333,13 +2641,22 @@ function SettingsPage() {
 																{role.permissions.length} Hak Akses
 															</p>
 														</div>
-														<button
-															className="rounded-lg p-2 text-destructive transition-colors hover:bg-destructive/10"
-															onClick={() => handleDeleteRole(role._id)}
-															type="button"
-														>
-															<Trash2 className="h-4 w-4" />
-														</button>
+														<div className="flex items-center gap-1">
+															<button
+																className="rounded-lg p-2 text-primary transition-colors hover:bg-primary/10"
+																onClick={() => handleStartEditRole(role)}
+																type="button"
+															>
+																<Pencil className="h-4 w-4" />
+															</button>
+															<button
+																className="rounded-lg p-2 text-destructive transition-colors hover:bg-destructive/10"
+																onClick={() => handleDeleteRole(role._id)}
+																type="button"
+															>
+																<Trash2 className="h-4 w-4" />
+															</button>
+														</div>
 													</div>
 												))}
 											</div>

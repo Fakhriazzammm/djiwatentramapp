@@ -255,6 +255,7 @@ export const bindProfile = mutation({
 export const updateUser = mutation({
 	args: {
 		id: v.id("users"),
+		username: v.optional(v.string()),
 		name: v.optional(v.string()),
 		roleId: v.optional(v.id("roles")),
 		isActive: v.optional(v.boolean()),
@@ -262,8 +263,28 @@ export const updateUser = mutation({
 		authUserId: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		const { id, ...updates } = args;
-		return await ctx.db.patch(id, updates);
+		const { id, username, ...updates } = args;
+		const nextUpdates: Record<string, unknown> = { ...updates };
+
+		if (username !== undefined) {
+			const normalizedUsername = normalizeEmail(username);
+			if (!isValidEmail(normalizedUsername)) {
+				throw new Error("Username harus berupa email yang valid");
+			}
+
+			const existing = await ctx.db
+				.query("users")
+				.withIndex("by_username", (q) => q.eq("username", normalizedUsername))
+				.first();
+
+			if (existing && existing._id !== id) {
+				throw new Error("Username already taken");
+			}
+
+			nextUpdates.username = normalizedUsername;
+		}
+
+		return await ctx.db.patch(id, nextUpdates);
 	},
 });
 
