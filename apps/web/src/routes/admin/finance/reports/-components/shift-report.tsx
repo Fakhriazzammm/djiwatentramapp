@@ -312,8 +312,8 @@ export function ShiftReport({ range }: Props) {
 					</div>
 
 					<div className="overflow-x-auto">
-						<table className="min-w-[1420px] w-full border-collapse text-sm">
-							<thead className="bg-muted/40 text-left text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+						<table className="min-w-[1420px] w-full border-collapse text-[13px]">
+							<thead className="bg-muted/40 text-left text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
 								<tr>
 									<TableHead>Tanggal</TableHead>
 									<TableHead>Shift</TableHead>
@@ -355,7 +355,7 @@ export function ShiftReport({ range }: Props) {
 											</TableCell>
 											<TableCell>
 												<span
-													className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-bold ${
+													className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-bold leading-4 ${
 														shift.status === "AKTIF"
 															? "bg-emerald-100 text-emerald-700"
 															: "bg-slate-100 text-slate-700"
@@ -399,14 +399,14 @@ export function ShiftReport({ range }: Props) {
 														void handleSendShiftEmail(shift);
 													}}
 													disabled={sendingShiftStart === shift.startTime}
-													className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+													className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
 												>
 													{sendingShiftStart === shift.startTime ? (
-														<Loader2 className="h-3.5 w-3.5 animate-spin" />
+														<Loader2 className="h-3 w-3 animate-spin" />
 													) : (
-														<Mail className="h-3.5 w-3.5" />
+														<Mail className="h-3 w-3" />
 													)}
-													Kirim Email
+													Email
 												</button>
 											</TableCell>
 										</tr>
@@ -678,7 +678,11 @@ function SummaryCard({
 }
 
 function TableHead({ children }: { children: React.ReactNode }) {
-	return <th className="whitespace-nowrap px-4 py-2.5 font-semibold">{children}</th>;
+	return (
+		<th className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold leading-4">
+			{children}
+		</th>
+	);
 }
 
 function TableCell({
@@ -688,7 +692,11 @@ function TableCell({
 	children: React.ReactNode;
 	className?: string;
 }) {
-	return <td className={`whitespace-nowrap px-4 py-2.5 align-middle ${className}`}>{children}</td>;
+	return (
+		<td className={`whitespace-nowrap px-3 py-1.5 align-middle leading-5 ${className}`}>
+			{children}
+		</td>
+	);
 }
 
 function MiniStat({
@@ -721,7 +729,7 @@ function TargetStatusCell({ shift }: { shift: ShiftRow }) {
 	}
 
 	return (
-		<div className="flex min-w-[200px] flex-col gap-1.5 whitespace-nowrap">
+		<div className="flex min-w-[190px] flex-col gap-1 whitespace-nowrap">
 			<TargetBadge
 				label="Shift"
 				met={!!shift.isShiftTargetMet}
@@ -751,7 +759,7 @@ function TargetBadge({
 }) {
 	return (
 		<div
-			className={`rounded-xl border px-2.5 py-2 text-[11px] ${
+			className={`rounded-lg border px-2 py-1.5 text-[10px] leading-4 ${
 				met
 					? "border-emerald-200 bg-emerald-50 text-emerald-700"
 					: "border-rose-200 bg-rose-50 text-rose-700"
@@ -759,9 +767,9 @@ function TargetBadge({
 		>
 			<div className="flex items-center justify-between gap-2 font-bold">
 				<span>{label}</span>
-				<span>{met ? "Target Tercapai" : "Target Tidak Tercapai"}</span>
+				<span>{met ? "Tercapai" : "Tidak Tercapai"}</span>
 			</div>
-			<div className="mt-1 text-[10px] font-medium opacity-90">
+			<div className="mt-0.5 text-[9px] font-medium opacity-90">
 				{formatCurrencyIDR(current, true)} / {formatCurrencyIDR(target, true)}
 			</div>
 		</div>

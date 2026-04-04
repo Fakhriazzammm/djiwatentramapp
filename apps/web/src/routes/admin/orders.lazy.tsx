@@ -772,9 +772,9 @@ function AdminOrders() {
 					</SheetHeader>
 
 					{selectedOrder && (
-						<div className="flex flex-1 flex-col overflow-hidden">
-							<ScrollArea className="flex-1 px-4 py-3">
-								<div className="space-y-4 pb-4">
+						<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+							<ScrollArea className="min-h-0 flex-1">
+								<div className="space-y-4 px-4 py-3 pb-6">
 									{/* Customer Info */}
 									<Card className="border-dashed bg-muted/20 shadow-none">
 										<CardContent className="flex items-center justify-between p-3">
@@ -936,7 +936,11 @@ function AdminOrders() {
 										</div>
 									</div>
 
-									{/* Status Actions */}
+								</div>
+							</ScrollArea>
+
+							<div className="sticky bottom-0 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+								<div className="space-y-3">
 									<div className="space-y-2">
 										<h4 className="font-medium text-[10px] text-muted-foreground uppercase tracking-widest">
 											Ubah Status Pesanan
@@ -1016,25 +1020,25 @@ function AdminOrders() {
 											</Button>
 										</div>
 									</div>
-								</div>
-							</ScrollArea>
 
-							<div className="border-border border-t p-3 flex gap-2">
-								<Button
-									className="h-9 flex-1 text-xs"
-									onClick={() => setIsDetailOpen(false)}
-									variant="outline"
-								>
-									Tutup Detail
-								</Button>
-								<Button
-									className="h-9 w-9 text-destructive"
-									onClick={() => handleDeleteOrder(selectedOrder)}
-									variant="ghost"
-									size="icon"
-								>
-									<Trash2 className="h-4 w-4" />
-								</Button>
+									<div className="flex gap-2 border-t border-border/60 pt-3">
+										<Button
+											className="h-9 flex-1 text-xs"
+											onClick={() => setIsDetailOpen(false)}
+											variant="outline"
+										>
+											Tutup Detail
+										</Button>
+										<Button
+											className="h-9 w-9 text-destructive"
+											onClick={() => handleDeleteOrder(selectedOrder)}
+											variant="ghost"
+											size="icon"
+										>
+											<Trash2 className="h-4 w-4" />
+										</Button>
+									</div>
+								</div>
 							</div>
 						</div>
 					)}
