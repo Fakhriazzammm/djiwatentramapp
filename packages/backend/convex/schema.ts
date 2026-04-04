@@ -88,6 +88,17 @@ export default defineSchema({
 		isRecurring: v.optional(v.boolean()),
 		recurringInterval: v.optional(v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"))),
 		tags: v.optional(v.array(v.string())),
+		metadata: v.optional(
+			v.object({
+				source: v.optional(v.string()),
+				inputMode: v.optional(v.string()),
+				aiSessionId: v.optional(v.string()),
+				importedAt: v.optional(v.number()),
+				rawText: v.optional(v.string()),
+				sourceRef: v.optional(v.string()),
+				sourceLabel: v.optional(v.string()),
+			})
+		),
 	})
 		.index("by_date", ["date"])
 		.index("by_type", ["type"]),

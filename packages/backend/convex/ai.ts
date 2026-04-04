@@ -981,6 +981,12 @@ function parseDateFromLine(line: string, fallbackYear: number): { ts: number; ye
 	return null;
 }
 
+function parseOptionalIsoDate(dateValue?: string | null): number | null {
+	if (!dateValue) return null;
+	const parsed = new Date(dateValue).getTime();
+	return Number.isFinite(parsed) ? parsed : null;
+}
+
 function parseBulkFinancialReport(message: string): ParsedBulkFinanceResult | null {
 	if (!message || message.trim().length < 10) return null;
 
@@ -1717,6 +1723,14 @@ export const yumiChat = action({
 						date: tx.date,
 						paymentMethod: tx.paymentMethod || "cash",
 						status: "completed",
+						metadata: {
+							source: "ai_bulk_finance",
+							inputMode: "bulk_text",
+							aiSessionId: args.sessionId,
+							importedAt: Date.now(),
+							rawText: tx.rawLine,
+							sourceLabel: "AI Bulk",
+						},
 					});
 					createdCount++;
 					if (tx.type === "income") incomeTotal += tx.amount;
@@ -4031,15 +4045,23 @@ export const processImageAndGenerate = action({
 					: args.generateType;
 
 		if (effectiveType === "expense" || effectiveType === "income") {
+			const detectedDate = parseOptionalIsoDate(scanResult.data.date);
 			const txId = await ctx.runMutation(api.finance.createTransaction, {
 				type: effectiveType as "income" | "expense",
 				amount: scanResult.data.amount,
 				category: scanResult.data.category || "Lainnya",
 				description:
 					scanResult.data.description || scanResult.rawText.slice(0, 200),
-				date: Date.now(),
+				date: detectedDate ?? Date.now(),
 				paymentMethod: scanResult.data.paymentMethod || "cash",
 				status: "completed",
+				metadata: {
+					source: "ai_receipt_scan",
+					inputMode: "image_scan",
+					importedAt: Date.now(),
+					rawText: scanResult.rawText.slice(0, 1000),
+					sourceLabel: "AI Scan",
+				},
 			});
 
 			return {
@@ -4138,15 +4160,23 @@ export const batchGenerateTransactions = action({
 							: args.generateType;
 
 				if (effectiveType === "expense" || effectiveType === "income") {
+					const detectedDate = parseOptionalIsoDate(scanResult.data.date);
 					const txId = await ctx.runMutation(api.finance.createTransaction, {
 						type: effectiveType as "income" | "expense",
 						amount: scanResult.data.amount,
 						category: scanResult.data.category || "Lainnya",
 						description:
 							scanResult.data.description || scanResult.rawText.slice(0, 200),
-						date: Date.now(),
+						date: detectedDate ?? Date.now(),
 						paymentMethod: scanResult.data.paymentMethod || "cash",
 						status: "completed",
+						metadata: {
+							source: "ai_receipt_scan",
+							inputMode: "batch_image_scan",
+							importedAt: Date.now(),
+							rawText: scanResult.rawText.slice(0, 1000),
+							sourceLabel: "AI Scan",
+						},
 					});
 
 					generated.push({

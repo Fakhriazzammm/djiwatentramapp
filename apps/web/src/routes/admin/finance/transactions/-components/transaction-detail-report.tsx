@@ -72,7 +72,10 @@ export function TransactionDetailReport({ range }: Props) {
 			result = result.filter(t => 
 				t.merchant?.toLowerCase().includes(query) || 
 				t.description?.toLowerCase().includes(query) ||
-				t.category.toLowerCase().includes(query)
+				t.category.toLowerCase().includes(query) ||
+				t.sourceLabel?.toLowerCase().includes(query) ||
+				t.referenceValue?.toLowerCase().includes(query) ||
+				t.rawText?.toLowerCase().includes(query)
 			);
 		}
 
@@ -149,6 +152,21 @@ export function TransactionDetailReport({ range }: Props) {
 			console.error(error);
 			toast.error("Gagal menghapus transaksi");
 		}
+	};
+
+	const sourceBadge = (sourceLabel?: string, sourceType?: string) => {
+		const colorMap: Record<string, string> = {
+			ai_bulk_finance: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700",
+			ai_tool: "border-violet-200 bg-violet-50 text-violet-700",
+			ai_receipt_scan: "border-sky-200 bg-sky-50 text-sky-700",
+			manual: "border-slate-200 bg-slate-50 text-slate-700",
+		};
+		const color = colorMap[sourceType || "manual"] || "border-slate-200 bg-slate-50 text-slate-700";
+		return (
+			<span className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${color}`}>
+				{sourceLabel || "Manual"}
+			</span>
+		);
 	};
 
 	const handleToggleRow = (id: Id<"financialTransactions">) => {
@@ -385,9 +403,12 @@ export function TransactionDetailReport({ range }: Props) {
 								</th>
 								<th className="px-4 py-3">Tanggal</th>
 								<th className="px-4 py-3">Shift</th>
+								<th className="px-4 py-3">Sumber</th>
 								<th className="px-4 py-3">Merchant/Keterangan</th>
+								<th className="px-4 py-3">Referensi</th>
 								<th className="px-4 py-3">Kategori</th>
 								<th className="px-4 py-3">Metode</th>
+								<th className="px-4 py-3">Status</th>
 								<th className="px-4 py-3 text-right">Nominal</th>
 								<th className="px-4 py-3 text-center">Aksi</th>
 							</tr>
@@ -396,12 +417,12 @@ export function TransactionDetailReport({ range }: Props) {
 							{!data ? (
 								Array.from({ length: 5 }).map((_, i) => (
 									<tr key={i}>
-										<td colSpan={8} className="px-4 py-4"><Skeleton className="h-4 w-full" /></td>
+										<td colSpan={11} className="px-4 py-4"><Skeleton className="h-4 w-full" /></td>
 									</tr>
 								))
 							) : filteredTransactions.length === 0 ? (
 								<tr>
-									<td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+									<td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
 										<div className="flex flex-col items-center gap-2">
 											<Wallet className="h-8 w-8 opacity-20" />
 											<p>Tidak ada transaksi ditemukan</p>
@@ -450,12 +471,37 @@ export function TransactionDetailReport({ range }: Props) {
 												)}
 											</td>
 											<td className="px-4 py-3">
+												<div className="flex flex-col gap-1">
+													{sourceBadge(t.sourceLabel, t.sourceType)}
+													{t.inputMode && (
+														<span className="text-[9px] text-muted-foreground uppercase tracking-wider">
+															{t.inputMode.replace(/_/g, " ")}
+														</span>
+													)}
+												</div>
+											</td>
+											<td className="px-4 py-3">
 												<div className="flex flex-col max-w-[180px] md:max-w-[250px]">
 												<span className="font-semibold text-foreground text-xs truncate" title={t.merchant || "Umum"}>
 													{t.merchant || "Umum"}
 												</span>
 												<span className="text-[10px] text-muted-foreground truncate" title={t.description || "-"}>
 													{t.description || "-"}
+												</span>
+												{t.rawText && (
+													<span className="text-[10px] text-muted-foreground/80 truncate" title={t.rawText}>
+														Raw: {t.rawText}
+													</span>
+												)}
+											</div>
+										</td>
+										<td className="px-4 py-3">
+											<div className="flex flex-col">
+												<span className="text-[10px] font-semibold text-foreground">
+													{t.referenceLabel || "-"}
+												</span>
+												<span className="text-[10px] text-muted-foreground">
+													{t.referenceValue || "-"}
 												</span>
 											</div>
 										</td>
@@ -465,6 +511,17 @@ export function TransactionDetailReport({ range }: Props) {
 										<td className="px-4 py-3">
 											<span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
 												{t.paymentMethod || "Cash"}
+											</span>
+										</td>
+										<td className="px-4 py-3">
+											<span className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+												t.status === "completed"
+													? "border-emerald-200 bg-emerald-50 text-emerald-700"
+													: t.status === "pending"
+														? "border-amber-200 bg-amber-50 text-amber-700"
+														: "border-rose-200 bg-rose-50 text-rose-700"
+											}`}>
+												{t.status}
 											</span>
 										</td>
 										<td className="px-4 py-3 text-right">

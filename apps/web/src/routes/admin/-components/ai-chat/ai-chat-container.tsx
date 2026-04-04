@@ -88,6 +88,21 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	const [actionButtonDone, setActionButtonDone] = useState<Set<string>>(new Set());
 	const [actionButtonLoading, setActionButtonLoading] = useState<Set<string>>(new Set());
 
+	const createAITrackedTransaction = useCallback(
+		(payload: Record<string, unknown>, sourceLabel: string, inputMode: string, rawText?: string) =>
+			createTransactionMutation({
+				...(payload as any),
+				metadata: {
+					source: "ai_tool",
+					inputMode,
+					importedAt: Date.now(),
+					rawText: rawText || (typeof payload.description === "string" ? payload.description : undefined),
+					sourceLabel,
+				},
+			}),
+		[createTransactionMutation]
+	);
+
 	const chatSessions = useQuery(api.aiMemory.getChatSessions, {});
 	const loadConversationQuery = useQuery(
 		api.aiMemory.getConversationContext,
@@ -417,25 +432,29 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 		const { btnKey } = editModal;
 		setActionButtonLoading(prev => { const s = new Set<string>(prev); s.add(btnKey); return s; });
 		try {
-			await createTransactionMutation(params);
+			await createAITrackedTransaction(params as any, "AI Scan", "scan_action_button", params.description);
 			toast.success("Berhasil disimpan!");
 			setActionButtonDone(prev => { const s = new Set<string>(prev); s.add(btnKey); return s; });
 			markScanSaved(btnKey);
 			setEditModal(null);
 		} catch (error) { toast.error("Gagal menyimpan");
 		} finally { setActionButtonLoading(prev => { const s = new Set<string>(prev); s.delete(btnKey); return s; }); }
-	}, [editModal, createTransactionMutation, markScanSaved]);
+	}, [editModal, createAITrackedTransaction, markScanSaved]);
 
 	const handleSaveFromSplitModal = useCallback(async (splits: ScanEditParams[]) => {
 		if (!splitModal) return;
 		try {
-			await Promise.all(splits.map(p => createTransactionMutation(p)));
+			await Promise.all(
+				splits.map((p) =>
+					createAITrackedTransaction(p as any, "AI Scan", "scan_split_action", p.description)
+				)
+			);
 			toast.success("Semua split berhasil disimpan!");
 			setActionButtonDone(prev => { const s = new Set<string>(prev); s.add(splitModal.btnKey); return s; });
 			markScanSaved(splitModal.btnKey);
 			setSplitModal(null); setEditModal(null);
 		} catch (error) { toast.error("Gagal menyimpan split"); }
-	}, [splitModal, createTransactionMutation, markScanSaved]);
+	}, [splitModal, createAITrackedTransaction, markScanSaved]);
 
 	const handleExecuteSuggestion = async (s: Suggestion) => {
 		setIsLoading(true);
@@ -489,7 +508,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 					toast.success("Status booking berhasil diperbarui!");
 					break;
 				case "create_transaction":
-					await createTransactionMutation(actionArgs as any);
+					await createAITrackedTransaction(actionArgs as any, "AI Suggestion", "suggestion_action", s.description || s.title);
 					toast.success("Transaksi berhasil dicatat!");
 					break;
 				case "delete_transaction":

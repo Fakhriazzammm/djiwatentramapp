@@ -23,6 +23,15 @@ interface NewTransactionDialogProps {
 		isRecurring?: boolean;
 		recurringInterval?: "daily" | "weekly" | "monthly";
 		tags?: string[];
+		metadata?: {
+			source?: string;
+			inputMode?: string;
+			aiSessionId?: string;
+			importedAt?: number;
+			rawText?: string;
+			sourceRef?: string;
+			sourceLabel?: string;
+		};
 	};
 }
 
@@ -123,6 +132,7 @@ export function NewTransactionDialog({
 				await updateTransaction({
 					id: transaction._id,
 					...commonData,
+					metadata: transaction.metadata,
 				});
 				toast.success("Transaksi berhasil diperbarui");
 			} else {

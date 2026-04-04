@@ -498,6 +498,17 @@ export const createTransaction = mutation({
 		isRecurring: v.optional(v.boolean()),
 		recurringInterval: v.optional(v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"))),
 		tags: v.optional(v.array(v.string())),
+		metadata: v.optional(
+			v.object({
+				source: v.optional(v.string()),
+				inputMode: v.optional(v.string()),
+				aiSessionId: v.optional(v.string()),
+				importedAt: v.optional(v.number()),
+				rawText: v.optional(v.string()),
+				sourceRef: v.optional(v.string()),
+				sourceLabel: v.optional(v.string()),
+			})
+		),
 	},
 	handler: async (ctx, args) => {
 		const id = await ctx.db.insert("financialTransactions", args);
@@ -687,6 +698,22 @@ export const getTransactionDetailReport = query({
 	handler: async (ctx, args) => {
 		const q = await fetchTransactionsInternal(ctx, args);
 		const transactions = await q.order("desc").collect();
+		const orderIds = [...new Set(transactions.map((t) => t.orderId).filter(Boolean))];
+		const bookingIds = [...new Set(transactions.map((t) => t.bookingOrderId).filter(Boolean))];
+		const [relatedOrders, relatedBookings] = await Promise.all([
+			Promise.all(orderIds.map((id) => ctx.db.get(id!))),
+			Promise.all(bookingIds.map((id) => ctx.db.get(id!))),
+		]);
+		const orderMap = new Map(
+			relatedOrders
+				.filter(Boolean)
+				.map((order) => [order!._id, order!]),
+		);
+		const bookingMap = new Map(
+			relatedBookings
+				.filter(Boolean)
+				.map((booking) => [booking!._id, booking!]),
+		);
 
 		let totalIncome = 0;
 		let totalExpense = 0;
@@ -698,12 +725,51 @@ export const getTransactionDetailReport = query({
 			}
 		}
 
+		const enrichedTransactions = transactions.map((transaction) => {
+			const relatedOrder = transaction.orderId ? orderMap.get(transaction.orderId) : null;
+			const relatedBooking = transaction.bookingOrderId ? bookingMap.get(transaction.bookingOrderId) : null;
+			const sourceLabel =
+				transaction.metadata?.sourceLabel ||
+				(transaction.metadata?.source === "ai_bulk_finance"
+					? "AI Bulk"
+					: transaction.metadata?.source === "ai_tool"
+						? "AI Chat"
+						: transaction.metadata?.source === "ai_receipt_scan"
+							? "AI Scan"
+							: transaction.orderId
+								? "Order"
+								: transaction.bookingOrderId
+									? "Booking"
+									: "Manual");
+			const referenceLabel = relatedOrder
+				? "Order"
+				: relatedBooking
+					? "Booking"
+					: transaction.metadata?.sourceRef
+						? "Referensi"
+						: null;
+			const referenceValue = relatedOrder?.orderNumber ||
+				relatedBooking?.bookingCode ||
+				transaction.metadata?.sourceRef ||
+				null;
+
+			return {
+				...transaction,
+				sourceLabel,
+				sourceType: transaction.metadata?.source || "manual",
+				inputMode: transaction.metadata?.inputMode || null,
+				rawText: transaction.metadata?.rawText || null,
+				referenceLabel,
+				referenceValue,
+			};
+		});
+
 		return {
-			transactions,
+			transactions: enrichedTransactions,
 			totalIncome,
 			totalExpense,
 			netBalance: totalIncome - totalExpense,
-			count: transactions.length,
+			count: enrichedTransactions.length,
 		};
 	},
 });
@@ -745,6 +811,17 @@ export const updateTransaction = mutation({
 		isRecurring: v.optional(v.boolean()),
 		recurringInterval: v.optional(v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"))),
 		tags: v.optional(v.array(v.string())),
+		metadata: v.optional(
+			v.object({
+				source: v.optional(v.string()),
+				inputMode: v.optional(v.string()),
+				aiSessionId: v.optional(v.string()),
+				importedAt: v.optional(v.number()),
+				rawText: v.optional(v.string()),
+				sourceRef: v.optional(v.string()),
+				sourceLabel: v.optional(v.string()),
+			})
+		),
 	},
 	handler: async (ctx, args) => {
 		const { id, ...data } = args;

@@ -259,6 +259,13 @@ export const executeToolCall = defineAction({
 						date: Number.isFinite(resolvedDate) ? resolvedDate : Date.now(),
 						paymentMethod: parsed.paymentMethod || "cash",
 						status: parsed.status || "completed",
+						metadata: {
+							source: "ai_tool",
+							inputMode: "chat",
+							importedAt: Date.now(),
+							rawText: parsed.description,
+							sourceLabel: "AI Chat",
+						},
 					});
 					break;
 				}
@@ -492,6 +499,13 @@ export const executeToolCall = defineAction({
 					date: Date.now(),
 					paymentMethod: "rekonsiliasi",
 					status: "completed",
+					metadata: {
+						source: "ai_tool",
+						inputMode: "reconciliation",
+						importedAt: Date.now(),
+						rawText: parsed.description,
+						sourceLabel: "AI Rekonsiliasi",
+					},
 				});
 				break;
 			}
