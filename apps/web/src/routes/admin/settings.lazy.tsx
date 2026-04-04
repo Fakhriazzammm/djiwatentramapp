@@ -430,6 +430,7 @@ function SettingsPage() {
 		predefinedShifts: [] as string[],
 		defaultStartingCash: 0,
 		reminderMinutesBeforeClose: 15,
+		autoSendShiftReportEmail: false,
 		shiftSchedules: [] as ShiftSchedule[],
 	});
 
@@ -543,6 +544,8 @@ function SettingsPage() {
 				defaultStartingCash: siteSettings.shiftSettings?.defaultStartingCash ?? 0,
 				reminderMinutesBeforeClose:
 					siteSettings.shiftSettings?.reminderMinutesBeforeClose ?? 15,
+				autoSendShiftReportEmail:
+					siteSettings.shiftSettings?.autoSendShiftReportEmail ?? false,
 				shiftSchedules: buildShiftSchedules(
 					siteSettings.shiftSettings?.predefinedShifts ?? [],
 					siteSettings.shiftSettings?.shiftSchedules ?? []
@@ -2022,6 +2025,29 @@ function SettingsPage() {
 													? reportRecipients.join(", ")
 													: "Belum ada admin aktif dengan email valid."}
 											</p>
+											<div className="mt-3 rounded-lg border border-blue-200 bg-white/80 p-3 dark:border-blue-800 dark:bg-slate-900/40">
+												<label className="flex cursor-pointer items-start gap-3">
+													<input
+														type="checkbox"
+														className="mt-0.5 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-400"
+														checked={shiftSettings.autoSendShiftReportEmail}
+														onChange={(e) =>
+															setShiftSettings({
+																...shiftSettings,
+																autoSendShiftReportEmail: e.target.checked,
+															})
+														}
+													/>
+													<span className="text-[11px] leading-relaxed text-blue-800 dark:text-blue-200">
+														<span className="block font-semibold">
+															Kirim otomatis laporan shift saat shift diakhiri
+														</span>
+														Jika aktif, setiap proses akhiri shift akan langsung
+														mengirim email laporan ke seluruh admin aktif yang
+														memiliki email valid.
+													</span>
+												</label>
+											</div>
 											<div className="mt-3 space-y-1.5">
 												<label
 													className="block font-medium text-[11px]"

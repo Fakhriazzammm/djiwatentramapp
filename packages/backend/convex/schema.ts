@@ -209,6 +209,7 @@ export default defineSchema({
 				predefinedShifts: v.optional(v.array(v.string())),
 				defaultStartingCash: v.optional(v.number()),
 				reminderMinutesBeforeClose: v.optional(v.number()),
+				autoSendShiftReportEmail: v.optional(v.boolean()),
 				shiftSchedules: v.optional(
 					v.array(
 						v.object({

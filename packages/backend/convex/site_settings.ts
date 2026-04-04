@@ -60,6 +60,7 @@ const DEFAULTS = {
 		predefinedShifts: [],
 		defaultStartingCash: 0,
 		reminderMinutesBeforeClose: 15,
+		autoSendShiftReportEmail: false,
 		shiftSchedules: [],
 	},
 };
@@ -150,7 +151,10 @@ export const getSettings = query({
 			receiptShowCashierName: settings.receiptShowCashierName ?? DEFAULTS.receiptShowCashierName,
 			receiptShowNotes: settings.receiptShowNotes ?? DEFAULTS.receiptShowNotes,
 			receiptFontSize: settings.receiptFontSize ?? DEFAULTS.receiptFontSize,
-			shiftSettings: settings.shiftSettings ?? DEFAULTS.shiftSettings,
+			shiftSettings: {
+				...DEFAULTS.shiftSettings,
+				...(settings.shiftSettings ?? {}),
+			},
 		};
 	},
 });
@@ -221,6 +225,7 @@ export const updateSettings = mutation({
 				predefinedShifts: v.optional(v.array(v.string())),
 				defaultStartingCash: v.optional(v.number()),
 				reminderMinutesBeforeClose: v.optional(v.number()),
+				autoSendShiftReportEmail: v.optional(v.boolean()),
 				shiftSchedules: v.optional(
 					v.array(
 						v.object({

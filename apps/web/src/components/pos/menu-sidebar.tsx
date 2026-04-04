@@ -2117,7 +2117,7 @@ function KasTab({ onClose }: { onClose: () => void }) {
 function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const startShift = useMutation(api.finance.startShift);
 	const endShift = useMutation(api.finance.endShift);
-	const sendShiftClosureEmail = useAction(api.reportsEmail.sendShiftClosureEmail);
+	const sendShiftReportEmail = useAction(api.reportsEmail.sendShiftReportEmail);
 	
 	const [shiftType, setShiftType] = useState<"mulai" | "akhiri">("mulai");
 	
@@ -2266,6 +2266,8 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					setIsSubmitting(false);
 					return;
 				}
+				const completedShiftStartTime =
+					shiftStatus?.ongoingShift?.startTime || Date.now();
 				await endShift({
 					shiftId: shiftStatus.shiftInfo.shiftId as Id<"shifts">,
 					endingCashPhysical: Number(cashInRegister),
@@ -2273,36 +2275,23 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					cashBreakdown: breakdown as any,
 					notes,
 				});
-				try {
-					await sendShiftClosureEmail({
-						storeName: siteSettings?.storeName || "Toko",
-						shiftName:
-							shiftStatus?.shiftInfo?.shiftName || shiftName || "Shift",
-						cashierName:
-							shiftStatus?.shiftInfo?.cashierName || cashierName || "Kasir",
-						startTime: shiftStatus?.ongoingShift?.startTime || Date.now(),
-						endTime: Date.now(),
-						startingCash: shiftStatus?.ongoingShift?.startingCash || 0,
-						endingCashPhysical: Number(cashInRegister),
-						totalRevenue: shiftCash + shiftQris,
-						totalExpenses: shiftExpense,
-						totalItemsSold: shiftItems,
-						cashRevenue: shiftCash,
-						qrisRevenue: shiftQris,
-						totalDiscount: 0,
-						notes,
-					});
-					toast.success("Shift berhasil diakhiri dan email laporan terkirim");
-				} catch (emailError) {
-					console.error("Shift report email failed:", emailError);
+				if (siteSettings?.shiftSettings?.autoSendShiftReportEmail) {
+					try {
+						await sendShiftReportEmail({
+							startTime: completedShiftStartTime,
+						});
+						toast.success("Shift berhasil diakhiri dan email laporan terkirim");
+					} catch (emailError) {
+						console.error("Shift report email failed:", emailError);
+						toast.success("Shift berhasil diakhiri");
+						const message =
+							emailError instanceof Error
+								? emailError.message
+								: "Laporan shift gagal dikirim email. Cek konfigurasi Resend.";
+						toast.warning(message);
+					}
+				} else {
 					toast.success("Shift berhasil diakhiri");
-					const message =
-						emailError instanceof Error
-							? emailError.message
-							: "Laporan shift gagal dikirim email. Cek konfigurasi Resend.";
-					toast.warning(
-						message
-					);
 				}
 			}
 			

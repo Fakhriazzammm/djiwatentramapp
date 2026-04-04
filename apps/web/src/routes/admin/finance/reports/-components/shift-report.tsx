@@ -1,5 +1,5 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
-import { useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
 import {
 	BadgeDollarSign,
@@ -7,6 +7,8 @@ import {
 	CheckCircle2,
 	Clock3,
 	Copy,
+	Loader2,
+	Mail,
 	ReceiptText,
 	TrendingUp,
 	Users,
@@ -133,12 +135,14 @@ function buildShiftSummaryText(shift: ShiftRow, details: any) {
 }
 
 export function ShiftReport({ range }: Props) {
+	const sendShiftReportEmail = useAction(api.reportsEmail.sendShiftReportEmail);
 	const rows = useQuery(api.finance.getShiftReportTable, {
 		startDate: range.startDate,
 		endDate: range.endDate,
 	}) as ShiftRow[] | undefined;
 
 	const [selectedShiftStart, setSelectedShiftStart] = useState<number | null>(null);
+	const [sendingShiftStart, setSendingShiftStart] = useState<number | null>(null);
 
 	useEffect(() => {
 		if (!rows?.length) {
@@ -220,6 +224,26 @@ export function ShiftReport({ range }: Props) {
 			? buildShiftSummaryText(selectedShift, details)
 			: "";
 
+	const handleSendShiftEmail = async (shift: ShiftRow) => {
+		try {
+			setSendingShiftStart(shift.startTime);
+			await sendShiftReportEmail({
+				startTime: shift.startTime,
+				endTime: shift.endTime,
+			});
+			toast.success(`Email laporan ${shift.shiftName} berhasil dikirim`);
+		} catch (error) {
+			console.error(error);
+			const message =
+				error instanceof Error
+					? error.message
+					: "Gagal mengirim email laporan shift.";
+			toast.error(message);
+		} finally {
+			setSendingShiftStart(null);
+		}
+	};
+
 	return (
 		<div className="space-y-5">
 			<div className="grid gap-3 md:grid-cols-4">
@@ -280,6 +304,7 @@ export function ShiftReport({ range }: Props) {
 									<TableHead>Net</TableHead>
 									<TableHead>Pengeluaran</TableHead>
 									<TableHead>Produk</TableHead>
+									<TableHead>Aksi</TableHead>
 								</tr>
 							</thead>
 							<tbody>
@@ -337,6 +362,24 @@ export function ShiftReport({ range }: Props) {
 											</TableCell>
 											<TableCell className="whitespace-nowrap text-center">
 												{shift.totalItemsSold}
+											</TableCell>
+											<TableCell>
+												<button
+													type="button"
+													onClick={(event) => {
+														event.stopPropagation();
+														void handleSendShiftEmail(shift);
+													}}
+													disabled={sendingShiftStart === shift.startTime}
+													className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+												>
+													{sendingShiftStart === shift.startTime ? (
+														<Loader2 className="h-3.5 w-3.5 animate-spin" />
+													) : (
+														<Mail className="h-3.5 w-3.5" />
+													)}
+													Kirim Email
+												</button>
 											</TableCell>
 										</tr>
 									);

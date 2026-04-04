@@ -17,6 +17,121 @@ function formatDateTime(timestamp: number) {
 	}).format(new Date(timestamp));
 }
 
+function formatDateOnly(timestamp: number) {
+	return new Intl.DateTimeFormat("id-ID", {
+		timeZone: "Asia/Jakarta",
+		day: "2-digit",
+		month: "2-digit",
+		year: "numeric",
+	}).format(new Date(timestamp));
+}
+
+function formatShiftTimeRange(startTime: number, endTime?: number) {
+	return `${formatDateTime(startTime)} - ${
+		endTime ? formatDateTime(endTime) : "Aktif"
+	}`;
+}
+
+function escapeHtml(value: string) {
+	return value
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;");
+}
+
+function buildShiftReportLines(input: {
+	storeName: string;
+	startTime: number;
+	shiftName: string;
+	status: string;
+	startingCash: number;
+	cashRevenue: number;
+	qrisRevenue: number;
+	otherRevenue: number;
+	totalGrossSales: number;
+	totalDiscount: number;
+	totalRevenue: number;
+	totalItemsSold: number;
+	totalExpenses: number;
+	cashierName: string;
+	teamMembers?: string;
+	productBreakdown?: Array<{
+		categoryName: string;
+		totalQuantity: number;
+		items: Array<{ productName: string; quantity: number }>;
+	}>;
+	topProducts?: Array<{ productName: string; quantity: number }>;
+	expenseBreakdown?: Array<{ category: string; amount: number }>;
+}) {
+	const lines: string[] = [
+		"Daily Revenue Report",
+		input.storeName,
+		`Tanggal: ${formatDateOnly(input.startTime)}`,
+		"",
+		`${input.shiftName} (${input.status})`,
+		`Modal Kasir: ${formatCurrency(input.startingCash)}`,
+		`Tunai: ${formatCurrency(input.cashRevenue)}`,
+		`Debit/QRIS: ${formatCurrency(input.qrisRevenue)}`,
+		`Lainnya: ${formatCurrency(input.otherRevenue)}`,
+		"",
+		`Total Penjualan Bruto: ${formatCurrency(input.totalGrossSales)}`,
+		`Total Potongan (Diskon): ${formatCurrency(input.totalDiscount)}`,
+		`Total Revenue Bersih: ${formatCurrency(input.totalRevenue)}`,
+		"",
+		`Produk Terjual: ${input.totalItemsSold}`,
+		"Rincian Produk:",
+	];
+
+	if (input.productBreakdown && input.productBreakdown.length > 0) {
+		for (const category of input.productBreakdown) {
+			lines.push(`- ${category.categoryName} (${category.totalQuantity})`);
+			for (const item of category.items) {
+				lines.push(`  • ${item.productName}: ${item.quantity}`);
+			}
+		}
+	} else {
+		lines.push("-");
+	}
+
+	lines.push("");
+	lines.push("TOP 3 PRODUK TERLARIS:");
+	if (input.topProducts && input.topProducts.length > 0) {
+		for (const item of input.topProducts) {
+			lines.push(`- ${item.productName}: ${item.quantity}`);
+		}
+	} else {
+		lines.push("-");
+	}
+
+	lines.push("");
+	lines.push(`Pengeluaran Shift: ${formatCurrency(input.totalExpenses)}`);
+	if (input.expenseBreakdown && input.expenseBreakdown.length > 0) {
+		for (const item of input.expenseBreakdown) {
+			lines.push(`- ${item.category}: ${formatCurrency(item.amount)}`);
+		}
+	}
+
+	lines.push("");
+	lines.push(`Kasir: ${input.cashierName || "-"}`);
+	lines.push(`Tim: ${input.teamMembers?.trim() || "-"}`);
+
+	return lines;
+}
+
+function buildShiftReportHtml(lines: string[]) {
+	return `
+		<div style="font-family: Arial, sans-serif; color: #0f172a;">
+			<h2 style="margin: 0 0 12px;">Laporan Shift</h2>
+			<p style="margin: 0 0 12px; color: #475569;">
+				Format email ini sama dengan ringkasan laporan shift pada aplikasi.
+			</p>
+			<pre style="white-space: pre-wrap; font-family: 'Courier New', monospace; background: #0f172a; color: #f8fafc; padding: 16px; border-radius: 12px; line-height: 1.7; font-size: 13px;">${escapeHtml(
+				lines.join("\n"),
+			)}</pre>
+		</div>
+	`;
+}
+
 async function getRecipients(
 	ctx: any,
 	explicitTo?: string[]
@@ -205,6 +320,66 @@ export const sendShiftClosureEmail = action({
 		});
 
 		return { success: true, result };
+	},
+});
+
+export const sendShiftReportEmail = action({
+	args: {
+		startTime: v.number(),
+		endTime: v.optional(v.number()),
+		to: v.optional(v.array(v.string())),
+	},
+	handler: async (ctx, args) => {
+		const settings = await ctx.runQuery(api.site_settings.getSettings, {});
+		const storeName = settings?.storeName?.trim() || "Toko";
+		const details = await ctx.runQuery(api.finance.getShiftDetails, {
+			startTime: args.startTime,
+			endTime: args.endTime,
+		});
+
+		if (!details) {
+			throw new ConvexError("Data shift tidak ditemukan.");
+		}
+
+		const lines = buildShiftReportLines({
+			storeName,
+			startTime: details.startTime,
+			shiftName: details.shiftName || "Shift",
+			status: details.status || "SELESAI",
+			startingCash: details.startingCash || 0,
+			cashRevenue: details.cashRevenue || 0,
+			qrisRevenue: details.qrisRevenue || 0,
+			otherRevenue: details.otherRevenue || 0,
+			totalGrossSales: details.totalGrossSales || 0,
+			totalDiscount: details.totalDiscount || 0,
+			totalRevenue: details.totalRevenue || 0,
+			totalItemsSold: details.totalItemsSold || 0,
+			totalExpenses: details.totalExpenses || 0,
+			cashierName: details.cashierName || "-",
+			teamMembers: details.teamMembers || "-",
+			productBreakdown: details.productBreakdown || [],
+			topProducts: details.topProducts || [],
+			expenseBreakdown: details.expenseBreakdown || [],
+		});
+
+		const subject = `[${storeName}] Laporan Shift ${
+			details.shiftName || "Shift"
+		} - ${formatDateOnly(details.startTime)}`;
+
+		const result = await sendEmail({
+			ctx,
+			to: args.to,
+			subject,
+			html: buildShiftReportHtml(lines),
+			text: lines.join("\n"),
+		});
+
+		return {
+			success: true,
+			result,
+			subject,
+			previewText: lines.join("\n"),
+		};
 	},
 });
 
