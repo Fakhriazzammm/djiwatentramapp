@@ -68,6 +68,10 @@ function formatTime(timestamp?: number) {
 	});
 }
 
+function formatCompactRange(startTime: number, endTime?: number) {
+	return `${formatDateTime(startTime)} • ${formatTime(startTime)}-${formatTime(endTime)}`;
+}
+
 function buildShiftSummaryText(shift: ShiftRow, details: any) {
 	const productBreakdown = details?.productBreakdown ?? [];
 	const topProducts = details?.topProducts ?? [];
@@ -260,7 +264,7 @@ export function ShiftReport({ range }: Props) {
 					</div>
 
 					<div className="overflow-x-auto">
-						<table className="min-w-[1160px] w-full border-collapse text-sm">
+						<table className="min-w-[1420px] w-full border-collapse text-sm">
 							<thead className="bg-muted/40 text-left text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
 								<tr>
 									<TableHead>Tanggal</TableHead>
@@ -292,17 +296,16 @@ export function ShiftReport({ range }: Props) {
 											onClick={() => setSelectedShiftStart(shift.startTime)}
 										>
 											<TableCell>
-												<div className="font-semibold text-foreground">
-													{formatDateTime(shift.startTime)}
-												</div>
-												<div className="text-xs text-muted-foreground">
-													{formatTime(shift.startTime)} - {formatTime(shift.endTime)}
+												<div className="font-semibold text-foreground whitespace-nowrap">
+													{formatCompactRange(shift.startTime, shift.endTime)}
 												</div>
 											</TableCell>
-											<TableCell>{shift.shiftName}</TableCell>
+											<TableCell className="font-medium whitespace-nowrap">
+												{shift.shiftName}
+											</TableCell>
 											<TableCell>
 												<span
-													className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${
+													className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-bold ${
 														shift.status === "AKTIF"
 															? "bg-emerald-100 text-emerald-700"
 															: "bg-slate-100 text-slate-700"
@@ -311,26 +314,30 @@ export function ShiftReport({ range }: Props) {
 													{shift.status}
 												</span>
 											</TableCell>
-											<TableCell>{shift.cashierName || "-"}</TableCell>
+											<TableCell className="whitespace-nowrap">
+												{shift.cashierName || "-"}
+											</TableCell>
 											<TableCell className="max-w-[170px]">
-												<div className="truncate text-muted-foreground">
+												<div className="truncate whitespace-nowrap text-muted-foreground">
 													{shift.teamMembers || "-"}
 												</div>
 											</TableCell>
-											<TableCell>{formatCurrencyIDR(shift.startingCash, true)}</TableCell>
-											<TableCell>{formatCurrencyIDR(shift.cashRevenue, true)}</TableCell>
-											<TableCell>{formatCurrencyIDR(shift.qrisRevenue, true)}</TableCell>
-											<TableCell>{formatCurrencyIDR(shift.totalGrossSales, true)}</TableCell>
-											<TableCell className="text-amber-700">
+											<TableCell className="whitespace-nowrap">{formatCurrencyIDR(shift.startingCash, true)}</TableCell>
+											<TableCell className="whitespace-nowrap">{formatCurrencyIDR(shift.cashRevenue, true)}</TableCell>
+											<TableCell className="whitespace-nowrap">{formatCurrencyIDR(shift.qrisRevenue, true)}</TableCell>
+											<TableCell className="whitespace-nowrap">{formatCurrencyIDR(shift.totalGrossSales, true)}</TableCell>
+											<TableCell className="whitespace-nowrap text-amber-700">
 												-{formatCurrencyIDR(shift.totalDiscount, true)}
 											</TableCell>
-											<TableCell className="font-bold text-primary">
+											<TableCell className="whitespace-nowrap font-bold text-primary">
 												{formatCurrencyIDR(shift.totalRevenue, true)}
 											</TableCell>
-											<TableCell className="text-rose-700">
+											<TableCell className="whitespace-nowrap text-rose-700">
 												{formatCurrencyIDR(shift.totalExpenses, true)}
 											</TableCell>
-											<TableCell>{shift.totalItemsSold}</TableCell>
+											<TableCell className="whitespace-nowrap text-center">
+												{shift.totalItemsSold}
+											</TableCell>
 										</tr>
 									);
 								})}
@@ -569,7 +576,7 @@ function SummaryCard({
 }
 
 function TableHead({ children }: { children: React.ReactNode }) {
-	return <th className="px-4 py-3 font-semibold">{children}</th>;
+	return <th className="whitespace-nowrap px-4 py-2.5 font-semibold">{children}</th>;
 }
 
 function TableCell({
@@ -579,7 +586,7 @@ function TableCell({
 	children: React.ReactNode;
 	className?: string;
 }) {
-	return <td className={`px-4 py-3 align-top ${className}`}>{children}</td>;
+	return <td className={`whitespace-nowrap px-4 py-2.5 align-middle ${className}`}>{children}</td>;
 }
 
 function MiniStat({
