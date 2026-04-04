@@ -49,7 +49,13 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 	const briefingAttemptedRef = useRef(false);
 
-	const [editModal, setEditModal] = useState<{ params: ScanEditParams; btnKey: string; messageIdx: number } | null>(null);
+	const [editModal, setEditModal] = useState<{
+		params: ScanEditParams;
+		btnKey: string;
+		messageIdx: number;
+		variant: "expense" | "income" | "stock" | "order";
+		scanData?: ScanResultData;
+	} | null>(null);
 	const [splitModal, setSplitModal] = useState<{ params: ScanEditParams; btnKey: string } | null>(null);
 	const [showScanHistory, setShowScanHistory] = useState(false);
 	const { history: scanHistory, addEntry: addScanHistory, markSaved: markScanSaved, removeEntry: removeScanHistory, clearAll: clearScanHistory } = useScanHistory();
@@ -62,6 +68,9 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	const yumiChat = useAction(api.ai.yumiChat);
 	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
 	const generateBusinessBriefingAction = useAction(api.ai.generateBusinessBriefing);
+	const recordScannedExpenseToInventoryAction = useAction(
+		api.ai.recordScannedExpenseToInventory
+	);
 	
 	const createTransactionMutation = useMutation(api.finance.createTransaction);
 	const deleteTransactionMutation = useMutation(api.finance.deleteTransaction);
@@ -424,22 +433,35 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	const handleScanAction = useCallback((btn: ScanActionButton, messageIdx: number) => {
 		const key = `${messageIdx}-${btn.id}`;
 		if (actionButtonDone.has(key)) return;
-		setEditModal({ params: btn.params, btnKey: key, messageIdx });
-	}, [actionButtonDone]);
+		setEditModal({
+			params: btn.params,
+			btnKey: key,
+			messageIdx,
+			variant: btn.variant,
+			scanData: messages[messageIdx]?.scanData,
+		});
+	}, [actionButtonDone, messages]);
 
 	const handleSaveFromEditModal = useCallback(async (params: ScanEditParams) => {
 		if (!editModal) return;
 		const { btnKey } = editModal;
 		setActionButtonLoading(prev => { const s = new Set<string>(prev); s.add(btnKey); return s; });
 		try {
-			await createAITrackedTransaction(params as any, "AI Scan", "scan_action_button", params.description);
+			if (editModal.variant === "stock" && editModal.scanData?.items?.length) {
+				await recordScannedExpenseToInventoryAction({
+					scanData: editModal.scanData,
+					override: params,
+				});
+			} else {
+				await createAITrackedTransaction(params as any, "AI Scan", "scan_action_button", params.description);
+			}
 			toast.success("Berhasil disimpan!");
 			setActionButtonDone(prev => { const s = new Set<string>(prev); s.add(btnKey); return s; });
 			markScanSaved(btnKey);
 			setEditModal(null);
 		} catch (error) { toast.error("Gagal menyimpan");
 		} finally { setActionButtonLoading(prev => { const s = new Set<string>(prev); s.delete(btnKey); return s; }); }
-	}, [editModal, createAITrackedTransaction, markScanSaved]);
+	}, [editModal, createAITrackedTransaction, markScanSaved, recordScannedExpenseToInventoryAction]);
 
 	const handleSaveFromSplitModal = useCallback(async (splits: ScanEditParams[]) => {
 		if (!splitModal) return;
@@ -808,7 +830,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			</main>
 
 			<ImageScanner isOpen={isImageScannerOpen} onClose={() => setIsImageScannerOpen(false)} onDataGenerated={(type, data) => setMessages(prev => [...prev, { role: "assistant", content: `Berhasil membuat ${type} dengan data terstruktur.`, _msgId: mkMsgId() }])} />
-			{editModal && <ScanEditModal params={editModal.params} onSave={handleSaveFromEditModal} onSplit={p => splitModal === null && setSplitModal({ params: p, btnKey: editModal.btnKey })} onClose={() => setEditModal(null)} />}
+			{editModal && <ScanEditModal params={editModal.params} allowSplit={editModal.variant !== "stock"} onSave={handleSaveFromEditModal} onSplit={p => splitModal === null && setSplitModal({ params: p, btnKey: editModal.btnKey })} onClose={() => setEditModal(null)} />}
 			{splitModal && <ScanSplitModal totalAmount={splitModal.params.amount} transactionType={splitModal.params.type} baseParams={splitModal.params} onSave={handleSaveFromSplitModal} onBack={() => setSplitModal(null)} onClose={() => { setSplitModal(null); setEditModal(null); }} />}
 			{showScanHistory && <ScanHistoryPanel history={scanHistory} onRemove={removeScanHistory} onClearAll={clearScanHistory} onClose={() => setShowScanHistory(false)} />}
 		</div>

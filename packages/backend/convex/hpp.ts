@@ -44,6 +44,33 @@ type RecipeDraft = {
 	variantName?: string;
 };
 
+type TransactionScanItem = {
+	name: string;
+	quantity: number;
+	price?: number;
+	total?: number;
+	unit?: string;
+};
+
+type InventoryCostFillContext = {
+	calculation: Doc<"hppCalculations">;
+	inventoryItems: Array<
+		Doc<"inventory"> & {
+			displayName: string;
+		}
+	>;
+	transactions: Array<{
+		_id: Id<"financialTransactions">;
+		amount: number;
+		category: string;
+		merchant?: string;
+		description?: string;
+		date: number;
+		rawText?: string;
+		scanItems: TransactionScanItem[];
+	}>;
+};
+
 function mapById<T extends { _id: string }>(items: T[]) {
 	return Object.fromEntries(items.map((item) => [item._id, item])) as Record<
 		string,
@@ -83,11 +110,16 @@ async function loadInventoryCostMap(
 			.order("desc")
 			.collect();
 
-		const restocks = transactions.filter(
+		const pricedTransactions = transactions.filter(
 			(transaction) =>
-				transaction.type === "restock" && transaction.costPerUnit != null
+				(transaction.type === "restock" ||
+					transaction.type === "costing_reference") &&
+				transaction.costPerUnit != null
 		);
-		const latestRestock = restocks[0];
+		const latestPriceReference = pricedTransactions[0];
+		const restocks = pricedTransactions.filter(
+			(transaction) => transaction.type === "restock"
+		);
 
 		let avgCostPerUnit: number | undefined;
 		if (restocks.length > 0) {
@@ -109,8 +141,8 @@ async function loadInventoryCostMap(
 			unit: item.unit,
 			displayUnit: item.displayUnit,
 			conversionFactor: item.conversionFactor,
-			latestCostPerUnit: latestRestock?.costPerUnit,
-			latestRestockDate: latestRestock?.timestamp,
+			latestCostPerUnit: latestPriceReference?.costPerUnit,
+			latestRestockDate: latestPriceReference?.timestamp,
 			avgCostPerUnit,
 		};
 	}
@@ -305,6 +337,52 @@ function getStatusOrder(status: ProductCostingStatus) {
 	}
 }
 
+function buildSyncedIngredientsFromInventory(args: {
+	calculation: Doc<"hppCalculations">;
+	inventoryCosts: Record<string, InventoryCostSnapshot>;
+	targetInventoryIds?: Set<Id<"inventory">>;
+}) {
+	let updatedCount = 0;
+
+	const ingredients = args.calculation.ingredients.map((ingredient) => {
+		if (!ingredient.inventoryId) {
+			return ingredient;
+		}
+
+		if (
+			args.targetInventoryIds &&
+			!args.targetInventoryIds.has(ingredient.inventoryId)
+		) {
+			return ingredient;
+		}
+
+		const latestCostPerUnit =
+			args.inventoryCosts[ingredient.inventoryId]?.latestCostPerUnit;
+		if (latestCostPerUnit == null) {
+			return ingredient;
+		}
+
+		const nextPurchasePrice = getInventoryLinkedPurchasePrice(
+			ingredient,
+			latestCostPerUnit
+		);
+		if (nextPurchasePrice === ingredient.purchasePrice) {
+			return ingredient;
+		}
+
+		updatedCount += 1;
+		return {
+			...ingredient,
+			purchasePrice: nextPurchasePrice,
+		};
+	});
+
+	return {
+		ingredients,
+		updatedCount,
+	};
+}
+
 export const getHppCalculations = query({
 	args: {},
 	handler: async (ctx) => {
@@ -335,6 +413,92 @@ export const getLatestInventoryCosts = query({
 	args: {},
 	handler: async (ctx) => {
 		return await loadInventoryCostMap(ctx);
+	},
+});
+
+export const getInventoryCostFillContext = query({
+	args: {
+		hppCalculationId: v.id("hppCalculations"),
+		transactionLimit: v.optional(v.number()),
+	},
+	handler: async (ctx, args): Promise<InventoryCostFillContext> => {
+		const calculation = await ctx.db.get(args.hppCalculationId);
+		if (!calculation) {
+			throw new Error("HPP calculation not found");
+		}
+
+		const inventoryIds = [
+			...new Set(
+				calculation.ingredients
+					.map((ingredient) => ingredient.inventoryId)
+					.filter((inventoryId): inventoryId is Id<"inventory"> => inventoryId != null)
+			),
+		];
+
+		const inventoryDocs = await Promise.all(
+			inventoryIds.map((inventoryId) => ctx.db.get(inventoryId))
+		);
+		const inventoryItems = inventoryDocs
+			.filter((item): item is Doc<"inventory"> => item != null)
+			.map((item) => ({
+				...item,
+				displayName: `${item.ingredientName} (${item.displayUnit ?? item.unit})`,
+			}));
+
+		const recentTransactions = await ctx.db
+			.query("financialTransactions")
+			.withIndex("by_date")
+			.order("desc")
+			.take(Math.min(Math.max(args.transactionLimit ?? 40, 10), 120));
+
+		const relevantTransactions = recentTransactions
+			.filter((transaction) => {
+				const metadata = (transaction.metadata ?? {}) as {
+					rawText?: string;
+					scanItems?: TransactionScanItem[];
+				};
+				if (transaction.type !== "expense" || transaction.status !== "completed") {
+					return false;
+				}
+
+				const hasScanItems = (metadata.scanItems?.length ?? 0) > 0;
+				const category = transaction.category.toLowerCase();
+				const description = (transaction.description ?? metadata.rawText ?? "").toLowerCase();
+
+				return (
+					hasScanItems ||
+					/belanja|stok|bahan|grocery|supplier|inventory/.test(category) ||
+					/beli|belanja|stok|bahan|supplier|grocery|restock/.test(description)
+				);
+			})
+			.map((transaction) => ({
+				_id: transaction._id,
+				amount: transaction.amount,
+				category: transaction.category,
+				merchant: transaction.merchant,
+				description: transaction.description,
+				date: transaction.date,
+				rawText: ((transaction.metadata ?? {}) as { rawText?: string }).rawText?.slice(
+					0,
+					1200
+				),
+				scanItems: (
+					((transaction.metadata ?? {}) as { scanItems?: TransactionScanItem[] })
+						.scanItems ?? []
+				).map((item) => ({
+					name: item.name,
+					quantity: item.quantity,
+					price: item.price,
+					total: item.total,
+					unit: item.unit,
+				})),
+			}));
+
+		return {
+			calculation,
+			inventoryItems,
+			transactions: relevantTransactions,
+		};
 	},
 });
 
@@ -467,32 +631,9 @@ export const syncHppWithInventoryPrices = mutation({
 		}
 
 		const inventoryCosts = await loadInventoryCostMap(ctx);
-		let updatedCount = 0;
-
-		const ingredients = calculation.ingredients.map((ingredient) => {
-			if (!ingredient.inventoryId) {
-				return ingredient;
-			}
-
-			const latestCostPerUnit =
-				inventoryCosts[ingredient.inventoryId]?.latestCostPerUnit;
-			if (latestCostPerUnit == null) {
-				return ingredient;
-			}
-
-			const nextPurchasePrice = getInventoryLinkedPurchasePrice(
-				ingredient,
-				latestCostPerUnit
-			);
-			if (nextPurchasePrice === ingredient.purchasePrice) {
-				return ingredient;
-			}
-
-			updatedCount += 1;
-			return {
-				...ingredient,
-				purchasePrice: nextPurchasePrice,
-			};
+		const { ingredients, updatedCount } = buildSyncedIngredientsFromInventory({
+			calculation,
+			inventoryCosts,
 		});
 
 		if (updatedCount > 0) {
@@ -504,6 +645,134 @@ export const syncHppWithInventoryPrices = mutation({
 		}
 
 		return { updatedCount };
+	},
+});
+
+export const syncHppCalculationsByInventoryIds = mutation({
+	args: {
+		inventoryIds: v.array(v.id("inventory")),
+	},
+	handler: async (ctx, args) => {
+		const targetInventoryIds = new Set(args.inventoryIds);
+		if (targetInventoryIds.size === 0) {
+			return {
+				updatedCalculations: 0,
+				updatedIngredients: 0,
+			};
+		}
+
+		const [calculations, inventoryCosts] = await Promise.all([
+			ctx.db.query("hppCalculations").collect(),
+			loadInventoryCostMap(ctx),
+		]);
+
+		let updatedCalculations = 0;
+		let updatedIngredients = 0;
+		const now = Date.now();
+
+		for (const calculation of calculations) {
+			const hasLinkedIngredient = calculation.ingredients.some(
+				(ingredient) =>
+					ingredient.inventoryId != null &&
+					targetInventoryIds.has(ingredient.inventoryId)
+			);
+			if (!hasLinkedIngredient) {
+				continue;
+			}
+
+			const syncResult = buildSyncedIngredientsFromInventory({
+				calculation,
+				inventoryCosts,
+				targetInventoryIds,
+			});
+
+			if (syncResult.updatedCount === 0) {
+				continue;
+			}
+
+			await ctx.db.patch(calculation._id, {
+				ingredients: syncResult.ingredients,
+				updatedAt: now,
+				lastCostSyncAt: now,
+			});
+
+			updatedCalculations += 1;
+			updatedIngredients += syncResult.updatedCount;
+		}
+
+		return {
+			updatedCalculations,
+			updatedIngredients,
+		};
+	},
+});
+
+const inventoryCostReferenceSuggestionValidator = v.object({
+	inventoryId: v.id("inventory"),
+	costPerUnit: v.number(),
+	sourceTransactionId: v.optional(v.id("financialTransactions")),
+	sourceLabel: v.optional(v.string()),
+	reason: v.optional(v.string()),
+	confidence: v.optional(v.number()),
+});
+
+export const applyInventoryCostReferencesFromTransactions = mutation({
+	args: {
+		suggestions: v.array(inventoryCostReferenceSuggestionValidator),
+	},
+	handler: async (ctx, args) => {
+		const now = Date.now();
+		let appliedCount = 0;
+
+		for (const suggestion of args.suggestions) {
+			if (!(suggestion.costPerUnit > 0)) {
+				continue;
+			}
+
+			const recentTransactions = await ctx.db
+				.query("inventoryTransactions")
+				.withIndex("by_inventory", (q) => q.eq("inventoryId", suggestion.inventoryId))
+				.order("desc")
+				.take(20);
+
+			const existing = recentTransactions.find(
+				(transaction) =>
+					transaction.type === "costing_reference" &&
+					transaction.sourceTransactionId === suggestion.sourceTransactionId
+			);
+
+			const notesParts = [
+				"AI referensi biaya dari transaksi belanja",
+				suggestion.reason,
+				suggestion.confidence != null
+					? `confidence ${Math.round(suggestion.confidence * 100)}%`
+					: undefined,
+			].filter(Boolean);
+
+			if (existing) {
+				await ctx.db.patch(existing._id, {
+					costPerUnit: suggestion.costPerUnit,
+					timestamp: now,
+					notes: notesParts.join(" | "),
+					sourceLabel: suggestion.sourceLabel,
+				});
+			} else {
+				await ctx.db.insert("inventoryTransactions", {
+					inventoryId: suggestion.inventoryId,
+					quantity: 0,
+					type: "costing_reference",
+					costPerUnit: suggestion.costPerUnit,
+					timestamp: now,
+					notes: notesParts.join(" | "),
+					sourceTransactionId: suggestion.sourceTransactionId,
+					sourceLabel: suggestion.sourceLabel,
+				});
+			}
+
+			appliedCount += 1;
+		}
+
+		return { appliedCount };
 	},
 });
 

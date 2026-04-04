@@ -16,6 +16,7 @@ export interface ScanEditParams {
 interface Props {
 	isOpen?: boolean;
 	params: ScanEditParams;
+	allowSplit?: boolean;
 	onSave: (params: ScanEditParams) => Promise<void>;
 	onSplit: (params: ScanEditParams) => void;
 	onClose: () => void;
@@ -48,7 +49,7 @@ const INCOME_CATEGORIES = [
 
 const PAYMENT_METHODS = ["cash", "qris", "card", "transfer"];
 
-export function ScanEditModal({ isOpen, params, onSave, onSplit, onClose }: Props) {
+export function ScanEditModal({ isOpen, params, allowSplit = true, onSave, onSplit, onClose }: Props) {
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
@@ -227,14 +228,16 @@ export function ScanEditModal({ isOpen, params, onSave, onSplit, onClose }: Prop
 
 				{/* Footer */}
 				<div className="flex gap-2 border-t border-border p-3">
-					<button
-						type="button"
-						onClick={() => onSplit(form)}
-						className="flex items-center gap-1.5 rounded-xl border border-orange-400/40 bg-orange-500/10 px-3 py-2.5 text-xs font-semibold text-orange-600 transition-all hover:bg-orange-500/20"
-					>
-						<Scissors className="h-3.5 w-3.5" />
-						Split
-					</button>
+					{allowSplit && (
+						<button
+							type="button"
+							onClick={() => onSplit(form)}
+							className="flex items-center gap-1.5 rounded-xl border border-orange-400/40 bg-orange-500/10 px-3 py-2.5 text-xs font-semibold text-orange-600 transition-all hover:bg-orange-500/20"
+						>
+							<Scissors className="h-3.5 w-3.5" />
+							Split
+						</button>
+					)}
 					<button
 						type="button"
 						onClick={handleSave}

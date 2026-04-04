@@ -723,6 +723,7 @@ export const createTransaction = mutation({
 			v.literal("cancelled")
 		),
 		attachmentUrl: v.optional(v.string()),
+		sourceFingerprint: v.optional(v.string()),
 		isRecurring: v.optional(v.boolean()),
 		recurringInterval: v.optional(v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"))),
 		tags: v.optional(v.array(v.string())),
@@ -735,12 +736,91 @@ export const createTransaction = mutation({
 				rawText: v.optional(v.string()),
 				sourceRef: v.optional(v.string()),
 				sourceLabel: v.optional(v.string()),
+				scanItems: v.optional(
+					v.array(
+						v.object({
+							name: v.string(),
+							quantity: v.number(),
+							price: v.optional(v.number()),
+							total: v.optional(v.number()),
+							unit: v.optional(v.string()),
+						})
+					)
+				),
 			})
 		),
 	},
 	handler: async (ctx, args) => {
 		const id = await ctx.db.insert("financialTransactions", args);
 		return id;
+	},
+});
+
+export const upsertReceiptTransaction = mutation({
+	args: {
+		type: v.union(v.literal("income"), v.literal("expense")),
+		amount: v.number(),
+		category: v.string(),
+		merchant: v.optional(v.string()),
+		description: v.optional(v.string()),
+		date: v.number(),
+		paymentMethod: v.optional(v.string()),
+		status: v.union(
+			v.literal("completed"),
+			v.literal("pending"),
+			v.literal("cancelled")
+		),
+		attachmentUrl: v.optional(v.string()),
+		sourceFingerprint: v.string(),
+		isRecurring: v.optional(v.boolean()),
+		recurringInterval: v.optional(v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"))),
+		tags: v.optional(v.array(v.string())),
+		metadata: v.optional(
+			v.object({
+				source: v.optional(v.string()),
+				inputMode: v.optional(v.string()),
+				aiSessionId: v.optional(v.string()),
+				importedAt: v.optional(v.number()),
+				rawText: v.optional(v.string()),
+				sourceRef: v.optional(v.string()),
+				sourceLabel: v.optional(v.string()),
+				scanItems: v.optional(
+					v.array(
+						v.object({
+							name: v.string(),
+							quantity: v.number(),
+							price: v.optional(v.number()),
+							total: v.optional(v.number()),
+							unit: v.optional(v.string()),
+						})
+					)
+				),
+			})
+		),
+	},
+	handler: async (ctx, args) => {
+		const existing = await ctx.db
+			.query("financialTransactions")
+			.withIndex("by_source_fingerprint", (q) =>
+				q.eq("sourceFingerprint", args.sourceFingerprint)
+			)
+			.first();
+
+		if (existing) {
+			await ctx.db.patch(existing._id, {
+				...args,
+			});
+			return {
+				id: existing._id,
+				created: false,
+			};
+		}
+
+		const id = await ctx.db.insert("financialTransactions", args);
+		return {
+			id,
+			created: true,
+		};
 	},
 });
 
@@ -1052,6 +1132,17 @@ export const updateTransaction = mutation({
 				rawText: v.optional(v.string()),
 				sourceRef: v.optional(v.string()),
 				sourceLabel: v.optional(v.string()),
+				scanItems: v.optional(
+					v.array(
+						v.object({
+							name: v.string(),
+							quantity: v.number(),
+							price: v.optional(v.number()),
+							total: v.optional(v.number()),
+							unit: v.optional(v.string()),
+						})
+					)
+				),
 			})
 		),
 	},

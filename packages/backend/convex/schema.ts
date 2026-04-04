@@ -35,6 +35,9 @@ export default defineSchema({
 		displayUnit: v.optional(v.string()), // e.g., "Liter"
 		conversionFactor: v.optional(v.number()), // e.g., 1000
 		baseRecipeId: v.optional(v.id("baseRecipes")), // If this is a pre-mix
+		aliases: v.optional(v.array(v.string())),
+		lastPurchasePrice: v.optional(v.number()),
+		lastPurchaseAt: v.optional(v.number()),
 	}),
 
 	// Transactions to track stock in/out for FIFO
@@ -45,14 +48,19 @@ export default defineSchema({
 			v.literal("restock"),
 			v.literal("usage"),
 			v.literal("adjustment"),
-			v.literal("production") // For base recipes
+			v.literal("production"), // For base recipes
+			v.literal("costing_reference") // Cost reference without changing stock
 		),
 		costPerUnit: v.optional(v.number()), // For calculating COGS
 		remainingQuantity: v.optional(v.number()), // For FIFO tracking
 		timestamp: v.number(),
 		notes: v.optional(v.string()),
 		expiryDate: v.optional(v.number()),
-	}).index("by_inventory", ["inventoryId"]),
+		sourceTransactionId: v.optional(v.id("financialTransactions")),
+		sourceLabel: v.optional(v.string()),
+		sourceFingerprint: v.optional(v.string()),
+	}).index("by_inventory", ["inventoryId"])
+		.index("by_source_transaction_id", ["sourceTransactionId"]),
 
 	// Base Recipes / Compositions (Pre-mixes)
 	baseRecipes: defineTable({
@@ -85,6 +93,7 @@ export default defineSchema({
 		orderId: v.optional(v.id("orders")),
 		bookingOrderId: v.optional(v.id("bookingOrders")),
 		attachmentUrl: v.optional(v.string()),
+		sourceFingerprint: v.optional(v.string()),
 		isRecurring: v.optional(v.boolean()),
 		recurringInterval: v.optional(v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"))),
 		tags: v.optional(v.array(v.string())),
@@ -97,11 +106,23 @@ export default defineSchema({
 				rawText: v.optional(v.string()),
 				sourceRef: v.optional(v.string()),
 				sourceLabel: v.optional(v.string()),
+				scanItems: v.optional(
+					v.array(
+						v.object({
+							name: v.string(),
+							quantity: v.number(),
+							price: v.optional(v.number()),
+							total: v.optional(v.number()),
+							unit: v.optional(v.string()),
+						})
+					)
+				),
 			})
 		),
 	})
 		.index("by_date", ["date"])
-		.index("by_type", ["type"]),
+		.index("by_type", ["type"])
+		.index("by_source_fingerprint", ["sourceFingerprint"]),
 
 	// Orders
 	orders: defineTable({

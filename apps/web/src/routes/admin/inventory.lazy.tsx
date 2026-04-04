@@ -1197,7 +1197,17 @@ function InventoryHistoryModal({
 														label: "Penyesuaian",
 														color: "bg-blue-100 text-blue-700",
 													},
-												}[t.type as "restock" | "usage" | "adjustment"] || {
+													costing_reference: {
+														label: "Referensi Biaya AI",
+														color: "bg-cyan-100 text-cyan-700",
+													},
+												}[
+													t.type as
+														| "restock"
+														| "usage"
+														| "adjustment"
+														| "costing_reference"
+												] || {
 													label: "Lainnya",
 													color: "bg-gray-100 text-gray-700",
 												};
@@ -1220,7 +1230,11 @@ function InventoryHistoryModal({
 										</td>
 										<td
 											className={`p-4 text-right font-black font-mono text-sm ${
-												t.quantity > 0 ? "text-green-600" : "text-destructive"
+												t.quantity > 0
+													? "text-green-600"
+													: t.quantity < 0
+														? "text-destructive"
+														: "text-cyan-700"
 											}`}
 										>
 											{t.quantity > 0 ? "+" : ""}

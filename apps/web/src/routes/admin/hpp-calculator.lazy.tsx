@@ -1,7 +1,7 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { motion } from "framer-motion";
 import {
 	AlertTriangle,
@@ -120,6 +120,15 @@ type PortfolioSummary = {
 	draftCount: number;
 	averageMargin: number;
 	lowMarginCount: number;
+};
+
+type AiCostSuggestion = {
+	inventoryId: Id<"inventory">;
+	costPerUnit: number;
+	sourceTransactionId?: Id<"financialTransactions">;
+	sourceLabel?: string;
+	confidence?: number;
+	reason?: string;
 };
 
 type PortfolioData = {
@@ -425,6 +434,7 @@ function HppCalculatorPage() {
 	const syncPrices = useMutation(api.hpp.syncHppWithInventoryPrices);
 	const syncFromRecipe = useMutation(api.hpp.upsertHppFromRecipe);
 	const applySellingPrice = useMutation(api.hpp.applyHppSellingPriceToProduct);
+	const fillFromTransactions = useAction(api.ai.fillHppInventoryCostsFromTransactions);
 
 	const [activeView, setActiveView] = useState<"portfolio" | "editor" | "impact">(
 		"portfolio"
@@ -446,6 +456,7 @@ function HppCalculatorPage() {
 	>("all");
 	const [saving, setSaving] = useState(false);
 	const [syncingId, setSyncingId] = useState<Id<"hppCalculations"> | null>(null);
+	const [aiFillingId, setAiFillingId] = useState<Id<"hppCalculations"> | null>(null);
 	const [recipeSyncProductId, setRecipeSyncProductId] =
 		useState<Id<"products"> | null>(null);
 	const [targetMargin, setTargetMargin] = useState(30);
@@ -666,6 +677,49 @@ function HppCalculatorPage() {
 		}
 	}
 
+	async function handleAiFillFromTransactions(id: Id<"hppCalculations">) {
+		setAiFillingId(id);
+		try {
+			const result = await fillFromTransactions({
+				hppCalculationId: id,
+				maxTransactions: 48,
+			});
+
+			const suggestions = (result.suggestions ?? []) as AiCostSuggestion[];
+			if (suggestions.length === 0) {
+				toast.info("AI belum menemukan referensi biaya yang cukup jelas");
+				return;
+			}
+
+			setForm((prev) => ({
+				...prev,
+				ingredients: prev.ingredients.map((ingredient) => {
+					if (!ingredient.inventoryId) {
+						return ingredient;
+					}
+					const match = suggestions.find(
+						(suggestion) => suggestion.inventoryId === ingredient.inventoryId
+					);
+					if (!match) {
+						return ingredient;
+					}
+					return {
+						...ingredient,
+						purchasePrice: match.costPerUnit * ingredient.conversionFactor,
+					};
+				}),
+			}));
+
+			toast.success(
+				`${result.updatedIngredients} bahan diperbarui dari ${result.appliedCount} referensi biaya transaksi`
+			);
+		} catch {
+			toast.error("AI gagal menarik referensi biaya dari transaksi");
+		} finally {
+			setAiFillingId(null);
+		}
+	}
+
 	function updateIngredient(
 		id: string,
 		field: keyof IngredientRow,
@@ -850,10 +904,12 @@ function HppCalculatorPage() {
 					onOpenProducts={() => navigate({ to: "/admin/products" })}
 					onReset={resetEditor}
 					onSave={handleSave}
+					onAiAutofill={() => editingId && handleAiFillFromTransactions(editingId)}
 					onSyncPrices={() => editingId && handleSyncPrices(editingId)}
 					onSyncRecipe={() =>
 						selectedProductRow && handleSyncRecipe(selectedProductRow)
 					}
+					aiFilling={aiFillingId === editingId}
 					recipeSyncing={recipeSyncProductId === selectedProductId}
 					saving={saving}
 					selectedDraft={selectedDraft}
@@ -1216,10 +1272,12 @@ function PortfolioView({
 }
 
 function EditorView({
+	aiFilling,
 	currentMetrics,
 	editingId,
 	form,
 	inventory,
+	onAiAutofill,
 	onApplyRecommendedPrice,
 	onDelete,
 	onOpenInventory,
@@ -1238,10 +1296,12 @@ function EditorView({
 	updateOverhead,
 	linkIngredientToInventory,
 }: {
+	aiFilling: boolean;
 	currentMetrics: HppMetrics;
 	editingId: Id<"hppCalculations"> | null;
 	form: HppFormData;
 	inventory: Doc<"inventory">[] | undefined;
+	onAiAutofill: () => void;
 	onApplyRecommendedPrice: (hppId: Id<"hppCalculations">, price: number) => void;
 	onDelete: () => void;
 	onOpenInventory: () => void;
@@ -1716,11 +1776,34 @@ function EditorView({
 								)}
 								Simpan Workspace
 							</Button>
-							<Button onClick={onReset} variant="outline">
+							<Button
+								className="border-white/15 bg-white/10 text-white hover:bg-white/15 hover:text-white"
+								onClick={onReset}
+								variant="outline"
+							>
 								Refresh Form
 							</Button>
+							{editingId && (
+								<Button
+									className="border-cyan-400/30 bg-cyan-400/10 text-cyan-50 hover:bg-cyan-400/20 hover:text-white"
+									disabled={aiFilling}
+									onClick={onAiAutofill}
+									variant="outline"
+								>
+									{aiFilling ? (
+										<RefreshCw className="h-4 w-4 animate-spin" />
+									) : (
+										<Sparkles className="h-4 w-4" />
+									)}
+									AI dari Transaksi
+								</Button>
+							)}
 							{selectedProductRow?.recipe && (
-								<Button onClick={onSyncRecipe} variant="outline">
+								<Button
+									className="border-white/15 bg-white/10 text-white hover:bg-white/15 hover:text-white"
+									onClick={onSyncRecipe}
+									variant="outline"
+								>
 									<RefreshCw
 										className={`h-4 w-4 ${recipeSyncing ? "animate-spin" : ""}`}
 									/>
@@ -1728,7 +1811,11 @@ function EditorView({
 								</Button>
 							)}
 							{editingId && (
-								<Button onClick={onSyncPrices} variant="outline">
+								<Button
+									className="border-white/15 bg-white/10 text-white hover:bg-white/15 hover:text-white"
+									onClick={onSyncPrices}
+									variant="outline"
+								>
 									<Database
 										className={`h-4 w-4 ${syncingId === editingId ? "animate-pulse" : ""}`}
 									/>
@@ -1737,6 +1824,7 @@ function EditorView({
 							)}
 							{editingId && recommendedPrice > 0 && (
 								<Button
+									className="border-white/15 bg-white/10 text-white hover:bg-white/15 hover:text-white"
 									onClick={() => onApplyRecommendedPrice(editingId, recommendedPrice)}
 									variant="outline"
 								>
@@ -1745,10 +1833,18 @@ function EditorView({
 								</Button>
 							)}
 							<div className="grid grid-cols-2 gap-2">
-								<Button onClick={onOpenProducts} variant="outline">
+								<Button
+									className="border-white/15 bg-white/10 text-white hover:bg-white/15 hover:text-white"
+									onClick={onOpenProducts}
+									variant="outline"
+								>
 									Produk
 								</Button>
-								<Button onClick={onOpenInventory} variant="outline">
+								<Button
+									className="border-white/15 bg-white/10 text-white hover:bg-white/15 hover:text-white"
+									onClick={onOpenInventory}
+									variant="outline"
+								>
 									Inventory
 								</Button>
 							</div>

@@ -203,6 +203,236 @@ function parseAIScanJSON(content: string): any {
 	}
 }
 
+function normalizeSearchText(text: string): string {
+	return sanitizeAIString(text)
+		.toLowerCase()
+		.replace(/[^a-z0-9\s]/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
+}
+
+function normalizeUnitLabel(unit?: string): string {
+	const normalized = normalizeSearchText(unit || "");
+	const aliases: Record<string, string> = {
+		g: "gram",
+		gr: "gram",
+		gram: "gram",
+		kg: "kg",
+		kilo: "kg",
+		kilogram: "kg",
+		l: "liter",
+		lt: "liter",
+		liter: "liter",
+		litre: "liter",
+		ml: "ml",
+		milliliter: "ml",
+		mililiter: "ml",
+		pc: "pcs",
+		pcs: "pcs",
+		piece: "pcs",
+		biji: "pcs",
+		butir: "pcs",
+		botol: "bottle",
+		bottle: "bottle",
+		bungkus: "pack",
+		pack: "pack",
+		sachet: "pack",
+		sak: "pack",
+		box: "box",
+		dus: "box",
+		lusin: "dozen",
+		dozen: "dozen",
+	};
+	return aliases[normalized] || normalized;
+}
+
+function scoreNameMatch(left: string, right: string): number {
+	const normalizedLeft = normalizeSearchText(left);
+	const normalizedRight = normalizeSearchText(right);
+	if (!normalizedLeft || !normalizedRight) {
+		return 0;
+	}
+	if (normalizedLeft === normalizedRight) {
+		return 1;
+	}
+	if (
+		normalizedLeft.length >= 4 &&
+		(normalizedLeft.includes(normalizedRight) ||
+			normalizedRight.includes(normalizedLeft))
+	) {
+		return 0.92;
+	}
+
+	const leftTokens = new Set(normalizedLeft.split(" ").filter(Boolean));
+	const rightTokens = new Set(normalizedRight.split(" ").filter(Boolean));
+	if (leftTokens.size === 0 || rightTokens.size === 0) {
+		return 0;
+	}
+
+	const overlap = [...leftTokens].filter((token) => rightTokens.has(token)).length;
+	return overlap / Math.max(leftTokens.size, rightTokens.size);
+}
+
+function convertListedCostToBaseUnit(args: {
+	listedUnitCost: number;
+	listedUnit?: string;
+	inventoryItem: {
+		unit: string;
+		displayUnit?: string;
+		conversionFactor?: number;
+	};
+}): number {
+	const { listedUnitCost, listedUnit, inventoryItem } = args;
+	if (!(listedUnitCost > 0)) {
+		return 0;
+	}
+
+	const normalizedListed = normalizeUnitLabel(listedUnit);
+	const normalizedBase = normalizeUnitLabel(inventoryItem.unit);
+	const normalizedDisplay = normalizeUnitLabel(inventoryItem.displayUnit);
+	const factor = inventoryItem.conversionFactor || 1;
+
+	if (!normalizedListed || normalizedListed === normalizedBase) {
+		return listedUnitCost;
+	}
+
+	if (normalizedDisplay && normalizedListed === normalizedDisplay && factor > 0) {
+		return listedUnitCost / factor;
+	}
+
+	if (normalizedListed === "kg" && normalizedBase === "gram") {
+		return listedUnitCost / 1000;
+	}
+	if (normalizedListed === "liter" && normalizedBase === "ml") {
+		return listedUnitCost / 1000;
+	}
+	if (normalizedListed === "dozen" && normalizedBase === "pcs") {
+		return listedUnitCost / 12;
+	}
+
+	return listedUnitCost;
+}
+
+function normalizeScanItems(items: any[] | undefined) {
+	return (items || [])
+		.map((item) => {
+			const quantity = Number(item?.quantity ?? item?.qty) || 1;
+			const price = Number(item?.price ?? item?.unitPrice) || undefined;
+			const total = Number(item?.total ?? item?.subtotal) || undefined;
+			return {
+				name: sanitizeAIString(item?.name || item?.item || ""),
+				quantity,
+				price,
+				total,
+				unit: sanitizeAIString(item?.unit || ""),
+			};
+		})
+		.filter((item) => item.name);
+}
+
+function buildHeuristicInventoryCostSuggestions(context: any) {
+	const suggestions = [];
+
+	for (const inventoryItem of context.inventoryItems || []) {
+		let bestMatch: any = null;
+
+		for (const transaction of context.transactions || []) {
+			for (const scanItem of normalizeScanItems(transaction.scanItems)) {
+				const score = scoreNameMatch(inventoryItem.ingredientName, scanItem.name);
+				if (score < 0.72) {
+					continue;
+				}
+
+				const quantity = Number(scanItem.quantity) || 1;
+				const listedUnitCost =
+					Number(scanItem.price) ||
+					((Number(scanItem.total) || 0) / Math.max(quantity, 1));
+				const costPerUnit = convertListedCostToBaseUnit({
+					listedUnitCost,
+					listedUnit: scanItem.unit,
+					inventoryItem,
+				});
+
+				if (!(costPerUnit > 0)) {
+					continue;
+				}
+
+				const candidate = {
+					inventoryId: inventoryItem._id,
+					costPerUnit,
+					sourceTransactionId: transaction._id,
+					sourceLabel:
+						transaction.merchant ||
+						transaction.description ||
+						"Heuristik transaksi belanja",
+					confidence: Math.min(0.99, score),
+					reason: `Cocok dengan item transaksi "${scanItem.name}"`,
+				};
+
+				if (
+					!bestMatch ||
+					candidate.confidence > bestMatch.confidence ||
+					(candidate.confidence === bestMatch.confidence &&
+						transaction.date > bestMatch._transactionDate)
+				) {
+					bestMatch = {
+						...candidate,
+						_transactionDate: transaction.date,
+					};
+				}
+			}
+		}
+
+		if (bestMatch) {
+			const { _transactionDate, ...result } = bestMatch;
+			suggestions.push(result);
+		}
+	}
+
+	return suggestions;
+}
+
+function parseInventoryCostSuggestionResponse(content: string, inventoryIds: Set<string>) {
+	const parsed = parseAIScanJSON(content);
+	const suggestions = parsed?.suggestions;
+	if (!Array.isArray(suggestions)) {
+		return [];
+	}
+
+	return suggestions
+		.map((suggestion: any) => ({
+			inventoryId: String(suggestion.inventoryId || ""),
+			costPerUnit: Number(suggestion.costPerUnit) || 0,
+			sourceTransactionId: suggestion.sourceTransactionId
+				? String(suggestion.sourceTransactionId)
+				: undefined,
+			sourceLabel: sanitizeAIString(suggestion.sourceLabel || ""),
+			confidence:
+				typeof suggestion.confidence === "number"
+					? Math.max(0, Math.min(1, suggestion.confidence))
+					: undefined,
+			reason: sanitizeAIString(suggestion.reason || ""),
+		}))
+		.filter(
+			(suggestion: any) =>
+				inventoryIds.has(suggestion.inventoryId) && suggestion.costPerUnit > 0
+		);
+}
+
+function mergeInventoryCostSuggestions(base: any[], incoming: any[]) {
+	const merged = new Map<string, any>();
+	for (const suggestion of [...base, ...incoming]) {
+		const current = merged.get(suggestion.inventoryId);
+		if (
+			!current ||
+			(suggestion.confidence ?? 0) > (current.confidence ?? 0)
+		) {
+			merged.set(suggestion.inventoryId, suggestion);
+		}
+	}
+	return [...merged.values()];
+}
+
 
 /**
  * Analyze sales data to provide high-level insights.
@@ -985,6 +1215,113 @@ function parseOptionalIsoDate(dateValue?: string | null): number | null {
 	if (!dateValue) return null;
 	const parsed = new Date(dateValue).getTime();
 	return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isInventoryPurchaseCategory(category?: string | null) {
+	const normalized = normalizeSearchText(category || "");
+	return (
+		normalized === "belanja stok" ||
+		normalized === "belanja_stok" ||
+		normalized === "pembelian stok" ||
+		normalized === "peralatan kantor" ||
+		normalized === "peralatan_kantor"
+	);
+}
+
+function buildReceiptFinanceFingerprint(args: {
+	scanResult: any;
+	effectiveType: "income" | "expense";
+	date: number;
+	inputMode: string;
+}) {
+	const merchant = normalizeSearchText(
+		args.scanResult?.data?.merchantName ||
+			args.scanResult?.name ||
+			"unknown"
+	);
+	const amount = Math.round(
+		Number(args.scanResult?.data?.amount ?? args.scanResult?.total) || 0
+	);
+	const category = normalizeSearchText(args.scanResult?.data?.category || "lainnya");
+	const dayKey = new Date(args.date).toISOString().slice(0, 10);
+	const itemsKey = normalizeScanItems(args.scanResult?.data?.items)
+		.map((item) => {
+			const lineTotal =
+				Number(item.total) ||
+				(Number(item.price) || 0) * (Number(item.quantity) || 1);
+			return `${normalizeSearchText(item.name)}:${item.quantity}:${Math.round(lineTotal)}:${normalizeUnitLabel(item.unit)}`;
+		})
+		.sort()
+		.join("|");
+
+	return `receipt:${args.inputMode}:${args.effectiveType}:${merchant}:${category}:${dayKey}:${amount}:${itemsKey || normalizeSearchText(args.scanResult?.rawText || "").slice(0, 120)}`;
+}
+
+function shouldSyncExpenseToInventory(scanResult: any, effectiveType: string) {
+	if (effectiveType !== "expense") {
+		return false;
+	}
+
+	const scanItems = normalizeScanItems(scanResult?.data?.items);
+	if (scanItems.length === 0) {
+		return false;
+	}
+
+	return (
+		isInventoryPurchaseCategory(scanResult?.data?.category) ||
+		scanResult?.suggestedAction === "addStock"
+	);
+}
+
+function buildStockPurchasePayloadFromScan(args: {
+	scanResult: any;
+	date: number;
+	sourceLabel: string;
+	override?: {
+		amount?: number;
+		category?: string;
+		merchant?: string;
+		description?: string;
+		paymentMethod?: string;
+	};
+}) {
+	const scanItems = normalizeScanItems(args.scanResult?.data?.items).map((item) => ({
+		name: item.name,
+		qty: Number(item.quantity) || 1,
+		price:
+			Number(item.price) ||
+			((Number(item.total) || 0) / Math.max(Number(item.quantity) || 1, 1)),
+		total: Number(item.total) || undefined,
+		unit: item.unit,
+	}));
+
+	return {
+		total:
+			Number(args.override?.amount) ||
+			Number(args.scanResult?.data?.amount) ||
+			scanItems.reduce(
+				(sum, item) => sum + (Number(item.total) || item.price * item.qty),
+				0
+			),
+		merchant:
+			args.override?.merchant ||
+			args.scanResult?.data?.merchantName ||
+			args.scanResult?.name,
+		date: args.date,
+		paymentMethod:
+			args.override?.paymentMethod ||
+			args.scanResult?.data?.paymentMethod ||
+			"cash",
+		description:
+			args.override?.description ||
+			args.scanResult?.data?.description ||
+			args.scanResult?.data?.notes ||
+			args.scanResult?.rawText?.slice(0, 200),
+		category: args.override?.category || "Pembelian Stok",
+		rawText: args.scanResult?.rawText?.slice(0, 1000),
+		sourceLabel: args.sourceLabel,
+		items: scanItems,
+	};
 }
 
 function parseBulkFinancialReport(message: string): ParsedBulkFinanceResult | null {
@@ -3899,7 +4236,13 @@ async function runReceiptOCR(imageDataUrl: string): Promise<{
 	type: "order" | "expense" | "income" | "unknown";
 	data?: {
 		amount?: number;
-		items?: Array<{ name: string; quantity: number; price?: number }>;
+		items?: Array<{
+			name: string;
+			quantity: number;
+			price?: number;
+			total?: number;
+			unit?: string;
+		}>;
 		category?: string;
 		description?: string;
 		paymentMethod?: string;
@@ -4009,6 +4352,99 @@ export const processReceipt = action({
 	},
 });
 
+const structuredScanDataValidator = v.object({
+	type: v.string(),
+	name: v.optional(v.string()),
+	merchant: v.optional(v.string()),
+	category: v.string(),
+	transactionType: v.union(
+		v.literal("expense"),
+		v.literal("income"),
+		v.literal("unknown")
+	),
+	total: v.number(),
+	items: v.array(
+		v.object({
+			name: v.string(),
+			qty: v.number(),
+			price: v.number(),
+			subtotal: v.number(),
+			unit: v.optional(v.string()),
+		})
+	),
+	date: v.optional(v.union(v.string(), v.null())),
+	paymentMethod: v.optional(v.string()),
+	notes: v.optional(v.string()),
+	confidence: v.optional(v.number()),
+	rawText: v.optional(v.string()),
+});
+
+const structuredScanOverrideValidator = v.object({
+	type: v.union(v.literal("income"), v.literal("expense")),
+	amount: v.number(),
+	category: v.string(),
+	merchant: v.optional(v.string()),
+	description: v.optional(v.string()),
+	date: v.number(),
+	paymentMethod: v.optional(v.string()),
+	status: v.literal("completed"),
+});
+
+export const recordScannedExpenseToInventory = action({
+	args: {
+		scanData: structuredScanDataValidator,
+		override: structuredScanOverrideValidator,
+	},
+	handler: async (ctx, args) => {
+		const purchaseResult = await ctx.runMutation(
+			api.stockPurchases.recordStockPurchase,
+			{
+				purchaseData: buildStockPurchasePayloadFromScan({
+					scanResult: {
+						data: {
+							amount: args.scanData.total,
+							merchantName: args.scanData.merchant || args.scanData.name,
+							description: args.scanData.notes,
+							category: args.scanData.category,
+							paymentMethod: args.scanData.paymentMethod,
+							items: args.scanData.items.map((item) => ({
+								name: item.name,
+								qty: item.qty,
+								price: item.price,
+								total: item.subtotal,
+								unit: item.unit,
+							})),
+						},
+						name: args.scanData.name,
+						rawText: args.scanData.rawText,
+					},
+					date: args.override.date,
+					sourceLabel: "AI Chat Scan",
+					override: {
+						amount: args.override.amount,
+						category: args.override.category,
+						merchant: args.override.merchant,
+						description: args.override.description,
+						paymentMethod: args.override.paymentMethod,
+					},
+				}),
+			}
+		);
+
+		return {
+			success: true,
+			message: purchaseResult.message,
+			generated: {
+				id: purchaseResult.transactionId,
+				type: "expense",
+				amount: args.override.amount,
+				category: args.override.category,
+			},
+			purchaseResult,
+		};
+	},
+});
+
 /**
  * Proses gambar struk dan langsung buat transaksi keuangan di database
  */
@@ -4046,21 +4482,57 @@ export const processImageAndGenerate = action({
 
 		if (effectiveType === "expense" || effectiveType === "income") {
 			const detectedDate = parseOptionalIsoDate(scanResult.data.date);
-			const txId = await ctx.runMutation(api.finance.createTransaction, {
+			const resolvedDate = detectedDate ?? Date.now();
+
+			if (shouldSyncExpenseToInventory(scanResult, effectiveType)) {
+				const purchaseResult = await ctx.runMutation(
+					api.stockPurchases.recordStockPurchase,
+					{
+						purchaseData: buildStockPurchasePayloadFromScan({
+							scanResult,
+							date: resolvedDate,
+							sourceLabel: "AI Scan",
+						}),
+					}
+				);
+
+				return {
+					success: true,
+					message: purchaseResult.message,
+					generated: {
+						id: purchaseResult.transactionId,
+						type: effectiveType,
+						amount: scanResult.data.amount,
+						category: "Pembelian Stok",
+					},
+					scanResult,
+				};
+			}
+
+			const scanItems = normalizeScanItems(scanResult.data.items);
+			const txResult = await ctx.runMutation(api.finance.upsertReceiptTransaction, {
 				type: effectiveType as "income" | "expense",
 				amount: scanResult.data.amount,
 				category: scanResult.data.category || "Lainnya",
+				merchant: scanResult.data.merchantName,
 				description:
 					scanResult.data.description || scanResult.rawText.slice(0, 200),
-				date: detectedDate ?? Date.now(),
+				date: resolvedDate,
 				paymentMethod: scanResult.data.paymentMethod || "cash",
 				status: "completed",
+				sourceFingerprint: buildReceiptFinanceFingerprint({
+					scanResult,
+					effectiveType: effectiveType as "income" | "expense",
+					date: resolvedDate,
+					inputMode: "image_scan",
+				}),
 				metadata: {
 					source: "ai_receipt_scan",
 					inputMode: "image_scan",
 					importedAt: Date.now(),
 					rawText: scanResult.rawText.slice(0, 1000),
 					sourceLabel: "AI Scan",
+					scanItems: scanItems.length > 0 ? scanItems : undefined,
 				},
 			});
 
@@ -4068,7 +4540,7 @@ export const processImageAndGenerate = action({
 				success: true,
 				message: `Berhasil mencatat ${effectiveType === "expense" ? "pengeluaran" : "pemasukan"} sebesar Rp${scanResult.data.amount.toLocaleString("id-ID")}`,
 				generated: {
-					id: txId,
+					id: txResult.id,
 					type: effectiveType,
 					amount: scanResult.data.amount,
 					category: scanResult.data.category,
@@ -4161,26 +4633,64 @@ export const batchGenerateTransactions = action({
 
 				if (effectiveType === "expense" || effectiveType === "income") {
 					const detectedDate = parseOptionalIsoDate(scanResult.data.date);
-					const txId = await ctx.runMutation(api.finance.createTransaction, {
-						type: effectiveType as "income" | "expense",
-						amount: scanResult.data.amount,
-						category: scanResult.data.category || "Lainnya",
-						description:
-							scanResult.data.description || scanResult.rawText.slice(0, 200),
-						date: detectedDate ?? Date.now(),
-						paymentMethod: scanResult.data.paymentMethod || "cash",
-						status: "completed",
-						metadata: {
-							source: "ai_receipt_scan",
-							inputMode: "batch_image_scan",
-							importedAt: Date.now(),
-							rawText: scanResult.rawText.slice(0, 1000),
-							sourceLabel: "AI Scan",
-						},
-					});
+					const resolvedDate = detectedDate ?? Date.now();
+
+					if (shouldSyncExpenseToInventory(scanResult, effectiveType)) {
+						const purchaseResult = await ctx.runMutation(
+							api.stockPurchases.recordStockPurchase,
+							{
+								purchaseData: buildStockPurchasePayloadFromScan({
+									scanResult,
+									date: resolvedDate,
+									sourceLabel: "AI Scan",
+								}),
+							}
+						);
+
+						generated.push({
+							id: purchaseResult.transactionId as string,
+							type: effectiveType,
+							amount: scanResult.data.amount,
+							category: "Pembelian Stok",
+						});
+
+						totalAmount += scanResult.data.amount;
+						continue;
+					}
+
+					const scanItems = normalizeScanItems(scanResult.data.items);
+					const txResult = await ctx.runMutation(
+						api.finance.upsertReceiptTransaction,
+						{
+							type: effectiveType as "income" | "expense",
+							amount: scanResult.data.amount,
+							category: scanResult.data.category || "Lainnya",
+							merchant: scanResult.data.merchantName,
+							description:
+								scanResult.data.description ||
+								scanResult.rawText.slice(0, 200),
+							date: resolvedDate,
+							paymentMethod: scanResult.data.paymentMethod || "cash",
+							status: "completed",
+							sourceFingerprint: buildReceiptFinanceFingerprint({
+								scanResult,
+								effectiveType: effectiveType as "income" | "expense",
+								date: resolvedDate,
+								inputMode: "batch_image_scan",
+							}),
+							metadata: {
+								source: "ai_receipt_scan",
+								inputMode: "batch_image_scan",
+								importedAt: Date.now(),
+								rawText: scanResult.rawText.slice(0, 1000),
+								sourceLabel: "AI Scan",
+								scanItems: scanItems.length > 0 ? scanItems : undefined,
+							},
+						}
+					);
 
 					generated.push({
-						id: txId as string,
+						id: txResult.id as string,
 						type: effectiveType,
 						amount: scanResult.data.amount,
 						category: scanResult.data.category,
@@ -4495,5 +5005,125 @@ export const bulkScanImageData = action({
 				index: i 
 			};
 		});
+	},
+});
+
+export const fillHppInventoryCostsFromTransactions = action({
+	args: {
+		hppCalculationId: v.id("hppCalculations"),
+		maxTransactions: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const context = await ctx.runQuery(api.hpp.getInventoryCostFillContext, {
+			hppCalculationId: args.hppCalculationId,
+			transactionLimit: args.maxTransactions,
+		});
+
+		if (!context.calculation) {
+			throw new ConvexError("Kalkulasi HPP tidak ditemukan");
+		}
+
+		if ((context.inventoryItems?.length || 0) === 0) {
+			return {
+				appliedCount: 0,
+				updatedIngredients: 0,
+				suggestions: [],
+				source: "none",
+			};
+		}
+
+		const heuristicSuggestions = buildHeuristicInventoryCostSuggestions(context);
+		let suggestions = heuristicSuggestions;
+		let source = heuristicSuggestions.length > 0 ? "heuristic" : "none";
+
+		try {
+			const aiResponse = await safeSumoPodCall(
+				[
+					{
+						role: "system",
+						content:
+							"Kamu adalah AI costing analyst untuk POS F&B Indonesia. Tugasmu mencocokkan transaksi belanja dengan item inventory dan menghitung costPerUnit dalam SATUAN DASAR inventory. Gunakan hanya bukti yang kuat. Jika ragu, abaikan. Kembalikan JSON murni: {\"suggestions\":[{\"inventoryId\":\"...\",\"sourceTransactionId\":\"...\",\"costPerUnit\":123.45,\"confidence\":0.91,\"reason\":\"...\",\"sourceLabel\":\"...\"}]}",
+					},
+					{
+						role: "user",
+						content: JSON.stringify({
+							targetCalculation: {
+								id: context.calculation._id,
+								name: context.calculation.name,
+								ingredients: context.calculation.ingredients.map((ingredient: any) => ({
+									inventoryId: ingredient.inventoryId,
+									ingredientName: ingredient.ingredientName,
+									purchasePrice: ingredient.purchasePrice,
+									purchaseQuantity: ingredient.purchaseQuantity,
+									purchaseUnit: ingredient.purchaseUnit,
+									usageUnit: ingredient.usageUnit,
+									conversionFactor: ingredient.conversionFactor,
+								})),
+							},
+							inventoryItems: context.inventoryItems.map((item: any) => ({
+								inventoryId: item._id,
+								ingredientName: item.ingredientName,
+								baseUnit: item.unit,
+								displayUnit: item.displayUnit,
+								conversionFactor: item.conversionFactor,
+							})),
+							recentTransactions: context.transactions.map((transaction: any) => ({
+								transactionId: transaction._id,
+								merchant: transaction.merchant,
+								category: transaction.category,
+								description: transaction.description,
+								date: transaction.date,
+								amount: transaction.amount,
+								rawText: transaction.rawText,
+								scanItems: transaction.scanItems,
+							})),
+						}),
+					},
+				],
+				{ maxTokens: 2200, model: "gpt-4o-mini" }
+			);
+
+			const aiSuggestions = parseInventoryCostSuggestionResponse(
+				aiResponse,
+				new Set((context.inventoryItems || []).map((item: any) => String(item._id)))
+			);
+			if (aiSuggestions.length > 0) {
+				suggestions = mergeInventoryCostSuggestions(
+					heuristicSuggestions,
+					aiSuggestions
+				);
+				source =
+					heuristicSuggestions.length > 0 ? "ai+heuristic" : "ai";
+			}
+		} catch (error) {
+			console.warn(
+				"fillHppInventoryCostsFromTransactions AI fallback to heuristic:",
+				error
+			);
+		}
+
+		if (suggestions.length === 0) {
+			return {
+				appliedCount: 0,
+				updatedIngredients: 0,
+				suggestions: [],
+				source,
+			};
+		}
+
+		const applyResult = await ctx.runMutation(
+			api.hpp.applyInventoryCostReferencesFromTransactions,
+			{ suggestions }
+		);
+		const syncResult = await ctx.runMutation(api.hpp.syncHppWithInventoryPrices, {
+			id: args.hppCalculationId,
+		});
+
+		return {
+			appliedCount: applyResult.appliedCount,
+			updatedIngredients: syncResult.updatedCount,
+			suggestions,
+			source,
+		};
 	},
 });
