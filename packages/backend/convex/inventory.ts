@@ -38,9 +38,32 @@ export const createInventoryItem = mutation({
 		displayUnit: v.optional(v.string()),
 		conversionFactor: v.optional(v.number()),
 		baseRecipeId: v.optional(v.id("baseRecipes")),
+		initialStockTimestamp: v.optional(v.number()),
+		costPerUnit: v.optional(v.number()),
+		notes: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		return await ctx.db.insert("inventory", args);
+		const {
+			initialStockTimestamp,
+			costPerUnit,
+			notes,
+			...inventoryData
+		} = args;
+		const inventoryId = await ctx.db.insert("inventory", inventoryData);
+
+		if (args.quantity > 0) {
+			await ctx.db.insert("inventoryTransactions", {
+				inventoryId,
+				quantity: args.quantity,
+				remainingQuantity: args.quantity,
+				type: "restock",
+				timestamp: initialStockTimestamp ?? Date.now(),
+				costPerUnit,
+				notes,
+			});
+		}
+
+		return inventoryId;
 	},
 });
 

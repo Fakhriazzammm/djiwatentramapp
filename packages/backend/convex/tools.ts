@@ -175,7 +175,7 @@ export const tools = {
 	// Create Order
 	createOrder: {
 		description:
-			"Buat pesanan baru. Berikan daftar item yang dipesan, total harga, metode pembayaran, dan nama pelanggan (opsional).",
+			"Buat pesanan baru. Berikan daftar item yang dipesan, total harga, metode pembayaran, nama pelanggan (opsional), dan tanggal order bila ingin mencatat order lama.",
 		parameters: z.object({
 			items: z
 				.array(
@@ -191,18 +191,20 @@ export const tools = {
 			totalAmount: z.number().positive("Total harga wajib diisi"),
 			paymentMethod: z.string().describe("Metode pembayaran (cash, qris, dll)"),
 			customerName: z.string().optional().describe("Nama pelanggan"),
+			date: z.string().optional().describe("Tanggal order historis (format ISO, contoh: 2024-01-20)"),
 		}),
 	},
 
 	// Update Order Status
 	updateOrderStatus: {
 		description:
-			"Update status pesanan. Berikan ID pesanan dan status baru (pending, paid, completed, cancelled).",
+			"Update status pesanan. Berikan ID pesanan, status baru (pending, paid, completed, cancelled), dan tanggal transaksi jika ingin mencatat pembayaran lama.",
 		parameters: z.object({
 			id: z.string().min(1, "ID pesanan wajib diisi"),
 			status: z
 				.enum(["pending", "paid", "completed", "cancelled"])
 				.describe("Status pesanan baru"),
+			date: z.string().optional().describe("Tanggal transaksi historis (format ISO, contoh: 2024-01-20)"),
 		}),
 	},
 
@@ -315,7 +317,7 @@ export const tools = {
 	// Update Booking Status
 	updateBookingStatus: {
 		description:
-			"Update status booking. Berikan ID booking dan status baru. Bisa update bookingStatus (pending/confirmed/cancelled/completed) dan/atau paymentStatus (pending/paid/cancelled). Saat paymentStatus diubah ke 'paid', transaksi keuangan otomatis dicatat.",
+			"Update status booking. Berikan ID booking dan status baru. Bisa update bookingStatus (pending/confirmed/cancelled/completed) dan/atau paymentStatus (pending/paid/cancelled). Saat paymentStatus diubah ke 'paid', transaksi keuangan otomatis dicatat, dan bisa memakai tanggal pembayaran historis.",
 		parameters: z.object({
 			id: z.string().min(1, "ID booking wajib diisi"),
 			bookingStatus: z
@@ -326,6 +328,7 @@ export const tools = {
 				.enum(["pending", "paid", "cancelled"])
 				.optional()
 				.describe("Status pembayaran baru"),
+			paymentDate: z.string().optional().describe("Tanggal pembayaran historis (format ISO, contoh: 2024-01-20)"),
 		}),
 	},
 

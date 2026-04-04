@@ -27,6 +27,42 @@ interface PredictionsPanelProps {
 	promoTime: any;
 }
 
+type StockPredictionItem = {
+	ingredientName: string;
+	currentStock: number;
+	recommendedOrder?: number;
+	daysUntilEmpty?: number;
+	risk?: "high" | "medium" | "low";
+};
+
+type BusyHoursData = {
+	totalOrders?: number;
+	peakHours?: Array<{ hour: number; orderCount: number; percentage: number }>;
+	peakDays?: Array<{ dayName: string; orderCount: number; percentage: number }>;
+};
+
+type RevenueData = {
+	currentAvgDaily?: number;
+	trend?: "increasing" | "decreasing" | "stable";
+	predictions?: Array<{ date: string; dayName: string; predictedRevenue: number; confidence: string }>;
+	totalAnalyzedDays?: number;
+};
+
+type TrendingProductItem = {
+	_id?: string;
+	name: string;
+	growthRate?: number;
+	recentSales?: number;
+	predictedNextWeek?: number;
+};
+
+type PromoTimeData = {
+	bestDay?: string;
+	bestHour?: number;
+	hasEnoughData?: boolean;
+	message?: string;
+};
+
 const CONFIDENCE_CONFIG = {
 	high: { label: "Tinggi", color: "text-green-600 bg-green-50 border-green-200", dot: "bg-green-500" },
 	medium: { label: "Sedang", color: "text-amber-600 bg-amber-50 border-amber-200", dot: "bg-amber-500" },
@@ -99,13 +135,31 @@ export const PredictionsPanel = ({
 	trending, 
 	promoTime 
 }: PredictionsPanelProps) => {
-	const hasStock = Array.isArray(stockPredictions) && stockPredictions.length > 0;
-	const hasBusy = Array.isArray(busyHours) && busyHours.length > 0;
-	const hasRevenue = revenue && (typeof revenue.predictedRevenue === 'number' || revenue.predictedRevenue);
-	const hasTrending = Array.isArray(trending) && trending.length > 0;
-	const hasPromo = promoTime && promoTime.bestDay && promoTime.bestHour !== undefined;
+	const stockItems: StockPredictionItem[] = Array.isArray(stockPredictions) ? stockPredictions : [];
+	const busyData: BusyHoursData = busyHours && typeof busyHours === "object" ? busyHours : {};
+	const revenueData: RevenueData = revenue && typeof revenue === "object" ? revenue : {};
+	const trendingItems: TrendingProductItem[] = Array.isArray(trending) ? trending : [];
+	const promoData: PromoTimeData = promoTime && typeof promoTime === "object" ? promoTime : {};
+
+	const hasStock = stockItems.length > 0;
+	const hasBusy = Array.isArray(busyData.peakHours) && busyData.peakHours.length > 0;
+	const hasRevenue =
+		Array.isArray(revenueData.predictions) && revenueData.predictions.length > 0;
+	const hasTrending = trendingItems.length > 0;
+	const hasPromo =
+		promoData.hasEnoughData !== false &&
+		typeof promoData.bestDay === "string" &&
+		promoData.bestHour !== undefined;
 	const activeCount = [hasStock, hasBusy, hasRevenue, hasTrending, hasPromo].filter(Boolean).length;
 	const overallConfidence = activeCount >= 4 ? "high" : activeCount >= 2 ? "medium" : "low";
+	const topRevenuePrediction = hasRevenue ? revenueData.predictions?.[0] : undefined;
+	const trendLabel =
+		revenueData.trend === "increasing"
+			? "Tren Positif"
+			: revenueData.trend === "decreasing"
+				? "Tren Menurun"
+				: "Tren Stabil";
+	const TrendIcon = revenueData.trend === "decreasing" ? ArrowDownRight : ArrowUpRight;
 
 	return (
 		<div className="px-4 pt-4 pb-24 md:pb-10 overflow-y-auto h-full custom-scrollbar space-y-4">
@@ -139,9 +193,9 @@ export const PredictionsPanel = ({
 				>
 					{hasStock ? (
 						<ul className="space-y-1.5 mt-2">
-							{stockPredictions.slice(0, 5).map((p: any, i: number) => (
+							{stockItems.slice(0, 5).map((p, i: number) => (
 								<motion.li 
-									key={p.productId} 
+									key={`${p.ingredientName}-${i}`} 
 									initial={{ opacity: 0, x: -10 }}
 									animate={{ opacity: 1, x: 0 }}
 									transition={{ delay: i * 0.06 }}
@@ -150,14 +204,16 @@ export const PredictionsPanel = ({
 									<div className="flex justify-between items-center gap-2">
 										<div className="flex items-center gap-1.5 min-w-0">
 											<Package className="h-3 w-3 text-amber-500 shrink-0" />
-											<span className="text-[11px] font-semibold text-foreground truncate">{p.productName}</span>
+											<span className="text-[11px] font-semibold text-foreground truncate">{p.ingredientName}</span>
 										</div>
 										<div className="flex flex-col items-end shrink-0">
 											<span className="text-[9px] font-black text-destructive uppercase">Kritis</span>
-											<span className="text-[8px] text-muted-foreground">sisa {p.currentStock ?? 0}</span>
+											<span className="text-[8px] text-muted-foreground">
+												sisa {p.currentStock ?? 0}{typeof p.daysUntilEmpty === "number" ? ` • ${p.daysUntilEmpty} hari` : ""}
+											</span>
 										</div>
 									</div>
-									<MiniBar value={p.currentStock ?? 0} maxVal={p.threshold ?? 50} color="bg-amber-400" />
+									<MiniBar value={p.currentStock ?? 0} maxVal={Math.max((p.recommendedOrder ?? 0), (p.currentStock ?? 0), 1)} color="bg-amber-400" />
 								</motion.li>
 							))}
 						</ul>
@@ -175,7 +231,7 @@ export const PredictionsPanel = ({
 					{hasBusy ? (
 						<div className="mt-2.5 flex flex-wrap gap-1.5">
 							<AnimatePresence>
-								{busyHours.map((hour: string, i: number) => (
+								{busyData.peakHours?.map((slot, i: number) => (
 									<motion.span 
 										key={i} 
 										initial={{ scale: 0, opacity: 0 }}
@@ -183,7 +239,7 @@ export const PredictionsPanel = ({
 										transition={{ delay: i * 0.05, type: "spring", stiffness: 400 }}
 										className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold border border-blue-200 hover:bg-blue-100 transition-colors cursor-default"
 									>
-										{hour}
+										{slot.hour}:00 ({slot.orderCount})
 									</motion.span>
 								))}
 							</AnimatePresence>
@@ -201,11 +257,11 @@ export const PredictionsPanel = ({
 				>
 					{hasRevenue ? (
 						<div className="mt-2 p-3 rounded-2xl bg-gradient-to-br from-green-50 to-green-100/30 border border-green-200/50">
-							<p className="text-[9px] font-black text-green-700/60 uppercase tracking-wider mb-0.5">Estimasi Total</p>
-							<p className="text-xl font-black text-green-700 tracking-tight">Rp {toRupiah(revenue.predictedRevenue)}</p>
+							<p className="text-[9px] font-black text-green-700/60 uppercase tracking-wider mb-0.5">Estimasi Hari Berikutnya</p>
+							<p className="text-xl font-black text-green-700 tracking-tight">Rp {toRupiah(topRevenuePrediction?.predictedRevenue ?? 0)}</p>
 							<div className="mt-2 flex items-center gap-1 text-green-600">
-								<ArrowUpRight className="h-3 w-3" />
-								<span className="text-[9px] font-bold">Tren Positif</span>
+								<TrendIcon className="h-3 w-3" />
+								<span className="text-[9px] font-bold">{trendLabel}</span>
 							</div>
 						</div>
 					) : <LearningState text="Menganalisis riwayat transaksi untuk estimasi akurat..." icon={TrendingUp} />}
@@ -217,13 +273,13 @@ export const PredictionsPanel = ({
 					icon={<BarChart3 className="h-4 w-4" />}
 					variant="primary"
 					tip={TIPS.performance}
-					confidence={getConfidence(revenue)}
+					confidence={getConfidence(revenueData)}
 				>
-					{revenue && (typeof revenue.currentAvgDaily === 'number' || revenue.currentAvgDaily) ? (
+					{typeof revenueData.currentAvgDaily === 'number' ? (
 						<div className="mt-2 p-3 rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/10">
 							<p className="text-[9px] font-black text-primary/60 uppercase tracking-wider mb-0.5">Rata-rata Harian</p>
-							<p className="text-xl font-black text-primary tracking-tight">Rp {toRupiah(revenue.currentAvgDaily)}</p>
-							<MiniBar value={revenue.currentAvgDaily ?? 0} maxVal={revenue.predictedRevenue ?? 1} color="bg-primary" />
+							<p className="text-xl font-black text-primary tracking-tight">Rp {toRupiah(revenueData.currentAvgDaily)}</p>
+							<MiniBar value={revenueData.currentAvgDaily ?? 0} maxVal={topRevenuePrediction?.predictedRevenue ?? revenueData.currentAvgDaily ?? 1} color="bg-primary" />
 						</div>
 					) : <LearningState text="Menghitung rerata produktivitas bisnis..." icon={BarChart3} />}
 				</PredictionCard>
@@ -238,9 +294,9 @@ export const PredictionsPanel = ({
 				>
 					{hasTrending ? (
 						<ul className="space-y-1.5 mt-2">
-							{trending.slice(0, 5).map((p: any, i: number) => (
+							{trendingItems.slice(0, 5).map((p, i: number) => (
 								<motion.li 
-									key={p.productId}
+									key={p._id ?? `${p.name}-${i}`}
 									initial={{ opacity: 0, x: -10 }}
 									animate={{ opacity: 1, x: 0 }}
 									transition={{ delay: i * 0.06 }}
@@ -250,11 +306,11 @@ export const PredictionsPanel = ({
 										<span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 text-purple-700 text-[9px] font-black shrink-0">
 											{i + 1}
 										</span>
-										<span className="text-[11px] font-medium text-foreground truncate">{p.productName}</span>
+										<span className="text-[11px] font-medium text-foreground truncate">{p.name}</span>
 									</div>
 									<span className="flex items-center gap-0.5 font-bold text-green-600 text-[10px] bg-green-50 px-2 py-0.5 rounded-full border border-green-100 shrink-0">
 										<ArrowUpRight className="h-3 w-3" />
-										{p.growthPercentage ?? 0}%
+										{p.growthRate ?? 0}%
 									</span>
 								</motion.li>
 							))}
@@ -275,11 +331,11 @@ export const PredictionsPanel = ({
 							<div className="flex gap-3">
 								<div className="flex-1">
 									<p className="text-[9px] font-black text-indigo-400 uppercase">Hari</p>
-									<p className="text-xs font-black text-indigo-700 capitalize">{promoTime.bestDay}</p>
+									<p className="text-xs font-black text-indigo-700 capitalize">{promoData.bestDay}</p>
 								</div>
 								<div className="flex-1">
 									<p className="text-[9px] font-black text-indigo-400 uppercase">Waktu</p>
-									<p className="text-xs font-black text-indigo-700">{promoTime.bestHour}:00</p>
+									<p className="text-xs font-black text-indigo-700">{promoData.bestHour}:00</p>
 								</div>
 							</div>
 							<div className="mt-2 flex items-center gap-1 text-indigo-500">
@@ -287,7 +343,7 @@ export const PredictionsPanel = ({
 								<span className="text-[8px] font-bold">Waktu terbaik untuk promosi</span>
 							</div>
 						</div>
-					) : <LearningState text="Menentukan waktu ideal untuk promosi..." icon={Target} />}
+					) : <LearningState text={promoData.message || "Menentukan waktu ideal untuk promosi..."} icon={Target} />}
 				</PredictionCard>
 			</div>
 		</div>

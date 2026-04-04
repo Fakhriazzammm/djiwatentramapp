@@ -440,77 +440,92 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	const handleExecuteSuggestion = async (s: Suggestion) => {
 		setIsLoading(true);
 		try {
-			if (!s.action?.type) {
+			const action = s.action;
+			const actionArgs = action?.args;
+			const actionType = action?.type ?? action?.toolName;
+			if (!actionType) {
 				await sendMessage(`Lakukan saran ini: ${s.title}`);
 				return;
 			}
-			switch (s.action.type) {
+			switch (actionType) {
 				case "record_stock_purchase":
-					await recordStockPurchaseMutation(s.action.args);
+					await recordStockPurchaseMutation(actionArgs as any);
 					toast.success("Stok berhasil dicatat!");
 					break;
 				case "create_product":
-					await createProductMutation(s.action.args);
+					await createProductMutation(actionArgs as any);
 					toast.success("Produk berhasil dibuat!");
 					break;
 				case "update_product":
-					await updateProductMutation(s.action.args);
+					await updateProductMutation(actionArgs as any);
 					toast.success("Produk berhasil diperbarui!");
 					break;
 				case "update_product_price":
-					await updateProductMutation(s.action.args);
+					await updateProductMutation(actionArgs as any);
 					toast.success("Harga produk berhasil diperbarui!");
 					break;
 				case "create_discount":
-					await createDiscountMutation(s.action.args);
+					await createDiscountMutation(actionArgs as any);
 					toast.success("Diskon berhasil dibuat!");
 					break;
 				case "toggle_discount":
-					await toggleDiscountMutation(s.action.args);
+					await toggleDiscountMutation(actionArgs as any);
 					toast.success("Status diskon berhasil diubah!");
 					break;
 				case "create_order":
-					await createOrderMutation(s.action.args);
+					await createOrderMutation(actionArgs as any);
 					toast.success("Pesanan berhasil dibuat!");
 					break;
 				case "update_order_status":
-					await updateOrderStatusMutation(s.action.args);
+					await updateOrderStatusMutation(actionArgs as any);
 					toast.success("Status pesanan berhasil diperbarui!");
 					break;
 				case "create_booking":
-					await createBookingOrderMutation(s.action.args);
+					await createBookingOrderMutation(actionArgs as any);
 					toast.success("Booking berhasil dibuat!");
 					break;
 				case "update_booking_status":
-					await updateBookingStatusMutation(s.action.args);
+					await updateBookingStatusMutation(actionArgs as any);
 					toast.success("Status booking berhasil diperbarui!");
 					break;
 				case "create_transaction":
-					await createTransactionMutation(s.action.args);
+					await createTransactionMutation(actionArgs as any);
 					toast.success("Transaksi berhasil dicatat!");
 					break;
 				case "delete_transaction":
-					await deleteTransactionMutation(s.action.args);
+					await deleteTransactionMutation(actionArgs as any);
 					toast.success("Transaksi berhasil dihapus!");
 					break;
 				case "create_inventory_item":
-					await createInventoryItemMutation(s.action.args);
+					await createInventoryItemMutation(actionArgs as any);
 					toast.success("Item inventaris berhasil dibuat!");
 					break;
 				case "add_stock":
-					await addStockMutation(s.action.args);
-					toast.success("Stok berhasil ditambahkan!");
+					if (
+						actionArgs &&
+						"inventoryId" in actionArgs &&
+						"quantity" in actionArgs
+					) {
+						await addStockMutation({
+							inventoryId: actionArgs.inventoryId as any,
+							quantity: actionArgs.quantity as number,
+							notes: typeof actionArgs.notes === "string" ? actionArgs.notes : undefined,
+						});
+						toast.success("Stok berhasil ditambahkan!");
+					} else {
+						await sendMessage(`Tindak lanjuti saran ini: ${s.title}`);
+					}
 					break;
 				case "set_financial_target":
-					await setFinancialTargetMutation(s.action.args);
+					await setFinancialTargetMutation(actionArgs as any);
 					toast.success("Target keuangan berhasil ditetapkan!");
 					break;
 				case "start_shift":
-					await startShiftMutation(s.action.args);
+					await startShiftMutation(actionArgs as any);
 					toast.success("Shift berhasil dimulai!");
 					break;
 				case "end_shift":
-					await endShiftMutation(s.action.args);
+					await endShiftMutation(actionArgs as any);
 					toast.success("Shift berhasil diakhiri!");
 					break;
 				default:

@@ -55,13 +55,30 @@ export const getReportRecipientEmails = query({
 
 		const recipients = Array.from(
 			new Set(
+				users
+					.filter(
+						(user) =>
+							user.isActive &&
+							user.receiveReportEmails === true &&
+							isValidEmail(normalizeEmail(user.username))
+					)
+					.map((user) => normalizeEmail(user.username))
+			)
+		);
+
+		if (recipients.length > 0) {
+			return recipients;
+		}
+
+		const fallbackRecipients = Array.from(
+			new Set(
 				adminUsers
 					.map((user) => normalizeEmail(user.username))
 					.filter((email) => isValidEmail(email))
 			)
 		);
 
-		return recipients;
+		return fallbackRecipients;
 	},
 });
 
@@ -93,6 +110,7 @@ export const createDefaultAdmin = mutation({
 				name: "Super Admin",
 				roleId,
 				isActive: true,
+				receiveReportEmails: true,
 			});
 			return "Admin created (admin/password123)";
 		}
@@ -142,6 +160,7 @@ export const createUser = mutation({
 		name: v.string(),
 		roleId: v.id("roles"),
 		authUserId: v.optional(v.string()), // Optional bind immediately
+		receiveReportEmails: v.optional(v.boolean()),
 	},
 	handler: async (ctx, args) => {
 		const username = normalizeEmail(args.username);
@@ -161,6 +180,7 @@ export const createUser = mutation({
 			username,
 			password: args.password || "", // Default empty if not provided
 			isActive: true, // Default active
+			receiveReportEmails: args.receiveReportEmails ?? false,
 		});
 	},
 });
@@ -248,6 +268,7 @@ export const bindProfile = mutation({
 			roleId,
 			authUserId: args.authUserId,
 			isActive: true,
+			receiveReportEmails: false,
 		});
 	},
 });
@@ -259,6 +280,7 @@ export const updateUser = mutation({
 		name: v.optional(v.string()),
 		roleId: v.optional(v.id("roles")),
 		isActive: v.optional(v.boolean()),
+		receiveReportEmails: v.optional(v.boolean()),
 		password: v.optional(v.string()),
 		authUserId: v.optional(v.string()),
 	},

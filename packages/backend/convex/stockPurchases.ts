@@ -69,6 +69,8 @@ export const recordStockPurchase = defineMutation({
           unit: "pcs", // Default unit, can be improved later
           lowStockThreshold: 10, // Default threshold
           costPerUnit: item.price,
+          initialStockTimestamp: purchaseData.date,
+          notes: `Pembelian dari ${purchaseData.merchant || "Supplier"}`,
         });
         createdCount++;
       }

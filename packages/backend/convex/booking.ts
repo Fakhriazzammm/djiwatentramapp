@@ -491,9 +491,10 @@ export const updateBookingStatus = mutation({
 		paymentStatus: v.optional(
 			v.union(v.literal("pending"), v.literal("paid"), v.literal("cancelled"))
 		),
+		paymentDate: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const { id, bookingStatus, paymentStatus } = args;
+		const { id, bookingStatus, paymentStatus, paymentDate } = args;
 
 		// Auto-record financial transaction when payment is confirmed as paid
 		if (paymentStatus === "paid") {
@@ -504,7 +505,7 @@ export const updateBookingStatus = mutation({
 					amount: booking.totalAmount,
 					category: "Booking",
 					description: `Booking #${booking.bookingCode} - ${booking.customerName} (${booking.bookingDate})`,
-					date: Date.now(),
+					date: paymentDate ?? Date.now(),
 					paymentMethod: booking.paymentMethod,
 					status: "completed",
 					bookingOrderId: id,

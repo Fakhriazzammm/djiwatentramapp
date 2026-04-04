@@ -41,10 +41,12 @@ export const createOrder = mutation({
 		),
 		isOpenBill: v.optional(v.boolean()),
 		autoComplete: v.optional(v.boolean()), // If true, set status to 'paid' immediately
+		createdAt: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const { autoComplete, isOpenBill, ...orderData } = args;
+		const { autoComplete, isOpenBill, createdAt, ...orderData } = args;
 		const orderNumber = `ORD-${Date.now().toString().slice(-4)}`;
+		const orderCreatedAt = createdAt ?? Date.now();
 		const nextStatus = isOpenBill
 			? "pending"
 			: autoComplete
@@ -55,7 +57,7 @@ export const createOrder = mutation({
 			...orderData,
 			orderNumber,
 			status: nextStatus,
-			createdAt: Date.now(),
+			createdAt: orderCreatedAt,
 		});
 
 		// Paid and completed orders should immediately record finance and stock.
@@ -71,7 +73,7 @@ export const createOrder = mutation({
 				amount: args.totalAmount,
 				category: "Penjualan",
 				description: `Penjualan Pesanan #${orderNumber}`,
-				date: Date.now(),
+				date: orderCreatedAt,
 				paymentMethod: args.paymentMethod,
 				status: "completed",
 				orderId,
@@ -124,6 +126,7 @@ export const updateOrderStatus = mutation({
 			v.literal("completed"),
 			v.literal("cancelled")
 		),
+		transactionDate: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const order = await ctx.db.get(args.id);
@@ -135,6 +138,7 @@ export const updateOrderStatus = mutation({
 		// If status changes TO 'paid' (or 'completed') FROM something else
 		const isNowPaid = args.status === "paid" || args.status === "completed";
 		const wasPaid = order.status === "paid" || order.status === "completed";
+		const effectiveTransactionDate = args.transactionDate ?? order.createdAt ?? Date.now();
 
 		if (isNowPaid && !wasPaid) {
 			// 1. Record Income Transaction
@@ -143,7 +147,7 @@ export const updateOrderStatus = mutation({
 				amount: order.totalAmount,
 				category: "Penjualan", // Standard category for sales
 				description: `Penjualan Pesanan #${order.orderNumber}`,
-				date: Date.now(),
+				date: effectiveTransactionDate,
 				paymentMethod: order.paymentMethod,
 				status: "completed",
 				orderId: args.id,
@@ -187,7 +191,7 @@ export const updateOrderStatus = mutation({
 					amount: totalOrderCogs,
 					category: "HPP",
 					description: `HPP Pesanan #${order.orderNumber}`,
-					date: Date.now(),
+					date: effectiveTransactionDate,
 					status: "completed",
 					orderId: args.id,
 				});

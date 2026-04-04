@@ -1082,10 +1082,10 @@ type BulkProductRow = { name: string; price: number; categoryName?: string; desc
 type BulkInventoryRow = { ingredientName: string; quantity: number; unit?: string; lowStockThreshold?: number; costPerUnit?: number; notes?: string; date?: number };
 type BulkBookingRow = { customerName: string; customerPhone: string; customerEmail?: string; bookingDate: string; guestCount: number; itemName?: string; quantity?: number; totalAmount?: number; paymentMethod?: string; notes?: string };
 type BulkDiscountRow = { name: string; type: "FIXED" | "PERCENTAGE" | "FLAT_PRICE"; value: number; targetType: "ALL" | "CATEGORY" | "PRODUCT"; targetName?: string; isActive?: boolean; minOrderValue?: number };
-type BulkOrderStatusRow = { orderRef: string; status: "pending" | "paid" | "completed" | "cancelled" };
+type BulkOrderStatusRow = { orderRef: string; status: "pending" | "paid" | "completed" | "cancelled"; date?: number };
 type BulkTargetRow = { month: string; targetRevenue: number; targetProfit?: number; notes?: string };
-type BulkShiftStartRow = { cashierName: string; shiftName: string; startingCash: number; teamMembers?: string; notes?: string };
-type BulkShiftEndRow = { endingCashPhysical: number; nonCashConfirmed: number; notes?: string };
+type BulkShiftStartRow = { cashierName: string; shiftName: string; startingCash: number; teamMembers?: string; notes?: string; startTime?: number };
+type BulkShiftEndRow = { endingCashPhysical: number; nonCashConfirmed: number; notes?: string; endTime?: number };
 
 type UniversalBulkParsed = {
 	products: BulkProductRow[];
@@ -1263,10 +1263,12 @@ function parseBulkUniversalData(message: string): UniversalBulkParsed {
 			const refMatch = line.match(/(ORD-\d+)/i);
 			const ref = refMatch?.[1] || kv.order || kv.order_number || kv.id;
 			const status = (statusMatch?.[1] || kv.status || "").toLowerCase();
+			const parsedDate = parseDateFromLine(line, new Date().getFullYear());
 			if (ref && ["pending", "paid", "completed", "cancelled"].includes(status)) {
 				result.orderStatuses.push({
 					orderRef: ref.trim(),
 					status: status as any,
+					date: parsedDate?.ts,
 				});
 			}
 			continue;
@@ -1294,6 +1296,7 @@ function parseBulkUniversalData(message: string): UniversalBulkParsed {
 			const cashierName = kv.kasir || kv.cashier || "Kasir";
 			const shiftName = kv.shift || "Shift";
 			const startingCash = parseNumberLoose(kv.modal || kv.starting_cash || kv.cash || "");
+			const parsedDate = parseDateFromLine(line, new Date().getFullYear());
 			if (startingCash > 0) {
 				result.shiftStarts.push({
 					cashierName,
@@ -1301,6 +1304,7 @@ function parseBulkUniversalData(message: string): UniversalBulkParsed {
 					startingCash,
 					teamMembers: kv.tim || kv.team,
 					notes: kv.catatan || kv.notes,
+					startTime: parsedDate?.ts,
 				});
 			}
 			continue;
@@ -1310,11 +1314,13 @@ function parseBulkUniversalData(message: string): UniversalBulkParsed {
 		if (/(akhiri shift|end shift|tutup shift)/.test(lower)) {
 			const endingCashPhysical = parseNumberLoose(kv.kas || kv.ending_cash || kv.cash || "");
 			const nonCashConfirmed = parseNumberLoose(kv.noncash || kv.qris || kv.transfer || "0");
+			const parsedDate = parseDateFromLine(line, new Date().getFullYear());
 			if (endingCashPhysical > 0 || nonCashConfirmed > 0) {
 				result.shiftEnds.push({
 					endingCashPhysical,
 					nonCashConfirmed,
 					notes: kv.catatan || kv.notes,
+					endTime: parsedDate?.ts,
 				});
 			}
 		}
@@ -1507,7 +1513,7 @@ async function executeUniversalBulkImport(
 		try {
 			const order = orders.find((o) => normText(o.orderNumber || "") === normText(row.orderRef));
 			if (!order) throw new Error(`Order ${row.orderRef} tidak ditemukan`);
-			await ctx.runMutation(api.orders.updateOrderStatus, { id: order._id, status: row.status });
+			await ctx.runMutation(api.orders.updateOrderStatus, { id: order._id, status: row.status, transactionDate: row.date });
 			countOrderStatus++;
 			toolCalls.push({ name: "updateOrderStatus", status: "success", args: { orderRef: row.orderRef, status: row.status } });
 		} catch (e) {
@@ -1542,6 +1548,7 @@ async function executeUniversalBulkImport(
 				teamMembers: row.teamMembers,
 				startingCash: row.startingCash,
 				notes: row.notes,
+				startTime: row.startTime,
 			});
 			countShiftStart++;
 			toolCalls.push({ name: "startShift", status: "success", args: { cashierName: row.cashierName, shiftName: row.shiftName } });
@@ -1561,6 +1568,7 @@ async function executeUniversalBulkImport(
 				endingCashPhysical: row.endingCashPhysical,
 				nonCashConfirmed: row.nonCashConfirmed,
 				notes: row.notes,
+				endTime: row.endTime,
 			});
 			countShiftEnd++;
 			toolCalls.push({ name: "endShift", status: "success", args: { shiftId: (ongoing as any)._id } });
@@ -1826,6 +1834,7 @@ ATURAN:
 11b. Jika ada template laporan khusus yang meminta nomor atau tanda minus, ikuti template khusus tersebut. Aturan ini mengalahkan aturan list biasa.
 12. FLEKSIBILITAS PARSING & GENERASI OTOMATIS (PROAKTIF): Kamu adalah pakar ekstraksi data yang sangat cerdas. Jika pengguna memberikan daftar data mentah (seperti daftar pengeluaran harian Februari 2026), kamu harus:
     a. EKSTRAK TANGGAL: Perhatikan format tanggal seperti DD/MM/YYYY, DD-MM-YYYY, atau nama bulan. Pastikan setiap baris diproses dengan tanggalnya masing-masing.
+    a1. Jika user menyebut tanggal lama atau periode lampau, WAJIB gunakan tanggal historis itu saat memanggil tool. JANGAN ganti ke tanggal hari ini kecuali user memang meminta tanggal hari ini.
     b. GENERASI OTOMATIS: Untuk field yang tidak ada pada input user, GENERATE SECARA OTOMATIS berdasarkan konteks:
        - KATEGORI: Pilih yang paling cocok dari daftar sistem (makanan_minuman, belanja_stok, dll). Contoh: "Galon" -> makanan_minuman, "Gaji" -> gaji_karyawan.
        - SATUAN (INVENTORY): Tentukan unit secara otomatis (kg, pcs, dll). JANGAN bertanya ke user.
@@ -1911,6 +1920,7 @@ INSTRUKSI TOOL CALLING:
 - Setelah menjalankan tool, jelaskan hasilnya dengan ringkas kepada user
 - Jika ada error dari tool, jelaskan masalahnya dan sarankan solusi
 - Untuk multi-step actions, lanjutkan dengan langkah berikutnya sampai selesai
+- Jika user memberi tanggal spesifik untuk transaksi, stok, order, booking, atau shift, selalu kirim field tanggal/waktu itu ke tool yang relevan.
 
 INSTRUKSI PENCATATAN KEUANGAN:
 - Saat mencatat transaksi keuangan, gunakan KATEGORI YANG TEPAT dari daftar berikut:

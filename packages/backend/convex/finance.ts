@@ -761,14 +761,15 @@ export const startShift = mutation({
 		teamMembers: v.optional(v.string()),
 		startingCash: v.number(),
 		notes: v.optional(v.string()),
+		startTime: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const now = Date.now();
+		const startTime = args.startTime ?? Date.now();
 		
 		// 1. Create entry in shifts table
 		const shiftId = await ctx.db.insert("shifts", {
 			...args,
-			startTime: now,
+			startTime,
 		});
 
 		// 2. Create financial transaction for Modal Awal (Legacy compatibility)
@@ -783,7 +784,7 @@ export const startShift = mutation({
 			amount: args.startingCash,
 			category: "Modal Awal",
 			description: descParts.join(" | "),
-			date: now,
+			date: startTime,
 			status: "completed",
 			paymentMethod: "tunai",
 		});
@@ -814,16 +815,18 @@ export const endShift = mutation({
 		),
 		notes: v.optional(v.string()),
 		closingTasks: v.optional(v.array(v.string())),
+		endTime: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const now = Date.now();
+		const endTimeArg = args.endTime ?? Date.now();
 		const shift = await ctx.db.get(args.shiftId);
 		if (!shift) throw new Error("Shift not found");
 		if (shift.endTime) throw new Error("Shift already ended");
+		if (endTimeArg < shift.startTime) throw new Error("Waktu akhir shift tidak boleh lebih awal dari waktu mulai");
 
 		// 1. Calculate shift statistics
 		const startTime = shift.startTime;
-		const endTime = now;
+		const endTime = endTimeArg;
 
 		const {
 			totalRevenue,
@@ -865,7 +868,7 @@ export const endShift = mutation({
 			amount: args.endingCashPhysical,
 			category: "Setoran Akhir",
 			description: (args.notes || "Akhiri Shift") + summaryText,
-			date: now,
+			date: endTime,
 			status: "completed",
 			paymentMethod: "tunai",
 		});

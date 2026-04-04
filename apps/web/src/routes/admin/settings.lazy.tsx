@@ -463,6 +463,7 @@ function SettingsPage() {
 		username: string;
 		roleId: Id<"roles"> | "";
 		isActive: boolean;
+		receiveReportEmails: boolean;
 	} | null>(null);
 	const [editingRole, setEditingRole] = useState<{
 		id: Id<"roles">;
@@ -487,10 +488,12 @@ function SettingsPage() {
 	const reportRecipients = useMemo(() => {
 		if (!users) return [];
 		return users
-			.filter((user: any) => {
-				const roleName = (user.roleName || "").toLowerCase();
-				return user.isActive && roleName.includes("admin");
-			})
+			.filter(
+				(user: any) =>
+					user.isActive &&
+					user.receiveReportEmails === true &&
+					isValidEmail(normalizeEmail(user.username || user.email || ""))
+			)
 			.map((user: any) => normalizeEmail(user.username || user.email || ""))
 			.filter((email: string) => isValidEmail(email));
 	}, [users]);
@@ -714,6 +717,7 @@ function SettingsPage() {
 			username: user.username || "",
 			roleId: user.roleId || "",
 			isActive: user.isActive ?? true,
+			receiveReportEmails: user.receiveReportEmails ?? false,
 		});
 	};
 
@@ -743,6 +747,7 @@ function SettingsPage() {
 				username: normalizedEmail,
 				roleId: editingUser.roleId as Id<"roles">,
 				isActive: editingUser.isActive,
+				receiveReportEmails: editingUser.receiveReportEmails,
 			});
 			toast.success("Pengguna berhasil diperbarui");
 			setEditingUser(null);
@@ -2107,13 +2112,16 @@ function SettingsPage() {
 										<div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300">
 											<p className="font-semibold">Integrasi Resend</p>
 											<p className="mt-1">
-												Email laporan otomatis diambil dari pengguna <strong>role admin</strong> yang <strong>aktif</strong>.
+												Pilih penerima laporan email dari <strong>edit pengguna</strong> dengan mengaktifkan opsi <strong>Terima laporan email</strong>.
 											</p>
 											<p className="mt-1">
 												Penerima saat ini:{" "}
 												{reportRecipients.length > 0
 													? reportRecipients.join(", ")
-													: "Belum ada admin aktif dengan email valid."}
+													: "Belum ada penerima khusus yang aktif dengan email valid."}
+											</p>
+											<p className="mt-1">
+												Jika belum ada penerima khusus dipilih, sistem akan tetap fallback ke admin aktif yang memiliki email valid agar data lama tetap aman.
 											</p>
 											<div className="mt-3 rounded-lg border border-blue-200 bg-white/80 p-3 dark:border-blue-800 dark:bg-slate-900/40">
 												<label className="flex cursor-pointer items-start gap-3">
@@ -2133,8 +2141,8 @@ function SettingsPage() {
 															Kirim otomatis laporan shift saat shift diakhiri
 														</span>
 														Jika aktif, setiap proses akhiri shift akan langsung
-														mengirim email laporan ke seluruh admin aktif yang
-														memiliki email valid.
+														mengirim email laporan ke daftar pengguna aktif yang
+														ditandai menerima laporan email.
 													</span>
 												</label>
 											</div>
@@ -2449,6 +2457,36 @@ function SettingsPage() {
 																/>
 															</button>
 														</div>
+														<div className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3">
+															<div>
+																<p className="font-medium text-sm text-foreground">
+																	Terima Laporan Email
+																</p>
+																<p className="text-xs text-muted-foreground">
+																	Jika aktif, user ini akan menerima laporan shift dari Resend.
+																</p>
+															</div>
+															<button
+																className={`relative h-6 w-10 rounded-full transition-all duration-300 ${
+																	editingUser.receiveReportEmails
+																		? "bg-primary"
+																		: "bg-muted-foreground/20"
+																}`}
+																onClick={() =>
+																	setEditingUser({
+																		...editingUser,
+																		receiveReportEmails: !editingUser.receiveReportEmails,
+																	})
+																}
+																type="button"
+															>
+																<div
+																	className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${
+																		editingUser.receiveReportEmails ? "right-1" : "left-1"
+																	}`}
+																/>
+															</button>
+														</div>
 													</div>
 													<div className="flex justify-end gap-2">
 														<button
@@ -2498,6 +2536,11 @@ function SettingsPage() {
 																<p className="text-muted-foreground text-xs">
 																	{user.username}
 																</p>
+																{user.receiveReportEmails ? (
+																	<p className="mt-1 text-[11px] font-medium text-primary">
+																		Penerima laporan email
+																	</p>
+																) : null}
 															</div>
 														</div>
 														<div className="flex items-center gap-1">

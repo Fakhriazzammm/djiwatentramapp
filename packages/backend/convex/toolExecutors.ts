@@ -204,6 +204,10 @@ export const executeToolCall = defineAction({
 				// ============================================
 				case "createOrder": {
 					const parsed = tools.createOrder.parameters.parse(toolArgs);
+					const createdAt =
+						typeof parsed.date === "string" && parsed.date.trim()
+							? new Date(parsed.date).getTime()
+							: undefined;
 					result = await ctx.runMutation(api.orders.createOrder, {
 						items: parsed.items.map((item: any) => ({
 							...item,
@@ -212,15 +216,21 @@ export const executeToolCall = defineAction({
 						totalAmount: parsed.totalAmount,
 						paymentMethod: parsed.paymentMethod,
 						customerName: parsed.customerName,
+						createdAt: Number.isFinite(createdAt) ? createdAt : undefined,
 					});
 					break;
 				}
 
 				case "updateOrderStatus": {
 					const parsed = tools.updateOrderStatus.parameters.parse(toolArgs);
+					const transactionDate =
+						typeof parsed.date === "string" && parsed.date.trim()
+							? new Date(parsed.date).getTime()
+							: undefined;
 					await ctx.runMutation(api.orders.updateOrderStatus, {
 						id: asId(parsed.id),
 						status: parsed.status as any,
+						transactionDate: Number.isFinite(transactionDate) ? transactionDate : undefined,
 					});
 					result = {
 						success: true,
@@ -491,10 +501,15 @@ export const executeToolCall = defineAction({
 			// ============================================
 				case "updateBookingStatus": {
 					const parsed = tools.updateBookingStatus.parameters.parse(toolArgs);
+					const paymentDate =
+						typeof parsed.paymentDate === "string" && parsed.paymentDate.trim()
+							? new Date(parsed.paymentDate).getTime()
+							: undefined;
 					await ctx.runMutation(api.booking.updateBookingStatus, {
 						id: asId(parsed.id),
 						bookingStatus: parsed.bookingStatus,
 						paymentStatus: parsed.paymentStatus,
+						paymentDate: Number.isFinite(paymentDate) ? paymentDate : undefined,
 					});
 					result = {
 						success: true,

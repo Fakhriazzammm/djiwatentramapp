@@ -336,6 +336,7 @@ export default defineSchema({
 		name: v.string(),
 		roleId: v.id("roles"),
 		isActive: v.boolean(),
+		receiveReportEmails: v.optional(v.boolean()),
 		lastLogin: v.optional(v.number()),
 		authUserId: v.optional(v.string()), // ID from Better Auth
 	})

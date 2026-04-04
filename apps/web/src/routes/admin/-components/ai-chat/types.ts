@@ -99,7 +99,11 @@ export interface Suggestion {
 	title: string;
 	description: string;
 	priority: "high" | "medium" | "low";
-	action?: any;
+	action?: {
+		type?: string;
+		toolName?: string;
+		args?: Record<string, unknown>;
+	} | null;
 	createdAt: number;
 }
 
