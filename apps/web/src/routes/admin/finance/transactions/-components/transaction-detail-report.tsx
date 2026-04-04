@@ -384,10 +384,27 @@ export function TransactionDetailReport({ range }: Props) {
 				</div>
 			)}
 
+			{data && (
+				<div className="flex flex-wrap gap-2 rounded-xl border border-border/60 bg-card/60 px-4 py-3">
+					<span className="inline-flex rounded-full border border-border bg-background px-3 py-1 text-[11px] font-medium text-foreground">
+						{filteredTransactions.length} baris tampil
+					</span>
+					<span className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[11px] font-medium text-violet-700">
+						{filteredTransactions.filter((t: any) => String(t.sourceType || "").startsWith("ai_")).length} transaksi AI
+					</span>
+					<span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-medium text-sky-700">
+						{filteredTransactions.filter((t: any) => t.referenceValue).length} punya referensi
+					</span>
+					<span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700">
+						{filteredTransactions.filter((t: any) => t.status === "completed").length} selesai
+					</span>
+				</div>
+			)}
+
 			{/* Transactions Table */}
 			<div className="rounded-xl border border-border overflow-hidden">
 				<div className="overflow-x-auto">
-					<table className="w-full text-left text-sm">
+					<table className="w-full min-w-[1180px] text-left text-sm">
 						<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase tracking-wider font-bold">
 							<tr>
 								<th className="px-4 py-3">
@@ -402,12 +419,9 @@ export function TransactionDetailReport({ range }: Props) {
 									</div>
 								</th>
 								<th className="px-4 py-3">Tanggal</th>
-								<th className="px-4 py-3">Shift</th>
-								<th className="px-4 py-3">Sumber</th>
-								<th className="px-4 py-3">Merchant/Keterangan</th>
+								<th className="px-4 py-3">Ringkasan</th>
 								<th className="px-4 py-3">Referensi</th>
-								<th className="px-4 py-3">Kategori</th>
-								<th className="px-4 py-3">Metode</th>
+								<th className="px-4 py-3">Kategori & Metode</th>
 								<th className="px-4 py-3">Status</th>
 								<th className="px-4 py-3 text-right">Nominal</th>
 								<th className="px-4 py-3 text-center">Aksi</th>
@@ -462,67 +476,82 @@ export function TransactionDetailReport({ range }: Props) {
 												</div>
 											</td>
 											<td className="px-4 py-3">
-												{shiftName !== "-" ? (
-													<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-[9px] font-bold text-primary uppercase">
-														{shiftName}
+												<div className="flex min-w-[320px] max-w-[420px] flex-col gap-1.5">
+													<div className="flex flex-wrap items-center gap-1.5">
+														{sourceBadge(t.sourceLabel, t.sourceType)}
+														{shiftName !== "-" && (
+															<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-[9px] font-bold text-primary uppercase">
+																{shiftName}
+															</span>
+														)}
+														{t.inputMode && (
+															<span className="inline-flex rounded-md border border-border bg-background px-2 py-1 text-[9px] uppercase tracking-wider text-muted-foreground">
+																{t.inputMode.replace(/_/g, " ")}
+															</span>
+														)}
+													</div>
+													<span className="font-semibold text-foreground text-sm" title={t.merchant || "Umum"}>
+														{t.merchant || "Umum"}
 													</span>
-												) : (
-													<span className="text-muted-foreground text-xs">-</span>
-												)}
-											</td>
-											<td className="px-4 py-3">
-												<div className="flex flex-col gap-1">
-													{sourceBadge(t.sourceLabel, t.sourceType)}
-													{t.inputMode && (
-														<span className="text-[9px] text-muted-foreground uppercase tracking-wider">
-															{t.inputMode.replace(/_/g, " ")}
+													<span className="text-[11px] text-muted-foreground leading-relaxed" title={t.description || "-"}>
+														{t.description || "-"}
+													</span>
+													{t.rawText && (
+														<span className="rounded-md bg-muted/40 px-2 py-1 text-[10px] text-muted-foreground line-clamp-2" title={t.rawText}>
+															Raw input: {t.rawText}
 														</span>
+													)}
+													{Array.isArray(t.tags) && t.tags.length > 0 && (
+														<div className="flex flex-wrap gap-1">
+															{t.tags.slice(0, 4).map((tag: string) => (
+																<span key={tag} className="inline-flex rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
+																	#{tag}
+																</span>
+															))}
+														</div>
 													)}
 												</div>
 											</td>
 											<td className="px-4 py-3">
-												<div className="flex flex-col max-w-[180px] md:max-w-[250px]">
-												<span className="font-semibold text-foreground text-xs truncate" title={t.merchant || "Umum"}>
-													{t.merchant || "Umum"}
-												</span>
-												<span className="text-[10px] text-muted-foreground truncate" title={t.description || "-"}>
-													{t.description || "-"}
-												</span>
-												{t.rawText && (
-													<span className="text-[10px] text-muted-foreground/80 truncate" title={t.rawText}>
-														Raw: {t.rawText}
+												<div className="flex min-w-[130px] flex-col">
+													<span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+														{t.referenceLabel || "Tanpa referensi"}
 													</span>
-												)}
+													<span className="text-xs font-medium text-foreground">
+														{t.referenceValue || "-"}
+													</span>
+													{t.metadata?.aiSessionId && (
+														<span className="text-[10px] text-muted-foreground">
+															Sesi: {t.metadata.aiSessionId}
+														</span>
+													)}
 											</div>
 										</td>
 										<td className="px-4 py-3">
-											<div className="flex flex-col">
-												<span className="text-[10px] font-semibold text-foreground">
-													{t.referenceLabel || "-"}
-												</span>
-												<span className="text-[10px] text-muted-foreground">
-													{t.referenceValue || "-"}
+											<div className="flex min-w-[160px] flex-col gap-1.5">
+												{categoryBadge(t.category, t.type)}
+												<span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+													{t.paymentMethod || "Cash"}
 												</span>
 											</div>
 										</td>
 										<td className="px-4 py-3">
-											{categoryBadge(t.category, t.type)}
-										</td>
-										<td className="px-4 py-3">
-											<span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-												{t.paymentMethod || "Cash"}
-											</span>
-										</td>
-										<td className="px-4 py-3">
-											<span className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+											<div className="flex min-w-[120px] flex-col gap-1.5">
+												<span className={`inline-flex w-fit rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
 												t.status === "completed"
 													? "border-emerald-200 bg-emerald-50 text-emerald-700"
 													: t.status === "pending"
 														? "border-amber-200 bg-amber-50 text-amber-700"
 														: "border-rose-200 bg-rose-50 text-rose-700"
-											}`}>
-												{t.status}
-											</span>
+												}`}>
+													{t.status}
+												</span>
+												{t.isRecurring && (
+													<span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+														berulang {t.recurringInterval || ""}
+													</span>
+												)}
+											</div>
 										</td>
 										<td className="px-4 py-3 text-right">
 											<span className={`font-bold text-xs ${t.type === "income" ? "text-green-600" : "text-red-600"}`}>
