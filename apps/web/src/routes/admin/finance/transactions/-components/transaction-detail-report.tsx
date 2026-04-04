@@ -404,7 +404,7 @@ export function TransactionDetailReport({ range }: Props) {
 			{/* Transactions Table */}
 			<div className="rounded-xl border border-border overflow-hidden">
 				<div className="overflow-x-auto">
-					<table className="w-full min-w-[1180px] text-left text-sm">
+					<table className="w-full min-w-[1540px] text-left text-sm">
 						<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase tracking-wider font-bold">
 							<tr>
 								<th className="px-4 py-3">
@@ -419,10 +419,16 @@ export function TransactionDetailReport({ range }: Props) {
 									</div>
 								</th>
 								<th className="px-4 py-3">Tanggal</th>
-								<th className="px-4 py-3">Ringkasan</th>
+								<th className="px-4 py-3">Tipe</th>
+								<th className="px-4 py-3">Shift</th>
+								<th className="px-4 py-3">Sumber</th>
+								<th className="px-4 py-3">Merchant</th>
+								<th className="px-4 py-3">Deskripsi</th>
 								<th className="px-4 py-3">Referensi</th>
-								<th className="px-4 py-3">Kategori & Metode</th>
+								<th className="px-4 py-3">Kategori</th>
+								<th className="px-4 py-3">Metode</th>
 								<th className="px-4 py-3">Status</th>
+								<th className="px-4 py-3">Detail</th>
 								<th className="px-4 py-3 text-right">Nominal</th>
 								<th className="px-4 py-3 text-center">Aksi</th>
 							</tr>
@@ -431,12 +437,12 @@ export function TransactionDetailReport({ range }: Props) {
 							{!data ? (
 								Array.from({ length: 5 }).map((_, i) => (
 									<tr key={i}>
-										<td colSpan={11} className="px-4 py-4"><Skeleton className="h-4 w-full" /></td>
+										<td colSpan={15} className="px-4 py-4"><Skeleton className="h-4 w-full" /></td>
 									</tr>
 								))
 							) : filteredTransactions.length === 0 ? (
 								<tr>
-									<td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
+									<td colSpan={15} className="px-4 py-12 text-center text-muted-foreground">
 										<div className="flex flex-col items-center gap-2">
 											<Wallet className="h-8 w-8 opacity-20" />
 											<p>Tidak ada transaksi ditemukan</p>
@@ -476,30 +482,49 @@ export function TransactionDetailReport({ range }: Props) {
 												</div>
 											</td>
 											<td className="px-4 py-3">
-												<div className="flex min-w-[320px] max-w-[420px] flex-col gap-1.5">
-													<div className="flex flex-wrap items-center gap-1.5">
-														{sourceBadge(t.sourceLabel, t.sourceType)}
-														{shiftName !== "-" && (
-															<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-[9px] font-bold text-primary uppercase">
-																{shiftName}
-															</span>
-														)}
-														{t.inputMode && (
-															<span className="inline-flex rounded-md border border-border bg-background px-2 py-1 text-[9px] uppercase tracking-wider text-muted-foreground">
-																{t.inputMode.replace(/_/g, " ")}
-															</span>
-														)}
-													</div>
-													<span className="font-semibold text-foreground text-sm" title={t.merchant || "Umum"}>
-														{t.merchant || "Umum"}
+												<span className={`inline-flex rounded-md border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${
+													t.type === "income"
+														? "border-emerald-200 bg-emerald-50 text-emerald-700"
+														: "border-rose-200 bg-rose-50 text-rose-700"
+												}`}>
+													{t.type === "income" ? "Pemasukan" : "Pengeluaran"}
+												</span>
+											</td>
+											<td className="px-4 py-3">
+												{shiftName !== "-" ? (
+													<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-[9px] font-bold text-primary uppercase">
+														{shiftName}
 													</span>
-													<span className="text-[11px] text-muted-foreground leading-relaxed" title={t.description || "-"}>
-														{t.description || "-"}
-													</span>
-													{t.rawText && (
-														<span className="rounded-md bg-muted/40 px-2 py-1 text-[10px] text-muted-foreground line-clamp-2" title={t.rawText}>
-															Raw input: {t.rawText}
+												) : (
+													<span className="text-[11px] text-muted-foreground">-</span>
+												)}
+											</td>
+											<td className="px-4 py-3">
+												<div className="flex min-w-[120px] flex-col gap-1.5">
+													{sourceBadge(t.sourceLabel, t.sourceType)}
+													{t.inputMode && (
+														<span className="text-[9px] uppercase tracking-wider text-muted-foreground">
+															{t.inputMode.replace(/_/g, " ")}
 														</span>
+													)}
+												</div>
+											</td>
+											<td className="px-4 py-3">
+												<div className="min-w-[140px] max-w-[180px]">
+													<span className="text-sm font-semibold text-foreground" title={t.displayTitle || t.merchant || "Umum"}>
+														{t.displayTitle || t.merchant || "Umum"}
+													</span>
+												</div>
+											</td>
+											<td className="px-4 py-3">
+												<div className="min-w-[220px] max-w-[300px] space-y-1">
+													<div className="text-[11px] leading-relaxed text-muted-foreground" title={t.displaySummary || t.description || "-"}>
+														{t.displaySummary || t.description || "-"}
+													</div>
+													{t.rawText && (
+														<div className="rounded-md bg-muted/40 px-2 py-1 text-[10px] text-muted-foreground line-clamp-2" title={t.rawText}>
+															Raw input: {t.rawText}
+														</div>
 													)}
 													{Array.isArray(t.tags) && t.tags.length > 0 && (
 														<div className="flex flex-wrap gap-1">
@@ -528,12 +553,12 @@ export function TransactionDetailReport({ range }: Props) {
 											</div>
 										</td>
 										<td className="px-4 py-3">
-											<div className="flex min-w-[160px] flex-col gap-1.5">
-												{categoryBadge(t.category, t.type)}
-												<span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-													{t.paymentMethod || "Cash"}
-												</span>
-											</div>
+											{categoryBadge(t.category, t.type)}
+										</td>
+										<td className="px-4 py-3">
+											<span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+												{t.paymentMethod || "Cash"}
+											</span>
 										</td>
 										<td className="px-4 py-3">
 											<div className="flex min-w-[120px] flex-col gap-1.5">
@@ -550,6 +575,24 @@ export function TransactionDetailReport({ range }: Props) {
 													<span className="text-[10px] text-muted-foreground uppercase tracking-wider">
 														berulang {t.recurringInterval || ""}
 													</span>
+												)}
+											</div>
+										</td>
+										<td className="px-4 py-3">
+											<div className="grid min-w-[260px] grid-cols-2 gap-1.5">
+												{Array.isArray(t.detailItems) && t.detailItems.length > 0 ? (
+													t.detailItems.slice(0, 6).map((detail: { label: string; value: string }, idx: number) => (
+														<div key={`${detail.label}-${idx}`} className="rounded-md border border-border/60 bg-background px-2 py-1">
+															<div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+																{detail.label}
+															</div>
+															<div className="text-[11px] font-medium text-foreground truncate" title={detail.value}>
+																{detail.value}
+															</div>
+														</div>
+													))
+												) : (
+													<span className="text-[11px] text-muted-foreground">-</span>
 												)}
 											</div>
 										</td>

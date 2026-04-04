@@ -32,6 +32,9 @@ interface NewTransactionDialogProps {
 			sourceRef?: string;
 			sourceLabel?: string;
 		};
+		displayTitle?: string | null;
+		displaySummary?: string | null;
+		detailItems?: Array<{ label: string; value: string }>;
 	};
 }
 
@@ -366,6 +369,20 @@ export function NewTransactionDialog({
 								<label className="flex items-center gap-2 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider" htmlFor={descriptionId}>
 									Keterangan
 								</label>
+								{transaction?.detailItems && transaction.detailItems.length > 0 && (
+									<div className="grid grid-cols-1 gap-2 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-2">
+										{transaction.detailItems.map((detail, index) => (
+											<div key={`${detail.label}-${index}`} className="rounded-md bg-background px-3 py-2">
+												<div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+													{detail.label}
+												</div>
+												<div className="text-sm font-medium text-foreground">
+													{detail.value}
+												</div>
+											</div>
+										))}
+									</div>
+								)}
 								<textarea
 									className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
 									id={descriptionId}

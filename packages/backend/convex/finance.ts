@@ -216,6 +216,171 @@ async function buildProductLookup(ctx: QueryCtx): Promise<ProductLookup> {
 	}, {});
 }
 
+function prettifyTransactionLabel(label: string) {
+	return label
+		.replace(/\[|\]/g, "")
+		.replace(/_/g, " ")
+		.trim();
+}
+
+function parseTransactionDetails(description?: string) {
+	if (!description) {
+		return {
+			title: null,
+			summary: null,
+			details: [] as Array<{ label: string; value: string }>,
+		};
+	}
+
+	const lines = description
+		.split("\n")
+		.map((line) => line.trim())
+		.filter(Boolean);
+
+	let title: string | null = null;
+	const details: Array<{ label: string; value: string }> = [];
+
+	for (const line of lines) {
+		if (/^\[.*\]$/.test(line)) {
+			title = prettifyTransactionLabel(line);
+			continue;
+		}
+
+		const pipeSegments = line.split("|").map((segment) => segment.trim()).filter(Boolean);
+		if (pipeSegments.length > 1) {
+			for (const segment of pipeSegments) {
+				const separatorIndex = segment.indexOf(":");
+				if (separatorIndex > 0) {
+					details.push({
+						label: prettifyTransactionLabel(segment.slice(0, separatorIndex)),
+						value: segment.slice(separatorIndex + 1).trim(),
+					});
+				} else {
+					details.push({ label: "Detail", value: segment });
+				}
+			}
+			continue;
+		}
+
+		const separatorIndex = line.indexOf(":");
+		if (separatorIndex > 0) {
+			details.push({
+				label: prettifyTransactionLabel(line.slice(0, separatorIndex)),
+				value: line.slice(separatorIndex + 1).trim(),
+			});
+			continue;
+		}
+
+		if (!title) title = line;
+		else details.push({ label: "Detail", value: line });
+	}
+
+	const summary = details
+		.slice(0, 2)
+		.map((detail) => `${detail.label}: ${detail.value}`)
+		.join(" • ");
+
+	return {
+		title,
+		summary: summary || null,
+		details,
+	};
+}
+
+function buildTransactionPresentation(
+	transaction: any,
+	relatedOrder: any,
+	relatedBooking: any
+) {
+	const parsedDetails = parseTransactionDetails(transaction.description);
+
+	if (transaction.category === "Modal Awal") {
+		return {
+			displayTitle: transaction.merchant || "Modal Awal Shift",
+			displaySummary: "Pembukaan shift dan modal kas awal",
+			detailItems: parsedDetails.details,
+		};
+	}
+
+	if (transaction.category === "Setoran Akhir") {
+		return {
+			displayTitle: transaction.merchant || "Setoran Akhir Shift",
+			displaySummary: "Penutupan shift dan rekap setoran kas",
+			detailItems: parsedDetails.details,
+		};
+	}
+
+	if (relatedOrder) {
+		const orderItems = Array.isArray(relatedOrder.items)
+			? relatedOrder.items
+					.slice(0, 4)
+					.map((item: any) => `${item.productName} x${item.quantity}`)
+					.join(", ")
+			: "";
+		return {
+			displayTitle: relatedOrder.customerName || transaction.merchant || "Pesanan POS",
+			displaySummary: orderItems || transaction.description || "Transaksi pesanan POS",
+			detailItems: [
+				{ label: "Order", value: relatedOrder.orderNumber || "-" },
+				{ label: "Customer", value: relatedOrder.customerName || "Walk-in" },
+				{ label: "Item", value: String(Array.isArray(relatedOrder.items) ? relatedOrder.items.length : 0) },
+				{ label: "Pembayaran", value: relatedOrder.paymentMethod || transaction.paymentMethod || "-" },
+				...(relatedOrder.tableNumber ? [{ label: "Meja", value: relatedOrder.tableNumber }] : []),
+				...(relatedOrder.orderType ? [{ label: "Tipe", value: relatedOrder.orderType.replace(/_/g, " ") }] : []),
+			],
+		};
+	}
+
+	if (relatedBooking) {
+		const bookingItems = Array.isArray(relatedBooking.items)
+			? relatedBooking.items
+					.slice(0, 4)
+					.map((item: any) => `${item.name} x${item.quantity}`)
+					.join(", ")
+			: "";
+		return {
+			displayTitle: relatedBooking.customerName || transaction.merchant || "Booking",
+			displaySummary: bookingItems || transaction.description || "Transaksi booking",
+			detailItems: [
+				{ label: "Booking", value: relatedBooking.bookingCode || "-" },
+				{ label: "Tanggal", value: relatedBooking.bookingDate || "-" },
+				{ label: "Tamu", value: String(relatedBooking.guestCount || 0) },
+				{ label: "Status", value: relatedBooking.bookingStatus || "-" },
+				{ label: "Pembayaran", value: relatedBooking.paymentStatus || "-" },
+			],
+		};
+	}
+
+	if (transaction.metadata?.source === "ai_bulk_finance") {
+		return {
+			displayTitle: transaction.merchant || parsedDetails.title || transaction.category,
+			displaySummary: transaction.description || transaction.metadata?.rawText || "Import bulk AI",
+			detailItems: [
+				{ label: "Sumber", value: "AI Bulk" },
+				...(transaction.metadata?.aiSessionId ? [{ label: "Sesi", value: transaction.metadata.aiSessionId }] : []),
+				...(parsedDetails.details.length > 0 ? parsedDetails.details : []),
+			].slice(0, 8),
+		};
+	}
+
+	if (transaction.metadata?.source === "ai_receipt_scan") {
+		return {
+			displayTitle: transaction.merchant || parsedDetails.title || transaction.category,
+			displaySummary: transaction.description || "Hasil scan struk oleh AI",
+			detailItems: [
+				{ label: "Sumber", value: "AI Scan" },
+				...(parsedDetails.details.length > 0 ? parsedDetails.details : []),
+			].slice(0, 8),
+		};
+	}
+
+	return {
+		displayTitle: parsedDetails.title || transaction.merchant || transaction.category,
+		displaySummary: parsedDetails.summary || transaction.description || null,
+		detailItems: parsedDetails.details,
+	};
+}
+
 async function buildShiftReportDetail(
 	ctx: QueryCtx,
 	startTime: number,
@@ -728,6 +893,7 @@ export const getTransactionDetailReport = query({
 		const enrichedTransactions = transactions.map((transaction) => {
 			const relatedOrder = transaction.orderId ? orderMap.get(transaction.orderId) : null;
 			const relatedBooking = transaction.bookingOrderId ? bookingMap.get(transaction.bookingOrderId) : null;
+			const presentation = buildTransactionPresentation(transaction, relatedOrder, relatedBooking);
 			const sourceLabel =
 				transaction.metadata?.sourceLabel ||
 				(transaction.metadata?.source === "ai_bulk_finance"
@@ -761,6 +927,9 @@ export const getTransactionDetailReport = query({
 				rawText: transaction.metadata?.rawText || null,
 				referenceLabel,
 				referenceValue,
+				displayTitle: presentation.displayTitle,
+				displaySummary: presentation.displaySummary,
+				detailItems: presentation.detailItems,
 			};
 		});
 
