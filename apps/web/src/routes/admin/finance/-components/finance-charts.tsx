@@ -420,7 +420,7 @@ export function ExpenseCategoryPieChart() {
 									labelLine={false}
 									label={<CustomLabel />}
 								>
-									{data.map((_, i) => (
+									{data.map((_: unknown, i: number) => (
 										<Cell key={i} fill={colors[i % colors.length]} />
 									))}
 								</Pie>
@@ -432,7 +432,9 @@ export function ExpenseCategoryPieChart() {
 						<p className="mb-2 text-xs font-semibold text-muted-foreground">
 							Total: {formatFull(total)}
 						</p>
-						{data.slice(0, 7).map((item, i) => (
+						{data
+							.slice(0, 7)
+							.map((item: { category: string; amount: number; percentage: number }, i: number) => (
 							<div key={item.category} className="flex items-center justify-between gap-2">
 								<div className="flex items-center gap-2 min-w-0">
 									<div

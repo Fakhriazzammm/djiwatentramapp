@@ -14,9 +14,7 @@ export default function SignUpForm({
 }: {
 	onSwitchToSignIn: () => void;
 }) {
-	const navigate = useNavigate({
-		from: "/",
-	});
+	const navigate = useNavigate();
 
 	const form = useForm({
 		defaultValues: {
@@ -25,26 +23,20 @@ export default function SignUpForm({
 			name: "",
 		},
 		onSubmit: async ({ value }) => {
-			await authClient.signUp.email(
-				{
+			try {
+				await authClient.signUp.email({
 					email: value.email,
 					password: value.password,
 					name: value.name,
-				},
-				{
-					onSuccess: () => {
-						navigate({
-							to: "/dashboard",
-						});
-						toast.success("Sign up successful");
-					},
-					onError: (error: {
-						error: { message: string; statusText: string };
-					}) => {
-						toast.error(error.error.message || error.error.statusText);
-					},
-				}
-			);
+				});
+
+				navigate({
+					to: "/dashboard",
+				});
+				toast.success("Sign up successful");
+			} catch {
+				toast.error("Sign up failed");
+			}
 		},
 		validators: {
 			onSubmit: z.object({

@@ -650,7 +650,7 @@ function BookingPage() {
 			currentTimeVal: now.getHours() * 60 + now.getMinutes(),
 		};
 
-		const activeRefillPromo = activeDiscounts.find((d) =>
+		const activeRefillPromo = activeDiscounts.find((d: any) =>
 			isFreeRefillActive(d, context)
 		);
 

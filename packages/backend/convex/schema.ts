@@ -114,6 +114,19 @@ export default defineSchema({
 				quantity: v.number(),
 				price: v.number(),
 				originalPrice: v.optional(v.number()),
+				hppSnapshot: v.optional(
+					v.object({
+						hppCalculationId: v.optional(v.id("hppCalculations")),
+						productId: v.id("products"),
+						productName: v.string(),
+						hppPerUnit: v.number(),
+						quantity: v.number(),
+						totalHpp: v.number(),
+						sellingPricePerUnit: v.number(),
+						source: v.union(v.literal("calculation"), v.literal("fallback")),
+						recordedAt: v.number(),
+					})
+				),
 				status: v.optional(v.union(v.literal("pending"), v.literal("preparing"), v.literal("ready"))),
 			})
 		),
@@ -330,6 +343,9 @@ export default defineSchema({
 		servingsPerBatch: v.number(), // How many servings produced per batch
 		sellingPrice: v.number(), // Target selling price per serving
 		productId: v.optional(v.id("products")), // Link to a product if applicable
+		sourceType: v.optional(v.union(v.literal("manual"), v.literal("recipe_based"))),
+		lastCostSyncAt: v.optional(v.number()),
+		lastRecipeSyncAt: v.optional(v.number()),
 		createdAt: v.number(),
 		updatedAt: v.number(),
 	}).index("by_product", ["productId"]),

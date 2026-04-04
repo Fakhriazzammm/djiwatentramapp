@@ -1,5 +1,5 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
+import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { Download, Upload } from "lucide-react";
 import Papa from "papaparse";
@@ -172,9 +172,10 @@ export function BulkOperations() {
 			return;
 		}
 
-		const data = products.map((p) => {
+		const data = products.map((p: Doc<"products">) => {
 			const categoryName =
-				categories?.find((c) => c._id === p.categoryId)?.name || "Unknown";
+				categories?.find((c: Doc<"categories">) => c._id === p.categoryId)?.name ||
+				"Unknown";
 			return {
 				Name: p.name,
 				Price: p.price,

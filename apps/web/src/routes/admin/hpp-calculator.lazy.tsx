@@ -1,51 +1,43 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import {
 	AlertTriangle,
 	ArrowRight,
 	BarChart3,
 	Calculator,
-	ChevronDown,
-	ChevronUp,
+	CheckCircle2,
+	ChevronRight,
 	CircleDollarSign,
-	Copy,
 	Database,
-	Edit,
-	FileDown,
-	GlassWater,
-	Link2,
+	FilePenLine,
 	Package,
-	Percent,
 	Plus,
 	RefreshCw,
-	Scale,
-	Sliders,
+	Search,
+	Sparkles,
 	Target,
-	Trash2,
 	TrendingDown,
 	TrendingUp,
-	X,
-	Zap,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createLazyFileRoute("/admin/hpp-calculator")({
 	component: HppCalculatorPage,
 });
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-interface IngredientRow {
+type IngredientRow = {
 	id: string;
 	inventoryId?: Id<"inventory">;
 	ingredientName: string;
@@ -55,15 +47,22 @@ interface IngredientRow {
 	usagePerServing: number;
 	usageUnit: string;
 	conversionFactor: number;
-}
+};
 
-interface OverheadRow {
+type OverheadRow = {
 	id: string;
 	name: string;
 	costPerServing: number;
-}
+};
 
-interface HppFormData {
+type HppSourceType = "manual" | "recipe_based";
+type PortfolioStatus =
+	| "linked"
+	| "outdated"
+	| "missing_recipe"
+	| "missing_cost";
+
+type HppFormData = {
 	name: string;
 	description: string;
 	ingredients: IngredientRow[];
@@ -71,52 +70,192 @@ interface HppFormData {
 	servingsPerBatch: number;
 	sellingPrice: number;
 	productId?: Id<"products">;
-}
+	sourceType: HppSourceType;
+};
 
-interface HppCalcResult {
+type HppMetrics = {
 	ingredientCostPerServing: number;
 	overheadCostPerServing: number;
 	totalHppPerServing: number;
 	totalHppPerBatch: number;
 	profitPerServing: number;
-	profitMarginPercent: number;
+	marginPercent: number;
 	markupPercent: number;
 	breakEvenServings: number;
+};
+
+type PortfolioRecipeItem = {
+	inventoryId: Id<"inventory">;
+	ingredientName: string;
+	amount: number;
+	unit: string;
+	displayUnit?: string;
+	conversionFactor: number;
+	latestCostPerUnit?: number;
+	currentStock?: number;
+};
+
+type PortfolioRow = {
+	product: Doc<"products">;
+	recipe: Doc<"recipes"> | null;
+	recipeItems: PortfolioRecipeItem[];
+	calculation: Doc<"hppCalculations"> | null;
+	metrics: HppMetrics | null;
+	status: PortfolioStatus;
+	reason: string;
+	linkedIngredientCount: number;
+	ingredientCount: number;
+	missingInventoryLinks: number;
+	missingCostCount: number;
+	outdatedIngredientCount: number;
+	recommendedSellingPrice: number | null;
+};
+
+type PortfolioSummary = {
+	totalProducts: number;
+	linkedProducts: number;
+	outdatedProducts: number;
+	missingRecipeProducts: number;
+	missingCostProducts: number;
+	draftCount: number;
+	averageMargin: number;
+	lowMarginCount: number;
+};
+
+type PortfolioData = {
+	summary: PortfolioSummary;
+	alerts: {
+		productId: Id<"products">;
+		productName: string;
+		status: PortfolioStatus;
+		reason: string;
+	}[];
+	portfolio: PortfolioRow[];
+	drafts: {
+		calculation: Doc<"hppCalculations">;
+		metrics: HppMetrics;
+		status: "draft";
+	}[];
+};
+
+type MarginAnalysisRow = {
+	id: Id<"hppCalculations">;
+	name: string;
+	productId?: Id<"products">;
+	hppPerServing: number;
+	currentSellingPrice: number;
+	currentMarginPercent: number;
+	currentProfitPerServing: number;
+	targetMarginPercent: number;
+	recommendedSellingPrice: number;
+	priceDiff: number;
+	isLowMargin: boolean;
+	status: "ok" | "warning" | "critical";
+};
+
+type SimulationResult = {
+	hppId: Id<"hppCalculations">;
+	name: string;
+	priceChangePercent: number;
+	ingredientIndex?: number;
+	original: {
+		hppPerServing: number;
+		sellingPrice: number;
+		profitPerServing: number;
+		marginPercent: number;
+	};
+	simulated: {
+		hppPerServing: number;
+		sellingPrice: number;
+		profitPerServing: number;
+		marginPercent: number;
+	};
+	delta: {
+		hppDelta: number;
+		profitDelta: number;
+		marginDelta: number;
+	};
+	recommendedSellingPrice: number;
+} | null | undefined;
+
+const COMMON_UNITS = [
+	{ purchase: "liter", usage: "ml", factor: 1000 },
+	{ purchase: "kg", usage: "gram", factor: 1000 },
+	{ purchase: "box (1L)", usage: "ml", factor: 1000 },
+	{ purchase: "box (500ml)", usage: "ml", factor: 500 },
+	{ purchase: "box (250ml)", usage: "ml", factor: 250 },
+	{ purchase: "karung (25kg)", usage: "gram", factor: 25_000 },
+	{ purchase: "karung (50kg)", usage: "gram", factor: 50_000 },
+	{ purchase: "pack", usage: "pcs", factor: 1 },
+	{ purchase: "lusin", usage: "pcs", factor: 12 },
+	{ purchase: "dus", usage: "pcs", factor: 1 },
+];
+
+function generateId() {
+	return Math.random().toString(36).slice(2, 9);
 }
 
-// ─── Helper Functions ────────────────────────────────────────────────────────
-
-function generateId(): string {
-	return Math.random().toString(36).substring(2, 9);
-}
-
-function formatCurrency(value: number): string {
+function formatCurrency(value: number) {
 	return new Intl.NumberFormat("id-ID", {
 		style: "currency",
 		currency: "IDR",
 		minimumFractionDigits: 0,
-		maximumFractionDigits: 2,
+		maximumFractionDigits: 0,
 	}).format(value);
 }
 
-function formatNumber(value: number): string {
+function formatNumber(value: number) {
 	return new Intl.NumberFormat("id-ID", {
 		minimumFractionDigits: 0,
 		maximumFractionDigits: 2,
 	}).format(value);
 }
 
-function getCostPerBaseUnit(ingredient: IngredientRow): number {
+function getCostPerBaseUnit(ingredient: IngredientRow) {
 	const totalBaseUnits =
 		ingredient.purchaseQuantity * ingredient.conversionFactor;
-	if (totalBaseUnits === 0) {
+	if (totalBaseUnits <= 0) {
 		return 0;
 	}
 	return ingredient.purchasePrice / totalBaseUnits;
 }
 
-function getIngredientCostPerServing(ingredient: IngredientRow): number {
+function getIngredientCostPerServing(ingredient: IngredientRow) {
 	return getCostPerBaseUnit(ingredient) * ingredient.usagePerServing;
+}
+
+function computeHpp(form: HppFormData): HppMetrics {
+	const ingredientCostPerServing = form.ingredients.reduce(
+		(sum, ingredient) => sum + getIngredientCostPerServing(ingredient),
+		0
+	);
+	const overheadCostPerServing = form.overheadCosts.reduce(
+		(sum, overhead) => sum + overhead.costPerServing,
+		0
+	);
+	const totalHppPerServing =
+		ingredientCostPerServing + overheadCostPerServing;
+	const totalHppPerBatch = totalHppPerServing * form.servingsPerBatch;
+	const profitPerServing = form.sellingPrice - totalHppPerServing;
+	const marginPercent =
+		form.sellingPrice > 0 ? (profitPerServing / form.sellingPrice) * 100 : 0;
+	const markupPercent =
+		totalHppPerServing > 0 ? (profitPerServing / totalHppPerServing) * 100 : 0;
+	const breakEvenServings =
+		totalHppPerBatch > 0 && profitPerServing > 0
+			? Math.ceil(totalHppPerBatch / profitPerServing)
+			: 0;
+
+	return {
+		ingredientCostPerServing,
+		overheadCostPerServing,
+		totalHppPerServing,
+		totalHppPerBatch,
+		profitPerServing,
+		marginPercent,
+		markupPercent,
+		breakEvenServings,
+	};
 }
 
 function createEmptyIngredient(): IngredientRow {
@@ -133,2269 +272,1748 @@ function createEmptyIngredient(): IngredientRow {
 }
 
 function createEmptyOverhead(): OverheadRow {
-	return { id: generateId(), name: "", costPerServing: 0 };
-}
-
-const INITIAL_FORM: HppFormData = {
-	name: "",
-	description: "",
-	ingredients: [createEmptyIngredient()],
-	overheadCosts: [createEmptyOverhead()],
-	servingsPerBatch: 1,
-	sellingPrice: 0,
-};
-
-const COMMON_UNITS = [
-	{ purchase: "liter", usage: "ml", factor: 1000 },
-	{ purchase: "kg", usage: "gram", factor: 1000 },
-	{ purchase: "box (1L)", usage: "ml", factor: 1000 },
-	{ purchase: "box (500ml)", usage: "ml", factor: 500 },
-	{ purchase: "box (250ml)", usage: "ml", factor: 250 },
-	{ purchase: "karung (25kg)", usage: "gram", factor: 25_000 },
-	{ purchase: "karung (50kg)", usage: "gram", factor: 50_000 },
-	{ purchase: "pack", usage: "pcs", factor: 1 },
-	{ purchase: "lusin", usage: "pcs", factor: 12 },
-	{ purchase: "dus", usage: "pcs", factor: 1 },
-];
-
-function computeHpp(form: HppFormData): HppCalcResult {
-	const ingredientCostPerServing = form.ingredients.reduce(
-		(sum: number, ing: any) => sum + getIngredientCostPerServing(ing),
-		0
-	);
-	const overheadCostPerServing = form.overheadCosts.reduce(
-		(sum: number, oh: any) => sum + oh.costPerServing,
-		0
-	);
-	const totalHppPerServing = ingredientCostPerServing + overheadCostPerServing;
-	const totalHppPerBatch = totalHppPerServing * form.servingsPerBatch;
-	const profitPerServing = form.sellingPrice - totalHppPerServing;
-	const profitMarginPercent =
-		form.sellingPrice > 0 ? (profitPerServing / form.sellingPrice) * 100 : 0;
-	const markupPercent =
-		totalHppPerServing > 0 ? (profitPerServing / totalHppPerServing) * 100 : 0;
-	const breakEvenServings =
-		totalHppPerBatch > 0 && profitPerServing > 0
-			? Math.ceil(totalHppPerBatch / profitPerServing)
-			: 0;
 	return {
-		ingredientCostPerServing,
-		overheadCostPerServing,
-		totalHppPerServing,
-		totalHppPerBatch,
-		profitPerServing,
-		profitMarginPercent,
-		markupPercent,
-		breakEvenServings,
+		id: generateId(),
+		name: "",
+		costPerServing: 0,
 	};
 }
 
-/** Compute HPP for a saved calculation doc */
-function computeHppFromDoc(calc: Doc<"hppCalculations">) {
-	const ingredientCost = calc.ingredients.reduce((sum: number, ing: any) => {
-		const totalBase = ing.purchaseQuantity * ing.conversionFactor;
-		const costBase = totalBase > 0 ? ing.purchasePrice / totalBase : 0;
-		return sum + costBase * ing.usagePerServing;
-	}, 0);
-	const overheadCost = calc.overheadCosts.reduce(
-		(sum: number, oh: any) => sum + oh.costPerServing,
-		0
-	);
-	const totalHpp = ingredientCost + overheadCost;
-	const profit = calc.sellingPrice - totalHpp;
-	const margin = calc.sellingPrice > 0 ? (profit / calc.sellingPrice) * 100 : 0;
-	return { ingredientCost, overheadCost, totalHpp, profit, margin };
+function createInitialForm(): HppFormData {
+	return {
+		name: "",
+		description: "",
+		ingredients: [createEmptyIngredient()],
+		overheadCosts: [createEmptyOverhead()],
+		servingsPerBatch: 1,
+		sellingPrice: 0,
+		sourceType: "manual",
+	};
 }
 
-// ─── Main Component ──────────────────────────────────────────────────────────
+function toFormFromCalculation(calc: Doc<"hppCalculations">): HppFormData {
+	return {
+		name: calc.name,
+		description: calc.description ?? "",
+		ingredients: calc.ingredients.map((ingredient) => ({
+			...ingredient,
+			id: generateId(),
+		})),
+		overheadCosts:
+			calc.overheadCosts.length > 0
+				? calc.overheadCosts.map((overhead) => ({
+						...overhead,
+						id: generateId(),
+					}))
+				: [createEmptyOverhead()],
+		servingsPerBatch: calc.servingsPerBatch,
+		sellingPrice: calc.sellingPrice,
+		productId: calc.productId,
+		sourceType: calc.sourceType ?? "manual",
+	};
+}
+
+function toFormFromPortfolioRow(row: PortfolioRow): HppFormData {
+	if (row.calculation) {
+		return toFormFromCalculation(row.calculation);
+	}
+
+	const ingredients =
+		row.recipeItems.length > 0
+			? row.recipeItems.map((item) => ({
+					id: generateId(),
+					inventoryId: item.inventoryId,
+					ingredientName: item.ingredientName,
+					purchasePrice:
+						(item.latestCostPerUnit ?? 0) * (item.conversionFactor ?? 1),
+					purchaseQuantity: 1,
+					purchaseUnit: item.displayUnit ?? item.unit,
+					usagePerServing: item.amount,
+					usageUnit: item.unit,
+					conversionFactor: item.conversionFactor ?? 1,
+				}))
+			: [createEmptyIngredient()];
+
+	return {
+		name: `HPP ${row.product.name}`,
+		description: row.recipe
+			? `Costing produk ${row.product.name} dari recipe aktif`
+			: `Draft costing manual untuk ${row.product.name}`,
+		ingredients,
+		overheadCosts: [createEmptyOverhead()],
+		servingsPerBatch: 1,
+		sellingPrice: row.product.promoPrice ?? row.product.price,
+		productId: row.product._id,
+		sourceType: row.recipe ? "recipe_based" : "manual",
+	};
+}
+
+function toRecipeSyncForm(row: PortfolioRow): HppFormData {
+	const overheadCosts = row.calculation
+		? row.calculation.overheadCosts.map((overhead) => ({
+				...overhead,
+				id: generateId(),
+			}))
+		: [createEmptyOverhead()];
+
+	return {
+		name: row.calculation?.name ?? `HPP ${row.product.name}`,
+		description: `Sinkron dari recipe ${row.product.name}`,
+		ingredients:
+			row.recipeItems.length > 0
+				? row.recipeItems.map((item) => ({
+						id: generateId(),
+						inventoryId: item.inventoryId,
+						ingredientName: item.ingredientName,
+						purchasePrice:
+							(item.latestCostPerUnit ?? 0) * (item.conversionFactor ?? 1),
+						purchaseQuantity: 1,
+						purchaseUnit: item.displayUnit ?? item.unit,
+						usagePerServing: item.amount,
+						usageUnit: item.unit,
+						conversionFactor: item.conversionFactor ?? 1,
+					}))
+				: [createEmptyIngredient()],
+		overheadCosts,
+		servingsPerBatch: row.calculation?.servingsPerBatch ?? 1,
+		sellingPrice: row.product.promoPrice ?? row.product.price,
+		productId: row.product._id,
+		sourceType: "recipe_based",
+	};
+}
+
+function statusTone(status: PortfolioStatus | "draft") {
+	switch (status) {
+		case "linked":
+			return "bg-emerald-100 text-emerald-700";
+		case "outdated":
+			return "bg-amber-100 text-amber-700";
+		case "missing_recipe":
+			return "bg-rose-100 text-rose-700";
+		case "missing_cost":
+			return "bg-orange-100 text-orange-700";
+		case "draft":
+		default:
+			return "bg-slate-200 text-slate-700";
+	}
+}
+
+function statusLabel(status: PortfolioStatus | "draft") {
+	switch (status) {
+		case "linked":
+			return "Linked";
+		case "outdated":
+			return "Outdated";
+		case "missing_recipe":
+			return "Missing Recipe";
+		case "missing_cost":
+			return "Missing Cost";
+		case "draft":
+		default:
+			return "Draft";
+	}
+}
 
 function HppCalculatorPage() {
-	const hppCalculations = useQuery(api.hpp.getHppCalculations);
+	const navigate = useNavigate();
+	const workspace = useQuery(api.hpp.getHppPortfolio) as PortfolioData | undefined;
 	const inventory = useQuery(api.inventory.getInventory);
-	const products = useQuery(api.products.getAllProductsAdmin);
 	const inventoryCosts = useQuery(api.hpp.getLatestInventoryCosts);
-	const productsWithRecipes = useQuery(api.hpp.getProductsWithRecipes);
-
 	const createHpp = useMutation(api.hpp.createHppCalculation);
 	const updateHpp = useMutation(api.hpp.updateHppCalculation);
 	const deleteHpp = useMutation(api.hpp.deleteHppCalculation);
 	const syncPrices = useMutation(api.hpp.syncHppWithInventoryPrices);
+	const syncFromRecipe = useMutation(api.hpp.upsertHppFromRecipe);
+	const applySellingPrice = useMutation(api.hpp.applyHppSellingPriceToProduct);
 
-	const [activeTab, setActiveTab] = useState<"calculator" | "saved" | "analysis">(
-		"calculator"
+	const [activeView, setActiveView] = useState<"portfolio" | "editor" | "impact">(
+		"portfolio"
 	);
-	const [form, setForm] = useState<HppFormData>(INITIAL_FORM);
-	const [editingId, setEditingId] = useState<Id<"hppCalculations"> | null>(
+	const [selectedProductId, setSelectedProductId] = useState<Id<"products"> | null>(
 		null
 	);
-	const [deleteTarget, setDeleteTarget] =
-		useState<Id<"hppCalculations"> | null>(null);
-	const [expandedCard, setExpandedCard] =
-		useState<Id<"hppCalculations"> | null>(null);
-	const [showImportModal, setShowImportModal] = useState(false);
-	const [syncingId, setSyncingId] = useState<Id<"hppCalculations"> | null>(
+	const [selectedDraftId, setSelectedDraftId] = useState<
+		Id<"hppCalculations"> | null
+	>(null);
+	const [editingId, setEditingId] = useState<Id<"hppCalculations"> | null>(null);
+	const [form, setForm] = useState<HppFormData>(createInitialForm());
+	const [deleteTarget, setDeleteTarget] = useState<Id<"hppCalculations"> | null>(
 		null
 	);
-
-	const calculations = useMemo(() => computeHpp(form), [form]);
-
-	// ─── Check for price changes on saved calculations ─────────────────────
-
-	const priceAlerts = useMemo(() => {
-		if (!(hppCalculations && inventoryCosts)) {
-			return [];
-		}
-		const alerts: {
-			hppId: Id<"hppCalculations">;
-			hppName: string;
-			changes: {
-				ingredientName: string;
-				oldPrice: number;
-				newPrice: number;
-				diff: number;
-			}[];
-		}[] = [];
-
-		for (const calc of hppCalculations) {
-			const changes: (typeof alerts)[number]["changes"] = [];
-			for (const ing of calc.ingredients) {
-				if (!ing.inventoryId) {
-					continue;
-				}
-				const cost = inventoryCosts[ing.inventoryId];
-				if (!cost?.latestCostPerUnit) {
-					continue;
-				}
-
-				const currentPurchasePrice =
-					cost.latestCostPerUnit * ing.conversionFactor;
-				// Only alert if difference > 1%
-				if (
-					ing.purchasePrice > 0 &&
-					Math.abs(currentPurchasePrice - ing.purchasePrice) /
-						ing.purchasePrice >
-						0.01
-				) {
-					changes.push({
-						ingredientName: ing.ingredientName,
-						oldPrice: ing.purchasePrice,
-						newPrice: currentPurchasePrice,
-						diff:
-							((currentPurchasePrice - ing.purchasePrice) / ing.purchasePrice) *
-							100,
-					});
-				}
-			}
-			if (changes.length > 0) {
-				alerts.push({
-					hppId: calc._id,
-					hppName: calc.name,
-					changes,
-				});
-			}
-		}
-		return alerts;
-	}, [hppCalculations, inventoryCosts]);
-
-	// ─── Ingredient Helpers ───────────────────────────────────────────────────
-
-	const updateIngredient = useCallback(
-		(id: string, field: keyof IngredientRow, value: string | number) => {
-			setForm((prev) => ({
-				...prev,
-				ingredients: prev.ingredients.map((ing) =>
-					ing.id === id ? { ...ing, [field]: value } : ing
-				),
-			}));
-		},
-		[]
-	);
-
-	const applyUnitPreset = useCallback((id: string, presetIndex: number) => {
-		const preset = COMMON_UNITS[presetIndex];
-		if (!preset) {
-			return;
-		}
-		setForm((prev) => ({
-			...prev,
-			ingredients: prev.ingredients.map((ing: any) =>
-				ing.id === id
-					? {
-							...ing,
-							purchaseUnit: preset.purchase,
-							usageUnit: preset.usage,
-							conversionFactor: preset.factor,
-						}
-					: ing
-			),
-		}));
-	}, []);
-
-	const linkIngredientToInventory = useCallback(
-		(ingredientId: string, inventoryItemId: string) => {
-			if (!inventoryCosts) {
-				return;
-			}
-			const cost = inventoryCosts[inventoryItemId];
-			if (!cost) {
-				return;
-			}
-
-			const invItem = inventory?.find((i) => i._id === inventoryItemId);
-			if (!invItem) {
-				return;
-			}
-
-			const convFactor = invItem.conversionFactor || 1;
-			const displayUnit = invItem.displayUnit || invItem.unit;
-			const purchasePrice = (cost.latestCostPerUnit ?? 0) * convFactor;
-
-			setForm((prev) => ({
-				...prev,
-				ingredients: prev.ingredients.map((ing: any) =>
-					ing.id === ingredientId
-						? {
-								...ing,
-								inventoryId: inventoryItemId as Id<"inventory">,
-								ingredientName: invItem.ingredientName,
-								purchaseUnit: displayUnit,
-								usageUnit: invItem.unit,
-								conversionFactor: convFactor,
-								purchasePrice,
-								purchaseQuantity: 1,
-							}
-						: ing
-				),
-			}));
-		},
-		[inventoryCosts, inventory]
-	);
-
-	const addIngredient = useCallback(() => {
-		setForm((prev) => ({
-			...prev,
-			ingredients: [...prev.ingredients, createEmptyIngredient()],
-		}));
-	}, []);
-
-	const removeIngredient = useCallback((id: string) => {
-		setForm((prev) => ({
-			...prev,
-			ingredients: prev.ingredients.filter((ing) => ing.id !== id),
-		}));
-	}, []);
-
-	// ─── Overhead Helpers ─────────────────────────────────────────────────────
-
-	const updateOverhead = useCallback(
-		(id: string, field: keyof OverheadRow, value: string | number) => {
-			setForm((prev) => ({
-				...prev,
-				overheadCosts: prev.overheadCosts.map((oh: any) =>
-					oh.id === id ? { ...oh, [field]: value } : oh
-				),
-			}));
-		},
-		[]
-	);
-
-	const addOverhead = useCallback(() => {
-		setForm((prev) => ({
-			...prev,
-			overheadCosts: [...prev.overheadCosts, createEmptyOverhead()],
-		}));
-	}, []);
-
-	const removeOverhead = useCallback((id: string) => {
-		setForm((prev) => ({
-			...prev,
-			overheadCosts: prev.overheadCosts.filter((oh: any) => oh.id !== id),
-		}));
-	}, []);
-
-	// ─── Import from Recipe ───────────────────────────────────────────────────
-
-	const _handleImportFromRecipe = useCallback(
-		async (productId: Id<"products">, _variantName?: string) => {
-			// We use the query result reactively, but for import we need to
-			// call via the already-fetched productsWithRecipes + inventoryCosts.
-			// Since generateHppFromRecipe is a query, we use a client-side approach:
-			const product = products?.find((p) => p._id === productId);
-			if (!product) {
-				return;
-			}
-
-			const recipes = productsWithRecipes?.find(
-				(p) => p.product._id === productId
-			);
-			if (!recipes) {
-				return;
-			}
-
-			// Build ingredients from inventory data
-			// We'll need to call the query via a different approach—
-			// actually let's just build it client-side from the data we already have
-			const _allRecipes = await fetch(""); // Not needed, we have the data
-
-			// Actually, let's use the data we already have
-			toast.info("Mengimpor resep...");
-			setShowImportModal(false);
-		},
-		[products, productsWithRecipes]
-	);
-
-	// ─── Save / Edit / Delete ─────────────────────────────────────────────────
-
-	const handleSave = async () => {
-		if (!form.name.trim()) {
-			toast.error("Nama kalkulasi harus diisi");
-			return;
-		}
-		if (form.ingredients.length === 0) {
-			toast.error("Tambahkan minimal 1 bahan baku");
-			return;
-		}
-
-		const payload = {
-			name: form.name,
-			description: form.description || undefined,
-			ingredients: form.ingredients.map(({ id, ...rest }) => rest),
-			overheadCosts: form.overheadCosts.map(({ id, ...rest }) => rest),
-			servingsPerBatch: form.servingsPerBatch,
-			sellingPrice: form.sellingPrice,
-			productId: form.productId || undefined,
-		};
-
-		try {
-			if (editingId) {
-				await updateHpp({ id: editingId, ...payload });
-				toast.success("Kalkulasi HPP berhasil diperbarui");
-				setEditingId(null);
-			} else {
-				await createHpp(payload);
-				toast.success("Kalkulasi HPP berhasil disimpan");
-			}
-			setForm(INITIAL_FORM);
-			setActiveTab("saved");
-		} catch {
-			toast.error("Gagal menyimpan kalkulasi HPP");
-		}
-	};
-
-	const handleEdit = (calc: Doc<"hppCalculations">) => {
-		setForm({
-			name: calc.name,
-			description: calc.description || "",
-			ingredients: calc.ingredients.map((ing: any) => ({
-				...ing,
-				id: generateId(),
-			})),
-			overheadCosts: calc.overheadCosts.map((oh: any) => ({
-				...oh,
-				id: generateId(),
-			})),
-			servingsPerBatch: calc.servingsPerBatch,
-			sellingPrice: calc.sellingPrice,
-			productId: calc.productId,
-		});
-		setEditingId(calc._id);
-		setActiveTab("calculator");
-	};
-
-	const handleDuplicate = (calc: Doc<"hppCalculations">) => {
-		setForm({
-			name: `${calc.name} (Salinan)`,
-			description: calc.description || "",
-			ingredients: calc.ingredients.map((ing: any) => ({
-				...ing,
-				id: generateId(),
-			})),
-			overheadCosts: calc.overheadCosts.map((oh: any) => ({
-				...oh,
-				id: generateId(),
-			})),
-			servingsPerBatch: calc.servingsPerBatch,
-			sellingPrice: calc.sellingPrice,
-			productId: undefined,
-		});
-		setEditingId(null);
-		setActiveTab("calculator");
-	};
-
-	const handleDelete = async () => {
-		if (!deleteTarget) {
-			return;
-		}
-		try {
-			await deleteHpp({ id: deleteTarget });
-			toast.success("Kalkulasi HPP berhasil dihapus");
-		} catch {
-			toast.error("Gagal menghapus kalkulasi HPP");
-		}
-		setDeleteTarget(null);
-	};
-
-	const handleReset = () => {
-		setForm(INITIAL_FORM);
-		setEditingId(null);
-	};
-
-	const handleSyncPrices = async (id: Id<"hppCalculations">) => {
-		setSyncingId(id);
-		try {
-			const result = await syncPrices({ id });
-			if (result.updatedCount > 0) {
-				toast.success(`${result.updatedCount} harga bahan berhasil diperbarui`);
-			} else {
-				toast.info("Semua harga sudah sesuai, tidak ada perubahan");
-			}
-		} catch {
-			toast.error("Gagal sinkronisasi harga");
-		}
-		setSyncingId(null);
-	};
-
-	// ─── Render ───────────────────────────────────────────────────────────────
-
-	return (
-		<div className="fade-in slide-in-from-bottom-4 flex animate-in flex-col gap-6 duration-500">
-			{/* Page Header */}
-			<div className="flex items-center justify-between">
-				<div>
-					<h2 className="font-bold text-xl tracking-tight">Kalkulator HPP</h2>
-					<p className="text-muted-foreground text-sm">
-						Hitung Harga Pokok Produksi bahan baku per porsi/gelas
-					</p>
-				</div>
-			</div>
-
-			{/* Price Change Alerts */}
-			{priceAlerts.length > 0 && (
-				<div className="flex flex-col gap-2">
-					{priceAlerts.map((alert: any) => (
-						<motion.div
-							animate={{ opacity: 1, y: 0 }}
-							className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30"
-							initial={{ opacity: 0, y: -5 }}
-							key={alert.hppId}
-						>
-							<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-							<div className="flex-1">
-								<p className="font-semibold text-amber-800 text-xs dark:text-amber-200">
-									Perubahan harga terdeteksi: {alert.hppName}
-								</p>
-								<div className="mt-1 flex flex-col gap-0.5">
-									{alert.changes.map((c) => (
-										<p
-											className="text-[11px] text-amber-700 dark:text-amber-300"
-											key={c.ingredientName}
-										>
-											{c.ingredientName}: {formatCurrency(c.oldPrice)}{" "}
-											<ArrowRight className="inline h-3 w-3" />{" "}
-											{formatCurrency(c.newPrice)}{" "}
-											<span
-												className={
-													c.diff > 0 ? "text-red-600" : "text-green-600"
-												}
-											>
-												({c.diff > 0 ? "+" : ""}
-												{formatNumber(c.diff)}%)
-											</span>
-										</p>
-									))}
-								</div>
-							</div>
-							<Button
-								className="shrink-0"
-								onClick={() => handleSyncPrices(alert.hppId)}
-								size="sm"
-								variant="outline"
-							>
-								<RefreshCw
-									className={`h-3 w-3 ${syncingId === alert.hppId ? "animate-spin" : ""}`}
-								/>
-								Sync
-							</Button>
-						</motion.div>
-					))}
-				</div>
-			)}
-
-			{/* Tabs */}
-			<div className="flex items-center gap-2 border-border border-b pb-1">
-				<button
-					className={`relative px-4 py-2 font-bold text-sm transition-colors ${
-						activeTab === "calculator"
-							? "text-primary"
-							: "text-muted-foreground hover:text-foreground"
-					}`}
-					onClick={() => setActiveTab("calculator")}
-					type="button"
-				>
-					Kalkulator
-					{activeTab === "calculator" && (
-						<motion.div
-							className="absolute right-0 -bottom-[5px] left-0 h-1 bg-primary"
-							layoutId="hppTab"
-						/>
-					)}
-				</button>
-				<button
-					className={`relative px-4 py-2 font-bold text-sm transition-colors ${
-						activeTab === "saved"
-							? "text-primary"
-							: "text-muted-foreground hover:text-foreground"
-					}`}
-					onClick={() => setActiveTab("saved")}
-					type="button"
-				>
-					Tersimpan
-					{hppCalculations && hppCalculations.length > 0 && (
-						<span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 text-primary text-xs">
-							{hppCalculations.length}
-						</span>
-					)}
-					{activeTab === "saved" && (
-						<motion.div
-							className="absolute right-0 -bottom-[5px] left-0 h-1 bg-primary"
-							layoutId="hppTab"
-						/>
-					)}
-				</button>
-				<button
-					className={`relative px-4 py-2 font-bold text-sm transition-colors ${
-						activeTab === "analysis"
-							? "text-primary"
-							: "text-muted-foreground hover:text-foreground"
-					}`}
-					onClick={() => setActiveTab("analysis")}
-					type="button"
-				>
-					Analisis Profit
-					{activeTab === "analysis" && (
-						<motion.div
-							className="absolute right-0 -bottom-[5px] left-0 h-1 bg-primary"
-							layoutId="hppTab"
-						/>
-					)}
-				</button>
-			</div>
-
-			{activeTab === "calculator" && (
-				<CalculatorView
-					addIngredient={addIngredient}
-					addOverhead={addOverhead}
-					applyUnitPreset={applyUnitPreset}
-					calculations={calculations}
-					editingId={editingId}
-					form={form}
-					inventory={inventory}
-					inventoryCosts={inventoryCosts}
-					linkIngredientToInventory={linkIngredientToInventory}
-					onReset={handleReset}
-					onSave={handleSave}
-					products={products}
-					productsWithRecipes={productsWithRecipes}
-					removeIngredient={removeIngredient}
-					removeOverhead={removeOverhead}
-					setForm={setForm}
-					setShowImportModal={setShowImportModal}
-					showImportModal={showImportModal}
-					updateIngredient={updateIngredient}
-					updateOverhead={updateOverhead}
-				/>
-			)}
-
-			{activeTab === "saved" && (
-				<SavedCalculationsView
-					calculations={hppCalculations as any}
-					expandedCard={expandedCard}
-					inventoryCosts={inventoryCosts}
-					onDelete={(id) => setDeleteTarget(id)}
-					onDuplicate={handleDuplicate}
-					onEdit={handleEdit}
-					onSync={handleSyncPrices}
-					products={products}
-					setExpandedCard={setExpandedCard}
-					syncingId={syncingId}
-				/>
-			)}
-
-			{activeTab === "analysis" && (
-				<HppProfitAnalysisView
-					calculations={hppCalculations}
-					products={products}
-				/>
-			)}
-
-			{/* Delete Confirmation */}
-			<ConfirmationModal
-				isOpen={!!deleteTarget}
-				message="Apakah Anda yakin ingin menghapus kalkulasi HPP ini? Tindakan ini tidak dapat dibatalkan."
-				onClose={() => setDeleteTarget(null)}
-				onConfirm={handleDelete}
-				title="Hapus Kalkulasi HPP"
-			/>
-		</div>
-	);
-}
-
-// ─── Import from Recipe Modal ────────────────────────────────────────────────
-
-function ImportRecipeModal({
-	productsWithRecipes,
-	inventoryCosts,
-	inventory,
-	products,
-	onImport,
-	onClose,
-}: {
-	productsWithRecipes:
-		| { product: Doc<"products">; variants: string[] }[]
-		| undefined;
-	inventoryCosts: Record<string, { latestCostPerUnit?: number }> | undefined;
-	inventory: Doc<"inventory">[] | undefined;
-	products: Doc<"products">[] | undefined;
-	onImport: (data: HppFormData) => void;
-	onClose: () => void;
-}) {
-	const recipes = useQuery(api.inventory.getRecipes);
-	const [selectedProduct, setSelectedProduct] = useState<Id<"products"> | null>(
-		null
-	);
-	const [selectedVariant, setSelectedVariant] = useState<string>("");
-
-	const selectedProductData = productsWithRecipes?.find(
-		(p) => p.product._id === selectedProduct
-	);
-
-	const handleImport = () => {
-		if (!(selectedProduct && recipes && inventory)) {
-			return;
-		}
-
-		// Find the matching recipe
-		const recipe = recipes.find(
-			(r: any) =>
-				r.productId === selectedProduct &&
-				(selectedVariant ? r.variantName === selectedVariant : !r.variantName)
-		);
-		// Fallback: try base recipe
-		const recipeToUse =
-			recipe ||
-			recipes.find((r: any) => r.productId === selectedProduct && !r.variantName);
-
-		if (!recipeToUse) {
-			toast.error("Resep tidak ditemukan untuk produk ini");
-			return;
-		}
-
-		const product = products?.find((p) => p._id === selectedProduct);
-		if (!product) {
-			return;
-		}
-
-		// Build ingredient rows from recipe
-		const ingredients: IngredientRow[] = recipeToUse.ingredients
-			.map((recipeIng: any) => {
-				const invItem = inventory.find((i) => i._id === recipeIng.inventoryId);
-				if (!invItem) {
-					return null;
-				}
-
-				const convFactor = invItem.conversionFactor || 1;
-				const displayUnit = invItem.displayUnit || invItem.unit;
-				const costData = inventoryCosts?.[invItem._id];
-				const purchasePrice = (costData?.latestCostPerUnit ?? 0) * convFactor;
-
-				return {
-					id: generateId(),
-					inventoryId: invItem._id,
-					ingredientName: invItem.ingredientName,
-					purchasePrice,
-					purchaseQuantity: 1,
-					purchaseUnit: displayUnit,
-					usagePerServing: recipeIng.amount,
-					usageUnit: invItem.unit,
-					conversionFactor: convFactor,
-				} satisfies IngredientRow;
-			})
-			.filter((i): i is IngredientRow => i !== null);
-
-		if (ingredients.length === 0) {
-			toast.error("Tidak ada bahan yang bisa diimpor dari resep ini");
-			return;
-		}
-
-		const variantLabel = selectedVariant ? ` (${selectedVariant})` : "";
-
-		onImport({
-			name: `HPP ${product.name}${variantLabel}`,
-			description: `Auto-generated dari resep ${product.name}${variantLabel}`,
-			ingredients,
-			overheadCosts: [createEmptyOverhead()],
-			servingsPerBatch: 1,
-			sellingPrice: product.promoPrice ?? product.price,
-			productId: product._id,
-		});
-
-		toast.success(`Resep ${product.name}${variantLabel} berhasil diimpor`);
-	};
-
-	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-			<motion.div
-				animate={{ opacity: 1, scale: 1 }}
-				className="w-full max-w-md rounded-xl border border-border bg-background p-6 shadow-lg"
-				exit={{ opacity: 0, scale: 0.95 }}
-				initial={{ opacity: 0, scale: 0.95 }}
-			>
-				<div className="mb-4 flex items-center justify-between">
-					<h3 className="flex items-center gap-2 font-bold text-base">
-						<FileDown className="h-4 w-4 text-primary" />
-						Impor dari Resep
-					</h3>
-					<button
-						className="rounded p-1 text-muted-foreground hover:bg-muted"
-						onClick={onClose}
-						type="button"
-					>
-						<X className="h-4 w-4" />
-					</button>
-				</div>
-
-				{!productsWithRecipes || productsWithRecipes.length === 0 ? (
-					<div className="py-8 text-center text-muted-foreground text-sm">
-						Belum ada produk dengan resep. Buat resep terlebih dahulu di halaman
-						Produk.
-					</div>
-				) : (
-					<div className="flex flex-col gap-4">
-						<div className="flex flex-col gap-1.5">
-							<Label>Pilih Produk</Label>
-							<select
-								className="h-8 w-full rounded-md border border-input bg-transparent px-2.5 text-xs outline-none transition-colors focus-visible:border-ring"
-								onChange={(e) => {
-									setSelectedProduct(
-										(e.target.value || null) as Id<"products"> | null
-									);
-									setSelectedVariant("");
-								}}
-								value={selectedProduct || ""}
-							>
-								<option value="">-- Pilih produk --</option>
-								{productsWithRecipes.map((p) => (
-									<option key={p.product._id} value={p.product._id}>
-										{p.product.name} (
-										{p.variants.length > 0
-											? `${p.variants.length + 1} resep`
-											: "1 resep"}
-										)
-									</option>
-								))}
-							</select>
-						</div>
-
-						{selectedProductData && selectedProductData.variants.length > 0 && (
-							<div className="flex flex-col gap-1.5">
-								<Label>Varian (Opsional)</Label>
-								<select
-									className="h-8 w-full rounded-md border border-input bg-transparent px-2.5 text-xs outline-none transition-colors focus-visible:border-ring"
-									onChange={(e) => setSelectedVariant(e.target.value)}
-									value={selectedVariant}
-								>
-									<option value="">Resep Dasar</option>
-									{selectedProductData.variants.map((v) => (
-										<option key={v} value={v}>
-											{v}
-										</option>
-									))}
-								</select>
-							</div>
-						)}
-
-						{selectedProduct && (
-							<div className="rounded-lg bg-muted/50 p-3 text-xs">
-								<p className="font-medium text-muted-foreground">Informasi:</p>
-								<ul className="mt-1 list-disc space-y-0.5 pl-4 text-muted-foreground">
-									<li>Bahan baku akan diimpor dari resep produk</li>
-									<li>
-										Harga beli diambil dari transaksi restock terbaru di
-										inventaris
-									</li>
-									<li>Anda bisa mengedit semua data setelah impor</li>
-								</ul>
-							</div>
-						)}
-
-						<div className="flex justify-end gap-2">
-							<Button onClick={onClose} variant="outline">
-								Batal
-							</Button>
-							<Button disabled={!selectedProduct} onClick={handleImport}>
-								<FileDown className="h-3.5 w-3.5" />
-								Impor Resep
-							</Button>
-						</div>
-					</div>
-				)}
-			</motion.div>
-		</div>
-	);
-}
-
-// ─── Calculator View ─────────────────────────────────────────────────────────
-
-function CalculatorView({
-	form,
-	setForm,
-	calculations,
-	inventory,
-	inventoryCosts,
-	products,
-	productsWithRecipes,
-	editingId,
-	updateIngredient,
-	applyUnitPreset,
-	linkIngredientToInventory,
-	addIngredient,
-	removeIngredient,
-	updateOverhead,
-	addOverhead,
-	removeOverhead,
-	onSave,
-	onReset,
-	showImportModal,
-	setShowImportModal,
-}: {
-	form: HppFormData;
-	setForm: React.Dispatch<React.SetStateAction<HppFormData>>;
-	calculations: HppCalcResult;
-	inventory: Doc<"inventory">[] | undefined;
-	inventoryCosts: Record<string, { latestCostPerUnit?: number }> | undefined;
-	products: Doc<"products">[] | undefined;
-	productsWithRecipes:
-		| { product: Doc<"products">; variants: string[] }[]
-		| undefined;
-	editingId: Id<"hppCalculations"> | null;
-	updateIngredient: (
-		id: string,
-		field: keyof IngredientRow,
-		value: string | number
-	) => void;
-	applyUnitPreset: (id: string, presetIndex: number) => void;
-	linkIngredientToInventory: (
-		ingredientId: string,
-		inventoryItemId: string
-	) => void;
-	addIngredient: () => void;
-	removeIngredient: (id: string) => void;
-	updateOverhead: (
-		id: string,
-		field: keyof OverheadRow,
-		value: string | number
-	) => void;
-	addOverhead: () => void;
-	removeOverhead: (id: string) => void;
-	onSave: () => void;
-	onReset: () => void;
-	showImportModal: boolean;
-	setShowImportModal: (v: boolean) => void;
-}) {
-	return (
-		<>
-			<div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-				{/* Left Column - Form */}
-				<div className="flex flex-col gap-6">
-					{/* Basic Info */}
-					<Card>
-						<CardHeader className="border-b">
-							<CardTitle className="flex items-center justify-between">
-								<span className="flex items-center gap-2">
-									<Calculator className="h-4 w-4 text-primary" />
-									Informasi Dasar
-								</span>
-								<Button
-									onClick={() => setShowImportModal(true)}
-									size="sm"
-									variant="outline"
-								>
-									<FileDown className="h-3.5 w-3.5" />
-									Impor dari Resep
-								</Button>
-							</CardTitle>
-						</CardHeader>
-						<CardContent className="flex flex-col gap-4">
-							<div className="grid gap-4 sm:grid-cols-2">
-								<div className="flex flex-col gap-1.5">
-									<Label htmlFor="hpp-name">Nama Kalkulasi *</Label>
-									<Input
-										id="hpp-name"
-										onChange={(e) =>
-											setForm((prev) => ({
-												...prev,
-												name: e.target.value,
-											}))
-										}
-										placeholder="cth: HPP Es Susu Coklat"
-										value={form.name}
-									/>
-								</div>
-								<div className="flex flex-col gap-1.5">
-									<Label htmlFor="hpp-desc">Deskripsi</Label>
-									<Input
-										id="hpp-desc"
-										onChange={(e) =>
-											setForm((prev) => ({
-												...prev,
-												description: e.target.value,
-											}))
-										}
-										placeholder="cth: Perhitungan untuk 1 gelas 300ml"
-										value={form.description}
-									/>
-								</div>
-							</div>
-							<div className="grid gap-4 sm:grid-cols-3">
-								<div className="flex flex-col gap-1.5">
-									<Label htmlFor="hpp-servings">Porsi per Batch</Label>
-									<Input
-										id="hpp-servings"
-										min={1}
-										onChange={(e) =>
-											setForm((prev) => ({
-												...prev,
-												servingsPerBatch: Number(e.target.value) || 0,
-											}))
-										}
-										type="number"
-										value={form.servingsPerBatch || ""}
-									/>
-								</div>
-								<div className="flex flex-col gap-1.5">
-									<Label htmlFor="hpp-selling">Harga Jual /Porsi</Label>
-									<Input
-										id="hpp-selling"
-										min={0}
-										onChange={(e) =>
-											setForm((prev) => ({
-												...prev,
-												sellingPrice: Number(e.target.value) || 0,
-											}))
-										}
-										placeholder="15000"
-										type="number"
-										value={form.sellingPrice || ""}
-									/>
-								</div>
-								<div className="flex flex-col gap-1.5">
-									<Label>Produk Terkait</Label>
-									<select
-										className="h-8 w-full rounded-md border border-input bg-transparent px-2.5 text-xs outline-none transition-colors focus-visible:border-ring"
-										onChange={(e) =>
-											setForm((prev) => ({
-												...prev,
-												productId: (e.target.value || undefined) as
-													| Id<"products">
-													| undefined,
-											}))
-										}
-										value={form.productId || ""}
-									>
-										<option value="">-- Tidak ada --</option>
-										{products?.map((p) => (
-											<option key={p._id} value={p._id}>
-												{p.name}
-											</option>
-										))}
-									</select>
-								</div>
-							</div>
-						</CardContent>
-					</Card>
-
-					{/* Ingredients */}
-					<Card>
-						<CardHeader className="border-b">
-							<CardTitle className="flex items-center justify-between">
-								<span className="flex items-center gap-2">
-									<Package className="h-4 w-4 text-primary" />
-									Bahan Baku
-								</span>
-								<Button onClick={addIngredient} size="sm" variant="outline">
-									<Plus className="h-3.5 w-3.5" />
-									Tambah Bahan
-								</Button>
-							</CardTitle>
-						</CardHeader>
-						<CardContent className="flex flex-col gap-4">
-							<AnimatePresence mode="popLayout">
-								{form.ingredients.map((ing, idx) => (
-									<motion.div
-										animate={{ opacity: 1, y: 0 }}
-										className="rounded-lg border border-border bg-muted/30 p-3"
-										exit={{ opacity: 0, y: -10 }}
-										initial={{ opacity: 0, y: 10 }}
-										key={ing.id}
-										layout
-									>
-										<div className="mb-3 flex items-center justify-between">
-											<span className="flex items-center gap-2 font-semibold text-muted-foreground text-xs">
-												Bahan #{idx + 1}
-												{ing.inventoryId && (
-													<span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] text-green-700 dark:bg-green-900/30 dark:text-green-400">
-														<Link2 className="h-2.5 w-2.5" />
-														Terhubung Inventaris
-													</span>
-												)}
-											</span>
-											{form.ingredients.length > 1 && (
-												<button
-													className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-													onClick={() => removeIngredient(ing.id)}
-													type="button"
-												>
-													<X className="h-3.5 w-3.5" />
-												</button>
-											)}
-										</div>
-
-										<div className="grid gap-3 sm:grid-cols-3">
-											<div className="flex flex-col gap-1">
-												<Label className="text-[11px] text-muted-foreground">
-													Nama Bahan
-												</Label>
-												<Input
-													onChange={(e) =>
-														updateIngredient(
-															ing.id,
-															"ingredientName",
-															e.target.value
-														)
-													}
-													placeholder="cth: Susu UHT"
-													value={ing.ingredientName}
-												/>
-											</div>
-											<div className="flex flex-col gap-1">
-												<Label className="text-[11px] text-muted-foreground">
-													<Database className="inline h-3 w-3" /> Link ke
-													Inventaris
-												</Label>
-												<select
-													className="h-8 w-full rounded-md border border-input bg-transparent px-2.5 text-xs outline-none transition-colors focus-visible:border-ring"
-													onChange={(e) => {
-														if (e.target.value) {
-															linkIngredientToInventory(ing.id, e.target.value);
-														}
-													}}
-													value={ing.inventoryId || ""}
-												>
-													<option value="">-- Manual --</option>
-													{inventory?.map((inv) => (
-														<option key={inv._id} value={inv._id}>
-															{inv.ingredientName} ({inv.unit})
-														</option>
-													))}
-												</select>
-											</div>
-											<div className="flex flex-col gap-1">
-												<Label className="text-[11px] text-muted-foreground">
-													Preset Satuan
-												</Label>
-												<select
-													className="h-8 w-full rounded-md border border-input bg-transparent px-2.5 text-xs outline-none transition-colors focus-visible:border-ring"
-													onChange={(e) => {
-														if (e.target.value !== "") {
-															applyUnitPreset(ing.id, Number(e.target.value));
-														}
-													}}
-													value=""
-												>
-													<option value="">Pilih preset...</option>
-													{COMMON_UNITS.map((u, i) => (
-														<option key={`${u.purchase}-${u.usage}`} value={i}>
-															{u.purchase} → {u.usage} (1:
-															{u.factor})
-														</option>
-													))}
-												</select>
-											</div>
-										</div>
-
-										<div className="mt-3 grid gap-3 sm:grid-cols-4">
-											<div className="flex flex-col gap-1">
-												<Label className="text-[11px] text-muted-foreground">
-													Harga Beli
-												</Label>
-												<Input
-													min={0}
-													onChange={(e) =>
-														updateIngredient(
-															ing.id,
-															"purchasePrice",
-															Number(e.target.value) || 0
-														)
-													}
-													placeholder="18000"
-													type="number"
-													value={ing.purchasePrice || ""}
-												/>
-											</div>
-											<div className="flex flex-col gap-1">
-												<Label className="text-[11px] text-muted-foreground">
-													Jumlah Beli
-												</Label>
-												<Input
-													min={0}
-													onChange={(e) =>
-														updateIngredient(
-															ing.id,
-															"purchaseQuantity",
-															Number(e.target.value) || 0
-														)
-													}
-													placeholder="1"
-													type="number"
-													value={ing.purchaseQuantity || ""}
-												/>
-											</div>
-											<div className="flex flex-col gap-1">
-												<Label className="text-[11px] text-muted-foreground">
-													Satuan Beli
-												</Label>
-												<Input
-													onChange={(e) =>
-														updateIngredient(
-															ing.id,
-															"purchaseUnit",
-															e.target.value
-														)
-													}
-													placeholder="liter"
-													value={ing.purchaseUnit}
-												/>
-											</div>
-											<div className="flex flex-col gap-1">
-												<Label className="text-[11px] text-muted-foreground">
-													Konversi
-												</Label>
-												<Input
-													min={1}
-													onChange={(e) =>
-														updateIngredient(
-															ing.id,
-															"conversionFactor",
-															Number(e.target.value) || 0
-														)
-													}
-													placeholder="1000"
-													type="number"
-													value={ing.conversionFactor || ""}
-												/>
-											</div>
-										</div>
-
-										<div className="mt-3 grid gap-3 sm:grid-cols-3">
-											<div className="flex flex-col gap-1">
-												<Label className="text-[11px] text-muted-foreground">
-													Pemakaian /Porsi
-												</Label>
-												<Input
-													min={0}
-													onChange={(e) =>
-														updateIngredient(
-															ing.id,
-															"usagePerServing",
-															Number(e.target.value) || 0
-														)
-													}
-													placeholder="200"
-													type="number"
-													value={ing.usagePerServing || ""}
-												/>
-											</div>
-											<div className="flex flex-col gap-1">
-												<Label className="text-[11px] text-muted-foreground">
-													Satuan Pakai
-												</Label>
-												<Input
-													onChange={(e) =>
-														updateIngredient(
-															ing.id,
-															"usageUnit",
-															e.target.value
-														)
-													}
-													placeholder="ml"
-													value={ing.usageUnit}
-												/>
-											</div>
-											<div className="flex flex-col gap-1.5">
-												<Label className="text-[11px] text-muted-foreground">
-													Biaya /Porsi
-												</Label>
-												<div className="flex h-8 items-center rounded-md bg-primary/5 px-2.5 font-semibold text-primary text-xs">
-													{formatCurrency(getIngredientCostPerServing(ing))}
-												</div>
-											</div>
-										</div>
-
-										{/* Conversion info */}
-										{ing.purchasePrice > 0 && ing.conversionFactor > 0 && (
-											<div className="mt-2 flex flex-wrap items-center gap-1.5 rounded bg-blue-50 px-2 py-1.5 text-[11px] text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">
-												<Scale className="h-3 w-3 shrink-0" />
-												<span>
-													1 {ing.purchaseUnit} ={" "}
-													{formatNumber(ing.conversionFactor)} {ing.usageUnit}
-												</span>
-												<ArrowRight className="h-3 w-3 shrink-0" />
-												<span>
-													Harga per {ing.usageUnit}:{" "}
-													{formatCurrency(getCostPerBaseUnit(ing))}
-												</span>
-												{ing.usagePerServing > 0 && (
-													<>
-														<ArrowRight className="h-3 w-3 shrink-0" />
-														<span>
-															1 {ing.purchaseUnit} ={" "}
-															{formatNumber(
-																(ing.purchaseQuantity * ing.conversionFactor) /
-																	ing.usagePerServing
-															)}{" "}
-															porsi
-														</span>
-													</>
-												)}
-											</div>
-										)}
-
-										{/* Inventory price info badge */}
-										{ing.inventoryId && inventoryCosts?.[ing.inventoryId] && (
-											<div className="mt-1.5 flex items-center gap-1.5 rounded bg-green-50 px-2 py-1 text-[11px] text-green-700 dark:bg-green-950/30 dark:text-green-300">
-												<Zap className="h-3 w-3 shrink-0" />
-												<span>
-													Harga inventaris terbaru:{" "}
-													{formatCurrency(
-														(inventoryCosts[ing.inventoryId]
-															?.latestCostPerUnit ?? 0) * ing.conversionFactor
-													)}
-													/{ing.purchaseUnit}
-												</span>
-											</div>
-										)}
-									</motion.div>
-								))}
-							</AnimatePresence>
-						</CardContent>
-					</Card>
-
-					{/* Overhead Costs */}
-					<Card>
-						<CardHeader className="border-b">
-							<CardTitle className="flex items-center justify-between">
-								<span className="flex items-center gap-2">
-									<CircleDollarSign className="h-4 w-4 text-primary" />
-									Biaya Overhead /Porsi
-								</span>
-								<Button onClick={addOverhead} size="sm" variant="outline">
-									<Plus className="h-3.5 w-3.5" />
-									Tambah Biaya
-								</Button>
-							</CardTitle>
-						</CardHeader>
-						<CardContent className="flex flex-col gap-3">
-							<p className="text-[11px] text-muted-foreground">
-								Biaya tambahan per porsi seperti cup, sedotan, gas, listrik,
-								dll.
-							</p>
-							<AnimatePresence mode="popLayout">
-								{form.overheadCosts.map((oh, idx) => (
-									<motion.div
-										animate={{ opacity: 1, x: 0 }}
-										className="flex items-end gap-2"
-										exit={{ opacity: 0, x: -10 }}
-										initial={{ opacity: 0, x: 10 }}
-										key={oh.id}
-										layout
-									>
-										<div className="flex flex-1 flex-col gap-1">
-											<Label className="text-[11px] text-muted-foreground">
-												{idx === 0 ? "Nama Biaya" : ""}
-											</Label>
-											<Input
-												onChange={(e) =>
-													updateOverhead(oh.id, "name", e.target.value)
-												}
-												placeholder="cth: Cup Plastik"
-												value={oh.name}
-											/>
-										</div>
-										<div className="flex w-36 flex-col gap-1">
-											<Label className="text-[11px] text-muted-foreground">
-												{idx === 0 ? "Biaya /Porsi" : ""}
-											</Label>
-											<Input
-												min={0}
-												onChange={(e) =>
-													updateOverhead(
-														oh.id,
-														"costPerServing",
-														Number(e.target.value) || 0
-													)
-												}
-												placeholder="500"
-												type="number"
-												value={oh.costPerServing || ""}
-											/>
-										</div>
-										{form.overheadCosts.length > 1 && (
-											<button
-												className="mb-0.5 rounded p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-												onClick={() => removeOverhead(oh.id)}
-												type="button"
-											>
-												<X className="h-3.5 w-3.5" />
-											</button>
-										)}
-									</motion.div>
-								))}
-							</AnimatePresence>
-						</CardContent>
-					</Card>
-				</div>
-
-				{/* Right Column - Results Panel */}
-				<div className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start">
-					{/* HPP Summary */}
-					<Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-						<CardHeader className="border-b">
-							<CardTitle className="flex items-center gap-2">
-								<GlassWater className="h-4 w-4 text-primary" />
-								Ringkasan HPP
-							</CardTitle>
-						</CardHeader>
-						<CardContent className="flex flex-col gap-3">
-							{/* Ingredient cost breakdown */}
-							<div>
-								<p className="mb-1 font-medium text-[11px] text-muted-foreground uppercase tracking-wider">
-									Biaya Bahan Baku
-								</p>
-								{form.ingredients
-									.filter((ing) => ing.ingredientName)
-									.map((ing) => (
-										<div
-											className="flex items-center justify-between py-0.5 text-xs"
-											key={ing.id}
-										>
-											<span className="flex items-center gap-1 text-muted-foreground">
-												{ing.ingredientName}
-												{ing.inventoryId && (
-													<Link2 className="h-2.5 w-2.5 text-green-500" />
-												)}
-											</span>
-											<span>
-												{formatCurrency(getIngredientCostPerServing(ing))}
-											</span>
-										</div>
-									))}
-								<div className="mt-1 flex items-center justify-between border-border border-t pt-1 font-semibold text-xs">
-									<span>Subtotal Bahan</span>
-									<span>
-										{formatCurrency(calculations.ingredientCostPerServing)}
-									</span>
-								</div>
-							</div>
-
-							{/* Overhead breakdown */}
-							<div>
-								<p className="mb-1 font-medium text-[11px] text-muted-foreground uppercase tracking-wider">
-									Biaya Overhead
-								</p>
-								{form.overheadCosts
-									.filter((oh) => oh.name)
-									.map((oh) => (
-										<div
-											className="flex items-center justify-between py-0.5 text-xs"
-											key={oh.id}
-										>
-											<span className="text-muted-foreground">{oh.name}</span>
-											<span>{formatCurrency(oh.costPerServing)}</span>
-										</div>
-									))}
-								<div className="mt-1 flex items-center justify-between border-border border-t pt-1 font-semibold text-xs">
-									<span>Subtotal Overhead</span>
-									<span>
-										{formatCurrency(calculations.overheadCostPerServing)}
-									</span>
-								</div>
-							</div>
-
-							{/* Total HPP */}
-							<div className="rounded-lg bg-primary/10 p-3">
-								<div className="flex items-center justify-between">
-									<span className="font-bold text-sm">HPP /Porsi</span>
-									<span className="font-bold text-lg text-primary">
-										{formatCurrency(calculations.totalHppPerServing)}
-									</span>
-								</div>
-								{form.servingsPerBatch > 1 && (
-									<div className="mt-1 flex items-center justify-between text-muted-foreground text-xs">
-										<span>HPP /Batch ({form.servingsPerBatch} porsi)</span>
-										<span>{formatCurrency(calculations.totalHppPerBatch)}</span>
-									</div>
-								)}
-							</div>
-						</CardContent>
-					</Card>
-
-					{/* Profit Analysis */}
-					{form.sellingPrice > 0 && (
-						<Card
-							className={
-								calculations.profitMarginPercent >= 30
-									? "border-green-200 dark:border-green-900"
-									: calculations.profitMarginPercent >= 15
-										? "border-yellow-200 dark:border-yellow-900"
-										: "border-red-200 dark:border-red-900"
-							}
-						>
-							<CardHeader className="border-b">
-								<CardTitle className="flex items-center gap-2">
-									<TrendingUp className="h-4 w-4 text-primary" />
-									Analisis Keuntungan
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="flex flex-col gap-2">
-								<div className="flex items-center justify-between text-xs">
-									<span className="text-muted-foreground">Harga Jual</span>
-									<span className="font-semibold">
-										{formatCurrency(form.sellingPrice)}
-									</span>
-								</div>
-								<div className="flex items-center justify-between text-xs">
-									<span className="text-muted-foreground">HPP</span>
-									<span>{formatCurrency(calculations.totalHppPerServing)}</span>
-								</div>
-								<div className="border-border border-t pt-2">
-									<div className="flex items-center justify-between text-xs">
-										<span className="font-semibold">Laba /Porsi</span>
-										<span
-											className={`font-bold text-sm ${
-												calculations.profitPerServing >= 0
-													? "text-green-600 dark:text-green-400"
-													: "text-red-600 dark:text-red-400"
-											}`}
-										>
-											{formatCurrency(calculations.profitPerServing)}
-										</span>
-									</div>
-								</div>
-
-								{/* Margin & Markup bars */}
-								<div className="mt-1 flex flex-col gap-2">
-									<div>
-										<div className="mb-1 flex items-center justify-between text-[11px]">
-											<span className="text-muted-foreground">Margin Laba</span>
-											<span className="font-semibold">
-												{formatNumber(calculations.profitMarginPercent)}%
-											</span>
-										</div>
-										<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-											<motion.div
-												animate={{
-													width: `${Math.min(Math.max(calculations.profitMarginPercent, 0), 100)}%`,
-												}}
-												className={`h-full rounded-full ${
-													calculations.profitMarginPercent >= 30
-														? "bg-green-500"
-														: calculations.profitMarginPercent >= 15
-															? "bg-yellow-500"
-															: "bg-red-500"
-												}`}
-												initial={{ width: 0 }}
-												transition={{
-													duration: 0.5,
-												}}
-											/>
-										</div>
-									</div>
-									<div>
-										<div className="mb-1 flex items-center justify-between text-[11px]">
-											<span className="text-muted-foreground">Markup</span>
-											<span className="font-semibold">
-												{formatNumber(calculations.markupPercent)}%
-											</span>
-										</div>
-										<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-											<motion.div
-												animate={{
-													width: `${Math.min(Math.max(calculations.markupPercent / 3, 0), 100)}%`,
-												}}
-												className="h-full rounded-full bg-primary"
-												initial={{ width: 0 }}
-												transition={{
-													duration: 0.5,
-												}}
-											/>
-										</div>
-									</div>
-								</div>
-
-								{calculations.breakEvenServings > 0 && (
-									<div className="mt-1 rounded bg-muted/50 p-2 text-center text-[11px] text-muted-foreground">
-										Break-even setelah{" "}
-										<span className="font-bold text-foreground">
-											{calculations.breakEvenServings} porsi
-										</span>{" "}
-										terjual (dari biaya batch)
-									</div>
-								)}
-							</CardContent>
-						</Card>
-					)}
-
-					{/* Action Buttons */}
-					<div className="flex gap-2">
-						<Button className="flex-1" onClick={onSave} variant="default">
-							{editingId ? "Perbarui" : "Simpan"} Kalkulasi
-						</Button>
-						<Button onClick={onReset} variant="outline">
-							Reset
-						</Button>
-					</div>
-				</div>
-			</div>
-
-			{/* Import Modal */}
-			{showImportModal && (
-				<ImportRecipeModal
-					inventory={inventory}
-					inventoryCosts={inventoryCosts}
-					onClose={() => setShowImportModal(false)}
-					onImport={(data) => {
-						setForm(data);
-						setShowImportModal(false);
-					}}
-					products={products}
-					productsWithRecipes={productsWithRecipes}
-				/>
-			)}
-		</>
-	);
-}
-
-// ─── Saved Calculations View ─────────────────────────────────────────────────
-
-function SavedCalculationsView({
-	calculations,
-	products,
-	inventoryCosts,
-	expandedCard,
-	setExpandedCard,
-	onEdit,
-	onDuplicate,
-	onDelete,
-	onSync,
-	syncingId,
-}: {
-	calculations: Doc<"hppCalculations">[] | undefined;
-	products: Doc<"products">[] | undefined;
-	inventoryCosts: Record<string, { latestCostPerUnit?: number }> | undefined;
-	expandedCard: Id<"hppCalculations"> | null;
-	setExpandedCard: (id: Id<"hppCalculations"> | null) => void;
-	onEdit: (calc: Doc<"hppCalculations">) => void;
-	onDuplicate: (calc: Doc<"hppCalculations">) => void;
-	onDelete: (id: Id<"hppCalculations">) => void;
-	onSync: (id: Id<"hppCalculations">) => void;
-	syncingId: Id<"hppCalculations"> | null;
-}) {
-	if (!calculations) {
-		return (
-			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-				{Array.from({ length: 6 }).map((_, i) => (
-					<Card className="overflow-hidden" key={i}>
-						<CardHeader className="border-b">
-							<div className="flex justify-between items-center">
-								<div className="space-y-2 flex-1">
-									<Skeleton className="h-4 w-3/4" />
-									<Skeleton className="h-3 w-1/2" />
-								</div>
-								<Skeleton className="h-8 w-8 rounded-lg" />
-							</div>
-						</CardHeader>
-						<CardContent className="p-4 space-y-4">
-							<div className="flex justify-between">
-								<Skeleton className="h-10 w-24 rounded-lg" />
-								<Skeleton className="h-10 w-24 rounded-lg" />
-							</div>
-							<div className="space-y-2">
-								<Skeleton className="h-3 w-full" />
-								<Skeleton className="h-3 w-2/3" />
-							</div>
-						</CardContent>
-					</Card>
-				))}
-			</div>
-		);
-	}
-
-	if (calculations.length === 0) {
-		return (
-			<div className="flex flex-col items-center gap-3 py-16">
-				<Calculator className="h-12 w-12 text-muted-foreground/40" />
-				<p className="font-medium text-muted-foreground text-sm">
-					Belum ada kalkulasi HPP tersimpan
-				</p>
-				<p className="text-muted-foreground text-xs">
-					Gunakan tab Kalkulator untuk membuat perhitungan baru
-				</p>
-			</div>
-		);
-	}
-
-	return (
-		<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-			{calculations.map((calc) => {
-				const { totalHpp, profit, margin } = computeHppFromDoc(calc);
-				const linkedProduct = products?.find((p) => p._id === calc.productId);
-				const isExpanded = expandedCard === calc._id;
-
-				// Check if any ingredient has a price mismatch
-				const hasLinkedIngredients = calc.ingredients.some(
-					(ing) => ing.inventoryId
-				);
-				let hasPriceChange = false;
-				if (hasLinkedIngredients && inventoryCosts) {
-					for (const ing of calc.ingredients) {
-						if (!ing.inventoryId) {
-							continue;
-						}
-						const cost = inventoryCosts[ing.inventoryId];
-						if (!cost?.latestCostPerUnit) {
-							continue;
-						}
-						const currentPrice = cost.latestCostPerUnit * ing.conversionFactor;
-						if (
-							ing.purchasePrice > 0 &&
-							Math.abs(currentPrice - ing.purchasePrice) / ing.purchasePrice >
-								0.01
-						) {
-							hasPriceChange = true;
-							break;
-						}
-					}
-				}
-
-				return (
-					<Card
-						className={`overflow-hidden ${hasPriceChange ? "border-amber-300 dark:border-amber-800" : ""}`}
-						key={calc._id}
-					>
-						<CardHeader className="border-b">
-							<CardTitle className="flex items-center justify-between">
-								<div className="flex flex-col gap-0.5">
-									<span className="flex items-center gap-1.5 truncate font-bold text-sm">
-										{calc.name}
-										{hasPriceChange && (
-											<AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-										)}
-									</span>
-									{linkedProduct && (
-										<span className="text-[11px] text-muted-foreground">
-											Produk: {linkedProduct.name}
-										</span>
-									)}
-								</div>
-								<button
-									className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted"
-									onClick={() => setExpandedCard(isExpanded ? null : calc._id)}
-									title={isExpanded ? "Tutup" : "Detail"}
-									type="button"
-								>
-									{isExpanded ? (
-										<ChevronUp className="h-4 w-4" />
-									) : (
-										<ChevronDown className="h-4 w-4" />
-									)}
-								</button>
-							</CardTitle>
-						</CardHeader>
-						<CardContent className="flex flex-col gap-2">
-							{/* Summary */}
-							<div className="grid grid-cols-2 gap-2">
-								<div className="rounded-md bg-muted/50 p-2 text-center">
-									<p className="text-[10px] text-muted-foreground">
-										HPP /Porsi
-									</p>
-									<p className="font-bold text-primary text-sm">
-										{formatCurrency(totalHpp)}
-									</p>
-								</div>
-								<div className="rounded-md bg-muted/50 p-2 text-center">
-									<p className="text-[10px] text-muted-foreground">
-										Laba /Porsi
-									</p>
-									<p
-										className={`font-bold text-sm ${
-											profit >= 0
-												? "text-green-600 dark:text-green-400"
-												: "text-red-600 dark:text-red-400"
-										}`}
-									>
-										{formatCurrency(profit)}
-									</p>
-								</div>
-							</div>
-
-							<div className="flex items-center justify-between text-xs">
-								<span className="text-muted-foreground">Harga Jual</span>
-								<span className="font-semibold">
-									{formatCurrency(calc.sellingPrice)}
-								</span>
-							</div>
-							<div className="flex items-center justify-between text-xs">
-								<span className="text-muted-foreground">Margin</span>
-								<span
-									className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-semibold text-[11px] ${
-										margin >= 30
-											? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-											: margin >= 15
-												? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-												: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-									}`}
-								>
-									<Percent className="h-3 w-3" />
-									{formatNumber(margin)}%
-								</span>
-							</div>
-
-							{/* Linked ingredients indicator */}
-							{hasLinkedIngredients && (
-								<div className="flex items-center gap-1.5 text-[11px] text-green-600 dark:text-green-400">
-									<Link2 className="h-3 w-3" />
-									<span>
-										{calc.ingredients.filter((i: any) => i.inventoryId).length}/
-										{calc.ingredients.length} bahan terhubung ke inventaris
-									</span>
-								</div>
-							)}
-
-							{/* Expanded detail */}
-							<AnimatePresence>
-								{isExpanded && (
-									<motion.div
-										animate={{
-											height: "auto",
-											opacity: 1,
-										}}
-										className="overflow-hidden"
-										exit={{ height: 0, opacity: 0 }}
-										initial={{ height: 0, opacity: 0 }}
-									>
-										<div className="mt-2 flex flex-col gap-2 border-border border-t pt-2">
-											<p className="font-semibold text-[11px] text-muted-foreground uppercase">
-												Bahan Baku
-											</p>
-											{calc.ingredients.map((ing: any, i: number) => {
-												const totalBase =
-													ing.purchaseQuantity * ing.conversionFactor;
-												const costBase =
-													totalBase > 0 ? ing.purchasePrice / totalBase : 0;
-												const cost = costBase * ing.usagePerServing;
-
-												// Check price change
-												let priceChanged = false;
-												let latestPrice = 0;
-												if (
-													ing.inventoryId &&
-													inventoryCosts?.[ing.inventoryId]
-												) {
-													latestPrice =
-														(inventoryCosts[ing.inventoryId]
-															?.latestCostPerUnit ?? 0) * ing.conversionFactor;
-													priceChanged =
-														ing.purchasePrice > 0 &&
-														Math.abs(latestPrice - ing.purchasePrice) /
-															ing.purchasePrice >
-															0.01;
-												}
-
-												return (
-													<div
-														className="flex flex-col gap-0.5"
-														key={`${calc._id}-ing-${i}`}
-													>
-														<div className="flex items-center justify-between text-[11px]">
-															<span className="flex items-center gap-1">
-																{ing.ingredientName}
-																<span className="text-muted-foreground">
-																	({ing.usagePerServing} {ing.usageUnit})
-																</span>
-																{ing.inventoryId && (
-																	<Link2 className="h-2.5 w-2.5 text-green-500" />
-																)}
-															</span>
-															<span>{formatCurrency(cost)}</span>
-														</div>
-														{priceChanged && (
-															<div className="flex items-center gap-1 text-[10px] text-amber-600">
-																<AlertTriangle className="h-2.5 w-2.5" />
-																Harga terbaru: {formatCurrency(latestPrice)}/
-																{ing.purchaseUnit}
-															</div>
-														)}
-													</div>
-												);
-											})}
-											{calc.overheadCosts.length > 0 && (
-												<>
-													<p className="mt-1 font-semibold text-[11px] text-muted-foreground uppercase">
-														Overhead
-													</p>
-													{calc.overheadCosts.map((oh: any, i: number) => (
-														<div
-															className="flex items-center justify-between text-[11px]"
-															key={`${calc._id}-oh-${i}`}
-														>
-															<span>{oh.name}</span>
-															<span>{formatCurrency(oh.costPerServing)}</span>
-														</div>
-													))}
-												</>
-											)}
-											{calc.description && (
-												<p className="mt-1 text-[11px] text-muted-foreground italic">
-													{calc.description}
-												</p>
-											)}
-										</div>
-									</motion.div>
-								)}
-							</AnimatePresence>
-
-							{/* Actions */}
-							<div className="flex gap-1.5 border-border border-t pt-2">
-								<Button
-									className="flex-1"
-									onClick={() => onEdit(calc)}
-									size="sm"
-									variant="outline"
-								>
-									<Edit className="h-3 w-3" />
-									Edit
-								</Button>
-								{hasLinkedIngredients && (
-									<Button
-										onClick={() => onSync(calc._id)}
-										size="sm"
-										title="Sync harga inventaris"
-										variant="outline"
-									>
-										<RefreshCw
-											className={`h-3 w-3 ${syncingId === calc._id ? "animate-spin" : ""}`}
-										/>
-									</Button>
-								)}
-								<Button
-									onClick={() => onDuplicate(calc)}
-									size="sm"
-									title="Duplikasi"
-									variant="outline"
-								>
-									<Copy className="h-3 w-3" />
-								</Button>
-								<Button
-									onClick={() => onDelete(calc._id)}
-									size="sm"
-									title="Hapus"
-									variant="destructive"
-								>
-									<Trash2 className="h-3 w-3" />
-								</Button>
-							</div>
-						</CardContent>
-					</Card>
-				);
-			})}
-		</div>
-	);
-}
-
-// ─── HPP Profit Analysis View ─────────────────────────────────────────────────
-
-function HppProfitAnalysisView({
-	calculations,
-	products,
-}: {
-	calculations: Doc<"hppCalculations">[] | undefined;
-	products: any[] | undefined;
-}) {
+	const [search, setSearch] = useState("");
+	const [statusFilter, setStatusFilter] = useState<
+		"all" | PortfolioStatus
+	>("all");
+	const [saving, setSaving] = useState(false);
+	const [syncingId, setSyncingId] = useState<Id<"hppCalculations"> | null>(null);
+	const [recipeSyncProductId, setRecipeSyncProductId] =
+		useState<Id<"products"> | null>(null);
 	const [targetMargin, setTargetMargin] = useState(30);
-	const [simulateId, setSimulateId] = useState<string | null>(null);
+	const [simulateId, setSimulateId] = useState<Id<"hppCalculations"> | null>(null);
 	const [simChangePercent, setSimChangePercent] = useState(10);
-	const [simIngredientIdx, setSimIngredientIdx] = useState<number | undefined>(undefined);
-
-	const updateSellingPrice = useMutation(api.hpp.updateHppSellingPrice);
-
+	const [simIngredientIdx, setSimIngredientIdx] = useState<number | undefined>(
+		undefined
+	);
 	const marginAnalysis = useQuery(api.hpp.getHppWithMarginAnalysis, {
 		targetMarginPercent: targetMargin,
-	});
+	}) as MarginAnalysisRow[] | undefined;
+
+	const portfolioRows = workspace?.portfolio ?? [];
+	const drafts = workspace?.drafts ?? [];
+	const currentMetrics = useMemo(() => computeHpp(form), [form]);
+
+	const selectedProductRow = selectedProductId
+		? portfolioRows.find((row) => row.product._id === selectedProductId) ?? null
+		: null;
+	const selectedDraft =
+		selectedDraftId != null
+			? drafts.find((draft) => draft.calculation._id === selectedDraftId) ?? null
+			: null;
+
+	const filteredPortfolio = useMemo(() => {
+		return portfolioRows.filter((row) => {
+			const matchesSearch =
+				row.product.name.toLowerCase().includes(search.toLowerCase()) ||
+				(row.calculation?.name.toLowerCase().includes(search.toLowerCase()) ?? false);
+			const matchesStatus =
+				statusFilter === "all" ? true : row.status === statusFilter;
+			return matchesSearch && matchesStatus;
+		});
+	}, [portfolioRows, search, statusFilter]);
+
+	const impactRows = useMemo(() => {
+		return (marginAnalysis ?? [])
+			.filter((item) => item.productId != null)
+			.sort((left, right) => left.currentMarginPercent - right.currentMarginPercent);
+	}, [marginAnalysis]);
 
 	const simulation = useQuery(
 		api.hpp.simulateHppPriceChange,
 		simulateId
 			? {
-					id: simulateId as Id<"hppCalculations">,
+					id: simulateId,
 					priceChangePercent: simChangePercent,
 					ingredientIndex: simIngredientIdx,
 				}
 			: "skip"
 	);
 
-	const selectedCalc = calculations?.find((c) => c._id === simulateId);
+	function openProductEditor(row: PortfolioRow) {
+		setSelectedProductId(row.product._id);
+		setSelectedDraftId(null);
+		setEditingId(row.calculation?._id ?? null);
+		setForm(toFormFromPortfolioRow(row));
+		setActiveView("editor");
+	}
 
-	const formatCurrencyLocal = (v: number) =>
-		new Intl.NumberFormat("id-ID", {
-			style: "currency",
-			currency: "IDR",
-			maximumFractionDigits: 0,
-		}).format(v);
+	function openDraftEditor(draft: PortfolioData["drafts"][number]) {
+		setSelectedDraftId(draft.calculation._id);
+		setSelectedProductId(null);
+		setEditingId(draft.calculation._id);
+		setForm(toFormFromCalculation(draft.calculation));
+		setActiveView("editor");
+	}
 
-	const handleApplyRecommendedPrice = async (hppId: string, price: number, name: string) => {
-		try {
-			await updateSellingPrice({ id: hppId as Id<"hppCalculations">, sellingPrice: price });
-			toast.success(`Harga jual ${name} berhasil diupdate ke ${formatCurrencyLocal(price)}`);
-		} catch {
-			toast.error("Gagal update harga jual");
+	function openNewDraft() {
+		setSelectedDraftId(null);
+		setSelectedProductId(null);
+		setEditingId(null);
+		setForm(createInitialForm());
+		setActiveView("editor");
+	}
+
+	function resetEditor() {
+		if (selectedProductRow) {
+			setForm(toFormFromPortfolioRow(selectedProductRow));
+			setEditingId(selectedProductRow.calculation?._id ?? null);
+			return;
 		}
-	};
 
-	if (!marginAnalysis) {
-		return (
-			<div className="flex h-40 items-center justify-center text-muted-foreground text-sm">
-				Memuat analisis...
-			</div>
-		);
+		if (selectedDraft) {
+			setForm(toFormFromCalculation(selectedDraft.calculation));
+			setEditingId(selectedDraft.calculation._id);
+			return;
+		}
+
+		setForm(createInitialForm());
+		setEditingId(null);
 	}
 
-	if (marginAnalysis.length === 0) {
-		return (
-			<div className="flex flex-col items-center gap-3 py-16">
-				<BarChart3 className="h-12 w-12 text-muted-foreground/40" />
-				<p className="font-medium text-muted-foreground text-sm">Belum ada data HPP untuk dianalisis</p>
-			</div>
+	async function handleSave() {
+		const ingredients = form.ingredients.filter(
+			(ingredient) => ingredient.ingredientName.trim().length > 0
 		);
+		const overheadCosts = form.overheadCosts.filter(
+			(overhead) => overhead.name.trim().length > 0 || overhead.costPerServing > 0
+		);
+
+		if (!form.name.trim()) {
+			toast.error("Nama costing harus diisi");
+			return;
+		}
+
+		if (ingredients.length === 0) {
+			toast.error("Tambahkan minimal satu bahan baku");
+			return;
+		}
+
+		setSaving(true);
+		try {
+			if (editingId) {
+				await updateHpp({
+					id: editingId,
+					name: form.name,
+					description: form.description || undefined,
+					ingredients: ingredients.map(({ id, ...rest }) => rest),
+					overheadCosts: overheadCosts.map(({ id, ...rest }) => rest),
+					servingsPerBatch: form.servingsPerBatch,
+					sellingPrice: form.sellingPrice,
+					productId: form.productId,
+					sourceType: form.sourceType,
+				});
+				toast.success("Workspace costing berhasil diperbarui");
+			} else {
+				const createdId = await createHpp({
+					name: form.name,
+					description: form.description || undefined,
+					ingredients: ingredients.map(({ id, ...rest }) => rest),
+					overheadCosts: overheadCosts.map(({ id, ...rest }) => rest),
+					servingsPerBatch: form.servingsPerBatch,
+					sellingPrice: form.sellingPrice,
+					productId: form.productId,
+					sourceType: form.sourceType,
+				});
+				setEditingId(createdId);
+				toast.success("Workspace costing berhasil dibuat");
+			}
+		} catch {
+			toast.error("Gagal menyimpan workspace costing");
+		} finally {
+			setSaving(false);
+		}
 	}
 
-	const lowMargin = marginAnalysis.filter((h: any) => h.isLowMargin);
-	const okMargin = marginAnalysis.filter((h: any) => !h.isLowMargin);
+	async function handleDelete() {
+		if (!deleteTarget) {
+			return;
+		}
+
+		try {
+			await deleteHpp({ id: deleteTarget });
+			if (editingId === deleteTarget) {
+				openNewDraft();
+			}
+			toast.success("Kalkulasi HPP berhasil dihapus");
+		} catch {
+			toast.error("Gagal menghapus kalkulasi HPP");
+		}
+	}
+
+	async function handleSyncPrices(id: Id<"hppCalculations">) {
+		setSyncingId(id);
+		try {
+			const result = await syncPrices({ id });
+			if (result.updatedCount > 0) {
+				toast.success(`${result.updatedCount} harga bahan berhasil diperbarui`);
+			} else {
+				toast.info("Harga bahan sudah sinkron");
+			}
+		} catch {
+			toast.error("Gagal sinkron harga bahan");
+		} finally {
+			setSyncingId(null);
+		}
+	}
+
+	async function handleSyncRecipe(row: PortfolioRow) {
+		setRecipeSyncProductId(row.product._id);
+		try {
+			const result = await syncFromRecipe({ productId: row.product._id });
+			setEditingId(result.id);
+			setSelectedProductId(row.product._id);
+			setSelectedDraftId(null);
+			setForm(toRecipeSyncForm(row));
+			setActiveView("editor");
+			toast.success(
+				result.created
+					? "Costing produk dibuat dari recipe"
+					: "Costing produk berhasil disinkronkan dari recipe"
+			);
+		} catch {
+			toast.error("Recipe belum siap untuk disinkronkan");
+		} finally {
+			setRecipeSyncProductId(null);
+		}
+	}
+
+	async function handleApplyRecommendedPrice(
+		hppId: Id<"hppCalculations">,
+		price: number
+	) {
+		try {
+			const result = await applySellingPrice({
+				id: hppId,
+				sellingPrice: price,
+				syncProductPrice: true,
+			});
+			toast.success(
+				result.productUpdated
+					? "Harga jual di HPP dan produk berhasil diperbarui"
+					: "Harga jual HPP berhasil diperbarui"
+			);
+		} catch {
+			toast.error("Gagal menerapkan rekomendasi harga");
+		}
+	}
+
+	function updateIngredient(
+		id: string,
+		field: keyof IngredientRow,
+		value: string | number | Id<"inventory"> | undefined
+	) {
+		setForm((prev) => ({
+			...prev,
+			ingredients: prev.ingredients.map((ingredient) =>
+				ingredient.id === id ? { ...ingredient, [field]: value } : ingredient
+			),
+		}));
+	}
+
+	function linkIngredientToInventory(ingredientId: string, inventoryItemId: string) {
+		const inventoryItem = inventory?.find(
+			(item: Doc<"inventory">) => item._id === inventoryItemId
+		);
+		if (!inventoryItem) {
+			return;
+		}
+
+		const latestCost =
+			inventoryCosts?.[inventoryItemId]?.latestCostPerUnit ?? 0;
+		const conversionFactor = inventoryItem.conversionFactor ?? 1;
+
+		setForm((prev) => ({
+			...prev,
+			ingredients: prev.ingredients.map((ingredient) =>
+				ingredient.id === ingredientId
+					? {
+							...ingredient,
+							inventoryId: inventoryItem._id,
+							ingredientName: inventoryItem.ingredientName,
+							purchasePrice: latestCost * conversionFactor,
+							purchaseQuantity: 1,
+							purchaseUnit: inventoryItem.displayUnit ?? inventoryItem.unit,
+							usageUnit: inventoryItem.unit,
+							conversionFactor,
+						}
+					: ingredient
+			),
+		}));
+	}
+
+	function updateOverhead(
+		id: string,
+		field: keyof OverheadRow,
+		value: string | number
+	) {
+		setForm((prev) => ({
+			...prev,
+			overheadCosts: prev.overheadCosts.map((overhead) =>
+				overhead.id === id ? { ...overhead, [field]: value } : overhead
+			),
+		}));
+	}
 
 	return (
-		<div className="space-y-6">
-			{/* Target Margin Setter */}
-			<div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4">
-				<Target className="h-5 w-5 shrink-0 text-primary" />
-				<div className="flex-1">
-					<p className="font-semibold text-sm">Target Margin</p>
-					<p className="text-muted-foreground text-xs">Set target margin untuk mendapat rekomendasi harga otomatis</p>
+		<div className="flex flex-col gap-6">
+			<motion.div
+				animate={{ opacity: 1, y: 0 }}
+				className="overflow-hidden rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(20,184,166,0.14),transparent_30%),linear-gradient(135deg,#fff7ed,#f8fafc_55%,#f0fdfa)] p-6 shadow-sm"
+				initial={{ opacity: 0, y: 12 }}
+			>
+				<div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+					<div className="max-w-3xl">
+						<p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-orange-600">
+							Product Costing Workspace
+						</p>
+						<h2 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
+							Overhaul HPP dari kalkulator jadi pusat keputusan harga produk.
+						</h2>
+						<p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+							Halaman ini sekarang memetakan status costing semua produk, editor
+							HPP yang terhubung ke recipe dan inventory, lalu simulasi dampak
+							margin untuk finance dan pricing.
+						</p>
+					</div>
+
+					<div className="flex flex-wrap gap-2">
+						<Button onClick={openNewDraft} variant="outline">
+							<Plus className="h-4 w-4" />
+							Draft Manual
+						</Button>
+						<Button
+							onClick={() => navigate({ to: "/admin/products" })}
+							variant="outline"
+						>
+							<FilePenLine className="h-4 w-4" />
+							Buka Produk
+						</Button>
+						<Button
+							onClick={() => navigate({ to: "/admin/inventory" })}
+							variant="outline"
+						>
+							<Database className="h-4 w-4" />
+							Buka Inventory
+						</Button>
+					</div>
 				</div>
-				<div className="flex items-center gap-2">
-					<input
-						type="range"
-						min={5}
-						max={80}
-						step={5}
-						value={targetMargin}
-						onChange={(e) => setTargetMargin(Number(e.target.value))}
-						className="w-32"
-					/>
-					<span className="font-bold text-primary w-10 text-right">{targetMargin}%</span>
-				</div>
+			</motion.div>
+
+			<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+				<SummaryCard label="Total Produk" value={workspace?.summary.totalProducts} />
+				<SummaryCard
+					label="Linked"
+					tone="emerald"
+					value={workspace?.summary.linkedProducts}
+				/>
+				<SummaryCard
+					label="Outdated"
+					tone="amber"
+					value={workspace?.summary.outdatedProducts}
+				/>
+				<SummaryCard
+					label="Missing Recipe"
+					tone="rose"
+					value={workspace?.summary.missingRecipeProducts}
+				/>
+				<SummaryCard
+					label="Missing Cost"
+					tone="orange"
+					value={workspace?.summary.missingCostProducts}
+				/>
+				<SummaryCard
+					label="Avg Margin"
+					tone="teal"
+					value={
+						workspace ? `${workspace.summary.averageMargin.toFixed(1)}%` : undefined
+					}
+				/>
 			</div>
 
-			{/* Alert: Low Margin Products */}
-			{lowMargin.length > 0 && (
-				<div className="space-y-3">
-					<div className="flex items-center gap-2">
-						<AlertTriangle className="h-4 w-4 text-amber-500" />
-						<h3 className="font-bold text-base">
-							Alert Margin Rendah ({lowMargin.length} produk di bawah {targetMargin}%)
-						</h3>
-					</div>
-					<div className="grid gap-3 md:grid-cols-2">
-						{lowMargin.map((hpp) => {
-							const linkedProduct = products?.find((p) => p._id === hpp.productId);
-							const statusColor =
-								hpp.status === "critical"
-									? "border-red-300 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20"
-									: "border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-950/20";
+			<div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white/80 p-2 shadow-sm">
+				<TabButton
+					active={activeView === "portfolio"}
+					icon={Package}
+					label="Portfolio"
+					onClick={() => setActiveView("portfolio")}
+				/>
+				<TabButton
+					active={activeView === "editor"}
+					icon={Calculator}
+					label="Editor"
+					onClick={() => setActiveView("editor")}
+				/>
+				<TabButton
+					active={activeView === "impact"}
+					icon={BarChart3}
+					label="Impact"
+					onClick={() => setActiveView("impact")}
+				/>
+			</div>
 
-							return (
-								<motion.div
-									key={hpp.id}
-									initial={{ opacity: 0, y: 5 }}
-									animate={{ opacity: 1, y: 0 }}
-									className={`rounded-xl border p-4 ${statusColor}`}
-								>
-									<div className="mb-3 flex items-start justify-between">
-										<div>
-											<p className="font-bold text-sm">{hpp.name}</p>
-											{linkedProduct && (
-												<p className="text-[11px] text-muted-foreground">
-													Produk: {linkedProduct.name}
-												</p>
-											)}
-										</div>
-										<span
-											className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-												hpp.status === "critical"
-													? "bg-red-500/20 text-red-600"
-													: "bg-amber-500/20 text-amber-700"
-											}`}
-										>
-											{hpp.currentMarginPercent.toFixed(1)}%
-										</span>
-									</div>
-
-									<div className="grid grid-cols-2 gap-2 mb-3">
-										<div className="rounded-lg bg-background/70 p-2">
-											<p className="text-[10px] text-muted-foreground">HPP/Porsi</p>
-											<p className="font-semibold text-sm">{formatCurrencyLocal(hpp.hppPerServing)}</p>
-										</div>
-										<div className="rounded-lg bg-background/70 p-2">
-											<p className="text-[10px] text-muted-foreground">Harga Jual</p>
-											<p className="font-semibold text-sm">{formatCurrencyLocal(hpp.currentSellingPrice)}</p>
-										</div>
-									</div>
-
-									{/* Recommendation */}
-									<div className="rounded-lg border border-primary/30 bg-primary/5 p-3 mb-3">
-										<div className="flex items-center gap-1.5 mb-1">
-											<TrendingUp className="h-3.5 w-3.5 text-primary" />
-											<p className="text-[11px] font-semibold text-primary">
-												Rekomendasi Harga: {formatCurrencyLocal(hpp.recommendedSellingPrice)}
-											</p>
-										</div>
-										<p className="text-[10px] text-muted-foreground">
-											Naik {formatCurrencyLocal(hpp.priceDiff)} untuk mencapai target margin {targetMargin}%
-										</p>
-									</div>
-
-									{/* Actions */}
-									<div className="flex gap-2">
-										<button
-											onClick={() => handleApplyRecommendedPrice(hpp.id, hpp.recommendedSellingPrice, hpp.name)}
-											className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground hover:brightness-110"
-											type="button"
-										>
-											<TrendingUp className="h-3 w-3" />
-											Terapkan Harga
-										</button>
-										<button
-											onClick={() => setSimulateId(hpp.id)}
-											className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-muted"
-											type="button"
-										>
-											<Sliders className="h-3 w-3" />
-											Simulasi
-										</button>
-									</div>
-								</motion.div>
-							);
-						})}
-					</div>
-				</div>
+			{activeView === "portfolio" && (
+				<PortfolioView
+					filteredPortfolio={filteredPortfolio}
+					onOpenEditor={openProductEditor}
+					onOpenNewDraft={openNewDraft}
+					onOpenDraft={openDraftEditor}
+					onSyncPrices={handleSyncPrices}
+					onSyncRecipe={handleSyncRecipe}
+					recipeSyncProductId={recipeSyncProductId}
+					search={search}
+					setSearch={setSearch}
+					statusFilter={statusFilter}
+					setStatusFilter={setStatusFilter}
+					syncingId={syncingId}
+					workspace={workspace}
+				/>
 			)}
 
-			{/* OK Margin Products */}
-			{okMargin.length > 0 && (
-				<div className="space-y-3">
-					<h3 className="flex items-center gap-2 font-bold text-base">
-						<TrendingUp className="h-4 w-4 text-green-500" />
-						Margin OK ({okMargin.length} produk ≥{targetMargin}%)
-					</h3>
-					<div className="grid gap-2 md:grid-cols-3">
-						{okMargin.map((hpp) => (
-							<div
-								key={hpp.id}
-								className="flex items-center justify-between rounded-lg border border-border bg-card p-3"
-							>
-								<div className="min-w-0">
-									<p className="text-sm font-semibold truncate">{hpp.name}</p>
-									<p className="text-[10px] text-muted-foreground">
-										HPP: {formatCurrencyLocal(hpp.hppPerServing)} | Jual: {formatCurrencyLocal(hpp.currentSellingPrice)}
-									</p>
-								</div>
-								<div className="flex items-center gap-2 ml-2 shrink-0">
-									<span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] font-bold text-green-600">
-										{hpp.currentMarginPercent.toFixed(1)}%
-									</span>
-									<button
-										onClick={() => setSimulateId(hpp.id)}
-										className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted"
-										type="button"
-										title="Simulasi what-if"
-									>
-										<Sliders className="h-3 w-3" />
-									</button>
-								</div>
-							</div>
-						))}
-					</div>
-				</div>
+			{activeView === "editor" && (
+				<EditorView
+					currentMetrics={currentMetrics}
+					editingId={editingId}
+					form={form}
+					inventory={inventory}
+					onApplyRecommendedPrice={handleApplyRecommendedPrice}
+					onDelete={() => editingId && setDeleteTarget(editingId)}
+					onOpenInventory={() => navigate({ to: "/admin/inventory" })}
+					onOpenProducts={() => navigate({ to: "/admin/products" })}
+					onReset={resetEditor}
+					onSave={handleSave}
+					onSyncPrices={() => editingId && handleSyncPrices(editingId)}
+					onSyncRecipe={() =>
+						selectedProductRow && handleSyncRecipe(selectedProductRow)
+					}
+					recipeSyncing={recipeSyncProductId === selectedProductId}
+					saving={saving}
+					selectedDraft={selectedDraft}
+					selectedProductRow={selectedProductRow}
+					setForm={setForm}
+					syncingId={syncingId}
+					updateIngredient={updateIngredient}
+					updateOverhead={updateOverhead}
+					linkIngredientToInventory={linkIngredientToInventory}
+				/>
 			)}
 
-			{/* What-If Simulation Modal */}
-			<AnimatePresence>
-				{simulateId && selectedCalc && (
-					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-						<motion.div
-							initial={{ opacity: 0, scale: 0.95 }}
-							animate={{ opacity: 1, scale: 1 }}
-							exit={{ opacity: 0, scale: 0.95 }}
-							className="relative w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl mx-4 max-h-[90vh] overflow-y-auto"
-						>
-							<div className="mb-5 flex items-center justify-between">
-								<div className="flex items-center gap-2">
-									<div className="rounded-lg bg-primary/10 p-2">
-										<Sliders className="h-5 w-5 text-primary" />
-									</div>
-									<div>
-										<h3 className="font-bold text-lg">Simulasi What-If</h3>
-										<p className="text-muted-foreground text-xs">{selectedCalc.name}</p>
-									</div>
-								</div>
-								<button
-									onClick={() => setSimulateId(null)}
-									className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
-									type="button"
-								>
-									<X className="h-4 w-4" />
-								</button>
-							</div>
+			{activeView === "impact" && (
+				<ImpactView
+					impactRows={impactRows}
+					onApplyRecommendedPrice={handleApplyRecommendedPrice}
+					onOpenEditor={(hppId) => {
+						const row = portfolioRows.find(
+							portfolioRow => portfolioRow.calculation?._id === hppId
+						);
+						if (row) {
+							openProductEditor(row);
+						}
+					}}
+					setSimChangePercent={setSimChangePercent}
+					setSimIngredientIdx={setSimIngredientIdx}
+					setSimulateId={setSimulateId}
+					setTargetMargin={setTargetMargin}
+					simChangePercent={simChangePercent}
+					simIngredientIdx={simIngredientIdx}
+					simulateId={simulateId}
+					simulation={simulation}
+					targetMargin={targetMargin}
+				/>
+			)}
 
-							{/* Simulation Controls */}
-							<div className="space-y-4 mb-5">
-								<div>
-									<label className="mb-2 block text-sm font-medium">
-										Perubahan Harga Bahan Baku
-									</label>
-									<div className="flex items-center gap-3">
-										<input
-											type="range"
-											min={-50}
-											max={100}
-											step={5}
-											value={simChangePercent}
-											onChange={(e) => setSimChangePercent(Number(e.target.value))}
-											className="flex-1"
-										/>
-										<div className="flex items-center gap-1">
-											<input
-												type="number"
-												value={simChangePercent}
-												onChange={(e) => setSimChangePercent(Number(e.target.value))}
-												className="w-16 rounded-lg border border-border bg-background px-2 py-1 text-center text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/40"
-											/>
-											<span className="text-sm font-bold">%</span>
-										</div>
-									</div>
-									<div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-										<span>Turun 50%</span>
-										<span className={simChangePercent > 0 ? "text-red-500 font-medium" : "text-green-500 font-medium"}>
-											{simChangePercent > 0 ? `Naik ${simChangePercent}%` : simChangePercent < 0 ? `Turun ${Math.abs(simChangePercent)}%` : "Tidak ada perubahan"}
-										</span>
-										<span>Naik 100%</span>
-									</div>
-								</div>
-
-								<div>
-									<label className="mb-2 block text-sm font-medium">
-										Bahan yang Berubah
-									</label>
-									<select
-										value={simIngredientIdx ?? "all"}
-										onChange={(e) => setSimIngredientIdx(e.target.value === "all" ? undefined : Number(e.target.value))}
-										className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-									>
-										<option value="all">Semua Bahan Baku</option>
-										{selectedCalc.ingredients.map((ing, idx) => (
-											<option key={idx} value={idx}>{ing.ingredientName}</option>
-										))}
-									</select>
-								</div>
-							</div>
-
-							{/* Simulation Results */}
-							{simulation ? (
-								<div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
-									<h4 className="font-bold text-sm">Hasil Simulasi</h4>
-									<div className="grid grid-cols-2 gap-3">
-										<div className="rounded-lg bg-card p-3">
-											<p className="text-[10px] text-muted-foreground mb-1">SEBELUM</p>
-											<p className="text-xs">HPP: <span className="font-bold">{formatCurrencyLocal(simulation.original.hppPerServing)}</span></p>
-											<p className="text-xs">Profit: <span className="font-bold text-green-600">{formatCurrencyLocal(simulation.original.profitPerServing)}</span></p>
-											<p className="text-xs">Margin: <span className="font-bold text-primary">{simulation.original.marginPercent.toFixed(1)}%</span></p>
-										</div>
-										<div className={`rounded-lg p-3 ${simulation.simulated.marginPercent < 0 ? "bg-red-50 dark:bg-red-950/20" : "bg-card"}`}>
-											<p className="text-[10px] text-muted-foreground mb-1">SETELAH</p>
-											<p className="text-xs">HPP: <span className="font-bold">{formatCurrencyLocal(simulation.simulated.hppPerServing)}</span></p>
-											<p className={`text-xs`}>Profit: <span className={`font-bold ${simulation.simulated.profitPerServing >= 0 ? "text-green-600" : "text-red-600"}`}>{formatCurrencyLocal(simulation.simulated.profitPerServing)}</span></p>
-											<p className="text-xs">Margin: <span className={`font-bold ${simulation.simulated.marginPercent >= targetMargin ? "text-green-600" : "text-amber-600"}`}>{simulation.simulated.marginPercent.toFixed(1)}%</span></p>
-										</div>
-									</div>
-
-									{/* Delta */}
-									<div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
-										{simulation.delta.profitDelta >= 0 ? (
-											<TrendingUp className="h-4 w-4 text-green-500 shrink-0" />
-										) : (
-											<TrendingDown className="h-4 w-4 text-red-500 shrink-0" />
-										)}
-										<div className="flex-1 text-xs">
-											<span className="text-muted-foreground">Dampak: </span>
-											<span className={`font-bold ${simulation.delta.profitDelta >= 0 ? "text-green-600" : "text-red-600"}`}>
-												{simulation.delta.profitDelta >= 0 ? "+" : ""}{formatCurrencyLocal(simulation.delta.profitDelta)}/porsi
-											</span>
-											<span className="text-muted-foreground ml-2">
-												({simulation.delta.marginDelta >= 0 ? "+" : ""}{simulation.delta.marginDelta.toFixed(1)}% margin)
-											</span>
-										</div>
-									</div>
-
-									{/* Recommendation */}
-									<div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
-										<p className="text-[11px] text-primary font-semibold mb-0.5">
-											Harga jual yang disarankan agar margin tetap {simulation.original.marginPercent.toFixed(0)}%:
-										</p>
-										<div className="flex items-center justify-between">
-											<p className="font-bold text-lg text-primary">
-												{formatCurrencyLocal(simulation.recommendedSellingPrice)}
-											</p>
-											<button
-												onClick={() => {
-													handleApplyRecommendedPrice(simulateId!, simulation.recommendedSellingPrice, selectedCalc.name);
-													setSimulateId(null);
-												}}
-												className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:brightness-110"
-												type="button"
-											>
-												<TrendingUp className="h-3 w-3" />
-												Terapkan
-											</button>
-										</div>
-									</div>
-								</div>
-							) : (
-								<div className="flex h-20 items-center justify-center text-muted-foreground text-sm">
-									Memuat simulasi...
-								</div>
-							)}
-						</motion.div>
-					</div>
-				)}
-			</AnimatePresence>
+			<ConfirmationModal
+				cancelText="Batal"
+				confirmText="Hapus"
+				isOpen={deleteTarget != null}
+				message="Kalkulasi yang dihapus akan hilang dari workspace dan tidak lagi dipakai sebagai referensi costing produk."
+				onClose={() => setDeleteTarget(null)}
+				onConfirm={handleDelete}
+				title="Hapus Kalkulasi HPP?"
+				variant="danger"
+			/>
 		</div>
 	);
 }
+
+function SummaryCard({
+	label,
+	value,
+	tone = "slate",
+}: {
+	label: string;
+	value: number | string | undefined;
+	tone?: "slate" | "emerald" | "amber" | "rose" | "orange" | "teal";
+}) {
+	const toneClasses: Record<typeof tone, string> = {
+		slate: "border-slate-200 bg-white text-slate-900",
+		emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
+		amber: "border-amber-200 bg-amber-50 text-amber-700",
+		rose: "border-rose-200 bg-rose-50 text-rose-700",
+		orange: "border-orange-200 bg-orange-50 text-orange-700",
+		teal: "border-teal-200 bg-teal-50 text-teal-700",
+	};
+
+	return (
+		<Card className={toneClasses[tone]}>
+			<CardContent className="p-4">
+				<p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">
+					{label}
+				</p>
+				<p className="mt-2 text-2xl font-black tracking-tight">
+					{value ?? <Skeleton className="h-8 w-16" />}
+				</p>
+			</CardContent>
+		</Card>
+	);
+}
+
+function TabButton({
+	active,
+	icon: Icon,
+	label,
+	onClick,
+}: {
+	active: boolean;
+	icon: typeof Package;
+	label: string;
+	onClick: () => void;
+}) {
+	return (
+		<button
+			className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
+				active
+					? "bg-slate-900 text-white shadow-sm"
+					: "text-slate-600 hover:bg-slate-100"
+			}`}
+			onClick={onClick}
+			type="button"
+		>
+			<Icon className="h-4 w-4" />
+			{label}
+		</button>
+	);
+}
+
+function StatusPill({ status }: { status: PortfolioStatus | "draft" }) {
+	return (
+		<span
+			className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone(status)}`}
+		>
+			{statusLabel(status)}
+		</span>
+	);
+}
+
+function PortfolioView({
+	filteredPortfolio,
+	onOpenEditor,
+	onOpenNewDraft,
+	onOpenDraft,
+	onSyncPrices,
+	onSyncRecipe,
+	recipeSyncProductId,
+	search,
+	setSearch,
+	statusFilter,
+	setStatusFilter,
+	syncingId,
+	workspace,
+}: {
+	filteredPortfolio: PortfolioRow[];
+	onOpenEditor: (row: PortfolioRow) => void;
+	onOpenNewDraft: () => void;
+	onOpenDraft: (draft: PortfolioData["drafts"][number]) => void;
+	onSyncPrices: (id: Id<"hppCalculations">) => void;
+	onSyncRecipe: (row: PortfolioRow) => void;
+	recipeSyncProductId: Id<"products"> | null;
+	search: string;
+	setSearch: (value: string) => void;
+	statusFilter: "all" | PortfolioStatus;
+	setStatusFilter: (value: "all" | PortfolioStatus) => void;
+	syncingId: Id<"hppCalculations"> | null;
+	workspace: PortfolioData | undefined;
+}) {
+	return (
+		<div className="space-y-6">
+			<Card className="border-slate-200 bg-white">
+				<CardContent className="grid gap-4 p-4 lg:grid-cols-[1fr_180px_180px_auto]">
+					<div className="relative">
+						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+						<Input
+							className="pl-9"
+							onChange={(event) => setSearch(event.target.value)}
+							placeholder="Cari produk atau nama costing..."
+							value={search}
+						/>
+					</div>
+					<select
+						className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+						onChange={(event) =>
+							setStatusFilter(event.target.value as "all" | PortfolioStatus)
+						}
+						value={statusFilter}
+					>
+						<option value="all">Semua status</option>
+						<option value="linked">Linked</option>
+						<option value="outdated">Outdated</option>
+						<option value="missing_recipe">Missing Recipe</option>
+						<option value="missing_cost">Missing Cost</option>
+					</select>
+					<div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-600">
+						{filteredPortfolio.length} produk tampil
+					</div>
+					<Button onClick={onOpenNewDraft}>
+						<Plus className="h-4 w-4" />
+						Buat Draft
+					</Button>
+				</CardContent>
+			</Card>
+
+			{workspace?.alerts && workspace.alerts.length > 0 && (
+				<div className="grid gap-3 lg:grid-cols-2">
+					{workspace.alerts.slice(0, 4).map((alert) => (
+						<div
+							className="rounded-2xl border border-amber-200 bg-amber-50 p-4"
+							key={alert.productId}
+						>
+							<div className="flex items-start gap-3">
+								<div className="rounded-xl bg-white p-2 text-amber-600">
+									<AlertTriangle className="h-4 w-4" />
+								</div>
+								<div className="min-w-0">
+									<p className="font-semibold text-slate-900">{alert.productName}</p>
+									<p className="mt-1 text-sm leading-6 text-slate-600">
+										{alert.reason}
+									</p>
+								</div>
+							</div>
+						</div>
+					))}
+				</div>
+			)}
+
+			<div className="grid gap-4 xl:grid-cols-2">
+				{workspace == null &&
+					Array.from({ length: 4 }).map((_, index) => (
+						<Card className="border-slate-200" key={index}>
+							<CardContent className="space-y-4 p-5">
+								<Skeleton className="h-5 w-32" />
+								<Skeleton className="h-4 w-full" />
+								<Skeleton className="h-20 w-full" />
+							</CardContent>
+						</Card>
+					))}
+
+				{filteredPortfolio.map((row) => (
+					<Card className="border-slate-200 shadow-sm" key={row.product._id}>
+						<CardContent className="flex h-full flex-col gap-4 p-5">
+							<div className="flex items-start justify-between gap-4">
+								<div>
+									<div className="flex flex-wrap items-center gap-2">
+										<h3 className="text-lg font-black tracking-tight text-slate-900">
+											{row.product.name}
+										</h3>
+										<StatusPill status={row.status} />
+									</div>
+									<p className="mt-2 text-sm leading-6 text-slate-600">
+										{row.reason}
+									</p>
+								</div>
+								<button
+									className="rounded-xl border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+									onClick={() => onOpenEditor(row)}
+									type="button"
+								>
+									<ChevronRight className="h-4 w-4" />
+								</button>
+							</div>
+
+							<div className="grid grid-cols-2 gap-3">
+								<div className="rounded-2xl bg-slate-50 p-3">
+									<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+										HPP / Porsi
+									</p>
+									<p className="mt-2 text-lg font-black text-slate-900">
+										{row.metrics
+											? formatCurrency(row.metrics.totalHppPerServing)
+											: "Belum ada"}
+									</p>
+								</div>
+								<div className="rounded-2xl bg-slate-50 p-3">
+									<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+										Margin
+									</p>
+									<p className="mt-2 text-lg font-black text-slate-900">
+										{row.metrics ? `${row.metrics.marginPercent.toFixed(1)}%` : "-"}
+									</p>
+								</div>
+							</div>
+
+							<div className="grid gap-2 text-sm text-slate-600">
+								<div className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
+									<span>Harga jual aktif</span>
+									<span className="font-semibold text-slate-900">
+										{formatCurrency(row.product.promoPrice ?? row.product.price)}
+									</span>
+								</div>
+								<div className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
+									<span>Koneksi bahan ke inventory</span>
+									<span className="font-semibold text-slate-900">
+										{row.linkedIngredientCount}/{row.ingredientCount}
+									</span>
+								</div>
+								<div className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
+									<span>Recipe & sync flags</span>
+									<span className="font-semibold text-slate-900">
+										{row.recipe ? "Recipe siap" : "Belum ada recipe"}
+										{row.outdatedIngredientCount > 0 &&
+											` | ${row.outdatedIngredientCount} berubah`}
+									</span>
+								</div>
+							</div>
+
+							<div className="mt-auto flex flex-wrap gap-2">
+								<Button onClick={() => onOpenEditor(row)} variant="outline">
+									<FilePenLine className="h-4 w-4" />
+									Edit Workspace
+								</Button>
+								{row.recipe && (
+									<Button
+										onClick={() => onSyncRecipe(row)}
+										variant="outline"
+									>
+										<RefreshCw
+											className={`h-4 w-4 ${recipeSyncProductId === row.product._id ? "animate-spin" : ""}`}
+										/>
+										Sync Recipe
+									</Button>
+								)}
+								{row.calculation && (
+									<Button
+										onClick={() => onSyncPrices(row.calculation!._id)}
+										variant="outline"
+									>
+										<Database
+											className={`h-4 w-4 ${syncingId === row.calculation._id ? "animate-pulse" : ""}`}
+										/>
+										Sync Harga
+									</Button>
+								)}
+							</div>
+						</CardContent>
+					</Card>
+				))}
+			</div>
+
+			<Card className="border-slate-200 bg-slate-950 text-white">
+				<CardHeader>
+					<CardTitle className="flex items-center gap-2 text-white">
+						<FilePenLine className="h-4 w-4 text-orange-300" />
+						Draft Manual
+					</CardTitle>
+				</CardHeader>
+				<CardContent className="space-y-3">
+					{workspace?.drafts.length ? (
+						workspace.drafts.map((draft) => (
+							<button
+								className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left transition hover:bg-white/10"
+								key={draft.calculation._id}
+								onClick={() => onOpenDraft(draft)}
+								type="button"
+							>
+								<div>
+									<div className="flex items-center gap-2">
+										<p className="font-semibold">{draft.calculation.name}</p>
+										<StatusPill status="draft" />
+									</div>
+									<p className="mt-1 text-sm text-slate-300">
+										HPP {formatCurrency(draft.metrics.totalHppPerServing)} | Margin{" "}
+										{draft.metrics.marginPercent.toFixed(1)}%
+									</p>
+								</div>
+								<ChevronRight className="h-4 w-4 text-slate-400" />
+							</button>
+						))
+					) : (
+						<div className="rounded-2xl border border-dashed border-white/15 p-5 text-sm text-slate-300">
+							Belum ada draft manual. Gunakan tombol "Buat Draft" untuk
+							membuat sandbox costing di luar produk.
+						</div>
+					)}
+				</CardContent>
+			</Card>
+		</div>
+	);
+}
+
+function EditorView({
+	currentMetrics,
+	editingId,
+	form,
+	inventory,
+	onApplyRecommendedPrice,
+	onDelete,
+	onOpenInventory,
+	onOpenProducts,
+	onReset,
+	onSave,
+	onSyncPrices,
+	onSyncRecipe,
+	recipeSyncing,
+	saving,
+	selectedDraft,
+	selectedProductRow,
+	setForm,
+	syncingId,
+	updateIngredient,
+	updateOverhead,
+	linkIngredientToInventory,
+}: {
+	currentMetrics: HppMetrics;
+	editingId: Id<"hppCalculations"> | null;
+	form: HppFormData;
+	inventory: Doc<"inventory">[] | undefined;
+	onApplyRecommendedPrice: (hppId: Id<"hppCalculations">, price: number) => void;
+	onDelete: () => void;
+	onOpenInventory: () => void;
+	onOpenProducts: () => void;
+	onReset: () => void;
+	onSave: () => void;
+	onSyncPrices: () => void;
+	onSyncRecipe: () => void;
+	recipeSyncing: boolean;
+	saving: boolean;
+	selectedDraft: PortfolioData["drafts"][number] | null;
+	selectedProductRow: PortfolioRow | null;
+					setForm: Dispatch<SetStateAction<HppFormData>>;
+	syncingId: Id<"hppCalculations"> | null;
+	updateIngredient: (
+		id: string,
+		field: keyof IngredientRow,
+		value: string | number | Id<"inventory"> | undefined
+	) => void;
+	updateOverhead: (
+		id: string,
+		field: keyof OverheadRow,
+		value: string | number
+	) => void;
+	linkIngredientToInventory: (ingredientId: string, inventoryItemId: string) => void;
+}) {
+	const recommendedPrice = currentMetrics.totalHppPerServing
+		? Math.ceil(
+				(currentMetrics.totalHppPerServing / (1 - 0.3)) / 100
+			) * 100
+		: 0;
+
+	return (
+		<div className="grid gap-6 lg:grid-cols-[1.2fr_420px]">
+			<div className="space-y-6">
+				<Card className="border-slate-200">
+					<CardHeader className="border-b border-slate-200">
+						<CardTitle className="flex flex-wrap items-center justify-between gap-3">
+							<div>
+								<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-600">
+									Workspace Editor
+								</p>
+								<h3 className="mt-1 text-xl font-black tracking-tight text-slate-900">
+									{selectedProductRow?.product.name ??
+										selectedDraft?.calculation.name ??
+										"Draft costing baru"}
+								</h3>
+							</div>
+							<div className="flex flex-wrap gap-2">
+								{selectedProductRow && <StatusPill status={selectedProductRow.status} />}
+								{selectedDraft && <StatusPill status="draft" />}
+							</div>
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-5 p-5">
+						<div className="grid gap-4 md:grid-cols-2">
+							<div className="space-y-2">
+								<Label>Nama Costing</Label>
+								<Input
+									onChange={(event) =>
+										setForm((prev) => ({ ...prev, name: event.target.value }))
+									}
+									placeholder="cth. HPP Es Kopi Susu"
+									value={form.name}
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label>Harga Jual / Porsi</Label>
+								<Input
+									min={0}
+									onChange={(event) =>
+										setForm((prev) => ({
+											...prev,
+											sellingPrice: Number(event.target.value) || 0,
+										}))
+									}
+									type="number"
+									value={form.sellingPrice || ""}
+								/>
+							</div>
+						</div>
+
+						<div className="grid gap-4 md:grid-cols-[1fr_200px]">
+							<div className="space-y-2">
+								<Label>Deskripsi</Label>
+								<Textarea
+									onChange={(event) =>
+										setForm((prev) => ({
+											...prev,
+											description: event.target.value,
+										}))
+									}
+									placeholder="Catatan batch, asumsi waste, atau konteks costing..."
+									value={form.description}
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label>Porsi per Batch</Label>
+								<Input
+									min={1}
+									onChange={(event) =>
+										setForm((prev) => ({
+											...prev,
+											servingsPerBatch: Number(event.target.value) || 1,
+										}))
+									}
+									type="number"
+									value={form.servingsPerBatch || ""}
+								/>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+
+				<Card className="border-slate-200">
+					<CardHeader className="border-b border-slate-200">
+						<CardTitle className="flex items-center justify-between gap-3">
+							<span className="flex items-center gap-2">
+								<Package className="h-4 w-4 text-orange-600" />
+								Bahan Baku
+							</span>
+							<Button
+								onClick={() =>
+									setForm((prev) => ({
+										...prev,
+										ingredients: [...prev.ingredients, createEmptyIngredient()],
+									}))
+								}
+								size="sm"
+								variant="outline"
+							>
+								<Plus className="h-4 w-4" />
+								Tambah
+							</Button>
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4 p-5">
+						{form.ingredients.map((ingredient, index) => (
+							<div
+								className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+								key={ingredient.id}
+							>
+								<div className="mb-4 flex items-center justify-between">
+									<p className="text-sm font-semibold text-slate-700">
+										Bahan #{index + 1}
+									</p>
+									{form.ingredients.length > 1 && (
+										<button
+											className="text-sm font-semibold text-rose-600"
+											onClick={() =>
+												setForm((prev) => ({
+													...prev,
+													ingredients: prev.ingredients.filter(
+														(item) => item.id !== ingredient.id
+													),
+												}))
+											}
+											type="button"
+										>
+											Hapus
+										</button>
+									)}
+								</div>
+
+								<div className="grid gap-3 md:grid-cols-3">
+									<div className="space-y-2">
+										<Label>Nama Bahan</Label>
+										<Input
+											onChange={(event) =>
+												updateIngredient(
+													ingredient.id,
+													"ingredientName",
+													event.target.value
+												)
+											}
+											value={ingredient.ingredientName}
+										/>
+									</div>
+									<div className="space-y-2">
+										<Label>Link Inventory</Label>
+										<select
+											className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+											onChange={(event) => {
+												if (event.target.value) {
+													linkIngredientToInventory(
+														ingredient.id,
+														event.target.value
+													);
+												}
+											}}
+											value={ingredient.inventoryId ?? ""}
+										>
+											<option value="">Manual</option>
+											{inventory?.map((item) => (
+												<option key={item._id} value={item._id}>
+													{item.ingredientName} ({item.unit})
+												</option>
+											))}
+										</select>
+									</div>
+									<div className="space-y-2">
+										<Label>Preset Satuan</Label>
+										<select
+											className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+											onChange={(event) => {
+												const preset = COMMON_UNITS[Number(event.target.value)];
+												if (!preset) {
+													return;
+												}
+												updateIngredient(
+													ingredient.id,
+													"purchaseUnit",
+													preset.purchase
+												);
+												updateIngredient(
+													ingredient.id,
+													"usageUnit",
+													preset.usage
+												);
+												updateIngredient(
+													ingredient.id,
+													"conversionFactor",
+													preset.factor
+												);
+											}}
+											value=""
+										>
+											<option value="">Pilih preset</option>
+											{COMMON_UNITS.map((unit, indexPreset) => (
+												<option key={`${unit.purchase}-${unit.usage}`} value={indexPreset}>
+													{unit.purchase} {"->"} {unit.usage}
+												</option>
+											))}
+										</select>
+									</div>
+								</div>
+
+								<div className="mt-3 grid gap-3 md:grid-cols-4">
+									<div className="space-y-2">
+										<Label>Harga Beli</Label>
+										<Input
+											min={0}
+											onChange={(event) =>
+												updateIngredient(
+													ingredient.id,
+													"purchasePrice",
+													Number(event.target.value) || 0
+												)
+											}
+											type="number"
+											value={ingredient.purchasePrice || ""}
+										/>
+									</div>
+									<div className="space-y-2">
+										<Label>Jumlah Beli</Label>
+										<Input
+											min={0}
+											onChange={(event) =>
+												updateIngredient(
+													ingredient.id,
+													"purchaseQuantity",
+													Number(event.target.value) || 0
+												)
+											}
+											type="number"
+											value={ingredient.purchaseQuantity || ""}
+										/>
+									</div>
+									<div className="space-y-2">
+										<Label>Satuan Beli</Label>
+										<Input
+											onChange={(event) =>
+												updateIngredient(
+													ingredient.id,
+													"purchaseUnit",
+													event.target.value
+												)
+											}
+											value={ingredient.purchaseUnit}
+										/>
+									</div>
+									<div className="space-y-2">
+										<Label>Konversi</Label>
+										<Input
+											min={1}
+											onChange={(event) =>
+												updateIngredient(
+													ingredient.id,
+													"conversionFactor",
+													Number(event.target.value) || 1
+												)
+											}
+											type="number"
+											value={ingredient.conversionFactor || ""}
+										/>
+									</div>
+								</div>
+
+								<div className="mt-3 grid gap-3 md:grid-cols-3">
+									<div className="space-y-2">
+										<Label>Pemakaian / Porsi</Label>
+										<Input
+											min={0}
+											onChange={(event) =>
+												updateIngredient(
+													ingredient.id,
+													"usagePerServing",
+													Number(event.target.value) || 0
+												)
+											}
+											type="number"
+											value={ingredient.usagePerServing || ""}
+										/>
+									</div>
+									<div className="space-y-2">
+										<Label>Satuan Pakai</Label>
+										<Input
+											onChange={(event) =>
+												updateIngredient(
+													ingredient.id,
+													"usageUnit",
+													event.target.value
+												)
+											}
+											value={ingredient.usageUnit}
+										/>
+									</div>
+									<div className="rounded-2xl border border-slate-200 bg-white p-3">
+										<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+											Biaya / Porsi
+										</p>
+										<p className="mt-2 text-lg font-black text-slate-900">
+											{formatCurrency(getIngredientCostPerServing(ingredient))}
+										</p>
+									</div>
+								</div>
+							</div>
+						))}
+					</CardContent>
+				</Card>
+
+				<Card className="border-slate-200">
+					<CardHeader className="border-b border-slate-200">
+						<CardTitle className="flex items-center justify-between">
+							<span className="flex items-center gap-2">
+								<CircleDollarSign className="h-4 w-4 text-teal-600" />
+								Overhead & Packaging
+							</span>
+							<Button
+								onClick={() =>
+									setForm((prev) => ({
+										...prev,
+										overheadCosts: [...prev.overheadCosts, createEmptyOverhead()],
+									}))
+								}
+								size="sm"
+								variant="outline"
+							>
+								<Plus className="h-4 w-4" />
+								Tambah
+							</Button>
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-3 p-5">
+						{form.overheadCosts.map((overhead) => (
+							<div className="grid gap-3 md:grid-cols-[1fr_180px_auto]" key={overhead.id}>
+								<Input
+									onChange={(event) =>
+										updateOverhead(overhead.id, "name", event.target.value)
+									}
+									placeholder="Cup, sedotan, gas, fee packing..."
+									value={overhead.name}
+								/>
+								<Input
+									min={0}
+									onChange={(event) =>
+										updateOverhead(
+											overhead.id,
+											"costPerServing",
+											Number(event.target.value) || 0
+										)
+									}
+									type="number"
+									value={overhead.costPerServing || ""}
+								/>
+								{form.overheadCosts.length > 1 && (
+									<Button
+										onClick={() =>
+											setForm((prev) => ({
+												...prev,
+												overheadCosts: prev.overheadCosts.filter(
+													(item) => item.id !== overhead.id
+												),
+											}))
+										}
+										variant="outline"
+									>
+										Hapus
+									</Button>
+								)}
+							</div>
+						))}
+					</CardContent>
+				</Card>
+			</div>
+
+			<div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
+				<Card className="border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-orange-950 text-white">
+					<CardContent className="space-y-5 p-5">
+						<div>
+							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-300">
+								Cost Health
+							</p>
+							<div className="mt-3 flex items-center gap-2">
+								{selectedProductRow ? (
+									<StatusPill status={selectedProductRow.status} />
+								) : selectedDraft ? (
+									<StatusPill status="draft" />
+								) : (
+									<StatusPill status="draft" />
+								)}
+							</div>
+							<p className="mt-3 text-sm leading-6 text-slate-300">
+								{selectedProductRow?.reason ??
+									"Draft manual ini belum terhubung ke produk tertentu."}
+							</p>
+						</div>
+
+						<div className="grid grid-cols-2 gap-3">
+							<MetricTile
+								label="HPP / Porsi"
+								value={formatCurrency(currentMetrics.totalHppPerServing)}
+							/>
+							<MetricTile
+								label="Margin"
+								value={`${currentMetrics.marginPercent.toFixed(1)}%`}
+							/>
+							<MetricTile
+								label="Laba / Porsi"
+								value={formatCurrency(currentMetrics.profitPerServing)}
+							/>
+							<MetricTile
+								label="BEP Batch"
+								value={formatNumber(currentMetrics.breakEvenServings)}
+							/>
+						</div>
+
+						<div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+							<div className="flex items-center justify-between gap-3">
+								<div>
+									<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-300">
+										Rekomendasi Harga
+									</p>
+									<p className="mt-2 text-2xl font-black">
+										{formatCurrency(recommendedPrice)}
+									</p>
+								</div>
+								<Target className="h-5 w-5 text-orange-300" />
+							</div>
+							<p className="mt-2 text-sm text-slate-300">
+								Dihitung untuk target margin 30%. Cocok dipakai sebagai baseline
+								di halaman produk.
+							</p>
+						</div>
+
+						<div className="grid gap-2">
+							<Button disabled={saving} onClick={onSave}>
+								{saving ? (
+									<RefreshCw className="h-4 w-4 animate-spin" />
+								) : (
+									<CheckCircle2 className="h-4 w-4" />
+								)}
+								Simpan Workspace
+							</Button>
+							<Button onClick={onReset} variant="outline">
+								Refresh Form
+							</Button>
+							{selectedProductRow?.recipe && (
+								<Button onClick={onSyncRecipe} variant="outline">
+									<RefreshCw
+										className={`h-4 w-4 ${recipeSyncing ? "animate-spin" : ""}`}
+									/>
+									Sync dari Recipe
+								</Button>
+							)}
+							{editingId && (
+								<Button onClick={onSyncPrices} variant="outline">
+									<Database
+										className={`h-4 w-4 ${syncingId === editingId ? "animate-pulse" : ""}`}
+									/>
+									Sync Harga Bahan
+								</Button>
+							)}
+							{editingId && recommendedPrice > 0 && (
+								<Button
+									onClick={() => onApplyRecommendedPrice(editingId, recommendedPrice)}
+									variant="outline"
+								>
+									<TrendingUp className="h-4 w-4" />
+									Terapkan ke Harga Produk
+								</Button>
+							)}
+							<div className="grid grid-cols-2 gap-2">
+								<Button onClick={onOpenProducts} variant="outline">
+									Produk
+								</Button>
+								<Button onClick={onOpenInventory} variant="outline">
+									Inventory
+								</Button>
+							</div>
+							{editingId && (
+								<Button onClick={onDelete} variant="destructive">
+									Hapus Kalkulasi
+								</Button>
+							)}
+						</div>
+					</CardContent>
+				</Card>
+			</div>
+		</div>
+	);
+}
+
+function MetricTile({ label, value }: { label: string; value: string }) {
+	return (
+		<div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+			<p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+				{label}
+			</p>
+			<p className="mt-2 text-lg font-black text-white">{value}</p>
+		</div>
+	);
+}
+
+function ImpactView({
+	impactRows,
+	onApplyRecommendedPrice,
+	onOpenEditor,
+	setSimChangePercent,
+	setSimIngredientIdx,
+	setSimulateId,
+	setTargetMargin,
+	simChangePercent,
+	simIngredientIdx,
+	simulateId,
+	simulation,
+	targetMargin,
+}: {
+	impactRows: MarginAnalysisRow[];
+	onApplyRecommendedPrice: (hppId: Id<"hppCalculations">, price: number) => void;
+	onOpenEditor: (hppId: Id<"hppCalculations">) => void;
+	setSimChangePercent: (value: number) => void;
+	setSimIngredientIdx: (value: number | undefined) => void;
+	setSimulateId: (value: Id<"hppCalculations"> | null) => void;
+	setTargetMargin: (value: number) => void;
+	simChangePercent: number;
+	simIngredientIdx: number | undefined;
+	simulateId: Id<"hppCalculations"> | null;
+	simulation: SimulationResult;
+	targetMargin: number;
+}) {
+	const selectedImpact = simulateId
+		? impactRows.find((row) => row.id === simulateId) ?? null
+		: null;
+
+	return (
+		<div className="space-y-6">
+			<Card className="border-slate-200">
+				<CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
+					<div>
+						<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-600">
+							Margin Guardrail
+						</p>
+						<h3 className="mt-1 text-xl font-black tracking-tight text-slate-900">
+							Tentukan target margin dan lihat produk mana yang perlu tindakan.
+						</h3>
+					</div>
+					<div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+						<input
+							className="w-40"
+							max={80}
+							min={10}
+							onChange={(event) => setTargetMargin(Number(event.target.value))}
+							type="range"
+							value={targetMargin}
+						/>
+						<span className="min-w-12 text-right text-lg font-black text-slate-900">
+							{targetMargin}%
+						</span>
+					</div>
+				</CardContent>
+			</Card>
+
+			<div className="grid gap-4 xl:grid-cols-2">
+				{impactRows.map((row) => (
+					<Card className="border-slate-200 shadow-sm" key={row.id}>
+						<CardContent className="space-y-4 p-5">
+							<div className="flex items-start justify-between gap-3">
+								<div>
+									<div className="flex items-center gap-2">
+										<h4 className="font-black tracking-tight text-slate-900">
+											{row.name}
+										</h4>
+										<span
+											className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+												row.status === "ok"
+													? "bg-emerald-100 text-emerald-700"
+													: row.status === "warning"
+														? "bg-amber-100 text-amber-700"
+														: "bg-rose-100 text-rose-700"
+											}`}
+										>
+											{row.currentMarginPercent.toFixed(1)}%
+										</span>
+									</div>
+									<p className="mt-2 text-sm text-slate-600">
+										HPP {formatCurrency(row.hppPerServing)} | Harga jual{" "}
+										{formatCurrency(row.currentSellingPrice)}
+									</p>
+								</div>
+								<Sparkles className="h-5 w-5 text-orange-500" />
+							</div>
+
+							<div className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
+								<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-700">
+									Recommended Price
+								</p>
+								<div className="mt-2 flex items-center justify-between">
+									<p className="text-2xl font-black text-slate-900">
+										{formatCurrency(row.recommendedSellingPrice)}
+									</p>
+									<p className="text-sm font-semibold text-slate-600">
+										Delta {formatCurrency(row.priceDiff)}
+									</p>
+								</div>
+							</div>
+
+							<div className="flex flex-wrap gap-2">
+								<Button
+									onClick={() =>
+										onApplyRecommendedPrice(row.id, row.recommendedSellingPrice)
+									}
+								>
+									<TrendingUp className="h-4 w-4" />
+									Terapkan Harga
+								</Button>
+								<Button onClick={() => onOpenEditor(row.id)} variant="outline">
+									<FilePenLine className="h-4 w-4" />
+									Buka Editor
+								</Button>
+								<Button
+									onClick={() => setSimulateId(row.id)}
+									variant="outline"
+								>
+									<TrendingDown className="h-4 w-4" />
+									Simulasi
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
+				))}
+			</div>
+
+			<Card className="border-slate-200">
+				<CardHeader className="border-b border-slate-200">
+					<CardTitle className="flex items-center gap-2">
+						<BarChart3 className="h-4 w-4 text-teal-600" />
+						What-if Simulation
+					</CardTitle>
+				</CardHeader>
+				<CardContent className="space-y-5 p-5">
+					<select
+						className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+						onChange={(event) =>
+							setSimulateId((event.target.value || null) as Id<"hppCalculations"> | null)
+						}
+						value={simulateId ?? ""}
+					>
+						<option value="">Pilih produk / HPP</option>
+						{impactRows.map((row) => (
+							<option key={row.id} value={row.id}>
+								{row.name}
+							</option>
+						))}
+					</select>
+
+					<div className="grid gap-4 md:grid-cols-2">
+						<div className="space-y-2">
+							<Label>Perubahan harga bahan</Label>
+							<Input
+								max={100}
+								min={-50}
+								onChange={(event) => setSimChangePercent(Number(event.target.value))}
+								type="number"
+								value={simChangePercent}
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label>Index bahan yang diubah</Label>
+							<Input
+								onChange={(event) =>
+									setSimIngredientIdx(
+										event.target.value === ""
+											? undefined
+											: Number(event.target.value)
+									)
+								}
+								placeholder="Kosongkan untuk semua bahan"
+								type="number"
+								value={simIngredientIdx ?? ""}
+							/>
+						</div>
+					</div>
+
+					{selectedImpact && simulation ? (
+						<div className="grid gap-4 md:grid-cols-2">
+							<div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+								<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+									Sebelum
+								</p>
+								<p className="mt-2 text-sm text-slate-700">
+									HPP {formatCurrency(simulation.original.hppPerServing)}
+								</p>
+								<p className="mt-1 text-sm text-slate-700">
+									Margin {simulation.original.marginPercent.toFixed(1)}%
+								</p>
+							</div>
+							<div className="rounded-2xl border border-teal-200 bg-teal-50 p-4">
+								<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700">
+									Setelah
+								</p>
+								<p className="mt-2 text-sm text-slate-700">
+									HPP {formatCurrency(simulation.simulated.hppPerServing)}
+								</p>
+								<p className="mt-1 text-sm text-slate-700">
+									Margin {simulation.simulated.marginPercent.toFixed(1)}%
+								</p>
+							</div>
+							<div className="rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2">
+								<div className="flex flex-wrap items-center justify-between gap-3">
+									<div>
+										<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+											Dampak
+										</p>
+										<p className="mt-2 text-sm text-slate-700">
+											Profit berubah {formatCurrency(simulation.delta.profitDelta)} dan
+											margin berubah {simulation.delta.marginDelta.toFixed(1)}%.
+										</p>
+									</div>
+									<Button
+										onClick={() =>
+											onApplyRecommendedPrice(
+												selectedImpact.id,
+												simulation.recommendedSellingPrice
+											)
+										}
+									>
+										<ArrowRight className="h-4 w-4" />
+										Pakai Harga Simulasi
+									</Button>
+								</div>
+							</div>
+						</div>
+					) : (
+						<div className="rounded-2xl border border-dashed border-slate-200 p-5 text-sm text-slate-500">
+							Pilih satu HPP di atas untuk melihat dampak kenaikan atau penurunan
+							harga bahan ke profit dan margin.
+						</div>
+					)}
+				</CardContent>
+			</Card>
+		</div>
+	);
+}
+

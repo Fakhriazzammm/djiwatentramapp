@@ -1,38 +1,318 @@
 import { v } from "convex/values";
+import type { Doc, Id } from "./_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
+import {
+	computeHppFromCalculation,
+	computeHppMetrics,
+	getIngredientPriceDelta,
+	getInventoryLinkedPurchasePrice,
+	roundUpToNearest,
+	type HppIngredientInput,
+	type HppOverheadInput,
+	type InventoryCostSnapshot,
+} from "./lib/hpp";
 
-// ─── Shared HPP calculation helper (used by multiple queries) ────────────────
+const hppIngredientValidator = v.object({
+	inventoryId: v.optional(v.id("inventory")),
+	ingredientName: v.string(),
+	purchasePrice: v.number(),
+	purchaseQuantity: v.number(),
+	purchaseUnit: v.string(),
+	usagePerServing: v.number(),
+	usageUnit: v.string(),
+	conversionFactor: v.number(),
+});
 
-function computeHppPerServing(calc: {
-	ingredients: {
-		purchasePrice: number;
-		purchaseQuantity: number;
-		conversionFactor: number;
-		usagePerServing: number;
-	}[];
-	overheadCosts: { costPerServing: number }[];
-}) {
-	const ingredientCost = calc.ingredients.reduce((sum, ing) => {
-		const totalBase = ing.purchaseQuantity * ing.conversionFactor;
-		const costBase = totalBase > 0 ? ing.purchasePrice / totalBase : 0;
-		return sum + costBase * ing.usagePerServing;
-	}, 0);
-	const overheadCost = calc.overheadCosts.reduce(
-		(sum, oh) => sum + oh.costPerServing,
-		0
-	);
-	return ingredientCost + overheadCost;
+const hppOverheadValidator = v.object({
+	name: v.string(),
+	costPerServing: v.number(),
+});
+
+type HppSourceType = "manual" | "recipe_based";
+type ProductCostingStatus =
+	| "linked"
+	| "outdated"
+	| "missing_recipe"
+	| "missing_cost";
+
+type RecipeDraft = {
+	product: Doc<"products">;
+	recipe: Doc<"recipes">;
+	ingredients: HppIngredientInput[];
+	sellingPrice: number;
+	variantName?: string;
+};
+
+function mapById<T extends { _id: string }>(items: T[]) {
+	return Object.fromEntries(items.map((item) => [item._id, item])) as Record<
+		string,
+		T
+	>;
 }
 
-// Get all HPP calculations
+function sortLinkedCalculations(
+	calculations: Doc<"hppCalculations">[]
+): Doc<"hppCalculations">[] {
+	return [...calculations].sort((left, right) => {
+		const rightTimestamp = right.updatedAt ?? right.createdAt;
+		const leftTimestamp = left.updatedAt ?? left.createdAt;
+		return rightTimestamp - leftTimestamp;
+	});
+}
+
+function pickLatestCalculationForProduct(
+	calculations: Doc<"hppCalculations">[],
+	productId: Id<"products">
+) {
+	return sortLinkedCalculations(
+		calculations.filter((calculation) => calculation.productId === productId)
+	)[0] ?? null;
+}
+
+async function loadInventoryCostMap(
+	ctx: QueryCtx | MutationCtx
+): Promise<Record<string, InventoryCostSnapshot>> {
+	const inventoryItems = await ctx.db.query("inventory").collect();
+	const result: Record<string, InventoryCostSnapshot> = {};
+
+	for (const item of inventoryItems) {
+		const transactions = await ctx.db
+			.query("inventoryTransactions")
+			.withIndex("by_inventory", (q) => q.eq("inventoryId", item._id))
+			.order("desc")
+			.collect();
+
+		const restocks = transactions.filter(
+			(transaction) =>
+				transaction.type === "restock" && transaction.costPerUnit != null
+		);
+		const latestRestock = restocks[0];
+
+		let avgCostPerUnit: number | undefined;
+		if (restocks.length > 0) {
+			const totalCost = restocks.reduce(
+				(sum, transaction) =>
+					sum + (transaction.costPerUnit ?? 0) * transaction.quantity,
+				0
+			);
+			const totalQuantity = restocks.reduce(
+				(sum, transaction) => sum + transaction.quantity,
+				0
+			);
+			avgCostPerUnit = totalQuantity > 0 ? totalCost / totalQuantity : undefined;
+		}
+
+		result[item._id] = {
+			inventoryId: item._id,
+			ingredientName: item.ingredientName,
+			unit: item.unit,
+			displayUnit: item.displayUnit,
+			conversionFactor: item.conversionFactor,
+			latestCostPerUnit: latestRestock?.costPerUnit,
+			latestRestockDate: latestRestock?.timestamp,
+			avgCostPerUnit,
+		};
+	}
+
+	return result;
+}
+
+async function getRecipeWithFallback(
+	ctx: QueryCtx | MutationCtx,
+	productId: Id<"products">,
+	variantName?: string
+) {
+	const exactRecipe = await ctx.db
+		.query("recipes")
+		.withIndex("by_product_variant", (q) =>
+			q.eq("productId", productId).eq("variantName", variantName)
+		)
+		.first();
+
+	if (exactRecipe) {
+		return exactRecipe;
+	}
+
+	if (variantName !== undefined) {
+		return await ctx.db
+			.query("recipes")
+			.withIndex("by_product_variant", (q) =>
+				q.eq("productId", productId).eq("variantName", undefined)
+			)
+			.first();
+	}
+
+	return null;
+}
+
+async function buildRecipeDraft(
+	ctx: QueryCtx | MutationCtx,
+	productId: Id<"products">,
+	variantName?: string
+): Promise<RecipeDraft | null> {
+	const [product, recipe, inventoryItems, inventoryCosts] = await Promise.all([
+		ctx.db.get(productId),
+		getRecipeWithFallback(ctx, productId, variantName),
+		ctx.db.query("inventory").collect(),
+		loadInventoryCostMap(ctx),
+	]);
+
+	if (!product || !recipe) {
+		return null;
+	}
+
+	const inventoryById = mapById(inventoryItems);
+	const ingredients: HppIngredientInput[] = [];
+
+	for (const recipeIngredient of recipe.ingredients) {
+		const inventoryItem = inventoryById[recipeIngredient.inventoryId];
+		if (!inventoryItem) {
+			continue;
+		}
+
+		const conversionFactor = inventoryItem.conversionFactor ?? 1;
+		const purchaseUnit = inventoryItem.displayUnit ?? inventoryItem.unit;
+		const latestCost = inventoryCosts[recipeIngredient.inventoryId]?.latestCostPerUnit;
+		const purchasePrice = getInventoryLinkedPurchasePrice(
+			{
+				ingredientName: inventoryItem.ingredientName,
+				purchasePrice: 0,
+				purchaseQuantity: 1,
+				purchaseUnit,
+				usagePerServing: recipeIngredient.amount,
+				usageUnit: inventoryItem.unit,
+				conversionFactor,
+				inventoryId: inventoryItem._id,
+			},
+			latestCost
+		);
+
+		ingredients.push({
+			inventoryId: inventoryItem._id,
+			ingredientName: inventoryItem.ingredientName,
+			purchasePrice,
+			purchaseQuantity: 1,
+			purchaseUnit,
+			usagePerServing: recipeIngredient.amount,
+			usageUnit: inventoryItem.unit,
+			conversionFactor,
+		});
+	}
+
+	return {
+		product,
+		recipe,
+		ingredients,
+		sellingPrice: product.promoPrice ?? product.price,
+		variantName,
+	};
+}
+
+function buildHppInsertDocument(args: {
+	name: string;
+	description?: string;
+	ingredients: HppIngredientInput[];
+	overheadCosts: HppOverheadInput[];
+	servingsPerBatch: number;
+	sellingPrice: number;
+	productId?: Id<"products">;
+	sourceType?: HppSourceType;
+	createdAt: number;
+	updatedAt: number;
+	lastCostSyncAt?: number;
+	lastRecipeSyncAt?: number;
+}) {
+	return {
+		name: args.name,
+		...(args.description !== undefined ? { description: args.description } : {}),
+		ingredients: args.ingredients,
+		overheadCosts: args.overheadCosts,
+		servingsPerBatch: args.servingsPerBatch,
+		sellingPrice: args.sellingPrice,
+		...(args.productId !== undefined ? { productId: args.productId } : {}),
+		...(args.sourceType !== undefined ? { sourceType: args.sourceType } : {}),
+		...(args.lastCostSyncAt !== undefined
+			? { lastCostSyncAt: args.lastCostSyncAt }
+			: {}),
+		...(args.lastRecipeSyncAt !== undefined
+			? { lastRecipeSyncAt: args.lastRecipeSyncAt }
+			: {}),
+		createdAt: args.createdAt,
+		updatedAt: args.updatedAt,
+	};
+}
+
+function getProductCostingStatus(input: {
+	recipe: Doc<"recipes"> | null;
+	calculation: Doc<"hppCalculations"> | null;
+	missingInventoryLinks: number;
+	missingCostCount: number;
+	outdatedIngredientCount: number;
+}): { status: ProductCostingStatus; reason: string } {
+	if (!input.recipe) {
+		return {
+			status: "missing_recipe",
+			reason: "Produk belum punya recipe yang bisa dipakai untuk costing.",
+		};
+	}
+
+	if (!input.calculation) {
+		return {
+			status: "missing_cost",
+			reason: "Recipe sudah ada, tetapi HPP produk ini belum dibuat.",
+		};
+	}
+
+	if (input.missingInventoryLinks > 0) {
+		return {
+			status: "missing_cost",
+			reason: "Masih ada bahan manual yang belum terhubung ke inventory.",
+		};
+	}
+
+	if (input.missingCostCount > 0) {
+		return {
+			status: "missing_cost",
+			reason: "Ada bahan yang belum punya histori harga terbaru.",
+		};
+	}
+
+	if (input.outdatedIngredientCount > 0) {
+		return {
+			status: "outdated",
+			reason: "Harga bahan berubah dan costing perlu disinkronkan ulang.",
+		};
+	}
+
+	return {
+		status: "linked",
+		reason: "Costing produk sudah tersinkron dengan recipe dan inventory.",
+	};
+}
+
+function getStatusOrder(status: ProductCostingStatus) {
+	switch (status) {
+		case "outdated":
+			return 0;
+		case "missing_cost":
+			return 1;
+		case "missing_recipe":
+			return 2;
+		case "linked":
+		default:
+			return 3;
+	}
+}
+
 export const getHppCalculations = query({
 	args: {},
 	handler: async (ctx) => {
-		return await ctx.db.query("hppCalculations").collect();
+		const calculations = await ctx.db.query("hppCalculations").collect();
+		return sortLinkedCalculations(calculations);
 	},
 });
 
-// Get a single HPP calculation by ID
 export const getHppCalculation = query({
 	args: { id: v.id("hppCalculations") },
 	handler: async (ctx, args) => {
@@ -40,276 +320,137 @@ export const getHppCalculation = query({
 	},
 });
 
-// Get HPP calculation linked to a product
 export const getHppByProduct = query({
 	args: { productId: v.id("products") },
 	handler: async (ctx, args) => {
-		return await ctx.db
+		const linkedCalculations = await ctx.db
 			.query("hppCalculations")
 			.withIndex("by_product", (q) => q.eq("productId", args.productId))
-			.first();
+			.collect();
+		return pickLatestCalculationForProduct(linkedCalculations, args.productId);
 	},
 });
 
-// ─── Inventory Price Sync ────────────────────────────────────────────────────
-
-/**
- * Get latest purchase costs for all inventory items.
- * Pulls the most recent restock transaction with costPerUnit for each item.
- */
 export const getLatestInventoryCosts = query({
 	args: {},
 	handler: async (ctx) => {
-		const inventory = await ctx.db.query("inventory").collect();
-		const result: Record<
-			string,
-			{
-				inventoryId: string;
-				ingredientName: string;
-				unit: string;
-				displayUnit?: string;
-				conversionFactor?: number;
-				latestCostPerUnit?: number;
-				latestRestockDate?: number;
-				avgCostPerUnit?: number;
-			}
-		> = {};
-
-		for (const item of inventory) {
-			const transactions = await ctx.db
-				.query("inventoryTransactions")
-				.withIndex("by_inventory", (q) => q.eq("inventoryId", item._id))
-				.order("desc")
-				.collect();
-
-			// Find latest restock with costPerUnit
-			const restocks = transactions.filter(
-				(t) => t.type === "restock" && t.costPerUnit != null
-			);
-			const latestRestock = restocks[0];
-
-			// Calculate average cost from all restocks that have costPerUnit
-			let avgCostPerUnit: number | undefined;
-			if (restocks.length > 0) {
-				const totalCost = restocks.reduce(
-					(sum, t) => sum + (t.costPerUnit ?? 0) * t.quantity,
-					0
-				);
-				const totalQty = restocks.reduce((sum, t) => sum + t.quantity, 0);
-				avgCostPerUnit = totalQty > 0 ? totalCost / totalQty : undefined;
-			}
-
-			result[item._id] = {
-				inventoryId: item._id,
-				ingredientName: item.ingredientName,
-				unit: item.unit,
-				displayUnit: item.displayUnit,
-				conversionFactor: item.conversionFactor,
-				latestCostPerUnit: latestRestock?.costPerUnit ?? undefined,
-				latestRestockDate: latestRestock?.timestamp,
-				avgCostPerUnit,
-			};
-		}
-
-		return result;
+		return await loadInventoryCostMap(ctx);
 	},
 });
 
-// ─── Recipe Integration ──────────────────────────────────────────────────────
-
-/**
- * Generate HPP data from an existing product recipe.
- * Returns ingredient data pre-populated with inventory info & latest costs,
- * ready to be loaded into the HPP calculator form.
- */
 export const generateHppFromRecipe = query({
 	args: { productId: v.id("products"), variantName: v.optional(v.string()) },
 	handler: async (ctx, args) => {
-		// Find the recipe
-		let recipe = await ctx.db
-			.query("recipes")
-			.withIndex("by_product_variant", (q) =>
-				q.eq("productId", args.productId).eq("variantName", args.variantName)
-			)
-			.first();
-
-		// Fallback to base recipe (no variant) if not found
-		if (!recipe && args.variantName) {
-			recipe = await ctx.db
-				.query("recipes")
-				.withIndex("by_product_variant", (q) =>
-					q.eq("productId", args.productId).eq("variantName", undefined)
-				)
-				.first();
-		}
-
-		if (!recipe) {
+		const draft = await buildRecipeDraft(ctx, args.productId, args.variantName);
+		if (!draft) {
 			return null;
-		}
-
-		const product = await ctx.db.get(args.productId);
-		if (!product) {
-			return null;
-		}
-
-		// Build ingredients with inventory info and latest costs
-		const ingredients = [];
-		for (const recipeIng of recipe.ingredients) {
-			const invItem = await ctx.db.get(recipeIng.inventoryId);
-			if (!invItem) {
-				continue;
-			}
-
-			// Get latest restock cost
-			const restocks = await ctx.db
-				.query("inventoryTransactions")
-				.withIndex("by_inventory", (q) =>
-					q.eq("inventoryId", recipeIng.inventoryId)
-				)
-				.order("desc")
-				.collect();
-
-			const latestRestock = restocks.find(
-				(t) => t.type === "restock" && t.costPerUnit != null
-			);
-
-			// Determine purchase unit / conversion
-			const displayUnit = invItem.displayUnit || invItem.unit;
-			const convFactor = invItem.conversionFactor || 1;
-
-			// costPerUnit from transaction is per base unit.
-			// purchasePrice = costPerUnit * conversionFactor (price per display unit)
-			const costPerBaseUnit = latestRestock?.costPerUnit ?? 0;
-			const purchasePrice = costPerBaseUnit * convFactor;
-
-			ingredients.push({
-				inventoryId: invItem._id,
-				ingredientName: invItem.ingredientName,
-				purchasePrice,
-				purchaseQuantity: 1,
-				purchaseUnit: displayUnit,
-				usagePerServing: recipeIng.amount,
-				usageUnit: invItem.unit,
-				conversionFactor: convFactor,
-			});
 		}
 
 		return {
-			productId: product._id,
-			productName: product.name,
-			sellingPrice: product.promoPrice ?? product.price,
-			ingredients,
+			productId: draft.product._id,
+			productName: draft.product.name,
+			sellingPrice: draft.sellingPrice,
+			ingredients: draft.ingredients,
 			variantName: args.variantName,
 		};
 	},
 });
 
-/**
- * Get all products that have recipes defined (for the import picker).
- */
 export const getProductsWithRecipes = query({
 	args: {},
 	handler: async (ctx) => {
 		const recipes = await ctx.db.query("recipes").collect();
-		const productIds = [...new Set(recipes.map((r) => r.productId))];
+		const uniqueProductIds = [...new Set(recipes.map((recipe) => recipe.productId))];
+		const results: {
+			product: Doc<"products">;
+			variants: string[];
+		}[] = [];
 
-		const results = [];
-		for (const pid of productIds) {
-			const product = await ctx.db.get(pid);
+		for (const productId of uniqueProductIds) {
+			const product = await ctx.db.get(productId);
 			if (!product) {
 				continue;
 			}
 
-			const productRecipes = recipes.filter((r) => r.productId === pid);
+			const productRecipes = recipes.filter((recipe) => recipe.productId === productId);
 			results.push({
 				product,
 				variants: productRecipes
-					.map((r) => r.variantName)
-					.filter((v): v is string => v != null),
+					.map((recipe) => recipe.variantName)
+					.filter((variant): variant is string => variant != null),
 			});
 		}
 
-		return results;
+		return results.sort((left, right) =>
+			left.product.name.localeCompare(right.product.name)
+		);
 	},
 });
 
-// ─── CRUD ────────────────────────────────────────────────────────────────────
-
-// Create a new HPP calculation
 export const createHppCalculation = mutation({
 	args: {
 		name: v.string(),
 		description: v.optional(v.string()),
-		ingredients: v.array(
-			v.object({
-				inventoryId: v.optional(v.id("inventory")),
-				ingredientName: v.string(),
-				purchasePrice: v.number(),
-				purchaseQuantity: v.number(),
-				purchaseUnit: v.string(),
-				usagePerServing: v.number(),
-				usageUnit: v.string(),
-				conversionFactor: v.number(),
-			})
-		),
-		overheadCosts: v.array(
-			v.object({
-				name: v.string(),
-				costPerServing: v.number(),
-			})
-		),
+		ingredients: v.array(hppIngredientValidator),
+		overheadCosts: v.array(hppOverheadValidator),
 		servingsPerBatch: v.number(),
 		sellingPrice: v.number(),
 		productId: v.optional(v.id("products")),
+		sourceType: v.optional(v.union(v.literal("manual"), v.literal("recipe_based"))),
 	},
 	handler: async (ctx, args) => {
 		const now = Date.now();
-		return await ctx.db.insert("hppCalculations", {
-			...args,
-			createdAt: now,
-			updatedAt: now,
-		});
+		return await ctx.db.insert(
+			"hppCalculations",
+			buildHppInsertDocument({
+				...args,
+				sourceType: args.sourceType ?? "manual",
+				createdAt: now,
+				updatedAt: now,
+			})
+		);
 	},
 });
 
-// Update an existing HPP calculation
 export const updateHppCalculation = mutation({
 	args: {
 		id: v.id("hppCalculations"),
 		name: v.string(),
 		description: v.optional(v.string()),
-		ingredients: v.array(
-			v.object({
-				inventoryId: v.optional(v.id("inventory")),
-				ingredientName: v.string(),
-				purchasePrice: v.number(),
-				purchaseQuantity: v.number(),
-				purchaseUnit: v.string(),
-				usagePerServing: v.number(),
-				usageUnit: v.string(),
-				conversionFactor: v.number(),
-			})
-		),
-		overheadCosts: v.array(
-			v.object({
-				name: v.string(),
-				costPerServing: v.number(),
-			})
-		),
+		ingredients: v.array(hppIngredientValidator),
+		overheadCosts: v.array(hppOverheadValidator),
 		servingsPerBatch: v.number(),
 		sellingPrice: v.number(),
 		productId: v.optional(v.id("products")),
+		sourceType: v.optional(v.union(v.literal("manual"), v.literal("recipe_based"))),
 	},
 	handler: async (ctx, args) => {
-		const { id, ...data } = args;
-		await ctx.db.patch(id, {
-			...data,
-			updatedAt: Date.now(),
-		});
+		const current = await ctx.db.get(args.id);
+		if (!current) {
+			throw new Error("HPP calculation not found");
+		}
+
+		const { id, ...nextData } = args;
+		await ctx.db.replace(
+			id,
+			buildHppInsertDocument({
+				name: nextData.name,
+				description: nextData.description,
+				ingredients: nextData.ingredients,
+				overheadCosts: nextData.overheadCosts,
+				servingsPerBatch: nextData.servingsPerBatch,
+				sellingPrice: nextData.sellingPrice,
+				productId: nextData.productId,
+				sourceType: nextData.sourceType ?? current.sourceType ?? "manual",
+				createdAt: current.createdAt,
+				updatedAt: Date.now(),
+				lastCostSyncAt: current.lastCostSyncAt,
+				lastRecipeSyncAt: current.lastRecipeSyncAt,
+			})
+		);
 	},
 });
 
-// Delete an HPP calculation
 export const deleteHppCalculation = mutation({
 	args: { id: v.id("hppCalculations") },
 	handler: async (ctx, args) => {
@@ -317,66 +458,48 @@ export const deleteHppCalculation = mutation({
 	},
 });
 
-/**
- * Sync HPP calculation ingredients with latest inventory prices.
- * Updates the purchasePrice of each ingredient that is linked to an inventory item.
- */
 export const syncHppWithInventoryPrices = mutation({
 	args: { id: v.id("hppCalculations") },
 	handler: async (ctx, args) => {
-		const hpp = await ctx.db.get(args.id);
-		if (!hpp) {
+		const calculation = await ctx.db.get(args.id);
+		if (!calculation) {
 			throw new Error("HPP calculation not found");
 		}
 
+		const inventoryCosts = await loadInventoryCostMap(ctx);
 		let updatedCount = 0;
-		const updatedIngredients = [];
 
-		for (const ing of hpp.ingredients) {
-			if (!ing.inventoryId) {
-				updatedIngredients.push(ing);
-				continue;
+		const ingredients = calculation.ingredients.map((ingredient) => {
+			if (!ingredient.inventoryId) {
+				return ingredient;
 			}
 
-			const invItem = await ctx.db.get(ing.inventoryId);
-			if (!invItem) {
-				updatedIngredients.push(ing);
-				continue;
+			const latestCostPerUnit =
+				inventoryCosts[ingredient.inventoryId]?.latestCostPerUnit;
+			if (latestCostPerUnit == null) {
+				return ingredient;
 			}
 
-			// Find latest restock with cost
-			const transactions = await ctx.db
-				.query("inventoryTransactions")
-				.withIndex("by_inventory", (q) => q.eq("inventoryId", ing.inventoryId!))
-				.order("desc")
-				.collect();
-
-			const latestRestock = transactions.find(
-				(t) => t.type === "restock" && t.costPerUnit != null
+			const nextPurchasePrice = getInventoryLinkedPurchasePrice(
+				ingredient,
+				latestCostPerUnit
 			);
-
-			if (latestRestock?.costPerUnit != null) {
-				const newPurchasePrice =
-					latestRestock.costPerUnit * ing.conversionFactor;
-
-				if (newPurchasePrice !== ing.purchasePrice) {
-					updatedIngredients.push({
-						...ing,
-						purchasePrice: newPurchasePrice,
-					});
-					updatedCount++;
-				} else {
-					updatedIngredients.push(ing);
-				}
-			} else {
-				updatedIngredients.push(ing);
+			if (nextPurchasePrice === ingredient.purchasePrice) {
+				return ingredient;
 			}
-		}
+
+			updatedCount += 1;
+			return {
+				...ingredient,
+				purchasePrice: nextPurchasePrice,
+			};
+		});
 
 		if (updatedCount > 0) {
 			await ctx.db.patch(args.id, {
-				ingredients: updatedIngredients,
+				ingredients,
 				updatedAt: Date.now(),
+				lastCostSyncAt: Date.now(),
 			});
 		}
 
@@ -384,16 +507,125 @@ export const syncHppWithInventoryPrices = mutation({
 	},
 });
 
-// ─── Dashboard & Analytics ───────────────────────────────────────────────────
+export const upsertHppFromRecipe = mutation({
+	args: {
+		productId: v.id("products"),
+		variantName: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const draft = await buildRecipeDraft(ctx, args.productId, args.variantName);
+		if (!draft) {
+			throw new Error("Recipe untuk produk ini belum tersedia");
+		}
 
-/**
- * Get HPP summary for all products (used by dashboard, products page, orders).
- * Returns a map of productId → { hppPerServing, sellingPrice, margin, name }
- */
+		const existingCalculations = await ctx.db
+			.query("hppCalculations")
+			.withIndex("by_product", (q) => q.eq("productId", args.productId))
+			.collect();
+		const existing = pickLatestCalculationForProduct(
+			existingCalculations,
+			args.productId
+		);
+
+		const missingCostCount = draft.ingredients.filter(
+			(ingredient) => ingredient.purchasePrice <= 0
+		).length;
+		const now = Date.now();
+		const nameSuffix = draft.variantName ? ` (${draft.variantName})` : "";
+		const description = `Sinkron dari recipe ${draft.product.name}${nameSuffix}`;
+		const overheadCosts = existing?.overheadCosts ?? [];
+		const servingsPerBatch = existing?.servingsPerBatch ?? 1;
+
+		if (existing) {
+			await ctx.db.patch(existing._id, {
+				name: existing.name || `HPP ${draft.product.name}${nameSuffix}`,
+				description,
+				ingredients: draft.ingredients,
+				overheadCosts,
+				servingsPerBatch,
+				sellingPrice: draft.sellingPrice,
+				sourceType: "recipe_based",
+				updatedAt: now,
+				lastCostSyncAt: now,
+				lastRecipeSyncAt: now,
+			});
+
+			return {
+				id: existing._id,
+				created: false,
+				ingredientCount: draft.ingredients.length,
+				missingCostCount,
+			};
+		}
+
+		const createdId = await ctx.db.insert(
+			"hppCalculations",
+			buildHppInsertDocument({
+				name: `HPP ${draft.product.name}${nameSuffix}`,
+				description,
+				ingredients: draft.ingredients,
+				overheadCosts,
+				servingsPerBatch,
+				sellingPrice: draft.sellingPrice,
+				productId: draft.product._id,
+				sourceType: "recipe_based",
+				createdAt: now,
+				updatedAt: now,
+				lastCostSyncAt: now,
+				lastRecipeSyncAt: now,
+			})
+		);
+
+		return {
+			id: createdId,
+			created: true,
+			ingredientCount: draft.ingredients.length,
+			missingCostCount,
+		};
+	},
+});
+
+export const applyHppSellingPriceToProduct = mutation({
+	args: {
+		id: v.id("hppCalculations"),
+		sellingPrice: v.number(),
+		syncProductPrice: v.optional(v.boolean()),
+	},
+	handler: async (ctx, args) => {
+		const calculation = await ctx.db.get(args.id);
+		if (!calculation) {
+			throw new Error("HPP calculation not found");
+		}
+
+		await ctx.db.patch(args.id, {
+			sellingPrice: args.sellingPrice,
+			updatedAt: Date.now(),
+		});
+
+		let productUpdated = false;
+		if (args.syncProductPrice && calculation.productId) {
+			const product = await ctx.db.get(calculation.productId);
+			if (product) {
+				if (product.promoPrice != null) {
+					await ctx.db.patch(product._id, { promoPrice: args.sellingPrice });
+				} else {
+					await ctx.db.patch(product._id, { price: args.sellingPrice });
+				}
+				productUpdated = true;
+			}
+		}
+
+		return {
+			productUpdated,
+			productId: calculation.productId,
+		};
+	},
+});
+
 export const getHppProductMap = query({
 	args: {},
 	handler: async (ctx) => {
-		const allHpp = await ctx.db.query("hppCalculations").collect();
+		const calculations = await ctx.db.query("hppCalculations").collect();
 		const result: Record<
 			string,
 			{
@@ -406,31 +638,37 @@ export const getHppProductMap = query({
 			}
 		> = {};
 
-		for (const calc of allHpp) {
-			const hpp = computeHppPerServing(calc);
-			const profit = calc.sellingPrice - hpp;
-			const margin =
-				calc.sellingPrice > 0 ? (profit / calc.sellingPrice) * 100 : 0;
+		const latestLinkedCalculations = sortLinkedCalculations(
+			calculations.filter((calculation) => calculation.productId != null)
+		);
 
-			// Index by productId if linked
-			if (calc.productId) {
-				result[calc.productId] = {
-					hppId: calc._id,
-					name: calc.name,
-					hppPerServing: hpp,
-					sellingPrice: calc.sellingPrice,
-					profitPerServing: profit,
-					marginPercent: margin,
-				};
+		for (const calculation of latestLinkedCalculations) {
+			if (!calculation.productId || result[calculation.productId]) {
+				continue;
 			}
-			// Also index by hppId for non-product-linked
-			result[calc._id] = {
-				hppId: calc._id,
-				name: calc.name,
-				hppPerServing: hpp,
-				sellingPrice: calc.sellingPrice,
-				profitPerServing: profit,
-				marginPercent: margin,
+			const metrics = computeHppFromCalculation(calculation);
+			result[calculation.productId] = {
+				hppId: calculation._id,
+				name: calculation.name,
+				hppPerServing: metrics.totalHppPerServing,
+				sellingPrice: calculation.sellingPrice,
+				profitPerServing: metrics.profitPerServing,
+				marginPercent: metrics.marginPercent,
+			};
+		}
+
+		for (const calculation of calculations) {
+			if (result[calculation._id]) {
+				continue;
+			}
+			const metrics = computeHppFromCalculation(calculation);
+			result[calculation._id] = {
+				hppId: calculation._id,
+				name: calculation.name,
+				hppPerServing: metrics.totalHppPerServing,
+				sellingPrice: calculation.sellingPrice,
+				profitPerServing: metrics.profitPerServing,
+				marginPercent: metrics.marginPercent,
 			};
 		}
 
@@ -438,15 +676,12 @@ export const getHppProductMap = query({
 	},
 });
 
-/**
- * Dashboard widget: HPP overview stats & rankings.
- */
 export const getHppDashboardData = query({
 	args: {},
 	handler: async (ctx) => {
-		const allHpp = await ctx.db.query("hppCalculations").collect();
+		const calculations = await ctx.db.query("hppCalculations").collect();
 
-		if (allHpp.length === 0) {
+		if (calculations.length === 0) {
 			return {
 				totalCalculations: 0,
 				avgMargin: 0,
@@ -456,43 +691,38 @@ export const getHppDashboardData = query({
 			};
 		}
 
-		const analyzed = allHpp.map((calc) => {
-			const hpp = computeHppPerServing(calc);
-			const profit = calc.sellingPrice - hpp;
-			const margin =
-				calc.sellingPrice > 0 ? (profit / calc.sellingPrice) * 100 : 0;
+		const analyzed = calculations.map((calculation) => {
+			const metrics = computeHppFromCalculation(calculation);
 			return {
-				id: calc._id,
-				name: calc.name,
-				productId: calc.productId,
-				hppPerServing: hpp,
-				sellingPrice: calc.sellingPrice,
-				profitPerServing: profit,
-				marginPercent: margin,
+				id: calculation._id,
+				name: calculation.name,
+				productId: calculation.productId,
+				hppPerServing: metrics.totalHppPerServing,
+				sellingPrice: calculation.sellingPrice,
+				profitPerServing: metrics.profitPerServing,
+				marginPercent: metrics.marginPercent,
 			};
 		});
 
 		const avgMargin =
-			analyzed.reduce((sum, a) => sum + a.marginPercent, 0) / analyzed.length;
+			analyzed.reduce((sum, item) => sum + item.marginPercent, 0) /
+			analyzed.length;
 
-		// Low margin alerts (below 20%)
 		const lowMarginAlerts = analyzed
-			.filter((a) => a.marginPercent < 20 && a.sellingPrice > 0)
-			.sort((a, b) => a.marginPercent - b.marginPercent);
+			.filter((item) => item.marginPercent < 20 && item.sellingPrice > 0)
+			.sort((left, right) => left.marginPercent - right.marginPercent);
 
-		// Top 5 most profitable
 		const topProfit = [...analyzed]
-			.sort((a, b) => b.profitPerServing - a.profitPerServing)
+			.sort((left, right) => right.profitPerServing - left.profitPerServing)
 			.slice(0, 5);
 
-		// Bottom 5 least profitable
 		const bottomProfit = [...analyzed]
-			.filter((a) => a.sellingPrice > 0)
-			.sort((a, b) => a.profitPerServing - b.profitPerServing)
+			.filter((item) => item.sellingPrice > 0)
+			.sort((left, right) => left.profitPerServing - right.profitPerServing)
 			.slice(0, 5);
 
 		return {
-			totalCalculations: allHpp.length,
+			totalCalculations: calculations.length,
 			avgMargin,
 			lowMarginAlerts,
 			topProfit,
@@ -501,19 +731,27 @@ export const getHppDashboardData = query({
 	},
 });
 
-/**
- * Calculate estimated COGS for completed/paid orders (used by finance integration).
- * Matches order items to HPP calculations via productId.
- */
 export const getOrdersCogs = query({
 	args: {
 		startDate: v.optional(v.number()),
 		endDate: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const allHpp = await ctx.db.query("hppCalculations").collect();
-		
-		let orders;
+		const calculations = await ctx.db.query("hppCalculations").collect();
+		const latestLinkedCalculations = sortLinkedCalculations(
+			calculations.filter((calculation) => calculation.productId != null)
+		);
+
+		const hppByProduct: Record<string, number> = {};
+		for (const calculation of latestLinkedCalculations) {
+			if (!calculation.productId || hppByProduct[calculation.productId] != null) {
+				continue;
+			}
+			hppByProduct[calculation.productId] =
+				computeHppFromCalculation(calculation).totalHppPerServing;
+		}
+
+		let orders: Doc<"orders">[];
 		if (args.startDate !== undefined && args.endDate !== undefined) {
 			orders = await ctx.db
 				.query("orders")
@@ -535,16 +773,8 @@ export const getOrdersCogs = query({
 			orders = await ctx.db.query("orders").order("desc").collect();
 		}
 
-		// Build productId → HPP lookup
-		const hppByProduct: Record<string, number> = {};
-		for (const calc of allHpp) {
-			if (calc.productId) {
-				hppByProduct[calc.productId] = computeHppPerServing(calc);
-			}
-		}
-
 		const completedOrders = orders.filter(
-			(o) => o.status === "completed" || o.status === "paid"
+			(order) => order.status === "completed" || order.status === "paid"
 		);
 
 		let totalRevenue = 0;
@@ -562,31 +792,39 @@ export const getOrdersCogs = query({
 
 		for (const order of completedOrders) {
 			let orderCogs = 0;
-			let hasHpp = false;
-			const items = Array.isArray(order.items) ? order.items : [];
-			for (const item of items) {
-				const hppPerUnit = hppByProduct[item.productId];
-				if (hppPerUnit != null) {
-					orderCogs += hppPerUnit * item.quantity;
-					hasHpp = true;
+			let hasMatchedSnapshot = false;
+
+			for (const item of order.items) {
+				if (item.hppSnapshot?.totalHpp != null) {
+					orderCogs += item.hppSnapshot.totalHpp;
+					hasMatchedSnapshot = true;
+					continue;
+				}
+
+				const liveHppPerUnit = hppByProduct[item.productId];
+				if (liveHppPerUnit != null) {
+					orderCogs += liveHppPerUnit * item.quantity;
+					hasMatchedSnapshot = true;
 				}
 			}
-			if (hasHpp) {
-				matchedOrders++;
-				totalRevenue += order.totalAmount;
-				totalCogs += orderCogs;
-				orderProfits.push({
-					orderId: order._id,
-					orderNumber: order.orderNumber,
-					revenue: order.totalAmount,
-					cogs: orderCogs,
-					profit: order.totalAmount - orderCogs,
-					createdAt: order.createdAt,
-				});
+
+			if (!hasMatchedSnapshot) {
+				continue;
 			}
+
+			matchedOrders += 1;
+			totalRevenue += order.totalAmount;
+			totalCogs += orderCogs;
+			orderProfits.push({
+				orderId: order._id,
+				orderNumber: order.orderNumber,
+				revenue: order.totalAmount,
+				cogs: orderCogs,
+				profit: order.totalAmount - orderCogs,
+				createdAt: order.createdAt,
+			});
 		}
 
-		// Group by date for daily summary
 		const dailySummary: Record<
 			string,
 			{
@@ -597,8 +835,11 @@ export const getOrdersCogs = query({
 				orders: number;
 			}
 		> = {};
-		for (const op of orderProfits) {
-			const dateKey = new Date(op.createdAt).toISOString().split("T")[0] as string;
+
+		for (const orderProfit of orderProfits) {
+			const dateKey = new Date(orderProfit.createdAt)
+				.toISOString()
+				.split("T")[0] as string;
 			if (!dailySummary[dateKey]) {
 				dailySummary[dateKey] = {
 					date: dateKey,
@@ -608,10 +849,11 @@ export const getOrdersCogs = query({
 					orders: 0,
 				};
 			}
-			dailySummary[dateKey].revenue += op.revenue;
-			dailySummary[dateKey].cogs += op.cogs;
-			dailySummary[dateKey].profit += op.profit;
-			dailySummary[dateKey].orders++;
+
+			dailySummary[dateKey].revenue += orderProfit.revenue;
+			dailySummary[dateKey].cogs += orderProfit.cogs;
+			dailySummary[dateKey].profit += orderProfit.profit;
+			dailySummary[dateKey].orders += 1;
 		}
 
 		return {
@@ -624,17 +866,16 @@ export const getOrdersCogs = query({
 					: 0,
 			matchedOrders,
 			totalCompletedOrders: completedOrders.length,
-			recentOrderProfits: orderProfits.slice(0, 20),
-			dailySummary: Object.values(dailySummary).sort((a, b) =>
-				b.date.localeCompare(a.date)
+			recentOrderProfits: orderProfits
+				.sort((left, right) => right.createdAt - left.createdAt)
+				.slice(0, 20),
+			dailySummary: Object.values(dailySummary).sort((left, right) =>
+				right.date.localeCompare(left.date)
 			),
 		};
 	},
 });
 
-/**
- * Update selling price for HPP calculation (for actionable margin alert).
- */
 export const updateHppSellingPrice = mutation({
 	args: {
 		id: v.id("hppCalculations"),
@@ -648,118 +889,124 @@ export const updateHppSellingPrice = mutation({
 	},
 });
 
-/**
- * Simulate what-if scenario: if ingredient prices change by X%, how does it affect profit?
- * Returns new HPP, new margin, and delta.
- */
 export const simulateHppPriceChange = query({
 	args: {
 		id: v.id("hppCalculations"),
-		priceChangePercent: v.number(), // e.g. 10 = 10% increase, -5 = 5% decrease
-		ingredientIndex: v.optional(v.number()), // If undefined, apply to ALL ingredients
+		priceChangePercent: v.number(),
+		ingredientIndex: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const calc = await ctx.db.get(args.id);
-		if (!calc) return null;
+		const calculation = await ctx.db.get(args.id);
+		if (!calculation) {
+			return null;
+		}
 
 		const changeMultiplier = 1 + args.priceChangePercent / 100;
+		const simulatedIngredients = calculation.ingredients.map(
+			(ingredient, ingredientIndex) => {
+				if (
+					args.ingredientIndex !== undefined &&
+					ingredientIndex !== args.ingredientIndex
+				) {
+					return ingredient;
+				}
 
-		const simulatedIngredients = calc.ingredients.map((ing, idx) => {
-			if (args.ingredientIndex !== undefined && idx !== args.ingredientIndex) {
-				return ing;
+				return {
+					...ingredient,
+					purchasePrice: ingredient.purchasePrice * changeMultiplier,
+				};
 			}
-			return { ...ing, purchasePrice: ing.purchasePrice * changeMultiplier };
+		);
+
+		const original = computeHppFromCalculation(calculation);
+		const simulated = computeHppMetrics({
+			ingredients: simulatedIngredients,
+			overheadCosts: calculation.overheadCosts,
+			servingsPerBatch: calculation.servingsPerBatch,
+			sellingPrice: calculation.sellingPrice,
 		});
 
-		const originalHpp = computeHppPerServing(calc);
-		const simulatedHpp = computeHppPerServing({ ...calc, ingredients: simulatedIngredients });
-
-		const originalProfit = calc.sellingPrice - originalHpp;
-		const simulatedProfit = calc.sellingPrice - simulatedHpp;
-		const originalMargin = calc.sellingPrice > 0 ? (originalProfit / calc.sellingPrice) * 100 : 0;
-		const simulatedMargin = calc.sellingPrice > 0 ? (simulatedProfit / calc.sellingPrice) * 100 : 0;
-
-		// Recommended selling price to maintain original margin
-		const recommendedPrice = simulatedHpp / (1 - originalMargin / 100);
+		const recommendedSellingPrice = roundUpToNearest(
+			simulated.totalHppPerServing / (1 - original.marginPercent / 100),
+			100
+		);
 
 		return {
-			hppId: calc._id,
-			name: calc.name,
+			hppId: calculation._id,
+			name: calculation.name,
 			priceChangePercent: args.priceChangePercent,
 			ingredientIndex: args.ingredientIndex,
 			original: {
-				hppPerServing: originalHpp,
-				sellingPrice: calc.sellingPrice,
-				profitPerServing: originalProfit,
-				marginPercent: originalMargin,
+				hppPerServing: original.totalHppPerServing,
+				sellingPrice: calculation.sellingPrice,
+				profitPerServing: original.profitPerServing,
+				marginPercent: original.marginPercent,
 			},
 			simulated: {
-				hppPerServing: simulatedHpp,
-				sellingPrice: calc.sellingPrice,
-				profitPerServing: simulatedProfit,
-				marginPercent: simulatedMargin,
+				hppPerServing: simulated.totalHppPerServing,
+				sellingPrice: calculation.sellingPrice,
+				profitPerServing: simulated.profitPerServing,
+				marginPercent: simulated.marginPercent,
 			},
 			delta: {
-				hppDelta: simulatedHpp - originalHpp,
-				profitDelta: simulatedProfit - originalProfit,
-				marginDelta: simulatedMargin - originalMargin,
+				hppDelta:
+					simulated.totalHppPerServing - original.totalHppPerServing,
+				profitDelta:
+					simulated.profitPerServing - original.profitPerServing,
+				marginDelta: simulated.marginPercent - original.marginPercent,
 			},
-			recommendedSellingPrice: Math.ceil(recommendedPrice / 100) * 100, // round up to nearest 100
+			recommendedSellingPrice,
 		};
 	},
 });
 
-/**
- * Get HPP with target margin analysis - returns all HPP calculations with
- * recommended selling prices based on target margin.
- */
 export const getHppWithMarginAnalysis = query({
 	args: { targetMarginPercent: v.optional(v.number()) },
 	handler: async (ctx, args) => {
-		const targetMargin = args.targetMarginPercent ?? 30; // Default 30% margin
-		const allHpp = await ctx.db.query("hppCalculations").collect();
+		const targetMargin = args.targetMarginPercent ?? 30;
+		const calculations = await ctx.db.query("hppCalculations").collect();
 
-		return allHpp.map((calc) => {
-			const hpp = computeHppPerServing(calc);
-			const currentProfit = calc.sellingPrice - hpp;
-			const currentMargin = calc.sellingPrice > 0 ? (currentProfit / calc.sellingPrice) * 100 : 0;
-
-			// Recommended price: hpp / (1 - targetMargin/100)
-			const recommendedPrice = hpp / (1 - targetMargin / 100);
-			const roundedRecommendedPrice = Math.ceil(recommendedPrice / 100) * 100;
-
-			const isLowMargin = currentMargin < targetMargin;
-			const priceDiff = roundedRecommendedPrice - calc.sellingPrice;
+		return sortLinkedCalculations(calculations).map((calculation) => {
+			const metrics = computeHppFromCalculation(calculation);
+			const recommendedSellingPrice = roundUpToNearest(
+				metrics.totalHppPerServing / (1 - targetMargin / 100),
+				100
+			);
+			const priceDiff = recommendedSellingPrice - calculation.sellingPrice;
 
 			return {
-				id: calc._id,
-				name: calc.name,
-				productId: calc.productId,
-				hppPerServing: hpp,
-				currentSellingPrice: calc.sellingPrice,
-				currentMarginPercent: currentMargin,
-				currentProfitPerServing: currentProfit,
+				id: calculation._id,
+				name: calculation.name,
+				productId: calculation.productId,
+				hppPerServing: metrics.totalHppPerServing,
+				currentSellingPrice: calculation.sellingPrice,
+				currentMarginPercent: metrics.marginPercent,
+				currentProfitPerServing: metrics.profitPerServing,
 				targetMarginPercent: targetMargin,
-				recommendedSellingPrice: roundedRecommendedPrice,
+				recommendedSellingPrice,
 				priceDiff,
-				isLowMargin,
-				status: currentMargin >= targetMargin ? "ok" : currentMargin >= targetMargin * 0.7 ? "warning" : "critical",
+				isLowMargin: metrics.marginPercent < targetMargin,
+				status:
+					metrics.marginPercent >= targetMargin
+						? "ok"
+						: metrics.marginPercent >= targetMargin * 0.7
+							? "warning"
+							: "critical",
 			};
 		});
 	},
 });
 
-/**
- * Forecasting: estimate future raw material costs based on avg daily usage.
- */
 export const getHppForecast = query({
 	args: { days: v.optional(v.number()) },
 	handler: async (ctx, args) => {
 		const forecastDays = args.days ?? 30;
-		const allHpp = await ctx.db.query("hppCalculations").collect();
+		const calculations = await ctx.db.query("hppCalculations").collect();
 		const orders = await ctx.db.query("orders").order("desc").collect();
+		const latestLinkedCalculations = sortLinkedCalculations(
+			calculations.filter((calculation) => calculation.productId != null)
+		);
 
-		// Build productId → HPP ingredients lookup
 		const hppByProduct: Record<
 			string,
 			{
@@ -772,30 +1019,29 @@ export const getHppForecast = query({
 			}
 		> = {};
 
-		for (const calc of allHpp) {
-			if (!calc.productId) {
+		for (const calculation of latestLinkedCalculations) {
+			if (!calculation.productId || hppByProduct[calculation.productId]) {
 				continue;
 			}
-			hppByProduct[calc.productId] = {
-				ingredients: calc.ingredients.map((ing) => {
-					const totalBase = ing.purchaseQuantity * ing.conversionFactor;
-					const costBase = totalBase > 0 ? ing.purchasePrice / totalBase : 0;
-					return {
-						ingredientName: ing.ingredientName,
-						usagePerServing: ing.usagePerServing,
-						usageUnit: ing.usageUnit,
-						costPerServing: costBase * ing.usagePerServing,
-					};
-				}),
+			hppByProduct[calculation.productId] = {
+				ingredients: calculation.ingredients.map((ingredient) => ({
+					ingredientName: ingredient.ingredientName,
+					usagePerServing: ingredient.usagePerServing,
+					usageUnit: ingredient.usageUnit,
+					costPerServing:
+						(ingredient.purchaseQuantity * ingredient.conversionFactor > 0
+							? ingredient.purchasePrice /
+								(ingredient.purchaseQuantity * ingredient.conversionFactor)
+							: 0) * ingredient.usagePerServing,
+				})),
 			};
 		}
 
-		// Calculate avg daily servings per product (last 7 days)
 		const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
 		const recentOrders = orders.filter(
-			(o) =>
-				(o.status === "completed" || o.status === "paid") &&
-				o.createdAt >= sevenDaysAgo
+			(order) =>
+				(order.status === "completed" || order.status === "paid") &&
+				order.createdAt >= sevenDaysAgo
 		);
 
 		const dailyUsage: Record<
@@ -805,56 +1051,252 @@ export const getHppForecast = query({
 
 		for (const order of recentOrders) {
 			for (const item of order.items) {
-				const hppData = hppByProduct[item.productId];
-				if (!hppData) {
+				const hpp = hppByProduct[item.productId];
+				if (!hpp) {
 					continue;
 				}
 
-				for (const ing of hppData.ingredients) {
-					const key = ing.ingredientName;
-					if (!dailyUsage[key]) {
-						dailyUsage[key] = {
-							name: ing.ingredientName,
+				for (const ingredient of hpp.ingredients) {
+					const usageKey = ingredient.ingredientName;
+					if (!dailyUsage[usageKey]) {
+						dailyUsage[usageKey] = {
+							name: ingredient.ingredientName,
 							totalQty: 0,
-							unit: ing.usageUnit,
+							unit: ingredient.usageUnit,
 							totalCost: 0,
 						};
 					}
-					dailyUsage[key].totalQty += ing.usagePerServing * item.quantity;
-					dailyUsage[key].totalCost += ing.costPerServing * item.quantity;
+
+					dailyUsage[usageKey].totalQty +=
+						ingredient.usagePerServing * item.quantity;
+					dailyUsage[usageKey].totalCost +=
+						ingredient.costPerServing * item.quantity;
 				}
 			}
 		}
 
-		// Calculate days with orders to get accurate daily avg
 		const daysWithData = Math.max(
 			1,
 			Math.min(
 				7,
 				new Set(
-					recentOrders.map(
-						(o) => new Date(o.createdAt).toISOString().split("T")[0]
+					recentOrders.map((order) =>
+						new Date(order.createdAt).toISOString().split("T")[0]
 					)
 				).size
 			)
 		);
 
-		const forecast = Object.values(dailyUsage).map((item) => ({
-			ingredientName: item.name,
-			unit: item.unit,
-			avgDailyUsage: item.totalQty / daysWithData,
-			avgDailyCost: item.totalCost / daysWithData,
-			forecastUsage: (item.totalQty / daysWithData) * forecastDays,
-			forecastCost: (item.totalCost / daysWithData) * forecastDays,
-		}));
-
-		forecast.sort((a, b) => b.forecastCost - a.forecastCost);
+		const ingredients = Object.values(dailyUsage)
+			.map((item) => ({
+				ingredientName: item.name,
+				unit: item.unit,
+				avgDailyUsage: item.totalQty / daysWithData,
+				avgDailyCost: item.totalCost / daysWithData,
+				forecastUsage: (item.totalQty / daysWithData) * forecastDays,
+				forecastCost: (item.totalCost / daysWithData) * forecastDays,
+			}))
+			.sort((left, right) => right.forecastCost - left.forecastCost);
 
 		return {
 			forecastDays,
 			daysWithData,
-			totalForecastCost: forecast.reduce((sum, f) => sum + f.forecastCost, 0),
-			ingredients: forecast,
+			totalForecastCost: ingredients.reduce(
+				(sum, ingredient) => sum + ingredient.forecastCost,
+				0
+			),
+			ingredients,
+		};
+	},
+});
+
+export const getHppPortfolio = query({
+	args: {},
+	handler: async (ctx) => {
+		const [products, recipes, calculations, inventoryItems, inventoryCosts] =
+			await Promise.all([
+				ctx.db.query("products").collect(),
+				ctx.db.query("recipes").collect(),
+				ctx.db.query("hppCalculations").collect(),
+				ctx.db.query("inventory").collect(),
+				loadInventoryCostMap(ctx),
+			]);
+
+		const inventoryById = mapById(inventoryItems);
+		const latestLinkedCalculations = sortLinkedCalculations(
+			calculations.filter((calculation) => calculation.productId != null)
+		);
+		const linkedCalculationByProduct: Record<string, Doc<"hppCalculations">> = {};
+
+		for (const calculation of latestLinkedCalculations) {
+			if (!calculation.productId || linkedCalculationByProduct[calculation.productId]) {
+				continue;
+			}
+			linkedCalculationByProduct[calculation.productId] = calculation;
+		}
+
+		const portfolio = products
+			.map((product) => {
+				const productRecipes = recipes.filter(
+					(recipe) => recipe.productId === product._id
+				);
+				const recipe =
+					productRecipes.find((candidate) => candidate.variantName == null) ??
+					productRecipes[0] ??
+					null;
+				const calculation = linkedCalculationByProduct[product._id] ?? null;
+
+				const recipeItems =
+					recipe?.ingredients.map((ingredient) => {
+						const inventoryItem = inventoryById[ingredient.inventoryId];
+						const latestCostPerUnit =
+							inventoryCosts[ingredient.inventoryId]?.latestCostPerUnit;
+						return {
+							inventoryId: ingredient.inventoryId,
+							ingredientName:
+								inventoryItem?.ingredientName ?? "Bahan tidak ditemukan",
+							amount: ingredient.amount,
+							unit: inventoryItem?.unit ?? "-",
+							displayUnit: inventoryItem?.displayUnit,
+							conversionFactor: inventoryItem?.conversionFactor ?? 1,
+							latestCostPerUnit,
+							currentStock: inventoryItem?.quantity,
+						};
+					}) ?? [];
+
+				const missingInventoryLinks =
+					calculation?.ingredients.filter((ingredient) => !ingredient.inventoryId)
+						.length ?? 0;
+
+				const missingCostCount = calculation
+					? calculation.ingredients.filter((ingredient) => {
+							if (!ingredient.inventoryId) {
+								return false;
+							}
+							return (
+								inventoryCosts[ingredient.inventoryId]?.latestCostPerUnit == null
+							);
+						}).length
+					: recipeItems.filter((ingredient) => ingredient.latestCostPerUnit == null)
+							.length;
+
+				const outdatedIngredientCount =
+					calculation?.ingredients.filter((ingredient) => {
+						if (!ingredient.inventoryId) {
+							return false;
+						}
+						return (
+							getIngredientPriceDelta(
+								ingredient,
+								inventoryCosts[ingredient.inventoryId]?.latestCostPerUnit
+							)?.hasChanged ?? false
+						);
+					}).length ?? 0;
+
+				const { status, reason } = getProductCostingStatus({
+					recipe,
+					calculation,
+					missingInventoryLinks,
+					missingCostCount,
+					outdatedIngredientCount,
+				});
+				const metrics = calculation ? computeHppFromCalculation(calculation) : null;
+				const targetMargin = 30;
+				const recommendedSellingPrice =
+					metrics != null
+						? roundUpToNearest(
+								metrics.totalHppPerServing / (1 - targetMargin / 100),
+								100
+							)
+						: null;
+
+				return {
+					product,
+					recipe,
+					recipeItems,
+					calculation,
+					metrics,
+					status,
+					reason,
+					linkedIngredientCount:
+						calculation?.ingredients.filter((ingredient) => ingredient.inventoryId)
+							.length ?? recipeItems.length,
+					ingredientCount:
+						calculation?.ingredients.length ?? recipeItems.length,
+					missingInventoryLinks,
+					missingCostCount,
+					outdatedIngredientCount,
+					recommendedSellingPrice,
+				};
+			})
+			.sort((left, right) => {
+				const statusDelta =
+					getStatusOrder(left.status) - getStatusOrder(right.status);
+				if (statusDelta !== 0) {
+					return statusDelta;
+				}
+
+				const leftMargin = left.metrics?.marginPercent ?? Number.POSITIVE_INFINITY;
+				const rightMargin =
+					right.metrics?.marginPercent ?? Number.POSITIVE_INFINITY;
+				if (leftMargin !== rightMargin) {
+					return leftMargin - rightMargin;
+				}
+
+				return left.product.name.localeCompare(right.product.name);
+			});
+
+		const drafts = calculations
+			.filter((calculation) => !calculation.productId)
+			.map((calculation) => ({
+				calculation,
+				metrics: computeHppFromCalculation(calculation),
+				status: "draft" as const,
+			}))
+			.sort((left, right) => {
+				const rightTimestamp =
+					right.calculation.updatedAt ?? right.calculation.createdAt;
+				const leftTimestamp =
+					left.calculation.updatedAt ?? left.calculation.createdAt;
+				return rightTimestamp - leftTimestamp;
+			});
+
+		const alerts = portfolio
+			.filter((row) => row.status !== "linked")
+			.map((row) => ({
+				productId: row.product._id,
+				productName: row.product.name,
+				status: row.status,
+				reason: row.reason,
+			}));
+
+		const portfolioWithMetrics = portfolio.filter((row) => row.metrics != null);
+		const summary = {
+			totalProducts: portfolio.length,
+			linkedProducts: portfolio.filter((row) => row.status === "linked").length,
+			outdatedProducts: portfolio.filter((row) => row.status === "outdated").length,
+			missingRecipeProducts: portfolio.filter(
+				(row) => row.status === "missing_recipe"
+			).length,
+			missingCostProducts: portfolio.filter(
+				(row) => row.status === "missing_cost"
+			).length,
+			draftCount: drafts.length,
+			averageMargin:
+				portfolioWithMetrics.reduce(
+					(sum, row) => sum + (row.metrics?.marginPercent ?? 0),
+					0
+				) / Math.max(1, portfolioWithMetrics.length),
+			lowMarginCount: portfolio.filter(
+				(row) => (row.metrics?.marginPercent ?? 100) < 20
+			).length,
+		};
+
+		return {
+			summary,
+			alerts,
+			portfolio,
+			drafts,
 		};
 	},
 });

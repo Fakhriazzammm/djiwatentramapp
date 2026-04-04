@@ -21,6 +21,7 @@ import type * as hpp from "../hpp.js";
 import type * as http from "../http.js";
 import type * as inventory from "../inventory.js";
 import type * as kitchenBar from "../kitchenBar.js";
+import type * as lib_hpp from "../lib/hpp.js";
 import type * as orders from "../orders.js";
 import type * as private_data from "../private_data.js";
 import type * as products from "../products.js";
@@ -55,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   inventory: typeof inventory;
   kitchenBar: typeof kitchenBar;
+  "lib/hpp": typeof lib_hpp;
   orders: typeof orders;
   private_data: typeof private_data;
   products: typeof products;

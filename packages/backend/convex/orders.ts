@@ -1,7 +1,137 @@
 import { v } from "convex/values";
+import type { Doc, Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
-
 import { deductStockForOrderInternal } from "./inventory";
+import { computeHppFromCalculation, type OrderItemHppSnapshot } from "./lib/hpp";
+
+type SettledOrder = Pick<
+	Doc<"orders">,
+	"orderNumber" | "items" | "totalAmount" | "paymentMethod" | "createdAt"
+> & {
+	_id: Id<"orders">;
+};
+
+type ProductHppIndex = Record<
+	string,
+	{
+		hppCalculationId: Id<"hppCalculations">;
+		hppPerUnit: number;
+	}
+>;
+
+async function buildLatestHppIndex(ctx: MutationCtx): Promise<ProductHppIndex> {
+	const calculations = await ctx.db.query("hppCalculations").collect();
+	const latestLinkedCalculations = [...calculations]
+		.filter((calculation) => calculation.productId != null)
+		.sort((left, right) => {
+			const rightTimestamp = right.updatedAt ?? right.createdAt;
+			const leftTimestamp = left.updatedAt ?? left.createdAt;
+			return rightTimestamp - leftTimestamp;
+		});
+
+	const index: ProductHppIndex = {};
+	for (const calculation of latestLinkedCalculations) {
+		if (!calculation.productId || index[calculation.productId]) {
+			continue;
+		}
+
+		index[calculation.productId] = {
+			hppCalculationId: calculation._id,
+			hppPerUnit: computeHppFromCalculation(calculation).totalHppPerServing,
+		};
+	}
+
+	return index;
+}
+
+function buildOrderItemSnapshots(
+	order: SettledOrder,
+	hppIndex: ProductHppIndex,
+	recordedAt: number
+) {
+	let totalOrderCogs = 0;
+	let hasSnapshot = false;
+
+	const itemsWithSnapshot = order.items.map((item) => {
+		const hpp = hppIndex[item.productId];
+		if (!hpp) {
+			return item;
+		}
+
+		const snapshot: OrderItemHppSnapshot = {
+			hppCalculationId: hpp.hppCalculationId,
+			productId: item.productId,
+			productName: item.productName,
+			hppPerUnit: hpp.hppPerUnit,
+			quantity: item.quantity,
+			totalHpp: hpp.hppPerUnit * item.quantity,
+			sellingPricePerUnit: item.price,
+			source: "calculation",
+			recordedAt,
+		};
+
+		totalOrderCogs += snapshot.totalHpp;
+		hasSnapshot = true;
+
+		return {
+			...item,
+			hppSnapshot: snapshot,
+		};
+	});
+
+	return {
+		itemsWithSnapshot,
+		totalOrderCogs,
+		hasSnapshot,
+	};
+}
+
+async function settleOrder(
+	ctx: MutationCtx,
+	order: SettledOrder,
+	transactionDate: number
+) {
+	await ctx.db.insert("financialTransactions", {
+		type: "income",
+		amount: order.totalAmount,
+		category: "Penjualan",
+		description: `Penjualan Pesanan #${order.orderNumber}`,
+		date: transactionDate,
+		paymentMethod: order.paymentMethod,
+		status: "completed",
+		orderId: order._id,
+	});
+
+	const hppIndex = await buildLatestHppIndex(ctx);
+	const { itemsWithSnapshot, totalOrderCogs, hasSnapshot } = buildOrderItemSnapshots(
+		order,
+		hppIndex,
+		transactionDate
+	);
+
+	if (hasSnapshot) {
+		await ctx.db.patch(order._id, {
+			items: itemsWithSnapshot,
+		});
+	}
+
+	if (totalOrderCogs > 0) {
+		await ctx.db.insert("financialTransactions", {
+			type: "expense",
+			amount: totalOrderCogs,
+			category: "HPP",
+			description: `HPP Pesanan #${order.orderNumber}`,
+			date: transactionDate,
+			status: "completed",
+			orderId: order._id,
+		});
+	}
+
+	await deductStockForOrderInternal(ctx, {
+		orderId: order._id,
+	});
+}
 
 export const createOrder = mutation({
 	args: {
@@ -13,7 +143,9 @@ export const createOrder = mutation({
 				quantity: v.number(),
 				price: v.number(),
 				originalPrice: v.optional(v.number()),
-				status: v.optional(v.union(v.literal("pending"), v.literal("preparing"), v.literal("ready"))),
+				status: v.optional(
+					v.union(v.literal("pending"), v.literal("preparing"), v.literal("ready"))
+				),
 			})
 		),
 		totalAmount: v.number(),
@@ -40,7 +172,7 @@ export const createOrder = mutation({
 			})
 		),
 		isOpenBill: v.optional(v.boolean()),
-		autoComplete: v.optional(v.boolean()), // If true, set status to 'paid' immediately
+		autoComplete: v.optional(v.boolean()),
 		createdAt: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
@@ -52,7 +184,7 @@ export const createOrder = mutation({
 			: autoComplete
 				? "completed"
 				: "paid";
-		
+
 		const orderId = await ctx.db.insert("orders", {
 			...orderData,
 			orderNumber,
@@ -60,27 +192,19 @@ export const createOrder = mutation({
 			createdAt: orderCreatedAt,
 		});
 
-		// Paid and completed orders should immediately record finance and stock.
 		if (!isOpenBill) {
-			// We can't call updateOrderStatus mutation directly from here efficiently, 
-			// but we can trigger its logic or let a separate process handle it.
-			// For simplicity in Convex, we should probably refactor the logic into an internal function.
-			// But for now, let's at least record the basic transaction.
-			
-			// 1. Record Income Transaction
-			await ctx.db.insert("financialTransactions", {
-				type: "income",
-				amount: args.totalAmount,
-				category: "Penjualan",
-				description: `Penjualan Pesanan #${orderNumber}`,
-				date: orderCreatedAt,
-				paymentMethod: args.paymentMethod,
-				status: "completed",
-				orderId,
-			});
-
-			// 2. Deduct inventory (internal call)
-			await deductStockForOrderInternal(ctx, { orderId });
+			await settleOrder(
+				ctx,
+				{
+					_id: orderId,
+					orderNumber,
+					items: orderData.items,
+					totalAmount: orderData.totalAmount,
+					paymentMethod: orderData.paymentMethod,
+					createdAt: orderCreatedAt,
+				},
+				orderCreatedAt
+			);
 		}
 
 		return orderId;
@@ -95,12 +219,12 @@ export const getOrder = query({
 });
 
 export const getOrders = query({
-	args: { 
+	args: {
 		status: v.optional(v.string()),
 		limit: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const limit = args.limit ?? 200; // Default limit to prevent slow performance
+		const limit = args.limit ?? 200;
 		if (args.status) {
 			return await ctx.db
 				.query("orders")
@@ -134,99 +258,43 @@ export const updateOrderStatus = mutation({
 			throw new Error("Order not found");
 		}
 
-		// Check if we need to record a transaction
-		// If status changes TO 'paid' (or 'completed') FROM something else
 		const isNowPaid = args.status === "paid" || args.status === "completed";
 		const wasPaid = order.status === "paid" || order.status === "completed";
 		const effectiveTransactionDate = args.transactionDate ?? order.createdAt ?? Date.now();
 
 		if (isNowPaid && !wasPaid) {
-			// 1. Record Income Transaction
-			await ctx.db.insert("financialTransactions", {
-				type: "income",
-				amount: order.totalAmount,
-				category: "Penjualan", // Standard category for sales
-				description: `Penjualan Pesanan #${order.orderNumber}`,
-				date: effectiveTransactionDate,
-				paymentMethod: order.paymentMethod,
-				status: "completed",
-				orderId: args.id,
-			});
-
-			// 2. Calculate and Record HPP (COGS) Transaction
-			const allHpp = await ctx.db.query("hppCalculations").collect();
-			const hppByProduct: Record<string, number> = {};
-			
-			// Helper to compute HPP from ingredients and overhead
-			const computeHpp = (calc: any) => {
-				const ingredientCost = calc.ingredients.reduce((sum: number, ing: any) => {
-					const totalBase = ing.purchaseQuantity * ing.conversionFactor;
-					const costBase = totalBase > 0 ? ing.purchasePrice / totalBase : 0;
-					return sum + costBase * ing.usagePerServing;
-				}, 0);
-				const overheadCost = calc.overheadCosts.reduce(
-					(sum: number, oh: any) => sum + oh.costPerServing,
-					0
-				);
-				return ingredientCost + overheadCost;
-			};
-
-			for (const calc of allHpp) {
-				if (calc.productId) {
-					hppByProduct[calc.productId] = computeHpp(calc);
-				}
-			}
-
-			let totalOrderCogs = 0;
-			for (const item of order.items) {
-				const hppPerUnit = hppByProduct[item.productId];
-				if (hppPerUnit != null) {
-					totalOrderCogs += hppPerUnit * item.quantity;
-				}
-			}
-
-			if (totalOrderCogs > 0) {
-				await ctx.db.insert("financialTransactions", {
-					type: "expense",
-					amount: totalOrderCogs,
-					category: "HPP",
-					description: `HPP Pesanan #${order.orderNumber}`,
-					date: effectiveTransactionDate,
-					status: "completed",
-					orderId: args.id,
-				});
-			}
-
-			// 3. Deduct inventory
-			await deductStockForOrderInternal(ctx, {
-				orderId: args.id,
-			});
+			await settleOrder(
+				ctx,
+				{
+					_id: order._id,
+					orderNumber: order.orderNumber,
+					items: order.items,
+					totalAmount: order.totalAmount,
+					paymentMethod: order.paymentMethod,
+					createdAt: order.createdAt,
+				},
+				effectiveTransactionDate
+			);
 		}
 
 		await ctx.db.patch(args.id, { status: args.status });
 	},
 });
 
-// Delete an order and its associated financial transactions
 export const deleteOrder = mutation({
 	args: { id: v.id("orders") },
 	handler: async (ctx, args) => {
-		// Delete associated financial transactions (Income and HPP)
-		const transactions = await ctx.db
-			.query("financialTransactions")
-			.collect();
-
+		const transactions = await ctx.db.query("financialTransactions").collect();
 		const orderTransactions = transactions.filter((tx) => tx.orderId === args.id);
 
-		for (const tx of orderTransactions) {
-			await ctx.db.delete(tx._id);
+		for (const transaction of orderTransactions) {
+			await ctx.db.delete(transaction._id);
 		}
 
 		await ctx.db.delete(args.id);
 	},
 });
 
-// Update an order (customer name, payment method, etc.)
 export const updateOrder = mutation({
 	args: {
 		id: v.id("orders"),
