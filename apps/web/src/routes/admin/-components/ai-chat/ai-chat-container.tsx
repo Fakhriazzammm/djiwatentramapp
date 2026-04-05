@@ -335,7 +335,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 				);
 			}
 			const newMessages: ChatMessage[] = [];
-			for (const entry of successfulResults) {
+			for (const [resultIndex, entry] of successfulResults.entries()) {
 				const scanData = entry.data;
 				if (!scanData) continue;
 				const itemsStr = scanData.items?.length 
@@ -350,7 +350,15 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 					_msgId: mkMsgId(),
 				};
 				newMessages.push(assistantMsg);
-				addScanHistory({ ...scanData, timestamp: Date.now() });
+				addScanHistory({
+					thumbnail: images[resultIndex] || "",
+					merchant: scanData.merchant || scanData.name || "Tidak diketahui",
+					total: Number(scanData.total) || 0,
+					date: Date.now(),
+					category: scanData.category?.replace(/_/g, " ") || "Umum",
+					transactionType: scanData.transactionType || "unknown",
+					saved: false,
+				});
 			}
 			setMessages(prev => [...prev, ...newMessages]);
 			setSelectedImages([]);
