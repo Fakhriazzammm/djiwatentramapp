@@ -98,17 +98,32 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	const [actionButtonLoading, setActionButtonLoading] = useState<Set<string>>(new Set());
 
 	const createAITrackedTransaction = useCallback(
-		(payload: Record<string, unknown>, sourceLabel: string, inputMode: string, rawText?: string) =>
-			createTransactionMutation({
-				...(payload as any),
+		(payload: Record<string, unknown>, sourceLabel: string, inputMode: string, rawText?: string) => {
+			const {
+				scanItems,
+				...transactionPayload
+			} = payload as Record<string, unknown> & {
+				scanItems?: Array<{
+					name: string;
+					quantity: number;
+					price?: number;
+					total?: number;
+					unit?: string;
+				}>;
+			};
+
+			return createTransactionMutation({
+				...(transactionPayload as any),
 				metadata: {
 					source: "ai_tool",
 					inputMode,
 					importedAt: Date.now(),
 					rawText: rawText || (typeof payload.description === "string" ? payload.description : undefined),
 					sourceLabel,
+					scanItems,
 				},
-			}),
+			});
+		},
 		[createTransactionMutation]
 	);
 
@@ -598,6 +613,9 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	};
 
 	const isPOS = mode === "pos";
+	const mobileBottomMenuOffset = isPOS
+		? ""
+		: "mb-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] md:mb-0";
 
 	const TAB_ITEMS = [
 		{ id: "chat", label: "Chat", icon: Bot },
@@ -607,7 +625,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	];
 
 	return (
-		<div className={cn("relative flex min-h-0 flex-col overflow-hidden bg-background", isPOS ? "h-full w-full" : "h-[100svh] max-h-[100svh] w-full")}>
+		<div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-background">
 			{/* Session History Sidebar */}
 			{!isPOS && (
 				<AnimatePresence>
@@ -773,7 +791,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 											)}
 										</div>
 									) : (
-										<div className="mx-auto max-w-3xl px-3 py-3 md:px-4 md:py-4">
+										<div className="mx-auto max-w-4xl px-3 py-3 md:px-6 md:py-6">
 											{messages.map((msg, idx) => (
 												<MessageBubble 
 													key={msg._msgId || idx}
@@ -793,13 +811,16 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 													onExport={handleExport}
 												/>
 											))}
-											<div ref={messagesEndRef} className="h-24 md:h-28" />
+											<div ref={messagesEndRef} className={cn("md:h-28", isPOS ? "h-24" : "h-28 md:h-36")} />
 										</div>
 									)}
 								</div>
 
-								<div className="sticky bottom-0 z-20 shrink-0 border-t border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-								<div className="px-2 pt-2 pb-1 md:px-3">
+								<div className={cn(
+									"z-20 shrink-0 border-t border-border/50 bg-background/95 px-2 pt-2 pb-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:px-6 md:pt-5 md:pb-5",
+									mobileBottomMenuOffset,
+									!isPOS && "md:border-t-0 md:bg-gradient-to-t md:from-background md:via-background/96 md:to-transparent"
+								)}>
 									<ChatInput 
 										mode={mode}
 										input={input}
@@ -818,7 +839,6 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 										inputRef={inputRef}
 										showTemplates={messages.length < 2}
 									/>
-								</div>
 							</div>
 						</div>
 						)}

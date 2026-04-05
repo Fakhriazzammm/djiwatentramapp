@@ -78,7 +78,7 @@ export const ChatInput = ({
 	const canSend = input.trim() || selectedImages.length > 0;
 
 	return (
-		<div className="mx-auto w-full max-w-3xl pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+		<div className="mx-auto w-full max-w-3xl pb-1 md:max-w-[52rem] md:pb-0">
 			{showTemplates && !isScanMode && (
 				<div className="mb-2 flex gap-1.5 overflow-x-auto pb-1 md:mb-3 md:flex-wrap md:justify-center md:gap-2">
 					{templates.map((template, i) => (
@@ -95,8 +95,8 @@ export const ChatInput = ({
 				</div>
 			)}
 
-			<div className={`overflow-hidden rounded-2xl border bg-background shadow-lg transition-all ${
-				isScanMode ? "border-emerald-300 shadow-emerald-50" : "border-border/60"
+			<div className={`overflow-hidden rounded-[1.35rem] border bg-background/98 shadow-[0_8px_30px_rgba(15,23,42,0.08)] transition-all md:rounded-[1.75rem] md:shadow-[0_20px_48px_rgba(15,23,42,0.08)] ${
+				isScanMode ? "border-emerald-300 shadow-emerald-100/70" : "border-border/70"
 			} focus-within:shadow-xl focus-within:border-primary/20`}>
 				{isScanMode && (
 					<div className="border-b border-emerald-200 bg-emerald-50 px-4 py-1.5 flex items-center gap-2">
@@ -144,7 +144,7 @@ export const ChatInput = ({
 					onChange={(e) => setInput(e.target.value)}
 					onKeyDown={onKeyDown}
 					placeholder={isListening ? "Mendengarkan..." : isScanMode ? "Instruksi analisis gambar..." : "Tanya Yumi AI..."}
-					className="min-h-[24px] max-h-[160px] w-full resize-none bg-transparent px-3 py-2.5 text-sm focus:outline-none placeholder:text-muted-foreground/50 md:max-h-[200px] md:px-4 md:py-3"
+					className="min-h-[52px] max-h-[160px] w-full resize-none bg-transparent px-3 py-3 text-sm focus:outline-none placeholder:text-muted-foreground/50 md:max-h-[200px] md:px-5 md:py-4"
 					rows={1}
 					onInput={(e) => {
 						const target = e.target as HTMLTextAreaElement;
@@ -153,7 +153,7 @@ export const ChatInput = ({
 					}}
 				/>
 
-				<div className="flex items-center justify-between px-2.5 pb-2.5 md:px-3 md:pb-3">
+				<div className="flex items-center justify-between px-2.5 pb-2.5 md:px-4 md:pb-4">
 					<div className="flex items-center gap-0.5">
 						<Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground md:h-8 md:w-8" onClick={() => fileInputRef.current?.click()} title="Upload file" type="button">
 							<Paperclip className="h-[18px] w-[18px]" />
@@ -190,7 +190,7 @@ export const ChatInput = ({
 				</div>
 			</div>
 
-			<p className="mt-1.5 text-center text-[11px] text-muted-foreground/40">
+			<p className="mt-2 text-center text-[11px] text-muted-foreground/45">
 				Yumi AI dapat membuat kesalahan. Periksa informasi penting.
 			</p>
 		</div>

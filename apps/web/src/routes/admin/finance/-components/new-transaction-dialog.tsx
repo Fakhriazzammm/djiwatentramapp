@@ -31,6 +31,13 @@ interface NewTransactionDialogProps {
 			rawText?: string;
 			sourceRef?: string;
 			sourceLabel?: string;
+			scanItems?: Array<{
+				name: string;
+				quantity: number;
+				price?: number;
+				total?: number;
+				unit?: string;
+			}>;
 		};
 		displayTitle?: string | null;
 		displaySummary?: string | null;
@@ -381,6 +388,37 @@ export function NewTransactionDialog({
 												</div>
 											</div>
 										))}
+									</div>
+								)}
+								{transaction?.metadata?.scanItems && transaction.metadata.scanItems.length > 0 && (
+									<div className="rounded-lg border border-border bg-muted/20 p-3">
+										<div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+											Detail Item Receipt
+										</div>
+										<div className="space-y-2">
+											{transaction.metadata.scanItems.map((item, index) => {
+												const quantity = Number(item.quantity) || 1;
+												const total =
+													Number(item.total) ||
+													((Number(item.price) || 0) * quantity);
+												return (
+													<div key={`${item.name}-${index}`} className="flex items-center justify-between rounded-md bg-background px-3 py-2">
+														<div>
+															<div className="text-sm font-medium text-foreground">
+																{item.name}
+															</div>
+															<div className="text-[11px] text-muted-foreground">
+																{quantity} {item.unit || "pcs"}
+																{item.price ? ` • Rp ${item.price.toLocaleString("id-ID")}/unit` : ""}
+															</div>
+														</div>
+														<div className="text-sm font-semibold text-foreground">
+															Rp {total.toLocaleString("id-ID")}
+														</div>
+													</div>
+												);
+											})}
+										</div>
 									</div>
 								)}
 								<textarea

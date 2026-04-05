@@ -63,6 +63,22 @@ const DEFAULTS = {
 		autoSendShiftReportEmail: false,
 		shiftSchedules: [],
 	},
+	customerOrdering: {
+		enabled: true,
+		welcomeTitle: "Welcome",
+		welcomeSubtitle: "Pesan menu favoritmu langsung dari meja.",
+		welcomeButtonLabel: "Mulai pesan",
+		enablePartySizeSelection: true,
+		enableFreeRefillPrompt: true,
+		enableBarcodeScan: true,
+		enableMenuNumberEntry: true,
+		enableCatalogBrowsing: true,
+		enableStaffCall: true,
+		enableDessertLater: true,
+		requireTableNumber: false,
+		cashPaymentLabel: "Bayar di kasir",
+		mayarPaymentLabel: "Bayar online",
+	},
 };
 
 export const getSettings = query({
@@ -155,6 +171,10 @@ export const getSettings = query({
 				...DEFAULTS.shiftSettings,
 				...(settings.shiftSettings ?? {}),
 			},
+			customerOrdering: {
+				...DEFAULTS.customerOrdering,
+				...(settings.customerOrdering ?? {}),
+			},
 		};
 	},
 });
@@ -235,6 +255,24 @@ export const updateSettings = mutation({
 						})
 					)
 				),
+			})
+		),
+		customerOrdering: v.optional(
+			v.object({
+				enabled: v.optional(v.boolean()),
+				welcomeTitle: v.optional(v.string()),
+				welcomeSubtitle: v.optional(v.string()),
+				welcomeButtonLabel: v.optional(v.string()),
+				enablePartySizeSelection: v.optional(v.boolean()),
+				enableFreeRefillPrompt: v.optional(v.boolean()),
+				enableBarcodeScan: v.optional(v.boolean()),
+				enableMenuNumberEntry: v.optional(v.boolean()),
+				enableCatalogBrowsing: v.optional(v.boolean()),
+				enableStaffCall: v.optional(v.boolean()),
+				enableDessertLater: v.optional(v.boolean()),
+				requireTableNumber: v.optional(v.boolean()),
+				cashPaymentLabel: v.optional(v.string()),
+				mayarPaymentLabel: v.optional(v.string()),
 			})
 		),
 	},

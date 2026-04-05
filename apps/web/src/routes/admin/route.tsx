@@ -11,6 +11,7 @@ import { useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	Archive,
+	Bell,
 	Calculator,
 	Calendar,
 	ChevronDown,
@@ -69,6 +70,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/booking": "Booking",
 	"/admin/kitchen": "Dapur",
 	"/admin/bar": "Bar",
+	"/admin/customer-service": "Layanan Customer",
 };
 
 // Bottom nav items (Yumi AI at center index 2)
@@ -96,6 +98,7 @@ const MORE_MENU_PATHS = [
 	"/admin/booking",
 	"/admin/kitchen",
 	"/admin/bar",
+	"/admin/customer-service",
 	"/admin/settings",
 ];
 
@@ -124,6 +127,7 @@ const QUICK_MENU_SECTIONS = [
 		items: [
 			{ to: "/admin/kitchen", icon: ChefHat, label: "Dapur" },
 			{ to: "/admin/bar", icon: Beer, label: "Bar" },
+			{ to: "/admin/customer-service", icon: Bell, label: "Layanan" },
 		],
 	},
 	{
@@ -311,6 +315,12 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Bar"
 						to="/admin/bar"
+					/>
+					<DesktopNavLink
+						icon={<Bell />}
+						isCollapsed={isCollapsed}
+						label="Layanan Customer"
+						to="/admin/customer-service"
 					/>
 
 					{/* KEUANGAN - Collapsible */}

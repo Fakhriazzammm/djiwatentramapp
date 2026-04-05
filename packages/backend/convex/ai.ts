@@ -1324,6 +1324,94 @@ function buildStockPurchasePayloadFromScan(args: {
 	};
 }
 
+function parseFlexibleQuantity(raw?: string) {
+	if (!raw) return 0;
+	const normalized = raw.replace(",", ".").replace(/[^0-9.-]/g, "");
+	const quantity = Number.parseFloat(normalized);
+	return Number.isFinite(quantity) ? quantity : 0;
+}
+
+function extractReceiptItemsFromText(message: string) {
+	if (!message || message.trim().length < 10) {
+		return [];
+	}
+
+	const items: Array<{
+		name: string;
+		quantity: number;
+		price: number;
+		total: number;
+		unit?: string;
+	}> = [];
+
+	const lines = message
+		.replace(/\r/g, "")
+		.split("\n")
+		.map((line) => line.trim())
+		.filter(Boolean);
+
+	const skipPattern =
+		/^(total|subtotal|grand total|tax|pajak|ppn|diskon|discount|service|biaya layanan|payment|pembayaran|cash|qris|debit|credit|metode|merchant|toko|supplier|tanggal|date|jam|waktu|no\.?\s*(struk|receipt|invoice)|receipt|invoice|catat|simpan|input)\b/i;
+
+	for (const rawLine of lines) {
+		const line = rawLine.replace(/^[\-\*\u2022>\s]+/, "").trim();
+		if (!line || skipPattern.test(line)) {
+			continue;
+		}
+
+		const patterns = [
+			/^(.*?)\s+(\d+(?:[.,]\d+)?)\s*(kg|gram|gr|g|liter|ltr|lt|l|ml|pcs|pc|pack|box|botol|bottle|bungkus|lusin|dozen)?\s*(?:x|@)\s*rp?\.?\s*([0-9][0-9.,]*)(?:\s*(?:=|x)\s*rp?\.?\s*([0-9][0-9.,]*))?$/i,
+			/^(.*?)\s+(\d+(?:[.,]\d+)?)\s*(kg|gram|gr|g|liter|ltr|lt|l|ml|pcs|pc|pack|box|botol|bottle|bungkus|lusin|dozen)?\s+rp?\.?\s*([0-9][0-9.,]*)(?:\s+rp?\.?\s*([0-9][0-9.,]*))?$/i,
+		];
+
+		let matchedItem:
+			| {
+					name: string;
+					quantity: number;
+					price: number;
+					total: number;
+					unit?: string;
+			  }
+			| null = null;
+
+		for (const pattern of patterns) {
+			const match = line.match(pattern);
+			if (!match) {
+				continue;
+			}
+
+			const name = sanitizeAIString(match[1] || "")
+				.replace(/[:\-]$/, "")
+				.trim();
+			const quantity = parseFlexibleQuantity(match[2]) || 1;
+			const unit = sanitizeAIString(match[3] || "") || undefined;
+			const price = parseRupiahAmount(match[4] || "");
+			const total = match[5]
+				? parseRupiahAmount(match[5])
+				: Math.round(quantity * price);
+
+			if (!name || name.length < 2 || !(price > 0)) {
+				continue;
+			}
+
+			matchedItem = {
+				name,
+				quantity,
+				price,
+				total,
+				unit,
+			};
+			break;
+		}
+
+		if (matchedItem) {
+			items.push(matchedItem);
+		}
+	}
+
+	return items.slice(0, 50);
+}
+
 function parseBulkFinancialReport(message: string): ParsedBulkFinanceResult | null {
 	if (!message || message.trim().length < 10) return null;
 
@@ -2036,6 +2124,7 @@ export const yumiChat = action({
 		}
 
 		const parsedBulkFinance = parseBulkFinancialReport(args.message);
+		const receiptItemsFromText = extractReceiptItemsFromText(args.message);
 		const bulkFinanceContext = formatBulkFinancialContext(parsedBulkFinance);
 		if (shouldAutoImportBulkFinance(args.message, parsedBulkFinance)) {
 			const toolCalls: Array<{
@@ -2067,6 +2156,12 @@ export const yumiChat = action({
 							importedAt: Date.now(),
 							rawText: tx.rawLine,
 							sourceLabel: "AI Bulk",
+							scanItems:
+								parsedBulkFinance!.entries.length === 1 &&
+								tx.type === "expense" &&
+								receiptItemsFromText.length > 0
+									? receiptItemsFromText
+									: undefined,
 						},
 					});
 					createdCount++;

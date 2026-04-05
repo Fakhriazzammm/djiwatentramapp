@@ -438,6 +438,23 @@ function SettingsPage() {
 		shiftSchedules: [] as ShiftSchedule[],
 	});
 
+	const [customerOrderingSettings, setCustomerOrderingSettings] = useState({
+		enabled: true,
+		welcomeTitle: "Welcome",
+		welcomeSubtitle: "Pesan menu favoritmu langsung dari meja.",
+		welcomeButtonLabel: "Mulai pesan",
+		enablePartySizeSelection: true,
+		enableFreeRefillPrompt: true,
+		enableBarcodeScan: true,
+		enableMenuNumberEntry: true,
+		enableCatalogBrowsing: true,
+		enableStaffCall: true,
+		enableDessertLater: true,
+		requireTableNumber: false,
+		cashPaymentLabel: "Bayar di kasir",
+		mayarPaymentLabel: "Bayar online",
+	});
+
 	const [mayarApiConfigured, setMayarApiConfigured] = useState(false);
 
 	const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
@@ -570,6 +587,37 @@ function SettingsPage() {
 					siteSettings.shiftSettings?.shiftSchedules ?? []
 				),
 			});
+			setCustomerOrderingSettings({
+				enabled: siteSettings.customerOrdering?.enabled ?? true,
+				welcomeTitle: siteSettings.customerOrdering?.welcomeTitle ?? "Welcome",
+				welcomeSubtitle:
+					siteSettings.customerOrdering?.welcomeSubtitle ??
+					"Pesan menu favoritmu langsung dari meja.",
+				welcomeButtonLabel:
+					siteSettings.customerOrdering?.welcomeButtonLabel ?? "Mulai pesan",
+				enablePartySizeSelection:
+					siteSettings.customerOrdering?.enablePartySizeSelection ?? true,
+				enableFreeRefillPrompt:
+					siteSettings.customerOrdering?.enableFreeRefillPrompt ?? true,
+				enableBarcodeScan:
+					siteSettings.customerOrdering?.enableBarcodeScan ?? true,
+				enableMenuNumberEntry:
+					siteSettings.customerOrdering?.enableMenuNumberEntry ?? true,
+				enableCatalogBrowsing:
+					siteSettings.customerOrdering?.enableCatalogBrowsing ?? true,
+				enableStaffCall:
+					siteSettings.customerOrdering?.enableStaffCall ?? true,
+				enableDessertLater:
+					siteSettings.customerOrdering?.enableDessertLater ?? true,
+				requireTableNumber:
+					siteSettings.customerOrdering?.requireTableNumber ?? false,
+				cashPaymentLabel:
+					siteSettings.customerOrdering?.cashPaymentLabel ??
+					"Bayar di kasir",
+				mayarPaymentLabel:
+					siteSettings.customerOrdering?.mayarPaymentLabel ??
+					"Bayar online",
+			});
 		}
 		setIsConnected(bluetoothPrinter.isConnected());
 		setPrinterName(bluetoothPrinter.getDeviceName());
@@ -645,6 +693,7 @@ function SettingsPage() {
 						shiftSettings.shiftSchedules
 					),
 				},
+				customerOrdering: customerOrderingSettings,
 			};
 			console.log("Saving settings:", payload);
 			await updateSiteSettings(payload);
@@ -1453,6 +1502,193 @@ function SettingsPage() {
 											)}
 										</>
 									)}
+								</div>
+
+								<div className="space-y-5 rounded-2xl border border-border/50 bg-card p-4 md:p-6">
+									<div className="flex items-center gap-3 border-b border-border/50 pb-4">
+										<Users className="h-5 w-5 text-primary" />
+										<div>
+											<h4 className="font-bold text-foreground text-sm uppercase tracking-wider">
+												Customer Self-Service
+											</h4>
+											<p className="text-muted-foreground text-xs">
+												Atur flow pemesanan customer di halaman brand.
+											</p>
+										</div>
+									</div>
+
+									<div className="grid gap-3 md:grid-cols-2">
+										{([
+											{
+												key: "enabled",
+												label: "Aktifkan halaman ordering customer",
+												description: "Izinkan flow self-service aktif di halaman brand.",
+											},
+											{
+												key: "enablePartySizeSelection",
+												label: "Pilih jumlah orang",
+												description: "Tampilkan step jumlah tamu sebelum mulai pesan.",
+											},
+											{
+												key: "enableFreeRefillPrompt",
+												label: "Prompt free refill",
+												description: "Tawarkan add-on free refill sebelum customer memilih menu.",
+											},
+											{
+												key: "enableBarcodeScan",
+												label: "Scan barcode / kamera",
+												description: "Aktifkan scanner barcode menu dari kamera perangkat.",
+											},
+											{
+												key: "enableMenuNumberEntry",
+												label: "Input nomor produk",
+												description: "Nomor menu lengkap akan langsung menambah item ke cart.",
+											},
+											{
+												key: "enableCatalogBrowsing",
+												label: "Mode katalog produk",
+												description: "Izinkan customer browsing produk lewat katalog kategori.",
+											},
+											{
+												key: "enableStaffCall",
+												label: "Tombol panggil staff",
+												description: "Customer bisa kirim request call staff ke admin.",
+											},
+											{
+												key: "enableDessertLater",
+												label: "Dessert nanti",
+												description: "Tampilkan opsi dessert dibawakan nanti dan request follow-up.",
+											},
+											{
+												key: "requireTableNumber",
+												label: "Wajib nomor meja",
+												description: "Minta nomor meja sebelum checkout untuk memudahkan layanan.",
+											},
+										] as const).map((item) => (
+											<div
+												className="flex items-center justify-between rounded-xl bg-muted/40 p-4 shadow-inner"
+												key={item.key}
+											>
+												<div className="pr-4">
+													<span className="block font-bold text-foreground text-sm">
+														{item.label}
+													</span>
+													<span className="text-muted-foreground text-xs">
+														{item.description}
+													</span>
+												</div>
+												<button
+													className={`relative h-7 w-12 rounded-full transition-all duration-300 ${
+														customerOrderingSettings[item.key]
+															? "bg-primary"
+															: "bg-muted-foreground/20"
+													}`}
+													onClick={() =>
+														setCustomerOrderingSettings((prev) => ({
+															...prev,
+															[item.key]: !prev[item.key],
+														}))
+													}
+													type="button"
+												>
+													<div
+														className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-300 ${
+															customerOrderingSettings[item.key]
+																? "right-1"
+																: "left-1"
+														}`}
+													/>
+												</button>
+											</div>
+										))}
+									</div>
+
+									<div className="grid gap-4 md:grid-cols-2">
+										<div className="space-y-2 md:col-span-2">
+											<label className="font-medium text-muted-foreground text-xs" htmlFor="customer-ordering-welcome-title">
+												Judul Welcome
+											</label>
+											<input
+												id="customer-ordering-welcome-title"
+												className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												onChange={(e) =>
+													setCustomerOrderingSettings((prev) => ({
+														...prev,
+														welcomeTitle: e.target.value,
+													}))
+												}
+												type="text"
+												value={customerOrderingSettings.welcomeTitle}
+											/>
+										</div>
+										<div className="space-y-2 md:col-span-2">
+											<label className="font-medium text-muted-foreground text-xs" htmlFor="customer-ordering-welcome-subtitle">
+												Subjudul Welcome
+											</label>
+											<textarea
+												id="customer-ordering-welcome-subtitle"
+												className="min-h-[90px] w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												onChange={(e) =>
+													setCustomerOrderingSettings((prev) => ({
+														...prev,
+														welcomeSubtitle: e.target.value,
+													}))
+												}
+												value={customerOrderingSettings.welcomeSubtitle}
+											/>
+										</div>
+										<div className="space-y-2">
+											<label className="font-medium text-muted-foreground text-xs" htmlFor="customer-ordering-welcome-button">
+												Label tombol mulai
+											</label>
+											<input
+												id="customer-ordering-welcome-button"
+												className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												onChange={(e) =>
+													setCustomerOrderingSettings((prev) => ({
+														...prev,
+														welcomeButtonLabel: e.target.value,
+													}))
+												}
+												type="text"
+												value={customerOrderingSettings.welcomeButtonLabel}
+											/>
+										</div>
+										<div className="space-y-2">
+											<label className="font-medium text-muted-foreground text-xs" htmlFor="customer-ordering-cash-label">
+												Label pembayaran kasir
+											</label>
+											<input
+												id="customer-ordering-cash-label"
+												className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												onChange={(e) =>
+													setCustomerOrderingSettings((prev) => ({
+														...prev,
+														cashPaymentLabel: e.target.value,
+													}))
+												}
+												type="text"
+												value={customerOrderingSettings.cashPaymentLabel}
+											/>
+										</div>
+										<div className="space-y-2 md:col-span-2">
+											<label className="font-medium text-muted-foreground text-xs" htmlFor="customer-ordering-mayar-label">
+												Label pembayaran online
+											</label>
+											<input
+												id="customer-ordering-mayar-label"
+												className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												onChange={(e) =>
+													setCustomerOrderingSettings((prev) => ({
+														...prev,
+														mayarPaymentLabel: e.target.value,
+													}))
+												}
+												type="text"
+												value={customerOrderingSettings.mayarPaymentLabel}
+											/>
+										</div>
+									</div>
 								</div>
 							</div>
 						</section>

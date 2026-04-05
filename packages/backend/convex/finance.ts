@@ -356,6 +356,24 @@ function buildTransactionPresentation(
 	relatedBooking: any
 ) {
 	const parsedDetails = parseTransactionDetails(transaction.description);
+	const scanItems = Array.isArray(transaction.metadata?.scanItems)
+		? transaction.metadata.scanItems
+		: [];
+	const scanItemDetails = scanItems.slice(0, 4).map((item: any) => {
+		const quantity = Number(item.quantity) || 1;
+		const total =
+			Number(item.total) ||
+			((Number(item.price) || 0) * quantity);
+		const unit = item.unit ? ` ${item.unit}` : "";
+		return {
+			label: item.name,
+			value: `${quantity}${unit} • Rp${total.toLocaleString("id-ID")}`,
+		};
+	});
+	const scanSummary =
+		scanItems.length > 0
+			? `${scanItems.length} item receipt tersimpan`
+			: null;
 
 	if (transaction.category === "Modal Awal") {
 		return {
@@ -417,9 +435,15 @@ function buildTransactionPresentation(
 	if (transaction.metadata?.source === "ai_bulk_finance") {
 		return {
 			displayTitle: transaction.merchant || parsedDetails.title || transaction.category,
-			displaySummary: transaction.description || transaction.metadata?.rawText || "Import bulk AI",
+			displaySummary:
+				transaction.description ||
+				scanSummary ||
+				transaction.metadata?.rawText ||
+				"Import bulk AI",
 			detailItems: [
 				{ label: "Sumber", value: "AI Bulk" },
+				...(scanSummary ? [{ label: "Receipt", value: scanSummary }] : []),
+				...scanItemDetails,
 				...(transaction.metadata?.aiSessionId ? [{ label: "Sesi", value: transaction.metadata.aiSessionId }] : []),
 				...(parsedDetails.details.length > 0 ? parsedDetails.details : []),
 			].slice(0, 8),
@@ -429,10 +453,27 @@ function buildTransactionPresentation(
 	if (transaction.metadata?.source === "ai_receipt_scan") {
 		return {
 			displayTitle: transaction.merchant || parsedDetails.title || transaction.category,
-			displaySummary: transaction.description || "Hasil scan struk oleh AI",
+			displaySummary:
+				transaction.description ||
+				scanSummary ||
+				"Hasil scan struk oleh AI",
 			detailItems: [
 				{ label: "Sumber", value: "AI Scan" },
+				...(scanSummary ? [{ label: "Receipt", value: scanSummary }] : []),
+				...scanItemDetails,
 				...(parsedDetails.details.length > 0 ? parsedDetails.details : []),
+			].slice(0, 8),
+		};
+	}
+
+	if (scanItems.length > 0) {
+		return {
+			displayTitle: parsedDetails.title || transaction.merchant || transaction.category,
+			displaySummary: parsedDetails.summary || scanSummary || transaction.description || null,
+			detailItems: [
+				...(scanSummary ? [{ label: "Receipt", value: scanSummary }] : []),
+				...scanItemDetails,
+				...parsedDetails.details,
 			].slice(0, 8),
 		};
 	}

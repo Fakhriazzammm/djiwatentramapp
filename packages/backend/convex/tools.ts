@@ -215,7 +215,7 @@ export const tools = {
 	// Create Transaction
 	createTransaction: {
 		description:
-			"Catat transaksi keuangan (income/expense). Harap sediakan: tipe, jumlah, kategori, merchant/toko (opsional), dan deskripsi.",
+			"Catat transaksi keuangan (income/expense). Harap sediakan: tipe, jumlah, kategori, merchant/toko (opsional), dan deskripsi. Jika user memberi receipt atau daftar item belanja, isi scanItems agar item tersimpan per baris di detail transaksi.",
 		parameters: z.object({
 			type: z.enum(["income", "expense"]).describe("Tipe transaksi"),
 			amount: z.number().describe("Jumlah uang"),
@@ -225,6 +225,15 @@ export const tools = {
 			paymentMethod: z.string().optional().describe("Metode pembayaran"),
 			date: z.union([z.number(), z.string()]).optional().describe("Tanggal transaksi (timestamp ms atau ISO date string, opsional)"),
 			status: z.enum(["completed", "pending", "cancelled"]).optional().describe("Status transaksi (default: completed)"),
+			scanItems: z.array(
+				z.object({
+					name: z.string().min(1, "Nama item wajib diisi"),
+					quantity: z.number().positive("Jumlah item harus lebih dari 0"),
+					price: z.number().nonnegative().optional().describe("Harga satuan item"),
+					total: z.number().nonnegative().optional().describe("Total item"),
+					unit: z.string().optional().describe("Satuan item"),
+				})
+			).optional().describe("Daftar item receipt/detail belanja"),
 		}),
 	},
 

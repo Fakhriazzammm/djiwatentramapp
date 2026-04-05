@@ -75,7 +75,8 @@ export function TransactionDetailReport({ range }: Props) {
 				t.category.toLowerCase().includes(query) ||
 				t.sourceLabel?.toLowerCase().includes(query) ||
 				t.referenceValue?.toLowerCase().includes(query) ||
-				t.rawText?.toLowerCase().includes(query)
+				t.rawText?.toLowerCase().includes(query) ||
+				t.metadata?.scanItems?.some((item: any) => item.name?.toLowerCase().includes(query))
 			);
 		}
 
@@ -624,10 +625,11 @@ export function TransactionDetailReport({ range }: Props) {
 												)}
 											</div>
 										</td>
-										<td className="px-3 py-2.5">
-											<div className="flex min-w-[220px] max-w-[260px] flex-wrap gap-1">
-												{Array.isArray(t.detailItems) && t.detailItems.length > 0 ? (
-													t.detailItems.slice(0, 4).map((detail: { label: string; value: string }, idx: number) => (
+											<td className="px-3 py-2.5">
+												<div className="flex min-w-[220px] max-w-[260px] flex-wrap gap-1">
+													{Array.isArray(t.detailItems) && t.detailItems.length > 0 ? (
+														<>
+															{t.detailItems.slice(0, Array.isArray(t.metadata?.scanItems) && t.metadata.scanItems.length > 0 ? 6 : 4).map((detail: { label: string; value: string }, idx: number) => (
 														<div key={`${detail.label}-${idx}`} className="inline-flex max-w-[126px] items-center gap-1 rounded-md border border-border/60 bg-background px-2 py-0.5 text-[10px]">
 															<span className="font-semibold uppercase tracking-wider text-muted-foreground">
 																{detail.label}:
@@ -636,7 +638,13 @@ export function TransactionDetailReport({ range }: Props) {
 																{detail.value}
 															</span>
 														</div>
-													))
+															))}
+															{t.detailItems.length > (Array.isArray(t.metadata?.scanItems) && t.metadata.scanItems.length > 0 ? 6 : 4) && (
+																<div className="inline-flex items-center rounded-md border border-dashed border-border/60 bg-muted/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+																	+{t.detailItems.length - (Array.isArray(t.metadata?.scanItems) && t.metadata.scanItems.length > 0 ? 6 : 4)} detail
+																</div>
+															)}
+														</>
 												) : (
 													<span className="text-[11px] text-muted-foreground">-</span>
 												)}

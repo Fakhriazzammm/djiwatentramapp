@@ -162,6 +162,17 @@ export default defineSchema({
 		customerName: v.optional(v.string()),
 		tableNumber: v.optional(v.string()),
 		orderType: v.optional(v.union(v.literal("dine_in"), v.literal("takeaway"))),
+		source: v.optional(
+			v.union(
+				v.literal("pos"),
+				v.literal("customer_self_service"),
+				v.literal("booking")
+			)
+		),
+		brandSlug: v.optional(v.string()),
+		guestCount: v.optional(v.number()),
+		freeRefillSelected: v.optional(v.boolean()),
+		dessertLater: v.optional(v.boolean()),
 		notes: v.optional(v.string()),
 		createdAt: v.number(),
 		voucherId: v.optional(v.id("discounts")),
@@ -179,6 +190,31 @@ export default defineSchema({
 						})
 					)
 				),
+			})
+		),
+		paymentReceiptKind: v.optional(
+			v.union(
+				v.literal("cashier_pending"),
+				v.literal("gateway_paid"),
+				v.literal("manual_qris_pending"),
+				v.literal("transfer_pending")
+			)
+		),
+		paymentGateway: v.optional(
+			v.object({
+				provider: v.string(),
+				invoiceId: v.string(),
+				transactionId: v.optional(v.string()),
+				invoiceUrl: v.optional(v.string()),
+				status: v.union(
+					v.literal("created"),
+					v.literal("pending"),
+					v.literal("paid"),
+					v.literal("expired"),
+					v.literal("cancelled"),
+					v.literal("failed")
+				),
+				paidAt: v.optional(v.number()),
 			})
 		),
 	})
@@ -266,7 +302,48 @@ export default defineSchema({
 				),
 			})
 		),
+		customerOrdering: v.optional(
+			v.object({
+				enabled: v.optional(v.boolean()),
+				welcomeTitle: v.optional(v.string()),
+				welcomeSubtitle: v.optional(v.string()),
+				welcomeButtonLabel: v.optional(v.string()),
+				enablePartySizeSelection: v.optional(v.boolean()),
+				enableFreeRefillPrompt: v.optional(v.boolean()),
+				enableBarcodeScan: v.optional(v.boolean()),
+				enableMenuNumberEntry: v.optional(v.boolean()),
+				enableCatalogBrowsing: v.optional(v.boolean()),
+				enableStaffCall: v.optional(v.boolean()),
+				enableDessertLater: v.optional(v.boolean()),
+				requireTableNumber: v.optional(v.boolean()),
+				cashPaymentLabel: v.optional(v.string()),
+				mayarPaymentLabel: v.optional(v.string()),
+			})
+		),
 	}),
+
+	customerServiceRequests: defineTable({
+		brandSlug: v.string(),
+		orderId: v.optional(v.id("orders")),
+		orderNumber: v.optional(v.string()),
+		requestType: v.union(v.literal("call_staff"), v.literal("bring_dessert")),
+		status: v.union(
+			v.literal("pending"),
+			v.literal("acknowledged"),
+			v.literal("completed"),
+			v.literal("cancelled")
+		),
+		tableNumber: v.optional(v.string()),
+		customerName: v.optional(v.string()),
+		notes: v.optional(v.string()),
+		source: v.optional(v.union(v.literal("customer_page"), v.literal("admin"))),
+		createdAt: v.number(),
+		resolvedAt: v.optional(v.number()),
+	})
+		.index("by_status", ["status"])
+		.index("by_brandSlug_and_status", ["brandSlug", "status"])
+		.index("by_orderId", ["orderId"])
+		.index("by_createdAt", ["createdAt"]),
 
 	// Discounts / Vouchers
 	discounts: defineTable({

@@ -153,6 +153,17 @@ export const createOrder = mutation({
 		customerName: v.optional(v.string()),
 		tableNumber: v.optional(v.string()),
 		orderType: v.optional(v.union(v.literal("dine_in"), v.literal("takeaway"))),
+		source: v.optional(
+			v.union(
+				v.literal("pos"),
+				v.literal("customer_self_service"),
+				v.literal("booking")
+			)
+		),
+		brandSlug: v.optional(v.string()),
+		guestCount: v.optional(v.number()),
+		freeRefillSelected: v.optional(v.boolean()),
+		dessertLater: v.optional(v.boolean()),
 		notes: v.optional(v.string()),
 		voucherId: v.optional(v.id("discounts")),
 		discountAmount: v.optional(v.number()),
@@ -169,6 +180,31 @@ export const createOrder = mutation({
 						})
 					)
 				),
+			})
+		),
+		paymentReceiptKind: v.optional(
+			v.union(
+				v.literal("cashier_pending"),
+				v.literal("gateway_paid"),
+				v.literal("manual_qris_pending"),
+				v.literal("transfer_pending")
+			)
+		),
+		paymentGateway: v.optional(
+			v.object({
+				provider: v.string(),
+				invoiceId: v.string(),
+				transactionId: v.optional(v.string()),
+				invoiceUrl: v.optional(v.string()),
+				status: v.union(
+					v.literal("created"),
+					v.literal("pending"),
+					v.literal("paid"),
+					v.literal("expired"),
+					v.literal("cancelled"),
+					v.literal("failed")
+				),
+				paidAt: v.optional(v.number()),
 			})
 		),
 		isOpenBill: v.optional(v.boolean()),
@@ -278,6 +314,98 @@ export const updateOrderStatus = mutation({
 		}
 
 		await ctx.db.patch(args.id, { status: args.status });
+	},
+});
+
+export const updateOrderPaymentGateway = mutation({
+	args: {
+		id: v.id("orders"),
+		paymentGateway: v.object({
+			provider: v.string(),
+			invoiceId: v.string(),
+			transactionId: v.optional(v.string()),
+			invoiceUrl: v.optional(v.string()),
+			status: v.union(
+				v.literal("created"),
+				v.literal("pending"),
+				v.literal("paid"),
+				v.literal("expired"),
+				v.literal("cancelled"),
+				v.literal("failed")
+			),
+			paidAt: v.optional(v.number()),
+		}),
+		paymentReceiptKind: v.optional(
+			v.union(
+				v.literal("cashier_pending"),
+				v.literal("gateway_paid"),
+				v.literal("manual_qris_pending"),
+				v.literal("transfer_pending")
+			)
+		),
+	},
+	handler: async (ctx, args) => {
+		const order = await ctx.db.get(args.id);
+		if (!order) {
+			throw new Error("Order not found");
+		}
+
+		const isNowPaid = args.paymentGateway.status === "paid";
+		const wasPaid = order.status === "paid" || order.status === "completed";
+		const nextStatus =
+			args.paymentGateway.status === "cancelled"
+				? "cancelled"
+				: args.paymentGateway.status === "paid"
+					? "paid"
+					: order.status;
+
+		if (isNowPaid && !wasPaid) {
+			const settledAt = args.paymentGateway.paidAt ?? Date.now();
+			await settleOrder(
+				ctx,
+				{
+					_id: order._id,
+					orderNumber: order.orderNumber,
+					items: order.items,
+					totalAmount: order.totalAmount,
+					paymentMethod: order.paymentMethod,
+					createdAt: order.createdAt,
+				},
+				settledAt
+			);
+		}
+
+		const patch: {
+			paymentGateway: {
+				provider: string;
+				invoiceId: string;
+				transactionId?: string;
+				invoiceUrl?: string;
+				status:
+					| "created"
+					| "pending"
+					| "paid"
+					| "expired"
+					| "cancelled"
+					| "failed";
+				paidAt?: number;
+			};
+			status: "pending" | "paid" | "completed" | "cancelled";
+			paymentReceiptKind?:
+				| "cashier_pending"
+				| "gateway_paid"
+				| "manual_qris_pending"
+				| "transfer_pending";
+		} = {
+			paymentGateway: args.paymentGateway,
+			status: nextStatus,
+		};
+		const nextReceiptKind = args.paymentReceiptKind ?? order.paymentReceiptKind;
+		if (nextReceiptKind) {
+			patch.paymentReceiptKind = nextReceiptKind;
+		}
+
+		await ctx.db.patch(args.id, patch);
 	},
 });
 

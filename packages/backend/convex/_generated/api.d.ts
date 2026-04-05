@@ -12,6 +12,7 @@ import type * as ai from "../ai.js";
 import type * as aiMemory from "../aiMemory.js";
 import type * as auth from "../auth.js";
 import type * as booking from "../booking.js";
+import type * as customerService from "../customerService.js";
 import type * as dashboard from "../dashboard.js";
 import type * as discounts from "../discounts.js";
 import type * as finance from "../finance.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   aiMemory: typeof aiMemory;
   auth: typeof auth;
   booking: typeof booking;
+  customerService: typeof customerService;
   dashboard: typeof dashboard;
   discounts: typeof discounts;
   finance: typeof finance;

@@ -265,6 +265,7 @@ export const executeToolCall = defineAction({
 							importedAt: Date.now(),
 							rawText: parsed.description,
 							sourceLabel: "AI Chat",
+							scanItems: parsed.scanItems,
 						},
 					});
 					break;

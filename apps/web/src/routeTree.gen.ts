@@ -25,6 +25,7 @@ import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
 import { Route as AdminHppCalculatorRouteImport } from './routes/admin/hpp-calculator'
 import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting'
 import { Route as AdminDiscountsRouteImport } from './routes/admin/discounts'
+import { Route as AdminCustomerServiceRouteImport } from './routes/admin/customer-service'
 import { Route as AdminBookingRouteImport } from './routes/admin/booking'
 import { Route as AdminBarRouteImport } from './routes/admin/bar'
 import { Route as AdminAiChatRouteImport } from './routes/admin/ai-chat'
@@ -126,6 +127,13 @@ const AdminDiscountsRoute = AdminDiscountsRouteImport.update({
 } as any).lazy(() =>
   import('./routes/admin/discounts.lazy').then((d) => d.Route),
 )
+const AdminCustomerServiceRoute = AdminCustomerServiceRouteImport.update({
+  id: '/customer-service',
+  path: '/customer-service',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/customer-service.lazy').then((d) => d.Route),
+)
 const AdminBookingRoute = AdminBookingRouteImport.update({
   id: '/booking',
   path: '/booking',
@@ -181,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
   '/admin/booking': typeof AdminBookingRoute
+  '/admin/customer-service': typeof AdminCustomerServiceRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
@@ -205,6 +214,7 @@ export interface FileRoutesByTo {
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
   '/admin/booking': typeof AdminBookingRoute
+  '/admin/customer-service': typeof AdminCustomerServiceRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
@@ -232,6 +242,7 @@ export interface FileRoutesById {
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
   '/admin/booking': typeof AdminBookingRoute
+  '/admin/customer-service': typeof AdminCustomerServiceRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/admin/ai-chat'
     | '/admin/bar'
     | '/admin/booking'
+    | '/admin/customer-service'
     | '/admin/discounts'
     | '/admin/forecasting'
     | '/admin/hpp-calculator'
@@ -284,6 +296,7 @@ export interface FileRouteTypes {
     | '/admin/ai-chat'
     | '/admin/bar'
     | '/admin/booking'
+    | '/admin/customer-service'
     | '/admin/discounts'
     | '/admin/forecasting'
     | '/admin/hpp-calculator'
@@ -310,6 +323,7 @@ export interface FileRouteTypes {
     | '/admin/ai-chat'
     | '/admin/bar'
     | '/admin/booking'
+    | '/admin/customer-service'
     | '/admin/discounts'
     | '/admin/forecasting'
     | '/admin/hpp-calculator'
@@ -449,6 +463,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDiscountsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/customer-service': {
+      id: '/admin/customer-service'
+      path: '/customer-service'
+      fullPath: '/admin/customer-service'
+      preLoaderRoute: typeof AdminCustomerServiceRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/booking': {
       id: '/admin/booking'
       path: '/booking'
@@ -530,6 +551,7 @@ interface AdminRouteRouteChildren {
   AdminAiChatRoute: typeof AdminAiChatRoute
   AdminBarRoute: typeof AdminBarRoute
   AdminBookingRoute: typeof AdminBookingRoute
+  AdminCustomerServiceRoute: typeof AdminCustomerServiceRoute
   AdminDiscountsRoute: typeof AdminDiscountsRoute
   AdminForecastingRoute: typeof AdminForecastingRoute
   AdminHppCalculatorRoute: typeof AdminHppCalculatorRoute
@@ -547,6 +569,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAiChatRoute: AdminAiChatRoute,
   AdminBarRoute: AdminBarRoute,
   AdminBookingRoute: AdminBookingRoute,
+  AdminCustomerServiceRoute: AdminCustomerServiceRoute,
   AdminDiscountsRoute: AdminDiscountsRoute,
   AdminForecastingRoute: AdminForecastingRoute,
   AdminHppCalculatorRoute: AdminHppCalculatorRoute,
