@@ -10,12 +10,14 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MenuRouteImport } from './routes/menu'
+import { Route as HomeRouteImport } from './routes/home'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BookingRouteImport } from './routes/booking'
 import { Route as BrandSlugRouteImport } from './routes/$brandSlug'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as HomeSectionRouteImport } from './routes/home.$section'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
@@ -40,6 +42,11 @@ const MenuRoute = MenuRouteImport.update({
   path: '/menu',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/menu.lazy').then((d) => d.Route))
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/home.lazy').then((d) => d.Route))
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -70,6 +77,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() => import('./routes/admin/index.lazy').then((d) => d.Route))
+const HomeSectionRoute = HomeSectionRouteImport.update({
+  id: '/$section',
+  path: '/$section',
+  getParentRoute: () => HomeRoute,
+} as any).lazy(() => import('./routes/home.$section.lazy').then((d) => d.Route))
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -184,6 +196,7 @@ export interface FileRoutesByFullPath {
   '/$brandSlug': typeof BrandSlugRoute
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
+  '/home': typeof HomeRouteWithChildren
   '/menu': typeof MenuRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
@@ -199,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/home/$section': typeof HomeSectionRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
@@ -210,6 +224,7 @@ export interface FileRoutesByTo {
   '/$brandSlug': typeof BrandSlugRoute
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
+  '/home': typeof HomeRouteWithChildren
   '/menu': typeof MenuRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
@@ -224,6 +239,7 @@ export interface FileRoutesByTo {
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/home/$section': typeof HomeSectionRoute
   '/admin': typeof AdminIndexRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
@@ -237,6 +253,7 @@ export interface FileRoutesById {
   '/$brandSlug': typeof BrandSlugRoute
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
+  '/home': typeof HomeRouteWithChildren
   '/menu': typeof MenuRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
@@ -252,6 +269,7 @@ export interface FileRoutesById {
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/home/$section': typeof HomeSectionRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
@@ -266,6 +284,7 @@ export interface FileRouteTypes {
     | '/$brandSlug'
     | '/booking'
     | '/dashboard'
+    | '/home'
     | '/menu'
     | '/admin/finance'
     | '/admin/ai-chat'
@@ -281,6 +300,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
+    | '/home/$section'
     | '/admin/'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
@@ -292,6 +312,7 @@ export interface FileRouteTypes {
     | '/$brandSlug'
     | '/booking'
     | '/dashboard'
+    | '/home'
     | '/menu'
     | '/admin/ai-chat'
     | '/admin/bar'
@@ -306,6 +327,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
+    | '/home/$section'
     | '/admin'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
@@ -318,6 +340,7 @@ export interface FileRouteTypes {
     | '/$brandSlug'
     | '/booking'
     | '/dashboard'
+    | '/home'
     | '/menu'
     | '/admin/finance'
     | '/admin/ai-chat'
@@ -333,6 +356,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
+    | '/home/$section'
     | '/admin/'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
@@ -346,6 +370,7 @@ export interface RootRouteChildren {
   BrandSlugRoute: typeof BrandSlugRoute
   BookingRoute: typeof BookingRoute
   DashboardRoute: typeof DashboardRoute
+  HomeRoute: typeof HomeRouteWithChildren
   MenuRoute: typeof MenuRoute
 }
 
@@ -356,6 +381,13 @@ declare module '@tanstack/react-router' {
       path: '/menu'
       fullPath: '/menu'
       preLoaderRoute: typeof MenuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -399,6 +431,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/home/$section': {
+      id: '/home/$section'
+      path: '/$section'
+      fullPath: '/home/$section'
+      preLoaderRoute: typeof HomeSectionRouteImport
+      parentRoute: typeof HomeRoute
     }
     '/admin/settings': {
       id: '/admin/settings'
@@ -586,12 +625,23 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
   AdminRouteRouteChildren,
 )
 
+interface HomeRouteChildren {
+  HomeSectionRoute: typeof HomeSectionRoute
+}
+
+const HomeRouteChildren: HomeRouteChildren = {
+  HomeSectionRoute: HomeSectionRoute,
+}
+
+const HomeRouteWithChildren = HomeRoute._addFileChildren(HomeRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   BrandSlugRoute: BrandSlugRoute,
   BookingRoute: BookingRoute,
   DashboardRoute: DashboardRoute,
+  HomeRoute: HomeRouteWithChildren,
   MenuRoute: MenuRoute,
 }
 export const routeTree = rootRouteImport

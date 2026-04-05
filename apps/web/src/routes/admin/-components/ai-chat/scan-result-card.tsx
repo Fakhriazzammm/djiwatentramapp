@@ -148,6 +148,28 @@ export function ScanResultCard({ data }: { data: ScanResultData }) {
 						</p>
 					</div>
 				)}
+
+				{data.rewrittenText && data.rewrittenText.trim().length > 0 && (
+					<div className="rounded-lg border border-primary/20 bg-primary/5 p-2">
+						<p className="mb-1 text-[10px] font-semibold text-primary">
+							Tulisan Ulang AI
+						</p>
+						<p className="whitespace-pre-wrap text-[10px] leading-relaxed text-foreground/90">
+							{data.rewrittenText}
+						</p>
+					</div>
+				)}
+
+				{data.rawText && data.rawText.trim().length > 0 && (
+					<div className="rounded-lg border border-border bg-muted/30 p-2">
+						<p className="mb-1 text-[10px] font-semibold text-muted-foreground">
+							Teks OCR Mentah
+						</p>
+						<p className="max-h-24 overflow-y-auto whitespace-pre-wrap text-[10px] leading-relaxed text-muted-foreground">
+							{data.rawText}
+						</p>
+					</div>
+				)}
 			</div>
 		</div>
 	);

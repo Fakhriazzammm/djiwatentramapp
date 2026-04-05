@@ -39,6 +39,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	const [streamSessionId, setStreamSessionId] = useState<string | null>(null);
 	const streamingActiveRef = useRef(false);
 	const scrollThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const hydratedSessionRef = useRef<string | null>(null);
 	const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
 	const [isImageScannerOpen, setIsImageScannerOpen] = useState(false);
 	const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -157,6 +158,10 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	}, [streamingContent, isStreaming]);
 
 	useEffect(() => {
+		if (!currentSessionId || !loadConversationQuery) return;
+		if (hydratedSessionRef.current === currentSessionId && messages.length > 0) {
+			return;
+		}
 		if (loadConversationQuery) {
 			const loadedMessages: ChatMessage[] = (loadConversationQuery as any).map((item: any) => ({
 				role: item.role,
@@ -164,8 +169,9 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 				_msgId: item._id,
 			}));
 			setMessages(loadedMessages);
+			hydratedSessionRef.current = currentSessionId;
 		}
-	}, [loadConversationQuery]);
+	}, [loadConversationQuery, currentSessionId, messages.length]);
 
 	useEffect(() => {
 		if (!streamSessionId || !streamingMessage) return;
@@ -190,6 +196,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			setCurrentSessionId(sid);
 			setStreamSessionId(sid);
 			setMessages([]);
+			hydratedSessionRef.current = null;
 			setToolCalls([]);
 			briefingAttemptedRef.current = false;
 			return sid;
@@ -202,6 +209,8 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	const loadSession = useCallback((sessionId: string) => {
 		setCurrentSessionId(sessionId);
 		setStreamSessionId(sessionId);
+		setMessages([]);
+		hydratedSessionRef.current = null;
 		setShowSessionHistory(false);
 	}, []);
 
@@ -314,34 +323,32 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 				index?: number;
 			}>;
 			if (!res || !res.length) throw new Error("Gagal menganalisis gambar");
-			const successfulResults = res.filter(
-				(entry: {
-					success: boolean;
-					data?: ScanResultData;
-				}): entry is { success: true; data: ScanResultData } =>
-					entry.success && !!entry.data
-			);
-			const failedResults = res.filter(
-				(entry: {
-					success: boolean;
-					error?: string;
-					index?: number;
-				}): entry is { success: false; error?: string; index: number } =>
-					!entry.success
-			);
+			const successfulResults: Array<{ data: ScanResultData; index: number }> = [];
+			const failedResults: Array<{ error?: string; index: number }> = [];
+			for (let idx = 0; idx < res.length; idx++) {
+				const entry = res[idx];
+				if (entry.success && entry.data) {
+					successfulResults.push({ data: entry.data, index: idx });
+				} else {
+					failedResults.push({ error: entry.error, index: idx });
+				}
+			}
 			if (successfulResults.length === 0) {
 				throw new Error(
 					failedResults[0]?.error || "Semua gambar gagal dianalisis"
 				);
 			}
 			const newMessages: ChatMessage[] = [];
-			for (const [resultIndex, entry] of successfulResults.entries()) {
+			for (const entry of successfulResults) {
 				const scanData = entry.data;
 				if (!scanData) continue;
 				const itemsStr = scanData.items?.length 
 					? `\n📋 Detail Item (${scanData.items.length} item):\n` + scanData.items.map((item: any, idx: number) => `${idx + 1}. ${item.name} x${item.qty} = Rp ${toRupiah(item.subtotal)}`).join("\n")
 					: "";
-				const assistantContent = `🍩 Merchant: ${scanData.name || "Toko"}${itemsStr}\n\n💰 Total: Rp ${toRupiah(scanData.total)}\n📊 Keyakinan: ${scanData.confidence}% | Kategori: ${scanData.category?.replace(/_/g, " ") || "Umum"}`;
+				const rewrittenPreview = scanData.rewrittenText?.trim()
+					? `\n\n📝 Tulisan Ulang AI:\n${scanData.rewrittenText}`
+					: "";
+				const assistantContent = `🍩 Merchant: ${scanData.name || "Toko"}${itemsStr}\n\n💰 Total: Rp ${toRupiah(scanData.total)}\n📊 Keyakinan: ${scanData.confidence}% | Kategori: ${scanData.category?.replace(/_/g, " ") || "Umum"}${rewrittenPreview}`;
 				const assistantMsg: ChatMessage = {
 					role: "assistant",
 					content: assistantContent,
@@ -351,7 +358,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 				};
 				newMessages.push(assistantMsg);
 				addScanHistory({
-					thumbnail: images[resultIndex] || "",
+					thumbnail: images[entry.index] || "",
 					merchant: scanData.merchant || scanData.name || "Tidak diketahui",
 					total: Number(scanData.total) || 0,
 					date: Date.now(),
@@ -385,6 +392,13 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 				: "");
 		if (!(effectiveText || attachedImages.length > 0) || isLoading || isScanning) return;
 		if (isScanMode && selectedImages.length > 0) {
+			const scanUserMsg: ChatMessage = {
+				role: "user",
+				content: effectiveText,
+				image: selectedImages[0],
+				_msgId: mkMsgId(),
+			};
+			setMessages((prev) => [...prev, scanUserMsg]);
 			await processImagesWithAI(selectedImages, effectiveText);
 			setInput("");
 			return;

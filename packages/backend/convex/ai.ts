@@ -272,6 +272,34 @@ Instruksi:
 	}
 }
 
+async function rewriteExtractedText(rawText: string) {
+	const normalized = sanitizeAIString(rawText || "").trim();
+	if (!normalized) {
+		return "";
+	}
+
+	const limited = normalized.slice(0, 4000);
+	try {
+		return await safeSumoPodCall(
+			[
+				{
+					role: "system",
+					content:
+						"Kamu adalah asisten OCR. Tulis ulang teks hasil scan agar rapi, mudah dibaca, dan terstruktur. Gunakan Bahasa Indonesia. Jangan gunakan markdown.",
+				},
+				{
+					role: "user",
+					content: `Teks OCR mentah:\n${limited}\n\nTulis ulang dengan format:\n- Merchant\n- Tanggal (jika ada)\n- Item penting\n- Total\n- Catatan singkat.`,
+				},
+			],
+			{ maxTokens: 500, model: "gpt-4o-mini" }
+		);
+	} catch (error) {
+		console.error("rewriteExtractedText error:", error);
+		return limited;
+	}
+}
+
 /**
  * Robust JSON parsing from AI response
  */
@@ -4601,6 +4629,49 @@ Output harus JSON murni:
 	};
 }
 
+function mapReceiptFallbackToStructuredScan(
+	scan: Awaited<ReturnType<typeof runReceiptOCR>>
+) {
+	const transactionType =
+		scan.type === "income"
+			? "income"
+			: scan.type === "expense"
+				? "expense"
+				: "unknown";
+	const merchant = sanitizeAIString(scan.data?.merchantName || "") || "Toko";
+	const total = Number(scan.data?.amount) || 0;
+	const items = (scan.data?.items || []).map((item) => {
+		const qty = Number(item.quantity) || 1;
+		const price = Number(item.price) || 0;
+		const subtotal =
+			Number(item.total) || (price > 0 ? Math.round(price * qty) : 0);
+		return {
+			name: sanitizeAIString(item.name || "Item"),
+			qty,
+			price,
+			subtotal,
+			unit: sanitizeAIString(item.unit || "") || undefined,
+		};
+	});
+
+	return {
+		type: "receipt",
+		name: merchant,
+		merchant,
+		category: sanitizeAIString(scan.data?.category || "lainnya") || "lainnya",
+		transactionType,
+		total,
+		subtotal: total,
+		items,
+		date: scan.data?.date || null,
+		paymentMethod: sanitizeAIString(scan.data?.paymentMethod || "unknown") || "unknown",
+		notes: sanitizeAIString(scan.data?.notes || ""),
+		confidence: Math.max(1, Math.min(100, Math.round((scan.confidence || 0.1) * 100))),
+		rawText: sanitizeAIString(scan.rawText || ""),
+		rewrittenText: "",
+	};
+}
+
 
 /**
  * Proses satu gambar struk menggunakan AI OCR (GPT-4o Vision)
@@ -5217,11 +5288,24 @@ PENTING:
 				...parsed,
 				rawText: parsed.rawText || visionResult.text,
 				confidence: parsed.confidence || 80,
+				rewrittenText: "",
 			};
+			result.rewrittenText = await rewriteExtractedText(result.rawText || "");
 
 			return result;
 		} catch (error) {
-			if (error instanceof ConvexError) throw error;
+			if (error instanceof ConvexError) {
+				try {
+					const fallbackScan = await runReceiptOCR(args.image);
+					const mapped = mapReceiptFallbackToStructuredScan(fallbackScan);
+					mapped.rewrittenText = await rewriteExtractedText(
+						mapped.rawText || ""
+					);
+					return mapped;
+				} catch {
+					throw error;
+				}
+			}
 			console.error("scanImageData unexpected error:", error);
 			throw new ConvexError(`Gagal memproses gambar: ${error instanceof Error ? error.message : "Terjadi kesalahan sistem"}`);
 		}
@@ -5237,18 +5321,62 @@ export const bulkScanImageData = action({
 		images: v.array(v.string()), // array of base64 data URLs
 	},
 	handler: async (ctx, args) => {
-		const results = await Promise.allSettled(
-			args.images.map((image) => ctx.runAction(api.ai.scanImageData, { image }))
+		const results = await Promise.all(
+			args.images.map(async (image, index) => {
+				try {
+					const structured = await ctx.runAction(api.ai.scanImageData, { image });
+					return { success: true as const, data: structured, index };
+				} catch (primaryError) {
+					try {
+						const receiptFallback = await runReceiptOCR(image);
+						const fallbackData = mapReceiptFallbackToStructuredScan(
+							receiptFallback
+						);
+						fallbackData.rewrittenText = await rewriteExtractedText(
+							fallbackData.rawText || ""
+						);
+						const isReadable =
+							fallbackData.total > 0 || fallbackData.items.length > 0;
+						if (isReadable) {
+							return {
+								success: true as const,
+								data: fallbackData,
+								index,
+								fallback: true as const,
+							};
+						}
+					} catch (fallbackError) {
+						console.error(
+							"bulkScanImageData fallback error:",
+							fallbackError
+						);
+					}
+
+					return {
+						success: false as const,
+						error:
+							primaryError instanceof Error
+								? primaryError.message
+								: String(primaryError),
+						index,
+					};
+				}
+			})
 		);
 
-		return results.map((r, i) => {
-			if (r.status === "fulfilled") {
-				return { success: true as const, data: r.value };
+		return results.map((r) => {
+			if (r.success) {
+				return {
+					success: true as const,
+					data: r.data,
+					index: r.index,
+					fallback: r.fallback === true,
+				};
 			}
-			return { 
-				success: false as const, 
-				error: r.reason instanceof Error ? r.reason.message : String(r.reason),
-				index: i 
+			return {
+				success: false as const,
+				error: r.error,
+				index: r.index,
 			};
 		});
 	},

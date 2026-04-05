@@ -16,6 +16,7 @@ export interface ScanResultData {
 	notes?: string;
 	confidence: number;
 	rawText?: string;
+	rewrittenText?: string;
 }
 
 export interface QuickActionButton {
