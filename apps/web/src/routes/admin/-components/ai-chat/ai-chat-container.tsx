@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
+import { compressFileToLimit } from "@/lib/image-compress";
 
 import { Button } from "@/components/ui/button";
 import { ImageScanner } from "@/components/ai/image-scanner";
@@ -218,50 +219,33 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 		}
 	}, [currentSessionId, deleteSessionMutation]);
 
-	const compressImage = useCallback((dataUrl: string): Promise<string> => {
-		return new Promise((resolve) => {
-			const img = new Image();
-			img.onload = () => {
-				const canvas = document.createElement("canvas");
-				const ctx = canvas.getContext("2d");
-				if (!ctx) { resolve(dataUrl); return; }
-				const maxDimension = 1024;
-				let { width, height } = img;
-				if (width > maxDimension || height > maxDimension) {
-					if (width > height) { height = Math.round((height * maxDimension) / width); width = maxDimension;
-					} else { width = Math.round((width * maxDimension) / height); height = maxDimension; }
-				}
-				canvas.width = width;
-				canvas.height = height;
-				ctx.drawImage(img, 0, 0, width, height);
-				let quality = 0.8;
-				let result = canvas.toDataURL("image/jpeg", quality);
-				while (result.length > 500_000 && quality > 0.3) {
-					quality -= 0.1;
-					result = canvas.toDataURL("image/jpeg", quality);
-				}
-				resolve(result);
-			};
-			img.onerror = () => resolve(dataUrl);
-			img.src = dataUrl;
-		});
-	}, []);
-
-	const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = Array.from(e.target.files || []);
+		e.target.value = "";
 		if (files.length === 0) return;
-		files.forEach(file => {
-			if (!file.type.startsWith("image/")) { toast.error(`${file.name} bukan gambar`); return; }
-			const reader = new FileReader();
-			reader.onload = async (event) => {
-				const raw = event.target?.result as string;
-				const compressed = await compressImage(raw);
-				setSelectedImages(prev => [...prev, compressed]);
-			};
-			reader.readAsDataURL(file);
+
+		const imageFiles = files.filter((file) => {
+			if (!file.type.startsWith("image/")) {
+				toast.error(`${file.name} bukan gambar yang didukung`);
+				return false;
+			}
+			return true;
 		});
-		e.target.value = '';
-	}, [compressImage]);
+
+		if (imageFiles.length === 0) {
+			return;
+		}
+
+		try {
+			const compressedImages = await Promise.all(
+				imageFiles.map((file) => compressFileToLimit(file))
+			);
+			setSelectedImages((prev) => [...prev, ...compressedImages]);
+		} catch (error) {
+			console.error("handleFileSelect error:", error);
+			toast.error("Gagal membaca lampiran gambar");
+		}
+	}, []);
 
 	const runDailyBriefing = useCallback(async () => {
 		if (briefingAttemptedRef.current) return;
@@ -323,11 +307,36 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 		setIsLoading(true);
 		setToolCalls([]);
 		try {
-			const res = await bulkScanImageDataAction({ images });
+			const res = await bulkScanImageDataAction({ images }) as Array<{
+				success: boolean;
+				data?: ScanResultData;
+				error?: string;
+				index?: number;
+			}>;
 			if (!res || !res.length) throw new Error("Gagal menganalisis gambar");
+			const successfulResults = res.filter(
+				(entry: {
+					success: boolean;
+					data?: ScanResultData;
+				}): entry is { success: true; data: ScanResultData } =>
+					entry.success && !!entry.data
+			);
+			const failedResults = res.filter(
+				(entry: {
+					success: boolean;
+					error?: string;
+					index?: number;
+				}): entry is { success: false; error?: string; index: number } =>
+					!entry.success
+			);
+			if (successfulResults.length === 0) {
+				throw new Error(
+					failedResults[0]?.error || "Semua gambar gagal dianalisis"
+				);
+			}
 			const newMessages: ChatMessage[] = [];
-			for (let i = 0; i < res.length; i++) {
-				const scanData = res[i].data;
+			for (const entry of successfulResults) {
+				const scanData = entry.data;
 				if (!scanData) continue;
 				const itemsStr = scanData.items?.length 
 					? `\n📋 Detail Item (${scanData.items.length} item):\n` + scanData.items.map((item: any, idx: number) => `${idx + 1}. ${item.name} x${item.qty} = Rp ${toRupiah(item.subtotal)}`).join("\n")
@@ -341,12 +350,15 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 					_msgId: mkMsgId(),
 				};
 				newMessages.push(assistantMsg);
-				addScanHistory({ ...scanData, id: assistantMsg._msgId!, timestamp: Date.now() });
+				addScanHistory({ ...scanData, timestamp: Date.now() });
 			}
 			setMessages(prev => [...prev, ...newMessages]);
 			setSelectedImages([]);
 			setIsScanMode(false);
-			toast.success(`${res.length} gambar berhasil dianalisis`);
+			toast.success(`${successfulResults.length} gambar berhasil dianalisis`);
+			if (failedResults.length > 0) {
+				toast.error(`${failedResults.length} gambar gagal dianalisis. Coba upload ulang gambar yang gagal.`);
+			}
 		} catch (error: any) {
 			toast.error(error.message || "Gagal menganalisis gambar");
 		} finally {
@@ -357,9 +369,15 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 
 	const sendMessage = useCallback(async (text: string) => {
 		const trimmed = text.trim();
-		if (!(trimmed || selectedImages.length > 0) || isLoading || isScanning) return;
+		const attachedImages = [...selectedImages];
+		const effectiveText =
+			trimmed ||
+			(attachedImages.length > 0
+				? "Tolong analisis gambar yang saya lampirkan."
+				: "");
+		if (!(effectiveText || attachedImages.length > 0) || isLoading || isScanning) return;
 		if (isScanMode && selectedImages.length > 0) {
-			await processImagesWithAI(selectedImages, trimmed);
+			await processImagesWithAI(selectedImages, effectiveText);
 			setInput("");
 			return;
 		}
@@ -368,7 +386,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			sessionId = await startNewSession();
 			if (!sessionId) return;
 		}
-		const userMsg: ChatMessage = { role: "user", content: trimmed, image: selectedImages[0], _msgId: mkMsgId() };
+		const userMsg: ChatMessage = { role: "user", content: effectiveText, image: attachedImages[0], _msgId: mkMsgId() };
 		const requestSessionId = sessionId ?? `pos-${mkMsgId()}`;
 		const pendingAssistantId = mkMsgId();
 		setStreamSessionId(requestSessionId);
@@ -383,9 +401,9 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			const history = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
 			const rawResponse = await yumiChat({ 
 				sessionId: requestSessionId,
-				message: trimmed, 
+				message: effectiveText, 
 				history, 
-				images: selectedImages.length > 0 ? selectedImages : (userMsg.image ? [userMsg.image] : undefined),
+				images: attachedImages.length > 0 ? attachedImages : (userMsg.image ? [userMsg.image] : undefined),
 				contextHint: contextHint || undefined,
 			});
 			const responseText = typeof rawResponse === "string"
@@ -400,7 +418,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 				throw new Error("Respons AI kosong atau tidak valid");
 			}
 			const suggestions = extractSuggestions(responseText);
-			const quickActions = generateQuickActions(trimmed, responseText);
+			const quickActions = generateQuickActions(effectiveText, responseText);
 			const genericActions = extractGenericActions(responseText);
 			const chartData = extractChartData(responseText);
 			const exportData = extractExportData(responseText);
@@ -412,7 +430,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 					: msg
 			)));
 			if (mode === "admin" && sessionId) {
-				await saveConversationMutation({ sessionId: sessionId!, role: "user", content: trimmed });
+				await saveConversationMutation({ sessionId: sessionId!, role: "user", content: effectiveText });
 				await saveConversationMutation({ sessionId: sessionId!, role: "assistant", content: sanitizedResponse });
 			}
 		} catch (error: any) {
@@ -423,6 +441,9 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 				"Gagal mendapatkan respons AI";
 			toast.error(message);
 			setMessages(prev => prev.filter(msg => msg._msgId !== pendingAssistantId));
+			if (attachedImages.length > 0) {
+				setSelectedImages(attachedImages);
+			}
 		} finally {
 			streamingActiveRef.current = false;
 			setIsStreaming(false);

@@ -125,6 +125,153 @@ async function callVisionAPI(
 	}
 }
 
+function extractImagePayload(image: string) {
+	let base64Data = "";
+	let mimeType = "image/jpeg";
+
+	if (image.startsWith("data:")) {
+		const dataUrlMatch = image.match(
+			/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/
+		);
+		if (!dataUrlMatch) {
+			throw new ConvexError(
+				"Format gambar tidak valid. Silakan upload ulang gambar."
+			);
+		}
+		mimeType = dataUrlMatch[1];
+		base64Data = dataUrlMatch[2] || "";
+	} else {
+		base64Data = image;
+	}
+
+	if (!base64Data || base64Data.length < 50) {
+		throw new ConvexError(
+			"Data base64 gambar tidak valid. Silakan upload ulang gambar."
+		);
+	}
+
+	return { base64Data, mimeType };
+}
+
+async function callVisionTextAPI(
+	prompt: string,
+	base64Data: string,
+	mimeType: string,
+	options?: { temperature?: number; maxOutputTokens?: number }
+): Promise<{ success: boolean; text: string; error?: string }> {
+	try {
+		const openai = getOpenAI();
+		const completion = await openai.chat.completions.create({
+			model: "seed-2-0-pro-free",
+			messages: [
+				{
+					role: "system",
+					content:
+						"Kamu adalah analis visual yang teliti. Jawab dalam Bahasa Indonesia yang ringkas, jelas, dan langsung ke inti temuan tanpa markdown dekoratif.",
+				},
+				{
+					role: "user",
+					content: [
+						{ type: "text", text: prompt },
+						{
+							type: "image_url",
+							image_url: {
+								url: `data:${mimeType};base64,${base64Data}`,
+							},
+						},
+					] as any,
+				},
+			],
+			temperature: options?.temperature ?? 0.2,
+			max_tokens: options?.maxOutputTokens ?? 1800,
+		});
+
+		const text = completion.choices[0]?.message?.content || "";
+		if (!text) {
+			return {
+				success: false,
+				text: "",
+				error: "Model tidak mengembalikan analisis gambar.",
+			};
+		}
+
+		return { success: true, text: sanitizeAIString(text) };
+	} catch (error) {
+		const errMsg = error instanceof Error ? error.message : String(error);
+		console.error("callVisionTextAPI error:", errMsg);
+		return {
+			success: false,
+			text: "",
+			error: `Gagal menganalisis lampiran gambar: ${errMsg}`,
+		};
+	}
+}
+
+async function fallbackAnalyzeChatImages(args: {
+	images: string[];
+	message: string;
+	contextHint?: string;
+}) {
+	const analyses: string[] = [];
+
+	for (const [index, image] of args.images.slice(0, 3).entries()) {
+		try {
+			const { base64Data, mimeType } = extractImagePayload(image);
+			const visionResult = await callVisionTextAPI(
+				`Pengguna meminta: "${args.message || "Tolong analisis gambar yang saya lampirkan."}".
+${args.contextHint ? `Konteks tambahan: ${args.contextHint}` : ""}
+
+Instruksi:
+- Jika ini struk, invoice, mutasi, atau dokumen keuangan, ringkas data penting yang terbaca: merchant, tanggal, total, metode pembayaran, item penting, dan kategori transaksi.
+- Jika ini foto toko, produk, rak, atau area operasional, lakukan audit visual singkat: kondisi utama, masalah yang terlihat, dan saran praktis.
+- Jika gambar kurang jelas, jelaskan bagian mana yang tidak terbaca.
+- Tutup dengan 2 saran tindak lanjut singkat.`,
+				base64Data,
+				mimeType,
+				{ maxOutputTokens: 1400 }
+			);
+
+			if (visionResult.success && visionResult.text) {
+				analyses.push(
+					args.images.length > 1
+						? `Lampiran ${index + 1}:\n${visionResult.text}`
+						: visionResult.text
+				);
+			}
+		} catch (error) {
+			console.error("fallbackAnalyzeChatImages payload error:", error);
+		}
+	}
+
+	if (analyses.length === 0) {
+		return null;
+	}
+
+	if (analyses.length === 1) {
+		return analyses[0];
+	}
+
+	try {
+		return await safeSumoPodCall(
+			[
+				{
+					role: "system",
+					content:
+						"Kamu adalah Yumi AI. Gabungkan beberapa hasil analisis gambar menjadi satu jawaban Bahasa Indonesia yang ringkas, jelas, dan mudah ditindaklanjuti.",
+				},
+				{
+					role: "user",
+					content: `Pertanyaan user: ${args.message || "Tolong analisis semua lampiran gambar ini."}\n\nHasil analisis per lampiran:\n${analyses.join("\n\n")}`,
+				},
+			],
+			{ maxTokens: 1200, model: "gpt-4o-mini" }
+		);
+	} catch (error) {
+		console.error("fallbackAnalyzeChatImages synthesis error:", error);
+		return analyses.join("\n\n");
+	}
+}
+
 /**
  * Robust JSON parsing from AI response
  */
@@ -2217,6 +2364,7 @@ export const yumiChat = action({
 
 		const allImages = [...(args.images || [])];
 		if (args.image) allImages.push(args.image);
+		const hasImageAttachments = allImages.length > 0;
 
 		// Build tool definitions for OpenAI
 		const openaiTools = Object.entries(tools).map(([name, tool]) => ({
@@ -2515,7 +2663,7 @@ INSTRUKSI REKONSILIASI BANK:
 			currentIteration++;
 			let completion;
 			try {
-				if (currentIteration === 1) {
+				if (currentIteration === 1 && !hasImageAttachments) {
 					// First iteration: use streaming for content
 					const response = await openai.chat.completions.create({
 						model: "gpt-4o",
@@ -2573,12 +2721,14 @@ INSTRUKSI REKONSILIASI BANK:
 					await executeToolCalls(finalToolCalls);
 					
 				} else {
-					// Subsequent iterations for tool chain results (non-streaming to save complexity)
+					// Use non-streaming for image attachments because some providers are less stable
+					// with streaming + tools + multimodal in a single request.
 					completion = await openai.chat.completions.create({
 						model: "gpt-4o",
 						messages,
 						tools: openaiTools,
-						max_tokens: 1000,
+						tool_choice: "auto",
+						max_tokens: currentIteration === 1 ? 1400 : 1000,
 					});
 
 					const responseMessage = completion.choices[0].message;
@@ -2599,6 +2749,29 @@ INSTRUKSI REKONSILIASI BANK:
 				}
 			} catch (apiError) {
 				console.error("yumiChat API error:", apiError);
+				if (hasImageAttachments) {
+					try {
+						const fallbackContent = await fallbackAnalyzeChatImages({
+							images: allImages,
+							message:
+								args.message ||
+								"Tolong analisis gambar yang saya lampirkan.",
+							contextHint: args.contextHint,
+						});
+						if (fallbackContent) {
+							if (streamingId) {
+								await ctx.runMutation(api.ai.updateStreamingMessage, {
+									streamingId,
+									chunk: fallbackContent,
+									isFinal: true,
+								});
+							}
+							return finalizeResponse(fallbackContent, executedToolCalls);
+						}
+					} catch (fallbackError) {
+						console.error("yumiChat image fallback error:", fallbackError);
+					}
+				}
 				const errMsg = apiError instanceof Error ? apiError.message : String(apiError);
 				if (errMsg.includes("401") || errMsg.includes("Unauthorized")) {
 					return finalizeResponse("Maaf, API key tidak valid. Silakan periksa SUMOPOD_API_KEY di dashboard Convex.", executedToolCalls);
@@ -4373,13 +4546,7 @@ async function runReceiptOCR(imageDataUrl: string): Promise<{
 	console.log("Using SumoPod AI (seed-2.0-pro-free) for OCR...");
 
 	// Use shared Vision API helper
-	const base64Data = imageDataUrl.includes(",") ? imageDataUrl.split(",")[1] : imageDataUrl;
-	if (!base64Data) {
-		throw new ConvexError("Format gambar tidak valid (Base64 data missing)");
-	}
-
-	const mimeMatch = imageDataUrl.match(/^data:(image\/[a-zA-Z+]+);base64,/);
-	const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
+	const { base64Data, mimeType } = extractImagePayload(imageDataUrl);
 
 	const prompt = `Kamu adalah pakar OCR struk belanja Indonesia yang sangat teliti.
 Tugas kamu adalah mengekstrak data dari struk/kwitansi ini ke dalam format JSON.
@@ -4961,23 +5128,7 @@ export const scanImageData = action({
 				throw new ConvexError("Data gambar tidak valid atau terlalu kecil. Silakan upload ulang gambar.");
 			}
 
-			// Extract base64 data and detect MIME type
-			let base64Data: string;
-			let mimeType: string;
-
-			if (args.image.startsWith("data:")) {
-				const mimeMatch = args.image.match(/^data:(image\/[a-zA-Z+]+);base64,/);
-				mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
-				base64Data = args.image.split(",")[1] || "";
-			} else {
-				// Raw base64 tanpa data URL prefix
-				base64Data = args.image;
-				mimeType = "image/jpeg";
-			}
-
-			if (!base64Data || base64Data.length < 50) {
-				throw new ConvexError("Data base64 gambar tidak valid. Silakan upload ulang gambar.");
-			}
+			const { base64Data, mimeType } = extractImagePayload(args.image);
 
 			// Limit ukuran gambar (max ~10MB base64 ≈ ~7.5MB file)
 			if (base64Data.length > 10_000_000) {

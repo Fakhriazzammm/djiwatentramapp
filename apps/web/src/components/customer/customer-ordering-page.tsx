@@ -512,7 +512,7 @@ export function CustomerOrderingPage({
 		);
 	}
 
-	if (!brandSettings || brandSettings.isActive === false || !config.enabled) {
+	if (brandSettings?.isActive === false || !config.enabled) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-background px-4">
 				<div className="max-w-md rounded-3xl border border-border bg-card p-8 text-center shadow-sm">
