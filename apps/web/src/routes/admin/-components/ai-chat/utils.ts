@@ -405,37 +405,37 @@ export const generateScanActionButtons = (scanData: ScanResultData): ScanActionB
 		paymentMethod: paymentMethod as any,
 		status: "completed" as const,
 	};
-	const buttons: ScanActionButton[] = [];
 	const ts = Date.now();
-	if (scanData.transactionType === "expense" || scanData.transactionType === "unknown") {
-		buttons.push({
-			id: `expense-${ts}`,
-			label: "Catat Pengeluaran",
-			icon: "💸",
-			variant: "expense",
-			params: { type: "expense", ...baseParams },
-		});
-	}
-	if (scanData.transactionType === "income" || scanData.transactionType === "unknown") {
-		buttons.push({
-			id: `income-${ts + 1}`,
-			label: "Catat Pemasukan",
-			icon: "💰",
-			variant: "income",
-			params: { type: "income", ...baseParams },
-		});
-	}
-	if (
+	const isStockDocument =
 		scanData.type === "product" ||
-		["belanja_stok", "peralatan_kantor"].includes(scanData.category)
-	) {
-		buttons.push({
-			id: `stock-${ts + 2}`,
-			label: "Catat ke Stok",
-			icon: "📦",
+		["belanja_stok", "peralatan_kantor"].includes(scanData.category);
+
+	// Keep exactly one primary action per extracted result to prevent button overload in bulk mode.
+	if (isStockDocument) {
+		return [{
+			id: `stock-${ts}`,
+			label: "Review Stok",
+			icon: "STK",
 			variant: "stock",
 			params: { type: "expense", ...baseParams, category: "Pembelian Stok" },
-		});
+		}];
 	}
-	return buttons;
+
+	if (scanData.transactionType === "income") {
+		return [{
+			id: `income-${ts}`,
+			label: "Review Pemasukan",
+			icon: "IN",
+			variant: "income",
+			params: { type: "income", ...baseParams },
+		}];
+	}
+
+	return [{
+		id: `expense-${ts}`,
+		label: scanData.transactionType === "unknown" ? "Review & Simpan" : "Review Pengeluaran",
+		icon: "OUT",
+		variant: "expense",
+		params: { type: "expense", ...baseParams },
+	}];
 };
