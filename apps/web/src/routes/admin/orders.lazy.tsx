@@ -536,8 +536,8 @@ function AdminOrders() {
 				</div>
 			</div>
 
-			<div className="flex-1 overflow-hidden">
-				<div className="space-y-2 overflow-y-auto md:hidden">
+			<div className="min-h-0 flex-1">
+				<div className="space-y-2 pb-24 md:hidden">
 					{filteredOrders?.length === 0 ? (
 						<div className="rounded-xl border border-dashed border-border bg-card py-12 text-center text-muted-foreground text-sm">
 							Tidak ada pesanan ditemukan.
