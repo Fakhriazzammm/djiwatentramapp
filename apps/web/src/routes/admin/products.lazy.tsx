@@ -2340,6 +2340,7 @@ function BaseRecipesTab() {
 	const [editingId, setEditingId] = useState<Id<"baseRecipes"> | null>(null);
 	const [confirmDeleteId, setConfirmDeleteId] =
 		useState<Id<"baseRecipes"> | null>(null);
+	const [ingredientQuery, setIngredientQuery] = useState("");
 	const [formData, setFormData] = useState({
 		name: "",
 		description: "",
@@ -2356,6 +2357,7 @@ function BaseRecipesTab() {
 			targetQuantity: "1000",
 			ingredients: [],
 		});
+		setIngredientQuery("");
 		setEditingId(null);
 		setIsModalOpen(false);
 	};
@@ -2415,6 +2417,33 @@ function BaseRecipesTab() {
 		const newIngs = [...formData.ingredients];
 		newIngs.splice(idx, 1);
 		setFormData({ ...formData, ingredients: newIngs });
+	};
+
+	const availableIngredients = useMemo(
+		() => inventory?.filter((item: any) => !item.baseRecipeId) ?? [],
+		[inventory]
+	);
+
+	const addIngredientFromQuery = () => {
+		const query = ingredientQuery.trim().toLowerCase();
+		if (!query) {
+			return;
+		}
+		const exact = availableIngredients.find(
+			(item: any) =>
+				item.ingredientName.toLowerCase() === query || item._id === ingredientQuery
+		);
+		const matched =
+			exact ||
+			availableIngredients.find((item: any) =>
+				item.ingredientName.toLowerCase().includes(query)
+			);
+		if (!matched) {
+			toast.error("Bahan tidak ditemukan");
+			return;
+		}
+		addIngredient(matched._id as Id<"inventory">);
+		setIngredientQuery("");
 	};
 
 	const filteredBaseRecipes = useMemo(() => {
@@ -2613,20 +2642,35 @@ function BaseRecipesTab() {
 									<div className="space-y-3 rounded-xl border border-border bg-card p-4">
 										<div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
 											<h4 className="font-semibold text-sm">Komposisi Bahan</h4>
-											<select
-												className="h-9 rounded-lg border border-border bg-background px-3 text-xs"
-												onChange={(e) => addIngredient(e.target.value as Id<"inventory">)}
-												value=""
-											>
-												<option value="">+ Tambah bahan dari inventory</option>
-												{inventory
-													?.filter((i: any) => !i.baseRecipeId)
-													.map((inv: any) => (
-														<option key={inv._id} value={inv._id}>
-															{inv.ingredientName} ({inv.unit})
+											<div className="flex w-full max-w-md items-center gap-2">
+												<input
+													className="h-9 flex-1 rounded-lg border border-border bg-background px-3 text-xs"
+													list="base-ingredient-options"
+													onChange={(event) => setIngredientQuery(event.target.value)}
+													onKeyDown={(event) => {
+														if (event.key === "Enter") {
+															event.preventDefault();
+															addIngredientFromQuery();
+														}
+													}}
+													placeholder="+ Tambah bahan dari inventory"
+													value={ingredientQuery}
+												/>
+												<datalist id="base-ingredient-options">
+													{availableIngredients.map((inv: any) => (
+														<option key={inv._id} value={inv.ingredientName}>
+															{inv.unit}
 														</option>
 													))}
-											</select>
+												</datalist>
+												<button
+													className="h-9 rounded-lg border border-border bg-background px-3 text-xs font-semibold hover:bg-muted"
+													onClick={addIngredientFromQuery}
+													type="button"
+												>
+													Tambah
+												</button>
+											</div>
 										</div>
 
 										<div className="overflow-x-auto rounded-lg border border-border">

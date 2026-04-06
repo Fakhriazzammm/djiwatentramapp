@@ -1465,6 +1465,21 @@ function EditorView({
 			!item.name || !item.price || !item.quantity || !item.conversion || !item.usage
 	);
 
+	function handleIngredientNameInput(ingredientId: string, rawValue: string) {
+		updateIngredient(ingredientId, "ingredientName", rawValue);
+		const trimmed = rawValue.trim().toLowerCase();
+		if (!trimmed) {
+			updateIngredient(ingredientId, "inventoryId", undefined);
+			return;
+		}
+		const matched = inventory?.find(
+			(item) => item.ingredientName.toLowerCase() === trimmed
+		);
+		if (matched) {
+			linkIngredientToInventory(ingredientId, matched._id);
+		}
+	}
+
 	function appendIngredient() {
 		setForm((prev) => {
 			const last = prev.ingredients[prev.ingredients.length - 1];
@@ -1705,18 +1720,26 @@ function EditorView({
 														data-col={0}
 														data-grid="ingredient"
 														data-row={index}
+														list={`inventory-ingredient-options-${ingredient.id}`}
 														onChange={(event) =>
-															updateIngredient(
+															handleIngredientNameInput(
 																ingredient.id,
-																"ingredientName",
 																event.target.value
 															)
 														}
 														onKeyDown={(event) =>
 															onGridCellKeyDown(event, index, 0, 7, "ingredient")
 														}
+														placeholder="Ketik nama bahan..."
 														value={ingredient.ingredientName}
 													/>
+													<datalist id={`inventory-ingredient-options-${ingredient.id}`}>
+														{(inventory ?? []).map((item) => (
+															<option key={item._id} value={item.ingredientName}>
+																{item.unit}
+															</option>
+														))}
+													</datalist>
 												</td>
 												<td className="sticky left-40 z-[1] bg-white px-1 py-1.5">
 													<SearchableSelect
@@ -1951,11 +1974,19 @@ function EditorView({
 											<Input
 												className={`h-8 ${!validation.name ? "border-rose-300" : ""}`}
 												onChange={(event) =>
-													updateIngredient(ingredient.id, "ingredientName", event.target.value)
+													handleIngredientNameInput(ingredient.id, event.target.value)
 												}
+												list={`inventory-ingredient-options-mobile-${ingredient.id}`}
 												placeholder="Nama bahan"
 												value={ingredient.ingredientName}
 											/>
+											<datalist id={`inventory-ingredient-options-mobile-${ingredient.id}`}>
+												{(inventory ?? []).map((item) => (
+													<option key={`${item._id}-mobile`} value={item.ingredientName}>
+														{item.unit}
+													</option>
+												))}
+											</datalist>
 											<Input
 												className={`h-8 ${!validation.price ? "border-rose-300" : ""}`}
 												min={0}
