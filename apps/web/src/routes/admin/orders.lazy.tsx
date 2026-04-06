@@ -21,7 +21,6 @@ import {
 	CreditCard,
 	Eye,
 	Filter,
-	Loader2,
 	Search,
 	ShoppingBag,
 	User,
@@ -217,6 +216,34 @@ function AdminOrders() {
 		return matchesStatus && matchesSearch && matchesQuickDate;
 	});
 
+	const totalFiltered = filteredOrders?.length || 0;
+	const activeQuickDateLabel =
+		quickDateFilter === "all"
+			? "Semua tanggal"
+			: quickDateFilterOptions.find((option) => option.value === quickDateFilter)
+					?.label || "Semua tanggal";
+
+	const getShiftName = (order: Order) => {
+		if (!historicalShifts) {
+			return "-";
+		}
+
+		const shift = historicalShifts.find(
+			(s: any) =>
+				order.createdAt >= s.startTime && (!s.endTime || order.createdAt <= s.endTime)
+		);
+		return shift ? shift.shiftName || "Shift Aktif" : "-";
+	};
+
+	const getOrderLocationLabel = (order: Order) => {
+		if (!order.orderType) {
+			return "-";
+		}
+		return order.orderType === "dine_in"
+			? `Meja ${order.tableNumber || "-"}`
+			: "Takeaway";
+	};
+
 	useEffect(() => {
 		if (hasAppliedFocus || !unifiedOrders) {
 			return;
@@ -346,99 +373,95 @@ function AdminOrders() {
 
 	if (unifiedOrders === undefined) {
 		return (
-			<div className="space-y-4 md:space-y-6">
-				<div>
-					<Skeleton className="h-8 w-48 mb-2" />
-					<Skeleton className="h-4 w-64" />
+			<div className="space-y-3 md:space-y-5">
+				<div className="space-y-2">
+					<Skeleton className="h-8 w-52" />
+					<Skeleton className="h-4 w-72" />
 				</div>
 
-				{/* Profit Summary Skeleton */}
-				<div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+				<div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
 					{Array.from({ length: 4 }).map((_, i) => (
-						<div key={i} className="rounded-lg border border-border bg-card p-2.5 md:p-3">
-							<Skeleton className="h-3 w-16 mb-2" />
+						<div
+							key={i}
+							className="rounded-xl border border-border bg-card p-3 shadow-sm"
+						>
+							<Skeleton className="mb-2 h-3 w-16" />
 							<Skeleton className="h-6 w-24" />
 						</div>
 					))}
 				</div>
 
-				{/* Filters Skeleton */}
-				<div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 md:flex-row md:items-center md:gap-4 md:p-4">
-					<Skeleton className="h-10 flex-1 rounded-md" />
-					<Skeleton className="h-10 w-full md:w-[180px] rounded-md" />
-				</div>
-
-				{/* Table/List Skeleton */}
-				<div className="rounded-xl border border-border bg-card overflow-hidden">
-					<div className="hidden md:block">
-						<div className="bg-muted/50 p-4 flex justify-between">
-							{Array.from({ length: 6 }).map((_, i) => (
-								<Skeleton key={i} className="h-4 w-20" />
-							))}
-						</div>
-						<div className="divide-y divide-border">
-							{Array.from({ length: 5 }).map((_, i) => (
-								<div key={i} className="p-4 flex justify-between items-center">
-									<Skeleton className="h-4 w-24" />
-									<Skeleton className="h-4 w-32" />
-									<Skeleton className="h-4 w-20" />
-									<Skeleton className="h-4 w-16" />
-									<Skeleton className="h-4 w-24" />
-									<Skeleton className="h-8 w-20" />
-								</div>
-							))}
-						</div>
-					</div>
-					<div className="md:hidden space-y-2 p-2">
-						{Array.from({ length: 5 }).map((_, i) => (
-							<div key={i} className="p-3 border border-border rounded-xl">
-								<div className="flex justify-between mb-2">
-									<Skeleton className="h-4 w-24" />
-									<Skeleton className="h-4 w-20" />
-								</div>
-								<div className="flex justify-between">
-									<Skeleton className="h-3 w-32" />
-									<Skeleton className="h-3 w-16" />
-								</div>
-							</div>
+				<div className="space-y-3 rounded-xl border border-border bg-card p-3 shadow-sm">
+					<Skeleton className="h-10 w-full" />
+					<Skeleton className="h-10 w-full" />
+					<div className="flex gap-2">
+						{Array.from({ length: 3 }).map((_, i) => (
+							<Skeleton className="h-8 w-24 rounded-full" key={i} />
 						))}
 					</div>
+				</div>
+
+				<div className="space-y-2">
+					{Array.from({ length: 6 }).map((_, i) => (
+						<div
+							key={i}
+							className="rounded-xl border border-border bg-card p-3 shadow-sm"
+						>
+							<div className="mb-2 flex items-center justify-between">
+								<Skeleton className="h-4 w-24" />
+								<Skeleton className="h-4 w-20" />
+							</div>
+							<Skeleton className="h-3 w-40" />
+						</div>
+					))}
 				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 flex h-full animate-in flex-col space-y-3 duration-500 md:space-y-6">
-			<div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
-				<div>
+		<div className="fade-in slide-in-from-bottom-4 flex h-full animate-in flex-col gap-3 duration-500 md:gap-4">
+			<div className="rounded-2xl border border-border bg-card p-3 shadow-sm md:p-4">
+				<div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+					<div>
 					<h2 className="font-bold text-lg tracking-tight md:text-2xl">
 						Riwayat Pesanan
 					</h2>
 					<p className="text-muted-foreground text-xs md:text-sm">
-						Kelola dan pantau semua transaksi pesanan masuk.
+						Tampilan compact untuk monitor transaksi mobile dan desktop.
 					</p>
+				</div>
+					<div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+						<span className="rounded-md bg-muted px-2 py-1">
+							{totalFiltered} pesanan
+						</span>
+						<span className="rounded-md bg-muted px-2 py-1">
+							{activeQuickDateLabel}
+						</span>
+						<span className="rounded-md bg-muted px-2 py-1">
+							{statusFilter === "all"
+								? "Semua status"
+								: getStatusLabel(statusFilter)}
+						</span>
+					</div>
 				</div>
 			</div>
 
-			{/* Profit Summary */}
 			{hppCogs && hppCogs.matchedOrders > 0 && (
-				<div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
-					<div className="rounded-lg border border-border bg-card p-2.5 md:p-3">
-						<p className="text-[10px] text-muted-foreground uppercase">
-							Revenue
-						</p>
+				<div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+					<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+						<p className="text-[10px] text-muted-foreground uppercase">Revenue</p>
 						<p className="font-bold text-sm md:text-lg">
 							{formatrupiah(hppCogs.totalRevenue)}
 						</p>
 					</div>
-					<div className="rounded-lg border border-border bg-card p-2.5 md:p-3">
+					<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 						<p className="text-[10px] text-muted-foreground uppercase">COGS</p>
 						<p className="font-bold text-orange-600 text-sm md:text-lg">
 							{formatrupiah(hppCogs.totalCogs)}
 						</p>
 					</div>
-					<div className="rounded-lg border border-border bg-card p-2.5 md:p-3">
+					<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 						<p className="text-[10px] text-muted-foreground uppercase">Laba</p>
 						<p
 							className={`font-bold text-sm md:text-lg ${hppCogs.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}
@@ -446,10 +469,8 @@ function AdminOrders() {
 							{formatrupiah(hppCogs.totalProfit)}
 						</p>
 					</div>
-					<div className="rounded-lg border border-border bg-card p-2.5 md:p-3">
-						<p className="text-[10px] text-muted-foreground uppercase">
-							Margin
-						</p>
+					<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+						<p className="text-[10px] text-muted-foreground uppercase">Margin</p>
 						<p className="font-bold text-primary text-sm md:text-lg">
 							{hppCogs.grossMargin.toFixed(1)}%
 						</p>
@@ -457,48 +478,24 @@ function AdminOrders() {
 				</div>
 			)}
 
-			{/* Filters - compact on mobile */}
-			<div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-sm md:gap-4 md:p-4">
-				<div className="flex flex-wrap gap-2">
-					<Button
-						className="h-8 rounded-full px-3 text-xs"
-						onClick={() => setQuickDateFilter("all")}
-						size="sm"
-						variant={quickDateFilter === "all" ? "default" : "outline"}
-					>
-						Semua Tanggal
-					</Button>
-					{quickDateFilterOptions.map((option) => (
-						<Button
-							className="h-8 rounded-full px-3 text-xs"
-							key={option.value}
-							onClick={() => setQuickDateFilter(option.value)}
-							size="sm"
-							variant={
-								quickDateFilter === option.value ? "default" : "outline"
-							}
-						>
-							{option.label}
-						</Button>
-					))}
-				</div>
-				<div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
-				<div className="relative flex-1">
+			<div className="space-y-3 rounded-2xl border border-border bg-card p-3 shadow-sm md:p-4">
+				<div className="grid grid-cols-1 gap-2 lg:grid-cols-[1fr_220px]">
+					<div className="relative">
 					<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 					<Input
 						className="h-10 pl-9 text-sm"
 						onChange={(e) => setSearchQuery(e.target.value)}
-						placeholder="Cari pesanan..."
+						placeholder="Cari ID pesanan atau nama pelanggan..."
 						value={searchQuery}
 					/>
 				</div>
 				<div className="flex items-center gap-2">
 					<Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
-					<Select 
-						onValueChange={(val: string | null) => val && setStatusFilter(val)} 
+					<Select
+						onValueChange={(val: string | null) => val && setStatusFilter(val)}
 						value={statusFilter}
 					>
-						<SelectTrigger className="w-full md:w-[180px]">
+						<SelectTrigger className="h-10 w-full">
 							<SelectValue placeholder="Status" />
 						</SelectTrigger>
 						<SelectContent>
@@ -511,245 +508,278 @@ function AdminOrders() {
 					</Select>
 				</div>
 				</div>
-			</div>
 
-			{/* Mobile: Card-based order list */}
-			<div className="flex-1 space-y-2 overflow-y-auto md:hidden">
-				{filteredOrders?.length === 0 ? (
-					<p className="py-12 text-center text-muted-foreground text-sm">
-						Tidak ada pesanan ditemukan.
-					</p>
-				) : (
-					filteredOrders?.map((order: Order) => (
-						<div
-							className="rounded-xl border border-border bg-card p-3 transition-colors active:bg-muted/50"
-							key={order._id}
-							onClick={() => {
-								setSelectedOrder(order as any);
-								setIsDetailOpen(true);
-							}}
+				<div className="-mx-1 overflow-x-auto pb-1">
+					<div className="flex w-max min-w-full gap-1.5 px-1">
+						<Button
+							className="h-8 rounded-full px-3 text-xs"
+							onClick={() => setQuickDateFilter("all")}
+							size="sm"
+							variant={quickDateFilter === "all" ? "default" : "outline"}
 						>
-							<div className="flex items-start justify-between">
-								<div className="min-w-0 flex-1">
-									<div className="flex items-center gap-2">
-										<span className="font-bold font-mono text-primary text-xs">
-											{order.type === "booking" ? "BK-" : "#"}{order.displayId}
-										</span>
-										{order.type === "booking" && (
-											<Badge className="bg-blue-50 text-blue-600 border-blue-200 text-[8px] px-1 py-0" variant="outline">Booking</Badge>
-										)}
-										<Badge
-											className={`rounded-md px-1.5 py-0 font-normal text-[9px] ${getStatusColor(order.status)}`}
-											variant="outline"
-										>
-											{getStatusLabel(order.status)}
-										</Badge>
-									</div>
-									<div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-										<span>{order.customerName || "Pelanggan Umum"}</span>
-										<span>&middot;</span>
-										<span className="capitalize">{order.paymentMethod}</span>
-										{order.orderType && (
-											<>
-												<span>&middot;</span>
-												<span className="font-bold text-primary uppercase">
-													{order.orderType === "dine_in" ? `Meja ${order.tableNumber || "-"}` : "Takeaway"}
-												</span>
-											</>
-										)}
-									</div>
-								</div>
-								<div className="text-right">
-									<p className="font-bold text-sm">
-										{formatrupiah(order.totalAmount)}
-									</p>
-									<p className="text-[10px] text-muted-foreground">
-										{format(order.createdAt, "dd MMM HH:mm", { locale: id })}
-									</p>
-								</div>
-							</div>
-						</div>
-					))
-				)}
+							Semua Tanggal
+						</Button>
+						{quickDateFilterOptions.map((option) => (
+							<Button
+								className="h-8 rounded-full px-3 text-xs"
+								key={option.value}
+								onClick={() => setQuickDateFilter(option.value)}
+								size="sm"
+								variant={
+									quickDateFilter === option.value ? "default" : "outline"
+								}
+							>
+								{option.label}
+							</Button>
+						))}
+					</div>
+				</div>
 			</div>
 
-			{/* Desktop: Table view */}
-			<div className="relative hidden flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm md:block">
-				<div className="absolute inset-0 overflow-auto">
-					<table className="w-full text-left text-sm">
-						<thead className="sticky top-0 z-10 bg-muted/50 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider">
-							<tr>
-								<th className="px-4 py-3">ID Pesanan</th>
-								<th className="px-4 py-3">Shift</th>
-								<th className="px-4 py-3">Pelanggan</th>
-								<th className="px-4 py-3 text-right">Total</th>
-								<th className="px-4 py-3 text-right">Laba</th>
-								<th className="px-4 py-3 text-center">Status</th>
-								<th className="px-4 py-3">Tipe/Metode</th>
-								<th className="px-4 py-3 text-right">Waktu</th>
-								<th className="px-4 py-3 text-center">Aksi</th>
-							</tr>
-						</thead>
-						<tbody className="divide-y divide-border">
-							{filteredOrders?.length === 0 ? (
-								<tr>
-									<td
-										className="h-40 text-center text-muted-foreground"
-										colSpan={9}
-									>
-										Tidak ada pesanan yang ditemukan.
-									</td>
-								</tr>
-							) : (
-								filteredOrders?.map((order: Order) => {
-									let shiftName = "-";
-									if (historicalShifts) {
-										const shift = historicalShifts.find((s: any) => order.createdAt >= s.startTime && (!s.endTime || order.createdAt <= s.endTime));
-										if (shift) {
-											shiftName = shift.shiftName || "Shift Aktif";
-										}
-									}
-
-									return (
-										<tr
-											className="group cursor-pointer transition-colors hover:bg-muted/30"
-											key={order._id}
-											onClick={() => {
-												setSelectedOrder(order as any);
-												setIsDetailOpen(true);
-											}}
-										>
-											<td className="px-4 py-3 font-medium font-mono text-primary text-xs">
-												<div className="flex flex-col">
-													<span>{order.displayId}</span>
-													{order.type === "booking" && (
-														<span className="text-[9px] text-blue-500 font-sans font-bold">BOOKING</span>
-													)}
-												</div>
-											</td>
-											<td className="px-4 py-3">
-												{shiftName !== "-" ? (
-													<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-[9px] font-bold text-primary uppercase">
-														{shiftName}
-													</span>
-												) : (
-													<span className="text-muted-foreground text-xs">-</span>
-												)}
-											</td>
-											<td className="px-4 py-3">
-											<div className="flex flex-col gap-0.5">
-												<div className="flex items-center gap-1.5">
-													<div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[9px] text-primary">
-														<User className="h-3 w-3" />
-													</div>
-													<span className="font-medium text-xs truncate max-w-[120px]">
-														{order.customerName || "Pelanggan Umum"}
-													</span>
-												</div>
-												{order.orderType && (
-													<span className="text-[9px] font-bold text-primary uppercase ml-6">
-														{order.orderType === "dine_in" ? `Meja ${order.tableNumber || "-"}` : "Takeaway"}
-													</span>
-												)}
-											</div>
-										</td>
-										<td className="px-4 py-3 font-bold text-xs text-right whitespace-nowrap">
-											{formatrupiah(order.totalAmount)}
-										</td>
-										<td className="px-4 py-3 text-right whitespace-nowrap">
-											{(() => {
-												if (!hppProductMap) {
-													return (
-														<span className="text-muted-foreground text-xs">
-															-
-														</span>
-													);
-												}
-												let orderCogs = 0;
-												let hasHpp = false;
-												for (const item of order.items) {
-													const hpp = hppProductMap[item.productId];
-													if (hpp) {
-														orderCogs += hpp.hppPerServing * item.quantity;
-														hasHpp = true;
-													}
-												}
-												if (!hasHpp) {
-													return (
-														<span className="text-muted-foreground text-xs">
-															-
-														</span>
-													);
-												}
-												const profit = order.totalAmount - orderCogs;
-												return (
-													<span
-														className={`font-semibold text-[11px] ${profit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
-													>
-														{formatrupiah(profit)}
-													</span>
-												);
-											})()}
-										</td>
-										<td className="px-4 py-3 text-center">
-											<Badge
-												className={`rounded-md px-1.5 py-0 font-normal text-[10px] ${getStatusColor(order.status)}`}
-												variant="outline"
-											>
-												{getStatusLabel(order.status)}
-											</Badge>
-										</td>
-										<td className="px-4 py-3">
-											<div className="flex flex-col gap-0.5">
-												<Badge className={`text-[9px] w-fit px-1.5 py-0 ${order.type === "booking" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`} variant="outline">
-													{order.type === "booking" ? "Reservasi" : "POS"}
-												</Badge>
-												<span className="capitalize text-[10px] text-muted-foreground font-medium">
-													{order.paymentMethod}
+			<div className="flex-1 overflow-hidden">
+				<div className="space-y-2 overflow-y-auto md:hidden">
+					{filteredOrders?.length === 0 ? (
+						<div className="rounded-xl border border-dashed border-border bg-card py-12 text-center text-muted-foreground text-sm">
+							Tidak ada pesanan ditemukan.
+						</div>
+					) : (
+						filteredOrders?.map((order: Order) => {
+							const shiftName = getShiftName(order);
+							return (
+								<button
+									className="w-full rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-colors active:bg-muted/40"
+									key={order._id}
+									onClick={() => {
+										setSelectedOrder(order as any);
+										setIsDetailOpen(true);
+									}}
+									type="button"
+								>
+									<div className="flex items-start justify-between gap-3">
+										<div className="min-w-0 flex-1 space-y-1">
+											<div className="flex flex-wrap items-center gap-1.5">
+												<span className="font-bold font-mono text-[11px] text-primary">
+													{order.type === "booking" ? "BK-" : "#"}
+													{order.displayId}
 												</span>
-											</div>
-										</td>
-										<td className="px-4 py-3 text-right text-muted-foreground text-[10px] tabular-nums whitespace-nowrap">
-											<div className="flex flex-col">
-												<span>{format(order.createdAt, "dd MMM", { locale: id })}</span>
-												<span>{format(order.createdAt, "HH:mm", { locale: id })}</span>
-											</div>
-										</td>
-										<td className="px-4 py-3 text-center">
-												<div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-													<Button
-														className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
-														onClick={(e) => {
-															e.stopPropagation();
-															setSelectedOrder(order as any);
-															setIsDetailOpen(true);
-														}}
-														size="icon"
-														variant="ghost"
-														title="Detail"
+												{order.type === "booking" && (
+													<Badge
+														className="border-blue-200 bg-blue-50 px-1.5 py-0 text-[9px] text-blue-700"
+														variant="outline"
 													>
-														<Eye className="h-3.5 w-3.5" />
-													</Button>
-													<Button
-														className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-														onClick={(e) => {
-															e.stopPropagation();
-															handleDeleteOrder(order);
-														}}
-														size="icon"
-														variant="ghost"
-														title="Hapus"
+														Booking
+													</Badge>
+												)}
+												<Badge
+													className={`rounded-md px-1.5 py-0 font-normal text-[9px] ${getStatusColor(order.status)}`}
+													variant="outline"
+												>
+													{getStatusLabel(order.status)}
+												</Badge>
+											</div>
+											<div className="text-[11px] text-muted-foreground">
+												{order.customerName || "Pelanggan Umum"} ·{" "}
+												{(order.paymentMethod || "-").toUpperCase()}
+											</div>
+											<div className="text-[10px] text-muted-foreground">
+												{getOrderLocationLabel(order)} · {shiftName}
+											</div>
+										</div>
+										<div className="shrink-0 text-right">
+											<p className="font-bold text-sm">
+												{formatrupiah(order.totalAmount)}
+											</p>
+											<p className="text-[10px] text-muted-foreground tabular-nums">
+												{format(order.createdAt, "dd MMM HH:mm", { locale: id })}
+											</p>
+										</div>
+									</div>
+								</button>
+							);
+						})
+					)}
+				</div>
+
+				<div className="hidden h-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm md:block">
+					<div className="h-full overflow-auto">
+						<table className="w-full min-w-[980px] text-left text-xs">
+							<thead className="sticky top-0 z-10 bg-muted/70 uppercase tracking-wider">
+								<tr className="text-[10px] text-muted-foreground">
+									<th className="px-3 py-2.5">ID</th>
+									<th className="px-3 py-2.5">Pelanggan</th>
+									<th className="px-3 py-2.5">Lokasi</th>
+									<th className="px-3 py-2.5">Shift</th>
+									<th className="px-3 py-2.5 text-right">Total</th>
+									<th className="px-3 py-2.5 text-right">Laba</th>
+									<th className="px-3 py-2.5">Status</th>
+									<th className="px-3 py-2.5">Channel</th>
+									<th className="px-3 py-2.5 text-right">Waktu</th>
+									<th className="px-3 py-2.5 text-center">Aksi</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-border">
+								{filteredOrders?.length === 0 ? (
+									<tr>
+										<td
+											className="h-44 text-center text-muted-foreground text-sm"
+											colSpan={10}
+										>
+											Tidak ada pesanan yang cocok dengan filter.
+										</td>
+									</tr>
+								) : (
+									filteredOrders?.map((order: Order) => {
+										const shiftName = getShiftName(order);
+										return (
+											<tr
+												className="group cursor-pointer transition-colors hover:bg-muted/30"
+												key={order._id}
+												onClick={() => {
+													setSelectedOrder(order as any);
+													setIsDetailOpen(true);
+												}}
+											>
+												<td className="px-3 py-2.5 align-top">
+													<div className="flex flex-col leading-tight">
+														<span className="font-bold font-mono text-[11px] text-primary">
+															{order.type === "booking" ? "BK-" : "#"}
+															{order.displayId}
+														</span>
+														{order.type === "booking" && (
+															<span className="text-[9px] text-blue-600 uppercase">
+																Reservasi
+															</span>
+														)}
+													</div>
+												</td>
+												<td className="px-3 py-2.5 align-top">
+													<div className="flex items-center gap-2">
+														<div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary">
+															<User className="h-3 w-3" />
+														</div>
+														<div className="min-w-0 leading-tight">
+															<p className="max-w-[170px] truncate font-medium text-[11px]">
+																{order.customerName || "Pelanggan Umum"}
+															</p>
+															<p className="text-[10px] text-muted-foreground uppercase">
+																{(order.paymentMethod || "-").toUpperCase()}
+															</p>
+														</div>
+													</div>
+												</td>
+												<td className="px-3 py-2.5 align-top text-[11px]">
+													{getOrderLocationLabel(order)}
+												</td>
+												<td className="px-3 py-2.5 align-top">
+													{shiftName !== "-" ? (
+														<span className="inline-flex rounded-md bg-primary/10 px-2 py-1 font-semibold text-[10px] text-primary uppercase">
+															{shiftName}
+														</span>
+													) : (
+														<span className="text-[11px] text-muted-foreground">-</span>
+													)}
+												</td>
+												<td className="px-3 py-2.5 text-right align-top font-semibold text-[11px] tabular-nums">
+													{formatrupiah(order.totalAmount)}
+												</td>
+												<td className="px-3 py-2.5 text-right align-top">
+													{(() => {
+														if (!hppProductMap || !order.items?.length) {
+															return (
+																<span className="text-[11px] text-muted-foreground">
+																	-
+																</span>
+															);
+														}
+														let orderCogs = 0;
+														let hasHpp = false;
+														for (const item of order.items) {
+															const hpp = hppProductMap[item.productId];
+															if (hpp) {
+																orderCogs += hpp.hppPerServing * item.quantity;
+																hasHpp = true;
+															}
+														}
+														if (!hasHpp) {
+															return (
+																<span className="text-[11px] text-muted-foreground">
+																	-
+																</span>
+															);
+														}
+														const profit = order.totalAmount - orderCogs;
+														return (
+															<span
+																className={`font-semibold text-[11px] ${profit >= 0 ? "text-green-600" : "text-red-600"}`}
+															>
+																{formatrupiah(profit)}
+															</span>
+														);
+													})()}
+												</td>
+												<td className="px-3 py-2.5 align-top">
+													<Badge
+														className={`rounded-md px-1.5 py-0 font-normal text-[10px] ${getStatusColor(order.status)}`}
+														variant="outline"
 													>
-														<Trash2 className="h-3.5 w-3.5" />
-													</Button>
-												</div>
-											</td>
-										</tr>
-									);
-								})
-							)}
-						</tbody>
-					</table>
+														{getStatusLabel(order.status)}
+													</Badge>
+												</td>
+												<td className="px-3 py-2.5 align-top">
+													<div className="flex flex-col gap-1 leading-tight">
+														<Badge
+															className={`w-fit px-1.5 py-0 text-[9px] ${order.type === "booking" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`}
+															variant="outline"
+														>
+															{order.type === "booking" ? "Booking" : "POS"}
+														</Badge>
+														<span className="text-[10px] text-muted-foreground">
+															{order.orderType === "dine_in" ? "Dine in" : "Takeaway"}
+														</span>
+													</div>
+												</td>
+												<td className="px-3 py-2.5 text-right align-top text-[10px] text-muted-foreground tabular-nums">
+													<div className="leading-tight">
+														<div>{format(order.createdAt, "dd MMM", { locale: id })}</div>
+														<div>{format(order.createdAt, "HH:mm", { locale: id })}</div>
+													</div>
+												</td>
+												<td className="px-3 py-2.5 text-center align-top">
+													<div className="flex items-center justify-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+														<Button
+															className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
+															onClick={(e) => {
+																e.stopPropagation();
+																setSelectedOrder(order as any);
+																setIsDetailOpen(true);
+															}}
+															size="icon"
+															variant="ghost"
+															title="Detail"
+														>
+															<Eye className="h-3.5 w-3.5" />
+														</Button>
+														<Button
+															className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+															onClick={(e) => {
+																e.stopPropagation();
+																handleDeleteOrder(order);
+															}}
+															size="icon"
+															variant="ghost"
+															title="Hapus"
+														>
+															<Trash2 className="h-3.5 w-3.5" />
+														</Button>
+													</div>
+												</td>
+											</tr>
+										);
+									})
+								)}
+							</tbody>
+						</table>
+					</div>
 				</div>
 			</div>
 
@@ -819,7 +849,7 @@ function AdminOrders() {
 											Daftar Item
 										</h4>
 										<div className="divide-y divide-border rounded-lg border border-border bg-card">
-											{selectedOrder.items.map((item, _idx) => (
+											{selectedOrder.items?.map((item) => (
 												<div
 													className="flex items-start justify-between p-2.5"
 													key={item.productId}
@@ -864,7 +894,7 @@ function AdminOrders() {
 													Metode Pembayaran
 												</span>
 												<span className="font-medium capitalize">
-													{selectedOrder.paymentMethod}
+													{selectedOrder.paymentMethod || "-"}
 												</span>
 											</div>
 											<div className="my-1.5 border-border/50 border-t" />
