@@ -23,7 +23,7 @@ import {
 	TrendingUp,
 } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -778,24 +778,23 @@ function HppCalculatorPage() {
 	}
 
 	return (
-		<div className="flex flex-col gap-6">
+		<div className="flex flex-col gap-4">
 			<motion.div
 				animate={{ opacity: 1, y: 0 }}
-				className="overflow-hidden rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(20,184,166,0.14),transparent_30%),linear-gradient(135deg,#fff7ed,#f8fafc_55%,#f0fdfa)] p-6 shadow-sm"
+				className="overflow-hidden rounded-2xl border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.14),transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(20,184,166,0.12),transparent_30%),linear-gradient(135deg,#fff7ed,#f8fafc_55%,#f0fdfa)] p-4 shadow-sm"
 				initial={{ opacity: 0, y: 12 }}
 			>
-				<div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+				<div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
 					<div className="max-w-3xl">
 						<p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-orange-600">
 							Product Costing Workspace
 						</p>
-						<h2 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
-							Overhaul HPP dari kalkulator jadi pusat keputusan harga produk.
+						<h2 className="text-xl font-black tracking-tight text-slate-900 md:text-2xl">
+							HPP Workspace yang ringkas dan fokus keputusan.
 						</h2>
-						<p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-							Halaman ini sekarang memetakan status costing semua produk, editor
-							HPP yang terhubung ke recipe dan inventory, lalu simulasi dampak
-							margin untuk finance dan pricing.
+						<p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+							Cari produk lebih cepat, edit costing lebih padat, dan cek dampak
+							margin tanpa perlu scroll panjang.
 						</p>
 					</div>
 
@@ -822,7 +821,7 @@ function HppCalculatorPage() {
 				</div>
 			</motion.div>
 
-			<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+			<div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
 				<SummaryCard label="Total Produk" value={workspace?.summary.totalProducts} />
 				<SummaryCard
 					label="Linked"
@@ -853,7 +852,7 @@ function HppCalculatorPage() {
 				/>
 			</div>
 
-			<div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white/80 p-2 shadow-sm">
+			<div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white/80 p-1.5 shadow-sm">
 				<TabButton
 					active={activeView === "portfolio"}
 					icon={Package}
@@ -980,11 +979,11 @@ function SummaryCard({
 
 	return (
 		<Card className={toneClasses[tone]}>
-			<CardContent className="p-4">
+			<CardContent className="p-3">
 				<p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">
 					{label}
 				</p>
-				<p className="mt-2 text-2xl font-black tracking-tight">
+				<p className="mt-1.5 text-xl font-black tracking-tight">
 					{value ?? <Skeleton className="h-8 w-16" />}
 				</p>
 			</CardContent>
@@ -1029,6 +1028,65 @@ function StatusPill({ status }: { status: PortfolioStatus | "draft" }) {
 	);
 }
 
+function SearchableSelect({
+	onValueChange,
+	options,
+	placeholder,
+	value,
+}: {
+	onValueChange: (value: string) => void;
+	options: Array<{ label: string; value: string }>;
+	placeholder: string;
+	value: string;
+}) {
+	const listId = useId();
+	const [inputValue, setInputValue] = useState("");
+
+	useEffect(() => {
+		const selected = options.find((option) => option.value === value);
+		setInputValue(selected?.label ?? "");
+	}, [value, options.length]);
+
+	return (
+		<div className="space-y-1">
+			<Input
+				className="h-9"
+				list={listId}
+				onBlur={() => {
+					const matched = options.find(
+						(option) =>
+							option.label.toLowerCase() === inputValue.trim().toLowerCase()
+					);
+					if (!matched && value) {
+						const selected = options.find((option) => option.value === value);
+						setInputValue(selected?.label ?? "");
+					}
+				}}
+				onChange={(event) => {
+					const nextValue = event.target.value;
+					setInputValue(nextValue);
+					const matched = options.find(
+						(option) =>
+							option.label.toLowerCase() === nextValue.trim().toLowerCase()
+					);
+					if (matched) {
+						onValueChange(matched.value);
+					} else if (nextValue.trim() === "") {
+						onValueChange("");
+					}
+				}}
+				placeholder={placeholder}
+				value={inputValue}
+			/>
+			<datalist id={listId}>
+				{options.map((option) => (
+					<option key={option.value || option.label} value={option.label} />
+				))}
+			</datalist>
+		</div>
+	);
+}
+
 function PortfolioView({
 	filteredPortfolio,
 	onOpenEditor,
@@ -1061,7 +1119,7 @@ function PortfolioView({
 	return (
 		<div className="space-y-6">
 			<Card className="border-slate-200 bg-white">
-				<CardContent className="grid gap-4 p-4 lg:grid-cols-[1fr_180px_180px_auto]">
+				<CardContent className="grid gap-3 p-3 lg:grid-cols-[1fr_180px_160px_auto]">
 					<div className="relative">
 						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 						<Input
@@ -1084,7 +1142,7 @@ function PortfolioView({
 						<option value="missing_recipe">Missing Recipe</option>
 						<option value="missing_cost">Missing Cost</option>
 					</select>
-					<div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-600">
+					<div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-600">
 						{filteredPortfolio.length} produk tampil
 					</div>
 					<Button onClick={onOpenNewDraft}>
@@ -1117,7 +1175,7 @@ function PortfolioView({
 				</div>
 			)}
 
-			<div className="grid gap-4 xl:grid-cols-2">
+			<div className="grid gap-3 xl:grid-cols-2">
 				{workspace == null &&
 					Array.from({ length: 4 }).map((_, index) => (
 						<Card className="border-slate-200" key={index}>
@@ -1131,7 +1189,7 @@ function PortfolioView({
 
 				{filteredPortfolio.map((row) => (
 					<Card className="border-slate-200 shadow-sm" key={row.product._id}>
-						<CardContent className="flex h-full flex-col gap-4 p-5">
+						<CardContent className="flex h-full flex-col gap-3 p-4">
 							<div className="flex items-start justify-between gap-4">
 								<div>
 									<div className="flex flex-wrap items-center gap-2">
@@ -1153,8 +1211,8 @@ function PortfolioView({
 								</button>
 							</div>
 
-							<div className="grid grid-cols-2 gap-3">
-								<div className="rounded-2xl bg-slate-50 p-3">
+							<div className="grid grid-cols-2 gap-2">
+								<div className="rounded-xl bg-slate-50 p-2.5">
 									<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
 										HPP / Porsi
 									</p>
@@ -1164,7 +1222,7 @@ function PortfolioView({
 											: "Belum ada"}
 									</p>
 								</div>
-								<div className="rounded-2xl bg-slate-50 p-3">
+								<div className="rounded-xl bg-slate-50 p-2.5">
 									<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
 										Margin
 									</p>
@@ -1174,20 +1232,20 @@ function PortfolioView({
 								</div>
 							</div>
 
-							<div className="grid gap-2 text-sm text-slate-600">
-								<div className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
+							<div className="grid gap-1.5 text-sm text-slate-600">
+								<div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
 									<span>Harga jual aktif</span>
 									<span className="font-semibold text-slate-900">
 										{formatCurrency(row.product.promoPrice ?? row.product.price)}
 									</span>
 								</div>
-								<div className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
+								<div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
 									<span>Koneksi bahan ke inventory</span>
 									<span className="font-semibold text-slate-900">
 										{row.linkedIngredientCount}/{row.ingredientCount}
 									</span>
 								</div>
-								<div className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
+								<div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
 									<span>Recipe & sync flags</span>
 									<span className="font-semibold text-slate-900">
 										{row.recipe ? "Recipe siap" : "Belum ada recipe"}
@@ -1335,8 +1393,8 @@ function EditorView({
 		: 0;
 
 	return (
-		<div className="grid gap-6 lg:grid-cols-[1.2fr_420px]">
-			<div className="space-y-6">
+		<div className="grid gap-4 lg:grid-cols-[1.25fr_360px]">
+			<div className="space-y-4">
 				<Card className="border-slate-200">
 					<CardHeader className="border-b border-slate-200">
 						<CardTitle className="flex flex-wrap items-center justify-between gap-3">
@@ -1356,7 +1414,7 @@ function EditorView({
 							</div>
 						</CardTitle>
 					</CardHeader>
-					<CardContent className="space-y-5 p-5">
+					<CardContent className="space-y-4 p-4">
 						<div className="grid gap-4 md:grid-cols-2">
 							<div className="space-y-2">
 								<Label>Nama Costing</Label>
@@ -1438,13 +1496,13 @@ function EditorView({
 							</Button>
 						</CardTitle>
 					</CardHeader>
-					<CardContent className="space-y-4 p-5">
+					<CardContent className="space-y-3 p-4">
 						{form.ingredients.map((ingredient, index) => (
 							<div
-								className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+								className="rounded-xl border border-slate-200 bg-slate-50 p-3"
 								key={ingredient.id}
 							>
-								<div className="mb-4 flex items-center justify-between">
+								<div className="mb-3 flex items-center justify-between">
 									<p className="text-sm font-semibold text-slate-700">
 										Bahan #{index + 1}
 									</p>
@@ -1482,32 +1540,30 @@ function EditorView({
 									</div>
 									<div className="space-y-2">
 										<Label>Link Inventory</Label>
-										<select
-											className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-											onChange={(event) => {
-												if (event.target.value) {
-													linkIngredientToInventory(
-														ingredient.id,
-														event.target.value
-													);
+										<SearchableSelect
+											onValueChange={(value) => {
+												if (!value) {
+													updateIngredient(ingredient.id, "inventoryId", undefined);
+													return;
 												}
+												linkIngredientToInventory(ingredient.id, value);
 											}}
+											options={[
+												{ label: "Manual (tanpa link)", value: "" },
+												...(inventory ?? []).map((item) => ({
+													label: `${item.ingredientName} (${item.unit})`,
+													value: item._id,
+												})),
+											]}
+											placeholder="Ketik nama bahan inventory..."
 											value={ingredient.inventoryId ?? ""}
-										>
-											<option value="">Manual</option>
-											{inventory?.map((item) => (
-												<option key={item._id} value={item._id}>
-													{item.ingredientName} ({item.unit})
-												</option>
-											))}
-										</select>
+										/>
 									</div>
 									<div className="space-y-2">
 										<Label>Preset Satuan</Label>
-										<select
-											className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-											onChange={(event) => {
-												const preset = COMMON_UNITS[Number(event.target.value)];
+										<SearchableSelect
+											onValueChange={(value) => {
+												const preset = COMMON_UNITS[Number(value)];
 												if (!preset) {
 													return;
 												}
@@ -1516,26 +1572,20 @@ function EditorView({
 													"purchaseUnit",
 													preset.purchase
 												);
-												updateIngredient(
-													ingredient.id,
-													"usageUnit",
-													preset.usage
-												);
+												updateIngredient(ingredient.id, "usageUnit", preset.usage);
 												updateIngredient(
 													ingredient.id,
 													"conversionFactor",
 													preset.factor
 												);
 											}}
+											options={COMMON_UNITS.map((unit, indexPreset) => ({
+												label: `${unit.purchase} -> ${unit.usage}`,
+												value: String(indexPreset),
+											}))}
+											placeholder="Ketik preset satuan..."
 											value=""
-										>
-											<option value="">Pilih preset</option>
-											{COMMON_UNITS.map((unit, indexPreset) => (
-												<option key={`${unit.purchase}-${unit.usage}`} value={indexPreset}>
-													{unit.purchase} {"->"} {unit.usage}
-												</option>
-											))}
-										</select>
+										/>
 									</div>
 								</div>
 
@@ -1629,7 +1679,7 @@ function EditorView({
 											value={ingredient.usageUnit}
 										/>
 									</div>
-									<div className="rounded-2xl border border-slate-200 bg-white p-3">
+									<div className="rounded-xl border border-slate-200 bg-white p-3">
 										<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
 											Biaya / Porsi
 										</p>
@@ -1665,7 +1715,7 @@ function EditorView({
 							</Button>
 						</CardTitle>
 					</CardHeader>
-					<CardContent className="space-y-3 p-5">
+					<CardContent className="space-y-2.5 p-4">
 						{form.overheadCosts.map((overhead) => (
 							<div className="grid gap-3 md:grid-cols-[1fr_180px_auto]" key={overhead.id}>
 								<Input
@@ -1708,9 +1758,9 @@ function EditorView({
 				</Card>
 			</div>
 
-			<div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
+			<div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
 				<Card className="border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-orange-950 text-white">
-					<CardContent className="space-y-5 p-5">
+					<CardContent className="space-y-4 p-4">
 						<div>
 							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-300">
 								Cost Health
@@ -1749,7 +1799,7 @@ function EditorView({
 							/>
 						</div>
 
-						<div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+						<div className="rounded-xl border border-white/10 bg-white/5 p-3.5">
 							<div className="flex items-center justify-between gap-3">
 								<div>
 									<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-300">
@@ -2009,20 +2059,20 @@ function ImpactView({
 					</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-5 p-5">
-					<select
-						className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-						onChange={(event) =>
-							setSimulateId((event.target.value || null) as Id<"hppCalculations"> | null)
+					<SearchableSelect
+						onValueChange={(value) =>
+							setSimulateId((value || null) as Id<"hppCalculations"> | null)
 						}
+						options={[
+							{ label: "Pilih produk / HPP", value: "" },
+							...impactRows.map((row) => ({
+								label: row.name,
+								value: row.id,
+							})),
+						]}
+						placeholder="Ketik nama produk..."
 						value={simulateId ?? ""}
-					>
-						<option value="">Pilih produk / HPP</option>
-						{impactRows.map((row) => (
-							<option key={row.id} value={row.id}>
-								{row.name}
-							</option>
-						))}
-					</select>
+					/>
 
 					<div className="grid gap-4 md:grid-cols-2">
 						<div className="space-y-2">
