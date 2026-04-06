@@ -5,15 +5,17 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	CheckCircle2,
+	Copy,
 	Edit,
 	LayoutGrid,
 	List,
 	Plus,
+	Search,
 	Sparkles,
 	Trash2,
 	XCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { compressFileToLimit, isOversized } from "@/lib/image-compress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,6 +32,13 @@ interface Variation {
 	name: string;
 	options: VariationOption[];
 }
+
+type SavedViewKey =
+	| "all"
+	| "draft"
+	| "out-of-stock"
+	| "promo"
+	| "inactive";
 
 export const Route = createLazyFileRoute("/admin/products")({
 	component: AdminProductsPage,
@@ -197,6 +206,7 @@ function ProductsTab({
 	const addProduct = useMutation(api.products.addProduct);
 	const updateProduct = useMutation(api.products.updateProduct);
 	const deleteProduct = useMutation(api.products.deleteProduct);
+	const bulkUpdateProducts = useMutation(api.products.bulkUpdateProducts);
 	const generateUploadUrl = useMutation(api.products.generateUploadUrl);
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
@@ -221,8 +231,119 @@ function ProductsTab({
 	const [_isUploading, setIsUploading] = useState(false);
 	const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
 	const [viewMode, setViewMode] = useState<"grid" | "table">("table");
+	const [searchKeyword, setSearchKeyword] = useState("");
+	const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
+	const [selectedStatusFilter, setSelectedStatusFilter] = useState<
+		"all" | "active" | "inactive"
+	>("all");
+	const [selectedStockFilter, setSelectedStockFilter] = useState<
+		"all" | "in-stock" | "out-of-stock"
+	>("all");
+	const [savedView, setSavedView] = useState<SavedViewKey>("all");
+	const [selectedIds, setSelectedIds] = useState<Id<"products">[]>([]);
+	const [bulkCategoryId, setBulkCategoryId] = useState("");
+	const [bulkDiscount, setBulkDiscount] = useState("10");
+	const [quickEditId, setQuickEditId] = useState<Id<"products"> | null>(null);
+	const [isSavingInline, setIsSavingInline] = useState<
+		Record<string, { price?: boolean; quantity?: boolean }>
+	>({});
+	const searchInputRef = useRef<HTMLInputElement | null>(null);
 
 	const generateDescription = useAction(api.ai.generateProductDescription);
+
+	const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+	const filteredProducts = useMemo(() => {
+		if (!products) {
+			return [];
+		}
+		let next = [...products];
+		const keyword = searchKeyword.trim().toLowerCase();
+		if (keyword) {
+			next = next.filter((product) => {
+				const categoryName =
+					categories?.find((category) => category._id === product.categoryId)?.name ??
+					"";
+				return (
+					product.name.toLowerCase().includes(keyword) ||
+					(product.description ?? "").toLowerCase().includes(keyword) ||
+					categoryName.toLowerCase().includes(keyword)
+				);
+			});
+		}
+
+		if (selectedCategoryFilter !== "all") {
+			next = next.filter((product) => product.categoryId === selectedCategoryFilter);
+		}
+
+		if (selectedStatusFilter !== "all") {
+			next = next.filter((product) =>
+				selectedStatusFilter === "active"
+					? product.isAvailable
+					: !product.isAvailable
+			);
+		}
+
+		if (selectedStockFilter !== "all") {
+			next = next.filter((product) =>
+				selectedStockFilter === "out-of-stock"
+					? (product.quantity ?? 0) <= 0
+					: (product.quantity ?? 0) > 0
+			);
+		}
+
+		if (savedView === "draft") {
+			next = next.filter((product) => !product.image || !product.description);
+		}
+		if (savedView === "out-of-stock") {
+			next = next.filter((product) => (product.quantity ?? 0) <= 0);
+		}
+		if (savedView === "promo") {
+			next = next.filter(
+				(product) => typeof product.promoPrice === "number" && product.promoPrice < product.price
+			);
+		}
+		if (savedView === "inactive") {
+			next = next.filter((product) => !product.isAvailable);
+		}
+
+		return next.sort((a, b) => (a.menuNumber ?? 9999) - (b.menuNumber ?? 9999));
+	}, [
+		categories,
+		products,
+		savedView,
+		searchKeyword,
+		selectedCategoryFilter,
+		selectedStatusFilter,
+		selectedStockFilter,
+	]);
+
+	const quickEditProduct = useMemo(
+		() => filteredProducts.find((product) => product._id === quickEditId) ?? null,
+		[filteredProducts, quickEditId]
+	);
+
+	const allVisibleSelected =
+		filteredProducts.length > 0 &&
+		filteredProducts.every((product) => selectedSet.has(product._id));
+
+	const selectedProducts = useMemo(
+		() => (products ?? []).filter((product) => selectedSet.has(product._id)),
+		[products, selectedSet]
+	);
+
+	const selectedSummary = useMemo(
+		() =>
+			selectedProducts.reduce(
+				(acc, product) => {
+					acc.totalPrice += product.price;
+					acc.outOfStock += (product.quantity ?? 0) <= 0 ? 1 : 0;
+					return acc;
+				},
+				{ totalPrice: 0, outOfStock: 0 }
+			),
+		[selectedProducts]
+	);
 
 	const resetForm = () => {
 		setFormData({
@@ -239,6 +360,69 @@ function ProductsTab({
 		setOriginalStorageId(null);
 		setEditingId(null);
 		setIsModalOpen(false);
+	};
+
+	useEffect(() => {
+		const handler = (event: KeyboardEvent) => {
+			if (
+				event.target instanceof HTMLInputElement ||
+				event.target instanceof HTMLTextAreaElement
+			) {
+				return;
+			}
+			if (event.key === "/") {
+				event.preventDefault();
+				searchInputRef.current?.focus();
+			}
+			if (event.key.toLowerCase() === "n") {
+				event.preventDefault();
+				resetForm();
+				setIsModalOpen(true);
+			}
+		};
+		window.addEventListener("keydown", handler);
+		return () => window.removeEventListener("keydown", handler);
+	}, []);
+
+	const formatRupiah = (value: number) =>
+		new Intl.NumberFormat("id-ID", {
+			style: "currency",
+			currency: "IDR",
+			maximumFractionDigits: 0,
+		}).format(value);
+
+	const getHealthScore = (product: Doc<"products">) => {
+		let score = 0;
+		if (product.name.length >= 4) score += 20;
+		if ((product.description ?? "").length >= 30) score += 30;
+		if (product.image) score += 25;
+		if (product.categoryId) score += 15;
+		if ((product.variations as Variation[] | undefined)?.length) score += 10;
+		return score;
+	};
+
+	const toggleSelected = (id: Id<"products">) => {
+		setSelectedIds((prev) =>
+			prev.includes(id) ? prev.filter((current) => current !== id) : [...prev, id]
+		);
+	};
+
+	const toggleAllVisible = () => {
+		if (allVisibleSelected) {
+			setSelectedIds((prev) =>
+				prev.filter(
+					(id) => !filteredProducts.some((product) => product._id === id)
+				)
+			);
+			return;
+		}
+		setSelectedIds((prev) => {
+			const merged = new Set(prev);
+			for (const product of filteredProducts) {
+				merged.add(product._id);
+			}
+			return Array.from(merged);
+		});
 	};
 
 	const handleImageUpload = async () => {
@@ -409,10 +593,555 @@ function ProductsTab({
 
 	const toggleAvailability = async (id: Id<"products">, current: boolean) => {
 		await updateProduct({ id, isAvailable: !current });
+		toast.success("Status produk diperbarui");
+	};
+
+	const runBulkAvailability = async (isAvailable: boolean) => {
+		if (selectedIds.length === 0) {
+			return;
+		}
+		await bulkUpdateProducts({
+			ids: selectedIds,
+			updates: { isAvailable },
+		});
+		toast.success(
+			`${selectedIds.length} produk ${
+				isAvailable ? "diaktifkan" : "dinonaktifkan"
+			}`
+		);
+	};
+
+	const runBulkCategory = async () => {
+		if (!bulkCategoryId || selectedIds.length === 0) {
+			toast.error("Pilih kategori dan produk terlebih dahulu");
+			return;
+		}
+		await Promise.all(
+			selectedIds.map((id) =>
+				updateProduct({
+					id,
+					categoryId: bulkCategoryId as Id<"categories">,
+				})
+			)
+		);
+		toast.success(`${selectedIds.length} produk dipindahkan kategori`);
+	};
+
+	const runBulkDiscount = async () => {
+		const discountPercent = Number(bulkDiscount);
+		if (selectedIds.length === 0 || Number.isNaN(discountPercent)) {
+			toast.error("Diskon tidak valid");
+			return;
+		}
+		await Promise.all(
+			selectedProducts.map((product) =>
+				updateProduct({
+					id: product._id,
+					promoPrice: Math.max(
+						Math.round(product.price * (1 - discountPercent / 100)),
+						0
+					),
+				})
+			)
+		);
+		toast.success(`Diskon ${discountPercent}% diterapkan ke ${selectedIds.length} produk`);
+	};
+
+	const runBulkDelete = async () => {
+		if (selectedIds.length === 0) {
+			return;
+		}
+		await Promise.all(selectedIds.map((id) => deleteProduct({ id })));
+		setSelectedIds([]);
+		toast.success("Produk terpilih berhasil dihapus");
+	};
+
+	const handleInlineNumberUpdate = async (
+		id: Id<"products">,
+		field: "price" | "quantity",
+		value: string,
+		currentValue: number
+	) => {
+		const parsed = Number(value);
+		if (Number.isNaN(parsed) || parsed < 0) {
+			toast.error(`${field === "price" ? "Harga" : "Stok"} tidak valid`);
+			return;
+		}
+		if (parsed === currentValue) {
+			return;
+		}
+		setIsSavingInline((prev) => ({
+			...prev,
+			[id]: { ...(prev[id] ?? {}), [field]: true },
+		}));
+		try {
+			await updateProduct({
+				id,
+				[field]: parsed,
+			});
+			toast.success(`${field === "price" ? "Harga" : "Stok"} diperbarui`);
+		} finally {
+			setIsSavingInline((prev) => ({
+				...prev,
+				[id]: { ...(prev[id] ?? {}), [field]: false },
+			}));
+		}
+	};
+
+	const duplicateProduct = async (product: Doc<"products"> & { storageId?: string }) => {
+		await addProduct({
+			name: `${product.name} (Copy)`,
+			price: product.price,
+			categoryId: product.categoryId,
+			description: product.description,
+			image: product.storageId || product.image,
+			isAvailable: product.isAvailable,
+			menuNumber: product.menuNumber,
+			quantity: product.quantity,
+			promoPrice: product.promoPrice,
+			variations: product.variations,
+		});
+		toast.success("Produk berhasil diduplikasi");
 	};
 
 	return (
 		<>
+			<div className="grid gap-4 xl:grid-cols-[1fr_320px]">
+				<div className="space-y-4">
+					<div className="rounded-xl border border-border bg-card p-4">
+						<div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+							<div>
+								<h2 className="font-bold text-xl">Product Workspace</h2>
+								<p className="text-muted-foreground text-xs">
+									Kelola produk lebih cepat dengan filter, bulk action, dan quick edit.
+								</p>
+							</div>
+							<div className="flex flex-wrap items-center gap-2">
+								<div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-1">
+									<button
+										className={`rounded px-2 py-1 transition-all ${viewMode === "grid" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+										onClick={() => setViewMode("grid")}
+										type="button"
+									>
+										<LayoutGrid className="h-4 w-4" />
+									</button>
+									<button
+										className={`rounded px-2 py-1 transition-all ${viewMode === "table" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+										onClick={() => setViewMode("table")}
+										type="button"
+									>
+										<List className="h-4 w-4" />
+									</button>
+								</div>
+								<BulkOperations />
+								<button
+									className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground text-sm transition-all hover:brightness-110"
+									onClick={() => {
+										resetForm();
+										setIsModalOpen(true);
+									}}
+									type="button"
+								>
+									<Plus className="h-4 w-4" /> Tambah Produk
+								</button>
+							</div>
+						</div>
+
+						<div className="mb-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+							<div className="relative md:col-span-2">
+								<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
+								<input
+									className="h-10 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+									onChange={(event) => setSearchKeyword(event.target.value)}
+									placeholder="Cari produk, deskripsi, kategori... (/)"
+									ref={searchInputRef}
+									value={searchKeyword}
+								/>
+							</div>
+							<select
+								className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+								onChange={(event) => setSelectedCategoryFilter(event.target.value)}
+								value={selectedCategoryFilter}
+							>
+								<option value="all">Semua kategori</option>
+								{categories?.map((category) => (
+									<option key={category._id} value={category._id}>
+										{category.name}
+									</option>
+								))}
+							</select>
+							<select
+								className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+								onChange={(event) =>
+									setSelectedStatusFilter(
+										event.target.value as "all" | "active" | "inactive"
+									)
+								}
+								value={selectedStatusFilter}
+							>
+								<option value="all">Semua status</option>
+								<option value="active">Active</option>
+								<option value="inactive">Inactive</option>
+							</select>
+							<select
+								className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+								onChange={(event) =>
+									setSelectedStockFilter(
+										event.target.value as "all" | "in-stock" | "out-of-stock"
+									)
+								}
+								value={selectedStockFilter}
+							>
+								<option value="all">Semua stok</option>
+								<option value="in-stock">In stock</option>
+								<option value="out-of-stock">Out of stock</option>
+							</select>
+						</div>
+
+						<div className="mb-4 flex flex-wrap items-center gap-2">
+							{[
+								{ key: "all", label: "Semua" },
+								{ key: "draft", label: "Draft" },
+								{ key: "out-of-stock", label: "Out of stock" },
+								{ key: "promo", label: "Promo" },
+								{ key: "inactive", label: "Inactive" },
+							].map((view) => (
+								<button
+									className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+										savedView === view.key
+											? "border-primary bg-primary/10 text-primary"
+											: "border-border bg-background text-muted-foreground hover:text-foreground"
+									}`}
+									key={view.key}
+									onClick={() => setSavedView(view.key as SavedViewKey)}
+									type="button"
+								>
+									{view.label}
+								</button>
+							))}
+						</div>
+
+						{selectedIds.length > 0 && (
+							<div className="sticky top-2 z-10 mb-4 rounded-xl border border-primary/30 bg-primary/5 p-3">
+								<div className="mb-2 flex items-center justify-between">
+									<p className="font-semibold text-sm">
+										{selectedIds.length} produk dipilih
+									</p>
+									<p className="text-muted-foreground text-xs">
+										Total: {formatRupiah(selectedSummary.totalPrice)}
+									</p>
+								</div>
+								<div className="flex flex-wrap items-center gap-2">
+									<button
+										className="rounded-md bg-green-600 px-3 py-1.5 font-medium text-white text-xs"
+										onClick={() => runBulkAvailability(true)}
+										type="button"
+									>
+										Publish
+									</button>
+									<button
+										className="rounded-md bg-slate-700 px-3 py-1.5 font-medium text-white text-xs"
+										onClick={() => runBulkAvailability(false)}
+										type="button"
+									>
+										Unpublish
+									</button>
+									<select
+										className="h-8 rounded-md border border-border bg-background px-2 text-xs"
+										onChange={(event) => setBulkCategoryId(event.target.value)}
+										value={bulkCategoryId}
+									>
+										<option value="">Pindah kategori...</option>
+										{categories?.map((category) => (
+											<option key={category._id} value={category._id}>
+												{category.name}
+											</option>
+										))}
+									</select>
+									<button
+										className="rounded-md border border-border px-3 py-1.5 text-xs"
+										onClick={runBulkCategory}
+										type="button"
+									>
+										Apply Kategori
+									</button>
+									<input
+										className="h-8 w-16 rounded-md border border-border bg-background px-2 text-xs"
+										onChange={(event) => setBulkDiscount(event.target.value)}
+										type="number"
+										value={bulkDiscount}
+									/>
+									<button
+										className="rounded-md border border-border px-3 py-1.5 text-xs"
+										onClick={runBulkDiscount}
+										type="button"
+									>
+										Set Promo %
+									</button>
+									<button
+										className="rounded-md bg-destructive px-3 py-1.5 font-medium text-destructive-foreground text-xs"
+										onClick={runBulkDelete}
+										type="button"
+									>
+										Hapus
+									</button>
+								</div>
+							</div>
+						)}
+
+						{viewMode === "grid" ? (
+							<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+								{!products &&
+									Array.from({ length: 8 }).map((_, i) => (
+										<div className="rounded-xl border border-border bg-card p-3" key={i}>
+											<Skeleton className="aspect-square w-full rounded-lg" />
+											<Skeleton className="mt-2 h-3 w-3/4" />
+										</div>
+									))}
+								{products &&
+									filteredProducts.map((product) => (
+										<div className="group rounded-xl border border-border bg-card p-3" key={product._id}>
+											<div className="mb-2 flex items-center justify-between">
+												<input
+													checked={selectedSet.has(product._id)}
+													onChange={() => toggleSelected(product._id)}
+													type="checkbox"
+												/>
+												<button
+													className="rounded p-1 hover:bg-muted"
+													onClick={() => setQuickEditId(product._id)}
+													type="button"
+												>
+													<Edit className="h-3.5 w-3.5" />
+												</button>
+											</div>
+											<div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
+												{product.image ? (
+													<img alt={product.name} className="h-full w-full object-cover" src={product.image} />
+												) : (
+													<div className="flex h-full items-center justify-center text-muted-foreground text-xs">
+														No image
+													</div>
+												)}
+											</div>
+											<p className="mt-2 truncate font-semibold text-sm">{product.name}</p>
+											<p className="text-primary text-xs">{formatRupiah(product.price)}</p>
+										</div>
+									))}
+							</div>
+						) : (
+							<div className="rounded-xl border border-border bg-card shadow-sm">
+								<div className="overflow-x-auto">
+									<table className="w-full min-w-[1080px] text-left text-sm">
+										<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase tracking-wider">
+											<tr>
+												<th className="px-3 py-3 text-center">
+													<input checked={allVisibleSelected} onChange={toggleAllVisible} type="checkbox" />
+												</th>
+												<th className="px-3 py-3 text-center">No.</th>
+												<th className="px-3 py-3">Produk</th>
+												<th className="px-3 py-3">Kategori</th>
+												<th className="px-3 py-3">Harga</th>
+												<th className="px-3 py-3">Promo</th>
+												<th className="px-3 py-3">Stok</th>
+												<th className="px-3 py-3">Health</th>
+												<th className="px-3 py-3">Status</th>
+												<th className="px-3 py-3 text-right">Aksi</th>
+											</tr>
+										</thead>
+										<tbody className="divide-y divide-border">
+											{products &&
+												filteredProducts.map((product) => {
+													const categoryName =
+														categories?.find((cat) => cat._id === product.categoryId)?.name ??
+														"Uncategorized";
+													const health = getHealthScore(product);
+													const hpp = hppProductMap?.[product._id];
+
+													return (
+														<tr className="group transition-colors hover:bg-muted/40" key={product._id}>
+															<td className="px-3 py-3 text-center">
+																<input
+																	checked={selectedSet.has(product._id)}
+																	onChange={() => toggleSelected(product._id)}
+																	type="checkbox"
+																/>
+															</td>
+															<td className="px-3 py-3 text-center text-xs">{product.menuNumber ?? "-"}</td>
+															<td className="px-3 py-3">
+																<button
+																	className="flex items-center gap-3 text-left"
+																	onClick={() => setQuickEditId(product._id)}
+																	type="button"
+																>
+																	<div className="h-10 w-10 overflow-hidden rounded-md bg-muted">
+																		{product.image ? (
+																			<img alt={product.name} className="h-full w-full object-cover" src={product.image} />
+																		) : (
+																			<div className="flex h-full w-full items-center justify-center text-[8px] text-muted-foreground">NA</div>
+																		)}
+																	</div>
+																	<div className="min-w-0">
+																		<p className="truncate font-semibold text-sm">{product.name}</p>
+																		<p className="line-clamp-1 text-[11px] text-muted-foreground">{product.description || "Belum ada deskripsi"}</p>
+																	</div>
+																</button>
+															</td>
+															<td className="px-3 py-3">
+																<Badge variant="secondary">{categoryName}</Badge>
+															</td>
+															<td className="px-3 py-3">
+																<input
+																	className="h-8 w-28 rounded-md border border-border bg-background px-2 text-xs"
+																	defaultValue={product.price}
+																	onBlur={(event) =>
+																		handleInlineNumberUpdate(
+																			product._id,
+																			"price",
+																			event.target.value,
+																			product.price
+																		)
+																	}
+																	onKeyDown={(event) => {
+																		if (event.key === "Enter") {
+																			(event.target as HTMLInputElement).blur();
+																		}
+																	}}
+																	type="number"
+																/>
+																{isSavingInline[product._id]?.price && (
+																	<p className="mt-1 text-[10px] text-muted-foreground">Saving...</p>
+																)}
+															</td>
+															<td className="px-3 py-3 text-xs">{product.promoPrice ? formatRupiah(product.promoPrice) : "-"}</td>
+															<td className="px-3 py-3">
+																<input
+																	className="h-8 w-20 rounded-md border border-border bg-background px-2 text-xs"
+																	defaultValue={product.quantity ?? 0}
+																	onBlur={(event) =>
+																		handleInlineNumberUpdate(
+																			product._id,
+																			"quantity",
+																			event.target.value,
+																			product.quantity ?? 0
+																		)
+																	}
+																	onKeyDown={(event) => {
+																		if (event.key === "Enter") {
+																			(event.target as HTMLInputElement).blur();
+																		}
+																	}}
+																	type="number"
+																/>
+																{isSavingInline[product._id]?.quantity && (
+																	<p className="mt-1 text-[10px] text-muted-foreground">Saving...</p>
+																)}
+															</td>
+															<td className="px-3 py-3">
+																<div className="space-y-1">
+																	<div className="h-1.5 w-24 rounded-full bg-muted">
+																		<div
+																			className={`${health > 80 ? "bg-green-500" : health > 50 ? "bg-amber-500" : "bg-red-500"} h-full rounded-full`}
+																			style={{ width: `${health}%` }}
+																		/>
+																	</div>
+																	<p className="text-[10px] text-muted-foreground">{health}/100</p>
+																</div>
+															</td>
+															<td className="px-3 py-3">
+																<div className="flex flex-col gap-1">
+																	<button
+																		className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-semibold text-white ${product.isAvailable ? "bg-green-600" : "bg-red-500"}`}
+																		onClick={() => toggleAvailability(product._id, product.isAvailable)}
+																		type="button"
+																	>
+																		{product.isAvailable ? "Active" : "Inactive"}
+																	</button>
+																	{hpp && (
+																		<span className="text-[10px] text-muted-foreground">
+																			Margin {hpp.marginPercent.toFixed(0)}%
+																		</span>
+																	)}
+																</div>
+															</td>
+															<td className="px-3 py-3">
+																<div className="flex justify-end gap-1">
+																	<button className="rounded-md p-1.5 hover:bg-muted" onClick={() => setQuickEditId(product._id)} type="button">
+																		<Edit className="h-3.5 w-3.5" />
+																	</button>
+																	<button className="rounded-md p-1.5 hover:bg-muted" onClick={() => duplicateProduct(product)} type="button">
+																		<Copy className="h-3.5 w-3.5" />
+																	</button>
+																	<button className="rounded-md p-1.5 text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(product._id)} type="button">
+																		<Trash2 className="h-3.5 w-3.5" />
+																	</button>
+																</div>
+															</td>
+														</tr>
+													);
+												})}
+											{products && filteredProducts.length === 0 && (
+												<tr>
+													<td className="px-3 py-10 text-center text-muted-foreground" colSpan={10}>
+														Belum ada produk sesuai filter. Coba ubah filter atau tambah produk baru.
+													</td>
+												</tr>
+											)}
+										</tbody>
+									</table>
+								</div>
+							</div>
+						)}
+					</div>
+				</div>
+
+				<div className="rounded-xl border border-border bg-card p-4">
+					<h3 className="font-semibold text-sm">Quick Edit</h3>
+					{quickEditProduct ? (
+						<div className="mt-3 space-y-3">
+							<div className="overflow-hidden rounded-lg bg-muted">
+								{quickEditProduct.image ? (
+									<img alt={quickEditProduct.name} className="h-40 w-full object-cover" src={quickEditProduct.image} />
+								) : (
+									<div className="flex h-40 items-center justify-center text-muted-foreground text-xs">
+										Belum ada gambar
+									</div>
+								)}
+							</div>
+							<div>
+								<p className="font-semibold">{quickEditProduct.name}</p>
+								<p className="text-muted-foreground text-xs">{quickEditProduct.description || "Deskripsi belum diisi"}</p>
+							</div>
+							<div className="grid grid-cols-2 gap-2 text-xs">
+								<div className="rounded-md border border-border p-2">
+									<p className="text-muted-foreground">Harga</p>
+									<p className="font-semibold">{formatRupiah(quickEditProduct.price)}</p>
+								</div>
+								<div className="rounded-md border border-border p-2">
+									<p className="text-muted-foreground">Stok</p>
+									<p className="font-semibold">{quickEditProduct.quantity ?? 0}</p>
+								</div>
+							</div>
+							<div className="flex flex-wrap gap-2">
+								<button className="rounded-md border border-border px-3 py-1.5 text-xs" onClick={() => handleEdit(quickEditProduct)} type="button">
+									Edit Lengkap
+								</button>
+								<button className="rounded-md border border-border px-3 py-1.5 text-xs" onClick={() => duplicateProduct(quickEditProduct)} type="button">
+									Duplikat
+								</button>
+								<button className="rounded-md bg-destructive px-3 py-1.5 text-destructive-foreground text-xs" onClick={() => setDeleteId(quickEditProduct._id)} type="button">
+									Hapus
+								</button>
+							</div>
+						</div>
+					) : (
+						<p className="mt-3 text-muted-foreground text-xs">Pilih salah satu produk dari daftar untuk quick edit.</p>
+					)}
+				</div>
+			</div>
+
+			{false && (
+				<>
 			<div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 				<div className="flex items-center gap-3">
 					<h2 className="font-bold text-xl">Produk</h2>
@@ -738,6 +1467,8 @@ function ProductsTab({
 						</table>
 					</div>
 				</div>
+			)}
+				</>
 			)}
 
 			{/* Post Modals for Products */}
