@@ -1181,12 +1181,12 @@ function ProductsTab({
 					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
 						<motion.div
 							animate={{ opacity: 1, scale: 1 }}
-							className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-border bg-card"
+							className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
 							exit={{ opacity: 0, scale: 0.95 }}
 							initial={{ opacity: 0, scale: 0.95 }}
 						>
-							<div className="border-b border-border p-8 pb-3">
-								<h3 className="font-bold text-2xl text-foreground tracking-tight">
+							<div className="border-b border-border/60 p-5">
+								<h3 className="font-bold text-xl text-foreground">
 									{editingId ? "Edit Produk" : "Tambah Produk Baru"}
 								</h3>
 							</div>
@@ -1195,7 +1195,7 @@ function ProductsTab({
 								className="flex flex-1 flex-col overflow-hidden"
 								onSubmit={handleCreateOrUpdate}
 							>
-								<div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto p-8">
+								<div className="custom-scrollbar flex-1 space-y-4 overflow-y-auto p-5">
 									<div className="space-y-2">
 										<label
 											className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
@@ -1628,19 +1628,19 @@ function ProductsTab({
 									</div>
 								</div>
 
-								<div className="flex gap-6 border-t border-border p-8">
+								<div className="sticky bottom-0 flex gap-3 border-t border-border/60 bg-card/95 p-4 backdrop-blur">
 									<button
-										className="flex-1 rounded-[24px] bg-muted py-5 font-bold text-foreground text-[10px] uppercase tracking-widest transition-all hover:bg-muted/80 active:scale-95"
+										className="flex-1 rounded-lg border border-border bg-muted py-2.5 font-semibold text-sm transition-all hover:bg-muted/80"
 										onClick={resetForm}
 										type="button"
 									>
 										Batal
 									</button>
 									<button
-										className="flex-1 rounded-[24px] bg-primary py-5 font-bold text-primary-foreground text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 transition-all hover:brightness-110 active:scale-[0.98]"
+										className="flex-1 rounded-lg bg-primary py-2.5 font-semibold text-primary-foreground text-sm shadow-sm transition-all hover:brightness-110"
 										type="submit"
 									>
-										Simpan
+										{editingId ? "Simpan Perubahan" : "Simpan Produk"}
 									</button>
 								</div>
 							</form>
@@ -2024,14 +2024,14 @@ function SettingsTab({
 					<div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-md">
 						<motion.div
 							animate={{ opacity: 1, scale: 1 }}
-							className="w-full max-w-sm rounded-[40px] border border-border bg-card p-8 shadow-2xl"
+							className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl"
 							exit={{ opacity: 0, scale: 0.95 }}
 							initial={{ opacity: 0, scale: 0.95 }}
 						>
-							<h3 className="mb-6 font-bold text-2xl text-foreground tracking-tight">
+							<h3 className="mb-4 font-bold text-xl text-foreground">
 								{categoryModal.editingId ? "Edit Kategori" : "Tambah Kategori"}
 							</h3>
-							<form className="space-y-6" onSubmit={handleCategorySubmit}>
+							<form className="space-y-4" onSubmit={handleCategorySubmit}>
 								<div className="space-y-2">
 									<label
 										className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
@@ -2041,7 +2041,7 @@ function SettingsTab({
 									</label>
 									<input
 										autoFocus
-										className="w-full rounded-2xl bg-muted p-4 font-bold text-foreground text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-primary/20"
+										className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
 										id="cat-name"
 										onChange={(e) =>
 											setCategoryModal({
@@ -2063,7 +2063,7 @@ function SettingsTab({
 										Sub dari Kategori (Opsional)
 									</label>
 									<select
-										className="w-full rounded-2xl bg-muted p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+										className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
 										id="cat-parent"
 										onChange={(e) =>
 											setCategoryModal({
@@ -2089,9 +2089,9 @@ function SettingsTab({
 									>
 										Track Order (Monitor)
 									</label>
-									<div className="flex gap-2">
+									<div className="grid grid-cols-3 gap-2">
 										<button
-											className={`flex-1 rounded-xl py-3 font-bold text-xs transition-all ${
+											className={`rounded-lg py-2 font-bold text-xs transition-all ${
 												categoryModal.track === "kitchen"
 													? "bg-primary text-primary-foreground shadow-sm"
 													: "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -2104,7 +2104,7 @@ function SettingsTab({
 											Kitchen
 										</button>
 										<button
-											className={`flex-1 rounded-xl py-3 font-bold text-xs transition-all ${
+											className={`rounded-lg py-2 font-bold text-xs transition-all ${
 												categoryModal.track === "bar"
 													? "bg-primary text-primary-foreground shadow-sm"
 													: "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -2117,7 +2117,7 @@ function SettingsTab({
 											Bar
 										</button>
 										<button
-											className={`flex-1 rounded-xl py-3 font-bold text-xs transition-all ${
+											className={`rounded-lg py-2 font-bold text-xs transition-all ${
 												!categoryModal.track
 													? "bg-primary text-primary-foreground shadow-sm"
 													: "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -2132,9 +2132,9 @@ function SettingsTab({
 									</div>
 								</div>
 
-								<div className="flex gap-4">
+								<div className="flex gap-3 pt-1">
 									<button
-										className="flex-1 rounded-[20px] bg-muted py-4 font-bold text-foreground text-[10px] uppercase tracking-widest transition-all hover:bg-muted/80 active:scale-95"
+										className="flex-1 rounded-lg border border-border bg-muted py-2.5 font-semibold text-sm transition-all hover:bg-muted/80"
 										onClick={() =>
 											setCategoryModal({
 												isOpen: false,
@@ -2147,7 +2147,7 @@ function SettingsTab({
 										Batal
 									</button>
 									<button
-										className="flex-1 rounded-[20px] bg-primary py-4 font-bold text-primary-foreground text-[10px] uppercase tracking-[0.2em] shadow-lg transition-all hover:brightness-110 active:scale-95"
+										className="flex-1 rounded-lg bg-primary py-2.5 font-semibold text-primary-foreground text-sm shadow-sm transition-all hover:brightness-110"
 										type="submit"
 									>
 										Simpan
@@ -2165,12 +2165,12 @@ function SettingsTab({
 					<div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-md">
 						<motion.div
 							animate={{ opacity: 1, scale: 1 }}
-							className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-[40px] border border-border bg-card"
+							className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
 							exit={{ opacity: 0, scale: 0.95 }}
 							initial={{ opacity: 0, scale: 0.95 }}
 						>
-							<div className="border-border/50 border-b p-8 pb-3">
-								<h3 className="font-bold text-2xl text-foreground tracking-tight">
+							<div className="border-border/60 border-b p-5">
+								<h3 className="font-bold text-xl text-foreground">
 									{variationModal.editingId ? "Edit Variasi" : "Tambah Variasi"}
 								</h3>
 							</div>
@@ -2178,7 +2178,7 @@ function SettingsTab({
 								className="flex flex-1 flex-col overflow-hidden"
 								onSubmit={handleVariationSubmit}
 							>
-								<div className="custom-scrollbar flex-1 space-y-6 overflow-y-auto p-8">
+								<div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto p-5">
 									<div className="space-y-2">
 										<label
 											className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
@@ -2188,7 +2188,7 @@ function SettingsTab({
 										</label>
 										<input
 											autoFocus
-											className="w-full rounded-2xl bg-muted p-4 font-bold text-foreground text-sm outline-none transition-all placeholder:text-muted-foreground/40 focus:ring-2 focus:ring-primary/20"
+											className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
 											id="var-name"
 											onChange={(e) =>
 												setVariationModal({
@@ -2209,7 +2209,7 @@ function SettingsTab({
 											{variationModal.options.map((opt, idx) => (
 												<div className="flex gap-3" key={opt.id}>
 													<input
-														className="flex-1 rounded-xl bg-muted/50 p-3 font-bold text-foreground text-xs outline-none focus:ring-1 focus:ring-primary/20"
+														className="h-9 flex-1 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-primary/20"
 														onChange={(e) => {
 															const newOptions = [...variationModal.options];
 															newOptions[idx].name = e.target.value;
@@ -2223,7 +2223,7 @@ function SettingsTab({
 														value={opt.name}
 													/>
 													<input
-														className="w-28 rounded-xl bg-muted/50 p-3 font-bold text-foreground text-xs outline-none focus:ring-1 focus:ring-primary/20"
+														className="h-9 w-32 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-1 focus:ring-primary/20"
 														onChange={(e) => {
 															const newOptions = [...variationModal.options];
 															newOptions[idx].price = e.target.value;
@@ -2259,7 +2259,7 @@ function SettingsTab({
 											))}
 										</div>
 										<button
-											className="w-full rounded-2xl border border-border border-dashed py-3 font-bold text-muted-foreground/60 text-[10px] uppercase tracking-widest transition-all hover:bg-muted/30"
+											className="w-full rounded-lg border border-border border-dashed py-2.5 font-semibold text-muted-foreground text-xs transition-all hover:bg-muted/30"
 											onClick={() =>
 												setVariationModal({
 													...variationModal,
@@ -2280,9 +2280,9 @@ function SettingsTab({
 									</div>
 								</div>
 
-								<div className="flex gap-4 border-border/50 border-t p-8">
+								<div className="flex gap-3 border-border/60 border-t p-4">
 									<button
-										className="flex-1 rounded-[20px] bg-muted py-4 font-bold text-foreground text-[10px] uppercase tracking-widest transition-all hover:bg-muted/80 active:scale-95"
+										className="flex-1 rounded-lg border border-border bg-muted py-2.5 font-semibold text-sm transition-all hover:bg-muted/80"
 										onClick={() =>
 											setVariationModal({
 												isOpen: false,
@@ -2302,7 +2302,7 @@ function SettingsTab({
 										Batal
 									</button>
 									<button
-										className="flex-1 rounded-[20px] bg-primary py-4 font-bold text-primary-foreground text-[10px] uppercase tracking-[0.2em] shadow-lg transition-all hover:brightness-110 active:scale-95"
+										className="flex-1 rounded-lg bg-primary py-2.5 font-semibold text-primary-foreground text-sm shadow-sm transition-all hover:brightness-110"
 										type="submit"
 									>
 										Simpan
@@ -2517,121 +2517,108 @@ function BaseRecipesTab() {
 
 			<AnimatePresence>
 				{isModalOpen && (
-					<div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-md">
+					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm">
 						<motion.div
 							animate={{ opacity: 1, scale: 1 }}
-							className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-[40px] border border-border bg-card"
+							className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
 							exit={{ opacity: 0, scale: 0.95 }}
 							initial={{ opacity: 0, scale: 0.95 }}
 						>
-							<div className="border-border/50 border-b p-8 pb-3">
-								<h3 className="font-bold text-2xl text-foreground tracking-tight">
+							<div className="border-border/60 border-b p-5">
+								<h3 className="font-bold text-xl text-foreground">
 									{editingId ? "Edit Resep Base" : "Buat Resep Base Baru"}
 								</h3>
+								<p className="mt-1 text-muted-foreground text-xs">
+									Susun formula base recipe dengan struktur yang lebih ringkas dan mudah dicek.
+								</p>
 							</div>
 
 							<form
 								className="flex flex-1 flex-col overflow-hidden"
 								onSubmit={handleSubmit}
 							>
-								<div className="custom-scrollbar flex-1 space-y-6 overflow-y-auto p-8">
-									<div className="space-y-2">
-										<label
-											className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
-											htmlFor="base-recipe-name"
-										>
-											Nama Resep (e.g., Based Susu)
-										</label>
-										<input
-											autoFocus
-											className="w-full rounded-2xl bg-muted p-4 font-bold text-foreground text-sm outline-none transition-all placeholder:text-muted-foreground/40 focus:ring-2 focus:ring-primary/20"
-											id="base-recipe-name"
-											onChange={(e) =>
-												setFormData({ ...formData, name: e.target.value })
-											}
-											placeholder="Pesen Es Kopi..."
-											required
-											value={formData.name}
-										/>
-									</div>
-									<div className="space-y-2">
-										<label
-											className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
-											htmlFor="base-recipe-desc"
-										>
-											Deskripsi
-										</label>
-										<input
-											className="w-full rounded-2xl bg-muted p-4 font-medium text-foreground text-sm outline-none transition-all placeholder:text-muted-foreground/40 focus:ring-2 focus:ring-primary/20"
-											id="base-recipe-desc"
-											onChange={(e) =>
-												setFormData({
-													...formData,
-													description: e.target.value,
-												})
-											}
-											placeholder="Kegunaan resep ini..."
-											value={formData.description}
-										/>
-									</div>
-									<div className="grid grid-cols-2 gap-5">
-										<div className="space-y-2">
-											<label
-												className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
-												htmlFor="base-recipe-unit"
-											>
-												Batch Unit
-											</label>
-											<input
-												className="w-full rounded-2xl bg-muted p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-												id="base-recipe-unit"
-												onChange={(e) =>
-													setFormData({
-														...formData,
-														targetUnit: e.target.value,
-													})
-												}
-												placeholder="ml / liter / pcs"
-												required
-												value={formData.targetUnit}
-											/>
+								<div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto p-5">
+									<div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+										<div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
+											<div className="space-y-2">
+												<label className="font-semibold text-[11px] uppercase tracking-wide" htmlFor="base-recipe-name">
+													Nama Resep
+												</label>
+												<input
+													autoFocus
+													className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+													id="base-recipe-name"
+													onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+													placeholder="Contoh: Base Susu Premium"
+													required
+													value={formData.name}
+												/>
+											</div>
+											<div className="space-y-2">
+												<label className="font-semibold text-[11px] uppercase tracking-wide" htmlFor="base-recipe-desc">
+													Deskripsi
+												</label>
+												<input
+													className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+													id="base-recipe-desc"
+													onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+													placeholder="Fungsi atau catatan penggunaan"
+													value={formData.description}
+												/>
+											</div>
 										</div>
-										<div className="space-y-2">
-											<label
-												className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
-												htmlFor="base-recipe-qty"
-											>
-												Batch Quantity
-											</label>
-											<input
-												className="w-full rounded-2xl bg-muted p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-												id="base-recipe-qty"
-												onChange={(e) =>
-													setFormData({
-														...formData,
-														targetQuantity: e.target.value,
-													})
-												}
-												required
-												type="number"
-												value={formData.targetQuantity}
-											/>
+
+										<div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
+											<div className="space-y-2">
+												<label className="font-semibold text-[11px] uppercase tracking-wide" htmlFor="base-recipe-unit">
+													Batch Unit
+												</label>
+												<input
+													className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+													id="base-recipe-unit"
+													onChange={(e) => setFormData({ ...formData, targetUnit: e.target.value })}
+													placeholder="ml / gram / pcs"
+													required
+													value={formData.targetUnit}
+												/>
+												<div className="flex gap-2">
+													{["ml", "gram", "pcs"].map((unit) => (
+														<button
+															className={`rounded-full border px-2.5 py-1 text-[11px] ${formData.targetUnit === unit ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+															key={unit}
+															onClick={() => setFormData({ ...formData, targetUnit: unit })}
+															type="button"
+														>
+															{unit}
+														</button>
+													))}
+												</div>
+											</div>
+											<div className="space-y-2">
+												<label className="font-semibold text-[11px] uppercase tracking-wide" htmlFor="base-recipe-qty">
+													Batch Quantity
+												</label>
+												<input
+													className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+													id="base-recipe-qty"
+													onChange={(e) => setFormData({ ...formData, targetQuantity: e.target.value })}
+													required
+													type="number"
+													value={formData.targetQuantity}
+												/>
+											</div>
 										</div>
 									</div>
 
-									<div className="space-y-4 rounded-[32px] border border-border bg-muted/50 p-6">
-										<div className="flex items-center justify-between">
-											<h4 className="font-bold text-foreground text-xs uppercase tracking-widest">
-												Komposisi Bahan
-											</h4>
+									<div className="space-y-3 rounded-xl border border-border bg-card p-4">
+										<div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+											<h4 className="font-semibold text-sm">Komposisi Bahan</h4>
 											<select
-												className="rounded-xl bg-muted px-3 py-1.5 font-bold text-foreground text-[10px] outline-none"
-												onChange={(e) =>
-													addIngredient(e.target.value as Id<"inventory">)
-												}
+												className="h-9 rounded-lg border border-border bg-background px-3 text-xs"
+												onChange={(e) => addIngredient(e.target.value as Id<"inventory">)}
 												value=""
 											>
-												<option value="">+ Pilih Bahan</option>
+												<option value="">+ Tambah bahan dari inventory</option>
 												{inventory
 													?.filter((i: any) => !i.baseRecipeId)
 													.map((inv: any) => (
@@ -2641,71 +2628,76 @@ function BaseRecipesTab() {
 													))}
 											</select>
 										</div>
-										<div className="space-y-3">
-											{formData.ingredients.map((ing: any, idx: number) => {
-												const inv = inventory?.find(
-													(v: any) => v._id === ing.inventoryId
-												);
-												return (
-													<div
-														className="flex items-center gap-3 rounded-2xl bg-muted/50 p-3"
-														key={ing.inventoryId || `new-${idx}`}
-													>
-														<span className="flex-1 truncate font-bold text-foreground text-[11px] uppercase tracking-tight">
-															{inv?.ingredientName}
-														</span>
-														<div className="flex items-center gap-2">
-															<input
-																className="w-20 rounded-xl bg-muted px-3 py-1.5 font-bold text-foreground text-xs outline-none focus:ring-1 focus:ring-primary/20"
-																onChange={(e) => {
-																	const newIngs = [...formData.ingredients];
-																	newIngs[idx].amount = Number(e.target.value);
-																	setFormData({
-																		...formData,
-																		ingredients: newIngs,
-																	});
-																}}
-																placeholder="0"
-																required
-																type="number"
-																value={ing.amount}
-															/>
-															<span className="min-w-[40px] font-bold text-muted-foreground/60 text-[10px] uppercase">
-																{inv?.unit}
-															</span>
-														</div>
-														<button
-															className="rounded-xl p-2 text-destructive transition-colors hover:bg-destructive/10"
-															onClick={() => removeIngredient(idx)}
-															type="button"
-														>
-															<Trash2 className="h-4 w-4" />
-														</button>
-													</div>
-												);
-											})}
-											{formData.ingredients.length === 0 && (
-												<p className="py-2 text-center font-medium text-muted-foreground/60 text-[10px] italic">
-													Belum ada bahan ditambahkan
-												</p>
-											)}
+
+										<div className="overflow-x-auto rounded-lg border border-border">
+											<table className="w-full min-w-[560px] text-left text-xs">
+												<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase">
+													<tr>
+														<th className="px-3 py-2">Bahan</th>
+														<th className="px-3 py-2">Jumlah</th>
+														<th className="px-3 py-2">Unit</th>
+														<th className="px-3 py-2 text-right">Hapus</th>
+													</tr>
+												</thead>
+												<tbody className="divide-y divide-border">
+													{formData.ingredients.map((ing: any, idx: number) => {
+														const inv = inventory?.find((v: any) => v._id === ing.inventoryId);
+														return (
+															<tr key={ing.inventoryId || `new-${idx}`}>
+																<td className="px-3 py-2 font-medium">{inv?.ingredientName || "-"}</td>
+																<td className="px-3 py-2">
+																	<input
+																		className="h-8 w-24 rounded-md border border-border bg-background px-2 text-xs"
+																		onChange={(e) => {
+																			const newIngs = [...formData.ingredients];
+																			newIngs[idx].amount = Number(e.target.value);
+																			setFormData({ ...formData, ingredients: newIngs });
+																		}}
+																		placeholder="0"
+																		required
+																		type="number"
+																		value={ing.amount}
+																	/>
+																</td>
+																<td className="px-3 py-2 text-muted-foreground">{inv?.unit ?? "-"}</td>
+																<td className="px-3 py-2 text-right">
+																	<button
+																		className="rounded-md p-1.5 text-destructive hover:bg-destructive/10"
+																		onClick={() => removeIngredient(idx)}
+																		type="button"
+																	>
+																		<Trash2 className="h-4 w-4" />
+																	</button>
+																</td>
+															</tr>
+														);
+													})}
+													{formData.ingredients.length === 0 && (
+														<tr>
+															<td className="px-3 py-6 text-center text-muted-foreground" colSpan={4}>
+																Belum ada bahan ditambahkan.
+															</td>
+														</tr>
+													)}
+												</tbody>
+											</table>
 										</div>
 									</div>
 								</div>
 
-								<div className="flex gap-6 border-border/50 border-t p-8">
+								<div className="sticky bottom-0 flex gap-3 border-border/60 border-t bg-card/95 p-4 backdrop-blur">
 									<button
-										className="flex-1 rounded-[24px] bg-muted py-5 font-bold text-foreground text-[10px] uppercase tracking-widest transition-all hover:bg-muted/80 active:scale-95"
+										className="flex-1 rounded-lg border border-border bg-muted py-2.5 font-semibold text-sm transition-all hover:bg-muted/80"
 										onClick={resetForm}
 										type="button"
 									>
 										Batal
 									</button>
 									<button
-										className="flex-1 rounded-[24px] bg-primary py-5 font-bold text-primary-foreground text-xs uppercase tracking-[0.2em] shadow-xl transition-all hover:brightness-110 active:scale-[0.98]"
+										className="flex-1 rounded-lg bg-primary py-2.5 font-semibold text-primary-foreground text-sm shadow-sm transition-all hover:brightness-110"
 										type="submit"
 									>
-										Simpan
+										{editingId ? "Simpan Perubahan" : "Simpan Resep"}
 									</button>
 								</div>
 							</form>
