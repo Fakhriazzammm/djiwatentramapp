@@ -5,7 +5,6 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	CheckCircle2,
-	Copy,
 	Edit,
 	LayoutGrid,
 	List,
@@ -19,7 +18,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { compressFileToLimit, isOversized } from "@/lib/image-compress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { BulkOperations } from "../../components/admin/bulk-operations";
 
@@ -243,9 +241,8 @@ function ProductsTab({
 	const [selectedIds, setSelectedIds] = useState<Id<"products">[]>([]);
 	const [bulkCategoryId, setBulkCategoryId] = useState("");
 	const [bulkDiscount, setBulkDiscount] = useState("10");
-	const [quickEditId, setQuickEditId] = useState<Id<"products"> | null>(null);
 	const [isSavingInline, setIsSavingInline] = useState<
-		Record<string, { price?: boolean; quantity?: boolean }>
+		Record<string, { price?: boolean; quantity?: boolean; promoPrice?: boolean; menuNumber?: boolean }>
 	>({});
 	const searchInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -317,11 +314,6 @@ function ProductsTab({
 		selectedStatusFilter,
 		selectedStockFilter,
 	]);
-
-	const quickEditProduct = useMemo(
-		() => filteredProducts.find((product) => product._id === quickEditId) ?? null,
-		[filteredProducts, quickEditId]
-	);
 
 	const allVisibleSelected =
 		filteredProducts.length > 0 &&
@@ -658,13 +650,21 @@ function ProductsTab({
 
 	const handleInlineNumberUpdate = async (
 		id: Id<"products">,
-		field: "price" | "quantity",
+		field: "price" | "quantity" | "promoPrice" | "menuNumber",
 		value: string,
 		currentValue: number
 	) => {
-		const parsed = Number(value);
+		const parsed = value === "" ? 0 : Number(value);
 		if (Number.isNaN(parsed) || parsed < 0) {
-			toast.error(`${field === "price" ? "Harga" : "Stok"} tidak valid`);
+			const label =
+				field === "price"
+					? "Harga"
+					: field === "quantity"
+						? "Stok"
+						: field === "promoPrice"
+							? "Harga promo"
+							: "Nomor menu";
+			toast.error(`${label} tidak valid`);
 			return;
 		}
 		if (parsed === currentValue) {
@@ -679,7 +679,15 @@ function ProductsTab({
 				id,
 				[field]: parsed,
 			});
-			toast.success(`${field === "price" ? "Harga" : "Stok"} diperbarui`);
+			const label =
+				field === "price"
+					? "Harga"
+					: field === "quantity"
+						? "Stok"
+						: field === "promoPrice"
+							? "Harga promo"
+							: "Nomor menu";
+			toast.success(`${label} diperbarui`);
 		} finally {
 			setIsSavingInline((prev) => ({
 				...prev,
@@ -688,25 +696,39 @@ function ProductsTab({
 		}
 	};
 
-	const duplicateProduct = async (product: Doc<"products"> & { storageId?: string }) => {
-		await addProduct({
-			name: `${product.name} (Copy)`,
-			price: product.price,
-			categoryId: product.categoryId,
-			description: product.description,
-			image: product.storageId || product.image,
-			isAvailable: product.isAvailable,
-			menuNumber: product.menuNumber,
-			quantity: product.quantity,
-			promoPrice: product.promoPrice,
-			variations: product.variations,
-		});
-		toast.success("Produk berhasil diduplikasi");
+	const handleInlineTextUpdate = async (
+		id: Id<"products">,
+		field: "name" | "description",
+		value: string,
+		currentValue: string
+	) => {
+		const normalized = value.trim();
+		if (normalized === currentValue.trim()) {
+			return;
+		}
+		if (field === "name" && normalized.length < 2) {
+			toast.error("Nama produk minimal 2 karakter");
+			return;
+		}
+		await updateProduct({ id, [field]: normalized });
+		toast.success(`${field === "name" ? "Nama" : "Deskripsi"} diperbarui`);
+	};
+
+	const handleInlineCategoryUpdate = async (
+		id: Id<"products">,
+		value: Id<"categories">,
+		currentValue: Id<"categories">
+	) => {
+		if (value === currentValue) {
+			return;
+		}
+		await updateProduct({ id, categoryId: value });
+		toast.success("Kategori diperbarui");
 	};
 
 	return (
 		<>
-			<div className="grid gap-4 xl:grid-cols-[1fr_320px]">
+			<div className="space-y-4">
 				<div className="space-y-4">
 					<div className="rounded-xl border border-border bg-card p-4">
 						<div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -908,11 +930,11 @@ function ProductsTab({
 													type="checkbox"
 												/>
 												<button
-													className="rounded p-1 hover:bg-muted"
-													onClick={() => setQuickEditId(product._id)}
+													className="rounded p-1 text-destructive hover:bg-destructive/10"
+													onClick={() => setDeleteId(product._id)}
 													type="button"
 												>
-													<Edit className="h-3.5 w-3.5" />
+													<Trash2 className="h-3.5 w-3.5" />
 												</button>
 											</div>
 											<div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
@@ -932,29 +954,27 @@ function ProductsTab({
 						) : (
 							<div className="rounded-xl border border-border bg-card shadow-sm">
 								<div className="overflow-x-auto">
-									<table className="w-full min-w-[1080px] text-left text-sm">
+									<table className="w-full min-w-[1240px] text-left text-xs">
 										<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase tracking-wider">
 											<tr>
 												<th className="px-3 py-3 text-center">
 													<input checked={allVisibleSelected} onChange={toggleAllVisible} type="checkbox" />
 												</th>
 												<th className="px-3 py-3 text-center">No.</th>
-												<th className="px-3 py-3">Produk</th>
+												<th className="px-3 py-3">Nama</th>
+												<th className="px-3 py-3">Deskripsi</th>
 												<th className="px-3 py-3">Kategori</th>
 												<th className="px-3 py-3">Harga</th>
 												<th className="px-3 py-3">Promo</th>
 												<th className="px-3 py-3">Stok</th>
-												<th className="px-3 py-3">Health</th>
 												<th className="px-3 py-3">Status</th>
+												<th className="px-3 py-3">Health</th>
 												<th className="px-3 py-3 text-right">Aksi</th>
 											</tr>
 										</thead>
 										<tbody className="divide-y divide-border">
 											{products &&
 												filteredProducts.map((product) => {
-													const categoryName =
-														categories?.find((cat) => cat._id === product.categoryId)?.name ??
-														"Uncategorized";
 													const health = getHealthScore(product);
 													const hpp = hppProductMap?.[product._id];
 
@@ -967,28 +987,78 @@ function ProductsTab({
 																	type="checkbox"
 																/>
 															</td>
-															<td className="px-3 py-3 text-center text-xs">{product.menuNumber ?? "-"}</td>
+															<td className="px-3 py-3 text-center text-xs">
+																<input
+																	className="h-7 w-14 rounded-md border border-border bg-background px-2 text-center"
+																	defaultValue={product.menuNumber ?? ""}
+																	onBlur={(event) =>
+																		handleInlineNumberUpdate(
+																			product._id,
+																			"menuNumber",
+																			event.target.value,
+																			product.menuNumber ?? 0
+																		)
+																	}
+																	type="number"
+																/>
+															</td>
 															<td className="px-3 py-3">
-																<button
-																	className="flex items-center gap-3 text-left"
-																	onClick={() => setQuickEditId(product._id)}
-																	type="button"
-																>
-																	<div className="h-10 w-10 overflow-hidden rounded-md bg-muted">
+																<div className="flex items-center gap-2">
+																	<div className="h-8 w-8 overflow-hidden rounded-md bg-muted">
 																		{product.image ? (
 																			<img alt={product.name} className="h-full w-full object-cover" src={product.image} />
 																		) : (
 																			<div className="flex h-full w-full items-center justify-center text-[8px] text-muted-foreground">NA</div>
 																		)}
 																	</div>
-																	<div className="min-w-0">
-																		<p className="truncate font-semibold text-sm">{product.name}</p>
-																		<p className="line-clamp-1 text-[11px] text-muted-foreground">{product.description || "Belum ada deskripsi"}</p>
-																	</div>
-																</button>
+																	<input
+																		className="h-7 w-48 rounded-md border border-border bg-background px-2"
+																		defaultValue={product.name}
+																		onBlur={(event) =>
+																			handleInlineTextUpdate(
+																				product._id,
+																				"name",
+																				event.target.value,
+																				product.name
+																			)
+																		}
+																		type="text"
+																	/>
+																</div>
 															</td>
 															<td className="px-3 py-3">
-																<Badge variant="secondary">{categoryName}</Badge>
+																<input
+																	className="h-7 w-56 rounded-md border border-border bg-background px-2"
+																	defaultValue={product.description ?? ""}
+																	onBlur={(event) =>
+																		handleInlineTextUpdate(
+																			product._id,
+																			"description",
+																			event.target.value,
+																			product.description ?? ""
+																		)
+																	}
+																	type="text"
+																/>
+															</td>
+															<td className="px-3 py-3">
+																<select
+																	className="h-7 w-36 rounded-md border border-border bg-background px-2"
+																	onChange={(event) =>
+																		handleInlineCategoryUpdate(
+																			product._id,
+																			event.target.value as Id<"categories">,
+																			product.categoryId
+																		)
+																	}
+																	value={product.categoryId}
+																>
+																	{categories?.map((category) => (
+																		<option key={category._id} value={category._id}>
+																			{category.name}
+																		</option>
+																	))}
+																</select>
 															</td>
 															<td className="px-3 py-3">
 																<input
@@ -1013,7 +1083,21 @@ function ProductsTab({
 																	<p className="mt-1 text-[10px] text-muted-foreground">Saving...</p>
 																)}
 															</td>
-															<td className="px-3 py-3 text-xs">{product.promoPrice ? formatRupiah(product.promoPrice) : "-"}</td>
+															<td className="px-3 py-3">
+																<input
+																	className="h-8 w-24 rounded-md border border-border bg-background px-2 text-xs"
+																	defaultValue={product.promoPrice ?? ""}
+																	onBlur={(event) =>
+																		handleInlineNumberUpdate(
+																			product._id,
+																			"promoPrice",
+																			event.target.value,
+																			product.promoPrice ?? 0
+																		)
+																	}
+																	type="number"
+																/>
+															</td>
 															<td className="px-3 py-3">
 																<input
 																	className="h-8 w-20 rounded-md border border-border bg-background px-2 text-xs"
@@ -1038,17 +1122,6 @@ function ProductsTab({
 																)}
 															</td>
 															<td className="px-3 py-3">
-																<div className="space-y-1">
-																	<div className="h-1.5 w-24 rounded-full bg-muted">
-																		<div
-																			className={`${health > 80 ? "bg-green-500" : health > 50 ? "bg-amber-500" : "bg-red-500"} h-full rounded-full`}
-																			style={{ width: `${health}%` }}
-																		/>
-																	</div>
-																	<p className="text-[10px] text-muted-foreground">{health}/100</p>
-																</div>
-															</td>
-															<td className="px-3 py-3">
 																<div className="flex flex-col gap-1">
 																	<button
 																		className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-semibold text-white ${product.isAvailable ? "bg-green-600" : "bg-red-500"}`}
@@ -1065,13 +1138,18 @@ function ProductsTab({
 																</div>
 															</td>
 															<td className="px-3 py-3">
+																<div className="space-y-1">
+																	<div className="h-1.5 w-24 rounded-full bg-muted">
+																		<div
+																			className={`${health > 80 ? "bg-green-500" : health > 50 ? "bg-amber-500" : "bg-red-500"} h-full rounded-full`}
+																			style={{ width: `${health}%` }}
+																		/>
+																	</div>
+																	<p className="text-[10px] text-muted-foreground">{health}/100</p>
+																</div>
+															</td>
+															<td className="px-3 py-3">
 																<div className="flex justify-end gap-1">
-																	<button className="rounded-md p-1.5 hover:bg-muted" onClick={() => setQuickEditId(product._id)} type="button">
-																		<Edit className="h-3.5 w-3.5" />
-																	</button>
-																	<button className="rounded-md p-1.5 hover:bg-muted" onClick={() => duplicateProduct(product)} type="button">
-																		<Copy className="h-3.5 w-3.5" />
-																	</button>
 																	<button className="rounded-md p-1.5 text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(product._id)} type="button">
 																		<Trash2 className="h-3.5 w-3.5" />
 																	</button>
@@ -1082,7 +1160,7 @@ function ProductsTab({
 												})}
 											{products && filteredProducts.length === 0 && (
 												<tr>
-													<td className="px-3 py-10 text-center text-muted-foreground" colSpan={10}>
+													<td className="px-3 py-10 text-center text-muted-foreground" colSpan={11}>
 														Belum ada produk sesuai filter. Coba ubah filter atau tambah produk baru.
 													</td>
 												</tr>
@@ -1095,381 +1173,7 @@ function ProductsTab({
 					</div>
 				</div>
 
-				<div className="rounded-xl border border-border bg-card p-4">
-					<h3 className="font-semibold text-sm">Quick Edit</h3>
-					{quickEditProduct ? (
-						<div className="mt-3 space-y-3">
-							<div className="overflow-hidden rounded-lg bg-muted">
-								{quickEditProduct.image ? (
-									<img alt={quickEditProduct.name} className="h-40 w-full object-cover" src={quickEditProduct.image} />
-								) : (
-									<div className="flex h-40 items-center justify-center text-muted-foreground text-xs">
-										Belum ada gambar
-									</div>
-								)}
-							</div>
-							<div>
-								<p className="font-semibold">{quickEditProduct.name}</p>
-								<p className="text-muted-foreground text-xs">{quickEditProduct.description || "Deskripsi belum diisi"}</p>
-							</div>
-							<div className="grid grid-cols-2 gap-2 text-xs">
-								<div className="rounded-md border border-border p-2">
-									<p className="text-muted-foreground">Harga</p>
-									<p className="font-semibold">{formatRupiah(quickEditProduct.price)}</p>
-								</div>
-								<div className="rounded-md border border-border p-2">
-									<p className="text-muted-foreground">Stok</p>
-									<p className="font-semibold">{quickEditProduct.quantity ?? 0}</p>
-								</div>
-							</div>
-							<div className="flex flex-wrap gap-2">
-								<button className="rounded-md border border-border px-3 py-1.5 text-xs" onClick={() => handleEdit(quickEditProduct)} type="button">
-									Edit Lengkap
-								</button>
-								<button className="rounded-md border border-border px-3 py-1.5 text-xs" onClick={() => duplicateProduct(quickEditProduct)} type="button">
-									Duplikat
-								</button>
-								<button className="rounded-md bg-destructive px-3 py-1.5 text-destructive-foreground text-xs" onClick={() => setDeleteId(quickEditProduct._id)} type="button">
-									Hapus
-								</button>
-							</div>
-						</div>
-					) : (
-						<p className="mt-3 text-muted-foreground text-xs">Pilih salah satu produk dari daftar untuk quick edit.</p>
-					)}
-				</div>
 			</div>
-
-			{false && (
-				<>
-			<div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-				<div className="flex items-center gap-3">
-					<h2 className="font-bold text-xl">Produk</h2>
-					<div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-1">
-						<button
-							className={`rounded px-2 py-1 transition-all ${viewMode === "grid" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-							onClick={() => setViewMode("grid")}
-							title="Grid View"
-							type="button"
-						>
-							<LayoutGrid className="h-4 w-4" />
-						</button>
-						<button
-							className={`rounded px-2 py-1 transition-all ${viewMode === "table" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-							onClick={() => setViewMode("table")}
-							title="Table View"
-							type="button"
-						>
-							<List className="h-4 w-4" />
-						</button>
-					</div>
-				</div>
-				<div className="flex flex-wrap items-center gap-2">
-					<BulkOperations />
-					<button
-						className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground text-sm transition-all hover:brightness-110"
-						onClick={() => {
-							resetForm();
-							setIsModalOpen(true);
-						}}
-						type="button"
-					>
-						<Plus className="h-4 w-4" /> Tambah Produk
-					</button>
-				</div>
-			</div>
-
-			{viewMode === "grid" ? (
-				<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-					{!products &&
-						Array.from({ length: 10 }).map((_, i) => (
-							<div
-								className="rounded-xl border border-border bg-card p-3"
-								key={i}
-							>
-								<Skeleton className="aspect-square w-full rounded-lg" />
-								<Skeleton className="mt-2 h-3 w-3/4" />
-								<Skeleton className="mt-2 h-2 w-1/2" />
-								<div className="mt-3 flex items-center justify-between">
-									<Skeleton className="h-4 w-12" />
-									<Skeleton className="h-6 w-12" />
-								</div>
-							</div>
-						))}
-
-					{products &&
-						products.length > 0 &&
-						products.map((product: any) => (
-							<div
-								className="group flex flex-col gap-2 rounded-xl border border-border bg-card p-3 transition-all hover:border-primary/20 hover:shadow-sm"
-								key={product._id}
-							>
-								<div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
-									{product.image ? (
-										<img
-											alt={product.name}
-											className="h-full w-full object-cover transition-transform group-hover:scale-105"
-											src={product.image}
-										/>
-									) : (
-										<div className="flex h-full w-full items-center justify-center text-muted-foreground text-[10px]">
-											No Image
-										</div>
-									)}
-									{product.menuNumber != null && (
-										<div className="absolute top-1.5 left-1.5 flex h-5 min-w-5 items-center justify-center rounded px-1 bg-black text-white font-bold text-[9px] leading-none shadow">
-											{product.menuNumber}
-										</div>
-									)}
-									<div className="absolute top-1.5 right-1.5">
-										<button
-											className={`rounded-full p-1 shadow-sm transition-transform hover:scale-110 ${product.isAvailable ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}
-											onClick={() =>
-												toggleAvailability(product._id, product.isAvailable)
-											}
-											type="button"
-										>
-											{product.isAvailable ? (
-												<CheckCircle2 className="h-3 w-3" />
-											) : (
-												<XCircle className="h-3 w-3" />
-											)}
-										</button>
-									</div>
-								</div>
-
-								<div className="flex-1 min-w-0">
-									<h3 className="font-bold text-[13px] leading-tight truncate">
-										{product.name}
-									</h3>
-									<p className="mt-0.5 line-clamp-1 text-muted-foreground text-[11px]">
-										{product.description || "Tanpa deskripsi"}
-									</p>
-								</div>
-
-								<div className="mt-1 flex flex-col gap-1.5">
-									<div className="flex items-center justify-between">
-										<span className="font-bold text-primary text-[13px]">
-											{new Intl.NumberFormat("id-ID", {
-												style: "currency",
-												currency: "IDR",
-												maximumFractionDigits: 0,
-											}).format(product.price)}
-										</span>
-										<div className="flex gap-0.5">
-											<button
-												className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-												onClick={() => handleEdit(product)}
-												type="button"
-											>
-												<Edit className="h-3.5 w-3.5" />
-											</button>
-											<button
-												className="rounded-md p-1.5 text-destructive transition-colors hover:bg-destructive/10"
-												onClick={() => setDeleteId(product._id)}
-												type="button"
-											>
-												<Trash2 className="h-3.5 w-3.5" />
-											</button>
-										</div>
-									</div>
-									
-									{hppProductMap?.[product._id] && (
-										<div className="flex flex-col gap-0.5">
-											{(() => {
-												const hpp = hppProductMap[product._id];
-												const isLowMargin = hpp.marginPercent < 30;
-												const isLoss = hpp.hppPerServing > product.price;
-												
-												return (
-													<>
-														<div className={`flex items-center justify-between rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
-															isLoss ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
-															isLowMargin ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" :
-															"bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-														}`}>
-															<span>Margin {hpp.marginPercent.toFixed(0)}%</span>
-															<span>{new Intl.NumberFormat("id-ID", {
-																maximumFractionDigits: 0,
-															}).format(hpp.hppPerServing)}</span>
-														</div>
-														{isLoss && (
-															<span className="text-[9px] text-red-600 font-bold animate-pulse">
-																⚠ Harga &lt; HPP
-															</span>
-														)}
-													</>
-												);
-											})()}
-										</div>
-									)}
-								</div>
-							</div>
-						))}
-
-					{products && products.length === 0 && (
-						<div className="col-span-full py-12 text-center text-muted-foreground">
-							Belum ada produk. Klik "Tambah Produk" untuk memulai.
-						</div>
-					)}
-				</div>
-			) : (
-				<div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-					<div className="overflow-x-auto">
-						<table className="w-full text-left text-sm">
-							<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase font-bold tracking-wider">
-								<tr>
-									<th className="px-4 py-3 text-center w-12">No.</th>
-									<th className="px-4 py-3">Produk</th>
-									<th className="px-4 py-3">Kategori</th>
-									<th className="px-4 py-3">Harga</th>
-									<th className="px-4 py-3">HPP & Margin</th>
-									<th className="px-4 py-3 text-center">Status</th>
-									<th className="px-4 py-3 text-right">Aksi</th>
-								</tr>
-							</thead>
-							<tbody className="divide-y divide-border">
-								{!products && Array.from({ length: 5 }).map((_, i) => (
-									<tr key={i}>
-										<td className="px-4 py-3"><Skeleton className="mx-auto h-5 w-5" /></td>
-										<td className="px-4 py-3"><Skeleton className="h-8 w-32" /></td>
-										<td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
-										<td className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
-										<td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
-										<td className="px-4 py-3 text-center"><Skeleton className="mx-auto h-6 w-12" /></td>
-										<td className="px-4 py-3 text-right"><Skeleton className="ml-auto h-8 w-16" /></td>
-									</tr>
-								))}
-
-								{products && products.map((product: any) => {
-									const cat = categories?.find(c => c._id === product.categoryId);
-									const hpp = hppProductMap?.[product._id];
-
-									return (
-										<tr
-											className="group cursor-pointer transition-colors hover:bg-muted/50"
-											key={product._id}
-											onClick={() => handleEdit(product)}
-										>
-											<td className="px-4 py-2 text-center">
-												{product.menuNumber != null ? (
-													<span className="inline-flex h-5 min-w-5 items-center justify-center rounded px-1 bg-black text-white font-bold text-[9px] leading-none">
-														{product.menuNumber}
-													</span>
-												) : (
-													<span className="text-muted-foreground text-[10px]">—</span>
-												)}
-											</td>
-											<td className="px-4 py-2">
-												<div className="flex items-center gap-3">
-													<div className="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-muted">
-														{product.image ? (
-															<img alt={product.name} className="h-full w-full object-cover" src={product.image} />
-														) : (
-															<div className="flex h-full w-full items-center justify-center text-[8px] text-muted-foreground">NA</div>
-														)}
-													</div>
-													<div className="min-w-0 max-w-[300px]">
-														<p className="font-bold text-sm leading-none truncate">{product.name}</p>
-														<p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">
-															{product.description || "Tanpa deskripsi"}
-														</p>
-													</div>
-												</div>
-											</td>
-											<td className="px-4 py-2">
-												<Badge className="font-normal text-[10px] bg-muted text-muted-foreground hover:bg-muted" variant="secondary">
-													{cat?.name || "Uncategorized"}
-												</Badge>
-											</td>
-											<td className="px-4 py-2 font-bold text-primary tabular-nums">
-												{new Intl.NumberFormat("id-ID", {
-													style: "currency",
-													currency: "IDR",
-													maximumFractionDigits: 0,
-												}).format(product.price)}
-											</td>
-											<td className="px-4 py-2">
-												{hpp ? (
-													<div className="flex flex-col gap-0.5">
-														<div className="flex items-center gap-2">
-															<span className={`text-[11px] font-bold ${hpp.marginPercent < 30 ? "text-orange-500" : "text-green-600"}`}>
-																{hpp.marginPercent.toFixed(0)}%
-															</span>
-															<span className="text-[10px] text-muted-foreground tabular-nums">
-																HPP: {new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(hpp.hppPerServing)}
-															</span>
-														</div>
-														{hpp.hppPerServing > product.price && (
-															<span className="text-[9px] font-bold text-red-500 uppercase tracking-tighter">⚠ Under Margin</span>
-														)}
-													</div>
-												) : (
-													<span className="text-muted-foreground text-xs italic">No data</span>
-												)}
-											</td>
-											<td className="px-4 py-2 text-center">
-												<button
-													className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold text-white transition-transform active:scale-95 ${product.isAvailable ? "bg-green-500" : "bg-red-500"}`}
-													onClick={(e) => {
-														e.stopPropagation();
-														toggleAvailability(product._id, product.isAvailable);
-													}}
-													type="button"
-												>
-													{product.isAvailable ? (
-														<>
-															<CheckCircle2 className="h-3 w-3" /> <span>On</span>
-														</>
-													) : (
-														<>
-															<XCircle className="h-3 w-3" /> <span>Off</span>
-														</>
-													)}
-												</button>
-											</td>
-											<td className="px-4 py-2 text-right">
-												<div className="flex justify-end gap-1">
-													<button
-														className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-														onClick={(e) => {
-															e.stopPropagation();
-															handleEdit(product);
-														}}
-														type="button"
-													>
-														<Edit className="h-3.5 w-3.5" />
-													</button>
-													<button
-														className="rounded-md p-1.5 text-destructive hover:bg-destructive/10 transition-colors"
-														onClick={(e) => {
-															e.stopPropagation();
-															setDeleteId(product._id);
-														}}
-														type="button"
-													>
-														<Trash2 className="h-3.5 w-3.5" />
-													</button>
-												</div>
-											</td>
-										</tr>
-									);
-								})}
-
-								{products && products.length === 0 && (
-									<tr>
-										<td className="py-12 text-center text-muted-foreground" colSpan={7}>
-											Belum ada produk.
-										</td>
-									</tr>
-								)}
-							</tbody>
-						</table>
-					</div>
-				</div>
-			)}
-				</>
-			)}
 
 			{/* Post Modals for Products */}
 			<AnimatePresence>
@@ -1972,6 +1676,7 @@ function SettingsTab({
 	const createVariationPreset = useMutation(api.products.addVariationPreset);
 	const updateVariationPreset = useMutation(api.products.updateVariationPreset);
 	const deleteVariationPreset = useMutation(api.products.deleteVariationPreset);
+	const [settingsSearch, setSettingsSearch] = useState("");
 
 	const [categoryModal, setCategoryModal] = useState<{
 		isOpen: boolean;
@@ -2008,6 +1713,31 @@ function SettingsTab({
 			/* no-op */
 		},
 	});
+
+	const normalizedSettingsSearch = settingsSearch.trim().toLowerCase();
+	const filteredCategories = useMemo(() => {
+		if (!categories) {
+			return [];
+		}
+		if (!normalizedSettingsSearch) {
+			return categories;
+		}
+		return categories.filter((category) =>
+			category.name.toLowerCase().includes(normalizedSettingsSearch)
+		);
+	}, [categories, normalizedSettingsSearch]);
+
+	const filteredVariationPresets = useMemo(() => {
+		if (!variationPresets) {
+			return [];
+		}
+		if (!normalizedSettingsSearch) {
+			return variationPresets;
+		}
+		return variationPresets.filter((preset) =>
+			preset.name.toLowerCase().includes(normalizedSettingsSearch)
+		);
+	}, [normalizedSettingsSearch, variationPresets]);
 
 	const handleCategorySubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -2070,6 +1800,35 @@ function SettingsTab({
 	};
 
 	return (
+		<div className="space-y-4">
+			<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+				<div className="rounded-lg border border-border bg-card p-3">
+					<p className="text-muted-foreground text-[10px] uppercase">Total Kategori</p>
+					<p className="font-bold text-lg">{categories?.length ?? 0}</p>
+				</div>
+				<div className="rounded-lg border border-border bg-card p-3">
+					<p className="text-muted-foreground text-[10px] uppercase">Kategori Utama</p>
+					<p className="font-bold text-lg">{categories?.filter((c) => !c.parentId).length ?? 0}</p>
+				</div>
+				<div className="rounded-lg border border-border bg-card p-3">
+					<p className="text-muted-foreground text-[10px] uppercase">Preset Variasi</p>
+					<p className="font-bold text-lg">{variationPresets?.length ?? 0}</p>
+				</div>
+				<div className="rounded-lg border border-border bg-card p-3">
+					<p className="text-muted-foreground text-[10px] uppercase">Track Kitchen/Bar</p>
+					<p className="font-bold text-lg">{categories?.filter((c) => !!c.track).length ?? 0}</p>
+				</div>
+			</div>
+
+			<div className="rounded-lg border border-border bg-card p-3">
+				<input
+					className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm"
+					onChange={(event) => setSettingsSearch(event.target.value)}
+					placeholder="Cari kategori atau preset variasi..."
+					value={settingsSearch}
+				/>
+			</div>
+
 		<div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
 			{/* Categories Section */}
 			<div className="rounded-xl border border-border bg-card p-6 shadow-sm">
@@ -2086,7 +1845,7 @@ function SettingsTab({
 					</button>
 				</div>
 				<div className="space-y-2">
-					{categories?.filter(c => !c.parentId).map((c) => (
+					{filteredCategories.filter(c => !c.parentId).map((c) => (
 						<div key={c._id} className="space-y-2">
 							<div
 								className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
@@ -2126,9 +1885,9 @@ function SettingsTab({
 							</div>
 							
 							{/* Render Sub-categories */}
-							{categories.filter(sub => sub.parentId === c._id).length > 0 && (
+							{filteredCategories.filter(sub => sub.parentId === c._id).length > 0 && (
 								<div className="ml-6 space-y-2 border-l-2 border-border pl-4">
-									{categories.filter(sub => sub.parentId === c._id).map(sub => (
+									{filteredCategories.filter(sub => sub.parentId === c._id).map(sub => (
 										<div
 											className="flex items-center justify-between rounded-lg bg-muted/30 p-2"
 											key={sub._id}
@@ -2200,7 +1959,7 @@ function SettingsTab({
 					</button>
 				</div>
 				<div className="space-y-4">
-					{variationPresets?.map((v) => (
+					{filteredVariationPresets.map((v) => (
 						<div
 							className="rounded-lg border border-border bg-muted/30 p-4"
 							key={v._id}
@@ -2563,15 +2322,19 @@ function SettingsTab({
 				title={confirmConfig.title}
 			/>
 		</div>
+		</div>
 	);
 }
 
 function BaseRecipesTab() {
 	const baseRecipes = useQuery(api.inventory.getBaseRecipes);
 	const inventory = useQuery(api.inventory.getInventory);
+	const products = useQuery(api.products.getAllProductsAdmin);
+	const recipes = useQuery(api.inventory.getRecipes);
 	const createBaseRecipe = useMutation(api.inventory.createBaseRecipe);
 	const updateBaseRecipe = useMutation(api.inventory.updateBaseRecipe);
 	const deleteBaseRecipe = useMutation(api.inventory.deleteBaseRecipe);
+	const [searchRecipe, setSearchRecipe] = useState("");
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingId, setEditingId] = useState<Id<"baseRecipes"> | null>(null);
@@ -2654,79 +2417,102 @@ function BaseRecipesTab() {
 		setFormData({ ...formData, ingredients: newIngs });
 	};
 
+	const filteredBaseRecipes = useMemo(() => {
+		if (!baseRecipes) {
+			return [];
+		}
+		const keyword = searchRecipe.trim().toLowerCase();
+		if (!keyword) {
+			return baseRecipes;
+		}
+		return baseRecipes.filter((recipe) =>
+			recipe.name.toLowerCase().includes(keyword)
+		);
+	}, [baseRecipes, searchRecipe]);
+
 	return (
 		<>
 			<div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 				<h2 className="font-bold text-xl">Daftar Resep Base (Pre-mix)</h2>
-				<button
-					className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground text-sm hover:brightness-110"
-					onClick={() => {
-						resetForm();
-						setIsModalOpen(true);
-					}}
-					type="button"
-				>
-					<Plus className="h-4 w-4" /> Tambah Resep Base
-				</button>
+				<div className="flex items-center gap-2">
+					<input
+						className="h-9 w-56 rounded-md border border-border bg-background px-3 text-sm"
+						onChange={(event) => setSearchRecipe(event.target.value)}
+						placeholder="Cari resep base..."
+						value={searchRecipe}
+					/>
+					<button
+						className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground text-sm hover:brightness-110"
+						onClick={() => {
+							resetForm();
+							setIsModalOpen(true);
+						}}
+						type="button"
+					>
+						<Plus className="h-4 w-4" /> Tambah Resep Base
+					</button>
+				</div>
 			</div>
 
-			<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-				{baseRecipes?.map((recipe: any) => (
-					<div
-						className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
-						key={recipe._id}
-					>
-						<div className="flex items-center justify-between">
-							<h3 className="font-bold text-sm">{recipe.name}</h3>
-							<div className="flex gap-1">
-								<button
-									className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-									onClick={() => handleEdit(recipe)}
-									type="button"
-								>
-									<Edit className="h-4 w-4" />
-								</button>
-								<button
-									className="rounded-lg p-2 text-destructive hover:bg-destructive/10"
-									onClick={() => setConfirmDeleteId(recipe._id)}
-									type="button"
-								>
-									<Trash2 className="h-4 w-4" />
-								</button>
-							</div>
-						</div>
-						<p className="text-muted-foreground text-xs">
-							{recipe.description}
-						</p>
-						<div className="flex items-center gap-2 border-border/50 border-t pt-3">
-							<span className="font-bold text-xs">Target Produksi:</span>
-							<span className="rounded-full bg-primary/10 px-2 py-0.5 font-bold text-[10px] text-primary">
-								{recipe.targetQuantity} {recipe.targetUnit}
-							</span>
-						</div>
-						<div className="space-y-1">
-							<p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
-								Bahan Komposisi:
-							</p>
-							{recipe.ingredients.map((ing: any, _i: number) => {
-								const inv = inventory?.find((v: any) => v._id === ing.inventoryId);
-								return (
-									<div
-										className="flex justify-between text-[11px]"
-										key={ing.inventoryId}
-									>
-										<span className="text-muted-foreground">
-											{inv?.ingredientName || "Unknown"}
-										</span>
-										<span className="font-bold font-mono">
-											{ing.amount} {inv?.unit}
-										</span>
+			<div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+				<div className="rounded-lg border border-border bg-card p-3">
+					<p className="text-muted-foreground text-[10px] uppercase">Total Base</p>
+					<p className="font-bold text-lg">{baseRecipes?.length ?? 0}</p>
+				</div>
+				<div className="rounded-lg border border-border bg-card p-3">
+					<p className="text-muted-foreground text-[10px] uppercase">Tampil</p>
+					<p className="font-bold text-lg">{filteredBaseRecipes.length}</p>
+				</div>
+				<div className="rounded-lg border border-border bg-card p-3">
+					<p className="text-muted-foreground text-[10px] uppercase">Dipakai Produk</p>
+					<p className="font-bold text-lg">{new Set((recipes ?? []).map((r) => r.productId)).size}</p>
+				</div>
+				<div className="rounded-lg border border-border bg-card p-3">
+					<p className="text-muted-foreground text-[10px] uppercase">Menu Aktif</p>
+					<p className="font-bold text-lg">{products?.filter((p) => p.isAvailable).length ?? 0}</p>
+				</div>
+			</div>
+
+			<div className="overflow-x-auto rounded-xl border border-border bg-card">
+				<table className="w-full min-w-[900px] text-left text-xs">
+					<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase">
+						<tr>
+							<th className="px-3 py-2">Nama</th>
+							<th className="px-3 py-2">Deskripsi</th>
+							<th className="px-3 py-2">Target</th>
+							<th className="px-3 py-2">Bahan</th>
+							<th className="px-3 py-2 text-right">Aksi</th>
+						</tr>
+					</thead>
+					<tbody className="divide-y divide-border">
+						{filteredBaseRecipes.map((recipe: any) => (
+							<tr key={recipe._id}>
+								<td className="px-3 py-2 font-semibold">{recipe.name}</td>
+								<td className="px-3 py-2 text-muted-foreground">{recipe.description || "-"}</td>
+								<td className="px-3 py-2">{recipe.targetQuantity} {recipe.targetUnit}</td>
+								<td className="px-3 py-2">{recipe.ingredients.length} item</td>
+								<td className="px-3 py-2">
+									<div className="flex justify-end gap-1">
+										<button
+											className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+											onClick={() => handleEdit(recipe)}
+											type="button"
+										>
+											<Edit className="h-4 w-4" />
+										</button>
+										<button
+											className="rounded-lg p-1.5 text-destructive hover:bg-destructive/10"
+											onClick={() => setConfirmDeleteId(recipe._id)}
+											type="button"
+										>
+											<Trash2 className="h-4 w-4" />
+										</button>
 									</div>
-								);
-							})}
-						</div>
-					</div>
-				))}
+								</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
 			</div>
 
 			<AnimatePresence>
@@ -2950,6 +2736,8 @@ function MixedRecipesTab() {
 	const baseRecipes = useQuery(api.inventory.getBaseRecipes);
 	const recipes = useQuery(api.inventory.getRecipes);
 	const inventory = useQuery(api.inventory.getInventory);
+	const hppProductMap = useQuery(api.hpp.getHppProductMap);
+	const [searchMixed, setSearchMixed] = useState("");
 
 	// Group recipes by productId for easy lookup
 	const recipesByProduct = recipes?.reduce(
@@ -2964,13 +2752,51 @@ function MixedRecipesTab() {
 		{} as Record<string, typeof recipes>
 	);
 
+	const filteredProducts = useMemo(() => {
+		if (!products) {
+			return [];
+		}
+		const keyword = searchMixed.trim().toLowerCase();
+		if (!keyword) {
+			return products;
+		}
+		return products.filter((product) => product.name.toLowerCase().includes(keyword));
+	}, [products, searchMixed]);
+
 	return (
 		<div className="space-y-6">
-			<div>
+			<div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+				<div>
 				<h2 className="font-bold text-xl">Resep Gabungan</h2>
 				<p className="text-muted-foreground text-sm">
 					Daftar lengkap semua resep produk dan resep base.
 				</p>
+				</div>
+				<input
+					className="h-9 w-64 rounded-md border border-border bg-background px-3 text-sm"
+					onChange={(event) => setSearchMixed(event.target.value)}
+					placeholder="Cari produk..."
+					value={searchMixed}
+				/>
+			</div>
+
+			<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+				<div className="rounded-lg border border-border bg-card p-3">
+					<p className="text-muted-foreground text-[10px] uppercase">Base Recipes</p>
+					<p className="font-bold text-lg">{baseRecipes?.length ?? 0}</p>
+				</div>
+				<div className="rounded-lg border border-border bg-card p-3">
+					<p className="text-muted-foreground text-[10px] uppercase">Produk Dengan Resep</p>
+					<p className="font-bold text-lg">{Object.keys(recipesByProduct ?? {}).length}</p>
+				</div>
+				<div className="rounded-lg border border-border bg-card p-3">
+					<p className="text-muted-foreground text-[10px] uppercase">Produk Ditampilkan</p>
+					<p className="font-bold text-lg">{filteredProducts.length}</p>
+				</div>
+				<div className="rounded-lg border border-border bg-card p-3">
+					<p className="text-muted-foreground text-[10px] uppercase">Bahan Inventory</p>
+					<p className="font-bold text-lg">{inventory?.length ?? 0}</p>
+				</div>
 			</div>
 
 			<div className="grid gap-6">
@@ -3031,55 +2857,49 @@ function MixedRecipesTab() {
 						<div className="h-6 w-1 rounded-full bg-blue-500" />
 						<h3 className="font-bold text-lg">Resep Produk (Menu)</h3>
 					</div>
-					<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-						{products?.map((product: any) => {
+					<div className="overflow-x-auto rounded-xl border border-border bg-card">
+						<table className="w-full min-w-[960px] text-left text-xs">
+							<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase">
+								<tr>
+									<th className="px-3 py-2">Produk</th>
+									<th className="px-3 py-2">Resep</th>
+									<th className="px-3 py-2">Komponen</th>
+									<th className="px-3 py-2">Status</th>
+									<th className="px-3 py-2">HPP/Margin</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-border">
+						{filteredProducts?.map((product: any) => {
 							// Get recipes for this product from the recipes table
 							const productRecipes = recipesByProduct?.[product._id];
 							if (!productRecipes || productRecipes.length === 0) {
 								return null;
 							}
 
+							const ingredientCount = productRecipes.reduce(
+								(total: number, recipe: any) => total + recipe.ingredients.length,
+								0
+							);
+							const hpp = hppProductMap?.[product._id];
+
 							return (
-								<div
-									className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
-									key={product._id}
-								>
-									<div className="flex items-center justify-between">
-										<h3 className="font-bold text-sm">{product.name}</h3>
-										<span className="rounded-full bg-blue-500/10 px-2 py-0.5 font-bold text-[10px] text-blue-500">
-											MENU
+								<tr key={product._id}>
+									<td className="px-3 py-2 font-semibold">{product.name}</td>
+									<td className="px-3 py-2">{productRecipes.length} resep</td>
+									<td className="px-3 py-2">{ingredientCount} komponen</td>
+									<td className="px-3 py-2">
+										<span className={`rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${product.isAvailable ? "bg-green-600" : "bg-red-500"}`}>
+											{product.isAvailable ? "Aktif" : "Nonaktif"}
 										</span>
-									</div>
-									<div className="space-y-1">
-										<p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
-											Komposisi:
-										</p>
-										{productRecipes.map((recipe: any) =>
-											recipe.ingredients.map(
-												(ing: { inventoryId: string; amount: number }) => {
-													const inv = inventory?.find(
-														(v: any) => v._id === ing.inventoryId
-													);
-													return (
-														<div
-															className="flex justify-between text-[11px]"
-															key={`${recipe._id}-${ing.inventoryId}`}
-														>
-															<span className="text-muted-foreground">
-																{inv?.ingredientName || "Unknown"}
-															</span>
-															<span className="font-bold font-mono">
-																{ing.amount} {inv?.unit}
-															</span>
-														</div>
-													);
-												}
-											)
-										)}
-									</div>
-								</div>
+									</td>
+									<td className="px-3 py-2">
+										{hpp ? `HPP ${Math.round(hpp.hppPerServing).toLocaleString("id-ID")} | Margin ${hpp.marginPercent.toFixed(0)}%` : "-"}
+									</td>
+								</tr>
 							);
 						})}
+							</tbody>
+						</table>
 					</div>
 				</div>
 			</div>
