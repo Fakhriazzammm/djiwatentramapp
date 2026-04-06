@@ -426,6 +426,7 @@ function statusLabel(status: PortfolioStatus | "draft") {
 function HppCalculatorPage() {
 	const navigate = useNavigate();
 	const workspace = useQuery(api.hpp.getHppPortfolio) as PortfolioData | undefined;
+	const products = useQuery(api.products.getAllProductsAdmin);
 	const inventory = useQuery(api.inventory.getInventory);
 	const inventoryCosts = useQuery(api.hpp.getLatestInventoryCosts);
 	const createHpp = useMutation(api.hpp.createHppCalculation);
@@ -498,6 +499,32 @@ function HppCalculatorPage() {
 			.sort((left, right) => left.currentMarginPercent - right.currentMarginPercent);
 	}, [marginAnalysis]);
 
+	const productSearchOptions = useMemo(() => {
+		const merged = new Map<
+			Id<"products">,
+			{ id: Id<"products">; name: string; hasPortfolio: boolean }
+		>();
+		for (const row of portfolioRows) {
+			merged.set(row.product._id, {
+				id: row.product._id,
+				name: row.product.name,
+				hasPortfolio: true,
+			});
+		}
+		for (const product of products ?? []) {
+			if (!merged.has(product._id)) {
+				merged.set(product._id, {
+					id: product._id,
+					name: product.name,
+					hasPortfolio: false,
+				});
+			}
+		}
+		return [...merged.values()].sort((left, right) =>
+			left.name.localeCompare(right.name, "id-ID")
+		);
+	}, [portfolioRows, products]);
+
 	const simulation = useQuery(
 		api.hpp.simulateHppPriceChange,
 		simulateId
@@ -568,6 +595,38 @@ function HppCalculatorPage() {
 		setEditingId(null);
 		setForm(createInitialForm());
 		setActiveView("editor");
+	}
+
+	function selectProductForEditor(productId: Id<"products">) {
+		const portfolioRow =
+			portfolioRows.find((row) => row.product._id === productId) ?? null;
+		if (portfolioRow) {
+			setSelectedProductId(productId);
+			setSelectedDraftId(null);
+			setEditingId(portfolioRow.calculation?._id ?? null);
+			setForm(toFormFromPortfolioRow(portfolioRow));
+			return;
+		}
+
+		const product = products?.find((item) => item._id === productId);
+		if (!product) {
+			return;
+		}
+
+		setSelectedProductId(productId);
+		setSelectedDraftId(null);
+		setEditingId(null);
+		setForm((prev) => ({
+			...prev,
+			name: prev.name.trim().length > 0 ? prev.name : `HPP ${product.name}`,
+			description:
+				prev.description.trim().length > 0
+					? prev.description
+					: `Draft costing manual untuk ${product.name}`,
+			sellingPrice: product.promoPrice ?? product.price,
+			productId: product._id,
+			sourceType: "manual",
+		}));
 	}
 
 	function resetEditor() {
@@ -939,6 +998,8 @@ function HppCalculatorPage() {
 					editingId={editingId}
 					form={form}
 					inventory={inventory}
+					productSearchOptions={productSearchOptions}
+					onSelectProduct={selectProductForEditor}
 					onApplyRecommendedPrice={handleApplyRecommendedPrice}
 					onDelete={() => editingId && setDeleteTarget(editingId)}
 					onOpenInventory={() => navigate({ to: "/admin/inventory" })}
@@ -1395,6 +1456,7 @@ function EditorView({
 	editingId,
 	form,
 	inventory,
+	productSearchOptions,
 	onAiAutofill,
 	onApplyRecommendedPrice,
 	onDelete,
@@ -1402,6 +1464,7 @@ function EditorView({
 	onOpenProducts,
 	onReset,
 	onSave,
+	onSelectProduct,
 	onSyncPrices,
 	onSyncRecipe,
 	recipeSyncing,
@@ -1419,6 +1482,11 @@ function EditorView({
 	editingId: Id<"hppCalculations"> | null;
 	form: HppFormData;
 	inventory: Doc<"inventory">[] | undefined;
+	productSearchOptions: {
+		id: Id<"products">;
+		name: string;
+		hasPortfolio: boolean;
+	}[];
 	onAiAutofill: () => void;
 	onApplyRecommendedPrice: (hppId: Id<"hppCalculations">, price: number) => void;
 	onDelete: () => void;
@@ -1426,6 +1494,7 @@ function EditorView({
 	onOpenProducts: () => void;
 	onReset: () => void;
 	onSave: () => void;
+	onSelectProduct: (productId: Id<"products">) => void;
 	onSyncPrices: () => void;
 	onSyncRecipe: () => void;
 	recipeSyncing: boolean;
@@ -1447,6 +1516,7 @@ function EditorView({
 	linkIngredientToInventory: (ingredientId: string, inventoryItemId: string) => void;
 }) {
 	const [quickMode, setQuickMode] = useState(false);
+	const [productQuery, setProductQuery] = useState("");
 	const recommendedPrice = currentMetrics.totalHppPerServing
 		? Math.ceil(
 				(currentMetrics.totalHppPerServing / (1 - 0.3)) / 100
@@ -1469,6 +1539,42 @@ function EditorView({
 		(item) =>
 			!item.name || !item.price || !item.quantity || !item.conversion || !item.usage
 	);
+
+	useEffect(() => {
+		if (!form.productId) {
+			return;
+		}
+		const selected = productSearchOptions.find(
+			(option) => option.id === form.productId
+		);
+		if (selected && selected.name !== productQuery) {
+			setProductQuery(selected.name);
+		}
+	}, [form.productId, productSearchOptions, productQuery]);
+
+	function resolveProductFromInput(value: string) {
+		const normalized = value.trim().toLowerCase();
+		if (!normalized) {
+			return null;
+		}
+		return (
+			productSearchOptions.find(
+				(option) => option.name.trim().toLowerCase() === normalized
+			) ??
+			productSearchOptions.find((option) =>
+				option.name.toLowerCase().includes(normalized)
+			) ??
+			null
+		);
+	}
+
+	function handleProductQueryInput(rawValue: string) {
+		setProductQuery(rawValue);
+		const matched = resolveProductFromInput(rawValue);
+		if (matched && matched.name.trim().toLowerCase() === rawValue.trim().toLowerCase()) {
+			onSelectProduct(matched.id);
+		}
+	}
 
 	function handleIngredientNameInput(ingredientId: string, rawValue: string) {
 		updateIngredient(ingredientId, "ingredientName", rawValue);
@@ -1614,6 +1720,38 @@ function EditorView({
 					</CardHeader>
 					<CardContent className="space-y-4 p-4">
 						<div className="grid gap-4 md:grid-cols-2">
+							<div className="space-y-2">
+								<Label>Produk Terkait (Portfolio / Produk)</Label>
+								<Input
+									list="hpp-product-options"
+									onBlur={() => {
+										const matched = resolveProductFromInput(productQuery);
+										if (matched) {
+											onSelectProduct(matched.id);
+										}
+									}}
+									onChange={(event) =>
+										handleProductQueryInput(event.target.value)
+									}
+									onKeyDown={(event) => {
+										if (event.key === "Enter") {
+											const matched = resolveProductFromInput(productQuery);
+											if (matched) {
+												onSelectProduct(matched.id);
+											}
+										}
+									}}
+									placeholder="Ketik nama produk untuk auto isi form..."
+									value={productQuery}
+								/>
+								<datalist id="hpp-product-options">
+									{productSearchOptions.map((option) => (
+										<option key={option.id} value={option.name}>
+											{option.hasPortfolio ? "Portfolio" : "Produk"}
+										</option>
+									))}
+								</datalist>
+							</div>
 							<div className="space-y-2">
 								<Label>Nama Costing</Label>
 								<Input
