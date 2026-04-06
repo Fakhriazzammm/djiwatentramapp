@@ -225,16 +225,22 @@ function AdminOrders() {
 			: quickDateFilterOptions.find((option) => option.value === quickDateFilter)
 					?.label || "Semua tanggal";
 
-	const getShiftName = (order: Order) => {
+	const getShiftMeta = (order: Order) => {
 		if (!historicalShifts) {
-			return "-";
+			return { shiftName: "-", cashierName: "-" };
 		}
 
 		const shift = historicalShifts.find(
 			(s: any) =>
 				order.createdAt >= s.startTime && (!s.endTime || order.createdAt <= s.endTime)
 		);
-		return shift ? shift.shiftName || "Shift Aktif" : "-";
+		if (!shift) {
+			return { shiftName: "-", cashierName: "-" };
+		}
+		return {
+			shiftName: shift.shiftName || "Shift Aktif",
+			cashierName: shift.cashierName || shift.kasirName || "-",
+		};
 	};
 
 	const getOrderLocationLabel = (order: Order) => {
@@ -642,7 +648,7 @@ function AdminOrders() {
 						</div>
 					) : (
 						filteredOrders?.map((order: Order) => {
-							const shiftName = getShiftName(order);
+							const shiftMeta = getShiftMeta(order);
 							return (
 								<button
 									className="w-full rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-colors active:bg-muted/40"
@@ -680,7 +686,10 @@ function AdminOrders() {
 												{(order.paymentMethod || "-").toUpperCase()}
 											</div>
 											<div className="text-[10px] text-muted-foreground">
-												{getOrderLocationLabel(order)} · {shiftName}
+												{getOrderLocationLabel(order)} · {shiftMeta.shiftName}
+											</div>
+											<div className="text-[10px] text-muted-foreground">
+												Kasir: {shiftMeta.cashierName}
 											</div>
 										</div>
 										<div className="shrink-0 text-right">
@@ -727,7 +736,7 @@ function AdminOrders() {
 									</tr>
 								) : (
 									filteredOrders?.map((order: Order) => {
-										const shiftName = getShiftName(order);
+										const shiftMeta = getShiftMeta(order);
 										return (
 											<tr
 												className="group cursor-pointer transition-colors hover:bg-muted/30"
@@ -769,13 +778,18 @@ function AdminOrders() {
 													{getOrderLocationLabel(order)}
 												</td>
 												<td className="px-3 py-2.5 align-top">
-													{shiftName !== "-" ? (
-														<span className="inline-flex rounded-md bg-primary/10 px-2 py-1 font-semibold text-[10px] text-primary uppercase">
-															{shiftName}
+													<div className="flex flex-col gap-1">
+														{shiftMeta.shiftName !== "-" ? (
+															<span className="inline-flex w-fit rounded-md bg-primary/10 px-2 py-1 font-semibold text-[10px] text-primary uppercase">
+																{shiftMeta.shiftName}
+															</span>
+														) : (
+															<span className="text-[11px] text-muted-foreground">-</span>
+														)}
+														<span className="text-[10px] text-muted-foreground">
+															Kasir: {shiftMeta.cashierName}
 														</span>
-													) : (
-														<span className="text-[11px] text-muted-foreground">-</span>
-													)}
+													</div>
 												</td>
 												<td className="px-3 py-2.5 text-right align-top font-semibold text-[11px] tabular-nums">
 													{formatrupiah(order.totalAmount)}
@@ -929,6 +943,9 @@ function AdminOrders() {
 														"dd MMM yyyy, HH:mm",
 														{ locale: id }
 													)}
+												</p>
+												<p className="mt-1 text-[10px] text-muted-foreground">
+													Kasir: {getShiftMeta(selectedOrder).cashierName}
 												</p>
 											</div>
 										</CardContent>

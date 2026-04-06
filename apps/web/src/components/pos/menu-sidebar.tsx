@@ -2764,6 +2764,25 @@ function StokTab({
 
 	return (
 		<div className="flex-1 flex flex-col gap-4 p-4 overflow-hidden min-h-0">
+			<div className="grid grid-cols-2 gap-2 shrink-0">
+				<Button 
+					variant="outline" 
+					className="h-11 flex-col gap-1 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-all font-bold"
+					onClick={() => window.location.href = "/admin/kitchen"}
+				>
+					<ChefHat className="h-4 w-4" />
+					<span className="text-[10px] uppercase tracking-wider">Monitor Dapur</span>
+				</Button>
+				<Button 
+					variant="outline" 
+					className="h-11 flex-col gap-1 border-orange-500/20 bg-orange-500/5 text-orange-600 hover:bg-orange-500/10 transition-all font-bold"
+					onClick={() => window.location.href = "/admin/bar"}
+				>
+					<CupSoda className="h-4 w-4" />
+					<span className="text-[10px] uppercase tracking-wider">Monitor Bar</span>
+				</Button>
+			</div>
+
 			<div className="flex shrink-0 gap-1 rounded-lg bg-muted/50 p-1">
 				{subTabs.map((tab) => {
 					const Icon = tab.icon;
@@ -2795,25 +2814,6 @@ function StokTab({
 					<InventoryTab setConfirmConfig={setConfirmConfig} />
 				)}
 				{activeSubTab === "beli" && <MarketList />}
-			</div>
-
-			<div className="grid grid-cols-2 gap-2 mt-auto pt-4 border-t shrink-0">
-				<Button 
-					variant="outline" 
-					className="h-12 flex-col gap-1 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-all font-bold"
-					onClick={() => window.location.href = "/admin/kitchen"}
-				>
-					<ChefHat className="h-4 w-4" />
-					<span className="text-[10px] uppercase tracking-wider">Monitor Dapur</span>
-				</Button>
-				<Button 
-					variant="outline" 
-					className="h-12 flex-col gap-1 border-orange-500/20 bg-orange-500/5 text-orange-600 hover:bg-orange-500/10 transition-all font-bold"
-					onClick={() => window.location.href = "/admin/bar"}
-				>
-					<CupSoda className="h-4 w-4" />
-					<span className="text-[10px] uppercase tracking-wider">Monitor Bar</span>
-				</Button>
 			</div>
 		</div>
 	);
