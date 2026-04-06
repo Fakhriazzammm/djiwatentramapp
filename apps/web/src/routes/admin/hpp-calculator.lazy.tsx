@@ -1517,6 +1517,7 @@ function EditorView({
 }) {
 	const [quickMode, setQuickMode] = useState(false);
 	const [productQuery, setProductQuery] = useState("");
+	const [isEditingProductQuery, setIsEditingProductQuery] = useState(false);
 	const recommendedPrice = currentMetrics.totalHppPerServing
 		? Math.ceil(
 				(currentMetrics.totalHppPerServing / (1 - 0.3)) / 100
@@ -1541,7 +1542,13 @@ function EditorView({
 	);
 
 	useEffect(() => {
+		if (isEditingProductQuery) {
+			return;
+		}
 		if (!form.productId) {
+			if (productQuery !== "") {
+				setProductQuery("");
+			}
 			return;
 		}
 		const selected = productSearchOptions.find(
@@ -1550,7 +1557,7 @@ function EditorView({
 		if (selected && selected.name !== productQuery) {
 			setProductQuery(selected.name);
 		}
-	}, [form.productId, productSearchOptions, productQuery]);
+	}, [form.productId, productSearchOptions, productQuery, isEditingProductQuery]);
 
 	function resolveProductFromInput(value: string) {
 		const normalized = value.trim().toLowerCase();
@@ -1569,10 +1576,19 @@ function EditorView({
 	}
 
 	function handleProductQueryInput(rawValue: string) {
+		setIsEditingProductQuery(true);
 		setProductQuery(rawValue);
+		if (!rawValue.trim()) {
+			setForm((prev) => ({
+				...prev,
+				productId: undefined,
+				sourceType: "manual",
+			}));
+		}
 		const matched = resolveProductFromInput(rawValue);
 		if (matched && matched.name.trim().toLowerCase() === rawValue.trim().toLowerCase()) {
 			onSelectProduct(matched.id);
+			setIsEditingProductQuery(false);
 		}
 	}
 
@@ -1588,17 +1604,13 @@ function EditorView({
 			inventory?.find((item) => normalize(item.ingredientName) === trimmed) ??
 			inventory?.find((item) =>
 				(item.aliases ?? []).some((alias) => normalize(alias) === trimmed)
-			) ??
-			inventory?.find(
-				(item) =>
-					normalize(item.ingredientName).includes(trimmed) ||
-					(item.aliases ?? []).some((alias) =>
-						normalize(alias).includes(trimmed)
-					)
 			);
 		if (matched) {
 			linkIngredientToInventory(ingredientId, matched._id);
+			return;
 		}
+		// Keep text editable: if user changes to non-matching text, detach inventory link.
+		updateIngredient(ingredientId, "inventoryId", undefined);
 	}
 
 	function appendIngredient() {
@@ -1725,10 +1737,24 @@ function EditorView({
 								<Input
 									list="hpp-product-options"
 									onBlur={() => {
-										const matched = resolveProductFromInput(productQuery);
-										if (matched) {
+										const trimmed = productQuery.trim();
+										if (!trimmed) {
+											setIsEditingProductQuery(false);
+											setForm((prev) => ({
+												...prev,
+												productId: undefined,
+												sourceType: "manual",
+											}));
+											return;
+										}
+										const matched = resolveProductFromInput(trimmed);
+										if (
+											matched &&
+											matched.name.trim().toLowerCase() === trimmed.toLowerCase()
+										) {
 											onSelectProduct(matched.id);
 										}
+										setIsEditingProductQuery(false);
 									}}
 									onChange={(event) =>
 										handleProductQueryInput(event.target.value)
@@ -1736,9 +1762,14 @@ function EditorView({
 									onKeyDown={(event) => {
 										if (event.key === "Enter") {
 											const matched = resolveProductFromInput(productQuery);
-											if (matched) {
+											if (
+												matched &&
+												matched.name.trim().toLowerCase() ===
+													productQuery.trim().toLowerCase()
+											) {
 												onSelectProduct(matched.id);
 											}
+											setIsEditingProductQuery(false);
 										}
 									}}
 									placeholder="Ketik nama produk untuk auto isi form..."
