@@ -5,14 +5,20 @@ import { useMutation, useQuery } from "convex/react";
 import { motion } from "framer-motion";
 import {
 	AlertCircle,
+	BadgeAlert,
+	BarChart3,
+	Boxes,
 	ArrowDown,
 	ArrowUp,
 	Edit,
 	History,
+	PackageSearch,
+	PanelRight,
 	Minus,
 	Plus,
 	Search,
 	Settings2,
+	ShieldAlert,
 	Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -34,6 +40,9 @@ export const Route = createLazyFileRoute("/admin/inventory")({
 
 function InventoryPage() {
 	const inventory = useQuery(api.inventory.getInventory);
+	const controlTower = useQuery(api.inventory.getInventoryControlTower, {
+		daysWindow: 30,
+	});
 	const applyStockAction = useMutation(api.inventory.applyInventoryStockAction);
 	const createItem = useMutation(api.inventory.createInventoryItem);
 	const updateItem = useMutation(api.inventory.updateInventoryItem);
@@ -48,6 +57,8 @@ function InventoryPage() {
 	>(null);
 	const [amount, setAmount] = useState("");
 	const [filterLowStock, setFilterLowStock] = useState(false);
+	const [mode, setMode] = useState<"operations" | "planning">("operations");
+	const [detailItem, setDetailItem] = useState<Doc<"inventory"> | null>(null);
 	const [newItem, setNewItem] = useState({
 		ingredientName: "",
 		unit: "gram",
@@ -217,24 +228,40 @@ function InventoryPage() {
 
 	return (
 		<div className="fade-in slide-in-from-bottom-4 animate-in space-y-6 duration-500">
+			<InventoryControlTowerSummary data={controlTower} />
+
 			<InventoryHeader
 				filterLowStock={filterLowStock}
+				mode={mode}
+				onModeChange={setMode}
 				onActionTypeChange={setActionType}
 				onFilterLowStockChange={setFilterLowStock}
 				onSearchQueryChange={setSearchQuery}
 				searchQuery={searchQuery}
 			/>
 
-			<InventoryTable
-				filteredInventory={filteredInventory}
-				inventory={inventory}
-				onActionTypeChange={setActionType}
-				onAmountChange={setAmount}
-				onNewItemChange={setNewItem}
-				onSelectedItemChange={setSelectedItem}
-				onSort={handleSort}
-				sortConfig={sortConfig}
-			/>
+			{mode === "operations" ? (
+				<InventoryTable
+					filteredInventory={filteredInventory}
+					inventory={inventory}
+					onActionTypeChange={setActionType}
+					onAmountChange={setAmount}
+					onDetailItemChange={setDetailItem}
+					onNewItemChange={setNewItem}
+					onSelectedItemChange={setSelectedItem}
+					onSort={handleSort}
+					sortConfig={sortConfig}
+				/>
+			) : (
+				<InventoryPlanningPanel
+					data={controlTower}
+					onActionTypeChange={setActionType}
+					onDetailItemChange={setDetailItem}
+					onFilterLowStockChange={setFilterLowStock}
+					onSearchQueryChange={setSearchQuery}
+					setSelectedItem={setSelectedItem}
+				/>
+			)}
 
 			<InventoryActionModal
 				actionType={actionType}
@@ -275,6 +302,19 @@ function InventoryPage() {
 					onClose={() => {
 						setSelectedItem(null);
 						setActionType(null);
+					}}
+				/>
+			)}
+			{detailItem && (
+				<InventoryDetailDrawer
+					item={detailItem}
+					onClose={() => setDetailItem(null)}
+					onOpenAction={(nextAction) => {
+						setSelectedItem(detailItem);
+						if (nextAction === "adjust") {
+							setAmount(String(detailItem.quantity));
+						}
+						setActionType(nextAction);
 					}}
 				/>
 			)}
@@ -807,11 +847,412 @@ function InventoryActionModal({
 	);
 }
 
+function InventoryControlTowerSummary({
+	data,
+}: {
+	data:
+		| {
+				summary: {
+					totalItems: number;
+					totalStockUnits: number;
+					lowStockCount: number;
+					riskHighCount: number;
+					riskMediumCount: number;
+					recentUsageTxCount: number;
+					recentRestockTxCount: number;
+					daysWindow: number;
+				};
+		  }
+		| undefined;
+}) {
+	const cards = [
+		{
+			label: "Item Aktif",
+			value: data?.summary.totalItems ?? "—",
+			icon: Boxes,
+			tone: "text-slate-700 bg-slate-100",
+		},
+		{
+			label: "Risiko Tinggi",
+			value: data?.summary.riskHighCount ?? "—",
+			icon: ShieldAlert,
+			tone: "text-rose-700 bg-rose-100",
+		},
+		{
+			label: "Stok Rendah",
+			value: data?.summary.lowStockCount ?? "—",
+			icon: BadgeAlert,
+			tone: "text-amber-700 bg-amber-100",
+		},
+		{
+			label: `Aktivitas ${data?.summary.daysWindow ?? 30} Hari`,
+			value:
+				data != null
+					? `${data.summary.recentUsageTxCount} pakai / ${data.summary.recentRestockTxCount} restock`
+					: "—",
+			icon: BarChart3,
+			tone: "text-sky-700 bg-sky-100",
+		},
+	];
+
+	return (
+		<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+			{cards.map((card) => (
+				<div className="rounded-xl border border-border bg-card p-4" key={card.label}>
+					<div className="flex items-center justify-between">
+						<p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+							{card.label}
+						</p>
+						<span className={`rounded-lg p-1.5 ${card.tone}`}>
+							<card.icon className="h-4 w-4" />
+						</span>
+					</div>
+					<p className="mt-2 font-black text-lg text-foreground">{card.value}</p>
+				</div>
+			))}
+		</div>
+	);
+}
+
+function InventoryPlanningPanel({
+	data,
+	onDetailItemChange,
+	onActionTypeChange,
+	setSelectedItem,
+	onSearchQueryChange,
+	onFilterLowStockChange,
+}: {
+	data:
+		| {
+				planningRows: Array<{
+					inventoryId: Id<"inventory">;
+					ingredientName: string;
+					currentStock: number;
+					unit: string;
+					avgDailyUsage: number;
+					daysUntilStockout: number | null;
+					reorderPoint: number;
+					suggestedOrderQty: number;
+					riskLevel: "high" | "medium" | "low";
+				}>;
+		  }
+		| undefined;
+	onDetailItemChange: (item: Doc<"inventory">) => void;
+	onActionTypeChange: (
+		type:
+			| "add"
+			| "usage"
+			| "edit"
+			| "adjust"
+			| "delete"
+			| "history"
+			| "batchInfo"
+			| "create"
+			| null
+	) => void;
+	setSelectedItem: (item: Doc<"inventory"> | null) => void;
+	onSearchQueryChange: (val: string) => void;
+	onFilterLowStockChange: (val: boolean) => void;
+}) {
+	const inventory = useQuery(api.inventory.getInventory);
+	const inventoryMap = useMemo(() => {
+		const map = new Map<string, Doc<"inventory">>();
+		for (const item of inventory ?? []) {
+			map.set(item._id, item);
+		}
+		return map;
+	}, [inventory]);
+
+	return (
+		<div className="space-y-4">
+			<div className="rounded-xl border border-border bg-card p-4">
+				<div className="flex flex-wrap items-center justify-between gap-3">
+					<div>
+						<p className="font-bold text-base text-foreground">Reorder Planner</p>
+						<p className="text-muted-foreground text-xs">
+							Prioritas restock berdasarkan konsumsi aktual dan risiko stok habis.
+						</p>
+					</div>
+					<div className="flex items-center gap-2">
+						<button
+							className="rounded-lg bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted/80"
+							onClick={() => onFilterLowStockChange(true)}
+							type="button"
+						>
+							Tampilkan Stok Rendah
+						</button>
+						<button
+							className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted"
+							onClick={() => onSearchQueryChange("")}
+							type="button"
+						>
+							Reset Filter
+						</button>
+					</div>
+				</div>
+			</div>
+			<div className="overflow-hidden rounded-xl border border-border bg-card">
+				<div className="overflow-x-auto">
+					<table className="w-full text-left text-xs md:text-sm">
+						<thead className="border-b border-border bg-muted/30 text-muted-foreground">
+							<tr>
+								<th className="p-3 font-semibold">Bahan</th>
+								<th className="p-3 text-center font-semibold">Avg/Hari</th>
+								<th className="p-3 text-center font-semibold">ROP</th>
+								<th className="p-3 text-center font-semibold">Saran Order</th>
+								<th className="p-3 text-center font-semibold">Stockout</th>
+								<th className="p-3 text-right font-semibold">Aksi</th>
+							</tr>
+						</thead>
+						<tbody className="divide-y divide-border">
+							{data?.planningRows?.map((row) => {
+								const itemDoc = inventoryMap.get(row.inventoryId as string);
+								return (
+									<tr className="hover:bg-muted/30" key={row.inventoryId}>
+										<td className="p-3">
+											<p className="font-bold text-foreground">{row.ingredientName}</p>
+											<p className="text-[11px] text-muted-foreground">
+												Stok saat ini {row.currentStock} {row.unit}
+											</p>
+										</td>
+										<td className="p-3 text-center font-semibold">
+											{row.avgDailyUsage.toFixed(2)} {row.unit}
+										</td>
+										<td className="p-3 text-center">{row.reorderPoint}</td>
+										<td className="p-3 text-center font-bold text-primary">
+											{row.suggestedOrderQty}
+										</td>
+										<td className="p-3 text-center">
+											{row.daysUntilStockout == null ? (
+												<span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-700">
+													AMAN
+												</span>
+											) : (
+												<span
+													className={`rounded-full px-2 py-1 text-[10px] font-bold ${
+														row.riskLevel === "high"
+															? "bg-rose-100 text-rose-700"
+															: row.riskLevel === "medium"
+																? "bg-amber-100 text-amber-700"
+																: "bg-emerald-100 text-emerald-700"
+													}`}
+												>
+													{row.daysUntilStockout.toFixed(1)} hari
+												</span>
+											)}
+										</td>
+										<td className="p-3 text-right">
+											<div className="flex justify-end gap-1">
+												<button
+													className="rounded-lg p-2 text-primary hover:bg-primary/10"
+													onClick={() => {
+														if (!itemDoc) {
+															return;
+														}
+														setSelectedItem(itemDoc);
+														onActionTypeChange("add");
+													}}
+													title="Restock"
+													type="button"
+												>
+													<Plus className="h-4 w-4" />
+												</button>
+												<button
+													className="rounded-lg p-2 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+													onClick={() => {
+														if (!itemDoc) {
+															return;
+														}
+														onDetailItemChange(itemDoc);
+													}}
+													title="Detail Impact"
+													type="button"
+												>
+													<PackageSearch className="h-4 w-4" />
+												</button>
+											</div>
+										</td>
+									</tr>
+								);
+							})}
+							{(data?.planningRows?.length ?? 0) === 0 && (
+								<tr>
+									<td className="p-6 text-center text-muted-foreground" colSpan={6}>
+										Belum ada data planning.
+									</td>
+								</tr>
+							)}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function InventoryDetailDrawer({
+	item,
+	onClose,
+	onOpenAction,
+}: {
+	item: Doc<"inventory">;
+	onClose: () => void;
+	onOpenAction: (action: "add" | "usage" | "adjust") => void;
+}) {
+	const impact = useQuery(api.inventory.getInventoryItemImpact, {
+		inventoryId: item._id,
+	});
+	const transactions = useQuery(api.inventory.getInventoryTransactions, {
+		inventoryId: item._id,
+	});
+
+	return (
+		<div className="fixed inset-0 z-50 flex justify-end bg-black/30">
+			<div className="h-full w-full max-w-md overflow-y-auto border-l border-border bg-card p-5 shadow-2xl">
+				<div className="mb-4 flex items-start justify-between">
+					<div>
+						<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+							Inventory Detail
+						</p>
+						<h3 className="font-bold text-xl text-foreground">{item.ingredientName}</h3>
+						<p className="text-sm text-muted-foreground">
+							Stok {item.quantity} {item.unit}
+						</p>
+					</div>
+					<button
+						className="rounded-full bg-muted p-2 hover:bg-muted/80"
+						onClick={onClose}
+						type="button"
+					>
+						<Plus className="h-4 w-4 rotate-45" />
+					</button>
+				</div>
+
+				<div className="mb-4 grid grid-cols-3 gap-2">
+					<button
+						className="rounded-lg bg-primary px-2 py-2 text-xs font-bold text-primary-foreground"
+						onClick={() => onOpenAction("add")}
+						type="button"
+					>
+						+ Restock
+					</button>
+					<button
+						className="rounded-lg border border-border px-2 py-2 text-xs font-bold text-foreground"
+						onClick={() => onOpenAction("usage")}
+						type="button"
+					>
+						- Pakai
+					</button>
+					<button
+						className="rounded-lg border border-border px-2 py-2 text-xs font-bold text-foreground"
+						onClick={() => onOpenAction("adjust")}
+						type="button"
+					>
+						Adjust
+					</button>
+				</div>
+
+				<div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
+					<p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+						Dampak Lintas Fitur
+					</p>
+					<p className="mt-2 text-xs text-foreground">
+						Produk terdampak:{" "}
+						<span className="font-bold">{impact?.impact.productCount ?? "—"}</span>
+					</p>
+					<p className="text-xs text-foreground">
+						Recipe terdampak:{" "}
+						<span className="font-bold">{impact?.impact.recipeCount ?? "—"}</span>
+					</p>
+					<p className="text-xs text-foreground">
+						Base recipe pemakai:{" "}
+						<span className="font-bold">
+							{impact?.impact.consumedByBaseRecipeCount ?? "—"}
+						</span>
+					</p>
+				</div>
+
+				<div className="mb-4 rounded-lg border border-border p-3">
+					<p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+						Produk Terkorelasi
+					</p>
+					<div className="space-y-1">
+						{impact?.impact.impactedProducts?.slice(0, 8).map((product) => (
+							<div
+								className="flex items-center justify-between rounded-md bg-muted/30 px-2 py-1.5"
+								key={`${product.productId}-${product.variantName || "base"}`}
+							>
+								<div>
+									<p className="text-xs font-semibold text-foreground">
+										{product.productName}
+									</p>
+									{product.variantName && (
+										<p className="text-[10px] text-muted-foreground">
+											Varian: {product.variantName}
+										</p>
+									)}
+								</div>
+								<span
+									className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+										product.isAvailable
+											? "bg-emerald-100 text-emerald-700"
+											: "bg-slate-200 text-slate-700"
+									}`}
+								>
+									{product.isAvailable ? "Aktif" : "Nonaktif"}
+								</span>
+							</div>
+						))}
+						{(impact?.impact.impactedProducts?.length ?? 0) === 0 && (
+							<p className="text-xs text-muted-foreground">Belum ada produk terkait.</p>
+						)}
+					</div>
+				</div>
+
+				<div className="rounded-lg border border-border p-3">
+					<p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+						Timeline Aktivitas Terbaru
+					</p>
+					<div className="space-y-1">
+						{transactions?.slice(0, 10).map((transaction) => (
+							<div
+								className="rounded-md bg-muted/30 px-2 py-1.5"
+								key={transaction._id}
+							>
+								<div className="flex items-center justify-between">
+									<p className="text-xs font-semibold uppercase text-foreground">
+										{transaction.type}
+									</p>
+									<p
+										className={`text-xs font-bold ${
+											transaction.quantity >= 0 ? "text-emerald-600" : "text-rose-600"
+										}`}
+									>
+										{transaction.quantity > 0 ? "+" : ""}
+										{transaction.quantity}
+									</p>
+								</div>
+								<p className="text-[10px] text-muted-foreground">
+									{new Date(transaction.timestamp).toLocaleString("id-ID")}
+								</p>
+							</div>
+						))}
+						{(transactions?.length ?? 0) === 0 && (
+							<p className="text-xs text-muted-foreground">Belum ada aktivitas.</p>
+						)}
+					</div>
+				</div>
+			</div>
+		</div>
+	);
+}
+
 function InventoryTable({
 	filteredInventory,
 	onSort,
 	sortConfig,
 	onSelectedItemChange,
+	onDetailItemChange,
 	onActionTypeChange,
 	onNewItemChange,
 	onAmountChange,
@@ -821,6 +1262,7 @@ function InventoryTable({
 	onSort: (key: keyof Doc<"inventory">) => void;
 	sortConfig: { key: keyof Doc<"inventory">; direction: "asc" | "desc" };
 	onSelectedItemChange: (item: Doc<"inventory">) => void;
+	onDetailItemChange: (item: Doc<"inventory">) => void;
 	onActionTypeChange: (
 		type:
 			| "add"
@@ -1039,6 +1481,14 @@ function InventoryTable({
 													<AlertCircle className="h-4 w-4" />
 												</button>
 												<button
+													className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+													onClick={() => onDetailItemChange(item)}
+													title="Panel Detail"
+													type="button"
+												>
+													<PanelRight className="h-4 w-4" />
+												</button>
+												<button
 													className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted"
 													onClick={() => {
 														onSelectedItemChange(item);
@@ -1074,12 +1524,16 @@ function InventoryTable({
 
 function InventoryHeader({
 	filterLowStock,
+	mode,
+	onModeChange,
 	onFilterLowStockChange,
 	searchQuery,
 	onSearchQueryChange,
 	onActionTypeChange,
 }: {
 	filterLowStock: boolean;
+	mode: "operations" | "planning";
+	onModeChange: (mode: "operations" | "planning") => void;
 	onFilterLowStockChange: (val: boolean) => void;
 	searchQuery: string;
 	onSearchQueryChange: (val: string) => void;
@@ -1098,7 +1552,33 @@ function InventoryHeader({
 }) {
 	return (
 		<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-			<h2 className="font-bold text-lg md:text-2xl">Inventaris</h2>
+			<div className="flex items-center gap-2">
+				<h2 className="font-bold text-lg md:text-2xl">Inventaris</h2>
+				<div className="inline-flex rounded-lg border border-border bg-muted/30 p-1">
+					<button
+						className={`rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
+							mode === "operations"
+								? "bg-card text-foreground shadow-sm"
+								: "text-muted-foreground hover:text-foreground"
+						}`}
+						onClick={() => onModeChange("operations")}
+						type="button"
+					>
+						Operasional
+					</button>
+					<button
+						className={`rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
+							mode === "planning"
+								? "bg-card text-foreground shadow-sm"
+								: "text-muted-foreground hover:text-foreground"
+						}`}
+						onClick={() => onModeChange("planning")}
+						type="button"
+					>
+						Planning
+					</button>
+				</div>
+			</div>
 			<div className="flex flex-wrap gap-2">
 				<button
 					className={`rounded-lg px-3 py-2 font-medium text-xs transition-colors md:text-sm ${

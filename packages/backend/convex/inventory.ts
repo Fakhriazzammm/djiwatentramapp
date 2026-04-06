@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 
@@ -114,6 +114,195 @@ export const getLowStockItems = query({
 				const rightGap = right.quantity - right.lowStockThreshold;
 				return leftGap - rightGap;
 			});
+	},
+});
+
+export const getInventoryControlTower = query({
+	args: {
+		daysWindow: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const daysWindow = Math.max(1, Math.min(90, args.daysWindow ?? 30));
+		const msPerDay = 24 * 60 * 60 * 1000;
+		const cutoff = Date.now() - daysWindow * msPerDay;
+
+		const [items, usageRows, restockRows] = await Promise.all([
+			ctx.db.query("inventory").collect(),
+			ctx.db
+				.query("inventoryTransactions")
+				.withIndex("by_type_and_timestamp", (q) =>
+					q.eq("type", "usage").gte("timestamp", cutoff)
+				)
+				.collect(),
+			ctx.db
+				.query("inventoryTransactions")
+				.withIndex("by_type_and_timestamp", (q) =>
+					q.eq("type", "restock").gte("timestamp", cutoff)
+				)
+				.collect(),
+		]);
+
+		const usageByInventoryId: Record<string, number> = {};
+		for (const row of usageRows) {
+			const key = row.inventoryId as string;
+			usageByInventoryId[key] =
+				(usageByInventoryId[key] ?? 0) + Math.abs(Number(row.quantity) || 0);
+		}
+
+		let totalStockUnits = 0;
+		let lowStockCount = 0;
+		let riskHighCount = 0;
+		let riskMediumCount = 0;
+
+		const planningRows = items
+			.map((item) => {
+				const totalUsage = usageByInventoryId[item._id as string] ?? 0;
+				const avgDailyUsage = totalUsage / daysWindow;
+				const daysUntilStockout =
+					avgDailyUsage > 0 ? item.quantity / avgDailyUsage : Number.POSITIVE_INFINITY;
+				const leadTimeDays = 3;
+				const safetyDays = 2;
+				const reorderPoint = Math.ceil(avgDailyUsage * (leadTimeDays + safetyDays));
+				const suggestedOrderQty = Math.max(
+					0,
+					Math.ceil(avgDailyUsage * 7 - item.quantity)
+				);
+
+				const riskLevel =
+					daysUntilStockout <= 3 || item.quantity <= item.lowStockThreshold
+						? "high"
+						: daysUntilStockout <= 7
+							? "medium"
+							: "low";
+
+				if (riskLevel === "high") {
+					riskHighCount += 1;
+				} else if (riskLevel === "medium") {
+					riskMediumCount += 1;
+				}
+
+				totalStockUnits += item.quantity;
+				if (item.quantity <= item.lowStockThreshold) {
+					lowStockCount += 1;
+				}
+
+				return {
+					inventoryId: item._id,
+					ingredientName: item.ingredientName,
+					currentStock: item.quantity,
+					unit: item.unit,
+					displayUnit: item.displayUnit,
+					conversionFactor: item.conversionFactor,
+					lowStockThreshold: item.lowStockThreshold,
+					avgDailyUsage: Number(avgDailyUsage.toFixed(2)),
+					daysUntilStockout:
+						daysUntilStockout === Number.POSITIVE_INFINITY
+							? null
+							: Number(daysUntilStockout.toFixed(1)),
+					reorderPoint,
+					suggestedOrderQty,
+					riskLevel,
+				};
+			})
+			.sort((left, right) => {
+				const rank = { high: 0, medium: 1, low: 2 };
+				const riskDiff = rank[left.riskLevel] - rank[right.riskLevel];
+				if (riskDiff !== 0) {
+					return riskDiff;
+				}
+				return left.currentStock - right.currentStock;
+			});
+
+		return {
+			summary: {
+				totalItems: items.length,
+				totalStockUnits,
+				lowStockCount,
+				riskHighCount,
+				riskMediumCount,
+				recentUsageTxCount: usageRows.length,
+				recentRestockTxCount: restockRows.length,
+				daysWindow,
+			},
+			planningRows,
+		};
+	},
+});
+
+export const getInventoryItemImpact = query({
+	args: {
+		inventoryId: v.id("inventory"),
+	},
+	handler: async (ctx, args) => {
+		const [item, recipes, products, baseRecipes] = await Promise.all([
+			ctx.db.get(args.inventoryId),
+			ctx.db.query("recipes").collect(),
+			ctx.db.query("products").collect(),
+			ctx.db.query("baseRecipes").collect(),
+		]);
+
+		if (!item) {
+			throw new Error("Item not found");
+		}
+
+		const impactedRecipes = recipes.filter((recipe) =>
+			recipe.ingredients.some((ingredient) => ingredient.inventoryId === args.inventoryId)
+		);
+		const productById = new Map<string, Doc<"products">>();
+		for (const product of products) {
+			productById.set(product._id as string, product);
+		}
+
+		const impactedProducts = impactedRecipes
+			.map((recipe) => {
+				const linkedProduct = productById.get(recipe.productId as string);
+				if (!linkedProduct) {
+					return null;
+				}
+				return {
+					productId: linkedProduct._id,
+					productName: linkedProduct.name,
+					variantName: recipe.variantName,
+					isAvailable: linkedProduct.isAvailable,
+				};
+			})
+			.filter((row): row is NonNullable<typeof row> => row !== null);
+
+		const consumedByBaseRecipes = baseRecipes
+			.filter((baseRecipe) =>
+				baseRecipe.ingredients.some(
+					(ingredient) => ingredient.inventoryId === args.inventoryId
+				)
+			)
+			.map((baseRecipe) => ({
+				baseRecipeId: baseRecipe._id,
+				baseRecipeName: baseRecipe.name,
+				targetQuantity: baseRecipe.targetQuantity,
+				targetUnit: baseRecipe.targetUnit,
+			}));
+
+		const producedByBaseRecipe =
+			item.baseRecipeId != null
+				? baseRecipes.find((recipe) => recipe._id === item.baseRecipeId) ?? null
+				: null;
+
+		return {
+			item: {
+				inventoryId: item._id,
+				ingredientName: item.ingredientName,
+				quantity: item.quantity,
+				unit: item.unit,
+				lowStockThreshold: item.lowStockThreshold,
+			},
+			impact: {
+				productCount: impactedProducts.length,
+				recipeCount: impactedRecipes.length,
+				consumedByBaseRecipeCount: consumedByBaseRecipes.length,
+				producedByBaseRecipeName: producedByBaseRecipe?.name ?? null,
+				impactedProducts,
+				consumedByBaseRecipes,
+			},
+		};
 	},
 });
 
