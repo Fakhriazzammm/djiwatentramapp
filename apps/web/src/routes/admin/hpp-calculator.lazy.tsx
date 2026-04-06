@@ -1497,199 +1497,213 @@ function EditorView({
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3 p-4">
-						{form.ingredients.map((ingredient, index) => (
-							<div
-								className="rounded-xl border border-slate-200 bg-slate-50 p-3"
-								key={ingredient.id}
-							>
-								<div className="mb-3 flex items-center justify-between">
-									<p className="text-sm font-semibold text-slate-700">
-										Bahan #{index + 1}
-									</p>
-									{form.ingredients.length > 1 && (
-										<button
-											className="text-sm font-semibold text-rose-600"
-											onClick={() =>
-												setForm((prev) => ({
-													...prev,
-													ingredients: prev.ingredients.filter(
-														(item) => item.id !== ingredient.id
-													),
-												}))
-											}
-											type="button"
+						<div className="overflow-x-auto rounded-lg border border-slate-200">
+							<table className="w-full min-w-[1280px] text-sm">
+								<thead className="bg-slate-50 text-[11px] uppercase tracking-[0.14em] text-slate-600">
+									<tr>
+										<th className="px-2 py-2 text-left font-semibold">#</th>
+										<th className="px-2 py-2 text-left font-semibold">Nama Bahan</th>
+										<th className="px-2 py-2 text-left font-semibold">Link Inventory</th>
+										<th className="px-2 py-2 text-left font-semibold">Preset</th>
+										<th className="px-2 py-2 text-left font-semibold">Harga</th>
+										<th className="px-2 py-2 text-left font-semibold">Qty</th>
+										<th className="px-2 py-2 text-left font-semibold">Sat Beli</th>
+										<th className="px-2 py-2 text-left font-semibold">Konversi</th>
+										<th className="px-2 py-2 text-left font-semibold">Pakai/Porsi</th>
+										<th className="px-2 py-2 text-left font-semibold">Sat Pakai</th>
+										<th className="px-2 py-2 text-left font-semibold">Biaya/Porsi</th>
+										<th className="px-2 py-2 text-left font-semibold">Aksi</th>
+									</tr>
+								</thead>
+								<tbody>
+									{form.ingredients.map((ingredient, index) => (
+										<tr
+											className="border-t border-slate-200 align-top"
+											key={ingredient.id}
 										>
-											Hapus
-										</button>
-									)}
-								</div>
-
-								<div className="grid gap-3 md:grid-cols-3">
-									<div className="space-y-2">
-										<Label>Nama Bahan</Label>
-										<Input
-											onChange={(event) =>
-												updateIngredient(
-													ingredient.id,
-													"ingredientName",
-													event.target.value
-												)
-											}
-											value={ingredient.ingredientName}
-										/>
-									</div>
-									<div className="space-y-2">
-										<Label>Link Inventory</Label>
-										<SearchableSelect
-											onValueChange={(value) => {
-												if (!value) {
-													updateIngredient(ingredient.id, "inventoryId", undefined);
-													return;
-												}
-												linkIngredientToInventory(ingredient.id, value);
-											}}
-											options={[
-												{ label: "Manual (tanpa link)", value: "" },
-												...(inventory ?? []).map((item) => ({
-													label: `${item.ingredientName} (${item.unit})`,
-													value: item._id,
-												})),
-											]}
-											placeholder="Ketik nama bahan inventory..."
-											value={ingredient.inventoryId ?? ""}
-										/>
-									</div>
-									<div className="space-y-2">
-										<Label>Preset Satuan</Label>
-										<SearchableSelect
-											onValueChange={(value) => {
-												const preset = COMMON_UNITS[Number(value)];
-												if (!preset) {
-													return;
-												}
-												updateIngredient(
-													ingredient.id,
-													"purchaseUnit",
-													preset.purchase
-												);
-												updateIngredient(ingredient.id, "usageUnit", preset.usage);
-												updateIngredient(
-													ingredient.id,
-													"conversionFactor",
-													preset.factor
-												);
-											}}
-											options={COMMON_UNITS.map((unit, indexPreset) => ({
-												label: `${unit.purchase} -> ${unit.usage}`,
-												value: String(indexPreset),
-											}))}
-											placeholder="Ketik preset satuan..."
-											value=""
-										/>
-									</div>
-								</div>
-
-								<div className="mt-3 grid gap-3 md:grid-cols-4">
-									<div className="space-y-2">
-										<Label>Harga Beli</Label>
-										<Input
-											min={0}
-											onChange={(event) =>
-												updateIngredient(
-													ingredient.id,
-													"purchasePrice",
-													Number(event.target.value) || 0
-												)
-											}
-											type="number"
-											value={ingredient.purchasePrice || ""}
-										/>
-									</div>
-									<div className="space-y-2">
-										<Label>Jumlah Beli</Label>
-										<Input
-											min={0}
-											onChange={(event) =>
-												updateIngredient(
-													ingredient.id,
-													"purchaseQuantity",
-													Number(event.target.value) || 0
-												)
-											}
-											type="number"
-											value={ingredient.purchaseQuantity || ""}
-										/>
-									</div>
-									<div className="space-y-2">
-										<Label>Satuan Beli</Label>
-										<Input
-											onChange={(event) =>
-												updateIngredient(
-													ingredient.id,
-													"purchaseUnit",
-													event.target.value
-												)
-											}
-											value={ingredient.purchaseUnit}
-										/>
-									</div>
-									<div className="space-y-2">
-										<Label>Konversi</Label>
-										<Input
-											min={1}
-											onChange={(event) =>
-												updateIngredient(
-													ingredient.id,
-													"conversionFactor",
-													Number(event.target.value) || 1
-												)
-											}
-											type="number"
-											value={ingredient.conversionFactor || ""}
-										/>
-									</div>
-								</div>
-
-								<div className="mt-3 grid gap-3 md:grid-cols-3">
-									<div className="space-y-2">
-										<Label>Pemakaian / Porsi</Label>
-										<Input
-											min={0}
-											onChange={(event) =>
-												updateIngredient(
-													ingredient.id,
-													"usagePerServing",
-													Number(event.target.value) || 0
-												)
-											}
-											type="number"
-											value={ingredient.usagePerServing || ""}
-										/>
-									</div>
-									<div className="space-y-2">
-										<Label>Satuan Pakai</Label>
-										<Input
-											onChange={(event) =>
-												updateIngredient(
-													ingredient.id,
-													"usageUnit",
-													event.target.value
-												)
-											}
-											value={ingredient.usageUnit}
-										/>
-									</div>
-									<div className="rounded-xl border border-slate-200 bg-white p-3">
-										<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-											Biaya / Porsi
-										</p>
-										<p className="mt-2 text-lg font-black text-slate-900">
-											{formatCurrency(getIngredientCostPerServing(ingredient))}
-										</p>
-									</div>
-								</div>
-							</div>
-						))}
+											<td className="px-2 py-2 text-slate-500">{index + 1}</td>
+											<td className="px-2 py-2">
+												<Input
+													className="h-8"
+													onChange={(event) =>
+														updateIngredient(
+															ingredient.id,
+															"ingredientName",
+															event.target.value
+														)
+													}
+													value={ingredient.ingredientName}
+												/>
+											</td>
+											<td className="px-2 py-2">
+												<SearchableSelect
+													onValueChange={(value) => {
+														if (!value) {
+															updateIngredient(
+																ingredient.id,
+																"inventoryId",
+																undefined
+															);
+															return;
+														}
+														linkIngredientToInventory(ingredient.id, value);
+													}}
+													options={[
+														{ label: "Manual (tanpa link)", value: "" },
+														...(inventory ?? []).map((item) => ({
+															label: `${item.ingredientName} (${item.unit})`,
+															value: item._id,
+														})),
+													]}
+													placeholder="Ketik inventory..."
+													value={ingredient.inventoryId ?? ""}
+												/>
+											</td>
+											<td className="px-2 py-2">
+												<SearchableSelect
+													onValueChange={(value) => {
+														const preset = COMMON_UNITS[Number(value)];
+														if (!preset) {
+															return;
+														}
+														updateIngredient(
+															ingredient.id,
+															"purchaseUnit",
+															preset.purchase
+														);
+														updateIngredient(
+															ingredient.id,
+															"usageUnit",
+															preset.usage
+														);
+														updateIngredient(
+															ingredient.id,
+															"conversionFactor",
+															preset.factor
+														);
+													}}
+													options={COMMON_UNITS.map((unit, indexPreset) => ({
+														label: `${unit.purchase} -> ${unit.usage}`,
+														value: String(indexPreset),
+													}))}
+													placeholder="Ketik preset..."
+													value=""
+												/>
+											</td>
+											<td className="px-2 py-2">
+												<Input
+													className="h-8"
+													min={0}
+													onChange={(event) =>
+														updateIngredient(
+															ingredient.id,
+															"purchasePrice",
+															Number(event.target.value) || 0
+														)
+													}
+													type="number"
+													value={ingredient.purchasePrice || ""}
+												/>
+											</td>
+											<td className="px-2 py-2">
+												<Input
+													className="h-8"
+													min={0}
+													onChange={(event) =>
+														updateIngredient(
+															ingredient.id,
+															"purchaseQuantity",
+															Number(event.target.value) || 0
+														)
+													}
+													type="number"
+													value={ingredient.purchaseQuantity || ""}
+												/>
+											</td>
+											<td className="px-2 py-2">
+												<Input
+													className="h-8"
+													onChange={(event) =>
+														updateIngredient(
+															ingredient.id,
+															"purchaseUnit",
+															event.target.value
+														)
+													}
+													value={ingredient.purchaseUnit}
+												/>
+											</td>
+											<td className="px-2 py-2">
+												<Input
+													className="h-8"
+													min={1}
+													onChange={(event) =>
+														updateIngredient(
+															ingredient.id,
+															"conversionFactor",
+															Number(event.target.value) || 1
+														)
+													}
+													type="number"
+													value={ingredient.conversionFactor || ""}
+												/>
+											</td>
+											<td className="px-2 py-2">
+												<Input
+													className="h-8"
+													min={0}
+													onChange={(event) =>
+														updateIngredient(
+															ingredient.id,
+															"usagePerServing",
+															Number(event.target.value) || 0
+														)
+													}
+													type="number"
+													value={ingredient.usagePerServing || ""}
+												/>
+											</td>
+											<td className="px-2 py-2">
+												<Input
+													className="h-8"
+													onChange={(event) =>
+														updateIngredient(
+															ingredient.id,
+															"usageUnit",
+															event.target.value
+														)
+													}
+													value={ingredient.usageUnit}
+												/>
+											</td>
+											<td className="px-2 py-2">
+												<div className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 font-semibold text-slate-800">
+													{formatCurrency(getIngredientCostPerServing(ingredient))}
+												</div>
+											</td>
+											<td className="px-2 py-2">
+												{form.ingredients.length > 1 && (
+													<Button
+														className="h-8 px-2"
+														onClick={() =>
+															setForm((prev) => ({
+																...prev,
+																ingredients: prev.ingredients.filter(
+																	(item) => item.id !== ingredient.id
+																),
+															}))
+														}
+														variant="outline"
+													>
+														Hapus
+													</Button>
+												)}
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
 					</CardContent>
 				</Card>
 
@@ -1715,45 +1729,72 @@ function EditorView({
 							</Button>
 						</CardTitle>
 					</CardHeader>
-					<CardContent className="space-y-2.5 p-4">
-						{form.overheadCosts.map((overhead) => (
-							<div className="grid gap-3 md:grid-cols-[1fr_180px_auto]" key={overhead.id}>
-								<Input
-									onChange={(event) =>
-										updateOverhead(overhead.id, "name", event.target.value)
-									}
-									placeholder="Cup, sedotan, gas, fee packing..."
-									value={overhead.name}
-								/>
-								<Input
-									min={0}
-									onChange={(event) =>
-										updateOverhead(
-											overhead.id,
-											"costPerServing",
-											Number(event.target.value) || 0
-										)
-									}
-									type="number"
-									value={overhead.costPerServing || ""}
-								/>
-								{form.overheadCosts.length > 1 && (
-									<Button
-										onClick={() =>
-											setForm((prev) => ({
-												...prev,
-												overheadCosts: prev.overheadCosts.filter(
-													(item) => item.id !== overhead.id
-												),
-											}))
-										}
-										variant="outline"
-									>
-										Hapus
-									</Button>
-								)}
-							</div>
-						))}
+					<CardContent className="p-4">
+						<div className="overflow-x-auto rounded-lg border border-slate-200">
+							<table className="w-full min-w-[640px] text-sm">
+								<thead className="bg-slate-50 text-[11px] uppercase tracking-[0.14em] text-slate-600">
+									<tr>
+										<th className="px-2 py-2 text-left font-semibold">#</th>
+										<th className="px-2 py-2 text-left font-semibold">Nama Biaya</th>
+										<th className="px-2 py-2 text-left font-semibold">Biaya / Porsi</th>
+										<th className="px-2 py-2 text-left font-semibold">Aksi</th>
+									</tr>
+								</thead>
+								<tbody>
+									{form.overheadCosts.map((overhead, index) => (
+										<tr
+											className="border-t border-slate-200 align-middle"
+											key={overhead.id}
+										>
+											<td className="px-2 py-2 text-slate-500">{index + 1}</td>
+											<td className="px-2 py-2">
+												<Input
+													className="h-8"
+													onChange={(event) =>
+														updateOverhead(overhead.id, "name", event.target.value)
+													}
+													placeholder="Cup, sedotan, gas, fee packing..."
+													value={overhead.name}
+												/>
+											</td>
+											<td className="px-2 py-2">
+												<Input
+													className="h-8"
+													min={0}
+													onChange={(event) =>
+														updateOverhead(
+															overhead.id,
+															"costPerServing",
+															Number(event.target.value) || 0
+														)
+													}
+													type="number"
+													value={overhead.costPerServing || ""}
+												/>
+											</td>
+											<td className="px-2 py-2">
+												{form.overheadCosts.length > 1 && (
+													<Button
+														className="h-8 px-2"
+														onClick={() =>
+															setForm((prev) => ({
+																...prev,
+																overheadCosts: prev.overheadCosts.filter(
+																	(item) => item.id !== overhead.id
+																),
+															}))
+														}
+														variant="outline"
+													>
+														Hapus
+													</Button>
+												)}
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
 					</CardContent>
 				</Card>
 			</div>
