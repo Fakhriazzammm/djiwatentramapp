@@ -22,7 +22,7 @@ import {
 	TrendingDown,
 	TrendingUp,
 } from "lucide-react";
-import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, KeyboardEvent as ReactKeyboardEvent, SetStateAction } from "react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -509,6 +509,43 @@ function HppCalculatorPage() {
 			: "skip"
 	);
 
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			const target = event.target as HTMLElement | null;
+			const isTypingElement =
+				target instanceof HTMLInputElement ||
+				target instanceof HTMLTextAreaElement ||
+				target?.isContentEditable;
+
+			if (
+				event.key === "/" &&
+				activeView === "portfolio" &&
+				!isTypingElement &&
+				!event.ctrlKey &&
+				!event.metaKey
+			) {
+				event.preventDefault();
+				const searchInput = document.querySelector<HTMLInputElement>(
+					'[data-hpp-search="true"]'
+				);
+				searchInput?.focus();
+				return;
+			}
+
+			if (
+				event.key.toLowerCase() === "s" &&
+				(event.ctrlKey || event.metaKey) &&
+				activeView === "editor"
+			) {
+				event.preventDefault();
+				void handleSave();
+			}
+		};
+
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [activeView, form, editingId]);
+
 	function openProductEditor(row: PortfolioRow) {
 		setSelectedProductId(row.product._id);
 		setSelectedDraftId(null);
@@ -778,7 +815,7 @@ function HppCalculatorPage() {
 	}
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-4 overflow-x-hidden">
 			<motion.div
 				animate={{ opacity: 1, y: 0 }}
 				className="overflow-hidden rounded-2xl border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.14),transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(20,184,166,0.12),transparent_30%),linear-gradient(135deg,#fff7ed,#f8fafc_55%,#f0fdfa)] p-4 shadow-sm"
@@ -1124,6 +1161,7 @@ function PortfolioView({
 						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 						<Input
 							className="pl-9"
+							data-hpp-search="true"
 							onChange={(event) => setSearch(event.target.value)}
 							placeholder="Cari produk atau nama costing..."
 							value={search}
@@ -1175,111 +1213,128 @@ function PortfolioView({
 				</div>
 			)}
 
-			<div className="grid gap-3 xl:grid-cols-2">
-				{workspace == null &&
-					Array.from({ length: 4 }).map((_, index) => (
-						<Card className="border-slate-200" key={index}>
-							<CardContent className="space-y-4 p-5">
-								<Skeleton className="h-5 w-32" />
-								<Skeleton className="h-4 w-full" />
-								<Skeleton className="h-20 w-full" />
-							</CardContent>
-						</Card>
-					))}
+			<Card className="hidden border-slate-200 lg:block">
+				<CardContent className="p-0">
+					<table className="w-full table-fixed text-sm">
+						<thead className="bg-slate-50 text-[11px] uppercase tracking-[0.14em] text-slate-600">
+							<tr>
+								<th className="px-3 py-2 text-left font-semibold">Produk</th>
+								<th className="px-3 py-2 text-left font-semibold">Status</th>
+								<th className="px-3 py-2 text-left font-semibold">HPP</th>
+								<th className="px-3 py-2 text-left font-semibold">Margin</th>
+								<th className="px-3 py-2 text-left font-semibold">Harga</th>
+								<th className="px-3 py-2 text-left font-semibold">Link</th>
+								<th className="px-3 py-2 text-left font-semibold">Aksi</th>
+							</tr>
+						</thead>
+						<tbody>
+							{workspace == null &&
+								Array.from({ length: 4 }).map((_, index) => (
+									<tr className="border-t border-slate-200" key={index}>
+										<td className="px-3 py-3" colSpan={7}>
+											<Skeleton className="h-5 w-full" />
+										</td>
+									</tr>
+								))}
+							{filteredPortfolio.map((row) => (
+								<tr
+									className="border-t border-slate-200 align-middle"
+									key={row.product._id}
+								>
+									<td className="px-3 py-2">
+										<p className="font-semibold text-slate-900">{row.product.name}</p>
+										<p className="text-xs text-slate-500">{row.reason}</p>
+									</td>
+									<td className="px-3 py-2">
+										<StatusPill status={row.status} />
+									</td>
+									<td className="px-3 py-2 font-semibold text-slate-900">
+										{row.metrics ? formatCurrency(row.metrics.totalHppPerServing) : "-"}
+									</td>
+									<td className="px-3 py-2 font-semibold text-slate-900">
+										{row.metrics ? `${row.metrics.marginPercent.toFixed(1)}%` : "-"}
+									</td>
+									<td className="px-3 py-2 font-semibold text-slate-900">
+										{formatCurrency(row.product.promoPrice ?? row.product.price)}
+									</td>
+									<td className="px-3 py-2 text-slate-700">
+										{row.linkedIngredientCount}/{row.ingredientCount}
+									</td>
+									<td className="px-3 py-2">
+										<div className="flex flex-wrap gap-1.5">
+											<Button
+												className="h-8 px-2 text-xs"
+												onClick={() => onOpenEditor(row)}
+												variant="outline"
+											>
+												Edit
+											</Button>
+											{row.recipe && (
+												<Button
+													className="h-8 px-2 text-xs"
+													onClick={() => onSyncRecipe(row)}
+													variant="outline"
+												>
+													<RefreshCw
+														className={`h-3.5 w-3.5 ${recipeSyncProductId === row.product._id ? "animate-spin" : ""}`}
+													/>
+													Sync Recipe
+												</Button>
+											)}
+											{row.calculation && (
+												<Button
+													className="h-8 px-2 text-xs"
+													onClick={() => onSyncPrices(row.calculation!._id)}
+													variant="outline"
+												>
+													<Database
+														className={`h-3.5 w-3.5 ${syncingId === row.calculation._id ? "animate-pulse" : ""}`}
+													/>
+													Sync Harga
+												</Button>
+											)}
+										</div>
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</CardContent>
+			</Card>
 
+			<div className="grid gap-3 lg:hidden">
 				{filteredPortfolio.map((row) => (
 					<Card className="border-slate-200 shadow-sm" key={row.product._id}>
-						<CardContent className="flex h-full flex-col gap-3 p-4">
-							<div className="flex items-start justify-between gap-4">
-								<div>
-									<div className="flex flex-wrap items-center gap-2">
-										<h3 className="text-lg font-black tracking-tight text-slate-900">
-											{row.product.name}
-										</h3>
-										<StatusPill status={row.status} />
-									</div>
-									<p className="mt-2 text-sm leading-6 text-slate-600">
-										{row.reason}
-									</p>
-								</div>
-								<button
-									className="rounded-xl border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
-									onClick={() => onOpenEditor(row)}
-									type="button"
-								>
-									<ChevronRight className="h-4 w-4" />
-								</button>
+						<CardContent className="space-y-3 p-3">
+							<div className="flex items-center justify-between gap-2">
+								<h3 className="text-sm font-bold text-slate-900">{row.product.name}</h3>
+								<StatusPill status={row.status} />
 							</div>
-
-							<div className="grid grid-cols-2 gap-2">
-								<div className="rounded-xl bg-slate-50 p-2.5">
-									<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-										HPP / Porsi
-									</p>
-									<p className="mt-2 text-lg font-black text-slate-900">
-										{row.metrics
-											? formatCurrency(row.metrics.totalHppPerServing)
-											: "Belum ada"}
-									</p>
+							<div className="grid grid-cols-2 gap-2 text-xs">
+								<div className="rounded-lg bg-slate-50 p-2">
+									HPP:{" "}
+									<span className="font-semibold">
+										{row.metrics ? formatCurrency(row.metrics.totalHppPerServing) : "-"}
+									</span>
 								</div>
-								<div className="rounded-xl bg-slate-50 p-2.5">
-									<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-										Margin
-									</p>
-									<p className="mt-2 text-lg font-black text-slate-900">
+								<div className="rounded-lg bg-slate-50 p-2">
+									Margin:{" "}
+									<span className="font-semibold">
 										{row.metrics ? `${row.metrics.marginPercent.toFixed(1)}%` : "-"}
-									</p>
-								</div>
-							</div>
-
-							<div className="grid gap-1.5 text-sm text-slate-600">
-								<div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
-									<span>Harga jual aktif</span>
-									<span className="font-semibold text-slate-900">
-										{formatCurrency(row.product.promoPrice ?? row.product.price)}
-									</span>
-								</div>
-								<div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
-									<span>Koneksi bahan ke inventory</span>
-									<span className="font-semibold text-slate-900">
-										{row.linkedIngredientCount}/{row.ingredientCount}
-									</span>
-								</div>
-								<div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
-									<span>Recipe & sync flags</span>
-									<span className="font-semibold text-slate-900">
-										{row.recipe ? "Recipe siap" : "Belum ada recipe"}
-										{row.outdatedIngredientCount > 0 &&
-											` | ${row.outdatedIngredientCount} berubah`}
 									</span>
 								</div>
 							</div>
-
-							<div className="mt-auto flex flex-wrap gap-2">
-								<Button onClick={() => onOpenEditor(row)} variant="outline">
-									<FilePenLine className="h-4 w-4" />
-									Edit Workspace
+							<div className="flex flex-wrap gap-2">
+								<Button className="h-8 px-2 text-xs" onClick={() => onOpenEditor(row)}>
+									Edit
 								</Button>
 								{row.recipe && (
 									<Button
+										className="h-8 px-2 text-xs"
 										onClick={() => onSyncRecipe(row)}
 										variant="outline"
 									>
-										<RefreshCw
-											className={`h-4 w-4 ${recipeSyncProductId === row.product._id ? "animate-spin" : ""}`}
-										/>
 										Sync Recipe
-									</Button>
-								)}
-								{row.calculation && (
-									<Button
-										onClick={() => onSyncPrices(row.calculation!._id)}
-										variant="outline"
-									>
-										<Database
-											className={`h-4 w-4 ${syncingId === row.calculation._id ? "animate-pulse" : ""}`}
-										/>
-										Sync Harga
 									</Button>
 								)}
 							</div>
@@ -1386,15 +1441,128 @@ function EditorView({
 	) => void;
 	linkIngredientToInventory: (ingredientId: string, inventoryItemId: string) => void;
 }) {
+	const [quickMode, setQuickMode] = useState(false);
 	const recommendedPrice = currentMetrics.totalHppPerServing
 		? Math.ceil(
 				(currentMetrics.totalHppPerServing / (1 - 0.3)) / 100
 			) * 100
 		: 0;
 
+	const ingredientValidation = useMemo(
+		() =>
+			form.ingredients.map((ingredient) => ({
+				name: ingredient.ingredientName.trim().length > 0,
+				price: ingredient.purchasePrice > 0,
+				quantity: ingredient.purchaseQuantity > 0,
+				conversion: ingredient.conversionFactor > 0,
+				usage: ingredient.usagePerServing > 0,
+			})),
+		[form.ingredients]
+	);
+
+	const hasValidationIssue = ingredientValidation.some(
+		(item) =>
+			!item.name || !item.price || !item.quantity || !item.conversion || !item.usage
+	);
+
+	function appendIngredient() {
+		setForm((prev) => {
+			const last = prev.ingredients[prev.ingredients.length - 1];
+			const next = createEmptyIngredient();
+			if (last) {
+				next.purchaseUnit = last.purchaseUnit;
+				next.usageUnit = last.usageUnit;
+				next.conversionFactor = last.conversionFactor;
+				next.purchaseQuantity = last.purchaseQuantity || 1;
+			}
+			return {
+				...prev,
+				ingredients: [...prev.ingredients, next],
+			};
+		});
+	}
+
+	function focusGridCell(
+		row: number,
+		col: number,
+		type: "ingredient" | "overhead"
+	) {
+		const next = document.querySelector<HTMLInputElement>(
+			`[data-grid="${type}"][data-row="${row}"][data-col="${col}"]`
+		);
+		next?.focus();
+		next?.select();
+	}
+
+	function onGridCellKeyDown(
+		event: ReactKeyboardEvent<HTMLInputElement>,
+		row: number,
+		col: number,
+		maxCol: number,
+		type: "ingredient" | "overhead"
+	) {
+		if (event.key !== "Enter") {
+			return;
+		}
+
+		event.preventDefault();
+		if (event.ctrlKey && type === "ingredient") {
+			appendIngredient();
+			setTimeout(() => focusGridCell(row + 1, 0, "ingredient"), 0);
+			return;
+		}
+
+		if (event.shiftKey) {
+			focusGridCell(row, Math.max(0, col - 1), type);
+			return;
+		}
+
+		focusGridCell(row, Math.min(maxCol, col + 1), type);
+	}
+
 	return (
-		<div className="grid gap-4 lg:grid-cols-[1.25fr_360px]">
+		<div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_340px]">
 			<div className="space-y-4">
+				<div className="sticky top-2 z-10 rounded-xl border border-slate-200 bg-white/95 p-2 shadow-sm backdrop-blur">
+					<div className="flex flex-wrap items-center justify-between gap-2">
+						<div className="flex items-center gap-2">
+							<Button className="h-8" disabled={saving} onClick={onSave}>
+								{saving ? (
+									<RefreshCw className="h-4 w-4 animate-spin" />
+								) : (
+									<CheckCircle2 className="h-4 w-4" />
+								)}
+								Simpan
+							</Button>
+							<Button className="h-8" onClick={onReset} variant="outline">
+								Reset
+							</Button>
+							{editingId && (
+								<Button className="h-8" onClick={onSyncPrices} variant="outline">
+									<Database
+										className={`h-4 w-4 ${syncingId === editingId ? "animate-pulse" : ""}`}
+									/>
+									Sync Harga
+								</Button>
+							)}
+						</div>
+						<div className="flex items-center gap-2">
+							<Button
+								className="h-8"
+								onClick={() => setQuickMode((prev) => !prev)}
+								variant={quickMode ? "default" : "outline"}
+							>
+								{quickMode ? "Mode Cepat: ON" : "Mode Cepat"}
+							</Button>
+							<p className="hidden text-xs text-slate-500 sm:block">
+								Shortcut: <span className="font-semibold">Ctrl+S</span>,{" "}
+								<span className="font-semibold">Enter</span>,{" "}
+								<span className="font-semibold">Ctrl+Enter</span>
+							</p>
+						</div>
+					</div>
+				</div>
+
 				<Card className="border-slate-200">
 					<CardHeader className="border-b border-slate-200">
 						<CardTitle className="flex flex-wrap items-center justify-between gap-3">
@@ -1443,19 +1611,25 @@ function EditorView({
 						</div>
 
 						<div className="grid gap-4 md:grid-cols-[1fr_200px]">
-							<div className="space-y-2">
-								<Label>Deskripsi</Label>
-								<Textarea
-									onChange={(event) =>
-										setForm((prev) => ({
-											...prev,
-											description: event.target.value,
-										}))
-									}
-									placeholder="Catatan batch, asumsi waste, atau konteks costing..."
-									value={form.description}
-								/>
-							</div>
+							{!quickMode ? (
+								<div className="space-y-2">
+									<Label>Deskripsi</Label>
+									<Textarea
+										onChange={(event) =>
+											setForm((prev) => ({
+												...prev,
+												description: event.target.value,
+											}))
+										}
+										placeholder="Catatan batch, asumsi waste, atau konteks costing..."
+										value={form.description}
+									/>
+								</div>
+							) : (
+								<div className="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500">
+									Mode cepat aktif: deskripsi disembunyikan agar fokus input kolom.
+								</div>
+							)}
 							<div className="space-y-2">
 								<Label>Porsi per Batch</Label>
 								<Input
@@ -1477,17 +1651,17 @@ function EditorView({
 				<Card className="border-slate-200">
 					<CardHeader className="border-b border-slate-200">
 						<CardTitle className="flex items-center justify-between gap-3">
-							<span className="flex items-center gap-2">
+							<div className="flex items-center gap-2">
 								<Package className="h-4 w-4 text-orange-600" />
-								Bahan Baku
-							</span>
+								<span>Bahan Baku</span>
+								{hasValidationIssue && (
+									<span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+										Ada data belum valid
+									</span>
+								)}
+							</div>
 							<Button
-								onClick={() =>
-									setForm((prev) => ({
-										...prev,
-										ingredients: [...prev.ingredients, createEmptyIngredient()],
-									}))
-								}
+								onClick={appendIngredient}
 								size="sm"
 								variant="outline"
 							>
@@ -1497,212 +1671,337 @@ function EditorView({
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3 p-4">
-						<div className="overflow-x-auto rounded-lg border border-slate-200">
-							<table className="w-full min-w-[1280px] text-sm">
-								<thead className="bg-slate-50 text-[11px] uppercase tracking-[0.14em] text-slate-600">
+						<div className="hidden rounded-lg border border-slate-200 xl:block">
+							<table className="w-full table-fixed text-xs">
+								<thead className="bg-slate-50 uppercase tracking-[0.12em] text-slate-600">
 									<tr>
-										<th className="px-2 py-2 text-left font-semibold">#</th>
-										<th className="px-2 py-2 text-left font-semibold">Nama Bahan</th>
-										<th className="px-2 py-2 text-left font-semibold">Link Inventory</th>
-										<th className="px-2 py-2 text-left font-semibold">Preset</th>
-										<th className="px-2 py-2 text-left font-semibold">Harga</th>
-										<th className="px-2 py-2 text-left font-semibold">Qty</th>
-										<th className="px-2 py-2 text-left font-semibold">Sat Beli</th>
-										<th className="px-2 py-2 text-left font-semibold">Konversi</th>
-										<th className="px-2 py-2 text-left font-semibold">Pakai/Porsi</th>
-										<th className="px-2 py-2 text-left font-semibold">Sat Pakai</th>
-										<th className="px-2 py-2 text-left font-semibold">Biaya/Porsi</th>
-										<th className="px-2 py-2 text-left font-semibold">Aksi</th>
+										<th className="w-10 px-1 py-2 text-left font-semibold">#</th>
+										<th className="sticky left-0 z-[2] w-40 bg-slate-50 px-1 py-2 text-left font-semibold">
+											Nama Bahan
+										</th>
+										<th className="sticky left-40 z-[2] w-40 bg-slate-50 px-1 py-2 text-left font-semibold">
+											Link Inventory
+										</th>
+										<th className="w-28 px-1 py-2 text-left font-semibold">Preset</th>
+										<th className="w-24 px-1 py-2 text-left font-semibold">Harga</th>
+										<th className="w-20 px-1 py-2 text-left font-semibold">Qty</th>
+										<th className="w-20 px-1 py-2 text-left font-semibold">Sat Beli</th>
+										<th className="w-20 px-1 py-2 text-left font-semibold">Konversi</th>
+										<th className="w-24 px-1 py-2 text-left font-semibold">Pakai</th>
+										<th className="w-20 px-1 py-2 text-left font-semibold">Sat Pakai</th>
+										<th className="w-24 px-1 py-2 text-left font-semibold">Biaya</th>
+										<th className="w-16 px-1 py-2 text-left font-semibold">Aksi</th>
 									</tr>
 								</thead>
 								<tbody>
-									{form.ingredients.map((ingredient, index) => (
-										<tr
-											className="border-t border-slate-200 align-top"
-											key={ingredient.id}
-										>
-											<td className="px-2 py-2 text-slate-500">{index + 1}</td>
-											<td className="px-2 py-2">
-												<Input
-													className="h-8"
-													onChange={(event) =>
-														updateIngredient(
-															ingredient.id,
-															"ingredientName",
-															event.target.value
-														)
-													}
-													value={ingredient.ingredientName}
-												/>
-											</td>
-											<td className="px-2 py-2">
-												<SearchableSelect
-													onValueChange={(value) => {
-														if (!value) {
+									{form.ingredients.map((ingredient, index) => {
+										const validation = ingredientValidation[index];
+										return (
+											<tr className="border-t border-slate-200 align-top" key={ingredient.id}>
+												<td className="px-1 py-1.5 text-slate-500">{index + 1}</td>
+												<td className="sticky left-0 z-[1] bg-white px-1 py-1.5">
+													<Input
+														className={`h-8 ${!validation.name ? "border-rose-300 focus-visible:ring-rose-300" : ""}`}
+														data-col={0}
+														data-grid="ingredient"
+														data-row={index}
+														onChange={(event) =>
 															updateIngredient(
 																ingredient.id,
-																"inventoryId",
-																undefined
+																"ingredientName",
+																event.target.value
+															)
+														}
+														onKeyDown={(event) =>
+															onGridCellKeyDown(event, index, 0, 7, "ingredient")
+														}
+														value={ingredient.ingredientName}
+													/>
+												</td>
+												<td className="sticky left-40 z-[1] bg-white px-1 py-1.5">
+													<SearchableSelect
+														onValueChange={(value) => {
+															if (!value) {
+																updateIngredient(
+																	ingredient.id,
+																	"inventoryId",
+																	undefined
+																);
+																return;
+															}
+															linkIngredientToInventory(ingredient.id, value);
+														}}
+														options={[
+															{ label: "Manual (tanpa link)", value: "" },
+															...(inventory ?? []).map((item) => ({
+																label: `${item.ingredientName} (${item.unit})`,
+																value: item._id,
+															})),
+														]}
+														placeholder="Ketik..."
+														value={ingredient.inventoryId ?? ""}
+													/>
+												</td>
+												<td className="px-1 py-1.5">
+													<SearchableSelect
+														onValueChange={(value) => {
+															const preset = COMMON_UNITS[Number(value)];
+															if (!preset) {
+																return;
+															}
+															updateIngredient(
+																ingredient.id,
+																"purchaseUnit",
+																preset.purchase
 															);
-															return;
+															updateIngredient(ingredient.id, "usageUnit", preset.usage);
+															updateIngredient(
+																ingredient.id,
+																"conversionFactor",
+																preset.factor
+															);
+														}}
+														options={COMMON_UNITS.map((unit, indexPreset) => ({
+															label: `${unit.purchase} -> ${unit.usage}`,
+															value: String(indexPreset),
+														}))}
+														placeholder="Preset"
+														value=""
+													/>
+												</td>
+												<td className="px-1 py-1.5">
+													<Input
+														className={`h-8 ${!validation.price ? "border-rose-300 focus-visible:ring-rose-300" : ""}`}
+														data-col={1}
+														data-grid="ingredient"
+														data-row={index}
+														min={0}
+														onChange={(event) =>
+															updateIngredient(
+																ingredient.id,
+																"purchasePrice",
+																Number(event.target.value) || 0
+															)
 														}
-														linkIngredientToInventory(ingredient.id, value);
-													}}
-													options={[
-														{ label: "Manual (tanpa link)", value: "" },
-														...(inventory ?? []).map((item) => ({
-															label: `${item.ingredientName} (${item.unit})`,
-															value: item._id,
-														})),
-													]}
-													placeholder="Ketik inventory..."
-													value={ingredient.inventoryId ?? ""}
-												/>
-											</td>
-											<td className="px-2 py-2">
-												<SearchableSelect
-													onValueChange={(value) => {
-														const preset = COMMON_UNITS[Number(value)];
-														if (!preset) {
-															return;
+														onKeyDown={(event) =>
+															onGridCellKeyDown(event, index, 1, 7, "ingredient")
 														}
-														updateIngredient(
-															ingredient.id,
-															"purchaseUnit",
-															preset.purchase
-														);
-														updateIngredient(
-															ingredient.id,
-															"usageUnit",
-															preset.usage
-														);
-														updateIngredient(
-															ingredient.id,
-															"conversionFactor",
-															preset.factor
-														);
-													}}
-													options={COMMON_UNITS.map((unit, indexPreset) => ({
-														label: `${unit.purchase} -> ${unit.usage}`,
-														value: String(indexPreset),
-													}))}
-													placeholder="Ketik preset..."
-													value=""
-												/>
-											</td>
-											<td className="px-2 py-2">
-												<Input
-													className="h-8"
-													min={0}
-													onChange={(event) =>
-														updateIngredient(
-															ingredient.id,
-															"purchasePrice",
-															Number(event.target.value) || 0
-														)
-													}
-													type="number"
-													value={ingredient.purchasePrice || ""}
-												/>
-											</td>
-											<td className="px-2 py-2">
-												<Input
-													className="h-8"
-													min={0}
-													onChange={(event) =>
-														updateIngredient(
-															ingredient.id,
-															"purchaseQuantity",
-															Number(event.target.value) || 0
-														)
-													}
-													type="number"
-													value={ingredient.purchaseQuantity || ""}
-												/>
-											</td>
-											<td className="px-2 py-2">
-												<Input
-													className="h-8"
-													onChange={(event) =>
-														updateIngredient(
-															ingredient.id,
-															"purchaseUnit",
-															event.target.value
-														)
-													}
-													value={ingredient.purchaseUnit}
-												/>
-											</td>
-											<td className="px-2 py-2">
-												<Input
-													className="h-8"
-													min={1}
-													onChange={(event) =>
-														updateIngredient(
-															ingredient.id,
-															"conversionFactor",
-															Number(event.target.value) || 1
-														)
-													}
-													type="number"
-													value={ingredient.conversionFactor || ""}
-												/>
-											</td>
-											<td className="px-2 py-2">
-												<Input
-													className="h-8"
-													min={0}
-													onChange={(event) =>
-														updateIngredient(
-															ingredient.id,
-															"usagePerServing",
-															Number(event.target.value) || 0
-														)
-													}
-													type="number"
-													value={ingredient.usagePerServing || ""}
-												/>
-											</td>
-											<td className="px-2 py-2">
-												<Input
-													className="h-8"
-													onChange={(event) =>
-														updateIngredient(
-															ingredient.id,
-															"usageUnit",
-															event.target.value
-														)
-													}
-													value={ingredient.usageUnit}
-												/>
-											</td>
-											<td className="px-2 py-2">
-												<div className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 font-semibold text-slate-800">
-													{formatCurrency(getIngredientCostPerServing(ingredient))}
-												</div>
-											</td>
-											<td className="px-2 py-2">
-												{form.ingredients.length > 1 && (
-													<Button
-														className="h-8 px-2"
-														onClick={() =>
-															setForm((prev) => ({
-																...prev,
-																ingredients: prev.ingredients.filter(
-																	(item) => item.id !== ingredient.id
-																),
-															}))
+														type="number"
+														value={ingredient.purchasePrice || ""}
+													/>
+												</td>
+												<td className="px-1 py-1.5">
+													<Input
+														className={`h-8 ${!validation.quantity ? "border-rose-300 focus-visible:ring-rose-300" : ""}`}
+														data-col={2}
+														data-grid="ingredient"
+														data-row={index}
+														min={0}
+														onChange={(event) =>
+															updateIngredient(
+																ingredient.id,
+																"purchaseQuantity",
+																Number(event.target.value) || 0
+															)
 														}
-														variant="outline"
-													>
-														Hapus
-													</Button>
-												)}
-											</td>
-										</tr>
-									))}
+														onKeyDown={(event) =>
+															onGridCellKeyDown(event, index, 2, 7, "ingredient")
+														}
+														type="number"
+														value={ingredient.purchaseQuantity || ""}
+													/>
+												</td>
+												<td className="px-1 py-1.5">
+													<Input
+														className="h-8"
+														data-col={3}
+														data-grid="ingredient"
+														data-row={index}
+														onChange={(event) =>
+															updateIngredient(
+																ingredient.id,
+																"purchaseUnit",
+																event.target.value
+															)
+														}
+														onKeyDown={(event) =>
+															onGridCellKeyDown(event, index, 3, 7, "ingredient")
+														}
+														value={ingredient.purchaseUnit}
+													/>
+												</td>
+												<td className="px-1 py-1.5">
+													<Input
+														className={`h-8 ${!validation.conversion ? "border-rose-300 focus-visible:ring-rose-300" : ""}`}
+														data-col={4}
+														data-grid="ingredient"
+														data-row={index}
+														min={1}
+														onChange={(event) =>
+															updateIngredient(
+																ingredient.id,
+																"conversionFactor",
+																Number(event.target.value) || 1
+															)
+														}
+														onKeyDown={(event) =>
+															onGridCellKeyDown(event, index, 4, 7, "ingredient")
+														}
+														type="number"
+														value={ingredient.conversionFactor || ""}
+													/>
+												</td>
+												<td className="px-1 py-1.5">
+													<Input
+														className={`h-8 ${!validation.usage ? "border-rose-300 focus-visible:ring-rose-300" : ""}`}
+														data-col={5}
+														data-grid="ingredient"
+														data-row={index}
+														min={0}
+														onChange={(event) =>
+															updateIngredient(
+																ingredient.id,
+																"usagePerServing",
+																Number(event.target.value) || 0
+															)
+														}
+														onKeyDown={(event) =>
+															onGridCellKeyDown(event, index, 5, 7, "ingredient")
+														}
+														type="number"
+														value={ingredient.usagePerServing || ""}
+													/>
+												</td>
+												<td className="px-1 py-1.5">
+													<Input
+														className="h-8"
+														data-col={6}
+														data-grid="ingredient"
+														data-row={index}
+														onChange={(event) =>
+															updateIngredient(
+																ingredient.id,
+																"usageUnit",
+																event.target.value
+															)
+														}
+														onKeyDown={(event) =>
+															onGridCellKeyDown(event, index, 6, 7, "ingredient")
+														}
+														value={ingredient.usageUnit}
+													/>
+												</td>
+												<td className="px-1 py-1.5">
+													<div className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] font-semibold text-slate-800">
+														{formatCurrency(getIngredientCostPerServing(ingredient))}
+													</div>
+												</td>
+												<td className="px-1 py-1.5">
+													{form.ingredients.length > 1 && (
+														<Button
+															className="h-8 px-2 text-xs"
+															onClick={() =>
+																setForm((prev) => ({
+																	...prev,
+																	ingredients: prev.ingredients.filter(
+																		(item) => item.id !== ingredient.id
+																	),
+																}))
+															}
+															variant="outline"
+														>
+															Hapus
+														</Button>
+													)}
+												</td>
+											</tr>
+										);
+									})}
 								</tbody>
 							</table>
+						</div>
+
+						<div className="space-y-2 xl:hidden">
+							{form.ingredients.map((ingredient, index) => {
+								const validation = ingredientValidation[index];
+								return (
+									<div className="rounded-lg border border-slate-200 p-2" key={ingredient.id}>
+										<div className="mb-2 flex items-center justify-between">
+											<p className="text-xs font-semibold text-slate-700">
+												Bahan #{index + 1}
+											</p>
+											{form.ingredients.length > 1 && (
+												<Button
+													className="h-7 px-2 text-xs"
+													onClick={() =>
+														setForm((prev) => ({
+															...prev,
+															ingredients: prev.ingredients.filter(
+																(item) => item.id !== ingredient.id
+															),
+														}))
+													}
+													variant="outline"
+												>
+													Hapus
+												</Button>
+											)}
+										</div>
+										<div className="grid grid-cols-2 gap-2">
+											<Input
+												className={`h-8 ${!validation.name ? "border-rose-300" : ""}`}
+												onChange={(event) =>
+													updateIngredient(ingredient.id, "ingredientName", event.target.value)
+												}
+												placeholder="Nama bahan"
+												value={ingredient.ingredientName}
+											/>
+											<Input
+												className={`h-8 ${!validation.price ? "border-rose-300" : ""}`}
+												min={0}
+												onChange={(event) =>
+													updateIngredient(
+														ingredient.id,
+														"purchasePrice",
+														Number(event.target.value) || 0
+													)
+												}
+												placeholder="Harga"
+												type="number"
+												value={ingredient.purchasePrice || ""}
+											/>
+											<Input
+												className={`h-8 ${!validation.quantity ? "border-rose-300" : ""}`}
+												min={0}
+												onChange={(event) =>
+													updateIngredient(
+														ingredient.id,
+														"purchaseQuantity",
+														Number(event.target.value) || 0
+													)
+												}
+												placeholder="Qty"
+												type="number"
+												value={ingredient.purchaseQuantity || ""}
+											/>
+											<Input
+												className={`h-8 ${!validation.usage ? "border-rose-300" : ""}`}
+												min={0}
+												onChange={(event) =>
+													updateIngredient(
+														ingredient.id,
+														"usagePerServing",
+														Number(event.target.value) || 0
+													)
+												}
+												placeholder="Pakai/porsi"
+												type="number"
+												value={ingredient.usagePerServing || ""}
+											/>
+										</div>
+									</div>
+								);
+							})}
 						</div>
 					</CardContent>
 				</Card>
@@ -1730,8 +2029,8 @@ function EditorView({
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="p-4">
-						<div className="overflow-x-auto rounded-lg border border-slate-200">
-							<table className="w-full min-w-[640px] text-sm">
+						<div className="rounded-lg border border-slate-200">
+							<table className="w-full table-fixed text-sm">
 								<thead className="bg-slate-50 text-[11px] uppercase tracking-[0.14em] text-slate-600">
 									<tr>
 										<th className="px-2 py-2 text-left font-semibold">#</th>
@@ -1750,8 +2049,14 @@ function EditorView({
 											<td className="px-2 py-2">
 												<Input
 													className="h-8"
+													data-col={0}
+													data-grid="overhead"
+													data-row={index}
 													onChange={(event) =>
 														updateOverhead(overhead.id, "name", event.target.value)
+													}
+													onKeyDown={(event) =>
+														onGridCellKeyDown(event, index, 0, 1, "overhead")
 													}
 													placeholder="Cup, sedotan, gas, fee packing..."
 													value={overhead.name}
@@ -1760,6 +2065,9 @@ function EditorView({
 											<td className="px-2 py-2">
 												<Input
 													className="h-8"
+													data-col={1}
+													data-grid="overhead"
+													data-row={index}
 													min={0}
 													onChange={(event) =>
 														updateOverhead(
@@ -1767,6 +2075,9 @@ function EditorView({
 															"costPerServing",
 															Number(event.target.value) || 0
 														)
+													}
+													onKeyDown={(event) =>
+														onGridCellKeyDown(event, index, 1, 1, "overhead")
 													}
 													type="number"
 													value={overhead.costPerServing || ""}
@@ -1799,9 +2110,9 @@ function EditorView({
 				</Card>
 			</div>
 
-			<div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+			<div className="space-y-3 lg:sticky lg:top-4 lg:self-start">
 				<Card className="border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-orange-950 text-white">
-					<CardContent className="space-y-4 p-4">
+					<CardContent className="space-y-3 p-3">
 						<div>
 							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-orange-300">
 								Cost Health
@@ -1815,10 +2126,12 @@ function EditorView({
 									<StatusPill status="draft" />
 								)}
 							</div>
-							<p className="mt-3 text-sm leading-6 text-slate-300">
-								{selectedProductRow?.reason ??
-									"Draft manual ini belum terhubung ke produk tertentu."}
-							</p>
+							{!quickMode && (
+								<p className="mt-2 text-xs leading-5 text-slate-300">
+									{selectedProductRow?.reason ??
+										"Draft manual ini belum terhubung ke produk tertentu."}
+								</p>
+							)}
 						</div>
 
 						<div className="grid grid-cols-2 gap-3">
@@ -1840,7 +2153,7 @@ function EditorView({
 							/>
 						</div>
 
-						<div className="rounded-xl border border-white/10 bg-white/5 p-3.5">
+						<div className="rounded-xl border border-white/10 bg-white/5 p-3">
 							<div className="flex items-center justify-between gap-3">
 								<div>
 									<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-300">
@@ -1852,28 +2165,13 @@ function EditorView({
 								</div>
 								<Target className="h-5 w-5 text-orange-300" />
 							</div>
-							<p className="mt-2 text-sm text-slate-300">
+							<p className="mt-1 text-xs text-slate-300">
 								Dihitung untuk target margin 30%. Cocok dipakai sebagai baseline
 								di halaman produk.
 							</p>
 						</div>
 
 						<div className="grid gap-2">
-							<Button disabled={saving} onClick={onSave}>
-								{saving ? (
-									<RefreshCw className="h-4 w-4 animate-spin" />
-								) : (
-									<CheckCircle2 className="h-4 w-4" />
-								)}
-								Simpan Workspace
-							</Button>
-							<Button
-								className="border-white/15 bg-white/10 text-white hover:bg-white/15 hover:text-white"
-								onClick={onReset}
-								variant="outline"
-							>
-								Refresh Form
-							</Button>
 							{editingId && (
 								<Button
 									className="border-cyan-400/30 bg-cyan-400/10 text-cyan-50 hover:bg-cyan-400/20 hover:text-white"
