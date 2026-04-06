@@ -778,8 +778,7 @@ function HppCalculatorPage() {
 			return;
 		}
 
-		const latestCost =
-			inventoryCosts?.[inventoryItemId]?.latestCostPerUnit ?? 0;
+		const latestCost = inventoryCosts?.[inventoryItemId]?.latestCostPerUnit ?? 0;
 		const conversionFactor = inventoryItem.conversionFactor ?? 1;
 
 		setForm((prev) => ({
@@ -790,11 +789,17 @@ function HppCalculatorPage() {
 							...ingredient,
 							inventoryId: inventoryItem._id,
 							ingredientName: inventoryItem.ingredientName,
-							purchasePrice: latestCost * conversionFactor,
-							purchaseQuantity: 1,
+							purchasePrice:
+								latestCost > 0
+									? latestCost * conversionFactor
+									: (inventoryItem.lastPurchasePrice ?? ingredient.purchasePrice),
+							purchaseQuantity:
+								ingredient.purchaseQuantity > 0 ? ingredient.purchaseQuantity : 1,
 							purchaseUnit: inventoryItem.displayUnit ?? inventoryItem.unit,
 							usageUnit: inventoryItem.unit,
 							conversionFactor,
+							usagePerServing:
+								ingredient.usagePerServing > 0 ? ingredient.usagePerServing : 1,
 						}
 					: ingredient
 			),
@@ -1472,9 +1477,19 @@ function EditorView({
 			updateIngredient(ingredientId, "inventoryId", undefined);
 			return;
 		}
-		const matched = inventory?.find(
-			(item) => item.ingredientName.toLowerCase() === trimmed
-		);
+		const normalize = (value: string) => value.toLowerCase().trim();
+		const matched =
+			inventory?.find((item) => normalize(item.ingredientName) === trimmed) ??
+			inventory?.find((item) =>
+				(item.aliases ?? []).some((alias) => normalize(alias) === trimmed)
+			) ??
+			inventory?.find(
+				(item) =>
+					normalize(item.ingredientName).includes(trimmed) ||
+					(item.aliases ?? []).some((alias) =>
+						normalize(alias).includes(trimmed)
+					)
+			);
 		if (matched) {
 			linkIngredientToInventory(ingredientId, matched._id);
 		}
