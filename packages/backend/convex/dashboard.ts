@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
 import { api } from "./_generated/api";
+import type { Doc } from "./_generated/dataModel";
 import {
 	getBookingFinancialSnapshot,
 	getOrderFinancialSnapshot,
@@ -283,7 +284,7 @@ export const getDashboardStats = query({
 			activeProducts,
 			totalProducts: allProducts.length,
 			lowStockCount: lowStockItems.length,
-			lowStockItems: lowStockItems.slice(0, 10).map((i) => ({
+			lowStockItems: lowStockItems.slice(0, 10).map((i: Doc<"inventory">) => ({
 				_id: i._id,
 				ingredientName: i.ingredientName ?? "Unknown",
 				quantity: i.quantity ?? 0,

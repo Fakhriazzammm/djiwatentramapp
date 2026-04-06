@@ -168,7 +168,7 @@ export const getInventoryControlTower = query({
 					Math.ceil(avgDailyUsage * 7 - item.quantity)
 				);
 
-				const riskLevel =
+				const riskLevel: "high" | "medium" | "low" =
 					daysUntilStockout <= 3 || item.quantity <= item.lowStockThreshold
 						? "high"
 						: daysUntilStockout <= 7
@@ -205,7 +205,11 @@ export const getInventoryControlTower = query({
 				};
 			})
 			.sort((left, right) => {
-				const rank = { high: 0, medium: 1, low: 2 };
+				const rank: Record<"high" | "medium" | "low", number> = {
+					high: 0,
+					medium: 1,
+					low: 2,
+				};
 				const riskDiff = rank[left.riskLevel] - rank[right.riskLevel];
 				if (riskDiff !== 0) {
 					return riskDiff;
