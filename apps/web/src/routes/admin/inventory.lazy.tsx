@@ -34,12 +34,10 @@ export const Route = createLazyFileRoute("/admin/inventory")({
 
 function InventoryPage() {
 	const inventory = useQuery(api.inventory.getInventory);
-	const addStock = useMutation(api.inventory.addStock);
-	const usageStock = useMutation(api.inventory.usageStock);
+	const applyStockAction = useMutation(api.inventory.applyInventoryStockAction);
 	const createItem = useMutation(api.inventory.createInventoryItem);
 	const updateItem = useMutation(api.inventory.updateInventoryItem);
 	const deleteItem = useMutation(api.inventory.deleteInventoryItem);
-	const adjustStock = useMutation(api.inventory.adjustStock);
 
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedItem, setSelectedItem] = useState<Doc<"inventory"> | null>(
@@ -146,24 +144,31 @@ function InventoryPage() {
 		type: "add" | "usage" | "adjust"
 	) => {
 		const numAmount = Number(amount);
-		const args = {
+		const baseArgs = {
 			inventoryId: selected._id,
 			quantity: numAmount,
 			notes,
 		};
 
 		if (type === "add") {
-			await addStock({
-				...args,
+			await applyStockAction({
+				...baseArgs,
+				action: "add",
 				costPerUnit: costPerUnit ? Number(costPerUnit) : undefined,
 				timestamp: entryDate ? new Date(entryDate).getTime() : undefined,
 			});
 			toast.success(`Stok ${selected.ingredientName} ditambahkan`);
 		} else if (type === "usage") {
-			await usageStock(args);
+			await applyStockAction({
+				...baseArgs,
+				action: "usage",
+			});
 			toast.success(`Penggunaan ${selected.ingredientName} dicatat`);
 		} else if (type === "adjust") {
-			await adjustStock(args);
+			await applyStockAction({
+				...baseArgs,
+				action: "adjust",
+			});
 			toast.success(`Stok ${selected.ingredientName} disesuaikan`);
 		}
 	};

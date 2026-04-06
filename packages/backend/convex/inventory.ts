@@ -3,6 +3,99 @@ import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 
+type StockActionArgs = {
+	inventoryId: Id<"inventory">;
+	quantity: number;
+	notes?: string;
+	costPerUnit?: number;
+	timestamp?: number;
+	expiryDate?: number;
+};
+
+async function performAddStock(ctx: MutationCtx, args: StockActionArgs) {
+	const item = await ctx.db.get(args.inventoryId);
+	if (!item) {
+		throw new Error("Item not found");
+	}
+	if (args.quantity <= 0) {
+		throw new Error("Quantity must be greater than 0");
+	}
+
+	const timestamp = args.timestamp ?? Date.now();
+
+	await ctx.db.patch(args.inventoryId, {
+		quantity: item.quantity + args.quantity,
+	});
+
+	await ctx.db.insert("inventoryTransactions", {
+		inventoryId: args.inventoryId,
+		quantity: args.quantity,
+		remainingQuantity: args.quantity,
+		type: "restock",
+		timestamp,
+		costPerUnit: args.costPerUnit,
+		notes: args.notes,
+		expiryDate: args.expiryDate,
+	});
+}
+
+async function performUsageStock(
+	ctx: MutationCtx,
+	args: Pick<StockActionArgs, "inventoryId" | "quantity" | "notes">
+) {
+	const item = await ctx.db.get(args.inventoryId);
+	if (!item) {
+		throw new Error("Item not found");
+	}
+	if (args.quantity <= 0) {
+		throw new Error("Quantity must be greater than 0");
+	}
+	if (item.quantity < args.quantity) {
+		throw new Error("Stok tidak mencukupi");
+	}
+
+	await consumeStockFifo(ctx, args.inventoryId, args.quantity);
+
+	await ctx.db.patch(args.inventoryId, {
+		quantity: item.quantity - args.quantity,
+	});
+
+	await ctx.db.insert("inventoryTransactions", {
+		inventoryId: args.inventoryId,
+		quantity: -args.quantity,
+		type: "usage",
+		timestamp: Date.now(),
+		notes: args.notes,
+	});
+}
+
+async function performAdjustStock(
+	ctx: MutationCtx,
+	args: Pick<StockActionArgs, "inventoryId" | "quantity" | "notes">
+) {
+	const item = await ctx.db.get(args.inventoryId);
+	if (!item) {
+		throw new Error("Item not found");
+	}
+	if (args.quantity < 0) {
+		throw new Error("Quantity tidak boleh negatif");
+	}
+
+	const diff = args.quantity - item.quantity;
+
+	await ctx.db.patch(args.inventoryId, {
+		quantity: args.quantity,
+	});
+
+	await ctx.db.insert("inventoryTransactions", {
+		inventoryId: args.inventoryId,
+		quantity: diff,
+		type: "adjustment",
+		timestamp: Date.now(),
+		notes: args.notes,
+	});
+}
+
 export const getInventory = query({
 	args: {},
 	handler: async (ctx) => {
@@ -14,7 +107,13 @@ export const getLowStockItems = query({
 	args: {},
 	handler: async (ctx) => {
 		const allItems = await ctx.db.query("inventory").collect();
-		return allItems.filter((item) => item.quantity <= item.lowStockThreshold);
+		return allItems
+			.filter((item) => item.quantity <= item.lowStockThreshold)
+			.sort((left, right) => {
+				const leftGap = left.quantity - left.lowStockThreshold;
+				const rightGap = right.quantity - right.lowStockThreshold;
+				return leftGap - rightGap;
+			});
 	},
 });
 
@@ -77,29 +176,7 @@ export const addStock = mutation({
 		expiryDate: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const item = await ctx.db.get(args.inventoryId);
-		if (!item) {
-			throw new Error("Item not found");
-		}
-
-		const timestamp = args.timestamp ?? Date.now();
-
-		// Update total quantity
-		await ctx.db.patch(args.inventoryId, {
-			quantity: item.quantity + args.quantity,
-		});
-
-		// Record transaction with remaining quantity for FIFO
-		await ctx.db.insert("inventoryTransactions", {
-			inventoryId: args.inventoryId,
-			quantity: args.quantity,
-			remainingQuantity: args.quantity,
-			type: "restock",
-			timestamp,
-			costPerUnit: args.costPerUnit,
-			notes: args.notes,
-			expiryDate: args.expiryDate,
-		});
+		await performAddStock(ctx, args);
 	},
 });
 
@@ -110,27 +187,7 @@ export const usageStock = mutation({
 		notes: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		const item = await ctx.db.get(args.inventoryId);
-		if (!item) {
-			throw new Error("Item not found");
-		}
-
-		// Sequential deduction (FIFO)
-		await consumeStockFifo(ctx, args.inventoryId, args.quantity);
-
-		// Update total quantity
-		await ctx.db.patch(args.inventoryId, {
-			quantity: item.quantity - args.quantity,
-		});
-
-		// Record transaction (summary)
-		await ctx.db.insert("inventoryTransactions", {
-			inventoryId: args.inventoryId,
-			quantity: -args.quantity,
-			type: "usage",
-			timestamp: Date.now(),
-			notes: args.notes,
-		});
+		await performUsageStock(ctx, args);
 	},
 });
 
@@ -177,26 +234,30 @@ export const adjustStock = mutation({
 		notes: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		const item = await ctx.db.get(args.inventoryId);
-		if (!item) {
-			throw new Error("Item not found");
+		await performAdjustStock(ctx, args);
+	},
+});
+
+export const applyInventoryStockAction = mutation({
+	args: {
+		inventoryId: v.id("inventory"),
+		action: v.union(v.literal("add"), v.literal("usage"), v.literal("adjust")),
+		quantity: v.number(),
+		notes: v.optional(v.string()),
+		costPerUnit: v.optional(v.number()),
+		timestamp: v.optional(v.number()),
+		expiryDate: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		if (args.action === "add") {
+			await performAddStock(ctx, args);
+			return;
 		}
-
-		const diff = args.quantity - item.quantity;
-
-		// Update total quantity
-		await ctx.db.patch(args.inventoryId, {
-			quantity: args.quantity,
-		});
-
-		// Record transaction
-		await ctx.db.insert("inventoryTransactions", {
-			inventoryId: args.inventoryId,
-			quantity: diff,
-			type: "adjustment",
-			timestamp: Date.now(),
-			notes: args.notes,
-		});
+		if (args.action === "usage") {
+			await performUsageStock(ctx, args);
+			return;
+		}
+		await performAdjustStock(ctx, args);
 	},
 });
 
@@ -364,11 +425,22 @@ export const deleteBaseRecipe = mutation({
 export const getInventoryItemBatches = query({
 	args: { inventoryId: v.id("inventory") },
 	handler: async (ctx, args) => {
-		return await ctx.db
+		const restockBatches = await ctx.db
 			.query("inventoryTransactions")
-			.withIndex("by_inventory", (q) => q.eq("inventoryId", args.inventoryId))
-			.filter((q) => q.gt(q.field("remainingQuantity"), 0))
+			.withIndex("by_inventory_and_type", (q) =>
+				q.eq("inventoryId", args.inventoryId).eq("type", "restock")
+			)
 			.collect();
+		const productionBatches = await ctx.db
+			.query("inventoryTransactions")
+			.withIndex("by_inventory_and_type", (q) =>
+				q.eq("inventoryId", args.inventoryId).eq("type", "production")
+			)
+			.collect();
+
+		return [...restockBatches, ...productionBatches]
+			.filter((batch) => (batch.remainingQuantity ?? 0) > 0)
+			.sort((left, right) => right.timestamp - left.timestamp);
 	},
 });
 
@@ -456,17 +528,24 @@ async function consumeStockFifo(
 	inventoryId: Id<"inventory">,
 	amountToConsume: number
 ) {
-	// Find all incoming transactions with remaining stock, oldest first
-	const batches = await ctx.db
+	if (amountToConsume <= 0) {
+		return;
+	}
+
+	const restockBatches = await ctx.db
 		.query("inventoryTransactions")
-		.withIndex("by_inventory", (q) => q.eq("inventoryId", inventoryId))
-		.filter((q) =>
-			q.or(q.eq(q.field("type"), "restock"), q.eq(q.field("type"), "production"))
+		.withIndex("by_inventory_and_type", (q) =>
+			q.eq("inventoryId", inventoryId).eq("type", "restock")
+		)
+		.collect();
+	const productionBatches = await ctx.db
+		.query("inventoryTransactions")
+		.withIndex("by_inventory_and_type", (q) =>
+			q.eq("inventoryId", inventoryId).eq("type", "production")
 		)
 		.collect();
 
-	// Manual sort because filter might interfere with index order or multiple types
-	const activeBatches = batches
+	const activeBatches = [...restockBatches, ...productionBatches]
 		.filter((b) => (b.remainingQuantity ?? 0) > 0)
 		.sort((a, b) => a.timestamp - b.timestamp);
 

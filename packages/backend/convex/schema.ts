@@ -60,6 +60,8 @@ export default defineSchema({
 		sourceLabel: v.optional(v.string()),
 		sourceFingerprint: v.optional(v.string()),
 	}).index("by_inventory", ["inventoryId"])
+		.index("by_inventory_and_type", ["inventoryId", "type"])
+		.index("by_type_and_timestamp", ["type", "timestamp"])
 		.index("by_source_transaction_id", ["sourceTransactionId"]),
 
 	// Base Recipes / Compositions (Pre-mixes)

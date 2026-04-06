@@ -64,7 +64,7 @@ function ForecastingPage() {
 	// Map AI predictions to the StockoutPrediction interface used by the UI
 	const stockoutPredictions: StockoutPrediction[] | undefined =
 		stockoutPredictionsRaw?.map((p: any) => ({
-			inventoryId: p.ingredientName as unknown as Id<"inventory">,
+			inventoryId: p.inventoryId as Id<"inventory">,
 			ingredientName: p.ingredientName,
 			currentStock: p.currentStock,
 			unit: p.unit,
@@ -103,7 +103,7 @@ function ForecastingPage() {
 			// Generate forecast from existing stockout prediction data
 			const item = (inventory as any)?.find((i: any) => i._id === selectedInventory);
 			const prediction = stockoutPredictions?.find(
-				(p: any) => p.ingredientName === item?.ingredientName
+				(p: any) => p.inventoryId === selectedInventory
 			);
 
 			if (item && prediction) {

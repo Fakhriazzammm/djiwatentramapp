@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
+import { api } from "./_generated/api";
 import {
 	getBookingFinancialSnapshot,
 	getOrderFinancialSnapshot,
@@ -91,10 +92,7 @@ export const getDashboardStats = query({
 		const activeProducts = allProducts.filter((p) => p.isAvailable ?? false).length;
 
 		// 5. Low stock items
-		const inventory = await ctx.db.query("inventory").collect();
-		const lowStockItems = inventory.filter(
-			(i) => (i.quantity ?? 0) <= (i.lowStockThreshold ?? 0),
-		);
+		const lowStockItems = await ctx.runQuery(api.inventory.getLowStockItems);
 
 		// 6. Financial summary (Indexed)
 		const todayTransactions = await ctx.db

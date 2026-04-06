@@ -3883,39 +3883,36 @@ export const predictStockOut = query({
 	handler: async (ctx, args) => {
 		const daysAhead = args.daysAhead || 7;
 		const inventory = await ctx.runQuery(api.inventory.getInventory);
-		
-		// Optimized: Only fetch orders from last 30 days
+
+		// Hitung pemakaian dari transaksi inventory aktual (usage), bukan dari nama produk.
 		const daysToAnalyze = 30;
 		const cutoffDate = Date.now() - daysToAnalyze * 24 * 60 * 60 * 1000;
-		const orders = await ctx.db
-			.query("orders")
-			.withIndex("by_createdAt", (q) => q.gte("createdAt", cutoffDate))
+
+		const usageTransactions = await ctx.db
+			.query("inventoryTransactions")
+			.withIndex("by_type_and_timestamp", (q) =>
+				q.eq("type", "usage").gte("timestamp", cutoffDate)
+			)
 			.collect();
 
-		const completedOrders = orders.filter(
-			(o) => o.status === "completed" || o.status === "paid"
-		);
-
-		// Calculate daily usage for each inventory item
 		const itemUsage: Record<string, number> = {};
-
-		for (const order of completedOrders) {
-			for (const item of order.items) {
-				// This is a simplified calculation
-				const productName = item.productName;
-				itemUsage[productName] = (itemUsage[productName] || 0) + item.quantity;
+		for (const tx of usageTransactions) {
+			const usageAmount = Math.abs(Number(tx.quantity) || 0);
+			if (usageAmount <= 0) {
+				continue;
 			}
+			const key = tx.inventoryId as string;
+			itemUsage[key] = (itemUsage[key] || 0) + usageAmount;
 		}
 
-		// Predict which items will run out
 		const predictions = inventory
 			.map((item) => {
-				const dailyUsage =
-					(itemUsage[item.ingredientName] || 0) / daysToAnalyze;
+				const dailyUsage = (itemUsage[item._id as string] || 0) / daysToAnalyze;
 				const daysUntilEmpty =
 					dailyUsage > 0 ? Math.floor(item.quantity / dailyUsage) : 999;
 
 				return {
+					inventoryId: item._id,
 					ingredientName: item.ingredientName,
 					currentStock: item.quantity,
 					unit: item.unit,

@@ -2825,9 +2825,7 @@ function InventoryTab({
 	setConfirmConfig: (config: ConfirmConfig) => void;
 }) {
 	const inventory = useQuery(api.inventory.getInventory);
-	const restockInventory = useMutation(api.inventory.addStock);
-	const usageStock = useMutation(api.inventory.usageStock);
-	const adjustStock = useMutation(api.inventory.adjustStock);
+	const applyStockAction = useMutation(api.inventory.applyInventoryStockAction);
 	const produceBatch = useMutation(api.inventory.produceBaseRecipeBatch);
 
 	const [editingId, setEditingId] = useState<Id<"inventory"> | null>(null);
@@ -2840,8 +2838,9 @@ function InventoryTab({
 	) => {
 		try {
 			if (type === "add") {
-				await restockInventory({
+				await applyStockAction({
 					inventoryId: id,
+					action: "add",
 					quantity: 1,
 					notes: "Quick Update via Menu",
 				});
@@ -2849,8 +2848,9 @@ function InventoryTab({
 				if (currentQty <= 0) {
 					return;
 				}
-				await usageStock({
+				await applyStockAction({
 					inventoryId: id,
+					action: "usage",
 					quantity: 1,
 					notes: "Quick Update via Menu",
 				});
@@ -2873,20 +2873,23 @@ function InventoryTab({
 
 		try {
 			if (action === "add") {
-				await restockInventory({
+				await applyStockAction({
 					inventoryId: id,
+					action: "add",
 					quantity: qty,
 					notes: "Manual Adjustment",
 				});
 			} else if (action === "usage") {
-				await usageStock({
+				await applyStockAction({
 					inventoryId: id,
+					action: "usage",
 					quantity: qty,
 					notes: "Manual Adjustment",
 				});
 			} else {
-				await adjustStock({
+				await applyStockAction({
 					inventoryId: id,
+					action: "adjust",
 					quantity: qty,
 					notes: "Opname/Adjustment",
 				});
