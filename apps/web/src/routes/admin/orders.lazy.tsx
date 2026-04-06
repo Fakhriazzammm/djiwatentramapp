@@ -428,15 +428,15 @@ function AdminOrders() {
 	}
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 flex h-full animate-in flex-col gap-2 duration-500 md:gap-4">
-			<div className="p-1 md:rounded-2xl md:border md:border-border md:bg-card md:p-4 md:shadow-sm">
+		<div className="fade-in slide-in-from-bottom-4 flex h-full animate-in flex-col gap-2 duration-500 md:gap-2">
+			<div className="p-1 md:rounded-xl md:border md:border-border md:bg-card md:p-3 md:shadow-sm">
 				<div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
 					<div>
 						<h2 className="font-bold text-xl tracking-tight md:text-2xl">
 							Riwayat Pesanan
 						</h2>
-						<p className="hidden text-muted-foreground text-xs md:block md:text-sm">
-							Tampilan compact untuk monitor transaksi mobile dan desktop.
+						<p className="hidden text-muted-foreground text-xs md:block">
+							Fokus data pesanan.
 						</p>
 					</div>
 					<div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground md:gap-2 md:text-[11px]">
@@ -457,30 +457,30 @@ function AdminOrders() {
 
 			{hppCogs && hppCogs.matchedOrders > 0 && (
 				<>
-					<div className="hidden grid-cols-2 gap-2 lg:grid md:grid-cols-4">
-						<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+					<div className="hidden gap-2 md:grid md:grid-cols-4">
+						<div className="rounded-lg border border-border bg-card px-3 py-2 shadow-sm">
 							<p className="text-[10px] text-muted-foreground uppercase">Revenue</p>
-							<p className="font-bold text-sm md:text-lg">
+							<p className="font-semibold text-sm md:text-base">
 								{formatrupiah(hppCogs.totalRevenue)}
 							</p>
 						</div>
-						<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+						<div className="rounded-lg border border-border bg-card px-3 py-2 shadow-sm">
 							<p className="text-[10px] text-muted-foreground uppercase">COGS</p>
-							<p className="font-bold text-orange-600 text-sm md:text-lg">
+							<p className="font-semibold text-orange-600 text-sm md:text-base">
 								{formatrupiah(hppCogs.totalCogs)}
 							</p>
 						</div>
-						<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+						<div className="rounded-lg border border-border bg-card px-3 py-2 shadow-sm">
 							<p className="text-[10px] text-muted-foreground uppercase">Laba</p>
 							<p
-								className={`font-bold text-sm md:text-lg ${hppCogs.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}
+								className={`font-semibold text-sm md:text-base ${hppCogs.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}
 							>
 								{formatrupiah(hppCogs.totalProfit)}
 							</p>
 						</div>
-						<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+						<div className="rounded-lg border border-border bg-card px-3 py-2 shadow-sm">
 							<p className="text-[10px] text-muted-foreground uppercase">Margin</p>
-							<p className="font-bold text-primary text-sm md:text-lg">
+							<p className="font-semibold text-primary text-sm md:text-base">
 								{hppCogs.grossMargin.toFixed(1)}%
 							</p>
 						</div>
@@ -525,12 +525,12 @@ function AdminOrders() {
 				</>
 			)}
 
-			<div className="hidden space-y-3 rounded-2xl border border-border bg-card p-3 shadow-sm md:block md:p-4">
+			<div className="hidden space-y-2 rounded-xl border border-border bg-card p-2.5 shadow-sm md:block">
 				<div className="grid grid-cols-1 gap-2 lg:grid-cols-[1fr_220px]">
 					<div className="relative">
 					<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 					<Input
-						className="h-10 pl-9 text-sm"
+						className="h-9 pl-9 text-sm"
 						onChange={(e) => setSearchQuery(e.target.value)}
 						placeholder="Cari ID pesanan atau nama pelanggan..."
 						value={searchQuery}
@@ -542,7 +542,7 @@ function AdminOrders() {
 						onValueChange={(val: string | null) => val && setStatusFilter(val)}
 						value={statusFilter}
 					>
-						<SelectTrigger className="h-10 w-full">
+						<SelectTrigger className="h-9 w-full">
 							<SelectValue placeholder="Status" />
 						</SelectTrigger>
 						<SelectContent>
@@ -556,10 +556,10 @@ function AdminOrders() {
 				</div>
 				</div>
 
-				<div className="-mx-1 overflow-x-auto pb-1">
+				<div className="-mx-1 overflow-x-auto">
 					<div className="flex w-max min-w-full gap-1.5 px-1">
 						<Button
-							className="h-8 rounded-full px-3 text-xs"
+							className="h-7 rounded-full px-3 text-xs"
 							onClick={() => setQuickDateFilter("all")}
 							size="sm"
 							variant={quickDateFilter === "all" ? "default" : "outline"}
@@ -568,7 +568,7 @@ function AdminOrders() {
 						</Button>
 						{quickDateFilterOptions.map((option) => (
 							<Button
-								className="h-8 rounded-full px-3 text-xs"
+								className="h-7 rounded-full px-3 text-xs"
 								key={option.value}
 								onClick={() => setQuickDateFilter(option.value)}
 								size="sm"
@@ -709,9 +709,9 @@ function AdminOrders() {
 
 				<div className="hidden h-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm md:block">
 					<div className="h-full overflow-auto">
-						<table className="w-full min-w-[980px] text-left text-xs">
+						<table className="w-full min-w-[980px] text-left text-sm">
 							<thead className="sticky top-0 z-10 bg-muted/70 uppercase tracking-wider">
-								<tr className="text-[10px] text-muted-foreground">
+								<tr className="text-[11px] text-muted-foreground">
 									<th className="px-3 py-2.5">ID</th>
 									<th className="px-3 py-2.5">Pelanggan</th>
 									<th className="px-3 py-2.5">Lokasi</th>
