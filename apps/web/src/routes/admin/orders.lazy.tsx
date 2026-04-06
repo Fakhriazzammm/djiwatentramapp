@@ -17,6 +17,7 @@ import {
 import { id } from "date-fns/locale/id";
 import {
 	CheckCircle,
+	ChevronDown,
 	Clock,
 	CreditCard,
 	Eye,
@@ -128,6 +129,7 @@ function AdminOrders() {
 		useState<QuickDateFilter>("all");
 	const [isDetailOpen, setIsDetailOpen] = useState(false);
 	const [hasAppliedFocus, setHasAppliedFocus] = useState(false);
+	const [showMobileOverview, setShowMobileOverview] = useState(false);
 
 	const getQuickDateRange = (filter: QuickDateFilter) => {
 		const now = new Date();
@@ -420,18 +422,18 @@ function AdminOrders() {
 	}
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 flex h-full animate-in flex-col gap-3 duration-500 md:gap-4">
-			<div className="rounded-2xl border border-border bg-card p-3 shadow-sm md:p-4">
+		<div className="fade-in slide-in-from-bottom-4 flex h-full animate-in flex-col gap-2 duration-500 md:gap-4">
+			<div className="p-1 md:rounded-2xl md:border md:border-border md:bg-card md:p-4 md:shadow-sm">
 				<div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
 					<div>
-					<h2 className="font-bold text-lg tracking-tight md:text-2xl">
-						Riwayat Pesanan
-					</h2>
-					<p className="text-muted-foreground text-xs md:text-sm">
-						Tampilan compact untuk monitor transaksi mobile dan desktop.
-					</p>
-				</div>
-					<div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+						<h2 className="font-bold text-xl tracking-tight md:text-2xl">
+							Riwayat Pesanan
+						</h2>
+						<p className="hidden text-muted-foreground text-xs md:block md:text-sm">
+							Tampilan compact untuk monitor transaksi mobile dan desktop.
+						</p>
+					</div>
+					<div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground md:gap-2 md:text-[11px]">
 						<span className="rounded-md bg-muted px-2 py-1">
 							{totalFiltered} pesanan
 						</span>
@@ -448,37 +450,76 @@ function AdminOrders() {
 			</div>
 
 			{hppCogs && hppCogs.matchedOrders > 0 && (
-				<div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-					<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-						<p className="text-[10px] text-muted-foreground uppercase">Revenue</p>
-						<p className="font-bold text-sm md:text-lg">
-							{formatrupiah(hppCogs.totalRevenue)}
-						</p>
+				<>
+					<div className="hidden grid-cols-2 gap-2 lg:grid md:grid-cols-4">
+						<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+							<p className="text-[10px] text-muted-foreground uppercase">Revenue</p>
+							<p className="font-bold text-sm md:text-lg">
+								{formatrupiah(hppCogs.totalRevenue)}
+							</p>
+						</div>
+						<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+							<p className="text-[10px] text-muted-foreground uppercase">COGS</p>
+							<p className="font-bold text-orange-600 text-sm md:text-lg">
+								{formatrupiah(hppCogs.totalCogs)}
+							</p>
+						</div>
+						<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+							<p className="text-[10px] text-muted-foreground uppercase">Laba</p>
+							<p
+								className={`font-bold text-sm md:text-lg ${hppCogs.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}
+							>
+								{formatrupiah(hppCogs.totalProfit)}
+							</p>
+						</div>
+						<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+							<p className="text-[10px] text-muted-foreground uppercase">Margin</p>
+							<p className="font-bold text-primary text-sm md:text-lg">
+								{hppCogs.grossMargin.toFixed(1)}%
+							</p>
+						</div>
 					</div>
-					<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-						<p className="text-[10px] text-muted-foreground uppercase">COGS</p>
-						<p className="font-bold text-orange-600 text-sm md:text-lg">
-							{formatrupiah(hppCogs.totalCogs)}
-						</p>
-					</div>
-					<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-						<p className="text-[10px] text-muted-foreground uppercase">Laba</p>
-						<p
-							className={`font-bold text-sm md:text-lg ${hppCogs.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}
+
+					<div className="rounded-xl border border-border bg-card p-2.5 shadow-sm md:hidden">
+						<button
+							className="flex w-full items-center justify-between rounded-md px-1 py-1 text-left"
+							onClick={() => setShowMobileOverview((prev) => !prev)}
+							type="button"
 						>
-							{formatrupiah(hppCogs.totalProfit)}
-						</p>
+							<div>
+								<p className="font-semibold text-xs">Ringkasan Finansial</p>
+								<p className="text-[10px] text-muted-foreground">
+									Revenue {formatrupiah(hppCogs.totalRevenue)} · Laba{" "}
+									{formatrupiah(hppCogs.totalProfit)}
+								</p>
+							</div>
+							<ChevronDown
+								className={`h-4 w-4 text-muted-foreground transition-transform ${
+									showMobileOverview ? "rotate-180" : ""
+								}`}
+							/>
+						</button>
+						{showMobileOverview && (
+							<div className="mt-2 grid grid-cols-2 gap-1.5 border-border border-t pt-2">
+								<div className="rounded-lg bg-muted/40 p-2">
+									<p className="text-[9px] text-muted-foreground uppercase">COGS</p>
+									<p className="font-semibold text-[11px] text-orange-600">
+										{formatrupiah(hppCogs.totalCogs)}
+									</p>
+								</div>
+								<div className="rounded-lg bg-muted/40 p-2">
+									<p className="text-[9px] text-muted-foreground uppercase">Margin</p>
+									<p className="font-semibold text-[11px] text-primary">
+										{hppCogs.grossMargin.toFixed(1)}%
+									</p>
+								</div>
+							</div>
+						)}
 					</div>
-					<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-						<p className="text-[10px] text-muted-foreground uppercase">Margin</p>
-						<p className="font-bold text-primary text-sm md:text-lg">
-							{hppCogs.grossMargin.toFixed(1)}%
-						</p>
-					</div>
-				</div>
+				</>
 			)}
 
-			<div className="space-y-3 rounded-2xl border border-border bg-card p-3 shadow-sm md:p-4">
+			<div className="hidden space-y-3 rounded-2xl border border-border bg-card p-3 shadow-sm md:block md:p-4">
 				<div className="grid grid-cols-1 gap-2 lg:grid-cols-[1fr_220px]">
 					<div className="relative">
 					<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -532,6 +573,63 @@ function AdminOrders() {
 								{option.label}
 							</Button>
 						))}
+					</div>
+				</div>
+			</div>
+
+			<div className="sticky top-0 z-20 -mx-3 border-border border-y bg-background/95 px-3 py-2 backdrop-blur md:hidden">
+				<div className="space-y-2">
+					<div className="grid grid-cols-[1fr_120px] gap-2">
+						<div className="relative">
+							<Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+							<Input
+								className="h-9 pl-8 text-xs"
+								onChange={(e) => setSearchQuery(e.target.value)}
+								placeholder="Cari pesanan..."
+								value={searchQuery}
+							/>
+						</div>
+						<Select
+							onValueChange={(val: string | null) => val && setStatusFilter(val)}
+							value={statusFilter}
+						>
+							<SelectTrigger className="h-9 text-xs">
+								<SelectValue placeholder="Status" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="all">Semua</SelectItem>
+								<SelectItem value="pending">Tertunda</SelectItem>
+								<SelectItem value="paid">Dibayar</SelectItem>
+								<SelectItem value="completed">Selesai</SelectItem>
+								<SelectItem value="cancelled">Batal</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+
+					<div className="-mx-1 overflow-x-auto">
+						<div className="flex w-max min-w-full gap-1 px-1">
+							<Button
+								className="h-7 rounded-full px-2.5 text-[11px]"
+								onClick={() => setQuickDateFilter("all")}
+								size="sm"
+								variant={quickDateFilter === "all" ? "default" : "outline"}
+							>
+								Semua
+							</Button>
+							{quickDateFilterOptions.map((option) => (
+								<Button
+									className="h-7 rounded-full px-2.5 text-[11px]"
+									key={option.value}
+									onClick={() => setQuickDateFilter(option.value)}
+									size="sm"
+									variant={
+										quickDateFilter === option.value ? "default" : "outline"
+									}
+								>
+									{option.label}
+								</Button>
+							))}
+						</div>
 					</div>
 				</div>
 			</div>
