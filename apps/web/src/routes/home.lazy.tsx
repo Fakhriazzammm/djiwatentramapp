@@ -141,19 +141,19 @@ function HomePage() {
 	}).format(new Date());
 
 	return (
-		<div className="min-h-app bg-slate-100 text-foreground">
+		<div className="app-page min-h-app text-foreground">
 			<div className="mx-auto w-full max-w-md px-4 pb-8 pt-6 md:max-w-4xl">
-				<div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 p-5 text-white shadow-xl md:p-7">
-					<div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-					<div className="absolute -bottom-16 left-10 h-40 w-40 rounded-full bg-cyan-300/20 blur-3xl" />
-					<p className="relative text-xs uppercase tracking-[0.24em] text-white/70">
+				<div className="app-shell relative overflow-hidden p-5 md:p-7">
+					<div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
+					<div className="absolute -bottom-16 left-10 h-40 w-40 rounded-full bg-accent/20 blur-3xl" />
+					<p className="app-overline relative">
 						Mobile Super App
 					</p>
 					<h1 className="relative mt-2 font-black text-2xl leading-tight tracking-tight md:text-3xl">
 						{storeName}
 					</h1>
-					<p className="relative mt-1 text-sm text-white/80">{dateText}</p>
-					<div className="relative mt-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold">
+					<p className="relative mt-1 text-sm text-muted-foreground">{dateText}</p>
+					<div className="app-pill relative mt-4 inline-flex items-center gap-2 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
 						<Sparkles className="h-3.5 w-3.5" />
 						Akses cepat untuk kasir, barista, dan kitchen
 					</div>
@@ -162,20 +162,20 @@ function HomePage() {
 				<div className="mt-5 space-y-4">
 					{ROLE_SECTIONS.map((section) => (
 						<div
-							className="rounded-[26px] bg-white p-4 shadow-sm ring-1 ring-slate-200 md:p-5"
+							className="app-card p-4 md:p-5"
 							key={section.role}
 						>
 							<div className="mb-3">
-								<p className="font-black text-base tracking-tight text-slate-900">
+								<p className="font-black text-base tracking-tight text-foreground">
 									{section.role}
 								</p>
-								<p className="text-xs text-slate-500">{section.description}</p>
+								<p className="text-xs text-muted-foreground">{section.description}</p>
 							</div>
 
 							<div className="grid grid-cols-2 gap-3 md:grid-cols-4">
 								{section.items.map((item) => (
 									<Link
-										className="group relative overflow-hidden rounded-2xl bg-slate-50 p-3.5 text-left ring-1 ring-slate-200 transition-all hover:-translate-y-0.5 hover:shadow-md"
+										className="group relative overflow-hidden rounded-2xl border border-border/70 bg-background p-3.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
 										key={`${section.role}-${item.label}`}
 										to={item.to}
 									>
@@ -184,13 +184,13 @@ function HomePage() {
 										>
 											<item.icon className="h-5 w-5" />
 										</div>
-										<p className="font-bold text-[13px] text-slate-900 leading-tight">
+										<p className="font-bold text-[13px] text-foreground leading-tight">
 											{item.label}
 										</p>
-										<p className="mt-1 text-[11px] text-slate-500">
+										<p className="mt-1 text-[11px] text-muted-foreground">
 											{item.subtitle}
 										</p>
-										<div className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 transition-colors group-hover:text-slate-700">
+										<div className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">
 											Buka
 											<ChevronsRight className="h-3.5 w-3.5" />
 										</div>
@@ -201,25 +201,25 @@ function HomePage() {
 					))}
 				</div>
 
-				<div className="mt-4 rounded-[26px] bg-white p-4 shadow-sm ring-1 ring-slate-200 md:p-5">
-					<p className="mb-3 font-black text-base tracking-tight text-slate-900">
+				<div className="app-card mt-4 p-4 md:p-5">
+					<p className="mb-3 font-black text-base tracking-tight text-foreground">
 						Shortcut Umum
 					</p>
 					<div className="grid grid-cols-2 gap-3">
 						<Link
-							className="group relative overflow-hidden rounded-2xl bg-slate-50 p-3.5 text-left ring-1 ring-slate-200 transition-all hover:-translate-y-0.5 hover:shadow-md"
+							className="group relative overflow-hidden rounded-2xl border border-border/70 bg-background p-3.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
 							to="/admin/ai-chat"
 						>
 							<div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white shadow-sm">
 								<Bot className="h-5 w-5" />
 							</div>
-							<p className="font-bold text-[13px] text-slate-900 leading-tight">
+							<p className="font-bold text-[13px] text-foreground leading-tight">
 								AI Chat
 							</p>
-							<p className="mt-1 text-[11px] text-slate-500">
+							<p className="mt-1 text-[11px] text-muted-foreground">
 								Asisten operasional cepat
 							</p>
-							<div className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 transition-colors group-hover:text-slate-700">
+							<div className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">
 								Buka
 								<ChevronsRight className="h-3.5 w-3.5" />
 							</div>
@@ -227,7 +227,7 @@ function HomePage() {
 					</div>
 					</div>
 
-				<div className="mt-4 rounded-2xl bg-white px-4 py-3 text-center text-[11px] font-semibold text-slate-500 shadow-sm ring-1 ring-slate-200">
+				<div className="app-card mt-4 px-4 py-3 text-center text-[11px] font-semibold text-muted-foreground">
 					Tap satu tombol untuk langsung pindah ke halaman kerja.
 				</div>
 			</div>

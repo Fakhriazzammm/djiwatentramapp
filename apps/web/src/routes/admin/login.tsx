@@ -30,7 +30,6 @@ function LoginPage() {
 
 		setIsLoading(true);
 		try {
-			// Try to sign in as email
 			await authClient.signIn.email(
 				{
 					email: username,
@@ -48,7 +47,6 @@ function LoginPage() {
 				}
 			);
 		} catch (_error) {
-			// Fallback error
 			setIsLoading(false);
 			toast.error("Terjadi kesalahan sistem");
 		}
@@ -68,83 +66,78 @@ function LoginPage() {
 	};
 
 	return (
-		<div className="flex min-h-app w-full overflow-hidden bg-background">
-			{/* Left Side: Branding & Visuals (Hidden on Mobile) */}
-			<div className="fade-in relative hidden flex-1 animate-in flex-col justify-between overflow-hidden bg-[#4A3728] p-12 duration-1000 lg:flex">
-				{/* Decorative Background Elements */}
-				<div className="absolute top-0 right-0 h-96 w-96 translate-x-1/2 -translate-y-1/2 rounded-full bg-white/5 blur-3xl" />
-				<div className="absolute bottom-0 left-0 h-96 w-96 -translate-x-1/2 translate-y-1/2 rounded-full bg-primary/10 blur-3xl" />
+		<div className="app-page flex min-h-app w-full overflow-hidden bg-background">
+			<div className="fade-in relative hidden flex-1 animate-in flex-col justify-between overflow-hidden bg-[linear-gradient(145deg,var(--foreground),color-mix(in_srgb,var(--primary)_42%,var(--foreground)_58%))] p-12 duration-1000 lg:flex">
+				<div className="absolute right-0 top-0 h-96 w-96 translate-x-1/2 -translate-y-1/2 rounded-full bg-white/8 blur-3xl" />
+				<div className="absolute bottom-0 left-0 h-96 w-96 -translate-x-1/2 translate-y-1/2 rounded-full bg-primary/20 blur-3xl" />
 
 				<div className="relative z-10 flex items-center gap-3">
-					<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 backdrop-blur-md">
-						<Coffee className="h-6 w-6 text-[#F5F0E1]" />
+					<div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md">
+						<Coffee className="h-6 w-6 text-primary-foreground" />
 					</div>
-					<span className="font-black text-[#F5F0E1] text-xl tracking-tight">
+					<span className="text-xl font-black tracking-tight text-primary-foreground">
 						{storeName}
 					</span>
 				</div>
 
 				<div className="relative z-10 max-w-lg space-y-6">
-					<h1 className="font-black text-6xl text-[#F5F0E1] leading-[1.1] tracking-tight">
+					<h1 className="text-6xl font-black leading-[1.1] tracking-tight text-primary-foreground">
 						Kelola Bisnis Anda <br />
-						<span className="text-primary/80">Lebih Cerdas.</span>
+						<span className="text-secondary">Lebih Cerdas.</span>
 					</h1>
-					<p className="max-w-md font-medium text-[#F5F0E1]/60 text-lg leading-relaxed">
+					<p className="max-w-md text-lg font-medium leading-relaxed text-primary-foreground/70">
 						Sistem manajemen modern untuk kafe dan restoran. Pantau penjualan,
 						stok, dan laporan keuangan dalam satu dashboard.
 					</p>
 				</div>
 
 				<div className="relative z-10">
-					<div className="flex items-center gap-4 border-white/10 border-t pt-8">
+					<div className="flex items-center gap-4 border-t border-white/10 pt-8">
 						<div className="flex -space-x-2">
 							{[1, 2, 3].map((i) => (
 								<div
-									className="h-8 w-8 rounded-full border-2 border-[#4A3728] bg-muted"
+									className="h-8 w-8 rounded-full border-2 border-foreground bg-white/20"
 									key={i}
 								/>
 							))}
 						</div>
-						<p className="text-[#F5F0E1]/40 text-sm italic">
+						<p className="text-sm italic text-primary-foreground/50">
 							Dipercaya oleh ratusan pemilik bisnis di Indonesia.
 						</p>
 					</div>
 				</div>
 			</div>
 
-			{/* Right Side: Login Form */}
-			<div className="fade-in slide-in-from-right-8 flex w-full animate-in flex-col justify-center bg-[#F5F0E1] p-8 duration-700 lg:w-[480px] xl:w-[540px]">
+			<div className="fade-in slide-in-from-right-8 flex w-full animate-in flex-col justify-center bg-background p-8 duration-700 lg:w-[480px] xl:w-[540px]">
 				<div className="mx-auto w-full max-w-sm space-y-10">
 					<div className="space-y-2">
 						<div className="lg:hidden">
-							<div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-[#4A3728] text-[#F5F0E1] shadow-lg">
+							<div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
 								<Coffee className="h-6 w-6" />
 							</div>
 						</div>
-						<h2 className="font-black text-3xl text-[#4A3728] tracking-tight">
+						<h2 className="text-3xl font-black tracking-tight text-foreground">
 							Selamat Datang Kembali
 						</h2>
-						<p className="font-bold text-[#4A3728]/50 text-xs uppercase tracking-[0.2em]">
-							Masuk Ke Dashboard Admin
-						</p>
+						<p className="app-overline">Masuk Ke Dashboard Admin</p>
 					</div>
 
 					<form className="space-y-6" onSubmit={handleLogin}>
 						<div className="space-y-4">
 							<div className="space-y-2">
 								<label
-									className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+									className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
 									htmlFor="username"
 								>
 									Email / Username
 								</label>
 								<div className="group relative">
-									<div className="absolute inset-y-0 left-0 flex items-center pl-4 text-[#4A3728]/30 transition-colors group-focus-within:text-primary">
+									<div className="absolute inset-y-0 left-0 flex items-center pl-4 text-muted-foreground/50 transition-colors group-focus-within:text-primary">
 										<User className="h-4 w-4" />
 									</div>
 									<input
 										autoFocus
-										className="w-full rounded-xl border border-[#4A3728]/5 bg-[#E8E1CF]/30 py-4 pr-4 pl-12 font-bold text-[#4A3728] text-sm outline-none transition-all placeholder:text-[#4A3728]/20 focus:border-primary/20 focus:bg-white focus:ring-4 focus:ring-primary/10"
+										className="w-full rounded-2xl border border-border bg-card py-4 pl-12 pr-4 text-sm font-bold text-foreground outline-none transition-all placeholder:text-muted-foreground/60 focus:border-primary/20 focus:bg-background focus:ring-4 focus:ring-primary/10"
 										id="username"
 										onChange={(e) => setUsername(e.target.value)}
 										placeholder="admin@example.com"
@@ -157,24 +150,24 @@ function LoginPage() {
 							<div className="space-y-2">
 								<div className="flex items-center justify-between">
 									<label
-										className="font-bold text-[#4A3728]/60 text-[10px] uppercase tracking-widest"
+										className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
 										htmlFor="password"
 									>
 										Password
 									</label>
 									<button
-										className="font-bold text-[#4A3728]/40 text-[10px] uppercase tracking-widest transition-colors hover:text-primary"
+										className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 transition-colors hover:text-primary"
 										type="button"
 									>
 										Lupa Kata Sandi?
 									</button>
 								</div>
 								<div className="group relative">
-									<div className="absolute inset-y-0 left-0 flex items-center pl-4 text-[#4A3728]/30 transition-colors group-focus-within:text-primary">
+									<div className="absolute inset-y-0 left-0 flex items-center pl-4 text-muted-foreground/50 transition-colors group-focus-within:text-primary">
 										<Lock className="h-4 w-4" />
 									</div>
 									<input
-										className="w-full rounded-xl border border-[#4A3728]/5 bg-[#E8E1CF]/30 py-4 pr-4 pl-12 font-bold text-[#4A3728] text-sm outline-none transition-all placeholder:text-[#4A3728]/20 focus:border-primary/20 focus:bg-white focus:ring-4 focus:ring-primary/10"
+										className="w-full rounded-2xl border border-border bg-card py-4 pl-12 pr-4 text-sm font-bold text-foreground outline-none transition-all placeholder:text-muted-foreground/60 focus:border-primary/20 focus:bg-background focus:ring-4 focus:ring-primary/10"
 										id="password"
 										onChange={(e) => setPassword(e.target.value)}
 										placeholder="••••••••"
@@ -186,7 +179,7 @@ function LoginPage() {
 						</div>
 
 						<button
-							className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-[#4A3728] py-4 pr-4 pl-4 font-black font-mono text-[#F5F0E1] text-xs uppercase tracking-[0.2em] shadow-xl transition-all hover:translate-y-[-2px] hover:shadow-2xl active:translate-y-0 active:scale-95 disabled:opacity-70 disabled:hover:translate-y-0"
+							className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-primary px-4 py-4 font-mono text-xs font-black uppercase tracking-[0.2em] text-primary-foreground shadow-xl transition-all hover:translate-y-[-2px] hover:shadow-2xl active:translate-y-0 active:scale-95 disabled:opacity-70 disabled:hover:translate-y-0"
 							disabled={isLoading}
 							type="submit"
 						>
@@ -203,17 +196,17 @@ function LoginPage() {
 
 					<div className="relative">
 						<div className="absolute inset-0 flex items-center">
-							<div className="w-full border-[#4A3728]/5 border-t" />
+							<div className="w-full border-t border-border" />
 						</div>
 						<div className="relative flex justify-center text-sm">
-							<span className="bg-[#F5F0E1] px-4 font-bold text-[#4A3728]/30 text-[10px] uppercase tracking-[0.3em]">
+							<span className="bg-background px-4 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
 								Metode Lain
 							</span>
 						</div>
 					</div>
 
 					<button
-						className="flex w-full items-center justify-center gap-3 rounded-xl border border-[#4A3728]/10 bg-white py-4 font-bold text-[#4A3728] text-sm shadow-sm transition-all hover:bg-[#E8E1CF]/20 hover:shadow-md active:scale-95 disabled:opacity-70"
+						className="flex w-full items-center justify-center gap-3 rounded-2xl border border-border bg-card py-4 text-sm font-bold text-foreground shadow-sm transition-all hover:bg-muted hover:shadow-md active:scale-95 disabled:opacity-70"
 						disabled={isGoogleLoading}
 						onClick={handleGoogleSignIn}
 						type="button"
@@ -237,13 +230,13 @@ function LoginPage() {
 								fill="#EA4335"
 							/>
 						</svg>
-						<span className="font-bold text-[#4A3728] text-xs uppercase tracking-widest">
+						<span className="text-xs font-bold uppercase tracking-widest text-foreground">
 							{isGoogleLoading ? "MEMPROSES..." : "MASUK DENGAN GOOGLE"}
 						</span>
 					</button>
 
-					<p className="text-center font-bold text-[#4A3728]/30 text-[10px] uppercase tracking-widest">
-						© 2026 {storeName} — BY ZANTARA
+					<p className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+						© 2026 {storeName} - BY ZANTARA
 					</p>
 				</div>
 			</div>

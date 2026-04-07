@@ -526,8 +526,8 @@ export function CustomerOrderingPage({
 	}
 
 	return (
-		<div className="min-h-app bg-[#f7f8fb]">
-			<div className="mx-auto flex min-h-app max-w-md flex-col bg-background shadow-[0_0_0_1px_rgba(15,23,42,0.04),0_24px_60px_rgba(15,23,42,0.08)]">
+		<div className="app-page min-h-app">
+			<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background">
 				<header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-4 py-3 backdrop-blur-xl">
 					<div className="flex items-center justify-between gap-3">
 						<div className="flex items-center gap-3">
@@ -568,7 +568,7 @@ export function CustomerOrderingPage({
 				<main className="flex-1 pb-28">
 					{step === "welcome" ? (
 						<section className="flex min-h-[calc(var(--app-min-height)-4.5rem)] flex-col items-center justify-center px-6 py-10 text-center">
-							<div className="w-full rounded-[2.5rem] bg-[linear-gradient(180deg,#ffffff,#f8fafc)] px-6 py-10 shadow-[0_30px_80px_rgba(15,23,42,0.08)]">
+							<div className="app-card-strong w-full px-6 py-10">
 								<div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[2rem] bg-primary/10">
 									{logoUrl ? <img alt={storeName} className="h-14 w-14 object-contain" src={logoUrl} /> : <ShoppingCart className="h-8 w-8 text-primary" />}
 								</div>
@@ -632,8 +632,8 @@ export function CustomerOrderingPage({
 				</main>
 
 				{step !== "welcome" && step !== "party" && step !== "refill" ? (
-					<div className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md border-t border-border/70 bg-background/95 px-3 pb-3 pt-2 backdrop-blur-xl">
-						<div className="grid grid-cols-4 gap-2 rounded-[1.8rem] border border-border bg-card p-2 shadow-[0_-12px_30px_rgba(15,23,42,0.08)]">
+					<div className="app-bottom-bar fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md px-3 pb-3 pt-2">
+						<div className="app-card grid grid-cols-4 gap-2 p-2">
 							<BottomButton label="Menu" icon={<Grid2X2 className="h-4 w-4" />} onClick={() => setStep("menu")} />
 							<BottomButton label="Basket" icon={<ShoppingCart className="h-4 w-4" />} onClick={() => setCartOpen(true)} badge={totalItems > 0 ? String(totalItems) : undefined} />
 							<BottomButton label="Staff" icon={<Bell className="h-4 w-4" />} onClick={() => setServiceOpen(true)} />

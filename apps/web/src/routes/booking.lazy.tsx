@@ -560,10 +560,10 @@ const MobileWrapper = ({
 	themeColor: string;
 	settings: any;
 }) => (
-	<div className="min-h-app bg-background flex flex-col items-center">
-		<div className="w-full max-w-md bg-card min-h-app shadow-2xl flex flex-col relative overflow-x-hidden">
+	<div className="app-page min-h-app flex flex-col items-center">
+		<div className="app-shell w-full max-w-md min-h-app flex flex-col relative overflow-x-hidden">
 			{showHeader && (
-				<header className="sticky top-0 z-30 w-full px-4 py-4 flex items-center justify-between bg-background/80 backdrop-blur-md border-b border-border">
+				<header className="sticky top-0 z-30 w-full px-4 py-4 flex items-center justify-between bg-background/90 backdrop-blur-md border-b border-border/70">
 					<div className="flex items-center gap-3">
 						{step > 0 && step < 6 && (
 							<button
@@ -790,9 +790,9 @@ function BookingPage() {
 	// Loading
 	if (settings === undefined || products === undefined) {
 		return (
-			<div className="min-h-app bg-background flex flex-col items-center">
-				<div className="w-full max-w-md bg-card min-h-app shadow-2xl flex flex-col relative overflow-x-hidden">
-					<header className="sticky top-0 z-30 w-full px-4 py-4 flex items-center justify-between bg-background/80 backdrop-blur-md border-b border-border">
+			<div className="app-page min-h-app flex flex-col items-center">
+				<div className="app-shell w-full max-w-md min-h-app flex flex-col relative overflow-x-hidden">
+					<header className="sticky top-0 z-30 w-full px-4 py-4 flex items-center justify-between bg-background/90 backdrop-blur-md border-b border-border/70">
 						<div className="flex items-center gap-3">
 							<Skeleton className="h-8 w-8 rounded-lg" />
 							<Skeleton className="h-5 w-32" />

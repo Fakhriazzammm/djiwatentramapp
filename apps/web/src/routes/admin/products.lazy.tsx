@@ -2423,6 +2423,15 @@ function BaseRecipesTab() {
 		() => inventory?.filter((item: any) => !item.baseRecipeId) ?? [],
 		[inventory]
 	);
+	const productNameOptions = useMemo<string[]>(() => {
+		if (!products) {
+			return [];
+		}
+		const names = (products as any[])
+			.map((product) => (typeof product?.name === "string" ? product.name.trim() : ""))
+			.filter((name): name is string => Boolean(name));
+		return [...new Set(names)].sort((a, b) => a.localeCompare(b, "id"));
+	}, [products]);
 
 	const addIngredientFromQuery = () => {
 		const query = ingredientQuery.trim().toLowerCase();
@@ -2577,11 +2586,17 @@ function BaseRecipesTab() {
 													autoFocus
 													className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
 													id="base-recipe-name"
+													list="base-recipe-name-options"
 													onChange={(e) => setFormData({ ...formData, name: e.target.value })}
 													placeholder="Contoh: Base Susu Premium"
 													required
 													value={formData.name}
 												/>
+												<datalist id="base-recipe-name-options">
+													{productNameOptions.map((name) => (
+														<option key={name} value={name} />
+													))}
+												</datalist>
 											</div>
 											<div className="space-y-2">
 												<label className="font-semibold text-[11px] uppercase tracking-wide" htmlFor="base-recipe-desc">

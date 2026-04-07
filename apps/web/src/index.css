@@ -48,6 +48,13 @@
 	--ring: #1a5dc6;
 
 	--radius: 0.5rem;
+	--radius-panel: 1.5rem;
+	--radius-pill: 9999px;
+	--shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.08);
+	--shadow-raised: 0 24px 60px rgba(15, 23, 42, 0.1);
+	--surface-page: #f7f9fc;
+	--surface-card: #ffffff;
+	--surface-card-muted: #f8fafc;
 
 	/* Charts */
 	--chart-1: #1a5dc6;
@@ -620,8 +627,66 @@
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
 	.glass,
 	.glass-strong {
-		background: rgba(254, 254, 254, 0.96);
+	background: rgba(254, 254, 254, 0.96);
 	}
+}
+
+.app-page {
+	background:
+		radial-gradient(circle at top, rgba(26, 93, 198, 0.06), transparent 32%),
+		linear-gradient(180deg, var(--surface-page), var(--background));
+}
+
+.app-shell {
+	background: color-mix(in srgb, var(--card) 94%, white 6%);
+	border: 1px solid color-mix(in srgb, var(--border) 88%, white 12%);
+	border-radius: var(--radius-panel);
+	box-shadow: var(--shadow-soft);
+}
+
+.app-card {
+	background: color-mix(in srgb, var(--card) 97%, white 3%);
+	border: 1px solid color-mix(in srgb, var(--border) 92%, white 8%);
+	border-radius: calc(var(--radius-panel) - 0.25rem);
+	box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+}
+
+.app-card-strong {
+	background: linear-gradient(
+		180deg,
+		color-mix(in srgb, var(--card) 98%, white 2%),
+		color-mix(in srgb, var(--muted) 32%, white 68%)
+	);
+	border: 1px solid color-mix(in srgb, var(--border) 90%, white 10%);
+	border-radius: calc(var(--radius-panel) + 0.25rem);
+	box-shadow: var(--shadow-raised);
+}
+
+.app-pill {
+	border-radius: var(--radius-pill);
+}
+
+.app-bottom-bar {
+	background: color-mix(in srgb, var(--background) 92%, white 8%);
+	border-top: 1px solid color-mix(in srgb, var(--border) 92%, white 8%);
+	box-shadow: 0 -10px 30px rgba(15, 23, 42, 0.08);
+	backdrop-filter: blur(18px);
+	-webkit-backdrop-filter: blur(18px);
+}
+
+.app-overline {
+	font-size: 11px;
+	font-weight: 800;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: color-mix(in srgb, var(--primary) 74%, var(--foreground) 26%);
+}
+
+.app-section-title {
+	font-size: 1.25rem;
+	font-weight: 900;
+	letter-spacing: -0.03em;
+	color: var(--foreground);
 }
 
 .min-h-app {

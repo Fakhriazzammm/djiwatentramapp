@@ -1440,7 +1440,7 @@ function MenuPage() {
 
 				</main>
 				{/* === BOTTOM NAVIGATION BAR (Fixed) === */}
-				<div className="shrink-0 w-full border-t border-border bg-background/95 backdrop-blur-xl pb-safe-area shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-3 pt-2 sm:pt-3">
+				<div className="app-bottom-bar shrink-0 w-full pb-safe-area px-3 pt-2 sm:pt-3">
 					<div className="flex items-center justify-around max-w-lg mx-auto sm:max-w-none gap-0.5 sm:gap-1">
 						{SIDEBAR_MENU_ITEMS.map((item, index) => {
 							const Icon = item.icon;
