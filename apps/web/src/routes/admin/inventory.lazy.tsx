@@ -1583,9 +1583,18 @@ function InventoryTable({
 	};
 
 	return (
-		<div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm">
-			<div className="overflow-x-auto">
-				<table className="w-full min-w-[1120px] text-left text-xs md:text-sm">
+		<div className="rounded-xl border border-border/80 bg-card shadow-sm">
+			<div>
+				<table className="w-full text-left text-xs md:text-sm">
+					<colgroup>
+						<col className="w-[24%]" />
+						<col className="w-[14%]" />
+						<col className="w-[12%]" />
+						<col className="w-[19%]" />
+						<col className="w-[17%]" />
+						<col className="w-[10%]" />
+						<col className="w-[4%]" />
+					</colgroup>
 					<thead className="bg-card">
 						<tr className="border-border border-b text-muted-foreground">
 							<th
@@ -1651,7 +1660,7 @@ function InventoryTable({
 					</thead>
 					<tbody className="divide-y divide-border">
 						<tr className="bg-primary/[0.04]">
-							<td className="px-4 py-3">
+							<td className="min-w-[260px] px-4 py-3">
 								<input
 									ref={quickAddNameRef}
 									className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-semibold outline-none focus:border-primary"
@@ -1792,20 +1801,22 @@ function InventoryTable({
 										}`}
 										key={row.inventoryId}
 									>
-										<td className="px-4 py-3 align-top">
+										<td className="min-w-[280px] px-4 py-3 align-top">
 											<div className="space-y-2">
-												<input
-													className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1 font-bold text-sm outline-none focus:border-border focus:bg-background"
+												<textarea
+													className="min-h-[44px] w-full resize-none rounded-lg border border-transparent bg-transparent px-2 py-1 font-bold text-sm leading-6 outline-none focus:border-border focus:bg-background"
 													onBlur={() => void saveMeta(row)}
 													onChange={(e) =>
 														setInlineField(row, "ingredientName", e.target.value)
 													}
 													onKeyDown={(e) => {
 														if (e.key === "Enter") {
+															e.preventDefault();
 															void saveMeta(row);
-															(e.target as HTMLInputElement).blur();
+															(e.target as HTMLTextAreaElement).blur();
 														}
 													}}
+													rows={2}
 													value={inline.ingredientName}
 												/>
 												<div className="flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
