@@ -7,6 +7,9 @@ import {
 	CheckCircle2,
 	Clock3,
 	Copy,
+	Download,
+	FileText,
+	Image as ImageIcon,
 	Loader2,
 	Mail,
 	ReceiptText,
@@ -17,7 +20,15 @@ import {
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { DateRange } from "./period-selector";
-import { formatCurrencyIDR } from "@/lib/export-utils";
+import {
+	exportShiftReportsCSV,
+	exportShiftReportsJPG,
+	exportShiftReportsPDF,
+	formatCurrencyIDR,
+	type ShiftReportDetails,
+	type ShiftReportRow,
+	type ShiftReportTotals,
+} from "@/lib/export-utils";
 
 interface Props {
 	range: DateRange;
@@ -160,6 +171,8 @@ function buildShiftSummaryText(shift: ShiftRow, details: any) {
 
 export function ShiftReport({ range }: Props) {
 	const sendShiftReportEmail = useAction(api.reportsEmail.sendShiftReportEmail);
+	const settings = useQuery(api.site_settings.getSettings);
+	const storeName = settings?.storeName || "Toko";
 	const rows = useQuery(api.finance.getShiftReportTable, {
 		startDate: range.startDate,
 		endDate: range.endDate,
@@ -167,6 +180,7 @@ export function ShiftReport({ range }: Props) {
 
 	const [selectedShiftStart, setSelectedShiftStart] = useState<number | null>(null);
 	const [sendingShiftStart, setSendingShiftStart] = useState<number | null>(null);
+	const [isExporting, setIsExporting] = useState(false);
 
 	useEffect(() => {
 		if (!rows?.length) {
@@ -268,8 +282,73 @@ export function ShiftReport({ range }: Props) {
 		}
 	};
 
+	const handleExport = async (format: "pdf" | "csv" | "jpg") => {
+		if (!rows?.length) return;
+		setIsExporting(true);
+		try {
+			const shiftRows = rows as ShiftReportRow[];
+			const shiftTotals = totals as ShiftReportTotals;
+			const shiftDetails = details as ShiftReportDetails | undefined;
+			const selected = selectedShift as ShiftReportRow | undefined;
+
+			if (format === "pdf") {
+				exportShiftReportsPDF(
+					shiftRows,
+					storeName,
+					range.label,
+					shiftTotals,
+					selected,
+					shiftDetails,
+				);
+			} else if (format === "csv") {
+				exportShiftReportsCSV(shiftRows, range.label);
+			} else {
+				exportShiftReportsJPG(
+					shiftRows,
+					storeName,
+					range.label,
+					shiftTotals,
+					selected,
+					shiftDetails,
+				);
+			}
+		} finally {
+			setIsExporting(false);
+		}
+	};
+
 	return (
 		<div className="space-y-5">
+			<div className="flex flex-wrap justify-end gap-2">
+				<button
+					type="button"
+					onClick={() => void handleExport("pdf")}
+					disabled={isExporting || !rows?.length}
+					className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-40"
+				>
+					<FileText className="h-3.5 w-3.5" />
+					PDF
+				</button>
+				<button
+					type="button"
+					onClick={() => void handleExport("csv")}
+					disabled={isExporting || !rows?.length}
+					className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-40"
+				>
+					<Download className="h-3.5 w-3.5" />
+					CSV
+				</button>
+				<button
+					type="button"
+					onClick={() => void handleExport("jpg")}
+					disabled={isExporting || !rows?.length}
+					className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-40"
+				>
+					<ImageIcon className="h-3.5 w-3.5" />
+					JPG
+				</button>
+			</div>
+
 			<div className="grid gap-3 md:grid-cols-4">
 				<SummaryCard
 					icon={Users}
@@ -312,7 +391,7 @@ export function ShiftReport({ range }: Props) {
 					</div>
 
 					<div className="overflow-x-auto">
-						<table className="min-w-[1420px] w-full border-collapse text-[13px]">
+						<table className="min-w-[1560px] w-full border-collapse text-[13px]">
 							<thead className="bg-muted/40 text-left text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
 								<tr>
 									<TableHead>Tanggal</TableHead>
@@ -326,7 +405,8 @@ export function ShiftReport({ range }: Props) {
 									<TableHead>Bruto</TableHead>
 									<TableHead>Diskon</TableHead>
 									<TableHead>Net</TableHead>
-									<TableHead>Target</TableHead>
+									<TableHead>Target Shift</TableHead>
+									<TableHead>Target Harian</TableHead>
 									<TableHead>Pengeluaran</TableHead>
 									<TableHead>Produk</TableHead>
 									<TableHead>Aksi</TableHead>
@@ -383,7 +463,22 @@ export function ShiftReport({ range }: Props) {
 												{formatCurrencyIDR(shift.totalRevenue, true)}
 											</TableCell>
 											<TableCell>
-												<TargetStatusCell shift={shift} />
+												<TargetStatusCell
+													label="Shift"
+													hasTarget={!!shift.hasTarget}
+													met={!!shift.isShiftTargetMet}
+													current={shift.shiftCollected ?? shift.totalRevenue}
+													target={shift.shiftTarget ?? 0}
+												/>
+											</TableCell>
+											<TableCell>
+												<TargetStatusCell
+													label="Harian"
+													hasTarget={!!shift.hasTarget}
+													met={!!shift.isDailyTargetMet}
+													current={shift.dailyCollected ?? 0}
+													target={shift.dailyTarget ?? 0}
+												/>
 											</TableCell>
 											<TableCell className="whitespace-nowrap text-rose-700">
 												{formatCurrencyIDR(shift.totalExpenses, true)}
@@ -719,8 +814,20 @@ function MiniStat({
 	);
 }
 
-function TargetStatusCell({ shift }: { shift: ShiftRow }) {
-	if (!shift.hasTarget) {
+function TargetStatusCell({
+	label,
+	hasTarget,
+	met,
+	current,
+	target,
+}: {
+	label: string;
+	hasTarget: boolean;
+	met: boolean;
+	current: number;
+	target: number;
+}) {
+	if (!hasTarget) {
 		return (
 			<div className="whitespace-nowrap text-xs text-muted-foreground">
 				Belum ada target
@@ -729,20 +836,12 @@ function TargetStatusCell({ shift }: { shift: ShiftRow }) {
 	}
 
 	return (
-		<div className="flex min-w-[190px] flex-col gap-1 whitespace-nowrap">
-			<TargetBadge
-				label="Shift"
-				met={!!shift.isShiftTargetMet}
-				current={shift.shiftCollected ?? shift.totalRevenue}
-				target={shift.shiftTarget ?? 0}
-			/>
-			<TargetBadge
-				label="Harian"
-				met={!!shift.isDailyTargetMet}
-				current={shift.dailyCollected ?? 0}
-				target={shift.dailyTarget ?? 0}
-			/>
-		</div>
+		<TargetBadge
+			label={label}
+			met={met}
+			current={current}
+			target={target}
+		/>
 	);
 }
 

@@ -693,3 +693,440 @@ export function exportBookingOrdersJPG(orders: BookingOrderRow[], storeName: str
 	link.href = canvas.toDataURL("image/jpeg", 0.9);
 	link.click();
 }
+
+export interface ShiftReportRow {
+	shiftId: string;
+	shiftName: string;
+	cashierName: string;
+	teamMembers: string;
+	startTime: number;
+	endTime?: number;
+	status: "SELESAI" | "AKTIF";
+	startingCash: number;
+	cashRevenue: number;
+	qrisRevenue: number;
+	otherRevenue: number;
+	totalGrossSales: number;
+	totalDiscount: number;
+	totalRevenue: number;
+	totalExpenses: number;
+	totalItemsSold: number;
+	orderCount: number;
+	bookingCount: number;
+	endingCashExpected: number;
+	endingCashPhysical?: number;
+	nonCashExpected: number;
+	nonCashConfirmed?: number;
+	hasTarget?: boolean;
+	targetMonth?: string;
+	dailyTarget?: number;
+	shiftTarget?: number;
+	dailyCollected?: number;
+	shiftCollected?: number;
+	dailyTargetProgress?: number;
+	shiftTargetProgress?: number;
+	isDailyTargetMet?: boolean;
+	isShiftTargetMet?: boolean;
+}
+
+export interface ShiftReportTotals {
+	totalRevenue: number;
+	totalGross: number;
+	totalDiscount: number;
+	totalExpenses: number;
+	totalItems: number;
+	activeCount: number;
+}
+
+export interface ShiftReportDetails {
+	topProducts?: Array<{ productName: string; quantity: number }>;
+	productBreakdown?: Array<{
+		categoryName: string;
+		totalQuantity: number;
+		items: Array<{ productName: string; quantity: number }>;
+	}>;
+	expenseBreakdown?: Array<{ category: string; amount: number }>;
+}
+
+function formatShiftRangeForExport(startTime: number, endTime?: number) {
+	const date = new Date(startTime).toLocaleDateString("id-ID");
+	const start = new Date(startTime).toLocaleTimeString("id-ID", {
+		hour: "2-digit",
+		minute: "2-digit",
+	});
+	const end = endTime
+		? new Date(endTime).toLocaleTimeString("id-ID", {
+				hour: "2-digit",
+				minute: "2-digit",
+			})
+		: "Aktif";
+	return `${date} ${start}-${end}`;
+}
+
+export function exportShiftReportsPDF(
+	rows: ShiftReportRow[],
+	storeName: string,
+	period: string,
+	totals: ShiftReportTotals,
+	selectedShift?: ShiftReportRow,
+	details?: ShiftReportDetails,
+) {
+	const doc = new jsPDF({ orientation: "landscape" });
+	addPDFHeader(doc, "LAPORAN SHIFT DETAIL", period, storeName);
+
+	autoTable(doc, {
+		startY: 50,
+		head: [[
+			"Tanggal",
+			"Shift",
+			"Status",
+			"Kasir",
+			"Tim",
+			"Modal",
+			"Tunai",
+			"QRIS",
+			"Bruto",
+			"Diskon",
+			"Net",
+			"Target Shift",
+			"Target Harian",
+			"Pengeluaran",
+			"Produk",
+			"Transaksi",
+		]],
+		body: rows.map((shift) => [
+			formatShiftRangeForExport(shift.startTime, shift.endTime),
+			shift.shiftName || "-",
+			shift.status,
+			shift.cashierName || "-",
+			shift.teamMembers || "-",
+			formatCurrencyIDR(shift.startingCash),
+			formatCurrencyIDR(shift.cashRevenue),
+			formatCurrencyIDR(shift.qrisRevenue),
+			formatCurrencyIDR(shift.totalGrossSales),
+			formatCurrencyIDR(shift.totalDiscount),
+			formatCurrencyIDR(shift.totalRevenue),
+			shift.hasTarget
+				? `${formatCurrencyIDR(shift.shiftCollected ?? shift.totalRevenue)} / ${formatCurrencyIDR(shift.shiftTarget ?? 0)} (${shift.isShiftTargetMet ? "Tercapai" : "Tidak"})`
+				: "-",
+			shift.hasTarget
+				? `${formatCurrencyIDR(shift.dailyCollected ?? 0)} / ${formatCurrencyIDR(shift.dailyTarget ?? 0)} (${shift.isDailyTargetMet ? "Tercapai" : "Tidak"})`
+				: "-",
+			formatCurrencyIDR(shift.totalExpenses),
+			String(shift.totalItemsSold),
+			String(shift.orderCount),
+		]),
+		foot: [
+			[
+				"",
+				"",
+				"",
+				"",
+				"TOTAL",
+				"",
+				"",
+				"",
+				formatCurrencyIDR(totals.totalGross),
+				formatCurrencyIDR(totals.totalDiscount),
+				formatCurrencyIDR(totals.totalRevenue),
+				"",
+				"",
+				formatCurrencyIDR(totals.totalExpenses),
+				String(totals.totalItems),
+				"",
+			],
+		],
+		theme: "striped",
+		styles: { fontSize: 7, cellPadding: 1.5 },
+		headStyles: { fillColor: [59, 130, 246], fontSize: 7 },
+		footStyles: { fontStyle: "bold" },
+		columnStyles: {
+			5: { halign: "right" },
+			6: { halign: "right" },
+			7: { halign: "right" },
+			8: { halign: "right" },
+			9: { halign: "right" },
+			10: { halign: "right" },
+			13: { halign: "right" },
+			14: { halign: "center" },
+			15: { halign: "center" },
+		},
+	});
+
+	if (selectedShift) {
+		let y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+		const pageHeight = doc.internal.pageSize.getHeight();
+		if (y > pageHeight - 70) {
+			doc.addPage("a4", "landscape");
+			addPDFHeader(doc, "RINGKASAN SHIFT TERPILIH", period, storeName);
+			y = 50;
+		}
+
+		doc.setFont("helvetica", "bold");
+		doc.setFontSize(11);
+		doc.text(`Ringkasan Shift: ${selectedShift.shiftName}`, 14, y);
+		y += 6;
+
+		autoTable(doc, {
+			startY: y,
+			head: [["Field", "Nilai"]],
+			body: [
+				["Tanggal", formatShiftRangeForExport(selectedShift.startTime, selectedShift.endTime)],
+				["Kasir", selectedShift.cashierName || "-"],
+				["Tim", selectedShift.teamMembers || "-"],
+				["Status", selectedShift.status],
+				["Revenue Bersih", formatCurrencyIDR(selectedShift.totalRevenue)],
+				["Penjualan Bruto", formatCurrencyIDR(selectedShift.totalGrossSales)],
+				["Diskon", formatCurrencyIDR(selectedShift.totalDiscount)],
+				["Pengeluaran", formatCurrencyIDR(selectedShift.totalExpenses)],
+				["Total Produk", `${selectedShift.totalItemsSold} item`],
+				["Total Transaksi", `${selectedShift.orderCount} transaksi`],
+				["Target Shift", selectedShift.hasTarget ? (selectedShift.isShiftTargetMet ? "Tercapai" : "Tidak Tercapai") : "-"],
+				["Target Harian", selectedShift.hasTarget ? (selectedShift.isDailyTargetMet ? "Tercapai" : "Tidak Tercapai") : "-"],
+			],
+			theme: "grid",
+			styles: { fontSize: 8 },
+			headStyles: { fillColor: [16, 185, 129] },
+			columnStyles: { 1: { halign: "right" } },
+		});
+
+		if (details?.topProducts?.length) {
+			const topY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+			autoTable(doc, {
+				startY: topY,
+				head: [["Top Produk", "Qty"]],
+				body: details.topProducts.map((p) => [p.productName, String(p.quantity)]),
+				theme: "striped",
+				styles: { fontSize: 8 },
+				headStyles: { fillColor: [99, 102, 241] },
+				columnStyles: { 1: { halign: "right" } },
+			});
+		}
+	}
+
+	doc.save(`laporan-shift-${Date.now()}.pdf`);
+}
+
+export function exportShiftReportsCSV(rows: ShiftReportRow[], period: string) {
+	const data = rows.map((shift) => ({
+		Periode: period,
+		Tanggal: new Date(shift.startTime).toLocaleDateString("id-ID"),
+		"Jam Mulai": new Date(shift.startTime).toLocaleTimeString("id-ID", {
+			hour: "2-digit",
+			minute: "2-digit",
+		}),
+		"Jam Selesai": shift.endTime
+			? new Date(shift.endTime).toLocaleTimeString("id-ID", {
+					hour: "2-digit",
+					minute: "2-digit",
+				})
+			: "Aktif",
+		Shift: shift.shiftName || "-",
+		Status: shift.status,
+		Kasir: shift.cashierName || "-",
+		Tim: shift.teamMembers || "-",
+		"Modal Kasir": shift.startingCash,
+		Tunai: shift.cashRevenue,
+		"Debit/QRIS": shift.qrisRevenue,
+		Lainnya: shift.otherRevenue,
+		"Penjualan Bruto": shift.totalGrossSales,
+		Diskon: shift.totalDiscount,
+		"Revenue Bersih": shift.totalRevenue,
+		Pengeluaran: shift.totalExpenses,
+		"Produk Terjual": shift.totalItemsSold,
+		"Jumlah Transaksi": shift.orderCount,
+		"Jumlah Booking": shift.bookingCount,
+		"Expected Ending Cash": shift.endingCashExpected,
+		"Actual Ending Cash": shift.endingCashPhysical ?? "",
+		"Expected Non-Cash": shift.nonCashExpected,
+		"Confirmed Non-Cash": shift.nonCashConfirmed ?? "",
+		"Target Tersedia": shift.hasTarget ? "Ya" : "Tidak",
+		"Target Shift": shift.shiftTarget ?? "",
+		"Tercapai Shift": shift.shiftCollected ?? "",
+		"Status Target Shift": shift.hasTarget ? (shift.isShiftTargetMet ? "Tercapai" : "Tidak Tercapai") : "",
+		"Target Harian": shift.dailyTarget ?? "",
+		"Tercapai Harian": shift.dailyCollected ?? "",
+		"Status Target Harian": shift.hasTarget ? (shift.isDailyTargetMet ? "Tercapai" : "Tidak Tercapai") : "",
+	}));
+
+	const csv = Papa.unparse(data);
+	const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement("a");
+	a.href = url;
+	a.download = `laporan-shift-${Date.now()}.csv`;
+	a.click();
+	URL.revokeObjectURL(url);
+}
+
+export function exportShiftReportsJPG(
+	rows: ShiftReportRow[],
+	storeName: string,
+	period: string,
+	totals: ShiftReportTotals,
+	selectedShift?: ShiftReportRow,
+	details?: ShiftReportDetails,
+) {
+	const canvas = document.createElement("canvas");
+	const ctx = canvas.getContext("2d");
+	if (!ctx) return;
+
+	const headerHeight = 120;
+	const summaryHeight = 80;
+	const tableHeaderHeight = 36;
+	const rowHeight = 28;
+	const detailsHeight = selectedShift ? 220 : 0;
+	const productLines = (details?.topProducts?.length ?? 0) + (details?.expenseBreakdown?.length ?? 0);
+	const productHeight = Math.max(0, productLines * 24);
+
+	canvas.width = 1800;
+	canvas.height = headerHeight + summaryHeight + tableHeaderHeight + (rows.length * rowHeight) + detailsHeight + productHeight + 80;
+
+	ctx.fillStyle = "#ffffff";
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+	ctx.fillStyle = "#0f172a";
+	ctx.fillRect(0, 0, canvas.width, headerHeight);
+	ctx.fillStyle = "#ffffff";
+	ctx.font = "bold 34px Arial";
+	ctx.fillText(storeName.toUpperCase(), 30, 52);
+	ctx.font = "20px Arial";
+	ctx.fillText("LAPORAN SHIFT DETAIL", 30, 84);
+	ctx.font = "15px Arial";
+	ctx.fillText(`Periode: ${period}`, 30, 108);
+
+	let y = headerHeight + 28;
+	ctx.fillStyle = "#111827";
+	ctx.font = "bold 18px Arial";
+	ctx.fillText(`Total Shift: ${rows.length}`, 30, y);
+	ctx.fillText(`Shift Aktif: ${totals.activeCount}`, 300, y);
+	ctx.fillText(`Revenue Bersih: ${formatCurrencyIDR(totals.totalRevenue)}`, 530, y);
+	y += 30;
+	ctx.font = "bold 16px Arial";
+	ctx.fillText(`Bruto: ${formatCurrencyIDR(totals.totalGross)}`, 30, y);
+	ctx.fillText(`Diskon: ${formatCurrencyIDR(totals.totalDiscount)}`, 330, y);
+	ctx.fillText(`Pengeluaran: ${formatCurrencyIDR(totals.totalExpenses)}`, 590, y);
+	ctx.fillText(`Produk: ${totals.totalItems}`, 930, y);
+
+	y += 24;
+	const columns = [
+		{ label: "Tanggal", width: 220 },
+		{ label: "Shift", width: 90 },
+		{ label: "Status", width: 80 },
+		{ label: "Kasir", width: 130 },
+		{ label: "Tim", width: 190 },
+		{ label: "Net", width: 140 },
+		{ label: "Target Shift", width: 220 },
+		{ label: "Target Harian", width: 220 },
+		{ label: "Pengeluaran", width: 140 },
+		{ label: "Produk", width: 90 },
+		{ label: "Trx", width: 80 },
+	];
+
+	ctx.fillStyle = "#e2e8f0";
+	ctx.fillRect(20, y, canvas.width - 40, tableHeaderHeight);
+	ctx.fillStyle = "#0f172a";
+	ctx.font = "bold 13px Arial";
+	let x = 28;
+	for (const col of columns) {
+		ctx.fillText(col.label, x, y + 22);
+		x += col.width;
+	}
+	y += tableHeaderHeight;
+
+	ctx.font = "12px Arial";
+	rows.forEach((row, index) => {
+		ctx.fillStyle = index % 2 === 0 ? "#f8fafc" : "#ffffff";
+		ctx.fillRect(20, y, canvas.width - 40, rowHeight);
+		ctx.fillStyle = "#1f2937";
+
+		const values = [
+			formatShiftRangeForExport(row.startTime, row.endTime),
+			row.shiftName || "-",
+			row.status,
+			row.cashierName || "-",
+			row.teamMembers || "-",
+			formatCurrencyIDR(row.totalRevenue),
+			row.hasTarget
+				? `${formatCurrencyIDR(row.shiftCollected ?? row.totalRevenue)} / ${formatCurrencyIDR(row.shiftTarget ?? 0)}`
+				: "-",
+			row.hasTarget
+				? `${formatCurrencyIDR(row.dailyCollected ?? 0)} / ${formatCurrencyIDR(row.dailyTarget ?? 0)}`
+				: "-",
+			formatCurrencyIDR(row.totalExpenses),
+			String(row.totalItemsSold),
+			String(row.orderCount),
+		];
+
+		let colX = 28;
+		values.forEach((value, valueIndex) => {
+			const text = value.length > 30 ? `${value.slice(0, 30)}...` : value;
+			ctx.fillText(text, colX, y + 18);
+			colX += columns[valueIndex]?.width ?? 100;
+		});
+
+		y += rowHeight;
+	});
+
+	if (selectedShift) {
+		y += 20;
+		ctx.fillStyle = "#0f172a";
+		ctx.font = "bold 18px Arial";
+		ctx.fillText(`Ringkasan Shift Terpilih: ${selectedShift.shiftName}`, 30, y);
+		y += 28;
+		ctx.font = "14px Arial";
+		const detailRows = [
+			`Kasir: ${selectedShift.cashierName || "-"}`,
+			`Tim: ${selectedShift.teamMembers || "-"}`,
+			`Status: ${selectedShift.status}`,
+			`Revenue Bersih: ${formatCurrencyIDR(selectedShift.totalRevenue)}`,
+			`Penjualan Bruto: ${formatCurrencyIDR(selectedShift.totalGrossSales)}`,
+			`Diskon: ${formatCurrencyIDR(selectedShift.totalDiscount)}`,
+			`Pengeluaran: ${formatCurrencyIDR(selectedShift.totalExpenses)}`,
+			`Total Produk: ${selectedShift.totalItemsSold} item`,
+			`Transaksi: ${selectedShift.orderCount}`,
+			`Target Shift: ${selectedShift.hasTarget ? (selectedShift.isShiftTargetMet ? "Tercapai" : "Tidak Tercapai") : "-"}`,
+			`Target Harian: ${selectedShift.hasTarget ? (selectedShift.isDailyTargetMet ? "Tercapai" : "Tidak Tercapai") : "-"}`,
+		];
+		detailRows.forEach((line) => {
+			ctx.fillStyle = "#1f2937";
+			ctx.fillText(line, 34, y);
+			y += 22;
+		});
+	}
+
+	if (details?.topProducts?.length) {
+		y += 8;
+		ctx.fillStyle = "#0f172a";
+		ctx.font = "bold 16px Arial";
+		ctx.fillText("Top Produk", 30, y);
+		y += 24;
+		ctx.font = "13px Arial";
+		details.topProducts.forEach((p, index) => {
+			ctx.fillStyle = "#1f2937";
+			ctx.fillText(`${index + 1}. ${p.productName}`, 34, y);
+			ctx.fillText(`${p.quantity}`, 560, y);
+			y += 20;
+		});
+	}
+
+	if (details?.expenseBreakdown?.length) {
+		y += 8;
+		ctx.fillStyle = "#0f172a";
+		ctx.font = "bold 16px Arial";
+		ctx.fillText("Rincian Pengeluaran", 30, y);
+		y += 24;
+		ctx.font = "13px Arial";
+		details.expenseBreakdown.forEach((e) => {
+			ctx.fillStyle = "#1f2937";
+			ctx.fillText(e.category, 34, y);
+			ctx.fillText(formatCurrencyIDR(e.amount), 360, y);
+			y += 20;
+		});
+	}
+
+	const link = document.createElement("a");
+	link.download = `laporan-shift-${Date.now()}.jpg`;
+	link.href = canvas.toDataURL("image/jpeg", 0.92);
+	link.click();
+}
