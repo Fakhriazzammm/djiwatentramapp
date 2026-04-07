@@ -397,6 +397,14 @@ function ProductsTab({
 			toast.error("Pilih kategori");
 			return;
 		}
+		if (!editingId && recipeData.length === 0) {
+			toast.error("Buat resep dulu sebelum menambah produk");
+			return;
+		}
+		if (recipeData.some((item) => item.amount <= 0)) {
+			toast.error("Jumlah resep harus lebih dari 0");
+			return;
+		}
 
 		setIsUploading(true);
 		try {
@@ -666,6 +674,8 @@ function ProductsTab({
 		await updateProduct({ id, categoryId: value });
 		toast.success("Kategori diperbarui");
 	};
+
+	const isCreateBlockedByRecipe = !editingId && recipeData.length === 0;
 
 	return (
 		<>
@@ -1562,7 +1572,7 @@ function ProductsTab({
 											})}
 											{recipeData.length === 0 && (
 												<p className="text-center font-medium text-muted-foreground/70 text-[10px] italic">
-													Belum ada resep
+													Buat resep dulu sebelum simpan produk.
 												</p>
 											)}
 										</div>
@@ -1578,10 +1588,15 @@ function ProductsTab({
 										Batal
 									</button>
 									<button
-										className="flex-1 rounded-lg bg-primary py-2.5 font-semibold text-primary-foreground text-sm shadow-sm transition-all hover:brightness-110"
+										className="flex-1 rounded-lg bg-primary py-2.5 font-semibold text-primary-foreground text-sm shadow-sm transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+										disabled={isCreateBlockedByRecipe}
 										type="submit"
 									>
-										{editingId ? "Simpan Perubahan" : "Simpan Produk"}
+										{editingId
+											? "Simpan Perubahan"
+											: isCreateBlockedByRecipe
+												? "Buat Resep Dulu"
+												: "Simpan Produk"}
 									</button>
 								</div>
 							</form>
