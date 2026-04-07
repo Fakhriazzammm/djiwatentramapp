@@ -2359,9 +2359,6 @@ function InventoryTable({
 							<td className="px-2 py-2">
 								<div className="text-[10px] text-muted-foreground">-</div>
 							</td>
-							<td className="px-2 py-2">
-								<div className="text-[10px] text-muted-foreground">-</div>
-							</td>
 							<td className="px-2 py-2 text-right">
 								<button
 									className="rounded-lg bg-primary px-2.5 py-1 text-[10px] font-bold text-primary-foreground hover:brightness-110"
