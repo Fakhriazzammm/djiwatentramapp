@@ -50,9 +50,7 @@ function AdminProductsPage() {
 	const categories = useQuery(api.products.getCategories);
 	const variationPresets = useQuery(api.products.getVariationPresets);
 
-	const [activeTab, setActiveTab] = useState<
-		"products" | "base-recipes" | "mixed-recipes" | "settings"
-	>("products");
+	const [activeTab, setActiveTab] = useState<"products" | "settings">("products");
 
 	return (
 		<div className="fade-in slide-in-from-bottom-4 flex animate-in flex-col gap-3 duration-500 md:gap-6">
@@ -60,8 +58,6 @@ function AdminProductsPage() {
 				<Tabs onValueChange={(value) => setActiveTab(value as typeof activeTab)} value={activeTab}>
 					<TabsList variant="line">
 						<TabsTrigger value="products">Produk</TabsTrigger>
-						<TabsTrigger value="base-recipes">Resep</TabsTrigger>
-						<TabsTrigger value="mixed-recipes">List Resep</TabsTrigger>
 						<TabsTrigger value="settings">Pengaturan</TabsTrigger>
 					</TabsList>
 				</Tabs>
@@ -82,30 +78,6 @@ function AdminProductsPage() {
 									products={products}
 									variationPresets={variationPresets}
 								/>
-							</motion.div>
-						);
-					}
-					if (activeTab === "base-recipes") {
-						return (
-							<motion.div
-								animate={{ opacity: 1, y: 0 }}
-								exit={{ opacity: 0, y: 10 }}
-								initial={{ opacity: 0, y: 10 }}
-								key="base-recipes-tab"
-							>
-								<BaseRecipesTab />
-							</motion.div>
-						);
-					}
-					if (activeTab === "mixed-recipes") {
-						return (
-							<motion.div
-								animate={{ opacity: 1, y: 0 }}
-								exit={{ opacity: 0, y: 10 }}
-								initial={{ opacity: 0, y: 10 }}
-								key="mixed-recipes-tab"
-							>
-								<MixedRecipesTab />
 							</motion.div>
 						);
 					}
@@ -137,11 +109,7 @@ function ProductsTab({
 	categories: Doc<"categories">[] | undefined;
 	variationPresets: Doc<"variationPresets">[] | undefined;
 }) {
-	const inventory = useQuery(api.inventory.getInventory);
-	const baseRecipes = useQuery(api.inventory.getBaseRecipes);
-	const recipes = useQuery(api.inventory.getRecipes);
 	const hppProductMap = useQuery(api.hpp.getHppProductMap);
-	const saveRecipe = useMutation(api.inventory.saveRecipe);
 
 	const addProduct = useMutation(api.products.addProduct);
 	const updateProduct = useMutation(api.products.updateProduct);
@@ -161,9 +129,6 @@ function ProductsTab({
 		menuNumber: "",
 		variations: [] as Variation[],
 	});
-	const [recipeData, setRecipeData] = useState<
-		{ inventoryId: Id<"inventory">; amount: number }[]
-	>([]);
 	const [imageFile, setImageFile] = useState<File | null>(null);
 	const [originalStorageId, setOriginalStorageId] = useState<string | null>(
 		null
@@ -304,7 +269,6 @@ function ProductsTab({
 			menuNumber: "",
 			variations: [],
 		});
-		setRecipeData([]);
 		setImageFile(null);
 		setOriginalStorageId(null);
 		setEditingId(null);
@@ -416,14 +380,6 @@ function ProductsTab({
 			toast.error("Pilih kategori");
 			return;
 		}
-		if (!editingId && recipeData.length === 0) {
-			toast.error("Buat resep dulu sebelum menambah produk");
-			return;
-		}
-		if (recipeData.some((item) => item.amount <= 0)) {
-			toast.error("Jumlah resep harus lebih dari 0");
-			return;
-		}
 
 		setIsUploading(true);
 		try {
@@ -439,24 +395,14 @@ function ProductsTab({
 				variations: formData.variations,
 			};
 
-			let activeId: Id<"products">;
 			if (editingId) {
 				await updateProduct({
 					id: editingId,
 					...productData,
 					isAvailable: true,
 				});
-				activeId = editingId;
 			} else {
-				activeId = await addProduct({ ...productData, isAvailable: true });
-			}
-
-			// Save recipe if any
-			if (recipeData.length > 0) {
-				await saveRecipe({
-					productId: activeId,
-					ingredients: recipeData,
-				});
+				await addProduct({ ...productData, isAvailable: true });
 			}
 
 			toast.success(
@@ -483,20 +429,6 @@ function ProductsTab({
 		});
 		setOriginalStorageId(product.storageId || null);
 		setEditingId(product._id);
-
-		// Load existing recipe
-		const existingRecipe = recipes?.find((recipe: any) => recipe.productId === product._id && !recipe.variantName);
-		if (existingRecipe) {
-			setRecipeData(
-				existingRecipe.ingredients as {
-					inventoryId: Id<"inventory">;
-					amount: number;
-				}[]
-			);
-		} else {
-			setRecipeData([]);
-		}
-
 		setIsModalOpen(true);
 	};
 
@@ -766,7 +698,7 @@ function ProductsTab({
 				variations: [],
 			});
 			toast.success("Produk berhasil ditambahkan");
-			toast.info("Lanjutkan isi resep dari tab Resep jika diperlukan");
+			toast.info("Kelola recipe produk dari halaman /recipe bila diperlukan");
 			resetInlineCreateRow();
 		} catch (error) {
 			console.error(error);
@@ -823,33 +755,6 @@ function ProductsTab({
 			setGeneratingProductDescId(null);
 		}
 	};
-
-	const isCreateBlockedByRecipe = !editingId && recipeData.length === 0;
-	const baseRecipeById = useMemo(() => {
-		const map = new Map<string, any>();
-		for (const recipe of baseRecipes ?? []) {
-			map.set(recipe._id as string, recipe);
-		}
-		return map;
-	}, [baseRecipes]);
-
-	const groupedBaseInventoryOptions = useMemo(() => {
-		const groups: Record<string, any[]> = {};
-		for (const item of inventory?.filter((inv: any) => inv.baseRecipeId) ?? []) {
-			const baseRecipe = item.baseRecipeId
-				? baseRecipeById.get(item.baseRecipeId as string)
-				: null;
-			const category =
-				typeof baseRecipe?.category === "string" && baseRecipe.category.trim()
-					? baseRecipe.category.trim()
-					: "Lainnya";
-			if (!groups[category]) {
-				groups[category] = [];
-			}
-			groups[category].push(item);
-		}
-		return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0], "id"));
-	}, [baseRecipeById, inventory]);
 
 	return (
 		<>
@@ -1841,106 +1746,24 @@ function ProductsTab({
 										)}
 									</div>
 
-									{/* Recipe Section */}
 									<div className="space-y-4 rounded-lg border border-border bg-muted/30 p-6">
-										<div className="flex items-center justify-between">
-											<h4 className="font-bold text-foreground text-xs uppercase tracking-widest">
-												Resep
-											</h4>
-											<select
-												className="rounded-md bg-muted px-3 py-1.5 font-bold text-foreground text-[10px] outline-none"
-												onChange={(e) => {
-													const invId = e.target.value as Id<"inventory">;
-													if (!invId) {
-														return;
-													}
-													if (recipeData.some((r) => r.inventoryId === invId)) {
-														toast.error("Bahan ini sudah ada");
-														return;
-													}
-													setRecipeData([
-														...recipeData,
-														{ inventoryId: invId, amount: 0 },
-													]);
-												}}
-												value=""
-											>
-												<option value="">+ Resep/Bahan</option>
-												{(() => {
-													const raw = inventory?.filter((i: any) => !i.baseRecipeId);
-													return (
-														<>
-															{raw && raw.length > 0 && (
-																<optgroup label="Bahan Mentah">
-																	{raw.map((inv: any) => (
-																		<option key={inv._id} value={inv._id}>
-																			{inv.ingredientName} ({inv.unit})
-																		</option>
-																	))}
-																</optgroup>
-															)}
-															{groupedBaseInventoryOptions.map(([category, items]) => (
-																<optgroup key={category} label={`Resep - ${category}`}>
-																	{items.map((inv: any) => (
-																		<option key={inv._id} value={inv._id}>
-																			{inv.ingredientName} ({inv.unit})
-																		</option>
-																	))}
-																</optgroup>
-															))}
-														</>
-													);
-												})()}
-											</select>
-										</div>
-										<div className="space-y-3">
-											{recipeData.map((item: any, idx: number) => {
-												const inv = inventory?.find(
-													(i: any) => i._id === item.inventoryId
-												);
-												return (
-													<div
-														className="flex items-center gap-3 rounded-2xl bg-muted/50 p-3"
-														key={item.inventoryId}
-													>
-														<span className="flex-1 truncate font-bold text-foreground text-[11px] uppercase tracking-tight">
-															{inv?.ingredientName || "Loading..."}
-														</span>
-														<div className="flex items-center gap-2">
-															<input
-																className="w-20 rounded-xl bg-muted px-3 py-1.5 font-bold text-foreground text-xs outline-none focus:ring-1 focus:ring-ring/20"
-																onChange={(e) => {
-																	const newData = [...recipeData];
-																	newData[idx].amount = Number(e.target.value);
-																	setRecipeData(newData);
-																}}
-																placeholder="0"
-																type="number"
-																value={item.amount}
-															/>
-															<span className="min-w-[40px] font-bold text-muted-foreground/70 text-[10px] uppercase">
-																{inv?.unit}
-															</span>
-														</div>
-														<button
-															className="rounded-xl p-2 text-destructive transition-colors hover:bg-destructive/10"
-															onClick={() => {
-																const newData = [...recipeData];
-																newData.splice(idx, 1);
-																setRecipeData(newData);
-															}}
-															type="button"
-														>
-															<Trash2 className="h-4 w-4" />
-														</button>
-													</div>
-												);
-											})}
-											{recipeData.length === 0 && (
-												<p className="text-center font-medium text-muted-foreground/70 text-[10px] italic">
-													Buat resep dulu sebelum simpan produk.
+										<div className="flex items-center justify-between gap-3">
+											<div>
+												<h4 className="font-bold text-foreground text-xs uppercase tracking-widest">
+													Recipe Workspace
+												</h4>
+												<p className="mt-2 text-xs leading-5 text-muted-foreground">
+													Produk dan recipe sekarang dipisahkan. Simpan dulu produk,
+													lalu kelola formula raciknya dari halaman khusus recipe agar
+													lebih rapi dan mudah dibaca tim operasional.
 												</p>
-											)}
+											</div>
+											<a
+												className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm transition hover:brightness-110"
+												href="/recipe"
+											>
+												Buka /recipe
+											</a>
 										</div>
 									</div>
 								</div>
@@ -1954,15 +1777,10 @@ function ProductsTab({
 										Batal
 									</button>
 									<button
-										className="flex-1 rounded-lg bg-primary py-2.5 font-semibold text-primary-foreground text-sm shadow-sm transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-										disabled={isCreateBlockedByRecipe}
+										className="flex-1 rounded-lg bg-primary py-2.5 font-semibold text-primary-foreground text-sm shadow-sm transition-all hover:brightness-110"
 										type="submit"
 									>
-										{editingId
-											? "Simpan Perubahan"
-											: isCreateBlockedByRecipe
-												? "Buat Resep Dulu"
-												: "Simpan Produk"}
+										{editingId ? "Simpan Perubahan" : "Simpan Produk"}
 									</button>
 								</div>
 							</form>
@@ -2752,9 +2570,42 @@ function BaseRecipesTab() {
 		setFormData({ ...formData, ingredients: newIngs });
 	};
 
-	const availableIngredients = useMemo(
-		() => inventory?.filter((item: any) => !item.baseRecipeId) ?? [],
-		[inventory]
+	const baseRecipeById = useMemo(() => {
+		const map = new Map<string, any>();
+		for (const recipe of baseRecipes ?? []) {
+			map.set(recipe._id as string, recipe);
+		}
+		return map;
+	}, [baseRecipes]);
+	const groupedIngredients = useMemo(() => {
+		const rawIngredients = inventory?.filter((item: any) => !item.baseRecipeId) ?? [];
+		const baseGroups: Record<string, any[]> = {};
+		for (const item of inventory?.filter((inv: any) => inv.baseRecipeId) ?? []) {
+			const baseRecipe = item.baseRecipeId
+				? baseRecipeById.get(item.baseRecipeId as string)
+				: null;
+			const category =
+				typeof baseRecipe?.category === "string" && baseRecipe.category.trim()
+					? baseRecipe.category.trim()
+					: "Lainnya";
+			if (!baseGroups[category]) {
+				baseGroups[category] = [];
+			}
+			baseGroups[category].push(item);
+		}
+		return {
+			rawIngredients,
+			baseGroups: Object.entries(baseGroups).sort((a, b) =>
+				a[0].localeCompare(b[0], "id")
+			),
+		};
+	}, [baseRecipeById, inventory]);
+	const allIngredients = useMemo(
+		() => [
+			...groupedIngredients.rawIngredients,
+			...groupedIngredients.baseGroups.flatMap(([, items]) => items),
+		],
+		[groupedIngredients]
 	);
 	const productNameOptions = useMemo<string[]>(() => {
 		if (!products) {
@@ -2771,13 +2622,13 @@ function BaseRecipesTab() {
 		if (!query) {
 			return;
 		}
-		const exact = availableIngredients.find(
+		const exact = allIngredients.find(
 			(item: any) =>
 				item.ingredientName.toLowerCase() === query || item._id === ingredientQuery
 		);
 		const matched =
 			exact ||
-			availableIngredients.find((item: any) =>
+			allIngredients.find((item: any) =>
 				item.ingredientName.toLowerCase().includes(query)
 			);
 		if (!matched) {
@@ -3041,11 +2892,11 @@ function BaseRecipesTab() {
 															addIngredientFromQuery();
 														}
 													}}
-													placeholder="+ Tambah bahan dari inventory"
+													placeholder="+ Tambah bahan atau base resep"
 													value={ingredientQuery}
 												/>
 												<datalist id="base-ingredient-options">
-													{availableIngredients.map((inv: any) => (
+													{allIngredients.map((inv: any) => (
 														<option key={inv._id} value={inv.ingredientName}>
 															{inv.unit}
 														</option>

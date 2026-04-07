@@ -11,6 +11,7 @@ import { useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	Archive,
+	BookOpen,
 	Bell,
 	Calculator,
 	Calendar,
@@ -56,6 +57,7 @@ export const Route = createFileRoute("/admin")({
 const PAGE_TITLES: Record<string, string> = {
 	"/admin": "Dasbor",
 	"/admin/products": "Produk",
+	"/recipe": "Resep",
 	"/admin/inventory": "Inventaris",
 	"/admin/finance": "Keuangan",
 	"/admin/finance/reports": "Laporan Keuangan",
@@ -91,6 +93,7 @@ const BOTTOM_NAV_ITEMS = [
 // Pages that belong to "Lainnya" menu
 const MORE_MENU_PATHS = [
 	"/admin/products",
+	"/recipe",
 	"/admin/inventory",
 	"/admin/discounts",
 	"/admin/hpp-calculator",
@@ -108,6 +111,7 @@ const QUICK_MENU_SECTIONS = [
 		label: "Manajemen",
 		items: [
 			{ to: "/admin/products", icon: Package, label: "Produk" },
+			{ to: "/recipe", icon: BookOpen, label: "Resep" },
 			{ to: "/admin/inventory", icon: Archive, label: "Inventaris" },
 			{ to: "/admin/booking", icon: Calendar, label: "Booking" },
 		],
@@ -288,6 +292,12 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Produk"
 						to="/admin/products"
+					/>
+					<DesktopNavLink
+						icon={<BookOpen />}
+						isCollapsed={isCollapsed}
+						label="Resep"
+						to="/recipe"
 					/>
 					<DesktopNavLink
 						icon={<Archive />}

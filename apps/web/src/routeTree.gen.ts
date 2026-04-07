@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RecipeRouteImport } from './routes/recipe'
 import { Route as MenuRouteImport } from './routes/menu'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -17,6 +18,7 @@ import { Route as BrandSlugRouteImport } from './routes/$brandSlug'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as RecipeViewRouteImport } from './routes/recipe.view'
 import { Route as HomeSectionRouteImport } from './routes/home.$section'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
@@ -37,6 +39,11 @@ import { Route as AdminFinanceShiftReportsRouteImport } from './routes/admin/fin
 import { Route as AdminFinanceTransactionsRouteRouteImport } from './routes/admin/finance/transactions/route'
 import { Route as AdminFinanceReportsRouteRouteImport } from './routes/admin/finance/reports/route'
 
+const RecipeRoute = RecipeRouteImport.update({
+  id: '/recipe',
+  path: '/recipe',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/recipe.lazy').then((d) => d.Route))
 const MenuRoute = MenuRouteImport.update({
   id: '/menu',
   path: '/menu',
@@ -77,6 +84,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() => import('./routes/admin/index.lazy').then((d) => d.Route))
+const RecipeViewRoute = RecipeViewRouteImport.update({
+  id: '/view',
+  path: '/view',
+  getParentRoute: () => RecipeRoute,
+} as any).lazy(() => import('./routes/recipe.view.lazy').then((d) => d.Route))
 const HomeSectionRoute = HomeSectionRouteImport.update({
   id: '/$section',
   path: '/$section',
@@ -198,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRouteWithChildren
   '/menu': typeof MenuRoute
+  '/recipe': typeof RecipeRouteWithChildren
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
@@ -213,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/home/$section': typeof HomeSectionRoute
+  '/recipe/view': typeof RecipeViewRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
@@ -226,6 +240,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRouteWithChildren
   '/menu': typeof MenuRoute
+  '/recipe': typeof RecipeRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
   '/admin/booking': typeof AdminBookingRoute
@@ -240,6 +255,7 @@ export interface FileRoutesByTo {
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/home/$section': typeof HomeSectionRoute
+  '/recipe/view': typeof RecipeViewRoute
   '/admin': typeof AdminIndexRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
@@ -255,6 +271,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRouteWithChildren
   '/menu': typeof MenuRoute
+  '/recipe': typeof RecipeRouteWithChildren
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
@@ -270,6 +287,7 @@ export interface FileRoutesById {
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/home/$section': typeof HomeSectionRoute
+  '/recipe/view': typeof RecipeViewRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
@@ -286,6 +304,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/home'
     | '/menu'
+    | '/recipe'
     | '/admin/finance'
     | '/admin/ai-chat'
     | '/admin/bar'
@@ -301,6 +320,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/settings'
     | '/home/$section'
+    | '/recipe/view'
     | '/admin/'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
@@ -314,6 +334,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/home'
     | '/menu'
+    | '/recipe'
     | '/admin/ai-chat'
     | '/admin/bar'
     | '/admin/booking'
@@ -328,6 +349,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/settings'
     | '/home/$section'
+    | '/recipe/view'
     | '/admin'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
@@ -342,6 +364,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/home'
     | '/menu'
+    | '/recipe'
     | '/admin/finance'
     | '/admin/ai-chat'
     | '/admin/bar'
@@ -357,6 +380,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/settings'
     | '/home/$section'
+    | '/recipe/view'
     | '/admin/'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
@@ -372,10 +396,18 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   HomeRoute: typeof HomeRouteWithChildren
   MenuRoute: typeof MenuRoute
+  RecipeRoute: typeof RecipeRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/recipe': {
+      id: '/recipe'
+      path: '/recipe'
+      fullPath: '/recipe'
+      preLoaderRoute: typeof RecipeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/menu': {
       id: '/menu'
       path: '/menu'
@@ -431,6 +463,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/recipe/view': {
+      id: '/recipe/view'
+      path: '/view'
+      fullPath: '/recipe/view'
+      preLoaderRoute: typeof RecipeViewRouteImport
+      parentRoute: typeof RecipeRoute
     }
     '/home/$section': {
       id: '/home/$section'
@@ -635,6 +674,17 @@ const HomeRouteChildren: HomeRouteChildren = {
 
 const HomeRouteWithChildren = HomeRoute._addFileChildren(HomeRouteChildren)
 
+interface RecipeRouteChildren {
+  RecipeViewRoute: typeof RecipeViewRoute
+}
+
+const RecipeRouteChildren: RecipeRouteChildren = {
+  RecipeViewRoute: RecipeViewRoute,
+}
+
+const RecipeRouteWithChildren =
+  RecipeRoute._addFileChildren(RecipeRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
@@ -643,6 +693,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   HomeRoute: HomeRouteWithChildren,
   MenuRoute: MenuRoute,
+  RecipeRoute: RecipeRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

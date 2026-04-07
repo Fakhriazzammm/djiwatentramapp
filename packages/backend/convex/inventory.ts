@@ -1197,6 +1197,15 @@ export const saveRecipe = mutation({
 	},
 });
 
+export const deleteRecipe = mutation({
+	args: {
+		id: v.id("recipes"),
+	},
+	handler: async (ctx, args) => {
+		await ctx.db.delete(args.id);
+	},
+});
+
 export const deductStockForOrder = mutation({
 	args: {
 		orderId: v.id("orders"),
