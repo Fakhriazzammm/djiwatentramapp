@@ -60,8 +60,8 @@ function AdminProductsPage() {
 				<Tabs onValueChange={(value) => setActiveTab(value as typeof activeTab)} value={activeTab}>
 					<TabsList variant="line">
 						<TabsTrigger value="products">Produk</TabsTrigger>
-						<TabsTrigger value="base-recipes">Resep Base</TabsTrigger>
-						<TabsTrigger value="mixed-recipes">Resep Gabungan</TabsTrigger>
+						<TabsTrigger value="base-recipes">Resep</TabsTrigger>
+						<TabsTrigger value="mixed-recipes">List Resep</TabsTrigger>
 						<TabsTrigger value="settings">Pengaturan</TabsTrigger>
 					</TabsList>
 				</Tabs>
@@ -1504,7 +1504,7 @@ function ProductsTab({
 																</optgroup>
 															)}
 															{bases && bases.length > 0 && (
-																<optgroup label="Resep Base">
+																<optgroup label="Resep">
 																	{bases.map((inv: any) => (
 																		<option key={inv._id} value={inv._id}>
 																			{inv.ingredientName} ({inv.unit})
@@ -2339,7 +2339,7 @@ function BaseRecipesTab() {
 			resetForm();
 		} catch (error) {
 			toast.error(
-				error instanceof Error ? error.message : "Gagal menyimpan resep base"
+				error instanceof Error ? error.message : "Gagal menyimpan resep"
 			);
 		}
 	};
@@ -2412,12 +2412,12 @@ function BaseRecipesTab() {
 	return (
 		<>
 			<div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-				<h2 className="font-bold text-xl">Daftar Resep Base (Pre-mix)</h2>
+				<h2 className="font-bold text-xl">Daftar Resep</h2>
 				<div className="flex items-center gap-2">
 					<Input
 						className="h-9 w-56"
 						onChange={(event) => setSearchRecipe(event.target.value)}
-						placeholder="Cari resep base..."
+						placeholder="Cari resep..."
 						value={searchRecipe}
 					/>
 					<Button
@@ -2429,7 +2429,7 @@ function BaseRecipesTab() {
 						size="sm"
 						type="button"
 					>
-						<Plus className="h-4 w-4" /> Tambah Resep Base
+						<Plus className="h-4 w-4" /> Tambah Resep
 					</Button>
 				</div>
 			</div>
@@ -2506,10 +2506,10 @@ function BaseRecipesTab() {
 						>
 							<div className="border-border/60 border-b p-5">
 								<h3 className="font-bold text-xl text-foreground">
-									{editingId ? "Edit Resep Base" : "Buat Resep Base Baru"}
+									{editingId ? "Edit Resep" : "Buat Resep Baru"}
 								</h3>
 								<p className="mt-1 text-muted-foreground text-xs">
-									Susun formula base recipe dengan struktur yang lebih ringkas dan mudah dicek.
+									Susun formula resep dengan struktur yang lebih ringkas dan mudah dicek.
 								</p>
 							</div>
 
@@ -2709,7 +2709,7 @@ function BaseRecipesTab() {
 			<ConfirmationModal
 				confirmText="Hapus"
 				isOpen={!!confirmDeleteId}
-				message="Hapus resep base ini? Semua produk yang menggunakan resep ini mungkin terpengaruh."
+				message="Hapus resep ini? Semua produk yang menggunakan resep ini mungkin terpengaruh."
 				onClose={() => setConfirmDeleteId(null)}
 				onConfirm={async () => {
 					if (confirmDeleteId) {
@@ -2760,9 +2760,9 @@ function MixedRecipesTab() {
 		<div className="space-y-6">
 			<div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
 				<div>
-				<h2 className="font-bold text-xl">Resep Gabungan</h2>
+				<h2 className="font-bold text-xl">List Resep</h2>
 				<p className="text-muted-foreground text-sm">
-					Daftar lengkap semua resep produk dan resep base.
+					Daftar lengkap semua resep produk dan resep.
 				</p>
 				</div>
 				<Input
@@ -2775,7 +2775,7 @@ function MixedRecipesTab() {
 
 			<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
 				<div className="rounded-lg border border-border bg-card p-3">
-					<p className="text-muted-foreground text-[10px] uppercase">Base Recipes</p>
+					<p className="text-muted-foreground text-[10px] uppercase">Total Resep</p>
 					<p className="font-bold text-lg">{baseRecipes?.length ?? 0}</p>
 				</div>
 				<div className="rounded-lg border border-border bg-card p-3">
@@ -2793,11 +2793,11 @@ function MixedRecipesTab() {
 			</div>
 
 			<div className="grid gap-6">
-				{/* Section 1: Base Recipes */}
+				{/* Section 1: Recipes */}
 				<div className="space-y-4">
 					<div className="flex items-center gap-2">
 						<div className="h-6 w-1 rounded-full bg-primary" />
-						<h3 className="font-bold text-lg">Resep Base (Pre-mix)</h3>
+						<h3 className="font-bold text-lg">Resep</h3>
 					</div>
 					<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 						{baseRecipes?.map((recipe: any) => (
@@ -2838,7 +2838,7 @@ function MixedRecipesTab() {
 						))}
 						{baseRecipes?.length === 0 && (
 							<div className="col-span-full py-8 text-center text-muted-foreground text-sm">
-								Belum ada resep base.
+								Belum ada resep.
 							</div>
 						)}
 					</div>
