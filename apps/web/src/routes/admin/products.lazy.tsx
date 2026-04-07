@@ -185,8 +185,10 @@ function ProductsTab({
 	const [isSavingInline, setIsSavingInline] = useState<
 		Record<string, { price?: boolean; quantity?: boolean; promoPrice?: boolean; menuNumber?: boolean }>
 	>({});
-	const [isInlineAddOpen, setIsInlineAddOpen] = useState(false);
 	const [isSavingInlineAdd, setIsSavingInlineAdd] = useState(false);
+	const [isGeneratingInlineDesc, setIsGeneratingInlineDesc] = useState(false);
+	const [generatingProductDescId, setGeneratingProductDescId] =
+		useState<Id<"products"> | null>(null);
 	const [inlineImageFile, setInlineImageFile] = useState<File | null>(null);
 	const [inlineFormData, setInlineFormData] = useState({
 		name: "",
@@ -703,7 +705,6 @@ function ProductsTab({
 			isAvailable: true,
 		});
 		setInlineImageFile(null);
-		setIsInlineAddOpen(false);
 	};
 
 	const saveInlineCreatedProduct = async () => {
@@ -774,6 +775,54 @@ function ProductsTab({
 		}
 	};
 
+	const handleGenerateInlineDescription = async () => {
+		if (!inlineFormData.name.trim() || !inlineFormData.categoryId) {
+			toast.error("Isi nama dan kategori terlebih dahulu");
+			return;
+		}
+		setIsGeneratingInlineDesc(true);
+		try {
+			const category = categories?.find(
+				(c: any) => c._id === inlineFormData.categoryId
+			);
+			const desc = await generateDescription({
+				productName: inlineFormData.name.trim(),
+				category: category?.name || "Produk",
+				price: Number(inlineFormData.price) || 0,
+			});
+			if (desc) {
+				setInlineFormData((prev) => ({ ...prev, description: desc }));
+				toast.success("Deskripsi berhasil di-generate");
+			}
+		} catch {
+			toast.error("Gagal generate deskripsi");
+		} finally {
+			setIsGeneratingInlineDesc(false);
+		}
+	};
+
+	const handleGenerateDescriptionForRow = async (
+		product: Doc<"products"> & { storageId?: string }
+	) => {
+		setGeneratingProductDescId(product._id);
+		try {
+			const category = categories?.find((c: any) => c._id === product.categoryId);
+			const desc = await generateDescription({
+				productName: product.name,
+				category: category?.name || "Produk",
+				price: Number(product.price) || 0,
+			});
+			if (desc) {
+				await updateProduct({ id: product._id, description: desc });
+				toast.success("Deskripsi produk diperbarui");
+			}
+		} catch {
+			toast.error("Gagal generate deskripsi");
+		} finally {
+			setGeneratingProductDescId(null);
+		}
+	};
+
 	const isCreateBlockedByRecipe = !editingId && recipeData.length === 0;
 
 	return (
@@ -810,7 +859,7 @@ function ProductsTab({
 									className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground text-sm transition-all hover:brightness-110"
 									onClick={() => {
 										if (viewMode === "table") {
-											setIsInlineAddOpen(true);
+											resetInlineCreateRow();
 											return;
 										}
 										resetForm();
@@ -1008,13 +1057,13 @@ function ProductsTab({
 						) : (
 							<div className="rounded-xl border border-border bg-card shadow-sm">
 								<div className="overflow-x-auto">
-									<table className="w-full min-w-[1240px] text-left text-xs">
+									<table className="w-full min-w-[1320px] text-left text-xs">
 										<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase tracking-wider">
 											<tr>
 												<th className="px-3 py-3 text-center">
 													<input checked={allVisibleSelected} onChange={toggleAllVisible} type="checkbox" />
 												</th>
-												<th className="px-3 py-3 text-center">No.</th>
+												<th className="min-w-[96px] px-3 py-3 text-center">No. Menu</th>
 												<th className="px-3 py-3">Nama</th>
 												<th className="px-3 py-3">Deskripsi</th>
 												<th className="px-3 py-3">Kategori</th>
@@ -1027,12 +1076,11 @@ function ProductsTab({
 											</tr>
 										</thead>
 										<tbody className="divide-y divide-border">
-											{isInlineAddOpen && (
-												<tr className="bg-primary/5">
+											<tr className="bg-primary/5">
 													<td className="px-3 py-3 text-center text-muted-foreground">-</td>
 													<td className="px-3 py-3 text-center text-xs">
 														<input
-															className="h-7 w-14 rounded-md border border-border bg-background px-2 text-center"
+															className="h-8 w-20 rounded-md border border-border bg-background px-2 text-center text-xs"
 															onChange={(event) =>
 																setInlineFormData((prev) => ({
 																	...prev,
@@ -1070,33 +1118,56 @@ function ProductsTab({
 																	type="text"
 																	value={inlineFormData.name}
 																/>
-																<input
-																	accept="image/*"
-																	className="text-[10px]"
-																	onChange={(event) => {
-																		const file = event.target.files?.[0];
-																		if (file) {
-																			setInlineImageFile(file);
-																		}
-																	}}
-																	type="file"
-																/>
+																<div className="flex items-center gap-2">
+																	<input
+																		accept="image/*"
+																		className="hidden"
+																		id="inline-create-image-upload"
+																		onChange={(event) => {
+																			const file = event.target.files?.[0];
+																			if (file) {
+																				setInlineImageFile(file);
+																			}
+																		}}
+																		type="file"
+																	/>
+																	<label
+																		className="cursor-pointer rounded-md border border-border bg-background px-2 py-1 font-semibold text-[10px] hover:bg-muted"
+																		htmlFor="inline-create-image-upload"
+																	>
+																		Upload Gambar
+																	</label>
+																	<span className="max-w-[120px] truncate text-[10px] text-muted-foreground">
+																		{inlineImageFile ? inlineImageFile.name : "Belum ada file"}
+																	</span>
+																</div>
 															</div>
 														</div>
 													</td>
 													<td className="px-3 py-3">
-														<input
-															className="h-7 w-56 rounded-md border border-border bg-background px-2"
-															onChange={(event) =>
-																setInlineFormData((prev) => ({
-																	...prev,
-																	description: event.target.value,
-																}))
-															}
-															placeholder="Deskripsi"
-															type="text"
-															value={inlineFormData.description}
-														/>
+														<div className="flex items-center gap-2">
+															<input
+																className="h-7 w-52 rounded-md border border-border bg-background px-2"
+																onChange={(event) =>
+																	setInlineFormData((prev) => ({
+																		...prev,
+																		description: event.target.value,
+																	}))
+																}
+																placeholder="Deskripsi"
+																type="text"
+																value={inlineFormData.description}
+															/>
+															<button
+																className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 font-semibold text-[10px] hover:bg-muted disabled:opacity-60"
+																disabled={isGeneratingInlineDesc}
+																onClick={handleGenerateInlineDescription}
+																type="button"
+															>
+																<Sparkles className="h-3 w-3" />
+																{isGeneratingInlineDesc ? "Generate..." : "AI"}
+															</button>
+														</div>
 													</td>
 													<td className="px-3 py-3">
 														<select
@@ -1175,27 +1246,26 @@ function ProductsTab({
 													</td>
 													<td className="px-3 py-3 text-[10px] text-muted-foreground">Baru</td>
 													<td className="px-3 py-3">
-														<div className="flex justify-end gap-1">
+														<div className="flex justify-end gap-2">
 															<button
-																className="rounded-md bg-green-600 p-1.5 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+																className="rounded-md bg-green-600 px-3 py-1.5 font-semibold text-white text-xs hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
 																disabled={isSavingInlineAdd}
 																onClick={saveInlineCreatedProduct}
 																type="button"
 															>
-																<CheckCircle2 className="h-3.5 w-3.5" />
+																{isSavingInlineAdd ? "Menyimpan..." : "Simpan"}
 															</button>
 															<button
-																className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
+																className="rounded-md border border-border bg-background px-3 py-1.5 font-semibold text-foreground text-xs hover:bg-muted"
 																disabled={isSavingInlineAdd}
 																onClick={resetInlineCreateRow}
 																type="button"
 															>
-																<XCircle className="h-3.5 w-3.5" />
+																Reset
 															</button>
 														</div>
 													</td>
 												</tr>
-											)}
 											{products &&
 												filteredProducts.map((product) => {
 													const health = getHealthScore(product);
@@ -1212,7 +1282,7 @@ function ProductsTab({
 															</td>
 															<td className="px-3 py-3 text-center text-xs">
 																<input
-																	className="h-7 w-14 rounded-md border border-border bg-background px-2 text-center"
+																	className="h-8 w-20 rounded-md border border-border bg-background px-2 text-center text-xs"
 																	defaultValue={product.menuNumber ?? ""}
 																	onBlur={(event) =>
 																		handleInlineNumberUpdate(
@@ -1250,19 +1320,34 @@ function ProductsTab({
 																</div>
 															</td>
 															<td className="px-3 py-3">
-																<input
-																	className="h-7 w-56 rounded-md border border-border bg-background px-2"
-																	defaultValue={product.description ?? ""}
-																	onBlur={(event) =>
-																		handleInlineTextUpdate(
-																			product._id,
-																			"description",
-																			event.target.value,
-																			product.description ?? ""
-																		)
-																	}
-																	type="text"
-																/>
+																<div className="flex items-center gap-2">
+																	<input
+																		className="h-7 w-52 rounded-md border border-border bg-background px-2"
+																		defaultValue={product.description ?? ""}
+																		onBlur={(event) =>
+																			handleInlineTextUpdate(
+																				product._id,
+																				"description",
+																				event.target.value,
+																				product.description ?? ""
+																			)
+																		}
+																		type="text"
+																	/>
+																	<button
+																		className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 font-semibold text-[10px] hover:bg-muted disabled:opacity-60"
+																		disabled={generatingProductDescId === product._id}
+																		onClick={() =>
+																			handleGenerateDescriptionForRow(product)
+																		}
+																		type="button"
+																	>
+																		<Sparkles className="h-3 w-3" />
+																		{generatingProductDescId === product._id
+																			? "Generate..."
+																			: "AI"}
+																	</button>
+																</div>
 															</td>
 															<td className="px-3 py-3">
 																<select
