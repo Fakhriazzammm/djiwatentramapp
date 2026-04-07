@@ -10,9 +10,127 @@ type StockActionArgs = {
 	costPerUnit?: number;
 	timestamp?: number;
 	expiryDate?: number;
+	brandName?: string;
+	storeId?: Id<"inventoryStores">;
+	purchaseUnit?: string;
+	purchaseQuantity?: number;
+	lineTotal?: number;
 };
 
 type RiskLevel = "high" | "medium" | "low";
+
+type StoreSummary = {
+	name: string;
+	type: Doc<"inventoryStores">["type"];
+};
+
+function normalizeUnitLabel(unit?: string) {
+	const normalized = (unit || "").trim().toLowerCase();
+	if (!normalized) {
+		return "";
+	}
+
+	const aliases: Record<string, string> = {
+		g: "gram",
+		gr: "gram",
+		gram: "gram",
+		grams: "gram",
+		kg: "kg",
+		kilo: "kg",
+		kilogram: "kg",
+		l: "liter",
+		liter: "liter",
+		litre: "liter",
+		lt: "liter",
+		ml: "ml",
+		milliliter: "ml",
+		mililiter: "ml",
+		pcs: "pcs",
+		pc: "pcs",
+		piece: "pcs",
+		pieces: "pcs",
+		biji: "pcs",
+		butir: "pcs",
+		dozen: "dozen",
+		lusin: "dozen",
+	};
+
+	return aliases[normalized] || normalized;
+}
+
+function convertQuantityToInventoryBaseUnit(args: {
+	quantity: number;
+	purchaseUnit?: string;
+	inventoryItem: Pick<Doc<"inventory">, "unit" | "displayUnit" | "conversionFactor">;
+}) {
+	const quantity = Number(args.quantity) || 0;
+	if (quantity <= 0) {
+		return 0;
+	}
+
+	const purchaseUnit = normalizeUnitLabel(args.purchaseUnit);
+	const baseUnit = normalizeUnitLabel(args.inventoryItem.unit);
+	const displayUnit = normalizeUnitLabel(args.inventoryItem.displayUnit);
+	const factor = args.inventoryItem.conversionFactor || 1;
+
+	if (!purchaseUnit || purchaseUnit === baseUnit) {
+		return quantity;
+	}
+
+	if (displayUnit && purchaseUnit === displayUnit && factor > 0) {
+		return quantity * factor;
+	}
+
+	if (purchaseUnit === "kg" && baseUnit === "gram") {
+		return quantity * 1000;
+	}
+	if (purchaseUnit === "liter" && baseUnit === "ml") {
+		return quantity * 1000;
+	}
+	if (purchaseUnit === "dozen" && baseUnit === "pcs") {
+		return quantity * 12;
+	}
+
+	return quantity;
+}
+
+function resolveRestockCostPerUnit(
+	item: Pick<Doc<"inventory">, "unit" | "displayUnit" | "conversionFactor">,
+	args: StockActionArgs
+) {
+	if (typeof args.costPerUnit === "number" && args.costPerUnit > 0) {
+		return args.costPerUnit;
+	}
+
+	if (
+		typeof args.lineTotal === "number" &&
+		args.lineTotal > 0 &&
+		typeof args.purchaseQuantity === "number" &&
+		args.purchaseQuantity > 0
+	) {
+		const baseQuantity = convertQuantityToInventoryBaseUnit({
+			quantity: args.purchaseQuantity,
+			purchaseUnit: args.purchaseUnit,
+			inventoryItem: item,
+		});
+		if (baseQuantity > 0) {
+			return args.lineTotal / baseQuantity;
+		}
+	}
+
+	return undefined;
+}
+
+function buildStoreLookup(stores: Doc<"inventoryStores">[]) {
+	const byId = new Map<string, StoreSummary>();
+	for (const store of stores) {
+		byId.set(store._id as string, {
+			name: store.name,
+			type: store.type,
+		});
+	}
+	return byId;
+}
 
 function getJakartaDayKey(timestamp: number) {
 	return new Date(timestamp).toLocaleDateString("sv-SE", {
@@ -102,9 +220,15 @@ async function performAddStock(ctx: MutationCtx, args: StockActionArgs) {
 	}
 
 	const timestamp = args.timestamp ?? Date.now();
+	const resolvedCostPerUnit = resolveRestockCostPerUnit(item, args);
+	const normalizedBrandName = args.brandName?.trim() || item.defaultBrandName;
 
 	await ctx.db.patch(args.inventoryId, {
 		quantity: item.quantity + args.quantity,
+		lastPurchasePrice: resolvedCostPerUnit,
+		lastPurchaseAt: timestamp,
+		lastPurchaseStoreId: args.storeId ?? item.lastPurchaseStoreId,
+		defaultBrandName: normalizedBrandName || item.defaultBrandName,
 	});
 
 	await ctx.db.insert("inventoryTransactions", {
@@ -113,9 +237,14 @@ async function performAddStock(ctx: MutationCtx, args: StockActionArgs) {
 		remainingQuantity: args.quantity,
 		type: "restock",
 		timestamp,
-		costPerUnit: args.costPerUnit,
+		costPerUnit: resolvedCostPerUnit,
 		notes: args.notes,
 		expiryDate: args.expiryDate,
+		brandName: normalizedBrandName,
+		storeId: args.storeId,
+		purchaseUnit: args.purchaseUnit,
+		purchaseQuantity: args.purchaseQuantity,
+		lineTotal: args.lineTotal,
 	});
 
 	await syncProductAvailabilityForInventoryIds(ctx, [args.inventoryId]);
@@ -328,7 +457,7 @@ export const getInventoryWorkspace = query({
 		const msPerDay = 24 * 60 * 60 * 1000;
 		const cutoff = Date.now() - daysWindow * msPerDay;
 
-		const [items, usageRows, restockRows, recipes, products, baseRecipes, transactions] =
+		const [items, usageRows, restockRows, recipes, products, baseRecipes, transactions, stores] =
 			await Promise.all([
 				ctx.db.query("inventory").collect(),
 				ctx.db
@@ -347,6 +476,7 @@ export const getInventoryWorkspace = query({
 				ctx.db.query("products").collect(),
 				ctx.db.query("baseRecipes").collect(),
 				ctx.db.query("inventoryTransactions").collect(),
+				ctx.db.query("inventoryStores").collect(),
 			]);
 
 		const usageByInventoryId: Record<string, number> = {};
@@ -400,6 +530,8 @@ export const getInventoryWorkspace = query({
 			}
 		}
 
+		const storeById = buildStoreLookup(stores);
+
 		const latestTransactionByInventoryId = new Map<
 			string,
 			{
@@ -407,6 +539,9 @@ export const getInventoryWorkspace = query({
 				quantity: number;
 				timestamp: number;
 				notes?: string;
+				brandName?: string;
+				storeId?: Id<"inventoryStores">;
+				costPerUnit?: number;
 			}
 		>();
 		for (const transaction of transactions) {
@@ -418,6 +553,9 @@ export const getInventoryWorkspace = query({
 					quantity: transaction.quantity,
 					timestamp: transaction.timestamp,
 					notes: transaction.notes,
+					brandName: transaction.brandName,
+					storeId: transaction.storeId,
+					costPerUnit: transaction.costPerUnit,
 				});
 			}
 		}
@@ -481,6 +619,16 @@ export const getInventoryWorkspace = query({
 					unit: item.unit,
 					displayUnit: item.displayUnit,
 					conversionFactor: item.conversionFactor,
+					defaultBrandName: item.defaultBrandName ?? null,
+					preferredStoreName:
+						item.preferredStoreId != null
+							? storeById.get(item.preferredStoreId as string)?.name ?? null
+							: null,
+					lastPurchaseStoreName:
+						item.lastPurchaseStoreId != null
+							? storeById.get(item.lastPurchaseStoreId as string)?.name ?? null
+							: null,
+					lastPurchasePrice: item.lastPurchasePrice ?? null,
 					lowStockThreshold: item.lowStockThreshold,
 					avgDailyUsage: Number(avgDailyUsage.toFixed(2)),
 					daysUntilStockout:
@@ -613,9 +761,213 @@ export const getInventoryTransactions = query({
 	handler: async (ctx, args) => {
 		return await ctx.db
 			.query("inventoryTransactions")
-			.withIndex("by_inventory", (q) => q.eq("inventoryId", args.inventoryId))
+			.withIndex("by_inventory_and_timestamp", (q) =>
+				q.eq("inventoryId", args.inventoryId)
+			)
 			.order("desc")
-			.collect();
+			.take(100);
+	},
+});
+
+export const listInventoryStores = query({
+	args: {},
+	handler: async (ctx) => {
+		return await ctx.db.query("inventoryStores").collect();
+	},
+});
+
+export const createInventoryStore = mutation({
+	args: {
+		name: v.string(),
+		type: v.optional(
+			v.union(
+				v.literal("store"),
+				v.literal("supplier"),
+				v.literal("market"),
+				v.literal("other")
+			)
+		),
+		phone: v.optional(v.string()),
+		address: v.optional(v.string()),
+		notes: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const trimmedName = args.name.trim();
+		if (!trimmedName) {
+			throw new Error("Nama toko wajib diisi");
+		}
+
+		const existingStores = await ctx.db.query("inventoryStores").collect();
+		const existing = existingStores.find(
+			(store) => store.name.trim().toLowerCase() === trimmedName.toLowerCase()
+		);
+		if (existing) {
+			return existing._id;
+		}
+
+		return await ctx.db.insert("inventoryStores", {
+			name: trimmedName,
+			type: args.type ?? "supplier",
+			phone: args.phone?.trim() || undefined,
+			address: args.address?.trim() || undefined,
+			notes: args.notes?.trim() || undefined,
+			isActive: true,
+		});
+	},
+});
+
+export const getInventoryPriceInsights = query({
+	args: { inventoryId: v.id("inventory") },
+	handler: async (ctx, args) => {
+		const item = await ctx.db.get(args.inventoryId);
+		if (!item) {
+			throw new Error("Item not found");
+		}
+
+		const [stores, transactions] = await Promise.all([
+			ctx.db.query("inventoryStores").collect(),
+			ctx.db
+				.query("inventoryTransactions")
+				.withIndex("by_inventory_and_timestamp", (q) =>
+					q.eq("inventoryId", args.inventoryId)
+				)
+				.order("desc")
+				.take(60),
+		]);
+		const storeById = buildStoreLookup(stores);
+		const purchaseRows = transactions.filter(
+			(row) => row.type === "restock" && (row.costPerUnit ?? 0) > 0
+		);
+
+		const prices = purchaseRows
+			.map((row) => row.costPerUnit ?? 0)
+			.filter((price) => price > 0);
+		const averagePrice =
+			prices.length > 0
+				? Number((prices.reduce((sum, price) => sum + price, 0) / prices.length).toFixed(2))
+				: null;
+		const lowestPrice = prices.length > 0 ? Math.min(...prices) : null;
+		const latestPurchase = purchaseRows[0] ?? null;
+
+		const storeComparisonMap = new Map<
+			string,
+			{
+				storeId: Id<"inventoryStores"> | null;
+				storeName: string;
+				storeType: Doc<"inventoryStores">["type"] | null;
+				lastPrice: number | null;
+				lowestPrice: number | null;
+				lastPurchaseAt: number | null;
+				purchaseCount: number;
+			}
+		>();
+		const brandComparisonMap = new Map<
+			string,
+			{
+				brandName: string;
+				lastStoreName: string | null;
+				lastPrice: number | null;
+				lastPurchaseAt: number | null;
+				purchaseCount: number;
+			}
+		>();
+
+		for (const row of purchaseRows) {
+			const storeKey = row.storeId ? String(row.storeId) : "__no_store__";
+			const storeName = row.storeId
+				? storeById.get(storeKey)?.name ?? "Toko tidak dikenal"
+				: "Tanpa toko";
+			const storeType = row.storeId
+				? storeById.get(storeKey)?.type ?? null
+				: null;
+			const currentStore = storeComparisonMap.get(storeKey) ?? {
+				storeId: row.storeId ?? null,
+				storeName,
+				storeType,
+				lastPrice: null,
+				lowestPrice: null,
+				lastPurchaseAt: null,
+				purchaseCount: 0,
+			};
+			currentStore.purchaseCount += 1;
+			if (currentStore.lastPurchaseAt == null || row.timestamp > currentStore.lastPurchaseAt) {
+				currentStore.lastPurchaseAt = row.timestamp;
+				currentStore.lastPrice = row.costPerUnit ?? null;
+			}
+			if (typeof row.costPerUnit === "number" && row.costPerUnit > 0) {
+				currentStore.lowestPrice =
+					currentStore.lowestPrice == null
+						? row.costPerUnit
+						: Math.min(currentStore.lowestPrice, row.costPerUnit);
+			}
+			storeComparisonMap.set(storeKey, currentStore);
+
+			const brandName = row.brandName?.trim() || item.defaultBrandName?.trim() || "Tanpa brand";
+			const currentBrand = brandComparisonMap.get(brandName) ?? {
+				brandName,
+				lastStoreName: null,
+				lastPrice: null,
+				lastPurchaseAt: null,
+				purchaseCount: 0,
+			};
+			currentBrand.purchaseCount += 1;
+			if (currentBrand.lastPurchaseAt == null || row.timestamp > currentBrand.lastPurchaseAt) {
+				currentBrand.lastPurchaseAt = row.timestamp;
+				currentBrand.lastPrice = row.costPerUnit ?? null;
+				currentBrand.lastStoreName = storeName;
+			}
+			brandComparisonMap.set(brandName, currentBrand);
+		}
+
+		return {
+			item: {
+				inventoryId: item._id,
+				ingredientName: item.ingredientName,
+				defaultBrandName: item.defaultBrandName ?? null,
+				preferredStoreId: item.preferredStoreId ?? null,
+				preferredStoreName:
+					item.preferredStoreId != null
+						? storeById.get(String(item.preferredStoreId))?.name ?? null
+						: null,
+				lastPurchasePrice: item.lastPurchasePrice ?? null,
+				lastPurchaseAt: item.lastPurchaseAt ?? null,
+				lastPurchaseStoreName:
+					item.lastPurchaseStoreId != null
+						? storeById.get(String(item.lastPurchaseStoreId))?.name ?? null
+						: null,
+			},
+			priceSnapshot: {
+				lastPrice: latestPurchase?.costPerUnit ?? item.lastPurchasePrice ?? null,
+				lastPurchaseAt: latestPurchase?.timestamp ?? item.lastPurchaseAt ?? null,
+				lowestPrice,
+				averagePrice,
+			},
+			storeComparison: [...storeComparisonMap.values()].sort((left, right) => {
+				const leftAt = left.lastPurchaseAt ?? 0;
+				const rightAt = right.lastPurchaseAt ?? 0;
+				return rightAt - leftAt;
+			}),
+			brandComparison: [...brandComparisonMap.values()].sort((left, right) => {
+				const leftAt = left.lastPurchaseAt ?? 0;
+				const rightAt = right.lastPurchaseAt ?? 0;
+				return rightAt - leftAt;
+			}),
+			recentPurchases: purchaseRows.slice(0, 20).map((row) => ({
+				transactionId: row._id,
+				timestamp: row.timestamp,
+				quantity: row.quantity,
+				costPerUnit: row.costPerUnit ?? null,
+				lineTotal: row.lineTotal ?? null,
+				brandName: row.brandName ?? null,
+				storeName:
+					row.storeId != null
+						? storeById.get(String(row.storeId))?.name ?? "Toko tidak dikenal"
+						: "Tanpa toko",
+				purchaseQuantity: row.purchaseQuantity ?? null,
+				purchaseUnit: row.purchaseUnit ?? null,
+				notes: row.notes ?? null,
+			})),
+		};
 	},
 });
 
@@ -628,15 +980,27 @@ export const createInventoryItem = mutation({
 		displayUnit: v.optional(v.string()),
 		conversionFactor: v.optional(v.number()),
 		baseRecipeId: v.optional(v.id("baseRecipes")),
+		defaultBrandName: v.optional(v.string()),
+		preferredStoreId: v.optional(v.id("inventoryStores")),
 		initialStockTimestamp: v.optional(v.number()),
 		costPerUnit: v.optional(v.number()),
 		notes: v.optional(v.string()),
+		brandName: v.optional(v.string()),
+		storeId: v.optional(v.id("inventoryStores")),
+		purchaseQuantity: v.optional(v.number()),
+		purchaseUnit: v.optional(v.string()),
+		lineTotal: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const {
 			initialStockTimestamp,
 			costPerUnit,
 			notes,
+			brandName,
+			storeId,
+			purchaseQuantity,
+			purchaseUnit,
+			lineTotal,
 			...inventoryData
 		} = args;
 		const inventoryId = await ctx.db.insert("inventory", inventoryData);
@@ -650,6 +1014,11 @@ export const createInventoryItem = mutation({
 				timestamp: initialStockTimestamp ?? Date.now(),
 				costPerUnit,
 				notes,
+				brandName: brandName ?? args.defaultBrandName,
+				storeId,
+				purchaseQuantity,
+				purchaseUnit,
+				lineTotal,
 			});
 		}
 
@@ -665,6 +1034,11 @@ export const addStock = mutation({
 		notes: v.optional(v.string()),
 		timestamp: v.optional(v.number()),
 		expiryDate: v.optional(v.number()),
+		brandName: v.optional(v.string()),
+		storeId: v.optional(v.id("inventoryStores")),
+		purchaseUnit: v.optional(v.string()),
+		purchaseQuantity: v.optional(v.number()),
+		lineTotal: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		await performAddStock(ctx, args);
@@ -691,6 +1065,8 @@ export const updateInventoryItem = mutation({
 		displayUnit: v.optional(v.string()),
 		conversionFactor: v.optional(v.number()),
 		baseRecipeId: v.optional(v.id("baseRecipes")),
+		defaultBrandName: v.optional(v.string()),
+		preferredStoreId: v.optional(v.id("inventoryStores")),
 	},
 	handler: async (ctx, args) => {
 		const { id, ...data } = args;
@@ -738,6 +1114,11 @@ export const applyInventoryStockAction = mutation({
 		costPerUnit: v.optional(v.number()),
 		timestamp: v.optional(v.number()),
 		expiryDate: v.optional(v.number()),
+		brandName: v.optional(v.string()),
+		storeId: v.optional(v.id("inventoryStores")),
+		purchaseUnit: v.optional(v.string()),
+		purchaseQuantity: v.optional(v.number()),
+		lineTotal: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		if (args.action === "add") {

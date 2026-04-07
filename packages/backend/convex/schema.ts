@@ -35,10 +35,27 @@ export default defineSchema({
 		displayUnit: v.optional(v.string()), // e.g., "Liter"
 		conversionFactor: v.optional(v.number()), // e.g., 1000
 		baseRecipeId: v.optional(v.id("baseRecipes")), // If this is a pre-mix
+		defaultBrandName: v.optional(v.string()),
+		preferredStoreId: v.optional(v.id("inventoryStores")),
 		aliases: v.optional(v.array(v.string())),
 		lastPurchasePrice: v.optional(v.number()),
 		lastPurchaseAt: v.optional(v.number()),
+		lastPurchaseStoreId: v.optional(v.id("inventoryStores")),
 	}),
+
+	inventoryStores: defineTable({
+		name: v.string(),
+		type: v.union(
+			v.literal("store"),
+			v.literal("supplier"),
+			v.literal("market"),
+			v.literal("other")
+		),
+		phone: v.optional(v.string()),
+		address: v.optional(v.string()),
+		notes: v.optional(v.string()),
+		isActive: v.boolean(),
+	}).index("by_name", ["name"]),
 
 	// Transactions to track stock in/out for FIFO
 	inventoryTransactions: defineTable({
@@ -56,11 +73,17 @@ export default defineSchema({
 		timestamp: v.number(),
 		notes: v.optional(v.string()),
 		expiryDate: v.optional(v.number()),
+		brandName: v.optional(v.string()),
+		storeId: v.optional(v.id("inventoryStores")),
+		purchaseUnit: v.optional(v.string()),
+		purchaseQuantity: v.optional(v.number()),
+		lineTotal: v.optional(v.number()),
 		sourceTransactionId: v.optional(v.id("financialTransactions")),
 		sourceLabel: v.optional(v.string()),
 		sourceFingerprint: v.optional(v.string()),
 	}).index("by_inventory", ["inventoryId"])
 		.index("by_inventory_and_type", ["inventoryId", "type"])
+		.index("by_inventory_and_timestamp", ["inventoryId", "timestamp"])
 		.index("by_type_and_timestamp", ["type", "timestamp"])
 		.index("by_source_transaction_id", ["sourceTransactionId"]),
 

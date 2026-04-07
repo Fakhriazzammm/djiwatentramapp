@@ -50,6 +50,10 @@ type InventoryWorkspaceRow = {
 	unit: string;
 	displayUnit?: string;
 	conversionFactor?: number;
+	defaultBrandName: string | null;
+	preferredStoreName: string | null;
+	lastPurchaseStoreName: string | null;
+	lastPurchasePrice: number | null;
 	lowStockThreshold: number;
 	avgDailyUsage: number;
 	daysUntilStockout: number | null;
@@ -84,12 +88,75 @@ type InventoryWorkspaceData = {
 	rows: InventoryWorkspaceRow[];
 };
 
+type InventoryStore = Doc<"inventoryStores">;
+
+type InventoryPriceInsights = {
+	item: {
+		inventoryId: Id<"inventory">;
+		ingredientName: string;
+		defaultBrandName: string | null;
+		preferredStoreId: Id<"inventoryStores"> | null;
+		preferredStoreName: string | null;
+		lastPurchasePrice: number | null;
+		lastPurchaseAt: number | null;
+		lastPurchaseStoreName: string | null;
+	};
+	priceSnapshot: {
+		lastPrice: number | null;
+		lastPurchaseAt: number | null;
+		lowestPrice: number | null;
+		averagePrice: number | null;
+	};
+	storeComparison: Array<{
+		storeId: Id<"inventoryStores"> | null;
+		storeName: string;
+		storeType: InventoryStore["type"] | null;
+		lastPrice: number | null;
+		lowestPrice: number | null;
+		lastPurchaseAt: number | null;
+		purchaseCount: number;
+	}>;
+	brandComparison: Array<{
+		brandName: string;
+		lastStoreName: string | null;
+		lastPrice: number | null;
+		lastPurchaseAt: number | null;
+		purchaseCount: number;
+	}>;
+	recentPurchases: Array<{
+		transactionId: Id<"inventoryTransactions">;
+		timestamp: number;
+		quantity: number;
+		costPerUnit: number | null;
+		lineTotal: number | null;
+		brandName: string | null;
+		storeName: string;
+		purchaseQuantity: number | null;
+		purchaseUnit: string | null;
+		notes: string | null;
+	}>;
+};
+
+function formatCurrency(value?: number | null) {
+	if (value == null || Number.isNaN(value)) {
+		return "-";
+	}
+	return new Intl.NumberFormat("id-ID", {
+		style: "currency",
+		currency: "IDR",
+		maximumFractionDigits: value >= 100 ? 0 : 2,
+	}).format(value);
+}
+
 export const Route = createLazyFileRoute("/admin/inventory")({
 	component: InventoryPage,
 });
 
 function InventoryPage() {
 	const inventory = useQuery(api.inventory.getInventory);
+	const stores = useQuery(api.inventory.listInventoryStores) as
+		| InventoryStore[]
+		| undefined;
 	const workspace = useQuery(api.inventory.getInventoryWorkspace, {
 		daysWindow: 30,
 	}) as InventoryWorkspaceData | undefined;
@@ -97,6 +164,7 @@ function InventoryPage() {
 	const createItem = useMutation(api.inventory.createInventoryItem);
 	const updateItem = useMutation(api.inventory.updateInventoryItem);
 	const deleteItem = useMutation(api.inventory.deleteInventoryItem);
+	const createStore = useMutation(api.inventory.createInventoryStore);
 
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedItem, setSelectedItem] = useState<Doc<"inventory"> | null>(
@@ -118,10 +186,21 @@ function InventoryPage() {
 		displayUnit: "",
 		conversionFactor: "",
 		baseRecipeId: "" as string,
+		defaultBrandName: "",
+		preferredStoreId: "" as string,
+		newStoreName: "",
 	});
 	const [notes, setNotes] = useState("");
 	const [costPerUnit, setCostPerUnit] = useState("");
 	const [entryDate, setEntryDate] = useState(new Date().toISOString().split("T")[0]);
+	const [purchaseMeta, setPurchaseMeta] = useState({
+		brandName: "",
+		storeId: "" as string,
+		newStoreName: "",
+		purchaseQuantity: "",
+		purchaseUnit: "",
+		lineTotal: "",
+	});
 	const [sortConfig, setSortConfig] = useState<{
 		key:
 			| "ingredientName"
@@ -146,6 +225,41 @@ function InventoryPage() {
 		}
 	}, [actionType]);
 
+	useEffect(() => {
+		if (!selectedItem) {
+			return;
+		}
+
+		if (actionType === "edit") {
+			setNewItem({
+				ingredientName: selectedItem.ingredientName,
+				unit: selectedItem.unit,
+				quantity: String(selectedItem.quantity),
+				lowStockThreshold: String(selectedItem.lowStockThreshold),
+				displayUnit: selectedItem.displayUnit || "",
+				conversionFactor: selectedItem.conversionFactor
+					? String(selectedItem.conversionFactor)
+					: "",
+				baseRecipeId: (selectedItem.baseRecipeId as string) || "",
+				defaultBrandName: selectedItem.defaultBrandName || "",
+				preferredStoreId: (selectedItem.preferredStoreId as string) || "",
+				newStoreName: "",
+			});
+		}
+
+		if (actionType === "add") {
+			setPurchaseMeta({
+				brandName: selectedItem.defaultBrandName || "",
+				storeId: (selectedItem.preferredStoreId as string) || "",
+				newStoreName: "",
+				purchaseQuantity: "",
+				purchaseUnit: selectedItem.displayUnit || selectedItem.unit || "",
+				lineTotal: "",
+			});
+			setCostPerUnit(selectedItem.lastPurchasePrice ? String(selectedItem.lastPurchasePrice) : "");
+		}
+	}, [actionType, selectedItem]);
+
 	const inventoryMap = useMemo(() => {
 		const nextMap = new Map<Id<"inventory">, Doc<"inventory">>();
 		for (const item of inventory ?? []) {
@@ -159,9 +273,16 @@ function InventoryPage() {
 			return [];
 		}
 		const result = workspace.rows.filter((row) => {
-			const matchesSearch = row.ingredientName
+			const query = searchQuery.toLowerCase();
+			const matchesSearch = [
+				row.ingredientName,
+				row.defaultBrandName || "",
+				row.lastPurchaseStoreName || "",
+				row.preferredStoreName || "",
+			]
+				.join(" ")
 				.toLowerCase()
-				.includes(searchQuery.toLowerCase());
+				.includes(query);
 			const matchesFilter = filterLowStock
 				? row.currentStock <= row.lowStockThreshold
 				: true;
@@ -204,6 +325,15 @@ function InventoryPage() {
 	};
 
 	const handleCreateItem = async () => {
+		const preferredStoreId =
+			newItem.preferredStoreId === "__new__"
+				? await createStore({
+						name: newItem.newStoreName.trim(),
+				  })
+				: newItem.preferredStoreId
+					? (newItem.preferredStoreId as Id<"inventoryStores">)
+					: undefined;
+
 		await createItem({
 			ingredientName: newItem.ingredientName,
 			unit: newItem.unit,
@@ -214,11 +344,22 @@ function InventoryPage() {
 				? Number(newItem.conversionFactor)
 				: undefined,
 			baseRecipeId: (newItem.baseRecipeId as Id<"baseRecipes">) || undefined,
+			defaultBrandName: newItem.defaultBrandName.trim() || undefined,
+			preferredStoreId,
 		});
 		toast.success("Bahan baku ditambahkan");
 	};
 
 	const handleEditItem = async (selected: Doc<"inventory">) => {
+		const preferredStoreId =
+			newItem.preferredStoreId === "__new__"
+				? await createStore({
+						name: newItem.newStoreName.trim(),
+				  })
+				: newItem.preferredStoreId
+					? (newItem.preferredStoreId as Id<"inventoryStores">)
+					: undefined;
+
 		await updateItem({
 			id: selected._id,
 			ingredientName: newItem.ingredientName,
@@ -229,6 +370,8 @@ function InventoryPage() {
 				? Number(newItem.conversionFactor)
 				: undefined,
 			baseRecipeId: (newItem.baseRecipeId as Id<"baseRecipes">) || undefined,
+			defaultBrandName: newItem.defaultBrandName.trim() || undefined,
+			preferredStoreId,
 		});
 		toast.success("Bahan baku diperbarui");
 	};
@@ -238,10 +381,25 @@ function InventoryPage() {
 		type: "add" | "usage" | "adjust"
 	) => {
 		const numAmount = Number(amount);
+		const storeId =
+			purchaseMeta.storeId === "__new__"
+				? await createStore({
+						name: purchaseMeta.newStoreName.trim(),
+				  })
+				: purchaseMeta.storeId
+					? (purchaseMeta.storeId as Id<"inventoryStores">)
+					: undefined;
 		const baseArgs = {
 			inventoryId: selected._id,
 			quantity: numAmount,
 			notes,
+			brandName: purchaseMeta.brandName.trim() || undefined,
+			storeId,
+			purchaseQuantity: purchaseMeta.purchaseQuantity
+				? Number(purchaseMeta.purchaseQuantity)
+				: undefined,
+			purchaseUnit: purchaseMeta.purchaseUnit.trim() || undefined,
+			lineTotal: purchaseMeta.lineTotal ? Number(purchaseMeta.lineTotal) : undefined,
 		};
 
 		if (type === "add") {
@@ -301,6 +459,17 @@ function InventoryPage() {
 				displayUnit: "",
 				conversionFactor: "",
 				baseRecipeId: "",
+				defaultBrandName: "",
+				preferredStoreId: "",
+				newStoreName: "",
+			});
+			setPurchaseMeta({
+				brandName: "",
+				storeId: "",
+				newStoreName: "",
+				purchaseQuantity: "",
+				purchaseUnit: "",
+				lineTotal: "",
 			});
 		} catch (error) {
 			const message =
@@ -342,12 +511,15 @@ function InventoryPage() {
 				entryDate={entryDate}
 				newItem={newItem}
 				notes={notes}
+				purchaseMeta={purchaseMeta}
+				stores={stores}
 				onActionTypeChange={setActionType}
 				onAmountChange={setAmount}
 				onCostPerUnitChange={setCostPerUnit}
 				onEntryDateChange={setEntryDate}
 				onNewItemChange={setNewItem}
 				onNotesChange={setNotes}
+				onPurchaseMetaChange={setPurchaseMeta}
 				onSelectedItemChange={setSelectedItem}
 				onSubmit={handleSubmit}
 				selectedItem={selectedItem}
@@ -411,6 +583,9 @@ function InventoryModalContent({
 	entryDate,
 	onEntryDateChange,
 	baseRecipes,
+	stores,
+	purchaseMeta,
+	onPurchaseMetaChange,
 	produceBatch,
 	setConfirmConfig,
 }: {
@@ -446,6 +621,9 @@ function InventoryModalContent({
 		displayUnit: string;
 		conversionFactor: string;
 		baseRecipeId: string;
+		defaultBrandName: string;
+		preferredStoreId: string;
+		newStoreName: string;
 	};
 	onNewItemChange: (item: {
 		ingredientName: string;
@@ -455,6 +633,9 @@ function InventoryModalContent({
 		displayUnit: string;
 		conversionFactor: string;
 		baseRecipeId: string;
+		defaultBrandName: string;
+		preferredStoreId: string;
+		newStoreName: string;
 	}) => void;
 	amount: string;
 	onAmountChange: (amount: string) => void;
@@ -465,6 +646,23 @@ function InventoryModalContent({
 	entryDate: string;
 	onEntryDateChange: (date: string) => void;
 	baseRecipes: Doc<"baseRecipes">[] | undefined;
+	stores: InventoryStore[] | undefined;
+	purchaseMeta: {
+		brandName: string;
+		storeId: string;
+		newStoreName: string;
+		purchaseQuantity: string;
+		purchaseUnit: string;
+		lineTotal: string;
+	};
+	onPurchaseMetaChange: (value: {
+		brandName: string;
+		storeId: string;
+		newStoreName: string;
+		purchaseQuantity: string;
+		purchaseUnit: string;
+		lineTotal: string;
+	}) => void;
 	produceBatch: (args: {
 		baseRecipeId: Id<"baseRecipes">;
 		inventoryId: Id<"inventory">;
@@ -544,6 +742,79 @@ function InventoryModalContent({
 						/>
 					</div>
 				</div>
+
+				<div className="grid grid-cols-2 gap-5">
+					<div className="space-y-2">
+						<label
+							className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
+							htmlFor="defaultBrandName"
+						>
+							Brand Utama
+						</label>
+						<input
+							className="w-full rounded-md border border-border bg-background p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
+							id="defaultBrandName"
+							onChange={(e) =>
+								onNewItemChange({
+									...newItem,
+									defaultBrandName: e.target.value,
+								})
+							}
+							placeholder="Contoh: Indomilk"
+							value={newItem.defaultBrandName}
+						/>
+					</div>
+					<div className="space-y-2">
+						<label
+							className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
+							htmlFor="preferredStoreId"
+						>
+							Toko Preferensi
+						</label>
+						<select
+							className="w-full appearance-none rounded-md border border-border bg-background p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
+							id="preferredStoreId"
+							onChange={(e) =>
+								onNewItemChange({
+									...newItem,
+									preferredStoreId: e.target.value,
+									newStoreName: e.target.value === "__new__" ? newItem.newStoreName : "",
+								})
+							}
+							value={newItem.preferredStoreId}
+						>
+							<option value="">PILIH NANTI</option>
+							{stores?.map((store) => (
+								<option key={store._id} value={store._id}>
+									{store.name.toUpperCase()}
+								</option>
+							))}
+							<option value="__new__">+ BUAT TOKO BARU</option>
+						</select>
+					</div>
+				</div>
+				{newItem.preferredStoreId === "__new__" && (
+					<div className="space-y-2">
+						<label
+							className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
+							htmlFor="newPreferredStoreName"
+						>
+							Nama Toko Baru
+						</label>
+						<input
+							className="w-full rounded-md border border-border bg-background p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
+							id="newPreferredStoreName"
+							onChange={(e) =>
+								onNewItemChange({
+									...newItem,
+									newStoreName: e.target.value,
+								})
+							}
+							placeholder="Contoh: Toko Susu Makmur"
+							value={newItem.newStoreName}
+						/>
+					</div>
+				)}
 
 				<div className="space-y-4 rounded-lg border border-border bg-muted/30 p-6">
 					<p className="font-bold text-foreground text-[11px] uppercase tracking-widest">
@@ -692,38 +963,183 @@ function InventoryModalContent({
 				</div>
 
 				{actionType === "add" && (
-					<div className="grid grid-cols-2 gap-4">
-						<div className="space-y-2">
-							<label
-								className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
-								htmlFor="cost-per-unit"
-							>
-								Harga per Unit (IDR)
-							</label>
-							<input
-								className="w-full rounded-md bg-background border border-border p-4 font-bold text-foreground text-sm outline-none transition-all placeholder:text-foreground/30 focus:ring-2 focus:ring-ring"
-								id="cost-per-unit"
-								onChange={(e) => onCostPerUnitChange(e.target.value)}
-								placeholder="contoh: 50000"
-								type="number"
-								value={costPerUnit}
-							/>
+					<div className="space-y-4 rounded-lg border border-border bg-muted/30 p-5">
+						<p className="font-bold text-[11px] uppercase tracking-widest text-foreground">
+							Info Pembelian
+						</p>
+						<div className="grid grid-cols-2 gap-4">
+							<div className="space-y-2">
+								<label
+									className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
+									htmlFor="purchase-brand"
+								>
+									Brand
+								</label>
+								<input
+									className="w-full rounded-md border border-border bg-background p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
+									id="purchase-brand"
+									onChange={(e) =>
+										onPurchaseMetaChange({
+											...purchaseMeta,
+											brandName: e.target.value,
+										})
+									}
+									placeholder="Contoh: Greenfields"
+									value={purchaseMeta.brandName}
+								/>
+							</div>
+							<div className="space-y-2">
+								<label
+									className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
+									htmlFor="entry-date"
+								>
+									Tanggal Masuk
+								</label>
+								<input
+									className="w-full rounded-md border border-border bg-background p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
+									id="entry-date"
+									onChange={(e) => onEntryDateChange(e.target.value)}
+									type="date"
+									value={entryDate}
+								/>
+							</div>
 						</div>
-						<div className="space-y-2">
-							<label
-								className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
-								htmlFor="entry-date"
-							>
-								Tanggal Masuk
-							</label>
-							<input
-								className="w-full rounded-md bg-background border border-border p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
-								id="entry-date"
-								onChange={(e) => onEntryDateChange(e.target.value)}
-								type="date"
-								value={entryDate}
-							/>
+						<div className="grid grid-cols-2 gap-4">
+							<div className="space-y-2">
+								<label
+									className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
+									htmlFor="purchase-store"
+								>
+									Toko
+								</label>
+								<select
+									className="w-full appearance-none rounded-md border border-border bg-background p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
+									id="purchase-store"
+									onChange={(e) =>
+										onPurchaseMetaChange({
+											...purchaseMeta,
+											storeId: e.target.value,
+											newStoreName: e.target.value === "__new__" ? purchaseMeta.newStoreName : "",
+										})
+									}
+									value={purchaseMeta.storeId}
+								>
+									<option value="">TANPA TOKO</option>
+									{stores?.map((store) => (
+										<option key={store._id} value={store._id}>
+											{store.name.toUpperCase()}
+										</option>
+									))}
+									<option value="__new__">+ BUAT TOKO BARU</option>
+								</select>
+							</div>
+							<div className="space-y-2">
+								<label
+									className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
+									htmlFor="cost-per-unit"
+								>
+									Harga Basis / Unit
+								</label>
+								<input
+									className="w-full rounded-md border border-border bg-background p-4 font-bold text-foreground text-sm outline-none transition-all placeholder:text-foreground/30 focus:ring-2 focus:ring-ring"
+									id="cost-per-unit"
+									onChange={(e) => onCostPerUnitChange(e.target.value)}
+									placeholder="Kosongkan agar hitung otomatis"
+									type="number"
+									value={costPerUnit}
+								/>
+							</div>
 						</div>
+						{purchaseMeta.storeId === "__new__" && (
+							<div className="space-y-2">
+								<label
+									className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
+									htmlFor="purchase-new-store"
+								>
+									Nama Toko Baru
+								</label>
+								<input
+									className="w-full rounded-md border border-border bg-background p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
+									id="purchase-new-store"
+									onChange={(e) =>
+										onPurchaseMetaChange({
+											...purchaseMeta,
+											newStoreName: e.target.value,
+										})
+									}
+									placeholder="Contoh: Pasar Pagi"
+									value={purchaseMeta.newStoreName}
+								/>
+							</div>
+						)}
+						<div className="grid grid-cols-3 gap-4">
+							<div className="space-y-2">
+								<label
+									className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
+									htmlFor="purchase-quantity"
+								>
+									Qty Beli
+								</label>
+								<input
+									className="w-full rounded-md border border-border bg-background p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
+									id="purchase-quantity"
+									onChange={(e) =>
+										onPurchaseMetaChange({
+											...purchaseMeta,
+											purchaseQuantity: e.target.value,
+										})
+									}
+									placeholder="1"
+									type="number"
+									value={purchaseMeta.purchaseQuantity}
+								/>
+							</div>
+							<div className="space-y-2">
+								<label
+									className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
+									htmlFor="purchase-unit"
+								>
+									Satuan Beli
+								</label>
+								<input
+									className="w-full rounded-md border border-border bg-background p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
+									id="purchase-unit"
+									onChange={(e) =>
+										onPurchaseMetaChange({
+											...purchaseMeta,
+											purchaseUnit: e.target.value,
+										})
+									}
+									placeholder="liter / box / pcs"
+									value={purchaseMeta.purchaseUnit}
+								/>
+							</div>
+							<div className="space-y-2">
+								<label
+									className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
+									htmlFor="line-total"
+								>
+									Total Belanja
+								</label>
+								<input
+									className="w-full rounded-md border border-border bg-background p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
+									id="line-total"
+									onChange={(e) =>
+										onPurchaseMetaChange({
+											...purchaseMeta,
+											lineTotal: e.target.value,
+										})
+									}
+									placeholder="50000"
+									type="number"
+									value={purchaseMeta.lineTotal}
+								/>
+							</div>
+						</div>
+						<p className="text-[11px] leading-relaxed text-muted-foreground">
+							Jika harga basis dikosongkan, sistem akan menghitung otomatis dari
+							total belanja dan qty beli.
+						</p>
 					</div>
 				)}
 
@@ -764,6 +1180,9 @@ function InventoryActionModal({
 	onCostPerUnitChange,
 	entryDate,
 	onEntryDateChange,
+	stores,
+	purchaseMeta,
+	onPurchaseMetaChange,
 	onSubmit,
 	setConfirmConfig,
 }: {
@@ -799,6 +1218,9 @@ function InventoryActionModal({
 		displayUnit: string;
 		conversionFactor: string;
 		baseRecipeId: string;
+		defaultBrandName: string;
+		preferredStoreId: string;
+		newStoreName: string;
 	};
 	onNewItemChange: (item: {
 		ingredientName: string;
@@ -808,6 +1230,9 @@ function InventoryActionModal({
 		displayUnit: string;
 		conversionFactor: string;
 		baseRecipeId: string;
+		defaultBrandName: string;
+		preferredStoreId: string;
+		newStoreName: string;
 	}) => void;
 	amount: string;
 	onAmountChange: (amount: string) => void;
@@ -817,6 +1242,23 @@ function InventoryActionModal({
 	onCostPerUnitChange: (cost: string) => void;
 	entryDate: string;
 	onEntryDateChange: (date: string) => void;
+	stores: InventoryStore[] | undefined;
+	purchaseMeta: {
+		brandName: string;
+		storeId: string;
+		newStoreName: string;
+		purchaseQuantity: string;
+		purchaseUnit: string;
+		lineTotal: string;
+	};
+	onPurchaseMetaChange: (value: {
+		brandName: string;
+		storeId: string;
+		newStoreName: string;
+		purchaseQuantity: string;
+		purchaseUnit: string;
+		lineTotal: string;
+	}) => void;
 	onSubmit: (e: React.FormEvent) => void;
 	setConfirmConfig: (config: ConfirmConfig) => void;
 }) {
@@ -876,10 +1318,13 @@ function InventoryActionModal({
 								onEntryDateChange={onEntryDateChange}
 								onNewItemChange={onNewItemChange}
 								onNotesChange={onNotesChange}
+								onPurchaseMetaChange={onPurchaseMetaChange}
 								onSelectedItemChange={onSelectedItemChange}
+								purchaseMeta={purchaseMeta}
 								produceBatch={produceBatch}
 								selectedItem={selectedItem}
 								setConfirmConfig={setConfirmConfig}
+								stores={stores}
 							/>
 						)}
 					</div>
@@ -1175,17 +1620,17 @@ function InventoryDetailDrawer({
 	const impact = useQuery(api.inventory.getInventoryItemImpact, {
 		inventoryId: item._id,
 	});
-	const transactions = useQuery(api.inventory.getInventoryTransactions, {
+	const priceInsights = useQuery(api.inventory.getInventoryPriceInsights, {
 		inventoryId: item._id,
-	});
+	}) as InventoryPriceInsights | undefined;
 
 	return (
 		<div className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px]">
-			<div className="h-full w-full max-w-lg overflow-y-auto border-l border-border bg-card p-5 shadow-2xl">
+			<div className="h-full w-full max-w-2xl overflow-y-auto border-l border-border bg-card p-5 shadow-2xl">
 				<div className="mb-5 flex items-start justify-between gap-4">
 					<div>
 						<p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-							Context Panel
+							Purchase Intelligence
 						</p>
 						<h3 className="mt-1 font-black text-2xl text-foreground">{item.ingredientName}</h3>
 						<p className="mt-1 text-sm text-muted-foreground">
@@ -1222,6 +1667,69 @@ function InventoryDetailDrawer({
 
 				<div className="mb-4 rounded-2xl border border-border p-4">
 					<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+						Identitas Pembelian
+					</p>
+					<div className="mt-3 grid grid-cols-2 gap-3 text-sm text-foreground">
+						<div className="rounded-xl bg-muted/40 px-3 py-2">
+							<p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+								Brand utama
+							</p>
+							<p className="mt-1 font-semibold">
+								{priceInsights?.item.defaultBrandName || "-"}
+							</p>
+						</div>
+						<div className="rounded-xl bg-muted/40 px-3 py-2">
+							<p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+								Toko preferensi
+							</p>
+							<p className="mt-1 font-semibold">
+								{priceInsights?.item.preferredStoreName || "-"}
+							</p>
+						</div>
+					</div>
+				</div>
+
+				<div className="mb-4 rounded-2xl border border-border p-4">
+					<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+						Snapshot Harga
+					</p>
+					<div className="mt-3 grid grid-cols-3 gap-3">
+						<div className="rounded-xl bg-muted/40 px-3 py-3">
+							<p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+								Terakhir
+							</p>
+							<p className="mt-1 font-black text-lg text-foreground">
+								{formatCurrency(priceInsights?.priceSnapshot.lastPrice)}
+							</p>
+						</div>
+						<div className="rounded-xl bg-muted/40 px-3 py-3">
+							<p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+								Termurah
+							</p>
+							<p className="mt-1 font-black text-lg text-foreground">
+								{formatCurrency(priceInsights?.priceSnapshot.lowestPrice)}
+							</p>
+						</div>
+						<div className="rounded-xl bg-muted/40 px-3 py-3">
+							<p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+								Rata-rata
+							</p>
+							<p className="mt-1 font-black text-lg text-foreground">
+								{formatCurrency(priceInsights?.priceSnapshot.averagePrice)}
+							</p>
+						</div>
+					</div>
+					<p className="mt-3 text-[11px] text-muted-foreground">
+						Toko terakhir: {priceInsights?.item.lastPurchaseStoreName || "-"} ·
+						Update:{" "}
+						{priceInsights?.priceSnapshot.lastPurchaseAt
+							? new Date(priceInsights.priceSnapshot.lastPurchaseAt).toLocaleDateString("id-ID")
+							: "-"}
+					</p>
+				</div>
+
+				<div className="mb-4 rounded-2xl border border-border p-4">
+					<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
 						Dampak Lintas Fitur
 					</p>
 					<div className="mt-3 space-y-2 text-sm text-foreground">
@@ -1230,6 +1738,84 @@ function InventoryDetailDrawer({
 						<p>Base recipe pemakai: <span className="font-bold">{impact?.impact.consumedByBaseRecipeCount ?? 0}</span></p>
 						{impact?.impact.producedByBaseRecipeName && (
 							<p>Diproduksi dari: <span className="font-bold">{impact.impact.producedByBaseRecipeName}</span></p>
+						)}
+					</div>
+				</div>
+
+				<div className="mb-4 rounded-2xl border border-border p-4">
+					<p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+						Perbandingan Toko
+					</p>
+					<div className="space-y-2">
+						{priceInsights?.storeComparison.map((store) => (
+							<div
+								className="grid grid-cols-[1.4fr_1fr_1fr_auto] items-center gap-3 rounded-xl bg-muted/40 px-3 py-2"
+								key={store.storeId ?? store.storeName}
+							>
+								<div>
+									<p className="text-sm font-semibold text-foreground">{store.storeName}</p>
+									<p className="text-[11px] text-muted-foreground">
+										{store.purchaseCount} pembelian
+									</p>
+								</div>
+								<div className="text-[11px] text-muted-foreground">
+									<p>Terakhir</p>
+									<p className="font-semibold text-foreground">
+										{formatCurrency(store.lastPrice)}
+									</p>
+								</div>
+								<div className="text-[11px] text-muted-foreground">
+									<p>Termurah</p>
+									<p className="font-semibold text-foreground">
+										{formatCurrency(store.lowestPrice)}
+									</p>
+								</div>
+								<div className="text-right text-[11px] text-muted-foreground">
+									{store.lastPurchaseAt
+										? new Date(store.lastPurchaseAt).toLocaleDateString("id-ID")
+										: "-"}
+								</div>
+							</div>
+						))}
+						{(priceInsights?.storeComparison.length ?? 0) === 0 && (
+							<p className="text-sm text-muted-foreground">
+								Belum ada histori pembelian per toko.
+							</p>
+						)}
+					</div>
+				</div>
+
+				<div className="mb-4 rounded-2xl border border-border p-4">
+					<p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+						Perbandingan Brand
+					</p>
+					<div className="space-y-2">
+						{priceInsights?.brandComparison.map((brand) => (
+							<div
+								className="grid grid-cols-[1.3fr_1fr_auto] items-center gap-3 rounded-xl bg-muted/40 px-3 py-2"
+								key={brand.brandName}
+							>
+								<div>
+									<p className="text-sm font-semibold text-foreground">{brand.brandName}</p>
+									<p className="text-[11px] text-muted-foreground">
+										Toko terakhir: {brand.lastStoreName || "-"}
+									</p>
+								</div>
+								<div className="text-[11px] text-muted-foreground">
+									<p>Harga terakhir</p>
+									<p className="font-semibold text-foreground">
+										{formatCurrency(brand.lastPrice)}
+									</p>
+								</div>
+								<div className="text-right text-[11px] text-muted-foreground">
+									{brand.purchaseCount}x
+								</div>
+							</div>
+						))}
+						{(priceInsights?.brandComparison.length ?? 0) === 0 && (
+							<p className="text-sm text-muted-foreground">
+								Belum ada histori pembelian per brand.
+							</p>
 						)}
 					</div>
 				</div>
@@ -1269,36 +1855,40 @@ function InventoryDetailDrawer({
 
 				<div className="rounded-2xl border border-border p-4">
 					<p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-						Timeline Aktivitas Terbaru
+						Histori Pembelian Terbaru
 					</p>
 					<div className="space-y-2">
-						{transactions?.slice(0, 10).map((transaction) => (
-							<div className="rounded-xl bg-muted/40 px-3 py-2" key={transaction._id}>
+						{priceInsights?.recentPurchases.map((purchase) => (
+							<div className="rounded-xl bg-muted/40 px-3 py-2" key={purchase.transactionId}>
 								<div className="flex items-center justify-between gap-4">
-									<p className="text-xs font-semibold uppercase text-foreground">
-										{transaction.type}
-									</p>
-									<p
-										className={`text-xs font-bold ${
-											transaction.quantity >= 0 ? "text-emerald-600" : "text-rose-600"
-										}`}
-									>
-										{transaction.quantity > 0 ? "+" : ""}
-										{transaction.quantity}
+									<div>
+										<p className="text-xs font-semibold uppercase text-foreground">
+											{purchase.brandName || "Tanpa brand"} · {purchase.storeName}
+										</p>
+										<p className="mt-1 text-[11px] text-muted-foreground">
+											{purchase.purchaseQuantity != null
+												? `${purchase.purchaseQuantity} ${purchase.purchaseUnit || item.unit}`
+												: `${purchase.quantity} ${item.unit}`}
+											{" · "}
+											{formatCurrency(purchase.lineTotal)}
+										</p>
+									</div>
+									<p className="text-xs font-bold text-emerald-600">
+										{formatCurrency(purchase.costPerUnit)}
 									</p>
 								</div>
 								<p className="mt-1 text-[11px] text-muted-foreground">
-									{new Date(transaction.timestamp).toLocaleString("id-ID")}
+									{new Date(purchase.timestamp).toLocaleString("id-ID")}
 								</p>
-								{transaction.notes && (
+								{purchase.notes && (
 									<p className="mt-1 text-[11px] text-muted-foreground">
-										{transaction.notes}
+										{purchase.notes}
 									</p>
 								)}
 							</div>
 						))}
-						{(transactions?.length ?? 0) === 0 && (
-							<p className="text-sm text-muted-foreground">Belum ada aktivitas.</p>
+						{(priceInsights?.recentPurchases.length ?? 0) === 0 && (
+							<p className="text-sm text-muted-foreground">Belum ada histori pembelian.</p>
 						)}
 					</div>
 				</div>
@@ -1366,6 +1956,7 @@ function InventoryTable({
 				quantity: string;
 				unit: string;
 				lowStockThreshold: string;
+				defaultBrandName: string;
 			}
 		>
 	>({});
@@ -1374,6 +1965,7 @@ function InventoryTable({
 		quantity: "0",
 		unit: "gram",
 		lowStockThreshold: "100",
+		defaultBrandName: "",
 	});
 
 	useEffect(() => {
@@ -1386,11 +1978,12 @@ function InventoryTable({
 			quantity: String(row.currentStock),
 			unit: row.unit,
 			lowStockThreshold: String(row.lowStockThreshold),
+			defaultBrandName: row.defaultBrandName ?? "",
 		};
 
 	const setInlineField = (
 		row: InventoryWorkspaceRow,
-		field: "ingredientName" | "quantity" | "unit" | "lowStockThreshold",
+		field: "ingredientName" | "quantity" | "unit" | "lowStockThreshold" | "defaultBrandName",
 		value: string
 	) => {
 		setInlineValues((prev) => {
@@ -1399,6 +1992,7 @@ function InventoryTable({
 				quantity: String(row.currentStock),
 				unit: row.unit,
 				lowStockThreshold: String(row.lowStockThreshold),
+				defaultBrandName: row.defaultBrandName ?? "",
 			};
 			return {
 				...prev,
@@ -1431,7 +2025,8 @@ function InventoryTable({
 		if (
 			ingredientName === row.ingredientName &&
 			current.unit === row.unit &&
-			lowStockThresholdNum === row.lowStockThreshold
+			lowStockThresholdNum === row.lowStockThreshold &&
+			current.defaultBrandName.trim() === (row.defaultBrandName ?? "")
 		) {
 			return;
 		}
@@ -1446,6 +2041,8 @@ function InventoryTable({
 				displayUnit: item.displayUnit || undefined,
 				conversionFactor: item.conversionFactor || undefined,
 				baseRecipeId: item.baseRecipeId || undefined,
+				defaultBrandName: current.defaultBrandName.trim() || undefined,
+				preferredStoreId: item.preferredStoreId || undefined,
 			});
 			toast.success("Perubahan baris tersimpan");
 		} catch (error) {
@@ -1547,11 +2144,13 @@ function InventoryTable({
 				unit: quickAdd.unit,
 				quantity,
 				lowStockThreshold,
+				defaultBrandName: quickAdd.defaultBrandName.trim() || undefined,
 			});
 			setQuickAdd((prev) => ({
 				...prev,
 				ingredientName: "",
 				quantity: "0",
+				defaultBrandName: "",
 			}));
 			toast.success("Item baru langsung tersimpan");
 			quickAddNameRef.current?.focus();
@@ -1587,13 +2186,16 @@ function InventoryTable({
 			<div>
 				<table className="w-full table-fixed text-left text-[10px] md:text-[11px]">
 					<colgroup>
-						<col className="w-[24%]" />
-						<col className="w-[14%]" />
-						<col className="w-[14%]" />
-						<col className="w-[14%]" />
-						<col className="w-[13%]" />
-						<col className="w-[13%]" />
+						<col className="w-[18%]" />
+						<col className="w-[12%]" />
+						<col className="w-[12%]" />
+						<col className="w-[11%]" />
+						<col className="w-[10%]" />
+						<col className="w-[12%]" />
+						<col className="w-[11%]" />
+						<col className="w-[11%]" />
 						<col className="w-[8%]" />
+						<col className="w-[9%]" />
 					</colgroup>
 					<thead className="bg-card">
 						<tr className="border-border border-b text-muted-foreground">
@@ -1608,9 +2210,10 @@ function InventoryTable({
 											<ArrowUp className="h-3 w-3" />
 										) : (
 											<ArrowDown className="h-3 w-3" />
-										))}
+									))}
 								</div>
 							</th>
+							<th className="px-2 py-2 font-semibold">Brand</th>
 							<th
 								className="cursor-pointer px-2 py-2 text-center font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("currentStock")}
@@ -1654,6 +2257,8 @@ function InventoryTable({
 										))}
 								</div>
 							</th>
+							<th className="px-2 py-2 font-semibold">Toko Terakhir</th>
+							<th className="px-2 py-2 font-semibold">Harga Terakhir</th>
 							<th className="px-2 py-2 font-semibold">Terkait</th>
 							<th className="px-2 py-2 text-right font-semibold">Aksi</th>
 						</tr>
@@ -1677,6 +2282,24 @@ function InventoryTable({
 									}}
 									placeholder="Tambah cepat: nama bahan"
 									value={quickAdd.ingredientName}
+								/>
+							</td>
+							<td className="px-2 py-2">
+								<input
+									className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({
+											...prev,
+											defaultBrandName: e.target.value,
+										}))
+									}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											void quickCreate();
+										}
+									}}
+									placeholder="Brand opsional"
+									value={quickAdd.defaultBrandName}
 								/>
 							</td>
 							<td className="px-2 py-2 text-center">
@@ -1735,6 +2358,12 @@ function InventoryTable({
 									-
 								</div>
 							</td>
+							<td className="px-2 py-2">
+								<div className="text-[10px] text-muted-foreground">-</div>
+							</td>
+							<td className="px-2 py-2">
+								<div className="text-[10px] text-muted-foreground">-</div>
+							</td>
 							<td className="px-2 py-2 text-right">
 								<button
 									className="rounded-lg bg-primary px-2.5 py-1 text-[10px] font-bold text-primary-foreground hover:brightness-110"
@@ -1753,6 +2382,9 @@ function InventoryTable({
 										<Skeleton className="h-4 w-32" />
 									</td>
 									<td className="p-4">
+										<Skeleton className="h-8 w-24" />
+									</td>
+									<td className="p-4">
 										<Skeleton className="mx-auto h-8 w-16" />
 									</td>
 									<td className="p-4">
@@ -1763,6 +2395,12 @@ function InventoryTable({
 									</td>
 									<td className="p-4">
 										<Skeleton className="h-10 w-32" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="h-8 w-28" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="h-8 w-24" />
 									</td>
 									<td className="p-4">
 										<Skeleton className="h-10 w-32" />
@@ -1813,6 +2451,23 @@ function InventoryTable({
 												}}
 												title={inline.ingredientName}
 												value={inline.ingredientName}
+											/>
+										</td>
+										<td className="px-2 py-2 align-middle">
+											<input
+												className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-semibold text-[11px] outline-none focus:border-border focus:bg-background"
+												onBlur={() => void saveMeta(row)}
+												onChange={(e) =>
+													setInlineField(row, "defaultBrandName", e.target.value)
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveMeta(row);
+														(e.target as HTMLInputElement).blur();
+													}
+												}}
+												placeholder="-"
+												value={inline.defaultBrandName}
 											/>
 										</td>
 										<td className="px-2 py-2 align-middle text-center">
@@ -1901,6 +2556,16 @@ function InventoryTable({
 												Order {row.suggestedOrderQty}
 											</span>
 										</td>
+										<td className="px-2 py-2 align-middle text-[10px] text-muted-foreground">
+											<span className="font-semibold text-foreground">
+												{row.lastPurchaseStoreName || "-"}
+											</span>
+										</td>
+										<td className="px-2 py-2 align-middle text-[10px] text-muted-foreground">
+											<span className="font-semibold text-foreground">
+												{formatCurrency(row.lastPurchasePrice)}
+											</span>
+										</td>
 										<td className="px-2 py-2 align-middle text-[10px]">
 											<span className="rounded-full bg-muted px-1.5 py-0.5 font-semibold text-foreground">
 												P {row.relatedProductCount}
@@ -1972,7 +2637,7 @@ function InventoryTable({
 							})}
 						{inventoryMap.size > 0 && filteredRows.length === 0 && (
 							<tr>
-								<td className="p-8 text-center text-muted-foreground" colSpan={7}>
+								<td className="p-8 text-center text-muted-foreground" colSpan={10}>
 									Tidak ada bahan baku ditemukan
 								</td>
 							</tr>

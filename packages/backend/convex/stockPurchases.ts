@@ -341,9 +341,12 @@ async function createInventoryItemForPurchase(
 		lowStockThreshold: getDefaultLowStockThreshold(unitSpec.baseUnit),
 		displayUnit: unitSpec.displayUnit,
 		conversionFactor: unitSpec.conversionFactor,
+		defaultBrandName: undefined,
+		preferredStoreId: undefined,
 		aliases: undefined,
 		lastPurchaseAt: undefined,
 		lastPurchasePrice: undefined,
+		lastPurchaseStoreId: undefined,
 	});
 
 	const created = await ctx.db.get(createdId);
@@ -387,13 +390,42 @@ async function resolveInventoryItem(
 	};
 }
 
+async function resolveInventoryStore(
+	ctx: MutationCtx,
+	merchant?: string
+): Promise<Id<"inventoryStores"> | undefined> {
+	const trimmedMerchant = merchant?.trim();
+	if (!trimmedMerchant) {
+		return undefined;
+	}
+
+	const normalizedMerchant = normalizeText(trimmedMerchant);
+	const stores = await ctx.db.query("inventoryStores").collect();
+	const existing = stores.find(
+		(store) => normalizeText(store.name) === normalizedMerchant
+	);
+	if (existing) {
+		return existing._id;
+	}
+
+	return await ctx.db.insert("inventoryStores", {
+		name: trimmedMerchant,
+		type: "supplier",
+		isActive: true,
+		phone: undefined,
+		address: undefined,
+		notes: "Dibuat otomatis dari sinkron pembelian stok",
+	});
+}
+
 async function applyInventoryQuantityDelta(
 	ctx: MutationCtx,
 	inventoryId: Id<"inventory">,
 	delta: number,
 	lastPurchasePrice: number,
 	purchaseDate: number,
-	aliases: string[]
+	aliases: string[],
+	storeId?: Id<"inventoryStores">
 ) {
 	const item = await ctx.db.get(inventoryId);
 	if (!item) {
@@ -405,6 +437,7 @@ async function applyInventoryQuantityDelta(
 		aliases: mergeAliases(item.aliases, aliases),
 		lastPurchasePrice,
 		lastPurchaseAt: purchaseDate,
+		lastPurchaseStoreId: storeId ?? item.lastPurchaseStoreId,
 	});
 }
 
@@ -414,10 +447,14 @@ async function upsertPurchaseBatch(args: {
 	inventoryItem: InventoryDoc;
 	baseQuantity: number;
 	costPerUnit: number;
+	lineTotal: number;
+	purchaseQuantity: number;
+	purchaseUnit?: string;
 	timestamp: number;
 	notes: string;
 	sourceLabel: string;
 	sourceFingerprint: string;
+	storeId?: Id<"inventoryStores">;
 }) {
 	const existingRows = await args.ctx.db
 		.query("inventoryTransactions")
@@ -437,7 +474,8 @@ async function upsertPurchaseBatch(args: {
 			args.baseQuantity,
 			args.costPerUnit,
 			args.timestamp,
-			[args.inventoryItem.ingredientName]
+			[args.inventoryItem.ingredientName],
+			args.storeId
 		);
 
 		await args.ctx.db.insert("inventoryTransactions", {
@@ -448,6 +486,10 @@ async function upsertPurchaseBatch(args: {
 			timestamp: args.timestamp,
 			costPerUnit: args.costPerUnit,
 			notes: args.notes,
+			storeId: args.storeId,
+			purchaseQuantity: args.purchaseQuantity,
+			purchaseUnit: args.purchaseUnit,
+			lineTotal: args.lineTotal,
 			sourceTransactionId: args.transactionId,
 			sourceLabel: args.sourceLabel,
 			sourceFingerprint: args.sourceFingerprint,
@@ -486,7 +528,8 @@ async function upsertPurchaseBatch(args: {
 			-existing.quantity,
 			args.costPerUnit,
 			args.timestamp,
-			[]
+			[],
+			undefined
 		);
 		await applyInventoryQuantityDelta(
 			args.ctx,
@@ -494,7 +537,8 @@ async function upsertPurchaseBatch(args: {
 			args.baseQuantity,
 			args.costPerUnit,
 			args.timestamp,
-			[args.inventoryItem.ingredientName]
+			[args.inventoryItem.ingredientName],
+			args.storeId
 		);
 	} else {
 		const delta = args.baseQuantity - existing.quantity;
@@ -505,7 +549,8 @@ async function upsertPurchaseBatch(args: {
 				delta,
 				args.costPerUnit,
 				args.timestamp,
-				[args.inventoryItem.ingredientName]
+				[args.inventoryItem.ingredientName],
+				args.storeId
 			);
 		} else {
 			await applyInventoryQuantityDelta(
@@ -514,7 +559,8 @@ async function upsertPurchaseBatch(args: {
 				0,
 				args.costPerUnit,
 				args.timestamp,
-				[args.inventoryItem.ingredientName]
+				[args.inventoryItem.ingredientName],
+				args.storeId
 			);
 		}
 	}
@@ -526,6 +572,10 @@ async function upsertPurchaseBatch(args: {
 		timestamp: args.timestamp,
 		costPerUnit: args.costPerUnit,
 		notes: args.notes,
+		storeId: args.storeId,
+		purchaseQuantity: args.purchaseQuantity,
+		purchaseUnit: args.purchaseUnit,
+		lineTotal: args.lineTotal,
 		sourceLabel: args.sourceLabel,
 		sourceFingerprint: args.sourceFingerprint,
 	});
@@ -620,6 +670,7 @@ export const recordStockPurchase = mutation({
 			},
 		});
 
+		const storeId = await resolveInventoryStore(ctx, args.purchaseData.merchant);
 		const allInventory = await ctx.db.query("inventory").collect();
 		let createdCount = 0;
 		let updatedCount = 0;
@@ -666,10 +717,14 @@ export const recordStockPurchase = mutation({
 				inventoryItem,
 				baseQuantity,
 				costPerUnit,
+				lineTotal,
+				purchaseQuantity: quantity,
+				purchaseUnit: item.unit,
 				timestamp: args.purchaseData.date,
 				notes: noteParts.join(" | "),
 				sourceLabel: args.purchaseData.sourceLabel || "AI Inventory Sync",
 				sourceFingerprint: rowFingerprint,
+				storeId,
 			});
 
 			const currentInventory = await ctx.db.get(inventoryItem._id);
@@ -678,6 +733,7 @@ export const recordStockPurchase = mutation({
 					aliases: mergeAliases(currentInventory.aliases, [item.name]),
 					lastPurchasePrice: costPerUnit,
 					lastPurchaseAt: args.purchaseData.date,
+					lastPurchaseStoreId: storeId,
 				});
 			}
 

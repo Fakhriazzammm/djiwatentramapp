@@ -2730,7 +2730,76 @@ INSTRUKSI REKONSILIASI BANK:
 						}
 					}
 
-					const finalToolCalls = toolCalls.filter(tc => tc.id);
+					const finalToolCalls = toolCalls.filter(
+						(tc) => tc?.id && tc?.function?.name
+					);
+					const hasToolFragments = toolCalls.some(
+						(tc) => tc?.function?.name || tc?.function?.arguments
+					);
+
+					// Some providers may stream incomplete tool call metadata (missing id)
+					// or return an empty first pass. Retry once in non-stream mode before failing.
+					if (!fullContent.trim() && finalToolCalls.length === 0) {
+						const retryCompletion = await openai.chat.completions.create({
+							model: "gpt-4o",
+							messages,
+							tools: openaiTools,
+							tool_choice: "auto",
+							max_tokens: 1000,
+						});
+
+						const retryMessage = retryCompletion.choices[0].message;
+						if (retryMessage.tool_calls && retryMessage.tool_calls.length > 0) {
+							messages.push(
+								retryMessage as OpenAI.ChatCompletionMessageParam
+							);
+							await executeToolCalls(retryMessage.tool_calls);
+							continue;
+						}
+
+						const retryContent = retryMessage.content ?? "";
+						if (streamingId && retryContent) {
+							await ctx.runMutation(api.ai.updateStreamingMessage, {
+								streamingId,
+								chunk: retryContent,
+								isFinal: true,
+							});
+						}
+						if (retryContent.trim()) {
+							return finalizeResponse(retryContent, executedToolCalls);
+						}
+					}
+
+					if (hasToolFragments && finalToolCalls.length === 0) {
+						const fallbackCompletion = await openai.chat.completions.create({
+							model: "gpt-4o",
+							messages,
+							tools: openaiTools,
+							tool_choice: "auto",
+							max_tokens: 1000,
+						});
+						const fallbackMessage = fallbackCompletion.choices[0].message;
+						if (fallbackMessage.tool_calls && fallbackMessage.tool_calls.length > 0) {
+							messages.push(
+								fallbackMessage as OpenAI.ChatCompletionMessageParam
+							);
+							await executeToolCalls(fallbackMessage.tool_calls);
+							continue;
+						}
+						if (fallbackMessage.content?.trim()) {
+							if (streamingId) {
+								await ctx.runMutation(api.ai.updateStreamingMessage, {
+									streamingId,
+									chunk: fallbackMessage.content,
+									isFinal: true,
+								});
+							}
+							return finalizeResponse(
+								fallbackMessage.content,
+								executedToolCalls
+							);
+						}
+					}
 					
 					// Finalize streaming for this pass
 					if (streamingId && fullContent) {

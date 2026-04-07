@@ -16,6 +16,7 @@ import type * as crons from "../crons.js";
 import type * as customerService from "../customerService.js";
 import type * as dashboard from "../dashboard.js";
 import type * as discounts from "../discounts.js";
+import type * as expenseIntake from "../expenseIntake.js";
 import type * as finance from "../finance.js";
 import type * as financialMetrics from "../financialMetrics.js";
 import type * as health_check from "../health_check.js";
@@ -53,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   customerService: typeof customerService;
   dashboard: typeof dashboard;
   discounts: typeof discounts;
+  expenseIntake: typeof expenseIntake;
   finance: typeof finance;
   financialMetrics: typeof financialMetrics;
   health_check: typeof health_check;

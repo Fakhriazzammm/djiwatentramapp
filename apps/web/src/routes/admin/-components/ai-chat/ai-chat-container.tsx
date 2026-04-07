@@ -40,6 +40,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	const streamingActiveRef = useRef(false);
 	const scrollThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const hydratedSessionRef = useRef<string | null>(null);
+	const shouldHydrateSessionRef = useRef(false);
 	const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
 	const [isImageScannerOpen, setIsImageScannerOpen] = useState(false);
 	const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -200,6 +201,9 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 
 	useEffect(() => {
 		if (!currentSessionId || !loadConversationQuery) return;
+		if (!shouldHydrateSessionRef.current && messages.length > 0) {
+			return;
+		}
 		if (hydratedSessionRef.current === currentSessionId && messages.length > 0) {
 			return;
 		}
@@ -211,6 +215,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			}));
 			setMessages(loadedMessages);
 			hydratedSessionRef.current = currentSessionId;
+			shouldHydrateSessionRef.current = false;
 		}
 	}, [loadConversationQuery, currentSessionId, messages.length]);
 
@@ -238,6 +243,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			setStreamSessionId(sid);
 			setMessages([]);
 			hydratedSessionRef.current = null;
+			shouldHydrateSessionRef.current = false;
 			setToolCalls([]);
 			briefingAttemptedRef.current = false;
 			return sid;
@@ -252,6 +258,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 		setStreamSessionId(sessionId);
 		setMessages([]);
 		hydratedSessionRef.current = null;
+		shouldHydrateSessionRef.current = true;
 		setShowSessionHistory(false);
 	}, []);
 
@@ -262,6 +269,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 				setCurrentSessionId(null);
 				setStreamSessionId(null);
 				setMessages([]);
+				shouldHydrateSessionRef.current = false;
 			}
 			toast.success("Sesi berhasil dihapus");
 		} catch (error) {
@@ -477,15 +485,15 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			const normalizedToolCalls = Array.isArray((rawResponse as any)?.toolCalls)
 				? (rawResponse as any).toolCalls
 				: [];
-			if (!responseText) {
-				throw new Error("Respons AI kosong atau tidak valid");
-			}
+			const safeResponseText = responseText?.trim()
+				? responseText
+				: "Maaf, respons AI sempat kosong. Silakan kirim ulang pertanyaan Anda.";
 			const suggestions = extractSuggestions(responseText);
-			const quickActions = generateQuickActions(effectiveText, responseText);
-			const genericActions = extractGenericActions(responseText);
-			const chartData = extractChartData(responseText);
-			const exportData = extractExportData(responseText);
-			const sanitizedResponse = sanitizeResponse(responseText);
+			const quickActions = generateQuickActions(effectiveText, safeResponseText);
+			const genericActions = extractGenericActions(safeResponseText);
+			const chartData = extractChartData(safeResponseText);
+			const exportData = extractExportData(safeResponseText);
+			const sanitizedResponse = sanitizeResponse(safeResponseText);
 			setToolCalls(normalizedToolCalls);
 			setMessages(prev => prev.map(msg => (
 				msg._msgId === pendingAssistantId
