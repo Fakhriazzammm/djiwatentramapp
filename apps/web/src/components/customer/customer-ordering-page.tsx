@@ -501,7 +501,7 @@ export function CustomerOrderingPage({
 		discounts === undefined
 	) {
 		return (
-			<div className="flex min-h-screen items-center justify-center bg-background">
+			<div className="flex min-h-app items-center justify-center bg-background">
 				<div className="flex items-center gap-3 rounded-3xl border border-border bg-card px-5 py-4 shadow-sm">
 					<Loader2 className="h-5 w-5 animate-spin text-primary" />
 					<span className="text-sm font-medium text-muted-foreground">
@@ -514,7 +514,7 @@ export function CustomerOrderingPage({
 
 	if (brandSettings?.isActive === false || !config.enabled) {
 		return (
-			<div className="flex min-h-screen items-center justify-center bg-background px-4">
+			<div className="flex min-h-app items-center justify-center bg-background px-4">
 				<div className="max-w-md rounded-3xl border border-border bg-card p-8 text-center shadow-sm">
 					<h1 className="text-2xl font-black">Halaman ordering belum aktif</h1>
 					<p className="mt-3 text-sm text-muted-foreground">
@@ -526,8 +526,8 @@ export function CustomerOrderingPage({
 	}
 
 	return (
-		<div className="min-h-screen bg-[#f7f8fb]">
-			<div className="mx-auto flex min-h-screen max-w-md flex-col bg-background shadow-[0_0_0_1px_rgba(15,23,42,0.04),0_24px_60px_rgba(15,23,42,0.08)]">
+		<div className="min-h-app bg-[#f7f8fb]">
+			<div className="mx-auto flex min-h-app max-w-md flex-col bg-background shadow-[0_0_0_1px_rgba(15,23,42,0.04),0_24px_60px_rgba(15,23,42,0.08)]">
 				<header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-4 py-3 backdrop-blur-xl">
 					<div className="flex items-center justify-between gap-3">
 						<div className="flex items-center gap-3">
@@ -567,7 +567,7 @@ export function CustomerOrderingPage({
 
 				<main className="flex-1 pb-28">
 					{step === "welcome" ? (
-						<section className="flex min-h-[calc(100vh-4.5rem)] flex-col items-center justify-center px-6 py-10 text-center">
+						<section className="flex min-h-[calc(var(--app-min-height)-4.5rem)] flex-col items-center justify-center px-6 py-10 text-center">
 							<div className="w-full rounded-[2.5rem] bg-[linear-gradient(180deg,#ffffff,#f8fafc)] px-6 py-10 shadow-[0_30px_80px_rgba(15,23,42,0.08)]">
 								<div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[2rem] bg-primary/10">
 									{logoUrl ? <img alt={storeName} className="h-14 w-14 object-contain" src={logoUrl} /> : <ShoppingCart className="h-8 w-8 text-primary" />}

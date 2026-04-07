@@ -11,6 +11,12 @@
    ============================================ */
 :root {
 	color-scheme: light;
+	--app-height: 100vh;
+	--app-min-height: 100vh;
+	--safe-area-top: env(safe-area-inset-top, 0px);
+	--safe-area-right: env(safe-area-inset-right, 0px);
+	--safe-area-bottom: env(safe-area-inset-bottom, 0px);
+	--safe-area-left: env(safe-area-inset-left, 0px);
 
 	/* Theme: Clean White & Deep Azure Accent — HEX fallbacks */
 	--background: #fefefe;
@@ -59,6 +65,13 @@
 	--sidebar-accent-foreground: #0d2d54;
 	--sidebar-border: #e8e9eb;
 	--sidebar-ring: #1a5dc6;
+}
+
+@supports (height: 100dvh) {
+	:root {
+		--app-height: 100dvh;
+		--app-min-height: 100dvh;
+	}
 }
 
 /* Force same light theme for .dark to prevent black/white on dark-mode devices */
@@ -252,19 +265,38 @@
 @layer base {
 	html {
 		@apply font-sans;
+		width: 100%;
+		min-height: 100%;
+		background-color: var(--background);
 		text-rendering: optimizeLegibility;
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
+		-webkit-text-size-adjust: 100%;
+		text-size-adjust: 100%;
 		font-feature-settings: "cv11" 1, "ss01" 1, "ss03" 1;
 		font-kerning: normal;
+		scrollbar-gutter: stable;
+	}
+	html,
+	body,
+	#root {
+		min-height: 100%;
 	}
 	* {
 		@apply border-border outline-ring/50;
+		box-sizing: border-box;
+	}
+	*::before,
+	*::after {
+		box-sizing: border-box;
 	}
 	body {
 		@apply font-sans bg-background text-foreground;
+		width: 100%;
+		min-height: var(--app-min-height);
 		line-height: 1.5;
 		font-synthesis-weight: none;
+		overflow-x: hidden;
 	}
 	button,
 	input,
@@ -281,7 +313,7 @@
 		font-weight: 700;
 		letter-spacing: -0.02em;
 		line-height: 1.15;
-		text-wrap: balance;
+		overflow-wrap: anywhere;
 	}
 	p,
 	label,
@@ -290,6 +322,27 @@
 	select,
 	button {
 		letter-spacing: -0.01em;
+	}
+	img,
+	svg,
+	video,
+	canvas {
+		display: block;
+		max-width: 100%;
+	}
+}
+
+@supports (text-wrap: balance) {
+	@layer base {
+		h1,
+		h2,
+		h3,
+		h4,
+		h5,
+		h6 {
+			text-wrap: balance;
+			overflow-wrap: normal;
+		}
 	}
 }
 
@@ -564,33 +617,52 @@
 	border: 1px solid rgba(220, 223, 228, 0.5);
 }
 
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+	.glass,
+	.glass-strong {
+		background: rgba(254, 254, 254, 0.96);
+	}
+}
+
+.min-h-app {
+	min-height: var(--app-min-height);
+}
+
+.h-app {
+	height: var(--app-height);
+}
+
+.max-h-app {
+	max-height: var(--app-height);
+}
+
 /* ============================================
    MOBILE ADMIN APP LAYOUT
    ============================================ */
 
 /* Safe area padding for bottom nav (notched phones) */
 .safe-area-bottom {
-	padding-bottom: env(safe-area-inset-bottom, 0px);
+	padding-bottom: var(--safe-area-bottom);
 }
 
 /* Safe area for padding bottom (iOS notch/home indicator) */
 .pb-safe-area {
-	padding-bottom: max(env(safe-area-inset-bottom, 0px), 1rem);
+	padding-bottom: max(var(--safe-area-bottom), 1rem);
 }
 
 /* Safe area for padding bottom - shorter version */
 .pb-safe {
-	padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem);
+	padding-bottom: max(var(--safe-area-bottom), 0.75rem);
 }
 
 /* Safe area for padding bottom with mobile navbar offset */
 .pb-safe-with-nav {
-	padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
+	padding-bottom: calc(var(--safe-area-bottom) + 80px);
 }
 
 /* Safe area for padding top */
 .pt-safe-area {
-	padding-top: max(env(safe-area-inset-top, 0px), 0.5rem);
+	padding-top: max(var(--safe-area-top), 0.5rem);
 }
 
 /* Mobile admin card style - compact with touch-friendly targets */

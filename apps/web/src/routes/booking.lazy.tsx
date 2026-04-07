@@ -560,8 +560,8 @@ const MobileWrapper = ({
 	themeColor: string;
 	settings: any;
 }) => (
-	<div className="min-h-screen bg-background flex flex-col items-center">
-		<div className="w-full max-w-md bg-card min-h-screen shadow-2xl flex flex-col relative overflow-x-hidden">
+	<div className="min-h-app bg-background flex flex-col items-center">
+		<div className="w-full max-w-md bg-card min-h-app shadow-2xl flex flex-col relative overflow-x-hidden">
 			{showHeader && (
 				<header className="sticky top-0 z-30 w-full px-4 py-4 flex items-center justify-between bg-background/80 backdrop-blur-md border-b border-border">
 					<div className="flex items-center gap-3">
@@ -790,8 +790,8 @@ function BookingPage() {
 	// Loading
 	if (settings === undefined || products === undefined) {
 		return (
-			<div className="min-h-screen bg-background flex flex-col items-center">
-				<div className="w-full max-w-md bg-card min-h-screen shadow-2xl flex flex-col relative overflow-x-hidden">
+			<div className="min-h-app bg-background flex flex-col items-center">
+				<div className="w-full max-w-md bg-card min-h-app shadow-2xl flex flex-col relative overflow-x-hidden">
 					<header className="sticky top-0 z-30 w-full px-4 py-4 flex items-center justify-between bg-background/80 backdrop-blur-md border-b border-border">
 						<div className="flex items-center gap-3">
 							<Skeleton className="h-8 w-8 rounded-lg" />
@@ -832,7 +832,7 @@ function BookingPage() {
 
 	if (!settings?.isActive) {
 		return (
-			<div className="flex h-screen items-center justify-center bg-background p-6 text-center">
+			<div className="flex min-h-app items-center justify-center bg-background p-6 text-center">
 				<div className="max-w-xs">
 					<div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
 						<X className="h-8 w-8 text-muted-foreground" />

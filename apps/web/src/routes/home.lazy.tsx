@@ -141,7 +141,7 @@ function HomePage() {
 	}).format(new Date());
 
 	return (
-		<div className="min-h-screen bg-slate-100 text-foreground">
+		<div className="min-h-app bg-slate-100 text-foreground">
 			<div className="mx-auto w-full max-w-md px-4 pb-8 pt-6 md:max-w-4xl">
 				<div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 p-5 text-white shadow-xl md:p-7">
 					<div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />

@@ -2194,8 +2194,7 @@ function InventoryTable({
 						<col className="w-[12%]" />
 						<col className="w-[11%]" />
 						<col className="w-[11%]" />
-						<col className="w-[8%]" />
-						<col className="w-[9%]" />
+						<col className="w-[13%]" />
 					</colgroup>
 					<thead className="bg-card">
 						<tr className="border-border border-b text-muted-foreground">
@@ -2259,7 +2258,6 @@ function InventoryTable({
 							</th>
 							<th className="px-2 py-2 font-semibold">Toko Terakhir</th>
 							<th className="px-2 py-2 font-semibold">Harga Terakhir</th>
-							<th className="px-2 py-2 font-semibold">Terkait</th>
 							<th className="px-2 py-2 text-right font-semibold">Aksi</th>
 						</tr>
 					</thead>
@@ -2401,9 +2399,6 @@ function InventoryTable({
 									</td>
 									<td className="p-4">
 										<Skeleton className="h-8 w-24" />
-									</td>
-									<td className="p-4">
-										<Skeleton className="h-10 w-32" />
 									</td>
 									<td className="p-4 text-right">
 										<Skeleton className="ml-auto h-8 w-8 rounded-lg" />
@@ -2566,17 +2561,6 @@ function InventoryTable({
 												{formatCurrency(row.lastPurchasePrice)}
 											</span>
 										</td>
-										<td className="px-2 py-2 align-middle text-[10px]">
-											<span className="rounded-full bg-muted px-1.5 py-0.5 font-semibold text-foreground">
-												P {row.relatedProductCount}
-											</span>
-											<span className="mx-1 rounded-full bg-muted px-1.5 py-0.5 font-semibold text-foreground">
-												R {row.relatedRecipeCount}
-											</span>
-											<span className="rounded-full bg-muted px-1.5 py-0.5 font-semibold text-foreground">
-												B {row.relatedBaseRecipeCount}
-											</span>
-										</td>
 										<td className="px-2 py-2 align-middle text-right">
 											<div className="flex items-center justify-end gap-1">
 												<button
@@ -2637,7 +2621,7 @@ function InventoryTable({
 							})}
 						{inventoryMap.size > 0 && filteredRows.length === 0 && (
 							<tr>
-								<td className="p-8 text-center text-muted-foreground" colSpan={10}>
+								<td className="p-8 text-center text-muted-foreground" colSpan={9}>
 									Tidak ada bahan baku ditemukan
 								</td>
 							</tr>

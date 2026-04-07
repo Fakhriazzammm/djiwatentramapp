@@ -17,7 +17,7 @@ function IndexPage() {
 		"Kelola penjualan, inventori, dan laporan keuangan dalam satu aplikasi yang mudah digunakan.";
 
 	return (
-		<div className="flex min-h-screen flex-col">
+		<div className="flex min-h-app flex-col">
 			{/* Header */}
 			<header className="border-b border-border bg-card px-4 py-4">
 				<div className="mx-auto flex max-w-6xl items-center justify-between">

@@ -1010,7 +1010,7 @@ function MenuPage() {
 	};
 
 	return (
-		<div className="flex h-[100dvh] flex-row bg-background overflow-hidden relative">
+		<div className="flex h-app flex-row bg-background overflow-hidden relative">
 			{/* LEFT CONTENT: Menu Area */}
 			<div className="flex flex-1 flex-col overflow-hidden relative">
 				{/* Shift Closed Overlay */}

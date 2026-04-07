@@ -68,7 +68,7 @@ function LoginPage() {
 	};
 
 	return (
-		<div className="flex min-h-screen w-full overflow-hidden bg-background">
+		<div className="flex min-h-app w-full overflow-hidden bg-background">
 			{/* Left Side: Branding & Visuals (Hidden on Mobile) */}
 			<div className="fade-in relative hidden flex-1 animate-in flex-col justify-between overflow-hidden bg-[#4A3728] p-12 duration-1000 lg:flex">
 				{/* Decorative Background Elements */}

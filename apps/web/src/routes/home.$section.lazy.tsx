@@ -21,7 +21,7 @@ function HomeSectionPage() {
 	const sectionLabel = SECTION_LABELS[section] ?? "Halaman";
 
 	return (
-		<div className="flex min-h-screen items-center justify-center bg-background p-6">
+		<div className="flex min-h-app items-center justify-center bg-background p-6">
 			<div className="flex w-full max-w-3xl flex-col items-center justify-center gap-8 rounded-3xl border border-border bg-card p-8 text-center">
 				<h1 className="font-black text-4xl tracking-tight md:text-5xl">
 					{sectionLabel}
@@ -37,4 +37,3 @@ function HomeSectionPage() {
 		</div>
 	);
 }
-
