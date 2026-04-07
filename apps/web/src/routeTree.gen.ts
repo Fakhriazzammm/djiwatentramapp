@@ -33,6 +33,7 @@ import { Route as AdminBookingRouteImport } from './routes/admin/booking'
 import { Route as AdminBarRouteImport } from './routes/admin/bar'
 import { Route as AdminAiChatRouteImport } from './routes/admin/ai-chat'
 import { Route as AdminFinanceRouteRouteImport } from './routes/admin/finance/route'
+import { Route as AdminRecipeIndexRouteImport } from './routes/admin/recipe.index'
 import { Route as AdminFinanceIndexRouteImport } from './routes/admin/finance/index'
 import { Route as AdminRecipeViewRouteImport } from './routes/admin/recipe.view'
 import { Route as AdminFinanceShiftReportsRouteImport } from './routes/admin/finance/shift-reports'
@@ -95,7 +96,7 @@ const AdminRecipeRoute = AdminRecipeRouteImport.update({
   id: '/recipe',
   path: '/recipe',
   getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() => import('./routes/admin/recipe.lazy').then((d) => d.Route))
+} as any)
 const AdminProductsRoute = AdminProductsRouteImport.update({
   id: '/products',
   path: '/products',
@@ -173,6 +174,11 @@ const AdminFinanceRouteRoute = AdminFinanceRouteRouteImport.update({
   path: '/finance',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminRecipeIndexRoute = AdminRecipeIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRecipeRoute,
+} as any)
 const AdminFinanceIndexRoute = AdminFinanceIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -234,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
+  '/admin/recipe/': typeof AdminRecipeIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -254,7 +261,6 @@ export interface FileRoutesByTo {
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
-  '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/home/$section': typeof HomeSectionRoute
   '/admin': typeof AdminIndexRoute
@@ -263,6 +269,7 @@ export interface FileRoutesByTo {
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/admin/finance': typeof AdminFinanceIndexRoute
+  '/admin/recipe': typeof AdminRecipeIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -295,6 +302,7 @@ export interface FileRoutesById {
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
+  '/admin/recipe/': typeof AdminRecipeIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -328,6 +336,7 @@ export interface FileRouteTypes {
     | '/admin/finance/shift-reports'
     | '/admin/recipe/view'
     | '/admin/finance/'
+    | '/admin/recipe/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -348,7 +357,6 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/orders'
     | '/admin/products'
-    | '/admin/recipe'
     | '/admin/settings'
     | '/home/$section'
     | '/admin'
@@ -357,6 +365,7 @@ export interface FileRouteTypes {
     | '/admin/finance/shift-reports'
     | '/admin/recipe/view'
     | '/admin/finance'
+    | '/admin/recipe'
   id:
     | '__root__'
     | '/'
@@ -388,6 +397,7 @@ export interface FileRouteTypes {
     | '/admin/finance/shift-reports'
     | '/admin/recipe/view'
     | '/admin/finance/'
+    | '/admin/recipe/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -570,6 +580,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFinanceRouteRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/recipe/': {
+      id: '/admin/recipe/'
+      path: '/'
+      fullPath: '/admin/recipe/'
+      preLoaderRoute: typeof AdminRecipeIndexRouteImport
+      parentRoute: typeof AdminRecipeRoute
+    }
     '/admin/finance/': {
       id: '/admin/finance/'
       path: '/'
@@ -627,10 +644,12 @@ const AdminFinanceRouteRouteWithChildren =
 
 interface AdminRecipeRouteChildren {
   AdminRecipeViewRoute: typeof AdminRecipeViewRoute
+  AdminRecipeIndexRoute: typeof AdminRecipeIndexRoute
 }
 
 const AdminRecipeRouteChildren: AdminRecipeRouteChildren = {
   AdminRecipeViewRoute: AdminRecipeViewRoute,
+  AdminRecipeIndexRoute: AdminRecipeIndexRoute,
 }
 
 const AdminRecipeRouteWithChildren = AdminRecipeRoute._addFileChildren(
