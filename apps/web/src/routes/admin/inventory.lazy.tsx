@@ -310,7 +310,7 @@ function InventoryPage() {
 	};
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 animate-in space-y-4 duration-500">
+		<div className="fade-in slide-in-from-bottom-4 animate-in space-y-3 duration-500">
 			<InventoryHeader
 				filterLowStock={filterLowStock}
 				onAddRow={() => setAddRowSignal((prev) => prev + 1)}
@@ -950,8 +950,8 @@ function InventoryControlTowerSummary({
 	];
 
 	return (
-		<div className="sticky top-0 z-20 rounded-2xl border border-border bg-background/90 p-2 backdrop-blur">
-			<div className="mb-2 flex items-center justify-between px-2">
+		<div className="rounded-xl border border-border/80 bg-card px-3 py-3 shadow-sm">
+			<div className="mb-2 flex items-center justify-between gap-3">
 				<div>
 					<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
 						Inventory Workspace
@@ -971,7 +971,7 @@ function InventoryControlTowerSummary({
 			<div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
 				{cards.map((card) => (
 					<div
-						className="rounded-xl border border-border/80 bg-card px-3 py-2.5"
+						className="rounded-lg border border-border/70 bg-background px-3 py-2.5"
 						key={card.label}
 					>
 						<div className="flex items-center justify-between">
@@ -1583,10 +1583,10 @@ function InventoryTable({
 	};
 
 	return (
-		<div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-			<div className="overflow-x-auto">
+		<div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm">
+			<div className="max-h-[calc(100vh-18rem)] overflow-auto">
 				<table className="w-full min-w-[1120px] text-left text-xs md:text-sm">
-					<thead className="sticky top-0 z-10 bg-card/95 backdrop-blur">
+					<thead className="sticky top-0 z-10 bg-card">
 						<tr className="border-border border-b text-muted-foreground">
 							<th
 								className="cursor-pointer px-4 py-3 font-semibold transition-colors hover:text-foreground"
@@ -2054,7 +2054,7 @@ function InventoryHeader({
 	onViewPresetChange: (preset: InventoryViewPreset) => void;
 }) {
 	return (
-		<div className="rounded-[28px] border border-border bg-card p-4 shadow-sm md:p-5">
+		<div className="rounded-xl border border-border/80 bg-card px-4 py-4 shadow-sm md:px-5">
 			<div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
 				<div className="space-y-2">
 					<p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
