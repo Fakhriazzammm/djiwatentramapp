@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 
 type StockActionArgs = {
 	inventoryId: Id<"inventory">;
@@ -11,6 +11,86 @@ type StockActionArgs = {
 	timestamp?: number;
 	expiryDate?: number;
 };
+
+type RiskLevel = "high" | "medium" | "low";
+
+function getJakartaDayKey(timestamp: number) {
+	return new Date(timestamp).toLocaleDateString("sv-SE", {
+		timeZone: "Asia/Bangkok",
+	});
+}
+
+async function syncProductAvailabilityForInventoryIds(
+	ctx: MutationCtx,
+	inventoryIds: Id<"inventory">[]
+) {
+	if (inventoryIds.length === 0) {
+		return;
+	}
+
+	const [recipes, products, inventory] = await Promise.all([
+		ctx.db.query("recipes").collect(),
+		ctx.db.query("products").collect(),
+		ctx.db.query("inventory").collect(),
+	]);
+
+	const inventorySet = new Set(inventoryIds.map((id) => id as string));
+	const affectedProductIds = new Set<string>();
+	const inventoryById = new Map<string, Doc<"inventory">>();
+
+	for (const inv of inventory) {
+		inventoryById.set(inv._id as string, inv);
+	}
+
+	for (const recipe of recipes) {
+		const touched = recipe.ingredients.some((ingredient) =>
+			inventorySet.has(ingredient.inventoryId as string)
+		);
+		if (touched) {
+			affectedProductIds.add(recipe.productId as string);
+		}
+	}
+
+	if (affectedProductIds.size === 0) {
+		return;
+	}
+
+	const recipesByProduct = new Map<string, Doc<"recipes">[]>();
+	for (const recipe of recipes) {
+		const key = recipe.productId as string;
+		const list = recipesByProduct.get(key) ?? [];
+		list.push(recipe);
+		recipesByProduct.set(key, list);
+	}
+
+	for (const product of products) {
+		const productId = product._id as string;
+		if (!affectedProductIds.has(productId)) {
+			continue;
+		}
+
+		const productRecipes = recipesByProduct.get(productId) ?? [];
+		if (productRecipes.length === 0) {
+			continue;
+		}
+
+		const hasFulfillableRecipe = productRecipes.some((recipe) =>
+			recipe.ingredients.every((ingredient) => {
+				const inv = inventoryById.get(ingredient.inventoryId as string);
+				if (!inv) {
+					return false;
+				}
+				return inv.quantity >= ingredient.amount;
+			})
+		);
+
+		if (product.isAvailable !== hasFulfillableRecipe) {
+			await ctx.db.patch(product._id, {
+				isAvailable: hasFulfillableRecipe,
+			});
+		}
+	}
+}
 
 async function performAddStock(ctx: MutationCtx, args: StockActionArgs) {
 	const item = await ctx.db.get(args.inventoryId);
@@ -37,6 +117,8 @@ async function performAddStock(ctx: MutationCtx, args: StockActionArgs) {
 		notes: args.notes,
 		expiryDate: args.expiryDate,
 	});
+
+	await syncProductAvailabilityForInventoryIds(ctx, [args.inventoryId]);
 }
 
 async function performUsageStock(
@@ -67,6 +149,8 @@ async function performUsageStock(
 		timestamp: Date.now(),
 		notes: args.notes,
 	});
+
+	await syncProductAvailabilityForInventoryIds(ctx, [args.inventoryId]);
 }
 
 async function performAdjustStock(
@@ -94,6 +178,8 @@ async function performAdjustStock(
 		timestamp: Date.now(),
 		notes: args.notes,
 	});
+
+	await syncProductAvailabilityForInventoryIds(ctx, [args.inventoryId]);
 }
 
 export const getInventory = query({
@@ -168,7 +254,7 @@ export const getInventoryControlTower = query({
 					Math.ceil(avgDailyUsage * 7 - item.quantity)
 				);
 
-				const riskLevel: "high" | "medium" | "low" =
+				const riskLevel: RiskLevel =
 					daysUntilStockout <= 3 || item.quantity <= item.lowStockThreshold
 						? "high"
 						: daysUntilStockout <= 7
@@ -205,7 +291,7 @@ export const getInventoryControlTower = query({
 				};
 			})
 			.sort((left, right) => {
-				const rank: Record<"high" | "medium" | "low", number> = {
+				const rank: Record<RiskLevel, number> = {
 					high: 0,
 					medium: 1,
 					low: 2,
@@ -498,14 +584,23 @@ export const saveRecipe = mutation({
 
 		if (existing) {
 			await ctx.db.patch(existing._id, { ingredients: args.ingredients });
+			await syncProductAvailabilityForInventoryIds(
+				ctx,
+				args.ingredients.map((ingredient) => ingredient.inventoryId)
+			);
 			return existing._id;
 		}
 
-		return await ctx.db.insert("recipes", {
+		const recipeId = await ctx.db.insert("recipes", {
 			productId: args.productId,
 			variantName: args.variantName,
 			ingredients: args.ingredients,
 		});
+		await syncProductAvailabilityForInventoryIds(
+			ctx,
+			args.ingredients.map((ingredient) => ingredient.inventoryId)
+		);
+		return recipeId;
 	},
 });
 
@@ -677,6 +772,11 @@ export const produceBaseRecipeBatch = mutation({
 			timestamp: Date.now(),
 			notes: args.notes || `Produced from recipe: ${recipe.name}`,
 		});
+
+		await syncProductAvailabilityForInventoryIds(ctx, [
+			args.inventoryId,
+			...recipe.ingredients.map((ingredient) => ingredient.inventoryId),
+		]);
 	},
 });
 
@@ -685,6 +785,7 @@ async function deductIngredients(
 	ingredients: { inventoryId: Id<"inventory">; amount: number }[],
 	multiplier: number
 ) {
+	const touchedInventoryIds = new Set<Id<"inventory">>();
 	for (const ing of ingredients) {
 		const inventoryItem = await ctx.db.get(ing.inventoryId);
 		if (!inventoryItem) {
@@ -709,8 +810,126 @@ async function deductIngredients(
 			timestamp: Date.now(),
 			notes: "Automated deduction for recipe use/production",
 		});
+		touchedInventoryIds.add(ing.inventoryId);
+	}
+
+	if (touchedInventoryIds.size > 0) {
+		await syncProductAvailabilityForInventoryIds(ctx, [...touchedInventoryIds]);
 	}
 }
+
+export const runDailyInventoryAutomation = internalMutation({
+	args: {},
+	handler: async (ctx) => {
+		const now = Date.now();
+		const dayKey = getJakartaDayKey(now);
+		const daysWindow = 30;
+		const msPerDay = 24 * 60 * 60 * 1000;
+		const cutoff = now - daysWindow * msPerDay;
+
+		const [items, usageRows, pendingTasks] = await Promise.all([
+			ctx.db.query("inventory").collect(),
+			ctx.db
+				.query("inventoryTransactions")
+				.withIndex("by_type_and_timestamp", (q) =>
+					q.eq("type", "usage").gte("timestamp", cutoff)
+				)
+				.collect(),
+			ctx.db
+				.query("followUpTasks")
+				.withIndex("by_status", (q) => q.eq("status", "pending"))
+				.take(300),
+		]);
+
+		const usageByInventoryId: Record<string, number> = {};
+		for (const tx of usageRows) {
+			const key = tx.inventoryId as string;
+			usageByInventoryId[key] =
+				(usageByInventoryId[key] ?? 0) + Math.abs(Number(tx.quantity) || 0);
+		}
+
+		const createdTaskIds: Id<"followUpTasks">[] = [];
+		for (const item of items) {
+			const avgDailyUsage = (usageByInventoryId[item._id as string] ?? 0) / daysWindow;
+			const reorderPoint = Math.ceil(avgDailyUsage * 5);
+			const suggestedOrderQty = Math.max(0, Math.ceil(avgDailyUsage * 7 - item.quantity));
+			const isLow = item.quantity <= item.lowStockThreshold;
+			const shouldReorder =
+				suggestedOrderQty > 0 && (isLow || item.quantity <= reorderPoint);
+
+			if (!shouldReorder) {
+				continue;
+			}
+
+			const hasTask = pendingTasks.some(
+				(task) =>
+					task.category === "inventory" &&
+					task.actionType === "restock" &&
+					task.actionData?.inventoryId === item._id &&
+					task.actionData?.dayKey === dayKey
+			);
+			if (hasTask) {
+				continue;
+			}
+
+			const dueDate = now + 24 * 60 * 60 * 1000;
+			const taskId = await ctx.db.insert("followUpTasks", {
+				title: `Restock ${item.ingredientName}`,
+				description: `Rekomendasi order ${suggestedOrderQty} ${item.unit}. Stok saat ini ${item.quantity} ${item.unit}.`,
+				priority: isLow ? "high" : "medium",
+				status: "pending",
+				dueDate,
+				category: "inventory",
+				actionType: "restock",
+				actionData: {
+					inventoryId: item._id,
+					ingredientName: item.ingredientName,
+					suggestedOrderQty,
+					reorderPoint,
+					dayKey,
+				},
+				createdAt: now,
+			});
+			createdTaskIds.push(taskId);
+		}
+
+		const highRiskCount = items.filter(
+			(item) => item.quantity <= item.lowStockThreshold
+		).length;
+
+		const recentInsights = await ctx.db
+			.query("aiInsightsLog")
+			.withIndex("by_status", (q) => q.eq("status", "new"))
+			.take(100);
+		const hasDailyInsight = recentInsights.some(
+			(insight) => insight.category === `inventory_daily_${dayKey}`
+		);
+
+		if (!hasDailyInsight) {
+			await ctx.db.insert("aiInsightsLog", {
+				insightType: "warning",
+				title: `Inventory Daily Alert ${dayKey}`,
+				content: `Risiko tinggi: ${highRiskCount} item. Draft restock baru: ${createdTaskIds.length}.`,
+				category: `inventory_daily_${dayKey}`,
+				priority: highRiskCount > 0 ? "high" : "medium",
+				status: "new",
+				actionTaken: "auto_generated",
+				createdAt: now,
+			});
+		}
+
+		await syncProductAvailabilityForInventoryIds(
+			ctx,
+			items.map((item) => item._id)
+		);
+
+		return {
+			dayKey,
+			highRiskCount,
+			createdTaskCount: createdTaskIds.length,
+		};
+	},
+});
 
 /**
  * Sequential stock consumption from batches (FIFO).
