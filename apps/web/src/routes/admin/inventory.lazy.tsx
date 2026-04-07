@@ -1584,9 +1584,9 @@ function InventoryTable({
 
 	return (
 		<div className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm">
-			<div className="max-h-[calc(100vh-18rem)] overflow-auto">
+			<div className="overflow-x-auto">
 				<table className="w-full min-w-[1120px] text-left text-xs md:text-sm">
-					<thead className="sticky top-0 z-10 bg-card">
+					<thead className="bg-card">
 						<tr className="border-border border-b text-muted-foreground">
 							<th
 								className="cursor-pointer px-4 py-3 font-semibold transition-colors hover:text-foreground"
