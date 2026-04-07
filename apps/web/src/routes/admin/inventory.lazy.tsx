@@ -12,6 +12,7 @@ import {
 	ArrowUp,
 	Edit,
 	History,
+	MoreHorizontal,
 	PackageSearch,
 	PanelRight,
 	Minus,
@@ -23,6 +24,12 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
@@ -1425,62 +1432,6 @@ function InventoryTable({
 													<Plus className="h-4 w-4" />
 												</button>
 												<button
-													className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted"
-													onClick={() => {
-														onSelectedItemChange(item);
-														onNewItemChange({
-															ingredientName: item.ingredientName,
-															unit: item.unit,
-															quantity: String(item.quantity),
-															lowStockThreshold: String(item.lowStockThreshold),
-															displayUnit: item.displayUnit || "",
-															conversionFactor: item.conversionFactor
-																? String(item.conversionFactor)
-																: "",
-															baseRecipeId: item.baseRecipeId || "",
-														});
-														onActionTypeChange("edit");
-													}}
-													title="Edit"
-													type="button"
-												>
-													<Edit className="h-4 w-4" />
-												</button>
-												<button
-													className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted"
-													onClick={() => {
-														onSelectedItemChange(item);
-														onAmountChange(String(item.quantity));
-														onActionTypeChange("adjust");
-													}}
-													title="Sesuaikan Stok"
-													type="button"
-												>
-													<Settings2 className="h-4 w-4" />
-												</button>
-												<button
-													className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-													onClick={() => {
-														onSelectedItemChange(item);
-														onActionTypeChange("delete");
-													}}
-													title="Hapus"
-													type="button"
-												>
-													<Trash2 className="h-4 w-4" />
-												</button>
-												<button
-													className="rounded-lg p-2 text-primary transition-colors hover:bg-primary/10"
-													onClick={() => {
-														onSelectedItemChange(item);
-														onActionTypeChange("batchInfo");
-													}}
-													title="Info Batch (FIFO)"
-													type="button"
-												>
-													<AlertCircle className="h-4 w-4" />
-												</button>
-												<button
 													className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
 													onClick={() => onDetailItemChange(item)}
 													title="Panel Detail"
@@ -1488,17 +1439,72 @@ function InventoryTable({
 												>
 													<PanelRight className="h-4 w-4" />
 												</button>
-												<button
-													className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted"
-													onClick={() => {
-														onSelectedItemChange(item);
-														onActionTypeChange("history");
-													}}
-													title="Riwayat"
-													type="button"
-												>
-													<History className="h-4 w-4" />
-												</button>
+												<DropdownMenu>
+													<DropdownMenuTrigger asChild>
+														<button
+															className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+															title="Aksi Lainnya"
+															type="button"
+														>
+															<MoreHorizontal className="h-4 w-4" />
+														</button>
+													</DropdownMenuTrigger>
+													<DropdownMenuContent align="end" className="w-44">
+														<DropdownMenuItem
+															onClick={() => {
+																onSelectedItemChange(item);
+																onNewItemChange({
+																	ingredientName: item.ingredientName,
+																	unit: item.unit,
+																	quantity: String(item.quantity),
+																	lowStockThreshold: String(item.lowStockThreshold),
+																	displayUnit: item.displayUnit || "",
+																	conversionFactor: item.conversionFactor
+																		? String(item.conversionFactor)
+																		: "",
+																	baseRecipeId: item.baseRecipeId || "",
+																});
+																onActionTypeChange("edit");
+															}}
+														>
+															<Edit className="mr-2 h-4 w-4" /> Edit Bahan
+														</DropdownMenuItem>
+														<DropdownMenuItem
+															onClick={() => {
+																onSelectedItemChange(item);
+																onAmountChange(String(item.quantity));
+																onActionTypeChange("adjust");
+															}}
+														>
+															<Settings2 className="mr-2 h-4 w-4" /> Sesuaikan Stok
+														</DropdownMenuItem>
+														<DropdownMenuItem
+															onClick={() => {
+																onSelectedItemChange(item);
+																onActionTypeChange("batchInfo");
+															}}
+														>
+															<AlertCircle className="mr-2 h-4 w-4" /> Info Batch FIFO
+														</DropdownMenuItem>
+														<DropdownMenuItem
+															onClick={() => {
+																onSelectedItemChange(item);
+																onActionTypeChange("history");
+															}}
+														>
+															<History className="mr-2 h-4 w-4" /> Riwayat
+														</DropdownMenuItem>
+														<DropdownMenuItem
+															className="text-destructive focus:text-destructive"
+															onClick={() => {
+																onSelectedItemChange(item);
+																onActionTypeChange("delete");
+															}}
+														>
+															<Trash2 className="mr-2 h-4 w-4" /> Hapus
+														</DropdownMenuItem>
+													</DropdownMenuContent>
+												</DropdownMenu>
 											</div>
 										</td>
 									</tr>
