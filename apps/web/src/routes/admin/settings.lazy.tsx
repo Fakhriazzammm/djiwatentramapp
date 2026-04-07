@@ -26,6 +26,17 @@ import { toast } from "sonner";
 import { compressFileToLimit, isOversized } from "@/lib/image-compress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { authClient } from "@/lib/auth-client";
 import {
 	bluetoothPrinter,
@@ -944,32 +955,34 @@ function SettingsPage() {
 						Konfigurasi & Personalisasi Toko
 					</p>
 				</div>
-				<button
-					className="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground text-sm transition-all hover:opacity-90 active:scale-95 md:gap-3 md:px-8 md:py-3.5"
+				<Button
+					className="gap-2 px-6 py-3 md:gap-3 md:px-8 md:py-3.5"
 					onClick={handleSave}
+					size="lg"
 					type="button"
 				>
 					<Save className="h-4 w-4" /> Simpan
-				</button>
+				</Button>
 			</div>
 
 			{/* Tab Switcher - horizontal scroll on mobile */}
 			<div className="no-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-muted/50 p-1 shadow-inner md:p-1.5">
-				{tabs.map((tab: any) => (
-					<button
-						className={`flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2.5 font-bold transition-all md:flex-1 md:gap-2 md:px-6 md:py-3 ${
-							activeTab === tab.id
-								? "bg-card text-primary shadow-sm"
-								: "text-muted-foreground hover:bg-card/50 hover:text-foreground"
-						}`}
-						key={tab.id}
-						onClick={() => setActiveTab(tab.id)}
-						type="button"
-					>
-						<tab.icon className="h-4 w-4" />
-						<span className="text-xs md:text-sm">{tab.label}</span>
-					</button>
-				))}
+				<Tabs
+					className="w-full"
+					onValueChange={(value) =>
+						setActiveTab(value as (typeof tabs)[number]["id"])
+					}
+					value={activeTab}
+				>
+					<TabsList className="w-full justify-start md:justify-stretch" variant="default">
+						{tabs.map((tab: any) => (
+							<TabsTrigger className="shrink-0 md:flex-1" key={tab.id} value={tab.id}>
+								<tab.icon className="h-4 w-4" />
+								<span className="text-xs md:text-sm">{tab.label}</span>
+							</TabsTrigger>
+						))}
+					</TabsList>
+				</Tabs>
 			</div>
 
 			{/* Tab Content */}
@@ -3176,20 +3189,24 @@ function SettingsPage() {
 											{ id: "open_bill", label: "Open Bill" },
 											{ id: "kitchen", label: "Kitchen" },
 										].map((option) => (
-											<button
+											<Button
 												key={option.id}
 												type="button"
 												onClick={() =>
 													setReceiptPreviewMode(option.id as ReceiptPrintMode)
 												}
-												className={`rounded-xl border px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all ${
+												className={`px-3 py-2 text-xs font-bold uppercase tracking-wider ${
 													receiptPreviewMode === option.id
-														? "border-primary bg-primary text-primary-foreground shadow-sm"
-														: "border-border bg-background text-muted-foreground hover:bg-muted/40"
+														? ""
+														: "text-muted-foreground"
 												}`}
+												size="sm"
+												variant={
+													receiptPreviewMode === option.id ? "default" : "outline"
+												}
 											>
 												{option.label}
-											</button>
+											</Button>
 										))}
 									</div>
 
@@ -3219,11 +3236,10 @@ function SettingsPage() {
 										<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
 											Teks Header Kustom (Opsional)
 										</label>
-										<input
-											className="w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+										<Input
+											className="h-11 w-full bg-muted/50 font-medium"
 											onChange={(e) => setSettings({ ...settings, receiptHeader: e.target.value })}
 											placeholder="Kosongkan untuk menggunakan Nama Toko"
-											type="text"
 											value={settings.receiptHeader}
 										/>
 										<p className="text-[10px] text-muted-foreground">Jika diisi, teks ini akan menggantikan Nama Toko di bagian paling atas struk.</p>
@@ -3234,8 +3250,8 @@ function SettingsPage() {
 										<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
 											Teks Footer Kustom
 										</label>
-										<textarea
-											className="min-h-[80px] w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
+										<Textarea
+											className="min-h-[80px] w-full bg-muted/50 font-medium"
 											onChange={(e) =>
 												setSettings({
 													...settings,
@@ -3253,15 +3269,22 @@ function SettingsPage() {
 										<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
 											Ukuran Font
 										</label>
-										<select
-											className="w-full appearance-none rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none transition-all focus:ring-2 focus:ring-primary/20"
-											onChange={(e) => setSettings({ ...settings, receiptFontSize: e.target.value })}
+										<Select
+											onValueChange={(value: string | null) =>
+												value &&
+												setSettings({ ...settings, receiptFontSize: value })
+											}
 											value={settings.receiptFontSize}
 										>
-											<option value="small">Kecil</option>
-											<option value="normal">Normal</option>
-											<option value="large">Besar</option>
-										</select>
+											<SelectTrigger className="bg-muted/50" size="default">
+												<SelectValue placeholder="Pilih ukuran font" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="small">Kecil</SelectItem>
+												<SelectItem value="normal">Normal</SelectItem>
+												<SelectItem value="large">Besar</SelectItem>
+											</SelectContent>
+										</Select>
 									</div>
 
 									{/* Visibility Toggles */}

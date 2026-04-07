@@ -350,17 +350,20 @@ function AdminOrders() {
 		}).format(amount);
 	};
 
-	const getStatusColor = (status: string) => {
+	const getStatusBadgeVariant = (
+		status: string
+	): "warning" | "info" | "success" | "destructive" | "secondary" => {
 		switch (status) {
-			case "paid":
-			case "completed":
-				return "bg-green-100 text-green-700 border-green-200";
 			case "pending":
-				return "bg-yellow-100 text-yellow-700 border-yellow-200";
+				return "warning";
+			case "paid":
+				return "info";
+			case "completed":
+				return "success";
 			case "cancelled":
-				return "bg-red-100 text-red-700 border-red-200";
+				return "destructive";
 			default:
-				return "bg-gray-100 text-gray-700 border-gray-200";
+				return "secondary";
 		}
 	};
 
@@ -487,10 +490,11 @@ function AdminOrders() {
 					</div>
 
 					<div className="rounded-xl border border-border bg-card p-2.5 shadow-sm md:hidden">
-						<button
-							className="flex w-full items-center justify-between rounded-md px-1 py-1 text-left"
+						<Button
+							className="h-auto w-full justify-between rounded-md px-1 py-1 text-left"
 							onClick={() => setShowMobileOverview((prev) => !prev)}
 							type="button"
+							variant="ghost"
 						>
 							<div>
 								<p className="font-semibold text-xs">Ringkasan Finansial</p>
@@ -504,7 +508,7 @@ function AdminOrders() {
 									showMobileOverview ? "rotate-180" : ""
 								}`}
 							/>
-						</button>
+						</Button>
 						{showMobileOverview && (
 							<div className="mt-2 grid grid-cols-2 gap-1.5 border-border border-t pt-2">
 								<div className="rounded-lg bg-muted/40 p-2">
@@ -542,7 +546,7 @@ function AdminOrders() {
 						onValueChange={(val: string | null) => val && setStatusFilter(val)}
 						value={statusFilter}
 					>
-						<SelectTrigger className="h-9 w-full">
+						<SelectTrigger size="sm">
 							<SelectValue placeholder="Status" />
 						</SelectTrigger>
 						<SelectContent>
@@ -599,7 +603,7 @@ function AdminOrders() {
 							onValueChange={(val: string | null) => val && setStatusFilter(val)}
 							value={statusFilter}
 						>
-							<SelectTrigger className="h-9 text-xs">
+							<SelectTrigger className="text-xs" size="sm">
 								<SelectValue placeholder="Status" />
 							</SelectTrigger>
 							<SelectContent>
@@ -650,14 +654,15 @@ function AdminOrders() {
 						filteredOrders?.map((order: Order) => {
 							const shiftMeta = getShiftMeta(order);
 							return (
-								<button
-									className="w-full rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-colors active:bg-muted/40"
+								<Button
+									className="h-auto w-full rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-colors active:bg-muted/40"
 									key={order._id}
 									onClick={() => {
 										setSelectedOrder(order as any);
 										setIsDetailOpen(true);
 									}}
 									type="button"
+									variant="ghost"
 								>
 									<div className="flex items-start justify-between gap-3">
 										<div className="min-w-0 flex-1 space-y-1">
@@ -675,8 +680,8 @@ function AdminOrders() {
 													</Badge>
 												)}
 												<Badge
-													className={`rounded-md px-1.5 py-0 font-normal text-[9px] ${getStatusColor(order.status)}`}
-													variant="outline"
+													className="rounded-md px-1.5 py-0 font-normal text-[9px]"
+													variant={getStatusBadgeVariant(order.status)}
 												>
 													{getStatusLabel(order.status)}
 												</Badge>
@@ -701,7 +706,7 @@ function AdminOrders() {
 											</p>
 										</div>
 									</div>
-								</button>
+								</Button>
 							);
 						})
 					)}
@@ -831,8 +836,8 @@ function AdminOrders() {
 												</td>
 												<td className="px-3 py-2.5 align-top">
 													<Badge
-														className={`rounded-md px-1.5 py-0 font-normal text-[10px] ${getStatusColor(order.status)}`}
-														variant="outline"
+														className="rounded-md px-1.5 py-0 font-normal text-[10px]"
+														variant={getStatusBadgeVariant(order.status)}
 													>
 														{getStatusLabel(order.status)}
 													</Badge>
@@ -902,8 +907,12 @@ function AdminOrders() {
 						<div className="flex items-center justify-between">
 							<SheetTitle className="text-lg">Detail Pesanan</SheetTitle>
 							<Badge
-								className={`${selectedOrder ? getStatusColor(selectedOrder.status) : ""} px-2 py-0.5 text-[10px] capitalize`}
-								variant="outline"
+								className="px-2 py-0.5 text-[10px] capitalize"
+								variant={
+									selectedOrder
+										? getStatusBadgeVariant(selectedOrder.status)
+										: "secondary"
+								}
 							>
 								{selectedOrder ? getStatusLabel(selectedOrder.status) : ""}
 							</Badge>

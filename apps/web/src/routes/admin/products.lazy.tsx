@@ -19,6 +19,9 @@ import { toast } from "sonner";
 import { compressFileToLimit, isOversized } from "@/lib/image-compress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BulkOperations } from "../../components/admin/bulk-operations";
 
 interface VariationOption {
@@ -54,76 +57,14 @@ function AdminProductsPage() {
 	return (
 		<div className="fade-in slide-in-from-bottom-4 flex animate-in flex-col gap-3 duration-500 md:gap-6">
 			<div className="no-scrollbar flex items-center justify-between overflow-x-auto border-border border-b pb-1">
-				<div className="flex gap-1 md:gap-2">
-					<button
-						className={`relative whitespace-nowrap px-3 py-2 font-bold text-xs transition-colors md:px-4 md:text-sm ${
-							activeTab === "products"
-								? "text-primary"
-								: "text-muted-foreground hover:text-foreground"
-						}`}
-						onClick={() => setActiveTab("products")}
-						type="button"
-					>
-						Produk
-						{activeTab === "products" && (
-							<motion.div
-								className="absolute right-0 -bottom-[5px] left-0 h-1 bg-primary"
-								layoutId="activeTab"
-							/>
-						)}
-					</button>
-					<button
-						className={`relative whitespace-nowrap px-3 py-2 font-bold text-xs transition-colors md:px-4 md:text-sm ${
-							activeTab === "base-recipes"
-								? "text-primary"
-								: "text-muted-foreground hover:text-foreground"
-						}`}
-						onClick={() => setActiveTab("base-recipes")}
-						type="button"
-					>
-						Resep Base
-						{activeTab === "base-recipes" && (
-							<motion.div
-								className="absolute right-0 -bottom-[5px] left-0 h-1 bg-primary"
-								layoutId="activeTab"
-							/>
-						)}
-					</button>
-					<button
-						className={`relative whitespace-nowrap px-3 py-2 font-bold text-xs transition-colors md:px-4 md:text-sm ${
-							activeTab === "mixed-recipes"
-								? "text-primary"
-								: "text-muted-foreground hover:text-foreground"
-						}`}
-						onClick={() => setActiveTab("mixed-recipes")}
-						type="button"
-					>
-						Resep Gabungan
-						{activeTab === "mixed-recipes" && (
-							<motion.div
-								className="absolute right-0 -bottom-[5px] left-0 h-1 bg-primary"
-								layoutId="activeTab"
-							/>
-						)}
-					</button>
-					<button
-						className={`relative whitespace-nowrap px-3 py-2 font-bold text-xs transition-colors md:px-4 md:text-sm ${
-							activeTab === "settings"
-								? "text-primary"
-								: "text-muted-foreground hover:text-foreground"
-						}`}
-						onClick={() => setActiveTab("settings")}
-						type="button"
-					>
-						Pengaturan
-						{activeTab === "settings" && (
-							<motion.div
-								className="absolute right-0 -bottom-[5px] left-0 h-1 bg-primary"
-								layoutId="activeTab"
-							/>
-						)}
-					</button>
-				</div>
+				<Tabs onValueChange={(value) => setActiveTab(value as typeof activeTab)} value={activeTab}>
+					<TabsList variant="line">
+						<TabsTrigger value="products">Produk</TabsTrigger>
+						<TabsTrigger value="base-recipes">Resep Base</TabsTrigger>
+						<TabsTrigger value="mixed-recipes">Resep Gabungan</TabsTrigger>
+						<TabsTrigger value="settings">Pengaturan</TabsTrigger>
+					</TabsList>
+				</Tabs>
 			</div>
 
 			<AnimatePresence mode="wait">
@@ -2463,7 +2404,7 @@ function BaseRecipesTab() {
 		if (!keyword) {
 			return baseRecipes;
 		}
-		return baseRecipes.filter((recipe) =>
+		return baseRecipes.filter((recipe: any) =>
 			recipe.name.toLowerCase().includes(keyword)
 		);
 	}, [baseRecipes, searchRecipe]);
@@ -2473,22 +2414,23 @@ function BaseRecipesTab() {
 			<div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 				<h2 className="font-bold text-xl">Daftar Resep Base (Pre-mix)</h2>
 				<div className="flex items-center gap-2">
-					<input
-						className="h-9 w-56 rounded-md border border-border bg-background px-3 text-sm"
+					<Input
+						className="h-9 w-56"
 						onChange={(event) => setSearchRecipe(event.target.value)}
 						placeholder="Cari resep base..."
 						value={searchRecipe}
 					/>
-					<button
-						className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground text-sm hover:brightness-110"
+					<Button
+						className="h-9 gap-2"
 						onClick={() => {
 							resetForm();
 							setIsModalOpen(true);
 						}}
+						size="sm"
 						type="button"
 					>
 						<Plus className="h-4 w-4" /> Tambah Resep Base
-					</button>
+					</Button>
 				</div>
 			</div>
 
@@ -2503,11 +2445,11 @@ function BaseRecipesTab() {
 				</div>
 				<div className="rounded-lg border border-border bg-card p-3">
 					<p className="text-muted-foreground text-[10px] uppercase">Dipakai Produk</p>
-					<p className="font-bold text-lg">{new Set((recipes ?? []).map((r) => r.productId)).size}</p>
+					<p className="font-bold text-lg">{new Set((recipes ?? []).map((r: any) => r.productId)).size}</p>
 				</div>
 				<div className="rounded-lg border border-border bg-card p-3">
 					<p className="text-muted-foreground text-[10px] uppercase">Menu Aktif</p>
-					<p className="font-bold text-lg">{products?.filter((p) => p.isAvailable).length ?? 0}</p>
+					<p className="font-bold text-lg">{products?.filter((p: any) => p.isAvailable).length ?? 0}</p>
 				</div>
 			</div>
 
@@ -2811,7 +2753,7 @@ function MixedRecipesTab() {
 		if (!keyword) {
 			return products;
 		}
-		return products.filter((product) => product.name.toLowerCase().includes(keyword));
+		return products.filter((product: any) => product.name.toLowerCase().includes(keyword));
 	}, [products, searchMixed]);
 
 	return (
@@ -2823,8 +2765,8 @@ function MixedRecipesTab() {
 					Daftar lengkap semua resep produk dan resep base.
 				</p>
 				</div>
-				<input
-					className="h-9 w-64 rounded-md border border-border bg-background px-3 text-sm"
+				<Input
+					className="h-9 w-64"
 					onChange={(event) => setSearchMixed(event.target.value)}
 					placeholder="Cari produk..."
 					value={searchMixed}

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { FinancialTargetPanel } from "./finance/-components/financial-target-panel";
 import { PeriodComparisonCards, TrendChart } from "./finance/-components/finance-charts";
 import { useMemo, useState } from "react";
@@ -228,9 +229,12 @@ function DashboardAdmin() {
 								<div key={`${anomaly.type}-${index}`} className="rounded-2xl border border-border bg-muted/20 p-4">
 									<div className="flex items-center justify-between gap-3">
 										<p className="font-bold text-sm">{anomaly.title}</p>
-										<span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${anomaly.severity === "high" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}>
+										<Badge
+											className="px-2 py-0.5 text-[10px] uppercase"
+											variant={anomaly.severity === "high" ? "destructive" : "warning"}
+										>
 											{anomaly.severity}
-										</span>
+										</Badge>
 									</div>
 									<p className="mt-2 text-xs text-muted-foreground">{anomaly.description}</p>
 								</div>
@@ -278,9 +282,12 @@ function DashboardAdmin() {
 												{shift.cashierName || 'Unknown'}
 											</p>
 										</div>
-										<span className={`text-[9px] font-bold tracking-wider px-2 py-0.5 rounded-full uppercase ${isActive ? 'bg-emerald-500 text-white shadow-sm' : 'bg-slate-200 text-slate-600'}`}>
+										<Badge
+											className="px-2 py-0.5 text-[9px] tracking-wider uppercase"
+											variant={isActive ? "success" : "secondary"}
+										>
 											{isActive ? 'Ongoing' : 'Closed'}
-										</span>
+										</Badge>
 									</div>
 									<div className="space-y-2 text-xs mt-3 pt-3 border-t border-border/40">
 										<div className="flex justify-between items-center">
@@ -550,16 +557,17 @@ function DashboardAdmin() {
 										<p className="text-xs font-bold text-foreground">
 											{formatCurrencyIDR(order.totalAmount)}
 										</p>
-										<span
-											className={`text-[8px] font-bold uppercase tracking-tighter px-1 py-0.5 rounded-md ${
+										<Badge
+											className="px-1 py-0.5 text-[8px] uppercase tracking-tighter"
+											variant={
 												order.status === "completed"
-													? "bg-green-100 text-green-700"
+													? "success"
 													: order.status === "paid"
-														? "bg-blue-100 text-blue-700"
+														? "info"
 														: order.status === "pending"
-															? "bg-yellow-100 text-yellow-700"
-															: "bg-red-100 text-red-700"
-											}`}
+															? "warning"
+															: "destructive"
+											}
 										>
 											{order.status === "completed"
 												? "Selesai"
@@ -568,7 +576,7 @@ function DashboardAdmin() {
 													: order.status === "pending"
 														? "Draft"
 														: "Batal"}
-										</span>
+										</Badge>
 									</div>
 								</Link>
 							))}
