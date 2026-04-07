@@ -1294,6 +1294,191 @@ function InventoryTable({
 	onAmountChange: (amount: string) => void;
 	inventory: Doc<"inventory">[] | undefined;
 }) {
+	const updateItemMutation = useMutation(api.inventory.updateInventoryItem);
+	const applyStockAction = useMutation(api.inventory.applyInventoryStockAction);
+	const createItemMutation = useMutation(api.inventory.createInventoryItem);
+	const [savingKey, setSavingKey] = useState<string | null>(null);
+	const [inlineValues, setInlineValues] = useState<
+		Record<
+			string,
+			{
+				ingredientName: string;
+				quantity: string;
+				unit: string;
+				lowStockThreshold: string;
+			}
+		>
+	>({});
+	const [quickAdd, setQuickAdd] = useState({
+		ingredientName: "",
+		quantity: "0",
+		unit: "gram",
+		lowStockThreshold: "100",
+	});
+
+	const getInlineValue = (item: Doc<"inventory">) =>
+		inlineValues[item._id] ?? {
+			ingredientName: item.ingredientName,
+			quantity: String(item.quantity),
+			unit: item.unit,
+			lowStockThreshold: String(item.lowStockThreshold),
+		};
+
+	const setInlineField = (
+		item: Doc<"inventory">,
+		field: "ingredientName" | "quantity" | "unit" | "lowStockThreshold",
+		value: string
+	) => {
+		setInlineValues((prev) => {
+			const current = prev[item._id] ?? {
+				ingredientName: item.ingredientName,
+				quantity: String(item.quantity),
+				unit: item.unit,
+				lowStockThreshold: String(item.lowStockThreshold),
+			};
+			return {
+				...prev,
+				[item._id]: {
+					...current,
+					[field]: value,
+				},
+			};
+		});
+	};
+
+	const saveMeta = async (item: Doc<"inventory">) => {
+		const current = getInlineValue(item);
+		const ingredientName = current.ingredientName.trim();
+		const lowStockThresholdNum = Number(current.lowStockThreshold);
+		if (!ingredientName) {
+			toast.error("Nama bahan tidak boleh kosong");
+			setInlineField(item, "ingredientName", item.ingredientName);
+			return;
+		}
+		if (Number.isNaN(lowStockThresholdNum) || lowStockThresholdNum < 0) {
+			toast.error("Ambang stok harus angka >= 0");
+			setInlineField(item, "lowStockThreshold", String(item.lowStockThreshold));
+			return;
+		}
+		if (
+			ingredientName === item.ingredientName &&
+			current.unit === item.unit &&
+			lowStockThresholdNum === item.lowStockThreshold
+		) {
+			return;
+		}
+
+		try {
+			setSavingKey(`${item._id}:meta`);
+			await updateItemMutation({
+				id: item._id,
+				ingredientName,
+				unit: current.unit,
+				lowStockThreshold: lowStockThresholdNum,
+				displayUnit: item.displayUnit || undefined,
+				conversionFactor: item.conversionFactor || undefined,
+				baseRecipeId: item.baseRecipeId || undefined,
+			});
+			toast.success("Perubahan baris tersimpan");
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Gagal menyimpan perubahan";
+			toast.error(message);
+		} finally {
+			setSavingKey(null);
+		}
+	};
+
+	const saveQuantity = async (item: Doc<"inventory">) => {
+		const current = getInlineValue(item);
+		const quantityNum = Number(current.quantity);
+		if (Number.isNaN(quantityNum) || quantityNum < 0) {
+			toast.error("Stok harus angka >= 0");
+			setInlineField(item, "quantity", String(item.quantity));
+			return;
+		}
+		if (quantityNum === item.quantity) {
+			return;
+		}
+
+		try {
+			setSavingKey(`${item._id}:qty`);
+			await applyStockAction({
+				inventoryId: item._id,
+				action: "adjust",
+				quantity: quantityNum,
+				notes: "Quick inline update",
+			});
+			toast.success("Stok langsung tersimpan");
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Gagal menyimpan stok";
+			toast.error(message);
+		} finally {
+			setSavingKey(null);
+		}
+	};
+
+	const quickDelta = async (item: Doc<"inventory">, direction: "add" | "usage") => {
+		if (direction === "usage" && item.quantity <= 0) {
+			return;
+		}
+		try {
+			setSavingKey(`${item._id}:delta`);
+			await applyStockAction({
+				inventoryId: item._id,
+				action: direction,
+				quantity: 1,
+				notes: "Quick +1/-1 from table",
+			});
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Gagal update stok cepat";
+			toast.error(message);
+		} finally {
+			setSavingKey(null);
+		}
+	};
+
+	const quickCreate = async () => {
+		const ingredientName = quickAdd.ingredientName.trim();
+		const quantity = Number(quickAdd.quantity);
+		const lowStockThreshold = Number(quickAdd.lowStockThreshold);
+		if (!ingredientName) {
+			toast.error("Nama bahan wajib diisi");
+			return;
+		}
+		if (Number.isNaN(quantity) || quantity < 0) {
+			toast.error("Stok awal tidak valid");
+			return;
+		}
+		if (Number.isNaN(lowStockThreshold) || lowStockThreshold < 0) {
+			toast.error("Ambang stok tidak valid");
+			return;
+		}
+
+		try {
+			setSavingKey("quick-add");
+			await createItemMutation({
+				ingredientName,
+				unit: quickAdd.unit,
+				quantity,
+				lowStockThreshold,
+			});
+			setQuickAdd((prev) => ({
+				...prev,
+				ingredientName: "",
+				quantity: "0",
+			}));
+			toast.success("Item baru langsung tersimpan");
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Gagal menambah item";
+			toast.error(message);
+		} finally {
+			setSavingKey(null);
+		}
+	};
+
 	return (
 		<div className="overflow-hidden rounded-xl border border-border bg-card">
 			<div className="overflow-x-auto">
@@ -1334,6 +1519,83 @@ function InventoryTable({
 						</tr>
 					</thead>
 					<tbody className="divide-y divide-border">
+						<tr className="bg-primary/[0.04]">
+							<td className="p-2.5 md:p-3">
+								<input
+									className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs font-semibold outline-none focus:border-primary md:text-sm"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({
+											...prev,
+											ingredientName: e.target.value,
+										}))
+									}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											void quickCreate();
+										}
+									}}
+									placeholder="Tambah cepat: nama bahan"
+									value={quickAdd.ingredientName}
+								/>
+							</td>
+							<td className="p-2.5 text-center md:p-3">
+								<input
+									className="mx-auto w-20 rounded-md border border-border bg-background px-2 py-1 text-center font-semibold text-xs outline-none focus:border-primary md:text-sm"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({ ...prev, quantity: e.target.value }))
+									}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											void quickCreate();
+										}
+									}}
+									type="number"
+									value={quickAdd.quantity}
+								/>
+							</td>
+							<td className="p-2.5 text-center md:p-3">
+								<select
+									className="rounded-md border border-border bg-background px-2 py-1 text-xs font-semibold outline-none focus:border-primary md:text-sm"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({ ...prev, unit: e.target.value }))
+									}
+									value={quickAdd.unit}
+								>
+									<option value="gram">gram</option>
+									<option value="ml">ml</option>
+									<option value="pcs">pcs</option>
+								</select>
+							</td>
+							<td className="p-2.5 md:p-3">
+								<input
+									className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs font-semibold outline-none focus:border-primary md:text-sm"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({
+											...prev,
+											lowStockThreshold: e.target.value,
+										}))
+									}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											void quickCreate();
+										}
+									}}
+									placeholder="Ambang rendah"
+									type="number"
+									value={quickAdd.lowStockThreshold}
+								/>
+							</td>
+							<td className="p-2.5 text-right md:p-3">
+								<button
+									className="rounded-md bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground hover:brightness-110 md:text-xs"
+									disabled={savingKey === "quick-add"}
+									onClick={() => void quickCreate()}
+									type="button"
+								>
+									{savingKey === "quick-add" ? "Menyimpan..." : "Tambah Cepat"}
+								</button>
+							</td>
+						</tr>
 						{!inventory &&
 							Array.from({ length: 8 }).map((_, i) => (
 								<tr key={i}>
@@ -1363,6 +1625,7 @@ function InventoryTable({
 						{inventory &&
 							filteredInventory.length > 0 &&
 							filteredInventory.map((item) => {
+								const inline = getInlineValue(item);
 								const hasConversion = !!(
 									item.displayUnit &&
 									item.conversionFactor &&
@@ -1380,53 +1643,108 @@ function InventoryTable({
 										className="transition-colors hover:bg-muted/30"
 										key={item._id}
 									>
-										<td className="p-4 font-bold">{item.ingredientName}</td>
-										<td className="p-4 text-center">
+										<td className="p-2.5 md:p-3">
+											<input
+												className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 font-bold text-sm outline-none focus:border-border focus:bg-background"
+												onBlur={() => void saveMeta(item)}
+												onChange={(e) =>
+													setInlineField(item, "ingredientName", e.target.value)
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveMeta(item);
+														(e.target as HTMLInputElement).blur();
+													}
+												}}
+												value={inline.ingredientName}
+											/>
+										</td>
+										<td className="p-2.5 text-center md:p-3">
 											<div className="flex flex-col items-center">
-												<span className="font-bold font-mono text-lg">
-													{displayQty}
-												</span>
+												<input
+													className="w-24 rounded-md border border-transparent bg-transparent px-2 py-1 text-center font-bold font-mono text-lg outline-none focus:border-border focus:bg-background"
+													onBlur={() => void saveQuantity(item)}
+													onChange={(e) =>
+														setInlineField(item, "quantity", e.target.value)
+													}
+													onKeyDown={(e) => {
+														if (e.key === "Enter") {
+															void saveQuantity(item);
+															(e.target as HTMLInputElement).blur();
+														}
+													}}
+													type="number"
+													value={inline.quantity}
+												/>
 												{hasConversion && (
 													<span className="text-[10px] text-muted-foreground">
-														({item.quantity} {item.unit})
+														(estimasi: {displayQty} {item.displayUnit})
 													</span>
 												)}
 											</div>
 										</td>
-										<td className="p-4 text-center text-muted-foreground">
-											{displayUnitText}
-										</td>
-										<td className="p-4">
-											{item.quantity <= item.lowStockThreshold ? (
-												<span className="flex items-center gap-1.5 font-bold text-destructive">
-													<AlertCircle className="h-4 w-4" /> Stok Rendah
-												</span>
-											) : (
-												<span className="font-medium text-green-600">
-													Cukup
-												</span>
+										<td className="p-2.5 text-center text-muted-foreground md:p-3">
+											<select
+												className="rounded-md border border-transparent bg-transparent px-2 py-1 text-center font-semibold text-muted-foreground outline-none focus:border-border focus:bg-background"
+												onBlur={() => void saveMeta(item)}
+												onChange={(e) =>
+													setInlineField(item, "unit", e.target.value)
+												}
+												value={inline.unit}
+											>
+												<option value="gram">gram</option>
+												<option value="ml">ml</option>
+												<option value="pcs">pcs</option>
+											</select>
+											{displayUnitText !== inline.unit && (
+												<div className="text-[10px] text-muted-foreground/70">
+													view: {displayUnitText}
+												</div>
 											)}
 										</td>
-										<td className="p-4 text-right">
+										<td className="p-2.5 md:p-3">
+											<div className="mb-1">
+												{item.quantity <= item.lowStockThreshold ? (
+													<span className="flex items-center gap-1.5 font-bold text-destructive">
+														<AlertCircle className="h-4 w-4" /> Stok Rendah
+													</span>
+												) : (
+													<span className="font-medium text-green-600">
+														Cukup
+													</span>
+												)}
+											</div>
+											<input
+												className="w-full rounded-md border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
+												onBlur={() => void saveMeta(item)}
+												onChange={(e) =>
+													setInlineField(item, "lowStockThreshold", e.target.value)
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveMeta(item);
+														(e.target as HTMLInputElement).blur();
+													}
+												}}
+												placeholder="Ambang stok"
+												type="number"
+												value={inline.lowStockThreshold}
+											/>
+										</td>
+										<td className="p-2.5 text-right md:p-3">
 											<div className="flex justify-end gap-1">
 												<button
 													className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-													onClick={() => {
-														onSelectedItemChange(item);
-														onActionTypeChange("usage");
-													}}
-													title="Catat Penggunaan"
+													onClick={() => void quickDelta(item, "usage")}
+													title="-1 Cepat"
 													type="button"
 												>
 													<Minus className="h-4 w-4" />
 												</button>
 												<button
 													className="rounded-lg p-2 text-primary transition-colors hover:bg-primary/10"
-													onClick={() => {
-														onSelectedItemChange(item);
-														onActionTypeChange("add");
-													}}
-													title="Tambah Stok"
+													onClick={() => void quickDelta(item, "add")}
+													title="+1 Cepat"
 													type="button"
 												>
 													<Plus className="h-4 w-4" />
@@ -1453,21 +1771,18 @@ function InventoryTable({
 														<DropdownMenuItem
 															onClick={() => {
 																onSelectedItemChange(item);
-																onNewItemChange({
-																	ingredientName: item.ingredientName,
-																	unit: item.unit,
-																	quantity: String(item.quantity),
-																	lowStockThreshold: String(item.lowStockThreshold),
-																	displayUnit: item.displayUnit || "",
-																	conversionFactor: item.conversionFactor
-																		? String(item.conversionFactor)
-																		: "",
-																	baseRecipeId: item.baseRecipeId || "",
-																});
-																onActionTypeChange("edit");
+																onActionTypeChange("add");
 															}}
 														>
-															<Edit className="mr-2 h-4 w-4" /> Edit Bahan
+															<Plus className="mr-2 h-4 w-4" /> Input Restock Detail
+														</DropdownMenuItem>
+														<DropdownMenuItem
+															onClick={() => {
+																onSelectedItemChange(item);
+																onActionTypeChange("usage");
+															}}
+														>
+															<Minus className="mr-2 h-4 w-4" /> Input Pemakaian Detail
 														</DropdownMenuItem>
 														<DropdownMenuItem
 															onClick={() => {
@@ -1495,6 +1810,25 @@ function InventoryTable({
 															<History className="mr-2 h-4 w-4" /> Riwayat
 														</DropdownMenuItem>
 														<DropdownMenuItem
+															onClick={() => {
+																onSelectedItemChange(item);
+																onNewItemChange({
+																	ingredientName: item.ingredientName,
+																	unit: item.unit,
+																	quantity: String(item.quantity),
+																	lowStockThreshold: String(item.lowStockThreshold),
+																	displayUnit: item.displayUnit || "",
+																	conversionFactor: item.conversionFactor
+																		? String(item.conversionFactor)
+																		: "",
+																	baseRecipeId: item.baseRecipeId || "",
+																});
+																onActionTypeChange("edit");
+															}}
+														>
+															<Edit className="mr-2 h-4 w-4" /> Edit Lanjutan
+														</DropdownMenuItem>
+														<DropdownMenuItem
 															className="text-destructive focus:text-destructive"
 															onClick={() => {
 																onSelectedItemChange(item);
@@ -1506,6 +1840,11 @@ function InventoryTable({
 													</DropdownMenuContent>
 												</DropdownMenu>
 											</div>
+											{savingKey?.startsWith(item._id) && (
+												<p className="mt-1 text-[10px] text-muted-foreground">
+													Menyimpan...
+												</p>
+											)}
 										</td>
 									</tr>
 								);
