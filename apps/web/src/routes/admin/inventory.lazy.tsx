@@ -1587,12 +1587,13 @@ function InventoryTable({
 			<div>
 				<table className="w-full table-fixed text-left text-[10px] md:text-[11px]">
 					<colgroup>
-						<col className="w-[34%]" />
+						<col className="w-[24%]" />
 						<col className="w-[14%]" />
-						<col className="w-[12%]" />
-						<col className="w-[20%]" />
-						<col className="w-[10%]" />
-						<col className="w-[10%]" />
+						<col className="w-[14%]" />
+						<col className="w-[14%]" />
+						<col className="w-[13%]" />
+						<col className="w-[13%]" />
+						<col className="w-[8%]" />
 					</colgroup>
 					<thead className="bg-card">
 						<tr className="border-border border-b text-muted-foreground">
@@ -1640,7 +1641,7 @@ function InventoryTable({
 							</th>
 							<th className="px-2 py-2 font-semibold">Status</th>
 							<th
-								className="hidden cursor-pointer px-2 py-2 font-semibold transition-colors hover:text-foreground lg:table-cell"
+								className="cursor-pointer px-2 py-2 font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("avgDailyUsage")}
 							>
 								<div className="flex items-center gap-1">
@@ -1653,7 +1654,7 @@ function InventoryTable({
 										))}
 								</div>
 							</th>
-							<th className="hidden px-2 py-2 font-semibold lg:table-cell">Terkait</th>
+							<th className="px-2 py-2 font-semibold">Terkait</th>
 							<th className="px-2 py-2 text-right font-semibold">Aksi</th>
 						</tr>
 					</thead>
@@ -1716,25 +1717,22 @@ function InventoryTable({
 									Autosave
 								</div>
 							</td>
-							<td className="hidden px-2 py-2 lg:table-cell">
-								<div className="flex flex-col gap-1 text-[10px] text-muted-foreground">
-									<span>Unit</span>
-									<select
-										className="w-fit rounded-lg border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold outline-none focus:border-primary"
-										onChange={(e) =>
-											setQuickAdd((prev) => ({ ...prev, unit: e.target.value }))
-										}
-										value={quickAdd.unit}
-									>
-										<option value="gram">gram</option>
-										<option value="ml">ml</option>
-										<option value="pcs">pcs</option>
-									</select>
-								</div>
+							<td className="px-2 py-2">
+								<select
+									className="w-full rounded-lg border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold outline-none focus:border-primary"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({ ...prev, unit: e.target.value }))
+									}
+									value={quickAdd.unit}
+								>
+									<option value="gram">gram</option>
+									<option value="ml">ml</option>
+									<option value="pcs">pcs</option>
+								</select>
 							</td>
-							<td className="hidden px-2 py-2 lg:table-cell">
+							<td className="px-2 py-2">
 								<div className="text-[10px] text-muted-foreground">
-									Cepat
+									-
 								</div>
 							</td>
 							<td className="px-2 py-2 text-right">
@@ -1800,38 +1798,25 @@ function InventoryTable({
 										}`}
 										key={row.inventoryId}
 									>
-										<td className="px-2.5 py-2 align-top">
-											<div className="space-y-2">
-												<textarea
-													className="min-h-[32px] w-full resize-none rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 font-bold text-[12px] leading-4 outline-none focus:border-border focus:bg-background"
-													onBlur={() => void saveMeta(row)}
-													onChange={(e) =>
-														setInlineField(row, "ingredientName", e.target.value)
+										<td className="px-2.5 py-2 align-middle">
+											<input
+												className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold text-[12px] leading-4 outline-none focus:border-border focus:bg-background"
+												onBlur={() => void saveMeta(row)}
+												onChange={(e) =>
+													setInlineField(row, "ingredientName", e.target.value)
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveMeta(row);
+														(e.target as HTMLInputElement).blur();
 													}
-													onKeyDown={(e) => {
-														if (e.key === "Enter") {
-															e.preventDefault();
-															void saveMeta(row);
-															(e.target as HTMLTextAreaElement).blur();
-														}
-													}}
-													rows={1}
-													value={inline.ingredientName}
-												/>
-												<div className="flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
-													<span className="rounded-full bg-muted px-2 py-1">
-														{row.unit}
-													</span>
-													{row.producedByBaseRecipeName && (
-														<span className="rounded-full bg-sky-50 px-2 py-1 text-sky-700">
-															Hasil: {row.producedByBaseRecipeName}
-														</span>
-													)}
-												</div>
-											</div>
+												}}
+												title={inline.ingredientName}
+												value={inline.ingredientName}
+											/>
 										</td>
-										<td className="px-2 py-2 align-top text-center">
-											<div className="flex flex-col items-center gap-2">
+										<td className="px-2 py-2 align-middle text-center">
+											<div className="inline-flex items-center gap-1">
 												<input
 													className="w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono text-sm font-bold outline-none focus:border-border focus:bg-background"
 													onBlur={() => void saveQuantity(row)}
@@ -1863,15 +1848,10 @@ function InventoryTable({
 														<Plus className="h-3.5 w-3.5" />
 													</button>
 												</div>
-												{hasConversion && (
-													<span className="text-[10px] text-muted-foreground">
-														{displayQty} {row.displayUnit}
-													</span>
-												)}
 											</div>
 										</td>
-										<td className="px-2 py-2 align-top text-center">
-											<div className="space-y-2">
+										<td className="px-2 py-2 align-middle text-center">
+											<div className="inline-flex items-center gap-1">
 												<input
 													className="mx-auto w-12 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[11px] outline-none focus:border-border focus:bg-background"
 													onBlur={() => void saveMeta(row)}
@@ -1888,7 +1868,7 @@ function InventoryTable({
 													value={inline.lowStockThreshold}
 												/>
 												<select
-													className="rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-center font-semibold text-xs text-muted-foreground outline-none focus:border-border focus:bg-background"
+													className="rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-xs text-muted-foreground outline-none focus:border-border focus:bg-background"
 													onBlur={() => void saveMeta(row)}
 													onChange={(e) =>
 														setInlineField(row, "unit", e.target.value)
@@ -1900,78 +1880,40 @@ function InventoryTable({
 													<option value="pcs">pcs</option>
 												</select>
 											</div>
-											{displayUnitText !== inline.unit && (
-												<div className="mt-1 text-[10px] text-muted-foreground/70">
-													view: {displayUnitText}
-												</div>
-											)}
 										</td>
-										<td className="px-2 py-2 align-top">
-											<div className="space-y-2">
-												<span
-													className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusMeta.tone}`}
-												>
-													{row.status === "critical" && (
-														<AlertCircle className="h-3.5 w-3.5" />
-													)}
-													{statusMeta.label}
-												</span>
-												<div className="space-y-0.5 text-[10px] text-muted-foreground">
-													<p>
-														ROP {row.reorderPoint} {row.unit}
-													</p>
-													<p className="hidden sm:block">
-														{row.daysUntilStockout == null
-															? "Belum ada proyeksi habis"
-															: `${row.daysUntilStockout} hari menuju habis`}
-													</p>
-												</div>
-											</div>
-										</td>
-										<td className="hidden px-2 py-2 align-top lg:table-cell">
-											<div className="space-y-1.5 text-[10px]">
-												<div className="font-semibold text-foreground">
-													{row.avgDailyUsage.toFixed(2)} / hari
-												</div>
-												<div className="text-muted-foreground">
-													Saran order {row.suggestedOrderQty} {row.unit}
-												</div>
-												{row.latestTransaction && (
-													<div className="rounded-lg bg-muted/50 px-2 py-1 text-[10px] text-muted-foreground">
-														{row.latestTransaction.type}{" "}
-														{row.latestTransaction.quantity > 0 ? "+" : ""}
-														{row.latestTransaction.quantity}
-													</div>
+										<td className="px-2 py-2 align-middle">
+											<span
+												className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusMeta.tone}`}
+												title={`ROP ${row.reorderPoint} ${row.unit}`}
+											>
+												{row.status === "critical" && (
+													<AlertCircle className="h-3.5 w-3.5" />
 												)}
-											</div>
+												{statusMeta.label}
+											</span>
 										</td>
-										<td className="hidden px-2 py-2 align-top lg:table-cell">
-											<div className="space-y-1.5 text-[10px]">
-												<div className="flex flex-wrap gap-1">
-													<span className="rounded-full bg-muted px-1.5 py-0.5 font-semibold text-foreground">
-														P {row.relatedProductCount}
-													</span>
-													<span className="rounded-full bg-muted px-1.5 py-0.5 font-semibold text-foreground">
-														R {row.relatedRecipeCount}
-													</span>
-													<span className="rounded-full bg-muted px-1.5 py-0.5 font-semibold text-foreground">
-														B {row.relatedBaseRecipeCount}
-													</span>
-												</div>
-												<div className="text-muted-foreground">
-													{row.activeRelatedProductCount} aktif
-												</div>
-												{viewPreset === "planning" && (
-													<div className="text-muted-foreground">
-														{row.daysUntilStockout == null
-															? "Belum ada laju pakai"
-															: `Habis dalam ${row.daysUntilStockout} hari`}
-													</div>
-												)}
-											</div>
+										<td className="px-2 py-2 align-middle text-[10px] text-muted-foreground">
+											<span className="font-semibold text-foreground">
+												{row.avgDailyUsage.toFixed(2)}/hari
+											</span>
+											<span className="mx-1">|</span>
+											<span>
+												Order {row.suggestedOrderQty}
+											</span>
 										</td>
-										<td className="px-2 py-2 align-top text-right">
-											<div className="flex items-start justify-end gap-1.5">
+										<td className="px-2 py-2 align-middle text-[10px]">
+											<span className="rounded-full bg-muted px-1.5 py-0.5 font-semibold text-foreground">
+												P {row.relatedProductCount}
+											</span>
+											<span className="mx-1 rounded-full bg-muted px-1.5 py-0.5 font-semibold text-foreground">
+												R {row.relatedRecipeCount}
+											</span>
+											<span className="rounded-full bg-muted px-1.5 py-0.5 font-semibold text-foreground">
+												B {row.relatedBaseRecipeCount}
+											</span>
+										</td>
+										<td className="px-2 py-2 align-middle text-right">
+											<div className="flex items-center justify-end gap-1">
 												<button
 													className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-1.5 py-1 text-[10px] font-semibold text-foreground hover:bg-muted"
 													onClick={() => onDetailItemChange(item)}
@@ -2024,11 +1966,6 @@ function InventoryTable({
 													</DropdownMenuContent>
 												</DropdownMenu>
 											</div>
-											{savingKey?.startsWith(row.inventoryId) && (
-												<p className="mt-2 text-[10px] text-muted-foreground">
-													Menyimpan...
-												</p>
-											)}
 										</td>
 									</tr>
 								);
