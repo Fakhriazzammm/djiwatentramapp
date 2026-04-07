@@ -431,7 +431,7 @@ function AdminOrders() {
 	}
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 flex h-full animate-in flex-col gap-2 duration-500 md:gap-2">
+		<div className="fade-in slide-in-from-bottom-4 flex animate-in flex-col gap-2 duration-500 md:gap-2">
 			<div className="p-1 md:rounded-xl md:border md:border-border md:bg-card md:p-3 md:shadow-sm">
 				<div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
 					<div>
@@ -644,7 +644,7 @@ function AdminOrders() {
 				</div>
 			</div>
 
-			<div className="min-h-0 flex-1">
+			<div>
 				<div className="space-y-2 pb-24 md:hidden">
 					{filteredOrders?.length === 0 ? (
 						<div className="rounded-xl border border-dashed border-border bg-card py-12 text-center text-muted-foreground text-sm">
@@ -712,8 +712,8 @@ function AdminOrders() {
 					)}
 				</div>
 
-				<div className="hidden h-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm md:block">
-					<div className="h-full overflow-auto">
+				<div className="hidden rounded-2xl border border-border bg-card shadow-sm md:block">
+					<div className="overflow-x-auto">
 						<table className="w-full min-w-[980px] text-left text-sm">
 							<thead className="sticky top-0 z-10 bg-muted/70 uppercase tracking-wider">
 								<tr className="text-[11px] text-muted-foreground">

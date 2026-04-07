@@ -185,6 +185,19 @@ function ProductsTab({
 	const [isSavingInline, setIsSavingInline] = useState<
 		Record<string, { price?: boolean; quantity?: boolean; promoPrice?: boolean; menuNumber?: boolean }>
 	>({});
+	const [isInlineAddOpen, setIsInlineAddOpen] = useState(false);
+	const [isSavingInlineAdd, setIsSavingInlineAdd] = useState(false);
+	const [inlineImageFile, setInlineImageFile] = useState<File | null>(null);
+	const [inlineFormData, setInlineFormData] = useState({
+		name: "",
+		description: "",
+		categoryId: "",
+		price: "",
+		promoPrice: "",
+		quantity: "0",
+		menuNumber: "",
+		isAvailable: true,
+	});
 	const searchInputRef = useRef<HTMLInputElement | null>(null);
 
 	const generateDescription = useAction(api.ai.generateProductDescription);
@@ -358,32 +371,35 @@ function ProductsTab({
 		});
 	};
 
+	const uploadImageFile = async (file: File) => {
+		let uploadBlob: Blob = file;
+		let contentType = file.type || "image/jpeg";
+		if (isOversized(file)) {
+				toast.loading("Mengompresi gambar...", { id: "compress-product" });
+			const compressed = await compressFileToLimit(file);
+			toast.dismiss("compress-product");
+			uploadBlob = await fetch(compressed).then((r) => r.blob());
+			contentType = "image/jpeg";
+		}
+
+		const postUrl = await generateUploadUrl();
+		const result = await fetch(postUrl, {
+			method: "POST",
+			headers: { "Content-Type": contentType },
+			body: uploadBlob,
+		});
+
+		if (!result.ok) {
+			throw new Error("Upload failed");
+		}
+
+		const { storageId } = await result.json();
+		return storageId as string;
+	};
+
 	const handleImageUpload = async () => {
 		if (imageFile) {
-			let uploadBlob: Blob = imageFile;
-			let contentType = imageFile.type || "image/jpeg";
-
-			if (isOversized(imageFile)) {
-				toast.loading("Mengompresi gambar...", { id: "compress-product" });
-				const compressed = await compressFileToLimit(imageFile);
-				toast.dismiss("compress-product");
-				uploadBlob = await fetch(compressed).then((r) => r.blob());
-				contentType = "image/jpeg";
-			}
-
-			const postUrl = await generateUploadUrl();
-			const result = await fetch(postUrl, {
-				method: "POST",
-				headers: { "Content-Type": contentType },
-				body: uploadBlob,
-			});
-
-			if (!result.ok) {
-				throw new Error("Upload failed");
-			}
-
-			const { storageId } = await result.json();
-			return storageId;
+			return await uploadImageFile(imageFile);
 		}
 		if (originalStorageId && formData.image) {
 			return originalStorageId;
@@ -675,6 +691,89 @@ function ProductsTab({
 		toast.success("Kategori diperbarui");
 	};
 
+	const resetInlineCreateRow = () => {
+		setInlineFormData({
+			name: "",
+			description: "",
+			categoryId: "",
+			price: "",
+			promoPrice: "",
+			quantity: "0",
+			menuNumber: "",
+			isAvailable: true,
+		});
+		setInlineImageFile(null);
+		setIsInlineAddOpen(false);
+	};
+
+	const saveInlineCreatedProduct = async () => {
+		const name = inlineFormData.name.trim();
+		if (name.length < 2) {
+			toast.error("Nama produk minimal 2 karakter");
+			return;
+		}
+		if (!inlineFormData.categoryId) {
+			toast.error("Pilih kategori");
+			return;
+		}
+		const price = Number(inlineFormData.price);
+		if (Number.isNaN(price) || price < 0) {
+			toast.error("Harga tidak valid");
+			return;
+		}
+		const promoPrice =
+			inlineFormData.promoPrice.trim() === ""
+				? undefined
+				: Number(inlineFormData.promoPrice);
+		if (promoPrice !== undefined && (Number.isNaN(promoPrice) || promoPrice < 0)) {
+			toast.error("Harga promo tidak valid");
+			return;
+		}
+		const quantity =
+			inlineFormData.quantity.trim() === ""
+				? undefined
+				: Number(inlineFormData.quantity);
+		if (quantity !== undefined && (Number.isNaN(quantity) || quantity < 0)) {
+			toast.error("Stok tidak valid");
+			return;
+		}
+		const menuNumber =
+			inlineFormData.menuNumber.trim() === ""
+				? undefined
+				: Number(inlineFormData.menuNumber);
+		if (menuNumber !== undefined && (Number.isNaN(menuNumber) || menuNumber < 0)) {
+			toast.error("Nomor menu tidak valid");
+			return;
+		}
+
+		setIsSavingInlineAdd(true);
+		try {
+			const imageId = inlineImageFile
+				? await uploadImageFile(inlineImageFile)
+				: undefined;
+			await addProduct({
+				name,
+				description: inlineFormData.description.trim() || undefined,
+				categoryId: inlineFormData.categoryId as Id<"categories">,
+				price,
+				promoPrice,
+				image: imageId,
+				isAvailable: inlineFormData.isAvailable,
+				quantity,
+				menuNumber,
+				variations: [],
+			});
+			toast.success("Produk berhasil ditambahkan");
+			toast.info("Lanjutkan isi resep dari tab Resep jika diperlukan");
+			resetInlineCreateRow();
+		} catch (error) {
+			console.error(error);
+			toast.error("Gagal menambahkan produk");
+		} finally {
+			setIsSavingInlineAdd(false);
+		}
+	};
+
 	const isCreateBlockedByRecipe = !editingId && recipeData.length === 0;
 
 	return (
@@ -710,6 +809,10 @@ function ProductsTab({
 								<button
 									className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground text-sm transition-all hover:brightness-110"
 									onClick={() => {
+										if (viewMode === "table") {
+											setIsInlineAddOpen(true);
+											return;
+										}
 										resetForm();
 										setIsModalOpen(true);
 									}}
@@ -924,6 +1027,175 @@ function ProductsTab({
 											</tr>
 										</thead>
 										<tbody className="divide-y divide-border">
+											{isInlineAddOpen && (
+												<tr className="bg-primary/5">
+													<td className="px-3 py-3 text-center text-muted-foreground">-</td>
+													<td className="px-3 py-3 text-center text-xs">
+														<input
+															className="h-7 w-14 rounded-md border border-border bg-background px-2 text-center"
+															onChange={(event) =>
+																setInlineFormData((prev) => ({
+																	...prev,
+																	menuNumber: event.target.value,
+																}))
+															}
+															placeholder="No"
+															type="number"
+															value={inlineFormData.menuNumber}
+														/>
+													</td>
+													<td className="px-3 py-3">
+														<div className="flex items-center gap-2">
+															<div className="h-8 w-8 overflow-hidden rounded-md bg-muted">
+																{inlineImageFile ? (
+																	<div className="flex h-full w-full items-center justify-center font-semibold text-[8px] text-foreground">
+																		IMG
+																	</div>
+																) : (
+																	<div className="flex h-full w-full items-center justify-center text-[8px] text-muted-foreground">
+																		NA
+																	</div>
+																)}
+															</div>
+															<div className="flex flex-col gap-1">
+																<input
+																	className="h-7 w-48 rounded-md border border-border bg-background px-2"
+																	onChange={(event) =>
+																		setInlineFormData((prev) => ({
+																			...prev,
+																			name: event.target.value,
+																		}))
+																	}
+																	placeholder="Nama produk"
+																	type="text"
+																	value={inlineFormData.name}
+																/>
+																<input
+																	accept="image/*"
+																	className="text-[10px]"
+																	onChange={(event) => {
+																		const file = event.target.files?.[0];
+																		if (file) {
+																			setInlineImageFile(file);
+																		}
+																	}}
+																	type="file"
+																/>
+															</div>
+														</div>
+													</td>
+													<td className="px-3 py-3">
+														<input
+															className="h-7 w-56 rounded-md border border-border bg-background px-2"
+															onChange={(event) =>
+																setInlineFormData((prev) => ({
+																	...prev,
+																	description: event.target.value,
+																}))
+															}
+															placeholder="Deskripsi"
+															type="text"
+															value={inlineFormData.description}
+														/>
+													</td>
+													<td className="px-3 py-3">
+														<select
+															className="h-7 w-36 rounded-md border border-border bg-background px-2"
+															onChange={(event) =>
+																setInlineFormData((prev) => ({
+																	...prev,
+																	categoryId: event.target.value,
+																}))
+															}
+															value={inlineFormData.categoryId}
+														>
+															<option value="">Pilih kategori</option>
+															{categories?.map((category) => (
+																<option key={category._id} value={category._id}>
+																	{category.name}
+																</option>
+															))}
+														</select>
+													</td>
+													<td className="px-3 py-3">
+														<input
+															className="h-8 w-28 rounded-md border border-border bg-background px-2 text-xs"
+															onChange={(event) =>
+																setInlineFormData((prev) => ({
+																	...prev,
+																	price: event.target.value,
+																}))
+															}
+															placeholder="0"
+															type="number"
+															value={inlineFormData.price}
+														/>
+													</td>
+													<td className="px-3 py-3">
+														<input
+															className="h-8 w-24 rounded-md border border-border bg-background px-2 text-xs"
+															onChange={(event) =>
+																setInlineFormData((prev) => ({
+																	...prev,
+																	promoPrice: event.target.value,
+																}))
+															}
+															placeholder="0"
+															type="number"
+															value={inlineFormData.promoPrice}
+														/>
+													</td>
+													<td className="px-3 py-3">
+														<input
+															className="h-8 w-20 rounded-md border border-border bg-background px-2 text-xs"
+															onChange={(event) =>
+																setInlineFormData((prev) => ({
+																	...prev,
+																	quantity: event.target.value,
+																}))
+															}
+															type="number"
+															value={inlineFormData.quantity}
+														/>
+													</td>
+													<td className="px-3 py-3">
+														<select
+															className="h-8 w-24 rounded-md border border-border bg-background px-2 text-xs"
+															onChange={(event) =>
+																setInlineFormData((prev) => ({
+																	...prev,
+																	isAvailable: event.target.value === "true",
+																}))
+															}
+															value={String(inlineFormData.isAvailable)}
+														>
+															<option value="true">Active</option>
+															<option value="false">Inactive</option>
+														</select>
+													</td>
+													<td className="px-3 py-3 text-[10px] text-muted-foreground">Baru</td>
+													<td className="px-3 py-3">
+														<div className="flex justify-end gap-1">
+															<button
+																className="rounded-md bg-green-600 p-1.5 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+																disabled={isSavingInlineAdd}
+																onClick={saveInlineCreatedProduct}
+																type="button"
+															>
+																<CheckCircle2 className="h-3.5 w-3.5" />
+															</button>
+															<button
+																className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
+																disabled={isSavingInlineAdd}
+																onClick={resetInlineCreateRow}
+																type="button"
+															>
+																<XCircle className="h-3.5 w-3.5" />
+															</button>
+														</div>
+													</td>
+												</tr>
+											)}
 											{products &&
 												filteredProducts.map((product) => {
 													const health = getHealthScore(product);
