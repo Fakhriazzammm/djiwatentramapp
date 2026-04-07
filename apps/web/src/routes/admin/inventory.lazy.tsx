@@ -1742,12 +1742,67 @@ function InventoryTable({
 													<Minus className="h-4 w-4" />
 												</button>
 												<button
+													className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+													onClick={async () => {
+														if (item.quantity <= 0) {
+															return;
+														}
+														try {
+															setSavingKey(`${item._id}:delta`);
+															await applyStockAction({
+																inventoryId: item._id,
+																action: "usage",
+																quantity: 5,
+																notes: "Quick -5 from table",
+															});
+														} catch (error) {
+															const message =
+																error instanceof Error
+																	? error.message
+																	: "Gagal update stok cepat";
+															toast.error(message);
+														} finally {
+															setSavingKey(null);
+														}
+													}}
+													title="-5 Cepat"
+													type="button"
+												>
+													<span className="font-bold text-[10px]">-5</span>
+												</button>
+												<button
 													className="rounded-lg p-2 text-primary transition-colors hover:bg-primary/10"
 													onClick={() => void quickDelta(item, "add")}
 													title="+1 Cepat"
 													type="button"
 												>
 													<Plus className="h-4 w-4" />
+												</button>
+												<button
+													className="rounded-lg p-2 text-primary transition-colors hover:bg-primary/10"
+													onClick={async () => {
+														try {
+															setSavingKey(`${item._id}:delta`);
+															await applyStockAction({
+																inventoryId: item._id,
+																action: "add",
+																quantity: 5,
+																notes: "Quick +5 from table",
+															});
+														} catch (error) {
+															const message =
+																error instanceof Error
+																	? error.message
+																	: "Gagal update stok cepat";
+															toast.error(message);
+														} finally {
+															setSavingKey(null);
+														}
+													}}
+													title="+5 Cepat"
+													type="button"
+												>
+													<span className="font-bold text-[10px]">+5</span>
 												</button>
 												<button
 													className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
@@ -1771,31 +1826,6 @@ function InventoryTable({
 														<DropdownMenuItem
 															onClick={() => {
 																onSelectedItemChange(item);
-																onActionTypeChange("add");
-															}}
-														>
-															<Plus className="mr-2 h-4 w-4" /> Input Restock Detail
-														</DropdownMenuItem>
-														<DropdownMenuItem
-															onClick={() => {
-																onSelectedItemChange(item);
-																onActionTypeChange("usage");
-															}}
-														>
-															<Minus className="mr-2 h-4 w-4" /> Input Pemakaian Detail
-														</DropdownMenuItem>
-														<DropdownMenuItem
-															onClick={() => {
-																onSelectedItemChange(item);
-																onAmountChange(String(item.quantity));
-																onActionTypeChange("adjust");
-															}}
-														>
-															<Settings2 className="mr-2 h-4 w-4" /> Sesuaikan Stok
-														</DropdownMenuItem>
-														<DropdownMenuItem
-															onClick={() => {
-																onSelectedItemChange(item);
 																onActionTypeChange("batchInfo");
 															}}
 														>
@@ -1808,25 +1838,6 @@ function InventoryTable({
 															}}
 														>
 															<History className="mr-2 h-4 w-4" /> Riwayat
-														</DropdownMenuItem>
-														<DropdownMenuItem
-															onClick={() => {
-																onSelectedItemChange(item);
-																onNewItemChange({
-																	ingredientName: item.ingredientName,
-																	unit: item.unit,
-																	quantity: String(item.quantity),
-																	lowStockThreshold: String(item.lowStockThreshold),
-																	displayUnit: item.displayUnit || "",
-																	conversionFactor: item.conversionFactor
-																		? String(item.conversionFactor)
-																		: "",
-																	baseRecipeId: item.baseRecipeId || "",
-																});
-																onActionTypeChange("edit");
-															}}
-														>
-															<Edit className="mr-2 h-4 w-4" /> Edit Lanjutan
 														</DropdownMenuItem>
 														<DropdownMenuItem
 															className="text-destructive focus:text-destructive"
