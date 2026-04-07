@@ -1,4 +1,4 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+﻿import { createLazyFileRoute } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
@@ -22,7 +22,7 @@ import {
 	ShieldAlert,
 	Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
 	DropdownMenu,
@@ -41,15 +41,58 @@ interface ConfirmConfig {
 	variant?: "danger" | "warning" | "info";
 }
 
+type InventoryViewPreset = "all" | "critical" | "planning";
+
+type InventoryWorkspaceRow = {
+	inventoryId: Id<"inventory">;
+	ingredientName: string;
+	currentStock: number;
+	unit: string;
+	displayUnit?: string;
+	conversionFactor?: number;
+	lowStockThreshold: number;
+	avgDailyUsage: number;
+	daysUntilStockout: number | null;
+	reorderPoint: number;
+	suggestedOrderQty: number;
+	riskLevel: "high" | "medium" | "low";
+	status: "critical" | "warning" | "healthy";
+	relatedProductCount: number;
+	relatedRecipeCount: number;
+	relatedBaseRecipeCount: number;
+	activeRelatedProductCount: number;
+	producedByBaseRecipeName: string | null;
+	latestTransaction: {
+		type: string;
+		quantity: number;
+		timestamp: number;
+		notes?: string;
+	} | null;
+};
+
+type InventoryWorkspaceData = {
+	summary: {
+		totalItems: number;
+		totalStockUnits: number;
+		lowStockCount: number;
+		riskHighCount: number;
+		riskMediumCount: number;
+		recentUsageTxCount: number;
+		recentRestockTxCount: number;
+		daysWindow: number;
+	};
+	rows: InventoryWorkspaceRow[];
+};
+
 export const Route = createLazyFileRoute("/admin/inventory")({
 	component: InventoryPage,
 });
 
 function InventoryPage() {
 	const inventory = useQuery(api.inventory.getInventory);
-	const controlTower = useQuery(api.inventory.getInventoryControlTower, {
+	const workspace = useQuery(api.inventory.getInventoryWorkspace, {
 		daysWindow: 30,
-	});
+	}) as InventoryWorkspaceData | undefined;
 	const applyStockAction = useMutation(api.inventory.applyInventoryStockAction);
 	const createItem = useMutation(api.inventory.createInventoryItem);
 	const updateItem = useMutation(api.inventory.updateInventoryItem);
@@ -64,7 +107,8 @@ function InventoryPage() {
 	>(null);
 	const [amount, setAmount] = useState("");
 	const [filterLowStock, setFilterLowStock] = useState(false);
-	const [mode, setMode] = useState<"operations" | "planning">("operations");
+	const [viewPreset, setViewPreset] = useState<InventoryViewPreset>("all");
+	const [addRowSignal, setAddRowSignal] = useState(0);
 	const [detailItem, setDetailItem] = useState<Doc<"inventory"> | null>(null);
 	const [newItem, setNewItem] = useState({
 		ingredientName: "",
@@ -79,7 +123,12 @@ function InventoryPage() {
 	const [costPerUnit, setCostPerUnit] = useState("");
 	const [entryDate, setEntryDate] = useState(new Date().toISOString().split("T")[0]);
 	const [sortConfig, setSortConfig] = useState<{
-		key: keyof Doc<"inventory">;
+		key:
+			| "ingredientName"
+			| "currentStock"
+			| "lowStockThreshold"
+			| "avgDailyUsage"
+			| "daysUntilStockout";
 		direction: "asc" | "desc";
 	}>({ key: "ingredientName", direction: "asc" });
 	const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig>({
@@ -97,23 +146,37 @@ function InventoryPage() {
 		}
 	}, [actionType]);
 
-	const filteredInventory = useMemo(() => {
-		if (!inventory) {
+	const inventoryMap = useMemo(() => {
+		const nextMap = new Map<Id<"inventory">, Doc<"inventory">>();
+		for (const item of inventory ?? []) {
+			nextMap.set(item._id, item);
+		}
+		return nextMap;
+	}, [inventory]);
+
+	const filteredRows = useMemo(() => {
+		if (!workspace) {
 			return [];
 		}
-		const result = inventory.filter((item: any) => {
-			const matchesSearch = item.ingredientName
+		const result = workspace.rows.filter((row) => {
+			const matchesSearch = row.ingredientName
 				.toLowerCase()
 				.includes(searchQuery.toLowerCase());
 			const matchesFilter = filterLowStock
-				? item.quantity <= item.lowStockThreshold
+				? row.currentStock <= row.lowStockThreshold
 				: true;
-			return matchesSearch && matchesFilter;
+			const matchesPreset =
+				viewPreset === "critical"
+					? row.status !== "healthy"
+					: viewPreset === "planning"
+						? row.avgDailyUsage > 0 || row.suggestedOrderQty > 0
+						: true;
+			return matchesSearch && matchesFilter && matchesPreset;
 		});
 
-		result.sort((a: any, b: any) => {
-			const aValue = (a[sortConfig.key] as string | number) ?? "";
-			const bValue = (b[sortConfig.key] as string | number) ?? "";
+		result.sort((a, b) => {
+			const aValue = a[sortConfig.key] ?? "";
+			const bValue = b[sortConfig.key] ?? "";
 			if (aValue < bValue) {
 				return sortConfig.direction === "asc" ? -1 : 1;
 			}
@@ -124,9 +187,16 @@ function InventoryPage() {
 		});
 
 		return result;
-	}, [inventory, searchQuery, filterLowStock, sortConfig]);
+	}, [workspace, searchQuery, filterLowStock, viewPreset, sortConfig]);
 
-	const handleSort = (key: keyof Doc<"inventory">) => {
+	const handleSort = (
+		key:
+			| "ingredientName"
+			| "currentStock"
+			| "lowStockThreshold"
+			| "avgDailyUsage"
+			| "daysUntilStockout"
+	) => {
 		setSortConfig((prev) => ({
 			key,
 			direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
@@ -240,41 +310,30 @@ function InventoryPage() {
 	};
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 animate-in space-y-6 duration-500">
-			<InventoryControlTowerSummary data={controlTower} />
-
+		<div className="fade-in slide-in-from-bottom-4 animate-in space-y-4 duration-500">
 			<InventoryHeader
 				filterLowStock={filterLowStock}
-				mode={mode}
-				onModeChange={setMode}
-				onActionTypeChange={setActionType}
+				onAddRow={() => setAddRowSignal((prev) => prev + 1)}
 				onFilterLowStockChange={setFilterLowStock}
 				onSearchQueryChange={setSearchQuery}
+				onViewPresetChange={setViewPreset}
 				searchQuery={searchQuery}
+				viewPreset={viewPreset}
 			/>
 
-			{mode === "operations" ? (
-				<InventoryTable
-					filteredInventory={filteredInventory}
-					inventory={inventory}
-					onActionTypeChange={setActionType}
-					onAmountChange={setAmount}
-					onDetailItemChange={setDetailItem}
-					onNewItemChange={setNewItem}
-					onSelectedItemChange={setSelectedItem}
-					onSort={handleSort}
-					sortConfig={sortConfig}
-				/>
-			) : (
-				<InventoryPlanningPanel
-					data={controlTower}
-					onActionTypeChange={setActionType}
-					onDetailItemChange={setDetailItem}
-					onFilterLowStockChange={setFilterLowStock}
-					onSearchQueryChange={setSearchQuery}
-					setSelectedItem={setSelectedItem}
-				/>
-			)}
+			<InventoryControlTowerSummary data={workspace} viewPreset={viewPreset} />
+
+			<InventoryTable
+				addRowSignal={addRowSignal}
+				filteredRows={filteredRows}
+				inventoryMap={inventoryMap}
+				onActionTypeChange={setActionType}
+				onDetailItemChange={setDetailItem}
+				onSelectedItemChange={setSelectedItem}
+				onSort={handleSort}
+				sortConfig={sortConfig}
+				viewPreset={viewPreset}
+			/>
 
 			<InventoryActionModal
 				actionType={actionType}
@@ -322,14 +381,6 @@ function InventoryPage() {
 				<InventoryDetailDrawer
 					item={detailItem}
 					onClose={() => setDetailItem(null)}
-					onOpenAction={(nextAction) => {
-						setSelectedItem(detailItem);
-						if (nextAction === "adjust") {
-							setAmount(String(detailItem.quantity));
-						}
-						setDetailItem(null);
-						setActionType(nextAction);
-					}}
 				/>
 			)}
 
@@ -863,71 +914,81 @@ function InventoryActionModal({
 
 function InventoryControlTowerSummary({
 	data,
+	viewPreset,
 }: {
-	data:
-		| {
-				summary: {
-					totalItems: number;
-					totalStockUnits: number;
-					lowStockCount: number;
-					riskHighCount: number;
-					riskMediumCount: number;
-					recentUsageTxCount: number;
-					recentRestockTxCount: number;
-					daysWindow: number;
-				};
-		  }
-		| undefined;
+	data: InventoryWorkspaceData | undefined;
+	viewPreset: InventoryViewPreset;
 }) {
 	const cards = [
 		{
-			label: "Item Aktif",
-			value: data?.summary.totalItems ?? "—",
+			label: "Item",
+			value: data?.summary.totalItems ?? "-",
 			icon: Boxes,
-			tone: "text-slate-700 bg-slate-100",
+			tone: "text-slate-700 bg-slate-100 border-slate-200",
 		},
 		{
-			label: "Risiko Tinggi",
-			value: data?.summary.riskHighCount ?? "—",
+			label: "Kritis",
+			value: data?.summary.riskHighCount ?? "-",
 			icon: ShieldAlert,
-			tone: "text-rose-700 bg-rose-100",
+			tone: "text-rose-700 bg-rose-100 border-rose-200",
 		},
 		{
-			label: "Stok Rendah",
-			value: data?.summary.lowStockCount ?? "—",
+			label: "Menipis",
+			value: data?.summary.lowStockCount ?? "-",
 			icon: BadgeAlert,
-			tone: "text-amber-700 bg-amber-100",
+			tone: "text-amber-700 bg-amber-100 border-amber-200",
 		},
 		{
 			label: `Aktivitas ${data?.summary.daysWindow ?? 30} Hari`,
 			value:
 				data != null
 					? `${data.summary.recentUsageTxCount} pakai / ${data.summary.recentRestockTxCount} restock`
-					: "—",
+					: "-",
 			icon: BarChart3,
-			tone: "text-sky-700 bg-sky-100",
+			tone: "text-sky-700 bg-sky-100 border-sky-200",
 		},
 	];
 
 	return (
-		<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-			{cards.map((card) => (
-				<div className="rounded-xl border border-border bg-card p-4" key={card.label}>
-					<div className="flex items-center justify-between">
-						<p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-							{card.label}
-						</p>
-						<span className={`rounded-lg p-1.5 ${card.tone}`}>
-							<card.icon className="h-4 w-4" />
-						</span>
-					</div>
-					<p className="mt-2 font-black text-lg text-foreground">{card.value}</p>
+		<div className="sticky top-0 z-20 rounded-2xl border border-border bg-background/90 p-2 backdrop-blur">
+			<div className="mb-2 flex items-center justify-between px-2">
+				<div>
+					<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+						Inventory Workspace
+					</p>
+					<p className="text-sm font-semibold text-foreground">
+						{viewPreset === "planning"
+							? "Preset planning aktif"
+							: viewPreset === "critical"
+								? "Fokus item kritis"
+								: "Semua item inventaris"}
+					</p>
 				</div>
-			))}
+				<p className="text-[11px] text-muted-foreground">
+					Total stok {data?.summary.totalStockUnits ?? "-"}
+				</p>
+			</div>
+			<div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+				{cards.map((card) => (
+					<div
+						className="rounded-xl border border-border/80 bg-card px-3 py-2.5"
+						key={card.label}
+					>
+						<div className="flex items-center justify-between">
+							<p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+								{card.label}
+							</p>
+							<span className={`rounded-lg border p-1.5 ${card.tone}`}>
+								<card.icon className="h-4 w-4" />
+							</span>
+						</div>
+						<p className="mt-1 font-black text-base text-foreground">{card.value}</p>
+					</div>
+				))}
+			</div>
 		</div>
 	);
 }
-
 function InventoryPlanningPanel({
 	data,
 	onDetailItemChange,
@@ -1107,11 +1168,9 @@ function InventoryPlanningPanel({
 function InventoryDetailDrawer({
 	item,
 	onClose,
-	onOpenAction,
 }: {
 	item: Doc<"inventory">;
 	onClose: () => void;
-	onOpenAction: (action: "add" | "usage" | "adjust") => void;
 }) {
 	const impact = useQuery(api.inventory.getInventoryItemImpact, {
 		inventoryId: item._id,
@@ -1121,16 +1180,16 @@ function InventoryDetailDrawer({
 	});
 
 	return (
-		<div className="fixed inset-0 z-50 flex justify-end bg-black/30">
-			<div className="h-full w-full max-w-md overflow-y-auto border-l border-border bg-card p-5 shadow-2xl">
-				<div className="mb-4 flex items-start justify-between">
+		<div className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px]">
+			<div className="h-full w-full max-w-lg overflow-y-auto border-l border-border bg-card p-5 shadow-2xl">
+				<div className="mb-5 flex items-start justify-between gap-4">
 					<div>
-						<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-							Inventory Detail
+						<p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+							Context Panel
 						</p>
-						<h3 className="font-bold text-xl text-foreground">{item.ingredientName}</h3>
-						<p className="text-sm text-muted-foreground">
-							Stok {item.quantity} {item.unit}
+						<h3 className="mt-1 font-black text-2xl text-foreground">{item.ingredientName}</h3>
+						<p className="mt-1 text-sm text-muted-foreground">
+							Stok {item.quantity} {item.unit} · ambang {item.lowStockThreshold} {item.unit}
 						</p>
 					</div>
 					<button
@@ -1142,72 +1201,57 @@ function InventoryDetailDrawer({
 					</button>
 				</div>
 
-				<div className="mb-4 grid grid-cols-3 gap-2">
-					<button
-						className="rounded-lg bg-primary px-2 py-2 text-xs font-bold text-primary-foreground"
-						onClick={() => onOpenAction("add")}
-						type="button"
-					>
-						+ Restock
-					</button>
-					<button
-						className="rounded-lg border border-border px-2 py-2 text-xs font-bold text-foreground"
-						onClick={() => onOpenAction("usage")}
-						type="button"
-					>
-						- Pakai
-					</button>
-					<button
-						className="rounded-lg border border-border px-2 py-2 text-xs font-bold text-foreground"
-						onClick={() => onOpenAction("adjust")}
-						type="button"
-					>
-						Adjust
-					</button>
+				<div className="mb-4 grid grid-cols-2 gap-3">
+					<div className="rounded-2xl border border-border bg-muted/20 p-4">
+						<p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+							Status
+						</p>
+						<p className="mt-2 font-black text-xl text-foreground">
+							{item.quantity <= item.lowStockThreshold ? "Perlu restock" : "Aman"}
+						</p>
+					</div>
+					<div className="rounded-2xl border border-border bg-muted/20 p-4">
+						<p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+							Korelasi
+						</p>
+						<p className="mt-2 font-black text-xl text-foreground">
+							{impact?.impact.productCount ?? 0} produk
+						</p>
+					</div>
 				</div>
 
-				<div className="mb-4 rounded-lg border border-border bg-muted/20 p-3">
-					<p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+				<div className="mb-4 rounded-2xl border border-border p-4">
+					<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
 						Dampak Lintas Fitur
 					</p>
-					<p className="mt-2 text-xs text-foreground">
-						Produk terdampak:{" "}
-						<span className="font-bold">{impact?.impact.productCount ?? "—"}</span>
-					</p>
-					<p className="text-xs text-foreground">
-						Recipe terdampak:{" "}
-						<span className="font-bold">{impact?.impact.recipeCount ?? "—"}</span>
-					</p>
-					<p className="text-xs text-foreground">
-						Base recipe pemakai:{" "}
-						<span className="font-bold">
-							{impact?.impact.consumedByBaseRecipeCount ?? "—"}
-						</span>
-					</p>
+					<div className="mt-3 space-y-2 text-sm text-foreground">
+						<p>Produk terdampak: <span className="font-bold">{impact?.impact.productCount ?? 0}</span></p>
+						<p>Recipe terdampak: <span className="font-bold">{impact?.impact.recipeCount ?? 0}</span></p>
+						<p>Base recipe pemakai: <span className="font-bold">{impact?.impact.consumedByBaseRecipeCount ?? 0}</span></p>
+						{impact?.impact.producedByBaseRecipeName && (
+							<p>Diproduksi dari: <span className="font-bold">{impact.impact.producedByBaseRecipeName}</span></p>
+						)}
+					</div>
 				</div>
 
-				<div className="mb-4 rounded-lg border border-border p-3">
-					<p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+				<div className="mb-4 rounded-2xl border border-border p-4">
+					<p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
 						Produk Terkorelasi
 					</p>
-					<div className="space-y-1">
+					<div className="space-y-2">
 						{impact?.impact.impactedProducts?.slice(0, 8).map((product) => (
 							<div
-								className="flex items-center justify-between rounded-md bg-muted/30 px-2 py-1.5"
+								className="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2"
 								key={`${product.productId}-${product.variantName || "base"}`}
 							>
 								<div>
-									<p className="text-xs font-semibold text-foreground">
-										{product.productName}
-									</p>
+									<p className="text-sm font-semibold text-foreground">{product.productName}</p>
 									{product.variantName && (
-										<p className="text-[10px] text-muted-foreground">
-											Varian: {product.variantName}
-										</p>
+										<p className="text-[11px] text-muted-foreground">Varian: {product.variantName}</p>
 									)}
 								</div>
 								<span
-									className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+									className={`rounded-full px-2 py-1 text-[10px] font-bold ${
 										product.isAvailable
 											? "bg-emerald-100 text-emerald-700"
 											: "bg-slate-200 text-slate-700"
@@ -1218,22 +1262,19 @@ function InventoryDetailDrawer({
 							</div>
 						))}
 						{(impact?.impact.impactedProducts?.length ?? 0) === 0 && (
-							<p className="text-xs text-muted-foreground">Belum ada produk terkait.</p>
+							<p className="text-sm text-muted-foreground">Belum ada produk terkait.</p>
 						)}
 					</div>
 				</div>
 
-				<div className="rounded-lg border border-border p-3">
-					<p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+				<div className="rounded-2xl border border-border p-4">
+					<p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
 						Timeline Aktivitas Terbaru
 					</p>
-					<div className="space-y-1">
+					<div className="space-y-2">
 						{transactions?.slice(0, 10).map((transaction) => (
-							<div
-								className="rounded-md bg-muted/30 px-2 py-1.5"
-								key={transaction._id}
-							>
-								<div className="flex items-center justify-between">
+							<div className="rounded-xl bg-muted/40 px-3 py-2" key={transaction._id}>
+								<div className="flex items-center justify-between gap-4">
 									<p className="text-xs font-semibold uppercase text-foreground">
 										{transaction.type}
 									</p>
@@ -1246,13 +1287,18 @@ function InventoryDetailDrawer({
 										{transaction.quantity}
 									</p>
 								</div>
-								<p className="text-[10px] text-muted-foreground">
+								<p className="mt-1 text-[11px] text-muted-foreground">
 									{new Date(transaction.timestamp).toLocaleString("id-ID")}
 								</p>
+								{transaction.notes && (
+									<p className="mt-1 text-[11px] text-muted-foreground">
+										{transaction.notes}
+									</p>
+								)}
 							</div>
 						))}
 						{(transactions?.length ?? 0) === 0 && (
-							<p className="text-xs text-muted-foreground">Belum ada aktivitas.</p>
+							<p className="text-sm text-muted-foreground">Belum ada aktivitas.</p>
 						)}
 					</div>
 				</div>
@@ -1260,21 +1306,36 @@ function InventoryDetailDrawer({
 		</div>
 	);
 }
-
 function InventoryTable({
-	filteredInventory,
+	addRowSignal,
+	filteredRows,
 	onSort,
 	sortConfig,
 	onSelectedItemChange,
 	onDetailItemChange,
 	onActionTypeChange,
-	onNewItemChange,
-	onAmountChange,
-	inventory,
+	inventoryMap,
+	viewPreset,
 }: {
-	filteredInventory: Doc<"inventory">[];
-	onSort: (key: keyof Doc<"inventory">) => void;
-	sortConfig: { key: keyof Doc<"inventory">; direction: "asc" | "desc" };
+	addRowSignal: number;
+	filteredRows: InventoryWorkspaceRow[];
+	onSort: (
+		key:
+			| "ingredientName"
+			| "currentStock"
+			| "lowStockThreshold"
+			| "avgDailyUsage"
+			| "daysUntilStockout"
+	) => void;
+	sortConfig: {
+		key:
+			| "ingredientName"
+			| "currentStock"
+			| "lowStockThreshold"
+			| "avgDailyUsage"
+			| "daysUntilStockout";
+		direction: "asc" | "desc";
+	};
 	onSelectedItemChange: (item: Doc<"inventory">) => void;
 	onDetailItemChange: (item: Doc<"inventory">) => void;
 	onActionTypeChange: (
@@ -1289,21 +1350,13 @@ function InventoryTable({
 			| "create"
 			| null
 	) => void;
-	onNewItemChange: (item: {
-		ingredientName: string;
-		unit: string;
-		quantity: string;
-		lowStockThreshold: string;
-		displayUnit: string;
-		conversionFactor: string;
-		baseRecipeId: string;
-	}) => void;
-	onAmountChange: (amount: string) => void;
-	inventory: Doc<"inventory">[] | undefined;
+	inventoryMap: Map<Id<"inventory">, Doc<"inventory">>;
+	viewPreset: InventoryViewPreset;
 }) {
 	const updateItemMutation = useMutation(api.inventory.updateInventoryItem);
 	const applyStockAction = useMutation(api.inventory.applyInventoryStockAction);
 	const createItemMutation = useMutation(api.inventory.createInventoryItem);
+	const quickAddNameRef = useRef<HTMLInputElement | null>(null);
 	const [savingKey, setSavingKey] = useState<string | null>(null);
 	const [inlineValues, setInlineValues] = useState<
 		Record<
@@ -1323,29 +1376,33 @@ function InventoryTable({
 		lowStockThreshold: "100",
 	});
 
-	const getInlineValue = (item: Doc<"inventory">) =>
-		inlineValues[item._id] ?? {
-			ingredientName: item.ingredientName,
-			quantity: String(item.quantity),
-			unit: item.unit,
-			lowStockThreshold: String(item.lowStockThreshold),
+	useEffect(() => {
+		quickAddNameRef.current?.focus();
+	}, [addRowSignal]);
+
+	const getInlineValue = (row: InventoryWorkspaceRow) =>
+		inlineValues[row.inventoryId] ?? {
+			ingredientName: row.ingredientName,
+			quantity: String(row.currentStock),
+			unit: row.unit,
+			lowStockThreshold: String(row.lowStockThreshold),
 		};
 
 	const setInlineField = (
-		item: Doc<"inventory">,
+		row: InventoryWorkspaceRow,
 		field: "ingredientName" | "quantity" | "unit" | "lowStockThreshold",
 		value: string
 	) => {
 		setInlineValues((prev) => {
-			const current = prev[item._id] ?? {
-				ingredientName: item.ingredientName,
-				quantity: String(item.quantity),
-				unit: item.unit,
-				lowStockThreshold: String(item.lowStockThreshold),
+			const current = prev[row.inventoryId] ?? {
+				ingredientName: row.ingredientName,
+				quantity: String(row.currentStock),
+				unit: row.unit,
+				lowStockThreshold: String(row.lowStockThreshold),
 			};
 			return {
 				...prev,
-				[item._id]: {
+				[row.inventoryId]: {
 					...current,
 					[field]: value,
 				},
@@ -1353,30 +1410,34 @@ function InventoryTable({
 		});
 	};
 
-	const saveMeta = async (item: Doc<"inventory">) => {
-		const current = getInlineValue(item);
+	const saveMeta = async (row: InventoryWorkspaceRow) => {
+		const item = inventoryMap.get(row.inventoryId);
+		if (!item) {
+			return;
+		}
+		const current = getInlineValue(row);
 		const ingredientName = current.ingredientName.trim();
 		const lowStockThresholdNum = Number(current.lowStockThreshold);
 		if (!ingredientName) {
 			toast.error("Nama bahan tidak boleh kosong");
-			setInlineField(item, "ingredientName", item.ingredientName);
+			setInlineField(row, "ingredientName", row.ingredientName);
 			return;
 		}
 		if (Number.isNaN(lowStockThresholdNum) || lowStockThresholdNum < 0) {
 			toast.error("Ambang stok harus angka >= 0");
-			setInlineField(item, "lowStockThreshold", String(item.lowStockThreshold));
+			setInlineField(row, "lowStockThreshold", String(row.lowStockThreshold));
 			return;
 		}
 		if (
-			ingredientName === item.ingredientName &&
-			current.unit === item.unit &&
-			lowStockThresholdNum === item.lowStockThreshold
+			ingredientName === row.ingredientName &&
+			current.unit === row.unit &&
+			lowStockThresholdNum === row.lowStockThreshold
 		) {
 			return;
 		}
 
 		try {
-			setSavingKey(`${item._id}:meta`);
+			setSavingKey(`${row.inventoryId}:meta`);
 			await updateItemMutation({
 				id: item._id,
 				ingredientName,
@@ -1396,20 +1457,24 @@ function InventoryTable({
 		}
 	};
 
-	const saveQuantity = async (item: Doc<"inventory">) => {
-		const current = getInlineValue(item);
+	const saveQuantity = async (row: InventoryWorkspaceRow) => {
+		const item = inventoryMap.get(row.inventoryId);
+		if (!item) {
+			return;
+		}
+		const current = getInlineValue(row);
 		const quantityNum = Number(current.quantity);
 		if (Number.isNaN(quantityNum) || quantityNum < 0) {
 			toast.error("Stok harus angka >= 0");
-			setInlineField(item, "quantity", String(item.quantity));
+			setInlineField(row, "quantity", String(row.currentStock));
 			return;
 		}
-		if (quantityNum === item.quantity) {
+		if (quantityNum === row.currentStock) {
 			return;
 		}
 
 		try {
-			setSavingKey(`${item._id}:qty`);
+			setSavingKey(`${row.inventoryId}:qty`);
 			await applyStockAction({
 				inventoryId: item._id,
 				action: "adjust",
@@ -1426,17 +1491,28 @@ function InventoryTable({
 		}
 	};
 
-	const quickDelta = async (item: Doc<"inventory">, direction: "add" | "usage") => {
-		if (direction === "usage" && item.quantity <= 0) {
+	const quickDelta = async (
+		row: InventoryWorkspaceRow,
+		direction: "add" | "usage",
+		amount = 1
+	) => {
+		if (direction === "usage" && row.currentStock <= 0) {
+			return;
+		}
+		const item = inventoryMap.get(row.inventoryId);
+		if (!item) {
 			return;
 		}
 		try {
-			setSavingKey(`${item._id}:delta`);
+			setSavingKey(`${row.inventoryId}:delta`);
 			await applyStockAction({
 				inventoryId: item._id,
 				action: direction,
-				quantity: 1,
-				notes: "Quick +1/-1 from table",
+				quantity: amount,
+				notes:
+					direction === "add"
+						? `Quick +${amount} from table`
+						: `Quick -${amount} from table`,
 			});
 		} catch (error) {
 			const message =
@@ -1478,6 +1554,7 @@ function InventoryTable({
 				quantity: "0",
 			}));
 			toast.success("Item baru langsung tersimpan");
+			quickAddNameRef.current?.focus();
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Gagal menambah item";
 			toast.error(message);
@@ -1486,14 +1563,33 @@ function InventoryTable({
 		}
 	};
 
+	const getStatusMeta = (status: InventoryWorkspaceRow["status"]) => {
+		if (status === "critical") {
+			return {
+				label: "Kritis",
+				tone: "border-rose-200 bg-rose-50 text-rose-700",
+			};
+		}
+		if (status === "warning") {
+			return {
+				label: "Menipis",
+				tone: "border-amber-200 bg-amber-50 text-amber-700",
+			};
+		}
+		return {
+			label: "Aman",
+			tone: "border-emerald-200 bg-emerald-50 text-emerald-700",
+		};
+	};
+
 	return (
-		<div className="overflow-hidden rounded-xl border border-border bg-card">
+		<div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
 			<div className="overflow-x-auto">
-				<table className="w-full text-left text-xs md:text-sm">
-					<thead>
-						<tr className="border-border border-b bg-muted/30 text-muted-foreground">
+				<table className="w-full min-w-[1120px] text-left text-xs md:text-sm">
+					<thead className="sticky top-0 z-10 bg-card/95 backdrop-blur">
+						<tr className="border-border border-b text-muted-foreground">
 							<th
-								className="cursor-pointer p-2.5 font-medium transition-colors hover:text-foreground md:p-4"
+								className="cursor-pointer px-4 py-3 font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("ingredientName")}
 							>
 								<div className="flex items-center gap-1">
@@ -1507,12 +1603,12 @@ function InventoryTable({
 								</div>
 							</th>
 							<th
-								className="cursor-pointer p-4 text-center font-medium transition-colors hover:text-foreground"
-								onClick={() => onSort("quantity")}
+								className="cursor-pointer px-4 py-3 text-center font-semibold transition-colors hover:text-foreground"
+								onClick={() => onSort("currentStock")}
 							>
 								<div className="flex items-center justify-center gap-1">
-									Stok Saat Ini
-									{sortConfig.key === "quantity" &&
+									Stok
+									{sortConfig.key === "currentStock" &&
 										(sortConfig.direction === "asc" ? (
 											<ArrowUp className="h-3 w-3" />
 										) : (
@@ -1520,16 +1616,45 @@ function InventoryTable({
 										))}
 								</div>
 							</th>
-							<th className="p-4 text-center font-medium">Satuan</th>
-							<th className="p-4 font-medium">Status</th>
-							<th className="p-4 text-right font-medium">Aksi</th>
+							<th
+								className="cursor-pointer px-4 py-3 text-center font-semibold transition-colors hover:text-foreground"
+								onClick={() => onSort("lowStockThreshold")}
+							>
+								<div className="flex items-center justify-center gap-1">
+									Min
+									{sortConfig.key === "lowStockThreshold" &&
+										(sortConfig.direction === "asc" ? (
+											<ArrowUp className="h-3 w-3" />
+										) : (
+											<ArrowDown className="h-3 w-3" />
+										))}
+								</div>
+							</th>
+							<th className="px-4 py-3 font-semibold">Status</th>
+							<th
+								className="cursor-pointer px-4 py-3 font-semibold transition-colors hover:text-foreground"
+								onClick={() => onSort("avgDailyUsage")}
+							>
+								<div className="flex items-center gap-1">
+									Pemakaian
+									{sortConfig.key === "avgDailyUsage" &&
+										(sortConfig.direction === "asc" ? (
+											<ArrowUp className="h-3 w-3" />
+										) : (
+											<ArrowDown className="h-3 w-3" />
+										))}
+								</div>
+							</th>
+							<th className="px-4 py-3 font-semibold">Terkait</th>
+							<th className="px-4 py-3 text-right font-semibold">Aksi</th>
 						</tr>
 					</thead>
 					<tbody className="divide-y divide-border">
 						<tr className="bg-primary/[0.04]">
-							<td className="p-2.5 md:p-3">
+							<td className="px-4 py-3">
 								<input
-									className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs font-semibold outline-none focus:border-primary md:text-sm"
+									ref={quickAddNameRef}
+									className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-semibold outline-none focus:border-primary"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({
 											...prev,
@@ -1545,9 +1670,9 @@ function InventoryTable({
 									value={quickAdd.ingredientName}
 								/>
 							</td>
-							<td className="p-2.5 text-center md:p-3">
+							<td className="px-4 py-3 text-center">
 								<input
-									className="mx-auto w-20 rounded-md border border-border bg-background px-2 py-1 text-center font-semibold text-xs outline-none focus:border-primary md:text-sm"
+									className="mx-auto w-24 rounded-xl border border-border bg-background px-2 py-2 text-center font-semibold text-sm outline-none focus:border-primary"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({ ...prev, quantity: e.target.value }))
 									}
@@ -1560,22 +1685,9 @@ function InventoryTable({
 									value={quickAdd.quantity}
 								/>
 							</td>
-							<td className="p-2.5 text-center md:p-3">
-								<select
-									className="rounded-md border border-border bg-background px-2 py-1 text-xs font-semibold outline-none focus:border-primary md:text-sm"
-									onChange={(e) =>
-										setQuickAdd((prev) => ({ ...prev, unit: e.target.value }))
-									}
-									value={quickAdd.unit}
-								>
-									<option value="gram">gram</option>
-									<option value="ml">ml</option>
-									<option value="pcs">pcs</option>
-								</select>
-							</td>
-							<td className="p-2.5 md:p-3">
+							<td className="px-4 py-3 text-center">
 								<input
-									className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs font-semibold outline-none focus:border-primary md:text-sm"
+									className="mx-auto w-24 rounded-xl border border-border bg-background px-2 py-2 text-center font-semibold text-sm outline-none focus:border-primary"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({
 											...prev,
@@ -1587,23 +1699,48 @@ function InventoryTable({
 											void quickCreate();
 										}
 									}}
-									placeholder="Ambang rendah"
 									type="number"
 									value={quickAdd.lowStockThreshold}
 								/>
 							</td>
-							<td className="p-2.5 text-right md:p-3">
+							<td className="px-4 py-3">
+								<div className="rounded-xl border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+									Item baru akan langsung tersimpan.
+								</div>
+							</td>
+							<td className="px-4 py-3">
+								<div className="flex flex-col gap-2 text-xs text-muted-foreground">
+									<span>Lengkapi stok awal dan satuan.</span>
+									<select
+										className="w-fit rounded-lg border border-border bg-background px-2 py-1 text-xs font-semibold outline-none focus:border-primary"
+										onChange={(e) =>
+											setQuickAdd((prev) => ({ ...prev, unit: e.target.value }))
+										}
+										value={quickAdd.unit}
+									>
+										<option value="gram">gram</option>
+										<option value="ml">ml</option>
+										<option value="pcs">pcs</option>
+									</select>
+								</div>
+							</td>
+							<td className="px-4 py-3">
+								<div className="text-xs text-muted-foreground">
+									Baris ini menggantikan form tambah modal.
+								</div>
+							</td>
+							<td className="px-4 py-3 text-right">
 								<button
-									className="rounded-md bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground hover:brightness-110 md:text-xs"
+									className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:brightness-110"
 									disabled={savingKey === "quick-add"}
 									onClick={() => void quickCreate()}
 									type="button"
 								>
-									{savingKey === "quick-add" ? "Menyimpan..." : "Tambah Cepat"}
+									{savingKey === "quick-add" ? "Menyimpan..." : "Tambah Baris"}
 								</button>
 							</td>
 						</tr>
-						{!inventory &&
+						{inventoryMap.size === 0 &&
 							Array.from({ length: 8 }).map((_, i) => (
 								<tr key={i}>
 									<td className="p-4">
@@ -1613,223 +1750,242 @@ function InventoryTable({
 										<Skeleton className="mx-auto h-8 w-16" />
 									</td>
 									<td className="p-4">
-										<Skeleton className="mx-auto h-4 w-12" />
+										<Skeleton className="mx-auto h-8 w-16" />
 									</td>
 									<td className="p-4">
-										<Skeleton className="h-4 w-20" />
+										<Skeleton className="h-8 w-28" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="h-10 w-32" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="h-10 w-32" />
 									</td>
 									<td className="p-4 text-right">
-										<div className="flex justify-end gap-1">
-											<Skeleton className="h-8 w-8 rounded-lg" />
-											<Skeleton className="h-8 w-8 rounded-lg" />
-											<Skeleton className="h-8 w-8 rounded-lg" />
-											<Skeleton className="h-8 w-8 rounded-lg" />
-										</div>
+										<Skeleton className="ml-auto h-8 w-8 rounded-lg" />
 									</td>
 								</tr>
 							))}
-
-						{inventory &&
-							filteredInventory.length > 0 &&
-							filteredInventory.map((item) => {
-								const inline = getInlineValue(item);
+						{inventoryMap.size > 0 &&
+							filteredRows.length > 0 &&
+							filteredRows.map((row, index) => {
+								const item = inventoryMap.get(row.inventoryId);
+								if (!item) {
+									return null;
+								}
+								const inline = getInlineValue(row);
 								const hasConversion = !!(
-									item.displayUnit &&
-									item.conversionFactor &&
-									item.conversionFactor > 0
+									row.displayUnit &&
+									row.conversionFactor &&
+									row.conversionFactor > 0
 								);
 								const displayQty = hasConversion
-									? (item.quantity / (item.conversionFactor || 1)).toFixed(2)
-									: item.quantity;
-								const displayUnitText = hasConversion
-									? item.displayUnit
-									: item.unit;
+									? (row.currentStock / (row.conversionFactor || 1)).toFixed(2)
+									: row.currentStock;
+								const displayUnitText = hasConversion ? row.displayUnit : row.unit;
+								const statusMeta = getStatusMeta(row.status);
 
 								return (
 									<tr
-										className="transition-colors hover:bg-muted/30"
-										key={item._id}
+										className={`transition-colors hover:bg-muted/20 ${
+											index % 2 === 0 ? "bg-background" : "bg-muted/[0.12]"
+										}`}
+										key={row.inventoryId}
 									>
-										<td className="p-2.5 md:p-3">
-											<input
-												className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 font-bold text-sm outline-none focus:border-border focus:bg-background"
-												onBlur={() => void saveMeta(item)}
-												onChange={(e) =>
-													setInlineField(item, "ingredientName", e.target.value)
-												}
-												onKeyDown={(e) => {
-													if (e.key === "Enter") {
-														void saveMeta(item);
-														(e.target as HTMLInputElement).blur();
-													}
-												}}
-												value={inline.ingredientName}
-											/>
-										</td>
-										<td className="p-2.5 text-center md:p-3">
-											<div className="flex flex-col items-center">
+										<td className="px-4 py-3 align-top">
+											<div className="space-y-2">
 												<input
-													className="w-24 rounded-md border border-transparent bg-transparent px-2 py-1 text-center font-bold font-mono text-lg outline-none focus:border-border focus:bg-background"
-													onBlur={() => void saveQuantity(item)}
+													className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1 font-bold text-sm outline-none focus:border-border focus:bg-background"
+													onBlur={() => void saveMeta(row)}
 													onChange={(e) =>
-														setInlineField(item, "quantity", e.target.value)
+														setInlineField(row, "ingredientName", e.target.value)
 													}
 													onKeyDown={(e) => {
 														if (e.key === "Enter") {
-															void saveQuantity(item);
+															void saveMeta(row);
+															(e.target as HTMLInputElement).blur();
+														}
+													}}
+													value={inline.ingredientName}
+												/>
+												<div className="flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
+													<span className="rounded-full bg-muted px-2 py-1">
+														{row.unit}
+													</span>
+													{row.producedByBaseRecipeName && (
+														<span className="rounded-full bg-sky-50 px-2 py-1 text-sky-700">
+															Hasil: {row.producedByBaseRecipeName}
+														</span>
+													)}
+												</div>
+											</div>
+										</td>
+										<td className="px-4 py-3 align-top text-center">
+											<div className="flex flex-col items-center gap-2">
+												<input
+													className="w-24 rounded-lg border border-transparent bg-transparent px-2 py-1 text-center font-mono text-lg font-bold outline-none focus:border-border focus:bg-background"
+													onBlur={() => void saveQuantity(row)}
+													onChange={(e) =>
+														setInlineField(row, "quantity", e.target.value)
+													}
+													onKeyDown={(e) => {
+														if (e.key === "Enter") {
+															void saveQuantity(row);
 															(e.target as HTMLInputElement).blur();
 														}
 													}}
 													type="number"
 													value={inline.quantity}
 												/>
+												<div className="inline-flex items-center gap-1 rounded-xl border border-border bg-background p-1">
+													<button
+														className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+														onClick={() => void quickDelta(row, "usage", 1)}
+														type="button"
+													>
+														<Minus className="h-3.5 w-3.5" />
+													</button>
+													<button
+														className="rounded-lg p-1.5 text-primary transition-colors hover:bg-primary/10"
+														onClick={() => void quickDelta(row, "add", 1)}
+														type="button"
+													>
+														<Plus className="h-3.5 w-3.5" />
+													</button>
+												</div>
 												{hasConversion && (
 													<span className="text-[10px] text-muted-foreground">
-														(estimasi: {displayQty} {item.displayUnit})
+														{displayQty} {row.displayUnit}
 													</span>
 												)}
 											</div>
 										</td>
-										<td className="p-2.5 text-center text-muted-foreground md:p-3">
-											<select
-												className="rounded-md border border-transparent bg-transparent px-2 py-1 text-center font-semibold text-muted-foreground outline-none focus:border-border focus:bg-background"
-												onBlur={() => void saveMeta(item)}
-												onChange={(e) =>
-													setInlineField(item, "unit", e.target.value)
-												}
-												value={inline.unit}
-											>
-												<option value="gram">gram</option>
-												<option value="ml">ml</option>
-												<option value="pcs">pcs</option>
-											</select>
+										<td className="px-4 py-3 align-top text-center">
+											<div className="space-y-2">
+												<input
+													className="mx-auto w-20 rounded-lg border border-transparent bg-transparent px-2 py-1 text-center font-semibold text-sm outline-none focus:border-border focus:bg-background"
+													onBlur={() => void saveMeta(row)}
+													onChange={(e) =>
+														setInlineField(row, "lowStockThreshold", e.target.value)
+													}
+													onKeyDown={(e) => {
+														if (e.key === "Enter") {
+															void saveMeta(row);
+															(e.target as HTMLInputElement).blur();
+														}
+													}}
+													type="number"
+													value={inline.lowStockThreshold}
+												/>
+												<select
+													className="rounded-lg border border-transparent bg-transparent px-2 py-1 text-center font-semibold text-muted-foreground outline-none focus:border-border focus:bg-background"
+													onBlur={() => void saveMeta(row)}
+													onChange={(e) =>
+														setInlineField(row, "unit", e.target.value)
+													}
+													value={inline.unit}
+												>
+													<option value="gram">gram</option>
+													<option value="ml">ml</option>
+													<option value="pcs">pcs</option>
+												</select>
+											</div>
 											{displayUnitText !== inline.unit && (
-												<div className="text-[10px] text-muted-foreground/70">
+												<div className="mt-1 text-[10px] text-muted-foreground/70">
 													view: {displayUnitText}
 												</div>
 											)}
 										</td>
-										<td className="p-2.5 md:p-3">
-											<div className="mb-1">
-												{item.quantity <= item.lowStockThreshold ? (
-													<span className="flex items-center gap-1.5 font-bold text-destructive">
-														<AlertCircle className="h-4 w-4" /> Stok Rendah
-													</span>
-												) : (
-													<span className="font-medium text-green-600">
-														Cukup
-													</span>
+										<td className="px-4 py-3 align-top">
+											<div className="space-y-2">
+												<span
+													className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold ${statusMeta.tone}`}
+												>
+													{row.status === "critical" && (
+														<AlertCircle className="h-3.5 w-3.5" />
+													)}
+													{statusMeta.label}
+												</span>
+												<div className="space-y-1 text-[11px] text-muted-foreground">
+													<p>
+														ROP {row.reorderPoint} {row.unit}
+													</p>
+													<p>
+														{row.daysUntilStockout == null
+															? "Belum ada proyeksi habis"
+															: `${row.daysUntilStockout} hari menuju habis`}
+													</p>
+												</div>
+											</div>
+										</td>
+										<td className="px-4 py-3 align-top">
+											<div className="space-y-2 text-[11px]">
+												<div className="font-semibold text-foreground">
+													{row.avgDailyUsage.toFixed(2)} / hari
+												</div>
+												<div className="text-muted-foreground">
+													Saran order {row.suggestedOrderQty} {row.unit}
+												</div>
+												{row.latestTransaction && (
+													<div className="rounded-xl bg-muted/50 px-2 py-1.5 text-[10px] text-muted-foreground">
+														{row.latestTransaction.type}{" "}
+														{row.latestTransaction.quantity > 0 ? "+" : ""}
+														{row.latestTransaction.quantity}
+													</div>
 												)}
 											</div>
-											<input
-												className="w-full rounded-md border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
-												onBlur={() => void saveMeta(item)}
-												onChange={(e) =>
-													setInlineField(item, "lowStockThreshold", e.target.value)
-												}
-												onKeyDown={(e) => {
-													if (e.key === "Enter") {
-														void saveMeta(item);
-														(e.target as HTMLInputElement).blur();
-													}
-												}}
-												placeholder="Ambang stok"
-												type="number"
-												value={inline.lowStockThreshold}
-											/>
 										</td>
-										<td className="p-2.5 text-right md:p-3">
-											<div className="flex justify-end gap-1">
+										<td className="px-4 py-3 align-top">
+											<div className="space-y-2 text-[11px]">
+												<div className="flex flex-wrap gap-1.5">
+													<span className="rounded-full bg-muted px-2 py-1 font-semibold text-foreground">
+														Produk {row.relatedProductCount}
+													</span>
+													<span className="rounded-full bg-muted px-2 py-1 font-semibold text-foreground">
+														Recipe {row.relatedRecipeCount}
+													</span>
+													<span className="rounded-full bg-muted px-2 py-1 font-semibold text-foreground">
+														Base {row.relatedBaseRecipeCount}
+													</span>
+												</div>
+												<div className="text-muted-foreground">
+													{row.activeRelatedProductCount} produk aktif
+												</div>
+												{viewPreset === "planning" && (
+													<div className="text-muted-foreground">
+														{row.daysUntilStockout == null
+															? "Belum ada laju pakai"
+															: `Habis dalam ${row.daysUntilStockout} hari`}
+													</div>
+												)}
+											</div>
+										</td>
+										<td className="px-4 py-3 align-top text-right">
+											<div className="flex items-start justify-end gap-2">
 												<button
-													className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-													onClick={() => void quickDelta(item, "usage")}
-													title="-1 Cepat"
-													type="button"
-												>
-													<Minus className="h-4 w-4" />
-												</button>
-												<button
-													className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-													onClick={async () => {
-														if (item.quantity <= 0) {
-															return;
-														}
-														try {
-															setSavingKey(`${item._id}:delta`);
-															await applyStockAction({
-																inventoryId: item._id,
-																action: "usage",
-																quantity: 5,
-																notes: "Quick -5 from table",
-															});
-														} catch (error) {
-															const message =
-																error instanceof Error
-																	? error.message
-																	: "Gagal update stok cepat";
-															toast.error(message);
-														} finally {
-															setSavingKey(null);
-														}
-													}}
-													title="-5 Cepat"
-													type="button"
-												>
-													<span className="font-bold text-[10px]">-5</span>
-												</button>
-												<button
-													className="rounded-lg p-2 text-primary transition-colors hover:bg-primary/10"
-													onClick={() => void quickDelta(item, "add")}
-													title="+1 Cepat"
-													type="button"
-												>
-													<Plus className="h-4 w-4" />
-												</button>
-												<button
-													className="rounded-lg p-2 text-primary transition-colors hover:bg-primary/10"
-													onClick={async () => {
-														try {
-															setSavingKey(`${item._id}:delta`);
-															await applyStockAction({
-																inventoryId: item._id,
-																action: "add",
-																quantity: 5,
-																notes: "Quick +5 from table",
-															});
-														} catch (error) {
-															const message =
-																error instanceof Error
-																	? error.message
-																	: "Gagal update stok cepat";
-															toast.error(message);
-														} finally {
-															setSavingKey(null);
-														}
-													}}
-													title="+5 Cepat"
-													type="button"
-												>
-													<span className="font-bold text-[10px]">+5</span>
-												</button>
-												<button
-													className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+													className="inline-flex items-center gap-1 rounded-xl border border-border bg-background px-3 py-2 text-[11px] font-semibold text-foreground hover:bg-muted"
 													onClick={() => onDetailItemChange(item)}
-													title="Panel Detail"
 													type="button"
 												>
-													<PanelRight className="h-4 w-4" />
+													<PanelRight className="h-3.5 w-3.5" />
+													Detail
 												</button>
 												<DropdownMenu>
 													<DropdownMenuTrigger asChild>
 														<button
-															className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-															title="Aksi Lainnya"
+															className="rounded-xl border border-border bg-background p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 															type="button"
 														>
 															<MoreHorizontal className="h-4 w-4" />
 														</button>
 													</DropdownMenuTrigger>
-													<DropdownMenuContent align="end" className="w-44">
+													<DropdownMenuContent align="end" className="w-52">
+														<DropdownMenuItem onClick={() => void quickDelta(row, "add", 5)}>
+															<Plus className="mr-2 h-4 w-4" /> Restock +5
+														</DropdownMenuItem>
+														<DropdownMenuItem onClick={() => void quickDelta(row, "usage", 5)}>
+															<Minus className="mr-2 h-4 w-4" /> Pakai -5
+														</DropdownMenuItem>
 														<DropdownMenuItem
 															onClick={() => {
 																onSelectedItemChange(item);
@@ -1858,8 +2014,8 @@ function InventoryTable({
 													</DropdownMenuContent>
 												</DropdownMenu>
 											</div>
-											{savingKey?.startsWith(item._id) && (
-												<p className="mt-1 text-[10px] text-muted-foreground">
+											{savingKey?.startsWith(row.inventoryId) && (
+												<p className="mt-2 text-[10px] text-muted-foreground">
 													Menyimpan...
 												</p>
 											)}
@@ -1867,13 +2023,9 @@ function InventoryTable({
 									</tr>
 								);
 							})}
-
-						{inventory && filteredInventory.length === 0 && (
+						{inventoryMap.size > 0 && filteredRows.length === 0 && (
 							<tr>
-								<td
-									className="p-8 text-center text-muted-foreground"
-									colSpan={5}
-								>
+								<td className="p-8 text-center text-muted-foreground" colSpan={7}>
 									Tidak ada bahan baku ditemukan
 								</td>
 							</tr>
@@ -1884,97 +2036,109 @@ function InventoryTable({
 		</div>
 	);
 }
-
 function InventoryHeader({
 	filterLowStock,
-	mode,
-	onModeChange,
+	onAddRow,
 	onFilterLowStockChange,
 	searchQuery,
 	onSearchQueryChange,
-	onActionTypeChange,
+	viewPreset,
+	onViewPresetChange,
 }: {
 	filterLowStock: boolean;
-	mode: "operations" | "planning";
-	onModeChange: (mode: "operations" | "planning") => void;
+	onAddRow: () => void;
 	onFilterLowStockChange: (val: boolean) => void;
 	searchQuery: string;
 	onSearchQueryChange: (val: string) => void;
-	onActionTypeChange: (
-		type:
-			| "add"
-			| "usage"
-			| "edit"
-			| "adjust"
-			| "delete"
-			| "history"
-			| "batchInfo"
-			| "create"
-			| null
-	) => void;
+	viewPreset: InventoryViewPreset;
+	onViewPresetChange: (preset: InventoryViewPreset) => void;
 }) {
 	return (
-		<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-			<div className="flex items-center gap-2">
-				<h2 className="font-bold text-lg md:text-2xl">Inventaris</h2>
-				<div className="inline-flex rounded-lg border border-border bg-muted/30 p-1">
-					<button
-						className={`rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
-							mode === "operations"
-								? "bg-card text-foreground shadow-sm"
-								: "text-muted-foreground hover:text-foreground"
-						}`}
-						onClick={() => onModeChange("operations")}
-						type="button"
-					>
-						Operasional
-					</button>
-					<button
-						className={`rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
-							mode === "planning"
-								? "bg-card text-foreground shadow-sm"
-								: "text-muted-foreground hover:text-foreground"
-						}`}
-						onClick={() => onModeChange("planning")}
-						type="button"
-					>
-						Planning
-					</button>
+		<div className="rounded-[28px] border border-border bg-card p-4 shadow-sm md:p-5">
+			<div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+				<div className="space-y-2">
+					<p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+						Inventory Workspace
+					</p>
+					<div>
+						<h2 className="font-black text-2xl text-foreground tracking-tight md:text-3xl">
+							Inventaris
+						</h2>
+						<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+							Tabel menjadi pusat kerja: tambah, edit, update stok, dan simpan langsung dari baris.
+						</p>
+					</div>
 				</div>
-			</div>
-			<div className="flex flex-wrap gap-2">
-				<button
-					className={`rounded-lg px-3 py-2 font-medium text-xs transition-colors md:text-sm ${
-						filterLowStock
-							? "border border-destructive/20 bg-destructive/10 text-destructive"
-							: "bg-muted text-muted-foreground hover:bg-muted/80"
-					}`}
-					onClick={() => onFilterLowStockChange(!filterLowStock)}
-					type="button"
-				>
-					Stok Rendah
-				</button>
-				<div className="relative flex-1 sm:flex-none">
-					<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-					<input
-						className="w-full rounded-lg border border-border bg-card py-2 pr-4 pl-10 text-sm outline-none transition-all focus:border-primary sm:w-64"
-						onChange={(e) => onSearchQueryChange(e.target.value)}
-						placeholder="Cari bahan..."
-						value={searchQuery}
-					/>
+				<div className="flex flex-col gap-3 xl:items-end">
+					<div className="flex flex-wrap gap-2">
+						<button
+							className="rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition hover:brightness-110"
+							onClick={onAddRow}
+							type="button"
+						>
+							+ Tambah Baris
+						</button>
+						<button
+							className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+								viewPreset === "all"
+									? "bg-foreground text-background"
+									: "border border-border bg-background text-foreground hover:bg-muted"
+							}`}
+							onClick={() => onViewPresetChange("all")}
+							type="button"
+						>
+							Semua Data
+						</button>
+						<button
+							className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+								viewPreset === "critical"
+									? "bg-rose-600 text-white"
+									: "border border-border bg-background text-foreground hover:bg-muted"
+							}`}
+							onClick={() => onViewPresetChange("critical")}
+							type="button"
+						>
+							Fokus Kritis
+						</button>
+						<button
+							className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+								viewPreset === "planning"
+									? "bg-sky-600 text-white"
+									: "border border-border bg-background text-foreground hover:bg-muted"
+							}`}
+							onClick={() => onViewPresetChange("planning")}
+							type="button"
+						>
+							Planning View
+						</button>
+					</div>
+					<div className="flex flex-wrap gap-2">
+						<button
+							className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors md:text-sm ${
+								filterLowStock
+									? "border border-destructive/20 bg-destructive/10 text-destructive"
+									: "border border-border bg-background text-muted-foreground hover:text-foreground"
+							}`}
+							onClick={() => onFilterLowStockChange(!filterLowStock)}
+							type="button"
+						>
+							Stok Rendah
+						</button>
+						<div className="relative min-w-[260px] flex-1 xl:w-[360px] xl:flex-none">
+							<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+							<input
+								className="w-full rounded-xl border border-border bg-background py-2.5 pr-4 pl-10 text-sm outline-none transition-all focus:border-primary"
+								onChange={(e) => onSearchQueryChange(e.target.value)}
+								placeholder="Cari bahan, satuan, atau item terkait..."
+								value={searchQuery}
+							/>
+						</div>
+					</div>
 				</div>
-				<button
-					className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 font-bold text-primary-foreground text-xs hover:brightness-110 md:gap-2 md:px-4 md:text-sm"
-					onClick={() => onActionTypeChange("create")}
-					type="button"
-				>
-					<Plus className="h-4 w-4" /> Tambah
-				</button>
 			</div>
 		</div>
 	);
 }
-
 function InventoryHistoryModal({
 	item,
 	onClose,
@@ -2186,3 +2350,8 @@ function InventoryBatchModal({
 		</div>
 	);
 }
+
+
+
+
+
