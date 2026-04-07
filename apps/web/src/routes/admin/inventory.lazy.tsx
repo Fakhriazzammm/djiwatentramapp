@@ -1585,20 +1585,19 @@ function InventoryTable({
 	return (
 		<div className="rounded-xl border border-border/80 bg-card shadow-sm">
 			<div>
-				<table className="w-full table-fixed text-left text-[11px] md:text-xs">
+				<table className="w-full table-fixed text-left text-[10px] md:text-[11px]">
 					<colgroup>
-						<col className="w-[29%]" />
+						<col className="w-[34%]" />
+						<col className="w-[14%]" />
 						<col className="w-[12%]" />
-						<col className="w-[11%]" />
-						<col className="w-[17%]" />
-						<col className="w-[15%]" />
-						<col className="w-[11%]" />
-						<col className="w-[5%]" />
+						<col className="w-[20%]" />
+						<col className="w-[10%]" />
+						<col className="w-[10%]" />
 					</colgroup>
 					<thead className="bg-card">
 						<tr className="border-border border-b text-muted-foreground">
 							<th
-								className="cursor-pointer px-3 py-2.5 font-semibold transition-colors hover:text-foreground"
+								className="cursor-pointer px-2.5 py-2 font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("ingredientName")}
 							>
 								<div className="flex items-center gap-1">
@@ -1612,7 +1611,7 @@ function InventoryTable({
 								</div>
 							</th>
 							<th
-								className="cursor-pointer px-3 py-2.5 text-center font-semibold transition-colors hover:text-foreground"
+								className="cursor-pointer px-2 py-2 text-center font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("currentStock")}
 							>
 								<div className="flex items-center justify-center gap-1">
@@ -1626,7 +1625,7 @@ function InventoryTable({
 								</div>
 							</th>
 							<th
-								className="cursor-pointer px-3 py-2.5 text-center font-semibold transition-colors hover:text-foreground"
+								className="cursor-pointer px-2 py-2 text-center font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("lowStockThreshold")}
 							>
 								<div className="flex items-center justify-center gap-1">
@@ -1639,9 +1638,9 @@ function InventoryTable({
 										))}
 								</div>
 							</th>
-							<th className="px-3 py-2.5 font-semibold">Status</th>
+							<th className="px-2 py-2 font-semibold">Status</th>
 							<th
-								className="cursor-pointer px-3 py-2.5 font-semibold transition-colors hover:text-foreground"
+								className="hidden cursor-pointer px-2 py-2 font-semibold transition-colors hover:text-foreground lg:table-cell"
 								onClick={() => onSort("avgDailyUsage")}
 							>
 								<div className="flex items-center gap-1">
@@ -1654,16 +1653,16 @@ function InventoryTable({
 										))}
 								</div>
 							</th>
-							<th className="px-3 py-2.5 font-semibold">Terkait</th>
-							<th className="px-3 py-2.5 text-right font-semibold">Aksi</th>
+							<th className="hidden px-2 py-2 font-semibold lg:table-cell">Terkait</th>
+							<th className="px-2 py-2 text-right font-semibold">Aksi</th>
 						</tr>
 					</thead>
 					<tbody className="divide-y divide-border">
 						<tr className="bg-primary/[0.04]">
-							<td className="px-3 py-2.5">
+							<td className="px-2.5 py-2">
 								<input
 									ref={quickAddNameRef}
-									className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-semibold outline-none focus:border-primary"
+									className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({
 											...prev,
@@ -1679,9 +1678,9 @@ function InventoryTable({
 									value={quickAdd.ingredientName}
 								/>
 							</td>
-							<td className="px-3 py-2.5 text-center">
+							<td className="px-2 py-2 text-center">
 								<input
-									className="mx-auto w-20 rounded-lg border border-border bg-background px-2 py-1.5 text-center font-semibold text-xs outline-none focus:border-primary"
+									className="mx-auto w-16 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[11px] outline-none focus:border-primary"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({ ...prev, quantity: e.target.value }))
 									}
@@ -1694,9 +1693,9 @@ function InventoryTable({
 									value={quickAdd.quantity}
 								/>
 							</td>
-							<td className="px-3 py-2.5 text-center">
+							<td className="px-2 py-2 text-center">
 								<input
-									className="mx-auto w-20 rounded-lg border border-border bg-background px-2 py-1.5 text-center font-semibold text-xs outline-none focus:border-primary"
+									className="mx-auto w-16 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[11px] outline-none focus:border-primary"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({
 											...prev,
@@ -1712,16 +1711,16 @@ function InventoryTable({
 									value={quickAdd.lowStockThreshold}
 								/>
 							</td>
-							<td className="px-3 py-2.5">
-								<div className="rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[11px] text-muted-foreground">
-									Item baru akan langsung tersimpan.
+							<td className="px-2 py-2">
+								<div className="rounded-lg border border-dashed border-border px-2 py-1 text-[10px] text-muted-foreground">
+									Autosave
 								</div>
 							</td>
-							<td className="px-3 py-2.5">
-								<div className="flex flex-col gap-1.5 text-[11px] text-muted-foreground">
-									<span>Lengkapi stok awal dan satuan.</span>
+							<td className="hidden px-2 py-2 lg:table-cell">
+								<div className="flex flex-col gap-1 text-[10px] text-muted-foreground">
+									<span>Unit</span>
 									<select
-										className="w-fit rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
+										className="w-fit rounded-lg border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold outline-none focus:border-primary"
 										onChange={(e) =>
 											setQuickAdd((prev) => ({ ...prev, unit: e.target.value }))
 										}
@@ -1733,14 +1732,14 @@ function InventoryTable({
 									</select>
 								</div>
 							</td>
-							<td className="px-3 py-2.5">
-								<div className="text-[11px] text-muted-foreground">
-									Input cepat.
+							<td className="hidden px-2 py-2 lg:table-cell">
+								<div className="text-[10px] text-muted-foreground">
+									Cepat
 								</div>
 							</td>
-							<td className="px-3 py-2.5 text-right">
+							<td className="px-2 py-2 text-right">
 								<button
-									className="rounded-lg bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground hover:brightness-110"
+									className="rounded-lg bg-primary px-2.5 py-1 text-[10px] font-bold text-primary-foreground hover:brightness-110"
 									disabled={savingKey === "quick-add"}
 									onClick={() => void quickCreate()}
 									type="button"
@@ -1801,10 +1800,10 @@ function InventoryTable({
 										}`}
 										key={row.inventoryId}
 									>
-										<td className="px-3 py-2.5 align-top">
+										<td className="px-2.5 py-2 align-top">
 											<div className="space-y-2">
 												<textarea
-													className="min-h-[38px] w-full resize-none rounded-lg border border-transparent bg-transparent px-2 py-1 font-bold text-[13px] leading-5 outline-none focus:border-border focus:bg-background"
+													className="min-h-[32px] w-full resize-none rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 font-bold text-[12px] leading-4 outline-none focus:border-border focus:bg-background"
 													onBlur={() => void saveMeta(row)}
 													onChange={(e) =>
 														setInlineField(row, "ingredientName", e.target.value)
@@ -1816,7 +1815,7 @@ function InventoryTable({
 															(e.target as HTMLTextAreaElement).blur();
 														}
 													}}
-													rows={2}
+													rows={1}
 													value={inline.ingredientName}
 												/>
 												<div className="flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
@@ -1831,10 +1830,10 @@ function InventoryTable({
 												</div>
 											</div>
 										</td>
-										<td className="px-3 py-2.5 align-top text-center">
+										<td className="px-2 py-2 align-top text-center">
 											<div className="flex flex-col items-center gap-2">
 												<input
-													className="w-20 rounded-lg border border-transparent bg-transparent px-2 py-1 text-center font-mono text-base font-bold outline-none focus:border-border focus:bg-background"
+													className="w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono text-sm font-bold outline-none focus:border-border focus:bg-background"
 													onBlur={() => void saveQuantity(row)}
 													onChange={(e) =>
 														setInlineField(row, "quantity", e.target.value)
@@ -1871,10 +1870,10 @@ function InventoryTable({
 												)}
 											</div>
 										</td>
-										<td className="px-3 py-2.5 align-top text-center">
+										<td className="px-2 py-2 align-top text-center">
 											<div className="space-y-2">
 												<input
-													className="mx-auto w-16 rounded-lg border border-transparent bg-transparent px-2 py-1 text-center font-semibold text-xs outline-none focus:border-border focus:bg-background"
+													className="mx-auto w-12 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[11px] outline-none focus:border-border focus:bg-background"
 													onBlur={() => void saveMeta(row)}
 													onChange={(e) =>
 														setInlineField(row, "lowStockThreshold", e.target.value)
@@ -1907,7 +1906,7 @@ function InventoryTable({
 												</div>
 											)}
 										</td>
-										<td className="px-3 py-2.5 align-top">
+										<td className="px-2 py-2 align-top">
 											<div className="space-y-2">
 												<span
 													className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusMeta.tone}`}
@@ -1921,7 +1920,7 @@ function InventoryTable({
 													<p>
 														ROP {row.reorderPoint} {row.unit}
 													</p>
-													<p>
+													<p className="hidden sm:block">
 														{row.daysUntilStockout == null
 															? "Belum ada proyeksi habis"
 															: `${row.daysUntilStockout} hari menuju habis`}
@@ -1929,7 +1928,7 @@ function InventoryTable({
 												</div>
 											</div>
 										</td>
-										<td className="px-3 py-2.5 align-top">
+										<td className="hidden px-2 py-2 align-top lg:table-cell">
 											<div className="space-y-1.5 text-[10px]">
 												<div className="font-semibold text-foreground">
 													{row.avgDailyUsage.toFixed(2)} / hari
@@ -1946,7 +1945,7 @@ function InventoryTable({
 												)}
 											</div>
 										</td>
-										<td className="px-3 py-2.5 align-top">
+										<td className="hidden px-2 py-2 align-top lg:table-cell">
 											<div className="space-y-1.5 text-[10px]">
 												<div className="flex flex-wrap gap-1">
 													<span className="rounded-full bg-muted px-1.5 py-0.5 font-semibold text-foreground">
@@ -1971,10 +1970,10 @@ function InventoryTable({
 												)}
 											</div>
 										</td>
-										<td className="px-3 py-2.5 align-top text-right">
+										<td className="px-2 py-2 align-top text-right">
 											<div className="flex items-start justify-end gap-1.5">
 												<button
-													className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2 py-1.5 text-[10px] font-semibold text-foreground hover:bg-muted"
+													className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-1.5 py-1 text-[10px] font-semibold text-foreground hover:bg-muted"
 													onClick={() => onDetailItemChange(item)}
 													type="button"
 												>
@@ -1984,7 +1983,7 @@ function InventoryTable({
 												<DropdownMenu>
 													<DropdownMenuTrigger asChild>
 														<button
-															className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+															className="rounded-lg border border-border bg-background p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 															type="button"
 														>
 															<MoreHorizontal className="h-4 w-4" />
