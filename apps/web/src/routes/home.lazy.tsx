@@ -3,6 +3,7 @@ import { api } from "@yumipos/backend/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import {
 	Beer,
+	BookOpen,
 	Bot,
 	Calendar,
 	ChefHat,
@@ -490,6 +491,28 @@ function HomePage() {
 							</p>
 							<p className="mt-1 text-[11px] text-muted-foreground">
 								Asisten operasional cepat
+							</p>
+							<div className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">
+								Buka
+								<ChevronsRight className="h-3.5 w-3.5" />
+							</div>
+						</Link>
+						<Link
+							className="group relative overflow-hidden rounded-2xl border border-border/70 bg-background p-3.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
+							state={(prev) => ({
+								...prev,
+								fromHomeEntry: true,
+							})}
+							to="/admin/recipe/view"
+						>
+							<div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-400 text-white shadow-sm">
+								<BookOpen className="h-5 w-5" />
+							</div>
+							<p className="font-bold text-[13px] leading-tight text-foreground">
+								Buku Resep
+							</p>
+							<p className="mt-1 text-[11px] text-muted-foreground">
+								Baca resep barista & kitchen
 							</p>
 							<div className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">
 								Buka
