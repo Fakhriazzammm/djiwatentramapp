@@ -22,7 +22,7 @@ import {
 	ShieldAlert,
 	Trash2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
 	DropdownMenu,
@@ -90,6 +90,12 @@ function InventoryPage() {
 			/* no-op */
 		},
 	});
+
+	useEffect(() => {
+		if (actionType !== null) {
+			setDetailItem(null);
+		}
+	}, [actionType]);
 
 	const filteredInventory = useMemo(() => {
 		if (!inventory) {
@@ -321,6 +327,7 @@ function InventoryPage() {
 						if (nextAction === "adjust") {
 							setAmount(String(detailItem.quantity));
 						}
+						setDetailItem(null);
 						setActionType(nextAction);
 					}}
 				/>
