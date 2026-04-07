@@ -777,6 +777,9 @@ export const createTransaction = mutation({
 				rawText: v.optional(v.string()),
 				sourceRef: v.optional(v.string()),
 				sourceLabel: v.optional(v.string()),
+				syncSource: v.optional(v.string()),
+				syncOutcome: v.optional(v.string()),
+				syncWarnings: v.optional(v.array(v.string())),
 				scanItems: v.optional(
 					v.array(
 						v.object({
@@ -825,6 +828,9 @@ export const upsertReceiptTransaction = mutation({
 				rawText: v.optional(v.string()),
 				sourceRef: v.optional(v.string()),
 				sourceLabel: v.optional(v.string()),
+				syncSource: v.optional(v.string()),
+				syncOutcome: v.optional(v.string()),
+				syncWarnings: v.optional(v.array(v.string())),
 				scanItems: v.optional(
 					v.array(
 						v.object({
@@ -1161,6 +1167,7 @@ export const updateTransaction = mutation({
 		paymentMethod: v.optional(v.string()),
 		status: v.optional(v.union(v.literal("completed"), v.literal("pending"), v.literal("cancelled"))),
 		attachmentUrl: v.optional(v.string()),
+		sourceFingerprint: v.optional(v.string()),
 		isRecurring: v.optional(v.boolean()),
 		recurringInterval: v.optional(v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"))),
 		tags: v.optional(v.array(v.string())),
@@ -1173,6 +1180,9 @@ export const updateTransaction = mutation({
 				rawText: v.optional(v.string()),
 				sourceRef: v.optional(v.string()),
 				sourceLabel: v.optional(v.string()),
+				syncSource: v.optional(v.string()),
+				syncOutcome: v.optional(v.string()),
+				syncWarnings: v.optional(v.array(v.string())),
 				scanItems: v.optional(
 					v.array(
 						v.object({

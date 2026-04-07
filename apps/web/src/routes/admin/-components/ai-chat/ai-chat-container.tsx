@@ -58,7 +58,11 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 		variant: "expense" | "income" | "stock" | "order";
 		scanData?: ScanResultData;
 	} | null>(null);
-	const [splitModal, setSplitModal] = useState<{ params: ScanEditParams; btnKey: string } | null>(null);
+	const [splitModal, setSplitModal] = useState<{
+		params: ScanEditParams;
+		btnKey: string;
+		scanData?: ScanResultData;
+	} | null>(null);
 	const [showScanHistory, setShowScanHistory] = useState(false);
 	const { history: scanHistory, addEntry: addScanHistory, markSaved: markScanSaved, removeEntry: removeScanHistory, clearAll: clearScanHistory } = useScanHistory();
 
@@ -70,11 +74,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	const yumiChat = useAction(api.ai.yumiChat);
 	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
 	const generateBusinessBriefingAction = useAction(api.ai.generateBusinessBriefing);
-	const recordScannedExpenseToInventoryAction = useAction(
-		api.ai.recordScannedExpenseToInventory
-	);
-	
-	const createTransactionMutation = useMutation(api.finance.createTransaction);
+	const recordExpenseMutation = useMutation((api as any).expenseIntake.recordExpense);
 	const deleteTransactionMutation = useMutation(api.finance.deleteTransaction);
 	const createSessionMutation = useMutation(api.aiMemory.createChatSession);
 	const deleteSessionMutation = useMutation(api.aiMemory.deleteChatSession);
@@ -99,34 +99,75 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	const [actionButtonDone, setActionButtonDone] = useState<Set<string>>(new Set());
 	const [actionButtonLoading, setActionButtonLoading] = useState<Set<string>>(new Set());
 
-	const createAITrackedTransaction = useCallback(
-		(payload: Record<string, unknown>, sourceLabel: string, inputMode: string, rawText?: string) => {
-			const {
-				scanItems,
-				...transactionPayload
-			} = payload as Record<string, unknown> & {
-				scanItems?: Array<{
-					name: string;
-					quantity: number;
-					price?: number;
-					total?: number;
-					unit?: string;
-				}>;
-			};
+	const isInventoryPurchaseCategory = useCallback((category?: string) => {
+		const normalized = (category || "").trim().toLowerCase().replace(/\s+/g, "_");
+		return normalized === "belanja_stok" || normalized === "pembelian_stok";
+	}, []);
 
-			return createTransactionMutation({
-				...(transactionPayload as any),
+	const createAITrackedTransaction = useCallback(
+		(
+			payload: Record<string, unknown>,
+			sourceLabel: string,
+			inputMode: string,
+			rawText?: string,
+			scanData?: ScanResultData,
+		) => {
+			const transactionPayload = payload as Record<string, unknown> & {
+				type: "income" | "expense";
+				amount: number;
+				category: string;
+				merchant?: string;
+				description?: string;
+				date: number;
+				paymentMethod?: string;
+				status?: "completed" | "pending" | "cancelled";
+			};
+			const scanItems =
+				scanData?.items?.map((item) => ({
+					name: item.name,
+					quantity: item.qty,
+					price: item.price || undefined,
+					total: item.subtotal || undefined,
+					unit: item.unit,
+				})) || undefined;
+
+			return recordExpenseMutation({
+				source: scanData ? "ai_receipt_scan" : "ai_tool",
+				rawText:
+					rawText ||
+					scanData?.rawText ||
+					(typeof payload.description === "string" ? payload.description : undefined),
+				syncMode: "auto",
+				transaction: {
+					type: transactionPayload.type,
+					amount: transactionPayload.amount,
+					category: transactionPayload.category,
+					merchant: transactionPayload.merchant,
+					description: transactionPayload.description,
+					date: transactionPayload.date,
+					paymentMethod:
+						typeof transactionPayload.paymentMethod === "string"
+							? transactionPayload.paymentMethod
+							: "cash",
+					status:
+						transactionPayload.status === "pending" ||
+						transactionPayload.status === "cancelled"
+							? transactionPayload.status
+							: "completed",
+				},
+				items:
+					transactionPayload.type === "expense" &&
+					scanItems &&
+					scanItems.length > 0
+						? scanItems
+						: undefined,
 				metadata: {
-					source: "ai_tool",
 					inputMode,
-					importedAt: Date.now(),
-					rawText: rawText || (typeof payload.description === "string" ? payload.description : undefined),
 					sourceLabel,
-					scanItems,
 				},
 			});
 		},
-		[createTransactionMutation]
+		[recordExpenseMutation]
 	);
 
 	const chatSessions = useQuery(api.aiMemory.getChatSessions, {});
@@ -505,36 +546,47 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 		const { btnKey } = editModal;
 		setActionButtonLoading(prev => { const s = new Set<string>(prev); s.add(btnKey); return s; });
 		try {
-			if (editModal.variant === "stock" && editModal.scanData?.items?.length) {
-				await recordScannedExpenseToInventoryAction({
-					scanData: editModal.scanData,
-					override: params,
-				});
-			} else {
-				await createAITrackedTransaction(params as any, "AI Scan", "scan_action_button", params.description);
-			}
+			await createAITrackedTransaction(
+				params as any,
+				"AI Scan",
+				editModal.variant === "stock" ? "scan_action_stock" : "scan_action_button",
+				params.description,
+				editModal.scanData,
+			);
 			toast.success("Berhasil disimpan!");
 			setActionButtonDone(prev => { const s = new Set<string>(prev); s.add(btnKey); return s; });
 			markScanSaved(btnKey);
 			setEditModal(null);
 		} catch (error) { toast.error("Gagal menyimpan");
 		} finally { setActionButtonLoading(prev => { const s = new Set<string>(prev); s.delete(btnKey); return s; }); }
-	}, [editModal, createAITrackedTransaction, markScanSaved, recordScannedExpenseToInventoryAction]);
+	}, [editModal, createAITrackedTransaction, markScanSaved]);
 
 	const handleSaveFromSplitModal = useCallback(async (splits: ScanEditParams[]) => {
 		if (!splitModal) return;
 		try {
+			const stockLikeSplits = splits.filter((split) =>
+				split.type === "expense" && isInventoryPurchaseCategory(split.category),
+			);
 			await Promise.all(
-				splits.map((p) =>
-					createAITrackedTransaction(p as any, "AI Scan", "scan_split_action", p.description)
-				)
+				splits.map((p) => {
+					const shouldCarryItems =
+						stockLikeSplits.length === 1 &&
+						stockLikeSplits[0] === p;
+					return createAITrackedTransaction(
+						p as any,
+						"AI Scan",
+						"scan_split_action",
+						p.description,
+						shouldCarryItems ? splitModal.scanData : undefined,
+					);
+				})
 			);
 			toast.success("Semua split berhasil disimpan!");
 			setActionButtonDone(prev => { const s = new Set<string>(prev); s.add(splitModal.btnKey); return s; });
 			markScanSaved(splitModal.btnKey);
 			setSplitModal(null); setEditModal(null);
 		} catch (error) { toast.error("Gagal menyimpan split"); }
-	}, [splitModal, createAITrackedTransaction, markScanSaved]);
+	}, [splitModal, createAITrackedTransaction, isInventoryPurchaseCategory, markScanSaved]);
 
 	const handleExecuteSuggestion = async (s: Suggestion) => {
 		setIsLoading(true);
@@ -893,7 +945,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			</main>
 
 			<ImageScanner isOpen={isImageScannerOpen} onClose={() => setIsImageScannerOpen(false)} onDataGenerated={(type, data) => setMessages(prev => [...prev, { role: "assistant", content: `Berhasil membuat ${type} dengan data terstruktur.`, _msgId: mkMsgId() }])} />
-			{editModal && <ScanEditModal params={editModal.params} allowSplit={editModal.variant !== "stock"} onSave={handleSaveFromEditModal} onSplit={p => splitModal === null && setSplitModal({ params: p, btnKey: editModal.btnKey })} onClose={() => setEditModal(null)} />}
+			{editModal && <ScanEditModal params={editModal.params} allowSplit={editModal.variant !== "stock"} onSave={handleSaveFromEditModal} onSplit={p => splitModal === null && setSplitModal({ params: p, btnKey: editModal.btnKey, scanData: editModal.scanData })} onClose={() => setEditModal(null)} />}
 			{splitModal && <ScanSplitModal totalAmount={splitModal.params.amount} transactionType={splitModal.params.type} baseParams={splitModal.params} onSave={handleSaveFromSplitModal} onBack={() => setSplitModal(null)} onClose={() => { setSplitModal(null); setEditModal(null); }} />}
 			{showScanHistory && <ScanHistoryPanel history={scanHistory} onRemove={removeScanHistory} onClearAll={clearScanHistory} onClose={() => setShowScanHistory(false)} />}
 		</div>

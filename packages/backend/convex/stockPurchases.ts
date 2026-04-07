@@ -606,6 +606,8 @@ export const recordStockPurchase = mutation({
 				rawText: args.purchaseData.rawText,
 				sourceRef: sourceFingerprint,
 				sourceLabel: args.purchaseData.sourceLabel || "AI Inventory Sync",
+				syncSource: "inventory_auto",
+				syncOutcome: "finance_plus_inventory",
 				scanItems: normalizedItems.map((item) => ({
 					name: item.name,
 					quantity: item.qty,

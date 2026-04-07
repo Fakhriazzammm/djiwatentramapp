@@ -108,6 +108,9 @@ export default defineSchema({
 				rawText: v.optional(v.string()),
 				sourceRef: v.optional(v.string()),
 				sourceLabel: v.optional(v.string()),
+				syncSource: v.optional(v.string()),
+				syncOutcome: v.optional(v.string()),
+				syncWarnings: v.optional(v.array(v.string())),
 				scanItems: v.optional(
 					v.array(
 						v.object({
