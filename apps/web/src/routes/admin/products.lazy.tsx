@@ -1,4 +1,4 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+﻿import { createLazyFileRoute } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useAction, useMutation, useQuery } from "convex/react";
@@ -698,7 +698,7 @@ function ProductsTab({
 				variations: [],
 			});
 			toast.success("Produk berhasil ditambahkan");
-			toast.info("Kelola recipe produk dari halaman /recipe bila diperlukan");
+			toast.info("Kelola recipe produk dari halaman /admin/recipe bila diperlukan");
 			resetInlineCreateRow();
 		} catch (error) {
 			console.error(error);
@@ -1466,7 +1466,7 @@ function ProductsTab({
 														<option value={parent._id}>{parent.name} (Utama)</option>
 														{categories?.filter(c => c.parentId === parent._id).map((sub: any) => (
 															<option key={sub._id} value={sub._id}>
-																↳ {sub.name}
+																â†³ {sub.name}
 															</option>
 														))}
 													</optgroup>
@@ -1760,9 +1760,9 @@ function ProductsTab({
 											</div>
 											<a
 												className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm transition hover:brightness-110"
-												href="/recipe"
+												href="/admin/recipe"
 											>
-												Buka /recipe
+												Buka /admin/recipe
 											</a>
 										</div>
 									</div>
@@ -3181,3 +3181,4 @@ function MixedRecipesTab() {
 		</div>
 	);
 }
+

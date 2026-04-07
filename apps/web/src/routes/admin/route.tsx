@@ -57,7 +57,8 @@ export const Route = createFileRoute("/admin")({
 const PAGE_TITLES: Record<string, string> = {
 	"/admin": "Dasbor",
 	"/admin/products": "Produk",
-	"/recipe": "Resep",
+	"/admin/recipe": "Resep",
+	"/admin/recipe/view": "Buku Resep",
 	"/admin/inventory": "Inventaris",
 	"/admin/finance": "Keuangan",
 	"/admin/finance/reports": "Laporan Keuangan",
@@ -93,7 +94,7 @@ const BOTTOM_NAV_ITEMS = [
 // Pages that belong to "Lainnya" menu
 const MORE_MENU_PATHS = [
 	"/admin/products",
-	"/recipe",
+	"/admin/recipe",
 	"/admin/inventory",
 	"/admin/discounts",
 	"/admin/hpp-calculator",
@@ -111,7 +112,7 @@ const QUICK_MENU_SECTIONS = [
 		label: "Manajemen",
 		items: [
 			{ to: "/admin/products", icon: Package, label: "Produk" },
-			{ to: "/recipe", icon: BookOpen, label: "Resep" },
+			{ to: "/admin/recipe", icon: BookOpen, label: "Resep" },
 			{ to: "/admin/inventory", icon: Archive, label: "Inventaris" },
 			{ to: "/admin/booking", icon: Calendar, label: "Booking" },
 		],
@@ -177,6 +178,10 @@ function AdminLayout() {
 	const location = useLocation();
 	// Use non-strict search to avoid type errors during route tree generation
 	const search = useSearch({ strict: false }) as any;
+	const isFromHomeEntry = Boolean(
+		(location.state as { fromHomeEntry?: boolean } | undefined)?.fromHomeEntry,
+	);
+	const [isHomeEntryMode, setIsHomeEntryMode] = useState(isFromHomeEntry);
 	
 	const isAIChat = location.pathname === "/admin/ai-chat";
 	const isOperational = OPERATIONAL_PATHS.some(p => location.pathname.startsWith(p));
@@ -206,6 +211,12 @@ function AdminLayout() {
 	useEffect(() => {
 		localStorage.setItem("admin-finance-open", String(isFinanceOpen));
 	}, [isFinanceOpen]);
+
+	useEffect(() => {
+		if (isFromHomeEntry) {
+			setIsHomeEntryMode(true);
+		}
+	}, [isFromHomeEntry]);
 
 	// Close quick menu on route change
 	useEffect(() => {
@@ -297,7 +308,7 @@ function AdminLayout() {
 						icon={<BookOpen />}
 						isCollapsed={isCollapsed}
 						label="Resep"
-						to="/recipe"
+						to="/admin/recipe"
 					/>
 					<DesktopNavLink
 						icon={<Archive />}
@@ -707,8 +718,27 @@ function AdminLayout() {
 				)}
 			</AnimatePresence>
 
+			{/* === MOBILE HOME ENTRY NAVIGATION === */}
+			{isHomeEntryMode && (
+				<nav className="safe-area-bottom fixed inset-x-0 bottom-0 z-40 border-border border-t bg-background/95 backdrop-blur-md md:hidden">
+					<div className="flex items-stretch px-2">
+						<Link
+							className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
+							to="/home"
+						>
+							<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+								<ArrowLeft className="h-4 w-4" />
+							</div>
+							<span className="font-medium text-[9px] leading-tight text-primary">
+								Kembali ke Home
+							</span>
+						</Link>
+					</div>
+				</nav>
+			)}
+
 			{/* === MOBILE BOTTOM NAVIGATION === */}
-			{!isOperational && (
+			{!isHomeEntryMode && !isOperational && (
 				<nav className="safe-area-bottom fixed inset-x-0 bottom-0 z-30 border-border border-t bg-background/95 backdrop-blur-md md:hidden">
 				<div className="flex items-stretch px-2">
 					{BOTTOM_NAV_ITEMS.map((item, index) => {
@@ -824,7 +854,7 @@ function AdminLayout() {
 			)}
 
 			{/* === MOBILE OPERATIONAL BOTTOM NAVIGATION === */}
-			{isOperational && (
+			{!isHomeEntryMode && isOperational && (
 				<nav className="safe-area-bottom fixed inset-x-0 bottom-0 z-40 border-border border-t bg-background/95 backdrop-blur-md md:hidden">
 					<div className="flex items-stretch px-2">
 						<Link

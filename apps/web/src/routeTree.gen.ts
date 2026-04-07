@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RecipeRouteImport } from './routes/recipe'
 import { Route as MenuRouteImport } from './routes/menu'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -18,9 +17,9 @@ import { Route as BrandSlugRouteImport } from './routes/$brandSlug'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as RecipeViewRouteImport } from './routes/recipe.view'
 import { Route as HomeSectionRouteImport } from './routes/home.$section'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
+import { Route as AdminRecipeRouteImport } from './routes/admin/recipe'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
@@ -35,15 +34,11 @@ import { Route as AdminBarRouteImport } from './routes/admin/bar'
 import { Route as AdminAiChatRouteImport } from './routes/admin/ai-chat'
 import { Route as AdminFinanceRouteRouteImport } from './routes/admin/finance/route'
 import { Route as AdminFinanceIndexRouteImport } from './routes/admin/finance/index'
+import { Route as AdminRecipeViewRouteImport } from './routes/admin/recipe.view'
 import { Route as AdminFinanceShiftReportsRouteImport } from './routes/admin/finance/shift-reports'
 import { Route as AdminFinanceTransactionsRouteRouteImport } from './routes/admin/finance/transactions/route'
 import { Route as AdminFinanceReportsRouteRouteImport } from './routes/admin/finance/reports/route'
 
-const RecipeRoute = RecipeRouteImport.update({
-  id: '/recipe',
-  path: '/recipe',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/recipe.lazy').then((d) => d.Route))
 const MenuRoute = MenuRouteImport.update({
   id: '/menu',
   path: '/menu',
@@ -84,11 +79,6 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() => import('./routes/admin/index.lazy').then((d) => d.Route))
-const RecipeViewRoute = RecipeViewRouteImport.update({
-  id: '/view',
-  path: '/view',
-  getParentRoute: () => RecipeRoute,
-} as any).lazy(() => import('./routes/recipe.view.lazy').then((d) => d.Route))
 const HomeSectionRoute = HomeSectionRouteImport.update({
   id: '/$section',
   path: '/$section',
@@ -101,6 +91,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
 } as any).lazy(() =>
   import('./routes/admin/settings.lazy').then((d) => d.Route),
 )
+const AdminRecipeRoute = AdminRecipeRouteImport.update({
+  id: '/recipe',
+  path: '/recipe',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() => import('./routes/admin/recipe.lazy').then((d) => d.Route))
 const AdminProductsRoute = AdminProductsRouteImport.update({
   id: '/products',
   path: '/products',
@@ -183,6 +178,13 @@ const AdminFinanceIndexRoute = AdminFinanceIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminFinanceRouteRoute,
 } as any)
+const AdminRecipeViewRoute = AdminRecipeViewRouteImport.update({
+  id: '/view',
+  path: '/view',
+  getParentRoute: () => AdminRecipeRoute,
+} as any).lazy(() =>
+  import('./routes/admin/recipe.view.lazy').then((d) => d.Route),
+)
 const AdminFinanceShiftReportsRoute =
   AdminFinanceShiftReportsRouteImport.update({
     id: '/shift-reports',
@@ -210,7 +212,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRouteWithChildren
   '/menu': typeof MenuRoute
-  '/recipe': typeof RecipeRouteWithChildren
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
@@ -224,13 +225,14 @@ export interface FileRoutesByFullPath {
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
+  '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/home/$section': typeof HomeSectionRoute
-  '/recipe/view': typeof RecipeViewRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
+  '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
 }
 export interface FileRoutesByTo {
@@ -240,7 +242,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRouteWithChildren
   '/menu': typeof MenuRoute
-  '/recipe': typeof RecipeRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
   '/admin/booking': typeof AdminBookingRoute
@@ -253,13 +254,14 @@ export interface FileRoutesByTo {
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
+  '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/home/$section': typeof HomeSectionRoute
-  '/recipe/view': typeof RecipeViewRoute
   '/admin': typeof AdminIndexRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
+  '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/admin/finance': typeof AdminFinanceIndexRoute
 }
 export interface FileRoutesById {
@@ -271,7 +273,6 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRouteWithChildren
   '/menu': typeof MenuRoute
-  '/recipe': typeof RecipeRouteWithChildren
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
@@ -285,13 +286,14 @@ export interface FileRoutesById {
   '/admin/login': typeof AdminLoginRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
+  '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/home/$section': typeof HomeSectionRoute
-  '/recipe/view': typeof RecipeViewRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
+  '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
 }
 export interface FileRouteTypes {
@@ -304,7 +306,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/home'
     | '/menu'
-    | '/recipe'
     | '/admin/finance'
     | '/admin/ai-chat'
     | '/admin/bar'
@@ -318,13 +319,14 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/orders'
     | '/admin/products'
+    | '/admin/recipe'
     | '/admin/settings'
     | '/home/$section'
-    | '/recipe/view'
     | '/admin/'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
+    | '/admin/recipe/view'
     | '/admin/finance/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -334,7 +336,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/home'
     | '/menu'
-    | '/recipe'
     | '/admin/ai-chat'
     | '/admin/bar'
     | '/admin/booking'
@@ -347,13 +348,14 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/orders'
     | '/admin/products'
+    | '/admin/recipe'
     | '/admin/settings'
     | '/home/$section'
-    | '/recipe/view'
     | '/admin'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
+    | '/admin/recipe/view'
     | '/admin/finance'
   id:
     | '__root__'
@@ -364,7 +366,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/home'
     | '/menu'
-    | '/recipe'
     | '/admin/finance'
     | '/admin/ai-chat'
     | '/admin/bar'
@@ -378,13 +379,14 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/orders'
     | '/admin/products'
+    | '/admin/recipe'
     | '/admin/settings'
     | '/home/$section'
-    | '/recipe/view'
     | '/admin/'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
+    | '/admin/recipe/view'
     | '/admin/finance/'
   fileRoutesById: FileRoutesById
 }
@@ -396,18 +398,10 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   HomeRoute: typeof HomeRouteWithChildren
   MenuRoute: typeof MenuRoute
-  RecipeRoute: typeof RecipeRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/recipe': {
-      id: '/recipe'
-      path: '/recipe'
-      fullPath: '/recipe'
-      preLoaderRoute: typeof RecipeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/menu': {
       id: '/menu'
       path: '/menu'
@@ -464,13 +458,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/recipe/view': {
-      id: '/recipe/view'
-      path: '/view'
-      fullPath: '/recipe/view'
-      preLoaderRoute: typeof RecipeViewRouteImport
-      parentRoute: typeof RecipeRoute
-    }
     '/home/$section': {
       id: '/home/$section'
       path: '/$section'
@@ -483,6 +470,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/admin/settings'
       preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/recipe': {
+      id: '/admin/recipe'
+      path: '/recipe'
+      fullPath: '/admin/recipe'
+      preLoaderRoute: typeof AdminRecipeRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/products': {
@@ -583,6 +577,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFinanceIndexRouteImport
       parentRoute: typeof AdminFinanceRouteRoute
     }
+    '/admin/recipe/view': {
+      id: '/admin/recipe/view'
+      path: '/view'
+      fullPath: '/admin/recipe/view'
+      preLoaderRoute: typeof AdminRecipeViewRouteImport
+      parentRoute: typeof AdminRecipeRoute
+    }
     '/admin/finance/shift-reports': {
       id: '/admin/finance/shift-reports'
       path: '/shift-reports'
@@ -624,6 +625,18 @@ const AdminFinanceRouteRouteChildren: AdminFinanceRouteRouteChildren = {
 const AdminFinanceRouteRouteWithChildren =
   AdminFinanceRouteRoute._addFileChildren(AdminFinanceRouteRouteChildren)
 
+interface AdminRecipeRouteChildren {
+  AdminRecipeViewRoute: typeof AdminRecipeViewRoute
+}
+
+const AdminRecipeRouteChildren: AdminRecipeRouteChildren = {
+  AdminRecipeViewRoute: AdminRecipeViewRoute,
+}
+
+const AdminRecipeRouteWithChildren = AdminRecipeRoute._addFileChildren(
+  AdminRecipeRouteChildren,
+)
+
 interface AdminRouteRouteChildren {
   AdminFinanceRouteRoute: typeof AdminFinanceRouteRouteWithChildren
   AdminAiChatRoute: typeof AdminAiChatRoute
@@ -638,6 +651,7 @@ interface AdminRouteRouteChildren {
   AdminLoginRoute: typeof AdminLoginRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
+  AdminRecipeRoute: typeof AdminRecipeRouteWithChildren
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -656,6 +670,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminLoginRoute: AdminLoginRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
+  AdminRecipeRoute: AdminRecipeRouteWithChildren,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
@@ -674,17 +689,6 @@ const HomeRouteChildren: HomeRouteChildren = {
 
 const HomeRouteWithChildren = HomeRoute._addFileChildren(HomeRouteChildren)
 
-interface RecipeRouteChildren {
-  RecipeViewRoute: typeof RecipeViewRoute
-}
-
-const RecipeRouteChildren: RecipeRouteChildren = {
-  RecipeViewRoute: RecipeViewRoute,
-}
-
-const RecipeRouteWithChildren =
-  RecipeRoute._addFileChildren(RecipeRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
@@ -693,7 +697,6 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   HomeRoute: HomeRouteWithChildren,
   MenuRoute: MenuRoute,
-  RecipeRoute: RecipeRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

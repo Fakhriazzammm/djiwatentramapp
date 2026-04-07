@@ -24,7 +24,6 @@ import { toast } from "sonner";
 import { formatCurrencyIDR } from "@/lib/export-utils";
 
 const HOME_PIN_SESSION_KEY = "home_access_unlocked_v1";
-
 type RoleMenuItem = {
 	to: string;
 	label: string;
@@ -177,6 +176,15 @@ function formatTime(timestamp?: number) {
 		hour: "2-digit",
 		minute: "2-digit",
 	});
+}
+
+function getHomeAdminEntryState(to: string) {
+	return to.startsWith("/admin")
+		? (prev: Record<string, unknown> = {}) => ({
+				...prev,
+				fromHomeEntry: true,
+		  })
+		: undefined;
 }
 
 function buildShiftSummaryText(shift: ShiftRow, details: any) {
@@ -436,6 +444,7 @@ function HomePage() {
 									<Link
 										className="group relative overflow-hidden rounded-2xl border border-border/70 bg-background p-3.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
 										key={`${section.role}-${item.label}`}
+										state={getHomeAdminEntryState(item.to)}
 										to={item.to}
 									>
 										<div
@@ -467,6 +476,10 @@ function HomePage() {
 					<div className="grid grid-cols-2 gap-3">
 						<Link
 							className="group relative overflow-hidden rounded-2xl border border-border/70 bg-background p-3.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
+							state={(prev) => ({
+								...prev,
+								fromHomeEntry: true,
+							})}
 							to="/admin/ai-chat"
 						>
 							<div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-400 text-white shadow-sm">
