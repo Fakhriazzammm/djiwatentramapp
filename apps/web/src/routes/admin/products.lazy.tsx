@@ -829,25 +829,25 @@ function ProductsTab({
 		<>
 			<div className="space-y-4">
 				<div className="space-y-4">
-					<div className="rounded-xl border border-border bg-card p-4">
-						<div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+					<div className="rounded-xl border border-border bg-card p-3 md:p-3.5">
+						<div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
 							<div>
-								<h2 className="font-bold text-xl">Product Workspace</h2>
-								<p className="text-muted-foreground text-xs">
+								<h2 className="font-bold text-lg md:text-xl">Product Workspace</h2>
+								<p className="text-[11px] text-muted-foreground md:text-xs">
 									Kelola produk lebih cepat dengan filter, bulk action, dan quick edit.
 								</p>
 							</div>
-							<div className="flex flex-wrap items-center gap-2">
+							<div className="flex flex-wrap items-center gap-1.5 md:gap-2">
 								<div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-1">
 									<button
-										className={`rounded px-2 py-1 transition-all ${viewMode === "grid" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+										className={`rounded px-1.5 py-1 transition-all ${viewMode === "grid" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
 										onClick={() => setViewMode("grid")}
 										type="button"
 									>
 										<LayoutGrid className="h-4 w-4" />
 									</button>
 									<button
-										className={`rounded px-2 py-1 transition-all ${viewMode === "table" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+										className={`rounded px-1.5 py-1 transition-all ${viewMode === "table" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
 										onClick={() => setViewMode("table")}
 										type="button"
 									>
@@ -855,28 +855,14 @@ function ProductsTab({
 									</button>
 								</div>
 								<BulkOperations />
-								<button
-									className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground text-sm transition-all hover:brightness-110"
-									onClick={() => {
-										if (viewMode === "table") {
-											resetInlineCreateRow();
-											return;
-										}
-										resetForm();
-										setIsModalOpen(true);
-									}}
-									type="button"
-								>
-									<Plus className="h-4 w-4" /> Tambah Produk
-								</button>
 							</div>
 						</div>
 
-						<div className="mb-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+						<div className="mb-3 grid gap-1.5 md:grid-cols-2 xl:grid-cols-5">
 							<div className="relative md:col-span-2">
 								<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
 								<input
-									className="h-10 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+									className="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
 									onChange={(event) => setSearchKeyword(event.target.value)}
 									placeholder="Cari produk, deskripsi, kategori... (/)"
 									ref={searchInputRef}
@@ -884,7 +870,7 @@ function ProductsTab({
 								/>
 							</div>
 							<select
-								className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+								className="h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
 								onChange={(event) => setSelectedCategoryFilter(event.target.value)}
 								value={selectedCategoryFilter}
 							>
@@ -896,7 +882,7 @@ function ProductsTab({
 								))}
 							</select>
 							<select
-								className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+								className="h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
 								onChange={(event) =>
 									setSelectedStatusFilter(
 										event.target.value as "all" | "active" | "inactive"
@@ -909,7 +895,7 @@ function ProductsTab({
 								<option value="inactive">Inactive</option>
 							</select>
 							<select
-								className="h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+								className="h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
 								onChange={(event) =>
 									setSelectedStockFilter(
 										event.target.value as "all" | "in-stock" | "out-of-stock"
@@ -923,7 +909,7 @@ function ProductsTab({
 							</select>
 						</div>
 
-						<div className="mb-4 flex flex-wrap items-center gap-2">
+						<div className="mb-3 flex flex-wrap items-center gap-1.5">
 							{[
 								{ key: "all", label: "Semua" },
 								{ key: "draft", label: "Draft" },
@@ -932,7 +918,7 @@ function ProductsTab({
 								{ key: "inactive", label: "Inactive" },
 							].map((view) => (
 								<button
-									className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+									className={`rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
 										savedView === view.key
 											? "border-primary bg-primary/10 text-primary"
 											: "border-border bg-background text-muted-foreground hover:text-foreground"
@@ -1057,7 +1043,7 @@ function ProductsTab({
 						) : (
 							<div className="rounded-xl border border-border bg-card shadow-sm">
 								<div className="overflow-x-auto">
-									<table className="w-full min-w-[1320px] text-left text-xs">
+									<table className="w-full min-w-[1180px] text-left text-xs">
 										<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase tracking-wider">
 											<tr>
 												<th className="px-3 py-3 text-center">
