@@ -11,6 +11,15 @@ function isValidEmail(email: string) {
 	return EMAIL_REGEX.test(email);
 }
 
+function normalizeHomePin(pin?: string) {
+	const trimmed = pin?.trim();
+	return trimmed ? trimmed : undefined;
+}
+
+function isValidHomePin(pin: string) {
+	return /^\d{6}$/.test(pin);
+}
+
 // Simple password hashing (MVP: In production use bcrypt/argon2 via external action)
 // For now we store as plain text or simple hash to avoid heavy dependencies on Convex runtime without Actions
 // IMPORTANT: For a real app, use an Action to hash passwords safely.
@@ -157,6 +166,7 @@ export const createUser = mutation({
 	args: {
 		username: v.string(),
 		password: v.optional(v.string()), // Optional for Better Auth
+		homePin: v.optional(v.string()),
 		name: v.string(),
 		roleId: v.id("roles"),
 		authUserId: v.optional(v.string()), // Optional bind immediately
@@ -164,8 +174,12 @@ export const createUser = mutation({
 	},
 	handler: async (ctx, args) => {
 		const username = normalizeEmail(args.username);
+		const homePin = normalizeHomePin(args.homePin);
 		if (!isValidEmail(username)) {
 			throw new Error("Username harus berupa email yang valid");
+		}
+		if (homePin && !isValidHomePin(homePin)) {
+			throw new Error("PIN akses home harus 6 digit angka");
 		}
 
 		const existing = await ctx.db
@@ -175,9 +189,19 @@ export const createUser = mutation({
 		if (existing) {
 			throw new Error("Username already taken");
 		}
+		if (homePin) {
+			const pinOwner = await ctx.db
+				.query("users")
+				.withIndex("by_homePin", (q) => q.eq("homePin", homePin))
+				.first();
+			if (pinOwner) {
+				throw new Error("PIN akses home sudah dipakai pengguna lain");
+			}
+		}
 		return await ctx.db.insert("users", {
 			...args,
 			username,
+			homePin,
 			password: args.password || "", // Default empty if not provided
 			isActive: true, // Default active
 			receiveReportEmails: args.receiveReportEmails ?? false,
@@ -277,6 +301,7 @@ export const updateUser = mutation({
 	args: {
 		id: v.id("users"),
 		username: v.optional(v.string()),
+		homePin: v.optional(v.string()),
 		name: v.optional(v.string()),
 		roleId: v.optional(v.id("roles")),
 		isActive: v.optional(v.boolean()),
@@ -287,6 +312,10 @@ export const updateUser = mutation({
 	handler: async (ctx, args) => {
 		const { id, username, ...updates } = args;
 		const nextUpdates: Record<string, unknown> = { ...updates };
+		const homePin =
+			typeof updates.homePin === "string"
+				? normalizeHomePin(updates.homePin)
+				: undefined;
 
 		if (username !== undefined) {
 			const normalizedUsername = normalizeEmail(username);
@@ -305,8 +334,52 @@ export const updateUser = mutation({
 
 			nextUpdates.username = normalizedUsername;
 		}
+		if (updates.homePin !== undefined) {
+			if (homePin && !isValidHomePin(homePin)) {
+				throw new Error("PIN akses home harus 6 digit angka");
+			}
+			if (homePin) {
+				const pinOwner = await ctx.db
+					.query("users")
+					.withIndex("by_homePin", (q) => q.eq("homePin", homePin))
+					.first();
+				if (pinOwner && pinOwner._id !== id) {
+					throw new Error("PIN akses home sudah dipakai pengguna lain");
+				}
+			}
+			nextUpdates.homePin = homePin;
+		}
 
 		return await ctx.db.patch(id, nextUpdates);
+	},
+});
+
+export const verifyHomePin = mutation({
+	args: {
+		pinCode: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const pinCode = normalizeHomePin(args.pinCode) ?? "";
+		if (!isValidHomePin(pinCode)) {
+			throw new Error("PIN harus terdiri dari 6 digit angka");
+		}
+
+		const user = await ctx.db
+			.query("users")
+			.withIndex("by_homePin", (q) => q.eq("homePin", pinCode))
+			.first();
+
+		if (!user || !user.isActive) {
+			throw new Error("PIN tidak valid atau pengguna tidak aktif");
+		}
+
+		const role = await ctx.db.get(user.roleId);
+
+		return {
+			userId: user._id,
+			name: user.name,
+			role: role?.name || "user",
+		};
 	},
 });
 

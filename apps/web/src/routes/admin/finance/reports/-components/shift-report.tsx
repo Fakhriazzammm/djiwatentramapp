@@ -171,6 +171,9 @@ function buildShiftSummaryText(shift: ShiftRow, details: any) {
 
 export function ShiftReport({ range }: Props) {
 	const sendShiftReportEmail = useAction(api.reportsEmail.sendShiftReportEmail);
+	const sendShiftTableReportEmail = useAction(
+		api.reportsEmail.sendShiftTableReportEmail,
+	);
 	const settings = useQuery(api.site_settings.getSettings);
 	const storeName = settings?.storeName || "Toko";
 	const rows = useQuery(api.finance.getShiftReportTable, {
@@ -181,6 +184,7 @@ export function ShiftReport({ range }: Props) {
 	const [selectedShiftStart, setSelectedShiftStart] = useState<number | null>(null);
 	const [sendingShiftStart, setSendingShiftStart] = useState<number | null>(null);
 	const [isExporting, setIsExporting] = useState(false);
+	const [isSendingFullEmail, setIsSendingFullEmail] = useState(false);
 
 	useEffect(() => {
 		if (!rows?.length) {
@@ -317,14 +321,38 @@ export function ShiftReport({ range }: Props) {
 		}
 	};
 
+	const handleSendFullReportEmail = async () => {
+		if (!rows?.length) return;
+		try {
+			setIsSendingFullEmail(true);
+			await sendShiftTableReportEmail({
+				startDate: range.startDate,
+				endDate: range.endDate,
+				periodLabel: range.label,
+				selectedStartTime: selectedShift?.startTime,
+				selectedEndTime: selectedShift?.endTime,
+			});
+			toast.success("Laporan shift lengkap berhasil dikirim ke email");
+		} catch (error) {
+			console.error(error);
+			const message =
+				error instanceof Error
+					? error.message
+					: "Gagal mengirim email laporan shift lengkap.";
+			toast.error(message);
+		} finally {
+			setIsSendingFullEmail(false);
+		}
+	};
+
 	return (
 		<div className="space-y-5">
-			<div className="flex flex-wrap justify-end gap-2">
+			<div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
 				<button
 					type="button"
 					onClick={() => void handleExport("pdf")}
 					disabled={isExporting || !rows?.length}
-					className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-40"
+					className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-40 sm:min-w-[92px]"
 				>
 					<FileText className="h-3.5 w-3.5" />
 					PDF
@@ -333,7 +361,7 @@ export function ShiftReport({ range }: Props) {
 					type="button"
 					onClick={() => void handleExport("csv")}
 					disabled={isExporting || !rows?.length}
-					className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-40"
+					className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-40 sm:min-w-[92px]"
 				>
 					<Download className="h-3.5 w-3.5" />
 					CSV
@@ -342,10 +370,23 @@ export function ShiftReport({ range }: Props) {
 					type="button"
 					onClick={() => void handleExport("jpg")}
 					disabled={isExporting || !rows?.length}
-					className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-40"
+					className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-40 sm:min-w-[92px]"
 				>
 					<ImageIcon className="h-3.5 w-3.5" />
 					JPG
+				</button>
+				<button
+					type="button"
+					onClick={() => void handleSendFullReportEmail()}
+					disabled={isSendingFullEmail || !rows?.length}
+					className="col-span-2 inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-40 sm:col-span-1 sm:min-w-[132px]"
+				>
+					{isSendingFullEmail ? (
+						<Loader2 className="h-3.5 w-3.5 animate-spin" />
+					) : (
+						<Mail className="h-3.5 w-3.5" />
+					)}
+					Kirim Email
 				</button>
 			</div>
 

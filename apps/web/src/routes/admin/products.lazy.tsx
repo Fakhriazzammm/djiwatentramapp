@@ -138,6 +138,7 @@ function ProductsTab({
 	variationPresets: Doc<"variationPresets">[] | undefined;
 }) {
 	const inventory = useQuery(api.inventory.getInventory);
+	const baseRecipes = useQuery(api.inventory.getBaseRecipes);
 	const recipes = useQuery(api.inventory.getRecipes);
 	const hppProductMap = useQuery(api.hpp.getHppProductMap);
 	const saveRecipe = useMutation(api.inventory.saveRecipe);
@@ -824,6 +825,31 @@ function ProductsTab({
 	};
 
 	const isCreateBlockedByRecipe = !editingId && recipeData.length === 0;
+	const baseRecipeById = useMemo(() => {
+		const map = new Map<string, any>();
+		for (const recipe of baseRecipes ?? []) {
+			map.set(recipe._id as string, recipe);
+		}
+		return map;
+	}, [baseRecipes]);
+
+	const groupedBaseInventoryOptions = useMemo(() => {
+		const groups: Record<string, any[]> = {};
+		for (const item of inventory?.filter((inv: any) => inv.baseRecipeId) ?? []) {
+			const baseRecipe = item.baseRecipeId
+				? baseRecipeById.get(item.baseRecipeId as string)
+				: null;
+			const category =
+				typeof baseRecipe?.category === "string" && baseRecipe.category.trim()
+					? baseRecipe.category.trim()
+					: "Lainnya";
+			if (!groups[category]) {
+				groups[category] = [];
+			}
+			groups[category].push(item);
+		}
+		return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0], "id"));
+	}, [baseRecipeById, inventory]);
 
 	return (
 		<>
@@ -1842,9 +1868,6 @@ function ProductsTab({
 												<option value="">+ Resep/Bahan</option>
 												{(() => {
 													const raw = inventory?.filter((i: any) => !i.baseRecipeId);
-													const bases = inventory?.filter(
-														(i: any) => i.baseRecipeId
-													);
 													return (
 														<>
 															{raw && raw.length > 0 && (
@@ -1856,15 +1879,15 @@ function ProductsTab({
 																	))}
 																</optgroup>
 															)}
-															{bases && bases.length > 0 && (
-																<optgroup label="Resep">
-																	{bases.map((inv: any) => (
+															{groupedBaseInventoryOptions.map(([category, items]) => (
+																<optgroup key={category} label={`Resep - ${category}`}>
+																	{items.map((inv: any) => (
 																		<option key={inv._id} value={inv._id}>
 																			{inv.ingredientName} ({inv.unit})
 																		</option>
 																	))}
 																</optgroup>
-															)}
+															))}
 														</>
 													);
 												})()}
@@ -2626,6 +2649,13 @@ function SettingsTab({
 }
 
 function BaseRecipesTab() {
+	const BASE_RECIPE_CATEGORIES = [
+		"Base Susu",
+		"Base Sauce",
+		"Base Sirup",
+		"Base Teh",
+		"Lainnya",
+	] as const;
 	const baseRecipes = useQuery(api.inventory.getBaseRecipes);
 	const inventory = useQuery(api.inventory.getInventory);
 	const products = useQuery(api.products.getAllProductsAdmin);
@@ -2643,6 +2673,7 @@ function BaseRecipesTab() {
 	const [formData, setFormData] = useState({
 		name: "",
 		description: "",
+		category: "Lainnya",
 		targetUnit: "ml",
 		targetQuantity: "1000",
 		ingredients: [] as { inventoryId: Id<"inventory">; amount: number }[],
@@ -2652,6 +2683,7 @@ function BaseRecipesTab() {
 		setFormData({
 			name: "",
 			description: "",
+			category: "Lainnya",
 			targetUnit: "ml",
 			targetQuantity: "1000",
 			ingredients: [],
@@ -2666,6 +2698,7 @@ function BaseRecipesTab() {
 		setFormData({
 			name: recipe.name,
 			description: recipe.description || "",
+			category: (recipe as any).category || "Lainnya",
 			targetUnit: recipe.targetUnit,
 			targetQuantity: String(recipe.targetQuantity),
 			ingredients: recipe.ingredients as {
@@ -2681,6 +2714,7 @@ function BaseRecipesTab() {
 		const data = {
 			name: formData.name,
 			description: formData.description,
+			category: formData.category,
 			targetUnit: formData.targetUnit,
 			targetQuantity: Number(formData.targetQuantity),
 			ingredients: formData.ingredients,
@@ -2762,9 +2796,15 @@ function BaseRecipesTab() {
 		if (!keyword) {
 			return baseRecipes;
 		}
-		return baseRecipes.filter((recipe: any) =>
-			recipe.name.toLowerCase().includes(keyword)
-		);
+		return baseRecipes.filter((recipe: any) => {
+			const category =
+				typeof recipe.category === "string" ? recipe.category.toLowerCase() : "";
+			return (
+				recipe.name.toLowerCase().includes(keyword) ||
+				(recipe.description ?? "").toLowerCase().includes(keyword) ||
+				category.includes(keyword)
+			);
+		});
 	}, [baseRecipes, searchRecipe]);
 
 	return (
@@ -2794,7 +2834,7 @@ function BaseRecipesTab() {
 
 			<div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
 				<div className="rounded-lg border border-border bg-card p-3">
-					<p className="text-muted-foreground text-[10px] uppercase">Total Base</p>
+					<p className="text-muted-foreground text-[10px] uppercase">Total Resep</p>
 					<p className="font-bold text-lg">{baseRecipes?.length ?? 0}</p>
 				</div>
 				<div className="rounded-lg border border-border bg-card p-3">
@@ -2802,12 +2842,20 @@ function BaseRecipesTab() {
 					<p className="font-bold text-lg">{filteredBaseRecipes.length}</p>
 				</div>
 				<div className="rounded-lg border border-border bg-card p-3">
-					<p className="text-muted-foreground text-[10px] uppercase">Dipakai Produk</p>
-					<p className="font-bold text-lg">{new Set((recipes ?? []).map((r: any) => r.productId)).size}</p>
+					<p className="text-muted-foreground text-[10px] uppercase">Kategori Resep</p>
+					<p className="font-bold text-lg">
+						{
+							new Set(
+								(filteredBaseRecipes as any[]).map((recipe) =>
+									recipe.category?.trim() ? recipe.category.trim() : "Lainnya"
+								)
+							).size
+						}
+					</p>
 				</div>
 				<div className="rounded-lg border border-border bg-card p-3">
-					<p className="text-muted-foreground text-[10px] uppercase">Menu Aktif</p>
-					<p className="font-bold text-lg">{products?.filter((p: any) => p.isAvailable).length ?? 0}</p>
+					<p className="text-muted-foreground text-[10px] uppercase">Dipakai Produk</p>
+					<p className="font-bold text-lg">{new Set((recipes ?? []).map((r: any) => r.productId)).size}</p>
 				</div>
 			</div>
 
@@ -2816,6 +2864,7 @@ function BaseRecipesTab() {
 					<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase">
 						<tr>
 							<th className="px-3 py-2">Nama</th>
+							<th className="px-3 py-2">Kategori</th>
 							<th className="px-3 py-2">Deskripsi</th>
 							<th className="px-3 py-2">Target</th>
 							<th className="px-3 py-2">Bahan</th>
@@ -2826,6 +2875,11 @@ function BaseRecipesTab() {
 						{filteredBaseRecipes.map((recipe: any) => (
 							<tr key={recipe._id}>
 								<td className="px-3 py-2 font-semibold">{recipe.name}</td>
+								<td className="px-3 py-2">
+									<span className="rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-[10px] text-primary">
+										{recipe.category?.trim() ? recipe.category : "Lainnya"}
+									</span>
+								</td>
 								<td className="px-3 py-2 text-muted-foreground">{recipe.description || "-"}</td>
 								<td className="px-3 py-2">{recipe.targetQuantity} {recipe.targetUnit}</td>
 								<td className="px-3 py-2">{recipe.ingredients.length} item</td>
@@ -2909,6 +2963,25 @@ function BaseRecipesTab() {
 													placeholder="Fungsi atau catatan penggunaan"
 													value={formData.description}
 												/>
+											</div>
+											<div className="space-y-2">
+												<label className="font-semibold text-[11px] uppercase tracking-wide" htmlFor="base-recipe-category">
+													Kategori Resep
+												</label>
+												<select
+													className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+													id="base-recipe-category"
+													onChange={(e) =>
+														setFormData({ ...formData, category: e.target.value })
+													}
+													value={formData.category}
+												>
+													{BASE_RECIPE_CATEGORIES.map((category) => (
+														<option key={category} value={category}>
+															{category}
+														</option>
+													))}
+												</select>
 											</div>
 										</div>
 

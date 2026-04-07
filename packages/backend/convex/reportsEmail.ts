@@ -383,6 +383,287 @@ export const sendShiftReportEmail = action({
 	},
 });
 
+export const sendShiftTableReportEmail = action({
+	args: {
+		startDate: v.optional(v.number()),
+		endDate: v.optional(v.number()),
+		periodLabel: v.string(),
+		selectedStartTime: v.optional(v.number()),
+		selectedEndTime: v.optional(v.number()),
+		to: v.optional(v.array(v.string())),
+	},
+	handler: async (ctx, args) => {
+		const settings = await ctx.runQuery(api.site_settings.getSettings, {});
+		const storeName = settings?.storeName?.trim() || "Toko";
+		const rows = await ctx.runQuery(api.finance.getShiftReportTable, {
+			startDate: args.startDate,
+			endDate: args.endDate,
+		});
+
+		if (!rows || rows.length === 0) {
+			throw new ConvexError("Belum ada data shift pada periode tersebut.");
+		}
+
+		const totals = rows.reduce(
+			(
+				acc: {
+					totalRevenue: number;
+					totalGross: number;
+					totalDiscount: number;
+					totalExpenses: number;
+					totalItems: number;
+					activeCount: number;
+				},
+				row: any,
+			) => {
+				acc.totalRevenue += row.totalRevenue ?? 0;
+				acc.totalGross += row.totalGrossSales ?? 0;
+				acc.totalDiscount += row.totalDiscount ?? 0;
+				acc.totalExpenses += row.totalExpenses ?? 0;
+				acc.totalItems += row.totalItemsSold ?? 0;
+				acc.activeCount += row.status === "AKTIF" ? 1 : 0;
+				return acc;
+			},
+			{
+				totalRevenue: 0,
+				totalGross: 0,
+				totalDiscount: 0,
+				totalExpenses: 0,
+				totalItems: 0,
+				activeCount: 0,
+			},
+		);
+
+		const selectedShift =
+			args.selectedStartTime !== undefined
+				? rows.find((row: any) => row.startTime === args.selectedStartTime)
+				: rows[0];
+		const selectedDetails =
+			selectedShift && args.selectedStartTime !== undefined
+				? await ctx.runQuery(api.finance.getShiftDetails, {
+						startTime: args.selectedStartTime,
+						endTime: args.selectedEndTime,
+				  })
+				: null;
+
+		const tableRowsHtml = rows
+			.map((row: any, idx: number) => {
+				return `
+					<tr style="background:${idx % 2 === 0 ? "#f8fafc" : "#ffffff"};">
+						<td style="padding:8px;border:1px solid #e2e8f0;white-space:nowrap;">${escapeHtml(
+							formatShiftTimeRange(row.startTime, row.endTime),
+						)}</td>
+						<td style="padding:8px;border:1px solid #e2e8f0;">${escapeHtml(
+							row.shiftName || "-",
+						)}</td>
+						<td style="padding:8px;border:1px solid #e2e8f0;">${escapeHtml(
+							row.status || "-",
+						)}</td>
+						<td style="padding:8px;border:1px solid #e2e8f0;">${escapeHtml(
+							row.cashierName || "-",
+						)}</td>
+						<td style="padding:8px;border:1px solid #e2e8f0;">${escapeHtml(
+							row.teamMembers || "-",
+						)}</td>
+						<td style="padding:8px;border:1px solid #e2e8f0;text-align:right;">${formatCurrency(
+							row.totalRevenue ?? 0,
+						)}</td>
+						<td style="padding:8px;border:1px solid #e2e8f0;text-align:right;">${
+							row.hasTarget
+								? `${formatCurrency(row.shiftCollected ?? row.totalRevenue ?? 0)} / ${formatCurrency(row.shiftTarget ?? 0)} (${row.isShiftTargetMet ? "Tercapai" : "Tidak"})`
+								: "-"
+						}</td>
+						<td style="padding:8px;border:1px solid #e2e8f0;text-align:right;">${
+							row.hasTarget
+								? `${formatCurrency(row.dailyCollected ?? 0)} / ${formatCurrency(row.dailyTarget ?? 0)} (${row.isDailyTargetMet ? "Tercapai" : "Tidak"})`
+								: "-"
+						}</td>
+						<td style="padding:8px;border:1px solid #e2e8f0;text-align:right;">${formatCurrency(
+							row.totalExpenses ?? 0,
+						)}</td>
+						<td style="padding:8px;border:1px solid #e2e8f0;text-align:center;">${
+							row.totalItemsSold ?? 0
+						}</td>
+						<td style="padding:8px;border:1px solid #e2e8f0;text-align:center;">${
+							row.orderCount ?? 0
+						}</td>
+					</tr>
+				`;
+			})
+			.join("");
+
+		const selectedTopProductsHtml = (selectedDetails?.topProducts ?? [])
+			.map(
+				(item: any, index: number) =>
+					`<tr><td style="padding:6px 8px;border:1px solid #e2e8f0;">${index + 1}. ${escapeHtml(
+						item.productName || "-",
+					)}</td><td style="padding:6px 8px;border:1px solid #e2e8f0;text-align:right;">${item.quantity ?? 0}</td></tr>`,
+			)
+			.join("");
+
+		const selectedExpenseHtml = (selectedDetails?.expenseBreakdown ?? [])
+			.map(
+				(item: any) =>
+					`<tr><td style="padding:6px 8px;border:1px solid #e2e8f0;">${escapeHtml(
+						item.category || "-",
+					)}</td><td style="padding:6px 8px;border:1px solid #e2e8f0;text-align:right;">${formatCurrency(item.amount ?? 0)}</td></tr>`,
+			)
+			.join("");
+
+		const selectedShiftHtml = selectedShift
+			? `
+				<div style="margin-top:18px;border:1px solid #dbeafe;background:#eff6ff;border-radius:10px;padding:14px;">
+					<h3 style="margin:0 0 10px;color:#1e3a8a;">Ringkasan Shift Terpilih: ${escapeHtml(
+						selectedShift.shiftName || "Shift",
+					)}</h3>
+					<div style="font-size:13px;line-height:1.7;color:#0f172a;">
+						<div>Kasir: <strong>${escapeHtml(selectedShift.cashierName || "-")}</strong></div>
+						<div>Tim: <strong>${escapeHtml(selectedShift.teamMembers || "-")}</strong></div>
+						<div>Status: <strong>${escapeHtml(selectedShift.status || "-")}</strong></div>
+						<div>Revenue Bersih: <strong>${formatCurrency(selectedShift.totalRevenue ?? 0)}</strong></div>
+						<div>Penjualan Bruto: <strong>${formatCurrency(selectedShift.totalGrossSales ?? 0)}</strong></div>
+						<div>Diskon: <strong>${formatCurrency(selectedShift.totalDiscount ?? 0)}</strong></div>
+						<div>Pengeluaran: <strong>${formatCurrency(selectedShift.totalExpenses ?? 0)}</strong></div>
+						<div>Total Produk: <strong>${selectedShift.totalItemsSold ?? 0}</strong></div>
+						<div>Total Transaksi: <strong>${selectedShift.orderCount ?? 0}</strong></div>
+					</div>
+				</div>
+			`
+			: "";
+
+		const html = `
+			<div style="font-family:Arial,sans-serif;color:#0f172a;max-width:100%;margin:0 auto;">
+				<div style="background:#0f172a;color:#fff;padding:18px 16px;border-radius:10px 10px 0 0;">
+					<h2 style="margin:0;font-size:24px;">${escapeHtml(storeName.toUpperCase())}</h2>
+					<div style="margin-top:6px;font-size:14px;opacity:0.92;">Laporan Shift Detail</div>
+					<div style="margin-top:4px;font-size:12px;opacity:0.85;">Periode: ${escapeHtml(
+						args.periodLabel,
+					)}</div>
+				</div>
+				<div style="border:1px solid #e2e8f0;border-top:none;padding:14px;border-radius:0 0 10px 10px;">
+					<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px;">
+						<tr>
+							<td style="padding:6px 8px;border:1px solid #e2e8f0;">Total Shift</td>
+							<td style="padding:6px 8px;border:1px solid #e2e8f0;"><strong>${rows.length}</strong></td>
+							<td style="padding:6px 8px;border:1px solid #e2e8f0;">Shift Aktif</td>
+							<td style="padding:6px 8px;border:1px solid #e2e8f0;"><strong>${totals.activeCount}</strong></td>
+						</tr>
+						<tr>
+							<td style="padding:6px 8px;border:1px solid #e2e8f0;">Net</td>
+							<td style="padding:6px 8px;border:1px solid #e2e8f0;"><strong>${formatCurrency(totals.totalRevenue)}</strong></td>
+							<td style="padding:6px 8px;border:1px solid #e2e8f0;">Bruto</td>
+							<td style="padding:6px 8px;border:1px solid #e2e8f0;"><strong>${formatCurrency(totals.totalGross)}</strong></td>
+						</tr>
+						<tr>
+							<td style="padding:6px 8px;border:1px solid #e2e8f0;">Diskon</td>
+							<td style="padding:6px 8px;border:1px solid #e2e8f0;"><strong>${formatCurrency(totals.totalDiscount)}</strong></td>
+							<td style="padding:6px 8px;border:1px solid #e2e8f0;">Pengeluaran</td>
+							<td style="padding:6px 8px;border:1px solid #e2e8f0;"><strong>${formatCurrency(totals.totalExpenses)}</strong></td>
+						</tr>
+					</table>
+
+					<div style="overflow-x:auto;">
+						<table style="border-collapse:collapse;width:100%;font-size:12px;min-width:980px;">
+							<thead>
+								<tr style="background:#e2e8f0;">
+									<th style="padding:8px;border:1px solid #cbd5e1;text-align:left;">Tanggal</th>
+									<th style="padding:8px;border:1px solid #cbd5e1;text-align:left;">Shift</th>
+									<th style="padding:8px;border:1px solid #cbd5e1;text-align:left;">Status</th>
+									<th style="padding:8px;border:1px solid #cbd5e1;text-align:left;">Kasir</th>
+									<th style="padding:8px;border:1px solid #cbd5e1;text-align:left;">Tim</th>
+									<th style="padding:8px;border:1px solid #cbd5e1;text-align:right;">Net</th>
+									<th style="padding:8px;border:1px solid #cbd5e1;text-align:right;">Target Shift</th>
+									<th style="padding:8px;border:1px solid #cbd5e1;text-align:right;">Target Harian</th>
+									<th style="padding:8px;border:1px solid #cbd5e1;text-align:right;">Pengeluaran</th>
+									<th style="padding:8px;border:1px solid #cbd5e1;text-align:center;">Produk</th>
+									<th style="padding:8px;border:1px solid #cbd5e1;text-align:center;">Trx</th>
+								</tr>
+							</thead>
+							<tbody>${tableRowsHtml}</tbody>
+						</table>
+					</div>
+					${selectedShiftHtml}
+
+					${
+						selectedTopProductsHtml
+							? `
+						<div style="margin-top:16px;">
+							<h4 style="margin:0 0 8px;">Top Produk</h4>
+							<table style="border-collapse:collapse;min-width:320px;font-size:12px;">
+								${selectedTopProductsHtml}
+							</table>
+						</div>
+					`
+							: ""
+					}
+					${
+						selectedExpenseHtml
+							? `
+						<div style="margin-top:16px;">
+							<h4 style="margin:0 0 8px;">Rincian Pengeluaran</h4>
+							<table style="border-collapse:collapse;min-width:320px;font-size:12px;">
+								${selectedExpenseHtml}
+							</table>
+						</div>
+					`
+							: ""
+					}
+				</div>
+			</div>
+		`;
+
+		const textSummaryRows = rows.map((row: any, index: number) => {
+			return [
+				`${index + 1}. ${row.shiftName || "-"} (${row.status || "-"})`,
+				`   Waktu: ${formatShiftTimeRange(row.startTime, row.endTime)}`,
+				`   Kasir: ${row.cashierName || "-"} | Tim: ${row.teamMembers || "-"}`,
+				`   Net: ${formatCurrency(row.totalRevenue ?? 0)} | Pengeluaran: ${formatCurrency(
+					row.totalExpenses ?? 0,
+				)} | Produk: ${row.totalItemsSold ?? 0} | Trx: ${row.orderCount ?? 0}`,
+				`   Target Shift: ${
+					row.hasTarget
+						? `${formatCurrency(row.shiftCollected ?? row.totalRevenue ?? 0)} / ${formatCurrency(
+								row.shiftTarget ?? 0,
+						  )} (${row.isShiftTargetMet ? "Tercapai" : "Tidak"})`
+						: "-"
+				}`,
+				`   Target Harian: ${
+					row.hasTarget
+						? `${formatCurrency(row.dailyCollected ?? 0)} / ${formatCurrency(
+								row.dailyTarget ?? 0,
+						  )} (${row.isDailyTargetMet ? "Tercapai" : "Tidak"})`
+						: "-"
+				}`,
+			].join("\n");
+		});
+
+		const text = [
+			`${storeName} - Laporan Shift Detail`,
+			`Periode: ${args.periodLabel}`,
+			`Total Shift: ${rows.length} | Shift Aktif: ${totals.activeCount}`,
+			`Net: ${formatCurrency(totals.totalRevenue)} | Bruto: ${formatCurrency(
+				totals.totalGross,
+			)} | Diskon: ${formatCurrency(totals.totalDiscount)} | Pengeluaran: ${formatCurrency(
+				totals.totalExpenses,
+			)}`,
+			"",
+			"Detail Shift:",
+			...textSummaryRows,
+		].join("\n");
+
+		const subject = `[${storeName}] Laporan Shift Detail - ${args.periodLabel}`;
+		const result = await sendEmail({
+			ctx,
+			to: args.to,
+			subject,
+			html,
+			text,
+		});
+
+		return { success: true, result, count: rows.length };
+	},
+});
+
 export const sendDailySummaryEmail = action({
 	args: {
 		storeName: v.optional(v.string()),

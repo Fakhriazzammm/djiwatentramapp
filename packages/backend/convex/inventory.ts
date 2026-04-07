@@ -1262,6 +1262,7 @@ export const createBaseRecipe = mutation({
 	args: {
 		name: v.string(),
 		description: v.optional(v.string()),
+		category: v.optional(v.string()),
 		targetUnit: v.string(),
 		targetQuantity: v.number(),
 		ingredients: v.array(
@@ -1281,6 +1282,7 @@ export const updateBaseRecipe = mutation({
 		id: v.id("baseRecipes"),
 		name: v.string(),
 		description: v.optional(v.string()),
+		category: v.optional(v.string()),
 		targetUnit: v.string(),
 		targetQuantity: v.number(),
 		ingredients: v.array(

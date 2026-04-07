@@ -971,16 +971,27 @@ export function exportShiftReportsJPG(
 	const ctx = canvas.getContext("2d");
 	if (!ctx) return;
 
-	const headerHeight = 120;
-	const summaryHeight = 80;
-	const tableHeaderHeight = 36;
-	const rowHeight = 28;
-	const detailsHeight = selectedShift ? 220 : 0;
-	const productLines = (details?.topProducts?.length ?? 0) + (details?.expenseBreakdown?.length ?? 0);
-	const productHeight = Math.max(0, productLines * 24);
+	const paddingX = 28;
+	const headerHeight = 128;
+	const summaryHeight = 96;
+	const rowCardHeight = 106;
+	const rowGap = 12;
+	const selectedHeight = selectedShift ? 216 : 0;
+	const topProductsHeight = details?.topProducts?.length
+		? 34 + (details.topProducts.length * 24)
+		: 0;
+	const expenseLines = details?.expenseBreakdown?.length ?? 0;
+	const expenseHeight = expenseLines ? 34 + (expenseLines * 24) : 0;
 
-	canvas.width = 1800;
-	canvas.height = headerHeight + summaryHeight + tableHeaderHeight + (rows.length * rowHeight) + detailsHeight + productHeight + 80;
+	canvas.width = 1280;
+	canvas.height =
+		headerHeight +
+		summaryHeight +
+		(rows.length * (rowCardHeight + rowGap)) +
+		selectedHeight +
+		topProductsHeight +
+		expenseHeight +
+		80;
 
 	ctx.fillStyle = "#ffffff";
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -988,91 +999,81 @@ export function exportShiftReportsJPG(
 	ctx.fillStyle = "#0f172a";
 	ctx.fillRect(0, 0, canvas.width, headerHeight);
 	ctx.fillStyle = "#ffffff";
-	ctx.font = "bold 34px Arial";
-	ctx.fillText(storeName.toUpperCase(), 30, 52);
-	ctx.font = "20px Arial";
-	ctx.fillText("LAPORAN SHIFT DETAIL", 30, 84);
-	ctx.font = "15px Arial";
-	ctx.fillText(`Periode: ${period}`, 30, 108);
+	ctx.font = "bold 32px Arial";
+	ctx.fillText(storeName.toUpperCase(), paddingX, 50);
+	ctx.font = "19px Arial";
+	ctx.fillText("LAPORAN SHIFT DETAIL", paddingX, 80);
+	ctx.font = "14px Arial";
+	ctx.fillText(`Periode: ${period}`, paddingX, 106);
 
-	let y = headerHeight + 28;
-	ctx.fillStyle = "#111827";
-	ctx.font = "bold 18px Arial";
-	ctx.fillText(`Total Shift: ${rows.length}`, 30, y);
-	ctx.fillText(`Shift Aktif: ${totals.activeCount}`, 300, y);
-	ctx.fillText(`Revenue Bersih: ${formatCurrencyIDR(totals.totalRevenue)}`, 530, y);
-	y += 30;
-	ctx.font = "bold 16px Arial";
-	ctx.fillText(`Bruto: ${formatCurrencyIDR(totals.totalGross)}`, 30, y);
-	ctx.fillText(`Diskon: ${formatCurrencyIDR(totals.totalDiscount)}`, 330, y);
-	ctx.fillText(`Pengeluaran: ${formatCurrencyIDR(totals.totalExpenses)}`, 590, y);
-	ctx.fillText(`Produk: ${totals.totalItems}`, 930, y);
-
-	y += 24;
-	const columns = [
-		{ label: "Tanggal", width: 220 },
-		{ label: "Shift", width: 90 },
-		{ label: "Status", width: 80 },
-		{ label: "Kasir", width: 130 },
-		{ label: "Tim", width: 190 },
-		{ label: "Net", width: 140 },
-		{ label: "Target Shift", width: 220 },
-		{ label: "Target Harian", width: 220 },
-		{ label: "Pengeluaran", width: 140 },
-		{ label: "Produk", width: 90 },
-		{ label: "Trx", width: 80 },
-	];
-
-	ctx.fillStyle = "#e2e8f0";
-	ctx.fillRect(20, y, canvas.width - 40, tableHeaderHeight);
+	let y = headerHeight + 20;
+	ctx.fillStyle = "#f1f5f9";
+	ctx.fillRect(paddingX, y - 8, canvas.width - (paddingX * 2), summaryHeight);
 	ctx.fillStyle = "#0f172a";
-	ctx.font = "bold 13px Arial";
-	let x = 28;
-	for (const col of columns) {
-		ctx.fillText(col.label, x, y + 22);
-		x += col.width;
-	}
-	y += tableHeaderHeight;
+	ctx.font = "bold 16px Arial";
+	ctx.fillText(`Total Shift: ${rows.length}`, paddingX + 12, y + 18);
+	ctx.fillText(`Shift Aktif: ${totals.activeCount}`, paddingX + 220, y + 18);
+	ctx.fillText(`Produk: ${totals.totalItems}`, paddingX + 420, y + 18);
+	ctx.font = "bold 15px Arial";
+	ctx.fillText(`Net: ${formatCurrencyIDR(totals.totalRevenue)}`, paddingX + 12, y + 46);
+	ctx.fillText(`Bruto: ${formatCurrencyIDR(totals.totalGross)}`, paddingX + 355, y + 46);
+	ctx.fillText(`Diskon: ${formatCurrencyIDR(totals.totalDiscount)}`, paddingX + 700, y + 46);
+	ctx.fillText(`Pengeluaran: ${formatCurrencyIDR(totals.totalExpenses)}`, paddingX + 12, y + 72);
 
-	ctx.font = "12px Arial";
+	y += summaryHeight + 16;
+
 	rows.forEach((row, index) => {
-		ctx.fillStyle = index % 2 === 0 ? "#f8fafc" : "#ffffff";
-		ctx.fillRect(20, y, canvas.width - 40, rowHeight);
-		ctx.fillStyle = "#1f2937";
+		const cardY = y;
+		ctx.fillStyle = "#ffffff";
+		ctx.fillRect(paddingX, cardY, canvas.width - (paddingX * 2), rowCardHeight);
+		ctx.strokeStyle = "#e2e8f0";
+		ctx.lineWidth = 1;
+		ctx.strokeRect(paddingX, cardY, canvas.width - (paddingX * 2), rowCardHeight);
 
-		const values = [
-			formatShiftRangeForExport(row.startTime, row.endTime),
-			row.shiftName || "-",
-			row.status,
-			row.cashierName || "-",
-			row.teamMembers || "-",
-			formatCurrencyIDR(row.totalRevenue),
-			row.hasTarget
-				? `${formatCurrencyIDR(row.shiftCollected ?? row.totalRevenue)} / ${formatCurrencyIDR(row.shiftTarget ?? 0)}`
-				: "-",
-			row.hasTarget
-				? `${formatCurrencyIDR(row.dailyCollected ?? 0)} / ${formatCurrencyIDR(row.dailyTarget ?? 0)}`
-				: "-",
-			formatCurrencyIDR(row.totalExpenses),
-			String(row.totalItemsSold),
-			String(row.orderCount),
-		];
+		ctx.fillStyle = "#0f172a";
+		ctx.font = "bold 15px Arial";
+		const title = `${index + 1}. ${row.shiftName || "Shift"} • ${formatShiftRangeForExport(row.startTime, row.endTime)} • ${row.status}`;
+		ctx.fillText(title, paddingX + 12, cardY + 22);
 
-		let colX = 28;
-		values.forEach((value, valueIndex) => {
-			const text = value.length > 30 ? `${value.slice(0, 30)}...` : value;
-			ctx.fillText(text, colX, y + 18);
-			colX += columns[valueIndex]?.width ?? 100;
-		});
+		ctx.fillStyle = "#334155";
+		ctx.font = "13px Arial";
+		ctx.fillText(`Kasir: ${row.cashierName || "-"} | Tim: ${row.teamMembers || "-"}`, paddingX + 12, cardY + 44);
+		ctx.fillText(
+			`Net: ${formatCurrencyIDR(row.totalRevenue)} | Bruto: ${formatCurrencyIDR(row.totalGrossSales)} | Diskon: ${formatCurrencyIDR(row.totalDiscount)} | Pengeluaran: ${formatCurrencyIDR(row.totalExpenses)}`,
+			paddingX + 12,
+			cardY + 64,
+		);
+		ctx.fillText(
+			`Target Shift: ${
+				row.hasTarget
+					? `${formatCurrencyIDR(row.shiftCollected ?? row.totalRevenue)} / ${formatCurrencyIDR(row.shiftTarget ?? 0)} (${row.isShiftTargetMet ? "Tercapai" : "Tidak"})`
+					: "-"
+			}`,
+			paddingX + 12,
+			cardY + 84,
+		);
+		ctx.fillText(
+			`Target Harian: ${
+				row.hasTarget
+					? `${formatCurrencyIDR(row.dailyCollected ?? 0)} / ${formatCurrencyIDR(row.dailyTarget ?? 0)} (${row.isDailyTargetMet ? "Tercapai" : "Tidak"})`
+					: "-"
+			} | Produk: ${row.totalItemsSold} | Trx: ${row.orderCount}`,
+			paddingX + 12,
+			cardY + 102,
+		);
 
-		y += rowHeight;
+		y += rowCardHeight + rowGap;
 	});
 
 	if (selectedShift) {
-		y += 20;
+		y += 8;
+		ctx.fillStyle = "#eff6ff";
+		ctx.fillRect(paddingX, y, canvas.width - (paddingX * 2), 198);
+		ctx.strokeStyle = "#bfdbfe";
+		ctx.strokeRect(paddingX, y, canvas.width - (paddingX * 2), 198);
 		ctx.fillStyle = "#0f172a";
 		ctx.font = "bold 18px Arial";
-		ctx.fillText(`Ringkasan Shift Terpilih: ${selectedShift.shiftName}`, 30, y);
+		ctx.fillText(`Ringkasan Shift Terpilih: ${selectedShift.shiftName}`, paddingX + 12, y + 28);
 		y += 28;
 		ctx.font = "14px Arial";
 		const detailRows = [
@@ -1090,22 +1091,23 @@ export function exportShiftReportsJPG(
 		];
 		detailRows.forEach((line) => {
 			ctx.fillStyle = "#1f2937";
-			ctx.fillText(line, 34, y);
+			ctx.fillText(line, paddingX + 16, y + 24);
 			y += 22;
 		});
+		y += 12;
 	}
 
 	if (details?.topProducts?.length) {
-		y += 8;
+		y += 4;
 		ctx.fillStyle = "#0f172a";
 		ctx.font = "bold 16px Arial";
-		ctx.fillText("Top Produk", 30, y);
+		ctx.fillText("Top Produk", paddingX, y);
 		y += 24;
 		ctx.font = "13px Arial";
 		details.topProducts.forEach((p, index) => {
 			ctx.fillStyle = "#1f2937";
-			ctx.fillText(`${index + 1}. ${p.productName}`, 34, y);
-			ctx.fillText(`${p.quantity}`, 560, y);
+			ctx.fillText(`${index + 1}. ${p.productName}`, paddingX + 4, y);
+			ctx.fillText(`${p.quantity}`, paddingX + 520, y);
 			y += 20;
 		});
 	}
@@ -1119,8 +1121,8 @@ export function exportShiftReportsJPG(
 		ctx.font = "13px Arial";
 		details.expenseBreakdown.forEach((e) => {
 			ctx.fillStyle = "#1f2937";
-			ctx.fillText(e.category, 34, y);
-			ctx.fillText(formatCurrencyIDR(e.amount), 360, y);
+			ctx.fillText(e.category, paddingX + 4, y);
+			ctx.fillText(formatCurrencyIDR(e.amount), paddingX + 330, y);
 			y += 20;
 		});
 	}

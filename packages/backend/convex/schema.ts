@@ -91,6 +91,7 @@ export default defineSchema({
 	baseRecipes: defineTable({
 		name: v.string(),
 		description: v.optional(v.string()),
+		category: v.optional(v.string()), // e.g., "Base Susu", "Base Sauce"
 		targetUnit: v.string(), // Unit produced (ml, liter, etc.)
 		targetQuantity: v.number(), // Quantity produced in one batch
 		ingredients: v.array(
@@ -486,6 +487,7 @@ export default defineSchema({
 	users: defineTable({
 		username: v.string(),
 		password: v.optional(v.string()), // Hashed (Optional for Better Auth users)
+		homePin: v.optional(v.string()),
 		name: v.string(),
 		roleId: v.id("roles"),
 		isActive: v.boolean(),
@@ -495,6 +497,7 @@ export default defineSchema({
 	})
 		.index("by_username", ["username"])
 		.index("by_role", ["roleId"])
+		.index("by_homePin", ["homePin"])
 		.index("by_auth_user_id", ["authUserId"]),
 
 	// Scheduled Reports for automatic reporting

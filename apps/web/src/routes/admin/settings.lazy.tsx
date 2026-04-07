@@ -339,6 +339,7 @@ const AVAILABLE_PERMISSIONS = [
 ];
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const HOME_PIN_REGEX = /^\d{6}$/;
 
 function normalizeEmail(email: string) {
 	return email.trim().toLowerCase();
@@ -346,6 +347,10 @@ function normalizeEmail(email: string) {
 
 function isValidEmail(email: string) {
 	return EMAIL_REGEX.test(normalizeEmail(email));
+}
+
+function isValidHomePin(pin: string) {
+	return HOME_PIN_REGEX.test(pin);
 }
 
 function SettingsPage() {
@@ -480,6 +485,7 @@ function SettingsPage() {
 		password: "",
 		name: "",
 		roleId: "",
+		homePin: "",
 	});
 	const [newRole, setNewRole] = useState({
 		name: "",
@@ -492,6 +498,7 @@ function SettingsPage() {
 		roleId: Id<"roles"> | "";
 		isActive: boolean;
 		receiveReportEmails: boolean;
+		homePin: string;
 	} | null>(null);
 	const [editingRole, setEditingRole] = useState<{
 		id: Id<"roles">;
@@ -720,6 +727,7 @@ function SettingsPage() {
 
 	const handleCreateUser = async () => {
 		const normalizedEmail = normalizeEmail(newUser.username);
+		const normalizedHomePin = newUser.homePin.trim();
 		if (
 			!(normalizedEmail && newUser.password && newUser.name && newUser.roleId)
 		) {
@@ -730,6 +738,10 @@ function SettingsPage() {
 			toast.error("Username harus berupa email yang valid");
 			return;
 		}
+		if (normalizedHomePin && !isValidHomePin(normalizedHomePin)) {
+			toast.error("PIN akses home harus 6 digit angka");
+			return;
+		}
 		try {
 			// Primary source of truth: always persist user profile to Convex first.
 			const createdUserId = await _createUser({
@@ -737,6 +749,7 @@ function SettingsPage() {
 				password: newUser.password,
 				name: newUser.name,
 				roleId: newUser.roleId as Id<"roles">,
+				homePin: normalizedHomePin || undefined,
 			});
 
 			// Best effort sync to external auth provider.
@@ -761,7 +774,13 @@ function SettingsPage() {
 			}
 
 			if (createdUserId) {
-				setNewUser({ username: "", password: "", name: "", roleId: "" });
+				setNewUser({
+					username: "",
+					password: "",
+					name: "",
+					roleId: "",
+					homePin: "",
+				});
 				toast.success("User berhasil dibuat!");
 			}
 		} catch (error) {
@@ -778,6 +797,7 @@ function SettingsPage() {
 			roleId: user.roleId || "",
 			isActive: user.isActive ?? true,
 			receiveReportEmails: user.receiveReportEmails ?? false,
+			homePin: "",
 		});
 	};
 
@@ -799,6 +819,10 @@ function SettingsPage() {
 			toast.error("Role pengguna wajib dipilih");
 			return;
 		}
+		if (editingUser.homePin.trim() && !isValidHomePin(editingUser.homePin.trim())) {
+			toast.error("PIN akses home harus 6 digit angka");
+			return;
+		}
 
 		try {
 			await _updateUser({
@@ -808,6 +832,7 @@ function SettingsPage() {
 				roleId: editingUser.roleId as Id<"roles">,
 				isActive: editingUser.isActive,
 				receiveReportEmails: editingUser.receiveReportEmails,
+				homePin: editingUser.homePin.trim() || undefined,
 			});
 			toast.success("Pengguna berhasil diperbarui");
 			setEditingUser(null);
@@ -2491,6 +2516,38 @@ function SettingsPage() {
 										<div className="space-y-2">
 											<label
 												className="font-medium text-muted-foreground text-xs"
+												htmlFor="reg-home-pin"
+											>
+												PIN Akses /home (6 digit)
+											</label>
+											<input
+												className="w-full rounded-xl bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												id="reg-home-pin"
+												inputMode="numeric"
+												maxLength={6}
+												onChange={(e) =>
+													setNewUser({
+														...newUser,
+														homePin: e.target.value.replace(/\D/g, "").slice(0, 6),
+													})
+												}
+												placeholder="Contoh: 123456"
+												type="password"
+												value={newUser.homePin}
+											/>
+											{newUser.homePin && !isValidHomePin(newUser.homePin) ? (
+												<p className="text-[11px] text-destructive">
+													PIN harus terdiri dari 6 digit angka.
+												</p>
+											) : (
+												<p className="text-[11px] text-muted-foreground">
+													Kosongkan jika PIN belum ingin diatur.
+												</p>
+											)}
+										</div>
+										<div className="space-y-2">
+											<label
+												className="font-medium text-muted-foreground text-xs"
 												htmlFor="reg-role"
 											>
 												Pilih Role
@@ -2676,6 +2733,28 @@ function SettingsPage() {
 																))}
 															</select>
 														</div>
+														<div className="space-y-1.5">
+															<label className="font-medium text-muted-foreground text-xs">
+																PIN Akses /home (6 digit)
+															</label>
+															<input
+																className="w-full rounded-xl border border-border bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+																inputMode="numeric"
+																maxLength={6}
+																onChange={(e) =>
+																	setEditingUser({
+																		...editingUser,
+																		homePin: e.target.value.replace(/\D/g, "").slice(0, 6),
+																	})
+																}
+																placeholder="Isi 6 digit untuk ganti PIN"
+																type="password"
+																value={editingUser.homePin}
+															/>
+															<p className="text-[11px] text-muted-foreground">
+																Kosongkan jika tidak ingin mengubah PIN saat ini.
+															</p>
+														</div>
 														<div className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3">
 															<div>
 																<p className="font-medium text-sm text-foreground">
@@ -2785,6 +2864,11 @@ function SettingsPage() {
 																<p className="text-muted-foreground text-xs">
 																	{user.username}
 																</p>
+																{user.homePin ? (
+																	<p className="mt-1 text-[11px] font-medium text-emerald-600">
+																		PIN /home aktif
+																	</p>
+																) : null}
 																{user.receiveReportEmails ? (
 																	<p className="mt-1 text-[11px] font-medium text-primary">
 																		Penerima laporan email
