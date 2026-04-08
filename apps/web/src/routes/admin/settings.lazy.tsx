@@ -468,7 +468,7 @@ function SettingsPage() {
 		enableDessertLater: true,
 		requireTableNumber: false,
 		cashPaymentLabel: "Bayar di kasir",
-		mayarPaymentLabel: "Bayar online",
+		mayarPaymentLabel: "QRIS",
 	});
 
 	const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
@@ -632,7 +632,7 @@ function SettingsPage() {
 					"Bayar di kasir",
 				mayarPaymentLabel:
 					siteSettings.customerOrdering?.mayarPaymentLabel ??
-					"Bayar online",
+					"QRIS",
 			});
 		}
 		setIsConnected(bluetoothPrinter.isConnected());

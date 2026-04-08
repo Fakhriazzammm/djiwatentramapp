@@ -77,7 +77,7 @@ const DEFAULTS = {
 		enableDessertLater: true,
 		requireTableNumber: false,
 		cashPaymentLabel: "Bayar di kasir",
-		mayarPaymentLabel: "Bayar online",
+		mayarPaymentLabel: "QRIS",
 	},
 };
 

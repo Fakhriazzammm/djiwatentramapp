@@ -30,7 +30,7 @@ import {
 	isFreeRefillActive,
 } from "@/lib/utils/pricing";
 
-type RouteSearch = { table?: string; session?: string };
+type RouteSearch = { table?: string; session?: string; orderId?: string };
 type Step = "welcome" | "party" | "refill" | "menu" | "checkout" | "receipt";
 type MenuMode = "number" | "catalog";
 type PaymentChoice = "cashier" | "mayar";
@@ -72,7 +72,7 @@ const CUSTOMER_ORDERING_DEFAULTS = {
 	enableDessertLater: true,
 	requireTableNumber: false,
 	cashPaymentLabel: "Bayar di kasir",
-	mayarPaymentLabel: "Bayar online",
+	mayarPaymentLabel: "QRIS",
 };
 
 const currency = (value: number) =>
@@ -115,6 +115,7 @@ export function CustomerOrderingPage({
 	const discounts = useQuery(api.discounts.getActiveDiscounts);
 	const createOrder = useMutation(api.orders.createOrder);
 	const updateOrderPaymentGateway = useMutation(api.orders.updateOrderPaymentGateway);
+	const updateOrderStatus = useMutation(api.orders.updateOrderStatus);
 	const createServiceRequest = useMutation(api.customerService.createRequest);
 	const createMayarInvoice = useAction(api.mayar.createInvoice);
 	const getMayarInvoiceDetail = useAction(api.mayar.getInvoiceDetail);
@@ -225,8 +226,8 @@ export function CustomerOrderingPage({
 			? [
 					{
 						key: "mayar" as const,
-						label: config.mayarPaymentLabel,
-						description: "Invoice Mayar dibuat dan status struk akan berubah otomatis setelah dibayar.",
+						label: "QRIS",
+						description: "Bayar cepat dan cashierless dengan QRIS",
 					},
 			  ]
 			: []),
@@ -244,6 +245,18 @@ export function CustomerOrderingPage({
 			setPaymentChoice("cashier");
 		}
 	}, [paymentChoice, paymentOptions]);
+
+	useEffect(() => {
+		if (!search.orderId || receipt) return;
+		setReceipt({
+			orderId: search.orderId as Id<"orders">,
+			fallbackReference: `SELF-${String(search.orderId).slice(-4).toUpperCase()}`,
+			mode: "mayar_pending",
+			paymentChoice: "mayar",
+			dessertLater: false,
+		});
+		setStep("receipt");
+	}, [search.orderId, receipt]);
 
 	useEffect(() => {
 		if (!receipt || !currentOrder) return;
@@ -386,6 +399,10 @@ export function CustomerOrderingPage({
 		}
 		setIsSubmitting(true);
 		try {
+			const normalizedCustomerName =
+				customerName.trim() || `Customer ${tableNumber.trim() || "Walk In"}`;
+			const normalizedTableNumber = tableNumber.trim() || undefined;
+			const normalizedNotes = notes.trim() || undefined;
 			const payload = {
 				items: cart.map((item) => ({
 					productId: item.productId,
@@ -399,15 +416,15 @@ export function CustomerOrderingPage({
 				taxAmount,
 				serviceChargeAmount,
 				paymentMethod: paymentChoice === "mayar" ? "mayar" : "cash",
-				customerName: customerName.trim() || undefined,
-				tableNumber: tableNumber.trim() || undefined,
+				customerName: normalizedCustomerName,
+				tableNumber: normalizedTableNumber,
 				orderType: "dine_in" as const,
 				source: "customer_self_service" as const,
 				brandSlug,
 				guestCount: partySize,
 				freeRefillSelected: Boolean(freeRefillOptIn),
 				dessertLater,
-				notes: notes.trim() || undefined,
+				notes: normalizedNotes,
 				discountAmount: promoDiscount,
 				receiptMeta:
 					freeRefillOptIn && activeFreeRefillPromo
@@ -423,57 +440,77 @@ export function CustomerOrderingPage({
 			};
 
 			if (paymentChoice === "mayar") {
-				const invoice = await createMayarInvoice({
-					name: customerName.trim() || `Customer ${tableNumber.trim() || "Walk In"}`,
-					email: undefined,
-					mobile: siteSettings?.storePhone || "",
-					redirectUrl: typeof window !== "undefined" ? window.location.href : undefined,
-					description: `Self-service order ${storeName}`,
-					expiredAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-					items: [
-						...cart.map((item) => ({
-							quantity: item.quantity,
-							rate: item.price,
-							description: item.variant ? `${item.name} (${item.variant})` : item.name,
-						})),
-						...(freeRefillOptIn && activeFreeRefillPromo
-							? [
-									{
-										quantity: Math.max(1, partySize),
-										rate: activeFreeRefillPromo.refillPrice ?? 0,
-										description: activeFreeRefillPromo.name || "Free Refill",
-									},
-							  ]
-							: []),
-						],
-					});
-				if (!invoice?.data?.id) {
-					throw new Error(invoice?.messages || "Gagal membuat invoice Mayar");
-				}
 				const orderId = await createOrder({
 					...payload,
-					paymentGateway: {
-						provider: "mayar",
-						invoiceId: invoice.data.id,
-						transactionId: invoice.data.transactionId,
-						invoiceUrl: invoice.data.link,
-						status: "created",
-					},
+					paymentReceiptKind: "cashier_pending",
 					isOpenBill: true,
 				});
+				const redirectUrl =
+					typeof window !== "undefined"
+						? `${window.location.origin}/${brandSlug}?session=${encodeURIComponent(sessionRef.current)}${normalizedTableNumber ? `&table=${encodeURIComponent(normalizedTableNumber)}` : ""}&orderId=${encodeURIComponent(String(orderId))}`
+						: undefined;
+				let invoice:
+					| {
+							statusCode?: number;
+							messages?: string;
+							data?: { id?: string; transactionId?: string; link?: string };
+					  }
+					| undefined;
+				try {
+					invoice = await createMayarInvoice({
+						name: normalizedCustomerName,
+						email: undefined,
+						mobile: siteSettings?.storePhone || "",
+						redirectUrl,
+						description: `Self-service order ${storeName}`,
+						expiredAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+						items: [
+							...cart.map((item) => ({
+								quantity: item.quantity,
+								rate: item.price,
+								description: item.variant ? `${item.name} (${item.variant})` : item.name,
+							})),
+							...(freeRefillOptIn && activeFreeRefillPromo
+								? [
+										{
+											quantity: Math.max(1, partySize),
+											rate: activeFreeRefillPromo.refillPrice ?? 0,
+											description: activeFreeRefillPromo.name || "Free Refill",
+										},
+								  ]
+								: []),
+						],
+					});
+					if (!invoice?.data?.id) {
+						throw new Error(invoice?.messages || "Gagal membuat invoice Mayar");
+					}
+					await updateOrderPaymentGateway({
+						id: orderId,
+						paymentGateway: {
+							provider: "mayar",
+							invoiceId: invoice.data.id,
+							transactionId: invoice.data.transactionId,
+							invoiceUrl: invoice.data.link,
+							status: "created",
+						},
+					});
+				} catch (error) {
+					await updateOrderStatus({ id: orderId, status: "cancelled" });
+					throw error;
+				}
 				setReceipt({
 					orderId,
 					fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`,
 					mode: "mayar_pending",
 					paymentChoice,
-					invoiceId: invoice.data.id,
-					invoiceUrl: invoice.data.link,
+					invoiceId: invoice?.data?.id,
+					invoiceUrl: invoice?.data?.link,
 					dessertLater,
 				});
 				setCart([]);
 				setStep("receipt");
 
-				if (invoice.data.link && typeof window !== "undefined") {
+				if (invoice?.data?.link && typeof window !== "undefined") {
 					window.location.assign(invoice.data.link);
 					return;
 				}
@@ -573,19 +610,24 @@ export function CustomerOrderingPage({
 					</div>
 				</header>
 
-				<main className="flex-1 pb-28">
+				<main
+					className={cn(
+						"flex-1",
+						step === "menu" ? "overflow-y-auto pb-24" : "overflow-hidden pb-20"
+					)}
+				>
 					{step === "welcome" ? (
-						<section className="flex min-h-[calc(var(--app-min-height)-4.5rem)] flex-col items-center justify-center px-6 py-10 text-center">
-							<div className="app-card-strong w-full px-6 py-10">
-								<div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[2rem] bg-primary/10">
-									{logoUrl ? <img alt={storeName} className="h-14 w-14 object-contain" src={logoUrl} /> : <ShoppingCart className="h-8 w-8 text-primary" />}
+						<section className="flex min-h-[calc(var(--app-min-height)-4.5rem)] flex-col items-center justify-center px-4 py-4 text-center">
+							<div className="app-card-strong w-full px-4 py-5">
+								<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[1.4rem] bg-primary/10">
+									{logoUrl ? <img alt={storeName} className="h-10 w-10 object-contain" src={logoUrl} /> : <ShoppingCart className="h-6 w-6 text-primary" />}
 								</div>
-								<p className="mt-6 text-[11px] font-bold uppercase tracking-[0.3em]" style={{ color: themeColor }}>
+								<p className="mt-3 text-[10px] font-bold uppercase tracking-[0.24em]" style={{ color: themeColor }}>
 									{config.welcomeTitle}
 								</p>
-								<h2 className="mt-3 text-3xl font-black tracking-tight">{storeName}</h2>
-								<p className="mt-4 text-sm leading-relaxed text-muted-foreground">{config.welcomeSubtitle}</p>
-								<button type="button" className="mt-8 rounded-[1.5rem] px-8 py-4 text-lg font-black text-white shadow-sm" style={{ background: themeColor }} onClick={() => setStep(config.enablePartySizeSelection ? "party" : config.enableFreeRefillPrompt && activeFreeRefillPromo ? "refill" : "menu")}>
+								<h2 className="mt-2 text-2xl font-black tracking-tight">{storeName}</h2>
+								<p className="mt-2 text-xs leading-relaxed text-muted-foreground">{config.welcomeSubtitle}</p>
+								<button type="button" className="mt-4 rounded-[1rem] px-6 py-3 text-sm font-black text-white shadow-sm" style={{ background: themeColor }} onClick={() => setStep(config.enablePartySizeSelection ? "party" : config.enableFreeRefillPrompt && activeFreeRefillPromo ? "refill" : "menu")}>
 									{config.welcomeButtonLabel}
 								</button>
 							</div>
@@ -593,20 +635,20 @@ export function CustomerOrderingPage({
 					) : null}
 
 					{step === "party" ? (
-						<section className="space-y-5 px-4 py-5">
-							<div className="rounded-[2rem] border border-border bg-card p-5 shadow-sm">
+						<section className="space-y-3 px-3 py-3">
+							<div className="rounded-[1.5rem] border border-border bg-card p-4 shadow-sm">
 								<div className="flex items-center gap-3">
 									<div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Users className="h-6 w-6" /></div>
 									<div><p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: themeColor }}>Step 1</p><h2 className="text-xl font-black">Berapa orang yang memesan?</h2></div>
 								</div>
-								<div className="mt-5 grid grid-cols-3 gap-3">
+								<div className="mt-3 grid grid-cols-3 gap-2">
 									{[1,2,3,4,5,6,7,8,9].map((value) => (
-										<button key={value} type="button" className={cn("rounded-[1.5rem] border px-3 py-5 text-lg font-black transition-all", partySize===value ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-background")} onClick={() => setPartySize(value)}>
+										<button key={value} type="button" className={cn("rounded-[1rem] border px-2 py-3 text-base font-black transition-all", partySize===value ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-background")} onClick={() => setPartySize(value)}>
 											{value === 9 ? "9+" : value}
 										</button>
 									))}
 								</div>
-								<button type="button" className="mt-5 flex w-full items-center justify-center gap-2 rounded-[1.5rem] px-4 py-4 text-base font-black text-white shadow-sm" style={{ background: themeColor }} onClick={goToMenuFlow}>
+								<button type="button" className="mt-3 flex w-full items-center justify-center gap-2 rounded-[1rem] px-4 py-3 text-sm font-black text-white shadow-sm" style={{ background: themeColor }} onClick={goToMenuFlow}>
 									Lanjut dengan {partySize} orang <ChevronRight className="h-5 w-5" />
 								</button>
 							</div>
@@ -614,19 +656,19 @@ export function CustomerOrderingPage({
 					) : null}
 
 					{step === "refill" ? (
-						<section className="space-y-5 px-4 py-5">
-							<div className="rounded-[2rem] border border-border bg-card p-5 shadow-sm">
+						<section className="space-y-3 px-3 py-3">
+							<div className="rounded-[1.5rem] border border-border bg-card p-4 shadow-sm">
 								<div className="flex items-center gap-3">
 									<div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Bell className="h-6 w-6" /></div>
 									<div><p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: themeColor }}>Step 2</p><h2 className="text-xl font-black">Tambahkan free refill?</h2></div>
 								</div>
-								<div className="mt-5 rounded-[1.75rem] border border-primary/15 bg-primary/5 p-4">
-									<p className="text-base font-black">{activeFreeRefillPromo?.name || "Free refill minuman tersedia"}</p>
-									<p className="mt-2 text-sm leading-relaxed text-muted-foreground">{activeFreeRefillPromo?.refillPrice ? `Tambahan ${currency(activeFreeRefillPromo.refillPrice)} per orang. Estimasi total ${currency((activeFreeRefillPromo.refillPrice || 0) * Math.max(1, partySize))}.` : `Promo refill aktif untuk ${partySize} orang.`}</p>
+								<div className="mt-3 rounded-[1rem] border border-primary/15 bg-primary/5 p-3">
+									<p className="text-sm font-black">{activeFreeRefillPromo?.name || "Free refill minuman tersedia"}</p>
+									<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{activeFreeRefillPromo?.refillPrice ? `Tambahan ${currency(activeFreeRefillPromo.refillPrice)} per orang. Estimasi total ${currency((activeFreeRefillPromo.refillPrice || 0) * Math.max(1, partySize))}.` : `Promo refill aktif untuk ${partySize} orang.`}</p>
 								</div>
-								<div className="mt-5 grid grid-cols-2 gap-3">
-									<button type="button" className="rounded-[1.5rem] border border-border bg-background px-4 py-4 text-base font-black" onClick={() => { setFreeRefillOptIn(false); setStep("menu"); }}>Tidak sekarang</button>
-									<button type="button" className="rounded-[1.5rem] px-4 py-4 text-base font-black text-white shadow-sm" style={{ background: themeColor }} onClick={() => { setFreeRefillOptIn(true); setStep("menu"); }}>Ya, tambahkan</button>
+								<div className="mt-3 grid grid-cols-2 gap-2">
+									<button type="button" className="rounded-[1rem] border border-border bg-background px-3 py-3 text-sm font-black" onClick={() => { setFreeRefillOptIn(false); setStep("menu"); }}>Tidak sekarang</button>
+									<button type="button" className="rounded-[1rem] px-3 py-3 text-sm font-black text-white shadow-sm" style={{ background: themeColor }} onClick={() => { setFreeRefillOptIn(true); setStep("menu"); }}>Ya, tambahkan</button>
 								</div>
 							</div>
 						</section>
@@ -785,23 +827,40 @@ function renderMenuSection(props: {
 
 function renderCheckoutSection(props: any) {
 	return (
-		<div className="space-y-5 px-4 py-5">
-			<div className="rounded-[2rem] border border-border bg-card p-5 shadow-sm">
-				<div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Wallet className="h-6 w-6" /></div><div><p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary/70">Step akhir</p><h2 className="text-xl font-black">Checkout pesanan</h2></div></div>
-				<div className="mt-5 space-y-4">
-					<div className="space-y-2"><label className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Nama customer</label><input className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium outline-none" value={props.customerName} onChange={(event) => props.setCustomerName(event.target.value)} placeholder="Opsional" type="text" /></div>
-					<div className="space-y-2"><label className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Nomor meja</label><input className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium outline-none" value={props.tableNumber} onChange={(event) => props.setTableNumber(event.target.value.replace(/[^\dA-Za-z-]/g, ""))} placeholder="Contoh 12" type="text" /></div>
-					<div className="space-y-2"><label className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Catatan order</label><textarea className="min-h-[88px] w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium outline-none" value={props.notes} onChange={(event) => props.setNotes(event.target.value)} placeholder="Contoh: saus dipisah, tanpa es" /></div>
-					{props.config.enableDessertLater && props.hasDessertInCart ? <label className="flex items-center justify-between rounded-2xl border border-primary/15 bg-primary/5 px-4 py-4"><div><p className="font-bold text-sm text-foreground">Bawakan dessert nanti</p><p className="text-xs text-muted-foreground">Setelah order dibuat, customer bisa menekan tombol request dessert.</p></div><button type="button" className={cn("relative h-7 w-12 rounded-full transition-all", props.dessertLater ? "bg-primary" : "bg-muted-foreground/20")} onClick={() => props.setDessertLater((value: boolean) => !value)}><span className={cn("absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all", props.dessertLater ? "right-1" : "left-1")} /></button></label> : null}
+		<div className="space-y-3 px-3 py-3">
+			<div className="rounded-[1.5rem] border border-border bg-card p-4 shadow-sm">
+				<div className="flex items-center gap-2.5">
+					<div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+						<Wallet className="h-5 w-5" />
+					</div>
+					<div>
+						<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/70">Step akhir</p>
+						<h2 className="text-base font-black">Checkout pesanan</h2>
+					</div>
+				</div>
+				<div className="mt-3 space-y-2.5">
+					<div className="space-y-1">
+						<label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nama customer</label>
+						<input className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium outline-none" value={props.customerName} onChange={(event) => props.setCustomerName(event.target.value)} placeholder="Opsional" type="text" />
+					</div>
+					<div className="space-y-1">
+						<label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nomor meja</label>
+						<input className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium outline-none" value={props.tableNumber} onChange={(event) => props.setTableNumber(event.target.value.replace(/[^\dA-Za-z-]/g, ""))} placeholder="Contoh 12" type="text" />
+					</div>
+					<div className="space-y-1">
+						<label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Catatan order</label>
+						<textarea className="min-h-[68px] w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium outline-none" value={props.notes} onChange={(event) => props.setNotes(event.target.value)} placeholder="Contoh: saus dipisah, tanpa es" />
+					</div>
+					{props.config.enableDessertLater && props.hasDessertInCart ? <label className="flex items-center justify-between rounded-xl border border-primary/15 bg-primary/5 px-3 py-2.5"><div><p className="font-bold text-xs text-foreground">Bawakan dessert nanti</p><p className="text-[11px] text-muted-foreground">Bisa dipanggil saat sudah siap.</p></div><button type="button" className={cn("relative h-6 w-11 rounded-full transition-all", props.dessertLater ? "bg-primary" : "bg-muted-foreground/20")} onClick={() => props.setDessertLater((value: boolean) => !value)}><span className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-all", props.dessertLater ? "right-0.5" : "left-0.5")} /></button></label> : null}
 				</div>
 			</div>
-			<div className="rounded-[2rem] border border-border bg-card p-5 shadow-sm">
-				<div className="flex items-center gap-2"><QrCode className="h-5 w-5 text-primary" /><h3 className="text-lg font-black">Pilih pembayaran</h3></div>
-				<div className="mt-4 space-y-3">{props.paymentOptions.map((option: any) => <button type="button" key={option.key} className={cn("flex w-full items-start justify-between rounded-[1.5rem] border px-4 py-4 text-left transition-all", props.paymentChoice === option.key ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-background")} onClick={() => props.setPaymentChoice(option.key)}><div><p className="font-black text-sm">{option.label}</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{option.description}</p></div><div className={cn("flex h-6 w-6 items-center justify-center rounded-full border-2", props.paymentChoice === option.key ? "border-primary bg-primary" : "border-muted-foreground/30")}>{props.paymentChoice === option.key ? <div className="h-2.5 w-2.5 rounded-full bg-white" /> : null}</div></button>)}</div>
+			<div className="rounded-[1.5rem] border border-border bg-card p-4 shadow-sm">
+				<div className="flex items-center gap-2"><QrCode className="h-4 w-4 text-primary" /><h3 className="text-base font-black">Pilih pembayaran</h3></div>
+				<div className="mt-3 space-y-2">{props.paymentOptions.map((option: any) => <button type="button" key={option.key} className={cn("flex w-full items-start justify-between rounded-xl border px-3 py-3 text-left transition-all", props.paymentChoice === option.key ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-background")} onClick={() => props.setPaymentChoice(option.key)}><div><p className="font-black text-sm">{option.label}</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{option.description}</p></div><div className={cn("mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2", props.paymentChoice === option.key ? "border-primary bg-primary" : "border-muted-foreground/30")}>{props.paymentChoice === option.key ? <div className="h-2 w-2 rounded-full bg-white" /> : null}</div></button>)}</div>
 			</div>
-			<div className="rounded-[2rem] border border-border bg-card p-5 shadow-sm">
+			<div className="rounded-[1.5rem] border border-border bg-card p-4 shadow-sm">
 				<SummaryCardLines productGrossSubtotal={props.productGrossSubtotal} freeRefillCharge={props.freeRefillCharge} promoDiscount={props.promoDiscount} taxAmount={props.taxAmount} taxRate={props.taxRate} serviceChargeAmount={props.serviceChargeAmount} serviceChargeRate={props.serviceChargeRate} total={props.total} />
-				<button type="button" className="mt-5 flex w-full items-center justify-center gap-2 rounded-[1.5rem] bg-primary px-4 py-4 text-base font-black text-primary-foreground shadow-sm transition-all disabled:opacity-60" onClick={props.checkout} disabled={props.isSubmitting}>{props.isSubmitting ? <><Loader2 className="h-5 w-5 animate-spin" />Memproses checkout...</> : <>Checkout {props.currency(props.total)}</>}</button>
+				<button type="button" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-black text-primary-foreground shadow-sm transition-all disabled:opacity-60" onClick={props.checkout} disabled={props.isSubmitting}>{props.isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" />Memproses...</> : <>Checkout {props.currency(props.total)}</>}</button>
 			</div>
 		</div>
 	);
@@ -810,17 +869,21 @@ function renderCheckoutSection(props: any) {
 function renderReceiptSection(props: any) {
 	const orderReference = props.currentOrder?.orderNumber || props.receipt.fallbackReference;
 	const mode = props.currentOrder?.status === "paid" || props.currentOrder?.status === "completed" ? "paid" : props.receipt.mode;
+	const orderItems = props.currentOrder?.items ?? [];
 	return (
-		<div className="space-y-5 px-4 py-5">
-			<div className="rounded-[2rem] border border-border bg-card p-6 text-center shadow-sm">
-				<div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">{mode === "paid" ? <CheckCircle2 className="h-8 w-8" /> : <Wallet className="h-8 w-8" />}</div>
-				<p className="mt-4 text-[11px] font-bold uppercase tracking-[0.24em] text-primary/70">{mode === "paid" ? "Payment completed" : "Payment receipt"}</p>
-				<h2 className="mt-2 text-2xl font-black tracking-tight">{mode === "paid" ? "Struk lunas" : "Tunjukkan ke kasir"}</h2>
-				<p className="mt-3 text-sm leading-relaxed text-muted-foreground">{mode === "cashier_pending" ? "Silakan tunjukkan layar ini ke kasir untuk menyelesaikan pembayaran." : mode === "mayar_pending" ? "Invoice Mayar sudah dibuat. Status struk akan berubah otomatis setelah dibayar." : "Pembayaran sudah diterima. Pesanan akan diproses restoran."}</p>
-				<div className="mt-6 rounded-[1.75rem] border border-border bg-background px-4 py-5">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-16 object-contain" src={props.logoUrl} /> : null}<div className="mt-4 space-y-1"><p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Nomor order</p><p className="text-3xl font-black tracking-[0.18em] text-foreground">{orderReference}</p></div><div className="mt-5 rounded-[1.4rem] bg-muted/35 px-4 py-4"><div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Metode</span><span className="font-bold">{props.receipt.paymentChoice === "mayar" ? "Mayar Payment Gateway" : "Kasir"}</span></div><div className="mt-2 flex items-center justify-between text-sm"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", mode === "paid" ? "text-emerald-600" : "text-orange-600")}>{mode === "paid" ? "LUNAS" : "MENUNGGU PEMBAYARAN"}</span></div><div className="mt-2 flex items-center justify-between text-sm"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div><BarcodeLines value={orderReference} /></div>
-				{props.receipt.invoiceUrl && mode === "mayar_pending" ? <a className="mt-5 inline-flex items-center justify-center gap-2 rounded-[1.3rem] bg-primary px-5 py-3 text-sm font-black text-primary-foreground shadow-sm" href={props.receipt.invoiceUrl} rel="noreferrer" target="_blank"><QrCode className="h-4 w-4" />Buka invoice Mayar</a> : null}
+		<div className="space-y-3 px-3 py-3">
+			<div className="rounded-[1.5rem] border border-border bg-card p-4 text-center shadow-sm">
+				<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">{mode === "paid" ? <CheckCircle2 className="h-6 w-6" /> : <Wallet className="h-6 w-6" />}</div>
+				<p className="mt-3 text-[10px] font-bold uppercase tracking-[0.2em] text-primary/70">{mode === "paid" ? "Payment completed" : "Payment receipt"}</p>
+				<h2 className="mt-1 text-xl font-black tracking-tight">{mode === "paid" ? "Struk lunas" : "Tunjukkan ke kasir"}</h2>
+				<p className="mt-2 text-xs leading-relaxed text-muted-foreground">{mode === "cashier_pending" ? "Silakan tunjukkan layar ini ke kasir untuk menyelesaikan pembayaran." : mode === "mayar_pending" ? "Invoice Mayar sudah dibuat. Status struk akan berubah otomatis setelah dibayar." : "Pembayaran sudah diterima. Pesanan akan diproses restoran."}</p>
+				<div className="mt-4 rounded-[1.2rem] border border-border bg-background px-3 py-3">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-12 object-contain" src={props.logoUrl} /> : null}<div className="mt-3 space-y-1"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Nomor order</p><p className="text-2xl font-black tracking-[0.14em] text-foreground">{orderReference}</p></div><div className="mt-3 rounded-xl bg-muted/35 px-3 py-3"><div className="flex items-center justify-between text-xs"><span className="text-muted-foreground">Metode</span><span className="font-bold">{props.receipt.paymentChoice === "mayar" ? "QRIS" : "Kasir"}</span></div><div className="mt-1.5 flex items-center justify-between text-xs"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", mode === "paid" ? "text-emerald-600" : "text-orange-600")}>{mode === "paid" ? "LUNAS" : "MENUNGGU PEMBAYARAN"}</span></div><div className="mt-1.5 flex items-center justify-between text-xs"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>
+					{orderItems.length > 0 ? <div className="mt-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Detail item</p><div className="mt-2 space-y-1.5">{orderItems.map((item: any, index: number) => <div className="flex items-start justify-between gap-2 text-xs" key={`${item.productId}-${item.variant || "default"}-${index}`}><span className="line-clamp-2 text-foreground">{item.quantity}x {item.productName}{item.variant ? ` (${item.variant})` : ""}</span><span className="shrink-0 font-semibold">{currency((item.price || 0) * (item.quantity || 0))}</span></div>)}</div></div> : null}
+					<BarcodeLines value={orderReference} />
+				</div>
+				{props.receipt.invoiceUrl && mode === "mayar_pending" ? <a className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-black text-primary-foreground shadow-sm" href={props.receipt.invoiceUrl} rel="noreferrer" target="_blank"><QrCode className="h-3.5 w-3.5" />Buka invoice Mayar</a> : null}
 			</div>
-			<div className="grid grid-cols-2 gap-3"><button type="button" className="rounded-[1.5rem] border border-border bg-card px-4 py-4 text-sm font-black shadow-sm" onClick={props.onOrderAgain}>Pesan lagi</button><button type="button" className="rounded-[1.5rem] bg-primary px-4 py-4 text-sm font-black text-primary-foreground shadow-sm" onClick={props.onOpenService}>{props.dessertLater ? "Call staff / dessert" : "Call staff"}</button></div>
+			<div className="grid grid-cols-2 gap-2"><button type="button" className="rounded-xl border border-border bg-card px-3 py-3 text-xs font-black shadow-sm" onClick={props.onOrderAgain}>Pesan lagi</button><button type="button" className="rounded-xl bg-primary px-3 py-3 text-xs font-black text-primary-foreground shadow-sm" onClick={props.onOpenService}>{props.dessertLater ? "Call staff / dessert" : "Call staff"}</button></div>
 		</div>
 	);
 }
