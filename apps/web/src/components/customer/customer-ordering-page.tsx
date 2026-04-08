@@ -798,20 +798,20 @@ function renderMenuSection(props: {
 	totalItems: number;
 }) {
 	return (
-		<div className="space-y-5 px-4 py-5">
-			<div className="rounded-[2rem] px-5 py-5 text-white shadow-[0_20px_50px_rgba(15,23,42,0.18)]" style={{ background: `linear-gradient(135deg, ${props.themeColor}, rgba(15,23,42,0.9))` }}>
-				<div className="flex items-start justify-between gap-4">
+		<div className="space-y-4 px-3.5 py-4">
+			<div className="rounded-[1.75rem] px-4 py-4 text-white shadow-[0_16px_40px_rgba(15,23,42,0.16)]" style={{ background: `linear-gradient(135deg, ${props.themeColor}, rgba(15,23,42,0.9))` }}>
+				<div className="flex items-start justify-between gap-3">
 					<div>
-						<p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/75">Session aktif</p>
-						<h2 className="mt-2 text-2xl font-black">Pilih menu</h2>
-						<p className="mt-2 text-sm text-white/75">Ketik nomor produk lengkap, scan barcode, atau pilih lewat katalog.</p>
+						<p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/75">Session aktif</p>
+						<h2 className="mt-1.5 text-[2rem] font-black leading-none">Pilih menu</h2>
+						<p className="mt-1.5 text-xs text-white/75">Ketik nomor produk lengkap, scan barcode, atau pilih lewat katalog.</p>
 					</div>
-					<div className="rounded-2xl bg-white/12 px-4 py-3 text-right backdrop-blur">
-						<p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/60">Orang</p>
-						<p className="mt-1 text-2xl font-black">{props.partySize}</p>
+					<div className="rounded-xl bg-white/12 px-3 py-2 text-right backdrop-blur">
+						<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/60">Orang</p>
+						<p className="mt-0.5 text-xl font-black">{props.partySize}</p>
 					</div>
 				</div>
-				<div className="mt-4 flex flex-wrap gap-2 text-xs">
+				<div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
 					<BadgePill label={props.tableNumber.trim() ? `Meja ${props.tableNumber.trim()}` : "Meja belum diisi"} />
 					{props.freeRefillCharge > 0 ? <BadgePill label={`Free refill ${currency(props.freeRefillCharge)}`} /> : null}
 					<BadgePill label={`${props.totalItems} item • ${currency(props.total)}`} />
@@ -958,7 +958,7 @@ function renderReceiptSection(props: any) {
 }
 
 function BadgePill({ label }: { label: string }) {
-	return <span className="rounded-full bg-white/12 px-3 py-1.5 font-semibold text-white/85 backdrop-blur">{label}</span>;
+	return <span className="rounded-full bg-white/12 px-2.5 py-1 text-[11px] font-semibold text-white/85 backdrop-blur">{label}</span>;
 }
 
 function chipClassName(active: boolean) {
