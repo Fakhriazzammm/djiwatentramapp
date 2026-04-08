@@ -738,7 +738,7 @@ export function CustomerOrderingPage({
 			</div>
 
 			<Sheet open={cartOpen} onOpenChange={setCartOpen}>
-				<SheetContent side="bottom" className="max-h-[90vh] rounded-t-[2rem] p-0">
+				<SheetContent side="bottom" showCloseButton={false} className="max-h-[90vh] rounded-t-[2rem] p-0">
 					<div className="flex h-full flex-col">
 						<div className="border-b border-border px-5 pb-4 pt-5"><div className="flex items-center justify-between"><div><p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: themeColor }}>Review pesanan</p><h3 className="text-xl font-black">Order basket</h3></div><button type="button" className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground" onClick={() => setCartOpen(false)}><X className="h-4 w-4" /></button></div></div>
 						<div className="flex-1 overflow-y-auto px-5 py-4">{cart.length === 0 ? <div className="rounded-[1.5rem] border border-dashed border-border bg-muted/20 px-4 py-10 text-center text-muted-foreground">Keranjang masih kosong.</div> : <div className="space-y-3">{cart.map((item) => <CartRow key={`${item.productId}-${item.variant || "default"}`} item={item} onDecrease={() => updateCartQuantity(item.productId, item.variant, -1)} onIncrease={() => updateCartQuantity(item.productId, item.variant, 1)} onRemove={() => setCart((current) => current.filter((entry) => entry.productId !== item.productId || entry.variant !== item.variant))} />)}</div>}</div>
@@ -758,13 +758,13 @@ export function CustomerOrderingPage({
 			</Sheet>
 
 			<Sheet open={scannerOpen} onOpenChange={setScannerOpen}>
-				<SheetContent side="bottom" className="rounded-t-[2rem] p-0">
+				<SheetContent side="bottom" showCloseButton={false} className="rounded-t-[2rem] p-0">
 					<BarcodeScanner onClose={() => setScannerOpen(false)} onDetected={(rawValue) => { const product = productByMenuNumber.get(normalizeMenuCode(rawValue.replace(/\D/g, ""))) || productByMenuNumber.get(normalizeMenuCode(rawValue)); if (!product) { toast.error("Barcode tidak cocok dengan nomor produk"); return; } handleProductSelect(product); setScannerOpen(false); }} />
 				</SheetContent>
 			</Sheet>
 
 			<Sheet open={Boolean(productSheet)} onOpenChange={(open) => !open && setProductSheet(null)}>
-				<SheetContent side="bottom" className="max-h-[90vh] rounded-t-[2rem] p-0">
+				<SheetContent side="bottom" showCloseButton={false} className="max-h-[90vh] rounded-t-[2rem] p-0">
 					<ProductSheet product={productSheet} discounts={discounts} onClose={() => setProductSheet(null)} onAdd={(item) => { addToCart(item); setProductSheet(null); }} />
 				</SheetContent>
 			</Sheet>
