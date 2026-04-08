@@ -269,6 +269,25 @@ export function CustomerOrderingPage({
 	}, [currentOrder, receipt]);
 
 	useEffect(() => {
+		if (!receipt || !currentOrder) return;
+		const gateway = currentOrder.paymentGateway as
+			| { invoiceId?: string; invoiceUrl?: string; provider?: string }
+			| undefined;
+		if (receipt.paymentChoice !== "mayar") return;
+		if (!receipt.invoiceId && gateway?.invoiceId) {
+			setReceipt((value) =>
+				value
+					? {
+							...value,
+							invoiceId: gateway.invoiceId,
+							invoiceUrl: value.invoiceUrl ?? gateway.invoiceUrl,
+					  }
+					: value
+			);
+		}
+	}, [receipt, currentOrder]);
+
+	useEffect(() => {
 		if (step !== "menu" || menuMode !== "number" || !manualCode.trim()) return;
 		const product = productByMenuNumber.get(normalizeMenuCode(manualCode));
 		if (!product) return;
@@ -280,23 +299,44 @@ export function CustomerOrderingPage({
 	}, [manualCode, menuMode, productByMenuNumber, step]);
 
 	useEffect(() => {
-		if (!receipt || receipt.mode !== "mayar_pending" || !receipt.invoiceId) return;
+		const invoiceId =
+			receipt?.invoiceId ||
+			((currentOrder?.paymentGateway as { invoiceId?: string } | undefined)
+				?.invoiceId ?? undefined);
+		const invoiceUrl =
+			receipt?.invoiceUrl ||
+			((currentOrder?.paymentGateway as { invoiceUrl?: string } | undefined)
+				?.invoiceUrl ?? undefined);
+		if (!receipt || receipt.mode !== "mayar_pending" || !invoiceId) return;
 		const timer = window.setInterval(async () => {
 			try {
-				const result = await getMayarInvoiceDetail({ invoiceId: receipt.invoiceId! });
-				const normalized = String((result?.data as { status?: string } | null)?.status || "").toLowerCase();
+				const result = await getMayarInvoiceDetail({ invoiceId });
+				const data = (result?.data as {
+					status?: string;
+					transactionStatus?: string;
+					transactions?: Array<{ status?: string; transactionStatus?: string }>;
+				} | null) ?? null;
+				const normalized = String(data?.status || "").toLowerCase();
+				const normalizedTransactionStatus = String(
+					data?.transactionStatus || ""
+				).toLowerCase();
 				const isPaid =
 					normalized.includes("paid") ||
-					((result?.data as { transactions?: Array<{ status?: string }> } | null)?.transactions || []).some((item) =>
-						String(item?.status || "").toLowerCase().includes("paid")
+					normalized.includes("success") ||
+					normalizedTransactionStatus.includes("paid") ||
+					normalizedTransactionStatus.includes("success") ||
+					(data?.transactions || []).some((item) =>
+						String(item?.status || item?.transactionStatus || "")
+							.toLowerCase()
+							.match(/paid|success/)
 					);
 				if (!isPaid) return;
 				await updateOrderPaymentGateway({
 					id: receipt.orderId,
 					paymentGateway: {
 						provider: "mayar",
-						invoiceId: receipt.invoiceId!,
-						invoiceUrl: receipt.invoiceUrl,
+						invoiceId,
+						invoiceUrl,
 						status: "paid",
 						paidAt: Date.now(),
 					},
@@ -309,7 +349,7 @@ export function CustomerOrderingPage({
 			}
 		}, 5000);
 		return () => window.clearInterval(timer);
-	}, [receipt, updateOrderPaymentGateway]);
+	}, [receipt, currentOrder, getMayarInvoiceDetail, updateOrderPaymentGateway]);
 
 	const addToCart = (item: CartItem) => {
 		setCart((current) => {
@@ -613,7 +653,11 @@ export function CustomerOrderingPage({
 				<main
 					className={cn(
 						"flex-1",
-						step === "menu" ? "overflow-y-auto pb-24" : "overflow-hidden pb-20"
+						step === "menu"
+							? "overflow-y-auto pb-24"
+							: step === "receipt"
+								? "overflow-y-auto pb-32"
+								: "overflow-hidden pb-20"
 					)}
 				>
 					{step === "welcome" ? (
@@ -870,20 +914,45 @@ function renderReceiptSection(props: any) {
 	const orderReference = props.currentOrder?.orderNumber || props.receipt.fallbackReference;
 	const mode = props.currentOrder?.status === "paid" || props.currentOrder?.status === "completed" ? "paid" : props.receipt.mode;
 	const orderItems = props.currentOrder?.items ?? [];
+	const customerName = props.currentOrder?.customerName || "-";
+	const tableNumber = props.currentOrder?.tableNumber || "-";
+	const orderType = props.currentOrder?.orderType === "takeaway" ? "Takeaway" : "Dine In";
+	const customerNotes = props.currentOrder?.notes || "-";
 	return (
-		<div className="space-y-3 px-3 py-3">
+		<div className="space-y-3 px-3 py-3 pb-8">
 			<div className="rounded-[1.5rem] border border-border bg-card p-4 text-center shadow-sm">
 				<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">{mode === "paid" ? <CheckCircle2 className="h-6 w-6" /> : <Wallet className="h-6 w-6" />}</div>
 				<p className="mt-3 text-[10px] font-bold uppercase tracking-[0.2em] text-primary/70">{mode === "paid" ? "Payment completed" : "Payment receipt"}</p>
 				<h2 className="mt-1 text-xl font-black tracking-tight">{mode === "paid" ? "Struk lunas" : "Tunjukkan ke kasir"}</h2>
 				<p className="mt-2 text-xs leading-relaxed text-muted-foreground">{mode === "cashier_pending" ? "Silakan tunjukkan layar ini ke kasir untuk menyelesaikan pembayaran." : mode === "mayar_pending" ? "Invoice Mayar sudah dibuat. Status struk akan berubah otomatis setelah dibayar." : "Pembayaran sudah diterima. Pesanan akan diproses restoran."}</p>
 				<div className="mt-4 rounded-[1.2rem] border border-border bg-background px-3 py-3">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-12 object-contain" src={props.logoUrl} /> : null}<div className="mt-3 space-y-1"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Nomor order</p><p className="text-2xl font-black tracking-[0.14em] text-foreground">{orderReference}</p></div><div className="mt-3 rounded-xl bg-muted/35 px-3 py-3"><div className="flex items-center justify-between text-xs"><span className="text-muted-foreground">Metode</span><span className="font-bold">{props.receipt.paymentChoice === "mayar" ? "QRIS" : "Kasir"}</span></div><div className="mt-1.5 flex items-center justify-between text-xs"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", mode === "paid" ? "text-emerald-600" : "text-orange-600")}>{mode === "paid" ? "LUNAS" : "MENUNGGU PEMBAYARAN"}</span></div><div className="mt-1.5 flex items-center justify-between text-xs"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>
+					<div className="mt-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left">
+						<p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Data customer</p>
+						<div className="mt-2 space-y-1.5">
+							<div className="flex items-center justify-between gap-2 text-xs">
+								<span className="text-muted-foreground">Nama</span>
+								<span className="font-semibold text-foreground">{customerName}</span>
+							</div>
+							<div className="flex items-center justify-between gap-2 text-xs">
+								<span className="text-muted-foreground">Meja</span>
+								<span className="font-semibold text-foreground">{tableNumber}</span>
+							</div>
+							<div className="flex items-center justify-between gap-2 text-xs">
+								<span className="text-muted-foreground">Tipe</span>
+								<span className="font-semibold text-foreground">{orderType}</span>
+							</div>
+							<div className="flex items-start justify-between gap-2 text-xs">
+								<span className="text-muted-foreground">Catatan</span>
+								<span className="max-w-[70%] text-right font-semibold text-foreground">{customerNotes}</span>
+							</div>
+						</div>
+					</div>
 					{orderItems.length > 0 ? <div className="mt-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Detail item</p><div className="mt-2 space-y-1.5">{orderItems.map((item: any, index: number) => <div className="flex items-start justify-between gap-2 text-xs" key={`${item.productId}-${item.variant || "default"}-${index}`}><span className="line-clamp-2 text-foreground">{item.quantity}x {item.productName}{item.variant ? ` (${item.variant})` : ""}</span><span className="shrink-0 font-semibold">{currency((item.price || 0) * (item.quantity || 0))}</span></div>)}</div></div> : null}
 					<BarcodeLines value={orderReference} />
 				</div>
 				{props.receipt.invoiceUrl && mode === "mayar_pending" ? <a className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-black text-primary-foreground shadow-sm" href={props.receipt.invoiceUrl} rel="noreferrer" target="_blank"><QrCode className="h-3.5 w-3.5" />Buka invoice Mayar</a> : null}
 			</div>
-			<div className="grid grid-cols-2 gap-2"><button type="button" className="rounded-xl border border-border bg-card px-3 py-3 text-xs font-black shadow-sm" onClick={props.onOrderAgain}>Pesan lagi</button><button type="button" className="rounded-xl bg-primary px-3 py-3 text-xs font-black text-primary-foreground shadow-sm" onClick={props.onOpenService}>{props.dessertLater ? "Call staff / dessert" : "Call staff"}</button></div>
+			<div className="grid grid-cols-2 gap-2 pb-6"><button type="button" className="rounded-xl border border-border bg-card px-3 py-3 text-xs font-black shadow-sm" onClick={props.onOrderAgain}>Pesan lagi</button><button type="button" className="rounded-xl bg-primary px-3 py-3 text-xs font-black text-primary-foreground shadow-sm" onClick={props.onOpenService}>{props.dessertLater ? "Call staff / dessert" : "Call staff"}</button></div>
 		</div>
 	);
 }
