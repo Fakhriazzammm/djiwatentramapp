@@ -470,6 +470,13 @@ export function CustomerOrderingPage({
 					invoiceUrl: invoice.data.link,
 					dessertLater,
 				});
+				setCart([]);
+				setStep("receipt");
+
+				if (invoice.data.link && typeof window !== "undefined") {
+					window.location.assign(invoice.data.link);
+					return;
+				}
 			} else {
 				const orderId = await createOrder({
 					...payload,
