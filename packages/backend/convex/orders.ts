@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { deductStockForOrderInternal } from "./inventory";
 import { computeHppFromCalculation, type OrderItemHppSnapshot } from "./lib/hpp";
 
@@ -226,6 +226,7 @@ export const createOrder = mutation({
 			orderNumber,
 			status: nextStatus,
 			createdAt: orderCreatedAt,
+			gatewayInvoiceId: orderData.paymentGateway?.invoiceId,
 		});
 
 		if (!isOpenBill) {
@@ -391,6 +392,7 @@ export const updateOrderPaymentGateway = mutation({
 				paidAt?: number;
 			};
 			status: "pending" | "paid" | "completed" | "cancelled";
+			gatewayInvoiceId?: string;
 			paymentReceiptKind?:
 				| "cashier_pending"
 				| "gateway_paid"
@@ -399,6 +401,7 @@ export const updateOrderPaymentGateway = mutation({
 		} = {
 			paymentGateway: args.paymentGateway,
 			status: nextStatus,
+			gatewayInvoiceId: args.paymentGateway.invoiceId,
 		};
 		const nextReceiptKind = args.paymentReceiptKind ?? order.paymentReceiptKind;
 		if (nextReceiptKind) {
@@ -406,6 +409,107 @@ export const updateOrderPaymentGateway = mutation({
 		}
 
 		await ctx.db.patch(args.id, patch);
+	},
+});
+
+export const updateOrderPaymentGatewayByInvoiceId = internalMutation({
+	args: {
+		invoiceId: v.string(),
+		paymentGateway: v.object({
+			provider: v.string(),
+			invoiceId: v.string(),
+			transactionId: v.optional(v.string()),
+			invoiceUrl: v.optional(v.string()),
+			status: v.union(
+				v.literal("created"),
+				v.literal("pending"),
+				v.literal("paid"),
+				v.literal("expired"),
+				v.literal("cancelled"),
+				v.literal("failed")
+			),
+			paidAt: v.optional(v.number()),
+		}),
+		paymentReceiptKind: v.optional(
+			v.union(
+				v.literal("cashier_pending"),
+				v.literal("gateway_paid"),
+				v.literal("manual_qris_pending"),
+				v.literal("transfer_pending")
+			)
+		),
+	},
+	handler: async (ctx, args) => {
+		const order = await ctx.db
+			.query("orders")
+			.withIndex("by_gateway_invoice_id", (q) =>
+				q.eq("gatewayInvoiceId", args.invoiceId)
+			)
+			.unique();
+
+		if (!order) {
+			return { updated: false };
+		}
+
+		const isNowPaid = args.paymentGateway.status === "paid";
+		const wasPaid = order.status === "paid" || order.status === "completed";
+		const nextStatus =
+			args.paymentGateway.status === "cancelled"
+				? "cancelled"
+				: args.paymentGateway.status === "paid"
+					? "paid"
+					: order.status;
+
+		if (isNowPaid && !wasPaid) {
+			const settledAt = args.paymentGateway.paidAt ?? Date.now();
+			await settleOrder(
+				ctx,
+				{
+					_id: order._id,
+					orderNumber: order.orderNumber,
+					items: order.items,
+					totalAmount: order.totalAmount,
+					paymentMethod: order.paymentMethod,
+					createdAt: order.createdAt,
+				},
+				settledAt
+			);
+		}
+
+		const patch: {
+			paymentGateway: {
+				provider: string;
+				invoiceId: string;
+				transactionId?: string;
+				invoiceUrl?: string;
+				status:
+					| "created"
+					| "pending"
+					| "paid"
+					| "expired"
+					| "cancelled"
+					| "failed";
+				paidAt?: number;
+			};
+			status: "pending" | "paid" | "completed" | "cancelled";
+			gatewayInvoiceId: string;
+			paymentReceiptKind?:
+				| "cashier_pending"
+				| "gateway_paid"
+				| "manual_qris_pending"
+				| "transfer_pending";
+		} = {
+			paymentGateway: args.paymentGateway,
+			status: nextStatus,
+			gatewayInvoiceId: args.paymentGateway.invoiceId,
+		};
+		const nextReceiptKind = args.paymentReceiptKind ?? order.paymentReceiptKind;
+		if (nextReceiptKind) {
+			patch.paymentReceiptKind = nextReceiptKind;
+		}
+
+		await ctx.db.patch(order._id, patch);
+		return { updated: true, orderId: order._id };
 	},
 });
 

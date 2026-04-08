@@ -42,7 +42,6 @@ import {
 	bluetoothPrinter,
 	type ReceiptPrintMode,
 } from "@/lib/bluetooth-printer";
-import { isMayarConfigured } from "@/lib/mayarGateway";
 
 type ShiftSchedule = {
 	name: string;
@@ -356,6 +355,7 @@ function isValidHomePin(pin: string) {
 function SettingsPage() {
 	// Site Settings
 	const siteSettings = useQuery(api.site_settings.getSettings);
+	const mayarConfig = useQuery(api.mayar.isConfigured);
 	const updateSiteSettings = useMutation(api.site_settings.updateSettings);
 	const generateUploadUrl = useMutation(api.site_settings.generateUploadUrl);
 
@@ -470,8 +470,6 @@ function SettingsPage() {
 		cashPaymentLabel: "Bayar di kasir",
 		mayarPaymentLabel: "Bayar online",
 	});
-
-	const [mayarApiConfigured, setMayarApiConfigured] = useState(false);
 
 	const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
 
@@ -639,8 +637,9 @@ function SettingsPage() {
 		}
 		setIsConnected(bluetoothPrinter.isConnected());
 		setPrinterName(bluetoothPrinter.getDeviceName());
-		setMayarApiConfigured(isMayarConfigured());
 	}, [siteSettings]);
+
+	const mayarApiConfigured = mayarConfig?.configured ?? false;
 
 	const handleConnectPrinter = async () => {
 		try {
@@ -960,7 +959,7 @@ function SettingsPage() {
 
 	const tabs = [
 		{ id: "landing", label: "Halaman Utama", icon: Layout },
-		{ id: "pos", label: "Konfigurasi POS", icon: CreditCard },
+		{ id: "pos", label: "Konfigurasi Pembayaran", icon: CreditCard },
 		{ id: "store", label: "Informasi Toko", icon: MapPin },
 		{ id: "branding", label: "Branding & SEO", icon: Globe },
 		{ id: "shifts", label: "Manajemen Shift", icon: Clock },
@@ -1150,7 +1149,7 @@ function SettingsPage() {
 								</div>
 								<div>
 									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
-										Konfigurasi POS & Pembayaran
+										Konfigurasi Pembayaran
 									</h3>
 									<p className="text-muted-foreground text-sm">
 										Pengaturan Alur Transaksi

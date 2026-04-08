@@ -50,6 +50,19 @@ function extractSvixV1Signatures(headerValue: string): string[] {
 		});
 }
 
+function extractBearerToken(authHeader: string | null): string | null {
+	if (!authHeader) return null;
+	const [scheme, token] = authHeader.split(" ");
+	if (!scheme || !token) return null;
+	if (scheme.toLowerCase() !== "bearer") return null;
+	return token.trim();
+}
+
+function timingSafeMatch(expected: string, candidate: string | null): boolean {
+	if (!candidate) return false;
+	return timingSafeEqual(expected, candidate);
+}
+
 async function verifyResendSignature(params: {
 	payload: string;
 	svixId: string;
@@ -152,10 +165,101 @@ const resendWebhook = httpAction(async (ctx, request) => {
 	return new Response("ok", { status: 200 });
 });
 
+const mayarWebhook = httpAction(async (ctx, request) => {
+	const webhookToken =
+		process.env.MAYAR_WEBHOOK_TOKEN || process.env.VITE_MAYAR_WEBHOOK_TOKEN;
+
+	if (webhookToken) {
+		const url = new URL(request.url);
+		const tokenFromHeader =
+			request.headers.get("x-webhook-token") ||
+			request.headers.get("x-mayar-webhook-token") ||
+			request.headers.get("x-callback-token") ||
+			extractBearerToken(request.headers.get("authorization"));
+		const tokenFromQuery = url.searchParams.get("token");
+		const incomingToken = tokenFromHeader || tokenFromQuery;
+
+		if (!timingSafeMatch(webhookToken, incomingToken)) {
+			return new Response("Unauthorized webhook", { status: 401 });
+		}
+	}
+
+	let payload: {
+		event?: string;
+		type?: string;
+		data?: {
+			id?: string;
+			transactionId?: string;
+			transactionStatus?: string;
+			status?: string;
+			url?: string;
+			link?: string;
+			updatedAt?: string;
+			paidAt?: string;
+		};
+	};
+	try {
+		payload = await request.json();
+	} catch {
+		return new Response("Invalid JSON payload", { status: 400 });
+	}
+
+	const eventName = (payload.event || payload.type || "").toLowerCase();
+	const transactionStatus = String(
+		payload.data?.transactionStatus || payload.data?.status || ""
+	).toLowerCase();
+	const invoiceId = payload.data?.transactionId || payload.data?.id;
+	if (!invoiceId) {
+		return new Response("Ignored: missing invoice identifier", { status: 200 });
+	}
+
+	const looksPaid =
+		eventName.includes("payment.received") ||
+		transactionStatus.includes("paid") ||
+		transactionStatus.includes("success");
+	const looksExpired = transactionStatus.includes("expired");
+	const looksCancelled = transactionStatus.includes("cancel");
+	const gatewayStatus = looksPaid
+		? "paid"
+		: looksExpired
+			? "expired"
+			: looksCancelled
+				? "cancelled"
+				: "pending";
+	const paidAt = looksPaid
+		? payload.data?.paidAt
+			? Date.parse(payload.data.paidAt)
+			: payload.data?.updatedAt
+				? Date.parse(payload.data.updatedAt)
+				: Date.now()
+		: undefined;
+
+	await ctx.runMutation(internal.orders.updateOrderPaymentGatewayByInvoiceId, {
+		invoiceId,
+		paymentGateway: {
+			provider: "mayar",
+			invoiceId,
+			transactionId: payload.data?.transactionId,
+			invoiceUrl: payload.data?.link || payload.data?.url,
+			status: gatewayStatus,
+			paidAt: Number.isFinite(paidAt) ? paidAt : undefined,
+		},
+		paymentReceiptKind: looksPaid ? "gateway_paid" : undefined,
+	});
+
+	return new Response("ok", { status: 200 });
+});
+
 http.route({
 	path: "/webhooks/resend",
 	method: "POST",
 	handler: resendWebhook,
+});
+
+http.route({
+	path: "/webhooks/mayar",
+	method: "POST",
+	handler: mayarWebhook,
 });
 
 export default http;

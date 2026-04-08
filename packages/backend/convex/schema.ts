@@ -246,9 +246,11 @@ export default defineSchema({
 				paidAt: v.optional(v.number()),
 			})
 		),
+		gatewayInvoiceId: v.optional(v.string()),
 	})
 		.index("by_status", ["status"])
-		.index("by_createdAt", ["createdAt"]),
+		.index("by_createdAt", ["createdAt"])
+		.index("by_gateway_invoice_id", ["gatewayInvoiceId"]),
 
 	// AI Insights
 	salesInsights: defineTable({

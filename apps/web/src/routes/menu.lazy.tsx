@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useMutation, useQuery, useConvex } from "convex/react";
+import { useAction, useMutation, useQuery, useConvex } from "convex/react";
 import {
 	BarChart3,
 	Bot,
@@ -212,10 +212,12 @@ function MenuPage() {
 	// Queries
 	const convex = useConvex();
 	const siteSettings = useQuery(api.site_settings.getSettings);
+	const mayarConfig = useQuery(api.mayar.isConfigured);
 	const categories = useQuery(api.products.getCategories);
 	const activeDiscounts = useQuery(api.discounts.getActiveDiscounts);
 	const allDiscounts = useQuery(api.discounts.getDiscounts);
 	const createOrder = useMutation(api.orders.createOrder);
+	const createMayarInvoice = useAction(api.mayar.createInvoice);
 
 	// Cart context
 	const {
@@ -913,6 +915,43 @@ function MenuPage() {
 			if (cartItems.length === 0) return;
 			setIsSubmitting(true);
 			try {
+					const useMayarGateway = paymentMethod === "qris_mayar";
+					const normalizedPaymentMethod = useMayarGateway
+						? "mayar"
+						: (paymentMethod as "cash" | "qris" | "transfer") || "cash";
+					let mayarInvoice:
+						| { id?: string; transactionId?: string; link?: string }
+						| undefined;
+					if (useMayarGateway) {
+						if (!siteSettings?.mayarEnabled) {
+							throw new Error("Mayar belum diaktifkan di pengaturan sistem");
+						}
+						if (!mayarConfig?.configured) {
+							throw new Error("Konfigurasi environment Mayar belum lengkap");
+						}
+						const invoiceResult = await createMayarInvoice({
+							name: customerInfo.name || "Pelanggan",
+							email: undefined,
+							mobile: siteSettings.storePhone || "085000000000",
+							redirectUrl:
+								typeof window !== "undefined" ? window.location.href : undefined,
+							description: `POS order ${siteSettings.storeName || "YumiPOS"}`,
+							expiredAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+							items: cartItems.map((item) => ({
+								quantity: item.quantity,
+								rate: item.price,
+								description: item.variant
+									? `${item.name} (${item.variant})`
+									: item.name,
+							})),
+						});
+						if (!invoiceResult.data?.id) {
+							throw new Error(invoiceResult.messages || "Gagal membuat invoice Mayar");
+						}
+						mayarInvoice = invoiceResult.data;
+					}
+
+					const shouldOpenBill = Boolean(orderData?.isOpenBill || useMayarGateway);
 					const orderPayload = {
 						items: cartItems.map((i) => ({
 							productId: i.productId as Id<"products">,
@@ -923,7 +962,7 @@ function MenuPage() {
 							originalPrice: i.originalPrice,
 						})),
 						totalAmount: finalAmount,
-						paymentMethod: (paymentMethod as "cash" | "qris" | "transfer") || "cash",
+						paymentMethod: normalizedPaymentMethod,
 						customerName: customerInfo.name || "Pelanggan",
 						tableNumber: orderData?.tableNumber,
 						orderType: orderData?.orderType,
@@ -941,8 +980,18 @@ function MenuPage() {
 						taxAmount,
 						serviceChargeAmount,
 					}),
-					isOpenBill: orderData?.isOpenBill,
-					autoComplete: orderData?.autoComplete,
+					paymentGateway: mayarInvoice
+						? {
+								provider: "mayar",
+								invoiceId: mayarInvoice.id!,
+								transactionId: mayarInvoice.transactionId,
+								invoiceUrl: mayarInvoice.link,
+								status: "created" as const,
+						  }
+						: undefined,
+					paymentReceiptKind: mayarInvoice ? "cashier_pending" as const : undefined,
+					isOpenBill: shouldOpenBill,
+					autoComplete: shouldOpenBill ? false : orderData?.autoComplete,
 				};
 
 				if (!navigator.onLine) {
@@ -956,8 +1005,15 @@ function MenuPage() {
 
 				const orderId = await createOrder(orderPayload);
 
-				if (orderData?.isOpenBill) {
-					toast.success("Open bill berhasil disimpan!");
+				if (shouldOpenBill) {
+					if (useMayarGateway) {
+						toast.success("Invoice Mayar berhasil dibuat");
+						if (mayarInvoice?.link && typeof window !== "undefined") {
+							window.open(mayarInvoice.link, "_blank", "noopener,noreferrer");
+						}
+					} else {
+						toast.success("Open bill berhasil disimpan!");
+					}
 					setLastOrderId(orderId);
 				} else {
 					toast.success("Pesanan berhasil dibuat!");
@@ -976,7 +1032,7 @@ function MenuPage() {
 				setIsCartOpen(false);
 			} catch (error) {
 				console.error(error);
-				toast.error("Gagal membuat pesanan");
+				toast.error((error as Error).message || "Gagal membuat pesanan");
 			} finally {
 				setIsSubmitting(false);
 			}
@@ -987,13 +1043,18 @@ function MenuPage() {
 			cartItems,
 			createOrder,
 			clearCart,
+			createMayarInvoice,
 			discountAmount,
 			handlePrint,
 			isShiftOpen,
+			mayarConfig?.configured,
 			promoDiscountAmount,
 			serviceChargeAmount,
 			siteSettings?.autoPrint,
 			siteSettings?.autoPrintKitchenReceipt,
+			siteSettings?.mayarEnabled,
+			siteSettings?.storeName,
+			siteSettings?.storePhone,
 			taxAmount,
 			voucherDiscountAmount,
 				customerInfo.name,

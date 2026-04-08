@@ -2,13 +2,11 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
-import { compressFileToLimit, isOversized } from "@/lib/image-compress";
 import {
 	Calendar,
 	Check,
 	ChevronLeft,
 	ChevronRight,
-	Globe,
 	Link as LinkIcon,
 	List,
 	Loader2,
@@ -18,7 +16,6 @@ import {
 	ShoppingBag,
 	Smartphone,
 	Trash2,
-	Upload,
 	Users,
 	X,
 	Pencil,
@@ -523,7 +520,6 @@ function BookingSettingsPage() {
 	const deleteBookingOrder = useMutation(api.booking.deleteBookingOrder);
 	const setDateCapacity = useMutation(api.booking.setDateCapacity);
 	const setBulkDateCapacity = useMutation(api.booking.setBulkDateCapacity);
-	const generateUploadUrl = useMutation(api.booking.generateUploadUrl);
 	const dateCapacities = useQuery(api.booking.getDateCapacities, { slug: "booking" });
 
 	const capacitySectionRef = useRef<HTMLDivElement>(null);
@@ -558,15 +554,12 @@ function BookingSettingsPage() {
 		logoUrl: "",
 		bannerUrl: "",
 		themeColor: "#1a2332",
-		paymentMethods: [] as string[],
-		bankDetails: "",
-		qrisImage: "",
 		featuredProductIds: [] as string[],
 		customFields: [] as any[],
 		isActive: true,
 	});
 	const [activeTab, setActiveTab] = useState<
-		"calendar" | "orders" | "capacity" | "general" | "products" | "payment" | "form"
+		"calendar" | "orders" | "capacity" | "general" | "products" | "form"
 	>("calendar");
 	const [isSaving, setIsSaving] = useState(false);
 
@@ -609,9 +602,6 @@ function BookingSettingsPage() {
 				bannerUrl: settings.bannerUrl || "",
 				themeColor: settings.themeColor || "#1a2332",
 				featuredProductIds: settings.featuredProductIds || [],
-				paymentMethods: settings.paymentMethods || [],
-				bankDetails: settings.bankDetails || "",
-				qrisImage: settings.qrisImage || "",
 				customFields: settings.customFields || [],
 				isActive: settings.isActive,
 			});
@@ -627,35 +617,6 @@ function BookingSettingsPage() {
 			toast.error("Gagal menyimpan pengaturan");
 		} finally {
 			setIsSaving(false);
-		}
-	};
-
-	const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (!file) return;
-
-		const toastId = toast.loading("Mengunggah gambar...");
-		try {
-			let uploadBlob: Blob = file;
-			let contentType = file.type || "image/jpeg";
-			if (isOversized(file)) {
-				toast.loading("Mengompresi gambar...", { id: toastId });
-				const compressed = await compressFileToLimit(file);
-				uploadBlob = await fetch(compressed).then((r) => r.blob());
-				contentType = "image/jpeg";
-				toast.loading("Mengunggah gambar...", { id: toastId });
-			}
-			const postUrl = await generateUploadUrl();
-			const result = await fetch(postUrl, {
-				method: "POST",
-				headers: { "Content-Type": contentType },
-				body: uploadBlob,
-			});
-			const { storageId } = await result.json();
-			setFormData((prev) => ({ ...prev, qrisImage: storageId }));
-			toast.success("Gambar berhasil diunggah!", { id: toastId });
-		} catch (error) {
-			toast.error("Gagal mengunggah gambar", { id: toastId });
 		}
 	};
 
@@ -830,7 +791,6 @@ function BookingSettingsPage() {
 		{ id: "capacity", label: "Kapasitas", icon: Users },
 		{ id: "general", label: "Tampilan", icon: Smartphone },
 		{ id: "products", label: "Produk", icon: ShoppingBag },
-		{ id: "payment", label: "Pembayaran", icon: Globe },
 		{ id: "form", label: "Formulir", icon: FileText },
 	] as const;
 
@@ -920,7 +880,7 @@ function BookingSettingsPage() {
 					>
 						<LinkIcon className="h-4 w-4" /> Buka Halaman
 					</a>
-					{(activeTab === "general" || activeTab === "products" || activeTab === "payment" || activeTab === "form") && (
+					{(activeTab === "general" || activeTab === "products" || activeTab === "form") && (
 						<button
 							className="flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 font-bold text-primary-foreground text-sm hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all"
 							disabled={isSaving}
@@ -1578,102 +1538,6 @@ function BookingSettingsPage() {
 							</button>
 						))}
 					</div>
-				</section>
-			)}
-
-			{/* ── PAYMENT TAB ── */}
-			{activeTab === "payment" && (
-				<section className="rounded-2xl border border-border bg-card p-5 md:p-8 space-y-6">
-					<div className="space-y-3">
-						<h3 className="font-bold text-sm">Metode Pembayaran</h3>
-						<div className="flex flex-wrap gap-3">
-							{[
-								{ id: "qris", label: "QRIS" },
-								{ id: "bank_transfer", label: "Transfer Bank" },
-								{ id: "cash", label: "Cash / Tunai" },
-							].map(({ id, label }) => (
-								<label
-									className="flex cursor-pointer items-center gap-2 rounded-xl border border-border p-3 hover:bg-muted/50 transition-colors"
-									key={id}
-								>
-									<input
-										checked={formData.paymentMethods.includes(id)}
-										className="accent-primary"
-										onChange={(e) => {
-											const newMethods = e.target.checked
-												? [...formData.paymentMethods, id]
-												: formData.paymentMethods.filter((m) => m !== id);
-											setFormData({ ...formData, paymentMethods: newMethods });
-										}}
-										type="checkbox"
-									/>
-									<span className="font-medium text-sm">{label}</span>
-								</label>
-							))}
-						</div>
-					</div>
-					<div className="space-y-1.5">
-						<label className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest" htmlFor="bank-details">
-							Detail Rekening / Instruksi Pembayaran
-						</label>
-						<textarea
-							className="min-h-[110px] w-full rounded-xl bg-muted/50 p-3.5 font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
-							id="bank-details"
-							onChange={(e) => setFormData({ ...formData, bankDetails: e.target.value })}
-							placeholder="BCA 1234567890 a.n Djiwa Tentram&#10;Konfirmasi via WhatsApp setelah transfer"
-							value={formData.bankDetails}
-						/>
-					</div>
-
-					{formData.paymentMethods.includes("qris") && (
-						<div className="space-y-3 pt-4 border-t border-border">
-							<h3 className="font-bold text-sm">Pengaturan QRIS</h3>
-							<div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-								<div className="h-48 w-48 shrink-0 overflow-hidden rounded-xl border border-dashed border-border bg-muted/30 flex items-center justify-center relative group">
-									{formData.qrisImage ? (
-										<>
-											<img
-												alt="QRIS"
-												className="h-full w-full object-contain"
-												src={formData.qrisImage.startsWith("http") ? formData.qrisImage : undefined}
-											/>
-											<button
-												className="absolute top-2 right-2 p-2 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-												onClick={() => setFormData({ ...formData, qrisImage: "" })}
-												type="button"
-											>
-												<Trash2 className="h-4 w-4" />
-											</button>
-										</>
-									) : (
-										<div className="text-center p-4">
-											<Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-											<p className="text-xs text-muted-foreground">Unggah QRIS</p>
-										</div>
-									)}
-								</div>
-								<div className="flex-1 space-y-3">
-									<p className="text-xs text-muted-foreground leading-relaxed">
-										Unggah gambar QRIS statis bisnis Anda. Gambar ini akan ditampilkan kepada pelanggan saat mereka memilih metode pembayaran QRIS.
-									</p>
-									<input
-										accept="image/*"
-										className="hidden"
-										id="qris-upload"
-										onChange={handleImageUpload}
-										type="file"
-									/>
-									<label
-										className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-muted px-4 py-2 text-xs font-bold hover:bg-muted/80 transition-all"
-										htmlFor="qris-upload"
-									>
-										<Upload className="h-3.5 w-3.5" />
-										{formData.qrisImage ? "Ganti Gambar" : "Pilih Gambar"}
-									</label>
-								</div>
-							</div>
-						</div>
-					)}
 				</section>
 			)}
 

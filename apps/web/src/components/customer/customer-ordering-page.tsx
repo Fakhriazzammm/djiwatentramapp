@@ -1,6 +1,6 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import {
 	ArrowLeft,
 	Barcode,
@@ -25,11 +25,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import {
-	isMayarConfigured,
-	mayarCreateInvoiceViaItems,
-	mayarGetTransaction,
-} from "@/lib/mayarGateway";
 import {
 	calculateEffectivePrice,
 	isFreeRefillActive,
@@ -121,6 +116,9 @@ export function CustomerOrderingPage({
 	const createOrder = useMutation(api.orders.createOrder);
 	const updateOrderPaymentGateway = useMutation(api.orders.updateOrderPaymentGateway);
 	const createServiceRequest = useMutation(api.customerService.createRequest);
+	const createMayarInvoice = useAction(api.mayar.createInvoice);
+	const getMayarInvoiceDetail = useAction(api.mayar.getInvoiceDetail);
+	const mayarConfig = useQuery(api.mayar.isConfigured);
 
 	const [step, setStep] = useState<Step>("welcome");
 	const [partySize, setPartySize] = useState(1);
@@ -150,7 +148,7 @@ export function CustomerOrderingPage({
 	const themeColor = brandSettings?.themeColor || "var(--color-primary)";
 	const logoUrl = brandSettings?.logoUrl || siteSettings?.logoUrl || "";
 	const storeName = brandSettings?.title || siteSettings?.storeName || "Ordering";
-	const canUseMayar = Boolean(siteSettings?.mayarEnabled && isMayarConfigured());
+	const canUseMayar = Boolean(siteSettings?.mayarEnabled && mayarConfig?.configured);
 
 	const orderedCategories = useMemo(
 		() => (categories ? [...categories].sort((a, b) => a.order - b.order) : []),
@@ -272,11 +270,11 @@ export function CustomerOrderingPage({
 		if (!receipt || receipt.mode !== "mayar_pending" || !receipt.invoiceId) return;
 		const timer = window.setInterval(async () => {
 			try {
-				const result = await mayarGetTransaction(receipt.invoiceId!);
-				const normalized = String(result?.data?.status || "").toLowerCase();
+				const result = await getMayarInvoiceDetail({ invoiceId: receipt.invoiceId! });
+				const normalized = String((result?.data as { status?: string } | null)?.status || "").toLowerCase();
 				const isPaid =
 					normalized.includes("paid") ||
-					result?.data?.transactions?.some((item) =>
+					((result?.data as { transactions?: Array<{ status?: string }> } | null)?.transactions || []).some((item) =>
 						String(item?.status || "").toLowerCase().includes("paid")
 					);
 				if (!isPaid) return;
@@ -425,11 +423,13 @@ export function CustomerOrderingPage({
 			};
 
 			if (paymentChoice === "mayar") {
-				const invoice = await mayarCreateInvoiceViaItems({
+				const invoice = await createMayarInvoice({
 					name: customerName.trim() || `Customer ${tableNumber.trim() || "Walk In"}`,
+					email: undefined,
 					mobile: siteSettings?.storePhone || "",
 					redirectUrl: typeof window !== "undefined" ? window.location.href : undefined,
 					description: `Self-service order ${storeName}`,
+					expiredAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
 					items: [
 						...cart.map((item) => ({
 							quantity: item.quantity,
@@ -445,18 +445,18 @@ export function CustomerOrderingPage({
 									},
 							  ]
 							: []),
-					],
-				});
-				if (!invoice.success || !invoice.id) {
-					throw new Error(invoice.message || "Gagal membuat invoice Mayar");
+						],
+					});
+				if (!invoice?.data?.id) {
+					throw new Error(invoice?.messages || "Gagal membuat invoice Mayar");
 				}
 				const orderId = await createOrder({
 					...payload,
 					paymentGateway: {
 						provider: "mayar",
-						invoiceId: invoice.id,
-						transactionId: invoice.transactionId,
-						invoiceUrl: invoice.link,
+						invoiceId: invoice.data.id,
+						transactionId: invoice.data.transactionId,
+						invoiceUrl: invoice.data.link,
 						status: "created",
 					},
 					isOpenBill: true,
@@ -466,8 +466,8 @@ export function CustomerOrderingPage({
 					fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`,
 					mode: "mayar_pending",
 					paymentChoice,
-					invoiceId: invoice.id,
-					invoiceUrl: invoice.link,
+					invoiceId: invoice.data.id,
+					invoiceUrl: invoice.data.link,
 					dessertLater,
 				});
 			} else {
@@ -498,7 +498,8 @@ export function CustomerOrderingPage({
 		brandSettings === undefined ||
 		categories === undefined ||
 		products === undefined ||
-		discounts === undefined
+		discounts === undefined ||
+		mayarConfig === undefined
 	) {
 		return (
 			<div className="flex min-h-app items-center justify-center bg-background">
