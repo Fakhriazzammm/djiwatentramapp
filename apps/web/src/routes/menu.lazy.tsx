@@ -828,7 +828,7 @@ function MenuPage() {
 
 			await bluetoothPrinter.print(
 				{
-					orderNumber: `OPEN-${Date.now().toString().slice(-4)}`,
+					orderNumber: `ORD-X-OPEN${Date.now().toString().slice(-4)}`,
 					items,
 					totalAmount: finalTotal,
 					subtotal: grossAmount,
@@ -963,6 +963,7 @@ function MenuPage() {
 						})),
 						totalAmount: finalAmount,
 						paymentMethod: normalizedPaymentMethod,
+						source: "pos" as const,
 						customerName: customerInfo.name || "Pelanggan",
 						tableNumber: orderData?.tableNumber,
 						orderType: orderData?.orderType,

@@ -69,6 +69,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/hpp-calculator": "HPP Kalkulator",
 	"/admin/ai-chat": "Yumi AI",
 	"/admin/settings": "Pengaturan",
+	"/admin/operational-team": "Tim Operasional",
 	"/admin/forecasting": "Forecasting",
 	"/admin/booking": "Booking",
 	"/admin/kitchen": "Dapur",
@@ -103,6 +104,7 @@ const MORE_MENU_PATHS = [
 	"/admin/kitchen",
 	"/admin/bar",
 	"/admin/customer-service",
+	"/admin/operational-team",
 	"/admin/settings",
 ];
 
@@ -133,6 +135,7 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/kitchen", icon: ChefHat, label: "Dapur" },
 			{ to: "/admin/bar", icon: Beer, label: "Bar" },
 			{ to: "/admin/customer-service", icon: Bell, label: "Layanan" },
+			{ to: "/admin/operational-team", icon: Users, label: "Tim Operasional" },
 		],
 	},
 	{
@@ -145,7 +148,11 @@ const QUICK_MENU_SECTIONS = [
 	},
 ];
 
-const OPERATIONAL_PATHS = ["/admin/kitchen", "/admin/bar"];
+const OPERATIONAL_PATHS = [
+	"/admin/kitchen",
+	"/admin/bar",
+	"/admin/operational-team",
+];
 
 // Flat list for backward compat
 const QUICK_MENU_ITEMS = QUICK_MENU_SECTIONS.flatMap((s) => s.items);
@@ -342,6 +349,12 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Layanan Customer"
 						to="/admin/customer-service"
+					/>
+					<DesktopNavLink
+						icon={<Users />}
+						isCollapsed={isCollapsed}
+						label="Tim Operasional"
+						to="/admin/operational-team"
 					/>
 
 					{/* KEUANGAN - Collapsible */}

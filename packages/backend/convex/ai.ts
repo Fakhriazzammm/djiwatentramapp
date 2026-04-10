@@ -2028,9 +2028,12 @@ function parseBulkUniversalData(message: string): UniversalBulkParsed {
 		}
 
 		// Order status bulk
-		if (/(^order\b|status order|ubah status)/.test(lower) || /ord-\d+/i.test(line)) {
+		if (
+			/(^order\b|status order|ubah status)/.test(lower) ||
+			/\b(?:ord|so|bko)-[a-z0-9-]+\b/i.test(line)
+		) {
 			const statusMatch = lower.match(/\b(pending|paid|completed|cancelled)\b/);
-			const refMatch = line.match(/(ORD-\d+)/i);
+			const refMatch = line.match(/\b((?:ORD|SO|BKO)-[A-Z0-9-]+)\b/i);
 			const ref = refMatch?.[1] || kv.order || kv.order_number || kv.id;
 			const status = (statusMatch?.[1] || kv.status || "").toLowerCase();
 			const parsedDate = parseDateFromLine(line, new Date().getFullYear());
@@ -5210,6 +5213,12 @@ export const processImageAndGenerate = action({
 			}
 
 			const scanItems = normalizeScanItems(scanResult.data.items);
+			const ocrConfidence =
+				typeof scanResult.confidence === "number" && scanResult.confidence > 0
+					? scanResult.confidence <= 1
+						? Math.round(scanResult.confidence * 100)
+						: Math.round(scanResult.confidence)
+					: undefined;
 			const receiptSourceRef =
 				sanitizeAIString(scanResult.data.receiptNumber || "") ||
 				buildReceiptFinanceFingerprint({
@@ -5251,6 +5260,7 @@ export const processImageAndGenerate = action({
 					rawText: scanResult.rawText.slice(0, 1000),
 					sourceRef: receiptSourceRef,
 					sourceLabel: "AI Scan",
+					ocrConfidence,
 					receiptDetails: {
 						merchantName: scanResult.data.merchantName || undefined,
 						receiptNumber: scanResult.data.receiptNumber || undefined,
@@ -5409,6 +5419,12 @@ export const batchGenerateTransactions = action({
 					}
 
 					const scanItems = normalizeScanItems(scanResult.data.items);
+					const ocrConfidence =
+						typeof scanResult.confidence === "number" && scanResult.confidence > 0
+							? scanResult.confidence <= 1
+								? Math.round(scanResult.confidence * 100)
+								: Math.round(scanResult.confidence)
+							: undefined;
 					const receiptSourceRef =
 						sanitizeAIString(scanResult.data.receiptNumber || "") ||
 						buildReceiptFinanceFingerprint({
@@ -5452,6 +5468,7 @@ export const batchGenerateTransactions = action({
 								rawText: scanResult.rawText.slice(0, 1000),
 								sourceRef: receiptSourceRef,
 								sourceLabel: "AI Scan",
+								ocrConfidence,
 								receiptDetails: {
 									merchantName: scanResult.data.merchantName || undefined,
 									receiptNumber: scanResult.data.receiptNumber || undefined,

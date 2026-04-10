@@ -198,6 +198,7 @@ export const recordExpense = mutation({
 				aiSessionId: v.optional(v.string()),
 				sourceRef: v.optional(v.string()),
 				sourceLabel: v.optional(v.string()),
+				ocrConfidence: v.optional(v.number()),
 				receiptDetails: v.optional(
 					v.object({
 						merchantName: v.optional(v.string()),
@@ -367,6 +368,7 @@ export const recordExpense = mutation({
 				sourceLabel:
 					args.metadata?.sourceLabel ||
 					(source === "manual_form" ? "Manual Form" : source),
+				ocrConfidence: args.metadata?.ocrConfidence,
 				receiptDetails: args.metadata?.receiptDetails,
 				syncSource: source,
 				syncOutcome: "finance_only",

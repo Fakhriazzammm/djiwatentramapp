@@ -135,6 +135,7 @@ export default defineSchema({
 				syncSource: v.optional(v.string()),
 				syncOutcome: v.optional(v.string()),
 				syncWarnings: v.optional(v.array(v.string())),
+				ocrConfidence: v.optional(v.number()),
 				receiptDetails: v.optional(
 					v.object({
 						merchantName: v.optional(v.string()),
@@ -166,11 +167,12 @@ export default defineSchema({
 		.index("by_type", ["type"])
 		.index("by_type_and_date", ["type", "date"])
 		.index("by_status_and_date", ["status", "date"])
+		.index("by_source_ref_and_date", ["metadata.sourceRef", "date"])
 		.index("by_source_fingerprint", ["sourceFingerprint"]),
 
 	// Orders
 	orders: defineTable({
-		orderNumber: v.string(), // Friendly ID e.g., "A-001"
+		orderNumber: v.string(), // Friendly ID e.g., "ORD-D-AB12CD"
 		items: v.array(
 			v.object({
 				productId: v.id("products"),

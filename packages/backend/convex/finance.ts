@@ -87,6 +87,72 @@ function getLocalDateKey(timestamp: number) {
 	).padStart(2, "0")}`;
 }
 
+function buildFinancialSourceRef(args: {
+	type: "income" | "expense";
+	category: string;
+	date: number;
+	source?: string;
+	syncSource?: string;
+	seed?: string;
+}) {
+	const category = (args.category || "").trim().toLowerCase();
+	const source = (args.source || "").trim().toLowerCase();
+	const syncSource = (args.syncSource || "").trim().toLowerCase();
+	let prefix = args.type === "income" ? "INC" : "EXP";
+
+	if (category === "modal awal") {
+		prefix = "SHF-OPEN";
+	} else if (category === "setoran akhir") {
+		prefix = "SHF-CLOSE";
+	} else if (source === "ai_receipt_scan") {
+		prefix = args.type === "income" ? "INC-RCT" : "EXP-RCT";
+	} else if (source.startsWith("ai_")) {
+		prefix = args.type === "income" ? "AI-INC" : "AI-EXP";
+	} else if (
+		syncSource.includes("inventory") ||
+		category.includes("stok") ||
+		category.includes("inventory") ||
+		category.includes("bahan")
+	) {
+		prefix = args.type === "income" ? "INV-IN" : "INV-OUT";
+	}
+
+	const datePart = getLocalDateKey(args.date).replace(/-/g, "").slice(2);
+	const seedClean = (args.seed || "")
+		.toUpperCase()
+		.replace(/[^A-Z0-9]/g, "");
+	const suffix = seedClean
+		? seedClean.slice(-6).padStart(6, "0")
+		: `${args.date.toString(36).toUpperCase().slice(-4)}${Math.random()
+				.toString(36)
+				.toUpperCase()
+				.slice(2, 4)}`;
+
+	return `${prefix}-${datePart}-${suffix}`;
+}
+
+function enrichFinancialMetadataWithRef(args: {
+	type: "income" | "expense";
+	category: string;
+	date: number;
+	metadata?: Record<string, any>;
+	seed?: string;
+}) {
+	const metadata = args.metadata ? { ...args.metadata } : {};
+	const currentSourceRef = String(metadata.sourceRef || "").trim();
+	if (!currentSourceRef) {
+		metadata.sourceRef = buildFinancialSourceRef({
+			type: args.type,
+			category: args.category,
+			date: args.date,
+			source: metadata.source,
+			syncSource: metadata.syncSource,
+			seed: args.seed,
+		});
+	}
+	return metadata;
+}
+
 function getDaysInMonth(timestamp: number) {
 	const date = new Date(timestamp);
 	return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -868,6 +934,7 @@ export const createTransaction = mutation({
 				syncSource: v.optional(v.string()),
 				syncOutcome: v.optional(v.string()),
 				syncWarnings: v.optional(v.array(v.string())),
+				ocrConfidence: v.optional(v.number()),
 				receiptDetails: v.optional(
 					v.object({
 						merchantName: v.optional(v.string()),
@@ -896,7 +963,16 @@ export const createTransaction = mutation({
 		),
 	},
 	handler: async (ctx, args) => {
-		const id = await ctx.db.insert("financialTransactions", args);
+		const metadata = enrichFinancialMetadataWithRef({
+			type: args.type,
+			category: args.category,
+			date: args.date,
+			metadata: args.metadata as Record<string, any> | undefined,
+		});
+		const id = await ctx.db.insert("financialTransactions", {
+			...args,
+			metadata,
+		});
 		return id;
 	},
 });
@@ -932,6 +1008,7 @@ export const upsertReceiptTransaction = mutation({
 				syncSource: v.optional(v.string()),
 				syncOutcome: v.optional(v.string()),
 				syncWarnings: v.optional(v.array(v.string())),
+				ocrConfidence: v.optional(v.number()),
 				receiptDetails: v.optional(
 					v.object({
 						merchantName: v.optional(v.string()),
@@ -960,6 +1037,17 @@ export const upsertReceiptTransaction = mutation({
 		),
 	},
 	handler: async (ctx, args) => {
+		const metadata = enrichFinancialMetadataWithRef({
+			type: args.type,
+			category: args.category,
+			date: args.date,
+			metadata: args.metadata as Record<string, any> | undefined,
+			seed: args.sourceFingerprint,
+		});
+		const payload = {
+			...args,
+			metadata,
+		};
 		const existing = await ctx.db
 			.query("financialTransactions")
 			.withIndex("by_source_fingerprint", (q) =>
@@ -969,7 +1057,7 @@ export const upsertReceiptTransaction = mutation({
 
 		if (existing) {
 			await ctx.db.patch(existing._id, {
-				...args,
+				...payload,
 			});
 			return {
 				id: existing._id,
@@ -977,7 +1065,7 @@ export const upsertReceiptTransaction = mutation({
 			};
 		}
 
-		const id = await ctx.db.insert("financialTransactions", args);
+		const id = await ctx.db.insert("financialTransactions", payload);
 		return {
 			id,
 			created: true,
@@ -1759,6 +1847,7 @@ export const updateTransaction = mutation({
 				syncSource: v.optional(v.string()),
 				syncOutcome: v.optional(v.string()),
 				syncWarnings: v.optional(v.array(v.string())),
+				ocrConfidence: v.optional(v.number()),
 				receiptDetails: v.optional(
 					v.object({
 						merchantName: v.optional(v.string()),
@@ -1827,6 +1916,17 @@ export const startShift = mutation({
 			date: startTime,
 			status: "completed",
 			paymentMethod: "tunai",
+			metadata: {
+				source: "shift_open",
+				sourceLabel: "Shift Open",
+				sourceRef: buildFinancialSourceRef({
+					type: "income",
+					category: "Modal Awal",
+					date: startTime,
+					source: "shift_open",
+					seed: `${startTime}:${args.shiftName}:${args.cashierName}`,
+				}),
+			},
 		});
 
 		return shiftId;
@@ -1911,6 +2011,17 @@ export const endShift = mutation({
 			date: endTime,
 			status: "completed",
 			paymentMethod: "tunai",
+			metadata: {
+				source: "shift_close",
+				sourceLabel: "Shift Close",
+				sourceRef: buildFinancialSourceRef({
+					type: "income",
+					category: "Setoran Akhir",
+					date: endTime,
+					source: "shift_close",
+					seed: `${endTime}:${shift.shiftName}:${shift.cashierName}`,
+				}),
+			},
 		});
 
 		return args.shiftId;
@@ -2067,6 +2178,91 @@ export const getHistoricalShifts = query({
 		}
 
 		return allShifts.sort((a, b) => b.startTime - a.startTime); // newest first
+	},
+});
+
+export const backfillTransactionSourceRefs = mutation({
+	args: {
+		limit: v.optional(v.number()),
+		dryRun: v.optional(v.boolean()),
+	},
+	handler: async (ctx, args) => {
+		const limit = Math.min(1000, Math.max(1, Math.round(args.limit ?? 300)));
+		const dryRun = args.dryRun ?? false;
+		const scanLimit = Math.min(3000, Math.max(limit * 8, limit));
+		const txs = await ctx.db
+			.query("financialTransactions")
+			.withIndex("by_date")
+			.order("desc")
+			.take(scanLimit);
+
+		let scanned = 0;
+		let updated = 0;
+		const samples: Array<{
+			id: string;
+			before: string | null;
+			after: string;
+			type: "income" | "expense";
+			category: string;
+		}> = [];
+
+		for (const tx of txs) {
+			scanned += 1;
+			if (updated >= limit) break;
+
+			const metadata = tx.metadata ? { ...tx.metadata } : {};
+			const currentSourceRef = String(metadata.sourceRef || "").trim();
+			if (currentSourceRef) continue;
+
+			let nextSourceRef: string | null = null;
+			if (tx.orderId) {
+				const relatedOrder = await ctx.db.get(tx.orderId);
+				nextSourceRef = String(relatedOrder?.orderNumber || "").trim() || null;
+			} else if (tx.bookingOrderId) {
+				const relatedBooking = await ctx.db.get(tx.bookingOrderId);
+				nextSourceRef = String(relatedBooking?.bookingCode || "").trim() || null;
+			}
+
+			if (!nextSourceRef) {
+				nextSourceRef = buildFinancialSourceRef({
+					type: tx.type,
+					category: tx.category,
+					date: tx.date,
+					source: metadata.source,
+					syncSource: metadata.syncSource,
+					seed: tx.sourceFingerprint || tx._id,
+				});
+			}
+
+			if (!nextSourceRef) continue;
+
+			if (!dryRun) {
+				await ctx.db.patch(tx._id, {
+					metadata: {
+						...metadata,
+						sourceRef: nextSourceRef,
+					},
+				});
+			}
+			updated += 1;
+			if (samples.length < 20) {
+				samples.push({
+					id: String(tx._id),
+					before: currentSourceRef || null,
+					after: nextSourceRef,
+					type: tx.type,
+					category: tx.category,
+				});
+			}
+		}
+
+		return {
+			scanned,
+			updated,
+			dryRun,
+			remainingEstimate: Math.max(0, txs.length - scanned),
+			samples,
+		};
 	},
 });
 

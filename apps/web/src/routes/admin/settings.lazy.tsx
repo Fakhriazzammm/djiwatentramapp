@@ -118,7 +118,7 @@ function ReceiptPreview({
 		{ qty: 1, name: "CROISSANT BUTTER", variant: "Hangat" },
 	];
 	const infoRows = [
-		settings.receiptShowOrderNumber ? ["ID", "ORD-6034"] : null,
+		settings.receiptShowOrderNumber ? ["ID", "ORD-D-6034"] : null,
 		settings.receiptShowCashierName ? ["KASIR", "AYU"] : null,
 		settings.receiptShowCashierName ? ["SHIFT", "SORE"] : null,
 		["WAKTU", "31/03/2026 15:09"],
@@ -339,6 +339,7 @@ const AVAILABLE_PERMISSIONS = [
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HOME_PIN_REGEX = /^\d{6}$/;
+type SettingsPageMode = "settings" | "operational-team";
 
 function normalizeEmail(email: string) {
 	return email.trim().toLowerCase();
@@ -405,7 +406,11 @@ const DEFAULT_AI_MODEL_CONFIG: AiModelConfig = {
 	fallbackModel: "gpt-4.1-mini",
 };
 
-function SettingsPage() {
+export function SettingsPage({
+	mode = "settings",
+}: {
+	mode?: SettingsPageMode;
+}) {
 	// Site Settings
 	const siteSettings = useQuery(api.site_settings.getSettings);
 	const mayarConfig = useQuery(api.mayar.isConfigured);
@@ -537,7 +542,11 @@ function SettingsPage() {
 		| "users"
 		| "shifts"
 		| "yumiAI"
-	>("landing");
+	>(mode === "operational-team" ? "users" : "landing");
+
+	useEffect(() => {
+		setActiveTab(mode === "operational-team" ? "users" : "landing");
+	}, [mode]);
 
 	// User/Role Form States
 	const [newUser, setNewUser] = useState({
@@ -1024,16 +1033,20 @@ function SettingsPage() {
 		return storageId as string;
 	};
 
-	const tabs = [
-		{ id: "landing", label: "Halaman Utama", icon: Layout },
-		{ id: "pos", label: "Konfigurasi Pembayaran", icon: CreditCard },
-		{ id: "store", label: "Informasi Toko", icon: MapPin },
-		{ id: "branding", label: "Branding & SEO", icon: Globe },
-		{ id: "yumiAI", label: "Yumi AI", icon: ShieldCheck },
-		{ id: "shifts", label: "Manajemen Shift", icon: Clock },
-		{ id: "users", label: "Pengguna & Akses", icon: Users },
-		{ id: "system", label: "Sistem & Perangkat", icon: Settings2 },
-	] as const;
+	const tabs =
+		mode === "operational-team"
+			? ([
+					{ id: "users", label: "Pengguna & Akses", icon: Users },
+					{ id: "shifts", label: "Manajemen Shift", icon: Clock },
+				] as const)
+			: ([
+					{ id: "landing", label: "Halaman Utama", icon: Layout },
+					{ id: "pos", label: "Konfigurasi Pembayaran", icon: CreditCard },
+					{ id: "store", label: "Informasi Toko", icon: MapPin },
+					{ id: "branding", label: "Branding & SEO", icon: Globe },
+					{ id: "yumiAI", label: "Yumi AI", icon: ShieldCheck },
+					{ id: "system", label: "Sistem & Perangkat", icon: Settings2 },
+				] as const);
 
 	return (
 		<div className="mx-auto max-w-5xl space-y-4 md:space-y-8">
@@ -1041,10 +1054,12 @@ function SettingsPage() {
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div>
 					<h2 className="font-bold text-foreground text-xl tracking-tight md:text-3xl">
-						Pengaturan Sistem
+						{mode === "operational-team" ? "Tim Operasional" : "Pengaturan Sistem"}
 					</h2>
 					<p className="mt-0.5 text-muted-foreground text-xs md:mt-1 md:text-sm">
-						Konfigurasi & Personalisasi Toko
+						{mode === "operational-team"
+							? "Kelola Pengguna, Akses, dan Manajemen Shift"
+							: "Konfigurasi & Personalisasi Toko"}
 					</p>
 				</div>
 				<Button

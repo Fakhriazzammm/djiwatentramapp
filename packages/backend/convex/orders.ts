@@ -20,6 +20,45 @@ type ProductHppIndex = Record<
 	}
 >;
 
+function getOrderSourcePrefix(
+	source?: "pos" | "customer_self_service" | "booking",
+) {
+	if (source === "customer_self_service") return "SO";
+	if (source === "booking") return "BKO";
+	return "ORD";
+}
+
+function getOrderTypeCode(orderType?: "dine_in" | "takeaway") {
+	if (orderType === "dine_in") return "D";
+	if (orderType === "takeaway") return "T";
+	return "X";
+}
+
+function generateOrderNumber(args: {
+	source?: "pos" | "customer_self_service" | "booking";
+	orderType?: "dine_in" | "takeaway";
+	createdAt: number;
+}) {
+	const sourcePrefix = getOrderSourcePrefix(args.source);
+	const typeCode = getOrderTypeCode(args.orderType);
+	const timeCode = args.createdAt.toString(36).toUpperCase().slice(-6);
+	const randomCode = Math.random().toString(36).toUpperCase().slice(2, 4);
+	return `${sourcePrefix}-${typeCode}-${timeCode}${randomCode}`;
+}
+
+function generateMigratedOrderNumber(order: {
+	_id: Id<"orders">;
+	source?: "pos" | "customer_self_service" | "booking";
+	orderType?: "dine_in" | "takeaway";
+	createdAt: number;
+}) {
+	const sourcePrefix = getOrderSourcePrefix(order.source);
+	const typeCode = getOrderTypeCode(order.orderType);
+	const timeCode = order.createdAt.toString(36).toUpperCase().slice(-6);
+	const idCode = String(order._id).replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(-3);
+	return `${sourcePrefix}-${typeCode}-${timeCode}${idCode}`;
+}
+
 async function buildLatestHppIndex(ctx: MutationCtx): Promise<ProductHppIndex> {
 	const calculations = await ctx.db.query("hppCalculations").collect();
 	const latestLinkedCalculations = [...calculations]
@@ -213,8 +252,12 @@ export const createOrder = mutation({
 	},
 	handler: async (ctx, args) => {
 		const { autoComplete, isOpenBill, createdAt, ...orderData } = args;
-		const orderNumber = `ORD-${Date.now().toString().slice(-4)}`;
 		const orderCreatedAt = createdAt ?? Date.now();
+		const orderNumber = generateOrderNumber({
+			source: orderData.source,
+			orderType: orderData.orderType,
+			createdAt: orderCreatedAt,
+		});
 		const nextStatus = isOpenBill
 			? "pending"
 			: autoComplete
@@ -245,6 +288,64 @@ export const createOrder = mutation({
 		}
 
 		return orderId;
+	},
+});
+
+export const migrateLegacyOrderNumbers = mutation({
+	args: {
+		limit: v.optional(v.number()),
+		dryRun: v.optional(v.boolean()),
+	},
+	handler: async (ctx, args) => {
+		const limit = Math.min(1000, Math.max(1, Math.round(args.limit ?? 300)));
+		const dryRun = args.dryRun ?? false;
+		const orders = await ctx.db
+			.query("orders")
+			.withIndex("by_createdAt")
+			.order("asc")
+			.take(limit);
+
+		let scanned = 0;
+		let updated = 0;
+		const samples: Array<{ id: Id<"orders">; before: string; after: string }> = [];
+
+		for (const order of orders) {
+			scanned += 1;
+			const current = String(order.orderNumber || "").trim();
+			const isLegacy =
+				!/^(ORD|SO|BKO)-(D|T|X)-[A-Z0-9]+$/i.test(current) ||
+				(current.startsWith("ORD-") && !/^ORD-(D|T|X)-/i.test(current));
+			if (!isLegacy) continue;
+
+			const nextOrderNumber = generateMigratedOrderNumber({
+				_id: order._id,
+				source: order.source,
+				orderType: order.orderType,
+				createdAt: order.createdAt,
+			});
+			if (!nextOrderNumber || nextOrderNumber === current) continue;
+
+			if (!dryRun) {
+				await ctx.db.patch(order._id, {
+					orderNumber: nextOrderNumber,
+				});
+			}
+			updated += 1;
+			if (samples.length < 15) {
+				samples.push({
+					id: order._id,
+					before: current || "-",
+					after: nextOrderNumber,
+				});
+			}
+		}
+
+		return {
+			scanned,
+			updated,
+			dryRun,
+			samples,
+		};
 	},
 });
 

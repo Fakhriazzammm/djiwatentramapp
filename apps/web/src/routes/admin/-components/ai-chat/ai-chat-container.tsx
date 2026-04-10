@@ -247,6 +247,10 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 					inputMode,
 					sourceLabel,
 					sourceRef,
+					ocrConfidence:
+						typeof scanData?.confidence === "number"
+							? scanData.confidence
+							: undefined,
 					receiptDetails: scanData
 						? {
 								merchantName: scanData.merchant || scanData.name || undefined,

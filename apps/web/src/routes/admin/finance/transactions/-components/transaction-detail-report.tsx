@@ -1,7 +1,7 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
-import { useState, useMemo, useEffect } from "react";
-import { Wallet, Pencil, Trash2, Search, Filter, ArrowUpDown } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { Wallet, Pencil, Trash2, Search, Filter, ArrowUpDown, Check, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { DateRange } from "../../reports/-components/period-selector";
@@ -49,6 +49,11 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 	const [page, setPage] = useState(1);
 	const [pageSize, setPageSize] = useState(50);
 	const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+	const [scrollTop, setScrollTop] = useState(0);
+	const [editingItemRowKey, setEditingItemRowKey] = useState<string | null>(null);
+	const [itemEditDraft, setItemEditDraft] = useState<{ qty: string; price: string; subtotal: string } | null>(null);
+	const [savingItemRowKey, setSavingItemRowKey] = useState<string | null>(null);
+	const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 	
 	const deleteTransaction = useMutation(api.finance.deleteTransaction);
 	const deleteTransactionsBulk = useMutation(api.finance.deleteTransactionsBulk);
@@ -91,8 +96,12 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 				t.sourceRef?.toLowerCase().includes(query) ||
 				t.sourceFingerprint?.toLowerCase().includes(query) ||
 				t.receiptNumber?.toLowerCase().includes(query) ||
+				t.paymentMethod?.toLowerCase().includes(query) ||
 				t.metadata?.receiptDetails?.merchantName?.toLowerCase().includes(query) ||
 				t.metadata?.receiptDetails?.receiptNumber?.toLowerCase().includes(query) ||
+				String(t.metadata?.receiptDetails?.tax ?? "").toLowerCase().includes(query) ||
+				String(t.metadata?.receiptDetails?.serviceCharge ?? "").toLowerCase().includes(query) ||
+				String(t.metadata?.receiptDetails?.discount ?? "").toLowerCase().includes(query) ||
 				t.metadata?.scanItems?.some((item: any) => item.name?.toLowerCase().includes(query))
 			);
 		}
@@ -156,6 +165,29 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 		}
 		return rows;
 	}, [filteredTransactions, viewMode, groupMode, collapsedGroups]);
+	const virtualized = useMemo(() => {
+		const shouldVirtualize = displayedRows.length > 120;
+		if (!shouldVirtualize) {
+			return {
+				rows: displayedRows,
+				topSpacer: 0,
+				bottomSpacer: 0,
+				shouldVirtualize: false,
+			};
+		}
+		const rowHeight = 68;
+		const overscan = 12;
+		const viewportHeight = 680;
+		const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
+		const visibleCount = Math.ceil(viewportHeight / rowHeight) + overscan * 2;
+		const endIndex = Math.min(displayedRows.length, startIndex + visibleCount);
+		return {
+			rows: displayedRows.slice(startIndex, endIndex),
+			topSpacer: startIndex * rowHeight,
+			bottomSpacer: Math.max(0, (displayedRows.length - endIndex) * rowHeight),
+			shouldVirtualize: true,
+		};
+	}, [displayedRows, scrollTop]);
 
 	const selectedVisibleCount = useMemo(
 		() => filteredRowKeys.filter((rowKey) => selectedRowKeys.has(rowKey)).length,
@@ -176,6 +208,13 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 	useEffect(() => {
 		setPage(1);
 	}, [range.startDate, range.endDate, filterType, filterCategory, viewMode, pageSize]);
+
+	useEffect(() => {
+		setScrollTop(0);
+		if (scrollContainerRef.current) {
+			scrollContainerRef.current.scrollTop = 0;
+		}
+	}, [page, pageSize, viewMode, groupMode, searchQuery, sortBy, sortOrder]);
 
 	const categoryBadge = (category: string, type: string) => {
 		const colorMap: Record<string, string> = {
@@ -347,30 +386,87 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 		}
 	};
 
-	const handleQuickEditItem = async (transaction: any) => {
+	const getReceiptItemDefaults = (transaction: any) => {
+		const scanItems = Array.isArray(transaction.metadata?.scanItems)
+			? transaction.metadata.scanItems
+			: [];
+		const item = scanItems[Number(transaction.itemIndex) || 0] || {};
+		const qty = Number(item.quantity) > 0 ? Number(item.quantity) : 1;
+		const subtotalFromItem =
+			Number(item.total) > 0
+				? Number(item.total)
+				: Number(item.price) > 0
+					? Number(item.price) * qty
+					: Number(transaction.amount) || 0;
+		const price =
+			Number(item.price) > 0
+				? Number(item.price)
+				: qty > 0
+					? subtotalFromItem / qty
+					: 0;
+		return {
+			qty: String(Math.max(1, Math.round(qty))),
+			price: String(Math.max(0, Math.round(price))),
+			subtotal: String(Math.max(0, Math.round(subtotalFromItem))),
+		};
+	};
+
+	const startInlineEditItem = (transaction: any) => {
 		if (transaction.rowType !== "receipt_item") {
 			toast.error("Quick edit hanya untuk item struk hasil scan");
 			return;
 		}
-		const currentQty = String(transaction.receiptItemIndex ? transaction.detailItems?.find((d: any) => d.label === "Qty")?.value || "1" : "1");
-		const qtyInput = window.prompt("Qty baru (angka):", currentQty.replace(/[^\d.]/g, "") || "1");
-		if (qtyInput === null) return;
-		const priceInput = window.prompt("Harga satuan baru (angka):", String(Math.round(Number(transaction.amount) / Math.max(Number(transaction.receiptItemCount) || 1, 1))));
-		if (priceInput === null) return;
-		const totalInput = window.prompt("Subtotal item baru (angka, opsional):", String(Math.round(Number(transaction.amount) || 0)));
-		if (totalInput === null) return;
+		const rowKey = String(transaction.rowKey || transaction._id);
+		setEditingItemRowKey(rowKey);
+		setItemEditDraft(getReceiptItemDefaults(transaction));
+	};
+
+	const cancelInlineEditItem = () => {
+		setEditingItemRowKey(null);
+		setItemEditDraft(null);
+	};
+
+	const saveInlineEditItem = async (transaction: any) => {
+		if (transaction.rowType !== "receipt_item") {
+			toast.error("Edit item hanya untuk baris item struk");
+			return;
+		}
+		const rowKey = String(transaction.rowKey || transaction._id);
+		if (!itemEditDraft) {
+			toast.error("Data edit item belum terisi");
+			return;
+		}
+		const qty = Number(itemEditDraft.qty);
+		const price = Number(itemEditDraft.price);
+		const subtotal = Number(itemEditDraft.subtotal);
+		if (!Number.isFinite(qty) || qty <= 0) {
+			toast.error("Qty harus angka lebih dari 0");
+			return;
+		}
+		if (!Number.isFinite(price) || price < 0) {
+			toast.error("Harga harus angka valid");
+			return;
+		}
+		if (!Number.isFinite(subtotal) || subtotal < 0) {
+			toast.error("Subtotal harus angka valid");
+			return;
+		}
 		try {
+			setSavingItemRowKey(rowKey);
 			await updateTransactionScanItem({
 				id: transaction._id,
 				itemIndex: Number(transaction.itemIndex) || 0,
-				quantity: Number(qtyInput) || 1,
-				price: Number(priceInput) || undefined,
-				total: Number(totalInput) || undefined,
+				quantity: qty,
+				price,
+				total: subtotal,
 			});
+			cancelInlineEditItem();
 			toast.success("Item struk berhasil diperbarui");
 		} catch (error) {
 			console.error(error);
 			toast.error("Gagal memperbarui item struk");
+		} finally {
+			setSavingItemRowKey(null);
 		}
 	};
 
@@ -399,7 +495,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 		if (
 			referenceLabel.includes("order") ||
 			referenceLabel.includes("pesanan") ||
-			referenceValue.toUpperCase().startsWith("ORD")
+			/^(ORD|SO|BKO)-/i.test(referenceValue)
 		) {
 			return `/admin/orders?focusOrder=${encodeURIComponent(referenceValue)}`;
 		}
@@ -628,7 +724,11 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 
 			{/* Transactions Table */}
 			<div className="rounded-xl border border-border overflow-hidden">
-				<div className="overflow-x-auto">
+				<div
+					ref={scrollContainerRef}
+					onScroll={(e) => setScrollTop((e.target as HTMLDivElement).scrollTop)}
+					className="max-h-[70vh] overflow-auto"
+				>
 					<table className="w-full min-w-[1440px] text-left text-sm">
 						<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase tracking-wider font-bold">
 							<tr>
@@ -677,7 +777,13 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 									</td>
 								</tr>
 							) : (
-								displayedRows.map((t: any) => {
+								<>
+									{virtualized.shouldVirtualize && virtualized.topSpacer > 0 && (
+										<tr>
+											<td colSpan={columnCount} style={{ height: `${virtualized.topSpacer}px`, padding: 0, border: 0 }} />
+										</tr>
+									)}
+									{virtualized.rows.map((t: any) => {
 									if (t.rowType === "group_header") {
 										return (
 											<tr key={t.rowKey} className="bg-muted/40">
@@ -710,7 +816,14 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 									const referenceHref = getReferenceHref(t);
 
 									return (
-										<tr key={rowKey} className="group hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => handleEdit(t)}>
+										<tr
+											key={rowKey}
+											className="group hover:bg-muted/30 transition-colors cursor-pointer"
+											onClick={() => {
+												if (editingItemRowKey === rowKey) return;
+												handleEdit(t);
+											}}
+										>
 											<td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
 												<div className="flex items-center justify-center">
 													<Checkbox
@@ -863,30 +976,94 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 												)}
 											</div>
 										</td>
-										<td className="px-3 py-2.5">
-											<div className="flex min-w-[220px] max-w-[260px] flex-wrap gap-1">
-													{Array.isArray(t.detailItems) && t.detailItems.length > 0 ? (
-														<>
-															{t.detailItems.slice(0, Array.isArray(t.metadata?.scanItems) && t.metadata.scanItems.length > 0 ? 6 : 4).map((detail: { label: string; value: string }, idx: number) => (
-														<div key={`${detail.label}-${idx}`} className="inline-flex max-w-[126px] items-center gap-1 rounded-md border border-border/60 bg-background px-2 py-0.5 text-[10px]">
-															<span className="font-semibold uppercase tracking-wider text-muted-foreground">
-																{detail.label}:
-															</span>
-															<span className="truncate text-foreground" title={detail.value}>
-																{detail.value}
-															</span>
-														</div>
-															))}
-															{t.detailItems.length > (Array.isArray(t.metadata?.scanItems) && t.metadata.scanItems.length > 0 ? 6 : 4) && (
-																<div className="inline-flex items-center rounded-md border border-dashed border-border/60 bg-muted/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-																	+{t.detailItems.length - (Array.isArray(t.metadata?.scanItems) && t.metadata.scanItems.length > 0 ? 6 : 4)} detail
-																</div>
-															)}
-														</>
-												) : (
-													<span className="text-[11px] text-muted-foreground">-</span>
-												)}
-											</div>
+										<td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+											{t.rowType === "receipt_item" &&
+											editingItemRowKey === rowKey &&
+											itemEditDraft ? (
+												<div className="grid min-w-[220px] max-w-[260px] grid-cols-3 gap-2">
+													<div className="space-y-1">
+														<span className="block text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+															Qty
+														</span>
+														<input
+															type="number"
+															min="0"
+															step="1"
+															value={itemEditDraft.qty}
+															onChange={(e) =>
+																setItemEditDraft((prev) =>
+																	prev
+																		? { ...prev, qty: e.target.value }
+																		: prev
+																)
+															}
+															className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+														/>
+													</div>
+													<div className="space-y-1">
+														<span className="block text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+															Harga
+														</span>
+														<input
+															type="number"
+															min="0"
+															step="1"
+															value={itemEditDraft.price}
+															onChange={(e) =>
+																setItemEditDraft((prev) =>
+																	prev
+																		? { ...prev, price: e.target.value }
+																		: prev
+																)
+															}
+															className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+														/>
+													</div>
+													<div className="space-y-1">
+														<span className="block text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+															Subtotal
+														</span>
+														<input
+															type="number"
+															min="0"
+															step="1"
+															value={itemEditDraft.subtotal}
+															onChange={(e) =>
+																setItemEditDraft((prev) =>
+																	prev
+																		? { ...prev, subtotal: e.target.value }
+																		: prev
+																)
+															}
+															className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+														/>
+													</div>
+												</div>
+											) : (
+												<div className="flex min-w-[220px] max-w-[260px] flex-wrap gap-1">
+														{Array.isArray(t.detailItems) && t.detailItems.length > 0 ? (
+															<>
+																{t.detailItems.slice(0, Array.isArray(t.metadata?.scanItems) && t.metadata.scanItems.length > 0 ? 6 : 4).map((detail: { label: string; value: string }, idx: number) => (
+															<div key={`${detail.label}-${idx}`} className="inline-flex max-w-[126px] items-center gap-1 rounded-md border border-border/60 bg-background px-2 py-0.5 text-[10px]">
+																<span className="font-semibold uppercase tracking-wider text-muted-foreground">
+																	{detail.label}:
+																</span>
+																<span className="truncate text-foreground" title={detail.value}>
+																	{detail.value}
+																</span>
+															</div>
+																))}
+																{t.detailItems.length > (Array.isArray(t.metadata?.scanItems) && t.metadata.scanItems.length > 0 ? 6 : 4) && (
+																	<div className="inline-flex items-center rounded-md border border-dashed border-border/60 bg-muted/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+																		+{t.detailItems.length - (Array.isArray(t.metadata?.scanItems) && t.metadata.scanItems.length > 0 ? 6 : 4)} detail
+																	</div>
+																)}
+															</>
+													) : (
+														<span className="text-[11px] text-muted-foreground">-</span>
+													)}
+												</div>
+											)}
 										</td>
 										<td className="px-3 py-2.5">
 											<div className="flex min-w-[180px] max-w-[220px] flex-wrap gap-1">
@@ -920,25 +1097,59 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 										</td>
 										<td className="px-3 py-2.5 text-right">
 											<span className={`font-bold text-xs whitespace-nowrap ${t.type === "income" ? "text-green-600" : "text-red-600"}`}>
-												{t.type === "income" ? "+" : "-"} {formatCurrencyIDR(t.amount)}
+												{t.type === "income" ? "+" : "-"}{" "}
+												{formatCurrencyIDR(
+													t.rowType === "receipt_item" &&
+													editingItemRowKey === rowKey &&
+													itemEditDraft
+														? Number(itemEditDraft.subtotal) || 0
+														: t.amount
+												)}
 											</span>
 										</td>
 										<td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
 												<div className="flex items-center justify-center gap-1 opacity-60 transition-opacity group-hover:opacity-100">
-													<button
-														onClick={(e) => {
-															e.stopPropagation();
-															if (t.rowType === "receipt_item") {
-																void handleQuickEditItem(t);
-																return;
-															}
-															handleEdit(t);
-														}}
-														className="p-1.5 rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-														title={t.rowType === "receipt_item" ? "Ubah Item" : "Ubah"}
-													>
-														<Pencil className="h-4 w-4" />
-													</button>
+													{t.rowType === "receipt_item" && editingItemRowKey === rowKey ? (
+														<>
+															<button
+																onClick={(e) => {
+																	e.stopPropagation();
+																	void saveInlineEditItem(t);
+																}}
+																disabled={savingItemRowKey === rowKey}
+																className="p-1.5 rounded-md text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-40"
+																title="Simpan item"
+															>
+																<Check className="h-4 w-4" />
+															</button>
+															<button
+																onClick={(e) => {
+																	e.stopPropagation();
+																	cancelInlineEditItem();
+																}}
+																disabled={savingItemRowKey === rowKey}
+																className="p-1.5 rounded-md text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40"
+																title="Batal edit item"
+															>
+																<X className="h-4 w-4" />
+															</button>
+														</>
+													) : (
+														<button
+															onClick={(e) => {
+																e.stopPropagation();
+																if (t.rowType === "receipt_item") {
+																	startInlineEditItem(t);
+																	return;
+																}
+																handleEdit(t);
+															}}
+															className="p-1.5 rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+															title={t.rowType === "receipt_item" ? "Ubah Item" : "Ubah"}
+														>
+															<Pencil className="h-4 w-4" />
+														</button>
+													)}
 													<button
 														onClick={(e) => {
 															e.stopPropagation();
@@ -953,7 +1164,13 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 											</td>
 										</tr>
 									);
-								})
+								})}
+									{virtualized.shouldVirtualize && virtualized.bottomSpacer > 0 && (
+										<tr>
+											<td colSpan={columnCount} style={{ height: `${virtualized.bottomSpacer}px`, padding: 0, border: 0 }} />
+										</tr>
+									)}
+								</>
 							)}
 						</tbody>
 					</table>

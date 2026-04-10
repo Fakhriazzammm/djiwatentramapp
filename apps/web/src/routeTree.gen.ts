@@ -22,6 +22,7 @@ import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminRecipeRouteImport } from './routes/admin/recipe'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
+import { Route as AdminOperationalTeamRouteImport } from './routes/admin/operational-team'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
@@ -109,6 +110,13 @@ const AdminOrdersRoute = AdminOrdersRouteImport.update({
   path: '/orders',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() => import('./routes/admin/orders.lazy').then((d) => d.Route))
+const AdminOperationalTeamRoute = AdminOperationalTeamRouteImport.update({
+  id: '/operational-team',
+  path: '/operational-team',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/operational-team.lazy').then((d) => d.Route),
+)
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -229,6 +237,7 @@ export interface FileRoutesByFullPath {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/operational-team': typeof AdminOperationalTeamRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
@@ -259,6 +268,7 @@ export interface FileRoutesByTo {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/operational-team': typeof AdminOperationalTeamRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -291,6 +301,7 @@ export interface FileRoutesById {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/operational-team': typeof AdminOperationalTeamRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
@@ -325,6 +336,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/kitchen'
     | '/admin/login'
+    | '/admin/operational-team'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/recipe'
@@ -355,6 +367,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/kitchen'
     | '/admin/login'
+    | '/admin/operational-team'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
@@ -386,6 +399,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/kitchen'
     | '/admin/login'
+    | '/admin/operational-team'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/recipe'
@@ -501,6 +515,13 @@ declare module '@tanstack/react-router' {
       path: '/orders'
       fullPath: '/admin/orders'
       preLoaderRoute: typeof AdminOrdersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/operational-team': {
+      id: '/admin/operational-team'
+      path: '/operational-team'
+      fullPath: '/admin/operational-team'
+      preLoaderRoute: typeof AdminOperationalTeamRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/login': {
@@ -668,6 +689,7 @@ interface AdminRouteRouteChildren {
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminKitchenRoute: typeof AdminKitchenRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminOperationalTeamRoute: typeof AdminOperationalTeamRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminRecipeRoute: typeof AdminRecipeRouteWithChildren
@@ -687,6 +709,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminInventoryRoute: AdminInventoryRoute,
   AdminKitchenRoute: AdminKitchenRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminOperationalTeamRoute: AdminOperationalTeamRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminRecipeRoute: AdminRecipeRouteWithChildren,
