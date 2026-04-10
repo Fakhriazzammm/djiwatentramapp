@@ -2463,39 +2463,21 @@ function InventoryTable({
 											/>
 										</td>
 										<td className="px-2 py-2 align-middle text-center">
-											<div className="inline-flex items-center gap-1">
-												<input
-													className="w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono text-sm font-bold outline-none focus:border-border focus:bg-background"
-													onBlur={() => void saveQuantity(row)}
-													onChange={(e) =>
-														setInlineField(row, "quantity", e.target.value)
+											<input
+												className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono text-sm font-bold outline-none focus:border-border focus:bg-background"
+												onBlur={() => void saveQuantity(row)}
+												onChange={(e) =>
+													setInlineField(row, "quantity", e.target.value)
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveQuantity(row);
+														(e.target as HTMLInputElement).blur();
 													}
-													onKeyDown={(e) => {
-														if (e.key === "Enter") {
-															void saveQuantity(row);
-															(e.target as HTMLInputElement).blur();
-														}
-													}}
-													type="number"
-													value={inline.quantity}
-												/>
-												<div className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-background p-0.5">
-													<button
-														className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-														onClick={() => void quickDelta(row, "usage", 1)}
-														type="button"
-													>
-														<Minus className="h-3.5 w-3.5" />
-													</button>
-													<button
-														className="rounded-lg p-1.5 text-primary transition-colors hover:bg-primary/10"
-														onClick={() => void quickDelta(row, "add", 1)}
-														type="button"
-													>
-														<Plus className="h-3.5 w-3.5" />
-													</button>
-												</div>
-											</div>
+												}}
+												type="number"
+												value={inline.quantity}
+											/>
 										</td>
 										<td className="px-2 py-2 align-middle text-center">
 											<div className="inline-flex items-center gap-1">

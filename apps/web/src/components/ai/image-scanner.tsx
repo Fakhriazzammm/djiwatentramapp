@@ -221,11 +221,30 @@ export function ImageScanner({
 
 		// Single image generate
 		if (index !== undefined) {
+			const shouldSave = window.confirm(
+				"Simpan hasil scan ke data aplikasi sekarang?"
+			);
+			if (!shouldSave) {
+				return;
+			}
+
+			let syncMode: "auto" | "finance_only" | "finance_plus_inventory" =
+				"auto";
+			if (type === "expense" || type === "auto") {
+				const shouldSyncInventory = window.confirm(
+					"Simpan ke Keuangan + sinkron item per baris ke Inventaris? Pilih Batal jika hanya ingin simpan ke Keuangan."
+				);
+				syncMode = shouldSyncInventory
+					? "finance_plus_inventory"
+					: "finance_only";
+			}
+
 			setIsGenerating(true);
 			try {
 				const result = await processAndGenerateMutation({
 					image: images[index],
 					generateType: type,
+					syncMode,
 				});
 
 				if (result.success && result.generated) {
@@ -248,11 +267,30 @@ export function ImageScanner({
 		}
 
 		// Batch generate
+		const shouldSaveBatch = window.confirm(
+			"Simpan semua hasil scan batch ke data aplikasi sekarang?"
+		);
+		if (!shouldSaveBatch) {
+			return;
+		}
+
+		let batchSyncMode: "auto" | "finance_only" | "finance_plus_inventory" =
+			"auto";
+		if (type === "expense" || type === "auto") {
+			const shouldSyncBatchInventory = window.confirm(
+				"Untuk batch ini, sinkronkan item per baris ke Inventaris juga? Pilih Batal jika hanya ingin simpan ke Keuangan."
+			);
+			batchSyncMode = shouldSyncBatchInventory
+				? "finance_plus_inventory"
+				: "finance_only";
+		}
+
 		setIsGenerating(true);
 		try {
 			const result = await batchGenerateMutation({
 				images,
 				generateType: type,
+				syncMode: batchSyncMode,
 			});
 
 			if (result.summary.totalGenerated > 0) {

@@ -404,6 +404,11 @@ export const generateScanActionButtons = (scanData: ScanResultData): ScanActionB
 		date: dateTs,
 		paymentMethod: paymentMethod as any,
 		status: "completed" as const,
+		syncMode:
+			scanData.transactionType === "expense" &&
+			["belanja_stok", "peralatan_kantor"].includes(scanData.category)
+				? ("finance_plus_inventory" as const)
+				: ("finance_only" as const),
 	};
 	const ts = Date.now();
 	const isStockDocument =
@@ -414,17 +419,22 @@ export const generateScanActionButtons = (scanData: ScanResultData): ScanActionB
 	if (isStockDocument) {
 		return [{
 			id: `stock-${ts}`,
-			label: "Review Stok",
+			label: "Review & Konfirmasi Simpan",
 			icon: "STK",
 			variant: "stock",
-			params: { type: "expense", ...baseParams, category: "Pembelian Stok" },
+			params: {
+				type: "expense",
+				...baseParams,
+				category: "Pembelian Stok",
+				syncMode: "finance_plus_inventory",
+			},
 		}];
 	}
 
 	if (scanData.transactionType === "income") {
 		return [{
 			id: `income-${ts}`,
-			label: "Review Pemasukan",
+			label: "Review & Konfirmasi Simpan",
 			icon: "IN",
 			variant: "income",
 			params: { type: "income", ...baseParams },
@@ -433,7 +443,7 @@ export const generateScanActionButtons = (scanData: ScanResultData): ScanActionB
 
 	return [{
 		id: `expense-${ts}`,
-		label: scanData.transactionType === "unknown" ? "Review & Simpan" : "Review Pengeluaran",
+		label: "Review & Konfirmasi Simpan",
 		icon: "OUT",
 		variant: "expense",
 		params: { type: "expense", ...baseParams },

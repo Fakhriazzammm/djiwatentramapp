@@ -93,13 +93,28 @@ export function ScanResultCard({ data }: { data: ScanResultData }) {
 					{data.date && (
 						<div className="flex flex-col rounded-lg bg-muted/50 px-2.5 py-1.5">
 							<span className="text-muted-foreground leading-none mb-1">Tanggal</span>
-							<span className="font-medium text-foreground">{data.date}</span>
+							<span className="font-medium text-foreground">
+								{data.date}
+								{data.time ? ` ${data.time}` : ""}
+							</span>
+						</div>
+					)}
+					{data.receiptNumber && (
+						<div className="flex flex-col rounded-lg bg-muted/50 px-2.5 py-1.5">
+							<span className="text-muted-foreground leading-none mb-1">No Struk</span>
+							<span className="font-medium text-foreground">{data.receiptNumber}</span>
 						</div>
 					)}
 					{(data.tax ?? 0) > 0 && (
 						<div className="flex flex-col rounded-lg bg-muted/50 px-2.5 py-1.5">
 							<span className="text-muted-foreground leading-none mb-1">Pajak</span>
 							<span className="font-medium text-foreground">Rp{toRupiah(data.tax)}</span>
+						</div>
+					)}
+					{(data.serviceCharge ?? 0) > 0 && (
+						<div className="flex flex-col rounded-lg bg-muted/50 px-2.5 py-1.5">
+							<span className="text-muted-foreground leading-none mb-1">Service</span>
+							<span className="font-medium text-foreground">Rp{toRupiah(data.serviceCharge)}</span>
 						</div>
 					)}
 					{(data.discount ?? 0) > 0 && (

@@ -343,31 +343,53 @@ function parseAIScanJSON(content: string): any {
 			return 0;
 		};
 
+		const normalizeConfidencePercent = (value: any) => {
+			const numeric = sanitizeNum(value);
+			if (!Number.isFinite(numeric) || numeric <= 0) {
+				return 0;
+			}
+			if (numeric <= 1) {
+				return Math.round(numeric * 100);
+			}
+			return Math.round(Math.min(100, numeric));
+		};
+
 		if (sanitizedParsed.data) {
 			if (sanitizedParsed.data.amount) sanitizedParsed.data.amount = sanitizeNum(sanitizedParsed.data.amount);
 			if (sanitizedParsed.data.total) sanitizedParsed.data.total = sanitizeNum(sanitizedParsed.data.total);
+			if (sanitizedParsed.data.subtotal !== undefined) sanitizedParsed.data.subtotal = sanitizeNum(sanitizedParsed.data.subtotal);
+			if (sanitizedParsed.data.tax !== undefined) sanitizedParsed.data.tax = sanitizeNum(sanitizedParsed.data.tax);
+			if (sanitizedParsed.data.serviceCharge !== undefined) sanitizedParsed.data.serviceCharge = sanitizeNum(sanitizedParsed.data.serviceCharge);
+			if (sanitizedParsed.data.discount !== undefined) sanitizedParsed.data.discount = sanitizeNum(sanitizedParsed.data.discount);
 			if (Array.isArray(sanitizedParsed.data.items)) {
 				sanitizedParsed.data.items = sanitizedParsed.data.items.map((item: any) => ({
 					...item,
-					qty: sanitizeNum(item.qty) || 1,
+					qty: sanitizeNum(item.qty ?? item.quantity) || 1,
+					quantity: sanitizeNum(item.quantity ?? item.qty) || 1,
 					price: sanitizeNum(item.price || item.unitPrice),
 					total: sanitizeNum(item.total || item.subtotal),
+					subtotal: sanitizeNum(item.subtotal || item.total),
 				}));
 			}
 		}
 
 		// Top level fields (for scanImageData style)
-		const fields = ['total', 'subtotal', 'tax', 'serviceCharge', 'discount', 'confidence'];
+		const fields = ['total', 'subtotal', 'tax', 'serviceCharge', 'discount'];
 		fields.forEach(f => {
 			if (sanitizedParsed[f] !== undefined) sanitizedParsed[f] = sanitizeNum(sanitizedParsed[f]);
 		});
+		if (sanitizedParsed.confidence !== undefined) {
+			sanitizedParsed.confidence = normalizeConfidencePercent(sanitizedParsed.confidence);
+		}
 
 		if (Array.isArray(sanitizedParsed.items)) {
 			sanitizedParsed.items = sanitizedParsed.items.map((item: any) => ({
 				...item,
-				qty: sanitizeNum(item.qty) || 1,
+				qty: sanitizeNum(item.qty ?? item.quantity) || 1,
+				quantity: sanitizeNum(item.quantity ?? item.qty) || 1,
 				price: sanitizeNum(item.price),
-				subtotal: sanitizeNum(item.subtotal),
+				total: sanitizeNum(item.total || item.subtotal),
+				subtotal: sanitizeNum(item.subtotal || item.total),
 			}));
 		}
 
@@ -493,7 +515,9 @@ function normalizeScanItems(items: any[] | undefined) {
 		.map((item) => {
 			const quantity = Number(item?.quantity ?? item?.qty) || 1;
 			const price = Number(item?.price ?? item?.unitPrice) || undefined;
-			const total = Number(item?.total ?? item?.subtotal) || undefined;
+			const total =
+				Number(item?.total ?? item?.subtotal) ||
+				(price ? Math.round(price * quantity) : undefined);
 			return {
 				name: sanitizeAIString(item?.name || item?.item || ""),
 				quantity,
@@ -4598,12 +4622,17 @@ async function runReceiptOCR(imageDataUrl: string): Promise<{
 	type: "order" | "expense" | "income" | "unknown";
 	data?: {
 		amount?: number;
+		subtotal?: number;
+		tax?: number;
+		serviceCharge?: number;
+		discount?: number;
 		items?: Array<{
 			name: string;
 			quantity: number;
 			price?: number;
 			total?: number;
 			unit?: string;
+			lineNumber?: number;
 		}>;
 		category?: string;
 		description?: string;
@@ -4611,6 +4640,8 @@ async function runReceiptOCR(imageDataUrl: string): Promise<{
 		notes?: string;
 		merchantName?: string;
 		date?: string;
+		time?: string;
+		receiptNumber?: string;
 	};
 	confidence: number;
 	rawText: string;
@@ -4643,28 +4674,45 @@ async function runReceiptOCR(imageDataUrl: string): Promise<{
 	const { base64Data, mimeType } = extractImagePayload(imageDataUrl);
 
 	const prompt = `Kamu adalah pakar OCR struk belanja Indonesia yang sangat teliti.
-Tugas kamu adalah mengekstrak data dari struk/kwitansi ini ke dalam format JSON.
+Tugasmu mengekstrak data struk/kwitansi menjadi JSON TERSTRUKTUR PER BARIS ITEM.
 
 PENTING:
-1. Baca DARI ATAS KE BAWAH secara lengkap.
-2. Ekstrak Merchant: Nama toko/restoran.
-3. Ekstrak Items: Daftar item, qty, harga satuan, subtotal.
-   - Tentukan satuan (unit) secara otomatis berdasarkan jenis barang (misal: "pcs", "kg", "liter", "porsi", "bungkus", "botol", dll). JANGAN bertanya ke user.
-4. Ekstrak Summary: Subtotal, Pajak, Service Charge, Diskon, dan TOTAL AKHIR.
-5. Kategori: Tentukan kategori yang paling cocok (makanan_minuman, belanja_stok, utilitas, dll).
-6. Tentukan Type: "expense" (pengeluaran) atau "income" (jika ini struk penjualan toko kamu).
+1. Baca dokumen dari atas ke bawah.
+2. Selalu isi merchantName, date (YYYY-MM-DD jika ada), time (HH:mm jika ada), receiptNumber (jika ada).
+3. Item HARUS per baris, bukan ringkasan. Masukkan lineNumber berurutan mulai 1.
+4. Untuk tiap item, isi: name, quantity, unit, price (harga satuan), total (subtotal item).
+5. Summary wajib: subtotal, tax, serviceCharge, discount, amount (total akhir dibayar).
+6. Jika angka tidak ada, isi 0. Jika teks tidak ada, isi null.
+7. Kategori pilih salah satu: makanan_minuman, belanja_stok, peralatan_kantor, transportasi, utilitas_listrik_air, gaji_karyawan, sewa_tempat, pemasaran, pajak, hiburan, kesehatan, pembangunan_renovasi, lainnya.
+8. paymentMethod: cash|qris|card|transfer|unknown.
+9. type: expense untuk struk pembelian/pengeluaran, income untuk struk pemasukan/penjualan, unknown jika tidak jelas.
 
-Output harus JSON murni:
+Kembalikan HANYA JSON valid:
 {
   "type": "expense",
   "data": {
     "merchantName": "Nama Toko",
-    "amount": 100000,
-    "items": [{"name": "Item A", "quantity": 1, "price": 100000, "total": 100000, "unit": "pcs"}],
-    "category": "makanan_minuman",
+    "amount": 125000,
+    "subtotal": 120000,
+    "tax": 6000,
+    "serviceCharge": 3000,
+    "discount": 4000,
+    "items": [
+      {
+        "lineNumber": 1,
+        "name": "Nama item",
+        "quantity": 2,
+        "unit": "pcs",
+        "price": 20000,
+        "total": 40000
+      }
+    ],
+    "category": "belanja_stok",
     "paymentMethod": "qris",
-    "date": "YYYY-MM-DD",
-    "notes": "Alamat/Info tambahan"
+    "date": "2026-04-10",
+    "time": "14:25",
+    "receiptNumber": "INV-001",
+    "notes": "Info tambahan penting"
   },
   "confidence": 95
 }`;
@@ -4678,11 +4726,49 @@ Output harus JSON murni:
 	const parsed = parseAIScanJSON(visionResult.text);
 	
 	if (parsed) {
+		const baseData = parsed.data || parsed;
+		const normalizedItems = normalizeScanItems(baseData.items).map((item, idx) => ({
+			lineNumber: Number(baseData.items?.[idx]?.lineNumber) || idx + 1,
+			name: item.name,
+			quantity: item.quantity,
+			price: item.price,
+			total: item.total,
+			unit: item.unit,
+		}));
+		const normalizedTotal =
+			Number(baseData.amount ?? baseData.total) ||
+			normalizedItems.reduce(
+				(sum, item) =>
+					sum +
+					(Number(item.total) || (Number(item.price) || 0) * (Number(item.quantity) || 1)),
+				0
+			);
+		const normalizedConfidence =
+			typeof parsed.confidence === "number"
+				? parsed.confidence > 1
+					? Math.min(1, Math.max(0.01, parsed.confidence / 100))
+					: Math.min(1, Math.max(0.01, parsed.confidence))
+				: 0.5;
 		return {
 			type: (parsed.type || parsed.transactionType || "unknown") as any,
-			data: parsed.data || parsed,
+			data: {
+				...baseData,
+				amount: normalizedTotal,
+				subtotal: Number(baseData.subtotal) || undefined,
+				tax: Number(baseData.tax) || undefined,
+				serviceCharge: Number(baseData.serviceCharge) || undefined,
+				discount: Number(baseData.discount) || undefined,
+				items: normalizedItems,
+				merchantName: sanitizeAIString(baseData.merchantName || baseData.name || ""),
+				category: sanitizeAIString(baseData.category || "lainnya") || "lainnya",
+				paymentMethod: sanitizeAIString(baseData.paymentMethod || "unknown") || "unknown",
+				date: sanitizeAIString(baseData.date || "") || undefined,
+				time: sanitizeAIString(baseData.time || "") || undefined,
+				receiptNumber: sanitizeAIString(baseData.receiptNumber || "") || undefined,
+				notes: sanitizeAIString(baseData.notes || "") || undefined,
+			},
 			rawText: visionResult.text,
-			confidence: (parsed.confidence || 50) / 100,
+			confidence: normalizedConfidence,
 		};
 	}
 
@@ -4706,6 +4792,10 @@ function mapReceiptFallbackToStructuredScan(
 				: "unknown";
 	const merchant = sanitizeAIString(scan.data?.merchantName || "") || "Toko";
 	const total = Number(scan.data?.amount) || 0;
+	const subtotal =
+		Number(scan.data?.subtotal) ||
+		Number(scan.data?.amount) ||
+		0;
 	const items = (scan.data?.items || []).map((item) => {
 		const qty = Number(item.quantity) || 1;
 		const price = Number(item.price) || 0;
@@ -4727,12 +4817,27 @@ function mapReceiptFallbackToStructuredScan(
 		category: sanitizeAIString(scan.data?.category || "lainnya") || "lainnya",
 		transactionType,
 		total,
-		subtotal: total,
+		subtotal,
+		tax: Number(scan.data?.tax) || undefined,
+		serviceCharge: Number(scan.data?.serviceCharge) || undefined,
+		discount: Number(scan.data?.discount) || undefined,
 		items,
 		date: scan.data?.date || null,
+		time: sanitizeAIString(scan.data?.time || "") || undefined,
+		receiptNumber:
+			sanitizeAIString(scan.data?.receiptNumber || "") || undefined,
 		paymentMethod: sanitizeAIString(scan.data?.paymentMethod || "unknown") || "unknown",
-		notes: sanitizeAIString(scan.data?.notes || ""),
-		confidence: Math.max(1, Math.min(100, Math.round((scan.confidence || 0.1) * 100))),
+		notes: sanitizeAIString(scan.data?.notes || scan.data?.receiptNumber || ""),
+		confidence: Math.max(
+			1,
+			Math.min(
+				100,
+				Math.round(
+					(scan.confidence > 1 ? scan.confidence / 100 : scan.confidence || 0.1) *
+						100
+				)
+			)
+		),
 		rawText: sanitizeAIString(scan.rawText || ""),
 		rewrittenText: "",
 	};
@@ -4762,6 +4867,10 @@ const structuredScanDataValidator = v.object({
 		v.literal("unknown")
 	),
 	total: v.number(),
+	subtotal: v.optional(v.number()),
+	tax: v.optional(v.number()),
+	serviceCharge: v.optional(v.number()),
+	discount: v.optional(v.number()),
 	items: v.array(
 		v.object({
 			name: v.string(),
@@ -4772,6 +4881,8 @@ const structuredScanDataValidator = v.object({
 		})
 	),
 	date: v.optional(v.union(v.string(), v.null())),
+	time: v.optional(v.string()),
+	receiptNumber: v.optional(v.string()),
 	paymentMethod: v.optional(v.string()),
 	notes: v.optional(v.string()),
 	confidence: v.optional(v.number()),
@@ -4856,6 +4967,13 @@ export const processImageAndGenerate = action({
 			v.literal("order"),
 			v.literal("income")
 		),
+		syncMode: v.optional(
+			v.union(
+				v.literal("auto"),
+				v.literal("finance_only"),
+				v.literal("finance_plus_inventory")
+			)
+		),
 	},
 	handler: async (ctx, args) => {
 		const scanResult = await runReceiptOCR(args.image);
@@ -4883,7 +5001,14 @@ export const processImageAndGenerate = action({
 			const detectedDate = parseOptionalIsoDate(scanResult.data.date);
 			const resolvedDate = detectedDate ?? Date.now();
 
-			if (shouldSyncExpenseToInventory(scanResult, effectiveType)) {
+			const shouldSyncInventory =
+				args.syncMode === "finance_plus_inventory"
+					? true
+					: args.syncMode === "finance_only"
+						? false
+						: shouldSyncExpenseToInventory(scanResult, effectiveType);
+
+			if (shouldSyncInventory) {
 				const purchaseResult = await ctx.runMutation(
 					api.stockPurchases.recordStockPurchase,
 					{
@@ -5001,6 +5126,13 @@ export const batchGenerateTransactions = action({
 			v.literal("order"),
 			v.literal("income")
 		),
+		syncMode: v.optional(
+			v.union(
+				v.literal("auto"),
+				v.literal("finance_only"),
+				v.literal("finance_plus_inventory")
+			)
+		),
 	},
 	handler: async (ctx, args) => {
 		const generated: Array<{
@@ -5034,7 +5166,14 @@ export const batchGenerateTransactions = action({
 					const detectedDate = parseOptionalIsoDate(scanResult.data.date);
 					const resolvedDate = detectedDate ?? Date.now();
 
-					if (shouldSyncExpenseToInventory(scanResult, effectiveType)) {
+					const shouldSyncInventory =
+						args.syncMode === "finance_plus_inventory"
+							? true
+							: args.syncMode === "finance_only"
+								? false
+								: shouldSyncExpenseToInventory(scanResult, effectiveType);
+
+					if (shouldSyncInventory) {
 						const purchaseResult = await ctx.runMutation(
 							api.stockPurchases.recordStockPurchase,
 							{

@@ -11,6 +11,7 @@ export interface ScanEditParams {
 	date: number;
 	paymentMethod?: string;
 	status: "completed";
+	syncMode?: "auto" | "finance_only" | "finance_plus_inventory";
 }
 
 interface Props {
@@ -60,12 +61,18 @@ export function ScanEditModal({ isOpen, params, allowSplit = true, onSave, onSpl
 	const [form, setForm] = useState<ScanEditParams>(params);
 
 	useEffect(() => {
-		setForm(params);
+		setForm({
+			...params,
+			syncMode:
+				params.syncMode ||
+				(params.type === "expense" ? "finance_only" : "auto"),
+		});
 	}, [params]);
 
 	if (isOpen === false) return null;
 
 	const categories = form.type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+	const canSyncInventory = form.type === "expense";
 
 	const handleSave = async () => {
 		if (!form.amount || form.amount <= 0) return;
@@ -224,6 +231,50 @@ export function ScanEditModal({ isOpen, params, allowSplit = true, onSave, onSpl
 							))}
 						</div>
 					</div>
+
+					{canSyncInventory && (
+						<div>
+							<label className="mb-1.5 block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+								Tujuan Simpan
+							</label>
+							<div className="grid grid-cols-1 gap-2">
+								<button
+									type="button"
+									onClick={() =>
+										setForm((f) => ({
+											...f,
+											syncMode: "finance_only",
+										}))
+									}
+									className={`rounded-xl border px-3 py-2.5 text-left text-xs transition-colors ${
+										(form.syncMode || "finance_only") === "finance_only"
+											? "border-primary bg-primary/10 text-primary"
+											: "border-border bg-muted/30 text-muted-foreground"
+									}`}
+								>
+									<p className="font-semibold">Simpan ke Keuangan saja</p>
+									<p className="mt-1 text-[11px]">Masuk transaksi keuangan tanpa update stok inventaris.</p>
+								</button>
+								<button
+									type="button"
+									onClick={() =>
+										setForm((f) => ({
+											...f,
+											syncMode: "finance_plus_inventory",
+										}))
+									}
+									className={`rounded-xl border px-3 py-2.5 text-left text-xs transition-colors ${
+										form.syncMode === "finance_plus_inventory"
+											? "border-primary bg-primary/10 text-primary"
+											: "border-border bg-muted/30 text-muted-foreground"
+									}`}
+								>
+									<p className="font-semibold">Simpan ke Keuangan + Inventaris</p>
+									<p className="mt-1 text-[11px]">Transaksi keuangan tersimpan dan item struk sinkron per baris ke stok.</p>
+								</button>
+							</div>
+						</div>
+					)}
 				</div>
 
 				{/* Footer */}

@@ -300,28 +300,78 @@ function IngredientEditor({
 	ingredients: { inventoryId: Id<"inventory">; amount: number }[];
 	setIngredients: (next: { inventoryId: Id<"inventory">; amount: number }[]) => void;
 }) {
+	const [ingredientQuery, setIngredientQuery] = useState("");
+
+	const sortedInventory = useMemo(() => sortByName(inventory), [inventory]);
+	const filteredInventory = useMemo(() => {
+		const keyword = ingredientQuery.trim().toLowerCase();
+		if (!keyword) return sortedInventory;
+		return sortedInventory.filter((item) =>
+			`${item.ingredientName} ${item.unit}`.toLowerCase().includes(keyword)
+		);
+	}, [ingredientQuery, sortedInventory]);
+
+	const addIngredient = (inventoryId: Id<"inventory">) => {
+		if (!inventoryId) return;
+		if (ingredients.some((item) => item.inventoryId === inventoryId)) {
+			toast.error("Bahan sudah ada");
+			return;
+		}
+		setIngredients([...ingredients, { inventoryId, amount: 0 }]);
+		setIngredientQuery("");
+	};
+
+	const resolveIngredientId = (rawValue: string) => {
+		const value = rawValue.trim().toLowerCase();
+		if (!value) return null;
+		const exact = sortedInventory.find(
+			(item) =>
+				item.ingredientName.toLowerCase() === value ||
+				`${item.ingredientName} (${item.unit})`.toLowerCase() === value
+		);
+		if (exact) return exact._id as Id<"inventory">;
+		const partial = sortedInventory.find((item) =>
+			`${item.ingredientName} ${item.unit}`.toLowerCase().includes(value)
+		);
+		return (partial?._id as Id<"inventory">) ?? null;
+	};
+
 	return (
 		<div className="space-y-3">
-			<select
-				className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-				onChange={(event) => {
-					const value = event.target.value as Id<"inventory">;
-					if (!value) return;
-					if (ingredients.some((item) => item.inventoryId === value)) {
-						toast.error("Bahan sudah ada");
-						return;
-					}
-					setIngredients([...ingredients, { inventoryId: value, amount: 0 }]);
-				}}
-				value=""
-			>
-				<option value="">+ Tambah bahan</option>
-				{sortByName(inventory).map((item) => (
-					<option key={item._id} value={item._id}>
-						{item.ingredientName} ({item.unit})
-					</option>
-				))}
-			</select>
+			<div className="space-y-2">
+				<div className="flex gap-2">
+					<Input
+						className="h-10"
+						list="ingredient-options"
+						onChange={(event) => setIngredientQuery(event.target.value)}
+						onKeyDown={(event) => {
+							if (event.key !== "Enter") return;
+							event.preventDefault();
+							const resolvedId = resolveIngredientId(ingredientQuery);
+							if (!resolvedId) return toast.error("Bahan tidak ditemukan");
+							addIngredient(resolvedId);
+						}}
+						placeholder="+ Tambah bahan (ketik untuk cari)"
+						value={ingredientQuery}
+					/>
+					<Button
+						onClick={() => {
+							const resolvedId = resolveIngredientId(ingredientQuery);
+							if (!resolvedId) return toast.error("Bahan tidak ditemukan");
+							addIngredient(resolvedId);
+						}}
+						type="button"
+						variant="outline"
+					>
+						Tambah
+					</Button>
+				</div>
+				<datalist id="ingredient-options">
+					{filteredInventory.map((item) => (
+						<option key={item._id} value={`${item.ingredientName} (${item.unit})`} />
+					))}
+				</datalist>
+			</div>
 			<div className="space-y-2">
 				{ingredients.map((ingredient, index) => {
 					const inv = inventory.find((item) => item._id === ingredient.inventoryId);
@@ -398,6 +448,7 @@ export function RecipeStudioPage() {
 		productId: "",
 		ingredients: [],
 	});
+	const [productQuery, setProductQuery] = useState("");
 
 	const loading =
 		!products || !categories || !inventory || !baseRecipes || !productRecipes;
@@ -447,6 +498,19 @@ export function RecipeStudioPage() {
 				);
 			});
 	}, [categories, hppProductMap, products, recipeByProductId, searchProduct]);
+
+	const sortedProducts = useMemo(() => sortByName(products ?? []), [products]);
+
+	const resolveProductId = (rawValue: string) => {
+		const value = rawValue.trim().toLowerCase();
+		if (!value) return "";
+		const exact = sortedProducts.find((product) => product.name.toLowerCase() === value);
+		if (exact) return String(exact._id);
+		const partial = sortedProducts.find((product) =>
+			product.name.toLowerCase().includes(value)
+		);
+		return partial ? String(partial._id) : "";
+	};
 
 	if (loading) {
 		return (
@@ -534,6 +598,7 @@ export function RecipeStudioPage() {
 					addLabel="Tambah Recipe Produk"
 					onAdd={() => {
 						setProductForm({ productId: "", ingredients: [] });
+						setProductQuery("");
 						setProductModalOpen(true);
 					}}
 					search={searchProduct}
@@ -547,6 +612,7 @@ export function RecipeStudioPage() {
 							productId: String(row.product._id),
 							ingredients: row.recipe?.ingredients ?? [],
 						});
+						setProductQuery(row.product.name);
 						setProductModalOpen(true);
 					}}
 					rows={productRows}
@@ -680,24 +746,29 @@ export function RecipeStudioPage() {
 							setProductModalOpen(false);
 						}}
 					>
-						<select
-							className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-							onChange={(event) =>
-								setProductForm((current) => ({
-									...current,
-									productId: event.target.value,
-								}))
-							}
-							required
-							value={productForm.productId}
-						>
-							<option value="">Pilih produk</option>
-							{sortByName(products).map((product) => (
-								<option key={product._id} value={product._id}>
-									{product.name}
-								</option>
-							))}
-						</select>
+						<div className="space-y-2">
+							<Input
+								className="h-10 w-full"
+								list="product-options"
+								onChange={(event) => {
+									const value = event.target.value;
+									setProductQuery(value);
+									const productId = resolveProductId(value);
+									setProductForm((current) => ({
+										...current,
+										productId,
+									}));
+								}}
+								placeholder="Pilih produk (ketik untuk cari)"
+								required
+								value={productQuery}
+							/>
+							<datalist id="product-options">
+								{sortedProducts.map((product) => (
+									<option key={product._id} value={product.name} />
+								))}
+							</datalist>
+						</div>
 						<IngredientEditor
 							ingredients={productForm.ingredients}
 							inventory={inventory}

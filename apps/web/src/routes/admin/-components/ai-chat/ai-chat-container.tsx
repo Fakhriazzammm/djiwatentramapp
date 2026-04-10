@@ -122,6 +122,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 				date: number;
 				paymentMethod?: string;
 				status?: "completed" | "pending" | "cancelled";
+				syncMode?: "auto" | "finance_only" | "finance_plus_inventory";
 			};
 			const scanItems =
 				scanData?.items?.map((item) => ({
@@ -138,7 +139,11 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 					rawText ||
 					scanData?.rawText ||
 					(typeof payload.description === "string" ? payload.description : undefined),
-				syncMode: "auto",
+				syncMode:
+					transactionPayload.syncMode ||
+					(transactionPayload.type === "expense"
+						? "finance_only"
+						: "auto"),
 				transaction: {
 					type: transactionPayload.type,
 					amount: transactionPayload.amount,
@@ -391,13 +396,37 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			for (const entry of successfulResults) {
 				const scanData = entry.data;
 				if (!scanData) continue;
-				const itemsStr = scanData.items?.length 
-					? `\n📋 Detail Item (${scanData.items.length} item):\n` + scanData.items.map((item: any, idx: number) => `${idx + 1}. ${item.name} x${item.qty} = Rp ${toRupiah(item.subtotal)}`).join("\n")
+				const itemsStr = scanData.items?.length
+					? `\nDetail Item (${scanData.items.length} item):\n${scanData.items
+							.map(
+								(item: any, idx: number) =>
+									`${idx + 1}. ${item.name} x${item.qty} ${item.unit || ""} = Rp ${toRupiah(item.subtotal)}`
+							)
+							.join("\n")}`
 					: "";
 				const rewrittenPreview = scanData.rewrittenText?.trim()
-					? `\n\n📝 Tulisan Ulang AI:\n${scanData.rewrittenText}`
+					? `\n\nTulisan Ulang AI:\n${scanData.rewrittenText}`
 					: "";
-				const assistantContent = `🍩 Merchant: ${scanData.name || "Toko"}${itemsStr}\n\n💰 Total: Rp ${toRupiah(scanData.total)}\n📊 Keyakinan: ${scanData.confidence}% | Kategori: ${scanData.category?.replace(/_/g, " ") || "Umum"}${rewrittenPreview}`;
+				const financialSummary = [
+					scanData.subtotal ? `Subtotal Rp ${toRupiah(scanData.subtotal)}` : null,
+					scanData.tax ? `Pajak Rp ${toRupiah(scanData.tax)}` : null,
+					scanData.serviceCharge
+						? `Service Rp ${toRupiah(scanData.serviceCharge)}`
+						: null,
+					scanData.discount ? `Diskon Rp ${toRupiah(scanData.discount)}` : null,
+				]
+					.filter(Boolean)
+					.join(" | ");
+				const assistantContent = `Merchant: ${scanData.name || "Toko"}${itemsStr}
+
+Total: Rp ${toRupiah(scanData.total)}
+${financialSummary ? `${financialSummary}\n` : ""}Tanggal: ${scanData.date || "-"}${scanData.time ? ` ${scanData.time}` : ""} | Kategori: ${scanData.category?.replace(/_/g, " ") || "Umum"}
+Keyakinan: ${scanData.confidence}%
+
+Konfirmasi simpan:
+Klik "Review & Konfirmasi Simpan", lalu pilih tujuan penyimpanan:
+1. Keuangan saja
+2. Keuangan + Inventaris (sinkron item per baris struk)${rewrittenPreview}`;
 				const assistantMsg: ChatMessage = {
 					role: "assistant",
 					content: assistantContent,
