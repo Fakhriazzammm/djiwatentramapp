@@ -16,12 +16,14 @@ type AiModelConfig = {
 	fallbackModel: string;
 };
 
+const UNIFIED_AI_MODEL = "gemini-2.0-flash-lite";
+
 const DEFAULT_AI_MODEL_CONFIG: AiModelConfig = {
-	ocrVisionModel: "gemini/gemini-2.0-flash-lite",
-	chatTextModel: "gpt-4.1-mini",
-	synthesisModel: "gpt-4.1-mini",
-	analyticsModel: "gpt-4.1-mini",
-	fallbackModel: "gpt-4.1-mini",
+	ocrVisionModel: UNIFIED_AI_MODEL,
+	chatTextModel: UNIFIED_AI_MODEL,
+	synthesisModel: UNIFIED_AI_MODEL,
+	analyticsModel: UNIFIED_AI_MODEL,
+	fallbackModel: UNIFIED_AI_MODEL,
 };
 
 async function resolveAiModelConfig(
@@ -29,10 +31,13 @@ async function resolveAiModelConfig(
 ): Promise<AiModelConfig> {
 	if (!ctx) return DEFAULT_AI_MODEL_CONFIG;
 	try {
-		const config = await ctx.runQuery(api.site_settings.getAiModelSettings, {});
+		await ctx.runQuery(api.site_settings.getAiModelSettings, {});
 		return {
-			...DEFAULT_AI_MODEL_CONFIG,
-			...(config ?? {}),
+			ocrVisionModel: UNIFIED_AI_MODEL,
+			chatTextModel: UNIFIED_AI_MODEL,
+			synthesisModel: UNIFIED_AI_MODEL,
+			analyticsModel: UNIFIED_AI_MODEL,
+			fallbackModel: UNIFIED_AI_MODEL,
 		};
 	} catch (error) {
 		console.warn("Failed to load AI model config, using defaults:", error);
@@ -567,6 +572,89 @@ function normalizeScanItems(items: any[] | undefined) {
 			};
 		})
 		.filter((item) => item.name);
+}
+
+function inferReceiptItemsFromRawText(rawText: string | undefined) {
+	const normalized = sanitizeAIString(rawText || "");
+	if (!normalized) return [];
+
+	const lines = normalized
+		.split("\n")
+		.map((line) => line.trim())
+		.filter(Boolean);
+	const blockedTokens = [
+		"subtotal",
+		"total",
+		"tax",
+		"pajak",
+		"service",
+		"diskon",
+		"discount",
+		"payment",
+		"kembalian",
+		"cash",
+		"card",
+		"qris",
+		"debit",
+		"credit",
+		"thank",
+		"terima kasih",
+		"closed",
+	];
+
+	const parsed = lines
+		.map((line) => {
+			const lower = line.toLowerCase();
+			if (blockedTokens.some((token) => lower.includes(token))) return null;
+			const priceMatch = line.match(/([0-9]{1,3}(?:[.,][0-9]{3})+|[0-9]{3,})\s*$/);
+			if (!priceMatch) return null;
+
+			const totalRaw = priceMatch[1] || "";
+			const total = Number(totalRaw.replace(/[^0-9]/g, ""));
+			if (!(total > 0)) return null;
+
+			let left = line.slice(0, line.length - totalRaw.length).trim();
+			left = left.replace(/^[0-9]+[\).\-\s]+/, "").trim();
+			if (!left) return null;
+
+			let quantity = 1;
+			const qtyStart = left.match(/^([0-9]+)\s+(.+)$/);
+			if (qtyStart) {
+				quantity = Number(qtyStart[1]) || 1;
+				left = qtyStart[2].trim();
+			} else {
+				const qtyEnd = left.match(/^(.+?)\s+x\s*([0-9]+)$/i);
+				if (qtyEnd) {
+					left = qtyEnd[1].trim();
+					quantity = Number(qtyEnd[2]) || 1;
+				}
+			}
+
+			const cleanName = sanitizeAIString(left);
+			if (!cleanName || cleanName.length < 2) return null;
+
+			return {
+				name: cleanName,
+				quantity: quantity > 0 ? quantity : 1,
+				price: quantity > 0 ? Math.round(total / quantity) : total,
+				total,
+				unit: undefined,
+			};
+		})
+		.filter(Boolean) as Array<{
+			name: string;
+			quantity: number;
+			price?: number;
+			total?: number;
+			unit?: string;
+		}>;
+
+	if (parsed.length <= 1) return [];
+
+	return parsed.slice(0, 30).map((item, index) => ({
+		...item,
+		lineNumber: index + 1,
+	}));
 }
 
 function buildHeuristicInventoryCostSuggestions(context: any) {
@@ -4798,7 +4886,7 @@ Kembalikan HANYA JSON valid:
 	
 	if (parsed) {
 		const baseData = parsed.data || parsed;
-		const normalizedItems = normalizeScanItems(baseData.items).map((item, idx) => ({
+		let normalizedItems = normalizeScanItems(baseData.items).map((item, idx) => ({
 			lineNumber: Number(baseData.items?.[idx]?.lineNumber) || idx + 1,
 			name: item.name,
 			quantity: item.quantity,
@@ -4806,6 +4894,9 @@ Kembalikan HANYA JSON valid:
 			total: item.total,
 			unit: item.unit,
 		}));
+		if (normalizedItems.length === 0) {
+			normalizedItems = inferReceiptItemsFromRawText(baseData.rawText || baseData.notes || visionResult.text);
+		}
 		const normalizedTotal =
 			Number(baseData.amount ?? baseData.total) ||
 			normalizedItems.reduce(
@@ -4838,7 +4929,7 @@ Kembalikan HANYA JSON valid:
 				receiptNumber: sanitizeAIString(baseData.receiptNumber || "") || undefined,
 				notes: sanitizeAIString(baseData.notes || "") || undefined,
 			},
-			rawText: visionResult.text,
+			rawText: sanitizeAIString(baseData.rawText || visionResult.text),
 			confidence: normalizedConfidence,
 		};
 	}
@@ -4880,6 +4971,14 @@ function mapReceiptFallbackToStructuredScan(
 			unit: sanitizeAIString(item.unit || "") || undefined,
 		};
 	});
+	const inferredItems =
+		items.length > 0 ? items : inferReceiptItemsFromRawText(scan.rawText).map((item) => ({
+			name: item.name,
+			qty: item.quantity,
+			price: Number(item.price) || 0,
+			subtotal: Number(item.total) || 0,
+			unit: item.unit,
+		}));
 
 	return {
 		type: "receipt",
@@ -4892,7 +4991,7 @@ function mapReceiptFallbackToStructuredScan(
 		tax: Number(scan.data?.tax) || undefined,
 		serviceCharge: Number(scan.data?.serviceCharge) || undefined,
 		discount: Number(scan.data?.discount) || undefined,
-		items,
+		items: inferredItems,
 		date: scan.data?.date || null,
 		time: sanitizeAIString(scan.data?.time || "") || undefined,
 		receiptNumber:

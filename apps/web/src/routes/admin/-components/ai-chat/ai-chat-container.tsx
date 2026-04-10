@@ -486,16 +486,30 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			for (const entry of successfulResults) {
 				const scanData = entry.data;
 				if (!scanData) continue;
-				const itemsStr = scanData.items?.length
-					? `\nDetail Item (${scanData.items.length} item):\n${scanData.items
+				const normalizedItems = Array.isArray(scanData.items)
+					? scanData.items
+							.map((item: any) => ({
+								name: String(item?.name || "").trim(),
+								qty: Number(item?.qty || item?.quantity) || 1,
+								unit: String(item?.unit || "").trim(),
+								price: Number(item?.price || item?.unitPrice) || 0,
+								subtotal:
+									Number(item?.subtotal || item?.total) ||
+									(Number(item?.price || item?.unitPrice) || 0) *
+										(Number(item?.qty || item?.quantity) || 1),
+							}))
+							.filter((item) => item.name.length > 0)
+					: [];
+				const itemsStr = normalizedItems.length
+					? `\nItem Struk (${normalizedItems.length} baris):\n${normalizedItems
 							.map(
 								(item: any, idx: number) =>
-									`${idx + 1}. ${item.name} x${item.qty} ${item.unit || ""} = Rp ${toRupiah(item.subtotal)}`
+									`${idx + 1}. ${item.name} | Qty: ${item.qty}${item.unit ? ` ${item.unit}` : ""} | Harga: Rp ${toRupiah(item.price)} | Subtotal: Rp ${toRupiah(item.subtotal)}`
 							)
 							.join("\n")}`
-					: "";
+					: "\nItem Struk: tidak terbaca jelas (silakan review manual sebelum simpan)";
 				const rewrittenPreview = scanData.rewrittenText?.trim()
-					? `\n\nTulisan Ulang AI:\n${scanData.rewrittenText}`
+					? `\n\nTulisan Ulang OCR:\n${scanData.rewrittenText}`
 					: "";
 				const financialSummary = [
 					scanData.subtotal ? `Subtotal Rp ${toRupiah(scanData.subtotal)}` : null,
@@ -507,11 +521,18 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 				]
 					.filter(Boolean)
 					.join(" | ");
-				const assistantContent = `Merchant: ${scanData.name || "Toko"}${itemsStr}
-
-Total: Rp ${toRupiah(scanData.total)}
-${financialSummary ? `${financialSummary}\n` : ""}Tanggal: ${scanData.date || "-"}${scanData.time ? ` ${scanData.time}` : ""} | Kategori: ${scanData.category?.replace(/_/g, " ") || "Umum"}
-Keyakinan: ${scanData.confidence}%
+				const merchantName =
+					scanData.merchant?.trim() || scanData.name?.trim() || "Toko tidak terbaca";
+				const assistantContent = `Hasil ekstraksi struk:
+- Merchant/Toko: ${merchantName}
+- No Struk: ${scanData.receiptNumber || "-"}
+- Tanggal: ${scanData.date || "-"}${scanData.time ? ` ${scanData.time}` : ""}
+- Metode Bayar: ${scanData.paymentMethod || "unknown"}
+- Kategori AI: ${scanData.category?.replace(/_/g, " ") || "Umum"}
+- Total: Rp ${toRupiah(scanData.total)}
+${financialSummary ? `- Ringkasan: ${financialSummary}` : ""}
+- Keyakinan OCR: ${scanData.confidence}%
+${itemsStr}
 
 Konfirmasi simpan:
 Klik "Review & Konfirmasi Simpan", lalu pilih tujuan penyimpanan:

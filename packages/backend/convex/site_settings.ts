@@ -57,11 +57,11 @@ const DEFAULTS = {
 	receiptShowNotes: true,
 	receiptFontSize: "normal",
 	aiModelConfig: {
-		ocrVisionModel: "gemini/gemini-2.0-flash-lite",
-		chatTextModel: "gpt-4.1-mini",
-		synthesisModel: "gpt-4.1-mini",
-		analyticsModel: "gpt-4.1-mini",
-		fallbackModel: "gpt-4.1-mini",
+		ocrVisionModel: "gemini-2.0-flash-lite",
+		chatTextModel: "gemini-2.0-flash-lite",
+		synthesisModel: "gemini-2.0-flash-lite",
+		analyticsModel: "gemini-2.0-flash-lite",
+		fallbackModel: "gemini-2.0-flash-lite",
 	},
 	shiftSettings: {
 		predefinedShifts: [],
