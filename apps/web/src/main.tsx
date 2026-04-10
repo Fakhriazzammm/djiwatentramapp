@@ -5,6 +5,7 @@ import { routeTree } from "./routeTree.gen";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CartProvider } from "@/context/cart-context";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { registerSW } from "virtual:pwa-register";
 import "./index.css";
 
@@ -32,25 +33,27 @@ registerSW();
 if (!rootElement.innerHTML) {
 	const root = ReactDOM.createRoot(rootElement);
 	root.render(
-		<ThemeProvider
-			attribute="class"
-			defaultTheme="light"
-			disableTransitionOnChange
-			storageKey="vite-ui-theme"
-		>
-			{convex ? (
-				<ConvexProvider client={convex}>
+		<ErrorBoundary>
+			<ThemeProvider
+				attribute="class"
+				defaultTheme="light"
+				disableTransitionOnChange
+				storageKey="vite-ui-theme"
+			>
+				{convex ? (
+					<ConvexProvider client={convex}>
+						<CartProvider>
+							<RouterProvider router={router} />
+							<Toaster richColors />
+						</CartProvider>
+					</ConvexProvider>
+				) : (
 					<CartProvider>
 						<RouterProvider router={router} />
 						<Toaster richColors />
 					</CartProvider>
-				</ConvexProvider>
-			) : (
-				<CartProvider>
-					<RouterProvider router={router} />
-					<Toaster richColors />
-				</CartProvider>
-			)}
-		</ThemeProvider>
+				)}
+			</ThemeProvider>
+		</ErrorBoundary>
 	);
 }
