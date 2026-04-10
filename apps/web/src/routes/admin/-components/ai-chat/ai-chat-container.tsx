@@ -125,13 +125,45 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 				syncMode?: "auto" | "finance_only" | "finance_plus_inventory";
 			};
 			const scanItems =
-				scanData?.items?.map((item) => ({
-					name: item.name,
-					quantity: item.qty,
-					price: item.price || undefined,
-					total: item.subtotal || undefined,
-					unit: item.unit,
-				})) || undefined;
+				scanData?.items
+					?.map((item) => {
+						const itemRecord = item as Record<string, unknown>;
+						const nameCandidate =
+							(typeof itemRecord.name === "string" && itemRecord.name) ||
+							(typeof itemRecord.itemName === "string" && itemRecord.itemName) ||
+							(typeof itemRecord.productName === "string" && itemRecord.productName) ||
+							(typeof itemRecord.description === "string" && itemRecord.description) ||
+							"";
+						const quantityCandidate =
+							Number(itemRecord.qty) ||
+							Number(itemRecord.quantity) ||
+							Number(itemRecord.jumlah) ||
+							1;
+						const priceCandidate =
+							Number(itemRecord.price) ||
+							Number(itemRecord.unitPrice) ||
+							Number(itemRecord.harga) ||
+							undefined;
+						const totalCandidate =
+							Number(itemRecord.subtotal) ||
+							Number(itemRecord.total) ||
+							Number(itemRecord.lineTotal) ||
+							undefined;
+						const unitCandidate =
+							(typeof itemRecord.unit === "string" && itemRecord.unit) ||
+							(typeof itemRecord.uom === "string" && itemRecord.uom) ||
+							(typeof itemRecord.satuan === "string" && itemRecord.satuan) ||
+							undefined;
+
+						return {
+							name: String(nameCandidate).trim(),
+							quantity: quantityCandidate > 0 ? quantityCandidate : 1,
+							price: priceCandidate && priceCandidate > 0 ? priceCandidate : undefined,
+							total: totalCandidate && totalCandidate > 0 ? totalCandidate : undefined,
+							unit: unitCandidate,
+						};
+					})
+					.filter((item) => item.name.length > 0) || undefined;
 			const merchant =
 				transactionPayload.merchant ||
 				scanData?.merchant ||
@@ -208,9 +240,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 							: "completed",
 				},
 				items:
-					transactionPayload.type === "expense" &&
-					scanItems &&
-					scanItems.length > 0
+					scanItems && scanItems.length > 0
 						? scanItems
 						: undefined,
 				metadata: {

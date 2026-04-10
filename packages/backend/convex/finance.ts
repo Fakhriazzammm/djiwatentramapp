@@ -1246,7 +1246,6 @@ export const getTransactionDetailReport = query({
 
 			const shouldExpandReceiptItems =
 				viewMode === "item" &&
-				transaction.type === "expense" &&
 				scanItems.length > 0;
 			const shouldExpandOrderItems =
 				viewMode === "item" &&
@@ -1257,86 +1256,73 @@ export const getTransactionDetailReport = query({
 				transaction.type === "income" &&
 				bookingItems.length > 0;
 
-			if (!shouldExpandReceiptItems) {
-				return [
-					{
+			if (shouldExpandReceiptItems) {
+				const receiptGroupId = String(
+					transaction.sourceFingerprint ||
+						transaction.metadata?.sourceRef ||
+						transaction._id
+				);
+				const receiptGroupLabel = `STRUK-${receiptGroupId.slice(-6).toUpperCase()}`;
+				const itemCount = scanItems.length;
+				const fallbackPerItemAmount =
+					itemCount > 0 ? transaction.amount / itemCount : transaction.amount;
+
+				return scanItems.map((item, index) => {
+					const quantity = Number(item.quantity) > 0 ? Number(item.quantity) : 1;
+					const unitPrice = Number(item.price) > 0 ? Number(item.price) : 0;
+					const lineTotalFromItem =
+						Number(item.total) > 0
+							? Number(item.total)
+							: unitPrice > 0
+								? unitPrice * quantity
+								: 0;
+					const lineTotal =
+						lineTotalFromItem > 0 ? lineTotalFromItem : fallbackPerItemAmount;
+					const unitSuffix = item.unit ? ` ${item.unit}` : "";
+					const itemSummary = `${quantity}${unitSuffix} x Rp${Math.round(
+						unitPrice
+					).toLocaleString("id-ID")} = Rp${Math.round(lineTotal).toLocaleString(
+						"id-ID"
+					)}`;
+
+					return {
 						...baseRow,
-						rowKey: String(transaction._id),
-						rowType: "transaction",
-						receiptGroupId: null,
-						receiptGroupLabel: null,
-						receiptItemIndex: null,
-						receiptItemCount: null,
-						itemGroupType: null,
-					},
-				];
+						amount: lineTotal,
+						displayTitle: item.name || baseRow.displayTitle,
+						displaySummary: itemSummary,
+						detailItems: [
+							{
+								label: "Item",
+								value: `${index + 1}/${itemCount}`,
+							},
+							{
+								label: "Grup",
+								value: receiptGroupLabel,
+							},
+							{
+								label: "Qty",
+								value: `${quantity}${unitSuffix}`,
+							},
+							{
+								label: "Harga",
+								value: `Rp${Math.round(unitPrice).toLocaleString("id-ID")}`,
+							},
+							{
+								label: "Subtotal",
+								value: `Rp${Math.round(lineTotal).toLocaleString("id-ID")}`,
+							},
+							...baseRow.detailItems,
+						].slice(0, 10),
+						rowKey: `${transaction._id}::item::${index}`,
+						rowType: "receipt_item",
+						receiptGroupId,
+						receiptGroupLabel,
+						receiptItemIndex: index + 1,
+						receiptItemCount: itemCount,
+						itemGroupType: "struk",
+					};
+				});
 			}
-
-			const receiptGroupId = String(
-				transaction.sourceFingerprint ||
-					transaction.metadata?.sourceRef ||
-					transaction._id
-			);
-			const receiptGroupLabel = `STRUK-${receiptGroupId.slice(-6).toUpperCase()}`;
-			const itemCount = scanItems.length;
-			const fallbackPerItemAmount =
-				itemCount > 0 ? transaction.amount / itemCount : transaction.amount;
-
-			return scanItems.map((item, index) => {
-				const quantity = Number(item.quantity) > 0 ? Number(item.quantity) : 1;
-				const unitPrice = Number(item.price) > 0 ? Number(item.price) : 0;
-				const lineTotalFromItem =
-					Number(item.total) > 0
-						? Number(item.total)
-						: unitPrice > 0
-							? unitPrice * quantity
-							: 0;
-				const lineTotal =
-					lineTotalFromItem > 0 ? lineTotalFromItem : fallbackPerItemAmount;
-				const unitSuffix = item.unit ? ` ${item.unit}` : "";
-				const itemSummary = `${quantity}${unitSuffix} x Rp${Math.round(
-					unitPrice
-				).toLocaleString("id-ID")} = Rp${Math.round(lineTotal).toLocaleString(
-					"id-ID"
-				)}`;
-
-				return {
-					...baseRow,
-					amount: lineTotal,
-					displayTitle: item.name || baseRow.displayTitle,
-					displaySummary: itemSummary,
-					detailItems: [
-						{
-							label: "Item",
-							value: `${index + 1}/${itemCount}`,
-						},
-						{
-							label: "Grup",
-							value: receiptGroupLabel,
-						},
-						{
-							label: "Qty",
-							value: `${quantity}${unitSuffix}`,
-						},
-						{
-							label: "Harga",
-							value: `Rp${Math.round(unitPrice).toLocaleString("id-ID")}`,
-						},
-						{
-							label: "Subtotal",
-							value: `Rp${Math.round(lineTotal).toLocaleString("id-ID")}`,
-						},
-						...baseRow.detailItems,
-					].slice(0, 10),
-					rowKey: `${transaction._id}::item::${index}`,
-					rowType: "receipt_item",
-					receiptGroupId,
-					receiptGroupLabel,
-					receiptItemIndex: index + 1,
-					receiptItemCount: itemCount,
-					itemGroupType: "struk",
-				};
-			});
 
 			if (shouldExpandOrderItems) {
 				const receiptGroupId = String(

@@ -271,6 +271,24 @@ export const recordExpense = mutation({
 			amount: args.transaction.amount,
 			items: normalizedItems,
 		});
+		const persistedScanItems: Array<{
+			name: string;
+			quantity: number;
+			price?: number;
+			total?: number;
+			unit?: string;
+		}> =
+			normalizedItems.length > 0
+				? normalizedItems
+				: Array.isArray(existingTransaction?.metadata?.scanItems)
+					? (existingTransaction?.metadata?.scanItems as Array<{
+							name: string;
+							quantity: number;
+							price?: number;
+							total?: number;
+							unit?: string;
+						}>)
+					: [];
 
 		const shouldSyncInventory =
 			type === "expense" &&
@@ -353,7 +371,7 @@ export const recordExpense = mutation({
 				syncSource: source,
 				syncOutcome: "finance_only",
 				syncWarnings: warnings.length > 0 ? warnings : undefined,
-				scanItems: normalizedItems.length > 0 ? normalizedItems : undefined,
+				scanItems: persistedScanItems.length > 0 ? persistedScanItems : undefined,
 			},
 		});
 
