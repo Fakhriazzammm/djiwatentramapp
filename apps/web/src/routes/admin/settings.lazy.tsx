@@ -352,6 +352,59 @@ function isValidHomePin(pin: string) {
 	return HOME_PIN_REGEX.test(pin);
 }
 
+type AiModelConfig = {
+	ocrVisionModel: string;
+	chatTextModel: string;
+	synthesisModel: string;
+	analyticsModel: string;
+	fallbackModel: string;
+};
+
+const AI_MODEL_OPTIONS = [
+	"claude-haiku-4-5",
+	"deepseek-v3-2",
+	"glm-4-7",
+	"kimi-k2-5-260127",
+	"seed-2-0-lite",
+	"seed-2-0-mini",
+	"seed-2-0-pro",
+	"gemini/gemini-2.0-flash",
+	"gemini/gemini-2.0-flash-lite",
+	"gemini/gemini-2.5-flash",
+	"gemini/gemini-2.5-flash-lite",
+	"gemini/gemini-2.5-pro",
+	"gemini/gemini-3-flash-preview",
+	"gemini/gemini-3-pro-preview",
+	"MiniMax-M2.7-highspeed",
+	"minimax/speech-2.8-hd",
+	"gpt-4.1",
+	"gpt-4.1-mini",
+	"gpt-4.1-nano",
+	"gpt-4o",
+	"gpt-4o-mini",
+	"gpt-5",
+	"gpt-5-mini",
+	"gpt-5-nano",
+	"gpt-5.1",
+	"gpt-5.1-codex",
+	"gpt-5.1-codex-mini",
+	"gpt-5.2",
+	"gpt-5.2-codex",
+	"text-embedding-3-large",
+	"text-embedding-3-small",
+	"glm-5",
+	"glm-5-turbo",
+	"glm-5.1",
+] as const;
+
+const DEFAULT_AI_MODEL_CONFIG: AiModelConfig = {
+	ocrVisionModel: "gemini/gemini-2.0-flash-lite",
+	chatTextModel: "gpt-4.1-mini",
+	synthesisModel: "gpt-4.1-mini",
+	analyticsModel: "gpt-4.1-mini",
+	fallbackModel: "gpt-4.1-mini",
+};
+
 function SettingsPage() {
 	// Site Settings
 	const siteSettings = useQuery(api.site_settings.getSettings);
@@ -470,11 +523,20 @@ function SettingsPage() {
 		cashPaymentLabel: "Bayar di kasir",
 		mayarPaymentLabel: "QRIS",
 	});
+	const [aiModelConfig, setAiModelConfig] =
+		useState<AiModelConfig>(DEFAULT_AI_MODEL_CONFIG);
 
 	const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
 
 	const [activeTab, setActiveTab] = useState<
-		"landing" | "pos" | "store" | "branding" | "system" | "users" | "shifts"
+		| "landing"
+		| "pos"
+		| "store"
+		| "branding"
+		| "system"
+		| "users"
+		| "shifts"
+		| "yumiAI"
 	>("landing");
 
 	// User/Role Form States
@@ -634,6 +696,10 @@ function SettingsPage() {
 					siteSettings.customerOrdering?.mayarPaymentLabel ??
 					"QRIS",
 			});
+			setAiModelConfig({
+				...DEFAULT_AI_MODEL_CONFIG,
+				...(siteSettings.aiModelConfig ?? {}),
+			});
 		}
 		setIsConnected(bluetoothPrinter.isConnected());
 		setPrinterName(bluetoothPrinter.getDeviceName());
@@ -711,6 +777,7 @@ function SettingsPage() {
 					),
 				},
 				customerOrdering: customerOrderingSettings,
+				aiModelConfig,
 			};
 			console.log("Saving settings:", payload);
 			await updateSiteSettings(payload);
@@ -962,6 +1029,7 @@ function SettingsPage() {
 		{ id: "pos", label: "Konfigurasi Pembayaran", icon: CreditCard },
 		{ id: "store", label: "Informasi Toko", icon: MapPin },
 		{ id: "branding", label: "Branding & SEO", icon: Globe },
+		{ id: "yumiAI", label: "Yumi AI", icon: ShieldCheck },
 		{ id: "shifts", label: "Manajemen Shift", icon: Clock },
 		{ id: "users", label: "Pengguna & Akses", icon: Users },
 		{ id: "system", label: "Sistem & Perangkat", icon: Settings2 },
@@ -2138,6 +2206,147 @@ function SettingsPage() {
 								</div>
 							</section>
 						</div>
+					</div>
+				)}
+
+				{activeTab === "yumiAI" && (
+					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
+						<section className="space-y-6 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-8">
+							<div className="flex items-center gap-4">
+								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+									<ShieldCheck className="h-6 w-6" />
+								</div>
+								<div>
+									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
+										Konfigurasi Yumi AI
+									</h3>
+									<p className="text-muted-foreground text-sm">
+										Pilih model AI untuk OCR/Vision, Chat/Teks, Ringkas/Sintesis, Analitik, dan fallback.
+									</p>
+								</div>
+							</div>
+
+							<div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-xs text-muted-foreground leading-relaxed">
+								Perubahan model akan tersimpan di settings dan langsung dipakai di Yumi AI Chat admin, Yumi AI Chat POS, OCR scan struk, serta fitur ringkasan/sintesis.
+							</div>
+
+							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+								<div className="space-y-2">
+									<label className="font-medium text-muted-foreground text-xs uppercase tracking-wider">
+										Model OCR / Vision
+									</label>
+									<Select
+										onValueChange={(value) =>
+											setAiModelConfig((prev) => ({ ...prev, ocrVisionModel: value }))
+										}
+										value={aiModelConfig.ocrVisionModel}
+									>
+										<SelectTrigger className="bg-muted/50" size="default">
+											<SelectValue placeholder="Pilih model OCR/Vision" />
+										</SelectTrigger>
+										<SelectContent>
+											{AI_MODEL_OPTIONS.map((modelId) => (
+												<SelectItem key={modelId} value={modelId}>
+													{modelId}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+
+								<div className="space-y-2">
+									<label className="font-medium text-muted-foreground text-xs uppercase tracking-wider">
+										Model Chat / Teks
+									</label>
+									<Select
+										onValueChange={(value) =>
+											setAiModelConfig((prev) => ({ ...prev, chatTextModel: value }))
+										}
+										value={aiModelConfig.chatTextModel}
+									>
+										<SelectTrigger className="bg-muted/50" size="default">
+											<SelectValue placeholder="Pilih model chat" />
+										</SelectTrigger>
+										<SelectContent>
+											{AI_MODEL_OPTIONS.map((modelId) => (
+												<SelectItem key={modelId} value={modelId}>
+													{modelId}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+
+								<div className="space-y-2">
+									<label className="font-medium text-muted-foreground text-xs uppercase tracking-wider">
+										Model Ringkas / Sintesis
+									</label>
+									<Select
+										onValueChange={(value) =>
+											setAiModelConfig((prev) => ({ ...prev, synthesisModel: value }))
+										}
+										value={aiModelConfig.synthesisModel}
+									>
+										<SelectTrigger className="bg-muted/50" size="default">
+											<SelectValue placeholder="Pilih model sintesis" />
+										</SelectTrigger>
+										<SelectContent>
+											{AI_MODEL_OPTIONS.map((modelId) => (
+												<SelectItem key={modelId} value={modelId}>
+													{modelId}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+
+								<div className="space-y-2">
+									<label className="font-medium text-muted-foreground text-xs uppercase tracking-wider">
+										Model Analitik
+									</label>
+									<Select
+										onValueChange={(value) =>
+											setAiModelConfig((prev) => ({ ...prev, analyticsModel: value }))
+										}
+										value={aiModelConfig.analyticsModel}
+									>
+										<SelectTrigger className="bg-muted/50" size="default">
+											<SelectValue placeholder="Pilih model analitik" />
+										</SelectTrigger>
+										<SelectContent>
+											{AI_MODEL_OPTIONS.map((modelId) => (
+												<SelectItem key={modelId} value={modelId}>
+													{modelId}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+
+								<div className="space-y-2 md:col-span-2">
+									<label className="font-medium text-muted-foreground text-xs uppercase tracking-wider">
+										Model Lainnya (Fallback)
+									</label>
+									<Select
+										onValueChange={(value) =>
+											setAiModelConfig((prev) => ({ ...prev, fallbackModel: value }))
+										}
+										value={aiModelConfig.fallbackModel}
+									>
+										<SelectTrigger className="bg-muted/50" size="default">
+											<SelectValue placeholder="Pilih model fallback" />
+										</SelectTrigger>
+										<SelectContent>
+											{AI_MODEL_OPTIONS.map((modelId) => (
+												<SelectItem key={modelId} value={modelId}>
+													{modelId}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+							</div>
+						</section>
 					</div>
 				)}
 

@@ -329,6 +329,15 @@ export default defineSchema({
 		receiptShowCashierName: v.optional(v.boolean()),
 		receiptShowNotes: v.optional(v.boolean()),
 		receiptFontSize: v.optional(v.string()),
+		aiModelConfig: v.optional(
+			v.object({
+				ocrVisionModel: v.optional(v.string()),
+				chatTextModel: v.optional(v.string()),
+				synthesisModel: v.optional(v.string()),
+				analyticsModel: v.optional(v.string()),
+				fallbackModel: v.optional(v.string()),
+			})
+		),
 		shiftSettings: v.optional(
 			v.object({
 				predefinedShifts: v.optional(v.array(v.string())),

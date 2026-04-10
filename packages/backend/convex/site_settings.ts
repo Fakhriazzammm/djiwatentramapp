@@ -56,6 +56,13 @@ const DEFAULTS = {
 	receiptShowCashierName: true,
 	receiptShowNotes: true,
 	receiptFontSize: "normal",
+	aiModelConfig: {
+		ocrVisionModel: "gemini/gemini-2.0-flash-lite",
+		chatTextModel: "gpt-4.1-mini",
+		synthesisModel: "gpt-4.1-mini",
+		analyticsModel: "gpt-4.1-mini",
+		fallbackModel: "gpt-4.1-mini",
+	},
 	shiftSettings: {
 		predefinedShifts: [],
 		defaultStartingCash: 0,
@@ -167,6 +174,10 @@ export const getSettings = query({
 			receiptShowCashierName: settings.receiptShowCashierName ?? DEFAULTS.receiptShowCashierName,
 			receiptShowNotes: settings.receiptShowNotes ?? DEFAULTS.receiptShowNotes,
 			receiptFontSize: settings.receiptFontSize ?? DEFAULTS.receiptFontSize,
+			aiModelConfig: {
+				...DEFAULTS.aiModelConfig,
+				...(settings.aiModelConfig ?? {}),
+			},
 			shiftSettings: {
 				...DEFAULTS.shiftSettings,
 				...(settings.shiftSettings ?? {}),
@@ -181,6 +192,17 @@ export const getSettings = query({
 
 export const generateUploadUrl = mutation(async (ctx) => {
 	return await ctx.storage.generateUploadUrl();
+});
+
+export const getAiModelSettings = query({
+	args: {},
+	handler: async (ctx) => {
+		const settings = await ctx.db.query("siteSettings").first();
+		return {
+			...DEFAULTS.aiModelConfig,
+			...(settings?.aiModelConfig ?? {}),
+		};
+	},
 });
 
 export const updateSettings = mutation({
@@ -240,6 +262,15 @@ export const updateSettings = mutation({
 		receiptShowCashierName: v.optional(v.boolean()),
 		receiptShowNotes: v.optional(v.boolean()),
 		receiptFontSize: v.optional(v.string()),
+		aiModelConfig: v.optional(
+			v.object({
+				ocrVisionModel: v.optional(v.string()),
+				chatTextModel: v.optional(v.string()),
+				synthesisModel: v.optional(v.string()),
+				analyticsModel: v.optional(v.string()),
+				fallbackModel: v.optional(v.string()),
+			})
+		),
 		shiftSettings: v.optional(
 			v.object({
 				predefinedShifts: v.optional(v.array(v.string())),

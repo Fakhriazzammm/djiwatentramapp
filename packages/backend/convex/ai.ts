@@ -8,6 +8,38 @@ import type { DataModel, Id } from "./_generated/dataModel";
 import { action, mutation, query } from "./_generated/server";
 import { formatToolResult, tools } from "./tools";
 
+type AiModelConfig = {
+	ocrVisionModel: string;
+	chatTextModel: string;
+	synthesisModel: string;
+	analyticsModel: string;
+	fallbackModel: string;
+};
+
+const DEFAULT_AI_MODEL_CONFIG: AiModelConfig = {
+	ocrVisionModel: "gemini/gemini-2.0-flash-lite",
+	chatTextModel: "gpt-4.1-mini",
+	synthesisModel: "gpt-4.1-mini",
+	analyticsModel: "gpt-4.1-mini",
+	fallbackModel: "gpt-4.1-mini",
+};
+
+async function resolveAiModelConfig(
+	ctx?: GenericActionCtx<DataModel>
+): Promise<AiModelConfig> {
+	if (!ctx) return DEFAULT_AI_MODEL_CONFIG;
+	try {
+		const config = await ctx.runQuery(api.site_settings.getAiModelSettings, {});
+		return {
+			...DEFAULT_AI_MODEL_CONFIG,
+			...(config ?? {}),
+		};
+	} catch (error) {
+		console.warn("Failed to load AI model config, using defaults:", error);
+		return DEFAULT_AI_MODEL_CONFIG;
+	}
+}
+
 // Helper to initialize OpenAI/SumoPod lazily (untuk Chat & text generation)
 const getOpenAI = () => {
 	const apiKey = process.env.SUMOPOD_API_KEY || process.env.OPENAI_API_KEY;
@@ -53,7 +85,7 @@ async function safeSumoPodCall(
 	try {
 		const openai = getOpenAI();
 		const completion = await openai.chat.completions.create({
-			model: options?.model || "gpt-4o",
+			model: options?.model || DEFAULT_AI_MODEL_CONFIG.fallbackModel,
 			messages: messages as Array<OpenAI.ChatCompletionMessageParam>,
 			max_tokens: options?.maxTokens,
 		});
@@ -75,18 +107,18 @@ async function safeSumoPodCall(
 	}
 }
 
-// Helper untuk panggil Vision API (seed-2.0-pro-free by ByteDance) melalui SumoPod AI (untuk scan gambar/OCR)
+// Helper untuk panggil Vision API melalui SumoPod AI (untuk scan gambar/OCR)
 async function callVisionAPI(
 	prompt: string,
 	base64Data: string,
 	mimeType: string,
-	options?: { temperature?: number; maxOutputTokens?: number }
+	options?: { temperature?: number; maxOutputTokens?: number; model?: string }
 ): Promise<{ success: boolean; text: string; error?: string }> {
 	try {
 		const openai = getOpenAI();
 		
 		const completion = await openai.chat.completions.create({
-			model: "seed-2-0-pro-free",
+			model: options?.model || DEFAULT_AI_MODEL_CONFIG.ocrVisionModel,
 			messages: [
 				{
 					role: "system",
@@ -157,12 +189,12 @@ async function callVisionTextAPI(
 	prompt: string,
 	base64Data: string,
 	mimeType: string,
-	options?: { temperature?: number; maxOutputTokens?: number }
+	options?: { temperature?: number; maxOutputTokens?: number; model?: string }
 ): Promise<{ success: boolean; text: string; error?: string }> {
 	try {
 		const openai = getOpenAI();
 		const completion = await openai.chat.completions.create({
-			model: "seed-2-0-pro-free",
+			model: options?.model || DEFAULT_AI_MODEL_CONFIG.ocrVisionModel,
 			messages: [
 				{
 					role: "system",
@@ -211,6 +243,8 @@ async function fallbackAnalyzeChatImages(args: {
 	images: string[];
 	message: string;
 	contextHint?: string;
+	visionModel?: string;
+	synthesisModel?: string;
 }) {
 	const analyses: string[] = [];
 
@@ -228,7 +262,7 @@ Instruksi:
 - Tutup dengan 2 saran tindak lanjut singkat.`,
 				base64Data,
 				mimeType,
-				{ maxOutputTokens: 1400 }
+				{ maxOutputTokens: 1400, model: args.visionModel }
 			);
 
 			if (visionResult.success && visionResult.text) {
@@ -264,7 +298,10 @@ Instruksi:
 					content: `Pertanyaan user: ${args.message || "Tolong analisis semua lampiran gambar ini."}\n\nHasil analisis per lampiran:\n${analyses.join("\n\n")}`,
 				},
 			],
-			{ maxTokens: 1200, model: "gpt-4o-mini" }
+			{
+				maxTokens: 1200,
+				model: args.synthesisModel || DEFAULT_AI_MODEL_CONFIG.synthesisModel,
+			}
 		);
 	} catch (error) {
 		console.error("fallbackAnalyzeChatImages synthesis error:", error);
@@ -272,7 +309,7 @@ Instruksi:
 	}
 }
 
-async function rewriteExtractedText(rawText: string) {
+async function rewriteExtractedText(rawText: string, synthesisModel?: string) {
 	const normalized = sanitizeAIString(rawText || "").trim();
 	if (!normalized) {
 		return "";
@@ -292,7 +329,10 @@ async function rewriteExtractedText(rawText: string) {
 					content: `Teks OCR mentah:\n${limited}\n\nTulis ulang dengan format:\n- Merchant\n- Tanggal (jika ada)\n- Item penting\n- Total\n- Catatan singkat.`,
 				},
 			],
-			{ maxTokens: 500, model: "gpt-4o-mini" }
+			{
+				maxTokens: 500,
+				model: synthesisModel || DEFAULT_AI_MODEL_CONFIG.synthesisModel,
+			}
 		);
 	} catch (error) {
 		console.error("rewriteExtractedText error:", error);
@@ -653,7 +693,8 @@ export const generateInsights = action({
 	args: {
 		salesData: v.string(), // JSON string of recent orders
 	},
-	handler: async (_ctx, args) => {
+	handler: async (ctx, args) => {
+		const modelConfig = await resolveAiModelConfig(ctx);
 		return await safeSumoPodCall([
 			{
 				role: "system",
@@ -664,7 +705,9 @@ export const generateInsights = action({
 				role: "user",
 				content: `Analyze this sales data: ${args.salesData}`,
 			},
-		]);
+		], {
+			model: modelConfig.analyticsModel,
+		});
 	},
 });
 
@@ -676,7 +719,8 @@ export const getProductRecommendations = action({
 		cartItems: v.array(v.string()),
 		allProducts: v.array(v.object({ name: v.string(), category: v.string() })),
 	},
-	handler: async (_ctx, args) => {
+	handler: async (ctx, args) => {
+		const modelConfig = await resolveAiModelConfig(ctx);
 		return await safeSumoPodCall([
 			{
 				role: "system",
@@ -687,7 +731,9 @@ export const getProductRecommendations = action({
 				role: "user",
 				content: `Cart contains: ${args.cartItems.join(", ")}\nAvailable Products: ${JSON.stringify(args.allProducts)}`,
 			},
-		]);
+		], {
+			model: modelConfig.chatTextModel,
+		});
 	},
 });
 
@@ -700,7 +746,8 @@ export const generateProductDescription = action({
 		category: v.string(),
 		price: v.number(),
 	},
-	handler: async (_ctx, args) => {
+	handler: async (ctx, args) => {
+		const modelConfig = await resolveAiModelConfig(ctx);
 		return await safeSumoPodCall([
 			{
 				role: "system",
@@ -711,7 +758,9 @@ export const generateProductDescription = action({
 				role: "user",
 				content: `Product: ${args.productName}\nCategory: ${args.category}\nPrice: Rp ${args.price.toLocaleString("id-ID")}`,
 			},
-		]);
+		], {
+			model: modelConfig.chatTextModel,
+		});
 	},
 });
 
@@ -723,7 +772,8 @@ export const generateDiscountStrategy = action({
 		salesSummary: v.string(),
 		existingDiscounts: v.string(),
 	},
-	handler: async (_ctx, args) => {
+	handler: async (ctx, args) => {
+		const modelConfig = await resolveAiModelConfig(ctx);
 		return await safeSumoPodCall([
 			{
 				role: "system",
@@ -734,7 +784,9 @@ export const generateDiscountStrategy = action({
 				role: "user",
 				content: `Sales Summary: ${args.salesSummary}\nExisting Discounts: ${args.existingDiscounts}`,
 			},
-		]);
+		], {
+			model: modelConfig.analyticsModel,
+		});
 	},
 });
 
@@ -2295,6 +2347,8 @@ export const yumiChat = action({
 		image: v.optional(v.string()), // backward compatibility for single image
 	},
 	handler: async (ctx, args) => {
+		const modelConfig = await resolveAiModelConfig(ctx);
+		const chatModel = modelConfig.chatTextModel;
 		const safeSerialize = (value: unknown) => {
 			try {
 				return JSON.stringify(value);
@@ -2718,7 +2772,7 @@ INSTRUKSI REKONSILIASI BANK:
 				if (currentIteration === 1 && !hasImageAttachments) {
 					// First iteration: use streaming for content
 					const response = await openai.chat.completions.create({
-						model: "gpt-4o",
+						model: chatModel,
 						messages,
 						tools: openaiTools,
 						tool_choice: "auto",
@@ -2765,7 +2819,7 @@ INSTRUKSI REKONSILIASI BANK:
 					// or return an empty first pass. Retry once in non-stream mode before failing.
 					if (!fullContent.trim() && finalToolCalls.length === 0) {
 						const retryCompletion = await openai.chat.completions.create({
-							model: "gpt-4o",
+							model: chatModel,
 							messages,
 							tools: openaiTools,
 							tool_choice: "auto",
@@ -2796,7 +2850,7 @@ INSTRUKSI REKONSILIASI BANK:
 
 					if (hasToolFragments && finalToolCalls.length === 0) {
 						const fallbackCompletion = await openai.chat.completions.create({
-							model: "gpt-4o",
+							model: chatModel,
 							messages,
 							tools: openaiTools,
 							tool_choice: "auto",
@@ -2845,7 +2899,7 @@ INSTRUKSI REKONSILIASI BANK:
 					// Use non-streaming for image attachments because some providers are less stable
 					// with streaming + tools + multimodal in a single request.
 					completion = await openai.chat.completions.create({
-						model: "gpt-4o",
+						model: chatModel,
 						messages,
 						tools: openaiTools,
 						tool_choice: "auto",
@@ -2878,6 +2932,8 @@ INSTRUKSI REKONSILIASI BANK:
 								args.message ||
 								"Tolong analisis gambar yang saya lampirkan.",
 							contextHint: args.contextHint,
+							visionModel: modelConfig.ocrVisionModel,
+							synthesisModel: modelConfig.synthesisModel,
 						});
 						if (fallbackContent) {
 							if (streamingId) {
@@ -2910,7 +2966,7 @@ INSTRUKSI REKONSILIASI BANK:
 		// Fallback: return last message if max iterations reached
 		try {
 			const finalCompletion = await openai.chat.completions.create({
-				model: "gpt-4o",
+				model: chatModel,
 				messages,
 				max_tokens: 1000,
 			});
@@ -2941,7 +2997,8 @@ export const generateCompanyOverview = action({
 		ordersSummary: v.string(), // { totalOrders: number, totalSales: number }
 		comparisonData: v.optional(v.string()), // { yesterday: ..., lastWeek: ... }
 	},
-	handler: async (_ctx, args) => {
+	handler: async (ctx, args) => {
+		const modelConfig = await resolveAiModelConfig(ctx);
 		try {
 			return await safeSumoPodCall([
 				{
@@ -2972,7 +3029,9 @@ ${args.comparisonData || "Tidak ada data perbandingan tersedia."}
 
 Berikan analisis ringkas dan perbandingannya.`,
 				},
-			]);
+			], {
+				model: modelConfig.synthesisModel,
+			});
 		} catch (error) {
 			console.error("generateCompanyOverview error:", error);
 			return "Maaf, gagal membuat ringkasan bisnis. Pastikan SUMOPOD_API_KEY sudah diatur di dashboard Convex.";
@@ -2989,6 +3048,7 @@ export const generateBusinessBriefing = action({
 		context: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
+		const modelConfig = await resolveAiModelConfig(ctx);
 		// Determine greeting based on local hour
 		let greeting = "Selamat pagi";
 		if (args.localHour !== undefined) {
@@ -3164,7 +3224,9 @@ ATURAN KETAT:
 - Manajemen Tugas: Ada ${dataContext.pendingTasksCount} tugas menunggu ${dataContext.pendingTasksTitles ? `(${dataContext.pendingTasksTitles})` : ""}
 ${args.context ? `- Konteks Tambahan: ${args.context}` : ""}`,
 				},
-			]);
+			], {
+				model: modelConfig.analyticsModel,
+			});
 		} catch (error) {
 			console.error("generateDailyBriefing error:", error);
 			return fallbackBriefing;
@@ -3346,6 +3408,7 @@ export const generateReport = action({
 		endDate: v.optional(v.number()), // Timestamp
 	},
 	handler: async (ctx, args) => {
+		const modelConfig = await resolveAiModelConfig(ctx);
 		// Gather requested data
 		const [
 			products,
@@ -3540,7 +3603,9 @@ export const generateReport = action({
 					"Kamu adalah analis bisnis yang ahli. Buat laporan yang jelas, terstruktur, dan actionable. Gunakan Bahasa Indonesia. Format dengan bullet points dan emoji. WAJIB: Setiap item dalam list (transaksi, pesanan, dll) harus menyertakan tanggal atau periode waktu dengan format: [Nomor]. - [Tanggal/Periode] - [Nama Item] - [Jumlah] - [Total Nilai].",
 			},
 			{ role: "user", content: prompt },
-		]);
+		], {
+			model: modelConfig.analyticsModel,
+		});
 	},
 });
 
@@ -4618,7 +4683,10 @@ async function callPythonOCRService(imageDataUrl: string, endpoint: string = "oc
 /**
  * Helper: Run OCR on a receipt image using seed-2.0-pro-free Vision API via SumoPod
  */
-async function runReceiptOCR(imageDataUrl: string): Promise<{
+async function runReceiptOCR(
+	imageDataUrl: string,
+	options?: { ocrVisionModel?: string }
+): Promise<{
 	type: "order" | "expense" | "income" | "unknown";
 	data?: {
 		amount?: number;
@@ -4668,7 +4736,7 @@ async function runReceiptOCR(imageDataUrl: string): Promise<{
 		}
 	}
 
-	console.log("Using SumoPod AI (seed-2.0-pro-free) for OCR...");
+	console.log("Using SumoPod AI model for OCR...");
 
 	// Use shared Vision API helper
 	const { base64Data, mimeType } = extractImagePayload(imageDataUrl);
@@ -4717,7 +4785,10 @@ Kembalikan HANYA JSON valid:
   "confidence": 95
 }`;
 
-	const visionResult = await callVisionAPI(prompt, base64Data, mimeType, { maxOutputTokens: 2000 });
+	const visionResult = await callVisionAPI(prompt, base64Data, mimeType, {
+		maxOutputTokens: 2000,
+		model: options?.ocrVisionModel,
+	});
 
 	if (!visionResult.success || !visionResult.text) {
 		throw new ConvexError(`Vision OCR gagal: ${visionResult.error || "Tidak ada respon dari AI"}`);
@@ -4845,14 +4916,17 @@ function mapReceiptFallbackToStructuredScan(
 
 
 /**
- * Proses satu gambar struk menggunakan AI OCR (GPT-4o Vision)
+ * Proses satu gambar struk menggunakan AI OCR
  */
 export const processReceipt = action({
 	args: {
 		image: v.string(), // base64 data URL
 	},
-	handler: async (_ctx, args) => {
-		return await runReceiptOCR(args.image);
+	handler: async (ctx, args) => {
+		const modelConfig = await resolveAiModelConfig(ctx);
+		return await runReceiptOCR(args.image, {
+			ocrVisionModel: modelConfig.ocrVisionModel,
+		});
 	},
 });
 
@@ -4976,7 +5050,10 @@ export const processImageAndGenerate = action({
 		),
 	},
 	handler: async (ctx, args) => {
-		const scanResult = await runReceiptOCR(args.image);
+		const modelConfig = await resolveAiModelConfig(ctx);
+		const scanResult = await runReceiptOCR(args.image, {
+			ocrVisionModel: modelConfig.ocrVisionModel,
+		});
 
 		if (scanResult.type === "unknown" || !scanResult.data?.amount) {
 			return {
@@ -5119,9 +5196,12 @@ export const batchProcessReceipts = action({
 	args: {
 		images: v.array(v.string()),
 	},
-	handler: async (_ctx, args) => {
+	handler: async (ctx, args) => {
+		const modelConfig = await resolveAiModelConfig(ctx);
 		const results = await Promise.allSettled(
-			args.images.map((img) => runReceiptOCR(img))
+			args.images.map((img) =>
+				runReceiptOCR(img, { ocrVisionModel: modelConfig.ocrVisionModel })
+			)
 		);
 
 		const processedResults = results.map((r) =>
@@ -5165,6 +5245,7 @@ export const batchGenerateTransactions = action({
 		),
 	},
 	handler: async (ctx, args) => {
+		const modelConfig = await resolveAiModelConfig(ctx);
 		const generated: Array<{
 			id: string;
 			type: string;
@@ -5176,7 +5257,9 @@ export const batchGenerateTransactions = action({
 
 		for (const image of args.images) {
 			try {
-				const scanResult = await runReceiptOCR(image);
+				const scanResult = await runReceiptOCR(image, {
+					ocrVisionModel: modelConfig.ocrVisionModel,
+				});
 
 				if (scanResult.type === "unknown" || !scanResult.data?.amount) {
 					totalFailed++;
@@ -5440,15 +5523,16 @@ export const analyzeDiscountEffectiveness = query({
 });
 
 /**
- * Scan gambar dengan AI (seed-2.0-pro-free by ByteDance via SumoPod) dan ekstrak data terstruktur.
+ * Scan gambar dengan AI via SumoPod dan ekstrak data terstruktur.
  * Mendukung: struk belanja, kwitansi, nota, tulisan tangan, produk, dll.
- * Menggunakan SumoPod AI (seed-2.0-pro-free by ByteDance) untuk stabilitas tinggi.
+ * Menggunakan satu model AI terpadu untuk konsistensi hasil.
  */
 export const scanImageData = action({
 	args: {
 		image: v.string(), // base64 data URL
 	},
-	handler: async (_ctx, args) => {
+	handler: async (ctx, args) => {
+		const modelConfig = await resolveAiModelConfig(ctx);
 		try {
 			// Validate API key tersedia
 			const sumoApiKey = process.env.SUMOPOD_API_KEY || process.env.OPENAI_API_KEY;
@@ -5531,8 +5615,10 @@ PENTING:
 - Nama merchant harus selalu diisi meskipun hanya terbaca sebagian.
 - HANYA kembalikan JSON.`;
 
-			// Gunakan SumoPod API (seed-2.0-pro-free) untuk scan gambar
-			const visionResult = await callVisionAPI(prompt, base64Data, mimeType);
+			// Gunakan SumoPod API dengan model AI terpadu untuk scan gambar
+			const visionResult = await callVisionAPI(prompt, base64Data, mimeType, {
+				model: modelConfig.ocrVisionModel,
+			});
 
 			if (!visionResult.success || !visionResult.text) {
 				console.error("scanImageData: callVisionAPI failed:", visionResult.error);
@@ -5554,16 +5640,22 @@ PENTING:
 				confidence: parsed.confidence || 80,
 				rewrittenText: "",
 			};
-			result.rewrittenText = await rewriteExtractedText(result.rawText || "");
+			result.rewrittenText = await rewriteExtractedText(
+				result.rawText || "",
+				modelConfig.synthesisModel
+			);
 
 			return result;
 		} catch (error) {
 			if (error instanceof ConvexError) {
 				try {
-					const fallbackScan = await runReceiptOCR(args.image);
+					const fallbackScan = await runReceiptOCR(args.image, {
+						ocrVisionModel: modelConfig.ocrVisionModel,
+					});
 					const mapped = mapReceiptFallbackToStructuredScan(fallbackScan);
 					mapped.rewrittenText = await rewriteExtractedText(
-						mapped.rawText || ""
+						mapped.rawText || "",
+						modelConfig.synthesisModel
 					);
 					return mapped;
 				} catch {
@@ -5585,6 +5677,7 @@ export const bulkScanImageData = action({
 		images: v.array(v.string()), // array of base64 data URLs
 	},
 	handler: async (ctx, args) => {
+		const modelConfig = await resolveAiModelConfig(ctx);
 		const results = await Promise.all(
 			args.images.map(async (image, index) => {
 				try {
@@ -5592,12 +5685,15 @@ export const bulkScanImageData = action({
 					return { success: true as const, data: structured, index };
 				} catch (primaryError) {
 					try {
-						const receiptFallback = await runReceiptOCR(image);
+						const receiptFallback = await runReceiptOCR(image, {
+							ocrVisionModel: modelConfig.ocrVisionModel,
+						});
 						const fallbackData = mapReceiptFallbackToStructuredScan(
 							receiptFallback
 						);
 						fallbackData.rewrittenText = await rewriteExtractedText(
-							fallbackData.rawText || ""
+							fallbackData.rawText || "",
+							modelConfig.synthesisModel
 						);
 						const isReadable =
 							fallbackData.total > 0 || fallbackData.items.length > 0;
@@ -5652,6 +5748,7 @@ export const fillHppInventoryCostsFromTransactions = action({
 		maxTransactions: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
+		const modelConfig = await resolveAiModelConfig(ctx);
 		const context = await ctx.runQuery(api.hpp.getInventoryCostFillContext, {
 			hppCalculationId: args.hppCalculationId,
 			transactionLimit: args.maxTransactions,
@@ -5718,7 +5815,10 @@ export const fillHppInventoryCostsFromTransactions = action({
 						}),
 					},
 				],
-				{ maxTokens: 2200, model: "gpt-4o-mini" }
+				{
+					maxTokens: 2200,
+					model: modelConfig.analyticsModel,
+				}
 			);
 
 			const aiSuggestions = parseInventoryCostSuggestionResponse(
