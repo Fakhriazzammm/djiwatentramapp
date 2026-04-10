@@ -30,9 +30,10 @@ const EXPENSE_CATEGORIES = [
 
 interface Props {
 	range: DateRange;
+	viewMode: "transaction" | "item";
 }
 
-export function TransactionDetailReport({ range }: Props) {
+export function TransactionDetailReport({ range, viewMode }: Props) {
 	const [filterType, setFilterType] = useState<"income" | "expense" | undefined>(undefined);
 	const [filterCategory, setFilterCategory] = useState<string>("");
 	const [searchQuery, setSearchQuery] = useState("");
@@ -43,7 +44,7 @@ export function TransactionDetailReport({ range }: Props) {
 	
 	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 	const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
-	const [selectedTransactionIds, setSelectedTransactionIds] = useState<Set<Id<"financialTransactions">>>(new Set());
+	const [selectedRowKeys, setSelectedRowKeys] = useState<Set<string>>(new Set());
 	
 	const deleteTransaction = useMutation(api.finance.deleteTransaction);
 	const deleteTransactionsBulk = useMutation(api.finance.deleteTransactionsBulk);
@@ -53,6 +54,7 @@ export function TransactionDetailReport({ range }: Props) {
 		endDate: range.endDate,
 		type: filterType,
 		category: filterCategory || undefined,
+		viewMode,
 	});
 
 	const historicalShifts = useQuery(api.finance.getHistoricalShifts, {
@@ -72,8 +74,10 @@ export function TransactionDetailReport({ range }: Props) {
 			result = result.filter(t => 
 				t.merchant?.toLowerCase().includes(query) || 
 				t.description?.toLowerCase().includes(query) ||
+				t.displayTitle?.toLowerCase().includes(query) ||
 				t.category.toLowerCase().includes(query) ||
 				t.sourceLabel?.toLowerCase().includes(query) ||
+				t.receiptGroupLabel?.toLowerCase().includes(query) ||
 				t.referenceValue?.toLowerCase().includes(query) ||
 				t.rawText?.toLowerCase().includes(query) ||
 				t.metadata?.scanItems?.some((item: any) => item.name?.toLowerCase().includes(query))
@@ -100,26 +104,29 @@ export function TransactionDetailReport({ range }: Props) {
 		return result;
 	}, [data?.transactions, searchQuery, minAmount, maxAmount, sortBy, sortOrder]);
 
-	const filteredTransactionIds = useMemo(
-		() => filteredTransactions.map((transaction) => transaction._id as Id<"financialTransactions">),
+	const filteredRowKeys = useMemo(
+		() =>
+			filteredTransactions.map((transaction: any) =>
+				String(transaction.rowKey || transaction._id)
+			),
 		[filteredTransactions]
 	);
 
 	const selectedVisibleCount = useMemo(
-		() => filteredTransactionIds.filter((id) => selectedTransactionIds.has(id)).length,
-		[filteredTransactionIds, selectedTransactionIds]
+		() => filteredRowKeys.filter((rowKey) => selectedRowKeys.has(rowKey)).length,
+		[filteredRowKeys, selectedRowKeys]
 	);
 
-	const allVisibleSelected = filteredTransactionIds.length > 0 && selectedVisibleCount === filteredTransactionIds.length;
+	const allVisibleSelected = filteredRowKeys.length > 0 && selectedVisibleCount === filteredRowKeys.length;
 
 	useEffect(() => {
-		setSelectedTransactionIds((prev) => {
+		setSelectedRowKeys((prev) => {
 			if (prev.size === 0) return prev;
-			const filteredIdSet = new Set(filteredTransactionIds);
-			const next = new Set([...prev].filter((id) => filteredIdSet.has(id)));
+			const filteredIdSet = new Set(filteredRowKeys);
+			const next = new Set([...prev].filter((rowKey) => filteredIdSet.has(rowKey)));
 			return next.size === prev.size ? prev : next;
 		});
-	}, [filteredTransactionIds]);
+	}, [filteredRowKeys]);
 
 	const categoryBadge = (category: string, type: string) => {
 		const colorMap: Record<string, string> = {
@@ -142,10 +149,9 @@ export function TransactionDetailReport({ range }: Props) {
 		if (!confirm("Apakah Anda yakin ingin menghapus transaksi ini?")) return;
 		try {
 			await deleteTransaction({ id });
-			setSelectedTransactionIds((prev) => {
-				if (!prev.has(id)) return prev;
-				const next = new Set(prev);
-				next.delete(id);
+			setSelectedRowKeys((prev) => {
+				const next = new Set([...prev].filter((rowKey) => !rowKey.startsWith(`${id}`)));
+				if (next.size === prev.size) return prev;
 				return next;
 			});
 			toast.success("Transaksi berhasil dihapus");
@@ -170,28 +176,28 @@ export function TransactionDetailReport({ range }: Props) {
 		);
 	};
 
-	const handleToggleRow = (id: Id<"financialTransactions">) => {
-		setSelectedTransactionIds((prev) => {
+	const handleToggleRow = (rowKey: string) => {
+		setSelectedRowKeys((prev) => {
 			const next = new Set(prev);
-			if (next.has(id)) {
-				next.delete(id);
+			if (next.has(rowKey)) {
+				next.delete(rowKey);
 			} else {
-				next.add(id);
+				next.add(rowKey);
 			}
 			return next;
 		});
 	};
 
 	const handleToggleSelectAll = () => {
-		setSelectedTransactionIds((prev) => {
+		setSelectedRowKeys((prev) => {
 			const next = new Set(prev);
 			if (allVisibleSelected) {
-				for (const id of filteredTransactionIds) {
-					next.delete(id);
+				for (const rowKey of filteredRowKeys) {
+					next.delete(rowKey);
 				}
 			} else {
-				for (const id of filteredTransactionIds) {
-					next.add(id);
+				for (const rowKey of filteredRowKeys) {
+					next.add(rowKey);
 				}
 			}
 			return next;
@@ -199,13 +205,22 @@ export function TransactionDetailReport({ range }: Props) {
 	};
 
 	const handleBulkDelete = async () => {
-		const idsToDelete = filteredTransactionIds.filter((id) => selectedTransactionIds.has(id));
+		const idsToDelete = [
+			...new Set(
+				filteredTransactions
+					.filter((transaction: any) => {
+						const rowKey = String(transaction.rowKey || transaction._id);
+						return selectedRowKeys.has(rowKey);
+					})
+					.map((transaction: any) => transaction._id as Id<"financialTransactions">)
+			),
+		];
 		if (idsToDelete.length === 0) return;
 		if (!confirm(`Hapus ${idsToDelete.length} transaksi terpilih? Aksi ini tidak dapat dibatalkan.`)) return;
 
 		try {
 			await deleteTransactionsBulk({ ids: idsToDelete });
-			setSelectedTransactionIds(new Set());
+			setSelectedRowKeys(new Set());
 			toast.success(`${idsToDelete.length} transaksi berhasil dihapus`);
 		} catch (error) {
 			console.error(error);
@@ -397,7 +412,9 @@ export function TransactionDetailReport({ range }: Props) {
 						</span>
 					</div>
 					<div>
-						<span className="text-muted-foreground">Jumlah Transaksi: </span>
+						<span className="text-muted-foreground">
+							{viewMode === "item" ? "Jumlah Baris: " : "Jumlah Transaksi: "}
+						</span>
 						<span className="font-bold">{data.count}</span>
 					</div>
 				</div>
@@ -406,12 +423,12 @@ export function TransactionDetailReport({ range }: Props) {
 			{selectedVisibleCount > 0 && (
 				<div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
 					<p className="text-sm text-foreground">
-						<span className="font-semibold">{selectedVisibleCount}</span> transaksi dipilih
+						<span className="font-semibold">{selectedVisibleCount}</span> baris dipilih
 					</p>
 					<div className="flex items-center gap-2">
 						<button
 							type="button"
-							onClick={() => setSelectedTransactionIds(new Set())}
+							onClick={() => setSelectedRowKeys(new Set())}
 							className="rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
 						>
 							Batal Pilih
@@ -431,7 +448,7 @@ export function TransactionDetailReport({ range }: Props) {
 			{data && (
 				<div className="flex flex-wrap gap-2 rounded-xl border border-border/60 bg-card/60 px-4 py-3">
 					<span className="inline-flex rounded-full border border-border bg-background px-3 py-1 text-[11px] font-medium text-foreground">
-						{filteredTransactions.length} baris tampil
+						{filteredTransactions.length} {viewMode === "item" ? "baris" : "transaksi"} tampil
 					</span>
 					<span className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[11px] font-medium text-violet-700">
 						{filteredTransactions.filter((t: any) => String(t.sourceType || "").startsWith("ai_")).length} transaksi AI
@@ -457,7 +474,7 @@ export function TransactionDetailReport({ range }: Props) {
 											checked={allVisibleSelected}
 											onCheckedChange={handleToggleSelectAll}
 											aria-label="Pilih semua transaksi di tabel"
-											disabled={filteredTransactionIds.length === 0}
+											disabled={filteredRowKeys.length === 0}
 											className="rounded-sm border-muted-foreground/40 bg-background data-checked:border-primary data-checked:bg-primary"
 										/>
 									</div>
@@ -466,6 +483,7 @@ export function TransactionDetailReport({ range }: Props) {
 								<th className="px-4 py-3">Tipe</th>
 								<th className="px-4 py-3">Shift</th>
 								<th className="px-4 py-3">Sumber</th>
+								{viewMode === "item" && <th className="px-4 py-3">Grup Referensi</th>}
 								<th className="px-4 py-3">Merchant</th>
 								<th className="px-4 py-3">Deskripsi</th>
 								<th className="px-4 py-3">Referensi</th>
@@ -481,12 +499,12 @@ export function TransactionDetailReport({ range }: Props) {
 							{!data ? (
 								Array.from({ length: 5 }).map((_, i) => (
 									<tr key={i}>
-										<td colSpan={14} className="px-4 py-4"><Skeleton className="h-4 w-full" /></td>
+										<td colSpan={viewMode === "item" ? 15 : 14} className="px-4 py-4"><Skeleton className="h-4 w-full" /></td>
 									</tr>
 								))
 							) : filteredTransactions.length === 0 ? (
 								<tr>
-									<td colSpan={14} className="px-4 py-12 text-center text-muted-foreground">
+									<td colSpan={viewMode === "item" ? 15 : 14} className="px-4 py-12 text-center text-muted-foreground">
 										<div className="flex flex-col items-center gap-2">
 											<Wallet className="h-8 w-8 opacity-20" />
 											<p>Tidak ada transaksi ditemukan</p>
@@ -495,6 +513,7 @@ export function TransactionDetailReport({ range }: Props) {
 								</tr>
 							) : (
 								filteredTransactions.map((t: any) => {
+									const rowKey = String(t.rowKey || t._id);
 									let shiftName = "-";
 									if (historicalShifts) {
 										const shift = historicalShifts.find((s: any) => t.date >= s.startTime && (!s.endTime || t.date <= s.endTime));
@@ -506,12 +525,12 @@ export function TransactionDetailReport({ range }: Props) {
 									const referenceHref = getReferenceHref(t);
 
 									return (
-										<tr key={t._id} className="group hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => handleEdit(t)}>
+										<tr key={rowKey} className="group hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => handleEdit(t)}>
 											<td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
 												<div className="flex items-center justify-center">
 													<Checkbox
-														checked={selectedTransactionIds.has(t._id)}
-														onCheckedChange={() => handleToggleRow(t._id)}
+														checked={selectedRowKeys.has(rowKey)}
+														onCheckedChange={() => handleToggleRow(rowKey)}
 														aria-label={`Pilih transaksi ${t.merchant || "Umum"} tanggal ${format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}`}
 														className="rounded-sm border-muted-foreground/40 bg-background data-checked:border-primary data-checked:bg-primary"
 													/>
@@ -555,6 +574,40 @@ export function TransactionDetailReport({ range }: Props) {
 													)}
 												</div>
 											</td>
+											{viewMode === "item" && (
+												<td className="px-3 py-2.5">
+													{t.rowType === "receipt_item" ? (
+														<div className="flex min-w-[116px] flex-col gap-1">
+															<span className="inline-flex rounded-md border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-700">
+																{t.receiptGroupLabel || "Struk"}
+															</span>
+															<span className="text-[10px] text-muted-foreground">
+																Item {t.receiptItemIndex}/{t.receiptItemCount}
+															</span>
+														</div>
+													) : t.rowType === "order_item" ? (
+														<div className="flex min-w-[116px] flex-col gap-1">
+															<span className="inline-flex rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+																{t.receiptGroupLabel || "Order"}
+															</span>
+															<span className="text-[10px] text-muted-foreground">
+																Item {t.receiptItemIndex}/{t.receiptItemCount}
+															</span>
+														</div>
+													) : t.rowType === "booking_item" ? (
+														<div className="flex min-w-[116px] flex-col gap-1">
+															<span className="inline-flex rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-700">
+																{t.receiptGroupLabel || "Booking"}
+															</span>
+															<span className="text-[10px] text-muted-foreground">
+																Item {t.receiptItemIndex}/{t.receiptItemCount}
+															</span>
+														</div>
+													) : (
+														<span className="text-[11px] text-muted-foreground">-</span>
+													)}
+												</td>
+											)}
 											<td className="px-3 py-2.5">
 												<div className="min-w-[116px] max-w-[148px]">
 													<span className="block truncate text-xs font-semibold text-foreground" title={t.displayTitle || t.merchant || "Umum"}>

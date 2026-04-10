@@ -658,6 +658,11 @@ export const recordStockPurchase = mutation({
 				sourceLabel: args.purchaseData.sourceLabel || "AI Inventory Sync",
 				syncSource: "inventory_auto",
 				syncOutcome: "finance_plus_inventory",
+				receiptDetails: {
+					merchantName: args.purchaseData.merchant,
+					date: new Date(args.purchaseData.date).toISOString().slice(0, 10),
+					total: computedTotal,
+				},
 				scanItems: normalizedItems.map((item) => ({
 					name: item.name,
 					quantity: item.qty,

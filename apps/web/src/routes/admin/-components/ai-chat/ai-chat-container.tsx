@@ -132,12 +132,58 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 					total: item.subtotal || undefined,
 					unit: item.unit,
 				})) || undefined;
+			const merchant =
+				transactionPayload.merchant ||
+				scanData?.merchant ||
+				scanData?.name ||
+				undefined;
+			const parsedScanDate =
+				scanData?.date && !Number.isNaN(new Date(scanData.date).getTime())
+					? new Date(scanData.date).getTime()
+					: undefined;
+			const dateValue = transactionPayload.date || parsedScanDate || Date.now();
+			const amountValue =
+				transactionPayload.amount ||
+				scanData?.total ||
+				0;
+			const categoryValue =
+				transactionPayload.category ||
+				scanData?.category ||
+				"lainnya";
+			const structuredReceiptText = scanData
+				? [
+						`Merchant: ${scanData.merchant || scanData.name || "-"}`,
+						`Tanggal: ${scanData.date || "-"}${scanData.time ? ` ${scanData.time}` : ""}`,
+						`No Struk: ${scanData.receiptNumber || "-"}`,
+						`Subtotal: ${scanData.subtotal ? `Rp ${toRupiah(scanData.subtotal)}` : "-"}`,
+						`Pajak: ${scanData.tax ? `Rp ${toRupiah(scanData.tax)}` : "-"}`,
+						`Service: ${scanData.serviceCharge ? `Rp ${toRupiah(scanData.serviceCharge)}` : "-"}`,
+						`Diskon: ${scanData.discount ? `Rp ${toRupiah(scanData.discount)}` : "-"}`,
+						`Total: Rp ${toRupiah(scanData.total)}`,
+						...(scanData.items || []).map(
+							(item, idx) =>
+								`Item ${idx + 1}: ${item.name} | qty=${item.qty}${item.unit ? ` ${item.unit}` : ""} | harga=${item.price || 0} | subtotal=${item.subtotal || 0}`
+						),
+					].join("\n")
+				: undefined;
+			const descriptionValue =
+				transactionPayload.description ||
+				scanData?.notes ||
+				(scanData ? `Transaksi dari scan struk ${merchant || "-"}` : undefined);
+			const sourceRef =
+				scanData?.receiptNumber ||
+				(scanData
+					? `scan:${merchant || "unknown"}:${scanData.date || ""}:${Math.round(
+							Number(scanData.total) || 0
+						)}`
+					: undefined);
 
 			return recordExpenseMutation({
 				source: scanData ? "ai_receipt_scan" : "ai_tool",
 				rawText:
 					rawText ||
 					scanData?.rawText ||
+					structuredReceiptText ||
 					(typeof payload.description === "string" ? payload.description : undefined),
 				syncMode:
 					transactionPayload.syncMode ||
@@ -146,11 +192,11 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 						: "auto"),
 				transaction: {
 					type: transactionPayload.type,
-					amount: transactionPayload.amount,
-					category: transactionPayload.category,
-					merchant: transactionPayload.merchant,
-					description: transactionPayload.description,
-					date: transactionPayload.date,
+					amount: amountValue,
+					category: categoryValue,
+					merchant: merchant,
+					description: descriptionValue,
+					date: dateValue,
 					paymentMethod:
 						typeof transactionPayload.paymentMethod === "string"
 							? transactionPayload.paymentMethod
@@ -170,6 +216,20 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 				metadata: {
 					inputMode,
 					sourceLabel,
+					sourceRef,
+					receiptDetails: scanData
+						? {
+								merchantName: scanData.merchant || scanData.name || undefined,
+								receiptNumber: scanData.receiptNumber || undefined,
+								date: scanData.date || undefined,
+								time: scanData.time || undefined,
+								subtotal: scanData.subtotal || undefined,
+								tax: scanData.tax || undefined,
+								serviceCharge: scanData.serviceCharge || undefined,
+								discount: scanData.discount || undefined,
+								total: scanData.total || undefined,
+							}
+						: undefined,
 				},
 			});
 		},

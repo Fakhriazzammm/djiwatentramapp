@@ -50,6 +50,17 @@ interface NewTransactionDialogProps {
 			rawText?: string;
 			sourceRef?: string;
 			sourceLabel?: string;
+			receiptDetails?: {
+				merchantName?: string;
+				receiptNumber?: string;
+				date?: string;
+				time?: string;
+				subtotal?: number;
+				tax?: number;
+				serviceCharge?: number;
+				discount?: number;
+				total?: number;
+			};
 			syncSource?: string;
 			syncOutcome?: string;
 			syncWarnings?: string[];
@@ -125,7 +136,10 @@ export function NewTransactionDialog({
 				type: transaction.type,
 				amount: String(transaction.amount),
 				category: transaction.category,
-				merchant: transaction.merchant || "",
+				merchant:
+					transaction.merchant ||
+					transaction.metadata?.receiptDetails?.merchantName ||
+					"",
 				description: transaction.description || "",
 				date: new Date(transaction.date).toISOString().split("T")[0],
 				paymentMethod: transaction.paymentMethod || "CASH",
@@ -288,6 +302,7 @@ export function NewTransactionDialog({
 						aiSessionId: transaction?.metadata?.aiSessionId,
 						sourceRef: transaction?.metadata?.sourceRef,
 						sourceLabel: transaction?.metadata?.sourceLabel || "Manual Form",
+						receiptDetails: transaction?.metadata?.receiptDetails,
 					},
 				});
 

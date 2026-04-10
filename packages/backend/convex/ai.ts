@@ -5034,13 +5034,31 @@ export const processImageAndGenerate = action({
 			}
 
 			const scanItems = normalizeScanItems(scanResult.data.items);
+			const receiptSourceRef =
+				sanitizeAIString(scanResult.data.receiptNumber || "") ||
+				buildReceiptFinanceFingerprint({
+					scanResult,
+					effectiveType: effectiveType as "income" | "expense",
+					date: resolvedDate,
+					inputMode: "image_scan",
+				});
+			const receiptDescriptionParts = [
+				scanResult.data.description,
+				scanResult.data.receiptNumber
+					? `No Struk: ${scanResult.data.receiptNumber}`
+					: undefined,
+				scanResult.data.date
+					? `Tanggal: ${scanResult.data.date}${scanResult.data.time ? ` ${scanResult.data.time}` : ""}`
+					: undefined,
+			].filter(Boolean);
 			const txResult = await ctx.runMutation(api.finance.upsertReceiptTransaction, {
 				type: effectiveType as "income" | "expense",
 				amount: scanResult.data.amount,
 				category: scanResult.data.category || "Lainnya",
-				merchant: scanResult.data.merchantName,
+				merchant: scanResult.data.merchantName || undefined,
 				description:
-					scanResult.data.description || scanResult.rawText.slice(0, 200),
+					receiptDescriptionParts.join(" | ") ||
+					scanResult.rawText.slice(0, 200),
 				date: resolvedDate,
 				paymentMethod: scanResult.data.paymentMethod || "cash",
 				status: "completed",
@@ -5055,7 +5073,19 @@ export const processImageAndGenerate = action({
 					inputMode: "image_scan",
 					importedAt: Date.now(),
 					rawText: scanResult.rawText.slice(0, 1000),
+					sourceRef: receiptSourceRef,
 					sourceLabel: "AI Scan",
+					receiptDetails: {
+						merchantName: scanResult.data.merchantName || undefined,
+						receiptNumber: scanResult.data.receiptNumber || undefined,
+						date: scanResult.data.date || undefined,
+						time: scanResult.data.time || undefined,
+						subtotal: scanResult.data.subtotal || undefined,
+						tax: scanResult.data.tax || undefined,
+						serviceCharge: scanResult.data.serviceCharge || undefined,
+						discount: scanResult.data.discount || undefined,
+						total: scanResult.data.amount || undefined,
+					},
 					scanItems: scanItems.length > 0 ? scanItems : undefined,
 				},
 			});
@@ -5197,15 +5227,32 @@ export const batchGenerateTransactions = action({
 					}
 
 					const scanItems = normalizeScanItems(scanResult.data.items);
+					const receiptSourceRef =
+						sanitizeAIString(scanResult.data.receiptNumber || "") ||
+						buildReceiptFinanceFingerprint({
+							scanResult,
+							effectiveType: effectiveType as "income" | "expense",
+							date: resolvedDate,
+							inputMode: "batch_image_scan",
+						});
+					const receiptDescriptionParts = [
+						scanResult.data.description,
+						scanResult.data.receiptNumber
+							? `No Struk: ${scanResult.data.receiptNumber}`
+							: undefined,
+						scanResult.data.date
+							? `Tanggal: ${scanResult.data.date}${scanResult.data.time ? ` ${scanResult.data.time}` : ""}`
+							: undefined,
+					].filter(Boolean);
 					const txResult = await ctx.runMutation(
 						api.finance.upsertReceiptTransaction,
 						{
 							type: effectiveType as "income" | "expense",
 							amount: scanResult.data.amount,
 							category: scanResult.data.category || "Lainnya",
-							merchant: scanResult.data.merchantName,
+							merchant: scanResult.data.merchantName || undefined,
 							description:
-								scanResult.data.description ||
+								receiptDescriptionParts.join(" | ") ||
 								scanResult.rawText.slice(0, 200),
 							date: resolvedDate,
 							paymentMethod: scanResult.data.paymentMethod || "cash",
@@ -5221,7 +5268,19 @@ export const batchGenerateTransactions = action({
 								inputMode: "batch_image_scan",
 								importedAt: Date.now(),
 								rawText: scanResult.rawText.slice(0, 1000),
+								sourceRef: receiptSourceRef,
 								sourceLabel: "AI Scan",
+								receiptDetails: {
+									merchantName: scanResult.data.merchantName || undefined,
+									receiptNumber: scanResult.data.receiptNumber || undefined,
+									date: scanResult.data.date || undefined,
+									time: scanResult.data.time || undefined,
+									subtotal: scanResult.data.subtotal || undefined,
+									tax: scanResult.data.tax || undefined,
+									serviceCharge: scanResult.data.serviceCharge || undefined,
+									discount: scanResult.data.discount || undefined,
+									total: scanResult.data.amount || undefined,
+								},
 								scanItems: scanItems.length > 0 ? scanItems : undefined,
 							},
 						}

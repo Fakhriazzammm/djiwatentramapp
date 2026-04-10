@@ -359,6 +359,45 @@ function buildTransactionPresentation(
 	const scanItems = Array.isArray(transaction.metadata?.scanItems)
 		? transaction.metadata.scanItems
 		: [];
+	const receiptDetails = transaction.metadata?.receiptDetails || {};
+	const receiptMetaDetails = [
+		receiptDetails.merchantName
+			? { label: "Merchant", value: receiptDetails.merchantName }
+			: null,
+		receiptDetails.receiptNumber
+			? { label: "No Struk", value: receiptDetails.receiptNumber }
+			: null,
+		receiptDetails.date
+			? {
+					label: "Tanggal",
+					value: `${receiptDetails.date}${receiptDetails.time ? ` ${receiptDetails.time}` : ""}`,
+				}
+			: null,
+		receiptDetails.subtotal != null
+			? {
+					label: "Subtotal",
+					value: `Rp${Math.round(Number(receiptDetails.subtotal) || 0).toLocaleString("id-ID")}`,
+				}
+			: null,
+		receiptDetails.tax != null
+			? {
+					label: "Pajak",
+					value: `Rp${Math.round(Number(receiptDetails.tax) || 0).toLocaleString("id-ID")}`,
+				}
+			: null,
+		receiptDetails.serviceCharge != null
+			? {
+					label: "Service",
+					value: `Rp${Math.round(Number(receiptDetails.serviceCharge) || 0).toLocaleString("id-ID")}`,
+				}
+			: null,
+		receiptDetails.discount != null
+			? {
+					label: "Diskon",
+					value: `Rp${Math.round(Number(receiptDetails.discount) || 0).toLocaleString("id-ID")}`,
+				}
+			: null,
+	].filter(Boolean) as Array<{ label: string; value: string }>;
 	const scanItemDetails = scanItems.slice(0, 4).map((item: any) => {
 		const quantity = Number(item.quantity) || 1;
 		const total =
@@ -452,13 +491,18 @@ function buildTransactionPresentation(
 
 	if (transaction.metadata?.source === "ai_receipt_scan") {
 		return {
-			displayTitle: transaction.merchant || parsedDetails.title || transaction.category,
+			displayTitle:
+				transaction.merchant ||
+				receiptDetails.merchantName ||
+				parsedDetails.title ||
+				transaction.category,
 			displaySummary:
 				transaction.description ||
 				scanSummary ||
 				"Hasil scan struk oleh AI",
 			detailItems: [
 				{ label: "Sumber", value: "AI Scan" },
+				...receiptMetaDetails,
 				...(scanSummary ? [{ label: "Receipt", value: scanSummary }] : []),
 				...scanItemDetails,
 				...(parsedDetails.details.length > 0 ? parsedDetails.details : []),
@@ -468,9 +512,14 @@ function buildTransactionPresentation(
 
 	if (scanItems.length > 0) {
 		return {
-			displayTitle: parsedDetails.title || transaction.merchant || transaction.category,
+			displayTitle:
+				parsedDetails.title ||
+				transaction.merchant ||
+				receiptDetails.merchantName ||
+				transaction.category,
 			displaySummary: parsedDetails.summary || scanSummary || transaction.description || null,
 			detailItems: [
+				...receiptMetaDetails,
 				...(scanSummary ? [{ label: "Receipt", value: scanSummary }] : []),
 				...scanItemDetails,
 				...parsedDetails.details,
@@ -780,6 +829,19 @@ export const createTransaction = mutation({
 				syncSource: v.optional(v.string()),
 				syncOutcome: v.optional(v.string()),
 				syncWarnings: v.optional(v.array(v.string())),
+				receiptDetails: v.optional(
+					v.object({
+						merchantName: v.optional(v.string()),
+						receiptNumber: v.optional(v.string()),
+						date: v.optional(v.string()),
+						time: v.optional(v.string()),
+						subtotal: v.optional(v.number()),
+						tax: v.optional(v.number()),
+						serviceCharge: v.optional(v.number()),
+						discount: v.optional(v.number()),
+						total: v.optional(v.number()),
+					})
+				),
 				scanItems: v.optional(
 					v.array(
 						v.object({
@@ -831,6 +893,19 @@ export const upsertReceiptTransaction = mutation({
 				syncSource: v.optional(v.string()),
 				syncOutcome: v.optional(v.string()),
 				syncWarnings: v.optional(v.array(v.string())),
+				receiptDetails: v.optional(
+					v.object({
+						merchantName: v.optional(v.string()),
+						receiptNumber: v.optional(v.string()),
+						date: v.optional(v.string()),
+						time: v.optional(v.string()),
+						subtotal: v.optional(v.number()),
+						tax: v.optional(v.number()),
+						serviceCharge: v.optional(v.number()),
+						discount: v.optional(v.number()),
+						total: v.optional(v.number()),
+					})
+				),
 				scanItems: v.optional(
 					v.array(
 						v.object({
@@ -1049,8 +1124,10 @@ export const getTransactionDetailReport = query({
 		endDate: v.optional(v.number()),
 		type: v.optional(v.union(v.literal("income"), v.literal("expense"))),
 		category: v.optional(v.string()),
+		viewMode: v.optional(v.union(v.literal("transaction"), v.literal("item"))),
 	},
 	handler: async (ctx, args) => {
+		const viewMode = args.viewMode ?? "transaction";
 		const q = await fetchTransactionsInternal(ctx, args);
 		const transactions = await q.order("desc").collect();
 		const orderIds = [...new Set(transactions.map((t) => t.orderId).filter(Boolean))];
@@ -1080,10 +1157,19 @@ export const getTransactionDetailReport = query({
 			}
 		}
 
-		const enrichedTransactions = transactions.map((transaction) => {
+		const enrichedTransactions: any[] = transactions.flatMap((transaction): any[] => {
 			const relatedOrder = transaction.orderId ? orderMap.get(transaction.orderId) : null;
 			const relatedBooking = transaction.bookingOrderId ? bookingMap.get(transaction.bookingOrderId) : null;
 			const presentation = buildTransactionPresentation(transaction, relatedOrder, relatedBooking);
+			const scanItems: Array<{
+				name: string;
+				quantity: number;
+				price?: number;
+				total?: number;
+				unit?: string;
+			}> = Array.isArray(transaction.metadata?.scanItems)
+				? transaction.metadata?.scanItems ?? []
+				: [];
 			const sourceLabel =
 				transaction.metadata?.sourceLabel ||
 				(transaction.metadata?.source === "ai_bulk_finance"
@@ -1108,8 +1194,7 @@ export const getTransactionDetailReport = query({
 				relatedBooking?.bookingCode ||
 				transaction.metadata?.sourceRef ||
 				null;
-
-			return {
+			const baseRow = {
 				...transaction,
 				sourceLabel,
 				sourceType: transaction.metadata?.source || "manual",
@@ -1121,6 +1206,296 @@ export const getTransactionDetailReport = query({
 				displaySummary: presentation.displaySummary,
 				detailItems: presentation.detailItems,
 			};
+
+			const orderItems: Array<{
+				productName?: string;
+				name?: string;
+				quantity?: number;
+				price?: number;
+				unitPrice?: number;
+				totalPrice?: number;
+				subtotal?: number;
+			}> = Array.isArray(relatedOrder?.items)
+				? ((relatedOrder?.items ?? []) as Array<{
+						productName?: string;
+						name?: string;
+						quantity?: number;
+						price?: number;
+						unitPrice?: number;
+						totalPrice?: number;
+						subtotal?: number;
+					}>)
+				: [];
+			const bookingItems: Array<{
+				name?: string;
+				quantity?: number;
+				price?: number;
+				unitPrice?: number;
+				totalPrice?: number;
+				subtotal?: number;
+			}> = Array.isArray(relatedBooking?.items)
+				? ((relatedBooking?.items ?? []) as Array<{
+						name?: string;
+						quantity?: number;
+						price?: number;
+						unitPrice?: number;
+						totalPrice?: number;
+						subtotal?: number;
+					}>)
+				: [];
+
+			const shouldExpandReceiptItems =
+				viewMode === "item" &&
+				transaction.type === "expense" &&
+				scanItems.length > 0;
+			const shouldExpandOrderItems =
+				viewMode === "item" &&
+				transaction.type === "income" &&
+				orderItems.length > 0;
+			const shouldExpandBookingItems =
+				viewMode === "item" &&
+				transaction.type === "income" &&
+				bookingItems.length > 0;
+
+			if (!shouldExpandReceiptItems) {
+				return [
+					{
+						...baseRow,
+						rowKey: String(transaction._id),
+						rowType: "transaction",
+						receiptGroupId: null,
+						receiptGroupLabel: null,
+						receiptItemIndex: null,
+						receiptItemCount: null,
+						itemGroupType: null,
+					},
+				];
+			}
+
+			const receiptGroupId = String(
+				transaction.sourceFingerprint ||
+					transaction.metadata?.sourceRef ||
+					transaction._id
+			);
+			const receiptGroupLabel = `STRUK-${receiptGroupId.slice(-6).toUpperCase()}`;
+			const itemCount = scanItems.length;
+			const fallbackPerItemAmount =
+				itemCount > 0 ? transaction.amount / itemCount : transaction.amount;
+
+			return scanItems.map((item, index) => {
+				const quantity = Number(item.quantity) > 0 ? Number(item.quantity) : 1;
+				const unitPrice = Number(item.price) > 0 ? Number(item.price) : 0;
+				const lineTotalFromItem =
+					Number(item.total) > 0
+						? Number(item.total)
+						: unitPrice > 0
+							? unitPrice * quantity
+							: 0;
+				const lineTotal =
+					lineTotalFromItem > 0 ? lineTotalFromItem : fallbackPerItemAmount;
+				const unitSuffix = item.unit ? ` ${item.unit}` : "";
+				const itemSummary = `${quantity}${unitSuffix} x Rp${Math.round(
+					unitPrice
+				).toLocaleString("id-ID")} = Rp${Math.round(lineTotal).toLocaleString(
+					"id-ID"
+				)}`;
+
+				return {
+					...baseRow,
+					amount: lineTotal,
+					displayTitle: item.name || baseRow.displayTitle,
+					displaySummary: itemSummary,
+					detailItems: [
+						{
+							label: "Item",
+							value: `${index + 1}/${itemCount}`,
+						},
+						{
+							label: "Grup",
+							value: receiptGroupLabel,
+						},
+						{
+							label: "Qty",
+							value: `${quantity}${unitSuffix}`,
+						},
+						{
+							label: "Harga",
+							value: `Rp${Math.round(unitPrice).toLocaleString("id-ID")}`,
+						},
+						{
+							label: "Subtotal",
+							value: `Rp${Math.round(lineTotal).toLocaleString("id-ID")}`,
+						},
+						...baseRow.detailItems,
+					].slice(0, 10),
+					rowKey: `${transaction._id}::item::${index}`,
+					rowType: "receipt_item",
+					receiptGroupId,
+					receiptGroupLabel,
+					receiptItemIndex: index + 1,
+					receiptItemCount: itemCount,
+					itemGroupType: "struk",
+				};
+			});
+
+			if (shouldExpandOrderItems) {
+				const receiptGroupId = String(
+					referenceValue || relatedOrder?.orderNumber || transaction._id
+				);
+				const receiptGroupLabel = `ORDER-${receiptGroupId.slice(-6).toUpperCase()}`;
+				const itemCount = orderItems.length;
+				const fallbackPerItemAmount =
+					itemCount > 0 ? transaction.amount / itemCount : transaction.amount;
+
+				return orderItems.map((item, index) => {
+					const quantity = Number(item.quantity) > 0 ? Number(item.quantity) : 1;
+					const unitPrice =
+						Number(item.price) > 0
+							? Number(item.price)
+							: Number(item.unitPrice) > 0
+								? Number(item.unitPrice)
+								: 0;
+					const lineTotalFromItem =
+						Number(item.totalPrice) > 0
+							? Number(item.totalPrice)
+							: Number(item.subtotal) > 0
+								? Number(item.subtotal)
+								: unitPrice > 0
+									? unitPrice * quantity
+									: 0;
+					const lineTotal =
+						lineTotalFromItem > 0 ? lineTotalFromItem : fallbackPerItemAmount;
+					const itemName = item.productName || item.name || baseRow.displayTitle;
+					const itemSummary = `${quantity} x Rp${Math.round(
+						unitPrice
+					).toLocaleString("id-ID")} = Rp${Math.round(lineTotal).toLocaleString(
+						"id-ID"
+					)}`;
+
+					return {
+						...baseRow,
+						amount: lineTotal,
+						displayTitle: itemName,
+						displaySummary: itemSummary,
+						detailItems: [
+							{
+								label: "Item",
+								value: `${index + 1}/${itemCount}`,
+							},
+							{
+								label: "Grup",
+								value: receiptGroupLabel,
+							},
+							{
+								label: "Qty",
+								value: String(quantity),
+							},
+							{
+								label: "Harga",
+								value: `Rp${Math.round(unitPrice).toLocaleString("id-ID")}`,
+							},
+							{
+								label: "Subtotal",
+								value: `Rp${Math.round(lineTotal).toLocaleString("id-ID")}`,
+							},
+							...baseRow.detailItems,
+						].slice(0, 10),
+						rowKey: `${transaction._id}::order_item::${index}`,
+						rowType: "order_item",
+						receiptGroupId,
+						receiptGroupLabel,
+						receiptItemIndex: index + 1,
+						receiptItemCount: itemCount,
+						itemGroupType: "order",
+					};
+				});
+			}
+
+			if (shouldExpandBookingItems) {
+				const receiptGroupId = String(
+					referenceValue || relatedBooking?.bookingCode || transaction._id
+				);
+				const receiptGroupLabel = `BOOK-${receiptGroupId.slice(-6).toUpperCase()}`;
+				const itemCount = bookingItems.length;
+				const fallbackPerItemAmount =
+					itemCount > 0 ? transaction.amount / itemCount : transaction.amount;
+
+				return bookingItems.map((item, index) => {
+					const quantity = Number(item.quantity) > 0 ? Number(item.quantity) : 1;
+					const unitPrice =
+						Number(item.price) > 0
+							? Number(item.price)
+							: Number(item.unitPrice) > 0
+								? Number(item.unitPrice)
+								: 0;
+					const lineTotalFromItem =
+						Number(item.totalPrice) > 0
+							? Number(item.totalPrice)
+							: Number(item.subtotal) > 0
+								? Number(item.subtotal)
+								: unitPrice > 0
+									? unitPrice * quantity
+									: 0;
+					const lineTotal =
+						lineTotalFromItem > 0 ? lineTotalFromItem : fallbackPerItemAmount;
+					const itemName = item.name || baseRow.displayTitle;
+					const itemSummary = `${quantity} x Rp${Math.round(
+						unitPrice
+					).toLocaleString("id-ID")} = Rp${Math.round(lineTotal).toLocaleString(
+						"id-ID"
+					)}`;
+
+					return {
+						...baseRow,
+						amount: lineTotal,
+						displayTitle: itemName,
+						displaySummary: itemSummary,
+						detailItems: [
+							{
+								label: "Item",
+								value: `${index + 1}/${itemCount}`,
+							},
+							{
+								label: "Grup",
+								value: receiptGroupLabel,
+							},
+							{
+								label: "Qty",
+								value: String(quantity),
+							},
+							{
+								label: "Harga",
+								value: `Rp${Math.round(unitPrice).toLocaleString("id-ID")}`,
+							},
+							{
+								label: "Subtotal",
+								value: `Rp${Math.round(lineTotal).toLocaleString("id-ID")}`,
+							},
+							...baseRow.detailItems,
+						].slice(0, 10),
+						rowKey: `${transaction._id}::booking_item::${index}`,
+						rowType: "booking_item",
+						receiptGroupId,
+						receiptGroupLabel,
+						receiptItemIndex: index + 1,
+						receiptItemCount: itemCount,
+						itemGroupType: "booking",
+					};
+				});
+			}
+
+			return [
+				{
+					...baseRow,
+					rowKey: String(transaction._id),
+					rowType: "transaction",
+					receiptGroupId: null,
+					receiptGroupLabel: null,
+					receiptItemIndex: null,
+					receiptItemCount: null,
+					itemGroupType: null,
+				},
+			];
 		});
 
 		return {
@@ -1183,6 +1558,19 @@ export const updateTransaction = mutation({
 				syncSource: v.optional(v.string()),
 				syncOutcome: v.optional(v.string()),
 				syncWarnings: v.optional(v.array(v.string())),
+				receiptDetails: v.optional(
+					v.object({
+						merchantName: v.optional(v.string()),
+						receiptNumber: v.optional(v.string()),
+						date: v.optional(v.string()),
+						time: v.optional(v.string()),
+						subtotal: v.optional(v.number()),
+						tax: v.optional(v.number()),
+						serviceCharge: v.optional(v.number()),
+						discount: v.optional(v.number()),
+						total: v.optional(v.number()),
+					})
+				),
 				scanItems: v.optional(
 					v.array(
 						v.object({

@@ -38,6 +38,14 @@ type ProductRecipeForm = {
 	ingredients: { inventoryId: Id<"inventory">; amount: number }[];
 };
 
+type InventoryCostMap = Record<
+	string,
+	{
+		latestCostPerUnit?: number;
+		avgCostPerUnit?: number;
+	}
+>;
+
 const BASE_RECIPE_CATEGORIES = [
 	"Base Susu",
 	"Base Sauce",
@@ -295,10 +303,12 @@ function IngredientEditor({
 	inventory,
 	ingredients,
 	setIngredients,
+	latestInventoryCosts,
 }: {
 	inventory: Doc<"inventory">[];
 	ingredients: { inventoryId: Id<"inventory">; amount: number }[];
 	setIngredients: (next: { inventoryId: Id<"inventory">; amount: number }[]) => void;
+	latestInventoryCosts?: InventoryCostMap;
 }) {
 	const [ingredientQuery, setIngredientQuery] = useState("");
 
@@ -310,6 +320,17 @@ function IngredientEditor({
 			`${item.ingredientName} ${item.unit}`.toLowerCase().includes(keyword)
 		);
 	}, [ingredientQuery, sortedInventory]);
+	const totalEstimatedCost = useMemo(
+		() =>
+			ingredients.reduce((sum, ingredient) => {
+				const unitCost = latestInventoryCosts?.[String(ingredient.inventoryId)]?.latestCostPerUnit;
+				if (unitCost == null || unitCost <= 0) {
+					return sum;
+				}
+				return sum + unitCost * ingredient.amount;
+			}, 0),
+		[ingredients, latestInventoryCosts]
+	);
 
 	const addIngredient = (inventoryId: Id<"inventory">) => {
 		if (!inventoryId) return;
@@ -375,9 +396,24 @@ function IngredientEditor({
 			<div className="space-y-2">
 				{ingredients.map((ingredient, index) => {
 					const inv = inventory.find((item) => item._id === ingredient.inventoryId);
+					const latestCost =
+						latestInventoryCosts?.[String(ingredient.inventoryId)]?.latestCostPerUnit;
+					const fallbackCost =
+						typeof inv?.lastPurchasePrice === "number" && inv.lastPurchasePrice > 0
+							? inv.lastPurchasePrice
+							: undefined;
+					const unitCost = latestCost ?? fallbackCost;
+					const lineCost = unitCost != null ? unitCost * ingredient.amount : null;
 					return (
 						<div className="grid gap-2 rounded-xl border border-border bg-background p-3 md:grid-cols-[1fr_130px_70px]" key={`${ingredient.inventoryId}-${index}`}>
-							<p className={`font-semibold ${tableCellSingleLine()}`}>{inv?.ingredientName || "-"}</p>
+							<div>
+								<p className={`font-semibold ${tableCellSingleLine()}`}>{inv?.ingredientName || "-"}</p>
+								<p className={`text-xs text-muted-foreground ${tableCellSingleLine()}`}>
+									{unitCost != null
+										? `${formatRupiah(Math.round(unitCost))}/${inv?.unit || "unit"} • ${formatRupiah(Math.round(lineCost ?? 0))}`
+										: "Harga bahan belum tersedia di inventory"}
+								</p>
+							</div>
 							<Input
 								min="0"
 								onChange={(event) => {
@@ -410,6 +446,15 @@ function IngredientEditor({
 						Belum ada bahan.
 					</p>
 				)}
+				{ingredients.length > 0 && (
+					<div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+						Estimasi biaya bahan per porsi:{" "}
+						<span className="font-semibold text-foreground">
+							{formatRupiah(Math.round(totalEstimatedCost))}
+						</span>{" "}
+						(dari harga terbaru inventory)
+					</div>
+				)}
 			</div>
 		</div>
 	);
@@ -422,6 +467,7 @@ export function RecipeStudioPage() {
 	const baseRecipes = useQuery(api.inventory.getBaseRecipes);
 	const productRecipes = useQuery(api.inventory.getRecipes);
 	const hppProductMap = useQuery(api.hpp.getHppProductMap);
+	const latestInventoryCosts = useQuery(api.hpp.getLatestInventoryCosts);
 	const createBaseRecipe = useMutation(api.inventory.createBaseRecipe);
 	const updateBaseRecipe = useMutation(api.inventory.updateBaseRecipe);
 	const deleteBaseRecipe = useMutation(api.inventory.deleteBaseRecipe);
@@ -713,6 +759,7 @@ export function RecipeStudioPage() {
 						<IngredientEditor
 							ingredients={baseForm.ingredients}
 							inventory={inventory}
+							latestInventoryCosts={latestInventoryCosts}
 							setIngredients={(next) =>
 								setBaseForm((current) => ({ ...current, ingredients: next }))
 							}
@@ -772,6 +819,7 @@ export function RecipeStudioPage() {
 						<IngredientEditor
 							ingredients={productForm.ingredients}
 							inventory={inventory}
+							latestInventoryCosts={latestInventoryCosts}
 							setIngredients={(next) =>
 								setProductForm((current) => ({ ...current, ingredients: next }))
 							}

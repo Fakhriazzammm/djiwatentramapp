@@ -135,6 +135,19 @@ export default defineSchema({
 				syncSource: v.optional(v.string()),
 				syncOutcome: v.optional(v.string()),
 				syncWarnings: v.optional(v.array(v.string())),
+				receiptDetails: v.optional(
+					v.object({
+						merchantName: v.optional(v.string()),
+						receiptNumber: v.optional(v.string()),
+						date: v.optional(v.string()),
+						time: v.optional(v.string()),
+						subtotal: v.optional(v.number()),
+						tax: v.optional(v.number()),
+						serviceCharge: v.optional(v.number()),
+						discount: v.optional(v.number()),
+						total: v.optional(v.number()),
+					})
+				),
 				scanItems: v.optional(
 					v.array(
 						v.object({

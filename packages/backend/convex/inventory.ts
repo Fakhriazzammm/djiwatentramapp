@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
+import { api } from "./_generated/api";
 import type { MutationCtx } from "./_generated/server";
 import { internalMutation, mutation, query } from "./_generated/server";
 
@@ -1177,6 +1178,10 @@ export const saveRecipe = mutation({
 
 		if (existing) {
 			await ctx.db.patch(existing._id, { ingredients: args.ingredients });
+			await ctx.runMutation(api.hpp.upsertHppFromRecipe, {
+				productId: args.productId,
+				variantName: args.variantName,
+			});
 			await syncProductAvailabilityForInventoryIds(
 				ctx,
 				args.ingredients.map((ingredient) => ingredient.inventoryId)
@@ -1188,6 +1193,10 @@ export const saveRecipe = mutation({
 			productId: args.productId,
 			variantName: args.variantName,
 			ingredients: args.ingredients,
+		});
+		await ctx.runMutation(api.hpp.upsertHppFromRecipe, {
+			productId: args.productId,
+			variantName: args.variantName,
 		});
 		await syncProductAvailabilityForInventoryIds(
 			ctx,

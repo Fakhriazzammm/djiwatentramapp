@@ -16,6 +16,7 @@ import {
 export function TransactionsView() {
 	const [period, setPeriod] = useState<PeriodOption>("this_month");
 	const [dateRange, setDateRange] = useState<DateRange>(getRangeFromPeriod("this_month"));
+	const [viewMode, setViewMode] = useState<"transaction" | "item">("item");
 	const [isExporting, setIsExporting] = useState(false);
 	const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
@@ -25,6 +26,7 @@ export function TransactionsView() {
 	const txData = useQuery(api.finance.getTransactionDetailReport, {
 		startDate: dateRange.startDate,
 		endDate: dateRange.endDate,
+		viewMode,
 	});
 
 	const handlePeriodChange = (p: PeriodOption, range: DateRange) => {
@@ -127,7 +129,7 @@ export function TransactionsView() {
 						<span className="text-2xl font-bold text-green-600">
 							{txData ? formatCurrencyIDR(txData.totalIncome) : "Rp0"}
 						</span>
-						<span className="text-[10px] text-muted-foreground mt-1">Dari {txData?.transactions.filter((t: any) => t.type === 'income').length || 0} transaksi</span>
+						<span className="text-[10px] text-muted-foreground mt-1">Dari {txData?.transactions.filter((t: any) => t.type === 'income').length || 0} baris</span>
 					</div>
 				</div>
 
@@ -142,7 +144,7 @@ export function TransactionsView() {
 						<span className="text-2xl font-bold text-red-600">
 							{txData ? formatCurrencyIDR(txData.totalExpense) : "Rp0"}
 						</span>
-						<span className="text-[10px] text-muted-foreground mt-1">Dari {txData?.transactions.filter((t: any) => t.type === 'expense').length || 0} transaksi</span>
+						<span className="text-[10px] text-muted-foreground mt-1">Dari {txData?.transactions.filter((t: any) => t.type === 'expense').length || 0} baris</span>
 					</div>
 				</div>
 
@@ -171,6 +173,30 @@ export function TransactionsView() {
 							Periode aktif: <span className="font-semibold text-foreground">{dateRange.label}</span>
 						</p>
 					</div>
+					<div className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
+						<button
+							type="button"
+							onClick={() => setViewMode("transaction")}
+							className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+								viewMode === "transaction"
+									? "bg-background text-foreground shadow-sm"
+									: "text-muted-foreground hover:bg-muted"
+							}`}
+						>
+							Per Transaksi
+						</button>
+						<button
+							type="button"
+							onClick={() => setViewMode("item")}
+							className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+								viewMode === "item"
+									? "bg-background text-foreground shadow-sm"
+									: "text-muted-foreground hover:bg-muted"
+							}`}
+						>
+							Per Item
+						</button>
+					</div>
 				</div>
 			</div>
 
@@ -180,7 +206,7 @@ export function TransactionsView() {
 					<h3 className="font-semibold text-sm">Daftar Transaksi Detail</h3>
 				</div>
 				<div className="p-0">
-					<TransactionDetailReport range={dateRange} />
+					<TransactionDetailReport range={dateRange} viewMode={viewMode} />
 				</div>
 			</div>
 
