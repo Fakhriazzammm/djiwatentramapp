@@ -216,26 +216,42 @@ export function exportTransactionsPDF(
 
 	autoTable(doc, {
 		startY: 50,
-		head: [["Tanggal", "Jenis", "Kategori", "Merchant", "Keterangan", "Metode", "Jumlah"]],
+		head: [[
+			"Tanggal",
+			"Jenis",
+			"Kategori",
+			"Merchant",
+			"Keterangan",
+			"Grup",
+			"Ref",
+			"No Struk",
+			"Fingerprint",
+			"Metode",
+			"Jumlah",
+		]],
 		body: transactions.map((t) => [
 			new Date(t.date).toLocaleDateString("id-ID"),
 			t.type === "income" ? "Pemasukan" : "Pengeluaran",
 			t.category.replace(/_/g, " "),
 			t.merchant || "-",
 			t.description || "-",
+			(t as any).receiptGroupLabel || "-",
+			(t as any).sourceRef || "-",
+			(t as any).receiptNumber || "-",
+			(t as any).sourceFingerprint || "-",
 			t.paymentMethod || "Cash",
 			(t.type === "income" ? "+ " : "- ") + formatCurrencyIDR(t.amount),
 		]),
 		foot: [
-			["", "", "", "", "", "Total Pemasukan", formatCurrencyIDR(totals.totalIncome)],
-			["", "", "", "", "", "Total Pengeluaran", formatCurrencyIDR(totals.totalExpense)],
-			["", "", "", "", "", "Saldo Bersih", formatCurrencyIDR(totals.netBalance)],
+			["", "", "", "", "", "", "", "", "", "Total Pemasukan", formatCurrencyIDR(totals.totalIncome)],
+			["", "", "", "", "", "", "", "", "", "Total Pengeluaran", formatCurrencyIDR(totals.totalExpense)],
+			["", "", "", "", "", "", "", "", "", "Saldo Bersih", formatCurrencyIDR(totals.netBalance)],
 		],
 		theme: "striped",
 		styles: { fontSize: 7 },
 		headStyles: { fillColor: [59, 130, 246] },
 		footStyles: { fontStyle: "bold" },
-		columnStyles: { 6: { halign: "right" } },
+		columnStyles: { 10: { halign: "right" } },
 	});
 
 	doc.save(`laporan-transaksi-${Date.now()}.pdf`);
@@ -427,27 +443,31 @@ export function exportTransactionsExcel(
 		["LAPORAN TRANSAKSI DETAIL"],
 		[`Periode: ${period}`],
 		[],
-		["Tanggal", "Jenis", "Kategori", "Merchant", "Keterangan", "Metode Bayar", "Jumlah", "Status"],
+		["Tanggal", "Jenis", "Kategori", "Merchant", "Keterangan", "Grup", "Ref", "No Struk", "Fingerprint", "Metode Bayar", "Jumlah", "Status"],
 		...transactions.map((t) => [
 			new Date(t.date).toLocaleDateString("id-ID"),
 			t.type === "income" ? "Pemasukan" : "Pengeluaran",
 			t.category.replace(/_/g, " "),
 			t.merchant || "-",
 			t.description || "-",
+			(t as any).receiptGroupLabel || "-",
+			(t as any).sourceRef || "-",
+			(t as any).receiptNumber || "-",
+			(t as any).sourceFingerprint || "-",
 			t.paymentMethod || "Cash",
 			t.type === "income" ? t.amount : -t.amount,
 			t.status,
 		]),
 		[],
-		["", "", "", "", "", "Total Pemasukan", totals.totalIncome, ""],
-		["", "", "", "", "", "Total Pengeluaran", totals.totalExpense, ""],
-		["", "", "", "", "", "Saldo Bersih", totals.netBalance, ""],
+		["", "", "", "", "", "", "", "", "", "Total Pemasukan", totals.totalIncome, ""],
+		["", "", "", "", "", "", "", "", "", "Total Pengeluaran", totals.totalExpense, ""],
+		["", "", "", "", "", "", "", "", "", "Saldo Bersih", totals.netBalance, ""],
 	];
 
 	const ws = XLSX.utils.aoa_to_sheet(rows);
 	ws["!cols"] = [
 		{ wch: 14 }, { wch: 12 }, { wch: 22 }, { wch: 20 },
-		{ wch: 30 }, { wch: 14 }, { wch: 18 }, { wch: 12 },
+		{ wch: 30 }, { wch: 14 }, { wch: 18 }, { wch: 16 }, { wch: 20 }, { wch: 14 }, { wch: 18 }, { wch: 12 },
 	];
 	XLSX.utils.book_append_sheet(wb, ws, "Transaksi");
 
@@ -465,6 +485,10 @@ export function exportTransactionsCSV(transactions: TransactionRow[], period: st
 		Kategori: t.category.replace(/_/g, " "),
 		Merchant: t.merchant || "-",
 		Keterangan: t.description || "-",
+		Grup: (t as any).receiptGroupLabel || "-",
+		Referensi: (t as any).sourceRef || "-",
+		"No Struk": (t as any).receiptNumber || "-",
+		Fingerprint: (t as any).sourceFingerprint || "-",
 		"Metode Bayar": t.paymentMethod || "Cash",
 		Jumlah: t.type === "income" ? t.amount : -t.amount,
 		Status: t.status,

@@ -164,6 +164,8 @@ export default defineSchema({
 	})
 		.index("by_date", ["date"])
 		.index("by_type", ["type"])
+		.index("by_type_and_date", ["type", "date"])
+		.index("by_status_and_date", ["status", "date"])
 		.index("by_source_fingerprint", ["sourceFingerprint"]),
 
 	// Orders

@@ -17,6 +17,8 @@ export function TransactionsView() {
 	const [period, setPeriod] = useState<PeriodOption>("this_month");
 	const [dateRange, setDateRange] = useState<DateRange>(getRangeFromPeriod("this_month"));
 	const [viewMode, setViewMode] = useState<"transaction" | "item">("item");
+	const [groupMode, setGroupMode] = useState<"flat" | "grouped">("grouped");
+	const [exportMode, setExportMode] = useState<"transaction" | "item">("item");
 	const [isExporting, setIsExporting] = useState(false);
 	const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
@@ -27,6 +29,22 @@ export function TransactionsView() {
 		startDate: dateRange.startDate,
 		endDate: dateRange.endDate,
 		viewMode,
+		page: 1,
+		pageSize: 200,
+	});
+	const txExportTransaction = useQuery(api.finance.getTransactionDetailReport, {
+		startDate: dateRange.startDate,
+		endDate: dateRange.endDate,
+		viewMode: "transaction",
+		page: 1,
+		pageSize: 500,
+	});
+	const txExportItem = useQuery(api.finance.getTransactionDetailReport, {
+		startDate: dateRange.startDate,
+		endDate: dateRange.endDate,
+		viewMode: "item",
+		page: 1,
+		pageSize: 500,
 	});
 
 	const handlePeriodChange = (p: PeriodOption, range: DateRange) => {
@@ -38,8 +56,19 @@ export function TransactionsView() {
 		setIsExporting(true);
 		try {
 			if (txData) {
-				const transactions = txData.transactions as TransactionRow[];
-				const totals = { totalIncome: txData.totalIncome, totalExpense: txData.totalExpense, netBalance: txData.netBalance };
+				const source = exportMode === "item" ? txExportItem : txExportTransaction;
+				const transactions = ((source?.transactions || txData.transactions) as TransactionRow[]).map((row: any) => ({
+					...row,
+					description:
+						exportMode === "item"
+							? `${row.displaySummary || row.description || "-"} | ${row.receiptGroupLabel || ""}`.trim()
+							: row.description,
+				}));
+				const totals = {
+					totalIncome: source?.totalIncome ?? txData.totalIncome,
+					totalExpense: source?.totalExpense ?? txData.totalExpense,
+					netBalance: source?.netBalance ?? txData.netBalance,
+				};
 				if (format === "pdf") exportTransactionsPDF(transactions, storeName, dateRange.label, totals);
 				else if (format === "excel") exportTransactionsExcel(transactions, storeName, dateRange.label, totals);
 				else exportTransactionsCSV(transactions, dateRange.label);
@@ -197,6 +226,43 @@ export function TransactionsView() {
 							Per Item
 						</button>
 					</div>
+					{viewMode === "item" && (
+						<div className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
+							<button
+								type="button"
+								onClick={() => setGroupMode("grouped")}
+								className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+									groupMode === "grouped"
+										? "bg-background text-foreground shadow-sm"
+										: "text-muted-foreground hover:bg-muted"
+								}`}
+							>
+								Group by
+							</button>
+							<button
+								type="button"
+								onClick={() => setGroupMode("flat")}
+								className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+									groupMode === "flat"
+										? "bg-background text-foreground shadow-sm"
+										: "text-muted-foreground hover:bg-muted"
+								}`}
+							>
+								Flat
+							</button>
+						</div>
+					)}
+					<div className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-2 py-1">
+						<span className="text-[10px] uppercase tracking-wider text-muted-foreground">Export</span>
+						<select
+							value={exportMode}
+							onChange={(e) => setExportMode((e.target.value as "transaction" | "item") || "transaction")}
+							className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+						>
+							<option value="transaction">Per Transaksi</option>
+							<option value="item">Per Item</option>
+						</select>
+					</div>
 				</div>
 			</div>
 
@@ -206,7 +272,7 @@ export function TransactionsView() {
 					<h3 className="font-semibold text-sm">Daftar Transaksi Detail</h3>
 				</div>
 				<div className="p-0">
-					<TransactionDetailReport range={dateRange} viewMode={viewMode} />
+					<TransactionDetailReport range={dateRange} viewMode={viewMode} groupMode={groupMode} />
 				</div>
 			</div>
 

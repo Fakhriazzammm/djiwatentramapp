@@ -167,30 +167,57 @@ async function fetchTransactionsInternal(
 ) {
 	const { type, startDate, endDate, category, status } = args;
 
-	let q =
-		startDate !== undefined || endDate !== undefined
-			? ctx.db.query("financialTransactions").withIndex("by_date", (q) => {
-					if (startDate !== undefined && endDate !== undefined) {
-						return q.gte("date", startDate).lte("date", endDate);
-					}
-					if (startDate !== undefined) {
-						return q.gte("date", startDate);
-					}
-					if (endDate !== undefined) {
-						return q.lte("date", endDate);
-					}
-					return q;
-				})
-			: ctx.db.query("financialTransactions").withIndex("by_date");
-
+	let q;
 	if (type) {
-		q = q.filter((f) => f.eq(f.field("type"), type));
+		q = ctx.db.query("financialTransactions").withIndex("by_type_and_date", (idx) => {
+			if (startDate !== undefined && endDate !== undefined) {
+				return idx.eq("type", type).gte("date", startDate).lte("date", endDate);
+			}
+			if (startDate !== undefined) {
+				return idx.eq("type", type).gte("date", startDate);
+			}
+			if (endDate !== undefined) {
+				return idx.eq("type", type).lte("date", endDate);
+			}
+			return idx.eq("type", type);
+		});
+	} else if (status) {
+		q = ctx.db.query("financialTransactions").withIndex("by_status_and_date", (idx) => {
+			if (startDate !== undefined && endDate !== undefined) {
+				return idx.eq("status", status).gte("date", startDate).lte("date", endDate);
+			}
+			if (startDate !== undefined) {
+				return idx.eq("status", status).gte("date", startDate);
+			}
+			if (endDate !== undefined) {
+				return idx.eq("status", status).lte("date", endDate);
+			}
+			return idx.eq("status", status);
+		});
+	} else if (startDate !== undefined || endDate !== undefined) {
+		q = ctx.db.query("financialTransactions").withIndex("by_date", (idx) => {
+			if (startDate !== undefined && endDate !== undefined) {
+				return idx.gte("date", startDate).lte("date", endDate);
+			}
+			if (startDate !== undefined) {
+				return idx.gte("date", startDate);
+			}
+			if (endDate !== undefined) {
+				return idx.lte("date", endDate);
+			}
+			return idx;
+		});
+	} else {
+		q = ctx.db.query("financialTransactions").withIndex("by_date");
+	}
+
+	if (status && !type) {
+		// Already applied through by_status_and_date branch above
+	} else if (status) {
+		q = q.filter((f) => f.eq(f.field("status"), status));
 	}
 	if (category) {
 		q = q.filter((f) => f.eq(f.field("category"), category));
-	}
-	if (status) {
-		q = q.filter((f) => f.eq(f.field("status"), status));
 	}
 
 	return q;
@@ -532,6 +559,18 @@ function buildTransactionPresentation(
 		displaySummary: parsedDetails.summary || transaction.description || null,
 		detailItems: parsedDetails.details,
 	};
+}
+
+function getScanItemLineTotal(item: {
+	quantity?: number;
+	price?: number;
+	total?: number;
+}) {
+	const quantity = Number(item.quantity) > 0 ? Number(item.quantity) : 1;
+	const totalFromItem = Number(item.total) > 0 ? Number(item.total) : 0;
+	if (totalFromItem > 0) return totalFromItem;
+	const price = Number(item.price) > 0 ? Number(item.price) : 0;
+	return price > 0 ? price * quantity : 0;
 }
 
 async function buildShiftReportDetail(
@@ -1125,11 +1164,30 @@ export const getTransactionDetailReport = query({
 		type: v.optional(v.union(v.literal("income"), v.literal("expense"))),
 		category: v.optional(v.string()),
 		viewMode: v.optional(v.union(v.literal("transaction"), v.literal("item"))),
+		page: v.optional(v.number()),
+		pageSize: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const viewMode = args.viewMode ?? "transaction";
+		const page = Math.max(1, Math.round(args.page ?? 1));
+		const pageSize = Math.min(200, Math.max(10, Math.round(args.pageSize ?? 50)));
 		const q = await fetchTransactionsInternal(ctx, args);
 		const transactions = await q.order("desc").collect();
+		const sourceFingerprintCount = new Map<string, number>();
+		const sourceRefCount = new Map<string, number>();
+		for (const tx of transactions) {
+			const fingerprint = String(tx.sourceFingerprint || "").trim();
+			if (fingerprint) {
+				sourceFingerprintCount.set(
+					fingerprint,
+					(sourceFingerprintCount.get(fingerprint) || 0) + 1
+				);
+			}
+			const sourceRef = String(tx.metadata?.sourceRef || "").trim();
+			if (sourceRef) {
+				sourceRefCount.set(sourceRef, (sourceRefCount.get(sourceRef) || 0) + 1);
+			}
+		}
 		const orderIds = [...new Set(transactions.map((t) => t.orderId).filter(Boolean))];
 		const bookingIds = [...new Set(transactions.map((t) => t.bookingOrderId).filter(Boolean))];
 		const [relatedOrders, relatedBookings] = await Promise.all([
@@ -1194,12 +1252,61 @@ export const getTransactionDetailReport = query({
 				relatedBooking?.bookingCode ||
 				transaction.metadata?.sourceRef ||
 				null;
+			const scanItemTotal = scanItems.reduce(
+				(sum, item) => sum + getScanItemLineTotal(item),
+				0
+			);
+			const scanItemMismatch =
+				scanItems.length > 0 &&
+				Math.abs(scanItemTotal - Number(transaction.amount || 0)) >= 1000 &&
+				Math.abs(scanItemTotal - Number(transaction.amount || 0)) /
+					Math.max(Number(transaction.amount || 0), scanItemTotal, 1) >=
+					0.1;
+			const metadataAny = (transaction.metadata || {}) as any;
+			const ocrConfidence =
+				Number(metadataAny.ocrConfidence) ||
+				Number(metadataAny.confidence) ||
+				null;
+			const ocrFlags: string[] = [];
+			if (String(transaction.metadata?.source || "").includes("ai_receipt_scan")) {
+				if (!transaction.merchant && !transaction.metadata?.receiptDetails?.merchantName) {
+					ocrFlags.push("merchant_missing");
+				}
+				if (scanItems.length === 0) {
+					ocrFlags.push("items_missing");
+				}
+				if (scanItemMismatch) {
+					ocrFlags.push("item_total_mismatch");
+				}
+				if (ocrConfidence !== null && ocrConfidence < 70) {
+					ocrFlags.push("low_confidence");
+				}
+			}
+			const sourceFingerprint = String(transaction.sourceFingerprint || "").trim();
+			const sourceRef = String(transaction.metadata?.sourceRef || "").trim();
+			const duplicateFingerprintCount = sourceFingerprint
+				? sourceFingerprintCount.get(sourceFingerprint) || 0
+				: 0;
+			const duplicateSourceRefCount = sourceRef
+				? sourceRefCount.get(sourceRef) || 0
+				: 0;
 			const baseRow = {
 				...transaction,
 				sourceLabel,
 				sourceType: transaction.metadata?.source || "manual",
 				inputMode: transaction.metadata?.inputMode || null,
 				rawText: transaction.metadata?.rawText || null,
+				sourceRef: sourceRef || null,
+				sourceFingerprint: sourceFingerprint || null,
+				receiptNumber: transaction.metadata?.receiptDetails?.receiptNumber || null,
+				ocrConfidence,
+				ocrFlags,
+				scanItemTotal,
+				hasScanItemMismatch: scanItemMismatch,
+				isPotentialDuplicate:
+					duplicateFingerprintCount > 1 || duplicateSourceRefCount > 1,
+				duplicateFingerprintCount,
+				duplicateSourceRefCount,
 				referenceLabel,
 				referenceValue,
 				displayTitle: presentation.displayTitle,
@@ -1315,6 +1422,7 @@ export const getTransactionDetailReport = query({
 						].slice(0, 10),
 						rowKey: `${transaction._id}::item::${index}`,
 						rowType: "receipt_item",
+						itemIndex: index,
 						receiptGroupId,
 						receiptGroupLabel,
 						receiptItemIndex: index + 1,
@@ -1388,6 +1496,7 @@ export const getTransactionDetailReport = query({
 						].slice(0, 10),
 						rowKey: `${transaction._id}::order_item::${index}`,
 						rowType: "order_item",
+						itemIndex: index,
 						receiptGroupId,
 						receiptGroupLabel,
 						receiptItemIndex: index + 1,
@@ -1461,6 +1570,7 @@ export const getTransactionDetailReport = query({
 						].slice(0, 10),
 						rowKey: `${transaction._id}::booking_item::${index}`,
 						rowType: "booking_item",
+						itemIndex: index,
 						receiptGroupId,
 						receiptGroupLabel,
 						receiptItemIndex: index + 1,
@@ -1475,6 +1585,7 @@ export const getTransactionDetailReport = query({
 					...baseRow,
 					rowKey: String(transaction._id),
 					rowType: "transaction",
+					itemIndex: null,
 					receiptGroupId: null,
 					receiptGroupLabel: null,
 					receiptItemIndex: null,
@@ -1484,12 +1595,20 @@ export const getTransactionDetailReport = query({
 			];
 		});
 
+		const totalCount = enrichedTransactions.length;
+		const start = (page - 1) * pageSize;
+		const pagedTransactions = enrichedTransactions.slice(start, start + pageSize);
+		const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
+
 		return {
-			transactions: enrichedTransactions,
+			transactions: pagedTransactions,
 			totalIncome,
 			totalExpense,
 			netBalance: totalIncome - totalExpense,
-			count: enrichedTransactions.length,
+			count: totalCount,
+			page,
+			pageSize,
+			pageCount,
 		};
 	},
 });
@@ -1512,6 +1631,102 @@ export const deleteTransactionsBulk = mutation({
 			await ctx.db.delete(id);
 		}
 		return { deletedCount: args.ids.length };
+	},
+});
+
+export const deleteTransactionScanItem = mutation({
+	args: {
+		id: v.id("financialTransactions"),
+		itemIndex: v.number(),
+	},
+	handler: async (ctx, args) => {
+		const tx = await ctx.db.get(args.id);
+		if (!tx) throw new Error("Transaksi tidak ditemukan");
+		const scanItems = Array.isArray((tx.metadata as any)?.scanItems)
+			? [...((tx.metadata as any).scanItems as Array<any>)]
+			: [];
+		if (
+			args.itemIndex < 0 ||
+			args.itemIndex >= scanItems.length
+		) {
+			throw new Error("Item tidak valid");
+		}
+		scanItems.splice(args.itemIndex, 1);
+
+		const nextAmount =
+			scanItems.length > 0
+				? Math.round(
+						scanItems.reduce(
+							(sum, item) => sum + getScanItemLineTotal(item),
+							0
+						)
+				  )
+				: tx.amount;
+		const nextMetadata = tx.metadata
+			? {
+					...tx.metadata,
+					scanItems: scanItems.length > 0 ? scanItems : undefined,
+				}
+			: undefined;
+		await ctx.db.patch(args.id, {
+			amount: nextAmount > 0 ? nextAmount : tx.amount,
+			metadata: nextMetadata,
+		});
+		return { success: true, remainingItems: scanItems.length };
+	},
+});
+
+export const updateTransactionScanItem = mutation({
+	args: {
+		id: v.id("financialTransactions"),
+		itemIndex: v.number(),
+		name: v.optional(v.string()),
+		quantity: v.optional(v.number()),
+		price: v.optional(v.number()),
+		total: v.optional(v.number()),
+		unit: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const tx = await ctx.db.get(args.id);
+		if (!tx) throw new Error("Transaksi tidak ditemukan");
+		const scanItems = Array.isArray((tx.metadata as any)?.scanItems)
+			? [...((tx.metadata as any).scanItems as Array<any>)]
+			: [];
+		if (
+			args.itemIndex < 0 ||
+			args.itemIndex >= scanItems.length
+		) {
+			throw new Error("Item tidak valid");
+		}
+		const current = scanItems[args.itemIndex];
+		const nextQuantity = Number(args.quantity ?? current.quantity) || 1;
+		const nextPrice =
+			args.price !== undefined ? Number(args.price) || undefined : current.price;
+		const nextTotal =
+			args.total !== undefined ? Number(args.total) || undefined : current.total;
+		scanItems[args.itemIndex] = {
+			name: args.name?.trim() || current.name,
+			quantity: nextQuantity > 0 ? nextQuantity : 1,
+			price: nextPrice,
+			total: nextTotal,
+			unit: args.unit !== undefined ? args.unit : current.unit,
+		};
+
+		const recomputedAmount = Math.round(
+			scanItems.reduce((sum, item) => sum + getScanItemLineTotal(item), 0)
+		);
+		const nextMetadata = tx.metadata
+			? {
+					...tx.metadata,
+					scanItems,
+				}
+			: { scanItems };
+
+		await ctx.db.patch(args.id, {
+			amount: recomputedAmount > 0 ? recomputedAmount : tx.amount,
+			metadata: nextMetadata as any,
+		});
+		return { success: true };
 	},
 });
 

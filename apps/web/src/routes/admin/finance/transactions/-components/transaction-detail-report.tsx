@@ -31,9 +31,10 @@ const EXPENSE_CATEGORIES = [
 interface Props {
 	range: DateRange;
 	viewMode: "transaction" | "item";
+	groupMode?: "flat" | "grouped";
 }
 
-export function TransactionDetailReport({ range, viewMode }: Props) {
+export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }: Props) {
 	const [filterType, setFilterType] = useState<"income" | "expense" | undefined>(undefined);
 	const [filterCategory, setFilterCategory] = useState<string>("");
 	const [searchQuery, setSearchQuery] = useState("");
@@ -45,9 +46,14 @@ export function TransactionDetailReport({ range, viewMode }: Props) {
 	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 	const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
 	const [selectedRowKeys, setSelectedRowKeys] = useState<Set<string>>(new Set());
+	const [page, setPage] = useState(1);
+	const [pageSize, setPageSize] = useState(50);
+	const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 	
 	const deleteTransaction = useMutation(api.finance.deleteTransaction);
 	const deleteTransactionsBulk = useMutation(api.finance.deleteTransactionsBulk);
+	const deleteTransactionScanItem = useMutation((api as any).finance.deleteTransactionScanItem);
+	const updateTransactionScanItem = useMutation((api as any).finance.updateTransactionScanItem);
 
 	const data = useQuery(api.finance.getTransactionDetailReport, {
 		startDate: range.startDate,
@@ -55,6 +61,8 @@ export function TransactionDetailReport({ range, viewMode }: Props) {
 		type: filterType,
 		category: filterCategory || undefined,
 		viewMode,
+		page,
+		pageSize,
 	});
 
 	const historicalShifts = useQuery(api.finance.getHistoricalShifts, {
@@ -80,6 +88,11 @@ export function TransactionDetailReport({ range, viewMode }: Props) {
 				t.receiptGroupLabel?.toLowerCase().includes(query) ||
 				t.referenceValue?.toLowerCase().includes(query) ||
 				t.rawText?.toLowerCase().includes(query) ||
+				t.sourceRef?.toLowerCase().includes(query) ||
+				t.sourceFingerprint?.toLowerCase().includes(query) ||
+				t.receiptNumber?.toLowerCase().includes(query) ||
+				t.metadata?.receiptDetails?.merchantName?.toLowerCase().includes(query) ||
+				t.metadata?.receiptDetails?.receiptNumber?.toLowerCase().includes(query) ||
 				t.metadata?.scanItems?.some((item: any) => item.name?.toLowerCase().includes(query))
 			);
 		}
@@ -111,6 +124,38 @@ export function TransactionDetailReport({ range, viewMode }: Props) {
 			),
 		[filteredTransactions]
 	);
+	const displayedRows = useMemo(() => {
+		if (viewMode !== "item" || groupMode !== "grouped") {
+			return filteredTransactions;
+		}
+		const groups = new Map<string, any[]>();
+		for (const row of filteredTransactions) {
+			const key = String(row.receiptGroupId || row._id);
+			const bucket = groups.get(key) || [];
+			bucket.push(row);
+			groups.set(key, bucket);
+		}
+		const rows: any[] = [];
+		for (const [groupKey, members] of groups.entries()) {
+			const head = members[0];
+			const groupAmount = members.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+			rows.push({
+				rowType: "group_header",
+				rowKey: `group::${groupKey}`,
+				groupKey,
+				groupLabel: head?.receiptGroupLabel || "GRUP",
+				groupTitle: head?.displayTitle || head?.merchant || "-",
+				groupType: head?.type,
+				groupCount: members.length,
+				groupAmount,
+				isCollapsed: collapsedGroups.has(groupKey),
+			});
+			if (!collapsedGroups.has(groupKey)) {
+				rows.push(...members);
+			}
+		}
+		return rows;
+	}, [filteredTransactions, viewMode, groupMode, collapsedGroups]);
 
 	const selectedVisibleCount = useMemo(
 		() => filteredRowKeys.filter((rowKey) => selectedRowKeys.has(rowKey)).length,
@@ -127,6 +172,10 @@ export function TransactionDetailReport({ range, viewMode }: Props) {
 			return next.size === prev.size ? prev : next;
 		});
 	}, [filteredRowKeys]);
+
+	useEffect(() => {
+		setPage(1);
+	}, [range.startDate, range.endDate, filterType, filterCategory, viewMode, pageSize]);
 
 	const categoryBadge = (category: string, type: string) => {
 		const colorMap: Record<string, string> = {
@@ -145,12 +194,41 @@ export function TransactionDetailReport({ range, viewMode }: Props) {
 		);
 	};
 
-	const handleDelete = async (id: Id<"financialTransactions">) => {
+	const handleDelete = async (transaction: any) => {
+		if (viewMode === "item" && transaction.rowType === "receipt_item") {
+			if (
+				!confirm(
+					`Hapus item ${transaction.receiptItemIndex}/${transaction.receiptItemCount} dari struk ini?`
+				)
+			) {
+				return;
+			}
+			try {
+				await deleteTransactionScanItem({
+					id: transaction._id,
+					itemIndex: Number(transaction.itemIndex) || 0,
+				});
+				toast.success("Item struk berhasil dihapus");
+			} catch (error) {
+				console.error(error);
+				toast.error("Gagal menghapus item struk");
+			}
+			return;
+		}
+		if (
+			viewMode === "item" &&
+			(transaction.rowType === "order_item" || transaction.rowType === "booking_item")
+		) {
+			toast.error("Item order/booking tidak bisa dihapus dari tabel ini. Ubah di modul Order/Booking.");
+			return;
+		}
 		if (!confirm("Apakah Anda yakin ingin menghapus transaksi ini?")) return;
 		try {
-			await deleteTransaction({ id });
+			await deleteTransaction({ id: transaction._id });
 			setSelectedRowKeys((prev) => {
-				const next = new Set([...prev].filter((rowKey) => !rowKey.startsWith(`${id}`)));
+				const next = new Set(
+					[...prev].filter((rowKey) => !rowKey.startsWith(`${transaction._id}`))
+				);
 				if (next.size === prev.size) return prev;
 				return next;
 			});
@@ -204,27 +282,95 @@ export function TransactionDetailReport({ range, viewMode }: Props) {
 		});
 	};
 
+	const toggleGroup = (groupKey: string) => {
+		setCollapsedGroups((prev) => {
+			const next = new Set(prev);
+			if (next.has(groupKey)) next.delete(groupKey);
+			else next.add(groupKey);
+			return next;
+		});
+	};
+
 	const handleBulkDelete = async () => {
+		const selectedRows = filteredTransactions.filter((transaction: any) => {
+			const rowKey = String(transaction.rowKey || transaction._id);
+			return selectedRowKeys.has(rowKey);
+		});
+		if (selectedRows.length === 0) return;
+
+		const receiptItemRows = selectedRows.filter((row: any) => row.rowType === "receipt_item");
+		const unDeletableItemRows = selectedRows.filter(
+			(row: any) => row.rowType === "order_item" || row.rowType === "booking_item"
+		);
+		const transactionRows = selectedRows.filter(
+			(row: any) =>
+				row.rowType === "transaction" ||
+				row.rowType === undefined ||
+				row.rowType === null
+		);
 		const idsToDelete = [
-			...new Set(
-				filteredTransactions
-					.filter((transaction: any) => {
-						const rowKey = String(transaction.rowKey || transaction._id);
-						return selectedRowKeys.has(rowKey);
-					})
-					.map((transaction: any) => transaction._id as Id<"financialTransactions">)
-			),
+			...new Set(transactionRows.map((transaction: any) => transaction._id as Id<"financialTransactions">)),
 		];
-		if (idsToDelete.length === 0) return;
-		if (!confirm(`Hapus ${idsToDelete.length} transaksi terpilih? Aksi ini tidak dapat dibatalkan.`)) return;
+		if (
+			!confirm(
+				`Hapus ${idsToDelete.length} transaksi dan ${receiptItemRows.length} item struk terpilih?`
+			)
+		) {
+			return;
+		}
 
 		try {
-			await deleteTransactionsBulk({ ids: idsToDelete });
+			if (idsToDelete.length > 0) {
+				await deleteTransactionsBulk({ ids: idsToDelete });
+			}
+			if (receiptItemRows.length > 0) {
+				await Promise.all(
+					receiptItemRows.map((row: any) =>
+						deleteTransactionScanItem({
+							id: row._id,
+							itemIndex: Number(row.itemIndex) || 0,
+						})
+					)
+				);
+			}
 			setSelectedRowKeys(new Set());
-			toast.success(`${idsToDelete.length} transaksi berhasil dihapus`);
+			if (unDeletableItemRows.length > 0) {
+				toast.warning(
+					`${idsToDelete.length} transaksi & ${receiptItemRows.length} item struk dihapus. ${unDeletableItemRows.length} item order/booking dilewati.`
+				);
+			} else {
+				toast.success(`${idsToDelete.length} transaksi & ${receiptItemRows.length} item struk berhasil dihapus`);
+			}
 		} catch (error) {
 			console.error(error);
 			toast.error("Gagal menghapus transaksi terpilih");
+		}
+	};
+
+	const handleQuickEditItem = async (transaction: any) => {
+		if (transaction.rowType !== "receipt_item") {
+			toast.error("Quick edit hanya untuk item struk hasil scan");
+			return;
+		}
+		const currentQty = String(transaction.receiptItemIndex ? transaction.detailItems?.find((d: any) => d.label === "Qty")?.value || "1" : "1");
+		const qtyInput = window.prompt("Qty baru (angka):", currentQty.replace(/[^\d.]/g, "") || "1");
+		if (qtyInput === null) return;
+		const priceInput = window.prompt("Harga satuan baru (angka):", String(Math.round(Number(transaction.amount) / Math.max(Number(transaction.receiptItemCount) || 1, 1))));
+		if (priceInput === null) return;
+		const totalInput = window.prompt("Subtotal item baru (angka, opsional):", String(Math.round(Number(transaction.amount) || 0)));
+		if (totalInput === null) return;
+		try {
+			await updateTransactionScanItem({
+				id: transaction._id,
+				itemIndex: Number(transaction.itemIndex) || 0,
+				quantity: Number(qtyInput) || 1,
+				price: Number(priceInput) || undefined,
+				total: Number(totalInput) || undefined,
+			});
+			toast.success("Item struk berhasil diperbarui");
+		} catch (error) {
+			console.error(error);
+			toast.error("Gagal memperbarui item struk");
 		}
 	};
 
@@ -275,6 +421,8 @@ export function TransactionDetailReport({ range, viewMode }: Props) {
 
 		return null;
 	};
+
+	const columnCount = viewMode === "item" ? 16 : 15;
 
 	return (
 		<div className="space-y-4 p-4">
@@ -392,6 +540,22 @@ export function TransactionDetailReport({ range, viewMode }: Props) {
 						</button>
 					)}
 				</div>
+				{viewMode === "item" && (
+					<div className="flex items-center gap-2">
+						<span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+							Grup:
+						</span>
+						<span
+							className={`inline-flex rounded-md border px-2 py-1 text-[11px] ${
+								groupMode === "grouped"
+									? "border-emerald-200 bg-emerald-50 text-emerald-700"
+									: "border-slate-200 bg-slate-50 text-slate-700"
+							}`}
+						>
+							{groupMode === "grouped" ? "Grouped by Struk/Transaksi" : "Flat"}
+						</span>
+					</div>
+				)}
 			</div>
 
 			{/* Summary */}
@@ -491,6 +655,7 @@ export function TransactionDetailReport({ range, viewMode }: Props) {
 								<th className="px-4 py-3">Metode</th>
 								<th className="px-4 py-3">Status</th>
 								<th className="px-4 py-3">Detail</th>
+								<th className="px-4 py-3">Audit</th>
 								<th className="px-4 py-3 text-right">Nominal</th>
 								<th className="px-4 py-3 text-center">Aksi</th>
 							</tr>
@@ -499,12 +664,12 @@ export function TransactionDetailReport({ range, viewMode }: Props) {
 							{!data ? (
 								Array.from({ length: 5 }).map((_, i) => (
 									<tr key={i}>
-										<td colSpan={viewMode === "item" ? 15 : 14} className="px-4 py-4"><Skeleton className="h-4 w-full" /></td>
+										<td colSpan={columnCount} className="px-4 py-4"><Skeleton className="h-4 w-full" /></td>
 									</tr>
 								))
 							) : filteredTransactions.length === 0 ? (
 								<tr>
-									<td colSpan={viewMode === "item" ? 15 : 14} className="px-4 py-12 text-center text-muted-foreground">
+									<td colSpan={columnCount} className="px-4 py-12 text-center text-muted-foreground">
 										<div className="flex flex-col items-center gap-2">
 											<Wallet className="h-8 w-8 opacity-20" />
 											<p>Tidak ada transaksi ditemukan</p>
@@ -512,7 +677,27 @@ export function TransactionDetailReport({ range, viewMode }: Props) {
 									</td>
 								</tr>
 							) : (
-								filteredTransactions.map((t: any) => {
+								displayedRows.map((t: any) => {
+									if (t.rowType === "group_header") {
+										return (
+											<tr key={t.rowKey} className="bg-muted/40">
+												<td colSpan={columnCount} className="px-4 py-2">
+													<button
+														type="button"
+														onClick={() => toggleGroup(t.groupKey)}
+														className="flex w-full items-center justify-between rounded-md border border-border/50 bg-background px-3 py-2 text-left text-xs"
+													>
+														<span className="font-semibold text-foreground">
+															{t.isCollapsed ? "▶" : "▼"} {t.groupLabel} • {t.groupTitle}
+														</span>
+														<span className="text-muted-foreground">
+															{t.groupCount} baris • {formatCurrencyIDR(t.groupAmount)}
+														</span>
+													</button>
+												</td>
+											</tr>
+										);
+									}
 									const rowKey = String(t.rowKey || t._id);
 									let shiftName = "-";
 									if (historicalShifts) {
@@ -678,8 +863,8 @@ export function TransactionDetailReport({ range, viewMode }: Props) {
 												)}
 											</div>
 										</td>
-											<td className="px-3 py-2.5">
-												<div className="flex min-w-[220px] max-w-[260px] flex-wrap gap-1">
+										<td className="px-3 py-2.5">
+											<div className="flex min-w-[220px] max-w-[260px] flex-wrap gap-1">
 													{Array.isArray(t.detailItems) && t.detailItems.length > 0 ? (
 														<>
 															{t.detailItems.slice(0, Array.isArray(t.metadata?.scanItems) && t.metadata.scanItems.length > 0 ? 6 : 4).map((detail: { label: string; value: string }, idx: number) => (
@@ -703,6 +888,36 @@ export function TransactionDetailReport({ range, viewMode }: Props) {
 												)}
 											</div>
 										</td>
+										<td className="px-3 py-2.5">
+											<div className="flex min-w-[180px] max-w-[220px] flex-wrap gap-1">
+												{t.receiptNumber && (
+													<span className="inline-flex rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] text-blue-700">
+														No: {t.receiptNumber}
+													</span>
+												)}
+												{t.sourceRef && (
+													<span className="inline-flex rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-700">
+														Ref: {t.sourceRef}
+													</span>
+												)}
+												{t.sourceFingerprint && (
+													<span className="inline-flex rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-700">
+														FP: {String(t.sourceFingerprint).slice(-8)}
+													</span>
+												)}
+												{t.isPotentialDuplicate && (
+													<span className="inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+														Duplikat
+													</span>
+												)}
+												{Array.isArray(t.ocrFlags) &&
+													t.ocrFlags.slice(0, 2).map((flag: string) => (
+														<span key={flag} className="inline-flex rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] text-rose-700">
+															{flag.replace(/_/g, " ")}
+														</span>
+													))}
+											</div>
+										</td>
 										<td className="px-3 py-2.5 text-right">
 											<span className={`font-bold text-xs whitespace-nowrap ${t.type === "income" ? "text-green-600" : "text-red-600"}`}>
 												{t.type === "income" ? "+" : "-"} {formatCurrencyIDR(t.amount)}
@@ -713,17 +928,21 @@ export function TransactionDetailReport({ range, viewMode }: Props) {
 													<button
 														onClick={(e) => {
 															e.stopPropagation();
+															if (t.rowType === "receipt_item") {
+																void handleQuickEditItem(t);
+																return;
+															}
 															handleEdit(t);
 														}}
 														className="p-1.5 rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-														title="Ubah"
+														title={t.rowType === "receipt_item" ? "Ubah Item" : "Ubah"}
 													>
 														<Pencil className="h-4 w-4" />
 													</button>
 													<button
 														onClick={(e) => {
 															e.stopPropagation();
-															handleDelete(t._id);
+															void handleDelete(t);
 														}}
 														className="p-1.5 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
 														title="Hapus"
@@ -740,6 +959,42 @@ export function TransactionDetailReport({ range, viewMode }: Props) {
 					</table>
 				</div>
 			</div>
+			{data && (
+				<div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 bg-card/60 px-4 py-3">
+					<div className="text-xs text-muted-foreground">
+						Halaman {data.page || page} / {data.pageCount || 1} • Total {data.count} baris
+					</div>
+					<div className="flex items-center gap-2">
+						<select
+							value={pageSize}
+							onChange={(e) => setPageSize(Number(e.target.value) || 50)}
+							className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+						>
+							<option value={25}>25 / halaman</option>
+							<option value={50}>50 / halaman</option>
+							<option value={100}>100 / halaman</option>
+						</select>
+						<button
+							type="button"
+							onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+							disabled={(data.page || page) <= 1}
+							className="rounded-md border border-input px-3 py-1.5 text-xs disabled:opacity-40"
+						>
+							Sebelumnya
+						</button>
+						<button
+							type="button"
+							onClick={() =>
+								setPage((prev) => Math.min(data.pageCount || 1, prev + 1))
+							}
+							disabled={(data.page || page) >= (data.pageCount || 1)}
+							className="rounded-md border border-input px-3 py-1.5 text-xs disabled:opacity-40"
+						>
+							Berikutnya
+						</button>
+					</div>
+				</div>
+			)}
 			
 			<NewTransactionDialog
 				isOpen={isEditDialogOpen}
