@@ -151,7 +151,6 @@ const QUICK_MENU_SECTIONS = [
 const OPERATIONAL_PATHS = [
 	"/admin/kitchen",
 	"/admin/bar",
-	"/admin/operational-team",
 ];
 
 // Flat list for backward compat

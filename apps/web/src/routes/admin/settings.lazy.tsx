@@ -1047,9 +1047,21 @@ export function SettingsPage({
 					{ id: "yumiAI", label: "Yumi AI", icon: ShieldCheck },
 					{ id: "system", label: "Sistem & Perangkat", icon: Settings2 },
 				] as const);
+	const pageContainerClass =
+		mode === "operational-team"
+			? "mx-auto w-full max-w-7xl space-y-4 md:space-y-8"
+			: "mx-auto max-w-5xl space-y-4 md:space-y-8";
+	const teamUsersGridClass =
+		mode === "operational-team"
+			? "grid grid-cols-1 gap-4 md:gap-8 xl:grid-cols-2"
+			: "grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-2";
+	const teamShiftsGridClass =
+		mode === "operational-team"
+			? "grid grid-cols-1 gap-3 xl:grid-cols-2"
+			: "grid grid-cols-1 gap-3 lg:grid-cols-2";
 
 	return (
-		<div className="mx-auto max-w-5xl space-y-4 md:space-y-8">
+		<div className={pageContainerClass}>
 			{/* Header */}
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div>
@@ -2413,7 +2425,7 @@ export function SettingsPage({
 										</button>
 									</div>
 
-									<div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+									<div className={teamShiftsGridClass}>
 										{shiftSettings.predefinedShifts.map((shift, index) => {
 											const schedule =
 												shiftSettings.shiftSchedules.find(
@@ -2596,7 +2608,7 @@ export function SettingsPage({
 								</div>
 							</div>
 
-							<div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-2">
+							<div className={teamUsersGridClass}>
 								{/* Create User Form */}
 								<div className="space-y-4 rounded-2xl border border-border/50 bg-muted/30 p-4 md:space-y-6 md:p-6">
 									<div className="flex items-center gap-2 border-border/50 border-b pb-4">
