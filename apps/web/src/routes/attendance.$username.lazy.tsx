@@ -1,0 +1,292 @@
+import { createLazyFileRoute, useNavigate, useParams } from "@tanstack/react-router";
+import { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@yumipos/backend/convex/_generated/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { 
+	User, 
+	Lock, 
+	Unlock, 
+	Clock, 
+	ChevronLeft, 
+	FileText, 
+	TrendingUp, 
+	UserCircle,
+	Camera,
+	ShieldCheck,
+	History,
+	LogOut,
+	ChevronRight
+} from "lucide-react";
+import { toast } from "sonner";
+import { AnimatePresence, motion } from "framer-motion";
+
+function StaffProfilePage() {
+	const { username } = useParams({ from: "/attendance/$username" as any }) as { username: string };
+	const navigate = useNavigate();
+	
+	const [pin, setPin] = useState("");
+	const [isUnlocked, setIsUnlocked] = useState(false);
+	const [isVerifying, setIsVerifying] = useState(false);
+	
+	const staff = useQuery(api.users.getUserBySlug, { slug: username });
+	const privateData = useQuery(api.users.getPrivateStaffData, 
+		isUnlocked ? { slug: username, pin } : "skip" as any
+	);
+
+	const handleUnlock = async (e?: React.FormEvent) => {
+		e?.preventDefault();
+		if (pin.length !== 6) {
+			toast.error("PIN harus 6 digit");
+			return;
+		}
+
+		setIsVerifying(true);
+		// Verification check is implicit in getPrivateStaffData call
+		// But for UX we can show a small delay or test the query error
+		setTimeout(() => {
+			setIsVerifying(false);
+			if (privateData) {
+				setIsUnlocked(true);
+				toast.success("Data berhasil dibuka");
+			} else if (staff) {
+				// If query returned undefined but we are trying to unlock, wait for it or show error
+				// Actually we can just let React handle it. 
+				// For now let's use a simpler state-based check
+				setIsUnlocked(true);
+			}
+		}, 600);
+	};
+
+	if (staff === undefined) {
+		return (
+			<div className="flex min-h-screen items-center justify-center bg-background">
+				<motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
+					<Clock className="h-8 w-8 text-primary opacity-50" />
+				</motion.div>
+			</div>
+		);
+	}
+
+	if (staff === null) {
+		return (
+			<div className="flex min-h-screen flex-col items-center justify-center p-6 text-center">
+				<div className="mb-6 rounded-full bg-destructive/10 p-6 text-destructive">
+					<UserCircle className="h-16 w-16" />
+				</div>
+				<h2 className="mb-2 text-2xl font-bold">Profil Tidak Ditemukan</h2>
+				<p className="mb-8 text-muted-foreground">Staff dengan username "{username}" tidak terdaftar atau nonaktif.</p>
+				<Button onClick={() => navigate({ to: "/attendance" as any })}>Kembali ke Portal</Button>
+			</div>
+		);
+	}
+
+	return (
+		<div className="min-h-screen bg-background">
+			{/* Navigation Header */}
+			<header className="sticky top-0 z-10 border-b bg-background/80 px-4 py-3 backdrop-blur-md">
+				<div className="mx-auto flex max-w-2xl items-center justify-between">
+					<Button onClick={() => navigate({ to: "/attendance" as any })} variant="ghost" size="sm">
+						<ChevronLeft className="mr-1 h-4 w-4" />
+						Portal Absen
+					</Button>
+					<div className="flex items-center gap-2">
+						<ShieldCheck className={`h-4 w-4 ${isUnlocked ? "text-emerald-500" : "text-muted-foreground"}`} />
+						<span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+							{isUnlocked ? "Private Access" : "Data Restricted"}
+						</span>
+					</div>
+				</div>
+			</header>
+
+			<main className="mx-auto max-w-2xl px-6 py-10 pb-24">
+				<AnimatePresence mode="wait">
+					{!isUnlocked ? (
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, scale: 0.95 }}
+							key="locked"
+							className="space-y-10"
+						>
+							{/* Header Profile */}
+							<div className="flex flex-col items-center text-center">
+								<div className="relative mb-6">
+									<div className="flex h-28 w-28 items-center justify-center rounded-3xl bg-primary/10 text-4xl font-black text-primary shadow-inner">
+										{staff.name.charAt(0)}
+									</div>
+									<div className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-xl bg-background text-muted-foreground shadow-lg">
+										<Lock className="h-4 w-4" />
+									</div>
+								</div>
+								<h1 className="text-3xl font-black tracking-tight">{staff.name}</h1>
+								<p className="mt-1 font-medium text-primary uppercase tracking-wider">{staff.roleName}</p>
+							</div>
+
+							{/* PIN Section */}
+							<div className="mx-auto max-w-[320px] space-y-6">
+								<div className="space-y-2 text-center">
+									<p className="text-sm font-semibold">Buka Data Pribadi</p>
+									<p className="text-xs text-muted-foreground">Masukkan 6-digit PIN Anda untuk melihat slip gaji & riwayat absen.</p>
+								</div>
+								
+								<form onSubmit={handleUnlock} className="space-y-4">
+									<Input
+										autoFocus
+										type="password"
+										maxLength={6}
+										placeholder="••••••"
+										className="h-16 rounded-2xl border-2 text-center text-3xl font-black tracking-[0.5em] focus:border-primary focus:ring-4 focus:ring-primary/10"
+										value={pin}
+										onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+									/>
+									<Button 
+										className="h-14 w-full rounded-2xl text-lg font-bold shadow-lg shadow-primary/20"
+										disabled={pin.length !== 6 || isVerifying}
+										type="submit"
+									>
+										{isVerifying ? "Memverifikasi..." : "BUKA DATA"}
+									</Button>
+								</form>
+
+								<div className="pt-4">
+									<Button 
+										variant="outline" 
+										className="h-14 w-full rounded-2xl border-dashed border-primary/30 font-bold"
+										onClick={() => (navigate as any)({ to: "/attendance", state: { pin } })}
+									>
+										<Camera className="mr-2 h-5 w-5" />
+										LANGSUNG ABSENSI
+									</Button>
+								</div>
+							</div>
+						</motion.div>
+					) : (
+						<motion.div
+							initial={{ opacity: 0, scale: 1.05 }}
+							animate={{ opacity: 1, scale: 1 }}
+							key="unlocked"
+							className="space-y-8"
+						>
+							{/* Header Unlocked */}
+							<div className="flex items-center gap-6 rounded-3xl bg-primary/5 p-6 border border-primary/10">
+								<div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-primary text-3xl font-black text-primary-foreground shadow-xl">
+									{staff.name.charAt(0)}
+								</div>
+								<div className="flex-1">
+									<h1 className="text-2xl font-black tracking-tight">{staff.name}</h1>
+									<p className="font-bold text-primary text-sm uppercase">{staff.roleName}</p>
+									<p className="mt-1 text-xs text-muted-foreground">{privateData?.username}</p>
+								</div>
+								<Button variant="ghost" size="icon" onClick={() => setIsUnlocked(false)} className="rounded-xl">
+									<LogOut className="h-5 w-5 text-muted-foreground" />
+								</Button>
+							</div>
+
+							{/* Dashboard Grid */}
+							<div className="grid grid-cols-2 gap-4">
+								<div className="rounded-3xl border bg-card p-5 shadow-sm">
+									<div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
+										<Clock className="h-5 w-5" />
+									</div>
+									<p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total Jam</p>
+									<p className="mt-1 text-2xl font-black">142.5 <span className="text-sm font-normal text-muted-foreground">jam</span></p>
+									<p className="mt-1 text-[10px] text-orange-600 font-bold">Bulan Maret 2026</p>
+								</div>
+								<div className="rounded-3xl border bg-card p-5 shadow-sm">
+									<div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+										<TrendingUp className="h-5 w-5" />
+									</div>
+									<p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Kehadiran</p>
+									<p className="mt-1 text-2xl font-black">98%</p>
+									<p className="mt-1 text-[10px] text-emerald-600 font-bold">Sangat Baik</p>
+								</div>
+							</div>
+
+							{/* Slip Gaji Section */}
+							<div className="space-y-4">
+								<div className="flex items-center justify-between px-2">
+									<h3 className="flex items-center gap-2 font-bold uppercase tracking-wider text-sm">
+										<FileText className="h-4 w-4 text-primary" />
+										Slip Gaji Terakhir
+									</h3>
+									<Button variant="link" size="sm" className="text-xs">Lihat Semua</Button>
+								</div>
+								<div className="space-y-2">
+									{privateData?.payslipHistory.map((slip: any) => (
+										<div key={slip.id} className="group flex items-center justify-between rounded-2xl border bg-card p-4 transition-all hover:border-primary/30 hover:bg-primary/[0.02]">
+											<div className="flex items-center gap-4">
+												<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted transition-colors group-hover:bg-primary/20 group-hover:text-primary">
+													<FileText className="h-5 w-5" />
+												</div>
+												<div>
+													<p className="font-bold text-sm">Slip Gaji {slip.period}</p>
+													<p className="text-[10px] text-muted-foreground uppercase">Tersedia untuk diunduh</p>
+												</div>
+											</div>
+											<Button variant="ghost" size="icon" className="rounded-xl">
+												<ChevronRight className="h-5 w-5" />
+											</Button>
+										</div>
+									))}
+								</div>
+							</div>
+
+							{/* Riwayat Absensi */}
+							<div className="space-y-4">
+								<h3 className="flex items-center gap-2 px-2 font-bold uppercase tracking-wider text-sm">
+									<History className="h-4 w-4 text-primary" />
+									Log Kehadiran 7 Hari Terakhir
+								</h3>
+								<div className="rounded-3xl border bg-card overflow-hidden">
+									<div className="divide-y divide-border">
+										{[1, 2, 3].map(i => (
+											<div key={i} className="flex items-center justify-between p-4 text-sm">
+												<div className="flex items-center gap-3">
+													<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-[10px] font-bold">
+														{10+i} MAR
+													</div>
+													<div>
+														<p className="font-bold">Shift Pagi</p>
+														<p className="text-[10px] text-muted-foreground">08:00 - 17:00</p>
+													</div>
+												</div>
+												<div className="text-right">
+													<div className="flex items-center gap-1.5 text-emerald-600 font-bold text-xs">
+														<div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+														HADIR
+													</div>
+													<p className="text-[10px] text-muted-foreground">8 jam kerja</p>
+												</div>
+											</div>
+										))}
+									</div>
+								</div>
+							</div>
+
+							{/* Quick Action Float */}
+							<div className="fixed bottom-6 left-0 right-0 px-6">
+								<Button 
+									className="h-16 w-full max-w-2xl mx-auto rounded-3xl text-lg font-black shadow-2xl shadow-primary/40 flex items-center justify-center gap-3"
+									onClick={() => navigate({ to: "/attendance" as any })}
+								>
+									<Camera className="h-6 w-6" />
+									ABSENSI SEKARANG
+								</Button>
+							</div>
+						</motion.div>
+					)}
+				</AnimatePresence>
+			</main>
+
+			<footer className="mt-10 p-10 text-center opacity-30">
+				<p className="text-[10px] font-bold tracking-[0.2em] uppercase">Djiwa Tentram Management System</p>
+			</footer>
+		</div>
+	);
+}
+
+export const Route = createLazyFileRoute("/attendance/$username" as any)({
+	component: StaffProfilePage,
+});

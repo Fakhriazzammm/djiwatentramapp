@@ -14,15 +14,13 @@ function AttendancePage() {
 	const [step, setStep] = useState<"pin" | "face" | "success">("pin");
 	const [pin, setPin] = useState("");
 	const [user, setUser] = useState<{ id: string; name: string; role: string; faceDescriptor?: number[] } | null>(null);
+	const [isEnrolling, setIsEnrolling] = useState(false);
 	const [isVerifyingPin, setIsVerifyingPin] = useState(false);
 
 	const verifyPin = useMutation(api.users.verifyHomePin);
+	const updateFace = useMutation(api.users.updateFaceDescriptor);
 	const clockIn = useMutation(api.attendance.clockIn);
 	const clockOut = useMutation(api.attendance.clockOut);
-	
-	// Fetch user details including faceDescriptor if PIN is valid
-	// Note: verifyHomePin returns minimal info, we might need a getByPin query for better UX
-	// but for now we follow the existing verifyHomePin signature.
 	
 	const handlePinSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -34,9 +32,18 @@ function AttendancePage() {
 		setIsVerifyingPin(true);
 		try {
 			const result = await verifyPin({ pinCode: pin });
-			// verifyHomePin doesn't return descriptor, let's assume we need to fetch it
-			// For this MVP, I'll update the verifyHomePin on backend to include it or just proceed
-			setUser({ id: result.userId, name: result.name, role: result.role });
+			setUser({ 
+				id: result.userId, 
+				name: result.name, 
+				role: result.role,
+				faceDescriptor: result.faceDescriptor 
+			});
+			
+			// If no face data, go to enroll mode automatically
+			if (!result.faceDescriptor || result.faceDescriptor.length === 0) {
+				setIsEnrolling(true);
+			}
+			
 			setStep("face");
 		} catch (err) {
 			toast.error((err as Error).message || "PIN salah");
@@ -45,22 +52,34 @@ function AttendancePage() {
 		}
 	};
 
-	const handleFaceMatched = async () => {
+	const handleFaceProcessed = async (descriptor: number[]) => {
 		if (!user) return;
 
 		try {
-			// Determine if clocking in or out based on current status
-			// For simplicity in this UI, we can ask user or auto-toggle
-			// Let's assume auto-toggle for now
+			// If in enroll mode, save the face data first
+			if (isEnrolling) {
+				toast.loading("Menyimpan biometrik...", { id: "save-face" });
+				await updateFace({
+					userId: user.id as any,
+					faceDescriptor: descriptor,
+				});
+				toast.success("Wajah berhasil terdaftar!", { id: "save-face" });
+			}
+
+			// Proceed with attendance recording
+			toast.loading("Mencatat kehadiran...", { id: "clocking" });
 			await clockIn({ userId: user.id as any });
+			toast.dismiss("clocking");
+			
 			setStep("success");
-			toast.success(`Berhasil Absen! Halo, ${user.name}`);
+			toast.success(`Berhasil! Selamat bertugas, ${user.name}`);
 			
 			setTimeout(() => {
 				navigate({ to: "/home" });
 			}, 3000);
 		} catch (err) {
-			toast.error("Gagal mencatat absensi");
+			toast.dismiss();
+			toast.error("Gagal memproses absensi");
 		}
 	};
 
@@ -126,20 +145,41 @@ function AttendancePage() {
 								key="face-step"
 							>
 								<div className="space-y-1">
-									<h2 className="text-2xl font-bold tracking-tight">Verifikasi Wajah</h2>
-									<p className="font-medium text-primary">Halo, {user?.name}</p>
-									<p className="text-xs text-muted-foreground">Silakan arahkan wajah ke kamera</p>
+									<h2 className="text-2xl font-bold tracking-tight">
+										{isEnrolling ? "Pendaftaran Wajah Baru" : "Verifikasi Wajah"}
+									</h2>
+									<p className="font-medium text-primary text-lg">Halo, {user?.name}</p>
+									<p className="text-sm text-black font-semibold">
+										{isEnrolling 
+											? "Wajah Anda belum terdaftar. Silakan lakukan pemindaian wajah untuk pertama kali." 
+											: "Silakan arahkan wajah ke kamera"}
+									</p>
 								</div>
 
 								<FaceRecognition
-									mode="verify"
-									onMatch={handleFaceMatched}
+									mode={isEnrolling ? "enroll" : "verify"}
+									onCapture={isEnrolling ? handleFaceProcessed : undefined}
+									onMatch={!isEnrolling ? () => handleFaceProcessed(user?.faceDescriptor || []) : undefined}
 									targetDescriptor={user?.faceDescriptor}
 								/>
 								
-								<Button className="w-full" onClick={() => setStep("pin")} variant="ghost">
-									Bukan Anda? Ganti PIN
-								</Button>
+								<div className="flex flex-col gap-2 pt-2">
+									{!isEnrolling && (
+										<Button 
+											className="w-full text-muted-foreground transition-colors hover:text-destructive" 
+											variant="outline"
+											onClick={() => {
+												setIsEnrolling(true);
+												toast.info("Anda sekarang dalam mode pendaftaran ulang wajah.");
+											}}
+										>
+											Wajah Berubah? Daftar Ulang Wajah
+										</Button>
+									)}
+									<Button className="w-full" onClick={() => setStep("pin")} variant="ghost">
+										Bukan Anda? Ganti PIN
+									</Button>
+								</div>
 							</motion.div>
 						)}
 

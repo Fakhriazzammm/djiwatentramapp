@@ -20,6 +20,17 @@ function isValidHomePin(pin: string) {
 	return /^\d{6}$/.test(pin);
 }
 
+function normalizeSlug(text: string) {
+	return text
+		.toLowerCase()
+		.trim()
+		.replace(/[\s_]+/g, "-") // Space/underscore to dash
+		.replace(/[^\w-]+/g, "") // Remove non-word except dash
+		.replace(/--+/g, "-") // Multiple dashes to single
+		.replace(/^-+/, "") // Trim leading dashes
+		.replace(/-+$/, ""); // Trim trailing dashes
+}
+
 // Simple password hashing (MVP: In production use bcrypt/argon2 via external action)
 // For now we store as plain text or simple hash to avoid heavy dependencies on Convex runtime without Actions
 // IMPORTANT: For a real app, use an Action to hash passwords safely.
@@ -171,10 +182,13 @@ export const createUser = mutation({
 		roleId: v.id("roles"),
 		authUserId: v.optional(v.string()), // Optional bind immediately
 		receiveReportEmails: v.optional(v.boolean()),
+		slug: v.optional(v.string()), // Unique username for URL profile
 	},
 	handler: async (ctx, args) => {
 		const username = normalizeEmail(args.username);
 		const homePin = normalizeHomePin(args.homePin);
+		const slug = normalizeSlug(args.slug || username.split("@")[0]);
+
 		if (!isValidEmail(username)) {
 			throw new Error("Username harus berupa email yang valid");
 		}
@@ -182,6 +196,7 @@ export const createUser = mutation({
 			throw new Error("PIN akses home harus 6 digit angka");
 		}
 
+		// Uniqueness checks
 		const existing = await ctx.db
 			.query("users")
 			.withIndex("by_username", (q) => q.eq("username", username))
@@ -189,6 +204,15 @@ export const createUser = mutation({
 		if (existing) {
 			throw new Error("Username already taken");
 		}
+
+		const existingSlug = await ctx.db
+			.query("users")
+			.withIndex("by_slug", (q) => q.eq("slug", slug))
+			.first();
+		if (existingSlug) {
+			throw new Error("Username profil (slug) sudah dipakai pengguna lain");
+		}
+
 		if (homePin) {
 			const pinOwner = await ctx.db
 				.query("users")
@@ -198,10 +222,12 @@ export const createUser = mutation({
 				throw new Error("PIN akses home sudah dipakai pengguna lain");
 			}
 		}
+
 		return await ctx.db.insert("users", {
 			...args,
 			username,
 			homePin,
+			slug,
 			password: args.password || "", // Default empty if not provided
 			isActive: true, // Default active
 			receiveReportEmails: args.receiveReportEmails ?? false,
@@ -309,6 +335,7 @@ export const updateUser = mutation({
 		password: v.optional(v.string()),
 		authUserId: v.optional(v.string()),
 		faceDescriptor: v.optional(v.array(v.number())),
+		slug: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const { id, username, ...updates } = args;
@@ -335,6 +362,20 @@ export const updateUser = mutation({
 
 			nextUpdates.username = normalizedUsername;
 		}
+
+		if (args.slug !== undefined) {
+			const normalizedSlugStr = normalizeSlug(args.slug);
+			const existingSlug = await ctx.db
+				.query("users")
+				.withIndex("by_slug", (q) => q.eq("slug", normalizedSlugStr))
+				.first();
+
+			if (existingSlug && existingSlug._id !== id) {
+				throw new Error("Username profil (slug) sudah dipakai pengguna lain");
+			}
+			nextUpdates.slug = normalizedSlugStr;
+		}
+
 		if (updates.homePin !== undefined) {
 			if (homePin && !isValidHomePin(homePin)) {
 				throw new Error("PIN akses home harus 6 digit angka");
@@ -406,6 +447,78 @@ export const deleteUser = mutation({
 	},
 	handler: async (ctx, args) => {
 		return await ctx.db.delete(args.id);
+	},
+});
+
+// Staff Profile Queries
+export const getUserBySlug = query({
+	args: { slug: v.string() },
+	handler: async (ctx, args) => {
+		const user = await ctx.db
+			.query("users")
+			.withIndex("by_slug", (q) => q.eq("slug", args.slug))
+			.first();
+		
+		if (!user || !user.isActive) return null;
+		
+		const role = await ctx.db.get(user.roleId);
+		
+		return {
+			_id: user._id,
+			name: user.name,
+			slug: user.slug,
+			roleName: role?.name || "Team",
+			hasFace: !!user.faceDescriptor,
+		};
+	},
+});
+
+export const getPrivateStaffData = query({
+	args: { 
+		slug: v.string(),
+		pin: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const user = await ctx.db
+			.query("users")
+			.withIndex("by_slug", (q) => q.eq("slug", args.slug))
+			.first();
+		
+		if (!user || !user.isActive) throw new Error("Staff tidak ditemukan");
+		if (user.homePin !== args.pin) throw new Error("PIN salah");
+		
+		// Return sensitive data
+		return {
+			name: user.name,
+			username: user.username,
+			roleId: user.roleId,
+			receiveReportEmails: user.receiveReportEmails,
+			lastLogin: user.lastLogin,
+			attendanceSummary: {
+				totalHoursThisMonth: 0, // Placeholder
+				lastAction: "none", // Placeholder
+			},
+			payslipHistory: [
+				{ id: "1", period: "Maret 2026", amount: 0, status: "pending" },
+			],
+		};
+	},
+});
+
+// Migration helper
+export const backfillSlugs = mutation({
+	args: {},
+	handler: async (ctx) => {
+		const users = await ctx.db.query("users").collect();
+		let count = 0;
+		for (const user of users) {
+			if (!user.slug) {
+				const slug = normalizeSlug(user.username.split("@")[0]);
+				await ctx.db.patch(user._id, { slug });
+				count++;
+			}
+		}
+		return `Backfilled ${count} users with slugs`;
 	},
 });
 

@@ -523,11 +523,13 @@ export default defineSchema({
 		lastLogin: v.optional(v.number()),
 		authUserId: v.optional(v.string()), // ID from Better Auth
 		faceDescriptor: v.optional(v.array(v.number())), // Facial biometric data
+		slug: v.optional(v.string()), // Unique username for URL profile
 	})
 		.index("by_username", ["username"])
 		.index("by_role", ["roleId"])
 		.index("by_homePin", ["homePin"])
-		.index("by_auth_user_id", ["authUserId"]),
+		.index("by_auth_user_id", ["authUserId"])
+		.index("by_slug", ["slug"]),
 
 	// Scheduled Reports for automatic reporting
 	scheduledReports: defineTable({

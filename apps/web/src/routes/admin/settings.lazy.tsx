@@ -558,6 +558,7 @@ export function SettingsPage({
 		name: "",
 		roleId: "",
 		homePin: "",
+		slug: "",
 	});
 	const [newRole, setNewRole] = useState({
 		name: "",
@@ -571,6 +572,7 @@ export function SettingsPage({
 		isActive: boolean;
 		receiveReportEmails: boolean;
 		homePin: string;
+		slug: string;
 	} | null>(null);
 	const [editingRole, setEditingRole] = useState<{
 		_id: string;
@@ -829,6 +831,7 @@ export function SettingsPage({
 				name: newUser.name,
 				roleId: newUser.roleId as Id<"roles">,
 				homePin: normalizedHomePin || undefined,
+				slug: newUser.slug || undefined,
 			});
 
 			// Best effort sync to external auth provider.
@@ -859,6 +862,7 @@ export function SettingsPage({
 					name: "",
 					roleId: "",
 					homePin: "",
+					slug: "",
 				});
 				toast.success("User berhasil dibuat!");
 			}
@@ -877,6 +881,7 @@ export function SettingsPage({
 			isActive: user.isActive ?? true,
 			receiveReportEmails: user.receiveReportEmails ?? false,
 			homePin: "",
+			slug: user.slug || "",
 		});
 	};
 
@@ -912,6 +917,7 @@ export function SettingsPage({
 				isActive: editingUser.isActive,
 				receiveReportEmails: editingUser.receiveReportEmails,
 				homePin: editingUser.homePin.trim() || undefined,
+				slug: editingUser.slug,
 				faceDescriptor: (editingUser as any).faceDescriptor,
 			});
 			toast.success("Pengguna berhasil diperbarui");
@@ -2784,6 +2790,26 @@ export function SettingsPage({
 													Kosongkan jika PIN belum ingin diatur.
 												</p>
 											)}
+											<div className="space-y-2">
+												<label className="font-medium text-muted-foreground text-xs">
+													Username Profil (Slug URL)
+												</label>
+												<div className="relative">
+													<span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground text-xs">/at/</span>
+													<input
+														className="w-full rounded-xl bg-background py-3 pr-3 pl-10 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20 lowercase"
+														onChange={(e) =>
+															setNewUser({ ...newUser, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })
+														}
+														placeholder="contoh-nama"
+														type="text"
+														value={newUser.slug}
+													/>
+												</div>
+												<p className="px-1 text-[10px] text-muted-foreground italic">
+													Default: bagian depan email.
+												</p>
+											</div>
 										</div>
 										<div className="space-y-2">
 											<label
@@ -2820,8 +2846,6 @@ export function SettingsPage({
 										</button>
 									</div>
 								</div>
-
-								{/* Create Role Form */}
 								<div className="space-y-4 rounded-2xl border border-border/50 bg-muted/30 p-4 md:space-y-6 md:p-6">
 									<div className="flex items-center gap-2 border-border/50 border-b pb-4">
 										<Settings2 className="h-4 w-4 text-primary" />
@@ -2937,7 +2961,7 @@ export function SettingsPage({
 														</div>
 														<div className="space-y-1.5">
 															<label className="font-medium text-muted-foreground text-xs">
-																Email / Username
+																Email / Username Login
 															</label>
 															<input
 																className="w-full rounded-xl border border-border bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
@@ -2950,6 +2974,26 @@ export function SettingsPage({
 																type="email"
 																value={editingUser.username}
 															/>
+														</div>
+														<div className="space-y-1.5">
+															<label className="font-medium text-muted-foreground text-xs">
+																Username Profil (Slug URL)
+															</label>
+															<div className="relative">
+																<span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground text-xs">/at/</span>
+																<input
+																	className="w-full rounded-xl border border-border bg-background py-3 pr-3 pl-10 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20 lowercase"
+																	onChange={(e) =>
+																		setEditingUser({
+																			...editingUser,
+																			slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+																		})
+																	}
+																	placeholder="fakhri-barista"
+																	type="text"
+																	value={editingUser.slug}
+																/>
+															</div>
 														</div>
 														<div className="space-y-1.5">
 															<label className="font-medium text-muted-foreground text-xs">
