@@ -63,11 +63,8 @@ function LoginPage() {
 			login(result.token);
 			toast.success(`Selamat datang, ${result.user.name}`);
 			
-			// Redirect based on role
-			// Note: useYumiAuth might need a tick to update, 
-			// so we can use the result from mutation.
-			// But for simplicity, we'll let the global guard handle redirect or go to /home
-			navigate({ to: "/home" });
+			// Redirect to home (Root guard will handle staff-specific redirects if needed)
+			navigate({ to: "/home" as any });
 		} catch (err: any) {
 			toast.error(err.message || "PIN salah");
 			setPin("");

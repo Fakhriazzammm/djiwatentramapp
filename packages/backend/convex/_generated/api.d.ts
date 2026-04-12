@@ -40,7 +40,6 @@ import type * as stockPurchases from "../stockPurchases.js";
 import type * as toolExecutors from "../toolExecutors.js";
 import type * as tools from "../tools.js";
 import type * as users from "../users.js";
-import type * as yumiAuth from "../yumiAuth.js";
 
 import type {
   ApiFromModules,
@@ -81,7 +80,6 @@ declare const fullApi: ApiFromModules<{
   toolExecutors: typeof toolExecutors;
   tools: typeof tools;
   users: typeof users;
-  yumiAuth: typeof yumiAuth;
 }>;
 
 /**
