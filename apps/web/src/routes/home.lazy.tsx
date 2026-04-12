@@ -28,7 +28,6 @@ import { toast } from "sonner";
 import { formatCurrencyIDR } from "@/lib/export-utils";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 
-const HOME_PIN_SESSION_KEY = "home_access_unlocked_v1";
 type RoleMenuItem = {
 	to: string;
 	label: string;
@@ -278,7 +277,6 @@ function HomePage() {
 	const shiftRows = useQuery(api.finance.getShiftReportTable, {}) as
 		| ShiftRow[]
 		| undefined;
-	const verifyHomePin = useMutation((api as any).users.verifyHomePin);
 
 	const dateText = new Intl.DateTimeFormat("id-ID", {
 		weekday: "long",
@@ -294,19 +292,7 @@ function HomePage() {
 		return "Selamat Malam";
 	}, []);
 
-	const [pinCode, setPinCode] = useState("");
-	const [isVerifyingPin, setIsVerifyingPin] = useState(false);
-	const [isUnlocked, setIsUnlocked] = useState(false);
 	const [selectedShiftStart, setSelectedShiftStart] = useState<number | null>(null);
-
-	useEffect(() => {
-		const hasSession =
-			typeof window !== "undefined" &&
-			window.sessionStorage.getItem(HOME_PIN_SESSION_KEY) === "1";
-		if (hasSession) {
-			setIsUnlocked(true);
-		}
-	}, []);
 
 	useEffect(() => {
 		if (!shiftRows?.length) {
@@ -340,104 +326,14 @@ function HomePage() {
 		return buildShiftSummaryText(selectedShift, shiftDetails);
 	}, [selectedShift, shiftDetails]);
 
-	const handleUnlockHome = async () => {
-		if (!/^\d{6}$/.test(pinCode)) {
-			toast.error("PIN harus 6 digit angka");
-			return;
-		}
-
-		try {
-			setIsVerifyingPin(true);
-			await verifyHomePin({ pinCode });
-			window.sessionStorage.setItem(HOME_PIN_SESSION_KEY, "1");
-			setIsUnlocked(true);
-			setPinCode("");
-			toast.success("PIN valid, akses dibuka");
-		} catch (error) {
-			console.error(error);
-			toast.error((error as Error).message || "PIN tidak valid");
-		} finally {
-			setIsVerifyingPin(false);
-		}
-	};
-
 	const handleLogout = async () => {
 		try {
 			await logout();
-			window.sessionStorage.removeItem(HOME_PIN_SESSION_KEY);
-			setIsUnlocked(false);
-			// toast.info is already handled inside useYumiAuth.logout but we can add more context if needed
 		} catch (error) {
 			console.error(error);
 			toast.error("Gagal melakukan proses keluar");
 		}
 	};
-
-	if (!isUnlocked) {
-		return (
-			<div className="app-page min-h-app bg-background text-foreground">
-				<div className="mx-auto flex min-h-app w-full max-w-md items-center px-4 py-8">
-					<div className="app-card w-full space-y-5 p-5 md:p-6">
-						<div className="text-center">
-							<div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-								<LockKeyhole className="h-6 w-6" />
-							</div>
-							<h1 className="mt-3 font-black text-2xl tracking-tight">
-								Akses Home
-							</h1>
-							<p className="mt-1 text-sm text-muted-foreground">
-								Masukkan PIN 6 digit yang diatur di Pengguna & Akses.
-							</p>
-						</div>
-
-						<div className="space-y-2">
-							<label className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-								PIN Akses
-							</label>
-							<input
-								type="password"
-								inputMode="numeric"
-								pattern="\d*"
-								maxLength={6}
-								autoFocus
-								placeholder="••••••"
-								value={pinCode}
-								onChange={(e) =>
-									setPinCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-								}
-								onKeyDown={(event) => {
-									if (event.key === "Enter") {
-										event.preventDefault();
-										void handleUnlockHome();
-									}
-								}}
-								className="w-full rounded-2xl border border-border bg-background p-3 text-center font-mono text-lg tracking-[0.45em] outline-none transition-all focus:ring-2 focus:ring-primary/20"
-							/>
-							<p className="text-[11px] text-muted-foreground">
-								PIN hanya menerima angka 0-9.
-							</p>
-						</div>
-
-						<button
-							type="button"
-							onClick={() => void handleUnlockHome()}
-							disabled={isVerifyingPin}
-							className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-						>
-							{isVerifyingPin ? (
-								<>
-									<Loader2 className="h-4 w-4 animate-spin" />
-									Memverifikasi...
-								</>
-							) : (
-								"Masuk /home"
-							)}
-						</button>
-					</div>
-				</div>
-			</div>
-		);
-	}
 
 	return (
 		<div className="app-page min-h-app text-foreground">
