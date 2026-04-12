@@ -14,7 +14,6 @@ import {
 	LockKeyhole,
 	Loader2,
 	LogOut,
-	LogIn,
 	Package,
 	Receipt,
 	ShieldCheck,
@@ -464,14 +463,7 @@ function HomePage() {
 							</div>
 						</div>
 
-						<div className="relative flex items-center gap-2">
-							<button
-								onClick={() => navigate({ to: "/" })}
-								className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground transition-all hover:bg-muted/80 active:scale-95"
-								title="Login / Ganti Akun"
-							>
-								<LogIn className="h-5 w-5" />
-							</button>
+						<div className="relative flex items-center">
 							<button
 								onClick={handleLogout}
 								className="flex items-center gap-2 rounded-xl bg-destructive px-4 py-2.5 text-sm font-bold text-destructive-foreground shadow-lg shadow-destructive/20 transition-all hover:opacity-90 active:scale-95"
