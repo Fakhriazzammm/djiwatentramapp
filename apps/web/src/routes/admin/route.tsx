@@ -82,8 +82,6 @@ const PAGE_TITLES: Record<string, string> = {
 const BOTTOM_NAV_ITEMS = [
 	{ to: "/admin", icon: LayoutDashboard, label: "Dasbor", exact: true, permission: "analytics:view" },
 	{ to: "/admin/orders", icon: ClipboardList, label: "Pesanan", permission: "orders:view" },
-	{ to: "/admin", icon: LayoutDashboard, label: "Dasbor", exact: true },
-	{ to: "/admin/orders", icon: ClipboardList, label: "Pesanan" },
 	{
 		to: "/admin/ai-chat",
 		icon: Sparkles,
@@ -170,7 +168,8 @@ const FINANCE_PATHS = [
 
 function AdminLayout() {
 	const navigate = useNavigate();
-	const { user: authUser, logout, isAdmin, role } = useYumiAuth();
+	const { user: authUser, logout, isAdmin, role, isAuthenticated, isLoading } = useYumiAuth();
+	const [isAccessDenied, setIsAccessDenied] = useState(false);
 
 	const hasPermission = (permId?: string) => {
 		if (isAdmin) return true;
@@ -209,12 +208,14 @@ function AdminLayout() {
 			const currentPath = location.pathname;
 			const allItems = [...BOTTOM_NAV_ITEMS, ...QUICK_MENU_ITEMS];
 			const matchedItem = allItems.find(item => item.to && currentPath.startsWith(item.to));
+			
 			if (matchedItem?.permission && !hasPermission(matchedItem.permission)) {
-				toast.error("Anda tidak memiliki akses ke halaman ini.");
-				navigate({ to: "/admin" });
+				setIsAccessDenied(true);
+			} else {
+				setIsAccessDenied(false);
 			}
 		}
-	}, [location.pathname, isAuthenticated, isLoading, role]);
+	}, [location.pathname, isAuthenticated, isLoading, role, isAdmin]);
 
 	// Auto-open finance submenu if on a finance route
 	const isOnFinancePath = FINANCE_PATHS.some((p) =>
@@ -317,12 +318,14 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Dasbor"
 						to="/admin"
+						permission="analytics:view"
 					/>
 					<DesktopNavLink
 						icon={<ClipboardList />}
 						isCollapsed={isCollapsed}
 						label="Pesanan"
 						to="/admin/orders"
+						permission="orders:view"
 					/>
 
 					{/* MANAJEMEN */}
@@ -346,12 +349,14 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Inventaris"
 						to="/admin/inventory"
+						permission="inventory:manage"
 					/>
 					<DesktopNavLink
 						icon={<Calendar />}
 						isCollapsed={isCollapsed}
 						label="Booking"
 						to="/admin/booking"
+						permission="orders:view"
 					/>
 
 					{/* OPERASIONAL */}
@@ -361,6 +366,7 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Dapur"
 						to="/admin/kitchen"
+						permission="kitchen:view"
 					/>
 					<DesktopNavLink
 						icon={<Beer />}
@@ -398,25 +404,29 @@ function AdminLayout() {
 								icon={<ClipboardList />}
 								isCollapsed={isCollapsed}
 								label="Transaksi"
-								to="/admin/finance/transactions"
+						to="/admin/finance/transactions"
+						permission="finance:view"
 							/>
 							<DesktopNavLink
 								icon={<FileBarChart />}
 								isCollapsed={isCollapsed}
 								label="Laporan"
-								to="/admin/finance/reports"
+						to="/admin/finance/reports"
+						permission="finance:view"
 							/>
 							<DesktopNavLink
 								icon={<Users />}
 								isCollapsed={isCollapsed}
 								label="Laporan Shift"
-								to="/admin/finance/shift-reports"
+						to="/admin/finance/shift-reports"
+						permission="finance:view"
 							/>
 							<DesktopNavLink
 								icon={<Calculator />}
 								isCollapsed={isCollapsed}
 								label="HPP Kalkulator"
-								to="/admin/hpp-calculator"
+						to="/admin/hpp-calculator"
+						permission="finance:view"
 							/>
 						</>
 					) : (
@@ -458,29 +468,34 @@ function AdminLayout() {
 												activeOptions={{ exact: true }}
 												icon={<Wallet />}
 												label="Overview"
-												to="/admin/finance"
+						to="/admin/finance"
+						permission="finance:view"
 											/>
 											<DesktopSubNavLink
 												icon={<ClipboardList />}
 												label="Transaksi"
-												to="/admin/finance/transactions"
+						to="/admin/finance/transactions"
+						permission="finance:view"
 											/>
 											<DesktopSubNavLink
 												icon={<FileBarChart />}
 												label="Laporan"
-												to="/admin/finance/reports"
+						to="/admin/finance/reports"
+						permission="finance:view"
 												permission="finance:view"
 											/>
 											<DesktopSubNavLink
 												icon={<Users />}
 												label="Laporan Shift"
-												to="/admin/finance/shift-reports"
+						to="/admin/finance/shift-reports"
+						permission="finance:view"
 												permission="finance:view"
 											/>
 											<DesktopSubNavLink
 												icon={<Calculator />}
 												label="HPP Kalkulator"
-												to="/admin/hpp-calculator"
+						to="/admin/hpp-calculator"
+						permission="finance:view"
 											/>
 										</div>
 									</motion.div>
@@ -496,6 +511,7 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Promosi"
 						to="/admin/discounts"
+						permission="products:manage"
 					/>
 				</nav>
 
@@ -534,6 +550,7 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Pengaturan"
 						to="/admin/settings"
+						permission="settings:manage"
 					/>
 
 					{/* Keluar */}
@@ -646,7 +663,11 @@ function AdminLayout() {
 				<div
 					className={(isAIChat || isOperational) ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto p-3 pb-20 md:p-4 md:pb-4"}
 				>
+					{isAccessDenied ? (
+					<PermissionDenied onBack={() => navigate({ to: "/admin" })} />
+				) : (
 					<Outlet />
+				)}
 				</div>
 
 				{/* Footer - visible on both desktop and mobile */}
@@ -708,10 +729,15 @@ function AdminLayout() {
 											{section.label}
 										</p>
 										<div className="grid grid-cols-3 gap-2">
-											{section.items.map((item) => (
-												<Link
-													className="flex flex-col items-center gap-1 rounded-lg bg-muted p-2.5 transition-colors active:bg-muted/80"
-													key={item.to}
+											{section.items.map((item) => {
+														const { isAdmin, role } = useYumiAuth();
+														const hasPermission = !item.permission || isAdmin || role?.permissions?.includes(item.permission);
+														if (!hasPermission) return null;
+
+														return (
+															<Link
+																className="flex flex-col items-center gap-2 rounded-xl bg-muted/50 p-3 transition-colors active:bg-muted"
+																key={item.to}
 													onClick={() => setIsQuickMenuOpen(false)}
 													to={item.to}
 												>
@@ -784,6 +810,10 @@ function AdminLayout() {
 				<nav className="safe-area-bottom fixed inset-x-0 bottom-0 z-30 border-border border-t bg-background/95 backdrop-blur-md md:hidden">
 				<div className="flex items-stretch px-2">
 					{BOTTOM_NAV_ITEMS.map((item, index) => {
+						const { isAdmin, role } = useYumiAuth();
+						const hasPermission = !item.permission || isAdmin || role?.permissions?.includes(item.permission);
+						if (!hasPermission) return null;
+
 						const isCenter = index === 2; // AI Chat at center
 						const isMore = "isMore" in item && item.isMore;
 
@@ -967,6 +997,47 @@ function AdminLayout() {
 	);
 }
 
+
+function PermissionDenied({ onBack }: { onBack: () => void }) {
+	return (
+		<motion.div 
+			initial={{ opacity: 0, scale: 0.95 }}
+			animate={{ opacity: 1, scale: 1 }}
+			className="flex h-full w-full flex-col items-center justify-center p-8 text-center"
+		>
+			<div className="relative mb-8">
+				<div className="absolute -inset-4 rounded-full bg-destructive/10 blur-2xl animate-pulse" />
+				<div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-card border border-border shadow-2xl">
+					<Sparkles className="absolute -top-2 -right-2 h-8 w-8 text-amber-500 animate-bounce" />
+					<Users className="h-12 w-12 text-destructive" />
+				</div>
+			</div>
+
+			<div className="max-w-md space-y-4">
+				<h2 className="text-3xl font-black tracking-tight uppercase">Akses Terbatas</h2>
+				<p className="text-muted-foreground font-medium leading-relaxed">
+					Maaf, Anda tidak memiliki izin yang diperlukan untuk mengakses fitur ini. 
+					Silakan hubungi administrator untuk memperbarui level akses role Anda.
+				</p>
+			</div>
+
+			<div className="mt-12 flex flex-col items-center gap-4">
+				<button
+					onClick={onBack}
+					className="group relative flex h-12 items-center gap-3 overflow-hidden rounded-2xl bg-primary px-8 font-bold text-primary-foreground shadow-lg transition-all hover:scale-105 hover:shadow-primary/25 active:scale-95"
+				>
+					<ArrowLeft className="h-5 w-5 transition-transform group-hover:-translate-x-1" />
+					<span>Kembali ke Beranda</span>
+				</button>
+				
+				<p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">
+					Keamanan Sistem Yumi POS
+				</p>
+			</div>
+		</motion.div>
+	);
+}
+
 /* Sidebar Section Header */
 function SidebarSection({
 	label,
@@ -995,13 +1066,20 @@ function DesktopNavLink({
 	label,
 	activeOptions,
 	isCollapsed,
+	permission,
 }: {
 	to: string;
 	icon: React.ReactNode;
 	label: string;
 	activeOptions?: { exact?: boolean };
 	isCollapsed: boolean;
+	permission?: string;
 }) {
+	const { isAdmin, role } = useYumiAuth();
+	const hasPermission = !permission || isAdmin || role?.permissions?.includes(permission);
+
+	if (!hasPermission) return null;
+
 	return (
 		<Link
 			activeOptions={activeOptions}
@@ -1039,12 +1117,19 @@ function DesktopSubNavLink({
 	icon,
 	label,
 	activeOptions,
+	permission,
 }: {
 	to: string;
 	icon: React.ReactNode;
 	label: string;
 	activeOptions?: { exact?: boolean };
+	permission?: string;
 }) {
+	const { isAdmin, role } = useYumiAuth();
+	const hasPermission = !permission || isAdmin || role?.permissions?.includes(permission);
+
+	if (!hasPermission) return null;
+
 	return (
 		<Link
 			activeOptions={activeOptions}
