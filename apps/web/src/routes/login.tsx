@@ -25,8 +25,8 @@ function LoginPage() {
 	const navigate = useNavigate();
 	const { login, isAuthenticated, isAdmin, user: activeUser } = useYumiAuth();
 	
-	const users = useQuery(api.auth_yumi.getPublicUsers);
-	const loginMutation = useMutation(api.auth_yumi.loginWithPin);
+	const users = useQuery(api.users.getPublicUsers);
+	const loginMutation = useMutation(api.users.loginWithPin);
 	
 	const [selectedUser, setSelectedUser] = useState<any>(null);
 	const [pin, setPin] = useState("");

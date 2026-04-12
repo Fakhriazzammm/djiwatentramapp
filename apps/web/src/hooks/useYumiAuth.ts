@@ -26,8 +26,8 @@ export function useYumiAuth() {
 		return null;
 	});
 
-	const validateSession = useQuery(api.authYumi.validateSession, { token: token ?? undefined });
-	const logoutMutation = useMutation(api.authYumi.logoutSession);
+	const validateSession = useQuery(api.users.validateSession, { token: token ?? undefined });
+	const logoutMutation = useMutation(api.users.logoutSession);
 
 	const isLoading = token !== null && validateSession === undefined;
 	const isAuthenticated = !!validateSession;
