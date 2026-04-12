@@ -35,6 +35,21 @@ function normalizeSlug(text: string) {
 // For now we store as plain text or simple hash to avoid heavy dependencies on Convex runtime without Actions
 // IMPORTANT: For a real app, use an Action to hash passwords safely.
 // Since this is a specialized requested feature, we will follow the prompt's simplicity but acknowledge the security trade-off.
+// Internal helper for session validation
+async function validateSessionInternal(ctx: any, token: string) {
+	const session = await ctx.db
+		.query("yumiSessions")
+		.withIndex("by_token", (q: any) => q.eq("token", token))
+		.unique();
+
+	if (!session) return null;
+	if (Date.now() > session.expiresAt) return null;
+
+	const user = await ctx.db.get(session.userId);
+	if (!user || !user.isActive) return null;
+
+	return { user, session };
+}
 
 export const getUsers = query({
 	args: {},
@@ -476,7 +491,8 @@ export const getUserBySlug = query({
 export const getPrivateStaffData = query({
 	args: { 
 		slug: v.string(),
-		pin: v.string(),
+		pin: v.optional(v.string()),
+		token: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const user = await ctx.db
@@ -485,7 +501,32 @@ export const getPrivateStaffData = query({
 			.first();
 		
 		if (!user || !user.isActive) throw new Error("Staff tidak ditemukan");
-		if (user.homePin !== args.pin) throw new Error("PIN salah");
+		
+		let isAuthorized = false;
+
+		// 1. Check if token is provided and valid
+		if (args.token) {
+			const session = await validateSessionInternal(ctx, args.token);
+			if (session) {
+				const sessionRole = (await ctx.db.get(session.user.roleId)) as any;
+				const isAdmin = sessionRole?.name?.toLowerCase() === "admin";
+				const isOwner = session.user._id === user._id;
+				
+				if (isAdmin || isOwner) {
+					isAuthorized = true;
+				}
+			}
+		}
+
+		// 2. Fallback to PIN if not authorized by token
+		if (!isAuthorized) {
+			if (!args.pin || user.homePin !== args.pin) {
+				throw new Error("PIN salah atau akses tidak diizinkan");
+			}
+			isAuthorized = true;
+		}
+
+		if (!isAuthorized) throw new Error("Akses ditolak");
 		
 		// Return sensitive data
 		return {
@@ -595,19 +636,12 @@ export const validateSession = query({
 	args: { token: v.optional(v.string()) },
 	handler: async (ctx, args) => {
 		if (!args.token) return null;
+		
+		const result = await validateSessionInternal(ctx, args.token);
+		if (!result) return null;
 
-		const session = await ctx.db
-			.query("yumiSessions")
-			.withIndex("by_token", (q) => q.eq("token", args.token!))
-			.unique();
-
-		if (!session) return null;
-		if (Date.now() > session.expiresAt) return null;
-
-		const user = await ctx.db.get(session.userId);
-		if (!user || !user.isActive) return null;
-
-		const role = await ctx.db.get(user.roleId);
+		const { user, session } = result;
+		const role = (await ctx.db.get(user.roleId)) as any;
 
 		return {
 			user: {

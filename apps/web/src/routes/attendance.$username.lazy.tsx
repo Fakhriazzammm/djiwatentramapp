@@ -32,7 +32,7 @@ const MONTHS = [
 function StaffProfilePage() {
 	const { username } = useParams({ from: "/attendance/$username" as any }) as { username: string };
 	const navigate = useNavigate();
-	const { user: authUser, isAdmin, isAuthenticated } = useYumiAuth();
+	const { user: authUser, isAdmin, isAuthenticated, token } = useYumiAuth();
 	
 	const [pin, setPin] = useState("");
 	const [isUnlocked, setIsUnlocked] = useState(false);
@@ -53,41 +53,17 @@ function StaffProfilePage() {
 	}, [isAuthenticated, authUser, isAdmin, username]);
 	
 	const staff = useQuery(api.users.getUserBySlug, { slug: username });
-	const privateData = useQuery(api.users.getPrivateStaffData, 
-		isUnlocked ? { slug: username, pin } : "skip" as any
-	);
-
 	const stats = useQuery(api.attendance.getStaffStats, 
-		(isUnlocked && staff) ? { userId: staff._id, month: selectedMonth, year: selectedYear } : "skip" as any
+		(isUnlocked && staff) ? { userId: staff._id, month: selectedMonth, year: selectedYear } : undefined
 	);
 
 	const logs = useQuery(api.attendance.getStaffLogs, 
-		(isUnlocked && staff) ? { userId: staff._id, month: selectedMonth, year: selectedYear } : "skip" as any
+		(isUnlocked && staff) ? { userId: staff._id, month: selectedMonth, year: selectedYear } : undefined
 	);
-
-	const handleUnlock = async (e?: React.FormEvent) => {
-		e?.preventDefault();
-		if (pin.length !== 6) {
-			toast.error("PIN harus 6 digit");
-			return;
-		}
-
-		setIsVerifying(true);
-		// Verification check is implicit in getPrivateStaffData call
-		// But for UX we can show a small delay or test the query error
-		setTimeout(() => {
-			setIsVerifying(false);
-			if (privateData) {
-				setIsUnlocked(true);
-				toast.success("Data berhasil dibuka");
-			} else if (staff) {
-				// If query returned undefined but we are trying to unlock, wait for it or show error
-				// Actually we can just let React handle it. 
-				// For now let's use a simpler state-based check
-				setIsUnlocked(true);
-			}
-		}, 600);
-	};
+	
+	const privateData = useQuery(api.users.getPrivateStaffData, 
+		(isUnlocked && staff) ? { slug: username, token: token } : undefined
+	);
 
 	if (staff === undefined) {
 		return (
@@ -154,37 +130,25 @@ function StaffProfilePage() {
 								<p className="mt-1 font-medium text-primary uppercase tracking-wider">{staff.roleName}</p>
 							</div>
 
-							{/* PIN Section */}
-							<div className="mx-auto max-w-[320px] space-y-6">
-								<div className="space-y-2 text-center">
-									<p className="text-sm font-semibold">Buka Data Pribadi</p>
-									<p className="text-xs text-muted-foreground">Masukkan 6-digit PIN Anda untuk melihat slip gaji & riwayat absen.</p>
+							{/* Access Restriction View */}
+							<div className="mx-auto max-w-[320px] space-y-6 text-center">
+								<div className="space-y-2">
+									<p className="text-sm font-semibold">Data Pribadi Dibatasi</p>
+									<p className="text-xs text-muted-foreground">Detail riwayat absen dan slip gaji hanya dapat dilihat setelah login melalui portal utama.</p>
 								</div>
 								
-								<form onSubmit={handleUnlock} className="space-y-4">
-									<Input
-										autoFocus
-										type="password"
-										maxLength={6}
-										placeholder="••••••"
-										className="h-16 rounded-2xl border-2 text-center text-3xl font-black tracking-[0.5em] focus:border-primary focus:ring-4 focus:ring-primary/10"
-										value={pin}
-										onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-									/>
+								<div className="pt-4 space-y-3">
 									<Button 
 										className="h-14 w-full rounded-2xl text-lg font-bold shadow-lg shadow-primary/20"
-										disabled={pin.length !== 6 || isVerifying}
-										type="submit"
+										onClick={() => navigate({ to: "/login" as any })}
 									>
-										{isVerifying ? "Memverifikasi..." : "BUKA DATA"}
+										MASUK KE SISTEM
 									</Button>
-								</form>
-
-								<div className="pt-4">
+									
 									<Button 
 										variant="outline" 
 										className="h-14 w-full rounded-2xl border-dashed border-primary/30 font-bold"
-										onClick={() => (navigate as any)({ to: "/attendance", state: { pin } })}
+										onClick={() => (navigate as any)({ to: "/attendance" })}
 									>
 										<Camera className="mr-2 h-5 w-5" />
 										LANGSUNG ABSENSI
