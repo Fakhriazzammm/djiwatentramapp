@@ -33,8 +33,8 @@ export function useYumiAuth() {
 	const isAuthenticated = !!validateSession;
 	const user = validateSession?.user;
 	const role = validateSession?.role;
-	const isAdmin = role?.name === "admin";
-	const isStaff = role?.name === "staff" || !isAdmin;
+	const isAdmin = role?.name?.toLowerCase() === "admin";
+	const isStaff = role?.name?.toLowerCase() === "staff" || (!isAdmin && !!role);
 
 	const login = useCallback((newToken: string) => {
 		localStorage.setItem(SESSION_KEY, newToken);

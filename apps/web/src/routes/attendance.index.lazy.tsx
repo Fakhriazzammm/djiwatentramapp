@@ -553,6 +553,6 @@ function AttendancePage() {
 	);
 }
 
-export const Route = createLazyFileRoute("/attendance" as any)({
+export const Route = createLazyFileRoute("/attendance/" as any)({
 	component: AttendancePage,
 });

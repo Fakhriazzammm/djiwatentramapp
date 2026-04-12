@@ -1,6 +1,7 @@
 import { createLazyFileRoute, useNavigate, useParams } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
+import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ const MONTHS = [
 function StaffProfilePage() {
 	const { username } = useParams({ from: "/attendance/$username" as any }) as { username: string };
 	const navigate = useNavigate();
+	const { user: authUser, isAdmin, isAuthenticated } = useYumiAuth();
 	
 	const [pin, setPin] = useState("");
 	const [isUnlocked, setIsUnlocked] = useState(false);
@@ -39,6 +41,16 @@ function StaffProfilePage() {
 	const now = new Date();
 	const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
 	const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+
+	// Auto-unlock if current user is the owner or an admin
+	useEffect(() => {
+		if (isAuthenticated && authUser) {
+			const isOwner = authUser.slug === username;
+			if (isOwner || isAdmin) {
+				setIsUnlocked(true);
+			}
+		}
+	}, [isAuthenticated, authUser, isAdmin, username]);
 	
 	const staff = useQuery(api.users.getUserBySlug, { slug: username });
 	const privateData = useQuery(api.users.getPrivateStaffData, 

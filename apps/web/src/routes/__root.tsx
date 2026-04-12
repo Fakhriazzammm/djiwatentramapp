@@ -7,7 +7,7 @@ import { useEffect } from "react";
 function RootComponent() {
 	const navigate = useNavigate();
 	const location = useLocation();
-	const { isAuthenticated, isLoading, isStaff, user } = useYumiAuth();
+	const { isAuthenticated, isLoading, isStaff, isAdmin, user } = useYumiAuth();
 
 	useGlobalKeyboardNavigation();
 	useSiteBrandingMetadata();
@@ -21,10 +21,10 @@ function RootComponent() {
 			if (!isLoginPage) {
 				navigate({ to: "/login" as any });
 			}
-		} else if (isStaff && user?.slug) {
-			// Staff only access to their profile
+		} else if (!isAdmin && isStaff && user?.slug) {
+			// Staff only access to their profile - ensure we are not already there
 			const profilePath = `/attendance/${user.slug}`;
-			if (location.pathname !== profilePath) {
+			if (!location.pathname.startsWith(profilePath)) {
 				navigate({ to: profilePath as any });
 			}
 		}
