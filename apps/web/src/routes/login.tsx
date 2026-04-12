@@ -125,7 +125,7 @@ function LoginPage() {
 								{filteredUsers.map((user: any) => (
 									<motion.button
 										key={user._id}
-										whileHover={{ y: -4, shadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+										whileHover={{ y: -4, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
 										whileTap={{ scale: 0.95 }}
 										onClick={() => setSelectedUser(user)}
 										className="group relative flex flex-col items-center gap-4 rounded-[1.5rem] border border-border bg-card p-6 shadow-sm transition-all hover:border-primary/30"
