@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@yumipos/backend/convex/_generated/api";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
 	User, 
@@ -63,6 +63,7 @@ function LoginPage() {
 			login(result.token);
 			
 			toast.success(`Selamat datang, ${result.user.name}`);
+			setPin("");
 			
 			// Redirect to home (Root guard will handle staff-specific redirects if needed)
 			navigate({ to: "/home" as any });
@@ -75,9 +76,18 @@ function LoginPage() {
 	};
 
 	// Auto-submit when pin reaches 6 digits
-	if (pin.length === 6 && !isVerifying) {
-		handleSubmitPin();
-	}
+	useEffect(() => {
+		if (pin.length === 6 && !isVerifying) {
+			handleSubmitPin();
+		}
+	}, [pin, isVerifying]);
+
+	// Redirect when already authenticated
+	useEffect(() => {
+		if (isAuthenticated) {
+			navigate({ to: "/home" as any });
+		}
+	}, [isAuthenticated, navigate]);
 
 	return (
 		<div className="app-page relative min-h-screen w-full overflow-hidden text-foreground">
