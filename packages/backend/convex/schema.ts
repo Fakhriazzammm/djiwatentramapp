@@ -522,6 +522,7 @@ export default defineSchema({
 		receiveReportEmails: v.optional(v.boolean()),
 		lastLogin: v.optional(v.number()),
 		authUserId: v.optional(v.string()), // ID from Better Auth
+		faceDescriptor: v.optional(v.array(v.number())), // Facial biometric data
 	})
 		.index("by_username", ["username"])
 		.index("by_role", ["roleId"])
@@ -826,6 +827,25 @@ export default defineSchema({
 	})
 		.index("by_startTime", ["startTime"])
 		.index("by_endTime", ["endTime"]),
+
+	// Attendance Tracking
+	attendance: defineTable({
+		userId: v.id("users"),
+		type: v.union(v.literal("check_in"), v.literal("check_out")),
+		timestamp: v.number(),
+		photoUrl: v.optional(v.string()),
+		notes: v.optional(v.string()),
+		location: v.optional(
+			v.object({
+				lat: v.number(),
+				lng: v.number(),
+				address: v.optional(v.string()),
+			})
+		),
+	})
+		.index("by_user", ["userId"])
+		.index("by_timestamp", ["timestamp"])
+		.index("by_user_and_timestamp", ["userId", "timestamp"]),
 
 	// Booking Settings for custom booking pages
 	bookingSettings: defineTable({

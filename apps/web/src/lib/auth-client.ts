@@ -1,22 +1,9 @@
-export const authClient = {
-	signOut: async (_options: { fetchOptions: { onSuccess: () => void } }) => {
-		// Stub implementation
-	},
-	signUp: {
-		email: async (_data: any) => {
-			// Stub implementation
-			return { data: { user: { id: "test-id" } }, error: null };
-		},
-	},
-	signIn: {
-		email: async (_data: any, _options?: any) => {
-			// Stub implementation
-			if (_options?.onSuccess) _options.onSuccess();
-			return { data: { user: { id: "test-id" } }, error: null };
-		},
-		social: async (_data: any) => {
-			// Stub implementation
-			return { data: { user: { id: "test-id" } }, error: null };
-		},
-	},
-};
+import { createAuthClient } from "better-auth/react";
+import { convexClient } from "@convex-dev/better-auth/client/plugins";
+
+export const authClient = createAuthClient({
+	baseURL: import.meta.env.VITE_AUTH_URL || "http://localhost:3000",
+	plugins: [
+		convexClient(),
+	],
+});

@@ -13,6 +13,10 @@ import {
 	Save,
 	Settings2,
 	ShieldCheck,
+	Calendar,
+	Camera,
+	Check,
+	CheckCircle,
 	Pencil,
 	Trash2,
 	Plus,
@@ -21,6 +25,8 @@ import {
 	Wallet,
 	X,
 } from "lucide-react";
+import { FaceRecognition } from "@/components/auth/FaceRecognition";
+import { Copy, Download, FileJson, FileSpreadsheet, FileText, Share2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { compressFileToLimit, isOversized } from "@/lib/image-compress";
@@ -413,13 +419,6 @@ export function SettingsPage({
 }) {
 	// Site Settings
 	const siteSettings = useQuery(api.site_settings.getSettings);
-	const mayarConfig = useQuery(api.mayar.isConfigured);
-	const updateSiteSettings = useMutation(api.site_settings.updateSettings);
-	const generateUploadUrl = useMutation(api.site_settings.generateUploadUrl);
-
-	// Users & Roles
-	// Users & Roles
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const users = useQuery((api as any).users.getUsers);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const roles = useQuery((api as any).roles.getRoles);
@@ -435,6 +434,10 @@ export function SettingsPage({
 	const updateRole = useMutation((api as any).roles.updateRole);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const deleteRole = useMutation((api as any).roles.deleteRole);
+
+	const mayarConfig = useQuery(api.mayar.isConfigured);
+	const updateSiteSettings = useMutation(api.site_settings.updateSettings);
+	const generateUploadUrl = useMutation(api.site_settings.generateUploadUrl);
 
 	const [settings, setSettings] = useState({
 		storeName: "Coffee Shop",
@@ -561,7 +564,7 @@ export function SettingsPage({
 		permissions: [] as string[],
 	});
 	const [editingUser, setEditingUser] = useState<{
-		id: Id<"users">;
+		_id: Id<"users">;
 		name: string;
 		username: string;
 		roleId: Id<"roles"> | "";
@@ -570,10 +573,11 @@ export function SettingsPage({
 		homePin: string;
 	} | null>(null);
 	const [editingRole, setEditingRole] = useState<{
-		id: Id<"roles">;
+		_id: string;
 		name: string;
 		permissions: string[];
 	} | null>(null);
+	const [showFaceEnrollment, setShowFaceEnrollment] = useState(false);
 	const [confirmConfig, setConfirmConfig] = useState<{
 		isOpen: boolean;
 		title: string;
@@ -866,7 +870,7 @@ export function SettingsPage({
 
 	const handleStartEditUser = (user: any) => {
 		setEditingUser({
-			id: user._id,
+			_id: user._id,
 			name: user.name || "",
 			username: user.username || "",
 			roleId: user.roleId || "",
@@ -901,13 +905,14 @@ export function SettingsPage({
 
 		try {
 			await _updateUser({
-				id: editingUser.id,
+				id: editingUser._id,
 				name: editingUser.name.trim(),
 				username: normalizedEmail,
 				roleId: editingUser.roleId as Id<"roles">,
 				isActive: editingUser.isActive,
 				receiveReportEmails: editingUser.receiveReportEmails,
 				homePin: editingUser.homePin.trim() || undefined,
+				faceDescriptor: (editingUser as any).faceDescriptor,
 			});
 			toast.success("Pengguna berhasil diperbarui");
 			setEditingUser(null);
@@ -919,7 +924,7 @@ export function SettingsPage({
 
 	const handleStartEditRole = (role: any) => {
 		setEditingRole({
-			id: role._id,
+			_id: role._id,
 			name: role.name || "",
 			permissions: role.permissions || [],
 		});
@@ -934,7 +939,7 @@ export function SettingsPage({
 
 		try {
 			await updateRole({
-				id: editingRole.id,
+				id: editingRole._id,
 				name: editingRole.name.trim(),
 				permissions: editingRole.permissions,
 			});
@@ -2264,7 +2269,7 @@ export function SettingsPage({
 									</label>
 									<Select
 										onValueChange={(value) =>
-											setAiModelConfig((prev) => ({ ...prev, ocrVisionModel: value }))
+											setAiModelConfig((prev) => ({ ...prev, ocrVisionModel: value as string }))
 										}
 										value={aiModelConfig.ocrVisionModel}
 									>
@@ -2287,7 +2292,7 @@ export function SettingsPage({
 									</label>
 									<Select
 										onValueChange={(value) =>
-											setAiModelConfig((prev) => ({ ...prev, chatTextModel: value }))
+											setAiModelConfig((prev) => ({ ...prev, chatTextModel: value as string }))
 										}
 										value={aiModelConfig.chatTextModel}
 									>
@@ -2310,7 +2315,7 @@ export function SettingsPage({
 									</label>
 									<Select
 										onValueChange={(value) =>
-											setAiModelConfig((prev) => ({ ...prev, synthesisModel: value }))
+											setAiModelConfig((prev) => ({ ...prev, synthesisModel: value as string }))
 										}
 										value={aiModelConfig.synthesisModel}
 									>
@@ -2333,7 +2338,7 @@ export function SettingsPage({
 									</label>
 									<Select
 										onValueChange={(value) =>
-											setAiModelConfig((prev) => ({ ...prev, analyticsModel: value }))
+											setAiModelConfig((prev) => ({ ...prev, analyticsModel: value as string }))
 										}
 										value={aiModelConfig.analyticsModel}
 									>
@@ -2356,7 +2361,7 @@ export function SettingsPage({
 									</label>
 									<Select
 										onValueChange={(value) =>
-											setAiModelConfig((prev) => ({ ...prev, fallbackModel: value }))
+											setAiModelConfig((prev) => ({ ...prev, fallbackModel: value as string }))
 										}
 										value={aiModelConfig.fallbackModel}
 									>
@@ -3049,6 +3054,47 @@ export function SettingsPage({
 																	}`}
 																/>
 															</button>
+														</div>
+
+														<div className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:col-span-2">
+															<div className="flex items-center justify-between">
+																<div>
+																	<p className="font-bold text-sm text-foreground">Biometrik Wajah</p>
+																	<p className="text-xs text-muted-foreground">
+																		{(editingUser as any).faceDescriptor 
+																			? "Wajah sudah terdaftar." 
+																			: "Pendaftaran wajah diperlukan untuk absensi."}
+																	</p>
+																</div>
+																<Button 
+																	variant={(editingUser as any).faceDescriptor ? "outline" : "default"}
+																	size="sm"
+																	onClick={() => setShowFaceEnrollment(true)}
+																	type="button"
+																>
+																	<Camera className="mr-2 h-4 w-4" />
+																	{(editingUser as any).faceDescriptor ? "Daftar Ulang" : "Daftarkan Wajah"}
+																</Button>
+															</div>
+
+															{showFaceEnrollment && (
+																<div className="mt-4 rounded-2xl border bg-background p-4 shadow-xl">
+																	<div className="mb-4 flex items-center justify-between">
+																		<p className="font-bold text-sm">Pendaftaran Wajah</p>
+																		<Button variant="ghost" size="sm" onClick={() => setShowFaceEnrollment(false)} type="button">
+																			<X className="h-4 w-4" />
+																		</Button>
+																	</div>
+																	<FaceRecognition 
+																		mode="enroll"
+																		onCapture={async (descriptor) => {
+																			setEditingUser({ ...editingUser, faceDescriptor: descriptor } as any);
+																			toast.success("Wajah berhasil diproses. Jangan lupa simpan perubahan!");
+																			setShowFaceEnrollment(false);
+																		}}
+																	/>
+																</div>
+															)}
 														</div>
 													</div>
 													<div className="flex justify-end gap-2">

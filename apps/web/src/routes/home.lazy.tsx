@@ -18,6 +18,7 @@ import {
 	ShieldCheck,
 	Sparkles,
 	Tags,
+	UserCheck,
 	UtensilsCrossed,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -445,7 +446,7 @@ function HomePage() {
 									<Link
 										className="group relative overflow-hidden rounded-2xl border border-border/70 bg-background p-3.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
 										key={`${section.role}-${item.label}`}
-										state={getHomeAdminEntryState(item.to)}
+										state={getHomeAdminEntryState(item.to) as any}
 										to={item.to}
 									>
 										<div
@@ -468,6 +469,33 @@ function HomePage() {
 							</div>
 						</div>
 					))}
+				</div>
+
+				<div className="app-card mt-4 p-4 md:p-5">
+					<p className="mb-3 font-black text-base tracking-tight text-foreground">
+						Manajemen Tim
+					</p>
+					<div className="grid grid-cols-1 gap-3">
+						<Link
+							className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border-2 border-primary/20 bg-primary/5 p-5 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98]"
+							to={"/attendance" as any}
+						>
+							<div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg transition-transform group-hover:scale-110">
+								<UserCheck className="h-7 w-7" />
+							</div>
+							<div className="flex-1">
+								<p className="font-black text-lg leading-tight text-foreground">
+									Absensi Tim
+								</p>
+								<p className="mt-1 text-xs text-muted-foreground font-medium">
+									Masuk PIN & Scan Wajah untuk mulai/selesai shift
+								</p>
+							</div>
+							<div className="flex h-10 w-10 items-center justify-center rounded-full bg-background/50 text-muted-foreground shadow-inner transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+								<ChevronsRight className="h-5 w-5" />
+							</div>
+						</Link>
+					</div>
 				</div>
 
 				<div className="app-card mt-4 p-4 md:p-5">

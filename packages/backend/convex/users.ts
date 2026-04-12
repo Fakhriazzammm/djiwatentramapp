@@ -308,6 +308,7 @@ export const updateUser = mutation({
 		receiveReportEmails: v.optional(v.boolean()),
 		password: v.optional(v.string()),
 		authUserId: v.optional(v.string()),
+		faceDescriptor: v.optional(v.array(v.number())),
 	},
 	handler: async (ctx, args) => {
 		const { id, username, ...updates } = args;
@@ -379,7 +380,23 @@ export const verifyHomePin = mutation({
 			userId: user._id,
 			name: user.name,
 			role: role?.name || "user",
+			faceDescriptor: user.faceDescriptor,
 		};
+	},
+});
+
+export const updateFaceDescriptor = mutation({
+	args: {
+		userId: v.id("users"),
+		faceDescriptor: v.array(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const user = await ctx.db.get(args.userId);
+		if (!user) throw new Error("User not found");
+		
+		return await ctx.db.patch(args.userId, {
+			faceDescriptor: args.faceDescriptor,
+		});
 	},
 });
 
