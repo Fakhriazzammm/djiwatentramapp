@@ -951,4 +951,12 @@ export default defineSchema({
 		.index("by_eventType", ["eventType"])
 		.index("by_emailId", ["emailId"])
 		.index("by_receivedAt", ["receivedAt"]),
+
+	yumiSessions: defineTable({
+		userId: v.id("users"),
+		token: v.string(), // Unique random token stored in localStorage
+		expiresAt: v.number(), // Timestamp for 24h expiry
+	})
+		.index("by_token", ["token"])
+		.index("by_userId", ["userId"]),
 });

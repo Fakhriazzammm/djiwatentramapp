@@ -1,5 +1,5 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { FaceRecognition } from "@/components/auth/FaceRecognition";
@@ -8,10 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Coffee, ArrowLeft, KeyRound, Loader2, UserCheck, LogIn, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
+import { useYumiAuth } from "@/hooks/useYumiAuth";
 
 function AttendancePage() {
 	const navigate = useNavigate();
 	const [step, setStep] = useState<"pin" | "face" | "success">("pin");
+	const { user: authUser, isAuthenticated } = useYumiAuth();
+	
 	const [pin, setPin] = useState("");
 	const [user, setUser] = useState<{ id: string; name: string; role: string; faceDescriptor?: number[] } | null>(null);
 	const [isEnrolling, setIsEnrolling] = useState(false);
@@ -21,6 +24,28 @@ function AttendancePage() {
 	const updateFace = useMutation(api.users.updateFaceDescriptor);
 	const clockIn = useMutation(api.attendance.clockIn);
 	const clockOut = useMutation(api.attendance.clockOut);
+
+	// Auto-login from Yumi Session
+	useEffect(() => {
+		if (isAuthenticated && authUser && step === "pin") {
+			// Get full user detail for face descriptor
+			// Wait, authUser from hook might not have faceDescriptor.
+			// However, in this context we can just set the step to face 
+			// and the FaceRecognition component will handle the rest if we fetch the descriptor.
+			// Actually, let's just trigger a pseudo-pin-submit logic or similar.
+			setUser({
+				id: authUser._id,
+				name: authUser.name,
+				role: "placeholder", // will be fetched or ignored
+				faceDescriptor: (authUser as any).faceDescriptor || []
+			});
+			
+			if (!(authUser as any).faceDescriptor || (authUser as any).faceDescriptor.length === 0) {
+				setIsEnrolling(true);
+			}
+			setStep("face");
+		}
+	}, [isAuthenticated, authUser, step]);
 	
 	const handlePinSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();

@@ -46,6 +46,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { authClient } from "@/lib/auth-client";
 import { APP_VERSION } from "@/lib/version";
 
@@ -167,6 +168,7 @@ const FINANCE_PATHS = [
 
 function AdminLayout() {
 	const navigate = useNavigate();
+	const { user: authUser, logout, isAdmin } = useYumiAuth();
 	const [isCollapsed, setIsCollapsed] = useState(() => {
 		if (typeof window !== "undefined") {
 			return localStorage.getItem("admin-sidebar-collapsed") === "true";
