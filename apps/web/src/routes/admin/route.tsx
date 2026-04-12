@@ -80,6 +80,8 @@ const PAGE_TITLES: Record<string, string> = {
 
 // Bottom nav items (Yumi AI at center index 2)
 const BOTTOM_NAV_ITEMS = [
+	{ to: "/admin", icon: LayoutDashboard, label: "Dasbor", exact: true, permission: "analytics:view" },
+	{ to: "/admin/orders", icon: ClipboardList, label: "Pesanan", permission: "orders:view" },
 	{ to: "/admin", icon: LayoutDashboard, label: "Dasbor", exact: true },
 	{ to: "/admin/orders", icon: ClipboardList, label: "Pesanan" },
 	{
@@ -89,7 +91,7 @@ const BOTTOM_NAV_ITEMS = [
 		exact: true,
 		isCenter: true,
 	},
-	{ to: "/admin/finance", icon: Wallet, label: "Keuangan" },
+	{ to: "/admin/finance", icon: Wallet, label: "Keuangan", permission: "finance:view" },
 	{ to: "", icon: MoreHorizontal, label: "Lainnya", isMore: true },
 ];
 
@@ -114,37 +116,37 @@ const QUICK_MENU_SECTIONS = [
 	{
 		label: "Manajemen",
 		items: [
-			{ to: "/admin/products", icon: Package, label: "Produk" },
-			{ to: "/admin/recipe", icon: BookOpen, label: "Resep" },
-			{ to: "/admin/inventory", icon: Archive, label: "Inventaris" },
-			{ to: "/admin/booking", icon: Calendar, label: "Booking" },
+			{ to: "/admin/products", icon: Package, label: "Produk", permission: "products:manage" },
+			{ to: "/admin/recipe", icon: BookOpen, label: "Resep", permission: "inventory:manage" },
+			{ to: "/admin/inventory", icon: Archive, label: "Inventaris", permission: "inventory:manage" },
+			{ to: "/admin/booking", icon: Calendar, label: "Booking", permission: "orders:view" },
 		],
 	},
 	{
 		label: "Keuangan",
 		items: [
-			{ to: "/admin/finance", icon: Wallet, label: "Keuangan" },
-			{ to: "/admin/finance/transactions", icon: ClipboardList, label: "Transaksi" },
-			{ to: "/admin/finance/reports", icon: FileBarChart, label: "Laporan" },
-			{ to: "/admin/finance/shift-reports", icon: Users, label: "Laporan Shift" },
-			{ to: "/admin/hpp-calculator", icon: Calculator, label: "HPP" },
+			{ to: "/admin/finance", icon: Wallet, label: "Keuangan", permission: "finance:view" },
+			{ to: "/admin/finance/transactions", icon: ClipboardList, label: "Transaksi", permission: "finance:view" },
+			{ to: "/admin/finance/reports", icon: FileBarChart, label: "Laporan", permission: "finance:view" },
+			{ to: "/admin/finance/shift-reports", icon: Users, label: "Laporan Shift", permission: "finance:view" },
+			{ to: "/admin/hpp-calculator", icon: Calculator, label: "HPP", permission: "finance:view" },
 		],
 	},
 	{
 		label: "Operasional",
 		items: [
-			{ to: "/admin/kitchen", icon: ChefHat, label: "Dapur" },
-			{ to: "/admin/bar", icon: Beer, label: "Bar" },
-			{ to: "/admin/customer-service", icon: Bell, label: "Layanan" },
-			{ to: "/admin/operational-team", icon: Users, label: "Tim Operasional" },
+			{ to: "/admin/kitchen", icon: ChefHat, label: "Dapur", permission: "kitchen:view" },
+			{ to: "/admin/bar", icon: Beer, label: "Bar", permission: "kitchen:view" },
+			{ to: "/admin/customer-service", icon: Bell, label: "Layanan", permission: "orders:view" },
+			{ to: "/admin/operational-team", icon: Users, label: "Tim Operasional", permission: "users:manage" },
 		],
 	},
 	{
 		label: "Lainnya",
 		items: [
-			{ to: "/admin/discounts", icon: Percent, label: "Promosi" },
-			{ to: "/admin/forecasting", icon: Grid3X3, label: "Forecast" },
-			{ to: "/admin/settings", icon: Settings, label: "Pengaturan" },
+			{ to: "/admin/discounts", icon: Percent, label: "Promosi", permission: "products:manage" },
+			{ to: "/admin/forecasting", icon: Grid3X3, label: "Forecast", permission: "analytics:view" },
+			{ to: "/admin/settings", icon: Settings, label: "Pengaturan", permission: "settings:manage" },
 		],
 	},
 ];
@@ -168,7 +170,13 @@ const FINANCE_PATHS = [
 
 function AdminLayout() {
 	const navigate = useNavigate();
-	const { user: authUser, logout, isAdmin } = useYumiAuth();
+	const { user: authUser, logout, isAdmin, role } = useYumiAuth();
+
+	const hasPermission = (permId?: string) => {
+		if (isAdmin) return true;
+		if (!permId) return true;
+		return role?.permissions?.includes(permId) || false;
+	};
 	const [isCollapsed, setIsCollapsed] = useState(() => {
 		if (typeof window !== "undefined") {
 			return localStorage.getItem("admin-sidebar-collapsed") === "true";
@@ -194,6 +202,19 @@ function AdminLayout() {
 	const isAIChat = location.pathname === "/admin/ai-chat";
 	const isOperational = OPERATIONAL_PATHS.some(p => location.pathname.startsWith(p));
 	const currentPageTitle = PAGE_TITLES[location.pathname] || "Admin";
+
+	// Route Guard
+	useEffect(() => {
+		if (isAuthenticated && !isLoading) {
+			const currentPath = location.pathname;
+			const allItems = [...BOTTOM_NAV_ITEMS, ...QUICK_MENU_ITEMS];
+			const matchedItem = allItems.find(item => item.to && currentPath.startsWith(item.to));
+			if (matchedItem?.permission && !hasPermission(matchedItem.permission)) {
+				toast.error("Anda tidak memiliki akses ke halaman ini.");
+				navigate({ to: "/admin" });
+			}
+		}
+	}, [location.pathname, isAuthenticated, isLoading, role]);
 
 	// Auto-open finance submenu if on a finance route
 	const isOnFinancePath = FINANCE_PATHS.some((p) =>
@@ -311,12 +332,14 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Produk"
 						to="/admin/products"
+						permission="products:manage"
 					/>
 					<DesktopNavLink
 						icon={<BookOpen />}
 						isCollapsed={isCollapsed}
 						label="Resep"
 						to="/admin/recipe"
+						permission="inventory:manage"
 					/>
 					<DesktopNavLink
 						icon={<Archive />}
@@ -344,18 +367,21 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Bar"
 						to="/admin/bar"
+						permission="kitchen:view"
 					/>
 					<DesktopNavLink
 						icon={<Bell />}
 						isCollapsed={isCollapsed}
 						label="Layanan Customer"
 						to="/admin/customer-service"
+						permission="orders:view"
 					/>
 					<DesktopNavLink
 						icon={<Users />}
 						isCollapsed={isCollapsed}
 						label="Tim Operasional"
 						to="/admin/operational-team"
+						permission="users:manage"
 					/>
 
 					{/* KEUANGAN - Collapsible */}
@@ -443,11 +469,13 @@ function AdminLayout() {
 												icon={<FileBarChart />}
 												label="Laporan"
 												to="/admin/finance/reports"
+												permission="finance:view"
 											/>
 											<DesktopSubNavLink
 												icon={<Users />}
 												label="Laporan Shift"
 												to="/admin/finance/shift-reports"
+												permission="finance:view"
 											/>
 											<DesktopSubNavLink
 												icon={<Calculator />}
