@@ -96,3 +96,78 @@ export const getLatestStatus = query({
 		};
 	},
 });
+
+export const getStaffStats = query({
+	args: { 
+		userId: v.id("users"),
+		month: v.number(),
+		year: v.number(),
+	},
+	handler: async (ctx, args) => {
+		const startOfMonth = new Date(args.year, args.month - 1, 1).getTime();
+		const endOfMonth = new Date(args.year, args.month, 1).getTime();
+
+		const entries = await ctx.db
+			.query("attendance")
+			.withIndex("by_user", (q) => q.eq("userId", args.userId))
+			.filter((q) => q.and(
+				q.gte(q.field("timestamp"), startOfMonth),
+				q.lt(q.field("timestamp"), endOfMonth)
+			))
+			.collect();
+
+		// Calculate stats
+		// We group by day to get unique days worked
+		const uniqueDays = new Set();
+		let totalMs = 0;
+
+		// Sort by timestamp to pair check-in and check-out
+		const sorted = [...entries].sort((a, b) => a.timestamp - b.timestamp);
+		
+		for (let i = 0; i < sorted.length; i++) {
+			const entry = sorted[i];
+			const dateStr = new Date(entry.timestamp).toDateString();
+			uniqueDays.add(dateStr);
+
+			if (entry.type === "check_in" && i + 1 < sorted.length) {
+				const nextEntry = sorted[i + 1];
+				if (nextEntry.type === "check_out") {
+					totalMs += (nextEntry.timestamp - entry.timestamp);
+					i++; // Skip the paired check_out
+				}
+			}
+		}
+
+		const totalHours = Math.round((totalMs / (1000 * 60 * 60)) * 10) / 10;
+		// Assume 26 working days as 100%
+		const attendanceRate = Math.min(100, Math.round((uniqueDays.size / 26) * 100));
+
+		return {
+			totalHours,
+			attendanceRate,
+			daysWorked: uniqueDays.size,
+		};
+	},
+});
+
+export const getStaffLogs = query({
+	args: {
+		userId: v.id("users"),
+		month: v.number(),
+		year: v.number(),
+	},
+	handler: async (ctx, args) => {
+		const startOfMonth = new Date(args.year, args.month - 1, 1).getTime();
+		const endOfMonth = new Date(args.year, args.month, 1).getTime();
+
+		return await ctx.db
+			.query("attendance")
+			.withIndex("by_user", (q) => q.eq("userId", args.userId))
+			.filter((q) => q.and(
+				q.gte(q.field("timestamp"), startOfMonth),
+				q.lt(q.field("timestamp"), endOfMonth)
+			))
+			.order("desc")
+			.collect();
+	},
+});

@@ -17,10 +17,16 @@ import {
 	ShieldCheck,
 	History,
 	LogOut,
-	ChevronRight
+	ChevronRight,
+	Calendar
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
+
+const MONTHS = [
+	"Januari", "Februari", "Maret", "April", "Mei", "Juni",
+	"Juli", "Agustus", "September", "Oktober", "November", "Desember"
+];
 
 function StaffProfilePage() {
 	const { username } = useParams({ from: "/attendance/$username" as any }) as { username: string };
@@ -30,9 +36,21 @@ function StaffProfilePage() {
 	const [isUnlocked, setIsUnlocked] = useState(false);
 	const [isVerifying, setIsVerifying] = useState(false);
 	
+	const now = new Date();
+	const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
+	const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+	
 	const staff = useQuery(api.users.getUserBySlug, { slug: username });
 	const privateData = useQuery(api.users.getPrivateStaffData, 
 		isUnlocked ? { slug: username, pin } : "skip" as any
+	);
+
+	const stats = useQuery(api.attendance.getStaffStats, 
+		(isUnlocked && staff) ? { userId: staff._id, month: selectedMonth, year: selectedYear } : "skip" as any
+	);
+
+	const logs = useQuery(api.attendance.getStaffLogs, 
+		(isUnlocked && staff) ? { userId: staff._id, month: selectedMonth, year: selectedYear } : "skip" as any
 	);
 
 	const handleUnlock = async (e?: React.FormEvent) => {
@@ -184,6 +202,34 @@ function StaffProfilePage() {
 								</Button>
 							</div>
 
+							{/* Period Selector */}
+							<div className="flex items-center justify-between gap-3 px-2">
+								<div className="flex items-center gap-2">
+									<Calendar className="h-4 w-4 text-primary" />
+									<span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Periode</span>
+								</div>
+								<div className="flex items-center gap-2">
+									<select 
+										className="bg-transparent text-sm font-black focus:outline-none"
+										value={selectedMonth}
+										onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+									>
+										{MONTHS.map((m, i) => (
+											<option key={m} value={i + 1}>{m}</option>
+										))}
+									</select>
+									<select 
+										className="bg-transparent text-sm font-black focus:outline-none"
+										value={selectedYear}
+										onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+									>
+										{[2024, 2025, 2026].map(y => (
+											<option key={y} value={y}>{y}</option>
+										))}
+									</select>
+								</div>
+							</div>
+
 							{/* Dashboard Grid */}
 							<div className="grid grid-cols-2 gap-4">
 								<div className="rounded-3xl border bg-card p-5 shadow-sm">
@@ -191,16 +237,18 @@ function StaffProfilePage() {
 										<Clock className="h-5 w-5" />
 									</div>
 									<p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total Jam</p>
-									<p className="mt-1 text-2xl font-black">142.5 <span className="text-sm font-normal text-muted-foreground">jam</span></p>
-									<p className="mt-1 text-[10px] text-orange-600 font-bold">Bulan Maret 2026</p>
+									<p className="mt-1 text-2xl font-black">{stats?.totalHours ?? 0} <span className="text-sm font-normal text-muted-foreground">jam</span></p>
+									<p className="mt-1 text-[10px] text-orange-600 font-bold">{MONTHS[selectedMonth - 1]} {selectedYear}</p>
 								</div>
 								<div className="rounded-3xl border bg-card p-5 shadow-sm">
 									<div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
 										<TrendingUp className="h-5 w-5" />
 									</div>
 									<p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Kehadiran</p>
-									<p className="mt-1 text-2xl font-black">98%</p>
-									<p className="mt-1 text-[10px] text-emerald-600 font-bold">Sangat Baik</p>
+									<p className="mt-1 text-2xl font-black">{stats?.attendanceRate ?? 0}%</p>
+									<p className="mt-1 text-[10px] text-emerald-600 font-bold">
+										{stats ? (stats.attendanceRate > 90 ? "Sangat Baik" : "Baik") : "..."}
+									</p>
 								</div>
 							</div>
 
@@ -214,22 +262,20 @@ function StaffProfilePage() {
 									<Button variant="link" size="sm" className="text-xs">Lihat Semua</Button>
 								</div>
 								<div className="space-y-2">
-									{privateData?.payslipHistory.map((slip: any) => (
-										<div key={slip.id} className="group flex items-center justify-between rounded-2xl border bg-card p-4 transition-all hover:border-primary/30 hover:bg-primary/[0.02]">
-											<div className="flex items-center gap-4">
-												<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted transition-colors group-hover:bg-primary/20 group-hover:text-primary">
-													<FileText className="h-5 w-5" />
-												</div>
-												<div>
-													<p className="font-bold text-sm">Slip Gaji {slip.period}</p>
-													<p className="text-[10px] text-muted-foreground uppercase">Tersedia untuk diunduh</p>
-												</div>
+									<div className="group flex items-center justify-between rounded-2xl border bg-card p-4 transition-all hover:border-primary/30 hover:bg-primary/[0.02] opacity-50 grayscale">
+										<div className="flex items-center gap-4">
+											<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
+												<FileText className="h-5 w-5" />
 											</div>
-											<Button variant="ghost" size="icon" className="rounded-xl">
-												<ChevronRight className="h-5 w-5" />
-											</Button>
+											<div>
+												<p className="font-bold text-sm">Slip Gaji {MONTHS[selectedMonth - 1]}</p>
+												<p className="text-[10px] text-muted-foreground uppercase">Rp 0 (Belum dikonfigurasi)</p>
+											</div>
 										</div>
-									))}
+										<Button variant="ghost" size="icon" className="rounded-xl" disabled>
+											<ChevronRight className="h-5 w-5" />
+										</Button>
+									</div>
 								</div>
 							</div>
 
@@ -237,31 +283,40 @@ function StaffProfilePage() {
 							<div className="space-y-4">
 								<h3 className="flex items-center gap-2 px-2 font-bold uppercase tracking-wider text-sm">
 									<History className="h-4 w-4 text-primary" />
-									Log Kehadiran 7 Hari Terakhir
+									Log Kehadiran {MONTHS[selectedMonth - 1]} {selectedYear}
 								</h3>
 								<div className="rounded-3xl border bg-card overflow-hidden">
-									<div className="divide-y divide-border">
-										{[1, 2, 3].map(i => (
-											<div key={i} className="flex items-center justify-between p-4 text-sm">
-												<div className="flex items-center gap-3">
-													<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-[10px] font-bold">
-														{10+i} MAR
+									{!logs || logs.length === 0 ? (
+										<div className="p-8 text-center text-sm text-muted-foreground">
+											Tidak ada data absensi untuk periode ini.
+										</div>
+									) : (
+										<div className="divide-y divide-border">
+											{logs.map((log: any) => (
+												<div key={log._id} className="flex items-center justify-between p-4 text-sm">
+													<div className="flex items-center gap-3">
+														<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-[10px] font-bold flex-col leading-tight">
+															<span>{new Date(log.timestamp).getDate()}</span>
+															<span>{MONTHS[new Date(log.timestamp).getMonth()].substring(0, 3).toUpperCase()}</span>
+														</div>
+														<div>
+															<p className="font-bold capitalize">{log.type === "check_in" ? "Masuk" : "Keluar"}</p>
+															<p className="text-[10px] text-muted-foreground">
+																{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+															</p>
+														</div>
 													</div>
-													<div>
-														<p className="font-bold">Shift Pagi</p>
-														<p className="text-[10px] text-muted-foreground">08:00 - 17:00</p>
+													<div className="text-right">
+														<div className={`flex items-center gap-1.5 font-bold text-xs ${log.type === "check_in" ? "text-emerald-600" : "text-orange-600"}`}>
+															<div className={`h-1.5 w-1.5 rounded-full ${log.type === "check_in" ? "bg-emerald-500" : "bg-orange-500"}`} />
+															{log.type === "check_in" ? "ABSEN MASUK" : "ABSEN KELUAR"}
+														</div>
+														{log.notes && <p className="text-[10px] text-muted-foreground truncate max-w-[100px]">{log.notes}</p>}
 													</div>
 												</div>
-												<div className="text-right">
-													<div className="flex items-center gap-1.5 text-emerald-600 font-bold text-xs">
-														<div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-														HADIR
-													</div>
-													<p className="text-[10px] text-muted-foreground">8 jam kerja</p>
-												</div>
-											</div>
-										))}
-									</div>
+											))}
+										</div>
+									)}
 								</div>
 							</div>
 

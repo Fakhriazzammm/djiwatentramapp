@@ -17,7 +17,7 @@ import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 
-export const Route = createFileRoute("/login")({
+export const Route = createFileRoute("/login" as any)({
 	component: LoginPage,
 });
 

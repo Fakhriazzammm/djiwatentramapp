@@ -24,6 +24,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { formatCurrencyIDR } from "@/lib/export-utils";
+import { useYumiAuth } from "@/hooks/useYumiAuth";
 
 const HOME_PIN_SESSION_KEY = "home_access_unlocked_v1";
 type RoleMenuItem = {
@@ -268,6 +269,7 @@ export const Route = createLazyFileRoute("/home")({
 });
 
 function HomePage() {
+	const { user, role: userRole } = useYumiAuth();
 	const settings = useQuery(api.site_settings.getSettings);
 	const storeName = settings?.storeName || "Yumi POS";
 	const shiftRows = useQuery(api.finance.getShiftReportTable, {}) as
@@ -280,6 +282,14 @@ function HomePage() {
 		day: "numeric",
 		month: "long",
 	}).format(new Date());
+
+	const greeting = useMemo(() => {
+		const hour = new Date().getHours();
+		if (hour < 11) return "Semangat Pagi";
+		if (hour < 15) return "Selamat Siang";
+		if (hour < 18) return "Selamat Sore";
+		return "Selamat Malam";
+	}, []);
 
 	const [pinCode, setPinCode] = useState("");
 	const [isVerifyingPin, setIsVerifyingPin] = useState(false);
@@ -417,15 +427,29 @@ function HomePage() {
 	return (
 		<div className="app-page min-h-app text-foreground">
 			<div className="mx-auto w-full max-w-md px-4 pb-8 pt-6 md:max-w-4xl">
-				<div className="app-shell relative overflow-hidden p-5 md:p-7">
+				<div className="app-shell relative overflow-hidden p-6 md:p-8">
 					<div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
 					<div className="absolute -bottom-16 left-10 h-40 w-40 rounded-full bg-accent/20 blur-3xl" />
-					<p className="app-overline relative">Mobile Super App</p>
-					<h1 className="relative mt-2 font-black text-2xl leading-tight tracking-tight md:text-3xl">
-						{storeName}
+					<p className="app-overline relative mb-1 opacity-70">Mobile Super App</p>
+					
+					<h1 className="relative font-black text-3xl leading-tight tracking-tight md:text-4xl text-foreground">
+						{greeting}, {user?.name?.split(' ')[0] || "Team"}!
 					</h1>
-					<p className="relative mt-1 text-sm text-muted-foreground">{dateText}</p>
-					<div className="app-pill relative mt-4 inline-flex items-center gap-2 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+					
+					<div className="relative mt-2 flex items-center gap-2">
+						<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-primary">
+							{userRole?.name || "Staff"}
+						</span>
+						<span className="text-xs font-bold text-muted-foreground">
+							{storeName}
+						</span>
+					</div>
+					
+					<p className="relative mt-4 text-xs font-medium text-muted-foreground/80">
+						 {dateText}
+					</p>
+
+					<div className="app-pill relative mt-6 inline-flex items-center gap-2 bg-primary/10 px-3 py-2 text-[11px] font-bold text-primary">
 						<Sparkles className="h-3.5 w-3.5" />
 						Akses cepat untuk kasir, barista, dan kitchen
 					</div>
