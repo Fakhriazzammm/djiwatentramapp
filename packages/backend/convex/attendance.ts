@@ -171,3 +171,27 @@ export const getStaffLogs = query({
 			.collect();
 	},
 });
+
+export const getCurrentlyInStore = query({
+	args: {},
+	handler: async (ctx) => {
+		const activeUsers = await ctx.db.query("users").filter(q => q.eq(q.field("isActive"), true)).collect();
+		const results = [];
+		for (const user of activeUsers) {
+			const latestStatus = await ctx.db.query("attendance")
+				.withIndex("by_user", (q) => q.eq("userId", user._id))
+				.order("desc")
+				.first();
+			
+			if (latestStatus?.type === "check_in") {
+				results.push({
+					_id: user._id,
+					name: user.name,
+					roleId: user.roleId,
+					checkInTime: latestStatus.timestamp
+				});
+			}
+		}
+		return results;
+	}
+});

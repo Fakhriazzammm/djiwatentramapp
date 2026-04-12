@@ -480,6 +480,9 @@ export function SettingsPage({
 		receiptShowCashierName: true,
 		receiptShowNotes: true,
 		receiptFontSize: "normal",
+		attendanceLat: -6.200000,
+		attendanceLng: 106.816666,
+		attendanceRadius: 50,
 	});
 
 	const [isConnected, setIsConnected] = useState(false);
@@ -545,6 +548,7 @@ export function SettingsPage({
 		| "users"
 		| "shifts"
 		| "yumiAI"
+		| "attendance"
 	>(mode === "operational-team" ? "users" : "landing");
 
 	useEffect(() => {
@@ -658,6 +662,9 @@ export function SettingsPage({
 				receiptShowCashierName: siteSettings.receiptShowCashierName ?? true,
 				receiptShowNotes: siteSettings.receiptShowNotes ?? true,
 				receiptFontSize: siteSettings.receiptFontSize ?? "normal",
+				attendanceLat: siteSettings.attendanceLat ?? -6.200000,
+				attendanceLng: siteSettings.attendanceLng ?? 106.816666,
+				attendanceRadius: siteSettings.attendanceRadius ?? 50,
 			}));
 			setPaymentSettings({
 				mayarEnabled: siteSettings.mayarEnabled ?? false,
@@ -784,6 +791,9 @@ export function SettingsPage({
 				receiptShowCashierName: settings.receiptShowCashierName,
 				receiptShowNotes: settings.receiptShowNotes,
 				receiptFontSize: settings.receiptFontSize,
+				attendanceLat: settings.attendanceLat,
+				attendanceLng: settings.attendanceLng,
+				attendanceRadius: settings.attendanceRadius,
 				shiftSettings: {
 					...shiftSettings,
 					shiftSchedules: buildShiftSchedules(
@@ -1049,6 +1059,7 @@ export function SettingsPage({
 			? ([
 					{ id: "users", label: "Pengguna & Akses", icon: Users },
 					{ id: "shifts", label: "Manajemen Shift", icon: Clock },
+					{ id: "attendance", label: "Pengaturan Absensi", icon: MapPin },
 				] as const)
 			: ([
 					{ id: "landing", label: "Halaman Utama", icon: Layout },
@@ -2596,6 +2607,116 @@ export function SettingsPage({
 											/>
 										</div>
 									</div>
+								</div>
+							</div>
+						</section>
+					</div>
+				)}
+
+				{activeTab === "attendance" && (
+					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
+						<section className="space-y-6 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-8">
+							<div className="flex items-center gap-4">
+								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+									<MapPin className="h-6 w-6" />
+								</div>
+								<div>
+									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
+										Pengaturan Absensi & Geofencing
+									</h3>
+									<p className="text-muted-foreground text-sm">
+										Konfigurasi Lokasi & Radius Kehadiran Tim
+									</p>
+								</div>
+							</div>
+
+							<div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-700 leading-relaxed dark:border-amber-900/30 dark:bg-amber-900/20 dark:text-amber-300">
+								<p className="font-bold">Penting:</p>
+								<p className="mt-1">
+									Sistem absensi akan memvalidasi lokasi GPS staff saat melakukan Clock In/Out. 
+									Pastikan koordinat di bawah sesuai dengan lokasi fisik kafe Anda.
+								</p>
+							</div>
+
+							<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+								<div className="space-y-2">
+									<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+										Latitude (Garis Lintang)
+									</label>
+									<Input
+										className="h-11 w-full bg-muted/50 font-medium"
+										type="number"
+										step="any"
+										onChange={(e) => setSettings({ ...settings, attendanceLat: Number(e.target.value) })}
+										placeholder="-6.123456"
+										value={settings.attendanceLat}
+									/>
+								</div>
+
+								<div className="space-y-2">
+									<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+										Longitude (Garis Bujur)
+									</label>
+									<Input
+										className="h-11 w-full bg-muted/50 font-medium"
+										type="number"
+										step="any"
+										onChange={(e) => setSettings({ ...settings, attendanceLng: Number(e.target.value) })}
+										placeholder="106.123456"
+										value={settings.attendanceLng}
+									/>
+								</div>
+
+								<div className="space-y-2 md:col-span-2">
+									<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+										Radius Toleransi (Meter)
+									</label>
+									<div className="relative">
+										<Input
+											className="h-11 w-full bg-muted/50 font-medium"
+											type="number"
+											onChange={(e) => setSettings({ ...settings, attendanceRadius: Number(e.target.value) })}
+											placeholder="50"
+											value={settings.attendanceRadius}
+										/>
+										<span className="absolute top-1/2 right-4 -translate-y-1/2 font-bold text-muted-foreground text-sm">
+											meter
+										</span>
+									</div>
+									<p className="text-[10px] text-muted-foreground">
+										Jarak maksimal staff diperbolehkan absen dari titik koordinat (Rekomendasi: 50-100m).
+									</p>
+								</div>
+
+								<div className="md:col-span-2 pt-2">
+									<Button 
+										variant="outline" 
+										className="w-full h-11 border-dashed"
+										onClick={() => {
+											if (navigator.geolocation) {
+												toast.loading("Mendapatkan lokasi saat ini...");
+												navigator.geolocation.getCurrentPosition(
+													(pos) => {
+														setSettings({
+															...settings,
+															attendanceLat: pos.coords.latitude,
+															attendanceLng: pos.coords.longitude
+														});
+														toast.dismiss();
+														toast.success("Lokasi berhasil didapatkan!");
+													},
+													(err) => {
+														toast.dismiss();
+														toast.error("Gagal mendapatkan lokasi. Pastikan izin GPS aktif.");
+													}
+												);
+											} else {
+												toast.error("Browser tidak mendukung geolokasi.");
+											}
+										}}
+									>
+										<MapPin className="mr-2 h-4 w-4" /> Gunakan Lokasi Saya Saat Ini
+									</Button>
 								</div>
 							</div>
 						</section>

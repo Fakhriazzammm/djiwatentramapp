@@ -377,6 +377,9 @@ export default defineSchema({
 				mayarPaymentLabel: v.optional(v.string()),
 			})
 		),
+		attendanceLat: v.optional(v.number()),
+		attendanceLng: v.optional(v.number()),
+		attendanceRadius: v.optional(v.number()), // in meters
 	}),
 
 	customerServiceRequests: defineTable({

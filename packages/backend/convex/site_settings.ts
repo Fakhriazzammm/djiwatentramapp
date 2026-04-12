@@ -86,6 +86,9 @@ const DEFAULTS = {
 		cashPaymentLabel: "Bayar di kasir",
 		mayarPaymentLabel: "QRIS",
 	},
+	attendanceLat: -6.200000,
+	attendanceLng: 106.816666,
+	attendanceRadius: 50,
 };
 
 export const getSettings = query({
@@ -186,6 +189,9 @@ export const getSettings = query({
 				...DEFAULTS.customerOrdering,
 				...(settings.customerOrdering ?? {}),
 			},
+			attendanceLat: settings.attendanceLat ?? DEFAULTS.attendanceLat,
+			attendanceLng: settings.attendanceLng ?? DEFAULTS.attendanceLng,
+			attendanceRadius: settings.attendanceRadius ?? DEFAULTS.attendanceRadius,
 		};
 	},
 });
@@ -306,6 +312,9 @@ export const updateSettings = mutation({
 				mayarPaymentLabel: v.optional(v.string()),
 			})
 		),
+		attendanceLat: v.optional(v.number()),
+		attendanceLng: v.optional(v.number()),
+		attendanceRadius: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const existing = await ctx.db.query("siteSettings").first();
