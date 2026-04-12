@@ -1,4 +1,4 @@
-import { createLazyFileRoute, Link } from "@tanstack/react-router";
+import { createLazyFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import {
@@ -13,11 +13,14 @@ import {
 	Croissant,
 	LockKeyhole,
 	Loader2,
+	LogOut,
+	LogIn,
 	Package,
 	Receipt,
 	ShieldCheck,
 	Sparkles,
 	Tags,
+	User,
 	UserCheck,
 	UtensilsCrossed,
 } from "lucide-react";
@@ -25,6 +28,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { formatCurrencyIDR } from "@/lib/export-utils";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
+import { authClient } from "@/lib/auth-client";
 
 const HOME_PIN_SESSION_KEY = "home_access_unlocked_v1";
 type RoleMenuItem = {
@@ -269,6 +273,7 @@ export const Route = createLazyFileRoute("/home")({
 });
 
 function HomePage() {
+	const navigate = useNavigate();
 	const { user, role: userRole } = useYumiAuth();
 	const settings = useQuery(api.site_settings.getSettings);
 	const storeName = settings?.storeName || "Yumi POS";
@@ -358,6 +363,18 @@ function HomePage() {
 		}
 	};
 
+	const handleLogout = async () => {
+		try {
+			await authClient.signOut();
+			window.sessionStorage.removeItem(HOME_PIN_SESSION_KEY);
+			setIsUnlocked(false);
+			toast.info("Berhasil logout dan mengunci sesi");
+		} catch (error) {
+			console.error(error);
+			toast.error("Gagal melakukan logout");
+		}
+	};
+
 	if (!isUnlocked) {
 		return (
 			<div className="app-page min-h-app bg-background text-foreground">
@@ -430,26 +447,47 @@ function HomePage() {
 				<div className="app-shell relative overflow-hidden p-6 md:p-8">
 					<div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
 					<div className="absolute -bottom-16 left-10 h-40 w-40 rounded-full bg-accent/20 blur-3xl" />
-					<p className="app-overline relative mb-1 opacity-70">Mobile Super App</p>
 					
-					<h1 className="relative font-black text-3xl leading-tight tracking-tight md:text-4xl text-foreground">
-						{greeting}, {user?.name?.split(' ')[0] || "Team"}!
-					</h1>
-					
-					<div className="relative mt-2 flex items-center gap-2">
-						<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-primary">
-							{userRole?.name || "Staff"}
-						</span>
-						<span className="text-xs font-bold text-muted-foreground">
-							{storeName}
-						</span>
+					<div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+						<div className="relative flex-1">
+							<p className="app-overline mb-1 opacity-70">Mobile Super App</p>
+							<h1 className="font-black text-3xl leading-tight tracking-tight md:text-4xl text-white">
+								{greeting}, {user?.name?.split(' ')[0] || "Team"}!
+							</h1>
+							
+							<div className="mt-2 flex items-center gap-2">
+								<span className="inline-flex items-center rounded-md bg-white/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white backdrop-blur-md">
+									{userRole?.name || "Staff"}
+								</span>
+								<span className="text-xs font-bold text-white/70">
+									{storeName}
+								</span>
+							</div>
+						</div>
+
+						<div className="relative flex items-center gap-2">
+							<button
+								onClick={() => navigate({ to: "/" })}
+								className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white backdrop-blur-md transition-all hover:bg-white/20 active:scale-95"
+								title="Login / Ganti Akun"
+							>
+								<LogIn className="h-5 w-5" />
+							</button>
+							<button
+								onClick={handleLogout}
+								className="flex items-center gap-2 rounded-xl bg-destructive/80 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-destructive/20 transition-all hover:bg-destructive hover:shadow-destructive/40 active:scale-95"
+							>
+								<LogOut className="h-4 w-4" />
+								<span>Keluar</span>
+							</button>
+						</div>
 					</div>
 					
-					<p className="relative mt-4 text-xs font-medium text-muted-foreground/80">
+					<p className="relative mt-8 text-xs font-medium text-white/50">
 						 {dateText}
 					</p>
 
-					<div className="app-pill relative mt-6 inline-flex items-center gap-2 bg-primary/10 px-3 py-2 text-[11px] font-bold text-primary">
+					<div className="app-pill relative mt-6 inline-flex items-center gap-2 bg-white/20 px-3 py-2 text-[11px] font-bold text-white backdrop-blur-md">
 						<Sparkles className="h-3.5 w-3.5" />
 						Akses cepat untuk kasir, barista, dan kitchen
 					</div>
