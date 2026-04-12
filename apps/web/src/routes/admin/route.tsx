@@ -399,34 +399,35 @@ function AdminLayout() {
 								isCollapsed={isCollapsed}
 								label="Keuangan"
 								to="/admin/finance"
+								permission="finance:view"
 							/>
 							<DesktopNavLink
 								icon={<ClipboardList />}
 								isCollapsed={isCollapsed}
 								label="Transaksi"
-						to="/admin/finance/transactions"
-						permission="finance:view"
+								to="/admin/finance/transactions"
+								permission="finance:view"
 							/>
 							<DesktopNavLink
 								icon={<FileBarChart />}
 								isCollapsed={isCollapsed}
 								label="Laporan"
-						to="/admin/finance/reports"
-						permission="finance:view"
+								to="/admin/finance/reports"
+								permission="finance:view"
 							/>
 							<DesktopNavLink
 								icon={<Users />}
 								isCollapsed={isCollapsed}
 								label="Laporan Shift"
-						to="/admin/finance/shift-reports"
-						permission="finance:view"
+								to="/admin/finance/shift-reports"
+								permission="finance:view"
 							/>
 							<DesktopNavLink
 								icon={<Calculator />}
 								isCollapsed={isCollapsed}
 								label="HPP Kalkulator"
-						to="/admin/hpp-calculator"
-						permission="finance:view"
+								to="/admin/hpp-calculator"
+								permission="finance:view"
 							/>
 						</>
 					) : (
@@ -468,34 +469,32 @@ function AdminLayout() {
 												activeOptions={{ exact: true }}
 												icon={<Wallet />}
 												label="Overview"
-						to="/admin/finance"
-						permission="finance:view"
+												to="/admin/finance"
+												permission="finance:view"
 											/>
 											<DesktopSubNavLink
 												icon={<ClipboardList />}
 												label="Transaksi"
-						to="/admin/finance/transactions"
-						permission="finance:view"
+												to="/admin/finance/transactions"
+												permission="finance:view"
 											/>
 											<DesktopSubNavLink
 												icon={<FileBarChart />}
 												label="Laporan"
-						to="/admin/finance/reports"
-						permission="finance:view"
+												to="/admin/finance/reports"
 												permission="finance:view"
 											/>
 											<DesktopSubNavLink
 												icon={<Users />}
 												label="Laporan Shift"
-						to="/admin/finance/shift-reports"
-						permission="finance:view"
+												to="/admin/finance/shift-reports"
 												permission="finance:view"
 											/>
 											<DesktopSubNavLink
 												icon={<Calculator />}
 												label="HPP Kalkulator"
-						to="/admin/hpp-calculator"
-						permission="finance:view"
+												to="/admin/hpp-calculator"
+												permission="finance:view"
 											/>
 										</div>
 									</motion.div>
@@ -664,10 +663,10 @@ function AdminLayout() {
 					className={(isAIChat || isOperational) ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto p-3 pb-20 md:p-4 md:pb-4"}
 				>
 					{isAccessDenied ? (
-					<PermissionDenied onBack={() => navigate({ to: "/admin" })} />
-				) : (
-					<Outlet />
-				)}
+						<PermissionDenied onBack={() => navigate({ to: "/admin" })} />
+					) : (
+						<Outlet />
+					)}
 				</div>
 
 				{/* Footer - visible on both desktop and mobile */}
@@ -730,30 +729,30 @@ function AdminLayout() {
 										</p>
 										<div className="grid grid-cols-3 gap-2">
 											{section.items.map((item) => {
-														const { isAdmin, role } = useYumiAuth();
-														const hasPermission = !item.permission || isAdmin || role?.permissions?.includes(item.permission);
-														if (!hasPermission) return null;
+												const hasPermission = !item.permission || isAdmin || role?.permissions?.includes(item.permission);
+												if (!hasPermission) return null;
 
-														return (
-															<Link
-																className="flex flex-col items-center gap-2 rounded-xl bg-muted/50 p-3 transition-colors active:bg-muted"
-																key={item.to}
-													onClick={() => setIsQuickMenuOpen(false)}
-													to={item.to}
-												>
-													<div
-														className={`flex h-9 w-9 items-center justify-center rounded-md ${location.pathname === item.to
-																? "bg-primary text-primary-foreground"
-																: "bg-background text-foreground"
-															}`}
+												return (
+													<Link
+														className="flex flex-col items-center gap-2 rounded-xl bg-muted/50 p-3 transition-colors active:bg-muted"
+														key={item.to}
+														onClick={() => setIsQuickMenuOpen(false)}
+														to={item.to}
 													>
-														<item.icon className="h-4 w-4" />
-													</div>
-													<span className="text-center font-medium text-[10px] text-foreground leading-tight">
-														{item.label}
-													</span>
-												</Link>
-											))}
+														<div
+															className={`flex h-9 w-9 items-center justify-center rounded-md ${location.pathname === item.to
+																	? "bg-primary text-primary-foreground"
+																	: "bg-background text-foreground"
+																}`}
+														>
+															<item.icon className="h-4 w-4" />
+														</div>
+														<span className="text-center font-medium text-[10px] text-foreground leading-tight">
+															{item.label}
+														</span>
+													</Link>
+												);
+											})}
 										</div>
 									</div>
 								))}
@@ -808,77 +807,103 @@ function AdminLayout() {
 			{/* === MOBILE BOTTOM NAVIGATION === */}
 			{!isHomeEntryMode && !isOperational && (
 				<nav className="safe-area-bottom fixed inset-x-0 bottom-0 z-30 border-border border-t bg-background/95 backdrop-blur-md md:hidden">
-				<div className="flex items-stretch px-2">
-					{BOTTOM_NAV_ITEMS.map((item, index) => {
-						const { isAdmin, role } = useYumiAuth();
-						const hasPermission = !item.permission || isAdmin || role?.permissions?.includes(item.permission);
-						if (!hasPermission) return null;
+					<div className="flex items-stretch px-2">
+						{BOTTOM_NAV_ITEMS.map((item, index) => {
+							const hasPermission = !item.permission || isAdmin || role?.permissions?.includes(item.permission);
+							if (!hasPermission) return null;
 
-						const isCenter = index === 2; // AI Chat at center
-						const isMore = "isMore" in item && item.isMore;
+							const isCenter = index === 2; // AI Chat at center
+							const isMore = "isMore" in item && item.isMore;
 
-						const isActive = isMore
-							? MORE_MENU_PATHS.some((p) =>
-								location.pathname.startsWith(p),
-							)
-							: item.exact
-								? location.pathname === item.to
-								: location.pathname.startsWith(item.to);
+							const isActive = isMore
+								? MORE_MENU_PATHS.some((p) =>
+									location.pathname.startsWith(p),
+								)
+								: item.exact
+									? location.pathname === item.to
+									: location.pathname.startsWith(item.to);
 
-						// Center AI button - Circular FAB style (Instagram/Tinder)
-						if (isCenter) {
+							// Center AI button - Circular FAB style (Instagram/Tinder)
+							if (isCenter) {
+								return (
+									<Link
+										className="relative -top-4 flex flex-1 justify-center transition-transform active:scale-95"
+										key={item.to}
+										to={item.to}
+									>
+										{/* FAB Container */}
+										<div className="relative">
+											{/* Glow effect */}
+											<div
+												className={`absolute inset-0 rounded-full transition-all duration-300 ${isActive
+														? "animate-pulse bg-primary/40 blur-md"
+														: "bg-primary/20 blur-sm"
+													}`}
+												style={{ width: 56, height: 56 }}
+											/>
+											{/* Main FAB */}
+											<div
+												className={`relative flex h-14 w-14 items-center justify-center rounded-full transition-all duration-300 ${isActive
+														? "scale-105 bg-gradient-to-br from-primary via-primary to-accent shadow-primary/50 shadow-xl"
+														: "bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/30"
+													}`}
+											>
+												{isActive ? (
+													<Sparkles className="h-6 w-6 animate-spin-slow text-white" />
+												) : (
+													<Sparkles className="h-6 w-6 text-white" />
+												)}
+											</div>
+											{/* Label below FAB */}
+											<span
+												className={`absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-semibold text-[10px] ${isActive ? "text-primary" : "text-muted-foreground"
+													}`}
+											>
+												AI
+											</span>
+										</div>
+									</Link>
+								);
+							}
+
+							// Lainnya button - opens quick menu sheet
+							if (isMore) {
+								return (
+									<button
+										className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
+										key="lainnya"
+										onClick={() => setIsQuickMenuOpen(true)}
+										type="button"
+									>
+										<div
+											className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${isActive || isQuickMenuOpen
+													? "bg-primary text-primary-foreground shadow-sm"
+													: "text-muted-foreground"
+												}`}
+										>
+											<item.icon className="h-4 w-4" />
+										</div>
+										<span
+											className={`font-medium text-[9px] leading-tight ${isActive || isQuickMenuOpen
+													? "text-primary"
+													: "text-muted-foreground"
+												}`}
+										>
+											{item.label}
+										</span>
+									</button>
+								);
+							}
+
+							// Regular navigation items
 							return (
 								<Link
-									className="relative -top-4 flex flex-1 justify-center transition-transform active:scale-95"
+									className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
 									key={item.to}
 									to={item.to}
 								>
-									{/* FAB Container */}
-									<div className="relative">
-										{/* Glow effect */}
-										<div
-											className={`absolute inset-0 rounded-full transition-all duration-300 ${isActive
-													? "animate-pulse bg-primary/40 blur-md"
-													: "bg-primary/20 blur-sm"
-												}`}
-											style={{ width: 56, height: 56 }}
-										/>
-										{/* Main FAB */}
-										<div
-											className={`relative flex h-14 w-14 items-center justify-center rounded-full transition-all duration-300 ${isActive
-													? "scale-105 bg-gradient-to-br from-primary via-primary to-accent shadow-primary/50 shadow-xl"
-													: "bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/30"
-												}`}
-										>
-											{isActive ? (
-												<Sparkles className="h-6 w-6 animate-spin-slow text-white" />
-											) : (
-												<Sparkles className="h-6 w-6 text-white" />
-											)}
-										</div>
-										{/* Label below FAB */}
-										<span
-											className={`absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-semibold text-[10px] ${isActive ? "text-primary" : "text-muted-foreground"
-												}`}
-										>
-											AI
-										</span>
-									</div>
-								</Link>
-							);
-						}
-
-						// Lainnya button - opens quick menu sheet
-						if (isMore) {
-							return (
-								<button
-									className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
-									key="lainnya"
-									onClick={() => setIsQuickMenuOpen(true)}
-									type="button"
-								>
 									<div
-										className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${isActive || isQuickMenuOpen
+										className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${isActive
 												? "bg-primary text-primary-foreground shadow-sm"
 												: "text-muted-foreground"
 											}`}
@@ -886,43 +911,16 @@ function AdminLayout() {
 										<item.icon className="h-4 w-4" />
 									</div>
 									<span
-										className={`font-medium text-[9px] leading-tight ${isActive || isQuickMenuOpen
-												? "text-primary"
-												: "text-muted-foreground"
+										className={`font-medium text-[9px] leading-tight ${isActive ? "text-primary" : "text-muted-foreground"
 											}`}
 									>
 										{item.label}
 									</span>
-								</button>
+								</Link>
 							);
-						}
-
-						// Regular navigation items
-						return (
-							<Link
-								className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
-								key={item.to}
-								to={item.to}
-							>
-								<div
-									className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${isActive
-											? "bg-primary text-primary-foreground shadow-sm"
-											: "text-muted-foreground"
-										}`}
-								>
-									<item.icon className="h-4 w-4" />
-								</div>
-								<span
-									className={`font-medium text-[9px] leading-tight ${isActive ? "text-primary" : "text-muted-foreground"
-										}`}
-								>
-									{item.label}
-								</span>
-							</Link>
-						);
-					})}
-				</div>
-			</nav>
+						})}
+					</div>
+				</nav>
 			)}
 
 			{/* === MOBILE OPERATIONAL BOTTOM NAVIGATION === */}
@@ -940,27 +938,25 @@ function AdminLayout() {
 								Kembali
 							</span>
 						</Link>
-						
+
 						<Link
 							className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
 							search={{ tab: "orders" } as any}
 							to={location.pathname as any}
 						>
 							<div
-								className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
-									search.tab !== "stock"
+								className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${search.tab !== "stock"
 										? "bg-primary text-primary-foreground shadow-sm"
 										: "text-muted-foreground"
-								}`}
+									}`}
 							>
 								<ClipboardList className="h-4 w-4" />
 							</div>
 							<span
-								className={`font-medium text-[9px] leading-tight ${
-									search.tab !== "stock"
+								className={`font-medium text-[9px] leading-tight ${search.tab !== "stock"
 										? "text-primary"
 										: "text-muted-foreground"
-								}`}
+									}`}
 							>
 								Pesanan
 							</span>
@@ -972,20 +968,18 @@ function AdminLayout() {
 							to={location.pathname as any}
 						>
 							<div
-								className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
-									search.tab === "stock"
+								className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${search.tab === "stock"
 										? "bg-primary text-primary-foreground shadow-sm"
 										: "text-muted-foreground"
-								}`}
+									}`}
 							>
 								<Package className="h-4 w-4" />
 							</div>
 							<span
-								className={`font-medium text-[9px] leading-tight ${
-									search.tab === "stock"
+								className={`font-medium text-[9px] leading-tight ${search.tab === "stock"
 										? "text-primary"
 										: "text-muted-foreground"
-								}`}
+									}`}
 							>
 								Stok
 							</span>
