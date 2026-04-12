@@ -28,7 +28,6 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { formatCurrencyIDR } from "@/lib/export-utils";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
-import { authClient } from "@/lib/auth-client";
 
 const HOME_PIN_SESSION_KEY = "home_access_unlocked_v1";
 type RoleMenuItem = {
@@ -274,7 +273,7 @@ export const Route = createLazyFileRoute("/home")({
 
 function HomePage() {
 	const navigate = useNavigate();
-	const { user, role: userRole } = useYumiAuth();
+	const { user, role: userRole, logout } = useYumiAuth();
 	const settings = useQuery(api.site_settings.getSettings);
 	const storeName = settings?.storeName || "Yumi POS";
 	const shiftRows = useQuery(api.finance.getShiftReportTable, {}) as
@@ -365,13 +364,13 @@ function HomePage() {
 
 	const handleLogout = async () => {
 		try {
-			await authClient.signOut();
+			await logout();
 			window.sessionStorage.removeItem(HOME_PIN_SESSION_KEY);
 			setIsUnlocked(false);
-			toast.info("Berhasil logout dan mengunci sesi");
+			// toast.info is already handled inside useYumiAuth.logout but we can add more context if needed
 		} catch (error) {
 			console.error(error);
-			toast.error("Gagal melakukan logout");
+			toast.error("Gagal melakukan proses keluar");
 		}
 	};
 
@@ -451,15 +450,15 @@ function HomePage() {
 					<div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
 						<div className="relative flex-1">
 							<p className="app-overline mb-1 opacity-70">Mobile Super App</p>
-							<h1 className="font-black text-3xl leading-tight tracking-tight md:text-4xl text-white">
+							<h1 className="font-black text-3xl leading-tight tracking-tight md:text-4xl text-foreground">
 								{greeting}, {user?.name?.split(' ')[0] || "Team"}!
 							</h1>
 							
 							<div className="mt-2 flex items-center gap-2">
-								<span className="inline-flex items-center rounded-md bg-white/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white backdrop-blur-md">
+								<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-primary">
 									{userRole?.name || "Staff"}
 								</span>
-								<span className="text-xs font-bold text-white/70">
+								<span className="text-xs font-bold text-muted-foreground">
 									{storeName}
 								</span>
 							</div>
@@ -468,14 +467,14 @@ function HomePage() {
 						<div className="relative flex items-center gap-2">
 							<button
 								onClick={() => navigate({ to: "/" })}
-								className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white backdrop-blur-md transition-all hover:bg-white/20 active:scale-95"
+								className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground transition-all hover:bg-muted/80 active:scale-95"
 								title="Login / Ganti Akun"
 							>
 								<LogIn className="h-5 w-5" />
 							</button>
 							<button
 								onClick={handleLogout}
-								className="flex items-center gap-2 rounded-xl bg-destructive/80 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-destructive/20 transition-all hover:bg-destructive hover:shadow-destructive/40 active:scale-95"
+								className="flex items-center gap-2 rounded-xl bg-destructive px-4 py-2.5 text-sm font-bold text-destructive-foreground shadow-lg shadow-destructive/20 transition-all hover:opacity-90 active:scale-95"
 							>
 								<LogOut className="h-4 w-4" />
 								<span>Keluar</span>
@@ -483,11 +482,11 @@ function HomePage() {
 						</div>
 					</div>
 					
-					<p className="relative mt-8 text-xs font-medium text-white/50">
+					<p className="relative mt-8 text-xs font-medium text-muted-foreground">
 						 {dateText}
 					</p>
 
-					<div className="app-pill relative mt-6 inline-flex items-center gap-2 bg-white/20 px-3 py-2 text-[11px] font-bold text-white backdrop-blur-md">
+					<div className="app-pill relative mt-6 inline-flex items-center gap-2 bg-primary/10 px-3 py-2 text-[11px] font-bold text-primary">
 						<Sparkles className="h-3.5 w-3.5" />
 						Akses cepat untuk kasir, barista, dan kitchen
 					</div>
