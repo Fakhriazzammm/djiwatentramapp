@@ -250,6 +250,32 @@ export const getStaffStatsToday = query({
 	},
 });
 
+export const getAdminLogs = query({
+	args: {
+		limit: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const rawLogs = await ctx.db
+			.query("attendance")
+			.order("desc")
+			.take(args.limit ?? 100);
+
+		const enrichedLogs = await Promise.all(
+			rawLogs.map(async (log) => {
+				const user = await ctx.db.get(log.userId);
+				const role = user ? await ctx.db.get(user.roleId) : null;
+				return {
+					...log,
+					userName: user?.name || "Unknown Staff",
+					roleName: role?.name || "N/A",
+				};
+			})
+		);
+
+		return enrichedLogs;
+	},
+});
+
 export const getPayrollReport = query({
 	args: {
 		month: v.number(), // 1-12

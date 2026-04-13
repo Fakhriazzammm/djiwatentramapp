@@ -29,6 +29,7 @@ import {
 	Utensils,
 	History,
 	FileBarChart,
+	ClipboardList,
 	ArrowUpRight,
 	Coins,
 } from "lucide-react";
@@ -549,6 +550,8 @@ export function SettingsPage({
 		year: reportFilter.year,
 	});
 
+	const attendanceLogs = useQuery(api.attendance.getAdminLogs, { limit: 100 });
+
 	const formatCurrency = (amount: number) => {
 		return new Intl.NumberFormat("id-ID", {
 			style: "currency",
@@ -590,6 +593,7 @@ export function SettingsPage({
 		| "attendance"
 		| "payroll"
 		| "attendance-report"
+		| "attendance-logs"
 	>(mode === "operational-team" ? "users" : "landing");
 
 	useEffect(() => {
@@ -1128,6 +1132,7 @@ export function SettingsPage({
 					{ id: "shifts", label: "Manajemen Shift", icon: Clock },
 					{ id: "attendance", label: "Lokasi & Radius", icon: MapPin },
 					{ id: "attendance-report", label: "Data Absensi", icon: FileBarChart },
+					{ id: "attendance-logs", label: "Log Absensi", icon: ClipboardList },
 					{ id: "payroll", label: "Pengaturan Gaji", icon: Wallet },
 				] as const)
 			: ([
@@ -1382,17 +1387,17 @@ export function SettingsPage({
 								<div className="overflow-x-auto">
 									<table className="w-full text-left text-sm">
 										<thead className="bg-muted/50 font-bold text-muted-foreground text-xs uppercase tracking-widest">
-											<tr>
-												<th className="px-4 py-3">Nama Staff</th>
-												<th className="px-4 py-3">Role</th>
-												<th className="px-4 py-3 text-center">Sesi Shift</th>
-												<th className="px-4 py-3 text-center">Telat (Total)</th>
-												<th className="px-4 py-3 text-right">Gaji Tetap</th>
-												<th className="px-4 py-3 text-right">Gaji Shift</th>
-												<th className="px-4 py-3 text-right">Tunjangan</th>
-												<th className="px-4 py-3 text-right">Lembur</th>
-												<th className="px-4 py-3 text-right text-destructive">Denda</th>
-												<th className="px-4 py-3 text-right font-bold text-primary">Total Bersih</th>
+											<tr className="border-b border-border/50">
+												<th className="px-3 py-2.5 text-[11px]">Staff</th>
+												<th className="px-3 py-2.5 text-[11px]">Role</th>
+												<th className="px-3 py-2.5 text-center text-[11px]">Shift</th>
+												<th className="px-3 py-2.5 text-center text-[11px]">Telat</th>
+												<th className="px-3 py-2.5 text-right text-[11px]">Gaji Tetap</th>
+												<th className="px-3 py-2.5 text-right text-[11px]">Gaji Shift</th>
+												<th className="px-3 py-2.5 text-right text-[11px]">Tunj.</th>
+												<th className="px-3 py-2.5 text-right text-[11px]">Lembur</th>
+												<th className="px-3 py-2.5 text-right text-destructive text-[11px]">Denda</th>
+												<th className="px-3 py-2.5 text-right font-bold text-primary text-[11px]">Total</th>
 											</tr>
 										</thead>
 										<tbody className="divide-y divide-border/50">
@@ -1415,20 +1420,20 @@ export function SettingsPage({
 											) : (
 												payrollReport.rows.map((staff: any, idx: number) => (
 													<tr className="hover:bg-muted/30 transition-colors" key={idx}>
-														<td className="px-4 py-4 font-bold text-foreground">{staff.name}</td>
-														<td className="px-4 py-4 text-xs font-medium text-muted-foreground">{staff.roleName}</td>
-														<td className="px-4 py-4 text-center font-medium">{staff.sessionCount}x</td>
-														<td className="px-4 py-4 text-center">
-															<span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${staff.totalLateMinutes > 0 ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600"}`}>
-																{staff.totalLateMinutes}m
+														<td className="px-3 py-2.5 font-bold text-foreground text-xs">{staff.name}</td>
+														<td className="px-3 py-2.5 text-[10px] font-medium text-muted-foreground">{staff.roleName}</td>
+														<td className="px-3 py-2.5 text-center font-medium text-xs">{(staff.sessionCount || 0)}x</td>
+														<td className="px-3 py-2.5 text-center">
+															<span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${(staff.totalLateMinutes || 0) > 0 ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600"}`}>
+																{(staff.totalLateMinutes || 0)}m
 															</span>
 														</td>
-														<td className="px-4 py-4 text-right font-medium">{formatCurrency(staff.monthlyFixedSalary)}</td>
-														<td className="px-4 py-4 text-right font-medium">{formatCurrency(staff.totalShiftSalary)}</td>
-														<td className="px-4 py-4 text-right">{formatCurrency(staff.totalAllowance)}</td>
-														<td className="px-4 py-4 text-right text-emerald-600">+{formatCurrency(staff.totalOvertimeBonus)}</td>
-														<td className="px-4 py-4 text-right text-destructive">-{formatCurrency(staff.totalPenalty)}</td>
-														<td className="px-4 py-4 text-right font-black text-primary bg-primary/5">{formatCurrency(staff.netSalary)}</td>
+														<td className="px-3 py-2.5 text-right font-medium text-xs">{formatCurrency(staff.monthlyFixedSalary || 0)}</td>
+														<td className="px-3 py-2.5 text-right font-medium text-xs">{formatCurrency(staff.totalShiftSalary || 0)}</td>
+														<td className="px-3 py-2.5 text-right text-xs">{formatCurrency(staff.totalAllowance || 0)}</td>
+														<td className="px-3 py-2.5 text-right text-[10px] text-emerald-600">+{formatCurrency(staff.totalOvertimeBonus || 0)}</td>
+														<td className="px-3 py-2.5 text-right text-[10px] text-destructive">-{formatCurrency(staff.totalPenalty || 0)}</td>
+														<td className="px-3 py-2.5 text-right font-bold text-primary bg-primary/5 text-xs">{formatCurrency(staff.netSalary || 0)}</td>
 													</tr>
 												))
 											)}
@@ -1443,6 +1448,91 @@ export function SettingsPage({
 									Laporan ini dihitung secara real-time berdasarkan log check-in/out staff dan aturan yang berlaku saat ini. 
 									Pastikan data shift dan geofencing sudah dikonfigurasi dengan benar untuk akurasi data.
 								</p>
+							</div>
+						</section>
+					</div>
+				)}
+
+				{activeTab === "attendance-logs" && (
+					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
+						<section className="space-y-6 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-8">
+							<div className="flex items-center gap-4">
+								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+									<ClipboardList className="h-6 w-6" />
+								</div>
+								<div>
+									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
+										Log Absensi Real-time
+									</h3>
+									<p className="text-muted-foreground text-sm">
+										Data aktivitas check-in dan check-out terbaru seluruh staff
+									</p>
+								</div>
+							</div>
+
+							<div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+								<div className="overflow-x-auto">
+									<table className="w-full text-left text-sm">
+										<thead className="bg-muted/50 font-bold text-muted-foreground text-xs uppercase tracking-widest">
+											<tr className="border-b border-border/50">
+												<th className="px-3 py-2.5 text-[11px]">Waktu</th>
+												<th className="px-3 py-2.5 text-[11px]">Staff</th>
+												<th className="px-3 py-2.5 text-[11px]">Aksi</th>
+												<th className="px-3 py-2.5 text-[11px]">Shift</th>
+												<th className="px-3 py-2.5 text-[11px]">Detail / Catatan</th>
+											</tr>
+										</thead>
+										<tbody className="divide-y divide-border/50">
+											{!attendanceLogs ? (
+												Array.from({ length: 5 }).map((_, i) => (
+													<tr key={i}>
+														<td className="px-3 py-4" colSpan={5}>
+															<Skeleton className="h-4 w-full" />
+														</td>
+													</tr>
+												))
+											) : !attendanceLogs || attendanceLogs.length === 0 ? (
+												<tr>
+													<td colSpan={5} className="py-12 text-center text-muted-foreground italic">
+														Belum ada log absensi tercatat.
+													</td>
+												</tr>
+											) : (
+												attendanceLogs.map((log: any, idx: number) => (
+													<tr className="hover:bg-muted/30 transition-colors" key={idx}>
+														<td className="px-3 py-2.5 text-xs text-muted-foreground">
+															<div className="font-bold text-foreground">
+																{new Date(log.timestamp).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+															</div>
+															<div className="opacity-70 text-[10px]">
+																{new Date(log.timestamp).toLocaleDateString("id-ID", { day: "2-digit", month: "short" })}
+															</div>
+														</td>
+														<td className="px-3 py-2.5">
+															<div className="font-bold text-foreground text-xs">{log.userName}</div>
+															<div className="text-[10px] text-muted-foreground">{log.roleName}</div>
+														</td>
+														<td className="px-3 py-2.5">
+															<span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+																log.type === "check_in" 
+																	? "bg-emerald-100 text-emerald-700 font-bold" 
+																	: "bg-amber-100 text-amber-700 font-bold"
+															}`}>
+																{log.type === "check_in" ? "CHECK-IN" : "CHECK-OUT"}
+															</span>
+														</td>
+														<td className="px-3 py-2.5 text-xs font-medium text-foreground">
+															{log.shiftName || "-"}
+														</td>
+														<td className="px-3 py-2.5 text-[11px] text-muted-foreground italic">
+															{log.notes || "-"}
+														</td>
+													</tr>
+												))
+											)}
+										</tbody>
+									</table>
+								</div>
 							</div>
 						</section>
 					</div>
@@ -1533,7 +1623,8 @@ export function SettingsPage({
 							<div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-700 leading-relaxed dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300">
 								<p className="font-bold">Tips Penggajian:</p>
 								<ul className="mt-2 list-inside list-disc space-y-1">
-									<li>Gaji per staff dihitung berdasarkan Jam Kerja x Tarif per Jam yang diatur di menu Roles.</li>
+									<li>Gaji tetap bulanan diberikan sebagai kompensasi dasar staff per bulan.</li>
+									<li>Gaji Shift dihitung dari jumlah check-in/out harian yang berhasil dilakukan oleh staff.</li>
 									<li>Tunjangan Harian diberikan otomatis setiap kali staff melakukan Check-in di hari tersebut.</li>
 									<li>Denda keterlambatan hanya dihitung terhadap menit yang melebihi masa toleransi.</li>
 								</ul>
