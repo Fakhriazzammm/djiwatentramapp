@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,9 @@ import {
 	History,
 	LogOut,
 	ChevronRight,
-	Calendar
+	Calendar,
+	KeyRound,
+	X
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
@@ -41,6 +43,12 @@ function StaffProfilePage() {
 	const now = new Date();
 	const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
 	const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+	const [showChangePin, setShowChangePin] = useState(false);
+	const [newPin, setNewPin] = useState("");
+	const [oldPin, setOldPin] = useState("");
+	const [isUpdatingPin, setIsUpdatingPin] = useState(false);
+
+	const updatePinMutation = useMutation(api.users.updatePin);
 
 	// Auto-unlock if current user is the owner or an admin
 	useEffect(() => {
@@ -293,6 +301,105 @@ function StaffProfilePage() {
 											))}
 										</div>
 									)}
+								</div>
+							</div>
+
+							{/* Account Settings */}
+							<div className="space-y-4">
+								<h3 className="flex items-center gap-2 px-2 font-bold uppercase tracking-wider text-sm">
+									<ShieldCheck className="h-4 w-4 text-primary" />
+									Pengaturan Akun
+								</h3>
+								<div className="rounded-3xl border bg-card p-4 space-y-4">
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-3">
+											<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+												<KeyRound className="h-5 w-5" />
+											</div>
+											<div>
+												<p className="font-bold text-sm">PIN Keamanan</p>
+												<p className="text-[10px] text-muted-foreground uppercase">Gunakan PIN untuk absensi & pendaftaran</p>
+											</div>
+										</div>
+										<Button 
+											variant="outline" 
+											size="sm" 
+											className="rounded-xl font-bold text-xs"
+											onClick={() => setShowChangePin(!showChangePin)}
+										>
+											{showChangePin ? "BATAL" : "UBAH PIN"}
+										</Button>
+									</div>
+
+									<AnimatePresence>
+										{showChangePin && (
+											<motion.div
+												initial={{ height: 0, opacity: 0 }}
+												animate={{ height: "auto", opacity: 1 }}
+												exit={{ height: 0, opacity: 0 }}
+												className="overflow-hidden border-t pt-4"
+											>
+												<form 
+													className="space-y-4"
+													onSubmit={async (e) => {
+														e.preventDefault();
+														if (newPin.length !== 6 || oldPin.length !== 6) {
+															toast.error("PIN harus 6 digit");
+															return;
+														}
+														setIsUpdatingPin(true);
+														try {
+															await updatePinMutation({
+																token: token!,
+																oldPin,
+																newPin
+															});
+															toast.success("PIN berhasil diperbarui!");
+															setShowChangePin(false);
+															setNewPin("");
+															setOldPin("");
+														} catch (err) {
+															toast.error((err as any).message || "Gagal memperbarui PIN");
+														} finally {
+															setIsUpdatingPin(false);
+														}
+													}}
+												>
+													<div className="grid grid-cols-2 gap-4">
+														<div className="space-y-1.5">
+															<label className="text-[10px] font-black text-muted-foreground uppercase ml-1">PIN Lama</label>
+															<Input 
+																type="password"
+																maxLength={6}
+																value={oldPin}
+																onChange={(e) => setOldPin(e.target.value.replace(/\D/g, ""))}
+																className="h-12 rounded-xl text-center font-bold tracking-widest"
+																placeholder="••••••"
+															/>
+														</div>
+														<div className="space-y-1.5">
+															<label className="text-[10px] font-black text-muted-foreground uppercase ml-1">PIN Baru</label>
+															<Input 
+																type="password"
+																maxLength={6}
+																value={newPin}
+																onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
+																className="h-12 rounded-xl text-center font-bold tracking-widest"
+																placeholder="••••••"
+															/>
+														</div>
+													</div>
+													<Button 
+														type="submit" 
+														className="w-full h-12 rounded-xl font-bold"
+														disabled={isUpdatingPin || newPin.length !== 6 || oldPin.length !== 6}
+													>
+														{isUpdatingPin ? <Clock className="h-4 w-4 animate-spin" /> : "SIMPAN PIN BARU"}
+													</Button>
+												</form>
+											</motion.div>
+										)}
+									</AnimatePresence>
 								</div>
 							</div>
 

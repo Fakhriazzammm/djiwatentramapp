@@ -42,7 +42,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 function AttendancePage() {
 	const navigate = useNavigate();
-	const [step, setStep] = useState<"select" | "face" | "success">("select");
+	const [step, setStep] = useState<"select" | "pin" | "face" | "success">("select");
 	const { user: authUser, isAuthenticated } = useYumiAuth();
 	
 	const [pin, setPin] = useState("");
@@ -109,10 +109,10 @@ function AttendancePage() {
 			setUser({
 				id: authUser._id,
 				name: authUser.name,
-				faceDescriptor: (authUser as any).faceDescriptor || [],
+				faceDescriptor: (authUser as any).faceDescriptor || null,
 				isCurrentlyIn
 			});
-			setStep("pin");
+			setStep("face"); // Go to face scan since we have the token
 		}
 	}, [isAuthenticated, authUser, step, currentlyIn]);
 	
@@ -121,10 +121,15 @@ function AttendancePage() {
 		setUser({
 			id: staff._id,
 			name: staff.name,
-			faceDescriptor: staff.faceDescriptor || [],
+			faceDescriptor: staff.faceDescriptor || null,
 			isCurrentlyIn
 		});
-		setStep("face");
+
+		if (!staff.faceDescriptor) {
+			setStep("pin"); // Need PIN to enroll
+		} else {
+			setStep("face");
+		}
 	};
 
 
@@ -139,13 +144,15 @@ function AttendancePage() {
 			}
 
 			// 2. If in enroll mode, save the face data first
-			if (isEnrolling && descriptor) {
-				toast.loading("Menyimpan biometrik...", { id: "save-face" });
+			if (isEnrolling && descriptor && pin) {
+				toast.loading("Mendaftarkan wajah...", { id: "save-face" });
 				await updateFace({
 					userId: user.id as any,
+					pin: pin,
 					faceDescriptor: descriptor,
 				});
 				toast.success("Wajah berhasil terdaftar!", { id: "save-face" });
+				setIsEnrolling(false);
 			}
 
 			// 3. Smart Toggle: In or Out?
@@ -166,6 +173,23 @@ function AttendancePage() {
 		} catch (err) {
 			toast.dismiss();
 			toast.error("Gagal memproses absensi");
+		}
+	};
+
+	const handlePinSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (pin.length !== 6) return;
+
+		setIsVerifyingPin(true);
+		try {
+			// Just use existing mutation to check if PIN is correct
+			await verifyPin({ userId: user?.id as any, pinCode: pin });
+			setStep("face");
+			setIsEnrolling(true);
+		} catch (err) {
+			toast.error("PIN salah. Pendaftaran wajah dibatalkan.");
+		} finally {
+			setIsVerifyingPin(false);
 		}
 	};
 
@@ -356,6 +380,57 @@ function AttendancePage() {
 						</motion.div>
 					)}
 
+
+					{step === "pin" && (
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: -20 }}
+							key="pin-step"
+							className="max-w-md mx-auto w-full space-y-8"
+						>
+							<div className="space-y-6 text-center">
+								<div className="inline-flex h-20 w-20 items-center justify-center rounded-[2.5rem] bg-amber-500/10 text-amber-600 mb-2">
+									<KeyRound className="h-10 w-10" />
+								</div>
+								<div className="space-y-2">
+									<h2 className="text-3xl font-black tracking-tight uppercase">Verifikasi PIN</h2>
+									<p className="text-muted-foreground">Halo <strong>{user?.name}</strong>, berikan PIN Anda untuk mendaftarkan data biometrik baru.</p>
+								</div>
+
+								<form className="space-y-6" onSubmit={handlePinSubmit}>
+									<div className="relative">
+										<Input
+											autoFocus
+											className="h-20 rounded-[2rem] border-2 pl-4 text-center text-4xl font-black tracking-[0.5em] focus:border-primary focus:ring-8 focus:ring-primary/5 transition-all"
+											maxLength={6}
+											onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+											placeholder="••••••"
+											type="password"
+											value={pin}
+										/>
+									</div>
+									<div className="grid grid-cols-2 gap-4">
+										<Button 
+											type="button" 
+											variant="outline" 
+											className="h-16 rounded-2xl font-bold"
+											onClick={() => { setStep("select"); setPin(""); }}
+										>
+											KEMBALI
+										</Button>
+										<Button 
+											className="h-16 rounded-2xl text-lg font-bold" 
+											disabled={pin.length !== 6 || isVerifyingPin} 
+											type="submit"
+										>
+											{isVerifyingPin ? <Loader2 className="h-6 w-6 animate-spin" /> : "LANJUT"}
+										</Button>
+									</div>
+								</form>
+							</div>
+						</motion.div>
+					)}
 
 					{step === "face" && (
 						<motion.div

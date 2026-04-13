@@ -675,3 +675,53 @@ export const logoutSession = mutation({
 		return true;
 	},
 });
+
+export const enrollFace = mutation({
+	args: { 
+		userId: v.id("users"), 
+		pin: v.string(), 
+		faceDescriptor: v.array(v.number()) 
+	},
+	handler: async (ctx, args) => {
+		const user = await ctx.db.get(args.userId);
+		if (!user || !user.isActive) throw new Error("User tidak ditemukan");
+		
+		if (user.homePin !== args.pin) {
+			throw new Error("PIN salah. Pendaftaran wajah dibatalkan.");
+		}
+
+		await ctx.db.patch(args.userId, {
+			faceDescriptor: args.faceDescriptor,
+		});
+
+		return { success: true };
+	},
+});
+
+export const updatePin = mutation({
+	args: { 
+		token: v.string(), 
+		newPin: v.string(),
+		oldPin: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const sessionResult = await validateSessionInternal(ctx, args.token);
+		if (!sessionResult) throw new Error("Sesi tidak valid atau telah berakhir");
+		
+		const { user } = sessionResult;
+		
+		if (args.oldPin && user.homePin !== args.oldPin) {
+			throw new Error("PIN lama salah");
+		}
+
+		if (!isValidHomePin(args.newPin)) {
+			throw new Error("PIN baru harus 6 digit angka");
+		}
+
+		await ctx.db.patch(user._id, {
+			homePin: args.newPin,
+		});
+
+		return { success: true };
+	},
+});

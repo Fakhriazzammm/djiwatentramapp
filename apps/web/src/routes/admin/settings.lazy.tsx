@@ -24,6 +24,8 @@ import {
 	Users,
 	Wallet,
 	X,
+	KeyRound,
+	AlertCircle,
 } from "lucide-react";
 import { FaceRecognition } from "@/components/auth/FaceRecognition";
 import { Copy, Download, FileJson, FileSpreadsheet, FileText, Share2 } from "lucide-react";
@@ -3239,15 +3241,30 @@ export function SettingsPage({
 																			: "Pendaftaran wajah diperlukan untuk absensi."}
 																	</p>
 																</div>
-																<Button 
-																	variant={(editingUser as any).faceDescriptor ? "outline" : "default"}
-																	size="sm"
-																	onClick={() => setShowFaceEnrollment(true)}
-																	type="button"
-																>
-																	<Camera className="mr-2 h-4 w-4" />
-																	{(editingUser as any).faceDescriptor ? "Daftar Ulang" : "Daftarkan Wajah"}
-																</Button>
+																<div className="flex gap-2">
+																	{(editingUser as any).faceDescriptor && (
+																		<Button 
+																			variant="ghost" 
+																			size="sm" 
+																			className="text-destructive hover:bg-destructive/10"
+																			onClick={() => {
+																				setEditingUser({ ...editingUser, faceDescriptor: undefined } as any);
+																				toast.info("Data wajah dikosongkan. Simpan untuk menerapkan perubahan.");
+																			}}
+																		>
+																			Hapus
+																		</Button>
+																	)}
+																	<Button 
+																		variant={(editingUser as any).faceDescriptor ? "outline" : "default"}
+																		size="sm"
+																		onClick={() => setShowFaceEnrollment(true)}
+																		type="button"
+																	>
+																		<Camera className="mr-2 h-4 w-4" />
+																		{(editingUser as any).faceDescriptor ? "Daftar Ulang" : "Daftarkan Wajah"}
+																	</Button>
+																</div>
 															</div>
 
 															{showFaceEnrollment && (
@@ -3318,16 +3335,31 @@ export function SettingsPage({
 																<p className="text-muted-foreground text-xs">
 																	{user.username}
 																</p>
-																{user.homePin ? (
-																	<p className="mt-1 text-[11px] font-medium text-emerald-600">
-																		PIN /home aktif
-																	</p>
-																) : null}
-																{user.receiveReportEmails ? (
-																	<p className="mt-1 text-[11px] font-medium text-primary">
-																		Penerima laporan email
-																	</p>
-																) : null}
+																<div className="mt-2 flex flex-wrap gap-2">
+																	{user.faceDescriptor ? (
+																		<span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+																			<ShieldCheck className="h-3 w-3" />
+																			Face ID Aktif
+																		</span>
+																	) : (
+																		<span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+																			<AlertCircle className="h-3 w-3" />
+																			Biometrik Kosong
+																		</span>
+																	)}
+																	{user.homePin ? (
+																		<span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+																			<KeyRound className="h-3 w-3" />
+																			PIN Aktif
+																		</span>
+																	) : null}
+																	{user.receiveReportEmails ? (
+																		<span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+																			<Bell className="h-3 w-3" />
+																			Email Lap.
+																		</span>
+																	) : null}
+																</div>
 															</div>
 														</div>
 														<div className="flex items-center gap-1">
