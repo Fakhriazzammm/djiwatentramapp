@@ -13,6 +13,8 @@ export const createRole = mutation({
 		name: v.string(),
 		permissions: v.array(v.string()),
 		baseHourlyRate: v.optional(v.number()),
+		baseShiftRate: v.optional(v.number()),
+		monthlyFixedSalary: v.optional(v.number()),
 		dailyAllowance: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
@@ -35,6 +37,8 @@ export const updateRole = mutation({
 		name: v.string(),
 		permissions: v.array(v.string()),
 		baseHourlyRate: v.optional(v.number()),
+		baseShiftRate: v.optional(v.number()),
+		monthlyFixedSalary: v.optional(v.number()),
 		dailyAllowance: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
@@ -42,6 +46,8 @@ export const updateRole = mutation({
 			name: args.name,
 			permissions: args.permissions,
 			baseHourlyRate: args.baseHourlyRate,
+			baseShiftRate: args.baseShiftRate,
+			monthlyFixedSalary: args.monthlyFixedSalary,
 			dailyAllowance: args.dailyAllowance,
 		});
 	},

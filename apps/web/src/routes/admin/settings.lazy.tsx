@@ -609,6 +609,8 @@ export function SettingsPage({
 		name: "",
 		permissions: [] as string[],
 		baseHourlyRate: 0,
+		baseShiftRate: 0,
+		monthlyFixedSalary: 0,
 		dailyAllowance: 0,
 	});
 	const [editingUser, setEditingUser] = useState<{
@@ -626,6 +628,8 @@ export function SettingsPage({
 		name: string;
 		permissions: string[];
 		baseHourlyRate: number;
+		baseShiftRate: number;
+		monthlyFixedSalary: number;
 		dailyAllowance: number;
 	} | null>(null);
 	const [showFaceEnrollment, setShowFaceEnrollment] = useState(false);
@@ -995,6 +999,8 @@ export function SettingsPage({
 			name: role.name,
 			permissions: role.permissions,
 			baseHourlyRate: role.baseHourlyRate ?? 0,
+			baseShiftRate: role.baseShiftRate ?? 0,
+			monthlyFixedSalary: role.monthlyFixedSalary ?? 0,
 			dailyAllowance: role.dailyAllowance ?? 0,
 		});
 	};
@@ -1012,6 +1018,8 @@ export function SettingsPage({
 				name: editingRole.name,
 				permissions: editingRole.permissions,
 				baseHourlyRate: editingRole.baseHourlyRate,
+				baseShiftRate: editingRole.baseShiftRate,
+				monthlyFixedSalary: editingRole.monthlyFixedSalary,
 				dailyAllowance: editingRole.dailyAllowance,
 			});
 			toast.success("Role berhasil diperbarui");
@@ -1049,10 +1057,12 @@ export function SettingsPage({
 				name: newRole.name,
 				permissions: newRole.permissions,
 				baseHourlyRate: newRole.baseHourlyRate,
+				baseShiftRate: newRole.baseShiftRate,
+				monthlyFixedSalary: newRole.monthlyFixedSalary,
 				dailyAllowance: newRole.dailyAllowance,
 			});
 			toast.success("Role baru berhasil dibuat");
-			setNewRole({ name: "", permissions: [], baseHourlyRate: 0, dailyAllowance: 0 });
+			setNewRole({ name: "", permissions: [], baseHourlyRate: 0, baseShiftRate: 0, monthlyFixedSalary: 0, dailyAllowance: 0 });
 		} catch (error) {
 			console.error(error);
 			toast.error("Gagal membuat role");
@@ -1375,10 +1385,10 @@ export function SettingsPage({
 											<tr>
 												<th className="px-4 py-3">Nama Staff</th>
 												<th className="px-4 py-3">Role</th>
-												<th className="px-4 py-3 text-center">Hadir</th>
-												<th className="px-4 py-3 text-center">Jam</th>
-												<th className="px-4 py-3 text-center">Telat (Min)</th>
-												<th className="px-4 py-3 text-right">Gaji Pokok</th>
+												<th className="px-4 py-3 text-center">Sesi Shift</th>
+												<th className="px-4 py-3 text-center">Telat (Total)</th>
+												<th className="px-4 py-3 text-right">Gaji Tetap</th>
+												<th className="px-4 py-3 text-right">Gaji Shift</th>
 												<th className="px-4 py-3 text-right">Tunjangan</th>
 												<th className="px-4 py-3 text-right">Lembur</th>
 												<th className="px-4 py-3 text-right text-destructive">Denda</th>
@@ -1407,18 +1417,18 @@ export function SettingsPage({
 													<tr className="hover:bg-muted/30 transition-colors" key={idx}>
 														<td className="px-4 py-4 font-bold text-foreground">{staff.name}</td>
 														<td className="px-4 py-4 text-xs font-medium text-muted-foreground">{staff.roleName}</td>
-														<td className="px-4 py-4 text-center font-medium">{staff.daysWorked} hr</td>
-														<td className="px-4 py-4 text-center text-zinc-600">{staff.totalHours.toFixed(1)}j</td>
+														<td className="px-4 py-4 text-center font-medium">{staff.sessionCount}x</td>
 														<td className="px-4 py-4 text-center">
 															<span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${staff.totalLateMinutes > 0 ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600"}`}>
 																{staff.totalLateMinutes}m
 															</span>
 														</td>
-														<td className="px-4 py-4 text-right font-medium">{formatCurrency(staff.totalBaseSalary)}</td>
-														<td className="px-4 py-4 text-right font-medium">{formatCurrency(staff.totalAllowance)}</td>
-														<td className="px-4 py-4 text-right font-medium text-emerald-600">+{formatCurrency(staff.totalOvertimeBonus)}</td>
-														<td className="px-4 py-4 text-right font-medium text-destructive">-{formatCurrency(staff.totalLatePenalty)}</td>
-														<td className="px-4 py-4 text-right font-bold text-primary">{formatCurrency(staff.netSalary)}</td>
+														<td className="px-4 py-4 text-right font-medium">{formatCurrency(staff.monthlyFixedSalary)}</td>
+														<td className="px-4 py-4 text-right font-medium">{formatCurrency(staff.totalShiftSalary)}</td>
+														<td className="px-4 py-4 text-right">{formatCurrency(staff.totalAllowance)}</td>
+														<td className="px-4 py-4 text-right text-emerald-600">+{formatCurrency(staff.totalOvertimeBonus)}</td>
+														<td className="px-4 py-4 text-right text-destructive">-{formatCurrency(staff.totalPenalty)}</td>
+														<td className="px-4 py-4 text-right font-black text-primary bg-primary/5">{formatCurrency(staff.netSalary)}</td>
 													</tr>
 												))
 											)}
@@ -3272,20 +3282,38 @@ export function SettingsPage({
 										<div className="grid grid-cols-2 gap-4">
 											<div className="space-y-2">
 												<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
-													Gaji per Jam (Rp)
+													Gaji per Shift (Rp)
 												</label>
 												<div className="relative">
 													<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
 													<input
 														className="w-full rounded-xl bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
 														onChange={(e) =>
-															setNewRole({ ...newRole, baseHourlyRate: Number(e.target.value) })
+															setNewRole({ ...newRole, baseShiftRate: Number(e.target.value) })
 														}
 														type="number"
-														value={newRole.baseHourlyRate}
+														value={newRole.baseShiftRate}
 													/>
 												</div>
 											</div>
+											<div className="space-y-2">
+												<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+													Gaji Tetap Bulanan (Rp)
+												</label>
+												<div className="relative">
+													<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
+													<input
+														className="w-full rounded-xl bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+														onChange={(e) =>
+															setNewRole({ ...newRole, monthlyFixedSalary: Number(e.target.value) })
+														}
+														type="number"
+														value={newRole.monthlyFixedSalary}
+													/>
+												</div>
+											</div>
+										</div>
+										<div className="grid grid-cols-1 gap-4">
 											<div className="space-y-2">
 												<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
 													Tunjangan Harian (Rp)
@@ -3728,7 +3756,7 @@ export function SettingsPage({
 													<div className="grid grid-cols-2 gap-4">
 														<div className="space-y-2">
 															<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
-																Gaji per Jam (Rp)
+																Gaji per Shift (Rp)
 															</label>
 															<div className="relative">
 																<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
@@ -3737,14 +3765,35 @@ export function SettingsPage({
 																	onChange={(e) =>
 																		setEditingRole({
 																			...editingRole,
-																			baseHourlyRate: Number(e.target.value),
+																			baseShiftRate: Number(e.target.value),
 																		})
 																	}
 																	type="number"
-																	value={editingRole.baseHourlyRate}
+																	value={editingRole.baseShiftRate}
 																/>
 															</div>
 														</div>
+														<div className="space-y-2">
+															<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+																Gaji Tetap Bulanan (Rp)
+															</label>
+															<div className="relative">
+																<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
+																<input
+																	className="w-full rounded-xl border border-border bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+																	onChange={(e) =>
+																		setEditingRole({
+																			...editingRole,
+																			monthlyFixedSalary: Number(e.target.value),
+																		})
+																	}
+																	type="number"
+																	value={editingRole.monthlyFixedSalary}
+																/>
+															</div>
+														</div>
+													</div>
+													<div className="grid grid-cols-1 gap-4">
 														<div className="space-y-2">
 															<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
 																Tunjangan Harian (Rp)

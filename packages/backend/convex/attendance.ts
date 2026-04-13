@@ -291,22 +291,26 @@ export const getPayrollReport = query({
 
 		const reportRows: any[] = [];
 
-		for (const [userId, logs] of userLogs.entries()) {
-			const user = userMap.get(userId as any);
-			if (!user) continue;
+		for (const user of users) {
+			if (!user.isActive) continue;
 
 			const role = roleMap.get(user.roleId);
-			const baseRate = role?.baseHourlyRate ?? 0;
-			const allowance = role?.dailyAllowance ?? 0;
+			const shiftRate = (role as any)?.baseShiftRate ?? 0;
+			const monthlySalary = (role as any)?.monthlyFixedSalary ?? 0;
+			const allowance = (role as any)?.dailyAllowance ?? 0;
 
+			// Get logs for this user
+			const userLogsForPeriod = userLogs.get(user._id) || [];
+			
 			// Sort logs by time
-			const sortedLogs = [...logs].sort((a, b) => a.timestamp - b.timestamp);
+			const sortedLogs = [...userLogsForPeriod].sort((a, b) => a.timestamp - b.timestamp);
 			
 			const daysWorked = new Set();
 			let totalWorkingMs = 0;
 			let totalPenalty = 0;
 			let totalLateMinutes = 0;
 			let totalOvertimeBonus = 0;
+			let sessionCount = 0;
 
 			const sessions: any[] = [];
 
@@ -321,6 +325,10 @@ export const getPayrollReport = query({
 					
 					const durationMs = checkOut ? (checkOut.timestamp - entry.timestamp) : 0;
 					totalWorkingMs += durationMs;
+
+					if (checkOut) {
+						sessionCount++;
+					}
 
 					const hours = durationMs / (1000 * 60 * 60);
 					if (hours > 8) {
@@ -356,18 +364,20 @@ export const getPayrollReport = query({
 				}
 			}
 
-			const totalBaseSalary = (totalWorkingMs / (1000 * 60 * 60)) * baseRate;
+			const totalShiftSalary = sessionCount * shiftRate;
 			const totalAllowance = daysWorked.size * allowance;
-			const netSalary = totalBaseSalary + totalAllowance + totalOvertimeBonus - totalPenalty;
+			const netSalary = monthlySalary + totalShiftSalary + totalAllowance + totalOvertimeBonus - totalPenalty;
 
 			reportRows.push({
-				userId,
+				userId: user._id,
 				name: user.name,
 				roleName: role?.name || "N/A",
 				daysWorked: daysWorked.size,
+				sessionCount,
 				totalHours: totalWorkingMs / (1000 * 60 * 60),
 				totalLateMinutes,
-				totalBaseSalary,
+				monthlyFixedSalary: monthlySalary,
+				totalShiftSalary,
 				totalPenalty,
 				totalAllowance,
 				totalOvertimeBonus,

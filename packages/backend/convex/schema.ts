@@ -518,7 +518,9 @@ export default defineSchema({
 	roles: defineTable({
 		name: v.string(), // e.g., "admin", "cashier"
 		permissions: v.array(v.string()), // e.g., ["manage_users", "view_reports"]
-		baseHourlyRate: v.optional(v.number()),
+		baseHourlyRate: v.optional(v.number()), // Deprecated in favor of shift/monthly
+		baseShiftRate: v.optional(v.number()),
+		monthlyFixedSalary: v.optional(v.number()),
 		dailyAllowance: v.optional(v.number()),
 	}).index("by_name", ["name"]),
 
