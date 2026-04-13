@@ -490,6 +490,15 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			for (const entry of successfulResults) {
 				const scanData = entry.data;
 				if (!scanData) continue;
+				const rewrittenFallback = (scanData.rewrittenText || "").trim()
+					? scanData.rewrittenText
+					: (scanData.rawText || "").trim()
+						? scanData.rawText
+						: "";
+				const normalizedScanData: ScanResultData = {
+					...scanData,
+					rewrittenText: rewrittenFallback,
+				};
 				const normalizedItems = Array.isArray(scanData.items)
 					? scanData.items
 							.map((item: any) => ({
@@ -512,9 +521,9 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 							)
 							.join("\n")}`
 					: "\nItem Struk: tidak terbaca jelas (silakan review manual sebelum simpan)";
-				const rewrittenPreview = scanData.rewrittenText?.trim()
-					? `\n\nTulisan Ulang OCR:\n${scanData.rewrittenText}`
-					: "";
+				const rewrittenPreview = normalizedScanData.rewrittenText?.trim()
+					? `\n\nTulisan ulang isi struk (OCR):\n${normalizedScanData.rewrittenText}`
+					: "\n\nTulisan ulang isi struk (OCR): belum bisa dibaca otomatis, mohon cek gambar secara manual.";
 				const financialSummary = [
 					scanData.subtotal ? `Subtotal Rp ${toRupiah(scanData.subtotal)}` : null,
 					scanData.tax ? `Pajak Rp ${toRupiah(scanData.tax)}` : null,
@@ -527,6 +536,10 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 					.join(" | ");
 				const merchantName =
 					scanData.merchant?.trim() || scanData.name?.trim() || "Toko tidak terbaca";
+				const actionButtons = generateScanActionButtons(normalizedScanData);
+				const actionHints = actionButtons
+					.map((btn, idx) => `${idx + 1}. ${btn.label}`)
+					.join("\n");
 				const assistantContent = `Hasil ekstraksi struk:
 - Merchant/Toko: ${merchantName}
 - No Struk: ${scanData.receiptNumber || "-"}
@@ -539,14 +552,14 @@ ${financialSummary ? `- Ringkasan: ${financialSummary}` : ""}
 ${itemsStr}
 
 Konfirmasi simpan:
-Klik "Review & Konfirmasi Simpan", lalu pilih tujuan penyimpanan:
-1. Keuangan saja
-2. Keuangan + Inventaris (sinkron item per baris struk)${rewrittenPreview}`;
+Pilih tombol sesuai kebutuhan:
+${actionHints}${rewrittenPreview}
+${customPrompt?.trim() ? `\n\nPermintaan Anda: ${customPrompt.trim()}` : ""}`;
 				const assistantMsg: ChatMessage = {
 					role: "assistant",
 					content: assistantContent,
-					scanData,
-					actionButtons: generateScanActionButtons(scanData),
+					scanData: normalizedScanData,
+					actionButtons,
 					_msgId: mkMsgId(),
 				};
 				newMessages.push(assistantMsg);
@@ -584,15 +597,15 @@ Klik "Review & Konfirmasi Simpan", lalu pilih tujuan penyimpanan:
 				? "Tolong analisis gambar yang saya lampirkan."
 				: "");
 		if (!(effectiveText || attachedImages.length > 0) || isLoading || isScanning) return;
-		if (isScanMode && selectedImages.length > 0) {
+		if (attachedImages.length > 0) {
 			const scanUserMsg: ChatMessage = {
 				role: "user",
 				content: effectiveText,
-				image: selectedImages[0],
+				image: attachedImages[0],
 				_msgId: mkMsgId(),
 			};
 			setMessages((prev) => [...prev, scanUserMsg]);
-			await processImagesWithAI(selectedImages, effectiveText);
+			await processImagesWithAI(attachedImages, effectiveText);
 			setInput("");
 			return;
 		}

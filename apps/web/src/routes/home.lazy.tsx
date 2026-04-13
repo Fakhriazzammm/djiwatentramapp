@@ -297,6 +297,7 @@ function HomePage() {
 	
 	const [showFaceModal, setShowFaceModal] = useState(false);
 	const [isProcessing, setIsProcessing] = useState(false);
+	const [liveNow, setLiveNow] = useState(() => new Date());
 
 	const activeShiftInfo = useMemo(() => {
 		if (!settings?.shiftSettings?.shiftSchedules) return null;
@@ -335,6 +336,13 @@ function HomePage() {
 	const [selectedShiftStart, setSelectedShiftStart] = useState<number | null>(null);
 
 	useEffect(() => {
+		const timer = window.setInterval(() => {
+			setLiveNow(new Date());
+		}, 60_000);
+		return () => window.clearInterval(timer);
+	}, []);
+
+	useEffect(() => {
 		if (!shiftRows?.length) {
 			setSelectedShiftStart(null);
 			return;
@@ -366,9 +374,43 @@ function HomePage() {
 		return buildShiftSummaryText(selectedShift, shiftDetails);
 	}, [selectedShift, shiftDetails]);
 
+	const hasFaceDescriptor =
+		Array.isArray((user as any)?.faceDescriptor) &&
+		((user as any)?.faceDescriptor?.length ?? 0) > 0;
+	const currentTimeText = new Intl.DateTimeFormat("id-ID", {
+		hour: "2-digit",
+		minute: "2-digit",
+	}).format(liveNow);
+	const workDurationLabel = `${statsToday?.totalHours ?? 0}j ${statsToday?.totalMinutes ?? 0}m`;
+	const primaryActionTitle = !hasFaceDescriptor
+		? "Daftarkan Wajah"
+		: statsToday?.isWorking
+			? "Clock Out"
+			: "Clock In";
+	const primaryActionSubtitle = !hasFaceDescriptor
+		? "Lengkapi verifikasi biometrik sebelum mulai absensi."
+		: statsToday?.isWorking
+			? "Akhiri sesi kerja dengan verifikasi wajah."
+			: "Mulai sesi kerja dan catat kehadiran hari ini.";
+
+	const handlePrimaryAttendanceAction = () => {
+		if (!hasFaceDescriptor) {
+			toast.info("Wajah belum terdaftar. Lengkapi dari halaman absensi tim.");
+			navigate({ to: "/attendance" as any });
+			return;
+		}
+		setShowFaceModal(true);
+	};
+
+	const handleSwitchAccount = async () => {
+		await logout();
+		navigate({ to: "/login" as any });
+	};
+
 	const handleLogout = async () => {
 		try {
 			await logout();
+			navigate({ to: "/login" as any });
 		} catch (error) {
 			console.error(error);
 			toast.error("Gagal melakukan proses keluar");

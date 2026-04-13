@@ -404,22 +404,50 @@ export const generateScanActionButtons = (scanData: ScanResultData): ScanActionB
 		date: dateTs,
 		paymentMethod: paymentMethod as any,
 		status: "completed" as const,
-		syncMode:
-			scanData.transactionType === "expense" &&
-			["belanja_stok", "peralatan_kantor"].includes(scanData.category)
-				? ("finance_plus_inventory" as const)
-				: ("finance_only" as const),
+		syncMode: "finance_only" as const,
 	};
 	const ts = Date.now();
 	const isStockDocument =
 		scanData.type === "product" ||
 		["belanja_stok", "peralatan_kantor"].includes(scanData.category);
 
-	// Keep exactly one primary action per extracted result to prevent button overload in bulk mode.
-	if (isStockDocument) {
-		return [{
+	const expenseCategory =
+		isStockDocument || scanData.category === "belanja_stok"
+			? "Pembelian Stok"
+			: baseParams.category;
+	const incomeCategory = "Penjualan";
+
+	const buttons: ScanActionButton[] = [
+		{
+			id: `expense-${ts}`,
+			label: "Catat sebagai Pengeluaran",
+			icon: "OUT",
+			variant: "expense",
+			params: {
+				type: "expense",
+				...baseParams,
+				category: expenseCategory,
+				syncMode: "finance_only",
+			},
+		},
+		{
+			id: `income-${ts}`,
+			label: "Catat sebagai Pemasukan",
+			icon: "IN",
+			variant: "income",
+			params: {
+				type: "income",
+				...baseParams,
+				category: incomeCategory,
+				syncMode: "auto",
+			},
+		},
+	];
+
+	if (isStockDocument || (scanData.items?.length ?? 0) > 0) {
+		buttons.unshift({
 			id: `stock-${ts}`,
-			label: "Review & Konfirmasi Simpan",
+			label: "Catat Belanja Stok (+Inventaris)",
 			icon: "STK",
 			variant: "stock",
 			params: {
@@ -428,24 +456,14 @@ export const generateScanActionButtons = (scanData: ScanResultData): ScanActionB
 				category: "Pembelian Stok",
 				syncMode: "finance_plus_inventory",
 			},
-		}];
+		});
 	}
 
 	if (scanData.transactionType === "income") {
-		return [{
-			id: `income-${ts}`,
-			label: "Review & Konfirmasi Simpan",
-			icon: "IN",
-			variant: "income",
-			params: { type: "income", ...baseParams },
-		}];
+		return buttons.sort((a) => (a.variant === "income" ? -1 : 1));
 	}
-
-	return [{
-		id: `expense-${ts}`,
-		label: "Review & Konfirmasi Simpan",
-		icon: "OUT",
-		variant: "expense",
-		params: { type: "expense", ...baseParams },
-	}];
+	if (isStockDocument) {
+		return buttons.sort((a) => (a.variant === "stock" ? -1 : 1));
+	}
+	return buttons;
 };
