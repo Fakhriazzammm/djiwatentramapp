@@ -1,6 +1,48 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+const DEFAULT_AI_MODEL_CONFIG = {
+	ocrVisionModel: "gemini/gemini-2.0-flash-lite",
+	chatTextModel: "gpt-4.1-mini",
+	synthesisModel: "gpt-4.1-mini",
+	analyticsModel: "gpt-4.1-mini",
+	fallbackModel: "gpt-4.1-mini",
+} as const;
+
+function normalizeModelId(model?: string) {
+	const raw = (model || "").trim();
+	if (!raw) return "";
+	if (raw.startsWith("gemini/")) return raw;
+	if (raw.startsWith("gemini-")) return `gemini/${raw}`;
+	return raw;
+}
+
+function normalizeAiModelConfig(config?: {
+	ocrVisionModel?: string;
+	chatTextModel?: string;
+	synthesisModel?: string;
+	analyticsModel?: string;
+	fallbackModel?: string;
+}) {
+	return {
+		ocrVisionModel:
+			normalizeModelId(config?.ocrVisionModel) ||
+			DEFAULT_AI_MODEL_CONFIG.ocrVisionModel,
+		chatTextModel:
+			normalizeModelId(config?.chatTextModel) ||
+			DEFAULT_AI_MODEL_CONFIG.chatTextModel,
+		synthesisModel:
+			normalizeModelId(config?.synthesisModel) ||
+			DEFAULT_AI_MODEL_CONFIG.synthesisModel,
+		analyticsModel:
+			normalizeModelId(config?.analyticsModel) ||
+			DEFAULT_AI_MODEL_CONFIG.analyticsModel,
+		fallbackModel:
+			normalizeModelId(config?.fallbackModel) ||
+			DEFAULT_AI_MODEL_CONFIG.fallbackModel,
+	};
+}
+
 // Default values
 const DEFAULTS = {
 	landingIcon: "Coffee",
@@ -56,13 +98,7 @@ const DEFAULTS = {
 	receiptShowCashierName: true,
 	receiptShowNotes: true,
 	receiptFontSize: "normal",
-	aiModelConfig: {
-		ocrVisionModel: "gemini-2.0-flash-lite",
-		chatTextModel: "gemini-2.0-flash-lite",
-		synthesisModel: "gemini-2.0-flash-lite",
-		analyticsModel: "gemini-2.0-flash-lite",
-		fallbackModel: "gemini-2.0-flash-lite",
-	},
+	aiModelConfig: DEFAULT_AI_MODEL_CONFIG,
 	shiftSettings: {
 		predefinedShifts: [],
 		defaultStartingCash: 0,
@@ -182,10 +218,7 @@ export const getSettings = query({
 			receiptShowCashierName: settings.receiptShowCashierName ?? DEFAULTS.receiptShowCashierName,
 			receiptShowNotes: settings.receiptShowNotes ?? DEFAULTS.receiptShowNotes,
 			receiptFontSize: settings.receiptFontSize ?? DEFAULTS.receiptFontSize,
-			aiModelConfig: {
-				...DEFAULTS.aiModelConfig,
-				...(settings.aiModelConfig ?? {}),
-			},
+			aiModelConfig: normalizeAiModelConfig(settings.aiModelConfig ?? {}),
 			shiftSettings: {
 				...DEFAULTS.shiftSettings,
 				...(settings.shiftSettings ?? {}),
@@ -213,10 +246,7 @@ export const getAiModelSettings = query({
 	args: {},
 	handler: async (ctx) => {
 		const settings = await ctx.db.query("siteSettings").first();
-		return {
-			...DEFAULTS.aiModelConfig,
-			...(settings?.aiModelConfig ?? {}),
-		};
+		return normalizeAiModelConfig(settings?.aiModelConfig ?? {});
 	},
 });
 
@@ -333,17 +363,20 @@ export const updateSettings = mutation({
 		),
 	},
 	handler: async (ctx, args) => {
+		const normalizedArgs = args.aiModelConfig
+			? { ...args, aiModelConfig: normalizeAiModelConfig(args.aiModelConfig) }
+			: args;
 		const existing = await ctx.db.query("siteSettings").first();
 
 		if (existing) {
-			await ctx.db.patch(existing._id, args);
+			await ctx.db.patch(existing._id, normalizedArgs);
 			return existing._id;
 		}
 
 		// Use defaults for required fields if it's the first time
 		const id = await ctx.db.insert("siteSettings", {
 			...DEFAULTS,
-			...args,
+			...normalizedArgs,
 		} as any);
 		return id;
 	},

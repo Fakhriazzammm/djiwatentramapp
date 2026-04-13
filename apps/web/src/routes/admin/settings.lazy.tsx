@@ -385,6 +385,34 @@ type AiModelConfig = {
 	fallbackModel: string;
 };
 
+function normalizeAiModelId(model?: string) {
+	const raw = (model || "").trim();
+	if (!raw) return "";
+	if (raw.startsWith("gemini/")) return raw;
+	if (raw.startsWith("gemini-")) return `gemini/${raw}`;
+	return raw;
+}
+
+function normalizeAiModelConfig(config?: Partial<AiModelConfig>): AiModelConfig {
+	return {
+		ocrVisionModel:
+			normalizeAiModelId(config?.ocrVisionModel) ||
+			DEFAULT_AI_MODEL_CONFIG.ocrVisionModel,
+		chatTextModel:
+			normalizeAiModelId(config?.chatTextModel) ||
+			DEFAULT_AI_MODEL_CONFIG.chatTextModel,
+		synthesisModel:
+			normalizeAiModelId(config?.synthesisModel) ||
+			DEFAULT_AI_MODEL_CONFIG.synthesisModel,
+		analyticsModel:
+			normalizeAiModelId(config?.analyticsModel) ||
+			DEFAULT_AI_MODEL_CONFIG.analyticsModel,
+		fallbackModel:
+			normalizeAiModelId(config?.fallbackModel) ||
+			DEFAULT_AI_MODEL_CONFIG.fallbackModel,
+	};
+}
+
 const AI_MODEL_OPTIONS = [
 	"claude-haiku-4-5",
 	"deepseek-v3-2",
@@ -886,10 +914,7 @@ export function SettingsPage({
 					siteSettings.customerOrdering?.mayarPaymentLabel ??
 					"QRIS",
 			});
-			setAiModelConfig({
-				...DEFAULT_AI_MODEL_CONFIG,
-				...(siteSettings.aiModelConfig ?? {}),
-			});
+			setAiModelConfig(normalizeAiModelConfig(siteSettings.aiModelConfig ?? {}));
 		}
 		setIsConnected(bluetoothPrinter.isConnected());
 		setPrinterName(bluetoothPrinter.getDeviceName());
@@ -971,7 +996,7 @@ export function SettingsPage({
 				},
 				payrollGlobalConfig,
 				customerOrdering: customerOrderingSettings,
-				aiModelConfig,
+				aiModelConfig: normalizeAiModelConfig(aiModelConfig),
 			};
 			console.log("Saving settings:", payload);
 			await updateSiteSettings(payload);

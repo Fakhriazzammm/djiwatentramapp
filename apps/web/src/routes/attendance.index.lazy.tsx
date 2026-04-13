@@ -202,24 +202,26 @@ function AttendancePage() {
 			</div>
 
 			{/* Header */}
-			<header className="sticky top-0 z-50 flex h-20 items-center justify-between border-b border-border/40 bg-background/80 px-6 backdrop-blur-xl md:px-12">
-				<div className="flex items-center gap-4">
+			<header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-border/40 bg-background/88 px-4 backdrop-blur-xl md:h-20 md:px-12">
+				<div className="flex items-center gap-3 md:gap-4">
 					<div className="group relative">
 						<div className="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-primary to-amber-500 opacity-20 blur transition duration-300 group-hover:opacity-40" />
-						<div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-card border border-border/50 text-primary shadow-sm">
-							<Coffee className="h-7 w-7" />
+						<div className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-border/50 bg-card text-primary shadow-sm md:h-12 md:w-12">
+							<Coffee className="h-6 w-6 md:h-7 md:w-7" />
 						</div>
 					</div>
-					<div>
-						<h1 className="text-xl font-black tracking-tight uppercase">Portal Presensi</h1>
-						<div className="flex items-center gap-2 mt-0.5">
+					<div className="min-w-0">
+						<h1 className="text-lg font-black tracking-tight uppercase md:text-xl">Portal Presensi</h1>
+						<div className="mt-0.5 flex items-center gap-2">
 							<span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-							<p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Sistem Biometrik Online</p>
+							<p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground md:text-[10px]">
+								Sistem Biometrik Online
+							</p>
 						</div>
 					</div>
 				</div>
 
-				<div className="flex items-center gap-4">
+				<div className="flex items-center gap-2 md:gap-4">
 					{/* Status Lokasi Chip */}
 					<div className={`hidden sm:flex items-center gap-2 rounded-full px-4 py-1.5 border text-xs font-bold transition-all ${
 						isInRadius ? "bg-emerald-50 border-emerald-100 text-emerald-700" : "bg-red-50 border-red-100 text-red-700"
@@ -232,15 +234,15 @@ function AttendancePage() {
 						onClick={() => navigate({ to: "/home" })} 
 						variant="ghost" 
 						size="sm"
-						className="rounded-xl hover:bg-muted/50"
+						className="rounded-xl px-2.5 hover:bg-muted/50 md:px-3"
 					>
-						<ArrowLeft className="mr-2 h-4 w-4" />
-						Dashboard
+						<ArrowLeft className="h-4 w-4 md:mr-2" />
+						<span className="hidden md:inline">Dashboard</span>
 					</Button>
 				</div>
 			</header>
 
-			<main className="flex flex-1 flex-col p-6 md:p-12">
+			<main className="flex flex-1 flex-col p-4 md:p-12">
 				<AnimatePresence mode="wait">
 					{step === "select" && (
 						<motion.div
@@ -248,23 +250,23 @@ function AttendancePage() {
 							animate={{ opacity: 1, y: 0 }}
 							exit={{ opacity: 0, y: -20 }}
 							key="select-step"
-							className="grid grid-cols-1 lg:grid-cols-12 gap-12 max-w-7xl mx-auto w-full"
+							className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-12"
 						>
 							{/* Left: User Selection Grid */}
-							<div className="lg:col-span-8 space-y-8">
+							<div className="space-y-5 lg:col-span-8 lg:space-y-8">
 								<div className="space-y-2">
-									<h2 className="text-3xl font-black tracking-tight">SIAPA ANDA?</h2>
-									<p className="text-muted-foreground font-medium">Pilih nama Anda untuk melanjutkan proses absensi.</p>
+									<h2 className="text-2xl font-black tracking-tight md:text-3xl">SIAPA ANDA?</h2>
+									<p className="text-sm font-medium text-muted-foreground">Pilih nama Anda untuk melanjutkan proses absensi.</p>
 								</div>
 
 								{!allStaff ? (
-									<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+									<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 md:gap-6">
 										{Array.from({ length: 8 }).map((_, i) => (
 											<div key={i} className="aspect-square rounded-3xl bg-muted animate-pulse" />
 										))}
 									</div>
 								) : (
-									<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+									<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 md:gap-6">
 										{allStaff.map((staff: any) => {
 											const isIn = currentlyIn?.some((s: any) => s._id === staff._id);
 											return (
@@ -273,7 +275,7 @@ function AttendancePage() {
 													whileTap={{ scale: 0.95 }}
 													key={staff._id}
 													onClick={() => handleUserSelect(staff)}
-													className={`group relative aspect-square rounded-[2rem] p-6 text-center transition-all duration-300 border-2 ${
+													className={`group relative aspect-square rounded-[1.6rem] border-2 p-4 text-center transition-all duration-300 md:rounded-[2rem] md:p-6 ${
 														isIn 
 														? "bg-emerald-50/30 border-emerald-500/20 hover:border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.05)]" 
 														: "bg-card border-border/50 hover:border-primary shadow-sm hover:shadow-xl"
@@ -310,13 +312,13 @@ function AttendancePage() {
 
 							{/* Right: Live Status Board */}
 							<div className="lg:col-span-4">
-								<div className="sticky top-32 space-y-6">
-									<div className="rounded-[2.5rem] bg-card border border-border/50 p-8 shadow-xl relative overflow-hidden group">
+								<div className="space-y-4 lg:sticky lg:top-32 lg:space-y-6">
+									<div className="group relative overflow-hidden rounded-[2rem] border border-border/50 bg-card p-5 shadow-xl md:rounded-[2.5rem] md:p-8">
 										<div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
 											<Users className="h-32 w-32" />
 										</div>
 										
-										<div className="relative space-y-6">
+										<div className="relative space-y-4 md:space-y-6">
 											<div className="flex items-center gap-3">
 												<div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
 													<Clock className="h-5 w-5" />
@@ -327,7 +329,7 @@ function AttendancePage() {
 												</div>
 											</div>
 
-											<div className="space-y-4">
+											<div className="space-y-3 md:space-y-4">
 												{!currentlyIn ? (
 													Array.from({ length: 3 }).map((_, i) => (
 														<div key={i} className="h-12 w-full bg-muted/30 rounded-2xl animate-pulse" />
@@ -363,7 +365,7 @@ function AttendancePage() {
 
 									{/* Geofencing Warning for Select Step */}
 									{!isInRadius && siteSettings?.attendanceLat && (
-										<div className="rounded-3xl bg-red-50 border border-red-100 p-6 flex gap-4">
+										<div className="flex gap-4 rounded-3xl border border-red-100 bg-red-50 p-5 md:p-6">
 											<div className="h-10 w-10 rounded-2xl bg-red-100 flex items-center justify-center text-red-600 shrink-0">
 												<AlertCircle className="h-6 w-6" />
 											</div>
@@ -387,22 +389,22 @@ function AttendancePage() {
 							animate={{ opacity: 1, y: 0 }}
 							exit={{ opacity: 0, y: -20 }}
 							key="pin-step"
-							className="max-w-md mx-auto w-full space-y-8"
+							className="mx-auto w-full max-w-md space-y-5"
 						>
-							<div className="space-y-6 text-center">
-								<div className="inline-flex h-20 w-20 items-center justify-center rounded-[2.5rem] bg-amber-500/10 text-amber-600 mb-2">
-									<KeyRound className="h-10 w-10" />
+							<div className="space-y-5 text-center">
+								<div className="mb-1 inline-flex h-16 w-16 items-center justify-center rounded-[2rem] bg-amber-500/10 text-amber-600">
+									<KeyRound className="h-8 w-8" />
 								</div>
 								<div className="space-y-2">
-									<h2 className="text-3xl font-black tracking-tight uppercase">Verifikasi PIN</h2>
-									<p className="text-muted-foreground">Halo <strong>{user?.name}</strong>, berikan PIN Anda untuk mendaftarkan data biometrik baru.</p>
+									<h2 className="text-2xl font-black tracking-tight uppercase md:text-3xl">Verifikasi PIN</h2>
+									<p className="text-sm text-muted-foreground">Halo <strong>{user?.name}</strong>, masukkan PIN untuk mendaftarkan biometrik baru.</p>
 								</div>
 
-								<form className="space-y-6" onSubmit={handlePinSubmit}>
+								<form className="space-y-4" onSubmit={handlePinSubmit}>
 									<div className="relative">
 										<Input
 											autoFocus
-											className="h-20 rounded-[2rem] border-2 pl-4 text-center text-4xl font-black tracking-[0.5em] focus:border-primary focus:ring-8 focus:ring-primary/5 transition-all"
+											className="h-16 rounded-[1.6rem] border-2 pl-4 text-center text-3xl font-black tracking-[0.45em] transition-all focus:border-primary focus:ring-8 focus:ring-primary/5 md:h-20 md:rounded-[2rem] md:text-4xl"
 											maxLength={6}
 											onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
 											placeholder="••••••"
@@ -410,17 +412,17 @@ function AttendancePage() {
 											value={pin}
 										/>
 									</div>
-									<div className="grid grid-cols-2 gap-4">
+									<div className="grid grid-cols-2 gap-3">
 										<Button 
 											type="button" 
 											variant="outline" 
-											className="h-16 rounded-2xl font-bold"
+											className="h-12 rounded-2xl font-bold md:h-16"
 											onClick={() => { setStep("select"); setPin(""); }}
 										>
 											KEMBALI
 										</Button>
 										<Button 
-											className="h-16 rounded-2xl text-lg font-bold" 
+											className="h-12 rounded-2xl text-base font-bold md:h-16 md:text-lg" 
 											disabled={pin.length !== 6 || isVerifyingPin} 
 											type="submit"
 										>
@@ -438,14 +440,14 @@ function AttendancePage() {
 							animate={{ opacity: 1, scale: 1 }}
 							exit={{ opacity: 0, scale: 0.95 }}
 							key="face-step"
-							className="max-w-xl mx-auto w-full space-y-8"
+							className="mx-auto w-full max-w-lg space-y-5"
 						>
 							<div className="space-y-2 text-center">
-								<h2 className="text-3xl font-black tracking-tight uppercase">
+								<h2 className="text-2xl font-black tracking-tight uppercase md:text-3xl">
 									{isEnrolling ? "Daftar Wajah" : "Verifikasi Wajah"}
 								</h2>
-								<p className="font-bold text-primary text-lg">Halo, {user?.name}</p>
-								<p className="text-sm text-muted-foreground">
+								<p className="text-base font-bold text-primary md:text-lg">Halo, {user?.name}</p>
+								<p className="mx-auto max-w-sm text-sm text-muted-foreground">
 									{isEnrolling 
 										? "Wajah Anda belum terdaftar. Harap lakukan pemindaian wajah." 
 										: "Dekatkan wajah ke kamera untuk penyelesaian absensi."}
@@ -453,14 +455,14 @@ function AttendancePage() {
 							</div>
 
 							<div className="relative group">
-								<div className={`absolute -inset-4 rounded-[3rem] bg-gradient-to-tr transition-all duration-500 blur-2xl opacity-10 ${
+								<div className={`absolute -inset-3 rounded-[2rem] bg-gradient-to-tr transition-all duration-500 blur-2xl opacity-10 ${
 									isInRadius ? "from-emerald-500 to-primary" : "from-red-500 to-orange-500"
 								}`} />
-								<div className="relative rounded-[2.5rem] bg-card border border-border/50 p-6 shadow-2xl overflow-hidden">
+								<div className="relative overflow-hidden rounded-[2rem] border border-border/60 bg-card/95 p-4 shadow-xl md:rounded-[2.5rem] md:p-6">
 									{!isInRadius && siteSettings?.attendanceLat ? (
-										<div className="aspect-video bg-muted rounded-2xl flex flex-col items-center justify-center p-8 text-center space-y-4">
-											<div className="h-16 w-16 rounded-3xl bg-red-100 text-red-600 flex items-center justify-center">
-												<Navigation className="h-8 w-8 animate-bounce" />
+										<div className="flex aspect-video flex-col items-center justify-center space-y-4 rounded-2xl bg-muted p-6 text-center">
+											<div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-red-100 text-red-600">
+												<Navigation className="h-7 w-7 animate-bounce" />
 											</div>
 											<div className="space-y-2">
 												<p className="font-bold text-red-900">DI LUAR AREA KERJA</p>
@@ -481,10 +483,10 @@ function AttendancePage() {
 								</div>
 							</div>
 							
-							<div className="flex flex-col gap-4">
-								<div className="flex items-center justify-center gap-3">
+							<div className="flex flex-col gap-3">
+								<div className="flex items-center justify-center gap-2.5 rounded-2xl border border-border/60 bg-card/60 px-4 py-3">
 									<div className={`h-2 w-2 rounded-full ${isInRadius ? "bg-emerald-500" : "bg-red-500"}`} />
-									<p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+									<p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
 										Akurasi Lokasi: {distance !== null ? `${Math.round(distance)}m` : "Checking..."}
 									</p>
 								</div>
@@ -492,7 +494,7 @@ function AttendancePage() {
 								{!isEnrolling && (
 									<Button 
 										variant="ghost"
-										className="text-muted-foreground hover:text-primary rounded-xl"
+										className="rounded-xl text-muted-foreground hover:text-primary"
 										onClick={() => {
 											setIsEnrolling(true);
 											toast.info("Masuk ke mode pendaftaran wajah baru.");
@@ -501,7 +503,7 @@ function AttendancePage() {
 										Wajah Tidak Terdeteksi? Daftar Ulang
 									</Button>
 								)}
-								<Button className="w-full h-14 rounded-2xl" onClick={() => setStep("select")} variant="outline">
+								<Button className="h-12 w-full rounded-2xl md:h-14" onClick={() => setStep("select")} variant="outline">
 									Ganti Identitas
 								</Button>
 							</div>

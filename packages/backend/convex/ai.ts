@@ -16,32 +16,106 @@ type AiModelConfig = {
 	fallbackModel: string;
 };
 
-const UNIFIED_AI_MODEL = "gemini-2.0-flash-lite";
-
 const DEFAULT_AI_MODEL_CONFIG: AiModelConfig = {
-	ocrVisionModel: UNIFIED_AI_MODEL,
-	chatTextModel: UNIFIED_AI_MODEL,
-	synthesisModel: UNIFIED_AI_MODEL,
-	analyticsModel: UNIFIED_AI_MODEL,
-	fallbackModel: UNIFIED_AI_MODEL,
+	ocrVisionModel: "gemini/gemini-2.0-flash-lite",
+	chatTextModel: "gpt-4.1-mini",
+	synthesisModel: "gpt-4.1-mini",
+	analyticsModel: "gpt-4.1-mini",
+	fallbackModel: "gpt-4.1-mini",
 };
+
+function normalizeModelId(
+	model: string | undefined | null,
+	fallback: string
+): string {
+	const raw = (model || "").trim();
+	if (!raw) return fallback;
+	if (raw.startsWith("gemini/")) return raw;
+	if (raw.startsWith("gemini-")) return `gemini/${raw}`;
+	return raw;
+}
+
+function normalizeAiModelConfig(
+	value: Partial<AiModelConfig> | null | undefined
+): AiModelConfig {
+	return {
+		ocrVisionModel: normalizeModelId(
+			value?.ocrVisionModel,
+			DEFAULT_AI_MODEL_CONFIG.ocrVisionModel
+		),
+		chatTextModel: normalizeModelId(
+			value?.chatTextModel,
+			DEFAULT_AI_MODEL_CONFIG.chatTextModel
+		),
+		synthesisModel: normalizeModelId(
+			value?.synthesisModel,
+			DEFAULT_AI_MODEL_CONFIG.synthesisModel
+		),
+		analyticsModel: normalizeModelId(
+			value?.analyticsModel,
+			DEFAULT_AI_MODEL_CONFIG.analyticsModel
+		),
+		fallbackModel: normalizeModelId(
+			value?.fallbackModel,
+			DEFAULT_AI_MODEL_CONFIG.fallbackModel
+		),
+	};
+}
+
+function isInvalidModelError(error: unknown): boolean {
+	const message = String(error ?? "").toLowerCase();
+	return (
+		message.includes("invalid model name") ||
+		message.includes("model_not_found") ||
+		message.includes("call `/v1/models`") ||
+		message.includes("unknown model")
+	);
+}
+
+function dedupeModels(models: Array<string | undefined | null>): string[] {
+	const result: string[] = [];
+	const seen = new Set<string>();
+	for (const model of models) {
+		const normalized = (model || "").trim();
+		if (!normalized || seen.has(normalized)) continue;
+		seen.add(normalized);
+		result.push(normalized);
+	}
+	return result;
+}
+
+async function createChatCompletionWithFallback(
+	openai: OpenAI,
+	models: Array<string | undefined | null>,
+	buildRequest: (model: string) => OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming
+) {
+	const candidates = dedupeModels(models);
+	let lastError: unknown = null;
+	for (const model of candidates) {
+		try {
+			return await openai.chat.completions.create(buildRequest(model));
+		} catch (error) {
+			lastError = error;
+			if (!isInvalidModelError(error)) throw error;
+		}
+	}
+	if (lastError) throw lastError;
+	throw new ConvexError("Tidak ada model AI yang dapat digunakan.");
+}
 
 async function resolveAiModelConfig(
 	ctx?: GenericActionCtx<DataModel>
 ): Promise<AiModelConfig> {
-	if (!ctx) return DEFAULT_AI_MODEL_CONFIG;
+	if (!ctx) return normalizeAiModelConfig(DEFAULT_AI_MODEL_CONFIG);
 	try {
-		await ctx.runQuery(api.site_settings.getAiModelSettings, {});
-		return {
-			ocrVisionModel: UNIFIED_AI_MODEL,
-			chatTextModel: UNIFIED_AI_MODEL,
-			synthesisModel: UNIFIED_AI_MODEL,
-			analyticsModel: UNIFIED_AI_MODEL,
-			fallbackModel: UNIFIED_AI_MODEL,
-		};
+		const settings = (await ctx.runQuery(
+			api.site_settings.getAiModelSettings,
+			{}
+		)) as Partial<AiModelConfig> | null;
+		return normalizeAiModelConfig(settings);
 	} catch (error) {
 		console.warn("Failed to load AI model config, using defaults:", error);
-		return DEFAULT_AI_MODEL_CONFIG;
+		return normalizeAiModelConfig(DEFAULT_AI_MODEL_CONFIG);
 	}
 }
 
@@ -89,11 +163,20 @@ async function safeSumoPodCall(
 ): Promise<string> {
 	try {
 		const openai = getOpenAI();
-		const completion = await openai.chat.completions.create({
-			model: options?.model || DEFAULT_AI_MODEL_CONFIG.fallbackModel,
-			messages: messages as Array<OpenAI.ChatCompletionMessageParam>,
-			max_tokens: options?.maxTokens,
-		});
+		const completion = await createChatCompletionWithFallback(
+			openai,
+			[
+				normalizeModelId(options?.model, DEFAULT_AI_MODEL_CONFIG.fallbackModel),
+				DEFAULT_AI_MODEL_CONFIG.fallbackModel,
+				"gpt-4.1-mini",
+				"gpt-4o-mini",
+			],
+			(model) => ({
+				model,
+				messages: messages as Array<OpenAI.ChatCompletionMessageParam>,
+				max_tokens: options?.maxTokens,
+			})
+		);
 		const content = completion.choices[0]?.message?.content || "";
 		return sanitizeAIString(content);
 	} catch (error) {
@@ -122,29 +205,38 @@ async function callVisionAPI(
 	try {
 		const openai = getOpenAI();
 		
-		const completion = await openai.chat.completions.create({
-			model: options?.model || DEFAULT_AI_MODEL_CONFIG.ocrVisionModel,
-			messages: [
-				{
-					role: "system",
-					content: "You are an expert OCR and visual document analyzer. Analyze the provided image and extract data in JSON format."
-				},
-				{
-					role: "user",
-					content: [
-						{ type: "text", text: prompt },
-						{
-							type: "image_url",
-							image_url: {
-								url: `data:${mimeType};base64,${base64Data}`
-							}
-						}
-					] as any
-				}
+		const completion = await createChatCompletionWithFallback(
+			openai,
+			[
+				normalizeModelId(options?.model, DEFAULT_AI_MODEL_CONFIG.ocrVisionModel),
+				DEFAULT_AI_MODEL_CONFIG.ocrVisionModel,
+				"gpt-4o-mini",
+				"gpt-4.1-mini",
 			],
-			temperature: options?.temperature ?? 0.1,
-			max_tokens: options?.maxOutputTokens ?? 4096,
-		});
+			(model) => ({
+				model,
+				messages: [
+					{
+						role: "system",
+						content: "You are an expert OCR and visual document analyzer. Analyze the provided image and extract data in JSON format."
+					},
+					{
+						role: "user",
+						content: [
+							{ type: "text", text: prompt },
+							{
+								type: "image_url",
+								image_url: {
+									url: `data:${mimeType};base64,${base64Data}`
+								}
+							}
+						] as any
+					}
+				],
+				temperature: options?.temperature ?? 0.1,
+				max_tokens: options?.maxOutputTokens ?? 4096,
+			})
+		);
 
 		const text = completion.choices[0]?.message?.content || "";
 		if (text) {
@@ -198,30 +290,39 @@ async function callVisionTextAPI(
 ): Promise<{ success: boolean; text: string; error?: string }> {
 	try {
 		const openai = getOpenAI();
-		const completion = await openai.chat.completions.create({
-			model: options?.model || DEFAULT_AI_MODEL_CONFIG.ocrVisionModel,
-			messages: [
-				{
-					role: "system",
-					content:
-						"Kamu adalah analis visual yang teliti. Jawab dalam Bahasa Indonesia yang ringkas, jelas, dan langsung ke inti temuan tanpa markdown dekoratif.",
-				},
-				{
-					role: "user",
-					content: [
-						{ type: "text", text: prompt },
-						{
-							type: "image_url",
-							image_url: {
-								url: `data:${mimeType};base64,${base64Data}`,
-							},
-						},
-					] as any,
-				},
+		const completion = await createChatCompletionWithFallback(
+			openai,
+			[
+				normalizeModelId(options?.model, DEFAULT_AI_MODEL_CONFIG.ocrVisionModel),
+				DEFAULT_AI_MODEL_CONFIG.ocrVisionModel,
+				"gpt-4o-mini",
+				"gpt-4.1-mini",
 			],
-			temperature: options?.temperature ?? 0.2,
-			max_tokens: options?.maxOutputTokens ?? 1800,
-		});
+			(model) => ({
+				model,
+				messages: [
+					{
+						role: "system",
+						content:
+							"Kamu adalah analis visual yang teliti. Jawab dalam Bahasa Indonesia yang ringkas, jelas, dan langsung ke inti temuan tanpa markdown dekoratif.",
+					},
+					{
+						role: "user",
+						content: [
+							{ type: "text", text: prompt },
+							{
+								type: "image_url",
+								image_url: {
+									url: `data:${mimeType};base64,${base64Data}`,
+								},
+							},
+						] as any,
+					},
+				],
+				temperature: options?.temperature ?? 0.2,
+				max_tokens: options?.maxOutputTokens ?? 1800,
+			})
+		);
 
 		const text = completion.choices[0]?.message?.content || "";
 		if (!text) {

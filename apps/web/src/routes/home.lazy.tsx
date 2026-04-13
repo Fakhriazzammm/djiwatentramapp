@@ -390,11 +390,6 @@ function HomePage() {
 		setShowFaceModal(true);
 	};
 
-	const handleSwitchAccount = async () => {
-		await logout();
-		navigate({ to: "/login" as any });
-	};
-
 	const handleLogout = async () => {
 		try {
 			await logout();
@@ -487,7 +482,7 @@ function HomePage() {
 							</div>
 						</div>
 
-						<div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
+						<div className="grid gap-3 md:grid-cols-[1fr_auto]">
 							<button
 								onClick={handlePrimaryAttendanceAction}
 								disabled={isProcessing}
@@ -526,14 +521,6 @@ function HomePage() {
 							>
 								Profil
 							</Link>
-
-							<button
-								onClick={handleSwitchAccount}
-								type="button"
-								className="inline-flex items-center justify-center rounded-[1.35rem] border border-border/70 bg-background/80 px-4 py-4 text-sm font-bold text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground"
-							>
-								Ganti Akun
-							</button>
 						</div>
 					</div>
 				</motion.div>

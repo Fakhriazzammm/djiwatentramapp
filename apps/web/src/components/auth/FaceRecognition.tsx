@@ -12,7 +12,32 @@ interface FaceRecognitionProps {
 	className?: string;
 }
 
-const MODEL_URL = "/models"; // User needs to put models here
+const MODEL_PATH_CANDIDATES = (() => {
+	const baseUrl = import.meta.env.BASE_URL || "/";
+	const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+	const paths = [
+		`${normalizedBase}/models`,
+		"/models",
+		"./models",
+	];
+	return [...new Set(paths.map((path) => path.replace(/\/{2,}/g, "/")))];
+})();
+
+async function canReachModelManifest(path: string) {
+	try {
+		const response = await fetch(
+			`${path}/ssd_mobilenetv1_model-weights_manifest.json`,
+			{
+				method: "GET",
+				cache: "no-store",
+			}
+		);
+		return response.ok;
+	} catch (error) {
+		console.error("Model manifest check failed:", error);
+		return false;
+	}
+}
 
 export function FaceRecognition({
 	onMatch,
@@ -23,23 +48,50 @@ export function FaceRecognition({
 }: FaceRecognitionProps) {
 	const webcamRef = useRef<Webcam>(null);
 	const [modelsLoaded, setModelsLoaded] = useState(false);
+	const [modelPath, setModelPath] = useState<string | null>(null);
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [matchStatus, setMatchStatus] = useState<"idle" | "matching" | "success" | "fail">("idle");
 
 	useEffect(() => {
+		let cancelled = false;
+
 		const loadModels = async () => {
-			try {
-				await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-				await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-				await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-				setModelsLoaded(true);
-			} catch (err) {
-				console.error("Failed to load face-api models:", err);
-				setError("Gagal memuat model pendeteksi wajah. Pastikan file model ada di /public/models");
+			setError(null);
+			setModelsLoaded(false);
+			setMatchStatus("idle");
+
+			for (const candidatePath of MODEL_PATH_CANDIDATES) {
+				const manifestExists = await canReachModelManifest(candidatePath);
+				if (!manifestExists) {
+					continue;
+				}
+
+				try {
+					await faceapi.nets.ssdMobilenetv1.loadFromUri(candidatePath);
+					await faceapi.nets.faceLandmark68Net.loadFromUri(candidatePath);
+					await faceapi.nets.faceRecognitionNet.loadFromUri(candidatePath);
+					if (!cancelled) {
+						setModelPath(candidatePath);
+						setModelsLoaded(true);
+					}
+					return;
+				} catch (err) {
+					console.error(`Failed to load face-api models from ${candidatePath}:`, err);
+				}
+			}
+
+			if (!cancelled) {
+				setError(
+					"Gagal memuat model pendeteksi wajah. Pastikan file model tersedia dan dapat diakses aplikasi."
+				);
 			}
 		};
+
 		loadModels();
+		return () => {
+			cancelled = true;
+		};
 	}, []);
 
 	const capture = async () => {
@@ -101,6 +153,9 @@ export function FaceRecognition({
 					<div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
 						<Loader2 className="h-8 w-8 animate-spin text-primary" />
 						<p className="mt-2 text-sm font-medium text-muted-foreground">Memuat model AI...</p>
+						<p className="mt-1 text-center text-xs text-muted-foreground/80">
+							Menyiapkan deteksi wajah untuk kamera perangkat.
+						</p>
 					</div>
 				)}
 
@@ -108,8 +163,19 @@ export function FaceRecognition({
 					<div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-destructive/10 p-6 text-center backdrop-blur-sm">
 						<XCircle className="h-10 w-10 text-destructive" />
 						<p className="mt-2 font-semibold text-destructive">{error}</p>
-						<Button className="mt-4" onClick={() => window.location.reload()} variant="outline">
-							Coba Lagi
+						<p className="mt-1 text-xs text-muted-foreground">
+							{modelPath ? `Path model terakhir: ${modelPath}` : "Mencoba beberapa path model otomatis."}
+						</p>
+						<Button
+							className="mt-4"
+							onClick={() => {
+								setError(null);
+								setModelsLoaded(false);
+								window.location.reload();
+							}}
+							variant="outline"
+						>
+							Muat Ulang
 						</Button>
 					</div>
 				)}
