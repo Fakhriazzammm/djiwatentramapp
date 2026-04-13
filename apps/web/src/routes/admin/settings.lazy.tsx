@@ -22,6 +22,7 @@ import {
 	Plus,
 	User,
 	Users,
+	UserPlus,
 	Wallet,
 	X,
 	KeyRound,
@@ -1233,12 +1234,12 @@ export function SettingsPage({
 	const tabs =
 		mode === "operational-team"
 			? ([
-					{ id: "users", label: "Pengguna & Akses", icon: Users },
+					{ id: "users", label: "Pengguna", icon: Users },
 					{ id: "shifts", label: "Manajemen Shift", icon: Clock },
 					{ id: "attendance", label: "Lokasi & Radius", icon: MapPin },
 					{ id: "attendance-report", label: "Data Absensi", icon: FileBarChart },
 					{ id: "attendance-logs", label: "Log Absensi", icon: ClipboardList },
-					{ id: "payroll", label: "Pengaturan Gaji", icon: Wallet },
+					{ id: "payroll", label: "Gaji & Role", icon: Wallet },
 				] as const)
 			: ([
 					{ id: "landing", label: "Halaman Utama", icon: Layout },
@@ -1271,7 +1272,7 @@ export function SettingsPage({
 					</h2>
 					<p className="mt-0.5 text-muted-foreground text-xs md:mt-1 md:text-sm">
 						{mode === "operational-team"
-							? "Kelola Pengguna, Akses, dan Manajemen Shift"
+							? "Kelola Staf, Kompensasi, dan Manajemen Shift"
 							: "Konfigurasi & Personalisasi Toko"}
 					</p>
 				</div>
@@ -1732,75 +1733,259 @@ export function SettingsPage({
 								</div>
 								<div>
 									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
-										Pengaturan Gaji (Global)
+										Gaji & Manajemen Role
 									</h3>
 									<p className="text-muted-foreground text-sm">
-										Konfigurasi aturan denda, bonus, dan toleransi keterlambatan
+										Atur kompensasi, izin akses, dan aturan denda/bonus
 									</p>
 								</div>
 							</div>
 
-							<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-								<div className="space-y-2">
-									<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
-										Masa Toleransi Keterlambatan (Menit)
-									</label>
-									<div className="relative">
-										<Input
-											className="h-11 w-full bg-muted/50 font-medium"
-											type="number"
-											onChange={(e) => setPayrollGlobalConfig({ 
-												...payrollGlobalConfig, 
-												lateToleranceMinutes: Number(e.target.value) 
-											})}
-											value={payrollGlobalConfig.lateToleranceMinutes}
-										/>
-										<span className="absolute top-1/2 right-4 -translate-y-1/2 font-bold text-muted-foreground text-sm">
-											menit
-										</span>
+							{/* Moved Role Management Here */}
+							<div className="space-y-6 pt-4">
+								<div className="rounded-2xl border border-border/50 bg-muted/30 p-4 md:p-6">
+									<div className="flex items-center gap-2 border-border/50 border-b pb-4">
+										<Settings2 className="h-4 w-4 text-primary" />
+										<h4 className="font-bold text-foreground text-sm uppercase tracking-wider">
+											Tambah Role Baru
+										</h4>
 									</div>
-									<p className="text-[10px] text-muted-foreground">
-										Staff tidak akan didenda jika keterlambatan di bawah menit ini.
-									</p>
+									<div className="mt-5 space-y-5">
+										<div className="space-y-2">
+											<label className="font-medium text-muted-foreground text-xs" htmlFor="role-name">
+												Nama Role
+											</label>
+											<input
+												className="w-full rounded-xl bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+												id="role-name"
+												onChange={(e) => setNewRole({ ...newRole, name: e.target.value })}
+												placeholder="Contoh: Kasir, Admin Stok"
+												type="text"
+												value={newRole.name}
+											/>
+										</div>
+
+										<div className="grid grid-cols-2 gap-4">
+											<div className="space-y-2">
+												<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+													Gaji per Shift (Rp)
+												</label>
+												<div className="relative">
+													<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
+													<input
+														className="w-full rounded-xl bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+														onChange={(e) => setNewRole({ ...newRole, baseShiftRate: Number(e.target.value) })}
+														type="number"
+														value={newRole.baseShiftRate}
+													/>
+												</div>
+											</div>
+											<div className="space-y-2">
+												<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+													Gaji Tetap Bulanan (Rp)
+												</label>
+												<div className="relative">
+													<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
+													<input
+														className="w-full rounded-xl bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+														onChange={(e) => setNewRole({ ...newRole, monthlyFixedSalary: Number(e.target.value) })}
+														type="number"
+														value={newRole.monthlyFixedSalary}
+													/>
+												</div>
+											</div>
+										</div>
+										<div className="space-y-2">
+											<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+												Tunjangan Harian (Rp)
+											</label>
+											<div className="relative">
+												<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
+												<input
+													className="w-full rounded-xl bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+													onChange={(e) => setNewRole({ ...newRole, dailyAllowance: Number(e.target.value) })}
+													type="number"
+													value={newRole.dailyAllowance}
+												/>
+											</div>
+										</div>
+
+										<div className="space-y-3">
+											<p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
+												Izin Akses (Permissions)
+											</p>
+											<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+												{AVAILABLE_PERMISSIONS.map((perm: any) => (
+													<label
+														className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${
+															newRole.permissions.includes(perm.id)
+																? "border-primary/30 bg-primary/5 text-primary"
+																: "border-border/50 bg-background text-muted-foreground hover:border-border"
+														}`}
+														key={perm.id}
+													>
+														<input
+															checked={newRole.permissions.includes(perm.id)}
+															className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20"
+															onChange={(e) => {
+																const perms = e.target.checked
+																	? [...newRole.permissions, perm.id]
+																	: newRole.permissions.filter((p) => p !== perm.id);
+																setNewRole({ ...newRole, permissions: perms });
+															}}
+															type="checkbox"
+														/>
+														<span className="font-medium text-xs">{perm.label}</span>
+													</label>
+												))}
+											</div>
+										</div>
+
+										<button
+											className="mt-2 w-full rounded-xl bg-primary/10 py-3.5 font-bold text-primary text-sm transition-all hover:bg-primary/20"
+											onClick={handleCreateRole}
+											type="button"
+										>
+											Buat Role Baru
+										</button>
+									</div>
 								</div>
 
-								<div className="space-y-2">
-									<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
-										Denda per Menit (Rp)
-									</label>
-									<div className="relative">
-										<span className="absolute top-1/2 left-4 -translate-y-1/2 font-bold text-muted-foreground text-sm">
-											Rp
-										</span>
-										<Input
-											className="h-11 w-full bg-muted/50 pl-11 font-medium"
-											type="number"
-											onChange={(e) => setPayrollGlobalConfig({ 
-												...payrollGlobalConfig, 
-												latePenaltyPerMinute: Number(e.target.value) 
-											})}
-											value={payrollGlobalConfig.latePenaltyPerMinute}
-										/>
+								<div className="space-y-4">
+									<h4 className="px-2 font-bold text-sm text-foreground uppercase tracking-wider">
+										Daftar Role & Akses
+									</h4>
+									{editingRole && (
+										<div className="space-y-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
+											<div className="flex items-center justify-between gap-3">
+												<div className="space-y-1">
+													<p className="font-bold text-sm text-foreground">Edit Role</p>
+													<p className="text-xs text-muted-foreground">Perbarui nama role dan hak akses.</p>
+												</div>
+												<button className="rounded-lg p-2 text-muted-foreground" onClick={() => setEditingRole(null)}>
+													<X className="h-4 w-4" />
+												</button>
+											</div>
+											<div className="space-y-4">
+												<div className="space-y-2">
+													<label className="font-medium text-muted-foreground text-xs">Nama Role</label>
+													<input className="w-full rounded-xl border border-border bg-background p-3 text-sm" onChange={(e) => setEditingRole({ ...editingRole, name: e.target.value })} type="text" value={editingRole.name} />
+												</div>
+												<div className="grid grid-cols-2 gap-4">
+													<div className="space-y-2">
+														<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">Gaji Shift</label>
+														<input className="w-full rounded-xl border border-border bg-background p-3 text-sm" onChange={(e) => setEditingRole({ ...editingRole, baseShiftRate: Number(e.target.value) })} type="number" value={editingRole.baseShiftRate} />
+													</div>
+													<div className="space-y-2">
+														<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">Gaji Tetap</label>
+														<input className="w-full rounded-xl border border-border bg-background p-3 text-sm" onChange={(e) => setEditingRole({ ...editingRole, monthlyFixedSalary: Number(e.target.value) })} type="number" value={editingRole.monthlyFixedSalary} />
+													</div>
+												</div>
+												<div className="space-y-3">
+													<p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">Izin Akses</p>
+													<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+														{AVAILABLE_PERMISSIONS.map((perm: any) => (
+															<label className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${editingRole.permissions.includes(perm.id) ? "border-primary/30 bg-primary/5 text-primary" : "border-border/50 bg-background text-muted-foreground"}`} key={perm.id}>
+																<input checked={editingRole.permissions.includes(perm.id)} className="h-4 w-4 rounded" onChange={(e) => {
+																	const nextPermissions = e.target.checked ? [...editingRole.permissions, perm.id] : editingRole.permissions.filter((id) => id !== perm.id);
+																	setEditingRole({ ...editingRole, permissions: nextPermissions });
+																}} type="checkbox" />
+																<span className="font-medium text-xs">{perm.label}</span>
+															</label>
+														))}
+													</div>
+												</div>
+												<div className="flex justify-end gap-2">
+													<button className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground" onClick={() => setEditingRole(null)}>Batal</button>
+													<button className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground text-sm" onClick={handleSaveEditRole}>Simpan</button>
+												</div>
+											</div>
+										</div>
+									)}
+									<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+										{!roles ? (
+											Array.from({ length: 3 }).map((_, i) => (
+												<div className="rounded-2xl border border-border bg-background p-4 shadow-sm" key={i}>
+													<Skeleton className="h-4 w-24 mb-2" />
+													<Skeleton className="h-3 w-32" />
+												</div>
+											))
+										) : roles.map((role: any) => (
+											<div className="flex items-center justify-between rounded-2xl border border-border bg-background p-4 shadow-sm" key={role._id}>
+												<div>
+													<p className="font-bold text-sm tracking-tight">{role.name}</p>
+													<p className="text-[10px] text-muted-foreground">{role.permissions.length} Hak Akses</p>
+												</div>
+												<div className="flex items-center gap-1">
+													<button className="rounded-lg p-2 text-primary hover:bg-primary/10" onClick={() => handleStartEditRole(role)}><Pencil className="h-4 w-4" /></button>
+													<button className="rounded-lg p-2 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteRole(role._id)}><Trash2 className="h-4 w-4" /></button>
+												</div>
+											</div>
+										))}
 									</div>
 								</div>
 
-								<div className="space-y-2 md:col-span-2">
-									<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
-										Bonus Lembur per Jam (Rp)
-									</label>
-									<div className="relative">
-										<span className="absolute top-1/2 left-4 -translate-y-1/2 font-bold text-muted-foreground text-sm">
-											Rp
-										</span>
-										<Input
-											className="h-11 w-full bg-muted/50 pl-11 font-medium"
-											type="number"
-											onChange={(e) => setPayrollGlobalConfig({ 
-												...payrollGlobalConfig, 
-												overtimeBonusPerHour: Number(e.target.value) 
-											})}
-											value={payrollGlobalConfig.overtimeBonusPerHour}
-										/>
+								<div className="border-t border-border pt-6">
+									<h4 className="px-2 mb-4 font-bold text-sm text-foreground uppercase tracking-wider">
+										Konfigurasi Payroll & Laporan Global
+									</h4>
+									<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+										<div className="space-y-2">
+											<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+												Masa Toleransi Keterlambatan (Menit)
+											</label>
+											<div className="relative">
+												<Input className="h-11 w-full bg-muted/50 font-medium" type="number" onChange={(e) => setPayrollGlobalConfig({ ...payrollGlobalConfig, lateToleranceMinutes: Number(e.target.value) })} value={payrollGlobalConfig.lateToleranceMinutes} />
+												<span className="absolute top-1/2 right-4 -translate-y-1/2 font-bold text-muted-foreground text-sm">menit</span>
+											</div>
+										</div>
+
+										<div className="space-y-2">
+											<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+												Denda per Menit (Rp)
+											</label>
+											<div className="relative">
+												<span className="absolute top-1/2 left-4 -translate-y-1/2 font-bold text-muted-foreground text-sm">Rp</span>
+												<Input className="h-11 w-full bg-muted/50 pl-11 font-medium" type="number" onChange={(e) => setPayrollGlobalConfig({ ...payrollGlobalConfig, latePenaltyPerMinute: Number(e.target.value) })} value={payrollGlobalConfig.latePenaltyPerMinute} />
+											</div>
+										</div>
+
+										<div className="space-y-2">
+											<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+												Bonus Lembur per Jam (Rp)
+											</label>
+											<div className="relative">
+												<span className="absolute top-1/2 left-4 -translate-y-1/2 font-bold text-muted-foreground text-sm">Rp</span>
+												<Input className="h-11 w-full bg-muted/50 pl-11 font-medium" type="number" onChange={(e) => setPayrollGlobalConfig({ ...payrollGlobalConfig, overtimeBonusPerHour: Number(e.target.value) })} value={payrollGlobalConfig.overtimeBonusPerHour} />
+											</div>
+										</div>
+
+										<div className="space-y-2">
+											<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+												Email Pengirim Laporan (Resend)
+											</label>
+											<Input className="h-11 w-full bg-muted/50 font-medium" type="email" placeholder="reports@domain.com" onChange={(e) => setSettings({ ...settings, resendFromEmail: normalizeEmail(e.target.value) })} value={settings.resendFromEmail} />
+										</div>
+
+										<div className="md:col-span-2 rounded-xl bg-blue-50/50 p-4 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30">
+											<label className="flex cursor-pointer items-start gap-3">
+												<input
+													type="checkbox"
+													className="mt-0.5 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-400"
+													checked={shiftSettings.autoSendShiftReportEmail}
+													onChange={(e) => setShiftSettings({ ...shiftSettings, autoSendShiftReportEmail: e.target.checked })}
+												/>
+												<div className="space-y-1">
+													<span className="block font-bold text-[11px] text-blue-800 dark:text-blue-200 uppercase tracking-wider">
+														Kirim Otomatis Laporan Shift via Email
+													</span>
+													<p className="text-[10px] text-blue-700/70 dark:text-blue-300/60 leading-relaxed">
+														Jika aktif, setiap proses tutup shift akan otomatis mengirim laporan ke daftar pengguna yang memiliki akses "Terima laporan email".
+														Penerima saat ini: <span className="font-semibold">{reportRecipients.length > 0 ? reportRecipients.join(", ") : "Tidak ada"}</span>
+													</p>
+												</div>
+											</label>
+										</div>
 									</div>
 								</div>
 							</div>
@@ -3286,248 +3471,175 @@ export function SettingsPage({
 
 				{activeTab === "users" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
+						<section className="space-y-6 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-8">
+							<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+								<div className="flex items-center gap-4">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+										<Users className="h-6 w-6" />
+									</div>
+									<div>
+										<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
+											Manajemen Pengguna
+										</h3>
+										<p className="text-muted-foreground text-sm">
+											Kelola akun staf dan profil akses mereka
+										</p>
+									</div>
+								</div>
+								<Button onClick={() => setShowFaceEnrollment(!showFaceEnrollment)} variant="outline" size="sm" className="gap-2">
+									<UserPlus className="h-4 w-4" /> Tambah Staf
+								</Button>
+							</div>
+
+							{/* User Table Implementation */}
+							<div className="space-y-6">
+								{/* Create/Edit Form (Moved to a conditional area or modal for cleaner look) */}
+								{(newUser.name || editingUser) && (
+									<div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 md:p-6 space-y-4">
+										<div className="flex items-center justify-between border-b border-primary/10 pb-3">
+											<h4 className="font-bold text-sm text-foreground uppercase tracking-wider">
+												{editingUser ? "Edit Pengguna" : "Tambah User Baru"}
+											</h4>
+											<button onClick={() => { setEditingUser(null); setNewUser({ username: "", password: "", name: "", roleId: "", homePin: "", slug: "" }); }} className="text-muted-foreground hover:text-foreground">
+												<X className="h-4 w-4" />
+											</button>
+										</div>
+										<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+											<div className="space-y-1.5">
+												<label className="text-[10px] font-bold uppercase text-muted-foreground">Nama Lengkap</label>
+												<input className="w-full rounded-lg border border-border bg-background p-2.5 text-xs" value={editingUser ? editingUser.name : newUser.name} onChange={(e) => editingUser ? setEditingUser({ ...editingUser, name: e.target.value }) : setNewUser({ ...newUser, name: e.target.value })} placeholder="Budi Santoso" />
+											</div>
+											<div className="space-y-1.5">
+												<label className="text-[10px] font-bold uppercase text-muted-foreground">Email / Username</label>
+												<input className="w-full rounded-lg border border-border bg-background p-2.5 text-xs" value={editingUser ? editingUser.username : newUser.username} onChange={(e) => editingUser ? setEditingUser({ ...editingUser, username: normalizeEmail(e.target.value) }) : setNewUser({ ...newUser, username: normalizeEmail(e.target.value) })} placeholder="budi@example.com" />
+											</div>
+											{!editingUser && (
+												<div className="space-y-1.5">
+													<label className="text-[10px] font-bold uppercase text-muted-foreground">Password</label>
+													<input className="w-full rounded-lg border border-border bg-background p-2.5 text-xs" type="password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} placeholder="••••••••" />
+												</div>
+											)}
+											<div className="space-y-1.5">
+												<label className="text-[10px] font-bold uppercase text-muted-foreground">Role</label>
+												<select className="w-full rounded-lg border border-border bg-background p-2.5 text-xs" value={editingUser ? editingUser.roleId : newUser.roleId} onChange={(e) => editingUser ? setEditingUser({ ...editingUser, roleId: e.target.value as any }) : setNewUser({ ...newUser, roleId: e.target.value })}>
+													<option value="">Pilih Role</option>
+													{roles?.map((r: any) => <option key={r._id} value={r._id}>{r.name}</option>)}
+												</select>
+											</div>
+											<div className="space-y-1.5">
+												<label className="text-[10px] font-bold uppercase text-muted-foreground">PIN Akses (6 digit)</label>
+												<input className="w-full rounded-lg border border-border bg-background p-2.5 text-xs" type="password" maxLength={6} value={editingUser ? editingUser.homePin : newUser.homePin} onChange={(e) => editingUser ? setEditingUser({ ...editingUser, homePin: e.target.value.replace(/\D/g, "") }) : setNewUser({ ...newUser, homePin: e.target.value.replace(/\D/g, "") })} placeholder="123456" />
+											</div>
+											<div className="space-y-1.5">
+												<label className="text-[10px] font-bold uppercase text-muted-foreground">Slug URL</label>
+												<input className="w-full rounded-lg border border-border bg-background p-2.5 text-xs" value={editingUser ? editingUser.slug : newUser.slug} onChange={(e) => editingUser ? setEditingUser({ ...editingUser, slug: e.target.value.toLowerCase() }) : setNewUser({ ...newUser, slug: e.target.value.toLowerCase() })} placeholder="budi-barista" />
+											</div>
+										</div>
+										{editingUser && (
+											<div className="flex flex-wrap gap-4 pt-2">
+												<label className="flex items-center gap-2 cursor-pointer">
+													<input type="checkbox" checked={editingUser.isActive} onChange={() => setEditingUser({ ...editingUser, isActive: !editingUser.isActive })} className="h-4 w-4 rounded" />
+													<span className="text-xs font-bold text-foreground">Akun Aktif</span>
+												</label>
+												<label className="flex items-center gap-2 cursor-pointer">
+													<input type="checkbox" checked={editingUser.receiveReportEmails} onChange={() => setEditingUser({ ...editingUser, receiveReportEmails: !editingUser.receiveReportEmails })} className="h-4 w-4 rounded" />
+													<span className="text-xs font-bold text-foreground">Terima Laporan Email</span>
+												</label>
+											</div>
+										)}
+										<div className="flex justify-end gap-2 pt-2">
+											<Button onClick={editingUser ? handleSaveEditUser : handleCreateUser} size="sm">
+												{editingUser ? "Simpan Perubahan" : "Simpan Pengguna"}
+											</Button>
+										</div>
+									</div>
+								)}
+
+								<div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+									<div className="overflow-x-auto">
+										<table className="w-full text-left text-sm">
+											<thead className="bg-muted/50 font-bold text-muted-foreground text-[10px] uppercase tracking-widest border-b border-border">
+												<tr>
+													<th className="px-4 py-3">Staf</th>
+													<th className="px-4 py-3">Role</th>
+													<th className="px-4 py-3">Status</th>
+													<th className="px-4 py-3">Keamanan</th>
+													<th className="px-4 py-3 text-right">Aksi</th>
+												</tr>
+											</thead>
+											<tbody className="divide-y divide-border/50">
+												{!users ? (
+													Array.from({ length: 5 }).map((_, i) => (
+														<tr key={i}><td colSpan={5} className="px-4 py-4"><Skeleton className="h-10 w-full" /></td></tr>
+													))
+												) : users.length === 0 ? (
+													<tr><td colSpan={5} className="py-12 text-center text-muted-foreground italic">Belum ada staf terdaftar.</td></tr>
+												) : (
+													users.map((user: any) => (
+														<tr key={user._id} className="hover:bg-muted/30 transition-colors group">
+															<td className="px-4 py-3">
+																<div className="flex items-center gap-3">
+																	<div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 font-bold text-primary text-[10px]">
+																		{user.name.charAt(0)}
+																	</div>
+																	<div>
+																		<p className="font-bold text-foreground text-xs">{user.name}</p>
+																		<p className="text-[10px] text-muted-foreground">{user.username}</p>
+																	</div>
+																</div>
+															</td>
+															<td className="px-4 py-3">
+																<span className="text-[11px] font-medium text-muted-foreground">{user.roleName || "Tanpa Role"}</span>
+															</td>
+															<td className="px-4 py-3">
+																<span className={`inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-bold ${user.isActive ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+																	{user.isActive ? "AKTIF" : "NONAKTIF"}
+																</span>
+															</td>
+															<td className="px-4 py-3">
+																<div className="flex gap-1.5 flex-wrap">
+																	{user.faceDescriptor && <span title="Wajah terdaftar" className="p-1 rounded bg-emerald-100 text-emerald-700"><Camera className="h-3 w-3" /></span>}
+																	{user.homePin && <span title="PIN Aktif" className="p-1 rounded bg-blue-100 text-blue-700"><ShieldCheck className="h-3 w-3" /></span>}
+																	{user.receiveReportEmails && <span title="Laporan Email" className="p-1 rounded bg-amber-100 text-amber-700"><Bell className="h-3 w-3" /></span>}
+																</div>
+															</td>
+															<td className="px-4 py-3 text-right">
+																<div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
+																	<button title="Edit Staf" className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors" onClick={() => handleStartEditUser(user)}><Pencil className="h-3.5 w-3.5" /></button>
+																	<button title="Hapus Staf" className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg transition-colors" onClick={() => handleDeleteUser(user._id)}><Trash2 className="h-3.5 w-3.5" /></button>
+																</div>
+															</td>
+														</tr>
+													))
+												)}
+											</tbody>
+										</table>
+									</div>
+								</div>
+							</div>
+						</section>
+					</div>
+				)}
+
+				{activeTab === "payroll" && (
+					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
 						<section className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-sm md:space-y-8 md:p-8">
 							<div className="flex items-center gap-4">
 								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-									<Users className="h-6 w-6" />
+									<Settings2 className="h-6 w-6" />
 								</div>
 								<div>
 									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
-										Manajemen Pengguna & Akses
+										Manajemen Role & Penggajian
 									</h3>
 									<p className="text-muted-foreground text-sm">
-										Kelola akun staf dan hak akses
+										Kelola struktur role, hak akses, dan kompensasi staf
 									</p>
 								</div>
 							</div>
 
-							<div className={teamUsersGridClass}>
-								{/* Create User Form */}
-								<div className="space-y-4 rounded-2xl border border-border/50 bg-muted/30 p-4 md:space-y-6 md:p-6">
-									<div className="flex items-center gap-2 border-border/50 border-b pb-4">
-										<User className="h-4 w-4 text-primary" />
-										<h4 className="font-bold text-foreground text-sm uppercase tracking-wider">
-											Tambah User Baru
-										</h4>
-									</div>
-									<div className="space-y-4">
-										<div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300">
-											<p className="font-semibold">Integrasi Resend</p>
-											<p className="mt-1">
-												Pilih penerima laporan email dari <strong>edit pengguna</strong> dengan mengaktifkan opsi <strong>Terima laporan email</strong>.
-											</p>
-											<p className="mt-1">
-												Penerima saat ini:{" "}
-												{reportRecipients.length > 0
-													? reportRecipients.join(", ")
-													: "Belum ada penerima khusus yang aktif dengan email valid."}
-											</p>
-											<p className="mt-1">
-												Jika belum ada penerima khusus dipilih, sistem akan tetap fallback ke admin aktif yang memiliki email valid agar data lama tetap aman.
-											</p>
-											<div className="mt-3 rounded-lg border border-blue-200 bg-white/80 p-3 dark:border-blue-800 dark:bg-slate-900/40">
-												<label className="flex cursor-pointer items-start gap-3">
-													<input
-														type="checkbox"
-														className="mt-0.5 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-400"
-														checked={shiftSettings.autoSendShiftReportEmail}
-														onChange={(e) =>
-															setShiftSettings({
-																...shiftSettings,
-																autoSendShiftReportEmail: e.target.checked,
-															})
-														}
-													/>
-													<span className="text-[11px] leading-relaxed text-blue-800 dark:text-blue-200">
-														<span className="block font-semibold">
-															Kirim otomatis laporan shift saat shift diakhiri
-														</span>
-														Jika aktif, setiap proses akhiri shift akan langsung
-														mengirim email laporan ke daftar pengguna aktif yang
-														ditandai menerima laporan email.
-													</span>
-												</label>
-											</div>
-											<div className="mt-3 space-y-1.5">
-												<label
-													className="block font-medium text-[11px]"
-													htmlFor="resend-from-email"
-												>
-													RESEND_FROM_EMAIL (Pengirim)
-												</label>
-												<input
-													className="w-full rounded-lg border border-blue-200 bg-white/90 p-2 text-xs outline-none transition-all focus:ring-2 focus:ring-blue-300 dark:border-blue-800 dark:bg-slate-900/40"
-													id="resend-from-email"
-													onChange={(e) =>
-														setSettings({
-															...settings,
-															resendFromEmail: normalizeEmail(e.target.value),
-														})
-													}
-													placeholder="reports@domainkamu.com"
-													type="email"
-													value={settings.resendFromEmail}
-												/>
-												<p className="text-[11px] opacity-80">
-													Wajib gunakan email/domain yang sudah verified di Resend.
-												</p>
-												{settings.resendFromEmail &&
-												!isValidEmail(settings.resendFromEmail) ? (
-													<p className="text-[11px] text-red-600 dark:text-red-400">
-														Format email pengirim belum valid.
-													</p>
-												) : null}
-											</div>
-										</div>
-										<div className="space-y-1.5">
-											<label
-												className="font-medium text-muted-foreground text-xs"
-												htmlFor="reg-name"
-											>
-												Nama Lengkap
-											</label>
-											<input
-												className="w-full rounded-xl bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-												id="reg-name"
-												onChange={(e) =>
-													setNewUser({ ...newUser, name: e.target.value })
-												}
-												placeholder="Contoh: Budi Santoso"
-												type="text"
-												value={newUser.name}
-											/>
-										</div>
-										<div className="space-y-2">
-											<label
-												className="font-medium text-muted-foreground text-xs"
-												htmlFor="reg-username"
-											>
-												Username (Email)
-											</label>
-											<input
-												className="w-full rounded-xl bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-												id="reg-username"
-												onChange={(e) =>
-													setNewUser({
-														...newUser,
-														username: normalizeEmail(e.target.value),
-													})
-												}
-												placeholder="budi@example.com"
-												type="email"
-												value={newUser.username}
-											/>
-											{newUser.username && !isValidEmail(newUser.username) ? (
-												<p className="text-[11px] text-destructive">
-													Format email belum valid.
-												</p>
-											) : null}
-										</div>
-										<div className="space-y-2">
-											<label
-												className="font-medium text-muted-foreground text-xs"
-												htmlFor="reg-password"
-											>
-												Password
-											</label>
-											<input
-												className="w-full rounded-xl bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-												id="reg-password"
-												onChange={(e) =>
-													setNewUser({ ...newUser, password: e.target.value })
-												}
-												placeholder="••••••••"
-												type="password"
-												value={newUser.password}
-											/>
-										</div>
-										<div className="space-y-2">
-											<label
-												className="font-medium text-muted-foreground text-xs"
-												htmlFor="reg-home-pin"
-											>
-												PIN Akses /home (6 digit)
-											</label>
-											<input
-												className="w-full rounded-xl bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-												id="reg-home-pin"
-												inputMode="numeric"
-												maxLength={6}
-												onChange={(e) =>
-													setNewUser({
-														...newUser,
-														homePin: e.target.value.replace(/\D/g, "").slice(0, 6),
-													})
-												}
-												placeholder="Contoh: 123456"
-												type="password"
-												value={newUser.homePin}
-											/>
-											{newUser.homePin && !isValidHomePin(newUser.homePin) ? (
-												<p className="text-[11px] text-destructive">
-													PIN harus terdiri dari 6 digit angka.
-												</p>
-											) : (
-												<p className="text-[11px] text-muted-foreground">
-													Kosongkan jika PIN belum ingin diatur.
-												</p>
-											)}
-											<div className="space-y-2">
-												<label className="font-medium text-muted-foreground text-xs">
-													Username Profil (Slug URL)
-												</label>
-												<div className="relative">
-													<span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground text-xs">/at/</span>
-													<input
-														className="w-full rounded-xl bg-background py-3 pr-3 pl-10 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20 lowercase"
-														onChange={(e) =>
-															setNewUser({ ...newUser, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })
-														}
-														placeholder="contoh-nama"
-														type="text"
-														value={newUser.slug}
-													/>
-												</div>
-												<p className="px-1 text-[10px] text-muted-foreground italic">
-													Default: bagian depan email.
-												</p>
-											</div>
-										</div>
-										<div className="space-y-2">
-											<label
-												className="font-medium text-muted-foreground text-xs"
-												htmlFor="reg-role"
-											>
-												Pilih Role
-											</label>
-											<select
-												className="w-full rounded-xl bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-												id="reg-role"
-												onChange={(e) =>
-													setNewUser({ ...newUser, roleId: e.target.value })
-												}
-												value={newUser.roleId}
-											>
-												<option disabled value="">
-													Pilih Role
-												</option>
-												{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-												{roles?.map((role: any) => (
-													<option key={role._id} value={role._id}>
-														{role.name}
-													</option>
-												))}
-											</select>
-										</div>
-										<button
-											className="mt-2 w-full rounded-xl bg-primary py-3.5 font-bold text-primary-foreground text-sm transition-all hover:opacity-90 active:scale-95"
-											onClick={handleCreateUser}
-											type="button"
-										>
-											Buat Akun Pengguna
-										</button>
-									</div>
-								</div>
+							<div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+								{/* Create Role Form */}
 								<div className="space-y-4 rounded-2xl border border-border/50 bg-muted/30 p-4 md:space-y-6 md:p-6">
 									<div className="flex items-center gap-2 border-border/50 border-b pb-4">
 										<Settings2 className="h-4 w-4 text-primary" />
@@ -3653,555 +3765,140 @@ export function SettingsPage({
 									</div>
 								</div>
 
-								{/* Lists: Users & Roles */}
-								<div className="pt-8 lg:col-span-2">
-									<div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
-										<div className="space-y-4">
-											<h4 className="px-2 font-bold text-base text-foreground">
-												Daftar Pengguna
-											</h4>
-											{editingUser && (
-												<div className="space-y-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
-													<div className="flex items-center justify-between gap-3">
-														<div className="space-y-1">
-															<p className="font-bold text-sm text-foreground">Edit Pengguna</p>
-															<p className="text-xs text-muted-foreground">
-																Perbarui data akun pengguna yang dipilih.
-															</p>
-														</div>
-														<button
-															className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-															onClick={() => setEditingUser(null)}
-															type="button"
-														>
-															<X className="h-4 w-4" />
-														</button>
-													</div>
-													<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-														<div className="space-y-1.5">
-															<label className="font-medium text-muted-foreground text-xs">
-																Nama Lengkap
-															</label>
-															<input
-																className="w-full rounded-xl border border-border bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-																onChange={(e) =>
-																	setEditingUser({
-																		...editingUser,
-																		name: e.target.value,
-																	})
-																}
-																type="text"
-																value={editingUser.name}
-															/>
-														</div>
-														<div className="space-y-1.5">
-															<label className="font-medium text-muted-foreground text-xs">
-																Email / Username Login
-															</label>
-															<input
-																className="w-full rounded-xl border border-border bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-																onChange={(e) =>
-																	setEditingUser({
-																		...editingUser,
-																		username: e.target.value,
-																	})
-																}
-																type="email"
-																value={editingUser.username}
-															/>
-														</div>
-														<div className="space-y-1.5">
-															<label className="font-medium text-muted-foreground text-xs">
-																Username Profil (Slug URL)
-															</label>
-															<div className="relative">
-																<span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground text-xs">/at/</span>
-																<input
-																	className="w-full rounded-xl border border-border bg-background py-3 pr-3 pl-10 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20 lowercase"
-																	onChange={(e) =>
-																		setEditingUser({
-																			...editingUser,
-																			slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""),
-																		})
-																	}
-																	placeholder="fakhri-barista"
-																	type="text"
-																	value={editingUser.slug}
-																/>
-															</div>
-														</div>
-														<div className="space-y-1.5">
-															<label className="font-medium text-muted-foreground text-xs">
-																Role
-															</label>
-															<select
-																className="w-full rounded-xl border border-border bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-																onChange={(e) =>
-																	setEditingUser({
-																		...editingUser,
-																		roleId: e.target.value as Id<"roles">,
-																	})
-																}
-																value={editingUser.roleId}
-															>
-																<option value="">Pilih role</option>
-																{roles?.map((role: any) => (
-																	<option key={role._id} value={role._id}>
-																		{role.name}
-																	</option>
-																))}
-															</select>
-														</div>
-														<div className="space-y-1.5">
-															<label className="font-medium text-muted-foreground text-xs">
-																PIN Akses /home (6 digit)
-															</label>
-															<input
-																className="w-full rounded-xl border border-border bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-																inputMode="numeric"
-																maxLength={6}
-																onChange={(e) =>
-																	setEditingUser({
-																		...editingUser,
-																		homePin: e.target.value.replace(/\D/g, "").slice(0, 6),
-																	})
-																}
-																placeholder="Isi 6 digit untuk ganti PIN"
-																type="password"
-																value={editingUser.homePin}
-															/>
-															<p className="text-[11px] text-muted-foreground">
-																Kosongkan jika tidak ingin mengubah PIN saat ini.
-															</p>
-														</div>
-														<div className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3">
-															<div>
-																<p className="font-medium text-sm text-foreground">
-																	Status Aktif
-																</p>
-																<p className="text-xs text-muted-foreground">
-																	Pengguna nonaktif tidak bisa login.
-																</p>
-															</div>
-															<button
-																className={`relative h-6 w-10 rounded-full transition-all duration-300 ${
-																	editingUser.isActive
-																		? "bg-primary"
-																		: "bg-muted-foreground/20"
-																}`}
-																onClick={() =>
-																	setEditingUser({
-																		...editingUser,
-																		isActive: !editingUser.isActive,
-																	})
-																}
-																type="button"
-															>
-																<div
-																	className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${
-																		editingUser.isActive ? "right-1" : "left-1"
-																	}`}
-																/>
-															</button>
-														</div>
-														<div className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3">
-															<div>
-																<p className="font-medium text-sm text-foreground">
-																	Terima Laporan Email
-																</p>
-																<p className="text-xs text-muted-foreground">
-																	Jika aktif, user ini akan menerima laporan shift dari Resend.
-																</p>
-															</div>
-															<button
-																className={`relative h-6 w-10 rounded-full transition-all duration-300 ${
-																	editingUser.receiveReportEmails
-																		? "bg-primary"
-																		: "bg-muted-foreground/20"
-																}`}
-																onClick={() =>
-																	setEditingUser({
-																		...editingUser,
-																		receiveReportEmails: !editingUser.receiveReportEmails,
-																	})
-																}
-																type="button"
-															>
-																<div
-																	className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${
-																		editingUser.receiveReportEmails ? "right-1" : "left-1"
-																	}`}
-																/>
-															</button>
-														</div>
-
-														<div className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:col-span-2">
-															<div className="flex items-center justify-between">
-																<div>
-																	<p className="font-bold text-sm text-foreground">Biometrik Wajah</p>
-																	<p className="text-xs text-muted-foreground">
-																		{(editingUser as any).faceDescriptor 
-																			? "Wajah sudah terdaftar." 
-																			: "Pendaftaran wajah diperlukan untuk absensi."}
-																	</p>
-																</div>
-																<div className="flex gap-2">
-																	{(editingUser as any).faceDescriptor && (
-																		<Button 
-																			variant="ghost" 
-																			size="sm" 
-																			className="text-destructive hover:bg-destructive/10"
-																			onClick={() => {
-																				setEditingUser({ ...editingUser, faceDescriptor: undefined } as any);
-																				toast.info("Data wajah dikosongkan. Simpan untuk menerapkan perubahan.");
-																			}}
-																		>
-																			Hapus
-																		</Button>
-																	)}
-																	<Button 
-																		variant={(editingUser as any).faceDescriptor ? "outline" : "default"}
-																		size="sm"
-																		onClick={() => setShowFaceEnrollment(true)}
-																		type="button"
-																	>
-																		<Camera className="mr-2 h-4 w-4" />
-																		{(editingUser as any).faceDescriptor ? "Daftar Ulang" : "Daftarkan Wajah"}
-																	</Button>
-																</div>
-															</div>
-
-															{showFaceEnrollment && (
-																<div className="mt-4 rounded-2xl border bg-background p-4 shadow-xl">
-																	<div className="mb-4 flex items-center justify-between">
-																		<p className="font-bold text-sm">Pendaftaran Wajah</p>
-																		<Button variant="ghost" size="sm" onClick={() => setShowFaceEnrollment(false)} type="button">
-																			<X className="h-4 w-4" />
-																		</Button>
-																	</div>
-																	<FaceRecognition 
-																		mode="enroll"
-																		onCapture={async (descriptor) => {
-																			setEditingUser({ ...editingUser, faceDescriptor: descriptor } as any);
-																			toast.success("Wajah berhasil diproses. Jangan lupa simpan perubahan!");
-																			setShowFaceEnrollment(false);
-																		}}
-																	/>
-																</div>
-															)}
-														</div>
-													</div>
-													<div className="flex justify-end gap-2">
-														<button
-															className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-background"
-															onClick={() => setEditingUser(null)}
-															type="button"
-														>
-															Batal
-														</button>
-														<button
-															className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground text-sm transition-all hover:opacity-90"
-															onClick={handleSaveEditUser}
-															type="button"
-														>
-															Simpan Perubahan
-														</button>
-													</div>
-												</div>
-											)}
-											<div className="space-y-2">
-												{!users ? (
-													Array.from({ length: 3 }).map((_, i) => (
-														<div className="flex items-center justify-between rounded-2xl border border-border bg-background p-4 shadow-sm" key={i}>
-															<div className="flex items-center gap-3">
-																<Skeleton className="h-10 w-10 rounded-full" />
-																<div className="space-y-2">
-																	<Skeleton className="h-4 w-24" />
-																	<Skeleton className="h-3 w-32" />
-																</div>
-															</div>
-															<Skeleton className="h-8 w-8 rounded-lg" />
-														</div>
-													))
-												) : users.map((user: any) => (
-													<div
-														className="flex items-center justify-between rounded-2xl border border-border bg-background p-4 shadow-sm"
-														key={user._id}
-													>
-														<div className="flex items-center gap-3">
-															<div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted font-bold text-primary text-sm">
-																{user.name.charAt(0)}
-															</div>
-															<div>
-																<p className="font-bold text-sm tracking-tight">
-																	{user.name}
-																</p>
-																<p className="text-muted-foreground text-xs">
-																	{user.username}
-																</p>
-																<div className="mt-2 flex flex-wrap gap-2">
-																	{user.faceDescriptor ? (
-																		<span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-																			<ShieldCheck className="h-3 w-3" />
-																			Face ID Aktif
-																		</span>
-																	) : (
-																		<span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-																			<AlertCircle className="h-3 w-3" />
-																			Biometrik Kosong
-																		</span>
-																	)}
-																	{user.homePin ? (
-																		<span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
-																			<KeyRound className="h-3 w-3" />
-																			PIN Aktif
-																		</span>
-																	) : null}
-																	{user.receiveReportEmails ? (
-																		<span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-																			<Bell className="h-3 w-3" />
-																			Email Lap.
-																		</span>
-																	) : null}
-																</div>
-															</div>
-														</div>
-														<div className="flex items-center gap-1">
-															<button
-																className="rounded-xl p-2.5 text-primary transition-colors hover:bg-primary/10"
-																onClick={() => handleStartEditUser(user)}
-																type="button"
-															>
-																<Pencil className="h-4 w-4" />
-															</button>
-															<button
-																className="rounded-xl p-2.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-																onClick={() => handleDeleteUser(user._id)}
-																type="button"
-															>
-																<Trash2 className="h-4 w-4" />
-															</button>
-														</div>
-													</div>
-												))}
-												{!users?.length && (
-													<p className="py-8 text-center text-muted-foreground text-sm italic">
-														Belum ada user.
+								{/* List Roles */}
+								<div className="space-y-4">
+									<h4 className="px-2 font-bold text-base text-foreground">
+										Daftar Role
+									</h4>
+									{editingRole && (
+										<div className="space-y-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
+											<div className="flex items-center justify-between gap-3">
+												<div className="space-y-1">
+													<p className="font-bold text-sm text-foreground">Edit Role</p>
+													<p className="text-xs text-muted-foreground">
+														Perbarui nama role dan hak akses yang dimiliki.
 													</p>
-												)}
+												</div>
+												<button
+													className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+													onClick={() => setEditingRole(null)}
+													type="button"
+												>
+													<X className="h-4 w-4" />
+												</button>
 											</div>
-										</div>
-										<div className="space-y-4">
-											<h4 className="px-2 font-bold text-base text-foreground">
-												Daftar Role
-											</h4>
-											{editingRole && (
-												<div className="space-y-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
-													<div className="flex items-center justify-between gap-3">
-														<div className="space-y-1">
-															<p className="font-bold text-sm text-foreground">Edit Role</p>
-															<p className="text-xs text-muted-foreground">
-																Perbarui nama role dan hak akses yang dimiliki.
-															</p>
-														</div>
-														<button
-															className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-															onClick={() => setEditingRole(null)}
-															type="button"
-														>
-															<X className="h-4 w-4" />
-														</button>
-													</div>
-													<div className="space-y-2">
-														<label className="font-medium text-muted-foreground text-xs">
-															Nama Role
-														</label>
+											<div className="space-y-2">
+												<label className="font-medium text-muted-foreground text-xs">
+													Nama Role
+												</label>
+												<input
+													className="w-full rounded-xl border border-border bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+													onChange={(e) =>
+														setEditingRole({
+															...editingRole,
+															name: e.target.value,
+														})
+													}
+													type="text"
+													value={editingRole.name}
+												/>
+											</div>
+
+											<div className="grid grid-cols-2 gap-4">
+												<div className="space-y-2">
+													<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+														Gaji per Shift (Rp)
+													</label>
+													<div className="relative">
+														<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
 														<input
-															className="w-full rounded-xl border border-border bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+															className="w-full rounded-xl border border-border bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
 															onChange={(e) =>
 																setEditingRole({
 																	...editingRole,
-																	name: e.target.value,
+																	baseShiftRate: Number(e.target.value),
 																})
 															}
-															type="text"
-															value={editingRole.name}
+															type="number"
+															value={editingRole.baseShiftRate}
 														/>
 													</div>
-
-													<div className="grid grid-cols-2 gap-4">
-														<div className="space-y-2">
-															<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
-																Gaji per Shift (Rp)
-															</label>
-															<div className="relative">
-																<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
-																<input
-																	className="w-full rounded-xl border border-border bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-																	onChange={(e) =>
-																		setEditingRole({
-																			...editingRole,
-																			baseShiftRate: Number(e.target.value),
-																		})
-																	}
-																	type="number"
-																	value={editingRole.baseShiftRate}
-																/>
-															</div>
-														</div>
-														<div className="space-y-2">
-															<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
-																Gaji Tetap Bulanan (Rp)
-															</label>
-															<div className="relative">
-																<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
-																<input
-																	className="w-full rounded-xl border border-border bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-																	onChange={(e) =>
-																		setEditingRole({
-																			...editingRole,
-																			monthlyFixedSalary: Number(e.target.value),
-																		})
-																	}
-																	type="number"
-																	value={editingRole.monthlyFixedSalary}
-																/>
-															</div>
-														</div>
-													</div>
-													<div className="grid grid-cols-1 gap-4">
-														<div className="space-y-2">
-															<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
-																Tunjangan Harian (Rp)
-															</label>
-															<div className="relative">
-																<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
-																<input
-																	className="w-full rounded-xl border border-border bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-																	onChange={(e) =>
-																		setEditingRole({
-																			...editingRole,
-																			dailyAllowance: Number(e.target.value),
-																		})
-																	}
-																	type="number"
-																	value={editingRole.dailyAllowance}
-																/>
-															</div>
-														</div>
-													</div>
-													<div className="space-y-3">
-														<p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
-															Izin Akses
-														</p>
-														<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-															{AVAILABLE_PERMISSIONS.map((perm: any) => (
-																<label
-																	className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${
-																		editingRole.permissions.includes(perm.id)
-																			? "border-primary/30 bg-primary/5 text-primary"
-																			: "border-border/50 bg-background text-muted-foreground hover:border-border"
-																	}`}
-																	key={perm.id}
-																>
-																	<input
-																		checked={editingRole.permissions.includes(perm.id)}
-																		className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20"
-																		onChange={(e) => {
-																			const nextPermissions = e.target.checked
-																				? [...editingRole.permissions, perm.id]
-																				: editingRole.permissions.filter(
-																						(id) => id !== perm.id,
-																				  );
-																			setEditingRole({
-																				...editingRole,
-																				permissions: nextPermissions,
-																			});
-																		}}
-																		type="checkbox"
-																	/>
-																	<span className="font-medium text-xs">
-																		{perm.label}
-																	</span>
-																</label>
-															))}
-														</div>
-													</div>
-													<div className="flex justify-end gap-2">
-														<button
-															className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-background"
-															onClick={() => setEditingRole(null)}
-															type="button"
-														>
-															Batal
-														</button>
-														<button
-															className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground text-sm transition-all hover:opacity-90"
-															onClick={handleSaveEditRole}
-															type="button"
-														>
-															Simpan Perubahan
-														</button>
+												</div>
+												<div className="space-y-2">
+													<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+														Gaji Tetap Bulanan (Rp)
+													</label>
+													<div className="relative">
+														<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
+														<input
+															className="w-full rounded-xl border border-border bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+															onChange={(e) =>
+																setEditingRole({
+																	...editingRole,
+																	monthlyFixedSalary: Number(e.target.value),
+																})
+															}
+															type="number"
+															value={editingRole.monthlyFixedSalary}
+														/>
 													</div>
 												</div>
-											)}
-											<div className="space-y-2">
-												{!roles ? (
-													Array.from({ length: 3 }).map((_, i) => (
-														<div className="flex items-center justify-between rounded-2xl border border-border bg-background p-4 shadow-sm" key={i}>
-															<div className="space-y-2">
-																<Skeleton className="h-4 w-24" />
-																<Skeleton className="h-3 w-48" />
-															</div>
-															<Skeleton className="h-8 w-8 rounded-lg" />
-														</div>
-													))
-												) : roles.map((role: any) => (
-													<div
-														className="flex items-center justify-between rounded-2xl border border-border bg-background p-4 shadow-sm"
-														key={role._id}
-													>
-														<div>
-															<p className="font-bold text-sm tracking-tight">
-																{role.name}
-															</p>
-															<p className="text-[10px] text-muted-foreground">
-																{role.permissions.length} Hak Akses
-															</p>
-														</div>
-														<div className="flex items-center gap-1">
-															<button
-																className="rounded-lg p-2 text-primary transition-colors hover:bg-primary/10"
-																onClick={() => handleStartEditRole(role)}
-																type="button"
-															>
-																<Pencil className="h-4 w-4" />
-															</button>
-															<button
-																className="rounded-lg p-2 text-destructive transition-colors hover:bg-destructive/10"
-																onClick={() => handleDeleteRole(role._id)}
-																type="button"
-															>
-																<Trash2 className="h-4 w-4" />
-															</button>
-														</div>
-													</div>
-												))}
 											</div>
-											{!roles?.length && (
-													<p className="w-full py-8 text-center text-muted-foreground text-sm italic">
-														Belum ada role.
-													</p>
-												)}
-										</div>
-									</div>
-								</div>
-							</div>
-						</section>
-					</div>
-				)}
-
-				{activeTab === "system" && (
+											<div className="grid grid-cols-1 gap-4">
+												<div className="space-y-2">
+													<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+														Tunjangan Harian (Rp)
+													</label>
+													<div className="relative">
+														<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
+														<input
+															className="w-full rounded-xl border border-border bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+															onChange={(e) =>
+																setEditingRole({
+																	...editingRole,
+																	dailyAllowance: Number(e.target.value),
+																})
+															}
+															type="number"
+															value={editingRole.dailyAllowance}
+														/>
+													</div>
+												</div>
+											</div>
+											<div className="space-y-3">
+												<p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
+													Izin Akses
+												</p>
+												<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+													{AVAILABLE_PERMISSIONS.map((perm: any) => (
+														<label
+															className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${
+																editingRole.permissions.includes(perm.id)
+																	? "border-primary/30 bg-primary/5 text-primary"
+																	: "border-border/50 bg-background text-muted-foreground hover:border-border"
+															}`}
+															key={perm.id}
+														>
+															<input
+																checked={editingRole.permissions.includes(perm.id)}
+																className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20"
+																onChange={(e) => {
+																	const nextPermissions = e.target.checked
+																		? [...editingRole.permissions, perm.id]
+																		: editingRole.permissions.filter(
+																				(id) => id !== perm.id,
+																		  );
+																	setEditingRole({
+																		...editingRole,
+																		permissions: nextPermissions,
+																	});
+																}}
+																type="checkbox"
+															/>
+															<span className="font-medium text-xs">
+																{perm.label}
+															</span>
+														</label>
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
 						<div className="grid grid-cols-1 gap-8 md:grid-cols-2">
 							{/* Branding Section (Hidden to prevent confusion with Store Name for general admin) */}
