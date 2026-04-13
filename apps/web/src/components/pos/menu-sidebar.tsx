@@ -63,6 +63,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { YumiAIChat } from "@/components/pos/yumi-ai-chat";
 import {
 	bluetoothPrinter,
@@ -2137,7 +2138,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [cashierName, setCashierName] = useState("");
 	const [shiftName, setShiftName] = useState("Shift Pagi");
 	const [isCustomShift, setIsCustomShift] = useState(false);
-	const [teamMembers, setTeamMembers] = useState("");
+	const [teamMembers, setTeamMembers] = useState<string[]>([]);
 	
 	// Akhiri Shift State
 	const [cashInRegister, setCashInRegister] = useState("");
@@ -2272,7 +2273,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				await startShift({
 					cashierName,
 					shiftName,
-					teamMembers,
+					teamMembers: teamMembers.join(", "),
 					startingCash: Number(amount),
 					notes,
 				});
@@ -2318,7 +2319,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			setNonCashConfirmed("");
 			setNotes("");
 			setCashierName("");
-			setTeamMembers("");
+			setTeamMembers([]);
 			onClose();
 		} catch (error) {
 			console.error(error);
@@ -2433,12 +2434,35 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 						</div>
 						<div className="space-y-1.5">
 							<Label className="text-[10px] font-bold uppercase text-muted-foreground">Tim Bertugas (Opsional)</Label>
-							<Input
-								placeholder="Andi (Barista), Budi (Waiter)"
-								className="h-9 text-xs"
-								value={teamMembers}
-								onChange={(e) => setTeamMembers(e.target.value)}
-							/>
+							<div className="rounded-md border bg-background p-2 space-y-1.5 max-h-32 overflow-y-auto">
+								{staffUsers.length === 0 ? (
+									<p className="text-[10px] text-muted-foreground italic px-1">Memuat data staff...</p>
+								) : (
+									staffUsers.map((u: any) => (
+										<label
+											key={u._id}
+											className="flex items-center gap-2 px-1 py-0.5 rounded hover:bg-muted/50 cursor-pointer"
+										>
+											<Checkbox
+												checked={teamMembers.includes(u.name)}
+												onCheckedChange={(checked: boolean) => {
+													setTeamMembers(prev =>
+														checked
+															? [...prev, u.name]
+															: prev.filter(n => n !== u.name)
+													);
+												}}
+											/>
+											<span className="text-xs">{u.name}</span>
+										</label>
+									))
+								)}
+							</div>
+							{teamMembers.length > 0 && (
+								<p className="text-[10px] text-muted-foreground">
+									Dipilih: <span className="font-semibold text-foreground">{teamMembers.join(", ")}</span>
+								</p>
+							)}
 						</div>
 						<div className="space-y-1.5">
 							<Label className="text-[10px] font-bold uppercase text-muted-foreground">Modal Awal (Rp) <span className="text-destructive">*</span></Label>
