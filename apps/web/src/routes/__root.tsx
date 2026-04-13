@@ -25,12 +25,6 @@ function RootComponent() {
 			// If we are authenticated and on the login page, move to home
 			if (isLoginPage) {
 				navigate({ to: "/home" as any });
-			} else if (!isAdmin && isStaff && user?.slug) {
-				// Staff only access to their profile - ensure we are not already there
-				const profilePath = `/attendance/${user.slug}`;
-				if (!location.pathname.startsWith(profilePath)) {
-					navigate({ to: profilePath as any });
-				}
 			}
 		}
 	}, [isAuthenticated, isLoading, isStaff, user, location.pathname, navigate]);
