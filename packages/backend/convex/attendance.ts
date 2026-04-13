@@ -419,3 +419,59 @@ export const getPayrollReport = query({
 		};
 	},
 });
+
+// === Admin CRUD for attendance logs ===
+
+export const adminCreateLog = mutation({
+	args: {
+		userId: v.id("users"),
+		type: v.union(v.literal("check_in"), v.literal("check_out")),
+		timestamp: v.number(),
+		notes: v.optional(v.string()),
+		shiftName: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.db.insert("attendance", {
+			userId: args.userId,
+			type: args.type,
+			timestamp: args.timestamp,
+			notes: args.notes,
+			shiftName: args.shiftName,
+		});
+	},
+});
+
+export const adminUpdateLog = mutation({
+	args: {
+		id: v.id("attendance"),
+		type: v.optional(v.union(v.literal("check_in"), v.literal("check_out"))),
+		timestamp: v.optional(v.number()),
+		notes: v.optional(v.string()),
+		shiftName: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const { id, ...updates } = args;
+		const cleaned: Record<string, any> = {};
+		for (const [k, val] of Object.entries(updates)) {
+			if (val !== undefined) cleaned[k] = val;
+		}
+		return await ctx.db.patch(id, cleaned);
+	},
+});
+
+export const adminDeleteLog = mutation({
+	args: { id: v.id("attendance") },
+	handler: async (ctx, args) => {
+		return await ctx.db.delete(args.id);
+	},
+});
+
+export const adminBulkDeleteLogs = mutation({
+	args: { ids: v.array(v.id("attendance")) },
+	handler: async (ctx, args) => {
+		for (const id of args.ids) {
+			await ctx.db.delete(id);
+		}
+		return { deleted: args.ids.length };
+	},
+});

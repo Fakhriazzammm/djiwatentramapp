@@ -552,6 +552,127 @@ export function SettingsPage({
 
 	const attendanceLogs = useQuery(api.attendance.getAdminLogs, { limit: 100 });
 
+	const adminCreateLog = useMutation(api.attendance.adminCreateLog);
+	const adminUpdateLog = useMutation(api.attendance.adminUpdateLog);
+	const adminDeleteLog = useMutation(api.attendance.adminDeleteLog);
+	const adminBulkDeleteLogs = useMutation(api.attendance.adminBulkDeleteLogs);
+
+	const [selectedLogIds, setSelectedLogIds] = useState<Set<string>>(new Set());
+	const [showCreateLog, setShowCreateLog] = useState(false);
+	const [editingLog, setEditingLog] = useState<any>(null);
+	const [newLog, setNewLog] = useState({
+		userId: "" as string,
+		type: "check_in" as "check_in" | "check_out",
+		date: new Date().toISOString().slice(0, 10),
+		time: new Date().toTimeString().slice(0, 5),
+		notes: "",
+		shiftName: "",
+	});
+
+	const toggleSelectLog = (id: string) => {
+		setSelectedLogIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) next.delete(id); else next.add(id);
+			return next;
+		});
+	};
+	const toggleSelectAll = () => {
+		if (!attendanceLogs) return;
+		if (selectedLogIds.size === attendanceLogs.length) {
+			setSelectedLogIds(new Set());
+		} else {
+			setSelectedLogIds(new Set(attendanceLogs.map((l: any) => l._id)));
+		}
+	};
+
+	const handleBulkDelete = async () => {
+		if (selectedLogIds.size === 0) return;
+		setConfirmConfig({
+			isOpen: true,
+			title: `Hapus ${selectedLogIds.size} Log?`,
+			message: "Data absensi yang dihapus tidak dapat dikembalikan.",
+			variant: "danger",
+			onConfirm: async () => {
+				try {
+					await adminBulkDeleteLogs({ ids: Array.from(selectedLogIds) as any });
+					toast.success(`${selectedLogIds.size} log dihapus`);
+					setSelectedLogIds(new Set());
+				} catch (e) { toast.error("Gagal menghapus"); }
+			},
+		});
+	};
+
+	const handleCreateLogSubmit = async () => {
+		if (!newLog.userId) { toast.error("Pilih staff"); return; }
+		const [y, m, d] = newLog.date.split("-").map(Number);
+		const [h, mi] = newLog.time.split(":").map(Number);
+		const ts = new Date(y, m - 1, d, h, mi).getTime();
+		try {
+			await adminCreateLog({
+				userId: newLog.userId as any,
+				type: newLog.type,
+				timestamp: ts,
+				notes: newLog.notes || undefined,
+				shiftName: newLog.shiftName || undefined,
+			});
+			toast.success("Log berhasil ditambahkan");
+			setShowCreateLog(false);
+			setNewLog({ userId: "", type: "check_in", date: new Date().toISOString().slice(0, 10), time: new Date().toTimeString().slice(0, 5), notes: "", shiftName: "" });
+		} catch (e) { toast.error("Gagal menambah log"); }
+	};
+
+	const handleSaveEditLog = async () => {
+		if (!editingLog) return;
+		const [y, m, d] = editingLog.date.split("-").map(Number);
+		const [h, mi] = editingLog.time.split(":").map(Number);
+		const ts = new Date(y, m - 1, d, h, mi).getTime();
+		try {
+			await adminUpdateLog({
+				id: editingLog._id,
+				type: editingLog.type,
+				timestamp: ts,
+				notes: editingLog.notes || undefined,
+				shiftName: editingLog.shiftName || undefined,
+			});
+			toast.success("Log diperbarui");
+			setEditingLog(null);
+		} catch (e) { toast.error("Gagal memperbarui log"); }
+	};
+
+	const exportPayrollCSV = () => {
+		if (!payrollReport?.rows) return;
+		const headers = ["Staff","Role","Shift","Telat (m)","Gaji Tetap","Gaji Shift","Tunjangan","Lembur","Denda","Total"];
+		const rows = payrollReport.rows.map((s: any) => [
+			s.name, s.roleName, s.sessionCount||0, s.totalLateMinutes||0,
+			s.monthlyFixedSalary||0, s.totalShiftSalary||0, s.totalAllowance||0,
+			s.totalOvertimeBonus||0, s.totalPenalty||0, s.netSalary||0,
+		]);
+		const csv = [headers.join(","), ...rows.map((r: any) => r.join(","))].join("\n");
+		const blob = new Blob([csv], { type: "text/csv" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url; a.download = `laporan-absensi-${reportFilter.month}-${reportFilter.year}.csv`;
+		a.click(); URL.revokeObjectURL(url);
+		toast.success("CSV berhasil diunduh");
+	};
+
+	const exportPayrollImage = async () => {
+		const el = document.getElementById("payroll-report-table");
+		if (!el) return;
+		try {
+			// @ts-ignore - dynamic import may not have types
+			const mod = await import(/* @vite-ignore */ "html2canvas");
+			const canvas = await mod.default(el, { backgroundColor: "#ffffff", scale: 2 });
+			const a = document.createElement("a");
+			a.href = canvas.toDataURL("image/jpeg", 0.95);
+			a.download = `laporan-absensi-${reportFilter.month}-${reportFilter.year}.jpg`;
+			a.click();
+			toast.success("JPG berhasil diunduh");
+		} catch {
+			toast.error("Gagal export JPG. Gunakan export CSV sebagai alternatif.");
+		}
+	};
+
 	const formatCurrency = (amount: number) => {
 		return new Intl.NumberFormat("id-ID", {
 			style: "currency",
@@ -1381,9 +1502,17 @@ export function SettingsPage({
 										</SelectContent>
 									</Select>
 								</div>
+								<div className="flex items-center gap-2">
+									<button onClick={exportPayrollCSV} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted" type="button">
+										<Download className="h-3.5 w-3.5" /> CSV
+									</button>
+									<button onClick={exportPayrollImage} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted" type="button">
+										<Download className="h-3.5 w-3.5" /> JPG
+									</button>
+								</div>
 							</div>
 
-							<div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+							<div id="payroll-report-table" className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
 								<div className="overflow-x-auto">
 									<table className="w-full text-left text-sm">
 										<thead className="bg-muted/50 font-bold text-muted-foreground text-xs uppercase tracking-widest">
@@ -1456,76 +1585,151 @@ export function SettingsPage({
 				{activeTab === "attendance-logs" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
 						<section className="space-y-6 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-8">
-							<div className="flex items-center gap-4">
-								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-									<ClipboardList className="h-6 w-6" />
+							<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+								<div className="flex items-center gap-4">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+										<ClipboardList className="h-6 w-6" />
+									</div>
+									<div>
+										<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
+											Log Absensi Real-time
+										</h3>
+										<p className="text-muted-foreground text-sm">
+											Kelola data aktivitas check-in dan check-out staff
+										</p>
+									</div>
 								</div>
-								<div>
-									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
-										Log Absensi Real-time
-									</h3>
-									<p className="text-muted-foreground text-sm">
-										Data aktivitas check-in dan check-out terbaru seluruh staff
-									</p>
+								<div className="flex items-center gap-2">
+									{selectedLogIds.size > 0 && (
+										<button onClick={handleBulkDelete} className="flex items-center gap-1.5 rounded-lg bg-destructive/10 px-3 py-1.5 text-[11px] font-bold text-destructive transition-colors hover:bg-destructive/20" type="button">
+											<Trash2 className="h-3.5 w-3.5" /> Hapus {selectedLogIds.size}
+										</button>
+									)}
+									<button onClick={() => setShowCreateLog(!showCreateLog)} className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-[11px] font-bold text-primary transition-colors hover:bg-primary/20" type="button">
+										<Plus className="h-3.5 w-3.5" /> Tambah Manual
+									</button>
 								</div>
 							</div>
+
+							{/* Create Form */}
+							{showCreateLog && (
+								<div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+									<p className="font-bold text-sm text-foreground">Tambah Log Manual</p>
+									<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
+										<select className="rounded-lg border border-border bg-background p-2 text-xs" value={newLog.userId} onChange={(e) => setNewLog({ ...newLog, userId: e.target.value })}>
+											<option value="">Pilih Staff</option>
+											{users?.map((u: any) => <option key={u._id} value={u._id}>{u.name}</option>)}
+										</select>
+										<select className="rounded-lg border border-border bg-background p-2 text-xs" value={newLog.type} onChange={(e) => setNewLog({ ...newLog, type: e.target.value as any })}>
+											<option value="check_in">Check-In</option>
+											<option value="check_out">Check-Out</option>
+										</select>
+										<input type="date" className="rounded-lg border border-border bg-background p-2 text-xs" value={newLog.date} onChange={(e) => setNewLog({ ...newLog, date: e.target.value })} />
+										<input type="time" className="rounded-lg border border-border bg-background p-2 text-xs" value={newLog.time} onChange={(e) => setNewLog({ ...newLog, time: e.target.value })} />
+										<input type="text" placeholder="Shift" className="rounded-lg border border-border bg-background p-2 text-xs" value={newLog.shiftName} onChange={(e) => setNewLog({ ...newLog, shiftName: e.target.value })} />
+										<input type="text" placeholder="Catatan" className="rounded-lg border border-border bg-background p-2 text-xs" value={newLog.notes} onChange={(e) => setNewLog({ ...newLog, notes: e.target.value })} />
+									</div>
+									<div className="flex gap-2">
+										<button onClick={handleCreateLogSubmit} className="rounded-lg bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground" type="button">Simpan</button>
+										<button onClick={() => setShowCreateLog(false)} className="rounded-lg border border-border px-4 py-1.5 text-xs font-medium text-muted-foreground" type="button">Batal</button>
+									</div>
+								</div>
+							)}
+
+							{/* Edit Form */}
+							{editingLog && (
+								<div className="space-y-3 rounded-xl border border-amber-300/30 bg-amber-50 p-4 dark:bg-amber-900/10">
+									<p className="font-bold text-sm text-foreground">Edit Log — {editingLog.userName}</p>
+									<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+										<select className="rounded-lg border border-border bg-background p-2 text-xs" value={editingLog.type} onChange={(e) => setEditingLog({ ...editingLog, type: e.target.value })}>
+											<option value="check_in">Check-In</option>
+											<option value="check_out">Check-Out</option>
+										</select>
+										<input type="date" className="rounded-lg border border-border bg-background p-2 text-xs" value={editingLog.date} onChange={(e) => setEditingLog({ ...editingLog, date: e.target.value })} />
+										<input type="time" className="rounded-lg border border-border bg-background p-2 text-xs" value={editingLog.time} onChange={(e) => setEditingLog({ ...editingLog, time: e.target.value })} />
+										<input type="text" placeholder="Catatan" className="rounded-lg border border-border bg-background p-2 text-xs" value={editingLog.notes || ""} onChange={(e) => setEditingLog({ ...editingLog, notes: e.target.value })} />
+									</div>
+									<div className="flex gap-2">
+										<button onClick={handleSaveEditLog} className="rounded-lg bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground" type="button">Simpan</button>
+										<button onClick={() => setEditingLog(null)} className="rounded-lg border border-border px-4 py-1.5 text-xs font-medium text-muted-foreground" type="button">Batal</button>
+									</div>
+								</div>
+							)}
 
 							<div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
 								<div className="overflow-x-auto">
 									<table className="w-full text-left text-sm">
 										<thead className="bg-muted/50 font-bold text-muted-foreground text-xs uppercase tracking-widest">
 											<tr className="border-b border-border/50">
+												<th className="px-2 py-2.5 w-8">
+													<input type="checkbox" className="h-3.5 w-3.5 rounded" checked={attendanceLogs ? selectedLogIds.size === attendanceLogs.length && attendanceLogs.length > 0 : false} onChange={toggleSelectAll} />
+												</th>
 												<th className="px-3 py-2.5 text-[11px]">Waktu</th>
 												<th className="px-3 py-2.5 text-[11px]">Staff</th>
 												<th className="px-3 py-2.5 text-[11px]">Aksi</th>
 												<th className="px-3 py-2.5 text-[11px]">Shift</th>
-												<th className="px-3 py-2.5 text-[11px]">Detail / Catatan</th>
+												<th className="px-3 py-2.5 text-[11px]">Catatan</th>
+												<th className="px-3 py-2.5 text-[11px] text-right">Aksi</th>
 											</tr>
 										</thead>
 										<tbody className="divide-y divide-border/50">
 											{!attendanceLogs ? (
 												Array.from({ length: 5 }).map((_, i) => (
-													<tr key={i}>
-														<td className="px-3 py-4" colSpan={5}>
-															<Skeleton className="h-4 w-full" />
-														</td>
-													</tr>
+													<tr key={i}><td className="px-3 py-4" colSpan={7}><Skeleton className="h-4 w-full" /></td></tr>
 												))
-											) : !attendanceLogs || attendanceLogs.length === 0 ? (
-												<tr>
-													<td colSpan={5} className="py-12 text-center text-muted-foreground italic">
-														Belum ada log absensi tercatat.
-													</td>
-												</tr>
+											) : attendanceLogs.length === 0 ? (
+												<tr><td colSpan={7} className="py-12 text-center text-muted-foreground italic">Belum ada log absensi tercatat.</td></tr>
 											) : (
-												attendanceLogs.map((log: any, idx: number) => (
-													<tr className="hover:bg-muted/30 transition-colors" key={idx}>
-														<td className="px-3 py-2.5 text-xs text-muted-foreground">
-															<div className="font-bold text-foreground">
-																{new Date(log.timestamp).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
-															</div>
-															<div className="opacity-70 text-[10px]">
-																{new Date(log.timestamp).toLocaleDateString("id-ID", { day: "2-digit", month: "short" })}
-															</div>
+												attendanceLogs.map((log: any) => (
+													<tr className="hover:bg-muted/30 transition-colors" key={log._id}>
+														<td className="px-2 py-2.5">
+															<input type="checkbox" className="h-3.5 w-3.5 rounded" checked={selectedLogIds.has(log._id)} onChange={() => toggleSelectLog(log._id)} />
+														</td>
+														<td className="px-3 py-2.5 text-xs">
+															<div className="font-bold text-foreground">{new Date(log.timestamp).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</div>
+															<div className="text-[10px] text-muted-foreground">{new Date(log.timestamp).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</div>
 														</td>
 														<td className="px-3 py-2.5">
 															<div className="font-bold text-foreground text-xs">{log.userName}</div>
 															<div className="text-[10px] text-muted-foreground">{log.roleName}</div>
 														</td>
 														<td className="px-3 py-2.5">
-															<span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-																log.type === "check_in" 
-																	? "bg-emerald-100 text-emerald-700 font-bold" 
-																	: "bg-amber-100 text-amber-700 font-bold"
-															}`}>
-																{log.type === "check_in" ? "CHECK-IN" : "CHECK-OUT"}
+															<span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${log.type === "check_in" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+																{log.type === "check_in" ? "IN" : "OUT"}
 															</span>
 														</td>
-														<td className="px-3 py-2.5 text-xs font-medium text-foreground">
-															{log.shiftName || "-"}
-														</td>
-														<td className="px-3 py-2.5 text-[11px] text-muted-foreground italic">
-															{log.notes || "-"}
+														<td className="px-3 py-2.5 text-xs">{log.shiftName || "-"}</td>
+														<td className="px-3 py-2.5 text-[11px] text-muted-foreground italic">{log.notes || "-"}</td>
+														<td className="px-3 py-2.5 text-right">
+															<div className="flex items-center justify-end gap-1">
+																<button type="button" className="rounded-lg p-1.5 text-primary transition-colors hover:bg-primary/10" onClick={() => {
+																	const d = new Date(log.timestamp);
+																	setEditingLog({
+																		_id: log._id,
+																		userName: log.userName,
+																		type: log.type,
+																		date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
+																		time: `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`,
+																		notes: log.notes || "",
+																		shiftName: log.shiftName || "",
+																	});
+																}}>
+																	<Pencil className="h-3.5 w-3.5" />
+																</button>
+																<button type="button" className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" onClick={() => {
+																	setConfirmConfig({
+																		isOpen: true,
+																		title: "Hapus Log?",
+																		message: `Log ${log.type === "check_in" ? "Check-In" : "Check-Out"} ${log.userName} akan dihapus permanen.`,
+																		variant: "danger",
+																		onConfirm: async () => {
+																			try { await adminDeleteLog({ id: log._id }); toast.success("Log dihapus"); } catch { toast.error("Gagal menghapus"); }
+																		},
+																	});
+																}}>
+																	<Trash2 className="h-3.5 w-3.5" />
+																</button>
+															</div>
 														</td>
 													</tr>
 												))
