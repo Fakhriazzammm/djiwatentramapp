@@ -139,6 +139,44 @@ function getJakartaDayKey(timestamp: number) {
 	});
 }
 
+async function getLatestCostPerUnitForInventory(
+	ctx: MutationCtx,
+	inventoryId: Id<"inventory">
+) {
+	const inventoryItem = await ctx.db.get(inventoryId);
+	if (!inventoryItem) {
+		return undefined;
+	}
+
+	const transactions = await ctx.db
+		.query("inventoryTransactions")
+		.withIndex("by_inventory_and_timestamp", (q) => q.eq("inventoryId", inventoryId))
+		.order("desc")
+		.collect();
+
+	const latestPriced = transactions.find(
+		(transaction) =>
+			(transaction.type === "restock" ||
+				transaction.type === "costing_reference" ||
+				transaction.type === "production") &&
+			typeof transaction.costPerUnit === "number" &&
+			transaction.costPerUnit > 0
+	);
+
+	if (latestPriced?.costPerUnit != null) {
+		return latestPriced.costPerUnit;
+	}
+
+	if (
+		typeof inventoryItem.lastPurchasePrice === "number" &&
+		inventoryItem.lastPurchasePrice > 0
+	) {
+		return inventoryItem.lastPurchasePrice;
+	}
+
+	return undefined;
+}
+
 async function syncProductAvailabilityForInventoryIds(
 	ctx: MutationCtx,
 	inventoryIds: Id<"inventory">[]
@@ -1276,6 +1314,44 @@ export const getBaseRecipes = query({
 	},
 });
 
+export const ensureInventoryItemForBaseRecipe = mutation({
+	args: {
+		baseRecipeId: v.id("baseRecipes"),
+	},
+	handler: async (ctx, args) => {
+		const baseRecipe = await ctx.db.get(args.baseRecipeId);
+		if (!baseRecipe) {
+			throw new Error("Base recipe tidak ditemukan");
+		}
+
+		const inventoryItems = await ctx.db.query("inventory").collect();
+		const existing = inventoryItems.find(
+			(item) => item.baseRecipeId === args.baseRecipeId
+		);
+		if (existing) {
+			return {
+				inventoryId: existing._id,
+				created: false,
+			};
+		}
+
+		const inventoryId = await ctx.db.insert("inventory", {
+			ingredientName: baseRecipe.name,
+			unit: baseRecipe.targetUnit,
+			quantity: 0,
+			lowStockThreshold: 0,
+			displayUnit: baseRecipe.targetUnit,
+			conversionFactor: 1,
+			baseRecipeId: args.baseRecipeId,
+		});
+
+		return {
+			inventoryId,
+			created: true,
+		};
+	},
+});
+
 export const createBaseRecipe = mutation({
 	args: {
 		name: v.string(),
@@ -1357,6 +1433,10 @@ export const produceBaseRecipeBatch = mutation({
 		notes: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
+		if (args.batchMultiplier <= 0) {
+			throw new Error("Batch multiplier harus lebih dari 0");
+		}
+
 		const recipe = await ctx.db.get(args.baseRecipeId);
 		if (!recipe) {
 			throw new Error("Recipe not found");
@@ -1367,13 +1447,33 @@ export const produceBaseRecipeBatch = mutation({
 			throw new Error("Target inventory item not found");
 		}
 
+		const now = Date.now();
+		let totalIngredientCost = 0;
+		for (const ingredient of recipe.ingredients) {
+			const latestCostPerUnit = await getLatestCostPerUnitForInventory(
+				ctx,
+				ingredient.inventoryId
+			);
+			if (latestCostPerUnit == null || latestCostPerUnit <= 0) {
+				continue;
+			}
+			totalIngredientCost +=
+				latestCostPerUnit * ingredient.amount * args.batchMultiplier;
+		}
+
 		// 1. Deduct ingredients
 		await deductIngredients(ctx, recipe.ingredients, args.batchMultiplier);
 
 		// 2. Add stock to target item
 		const addedQuantity = recipe.targetQuantity * args.batchMultiplier;
+		const productionCostPerUnit =
+			addedQuantity > 0 && totalIngredientCost > 0
+				? totalIngredientCost / addedQuantity
+				: undefined;
 		await ctx.db.patch(args.inventoryId, {
 			quantity: targetItem.quantity + addedQuantity,
+			lastPurchasePrice: productionCostPerUnit ?? targetItem.lastPurchasePrice,
+			lastPurchaseAt: now,
 		});
 
 		// 3. Record transaction with FIFO tracking
@@ -1382,9 +1482,16 @@ export const produceBaseRecipeBatch = mutation({
 			quantity: addedQuantity,
 			remainingQuantity: addedQuantity,
 			type: "production",
-			timestamp: Date.now(),
+			timestamp: now,
+			costPerUnit: productionCostPerUnit,
 			notes: args.notes || `Produced from recipe: ${recipe.name}`,
 		});
+
+		if (productionCostPerUnit != null) {
+			await ctx.runMutation(api.hpp.syncHppCalculationsByInventoryIds, {
+				inventoryIds: [args.inventoryId],
+			});
+		}
 
 		await syncProductAvailabilityForInventoryIds(ctx, [
 			args.inventoryId,

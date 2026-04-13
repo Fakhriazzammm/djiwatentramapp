@@ -52,6 +52,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { authClient } from "@/lib/auth-client";
 import {
 	bluetoothPrinter,
@@ -722,6 +723,7 @@ export function SettingsPage({
 		baseShiftRate: 0,
 		monthlyFixedSalary: 0,
 		dailyAllowance: 0,
+		_show: false,
 	});
 	const [editingUser, setEditingUser] = useState<{
 		_id: Id<"users">;
@@ -742,6 +744,8 @@ export function SettingsPage({
 		monthlyFixedSalary: number;
 		dailyAllowance: number;
 	} | null>(null);
+	const [newRolePermOpen, setNewRolePermOpen] = useState(false);
+	const [editRolePermOpen, setEditRolePermOpen] = useState(false);
 	const [showFaceEnrollment, setShowFaceEnrollment] = useState(false);
 	const [confirmConfig, setConfirmConfig] = useState<{
 		isOpen: boolean;
@@ -1172,7 +1176,7 @@ export function SettingsPage({
 				dailyAllowance: newRole.dailyAllowance,
 			});
 			toast.success("Role baru berhasil dibuat");
-			setNewRole({ name: "", permissions: [], baseHourlyRate: 0, baseShiftRate: 0, monthlyFixedSalary: 0, dailyAllowance: 0 });
+			setNewRole({ name: "", permissions: [], baseHourlyRate: 0, baseShiftRate: 0, monthlyFixedSalary: 0, dailyAllowance: 0, _show: false });
 		} catch (error) {
 			console.error(error);
 			toast.error("Gagal membuat role");
@@ -1741,189 +1745,290 @@ export function SettingsPage({
 								</div>
 							</div>
 
-							{/* Moved Role Management Here */}
-							<div className="space-y-6 pt-4">
-								<div className="rounded-2xl border border-border/50 bg-muted/30 p-4 md:p-6">
-									<div className="flex items-center gap-2 border-border/50 border-b pb-4">
-										<Settings2 className="h-4 w-4 text-primary" />
-										<h4 className="font-bold text-foreground text-sm uppercase tracking-wider">
-											Tambah Role Baru
-										</h4>
-									</div>
-									<div className="mt-5 space-y-5">
-										<div className="space-y-2">
-											<label className="font-medium text-muted-foreground text-xs" htmlFor="role-name">
-												Nama Role
-											</label>
-											<input
-												className="w-full rounded-xl bg-background p-3 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-												id="role-name"
-												onChange={(e) => setNewRole({ ...newRole, name: e.target.value })}
-												placeholder="Contoh: Kasir, Admin Stok"
-												type="text"
-												value={newRole.name}
-											/>
-										</div>
-
-										<div className="grid grid-cols-2 gap-4">
-											<div className="space-y-2">
-												<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
-													Gaji per Shift (Rp)
-												</label>
-												<div className="relative">
-													<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
-													<input
-														className="w-full rounded-xl bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-														onChange={(e) => setNewRole({ ...newRole, baseShiftRate: Number(e.target.value) })}
-														type="number"
-														value={newRole.baseShiftRate}
-													/>
-												</div>
-											</div>
-											<div className="space-y-2">
-												<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
-													Gaji Tetap Bulanan (Rp)
-												</label>
-												<div className="relative">
-													<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
-													<input
-														className="w-full rounded-xl bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-														onChange={(e) => setNewRole({ ...newRole, monthlyFixedSalary: Number(e.target.value) })}
-														type="number"
-														value={newRole.monthlyFixedSalary}
-													/>
-												</div>
-											</div>
-										</div>
-										<div className="space-y-2">
-											<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
-												Tunjangan Harian (Rp)
-											</label>
-											<div className="relative">
-												<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
-												<input
-													className="w-full rounded-xl bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-													onChange={(e) => setNewRole({ ...newRole, dailyAllowance: Number(e.target.value) })}
-													type="number"
-													value={newRole.dailyAllowance}
-												/>
-											</div>
-										</div>
-
-										<div className="space-y-3">
-											<p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
-												Izin Akses (Permissions)
-											</p>
-											<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-												{AVAILABLE_PERMISSIONS.map((perm: any) => (
-													<label
-														className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${
-															newRole.permissions.includes(perm.id)
-																? "border-primary/30 bg-primary/5 text-primary"
-																: "border-border/50 bg-background text-muted-foreground hover:border-border"
-														}`}
-														key={perm.id}
-													>
-														<input
-															checked={newRole.permissions.includes(perm.id)}
-															className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20"
-															onChange={(e) => {
-																const perms = e.target.checked
-																	? [...newRole.permissions, perm.id]
-																	: newRole.permissions.filter((p) => p !== perm.id);
-																setNewRole({ ...newRole, permissions: perms });
-															}}
-															type="checkbox"
-														/>
-														<span className="font-medium text-xs">{perm.label}</span>
-													</label>
-												))}
-											</div>
-										</div>
-
-										<button
-											className="mt-2 w-full rounded-xl bg-primary/10 py-3.5 font-bold text-primary text-sm transition-all hover:bg-primary/20"
-											onClick={handleCreateRole}
-											type="button"
-										>
-											Buat Role Baru
-										</button>
-									</div>
-								</div>
-
-								<div className="space-y-4">
-									<h4 className="px-2 font-bold text-sm text-foreground uppercase tracking-wider">
+							{/* Role Table - Inline Editable */}
+							<div className="space-y-4 pt-4">
+								<div className="flex items-center justify-between">
+									<h4 className="font-bold text-sm text-foreground uppercase tracking-wider">
 										Daftar Role & Akses
 									</h4>
-									{editingRole && (
-										<div className="space-y-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
-											<div className="flex items-center justify-between gap-3">
-												<div className="space-y-1">
-													<p className="font-bold text-sm text-foreground">Edit Role</p>
-													<p className="text-xs text-muted-foreground">Perbarui nama role dan hak akses.</p>
-												</div>
-												<button className="rounded-lg p-2 text-muted-foreground" onClick={() => setEditingRole(null)}>
-													<X className="h-4 w-4" />
-												</button>
-											</div>
-											<div className="space-y-4">
-												<div className="space-y-2">
-													<label className="font-medium text-muted-foreground text-xs">Nama Role</label>
-													<input className="w-full rounded-xl border border-border bg-background p-3 text-sm" onChange={(e) => setEditingRole({ ...editingRole, name: e.target.value })} type="text" value={editingRole.name} />
-												</div>
-												<div className="grid grid-cols-2 gap-4">
-													<div className="space-y-2">
-														<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">Gaji Shift</label>
-														<input className="w-full rounded-xl border border-border bg-background p-3 text-sm" onChange={(e) => setEditingRole({ ...editingRole, baseShiftRate: Number(e.target.value) })} type="number" value={editingRole.baseShiftRate} />
-													</div>
-													<div className="space-y-2">
-														<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">Gaji Tetap</label>
-														<input className="w-full rounded-xl border border-border bg-background p-3 text-sm" onChange={(e) => setEditingRole({ ...editingRole, monthlyFixedSalary: Number(e.target.value) })} type="number" value={editingRole.monthlyFixedSalary} />
-													</div>
-												</div>
-												<div className="space-y-3">
-													<p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">Izin Akses</p>
-													<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-														{AVAILABLE_PERMISSIONS.map((perm: any) => (
-															<label className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${editingRole.permissions.includes(perm.id) ? "border-primary/30 bg-primary/5 text-primary" : "border-border/50 bg-background text-muted-foreground"}`} key={perm.id}>
-																<input checked={editingRole.permissions.includes(perm.id)} className="h-4 w-4 rounded" onChange={(e) => {
-																	const nextPermissions = e.target.checked ? [...editingRole.permissions, perm.id] : editingRole.permissions.filter((id) => id !== perm.id);
-																	setEditingRole({ ...editingRole, permissions: nextPermissions });
-																}} type="checkbox" />
-																<span className="font-medium text-xs">{perm.label}</span>
-															</label>
-														))}
-													</div>
-												</div>
-												<div className="flex justify-end gap-2">
-													<button className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-muted-foreground" onClick={() => setEditingRole(null)}>Batal</button>
-													<button className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground text-sm" onClick={handleSaveEditRole}>Simpan</button>
-												</div>
-											</div>
-										</div>
-									)}
-									<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-										{!roles ? (
-											Array.from({ length: 3 }).map((_, i) => (
-												<div className="rounded-2xl border border-border bg-background p-4 shadow-sm" key={i}>
-													<Skeleton className="h-4 w-24 mb-2" />
-													<Skeleton className="h-3 w-32" />
-												</div>
-											))
-										) : roles.map((role: any) => (
-											<div className="flex items-center justify-between rounded-2xl border border-border bg-background p-4 shadow-sm" key={role._id}>
-												<div>
-													<p className="font-bold text-sm tracking-tight">{role.name}</p>
-													<p className="text-[10px] text-muted-foreground">{role.permissions.length} Hak Akses</p>
-												</div>
-												<div className="flex items-center gap-1">
-													<button className="rounded-lg p-2 text-primary hover:bg-primary/10" onClick={() => handleStartEditRole(role)}><Pencil className="h-4 w-4" /></button>
-													<button className="rounded-lg p-2 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteRole(role._id)}><Trash2 className="h-4 w-4" /></button>
-												</div>
-											</div>
-										))}
+									<Button
+										size="sm"
+										variant="outline"
+										className="gap-1.5"
+										onClick={() =>
+											setNewRole((prev) => ({
+												...prev,
+												_show: !prev._show,
+											}))
+										}
+									>
+										<Plus className="h-3.5 w-3.5" />
+										{newRole._show ? "Batal" : "Tambah Role"}
+									</Button>
+								</div>
+
+								<div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+									<div className="overflow-x-auto">
+										<table className="w-full text-left text-sm">
+											<thead className="bg-muted/50 font-bold text-muted-foreground text-[10px] uppercase tracking-widest border-b border-border">
+												<tr>
+													<th className="px-4 py-3">Nama Role</th>
+													<th className="px-4 py-3 text-right">Gaji/Shift (Rp)</th>
+													<th className="px-4 py-3 text-right">Gaji Tetap (Rp)</th>
+													<th className="px-4 py-3 text-right">Tunjangan/Hari (Rp)</th>
+													<th className="px-4 py-3 text-center">Akses</th>
+													<th className="px-4 py-3 text-right">Aksi</th>
+												</tr>
+											</thead>
+											<tbody className="divide-y divide-border/50">
+												{!roles ? (
+													Array.from({ length: 3 }).map((_, i) => (
+														<tr key={i}>
+															<td colSpan={6} className="px-4 py-4">
+																<Skeleton className="h-8 w-full" />
+															</td>
+														</tr>
+													))
+												) : (
+													<>
+														{newRole._show && (
+															<tr className="bg-primary/5 border-b border-primary/20">
+																<td className="px-3 py-2">
+																	<input
+																		className="w-full rounded-lg border border-primary/30 bg-background p-2 text-xs outline-none focus:ring-2 focus:ring-primary/20"
+																		placeholder="Nama role baru..."
+																		type="text"
+																		value={newRole.name}
+																		onChange={(e) => setNewRole({ ...newRole, name: e.target.value })}
+																	/>
+																</td>
+																<td className="px-3 py-2">
+																	<input
+																		className="w-full rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
+																		type="number"
+																		value={newRole.baseShiftRate || ""}
+																		onChange={(e) => setNewRole({ ...newRole, baseShiftRate: Number(e.target.value) })}
+																	/>
+																</td>
+																<td className="px-3 py-2">
+																	<input
+																		className="w-full rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
+																		type="number"
+																		value={newRole.monthlyFixedSalary || ""}
+																		onChange={(e) => setNewRole({ ...newRole, monthlyFixedSalary: Number(e.target.value) })}
+																	/>
+																</td>
+																<td className="px-3 py-2">
+																	<input
+																		className="w-full rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
+																		type="number"
+																		value={newRole.dailyAllowance || ""}
+																		onChange={(e) => setNewRole({ ...newRole, dailyAllowance: Number(e.target.value) })}
+																	/>
+																</td>
+																<td className="px-3 py-2">
+																	<button
+																		className="mx-auto flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[10px] font-semibold text-muted-foreground hover:bg-muted/50 transition-colors"
+																		onClick={() => setNewRolePermOpen(true)}
+																		type="button"
+																	>
+																		<ShieldCheck className="h-3 w-3" />
+																		{newRole.permissions.length}
+																	</button>
+																</td>
+																<td className="px-3 py-2 text-right">
+																	<button
+																		className="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:opacity-90 transition-opacity"
+																		onClick={handleCreateRole}
+																		type="button"
+																	>
+																		Simpan
+																	</button>
+																</td>
+															</tr>
+														)}
+														{roles.map((role: any) => {
+															const isEditing = editingRole?._id === role._id;
+															return (
+																<tr key={role._id} className={`transition-colors ${isEditing ? "bg-primary/5" : "hover:bg-muted/30"}`}>
+																	<td className="px-3 py-2">
+																		{isEditing ? (
+																			<input
+																				className="w-full rounded-lg border border-primary/30 bg-background p-2 text-xs outline-none focus:ring-2 focus:ring-primary/20"
+																				type="text"
+																				value={editingRole.name}
+																				onChange={(e) => setEditingRole({ ...editingRole, name: e.target.value })}
+																			/>
+																		) : (
+																			<span className="font-semibold text-xs text-foreground">{role.name}</span>
+																		)}
+																	</td>
+																	<td className="px-3 py-2 text-right">
+																		{isEditing ? (
+																			<input
+																				className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
+																				type="number"
+																				value={editingRole.baseShiftRate}
+																				onChange={(e) => setEditingRole({ ...editingRole, baseShiftRate: Number(e.target.value) })}
+																			/>
+																		) : (
+																			<span className="text-xs text-muted-foreground font-mono">
+																				{role.baseShiftRate?.toLocaleString("id-ID") || 0}
+																			</span>
+																		)}
+																	</td>
+																	<td className="px-3 py-2 text-right">
+																		{isEditing ? (
+																			<input
+																				className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
+																				type="number"
+																				value={editingRole.monthlyFixedSalary}
+																				onChange={(e) => setEditingRole({ ...editingRole, monthlyFixedSalary: Number(e.target.value) })}
+																			/>
+																		) : (
+																			<span className="text-xs text-muted-foreground font-mono">
+																				{role.monthlyFixedSalary?.toLocaleString("id-ID") || 0}
+																			</span>
+																		)}
+																	</td>
+																	<td className="px-3 py-2 text-right">
+																		{isEditing ? (
+																			<input
+																				className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
+																				type="number"
+																				value={editingRole.dailyAllowance}
+																				onChange={(e) => setEditingRole({ ...editingRole, dailyAllowance: Number(e.target.value) })}
+																			/>
+																		) : (
+																			<span className="text-xs text-muted-foreground font-mono">
+																				{role.dailyAllowance?.toLocaleString("id-ID") || 0}
+																			</span>
+																		)}
+																	</td>
+																	<td className="px-3 py-2">
+																		{isEditing ? (
+																			<button
+																				className="mx-auto flex items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-primary/20 transition-colors"
+																				onClick={() => setEditRolePermOpen(true)}
+																				type="button"
+																			>
+																				<ShieldCheck className="h-3 w-3" />
+																				{editingRole.permissions.length}
+																			</button>
+																		) : (
+																			<span className="block text-center text-[10px] font-semibold text-muted-foreground">
+																				{role.permissions.length} hak
+																			</span>
+																		)}
+																	</td>
+																	<td className="px-3 py-2">
+																		<div className="flex items-center justify-end gap-1">
+																			{isEditing ? (
+																				<>
+																					<button
+																						className="rounded-lg border border-border px-2 py-1 text-[10px] font-semibold text-muted-foreground hover:bg-muted/50 transition-colors"
+																						onClick={() => setEditingRole(null)}
+																						type="button"
+																					>
+																						Batal
+																					</button>
+																					<button
+																						className="rounded-lg bg-primary px-2 py-1 text-[10px] font-bold text-primary-foreground hover:opacity-90 transition-opacity"
+																						onClick={handleSaveEditRole}
+																						type="button"
+																					>
+																						Simpan
+																					</button>
+																				</>
+																			) : (
+																				<>
+																					<button
+																						title="Edit Role"
+																						className="rounded-lg p-1.5 text-primary hover:bg-primary/10 transition-colors"
+																						onClick={() => handleStartEditRole(role)}
+																					>
+																						<Pencil className="h-3.5 w-3.5" />
+																					</button>
+																					<button
+																						title="Hapus Role"
+																						className="rounded-lg p-1.5 text-destructive hover:bg-destructive/10 transition-colors"
+																						onClick={() => handleDeleteRole(role._id)}
+																					>
+																						<Trash2 className="h-3.5 w-3.5" />
+																					</button>
+																				</>
+																			)}
+																		</div>
+																	</td>
+																</tr>
+															);
+														})}
+														{roles.length === 0 && !newRole._show && (
+															<tr>
+																<td colSpan={6} className="py-8 text-center text-muted-foreground text-xs italic">
+																	Belum ada role. Klik "Tambah Role" untuk membuat baru.
+																</td>
+															</tr>
+														)}
+													</>
+												)}
+											</tbody>
+										</table>
 									</div>
 								</div>
+							</div>
+
+							<Dialog open={newRolePermOpen} onOpenChange={setNewRolePermOpen}>
+								<DialogContent className="sm:max-w-sm">
+									<DialogTitle>Izin Akses - Role Baru</DialogTitle>
+									<DialogDescription>Pilih izin akses untuk role baru.</DialogDescription>
+									<div className="max-h-72 space-y-1 overflow-y-auto">
+										{AVAILABLE_PERMISSIONS.map((perm) => (
+											<label key={perm.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-muted/50">
+												<input
+													type="checkbox"
+													className="h-3.5 w-3.5 rounded border-border"
+													checked={newRole.permissions.includes(perm.id)}
+													onChange={(e) => {
+														const perms = e.target.checked
+															? [...newRole.permissions, perm.id]
+															: newRole.permissions.filter((p) => p !== perm.id);
+														setNewRole({ ...newRole, permissions: perms });
+													}}
+												/>
+												<span>{perm.label}</span>
+											</label>
+										))}
+									</div>
+								</DialogContent>
+							</Dialog>
+
+							<Dialog open={editRolePermOpen} onOpenChange={setEditRolePermOpen}>
+								<DialogContent className="sm:max-w-sm">
+									<DialogTitle>Izin Akses - {editingRole?.name}</DialogTitle>
+									<DialogDescription>Pilih izin akses untuk role ini.</DialogDescription>
+									{editingRole && (
+										<div className="max-h-72 space-y-1 overflow-y-auto">
+											{AVAILABLE_PERMISSIONS.map((perm) => (
+												<label key={perm.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-muted/50">
+													<input
+														type="checkbox"
+														className="h-3.5 w-3.5 rounded border-border"
+														checked={editingRole.permissions.includes(perm.id)}
+														onChange={(e) => {
+															const nextPermissions = e.target.checked
+																? [...editingRole.permissions, perm.id]
+																: editingRole.permissions.filter((id) => id !== perm.id);
+															setEditingRole({ ...editingRole, permissions: nextPermissions });
+														}}
+													/>
+													<span>{perm.label}</span>
+												</label>
+											))}
+										</div>
+									)}
+								</DialogContent>
+							</Dialog>
 
 								<div className="border-t border-border pt-6">
 									<h4 className="px-2 mb-4 font-bold text-sm text-foreground uppercase tracking-wider">
@@ -1988,7 +2093,6 @@ export function SettingsPage({
 										</div>
 									</div>
 								</div>
-							</div>
 
 							<div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-700 leading-relaxed dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300">
 								<p className="font-bold">Tips Penggajian:</p>

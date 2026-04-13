@@ -301,18 +301,25 @@ function ProductRecipeTable({
 
 function IngredientEditor({
 	inventory,
+	baseRecipes = [],
 	ingredients,
 	setIngredients,
 	latestInventoryCosts,
+	ensureInventoryItemForBaseRecipe,
 }: {
 	inventory: Doc<"inventory">[];
+	baseRecipes?: Doc<"baseRecipes">[];
 	ingredients: { inventoryId: Id<"inventory">; amount: number }[];
 	setIngredients: (next: { inventoryId: Id<"inventory">; amount: number }[]) => void;
 	latestInventoryCosts?: InventoryCostMap;
+	ensureInventoryItemForBaseRecipe?: (args: {
+		baseRecipeId: Id<"baseRecipes">;
+	}) => Promise<{ inventoryId: Id<"inventory">; created: boolean }>;
 }) {
 	const [ingredientQuery, setIngredientQuery] = useState("");
 
 	const sortedInventory = useMemo(() => sortByName(inventory), [inventory]);
+	const sortedBaseRecipes = useMemo(() => sortByName(baseRecipes), [baseRecipes]);
 	const filteredInventory = useMemo(() => {
 		const keyword = ingredientQuery.trim().toLowerCase();
 		if (!keyword) return sortedInventory;
@@ -320,6 +327,13 @@ function IngredientEditor({
 			`${item.ingredientName} ${item.unit}`.toLowerCase().includes(keyword)
 		);
 	}, [ingredientQuery, sortedInventory]);
+	const filteredBaseRecipes = useMemo(() => {
+		const keyword = ingredientQuery.trim().toLowerCase();
+		if (!keyword) return sortedBaseRecipes;
+		return sortedBaseRecipes.filter((recipe) =>
+			`${recipe.name} ${recipe.category ?? ""}`.toLowerCase().includes(keyword)
+		);
+	}, [ingredientQuery, sortedBaseRecipes]);
 	const totalEstimatedCost = useMemo(
 		() =>
 			ingredients.reduce((sum, ingredient) => {
@@ -342,19 +356,84 @@ function IngredientEditor({
 		setIngredientQuery("");
 	};
 
-	const resolveIngredientId = (rawValue: string) => {
+	const baseRecipeLabel = (recipe: Doc<"baseRecipes">) =>
+		`${recipe.name} [Base Recipe - ${recipe.targetQuantity} ${recipe.targetUnit}]`;
+
+	const resolveIngredient = (rawValue: string) => {
 		const value = rawValue.trim().toLowerCase();
 		if (!value) return null;
-		const exact = sortedInventory.find(
+
+		const exactInventory = sortedInventory.find(
 			(item) =>
 				item.ingredientName.toLowerCase() === value ||
 				`${item.ingredientName} (${item.unit})`.toLowerCase() === value
 		);
-		if (exact) return exact._id as Id<"inventory">;
-		const partial = sortedInventory.find((item) =>
+		if (exactInventory) {
+			return {
+				type: "inventory" as const,
+				inventoryId: exactInventory._id as Id<"inventory">,
+			};
+		}
+
+		const exactBaseRecipe = sortedBaseRecipes.find(
+			(recipe) =>
+				recipe.name.toLowerCase() === value ||
+				baseRecipeLabel(recipe).toLowerCase() === value
+		);
+		if (exactBaseRecipe) {
+			return {
+				type: "baseRecipe" as const,
+				baseRecipeId: exactBaseRecipe._id as Id<"baseRecipes">,
+			};
+		}
+
+		const partialInventory = sortedInventory.find((item) =>
 			`${item.ingredientName} ${item.unit}`.toLowerCase().includes(value)
 		);
-		return (partial?._id as Id<"inventory">) ?? null;
+		if (partialInventory) {
+			return {
+				type: "inventory" as const,
+				inventoryId: partialInventory._id as Id<"inventory">,
+			};
+		}
+
+		const partialBaseRecipe = sortedBaseRecipes.find((recipe) =>
+			`${recipe.name} ${recipe.category ?? ""}`.toLowerCase().includes(value)
+		);
+		if (partialBaseRecipe) {
+			return {
+				type: "baseRecipe" as const,
+				baseRecipeId: partialBaseRecipe._id as Id<"baseRecipes">,
+			};
+		}
+
+		return null;
+	};
+
+	const addIngredientFromQuery = async () => {
+		const resolved = resolveIngredient(ingredientQuery);
+		if (!resolved) {
+			toast.error("Bahan atau base recipe tidak ditemukan");
+			return;
+		}
+
+		if (resolved.type === "inventory") {
+			addIngredient(resolved.inventoryId);
+			return;
+		}
+
+		if (!ensureInventoryItemForBaseRecipe) {
+			toast.error("Pilih base recipe hanya tersedia di recipe produk");
+			return;
+		}
+
+		const linkedInventory = await ensureInventoryItemForBaseRecipe({
+			baseRecipeId: resolved.baseRecipeId,
+		});
+		addIngredient(linkedInventory.inventoryId);
+		if (linkedInventory.created) {
+			toast.success("Base recipe ditambahkan ke inventory dan dipakai di recipe");
+		}
 	};
 
 	return (
@@ -368,18 +447,14 @@ function IngredientEditor({
 						onKeyDown={(event) => {
 							if (event.key !== "Enter") return;
 							event.preventDefault();
-							const resolvedId = resolveIngredientId(ingredientQuery);
-							if (!resolvedId) return toast.error("Bahan tidak ditemukan");
-							addIngredient(resolvedId);
+							void addIngredientFromQuery();
 						}}
-						placeholder="+ Tambah bahan (ketik untuk cari)"
+						placeholder="+ Tambah bahan atau base resep (ketik untuk cari)"
 						value={ingredientQuery}
 					/>
 					<Button
 						onClick={() => {
-							const resolvedId = resolveIngredientId(ingredientQuery);
-							if (!resolvedId) return toast.error("Bahan tidak ditemukan");
-							addIngredient(resolvedId);
+							void addIngredientFromQuery();
 						}}
 						type="button"
 						variant="outline"
@@ -390,6 +465,9 @@ function IngredientEditor({
 				<datalist id="ingredient-options">
 					{filteredInventory.map((item) => (
 						<option key={item._id} value={`${item.ingredientName} (${item.unit})`} />
+					))}
+					{filteredBaseRecipes.map((recipe) => (
+						<option key={recipe._id} value={baseRecipeLabel(recipe)} />
 					))}
 				</datalist>
 			</div>
@@ -471,6 +549,9 @@ export function RecipeStudioPage() {
 	const createBaseRecipe = useMutation(api.inventory.createBaseRecipe);
 	const updateBaseRecipe = useMutation(api.inventory.updateBaseRecipe);
 	const deleteBaseRecipe = useMutation(api.inventory.deleteBaseRecipe);
+	const ensureInventoryItemForBaseRecipe = useMutation(
+		api.inventory.ensureInventoryItemForBaseRecipe
+	);
 	const saveRecipe = useMutation(api.inventory.saveRecipe);
 	const deleteRecipe = useMutation(api.inventory.deleteRecipe);
 	const [searchBase, setSearchBase] = useState("");
@@ -819,6 +900,8 @@ export function RecipeStudioPage() {
 						<IngredientEditor
 							ingredients={productForm.ingredients}
 							inventory={inventory}
+							baseRecipes={baseRecipes}
+							ensureInventoryItemForBaseRecipe={ensureInventoryItemForBaseRecipe}
 							latestInventoryCosts={latestInventoryCosts}
 							setIngredients={(next) =>
 								setProductForm((current) => ({ ...current, ingredients: next }))
