@@ -656,22 +656,6 @@ export function SettingsPage({
 		toast.success("CSV berhasil diunduh");
 	};
 
-	const exportPayrollImage = async () => {
-		const el = document.getElementById("payroll-report-table");
-		if (!el) return;
-		try {
-			// @ts-ignore - dynamic import may not have types
-			const mod = await import(/* @vite-ignore */ "html2canvas");
-			const canvas = await mod.default(el, { backgroundColor: "#ffffff", scale: 2 });
-			const a = document.createElement("a");
-			a.href = canvas.toDataURL("image/jpeg", 0.95);
-			a.download = `laporan-absensi-${reportFilter.month}-${reportFilter.year}.jpg`;
-			a.click();
-			toast.success("JPG berhasil diunduh");
-		} catch {
-			toast.error("Gagal export JPG. Gunakan export CSV sebagai alternatif.");
-		}
-	};
 
 	const formatCurrency = (amount: number) => {
 		return new Intl.NumberFormat("id-ID", {
@@ -1505,9 +1489,6 @@ export function SettingsPage({
 								<div className="flex items-center gap-2">
 									<button onClick={exportPayrollCSV} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted" type="button">
 										<Download className="h-3.5 w-3.5" /> CSV
-									</button>
-									<button onClick={exportPayrollImage} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted" type="button">
-										<Download className="h-3.5 w-3.5" /> JPG
 									</button>
 								</div>
 							</div>
