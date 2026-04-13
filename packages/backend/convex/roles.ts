@@ -12,6 +12,8 @@ export const createRole = mutation({
 	args: {
 		name: v.string(),
 		permissions: v.array(v.string()),
+		baseHourlyRate: v.optional(v.number()),
+		dailyAllowance: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const existing = await ctx.db
@@ -32,11 +34,15 @@ export const updateRole = mutation({
 		id: v.id("roles"),
 		name: v.string(),
 		permissions: v.array(v.string()),
+		baseHourlyRate: v.optional(v.number()),
+		dailyAllowance: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		return await ctx.db.patch(args.id, {
 			name: args.name,
 			permissions: args.permissions,
+			baseHourlyRate: args.baseHourlyRate,
+			dailyAllowance: args.dailyAllowance,
 		});
 	},
 });

@@ -26,6 +26,11 @@ import {
 	X,
 	KeyRound,
 	AlertCircle,
+	Utensils,
+	History,
+	FileBarChart,
+	ArrowUpRight,
+	Coins,
 } from "lucide-react";
 import { FaceRecognition } from "@/components/auth/FaceRecognition";
 import { Copy, Download, FileJson, FileSpreadsheet, FileText, Share2 } from "lucide-react";
@@ -528,6 +533,30 @@ export function SettingsPage({
 		shiftSchedules: [] as ShiftSchedule[],
 	});
 
+	const [payrollGlobalConfig, setPayrollGlobalConfig] = useState({
+		lateToleranceMinutes: 5,
+		latePenaltyPerMinute: 1000,
+		overtimeBonusPerHour: 10000,
+	});
+
+	const [reportFilter, setReportFilter] = useState({
+		month: new Date().getMonth() + 1,
+		year: new Date().getFullYear(),
+	});
+
+	const payrollReport = useQuery(api.attendance.getPayrollReport, {
+		month: reportFilter.month,
+		year: reportFilter.year,
+	});
+
+	const formatCurrency = (amount: number) => {
+		return new Intl.NumberFormat("id-ID", {
+			style: "currency",
+			currency: "IDR",
+			minimumFractionDigits: 0,
+		}).format(amount);
+	};
+
 	const [customerOrderingSettings, setCustomerOrderingSettings] = useState({
 		enabled: true,
 		welcomeTitle: "Welcome",
@@ -559,6 +588,8 @@ export function SettingsPage({
 		| "shifts"
 		| "yumiAI"
 		| "attendance"
+		| "payroll"
+		| "attendance-report"
 	>(mode === "operational-team" ? "users" : "landing");
 
 	useEffect(() => {
@@ -577,6 +608,8 @@ export function SettingsPage({
 	const [newRole, setNewRole] = useState({
 		name: "",
 		permissions: [] as string[],
+		baseHourlyRate: 0,
+		dailyAllowance: 0,
 	});
 	const [editingUser, setEditingUser] = useState<{
 		_id: Id<"users">;
@@ -589,9 +622,11 @@ export function SettingsPage({
 		slug: string;
 	} | null>(null);
 	const [editingRole, setEditingRole] = useState<{
-		_id: string;
+		_id: Id<"roles">;
 		name: string;
 		permissions: string[];
+		baseHourlyRate: number;
+		dailyAllowance: number;
 	} | null>(null);
 	const [showFaceEnrollment, setShowFaceEnrollment] = useState(false);
 	const [confirmConfig, setConfirmConfig] = useState<{
@@ -692,10 +727,15 @@ export function SettingsPage({
 					siteSettings.shiftSettings?.reminderMinutesBeforeClose ?? 15,
 				autoSendShiftReportEmail:
 					siteSettings.shiftSettings?.autoSendShiftReportEmail ?? false,
-				shiftSchedules: buildShiftSchedules(
+			shiftSchedules: buildShiftSchedules(
 					siteSettings.shiftSettings?.predefinedShifts ?? [],
 					siteSettings.shiftSettings?.shiftSchedules ?? []
 				),
+			});
+			setPayrollGlobalConfig({
+				lateToleranceMinutes: siteSettings.payrollGlobalConfig?.lateToleranceMinutes ?? 5,
+				latePenaltyPerMinute: siteSettings.payrollGlobalConfig?.latePenaltyPerMinute ?? 1000,
+				overtimeBonusPerHour: siteSettings.payrollGlobalConfig?.overtimeBonusPerHour ?? 10000,
 			});
 			setCustomerOrderingSettings({
 				enabled: siteSettings.customerOrdering?.enabled ?? true,
@@ -811,6 +851,7 @@ export function SettingsPage({
 						shiftSettings.shiftSchedules
 					),
 				},
+				payrollGlobalConfig,
 				customerOrdering: customerOrderingSettings,
 				aiModelConfig,
 			};
@@ -951,8 +992,10 @@ export function SettingsPage({
 	const handleStartEditRole = (role: any) => {
 		setEditingRole({
 			_id: role._id,
-			name: role.name || "",
-			permissions: role.permissions || [],
+			name: role.name,
+			permissions: role.permissions,
+			baseHourlyRate: role.baseHourlyRate ?? 0,
+			dailyAllowance: role.dailyAllowance ?? 0,
 		});
 	};
 
@@ -966,8 +1009,10 @@ export function SettingsPage({
 		try {
 			await updateRole({
 				id: editingRole._id,
-				name: editingRole.name.trim(),
+				name: editingRole.name,
 				permissions: editingRole.permissions,
+				baseHourlyRate: editingRole.baseHourlyRate,
+				dailyAllowance: editingRole.dailyAllowance,
 			});
 			toast.success("Role berhasil diperbarui");
 			setEditingRole(null);
@@ -1003,9 +1048,11 @@ export function SettingsPage({
 			await createRole({
 				name: newRole.name,
 				permissions: newRole.permissions,
+				baseHourlyRate: newRole.baseHourlyRate,
+				dailyAllowance: newRole.dailyAllowance,
 			});
-			toast.success("Role berhasil dibuat");
-			setNewRole({ name: "", permissions: [] });
+			toast.success("Role baru berhasil dibuat");
+			setNewRole({ name: "", permissions: [], baseHourlyRate: 0, dailyAllowance: 0 });
 		} catch (error) {
 			console.error(error);
 			toast.error("Gagal membuat role");
@@ -1069,7 +1116,9 @@ export function SettingsPage({
 			? ([
 					{ id: "users", label: "Pengguna & Akses", icon: Users },
 					{ id: "shifts", label: "Manajemen Shift", icon: Clock },
-					{ id: "attendance", label: "Pengaturan Absensi", icon: MapPin },
+					{ id: "attendance", label: "Lokasi & Radius", icon: MapPin },
+					{ id: "attendance-report", label: "Data Absensi", icon: FileBarChart },
+					{ id: "payroll", label: "Pengaturan Gaji", icon: Wallet },
 				] as const)
 			: ([
 					{ id: "landing", label: "Halaman Utama", icon: Layout },
@@ -1262,6 +1311,222 @@ export function SettingsPage({
 										value={landingSettings.logoUrl}
 									/>
 								</div>
+							</div>
+						</section>
+					</div>
+				)}
+
+				{activeTab === "attendance-report" && (
+					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
+						<section className="space-y-6 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-8">
+							<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+								<div className="flex items-center gap-4">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+										<FileBarChart className="h-6 w-6" />
+									</div>
+									<div>
+										<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
+											Laporan Data Absensi
+										</h3>
+										<p className="text-muted-foreground text-sm">
+											Rekapitulasi jam kerja, keterlambatan, dan gaji staff
+										</p>
+									</div>
+								</div>
+
+								<div className="flex items-center gap-2">
+									<Select
+										onValueChange={(v) => setReportFilter({ ...reportFilter, month: Number(v) })}
+										value={reportFilter.month.toString()}
+									>
+										<SelectTrigger className="w-[140px] bg-muted/50">
+											<SelectValue placeholder="Bulan" />
+										</SelectTrigger>
+										<SelectContent>
+											{Array.from({ length: 12 }).map((_, i) => (
+												<SelectItem key={i + 1} value={(i + 1).toString()}>
+													{new Intl.DateTimeFormat("id-ID", { month: "long" }).format(new Date(2024, i, 1))}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<Select
+										onValueChange={(v) => setReportFilter({ ...reportFilter, year: Number(v) })}
+										value={reportFilter.year.toString()}
+									>
+										<SelectTrigger className="w-[100px] bg-muted/50">
+											<SelectValue placeholder="Tahun" />
+										</SelectTrigger>
+										<SelectContent>
+											{[2024, 2025, 2026].map((y) => (
+												<SelectItem key={y} value={y.toString()}>
+													{y}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+							</div>
+
+							<div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+								<div className="overflow-x-auto">
+									<table className="w-full text-left text-sm">
+										<thead className="bg-muted/50 font-bold text-muted-foreground text-xs uppercase tracking-widest">
+											<tr>
+												<th className="px-4 py-3">Nama Staff</th>
+												<th className="px-4 py-3">Role</th>
+												<th className="px-4 py-3 text-center">Hadir</th>
+												<th className="px-4 py-3 text-center">Jam</th>
+												<th className="px-4 py-3 text-center">Telat (Min)</th>
+												<th className="px-4 py-3 text-right">Gaji Pokok</th>
+												<th className="px-4 py-3 text-right">Tunjangan</th>
+												<th className="px-4 py-3 text-right">Lembur</th>
+												<th className="px-4 py-3 text-right text-destructive">Denda</th>
+												<th className="px-4 py-3 text-right font-bold text-primary">Total Bersih</th>
+											</tr>
+										</thead>
+										<tbody className="divide-y divide-border/50">
+											{!payrollReport ? (
+												Array.from({ length: 5 }).map((_, i) => (
+													<tr key={i}>
+														<td className="px-4 py-4"><Skeleton className="h-4 w-24" /></td>
+														<td className="px-4 py-4"><Skeleton className="h-4 w-16" /></td>
+														<td colSpan={8} className="px-4 py-4">
+															<Skeleton className="h-4 w-full" />
+														</td>
+													</tr>
+												))
+											) : !payrollReport.rows || payrollReport.rows.length === 0 ? (
+												<tr>
+													<td colSpan={10} className="py-12 text-center text-muted-foreground italic">
+														{!payrollReport.rows ? "Gagal memuat data." : "Tidak ada data absensi untuk periode ini."}
+													</td>
+												</tr>
+											) : (
+												payrollReport.rows.map((staff: any, idx: number) => (
+													<tr className="hover:bg-muted/30 transition-colors" key={idx}>
+														<td className="px-4 py-4 font-bold text-foreground">{staff.name}</td>
+														<td className="px-4 py-4 text-xs font-medium text-muted-foreground">{staff.roleName}</td>
+														<td className="px-4 py-4 text-center font-medium">{staff.daysWorked} hr</td>
+														<td className="px-4 py-4 text-center text-zinc-600">{staff.totalHours.toFixed(1)}j</td>
+														<td className="px-4 py-4 text-center">
+															<span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${staff.totalLateMinutes > 0 ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600"}`}>
+																{staff.totalLateMinutes}m
+															</span>
+														</td>
+														<td className="px-4 py-4 text-right font-medium">{formatCurrency(staff.totalBaseSalary)}</td>
+														<td className="px-4 py-4 text-right font-medium">{formatCurrency(staff.totalAllowance)}</td>
+														<td className="px-4 py-4 text-right font-medium text-emerald-600">+{formatCurrency(staff.totalOvertimeBonus)}</td>
+														<td className="px-4 py-4 text-right font-medium text-destructive">-{formatCurrency(staff.totalLatePenalty)}</td>
+														<td className="px-4 py-4 text-right font-bold text-primary">{formatCurrency(staff.netSalary)}</td>
+													</tr>
+												))
+											)}
+										</tbody>
+									</table>
+								</div>
+							</div>
+
+							<div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-[10px] text-amber-800 leading-relaxed dark:border-amber-900/30 dark:bg-amber-900/20 dark:text-amber-300">
+								<AlertCircle className="h-4 w-4 shrink-0" />
+								<p>
+									Laporan ini dihitung secara real-time berdasarkan log check-in/out staff dan aturan yang berlaku saat ini. 
+									Pastikan data shift dan geofencing sudah dikonfigurasi dengan benar untuk akurasi data.
+								</p>
+							</div>
+						</section>
+					</div>
+				)}
+
+				{activeTab === "payroll" && (
+					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
+						<section className="space-y-6 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-8">
+							<div className="flex items-center gap-4">
+								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+									<Wallet className="h-6 w-6" />
+								</div>
+								<div>
+									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
+										Pengaturan Gaji (Global)
+									</h3>
+									<p className="text-muted-foreground text-sm">
+										Konfigurasi aturan denda, bonus, dan toleransi keterlambatan
+									</p>
+								</div>
+							</div>
+
+							<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+								<div className="space-y-2">
+									<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+										Masa Toleransi Keterlambatan (Menit)
+									</label>
+									<div className="relative">
+										<Input
+											className="h-11 w-full bg-muted/50 font-medium"
+											type="number"
+											onChange={(e) => setPayrollGlobalConfig({ 
+												...payrollGlobalConfig, 
+												lateToleranceMinutes: Number(e.target.value) 
+											})}
+											value={payrollGlobalConfig.lateToleranceMinutes}
+										/>
+										<span className="absolute top-1/2 right-4 -translate-y-1/2 font-bold text-muted-foreground text-sm">
+											menit
+										</span>
+									</div>
+									<p className="text-[10px] text-muted-foreground">
+										Staff tidak akan didenda jika keterlambatan di bawah menit ini.
+									</p>
+								</div>
+
+								<div className="space-y-2">
+									<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+										Denda per Menit (Rp)
+									</label>
+									<div className="relative">
+										<span className="absolute top-1/2 left-4 -translate-y-1/2 font-bold text-muted-foreground text-sm">
+											Rp
+										</span>
+										<Input
+											className="h-11 w-full bg-muted/50 pl-11 font-medium"
+											type="number"
+											onChange={(e) => setPayrollGlobalConfig({ 
+												...payrollGlobalConfig, 
+												latePenaltyPerMinute: Number(e.target.value) 
+											})}
+											value={payrollGlobalConfig.latePenaltyPerMinute}
+										/>
+									</div>
+								</div>
+
+								<div className="space-y-2 md:col-span-2">
+									<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+										Bonus Lembur per Jam (Rp)
+									</label>
+									<div className="relative">
+										<span className="absolute top-1/2 left-4 -translate-y-1/2 font-bold text-muted-foreground text-sm">
+											Rp
+										</span>
+										<Input
+											className="h-11 w-full bg-muted/50 pl-11 font-medium"
+											type="number"
+											onChange={(e) => setPayrollGlobalConfig({ 
+												...payrollGlobalConfig, 
+												overtimeBonusPerHour: Number(e.target.value) 
+											})}
+											value={payrollGlobalConfig.overtimeBonusPerHour}
+										/>
+									</div>
+								</div>
+							</div>
+
+							<div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-700 leading-relaxed dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300">
+								<p className="font-bold">Tips Penggajian:</p>
+								<ul className="mt-2 list-inside list-disc space-y-1">
+									<li>Gaji per staff dihitung berdasarkan Jam Kerja x Tarif per Jam yang diatur di menu Roles.</li>
+									<li>Tunjangan Harian diberikan otomatis setiap kali staff melakukan Check-in di hari tersebut.</li>
+									<li>Denda keterlambatan hanya dihitung terhadap menit yang melebihi masa toleransi.</li>
+								</ul>
 							</div>
 						</section>
 					</div>
@@ -3004,6 +3269,41 @@ export function SettingsPage({
 											/>
 										</div>
 
+										<div className="grid grid-cols-2 gap-4">
+											<div className="space-y-2">
+												<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+													Gaji per Jam (Rp)
+												</label>
+												<div className="relative">
+													<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
+													<input
+														className="w-full rounded-xl bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+														onChange={(e) =>
+															setNewRole({ ...newRole, baseHourlyRate: Number(e.target.value) })
+														}
+														type="number"
+														value={newRole.baseHourlyRate}
+													/>
+												</div>
+											</div>
+											<div className="space-y-2">
+												<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+													Tunjangan Harian (Rp)
+												</label>
+												<div className="relative">
+													<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
+													<input
+														className="w-full rounded-xl bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+														onChange={(e) =>
+															setNewRole({ ...newRole, dailyAllowance: Number(e.target.value) })
+														}
+														type="number"
+														value={newRole.dailyAllowance}
+													/>
+												</div>
+											</div>
+										</div>
+
 										<div className="space-y-3">
 											<p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
 												Izin Akses (Permissions)
@@ -3423,6 +3723,47 @@ export function SettingsPage({
 															type="text"
 															value={editingRole.name}
 														/>
+													</div>
+
+													<div className="grid grid-cols-2 gap-4">
+														<div className="space-y-2">
+															<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+																Gaji per Jam (Rp)
+															</label>
+															<div className="relative">
+																<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
+																<input
+																	className="w-full rounded-xl border border-border bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+																	onChange={(e) =>
+																		setEditingRole({
+																			...editingRole,
+																			baseHourlyRate: Number(e.target.value),
+																		})
+																	}
+																	type="number"
+																	value={editingRole.baseHourlyRate}
+																/>
+															</div>
+														</div>
+														<div className="space-y-2">
+															<label className="font-medium text-muted-foreground text-xs uppercase tracking-widest">
+																Tunjangan Harian (Rp)
+															</label>
+															<div className="relative">
+																<span className="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground text-xs">Rp</span>
+																<input
+																	className="w-full rounded-xl border border-border bg-background py-3 pr-3 pl-8 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
+																	onChange={(e) =>
+																		setEditingRole({
+																			...editingRole,
+																			dailyAllowance: Number(e.target.value),
+																		})
+																	}
+																	type="number"
+																	value={editingRole.dailyAllowance}
+																/>
+															</div>
+														</div>
 													</div>
 													<div className="space-y-3">
 														<p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">

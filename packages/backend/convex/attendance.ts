@@ -28,6 +28,8 @@ export const clockIn = mutation({
 			})
 		),
 		notes: v.optional(v.string()),
+		shiftName: v.optional(v.string()),
+		shiftOpenTimeSnapshot: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		// Verify user exists and is active
@@ -46,6 +48,8 @@ export const clockIn = mutation({
 			photoUrl: args.photoUrl,
 			location: args.location,
 			notes: args.notes,
+			shiftName: args.shiftName,
+			shiftOpenTimeSnapshot: args.shiftOpenTimeSnapshot,
 		});
 
 		return attendanceId;
@@ -194,4 +198,188 @@ export const getCurrentlyInStore = query({
 		}
 		return results;
 	}
+});
+
+export const getStaffStatsToday = query({
+	args: { 
+		userId: v.id("users")
+	},
+	handler: async (ctx, args) => {
+		const now = new Date();
+		const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+		const endOfDay = startOfDay + (24 * 60 * 60 * 1000);
+
+		const entries = await ctx.db
+			.query("attendance")
+			.withIndex("by_user", (q) => q.eq("userId", args.userId))
+			.filter((q) => q.and(
+				q.gte(q.field("timestamp"), startOfDay),
+				q.lt(q.field("timestamp"), endOfDay)
+			))
+			.order("asc")
+			.collect();
+
+		let totalMs = 0;
+		let lastCheckIn: number | null = null;
+
+		for (const entry of entries) {
+			if (entry.type === "check_in") {
+				lastCheckIn = entry.timestamp;
+			} else if (entry.type === "check_out" && lastCheckIn) {
+				totalMs += (entry.timestamp - lastCheckIn);
+				lastCheckIn = null;
+			}
+		}
+
+		// If currently checked in, add time until now
+		if (lastCheckIn) {
+			totalMs += (Date.now() - lastCheckIn);
+		}
+
+		const totalHoursFloat = totalMs / (1000 * 60 * 60);
+		const totalMinutes = Math.floor((totalMs / (1000 * 60)) % 60);
+		const totalHours = Math.floor(totalHoursFloat);
+
+		return {
+			totalHours,
+			totalMinutes,
+			totalMs,
+			isWorking: !!lastCheckIn,
+			lastCheckIn
+		};
+	},
+});
+
+export const getPayrollReport = query({
+	args: {
+		month: v.number(), // 1-12
+		year: v.number(),
+	},
+	handler: async (ctx, args) => {
+		const startOfMonth = new Date(args.year, args.month - 1, 1).getTime();
+		const endOfMonth = new Date(args.year, args.month, 1).getTime();
+
+		const logs = await ctx.db
+			.query("attendance")
+			.filter((q) =>
+				q.and(
+					q.gte(q.field("timestamp"), startOfMonth),
+					q.lt(q.field("timestamp"), endOfMonth)
+				)
+			)
+			.collect();
+
+		const users = await ctx.db.query("users").collect();
+		const roles = await ctx.db.query("roles").collect();
+		const siteSettings = await ctx.db.query("siteSettings").first();
+		const payrollConfig = siteSettings?.payrollGlobalConfig ?? {
+			lateToleranceMinutes: 0,
+			latePenaltyPerMinute: 0,
+			overtimeBonusPerHour: 0,
+		};
+
+		const userMap = new Map(users.map((u) => [u._id, u]));
+		const roleMap = new Map(roles.map((r) => [r._id, r]));
+
+		// Group logs by user
+		const userLogs = new Map<string, any[]>();
+		logs.forEach((log) => {
+			const list = userLogs.get(log.userId) || [];
+			list.push(log);
+			userLogs.set(log.userId, list);
+		});
+
+		const reportRows: any[] = [];
+
+		for (const [userId, logs] of userLogs.entries()) {
+			const user = userMap.get(userId as any);
+			if (!user) continue;
+
+			const role = roleMap.get(user.roleId);
+			const baseRate = role?.baseHourlyRate ?? 0;
+			const allowance = role?.dailyAllowance ?? 0;
+
+			// Sort logs by time
+			const sortedLogs = [...logs].sort((a, b) => a.timestamp - b.timestamp);
+			
+			const daysWorked = new Set();
+			let totalWorkingMs = 0;
+			let totalPenalty = 0;
+			let totalLateMinutes = 0;
+			let totalOvertimeBonus = 0;
+
+			const sessions: any[] = [];
+
+			for (let i = 0; i < sortedLogs.length; i++) {
+				const entry = sortedLogs[i];
+				if (entry.type === "check_in") {
+					const dateStr = new Date(entry.timestamp).toDateString();
+					daysWorked.add(dateStr);
+
+					const nextEntry = sortedLogs[i + 1];
+					const checkOut = nextEntry?.type === "check_out" ? nextEntry : null;
+					
+					const durationMs = checkOut ? (checkOut.timestamp - entry.timestamp) : 0;
+					totalWorkingMs += durationMs;
+
+					const hours = durationMs / (1000 * 60 * 60);
+					if (hours > 8) {
+						totalOvertimeBonus += (hours - 8) * (payrollConfig.overtimeBonusPerHour ?? 0);
+					}
+
+					let lateMinutes = 0;
+					if (entry.shiftOpenTimeSnapshot) {
+						const [openH, openM] = entry.shiftOpenTimeSnapshot.split(':').map(Number);
+						const checkInDate = new Date(entry.timestamp);
+						const shiftOpenTime = new Date(checkInDate.getFullYear(), checkInDate.getMonth(), checkInDate.getDate(), openH, openM).getTime();
+						
+						const diffMs = entry.timestamp - shiftOpenTime;
+						const diffMin = Math.floor(diffMs / (1000 * 60));
+						
+						if (diffMin > payrollConfig.lateToleranceMinutes) {
+							lateMinutes = diffMin;
+							totalPenalty += lateMinutes * payrollConfig.latePenaltyPerMinute;
+							totalLateMinutes += lateMinutes;
+						}
+					}
+
+					sessions.push({
+						date: new Date(entry.timestamp).toLocaleDateString('id-ID'),
+						shiftName: entry.shiftName || "N/A",
+						checkIn: entry.timestamp,
+						checkOut: checkOut?.timestamp ?? null,
+						lateMinutes,
+						durationHours: hours,
+					});
+
+					if (checkOut) i++;
+				}
+			}
+
+			const totalBaseSalary = (totalWorkingMs / (1000 * 60 * 60)) * baseRate;
+			const totalAllowance = daysWorked.size * allowance;
+			const netSalary = totalBaseSalary + totalAllowance + totalOvertimeBonus - totalPenalty;
+
+			reportRows.push({
+				userId,
+				name: user.name,
+				roleName: role?.name || "N/A",
+				daysWorked: daysWorked.size,
+				totalHours: totalWorkingMs / (1000 * 60 * 60),
+				totalLateMinutes,
+				totalBaseSalary,
+				totalPenalty,
+				totalAllowance,
+				totalOvertimeBonus,
+				netSalary,
+				sessions
+			});
+		}
+
+		return {
+			period: `${args.month}/${args.year}`,
+			rows: reportRows,
+			config: payrollConfig
+		};
+	},
 });

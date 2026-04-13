@@ -22,7 +22,21 @@ import {
 	User,
 	UserCheck,
 	UtensilsCrossed,
+	Clock,
+	X,
+	KeyRound,
+	Play,
+	Square,
+	ArrowRight,
+	History,
+	ExternalLink,
+	Users,
+	AlertCircle,
+	Camera
 } from "lucide-react";
+import { FaceRecognition } from "@/components/auth/FaceRecognition";
+import { Button } from "@/components/ui/button";
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { formatCurrencyIDR } from "@/lib/export-utils";
@@ -277,6 +291,32 @@ function HomePage() {
 	const shiftRows = useQuery(api.finance.getShiftReportTable, {}) as
 		| ShiftRow[]
 		| undefined;
+	const statsToday = useQuery(api.attendance.getStaffStatsToday, user ? { userId: user._id } : "skip");
+	const clockIn = useMutation(api.attendance.clockIn);
+	const clockOut = useMutation(api.attendance.clockOut);
+	
+	const [showFaceModal, setShowFaceModal] = useState(false);
+	const [isProcessing, setIsProcessing] = useState(false);
+
+	const activeShiftInfo = useMemo(() => {
+		if (!settings?.shiftSettings?.shiftSchedules) return null;
+		
+		const now = new Date();
+		const currentMinutes = now.getHours() * 60 + now.getMinutes();
+		
+		return settings.shiftSettings.shiftSchedules.find((s: any) => {
+			if (!s.openTime || !s.closeTime) return false;
+			const [openH, openM] = s.openTime.split(':').map(Number);
+			const [closeH, closeM] = s.closeTime.split(':').map(Number);
+			const openTotal = openH * 60 + openM;
+			const closeTotal = closeH * 60 + closeM;
+			
+			if (closeTotal < openTotal) { // Overnight shift
+				return currentMinutes >= openTotal || currentMinutes <= closeTotal;
+			}
+			return currentMinutes >= openTotal && currentMinutes <= closeTotal;
+		});
+	}, [settings]);
 
 	const dateText = new Intl.DateTimeFormat("id-ID", {
 		weekday: "long",
@@ -338,47 +378,169 @@ function HomePage() {
 	return (
 		<div className="app-page min-h-app text-foreground">
 			<div className="mx-auto w-full max-w-md px-4 pb-8 pt-6 md:max-w-4xl">
-				<div className="app-shell relative overflow-hidden p-6 md:p-8">
-					<div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
-					<div className="absolute -bottom-16 left-10 h-40 w-40 rounded-full bg-accent/20 blur-3xl" />
-					
-					<div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-						<div className="relative flex-1">
-							<p className="app-overline mb-1 opacity-70">Mobile Super App</p>
-							<h1 className="font-black text-3xl leading-tight tracking-tight md:text-4xl text-foreground">
-								{greeting}, {user?.name?.split(' ')[0] || "Team"}!
-							</h1>
-							
-							<div className="mt-2 flex items-center gap-2">
-								<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-primary">
-									{userRole?.name || "Staff"}
-								</span>
-								<span className="text-xs font-bold text-muted-foreground">
-									{storeName}
-								</span>
+				{/* Djiwa Personal Hub / Profile Card */}
+				<motion.div 
+					initial={{ opacity: 0, y: 20 }}
+					animate={{ opacity: 1, y: 0 }}
+					className="app-card relative mb-5 overflow-hidden p-0 border-none shadow-2xl bg-[#0a0a0b]"
+				>
+					{/* Animated Background Mesh for Card */}
+					<div className="absolute inset-0 -z-10 overflow-hidden opacity-30">
+						<div className="absolute top-[-20%] left-[-10%] h-[100%] w-[50%] rounded-full bg-primary/20 blur-[80px]" />
+						<div className="absolute bottom-[-20%] right-[-10%] h-[100%] w-[50%] rounded-full bg-accent/20 blur-[80px]" />
+					</div>
+
+					<div className="p-6 md:p-8">
+						<div className="flex flex-col gap-6 md:flex-row md:items-center">
+							{/* Personal Info & Status */}
+							<div className="flex flex-1 items-center gap-5">
+								<div className="relative">
+									<div className="flex h-20 w-20 items-center justify-center rounded-[2rem] bg-gradient-to-br from-primary to-primary/60 text-3xl font-black text-white shadow-xl shadow-primary/20">
+										{user?.name?.charAt(0)}
+									</div>
+									<div className={`absolute -bottom-1 -right-1 h-6 w-6 rounded-full border-4 border-[#0a0a0b] ${statsToday?.isWorking ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"}`} />
+								</div>
+								<div>
+									<h2 className="text-2xl font-black tracking-tight text-white mb-1">
+										{user?.name}
+									</h2>
+									<div className="flex flex-wrap items-center gap-2">
+										<span className="inline-flex items-center rounded-lg bg-white/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-primary border border-primary/20">
+											{userRole?.name || "Staff"}
+										</span>
+										{statsToday?.isWorking ? (
+											<span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-500 whitespace-nowrap">
+												<span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+												Sedang Bertugas
+											</span>
+										) : (
+											<span className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground grayscale whitespace-nowrap">
+												<span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+												Off Duty
+											</span>
+										)}
+									</div>
+								</div>
+							</div>
+
+							{/* Stats & Shift Info */}
+							<div className="grid grid-cols-2 gap-4 md:gap-8 border-t border-white/5 pt-6 md:border-t-0 md:pt-0">
+								<div className="space-y-1">
+									<p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Hari Ini</p>
+									<p className="text-xl font-black text-white">
+										{statsToday?.totalHours ?? 0}<span className="text-sm font-medium text-muted-foreground ml-1">j</span> {statsToday?.totalMinutes ?? 0}<span className="text-sm font-medium text-muted-foreground ml-1">m</span>
+									</p>
+									<p className="text-[10px] font-medium text-primary uppercase">Total Kerja</p>
+								</div>
+								<div className="space-y-1">
+									<p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Shift Aktif</p>
+									<p className="text-xl font-black text-white">
+										{activeShiftInfo ? activeShiftInfo.name : "N/A"}
+									</p>
+									<p className="text-[10px] font-medium text-muted-foreground uppercase opacity-70">
+										{activeShiftInfo ? `${activeShiftInfo.openTime} - ${activeShiftInfo.closeTime}` : "No Schedule"}
+									</p>
+								</div>
 							</div>
 						</div>
 
-						<div className="relative flex items-center">
-							<button
-								onClick={handleLogout}
-								className="flex items-center gap-2 rounded-xl bg-destructive px-4 py-2.5 text-sm font-bold text-destructive-foreground shadow-lg shadow-destructive/20 transition-all hover:opacity-90 active:scale-95"
+						{/* Quick Actions Grid */}
+						<div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+							<motion.button
+								whileHover={{ y: -2 }}
+								whileTap={{ scale: 0.98 }}
+								onClick={() => setShowFaceModal(true)}
+								className={`flex flex-col items-center justify-center gap-2 rounded-2xl p-4 transition-all shadow-lg ${
+									statsToday?.isWorking 
+									? "bg-amber-500 text-amber-950 shadow-amber-500/20" 
+									: "bg-emerald-500 text-emerald-950 shadow-emerald-500/20"
+								}`}
 							>
-								<LogOut className="h-4 w-4" />
-								<span>Keluar</span>
+								{statsToday?.isWorking ? <Square className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+								<span className="text-xs font-black uppercase tracking-widest leading-none">
+									{statsToday?.isWorking ? "CLOCK OUT" : "CLOCK IN"}
+								</span>
+							</motion.button>
+
+							<Link 
+								to={user?.slug ? (`/attendance/${user.slug}` as any) : ("/attendance" as any)}
+								className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-white/5 border border-white/10 p-4 transition-all hover:bg-white/10"
+							>
+								<User className="h-6 w-6 text-white" />
+								<span className="text-xs font-black uppercase tracking-widest text-white leading-none">PROFIL</span>
+							</Link>
+
+							<Link 
+								to={"/login" as any}
+								className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-white/5 border border-white/10 p-4 transition-all hover:bg-white/10"
+							>
+								<Users className="h-6 w-6 text-white" />
+								<span className="text-xs font-black uppercase tracking-widest text-white leading-none">GANTI</span>
+							</Link>
+
+							<button 
+								onClick={handleLogout}
+								className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-destructive/10 border border-destructive/20 p-4 transition-all hover:bg-destructive/20"
+							>
+								<LogOut className="h-6 w-6 text-destructive" />
+								<span className="text-xs font-black uppercase tracking-widest text-destructive leading-none">KELUAR</span>
 							</button>
 						</div>
 					</div>
-					
-					<p className="relative mt-8 text-xs font-medium text-muted-foreground">
-						 {dateText}
-					</p>
+				</motion.div>
 
-					<div className="app-pill relative mt-6 inline-flex items-center gap-2 bg-primary/10 px-3 py-2 text-[11px] font-bold text-primary">
-						<Sparkles className="h-3.5 w-3.5" />
-						Akses cepat untuk kasir, barista, dan kitchen
-					</div>
-				</div>
+				<AnimatePresence>
+					{showFaceModal && (
+						<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
+							<motion.div 
+								initial={{ opacity: 0, scale: 0.9 }}
+								animate={{ opacity: 1, scale: 1 }}
+								exit={{ opacity: 0, scale: 0.9 }}
+								className="relative w-full max-w-lg overflow-hidden rounded-[2.5rem] bg-card shadow-2xl"
+							>
+								<div className="absolute top-6 right-6 z-10">
+									<Button 
+										variant="ghost" 
+										size="icon" 
+										onClick={() => setShowFaceModal(false)}
+										className="h-12 w-12 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md transition-all"
+									>
+										<X className="h-6 w-6" />
+									</Button>
+								</div>
+								
+								<div className="p-8">
+									<h2 className="text-2xl font-black tracking-tight text-center mb-6 uppercase">
+										Verifikasi Wajah
+									</h2>
+									<FaceRecognition 
+										mode="verify" 
+										targetDescriptor={(user as any)?.faceDescriptor}
+										onMatch={async () => {
+											if (isProcessing) return;
+											setIsProcessing(true);
+											const toastId = toast.loading(statsToday?.isWorking ? "Proses Clock Out..." : "Proses Clock In...");
+											try {
+												if (statsToday?.isWorking) {
+													await clockOut({ userId: user!._id });
+													toast.success("Berhasil Clock Out", { id: toastId });
+												} else {
+													await clockIn({ userId: user!._id });
+													toast.success("Berhasil Clock In", { id: toastId });
+												}
+												setShowFaceModal(false);
+											} catch (err) {
+												toast.error("Gagal memproses absensi", { id: toastId });
+											} finally {
+												setIsProcessing(false);
+											}
+										}}
+									/>
+								</div>
+							</motion.div>
+						</div>
+					)}
+				</AnimatePresence>
 
 				<div className="mt-5 space-y-4">
 					{ROLE_SECTIONS.map((section) => (

@@ -380,6 +380,13 @@ export default defineSchema({
 		attendanceLat: v.optional(v.number()),
 		attendanceLng: v.optional(v.number()),
 		attendanceRadius: v.optional(v.number()), // in meters
+		payrollGlobalConfig: v.optional(
+			v.object({
+				lateToleranceMinutes: v.number(),
+				latePenaltyPerMinute: v.number(),
+				overtimeBonusPerHour: v.number(),
+			})
+		),
 	}),
 
 	customerServiceRequests: defineTable({
@@ -508,10 +515,11 @@ export default defineSchema({
 		updatedAt: v.number(),
 	}).index("by_product", ["productId"]),
 
-	// Roles for RBAC
 	roles: defineTable({
 		name: v.string(), // e.g., "admin", "cashier"
 		permissions: v.array(v.string()), // e.g., ["manage_users", "view_reports"]
+		baseHourlyRate: v.optional(v.number()),
+		dailyAllowance: v.optional(v.number()),
 	}).index("by_name", ["name"]),
 
 	// Users for Custom Auth & Profile
@@ -847,6 +855,8 @@ export default defineSchema({
 				address: v.optional(v.string()),
 			})
 		),
+		shiftName: v.optional(v.string()),
+		shiftOpenTimeSnapshot: v.optional(v.string()), // HH:mm
 	})
 		.index("by_user", ["userId"])
 		.index("by_timestamp", ["timestamp"])

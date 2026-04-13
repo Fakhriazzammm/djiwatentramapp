@@ -89,6 +89,11 @@ const DEFAULTS = {
 	attendanceLat: -6.200000,
 	attendanceLng: 106.816666,
 	attendanceRadius: 50,
+	payrollGlobalConfig: {
+		lateToleranceMinutes: 5,
+		latePenaltyPerMinute: 1000,
+		overtimeBonusPerHour: 10000,
+	},
 };
 
 export const getSettings = query({
@@ -192,6 +197,10 @@ export const getSettings = query({
 			attendanceLat: settings.attendanceLat ?? DEFAULTS.attendanceLat,
 			attendanceLng: settings.attendanceLng ?? DEFAULTS.attendanceLng,
 			attendanceRadius: settings.attendanceRadius ?? DEFAULTS.attendanceRadius,
+			payrollGlobalConfig: {
+				...DEFAULTS.payrollGlobalConfig,
+				...(settings.payrollGlobalConfig ?? {}),
+			},
 		};
 	},
 });
@@ -315,6 +324,13 @@ export const updateSettings = mutation({
 		attendanceLat: v.optional(v.number()),
 		attendanceLng: v.optional(v.number()),
 		attendanceRadius: v.optional(v.number()),
+		payrollGlobalConfig: v.optional(
+			v.object({
+				lateToleranceMinutes: v.number(),
+				latePenaltyPerMinute: v.number(),
+				overtimeBonusPerHour: v.number(),
+			})
+		),
 	},
 	handler: async (ctx, args) => {
 		const existing = await ctx.db.query("siteSettings").first();
