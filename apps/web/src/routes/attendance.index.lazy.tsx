@@ -440,61 +440,54 @@ function AttendancePage() {
 							animate={{ opacity: 1, scale: 1 }}
 							exit={{ opacity: 0, scale: 0.95 }}
 							key="face-step"
-							className="mx-auto w-full max-w-lg space-y-5"
+							className="mx-auto w-full max-w-xl space-y-4"
 						>
-							<div className="space-y-2 text-center">
-								<h2 className="text-2xl font-black tracking-tight uppercase md:text-3xl">
-									{isEnrolling ? "Daftar Wajah" : "Verifikasi Wajah"}
-								</h2>
-								<p className="text-base font-bold text-primary md:text-lg">Halo, {user?.name}</p>
-								<p className="mx-auto max-w-sm text-sm text-muted-foreground">
-									{isEnrolling 
-										? "Wajah Anda belum terdaftar. Harap lakukan pemindaian wajah." 
-										: "Dekatkan wajah ke kamera untuk penyelesaian absensi."}
-								</p>
+							<div className="flex items-center justify-between gap-3">
+								<div className="space-y-1 min-w-0">
+									<h2 className="text-xl font-black tracking-tight uppercase md:text-2xl">
+										{isEnrolling ? "Daftar Wajah" : "Verifikasi Wajah"}
+									</h2>
+									<p className="text-sm font-bold text-primary truncate">Halo, {user?.name}</p>
+								</div>
+								<div className="flex items-center gap-2 shrink-0">
+									<div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 border text-[10px] font-bold uppercase tracking-wider ${
+										isInRadius ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-red-50 border-red-200 text-red-700"
+									}`}>
+										<div className={`h-1.5 w-1.5 rounded-full ${isInRadius ? "bg-emerald-500" : "bg-red-500"}`} />
+										{isInRadius ? "Dalam Area" : "Luar Area"}
+									</div>
+								</div>
 							</div>
 
 							<div className="relative group">
-								<div className={`absolute -inset-3 rounded-[2rem] bg-gradient-to-tr transition-all duration-500 blur-2xl opacity-10 ${
-									isInRadius ? "from-emerald-500 to-primary" : "from-red-500 to-orange-500"
-								}`} />
-								<div className="relative overflow-hidden rounded-[2rem] border border-border/60 bg-card/95 p-4 shadow-xl md:rounded-[2.5rem] md:p-6">
-									{!isInRadius && siteSettings?.attendanceLat ? (
-										<div className="flex aspect-video flex-col items-center justify-center space-y-4 rounded-2xl bg-muted p-6 text-center">
-											<div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-red-100 text-red-600">
-												<Navigation className="h-7 w-7 animate-bounce" />
-											</div>
-											<div className="space-y-2">
-												<p className="font-bold text-red-900">DI LUAR AREA KERJA</p>
-												<p className="text-xs text-red-700">Akses diblokir. Harap berada di dalam jangkauan kafe untuk melakukan absensi.</p>
-											</div>
-											<Button onClick={() => setStep("select")} variant="outline" className="rounded-xl border-red-200 text-red-700 hover:bg-red-50">
-												Pilih User Lain
-											</Button>
+								{!isInRadius && siteSettings?.attendanceLat ? (
+									<div className="flex aspect-[3/4] w-full flex-col items-center justify-center space-y-4 rounded-3xl bg-muted p-6 text-center">
+										<div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-red-100 text-red-600">
+											<Navigation className="h-7 w-7 animate-bounce" />
 										</div>
-									) : (
-										<FaceRecognition
-											mode={isEnrolling ? "enroll" : "verify"}
-											onCapture={isEnrolling ? handleFaceProcessed : undefined}
-											onMatch={!isEnrolling ? () => handleFaceProcessed() : undefined}
-											targetDescriptor={user?.faceDescriptor}
-										/>
-									)}
-								</div>
+										<div className="space-y-2">
+											<p className="font-bold text-red-900">DI LUAR AREA KERJA</p>
+											<p className="text-xs text-red-700">Akses diblokir. Harap berada di dalam jangkauan kafe untuk melakukan absensi.</p>
+										</div>
+										<Button onClick={() => setStep("select")} variant="outline" className="rounded-xl border-red-200 text-red-700 hover:bg-red-50">
+											Pilih User Lain
+										</Button>
+									</div>
+								) : (
+									<FaceRecognition
+										mode={isEnrolling ? "enroll" : "verify"}
+										onCapture={isEnrolling ? handleFaceProcessed : undefined}
+										onMatch={!isEnrolling ? () => handleFaceProcessed() : undefined}
+										targetDescriptor={user?.faceDescriptor}
+									/>
+								)}
 							</div>
-							
-							<div className="flex flex-col gap-3">
-								<div className="flex items-center justify-center gap-2.5 rounded-2xl border border-border/60 bg-card/60 px-4 py-3">
-									<div className={`h-2 w-2 rounded-full ${isInRadius ? "bg-emerald-500" : "bg-red-500"}`} />
-									<p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-										Akurasi Lokasi: {distance !== null ? `${Math.round(distance)}m` : "Checking..."}
-									</p>
-								</div>
 
+							<div className="flex items-center gap-3">
 								{!isEnrolling && (
 									<Button 
 										variant="ghost"
-										className="rounded-xl text-muted-foreground hover:text-primary"
+										className="rounded-xl text-muted-foreground hover:text-primary flex-1"
 										onClick={() => {
 											setIsEnrolling(true);
 											toast.info("Masuk ke mode pendaftaran wajah baru.");
@@ -503,7 +496,7 @@ function AttendancePage() {
 										Wajah Tidak Terdeteksi? Daftar Ulang
 									</Button>
 								)}
-								<Button className="h-12 w-full rounded-2xl md:h-14" onClick={() => setStep("select")} variant="outline">
+								<Button className="h-11 flex-1 rounded-2xl" onClick={() => setStep("select")} variant="outline">
 									Ganti Identitas
 								</Button>
 							</div>
@@ -520,24 +513,67 @@ function AttendancePage() {
 							<div className="flex flex-col items-center space-y-8 text-center bg-card border border-border/50 rounded-[3rem] p-12 shadow-2xl relative overflow-hidden">
 								<div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-emerald-500 to-primary" />
 								
-								<div className="relative">
-									<div className="absolute -inset-4 rounded-full bg-emerald-500/20 blur-xl animate-pulse" />
-									<div className="relative flex h-32 w-32 items-center justify-center rounded-full bg-emerald-500 text-white shadow-xl shadow-emerald-500/20">
+								<motion.div
+									className="relative"
+									initial={{ scale: 0, rotate: -180 }}
+									animate={{ scale: 1, rotate: 0 }}
+									transition={{ type: "spring", stiffness: 150, damping: 12 }}
+								>
+									<div className="absolute -inset-6 rounded-full bg-emerald-500/20 blur-2xl animate-pulse" />
+									<motion.div
+										className="relative flex h-32 w-32 items-center justify-center rounded-full bg-emerald-500 text-white shadow-xl shadow-emerald-500/20"
+										animate={{ boxShadow: ["0 10px 25px -5px rgba(16,185,129,0.2)", "0 10px 40px -5px rgba(16,185,129,0.4)", "0 10px 25px -5px rgba(16,185,129,0.2)"] }}
+										transition={{ duration: 2, repeat: Infinity }}
+									>
 										<UserCheck className="h-16 w-16" />
-									</div>
-								</div>
+									</motion.div>
+								</motion.div>
 
-								<div className="space-y-2">
+								<motion.div
+									className="space-y-3"
+									initial={{ opacity: 0, y: 20 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{ delay: 0.3 }}
+								>
 									<h2 className="text-4xl font-black tracking-tight text-foreground uppercase">SUKSES!</h2>
 									<p className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-primary bg-clip-text text-transparent italic">
 										{user?.isCurrentlyIn ? "Sudah diabsen keluar. Hati-hati di jalan!" : "Berhasil diabsen masuk. Semangat!"}
 									</p>
-								</div>
+									<p className="text-sm text-muted-foreground">
+										{user?.name} — {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+									</p>
+								</motion.div>
 
-								<div className="flex items-center gap-3 rounded-2xl border border-border bg-muted/50 px-6 py-4 w-full">
+								<motion.div
+									className="flex items-center gap-3 rounded-2xl border border-border bg-muted/50 px-6 py-4 w-full"
+									initial={{ opacity: 0, y: 10 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{ delay: 0.6 }}
+								>
 									<Loader2 className="h-4 w-4 animate-spin text-primary" />
 									<p className="text-xs font-bold text-muted-foreground uppercase tracking-widest leading-none">Mengalihkan ke Dashboard...</p>
-								</div>
+								</motion.div>
+
+								{/* Celebration particles */}
+								{Array.from({ length: 12 }).map((_, i) => (
+									<motion.div
+										key={i}
+										className="absolute rounded-full"
+										style={{
+											width: 4 + Math.random() * 8,
+											height: 4 + Math.random() * 8,
+											background: ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ec4899"][i % 5],
+										}}
+										initial={{ top: "50%", left: "50%", opacity: 1, scale: 1 }}
+										animate={{
+											top: `${10 + Math.random() * 80}%`,
+											left: `${5 + Math.random() * 90}%`,
+											opacity: 0,
+											scale: 0,
+										}}
+										transition={{ duration: 1.5 + Math.random(), delay: 0.2 + i * 0.08 }}
+									/>
+								))}
 							</div>
 						</motion.div>
 					)}

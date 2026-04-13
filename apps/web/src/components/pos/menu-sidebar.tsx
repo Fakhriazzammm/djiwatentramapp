@@ -33,7 +33,7 @@ import {
 	ChefHat,
 	CupSoda
 } from "lucide-react";
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -71,6 +71,7 @@ import {
 } from "@/lib/bluetooth-printer";
 import { useCart } from "@/context/cart-context";
 import { cn } from "@/lib/utils";
+import { useYumiAuth } from "@/hooks/useYumiAuth";
 import {
 	buildReceiptMetaFromCart,
 	buildReceiptMetaFromOrder,
@@ -2115,12 +2116,22 @@ function KasTab({ onClose }: { onClose: () => void }) {
 }
 
 function ShiftManagement({ onClose }: { onClose: () => void }) {
+	const { user: currentUser } = useYumiAuth();
+	const allUsers = useQuery(api.users.getUsers);
+
+	const staffUsers = useMemo(() =>
+		(allUsers || []).filter(
+			(u: any) => u.isActive && (u.roleName || "").toLowerCase() !== "admin"
+		).sort((a: any, b: any) => a.name.localeCompare(b.name)),
+		[allUsers]
+	);
+
 	const startShift = useMutation(api.finance.startShift);
 	const endShift = useMutation(api.finance.endShift);
 	const sendShiftReportEmail = useAction(api.reportsEmail.sendShiftReportEmail);
-	
+
 	const [shiftType, setShiftType] = useState<"mulai" | "akhiri">("mulai");
-	
+
 	// Mulai Shift State
 	const [amount, setAmount] = useState("");
 	const [cashierName, setCashierName] = useState("");
@@ -2163,6 +2174,13 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			setShiftType("mulai");
 		}
 	}, [shiftStatus?.isOpen]);
+
+	// Auto-fill cashier name from current authenticated user
+	useEffect(() => {
+		if (currentUser?.name && !cashierName) {
+			setCashierName(currentUser.name);
+		}
+	}, [currentUser?.name]);
 
 	// Auto-fill default starting cash and first predefined shift
 	useEffect(() => {
@@ -2348,13 +2366,18 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 						<div className="grid grid-cols-2 gap-3">
 							<div className="space-y-1.5">
 								<Label className="text-[10px] font-bold uppercase text-muted-foreground">Kasir <span className="text-destructive">*</span></Label>
-								<Input
-									placeholder="Nama Kasir"
-									className="h-9 text-xs"
-									value={cashierName}
-									onChange={(e) => setCashierName(e.target.value)}
-									required
-								/>
+								<Select value={cashierName} onValueChange={setCashierName}>
+									<SelectTrigger className="h-9 text-xs">
+										<SelectValue placeholder="Pilih Kasir" />
+									</SelectTrigger>
+									<SelectContent className="z-[9999]">
+										{staffUsers.map((u: any) => (
+											<SelectItem key={u._id} value={u.name}>
+												{u.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
 							</div>
 							<div className="space-y-1.5">
 								<Label className="text-[10px] font-bold uppercase text-muted-foreground">Shift <span className="text-destructive">*</span></Label>
