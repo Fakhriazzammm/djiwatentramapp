@@ -297,7 +297,6 @@ function HomePage() {
 	
 	const [showFaceModal, setShowFaceModal] = useState(false);
 	const [isProcessing, setIsProcessing] = useState(false);
-	const [liveNow, setLiveNow] = useState(() => new Date());
 
 	const activeShiftInfo = useMemo(() => {
 		if (!settings?.shiftSettings?.shiftSchedules) return null;
@@ -336,13 +335,6 @@ function HomePage() {
 	const [selectedShiftStart, setSelectedShiftStart] = useState<number | null>(null);
 
 	useEffect(() => {
-		const timer = window.setInterval(() => {
-			setLiveNow(new Date());
-		}, 60_000);
-		return () => window.clearInterval(timer);
-	}, []);
-
-	useEffect(() => {
 		if (!shiftRows?.length) {
 			setSelectedShiftStart(null);
 			return;
@@ -377,10 +369,6 @@ function HomePage() {
 	const hasFaceDescriptor =
 		Array.isArray((user as any)?.faceDescriptor) &&
 		((user as any)?.faceDescriptor?.length ?? 0) > 0;
-	const currentTimeText = new Intl.DateTimeFormat("id-ID", {
-		hour: "2-digit",
-		minute: "2-digit",
-	}).format(liveNow);
 	const workDurationLabel = `${statsToday?.totalHours ?? 0}j ${statsToday?.totalMinutes ?? 0}m`;
 	const primaryActionTitle = !hasFaceDescriptor
 		? "Daftarkan Wajah"
@@ -424,229 +412,128 @@ function HomePage() {
 				<motion.div
 					initial={{ opacity: 0, y: 20 }}
 					animate={{ opacity: 1, y: 0 }}
-					className="app-card relative mb-5 overflow-hidden border-none bg-[#08111f] p-0 shadow-[0_24px_80px_rgba(4,10,24,0.36)]"
+					className="app-card glass-strong relative mb-5 overflow-hidden p-4 md:p-5"
 				>
-					<div className="absolute inset-0 -z-10 overflow-hidden">
-						<div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.28),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.18),transparent_30%),linear-gradient(135deg,#08111f_0%,#0e172a_48%,#0a1220_100%)]" />
-						<div className="absolute inset-y-0 right-[18%] hidden w-px bg-white/8 lg:block" />
-						<div className="absolute left-0 top-0 h-full w-full bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:32px_32px] opacity-20" />
-					</div>
+					<div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.08),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.08),transparent_24%)]" />
 
-					<div className="p-5 md:p-7">
-						<div className="flex flex-col gap-6">
-							<div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-								<div className="space-y-3">
-									<div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-sky-100/85">
-										<Sparkles className="h-3.5 w-3.5 text-sky-300" />
-										{storeName}
-									</div>
-									<div>
-										<p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/55">
-											{greeting}
-										</p>
-										<h1 className="mt-2 max-w-xl text-2xl font-black tracking-tight text-white md:text-[2rem]">
-											Panel kerja personal untuk shift hari ini.
-										</h1>
-										<p className="mt-2 max-w-lg text-sm leading-6 text-slate-300">
-											Status kehadiran, shift aktif, dan akses cepat ke aksi penting dalam satu area.
-										</p>
-									</div>
-								</div>
-
-								<div className="grid grid-cols-2 gap-3 md:min-w-[280px]">
-									<div className="rounded-2xl border border-white/10 bg-white/[0.06] p-3 backdrop-blur-sm">
-										<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">
-											Hari Ini
-										</p>
-										<p className="mt-2 text-lg font-black text-white">{dateText}</p>
-										<p className="mt-1 text-xs text-sky-200">Jam sekarang {currentTimeText}</p>
-									</div>
-									<div className="rounded-2xl border border-white/10 bg-white/[0.06] p-3 backdrop-blur-sm">
-										<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">
-											Verifikasi
-										</p>
-										<p className="mt-2 text-lg font-black text-white">
-											{hasFaceDescriptor ? "Siap" : "Belum"}
-										</p>
-										<p className="mt-1 text-xs text-slate-300">
-											{hasFaceDescriptor ? "Face ID aktif" : "Perlu pendaftaran"}
-										</p>
-									</div>
-								</div>
+					<div className="flex flex-col gap-4">
+						<div className="flex items-start justify-between gap-3">
+							<div className="min-w-0">
+								<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">
+									{storeName}
+								</p>
+								<h2 className="mt-1 text-lg font-black tracking-tight text-foreground md:text-xl">
+									{greeting}, {user?.name}
+								</h2>
+								<p className="mt-1 text-sm text-muted-foreground">
+									{dateText}
+								</p>
 							</div>
+							<button
+								onClick={handleLogout}
+								type="button"
+								className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-background/80 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+							>
+								<LogOut className="h-4 w-4" />
+							</button>
+						</div>
 
-							<div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)]">
-								<div className="rounded-[28px] border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-sm md:p-5">
-									<div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-										<div className="flex items-center gap-4">
-											<div className="relative">
-												<div className="flex h-20 w-20 items-center justify-center rounded-[28px] bg-gradient-to-br from-sky-500 via-blue-500 to-cyan-400 text-3xl font-black text-white shadow-[0_18px_40px_rgba(56,189,248,0.28)]">
-													{user?.name?.charAt(0)}
-												</div>
-												<div className={`absolute -bottom-1 -right-1 h-6 w-6 rounded-full border-4 border-[#0d1626] ${statsToday?.isWorking ? "bg-emerald-500" : "bg-slate-500"}`} />
-											</div>
-											<div className="space-y-2">
-												<div className="flex flex-wrap items-center gap-2">
-													<span className="inline-flex items-center rounded-full border border-sky-400/20 bg-sky-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-sky-200">
-														{userRole?.name || "Staff"}
-													</span>
-													<span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${
-														statsToday?.isWorking
-															? "bg-emerald-500/12 text-emerald-300"
-															: "bg-white/[0.06] text-slate-300"
-													}`}>
-														<span className={`h-1.5 w-1.5 rounded-full ${statsToday?.isWorking ? "bg-emerald-400" : "bg-slate-400"}`} />
-														{statsToday?.isWorking ? "Sedang Bertugas" : "Off Duty"}
-													</span>
-												</div>
-												<div>
-													<h2 className="text-2xl font-black tracking-tight text-white">
-														{user?.name}
-													</h2>
-													<p className="mt-1 text-sm text-slate-300">
-														{statsToday?.isWorking
-															? "Anda sedang berada dalam sesi kerja aktif."
-															: "Belum ada sesi kerja aktif untuk akun ini."}
-													</p>
-												</div>
-											</div>
-										</div>
-
-										<div className="grid grid-cols-2 gap-3 md:min-w-[260px]">
-											<div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-												<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-													Total Kerja
-												</p>
-												<p className="mt-2 text-xl font-black text-white">{workDurationLabel}</p>
-												<p className="mt-1 text-xs text-slate-400">Akumulasi hari ini</p>
-											</div>
-											<div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-												<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-													Shift Aktif
-												</p>
-												<p className="mt-2 line-clamp-1 text-xl font-black text-white">
-													{activeShiftInfo ? activeShiftInfo.name : "Belum ada"}
-												</p>
-												<p className="mt-1 text-xs text-slate-400">
-													{activeShiftInfo
-														? `${activeShiftInfo.openTime} - ${activeShiftInfo.closeTime}`
-														: "Jadwal belum tersedia"}
-												</p>
-											</div>
-										</div>
+						<div className="grid gap-3 md:grid-cols-[1.1fr_0.9fr] md:items-center">
+							<div className="flex items-center gap-3 rounded-[1.5rem] border border-border/70 bg-background/70 p-3 shadow-sm">
+								<div className="relative shrink-0">
+									<div className="flex h-16 w-16 items-center justify-center rounded-[1.35rem] bg-gradient-to-br from-primary to-sky-400 text-2xl font-black text-white shadow-sm">
+										{user?.name?.charAt(0)}
 									</div>
+									<div className={`absolute -bottom-1 -right-1 h-5 w-5 rounded-full border-4 border-background ${
+										statsToday?.isWorking ? "bg-emerald-500" : "bg-muted-foreground"
+									}`} />
 								</div>
-
-								<div className="rounded-[28px] border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.03] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-									<div className="flex items-start justify-between gap-3">
-										<div>
-											<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/48">
-												Aksi Utama
-											</p>
-											<h3 className="mt-2 text-xl font-black tracking-tight text-white">
-												{primaryActionTitle}
-											</h3>
-											<p className="mt-2 max-w-xs text-sm leading-6 text-slate-300">
-												{primaryActionSubtitle}
-											</p>
-										</div>
-										<div className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl ${
-											!hasFaceDescriptor
-												? "bg-sky-500/16 text-sky-300"
-												: statsToday?.isWorking
-													? "bg-amber-500/16 text-amber-300"
-													: "bg-emerald-500/16 text-emerald-300"
+								<div className="min-w-0">
+									<div className="flex flex-wrap items-center gap-2">
+										<span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-primary">
+											{userRole?.name || "Staff"}
+										</span>
+										<span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
+											statsToday?.isWorking
+												? "bg-emerald-500/10 text-emerald-600"
+												: "bg-muted text-muted-foreground"
 										}`}>
-											{!hasFaceDescriptor ? (
-												<Camera className="h-5 w-5" />
-											) : statsToday?.isWorking ? (
-												<Square className="h-5 w-5" />
-											) : (
-												<Play className="h-5 w-5" />
-											)}
-										</div>
-									</div>
-
-									<motion.button
-										whileHover={{ y: -2 }}
-										whileTap={{ scale: 0.99 }}
-										onClick={handlePrimaryAttendanceAction}
-										disabled={isProcessing}
-										className={`mt-5 flex w-full items-center justify-between rounded-[22px] px-4 py-4 text-left transition-all ${
-											!hasFaceDescriptor
-												? "bg-sky-500 text-white shadow-[0_18px_40px_rgba(14,165,233,0.28)]"
-												: statsToday?.isWorking
-													? "bg-amber-400 text-amber-950 shadow-[0_18px_40px_rgba(251,191,36,0.24)]"
-													: "bg-emerald-500 text-emerald-950 shadow-[0_18px_40px_rgba(16,185,129,0.24)]"
-										} disabled:cursor-not-allowed disabled:opacity-70`}
-									>
-										<div>
-											<p className="text-[11px] font-black uppercase tracking-[0.22em] opacity-80">
-												{!hasFaceDescriptor ? "Setup" : "Attendance"}
-											</p>
-											<p className="mt-1 text-lg font-black">{primaryActionTitle}</p>
-										</div>
-										<div className="inline-flex items-center gap-2">
-											<span className="text-xs font-bold opacity-80">
-												{!hasFaceDescriptor ? "Buka" : "Mulai"}
-											</span>
-											<ArrowRight className="h-5 w-5" />
-										</div>
-									</motion.button>
-
-									<div className="mt-4 flex items-center gap-2 text-xs text-slate-300">
-										<History className="h-4 w-4 text-slate-400" />
-										<span>
-											{statsToday?.isWorking
-												? "Sesi aktif terdeteksi. Gunakan tombol ini untuk mengakhiri shift."
-												: "Belum ada sesi aktif. Gunakan tombol ini untuk mulai bekerja."}
+											{statsToday?.isWorking ? "Sedang Bertugas" : "Off Duty"}
 										</span>
 									</div>
+									<p className="mt-2 text-sm text-muted-foreground">
+										{hasFaceDescriptor
+											? "Siap untuk presensi dengan verifikasi wajah."
+											: "Face ID belum aktif. Lengkapi sebelum mulai presensi."}
+									</p>
 								</div>
 							</div>
 
-							<div className="grid gap-3 sm:grid-cols-3">
-								<Link
-									to={user?.slug ? (`/attendance/${user.slug}` as any) : ("/attendance" as any)}
-									className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.045] p-4 transition-all hover:bg-white/[0.08]"
-								>
-									<div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/8 text-white transition-transform group-hover:scale-105">
-										<User className="h-5 w-5" />
-									</div>
-									<div>
-										<p className="text-sm font-black text-white">Profil</p>
-										<p className="text-xs text-slate-300">Lihat riwayat dan identitas</p>
-									</div>
-								</Link>
-
-								<button
-									onClick={handleSwitchAccount}
-									className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.045] p-4 text-left transition-all hover:bg-white/[0.08]"
-									type="button"
-								>
-									<div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/8 text-white transition-transform group-hover:scale-105">
-										<Users className="h-5 w-5" />
-									</div>
-									<div>
-										<p className="text-sm font-black text-white">Ganti Akun</p>
-										<p className="text-xs text-slate-300">Masuk dengan akun lain</p>
-									</div>
-								</button>
-
-								<button
-									onClick={handleLogout}
-									className="group flex items-center gap-3 rounded-2xl border border-rose-400/16 bg-rose-500/10 p-4 text-left transition-all hover:bg-rose-500/16"
-									type="button"
-								>
-									<div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-500/14 text-rose-300 transition-transform group-hover:scale-105">
-										<LogOut className="h-5 w-5" />
-									</div>
-									<div>
-										<p className="text-sm font-black text-rose-200">Keluar</p>
-										<p className="text-xs text-rose-100/70">Akhiri sesi aplikasi</p>
-									</div>
-								</button>
+							<div className="grid grid-cols-2 gap-3">
+								<div className="rounded-[1.35rem] border border-border/70 bg-background/80 p-3 shadow-sm">
+									<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+										Total Kerja
+									</p>
+									<p className="mt-2 text-lg font-black text-foreground">{workDurationLabel}</p>
+								</div>
+								<div className="rounded-[1.35rem] border border-border/70 bg-background/80 p-3 shadow-sm">
+									<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+										Shift Aktif
+									</p>
+									<p className="mt-2 line-clamp-1 text-lg font-black text-foreground">
+										{activeShiftInfo ? activeShiftInfo.name : "Belum ada"}
+									</p>
+								</div>
 							</div>
+						</div>
+
+						<div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
+							<button
+								onClick={handlePrimaryAttendanceAction}
+								disabled={isProcessing}
+								type="button"
+								className={`flex items-center justify-between rounded-[1.6rem] px-4 py-4 text-left shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-70 ${
+									!hasFaceDescriptor
+										? "bg-sky-500 text-white hover:bg-sky-600"
+										: statsToday?.isWorking
+											? "bg-amber-500 text-amber-950 hover:bg-amber-400"
+											: "bg-emerald-500 text-emerald-950 hover:bg-emerald-400"
+								}`}
+							>
+								<div className="flex items-center gap-3">
+									<div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/20">
+										{!hasFaceDescriptor ? (
+											<Camera className="h-5 w-5" />
+										) : statsToday?.isWorking ? (
+											<Square className="h-5 w-5" />
+										) : (
+											<Play className="h-5 w-5" />
+										)}
+									</div>
+									<div>
+										<p className="text-[11px] font-black uppercase tracking-[0.18em] opacity-80">
+											{!hasFaceDescriptor ? "Setup" : "Presensi"}
+										</p>
+										<p className="text-base font-black">{primaryActionTitle}</p>
+									</div>
+								</div>
+								<ArrowRight className="h-5 w-5" />
+							</button>
+
+							<Link
+								to={user?.slug ? (`/attendance/${user.slug}` as any) : ("/attendance" as any)}
+								className="inline-flex items-center justify-center rounded-[1.35rem] border border-border/70 bg-background/80 px-4 py-4 text-sm font-bold text-foreground shadow-sm transition-colors hover:bg-muted"
+							>
+								Profil
+							</Link>
+
+							<button
+								onClick={handleSwitchAccount}
+								type="button"
+								className="inline-flex items-center justify-center rounded-[1.35rem] border border-border/70 bg-background/80 px-4 py-4 text-sm font-bold text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground"
+							>
+								Ganti Akun
+							</button>
 						</div>
 					</div>
 				</motion.div>
