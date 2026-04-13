@@ -10,20 +10,23 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MenuRouteImport } from './routes/menu'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BookingRouteImport } from './routes/booking'
+import { Route as AttendanceRouteImport } from './routes/attendance'
 import { Route as BrandSlugRouteImport } from './routes/$brandSlug'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as HomeSectionRouteImport } from './routes/home.$section'
+import { Route as AttendanceUsernameRouteImport } from './routes/attendance.$username'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminRecipeRouteImport } from './routes/admin/recipe'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminOperationalTeamRouteImport } from './routes/admin/operational-team'
-import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
 import { Route as AdminHppCalculatorRouteImport } from './routes/admin/hpp-calculator'
@@ -46,6 +49,11 @@ const MenuRoute = MenuRouteImport.update({
   path: '/menu',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/menu.lazy').then((d) => d.Route))
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
@@ -61,6 +69,11 @@ const BookingRoute = BookingRouteImport.update({
   path: '/booking',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/booking.lazy').then((d) => d.Route))
+const AttendanceRoute = AttendanceRouteImport.update({
+  id: '/attendance',
+  path: '/attendance',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BrandSlugRoute = BrandSlugRouteImport.update({
   id: '/$brandSlug',
   path: '/$brandSlug',
@@ -76,6 +89,13 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
+const AttendanceIndexRoute = AttendanceIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AttendanceRoute,
+} as any).lazy(() =>
+  import('./routes/attendance.index.lazy').then((d) => d.Route),
+)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -86,6 +106,13 @@ const HomeSectionRoute = HomeSectionRouteImport.update({
   path: '/$section',
   getParentRoute: () => HomeRoute,
 } as any).lazy(() => import('./routes/home.$section.lazy').then((d) => d.Route))
+const AttendanceUsernameRoute = AttendanceUsernameRouteImport.update({
+  id: '/$username',
+  path: '/$username',
+  getParentRoute: () => AttendanceRoute,
+} as any).lazy(() =>
+  import('./routes/attendance.$username.lazy').then((d) => d.Route),
+)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -117,11 +144,6 @@ const AdminOperationalTeamRoute = AdminOperationalTeamRouteImport.update({
 } as any).lazy(() =>
   import('./routes/admin/operational-team.lazy').then((d) => d.Route),
 )
-const AdminLoginRoute = AdminLoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
 const AdminKitchenRoute = AdminKitchenRouteImport.update({
   id: '/kitchen',
   path: '/kitchen',
@@ -222,9 +244,11 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/$brandSlug': typeof BrandSlugRoute
+  '/attendance': typeof AttendanceRouteWithChildren
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRouteWithChildren
+  '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
@@ -236,14 +260,15 @@ export interface FileRoutesByFullPath {
   '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
-  '/admin/login': typeof AdminLoginRoute
   '/admin/operational-team': typeof AdminOperationalTeamRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
+  '/attendance/$username': typeof AttendanceUsernameRoute
   '/home/$section': typeof HomeSectionRoute
   '/admin/': typeof AdminIndexRoute
+  '/attendance/': typeof AttendanceIndexRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
@@ -257,6 +282,7 @@ export interface FileRoutesByTo {
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRouteWithChildren
+  '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
@@ -267,13 +293,14 @@ export interface FileRoutesByTo {
   '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
-  '/admin/login': typeof AdminLoginRoute
   '/admin/operational-team': typeof AdminOperationalTeamRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/attendance/$username': typeof AttendanceUsernameRoute
   '/home/$section': typeof HomeSectionRoute
   '/admin': typeof AdminIndexRoute
+  '/attendance': typeof AttendanceIndexRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
@@ -286,9 +313,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/$brandSlug': typeof BrandSlugRoute
+  '/attendance': typeof AttendanceRouteWithChildren
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRouteWithChildren
+  '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/admin/ai-chat': typeof AdminAiChatRoute
@@ -300,14 +329,15 @@ export interface FileRoutesById {
   '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
-  '/admin/login': typeof AdminLoginRoute
   '/admin/operational-team': typeof AdminOperationalTeamRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
+  '/attendance/$username': typeof AttendanceUsernameRoute
   '/home/$section': typeof HomeSectionRoute
   '/admin/': typeof AdminIndexRoute
+  '/attendance/': typeof AttendanceIndexRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
@@ -321,9 +351,11 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/$brandSlug'
+    | '/attendance'
     | '/booking'
     | '/dashboard'
     | '/home'
+    | '/login'
     | '/menu'
     | '/admin/finance'
     | '/admin/ai-chat'
@@ -335,14 +367,15 @@ export interface FileRouteTypes {
     | '/admin/hpp-calculator'
     | '/admin/inventory'
     | '/admin/kitchen'
-    | '/admin/login'
     | '/admin/operational-team'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/recipe'
     | '/admin/settings'
+    | '/attendance/$username'
     | '/home/$section'
     | '/admin/'
+    | '/attendance/'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
@@ -356,6 +389,7 @@ export interface FileRouteTypes {
     | '/booking'
     | '/dashboard'
     | '/home'
+    | '/login'
     | '/menu'
     | '/admin/ai-chat'
     | '/admin/bar'
@@ -366,13 +400,14 @@ export interface FileRouteTypes {
     | '/admin/hpp-calculator'
     | '/admin/inventory'
     | '/admin/kitchen'
-    | '/admin/login'
     | '/admin/operational-team'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
+    | '/attendance/$username'
     | '/home/$section'
     | '/admin'
+    | '/attendance'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
@@ -384,9 +419,11 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/$brandSlug'
+    | '/attendance'
     | '/booking'
     | '/dashboard'
     | '/home'
+    | '/login'
     | '/menu'
     | '/admin/finance'
     | '/admin/ai-chat'
@@ -398,14 +435,15 @@ export interface FileRouteTypes {
     | '/admin/hpp-calculator'
     | '/admin/inventory'
     | '/admin/kitchen'
-    | '/admin/login'
     | '/admin/operational-team'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/recipe'
     | '/admin/settings'
+    | '/attendance/$username'
     | '/home/$section'
     | '/admin/'
+    | '/attendance/'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
@@ -418,9 +456,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   BrandSlugRoute: typeof BrandSlugRoute
+  AttendanceRoute: typeof AttendanceRouteWithChildren
   BookingRoute: typeof BookingRoute
   DashboardRoute: typeof DashboardRoute
   HomeRoute: typeof HomeRouteWithChildren
+  LoginRoute: typeof LoginRoute
   MenuRoute: typeof MenuRoute
 }
 
@@ -431,6 +471,13 @@ declare module '@tanstack/react-router' {
       path: '/menu'
       fullPath: '/menu'
       preLoaderRoute: typeof MenuRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/home': {
@@ -454,6 +501,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BookingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/attendance': {
+      id: '/attendance'
+      path: '/attendance'
+      fullPath: '/attendance'
+      preLoaderRoute: typeof AttendanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$brandSlug': {
       id: '/$brandSlug'
       path: '/$brandSlug'
@@ -475,6 +529,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/attendance/': {
+      id: '/attendance/'
+      path: '/'
+      fullPath: '/attendance/'
+      preLoaderRoute: typeof AttendanceIndexRouteImport
+      parentRoute: typeof AttendanceRoute
+    }
     '/admin/': {
       id: '/admin/'
       path: '/'
@@ -488,6 +549,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/home/$section'
       preLoaderRoute: typeof HomeSectionRouteImport
       parentRoute: typeof HomeRoute
+    }
+    '/attendance/$username': {
+      id: '/attendance/$username'
+      path: '/$username'
+      fullPath: '/attendance/$username'
+      preLoaderRoute: typeof AttendanceUsernameRouteImport
+      parentRoute: typeof AttendanceRoute
     }
     '/admin/settings': {
       id: '/admin/settings'
@@ -522,13 +590,6 @@ declare module '@tanstack/react-router' {
       path: '/operational-team'
       fullPath: '/admin/operational-team'
       preLoaderRoute: typeof AdminOperationalTeamRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/login': {
-      id: '/admin/login'
-      path: '/login'
-      fullPath: '/admin/login'
-      preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/kitchen': {
@@ -688,7 +749,6 @@ interface AdminRouteRouteChildren {
   AdminHppCalculatorRoute: typeof AdminHppCalculatorRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminKitchenRoute: typeof AdminKitchenRoute
-  AdminLoginRoute: typeof AdminLoginRoute
   AdminOperationalTeamRoute: typeof AdminOperationalTeamRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
@@ -708,7 +768,6 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminHppCalculatorRoute: AdminHppCalculatorRoute,
   AdminInventoryRoute: AdminInventoryRoute,
   AdminKitchenRoute: AdminKitchenRoute,
-  AdminLoginRoute: AdminLoginRoute,
   AdminOperationalTeamRoute: AdminOperationalTeamRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
@@ -719,6 +778,20 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
   AdminRouteRouteChildren,
+)
+
+interface AttendanceRouteChildren {
+  AttendanceUsernameRoute: typeof AttendanceUsernameRoute
+  AttendanceIndexRoute: typeof AttendanceIndexRoute
+}
+
+const AttendanceRouteChildren: AttendanceRouteChildren = {
+  AttendanceUsernameRoute: AttendanceUsernameRoute,
+  AttendanceIndexRoute: AttendanceIndexRoute,
+}
+
+const AttendanceRouteWithChildren = AttendanceRoute._addFileChildren(
+  AttendanceRouteChildren,
 )
 
 interface HomeRouteChildren {
@@ -735,9 +808,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   BrandSlugRoute: BrandSlugRoute,
+  AttendanceRoute: AttendanceRouteWithChildren,
   BookingRoute: BookingRoute,
   DashboardRoute: DashboardRoute,
   HomeRoute: HomeRouteWithChildren,
+  LoginRoute: LoginRoute,
   MenuRoute: MenuRoute,
 }
 export const routeTree = rootRouteImport
