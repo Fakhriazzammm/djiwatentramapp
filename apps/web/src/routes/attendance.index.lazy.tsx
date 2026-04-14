@@ -126,10 +126,12 @@ function AttendancePage() {
 			isCurrentlyIn
 		});
 
-		if (!staff.faceDescriptor) {
+		if (!staff.hasFace) {
 			setStep("pin"); // Need PIN to enroll
+			setIsEnrolling(true);
 		} else {
 			setStep("face");
+			setIsEnrolling(false);
 		}
 	};
 
@@ -183,12 +185,25 @@ function AttendancePage() {
 
 		setIsVerifyingPin(true);
 		try {
-			// Just use existing mutation to check if PIN is correct
-			await verifyPin({ userId: user?.id as any, pinCode: pin });
-			setStep("face");
-			setIsEnrolling(true);
-		} catch (err) {
-			toast.error("PIN salah. Pendaftaran wajah dibatalkan.");
+			// 1. Verify PIN and get user data
+			const result = await verifyPin({ pinCode: pin });
+			
+			// 2. Security: Ensure the PIN belongs to the selected user (if one was selected)
+			if (user && result.userId !== user.id) {
+				toast.error("PIN ini bukan milik Anda.");
+				setIsVerifyingPin(false);
+				return;
+			}
+
+			// 3. If we were enrolling, move to face step
+			if (isEnrolling && !user?.faceDescriptor) {
+				setStep("face");
+			} else {
+				// 4. Otherwise, this was a PIN fallback attendance
+				await handleFaceProcessed(); // Process attendance directly
+			}
+		} catch (err: any) {
+			toast.error(err.message || "PIN salah.");
 		} finally {
 			setIsVerifyingPin(false);
 		}
@@ -479,35 +494,57 @@ function AttendancePage() {
 										mode={isEnrolling ? "enroll" : "verify"}
 										onCapture={isEnrolling ? handleFaceProcessed : undefined}
 										onMatch={!isEnrolling ? () => handleFaceProcessed() : undefined}
+										onModelError={() => {
+											if (!isEnrolling) {
+												toast.error("Gagal memuat sistem wajah. Silakan gunakan PIN.");
+												setStep("pin");
+											}
+										}}
 										targetDescriptor={user?.faceDescriptor}
 									/>
 								)}
 							</div>
 
-							<div className="flex flex-col sm:flex-row items-center gap-3">
-								{!isEnrolling && (
-									<Button 
-										className="h-11 w-full sm:flex-1 rounded-2xl font-bold"
-										onClick={() => {
-											setIsEnrolling(true);
-											setStep("pin");
-											toast.info("Masukkan PIN untuk mendaftarkan wajah baru.");
-										}}
-									>
-										DAFTAR ULANG WAJAH
-									</Button>
-								)}
-								<Button 
-									className="h-11 w-full sm:flex-1 rounded-2xl" 
-									onClick={() => {
-										setStep("select");
-										setIsEnrolling(false);
-									}} 
-									variant="outline"
-								>
-									Ganti Identitas
-								</Button>
-							</div>
+								<div className="flex flex-col gap-3">
+									{!isEnrolling && (
+										<Button 
+											className="h-11 w-full rounded-2xl font-bold bg-amber-500 hover:bg-amber-600 text-white"
+											onClick={() => {
+												setStep("pin");
+												toast.info("Masukkan PIN untuk absen manual.");
+											}}
+										>
+											<KeyRound className="mr-2 h-4 w-4" />
+											ABSEN DENGAN PIN (FALLBACK)
+										</Button>
+									)}
+									
+									<div className="flex items-center gap-3">
+										{!isEnrolling && (
+											<Button 
+												className="h-11 flex-1 rounded-2xl font-bold"
+												variant="secondary"
+												onClick={() => {
+													setIsEnrolling(true);
+													setStep("pin");
+													toast.info("Masukkan PIN untuk mendaftarkan wajah baru.");
+												}}
+											>
+												DAFTAR ULANG WAJAH
+											</Button>
+										)}
+										<Button 
+											className="h-11 flex-1 rounded-2xl" 
+											onClick={() => {
+												setStep("select");
+												setIsEnrolling(false);
+											}} 
+											variant="outline"
+										>
+											Ganti Identitas
+										</Button>
+									</div>
+								</div>
 						</motion.div>
 					)}
 

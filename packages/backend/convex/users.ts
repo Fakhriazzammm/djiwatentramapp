@@ -663,6 +663,7 @@ export const getPublicUsers = query({
 			name: u.name,
 			slug: u.slug || u.username.split("@")[0],
 			initial: u.name.charAt(0).toUpperCase(),
+			hasFace: !!u.faceDescriptor,
 		})).sort((a, b) => a.name.localeCompare(b.name));
 	},
 });

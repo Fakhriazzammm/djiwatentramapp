@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 interface FaceRecognitionProps {
 	onMatch?: (descriptor: number[]) => void;
 	onCapture?: (descriptor: number[]) => void;
+	onModelError?: (error: string) => void;
 	targetDescriptor?: number[];
 	mode: "enroll" | "verify";
 	className?: string;
@@ -27,7 +28,7 @@ const MODEL_PATH_CANDIDATES = (() => {
 async function canReachModelManifest(path: string) {
 	try {
 		const response = await fetch(
-			`${path}/ssd_mobilenetv1_model-weights_manifest.json`,
+			`${path}/tiny_face_detector_model-weights_manifest.json`,
 			{ method: "GET", cache: "no-store" }
 		);
 		return response.ok;
@@ -39,6 +40,7 @@ async function canReachModelManifest(path: string) {
 export function FaceRecognition({
 	onMatch,
 	onCapture,
+	onModelError,
 	targetDescriptor,
 	mode,
 	className = "",
@@ -71,7 +73,7 @@ export function FaceRecognition({
 				if (!manifestExists) continue;
 
 				try {
-					await faceapi.nets.ssdMobilenetv1.loadFromUri(candidatePath);
+					await faceapi.nets.tinyFaceDetector.loadFromUri(candidatePath);
 					await faceapi.nets.faceLandmark68Net.loadFromUri(candidatePath);
 					await faceapi.nets.faceRecognitionNet.loadFromUri(candidatePath);
 					if (!cancelled) {
@@ -85,9 +87,9 @@ export function FaceRecognition({
 			}
 
 			if (!cancelled) {
-				setError(
-					"Gagal memuat model pendeteksi wajah. Pastikan file model tersedia dan dapat diakses aplikasi."
-				);
+				const errorMsg = "Gagal memuat model pendeteksi wajah. Pastikan file model tersedia dan dapat diakses aplikasi.";
+				setError(errorMsg);
+				onModelError?.(errorMsg);
 			}
 		};
 
@@ -116,7 +118,7 @@ export function FaceRecognition({
 
 			try {
 				const detection = await faceapi
-					.detectSingleFace(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+					.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
 					.withFaceLandmarks();
 
 				if (detection) {
@@ -167,7 +169,7 @@ export function FaceRecognition({
 			if (!video) throw new Error("Video not available");
 
 			const detections = await faceapi
-				.detectSingleFace(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+				.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
 				.withFaceLandmarks()
 				.withFaceDescriptor();
 
