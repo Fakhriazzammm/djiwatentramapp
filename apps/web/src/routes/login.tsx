@@ -64,9 +64,6 @@ function LoginPage() {
 			
 			toast.success(`Selamat datang, ${result.user.name}`);
 			setPin("");
-			
-			// Redirect to home (Root guard will handle staff-specific redirects if needed)
-			navigate({ to: "/home" as any });
 		} catch (err: any) {
 			toast.error(err.message || "PIN salah");
 			setPin("");
@@ -85,7 +82,7 @@ function LoginPage() {
 	// Redirect when already authenticated
 	useEffect(() => {
 		if (isAuthenticated) {
-			navigate({ to: "/home" as any });
+			navigate({ to: "/home" as any, replace: true });
 		}
 	}, [isAuthenticated, navigate]);
 

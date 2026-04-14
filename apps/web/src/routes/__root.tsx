@@ -19,12 +19,12 @@ function RootComponent() {
 		
 		if (!isAuthenticated) {
 			if (!isLoginPage) {
-				navigate({ to: "/login" as any });
+				navigate({ to: "/login" as any, replace: true });
 			}
 		} else {
 			// If we are authenticated and on the login page, move to home
 			if (isLoginPage) {
-				navigate({ to: "/home" as any });
+				navigate({ to: "/home" as any, replace: true });
 			}
 		}
 	}, [isAuthenticated, isLoading, isStaff, user, location.pathname, navigate]);
