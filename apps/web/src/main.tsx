@@ -28,7 +28,12 @@ declare module "@tanstack/react-router" {
 }
 
 const rootElement = document.getElementById("root")!;
-registerSW();
+let updateSW: ((reloadPage?: boolean) => Promise<void>) | undefined;
+updateSW = registerSW({
+	onNeedRefresh() {
+		void updateSW?.(true);
+	},
+});
 
 if (!rootElement.innerHTML) {
 	const root = ReactDOM.createRoot(rootElement);

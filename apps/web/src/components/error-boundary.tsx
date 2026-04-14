@@ -10,6 +10,24 @@ interface State {
 	countdown: number;
 }
 
+const CHUNK_RELOAD_SESSION_KEY = "__chunk_reload_once__";
+
+function isChunkLoadError(error: unknown): boolean {
+	const message =
+		error instanceof Error
+			? `${error.name} ${error.message}`
+			: typeof error === "string"
+				? error
+				: "";
+	const normalized = message.toLowerCase();
+	return (
+		normalized.includes("failed to fetch dynamically imported module") ||
+		normalized.includes("importing a module script failed") ||
+		normalized.includes("chunkloaderror") ||
+		normalized.includes("loading chunk")
+	);
+}
+
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - Error boundaries require class components
 export class ErrorBoundary extends Component<Props, State> {
@@ -33,6 +51,10 @@ export class ErrorBoundary extends Component<Props, State> {
 	componentDidCatch(error: Error) {
 		// Keep logging for observability/debugging in browser console.
 		console.error("Runtime error caught by ErrorBoundary:", error);
+		if (isChunkLoadError(error)) {
+			void this.recoverFromChunkLoadError();
+			return;
+		}
 		this.startAutoRetryCountdown();
 	}
 
@@ -75,6 +97,10 @@ export class ErrorBoundary extends Component<Props, State> {
 			event.error instanceof Error
 				? event.error
 				: new Error(event.message || "Unknown runtime error");
+		if (isChunkLoadError(nextError)) {
+			void this.recoverFromChunkLoadError();
+			return;
+		}
 		this.setState({ hasError: true, error: nextError, countdown: this.retryDelaySeconds });
 	};
 
@@ -84,7 +110,41 @@ export class ErrorBoundary extends Component<Props, State> {
 			reason instanceof Error
 				? reason
 				: new Error(typeof reason === "string" ? reason : "Unhandled promise rejection");
+		if (isChunkLoadError(nextError)) {
+			void this.recoverFromChunkLoadError();
+			return;
+		}
 		this.setState({ hasError: true, error: nextError, countdown: this.retryDelaySeconds });
+	};
+
+	private recoverFromChunkLoadError = async () => {
+		const alreadyRetried = sessionStorage.getItem(CHUNK_RELOAD_SESSION_KEY) === "1";
+		if (alreadyRetried) {
+			this.setState({
+				hasError: true,
+				error: new Error(
+					"Gagal memuat aset aplikasi terbaru. Coba hard refresh (Ctrl+F5) atau tutup-tab buka lagi."
+				),
+				countdown: this.retryDelaySeconds,
+			});
+			this.startAutoRetryCountdown();
+			return;
+		}
+
+		sessionStorage.setItem(CHUNK_RELOAD_SESSION_KEY, "1");
+
+		try {
+			if ("serviceWorker" in navigator) {
+				const registrations = await navigator.serviceWorker.getRegistrations();
+				await Promise.all(registrations.map((registration) => registration.update()));
+			}
+		} catch (error) {
+			console.warn("Failed to update service worker before reload:", error);
+		}
+
+		const url = new URL(window.location.href);
+		url.searchParams.set("r", Date.now().toString());
+		window.location.replace(url.toString());
 	};
 
 	private handleRefresh = () => {

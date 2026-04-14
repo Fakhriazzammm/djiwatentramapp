@@ -48,7 +48,6 @@ import {
 	type ReceiptPrintMode,
 } from "@/lib/bluetooth-printer";
 import { cn } from "@/lib/utils";
-import { ShiftTargetBanner } from "@/components/pos/ShiftTargetBanner";
 import { getOfflineManager, queueOfflineAction } from "@/lib/offline-manager";
 import {
 	buildReceiptMetaFromCart,
@@ -61,6 +60,52 @@ const fmt = (n: number) =>
 		currency: "IDR",
 		maximumFractionDigits: 0,
 	}).format(n);
+
+type BonusBasis = "shift" | "daily" | "monthly";
+type BonusTier = { thresholdPct: number; bonusAmount: number };
+type RoleBonusConfig = {
+	roleName: string;
+	basis: BonusBasis;
+	tiers: BonusTier[];
+};
+
+function normalizeRoleBonusConfig(role: any): RoleBonusConfig | null {
+	const config = role?.bonusTargetConfig;
+	if (!config?.basis || !Array.isArray(config?.tiers)) return null;
+	const basis = config.basis as BonusBasis;
+	if (basis !== "shift" && basis !== "daily" && basis !== "monthly") return null;
+
+	const tiers = config.tiers
+		.map((tier: any) => ({
+			thresholdPct: Number(tier?.thresholdPct ?? 0),
+			bonusAmount: Number(tier?.bonusAmount ?? 0),
+		}))
+		.filter((tier: BonusTier) => tier.thresholdPct > 0)
+		.sort((a: BonusTier, b: BonusTier) => a.thresholdPct - b.thresholdPct);
+
+	if (tiers.length === 0) return null;
+
+	return {
+		roleName: role?.name || "Role",
+		basis,
+		tiers,
+	};
+}
+
+function summarizeRoleBonus(achievementPct: number, config: RoleBonusConfig) {
+	const safePct = Number.isFinite(achievementPct) ? Math.max(achievementPct, 0) : 0;
+	const reached = config.tiers.filter((tier) => safePct >= tier.thresholdPct);
+	const nextTier = config.tiers.find((tier) => safePct < tier.thresholdPct) ?? null;
+	const achievedBonus = reached.reduce((sum, tier) => sum + tier.bonusAmount, 0);
+
+	return {
+		roleName: config.roleName,
+		achievementPct: safePct,
+		achievedBonus,
+		reachedThresholds: reached.map((tier) => tier.thresholdPct),
+		nextTier,
+	};
+}
 
 export const Route = createLazyFileRoute("/menu")({
 	component: MenuPage,
@@ -216,6 +261,8 @@ function MenuPage() {
 	const categories = useQuery(api.products.getCategories);
 	const activeDiscounts = useQuery(api.discounts.getActiveDiscounts);
 	const allDiscounts = useQuery(api.discounts.getDiscounts);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const roles = useQuery((api as any).roles.getRoles);
 	const createOrder = useMutation(api.orders.createOrder);
 	const createMayarInvoice = useAction(api.mayar.createInvoice);
 
@@ -366,6 +413,63 @@ function MenuPage() {
 	const [isTargetExpanded, setIsTargetExpanded] = useState(false);
 	const [isSearchActive, setIsSearchActive] = useState(false);
 	const progress = useQuery(api.finance.getCurrentMonthProgress);
+
+	const shiftPct = useMemo(
+		() =>
+			progress?.shiftTarget
+				? (progress.shiftCollected / progress.shiftTarget) * 100
+				: 0,
+		[progress?.shiftCollected, progress?.shiftTarget]
+	);
+	const dailyPct = useMemo(
+		() =>
+			progress?.dailyTarget
+				? (progress.dailyCollected / progress.dailyTarget) * 100
+				: 0,
+		[progress?.dailyCollected, progress?.dailyTarget]
+	);
+	const monthlyPct = useMemo(
+		() => progress?.progressPct ?? 0,
+		[progress?.progressPct]
+	);
+
+	const roleBonusConfigs = useMemo(
+		() => (roles ?? []).map((role: any) => normalizeRoleBonusConfig(role)).filter(Boolean) as RoleBonusConfig[],
+		[roles]
+	);
+
+	const shiftBonusSummary = useMemo(
+		() =>
+			roleBonusConfigs
+				.filter((config) => config.basis === "shift")
+				.map((config) => summarizeRoleBonus(shiftPct, config)),
+		[roleBonusConfigs, shiftPct]
+	);
+
+	const dailyBonusSummary = useMemo(
+		() =>
+			roleBonusConfigs
+				.filter((config) => config.basis === "daily")
+				.map((config) => summarizeRoleBonus(dailyPct, config)),
+		[roleBonusConfigs, dailyPct]
+	);
+
+	const monthlyBonusSummary = useMemo(
+		() =>
+			roleBonusConfigs
+				.filter((config) => config.basis === "monthly")
+				.map((config) => summarizeRoleBonus(monthlyPct, config)),
+		[roleBonusConfigs, monthlyPct]
+	);
+
+	const totalShiftBonusNow = useMemo(
+		() => shiftBonusSummary.reduce((sum, item) => sum + item.achievedBonus, 0),
+		[shiftBonusSummary]
+	);
+	const totalDailyBonusNow = useMemo(
+		() => dailyBonusSummary.reduce((sum, item) => sum + item.achievedBonus, 0),
+		[dailyBonusSummary]
+	);
 
 	useEffect(() => {
 		const updateColumns = () => {
@@ -1209,25 +1313,48 @@ function MenuPage() {
 								<div className="space-y-1">
 									<div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-widest text-muted-foreground/80 mb-0.5">
 										<span>Shift</span>
-										<span>{Math.round((progress.shiftCollected / (progress.shiftTarget || 1)) * 100)}%</span>
+										<span>{Math.round(shiftPct)}%</span>
 									</div>
 									<div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
 										<motion.div 
 											className="h-full bg-primary"
 											initial={{ width: 0 }}
-											animate={{ width: `${Math.min(100, (progress.shiftCollected / (progress.shiftTarget || 1)) * 100)}%` }}
+											animate={{ width: `${Math.min(100, shiftPct)}%` }}
 										/>
 									</div>
+									{shiftBonusSummary.length > 0 && (
+										<p className="text-[8px] font-black text-primary/80 leading-none pt-0.5">
+											Bonus Shift: {fmt(totalShiftBonusNow)}
+										</p>
+									)}
 									<AnimatePresence>
 										{isTargetExpanded && (
-											<motion.p 
+											<motion.div 
 												initial={{ opacity: 0, height: 0 }}
 												animate={{ opacity: 1, height: "auto" }}
 												exit={{ opacity: 0, height: 0 }}
-												className="text-[9px] font-bold text-muted-foreground/60 leading-none pt-1"
+												className="space-y-1 pt-1"
 											>
-												{fmt(progress.shiftCollected)} / {fmt(progress.shiftTarget)}
-											</motion.p>
+												<p className="text-[9px] font-bold text-muted-foreground/60 leading-none">
+													{fmt(progress.shiftCollected)} / {fmt(progress.shiftTarget)}
+												</p>
+												{shiftBonusSummary.length > 0 && (
+													<div className="space-y-1">
+														{shiftBonusSummary.map((item) => (
+															<div key={`shift-${item.roleName}`} className="rounded-md bg-primary/5 px-1.5 py-1 text-[8px] leading-tight">
+																<p className="font-black uppercase tracking-wide text-primary">
+																	{item.roleName} - Bonus: {fmt(item.achievedBonus)}
+																</p>
+																<p className="font-semibold text-muted-foreground/80">
+																	{item.nextTier
+																		? `Capai ${item.nextTier.thresholdPct}% untuk +${fmt(item.nextTier.bonusAmount)}`
+																		: "Semua level bonus shift tercapai"}
+																</p>
+															</div>
+														))}
+													</div>
+												)}
+											</motion.div>
 										)}
 									</AnimatePresence>
 								</div>
@@ -1236,29 +1363,81 @@ function MenuPage() {
 								<div className="space-y-1">
 									<div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-widest text-muted-foreground/80 mb-0.5">
 										<span>Harian</span>
-										<span>{Math.round((progress.dailyCollected / (progress.dailyTarget || 1)) * 100)}%</span>
+										<span>{Math.round(dailyPct)}%</span>
 									</div>
 									<div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
 										<motion.div 
 											className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.2)]"
 											initial={{ width: 0 }}
-											animate={{ width: `${Math.min(100, (progress.dailyCollected / (progress.dailyTarget || 1)) * 100)}%` }}
+											animate={{ width: `${Math.min(100, dailyPct)}%` }}
 										/>
 									</div>
+									{dailyBonusSummary.length > 0 && (
+										<p className="text-[8px] font-black text-blue-600/80 leading-none pt-0.5">
+											Bonus Harian: {fmt(totalDailyBonusNow)}
+										</p>
+									)}
 									<AnimatePresence>
 										{isTargetExpanded && (
-											<motion.p 
+											<motion.div 
 												initial={{ opacity: 0, height: 0 }}
 												animate={{ opacity: 1, height: "auto" }}
 												exit={{ opacity: 0, height: 0 }}
-												className="text-[9px] font-bold text-muted-foreground/60 leading-none pt-1"
+												className="space-y-1 pt-1"
 											>
-												{fmt(progress.dailyCollected)} / {fmt(progress.dailyTarget)}
-											</motion.p>
+												<p className="text-[9px] font-bold text-muted-foreground/60 leading-none">
+													{fmt(progress.dailyCollected)} / {fmt(progress.dailyTarget)}
+												</p>
+												{dailyBonusSummary.length > 0 && (
+													<div className="space-y-1">
+														{dailyBonusSummary.map((item) => (
+															<div key={`daily-${item.roleName}`} className="rounded-md bg-blue-500/5 px-1.5 py-1 text-[8px] leading-tight">
+																<p className="font-black uppercase tracking-wide text-blue-700 dark:text-blue-400">
+																	{item.roleName} - Bonus: {fmt(item.achievedBonus)}
+																</p>
+																<p className="font-semibold text-muted-foreground/80">
+																	{item.nextTier
+																		? `Capai ${item.nextTier.thresholdPct}% untuk +${fmt(item.nextTier.bonusAmount)}`
+																		: "Semua level bonus harian tercapai"}
+																</p>
+															</div>
+														))}
+													</div>
+												)}
+											</motion.div>
 										)}
 									</AnimatePresence>
 								</div>
 							</div>
+
+							<AnimatePresence>
+								{isTargetExpanded && monthlyBonusSummary.length > 0 && (
+									<motion.div
+										initial={{ opacity: 0, height: 0 }}
+										animate={{ opacity: 1, height: "auto" }}
+										exit={{ opacity: 0, height: 0 }}
+										className="mt-2 rounded-md border border-emerald-200/60 bg-emerald-50/70 px-2 py-1.5 dark:border-emerald-400/20 dark:bg-emerald-500/10"
+									>
+										<p className="text-[8px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+											Bonus Bulanan ({Math.round(monthlyPct)}%)
+										</p>
+										<div className="mt-1 space-y-1">
+											{monthlyBonusSummary.map((item) => (
+												<div key={`monthly-${item.roleName}`} className="text-[8px] leading-tight">
+													<p className="font-black text-emerald-700 dark:text-emerald-300">
+														{item.roleName} - Bonus: {fmt(item.achievedBonus)}
+													</p>
+													<p className="font-semibold text-emerald-700/80 dark:text-emerald-200/80">
+														{item.nextTier
+															? `Capai ${item.nextTier.thresholdPct}% untuk +${fmt(item.nextTier.bonusAmount)}`
+															: "Semua level bonus bulanan tercapai"}
+													</p>
+												</div>
+											))}
+										</div>
+									</motion.div>
+								)}
+							</AnimatePresence>
 						</div>
 					)}
 				</header>
