@@ -73,6 +73,21 @@ function formatRupiah(value: number) {
 	}).format(value);
 }
 
+function getRecipeAmountHint(item?: Doc<"inventory">) {
+	if (!item) {
+		return "Isi angka sesuai satuan bahan di inventory.";
+	}
+	if (
+		item.unit === "pcs" &&
+		typeof item.conversionFactor === "number" &&
+		item.conversionFactor > 0 &&
+		item.displayUnit
+	) {
+		return `Satuan recipe: pcs. Patokan: 1 pcs = ${item.conversionFactor} ${item.displayUnit}.`;
+	}
+	return `Satuan recipe: ${item.unit} per porsi.`;
+}
+
 function HeaderCard({
 	mode,
 }: {
@@ -472,6 +487,10 @@ function IngredientEditor({
 				</datalist>
 			</div>
 			<div className="space-y-2">
+				<p className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+					Input jumlah di recipe harus mengikuti satuan dasar inventory:{" "}
+					<span className="font-semibold text-foreground">gram / ml / pcs</span> per porsi.
+				</p>
 				{ingredients.map((ingredient, index) => {
 					const inv = inventory.find((item) => item._id === ingredient.inventoryId);
 					const latestCost =
@@ -491,9 +510,14 @@ function IngredientEditor({
 										? `${formatRupiah(Math.round(unitCost))}/${inv?.unit || "unit"} • ${formatRupiah(Math.round(lineCost ?? 0))}`
 										: "Harga bahan belum tersedia di inventory"}
 								</p>
+								<p className={`text-[11px] text-muted-foreground ${tableCellSingleLine()}`}>
+									{getRecipeAmountHint(inv)}
+								</p>
 							</div>
 							<Input
 								min="0"
+								placeholder={inv ? `${inv.unit} / porsi` : "jumlah / porsi"}
+								step="0.01"
 								onChange={(event) => {
 									const amount = Number(event.target.value);
 									setIngredients(
@@ -526,7 +550,7 @@ function IngredientEditor({
 				)}
 				{ingredients.length > 0 && (
 					<div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-						Estimasi biaya bahan per porsi:{" "}
+						Estimasi biaya bahan per porsi (berdasarkan satuan input recipe):{" "}
 						<span className="font-semibold text-foreground">
 							{formatRupiah(Math.round(totalEstimatedCost))}
 						</span>{" "}

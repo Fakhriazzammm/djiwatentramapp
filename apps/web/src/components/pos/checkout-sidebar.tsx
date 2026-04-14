@@ -36,7 +36,7 @@ export function CheckoutSidebar({
 	onConfirmPayment,
 	isSubmitting = false,
 	onClose,
-	initialStep = "customer",
+	initialStep = "menu",
 	lastOrderId,
 	onPrintLastOrder,
 	onPrintOpenBill,
@@ -87,7 +87,7 @@ export function CheckoutSidebar({
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
 	const [activeStep, setActiveStep] = useState<"customer" | "menu" | "payment">(
-		initialStep || (customerInfo.isSubmitted ? "menu" : "customer")
+		initialStep || "menu"
 	);
 	
 	// Payment State
@@ -104,10 +104,10 @@ export function CheckoutSidebar({
 			maximumFractionDigits: 0,
 		}).format(n);
 
-	// Reset to step 1 when cart is cleared (after successful payment)
+	// Reset to step 1 (menu) when cart is cleared (after successful payment)
 	useEffect(() => {
-		if (items.length === 0 && !customerInfo.isSubmitted && activeStep !== "customer") {
-			setActiveStep("customer");
+		if (items.length === 0 && !customerInfo.isSubmitted && activeStep !== "menu") {
+			setActiveStep("menu");
 		}
 	}, [items.length, activeStep, customerInfo.isSubmitted]);
 
@@ -272,17 +272,17 @@ export function CheckoutSidebar({
 					<div className="flex items-center gap-1.5 sm:gap-2">
 						<div className={cn(
 							"flex h-7.5 w-7.5 items-center justify-center rounded-full text-[11px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
-							activeStep === "customer" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
+							activeStep === "menu" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
 						)}>1</div>
-						<span className={cn("text-[13px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "customer" ? "text-foreground" : "text-muted-foreground")}>Info</span>
+						<span className={cn("text-[13px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "menu" ? "text-foreground" : "text-muted-foreground")}>Menu</span>
 					</div>
 					<ChevronRight className="mx-0.5 h-3.5 w-3.5 text-muted-foreground/40 md:h-3.5 md:w-3.5" />
 					<div className="flex items-center gap-1.5 sm:gap-2">
 						<div className={cn(
 							"flex h-7.5 w-7.5 items-center justify-center rounded-full text-[11px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
-							activeStep === "menu" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
+							activeStep === "customer" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
 						)}>2</div>
-						<span className={cn("text-[13px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "menu" ? "text-foreground" : "text-muted-foreground")}>Menu</span>
+						<span className={cn("text-[13px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "customer" ? "text-foreground" : "text-muted-foreground")}>Info</span>
 					</div>
 					<ChevronRight className="mx-0.5 h-3.5 w-3.5 text-muted-foreground/40 md:h-3.5 md:w-3.5" />
 					<div className="flex items-center gap-1.5 sm:gap-2">
@@ -446,7 +446,7 @@ export function CheckoutSidebar({
 									className="h-7 px-2 text-[10px] text-muted-foreground font-bold"
 									onClick={() => setActiveStep("customer")}
 								>
-									<ChevronLeft className="mr-1 h-3 w-3" /> Edit Info
+									<ChevronRight className="mr-1 h-3 w-3" /> Isi Info
 								</Button>
 							</div>
 
@@ -569,9 +569,9 @@ export function CheckoutSidebar({
 									variant="ghost" 
 									size="sm" 
 									className="h-7 px-2 text-[10px] text-muted-foreground font-bold"
-									onClick={() => setActiveStep("menu")}
+									onClick={() => setActiveStep("customer")}
 								>
-									<ChevronLeft className="mr-1 h-3 w-3" /> Edit Menu
+									<ChevronLeft className="mr-1 h-3 w-3" /> Edit Info
 								</Button>
 							</div>
 
@@ -738,15 +738,16 @@ export function CheckoutSidebar({
 					<Button
 						onClick={() => {
 							updateCustomerInfo({ isSubmitted: true });
-							if (items.length === 0 && onClose) {
-								onClose();
-							} else {
-								setActiveStep("menu");
+							if (!isShiftOpen) {
+								toast.error("Buka shift terlebih dahulu di Dashboard");
+								return;
 							}
+							setActiveStep("payment");
 						}}
+						disabled={items.length === 0 || !isShiftOpen}
 						className="h-11 w-full text-xs font-bold shadow-md"
 					>
-						Lanjut Pilih Menu <ChevronRight className="ml-2 h-4 w-4" />
+						Lanjut Bayar <ChevronRight className="ml-2 h-4 w-4" />
 					</Button>
 				)}
 
@@ -785,16 +786,12 @@ export function CheckoutSidebar({
 							</Button>
 							<Button
 								onClick={() => {
-									if (!isShiftOpen) {
-										toast.error("Buka shift terlebih dahulu di Dashboard");
-										return;
-									}
-									setActiveStep("payment");
+									setActiveStep("customer");
 								}}
-								disabled={items.length === 0 || !isShiftOpen}
+								disabled={items.length === 0}
 								className="h-11 min-w-0 px-3 text-[11px] sm:text-xs font-bold shadow-md"
 							>
-								<span className="truncate">Lanjut Bayar</span>
+								<span className="truncate">Lanjut Info</span>
 								<ChevronRight className="ml-1 h-4 w-4 shrink-0" />
 							</Button>
 						</div>

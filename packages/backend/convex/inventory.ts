@@ -1010,6 +1010,162 @@ export const getInventoryPriceInsights = query({
 	},
 });
 
+export const getRealtimePriceMonitor = query({
+	args: {
+		limit: v.optional(v.number()),
+		search: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const limit = Math.max(20, Math.min(500, Math.floor(args.limit ?? 200)));
+		const keyword = (args.search ?? "").trim().toLowerCase();
+
+		const [items, stores, restockRows] = await Promise.all([
+			ctx.db.query("inventory").collect(),
+			ctx.db.query("inventoryStores").collect(),
+			ctx.db
+				.query("inventoryTransactions")
+				.withIndex("by_type_and_timestamp", (q) => q.eq("type", "restock"))
+				.order("desc")
+				.take(1200),
+		]);
+
+		const storeById = buildStoreLookup(stores);
+		const itemById = new Map<string, Doc<"inventory">>();
+		for (const item of items) {
+			itemById.set(String(item._id), item);
+		}
+
+		const aggregate = new Map<
+			string,
+			{
+				inventoryName: string;
+				nameKey: string;
+				unit: string;
+				displayUnit: string | null;
+				conversionFactor: number | null;
+				lastPrice: number;
+				previousPrice: number | null;
+				lastPurchaseAt: number;
+				lastStoreName: string | null;
+				lastBrandName: string | null;
+				totalPurchases: number;
+				storeSet: Set<string>;
+				brandSet: Set<string>;
+				latestInventoryId: Id<"inventory">;
+			}
+		>();
+
+		for (const row of restockRows) {
+			if (typeof row.costPerUnit !== "number" || row.costPerUnit <= 0) {
+				continue;
+			}
+
+			const item = itemById.get(String(row.inventoryId));
+			if (!item) {
+				continue;
+			}
+
+			const rawName = item.ingredientName.trim();
+			if (!rawName) {
+				continue;
+			}
+
+			const nameKey = rawName.toLowerCase();
+			const storeName =
+				row.storeId != null
+					? storeById.get(String(row.storeId))?.name ?? "Toko tidak dikenal"
+					: "Tanpa toko";
+			const brandName = row.brandName?.trim() || item.defaultBrandName?.trim() || null;
+
+			const existing = aggregate.get(nameKey);
+			if (!existing) {
+				const storeSet = new Set<string>();
+				const brandSet = new Set<string>();
+				storeSet.add(storeName);
+				if (brandName) {
+					brandSet.add(brandName);
+				}
+				aggregate.set(nameKey, {
+					inventoryName: rawName,
+					nameKey,
+					unit: item.unit,
+					displayUnit: item.displayUnit ?? null,
+					conversionFactor: item.conversionFactor ?? null,
+					lastPrice: row.costPerUnit,
+					previousPrice: null,
+					lastPurchaseAt: row.timestamp,
+					lastStoreName: storeName,
+					lastBrandName: brandName,
+					totalPurchases: 1,
+					storeSet,
+					brandSet,
+					latestInventoryId: item._id,
+				});
+				continue;
+			}
+
+			existing.totalPurchases += 1;
+			existing.storeSet.add(storeName);
+			if (brandName) {
+				existing.brandSet.add(brandName);
+			}
+			if (existing.previousPrice == null) {
+				existing.previousPrice = row.costPerUnit;
+			}
+		}
+
+		const rows = [...aggregate.values()]
+			.filter((row) => {
+				if (!keyword) {
+					return true;
+				}
+				return [
+					row.inventoryName,
+					row.lastStoreName ?? "",
+					row.lastBrandName ?? "",
+					row.unit,
+					row.displayUnit ?? "",
+				]
+					.join(" ")
+					.toLowerCase()
+					.includes(keyword);
+			})
+			.sort((left, right) => right.lastPurchaseAt - left.lastPurchaseAt)
+			.slice(0, limit)
+			.map((row) => {
+				const priceDelta =
+					row.previousPrice != null
+						? Number((row.lastPrice - row.previousPrice).toFixed(2))
+						: null;
+				return {
+					inventoryId: row.latestInventoryId,
+					ingredientName: row.inventoryName,
+					nameKey: row.nameKey,
+					unit: row.unit,
+					displayUnit: row.displayUnit,
+					conversionFactor: row.conversionFactor,
+					lastPrice: row.lastPrice,
+					previousPrice: row.previousPrice,
+					priceDelta,
+					lastPurchaseAt: row.lastPurchaseAt,
+					lastStoreName: row.lastStoreName,
+					lastBrandName: row.lastBrandName,
+					storeCount: row.storeSet.size,
+					brandCount: row.brandSet.size,
+					totalPurchases: row.totalPurchases,
+				};
+			});
+
+		return {
+			rows,
+			summary: {
+				totalUniqueNames: rows.length,
+				totalRawTransactions: restockRows.length,
+			},
+		};
+	},
+});
+
 export const createInventoryItem = mutation({
 	args: {
 		ingredientName: v.string(),

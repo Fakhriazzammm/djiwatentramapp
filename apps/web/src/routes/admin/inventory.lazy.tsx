@@ -41,7 +41,7 @@ interface ConfirmConfig {
 	variant?: "danger" | "warning" | "info";
 }
 
-type InventoryViewPreset = "all" | "critical" | "planning";
+type InventoryViewPreset = "all" | "critical" | "planning" | "priceMonitor";
 
 type InventoryWorkspaceRow = {
 	inventoryId: Id<"inventory">;
@@ -137,6 +137,30 @@ type InventoryPriceInsights = {
 	}>;
 };
 
+type RealtimePriceMonitorData = {
+	rows: Array<{
+		inventoryId: Id<"inventory">;
+		ingredientName: string;
+		nameKey: string;
+		unit: string;
+		displayUnit: string | null;
+		conversionFactor: number | null;
+		lastPrice: number;
+		previousPrice: number | null;
+		priceDelta: number | null;
+		lastPurchaseAt: number;
+		lastStoreName: string | null;
+		lastBrandName: string | null;
+		storeCount: number;
+		brandCount: number;
+		totalPurchases: number;
+	}>;
+	summary: {
+		totalUniqueNames: number;
+		totalRawTransactions: number;
+	};
+};
+
 function formatCurrency(value?: number | null) {
 	if (value == null || Number.isNaN(value)) {
 		return "-";
@@ -148,11 +172,40 @@ function formatCurrency(value?: number | null) {
 	}).format(value);
 }
 
+function normalizeUnitLabel(unit?: string | null) {
+	const normalized = (unit || "").trim().toLowerCase();
+	if (!normalized) {
+		return "";
+	}
+	return normalized;
+}
+
+function buildConversionHint(
+	unit?: string | null,
+	displayUnit?: string | null,
+	conversionFactor?: number | null
+) {
+	const baseUnit = normalizeUnitLabel(unit);
+	const showUnit = normalizeUnitLabel(displayUnit);
+	const factor = conversionFactor ?? 0;
+
+	if (!showUnit || factor <= 0) {
+		return null;
+	}
+
+	if (baseUnit === "pcs") {
+		return `1 pcs = ${factor} ${showUnit}`;
+	}
+
+	return `1 ${showUnit} = ${factor} ${baseUnit}`;
+}
+
 export const Route = createLazyFileRoute("/admin/inventory")({
 	component: InventoryPage,
 });
 
 function InventoryPage() {
+	const [searchQuery, setSearchQuery] = useState("");
 	const inventory = useQuery(api.inventory.getInventory);
 	const stores = useQuery(api.inventory.listInventoryStores) as
 		| InventoryStore[]
@@ -160,13 +213,16 @@ function InventoryPage() {
 	const workspace = useQuery(api.inventory.getInventoryWorkspace, {
 		daysWindow: 30,
 	}) as InventoryWorkspaceData | undefined;
+	const realtimePriceMonitor = useQuery(api.inventory.getRealtimePriceMonitor, {
+		limit: 300,
+		search: searchQuery || undefined,
+	}) as RealtimePriceMonitorData | undefined;
 	const applyStockAction = useMutation(api.inventory.applyInventoryStockAction);
 	const createItem = useMutation(api.inventory.createInventoryItem);
 	const updateItem = useMutation(api.inventory.updateInventoryItem);
 	const deleteItem = useMutation(api.inventory.deleteInventoryItem);
 	const createStore = useMutation(api.inventory.createInventoryStore);
 
-	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedItem, setSelectedItem] = useState<Doc<"inventory"> | null>(
 		null
 	);
@@ -492,17 +548,21 @@ function InventoryPage() {
 
 			<InventoryControlTowerSummary data={workspace} viewPreset={viewPreset} />
 
-			<InventoryTable
-				addRowSignal={addRowSignal}
-				filteredRows={filteredRows}
-				inventoryMap={inventoryMap}
-				onActionTypeChange={setActionType}
-				onDetailItemChange={setDetailItem}
-				onSelectedItemChange={setSelectedItem}
-				onSort={handleSort}
-				sortConfig={sortConfig}
-				viewPreset={viewPreset}
-			/>
+			{viewPreset === "priceMonitor" ? (
+				<RealtimePriceMonitorTable data={realtimePriceMonitor} />
+			) : (
+				<InventoryTable
+					addRowSignal={addRowSignal}
+					filteredRows={filteredRows}
+					inventoryMap={inventoryMap}
+					onActionTypeChange={setActionType}
+					onDetailItemChange={setDetailItem}
+					onSelectedItemChange={setSelectedItem}
+					onSort={handleSort}
+					sortConfig={sortConfig}
+					viewPreset={viewPreset}
+				/>
+			)}
 
 			<InventoryActionModal
 				actionType={actionType}
@@ -818,7 +878,7 @@ function InventoryModalContent({
 
 				<div className="space-y-4 rounded-lg border border-border bg-muted/30 p-6">
 					<p className="font-bold text-foreground text-[11px] uppercase tracking-widest">
-						Konversi Unit (Opsional)
+						Konversi Unit (Wajib untuk item pcs)
 					</p>
 					<div className="grid grid-cols-2 gap-4">
 						<div className="space-y-1.5">
@@ -865,7 +925,8 @@ function InventoryModalContent({
 					</div>
 					<p className="text-foreground/50 text-[10px] italic leading-snug">
 						* Contoh: Jika Satuan Dasar = ml, Satuan Tampilan = Liter, Isi =
-						1000. Maka 2500 ml akan tampil 2.50 Liter.
+						1000, maka 2500 ml akan tampil 2.50 Liter. Untuk item potong: 1 pcs
+						= 200 gram (isi Satuan Tampilan: gram, Isi: 200).
 					</p>
 				</div>
 
@@ -1896,6 +1957,151 @@ function InventoryDetailDrawer({
 		</div>
 	);
 }
+
+function RealtimePriceMonitorTable({
+	data,
+}: {
+	data: RealtimePriceMonitorData | undefined;
+}) {
+	return (
+		<div className="rounded-xl border border-border/80 bg-card shadow-sm">
+			<div className="border-border border-b px-4 py-3">
+				<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+					Monitoring Harga Realtime
+				</p>
+				<p className="mt-1 text-sm text-muted-foreground">
+					Nama bahan yang sama otomatis digabung. Saat ada input baru, harga lama tertimpa
+					oleh harga terbaru.
+				</p>
+			</div>
+			<div className="overflow-x-auto">
+				<table className="w-full table-fixed text-left text-[10px] md:text-[11px]">
+					<colgroup>
+						<col className="w-[18%]" />
+						<col className="w-[12%]" />
+						<col className="w-[12%]" />
+						<col className="w-[12%]" />
+						<col className="w-[11%]" />
+						<col className="w-[12%]" />
+						<col className="w-[10%]" />
+						<col className="w-[13%]" />
+					</colgroup>
+					<thead className="bg-card">
+						<tr className="border-border border-b text-muted-foreground">
+							<th className="px-2.5 py-2 font-semibold">Nama (Dedup)</th>
+							<th className="px-2 py-2 font-semibold">Satuan</th>
+							<th className="px-2 py-2 font-semibold">Harga Terbaru</th>
+							<th className="px-2 py-2 font-semibold">Harga Sebelumnya</th>
+							<th className="px-2 py-2 font-semibold">Delta</th>
+							<th className="px-2 py-2 font-semibold">Toko / Brand Terakhir</th>
+							<th className="px-2 py-2 font-semibold">Cakupan</th>
+							<th className="px-2 py-2 font-semibold">Update</th>
+						</tr>
+					</thead>
+					<tbody className="divide-y divide-border">
+						{!data &&
+							Array.from({ length: 8 }).map((_, i) => (
+								<tr key={i}>
+									<td className="p-4">
+										<Skeleton className="h-4 w-32" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="h-4 w-24" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="h-4 w-28" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="h-4 w-28" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="h-4 w-20" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="h-4 w-36" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="h-4 w-20" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="h-4 w-24" />
+									</td>
+								</tr>
+							))}
+						{(data?.rows ?? []).map((row) => {
+							const deltaTone =
+								row.priceDelta == null
+									? "text-muted-foreground"
+									: row.priceDelta > 0
+										? "text-rose-600"
+										: row.priceDelta < 0
+											? "text-emerald-600"
+											: "text-muted-foreground";
+							const conversionHint = buildConversionHint(
+								row.unit,
+								row.displayUnit,
+								row.conversionFactor
+							);
+							return (
+								<tr className="transition-colors hover:bg-muted/20" key={row.nameKey}>
+									<td className="px-2.5 py-2 align-middle">
+										<p className="font-semibold text-foreground">{row.ingredientName}</p>
+										<p className="text-[10px] text-muted-foreground">{row.nameKey}</p>
+									</td>
+									<td className="px-2 py-2 align-middle text-muted-foreground">
+										<p className="font-semibold text-foreground">{row.unit}</p>
+										{conversionHint && <p className="text-[10px]">{conversionHint}</p>}
+									</td>
+									<td className="px-2 py-2 align-middle font-semibold text-foreground">
+										{formatCurrency(row.lastPrice)}
+									</td>
+									<td className="px-2 py-2 align-middle text-muted-foreground">
+										{formatCurrency(row.previousPrice)}
+									</td>
+									<td className={`px-2 py-2 align-middle font-semibold ${deltaTone}`}>
+										{row.priceDelta == null ? "-" : formatCurrency(row.priceDelta)}
+									</td>
+									<td className="px-2 py-2 align-middle text-muted-foreground">
+										<p className="font-semibold text-foreground">
+											{row.lastStoreName || "Tanpa toko"}
+										</p>
+										<p className="text-[10px]">
+											{row.lastBrandName || "Tanpa brand"}
+										</p>
+									</td>
+									<td className="px-2 py-2 align-middle text-muted-foreground">
+										<p>{row.storeCount} toko</p>
+										<p>{row.brandCount} brand</p>
+									</td>
+									<td className="px-2 py-2 align-middle text-muted-foreground">
+										<p>{new Date(row.lastPurchaseAt).toLocaleDateString("id-ID")}</p>
+										<p className="text-[10px]">
+											{new Date(row.lastPurchaseAt).toLocaleTimeString("id-ID")}
+										</p>
+									</td>
+								</tr>
+							);
+						})}
+						{data && data.rows.length === 0 && (
+							<tr>
+								<td className="p-8 text-center text-muted-foreground" colSpan={8}>
+									Belum ada data harga realtime.
+								</td>
+							</tr>
+						)}
+					</tbody>
+				</table>
+			</div>
+			{data && (
+				<div className="border-border border-t px-4 py-2 text-[11px] text-muted-foreground">
+					{data.summary.totalUniqueNames} nama unik dari{" "}
+					{data.summary.totalRawTransactions} transaksi restock terbaru.
+				</div>
+			)}
+		</div>
+	);
+}
+
 function InventoryTable({
 	addRowSignal,
 	filteredRows,
@@ -1957,6 +2163,8 @@ function InventoryTable({
 				unit: string;
 				lowStockThreshold: string;
 				defaultBrandName: string;
+				displayUnit: string;
+				conversionFactor: string;
 			}
 		>
 	>({});
@@ -1966,6 +2174,8 @@ function InventoryTable({
 		unit: "gram",
 		lowStockThreshold: "100",
 		defaultBrandName: "",
+		displayUnit: "",
+		conversionFactor: "",
 	});
 
 	useEffect(() => {
@@ -1979,11 +2189,23 @@ function InventoryTable({
 			unit: row.unit,
 			lowStockThreshold: String(row.lowStockThreshold),
 			defaultBrandName: row.defaultBrandName ?? "",
+			displayUnit: row.displayUnit ?? "",
+			conversionFactor:
+				typeof row.conversionFactor === "number" && row.conversionFactor > 0
+					? String(row.conversionFactor)
+					: "",
 		};
 
 	const setInlineField = (
 		row: InventoryWorkspaceRow,
-		field: "ingredientName" | "quantity" | "unit" | "lowStockThreshold" | "defaultBrandName",
+		field:
+			| "ingredientName"
+			| "quantity"
+			| "unit"
+			| "lowStockThreshold"
+			| "defaultBrandName"
+			| "displayUnit"
+			| "conversionFactor",
 		value: string
 	) => {
 		setInlineValues((prev) => {
@@ -1993,6 +2215,11 @@ function InventoryTable({
 				unit: row.unit,
 				lowStockThreshold: String(row.lowStockThreshold),
 				defaultBrandName: row.defaultBrandName ?? "",
+				displayUnit: row.displayUnit ?? "",
+				conversionFactor:
+					typeof row.conversionFactor === "number" && row.conversionFactor > 0
+						? String(row.conversionFactor)
+						: "",
 			};
 			return {
 				...prev,
@@ -2012,6 +2239,8 @@ function InventoryTable({
 		const current = getInlineValue(row);
 		const ingredientName = current.ingredientName.trim();
 		const lowStockThresholdNum = Number(current.lowStockThreshold);
+		const conversionFactorNum = Number(current.conversionFactor);
+		const normalizedDisplayUnit = current.displayUnit.trim().toLowerCase();
 		if (!ingredientName) {
 			toast.error("Nama bahan tidak boleh kosong");
 			setInlineField(row, "ingredientName", row.ingredientName);
@@ -2022,11 +2251,25 @@ function InventoryTable({
 			setInlineField(row, "lowStockThreshold", String(row.lowStockThreshold));
 			return;
 		}
+		if (current.unit === "pcs") {
+			if (!normalizedDisplayUnit || !["gram", "ml"].includes(normalizedDisplayUnit)) {
+				toast.error("Untuk unit pcs, isi unit turunan gram atau ml");
+				return;
+			}
+			if (Number.isNaN(conversionFactorNum) || conversionFactorNum <= 0) {
+				toast.error("Untuk unit pcs, isi konversi > 0 (contoh: 200)");
+				return;
+			}
+		}
 		if (
 			ingredientName === row.ingredientName &&
 			current.unit === row.unit &&
 			lowStockThresholdNum === row.lowStockThreshold &&
-			current.defaultBrandName.trim() === (row.defaultBrandName ?? "")
+			current.defaultBrandName.trim() === (row.defaultBrandName ?? "") &&
+			(current.displayUnit.trim() || "") === (row.displayUnit ?? "") &&
+			(current.conversionFactor
+				? Number(current.conversionFactor)
+				: undefined) === row.conversionFactor
 		) {
 			return;
 		}
@@ -2038,8 +2281,10 @@ function InventoryTable({
 				ingredientName,
 				unit: current.unit,
 				lowStockThreshold: lowStockThresholdNum,
-				displayUnit: item.displayUnit || undefined,
-				conversionFactor: item.conversionFactor || undefined,
+				displayUnit: current.displayUnit.trim() || undefined,
+				conversionFactor: current.conversionFactor
+					? Number(current.conversionFactor)
+					: undefined,
 				baseRecipeId: item.baseRecipeId || undefined,
 				defaultBrandName: current.defaultBrandName.trim() || undefined,
 				preferredStoreId: item.preferredStoreId || undefined,
@@ -2124,6 +2369,8 @@ function InventoryTable({
 		const ingredientName = quickAdd.ingredientName.trim();
 		const quantity = Number(quickAdd.quantity);
 		const lowStockThreshold = Number(quickAdd.lowStockThreshold);
+		const conversionFactor = Number(quickAdd.conversionFactor);
+		const displayUnit = quickAdd.displayUnit.trim().toLowerCase();
 		if (!ingredientName) {
 			toast.error("Nama bahan wajib diisi");
 			return;
@@ -2136,6 +2383,16 @@ function InventoryTable({
 			toast.error("Ambang stok tidak valid");
 			return;
 		}
+		if (quickAdd.unit === "pcs") {
+			if (!displayUnit || !["gram", "ml"].includes(displayUnit)) {
+				toast.error("Untuk unit pcs, isi unit turunan gram atau ml");
+				return;
+			}
+			if (Number.isNaN(conversionFactor) || conversionFactor <= 0) {
+				toast.error("Isi konversi per pcs, contoh: 1 pcs = 200 gram");
+				return;
+			}
+		}
 
 		try {
 			setSavingKey("quick-add");
@@ -2145,12 +2402,18 @@ function InventoryTable({
 				quantity,
 				lowStockThreshold,
 				defaultBrandName: quickAdd.defaultBrandName.trim() || undefined,
+				displayUnit: quickAdd.displayUnit.trim() || undefined,
+				conversionFactor: quickAdd.conversionFactor
+					? Number(quickAdd.conversionFactor)
+					: undefined,
 			});
 			setQuickAdd((prev) => ({
 				...prev,
 				ingredientName: "",
 				quantity: "0",
 				defaultBrandName: "",
+				displayUnit: "",
+				conversionFactor: "",
 			}));
 			toast.success("Item baru langsung tersimpan");
 			quickAddNameRef.current?.focus();
@@ -2186,15 +2449,16 @@ function InventoryTable({
 			<div>
 				<table className="w-full table-fixed text-left text-[10px] md:text-[11px]">
 					<colgroup>
-						<col className="w-[18%]" />
-						<col className="w-[12%]" />
-						<col className="w-[12%]" />
-						<col className="w-[11%]" />
+						<col className="w-[16%]" />
 						<col className="w-[10%]" />
-						<col className="w-[12%]" />
-						<col className="w-[11%]" />
-						<col className="w-[11%]" />
-						<col className="w-[13%]" />
+						<col className="w-[10%]" />
+						<col className="w-[9%]" />
+						<col className="w-[14%]" />
+						<col className="w-[8%]" />
+						<col className="w-[10%]" />
+						<col className="w-[9%]" />
+						<col className="w-[9%]" />
+						<col className="w-[15%]" />
 					</colgroup>
 					<thead className="bg-card">
 						<tr className="border-border border-b text-muted-foreground">
@@ -2238,9 +2502,10 @@ function InventoryTable({
 											<ArrowUp className="h-3 w-3" />
 										) : (
 											<ArrowDown className="h-3 w-3" />
-										))}
+									))}
 								</div>
 							</th>
+							<th className="px-2 py-2 font-semibold">Takaran</th>
 							<th className="px-2 py-2 font-semibold">Status</th>
 							<th
 								className="cursor-pointer px-2 py-2 font-semibold transition-colors hover:text-foreground"
@@ -2334,6 +2599,42 @@ function InventoryTable({
 								/>
 							</td>
 							<td className="px-2 py-2">
+								{quickAdd.unit === "pcs" ? (
+									<div className="space-y-1">
+										<p className="text-[10px] text-muted-foreground">1 pcs =</p>
+										<div className="flex items-center gap-1">
+											<input
+												className="w-14 rounded-lg border border-border bg-background px-1.5 py-1 text-center text-[10px] font-semibold outline-none focus:border-primary"
+												onChange={(e) =>
+													setQuickAdd((prev) => ({
+														...prev,
+														conversionFactor: e.target.value,
+													}))
+												}
+												placeholder="200"
+												type="number"
+												value={quickAdd.conversionFactor}
+											/>
+											<select
+												className="rounded-lg border border-border bg-background px-1 py-1 text-[10px] font-semibold outline-none focus:border-primary"
+												onChange={(e) =>
+													setQuickAdd((prev) => ({
+														...prev,
+														displayUnit: e.target.value,
+													}))
+												}
+												value={quickAdd.displayUnit || "gram"}
+											>
+												<option value="gram">gram</option>
+												<option value="ml">ml</option>
+											</select>
+										</div>
+									</div>
+								) : (
+									<div className="text-[10px] text-muted-foreground">-</div>
+								)}
+							</td>
+							<td className="px-2 py-2">
 								<div className="rounded-lg border border-dashed border-border px-2 py-1 text-[10px] text-muted-foreground">
 									Autosave
 								</div>
@@ -2342,7 +2643,16 @@ function InventoryTable({
 								<select
 									className="w-full rounded-lg border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold outline-none focus:border-primary"
 									onChange={(e) =>
-										setQuickAdd((prev) => ({ ...prev, unit: e.target.value }))
+										setQuickAdd((prev) => ({
+											...prev,
+											unit: e.target.value,
+											displayUnit:
+												e.target.value === "pcs"
+													? prev.displayUnit || "gram"
+													: "",
+											conversionFactor:
+												e.target.value === "pcs" ? prev.conversionFactor : "",
+										}))
 									}
 									value={quickAdd.unit}
 								>
@@ -2386,6 +2696,9 @@ function InventoryTable({
 										<Skeleton className="mx-auto h-8 w-16" />
 									</td>
 									<td className="p-4">
+										<Skeleton className="h-8 w-24" />
+									</td>
+									<td className="p-4">
 										<Skeleton className="h-8 w-28" />
 									</td>
 									<td className="p-4">
@@ -2410,15 +2723,6 @@ function InventoryTable({
 									return null;
 								}
 								const inline = getInlineValue(row);
-								const hasConversion = !!(
-									row.displayUnit &&
-									row.conversionFactor &&
-									row.conversionFactor > 0
-								);
-								const displayQty = hasConversion
-									? (row.currentStock / (row.conversionFactor || 1)).toFixed(2)
-									: row.currentStock;
-								const displayUnitText = hasConversion ? row.displayUnit : row.unit;
 								const statusMeta = getStatusMeta(row.status);
 
 								return (
@@ -2511,6 +2815,56 @@ function InventoryTable({
 											</div>
 										</td>
 										<td className="px-2 py-2 align-middle">
+											{inline.unit === "pcs" ? (
+												<div className="space-y-1">
+													<p className="text-[10px] text-muted-foreground">1 pcs =</p>
+													<div className="flex items-center gap-1">
+														<input
+															className="w-14 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[11px] outline-none focus:border-border focus:bg-background"
+															onBlur={() => void saveMeta(row)}
+															onChange={(e) =>
+																setInlineField(
+																	row,
+																	"conversionFactor",
+																	e.target.value
+																)
+															}
+															onKeyDown={(e) => {
+																if (e.key === "Enter") {
+																	void saveMeta(row);
+																	(e.target as HTMLInputElement).blur();
+																}
+															}}
+															placeholder="200"
+															type="number"
+															value={inline.conversionFactor}
+														/>
+														<select
+															className="rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-xs text-muted-foreground outline-none focus:border-border focus:bg-background"
+															onBlur={() => void saveMeta(row)}
+															onChange={(e) =>
+																setInlineField(row, "displayUnit", e.target.value)
+															}
+															value={inline.displayUnit || "gram"}
+														>
+															<option value="gram">gram</option>
+															<option value="ml">ml</option>
+														</select>
+													</div>
+												</div>
+											) : (
+												<div className="text-[10px] text-muted-foreground">
+													{buildConversionHint(
+														row.unit,
+														inline.displayUnit || row.displayUnit,
+														inline.conversionFactor
+															? Number(inline.conversionFactor)
+															: row.conversionFactor
+													) || "-"}
+												</div>
+											)}
+										</td>
+										<td className="px-2 py-2 align-middle">
 											<span
 												className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusMeta.tone}`}
 												title={`ROP ${row.reorderPoint} ${row.unit}`}
@@ -2597,7 +2951,7 @@ function InventoryTable({
 							})}
 						{inventoryMap.size > 0 && filteredRows.length === 0 && (
 							<tr>
-								<td className="p-8 text-center text-muted-foreground" colSpan={9}>
+								<td className="p-8 text-center text-muted-foreground" colSpan={10}>
 									Tidak ada bahan baku ditemukan
 								</td>
 							</tr>
@@ -2683,6 +3037,17 @@ function InventoryHeader({
 						>
 							Planning View
 						</button>
+						<button
+							className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+								viewPreset === "priceMonitor"
+									? "bg-emerald-600 text-white"
+									: "border border-border bg-background text-foreground hover:bg-muted"
+							}`}
+							onClick={() => onViewPresetChange("priceMonitor")}
+							type="button"
+						>
+							Monitoring Harga
+						</button>
 					</div>
 					<div className="flex flex-wrap gap-2">
 						<button
@@ -2691,6 +3056,7 @@ function InventoryHeader({
 									? "border border-destructive/20 bg-destructive/10 text-destructive"
 									: "border border-border bg-background text-muted-foreground hover:text-foreground"
 							}`}
+							disabled={viewPreset === "priceMonitor"}
 							onClick={() => onFilterLowStockChange(!filterLowStock)}
 							type="button"
 						>
@@ -2701,7 +3067,11 @@ function InventoryHeader({
 							<input
 								className="w-full rounded-xl border border-border bg-background py-2.5 pr-4 pl-10 text-sm outline-none transition-all focus:border-primary"
 								onChange={(e) => onSearchQueryChange(e.target.value)}
-								placeholder="Cari bahan, satuan, atau item terkait..."
+								placeholder={
+									viewPreset === "priceMonitor"
+										? "Cari nama bahan, brand, atau toko..."
+										: "Cari bahan, satuan, atau item terkait..."
+								}
 								value={searchQuery}
 							/>
 						</div>
