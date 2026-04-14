@@ -314,9 +314,16 @@ function AttendancePage() {
 															<p className="font-bold text-foreground text-sm leading-tight line-clamp-2 uppercase tracking-tight">
 																{staff.name}
 															</p>
-															<p className={`text-[10px] font-black uppercase tracking-widest ${isIn ? "text-emerald-600" : "text-muted-foreground/60"}`}>
-																{isIn ? "BERTUGAS" : "OFF Duty"}
-															</p>
+															<div className="flex flex-col items-center gap-1">
+																<p className={`text-[10px] font-black uppercase tracking-widest ${isIn ? "text-emerald-600" : "text-muted-foreground/60"}`}>
+																	{isIn ? "BERTUGAS" : "OFF Duty"}
+																</p>
+																<div className={`mt-1 rounded-full px-3 py-1 text-[8px] font-black uppercase tracking-tighter text-white transition-all ${
+																	isIn ? "bg-amber-500 group-hover:bg-amber-600" : "bg-primary group-hover:bg-primary/80"
+																}`}>
+																	{isIn ? "Klik untuk Keluar" : "Klik untuk Masuk"}
+																</div>
+															</div>
 														</div>
 													</div>
 												</motion.button>
@@ -460,10 +467,17 @@ function AttendancePage() {
 						>
 							<div className="flex items-center justify-between gap-3">
 								<div className="space-y-1 min-w-0">
-									<h2 className="text-xl font-black tracking-tight uppercase md:text-2xl">
-										{isEnrolling ? "Daftar Wajah" : "Verifikasi Wajah"}
+									<h2 className={`text-xl font-black tracking-tight uppercase md:text-2xl ${
+										isEnrolling ? "text-foreground" : (user?.isCurrentlyIn ? "text-amber-500" : "text-emerald-500")
+									}`}>
+										{isEnrolling 
+											? "Daftar Wajah Baru" 
+											: (user?.isCurrentlyIn ? "Konfirmasi Absen Keluar" : "Konfirmasi Absen Masuk")
+										}
 									</h2>
-									<p className="text-sm font-bold text-primary truncate">Halo, {user?.name}</p>
+									<p className="text-sm font-bold text-muted-foreground truncate">
+										Staff: <span className="text-foreground">{user?.name}</span>
+									</p>
 								</div>
 								<div className="flex items-center gap-2 shrink-0">
 									<div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 border text-[10px] font-bold uppercase tracking-wider ${
@@ -508,14 +522,18 @@ function AttendancePage() {
 								<div className="flex flex-col gap-3">
 									{!isEnrolling && (
 										<Button 
-											className="h-11 w-full rounded-2xl font-bold bg-amber-500 hover:bg-amber-600 text-white"
+											className={`h-14 w-full rounded-2xl font-black text-lg border-2 shadow-lg transition-all active:scale-95 ${
+												user?.isCurrentlyIn 
+													? "bg-amber-500 hover:bg-amber-600 border-amber-600 text-white" 
+													: "bg-emerald-500 hover:bg-emerald-600 border-emerald-600 text-white"
+											}`}
 											onClick={() => {
 												setStep("pin");
-												toast.info("Masukkan PIN untuk absen manual.");
+												toast.info(`Masukkan PIN untuk ${user?.isCurrentlyIn ? 'Keluar' : 'Masuk'} manual.`);
 											}}
 										>
-											<KeyRound className="mr-2 h-4 w-4" />
-											ABSEN DENGAN PIN (FALLBACK)
+											<KeyRound className="mr-3 h-6 w-6" />
+											{user?.isCurrentlyIn ? "ABSEN KELUAR (PIN)" : "ABSEN MASUK (PIN)"}
 										</Button>
 									)}
 									

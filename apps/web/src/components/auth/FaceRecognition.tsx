@@ -14,25 +14,33 @@ interface FaceRecognitionProps {
 	className?: string;
 }
 
+const MODEL_CDN_URL = "https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights";
+
 const MODEL_PATH_CANDIDATES = (() => {
 	const baseUrl = import.meta.env.BASE_URL || "/";
 	const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 	const paths = [
+		MODEL_CDN_URL, // Try CDN first for reliability
 		`${normalizedBase}/models`,
 		"/models",
 		"./models",
 	];
-	return [...new Set(paths.map((path) => path.replace(/\/{2,}/g, "/")))];
+	return [...new Set(paths.map((path) => path.replace(/\/{2,}/g, "/").replace("https:/", "https://")))];
 })();
 
 async function canReachModelManifest(path: string) {
 	try {
+		// Use a short timeout for manifest check
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), 3000);
+		
 		const response = await fetch(
 			`${path}/tiny_face_detector_model-weights_manifest.json`,
-			{ method: "GET", cache: "no-store" }
+			{ method: "GET", cache: "default", signal: controller.signal }
 		);
+		clearTimeout(timeoutId);
 		return response.ok;
-	} catch {
+	} catch (err) {
 		return false;
 	}
 }
@@ -51,6 +59,7 @@ export function FaceRecognition({
 	const autoCaptureTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const [modelsLoaded, setModelsLoaded] = useState(false);
+	const [loadingStep, setLoadingStep] = useState<string>("Inisialisasi...");
 	const [modelPath, setModelPath] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [matchStatus, setMatchStatus] = useState<"idle" | "detecting" | "scanning" | "success" | "fail">("idle");
@@ -67,27 +76,48 @@ export function FaceRecognition({
 			setError(null);
 			setModelsLoaded(false);
 			setMatchStatus("idle");
+			
+			// Global timeout for entire loading process
+			const globalTimeout = setTimeout(() => {
+				if (!cancelled && !modelsLoaded) {
+					const errorMsg = "Waktu pemuatan habis. Jaringan mungkin sedang sibuk.";
+					setError(errorMsg);
+					onModelError?.(errorMsg);
+				}
+			}, 20000);
 
 			for (const candidatePath of MODEL_PATH_CANDIDATES) {
-				const manifestExists = await canReachModelManifest(candidatePath);
-				if (!manifestExists) continue;
+				const isCDN = candidatePath.startsWith("http");
+				if (!isCDN) {
+					const manifestExists = await canReachModelManifest(candidatePath);
+					if (!manifestExists) continue;
+				}
 
 				try {
+					setLoadingStep("Memuat Detektor (1/3)...");
 					await faceapi.nets.tinyFaceDetector.loadFromUri(candidatePath);
+					
+					setLoadingStep("Memuat Landmark (2/3)...");
 					await faceapi.nets.faceLandmark68Net.loadFromUri(candidatePath);
+					
+					setLoadingStep("Memuat Pengenalan (3/3)...");
 					await faceapi.nets.faceRecognitionNet.loadFromUri(candidatePath);
+					
 					if (!cancelled) {
+						clearTimeout(globalTimeout);
 						setModelPath(candidatePath);
 						setModelsLoaded(true);
 					}
 					return;
 				} catch (err) {
 					console.error(`Failed to load face-api models from ${candidatePath}:`, err);
+					// Continue to next candidate
 				}
 			}
 
 			if (!cancelled) {
-				const errorMsg = "Gagal memuat model pendeteksi wajah. Pastikan file model tersedia dan dapat diakses aplikasi.";
+				clearTimeout(globalTimeout);
+				const errorMsg = "Gagal memuat sistem biometrik. Gunakan PIN jika terus berlanjut.";
 				setError(errorMsg);
 				onModelError?.(errorMsg);
 			}
@@ -258,9 +288,9 @@ export function FaceRecognition({
 								<div className="absolute -inset-4 rounded-full bg-primary/20 blur-xl animate-pulse" />
 								<Loader2 className="relative h-12 w-12 animate-spin text-primary" />
 							</div>
-							<p className="mt-4 text-sm font-bold text-white">Memuat Model AI...</p>
+							<p className="mt-4 text-sm font-bold text-white">{loadingStep}</p>
 							<p className="mt-1 text-center text-xs text-white/50">
-								Menyiapkan deteksi wajah
+								Menyiapkan sistem biometrik
 							</p>
 						</motion.div>
 					)}
