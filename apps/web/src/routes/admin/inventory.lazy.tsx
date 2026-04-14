@@ -50,6 +50,10 @@ type InventoryWorkspaceRow = {
 	unit: string;
 	displayUnit?: string;
 	conversionFactor?: number;
+	unitConversions?: Array<{
+		unit: string;
+		factor: number;
+	}>;
 	defaultBrandName: string | null;
 	preferredStoreName: string | null;
 	lastPurchaseStoreName: string | null;
@@ -163,6 +167,20 @@ type RealtimePriceMonitorData = {
 	};
 };
 
+const INVENTORY_UNIT_OPTIONS = [
+	"gram",
+	"ml",
+	"pcs",
+	"dus",
+	"karton",
+	"pack",
+	"box",
+	"botol",
+	"sachet",
+	"liter",
+	"kg",
+];
+
 function formatCurrency(value?: number | null) {
 	if (value == null || Number.isNaN(value)) {
 		return "-";
@@ -200,6 +218,88 @@ function buildConversionHint(
 	}
 
 	return `1 ${showUnit} = ${factor} ${baseUnit}`;
+}
+
+function parseUnitConversionsText(input: string) {
+	const rows = input
+		.split(/[\n,;]+/)
+		.map((chunk) => chunk.trim())
+		.filter(Boolean);
+
+	const parsed: Array<{ unit: string; factor: number }> = [];
+	for (const row of rows) {
+		const [rawUnit, rawFactor] = row.split(/[:=]/).map((part) => part.trim());
+		const factor = Number(rawFactor);
+		if (!rawUnit || Number.isNaN(factor) || factor <= 0) {
+			continue;
+		}
+		parsed.push({ unit: rawUnit.toLowerCase(), factor });
+	}
+
+	if (parsed.length === 0) {
+		return undefined;
+	}
+	return parsed;
+}
+
+function formatUnitConversionsText(
+	unitConversions?: Array<{ unit: string; factor: number }>,
+	displayUnit?: string,
+	conversionFactor?: number
+) {
+	const values = [...(unitConversions ?? [])];
+	if (
+		displayUnit &&
+		typeof conversionFactor === "number" &&
+		conversionFactor > 0 &&
+		!values.some((row) => row.unit.toLowerCase() === displayUnit.toLowerCase())
+	) {
+		values.push({ unit: displayUnit, factor: conversionFactor });
+	}
+	return values.map((row) => `${row.unit}:${row.factor}`).join(", ");
+}
+
+function buildUnitChainSummary(
+	baseUnit: string,
+	unitConversions?: Array<{ unit: string; factor: number }>,
+	displayUnit?: string,
+	conversionFactor?: number
+) {
+	const text = formatUnitConversionsText(unitConversions, displayUnit, conversionFactor);
+	if (!text) {
+		return null;
+	}
+	return text
+		.split(",")
+		.map((row) => row.trim())
+		.filter(Boolean)
+		.map((row) => {
+			const [unit, factor] = row.split(":").map((part) => part.trim());
+			return unit && factor ? `1 ${unit} = ${factor} ${baseUnit}` : null;
+		})
+		.filter((row): row is string => Boolean(row))
+		.join(" • ");
+}
+
+function getPurchaseUnitOptions(
+	item?: Pick<Doc<"inventory">, "unit" | "displayUnit" | "unitConversions"> | null
+) {
+	if (!item) {
+		return [];
+	}
+	const options = new Set<string>();
+	if (item.unit) {
+		options.add(item.unit);
+	}
+	if (item.displayUnit) {
+		options.add(item.displayUnit);
+	}
+	for (const row of item.unitConversions ?? []) {
+		if (row.unit) {
+			options.add(row.unit);
+		}
+	}
+	return [...options];
 }
 
 export const Route = createLazyFileRoute("/admin/inventory")({
@@ -243,6 +343,7 @@ function InventoryPage() {
 		lowStockThreshold: "100",
 		displayUnit: "",
 		conversionFactor: "",
+		unitConversionsText: "",
 		baseRecipeId: "" as string,
 		defaultBrandName: "",
 		preferredStoreId: "" as string,
@@ -298,6 +399,11 @@ function InventoryPage() {
 				conversionFactor: selectedItem.conversionFactor
 					? String(selectedItem.conversionFactor)
 					: "",
+				unitConversionsText: formatUnitConversionsText(
+					selectedItem.unitConversions,
+					selectedItem.displayUnit,
+					selectedItem.conversionFactor
+				),
 				baseRecipeId: (selectedItem.baseRecipeId as string) || "",
 				defaultBrandName: selectedItem.defaultBrandName || "",
 				preferredStoreId: (selectedItem.preferredStoreId as string) || "",
@@ -401,6 +507,7 @@ function InventoryPage() {
 			conversionFactor: newItem.conversionFactor
 				? Number(newItem.conversionFactor)
 				: undefined,
+			unitConversions: parseUnitConversionsText(newItem.unitConversionsText),
 			baseRecipeId: (newItem.baseRecipeId as Id<"baseRecipes">) || undefined,
 			defaultBrandName: newItem.defaultBrandName.trim() || undefined,
 			preferredStoreId,
@@ -427,6 +534,7 @@ function InventoryPage() {
 			conversionFactor: newItem.conversionFactor
 				? Number(newItem.conversionFactor)
 				: undefined,
+			unitConversions: parseUnitConversionsText(newItem.unitConversionsText),
 			baseRecipeId: (newItem.baseRecipeId as Id<"baseRecipes">) || undefined,
 			defaultBrandName: newItem.defaultBrandName.trim() || undefined,
 			preferredStoreId,
@@ -516,6 +624,7 @@ function InventoryPage() {
 				lowStockThreshold: "100",
 				displayUnit: "",
 				conversionFactor: "",
+				unitConversionsText: "",
 				baseRecipeId: "",
 				defaultBrandName: "",
 				preferredStoreId: "",
@@ -682,6 +791,7 @@ function InventoryModalContent({
 		lowStockThreshold: string;
 		displayUnit: string;
 		conversionFactor: string;
+		unitConversionsText: string;
 		baseRecipeId: string;
 		defaultBrandName: string;
 		preferredStoreId: string;
@@ -694,6 +804,7 @@ function InventoryModalContent({
 		lowStockThreshold: string;
 		displayUnit: string;
 		conversionFactor: string;
+		unitConversionsText: string;
 		baseRecipeId: string;
 		defaultBrandName: string;
 		preferredStoreId: string;
@@ -732,6 +843,8 @@ function InventoryModalContent({
 	}) => Promise<unknown>;
 	setConfirmConfig: (config: ConfirmConfig) => void;
 }) {
+	const purchaseUnitOptions = getPurchaseUnitOptions(selectedItem);
+
 	if (actionType === "create" || actionType === "edit") {
 		return (
 			<div className="space-y-6">
@@ -773,9 +886,11 @@ function InventoryModalContent({
 							}
 							value={newItem.unit}
 						>
-							<option value="gram">GRAM</option>
-							<option value="ml">ML</option>
-							<option value="pcs">PCS</option>
+							{INVENTORY_UNIT_OPTIONS.map((unit) => (
+								<option key={unit} value={unit}>
+									{unit.toUpperCase()}
+								</option>
+							))}
 						</select>
 					</div>
 					<div className="space-y-2">
@@ -925,10 +1040,31 @@ function InventoryModalContent({
 							/>
 						</div>
 					</div>
+					<div className="space-y-1.5">
+						<label
+							className="font-bold text-foreground/60 text-[9px] uppercase tracking-wider"
+							htmlFor="unitConversionsText"
+						>
+							Konversi Multi Satuan
+						</label>
+						<input
+							className="w-full rounded-md bg-background border border-border p-3 font-medium text-foreground text-xs outline-none transition-all focus:ring-1 focus:ring-ring"
+							id="unitConversionsText"
+							onChange={(e) =>
+								onNewItemChange({
+									...newItem,
+									unitConversionsText: e.target.value,
+								})
+							}
+							placeholder="Contoh: dus:12, karton:144"
+							value={newItem.unitConversionsText}
+						/>
+					</div>
 					<p className="text-foreground/50 text-[10px] italic leading-snug">
 						* Contoh: Jika Satuan Dasar = ml, Satuan Tampilan = Liter, Isi =
 						1000, maka 2500 ml akan tampil 2.50 Liter. Untuk item potong: 1 pcs
-						= 200 gram (isi Satuan Tampilan: gram, Isi: 200).
+						= 200 gram (isi Satuan Tampilan: gram, Isi: 200). Bisa bertingkat:
+						dus:12, karton:144.
 					</p>
 				</div>
 
@@ -1167,15 +1303,21 @@ function InventoryModalContent({
 								<input
 									className="w-full rounded-md border border-border bg-background p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
 									id="purchase-unit"
+									list="purchase-unit-options"
 									onChange={(e) =>
 										onPurchaseMetaChange({
 											...purchaseMeta,
 											purchaseUnit: e.target.value,
 										})
 									}
-									placeholder="liter / box / pcs"
+									placeholder="pcs / dus / karton / liter"
 									value={purchaseMeta.purchaseUnit}
 								/>
+								<datalist id="purchase-unit-options">
+									{purchaseUnitOptions.map((unit) => (
+										<option key={unit} value={unit} />
+									))}
+								</datalist>
 							</div>
 							<div className="space-y-2">
 								<label
@@ -1280,6 +1422,7 @@ function InventoryActionModal({
 		lowStockThreshold: string;
 		displayUnit: string;
 		conversionFactor: string;
+		unitConversionsText: string;
 		baseRecipeId: string;
 		defaultBrandName: string;
 		preferredStoreId: string;
@@ -1292,6 +1435,7 @@ function InventoryActionModal({
 		lowStockThreshold: string;
 		displayUnit: string;
 		conversionFactor: string;
+		unitConversionsText: string;
 		baseRecipeId: string;
 		defaultBrandName: string;
 		preferredStoreId: string;
@@ -2168,6 +2312,7 @@ function InventoryTable({
 				defaultBrandName: string;
 				displayUnit: string;
 				conversionFactor: string;
+				unitConversionsText: string;
 			}
 		>
 	>({});
@@ -2179,6 +2324,7 @@ function InventoryTable({
 		defaultBrandName: "",
 		displayUnit: "",
 		conversionFactor: "",
+		unitConversionsText: "",
 	});
 
 	useEffect(() => {
@@ -2197,6 +2343,11 @@ function InventoryTable({
 				typeof row.conversionFactor === "number" && row.conversionFactor > 0
 					? String(row.conversionFactor)
 					: "",
+			unitConversionsText: formatUnitConversionsText(
+				row.unitConversions,
+				row.displayUnit,
+				row.conversionFactor
+			),
 		};
 
 	const setInlineField = (
@@ -2208,7 +2359,8 @@ function InventoryTable({
 			| "lowStockThreshold"
 			| "defaultBrandName"
 			| "displayUnit"
-			| "conversionFactor",
+			| "conversionFactor"
+			| "unitConversionsText",
 		value: string
 	) => {
 		setInlineValues((prev) => {
@@ -2223,6 +2375,11 @@ function InventoryTable({
 					typeof row.conversionFactor === "number" && row.conversionFactor > 0
 						? String(row.conversionFactor)
 						: "",
+				unitConversionsText: formatUnitConversionsText(
+					row.unitConversions,
+					row.displayUnit,
+					row.conversionFactor
+				),
 			};
 			return {
 				...prev,
@@ -2244,6 +2401,7 @@ function InventoryTable({
 		const lowStockThresholdNum = Number(current.lowStockThreshold);
 		const conversionFactorNum = Number(current.conversionFactor);
 		const normalizedDisplayUnit = current.displayUnit.trim().toLowerCase();
+		const parsedUnitConversions = parseUnitConversionsText(current.unitConversionsText);
 		if (!ingredientName) {
 			toast.error("Nama bahan tidak boleh kosong");
 			setInlineField(row, "ingredientName", row.ingredientName);
@@ -2255,12 +2413,16 @@ function InventoryTable({
 			return;
 		}
 		if (current.unit === "pcs") {
-			if (!normalizedDisplayUnit || !["gram", "ml"].includes(normalizedDisplayUnit)) {
-				toast.error("Untuk unit pcs, isi unit turunan gram atau ml");
-				return;
-			}
-			if (Number.isNaN(conversionFactorNum) || conversionFactorNum <= 0) {
-				toast.error("Untuk unit pcs, isi konversi > 0 (contoh: 200)");
+			const hasLegacyConversion =
+				normalizedDisplayUnit &&
+				["gram", "ml"].includes(normalizedDisplayUnit) &&
+				!Number.isNaN(conversionFactorNum) &&
+				conversionFactorNum > 0;
+			const hasChainConversion = (parsedUnitConversions?.length ?? 0) > 0;
+			if (!hasLegacyConversion && !hasChainConversion) {
+				toast.error(
+					"Untuk unit pcs, isi konversi gram/ml atau rantai kemasan (contoh: dus:12, karton:144)"
+				);
 				return;
 			}
 		}
@@ -2272,7 +2434,13 @@ function InventoryTable({
 			(current.displayUnit.trim() || "") === (row.displayUnit ?? "") &&
 			(current.conversionFactor
 				? Number(current.conversionFactor)
-				: undefined) === row.conversionFactor
+				: undefined) === row.conversionFactor &&
+			current.unitConversionsText.trim() ===
+				formatUnitConversionsText(
+					row.unitConversions,
+					row.displayUnit,
+					row.conversionFactor
+				)
 		) {
 			return;
 		}
@@ -2288,6 +2456,7 @@ function InventoryTable({
 				conversionFactor: current.conversionFactor
 					? Number(current.conversionFactor)
 					: undefined,
+				unitConversions: parsedUnitConversions,
 				baseRecipeId: item.baseRecipeId || undefined,
 				defaultBrandName: current.defaultBrandName.trim() || undefined,
 				preferredStoreId: item.preferredStoreId || undefined,
@@ -2374,6 +2543,7 @@ function InventoryTable({
 		const lowStockThreshold = Number(quickAdd.lowStockThreshold);
 		const conversionFactor = Number(quickAdd.conversionFactor);
 		const displayUnit = quickAdd.displayUnit.trim().toLowerCase();
+		const parsedUnitConversions = parseUnitConversionsText(quickAdd.unitConversionsText);
 		if (!ingredientName) {
 			toast.error("Nama bahan wajib diisi");
 			return;
@@ -2387,12 +2557,16 @@ function InventoryTable({
 			return;
 		}
 		if (quickAdd.unit === "pcs") {
-			if (!displayUnit || !["gram", "ml"].includes(displayUnit)) {
-				toast.error("Untuk unit pcs, isi unit turunan gram atau ml");
-				return;
-			}
-			if (Number.isNaN(conversionFactor) || conversionFactor <= 0) {
-				toast.error("Isi konversi per pcs, contoh: 1 pcs = 200 gram");
+			const hasLegacyConversion =
+				displayUnit &&
+				["gram", "ml"].includes(displayUnit) &&
+				!Number.isNaN(conversionFactor) &&
+				conversionFactor > 0;
+			const hasChainConversion = (parsedUnitConversions?.length ?? 0) > 0;
+			if (!hasLegacyConversion && !hasChainConversion) {
+				toast.error(
+					"Untuk unit pcs, isi konversi gram/ml atau rantai kemasan (contoh: dus:12, karton:144)"
+				);
 				return;
 			}
 		}
@@ -2409,6 +2583,7 @@ function InventoryTable({
 				conversionFactor: quickAdd.conversionFactor
 					? Number(quickAdd.conversionFactor)
 					: undefined,
+				unitConversions: parsedUnitConversions,
 			});
 			setQuickAdd((prev) => ({
 				...prev,
@@ -2417,6 +2592,7 @@ function InventoryTable({
 				defaultBrandName: "",
 				displayUnit: "",
 				conversionFactor: "",
+				unitConversionsText: "",
 			}));
 			toast.success("Item baru langsung tersimpan");
 			quickAddNameRef.current?.focus();
@@ -2602,8 +2778,9 @@ function InventoryTable({
 								/>
 							</td>
 							<td className="px-2 py-2">
-								{quickAdd.unit === "pcs" ? (
-									<div className="space-y-1">
+								<div className="space-y-1">
+									{quickAdd.unit === "pcs" ? (
+										<>
 										<p className="text-[10px] text-muted-foreground">1 pcs =</p>
 										<div className="flex items-center gap-1">
 											<input
@@ -2632,10 +2809,22 @@ function InventoryTable({
 												<option value="ml">ml</option>
 											</select>
 										</div>
-									</div>
-								) : (
-									<div className="text-[10px] text-muted-foreground">-</div>
-								)}
+										</>
+									) : (
+										<div className="text-[10px] text-muted-foreground">Opsional</div>
+									)}
+									<input
+										className="w-full rounded-lg border border-border bg-background px-1.5 py-1 text-[10px] outline-none focus:border-primary"
+										onChange={(e) =>
+											setQuickAdd((prev) => ({
+												...prev,
+												unitConversionsText: e.target.value,
+											}))
+										}
+										placeholder="dus:12, karton:144"
+										value={quickAdd.unitConversionsText}
+									/>
+								</div>
 							</td>
 							<td className="px-2 py-2">
 								<div className="rounded-lg border border-dashed border-border px-2 py-1 text-[10px] text-muted-foreground">
@@ -2659,9 +2848,11 @@ function InventoryTable({
 									}
 									value={quickAdd.unit}
 								>
-									<option value="gram">gram</option>
-									<option value="ml">ml</option>
-									<option value="pcs">pcs</option>
+									{INVENTORY_UNIT_OPTIONS.map((unit) => (
+										<option key={unit} value={unit}>
+											{unit}
+										</option>
+									))}
 								</select>
 							</td>
 							<td className="px-2 py-2">
@@ -2811,15 +3002,18 @@ function InventoryTable({
 													}
 													value={inline.unit}
 												>
-													<option value="gram">gram</option>
-													<option value="ml">ml</option>
-													<option value="pcs">pcs</option>
+													{INVENTORY_UNIT_OPTIONS.map((unit) => (
+														<option key={unit} value={unit}>
+															{unit}
+														</option>
+													))}
 												</select>
 											</div>
 										</td>
 										<td className="px-2 py-2 align-middle">
-											{inline.unit === "pcs" ? (
-												<div className="space-y-1">
+											<div className="space-y-1">
+												{inline.unit === "pcs" ? (
+													<>
 													<p className="text-[10px] text-muted-foreground">1 pcs =</p>
 													<div className="flex items-center gap-1">
 														<input
@@ -2854,18 +3048,43 @@ function InventoryTable({
 															<option value="ml">ml</option>
 														</select>
 													</div>
-												</div>
-											) : (
-												<div className="text-[10px] text-muted-foreground">
-													{buildConversionHint(
-														row.unit,
-														inline.displayUnit || row.displayUnit,
-														inline.conversionFactor
-															? Number(inline.conversionFactor)
-															: row.conversionFactor
-													) || "-"}
-												</div>
-											)}
+													</>
+												) : (
+													<div className="text-[10px] text-muted-foreground">
+														{buildUnitChainSummary(
+															row.unit,
+															row.unitConversions,
+															inline.displayUnit || row.displayUnit,
+															inline.conversionFactor
+																? Number(inline.conversionFactor)
+																: row.conversionFactor
+														) ||
+															buildConversionHint(
+																row.unit,
+																inline.displayUnit || row.displayUnit,
+																inline.conversionFactor
+																	? Number(inline.conversionFactor)
+																	: row.conversionFactor
+															) ||
+															"-"}
+													</div>
+												)}
+												<input
+													className="w-full rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-[10px] outline-none focus:border-border focus:bg-background"
+													onBlur={() => void saveMeta(row)}
+													onChange={(e) =>
+														setInlineField(row, "unitConversionsText", e.target.value)
+													}
+													onKeyDown={(e) => {
+														if (e.key === "Enter") {
+															void saveMeta(row);
+															(e.target as HTMLInputElement).blur();
+														}
+													}}
+													placeholder="dus:12, karton:144"
+													value={inline.unitConversionsText}
+												/>
+											</div>
 										</td>
 										<td className="px-2 py-2 align-middle">
 											<span

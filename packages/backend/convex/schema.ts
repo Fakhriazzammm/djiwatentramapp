@@ -34,6 +34,14 @@ export default defineSchema({
 		lowStockThreshold: v.number(),
 		displayUnit: v.optional(v.string()), // e.g., "Liter"
 		conversionFactor: v.optional(v.number()), // e.g., 1000
+		unitConversions: v.optional(
+			v.array(
+				v.object({
+					unit: v.string(), // e.g., "dus", "karton"
+					factor: v.number(), // factor to base unit
+				})
+			)
+		),
 		baseRecipeId: v.optional(v.id("baseRecipes")), // If this is a pre-mix
 		defaultBrandName: v.optional(v.string()),
 		preferredStoreId: v.optional(v.id("inventoryStores")),

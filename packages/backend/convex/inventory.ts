@@ -25,6 +25,11 @@ type StoreSummary = {
 	type: Doc<"inventoryStores">["type"];
 };
 
+type UnitConversion = {
+	unit: string;
+	factor: number;
+};
+
 function normalizeUnitLabel(unit?: string) {
 	const normalized = (unit || "").trim().toLowerCase();
 	if (!normalized) {
@@ -54,15 +59,81 @@ function normalizeUnitLabel(unit?: string) {
 		butir: "pcs",
 		dozen: "dozen",
 		lusin: "dozen",
+		karton: "karton",
+		carton: "karton",
+		ctn: "karton",
+		dus: "dus",
+		box: "box",
+		pack: "pack",
+		pak: "pack",
+		botol: "botol",
+		bottle: "botol",
+		sachet: "sachet",
 	};
 
 	return aliases[normalized] || normalized;
 }
 
+function sanitizeUnitConversions(input?: UnitConversion[]) {
+	if (!input || input.length === 0) {
+		return undefined;
+	}
+
+	const dedup = new Map<string, UnitConversion>();
+	for (const row of input) {
+		const unit = normalizeUnitLabel(row.unit);
+		const factor = Number(row.factor);
+		if (!unit || Number.isNaN(factor) || factor <= 0) {
+			continue;
+		}
+		dedup.set(unit, { unit, factor });
+	}
+
+	if (dedup.size === 0) {
+		return undefined;
+	}
+
+	return [...dedup.values()].sort((left, right) => left.factor - right.factor);
+}
+
+function normalizeInventoryUnitConfig(args: {
+	unit: string;
+	displayUnit?: string;
+	conversionFactor?: number;
+	unitConversions?: UnitConversion[];
+}) {
+	const baseUnit = normalizeUnitLabel(args.unit);
+	const displayUnit = normalizeUnitLabel(args.displayUnit);
+	const conversionFactor =
+		typeof args.conversionFactor === "number" && args.conversionFactor > 0
+			? args.conversionFactor
+			: undefined;
+
+	const merged = sanitizeUnitConversions(args.unitConversions) ?? [];
+	if (
+		displayUnit &&
+		displayUnit !== baseUnit &&
+		conversionFactor != null &&
+		!merged.some((row) => row.unit === displayUnit)
+	) {
+		merged.push({ unit: displayUnit, factor: conversionFactor });
+	}
+
+	const normalized = sanitizeUnitConversions(merged);
+	return {
+		displayUnit: displayUnit || undefined,
+		conversionFactor,
+		unitConversions: normalized,
+	};
+}
+
 function convertQuantityToInventoryBaseUnit(args: {
 	quantity: number;
 	purchaseUnit?: string;
-	inventoryItem: Pick<Doc<"inventory">, "unit" | "displayUnit" | "conversionFactor">;
+	inventoryItem: Pick<
+		Doc<"inventory">,
+		"unit" | "displayUnit" | "conversionFactor" | "unitConversions"
+	>;
 }) {
 	const quantity = Number(args.quantity) || 0;
 	if (quantity <= 0) {
@@ -73,9 +144,17 @@ function convertQuantityToInventoryBaseUnit(args: {
 	const baseUnit = normalizeUnitLabel(args.inventoryItem.unit);
 	const displayUnit = normalizeUnitLabel(args.inventoryItem.displayUnit);
 	const factor = args.inventoryItem.conversionFactor || 1;
+	const unitConversions = sanitizeUnitConversions(args.inventoryItem.unitConversions);
 
 	if (!purchaseUnit || purchaseUnit === baseUnit) {
 		return quantity;
+	}
+
+	const matchedConversion = unitConversions?.find(
+		(conversion) => normalizeUnitLabel(conversion.unit) === purchaseUnit
+	);
+	if (matchedConversion && matchedConversion.factor > 0) {
+		return quantity * matchedConversion.factor;
 	}
 
 	if (displayUnit && purchaseUnit === displayUnit && factor > 0) {
@@ -96,7 +175,10 @@ function convertQuantityToInventoryBaseUnit(args: {
 }
 
 function resolveRestockCostPerUnit(
-	item: Pick<Doc<"inventory">, "unit" | "displayUnit" | "conversionFactor">,
+	item: Pick<
+		Doc<"inventory">,
+		"unit" | "displayUnit" | "conversionFactor" | "unitConversions"
+	>,
 	args: StockActionArgs
 ) {
 	if (typeof args.costPerUnit === "number" && args.costPerUnit > 0) {
@@ -137,6 +219,40 @@ function getJakartaDayKey(timestamp: number) {
 	return new Date(timestamp).toLocaleDateString("sv-SE", {
 		timeZone: "Asia/Bangkok",
 	});
+}
+
+function isLikelyInventoryExpenseCategory(category?: string | null) {
+	const value = (category || "").trim().toLowerCase();
+	if (!value) {
+		return false;
+	}
+	const positiveKeywords = [
+		"inventory",
+		"bahan",
+		"stok",
+		"stock",
+		"suppl",
+		"belanja",
+		"pembelian",
+		"bahan_baku",
+		"makanan_minuman",
+	];
+	const negativeKeywords = [
+		"hpp",
+		"gaji",
+		"salary",
+		"sewa",
+		"rent",
+		"listrik",
+		"internet",
+		"marketing",
+		"iklan",
+		"transport",
+	];
+	if (negativeKeywords.some((keyword) => value.includes(keyword))) {
+		return false;
+	}
+	return positiveKeywords.some((keyword) => value.includes(keyword));
 }
 
 async function getLatestCostPerUnitForInventory(
@@ -447,6 +563,7 @@ export const getInventoryControlTower = query({
 					unit: item.unit,
 					displayUnit: item.displayUnit,
 					conversionFactor: item.conversionFactor,
+					unitConversions: item.unitConversions,
 					lowStockThreshold: item.lowStockThreshold,
 					avgDailyUsage: Number(avgDailyUsage.toFixed(2)),
 					daysUntilStockout:
@@ -658,6 +775,7 @@ export const getInventoryWorkspace = query({
 					unit: item.unit,
 					displayUnit: item.displayUnit,
 					conversionFactor: item.conversionFactor,
+					unitConversions: item.unitConversions,
 					defaultBrandName: item.defaultBrandName ?? null,
 					preferredStoreName:
 						item.preferredStoreId != null
@@ -1078,6 +1196,10 @@ export const getRealtimePriceMonitor = query({
 			if (!rawName) {
 				continue;
 			}
+			const rawNameLower = rawName.toLowerCase();
+			if (rawNameLower.includes("hpp pesanan")) {
+				continue;
+			}
 
 			const nameKey = rawName.toLowerCase();
 			const storeName =
@@ -1124,6 +1246,7 @@ export const getRealtimePriceMonitor = query({
 		}
 
 		for (const expense of expenseRows) {
+			const isInventoryExpense = isLikelyInventoryExpenseCategory(expense.category);
 			const fallbackStoreName =
 				expense.merchant?.trim() ||
 				expense.metadata?.receiptDetails?.merchantName?.trim() ||
@@ -1132,22 +1255,32 @@ export const getRealtimePriceMonitor = query({
 			const normalizedScanItems =
 				scanItems.length > 0
 					? scanItems
+					: isInventoryExpense
+						? [
+								{
+									name:
+										expense.description?.trim() ||
+										expense.category?.trim() ||
+										"Pengeluaran",
+									quantity: 1,
+									price: expense.amount,
+									total: expense.amount,
+									unit: "unit",
+								},
+						  ]
 					: [
-							{
-								name:
-									expense.description?.trim() ||
-									expense.category?.trim() ||
-									"Pengeluaran",
-								quantity: 1,
-								price: expense.amount,
-								total: expense.amount,
-								unit: "unit",
-							},
-					  ];
+						];
+			if (normalizedScanItems.length === 0) {
+				continue;
+			}
 
 			for (const line of normalizedScanItems) {
 				const lineName = (line.name || "").trim();
 				if (!lineName) {
+					continue;
+				}
+				const lineNameLower = lineName.toLowerCase();
+				if (lineNameLower.includes("hpp pesanan")) {
 					continue;
 				}
 				const quantity = Number(line.quantity) || 0;
@@ -1209,6 +1342,44 @@ export const getRealtimePriceMonitor = query({
 					existing.previousPrice = unitPrice;
 				}
 			}
+		}
+
+		for (const item of items) {
+			const nameKey = item.ingredientName.trim().toLowerCase();
+			if (!nameKey || aggregate.has(nameKey)) {
+				continue;
+			}
+			if (nameKey.includes("hpp pesanan")) {
+				continue;
+			}
+			if (
+				typeof item.lastPurchasePrice !== "number" ||
+				Number.isNaN(item.lastPurchasePrice) ||
+				item.lastPurchasePrice <= 0
+			) {
+				continue;
+			}
+			aggregate.set(nameKey, {
+				inventoryName: item.ingredientName.trim(),
+				nameKey,
+				unit: item.unit,
+				displayUnit: item.displayUnit ?? null,
+				conversionFactor: item.conversionFactor ?? null,
+				lastPrice: item.lastPurchasePrice,
+				previousPrice: null,
+				lastPurchaseAt: item.lastPurchaseAt ?? item._creationTime,
+				lastStoreName:
+					item.lastPurchaseStoreId != null
+						? storeById.get(String(item.lastPurchaseStoreId))?.name ?? "Toko tidak dikenal"
+						: null,
+				lastBrandName: item.defaultBrandName ?? null,
+				totalPurchases: 1,
+				storeSet: new Set<string>(),
+				brandSet: item.defaultBrandName
+					? new Set<string>([item.defaultBrandName])
+					: new Set<string>(),
+				latestInventoryId: item._id,
+			});
 		}
 
 		const rows = [...aggregate.values()]
@@ -1273,6 +1444,14 @@ export const createInventoryItem = mutation({
 		lowStockThreshold: v.number(),
 		displayUnit: v.optional(v.string()),
 		conversionFactor: v.optional(v.number()),
+		unitConversions: v.optional(
+			v.array(
+				v.object({
+					unit: v.string(),
+					factor: v.number(),
+				})
+			)
+		),
 		baseRecipeId: v.optional(v.id("baseRecipes")),
 		defaultBrandName: v.optional(v.string()),
 		preferredStoreId: v.optional(v.id("inventoryStores")),
@@ -1297,7 +1476,18 @@ export const createInventoryItem = mutation({
 			lineTotal,
 			...inventoryData
 		} = args;
-		const inventoryId = await ctx.db.insert("inventory", inventoryData);
+		const normalizedUnits = normalizeInventoryUnitConfig({
+			unit: inventoryData.unit,
+			displayUnit: inventoryData.displayUnit,
+			conversionFactor: inventoryData.conversionFactor,
+			unitConversions: inventoryData.unitConversions,
+		});
+		const inventoryId = await ctx.db.insert("inventory", {
+			...inventoryData,
+			displayUnit: normalizedUnits.displayUnit,
+			conversionFactor: normalizedUnits.conversionFactor,
+			unitConversions: normalizedUnits.unitConversions,
+		});
 
 		if (args.quantity > 0) {
 			await ctx.db.insert("inventoryTransactions", {
@@ -1358,13 +1548,32 @@ export const updateInventoryItem = mutation({
 		lowStockThreshold: v.number(),
 		displayUnit: v.optional(v.string()),
 		conversionFactor: v.optional(v.number()),
+		unitConversions: v.optional(
+			v.array(
+				v.object({
+					unit: v.string(),
+					factor: v.number(),
+				})
+			)
+		),
 		baseRecipeId: v.optional(v.id("baseRecipes")),
 		defaultBrandName: v.optional(v.string()),
 		preferredStoreId: v.optional(v.id("inventoryStores")),
 	},
 	handler: async (ctx, args) => {
 		const { id, ...data } = args;
-		await ctx.db.patch(id, data);
+		const normalizedUnits = normalizeInventoryUnitConfig({
+			unit: data.unit,
+			displayUnit: data.displayUnit,
+			conversionFactor: data.conversionFactor,
+			unitConversions: data.unitConversions,
+		});
+		await ctx.db.patch(id, {
+			...data,
+			displayUnit: normalizedUnits.displayUnit,
+			conversionFactor: normalizedUnits.conversionFactor,
+			unitConversions: normalizedUnits.unitConversions,
+		});
 	},
 });
 
