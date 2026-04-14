@@ -38,8 +38,14 @@ export const clockIn = mutation({
 			throw new Error("User not found or inactive");
 		}
 
-		// Check if already clocked in today (simple check)
-		// Optimal implementation would check for existing check_in without a matching check_out
+		const latestStatus = await ctx.db
+			.query("attendance")
+			.withIndex("by_user", (q) => q.eq("userId", args.userId))
+			.order("desc")
+			.first();
+		if (latestStatus?.type === "check_in") {
+			throw new Error("User is already clocked in");
+		}
 		
 		const attendanceId = await ctx.db.insert("attendance", {
 			userId: args.userId,
@@ -65,6 +71,15 @@ export const clockOut = mutation({
 		const user = await ctx.db.get(args.userId);
 		if (!user || !user.isActive) {
 			throw new Error("User not found or inactive");
+		}
+
+		const latestStatus = await ctx.db
+			.query("attendance")
+			.withIndex("by_user", (q) => q.eq("userId", args.userId))
+			.order("desc")
+			.first();
+		if (!latestStatus || latestStatus.type !== "check_in") {
+			throw new Error("User is not currently clocked in");
 		}
 
 		const attendanceId = await ctx.db.insert("attendance", {

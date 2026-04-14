@@ -55,7 +55,7 @@ function LoadTimer({ startMs }: { startMs: number }) {
 		const id = setInterval(() => setSec(parseFloat(((Date.now() - startMs) / 1000).toFixed(1))), 100);
 		return () => clearInterval(id);
 	}, [startMs]);
-	return <p className="mt-2 text-xs font-mono text-white/40">{sec}d</p>;
+	return <p className="mt-2 text-xs font-mono text-white/40">{sec}s</p>;
 }
 
 export function FaceRecognition({
@@ -84,7 +84,6 @@ export function FaceRecognition({
 	const [retryCount, setRetryCount] = useState(0);
 	const [scanLineY, setScanLineY] = useState(0);
 	const [elapsedMs, setElapsedMs] = useState(0);
-	const [scanStartMs, setScanStartMs] = useState(0);
 	const [loadStartMs, setLoadStartMs] = useState(Date.now());
 	const [loadElapsedSec, setLoadElapsedSec] = useState(0);
 	const [cooldown, setCooldown] = useState(false);
@@ -116,13 +115,13 @@ export function FaceRecognition({
 
 				try {
 					setLoadingStep("Memuat Detektor (1/3)...");
-					setLoadingStep(`Memuat Detektor (1/3)... ${((Date.now() - loadStartMs) / 1000).toFixed(1)}d`);
+					setLoadingStep(`Memuat Detektor (1/3)... ${((Date.now() - loadStartMs) / 1000).toFixed(1)}s`);
 					await faceapi.nets.tinyFaceDetector.loadFromUri(candidatePath);
 					
-					setLoadingStep(`Memuat Landmark (2/3)... ${((Date.now() - loadStartMs) / 1000).toFixed(1)}d`);
+					setLoadingStep(`Memuat Landmark (2/3)... ${((Date.now() - loadStartMs) / 1000).toFixed(1)}s`);
 					await faceapi.nets.faceLandmark68Net.loadFromUri(candidatePath);
 					
-					setLoadingStep(`Memuat Pengenalan (3/3)... ${((Date.now() - loadStartMs) / 1000).toFixed(1)}d`);
+					setLoadingStep(`Memuat Pengenalan (3/3)... ${((Date.now() - loadStartMs) / 1000).toFixed(1)}s`);
 					await faceapi.nets.faceRecognitionNet.loadFromUri(candidatePath);
 					
 					if (!cancelled) {
@@ -208,7 +207,6 @@ export function FaceRecognition({
 		setScanProgress(0);
 		setAutoCaptureReady(false);
 		const startTime = Date.now();
-		setScanStartMs(startTime);
 
 		const progressInterval = setInterval(() => {
 			setScanProgress((prev) => {
@@ -232,7 +230,7 @@ export function FaceRecognition({
 
 			clearInterval(progressInterval);
 			setScanProgress(100);
-			setElapsedMs(Date.now() - scanStartMs);
+			setElapsedMs(Date.now() - startTime);
 
 			if (!detections) {
 				setTimeout(() => {
@@ -261,6 +259,9 @@ export function FaceRecognition({
 				} else {
 					setMatchStatus("fail");
 				}
+			} else if (mode === "verify" && !targetDescriptor) {
+				setMatchStatus("fail");
+				onModelError?.("Data wajah tidak tersedia untuk verifikasi.");
 			}
 		} catch (err) {
 			console.error("Face detection error:", err);
@@ -272,11 +273,9 @@ export function FaceRecognition({
 				isProcessingRef.current = false;
 			}, 2000);
 		} finally {
-			if (matchStatus !== "fail") {
-				isProcessingRef.current = false;
-			}
+			isProcessingRef.current = false;
 		}
-	}, [modelsLoaded, matchStatus, mode, targetDescriptor, onMatch, onCapture, cooldown]);
+	}, [modelsLoaded, matchStatus, mode, targetDescriptor, onMatch, onCapture, cooldown, onModelError]);
 
 	// Auto-capture when face is stable
 	useEffect(() => {

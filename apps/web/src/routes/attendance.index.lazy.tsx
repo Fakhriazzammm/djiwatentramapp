@@ -62,7 +62,7 @@ function AttendancePage() {
 	const currentlyIn = useQuery(api.attendance.getCurrentlyInStore);
 
 	const verifyPin = useMutation(api.users.verifyHomePin);
-	const updateFace = useMutation(api.users.updateFaceDescriptor);
+	const enrollFace = useMutation(api.users.enrollFace);
 	const clockIn = useMutation(api.attendance.clockIn);
 	const clockOut = useMutation(api.attendance.clockOut);
 
@@ -165,7 +165,7 @@ function AttendancePage() {
 			setUser({
 				id: authUser._id,
 				name: authUser.name,
-				faceDescriptor: (authUser as any).faceDescriptor || null,
+				faceDescriptor: authUser.faceDescriptor || undefined,
 				isCurrentlyIn
 			});
 			setStep("face"); // Go to face scan since we have the token
@@ -177,7 +177,7 @@ function AttendancePage() {
 		setUser({
 			id: staff._id,
 			name: staff.name,
-			faceDescriptor: staff.faceDescriptor || null,
+			faceDescriptor: staff.faceDescriptor || undefined,
 			isCurrentlyIn
 		});
 
@@ -204,9 +204,9 @@ function AttendancePage() {
 			// 2. If in enroll mode, save the face data first
 			if (isEnrolling && descriptor && pin) {
 				toast.loading("Mendaftarkan wajah...", { id: "save-face" });
-				await updateFace({
+				await enrollFace({
 					userId: user.id as any,
-					pin: pin,
+					pin,
 					faceDescriptor: descriptor,
 				});
 				toast.success("Wajah berhasil terdaftar!", { id: "save-face" });
@@ -620,6 +620,24 @@ function AttendancePage() {
 										</div>
 										<Button onClick={() => setStep("select")} variant="outline" className="rounded-xl border-red-200 text-red-700 hover:bg-red-50">
 											Pilih User Lain
+										</Button>
+									</div>
+								) : !isEnrolling && !user?.faceDescriptor ? (
+									<div className="flex aspect-[3/4] w-full flex-col items-center justify-center space-y-4 rounded-3xl bg-muted p-6 text-center">
+										<div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-amber-100 text-amber-600">
+											<AlertCircle className="h-7 w-7" />
+										</div>
+										<div className="space-y-2">
+											<p className="font-bold text-amber-900">DATA WAJAH BELUM TERSEDIA</p>
+											<p className="text-xs text-amber-700">Silakan lanjut dengan PIN lalu daftar ulang wajah agar absensi otomatis kembali aktif.</p>
+										</div>
+										<Button
+											onClick={() => setStep("pin")}
+											variant="outline"
+											className="rounded-xl border-amber-200 text-amber-700 hover:bg-amber-50"
+										>
+											<KeyRound className="mr-2 h-4 w-4" />
+											Lanjut Dengan PIN
 										</Button>
 									</div>
 								) : (

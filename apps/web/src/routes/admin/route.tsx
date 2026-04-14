@@ -23,6 +23,7 @@ import {
 	ChefHat,
 	Beer,
 	FileBarChart,
+	Gamepad2,
 	Grid3X3,
 	LayoutDashboard,
 	LogOut,
@@ -77,6 +78,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/kitchen": "Dapur",
 	"/admin/bar": "Bar",
 	"/admin/customer-service": "Layanan Customer",
+	"/admin/minigames": "Mini Games",
 };
 
 // Bottom nav items (Yumi AI at center index 2)
@@ -106,6 +108,7 @@ const MORE_MENU_PATHS = [
 	"/admin/kitchen",
 	"/admin/bar",
 	"/admin/customer-service",
+	"/admin/minigames",
 	"/admin/operational-team",
 	"/admin/settings",
 ];
@@ -141,9 +144,15 @@ const QUICK_MENU_SECTIONS = [
 		],
 	},
 	{
-		label: "Lainnya",
+		label: "Marketing",
 		items: [
 			{ to: "/admin/discounts", icon: Percent, label: "Promosi", permission: "products:manage" },
+			{ to: "/admin/minigames", icon: Gamepad2, label: "Mini Games", permission: "products:manage" },
+		],
+	},
+	{
+		label: "Lainnya",
+		items: [
 			{ to: "/admin/forecasting", icon: Grid3X3, label: "Forecast", permission: "analytics:view" },
 			{ to: "/admin/settings", icon: Settings, label: "Pengaturan", permission: "settings:manage" },
 		],
@@ -511,6 +520,13 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Promosi"
 						to="/admin/discounts"
+						permission="products:manage"
+					/>
+					<DesktopNavLink
+						icon={<Gamepad2 />}
+						isCollapsed={isCollapsed}
+						label="Mini Games"
+						to="/admin/minigames"
 						permission="products:manage"
 					/>
 				</nav>

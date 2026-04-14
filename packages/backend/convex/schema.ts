@@ -412,6 +412,67 @@ export default defineSchema({
 		.index("by_orderId", ["orderId"])
 		.index("by_createdAt", ["createdAt"]),
 
+	miniGames: defineTable({
+		brandSlug: v.string(),
+		name: v.string(),
+		slug: v.string(),
+		description: v.optional(v.string()),
+		isActive: v.boolean(),
+		requireUniqueContact: v.boolean(),
+		maxSpinsPerContact: v.number(),
+		startAt: v.optional(v.number()),
+		endAt: v.optional(v.number()),
+		spinDurationMs: v.optional(v.number()),
+		thankYouMessage: v.optional(v.string()),
+		prizes: v.array(
+			v.object({
+				id: v.string(),
+				label: v.string(),
+				description: v.optional(v.string()),
+				color: v.optional(v.string()),
+				weight: v.number(),
+				stock: v.optional(v.number()),
+				claimedCount: v.number(),
+				voucherCode: v.optional(v.string()),
+				isActive: v.boolean(),
+			})
+		),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_brand_slug_and_slug", ["brandSlug", "slug"])
+		.index("by_brand_slug_and_is_active", ["brandSlug", "isActive"])
+		.index("by_brand_slug_and_created_at", ["brandSlug", "createdAt"])
+		.index("by_created_at", ["createdAt"]),
+
+	miniGameEntries: defineTable({
+		gameId: v.id("miniGames"),
+		brandSlug: v.string(),
+		fullName: v.string(),
+		email: v.string(),
+		whatsapp: v.string(),
+		instagram: v.string(),
+		prizeId: v.string(),
+		prizeLabel: v.string(),
+		voucherCode: v.optional(v.string()),
+		spinAngle: v.number(),
+		contactStatus: v.union(
+			v.literal("new"),
+			v.literal("contacted"),
+			v.literal("voucher_sent"),
+			v.literal("invalid")
+		),
+		adminNotes: v.optional(v.string()),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_game_id", ["gameId"])
+		.index("by_game_id_and_created_at", ["gameId", "createdAt"])
+		.index("by_game_id_and_email", ["gameId", "email"])
+		.index("by_game_id_and_whatsapp", ["gameId", "whatsapp"])
+		.index("by_contact_status_and_created_at", ["contactStatus", "createdAt"])
+		.index("by_created_at", ["createdAt"]),
+
 	// Discounts / Vouchers
 	discounts: defineTable({
 		name: v.string(),

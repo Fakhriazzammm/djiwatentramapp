@@ -11,6 +11,7 @@ export interface YumiUser {
 	username: string;
 	slug?: string;
 	roleId: string;
+	faceDescriptor?: number[];
 }
 
 export interface YumiRole {

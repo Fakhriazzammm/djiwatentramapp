@@ -664,6 +664,7 @@ export const getPublicUsers = query({
 			slug: u.slug || u.username.split("@")[0],
 			initial: u.name.charAt(0).toUpperCase(),
 			hasFace: !!u.faceDescriptor,
+			faceDescriptor: u.faceDescriptor,
 		})).sort((a, b) => a.name.localeCompare(b.name));
 	},
 });
@@ -722,6 +723,7 @@ export const validateSession = query({
 				username: user.username,
 				slug: user.slug,
 				roleId: user.roleId,
+				faceDescriptor: user.faceDescriptor,
 			},
 			role: {
 				name: role?.name || "staff",

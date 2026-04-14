@@ -16,6 +16,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BookingRouteImport } from './routes/booking'
 import { Route as AttendanceRouteImport } from './routes/attendance'
 import { Route as BrandSlugRouteImport } from './routes/$brandSlug'
+import { Route as BrandSlugMinigamesRouteImport } from './routes/$brandSlug.minigames'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
@@ -29,6 +30,7 @@ import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminOperationalTeamRouteImport } from './routes/admin/operational-team'
 import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
+import { Route as AdminMinigamesRouteImport } from './routes/admin/minigames'
 import { Route as AdminHppCalculatorRouteImport } from './routes/admin/hpp-calculator'
 import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting'
 import { Route as AdminDiscountsRouteImport } from './routes/admin/discounts'
@@ -79,6 +81,13 @@ const BrandSlugRoute = BrandSlugRouteImport.update({
   path: '/$brandSlug',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/$brandSlug.lazy').then((d) => d.Route))
+const BrandSlugMinigamesRoute = BrandSlugMinigamesRouteImport.update({
+  id: '/minigames',
+  path: '/minigames',
+  getParentRoute: () => BrandSlugRoute,
+} as any).lazy(() =>
+  import('./routes/$brandSlug.minigames.lazy').then((d) => d.Route),
+)
 const AdminRouteRoute = AdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -155,6 +164,13 @@ const AdminInventoryRoute = AdminInventoryRouteImport.update({
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
   import('./routes/admin/inventory.lazy').then((d) => d.Route),
+)
+const AdminMinigamesRoute = AdminMinigamesRouteImport.update({
+  id: '/minigames',
+  path: '/minigames',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/minigames.lazy').then((d) => d.Route),
 )
 const AdminHppCalculatorRoute = AdminHppCalculatorRouteImport.update({
   id: '/hpp-calculator',
@@ -243,7 +259,7 @@ const AdminFinanceReportsRouteRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
-  '/$brandSlug': typeof BrandSlugRoute
+  '/$brandSlug': typeof BrandSlugRouteWithChildren
   '/attendance': typeof AttendanceRouteWithChildren
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
@@ -259,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/operational-team': typeof AdminOperationalTeamRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -266,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/attendance/$username': typeof AttendanceUsernameRoute
+  '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
   '/home/$section': typeof HomeSectionRoute
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
@@ -278,7 +296,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/$brandSlug': typeof BrandSlugRoute
+  '/$brandSlug': typeof BrandSlugRouteWithChildren
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRouteWithChildren
@@ -292,12 +310,14 @@ export interface FileRoutesByTo {
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/operational-team': typeof AdminOperationalTeamRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/attendance/$username': typeof AttendanceUsernameRoute
+  '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
   '/home/$section': typeof HomeSectionRoute
   '/admin': typeof AdminIndexRoute
   '/attendance': typeof AttendanceIndexRoute
@@ -312,7 +332,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
-  '/$brandSlug': typeof BrandSlugRoute
+  '/$brandSlug': typeof BrandSlugRouteWithChildren
   '/attendance': typeof AttendanceRouteWithChildren
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
@@ -328,6 +348,7 @@ export interface FileRoutesById {
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/operational-team': typeof AdminOperationalTeamRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -335,6 +356,7 @@ export interface FileRoutesById {
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/attendance/$username': typeof AttendanceUsernameRoute
+  '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
   '/home/$section': typeof HomeSectionRoute
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
@@ -366,6 +388,7 @@ export interface FileRouteTypes {
     | '/admin/forecasting'
     | '/admin/hpp-calculator'
     | '/admin/inventory'
+    | '/admin/minigames'
     | '/admin/kitchen'
     | '/admin/operational-team'
     | '/admin/orders'
@@ -373,6 +396,7 @@ export interface FileRouteTypes {
     | '/admin/recipe'
     | '/admin/settings'
     | '/attendance/$username'
+    | '/$brandSlug/minigames'
     | '/home/$section'
     | '/admin/'
     | '/attendance/'
@@ -399,12 +423,14 @@ export interface FileRouteTypes {
     | '/admin/forecasting'
     | '/admin/hpp-calculator'
     | '/admin/inventory'
+    | '/admin/minigames'
     | '/admin/kitchen'
     | '/admin/operational-team'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
     | '/attendance/$username'
+    | '/$brandSlug/minigames'
     | '/home/$section'
     | '/admin'
     | '/attendance'
@@ -434,6 +460,7 @@ export interface FileRouteTypes {
     | '/admin/forecasting'
     | '/admin/hpp-calculator'
     | '/admin/inventory'
+    | '/admin/minigames'
     | '/admin/kitchen'
     | '/admin/operational-team'
     | '/admin/orders'
@@ -441,6 +468,7 @@ export interface FileRouteTypes {
     | '/admin/recipe'
     | '/admin/settings'
     | '/attendance/$username'
+    | '/$brandSlug/minigames'
     | '/home/$section'
     | '/admin/'
     | '/attendance/'
@@ -455,7 +483,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
-  BrandSlugRoute: typeof BrandSlugRoute
+  BrandSlugRoute: typeof BrandSlugRouteWithChildren
   AttendanceRoute: typeof AttendanceRouteWithChildren
   BookingRoute: typeof BookingRoute
   DashboardRoute: typeof DashboardRoute
@@ -557,6 +585,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AttendanceUsernameRouteImport
       parentRoute: typeof AttendanceRoute
     }
+    '/$brandSlug/minigames': {
+      id: '/$brandSlug/minigames'
+      path: '/minigames'
+      fullPath: '/$brandSlug/minigames'
+      preLoaderRoute: typeof BrandSlugMinigamesRouteImport
+      parentRoute: typeof BrandSlugRoute
+    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/settings'
@@ -604,6 +639,13 @@ declare module '@tanstack/react-router' {
       path: '/inventory'
       fullPath: '/admin/inventory'
       preLoaderRoute: typeof AdminInventoryRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/minigames': {
+      id: '/admin/minigames'
+      path: '/minigames'
+      fullPath: '/admin/minigames'
+      preLoaderRoute: typeof AdminMinigamesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/hpp-calculator': {
@@ -748,6 +790,7 @@ interface AdminRouteRouteChildren {
   AdminForecastingRoute: typeof AdminForecastingRoute
   AdminHppCalculatorRoute: typeof AdminHppCalculatorRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
+  AdminMinigamesRoute: typeof AdminMinigamesRoute
   AdminKitchenRoute: typeof AdminKitchenRoute
   AdminOperationalTeamRoute: typeof AdminOperationalTeamRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
@@ -767,6 +810,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminForecastingRoute: AdminForecastingRoute,
   AdminHppCalculatorRoute: AdminHppCalculatorRoute,
   AdminInventoryRoute: AdminInventoryRoute,
+  AdminMinigamesRoute: AdminMinigamesRoute,
   AdminKitchenRoute: AdminKitchenRoute,
   AdminOperationalTeamRoute: AdminOperationalTeamRoute,
   AdminOrdersRoute: AdminOrdersRoute,
@@ -804,10 +848,22 @@ const HomeRouteChildren: HomeRouteChildren = {
 
 const HomeRouteWithChildren = HomeRoute._addFileChildren(HomeRouteChildren)
 
+interface BrandSlugRouteChildren {
+  BrandSlugMinigamesRoute: typeof BrandSlugMinigamesRoute
+}
+
+const BrandSlugRouteChildren: BrandSlugRouteChildren = {
+  BrandSlugMinigamesRoute: BrandSlugMinigamesRoute,
+}
+
+const BrandSlugRouteWithChildren = BrandSlugRoute._addFileChildren(
+  BrandSlugRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
-  BrandSlugRoute: BrandSlugRoute,
+  BrandSlugRoute: BrandSlugRouteWithChildren,
   AttendanceRoute: AttendanceRouteWithChildren,
   BookingRoute: BookingRoute,
   DashboardRoute: DashboardRoute,
