@@ -186,9 +186,9 @@ function buildShiftTargetSummary(args: {
 	const safeShiftsPerDay = Math.max(1, shiftsPerDay);
 	const shiftTarget = dailyTarget / safeShiftsPerDay;
 	const dailyTargetProgress =
-		dailyTarget > 0 ? Math.min((dailyCollected / dailyTarget) * 100, 100) : 0;
+		dailyTarget > 0 ? (dailyCollected / dailyTarget) * 100 : 0;
 	const shiftTargetProgress =
-		shiftTarget > 0 ? Math.min((shiftRevenue / shiftTarget) * 100, 100) : 0;
+		shiftTarget > 0 ? (shiftRevenue / shiftTarget) * 100 : 0;
 
 	return {
 		hasTarget: true,
@@ -2754,10 +2754,10 @@ export const getShiftTargetProgress = query({
 			monthStr,
 			dailyTarget,
 			dailyCollected,
-			dailyProgress: Math.min((dailyCollected / dailyTarget) * 100, 100),
+			dailyProgress: dailyTarget > 0 ? (dailyCollected / dailyTarget) * 100 : 0,
 			shiftTarget,
 			shiftCollected,
-			shiftProgress: Math.min((shiftCollected / shiftTarget) * 100, 100),
+			shiftProgress: shiftTarget > 0 ? (shiftCollected / shiftTarget) * 100 : 0,
 			isDailyMet: dailyCollected >= dailyTarget,
 			isShiftMet: shiftCollected >= shiftTarget,
 		};
@@ -2971,7 +2971,7 @@ export const getCurrentMonthProgress = query({
 
 		const targetRevenue = target?.targetRevenue ?? 0;
 		const remaining = Math.max(0, targetRevenue - income);
-		const progressPct = targetRevenue > 0 ? Math.min(100, (income / targetRevenue) * 100) : 0;
+		const progressPct = targetRevenue > 0 ? (income / targetRevenue) * 100 : 0;
 
 		const dailyTarget = targetRevenue / daysInMonth;
 		const shiftTarget = dailyTarget / 2; // Assuming 2 shifts per day

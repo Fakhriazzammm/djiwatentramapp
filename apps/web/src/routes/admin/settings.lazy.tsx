@@ -364,6 +364,14 @@ const AVAILABLE_PERMISSIONS = [
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HOME_PIN_REGEX = /^\d{6}$/;
 type SettingsPageMode = "settings" | "operational-team";
+type BonusTargetBasis = "shift" | "daily" | "monthly";
+type BonusTierConfig = { thresholdPct: number; bonusAmount: number };
+type RoleBonusTargetConfig = {
+	basis: BonusTargetBasis;
+	tiers: BonusTierConfig[];
+};
+
+const DEFAULT_BONUS_THRESHOLDS = [100, 150, 200] as const;
 
 function normalizeEmail(email: string) {
 	return email.trim().toLowerCase();
@@ -375,6 +383,58 @@ function isValidEmail(email: string) {
 
 function isValidHomePin(pin: string) {
 	return HOME_PIN_REGEX.test(pin);
+}
+
+function createDefaultRoleBonusTargetConfig(): RoleBonusTargetConfig {
+	return {
+		basis: "shift",
+		tiers: DEFAULT_BONUS_THRESHOLDS.map((thresholdPct) => ({
+			thresholdPct,
+			bonusAmount: 0,
+		})),
+	};
+}
+
+function normalizeRoleBonusTargetConfig(config?: Partial<RoleBonusTargetConfig>): RoleBonusTargetConfig {
+	const fallback = createDefaultRoleBonusTargetConfig();
+	const basis: BonusTargetBasis =
+		config?.basis === "daily" || config?.basis === "monthly" || config?.basis === "shift"
+			? config.basis
+			: fallback.basis;
+	const tiersSource =
+		config?.tiers && config.tiers.length > 0 ? config.tiers : fallback.tiers;
+	const tiers = [...tiersSource]
+		.map((tier) => ({
+			thresholdPct: Number(tier.thresholdPct) || 0,
+			bonusAmount: Number(tier.bonusAmount) || 0,
+		}))
+		.filter((tier) => tier.thresholdPct > 0)
+		.sort((a, b) => a.thresholdPct - b.thresholdPct);
+
+	return {
+		basis,
+		tiers:
+			tiers.length > 0
+				? tiers
+				: DEFAULT_BONUS_THRESHOLDS.map((thresholdPct) => ({
+						thresholdPct,
+						bonusAmount: 0,
+					})),
+	};
+}
+
+function getBonusBasisLabel(basis: BonusTargetBasis) {
+	if (basis === "daily") return "Per Hari";
+	if (basis === "monthly") return "Per Bulan";
+	return "Per Shift";
+}
+
+function formatRoleBonusSummary(config?: Partial<RoleBonusTargetConfig>) {
+	const normalized = normalizeRoleBonusTargetConfig(config);
+	const tiersSummary = normalized.tiers
+		.map((tier) => `${Math.round(tier.thresholdPct)}%: Rp${tier.bonusAmount.toLocaleString("id-ID")}`)
+		.join(" | ");
+	return `${getBonusBasisLabel(normalized.basis)} - ${tiersSummary}`;
 }
 
 type AiModelConfig = {
@@ -671,11 +731,11 @@ export function SettingsPage({
 
 	const exportPayrollCSV = () => {
 		if (!payrollReport?.rows) return;
-		const headers = ["Staff","Role","Shift","Telat (m)","Gaji Tetap","Gaji Shift","Tunjangan","Lembur","Denda","Total"];
+		const headers = ["Staff","Role","Shift","Telat (m)","Gaji Tetap","Gaji Shift","Tunjangan","Lembur","Bonus Target","Denda","Total"];
 		const rows = payrollReport.rows.map((s: any) => [
 			s.name, s.roleName, s.sessionCount||0, s.totalLateMinutes||0,
 			s.monthlyFixedSalary||0, s.totalShiftSalary||0, s.totalAllowance||0,
-			s.totalOvertimeBonus||0, s.totalPenalty||0, s.netSalary||0,
+			s.totalOvertimeBonus||0, s.totalTargetBonus||0, s.totalPenalty||0, s.netSalary||0,
 		]);
 		const csv = [headers.join(","), ...rows.map((r: any) => r.join(","))].join("\n");
 		const blob = new Blob([csv], { type: "text/csv" });
@@ -751,6 +811,7 @@ export function SettingsPage({
 		baseShiftRate: 0,
 		monthlyFixedSalary: 0,
 		dailyAllowance: 0,
+		bonusTargetConfig: createDefaultRoleBonusTargetConfig(),
 		_show: false,
 	});
 	const [editingUser, setEditingUser] = useState<{
@@ -771,9 +832,12 @@ export function SettingsPage({
 		baseShiftRate: number;
 		monthlyFixedSalary: number;
 		dailyAllowance: number;
+		bonusTargetConfig: RoleBonusTargetConfig;
 	} | null>(null);
 	const [newRolePermOpen, setNewRolePermOpen] = useState(false);
 	const [editRolePermOpen, setEditRolePermOpen] = useState(false);
+	const [newRoleBonusOpen, setNewRoleBonusOpen] = useState(false);
+	const [editRoleBonusOpen, setEditRoleBonusOpen] = useState(false);
 	const [showFaceEnrollment, setShowFaceEnrollment] = useState(false);
 	const [confirmConfig, setConfirmConfig] = useState<{
 		isOpen: boolean;
@@ -1141,6 +1205,7 @@ export function SettingsPage({
 			baseShiftRate: role.baseShiftRate ?? 0,
 			monthlyFixedSalary: role.monthlyFixedSalary ?? 0,
 			dailyAllowance: role.dailyAllowance ?? 0,
+			bonusTargetConfig: normalizeRoleBonusTargetConfig(role.bonusTargetConfig),
 		});
 	};
 
@@ -1160,6 +1225,9 @@ export function SettingsPage({
 				baseShiftRate: editingRole.baseShiftRate,
 				monthlyFixedSalary: editingRole.monthlyFixedSalary,
 				dailyAllowance: editingRole.dailyAllowance,
+				bonusTargetConfig: normalizeRoleBonusTargetConfig(
+					editingRole.bonusTargetConfig
+				),
 			});
 			toast.success("Role berhasil diperbarui");
 			setEditingRole(null);
@@ -1199,9 +1267,21 @@ export function SettingsPage({
 				baseShiftRate: newRole.baseShiftRate,
 				monthlyFixedSalary: newRole.monthlyFixedSalary,
 				dailyAllowance: newRole.dailyAllowance,
+				bonusTargetConfig: normalizeRoleBonusTargetConfig(
+					newRole.bonusTargetConfig
+				),
 			});
 			toast.success("Role baru berhasil dibuat");
-			setNewRole({ name: "", permissions: [], baseHourlyRate: 0, baseShiftRate: 0, monthlyFixedSalary: 0, dailyAllowance: 0, _show: false });
+			setNewRole({
+				name: "",
+				permissions: [],
+				baseHourlyRate: 0,
+				baseShiftRate: 0,
+				monthlyFixedSalary: 0,
+				dailyAllowance: 0,
+				bonusTargetConfig: createDefaultRoleBonusTargetConfig(),
+				_show: false,
+			});
 		} catch (error) {
 			console.error(error);
 			toast.error("Gagal membuat role");
@@ -1222,6 +1302,98 @@ export function SettingsPage({
 					toast.error((error as Error).message);
 				}
 			},
+		});
+	};
+
+	const updateNewRoleBonusTier = (
+		index: number,
+		field: keyof BonusTierConfig,
+		value: number
+	) => {
+		setNewRole((prev) => ({
+			...prev,
+			bonusTargetConfig: {
+				...prev.bonusTargetConfig,
+				tiers: prev.bonusTargetConfig.tiers.map((tier, tierIndex) =>
+					tierIndex === index ? { ...tier, [field]: value } : tier
+				),
+			},
+		}));
+	};
+
+	const addNewRoleBonusTier = () => {
+		setNewRole((prev) => {
+			const tiers = [...prev.bonusTargetConfig.tiers];
+			const lastThreshold = tiers.length > 0 ? tiers[tiers.length - 1].thresholdPct : 50;
+			tiers.push({ thresholdPct: lastThreshold + 50, bonusAmount: 0 });
+			return {
+				...prev,
+				bonusTargetConfig: {
+					...prev.bonusTargetConfig,
+					tiers,
+				},
+			};
+		});
+	};
+
+	const removeNewRoleBonusTier = (index: number) => {
+		setNewRole((prev) => {
+			if (prev.bonusTargetConfig.tiers.length <= 1) return prev;
+			return {
+				...prev,
+				bonusTargetConfig: {
+					...prev.bonusTargetConfig,
+					tiers: prev.bonusTargetConfig.tiers.filter((_, tierIndex) => tierIndex !== index),
+				},
+			};
+		});
+	};
+
+	const updateEditingRoleBonusTier = (
+		index: number,
+		field: keyof BonusTierConfig,
+		value: number
+	) => {
+		setEditingRole((prev) => {
+			if (!prev) return prev;
+			return {
+				...prev,
+				bonusTargetConfig: {
+					...prev.bonusTargetConfig,
+					tiers: prev.bonusTargetConfig.tiers.map((tier, tierIndex) =>
+						tierIndex === index ? { ...tier, [field]: value } : tier
+					),
+				},
+			};
+		});
+	};
+
+	const addEditingRoleBonusTier = () => {
+		setEditingRole((prev) => {
+			if (!prev) return prev;
+			const tiers = [...prev.bonusTargetConfig.tiers];
+			const lastThreshold = tiers.length > 0 ? tiers[tiers.length - 1].thresholdPct : 50;
+			tiers.push({ thresholdPct: lastThreshold + 50, bonusAmount: 0 });
+			return {
+				...prev,
+				bonusTargetConfig: {
+					...prev.bonusTargetConfig,
+					tiers,
+				},
+			};
+		});
+	};
+
+	const removeEditingRoleBonusTier = (index: number) => {
+		setEditingRole((prev) => {
+			if (!prev || prev.bonusTargetConfig.tiers.length <= 1) return prev;
+			return {
+				...prev,
+				bonusTargetConfig: {
+					...prev.bonusTargetConfig,
+					tiers: prev.bonusTargetConfig.tiers.filter((_, tierIndex) => tierIndex !== index),
+				},
+			};
 		});
 	};
 
@@ -1536,6 +1708,7 @@ export function SettingsPage({
 												<th className="px-3 py-2.5 text-right text-[11px]">Gaji Shift</th>
 												<th className="px-3 py-2.5 text-right text-[11px]">Tunj.</th>
 												<th className="px-3 py-2.5 text-right text-[11px]">Lembur</th>
+												<th className="px-3 py-2.5 text-right text-emerald-700 text-[11px]">Bonus Target</th>
 												<th className="px-3 py-2.5 text-right text-destructive text-[11px]">Denda</th>
 												<th className="px-3 py-2.5 text-right font-bold text-primary text-[11px]">Total</th>
 											</tr>
@@ -1546,14 +1719,14 @@ export function SettingsPage({
 													<tr key={i}>
 														<td className="px-4 py-4"><Skeleton className="h-4 w-24" /></td>
 														<td className="px-4 py-4"><Skeleton className="h-4 w-16" /></td>
-														<td colSpan={8} className="px-4 py-4">
+														<td colSpan={9} className="px-4 py-4">
 															<Skeleton className="h-4 w-full" />
 														</td>
 													</tr>
 												))
 											) : !payrollReport.rows || payrollReport.rows.length === 0 ? (
 												<tr>
-													<td colSpan={10} className="py-12 text-center text-muted-foreground italic">
+													<td colSpan={11} className="py-12 text-center text-muted-foreground italic">
 														{!payrollReport.rows ? "Gagal memuat data." : "Tidak ada data absensi untuk periode ini."}
 													</td>
 												</tr>
@@ -1572,6 +1745,18 @@ export function SettingsPage({
 														<td className="px-3 py-2.5 text-right font-medium text-xs">{formatCurrency(staff.totalShiftSalary || 0)}</td>
 														<td className="px-3 py-2.5 text-right text-xs">{formatCurrency(staff.totalAllowance || 0)}</td>
 														<td className="px-3 py-2.5 text-right text-[10px] text-emerald-600">+{formatCurrency(staff.totalOvertimeBonus || 0)}</td>
+														<td className="px-3 py-2.5 text-right text-[10px] text-emerald-700">
+															+{formatCurrency(staff.totalTargetBonus || 0)}
+															{staff.bonusTargetBasis ? (
+																<div className="text-[9px] text-muted-foreground">
+																	{staff.bonusTargetBasis === "shift"
+																		? "Per Shift"
+																		: staff.bonusTargetBasis === "daily"
+																			? "Per Hari"
+																			: "Per Bulan"}
+																</div>
+															) : null}
+														</td>
 														<td className="px-3 py-2.5 text-right text-[10px] text-destructive">-{formatCurrency(staff.totalPenalty || 0)}</td>
 														<td className="px-3 py-2.5 text-right font-bold text-primary bg-primary/5 text-xs">{formatCurrency(staff.netSalary || 0)}</td>
 													</tr>
@@ -1801,6 +1986,7 @@ export function SettingsPage({
 													<th className="px-4 py-3 text-right">Gaji/Shift (Rp)</th>
 													<th className="px-4 py-3 text-right">Gaji Tetap (Rp)</th>
 													<th className="px-4 py-3 text-right">Tunjangan/Hari (Rp)</th>
+													<th className="px-4 py-3">Bonus Target</th>
 													<th className="px-4 py-3 text-center">Akses</th>
 													<th className="px-4 py-3 text-right">Aksi</th>
 												</tr>
@@ -1809,7 +1995,7 @@ export function SettingsPage({
 												{!roles ? (
 													Array.from({ length: 3 }).map((_, i) => (
 														<tr key={i}>
-															<td colSpan={6} className="px-4 py-4">
+															<td colSpan={7} className="px-4 py-4">
 																<Skeleton className="h-8 w-full" />
 															</td>
 														</tr>
@@ -1850,6 +2036,15 @@ export function SettingsPage({
 																		value={newRole.dailyAllowance || ""}
 																		onChange={(e) => setNewRole({ ...newRole, dailyAllowance: Number(e.target.value) })}
 																	/>
+																</td>
+																<td className="px-3 py-2">
+																	<button
+																		className="w-full rounded-lg border border-border px-2 py-1 text-left text-[10px] font-semibold text-foreground hover:bg-muted/40"
+																		onClick={() => setNewRoleBonusOpen(true)}
+																		type="button"
+																	>
+																		{formatRoleBonusSummary(newRole.bonusTargetConfig)}
+																	</button>
 																</td>
 																<td className="px-3 py-2">
 																	<button
@@ -1955,6 +2150,21 @@ export function SettingsPage({
 																	<td className="px-3 py-2">
 																		{isEditing ? (
 																			<button
+																				className="w-full rounded-lg border border-primary/30 bg-primary/10 px-2 py-1 text-left text-[10px] font-semibold text-primary hover:bg-primary/20"
+																				onClick={() => setEditRoleBonusOpen(true)}
+																				type="button"
+																			>
+																				{formatRoleBonusSummary(editingRole?.bonusTargetConfig)}
+																			</button>
+																		) : (
+																			<span className="block text-[10px] font-medium text-muted-foreground leading-relaxed">
+																				{formatRoleBonusSummary(role.bonusTargetConfig)}
+																			</span>
+																		)}
+																	</td>
+																	<td className="px-3 py-2">
+																		{isEditing ? (
+																			<button
 																				className="mx-auto flex items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-primary/20 transition-colors"
 																				onClick={() => setEditRolePermOpen(true)}
 																				type="button"
@@ -2012,7 +2222,7 @@ export function SettingsPage({
 														})}
 														{roles.length === 0 && !newRole._show && (
 															<tr>
-																<td colSpan={6} className="py-8 text-center text-muted-foreground text-xs italic">
+																<td colSpan={7} className="py-8 text-center text-muted-foreground text-xs italic">
 																	Belum ada role. Klik "Tambah Role" untuk membuat baru.
 																</td>
 															</tr>
@@ -2076,6 +2286,176 @@ export function SettingsPage({
 													<span>{perm.label}</span>
 												</label>
 											))}
+										</div>
+									)}
+								</DialogContent>
+							</Dialog>
+
+							<Dialog open={newRoleBonusOpen} onOpenChange={setNewRoleBonusOpen}>
+								<DialogContent className="sm:max-w-lg">
+									<DialogTitle>Bonus Target - Role Baru</DialogTitle>
+									<DialogDescription>
+										Atur bonus bertingkat saat target 100%, 150%, 200%, dan seterusnya tercapai.
+									</DialogDescription>
+									<div className="space-y-4">
+										<div className="space-y-2">
+											<label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+												Dasar Perhitungan
+											</label>
+											<select
+												className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+												value={newRole.bonusTargetConfig.basis}
+												onChange={(e) =>
+													setNewRole((prev) => ({
+														...prev,
+														bonusTargetConfig: {
+															...prev.bonusTargetConfig,
+															basis: e.target.value as BonusTargetBasis,
+														},
+													}))
+												}
+											>
+												<option value="shift">Per Shift</option>
+												<option value="daily">Per Hari</option>
+												<option value="monthly">Per Bulan</option>
+											</select>
+										</div>
+										<div className="space-y-2">
+											<div className="flex items-center justify-between">
+												<label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+													Level Bonus
+												</label>
+												<Button size="sm" type="button" variant="outline" onClick={addNewRoleBonusTier}>
+													<Plus className="h-3 w-3" />
+													Tambah Level
+												</Button>
+											</div>
+											<div className="space-y-2">
+												{newRole.bonusTargetConfig.tiers.map((tier, index) => (
+													<div key={`${tier.thresholdPct}-${index}`} className="grid grid-cols-[1fr_1fr_auto] items-center gap-2">
+														<input
+															type="number"
+															className="rounded-lg border border-border bg-background px-3 py-2 text-xs"
+															value={tier.thresholdPct}
+															onChange={(e) =>
+																updateNewRoleBonusTier(
+																	index,
+																	"thresholdPct",
+																	Number(e.target.value)
+																)
+															}
+														/>
+														<input
+															type="number"
+															className="rounded-lg border border-border bg-background px-3 py-2 text-xs"
+															value={tier.bonusAmount}
+															onChange={(e) =>
+																updateNewRoleBonusTier(
+																	index,
+																	"bonusAmount",
+																	Number(e.target.value)
+																)
+															}
+														/>
+														<Button
+															size="icon"
+															type="button"
+															variant="ghost"
+															onClick={() => removeNewRoleBonusTier(index)}
+														>
+															<Trash2 className="h-3.5 w-3.5" />
+														</Button>
+													</div>
+												))}
+											</div>
+										</div>
+									</div>
+								</DialogContent>
+							</Dialog>
+
+							<Dialog open={editRoleBonusOpen} onOpenChange={setEditRoleBonusOpen}>
+								<DialogContent className="sm:max-w-lg">
+									<DialogTitle>Bonus Target - {editingRole?.name}</DialogTitle>
+									<DialogDescription>
+										Bonus bersifat akumulatif setiap level target yang tercapai.
+									</DialogDescription>
+									{editingRole && (
+										<div className="space-y-4">
+											<div className="space-y-2">
+												<label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+													Dasar Perhitungan
+												</label>
+												<select
+													className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+													value={editingRole.bonusTargetConfig.basis}
+													onChange={(e) =>
+														setEditingRole((prev) =>
+															prev
+																? {
+																		...prev,
+																		bonusTargetConfig: {
+																			...prev.bonusTargetConfig,
+																			basis: e.target.value as BonusTargetBasis,
+																		},
+																	}
+																: prev
+														)
+													}
+												>
+													<option value="shift">Per Shift</option>
+													<option value="daily">Per Hari</option>
+													<option value="monthly">Per Bulan</option>
+												</select>
+											</div>
+											<div className="space-y-2">
+												<div className="flex items-center justify-between">
+													<label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+														Level Bonus
+													</label>
+													<Button size="sm" type="button" variant="outline" onClick={addEditingRoleBonusTier}>
+														<Plus className="h-3 w-3" />
+														Tambah Level
+													</Button>
+												</div>
+												<div className="space-y-2">
+													{editingRole.bonusTargetConfig.tiers.map((tier, index) => (
+														<div key={`${tier.thresholdPct}-${index}`} className="grid grid-cols-[1fr_1fr_auto] items-center gap-2">
+															<input
+																type="number"
+																className="rounded-lg border border-border bg-background px-3 py-2 text-xs"
+																value={tier.thresholdPct}
+																onChange={(e) =>
+																	updateEditingRoleBonusTier(
+																		index,
+																		"thresholdPct",
+																		Number(e.target.value)
+																	)
+																}
+															/>
+															<input
+																type="number"
+																className="rounded-lg border border-border bg-background px-3 py-2 text-xs"
+																value={tier.bonusAmount}
+																onChange={(e) =>
+																	updateEditingRoleBonusTier(
+																		index,
+																		"bonusAmount",
+																		Number(e.target.value)
+																	)
+																}
+															/>
+															<Button
+																size="icon"
+																type="button"
+																variant="ghost"
+																onClick={() => removeEditingRoleBonusTier(index)}
+															>
+																<Trash2 className="h-3.5 w-3.5" />
+															</Button>
+														</div>
+													))}
+												</div>
+											</div>
 										</div>
 									)}
 								</DialogContent>
@@ -2151,6 +2531,7 @@ export function SettingsPage({
 									<li>Gaji tetap bulanan diberikan sebagai kompensasi dasar staff per bulan.</li>
 									<li>Gaji Shift dihitung dari jumlah check-in/out harian yang berhasil dilakukan oleh staff.</li>
 									<li>Tunjangan Harian diberikan otomatis setiap kali staff melakukan Check-in di hari tersebut.</li>
+									<li>Bonus Target dapat dihitung per shift, per hari, atau per bulan sesuai role dan level target.</li>
 									<li>Denda keterlambatan hanya dihitung terhadap menit yang melebihi masa toleransi.</li>
 								</ul>
 							</div>

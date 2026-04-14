@@ -20,6 +20,21 @@ const formatCurrency = (amount: number) =>
 		maximumFractionDigits: 0,
 	}).format(amount);
 
+const TARGET_STEP_PCT = 50;
+
+function buildTargetLevels(progressPct: number) {
+	const safeProgress = Number.isFinite(progressPct) ? Math.max(progressPct, 0) : 0;
+	const maxLevel = Math.max(
+		200,
+		Math.ceil(safeProgress / TARGET_STEP_PCT) * TARGET_STEP_PCT
+	);
+	const levels: number[] = [];
+	for (let level = 100; level <= maxLevel; level += TARGET_STEP_PCT) {
+		levels.push(level);
+	}
+	return levels;
+}
+
 // ─── Set Target Modal ─────────────────────────────────────────────────────────
 
 function SetTargetModal({
@@ -173,7 +188,8 @@ function CircularProgress({
 }) {
 	const r = (size - 12) / 2;
 	const circumference = 2 * Math.PI * r;
-	const dash = (pct / 100) * circumference;
+	const visualPct = Math.max(0, Math.min(pct, 100));
+	const dash = (visualPct / 100) * circumference;
 	const color = pct >= 100 ? "#22c55e" : pct >= 70 ? "#3b82f6" : pct >= 40 ? "#f59e0b" : "#ef4444";
 
 	return (
@@ -218,6 +234,13 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 	}
 
 	const pct = progress.progressPct;
+	const shiftPct =
+		progress.shiftTarget > 0 ? (progress.shiftCollected / progress.shiftTarget) * 100 : 0;
+	const dailyPct =
+		progress.dailyTarget > 0 ? (progress.dailyCollected / progress.dailyTarget) * 100 : 0;
+	const monthlyLevels = buildTargetLevels(pct);
+	const dailyLevels = buildTargetLevels(dailyPct);
+	const shiftLevels = buildTargetLevels(shiftPct);
 	const isOverTarget = pct >= 100;
 
 	if (!progress.hasTarget) {
@@ -381,13 +404,13 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 									<Clock className="w-3 h-3" />
 									Target Per Sesi
 								</div>
-								<span>{Math.round((progress.shiftCollected / progress.shiftTarget) * 100)}%</span>
+								<span>{Math.round(shiftPct)}%</span>
 							</div>
 							<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
 								<motion.div
 									className="h-full bg-primary"
 									initial={{ width: 0 }}
-									animate={{ width: `${Math.min(100, (progress.shiftCollected / progress.shiftTarget) * 100)}%` }}
+									animate={{ width: `${Math.min(100, shiftPct)}%` }}
 								/>
 							</div>
 							<div className="flex items-center justify-between text-[10px] text-muted-foreground font-medium">
@@ -402,18 +425,81 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 									<Target className="w-3 h-3" />
 									Target Per Hari
 								</div>
-								<span>{Math.round((progress.dailyCollected / progress.dailyTarget) * 100)}%</span>
+								<span>{Math.round(dailyPct)}%</span>
 							</div>
 							<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/50">
 								<motion.div
 									className="h-full bg-blue-500"
 									initial={{ width: 0 }}
-									animate={{ width: `${Math.min(100, (progress.dailyCollected / progress.dailyTarget) * 100)}%` }}
+									animate={{ width: `${Math.min(100, dailyPct)}%` }}
 								/>
 							</div>
 							<div className="flex items-center justify-between text-[10px] text-muted-foreground font-medium">
 								<span>{formatCurrency(progress.dailyCollected)}</span>
 								<span>{formatCurrency(progress.dailyTarget)}</span>
+							</div>
+						</div>
+
+						<div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+							<p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+								Level Target Bertingkat
+							</p>
+							<div className="space-y-1.5">
+								<p className="text-[10px] font-semibold text-muted-foreground">
+									Bulan ({Math.round(pct)}%)
+								</p>
+								<div className="flex flex-wrap gap-1.5">
+									{monthlyLevels.map((level) => (
+										<span
+											key={`month-${level}`}
+											className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+												pct >= level
+													? "bg-emerald-100 text-emerald-700"
+													: "bg-muted text-muted-foreground"
+											}`}
+										>
+											{level}%
+										</span>
+									))}
+								</div>
+							</div>
+							<div className="space-y-1.5">
+								<p className="text-[10px] font-semibold text-muted-foreground">
+									Hari Ini ({Math.round(dailyPct)}%)
+								</p>
+								<div className="flex flex-wrap gap-1.5">
+									{dailyLevels.map((level) => (
+										<span
+											key={`day-${level}`}
+											className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+												dailyPct >= level
+													? "bg-blue-100 text-blue-700"
+													: "bg-muted text-muted-foreground"
+											}`}
+										>
+											{level}%
+										</span>
+									))}
+								</div>
+							</div>
+							<div className="space-y-1.5">
+								<p className="text-[10px] font-semibold text-muted-foreground">
+									Shift ({Math.round(shiftPct)}%)
+								</p>
+								<div className="flex flex-wrap gap-1.5">
+									{shiftLevels.map((level) => (
+										<span
+											key={`shift-${level}`}
+											className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+												shiftPct >= level
+													? "bg-primary/20 text-primary"
+													: "bg-muted text-muted-foreground"
+											}`}
+										>
+											{level}%
+										</span>
+									))}
+								</div>
 							</div>
 						</div>
 					</div>

@@ -16,6 +16,21 @@ export const createRole = mutation({
 		baseShiftRate: v.optional(v.number()),
 		monthlyFixedSalary: v.optional(v.number()),
 		dailyAllowance: v.optional(v.number()),
+		bonusTargetConfig: v.optional(
+			v.object({
+				basis: v.union(
+					v.literal("shift"),
+					v.literal("daily"),
+					v.literal("monthly")
+				),
+				tiers: v.array(
+					v.object({
+						thresholdPct: v.number(),
+						bonusAmount: v.number(),
+					})
+				),
+			})
+		),
 	},
 	handler: async (ctx, args) => {
 		const existing = await ctx.db
@@ -40,6 +55,21 @@ export const updateRole = mutation({
 		baseShiftRate: v.optional(v.number()),
 		monthlyFixedSalary: v.optional(v.number()),
 		dailyAllowance: v.optional(v.number()),
+		bonusTargetConfig: v.optional(
+			v.object({
+				basis: v.union(
+					v.literal("shift"),
+					v.literal("daily"),
+					v.literal("monthly")
+				),
+				tiers: v.array(
+					v.object({
+						thresholdPct: v.number(),
+						bonusAmount: v.number(),
+					})
+				),
+			})
+		),
 	},
 	handler: async (ctx, args) => {
 		return await ctx.db.patch(args.id, {
@@ -49,6 +79,7 @@ export const updateRole = mutation({
 			baseShiftRate: args.baseShiftRate,
 			monthlyFixedSalary: args.monthlyFixedSalary,
 			dailyAllowance: args.dailyAllowance,
+			bonusTargetConfig: args.bonusTargetConfig,
 		});
 	},
 });

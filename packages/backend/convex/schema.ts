@@ -583,6 +583,21 @@ export default defineSchema({
 		baseShiftRate: v.optional(v.number()),
 		monthlyFixedSalary: v.optional(v.number()),
 		dailyAllowance: v.optional(v.number()),
+		bonusTargetConfig: v.optional(
+			v.object({
+				basis: v.union(
+					v.literal("shift"),
+					v.literal("daily"),
+					v.literal("monthly")
+				),
+				tiers: v.array(
+					v.object({
+						thresholdPct: v.number(), // e.g. 100, 150, 200
+						bonusAmount: v.number(), // amount in IDR
+					})
+				),
+			})
+		),
 	}).index("by_name", ["name"]),
 
 	// Users for Custom Auth & Profile
