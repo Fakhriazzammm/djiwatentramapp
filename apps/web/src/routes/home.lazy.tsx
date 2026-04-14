@@ -298,11 +298,19 @@ function HomePage() {
 	const [showFaceModal, setShowFaceModal] = useState(false);
 	const [isProcessing, setIsProcessing] = useState(false);
 
+	const [currentTime, setCurrentTime] = useState(new Date());
+
+	useEffect(() => {
+		const timer = setInterval(() => {
+			setCurrentTime(new Date());
+		}, 1000);
+		return () => clearInterval(timer);
+	}, []);
+
 	const activeShiftInfo = useMemo(() => {
 		if (!settings?.shiftSettings?.shiftSchedules) return null;
 		
-		const now = new Date();
-		const currentMinutes = now.getHours() * 60 + now.getMinutes();
+		const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
 		
 		return settings.shiftSettings.shiftSchedules.find((s: any) => {
 			if (!s.openTime || !s.closeTime) return false;
@@ -318,19 +326,29 @@ function HomePage() {
 		});
 	}, [settings]);
 
-	const dateText = new Intl.DateTimeFormat("id-ID", {
-		weekday: "long",
-		day: "numeric",
-		month: "long",
-	}).format(new Date());
+	const dateText = useMemo(() => {
+		const datePart = new Intl.DateTimeFormat("id-ID", {
+			weekday: "long",
+			day: "numeric",
+			month: "long",
+		}).format(currentTime);
+		
+		const timePart = currentTime.toLocaleTimeString("id-ID", {
+			hour: "2-digit",
+			minute: "2-digit",
+			second: "2-digit",
+		});
+		
+		return `${datePart} • ${timePart}`;
+	}, [currentTime]);
 
 	const greeting = useMemo(() => {
-		const hour = new Date().getHours();
+		const hour = currentTime.getHours();
 		if (hour < 11) return "Semangat Pagi";
 		if (hour < 15) return "Selamat Siang";
 		if (hour < 18) return "Selamat Sore";
 		return "Selamat Malam";
-	}, []);
+	}, [currentTime]);
 
 	const [selectedShiftStart, setSelectedShiftStart] = useState<number | null>(null);
 
