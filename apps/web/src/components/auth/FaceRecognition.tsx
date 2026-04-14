@@ -22,10 +22,15 @@ const MODEL_PATH_CANDIDATES = (() => {
 	const paths = [
 		`${normalizedBase}/models`,
 		"/models",
-		"./models",
 		MODEL_CDN_URL,
 	];
-	return [...new Set(paths.map((path) => path.replace(/\/{2,}/g, "/").replace("https:/", "https://")))];
+	// Ensure paths are absolute by adding leading slash if they don't have one and aren't URLs
+	return [...new Set(paths.map((path) => {
+		if (path.startsWith("http")) return path;
+		let p = path.replace(/\/{2,}/g, "/");
+		if (!p.startsWith("/")) p = "/" + p;
+		return p;
+	}))];
 })();
 
 async function canReachModelManifest(path: string) {
@@ -197,7 +202,8 @@ export function FaceRecognition({
 		setMatchStatus("scanning");
 		setScanProgress(0);
 		setAutoCaptureReady(false);
-		setScanStartMs(Date.now());
+		const startTime = Date.now();
+		setScanStartMs(startTime);
 
 		const progressInterval = setInterval(() => {
 			setScanProgress((prev) => {
@@ -207,7 +213,7 @@ export function FaceRecognition({
 				}
 				return prev + Math.random() * 20;
 			});
-			setElapsedMs(Date.now() - scanStartMs);
+			setElapsedMs(Date.now() - startTime);
 		}, 100);
 
 		try {
@@ -288,8 +294,8 @@ export function FaceRecognition({
 
 	return (
 		<div className={`flex flex-col items-center gap-4 ${className}`}>
-			<div className="relative w-full overflow-hidden rounded-3xl bg-black shadow-2xl ring-2 ring-border/30"
-				style={{ aspectRatio: "3/4" }}
+			<div className="relative w-full overflow-hidden rounded-[2.5rem] bg-black shadow-2xl ring-2 ring-border/30"
+				style={{ aspectRatio: "4/5" }}
 			>
 				{/* Loading overlay */}
 				<AnimatePresence>
@@ -339,13 +345,13 @@ export function FaceRecognition({
 				{/* Webcam */}
 				<Webcam
 					audio={false}
-					className="absolute inset-0 h-full w-full object-cover scale-x-[-1]"
+					className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[110%] w-full object-cover scale-x-[-1]"
 					mirrored={false}
 					ref={webcamRef}
 					screenshotFormat="image/jpeg"
 					videoConstraints={{
-						width: { ideal: 640 },
-						height: { ideal: 960 },
+						width: { ideal: 480 },
+						height: { ideal: 640 },
 						facingMode: "user",
 					}}
 				/>

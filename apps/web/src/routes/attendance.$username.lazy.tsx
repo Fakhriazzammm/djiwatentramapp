@@ -119,7 +119,7 @@ function StaffProfilePage() {
 	return (
 		<div className="min-h-screen bg-background">
 			{/* Navigation Header */}
-			<header className="sticky top-0 z-10 border-b bg-background/80 px-4 py-3 backdrop-blur-md">
+			<header className="sticky top-0 z-10 border-b bg-background/80 px-4 py-2 backdrop-blur-md">
 				<div className="mx-auto flex max-w-2xl items-center justify-between">
 					<Button onClick={() => navigate({ to: "/attendance" as any })} variant="ghost" size="sm">
 						<ChevronLeft className="mr-1 h-4 w-4" />
@@ -134,7 +134,7 @@ function StaffProfilePage() {
 				</div>
 			</header>
 
-			<main className="mx-auto max-w-2xl px-6 py-10 pb-24">
+			<main className="mx-auto max-w-2xl px-4 py-8 pb-24">
 				<AnimatePresence mode="wait">
 					{!isUnlocked ? (
 						<motion.div
@@ -146,28 +146,28 @@ function StaffProfilePage() {
 						>
 							{/* Header Profile */}
 							<div className="flex flex-col items-center text-center">
-								<div className="relative mb-6">
-									<div className="flex h-28 w-28 items-center justify-center rounded-3xl bg-primary/10 text-4xl font-black text-primary shadow-inner">
+								<div className="relative mb-4">
+									<div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 text-3xl font-black text-primary shadow-inner">
 										{staff.name.charAt(0)}
 									</div>
 									<div className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-xl bg-background text-muted-foreground shadow-lg">
 										<Lock className="h-4 w-4" />
 									</div>
 								</div>
-								<h1 className="text-3xl font-black tracking-tight">{staff.name}</h1>
-								<p className="mt-1 font-medium text-primary uppercase tracking-wider">{staff.roleName}</p>
+								<h1 className="text-2xl font-black tracking-tight">{staff.name}</h1>
+								<p className="mt-0.5 font-bold text-primary uppercase tracking-wider text-xs">{staff.roleName}</p>
 							</div>
 
 							{/* Access Restriction View */}
 							<div className="mx-auto max-w-[320px] space-y-6 text-center">
-								<div className="space-y-2">
-									<p className="text-sm font-semibold">Data Pribadi Dibatasi</p>
-									<p className="text-xs text-muted-foreground">Detail riwayat absen dan slip gaji hanya dapat dilihat setelah login melalui portal utama.</p>
+								<div className="space-y-1">
+									<p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60">Akses Terbatas</p>
+									<p className="text-xs text-muted-foreground">Detail riwayat absen & slip gaji hanya dapat dilihat setelah login.</p>
 								</div>
 								
-								<div className="pt-4 space-y-3">
+								<div className="pt-2 space-y-2.5">
 									<Button 
-										className="h-14 w-full rounded-2xl text-lg font-bold shadow-lg shadow-primary/20"
+										className="h-12 w-full rounded-xl text-base font-bold shadow-lg shadow-primary/20"
 										onClick={() => navigate({ to: "/login" as any })}
 									>
 										MASUK KE SISTEM
@@ -175,10 +175,10 @@ function StaffProfilePage() {
 									
 									<Button 
 										variant="outline" 
-										className="h-14 w-full rounded-2xl border-dashed border-primary/30 font-bold"
+										className="h-12 w-full rounded-xl border-dashed border-primary/30 font-bold text-sm"
 										onClick={() => (navigate as any)({ to: "/attendance" })}
 									>
-										<Camera className="mr-2 h-5 w-5" />
+										<Camera className="mr-2 h-4 w-4" />
 										LANGSUNG ABSENSI
 									</Button>
 								</div>
@@ -192,17 +192,17 @@ function StaffProfilePage() {
 							className="space-y-8"
 						>
 							{/* Header Unlocked */}
-							<div className="flex items-center gap-6 rounded-3xl bg-primary/5 p-6 border border-primary/10">
-								<div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-primary text-3xl font-black text-primary-foreground shadow-xl">
+							<div className="flex items-center gap-4 rounded-2xl bg-primary/5 p-4 border border-primary/10">
+								<div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-primary text-2xl font-black text-primary-foreground shadow-lg">
 									{staff.name.charAt(0)}
 								</div>
 								<div className="flex-1">
-									<h1 className="text-2xl font-black tracking-tight">{staff.name}</h1>
-									<p className="font-bold text-primary text-sm uppercase">{staff.roleName}</p>
-									<p className="mt-1 text-xs text-muted-foreground">{privateData?.username}</p>
+									<h1 className="text-xl font-black tracking-tight">{staff.name}</h1>
+									<p className="font-bold text-primary text-[10px] uppercase">{staff.roleName}</p>
+									<p className="text-[10px] text-muted-foreground leading-none">{privateData?.username}</p>
 								</div>
-								<Button variant="ghost" size="icon" onClick={() => setIsUnlocked(false)} className="rounded-xl">
-									<LogOut className="h-5 w-5 text-muted-foreground" />
+								<Button variant="ghost" size="icon" onClick={() => setIsUnlocked(false)} className="rounded-lg h-8 w-8">
+									<LogOut className="h-4 w-4 text-muted-foreground" />
 								</Button>
 							</div>
 
@@ -235,22 +235,22 @@ function StaffProfilePage() {
 							</div>
 
 							{/* Dashboard Grid */}
-							<div className="grid grid-cols-2 gap-4">
-								<div className="rounded-3xl border bg-card p-5 shadow-sm">
-									<div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
-										<Clock className="h-5 w-5" />
+							<div className="grid grid-cols-2 gap-3">
+								<div className="rounded-2xl border bg-card p-4 shadow-sm">
+									<div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 text-orange-600">
+										<Clock className="h-4 w-4" />
 									</div>
-									<p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total Jam</p>
-									<p className="mt-1 text-2xl font-black">{stats?.totalHours ?? 0} <span className="text-sm font-normal text-muted-foreground">jam</span></p>
-									<p className="mt-1 text-[10px] text-orange-600 font-bold">{MONTHS[selectedMonth - 1]} {selectedYear}</p>
+									<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">Total Jam</p>
+									<p className="mt-0.5 text-xl font-black">{stats?.totalHours ?? 0} <span className="text-[10px] font-normal text-muted-foreground">jam</span></p>
+									<p className="text-[9px] text-orange-600 font-bold">{MONTHS[selectedMonth - 1]} {selectedYear}</p>
 								</div>
-								<div className="rounded-3xl border bg-card p-5 shadow-sm">
-									<div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
-										<TrendingUp className="h-5 w-5" />
+								<div className="rounded-2xl border bg-card p-4 shadow-sm">
+									<div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+										<TrendingUp className="h-4 w-4" />
 									</div>
-									<p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Kehadiran</p>
-									<p className="mt-1 text-2xl font-black">{stats?.attendanceRate ?? 0}%</p>
-									<p className="mt-1 text-[10px] text-emerald-600 font-bold">
+									<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">Kehadiran</p>
+									<p className="mt-0.5 text-xl font-black">{stats?.attendanceRate ?? 0}%</p>
+									<p className="text-[9px] text-emerald-600 font-bold">
 										{stats ? (stats.attendanceRate > 90 ? "Sangat Baik" : "Baik") : "..."}
 									</p>
 								</div>
@@ -266,18 +266,18 @@ function StaffProfilePage() {
 									<Button variant="link" size="sm" className="text-xs">Lihat Semua</Button>
 								</div>
 								<div className="space-y-2">
-									<div className="group flex items-center justify-between rounded-2xl border bg-card p-4 transition-all hover:border-primary/30 hover:bg-primary/[0.02] opacity-50 grayscale">
-										<div className="flex items-center gap-4">
-											<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
-												<FileText className="h-5 w-5" />
+									<div className="group flex items-center justify-between rounded-xl border bg-card p-3 transition-all hover:border-primary/30 hover:bg-primary/[0.02] opacity-50 grayscale">
+										<div className="flex items-center gap-3">
+											<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+												<FileText className="h-4 w-4" />
 											</div>
 											<div>
-												<p className="font-bold text-sm">Slip Gaji {MONTHS[selectedMonth - 1]}</p>
-												<p className="text-[10px] text-muted-foreground uppercase">Rp 0 (Belum dikonfigurasi)</p>
+												<p className="font-bold text-xs">Slip Gaji {MONTHS[selectedMonth - 1]}</p>
+												<p className="text-[9px] text-muted-foreground uppercase leading-tight">Rp 0 (Belum dikonfigurasi)</p>
 											</div>
 										</div>
-										<Button variant="ghost" size="icon" className="rounded-xl" disabled>
-											<ChevronRight className="h-5 w-5" />
+										<Button variant="ghost" size="icon" className="rounded-lg h-8 w-8" disabled>
+											<ChevronRight className="h-4 w-4" />
 										</Button>
 									</div>
 								</div>
@@ -289,33 +289,33 @@ function StaffProfilePage() {
 									<History className="h-4 w-4 text-primary" />
 									Log Kehadiran {MONTHS[selectedMonth - 1]} {selectedYear}
 								</h3>
-								<div className="rounded-3xl border bg-card overflow-hidden">
+								<div className="rounded-2xl border bg-card overflow-hidden">
 									{!logs || logs.length === 0 ? (
-										<div className="p-8 text-center text-sm text-muted-foreground">
+										<div className="p-8 text-center text-xs text-muted-foreground">
 											Tidak ada data absensi untuk periode ini.
 										</div>
 									) : (
 										<div className="divide-y divide-border">
 											{logs.map((log: any) => (
-												<div key={log._id} className="flex items-center justify-between p-4 text-sm">
-													<div className="flex items-center gap-3">
-														<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-[10px] font-bold flex-col leading-tight">
+												<div key={log._id} className="flex items-center justify-between p-3 text-sm">
+													<div className="flex items-center gap-2.5">
+														<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-[10px] font-bold flex-col leading-tight shrink-0">
 															<span>{new Date(log.timestamp).getDate()}</span>
-															<span>{MONTHS[new Date(log.timestamp).getMonth()].substring(0, 3).toUpperCase()}</span>
+															<span className="text-[8px] opacity-60">{MONTHS[new Date(log.timestamp).getMonth()].substring(0, 3).toUpperCase()}</span>
 														</div>
 														<div>
-															<p className="font-bold capitalize">{log.type === "check_in" ? "Masuk" : "Keluar"}</p>
-															<p className="text-[10px] text-muted-foreground">
+															<p className="font-bold capitalize text-xs">{log.type === "check_in" ? "Masuk" : "Keluar"}</p>
+															<p className="text-[10px] text-muted-foreground mt-0.5">
 																{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
 															</p>
 														</div>
 													</div>
 													<div className="text-right">
-														<div className={`flex items-center gap-1.5 font-bold text-xs ${log.type === "check_in" ? "text-emerald-600" : "text-orange-600"}`}>
+														<div className={`flex items-center gap-1.5 font-bold text-[10px] ${log.type === "check_in" ? "text-emerald-600" : "text-orange-600"}`}>
 															<div className={`h-1.5 w-1.5 rounded-full ${log.type === "check_in" ? "bg-emerald-500" : "bg-orange-500"}`} />
-															{log.type === "check_in" ? "ABSEN MASUK" : "ABSEN KELUAR"}
+															{log.type === "check_in" ? "MASUK" : "KELUAR"}
 														</div>
-														{log.notes && <p className="text-[10px] text-muted-foreground truncate max-w-[100px]">{log.notes}</p>}
+														{log.notes && <p className="text-[9px] text-muted-foreground truncate max-w-[80px] mt-0.5">{log.notes}</p>}
 													</div>
 												</div>
 											))}
@@ -341,25 +341,25 @@ function StaffProfilePage() {
 									</Button>
 								</div>
 								
-								<div className="rounded-3xl border bg-card p-5 space-y-5">
+								<div className="rounded-2xl border bg-card p-4 space-y-4">
 									{!isEditMode ? (
-										<div className="space-y-4">
-											<div className="flex justify-between items-center text-sm">
+										<div className="space-y-3">
+											<div className="flex justify-between items-center text-xs">
 												<span className="text-muted-foreground font-medium">Nama Lengkap</span>
 												<span className="font-bold">{staff.name}</span>
 											</div>
-											<div className="flex justify-between items-center text-sm">
+											<div className="flex justify-between items-center text-xs">
 												<span className="text-muted-foreground font-medium">Email / Username</span>
 												<span className="font-bold">{privateData?.username || "---"}</span>
 											</div>
-											<div className="flex justify-between items-center text-sm">
+											<div className="flex justify-between items-center text-xs">
 												<span className="text-muted-foreground font-medium">Username Profil</span>
 												<span className="font-bold">@{staff.slug}</span>
 											</div>
 										</div>
 									) : (
 										<form 
-											className="space-y-4"
+											className="space-y-3"
 											onSubmit={async (e) => {
 												e.preventDefault();
 												if (!token) return;
@@ -390,55 +390,54 @@ function StaffProfilePage() {
 												}
 											}}
 										>
-											<div className="space-y-3">
-												<div className="space-y-1.5">
-													<label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Nama Lengkap</label>
+											<div className="space-y-2.5">
+												<div className="space-y-1">
+													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Nama Lengkap</label>
 													<Input 
 														value={editName}
 														onChange={(e) => setEditName(e.target.value)}
-														className="h-11 rounded-xl font-bold"
+														className="h-10 rounded-xl font-bold text-xs"
 														placeholder="Nama Lengkap"
 													/>
 												</div>
-												<div className="space-y-1.5">
-													<label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Email / Username</label>
+												<div className="space-y-1">
+													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Email / Username</label>
 													<Input 
 														value={editEmail}
 														onChange={(e) => setEditEmail(e.target.value)}
-														className="h-11 rounded-xl font-bold"
+														className="h-10 rounded-xl font-bold text-xs"
 														placeholder="email@example.com"
 													/>
 												</div>
-												<div className="space-y-1.5">
-													<label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Username Profil (Slug)</label>
+												<div className="space-y-1">
+													<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Username Profil (Slug)</label>
 													<Input 
 														value={editSlug}
 														onChange={(e) => setEditSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-														className="h-11 rounded-xl font-bold"
+														className="h-10 rounded-xl font-bold text-xs"
 														placeholder="username-profil"
 													/>
-													<p className="text-[9px] text-muted-foreground ml-1">URL Profil: /attendance/{editSlug}</p>
 												</div>
 
-												<div className="pt-2 border-t mt-4 space-y-3">
-													<p className="text-[10px] font-black text-primary uppercase ml-1">Ubah Password (Opsional)</p>
-													<div className="space-y-1.5">
-														<label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Password Lama</label>
+												<div className="pt-2 border-t mt-2 space-y-2.5">
+													<p className="text-[9px] font-black text-primary uppercase ml-1">Ubah Password (Opsional)</p>
+													<div className="space-y-1">
+														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Password Lama</label>
 														<Input 
 															type="password"
 															value={editOldPassword}
 															onChange={(e) => setEditOldPassword(e.target.value)}
-															className="h-11 rounded-xl font-bold"
-															placeholder="Ketik password lama untuk verifikasi"
+															className="h-10 rounded-xl font-bold text-xs"
+															placeholder="Ketik password lama"
 														/>
 													</div>
-													<div className="space-y-1.5">
-														<label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Password Baru</label>
+													<div className="space-y-1">
+														<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">Password Baru</label>
 														<Input 
 															type="password"
 															value={editNewPassword}
 															onChange={(e) => setEditNewPassword(e.target.value)}
-															className="h-11 rounded-xl font-bold"
+															className="h-10 rounded-xl font-bold text-xs"
 															placeholder="Minimal 6 karakter"
 														/>
 													</div>
@@ -448,7 +447,7 @@ function StaffProfilePage() {
 											<div className="pt-2">
 												<Button 
 													type="submit" 
-													className="w-full h-12 rounded-xl font-bold shadow-md"
+													className="w-full h-10 rounded-xl font-bold shadow-md text-xs"
 													disabled={isSavingProfile}
 												>
 													{isSavingProfile ? <Clock className="h-4 w-4 animate-spin" /> : "SIMPAN PERUBAHAN"}
@@ -465,21 +464,21 @@ function StaffProfilePage() {
 									<ShieldCheck className="h-4 w-4 text-primary" />
 									Pengaturan Akun
 								</h3>
-								<div className="rounded-3xl border bg-card p-4 space-y-4">
+								<div className="rounded-2xl border bg-card p-3 space-y-3">
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-3">
-											<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
-												<KeyRound className="h-5 w-5" />
+											<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+												<KeyRound className="h-4 w-4" />
 											</div>
 											<div>
-												<p className="font-bold text-sm">PIN Keamanan</p>
-												<p className="text-[10px] text-muted-foreground uppercase">Gunakan PIN untuk absensi & pendaftaran</p>
+												<p className="font-bold text-xs">PIN Keamanan</p>
+												<p className="text-[9px] text-muted-foreground uppercase">Gunakan PIN untuk absensi</p>
 											</div>
 										</div>
 										<Button 
 											variant="outline" 
 											size="sm" 
-											className="rounded-xl font-bold text-xs"
+											className="rounded-lg font-bold text-[10px] h-8 px-3"
 											onClick={() => setShowChangePin(!showChangePin)}
 										>
 											{showChangePin ? "BATAL" : "UBAH PIN"}
@@ -492,10 +491,10 @@ function StaffProfilePage() {
 												initial={{ height: 0, opacity: 0 }}
 												animate={{ height: "auto", opacity: 1 }}
 												exit={{ height: 0, opacity: 0 }}
-												className="overflow-hidden border-t pt-4"
+												className="overflow-hidden border-t pt-3"
 											>
 												<form 
-													className="space-y-4"
+													className="space-y-3"
 													onSubmit={async (e) => {
 														e.preventDefault();
 														if (newPin.length !== 6 || oldPin.length !== 6) {
@@ -520,33 +519,33 @@ function StaffProfilePage() {
 														}
 													}}
 												>
-													<div className="grid grid-cols-2 gap-4">
-														<div className="space-y-1.5">
-															<label className="text-[10px] font-black text-muted-foreground uppercase ml-1">PIN Lama</label>
+													<div className="grid grid-cols-2 gap-3">
+														<div className="space-y-1">
+															<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">PIN Lama</label>
 															<Input 
 																type="password"
 																maxLength={6}
 																value={oldPin}
 																onChange={(e) => setOldPin(e.target.value.replace(/\D/g, ""))}
-																className="h-12 rounded-xl text-center font-bold tracking-widest"
+																className="h-10 rounded-xl text-center font-bold tracking-widest text-xs"
 																placeholder="••••••"
 															/>
 														</div>
-														<div className="space-y-1.5">
-															<label className="text-[10px] font-black text-muted-foreground uppercase ml-1">PIN Baru</label>
+														<div className="space-y-1">
+															<label className="text-[9px] font-black text-muted-foreground uppercase ml-1">PIN Baru</label>
 															<Input 
 																type="password"
 																maxLength={6}
 																value={newPin}
 																onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
-																className="h-12 rounded-xl text-center font-bold tracking-widest"
+																className="h-10 rounded-xl text-center font-bold tracking-widest text-xs"
 																placeholder="••••••"
 															/>
 														</div>
 													</div>
 													<Button 
 														type="submit" 
-														className="w-full h-12 rounded-xl font-bold"
+														className="w-full h-10 rounded-xl font-bold text-xs"
 														disabled={isUpdatingPin || newPin.length !== 6 || oldPin.length !== 6}
 													>
 														{isUpdatingPin ? <Clock className="h-4 w-4 animate-spin" /> : "SIMPAN PIN BARU"}
@@ -559,12 +558,12 @@ function StaffProfilePage() {
 							</div>
 
 							{/* Quick Action Float */}
-							<div className="fixed bottom-6 left-0 right-0 px-6">
+							<div className="fixed bottom-6 left-0 right-0 px-4">
 								<Button 
-									className="h-16 w-full max-w-2xl mx-auto rounded-3xl text-lg font-black shadow-2xl shadow-primary/40 flex items-center justify-center gap-3"
+									className="h-14 w-full max-w-2xl mx-auto rounded-2xl text-base font-black shadow-2xl shadow-primary/40 flex items-center justify-center gap-2"
 									onClick={() => navigate({ to: "/attendance" as any })}
 								>
-									<Camera className="h-6 w-6" />
+									<Camera className="h-5 w-5" />
 									ABSENSI SEKARANG
 								</Button>
 							</div>
@@ -573,7 +572,7 @@ function StaffProfilePage() {
 				</AnimatePresence>
 			</main>
 
-			<Footer className="mt-10 pb-10" />
+			<Footer className="mt-6 pb-6" />
 		</div>
 	);
 }

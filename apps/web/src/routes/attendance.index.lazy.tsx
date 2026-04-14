@@ -712,13 +712,22 @@ function AttendancePage() {
 								</motion.div>
 
 								<motion.div
-									className="space-y-3"
+									className="space-y-4"
 									initial={{ opacity: 0, y: 20 }}
 									animate={{ opacity: 1, y: 0 }}
 									transition={{ delay: 0.3 }}
 								>
+									<div className="flex justify-center">
+										<div className={`rounded-full px-6 py-2 text-sm font-black uppercase tracking-[0.2em] shadow-lg ${
+											user?.isCurrentlyIn 
+												? "bg-amber-100 text-amber-600 border border-amber-200 text-center" 
+												: "bg-emerald-100 text-emerald-600 border border-emerald-200 text-center"
+										}`}>
+											{user?.isCurrentlyIn ? "Clock Out Berhasil" : "Clock In Berhasil"}
+										</div>
+									</div>
 									<h2 className="text-4xl font-black tracking-tight text-foreground uppercase">SUKSES!</h2>
-									<p className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-primary bg-clip-text text-transparent italic">
+									<p className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-primary bg-clip-text text-transparent italic text-center">
 										{user?.isCurrentlyIn ? "Sudah diabsen keluar. Hati-hati di jalan!" : "Berhasil diabsen masuk. Semangat!"}
 									</p>
 									<p className="text-sm text-muted-foreground">
