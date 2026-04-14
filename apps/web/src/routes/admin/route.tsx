@@ -518,23 +518,33 @@ function AdminLayout() {
 				{/* Footer: User Profile + Pengaturan + Keluar */}
 				<div className="border-border border-t p-2 space-y-1">
 					{/* User Profile */}
-					<div
-						className={`flex items-center gap-2 rounded-md px-2 py-2 ${isCollapsed ? "justify-center" : ""
+					<button
+						className={`flex w-full items-center gap-2 rounded-md px-2 py-2 transition-colors hover:bg-muted/50 ${isCollapsed ? "justify-center" : ""
 							}`}
+						onClick={() => {
+							const profilePath = authUser?.slug 
+								? `/attendance/${authUser.slug}` 
+								: (authUser as any)?.username 
+									? `/attendance/${(authUser as any).username}` 
+									: "/attendance";
+							navigate({ to: profilePath as any });
+						}}
+						title={isCollapsed ? authUser?.name || "Profil" : undefined}
+						type="button"
 					>
 						<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 font-bold text-primary text-xs">
-							A
+							{authUser?.name?.charAt(0) || "U"}
 						</div>
 						<AnimatePresence>
 							{!isCollapsed && (
 								<motion.div
 									animate={{ opacity: 1, x: 0 }}
-									className="min-w-0 flex-1"
+									className="min-w-0 flex-1 text-left"
 									exit={{ opacity: 0, x: -5 }}
 									initial={{ opacity: 0, x: -5 }}
 								>
 									<p className="truncate font-medium text-foreground text-sm leading-tight">
-										Admin
+										{authUser?.name || "User"}
 									</p>
 									<p className="truncate text-muted-foreground text-[11px] leading-tight">
 										{storeName}
@@ -542,7 +552,7 @@ function AdminLayout() {
 								</motion.div>
 							)}
 						</AnimatePresence>
-					</div>
+					</button>
 
 					{/* Pengaturan */}
 					<DesktopNavLink
@@ -621,12 +631,12 @@ function AdminLayout() {
 										className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-primary/10 font-bold text-primary text-xs transition-all hover:scale-105 hover:bg-primary/20 active:scale-95"
 										type="button"
 									>
-										A
+										{authUser?.name?.charAt(0) || "U"}
 									</button>
 								)}
 							/>
 							<DropdownMenuContent align="end" className="w-56">
-								<DropdownMenuLabel>Akun Admin</DropdownMenuLabel>
+								<DropdownMenuLabel>{authUser?.name || "Akun Saya"}</DropdownMenuLabel>
 								<DropdownMenuSeparator />
 								<DropdownMenuItem
 									onClick={() => navigate({ to: "/admin/settings" })}
@@ -634,7 +644,14 @@ function AdminLayout() {
 									<Settings className="mr-2 h-4 w-4" />
 									<span>Pengaturan</span>
 								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => navigate({ to: "/admin" })}>
+								<DropdownMenuItem onClick={() => {
+									const profilePath = authUser?.slug 
+										? `/attendance/${authUser.slug}` 
+										: (authUser as any)?.username 
+											? `/attendance/${(authUser as any).username}` 
+											: "/attendance";
+									navigate({ to: profilePath as any });
+								}}>
 									<User className="mr-2 h-4 w-4" />
 									<span>Profil</span>
 								</DropdownMenuItem>
