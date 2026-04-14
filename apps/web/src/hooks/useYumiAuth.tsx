@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "convex/react";
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { toast } from "sonner";
 
@@ -18,7 +18,21 @@ export interface YumiRole {
 	permissions: string[];
 }
 
-export function useYumiAuth() {
+interface YumiAuthContextType {
+	isLoading: boolean;
+	isAuthenticated: boolean;
+	user: YumiUser | undefined;
+	role: YumiRole | undefined;
+	isAdmin: boolean;
+	isStaff: boolean;
+	login: (newToken: string) => void;
+	logout: () => Promise<void>;
+	token: string | null;
+}
+
+const YumiAuthContext = createContext<YumiAuthContextType | undefined>(undefined);
+
+export function YumiAuthProvider({ children }: { children: ReactNode }) {
 	const [token, setToken] = useState<string | null>(() => {
 		if (typeof window !== "undefined") {
 			return localStorage.getItem(SESSION_KEY);
@@ -62,15 +76,29 @@ export function useYumiAuth() {
 		}
 	}, [token, validateSession]);
 
-	return {
-		isLoading,
-		isAuthenticated,
-		user,
-		role,
-		isAdmin,
-		isStaff,
-		login,
-		logout,
-		token,
-	};
+	return (
+		<YumiAuthContext.Provider
+			value={{
+				isLoading,
+				isAuthenticated,
+				user,
+				role,
+				isAdmin,
+				isStaff,
+				login,
+				logout,
+				token,
+			}}
+		>
+			{children}
+		</YumiAuthContext.Provider>
+	);
+}
+
+export function useYumiAuth() {
+	const context = useContext(YumiAuthContext);
+	if (context === undefined) {
+		throw new Error("useYumiAuth must be used within a YumiAuthProvider");
+	}
+	return context;
 }

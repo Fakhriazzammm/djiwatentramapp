@@ -1,10 +1,10 @@
 import { Outlet, createRootRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { useGlobalKeyboardNavigation } from "../hooks/useGlobalKeyboardNavigation";
 import { useSiteBrandingMetadata } from "../hooks/useSiteBrandingMetadata";
-import { useYumiAuth } from "../hooks/useYumiAuth";
+import { useYumiAuth, YumiAuthProvider } from "../hooks/useYumiAuth";
 import { useEffect } from "react";
 
-function RootComponent() {
+function RootContent() {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const { isAuthenticated, isLoading, isStaff, isAdmin, user } = useYumiAuth();
@@ -48,5 +48,9 @@ function RootComponent() {
 }
 
 export const Route = createRootRoute({
-	component: RootComponent,
+	component: () => (
+		<YumiAuthProvider>
+			<RootContent />
+		</YumiAuthProvider>
+	),
 });
