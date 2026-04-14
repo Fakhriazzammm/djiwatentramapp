@@ -69,6 +69,20 @@ type RoleBonusConfig = {
 	tiers: BonusTier[];
 };
 
+type MemberBonusSummary = {
+	memberName: string;
+	roleName: string;
+	basis: BonusBasis;
+	achievementPct: number;
+	achievedBonus: number;
+	reachedThresholds: number[];
+	nextTier: BonusTier | null;
+};
+
+function normalizePersonName(value?: string | null) {
+	return (value || "").trim().toLowerCase();
+}
+
 function normalizeRoleBonusConfig(role: any): RoleBonusConfig | null {
 	const config = role?.bonusTargetConfig;
 	if (!config?.basis || !Array.isArray(config?.tiers)) return null;
@@ -263,6 +277,8 @@ function MenuPage() {
 	const allDiscounts = useQuery(api.discounts.getDiscounts);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const roles = useQuery((api as any).roles.getRoles);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const users = useQuery((api as any).users.getUsers);
 	const createOrder = useMutation(api.orders.createOrder);
 	const createMayarInvoice = useAction(api.mayar.createInvoice);
 
@@ -433,33 +449,88 @@ function MenuPage() {
 		[progress?.progressPct]
 	);
 
-	const roleBonusConfigs = useMemo(
-		() => (roles ?? []).map((role: any) => normalizeRoleBonusConfig(role)).filter(Boolean) as RoleBonusConfig[],
-		[roles]
-	);
+	const roleBonusConfigById = useMemo(() => {
+		const map = new Map<string, RoleBonusConfig>();
+		(roles ?? []).forEach((role: any) => {
+			const config = normalizeRoleBonusConfig(role);
+			if (config) {
+				map.set(String(role._id), config);
+			}
+		});
+		return map;
+	}, [roles]);
+
+	const onDutyNameList = useMemo(() => {
+		const names = new Set<string>();
+		const cashierName = shiftStatus?.ongoingShift?.cashierName || shiftStatus?.shiftInfo?.cashierName;
+		if (cashierName) names.add(cashierName.trim());
+
+		const teamRaw = shiftStatus?.ongoingShift?.teamMembers || "";
+		teamRaw
+			.split(/[,\n;|]/g)
+			.map((name: string) => name.trim())
+			.filter(Boolean)
+			.forEach((name: string) => names.add(name));
+
+		return Array.from(names);
+	}, [shiftStatus?.ongoingShift?.cashierName, shiftStatus?.ongoingShift?.teamMembers, shiftStatus?.shiftInfo?.cashierName]);
+
+	const onDutyMembers = useMemo(() => {
+		const allUsers = users ?? [];
+		return onDutyNameList.map((name) => {
+			const matched = allUsers.find(
+				(user: any) => normalizePersonName(user.name) === normalizePersonName(name)
+			);
+			return {
+				name,
+				roleId: matched?.roleId ?? null,
+				roleName: matched?.roleName ?? "-",
+			};
+		});
+	}, [onDutyNameList, users]);
+
+	const memberBonusSummary = useMemo((): MemberBonusSummary[] => {
+		return onDutyMembers
+			.map((member) => {
+				if (!member.roleId) return null;
+				const config = roleBonusConfigById.get(String(member.roleId));
+				if (!config) return null;
+				const achievementPct =
+					config.basis === "shift"
+						? shiftPct
+						: config.basis === "daily"
+							? dailyPct
+							: monthlyPct;
+				const summary = summarizeRoleBonus(achievementPct, config);
+				return {
+					memberName: member.name,
+					roleName: member.roleName,
+					basis: config.basis,
+					achievementPct: summary.achievementPct,
+					achievedBonus: summary.achievedBonus,
+					reachedThresholds: summary.reachedThresholds,
+					nextTier: summary.nextTier,
+				};
+			})
+			.filter((item): item is MemberBonusSummary => item !== null);
+	}, [onDutyMembers, roleBonusConfigById, shiftPct, dailyPct, monthlyPct]);
 
 	const shiftBonusSummary = useMemo(
 		() =>
-			roleBonusConfigs
-				.filter((config) => config.basis === "shift")
-				.map((config) => summarizeRoleBonus(shiftPct, config)),
-		[roleBonusConfigs, shiftPct]
+			memberBonusSummary.filter((item) => item.basis === "shift"),
+		[memberBonusSummary]
 	);
 
 	const dailyBonusSummary = useMemo(
 		() =>
-			roleBonusConfigs
-				.filter((config) => config.basis === "daily")
-				.map((config) => summarizeRoleBonus(dailyPct, config)),
-		[roleBonusConfigs, dailyPct]
+			memberBonusSummary.filter((item) => item.basis === "daily"),
+		[memberBonusSummary]
 	);
 
 	const monthlyBonusSummary = useMemo(
 		() =>
-			roleBonusConfigs
-				.filter((config) => config.basis === "monthly")
-				.map((config) => summarizeRoleBonus(monthlyPct, config)),
-		[roleBonusConfigs, monthlyPct]
+			memberBonusSummary.filter((item) => item.basis === "monthly"),
+		[memberBonusSummary]
 	);
 
 	const totalShiftBonusNow = useMemo(
@@ -1341,9 +1412,12 @@ function MenuPage() {
 												{shiftBonusSummary.length > 0 && (
 													<div className="space-y-1">
 														{shiftBonusSummary.map((item) => (
-															<div key={`shift-${item.roleName}`} className="rounded-md bg-primary/5 px-1.5 py-1 text-[8px] leading-tight">
+															<div key={`shift-${item.memberName}`} className="rounded-md bg-primary/5 px-1.5 py-1 text-[8px] leading-tight">
 																<p className="font-black uppercase tracking-wide text-primary">
-																	{item.roleName} - Bonus: {fmt(item.achievedBonus)}
+																	{item.memberName} - Bonus: {fmt(item.achievedBonus)}
+																</p>
+																<p className="font-bold text-muted-foreground/70 uppercase">
+																	Role: {item.roleName}
 																</p>
 																<p className="font-semibold text-muted-foreground/80">
 																	{item.nextTier
@@ -1391,9 +1465,12 @@ function MenuPage() {
 												{dailyBonusSummary.length > 0 && (
 													<div className="space-y-1">
 														{dailyBonusSummary.map((item) => (
-															<div key={`daily-${item.roleName}`} className="rounded-md bg-blue-500/5 px-1.5 py-1 text-[8px] leading-tight">
+															<div key={`daily-${item.memberName}`} className="rounded-md bg-blue-500/5 px-1.5 py-1 text-[8px] leading-tight">
 																<p className="font-black uppercase tracking-wide text-blue-700 dark:text-blue-400">
-																	{item.roleName} - Bonus: {fmt(item.achievedBonus)}
+																	{item.memberName} - Bonus: {fmt(item.achievedBonus)}
+																</p>
+																<p className="font-bold text-muted-foreground/70 uppercase">
+																	Role: {item.roleName}
 																</p>
 																<p className="font-semibold text-muted-foreground/80">
 																	{item.nextTier
@@ -1423,9 +1500,12 @@ function MenuPage() {
 										</p>
 										<div className="mt-1 space-y-1">
 											{monthlyBonusSummary.map((item) => (
-												<div key={`monthly-${item.roleName}`} className="text-[8px] leading-tight">
+												<div key={`monthly-${item.memberName}`} className="text-[8px] leading-tight">
 													<p className="font-black text-emerald-700 dark:text-emerald-300">
-														{item.roleName} - Bonus: {fmt(item.achievedBonus)}
+														{item.memberName} - Bonus: {fmt(item.achievedBonus)}
+													</p>
+													<p className="font-bold text-emerald-700/70 uppercase dark:text-emerald-200/70">
+														Role: {item.roleName}
 													</p>
 													<p className="font-semibold text-emerald-700/80 dark:text-emerald-200/80">
 														{item.nextTier
