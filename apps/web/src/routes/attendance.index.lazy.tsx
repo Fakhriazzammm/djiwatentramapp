@@ -48,7 +48,7 @@ function AttendancePage() {
 	const { user: authUser, isAuthenticated } = useYumiAuth();
 	
 	const [pin, setPin] = useState("");
-	const [user, setUser] = useState<{ id: string; name: string; faceDescriptor?: number[]; isCurrentlyIn?: boolean } | null>(null);
+	const [user, setUser] = useState<{ id: string; name: string; hasFace?: boolean; isCurrentlyIn?: boolean } | null>(null);
 	const [isEnrolling, setIsEnrolling] = useState(false);
 	const [isVerifyingPin, setIsVerifyingPin] = useState(false);
 	
@@ -136,6 +136,11 @@ function AttendancePage() {
 		return distance <= (siteSettings?.attendanceRadius ?? 50);
 	}, [distance, siteSettings]);
 
+	const attendanceLocation = useMemo(() => {
+		if (!userLocation) return undefined;
+		return { lat: userLocation.lat, lng: userLocation.lng };
+	}, [userLocation]);
+
 	// Watch Location
 	useEffect(() => {
 		if (!navigator.geolocation) {
@@ -165,10 +170,16 @@ function AttendancePage() {
 			setUser({
 				id: authUser._id,
 				name: authUser.name,
-				faceDescriptor: authUser.faceDescriptor || undefined,
+				hasFace: !!authUser.hasFace,
 				isCurrentlyIn
 			});
-			setStep("face"); // Go to face scan since we have the token
+			if (authUser.hasFace) {
+				setIsEnrolling(false);
+				setStep("face");
+			} else {
+				setIsEnrolling(true);
+				setStep("pin");
+			}
 		}
 	}, [isAuthenticated, authUser, step, currentlyIn]);
 	
@@ -177,7 +188,7 @@ function AttendancePage() {
 		setUser({
 			id: staff._id,
 			name: staff.name,
-			faceDescriptor: staff.faceDescriptor || undefined,
+			hasFace: !!staff.hasFace,
 			isCurrentlyIn
 		});
 
@@ -200,6 +211,10 @@ function AttendancePage() {
 				toast.error("Gagal: Anda berada di luar radius kafe.");
 				return;
 			}
+			if (siteSettings?.attendanceLat && !attendanceLocation) {
+				toast.error("Lokasi belum siap. Aktifkan GPS lalu coba lagi.");
+				return;
+			}
 
 			// 2. If in enroll mode, save the face data first
 			if (isEnrolling && descriptor && pin) {
@@ -211,19 +226,28 @@ function AttendancePage() {
 				});
 				toast.success("Wajah berhasil terdaftar!", { id: "save-face" });
 				setIsEnrolling(false);
+				setUser((prev) => (prev ? { ...prev, hasFace: true } : prev));
 			}
 
 			// 3. Smart Toggle: In or Out?
 			toast.loading(user.isCurrentlyIn ? "Proses Keluar..." : "Proses Masuk...", { id: "clocking" });
+			const verificationPayload = {
+				userId: user.id as any,
+				faceDescriptor: descriptor,
+				pinCode: pin || undefined,
+				location: attendanceLocation,
+			};
 			
 			if (user.isCurrentlyIn) {
-				await clockOut({ userId: user.id as any });
+				await clockOut({
+					...verificationPayload,
+				});
 			} else {
 				await clockIn({ 
-				userId: user.id as any,
-				shiftName: detectedShift?.name || undefined,
-				shiftOpenTimeSnapshot: detectedShift?.openTime || undefined,
-			});
+					...verificationPayload,
+					shiftName: detectedShift?.name || undefined,
+					shiftOpenTimeSnapshot: detectedShift?.openTime || undefined,
+				});
 			}
 			
 			toast.dismiss("clocking");
@@ -232,9 +256,9 @@ function AttendancePage() {
 			setTimeout(() => {
 				navigate({ to: "/home" });
 			}, 3000);
-		} catch (err) {
+		} catch (err: any) {
 			toast.dismiss();
-			toast.error("Gagal memproses absensi");
+			toast.error(err?.message || "Gagal memproses absensi");
 		}
 	};
 
@@ -255,7 +279,7 @@ function AttendancePage() {
 			}
 
 			// 3. If we were enrolling, move to face step
-			if (isEnrolling && !user?.faceDescriptor) {
+			if (isEnrolling && !user?.hasFace) {
 				setStep("face");
 			} else {
 				// 4. Otherwise, this was a PIN fallback attendance
@@ -622,7 +646,7 @@ function AttendancePage() {
 											Pilih User Lain
 										</Button>
 									</div>
-								) : !isEnrolling && !user?.faceDescriptor ? (
+								) : !isEnrolling && !user?.hasFace ? (
 									<div className="flex aspect-[3/4] w-full flex-col items-center justify-center space-y-4 rounded-3xl bg-muted p-6 text-center">
 										<div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-amber-100 text-amber-600">
 											<AlertCircle className="h-7 w-7" />
@@ -644,14 +668,13 @@ function AttendancePage() {
 									<FaceRecognition
 										mode={isEnrolling ? "enroll" : "verify"}
 										onCapture={isEnrolling ? handleFaceProcessed : undefined}
-										onMatch={!isEnrolling ? () => handleFaceProcessed() : undefined}
+										onVerify={!isEnrolling ? handleFaceProcessed : undefined}
 										onModelError={() => {
 											if (!isEnrolling) {
 												toast.error("Gagal memuat sistem wajah. Silakan gunakan PIN.");
 												setStep("pin");
 											}
 										}}
-										targetDescriptor={user?.faceDescriptor}
 									/>
 								)}
 							</div>

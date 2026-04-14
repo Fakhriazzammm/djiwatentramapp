@@ -1,6 +1,86 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+const FACE_MATCH_THRESHOLD = 0.6;
+
+function euclideanDistance(a: number[], b: number[]) {
+	if (a.length !== b.length) return Number.POSITIVE_INFINITY;
+	let sum = 0;
+	for (let i = 0; i < a.length; i++) {
+		const delta = a[i] - b[i];
+		sum += delta * delta;
+	}
+	return Math.sqrt(sum);
+}
+
+function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
+	const earthRadius = 6371e3;
+	const phi1 = (lat1 * Math.PI) / 180;
+	const phi2 = (lat2 * Math.PI) / 180;
+	const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+	const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+
+	const a =
+		Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+		Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+	return earthRadius * c;
+}
+
+async function assertVerification(
+	user: { faceDescriptor?: number[]; homePin?: string },
+	args: { faceDescriptor?: number[]; pinCode?: string }
+) {
+	const hasFaceInput = Array.isArray(args.faceDescriptor) && args.faceDescriptor.length > 0;
+	const hasPinInput = typeof args.pinCode === "string" && args.pinCode.trim().length > 0;
+
+	if (hasFaceInput) {
+		if (!user.faceDescriptor || user.faceDescriptor.length === 0) {
+			throw new Error("Wajah belum terdaftar. Gunakan PIN.");
+		}
+		const distance = euclideanDistance(user.faceDescriptor, args.faceDescriptor!);
+		if (distance >= FACE_MATCH_THRESHOLD) {
+			throw new Error("Verifikasi wajah gagal");
+		}
+		return;
+	}
+
+	if (hasPinInput) {
+		if (!user.homePin || user.homePin !== args.pinCode) {
+			throw new Error("PIN tidak valid");
+		}
+		return;
+	}
+
+	throw new Error("Verifikasi wajib (wajah atau PIN)");
+}
+
+async function assertInsideAttendanceRadius(
+	ctx: any,
+	location?: { lat: number; lng: number; address?: string }
+) {
+	const settings = await ctx.db.query("siteSettings").first();
+	if (
+		settings?.attendanceLat === undefined ||
+		settings?.attendanceLng === undefined
+	) {
+		return;
+	}
+	if (!location) {
+		throw new Error("Lokasi wajib untuk absensi");
+	}
+	const radius = settings.attendanceRadius ?? 50;
+	const distance = calculateDistanceMeters(
+		location.lat,
+		location.lng,
+		settings.attendanceLat,
+		settings.attendanceLng
+	);
+	if (distance > radius) {
+		throw new Error("Di luar radius absensi");
+	}
+}
+
 export const getAttendance = query({
 	args: {
 		userId: v.optional(v.id("users")),
@@ -19,6 +99,8 @@ export const getAttendance = query({
 export const clockIn = mutation({
 	args: {
 		userId: v.id("users"),
+		faceDescriptor: v.optional(v.array(v.number())),
+		pinCode: v.optional(v.string()),
 		photoUrl: v.optional(v.string()),
 		location: v.optional(
 			v.object({
@@ -37,6 +119,11 @@ export const clockIn = mutation({
 		if (!user || !user.isActive) {
 			throw new Error("User not found or inactive");
 		}
+		await assertVerification(user, {
+			faceDescriptor: args.faceDescriptor,
+			pinCode: args.pinCode,
+		});
+		await assertInsideAttendanceRadius(ctx, args.location);
 
 		const latestStatus = await ctx.db
 			.query("attendance")
@@ -65,6 +152,15 @@ export const clockIn = mutation({
 export const clockOut = mutation({
 	args: {
 		userId: v.id("users"),
+		faceDescriptor: v.optional(v.array(v.number())),
+		pinCode: v.optional(v.string()),
+		location: v.optional(
+			v.object({
+				lat: v.number(),
+				lng: v.number(),
+				address: v.optional(v.string()),
+			})
+		),
 		notes: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
@@ -72,6 +168,11 @@ export const clockOut = mutation({
 		if (!user || !user.isActive) {
 			throw new Error("User not found or inactive");
 		}
+		await assertVerification(user, {
+			faceDescriptor: args.faceDescriptor,
+			pinCode: args.pinCode,
+		});
+		await assertInsideAttendanceRadius(ctx, args.location);
 
 		const latestStatus = await ctx.db
 			.query("attendance")
@@ -86,6 +187,7 @@ export const clockOut = mutation({
 			userId: args.userId,
 			type: "check_out",
 			timestamp: Date.now(),
+			location: args.location,
 			notes: args.notes,
 		});
 

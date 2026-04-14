@@ -384,9 +384,7 @@ function HomePage() {
 		return buildShiftSummaryText(selectedShift, shiftDetails);
 	}, [selectedShift, shiftDetails]);
 
-	const hasFaceDescriptor =
-		Array.isArray((user as any)?.faceDescriptor) &&
-		((user as any)?.faceDescriptor?.length ?? 0) > 0;
+	const hasFaceDescriptor = !!user?.hasFace;
 	const workDurationLabel = `${statsToday?.totalHours ?? 0}j ${statsToday?.totalMinutes ?? 0}m`;
 	const primaryActionTitle = !hasFaceDescriptor
 		? "Daftarkan Wajah"
@@ -407,6 +405,19 @@ function HomePage() {
 		}
 		setShowFaceModal(true);
 	};
+
+	const getCurrentLocation = () =>
+		new Promise<{ lat: number; lng: number }>((resolve, reject) => {
+			if (!navigator.geolocation) {
+				reject(new Error("Browser tidak mendukung geolokasi."));
+				return;
+			}
+			navigator.geolocation.getCurrentPosition(
+				(pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+				() => reject(new Error("Izin lokasi diperlukan untuk absensi.")),
+				{ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+			);
+		});
 
 	const handleLogout = async () => {
 		try {
@@ -571,22 +582,31 @@ function HomePage() {
 									</h2>
 									<FaceRecognition 
 										mode="verify" 
-										targetDescriptor={(user as any)?.faceDescriptor}
-										onMatch={async () => {
+										onVerify={async (descriptor) => {
 											if (isProcessing) return;
 											setIsProcessing(true);
 											const toastId = toast.loading(statsToday?.isWorking ? "Proses Clock Out..." : "Proses Clock In...");
 											try {
+												const location = await getCurrentLocation();
 												if (statsToday?.isWorking) {
-													await clockOut({ userId: user!._id });
+													await clockOut({
+														userId: user!._id,
+														faceDescriptor: descriptor,
+														location,
+													});
 													toast.success("Berhasil Clock Out", { id: toastId });
 												} else {
-													await clockIn({ userId: user!._id });
+													await clockIn({
+														userId: user!._id,
+														faceDescriptor: descriptor,
+														location,
+													});
 													toast.success("Berhasil Clock In", { id: toastId });
 												}
 												setShowFaceModal(false);
-											} catch (err) {
-												toast.error("Gagal memproses absensi", { id: toastId });
+											} catch (err: any) {
+												toast.error(err?.message || "Gagal memproses absensi", { id: toastId });
+												throw err;
 											} finally {
 												setIsProcessing(false);
 											}

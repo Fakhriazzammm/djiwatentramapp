@@ -1825,7 +1825,7 @@ function InventoryDetailDrawer({
 						Produk Terkorelasi
 					</p>
 					<div className="space-y-2">
-						{impact?.impact.impactedProducts?.slice(0, 8).map((product) => (
+						{impact?.impact.impactedProducts?.slice(0, 8).map((product: any) => (
 							<div
 								className="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2"
 								key={`${product.productId}-${product.variantName || "base"}`}
@@ -2551,13 +2551,10 @@ function InventoryTable({
 													Info
 												</button>
 												<DropdownMenu>
-													<DropdownMenuTrigger asChild>
-														<button
-															className="rounded-lg border border-border bg-background p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-															type="button"
-														>
-															<MoreHorizontal className="h-4 w-4" />
-														</button>
+													<DropdownMenuTrigger
+														className="rounded-lg border border-border bg-background p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+													>
+														<MoreHorizontal className="h-4 w-4" />
 													</DropdownMenuTrigger>
 													<DropdownMenuContent align="end" className="w-52">
 														<DropdownMenuItem onClick={() => void quickDelta(row, "add", 5)}>

@@ -2367,7 +2367,10 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 						<div className="grid grid-cols-2 gap-3">
 							<div className="space-y-1.5">
 								<Label className="text-[10px] font-bold uppercase text-muted-foreground">Kasir <span className="text-destructive">*</span></Label>
-								<Select value={cashierName} onValueChange={setCashierName}>
+								<Select
+									value={cashierName}
+									onValueChange={(value) => setCashierName(value ?? "")}
+								>
 									<SelectTrigger className="h-9 text-xs">
 										<SelectValue placeholder="Pilih Kasir" />
 									</SelectTrigger>

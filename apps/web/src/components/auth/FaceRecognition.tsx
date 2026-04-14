@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface FaceRecognitionProps {
 	onMatch?: (descriptor: number[]) => void;
+	onVerify?: (descriptor: number[]) => Promise<void> | void;
 	onCapture?: (descriptor: number[]) => void;
 	onModelError?: (error: string) => void;
 	targetDescriptor?: number[];
@@ -60,6 +61,7 @@ function LoadTimer({ startMs }: { startMs: number }) {
 
 export function FaceRecognition({
 	onMatch,
+	onVerify,
 	onCapture,
 	onModelError,
 	targetDescriptor,
@@ -247,6 +249,10 @@ export function FaceRecognition({
 			if (mode === "enroll") {
 				onCapture?.(descriptor);
 				setMatchStatus("success");
+			} else if (mode === "verify" && onVerify) {
+				await onVerify(descriptor);
+				setMatchStatus("success");
+				onMatch?.(descriptor);
 			} else if (mode === "verify" && targetDescriptor) {
 				const distance = faceapi.euclideanDistance(
 					new Float32Array(descriptor),
@@ -275,7 +281,7 @@ export function FaceRecognition({
 		} finally {
 			isProcessingRef.current = false;
 		}
-	}, [modelsLoaded, matchStatus, mode, targetDescriptor, onMatch, onCapture, cooldown, onModelError]);
+	}, [modelsLoaded, matchStatus, mode, targetDescriptor, onMatch, onVerify, onCapture, cooldown, onModelError]);
 
 	// Auto-capture when face is stable
 	useEffect(() => {
@@ -541,7 +547,7 @@ export function FaceRecognition({
 										Memindai Wajah...
 									</span>
 									<span className="text-xs font-mono text-blue-300 ml-auto">
-										{(elapsedMs / 1000).toFixed(1)}d
+										{(elapsedMs / 1000).toFixed(1)}s
 									</span>
 								</div>
 								<div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">

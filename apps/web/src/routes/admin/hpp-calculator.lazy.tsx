@@ -608,7 +608,7 @@ function HppCalculatorPage() {
 			return;
 		}
 
-		const product = products?.find((item) => item._id === productId);
+		const product = products?.find((item: any) => item._id === productId);
 		if (!product) {
 			return;
 		}

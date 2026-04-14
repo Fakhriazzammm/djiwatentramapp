@@ -1878,24 +1878,34 @@ export function SettingsPage({
 																<tr key={role._id} className={`transition-colors ${isEditing ? "bg-primary/5" : "hover:bg-muted/30"}`}>
 																	<td className="px-3 py-2">
 																		{isEditing ? (
-																			<input
-																				className="w-full rounded-lg border border-primary/30 bg-background p-2 text-xs outline-none focus:ring-2 focus:ring-primary/20"
-																				type="text"
-																				value={editingRole.name}
-																				onChange={(e) => setEditingRole({ ...editingRole, name: e.target.value })}
-																			/>
+														<input
+															className="w-full rounded-lg border border-primary/30 bg-background p-2 text-xs outline-none focus:ring-2 focus:ring-primary/20"
+															type="text"
+															value={editingRole?.name ?? ""}
+															onChange={(e) =>
+																setEditingRole((prev) =>
+																	prev ? { ...prev, name: e.target.value } : prev
+																)
+															}
+														/>
 																		) : (
 																			<span className="font-semibold text-xs text-foreground">{role.name}</span>
 																		)}
 																	</td>
 																	<td className="px-3 py-2 text-right">
 																		{isEditing ? (
-																			<input
-																				className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
-																				type="number"
-																				value={editingRole.baseShiftRate}
-																				onChange={(e) => setEditingRole({ ...editingRole, baseShiftRate: Number(e.target.value) })}
-																			/>
+														<input
+															className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
+															type="number"
+															value={editingRole?.baseShiftRate ?? 0}
+															onChange={(e) =>
+																setEditingRole((prev) =>
+																	prev
+																		? { ...prev, baseShiftRate: Number(e.target.value) }
+																		: prev
+																)
+															}
+														/>
 																		) : (
 																			<span className="text-xs text-muted-foreground font-mono">
 																				{role.baseShiftRate?.toLocaleString("id-ID") || 0}
@@ -1904,12 +1914,18 @@ export function SettingsPage({
 																	</td>
 																	<td className="px-3 py-2 text-right">
 																		{isEditing ? (
-																			<input
-																				className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
-																				type="number"
-																				value={editingRole.monthlyFixedSalary}
-																				onChange={(e) => setEditingRole({ ...editingRole, monthlyFixedSalary: Number(e.target.value) })}
-																			/>
+														<input
+															className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
+															type="number"
+															value={editingRole?.monthlyFixedSalary ?? 0}
+															onChange={(e) =>
+																setEditingRole((prev) =>
+																	prev
+																		? { ...prev, monthlyFixedSalary: Number(e.target.value) }
+																		: prev
+																)
+															}
+														/>
 																		) : (
 																			<span className="text-xs text-muted-foreground font-mono">
 																				{role.monthlyFixedSalary?.toLocaleString("id-ID") || 0}
@@ -1918,12 +1934,18 @@ export function SettingsPage({
 																	</td>
 																	<td className="px-3 py-2 text-right">
 																		{isEditing ? (
-																			<input
-																				className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
-																				type="number"
-																				value={editingRole.dailyAllowance}
-																				onChange={(e) => setEditingRole({ ...editingRole, dailyAllowance: Number(e.target.value) })}
-																			/>
+														<input
+															className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
+															type="number"
+															value={editingRole?.dailyAllowance ?? 0}
+															onChange={(e) =>
+																setEditingRole((prev) =>
+																	prev
+																		? { ...prev, dailyAllowance: Number(e.target.value) }
+																		: prev
+																)
+															}
+														/>
 																		) : (
 																			<span className="text-xs text-muted-foreground font-mono">
 																				{role.dailyAllowance?.toLocaleString("id-ID") || 0}
@@ -1938,7 +1960,7 @@ export function SettingsPage({
 																				type="button"
 																			>
 																				<ShieldCheck className="h-3 w-3" />
-																				{editingRole.permissions.length}
+																				{editingRole?.permissions.length ?? 0}
 																			</button>
 																		) : (
 																			<span className="block text-center text-[10px] font-semibold text-muted-foreground">
@@ -2044,7 +2066,11 @@ export function SettingsPage({
 															const nextPermissions = e.target.checked
 																? [...editingRole.permissions, perm.id]
 																: editingRole.permissions.filter((id) => id !== perm.id);
-															setEditingRole({ ...editingRole, permissions: nextPermissions });
+															setEditingRole((prev) =>
+																prev
+																	? { ...prev, permissions: nextPermissions }
+																	: prev
+															);
 														}}
 													/>
 													<span>{perm.label}</span>
