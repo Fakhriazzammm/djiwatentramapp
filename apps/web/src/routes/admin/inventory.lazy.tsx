@@ -139,7 +139,7 @@ type InventoryPriceInsights = {
 
 type RealtimePriceMonitorData = {
 	rows: Array<{
-		inventoryId: Id<"inventory">;
+		inventoryId: Id<"inventory"> | null;
 		ingredientName: string;
 		nameKey: string;
 		unit: string;
@@ -158,6 +158,8 @@ type RealtimePriceMonitorData = {
 	summary: {
 		totalUniqueNames: number;
 		totalRawTransactions: number;
+		totalExpenseLines: number;
+		totalRestockRows: number;
 	};
 };
 
@@ -1971,7 +1973,7 @@ function RealtimePriceMonitorTable({
 				</p>
 				<p className="mt-1 text-sm text-muted-foreground">
 					Nama bahan yang sama otomatis digabung. Saat ada input baru, harga lama tertimpa
-					oleh harga terbaru.
+					oleh harga terbaru. Sumber: restock inventory + data pengeluaran.
 				</p>
 			</div>
 			<div className="overflow-x-auto">
@@ -2095,7 +2097,8 @@ function RealtimePriceMonitorTable({
 			{data && (
 				<div className="border-border border-t px-4 py-2 text-[11px] text-muted-foreground">
 					{data.summary.totalUniqueNames} nama unik dari{" "}
-					{data.summary.totalRawTransactions} transaksi restock terbaru.
+					{data.summary.totalRawTransactions} transaksi (restock + pengeluaran). Baris
+					pengeluaran terproses: {data.summary.totalExpenseLines}.
 				</div>
 			)}
 		</div>

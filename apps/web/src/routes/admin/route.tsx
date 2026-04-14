@@ -137,8 +137,8 @@ const QUICK_MENU_SECTIONS = [
 	{
 		label: "Operasional",
 		items: [
-			{ to: "/admin/kitchen", icon: ChefHat, label: "Dapur", permission: "kitchen:view" },
-			{ to: "/admin/bar", icon: Beer, label: "Bar", permission: "kitchen:view" },
+			{ to: "/admin/kitchen", icon: ChefHat, label: "Dapur" },
+			{ to: "/admin/bar", icon: Beer, label: "Bar" },
 			{ to: "/admin/customer-service", icon: Bell, label: "Layanan", permission: "orders:view" },
 			{ to: "/admin/operational-team", icon: Users, label: "Tim Operasional", permission: "users:manage" },
 		],
@@ -217,7 +217,9 @@ function AdminLayout() {
 		if (isAuthenticated && !isLoading) {
 			const currentPath = location.pathname;
 			const allItems = [...BOTTOM_NAV_ITEMS, ...QUICK_MENU_ITEMS];
-			const matchedItem = allItems.find(item => item.to && currentPath.startsWith(item.to));
+			const matchedItem = allItems
+				.filter((item) => item.to && currentPath.startsWith(item.to))
+				.sort((a, b) => b.to.length - a.to.length)[0];
 			
 			if (matchedItem?.permission && !hasPermission(matchedItem.permission)) {
 				setIsAccessDenied(true);
@@ -376,14 +378,12 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Dapur"
 						to="/admin/kitchen"
-						permission="kitchen:view"
 					/>
 					<DesktopNavLink
 						icon={<Beer />}
 						isCollapsed={isCollapsed}
 						label="Bar"
 						to="/admin/bar"
-						permission="kitchen:view"
 					/>
 					<DesktopNavLink
 						icon={<Bell />}

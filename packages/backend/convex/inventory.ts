@@ -1019,7 +1019,7 @@ export const getRealtimePriceMonitor = query({
 		const limit = Math.max(20, Math.min(500, Math.floor(args.limit ?? 200)));
 		const keyword = (args.search ?? "").trim().toLowerCase();
 
-		const [items, stores, restockRows] = await Promise.all([
+		const [items, stores, restockRows, expenseRows] = await Promise.all([
 			ctx.db.query("inventory").collect(),
 			ctx.db.query("inventoryStores").collect(),
 			ctx.db
@@ -1027,12 +1027,19 @@ export const getRealtimePriceMonitor = query({
 				.withIndex("by_type_and_timestamp", (q) => q.eq("type", "restock"))
 				.order("desc")
 				.take(1200),
+			ctx.db
+				.query("financialTransactions")
+				.withIndex("by_type_and_date", (q) => q.eq("type", "expense"))
+				.order("desc")
+				.take(800),
 		]);
 
 		const storeById = buildStoreLookup(stores);
 		const itemById = new Map<string, Doc<"inventory">>();
+		const itemByName = new Map<string, Doc<"inventory">>();
 		for (const item of items) {
 			itemById.set(String(item._id), item);
+			itemByName.set(item.ingredientName.trim().toLowerCase(), item);
 		}
 
 		const aggregate = new Map<
@@ -1051,9 +1058,11 @@ export const getRealtimePriceMonitor = query({
 				totalPurchases: number;
 				storeSet: Set<string>;
 				brandSet: Set<string>;
-				latestInventoryId: Id<"inventory">;
+				latestInventoryId: Id<"inventory"> | null;
 			}
 		>();
+
+		let expenseLineCount = 0;
 
 		for (const row of restockRows) {
 			if (typeof row.costPerUnit !== "number" || row.costPerUnit <= 0) {
@@ -1114,6 +1123,94 @@ export const getRealtimePriceMonitor = query({
 			}
 		}
 
+		for (const expense of expenseRows) {
+			const fallbackStoreName =
+				expense.merchant?.trim() ||
+				expense.metadata?.receiptDetails?.merchantName?.trim() ||
+				"Tanpa toko";
+			const scanItems = expense.metadata?.scanItems ?? [];
+			const normalizedScanItems =
+				scanItems.length > 0
+					? scanItems
+					: [
+							{
+								name:
+									expense.description?.trim() ||
+									expense.category?.trim() ||
+									"Pengeluaran",
+								quantity: 1,
+								price: expense.amount,
+								total: expense.amount,
+								unit: "unit",
+							},
+					  ];
+
+			for (const line of normalizedScanItems) {
+				const lineName = (line.name || "").trim();
+				if (!lineName) {
+					continue;
+				}
+				const quantity = Number(line.quantity) || 0;
+				const unitPrice =
+					typeof line.price === "number" && line.price > 0
+						? line.price
+						: typeof line.total === "number" && line.total > 0 && quantity > 0
+							? line.total / quantity
+							: 0;
+				if (unitPrice <= 0) {
+					continue;
+				}
+
+				expenseLineCount += 1;
+
+				const nameKey = lineName.toLowerCase();
+				const matchedItem = itemByName.get(nameKey) ?? null;
+				const displayUnit = normalizeUnitLabel(line.unit) || matchedItem?.displayUnit || null;
+				const baseUnit = matchedItem?.unit || displayUnit || "unit";
+				const conversionFactor = matchedItem?.conversionFactor ?? null;
+				const existing = aggregate.get(nameKey);
+				if (!existing) {
+					const storeSet = new Set<string>();
+					storeSet.add(fallbackStoreName);
+					aggregate.set(nameKey, {
+						inventoryName: lineName,
+						nameKey,
+						unit: baseUnit,
+						displayUnit,
+						conversionFactor,
+						lastPrice: unitPrice,
+						previousPrice: null,
+						lastPurchaseAt: expense.date,
+						lastStoreName: fallbackStoreName,
+						lastBrandName: null,
+						totalPurchases: 1,
+						storeSet,
+						brandSet: new Set<string>(),
+						latestInventoryId: matchedItem?._id ?? null,
+					});
+					continue;
+				}
+
+				existing.totalPurchases += 1;
+				existing.storeSet.add(fallbackStoreName);
+				if (expense.date > existing.lastPurchaseAt) {
+					existing.lastPurchaseAt = expense.date;
+					existing.lastPrice = unitPrice;
+					existing.lastStoreName = fallbackStoreName;
+					existing.lastBrandName = null;
+					if (matchedItem?._id) {
+						existing.latestInventoryId = matchedItem._id;
+					}
+				} else if (existing.previousPrice == null) {
+					existing.previousPrice = unitPrice;
+				}
+
+				if (existing.previousPrice == null && existing.lastPrice !== unitPrice) {
+					existing.previousPrice = unitPrice;
+				}
+			}
+		}
+
 		const rows = [...aggregate.values()]
 			.filter((row) => {
 				if (!keyword) {
@@ -1138,7 +1235,7 @@ export const getRealtimePriceMonitor = query({
 						? Number((row.lastPrice - row.previousPrice).toFixed(2))
 						: null;
 				return {
-					inventoryId: row.latestInventoryId,
+					inventoryId: row.latestInventoryId ?? null,
 					ingredientName: row.inventoryName,
 					nameKey: row.nameKey,
 					unit: row.unit,
@@ -1160,7 +1257,9 @@ export const getRealtimePriceMonitor = query({
 			rows,
 			summary: {
 				totalUniqueNames: rows.length,
-				totalRawTransactions: restockRows.length,
+				totalRawTransactions: restockRows.length + expenseRows.length,
+				totalExpenseLines: expenseLineCount,
+				totalRestockRows: restockRows.length,
 			},
 		};
 	},
