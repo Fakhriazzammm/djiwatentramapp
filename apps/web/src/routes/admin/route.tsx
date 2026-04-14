@@ -49,6 +49,7 @@ import {
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { authClient } from "@/lib/auth-client";
 import { APP_VERSION } from "@/lib/version";
+import { Footer } from "@/components/layout/Footer";
 
 export const Route = createFileRoute("/admin")({
 	component: AdminLayout,
@@ -671,17 +672,7 @@ function AdminLayout() {
 
 				{/* Footer - visible on both desktop and mobile */}
 				{!isAIChat && (
-					<footer className="border-border border-t bg-muted/20 px-4 py-2 text-center text-muted-foreground text-xs">
-						<div className="flex flex-col items-center gap-0.5 md:flex-row md:gap-2">
-							<span>
-								{appName} {APP_VERSION.semantic} by {developerName}
-							</span>
-							<span className="hidden md:inline text-muted-foreground/40">·</span>
-							<span className="text-[10px] text-muted-foreground/60">
-								{APP_VERSION.buildDate}
-							</span>
-						</div>
-					</footer>
+					<Footer className="border-t bg-muted/20" />
 				)}
 			</main>
 

@@ -2,6 +2,7 @@ import { createLazyFileRoute, useNavigate, useParams } from "@tanstack/react-rou
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
+import { Footer } from "@/components/layout/Footer";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -572,9 +573,7 @@ function StaffProfilePage() {
 				</AnimatePresence>
 			</main>
 
-			<footer className="mt-10 p-10 text-center opacity-30">
-				<p className="text-[10px] font-bold tracking-[0.2em] uppercase">Djiwa Tentram Management System</p>
-			</footer>
+			<Footer className="mt-10 pb-10" />
 		</div>
 	);
 }

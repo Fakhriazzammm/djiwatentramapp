@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
+import { Footer } from "@/components/layout/Footer";
 
 // Helper for distance calculation
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -483,20 +484,27 @@ function AttendancePage() {
 								)}
 							</div>
 
-							<div className="flex items-center gap-3">
+							<div className="flex flex-col sm:flex-row items-center gap-3">
 								{!isEnrolling && (
 									<Button 
-										variant="ghost"
-										className="rounded-xl text-muted-foreground hover:text-primary flex-1"
+										className="h-11 w-full sm:flex-1 rounded-2xl font-bold"
 										onClick={() => {
 											setIsEnrolling(true);
-											toast.info("Masuk ke mode pendaftaran wajah baru.");
+											setStep("pin");
+											toast.info("Masukkan PIN untuk mendaftarkan wajah baru.");
 										}}
 									>
-										Wajah Tidak Terdeteksi? Daftar Ulang
+										DAFTAR ULANG WAJAH
 									</Button>
 								)}
-								<Button className="h-11 flex-1 rounded-2xl" onClick={() => setStep("select")} variant="outline">
+								<Button 
+									className="h-11 w-full sm:flex-1 rounded-2xl" 
+									onClick={() => {
+										setStep("select");
+										setIsEnrolling(false);
+									}} 
+									variant="outline"
+								>
 									Ganti Identitas
 								</Button>
 							</div>
@@ -580,11 +588,7 @@ function AttendancePage() {
 				</AnimatePresence>
 			</main>
 
-			<footer className="p-8 text-center">
-				<p className="text-[10px] font-black tracking-[0.3em] text-muted-foreground/30 uppercase">
-					Djiwa Tentram Attendance System v2.0
-				</p>
-			</footer>
+			<Footer className="pb-8" />
 		</div>
 	);
 }

@@ -14,6 +14,7 @@ import {
 	Search
 } from "lucide-react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
+import { Footer } from "@/components/layout/Footer";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 
@@ -239,9 +240,7 @@ function LoginPage() {
 				</AnimatePresence>
 			</main>
 			
-			<footer className="absolute bottom-8 left-0 right-0 text-center opacity-30 pointer-events-none">
-				<p className="text-[9px] font-black tracking-[0.3em] uppercase text-muted-foreground">Djiwa Tentram Unified System</p>
-			</footer>
+			<Footer className="absolute bottom-8 left-0 right-0 pointer-events-none" />
 		</div>
 	);
 }
