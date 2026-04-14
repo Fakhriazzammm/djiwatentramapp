@@ -428,11 +428,11 @@ async function rewriteExtractedText(rawText: string, synthesisModel?: string) {
 				{
 					role: "system",
 					content:
-						"Kamu adalah asisten OCR. Tulis ulang teks hasil scan agar rapi, mudah dibaca, dan terstruktur. Gunakan Bahasa Indonesia. Jangan gunakan markdown.",
+						"Kamu adalah asisten AI kasir. Rangkum teks hasil scan struk menjadi tampilan yang rapi, simpel, dan profesional. Gunakan format Markdown.",
 				},
 				{
 					role: "user",
-					content: `Teks OCR mentah:\n${limited}\n\nTulis ulang dengan format:\n- Merchant\n- Tanggal (jika ada)\n- Item penting\n- Total\n- Catatan singkat.`,
+					content: `Teks OCR mentah:\n${limited}\n\nBuatkan rangkuman ringkas dengan format:\n**[Nama Merchant]** - [Tanggal] (jika ada)\n\nLalu buatkan tabel Markdown sederhana untuk daftar item (Nama Item, Qty, Harga, Subtotal). Akhiri dengan ringkasan Total belanja. Jangan terlalu panjang, buat simpel dan jelas saja.`,
 				},
 			],
 			{

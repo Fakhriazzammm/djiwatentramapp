@@ -521,40 +521,23 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 							)
 							.join("\n")}`
 					: "\nItem Struk: tidak terbaca jelas (silakan review manual sebelum simpan)";
-				const rewrittenPreview = normalizedScanData.rewrittenText?.trim()
-					? `\n\nTulisan ulang isi struk (OCR):\n${normalizedScanData.rewrittenText}`
-					: "\n\nTulisan ulang isi struk (OCR): belum bisa dibaca otomatis, mohon cek gambar secara manual.";
-				const financialSummary = [
-					scanData.subtotal ? `Subtotal Rp ${toRupiah(scanData.subtotal)}` : null,
-					scanData.tax ? `Pajak Rp ${toRupiah(scanData.tax)}` : null,
-					scanData.serviceCharge
-						? `Service Rp ${toRupiah(scanData.serviceCharge)}`
-						: null,
-					scanData.discount ? `Diskon Rp ${toRupiah(scanData.discount)}` : null,
-				]
-					.filter(Boolean)
-					.join(" | ");
 				const merchantName =
 					scanData.merchant?.trim() || scanData.name?.trim() || "Toko tidak terbaca";
 				const actionButtons = generateScanActionButtons(normalizedScanData);
 				const actionHints = actionButtons
 					.map((btn, idx) => `${idx + 1}. ${btn.label}`)
 					.join("\n");
-				const assistantContent = `Hasil ekstraksi struk:
-- Merchant/Toko: ${merchantName}
-- No Struk: ${scanData.receiptNumber || "-"}
-- Tanggal: ${scanData.date || "-"}${scanData.time ? ` ${scanData.time}` : ""}
-- Metode Bayar: ${scanData.paymentMethod || "unknown"}
-- Kategori AI: ${scanData.category?.replace(/_/g, " ") || "Umum"}
-- Total: Rp ${toRupiah(scanData.total)}
-${financialSummary ? `- Ringkasan: ${financialSummary}` : ""}
-- Keyakinan OCR: ${scanData.confidence}%
-${itemsStr}
 
-Konfirmasi simpan:
+				const rewrittenContent = normalizedScanData.rewrittenText?.trim()
+					? normalizedScanData.rewrittenText
+					: `**Ringkasan Struk**\n**${merchantName}** - ${scanData.date || "-"}\n\nTotal: Rp ${toRupiah(scanData.total)}${itemsStr}`;
+
+				const assistantContent = `${rewrittenContent}
+
+**Konfirmasi Simpan**
 Pilih tombol sesuai kebutuhan:
-${actionHints}${rewrittenPreview}
-${customPrompt?.trim() ? `\n\nPermintaan Anda: ${customPrompt.trim()}` : ""}`;
+${actionHints}
+${customPrompt?.trim() ? `\n*Permintaan Anda: ${customPrompt.trim()}*` : ""}`;
 				const assistantMsg: ChatMessage = {
 					role: "assistant",
 					content: assistantContent,
@@ -722,6 +705,15 @@ ${customPrompt?.trim() ? `\n\nPermintaan Anda: ${customPrompt.trim()}` : ""}`;
 			setActionButtonDone(prev => { const s = new Set<string>(prev); s.add(btnKey); return s; });
 			markScanSaved(btnKey);
 			setEditModal(null);
+
+			// Lanjut chat: Biarkan AI menanggapi aksi penyimpanan ini
+			const typeLabel = params.type === "expense" ? "pengeluaran" : "pemasukan";
+			const followUpPrompt = `Saya telah menyimpan ${typeLabel} ${params.merchant ? "dari " + params.merchant : ""} sebesar Rp ${toRupiah(params.amount)} ke dalam catatan keuangan. Berikan konfirmasi singkat dan saran langkah selanjutnya jika ada.`;
+			
+			// Gunakan setTimeout agar state modal benar-benar bersih sebelum kirim pesan
+			setTimeout(() => {
+				sendMessage(followUpPrompt);
+			}, 100);
 		} catch (error) { toast.error("Gagal menyimpan");
 		} finally { setActionButtonLoading(prev => { const s = new Set<string>(prev); s.delete(btnKey); return s; }); }
 	}, [editModal, createAITrackedTransaction, markScanSaved]);
@@ -750,6 +742,14 @@ ${customPrompt?.trim() ? `\n\nPermintaan Anda: ${customPrompt.trim()}` : ""}`;
 			setActionButtonDone(prev => { const s = new Set<string>(prev); s.add(splitModal.btnKey); return s; });
 			markScanSaved(splitModal.btnKey);
 			setSplitModal(null); setEditModal(null);
+
+			// Lanjut chat: Biarkan AI menanggapi aksi split ini
+			const totalAmount = splits.reduce((sum, s) => sum + s.amount, 0);
+			const followUpPrompt = `Saya telah membagi dan menyimpan transaksi tersebut menjadi ${splits.length} catatan dengan total Rp ${toRupiah(totalAmount)}. Tolong berikan ringkasan singkat hasil split ini.`;
+			
+			setTimeout(() => {
+				sendMessage(followUpPrompt);
+			}, 100);
 		} catch (error) { toast.error("Gagal menyimpan split"); }
 	}, [splitModal, createAITrackedTransaction, isInventoryPurchaseCategory, markScanSaved]);
 
