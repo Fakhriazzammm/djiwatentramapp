@@ -51,6 +51,77 @@ async function validateSessionInternal(ctx: any, token: string) {
 	return { user, session };
 }
 
+export const updateProfile = mutation({
+	args: {
+		token: v.string(),
+		name: v.optional(v.string()),
+		username: v.optional(v.string()),
+		password: v.optional(v.string()),
+		slug: v.optional(v.string()),
+		oldPassword: v.optional(v.string()), // Required for password change
+	},
+	handler: async (ctx, args) => {
+		const sessionResult = await validateSessionInternal(ctx, args.token);
+		if (!sessionResult) throw new Error("Sesi tidak valid atau telah berakhir");
+		
+		const { user } = sessionResult;
+		const updates: Record<string, any> = {};
+
+		if (args.name !== undefined) {
+			updates.name = args.name.trim();
+		}
+
+		if (args.username !== undefined) {
+			const normalizedUsername = normalizeEmail(args.username);
+			if (!isValidEmail(normalizedUsername)) {
+				throw new Error("Email tidak valid");
+			}
+
+			// Check uniqueness
+			const existing = await ctx.db
+				.query("users")
+				.withIndex("by_username", (q) => q.eq("username", normalizedUsername))
+				.first();
+
+			if (existing && existing._id !== user._id) {
+				throw new Error("Email sudah digunakan oleh pengguna lain");
+			}
+			updates.username = normalizedUsername;
+		}
+
+		if (args.slug !== undefined) {
+			const normalizedSlugStr = normalizeSlug(args.slug);
+			if (!normalizedSlugStr) throw new Error("Slug profil tidak boleh kosong");
+
+			const existingSlug = await ctx.db
+				.query("users")
+				.withIndex("by_slug", (q) => q.eq("slug", normalizedSlugStr))
+				.first();
+
+			if (existingSlug && existingSlug._id !== user._id) {
+				throw new Error("Username profil sudah used");
+			}
+			updates.slug = normalizedSlugStr;
+		}
+
+		if (args.password !== undefined) {
+			if (!args.oldPassword || user.password !== args.oldPassword) {
+				throw new Error("Password lama salah. Verifikasi diperlukan untuk mengubah password.");
+			}
+			if (args.password.length < 6) {
+				throw new Error("Password baru minimal 6 karakter");
+			}
+			updates.password = args.password;
+		}
+
+		if (Object.keys(updates).length > 0) {
+			await ctx.db.patch(user._id, updates);
+		}
+
+		return { success: true };
+	},
+});
+
 export const getUsers = query({
 	args: {},
 	handler: async (ctx) => {

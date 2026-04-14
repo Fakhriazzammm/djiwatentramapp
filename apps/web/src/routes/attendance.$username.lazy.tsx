@@ -49,6 +49,15 @@ function StaffProfilePage() {
 	const [isUpdatingPin, setIsUpdatingPin] = useState(false);
 
 	const updatePinMutation = useMutation(api.users.updatePin);
+	const updateProfileMutation = useMutation(api.users.updateProfile);
+
+	const [isEditMode, setIsEditMode] = useState(false);
+	const [editName, setEditName] = useState("");
+	const [editEmail, setEditEmail] = useState("");
+	const [editSlug, setEditSlug] = useState("");
+	const [editOldPassword, setEditOldPassword] = useState("");
+	const [editNewPassword, setEditNewPassword] = useState("");
+	const [isSavingProfile, setIsSavingProfile] = useState(false);
 
 	// Auto-unlock if current user is the owner or an admin
 	useEffect(() => {
@@ -72,6 +81,16 @@ function StaffProfilePage() {
 	const privateData = useQuery(api.users.getPrivateStaffData, 
 		(isUnlocked && staff) ? { slug: username, token: token } : undefined
 	);
+
+	useEffect(() => {
+		if (staff && isUnlocked) {
+			setEditName(staff.name || "");
+			setEditSlug(staff.slug || "");
+		}
+		if (privateData && isUnlocked) {
+			setEditEmail(privateData.username || "");
+		}
+	}, [staff, privateData, isUnlocked]);
 
 	if (staff === undefined) {
 		return (
@@ -300,6 +319,141 @@ function StaffProfilePage() {
 												</div>
 											))}
 										</div>
+									)}
+								</div>
+							</div>
+
+							{/* Account Settings */}
+							<div className="space-y-4">
+								<div className="flex items-center justify-between px-2">
+									<h3 className="flex items-center gap-2 font-bold uppercase tracking-wider text-sm">
+										<User className="h-4 w-4 text-primary" />
+										Data Pribadi
+									</h3>
+									<Button 
+										variant="ghost" 
+										size="sm" 
+										className="text-xs font-bold"
+										onClick={() => setIsEditMode(!isEditMode)}
+									>
+										{isEditMode ? "BATAL" : "EDIT PROFIL"}
+									</Button>
+								</div>
+								
+								<div className="rounded-3xl border bg-card p-5 space-y-5">
+									{!isEditMode ? (
+										<div className="space-y-4">
+											<div className="flex justify-between items-center text-sm">
+												<span className="text-muted-foreground font-medium">Nama Lengkap</span>
+												<span className="font-bold">{staff.name}</span>
+											</div>
+											<div className="flex justify-between items-center text-sm">
+												<span className="text-muted-foreground font-medium">Email / Username</span>
+												<span className="font-bold">{privateData?.username || "---"}</span>
+											</div>
+											<div className="flex justify-between items-center text-sm">
+												<span className="text-muted-foreground font-medium">Username Profil</span>
+												<span className="font-bold">@{staff.slug}</span>
+											</div>
+										</div>
+									) : (
+										<form 
+											className="space-y-4"
+											onSubmit={async (e) => {
+												e.preventDefault();
+												if (!token) return;
+												
+												setIsSavingProfile(true);
+												try {
+													await updateProfileMutation({
+														token,
+														name: editName !== staff?.name ? editName : undefined,
+														username: editEmail !== privateData?.username ? editEmail : undefined,
+														slug: editSlug !== staff?.slug ? editSlug : undefined,
+														password: editNewPassword || undefined,
+														oldPassword: editNewPassword ? editOldPassword : undefined,
+													});
+													
+													toast.success("Profil berhasil diperbarui!");
+													setIsEditMode(false);
+													setEditOldPassword("");
+													setEditNewPassword("");
+													
+													if (editSlug !== username) {
+														navigate({ to: `/attendance/${editSlug}` as any, replace: true });
+													}
+												} catch (err: any) {
+													toast.error(err.message || "Gagal memperbarui profil");
+												} finally {
+													setIsSavingProfile(false);
+												}
+											}}
+										>
+											<div className="space-y-3">
+												<div className="space-y-1.5">
+													<label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Nama Lengkap</label>
+													<Input 
+														value={editName}
+														onChange={(e) => setEditName(e.target.value)}
+														className="h-11 rounded-xl font-bold"
+														placeholder="Nama Lengkap"
+													/>
+												</div>
+												<div className="space-y-1.5">
+													<label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Email / Username</label>
+													<Input 
+														value={editEmail}
+														onChange={(e) => setEditEmail(e.target.value)}
+														className="h-11 rounded-xl font-bold"
+														placeholder="email@example.com"
+													/>
+												</div>
+												<div className="space-y-1.5">
+													<label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Username Profil (Slug)</label>
+													<Input 
+														value={editSlug}
+														onChange={(e) => setEditSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+														className="h-11 rounded-xl font-bold"
+														placeholder="username-profil"
+													/>
+													<p className="text-[9px] text-muted-foreground ml-1">URL Profil: /attendance/{editSlug}</p>
+												</div>
+
+												<div className="pt-2 border-t mt-4 space-y-3">
+													<p className="text-[10px] font-black text-primary uppercase ml-1">Ubah Password (Opsional)</p>
+													<div className="space-y-1.5">
+														<label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Password Lama</label>
+														<Input 
+															type="password"
+															value={editOldPassword}
+															onChange={(e) => setEditOldPassword(e.target.value)}
+															className="h-11 rounded-xl font-bold"
+															placeholder="Ketik password lama untuk verifikasi"
+														/>
+													</div>
+													<div className="space-y-1.5">
+														<label className="text-[10px] font-black text-muted-foreground uppercase ml-1">Password Baru</label>
+														<Input 
+															type="password"
+															value={editNewPassword}
+															onChange={(e) => setEditNewPassword(e.target.value)}
+															className="h-11 rounded-xl font-bold"
+															placeholder="Minimal 6 karakter"
+														/>
+													</div>
+												</div>
+											</div>
+
+											<div className="pt-2">
+												<Button 
+													type="submit" 
+													className="w-full h-12 rounded-xl font-bold shadow-md"
+													disabled={isSavingProfile}
+												>
+													{isSavingProfile ? <Clock className="h-4 w-4 animate-spin" /> : "SIMPAN PERUBAHAN"}
+												</Button>
+											</div>
+										</form>
 									)}
 								</div>
 							</div>
