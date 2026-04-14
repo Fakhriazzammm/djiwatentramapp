@@ -3,6 +3,6 @@
   "outputDirectory": "dist",
   "installCommand": "cd ../.. && bun install",
   "rewrites": [
-    { "source": "/:path((?!.*\..*).*)", "destination": "/index.html" }
+    { "source": "/:path((?!.*\\..*).*)", "destination": "/index.html" }
   ]
 }
