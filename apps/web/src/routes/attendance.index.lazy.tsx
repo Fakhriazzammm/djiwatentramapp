@@ -18,7 +18,8 @@ import {
 	AlertCircle,
 	CheckCircle2,
 	Clock,
-	Navigation
+	Navigation,
+	CalendarClock
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
@@ -64,6 +65,60 @@ function AttendancePage() {
 	const updateFace = useMutation(api.users.updateFaceDescriptor);
 	const clockIn = useMutation(api.attendance.clockIn);
 	const clockOut = useMutation(api.attendance.clockOut);
+
+	// Shift Detection based on local device time
+	const shiftSchedules = siteSettings?.shiftSettings?.shiftSchedules || [];
+
+	const detectedShift = useMemo(() => {
+		if (!shiftSchedules.length) return null;
+
+		const now = new Date();
+		const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+		// Try to find current shift (time is within openTime-closeTime range)
+		for (const schedule of shiftSchedules) {
+			if (!schedule.openTime || !schedule.closeTime) continue;
+			const [oH, oM] = schedule.openTime.split(":").map(Number);
+			const [cH, cM] = schedule.closeTime.split(":").map(Number);
+			const openMin = oH * 60 + oM;
+			const closeMin = cH * 60 + cM;
+
+			if (openMin <= closeMin) {
+				// Same day shift (e.g. 07:00 - 15:00)
+				if (currentMinutes >= openMin && currentMinutes < closeMin) {
+					return schedule;
+				}
+			} else {
+				// Overnight shift (e.g. 22:00 - 06:00)
+				if (currentMinutes >= openMin || currentMinutes < closeMin) {
+					return schedule;
+				}
+			}
+		}
+
+		// No active shift found — find nearest upcoming shift
+		let nearest: typeof shiftSchedules[number] | null = null;
+		let minDiff = Infinity;
+
+		for (const schedule of shiftSchedules) {
+			if (!schedule.openTime) continue;
+			const [oH, oM] = schedule.openTime.split(":").map(Number);
+			const openMin = oH * 60 + oM;
+			let diff = openMin - currentMinutes;
+			if (diff < 0) diff += 24 * 60; // wrap around midnight
+			if (diff < minDiff) {
+				minDiff = diff;
+				nearest = schedule;
+			}
+		}
+
+		return nearest ? { ...nearest, upcoming: true } : null;
+	}, [shiftSchedules]);
+
+	const isShiftActive = useMemo(() => {
+		if (!detectedShift) return false;
+		return !(detectedShift as any).upcoming;
+	}, [detectedShift]);
 
 	// Check if user is in-store radius
 	const distance = useMemo(() => {
@@ -164,7 +219,11 @@ function AttendancePage() {
 			if (user.isCurrentlyIn) {
 				await clockOut({ userId: user.id as any });
 			} else {
-				await clockIn({ userId: user.id as any });
+				await clockIn({ 
+				userId: user.id as any,
+				shiftName: detectedShift?.name || undefined,
+				shiftOpenTimeSnapshot: detectedShift?.openTime || undefined,
+			});
 			}
 			
 			toast.dismiss("clocking");
@@ -238,6 +297,22 @@ function AttendancePage() {
 				</div>
 
 				<div className="flex items-center gap-2 md:gap-4">
+					{/* Shift Detection Chip */}
+					{detectedShift && (
+						<div className={`hidden sm:flex items-center gap-2 rounded-full px-4 py-1.5 border text-xs font-bold transition-all ${
+							isShiftActive 
+								? "bg-blue-50 border-blue-100 text-blue-700" 
+								: "bg-amber-50 border-amber-100 text-amber-700"
+						}`}>
+							<CalendarClock className="h-4 w-4" />
+							<span>{detectedShift.name}</span>
+							<span className="text-[10px] font-semibold opacity-70">
+								{detectedShift.openTime}{detectedShift.closeTime ? `-${detectedShift.closeTime}` : ""}
+							</span>
+							{!isShiftActive && <span className="text-[9px] uppercase tracking-wider">(berikutnya)</span>}
+						</div>
+					)}
+
 					{/* Status Lokasi Chip */}
 					<div className={`hidden sm:flex items-center gap-2 rounded-full px-4 py-1.5 border text-xs font-bold transition-all ${
 						isInRadius ? "bg-emerald-50 border-emerald-100 text-emerald-700" : "bg-red-50 border-red-100 text-red-700"
@@ -386,6 +461,37 @@ function AttendancePage() {
 										</div>
 									</div>
 
+									{/* Shift Info Card */}
+									{detectedShift && (
+										<div className={`rounded-[1.6rem] border p-4 md:rounded-[2rem] md:p-5 ${
+											isShiftActive 
+												? "bg-blue-50/50 border-blue-100/50" 
+												: "bg-amber-50/50 border-amber-100/50"
+										}`}>
+											<div className="flex items-center gap-3 mb-2">
+												<div className={`h-9 w-9 rounded-xl flex items-center justify-center ${
+													isShiftActive ? "bg-blue-500/10 text-blue-600" : "bg-amber-500/10 text-amber-600"
+												}`}>
+													<CalendarClock className="h-4 w-4" />
+												</div>
+												<div>
+													<p className="font-black text-sm leading-none">{detectedShift.name}</p>
+													<p className={`text-[9px] font-bold uppercase tracking-widest mt-0.5 ${
+														isShiftActive ? "text-blue-600" : "text-amber-600"
+													}`}>
+														{isShiftActive ? "Shift Aktif Sekarang" : "Shift Berikutnya"}
+													</p>
+												</div>
+											</div>
+											{detectedShift.openTime && detectedShift.closeTime && (
+												<div className="flex items-center gap-2 mt-2 text-xs">
+													<Clock className="h-3.5 w-3.5 text-muted-foreground" />
+													<span className="font-bold">{detectedShift.openTime} — {detectedShift.closeTime}</span>
+												</div>
+											)}
+										</div>
+									)}
+
 									{/* Geofencing Warning for Select Step */}
 									{!isInRadius && siteSettings?.attendanceLat && (
 										<div className="flex gap-4 rounded-3xl border border-red-100 bg-red-50 p-5 md:p-6">
@@ -477,9 +583,22 @@ function AttendancePage() {
 									</h2>
 									<p className="text-sm font-bold text-muted-foreground truncate">
 										Staff: <span className="text-foreground">{user?.name}</span>
+										{detectedShift && !user?.isCurrentlyIn && (
+											<span className="text-muted-foreground/60"> — {detectedShift.name} ({detectedShift.openTime}{detectedShift.closeTime ? `-${detectedShift.closeTime}` : ""})</span>
+										)}
 									</p>
 								</div>
 								<div className="flex items-center gap-2 shrink-0">
+									{detectedShift && !user?.isCurrentlyIn && (
+										<div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 border text-[10px] font-bold ${
+											isShiftActive 
+												? "bg-blue-50 border-blue-200 text-blue-700" 
+												: "bg-amber-50 border-amber-200 text-amber-700"
+										}`}>
+											<CalendarClock className="h-3 w-3" />
+											{detectedShift.name}
+										</div>
+									)}
 									<div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 border text-[10px] font-bold uppercase tracking-wider ${
 										isInRadius ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-red-50 border-red-200 text-red-700"
 									}`}>
@@ -604,6 +723,11 @@ function AttendancePage() {
 									</p>
 									<p className="text-sm text-muted-foreground">
 										{user?.name} — {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+										{detectedShift && !user?.isCurrentlyIn && (
+											<span className="block text-xs mt-1">
+												Shift: <span className="font-bold">{detectedShift.name}</span> ({detectedShift.openTime}{detectedShift.closeTime ? `-${detectedShift.closeTime}` : ""})
+											</span>
+										)}
 									</p>
 								</motion.div>
 
