@@ -70,6 +70,8 @@ export function FaceRecognition({
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const autoCaptureTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const isProcessingRef = useRef(false);
+	const lastAttemptRef = useRef(0);
 
 	const [modelsLoaded, setModelsLoaded] = useState(false);
 	const [loadingStep, setLoadingStep] = useState<string>("Inisialisasi...");
@@ -85,6 +87,7 @@ export function FaceRecognition({
 	const [scanStartMs, setScanStartMs] = useState(0);
 	const [loadStartMs, setLoadStartMs] = useState(Date.now());
 	const [loadElapsedSec, setLoadElapsedSec] = useState(0);
+	const [cooldown, setCooldown] = useState(false);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -160,7 +163,7 @@ export function FaceRecognition({
 
 	// Auto-detect face continuously when idle
 	useEffect(() => {
-		if (!modelsLoaded || matchStatus !== "idle") return;
+		if (!modelsLoaded || matchStatus !== "idle" || cooldown) return;
 
 		const detectLoop = async () => {
 			if (!webcamRef.current?.video || matchStatus !== "idle") return;
@@ -191,7 +194,9 @@ export function FaceRecognition({
 
 	const performCapture = useCallback(async () => {
 		if (!webcamRef.current || !modelsLoaded) return;
-		if (matchStatus === "scanning" || matchStatus === "success") return;
+		if (isProcessingRef.current || matchStatus === "success" || cooldown) return;
+		
+		isProcessingRef.current = true;
 
 		// Clear auto-detect interval
 		if (scanIntervalRef.current) {
@@ -261,22 +266,31 @@ export function FaceRecognition({
 			console.error("Face detection error:", err);
 			clearInterval(progressInterval);
 			setMatchStatus("fail");
+			setCooldown(true);
+			setTimeout(() => {
+				setCooldown(false);
+				isProcessingRef.current = false;
+			}, 2000);
+		} finally {
+			if (matchStatus !== "fail") {
+				isProcessingRef.current = false;
+			}
 		}
-	}, [modelsLoaded, matchStatus, mode, targetDescriptor, onMatch, onCapture]);
+	}, [modelsLoaded, matchStatus, mode, targetDescriptor, onMatch, onCapture, cooldown]);
 
 	// Auto-capture when face is stable
 	useEffect(() => {
-		if (autoCaptureReady && matchStatus === "idle" && modelsLoaded) {
+		if (autoCaptureReady && matchStatus === "idle" && modelsLoaded && !cooldown) {
 			autoCaptureTimeoutRef.current = setTimeout(() => {
-				if (autoCaptureReady) {
+				if (autoCaptureReady && !isProcessingRef.current && !cooldown) {
 					performCapture();
 				}
-			}, 800);
+			}, 1000);
 		}
 		return () => {
 			if (autoCaptureTimeoutRef.current) clearTimeout(autoCaptureTimeoutRef.current);
 		};
-	}, [autoCaptureReady, matchStatus, modelsLoaded, performCapture]);
+	}, [autoCaptureReady, matchStatus, modelsLoaded, performCapture, cooldown]);
 
 	const handleRetry = () => {
 		setMatchStatus("idle");

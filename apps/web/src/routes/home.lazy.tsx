@@ -396,8 +396,8 @@ function HomePage() {
 	const primaryActionSubtitle = !hasFaceDescriptor
 		? "Lengkapi verifikasi biometrik sebelum mulai absensi."
 		: statsToday?.isWorking
-			? "Akhiri sesi kerja dengan verifikasi wajah."
-			: "Mulai sesi kerja dan catat kehadiran hari ini.";
+			? "Akhiri sesi kerja."
+			: "Mulai sesi kerja hari ini.";
 
 	const handlePrimaryAttendanceAction = () => {
 		if (!hasFaceDescriptor) {
@@ -474,11 +474,11 @@ function HomePage() {
 											{statsToday?.isWorking ? "Sedang Bertugas" : "Off Duty"}
 										</span>
 									</div>
-									<p className="mt-2 text-sm text-muted-foreground">
-										{hasFaceDescriptor
-											? "Siap untuk presensi dengan verifikasi wajah."
-											: "Face ID belum aktif. Lengkapi sebelum mulai presensi."}
-									</p>
+									{!hasFaceDescriptor && (
+										<p className="mt-2 text-sm text-muted-foreground animate-pulse text-sky-600 font-bold">
+											Face ID belum aktif. Lengkapi untuk akses absensi.
+										</p>
+									)}
 								</div>
 							</div>
 
@@ -501,37 +501,39 @@ function HomePage() {
 						</div>
 
 						<div className="grid gap-3 md:grid-cols-[1fr_auto]">
-							<button
-								onClick={handlePrimaryAttendanceAction}
-								disabled={isProcessing}
-								type="button"
-								className={`flex items-center justify-between rounded-[1.6rem] px-4 py-4 text-left shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-70 ${
-									!hasFaceDescriptor
-										? "bg-sky-500 text-white hover:bg-sky-600"
-										: statsToday?.isWorking
-											? "bg-amber-500 text-amber-950 hover:bg-amber-400"
-											: "bg-emerald-500 text-emerald-950 hover:bg-emerald-400"
-								}`}
-							>
-								<div className="flex items-center gap-3">
-									<div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/20">
-										{!hasFaceDescriptor ? (
-											<Camera className="h-5 w-5" />
-										) : statsToday?.isWorking ? (
-											<Square className="h-5 w-5" />
-										) : (
-											<Play className="h-5 w-5" />
-										)}
+							{(!hasFaceDescriptor || statsToday?.isWorking !== undefined) && (
+								<button
+									onClick={handlePrimaryAttendanceAction}
+									disabled={isProcessing}
+									type="button"
+									className={`flex items-center justify-between rounded-[1.6rem] px-4 py-4 text-left shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-70 ${
+										!hasFaceDescriptor
+											? "bg-sky-500 text-white hover:bg-sky-600"
+											: statsToday?.isWorking
+												? "bg-amber-500 text-amber-950 hover:bg-amber-400"
+												: "bg-emerald-500 text-emerald-950 hover:bg-emerald-400"
+									}`}
+								>
+									<div className="flex items-center gap-3">
+										<div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/20">
+											{!hasFaceDescriptor ? (
+												<Camera className="h-5 w-5" />
+											) : statsToday?.isWorking ? (
+												<Square className="h-5 w-5" />
+											) : (
+												<Play className="h-5 w-5" />
+											)}
+										</div>
+										<div>
+											<p className="text-[11px] font-black uppercase tracking-[0.18em] opacity-80">
+												{!hasFaceDescriptor ? "Setup" : "Sesi Kerja"}
+											</p>
+											<p className="text-base font-black">{primaryActionTitle}</p>
+										</div>
 									</div>
-									<div>
-										<p className="text-[11px] font-black uppercase tracking-[0.18em] opacity-80">
-											{!hasFaceDescriptor ? "Setup" : "Presensi"}
-										</p>
-										<p className="text-base font-black">{primaryActionTitle}</p>
-									</div>
-								</div>
-								<ArrowRight className="h-5 w-5" />
-							</button>
+									<ArrowRight className="h-5 w-5" />
+								</button>
+							)}
 
 							<Link
 								to={user?.slug ? (`/attendance/${user.slug}` as any) : ("/attendance" as any)}
