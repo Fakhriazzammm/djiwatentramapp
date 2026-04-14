@@ -20,29 +20,37 @@ const MODEL_PATH_CANDIDATES = (() => {
 	const baseUrl = import.meta.env.BASE_URL || "/";
 	const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 	const paths = [
-		MODEL_CDN_URL, // Try CDN first for reliability
 		`${normalizedBase}/models`,
 		"/models",
 		"./models",
+		MODEL_CDN_URL,
 	];
 	return [...new Set(paths.map((path) => path.replace(/\/{2,}/g, "/").replace("https:/", "https://")))];
 })();
 
 async function canReachModelManifest(path: string) {
 	try {
-		// Use a short timeout for manifest check
 		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), 3000);
+		const timeoutId = setTimeout(() => controller.abort(), 1500);
 		
 		const response = await fetch(
 			`${path}/tiny_face_detector_model-weights_manifest.json`,
-			{ method: "GET", cache: "default", signal: controller.signal }
+			{ method: "GET", cache: "force-cache", signal: controller.signal }
 		);
 		clearTimeout(timeoutId);
 		return response.ok;
 	} catch (err) {
 		return false;
 	}
+}
+
+function LoadTimer({ startMs }: { startMs: number }) {
+	const [sec, setSec] = useState(0);
+	useEffect(() => {
+		const id = setInterval(() => setSec(parseFloat(((Date.now() - startMs) / 1000).toFixed(1))), 100);
+		return () => clearInterval(id);
+	}, [startMs]);
+	return <p className="mt-2 text-xs font-mono text-white/40">{sec}d</p>;
 }
 
 export function FaceRecognition({
@@ -68,6 +76,10 @@ export function FaceRecognition({
 	const [autoCaptureReady, setAutoCaptureReady] = useState(false);
 	const [retryCount, setRetryCount] = useState(0);
 	const [scanLineY, setScanLineY] = useState(0);
+	const [elapsedMs, setElapsedMs] = useState(0);
+	const [scanStartMs, setScanStartMs] = useState(0);
+	const [loadStartMs, setLoadStartMs] = useState(Date.now());
+	const [loadElapsedSec, setLoadElapsedSec] = useState(0);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -76,6 +88,7 @@ export function FaceRecognition({
 			setError(null);
 			setModelsLoaded(false);
 			setMatchStatus("idle");
+			setLoadStartMs(Date.now());
 			
 			// Global timeout for entire loading process
 			const globalTimeout = setTimeout(() => {
@@ -95,18 +108,20 @@ export function FaceRecognition({
 
 				try {
 					setLoadingStep("Memuat Detektor (1/3)...");
+					setLoadingStep(`Memuat Detektor (1/3)... ${((Date.now() - loadStartMs) / 1000).toFixed(1)}d`);
 					await faceapi.nets.tinyFaceDetector.loadFromUri(candidatePath);
 					
-					setLoadingStep("Memuat Landmark (2/3)...");
+					setLoadingStep(`Memuat Landmark (2/3)... ${((Date.now() - loadStartMs) / 1000).toFixed(1)}d`);
 					await faceapi.nets.faceLandmark68Net.loadFromUri(candidatePath);
 					
-					setLoadingStep("Memuat Pengenalan (3/3)...");
+					setLoadingStep(`Memuat Pengenalan (3/3)... ${((Date.now() - loadStartMs) / 1000).toFixed(1)}d`);
 					await faceapi.nets.faceRecognitionNet.loadFromUri(candidatePath);
 					
 					if (!cancelled) {
 						clearTimeout(globalTimeout);
 						setModelPath(candidatePath);
 						setModelsLoaded(true);
+						setLoadElapsedSec(parseFloat(((Date.now() - loadStartMs) / 1000).toFixed(1)));
 					}
 					return;
 				} catch (err) {
@@ -148,7 +163,7 @@ export function FaceRecognition({
 
 			try {
 				const detection = await faceapi
-					.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+					.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.4 }))
 					.withFaceLandmarks();
 
 				if (detection) {
@@ -163,7 +178,7 @@ export function FaceRecognition({
 			}
 		};
 
-		scanIntervalRef.current = setInterval(detectLoop, 400);
+		scanIntervalRef.current = setInterval(detectLoop, 200);
 		return () => {
 			if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
 		};
@@ -182,29 +197,31 @@ export function FaceRecognition({
 		setMatchStatus("scanning");
 		setScanProgress(0);
 		setAutoCaptureReady(false);
+		setScanStartMs(Date.now());
 
-		// Simulate scan progress
 		const progressInterval = setInterval(() => {
 			setScanProgress((prev) => {
 				if (prev >= 90) {
 					clearInterval(progressInterval);
 					return 90;
 				}
-				return prev + Math.random() * 15;
+				return prev + Math.random() * 20;
 			});
-		}, 200);
+			setElapsedMs(Date.now() - scanStartMs);
+		}, 100);
 
 		try {
 			const video = webcamRef.current.video;
 			if (!video) throw new Error("Video not available");
 
 			const detections = await faceapi
-				.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+				.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.4 }))
 				.withFaceLandmarks()
 				.withFaceDescriptor();
 
 			clearInterval(progressInterval);
 			setScanProgress(100);
+			setElapsedMs(Date.now() - scanStartMs);
 
 			if (!detections) {
 				setTimeout(() => {
@@ -216,8 +233,7 @@ export function FaceRecognition({
 
 			const descriptor = Array.from(detections.descriptor);
 
-			// Small delay for visual effect
-			await new Promise((r) => setTimeout(r, 800));
+
 
 			if (mode === "enroll") {
 				onCapture?.(descriptor);
@@ -249,7 +265,7 @@ export function FaceRecognition({
 				if (autoCaptureReady) {
 					performCapture();
 				}
-			}, 1500);
+			}, 800);
 		}
 		return () => {
 			if (autoCaptureTimeoutRef.current) clearTimeout(autoCaptureTimeoutRef.current);
@@ -292,6 +308,7 @@ export function FaceRecognition({
 							<p className="mt-1 text-center text-xs text-white/50">
 								Menyiapkan sistem biometrik
 							</p>
+							<LoadTimer startMs={loadStartMs} />
 						</motion.div>
 					)}
 				</AnimatePresence>
@@ -322,13 +339,13 @@ export function FaceRecognition({
 				{/* Webcam */}
 				<Webcam
 					audio={false}
-					className="absolute inset-0 h-full w-full object-cover"
-					mirrored
+					className="absolute inset-0 h-full w-full object-cover scale-x-[-1]"
+					mirrored={false}
 					ref={webcamRef}
 					screenshotFormat="image/jpeg"
 					videoConstraints={{
-						width: { ideal: 1280 },
-						height: { ideal: 1920 },
+						width: { ideal: 640 },
+						height: { ideal: 960 },
 						facingMode: "user",
 					}}
 				/>
@@ -504,6 +521,9 @@ export function FaceRecognition({
 									<span className="text-xs font-bold text-white uppercase tracking-wider">
 										Memindai Wajah...
 									</span>
+									<span className="text-xs font-mono text-blue-300 ml-auto">
+										{(elapsedMs / 1000).toFixed(1)}d
+									</span>
 								</div>
 								<div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
 									<motion.div
@@ -553,6 +573,9 @@ export function FaceRecognition({
 								<p className="text-2xl font-black text-white uppercase tracking-wide">Terverifikasi!</p>
 								<p className="mt-1 text-sm text-emerald-200">
 									{mode === "enroll" ? "Wajah berhasil didaftarkan" : "Identitas terkonfirmasi"}
+								</p>
+								<p className="mt-1 text-xs font-mono text-emerald-300/70">
+									{(elapsedMs / 1000).toFixed(2)} detik
 								</p>
 							</motion.div>
 							{/* Confetti-like particles */}
