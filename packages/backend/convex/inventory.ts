@@ -30,6 +30,20 @@ type UnitConversion = {
 	factor: number;
 };
 
+type InventoryAuditSnapshot = {
+	ingredientName: string;
+	unit: string;
+	quantity: number;
+	lowStockThreshold: number;
+	displayUnit?: string;
+	conversionFactor?: number;
+	unitConversions?: UnitConversion[];
+	defaultBrandName?: string;
+	preferredStoreId?: Id<"inventoryStores">;
+	lastPurchasePrice?: number;
+	lastPurchaseAt?: number;
+};
+
 function normalizeUnitLabel(unit?: string) {
 	const normalized = (unit || "").trim().toLowerCase();
 	if (!normalized) {
@@ -94,6 +108,59 @@ function sanitizeUnitConversions(input?: UnitConversion[]) {
 	}
 
 	return [...dedup.values()].sort((left, right) => left.factor - right.factor);
+}
+
+function normalizeAliasList(input?: string[]) {
+	if (!input || input.length === 0) {
+		return undefined;
+	}
+	const dedup = new Set<string>();
+	for (const alias of input) {
+		const normalized = normalizeUnitLabel(alias);
+		if (normalized) {
+			dedup.add(normalized);
+		}
+	}
+	if (dedup.size === 0) {
+		return undefined;
+	}
+	return [...dedup.values()].sort((a, b) => a.localeCompare(b, "id-ID"));
+}
+
+function snapshotInventoryItem(item: Doc<"inventory">): InventoryAuditSnapshot {
+	return {
+		ingredientName: item.ingredientName,
+		unit: item.unit,
+		quantity: item.quantity,
+		lowStockThreshold: item.lowStockThreshold,
+		displayUnit: item.displayUnit,
+		conversionFactor: item.conversionFactor,
+		unitConversions: sanitizeUnitConversions(item.unitConversions),
+		defaultBrandName: item.defaultBrandName,
+		preferredStoreId: item.preferredStoreId,
+		lastPurchasePrice: item.lastPurchasePrice,
+		lastPurchaseAt: item.lastPurchaseAt,
+	};
+}
+
+async function logInventoryAudit(args: {
+	ctx: MutationCtx;
+	inventoryId: Id<"inventory">;
+	action: string;
+	message?: string;
+	before?: InventoryAuditSnapshot;
+	after?: InventoryAuditSnapshot;
+	rollbackOfAuditLogId?: Id<"inventoryAuditLogs">;
+}) {
+	await args.ctx.db.insert("inventoryAuditLogs", {
+		inventoryId: args.inventoryId,
+		action: args.action,
+		message: args.message,
+		before: args.before,
+		after: args.after,
+		rollbackOfAuditLogId: args.rollbackOfAuditLogId,
+		createdAt: Date.now(),
+	});
 }
 
 function normalizeInventoryUnitConfig(args: {
@@ -377,6 +444,7 @@ async function performAddStock(ctx: MutationCtx, args: StockActionArgs) {
 	const timestamp = args.timestamp ?? Date.now();
 	const resolvedCostPerUnit = resolveRestockCostPerUnit(item, args);
 	const normalizedBrandName = args.brandName?.trim() || item.defaultBrandName;
+	const beforeSnapshot = snapshotInventoryItem(item);
 
 	await ctx.db.patch(args.inventoryId, {
 		quantity: item.quantity + args.quantity,
@@ -385,6 +453,18 @@ async function performAddStock(ctx: MutationCtx, args: StockActionArgs) {
 		lastPurchaseStoreId: args.storeId ?? item.lastPurchaseStoreId,
 		defaultBrandName: normalizedBrandName || item.defaultBrandName,
 	});
+
+	const patchedItem = await ctx.db.get(args.inventoryId);
+	if (patchedItem) {
+		await logInventoryAudit({
+			ctx,
+			inventoryId: args.inventoryId,
+			action: "restock",
+			message: args.notes ?? "Restock stok",
+			before: beforeSnapshot,
+			after: snapshotInventoryItem(patchedItem),
+		});
+	}
 
 	await ctx.db.insert("inventoryTransactions", {
 		inventoryId: args.inventoryId,
@@ -419,12 +499,25 @@ async function performUsageStock(
 	if (item.quantity < args.quantity) {
 		throw new Error("Stok tidak mencukupi");
 	}
+	const beforeSnapshot = snapshotInventoryItem(item);
 
 	await consumeStockFifo(ctx, args.inventoryId, args.quantity);
 
 	await ctx.db.patch(args.inventoryId, {
 		quantity: item.quantity - args.quantity,
 	});
+
+	const patchedItem = await ctx.db.get(args.inventoryId);
+	if (patchedItem) {
+		await logInventoryAudit({
+			ctx,
+			inventoryId: args.inventoryId,
+			action: "usage",
+			message: args.notes ?? "Pengurangan stok",
+			before: beforeSnapshot,
+			after: snapshotInventoryItem(patchedItem),
+		});
+	}
 
 	await ctx.db.insert("inventoryTransactions", {
 		inventoryId: args.inventoryId,
@@ -448,12 +541,25 @@ async function performAdjustStock(
 	if (args.quantity < 0) {
 		throw new Error("Quantity tidak boleh negatif");
 	}
+	const beforeSnapshot = snapshotInventoryItem(item);
 
 	const diff = args.quantity - item.quantity;
 
 	await ctx.db.patch(args.inventoryId, {
 		quantity: args.quantity,
 	});
+
+	const patchedItem = await ctx.db.get(args.inventoryId);
+	if (patchedItem) {
+		await logInventoryAudit({
+			ctx,
+			inventoryId: args.inventoryId,
+			action: "adjustment",
+			message: args.notes ?? "Penyesuaian stok",
+			before: beforeSnapshot,
+			after: snapshotInventoryItem(patchedItem),
+		});
+	}
 
 	await ctx.db.insert("inventoryTransactions", {
 		inventoryId: args.inventoryId,
@@ -973,6 +1079,197 @@ export const createInventoryStore = mutation({
 	},
 });
 
+const DEFAULT_INVENTORY_UNITS = [
+	"gram",
+	"ml",
+	"pcs",
+	"dus",
+	"karton",
+	"pack",
+	"box",
+	"botol",
+	"sachet",
+	"liter",
+	"kg",
+];
+
+export const listInventoryUnitDictionary = query({
+	args: {},
+	handler: async (ctx) => {
+		const rows = await ctx.db
+			.query("inventoryUnitDictionary")
+			.withIndex("by_is_active_and_sort_order", (q) => q.eq("isActive", true))
+			.collect();
+
+		const rowsByUnit = new Map<string, Doc<"inventoryUnitDictionary">>();
+		for (const row of rows) {
+			rowsByUnit.set(normalizeUnitLabel(row.unit), row);
+		}
+
+		const seedRows = DEFAULT_INVENTORY_UNITS.map((unit, index) => {
+			const existing = rowsByUnit.get(unit);
+			if (existing) {
+				return existing;
+			}
+			return {
+				_id: `seed:${unit}` as Id<"inventoryUnitDictionary">,
+				_creationTime: 0,
+				unit,
+				aliases: undefined,
+				category: "default",
+				isSystem: true,
+				isActive: true,
+				sortOrder: index,
+				createdAt: 0,
+				updatedAt: 0,
+			} as Doc<"inventoryUnitDictionary">;
+		});
+
+		const customRows = rows
+			.filter((row) => !DEFAULT_INVENTORY_UNITS.includes(normalizeUnitLabel(row.unit)))
+			.sort((a, b) => a.sortOrder - b.sortOrder);
+
+		return [...seedRows, ...customRows];
+	},
+});
+
+export const upsertInventoryUnitDictionary = mutation({
+	args: {
+		id: v.optional(v.id("inventoryUnitDictionary")),
+		unit: v.string(),
+		aliases: v.optional(v.array(v.string())),
+		category: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const unit = normalizeUnitLabel(args.unit);
+		if (!unit) {
+			throw new Error("Nama satuan wajib diisi");
+		}
+
+		const aliases = normalizeAliasList(args.aliases);
+		const now = Date.now();
+
+		if (args.id) {
+			await ctx.db.patch(args.id, {
+				unit,
+				aliases,
+				category: args.category?.trim() || undefined,
+				updatedAt: now,
+				isActive: true,
+			});
+			return args.id;
+		}
+
+		const existingRows = await ctx.db.query("inventoryUnitDictionary").collect();
+		const existing = existingRows.find(
+			(row) => normalizeUnitLabel(row.unit) === unit
+		);
+		if (existing) {
+			await ctx.db.patch(existing._id, {
+				aliases: aliases ?? existing.aliases,
+				category: args.category?.trim() || existing.category,
+				isActive: true,
+				updatedAt: now,
+			});
+			return existing._id;
+		}
+
+		return await ctx.db.insert("inventoryUnitDictionary", {
+			unit,
+			aliases,
+			category: args.category?.trim() || "custom",
+			isSystem: false,
+			isActive: true,
+			sortOrder: now,
+			createdAt: now,
+			updatedAt: now,
+		});
+	},
+});
+
+export const deactivateInventoryUnitDictionary = mutation({
+	args: { id: v.id("inventoryUnitDictionary") },
+	handler: async (ctx, args) => {
+		const row = await ctx.db.get(args.id);
+		if (!row) {
+			return;
+		}
+		if (row.isSystem) {
+			throw new Error("Satuan bawaan sistem tidak bisa dihapus");
+		}
+		await ctx.db.patch(args.id, {
+			isActive: false,
+			updatedAt: Date.now(),
+		});
+	},
+});
+
+export const bulkUpdateInventoryItems = mutation({
+	args: {
+		inventoryIds: v.array(v.id("inventory")),
+		lowStockThreshold: v.optional(v.number()),
+		unit: v.optional(v.string()),
+		defaultBrandName: v.optional(v.string()),
+		preferredStoreId: v.optional(v.id("inventoryStores")),
+	},
+	handler: async (ctx, args) => {
+		if (args.inventoryIds.length === 0) {
+			throw new Error("Pilih minimal satu baris inventaris");
+		}
+		if (
+			args.lowStockThreshold == null &&
+			args.unit == null &&
+			args.defaultBrandName == null &&
+			args.preferredStoreId == null
+		) {
+			throw new Error("Tidak ada field yang akan diubah");
+		}
+
+		const nextUnit = args.unit != null ? normalizeUnitLabel(args.unit) : undefined;
+		if (args.unit != null && !nextUnit) {
+			throw new Error("Satuan tidak valid");
+		}
+
+		let updatedCount = 0;
+		for (const inventoryId of args.inventoryIds) {
+			const item = await ctx.db.get(inventoryId);
+			if (!item) {
+				continue;
+			}
+			const before = snapshotInventoryItem(item);
+			const normalizedUnits = normalizeInventoryUnitConfig({
+				unit: nextUnit ?? item.unit,
+				displayUnit: item.displayUnit,
+				conversionFactor: item.conversionFactor,
+				unitConversions: item.unitConversions,
+			});
+			await ctx.db.patch(inventoryId, {
+				lowStockThreshold: args.lowStockThreshold ?? item.lowStockThreshold,
+				unit: nextUnit ?? item.unit,
+				displayUnit: normalizedUnits.displayUnit,
+				conversionFactor: normalizedUnits.conversionFactor,
+				unitConversions: normalizedUnits.unitConversions,
+				defaultBrandName: args.defaultBrandName ?? item.defaultBrandName,
+				preferredStoreId: args.preferredStoreId ?? item.preferredStoreId,
+			});
+			const afterItem = await ctx.db.get(inventoryId);
+			if (afterItem) {
+				await logInventoryAudit({
+					ctx,
+					inventoryId,
+					action: "bulk_update",
+					message: "Perubahan massal inventory",
+					before,
+					after: snapshotInventoryItem(afterItem),
+				});
+			}
+			updatedCount += 1;
+		}
+
+		return { updatedCount };
+	},
+});
+
 export const getInventoryPriceInsights = query({
 	args: { inventoryId: v.id("inventory") },
 	handler: async (ctx, args) => {
@@ -1436,6 +1733,134 @@ export const getRealtimePriceMonitor = query({
 	},
 });
 
+export const setInventoryReferencePrice = mutation({
+	args: {
+		inventoryId: v.id("inventory"),
+		price: v.number(),
+		notes: v.optional(v.string()),
+		brandName: v.optional(v.string()),
+		storeId: v.optional(v.id("inventoryStores")),
+	},
+	handler: async (ctx, args) => {
+		if (!Number.isFinite(args.price) || args.price <= 0) {
+			throw new Error("Harga referensi tidak valid");
+		}
+		const item = await ctx.db.get(args.inventoryId);
+		if (!item) {
+			throw new Error("Item inventory tidak ditemukan");
+		}
+		const before = snapshotInventoryItem(item);
+		const timestamp = Date.now();
+		await ctx.db.patch(args.inventoryId, {
+			lastPurchasePrice: args.price,
+			lastPurchaseAt: timestamp,
+			lastPurchaseStoreId: args.storeId ?? item.lastPurchaseStoreId,
+			defaultBrandName: args.brandName?.trim() || item.defaultBrandName,
+		});
+		await ctx.db.insert("inventoryTransactions", {
+			inventoryId: args.inventoryId,
+			quantity: 0,
+			type: "costing_reference",
+			timestamp,
+			costPerUnit: args.price,
+			notes: args.notes ?? "Sinkron harga dari monitoring",
+			brandName: args.brandName?.trim() || item.defaultBrandName,
+			storeId: args.storeId,
+		});
+		const after = await ctx.db.get(args.inventoryId);
+		if (after) {
+			await logInventoryAudit({
+				ctx,
+				inventoryId: args.inventoryId,
+				action: "set_reference_price",
+				message: args.notes ?? "Set harga referensi",
+				before,
+				after: snapshotInventoryItem(after),
+			});
+		}
+		return { ok: true };
+	},
+});
+
+export const getInventoryAuditLogs = query({
+	args: {
+		inventoryId: v.id("inventory"),
+		limit: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const limit = Math.max(10, Math.min(args.limit ?? 40, 200));
+		const rows = await ctx.db
+			.query("inventoryAuditLogs")
+			.withIndex("by_inventory_and_created_at", (q) =>
+				q.eq("inventoryId", args.inventoryId)
+			)
+			.order("desc")
+			.take(limit);
+
+		return rows.map((row) => ({
+			...row,
+			canRollback: row.before != null,
+		}));
+	},
+});
+
+export const rollbackInventoryByAudit = mutation({
+	args: {
+		auditLogId: v.id("inventoryAuditLogs"),
+	},
+	handler: async (ctx, args) => {
+		const audit = await ctx.db.get(args.auditLogId);
+		if (!audit) {
+			throw new Error("Log audit tidak ditemukan");
+		}
+		if (!audit.before) {
+			throw new Error("Log ini tidak memiliki snapshot sebelum perubahan");
+		}
+		const item = await ctx.db.get(audit.inventoryId);
+		if (!item) {
+			throw new Error("Item inventory tidak ditemukan");
+		}
+
+		const beforeRollback = snapshotInventoryItem(item);
+		const normalized = normalizeInventoryUnitConfig({
+			unit: audit.before.unit,
+			displayUnit: audit.before.displayUnit,
+			conversionFactor: audit.before.conversionFactor,
+			unitConversions: audit.before.unitConversions,
+		});
+
+		await ctx.db.patch(audit.inventoryId, {
+			ingredientName: audit.before.ingredientName,
+			unit: normalizeUnitLabel(audit.before.unit),
+			quantity: audit.before.quantity,
+			lowStockThreshold: audit.before.lowStockThreshold,
+			displayUnit: normalized.displayUnit,
+			conversionFactor: normalized.conversionFactor,
+			unitConversions: normalized.unitConversions,
+			defaultBrandName: audit.before.defaultBrandName,
+			preferredStoreId: audit.before.preferredStoreId,
+			lastPurchasePrice: audit.before.lastPurchasePrice,
+			lastPurchaseAt: audit.before.lastPurchaseAt,
+		});
+
+		const afterRollback = await ctx.db.get(audit.inventoryId);
+		if (afterRollback) {
+			await logInventoryAudit({
+				ctx,
+				inventoryId: audit.inventoryId,
+				action: "rollback",
+				message: `Rollback dari log ${audit._id}`,
+				before: beforeRollback,
+				after: snapshotInventoryItem(afterRollback),
+				rollbackOfAuditLogId: audit._id,
+			});
+		}
+		await syncProductAvailabilityForInventoryIds(ctx, [audit.inventoryId]);
+
+		return { ok: true };
+	},
+});
+
 export const createInventoryItem = mutation({
 	args: {
 		ingredientName: v.string(),
@@ -1488,6 +1913,16 @@ export const createInventoryItem = mutation({
 			conversionFactor: normalizedUnits.conversionFactor,
 			unitConversions: normalizedUnits.unitConversions,
 		});
+		const createdItem = await ctx.db.get(inventoryId);
+		if (createdItem) {
+			await logInventoryAudit({
+				ctx,
+				inventoryId,
+				action: "create",
+				message: "Item inventaris dibuat",
+				after: snapshotInventoryItem(createdItem),
+			});
+		}
 
 		if (args.quantity > 0) {
 			await ctx.db.insert("inventoryTransactions", {
@@ -1562,6 +1997,10 @@ export const updateInventoryItem = mutation({
 	},
 	handler: async (ctx, args) => {
 		const { id, ...data } = args;
+		const existing = await ctx.db.get(id);
+		if (!existing) {
+			throw new Error("Item tidak ditemukan");
+		}
 		const normalizedUnits = normalizeInventoryUnitConfig({
 			unit: data.unit,
 			displayUnit: data.displayUnit,
@@ -1574,6 +2013,17 @@ export const updateInventoryItem = mutation({
 			conversionFactor: normalizedUnits.conversionFactor,
 			unitConversions: normalizedUnits.unitConversions,
 		});
+		const updated = await ctx.db.get(id);
+		if (updated) {
+			await logInventoryAudit({
+				ctx,
+				inventoryId: id,
+				action: "meta_update",
+				message: "Metadata item diperbarui",
+				before: snapshotInventoryItem(existing),
+				after: snapshotInventoryItem(updated),
+			});
+		}
 	},
 });
 
@@ -1582,6 +2032,10 @@ export const deleteInventoryItem = mutation({
 	handler: async (ctx, args) => {
 		// Check if used in any recipes
 		const recipes = await ctx.db.query("recipes").collect();
+		const existing = await ctx.db.get(args.id);
+		if (!existing) {
+			return;
+		}
 
 		const isUsed = recipes.some((r) =>
 			r.ingredients.some((i) => i.inventoryId === args.id)
@@ -1593,6 +2047,13 @@ export const deleteInventoryItem = mutation({
 			);
 		}
 
+		await logInventoryAudit({
+			ctx,
+			inventoryId: args.id,
+			action: "delete",
+			message: "Item inventaris dihapus",
+			before: snapshotInventoryItem(existing),
+		});
 		await ctx.db.delete(args.id);
 	},
 });

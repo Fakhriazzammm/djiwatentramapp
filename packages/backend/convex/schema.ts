@@ -65,6 +65,19 @@ export default defineSchema({
 		isActive: v.boolean(),
 	}).index("by_name", ["name"]),
 
+	inventoryUnitDictionary: defineTable({
+		unit: v.string(),
+		aliases: v.optional(v.array(v.string())),
+		category: v.optional(v.string()),
+		isSystem: v.boolean(),
+		isActive: v.boolean(),
+		sortOrder: v.number(),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_unit", ["unit"])
+		.index("by_is_active_and_sort_order", ["isActive", "sortOrder"]),
+
 	// Transactions to track stock in/out for FIFO
 	inventoryTransactions: defineTable({
 		inventoryId: v.id("inventory"),
@@ -94,6 +107,58 @@ export default defineSchema({
 		.index("by_inventory_and_timestamp", ["inventoryId", "timestamp"])
 		.index("by_type_and_timestamp", ["type", "timestamp"])
 		.index("by_source_transaction_id", ["sourceTransactionId"]),
+
+	inventoryAuditLogs: defineTable({
+		inventoryId: v.id("inventory"),
+		action: v.string(),
+		message: v.optional(v.string()),
+		rollbackOfAuditLogId: v.optional(v.id("inventoryAuditLogs")),
+		before: v.optional(
+			v.object({
+				ingredientName: v.string(),
+				unit: v.string(),
+				quantity: v.number(),
+				lowStockThreshold: v.number(),
+				displayUnit: v.optional(v.string()),
+				conversionFactor: v.optional(v.number()),
+				unitConversions: v.optional(
+					v.array(
+						v.object({
+							unit: v.string(),
+							factor: v.number(),
+						})
+					)
+				),
+				defaultBrandName: v.optional(v.string()),
+				preferredStoreId: v.optional(v.id("inventoryStores")),
+				lastPurchasePrice: v.optional(v.number()),
+				lastPurchaseAt: v.optional(v.number()),
+			})
+		),
+		after: v.optional(
+			v.object({
+				ingredientName: v.string(),
+				unit: v.string(),
+				quantity: v.number(),
+				lowStockThreshold: v.number(),
+				displayUnit: v.optional(v.string()),
+				conversionFactor: v.optional(v.number()),
+				unitConversions: v.optional(
+					v.array(
+						v.object({
+							unit: v.string(),
+							factor: v.number(),
+						})
+					)
+				),
+				defaultBrandName: v.optional(v.string()),
+				preferredStoreId: v.optional(v.id("inventoryStores")),
+				lastPurchasePrice: v.optional(v.number()),
+				lastPurchaseAt: v.optional(v.number()),
+			})
+		),
+		createdAt: v.number(),
+	}).index("by_inventory_and_created_at", ["inventoryId", "createdAt"]),
 
 	// Base Recipes / Compositions (Pre-mixes)
 	baseRecipes: defineTable({
