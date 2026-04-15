@@ -3843,7 +3843,11 @@ function InventoryTable({
 						<option key={item._id} value={item.ingredientName} />
 					))}
 				</datalist>
-				<table className="w-full table-fixed text-left text-[10px] md:text-[11px]">
+				<table
+					className={`w-full table-fixed text-left ${
+						tableMode === "detail" ? "text-[9px] md:text-[10px]" : "text-[10px] md:text-[11px]"
+					}`}
+				>
 					{tableMode === "detail" ? (
 						<colgroup>
 							<col className="w-[20%]" />
@@ -4193,7 +4197,7 @@ function InventoryTable({
 									>
 										<td className="sticky left-0 z-[1] bg-inherit px-2.5 py-1.5 align-middle">
 											<input
-												className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold text-[12px] leading-4 outline-none focus:border-border focus:bg-background"
+												className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold text-[11px] leading-4 outline-none focus:border-border focus:bg-background"
 												onBlur={() => void saveMeta(row)}
 												onChange={(e) =>
 													setInlineField(row, "ingredientName", e.target.value)
@@ -4215,7 +4219,7 @@ function InventoryTable({
 										>
 											<div className={tableMode === "detail" ? "" : "space-y-1"}>
 												<input
-													className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-semibold text-[11px] outline-none focus:border-border focus:bg-background"
+													className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-semibold text-[10px] outline-none focus:border-border focus:bg-background"
 													onBlur={() => void saveMeta(row)}
 													onChange={(e) =>
 														setInlineField(row, "defaultBrandName", e.target.value)
@@ -4239,7 +4243,7 @@ function InventoryTable({
 										<td className="px-2 py-1.5 align-middle text-center">
 											<div className="space-y-1">
 												<input
-													className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono text-sm font-bold outline-none focus:border-border focus:bg-background"
+													className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono text-[12px] font-bold outline-none focus:border-border focus:bg-background"
 													onBlur={() => void saveQuantity(row)}
 													onChange={(e) =>
 														setInlineField(row, "quantity", e.target.value)
@@ -4267,7 +4271,7 @@ function InventoryTable({
 										>
 											<div className="inline-flex items-center gap-1">
 												<input
-													className="mx-auto w-12 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[11px] outline-none focus:border-border focus:bg-background"
+													className="mx-auto w-12 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] outline-none focus:border-border focus:bg-background"
 													onBlur={() => void saveMeta(row)}
 													onChange={(e) =>
 														setInlineField(row, "lowStockThreshold", e.target.value)
@@ -4282,7 +4286,7 @@ function InventoryTable({
 													value={inline.lowStockThreshold}
 												/>
 												<input
-													className="w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-xs text-muted-foreground outline-none focus:border-border focus:bg-background"
+													className="w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background"
 													list="inventory-unit-options-table"
 													onBlur={() => void saveMeta(row)}
 													onChange={(e) =>
@@ -4317,7 +4321,7 @@ function InventoryTable({
 										<td className="px-2 py-1.5 align-middle">
 											{tableMode === "detail" ? (
 												<input
-													className="w-full truncate rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-[10px] outline-none focus:border-border focus:bg-background"
+													className="w-full truncate rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-[9px] outline-none focus:border-border focus:bg-background"
 													onBlur={() => void saveMeta(row)}
 													onChange={(e) =>
 														setInlineField(row, "unitConversionsText", e.target.value)
@@ -4398,7 +4402,7 @@ function InventoryTable({
 											{tableMode === "detail" ? (
 												<div className="flex items-center gap-1.5 whitespace-nowrap text-[10px]">
 													<span
-														className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-bold ${statusMeta.tone}`}
+														className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${statusMeta.tone}`}
 														title={`ROP ${row.reorderPoint} ${row.unit}`}
 													>
 														{row.status === "critical" && (
@@ -4481,25 +4485,49 @@ function InventoryTable({
 											</div>
 										</td>
 										<td className="px-2 py-1.5 align-middle text-right">
-											<div className="flex items-center justify-end gap-1">
+											<div className="flex items-center justify-end gap-1 whitespace-nowrap">
 												<button
-													className="rounded-lg border border-border/90 bg-background p-1 text-foreground shadow-[inset_0_0_0_1px_rgba(15,23,42,0.03)] transition-colors hover:bg-muted"
+													className={
+														tableMode === "simple"
+															? "inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-300 bg-slate-50 text-slate-700 shadow-sm transition-colors hover:bg-slate-100"
+															: "inline-flex items-center justify-center rounded-lg border border-border/90 bg-background p-0.5 text-foreground shadow-[inset_0_0_0_1px_rgba(15,23,42,0.03)] transition-colors hover:bg-muted"
+													}
 													onClick={() => void applyAiAutofillForRow(row, item)}
 													title="Autofill AI"
 													type="button"
 												>
-													<Settings2 className="h-4 w-4 text-foreground" />
+													<Settings2
+														className={
+															tableMode === "simple"
+																? "h-4 w-4 text-slate-700"
+																: "h-3.5 w-3.5 text-foreground"
+														}
+													/>
 												</button>
 												<button
-													className="rounded-lg border border-border/90 bg-background p-1 text-foreground shadow-[inset_0_0_0_1px_rgba(15,23,42,0.03)] transition-colors hover:bg-muted"
+													className={
+														tableMode === "simple"
+															? "inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-300 bg-slate-50 text-slate-700 shadow-sm transition-colors hover:bg-slate-100"
+															: "inline-flex items-center justify-center rounded-lg border border-border/90 bg-background p-0.5 text-foreground shadow-[inset_0_0_0_1px_rgba(15,23,42,0.03)] transition-colors hover:bg-muted"
+													}
 													onClick={() => onDetailItemChange(item)}
 													title="Info"
 													type="button"
 												>
-													<PanelRight className="h-4 w-4 text-foreground" />
+													<PanelRight
+														className={
+															tableMode === "simple"
+																? "h-4 w-4 text-slate-700"
+																: "h-3.5 w-3.5 text-foreground"
+														}
+													/>
 												</button>
 												<button
-													className="rounded-lg border border-border/90 bg-background p-1 text-foreground shadow-[inset_0_0_0_1px_rgba(15,23,42,0.03)] transition-colors hover:bg-muted"
+													className={
+														tableMode === "simple"
+															? "inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-300 bg-slate-50 text-slate-700 shadow-sm transition-colors hover:bg-slate-100"
+															: "inline-flex items-center justify-center rounded-lg border border-border/90 bg-background p-0.5 text-foreground shadow-[inset_0_0_0_1px_rgba(15,23,42,0.03)] transition-colors hover:bg-muted"
+													}
 													onClick={() => {
 														onSelectedItemChange(item);
 														onActionTypeChange("history");
@@ -4507,10 +4535,20 @@ function InventoryTable({
 													title="Riwayat"
 													type="button"
 												>
-													<History className="h-4 w-4 text-foreground" />
+													<History
+														className={
+															tableMode === "simple"
+																? "h-4 w-4 text-slate-700"
+																: "h-3.5 w-3.5 text-foreground"
+														}
+													/>
 												</button>
 												<button
-													className="rounded-lg border border-rose-200 bg-background p-1 text-rose-600 shadow-[inset_0_0_0_1px_rgba(225,29,72,0.05)] transition-colors hover:bg-rose-50"
+													className={
+														tableMode === "simple"
+															? "inline-flex h-7 w-7 items-center justify-center rounded-lg border border-rose-300 bg-rose-50 text-rose-600 shadow-sm transition-colors hover:bg-rose-100"
+															: "inline-flex items-center justify-center rounded-lg border border-rose-200 bg-background p-0.5 text-rose-600 shadow-[inset_0_0_0_1px_rgba(225,29,72,0.05)] transition-colors hover:bg-rose-50"
+													}
 													onClick={() => {
 														onSelectedItemChange(item);
 														onActionTypeChange("delete");
@@ -4518,7 +4556,13 @@ function InventoryTable({
 													title="Hapus"
 													type="button"
 												>
-													<Trash2 className="h-4 w-4 text-rose-600" />
+													<Trash2
+														className={
+															tableMode === "simple"
+																? "h-4 w-4 text-rose-600"
+																: "h-3.5 w-3.5 text-rose-600"
+														}
+													/>
 												</button>
 											</div>
 										</td>
