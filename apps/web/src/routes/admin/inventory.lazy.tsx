@@ -936,8 +936,6 @@ function InventoryPage() {
 				viewPreset={viewPreset}
 			/>
 
-			<InventoryControlTowerSummary data={workspace} viewPreset={viewPreset} />
-
 			{viewPreset === "priceMonitor" ? (
 				<RealtimePriceMonitorTable
 					data={realtimePriceMonitor}
@@ -3576,84 +3574,65 @@ function InventoryHeader({
 	onViewPresetChange: (preset: InventoryViewPreset) => void;
 }) {
 	return (
-		<div className="sticky top-2 z-20 rounded-xl border border-border/80 bg-card px-4 py-4 shadow-sm backdrop-blur md:px-5">
-			<div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-				<div className="space-y-2">
-					<p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-						Inventory Workspace
-					</p>
-					<div>
-						<h2 className="font-black text-2xl text-foreground tracking-tight md:text-3xl">
-							Inventaris
-						</h2>
-						<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-							Tabel menjadi pusat kerja: tambah, edit, update stok, dan simpan langsung dari baris.
-						</p>
-					</div>
-				</div>
-				<div className="flex flex-col gap-3 xl:items-end">
-					<div className="flex flex-wrap gap-2">
-						<button
-							className="rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition hover:brightness-110"
-							onClick={onAddRow}
-							type="button"
-						>
-							+ Tambah Baris
-						</button>
-						<select
-							className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none md:text-sm"
-							onChange={(e) =>
-								onViewPresetChange(e.target.value as InventoryViewPreset)
-							}
-							value={viewPreset}
-						>
-							<option value="all">Mode: Operasional</option>
-							<option value="priceMonitor">Mode: Harga</option>
-							<option value="planning">Mode: Analitik</option>
-							<option value="critical">Mode: Fokus Kritis</option>
-						</select>
-					</div>
-					<div className="flex flex-wrap gap-2">
-						<button
-							className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors md:text-sm ${
-								filterLowStock
-									? "border border-destructive/20 bg-destructive/10 text-destructive"
-									: "border border-border bg-background text-muted-foreground hover:text-foreground"
-							}`}
-							disabled={viewPreset === "priceMonitor"}
-							onClick={() => onFilterLowStockChange(!filterLowStock)}
-							type="button"
-						>
-							Stok Rendah
-						</button>
-						<select
-							className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none md:text-sm"
-							onChange={(e) =>
-								onAdvancedFilterChange(
-									e.target.value as "all" | "priceUp" | "missingConversion"
-								)
-							}
-							value={advancedFilter}
-						>
-							<option value="all">Filter Tambahan: Semua</option>
-							<option value="priceUp">Harga Naik</option>
-							<option value="missingConversion">Belum Ada Konversi</option>
-						</select>
-						<div className="relative min-w-[260px] flex-1 xl:w-[360px] xl:flex-none">
-							<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-							<input
-								id="inventory-search-input"
-								className="w-full rounded-xl border border-border bg-background py-2.5 pr-4 pl-10 text-sm outline-none transition-all focus:border-primary"
-								onChange={(e) => onSearchQueryChange(e.target.value)}
-								placeholder={
-									viewPreset === "priceMonitor"
-										? "Cari nama bahan, brand, atau toko..."
-										: "Cari bahan, satuan, atau item terkait..."
-								}
-								value={searchQuery}
-							/>
-						</div>
-					</div>
+		<div className="sticky top-2 z-20 rounded-xl border border-border bg-background px-3 py-3">
+			<div className="flex flex-wrap items-center gap-2">
+				<button
+					className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition hover:brightness-110"
+					onClick={onAddRow}
+					type="button"
+				>
+					+ Tambah Baris
+				</button>
+				<select
+					className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none"
+					onChange={(e) =>
+						onViewPresetChange(e.target.value as InventoryViewPreset)
+					}
+					value={viewPreset}
+				>
+					<option value="all">Operasional</option>
+					<option value="priceMonitor">Harga</option>
+					<option value="planning">Analitik</option>
+					<option value="critical">Kritis</option>
+				</select>
+				<button
+					className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+						filterLowStock
+							? "border border-destructive/20 bg-destructive/10 text-destructive"
+							: "border border-border bg-background text-muted-foreground hover:text-foreground"
+					}`}
+					disabled={viewPreset === "priceMonitor"}
+					onClick={() => onFilterLowStockChange(!filterLowStock)}
+					type="button"
+				>
+					Stok Rendah
+				</button>
+				<select
+					className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none"
+					onChange={(e) =>
+						onAdvancedFilterChange(
+							e.target.value as "all" | "priceUp" | "missingConversion"
+						)
+					}
+					value={advancedFilter}
+				>
+					<option value="all">Semua</option>
+					<option value="priceUp">Harga Naik</option>
+					<option value="missingConversion">Belum Konversi</option>
+				</select>
+				<div className="relative min-w-[260px] flex-1">
+					<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+					<input
+						id="inventory-search-input"
+						className="w-full rounded-lg border border-border bg-background py-2 pr-3 pl-9 text-sm outline-none transition-all focus:border-primary"
+						onChange={(e) => onSearchQueryChange(e.target.value)}
+						placeholder={
+							viewPreset === "priceMonitor"
+								? "Cari bahan, brand, toko..."
+								: "Cari bahan atau satuan..."
+						}
+						value={searchQuery}
+					/>
 				</div>
 			</div>
 		</div>
