@@ -1733,6 +1733,232 @@ export const getRealtimePriceMonitor = query({
 	},
 });
 
+export const getInventoryYumiAiInsights = query({
+	args: {
+		limit: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const limit = Math.max(10, Math.min(150, Math.floor(args.limit ?? 40)));
+		const now = Date.now();
+		const dayMs = 24 * 60 * 60 * 1000;
+		const cutoff7 = now - 7 * dayMs;
+		const cutoff30 = now - 30 * dayMs;
+		const cutoff90 = now - 90 * dayMs;
+
+		const [items, stores, usageRows, restockRows] = await Promise.all([
+			ctx.db.query("inventory").collect(),
+			ctx.db.query("inventoryStores").collect(),
+			ctx.db
+				.query("inventoryTransactions")
+				.withIndex("by_type_and_timestamp", (q) =>
+					q.eq("type", "usage").gte("timestamp", cutoff30)
+				)
+				.collect(),
+			ctx.db
+				.query("inventoryTransactions")
+				.withIndex("by_type_and_timestamp", (q) =>
+					q.eq("type", "restock").gte("timestamp", cutoff90)
+				)
+				.collect(),
+		]);
+
+		const storeById = buildStoreLookup(stores);
+		const usage30ByInventory = new Map<string, number>();
+		const usage7ByInventory = new Map<string, number>();
+		for (const row of usageRows) {
+			const key = String(row.inventoryId);
+			const qty = Math.abs(Number(row.quantity) || 0);
+			if (qty <= 0) {
+				continue;
+			}
+			usage30ByInventory.set(key, (usage30ByInventory.get(key) ?? 0) + qty);
+			if (row.timestamp >= cutoff7) {
+				usage7ByInventory.set(key, (usage7ByInventory.get(key) ?? 0) + qty);
+			}
+		}
+
+		const stockoutPredictions = items
+			.map((item) => {
+				const key = String(item._id);
+				const totalUsage30 = usage30ByInventory.get(key) ?? 0;
+				const avgDailyUsage = totalUsage30 / 30;
+				const daysUntilStockout =
+					avgDailyUsage > 0 ? item.quantity / avgDailyUsage : Number.POSITIVE_INFINITY;
+				const leadTimeDays = 3;
+				const safetyDays = 2;
+				const reorderPoint = Math.ceil(avgDailyUsage * (leadTimeDays + safetyDays));
+				const suggestedOrderQty = Math.max(
+					0,
+					Math.ceil(avgDailyUsage * 7 - item.quantity)
+				);
+				const urgency: "high" | "medium" | "low" =
+					daysUntilStockout <= 3 || item.quantity <= item.lowStockThreshold
+						? "high"
+						: daysUntilStockout <= 7
+							? "medium"
+							: "low";
+				return {
+					inventoryId: item._id,
+					ingredientName: item.ingredientName,
+					unit: item.unit,
+					currentStock: item.quantity,
+					avgDailyUsage: Number(avgDailyUsage.toFixed(2)),
+					daysUntilStockout:
+						daysUntilStockout === Number.POSITIVE_INFINITY
+							? null
+							: Number(daysUntilStockout.toFixed(1)),
+					reorderPoint,
+					suggestedOrderQty,
+					urgency,
+				};
+			})
+			.sort((left, right) => {
+				const rank: Record<"high" | "medium" | "low", number> = {
+					high: 0,
+					medium: 1,
+					low: 2,
+				};
+				const urgencyDiff = rank[left.urgency] - rank[right.urgency];
+				if (urgencyDiff !== 0) {
+					return urgencyDiff;
+				}
+				const leftDays = left.daysUntilStockout ?? 999;
+				const rightDays = right.daysUntilStockout ?? 999;
+				return leftDays - rightDays;
+			})
+			.slice(0, limit);
+
+		const supplierAggregate = new Map<
+			string,
+			{
+				inventoryId: Id<"inventory">;
+				ingredientName: string;
+				lastPrice: number;
+				lastStoreName: string | null;
+				storeStats: Map<string, { storeName: string; count: number; totalPrice: number; minPrice: number }>;
+			}
+		>();
+		for (const row of restockRows) {
+			if (typeof row.costPerUnit !== "number" || row.costPerUnit <= 0) {
+				continue;
+			}
+			const item = items.find((candidate) => candidate._id === row.inventoryId);
+			if (!item) {
+				continue;
+			}
+			const key = String(item._id);
+			const storeName =
+				row.storeId != null
+					? storeById.get(String(row.storeId))?.name ?? "Toko tidak dikenal"
+					: "Tanpa toko";
+			const current = supplierAggregate.get(key) ?? {
+				inventoryId: item._id,
+				ingredientName: item.ingredientName,
+				lastPrice: row.costPerUnit,
+				lastStoreName: storeName,
+				storeStats: new Map<
+					string,
+					{ storeName: string; count: number; totalPrice: number; minPrice: number }
+				>(),
+			};
+			if (row.timestamp > (item.lastPurchaseAt ?? 0)) {
+				current.lastPrice = row.costPerUnit;
+				current.lastStoreName = storeName;
+			}
+			const storeKey = row.storeId != null ? String(row.storeId) : "__none__";
+			const storeStat = current.storeStats.get(storeKey) ?? {
+				storeName,
+				count: 0,
+				totalPrice: 0,
+				minPrice: Number.POSITIVE_INFINITY,
+			};
+			storeStat.count += 1;
+			storeStat.totalPrice += row.costPerUnit;
+			storeStat.minPrice = Math.min(storeStat.minPrice, row.costPerUnit);
+			current.storeStats.set(storeKey, storeStat);
+			supplierAggregate.set(key, current);
+		}
+
+		const supplierIntelligence = [...supplierAggregate.values()]
+			.map((row) => {
+				const options = [...row.storeStats.values()]
+					.filter((store) => store.count > 0)
+					.map((store) => ({
+						storeName: store.storeName,
+						avgPrice: store.totalPrice / store.count,
+						minPrice: store.minPrice,
+						sampleCount: store.count,
+					}))
+					.sort((left, right) => left.avgPrice - right.avgPrice);
+				const best = options[0] ?? null;
+				const savings =
+					best && row.lastPrice > 0
+						? Number((row.lastPrice - best.avgPrice).toFixed(2))
+						: 0;
+				return {
+					inventoryId: row.inventoryId,
+					ingredientName: row.ingredientName,
+					lastStoreName: row.lastStoreName,
+					lastPrice: row.lastPrice,
+					recommendedStoreName: best?.storeName ?? null,
+					recommendedPrice: best != null ? Number(best.avgPrice.toFixed(2)) : null,
+					potentialSavings: savings > 0 ? savings : 0,
+					storeOptions: options.slice(0, 3),
+				};
+			})
+			.sort((left, right) => right.potentialSavings - left.potentialSavings)
+			.slice(0, limit);
+
+		const usageAnomalies = items
+			.map((item) => {
+				const key = String(item._id);
+				const usage30 = usage30ByInventory.get(key) ?? 0;
+				const usage7 = usage7ByInventory.get(key) ?? 0;
+				const avg7 = usage7 / 7;
+				const avg30 = usage30 / 30;
+				const spikeRatio = avg30 > 0 ? avg7 / avg30 : 0;
+				const dropRatio = avg30 > 0 ? avg7 / avg30 : 1;
+				let anomalyType: "spike" | "drop" | null = null;
+				let reason = "";
+				if (avg30 >= 0.5 && spikeRatio >= 1.8) {
+					anomalyType = "spike";
+					reason = `Pemakaian 7 hari naik ${Number((spikeRatio * 100).toFixed(0))}% vs baseline 30 hari`;
+				} else if (avg30 >= 0.5 && dropRatio <= 0.35) {
+					anomalyType = "drop";
+					reason = `Pemakaian 7 hari turun tajam ke ${Number((dropRatio * 100).toFixed(0))}% dari baseline`;
+				}
+				return {
+					inventoryId: item._id,
+					ingredientName: item.ingredientName,
+					unit: item.unit,
+					avgDailyUsage7d: Number(avg7.toFixed(2)),
+					avgDailyUsage30d: Number(avg30.toFixed(2)),
+					anomalyType,
+					reason,
+				};
+			})
+			.filter((row) => row.anomalyType != null)
+			.sort((left, right) => {
+				const leftDelta = Math.abs(left.avgDailyUsage7d - left.avgDailyUsage30d);
+				const rightDelta = Math.abs(right.avgDailyUsage7d - right.avgDailyUsage30d);
+				return rightDelta - leftDelta;
+			})
+			.slice(0, limit);
+
+		return {
+			stockoutPredictions,
+			supplierIntelligence,
+			usageAnomalies,
+			summary: {
+				predictionCount: stockoutPredictions.length,
+				supplierInsightCount: supplierIntelligence.length,
+				anomalyCount: usageAnomalies.length,
+				refreshedAt: now,
+			},
+		};
+	},
+});
+
 export const setInventoryReferencePrice = mutation({
 	args: {
 		inventoryId: v.id("inventory"),

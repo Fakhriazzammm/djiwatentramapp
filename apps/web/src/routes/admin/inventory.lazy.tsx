@@ -41,7 +41,7 @@ interface ConfirmConfig {
 	variant?: "danger" | "warning" | "info";
 }
 
-type InventoryViewPreset = "all" | "critical" | "planning" | "priceMonitor";
+type InventoryViewPreset = "operational" | "priceMonitor" | "yumiAi";
 
 type InventoryWorkspaceRow = {
 	inventoryId: Id<"inventory">;
@@ -165,6 +165,50 @@ type RealtimePriceMonitorData = {
 		totalRawTransactions: number;
 		totalExpenseLines: number;
 		totalRestockRows: number;
+	};
+};
+
+type InventoryYumiAiInsightsData = {
+	stockoutPredictions: Array<{
+		inventoryId: Id<"inventory">;
+		ingredientName: string;
+		unit: string;
+		currentStock: number;
+		avgDailyUsage: number;
+		daysUntilStockout: number | null;
+		reorderPoint: number;
+		suggestedOrderQty: number;
+		urgency: "high" | "medium" | "low";
+	}>;
+	supplierIntelligence: Array<{
+		inventoryId: Id<"inventory">;
+		ingredientName: string;
+		lastStoreName: string | null;
+		lastPrice: number;
+		recommendedStoreName: string | null;
+		recommendedPrice: number | null;
+		potentialSavings: number;
+		storeOptions: Array<{
+			storeName: string;
+			avgPrice: number;
+			minPrice: number;
+			sampleCount: number;
+		}>;
+	}>;
+	usageAnomalies: Array<{
+		inventoryId: Id<"inventory">;
+		ingredientName: string;
+		unit: string;
+		avgDailyUsage7d: number;
+		avgDailyUsage30d: number;
+		anomalyType: "spike" | "drop" | null;
+		reason: string;
+	}>;
+	summary: {
+		predictionCount: number;
+		supplierInsightCount: number;
+		anomalyCount: number;
+		refreshedAt: number;
 	};
 };
 
@@ -447,6 +491,9 @@ function InventoryPage() {
 		limit: 300,
 		search: searchQuery || undefined,
 	}) as RealtimePriceMonitorData | undefined;
+	const yumiAiInsights = useQuery(api.inventory.getInventoryYumiAiInsights, {
+		limit: 40,
+	}) as InventoryYumiAiInsightsData | undefined;
 	const applyStockAction = useMutation(api.inventory.applyInventoryStockAction);
 	const createItem = useMutation(api.inventory.createInventoryItem);
 	const updateItem = useMutation(api.inventory.updateInventoryItem);
@@ -465,7 +512,7 @@ function InventoryPage() {
 	const [advancedFilter, setAdvancedFilter] = useState<
 		"all" | "priceUp" | "missingConversion"
 	>("all");
-	const [viewPreset, setViewPreset] = useState<InventoryViewPreset>("all");
+	const [viewPreset, setViewPreset] = useState<InventoryViewPreset>("operational");
 	const [addRowSignal, setAddRowSignal] = useState(0);
 	const [detailItem, setDetailItem] = useState<Doc<"inventory"> | null>(null);
 	const [newItem, setNewItem] = useState({
@@ -590,12 +637,7 @@ function InventoryPage() {
 			const matchesFilter = filterLowStock
 				? row.currentStock <= row.lowStockThreshold
 				: true;
-			const matchesPreset =
-				viewPreset === "critical"
-					? row.status !== "healthy"
-					: viewPreset === "planning"
-						? row.avgDailyUsage > 0 || row.suggestedOrderQty > 0
-						: true;
+			const matchesPreset = viewPreset === "operational";
 			const missingConversion =
 				row.unit === "pcs" &&
 				!row.unitConversions?.length &&
@@ -941,6 +983,8 @@ function InventoryPage() {
 					data={realtimePriceMonitor}
 					onApplyReferencePrice={handleApplyReferencePrice}
 				/>
+			) : viewPreset === "yumiAi" ? (
+				<YumiAiInventoryPanel data={yumiAiInsights} />
 			) : (
 				<InventoryTable
 				addRowSignal={addRowSignal}
@@ -1857,11 +1901,11 @@ function InventoryControlTowerSummary({
 						Inventory Workspace
 					</p>
 					<p className="text-sm font-semibold text-foreground">
-						{viewPreset === "planning"
-							? "Preset planning aktif"
-							: viewPreset === "critical"
-								? "Fokus item kritis"
-								: "Semua item inventaris"}
+						{viewPreset === "priceMonitor"
+							? "Monitoring harga realtime"
+							: viewPreset === "yumiAi"
+								? "Insight Yumi AI"
+								: "Operasional inventaris"}
 					</p>
 				</div>
 				<p className="text-[11px] text-muted-foreground">
@@ -2570,6 +2614,127 @@ function RealtimePriceMonitorTable({
 	);
 }
 
+function YumiAiInventoryPanel({
+	data,
+}: {
+	data: InventoryYumiAiInsightsData | undefined;
+}) {
+	return (
+		<div className="space-y-3">
+			<div className="rounded-xl border border-border/80 bg-card px-4 py-3 shadow-sm">
+				<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+					Yumi AI
+				</p>
+				<p className="mt-1 text-sm text-muted-foreground">
+					Prediksi stok habis, rekomendasi supplier, dan deteksi anomali pemakaian dari data
+					inventory saat ini.
+				</p>
+				{data && (
+					<p className="mt-1 text-xs text-muted-foreground">
+						Updated {new Date(data.summary.refreshedAt).toLocaleString("id-ID")}
+					</p>
+				)}
+			</div>
+
+			<div className="grid gap-3 xl:grid-cols-3">
+				<div className="rounded-xl border border-border/80 bg-card shadow-sm">
+					<div className="border-border border-b px-3 py-2">
+						<p className="text-xs font-semibold text-foreground">
+							Prediksi Stok Habis + Reorder
+						</p>
+					</div>
+					<div className="max-h-[460px] overflow-auto p-3">
+						{!data &&
+							Array.from({ length: 6 }).map((_, i) => (
+								<Skeleton className="mb-2 h-14 w-full" key={i} />
+							))}
+						{data?.stockoutPredictions.map((row) => (
+							<div
+								className="mb-2 rounded-lg border border-border/70 bg-background px-3 py-2"
+								key={row.inventoryId}
+							>
+								<p className="text-sm font-semibold text-foreground">{row.ingredientName}</p>
+								<p className="text-xs text-muted-foreground">
+									Stok {row.currentStock} {row.unit} · Avg {row.avgDailyUsage}/hari
+								</p>
+								<p className="text-xs text-muted-foreground">
+									Habis: {row.daysUntilStockout == null ? "-" : `${row.daysUntilStockout} hari`}
+								</p>
+								<p className="text-xs font-semibold text-foreground">
+									Reorder point {row.reorderPoint} · Saran order {row.suggestedOrderQty}
+								</p>
+							</div>
+						))}
+						{data && data.stockoutPredictions.length === 0 && (
+							<p className="text-sm text-muted-foreground">Belum ada prediksi kritis.</p>
+						)}
+					</div>
+				</div>
+
+				<div className="rounded-xl border border-border/80 bg-card shadow-sm">
+					<div className="border-border border-b px-3 py-2">
+						<p className="text-xs font-semibold text-foreground">Harga Supplier Intelligence</p>
+					</div>
+					<div className="max-h-[460px] overflow-auto p-3">
+						{!data &&
+							Array.from({ length: 6 }).map((_, i) => (
+								<Skeleton className="mb-2 h-14 w-full" key={i} />
+							))}
+						{data?.supplierIntelligence.map((row) => (
+							<div
+								className="mb-2 rounded-lg border border-border/70 bg-background px-3 py-2"
+								key={row.inventoryId}
+							>
+								<p className="text-sm font-semibold text-foreground">{row.ingredientName}</p>
+								<p className="text-xs text-muted-foreground">
+									Terakhir: {row.lastStoreName || "Tanpa toko"} · {formatCurrency(row.lastPrice)}
+								</p>
+								<p className="text-xs text-muted-foreground">
+									Rekomendasi: {row.recommendedStoreName || "-"} ·{" "}
+									{formatCurrency(row.recommendedPrice)}
+								</p>
+								<p className="text-xs font-semibold text-emerald-700">
+									Potensi hemat: {formatCurrency(row.potentialSavings)}
+								</p>
+							</div>
+						))}
+						{data && data.supplierIntelligence.length === 0 && (
+							<p className="text-sm text-muted-foreground">Belum ada insight supplier.</p>
+						)}
+					</div>
+				</div>
+
+				<div className="rounded-xl border border-border/80 bg-card shadow-sm">
+					<div className="border-border border-b px-3 py-2">
+						<p className="text-xs font-semibold text-foreground">Anomali Pemakaian</p>
+					</div>
+					<div className="max-h-[460px] overflow-auto p-3">
+						{!data &&
+							Array.from({ length: 6 }).map((_, i) => (
+								<Skeleton className="mb-2 h-14 w-full" key={i} />
+							))}
+						{data?.usageAnomalies.map((row) => (
+							<div
+								className="mb-2 rounded-lg border border-border/70 bg-background px-3 py-2"
+								key={row.inventoryId}
+							>
+								<p className="text-sm font-semibold text-foreground">{row.ingredientName}</p>
+								<p className="text-xs text-muted-foreground">{row.reason}</p>
+								<p className="text-xs text-muted-foreground">
+									7d: {row.avgDailyUsage7d}/hari · 30d: {row.avgDailyUsage30d}/hari
+								</p>
+							</div>
+						))}
+						{data && data.usageAnomalies.length === 0 && (
+							<p className="text-sm text-muted-foreground">Belum ada anomali terdeteksi.</p>
+						)}
+					</div>
+				</div>
+			</div>
+		</div>
+	);
+}
+
 function InventoryTable({
 	addRowSignal,
 	filteredRows,
@@ -3020,18 +3185,18 @@ function InventoryTable({
 				</datalist>
 				<table className="w-full table-fixed text-left text-[10px] md:text-[11px]">
 					<colgroup>
-						<col className="w-[16%]" />
-						<col className="w-[10%]" />
-						<col className="w-[10%]" />
-						<col className="w-[9%]" />
-						<col className="w-[14%]" />
-						<col className="w-[8%]" />
-						<col className="w-[10%]" />
-						<col className="w-[9%]" />
-						<col className="w-[9%]" />
-						<col className="w-[15%]" />
+						<col className="w-[22%] lg:w-[16%]" />
+						<col className="hidden lg:table-column lg:w-[10%]" />
+						<col className="w-[13%] lg:w-[10%]" />
+						<col className="w-[11%] lg:w-[9%]" />
+						<col className="w-[22%] lg:w-[14%]" />
+						<col className="w-[12%] lg:w-[8%]" />
+						<col className="hidden lg:table-column lg:w-[10%]" />
+						<col className="hidden md:table-column md:w-[9%]" />
+						<col className="hidden md:table-column md:w-[9%]" />
+						<col className="w-[20%] lg:w-[15%]" />
 					</colgroup>
-					<thead className="bg-card">
+					<thead className="sticky top-[58px] z-10 bg-card">
 						<tr className="border-border border-b text-muted-foreground">
 							<th
 								className="cursor-pointer px-2.5 py-2 font-semibold transition-colors hover:text-foreground"
@@ -3047,9 +3212,9 @@ function InventoryTable({
 									))}
 								</div>
 							</th>
-							<th className="px-2 py-2 font-semibold">Brand</th>
+							<th className="hidden px-2 py-1.5 font-semibold lg:table-cell">Brand</th>
 							<th
-								className="cursor-pointer px-2 py-2 text-center font-semibold transition-colors hover:text-foreground"
+								className="cursor-pointer px-2 py-1.5 text-center font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("currentStock")}
 							>
 								<div className="flex items-center justify-center gap-1">
@@ -3063,7 +3228,7 @@ function InventoryTable({
 								</div>
 							</th>
 							<th
-								className="cursor-pointer px-2 py-2 text-center font-semibold transition-colors hover:text-foreground"
+								className="cursor-pointer px-2 py-1.5 text-center font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("lowStockThreshold")}
 							>
 								<div className="flex items-center justify-center gap-1">
@@ -3076,10 +3241,10 @@ function InventoryTable({
 									))}
 								</div>
 							</th>
-							<th className="px-2 py-2 font-semibold">Takaran</th>
-							<th className="px-2 py-2 font-semibold">Status</th>
+							<th className="px-2 py-1.5 font-semibold">Takaran</th>
+							<th className="px-2 py-1.5 font-semibold">Status</th>
 							<th
-								className="cursor-pointer px-2 py-2 font-semibold transition-colors hover:text-foreground"
+								className="hidden cursor-pointer px-2 py-1.5 font-semibold transition-colors hover:text-foreground lg:table-cell"
 								onClick={() => onSort("avgDailyUsage")}
 							>
 								<div className="flex items-center gap-1">
@@ -3092,14 +3257,14 @@ function InventoryTable({
 										))}
 								</div>
 							</th>
-							<th className="px-2 py-2 font-semibold">Toko Terakhir</th>
-							<th className="px-2 py-2 font-semibold">Harga Terakhir</th>
-							<th className="px-2 py-2 text-right font-semibold">Aksi</th>
+							<th className="hidden px-2 py-1.5 font-semibold md:table-cell">Toko Terakhir</th>
+							<th className="hidden px-2 py-1.5 font-semibold md:table-cell">Harga Terakhir</th>
+							<th className="px-2 py-1.5 text-right font-semibold">Aksi</th>
 						</tr>
 					</thead>
 					<tbody className="divide-y divide-border">
 						<tr className="bg-primary/[0.04]">
-							<td className="px-2.5 py-2">
+							<td className="px-2.5 py-1.5">
 								<input
 									ref={quickAddNameRef}
 									className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
@@ -3120,7 +3285,7 @@ function InventoryTable({
 									value={quickAdd.ingredientName}
 								/>
 							</td>
-							<td className="px-2 py-2">
+							<td className="hidden px-2 py-1.5 lg:table-cell">
 								<input
 									className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
 									onChange={(e) =>
@@ -3138,7 +3303,7 @@ function InventoryTable({
 									value={quickAdd.defaultBrandName}
 								/>
 							</td>
-							<td className="px-2 py-2 text-center">
+							<td className="px-2 py-1.5 text-center">
 								<input
 									className="mx-auto w-16 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[11px] outline-none focus:border-primary"
 									onChange={(e) =>
@@ -3153,7 +3318,7 @@ function InventoryTable({
 									value={quickAdd.quantity}
 								/>
 							</td>
-							<td className="px-2 py-2 text-center">
+							<td className="px-2 py-1.5 text-center">
 								<input
 									className="mx-auto w-16 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[11px] outline-none focus:border-primary"
 									onChange={(e) =>
@@ -3171,7 +3336,7 @@ function InventoryTable({
 									value={quickAdd.lowStockThreshold}
 								/>
 							</td>
-							<td className="px-2 py-2">
+							<td className="px-2 py-1.5">
 								<div className="space-y-1">
 									<div className="text-[10px] text-muted-foreground">
 										{quickAdd.unit === "pcs"
@@ -3195,12 +3360,12 @@ function InventoryTable({
 									/>
 								</div>
 							</td>
-							<td className="px-2 py-2">
+							<td className="px-2 py-1.5">
 								<div className="rounded-lg border border-dashed border-border px-2 py-1 text-[10px] text-muted-foreground">
 									Autosave
 								</div>
 							</td>
-							<td className="px-2 py-2">
+							<td className="hidden px-2 py-1.5 lg:table-cell">
 								<input
 									className="w-full rounded-lg border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold outline-none focus:border-primary"
 									list="inventory-unit-options-table"
@@ -3214,15 +3379,15 @@ function InventoryTable({
 									value={quickAdd.unit}
 								/>
 							</td>
-							<td className="px-2 py-2">
+							<td className="hidden px-2 py-1.5 md:table-cell">
 								<div className="text-[10px] text-muted-foreground">
 									-
 								</div>
 							</td>
-							<td className="px-2 py-2">
+							<td className="hidden px-2 py-1.5 md:table-cell">
 								<div className="text-[10px] text-muted-foreground">-</div>
 							</td>
-							<td className="px-2 py-2 text-right">
+							<td className="px-2 py-1.5 text-right">
 								<button
 									className="rounded-lg bg-primary px-2.5 py-1 text-[10px] font-bold text-primary-foreground hover:brightness-110"
 									disabled={savingKey === "quick-add"}
@@ -3296,7 +3461,7 @@ function InventoryTable({
 										}`}
 										key={row.inventoryId}
 									>
-										<td className="px-2.5 py-2 align-middle">
+										<td className="px-2.5 py-1.5 align-middle">
 											<input
 												className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold text-[12px] leading-4 outline-none focus:border-border focus:bg-background"
 												onBlur={() => void saveMeta(row)}
@@ -3313,7 +3478,7 @@ function InventoryTable({
 												value={inline.ingredientName}
 											/>
 										</td>
-										<td className="px-2 py-2 align-middle">
+										<td className="hidden px-2 py-1.5 align-middle lg:table-cell">
 											<div className="space-y-1">
 												<input
 													className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-semibold text-[11px] outline-none focus:border-border focus:bg-background"
@@ -3335,7 +3500,7 @@ function InventoryTable({
 												</p>
 											</div>
 										</td>
-										<td className="px-2 py-2 align-middle text-center">
+										<td className="px-2 py-1.5 align-middle text-center">
 											<input
 												className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono text-sm font-bold outline-none focus:border-border focus:bg-background"
 												onBlur={() => void saveQuantity(row)}
@@ -3352,7 +3517,7 @@ function InventoryTable({
 												value={inline.quantity}
 											/>
 										</td>
-										<td className="px-2 py-2 align-middle text-center">
+										<td className="px-2 py-1.5 align-middle text-center">
 											<div className="inline-flex items-center gap-1">
 												<input
 													className="mx-auto w-12 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[11px] outline-none focus:border-border focus:bg-background"
@@ -3385,7 +3550,7 @@ function InventoryTable({
 												/>
 											</div>
 										</td>
-										<td className="px-2 py-2 align-middle">
+										<td className="px-2 py-1.5 align-middle">
 											<div className="space-y-1">
 												<div className="text-[10px] text-muted-foreground">
 													{buildUnitChainSummary(
@@ -3433,7 +3598,7 @@ function InventoryTable({
 												)}
 											</div>
 										</td>
-										<td className="px-2 py-2 align-middle">
+										<td className="px-2 py-1.5 align-middle">
 											<span
 												className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusMeta.tone}`}
 												title={`ROP ${row.reorderPoint} ${row.unit}`}
@@ -3458,7 +3623,7 @@ function InventoryTable({
 												{usageInsight.label}
 											</span>
 										</td>
-										<td className="px-2 py-2 align-middle text-[10px] text-muted-foreground">
+										<td className="hidden px-2 py-1.5 align-middle text-[10px] text-muted-foreground lg:table-cell">
 											<span className="font-semibold text-foreground">
 												{row.avgDailyUsage.toFixed(2)}/hari
 											</span>
@@ -3467,7 +3632,7 @@ function InventoryTable({
 												Order {row.suggestedOrderQty}
 											</span>
 										</td>
-										<td className="px-2 py-2 align-middle text-[10px] text-muted-foreground">
+										<td className="hidden px-2 py-1.5 align-middle text-[10px] text-muted-foreground md:table-cell">
 											<div className="space-y-1">
 												<span className="font-semibold text-foreground">
 													{row.lastPurchaseStoreName || "-"}
@@ -3475,7 +3640,7 @@ function InventoryTable({
 												<p>Preferensi: {row.preferredStoreName || "-"}</p>
 											</div>
 										</td>
-										<td className="px-2 py-2 align-middle text-[10px] text-muted-foreground">
+										<td className="hidden px-2 py-1.5 align-middle text-[10px] text-muted-foreground md:table-cell">
 											<div className="space-y-1">
 												<span className="font-semibold text-foreground">
 													{formatCurrency(row.lastPurchasePrice)}
@@ -3483,8 +3648,22 @@ function InventoryTable({
 												<p>{row.defaultBrandName || "Tanpa brand"}</p>
 											</div>
 										</td>
-										<td className="px-2 py-2 align-middle text-right">
+										<td className="px-2 py-1.5 align-middle text-right">
 											<div className="flex items-center justify-end gap-1">
+												<button
+													className="rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold hover:bg-muted"
+													onClick={() => void quickDelta(row, "add", 1)}
+													type="button"
+												>
+													+1
+												</button>
+												<button
+													className="rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold hover:bg-muted"
+													onClick={() => void quickDelta(row, "usage", 1)}
+													type="button"
+												>
+													-1
+												</button>
 												<button
 													className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-1.5 py-1 text-[10px] font-semibold text-foreground hover:bg-muted"
 													onClick={() => onDetailItemChange(item)}
@@ -3590,10 +3769,9 @@ function InventoryHeader({
 					}
 					value={viewPreset}
 				>
-					<option value="all">Operasional</option>
-					<option value="priceMonitor">Harga</option>
-					<option value="planning">Analitik</option>
-					<option value="critical">Kritis</option>
+					<option value="operational">Operasional</option>
+					<option value="priceMonitor">Monitoring Harga</option>
+					<option value="yumiAi">Yumi AI</option>
 				</select>
 				<button
 					className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
@@ -3601,7 +3779,7 @@ function InventoryHeader({
 							? "border border-destructive/20 bg-destructive/10 text-destructive"
 							: "border border-border bg-background text-muted-foreground hover:text-foreground"
 					}`}
-					disabled={viewPreset === "priceMonitor"}
+					disabled={viewPreset !== "operational"}
 					onClick={() => onFilterLowStockChange(!filterLowStock)}
 					type="button"
 				>
@@ -3609,6 +3787,7 @@ function InventoryHeader({
 				</button>
 				<select
 					className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none"
+					disabled={viewPreset !== "operational"}
 					onChange={(e) =>
 						onAdvancedFilterChange(
 							e.target.value as "all" | "priceUp" | "missingConversion"
@@ -3629,6 +3808,8 @@ function InventoryHeader({
 						placeholder={
 							viewPreset === "priceMonitor"
 								? "Cari bahan, brand, toko..."
+								: viewPreset === "yumiAi"
+									? "Cari di tab Operasional/Monitoring..."
 								: "Cari bahan atau satuan..."
 						}
 						value={searchQuery}
