@@ -10,7 +10,6 @@ import {
 	Boxes,
 	ArrowDown,
 	ArrowUp,
-	Copy,
 	Edit,
 	History,
 	MoreHorizontal,
@@ -169,12 +168,6 @@ type RealtimePriceMonitorData = {
 	};
 };
 
-type InventoryUnitDictionaryRow = Doc<"inventoryUnitDictionary">;
-
-type InventoryAuditLog = Doc<"inventoryAuditLogs"> & {
-	canRollback?: boolean;
-};
-
 const INVENTORY_UNIT_OPTIONS = [
 	"gram",
 	"ml",
@@ -189,30 +182,6 @@ const INVENTORY_UNIT_OPTIONS = [
 	"kg",
 ];
 
-const INVENTORY_QUICK_TEMPLATES = [
-	{
-		id: "fresh-milk",
-		label: "Susu Fresh (liter)",
-		unit: "ml",
-		conversions: "liter:1000",
-		lowStockThreshold: "5000",
-	},
-	{
-		id: "beans",
-		label: "Beans (kg)",
-		unit: "gram",
-		conversions: "kg:1000",
-		lowStockThreshold: "3000",
-	},
-	{
-		id: "packaged",
-		label: "Kemasan (dus/karton)",
-		unit: "pcs",
-		conversions: "dus:12, karton:144",
-		lowStockThreshold: "24",
-	},
-];
-
 function normalizeUnitOption(value?: string | null) {
 	return (value || "").trim().toLowerCase();
 }
@@ -220,11 +189,9 @@ function normalizeUnitOption(value?: string | null) {
 function collectDynamicUnitOptions({
 	inventoryItems,
 	workspaceRows,
-	dictionaryRows,
 }: {
 	inventoryItems?: Doc<"inventory">[];
 	workspaceRows?: InventoryWorkspaceRow[];
-	dictionaryRows?: InventoryUnitDictionaryRow[];
 }) {
 	const set = new Set<string>(INVENTORY_UNIT_OPTIONS.map((unit) => unit.toLowerCase()));
 
@@ -258,19 +225,6 @@ function collectDynamicUnitOptions({
 			const conversionUnit = normalizeUnitOption(conversion.unit);
 			if (conversionUnit) {
 				set.add(conversionUnit);
-			}
-		}
-	}
-
-	for (const row of dictionaryRows ?? []) {
-		const unit = normalizeUnitOption(row.unit);
-		if (unit) {
-			set.add(unit);
-		}
-		for (const alias of row.aliases ?? []) {
-			const aliasLabel = normalizeUnitOption(alias);
-			if (aliasLabel) {
-				set.add(aliasLabel);
 			}
 		}
 	}
@@ -475,133 +429,6 @@ function getUsageInsight(row: Pick<
 	};
 }
 
-function parseInventoryPasteRows(input: string) {
-	return input
-		.split(/\r?\n/)
-		.map((line) => line.trim())
-		.filter(Boolean)
-		.map((line) => {
-			const [ingredientName, defaultBrandName, quantity, lowStockThreshold, unit, unitConversionsText] =
-				line.split("\t").map((part) => part.trim());
-			return {
-				ingredientName: ingredientName || "",
-				defaultBrandName: defaultBrandName || "",
-				quantity: quantity || "0",
-				lowStockThreshold: lowStockThreshold || "100",
-				unit: normalizeUnitOption(unit || "gram") || "gram",
-				unitConversionsText: unitConversionsText || "",
-			};
-		})
-		.filter((row) => row.ingredientName);
-}
-
-function UnitConversionBuilder({
-	baseUnit,
-	value,
-	unitOptions,
-	onChange,
-}: {
-	baseUnit: string;
-	value: string;
-	unitOptions: string[];
-	onChange: (next: string) => void;
-}) {
-	const rows = useMemo(() => parseUnitConversionsText(value) ?? [], [value]);
-
-	const serializeRows = (nextRows: Array<{ unit: string; factor: number }>) => {
-		onChange(
-			nextRows
-				.filter((row) => row.unit && row.factor > 0)
-				.map((row) => `${row.unit}:${row.factor}`)
-				.join(", ")
-		);
-	};
-
-	const updateRow = (
-		index: number,
-		field: "unit" | "factor",
-		nextValue: string
-	) => {
-		const nextRows = rows.map((row, rowIndex) => {
-			if (rowIndex !== index) {
-				return row;
-			}
-			if (field === "unit") {
-				return {
-					...row,
-					unit: normalizeUnitOption(nextValue),
-				};
-			}
-			const factor = Number(nextValue);
-			return {
-				...row,
-				factor: Number.isNaN(factor) ? 0 : factor,
-			};
-		});
-		serializeRows(nextRows);
-	};
-
-	return (
-		<div className="space-y-2 rounded-md border border-border/70 bg-background/50 p-2">
-			<div className="flex items-center justify-between">
-				<p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-					Builder Takaran (basis: {baseUnit || "-"})
-				</p>
-				<button
-					className="rounded border border-border px-2 py-0.5 text-[10px] font-semibold"
-					onClick={() =>
-						serializeRows([
-							...rows,
-							{
-								unit: "",
-								factor: 0,
-							},
-						])
-					}
-					type="button"
-				>
-					+ Langkah
-				</button>
-			</div>
-			{rows.map((row, index) => (
-				<div className="flex items-center gap-1" key={`${row.unit}-${row.factor}-${index}`}>
-					<span className="text-[10px] text-muted-foreground">1</span>
-					<input
-						className="w-28 rounded border border-border bg-background px-1.5 py-1 text-[10px] outline-none"
-						list="inventory-unit-options-builder"
-						onChange={(e) => updateRow(index, "unit", e.target.value)}
-						placeholder="satuan"
-						value={row.unit}
-					/>
-					<span className="text-[10px] text-muted-foreground">=</span>
-					<input
-						className="w-20 rounded border border-border bg-background px-1.5 py-1 text-[10px] outline-none"
-						onChange={(e) => updateRow(index, "factor", e.target.value)}
-						placeholder="factor"
-						type="number"
-						value={row.factor || ""}
-					/>
-					<span className="text-[10px] text-muted-foreground">{baseUnit}</span>
-					<button
-						className="rounded border border-border px-1.5 py-1 text-[10px]"
-						onClick={() => serializeRows(rows.filter((_, rowIndex) => rowIndex !== index))}
-						type="button"
-					>
-						x
-					</button>
-				</div>
-			))}
-			{rows.length === 0 && (
-				<p className="text-[10px] text-muted-foreground">Belum ada langkah konversi.</p>
-			)}
-			<datalist id="inventory-unit-options-builder">
-				{unitOptions.map((unit) => (
-					<option key={unit} value={unit} />
-				))}
-			</datalist>
-		</div>
-	);
-}
 
 export const Route = createLazyFileRoute("/admin/inventory")({
 	component: InventoryPage,
@@ -610,9 +437,6 @@ export const Route = createLazyFileRoute("/admin/inventory")({
 function InventoryPage() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const inventory = useQuery(api.inventory.getInventory);
-	const unitDictionary = useQuery(api.inventory.listInventoryUnitDictionary) as
-		| InventoryUnitDictionaryRow[]
-		| undefined;
 	const stores = useQuery(api.inventory.listInventoryStores) as
 		| InventoryStore[]
 		| undefined;
@@ -628,10 +452,6 @@ function InventoryPage() {
 	const updateItem = useMutation(api.inventory.updateInventoryItem);
 	const deleteItem = useMutation(api.inventory.deleteInventoryItem);
 	const createStore = useMutation(api.inventory.createInventoryStore);
-	const upsertUnitDictionary = useMutation(api.inventory.upsertInventoryUnitDictionary);
-	const deactivateUnitDictionary = useMutation(
-		api.inventory.deactivateInventoryUnitDictionary
-	);
 	const setReferencePrice = useMutation(api.inventory.setInventoryReferencePrice);
 
 	const [selectedItem, setSelectedItem] = useState<Doc<"inventory"> | null>(
@@ -648,13 +468,6 @@ function InventoryPage() {
 	const [viewPreset, setViewPreset] = useState<InventoryViewPreset>("all");
 	const [addRowSignal, setAddRowSignal] = useState(0);
 	const [detailItem, setDetailItem] = useState<Doc<"inventory"> | null>(null);
-	const [commandOpen, setCommandOpen] = useState(false);
-	const [unitDictionaryOpen, setUnitDictionaryOpen] = useState(false);
-	const [unitForm, setUnitForm] = useState({
-		unit: "",
-		aliases: "",
-		category: "",
-	});
 	const [newItem, setNewItem] = useState({
 		ingredientName: "",
 		unit: "gram",
@@ -830,9 +643,8 @@ function InventoryPage() {
 			collectDynamicUnitOptions({
 				inventoryItems: inventory,
 				workspaceRows: workspace?.rows,
-				dictionaryRows: unitDictionary,
 			}),
-		[inventory, workspace?.rows, unitDictionary]
+		[inventory, workspace?.rows]
 	);
 
 	const handleSort = (
@@ -860,11 +672,6 @@ function InventoryPage() {
 				(target.tagName === "INPUT" ||
 					target.tagName === "TEXTAREA" ||
 					target.isContentEditable);
-			if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-				event.preventDefault();
-				setCommandOpen((prev) => !prev);
-				return;
-			}
 			if (isTypingTarget) {
 				return;
 			}
@@ -1115,75 +922,6 @@ function InventoryPage() {
 		}
 	};
 
-	const handleCreateUnitDictionary = async () => {
-		const unit = unitForm.unit.trim().toLowerCase();
-		if (!unit) {
-			toast.error("Nama satuan wajib diisi");
-			return;
-		}
-		try {
-			await upsertUnitDictionary({
-				unit,
-				aliases: unitForm.aliases
-					.split(",")
-					.map((part) => part.trim())
-					.filter(Boolean),
-				category: unitForm.category.trim() || undefined,
-			});
-			setUnitForm({ unit: "", aliases: "", category: "" });
-			toast.success("Satuan baru ditambahkan");
-		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Gagal menambah satuan");
-		}
-	};
-
-	const handleDeactivateUnit = async (id: Id<"inventoryUnitDictionary">) => {
-		try {
-			await deactivateUnitDictionary({ id });
-			toast.success("Satuan dinonaktifkan");
-		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Gagal menghapus satuan");
-		}
-	};
-
-	const commandItems: Array<{
-		id: string;
-		label: string;
-		description: string;
-		onSelect: () => void;
-	}> = [
-		{
-			id: "new-row",
-			label: "Tambah Baris Cepat",
-			description: "Fokus ke quick add row",
-			onSelect: () => setAddRowSignal((prev) => prev + 1),
-		},
-		{
-			id: "view-all",
-			label: "View Semua Data",
-			description: "Lihat semua inventory",
-			onSelect: () => setViewPreset("all"),
-		},
-		{
-			id: "view-critical",
-			label: "View Fokus Kritis",
-			description: "Filter item menipis/kritis",
-			onSelect: () => setViewPreset("critical"),
-		},
-		{
-			id: "view-monitor",
-			label: "Buka Monitoring Harga",
-			description: "Pantau perubahan harga realtime",
-			onSelect: () => setViewPreset("priceMonitor"),
-		},
-		{
-			id: "open-unit-dictionary",
-			label: "Kelola Kamus Satuan",
-			description: "Tambah/edit satuan global",
-			onSelect: () => setUnitDictionaryOpen(true),
-		},
-	];
-
 	return (
 		<div className="fade-in slide-in-from-bottom-4 animate-in space-y-3 duration-500">
 			<InventoryHeader
@@ -1192,8 +930,6 @@ function InventoryPage() {
 				onAddRow={() => setAddRowSignal((prev) => prev + 1)}
 				onAdvancedFilterChange={setAdvancedFilter}
 				onFilterLowStockChange={setFilterLowStock}
-				onOpenCommand={() => setCommandOpen(true)}
-				onOpenUnitDictionary={() => setUnitDictionaryOpen(true)}
 				onSearchQueryChange={setSearchQuery}
 				onViewPresetChange={setViewPreset}
 				searchQuery={searchQuery}
@@ -1282,22 +1018,6 @@ function InventoryPage() {
 				onConfirm={confirmConfig.onConfirm}
 				title={confirmConfig.title}
 			/>
-			{commandOpen && (
-				<CommandPalette
-					items={commandItems}
-					onClose={() => setCommandOpen(false)}
-				/>
-			)}
-			{unitDictionaryOpen && (
-				<UnitDictionaryModal
-					form={unitForm}
-					onClose={() => setUnitDictionaryOpen(false)}
-					onCreate={handleCreateUnitDictionary}
-					onDelete={handleDeactivateUnit}
-					onFormChange={setUnitForm}
-					rows={unitDictionary ?? []}
-				/>
-			)}
 		</div>
 	);
 }
@@ -1587,17 +1307,6 @@ function InventoryModalContent({
 							value={newItem.unitConversionsText}
 						/>
 					</div>
-					<UnitConversionBuilder
-						baseUnit={newItem.unit}
-						onChange={(value) =>
-							onNewItemChange({
-								...newItem,
-								unitConversionsText: value,
-							})
-						}
-						unitOptions={unitOptions}
-						value={newItem.unitConversionsText}
-					/>
 					<p className="text-foreground/50 text-[10px] italic leading-snug">
 						* Format: namaSatuan:isiDalamSatuanDasar. Contoh: satuan dasar gram,
 						isian "pcs:200" berarti 1 pcs = 200 gram. Contoh lain: satuan dasar
@@ -2915,21 +2624,11 @@ function InventoryTable({
 	const updateItemMutation = useMutation(api.inventory.updateInventoryItem);
 	const applyStockAction = useMutation(api.inventory.applyInventoryStockAction);
 	const createItemMutation = useMutation(api.inventory.createInventoryItem);
-	const bulkUpdateInventory = useMutation(api.inventory.bulkUpdateInventoryItems);
 	const quickAddNameRef = useRef<HTMLInputElement | null>(null);
 	const [savingKey, setSavingKey] = useState<string | null>(null);
 	const [saveStateByRow, setSaveStateByRow] = useState<
 		Record<string, "idle" | "saving" | "saved" | "error">
 	>({});
-	const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>({});
-	const [bulkValues, setBulkValues] = useState({
-		lowStockThreshold: "",
-		unit: "",
-		defaultBrandName: "",
-	});
-	const [auditItem, setAuditItem] = useState<Doc<"inventory"> | null>(null);
-	const [showPastePanel, setShowPastePanel] = useState(false);
-	const [pasteBuffer, setPasteBuffer] = useState("");
 	const inventoryItems = useMemo(() => [...inventoryMap.values()], [inventoryMap]);
 	const [inlineValues, setInlineValues] = useState<
 		Record<
@@ -2960,48 +2659,6 @@ function InventoryTable({
 	useEffect(() => {
 		quickAddNameRef.current?.focus();
 	}, [addRowSignal]);
-
-	const selectedVisibleIds = useMemo(
-		() =>
-			filteredRows
-				.map((row) => row.inventoryId)
-				.filter((id) => selectedRows[id]),
-		[filteredRows, selectedRows]
-	);
-
-	const allVisibleSelected =
-		filteredRows.length > 0 &&
-		filteredRows.every((row) => Boolean(selectedRows[row.inventoryId]));
-
-	const toggleRowSelection = (inventoryId: Id<"inventory">) => {
-		setSelectedRows((prev) => ({
-			...prev,
-			[inventoryId]: !prev[inventoryId],
-		}));
-	};
-
-	const toggleSelectAllVisible = () => {
-		setSelectedRows((prev) => {
-			const next = { ...prev };
-			for (const row of filteredRows) {
-				next[row.inventoryId] = !allVisibleSelected;
-			}
-			return next;
-		});
-	};
-
-	const applyQuickTemplate = (templateId: string) => {
-		const template = INVENTORY_QUICK_TEMPLATES.find((item) => item.id === templateId);
-		if (!template) {
-			return;
-		}
-		setQuickAdd((prev) => ({
-			...prev,
-			unit: template.unit,
-			unitConversionsText: template.conversions,
-			lowStockThreshold: template.lowStockThreshold,
-		}));
-	};
 
 	const createInventoryFromDraft = async (draft: {
 		ingredientName: string;
@@ -3331,97 +2988,6 @@ function InventoryTable({
 		}
 	};
 
-	const applyBulkUpdate = async () => {
-		if (selectedVisibleIds.length === 0) {
-			toast.error("Pilih minimal satu baris untuk bulk edit");
-			return;
-		}
-		try {
-			setSavingKey("bulk-update");
-			const payload: {
-				inventoryIds: Id<"inventory">[];
-				lowStockThreshold?: number;
-				unit?: string;
-				defaultBrandName?: string;
-			} = {
-				inventoryIds: selectedVisibleIds,
-			};
-			if (bulkValues.lowStockThreshold.trim()) {
-				payload.lowStockThreshold = Number(bulkValues.lowStockThreshold);
-			}
-			if (bulkValues.unit.trim()) {
-				payload.unit = normalizeUnitOption(bulkValues.unit);
-			}
-			if (bulkValues.defaultBrandName.trim()) {
-				payload.defaultBrandName = bulkValues.defaultBrandName.trim();
-			}
-
-			const result = await bulkUpdateInventory(payload);
-			toast.success(`Bulk update berhasil: ${result.updatedCount} baris`);
-			setBulkValues({
-				lowStockThreshold: "",
-				unit: "",
-				defaultBrandName: "",
-			});
-		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Bulk update gagal");
-		} finally {
-			setSavingKey(null);
-		}
-	};
-
-	const handleDuplicateRow = async (row: InventoryWorkspaceRow) => {
-		try {
-			setSavingKey(`${row.inventoryId}:duplicate`);
-			await createInventoryFromDraft({
-				ingredientName: `${row.ingredientName} Copy`,
-				quantity: String(row.currentStock),
-				unit: row.unit,
-				lowStockThreshold: String(row.lowStockThreshold),
-				defaultBrandName: row.defaultBrandName ?? "",
-				displayUnit: row.displayUnit ?? "",
-				conversionFactor:
-					typeof row.conversionFactor === "number" ? String(row.conversionFactor) : "",
-				unitConversionsText: formatUnitConversionsText(
-					row.unitConversions,
-					row.displayUnit,
-					row.conversionFactor
-				),
-			});
-			toast.success(`Duplikat dibuat untuk ${row.ingredientName}`);
-		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Gagal duplikasi baris");
-		} finally {
-			setSavingKey(null);
-		}
-	};
-
-	const handlePasteImport = async () => {
-		const rows = parseInventoryPasteRows(pasteBuffer);
-		if (rows.length === 0) {
-			toast.error("Paste Excel kosong atau format belum sesuai");
-			return;
-		}
-
-		try {
-			setSavingKey("paste-import");
-			for (const row of rows) {
-				await createInventoryFromDraft({
-					...row,
-					displayUnit: "",
-					conversionFactor: "",
-				});
-			}
-			setPasteBuffer("");
-			setShowPastePanel(false);
-			toast.success(`${rows.length} baris berhasil diimport`);
-		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Import paste gagal");
-		} finally {
-			setSavingKey(null);
-		}
-	};
-
 	const getStatusMeta = (status: InventoryWorkspaceRow["status"]) => {
 		if (status === "critical") {
 			return {
@@ -3454,92 +3020,8 @@ function InventoryTable({
 						<option key={item._id} value={item.ingredientName} />
 					))}
 				</datalist>
-				<div className="flex flex-wrap items-end gap-2 border-border border-b bg-muted/20 px-3 py-2">
-					<div className="text-[11px] font-semibold text-muted-foreground">
-						{selectedVisibleIds.length} baris dipilih
-					</div>
-					<button
-						className="rounded-lg border border-border bg-background px-2.5 py-1 text-[11px] font-semibold"
-						onClick={() => setShowPastePanel((prev) => !prev)}
-						type="button"
-					>
-						{showPastePanel ? "Tutup Paste" : "Paste Excel"}
-					</button>
-					<input
-						className="w-24 rounded-lg border border-border bg-background px-2 py-1 text-[11px] outline-none"
-						onChange={(e) =>
-							setBulkValues((prev) => ({
-								...prev,
-								lowStockThreshold: e.target.value,
-							}))
-						}
-						placeholder="Min stok"
-						type="number"
-						value={bulkValues.lowStockThreshold}
-					/>
-					<input
-						className="w-24 rounded-lg border border-border bg-background px-2 py-1 text-[11px] outline-none"
-						list="inventory-unit-options-table"
-						onChange={(e) =>
-							setBulkValues((prev) => ({
-								...prev,
-								unit: normalizeUnitOption(e.target.value),
-							}))
-						}
-						placeholder="Satuan"
-						value={bulkValues.unit}
-					/>
-					<input
-						className="w-32 rounded-lg border border-border bg-background px-2 py-1 text-[11px] outline-none"
-						onChange={(e) =>
-							setBulkValues((prev) => ({
-								...prev,
-								defaultBrandName: e.target.value,
-							}))
-						}
-						placeholder="Brand default"
-						value={bulkValues.defaultBrandName}
-					/>
-					<button
-						className="rounded-lg bg-foreground px-3 py-1.5 text-[11px] font-semibold text-background disabled:cursor-not-allowed disabled:opacity-50"
-						disabled={selectedVisibleIds.length === 0 || savingKey === "bulk-update"}
-						onClick={() => void applyBulkUpdate()}
-						type="button"
-					>
-						{savingKey === "bulk-update" ? "Menyimpan..." : "Apply Bulk"}
-					</button>
-				</div>
-				{showPastePanel && (
-					<div className="space-y-2 border-border border-b bg-background px-3 py-3">
-						<p className="text-[11px] font-semibold text-foreground">
-							Paste dari Excel: `nama`, `brand`, `stok`, `min`, `unit`, `takaran`
-						</p>
-						<textarea
-							className="min-h-[110px] w-full rounded-lg border border-border bg-muted/10 px-3 py-2 text-xs outline-none focus:border-primary"
-							onChange={(e) => setPasteBuffer(e.target.value)}
-							placeholder={
-								"Air Cleo\tCleo\t24\t6\tpcs\tdus:12\nFresh Milk\tIndomilk\t8000\t3000\tml\tliter:1000"
-							}
-							value={pasteBuffer}
-						/>
-						<div className="flex items-center justify-between gap-3">
-							<p className="text-[11px] text-muted-foreground">
-								Satu baris = satu item baru. Kolom dipisah tab dari Excel.
-							</p>
-							<button
-								className="rounded-lg bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground disabled:opacity-50"
-								disabled={savingKey === "paste-import"}
-								onClick={() => void handlePasteImport()}
-								type="button"
-							>
-								{savingKey === "paste-import" ? "Import..." : "Import Baris"}
-							</button>
-						</div>
-					</div>
-				)}
 				<table className="w-full table-fixed text-left text-[10px] md:text-[11px]">
 					<colgroup>
-						<col className="w-[3%]" />
 						<col className="w-[16%]" />
 						<col className="w-[10%]" />
 						<col className="w-[10%]" />
@@ -3553,13 +3035,6 @@ function InventoryTable({
 					</colgroup>
 					<thead className="bg-card">
 						<tr className="border-border border-b text-muted-foreground">
-							<th className="px-2 py-2">
-								<input
-									checked={allVisibleSelected}
-									onChange={toggleSelectAllVisible}
-									type="checkbox"
-								/>
-							</th>
 							<th
 								className="cursor-pointer px-2.5 py-2 font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("ingredientName")}
@@ -3626,7 +3101,6 @@ function InventoryTable({
 					</thead>
 					<tbody className="divide-y divide-border">
 						<tr className="bg-primary/[0.04]">
-							<td className="px-2 py-2" />
 							<td className="px-2.5 py-2">
 								<input
 									ref={quickAddNameRef}
@@ -3649,36 +3123,22 @@ function InventoryTable({
 								/>
 							</td>
 							<td className="px-2 py-2">
-								<div className="space-y-1">
-									<input
-										className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
-										onChange={(e) =>
-											setQuickAdd((prev) => ({
-												...prev,
-												defaultBrandName: e.target.value,
-											}))
+								<input
+									className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({
+											...prev,
+											defaultBrandName: e.target.value,
+										}))
+									}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											void quickCreate();
 										}
-										onKeyDown={(e) => {
-											if (e.key === "Enter") {
-												void quickCreate();
-											}
-										}}
-										placeholder="Brand opsional"
-										value={quickAdd.defaultBrandName}
-									/>
-									<select
-										className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[10px] outline-none"
-										onChange={(e) => applyQuickTemplate(e.target.value)}
-										value=""
-									>
-										<option value="">Template cepat...</option>
-										{INVENTORY_QUICK_TEMPLATES.map((template) => (
-											<option key={template.id} value={template.id}>
-												{template.label}
-											</option>
-										))}
-									</select>
-								</div>
+									}}
+									placeholder="Brand opsional"
+									value={quickAdd.defaultBrandName}
+								/>
 							</td>
 							<td className="px-2 py-2 text-center">
 								<input
@@ -3779,9 +3239,6 @@ function InventoryTable({
 							Array.from({ length: 8 }).map((_, i) => (
 								<tr key={i}>
 									<td className="p-4">
-										<Skeleton className="h-4 w-4" />
-									</td>
-									<td className="p-4">
 										<Skeleton className="h-4 w-32" />
 									</td>
 									<td className="p-4">
@@ -3841,13 +3298,6 @@ function InventoryTable({
 										}`}
 										key={row.inventoryId}
 									>
-										<td className="px-2 py-2 align-middle">
-											<input
-												checked={Boolean(selectedRows[row.inventoryId])}
-												onChange={() => toggleRowSelection(row.inventoryId)}
-												type="checkbox"
-											/>
-										</td>
 										<td className="px-2.5 py-2 align-middle">
 											<input
 												className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold text-[12px] leading-4 outline-none focus:border-border focus:bg-background"
@@ -4059,11 +3509,6 @@ function InventoryTable({
 															<Minus className="mr-2 h-4 w-4" /> Pakai -5
 														</DropdownMenuItem>
 														<DropdownMenuItem
-															onClick={() => void handleDuplicateRow(row)}
-														>
-															<Copy className="mr-2 h-4 w-4" /> Duplikat Baris
-														</DropdownMenuItem>
-														<DropdownMenuItem
 															onClick={() => {
 																onSelectedItemChange(item);
 																onActionTypeChange("batchInfo");
@@ -4078,13 +3523,6 @@ function InventoryTable({
 															}}
 														>
 															<History className="mr-2 h-4 w-4" /> Riwayat
-														</DropdownMenuItem>
-														<DropdownMenuItem
-															onClick={() => {
-																setAuditItem(item);
-															}}
-														>
-															<History className="mr-2 h-4 w-4" /> Audit Trail
 														</DropdownMenuItem>
 														<DropdownMenuItem
 															className="text-destructive focus:text-destructive"
@@ -4104,7 +3542,7 @@ function InventoryTable({
 							})}
 						{inventoryMap.size > 0 && filteredRows.length === 0 && (
 							<tr>
-								<td className="p-8 text-center text-muted-foreground" colSpan={11}>
+								<td className="p-8 text-center text-muted-foreground" colSpan={10}>
 									Tidak ada bahan baku ditemukan
 								</td>
 							</tr>
@@ -4112,256 +3550,16 @@ function InventoryTable({
 					</tbody>
 				</table>
 			</div>
-			{auditItem && (
-				<InventoryAuditModal
-					item={auditItem}
-					onClose={() => setAuditItem(null)}
-				/>
-			)}
 		</div>
 	);
 }
 
-function CommandPalette({
-	items,
-	onClose,
-}: {
-	items: Array<{
-		id: string;
-		label: string;
-		description: string;
-		onSelect: () => void;
-	}>;
-	onClose: () => void;
-}) {
-	const [query, setQuery] = useState("");
-	const filteredItems = useMemo(() => {
-		const keyword = query.trim().toLowerCase();
-		if (!keyword) {
-			return items;
-		}
-		return items.filter((item) =>
-			`${item.label} ${item.description}`.toLowerCase().includes(keyword)
-		);
-	}, [items, query]);
-
-	return (
-		<div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 backdrop-blur-sm">
-			<div className="mt-20 w-full max-w-xl rounded-xl border border-border bg-card shadow-2xl">
-				<div className="border-border border-b p-4">
-					<input
-						autoFocus
-						className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-						onChange={(e) => setQuery(e.target.value)}
-						placeholder="Cari perintah..."
-						value={query}
-					/>
-				</div>
-				<div className="max-h-[52vh] overflow-y-auto p-2">
-					{filteredItems.map((item) => (
-						<button
-							className="w-full rounded-lg px-3 py-2 text-left hover:bg-muted"
-							key={item.id}
-							onClick={() => {
-								item.onSelect();
-								onClose();
-							}}
-							type="button"
-						>
-							<p className="text-sm font-semibold text-foreground">{item.label}</p>
-							<p className="text-[11px] text-muted-foreground">{item.description}</p>
-						</button>
-					))}
-					{filteredItems.length === 0 && (
-						<p className="px-3 py-4 text-sm text-muted-foreground">Perintah tidak ditemukan.</p>
-					)}
-				</div>
-				<div className="border-border border-t p-3 text-right">
-					<button
-						className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold"
-						onClick={onClose}
-						type="button"
-					>
-						Tutup
-					</button>
-				</div>
-			</div>
-		</div>
-	);
-}
-
-function UnitDictionaryModal({
-	rows,
-	form,
-	onFormChange,
-	onCreate,
-	onDelete,
-	onClose,
-}: {
-	rows: InventoryUnitDictionaryRow[];
-	form: { unit: string; aliases: string; category: string };
-	onFormChange: (next: { unit: string; aliases: string; category: string }) => void;
-	onCreate: () => void;
-	onDelete: (id: Id<"inventoryUnitDictionary">) => void;
-	onClose: () => void;
-}) {
-	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-			<div className="w-full max-w-3xl rounded-xl border border-border bg-card shadow-2xl">
-				<div className="flex items-center justify-between border-border border-b p-4">
-					<h3 className="text-base font-bold text-foreground">Kamus Satuan Inventory</h3>
-					<button
-						className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold"
-						onClick={onClose}
-						type="button"
-					>
-						Tutup
-					</button>
-				</div>
-				<div className="space-y-3 border-border border-b p-4">
-					<div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-						<input
-							className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-							onChange={(e) =>
-								onFormChange({
-									...form,
-									unit: e.target.value,
-								})
-							}
-							placeholder="Satuan (contoh: slop)"
-							value={form.unit}
-						/>
-						<input
-							className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary md:col-span-2"
-							onChange={(e) =>
-								onFormChange({
-									...form,
-									aliases: e.target.value,
-								})
-							}
-							placeholder="Alias dipisah koma (cth: ctn, carton)"
-							value={form.aliases}
-						/>
-						<button
-							className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
-							onClick={onCreate}
-							type="button"
-						>
-							Tambah
-						</button>
-					</div>
-				</div>
-				<div className="max-h-[46vh] overflow-y-auto p-4">
-					<table className="w-full text-left text-xs">
-						<thead>
-							<tr className="text-muted-foreground">
-								<th className="p-2">Satuan</th>
-								<th className="p-2">Alias</th>
-								<th className="p-2">Kategori</th>
-								<th className="p-2 text-right">Aksi</th>
-							</tr>
-						</thead>
-						<tbody className="divide-y divide-border">
-							{rows.map((row) => (
-								<tr key={row._id}>
-									<td className="p-2 font-semibold text-foreground">{row.unit}</td>
-									<td className="p-2 text-muted-foreground">
-										{row.aliases?.join(", ") || "-"}
-									</td>
-									<td className="p-2 text-muted-foreground">{row.category || "-"}</td>
-									<td className="p-2 text-right">
-										<button
-											className="rounded-md border border-border bg-background px-2 py-1 text-[11px] font-semibold disabled:opacity-40"
-											disabled={Boolean(row.isSystem) || row._creationTime === 0}
-											onClick={() => onDelete(row._id)}
-											type="button"
-										>
-											Nonaktifkan
-										</button>
-									</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
-				</div>
-			</div>
-		</div>
-	);
-}
-
-function InventoryAuditModal({
-	item,
-	onClose,
-}: {
-	item: Doc<"inventory">;
-	onClose: () => void;
-}) {
-	const logs = useQuery(api.inventory.getInventoryAuditLogs, {
-		inventoryId: item._id,
-		limit: 80,
-	}) as InventoryAuditLog[] | undefined;
-	const rollbackAudit = useMutation(api.inventory.rollbackInventoryByAudit);
-
-	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-			<div className="w-full max-w-2xl rounded-xl border border-border bg-card shadow-2xl">
-				<div className="flex items-center justify-between border-border border-b p-4">
-					<h3 className="text-base font-bold text-foreground">
-						Audit Trail: {item.ingredientName}
-					</h3>
-					<button
-						className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold"
-						onClick={onClose}
-						type="button"
-					>
-						Tutup
-					</button>
-				</div>
-				<div className="max-h-[60vh] overflow-y-auto p-4">
-					<div className="space-y-2">
-						{(logs ?? []).map((log) => (
-							<div
-								className="rounded-lg border border-border bg-background p-3"
-								key={log._id}
-							>
-								<div className="flex items-center justify-between gap-2">
-									<p className="text-xs font-semibold text-foreground">{log.action}</p>
-									<p className="text-[11px] text-muted-foreground">
-										{new Date(log.createdAt).toLocaleString("id-ID")}
-									</p>
-								</div>
-								<p className="mt-1 text-[11px] text-muted-foreground">
-									{log.message || "-"}
-								</p>
-								<div className="mt-2 text-right">
-									<button
-										className="rounded-md border border-border bg-background px-2 py-1 text-[11px] font-semibold disabled:opacity-40"
-										disabled={!log.canRollback}
-										onClick={() => void rollbackAudit({ auditLogId: log._id })}
-										type="button"
-									>
-										Rollback ke sebelum log ini
-									</button>
-								</div>
-							</div>
-						))}
-						{logs && logs.length === 0 && (
-							<p className="text-sm text-muted-foreground">Belum ada audit log.</p>
-						)}
-					</div>
-				</div>
-			</div>
-		</div>
-	);
-}
 function InventoryHeader({
 	advancedFilter,
 	filterLowStock,
 	onAddRow,
 	onAdvancedFilterChange,
 	onFilterLowStockChange,
-	onOpenCommand,
-	onOpenUnitDictionary,
 	searchQuery,
 	onSearchQueryChange,
 	viewPreset,
@@ -4372,8 +3570,6 @@ function InventoryHeader({
 	onAddRow: () => void;
 	onAdvancedFilterChange: (val: "all" | "priceUp" | "missingConversion") => void;
 	onFilterLowStockChange: (val: boolean) => void;
-	onOpenCommand: () => void;
-	onOpenUnitDictionary: () => void;
 	searchQuery: string;
 	onSearchQueryChange: (val: string) => void;
 	viewPreset: InventoryViewPreset;
@@ -4416,25 +3612,6 @@ function InventoryHeader({
 							<option value="planning">Mode: Analitik</option>
 							<option value="critical">Mode: Fokus Kritis</option>
 						</select>
-						<DropdownMenu>
-							<DropdownMenuTrigger className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted md:text-sm">
-								Lainnya
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end" className="w-56">
-								<DropdownMenuItem onClick={onOpenUnitDictionary}>
-									Kamus Satuan
-								</DropdownMenuItem>
-								<DropdownMenuItem onClick={onOpenCommand}>
-									Command Palette (Ctrl+K)
-								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => onViewPresetChange("all")}>
-									Buka Semua Data
-								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => onViewPresetChange("critical")}>
-									Buka Fokus Kritis
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
 					</div>
 					<div className="flex flex-wrap gap-2">
 						<button
