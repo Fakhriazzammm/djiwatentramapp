@@ -1,7 +1,7 @@
 ﻿import { createLazyFileRoute } from "@tanstack/react-router";
 import { api } from "@yumipos/backend/convex/_generated/api";
 import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { motion } from "framer-motion";
 import {
 	AlertCircle,
@@ -291,6 +291,42 @@ function collectDynamicUnitOptions({
 		}
 		return a.localeCompare(b, "id-ID");
 	});
+}
+
+function normalizeLookupText(text: string) {
+	return text
+		.toLowerCase()
+		.normalize("NFKD")
+		.replace(/[^\w\s]/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
+}
+
+function getNameMatchScore(keyword: string, candidate: string) {
+	if (!keyword || !candidate) {
+		return 0;
+	}
+	if (keyword === candidate) {
+		return 100;
+	}
+	if (candidate.startsWith(keyword) || keyword.startsWith(candidate)) {
+		return 88;
+	}
+	if (candidate.includes(keyword) || keyword.includes(candidate)) {
+		return 74;
+	}
+	const keywordTokens = keyword.split(" ").filter(Boolean);
+	const candidateTokens = new Set(candidate.split(" ").filter(Boolean));
+	if (keywordTokens.length === 0) {
+		return 0;
+	}
+	let overlap = 0;
+	for (const token of keywordTokens) {
+		if (candidateTokens.has(token)) {
+			overlap += 1;
+		}
+	}
+	return Math.round((overlap / keywordTokens.length) * 60);
 }
 
 function formatCurrency(value?: number | null) {
@@ -2619,116 +2655,240 @@ function YumiAiInventoryPanel({
 }: {
 	data: InventoryYumiAiInsightsData | undefined;
 }) {
+	const [activeSection, setActiveSection] = useState<
+		"stockout" | "supplier" | "anomaly"
+	>("stockout");
+	const [keyword, setKeyword] = useState("");
+	const normalizedKeyword = keyword.trim().toLowerCase();
+	const stockoutRows = useMemo(
+		() =>
+			(data?.stockoutPredictions ?? []).filter((row) =>
+				row.ingredientName.toLowerCase().includes(normalizedKeyword)
+			),
+		[data?.stockoutPredictions, normalizedKeyword]
+	);
+	const supplierRows = useMemo(
+		() =>
+			(data?.supplierIntelligence ?? []).filter((row) =>
+				row.ingredientName.toLowerCase().includes(normalizedKeyword)
+			),
+		[data?.supplierIntelligence, normalizedKeyword]
+	);
+	const anomalyRows = useMemo(
+		() =>
+			(data?.usageAnomalies ?? []).filter((row) =>
+				row.ingredientName.toLowerCase().includes(normalizedKeyword)
+			),
+		[data?.usageAnomalies, normalizedKeyword]
+	);
+
 	return (
 		<div className="space-y-3">
 			<div className="rounded-xl border border-border/80 bg-card px-4 py-3 shadow-sm">
-				<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-					Yumi AI
-				</p>
-				<p className="mt-1 text-sm text-muted-foreground">
-					Prediksi stok habis, rekomendasi supplier, dan deteksi anomali pemakaian dari data
-					inventory saat ini.
-				</p>
-				{data && (
-					<p className="mt-1 text-xs text-muted-foreground">
-						Updated {new Date(data.summary.refreshedAt).toLocaleString("id-ID")}
-					</p>
-				)}
-			</div>
-
-			<div className="grid gap-3 xl:grid-cols-3">
-				<div className="rounded-xl border border-border/80 bg-card shadow-sm">
-					<div className="border-border border-b px-3 py-2">
-						<p className="text-xs font-semibold text-foreground">
-							Prediksi Stok Habis + Reorder
+				<div className="flex flex-wrap items-center justify-between gap-2">
+					<div>
+						<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+							Yumi AI Inventory Assistant
+						</p>
+						<p className="mt-1 text-sm text-muted-foreground">
+							Fokus aksi cepat: prediksi habis, rekomendasi supplier, dan anomali pemakaian.
 						</p>
 					</div>
-					<div className="max-h-[460px] overflow-auto p-3">
-						{!data &&
-							Array.from({ length: 6 }).map((_, i) => (
-								<Skeleton className="mb-2 h-14 w-full" key={i} />
-							))}
-						{data?.stockoutPredictions.map((row) => (
-							<div
-								className="mb-2 rounded-lg border border-border/70 bg-background px-3 py-2"
-								key={row.inventoryId}
-							>
-								<p className="text-sm font-semibold text-foreground">{row.ingredientName}</p>
-								<p className="text-xs text-muted-foreground">
-									Stok {row.currentStock} {row.unit} · Avg {row.avgDailyUsage}/hari
-								</p>
-								<p className="text-xs text-muted-foreground">
-									Habis: {row.daysUntilStockout == null ? "-" : `${row.daysUntilStockout} hari`}
-								</p>
-								<p className="text-xs font-semibold text-foreground">
-									Reorder point {row.reorderPoint} · Saran order {row.suggestedOrderQty}
-								</p>
-							</div>
-						))}
-						{data && data.stockoutPredictions.length === 0 && (
-							<p className="text-sm text-muted-foreground">Belum ada prediksi kritis.</p>
-						)}
-					</div>
+					{data && (
+						<p className="text-xs text-muted-foreground">
+							Updated {new Date(data.summary.refreshedAt).toLocaleString("id-ID")}
+						</p>
+					)}
 				</div>
-
-				<div className="rounded-xl border border-border/80 bg-card shadow-sm">
-					<div className="border-border border-b px-3 py-2">
-						<p className="text-xs font-semibold text-foreground">Harga Supplier Intelligence</p>
-					</div>
-					<div className="max-h-[460px] overflow-auto p-3">
-						{!data &&
-							Array.from({ length: 6 }).map((_, i) => (
-								<Skeleton className="mb-2 h-14 w-full" key={i} />
-							))}
-						{data?.supplierIntelligence.map((row) => (
-							<div
-								className="mb-2 rounded-lg border border-border/70 bg-background px-3 py-2"
-								key={row.inventoryId}
-							>
-								<p className="text-sm font-semibold text-foreground">{row.ingredientName}</p>
-								<p className="text-xs text-muted-foreground">
-									Terakhir: {row.lastStoreName || "Tanpa toko"} · {formatCurrency(row.lastPrice)}
-								</p>
-								<p className="text-xs text-muted-foreground">
-									Rekomendasi: {row.recommendedStoreName || "-"} ·{" "}
-									{formatCurrency(row.recommendedPrice)}
-								</p>
-								<p className="text-xs font-semibold text-emerald-700">
-									Potensi hemat: {formatCurrency(row.potentialSavings)}
-								</p>
-							</div>
-						))}
-						{data && data.supplierIntelligence.length === 0 && (
-							<p className="text-sm text-muted-foreground">Belum ada insight supplier.</p>
-						)}
-					</div>
-				</div>
-
-				<div className="rounded-xl border border-border/80 bg-card shadow-sm">
-					<div className="border-border border-b px-3 py-2">
+				<div className="mt-3 grid gap-2 md:grid-cols-3">
+					<button
+						className={`rounded-lg border px-3 py-2 text-left ${
+							activeSection === "stockout"
+								? "border-rose-200 bg-rose-50"
+								: "border-border bg-background"
+						}`}
+						onClick={() => setActiveSection("stockout")}
+						type="button"
+					>
+						<p className="text-xs font-semibold text-foreground">Prediksi Stok Habis</p>
+						<p className="text-[11px] text-muted-foreground">
+							{data?.summary.predictionCount ?? "-"} item
+						</p>
+					</button>
+					<button
+						className={`rounded-lg border px-3 py-2 text-left ${
+							activeSection === "supplier"
+								? "border-emerald-200 bg-emerald-50"
+								: "border-border bg-background"
+						}`}
+						onClick={() => setActiveSection("supplier")}
+						type="button"
+					>
+						<p className="text-xs font-semibold text-foreground">Supplier Intelligence</p>
+						<p className="text-[11px] text-muted-foreground">
+							{data?.summary.supplierInsightCount ?? "-"} insight
+						</p>
+					</button>
+					<button
+						className={`rounded-lg border px-3 py-2 text-left ${
+							activeSection === "anomaly"
+								? "border-amber-200 bg-amber-50"
+								: "border-border bg-background"
+						}`}
+						onClick={() => setActiveSection("anomaly")}
+						type="button"
+					>
 						<p className="text-xs font-semibold text-foreground">Anomali Pemakaian</p>
+						<p className="text-[11px] text-muted-foreground">
+							{data?.summary.anomalyCount ?? "-"} anomali
+						</p>
+					</button>
+				</div>
+			</div>
+
+			<div className="rounded-xl border border-border/80 bg-card shadow-sm">
+				<div className="flex flex-wrap items-center justify-between gap-2 border-border border-b px-3 py-2">
+					<p className="text-xs font-semibold text-foreground">
+						{activeSection === "stockout"
+							? "Prediksi Stok Habis + Reorder Recommendation"
+							: activeSection === "supplier"
+								? "Harga Supplier Intelligence"
+								: "Anomali Pemakaian"}
+					</p>
+					<div className="relative w-full max-w-xs">
+						<Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+						<input
+							className="w-full rounded-md border border-border bg-background py-1.5 pr-2 pl-8 text-xs outline-none"
+							onChange={(event) => setKeyword(event.target.value)}
+							placeholder="Cari bahan..."
+							value={keyword}
+						/>
 					</div>
-					<div className="max-h-[460px] overflow-auto p-3">
-						{!data &&
-							Array.from({ length: 6 }).map((_, i) => (
-								<Skeleton className="mb-2 h-14 w-full" key={i} />
+				</div>
+				<div className="max-h-[500px] overflow-auto">
+					{!data && (
+						<div className="space-y-2 p-3">
+							{Array.from({ length: 8 }).map((_, i) => (
+								<Skeleton className="h-10 w-full" key={i} />
 							))}
-						{data?.usageAnomalies.map((row) => (
-							<div
-								className="mb-2 rounded-lg border border-border/70 bg-background px-3 py-2"
-								key={row.inventoryId}
-							>
-								<p className="text-sm font-semibold text-foreground">{row.ingredientName}</p>
-								<p className="text-xs text-muted-foreground">{row.reason}</p>
-								<p className="text-xs text-muted-foreground">
-									7d: {row.avgDailyUsage7d}/hari · 30d: {row.avgDailyUsage30d}/hari
-								</p>
-							</div>
-						))}
-						{data && data.usageAnomalies.length === 0 && (
-							<p className="text-sm text-muted-foreground">Belum ada anomali terdeteksi.</p>
-						)}
-					</div>
+						</div>
+					)}
+					{data && activeSection === "stockout" && (
+						<table className="w-full table-fixed text-left text-[11px]">
+							<thead className="bg-muted/30">
+								<tr className="border-border border-b text-muted-foreground">
+									<th className="px-3 py-2 font-semibold">Bahan</th>
+									<th className="px-3 py-2 font-semibold">Stok & Usage</th>
+									<th className="px-3 py-2 font-semibold">Prediksi Habis</th>
+									<th className="px-3 py-2 font-semibold">Saran Reorder</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-border">
+								{stockoutRows.map((row) => {
+									const urgencyTone =
+										row.urgency === "high"
+											? "bg-rose-100 text-rose-700"
+											: row.urgency === "medium"
+												? "bg-amber-100 text-amber-700"
+												: "bg-emerald-100 text-emerald-700";
+									return (
+										<tr className="hover:bg-muted/20" key={row.inventoryId}>
+											<td className="px-3 py-2 font-semibold text-foreground">
+												{row.ingredientName}
+											</td>
+											<td className="px-3 py-2 text-muted-foreground">
+												{row.currentStock} {row.unit} · {row.avgDailyUsage}/hari
+											</td>
+											<td className="px-3 py-2">
+												<span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${urgencyTone}`}>
+													{row.urgency.toUpperCase()}
+												</span>
+												<p className="mt-1 text-muted-foreground">
+													{row.daysUntilStockout == null ? "-" : `${row.daysUntilStockout} hari`}
+												</p>
+											</td>
+											<td className="px-3 py-2 text-muted-foreground">
+												ROP {row.reorderPoint} · Order {row.suggestedOrderQty}
+											</td>
+										</tr>
+									);
+								})}
+								{stockoutRows.length === 0 && (
+									<tr>
+										<td className="p-6 text-center text-muted-foreground" colSpan={4}>
+											Belum ada data prediksi.
+										</td>
+									</tr>
+								)}
+							</tbody>
+						</table>
+					)}
+					{data && activeSection === "supplier" && (
+						<table className="w-full table-fixed text-left text-[11px]">
+							<thead className="bg-muted/30">
+								<tr className="border-border border-b text-muted-foreground">
+									<th className="px-3 py-2 font-semibold">Bahan</th>
+									<th className="px-3 py-2 font-semibold">Harga Terakhir</th>
+									<th className="px-3 py-2 font-semibold">Supplier Rekomendasi</th>
+									<th className="px-3 py-2 font-semibold">Potensi Hemat</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-border">
+								{supplierRows.map((row) => (
+									<tr className="hover:bg-muted/20" key={row.inventoryId}>
+										<td className="px-3 py-2 font-semibold text-foreground">{row.ingredientName}</td>
+										<td className="px-3 py-2 text-muted-foreground">
+											{formatCurrency(row.lastPrice)}
+											<p className="text-[10px]">{row.lastStoreName || "Tanpa toko"}</p>
+										</td>
+										<td className="px-3 py-2 text-muted-foreground">
+											{row.recommendedStoreName || "-"}
+											<p className="text-[10px]">{formatCurrency(row.recommendedPrice)}</p>
+										</td>
+										<td className="px-3 py-2 font-semibold text-emerald-700">
+											{formatCurrency(row.potentialSavings)}
+										</td>
+									</tr>
+								))}
+								{supplierRows.length === 0 && (
+									<tr>
+										<td className="p-6 text-center text-muted-foreground" colSpan={4}>
+											Belum ada insight supplier.
+										</td>
+									</tr>
+								)}
+							</tbody>
+						</table>
+					)}
+					{data && activeSection === "anomaly" && (
+						<table className="w-full table-fixed text-left text-[11px]">
+							<thead className="bg-muted/30">
+								<tr className="border-border border-b text-muted-foreground">
+									<th className="px-3 py-2 font-semibold">Bahan</th>
+									<th className="px-3 py-2 font-semibold">Perubahan 7d vs 30d</th>
+									<th className="px-3 py-2 font-semibold">Keterangan</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-border">
+								{anomalyRows.map((row) => (
+									<tr className="hover:bg-muted/20" key={row.inventoryId}>
+										<td className="px-3 py-2 font-semibold text-foreground">{row.ingredientName}</td>
+										<td className="px-3 py-2 text-muted-foreground">
+											7d {row.avgDailyUsage7d}/hari · 30d {row.avgDailyUsage30d}/hari
+										</td>
+										<td className="px-3 py-2 text-muted-foreground">{row.reason}</td>
+									</tr>
+								))}
+								{anomalyRows.length === 0 && (
+									<tr>
+										<td className="p-6 text-center text-muted-foreground" colSpan={3}>
+											Belum ada anomali terdeteksi.
+										</td>
+									</tr>
+								)}
+							</tbody>
+						</table>
+					)}
 				</div>
 			</div>
 		</div>
@@ -2787,6 +2947,7 @@ function InventoryTable({
 	const updateItemMutation = useMutation(api.inventory.updateInventoryItem);
 	const applyStockAction = useMutation(api.inventory.applyInventoryStockAction);
 	const createItemMutation = useMutation(api.inventory.createInventoryItem);
+	const suggestInventoryAutofill = useAction(api.inventory.suggestInventoryAutofill);
 	const quickAddNameRef = useRef<HTMLInputElement | null>(null);
 	const [savingKey, setSavingKey] = useState<string | null>(null);
 	const [saveStateByRow, setSaveStateByRow] = useState<
@@ -2884,29 +3045,49 @@ function InventoryTable({
 		});
 	};
 
-	const applySuggestionFromExisting = (ingredientName: string) => {
-		const keyword = ingredientName.trim().toLowerCase();
+	const applySuggestionFromExisting = (
+		ingredientName: string,
+		options?: { silent?: boolean }
+	) => {
+		const keyword = normalizeLookupText(ingredientName);
 		if (!keyword) {
 			return;
 		}
-		const matched = inventoryItems.find(
-			(item) => item.ingredientName.trim().toLowerCase() === keyword
-		);
-		if (!matched) {
+		const matched = [...inventoryItems]
+			.map((item) => ({
+				item,
+				score: getNameMatchScore(
+					keyword,
+					normalizeLookupText(item.ingredientName || "")
+				),
+			}))
+			.sort((left, right) => right.score - left.score)[0];
+		if (!matched || matched.score < 60) {
+			if (ingredientName.trim() && !options?.silent) {
+				toast.message("Belum ada referensi item mirip untuk autofill");
+			}
 			return;
 		}
+		const source = matched.item;
 		setQuickAdd((prev) => ({
 			...prev,
-			defaultBrandName: prev.defaultBrandName || matched.defaultBrandName || "",
-			unit: matched.unit || prev.unit,
+			defaultBrandName: prev.defaultBrandName || source.defaultBrandName || "",
+			unit: source.unit || prev.unit,
+			lowStockThreshold:
+				prev.lowStockThreshold && prev.lowStockThreshold !== "0"
+					? prev.lowStockThreshold
+					: String(source.lowStockThreshold ?? 100),
 			unitConversionsText:
 				prev.unitConversionsText ||
 				formatUnitConversionsText(
-					matched.unitConversions,
-					matched.displayUnit,
-					matched.conversionFactor
+					source.unitConversions,
+					source.displayUnit,
+					source.conversionFactor
 				),
 		}));
+		if (!options?.silent) {
+			toast.success(`Autofill dari referensi "${source.ingredientName}"`);
+		}
 	};
 
 	const getInlineValue = (row: InventoryWorkspaceRow) =>
@@ -3151,6 +3332,64 @@ function InventoryTable({
 		}
 	};
 
+	const quickAutofillFromAI = async () => {
+		const ingredientName = quickAdd.ingredientName.trim();
+		if (!ingredientName) {
+			toast.error("Isi nama bahan dulu sebelum autofill AI");
+			return;
+		}
+		try {
+			setSavingKey("quick-ai");
+			const result = (await suggestInventoryAutofill({
+				ingredientName,
+			})) as {
+				ok: boolean;
+				message: string;
+				suggestion: {
+					unit: string;
+					lowStockThreshold: number;
+					defaultBrandName: string;
+					displayUnit: string;
+					conversionFactor: number | null;
+					unitConversionsText: string;
+					confidence: number;
+					reason: string;
+				} | null;
+				sources: Array<{ title: string; url: string; snippet: string }>;
+			};
+			if (!result.ok || !result.suggestion) {
+				toast.error(result.message || "Autofill AI belum menemukan saran");
+				return;
+			}
+			const suggestion = result.suggestion;
+			setQuickAdd((prev) => ({
+				...prev,
+				unit: normalizeUnitOption(suggestion.unit) || prev.unit,
+				lowStockThreshold:
+					prev.lowStockThreshold && prev.lowStockThreshold !== "0"
+						? prev.lowStockThreshold
+						: String(suggestion.lowStockThreshold || 100),
+				defaultBrandName: prev.defaultBrandName || suggestion.defaultBrandName || "",
+				displayUnit: prev.displayUnit || suggestion.displayUnit || "",
+				conversionFactor:
+					prev.conversionFactor ||
+					(suggestion.conversionFactor != null
+						? String(suggestion.conversionFactor)
+						: ""),
+				unitConversionsText:
+					prev.unitConversionsText || suggestion.unitConversionsText || "",
+			}));
+			const confidencePercent = Math.round(suggestion.confidence * 100);
+			toast.success(`Autofill AI ${confidencePercent}%: ${suggestion.reason}`);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Autofill AI gagal dijalankan";
+			toast.error(message);
+		} finally {
+			setSavingKey(null);
+		}
+	};
+
 	const getStatusMeta = (status: InventoryWorkspaceRow["status"]) => {
 		if (status === "critical") {
 			return {
@@ -3269,7 +3508,9 @@ function InventoryTable({
 									ref={quickAddNameRef}
 									className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
 									list="inventory-name-suggestions"
-									onBlur={(e) => applySuggestionFromExisting(e.target.value)}
+									onBlur={(e) =>
+										applySuggestionFromExisting(e.target.value, { silent: true })
+									}
 									onChange={(e) =>
 										setQuickAdd((prev) => ({
 											...prev,
@@ -3388,14 +3629,24 @@ function InventoryTable({
 								<div className="text-[10px] text-muted-foreground">-</div>
 							</td>
 							<td className="px-2 py-1.5 text-right">
-								<button
-									className="rounded-lg bg-primary px-2.5 py-1 text-[10px] font-bold text-primary-foreground hover:brightness-110"
-									disabled={savingKey === "quick-add"}
-									onClick={() => void quickCreate()}
-									type="button"
-								>
-									{savingKey === "quick-add" ? "Menyimpan..." : "Tambah Baris"}
-								</button>
+								<div className="flex items-center justify-end gap-1.5">
+									<button
+										className="rounded-lg border border-border bg-background px-2 py-1 text-[10px] font-semibold text-foreground hover:bg-muted"
+										disabled={savingKey === "quick-ai"}
+										onClick={() => void quickAutofillFromAI()}
+										type="button"
+									>
+										{savingKey === "quick-ai" ? "AI mencari..." : "Autofill AI"}
+									</button>
+									<button
+										className="rounded-lg bg-primary px-2.5 py-1 text-[10px] font-bold text-primary-foreground hover:brightness-110"
+										disabled={savingKey === "quick-add"}
+										onClick={() => void quickCreate()}
+										type="button"
+									>
+										{savingKey === "quick-add" ? "Menyimpan..." : "Tambah Baris"}
+									</button>
+								</div>
 							</td>
 						</tr>
 						{inventoryMap.size === 0 &&

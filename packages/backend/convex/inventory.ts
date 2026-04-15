@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { api } from "./_generated/api";
 import type { MutationCtx } from "./_generated/server";
-import { internalMutation, mutation, query } from "./_generated/server";
+import { action, internalMutation, mutation, query } from "./_generated/server";
 
 type StockActionArgs = {
 	inventoryId: Id<"inventory">;
@@ -125,6 +125,93 @@ function normalizeAliasList(input?: string[]) {
 		return undefined;
 	}
 	return [...dedup.values()].sort((a, b) => a.localeCompare(b, "id-ID"));
+}
+
+function normalizeLookupText(input?: string | null) {
+	return (input || "")
+		.toLowerCase()
+		.normalize("NFKD")
+		.replace(/[^\w\s]/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
+}
+
+function scoreNameMatch(keyword: string, candidate: string) {
+	if (!keyword || !candidate) {
+		return 0;
+	}
+	if (keyword === candidate) {
+		return 100;
+	}
+	if (candidate.startsWith(keyword) || keyword.startsWith(candidate)) {
+		return 88;
+	}
+	if (candidate.includes(keyword) || keyword.includes(candidate)) {
+		return 72;
+	}
+	const keyTokens = keyword.split(" ").filter(Boolean);
+	const candidateTokens = new Set(candidate.split(" ").filter(Boolean));
+	if (keyTokens.length === 0) {
+		return 0;
+	}
+	let overlap = 0;
+	for (const token of keyTokens) {
+		if (candidateTokens.has(token)) {
+			overlap += 1;
+		}
+	}
+	return Math.round((overlap / keyTokens.length) * 60);
+}
+
+function parseMeasurementValue(raw: string) {
+	const cleaned = raw.replace(",", ".").trim();
+	const value = Number(cleaned);
+	if (!Number.isFinite(value) || value <= 0) {
+		return null;
+	}
+	return value;
+}
+
+function inferUnitFromQuantityText(quantityText?: string | null) {
+	const quantity = (quantityText || "").toLowerCase().trim();
+	if (!quantity) {
+		return null;
+	}
+
+	const multiPackMatch = quantity.match(
+		/(\d+(?:[.,]\d+)?)\s*[xX]\s*(\d+(?:[.,]\d+)?)\s*(ml|l|liter|litre|g|gr|gram|kg)/i
+	);
+	if (multiPackMatch) {
+		const packCount = parseMeasurementValue(multiPackMatch[1]);
+		const eachAmount = parseMeasurementValue(multiPackMatch[2]);
+		const eachUnit = normalizeUnitLabel(multiPackMatch[3]);
+		if (packCount && eachAmount && eachUnit) {
+			return {
+				unit: "pcs",
+				displayUnit: eachUnit,
+				conversionFactor: eachAmount,
+				unitConversionsText: packCount >= 2 ? `pack:${packCount}` : "",
+			};
+		}
+	}
+
+	const measurementMatch = quantity.match(
+		/(\d+(?:[.,]\d+)?)\s*(ml|l|liter|litre|g|gr|gram|kg)/i
+	);
+	if (measurementMatch) {
+		const amount = parseMeasurementValue(measurementMatch[1]);
+		const normalizedUnit = normalizeUnitLabel(measurementMatch[2]);
+		if (amount && normalizedUnit) {
+			return {
+				unit: normalizedUnit,
+				displayUnit: "",
+				conversionFactor: null,
+				unitConversionsText: "",
+			};
+		}
+	}
+
+	return null;
 }
 
 function snapshotInventoryItem(item: Doc<"inventory">): InventoryAuditSnapshot {
@@ -1955,6 +2042,142 @@ export const getInventoryYumiAiInsights = query({
 				anomalyCount: usageAnomalies.length,
 				refreshedAt: now,
 			},
+		};
+	},
+});
+
+export const suggestInventoryAutofill = action({
+	args: {
+		ingredientName: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const ingredientName = args.ingredientName.trim();
+		if (!ingredientName) {
+			return {
+				ok: false,
+				message: "Nama bahan wajib diisi",
+				suggestion: null,
+				sources: [] as Array<{ title: string; url: string; snippet: string }>,
+			};
+		}
+
+		const keyword = normalizeLookupText(ingredientName);
+		const inventory: Array<Doc<"inventory">> = await ctx.runQuery(
+			api.inventory.getInventory,
+			{}
+		);
+
+		const internalMatch = inventory
+			.map((item) => ({
+				item,
+				score: scoreNameMatch(keyword, normalizeLookupText(item.ingredientName)),
+			}))
+			.sort((left, right) => right.score - left.score)[0];
+
+		let webCandidates: Array<{
+			name: string;
+			brand: string;
+			quantity: string;
+			score: number;
+			url: string;
+		}> = [];
+		try {
+			const response = await fetch(
+				`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(
+					ingredientName
+				)}&search_simple=1&action=process&json=1&page_size=12`
+			);
+			if (response.ok) {
+				const json = (await response.json()) as {
+					products?: Array<{
+						product_name?: string;
+						brands?: string;
+						quantity?: string;
+						url?: string;
+					}>;
+				};
+				webCandidates = (json.products ?? [])
+					.map((product) => {
+						const name = (product.product_name || "").trim();
+						const brand = (product.brands || "").split(",")[0]?.trim() || "";
+						const quantity = (product.quantity || "").trim();
+						return {
+							name,
+							brand,
+							quantity,
+							url: product.url || "https://world.openfoodfacts.org",
+							score: scoreNameMatch(keyword, normalizeLookupText(name)),
+						};
+					})
+					.filter((row) => row.name && row.score > 0)
+					.sort((left, right) => right.score - left.score)
+					.slice(0, 5);
+			}
+		} catch {
+			// Ignore network errors and keep internal-only suggestion.
+		}
+
+		const bestWeb = webCandidates[0];
+		const webInference = inferUnitFromQuantityText(bestWeb?.quantity);
+
+		const internalConversionsText = internalMatch?.item
+			? (internalMatch.item.unitConversions ?? [])
+					.map((row) => `${normalizeUnitLabel(row.unit)}:${Number(row.factor)}`)
+					.join(", ")
+			: "";
+
+		const suggestion = {
+			ingredientName,
+			unit:
+				internalMatch?.score >= 60
+					? normalizeUnitLabel(internalMatch.item.unit)
+					: webInference?.unit || "gram",
+			lowStockThreshold:
+				internalMatch?.score >= 60
+					? internalMatch.item.lowStockThreshold
+					: webInference?.unit === "pcs"
+						? 10
+						: 100,
+			defaultBrandName:
+				(internalMatch?.score >= 60
+					? internalMatch.item.defaultBrandName
+					: null) ||
+				bestWeb?.brand ||
+				"",
+			displayUnit:
+				(internalMatch?.score >= 60
+					? normalizeUnitLabel(internalMatch.item.displayUnit)
+					: "") || webInference?.displayUnit || "",
+			conversionFactor:
+				(internalMatch?.score >= 60
+					? internalMatch.item.conversionFactor
+					: null) ?? webInference?.conversionFactor ?? null,
+			unitConversionsText:
+				internalConversionsText || webInference?.unitConversionsText || "",
+			confidence: Math.min(
+				0.98,
+				Math.max(
+					0.35,
+					Math.max((internalMatch?.score ?? 0) / 100, (bestWeb?.score ?? 0) / 100)
+				)
+			),
+			reason:
+				internalMatch?.score >= 60
+					? `Autofill dari histori item mirip: ${internalMatch.item.ingredientName}`
+					: bestWeb
+						? `Autofill dari web (${bestWeb.name}${bestWeb.quantity ? `, ${bestWeb.quantity}` : ""})`
+						: "Autofill default dasar",
+		};
+
+		return {
+			ok: true,
+			message: "Saran autofill berhasil dibuat",
+			suggestion,
+			sources: webCandidates.map((row) => ({
+				title: row.name,
+				url: row.url,
+				snippet: `${row.brand || "brand tidak diketahui"}${row.quantity ? ` • ${row.quantity}` : ""}`,
+			})),
 		};
 	},
 });
