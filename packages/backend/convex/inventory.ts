@@ -214,6 +214,22 @@ function inferUnitFromQuantityText(quantityText?: string | null) {
 	return null;
 }
 
+function inferInventoryCategory(ingredientName: string) {
+	const name = normalizeLookupText(ingredientName);
+	const rules: Array<{ category: string; keywords: string[] }> = [
+		{ category: "beverage", keywords: ["air", "milk", "susu", "juice", "kopi", "coffee", "tea", "teh"] },
+		{ category: "protein", keywords: ["ayam", "daging", "ikan", "egg", "telur"] },
+		{ category: "powder", keywords: ["powder", "bubuk", "flour", "tepung", "gula", "salt", "garam"] },
+		{ category: "packaging", keywords: ["cup", "gelas", "tutup", "straw", "sedotan", "plastic", "plastik"] },
+	];
+	for (const rule of rules) {
+		if (rule.keywords.some((keyword) => name.includes(keyword))) {
+			return rule.category;
+		}
+	}
+	return "general";
+}
+
 function snapshotInventoryItem(item: Doc<"inventory">): InventoryAuditSnapshot {
 	return {
 		ingredientName: item.ingredientName,
@@ -2057,6 +2073,8 @@ export const suggestInventoryAutofill = action({
 				ok: false,
 				message: "Nama bahan wajib diisi",
 				suggestion: null,
+				fallbackPath: [] as string[],
+				refreshedAt: Date.now(),
 				sources: [] as Array<{ title: string; url: string; snippet: string }>,
 			};
 		}
@@ -2118,7 +2136,9 @@ export const suggestInventoryAutofill = action({
 		}
 
 		const bestWeb = webCandidates[0];
+		const secondWeb = webCandidates[1];
 		const webInference = inferUnitFromQuantityText(bestWeb?.quantity);
+		const inferredCategory = inferInventoryCategory(ingredientName);
 
 		const internalConversionsText = internalMatch?.item
 			? (internalMatch.item.unitConversions ?? [])
@@ -2126,34 +2146,41 @@ export const suggestInventoryAutofill = action({
 					.join(", ")
 			: "";
 
+		const hasInternalExact = (internalMatch?.score ?? 0) >= 92;
+		const hasInternalFuzzy = (internalMatch?.score ?? 0) >= 60;
+		const hasWeb = Boolean(bestWeb);
+		const fallbackPath = [
+			hasInternalExact ? "internal_exact" : hasInternalFuzzy ? "internal_fuzzy" : "internal_none",
+			hasWeb ? "web_hit" : "web_none",
+			"default_template",
+		];
+
 		const suggestion = {
 			ingredientName,
-			unit:
-				internalMatch?.score >= 60
-					? normalizeUnitLabel(internalMatch.item.unit)
-					: webInference?.unit || "gram",
-			lowStockThreshold:
-				internalMatch?.score >= 60
-					? internalMatch.item.lowStockThreshold
-					: webInference?.unit === "pcs"
-						? 10
+			unit: hasInternalFuzzy
+				? normalizeUnitLabel(internalMatch.item.unit)
+				: webInference?.unit || "gram",
+			lowStockThreshold: hasInternalFuzzy
+				? internalMatch.item.lowStockThreshold
+				: webInference?.unit === "pcs"
+					? 10
+					: inferredCategory === "beverage"
+						? 30
 						: 100,
 			defaultBrandName:
-				(internalMatch?.score >= 60
-					? internalMatch.item.defaultBrandName
-					: null) ||
+				(hasInternalFuzzy ? internalMatch.item.defaultBrandName : null) ||
 				bestWeb?.brand ||
 				"",
 			displayUnit:
-				(internalMatch?.score >= 60
-					? normalizeUnitLabel(internalMatch.item.displayUnit)
-					: "") || webInference?.displayUnit || "",
+				(hasInternalFuzzy ? normalizeUnitLabel(internalMatch.item.displayUnit) : "") ||
+				webInference?.displayUnit ||
+				"",
 			conversionFactor:
-				(internalMatch?.score >= 60
-					? internalMatch.item.conversionFactor
-					: null) ?? webInference?.conversionFactor ?? null,
-			unitConversionsText:
-				internalConversionsText || webInference?.unitConversionsText || "",
+				(hasInternalFuzzy ? internalMatch.item.conversionFactor : null) ??
+				webInference?.conversionFactor ??
+				null,
+			unitConversionsText: internalConversionsText || webInference?.unitConversionsText || "",
+			category: inferredCategory,
 			confidence: Math.min(
 				0.98,
 				Math.max(
@@ -2161,27 +2188,76 @@ export const suggestInventoryAutofill = action({
 					Math.max((internalMatch?.score ?? 0) / 100, (bestWeb?.score ?? 0) / 100)
 				)
 			),
-			reason:
-				internalMatch?.score >= 60
-					? `Autofill dari histori item mirip: ${internalMatch.item.ingredientName}`
+			fieldConfidence: {
+				unit: Math.min(
+					0.99,
+					Math.max(
+						0.35,
+						hasInternalFuzzy
+							? (internalMatch?.score ?? 0) / 100
+							: (bestWeb?.score ?? 0) / 110
+					)
+				),
+				lowStockThreshold: hasInternalFuzzy ? 0.86 : inferredCategory === "general" ? 0.55 : 0.68,
+				defaultBrandName: hasInternalFuzzy ? 0.8 : bestWeb?.brand ? 0.7 : 0.35,
+				conversion: hasInternalFuzzy
+					? internalConversionsText
+						? 0.9
+						: 0.65
+					: webInference
+						? 0.72
+						: 0.3,
+			},
+			fieldReason: {
+				unit: hasInternalFuzzy
+					? `Diambil dari histori item mirip (${internalMatch?.item.ingredientName})`
 					: bestWeb
-						? `Autofill dari web (${bestWeb.name}${bestWeb.quantity ? `, ${bestWeb.quantity}` : ""})`
-						: "Autofill default dasar",
+						? `Infer dari quantity web: ${bestWeb.quantity || "-"}`
+						: "Fallback default template",
+				lowStockThreshold: hasInternalFuzzy
+					? "Mengikuti threshold item historis mirip"
+					: `Template kategori ${inferredCategory}`,
+				defaultBrandName: hasInternalFuzzy
+					? "Brand dari histori item mirip"
+					: bestWeb?.brand
+						? "Brand dari data web"
+						: "Belum ada referensi brand",
+				conversion: hasInternalFuzzy
+					? internalConversionsText
+						? "Konversi dari histori item mirip"
+						: "Konversi internal belum lengkap"
+					: webInference
+						? "Infer konversi dari kemasan web"
+						: "Belum ada referensi konversi",
+			},
+			conflictWarning:
+				Boolean(bestWeb && secondWeb && Math.abs(bestWeb.score - secondWeb.score) <= 5) &&
+				bestWeb.quantity &&
+				secondWeb.quantity &&
+				bestWeb.quantity !== secondWeb.quantity
+					? "Data web memiliki lebih dari satu kandidat kuat dengan kemasan berbeda"
+					: null,
+			reason: hasInternalFuzzy
+				? `Autofill dari histori item mirip: ${internalMatch.item.ingredientName}`
+				: bestWeb
+					? `Autofill dari web (${bestWeb.name}${bestWeb.quantity ? `, ${bestWeb.quantity}` : ""})`
+					: "Autofill default dasar",
 		};
 
 		return {
 			ok: true,
 			message: "Saran autofill berhasil dibuat",
 			suggestion,
+			fallbackPath,
+			refreshedAt: Date.now(),
 			sources: webCandidates.map((row) => ({
 				title: row.name,
 				url: row.url,
-				snippet: `${row.brand || "brand tidak diketahui"}${row.quantity ? ` â€¢ ${row.quantity}` : ""}`,
+				snippet: `${row.brand || "brand tidak diketahui"}${row.quantity ? ` • ${row.quantity}` : ""}`,
 			})),
 		};
 	},
 });
-
 export const setInventoryReferencePrice = mutation({
 	args: {
 		inventoryId: v.id("inventory"),

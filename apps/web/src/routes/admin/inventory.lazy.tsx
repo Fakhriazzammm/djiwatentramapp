@@ -12,7 +12,6 @@ import {
 	ArrowUp,
 	Edit,
 	History,
-	MoreHorizontal,
 	PackageSearch,
 	PanelRight,
 	Minus,
@@ -24,12 +23,6 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
@@ -219,7 +212,21 @@ type InventoryAutofillSuggestion = {
 	displayUnit: string;
 	conversionFactor: number | null;
 	unitConversionsText: string;
+	category?: string;
 	confidence: number;
+	fieldConfidence?: {
+		unit: number;
+		lowStockThreshold: number;
+		defaultBrandName: number;
+		conversion: number;
+	};
+	fieldReason?: {
+		unit: string;
+		lowStockThreshold: string;
+		defaultBrandName: string;
+		conversion: string;
+	};
+	conflictWarning?: string | null;
 	reason: string;
 };
 
@@ -227,6 +234,8 @@ type InventoryAutofillActionResult = {
 	ok: boolean;
 	message: string;
 	suggestion: InventoryAutofillSuggestion | null;
+	fallbackPath?: string[];
+	refreshedAt?: number;
 	sources: Array<{ title: string; url: string; snippet: string }>;
 };
 
@@ -345,6 +354,41 @@ function getNameMatchScore(keyword: string, candidate: string) {
 		}
 	}
 	return Math.round((overlap / keywordTokens.length) * 60);
+}
+
+const AUTOFILL_CACHE_KEY = "inventory:ai-autofill-cache:v2";
+const AUTOFILL_LEARN_KEY = "inventory:ai-learned-profile:v2";
+const AUTOFILL_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+type AutofillCacheEntry = {
+	updatedAt: number;
+	result: InventoryAutofillActionResult;
+};
+
+function readJsonStorage<T>(key: string): T | null {
+	if (typeof window === "undefined") {
+		return null;
+	}
+	try {
+		const raw = window.localStorage.getItem(key);
+		if (!raw) {
+			return null;
+		}
+		return JSON.parse(raw) as T;
+	} catch {
+		return null;
+	}
+}
+
+function writeJsonStorage<T>(key: string, value: T) {
+	if (typeof window === "undefined") {
+		return;
+	}
+	try {
+		window.localStorage.setItem(key, JSON.stringify(value));
+	} catch {
+		// ignore quota/storage errors
+	}
 }
 
 function formatCurrency(value?: number | null) {
@@ -559,13 +603,14 @@ function InventoryPage() {
 		null
 	);
 	const [actionType, setActionType] = useState<
-		"add" | "usage" | "history" | "create" | "edit" | "adjust" | "delete" | "batchInfo" | null
+		"add" | "usage" | "history" | "create" | "edit" | "adjust" | "delete" | null
 	>(null);
 	const [amount, setAmount] = useState("");
 	const [filterLowStock, setFilterLowStock] = useState(false);
 	const [advancedFilter, setAdvancedFilter] = useState<
 		"all" | "priceUp" | "missingConversion"
 	>("all");
+	const [tableMode, setTableMode] = useState<"simple" | "detail">("simple");
 	const [viewPreset, setViewPreset] = useState<InventoryViewPreset>("operational");
 	const [addRowSignal, setAddRowSignal] = useState(0);
 	const [detailItem, setDetailItem] = useState<Doc<"inventory"> | null>(null);
@@ -689,7 +734,7 @@ function InventoryPage() {
 				.toLowerCase()
 				.includes(query);
 			const matchesFilter = filterLowStock
-				? row.currentStock <= row.lowStockThreshold
+				? row.status === "critical" || row.currentStock <= row.lowStockThreshold
 				: true;
 			const matchesPreset = viewPreset === "operational";
 			const missingConversion =
@@ -1027,8 +1072,10 @@ function InventoryPage() {
 				onAdvancedFilterChange={setAdvancedFilter}
 				onFilterLowStockChange={setFilterLowStock}
 				onSearchQueryChange={setSearchQuery}
+				onTableModeChange={setTableMode}
 				onViewPresetChange={setViewPreset}
 				searchQuery={searchQuery}
+				tableMode={tableMode}
 				viewPreset={viewPreset}
 			/>
 
@@ -1049,6 +1096,7 @@ function InventoryPage() {
 					onSelectedItemChange={setSelectedItem}
 					onSort={handleSort}
 					sortConfig={sortConfig}
+					tableMode={tableMode}
 					unitOptions={unitOptions}
 					viewPreset={viewPreset}
 				/>
@@ -1091,15 +1139,6 @@ function InventoryPage() {
 				/>
 			)}
 
-			{selectedItem && actionType === "batchInfo" && (
-				<InventoryBatchModal
-					item={selectedItem}
-					onClose={() => {
-						setSelectedItem(null);
-						setActionType(null);
-					}}
-				/>
-			)}
 			{detailItem && (
 				<InventoryDetailDrawer
 					item={detailItem}
@@ -1151,7 +1190,6 @@ function InventoryModalContent({
 		| "delete"
 		| "create"
 		| "history"
-		| "batchInfo"
 		| null;
 	onActionTypeChange: (
 		type:
@@ -1162,7 +1200,6 @@ function InventoryModalContent({
 			| "delete"
 			| "create"
 			| "history"
-			| "batchInfo"
 			| null
 	) => void;
 	newItem: {
@@ -1745,7 +1782,6 @@ function InventoryActionModal({
 		| "delete"
 		| "create"
 		| "history"
-		| "batchInfo"
 		| null;
 	onActionTypeChange: (
 		type:
@@ -1756,7 +1792,6 @@ function InventoryActionModal({
 			| "delete"
 			| "create"
 			| "history"
-			| "batchInfo"
 			| null
 	) => void;
 	newItem: {
@@ -2019,7 +2054,6 @@ function InventoryPlanningPanel({
 			| "adjust"
 			| "delete"
 			| "history"
-			| "batchInfo"
 			| "create"
 			| null
 	) => void;
@@ -2171,6 +2205,9 @@ function InventoryDetailDrawer({
 	onClose: () => void;
 }) {
 	const impact = useQuery(api.inventory.getInventoryItemImpact, {
+		inventoryId: item._id,
+	});
+	const batches = useQuery(api.inventory.getInventoryItemBatches, {
 		inventoryId: item._id,
 	});
 	const priceInsights = useQuery(api.inventory.getInventoryPriceInsights, {
@@ -2404,6 +2441,50 @@ function InventoryDetailDrawer({
 							<p className="text-sm text-muted-foreground">Belum ada produk terkait.</p>
 						)}
 					</div>
+				</div>
+
+				<div className="mb-4 rounded-2xl border border-border p-4">
+					<p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+						Info Batch FIFO
+					</p>
+					<div className="overflow-hidden rounded-xl border border-border">
+						<table className="w-full text-left text-xs">
+							<thead className="bg-muted/40">
+								<tr className="border-border border-b text-muted-foreground">
+									<th className="px-3 py-2 font-semibold">Tanggal Masuk</th>
+									<th className="px-3 py-2 font-semibold">Harga/Unit</th>
+									<th className="px-3 py-2 text-right font-semibold">Sisa Stok</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-border">
+								{batches?.map((batch: any) => (
+									<tr key={batch._id}>
+										<td className="px-3 py-2 text-foreground">
+											{new Date(batch.timestamp).toLocaleDateString("id-ID", {
+												dateStyle: "medium",
+											})}
+										</td>
+										<td className="px-3 py-2 text-foreground">
+											{batch.costPerUnit ? formatCurrency(batch.costPerUnit) : "-"}
+										</td>
+										<td className="px-3 py-2 text-right font-semibold text-foreground">
+											{batch.remainingQuantity} {item.unit}
+										</td>
+									</tr>
+								))}
+								{(batches?.length ?? 0) === 0 && (
+									<tr>
+										<td className="px-3 py-6 text-center text-muted-foreground" colSpan={3}>
+											Tidak ada batch aktif.
+										</td>
+									</tr>
+								)}
+							</tbody>
+						</table>
+					</div>
+					<p className="mt-2 text-[11px] text-muted-foreground">
+						FIFO: pemakaian otomatis mengurangi batch paling lama lebih dulu.
+					</p>
 				</div>
 
 				<div className="rounded-2xl border border-border p-4">
@@ -2918,6 +2999,7 @@ function InventoryTable({
 	filteredRows,
 	onSort,
 	sortConfig,
+	tableMode,
 	onSelectedItemChange,
 	onDetailItemChange,
 	onActionTypeChange,
@@ -2944,6 +3026,7 @@ function InventoryTable({
 			| "daysUntilStockout";
 		direction: "asc" | "desc";
 	};
+	tableMode: "simple" | "detail";
 	onSelectedItemChange: (item: Doc<"inventory">) => void;
 	onDetailItemChange: (item: Doc<"inventory">) => void;
 	onActionTypeChange: (
@@ -2954,7 +3037,6 @@ function InventoryTable({
 			| "adjust"
 			| "delete"
 			| "history"
-			| "batchInfo"
 			| "create"
 			| null
 	) => void;
@@ -2971,6 +3053,22 @@ function InventoryTable({
 	const [saveStateByRow, setSaveStateByRow] = useState<
 		Record<string, "idle" | "saving" | "saved" | "error">
 	>({});
+	const [aiReview, setAiReview] = useState<{
+		row: InventoryWorkspaceRow;
+		item: Doc<"inventory">;
+		result: InventoryAutofillActionResult;
+	} | null>(null);
+	const [aiFieldApply, setAiFieldApply] = useState<{
+		unit: boolean;
+		lowStockThreshold: boolean;
+		defaultBrandName: boolean;
+		conversion: boolean;
+	}>({
+		unit: true,
+		lowStockThreshold: true,
+		defaultBrandName: true,
+		conversion: true,
+	});
 	const inventoryItems = useMemo(() => [...inventoryMap.values()], [inventoryMap]);
 	const [inlineValues, setInlineValues] = useState<
 		Record<
@@ -2997,6 +3095,62 @@ function InventoryTable({
 		conversionFactor: "",
 		unitConversionsText: "",
 	});
+
+	const getCachedAutofill = (ingredientName: string) => {
+		const cache = readJsonStorage<Record<string, AutofillCacheEntry>>(AUTOFILL_CACHE_KEY) ?? {};
+		const key = normalizeLookupText(ingredientName);
+		const hit = cache[key];
+		if (!hit) {
+			return null;
+		}
+		if (Date.now() - hit.updatedAt > AUTOFILL_CACHE_MAX_AGE_MS) {
+			return null;
+		}
+		return hit.result;
+	};
+
+	const saveCachedAutofill = (ingredientName: string, result: InventoryAutofillActionResult) => {
+		const cache = readJsonStorage<Record<string, AutofillCacheEntry>>(AUTOFILL_CACHE_KEY) ?? {};
+		const key = normalizeLookupText(ingredientName);
+		cache[key] = {
+			updatedAt: Date.now(),
+			result,
+		};
+		writeJsonStorage(AUTOFILL_CACHE_KEY, cache);
+	};
+
+	const getLearnedProfile = (ingredientName: string) => {
+		const learned = readJsonStorage<
+			Record<
+				string,
+				{
+					unit: string;
+					lowStockThreshold: number;
+					defaultBrandName: string;
+					displayUnit: string;
+					conversionFactor: string;
+					unitConversionsText: string;
+				}
+			>
+		>(AUTOFILL_LEARN_KEY) ?? {};
+		return learned[normalizeLookupText(ingredientName)] ?? null;
+	};
+
+	const saveLearnedProfile = (
+		ingredientName: string,
+		payload: {
+			unit: string;
+			lowStockThreshold: number;
+			defaultBrandName: string;
+			displayUnit: string;
+			conversionFactor: string;
+			unitConversionsText: string;
+		}
+	) => {
+		const learned = readJsonStorage<Record<string, typeof payload>>(AUTOFILL_LEARN_KEY) ?? {};
+		learned[normalizeLookupText(ingredientName)] = payload;
+		writeJsonStorage(AUTOFILL_LEARN_KEY, learned);
+	};
 
 	useEffect(() => {
 		quickAddNameRef.current?.focus();
@@ -3249,6 +3403,14 @@ function InventoryTable({
 				defaultBrandName: current.defaultBrandName.trim() || undefined,
 				preferredStoreId: item.preferredStoreId || undefined,
 			});
+			saveLearnedProfile(ingredientName, {
+				unit: normalizedUnit,
+				lowStockThreshold: lowStockThresholdNum,
+				defaultBrandName: current.defaultBrandName.trim(),
+				displayUnit: (current.displayUnit || "").trim(),
+				conversionFactor: (current.conversionFactor || "").trim(),
+				unitConversionsText: (current.unitConversionsText || "").trim(),
+			});
 			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
 		} catch (error) {
 			const message =
@@ -3296,38 +3458,6 @@ function InventoryTable({
 		}
 	};
 
-	const quickDelta = async (
-		row: InventoryWorkspaceRow,
-		direction: "add" | "usage",
-		amount = 1
-	) => {
-		if (direction === "usage" && row.currentStock <= 0) {
-			return;
-		}
-		const item = inventoryMap.get(row.inventoryId);
-		if (!item) {
-			return;
-		}
-		try {
-			setSavingKey(`${row.inventoryId}:delta`);
-			await applyStockAction({
-				inventoryId: item._id,
-				action: direction,
-				quantity: amount,
-				notes:
-					direction === "add"
-						? `Quick +${amount} from table`
-						: `Quick -${amount} from table`,
-			});
-		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : "Gagal update stok cepat";
-			toast.error(message);
-		} finally {
-			setSavingKey(null);
-		}
-	};
-
 	const quickCreate = async () => {
 		try {
 			setSavingKey("quick-add");
@@ -3350,10 +3480,57 @@ function InventoryTable({
 		}
 	};
 
-	const requestAutofillSuggestion = async (ingredientName: string) => {
-		return (await suggestInventoryAutofill({
+	const requestAutofillSuggestion = async (
+		ingredientName: string,
+		options?: { forceRefresh?: boolean }
+	) => {
+		const learned = getLearnedProfile(ingredientName);
+		if (learned && !options?.forceRefresh) {
+			return {
+				ok: true,
+				message: "Saran dari pembelajaran lokal",
+				suggestion: {
+					unit: learned.unit,
+					lowStockThreshold: learned.lowStockThreshold,
+					defaultBrandName: learned.defaultBrandName,
+					displayUnit: learned.displayUnit,
+					conversionFactor: learned.conversionFactor
+						? Number(learned.conversionFactor)
+						: null,
+					unitConversionsText: learned.unitConversionsText,
+					confidence: 0.9,
+					category: "learned",
+					fieldConfidence: {
+						unit: 0.9,
+						lowStockThreshold: 0.9,
+						defaultBrandName: 0.82,
+						conversion: learned.unitConversionsText ? 0.9 : 0.62,
+					},
+					fieldReason: {
+						unit: "Belajar dari edit manual sebelumnya",
+						lowStockThreshold: "Belajar dari edit manual sebelumnya",
+						defaultBrandName: "Belajar dari edit manual sebelumnya",
+						conversion: "Belajar dari edit manual sebelumnya",
+					},
+					reason: "Saran dari pembelajaran lokal",
+					conflictWarning: null,
+				},
+				fallbackPath: ["learned_profile"],
+				refreshedAt: Date.now(),
+				sources: [],
+			} as InventoryAutofillActionResult;
+		}
+		const cached = getCachedAutofill(ingredientName);
+		if (cached && !options?.forceRefresh) {
+			return cached;
+		}
+		const result = (await suggestInventoryAutofill({
 			ingredientName,
 		})) as InventoryAutofillActionResult;
+		if (result.ok) {
+			saveCachedAutofill(ingredientName, result);
+		}
+		return result;
 	};
 
 	const quickAutofillFromAI = async () => {
@@ -3417,21 +3594,66 @@ function InventoryTable({
 				return;
 			}
 			const suggestion = result.suggestion;
-			const nextUnit = normalizeUnitOption(suggestion.unit) || item.unit;
-			const nextThreshold =
-				suggestion.lowStockThreshold > 0
-					? suggestion.lowStockThreshold
-					: item.lowStockThreshold;
-			const nextDisplayUnit =
-				normalizeUnitOption(suggestion.displayUnit) || item.displayUnit || undefined;
-			const nextConversionFactor =
-				suggestion.conversionFactor != null && suggestion.conversionFactor > 0
-					? suggestion.conversionFactor
-					: item.conversionFactor || undefined;
-			const parsedAiConversions = parseUnitConversionsText(
-				suggestion.unitConversionsText || ""
-			);
+			setAiFieldApply({
+				unit: normalizeUnitOption(suggestion.unit) !== normalizeUnitOption(item.unit),
+				lowStockThreshold:
+					Number(suggestion.lowStockThreshold || 0) > 0 &&
+					Number(suggestion.lowStockThreshold) !== Number(item.lowStockThreshold),
+				defaultBrandName:
+					(suggestion.defaultBrandName || "").trim() !==
+					(item.defaultBrandName || "").trim(),
+				conversion:
+					(suggestion.unitConversionsText || "").trim() !==
+						formatUnitConversionsText(
+							item.unitConversions,
+							item.displayUnit,
+							item.conversionFactor
+						).trim() ||
+					normalizeUnitOption(suggestion.displayUnit) !==
+						normalizeUnitOption(item.displayUnit) ||
+					(suggestion.conversionFactor || 0) !== (item.conversionFactor || 0),
+			});
+			setAiReview({ row, item, result });
+			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "idle" }));
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Autofill AI untuk baris gagal";
+			toast.error(message);
+			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "error" }));
+		} finally {
+			setSavingKey(null);
+		}
+	};
 
+	const applyAiReviewSelection = async () => {
+		if (!aiReview || !aiReview.result.suggestion) {
+			return;
+		}
+		const { row, item } = aiReview;
+		const suggestion = aiReview.result.suggestion;
+		const parsedAiConversions = parseUnitConversionsText(suggestion.unitConversionsText || "");
+		const nextUnit = aiFieldApply.unit
+			? normalizeUnitOption(suggestion.unit) || item.unit
+			: item.unit;
+		const nextThreshold = aiFieldApply.lowStockThreshold
+			? suggestion.lowStockThreshold > 0
+				? suggestion.lowStockThreshold
+				: item.lowStockThreshold
+			: item.lowStockThreshold;
+		const nextDisplayUnit = aiFieldApply.conversion
+			? normalizeUnitOption(suggestion.displayUnit) || item.displayUnit || undefined
+			: item.displayUnit || undefined;
+		const nextConversionFactor = aiFieldApply.conversion
+			? suggestion.conversionFactor != null && suggestion.conversionFactor > 0
+				? suggestion.conversionFactor
+				: item.conversionFactor || undefined
+			: item.conversionFactor || undefined;
+		const nextConversions = aiFieldApply.conversion
+			? parsedAiConversions ?? item.unitConversions
+			: item.unitConversions;
+		try {
+			setSavingKey(`${row.inventoryId}:ai-apply`);
+			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saving" }));
 			await updateItemMutation({
 				id: item._id,
 				ingredientName: item.ingredientName,
@@ -3439,13 +3661,13 @@ function InventoryTable({
 				lowStockThreshold: nextThreshold,
 				displayUnit: nextDisplayUnit,
 				conversionFactor: nextConversionFactor,
-				unitConversions: parsedAiConversions ?? item.unitConversions,
+				unitConversions: nextConversions,
 				baseRecipeId: item.baseRecipeId || undefined,
-				defaultBrandName:
-					(suggestion.defaultBrandName || "").trim() || item.defaultBrandName || undefined,
+				defaultBrandName: aiFieldApply.defaultBrandName
+					? (suggestion.defaultBrandName || "").trim() || item.defaultBrandName || undefined
+					: item.defaultBrandName || undefined,
 				preferredStoreId: item.preferredStoreId || undefined,
 			});
-
 			setInlineValues((prev) => ({
 				...prev,
 				[row.inventoryId]: {
@@ -3468,31 +3690,116 @@ function InventoryTable({
 					}),
 					unit: nextUnit,
 					lowStockThreshold: String(nextThreshold),
-					defaultBrandName:
-						(suggestion.defaultBrandName || "").trim() || item.defaultBrandName || "",
+					defaultBrandName: aiFieldApply.defaultBrandName
+						? (suggestion.defaultBrandName || "").trim() || item.defaultBrandName || ""
+						: item.defaultBrandName || "",
 					displayUnit: nextDisplayUnit || "",
 					conversionFactor: nextConversionFactor ? String(nextConversionFactor) : "",
-					unitConversionsText:
-						suggestion.unitConversionsText ||
-						formatUnitConversionsText(
-							parsedAiConversions ?? item.unitConversions,
-							nextDisplayUnit,
-							nextConversionFactor
-						),
+					unitConversionsText: formatUnitConversionsText(
+						nextConversions,
+						nextDisplayUnit,
+						nextConversionFactor
+					),
 				},
 			}));
-
+			saveLearnedProfile(item.ingredientName, {
+				unit: nextUnit,
+				lowStockThreshold: nextThreshold,
+				defaultBrandName: aiFieldApply.defaultBrandName
+					? (suggestion.defaultBrandName || "").trim()
+					: item.defaultBrandName || "",
+				displayUnit: nextDisplayUnit || "",
+				conversionFactor: nextConversionFactor ? String(nextConversionFactor) : "",
+				unitConversionsText: formatUnitConversionsText(
+					nextConversions,
+					nextDisplayUnit,
+					nextConversionFactor
+				),
+			});
 			const confidencePercent = Math.round(suggestion.confidence * 100);
-			toast.success(`Autofill baris ${confidencePercent}%: ${suggestion.reason}`);
+			toast.success(`Autofill baris diterapkan (${confidencePercent}%)`);
 			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
+			setAiReview(null);
 		} catch (error) {
 			const message =
-				error instanceof Error ? error.message : "Autofill AI untuk baris gagal";
+				error instanceof Error ? error.message : "Gagal menerapkan autofill AI";
 			toast.error(message);
 			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "error" }));
 		} finally {
 			setSavingKey(null);
 		}
+	};
+
+	const bulkAutofillMissingRows = async () => {
+		const candidates = filteredRows
+			.filter((row) => {
+				const item = inventoryMap.get(row.inventoryId);
+				if (!item) {
+					return false;
+				}
+				const missingBrand = !(item.defaultBrandName || "").trim();
+				const missingConversion = hasMissingConversion({
+					unit: item.unit,
+					displayUnit: item.displayUnit,
+					conversionFactor: item.conversionFactor,
+					unitConversions: item.unitConversions,
+				});
+				return missingBrand || missingConversion;
+			})
+			.slice(0, 40);
+		if (candidates.length === 0) {
+			toast.message("Tidak ada baris prioritas untuk bulk autofill");
+			return;
+		}
+
+		let updated = 0;
+		let skipped = 0;
+		for (const row of candidates) {
+			const item = inventoryMap.get(row.inventoryId);
+			if (!item) {
+				continue;
+			}
+			const result = await requestAutofillSuggestion(item.ingredientName);
+			if (!result.ok || !result.suggestion) {
+				skipped += 1;
+				continue;
+			}
+			const suggestion = result.suggestion;
+			if (suggestion.confidence < 0.7) {
+				skipped += 1;
+				continue;
+			}
+			try {
+				await updateItemMutation({
+					id: item._id,
+					ingredientName: item.ingredientName,
+					unit: normalizeUnitOption(suggestion.unit) || item.unit,
+					lowStockThreshold:
+						suggestion.lowStockThreshold > 0
+							? suggestion.lowStockThreshold
+							: item.lowStockThreshold,
+					displayUnit:
+						normalizeUnitOption(suggestion.displayUnit) || item.displayUnit || undefined,
+					conversionFactor:
+						suggestion.conversionFactor != null && suggestion.conversionFactor > 0
+							? suggestion.conversionFactor
+							: item.conversionFactor || undefined,
+					unitConversions:
+						parseUnitConversionsText(suggestion.unitConversionsText || "") ??
+						item.unitConversions,
+					baseRecipeId: item.baseRecipeId || undefined,
+					defaultBrandName:
+						(suggestion.defaultBrandName || "").trim() ||
+						item.defaultBrandName ||
+						undefined,
+					preferredStoreId: item.preferredStoreId || undefined,
+				});
+				updated += 1;
+			} catch {
+				skipped += 1;
+			}
+		}
+		toast.success(`Bulk autofill selesai: ${updated} update, ${skipped} skip`);
 	};
 
 	const getStatusMeta = (status: InventoryWorkspaceRow["status"]) => {
@@ -3517,6 +3824,15 @@ function InventoryTable({
 	return (
 		<div className="rounded-xl border border-border/80 bg-card shadow-sm">
 			<div>
+				<div className="flex justify-end px-2.5 py-2">
+					<button
+						className="rounded-lg border border-border bg-background px-2.5 py-1 text-[10px] font-semibold text-foreground hover:bg-muted"
+						onClick={() => void bulkAutofillMissingRows()}
+						type="button"
+					>
+						Bulk Autofill Prioritas
+					</button>
+				</div>
 				<datalist id="inventory-unit-options-table">
 					{unitOptions.map((unit) => (
 						<option key={unit} value={unit} />
@@ -3528,22 +3844,32 @@ function InventoryTable({
 					))}
 				</datalist>
 				<table className="w-full table-fixed text-left text-[10px] md:text-[11px]">
-					<colgroup>
-						<col className="w-[22%] lg:w-[16%]" />
-						<col className="hidden lg:table-column lg:w-[10%]" />
-						<col className="w-[13%] lg:w-[10%]" />
-						<col className="w-[11%] lg:w-[9%]" />
-						<col className="w-[22%] lg:w-[14%]" />
-						<col className="w-[12%] lg:w-[8%]" />
-						<col className="hidden lg:table-column lg:w-[10%]" />
-						<col className="hidden md:table-column md:w-[9%]" />
-						<col className="hidden md:table-column md:w-[9%]" />
-						<col className="w-[20%] lg:w-[15%]" />
-					</colgroup>
+					{tableMode === "detail" ? (
+						<colgroup>
+							<col className="w-[22%] lg:w-[16%]" />
+							<col className="hidden lg:table-column lg:w-[10%]" />
+							<col className="w-[13%] lg:w-[10%]" />
+							<col className="w-[11%] lg:w-[9%]" />
+							<col className="w-[22%] lg:w-[14%]" />
+							<col className="w-[12%] lg:w-[8%]" />
+							<col className="hidden lg:table-column lg:w-[10%]" />
+							<col className="hidden md:table-column md:w-[9%]" />
+							<col className="w-[9%]" />
+							<col className="w-[20%] lg:w-[15%]" />
+						</colgroup>
+					) : (
+						<colgroup>
+							<col className="w-[28%]" />
+							<col className="w-[18%]" />
+							<col className="w-[22%]" />
+							<col className="w-[12%]" />
+							<col className="w-[20%]" />
+						</colgroup>
+					)}
 					<thead className="sticky top-[58px] z-10 bg-card">
 						<tr className="border-border border-b text-muted-foreground">
 							<th
-								className="cursor-pointer px-2.5 py-2 font-semibold transition-colors hover:text-foreground"
+								className="sticky left-0 z-10 cursor-pointer bg-card px-2.5 py-2 font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("ingredientName")}
 							>
 								<div className="flex items-center gap-1">
@@ -3556,13 +3882,19 @@ function InventoryTable({
 									))}
 								</div>
 							</th>
-							<th className="hidden px-2 py-1.5 font-semibold lg:table-cell">Brand</th>
+							<th
+								className={`px-2 py-1.5 font-semibold ${
+									tableMode === "detail" ? "hidden lg:table-cell" : "hidden"
+								}`}
+							>
+								Brand
+							</th>
 							<th
 								className="cursor-pointer px-2 py-1.5 text-center font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("currentStock")}
 							>
 								<div className="flex items-center justify-center gap-1">
-									Stok
+									{tableMode === "detail" ? "Stok" : "Stok/Min/Gap"}
 									{sortConfig.key === "currentStock" &&
 										(sortConfig.direction === "asc" ? (
 											<ArrowUp className="h-3 w-3" />
@@ -3572,7 +3904,9 @@ function InventoryTable({
 								</div>
 							</th>
 							<th
-								className="cursor-pointer px-2 py-1.5 text-center font-semibold transition-colors hover:text-foreground"
+								className={`cursor-pointer px-2 py-1.5 text-center font-semibold transition-colors hover:text-foreground ${
+									tableMode === "detail" ? "" : "hidden"
+								}`}
 								onClick={() => onSort("lowStockThreshold")}
 							>
 								<div className="flex items-center justify-center gap-1">
@@ -3588,7 +3922,9 @@ function InventoryTable({
 							<th className="px-2 py-1.5 font-semibold">Takaran</th>
 							<th className="px-2 py-1.5 font-semibold">Status</th>
 							<th
-								className="hidden cursor-pointer px-2 py-1.5 font-semibold transition-colors hover:text-foreground lg:table-cell"
+								className={`cursor-pointer px-2 py-1.5 font-semibold transition-colors hover:text-foreground ${
+									tableMode === "detail" ? "hidden lg:table-cell" : "hidden"
+								}`}
 								onClick={() => onSort("avgDailyUsage")}
 							>
 								<div className="flex items-center gap-1">
@@ -3601,8 +3937,14 @@ function InventoryTable({
 										))}
 								</div>
 							</th>
-							<th className="hidden px-2 py-1.5 font-semibold md:table-cell">Toko Terakhir</th>
-							<th className="hidden px-2 py-1.5 font-semibold md:table-cell">Harga Terakhir</th>
+							<th
+								className={`px-2 py-1.5 font-semibold ${
+									tableMode === "detail" ? "hidden md:table-cell" : "hidden"
+								}`}
+							>
+								Toko Terakhir
+							</th>
+							<th className="px-2 py-1.5 font-semibold">Harga Terakhir</th>
 							<th className="px-2 py-1.5 text-right font-semibold">Aksi</th>
 						</tr>
 					</thead>
@@ -3631,7 +3973,11 @@ function InventoryTable({
 									value={quickAdd.ingredientName}
 								/>
 							</td>
-							<td className="hidden px-2 py-1.5 lg:table-cell">
+							<td
+								className={`px-2 py-1.5 ${
+									tableMode === "detail" ? "hidden lg:table-cell" : "hidden"
+								}`}
+							>
 								<input
 									className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
 									onChange={(e) =>
@@ -3649,7 +3995,7 @@ function InventoryTable({
 									value={quickAdd.defaultBrandName}
 								/>
 							</td>
-							<td className="px-2 py-1.5 text-center">
+							<td className={`px-2 py-1.5 text-center ${tableMode === "detail" ? "" : "hidden"}`}>
 								<input
 									className="mx-auto w-16 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[11px] outline-none focus:border-primary"
 									onChange={(e) =>
@@ -3711,7 +4057,11 @@ function InventoryTable({
 									Autosave
 								</div>
 							</td>
-							<td className="hidden px-2 py-1.5 lg:table-cell">
+							<td
+								className={`px-2 py-1.5 ${
+									tableMode === "detail" ? "hidden lg:table-cell" : "hidden"
+								}`}
+							>
 								<input
 									className="w-full rounded-lg border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold outline-none focus:border-primary"
 									list="inventory-unit-options-table"
@@ -3725,12 +4075,16 @@ function InventoryTable({
 									value={quickAdd.unit}
 								/>
 							</td>
-							<td className="hidden px-2 py-1.5 md:table-cell">
+							<td
+								className={`px-2 py-1.5 ${
+									tableMode === "detail" ? "hidden md:table-cell" : "hidden"
+								}`}
+							>
 								<div className="text-[10px] text-muted-foreground">
 									-
 								</div>
 							</td>
-							<td className="hidden px-2 py-1.5 md:table-cell">
+							<td className="px-2 py-1.5">
 								<div className="text-[10px] text-muted-foreground">-</div>
 							</td>
 							<td className="px-2 py-1.5 text-right">
@@ -3760,13 +4114,13 @@ function InventoryTable({
 									<td className="p-4">
 										<Skeleton className="h-4 w-32" />
 									</td>
-									<td className="p-4">
+									<td className={`p-4 ${tableMode === "detail" ? "" : "hidden"}`}>
 										<Skeleton className="h-8 w-24" />
 									</td>
 									<td className="p-4">
 										<Skeleton className="mx-auto h-8 w-16" />
 									</td>
-									<td className="p-4">
+									<td className={`p-4 ${tableMode === "detail" ? "" : "hidden"}`}>
 										<Skeleton className="mx-auto h-8 w-16" />
 									</td>
 									<td className="p-4">
@@ -3775,10 +4129,10 @@ function InventoryTable({
 									<td className="p-4">
 										<Skeleton className="h-8 w-28" />
 									</td>
-									<td className="p-4">
+									<td className={`p-4 ${tableMode === "detail" ? "" : "hidden"}`}>
 										<Skeleton className="h-10 w-32" />
 									</td>
-									<td className="p-4">
+									<td className={`p-4 ${tableMode === "detail" ? "" : "hidden"}`}>
 										<Skeleton className="h-8 w-28" />
 									</td>
 									<td className="p-4">
@@ -3813,11 +4167,17 @@ function InventoryTable({
 								return (
 									<tr
 										className={`transition-colors hover:bg-muted/20 ${
-											index % 2 === 0 ? "bg-background" : "bg-muted/[0.12]"
+											row.status === "critical"
+												? "bg-rose-50/40"
+												: row.status === "warning"
+													? "bg-amber-50/30"
+													: index % 2 === 0
+														? "bg-background"
+														: "bg-muted/[0.12]"
 										}`}
 										key={row.inventoryId}
 									>
-										<td className="px-2.5 py-1.5 align-middle">
+										<td className="sticky left-0 z-[1] bg-inherit px-2.5 py-1.5 align-middle">
 											<input
 												className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold text-[12px] leading-4 outline-none focus:border-border focus:bg-background"
 												onBlur={() => void saveMeta(row)}
@@ -3834,7 +4194,11 @@ function InventoryTable({
 												value={inline.ingredientName}
 											/>
 										</td>
-										<td className="hidden px-2 py-1.5 align-middle lg:table-cell">
+										<td
+											className={`px-2 py-1.5 align-middle ${
+												tableMode === "detail" ? "hidden lg:table-cell" : "hidden"
+											}`}
+										>
 											<div className="space-y-1">
 												<input
 													className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-semibold text-[11px] outline-none focus:border-border focus:bg-background"
@@ -3857,23 +4221,34 @@ function InventoryTable({
 											</div>
 										</td>
 										<td className="px-2 py-1.5 align-middle text-center">
-											<input
-												className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono text-sm font-bold outline-none focus:border-border focus:bg-background"
-												onBlur={() => void saveQuantity(row)}
-												onChange={(e) =>
-													setInlineField(row, "quantity", e.target.value)
-												}
-												onKeyDown={(e) => {
-													if (e.key === "Enter") {
-														void saveQuantity(row);
-														(e.target as HTMLInputElement).blur();
+											<div className="space-y-1">
+												<input
+													className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono text-sm font-bold outline-none focus:border-border focus:bg-background"
+													onBlur={() => void saveQuantity(row)}
+													onChange={(e) =>
+														setInlineField(row, "quantity", e.target.value)
 													}
-												}}
-												type="number"
-												value={inline.quantity}
-											/>
+													onKeyDown={(e) => {
+														if (e.key === "Enter") {
+															void saveQuantity(row);
+															(e.target as HTMLInputElement).blur();
+														}
+													}}
+													type="number"
+													value={inline.quantity}
+												/>
+												{tableMode === "simple" && (
+													<p className="text-[9px] text-muted-foreground">
+														min {row.lowStockThreshold} · gap {row.currentStock - row.lowStockThreshold}
+													</p>
+												)}
+											</div>
 										</td>
-										<td className="px-2 py-1.5 align-middle text-center">
+										<td
+											className={`px-2 py-1.5 align-middle text-center ${
+												tableMode === "detail" ? "" : "hidden"
+											}`}
+										>
 											<div className="inline-flex items-center gap-1">
 												<input
 													className="mx-auto w-12 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[11px] outline-none focus:border-border focus:bg-background"
@@ -3973,13 +4348,23 @@ function InventoryTable({
 															? "Error"
 															: "Idle"}
 											</p>
+											<p className="text-[9px] text-muted-foreground">
+												Update:{" "}
+												{row.latestTransaction?.timestamp
+													? new Date(row.latestTransaction.timestamp).toLocaleDateString("id-ID")
+													: "-"}
+											</p>
 											<span
 												className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-semibold ${usageInsight.tone}`}
 											>
 												{usageInsight.label}
 											</span>
 										</td>
-										<td className="hidden px-2 py-1.5 align-middle text-[10px] text-muted-foreground lg:table-cell">
+										<td
+											className={`px-2 py-1.5 align-middle text-[10px] text-muted-foreground ${
+												tableMode === "detail" ? "hidden lg:table-cell" : "hidden"
+											}`}
+										>
 											<span className="font-semibold text-foreground">
 												{row.avgDailyUsage.toFixed(2)}/hari
 											</span>
@@ -3988,7 +4373,11 @@ function InventoryTable({
 												Order {row.suggestedOrderQty}
 											</span>
 										</td>
-										<td className="hidden px-2 py-1.5 align-middle text-[10px] text-muted-foreground md:table-cell">
+										<td
+											className={`px-2 py-1.5 align-middle text-[10px] text-muted-foreground ${
+												tableMode === "detail" ? "hidden md:table-cell" : "hidden"
+											}`}
+										>
 											<div className="space-y-1">
 												<span className="font-semibold text-foreground">
 													{row.lastPurchaseStoreName || "-"}
@@ -3996,7 +4385,7 @@ function InventoryTable({
 												<p>Preferensi: {row.preferredStoreName || "-"}</p>
 											</div>
 										</td>
-										<td className="hidden px-2 py-1.5 align-middle text-[10px] text-muted-foreground md:table-cell">
+										<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
 											<div className="space-y-1">
 												<span className="font-semibold text-foreground">
 													{formatCurrency(row.lastPurchasePrice)}
@@ -4007,72 +4396,43 @@ function InventoryTable({
 										<td className="px-2 py-1.5 align-middle text-right">
 											<div className="flex items-center justify-end gap-1">
 												<button
-													className="rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold hover:bg-muted"
-													onClick={() => void quickDelta(row, "add", 1)}
+													className="rounded-lg border border-border bg-background p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+													onClick={() => void applyAiAutofillForRow(row, item)}
+													title="Autofill AI"
 													type="button"
 												>
-													+1
+													<Settings2 className="h-4 w-4" />
 												</button>
 												<button
-													className="rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold hover:bg-muted"
-													onClick={() => void quickDelta(row, "usage", 1)}
-													type="button"
-												>
-													-1
-												</button>
-												<button
-													className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-1.5 py-1 text-[10px] font-semibold text-foreground hover:bg-muted"
+													className="rounded-lg border border-border bg-background p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 													onClick={() => onDetailItemChange(item)}
+													title="Info"
 													type="button"
 												>
-													<PanelRight className="h-3.5 w-3.5" />
-													Info
+													<PanelRight className="h-4 w-4" />
 												</button>
-												<DropdownMenu>
-													<DropdownMenuTrigger
-														className="rounded-lg border border-border bg-background p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-													>
-														<MoreHorizontal className="h-4 w-4" />
-													</DropdownMenuTrigger>
-													<DropdownMenuContent align="end" className="w-52">
-														<DropdownMenuItem onClick={() => void quickDelta(row, "add", 5)}>
-															<Plus className="mr-2 h-4 w-4" /> Restock +5
-														</DropdownMenuItem>
-														<DropdownMenuItem onClick={() => void quickDelta(row, "usage", 5)}>
-															<Minus className="mr-2 h-4 w-4" /> Pakai -5
-														</DropdownMenuItem>
-														<DropdownMenuItem
-															onClick={() => void applyAiAutofillForRow(row, item)}
-														>
-															<Settings2 className="mr-2 h-4 w-4" /> Autofill AI Baris Ini
-														</DropdownMenuItem>
-														<DropdownMenuItem
-															onClick={() => {
-																onSelectedItemChange(item);
-																onActionTypeChange("batchInfo");
-															}}
-														>
-															<AlertCircle className="mr-2 h-4 w-4" /> Info Batch FIFO
-														</DropdownMenuItem>
-														<DropdownMenuItem
-															onClick={() => {
-																onSelectedItemChange(item);
-																onActionTypeChange("history");
-															}}
-														>
-															<History className="mr-2 h-4 w-4" /> Riwayat
-														</DropdownMenuItem>
-														<DropdownMenuItem
-															className="text-destructive focus:text-destructive"
-															onClick={() => {
-																onSelectedItemChange(item);
-																onActionTypeChange("delete");
-															}}
-														>
-															<Trash2 className="mr-2 h-4 w-4" /> Hapus
-														</DropdownMenuItem>
-													</DropdownMenuContent>
-												</DropdownMenu>
+												<button
+													className="rounded-lg border border-border bg-background p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+													onClick={() => {
+														onSelectedItemChange(item);
+														onActionTypeChange("history");
+													}}
+													title="Riwayat"
+													type="button"
+												>
+													<History className="h-4 w-4" />
+												</button>
+												<button
+													className="rounded-lg border border-border bg-background p-1 text-destructive transition-colors hover:bg-destructive/10"
+													onClick={() => {
+														onSelectedItemChange(item);
+														onActionTypeChange("delete");
+													}}
+													title="Hapus"
+													type="button"
+												>
+													<Trash2 className="h-4 w-4" />
+												</button>
 											</div>
 										</td>
 									</tr>
@@ -4088,6 +4448,160 @@ function InventoryTable({
 					</tbody>
 				</table>
 			</div>
+			{aiReview?.result.suggestion && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+					<div className="w-full max-w-2xl rounded-2xl border border-border bg-card p-4 shadow-2xl">
+						<div className="flex items-start justify-between gap-3">
+							<div>
+								<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+									Review Autofill AI
+								</p>
+								<p className="text-sm text-foreground">
+									{aiReview.item.ingredientName} • confidence{" "}
+									{Math.round(aiReview.result.suggestion.confidence * 100)}%
+								</p>
+								<p className="text-xs text-muted-foreground">
+									{aiReview.result.suggestion.reason}
+								</p>
+								{aiReview.result.suggestion.conflictWarning && (
+									<p className="mt-1 text-xs font-semibold text-amber-700">
+										{aiReview.result.suggestion.conflictWarning}
+									</p>
+								)}
+							</div>
+							<button
+								className="rounded-lg border border-border bg-background px-2 py-1 text-xs"
+								onClick={() => setAiReview(null)}
+								type="button"
+							>
+								Tutup
+							</button>
+						</div>
+						<div className="mt-3 space-y-2 rounded-lg border border-border p-3 text-xs">
+							<label className="flex items-start gap-2">
+								<input
+									checked={aiFieldApply.unit}
+									onChange={(event) =>
+										setAiFieldApply((prev) => ({ ...prev, unit: event.target.checked }))
+									}
+									type="checkbox"
+								/>
+								<span>
+									Unit: `{aiReview.item.unit}` → `
+									{normalizeUnitOption(aiReview.result.suggestion.unit) || aiReview.item.unit}`
+									{" • "}
+									{Math.round((aiReview.result.suggestion.fieldConfidence?.unit ?? 0) * 100)}%
+								</span>
+							</label>
+							<label className="flex items-start gap-2">
+								<input
+									checked={aiFieldApply.lowStockThreshold}
+									onChange={(event) =>
+										setAiFieldApply((prev) => ({
+											...prev,
+											lowStockThreshold: event.target.checked,
+										}))
+									}
+									type="checkbox"
+								/>
+								<span>
+									Threshold: `{aiReview.item.lowStockThreshold}` → `
+									{aiReview.result.suggestion.lowStockThreshold || aiReview.item.lowStockThreshold}`
+									{" • "}
+									{Math.round(
+										(aiReview.result.suggestion.fieldConfidence?.lowStockThreshold ?? 0) * 100
+									)}
+									%
+								</span>
+							</label>
+							<label className="flex items-start gap-2">
+								<input
+									checked={aiFieldApply.defaultBrandName}
+									onChange={(event) =>
+										setAiFieldApply((prev) => ({
+											...prev,
+											defaultBrandName: event.target.checked,
+										}))
+									}
+									type="checkbox"
+								/>
+								<span>
+									Brand: `{aiReview.item.defaultBrandName || "-"}` → `
+									{aiReview.result.suggestion.defaultBrandName || "-"}`
+									{" • "}
+									{Math.round(
+										(aiReview.result.suggestion.fieldConfidence?.defaultBrandName ?? 0) * 100
+									)}
+									%
+								</span>
+							</label>
+							<label className="flex items-start gap-2">
+								<input
+									checked={aiFieldApply.conversion}
+									onChange={(event) =>
+										setAiFieldApply((prev) => ({ ...prev, conversion: event.target.checked }))
+									}
+									type="checkbox"
+								/>
+								<span>
+									Konversi/Takaran: `
+									{formatUnitConversionsText(
+										aiReview.item.unitConversions,
+										aiReview.item.displayUnit,
+										aiReview.item.conversionFactor
+									) || "-"}
+									` → `{aiReview.result.suggestion.unitConversionsText || "-"}`
+									{" • "}
+									{Math.round((aiReview.result.suggestion.fieldConfidence?.conversion ?? 0) * 100)}
+									%
+								</span>
+							</label>
+						</div>
+						<div className="mt-3 rounded-lg border border-border p-3">
+							<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+								Sumber
+							</p>
+							<p className="mt-1 text-xs text-muted-foreground">
+								Flow: {(aiReview.result.fallbackPath ?? []).join(" → ") || "-"}
+							</p>
+							<div className="mt-2 space-y-1 text-xs">
+								{aiReview.result.sources.slice(0, 3).map((source) => (
+									<div key={`${source.title}-${source.url}`}>
+										<a
+											className="font-semibold text-primary underline"
+											href={source.url}
+											rel="noreferrer"
+											target="_blank"
+										>
+											{source.title}
+										</a>
+										<p className="text-muted-foreground">{source.snippet}</p>
+									</div>
+								))}
+								{aiReview.result.sources.length === 0 && (
+									<p className="text-muted-foreground">Sumber internal/cached.</p>
+								)}
+							</div>
+						</div>
+						<div className="mt-3 flex items-center justify-end gap-2">
+							<button
+								className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold"
+								onClick={() => setAiReview(null)}
+								type="button"
+							>
+								Batal
+							</button>
+							<button
+								className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+								onClick={() => void applyAiReviewSelection()}
+								type="button"
+							>
+								Apply Terpilih
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
@@ -4100,6 +4614,8 @@ function InventoryHeader({
 	onFilterLowStockChange,
 	searchQuery,
 	onSearchQueryChange,
+	onTableModeChange,
+	tableMode,
 	viewPreset,
 	onViewPresetChange,
 }: {
@@ -4110,6 +4626,8 @@ function InventoryHeader({
 	onFilterLowStockChange: (val: boolean) => void;
 	searchQuery: string;
 	onSearchQueryChange: (val: string) => void;
+	onTableModeChange: (mode: "simple" | "detail") => void;
+	tableMode: "simple" | "detail";
 	viewPreset: InventoryViewPreset;
 	onViewPresetChange: (preset: InventoryViewPreset) => void;
 }) {
@@ -4144,7 +4662,7 @@ function InventoryHeader({
 					onClick={() => onFilterLowStockChange(!filterLowStock)}
 					type="button"
 				>
-					Stok Rendah
+					Kritis Saja
 				</button>
 				<select
 					className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none"
@@ -4158,7 +4676,16 @@ function InventoryHeader({
 				>
 					<option value="all">Semua</option>
 					<option value="priceUp">Harga Naik</option>
-					<option value="missingConversion">Belum Konversi</option>
+					<option value="missingConversion">Belum ada takaran</option>
+				</select>
+				<select
+					className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none"
+					disabled={viewPreset !== "operational"}
+					onChange={(e) => onTableModeChange(e.target.value as "simple" | "detail")}
+					value={tableMode}
+				>
+					<option value="simple">Mode Simple</option>
+					<option value="detail">Mode Detail</option>
 				</select>
 				<div className="relative min-w-[260px] flex-1">
 					<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -4313,86 +4840,4 @@ function InventoryHistoryModal({
 		</div>
 	);
 }
-
-function InventoryBatchModal({
-	item,
-	onClose,
-}: {
-	item: Doc<"inventory">;
-	onClose: () => void;
-}) {
-	const batches = useQuery(api.inventory.getInventoryItemBatches, {
-		inventoryId: item._id,
-	});
-
-	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-			<motion.div
-				animate={{ opacity: 1, scale: 1 }}
-				className="w-full max-w-xl rounded-xl border border-border bg-card shadow-2xl"
-				exit={{ opacity: 0, scale: 0.95 }}
-				initial={{ opacity: 0, scale: 0.95 }}
-			>
-				<div className="flex items-center justify-between border-border border-b p-8 pb-4">
-					<h3 className="font-bold text-2xl text-foreground tracking-tight">
-						Batch Aktif (FIFO): {item.ingredientName}
-					</h3>
-					<button
-						className="rounded-full bg-muted p-2 text-foreground transition-all hover:bg-muted/80"
-						onClick={onClose}
-						type="button"
-					>
-						<Minus className="h-5 w-5 rotate-45" />
-					</button>
-				</div>
-				<div className="p-8">
-					<div className="max-h-[60vh] overflow-y-auto rounded-lg border border-border">
-						<table className="w-full text-left text-xs">
-							<thead className="sticky top-0 bg-muted/50 border-b border-border">
-								<tr className="text-muted-foreground uppercase tracking-wider">
-									<th className="p-4 font-bold">Tanggal Masuk</th>
-									<th className="p-4 font-bold">Harga/Unit</th>
-									<th className="p-4 text-right font-bold">Sisa Stok</th>
-								</tr>
-							</thead>
-							<tbody className="divide-y divide-border">
-								{batches?.map((b: any) => (
-									<tr className="hover:bg-muted/30 transition-colors" key={b._id}>
-										<td className="p-4 font-medium">
-											{new Date(b.timestamp).toLocaleDateString("id-ID", {
-												dateStyle: "medium"
-											})}
-										</td>
-										<td className="p-4">
-											{b.costPerUnit ? `Rp ${b.costPerUnit.toLocaleString()}` : "-"}
-										</td>
-										<td className="p-4 text-right font-bold text-primary">
-											{b.remainingQuantity} {item.unit}
-										</td>
-									</tr>
-								))}
-								{batches?.length === 0 && (
-									<tr>
-										<td className="p-12 text-center text-muted-foreground italic" colSpan={3}>
-											Tidak ada batch aktif. Stok mungkin berasal dari penyesuaian manual.
-										</td>
-									</tr>
-								)}
-							</tbody>
-						</table>
-					</div>
-					<div className="mt-6 rounded-lg bg-blue-50 p-4 dark:bg-blue-950/20">
-						<p className="text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed">
-							<strong>Catatan FIFO:</strong> Penggunaan stok akan secara otomatis mengurangi batch yang paling lama terlebih dahulu (atas ke bawah).
-						</p>
-					</div>
-				</div>
-			</motion.div>
-		</div>
-	);
-}
-
-
-
-
 
