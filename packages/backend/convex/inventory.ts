@@ -907,6 +907,8 @@ export const getInventoryWorkspace = query({
 				brandName?: string;
 				storeId?: Id<"inventoryStores">;
 				costPerUnit?: number;
+				purchaseQuantity?: number;
+				purchaseUnit?: string;
 			}
 		>();
 		for (const transaction of transactions) {
@@ -921,6 +923,8 @@ export const getInventoryWorkspace = query({
 					brandName: transaction.brandName,
 					storeId: transaction.storeId,
 					costPerUnit: transaction.costPerUnit,
+					purchaseQuantity: transaction.purchaseQuantity,
+					purchaseUnit: transaction.purchaseUnit,
 				});
 			}
 		}
@@ -2253,7 +2257,7 @@ export const suggestInventoryAutofill = action({
 			sources: webCandidates.map((row) => ({
 				title: row.name,
 				url: row.url,
-				snippet: `${row.brand || "brand tidak diketahui"}${row.quantity ? ` • ${row.quantity}` : ""}`,
+				snippet: `${row.brand || "brand tidak diketahui"}${row.quantity ? ` | ${row.quantity}` : ""}`,
 			})),
 		};
 	},

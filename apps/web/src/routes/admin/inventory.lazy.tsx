@@ -69,6 +69,9 @@ type InventoryWorkspaceRow = {
 		quantity: number;
 		timestamp: number;
 		notes?: string;
+		costPerUnit?: number;
+		purchaseQuantity?: number;
+		purchaseUnit?: string;
 	} | null;
 };
 
@@ -3843,34 +3846,26 @@ function InventoryTable({
 						<option key={item._id} value={item.ingredientName} />
 					))}
 				</datalist>
+				<div className="overflow-x-auto">
 				<table
-					className={`w-full table-fixed text-left ${
-						tableMode === "detail" ? "text-[9px] md:text-[10px]" : "text-[10px] md:text-[11px]"
+					className={`min-w-[1180px] w-full table-fixed text-left ${
+						tableMode === "detail" ? "text-[9px] md:text-[10px]" : "text-[8px] md:text-[9px]"
 					}`}
 				>
-					{tableMode === "detail" ? (
-						<colgroup>
-							<col className="w-[20%]" />
-							<col className="hidden lg:table-column lg:w-[11%]" />
-							<col className="w-[8%]" />
-							<col className="w-[8%]" />
-							<col className="w-[8%]" />
-							<col className="w-[16%]" />
-							<col className="w-[10%]" />
-							<col className="hidden lg:table-column lg:w-[10%]" />
-							<col className="hidden md:table-column md:w-[9%]" />
-							<col className="w-[10%]" />
-							<col className="w-[10%]" />
-						</colgroup>
-					) : (
-						<colgroup>
-							<col className="w-[28%]" />
-							<col className="w-[18%]" />
-							<col className="w-[22%]" />
-							<col className="w-[12%]" />
-							<col className="w-[20%]" />
-						</colgroup>
-					)}
+					<colgroup>
+						<col className="w-[16%]" />
+						<col className="w-[10%]" />
+						<col className="w-[9%]" />
+						<col className="w-[5%]" />
+						<col className="w-[7%]" />
+						<col className="w-[7%]" />
+						<col className="w-[7%]" />
+						<col className="w-[7%]" />
+						<col className="w-[8%]" />
+						<col className="w-[8%]" />
+						<col className="w-[8%]" />
+						<col className="w-[11rem]" />
+					</colgroup>
 					<thead className="sticky top-[58px] z-10 bg-card">
 						<tr className="border-border border-b text-muted-foreground">
 							<th
@@ -3887,31 +3882,12 @@ function InventoryTable({
 									))}
 								</div>
 							</th>
-							<th
-								className={`px-2 py-1.5 font-semibold ${
-									tableMode === "detail" ? "hidden lg:table-cell" : "hidden"
-								}`}
-							>
+							<th className="px-2 py-1.5 font-semibold">
 								Brand
 							</th>
+							<th className="px-2 py-1.5 font-semibold">Toko</th>
 							<th
 								className="cursor-pointer px-2 py-1.5 text-center font-semibold transition-colors hover:text-foreground"
-								onClick={() => onSort("currentStock")}
-							>
-								<div className="flex items-center justify-center gap-1">
-									{tableMode === "detail" ? "Stok" : "Stok/Min/Gap"}
-									{sortConfig.key === "currentStock" &&
-										(sortConfig.direction === "asc" ? (
-											<ArrowUp className="h-3 w-3" />
-										) : (
-											<ArrowDown className="h-3 w-3" />
-										))}
-								</div>
-							</th>
-							<th
-								className={`cursor-pointer px-2 py-1.5 text-center font-semibold transition-colors hover:text-foreground ${
-									tableMode === "detail" ? "" : "hidden"
-								}`}
 								onClick={() => onSort("lowStockThreshold")}
 							>
 								<div className="flex items-center justify-center gap-1">
@@ -3921,22 +3897,28 @@ function InventoryTable({
 											<ArrowUp className="h-3 w-3" />
 										) : (
 											<ArrowDown className="h-3 w-3" />
-									))}
+										))}
 								</div>
 							</th>
 							<th
-								className={`px-2 py-1.5 text-center font-semibold ${
-									tableMode === "detail" ? "" : "hidden"
-								}`}
+								className="cursor-pointer px-2 py-1.5 text-center font-semibold transition-colors hover:text-foreground"
+								onClick={() => onSort("currentStock")}
 							>
-								Gap
+								<div className="flex items-center justify-center gap-1">
+									Stock
+									{sortConfig.key === "currentStock" &&
+										(sortConfig.direction === "asc" ? (
+											<ArrowUp className="h-3 w-3" />
+										) : (
+											<ArrowDown className="h-3 w-3" />
+									))}
+								</div>
 							</th>
-							<th className="px-2 py-1.5 font-semibold">Takaran</th>
-							<th className="px-2 py-1.5 font-semibold">Status</th>
+							<th className="px-2 py-1.5 text-center font-semibold">Satuan</th>
+							<th className="px-2 py-1.5 text-center font-semibold">Jml Pembelian</th>
+							<th className="px-2 py-1.5 text-center font-semibold">Satuan Beli</th>
 							<th
-								className={`cursor-pointer px-2 py-1.5 font-semibold transition-colors hover:text-foreground ${
-									tableMode === "detail" ? "hidden lg:table-cell" : "hidden"
-								}`}
+								className="cursor-pointer px-2 py-1.5 font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("avgDailyUsage")}
 							>
 								<div className="flex items-center gap-1">
@@ -3946,17 +3928,11 @@ function InventoryTable({
 											<ArrowUp className="h-3 w-3" />
 										) : (
 											<ArrowDown className="h-3 w-3" />
-										))}
+									))}
 								</div>
 							</th>
-							<th
-								className={`px-2 py-1.5 font-semibold ${
-									tableMode === "detail" ? "hidden md:table-cell" : "hidden"
-								}`}
-							>
-								Toko Terakhir
-							</th>
 							<th className="px-2 py-1.5 font-semibold">Harga Terakhir</th>
+							<th className="px-2 py-1.5 font-semibold">Status</th>
 							<th className="px-2 py-1.5 text-right font-semibold">Aksi</th>
 						</tr>
 					</thead>
@@ -3985,11 +3961,7 @@ function InventoryTable({
 									value={quickAdd.ingredientName}
 								/>
 							</td>
-							<td
-								className={`px-2 py-1.5 ${
-									tableMode === "detail" ? "hidden lg:table-cell" : "hidden"
-								}`}
-							>
+							<td className="px-2 py-1.5">
 								<input
 									className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
 									onChange={(e) =>
@@ -4007,24 +3979,12 @@ function InventoryTable({
 									value={quickAdd.defaultBrandName}
 								/>
 							</td>
-							<td className={`px-2 py-1.5 text-center ${tableMode === "detail" ? "" : "hidden"}`}>
-								<input
-									className="mx-auto w-16 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[11px] outline-none focus:border-primary"
-									onChange={(e) =>
-										setQuickAdd((prev) => ({ ...prev, quantity: e.target.value }))
-									}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											void quickCreate();
-										}
-									}}
-									type="number"
-									value={quickAdd.quantity}
-								/>
+							<td className="px-2 py-1.5 text-center">
+								<div className="text-[10px] text-muted-foreground">-</div>
 							</td>
 							<td className="px-2 py-1.5 text-center">
 								<input
-									className="mx-auto w-16 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[11px] outline-none focus:border-primary"
+									className="mx-auto w-14 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[10px] outline-none focus:border-primary"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({
 											...prev,
@@ -4040,45 +4000,24 @@ function InventoryTable({
 									value={quickAdd.lowStockThreshold}
 								/>
 							</td>
-							<td className={`px-2 py-1.5 text-center ${tableMode === "detail" ? "" : "hidden"}`}>
-								<div className="text-[10px] text-muted-foreground">-</div>
-							</td>
-							<td className="px-2 py-1.5">
-								<div className="space-y-1">
-									<div className="text-[10px] text-muted-foreground">
-										{quickAdd.unit === "pcs"
-											? "Wajib isi konversi"
-											: "Opsional"}
-									</div>
-									<input
-										className="w-full rounded-lg border border-border bg-background px-1.5 py-1 text-[10px] outline-none focus:border-primary"
-										onChange={(e) =>
-											setQuickAdd((prev) => ({
-												...prev,
-												unitConversionsText: e.target.value,
-											}))
-										}
-										placeholder={
-											quickAdd.unit === "pcs"
-												? "contoh: gram:200 atau dus:12"
-												: "contoh: dus:12, karton:144"
-										}
-										value={quickAdd.unitConversionsText}
-									/>
-								</div>
-							</td>
-							<td className="px-2 py-1.5">
-								<div className="rounded-lg border border-dashed border-border px-2 py-1 text-[10px] text-muted-foreground">
-									Autosave
-								</div>
-							</td>
-							<td
-								className={`px-2 py-1.5 ${
-									tableMode === "detail" ? "hidden lg:table-cell" : "hidden"
-								}`}
-							>
+							<td className="px-2 py-1.5 text-center">
 								<input
-									className="w-full rounded-lg border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold outline-none focus:border-primary"
+									className="mx-auto w-14 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[10px] outline-none focus:border-primary"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({ ...prev, quantity: e.target.value }))
+									}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											void quickCreate();
+										}
+									}}
+									type="number"
+									value={quickAdd.quantity}
+								/>
+							</td>
+							<td className="px-2 py-1.5 text-center">
+								<input
+									className="mx-auto w-16 rounded-lg border border-border bg-background px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-primary"
 									list="inventory-unit-options-table"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({
@@ -4086,21 +4025,18 @@ function InventoryTable({
 											unit: normalizeUnitOption(e.target.value),
 										}))
 									}
-									placeholder="unit"
+									placeholder="satuan"
 									value={quickAdd.unit}
 								/>
 							</td>
-							<td
-								className={`px-2 py-1.5 ${
-									tableMode === "detail" ? "hidden md:table-cell" : "hidden"
-								}`}
-							>
-								<div className="text-[10px] text-muted-foreground">
-									-
-								</div>
-							</td>
+							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">-</div></td>
+							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">-</div></td>
+							<td className="px-2 py-1.5"><div className="text-[10px] text-muted-foreground">-</div></td>
+							<td className="px-2 py-1.5"><div className="text-[10px] text-muted-foreground">-</div></td>
 							<td className="px-2 py-1.5">
-								<div className="text-[10px] text-muted-foreground">-</div>
+								<div className="rounded-lg border border-dashed border-border px-2 py-1 text-[10px] text-muted-foreground">
+									Autosave
+								</div>
 							</td>
 							<td className="px-2 py-1.5 text-right">
 								<div className="flex items-center justify-end gap-1.5">
@@ -4129,35 +4065,38 @@ function InventoryTable({
 									<td className="p-4">
 										<Skeleton className="h-4 w-32" />
 									</td>
-									<td className={`p-4 ${tableMode === "detail" ? "" : "hidden"}`}>
-										<Skeleton className="h-8 w-24" />
-									</td>
-									<td className="p-4">
-										<Skeleton className="mx-auto h-8 w-16" />
-									</td>
-									<td className={`p-4 ${tableMode === "detail" ? "" : "hidden"}`}>
-										<Skeleton className="mx-auto h-8 w-16" />
-									</td>
-									<td className={`p-4 ${tableMode === "detail" ? "" : "hidden"}`}>
-										<Skeleton className="mx-auto h-8 w-16" />
-									</td>
 									<td className="p-4">
 										<Skeleton className="h-8 w-24" />
 									</td>
 									<td className="p-4">
-										<Skeleton className="h-8 w-28" />
+										<Skeleton className="mx-auto h-4 w-12" />
 									</td>
-									<td className={`p-4 ${tableMode === "detail" ? "" : "hidden"}`}>
-										<Skeleton className="h-10 w-32" />
+									<td className="p-4">
+										<Skeleton className="mx-auto h-8 w-16" />
 									</td>
-									<td className={`p-4 ${tableMode === "detail" ? "" : "hidden"}`}>
-										<Skeleton className="h-8 w-28" />
+									<td className="p-4">
+										<Skeleton className="mx-auto h-8 w-16" />
 									</td>
 									<td className="p-4">
 										<Skeleton className="h-8 w-24" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="mx-auto h-4 w-12" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="mx-auto h-4 w-12" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="h-4 w-20" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="h-4 w-20" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="h-6 w-20" />
 									</td>
 									<td className="p-4 text-right">
-										<Skeleton className="ml-auto h-8 w-8 rounded-lg" />
+										<Skeleton className="ml-auto h-8 w-24 rounded-lg" />
 									</td>
 								</tr>
 							))}
@@ -4170,18 +4109,6 @@ function InventoryTable({
 								}
 								const inline = getInlineValue(row);
 								const statusMeta = getStatusMeta(row.status);
-								const usageInsight = getUsageInsight(row);
-								const missingConversion = hasMissingConversion({
-									unit: inline.unit || row.unit,
-									displayUnit: inline.displayUnit || row.displayUnit,
-									conversionFactor: inline.conversionFactor
-										? Number(inline.conversionFactor)
-										: row.conversionFactor,
-									unitConversions:
-										parseUnitConversionsText(inline.unitConversionsText) ??
-										row.unitConversions,
-								});
-
 								return (
 									<tr
 										className={`transition-colors hover:bg-muted/20 ${
@@ -4197,7 +4124,9 @@ function InventoryTable({
 									>
 										<td className="sticky left-0 z-[1] bg-inherit px-2.5 py-1.5 align-middle">
 											<input
-												className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold text-[11px] leading-4 outline-none focus:border-border focus:bg-background"
+												className={`w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold leading-4 outline-none focus:border-border focus:bg-background ${
+													tableMode === "simple" ? "text-[10px]" : "text-[11px]"
+												}`}
 												onBlur={() => void saveMeta(row)}
 												onChange={(e) =>
 													setInlineField(row, "ingredientName", e.target.value)
@@ -4212,276 +4141,111 @@ function InventoryTable({
 												value={inline.ingredientName}
 											/>
 										</td>
-										<td
-											className={`px-2 py-1.5 align-middle ${
-												tableMode === "detail" ? "hidden lg:table-cell" : "hidden"
-											}`}
-										>
-											<div className={tableMode === "detail" ? "" : "space-y-1"}>
-												<input
-													className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-semibold text-[10px] outline-none focus:border-border focus:bg-background"
-													onBlur={() => void saveMeta(row)}
-													onChange={(e) =>
-														setInlineField(row, "defaultBrandName", e.target.value)
+										<td className="px-2 py-1.5 align-middle">
+											<input
+												className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-semibold text-[10px] outline-none focus:border-border focus:bg-background"
+												onBlur={() => void saveMeta(row)}
+												onChange={(e) =>
+													setInlineField(row, "defaultBrandName", e.target.value)
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveMeta(row);
+														(e.target as HTMLInputElement).blur();
 													}
-													onKeyDown={(e) => {
-														if (e.key === "Enter") {
-															void saveMeta(row);
-															(e.target as HTMLInputElement).blur();
-														}
-													}}
-													placeholder="-"
-													value={inline.defaultBrandName}
-												/>
-												{tableMode !== "detail" && (
-													<p className="text-[10px] text-muted-foreground">
-														Preferensi: {row.preferredStoreName || "-"}
-													</p>
-												)}
-											</div>
+												}}
+												placeholder="-"
+												value={inline.defaultBrandName}
+											/>
 										</td>
-										<td className="px-2 py-1.5 align-middle text-center">
-											<div className="space-y-1">
-												<input
-													className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono text-[12px] font-bold outline-none focus:border-border focus:bg-background"
-													onBlur={() => void saveQuantity(row)}
-													onChange={(e) =>
-														setInlineField(row, "quantity", e.target.value)
-													}
-													onKeyDown={(e) => {
-														if (e.key === "Enter") {
-															void saveQuantity(row);
-															(e.target as HTMLInputElement).blur();
-														}
-													}}
-													type="number"
-													value={inline.quantity}
-												/>
-												{tableMode === "simple" && (
-													<p className="text-[9px] text-muted-foreground">
-														min {row.lowStockThreshold} · gap {row.currentStock - row.lowStockThreshold}
-													</p>
-												)}
-											</div>
-										</td>
-										<td
-											className={`px-2 py-1.5 align-middle text-center ${
-												tableMode === "detail" ? "" : "hidden"
-											}`}
-										>
-											<div className="inline-flex items-center gap-1">
-												<input
-													className="mx-auto w-12 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] outline-none focus:border-border focus:bg-background"
-													onBlur={() => void saveMeta(row)}
-													onChange={(e) =>
-														setInlineField(row, "lowStockThreshold", e.target.value)
-													}
-													onKeyDown={(e) => {
-														if (e.key === "Enter") {
-															void saveMeta(row);
-															(e.target as HTMLInputElement).blur();
-														}
-													}}
-													type="number"
-													value={inline.lowStockThreshold}
-												/>
-												<input
-													className="w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background"
-													list="inventory-unit-options-table"
-													onBlur={() => void saveMeta(row)}
-													onChange={(e) =>
-														setInlineField(
-															row,
-															"unit",
-															normalizeUnitOption(e.target.value)
-														)
-													}
-													placeholder="unit"
-													value={inline.unit}
-												/>
-											</div>
-										</td>
-										<td
-											className={`px-2 py-1.5 align-middle text-center ${
-												tableMode === "detail" ? "" : "hidden"
-											}`}
-										>
-											<span
-												className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-													row.currentStock - row.lowStockThreshold < 0
-														? "bg-rose-100 text-rose-700"
-														: row.currentStock - row.lowStockThreshold <= 10
-															? "bg-amber-100 text-amber-700"
-															: "bg-emerald-100 text-emerald-700"
-												}`}
-											>
-												{row.currentStock - row.lowStockThreshold}
+										<td className="px-2 py-1.5 align-middle text-[9px] text-muted-foreground">
+											<span className="whitespace-nowrap font-semibold text-foreground">
+												{row.lastPurchaseStoreName || row.preferredStoreName || "-"}
 											</span>
 										</td>
-										<td className="px-2 py-1.5 align-middle">
-											{tableMode === "detail" ? (
-												<input
-													className="w-full truncate rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-[9px] outline-none focus:border-border focus:bg-background"
-													onBlur={() => void saveMeta(row)}
-													onChange={(e) =>
-														setInlineField(row, "unitConversionsText", e.target.value)
+										<td className="px-2 py-1.5 align-middle text-center">
+											<input
+												className="mx-auto w-12 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] outline-none focus:border-border focus:bg-background"
+												onBlur={() => void saveMeta(row)}
+												onChange={(e) =>
+													setInlineField(row, "lowStockThreshold", e.target.value)
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveMeta(row);
+														(e.target as HTMLInputElement).blur();
 													}
-													onKeyDown={(e) => {
-														if (e.key === "Enter") {
-															void saveMeta(row);
-															(e.target as HTMLInputElement).blur();
-														}
-													}}
-													placeholder={
-														inline.unit === "pcs"
-															? "gram:200 atau dus:12"
-															: "dus:12, karton:144"
+												}}
+												type="number"
+												value={inline.lowStockThreshold}
+											/>
+										</td>
+										<td className="px-2 py-1.5 align-middle text-center">
+											<input
+												className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono text-[12px] font-bold outline-none focus:border-border focus:bg-background"
+												onBlur={() => void saveQuantity(row)}
+												onChange={(e) =>
+													setInlineField(row, "quantity", e.target.value)
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveQuantity(row);
+														(e.target as HTMLInputElement).blur();
 													}
-													title={
-														buildUnitChainSummary(
-															inline.unit || row.unit,
-															row.unitConversions,
-															inline.displayUnit || row.displayUnit,
-															inline.conversionFactor
-																? Number(inline.conversionFactor)
-																: row.conversionFactor
-														) || ""
-													}
-													value={inline.unitConversionsText}
-												/>
-											) : (
-												<div className="space-y-1">
-													<div className="text-[10px] text-muted-foreground">
-														{buildUnitChainSummary(
-															inline.unit || row.unit,
-															row.unitConversions,
-															inline.displayUnit || row.displayUnit,
-															inline.conversionFactor
-																? Number(inline.conversionFactor)
-																: row.conversionFactor
-														) ||
-															buildConversionHint(
-																inline.unit || row.unit,
-																inline.displayUnit || row.displayUnit,
-																inline.conversionFactor
-																	? Number(inline.conversionFactor)
-																	: row.conversionFactor
-															) ||
-															(inline.unit === "pcs"
-																? "Wajib isi konversi"
-																: "-")}
-													</div>
-													<input
-														className="w-full rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-[10px] outline-none focus:border-border focus:bg-background"
-														onBlur={() => void saveMeta(row)}
-														onChange={(e) =>
-															setInlineField(row, "unitConversionsText", e.target.value)
-														}
-														onKeyDown={(e) => {
-															if (e.key === "Enter") {
-																void saveMeta(row);
-																(e.target as HTMLInputElement).blur();
-															}
-														}}
-														placeholder={
-															inline.unit === "pcs"
-																? "contoh: gram:200 atau dus:12"
-																: "contoh: dus:12, karton:144"
-														}
-														value={inline.unitConversionsText}
-													/>
-													{missingConversion && (
-														<p className="text-[10px] font-semibold text-rose-600">
-															Item `pcs` belum punya konversi.
-														</p>
-													)}
-												</div>
-											)}
+												}}
+												type="number"
+												value={inline.quantity}
+											/>
 										</td>
-										<td className="px-2 py-1.5 align-middle">
-											{tableMode === "detail" ? (
-												<div className="flex items-center gap-1.5 whitespace-nowrap text-[10px]">
-													<span
-														className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${statusMeta.tone}`}
-														title={`ROP ${row.reorderPoint} ${row.unit}`}
-													>
-														{row.status === "critical" && (
-															<AlertCircle className="h-3.5 w-3.5" />
-														)}
-														{statusMeta.label}
-													</span>
-													<span className="text-muted-foreground">
-														{row.latestTransaction?.timestamp
-															? new Date(row.latestTransaction.timestamp).toLocaleDateString("id-ID")
-															: "-"}
-													</span>
-												</div>
-											) : (
-												<>
-													<span
-														className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusMeta.tone}`}
-														title={`ROP ${row.reorderPoint} ${row.unit}`}
-													>
-														{row.status === "critical" && (
-															<AlertCircle className="h-3.5 w-3.5" />
-														)}
-														{statusMeta.label}
-													</span>
-													<p className="mt-1 text-[9px] text-muted-foreground">
-														{saveStateByRow[row.inventoryId] === "saving"
-															? "Saving..."
-															: saveStateByRow[row.inventoryId] === "saved"
-																? "Saved"
-																: saveStateByRow[row.inventoryId] === "error"
-																	? "Error"
-																	: "Idle"}
-													</p>
-													<p className="text-[9px] text-muted-foreground">
-														Update:{" "}
-														{row.latestTransaction?.timestamp
-															? new Date(row.latestTransaction.timestamp).toLocaleDateString("id-ID")
-															: "-"}
-													</p>
-													<span
-														className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-semibold ${usageInsight.tone}`}
-													>
-														{usageInsight.label}
-													</span>
-												</>
-											)}
+										<td className="px-2 py-1.5 align-middle text-center">
+											<input
+												className="mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background"
+												list="inventory-unit-options-table"
+												onBlur={() => void saveMeta(row)}
+												onChange={(e) =>
+													setInlineField(
+														row,
+														"unit",
+														normalizeUnitOption(e.target.value)
+													)
+												}
+												placeholder="unit"
+												value={inline.unit}
+											/>
 										</td>
-										<td
-											className={`px-2 py-1.5 align-middle text-[10px] text-muted-foreground ${
-												tableMode === "detail" ? "hidden lg:table-cell" : "hidden"
-											}`}
-										>
-											<div className="whitespace-nowrap">
-												<span className="font-semibold text-foreground">
-													{row.avgDailyUsage.toFixed(2)}/hari
-												</span>
-												<span className="mx-1">|</span>
-												<span>Order {row.suggestedOrderQty}</span>
-											</div>
+										<td className="px-2 py-1.5 align-middle text-center text-[10px]">
+											{row.latestTransaction?.purchaseQuantity != null
+												? row.latestTransaction.purchaseQuantity
+												: "-"}
 										</td>
-										<td
-											className={`px-2 py-1.5 align-middle text-[10px] text-muted-foreground ${
-												tableMode === "detail" ? "hidden md:table-cell" : "hidden"
-											}`}
-										>
-											<span className="whitespace-nowrap font-semibold text-foreground">
-												{row.lastPurchaseStoreName || "-"}
+										<td className="px-2 py-1.5 align-middle text-center text-[10px] text-muted-foreground">
+											{row.latestTransaction?.purchaseUnit || "-"}
+										</td>
+										<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
+											<span className="font-semibold text-foreground">
+												{row.avgDailyUsage.toFixed(2)}/hari
 											</span>
 										</td>
 										<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
-											<div className="whitespace-nowrap">
-												<span className="font-semibold text-foreground">
-													{formatCurrency(row.lastPurchasePrice)}
+											<span className="font-semibold text-foreground">
+												{formatCurrency(row.lastPurchasePrice)}
+											</span>
+										</td>
+										<td className="px-2 py-1.5 align-middle">
+											<div className="flex items-center gap-1.5 whitespace-nowrap text-[10px]">
+												<span
+													className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${statusMeta.tone}`}
+												>
+													{row.status === "critical" && (
+														<AlertCircle className="h-3.5 w-3.5" />
+													)}
+													{statusMeta.label}
 												</span>
-												{tableMode === "detail" && (
-													<span className="ml-1 text-muted-foreground">
-														| {row.defaultBrandName || "Tanpa brand"}
-													</span>
-												)}
+												<span className="text-muted-foreground">
+													{row.latestTransaction?.timestamp
+														? new Date(row.latestTransaction.timestamp).toLocaleDateString("id-ID")
+														: "-"}
+												</span>
 											</div>
 										</td>
 										<td className="px-2 py-1.5 align-middle text-right">
@@ -4571,13 +4335,14 @@ function InventoryTable({
 							})}
 						{inventoryMap.size > 0 && filteredRows.length === 0 && (
 							<tr>
-								<td className="p-8 text-center text-muted-foreground" colSpan={10}>
+								<td className="p-8 text-center text-muted-foreground" colSpan={12}>
 									Tidak ada bahan baku ditemukan
 								</td>
 							</tr>
 						)}
 					</tbody>
 				</table>
+				</div>
 			</div>
 			{aiReview?.result.suggestion && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
