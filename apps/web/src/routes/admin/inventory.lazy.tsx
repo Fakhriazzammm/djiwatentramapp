@@ -212,6 +212,24 @@ type InventoryYumiAiInsightsData = {
 	};
 };
 
+type InventoryAutofillSuggestion = {
+	unit: string;
+	lowStockThreshold: number;
+	defaultBrandName: string;
+	displayUnit: string;
+	conversionFactor: number | null;
+	unitConversionsText: string;
+	confidence: number;
+	reason: string;
+};
+
+type InventoryAutofillActionResult = {
+	ok: boolean;
+	message: string;
+	suggestion: InventoryAutofillSuggestion | null;
+	sources: Array<{ title: string; url: string; snippet: string }>;
+};
+
 const INVENTORY_UNIT_OPTIONS = [
 	"gram",
 	"ml",
@@ -3332,6 +3350,12 @@ function InventoryTable({
 		}
 	};
 
+	const requestAutofillSuggestion = async (ingredientName: string) => {
+		return (await suggestInventoryAutofill({
+			ingredientName,
+		})) as InventoryAutofillActionResult;
+	};
+
 	const quickAutofillFromAI = async () => {
 		const ingredientName = quickAdd.ingredientName.trim();
 		if (!ingredientName) {
@@ -3340,23 +3364,7 @@ function InventoryTable({
 		}
 		try {
 			setSavingKey("quick-ai");
-			const result = (await suggestInventoryAutofill({
-				ingredientName,
-			})) as {
-				ok: boolean;
-				message: string;
-				suggestion: {
-					unit: string;
-					lowStockThreshold: number;
-					defaultBrandName: string;
-					displayUnit: string;
-					conversionFactor: number | null;
-					unitConversionsText: string;
-					confidence: number;
-					reason: string;
-				} | null;
-				sources: Array<{ title: string; url: string; snippet: string }>;
-			};
+			const result = await requestAutofillSuggestion(ingredientName);
 			if (!result.ok || !result.suggestion) {
 				toast.error(result.message || "Autofill AI belum menemukan saran");
 				return;
@@ -3385,6 +3393,103 @@ function InventoryTable({
 			const message =
 				error instanceof Error ? error.message : "Autofill AI gagal dijalankan";
 			toast.error(message);
+		} finally {
+			setSavingKey(null);
+		}
+	};
+
+	const applyAiAutofillForRow = async (
+		row: InventoryWorkspaceRow,
+		item: Doc<"inventory">
+	) => {
+		const ingredientName = (row.ingredientName || item.ingredientName || "").trim();
+		if (!ingredientName) {
+			toast.error("Nama bahan kosong, tidak bisa autofill AI");
+			return;
+		}
+		try {
+			setSavingKey(`${row.inventoryId}:ai`);
+			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saving" }));
+			const result = await requestAutofillSuggestion(ingredientName);
+			if (!result.ok || !result.suggestion) {
+				toast.error(result.message || "Autofill AI belum menemukan saran");
+				setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "error" }));
+				return;
+			}
+			const suggestion = result.suggestion;
+			const nextUnit = normalizeUnitOption(suggestion.unit) || item.unit;
+			const nextThreshold =
+				suggestion.lowStockThreshold > 0
+					? suggestion.lowStockThreshold
+					: item.lowStockThreshold;
+			const nextDisplayUnit =
+				normalizeUnitOption(suggestion.displayUnit) || item.displayUnit || undefined;
+			const nextConversionFactor =
+				suggestion.conversionFactor != null && suggestion.conversionFactor > 0
+					? suggestion.conversionFactor
+					: item.conversionFactor || undefined;
+			const parsedAiConversions = parseUnitConversionsText(
+				suggestion.unitConversionsText || ""
+			);
+
+			await updateItemMutation({
+				id: item._id,
+				ingredientName: item.ingredientName,
+				unit: nextUnit,
+				lowStockThreshold: nextThreshold,
+				displayUnit: nextDisplayUnit,
+				conversionFactor: nextConversionFactor,
+				unitConversions: parsedAiConversions ?? item.unitConversions,
+				baseRecipeId: item.baseRecipeId || undefined,
+				defaultBrandName:
+					(suggestion.defaultBrandName || "").trim() || item.defaultBrandName || undefined,
+				preferredStoreId: item.preferredStoreId || undefined,
+			});
+
+			setInlineValues((prev) => ({
+				...prev,
+				[row.inventoryId]: {
+					...(prev[row.inventoryId] ?? {
+						ingredientName: row.ingredientName,
+						quantity: String(row.currentStock),
+						unit: row.unit,
+						lowStockThreshold: String(row.lowStockThreshold),
+						defaultBrandName: row.defaultBrandName ?? "",
+						displayUnit: row.displayUnit ?? "",
+						conversionFactor:
+							typeof row.conversionFactor === "number" && row.conversionFactor > 0
+								? String(row.conversionFactor)
+								: "",
+						unitConversionsText: formatUnitConversionsText(
+							row.unitConversions,
+							row.displayUnit,
+							row.conversionFactor
+						),
+					}),
+					unit: nextUnit,
+					lowStockThreshold: String(nextThreshold),
+					defaultBrandName:
+						(suggestion.defaultBrandName || "").trim() || item.defaultBrandName || "",
+					displayUnit: nextDisplayUnit || "",
+					conversionFactor: nextConversionFactor ? String(nextConversionFactor) : "",
+					unitConversionsText:
+						suggestion.unitConversionsText ||
+						formatUnitConversionsText(
+							parsedAiConversions ?? item.unitConversions,
+							nextDisplayUnit,
+							nextConversionFactor
+						),
+				},
+			}));
+
+			const confidencePercent = Math.round(suggestion.confidence * 100);
+			toast.success(`Autofill baris ${confidencePercent}%: ${suggestion.reason}`);
+			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Autofill AI untuk baris gagal";
+			toast.error(message);
+			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "error" }));
 		} finally {
 			setSavingKey(null);
 		}
@@ -3935,6 +4040,11 @@ function InventoryTable({
 														</DropdownMenuItem>
 														<DropdownMenuItem onClick={() => void quickDelta(row, "usage", 5)}>
 															<Minus className="mr-2 h-4 w-4" /> Pakai -5
+														</DropdownMenuItem>
+														<DropdownMenuItem
+															onClick={() => void applyAiAutofillForRow(row, item)}
+														>
+															<Settings2 className="mr-2 h-4 w-4" /> Autofill AI Baris Ini
 														</DropdownMenuItem>
 														<DropdownMenuItem
 															onClick={() => {
