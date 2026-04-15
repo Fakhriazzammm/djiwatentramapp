@@ -10,6 +10,7 @@ import {
 	Boxes,
 	ArrowDown,
 	ArrowUp,
+	Copy,
 	Edit,
 	History,
 	MoreHorizontal,
@@ -58,6 +59,7 @@ type InventoryWorkspaceRow = {
 	preferredStoreName: string | null;
 	lastPurchaseStoreName: string | null;
 	lastPurchasePrice: number | null;
+	lastPurchaseBrandName?: string | null;
 	lowStockThreshold: number;
 	avgDailyUsage: number;
 	daysUntilStockout: number | null;
@@ -428,6 +430,69 @@ function getPurchaseUnitOptions(
 		}
 	}
 	return [...options];
+}
+
+function hasMissingConversion(row: Pick<
+	InventoryWorkspaceRow,
+	"unit" | "displayUnit" | "conversionFactor" | "unitConversions"
+>) {
+	return (
+		row.unit === "pcs" &&
+		!(row.unitConversions?.length ?? 0) &&
+		!(
+			(row.displayUnit || "").trim() &&
+			typeof row.conversionFactor === "number" &&
+			row.conversionFactor > 0
+		)
+	);
+}
+
+function getUsageInsight(row: Pick<
+	InventoryWorkspaceRow,
+	"avgDailyUsage" | "currentStock" | "daysUntilStockout" | "status"
+>) {
+	if (row.currentStock <= 0 || row.status === "critical") {
+		return {
+			label: "Cepat habis",
+			tone: "border-rose-200 bg-rose-50 text-rose-700",
+		};
+	}
+	if (row.avgDailyUsage === 0) {
+		return {
+			label: "Stok diam",
+			tone: "border-slate-200 bg-slate-50 text-slate-700",
+		};
+	}
+	if ((row.daysUntilStockout ?? 999) <= 7) {
+		return {
+			label: "Perlu order",
+			tone: "border-amber-200 bg-amber-50 text-amber-700",
+		};
+	}
+	return {
+		label: "Lancar",
+		tone: "border-emerald-200 bg-emerald-50 text-emerald-700",
+	};
+}
+
+function parseInventoryPasteRows(input: string) {
+	return input
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter(Boolean)
+		.map((line) => {
+			const [ingredientName, defaultBrandName, quantity, lowStockThreshold, unit, unitConversionsText] =
+				line.split("\t").map((part) => part.trim());
+			return {
+				ingredientName: ingredientName || "",
+				defaultBrandName: defaultBrandName || "",
+				quantity: quantity || "0",
+				lowStockThreshold: lowStockThreshold || "100",
+				unit: normalizeUnitOption(unit || "gram") || "gram",
+				unitConversionsText: unitConversionsText || "",
+			};
+		})
+		.filter((row) => row.ingredientName);
 }
 
 function UnitConversionBuilder({
@@ -2863,6 +2928,8 @@ function InventoryTable({
 		defaultBrandName: "",
 	});
 	const [auditItem, setAuditItem] = useState<Doc<"inventory"> | null>(null);
+	const [showPastePanel, setShowPastePanel] = useState(false);
+	const [pasteBuffer, setPasteBuffer] = useState("");
 	const inventoryItems = useMemo(() => [...inventoryMap.values()], [inventoryMap]);
 	const [inlineValues, setInlineValues] = useState<
 		Record<
@@ -2934,6 +3001,67 @@ function InventoryTable({
 			unitConversionsText: template.conversions,
 			lowStockThreshold: template.lowStockThreshold,
 		}));
+	};
+
+	const createInventoryFromDraft = async (draft: {
+		ingredientName: string;
+		quantity: string;
+		unit: string;
+		lowStockThreshold: string;
+		defaultBrandName: string;
+		displayUnit?: string;
+		conversionFactor?: string;
+		unitConversionsText: string;
+	}) => {
+		const ingredientName = draft.ingredientName.trim();
+		const normalizedUnit = normalizeUnitOption(draft.unit);
+		const quantity = Number(draft.quantity);
+		const lowStockThreshold = Number(draft.lowStockThreshold);
+		const conversionFactor = Number(draft.conversionFactor || "");
+		const displayUnit = (draft.displayUnit || "").trim().toLowerCase();
+		const parsedUnitConversions = parseUnitConversionsText(draft.unitConversionsText);
+		const primaryConversion = getPrimaryConversionFromChain(parsedUnitConversions);
+
+		if (!ingredientName) {
+			throw new Error("Nama bahan wajib diisi");
+		}
+		if (!normalizedUnit) {
+			throw new Error("Satuan wajib diisi");
+		}
+		if (Number.isNaN(quantity) || quantity < 0) {
+			throw new Error("Stok awal tidak valid");
+		}
+		if (Number.isNaN(lowStockThreshold) || lowStockThreshold < 0) {
+			throw new Error("Ambang stok tidak valid");
+		}
+		if (normalizedUnit === "pcs") {
+			const hasLegacyConversion =
+				displayUnit &&
+				!Number.isNaN(conversionFactor) &&
+				conversionFactor > 0;
+			const hasChainConversion = (parsedUnitConversions?.length ?? 0) > 0;
+			if (!hasLegacyConversion && !hasChainConversion) {
+				throw new Error(
+					`"${ingredientName}" perlu konversi pcs, contoh gram:200 atau dus:12`
+				);
+			}
+		}
+
+		await createItemMutation({
+			ingredientName,
+			unit: normalizedUnit,
+			quantity,
+			lowStockThreshold,
+			defaultBrandName: draft.defaultBrandName.trim() || undefined,
+			displayUnit:
+				primaryConversion.displayUnit || displayUnit || undefined,
+			conversionFactor:
+				primaryConversion.conversionFactor ||
+				(!Number.isNaN(conversionFactor) && conversionFactor > 0
+					? conversionFactor
+					: undefined),
+			unitConversions: parsedUnitConversions,
+		});
 	};
 
 	const applySuggestionFromExisting = (ingredientName: string) => {
@@ -3102,7 +3230,6 @@ function InventoryTable({
 				defaultBrandName: current.defaultBrandName.trim() || undefined,
 				preferredStoreId: item.preferredStoreId || undefined,
 			});
-			toast.success("Perubahan baris tersimpan");
 			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
 		} catch (error) {
 			const message =
@@ -3139,7 +3266,6 @@ function InventoryTable({
 				quantity: quantityNum,
 				notes: "Quick inline update",
 			});
-			toast.success("Stok langsung tersimpan");
 			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
 		} catch (error) {
 			const message =
@@ -3184,63 +3310,9 @@ function InventoryTable({
 	};
 
 	const quickCreate = async () => {
-		const ingredientName = quickAdd.ingredientName.trim();
-		const normalizedUnit = normalizeUnitOption(quickAdd.unit);
-		const quantity = Number(quickAdd.quantity);
-		const lowStockThreshold = Number(quickAdd.lowStockThreshold);
-		const conversionFactor = Number(quickAdd.conversionFactor);
-		const displayUnit = quickAdd.displayUnit.trim().toLowerCase();
-		const parsedUnitConversions = parseUnitConversionsText(quickAdd.unitConversionsText);
-		const primaryConversion = getPrimaryConversionFromChain(parsedUnitConversions);
-		if (!ingredientName) {
-			toast.error("Nama bahan wajib diisi");
-			return;
-		}
-		if (!normalizedUnit) {
-			toast.error("Satuan wajib diisi");
-			return;
-		}
-		if (Number.isNaN(quantity) || quantity < 0) {
-			toast.error("Stok awal tidak valid");
-			return;
-		}
-		if (Number.isNaN(lowStockThreshold) || lowStockThreshold < 0) {
-			toast.error("Ambang stok tidak valid");
-			return;
-		}
-		if (normalizedUnit === "pcs") {
-			const hasLegacyConversion =
-				displayUnit &&
-				!Number.isNaN(conversionFactor) &&
-				conversionFactor > 0;
-			const hasChainConversion = (parsedUnitConversions?.length ?? 0) > 0;
-			if (!hasLegacyConversion && !hasChainConversion) {
-				toast.error(
-					"Untuk unit pcs, isi minimal satu konversi (contoh: gram:200 atau dus:12)"
-				);
-				return;
-			}
-		}
-
 		try {
 			setSavingKey("quick-add");
-			await createItemMutation({
-				ingredientName,
-				unit: normalizedUnit,
-				quantity,
-				lowStockThreshold,
-				defaultBrandName: quickAdd.defaultBrandName.trim() || undefined,
-				displayUnit:
-					primaryConversion.displayUnit ||
-					quickAdd.displayUnit.trim() ||
-					undefined,
-				conversionFactor:
-					primaryConversion.conversionFactor ||
-					(quickAdd.conversionFactor
-						? Number(quickAdd.conversionFactor)
-						: undefined),
-				unitConversions: parsedUnitConversions,
-			});
+			await createInventoryFromDraft(quickAdd);
 			setQuickAdd((prev) => ({
 				...prev,
 				ingredientName: "",
@@ -3250,7 +3322,6 @@ function InventoryTable({
 				conversionFactor: "",
 				unitConversionsText: "",
 			}));
-			toast.success("Item baru langsung tersimpan");
 			quickAddNameRef.current?.focus();
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Gagal menambah item";
@@ -3299,6 +3370,58 @@ function InventoryTable({
 		}
 	};
 
+	const handleDuplicateRow = async (row: InventoryWorkspaceRow) => {
+		try {
+			setSavingKey(`${row.inventoryId}:duplicate`);
+			await createInventoryFromDraft({
+				ingredientName: `${row.ingredientName} Copy`,
+				quantity: String(row.currentStock),
+				unit: row.unit,
+				lowStockThreshold: String(row.lowStockThreshold),
+				defaultBrandName: row.defaultBrandName ?? "",
+				displayUnit: row.displayUnit ?? "",
+				conversionFactor:
+					typeof row.conversionFactor === "number" ? String(row.conversionFactor) : "",
+				unitConversionsText: formatUnitConversionsText(
+					row.unitConversions,
+					row.displayUnit,
+					row.conversionFactor
+				),
+			});
+			toast.success(`Duplikat dibuat untuk ${row.ingredientName}`);
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : "Gagal duplikasi baris");
+		} finally {
+			setSavingKey(null);
+		}
+	};
+
+	const handlePasteImport = async () => {
+		const rows = parseInventoryPasteRows(pasteBuffer);
+		if (rows.length === 0) {
+			toast.error("Paste Excel kosong atau format belum sesuai");
+			return;
+		}
+
+		try {
+			setSavingKey("paste-import");
+			for (const row of rows) {
+				await createInventoryFromDraft({
+					...row,
+					displayUnit: "",
+					conversionFactor: "",
+				});
+			}
+			setPasteBuffer("");
+			setShowPastePanel(false);
+			toast.success(`${rows.length} baris berhasil diimport`);
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : "Import paste gagal");
+		} finally {
+			setSavingKey(null);
+		}
+	};
+
 	const getStatusMeta = (status: InventoryWorkspaceRow["status"]) => {
 		if (status === "critical") {
 			return {
@@ -3335,6 +3458,13 @@ function InventoryTable({
 					<div className="text-[11px] font-semibold text-muted-foreground">
 						{selectedVisibleIds.length} baris dipilih
 					</div>
+					<button
+						className="rounded-lg border border-border bg-background px-2.5 py-1 text-[11px] font-semibold"
+						onClick={() => setShowPastePanel((prev) => !prev)}
+						type="button"
+					>
+						{showPastePanel ? "Tutup Paste" : "Paste Excel"}
+					</button>
 					<input
 						className="w-24 rounded-lg border border-border bg-background px-2 py-1 text-[11px] outline-none"
 						onChange={(e) =>
@@ -3379,6 +3509,34 @@ function InventoryTable({
 						{savingKey === "bulk-update" ? "Menyimpan..." : "Apply Bulk"}
 					</button>
 				</div>
+				{showPastePanel && (
+					<div className="space-y-2 border-border border-b bg-background px-3 py-3">
+						<p className="text-[11px] font-semibold text-foreground">
+							Paste dari Excel: `nama`, `brand`, `stok`, `min`, `unit`, `takaran`
+						</p>
+						<textarea
+							className="min-h-[110px] w-full rounded-lg border border-border bg-muted/10 px-3 py-2 text-xs outline-none focus:border-primary"
+							onChange={(e) => setPasteBuffer(e.target.value)}
+							placeholder={
+								"Air Cleo\tCleo\t24\t6\tpcs\tdus:12\nFresh Milk\tIndomilk\t8000\t3000\tml\tliter:1000"
+							}
+							value={pasteBuffer}
+						/>
+						<div className="flex items-center justify-between gap-3">
+							<p className="text-[11px] text-muted-foreground">
+								Satu baris = satu item baru. Kolom dipisah tab dari Excel.
+							</p>
+							<button
+								className="rounded-lg bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground disabled:opacity-50"
+								disabled={savingKey === "paste-import"}
+								onClick={() => void handlePasteImport()}
+								type="button"
+							>
+								{savingKey === "paste-import" ? "Import..." : "Import Baris"}
+							</button>
+						</div>
+					</div>
+				)}
 				<table className="w-full table-fixed text-left text-[10px] md:text-[11px]">
 					<colgroup>
 						<col className="w-[3%]" />
@@ -3664,6 +3822,17 @@ function InventoryTable({
 								}
 								const inline = getInlineValue(row);
 								const statusMeta = getStatusMeta(row.status);
+								const usageInsight = getUsageInsight(row);
+								const missingConversion = hasMissingConversion({
+									unit: inline.unit || row.unit,
+									displayUnit: inline.displayUnit || row.displayUnit,
+									conversionFactor: inline.conversionFactor
+										? Number(inline.conversionFactor)
+										: row.conversionFactor,
+									unitConversions:
+										parseUnitConversionsText(inline.unitConversionsText) ??
+										row.unitConversions,
+								});
 
 								return (
 									<tr
@@ -3697,21 +3866,26 @@ function InventoryTable({
 											/>
 										</td>
 										<td className="px-2 py-2 align-middle">
-											<input
-												className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-semibold text-[11px] outline-none focus:border-border focus:bg-background"
-												onBlur={() => void saveMeta(row)}
-												onChange={(e) =>
-													setInlineField(row, "defaultBrandName", e.target.value)
-												}
-												onKeyDown={(e) => {
-													if (e.key === "Enter") {
-														void saveMeta(row);
-														(e.target as HTMLInputElement).blur();
+											<div className="space-y-1">
+												<input
+													className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-semibold text-[11px] outline-none focus:border-border focus:bg-background"
+													onBlur={() => void saveMeta(row)}
+													onChange={(e) =>
+														setInlineField(row, "defaultBrandName", e.target.value)
 													}
-												}}
-												placeholder="-"
-												value={inline.defaultBrandName}
-											/>
+													onKeyDown={(e) => {
+														if (e.key === "Enter") {
+															void saveMeta(row);
+															(e.target as HTMLInputElement).blur();
+														}
+													}}
+													placeholder="-"
+													value={inline.defaultBrandName}
+												/>
+												<p className="text-[10px] text-muted-foreground">
+													Preferensi: {row.preferredStoreName || "-"}
+												</p>
+											</div>
 										</td>
 										<td className="px-2 py-2 align-middle text-center">
 											<input
@@ -3804,6 +3978,11 @@ function InventoryTable({
 													}
 													value={inline.unitConversionsText}
 												/>
+												{missingConversion && (
+													<p className="text-[10px] font-semibold text-rose-600">
+														Item `pcs` belum punya konversi.
+													</p>
+												)}
 											</div>
 										</td>
 										<td className="px-2 py-2 align-middle">
@@ -3825,6 +4004,11 @@ function InventoryTable({
 															? "Error"
 															: "Idle"}
 											</p>
+											<span
+												className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-semibold ${usageInsight.tone}`}
+											>
+												{usageInsight.label}
+											</span>
 										</td>
 										<td className="px-2 py-2 align-middle text-[10px] text-muted-foreground">
 											<span className="font-semibold text-foreground">
@@ -3836,14 +4020,20 @@ function InventoryTable({
 											</span>
 										</td>
 										<td className="px-2 py-2 align-middle text-[10px] text-muted-foreground">
-											<span className="font-semibold text-foreground">
-												{row.lastPurchaseStoreName || "-"}
-											</span>
+											<div className="space-y-1">
+												<span className="font-semibold text-foreground">
+													{row.lastPurchaseStoreName || "-"}
+												</span>
+												<p>Preferensi: {row.preferredStoreName || "-"}</p>
+											</div>
 										</td>
 										<td className="px-2 py-2 align-middle text-[10px] text-muted-foreground">
-											<span className="font-semibold text-foreground">
-												{formatCurrency(row.lastPurchasePrice)}
-											</span>
+											<div className="space-y-1">
+												<span className="font-semibold text-foreground">
+													{formatCurrency(row.lastPurchasePrice)}
+												</span>
+												<p>{row.defaultBrandName || "Tanpa brand"}</p>
+											</div>
 										</td>
 										<td className="px-2 py-2 align-middle text-right">
 											<div className="flex items-center justify-end gap-1">
@@ -3867,6 +4057,11 @@ function InventoryTable({
 														</DropdownMenuItem>
 														<DropdownMenuItem onClick={() => void quickDelta(row, "usage", 5)}>
 															<Minus className="mr-2 h-4 w-4" /> Pakai -5
+														</DropdownMenuItem>
+														<DropdownMenuItem
+															onClick={() => void handleDuplicateRow(row)}
+														>
+															<Copy className="mr-2 h-4 w-4" /> Duplikat Baris
 														</DropdownMenuItem>
 														<DropdownMenuItem
 															onClick={() => {
@@ -4209,64 +4404,37 @@ function InventoryHeader({
 						>
 							+ Tambah Baris
 						</button>
-						<button
-							className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted"
-							onClick={onOpenUnitDictionary}
-							type="button"
+						<select
+							className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none md:text-sm"
+							onChange={(e) =>
+								onViewPresetChange(e.target.value as InventoryViewPreset)
+							}
+							value={viewPreset}
 						>
-							Kamus Satuan
-						</button>
-						<button
-							className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted"
-							onClick={onOpenCommand}
-							type="button"
-						>
-							Command (Ctrl+K)
-						</button>
-						<button
-							className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
-								viewPreset === "all"
-									? "bg-foreground text-background"
-									: "border border-border bg-background text-foreground hover:bg-muted"
-							}`}
-							onClick={() => onViewPresetChange("all")}
-							type="button"
-						>
-							Semua Data
-						</button>
-						<button
-							className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
-								viewPreset === "critical"
-									? "bg-rose-600 text-white"
-									: "border border-border bg-background text-foreground hover:bg-muted"
-							}`}
-							onClick={() => onViewPresetChange("critical")}
-							type="button"
-						>
-							Fokus Kritis
-						</button>
-						<button
-							className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
-								viewPreset === "planning"
-									? "bg-sky-600 text-white"
-									: "border border-border bg-background text-foreground hover:bg-muted"
-							}`}
-							onClick={() => onViewPresetChange("planning")}
-							type="button"
-						>
-							Planning View
-						</button>
-						<button
-							className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
-								viewPreset === "priceMonitor"
-									? "bg-emerald-600 text-white"
-									: "border border-border bg-background text-foreground hover:bg-muted"
-							}`}
-							onClick={() => onViewPresetChange("priceMonitor")}
-							type="button"
-						>
-							Monitoring Harga
-						</button>
+							<option value="all">Mode: Operasional</option>
+							<option value="priceMonitor">Mode: Harga</option>
+							<option value="planning">Mode: Analitik</option>
+							<option value="critical">Mode: Fokus Kritis</option>
+						</select>
+						<DropdownMenu>
+							<DropdownMenuTrigger className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted md:text-sm">
+								Lainnya
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" className="w-56">
+								<DropdownMenuItem onClick={onOpenUnitDictionary}>
+									Kamus Satuan
+								</DropdownMenuItem>
+								<DropdownMenuItem onClick={onOpenCommand}>
+									Command Palette (Ctrl+K)
+								</DropdownMenuItem>
+								<DropdownMenuItem onClick={() => onViewPresetChange("all")}>
+									Buka Semua Data
+								</DropdownMenuItem>
+								<DropdownMenuItem onClick={() => onViewPresetChange("critical")}>
+									Buka Fokus Kritis
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
 					</div>
 					<div className="flex flex-wrap gap-2">
 						<button
