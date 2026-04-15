@@ -33,6 +33,10 @@ import {
 	ClipboardList,
 	ArrowUpRight,
 	Coins,
+	ShoppingBag,
+	Bike,
+	Truck,
+	Package,
 } from "lucide-react";
 import { FaceRecognition } from "@/components/auth/FaceRecognition";
 import { Copy, Download, FileJson, FileSpreadsheet, FileText, Share2 } from "lucide-react";
@@ -63,6 +67,16 @@ type ShiftSchedule = {
 	name: string;
 	openTime?: string;
 	closeTime?: string;
+};
+
+type OrderType = {
+	id: string;
+	name: string;
+	label: string;
+	icon?: string;
+	requiresTableNumber: boolean;
+	isActive: boolean;
+	sortOrder: number;
 };
 
 function buildShiftSchedules(
@@ -589,6 +603,8 @@ export function SettingsPage({
 		attendanceLat: -6.200000,
 		attendanceLng: 106.816666,
 		attendanceRadius: 50,
+		// Order Types
+		orderTypes: [] as OrderType[],
 	});
 
 	const [isConnected, setIsConnected] = useState(false);
@@ -2685,6 +2701,105 @@ export function SettingsPage({
 											</span>
 										</div>
 										<p className="text-[10px] text-muted-foreground">Biaya layanan operasional restoran</p>
+									</div>
+								</div>
+
+								{/* Order Types Configuration */}
+								<div className="space-y-4 pt-4 border-t border-border/50">
+									<div className="space-y-1.5">
+										<label className="block font-medium text-muted-foreground text-xs uppercase tracking-widest">
+											Tipe Pesanan (Order Types)
+										</label>
+										<p className="text-muted-foreground text-xs">
+											Konfigurasi tipe pesanan yang tersedia (Dine In, Takeaway, Ojol, dll).
+										</p>
+									</div>
+
+									<div className="space-y-3">
+										{settings.orderTypes?.map((orderType, index) => (
+											<div
+												key={orderType.id}
+												className="flex items-center gap-3 rounded-lg border border-border/50 bg-background p-3 shadow-sm"
+											>
+												<div className="flex items-center gap-2 flex-1">
+													<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+														{orderType.icon === "Utensils" && <Utensils className="h-4 w-4" />}
+														{orderType.icon === "ShoppingBag" && <ShoppingBag className="h-4 w-4" />}
+														{orderType.icon === "Bike" && <Bike className="h-4 w-4" />}
+														{orderType.icon === "Truck" && <Truck className="h-4 w-4" />}
+														{(!orderType.icon || !["Utensils", "ShoppingBag", "Bike", "Truck"].includes(orderType.icon)) && (
+															<Package className="h-4 w-4" />
+														)}
+													</div>
+													<div className="flex-1">
+														<input
+															className="w-full bg-transparent font-bold text-foreground text-sm outline-none focus:ring-1 focus:ring-primary/20"
+															onChange={(e) => {
+																const newOrderTypes = [...(settings.orderTypes || [])];
+																newOrderTypes[index] = { ...newOrderTypes[index], label: e.target.value };
+																setSettings({ ...settings, orderTypes: newOrderTypes });
+															}}
+															value={orderType.label}
+														/>
+													</div>
+												</div>
+
+												<div className="flex items-center gap-2">
+													<button
+														className={`relative h-5 w-9 rounded-full transition-all duration-300 ${orderType.isActive ? "bg-primary" : "bg-muted-foreground/20"}`}
+														onClick={() => {
+															const newOrderTypes = [...(settings.orderTypes || [])];
+															newOrderTypes[index] = { ...newOrderTypes[index], isActive: !newOrderTypes[index].isActive };
+															setSettings({ ...settings, orderTypes: newOrderTypes });
+														}}
+														title="Aktifkan/Nonaktifkan"
+														type="button"
+													>
+														<div
+															className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${orderType.isActive ? "right-0.5" : "left-0.5"}`}
+														/>
+													</button>
+													<button
+														className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+														onClick={() => {
+															if (settings.orderTypes && settings.orderTypes.length > 1) {
+																const newOrderTypes = settings.orderTypes.filter((_, i) => i !== index);
+																setSettings({ ...settings, orderTypes: newOrderTypes });
+															} else {
+																toast.error("Minimal harus ada satu tipe pesanan");
+															}
+														}}
+														title="Hapus"
+														type="button"
+													>
+														<Trash2 className="h-3.5 w-3.5" />
+													</button>
+												</div>
+											</div>
+										))}
+
+										<Button
+											className="w-full border-dashed border-2"
+											onClick={() => {
+												const newOrderType = {
+													id: `order_type_${Date.now()}`,
+													name: `order_type_${Date.now()}`,
+													label: "Tipe Pesanan Baru",
+													icon: "Package",
+													requiresTableNumber: false,
+													isActive: true,
+													sortOrder: (settings.orderTypes?.length || 0) + 1,
+												};
+												setSettings({
+													...settings,
+													orderTypes: [...(settings.orderTypes || []), newOrderType],
+												});
+											}}
+											variant="outline"
+										>
+											<Plus className="mr-2 h-4 w-4" />
+											Tambah Tipe Pesanan
+										</Button>
 									</div>
 								</div>
 

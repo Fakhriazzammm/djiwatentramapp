@@ -1,13 +1,74 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-const DEFAULT_AI_MODEL_CONFIG = {
+type OrderType = {
+	id: string;
+	name: string;
+	label: string;
+	icon?: string;
+	requiresTableNumber: boolean;
+	isActive: boolean;
+	sortOrder: number;
+};
+
+type PaymentMethodsManual = {
+	cash: boolean;
+	qris: boolean;
+	transfer: boolean;
+};
+
+type ShiftSchedule = {
+	name: string;
+	openTime?: string;
+	closeTime?: string;
+};
+
+type ShiftSettings = {
+	predefinedShifts: string[];
+	defaultStartingCash: number;
+	reminderMinutesBeforeClose: number;
+	autoSendShiftReportEmail: boolean;
+	shiftSchedules: ShiftSchedule[];
+};
+
+type CustomerOrdering = {
+	enabled: boolean;
+	welcomeTitle: string;
+	welcomeSubtitle: string;
+	welcomeButtonLabel: string;
+	enablePartySizeSelection: boolean;
+	enableFreeRefillPrompt: boolean;
+	enableBarcodeScan: boolean;
+	enableMenuNumberEntry: boolean;
+	enableCatalogBrowsing: boolean;
+	enableStaffCall: boolean;
+	enableDessertLater: boolean;
+	requireTableNumber: boolean;
+	cashPaymentLabel: string;
+	mayarPaymentLabel: string;
+};
+
+type PayrollGlobalConfig = {
+	lateToleranceMinutes: number;
+	latePenaltyPerMinute: number;
+	overtimeBonusPerHour: number;
+};
+
+type AiModelConfig = {
+	ocrVisionModel: string;
+	chatTextModel: string;
+	synthesisModel: string;
+	analyticsModel: string;
+	fallbackModel: string;
+};
+
+const DEFAULT_AI_MODEL_CONFIG: AiModelConfig = {
 	ocrVisionModel: "gemini/gemini-2.0-flash-lite",
 	chatTextModel: "gpt-4.1-mini",
 	synthesisModel: "gpt-4.1-mini",
 	analyticsModel: "gpt-4.1-mini",
 	fallbackModel: "gpt-4.1-mini",
-} as const;
+};
 
 function normalizeModelId(model?: string) {
 	const raw = (model || "").trim();
@@ -17,13 +78,7 @@ function normalizeModelId(model?: string) {
 	return raw;
 }
 
-function normalizeAiModelConfig(config?: {
-	ocrVisionModel?: string;
-	chatTextModel?: string;
-	synthesisModel?: string;
-	analyticsModel?: string;
-	fallbackModel?: string;
-}) {
+function normalizeAiModelConfig(config?: Partial<AiModelConfig>): AiModelConfig {
 	return {
 		ocrVisionModel:
 			normalizeModelId(config?.ocrVisionModel) ||
@@ -44,7 +99,61 @@ function normalizeAiModelConfig(config?: {
 }
 
 // Default values
-const DEFAULTS = {
+const DEFAULTS: {
+	landingIcon: string;
+	landingTitle: string;
+	landingDescription: string;
+	landingButtonText: string;
+	logoUrl: string;
+	headerLogoUrl: string;
+	faviconUrl: string;
+	pwaIcon192Url: string;
+	pwaIcon512Url: string;
+	pwaMaskableIconUrl: string;
+	seoMetaTitle: string;
+	seoMetaDescription: string;
+	seoMetaKeywords: string;
+	seoShareTitle: string;
+	seoShareDescription: string;
+	seoShareImageUrl: string;
+	seoCanonicalUrl: string;
+	paymentPopupImage: string;
+	storeName: string;
+	storeAddress: string;
+	storePhone: string;
+	resendFromEmail: string;
+	receiptFooter: string;
+	autoPrint: boolean;
+	autoPrintKitchenReceipt: boolean;
+	allowOpenBillPrint: boolean;
+	appName: string;
+	appVersion: string;
+	developerName: string;
+	mayarEnabled: boolean;
+	mayarTestMode: boolean;
+	paymentMethodsManual: PaymentMethodsManual;
+	orderTypes: OrderType[];
+	taxRate: number;
+	serviceChargeRate: number;
+	qrisImage: string;
+	receiptLogo: string;
+	receiptHeader: string;
+	receiptShowLogo: boolean;
+	receiptShowAddress: boolean;
+	receiptShowPhone: boolean;
+	receiptShowOrderNumber: boolean;
+	receiptShowCustomerName: boolean;
+	receiptShowCashierName: boolean;
+	receiptShowNotes: boolean;
+	receiptFontSize: string;
+	aiModelConfig: AiModelConfig;
+	shiftSettings: ShiftSettings;
+	customerOrdering: CustomerOrdering;
+	attendanceLat: number;
+	attendanceLng: number;
+	attendanceRadius: number;
+	payrollGlobalConfig: PayrollGlobalConfig;
+} = {
 	landingIcon: "Coffee",
 	landingTitle: "COFFEE SHOP",
 	landingDescription: "Pengalaman Kopi Premium",
@@ -84,6 +193,26 @@ const DEFAULTS = {
 		qris: true,
 		transfer: false,
 	},
+	orderTypes: [
+		{
+			id: "dine_in",
+			name: "dine_in",
+			label: "Dine In",
+			icon: "Utensils",
+			requiresTableNumber: true,
+			isActive: true,
+			sortOrder: 1,
+		},
+		{
+			id: "takeaway",
+			name: "takeaway",
+			label: "Takeaway",
+			icon: "ShoppingBag",
+			requiresTableNumber: false,
+			isActive: true,
+			sortOrder: 2,
+		},
+	],
 	taxRate: 0,
 	serviceChargeRate: 0,
 	qrisImage: "",
@@ -204,6 +333,7 @@ export const getSettings = query({
 			// Manual Payment
 			paymentMethodsManual:
 				settings.paymentMethodsManual ?? DEFAULTS.paymentMethodsManual,
+			orderTypes: settings.orderTypes ?? DEFAULTS.orderTypes,
 			taxRate: settings.taxRate ?? DEFAULTS.taxRate,
 			serviceChargeRate: settings.serviceChargeRate ?? DEFAULTS.serviceChargeRate,
 			qrisImage: qrisImage ?? DEFAULTS.qrisImage,
@@ -292,6 +422,19 @@ export const updateSettings = mutation({
 				qris: v.boolean(),
 				transfer: v.boolean(),
 			})
+		),
+		orderTypes: v.optional(
+			v.array(
+				v.object({
+					id: v.string(),
+					name: v.string(),
+					label: v.string(),
+					icon: v.optional(v.string()),
+					requiresTableNumber: v.boolean(),
+					isActive: v.boolean(),
+					sortOrder: v.number(),
+				})
+			)
 		),
 		taxRate: v.optional(v.number()),
 		serviceChargeRate: v.optional(v.number()),

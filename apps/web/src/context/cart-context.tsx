@@ -55,7 +55,7 @@ interface CartContextType {
 	serviceChargeAmount: number;
 	customerInfo: {
 		name: string;
-		orderType: "dine_in" | "takeaway";
+		orderType: string;
 		tableNumber: string;
 		notes: string;
 		isFreeRefill: boolean;
@@ -103,7 +103,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 	const [customerInfo, setCustomerInfo] = useState<{
 		name: string;
-		orderType: "dine_in" | "takeaway";
+		orderType: string;
 		tableNumber: string;
 		notes: string;
 		isFreeRefill: boolean;

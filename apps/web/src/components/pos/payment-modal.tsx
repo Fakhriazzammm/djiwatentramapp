@@ -31,7 +31,7 @@ interface PaymentModalProps {
 		paymentMethod?: string,
 		orderData?: {
 			tableNumber?: string;
-			orderType?: "dine_in" | "takeaway";
+			orderType?: string;
 			notes?: string;
 			autoComplete?: boolean;
 			isOpenBill?: boolean;

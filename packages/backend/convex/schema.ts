@@ -392,6 +392,19 @@ export default defineSchema({
 				transfer: v.boolean(),
 			})
 		),
+		orderTypes: v.optional(
+			v.array(
+				v.object({
+					id: v.string(),
+					name: v.string(),
+					label: v.string(),
+					icon: v.optional(v.string()),
+					requiresTableNumber: v.boolean(),
+					isActive: v.boolean(),
+					sortOrder: v.number(),
+				})
+			)
+		),
 		taxRate: v.optional(v.number()),
 		serviceChargeRate: v.optional(v.number()),
 		qrisImage: v.optional(v.string()), 

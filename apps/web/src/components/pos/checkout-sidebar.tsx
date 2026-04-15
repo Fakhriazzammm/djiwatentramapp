@@ -1,11 +1,11 @@
 import { useCart } from "@/context/cart-context";
 import { toast } from "sonner";
-import { 
-	User, 
-	ShoppingBag, 
-	Trash2, 
-	Minus, 
-	Plus, 
+import {
+	User,
+	ShoppingBag,
+	Trash2,
+	Minus,
+	Plus,
 	CreditCard,
 	ChevronRight,
 	ChevronLeft,
@@ -17,7 +17,11 @@ import {
 	Tag,
 	Coffee,
 	X,
-	Printer
+	Printer,
+	Utensils,
+	Bike,
+	Truck,
+	Package
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -48,7 +52,7 @@ export function CheckoutSidebar({
 		paymentMethod?: string,
 		orderData?: {
 			tableNumber?: string;
-			orderType?: "dine_in" | "takeaway";
+			orderType?: string;
 			notes?: string;
 			autoComplete?: boolean;
 			isOpenBill?: boolean;
@@ -85,6 +89,17 @@ export function CheckoutSidebar({
 	const allActiveDiscounts = useQuery(api.discounts.getActiveDiscounts);
 	const shiftStatus = useQuery(api.finance.getShiftStatus);
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
+
+	const orderTypes = useMemo(() => {
+		const types = siteSettings?.orderTypes ?? [];
+		return types
+			.filter((type: any) => type.isActive)
+			.sort((a: any, b: any) => a.sortOrder - b.sortOrder);
+	}, [siteSettings]);
+
+	const selectedOrderType = useMemo(() => {
+		return orderTypes.find((type: any) => type.id === customerInfo.orderType) || orderTypes[0];
+	}, [orderTypes, customerInfo.orderType]);
 
 	const [activeStep, setActiveStep] = useState<"customer" | "menu" | "payment">(
 		initialStep || "menu"
@@ -198,6 +213,18 @@ export function CheckoutSidebar({
 
 		return [...new Set(labels)];
 	}, [allActiveDiscounts, items, promoDiscountAmount, selectedDiscountId]);
+
+	// Icon mapping helper
+	const getIcon = (iconName?: string) => {
+		switch (iconName) {
+			case "Utensils": return Utensils;
+			case "ShoppingBag": return ShoppingBag;
+			case "Bike": return Bike;
+			case "Truck": return Truck;
+			case "Package": return Package;
+			default: return Utensils;
+		}
+	};
 
 	useEffect(() => {
 		if (!allActiveDiscounts) return;
@@ -323,97 +350,111 @@ export function CheckoutSidebar({
 				<div className={cn("space-y-5 p-3.5 sm:p-4 md:space-y-5 md:p-4", activeStep === "payment" ? "pb-24" : "pb-20")}>
 					{/* Section 1: Informasi Pelanggan */}
 					{activeStep === "customer" && (
-						<div className="fade-in animate-in space-y-4 duration-300 slide-in-from-right-4 md:space-y-4">
-							<div className="rounded-[1.5rem] border border-primary/10 bg-white px-3.5 py-3.5 shadow-[0_10px_30px_rgba(15,23,42,0.05)] md:rounded-[1.35rem] md:px-3.5 md:py-3.5">
-								<div className="flex items-start gap-2.5 md:gap-2.5">
-									<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1.15rem] bg-primary/10 text-primary md:h-9 md:w-9 md:rounded-xl">
-										<User className="h-4.5 w-4.5 md:h-4.5 md:w-4.5" />
+						<div className="fade-in animate-in space-y-3 duration-300 slide-in-from-right-4 md:space-y-3.5">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<User className="h-4 w-4 text-primary" />
+									<h3 className="text-sm font-bold uppercase tracking-wider">Informasi Pelanggan</h3>
+								</div>
+								<Button
+									variant="ghost"
+									size="sm"
+									className="h-7 px-2 text-[10px] text-muted-foreground font-bold"
+									onClick={() => setActiveStep("menu")}
+								>
+									<ChevronLeft className="mr-1 h-3 w-3" /> Kembali
+								</Button>
+							</div>
+
+							<div className="rounded-[1.3rem] border border-primary/10 bg-white px-3 py-2.5 shadow-[0_8px_25px_rgba(15,23,42,0.04)] md:rounded-[1.35rem] md:px-3.5 md:py-3">
+								<div className="flex items-center gap-2">
+									<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary md:h-9 md:w-9">
+										<User className="h-4 w-4 md:h-4.5 md:w-4.5" />
 									</div>
-									<div>
-										<h3 className="text-lg font-black uppercase tracking-wide text-foreground md:text-lg">
+									<div className="min-w-0 flex-1">
+										<h3 className="text-base font-black uppercase tracking-wide text-foreground md:text-lg">
 											Informasi Pelanggan
 										</h3>
-										<p className="mt-1 text-[13px] leading-relaxed text-muted-foreground md:text-[13px]">
-											Isi data singkat pelanggan sebelum lanjut pilih menu dan pembayaran.
+										<p className="mt-0.5 text-[12px] leading-snug text-muted-foreground md:text-[13px]">
+											Isi data pelanggan sebelum lanjut ke pembayaran.
 										</p>
 									</div>
 								</div>
 							</div>
-							
-							<div className="grid gap-3 md:gap-3.5">
-								<div className="space-y-2">
-									<Label htmlFor="customer-name" className="text-xs font-black uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">Nama Pelanggan</Label>
-									<Input 
+
+							<div className="grid gap-2.5 md:gap-3">
+								<div className="space-y-1.5">
+									<Label htmlFor="customer-name" className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">Nama Pelanggan</Label>
+									<Input
 										id="customer-name"
 										placeholder="Masukkan nama pelanggan"
 										value={customerInfo.name}
 										onChange={(e) => updateCustomerInfo({ name: e.target.value })}
-										className="h-12 rounded-[1.15rem] border-border/70 bg-white px-3.5 text-base font-semibold placeholder:text-sm placeholder:font-medium md:h-11 md:rounded-xl md:px-3.5 md:text-base md:placeholder:text-sm"
+										className="h-10 rounded-[1rem] border-border/70 bg-white px-3 text-sm font-semibold placeholder:text-xs placeholder:font-medium md:h-11 md:rounded-[1.15rem] md:px-3.5 md:text-base md:placeholder:text-sm"
 									/>
 								</div>
 
 								<div className={cn(
-									"grid gap-3",
-									customerInfo.orderType === "dine_in" ? "grid-cols-2" : "grid-cols-1"
+									"grid gap-2.5",
+									selectedOrderType?.requiresTableNumber ? "grid-cols-2" : "grid-cols-1"
 								)}>
-									<div className="space-y-2">
-										<Label className="text-xs font-black uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">Tipe Order</Label>
-										<div className="grid grid-cols-2 gap-1.5 rounded-[1.15rem] border border-border/70 bg-white p-1.5 shadow-sm md:gap-1.5 md:rounded-xl md:p-1.5">
-											<button 
-												type="button"
-												onClick={() => updateCustomerInfo({ orderType: "dine_in" })}
-												className={cn(
-													"flex min-h-[44px] items-center justify-center rounded-[1rem] px-2.5 text-sm font-black transition-all md:min-h-[42px] md:rounded-xl md:px-2.5 md:text-sm",
-													customerInfo.orderType === "dine_in"
-														? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-														: "text-muted-foreground hover:bg-muted"
-												)}
-											>Dine In</button>
-											<button 
-												type="button"
-												onClick={() => updateCustomerInfo({ orderType: "takeaway" })}
-												className={cn(
-													"flex min-h-[44px] items-center justify-center rounded-[1rem] px-2.5 text-sm font-black transition-all md:min-h-[42px] md:rounded-xl md:px-2.5 md:text-sm",
-													customerInfo.orderType === "takeaway"
-														? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-														: "text-muted-foreground hover:bg-muted"
-												)}
-											>Takeaway</button>
+									<div className="space-y-1.5">
+										<Label className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">Tipe Order</Label>
+										<div className="grid grid-cols-2 gap-1 rounded-[1rem] border border-border/70 bg-white p-1 shadow-sm md:gap-1.5 md:rounded-[1.15rem] md:p-1.5">
+											{orderTypes.map((type: any) => {
+												const Icon = getIcon(type.icon);
+												return (
+													<button
+														key={type.id}
+														type="button"
+														onClick={() => updateCustomerInfo({ orderType: type.id })}
+														className={cn(
+															"flex min-h-[40px] flex-col items-center justify-center gap-0.5 rounded-[0.9rem] px-2 py-1.5 text-[10px] font-black transition-all md:min-h-[42px] md:rounded-[1rem] md:px-2.5 md:py-2 md:text-[11px]",
+															customerInfo.orderType === type.id
+																? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+																: "text-muted-foreground hover:bg-muted"
+														)}
+													>
+														<Icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
+														<span className="truncate">{type.label}</span>
+													</button>
+												);
+											})}
 										</div>
 									</div>
-									{customerInfo.orderType === "dine_in" && (
-										<div className="space-y-2">
-											<Label htmlFor="table-number" className="text-xs font-black uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">No. Meja</Label>
-											<Input 
+									{selectedOrderType?.requiresTableNumber && (
+										<div className="space-y-1.5">
+											<Label htmlFor="table-number" className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">No. Meja</Label>
+											<Input
 												id="table-number"
 												placeholder="01"
 												value={customerInfo.tableNumber}
 												onChange={(e) => updateCustomerInfo({ tableNumber: e.target.value })}
-												className="h-12 rounded-[1.15rem] border-border/70 bg-white px-3.5 text-base font-black tracking-wide placeholder:text-sm placeholder:font-medium md:h-11 md:rounded-xl md:px-3.5 md:text-base md:placeholder:text-sm"
+												className="h-10 rounded-[1rem] border-border/70 bg-white px-3 text-sm font-black tracking-wide placeholder:text-xs placeholder:font-medium md:h-11 md:rounded-[1.15rem] md:px-3.5 md:text-base md:placeholder:text-sm"
 											/>
 										</div>
 									)}
 								</div>
 
 								{/* Free Refill Toggle */}
-								<div className="mt-1 flex items-center justify-between rounded-[1.35rem] border border-primary/15 bg-gradient-to-r from-primary/[0.08] via-sky-50 to-background p-3.5 shadow-sm md:rounded-[1.2rem] md:p-3">
-									<div className="flex items-center gap-3 md:gap-3">
-										<div className="flex h-10 w-10 items-center justify-center rounded-[1rem] bg-primary/10 text-primary md:h-10 md:w-10 md:rounded-xl">
-											<Coffee className="h-4.5 w-4.5 md:h-4.5 md:w-4.5" />
+								<div className="mt-0.5 flex items-center justify-between rounded-[1.2rem] border border-primary/15 bg-gradient-to-r from-primary/[0.06] via-sky-50/50 to-background p-2.5 shadow-sm md:rounded-[1.35rem] md:p-3">
+									<div className="flex items-center gap-2.5 md:gap-3">
+										<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary md:h-10 md:w-10 md:rounded-[1rem]">
+											<Coffee className="h-4 w-4 md:h-4.5 md:w-4.5" />
 										</div>
-										<div className="space-y-1">
-											<span className="block text-sm font-black uppercase tracking-[0.14em] text-primary md:text-sm">
+										<div className="min-w-0 flex-1">
+											<span className="block text-[13px] font-black uppercase tracking-[0.14em] text-primary md:text-sm">
 												Free Refill Minuman
 											</span>
-											<p className="text-xs font-medium leading-snug text-muted-foreground md:text-[12px]">
-												Aktifkan jika add-on refill ingin otomatis masuk ke keranjang.
+											<p className="text-[11px] font-medium leading-snug text-muted-foreground md:text-xs">
+												Otomatis masuk ke keranjang jika aktif.
 											</p>
 										</div>
 									</div>
 									<button
 										aria-label="Toggle free refill"
 										className={cn(
-											"relative h-7 w-12 shrink-0 rounded-full transition-all duration-300 md:h-7 md:w-12",
+											"relative h-6 w-11 shrink-0 rounded-full transition-all duration-300 md:h-7 md:w-12",
 											customerInfo.isFreeRefill
 												? "bg-primary shadow-md shadow-primary/20"
 												: "bg-muted-foreground/20"
@@ -422,13 +463,13 @@ export function CheckoutSidebar({
 										type="button"
 									>
 										<div className={cn(
-											"absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-md transition-all duration-300",
+											"absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-all duration-300 md:h-6 md:w-6",
 											customerInfo.isFreeRefill ? "right-0.5" : "left-0.5"
 										)} />
 									</button>
 								</div>
 							</div>
-							
+
 						</div>
 					)}
 
@@ -735,20 +776,29 @@ export function CheckoutSidebar({
 
 			<div className="border-t border-border bg-card p-3 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
 				{activeStep === "customer" && (
-					<Button
-						onClick={() => {
-							updateCustomerInfo({ isSubmitted: true });
-							if (!isShiftOpen) {
-								toast.error("Buka shift terlebih dahulu di Dashboard");
-								return;
-							}
-							setActiveStep("payment");
-						}}
-						disabled={items.length === 0 || !isShiftOpen}
-						className="h-11 w-full text-xs font-bold shadow-md"
-					>
-						Lanjut Bayar <ChevronRight className="ml-2 h-4 w-4" />
-					</Button>
+					<div className="grid gap-2">
+						<Button
+							onClick={() => setActiveStep("menu")}
+							className="h-11 w-full text-xs font-bold bg-background text-foreground hover:bg-muted"
+							variant="outline"
+						>
+							<ChevronLeft className="mr-2 h-4 w-4" /> Kembali
+						</Button>
+						<Button
+							onClick={() => {
+								updateCustomerInfo({ isSubmitted: true });
+								if (!isShiftOpen) {
+									toast.error("Buka shift terlebih dahulu di Dashboard");
+									return;
+								}
+								setActiveStep("payment");
+							}}
+							disabled={items.length === 0 || !isShiftOpen}
+							className="h-11 w-full text-xs font-bold shadow-md"
+						>
+							Lanjut Bayar <ChevronRight className="ml-2 h-4 w-4" />
+						</Button>
+					</div>
 				)}
 
 				{activeStep === "menu" && (
