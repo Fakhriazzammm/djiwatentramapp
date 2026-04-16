@@ -17,6 +17,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
 import { ChartBubble } from "./chart-bubble";
+import { ResponseTable } from "./response-table";
 import { ScanResultCard } from "./scan-result-card";
 import type { ChatMessage, ExportFormat, QuickActionButton, ScanActionButton } from "./types";
 
@@ -154,6 +155,10 @@ export const MessageBubble = ({
 						)}
 
 						{msg.chartData && <div className="mt-3"><ChartBubble chart={msg.chartData} /></div>}
+
+						{msg.tables && msg.tables.length > 0 && msg.tables.map((tbl, ti) => (
+							<ResponseTable key={ti} table={tbl} />
+						))}
 
 						{msg.exportData && (
 							<div className="mt-2.5 flex flex-wrap gap-1.5">

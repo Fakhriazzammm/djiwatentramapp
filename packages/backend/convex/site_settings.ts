@@ -99,61 +99,7 @@ function normalizeAiModelConfig(config?: Partial<AiModelConfig>): AiModelConfig 
 }
 
 // Default values
-const DEFAULTS: {
-	landingIcon: string;
-	landingTitle: string;
-	landingDescription: string;
-	landingButtonText: string;
-	logoUrl: string;
-	headerLogoUrl: string;
-	faviconUrl: string;
-	pwaIcon192Url: string;
-	pwaIcon512Url: string;
-	pwaMaskableIconUrl: string;
-	seoMetaTitle: string;
-	seoMetaDescription: string;
-	seoMetaKeywords: string;
-	seoShareTitle: string;
-	seoShareDescription: string;
-	seoShareImageUrl: string;
-	seoCanonicalUrl: string;
-	paymentPopupImage: string;
-	storeName: string;
-	storeAddress: string;
-	storePhone: string;
-	resendFromEmail: string;
-	receiptFooter: string;
-	autoPrint: boolean;
-	autoPrintKitchenReceipt: boolean;
-	allowOpenBillPrint: boolean;
-	appName: string;
-	appVersion: string;
-	developerName: string;
-	mayarEnabled: boolean;
-	mayarTestMode: boolean;
-	paymentMethodsManual: PaymentMethodsManual;
-	orderTypes: OrderType[];
-	taxRate: number;
-	serviceChargeRate: number;
-	qrisImage: string;
-	receiptLogo: string;
-	receiptHeader: string;
-	receiptShowLogo: boolean;
-	receiptShowAddress: boolean;
-	receiptShowPhone: boolean;
-	receiptShowOrderNumber: boolean;
-	receiptShowCustomerName: boolean;
-	receiptShowCashierName: boolean;
-	receiptShowNotes: boolean;
-	receiptFontSize: string;
-	aiModelConfig: AiModelConfig;
-	shiftSettings: ShiftSettings;
-	customerOrdering: CustomerOrdering;
-	attendanceLat: number;
-	attendanceLng: number;
-	attendanceRadius: number;
-	payrollGlobalConfig: PayrollGlobalConfig;
-} = {
+const DEFAULTS = {
 	landingIcon: "Coffee",
 	landingTitle: "COFFEE SHOP",
 	landingDescription: "Pengalaman Kopi Premium",

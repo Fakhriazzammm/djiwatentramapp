@@ -33,15 +33,17 @@ export function useScanHistory() {
 		}
 	};
 
-	const addEntry = (entry: Omit<ScanHistoryEntry, "id">) => {
+	const addEntry = (entry: Omit<ScanHistoryEntry, "id">): string => {
+		const id = `scan-${Date.now()}`;
 		setHistory((prev) => {
 			const next = [
-				{ ...entry, id: `scan-${Date.now()}` },
+				{ ...entry, id },
 				...prev,
 			].slice(0, MAX_ENTRIES);
 			persist(next);
 			return next;
 		});
+		return id;
 	};
 
 	const markSaved = (id: string) => {

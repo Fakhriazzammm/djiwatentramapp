@@ -75,6 +75,13 @@ export interface ExportData {
 
 export type ExportFormat = "pdf" | "excel";
 
+export interface ResponseTableData {
+	title?: string;
+	headers: string[];
+	rows: string[][];
+	footer?: string[];
+}
+
 export interface ChatMessage {
 	role: "user" | "assistant";
 	content: string;
@@ -86,7 +93,7 @@ export interface ChatMessage {
 	genericActions?: GenericActionButton[];
 	chartData?: ChartData;
 	exportData?: ExportData;
-	/** Stable ID for AnimatePresence keys — generated at creation time */
+	tables?: ResponseTableData[];
 	_msgId?: string;
 }
 

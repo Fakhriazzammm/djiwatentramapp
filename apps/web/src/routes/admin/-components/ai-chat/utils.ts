@@ -1,4 +1,4 @@
-import type { QuickActionButton, GenericActionButton, ScanResultData, ScanActionButton, ChartData, ExportData } from "./types";
+import type { QuickActionButton, GenericActionButton, ScanResultData, ScanActionButton, ChartData, ExportData, ResponseTableData } from "./types";
 
 export const mkMsgId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 
@@ -238,6 +238,34 @@ export function generateQuickActions(userMsg: string, aiResponse: string): Quick
 				{ label: "Progress Target", icon: "📈", variant: "finance", actionType: "sendPrompt", prompt: "Tampilkan progress pencapaian target keuangan bulan ini" },
 			],
 		},
+		{
+			keys: [
+				{ word: "struk", weight: 4 }, { word: "nota", weight: 3 },
+				{ word: "receipt", weight: 4 }, { word: "invoice", weight: 3 },
+				{ word: "faktur", weight: 3 }, { word: "scan", weight: 3 },
+				{ word: "pindai", weight: 3 }, { word: "ocr", weight: 3 },
+				{ word: "gambar", weight: 1 }, { word: "foto", weight: 1 },
+				{ word: "transaksi", weight: 2 }, { word: "belanja", weight: 2 },
+			],
+			buttons: [
+				{ label: "Scan Struk Lagi", icon: "📸", variant: "misc", actionType: "sendPrompt", prompt: "Saya ingin memindai struk/nota lain" },
+				{ label: "Rekap Struk", icon: "📋", variant: "finance", actionType: "sendPrompt", prompt: "Berikan rekap semua struk yang sudah dipindai hari ini" },
+				{ label: "Laporan Keuangan", icon: "📊", variant: "finance", actionType: "navigate", href: "/admin/finance/reports" },
+			],
+		},
+		{
+			keys: [
+				{ word: "catat", weight: 3 }, { word: "input", weight: 2 },
+				{ word: "pemasukan", weight: 3 }, { word: "pengeluaran", weight: 3 },
+				{ word: "manual", weight: 2 }, { word: "form", weight: 2 },
+				{ word: "isi data", weight: 3 },
+			],
+			buttons: [
+				{ label: "Catat Pemasukan", icon: "💰", variant: "finance", actionType: "sendPrompt", prompt: "Bantu saya mencatat pemasukan baru dengan data terstruktur dalam format tabel" },
+				{ label: "Catat Pengeluaran", icon: "💸", variant: "finance", actionType: "sendPrompt", prompt: "Bantu saya mencatat pengeluaran baru dengan data terstruktur dalam format tabel" },
+				{ label: "Scan Struk", icon: "📸", variant: "misc", actionType: "sendPrompt", prompt: "Saya ingin memindai struk/nota untuk dicatat" },
+			],
+		},
 	];
 
 	const scored = rules.map((rule) => {
@@ -315,7 +343,70 @@ export const sanitizeResponse = (text: string): string => {
 		.replace(/\[QUICK:\s*(.*?)\s*\|\s*(.*?)\s*\]/g, "")
 		.replace(/\[CHART:[\s\S]*?\]/g, "")
 		.replace(/\[EXPORT:[\s\S]*?\]/g, "")
+		.replace(/\[TABLE:[\s\S]*?\[\/TABLE\]\s*\n?/g, "")
 		.trim();
+};
+
+export const extractResponseTables = (text: string): ResponseTableData[] => {
+	const tables: ResponseTableData[] = [];
+	const regex = /\[TABLE:\s*(\{[\s\S]*?\})\s*\][\s\S]*?\[\/TABLE\]/g;
+	let match;
+	while ((match = regex.exec(text)) !== null) {
+		try {
+			const meta = JSON.parse(match[1]);
+			const body = match[0].replace(/\[TABLE:\s*\{[\s\S]*?\}\s*\]\n?/, "").replace(/\[\/TABLE\]\s*$/, "").trim();
+			const lines = body.split("\n").map(l => l.trim()).filter(Boolean);
+			if (lines.length < 2) continue;
+			const headerLine = lines[0];
+			const separatorIdx = lines.findIndex((l, i) => i > 0 && /^[\s|:-]+$/.test(l));
+			const headers = headerLine.split("|").map(h => h.replace(/[*]/g, "").trim()).filter(Boolean);
+			if (headers.length < 2) continue;
+			const dataStart = separatorIdx > 0 ? separatorIdx + 1 : 1;
+			const rows: string[][] = [];
+			let footer: string[] | undefined;
+			for (let i = dataStart; i < lines.length; i++) {
+				const cells = lines[i].split("|").map(c => c.replace(/[*]/g, "").trim()).filter(Boolean);
+				if (cells.length === headers.length) {
+					if (i === lines.length - 1 && /^(total|jumlah|grand|keseluruhan|subtotal)/i.test(cells[0])) {
+						footer = cells;
+					} else {
+						rows.push(cells);
+					}
+				}
+			}
+			tables.push({ title: meta.title, headers, rows, footer });
+		} catch { /* skip invalid */ }
+	}
+
+	if (tables.length === 0) {
+		const mdTableRegex = /(?:^|\n\n)((?:\|.+\|\n)+)/g;
+		while ((match = mdTableRegex.exec(text)) !== null) {
+			const block = match[1].trim();
+			const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
+			if (lines.length < 3) continue;
+			const headerLine = lines[0];
+			const sepLine = lines[1];
+			if (!/^[\s|:-]+$/.test(sepLine)) continue;
+			const headers = headerLine.split("|").map(h => h.replace(/[*]/g, "").trim()).filter(Boolean);
+			if (headers.length < 2) continue;
+			const rows: string[][] = [];
+			let footer: string[] | undefined;
+			for (let i = 2; i < lines.length; i++) {
+				const cells = lines[i].split("|").map(c => c.replace(/[*]/g, "").trim()).filter(Boolean);
+				if (cells.length === headers.length) {
+					if (i === lines.length - 1 && /^(total|jumlah|grand|keseluruhan|subtotal)/i.test(cells[0])) {
+						footer = cells;
+					} else {
+						rows.push(cells);
+					}
+				}
+			}
+			if (rows.length > 0) {
+				tables.push({ headers, rows, footer });
+			}
+		}
+	}
+	return tables;
 };
 
 export const extractExportData = (text: string): ExportData | undefined => {

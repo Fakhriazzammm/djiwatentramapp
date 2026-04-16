@@ -14,8 +14,8 @@ import { ScanEditModal, type ScanEditParams } from "@/components/scan/scan-edit-
 import { ScanSplitModal } from "@/components/scan/scan-split-modal";
 import { ScanHistoryPanel, useScanHistory } from "@/components/scan/scan-history-panel";
 
-import type { ChatMessage, ToolCall, Suggestion, TabType, ChatSession, QuickActionButton, ScanActionButton, ScanResultData, ChatMode } from "./types";
-import { mkMsgId, toRupiah, TOOL_LABELS, generateQuickActions, generateScanActionButtons, extractSuggestions, extractGenericActions, extractChartData, extractExportData, sanitizeResponse } from "./utils";
+import type { ChatMessage, ToolCall, Suggestion, TabType, ChatSession, QuickActionButton, ScanActionButton, ScanResultData, ChatMode, ResponseTableData } from "./types";
+import { mkMsgId, toRupiah, TOOL_LABELS, generateQuickActions, generateScanActionButtons, extractSuggestions, extractGenericActions, extractChartData, extractExportData, extractResponseTables, sanitizeResponse } from "./utils";
 import { exportReport } from "./report-exporter";
 import { MessageBubble } from "./message-bubble";
 import { ChatInput } from "./chat-input";
@@ -66,6 +66,9 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	} | null>(null);
 	const [showScanHistory, setShowScanHistory] = useState(false);
 	const { history: scanHistory, addEntry: addScanHistory, markSaved: markScanSaved, removeEntry: removeScanHistory, clearAll: clearScanHistory } = useScanHistory();
+	const lastScanEntryIdsRef = useRef<string[]>([]);
+	const messagesRef = useRef(messages);
+	messagesRef.current = messages;
 
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -296,6 +299,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 			scrollThrottleRef.current = null;
 		}, 120);
+		return () => { if (scrollThrottleRef.current) { clearTimeout(scrollThrottleRef.current); scrollThrottleRef.current = null; } };
 	}, [streamingContent, isStreaming]);
 
 	useEffect(() => {
@@ -538,15 +542,41 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 Pilih tombol sesuai kebutuhan:
 ${actionHints}
 ${customPrompt?.trim() ? `\n*Permintaan Anda: ${customPrompt.trim()}*` : ""}`;
+
+				const scanTableData: ResponseTableData | undefined = normalizedItems.length > 0 ? {
+					title: `Detail Struk — ${merchantName}`,
+					headers: ["Item", "Qty", "Harga", "Subtotal"],
+					rows: normalizedItems.map((item: any) => [
+						item.name,
+						`${item.qty}${item.unit ? ` ${item.unit}` : ""}`,
+						`Rp ${toRupiah(item.price)}`,
+						`Rp ${toRupiah(item.subtotal)}`,
+					]),
+					footer: scanData.total > 0 ? ["Total", "", "", `Rp ${toRupiah(scanData.total)}`] : undefined,
+				} : undefined;
+
+				const scanSuggestions: Array<{ label: string; prompt: string }> = [
+					{ label: "Lihat Laporan Keuangan", prompt: `Tampilkan ringkasan laporan keuangan saya` },
+					{ label: "Rekap Struk Hari Ini", prompt: "Berikan rekap semua struk yang sudah dipindai hari ini" },
+					{ label: "Cek Stok Rendah", prompt: "Tampilkan item inventaris yang stoknya rendah atau hampir habis" },
+				];
+				if (scanData.transactionType === "expense") {
+					scanSuggestions.push({ label: "Analisis Pengeluaran", prompt: "Analisis tren pengeluaran saya minggu ini, kategori mana yang paling besar?" });
+				} else if (scanData.transactionType === "income") {
+					scanSuggestions.push({ label: "Analisis Pendapatan", prompt: "Analisis tren pendapatan saya minggu ini" });
+				}
+
 				const assistantMsg: ChatMessage = {
 					role: "assistant",
 					content: assistantContent,
 					scanData: normalizedScanData,
 					actionButtons,
+					tables: scanTableData ? [scanTableData] : undefined,
+					suggestions: scanSuggestions,
 					_msgId: mkMsgId(),
 				};
 				newMessages.push(assistantMsg);
-				addScanHistory({
+				const scanEntryId = addScanHistory({
 					thumbnail: images[entry.index] || "",
 					merchant: scanData.merchant || scanData.name || "Tidak diketahui",
 					total: Number(scanData.total) || 0,
@@ -555,6 +585,7 @@ ${customPrompt?.trim() ? `\n*Permintaan Anda: ${customPrompt.trim()}*` : ""}`;
 					transactionType: scanData.transactionType || "unknown",
 					saved: false,
 				});
+				lastScanEntryIdsRef.current.push(scanEntryId);
 			}
 			setMessages(prev => [...prev, ...newMessages]);
 			setSelectedImages([]);
@@ -597,7 +628,7 @@ ${customPrompt?.trim() ? `\n*Permintaan Anda: ${customPrompt.trim()}*` : ""}`;
 			sessionId = await startNewSession();
 			if (!sessionId) return;
 		}
-		const userMsg: ChatMessage = { role: "user", content: effectiveText, image: attachedImages[0], _msgId: mkMsgId() };
+		const userMsg: ChatMessage = { role: "user", content: effectiveText, _msgId: mkMsgId() };
 		const requestSessionId = sessionId ?? `pos-${mkMsgId()}`;
 		const pendingAssistantId = mkMsgId();
 		setStreamSessionId(requestSessionId);
@@ -609,12 +640,12 @@ ${customPrompt?.trim() ? `\n*Permintaan Anda: ${customPrompt.trim()}*` : ""}`;
 		setStreamingContent("");
 		setToolCalls([]);
 		try {
-			const history = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
+			const history = messagesRef.current.slice(-10).map(m => ({ role: m.role, content: m.content }));
 			const rawResponse = await yumiChat({ 
 				sessionId: requestSessionId,
 				message: effectiveText, 
 				history, 
-				images: attachedImages.length > 0 ? attachedImages : (userMsg.image ? [userMsg.image] : undefined),
+				images: attachedImages.length > 0 ? attachedImages : undefined,
 				contextHint: contextHint || undefined,
 			});
 			const responseText = typeof rawResponse === "string"
@@ -633,11 +664,12 @@ ${customPrompt?.trim() ? `\n*Permintaan Anda: ${customPrompt.trim()}*` : ""}`;
 			const genericActions = extractGenericActions(safeResponseText);
 			const chartData = extractChartData(safeResponseText);
 			const exportData = extractExportData(safeResponseText);
+			const tables = extractResponseTables(safeResponseText);
 			const sanitizedResponse = sanitizeResponse(safeResponseText);
 			setToolCalls(normalizedToolCalls);
 			setMessages(prev => prev.map(msg => (
 				msg._msgId === pendingAssistantId
-					? { role: "assistant", content: sanitizedResponse, suggestions, quickActions, genericActions, chartData, exportData, _msgId: pendingAssistantId }
+					? { role: "assistant", content: sanitizedResponse, suggestions, quickActions, genericActions, chartData, exportData, tables, _msgId: pendingAssistantId }
 					: msg
 			)));
 			if (mode === "admin" && sessionId) {
@@ -661,7 +693,7 @@ ${customPrompt?.trim() ? `\n*Permintaan Anda: ${customPrompt.trim()}*` : ""}`;
 			setStreamingContent("");
 			setIsLoading(false);
 		}
-	}, [currentSessionId, selectedImages, isLoading, isScanning, isScanMode, messages, yumiChat, startNewSession, saveConversationMutation, processImagesWithAI, mode, contextHint]);
+	}, [currentSessionId, selectedImages, isLoading, isScanning, yumiChat, startNewSession, saveConversationMutation, processImagesWithAI, mode, contextHint]);
 
 	const handleCopy = useCallback((text: string, index: number) => {
 		navigator.clipboard.writeText(text);
@@ -703,7 +735,8 @@ ${customPrompt?.trim() ? `\n*Permintaan Anda: ${customPrompt.trim()}*` : ""}`;
 			);
 			toast.success("Berhasil disimpan!");
 			setActionButtonDone(prev => { const s = new Set<string>(prev); s.add(btnKey); return s; });
-			markScanSaved(btnKey);
+			const scanEntryId = lastScanEntryIdsRef.current.shift();
+			if (scanEntryId) markScanSaved(scanEntryId);
 			setEditModal(null);
 
 			// Lanjut chat: Biarkan AI menanggapi aksi penyimpanan ini
@@ -740,7 +773,8 @@ ${customPrompt?.trim() ? `\n*Permintaan Anda: ${customPrompt.trim()}*` : ""}`;
 			);
 			toast.success("Semua split berhasil disimpan!");
 			setActionButtonDone(prev => { const s = new Set<string>(prev); s.add(splitModal.btnKey); return s; });
-			markScanSaved(splitModal.btnKey);
+			const scanEntryId = lastScanEntryIdsRef.current.shift();
+			if (scanEntryId) markScanSaved(scanEntryId);
 			setSplitModal(null); setEditModal(null);
 
 			// Lanjut chat: Biarkan AI menanggapi aksi split ini
@@ -753,7 +787,7 @@ ${customPrompt?.trim() ? `\n*Permintaan Anda: ${customPrompt.trim()}*` : ""}`;
 		} catch (error) { toast.error("Gagal menyimpan split"); }
 	}, [splitModal, createAITrackedTransaction, isInventoryPurchaseCategory, markScanSaved]);
 
-	const handleExecuteSuggestion = async (s: Suggestion) => {
+	const handleExecuteSuggestion = useCallback(async (s: Suggestion) => {
 		setIsLoading(true);
 		try {
 			const action = s.action;
@@ -850,7 +884,7 @@ ${customPrompt?.trim() ? `\n*Permintaan Anda: ${customPrompt.trim()}*` : ""}`;
 		} catch (error: any) {
 			toast.error(error?.message || "Gagal mengeksekusi saran");
 		} finally { setIsLoading(false); }
-	};
+	}, [sendMessage, recordStockPurchaseMutation, createProductMutation, updateProductMutation, createDiscountMutation, toggleDiscountMutation, createOrderMutation, updateOrderStatusMutation, createBookingOrderMutation, updateBookingStatusMutation, createAITrackedTransaction, deleteTransactionMutation, createInventoryItemMutation, addStockMutation, setFinancialTargetMutation, startShiftMutation, endShiftMutation]);
 
 	const handleExport = useCallback(async (format: any, dataIdx: number) => {
 		const msg = messages[dataIdx];
@@ -864,13 +898,13 @@ ${customPrompt?.trim() ? `\n*Permintaan Anda: ${customPrompt.trim()}*` : ""}`;
 		}
 	}, [messages]);
 
-	const handleCompleteTask = async (taskId: string) => {
+	const handleCompleteTask = useCallback(async (taskId: string) => {
 		try { await completeTaskMutation({ taskId }); toast.success("Tugas selesai!"); } catch { toast.error("Gagal"); }
-	};
+	}, [completeTaskMutation]);
 
-	const handleDismissTask = async (taskId: string) => {
+	const handleDismissTask = useCallback(async (taskId: string) => {
 		try { await dismissTaskMutation({ taskId }); toast.success("Tugas diabaikan"); } catch { toast.error("Gagal"); }
-	};
+	}, [dismissTaskMutation]);
 
 	const isPOS = mode === "pos";
 	const mobileBottomMenuOffset = isPOS
