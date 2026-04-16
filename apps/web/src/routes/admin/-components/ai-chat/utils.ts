@@ -47,8 +47,8 @@ export const TOOL_LABELS: Record<string, string> = {
 };
 
 export function generateQuickActions(userMsg: string, aiResponse: string): QuickActionButton[] {
-	const userText = userMsg.toLowerCase();
-	const aiText = aiResponse.toLowerCase();
+	const userText = (userMsg || "").toLowerCase();
+	const aiText = (aiResponse || "").toLowerCase();
 	let id = 0;
 
 	const rules = [

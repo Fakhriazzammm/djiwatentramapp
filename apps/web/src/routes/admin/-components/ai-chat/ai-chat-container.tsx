@@ -462,7 +462,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 		}
 	}, [activeTab, messages.length, isLoading, isStreaming, runDailyBriefing]);
 
-	const processImagesWithAI = useCallback(async (images: string[], customPrompt?: string) => {
+	const processImagesWithAI = useCallback(async (images: string[]) => {
 		if (isScanning) return;
 		setIsScanning(true);
 		setIsLoading(true);
@@ -494,14 +494,9 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 			for (const entry of successfulResults) {
 				const scanData = entry.data;
 				if (!scanData) continue;
-				const rewrittenFallback = (scanData.rewrittenText || "").trim()
-					? scanData.rewrittenText
-					: (scanData.rawText || "").trim()
-						? scanData.rawText
-						: "";
 				const normalizedScanData: ScanResultData = {
 					...scanData,
-					rewrittenText: rewrittenFallback,
+					rewrittenText: "",
 				};
 				const normalizedItems = Array.isArray(scanData.items)
 					? scanData.items
@@ -528,51 +523,52 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 				const merchantName =
 					scanData.merchant?.trim() || scanData.name?.trim() || "Toko tidak terbaca";
 				const actionButtons = generateScanActionButtons(normalizedScanData);
-				const actionHints = actionButtons
-					.map((btn, idx) => `${idx + 1}. ${btn.label}`)
-					.join("\n");
 
-				const rewrittenContent = normalizedScanData.rewrittenText?.trim()
-					? normalizedScanData.rewrittenText
-					: `**Ringkasan Struk**\n**${merchantName}** - ${scanData.date || "-"}\n\nTotal: Rp ${toRupiah(scanData.total)}${itemsStr}`;
+				const assistantContent = "";
 
-				const assistantContent = `${rewrittenContent}
+				const paymentLabel: Record<string, string> = {
+					cash: "Tunai", qris: "QRIS", card: "Kartu", transfer: "Transfer", unknown: "-",
+				};
 
-**Konfirmasi Simpan**
-Pilih tombol sesuai kebutuhan:
-${actionHints}
-${customPrompt?.trim() ? `\n*Permintaan Anda: ${customPrompt.trim()}*` : ""}`;
-
-				const scanTableData: ResponseTableData | undefined = normalizedItems.length > 0 ? {
-					title: `Detail Struk — ${merchantName}`,
-					headers: ["Item", "Qty", "Harga", "Subtotal"],
-					rows: normalizedItems.map((item: any) => [
-						item.name,
-						`${item.qty}${item.unit ? ` ${item.unit}` : ""}`,
-						`Rp ${toRupiah(item.price)}`,
-						`Rp ${toRupiah(item.subtotal)}`,
-					]),
-					footer: scanData.total > 0 ? ["Total", "", "", `Rp ${toRupiah(scanData.total)}`] : undefined,
-				} : undefined;
-
-				const scanSuggestions: Array<{ label: string; prompt: string }> = [
-					{ label: "Lihat Laporan Keuangan", prompt: `Tampilkan ringkasan laporan keuangan saya` },
-					{ label: "Rekap Struk Hari Ini", prompt: "Berikan rekap semua struk yang sudah dipindai hari ini" },
-					{ label: "Cek Stok Rendah", prompt: "Tampilkan item inventaris yang stoknya rendah atau hampir habis" },
-				];
-				if (scanData.transactionType === "expense") {
-					scanSuggestions.push({ label: "Analisis Pengeluaran", prompt: "Analisis tren pengeluaran saya minggu ini, kategori mana yang paling besar?" });
-				} else if (scanData.transactionType === "income") {
-					scanSuggestions.push({ label: "Analisis Pendapatan", prompt: "Analisis tren pendapatan saya minggu ini" });
-				}
+				const scanTableData: ResponseTableData = {
+					title: merchantName,
+					headers: normalizedItems.length > 0 ? ["Item", "Qty", "Harga", "Subtotal"] : ["Keterangan", "Nilai"],
+					rows: normalizedItems.length > 0
+						? normalizedItems.map((item: any) => [
+								item.name,
+								`${item.qty}${item.unit ? ` ${item.unit}` : ""}`,
+								`Rp ${toRupiah(item.price)}`,
+								`Rp ${toRupiah(item.subtotal)}`,
+							])
+						: [
+								["Total", `Rp ${toRupiah(scanData.total)}`],
+								["Kategori", scanData.category?.replace(/_/g, " ") || "-"],
+								["Metode Pembayaran", paymentLabel[scanData.paymentMethod] ?? scanData.paymentMethod || "-"],
+							],
+					footer: normalizedItems.length > 0 && scanData.total > 0
+						? ["Total", "", "", `Rp ${toRupiah(scanData.total)}`]
+						: undefined,
+					meta: {
+						merchant: merchantName,
+						date: scanData.date || undefined,
+						category: scanData.category?.replace(/_/g, " ") || undefined,
+						paymentMethod: scanData.paymentMethod || undefined,
+						transactionType: scanData.transactionType || "unknown",
+						confidence: scanData.confidence,
+						receiptNumber: scanData.receiptNumber || undefined,
+						tax: scanData.tax ? `Rp ${toRupiah(scanData.tax)}` : undefined,
+						serviceCharge: scanData.serviceCharge ? `Rp ${toRupiah(scanData.serviceCharge)}` : undefined,
+						discount: scanData.discount ? `-Rp ${toRupiah(scanData.discount)}` : undefined,
+						subtotal: scanData.subtotal ? `Rp ${toRupiah(scanData.subtotal)}` : undefined,
+					},
+				};
 
 				const assistantMsg: ChatMessage = {
 					role: "assistant",
 					content: assistantContent,
 					scanData: normalizedScanData,
 					actionButtons,
-					tables: scanTableData ? [scanTableData] : undefined,
-					suggestions: scanSuggestions,
+					tables: [scanTableData],
 					_msgId: mkMsgId(),
 				};
 				newMessages.push(assistantMsg);
@@ -619,7 +615,7 @@ ${customPrompt?.trim() ? `\n*Permintaan Anda: ${customPrompt.trim()}*` : ""}`;
 				_msgId: mkMsgId(),
 			};
 			setMessages((prev) => [...prev, scanUserMsg]);
-			await processImagesWithAI(attachedImages, effectiveText);
+			await processImagesWithAI(attachedImages);
 			setInput("");
 			return;
 		}
@@ -659,13 +655,14 @@ ${customPrompt?.trim() ? `\n*Permintaan Anda: ${customPrompt.trim()}*` : ""}`;
 			const safeResponseText = responseText?.trim()
 				? responseText
 				: "Maaf, respons AI sempat kosong. Silakan kirim ulang pertanyaan Anda.";
-			const suggestions = extractSuggestions(responseText);
-			const quickActions = generateQuickActions(effectiveText, safeResponseText);
-			const genericActions = extractGenericActions(safeResponseText);
-			const chartData = extractChartData(safeResponseText);
-			const exportData = extractExportData(safeResponseText);
 			const tables = extractResponseTables(safeResponseText);
-			const sanitizedResponse = sanitizeResponse(safeResponseText);
+			const hasTables = tables.length > 0;
+			const suggestions = hasTables ? [] : extractSuggestions(responseText);
+			const quickActions = hasTables ? [] : generateQuickActions(effectiveText, safeResponseText);
+			const genericActions = hasTables ? [] : extractGenericActions(safeResponseText);
+			const chartData = hasTables ? undefined : extractChartData(safeResponseText);
+			const exportData = hasTables ? undefined : extractExportData(safeResponseText);
+			const sanitizedResponse = hasTables ? "" : sanitizeResponse(safeResponseText);
 			setToolCalls(normalizedToolCalls);
 			setMessages(prev => prev.map(msg => (
 				msg._msgId === pendingAssistantId

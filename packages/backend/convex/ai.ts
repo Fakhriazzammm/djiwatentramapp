@@ -2663,6 +2663,24 @@ export const yumiChat = action({
 		const allImages = [...(args.images || [])];
 		if (args.image) allImages.push(args.image);
 		const hasImageAttachments = allImages.length > 0;
+		const shouldForceTableResponse =
+			hasImageAttachments ||
+			Boolean(parsedBulkFinance) ||
+			/\b(pemasukan|pengeluaran|income|expense|transaksi|ocr|struk|receipt|invoice|kwitansi|mutasi)\b/i.test(
+				args.message || ""
+			);
+		const tabularFormatInstruction = shouldForceTableResponse
+			? `
+FORMAT WAJIB UNTUK REQUEST SAAT INI:
+- Jawaban HARUS langsung berupa tabel saja (markdown table dengan | kolom |).
+- Jangan tulis pembuka, ringkasan, penjelasan naratif, atau penutup.
+- Jangan berikan bullet/list/paragraph di luar tabel.
+- Untuk data transaksi/pemasukan/pengeluaran: minimal tampilkan tabel dengan kolom Tanggal, Jenis, Kategori, Deskripsi, Nominal.
+- Untuk gambar OCR/vision: tampilkan 2 tabel:
+  1) Tabel metadata (Merchant, No Struk, Tanggal, Metode Bayar, Kategori, Total, Pajak/Service/Diskon jika ada, Confidence).
+  2) Tabel item (No, Item, Qty, Harga, Subtotal).
+- Setelah tabel selesai, berhenti. Tidak perlu teks tambahan.`
+			: "";
 
 		// Build tool definitions for OpenAI
 		const openaiTools = Object.entries(tools).map(([name, tool]) => ({
@@ -2835,7 +2853,8 @@ INSTRUKSI PENCATATAN KEUANGAN:
 INSTRUKSI REKONSILIASI BANK:
 - Jika user mengirim screenshot mutasi bank, bandingkan setiap transaksi uang masuk dengan data pesanan (orders) atau transaksi keuangan (finance) yang ada di SMART CONTEXT atau DATA REAL-TIME.
 - Gunakan tool updateOrderStatus untuk menandai pesanan sebagai "paid" jika nominalnya cocok.
-- Jika tidak ada pesanan yang cocok, gunakan tool createTransaction untuk mencatatnya sebagai pemasukan baru dengan kategori yang sesuai.`,
+- Jika tidak ada pesanan yang cocok, gunakan tool createTransaction untuk mencatatnya sebagai pemasukan baru dengan kategori yang sesuai.
+${tabularFormatInstruction}`,
 			},
 		];
 

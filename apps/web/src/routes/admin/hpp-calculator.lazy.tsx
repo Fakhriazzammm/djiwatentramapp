@@ -131,6 +131,14 @@ type AiCostSuggestion = {
 	reason?: string;
 };
 
+type RecipeSyncResult = {
+	id: Id<"hppCalculations">;
+	created: boolean;
+	ingredientCount: number;
+	missingCostCount: number;
+	calculation?: Doc<"hppCalculations">;
+};
+
 type PortfolioData = {
 	summary: PortfolioSummary;
 	alerts: {
@@ -735,11 +743,17 @@ function HppCalculatorPage() {
 	async function handleSyncRecipe(row: PortfolioRow) {
 		setRecipeSyncProductId(row.product._id);
 		try {
-			const result = await syncFromRecipe({ productId: row.product._id });
+			const result = (await syncFromRecipe({
+				productId: row.product._id,
+			})) as RecipeSyncResult;
 			setEditingId(result.id);
 			setSelectedProductId(row.product._id);
 			setSelectedDraftId(null);
-			setForm(toRecipeSyncForm(row));
+			if (result.calculation) {
+				setForm(toFormFromCalculation(result.calculation));
+			} else {
+				setForm(toRecipeSyncForm(row));
+			}
 			setActiveView("editor");
 			toast.success(
 				result.created
@@ -839,6 +853,11 @@ function HppCalculatorPage() {
 
 		const latestCost = inventoryCosts?.[inventoryItemId]?.latestCostPerUnit ?? 0;
 		const conversionFactor = inventoryItem.conversionFactor ?? 1;
+		const fallbackInventoryCost =
+			typeof inventoryItem.lastPurchasePrice === "number" &&
+			inventoryItem.lastPurchasePrice > 0
+				? inventoryItem.lastPurchasePrice
+				: undefined;
 
 		setForm((prev) => ({
 			...prev,
@@ -851,7 +870,9 @@ function HppCalculatorPage() {
 							purchasePrice:
 								latestCost > 0
 									? latestCost * conversionFactor
-									: (inventoryItem.lastPurchasePrice ?? ingredient.purchasePrice),
+									: fallbackInventoryCost != null
+										? fallbackInventoryCost * conversionFactor
+										: ingredient.purchasePrice,
 							purchaseQuantity:
 								ingredient.purchaseQuantity > 0 ? ingredient.purchaseQuantity : 1,
 							purchaseUnit: inventoryItem.displayUnit ?? inventoryItem.unit,

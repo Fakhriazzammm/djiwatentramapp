@@ -125,6 +125,7 @@ export const MessageBubble = ({
 								<span className="tracking-[0.01em]">{activityLabel}</span>
 							</div>
 						)}
+						{!(msg.tables && msg.tables.length > 0) && (
 						<div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
 							{visibleContent}
 							{isLast && isLoading && !isStreaming && (
@@ -135,6 +136,7 @@ export const MessageBubble = ({
 								</span>
 							)}
 						</div>
+						)}
 
 						{isLong && !isStreaming && (
 							<button
@@ -173,7 +175,7 @@ export const MessageBubble = ({
 							</div>
 						)}
 
-						{msg.scanData && <div className="mt-3"><ScanResultCard data={msg.scanData} /></div>}
+						{msg.scanData && !(msg.tables && msg.tables.length > 0) && <div className="mt-3"><ScanResultCard data={msg.scanData} /></div>}
 
 						{msg.actionButtons && msg.actionButtons.length > 0 && (
 							<div className="mt-2.5 flex flex-wrap gap-1.5">

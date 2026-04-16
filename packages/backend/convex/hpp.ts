@@ -135,14 +135,19 @@ async function loadInventoryCostMap(
 			avgCostPerUnit = totalQuantity > 0 ? totalCost / totalQuantity : undefined;
 		}
 
+		const fallbackInventoryCost =
+			typeof item.lastPurchasePrice === "number" && item.lastPurchasePrice > 0
+				? item.lastPurchasePrice
+				: undefined;
+
 		result[item._id] = {
 			inventoryId: item._id,
 			ingredientName: item.ingredientName,
 			unit: item.unit,
 			displayUnit: item.displayUnit,
 			conversionFactor: item.conversionFactor,
-			latestCostPerUnit: latestPriceReference?.costPerUnit,
-			latestRestockDate: latestPriceReference?.timestamp,
+			latestCostPerUnit: latestPriceReference?.costPerUnit ?? fallbackInventoryCost,
+			latestRestockDate: latestPriceReference?.timestamp ?? item.lastPurchaseAt,
 			avgCostPerUnit,
 		};
 	}
@@ -818,12 +823,14 @@ export const upsertHppFromRecipe = mutation({
 				lastCostSyncAt: now,
 				lastRecipeSyncAt: now,
 			});
+			const updatedCalculation = await ctx.db.get(existing._id);
 
 			return {
 				id: existing._id,
 				created: false,
 				ingredientCount: draft.ingredients.length,
 				missingCostCount,
+				calculation: updatedCalculation ?? undefined,
 			};
 		}
 
@@ -844,12 +851,14 @@ export const upsertHppFromRecipe = mutation({
 				lastRecipeSyncAt: now,
 			})
 		);
+		const createdCalculation = await ctx.db.get(createdId);
 
 		return {
 			id: createdId,
 			created: true,
 			ingredientCount: draft.ingredients.length,
 			missingCostCount,
+			calculation: createdCalculation ?? undefined,
 		};
 	},
 });

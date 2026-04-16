@@ -80,6 +80,19 @@ export interface ResponseTableData {
 	headers: string[];
 	rows: string[][];
 	footer?: string[];
+	meta?: {
+		merchant?: string;
+		date?: string;
+		category?: string;
+		paymentMethod?: string;
+		transactionType?: "expense" | "income" | "unknown";
+		confidence?: number;
+		receiptNumber?: string;
+		tax?: string;
+		serviceCharge?: string;
+		discount?: string;
+		subtotal?: string;
+	};
 }
 
 export interface ChatMessage {
