@@ -543,7 +543,7 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 						: [
 								["Total", `Rp ${toRupiah(scanData.total)}`],
 								["Kategori", scanData.category?.replace(/_/g, " ") || "-"],
-								["Metode Pembayaran", paymentLabel[scanData.paymentMethod] ?? scanData.paymentMethod || "-"],
+								["Metode Pembayaran", (paymentLabel[scanData.paymentMethod] ?? scanData.paymentMethod) || "-"],
 							],
 					footer: normalizedItems.length > 0 && scanData.total > 0
 						? ["Total", "", "", `Rp ${toRupiah(scanData.total)}`]

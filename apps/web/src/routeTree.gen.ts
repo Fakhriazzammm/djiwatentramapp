@@ -16,7 +16,6 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BookingRouteImport } from './routes/booking'
 import { Route as AttendanceRouteImport } from './routes/attendance'
 import { Route as BrandSlugRouteImport } from './routes/$brandSlug'
-import { Route as BrandSlugMinigamesRouteImport } from './routes/$brandSlug.minigames'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
@@ -28,9 +27,9 @@ import { Route as AdminRecipeRouteImport } from './routes/admin/recipe'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminOperationalTeamRouteImport } from './routes/admin/operational-team'
+import { Route as AdminMinigamesRouteImport } from './routes/admin/minigames'
 import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
-import { Route as AdminMinigamesRouteImport } from './routes/admin/minigames'
 import { Route as AdminHppCalculatorRouteImport } from './routes/admin/hpp-calculator'
 import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting'
 import { Route as AdminDiscountsRouteImport } from './routes/admin/discounts'
@@ -38,6 +37,7 @@ import { Route as AdminCustomerServiceRouteImport } from './routes/admin/custome
 import { Route as AdminBookingRouteImport } from './routes/admin/booking'
 import { Route as AdminBarRouteImport } from './routes/admin/bar'
 import { Route as AdminAiChatRouteImport } from './routes/admin/ai-chat'
+import { Route as BrandSlugMinigamesRouteImport } from './routes/$brandSlug.minigames'
 import { Route as AdminFinanceRouteRouteImport } from './routes/admin/finance/route'
 import { Route as AdminRecipeIndexRouteImport } from './routes/admin/recipe.index'
 import { Route as AdminFinanceIndexRouteImport } from './routes/admin/finance/index'
@@ -81,13 +81,6 @@ const BrandSlugRoute = BrandSlugRouteImport.update({
   path: '/$brandSlug',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/$brandSlug.lazy').then((d) => d.Route))
-const BrandSlugMinigamesRoute = BrandSlugMinigamesRouteImport.update({
-  id: '/minigames',
-  path: '/minigames',
-  getParentRoute: () => BrandSlugRoute,
-} as any).lazy(() =>
-  import('./routes/$brandSlug.minigames.lazy').then((d) => d.Route),
-)
 const AdminRouteRoute = AdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -153,6 +146,13 @@ const AdminOperationalTeamRoute = AdminOperationalTeamRouteImport.update({
 } as any).lazy(() =>
   import('./routes/admin/operational-team.lazy').then((d) => d.Route),
 )
+const AdminMinigamesRoute = AdminMinigamesRouteImport.update({
+  id: '/minigames',
+  path: '/minigames',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/minigames.lazy').then((d) => d.Route),
+)
 const AdminKitchenRoute = AdminKitchenRouteImport.update({
   id: '/kitchen',
   path: '/kitchen',
@@ -164,13 +164,6 @@ const AdminInventoryRoute = AdminInventoryRouteImport.update({
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
   import('./routes/admin/inventory.lazy').then((d) => d.Route),
-)
-const AdminMinigamesRoute = AdminMinigamesRouteImport.update({
-  id: '/minigames',
-  path: '/minigames',
-  getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() =>
-  import('./routes/admin/minigames.lazy').then((d) => d.Route),
 )
 const AdminHppCalculatorRoute = AdminHppCalculatorRouteImport.update({
   id: '/hpp-calculator',
@@ -215,6 +208,13 @@ const AdminAiChatRoute = AdminAiChatRouteImport.update({
   path: '/ai-chat',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() => import('./routes/admin/ai-chat.lazy').then((d) => d.Route))
+const BrandSlugMinigamesRoute = BrandSlugMinigamesRouteImport.update({
+  id: '/minigames',
+  path: '/minigames',
+  getParentRoute: () => BrandSlugRoute,
+} as any).lazy(() =>
+  import('./routes/$brandSlug.minigames.lazy').then((d) => d.Route),
+)
 const AdminFinanceRouteRoute = AdminFinanceRouteRouteImport.update({
   id: '/finance',
   path: '/finance',
@@ -267,6 +267,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
+  '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
   '/admin/booking': typeof AdminBookingRoute
@@ -275,15 +276,14 @@ export interface FileRoutesByFullPath {
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
-  '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/kitchen': typeof AdminKitchenRoute
+  '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/operational-team': typeof AdminOperationalTeamRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/attendance/$username': typeof AttendanceUsernameRoute
-  '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
   '/home/$section': typeof HomeSectionRoute
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
@@ -302,6 +302,7 @@ export interface FileRoutesByTo {
   '/home': typeof HomeRouteWithChildren
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
+  '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
   '/admin/booking': typeof AdminBookingRoute
@@ -310,14 +311,13 @@ export interface FileRoutesByTo {
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
-  '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/kitchen': typeof AdminKitchenRoute
+  '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/operational-team': typeof AdminOperationalTeamRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/attendance/$username': typeof AttendanceUsernameRoute
-  '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
   '/home/$section': typeof HomeSectionRoute
   '/admin': typeof AdminIndexRoute
   '/attendance': typeof AttendanceIndexRoute
@@ -340,6 +340,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
+  '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
   '/admin/booking': typeof AdminBookingRoute
@@ -348,15 +349,14 @@ export interface FileRoutesById {
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
-  '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/kitchen': typeof AdminKitchenRoute
+  '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/operational-team': typeof AdminOperationalTeamRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/attendance/$username': typeof AttendanceUsernameRoute
-  '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
   '/home/$section': typeof HomeSectionRoute
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
@@ -380,6 +380,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/menu'
     | '/admin/finance'
+    | '/$brandSlug/minigames'
     | '/admin/ai-chat'
     | '/admin/bar'
     | '/admin/booking'
@@ -388,15 +389,14 @@ export interface FileRouteTypes {
     | '/admin/forecasting'
     | '/admin/hpp-calculator'
     | '/admin/inventory'
-    | '/admin/minigames'
     | '/admin/kitchen'
+    | '/admin/minigames'
     | '/admin/operational-team'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/recipe'
     | '/admin/settings'
     | '/attendance/$username'
-    | '/$brandSlug/minigames'
     | '/home/$section'
     | '/admin/'
     | '/attendance/'
@@ -415,6 +415,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/login'
     | '/menu'
+    | '/$brandSlug/minigames'
     | '/admin/ai-chat'
     | '/admin/bar'
     | '/admin/booking'
@@ -423,14 +424,13 @@ export interface FileRouteTypes {
     | '/admin/forecasting'
     | '/admin/hpp-calculator'
     | '/admin/inventory'
-    | '/admin/minigames'
     | '/admin/kitchen'
+    | '/admin/minigames'
     | '/admin/operational-team'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
     | '/attendance/$username'
-    | '/$brandSlug/minigames'
     | '/home/$section'
     | '/admin'
     | '/attendance'
@@ -452,6 +452,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/menu'
     | '/admin/finance'
+    | '/$brandSlug/minigames'
     | '/admin/ai-chat'
     | '/admin/bar'
     | '/admin/booking'
@@ -460,15 +461,14 @@ export interface FileRouteTypes {
     | '/admin/forecasting'
     | '/admin/hpp-calculator'
     | '/admin/inventory'
-    | '/admin/minigames'
     | '/admin/kitchen'
+    | '/admin/minigames'
     | '/admin/operational-team'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/recipe'
     | '/admin/settings'
     | '/attendance/$username'
-    | '/$brandSlug/minigames'
     | '/home/$section'
     | '/admin/'
     | '/attendance/'
@@ -585,13 +585,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AttendanceUsernameRouteImport
       parentRoute: typeof AttendanceRoute
     }
-    '/$brandSlug/minigames': {
-      id: '/$brandSlug/minigames'
-      path: '/minigames'
-      fullPath: '/$brandSlug/minigames'
-      preLoaderRoute: typeof BrandSlugMinigamesRouteImport
-      parentRoute: typeof BrandSlugRoute
-    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/settings'
@@ -627,6 +620,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOperationalTeamRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/minigames': {
+      id: '/admin/minigames'
+      path: '/minigames'
+      fullPath: '/admin/minigames'
+      preLoaderRoute: typeof AdminMinigamesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/kitchen': {
       id: '/admin/kitchen'
       path: '/kitchen'
@@ -639,13 +639,6 @@ declare module '@tanstack/react-router' {
       path: '/inventory'
       fullPath: '/admin/inventory'
       preLoaderRoute: typeof AdminInventoryRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/minigames': {
-      id: '/admin/minigames'
-      path: '/minigames'
-      fullPath: '/admin/minigames'
-      preLoaderRoute: typeof AdminMinigamesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/hpp-calculator': {
@@ -696,6 +689,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/ai-chat'
       preLoaderRoute: typeof AdminAiChatRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/$brandSlug/minigames': {
+      id: '/$brandSlug/minigames'
+      path: '/minigames'
+      fullPath: '/$brandSlug/minigames'
+      preLoaderRoute: typeof BrandSlugMinigamesRouteImport
+      parentRoute: typeof BrandSlugRoute
     }
     '/admin/finance': {
       id: '/admin/finance'
@@ -790,8 +790,8 @@ interface AdminRouteRouteChildren {
   AdminForecastingRoute: typeof AdminForecastingRoute
   AdminHppCalculatorRoute: typeof AdminHppCalculatorRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
-  AdminMinigamesRoute: typeof AdminMinigamesRoute
   AdminKitchenRoute: typeof AdminKitchenRoute
+  AdminMinigamesRoute: typeof AdminMinigamesRoute
   AdminOperationalTeamRoute: typeof AdminOperationalTeamRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
@@ -810,8 +810,8 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminForecastingRoute: AdminForecastingRoute,
   AdminHppCalculatorRoute: AdminHppCalculatorRoute,
   AdminInventoryRoute: AdminInventoryRoute,
-  AdminMinigamesRoute: AdminMinigamesRoute,
   AdminKitchenRoute: AdminKitchenRoute,
+  AdminMinigamesRoute: AdminMinigamesRoute,
   AdminOperationalTeamRoute: AdminOperationalTeamRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
@@ -822,6 +822,18 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
   AdminRouteRouteChildren,
+)
+
+interface BrandSlugRouteChildren {
+  BrandSlugMinigamesRoute: typeof BrandSlugMinigamesRoute
+}
+
+const BrandSlugRouteChildren: BrandSlugRouteChildren = {
+  BrandSlugMinigamesRoute: BrandSlugMinigamesRoute,
+}
+
+const BrandSlugRouteWithChildren = BrandSlugRoute._addFileChildren(
+  BrandSlugRouteChildren,
 )
 
 interface AttendanceRouteChildren {
@@ -847,18 +859,6 @@ const HomeRouteChildren: HomeRouteChildren = {
 }
 
 const HomeRouteWithChildren = HomeRoute._addFileChildren(HomeRouteChildren)
-
-interface BrandSlugRouteChildren {
-  BrandSlugMinigamesRoute: typeof BrandSlugMinigamesRoute
-}
-
-const BrandSlugRouteChildren: BrandSlugRouteChildren = {
-  BrandSlugMinigamesRoute: BrandSlugMinigamesRoute,
-}
-
-const BrandSlugRouteWithChildren = BrandSlugRoute._addFileChildren(
-  BrandSlugRouteChildren,
-)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
