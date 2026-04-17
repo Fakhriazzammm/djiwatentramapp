@@ -1024,6 +1024,7 @@ function HppCalculatorPage() {
 					editingId={editingId}
 					form={form}
 					inventory={inventory}
+					inventoryCosts={inventoryCosts}
 					productSearchOptions={productSearchOptions}
 					onSelectProduct={selectProductForEditor}
 					onApplyRecommendedPrice={handleApplyRecommendedPrice}
@@ -1482,6 +1483,7 @@ function EditorView({
 	editingId,
 	form,
 	inventory,
+	inventoryCosts,
 	productSearchOptions,
 	onAiAutofill,
 	onApplyRecommendedPrice,
@@ -1508,6 +1510,9 @@ function EditorView({
 	editingId: Id<"hppCalculations"> | null;
 	form: HppFormData;
 	inventory: Doc<"inventory">[] | undefined;
+	inventoryCosts:
+		| Record<string, { latestCostPerUnit?: number }>
+		| undefined;
 	productSearchOptions: {
 		id: Id<"products">;
 		name: string;
@@ -1566,6 +1571,99 @@ function EditorView({
 		(item) =>
 			!item.name || !item.price || !item.quantity || !item.conversion || !item.usage
 	);
+
+	function getInventoryItem(inventoryId?: Id<"inventory">) {
+		if (!inventoryId) {
+			return undefined;
+		}
+		return inventory?.find((item) => item._id === inventoryId);
+	}
+
+	function getLatestInventoryUnitCost(inventoryId?: Id<"inventory">) {
+		if (!inventoryId) {
+			return undefined;
+		}
+		const fromTransactions = inventoryCosts?.[inventoryId]?.latestCostPerUnit;
+		if (typeof fromTransactions === "number" && fromTransactions > 0) {
+			return fromTransactions;
+		}
+		const inventoryItem = getInventoryItem(inventoryId);
+		const fallbackInventoryPrice = inventoryItem?.lastPurchasePrice;
+		if (typeof fallbackInventoryPrice === "number" && fallbackInventoryPrice > 0) {
+			return fallbackInventoryPrice;
+		}
+		return undefined;
+	}
+
+	function getIngredientPriceInfo(ingredient: IngredientRow) {
+		if (!ingredient.inventoryId) {
+			return null;
+		}
+		const inventoryItem = getInventoryItem(ingredient.inventoryId);
+		if (!inventoryItem) {
+			return {
+				tone: "warning" as const,
+				text: "Bahan tidak ditemukan di Inventory. Cek /admin/inventory.",
+			};
+		}
+		const latestFromTransactions =
+			inventoryCosts?.[ingredient.inventoryId]?.latestCostPerUnit;
+		const latestUnitCost = getLatestInventoryUnitCost(ingredient.inventoryId);
+		if (latestUnitCost && latestUnitCost > 0) {
+			const sourceLabel =
+				typeof latestFromTransactions === "number" && latestFromTransactions > 0
+					? "transaksi inventory"
+					: "harga terakhir item";
+			return {
+				tone: "ok" as const,
+				text: `Harga inventory: ${formatCurrency(latestUnitCost)} / ${inventoryItem.unit} (${sourceLabel})`,
+			};
+		}
+		return {
+			tone: "warning" as const,
+			text: "Belum ada harga terakhir di Inventory. Isi manual atau update di /admin/inventory.",
+		};
+	}
+
+	useEffect(() => {
+		if (!inventory || inventory.length === 0) {
+			return;
+		}
+		setForm((prev) => {
+			let updated = false;
+			const nextIngredients = prev.ingredients.map((ingredient) => {
+				if (!ingredient.inventoryId || ingredient.purchasePrice > 0) {
+					return ingredient;
+				}
+				const inventoryItem = getInventoryItem(ingredient.inventoryId);
+				const latestUnitCost = getLatestInventoryUnitCost(ingredient.inventoryId);
+				if (!(latestUnitCost && latestUnitCost > 0)) {
+					return ingredient;
+				}
+				const conversionFactor =
+					ingredient.conversionFactor > 0
+						? ingredient.conversionFactor
+						: (inventoryItem?.conversionFactor ?? 1);
+				const nextPurchasePrice = latestUnitCost * conversionFactor;
+				if (!(nextPurchasePrice > 0)) {
+					return ingredient;
+				}
+				updated = true;
+				return {
+					...ingredient,
+					purchasePrice: nextPurchasePrice,
+					conversionFactor,
+					purchaseUnit:
+						ingredient.purchaseUnit ||
+						inventoryItem?.displayUnit ||
+						inventoryItem?.unit ||
+						ingredient.purchaseUnit,
+					usageUnit: ingredient.usageUnit || inventoryItem?.unit || ingredient.usageUnit,
+				};
+			});
+			return updated ? { ...prev, ingredients: nextIngredients } : prev;
+		});
+	}, [inventory, inventoryCosts, setForm]);
 
 	useEffect(() => {
 		if (isEditingProductQuery) {
@@ -1924,6 +2022,7 @@ function EditorView({
 								<tbody>
 									{form.ingredients.map((ingredient, index) => {
 										const validation = ingredientValidation[index];
+										const priceInfo = getIngredientPriceInfo(ingredient);
 										return (
 											<tr className="border-t border-slate-200 align-top" key={ingredient.id}>
 												<td className="px-1 py-1.5 text-slate-500">{index + 1}</td>
@@ -2006,25 +2105,38 @@ function EditorView({
 													/>
 												</td>
 												<td className="px-1 py-1.5">
-													<Input
-														className={`h-8 ${!validation.price ? "border-rose-300 focus-visible:ring-rose-300" : ""}`}
-														data-col={1}
-														data-grid="ingredient"
-														data-row={index}
-														min={0}
-														onChange={(event) =>
-															updateIngredient(
-																ingredient.id,
-																"purchasePrice",
-																Number(event.target.value) || 0
-															)
-														}
-														onKeyDown={(event) =>
-															onGridCellKeyDown(event, index, 1, 7, "ingredient")
-														}
-														type="number"
-														value={ingredient.purchasePrice || ""}
-													/>
+													<div className="space-y-1">
+														<Input
+															className={`h-8 ${!validation.price ? "border-rose-300 focus-visible:ring-rose-300" : ""}`}
+															data-col={1}
+															data-grid="ingredient"
+															data-row={index}
+															min={0}
+															onChange={(event) =>
+																updateIngredient(
+																	ingredient.id,
+																	"purchasePrice",
+																	Number(event.target.value) || 0
+																)
+															}
+															onKeyDown={(event) =>
+																onGridCellKeyDown(event, index, 1, 7, "ingredient")
+															}
+															type="number"
+															value={ingredient.purchasePrice || ""}
+														/>
+														{priceInfo && (
+															<p
+																className={`text-[10px] leading-4 ${
+																	priceInfo.tone === "warning"
+																		? "text-amber-700"
+																		: "text-emerald-700"
+																}`}
+															>
+																{priceInfo.text}
+															</p>
+														)}
+													</div>
 												</td>
 												<td className="px-1 py-1.5">
 													<Input
@@ -2160,6 +2272,7 @@ function EditorView({
 						<div className="space-y-2 xl:hidden">
 							{form.ingredients.map((ingredient, index) => {
 								const validation = ingredientValidation[index];
+								const priceInfo = getIngredientPriceInfo(ingredient);
 								return (
 									<div className="rounded-lg border border-slate-200 p-2" key={ingredient.id}>
 										<div className="mb-2 flex items-center justify-between">
@@ -2242,6 +2355,17 @@ function EditorView({
 												type="number"
 												value={ingredient.usagePerServing || ""}
 											/>
+											{priceInfo && (
+												<p
+													className={`col-span-2 text-[11px] leading-4 ${
+														priceInfo.tone === "warning"
+															? "text-amber-700"
+															: "text-emerald-700"
+													}`}
+												>
+													{priceInfo.text}
+												</p>
+											)}
 										</div>
 									</div>
 								);
