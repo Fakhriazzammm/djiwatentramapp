@@ -433,6 +433,35 @@ function buildConversionHint(
 	return `1 ${showUnit} = ${factor} ${baseUnit}`;
 }
 
+function getInventorySizeLabel({
+	unit,
+	displayUnit,
+	conversionFactor,
+	unitConversionsText,
+}: {
+	unit?: string | null;
+	displayUnit?: string | null;
+	conversionFactor?: number | string | null;
+	unitConversionsText?: string | null;
+}) {
+	const parsedConversionFactor =
+		typeof conversionFactor === "string"
+			? Number(conversionFactor)
+			: conversionFactor ?? undefined;
+	const parsedConversions = parseUnitConversionsText(unitConversionsText || "");
+	const primaryConversion = getPrimaryConversionFromChain(parsedConversions);
+	const selectedDisplayUnit =
+		normalizeUnitLabel(displayUnit) || primaryConversion.displayUnit;
+	const selectedFactor =
+		typeof parsedConversionFactor === "number" &&
+		Number.isFinite(parsedConversionFactor) &&
+		parsedConversionFactor > 0
+			? parsedConversionFactor
+			: primaryConversion.conversionFactor;
+
+	return buildConversionHint(unit, selectedDisplayUnit, selectedFactor);
+}
+
 function parseUnitConversionsText(input: string) {
 	const rows = input
 		.split(/[\n,;]+/)
@@ -1066,8 +1095,9 @@ function InventoryPage() {
 	};
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 animate-in space-y-4 duration-500">
-			<InventoryHeader
+		<div className="space-y-4">
+			<div className="sticky top-0 z-50 bg-background pb-3">
+				<InventoryHeader
 				advancedFilter={advancedFilter}
 				filterLowStock={filterLowStock}
 				onAdvancedFilterChange={setAdvancedFilter}
@@ -1078,7 +1108,8 @@ function InventoryPage() {
 				searchQuery={searchQuery}
 				tableMode={tableMode}
 				viewPreset={viewPreset}
-			/>
+				/>
+			</div>
 
 			{viewPreset === "priceMonitor" ? (
 				<RealtimePriceMonitorTable
@@ -3911,7 +3942,7 @@ function InventoryTable({
 				</datalist>
 				<div className="overflow-x-auto">
 				<table
-					className={`min-w-[1180px] w-full table-fixed text-left ${
+					className={`min-w-[1280px] w-full table-fixed text-left ${
 						tableMode === "detail" ? "text-[9px] md:text-[10px]" : "text-[8px] md:text-[9px]"
 					}`}
 				>
@@ -3919,6 +3950,7 @@ function InventoryTable({
 						<col className="w-[16%]" />
 						<col className="w-[10%]" />
 						<col className="w-[9%]" />
+						<col className="w-[10%]" />
 						<col className="w-[5%]" />
 						<col className="w-[7%]" />
 						<col className="w-[7%]" />
@@ -3949,6 +3981,7 @@ function InventoryTable({
 								Brand
 							</th>
 							<th className="px-2 py-1.5 font-semibold">Toko</th>
+							<th className="px-2 py-1.5 text-center font-semibold">Ukuran</th>
 							<th
 								className="cursor-pointer px-2 py-1.5 text-center font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("lowStockThreshold")}
@@ -4046,6 +4079,16 @@ function InventoryTable({
 								<div className="text-[10px] text-muted-foreground">-</div>
 							</td>
 							<td className="px-2 py-1.5 text-center">
+								<div className="text-[10px] text-muted-foreground">
+									{getInventorySizeLabel({
+										unit: quickAdd.unit,
+										displayUnit: quickAdd.displayUnit,
+										conversionFactor: quickAdd.conversionFactor,
+										unitConversionsText: quickAdd.unitConversionsText,
+									}) || "-"}
+								</div>
+							</td>
+							<td className="px-2 py-1.5 text-center">
 								<input
 									className="mx-auto w-14 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[10px] outline-none focus:border-primary"
 									onChange={(e) =>
@@ -4133,6 +4176,9 @@ function InventoryTable({
 									</td>
 									<td className="p-4">
 										<Skeleton className="mx-auto h-4 w-12" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="mx-auto h-4 w-20" />
 									</td>
 									<td className="p-4">
 										<Skeleton className="mx-auto h-8 w-16" />
@@ -4225,6 +4271,14 @@ function InventoryTable({
 											<span className="whitespace-nowrap font-semibold text-foreground">
 												{row.lastPurchaseStoreName || row.preferredStoreName || "-"}
 											</span>
+										</td>
+										<td className="px-2 py-1.5 align-middle text-center text-[10px] text-muted-foreground">
+											{getInventorySizeLabel({
+												unit: inline.unit,
+												displayUnit: inline.displayUnit,
+												conversionFactor: inline.conversionFactor,
+												unitConversionsText: inline.unitConversionsText,
+											}) || "-"}
 										</td>
 										<td className="px-2 py-1.5 align-middle text-center">
 											<input
@@ -4418,7 +4472,7 @@ function InventoryTable({
 							})}
 						{inventoryMap.size > 0 && filteredRows.length === 0 && (
 							<tr>
-								<td className="p-8 text-center text-muted-foreground" colSpan={12}>
+								<td className="p-8 text-center text-muted-foreground" colSpan={13}>
 									Tidak ada bahan baku ditemukan
 								</td>
 							</tr>
@@ -4609,7 +4663,7 @@ function InventoryHeader({
 	onViewPresetChange: (preset: InventoryViewPreset) => void;
 }) {
 	return (
-		<div className="sticky top-3 z-40 rounded-xl border border-border bg-background/95 px-3 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/90">
+		<div className="rounded-xl border border-border bg-background px-3 py-3">
 			<div className="flex flex-wrap items-center gap-2">
 				<select
 					className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none"
