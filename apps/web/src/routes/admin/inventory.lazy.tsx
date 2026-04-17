@@ -48,7 +48,10 @@ type InventoryWorkspaceRow = {
 		factor: number;
 	}>;
 	defaultBrandName: string | null;
+	preferredStoreId: Id<"inventoryStores"> | null;
 	preferredStoreName: string | null;
+	preferredPurchaseQuantity: number | null;
+	preferredPurchaseUnit: string | null;
 	lastPurchaseStoreName: string | null;
 	lastPurchasePrice: number | null;
 	lastPurchaseBrandName?: string | null;
@@ -70,6 +73,7 @@ type InventoryWorkspaceRow = {
 		timestamp: number;
 		notes?: string;
 		costPerUnit?: number;
+		storeId?: Id<"inventoryStores">;
 		purchaseQuantity?: number;
 		purchaseUnit?: string;
 	} | null;
@@ -847,11 +851,6 @@ function InventoryPage() {
 			if (isTypingTarget) {
 				return;
 			}
-			if (event.key.toLowerCase() === "n") {
-				event.preventDefault();
-				setAddRowSignal((prev) => prev + 1);
-				return;
-			}
 			if (event.key.toLowerCase() === "f") {
 				event.preventDefault();
 				const input = document.getElementById("inventory-search-input");
@@ -1122,6 +1121,7 @@ function InventoryPage() {
 				<InventoryTable
 				filteredRows={filteredRows}
 				inventoryMap={inventoryMap}
+					stores={stores ?? []}
 					onActionTypeChange={setActionType}
 					onDetailItemChange={setDetailItem}
 					onSelectedItemChange={setSelectedItem}
@@ -3034,6 +3034,7 @@ function InventoryTable({
 	onDetailItemChange,
 	onActionTypeChange,
 	inventoryMap,
+	stores,
 	viewPreset,
 	unitOptions,
 }: {
@@ -3070,12 +3071,14 @@ function InventoryTable({
 			| null
 	) => void;
 	inventoryMap: Map<Id<"inventory">, Doc<"inventory">>;
+	stores: InventoryStore[];
 	viewPreset: InventoryViewPreset;
 	unitOptions: string[];
 }) {
 	const updateItemMutation = useMutation(api.inventory.updateInventoryItem);
 	const applyStockAction = useMutation(api.inventory.applyInventoryStockAction);
 	const createItemMutation = useMutation(api.inventory.createInventoryItem);
+	const createStoreMutation = useMutation(api.inventory.createInventoryStore);
 	const setReferencePriceMutation = useMutation(
 		api.inventory.setInventoryReferencePrice
 	);
@@ -3111,6 +3114,9 @@ function InventoryTable({
 				unit: string;
 				lowStockThreshold: string;
 				defaultBrandName: string;
+				preferredStoreName: string;
+				preferredPurchaseQuantity: string;
+				preferredPurchaseUnit: string;
 				displayUnit: string;
 				conversionFactor: string;
 				unitConversionsText: string;
@@ -3304,6 +3310,17 @@ function InventoryTable({
 			unit: row.unit,
 			lowStockThreshold: String(row.lowStockThreshold),
 			defaultBrandName: row.defaultBrandName ?? "",
+			preferredStoreName: row.lastPurchaseStoreName || row.preferredStoreName || "",
+			preferredPurchaseQuantity:
+				row.latestTransaction?.purchaseQuantity != null
+					? String(row.latestTransaction.purchaseQuantity)
+					: row.preferredPurchaseQuantity != null
+						? String(row.preferredPurchaseQuantity)
+						: "",
+			preferredPurchaseUnit:
+				normalizeUnitOption(row.latestTransaction?.purchaseUnit) ||
+				normalizeUnitOption(row.preferredPurchaseUnit) ||
+				"",
 			displayUnit: row.displayUnit ?? "",
 			conversionFactor:
 				typeof row.conversionFactor === "number" && row.conversionFactor > 0
@@ -3324,6 +3341,9 @@ function InventoryTable({
 			| "unit"
 			| "lowStockThreshold"
 			| "defaultBrandName"
+			| "preferredStoreName"
+			| "preferredPurchaseQuantity"
+			| "preferredPurchaseUnit"
 			| "displayUnit"
 			| "conversionFactor"
 			| "unitConversionsText",
@@ -3336,6 +3356,17 @@ function InventoryTable({
 				unit: row.unit,
 				lowStockThreshold: String(row.lowStockThreshold),
 				defaultBrandName: row.defaultBrandName ?? "",
+				preferredStoreName: row.lastPurchaseStoreName || row.preferredStoreName || "",
+				preferredPurchaseQuantity:
+					row.latestTransaction?.purchaseQuantity != null
+						? String(row.latestTransaction.purchaseQuantity)
+						: row.preferredPurchaseQuantity != null
+							? String(row.preferredPurchaseQuantity)
+							: "",
+				preferredPurchaseUnit:
+					normalizeUnitOption(row.latestTransaction?.purchaseUnit) ||
+					normalizeUnitOption(row.preferredPurchaseUnit) ||
+					"",
 				displayUnit: row.displayUnit ?? "",
 				conversionFactor:
 					typeof row.conversionFactor === "number" && row.conversionFactor > 0
@@ -3357,6 +3388,52 @@ function InventoryTable({
 		});
 	};
 
+	useEffect(() => {
+		if (!filteredRows.length) {
+			return;
+		}
+		setInlineValues((prev) => {
+			let changed = false;
+			const next = { ...prev };
+			for (const row of filteredRows) {
+				const existing = next[row.inventoryId];
+				if (!existing) {
+					continue;
+				}
+				const latestStoreName = (row.lastPurchaseStoreName || "").trim();
+				const latestPurchaseQuantity = row.latestTransaction?.purchaseQuantity;
+				const latestPurchaseUnit = normalizeUnitOption(row.latestTransaction?.purchaseUnit);
+				let updated = existing;
+				if (latestStoreName && latestStoreName !== updated.preferredStoreName) {
+					updated = {
+						...updated,
+						preferredStoreName: latestStoreName,
+					};
+				}
+				if (latestPurchaseQuantity != null) {
+					const normalizedQty = String(latestPurchaseQuantity);
+					if (normalizedQty !== updated.preferredPurchaseQuantity) {
+						updated = {
+							...updated,
+							preferredPurchaseQuantity: normalizedQty,
+						};
+					}
+				}
+				if (latestPurchaseUnit && latestPurchaseUnit !== normalizeUnitOption(updated.preferredPurchaseUnit)) {
+					updated = {
+						...updated,
+						preferredPurchaseUnit: latestPurchaseUnit,
+					};
+				}
+				if (updated !== existing) {
+					next[row.inventoryId] = updated;
+					changed = true;
+				}
+			}
+			return changed ? next : prev;
+		});
+	}, [filteredRows]);
+
 	const saveMeta = async (row: InventoryWorkspaceRow) => {
 		const item = inventoryMap.get(row.inventoryId);
 		if (!item) {
@@ -3368,6 +3445,12 @@ function InventoryTable({
 		const lowStockThresholdNum = Number(current.lowStockThreshold);
 		const conversionFactorNum = Number(current.conversionFactor);
 		const normalizedDisplayUnit = current.displayUnit.trim().toLowerCase();
+		const preferredStoreName = current.preferredStoreName.trim();
+		const preferredStoreNameNorm = preferredStoreName.toLowerCase();
+		const preferredPurchaseQuantityRaw = current.preferredPurchaseQuantity.trim();
+		const preferredPurchaseQuantityNum =
+			preferredPurchaseQuantityRaw === "" ? null : Number(preferredPurchaseQuantityRaw);
+		const preferredPurchaseUnit = normalizeUnitOption(current.preferredPurchaseUnit);
 		const parsedUnitConversions = parseUnitConversionsText(current.unitConversionsText);
 		const primaryConversion = getPrimaryConversionFromChain(parsedUnitConversions);
 		if (!ingredientName) {
@@ -3383,6 +3466,18 @@ function InventoryTable({
 		if (!normalizedUnit) {
 			toast.error("Satuan wajib diisi");
 			setInlineField(row, "unit", row.unit);
+			return;
+		}
+		if (
+			preferredPurchaseQuantityNum != null &&
+			(!Number.isFinite(preferredPurchaseQuantityNum) || preferredPurchaseQuantityNum <= 0)
+		) {
+			toast.error("Jml pembelian harus angka lebih dari 0");
+			setInlineField(
+				row,
+				"preferredPurchaseQuantity",
+				row.preferredPurchaseQuantity != null ? String(row.preferredPurchaseQuantity) : ""
+			);
 			return;
 		}
 		if (normalizedUnit === "pcs") {
@@ -3403,6 +3498,9 @@ function InventoryTable({
 			normalizedUnit === row.unit &&
 			lowStockThresholdNum === row.lowStockThreshold &&
 			current.defaultBrandName.trim() === (row.defaultBrandName ?? "") &&
+			preferredStoreNameNorm === (row.preferredStoreName ?? "").trim().toLowerCase() &&
+			preferredPurchaseQuantityNum === row.preferredPurchaseQuantity &&
+			preferredPurchaseUnit === normalizeUnitOption(row.preferredPurchaseUnit) &&
 			(current.displayUnit.trim() || "") === (row.displayUnit ?? "") &&
 			(current.conversionFactor
 				? Number(current.conversionFactor)
@@ -3420,6 +3518,16 @@ function InventoryTable({
 		try {
 			setSavingKey(`${row.inventoryId}:meta`);
 			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saving" }));
+			const existingStore = stores.find(
+				(store) => store.name.trim().toLowerCase() === preferredStoreNameNorm
+			);
+			const preferredStoreId =
+				preferredStoreName === ""
+					? undefined
+					: existingStore?._id ??
+						(await createStoreMutation({
+							name: preferredStoreName,
+						}));
 			await updateItemMutation({
 				id: item._id,
 				ingredientName,
@@ -3436,7 +3544,9 @@ function InventoryTable({
 				unitConversions: parsedUnitConversions,
 				baseRecipeId: item.baseRecipeId || undefined,
 				defaultBrandName: current.defaultBrandName.trim() || undefined,
-				preferredStoreId: item.preferredStoreId || undefined,
+				preferredStoreId,
+				preferredPurchaseQuantity: preferredPurchaseQuantityNum ?? undefined,
+				preferredPurchaseUnit: preferredPurchaseUnit || undefined,
 			});
 			saveLearnedProfile(ingredientName, {
 				unit: normalizedUnit,
@@ -3774,6 +3884,18 @@ function InventoryTable({
 						unit: row.unit,
 						lowStockThreshold: String(row.lowStockThreshold),
 						defaultBrandName: row.defaultBrandName ?? "",
+						preferredStoreName:
+							row.lastPurchaseStoreName || row.preferredStoreName || "",
+						preferredPurchaseQuantity:
+							row.latestTransaction?.purchaseQuantity != null
+								? String(row.latestTransaction.purchaseQuantity)
+								: row.preferredPurchaseQuantity != null
+									? String(row.preferredPurchaseQuantity)
+									: "",
+						preferredPurchaseUnit:
+							normalizeUnitOption(row.latestTransaction?.purchaseUnit) ||
+							normalizeUnitOption(row.preferredPurchaseUnit) ||
+							"",
 						displayUnit: row.displayUnit ?? "",
 						conversionFactor:
 							typeof row.conversionFactor === "number" && row.conversionFactor > 0
@@ -4300,10 +4422,22 @@ function InventoryTable({
 												value={inline.defaultBrandName}
 											/>
 										</td>
-										<td className="px-2 py-1.5 align-middle text-[9px] text-muted-foreground">
-											<span className="whitespace-nowrap font-semibold text-foreground">
-												{row.lastPurchaseStoreName || row.preferredStoreName || "-"}
-											</span>
+										<td className="px-2 py-1.5 align-middle">
+											<input
+												className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-[10px] font-semibold text-foreground outline-none focus:border-border focus:bg-background"
+												onBlur={() => void saveMeta(row)}
+												onChange={(e) =>
+													setInlineField(row, "preferredStoreName", e.target.value)
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveMeta(row);
+														(e.target as HTMLInputElement).blur();
+													}
+												}}
+												placeholder={row.lastPurchaseStoreName || row.preferredStoreName || "Toko"}
+												value={inline.preferredStoreName}
+											/>
 										</td>
 										<td className="px-2 py-1.5 align-middle text-center">
 											<input
@@ -4400,13 +4534,50 @@ function InventoryTable({
 												value={inline.unit}
 											/>
 										</td>
-										<td className="px-2 py-1.5 align-middle text-center text-[10px]">
-											{row.latestTransaction?.purchaseQuantity != null
-												? row.latestTransaction.purchaseQuantity
-												: "-"}
+										<td className="px-2 py-1.5 align-middle text-center">
+											<input
+												className="mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] outline-none focus:border-border focus:bg-background"
+												min={0}
+												onBlur={() => void saveMeta(row)}
+												onChange={(e) =>
+													setInlineField(
+														row,
+														"preferredPurchaseQuantity",
+														e.target.value
+													)
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveMeta(row);
+														(e.target as HTMLInputElement).blur();
+													}
+												}}
+												placeholder="-"
+												type="number"
+												value={inline.preferredPurchaseQuantity}
+											/>
 										</td>
-										<td className="px-2 py-1.5 align-middle text-center text-[10px] text-muted-foreground">
-											{row.latestTransaction?.purchaseUnit || "-"}
+										<td className="px-2 py-1.5 align-middle text-center">
+											<input
+												className="mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background"
+												list="inventory-unit-options-table"
+												onBlur={() => void saveMeta(row)}
+												onChange={(e) =>
+													setInlineField(
+														row,
+														"preferredPurchaseUnit",
+														normalizeUnitOption(e.target.value)
+													)
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveMeta(row);
+														(e.target as HTMLInputElement).blur();
+													}
+												}}
+												placeholder="-"
+												value={inline.preferredPurchaseUnit}
+											/>
 										</td>
 										<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
 											<span className="font-semibold text-foreground">

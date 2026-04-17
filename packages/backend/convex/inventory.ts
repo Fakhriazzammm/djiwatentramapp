@@ -40,6 +40,8 @@ type InventoryAuditSnapshot = {
 	unitConversions?: UnitConversion[];
 	defaultBrandName?: string;
 	preferredStoreId?: Id<"inventoryStores">;
+	preferredPurchaseQuantity?: number;
+	preferredPurchaseUnit?: string;
 	lastPurchasePrice?: number;
 	lastPurchaseAt?: number;
 };
@@ -241,6 +243,8 @@ function snapshotInventoryItem(item: Doc<"inventory">): InventoryAuditSnapshot {
 		unitConversions: sanitizeUnitConversions(item.unitConversions),
 		defaultBrandName: item.defaultBrandName,
 		preferredStoreId: item.preferredStoreId,
+		preferredPurchaseQuantity: item.preferredPurchaseQuantity,
+		preferredPurchaseUnit: item.preferredPurchaseUnit,
 		lastPurchasePrice: item.lastPurchasePrice,
 		lastPurchaseAt: item.lastPurchaseAt,
 	};
@@ -990,10 +994,13 @@ export const getInventoryWorkspace = query({
 					conversionFactor: item.conversionFactor,
 					unitConversions: item.unitConversions,
 					defaultBrandName: item.defaultBrandName ?? null,
+					preferredStoreId: item.preferredStoreId ?? null,
 					preferredStoreName:
 						item.preferredStoreId != null
 							? storeById.get(item.preferredStoreId as string)?.name ?? null
 							: null,
+					preferredPurchaseQuantity: item.preferredPurchaseQuantity ?? null,
+					preferredPurchaseUnit: item.preferredPurchaseUnit ?? null,
 					lastPurchaseStoreName:
 						item.lastPurchaseStoreId != null
 							? storeById.get(item.lastPurchaseStoreId as string)?.name ?? null
@@ -2368,6 +2375,8 @@ export const rollbackInventoryByAudit = mutation({
 			unitConversions: normalized.unitConversions,
 			defaultBrandName: audit.before.defaultBrandName,
 			preferredStoreId: audit.before.preferredStoreId,
+			preferredPurchaseQuantity: audit.before.preferredPurchaseQuantity,
+			preferredPurchaseUnit: audit.before.preferredPurchaseUnit,
 			lastPurchasePrice: audit.before.lastPurchasePrice,
 			lastPurchaseAt: audit.before.lastPurchaseAt,
 		});
@@ -2409,6 +2418,8 @@ export const createInventoryItem = mutation({
 		baseRecipeId: v.optional(v.id("baseRecipes")),
 		defaultBrandName: v.optional(v.string()),
 		preferredStoreId: v.optional(v.id("inventoryStores")),
+		preferredPurchaseQuantity: v.optional(v.number()),
+		preferredPurchaseUnit: v.optional(v.string()),
 		initialStockTimestamp: v.optional(v.number()),
 		costPerUnit: v.optional(v.number()),
 		notes: v.optional(v.string()),
@@ -2523,6 +2534,8 @@ export const updateInventoryItem = mutation({
 		baseRecipeId: v.optional(v.id("baseRecipes")),
 		defaultBrandName: v.optional(v.string()),
 		preferredStoreId: v.optional(v.id("inventoryStores")),
+		preferredPurchaseQuantity: v.optional(v.number()),
+		preferredPurchaseUnit: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const { id, ...data } = args;

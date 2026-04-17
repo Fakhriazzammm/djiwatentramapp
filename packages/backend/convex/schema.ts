@@ -45,6 +45,8 @@ export default defineSchema({
 		baseRecipeId: v.optional(v.id("baseRecipes")), // If this is a pre-mix
 		defaultBrandName: v.optional(v.string()),
 		preferredStoreId: v.optional(v.id("inventoryStores")),
+		preferredPurchaseQuantity: v.optional(v.number()),
+		preferredPurchaseUnit: v.optional(v.string()),
 		aliases: v.optional(v.array(v.string())),
 		lastPurchasePrice: v.optional(v.number()),
 		lastPurchaseAt: v.optional(v.number()),
@@ -131,6 +133,8 @@ export default defineSchema({
 				),
 				defaultBrandName: v.optional(v.string()),
 				preferredStoreId: v.optional(v.id("inventoryStores")),
+				preferredPurchaseQuantity: v.optional(v.number()),
+				preferredPurchaseUnit: v.optional(v.string()),
 				lastPurchasePrice: v.optional(v.number()),
 				lastPurchaseAt: v.optional(v.number()),
 			})
@@ -153,6 +157,8 @@ export default defineSchema({
 				),
 				defaultBrandName: v.optional(v.string()),
 				preferredStoreId: v.optional(v.id("inventoryStores")),
+				preferredPurchaseQuantity: v.optional(v.number()),
+				preferredPurchaseUnit: v.optional(v.string()),
 				lastPurchasePrice: v.optional(v.number()),
 				lastPurchaseAt: v.optional(v.number()),
 			})
