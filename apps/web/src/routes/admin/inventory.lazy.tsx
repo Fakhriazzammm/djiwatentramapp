@@ -204,10 +204,28 @@ type InventoryYumiAiInsightsData = {
 		anomalyType: "spike" | "drop" | null;
 		reason: string;
 	}>;
+	similarNameGroups: Array<{
+		groupKey: string;
+		canonicalName: string;
+		confidence: number;
+		itemCount: number;
+		items: Array<{
+			inventoryId: Id<"inventory">;
+			ingredientName: string;
+			normalizedName: string;
+			unit: string;
+			currentStock: number;
+			lastPrice: number | null;
+			lastPurchaseAt: number | null;
+			lastStoreName: string | null;
+			latestUpdateAt: number;
+		}>;
+	}>;
 	summary: {
 		predictionCount: number;
 		supplierInsightCount: number;
 		anomalyCount: number;
+		similarNameGroupCount: number;
 		refreshedAt: number;
 	};
 };
@@ -1116,7 +1134,12 @@ function InventoryPage() {
 					onApplyReferencePrice={handleApplyReferencePrice}
 				/>
 			) : viewPreset === "yumiAi" ? (
-				<YumiAiInventoryPanel data={yumiAiInsights} />
+				<YumiAiInventoryPanel
+					data={yumiAiInsights}
+					inventoryMap={inventoryMap}
+					onActionTypeChange={setActionType}
+					onSelectedItemChange={setSelectedItem}
+				/>
 			) : (
 				<InventoryTable
 				filteredRows={filteredRows}
@@ -2782,14 +2805,49 @@ function RealtimePriceMonitorTable({
 
 function YumiAiInventoryPanel({
 	data,
+	inventoryMap,
+	onSelectedItemChange,
+	onActionTypeChange,
 }: {
 	data: InventoryYumiAiInsightsData | undefined;
+	inventoryMap: Map<Id<"inventory">, Doc<"inventory">>;
+	onSelectedItemChange: (item: Doc<"inventory"> | null) => void;
+	onActionTypeChange: (
+		type:
+			| "add"
+			| "usage"
+			| "edit"
+			| "adjust"
+			| "delete"
+			| "history"
+			| "create"
+			| null
+	) => void;
 }) {
 	const [activeSection, setActiveSection] = useState<
-		"stockout" | "supplier" | "anomaly"
-	>("stockout");
+		"nameMatch" | "stockout" | "supplier" | "anomaly"
+	>("nameMatch");
 	const [keyword, setKeyword] = useState("");
+	const [canonicalByGroup, setCanonicalByGroup] = useState<Record<string, string>>({});
+	const [savingGroupKey, setSavingGroupKey] = useState<string | null>(null);
+	const updateItemMutation = useMutation(api.inventory.updateInventoryItem);
 	const normalizedKeyword = keyword.trim().toLowerCase();
+	const nameMatchRows = useMemo(
+		() =>
+			(data?.similarNameGroups ?? []).filter((group) => {
+				if (!normalizedKeyword) {
+					return true;
+				}
+				const haystack = [
+					group.canonicalName,
+					...group.items.map((item) => item.ingredientName),
+				]
+					.join(" ")
+					.toLowerCase();
+				return haystack.includes(normalizedKeyword);
+			}),
+		[data?.similarNameGroups, normalizedKeyword]
+	);
 	const stockoutRows = useMemo(
 		() =>
 			(data?.stockoutPredictions ?? []).filter((row) =>
@@ -2811,6 +2869,48 @@ function YumiAiInventoryPanel({
 			),
 		[data?.usageAnomalies, normalizedKeyword]
 	);
+	const applyCanonicalName = async (
+		group: InventoryYumiAiInsightsData["similarNameGroups"][number]
+	) => {
+		const canonical = (canonicalByGroup[group.groupKey] ?? group.canonicalName).trim();
+		if (!canonical) {
+			toast.error("Nama canonical wajib diisi");
+			return;
+		}
+		try {
+			setSavingGroupKey(group.groupKey);
+			let updated = 0;
+			for (const entry of group.items) {
+				const item = inventoryMap.get(entry.inventoryId);
+				if (!item) {
+					continue;
+				}
+				if (item.ingredientName.trim().toLowerCase() === canonical.toLowerCase()) {
+					continue;
+				}
+				await updateItemMutation({
+					id: item._id,
+					ingredientName: canonical,
+					unit: item.unit,
+					lowStockThreshold: item.lowStockThreshold,
+					displayUnit: item.displayUnit,
+					conversionFactor: item.conversionFactor,
+					unitConversions: item.unitConversions,
+					baseRecipeId: item.baseRecipeId,
+					defaultBrandName: item.defaultBrandName,
+					preferredStoreId: item.preferredStoreId,
+					preferredPurchaseQuantity: item.preferredPurchaseQuantity,
+					preferredPurchaseUnit: item.preferredPurchaseUnit,
+				});
+				updated += 1;
+			}
+			toast.success(`Berhasil samakan ${updated} item ke "${canonical}"`);
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : "Gagal menyamakan nama");
+		} finally {
+			setSavingGroupKey(null);
+		}
+	};
 
 	return (
 		<div className="space-y-3">
@@ -2821,7 +2921,7 @@ function YumiAiInventoryPanel({
 							Yumi AI Inventory Assistant
 						</p>
 						<p className="mt-1 text-sm text-muted-foreground">
-							Fokus aksi cepat: prediksi habis, rekomendasi supplier, dan anomali pemakaian.
+							Deteksi nama sama/mirip + data harga/update terbaru, lalu kelola langsung dari AI.
 						</p>
 					</div>
 					{data && (
@@ -2830,7 +2930,33 @@ function YumiAiInventoryPanel({
 						</p>
 					)}
 				</div>
-				<div className="mt-3 grid gap-2 md:grid-cols-3">
+				<div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+					<button
+						className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+						onClick={() => {
+							onSelectedItemChange(null);
+							onActionTypeChange("create");
+						}}
+						type="button"
+					>
+						Tambah Item Baru
+					</button>
+				</div>
+				<div className="mt-3 grid gap-2 md:grid-cols-4">
+					<button
+						className={`rounded-lg border px-3 py-2 text-left ${
+							activeSection === "nameMatch"
+								? "border-sky-200 bg-sky-50"
+								: "border-border bg-background"
+						}`}
+						onClick={() => setActiveSection("nameMatch")}
+						type="button"
+					>
+						<p className="text-xs font-semibold text-foreground">Nama Mirip/Sama</p>
+						<p className="text-[11px] text-muted-foreground">
+							{data?.summary.similarNameGroupCount ?? "-"} grup
+						</p>
+					</button>
 					<button
 						className={`rounded-lg border px-3 py-2 text-left ${
 							activeSection === "stockout"
@@ -2876,13 +3002,15 @@ function YumiAiInventoryPanel({
 				</div>
 			</div>
 
-			<div className="rounded-xl border border-border/80 bg-card shadow-sm">
-				<div className="flex flex-wrap items-center justify-between gap-2 border-border border-b px-3 py-2">
-					<p className="text-xs font-semibold text-foreground">
-						{activeSection === "stockout"
-							? "Prediksi Stok Habis + Reorder Recommendation"
-							: activeSection === "supplier"
-								? "Harga Supplier Intelligence"
+				<div className="rounded-xl border border-border/80 bg-card shadow-sm">
+					<div className="flex flex-wrap items-center justify-between gap-2 border-border border-b px-3 py-2">
+						<p className="text-xs font-semibold text-foreground">
+							{activeSection === "nameMatch"
+								? "Deteksi Nama Bahan Mirip/Sama (dari data terbaru)"
+								: activeSection === "stockout"
+								? "Prediksi Stok Habis + Reorder Recommendation"
+								: activeSection === "supplier"
+									? "Harga Supplier Intelligence"
 								: "Anomali Pemakaian"}
 					</p>
 					<div className="relative w-full max-w-xs">
@@ -2901,6 +3029,96 @@ function YumiAiInventoryPanel({
 							{Array.from({ length: 8 }).map((_, i) => (
 								<Skeleton className="h-10 w-full" key={i} />
 							))}
+						</div>
+					)}
+					{data && activeSection === "nameMatch" && (
+						<div className="space-y-3 p-3">
+							{nameMatchRows.map((group) => (
+								<div className="rounded-xl border border-border/80 bg-muted/20 p-3" key={group.groupKey}>
+									<div className="flex flex-wrap items-center justify-between gap-2">
+										<div>
+											<p className="font-semibold text-foreground">{group.canonicalName}</p>
+											<p className="text-[11px] text-muted-foreground">
+												{group.itemCount} item · confidence {Math.round(group.confidence * 100)}%
+											</p>
+										</div>
+										<div className="flex items-center gap-2">
+											<input
+												className="w-56 rounded-md border border-border bg-background px-2 py-1 text-xs outline-none"
+												onChange={(event) =>
+													setCanonicalByGroup((prev) => ({
+														...prev,
+														[group.groupKey]: event.target.value,
+													}))
+												}
+												placeholder="Nama canonical"
+												value={canonicalByGroup[group.groupKey] ?? group.canonicalName}
+											/>
+											<button
+												className="rounded-md border border-border bg-background px-2 py-1 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60"
+												disabled={savingGroupKey === group.groupKey}
+												onClick={() => void applyCanonicalName(group)}
+												type="button"
+											>
+												{savingGroupKey === group.groupKey ? "Menyimpan..." : "Samakan Nama"}
+											</button>
+										</div>
+									</div>
+									<div className="mt-2 space-y-2">
+										{group.items.map((entry) => {
+											const item = inventoryMap.get(entry.inventoryId);
+											return (
+												<div
+													className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-background px-2 py-2"
+													key={entry.inventoryId}
+												>
+													<div>
+														<p className="font-semibold text-foreground">{entry.ingredientName}</p>
+														<p className="text-[11px] text-muted-foreground">
+															Stock {entry.currentStock} {entry.unit} · Harga{" "}
+															{formatCurrency(entry.lastPrice)} · {entry.lastStoreName || "Tanpa toko"}
+														</p>
+														<p className="text-[10px] text-muted-foreground">
+															Update: {new Date(entry.latestUpdateAt).toLocaleString("id-ID")}
+														</p>
+													</div>
+													<div className="flex items-center gap-2">
+														<button
+															className="rounded-md border border-border bg-background px-2 py-1 text-[11px] font-semibold text-foreground hover:bg-muted disabled:opacity-60"
+															disabled={!item}
+															onClick={() => {
+																if (!item) return;
+																onSelectedItemChange(item);
+																onActionTypeChange("edit");
+															}}
+															type="button"
+														>
+															Edit
+														</button>
+														<button
+															className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+															disabled={!item}
+															onClick={() => {
+																if (!item) return;
+																onSelectedItemChange(item);
+																onActionTypeChange("delete");
+															}}
+															type="button"
+														>
+															Hapus
+														</button>
+													</div>
+												</div>
+											);
+										})}
+									</div>
+								</div>
+							))}
+							{nameMatchRows.length === 0 && (
+								<div className="rounded-lg border border-border bg-background p-6 text-center text-sm text-muted-foreground">
+									Tidak ada grup nama mirip/sama dari data terbaru.
+								</div>
+							)}
 						</div>
 					)}
 					{data && activeSection === "stockout" && (

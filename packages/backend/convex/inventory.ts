@@ -138,6 +138,46 @@ function normalizeLookupText(input?: string | null) {
 		.trim();
 }
 
+function tokenizeName(input?: string | null) {
+	return normalizeLookupText(input)
+		.split(" ")
+		.map((token) => token.trim())
+		.filter((token) => token.length >= 2);
+}
+
+function getNameSimilarityScore(leftName: string, rightName: string) {
+	const left = normalizeLookupText(leftName);
+	const right = normalizeLookupText(rightName);
+	if (!left || !right) {
+		return 0;
+	}
+	if (left === right) {
+		return 1;
+	}
+	if (left.includes(right) || right.includes(left)) {
+		const shortLen = Math.min(left.length, right.length);
+		return shortLen >= 6 ? 0.92 : 0.7;
+	}
+	const leftTokens = tokenizeName(leftName);
+	const rightTokens = tokenizeName(rightName);
+	if (leftTokens.length === 0 || rightTokens.length === 0) {
+		return 0;
+	}
+	const rightSet = new Set(rightTokens);
+	let overlap = 0;
+	for (const token of leftTokens) {
+		if (rightSet.has(token)) {
+			overlap += 1;
+		}
+	}
+	const denom = Math.max(leftTokens.length, rightTokens.length);
+	const tokenSimilarity = overlap / denom;
+	if (overlap >= 2 && tokenSimilarity >= 0.55) {
+		return tokenSimilarity;
+	}
+	return 0;
+}
+
 function scoreNameMatch(keyword: string, candidate: string) {
 	if (!keyword || !candidate) {
 		return 0;
@@ -1859,7 +1899,7 @@ export const getInventoryYumiAiInsights = query({
 		const cutoff30 = now - 30 * dayMs;
 		const cutoff90 = now - 90 * dayMs;
 
-		const [items, stores, usageRows, restockRows] = await Promise.all([
+		const [items, stores, usageRows, restockRows, allTxRows] = await Promise.all([
 			ctx.db.query("inventory").collect(),
 			ctx.db.query("inventoryStores").collect(),
 			ctx.db
@@ -1874,11 +1914,13 @@ export const getInventoryYumiAiInsights = query({
 					q.eq("type", "restock").gte("timestamp", cutoff90)
 				)
 				.collect(),
+			ctx.db.query("inventoryTransactions").collect(),
 		]);
 
 		const storeById = buildStoreLookup(stores);
 		const usage30ByInventory = new Map<string, number>();
 		const usage7ByInventory = new Map<string, number>();
+		const latestTxAtByInventory = new Map<string, number>();
 		for (const row of usageRows) {
 			const key = String(row.inventoryId);
 			const qty = Math.abs(Number(row.quantity) || 0);
@@ -1888,6 +1930,13 @@ export const getInventoryYumiAiInsights = query({
 			usage30ByInventory.set(key, (usage30ByInventory.get(key) ?? 0) + qty);
 			if (row.timestamp >= cutoff7) {
 				usage7ByInventory.set(key, (usage7ByInventory.get(key) ?? 0) + qty);
+			}
+		}
+		for (const row of allTxRows) {
+			const key = String(row.inventoryId);
+			const current = latestTxAtByInventory.get(key) ?? 0;
+			if ((row.timestamp ?? 0) > current) {
+				latestTxAtByInventory.set(key, row.timestamp ?? 0);
 			}
 		}
 
@@ -2059,14 +2108,130 @@ export const getInventoryYumiAiInsights = query({
 			})
 			.slice(0, limit);
 
+		const parentByIndex: number[] = [];
+		const rankByIndex: number[] = [];
+		for (let i = 0; i < items.length; i += 1) {
+			parentByIndex[i] = i;
+			rankByIndex[i] = 0;
+		}
+		const findIndex = (value: number): number => {
+			if (parentByIndex[value] !== value) {
+				parentByIndex[value] = findIndex(parentByIndex[value]);
+			}
+			return parentByIndex[value];
+		};
+		const unionIndex = (left: number, right: number) => {
+			const rootLeft = findIndex(left);
+			const rootRight = findIndex(right);
+			if (rootLeft === rootRight) {
+				return;
+			}
+			if (rankByIndex[rootLeft] < rankByIndex[rootRight]) {
+				parentByIndex[rootLeft] = rootRight;
+				return;
+			}
+			if (rankByIndex[rootLeft] > rankByIndex[rootRight]) {
+				parentByIndex[rootRight] = rootLeft;
+				return;
+			}
+			parentByIndex[rootRight] = rootLeft;
+			rankByIndex[rootLeft] += 1;
+		};
+
+		for (let i = 0; i < items.length; i += 1) {
+			for (let j = i + 1; j < items.length; j += 1) {
+				const score = getNameSimilarityScore(
+					items[i].ingredientName,
+					items[j].ingredientName
+				);
+				if (score >= 0.55) {
+					unionIndex(i, j);
+				}
+			}
+		}
+
+		const groupedByRoot = new Map<number, Array<typeof items[number]>>();
+		for (let i = 0; i < items.length; i += 1) {
+			const root = findIndex(i);
+			const current = groupedByRoot.get(root) ?? [];
+			current.push(items[i]);
+			groupedByRoot.set(root, current);
+		}
+
+		const similarNameGroups = [...groupedByRoot.values()]
+			.filter((group) => group.length >= 2)
+			.map((group) => {
+				const enriched = group
+					.map((item) => {
+						const key = String(item._id);
+						const latestTransactionAt = latestTxAtByInventory.get(key) ?? 0;
+						const latestUpdateAt = Math.max(
+							item.lastPurchaseAt ?? 0,
+							latestTransactionAt,
+							item._creationTime ?? 0
+						);
+						return {
+							inventoryId: item._id,
+							ingredientName: item.ingredientName,
+							normalizedName: normalizeLookupText(item.ingredientName),
+							unit: item.unit,
+							currentStock: item.quantity,
+							lastPrice: item.lastPurchasePrice ?? null,
+							lastPurchaseAt: item.lastPurchaseAt ?? null,
+							lastStoreName:
+								item.lastPurchaseStoreId != null
+									? storeById.get(String(item.lastPurchaseStoreId))?.name ??
+									  "Toko tidak dikenal"
+									: null,
+							latestUpdateAt,
+						};
+					})
+					.sort((left, right) => right.latestUpdateAt - left.latestUpdateAt);
+				const newest = enriched[0];
+				const canonicalName = newest?.ingredientName ?? group[0].ingredientName;
+				const scores: number[] = [];
+				for (let i = 0; i < enriched.length; i += 1) {
+					for (let j = i + 1; j < enriched.length; j += 1) {
+						scores.push(
+							getNameSimilarityScore(
+								enriched[i].ingredientName,
+								enriched[j].ingredientName
+							)
+						);
+					}
+				}
+				const avgScore =
+					scores.length > 0
+						? scores.reduce((sum, score) => sum + score, 0) / scores.length
+						: 0;
+				return {
+					groupKey: normalizeLookupText(canonicalName) || String(newest?.inventoryId),
+					canonicalName,
+					confidence: Number(avgScore.toFixed(2)),
+					itemCount: enriched.length,
+					items: enriched,
+				};
+			})
+			.sort((left, right) => {
+				if (right.itemCount !== left.itemCount) {
+					return right.itemCount - left.itemCount;
+				}
+				const leftLatest = left.items[0]?.latestUpdateAt ?? 0;
+				const rightLatest = right.items[0]?.latestUpdateAt ?? 0;
+				return rightLatest - leftLatest;
+			})
+			.slice(0, Math.max(limit, 20));
+
 		return {
 			stockoutPredictions,
 			supplierIntelligence,
 			usageAnomalies,
+			similarNameGroups,
 			summary: {
 				predictionCount: stockoutPredictions.length,
 				supplierInsightCount: supplierIntelligence.length,
 				anomalyCount: usageAnomalies.length,
+				similarNameGroupCount: similarNameGroups.length,
 				refreshedAt: now,
 			},
 		};
