@@ -615,7 +615,6 @@ function InventoryPage() {
 	>("all");
 	const [tableMode, setTableMode] = useState<"simple" | "detail">("simple");
 	const [viewPreset, setViewPreset] = useState<InventoryViewPreset>("operational");
-	const [addRowSignal, setAddRowSignal] = useState(0);
 	const [detailItem, setDetailItem] = useState<Doc<"inventory"> | null>(null);
 	const [newItem, setNewItem] = useState({
 		ingredientName: "",
@@ -1067,11 +1066,10 @@ function InventoryPage() {
 	};
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 animate-in space-y-3 duration-500">
+		<div className="fade-in slide-in-from-bottom-4 animate-in space-y-4 duration-500">
 			<InventoryHeader
 				advancedFilter={advancedFilter}
 				filterLowStock={filterLowStock}
-				onAddRow={() => setAddRowSignal((prev) => prev + 1)}
 				onAdvancedFilterChange={setAdvancedFilter}
 				onFilterLowStockChange={setFilterLowStock}
 				onSearchQueryChange={setSearchQuery}
@@ -1091,7 +1089,6 @@ function InventoryPage() {
 				<YumiAiInventoryPanel data={yumiAiInsights} />
 			) : (
 				<InventoryTable
-				addRowSignal={addRowSignal}
 				filteredRows={filteredRows}
 				inventoryMap={inventoryMap}
 					onActionTypeChange={setActionType}
@@ -2998,7 +2995,6 @@ function YumiAiInventoryPanel({
 }
 
 function InventoryTable({
-	addRowSignal,
 	filteredRows,
 	onSort,
 	sortConfig,
@@ -3010,7 +3006,6 @@ function InventoryTable({
 	viewPreset,
 	unitOptions,
 }: {
-	addRowSignal: number;
 	filteredRows: InventoryWorkspaceRow[];
 	onSort: (
 		key:
@@ -3163,7 +3158,7 @@ function InventoryTable({
 
 	useEffect(() => {
 		quickAddNameRef.current?.focus();
-	}, [addRowSignal]);
+	}, []);
 
 	const createInventoryFromDraft = async (draft: {
 		ingredientName: string;
@@ -3937,7 +3932,7 @@ function InventoryTable({
 					<thead className="bg-card">
 						<tr className="border-border border-b text-muted-foreground">
 							<th
-								className="sticky left-0 z-10 cursor-pointer bg-card px-2.5 py-2 font-semibold transition-colors hover:text-foreground"
+								className="sticky left-0 z-20 cursor-pointer border-border/70 border-r bg-card px-2.5 py-2 font-semibold shadow-[6px_0_10px_-8px_rgba(15,23,42,0.35)] transition-colors hover:text-foreground"
 								onClick={() => onSort("ingredientName")}
 							>
 								<div className="flex items-center gap-1">
@@ -4190,7 +4185,7 @@ function InventoryTable({
 										}`}
 										key={row.inventoryId}
 									>
-										<td className="sticky left-0 z-[1] bg-inherit px-2.5 py-1.5 align-middle">
+										<td className="sticky left-0 z-10 border-border/60 border-r bg-card px-2.5 py-1.5 align-middle shadow-[6px_0_10px_-8px_rgba(15,23,42,0.2)]">
 											<input
 												className={`w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold leading-4 outline-none focus:border-border focus:bg-background ${
 													tableMode === "simple" ? "text-[10px]" : "text-[11px]"
@@ -4295,34 +4290,29 @@ function InventoryTable({
 											</span>
 										</td>
 										<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
-											<div className="space-y-1">
-												<input
-													className="w-full rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-[11px] font-semibold text-foreground outline-none focus:border-border focus:bg-background"
-													min={0}
-													onBlur={() => void saveReferencePrice(row)}
-													onChange={(e) =>
-														setPriceDraftByRow((prev) => ({
-															...prev,
-															[row.inventoryId]: e.target.value,
-														}))
+											<input
+												className="w-full rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-[11px] font-semibold text-foreground outline-none focus:border-border focus:bg-background"
+												min={0}
+												onBlur={() => void saveReferencePrice(row)}
+												onChange={(e) =>
+													setPriceDraftByRow((prev) => ({
+														...prev,
+														[row.inventoryId]: e.target.value,
+													}))
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveReferencePrice(row);
+														(e.target as HTMLInputElement).blur();
 													}
-													onKeyDown={(e) => {
-														if (e.key === "Enter") {
-															void saveReferencePrice(row);
-															(e.target as HTMLInputElement).blur();
-														}
-													}}
-													placeholder={
-														row.lastPurchasePrice == null ? "Isi harga" : undefined
-													}
-													step="0.01"
-													type="number"
-													value={getPriceDraft(row)}
-												/>
-												<p className="text-[9px] text-muted-foreground">
-													Bisa dikoreksi manual. Akan otomatis update lagi saat ada harga baru dari transaksi pengeluaran.
-												</p>
-											</div>
+												}}
+												placeholder={
+													row.lastPurchasePrice == null ? "Isi harga" : undefined
+												}
+												step="0.01"
+												type="number"
+												value={getPriceDraft(row)}
+											/>
 										</td>
 										<td className="px-2 py-1.5 align-middle">
 											<div className="flex items-center gap-1.5 whitespace-nowrap text-[10px]">
@@ -4598,7 +4588,6 @@ function InventoryTable({
 function InventoryHeader({
 	advancedFilter,
 	filterLowStock,
-	onAddRow,
 	onAdvancedFilterChange,
 	onFilterLowStockChange,
 	searchQuery,
@@ -4610,7 +4599,6 @@ function InventoryHeader({
 }: {
 	advancedFilter: "all" | "priceUp" | "missingConversion";
 	filterLowStock: boolean;
-	onAddRow: () => void;
 	onAdvancedFilterChange: (val: "all" | "priceUp" | "missingConversion") => void;
 	onFilterLowStockChange: (val: boolean) => void;
 	searchQuery: string;
@@ -4623,13 +4611,6 @@ function InventoryHeader({
 	return (
 		<div className="sticky top-3 z-40 rounded-xl border border-border bg-background/95 px-3 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/90">
 			<div className="flex flex-wrap items-center gap-2">
-				<button
-					className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition hover:brightness-110"
-					onClick={onAddRow}
-					type="button"
-				>
-					+ Tambah Baris
-				</button>
 				<select
 					className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none"
 					onChange={(e) =>
