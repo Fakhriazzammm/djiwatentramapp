@@ -96,20 +96,20 @@ export function TransactionsView() {
 	const canExport = !!txData;
 
 	return (
-		<div className="space-y-4">
-			<div className="flex flex-col gap-3 rounded-xl border border-border bg-card px-4 py-3">
+		<div className="space-y-2">
+			<div className="sticky top-0 z-30 flex flex-col gap-2 rounded-xl border border-border bg-card/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-card/85">
 				<div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
 					<div>
-						<h2 className="font-semibold text-lg tracking-tight">Riwayat Transaksi</h2>
-						<p className="text-muted-foreground text-xs">
-							Pencatatan pemasukan/pengeluaran dengan tampilan operasional cepat.
+						<h2 className="font-semibold text-base tracking-tight">Riwayat Transaksi</h2>
+						<p className="text-muted-foreground text-[10px]">
+							Data-grid finance padat untuk monitoring dan edit cepat.
 						</p>
 					</div>
 					<div className="flex flex-wrap items-center gap-2">
 						<button
 							type="button"
 							onClick={() => setFocusMode((prev) => !prev)}
-							className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[11px] font-semibold transition-colors ${
+							className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[10px] font-semibold transition-colors ${
 								focusMode
 									? "bg-primary text-primary-foreground"
 									: "border border-border bg-muted text-foreground hover:bg-muted/80"
@@ -121,14 +121,14 @@ export function TransactionsView() {
 						<button
 							type="button"
 							onClick={() => setIsAddDialogOpen(true)}
-							className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+							className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[10px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
 						>
 							<Plus className="h-3.5 w-3.5" />
 							Catat Transaksi
 						</button>
 						<div className="hidden h-7 w-px bg-border sm:block" />
 						<div className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-2 py-1">
-							<span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+							<span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
 								Export
 							</span>
 							<select
@@ -136,7 +136,7 @@ export function TransactionsView() {
 								onChange={(e) =>
 									setExportMode((e.target.value as "transaction" | "item") || "transaction")
 								}
-								className="h-7 rounded-md border border-input bg-background px-2 text-[11px]"
+								className="h-6 rounded-md border border-input bg-background px-2 text-[10px]"
 							>
 								<option value="transaction">Per Transaksi</option>
 								<option value="item">Per Item</option>
@@ -145,10 +145,10 @@ export function TransactionsView() {
 					</div>
 				</div>
 
-				<div className="flex flex-col gap-3 rounded-lg border border-border bg-background px-3 py-3 lg:flex-row lg:items-center lg:justify-between">
+				<div className="flex flex-col gap-2 rounded-lg border border-border bg-background px-2.5 py-2 lg:flex-row lg:items-center lg:justify-between">
 					<div className="min-w-0 flex-1">
 						<PeriodSelector value={period} onChange={handlePeriodChange} />
-						<p className="mt-1 text-[11px] text-muted-foreground">
+						<p className="mt-1 text-[10px] text-muted-foreground">
 							Periode aktif: <span className="font-semibold text-foreground">{dateRange.label}</span>
 						</p>
 					</div>
@@ -157,7 +157,7 @@ export function TransactionsView() {
 							<button
 								type="button"
 								onClick={() => setViewMode("transaction")}
-								className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
+								className={`rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
 									viewMode === "transaction"
 										? "bg-background text-foreground shadow-sm"
 										: "text-muted-foreground hover:bg-muted"
@@ -168,7 +168,7 @@ export function TransactionsView() {
 							<button
 								type="button"
 								onClick={() => setViewMode("item")}
-								className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
+								className={`rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
 									viewMode === "item"
 										? "bg-background text-foreground shadow-sm"
 										: "text-muted-foreground hover:bg-muted"
@@ -182,7 +182,7 @@ export function TransactionsView() {
 								<button
 									type="button"
 									onClick={() => setGroupMode("grouped")}
-									className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
+									className={`rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
 										groupMode === "grouped"
 											? "bg-background text-foreground shadow-sm"
 											: "text-muted-foreground hover:bg-muted"
@@ -193,7 +193,7 @@ export function TransactionsView() {
 								<button
 									type="button"
 									onClick={() => setGroupMode("flat")}
-									className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
+									className={`rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
 										groupMode === "flat"
 											? "bg-background text-foreground shadow-sm"
 											: "text-muted-foreground hover:bg-muted"
@@ -208,7 +208,7 @@ export function TransactionsView() {
 								type="button"
 								onClick={() => handleExport("pdf")}
 								disabled={!canExport || isExporting}
-								className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-2.5 text-[11px] font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-40 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400"
+								className="inline-flex h-7 items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 text-[10px] font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-40 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400"
 							>
 								<FileText className="h-3.5 w-3.5" />
 								PDF
@@ -217,7 +217,7 @@ export function TransactionsView() {
 								type="button"
 								onClick={() => handleExport("excel")}
 								disabled={!canExport || isExporting}
-								className="inline-flex h-8 items-center gap-1.5 rounded-md border border-green-200 bg-green-50 px-2.5 text-[11px] font-semibold text-green-700 transition-colors hover:bg-green-100 disabled:opacity-40 dark:border-green-900/30 dark:bg-green-900/20 dark:text-green-400"
+								className="inline-flex h-7 items-center gap-1 rounded-md border border-green-200 bg-green-50 px-2 text-[10px] font-semibold text-green-700 transition-colors hover:bg-green-100 disabled:opacity-40 dark:border-green-900/30 dark:bg-green-900/20 dark:text-green-400"
 							>
 								<FileSpreadsheet className="h-3.5 w-3.5" />
 								Excel
@@ -226,7 +226,7 @@ export function TransactionsView() {
 								type="button"
 								onClick={() => handleExport("csv")}
 								disabled={!canExport || isExporting}
-								className="inline-flex h-8 items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-[11px] font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-40 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400"
+								className="inline-flex h-7 items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 text-[10px] font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-40 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400"
 							>
 								<Download className="h-3.5 w-3.5" />
 								CSV
@@ -234,7 +234,7 @@ export function TransactionsView() {
 							<button
 								type="button"
 								onClick={handlePrint}
-								className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-muted/70"
+								className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-muted px-2 text-[10px] font-semibold text-muted-foreground transition-colors hover:bg-muted/70"
 							>
 								<Printer className="h-3.5 w-3.5" />
 								Print
@@ -245,61 +245,32 @@ export function TransactionsView() {
 			</div>
 
 			{!focusMode && (
-			<div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-				<div className="rounded-xl border border-border bg-card px-3 py-2.5 shadow-sm">
-					<div className="mb-1 flex items-center justify-between">
-						<span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-							Total Pemasukan
-						</span>
-						<div className="rounded-md bg-green-500/10 p-1.5 text-green-600">
-							<ArrowUpRight className="h-3.5 w-3.5" />
-						</div>
-					</div>
-					<div className="text-base font-bold text-green-600">
+				<div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 py-2">
+					<span className="inline-flex items-center gap-1 rounded-md border border-green-200 bg-green-50 px-2 py-1 text-[10px] font-semibold text-green-700">
+						<ArrowUpRight className="h-3 w-3" />
 						{txData ? formatCurrencyIDR(txData.totalIncome) : "Rp0"}
-					</div>
-					<div className="mt-0.5 text-[10px] text-muted-foreground">
-						{txData?.transactions.filter((t: any) => t.type === "income").length || 0} baris
-					</div>
-				</div>
-
-				<div className="rounded-xl border border-border bg-card px-3 py-2.5 shadow-sm">
-					<div className="mb-1 flex items-center justify-between">
-						<span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-							Total Pengeluaran
-						</span>
-						<div className="rounded-md bg-red-500/10 p-1.5 text-red-600">
-							<ArrowDownLeft className="h-3.5 w-3.5" />
-						</div>
-					</div>
-					<div className="text-base font-bold text-red-600">
+					</span>
+					<span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-semibold text-red-700">
+						<ArrowDownLeft className="h-3 w-3" />
 						{txData ? formatCurrencyIDR(txData.totalExpense) : "Rp0"}
-					</div>
-					<div className="mt-0.5 text-[10px] text-muted-foreground">
-						{txData?.transactions.filter((t: any) => t.type === "expense").length || 0} baris
-					</div>
-				</div>
-
-				<div className="rounded-xl border border-border bg-card px-3 py-2.5 shadow-sm">
-					<div className="mb-1 flex items-center justify-between">
-						<span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-							Saldo Bersih
-						</span>
-						<div className="rounded-md bg-primary/10 p-1.5 text-primary">
-							<TrendingUp className="h-3.5 w-3.5" />
-						</div>
-					</div>
-					<div className={`text-base font-bold ${(txData?.netBalance || 0) >= 0 ? "text-primary" : "text-destructive"}`}>
+					</span>
+					<span className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-semibold ${
+						(txData?.netBalance || 0) >= 0
+							? "border-primary/20 bg-primary/10 text-primary"
+							: "border-destructive/20 bg-destructive/10 text-destructive"
+					}`}>
+						<TrendingUp className="h-3 w-3" />
 						{txData ? formatCurrencyIDR(txData.netBalance) : "Rp0"}
-					</div>
-					<div className="mt-0.5 text-[10px] text-muted-foreground">Selisih arus kas</div>
+					</span>
+					<span className="inline-flex rounded-md border border-border bg-background px-2 py-1 text-[10px] font-semibold text-muted-foreground">
+						{txData?.count || 0} baris
+					</span>
 				</div>
-			</div>
 			)}
 
 			<div id="report-content" className="overflow-hidden rounded-xl border border-border bg-card">
 				<div className="border-border border-b bg-muted/20 px-3 py-2">
-					<h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+					<h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
 						Daftar Transaksi Detail
 					</h3>
 				</div>
