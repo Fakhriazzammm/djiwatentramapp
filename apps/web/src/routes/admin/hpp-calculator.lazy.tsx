@@ -573,7 +573,7 @@ function HppCalculatorPage() {
 			}
 
 			if (
-				event.key.toLowerCase() === "s" &&
+				safeLower(event.key) === "s" &&
 				(event.ctrlKey || event.metaKey) &&
 				activeView === "editor"
 			) {
