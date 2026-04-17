@@ -2572,21 +2572,40 @@ export const updateInventoryItem = mutation({
 export const deleteInventoryItem = mutation({
 	args: { id: v.id("inventory") },
 	handler: async (ctx, args) => {
-		// Check if used in any recipes
-		const recipes = await ctx.db.query("recipes").collect();
 		const existing = await ctx.db.get(args.id);
 		if (!existing) {
-			return;
+			return { ok: true, deleted: false };
 		}
 
-		const isUsed = recipes.some((r) =>
-			r.ingredients.some((i) => i.inventoryId === args.id)
+		// Guard against legacy/partial rows where ingredients may be missing.
+		const [recipes, baseRecipes] = await Promise.all([
+			ctx.db.query("recipes").collect(),
+			ctx.db.query("baseRecipes").collect(),
+		]);
+
+		const isUsedInRecipes = recipes.some((recipe) =>
+			Array.isArray(recipe.ingredients) &&
+			recipe.ingredients.some((ingredient) => ingredient?.inventoryId === args.id)
+		);
+		const isUsedInBaseRecipes = baseRecipes.some((recipe) =>
+			Array.isArray(recipe.ingredients) &&
+			recipe.ingredients.some((ingredient) => ingredient?.inventoryId === args.id)
 		);
 
-		if (isUsed) {
+		if (isUsedInRecipes || isUsedInBaseRecipes) {
 			throw new Error(
-				"Cannot delete item that is used in a recipe. Please remove it from recipes first."
+				"Item masih dipakai di recipe/base recipe. Lepaskan dulu dari resep terkait sebelum menghapus."
 			);
+		}
+
+		// Cleanup child transactions first so delete is safe and data stays consistent.
+		const relatedTransactions = await ctx.db
+			.query("inventoryTransactions")
+			.withIndex("by_inventory", (q) => q.eq("inventoryId", args.id))
+			.collect();
+
+		for (const transaction of relatedTransactions) {
+			await ctx.db.delete(transaction._id);
 		}
 
 		await logInventoryAudit({
@@ -2597,6 +2616,7 @@ export const deleteInventoryItem = mutation({
 			before: snapshotInventoryItem(existing),
 		});
 		await ctx.db.delete(args.id);
+		return { ok: true, deleted: true };
 	},
 });
 
