@@ -3866,7 +3866,7 @@ function InventoryTable({
 						<col className="w-[8%]" />
 						<col className="w-[11rem]" />
 					</colgroup>
-					<thead className="sticky top-[58px] z-10 bg-card">
+					<thead className="bg-card">
 						<tr className="border-border border-b text-muted-foreground">
 							<th
 								className="sticky left-0 z-10 cursor-pointer bg-card px-2.5 py-2 font-semibold transition-colors hover:text-foreground"
