@@ -3050,6 +3050,9 @@ function InventoryTable({
 	const updateItemMutation = useMutation(api.inventory.updateInventoryItem);
 	const applyStockAction = useMutation(api.inventory.applyInventoryStockAction);
 	const createItemMutation = useMutation(api.inventory.createInventoryItem);
+	const setReferencePriceMutation = useMutation(
+		api.inventory.setInventoryReferencePrice
+	);
 	const suggestInventoryAutofill = useAction(api.inventory.suggestInventoryAutofill);
 	const quickAddNameRef = useRef<HTMLInputElement | null>(null);
 	const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -3088,6 +3091,9 @@ function InventoryTable({
 			}
 		>
 	>({});
+	const [priceDraftByRow, setPriceDraftByRow] = useState<Record<string, string>>(
+		{}
+	);
 	const [quickAdd, setQuickAdd] = useState({
 		ingredientName: "",
 		quantity: "0",
@@ -3454,6 +3460,68 @@ function InventoryTable({
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : "Gagal menyimpan stok";
+			toast.error(message);
+			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "error" }));
+		} finally {
+			setSavingKey(null);
+		}
+	};
+
+	const getPriceDraft = (row: InventoryWorkspaceRow) =>
+		priceDraftByRow[row.inventoryId] ??
+		(row.lastPurchasePrice != null ? String(row.lastPurchasePrice) : "");
+
+	const saveReferencePrice = async (row: InventoryWorkspaceRow) => {
+		const rawValue = getPriceDraft(row).trim();
+		if (!rawValue) {
+			setPriceDraftByRow((prev) => {
+				const next = { ...prev };
+				delete next[row.inventoryId];
+				return next;
+			});
+			return;
+		}
+
+		const parsed = Number(rawValue);
+		if (!Number.isFinite(parsed) || parsed <= 0) {
+			toast.error("Harga terakhir harus angka lebih dari 0");
+			setPriceDraftByRow((prev) => ({
+				...prev,
+				[row.inventoryId]:
+					row.lastPurchasePrice != null ? String(row.lastPurchasePrice) : "",
+			}));
+			return;
+		}
+
+		if (row.lastPurchasePrice != null && Math.abs(row.lastPurchasePrice - parsed) < 1e-9) {
+			setPriceDraftByRow((prev) => {
+				const next = { ...prev };
+				delete next[row.inventoryId];
+				return next;
+			});
+			return;
+		}
+
+		try {
+			setSavingKey(`${row.inventoryId}:price`);
+			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saving" }));
+			const inline = getInlineValue(row);
+			await setReferencePriceMutation({
+				inventoryId: row.inventoryId,
+				price: parsed,
+				notes: "Koreksi manual harga terakhir dari tabel inventory",
+				brandName: inline.defaultBrandName?.trim() || undefined,
+			});
+			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
+			toast.success("Harga terakhir diperbarui");
+			setPriceDraftByRow((prev) => {
+				const next = { ...prev };
+				delete next[row.inventoryId];
+				return next;
+			});
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Gagal memperbarui harga terakhir";
 			toast.error(message);
 			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "error" }));
 		} finally {
@@ -4227,9 +4295,34 @@ function InventoryTable({
 											</span>
 										</td>
 										<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
-											<span className="font-semibold text-foreground">
-												{formatCurrency(row.lastPurchasePrice)}
-											</span>
+											<div className="space-y-1">
+												<input
+													className="w-full rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-[11px] font-semibold text-foreground outline-none focus:border-border focus:bg-background"
+													min={0}
+													onBlur={() => void saveReferencePrice(row)}
+													onChange={(e) =>
+														setPriceDraftByRow((prev) => ({
+															...prev,
+															[row.inventoryId]: e.target.value,
+														}))
+													}
+													onKeyDown={(e) => {
+														if (e.key === "Enter") {
+															void saveReferencePrice(row);
+															(e.target as HTMLInputElement).blur();
+														}
+													}}
+													placeholder={
+														row.lastPurchasePrice == null ? "Isi harga" : undefined
+													}
+													step="0.01"
+													type="number"
+													value={getPriceDraft(row)}
+												/>
+												<p className="text-[9px] text-muted-foreground">
+													Bisa dikoreksi manual. Akan otomatis update lagi saat ada harga baru dari transaksi pengeluaran.
+												</p>
+											</div>
 										</td>
 										<td className="px-2 py-1.5 align-middle">
 											<div className="flex items-center gap-1.5 whitespace-nowrap text-[10px]">
