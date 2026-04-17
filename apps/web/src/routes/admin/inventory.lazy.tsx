@@ -4528,7 +4528,7 @@ function InventoryHeader({
 	onViewPresetChange: (preset: InventoryViewPreset) => void;
 }) {
 	return (
-		<div className="sticky top-2 z-20 rounded-xl border border-border bg-background px-3 py-3">
+		<div className="sticky top-3 z-40 rounded-xl border border-border bg-background/95 px-3 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/90">
 			<div className="flex flex-wrap items-center gap-2">
 				<button
 					className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition hover:brightness-110"
