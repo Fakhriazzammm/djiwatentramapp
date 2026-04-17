@@ -193,6 +193,13 @@ function AdminLayout() {
 		return false;
 	});
 	const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
+	const [adminPopupDensity] = useState<"compact" | "normal">(() => {
+		if (typeof window !== "undefined") {
+			const saved = localStorage.getItem("admin-popup-density");
+			if (saved === "normal" || saved === "compact") return saved;
+		}
+		return "compact";
+	});
 
 	const settings = useQuery(api.site_settings.getSettings);
 	const storeName = settings?.storeName || "Yumi POS";
@@ -267,13 +274,19 @@ function AdminLayout() {
 
 	useEffect(() => {
 		document.body.classList.add("admin-shell");
+		document.body.setAttribute("data-admin-density", adminPopupDensity);
 		return () => {
 			document.body.classList.remove("admin-shell");
+			document.body.removeAttribute("data-admin-density");
 		};
-	}, []);
+	}, [adminPopupDensity]);
 
 	return (
-		<div className="flex h-app w-full overflow-hidden bg-background" data-admin-shell="true">
+		<div
+			className="flex h-app w-full overflow-hidden bg-background"
+			data-admin-density={adminPopupDensity}
+			data-admin-shell="true"
+		>
 			{/* === DESKTOP SIDEBAR (hidden on mobile) === */}
 			<aside
 				className={`relative hidden flex-col border-border border-r bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out md:flex ${isCollapsed ? "w-16" : "w-64"

@@ -340,7 +340,10 @@ export function NewTransactionDialog({
 	return (
 		<AnimatePresence>
 			{isOpen && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-md">
+				<div
+					className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-md"
+					data-admin-modal-backdrop
+				>
 					<button
 						aria-label="Tutup dialog"
 						className="absolute inset-0 cursor-default bg-transparent"
@@ -350,6 +353,7 @@ export function NewTransactionDialog({
 					<motion.div
 						animate={{ opacity: 1, y: 0 }}
 						className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
+						data-admin-modal-card
 						exit={{ opacity: 0, y: 20 }}
 						initial={{ opacity: 0, y: 20 }}
 					>

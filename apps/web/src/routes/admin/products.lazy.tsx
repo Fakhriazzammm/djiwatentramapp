@@ -1403,10 +1403,14 @@ function ProductsTab({
 			{/* Post Modals for Products */}
 			<AnimatePresence>
 				{isModalOpen && (
-					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+					<div
+						className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+						data-admin-modal-backdrop
+					>
 						<motion.div
 							animate={{ opacity: 1, scale: 1 }}
 							className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+							data-admin-modal-card
 							exit={{ opacity: 0, scale: 0.95 }}
 							initial={{ opacity: 0, scale: 0.95 }}
 						>
@@ -2161,10 +2165,14 @@ function SettingsTab({
 			{/* Category Modal */}
 			<AnimatePresence>
 				{categoryModal.isOpen && (
-					<div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-md">
+					<div
+						className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-md"
+						data-admin-modal-backdrop
+					>
 						<motion.div
 							animate={{ opacity: 1, scale: 1 }}
 							className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl"
+							data-admin-modal-card
 							exit={{ opacity: 0, scale: 0.95 }}
 							initial={{ opacity: 0, scale: 0.95 }}
 						>
@@ -2302,10 +2310,14 @@ function SettingsTab({
 			{/* Variation Modal */}
 			<AnimatePresence>
 				{variationModal.isOpen && (
-					<div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-md">
+					<div
+						className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-md"
+						data-admin-modal-backdrop
+					>
 						<motion.div
 							animate={{ opacity: 1, scale: 1 }}
 							className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+							data-admin-modal-card
 							exit={{ opacity: 0, scale: 0.95 }}
 							initial={{ opacity: 0, scale: 0.95 }}
 						>
@@ -2760,10 +2772,14 @@ function BaseRecipesTab() {
 
 			<AnimatePresence>
 				{isModalOpen && (
-					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm">
+					<div
+						className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm"
+						data-admin-modal-backdrop
+					>
 						<motion.div
 							animate={{ opacity: 1, scale: 1 }}
 							className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+							data-admin-modal-card
 							exit={{ opacity: 0, scale: 0.95 }}
 							initial={{ opacity: 0, scale: 0.95 }}
 						>

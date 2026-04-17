@@ -1964,10 +1964,14 @@ function InventoryActionModal({
 	}
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+		<div
+			className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+			data-admin-modal-backdrop
+		>
 			<motion.div
 				animate={{ opacity: 1, scale: 1 }}
 				className="w-full max-w-xl rounded-xl border border-border bg-card shadow-2xl"
+				data-admin-modal-card
 				exit={{ opacity: 0, scale: 0.95 }}
 				initial={{ opacity: 0, scale: 0.95 }}
 			>
@@ -2318,8 +2322,11 @@ function InventoryDetailDrawer({
 	}) as InventoryPriceInsights | undefined;
 
 	return (
-		<div className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px]">
-			<div className="h-full w-full max-w-2xl overflow-y-auto border-l border-border bg-card p-5 shadow-2xl">
+		<div className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px]" data-admin-modal-backdrop>
+			<div
+				className="h-full w-full max-w-2xl overflow-y-auto border-l border-border bg-card p-5 shadow-2xl"
+				data-admin-modal-drawer
+			>
 				<div className="mb-5 flex items-start justify-between gap-4">
 					<div>
 						<p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
@@ -3499,10 +3506,68 @@ function InventoryTable({
 		unit: "gram",
 		lowStockThreshold: "100",
 		defaultBrandName: "",
+		preferredStoreName: "",
 		displayUnit: "",
 		conversionFactor: "",
 		unitConversionsText: "",
 	});
+	const brandNameOptions = useMemo(() => {
+		const seen = new Set<string>();
+		for (const item of inventoryItems) {
+			const brand = (item.defaultBrandName ?? "").trim();
+			if (brand) {
+				seen.add(brand);
+			}
+		}
+		for (const row of filteredRows) {
+			const primaryBrand = (row.defaultBrandName ?? "").trim();
+			const lastBrand = (row.lastPurchaseBrandName ?? "").trim();
+			if (primaryBrand) {
+				seen.add(primaryBrand);
+			}
+			if (lastBrand) {
+				seen.add(lastBrand);
+			}
+		}
+		return [...seen].sort((a, b) => a.localeCompare(b, "id"));
+	}, [inventoryItems, filteredRows]);
+	const storeNameOptions = useMemo(() => {
+		const seen = new Set<string>();
+		for (const store of stores) {
+			const name = store.name.trim();
+			if (name) {
+				seen.add(name);
+			}
+		}
+		for (const row of filteredRows) {
+			const preferred = (row.preferredStoreName ?? "").trim();
+			const last = (row.lastPurchaseStoreName ?? "").trim();
+			if (preferred) {
+				seen.add(preferred);
+			}
+			if (last) {
+				seen.add(last);
+			}
+		}
+		return [...seen].sort((a, b) => a.localeCompare(b, "id"));
+	}, [stores, filteredRows]);
+	const brandOptionSet = useMemo(
+		() => new Set(brandNameOptions.map((brand) => normalizeLookupText(brand))),
+		[brandNameOptions]
+	);
+	const storeOptionSet = useMemo(
+		() => new Set(storeNameOptions.map((storeName) => normalizeLookupText(storeName))),
+		[storeNameOptions]
+	);
+	const unitOptionSet = useMemo(
+		() => new Set(unitOptions.map((unit) => normalizeUnitOption(unit))),
+		[unitOptions]
+	);
+
+	const getSuggestionHighlightClass = (matched: boolean) =>
+		matched
+			? "border-emerald-300/80 bg-emerald-50/60 text-emerald-900 focus:border-emerald-400"
+			: "";
 
 	const getCachedAutofill = (ingredientName: string) => {
 		const cache = readJsonStorage<Record<string, AutofillCacheEntry>>(AUTOFILL_CACHE_KEY) ?? {};
@@ -3570,6 +3635,7 @@ function InventoryTable({
 		unit: string;
 		lowStockThreshold: string;
 		defaultBrandName: string;
+		preferredStoreName?: string;
 		displayUnit?: string;
 		conversionFactor?: string;
 		unitConversionsText: string;
@@ -3580,6 +3646,8 @@ function InventoryTable({
 		const lowStockThreshold = Number(draft.lowStockThreshold);
 		const conversionFactor = Number(draft.conversionFactor || "");
 		const displayUnit = (draft.displayUnit || "").trim().toLowerCase();
+		const preferredStoreName = (draft.preferredStoreName || "").trim();
+		const preferredStoreNameNorm = preferredStoreName.toLowerCase();
 		const parsedUnitConversions = parseUnitConversionsText(draft.unitConversionsText);
 		const primaryConversion = getPrimaryConversionFromChain(parsedUnitConversions);
 
@@ -3608,12 +3676,25 @@ function InventoryTable({
 			}
 		}
 
+		const existingStore = preferredStoreNameNorm
+			? stores.find(
+					(store) => store.name.trim().toLowerCase() === preferredStoreNameNorm
+			  )
+			: undefined;
+		const preferredStoreId = preferredStoreName
+			? existingStore?._id ??
+				(await createStoreMutation({
+					name: preferredStoreName,
+				}))
+			: undefined;
+
 		await createItemMutation({
 			ingredientName,
 			unit: normalizedUnit,
 			quantity,
 			lowStockThreshold,
 			defaultBrandName: draft.defaultBrandName.trim() || undefined,
+			preferredStoreId,
 			displayUnit:
 				primaryConversion.displayUnit || displayUnit || undefined,
 			conversionFactor:
@@ -4041,6 +4122,7 @@ function InventoryTable({
 				ingredientName: "",
 				quantity: "0",
 				defaultBrandName: "",
+				preferredStoreName: "",
 				displayUnit: "",
 				conversionFactor: "",
 				unitConversionsText: "",
@@ -4429,6 +4511,16 @@ function InventoryTable({
 						<option key={item._id} value={item.ingredientName} />
 					))}
 				</datalist>
+				<datalist id="inventory-brand-suggestions-table">
+					{brandNameOptions.slice(0, 500).map((brand) => (
+						<option key={brand} value={brand} />
+					))}
+				</datalist>
+				<datalist id="inventory-store-suggestions-table">
+					{storeNameOptions.slice(0, 500).map((storeName) => (
+						<option key={storeName} value={storeName} />
+					))}
+				</datalist>
 				<div className="overflow-x-auto">
 				<table
 					className={`min-w-[1360px] w-full table-fixed text-left ${
@@ -4550,7 +4642,11 @@ function InventoryTable({
 							</td>
 							<td className="px-2 py-1.5">
 								<input
-									className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
+									className={`w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary ${getSuggestionHighlightClass(
+										quickAdd.defaultBrandName.trim() !== "" &&
+											brandOptionSet.has(normalizeLookupText(quickAdd.defaultBrandName))
+									)}`}
+									list="inventory-brand-suggestions-table"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({
 											...prev,
@@ -4566,8 +4662,27 @@ function InventoryTable({
 									value={quickAdd.defaultBrandName}
 								/>
 							</td>
-							<td className="px-2 py-1.5 text-center">
-								<div className="text-[10px] text-muted-foreground">-</div>
+							<td className="px-2 py-1.5">
+								<input
+									className={`w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary ${getSuggestionHighlightClass(
+										quickAdd.preferredStoreName.trim() !== "" &&
+											storeOptionSet.has(normalizeLookupText(quickAdd.preferredStoreName))
+									)}`}
+									list="inventory-store-suggestions-table"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({
+											...prev,
+											preferredStoreName: e.target.value,
+										}))
+									}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											void quickCreate();
+										}
+									}}
+									placeholder="Pilih / ketik toko"
+									value={quickAdd.preferredStoreName}
+								/>
 							</td>
 							<td className="px-2 py-1.5 text-center">
 								<input
@@ -4590,7 +4705,10 @@ function InventoryTable({
 							</td>
 							<td className="px-2 py-1.5 text-center">
 								<input
-									className="mx-auto w-20 rounded-lg border border-border bg-background px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-primary"
+									className={`mx-auto w-20 rounded-lg border border-border bg-background px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-primary ${getSuggestionHighlightClass(
+										quickAdd.displayUnit.trim() !== "" &&
+											unitOptionSet.has(normalizeUnitOption(quickAdd.displayUnit))
+									)}`}
 									list="inventory-unit-options-table"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({
@@ -4642,7 +4760,10 @@ function InventoryTable({
 							</td>
 							<td className="px-2 py-1.5 text-center">
 								<input
-									className="mx-auto w-16 rounded-lg border border-border bg-background px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-primary"
+									className={`mx-auto w-16 rounded-lg border border-border bg-background px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-primary ${getSuggestionHighlightClass(
+										quickAdd.unit.trim() !== "" &&
+											unitOptionSet.has(normalizeUnitOption(quickAdd.unit))
+									)}`}
 									list="inventory-unit-options-table"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({
@@ -4774,7 +4895,11 @@ function InventoryTable({
 										</td>
 										<td className="px-2 py-1.5 align-middle">
 											<input
-												className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-semibold text-[10px] outline-none focus:border-border focus:bg-background"
+												className={`w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-semibold text-[10px] outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
+													inline.defaultBrandName.trim() !== "" &&
+														brandOptionSet.has(normalizeLookupText(inline.defaultBrandName))
+												)}`}
+												list="inventory-brand-suggestions-table"
 												onBlur={() => void saveMeta(row)}
 												onChange={(e) =>
 													setInlineField(row, "defaultBrandName", e.target.value)
@@ -4791,7 +4916,11 @@ function InventoryTable({
 										</td>
 										<td className="px-2 py-1.5 align-middle">
 											<input
-												className="w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-[10px] font-semibold text-foreground outline-none focus:border-border focus:bg-background"
+												className={`w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-[10px] font-semibold text-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
+													inline.preferredStoreName.trim() !== "" &&
+														storeOptionSet.has(normalizeLookupText(inline.preferredStoreName))
+												)}`}
+												list="inventory-store-suggestions-table"
 												onBlur={() => void saveMeta(row)}
 												onChange={(e) =>
 													setInlineField(row, "preferredStoreName", e.target.value)
@@ -4831,7 +4960,10 @@ function InventoryTable({
 										</td>
 										<td className="px-2 py-1.5 align-middle text-center">
 											<input
-												className="mx-auto w-20 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background"
+												className={`mx-auto w-20 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
+													inline.displayUnit.trim() !== "" &&
+														unitOptionSet.has(normalizeUnitOption(inline.displayUnit))
+												)}`}
 												list="inventory-unit-options-table"
 												onBlur={() => void saveMeta(row)}
 												onChange={(e) =>
@@ -4887,7 +5019,10 @@ function InventoryTable({
 										</td>
 										<td className="px-2 py-1.5 align-middle text-center">
 											<input
-												className="mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background"
+												className={`mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
+													inline.preferredPurchaseUnit.trim() !== "" &&
+														unitOptionSet.has(normalizeUnitOption(inline.preferredPurchaseUnit))
+												)}`}
 												list="inventory-unit-options-table"
 												onBlur={() => void saveMeta(row)}
 												onChange={(e) =>
@@ -4926,7 +5061,10 @@ function InventoryTable({
 										</td>
 										<td className="px-2 py-1.5 align-middle text-center">
 											<input
-												className="mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background"
+												className={`mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
+													inline.unit.trim() !== "" &&
+														unitOptionSet.has(normalizeUnitOption(inline.unit))
+												)}`}
 												list="inventory-unit-options-table"
 												onBlur={() => void saveMeta(row)}
 												onChange={(e) =>
@@ -5090,8 +5228,14 @@ function InventoryTable({
 				</div>
 			</div>
 			{aiReview?.result.suggestion && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-					<div className="w-full max-w-2xl rounded-2xl border border-border bg-card p-4 shadow-2xl">
+				<div
+					className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+					data-admin-modal-backdrop
+				>
+					<div
+						className="w-full max-w-2xl rounded-2xl border border-border bg-card p-4 shadow-2xl"
+						data-admin-modal-card
+					>
 						<div className="flex items-start justify-between gap-3">
 							<div>
 								<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -5351,10 +5495,14 @@ function InventoryHistoryModal({
 	});
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+		<div
+			className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+			data-admin-modal-backdrop
+		>
 			<motion.div
 				animate={{ opacity: 1, scale: 1 }}
 				className="w-full max-w-xl rounded-[40px] border border-border bg-card shadow-2xl"
+				data-admin-modal-card
 				exit={{ opacity: 0, scale: 0.95 }}
 				initial={{ opacity: 0, scale: 0.95 }}
 			>

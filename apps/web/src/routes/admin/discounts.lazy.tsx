@@ -864,10 +864,14 @@ function AdminDiscountsPage() {
 			{/* Modal Form */}
 			<AnimatePresence>
 				{isModalOpen && (
-					<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+					<div
+						className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+						data-admin-modal-backdrop
+					>
 						<motion.div
 							animate={{ opacity: 1, scale: 1, y: 0 }}
 							className="relative my-auto flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl"
+							data-admin-modal-card
 							exit={{ opacity: 0, scale: 0.95, y: 20 }}
 							initial={{ opacity: 0, scale: 0.95, y: 20 }}
 						>

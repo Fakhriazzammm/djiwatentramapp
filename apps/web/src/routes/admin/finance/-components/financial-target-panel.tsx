@@ -81,12 +81,16 @@ function SetTargetModal({
 	};
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+		<div
+			className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+			data-admin-modal-backdrop
+		>
 			<motion.div
 				initial={{ opacity: 0, scale: 0.95 }}
 				animate={{ opacity: 1, scale: 1 }}
 				exit={{ opacity: 0, scale: 0.95 }}
 				className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl mx-4"
+				data-admin-modal-card
 			>
 				<div className="mb-5 flex items-center justify-between">
 					<div className="flex items-center gap-2">

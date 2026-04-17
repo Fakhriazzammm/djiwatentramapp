@@ -1018,8 +1018,11 @@ function ModalScaffold({
 	onClose: () => void;
 }) {
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
-			<div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl">
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4" data-admin-modal-backdrop>
+			<div
+				className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl"
+				data-admin-modal-card
+			>
 				<div className="mb-4 flex items-center justify-between">
 					<h3 className="text-xl font-black tracking-tight">{title}</h3>
 					<Button onClick={onClose} size="sm" type="button" variant="outline">
