@@ -164,18 +164,37 @@ function getNameSimilarityScore(leftName: string, rightName: string) {
 		return 0;
 	}
 	const rightSet = new Set(rightTokens);
-	let overlap = 0;
+	let exactOverlap = 0;
 	for (const token of leftTokens) {
 		if (rightSet.has(token)) {
-			overlap += 1;
+			exactOverlap += 1;
 		}
 	}
-	const denom = Math.max(leftTokens.length, rightTokens.length);
-	const tokenSimilarity = overlap / denom;
-	if (overlap >= 2 && tokenSimilarity >= 0.55) {
-		return tokenSimilarity;
+
+	let fuzzyOverlap = 0;
+	for (const leftToken of leftTokens) {
+		for (const rightToken of rightTokens) {
+			if (leftToken === rightToken) {
+				continue;
+			}
+			if (leftToken.length < 4 || rightToken.length < 4) {
+				continue;
+			}
+			if (leftToken.includes(rightToken) || rightToken.includes(leftToken)) {
+				fuzzyOverlap += 0.7;
+			}
+		}
 	}
-	return 0;
+
+	const denom = Math.max(leftTokens.length, rightTokens.length);
+	const tokenSimilarity = (exactOverlap + fuzzyOverlap) / denom;
+	if (exactOverlap >= 1 && tokenSimilarity >= 0.45) {
+		return Math.min(0.94, tokenSimilarity);
+	}
+	if (exactOverlap >= 2 && tokenSimilarity >= 0.35) {
+		return Math.min(0.9, tokenSimilarity);
+	}
+	return tokenSimilarity >= 0.6 ? Math.min(0.88, tokenSimilarity) : 0;
 }
 
 function scoreNameMatch(keyword: string, candidate: string) {

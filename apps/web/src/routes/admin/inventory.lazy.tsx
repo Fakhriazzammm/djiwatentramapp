@@ -381,6 +381,55 @@ function getNameMatchScore(keyword: string, candidate: string) {
 	return Math.round((overlap / keywordTokens.length) * 60);
 }
 
+function tokenizeLookupText(text: string) {
+	return normalizeLookupText(text)
+		.split(" ")
+		.map((token) => token.trim())
+		.filter((token) => token.length >= 2);
+}
+
+function getLooseSimilarityScore(leftName: string, rightName: string) {
+	const left = normalizeLookupText(leftName);
+	const right = normalizeLookupText(rightName);
+	if (!left || !right) {
+		return 0;
+	}
+	if (left === right) {
+		return 1;
+	}
+	if (left.includes(right) || right.includes(left)) {
+		const shortLen = Math.min(left.length, right.length);
+		return shortLen >= 6 ? 0.92 : 0.7;
+	}
+	const leftTokens = tokenizeLookupText(leftName);
+	const rightTokens = tokenizeLookupText(rightName);
+	if (leftTokens.length === 0 || rightTokens.length === 0) {
+		return 0;
+	}
+	let exact = 0;
+	const rightSet = new Set(rightTokens);
+	for (const token of leftTokens) {
+		if (rightSet.has(token)) {
+			exact += 1;
+		}
+	}
+	let fuzzy = 0;
+	for (const leftToken of leftTokens) {
+		for (const rightToken of rightTokens) {
+			if (leftToken === rightToken) continue;
+			if (leftToken.length < 4 || rightToken.length < 4) continue;
+			if (leftToken.includes(rightToken) || rightToken.includes(leftToken)) {
+				fuzzy += 0.7;
+			}
+		}
+	}
+	const denom = Math.max(leftTokens.length, rightTokens.length);
+	const score = (exact + fuzzy) / denom;
+	if (exact >= 1 && score >= 0.45) return Math.min(0.94, score);
+	if (exact >= 2 && score >= 0.35) return Math.min(0.9, score);
+	return score >= 0.6 ? Math.min(0.88, score) : 0;
+}
+
 const AUTOFILL_CACHE_KEY = "inventory:ai-autofill-cache:v2";
 const AUTOFILL_LEARN_KEY = "inventory:ai-learned-profile:v2";
 const AUTOFILL_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -2832,9 +2881,109 @@ function YumiAiInventoryPanel({
 	const [savingGroupKey, setSavingGroupKey] = useState<string | null>(null);
 	const updateItemMutation = useMutation(api.inventory.updateInventoryItem);
 	const normalizedKeyword = keyword.trim().toLowerCase();
+	const fallbackSimilarGroups = useMemo(() => {
+		const items = [...inventoryMap.values()];
+		if (items.length < 2) {
+			return [];
+		}
+		const parent: number[] = [];
+		const rank: number[] = [];
+		for (let i = 0; i < items.length; i += 1) {
+			parent[i] = i;
+			rank[i] = 0;
+		}
+		const find = (value: number): number => {
+			if (parent[value] !== value) {
+				parent[value] = find(parent[value]);
+			}
+			return parent[value];
+		};
+		const union = (a: number, b: number) => {
+			const ra = find(a);
+			const rb = find(b);
+			if (ra === rb) return;
+			if (rank[ra] < rank[rb]) {
+				parent[ra] = rb;
+				return;
+			}
+			if (rank[ra] > rank[rb]) {
+				parent[rb] = ra;
+				return;
+			}
+			parent[rb] = ra;
+			rank[ra] += 1;
+		};
+		for (let i = 0; i < items.length; i += 1) {
+			for (let j = i + 1; j < items.length; j += 1) {
+				const score = getLooseSimilarityScore(items[i].ingredientName, items[j].ingredientName);
+				if (score >= 0.55) {
+					union(i, j);
+				}
+			}
+		}
+		const grouped = new Map<number, Array<Doc<"inventory">>>();
+		for (let i = 0; i < items.length; i += 1) {
+			const root = find(i);
+			const current = grouped.get(root) ?? [];
+			current.push(items[i]);
+			grouped.set(root, current);
+		}
+		return [...grouped.values()]
+			.filter((group) => group.length >= 2)
+			.map((group) => {
+				const mapped = group
+					.map((item) => ({
+						inventoryId: item._id,
+						ingredientName: item.ingredientName,
+						normalizedName: normalizeLookupText(item.ingredientName),
+						unit: item.unit,
+						currentStock: item.quantity,
+						lastPrice: item.lastPurchasePrice ?? null,
+						lastPurchaseAt: item.lastPurchaseAt ?? null,
+						lastStoreName: null,
+						latestUpdateAt: Math.max(item.lastPurchaseAt ?? 0, item._creationTime ?? 0),
+					}))
+					.sort((left, right) => right.latestUpdateAt - left.latestUpdateAt);
+				const canonicalName = mapped[0]?.ingredientName ?? group[0].ingredientName;
+				const scores: number[] = [];
+				for (let i = 0; i < mapped.length; i += 1) {
+					for (let j = i + 1; j < mapped.length; j += 1) {
+						scores.push(
+							getLooseSimilarityScore(
+								mapped[i].ingredientName,
+								mapped[j].ingredientName
+							)
+						);
+					}
+				}
+				const avgScore =
+					scores.length > 0
+						? scores.reduce((sum, score) => sum + score, 0) / scores.length
+						: 0.55;
+				return {
+					groupKey: normalizeLookupText(canonicalName) || String(mapped[0]?.inventoryId),
+					canonicalName,
+					confidence: Number(avgScore.toFixed(2)),
+					itemCount: mapped.length,
+					items: mapped,
+				};
+			})
+			.sort((left, right) => {
+				if (right.itemCount !== left.itemCount) {
+					return right.itemCount - left.itemCount;
+				}
+				return (right.items[0]?.latestUpdateAt ?? 0) - (left.items[0]?.latestUpdateAt ?? 0);
+			});
+	}, [inventoryMap]);
+	const detectedSimilarGroups = useMemo(() => {
+		if (data?.similarNameGroups && data.similarNameGroups.length > 0) {
+			return data.similarNameGroups;
+		}
+		return fallbackSimilarGroups;
+	}, [data?.similarNameGroups, fallbackSimilarGroups]);
 	const nameMatchRows = useMemo(
 		() =>
-			(data?.similarNameGroups ?? []).filter((group) => {
+			detectedSimilarGroups.filter((group) => {
 				if (!normalizedKeyword) {
 					return true;
 				}
@@ -2846,7 +2995,7 @@ function YumiAiInventoryPanel({
 					.toLowerCase();
 				return haystack.includes(normalizedKeyword);
 			}),
-		[data?.similarNameGroups, normalizedKeyword]
+		[detectedSimilarGroups, normalizedKeyword]
 	);
 	const stockoutRows = useMemo(
 		() =>
@@ -2954,7 +3103,7 @@ function YumiAiInventoryPanel({
 					>
 						<p className="text-xs font-semibold text-foreground">Nama Mirip/Sama</p>
 						<p className="text-[11px] text-muted-foreground">
-							{data?.summary.similarNameGroupCount ?? "-"} grup
+							{data?.summary.similarNameGroupCount ?? detectedSimilarGroups.length} grup
 						</p>
 					</button>
 					<button
