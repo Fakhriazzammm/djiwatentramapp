@@ -3942,7 +3942,7 @@ function InventoryTable({
 				</datalist>
 				<div className="overflow-x-auto">
 				<table
-					className={`min-w-[1280px] w-full table-fixed text-left ${
+					className={`min-w-[1360px] w-full table-fixed text-left ${
 						tableMode === "detail" ? "text-[9px] md:text-[10px]" : "text-[8px] md:text-[9px]"
 					}`}
 				>
@@ -3950,7 +3950,8 @@ function InventoryTable({
 						<col className="w-[16%]" />
 						<col className="w-[10%]" />
 						<col className="w-[9%]" />
-						<col className="w-[10%]" />
+						<col className="w-[7%]" />
+						<col className="w-[8%]" />
 						<col className="w-[5%]" />
 						<col className="w-[7%]" />
 						<col className="w-[7%]" />
@@ -3982,6 +3983,7 @@ function InventoryTable({
 							</th>
 							<th className="px-2 py-1.5 font-semibold">Toko</th>
 							<th className="px-2 py-1.5 text-center font-semibold">Ukuran</th>
+							<th className="px-2 py-1.5 text-center font-semibold">Satuan Ukuran</th>
 							<th
 								className="cursor-pointer px-2 py-1.5 text-center font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("lowStockThreshold")}
@@ -4010,7 +4012,7 @@ function InventoryTable({
 									))}
 								</div>
 							</th>
-							<th className="px-2 py-1.5 text-center font-semibold">Satuan</th>
+							<th className="px-2 py-1.5 text-center font-semibold">Satuan Stok</th>
 							<th className="px-2 py-1.5 text-center font-semibold">Jml Pembelian</th>
 							<th className="px-2 py-1.5 text-center font-semibold">Satuan Beli</th>
 							<th
@@ -4079,14 +4081,42 @@ function InventoryTable({
 								<div className="text-[10px] text-muted-foreground">-</div>
 							</td>
 							<td className="px-2 py-1.5 text-center">
-								<div className="text-[10px] text-muted-foreground">
-									{getInventorySizeLabel({
-										unit: quickAdd.unit,
-										displayUnit: quickAdd.displayUnit,
-										conversionFactor: quickAdd.conversionFactor,
-										unitConversionsText: quickAdd.unitConversionsText,
-									}) || "-"}
-								</div>
+								<input
+									className="mx-auto w-16 rounded-lg border border-border bg-background px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-primary"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({
+											...prev,
+											conversionFactor: e.target.value,
+										}))
+									}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											void quickCreate();
+										}
+									}}
+									placeholder="1000"
+									type="number"
+									value={quickAdd.conversionFactor}
+								/>
+							</td>
+							<td className="px-2 py-1.5 text-center">
+								<input
+									className="mx-auto w-20 rounded-lg border border-border bg-background px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-primary"
+									list="inventory-unit-options-table"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({
+											...prev,
+											displayUnit: normalizeUnitOption(e.target.value),
+										}))
+									}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											void quickCreate();
+										}
+									}}
+									placeholder="gram / ml"
+									value={quickAdd.displayUnit}
+								/>
 							</td>
 							<td className="px-2 py-1.5 text-center">
 								<input
@@ -4181,6 +4211,9 @@ function InventoryTable({
 										<Skeleton className="mx-auto h-4 w-20" />
 									</td>
 									<td className="p-4">
+										<Skeleton className="mx-auto h-4 w-16" />
+									</td>
+									<td className="p-4">
 										<Skeleton className="mx-auto h-8 w-16" />
 									</td>
 									<td className="p-4">
@@ -4272,13 +4305,50 @@ function InventoryTable({
 												{row.lastPurchaseStoreName || row.preferredStoreName || "-"}
 											</span>
 										</td>
-										<td className="px-2 py-1.5 align-middle text-center text-[10px] text-muted-foreground">
-											{getInventorySizeLabel({
-												unit: inline.unit,
-												displayUnit: inline.displayUnit,
-												conversionFactor: inline.conversionFactor,
-												unitConversionsText: inline.unitConversionsText,
-											}) || "-"}
+										<td className="px-2 py-1.5 align-middle text-center">
+											<input
+												className="mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-border focus:bg-background"
+												min={0}
+												onBlur={() => void saveMeta(row)}
+												onChange={(e) =>
+													setInlineField(row, "conversionFactor", e.target.value)
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveMeta(row);
+														(e.target as HTMLInputElement).blur();
+													}
+												}}
+												placeholder={
+													typeof row.unitConversions?.[0]?.factor === "number"
+														? String(row.unitConversions?.[0]?.factor)
+														: "-"
+												}
+												type="number"
+												value={inline.conversionFactor}
+											/>
+										</td>
+										<td className="px-2 py-1.5 align-middle text-center">
+											<input
+												className="mx-auto w-20 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background"
+												list="inventory-unit-options-table"
+												onBlur={() => void saveMeta(row)}
+												onChange={(e) =>
+													setInlineField(
+														row,
+														"displayUnit",
+														normalizeUnitOption(e.target.value)
+													)
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveMeta(row);
+														(e.target as HTMLInputElement).blur();
+													}
+												}}
+												placeholder={row.unitConversions?.[0]?.unit || "ml / gram"}
+												value={inline.displayUnit}
+											/>
 										</td>
 										<td className="px-2 py-1.5 align-middle text-center">
 											<input
@@ -4472,7 +4542,7 @@ function InventoryTable({
 							})}
 						{inventoryMap.size > 0 && filteredRows.length === 0 && (
 							<tr>
-								<td className="p-8 text-center text-muted-foreground" colSpan={13}>
+								<td className="p-8 text-center text-muted-foreground" colSpan={14}>
 									Tidak ada bahan baku ditemukan
 								</td>
 							</tr>

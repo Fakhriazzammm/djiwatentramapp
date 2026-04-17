@@ -191,7 +191,9 @@ export const createOrder = mutation({
 		paymentMethod: v.string(),
 		customerName: v.optional(v.string()),
 		tableNumber: v.optional(v.string()),
-		orderType: v.optional(v.string()),
+		orderType: v.optional(
+			v.union(v.literal("dine_in"), v.literal("takeaway"))
+		),
 		source: v.optional(
 			v.union(
 				v.literal("pos"),
