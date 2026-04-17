@@ -160,17 +160,17 @@ export function FinanceDashboard() {
 		}
 
 		return (
-			<div className="relative overflow-x-auto rounded-xl border border-border">
-				<table className="w-full text-left text-sm">
-					<thead className="bg-muted/50 text-muted-foreground text-xs uppercase">
+			<div className="relative overflow-x-auto rounded-xl border border-border/80">
+				<table className="w-full text-left text-xs">
+					<thead className="bg-muted/50 text-[10px] text-muted-foreground uppercase">
 						<tr>
-							<th className="px-4 py-3">Tanggal</th>
-							<th className="px-4 py-3">Shift</th>
-							<th className="px-4 py-3">Merchant/Keterangan</th>
-							<th className="px-4 py-3">Kategori</th>
-							<th className="px-4 py-3">Metode</th>
-							<th className="px-4 py-3 text-right">Nominal</th>
-							<th className="px-4 py-3 text-center">Aksi</th>
+							<th className="px-3 py-2.5">Tanggal</th>
+							<th className="px-3 py-2.5">Shift</th>
+							<th className="px-3 py-2.5">Merchant/Keterangan</th>
+							<th className="px-3 py-2.5">Kategori</th>
+							<th className="px-3 py-2.5">Metode</th>
+							<th className="px-3 py-2.5 text-right">Nominal</th>
+							<th className="px-3 py-2.5 text-center">Aksi</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -193,7 +193,7 @@ export function FinanceDashboard() {
 										setIsDialogOpen(true);
 									}}
 								>
-										<td className="px-4 py-3 font-medium">
+										<td className="px-3 py-2.5 font-medium">
 											{new Date(t.date).toLocaleDateString("id-ID", {
 												day: "numeric",
 												month: "short",
@@ -203,7 +203,7 @@ export function FinanceDashboard() {
 												{new Date(t.date).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
 											</div>
 										</td>
-										<td className="px-4 py-3">
+										<td className="px-3 py-2.5">
 											{shiftName !== "-" ? (
 												<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary uppercase">
 													{shiftName}
@@ -212,7 +212,7 @@ export function FinanceDashboard() {
 												<span className="text-muted-foreground text-xs">-</span>
 											)}
 										</td>
-										<td className="px-4 py-3 max-w-[200px] md:max-w-[300px]">
+										<td className="px-3 py-2.5 max-w-[200px] md:max-w-[300px]">
 											<div className="font-semibold text-foreground truncate" title={t.merchant || "Umum"}>
 												{t.merchant || "Umum"}
 											</div>
@@ -220,7 +220,7 @@ export function FinanceDashboard() {
 												{t.description || "-"}
 											</div>
 										</td>
-										<td className="px-4 py-3">
+										<td className="px-3 py-2.5">
 										<span className={`inline-flex items-center rounded-md border px-2 py-1 font-medium text-[10px] uppercase tracking-wider ${
 											t.category === "makanan_minuman" ? "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/30 dark:bg-orange-900/20 dark:text-orange-400" :
 											t.category === "belanja_stok" ? "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400" :
@@ -232,18 +232,18 @@ export function FinanceDashboard() {
 											{t.category.replace(/_/g, " ")}
 										</span>
 									</td>
-									<td className="px-4 py-3 text-xs font-mono uppercase">
+									<td className="px-3 py-2.5 text-[11px] font-mono uppercase">
 										{t.paymentMethod || "CASH"}
 									</td>
 									<td
-										className={`px-4 py-3 text-right font-bold ${
+										className={`px-3 py-2.5 text-right font-bold ${
 											t.type === "income" ? "text-green-600" : "text-red-600"
 										}`}
 									>
 										{t.type === "income" ? "+ " : "- "}
 										{formatCurrency(t.amount)}
 									</td>
-									<td className="px-4 py-3 text-center">
+									<td className="px-3 py-2.5 text-center">
 										<div className="flex items-center justify-center gap-1">
 											<button
 												className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
@@ -291,33 +291,33 @@ export function FinanceDashboard() {
 	};
 
 	return (
-		<div className="fade-in slide-in-from-bottom-4 animate-in space-y-6 duration-500">
-			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+		<div className="space-y-4">
+			<div className="flex flex-col gap-3 rounded-xl border border-border bg-card px-4 py-3 md:flex-row md:items-center md:justify-between">
 				<div>
-					<h2 className="font-bold text-2xl tracking-tight">Keuangan</h2>
-					<p className="text-muted-foreground">
+					<h2 className="font-semibold text-lg tracking-tight">Keuangan</h2>
+					<p className="text-muted-foreground text-xs">
 						Monitor arus kas dan laporan keuangan
 					</p>
 				</div>
-				<div className="flex gap-2">
+				<div className="flex flex-wrap gap-1.5">
 					<Link
 						to="/admin/finance/reports"
-						className="flex items-center gap-2 rounded-lg border border-border bg-muted px-4 py-2 font-medium text-sm text-foreground transition-all hover:bg-muted/70"
+						className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted/70"
 					>
-						<FileBarChart className="h-4 w-4" /> Laporan
+						<FileBarChart className="h-3.5 w-3.5" /> Laporan
 					</Link>
 					<button
-						className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground transition-all hover:brightness-110"
+						className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[11px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
 						onClick={() => setIsDialogOpen(true)}
 						type="button"
 					>
-						<Plus className="h-4 w-4" /> Catat Transaksi
+						<Plus className="h-3.5 w-3.5" /> Catat Transaksi
 					</button>
 				</div>
 			</div>
 
 			{/* Date Range Filter */}
-			<div className="flex flex-wrap gap-2 pb-2">
+			<div className="flex flex-wrap gap-1.5 rounded-xl border border-border bg-card px-3 py-2">
 				{[
 					{ id: "today", label: "Hari Ini" },
 					{ id: "yesterday", label: "Kemarin" },
@@ -329,9 +329,9 @@ export function FinanceDashboard() {
 					<button
 						key={range.id}
 						onClick={() => handleRangeChange(range.id)}
-						className={`rounded-lg px-4 py-2 font-medium text-xs transition-all ${
+						className={`rounded-md px-2.5 py-1.5 font-semibold text-[11px] transition-colors ${
 							selectedRange === range.id
-								? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+								? "bg-primary text-primary-foreground shadow-sm"
 								: "bg-muted text-muted-foreground hover:bg-muted/70"
 						}`}
 						type="button"
@@ -345,8 +345,8 @@ export function FinanceDashboard() {
 			<FinancialTargetPanel />
 
 			{/* Period Comparison */}
-			<div>
-				<h3 className="mb-3 font-bold text-base">Perbandingan Periode</h3>
+			<div className="space-y-2">
+				<h3 className="font-semibold text-sm">Perbandingan Periode</h3>
 				<PeriodComparisonCards />
 			</div>
 
@@ -357,16 +357,16 @@ export function FinanceDashboard() {
 			</div>
 
 			{/* Summary Cards */}
-			<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-				<div className="rounded-xl border border-border bg-card p-6">
+			<div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+				<div className="rounded-xl border border-border bg-card px-3 py-2.5">
 					<div className="flex items-center justify-between">
 						<div>
-							<p className="font-medium text-muted-foreground text-sm">
+							<p className="font-medium text-muted-foreground text-xs">
 								Total Pemasukan
 							</p>
 							<div className="mt-1">
 								{summary ? (
-									<h3 className="font-bold text-2xl text-primary">
+									<h3 className="font-bold text-base text-primary">
 										{formatCurrency(summary.totalIncome)}
 									</h3>
 								) : (
@@ -374,21 +374,21 @@ export function FinanceDashboard() {
 								)}
 							</div>
 						</div>
-						<div className="rounded-full bg-green-100 p-3 text-green-600 dark:bg-green-900/30">
-							<ArrowDownLeft className="h-6 w-6" />
+						<div className="rounded-md bg-green-100 p-1.5 text-green-600 dark:bg-green-900/30">
+							<ArrowDownLeft className="h-4 w-4" />
 						</div>
 					</div>
 				</div>
 
-				<div className="rounded-xl border border-border bg-card p-6">
+				<div className="rounded-xl border border-border bg-card px-3 py-2.5">
 					<div className="flex items-center justify-between">
 						<div>
-							<p className="font-medium text-muted-foreground text-sm">
+							<p className="font-medium text-muted-foreground text-xs">
 								Total Pengeluaran
 							</p>
 							<div className="mt-1">
 								{summary ? (
-									<h3 className="font-bold text-2xl text-red-600">
+									<h3 className="font-bold text-base text-red-600">
 										{formatCurrency(summary.totalExpense)}
 									</h3>
 								) : (
@@ -396,22 +396,22 @@ export function FinanceDashboard() {
 								)}
 							</div>
 						</div>
-						<div className="rounded-full bg-red-100 p-3 text-red-600 dark:bg-red-900/30">
-							<ArrowUpRight className="h-6 w-6" />
+						<div className="rounded-md bg-red-100 p-1.5 text-red-600 dark:bg-red-900/30">
+							<ArrowUpRight className="h-4 w-4" />
 						</div>
 					</div>
 				</div>
 
-				<div className="rounded-xl border border-border bg-card p-6">
+				<div className="rounded-xl border border-border bg-card px-3 py-2.5">
 					<div className="flex items-center justify-between">
 						<div>
-							<p className="font-medium text-muted-foreground text-sm">
+							<p className="font-medium text-muted-foreground text-xs">
 								Saldo Bersih
 							</p>
 							<div className="mt-1">
 								{summary ? (
 									<h3
-										className={`font-bold text-2xl ${
+										className={`font-bold text-base ${
 											(summary?.netBalance || 0) >= 0
 												? "text-primary"
 												: "text-destructive"
@@ -424,8 +424,8 @@ export function FinanceDashboard() {
 								)}
 							</div>
 						</div>
-						<div className="rounded-full bg-blue-100 p-3 text-blue-600 dark:bg-blue-900/30">
-							<Wallet className="h-6 w-6" />
+						<div className="rounded-md bg-blue-100 p-1.5 text-blue-600 dark:bg-blue-900/30">
+							<Wallet className="h-4 w-4" />
 						</div>
 					</div>
 				</div>
@@ -433,35 +433,35 @@ export function FinanceDashboard() {
 
 			{/* COGS / HPP Analysis */}
 			{hppCogs && hppCogs.matchedOrders > 0 && (
-				<div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent p-6">
-					<h3 className="mb-4 flex items-center gap-2 font-bold text-lg">
+				<div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent px-3 py-3">
+					<h3 className="mb-3 flex items-center gap-2 font-semibold text-sm">
 						<Calculator className="h-5 w-5 text-primary" />
 						Analisis Laba Kotor (HPP)
 					</h3>
-					<div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+					<div className="grid grid-cols-1 gap-3 md:grid-cols-4">
 						<div>
 							<p className="text-muted-foreground text-xs">Revenue Penjualan</p>
-							<p className="font-bold text-lg">
+							<p className="font-bold text-base">
 								{formatCurrency(hppCogs.totalRevenue)}
 							</p>
 						</div>
 						<div>
 							<p className="text-muted-foreground text-xs">Total COGS</p>
-							<p className="font-bold text-lg text-orange-600">
+							<p className="font-bold text-base text-orange-600">
 								{formatCurrency(hppCogs.totalCogs)}
 							</p>
 						</div>
 						<div>
 							<p className="text-muted-foreground text-xs">Laba Kotor</p>
 							<p
-								className={`font-bold text-lg ${hppCogs.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}
+								className={`font-bold text-base ${hppCogs.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}
 							>
 								{formatCurrency(hppCogs.totalProfit)}
 							</p>
 						</div>
 						<div>
 							<p className="text-muted-foreground text-xs">Gross Margin</p>
-							<p className="flex items-center gap-1 font-bold text-lg text-primary">
+							<p className="flex items-center gap-1 font-bold text-base text-primary">
 								<TrendingUp className="h-4 w-4" />
 								{hppCogs.grossMargin.toFixed(1)}%
 							</p>
@@ -473,8 +473,8 @@ export function FinanceDashboard() {
 					</div>
 					{/* Daily Breakdown */}
 					{hppCogs.dailySummary.length > 0 && (
-						<div className="mt-4 border-border/50 border-t pt-4">
-							<h4 className="mb-2 font-semibold text-muted-foreground text-sm">
+						<div className="mt-3 border-border/50 border-t pt-3">
+							<h4 className="mb-2 font-semibold text-muted-foreground text-xs">
 								Ringkasan Harian
 							</h4>
 							<div className="space-y-1.5">
@@ -514,11 +514,11 @@ export function FinanceDashboard() {
 
 			{/* Transaction List */}
 			<div className="rounded-xl border border-border bg-card">
-				<div className="flex items-center justify-between border-border/50 border-b p-6">
-					<h3 className="font-bold text-lg">Riwayat Transaksi</h3>
-					<div className="flex gap-2">
+				<div className="flex flex-wrap items-center justify-between gap-2 border-border/50 border-b px-3 py-2.5">
+					<h3 className="font-semibold text-sm">Riwayat Transaksi</h3>
+					<div className="flex flex-wrap gap-1.5">
 						<button
-							className={`rounded-lg px-3 py-1.5 font-medium text-xs transition-colors ${
+							className={`rounded-md px-2.5 py-1.5 font-semibold text-[11px] transition-colors ${
 								filterType === undefined
 									? "bg-muted text-foreground"
 									: "text-muted-foreground hover:bg-muted/50"
@@ -529,7 +529,7 @@ export function FinanceDashboard() {
 							Semua
 						</button>
 						<button
-							className={`rounded-lg px-3 py-1.5 font-medium text-xs transition-colors ${
+							className={`rounded-md px-2.5 py-1.5 font-semibold text-[11px] transition-colors ${
 								filterType === "income"
 									? "bg-green-100 text-green-700 dark:bg-green-900/30"
 									: "text-muted-foreground hover:bg-muted/50"
@@ -540,7 +540,7 @@ export function FinanceDashboard() {
 							Pemasukan
 						</button>
 						<button
-							className={`rounded-lg px-3 py-1.5 font-medium text-xs transition-colors ${
+							className={`rounded-md px-2.5 py-1.5 font-semibold text-[11px] transition-colors ${
 								filterType === "expense"
 									? "bg-red-100 text-red-700 dark:bg-red-900/30"
 									: "text-muted-foreground hover:bg-muted/50"

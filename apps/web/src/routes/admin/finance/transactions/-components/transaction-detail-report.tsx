@@ -521,17 +521,17 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 	const columnCount = viewMode === "item" ? 16 : 15;
 
 	return (
-		<div className="space-y-4 p-4">
+		<div className="space-y-3 p-3">
 			{/* Filters & Search */}
-			<div className="flex flex-col gap-4">
-				<div className="flex flex-wrap gap-2 items-center justify-between">
-					<div className="flex gap-1 bg-muted/50 p-1 rounded-lg">
+			<div className="flex flex-col gap-2 rounded-xl border border-border bg-card px-3 py-3">
+				<div className="flex flex-wrap items-center justify-between gap-2">
+					<div className="flex gap-1 rounded-lg bg-muted/50 p-1">
 						{(["all", "income", "expense"] as const).map((t) => (
 							<button
 								key={t}
 							type="button"
 							onClick={() => setFilterType(t === "all" ? undefined : t)}
-							className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+							className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-all ${
 								(t === "all" && !filterType) || filterType === t
 									? t === "income"
 										? "bg-green-600 text-white shadow-sm"
@@ -546,7 +546,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 					))}
 					</div>
 
-					<div className="flex items-center gap-2">
+					<div className="flex flex-wrap items-center gap-2">
 						<div className="relative">
 							<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
 							<input
@@ -554,13 +554,13 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 								placeholder="Cari transaksi..."
 								value={searchQuery}
 								onChange={(e) => setSearchQuery(e.target.value)}
-								className="h-9 w-64 rounded-md border border-input bg-background pl-8 pr-3 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+								className="h-8 w-52 rounded-md border border-input bg-background pl-8 pr-3 text-[11px] ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 							/>
 						</div>
 						<select
 							value={filterCategory}
 							onChange={(e) => setFilterCategory(e.target.value)}
-							className="h-9 rounded-md border border-input bg-background px-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+							className="h-8 rounded-md border border-input bg-background px-2.5 py-1 text-[11px] focus:outline-none focus:ring-2 focus:ring-ring"
 						>
 							<option value="">Semua Kategori</option>
 							{EXPENSE_CATEGORIES.map((cat) => (
@@ -572,8 +572,8 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 					</div>
 				</div>
 
-				<div className="flex flex-wrap items-center gap-4 bg-muted/20 p-3 rounded-lg border border-border/50">
-					<div className="flex items-center gap-2">
+				<div className="flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
+					<div className="flex flex-wrap items-center gap-2">
 						<Filter className="h-3.5 w-3.5 text-muted-foreground" />
 						<span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Nominal:</span>
 						<div className="flex items-center gap-1.5">
@@ -582,7 +582,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 								placeholder="Min"
 								value={minAmount}
 								onChange={(e) => setMinAmount(e.target.value)}
-								className="h-8 w-24 rounded-md border border-input bg-background px-2 text-[11px] focus:outline-none focus:ring-1 focus:ring-ring"
+								className="h-7 w-24 rounded-md border border-input bg-background px-2 text-[11px] focus:outline-none focus:ring-1 focus:ring-ring"
 							/>
 							<span className="text-muted-foreground">-</span>
 							<input
@@ -590,14 +590,14 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 								placeholder="Max"
 								value={maxAmount}
 								onChange={(e) => setMaxAmount(e.target.value)}
-								className="h-8 w-24 rounded-md border border-input bg-background px-2 text-[11px] focus:outline-none focus:ring-1 focus:ring-ring"
+								className="h-7 w-24 rounded-md border border-input bg-background px-2 text-[11px] focus:outline-none focus:ring-1 focus:ring-ring"
 							/>
 						</div>
 					</div>
 
 					<div className="h-4 w-px bg-border hidden md:block" />
 
-					<div className="flex items-center gap-2">
+					<div className="flex flex-wrap items-center gap-2">
 						<ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
 						<span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Urutkan:</span>
 						<div className="flex gap-1">
@@ -606,18 +606,18 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 									if (sortBy === "date") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
 									else setSortBy("date");
 								}}
-								className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${sortBy === 'date' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted'}`}
+								className={`rounded px-2 py-1 text-[11px] font-medium transition-colors ${sortBy === "date" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
 							>
-								Tanggal {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
+								Tanggal {sortBy === "date" && (sortOrder === "asc" ? "ASC" : "DESC")}
 							</button>
 							<button
 								onClick={() => {
 									if (sortBy === "amount") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
 									else setSortBy("amount");
 								}}
-								className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${sortBy === 'amount' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted'}`}
+								className={`rounded px-2 py-1 text-[11px] font-medium transition-colors ${sortBy === "amount" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
 							>
-								Nominal {sortBy === 'amount' && (sortOrder === 'asc' ? '↑' : '↓')}
+								Nominal {sortBy === "amount" && (sortOrder === "asc" ? "ASC" : "DESC")}
 							</button>
 						</div>
 					</div>
@@ -637,7 +637,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 					)}
 				</div>
 				{viewMode === "item" && (
-					<div className="flex items-center gap-2">
+					<div className="flex flex-wrap items-center gap-2">
 						<span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
 							Grup:
 						</span>
@@ -656,7 +656,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 
 			{/* Summary */}
 			{data && (
-				<div className="flex flex-wrap gap-4 rounded-xl border border-border bg-muted/20 px-6 py-4 text-sm">
+				<div className="grid grid-cols-1 gap-2 rounded-xl border border-border/80 bg-muted/20 px-3 py-2.5 text-xs sm:grid-cols-2 xl:grid-cols-4">
 					<div>
 						<span className="text-muted-foreground">Total Pemasukan: </span>
 						<span className="font-bold text-green-600">{formatCurrencyIDR(data.totalIncome)}</span>
@@ -681,11 +681,11 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 			)}
 
 			{selectedVisibleCount > 0 && (
-				<div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
-					<p className="text-sm text-foreground">
+				<div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5">
+					<p className="text-xs text-foreground">
 						<span className="font-semibold">{selectedVisibleCount}</span> baris dipilih
 					</p>
-					<div className="flex items-center gap-2">
+					<div className="flex flex-wrap items-center gap-2">
 						<button
 							type="button"
 							onClick={() => setSelectedRowKeys(new Set())}
@@ -706,7 +706,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 			)}
 
 			{data && (
-				<div className="flex flex-wrap gap-2 rounded-xl border border-border/60 bg-card/60 px-4 py-3">
+				<div className="flex flex-wrap gap-1.5 rounded-xl border border-border/60 bg-card/60 px-3 py-2">
 					<span className="inline-flex rounded-full border border-border bg-background px-3 py-1 text-[11px] font-medium text-foreground">
 						{filteredTransactions.length} {viewMode === "item" ? "baris" : "transaksi"} tampil
 					</span>
@@ -723,14 +723,14 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 			)}
 
 			{/* Transactions Table */}
-			<div className="rounded-xl border border-border overflow-hidden">
+			<div className="overflow-hidden rounded-xl border border-border/80 bg-card">
 				<div
 					ref={scrollContainerRef}
 					onScroll={(e) => setScrollTop((e.target as HTMLDivElement).scrollTop)}
 					className="max-h-[70vh] overflow-auto"
 				>
-					<table className="w-full min-w-[1440px] text-left text-sm">
-						<thead className="bg-muted/50 text-muted-foreground text-[10px] uppercase tracking-wider font-bold">
+					<table className="w-full min-w-[1440px] text-left text-xs">
+						<thead className="sticky top-0 z-10 bg-muted/60 text-[10px] font-bold uppercase tracking-wider text-muted-foreground backdrop-blur">
 							<tr>
 								<th className="px-4 py-3">
 									<div className="flex items-center justify-center">
@@ -794,10 +794,10 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 														className="flex w-full items-center justify-between rounded-md border border-border/50 bg-background px-3 py-2 text-left text-xs"
 													>
 														<span className="font-semibold text-foreground">
-															{t.isCollapsed ? "▶" : "▼"} {t.groupLabel} • {t.groupTitle}
+															{t.isCollapsed ? ">" : "v"} {t.groupLabel} | {t.groupTitle}
 														</span>
 														<span className="text-muted-foreground">
-															{t.groupCount} baris • {formatCurrencyIDR(t.groupAmount)}
+															{t.groupCount} baris | {formatCurrencyIDR(t.groupAmount)}
 														</span>
 													</button>
 												</td>
@@ -1181,7 +1181,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 					<div className="text-xs text-muted-foreground">
 						Halaman {data.page || page} / {data.pageCount || 1} • Total {data.count} baris
 					</div>
-					<div className="flex items-center gap-2">
+					<div className="flex flex-wrap items-center gap-2">
 						<select
 							value={pageSize}
 							onChange={(e) => setPageSize(Number(e.target.value) || 50)}
@@ -1224,3 +1224,4 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 		</div>
 	);
 }
+
