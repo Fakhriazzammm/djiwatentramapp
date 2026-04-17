@@ -742,6 +742,7 @@ function InventoryPage() {
 	});
 	const [sortConfig, setSortConfig] = useState<{
 		key:
+			| "rowNumber"
 			| "ingredientName"
 			| "currentStock"
 			| "lowStockThreshold"
@@ -859,8 +860,14 @@ function InventoryPage() {
 		});
 
 		result.sort((a, b) => {
-			const aValue = a[sortConfig.key] ?? "";
-			const bValue = b[sortConfig.key] ?? "";
+			const aValue =
+				sortConfig.key === "rowNumber"
+					? inventoryMap.get(a.inventoryId)?._creationTime ?? 0
+					: a[sortConfig.key] ?? "";
+			const bValue =
+				sortConfig.key === "rowNumber"
+					? inventoryMap.get(b.inventoryId)?._creationTime ?? 0
+					: b[sortConfig.key] ?? "";
 			if (aValue < bValue) {
 				return sortConfig.direction === "asc" ? -1 : 1;
 			}
@@ -879,6 +886,7 @@ function InventoryPage() {
 		sortConfig,
 		advancedFilter,
 		priceMonitorDeltaMap,
+		inventoryMap,
 	]);
 
 	const unitOptions = useMemo(
@@ -892,6 +900,7 @@ function InventoryPage() {
 
 	const handleSort = (
 		key:
+			| "rowNumber"
 			| "ingredientName"
 			| "currentStock"
 			| "lowStockThreshold"
@@ -1975,8 +1984,8 @@ function InventoryActionModal({
 				exit={{ opacity: 0, scale: 0.95 }}
 				initial={{ opacity: 0, scale: 0.95 }}
 			>
-				<div className="border-border border-b p-8 pb-3">
-					<h3 className="font-bold text-2xl text-foreground tracking-tight">
+				<div className="border-border border-b px-4 py-3 sm:px-6 sm:py-4">
+					<h3 className="font-bold text-base text-foreground tracking-tight sm:text-lg">
 						{actionType === "create" && "Tambah Bahan Baru"}
 						{actionType === "edit" && "Edit Bahan Baku"}
 						{actionType === "add" && "Update Stok"}
@@ -1986,14 +1995,14 @@ function InventoryActionModal({
 					</h3>
 				</div>
 
-				<form className="space-y-6" onSubmit={onSubmit}>
-					<div className="custom-scrollbar max-h-[70vh] overflow-y-auto p-8">
+				<form className="space-y-3 sm:space-y-4" onSubmit={onSubmit}>
+					<div className="custom-scrollbar max-h-[70vh] overflow-y-auto p-4 sm:p-6">
 						{actionType === "delete" ? (
-							<div className="rounded-lg border border-destructive/20 bg-destructive/10 p-6 text-center">
-								<p className="font-bold text-[#EF4444] text-sm">
+							<div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-center sm:p-5">
+								<p className="font-bold text-[#EF4444] text-sm sm:text-base">
 									Yakin ingin menghapus {selectedItem?.ingredientName}?
 								</p>
-								<p className="mt-2 text-destructive/80 text-xs">
+								<p className="mt-1.5 text-destructive/80 text-xs sm:text-sm">
 									Tindakan ini tidak dapat dibatalkan.
 								</p>
 							</div>
@@ -2024,9 +2033,9 @@ function InventoryActionModal({
 						)}
 					</div>
 
-					<div className="flex gap-6 border-border border-t p-8">
+					<div className="flex flex-col-reverse gap-2 border-border border-t p-4 sm:flex-row sm:gap-3 sm:p-5">
 						<button
-							className="flex-1 rounded-md bg-background border border-border py-5 font-bold text-foreground text-[10px] uppercase tracking-widest transition-all hover:bg-muted active:scale-95"
+							className="h-9 min-w-0 flex-1 rounded-md border border-border bg-background px-3 font-bold text-[10px] text-foreground uppercase tracking-[0.14em] transition-all hover:bg-muted active:scale-95 sm:h-10 sm:text-xs"
 							onClick={() => {
 								onSelectedItemChange(null);
 								onActionTypeChange(null);
@@ -2036,7 +2045,7 @@ function InventoryActionModal({
 							Batal
 						</button>
 						<button
-							className={`flex-1 rounded-md py-5 font-bold text-xs uppercase tracking-[0.2em] transition-all active:scale-[0.98] ${
+							className={`h-9 min-w-0 flex-1 rounded-md px-3 font-bold text-[10px] uppercase tracking-[0.14em] whitespace-nowrap transition-all active:scale-[0.98] sm:h-10 sm:text-xs ${
 								actionType === "delete"
 									? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
 									: "bg-primary text-primary-foreground hover:bg-primary/90"
@@ -3415,6 +3424,7 @@ function InventoryTable({
 	filteredRows: InventoryWorkspaceRow[];
 	onSort: (
 		key:
+			| "rowNumber"
 			| "ingredientName"
 			| "currentStock"
 			| "lowStockThreshold"
@@ -3423,6 +3433,7 @@ function InventoryTable({
 	) => void;
 	sortConfig: {
 		key:
+			| "rowNumber"
 			| "ingredientName"
 			| "currentStock"
 			| "lowStockThreshold"
@@ -4523,11 +4534,12 @@ function InventoryTable({
 				</datalist>
 				<div className="overflow-x-auto">
 				<table
-					className={`min-w-[1360px] w-full table-fixed text-left ${
+					className={`min-w-[1410px] w-full table-fixed text-left ${
 						tableMode === "detail" ? "text-[9px] md:text-[10px]" : "text-[8px] md:text-[9px]"
 					}`}
 				>
 					<colgroup>
+						<col className="w-[3.5rem]" />
 						<col className="w-[16%]" />
 						<col className="w-[10%]" />
 						<col className="w-[9%]" />
@@ -4545,6 +4557,20 @@ function InventoryTable({
 					</colgroup>
 					<thead className="bg-card">
 						<tr className="border-border border-b text-muted-foreground">
+							<th
+								className="cursor-pointer border-border/70 border-r px-2 py-2 text-center font-semibold transition-colors hover:text-foreground"
+								onClick={() => onSort("rowNumber")}
+							>
+								<div className="flex items-center justify-center gap-1">
+									No
+									{sortConfig.key === "rowNumber" &&
+										(sortConfig.direction === "asc" ? (
+											<ArrowUp className="h-3 w-3" />
+										) : (
+											<ArrowDown className="h-3 w-3" />
+										))}
+								</div>
+							</th>
 							<th
 								className="sticky left-0 z-20 cursor-pointer border-border/70 border-r bg-card px-2.5 py-2 font-semibold shadow-[6px_0_10px_-8px_rgba(15,23,42,0.35)] transition-colors hover:text-foreground"
 								onClick={() => onSort("ingredientName")}
@@ -4617,6 +4643,9 @@ function InventoryTable({
 					</thead>
 					<tbody className="divide-y divide-border">
 						<tr className="bg-primary/[0.04]">
+							<td className="px-2 py-1.5 text-center align-middle text-[10px] font-semibold text-muted-foreground">
+								#
+							</td>
 							<td className="px-2.5 py-1.5">
 								<input
 									ref={quickAddNameRef}
@@ -4809,6 +4838,9 @@ function InventoryTable({
 							Array.from({ length: 8 }).map((_, i) => (
 								<tr key={i}>
 									<td className="p-4">
+										<Skeleton className="mx-auto h-4 w-6" />
+									</td>
+									<td className="p-4">
 										<Skeleton className="h-4 w-32" />
 									</td>
 									<td className="p-4">
@@ -4874,6 +4906,9 @@ function InventoryTable({
 										}`}
 										key={row.inventoryId}
 									>
+										<td className="px-2 py-1.5 text-center align-middle text-[10px] font-semibold text-muted-foreground">
+											{index + 1}
+										</td>
 										<td className="sticky left-0 z-10 border-border/60 border-r bg-card px-2.5 py-1.5 align-middle shadow-[6px_0_10px_-8px_rgba(15,23,42,0.2)]">
 											<input
 												className={`w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold leading-4 outline-none focus:border-border focus:bg-background ${

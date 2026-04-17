@@ -2762,34 +2762,34 @@ export const deleteInventoryItem = mutation({
 		}
 
 		// Guard against legacy/partial rows where ingredients may be missing.
-		const [recipes, baseRecipes] = await Promise.all([
-			ctx.db.query("recipes").collect(),
-			ctx.db.query("baseRecipes").collect(),
-		]);
+		let isUsedInRecipes = false;
+		for await (const recipe of ctx.db.query("recipes")) {
+			if (
+				Array.isArray(recipe.ingredients) &&
+				recipe.ingredients.some((ingredient) => ingredient?.inventoryId === args.id)
+			) {
+				isUsedInRecipes = true;
+				break;
+			}
+		}
 
-		const isUsedInRecipes = recipes.some((recipe) =>
-			Array.isArray(recipe.ingredients) &&
-			recipe.ingredients.some((ingredient) => ingredient?.inventoryId === args.id)
-		);
-		const isUsedInBaseRecipes = baseRecipes.some((recipe) =>
-			Array.isArray(recipe.ingredients) &&
-			recipe.ingredients.some((ingredient) => ingredient?.inventoryId === args.id)
-		);
+		let isUsedInBaseRecipes = false;
+		if (!isUsedInRecipes) {
+			for await (const recipe of ctx.db.query("baseRecipes")) {
+				if (
+					Array.isArray(recipe.ingredients) &&
+					recipe.ingredients.some((ingredient) => ingredient?.inventoryId === args.id)
+				) {
+					isUsedInBaseRecipes = true;
+					break;
+				}
+			}
+		}
 
 		if (isUsedInRecipes || isUsedInBaseRecipes) {
 			throw new Error(
 				"Item masih dipakai di recipe/base recipe. Lepaskan dulu dari resep terkait sebelum menghapus."
 			);
-		}
-
-		// Cleanup child transactions first so delete is safe and data stays consistent.
-		const relatedTransactions = await ctx.db
-			.query("inventoryTransactions")
-			.withIndex("by_inventory", (q) => q.eq("inventoryId", args.id))
-			.collect();
-
-		for (const transaction of relatedTransactions) {
-			await ctx.db.delete(transaction._id);
 		}
 
 		await logInventoryAudit({
