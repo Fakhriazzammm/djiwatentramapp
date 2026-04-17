@@ -1,32 +1,38 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Doc } from "@yumipos/backend/convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 import {
 	ArrowDownLeft,
 	ArrowUpRight,
 	Calculator,
 	FileBarChart,
+	Focus,
 	Plus,
 	TrendingUp,
 	Wallet,
-	Pencil,
-	Trash2,
 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
-import { useMutation } from "convex/react";
 import { Link } from "@tanstack/react-router";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NewTransactionDialog } from "./new-transaction-dialog";
 import { FinancialTargetPanel } from "./financial-target-panel";
 import { ExpenseCategoryPieChart, PeriodComparisonCards, TrendChart } from "./finance-charts";
+import { TransactionDetailReport } from "../transactions/-components/transaction-detail-report";
+import type { DateRange } from "../reports/-components/period-selector";
+
+const RANGE_LABEL_MAP: Record<string, string> = {
+	today: "Hari Ini",
+	yesterday: "Kemarin",
+	this_week: "Minggu Ini",
+	last_week: "Minggu Kemarin",
+	month: "Bulan Ini",
+	last_month: "Bulan Kemarin",
+};
 
 export function FinanceDashboard() {
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
-	const [filterType, setFilterType] = useState<
-		"income" | "expense" | undefined
-	>(undefined);
+	const [focusMode, setFocusMode] = useState(true);
+	const [tableViewMode, setTableViewMode] = useState<"transaction" | "item">("item");
+	const [groupMode, setGroupMode] = useState<"flat" | "grouped">("grouped");
 
 	const [selectedRange, setSelectedRange] = useState("month");
 	const [startDate, setStartDate] = useState<number | undefined>(() => {
@@ -82,21 +88,6 @@ export function FinanceDashboard() {
 		}
 	};
 
-	// Get ALL transactions with range
-	const transactions = useQuery(api.finance.getAllTransactions, {
-		type: filterType,
-		startDate,
-		endDate,
-	});
-
-	const historicalShifts = useQuery(api.finance.getHistoricalShifts, {
-		startDate,
-		endDate,
-	});
-
-	const deleteTransaction = useMutation(api.finance.deleteTransaction);
-	const updateTransaction = useMutation(api.finance.updateTransaction);
-
 	const summary = useQuery(api.finance.getFinancialSummary, {
 		startDate,
 		endDate,
@@ -115,179 +106,10 @@ export function FinanceDashboard() {
 		}).format(amount);
 	};
 
-	const handleDeleteTransaction = async (id: any) => {
-		if (!confirm("Hapus transaksi ini?")) return;
-		try {
-			await deleteTransaction({ id });
-			toast.success("Transaksi dihapus");
-		} catch {
-			toast.error("Gagal menghapus transaksi");
-		}
-	};
-
-	const renderTransactionContent = () => {
-		if (!transactions) {
-			return (
-				<div className="divide-y divide-border">
-					{Array.from({ length: 5 }).map((_, i) => (
-						<div key={i} className="flex items-center justify-between p-4">
-							<div className="flex items-center gap-4 flex-1">
-								<Skeleton className="h-4 w-24" />
-								<Skeleton className="h-4 w-32" />
-								<Skeleton className="h-4 w-48" />
-							</div>
-							<div className="flex items-center gap-4">
-								<Skeleton className="h-4 w-20" />
-								<Skeleton className="h-8 w-16" />
-							</div>
-						</div>
-					))}
-				</div>
-			);
-		}
-
-		if (transactions.length === 0) {
-			return (
-				<div className="p-12 text-center">
-					<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-						<Wallet className="h-6 w-6 text-muted-foreground" />
-					</div>
-					<p className="font-medium text-muted-foreground">
-						Belum ada transaksi
-					</p>
-				</div>
-			);
-		}
-
-		return (
-			<div className="relative overflow-x-auto rounded-xl border border-border/80">
-				<table className="w-full text-left text-xs">
-					<thead className="bg-muted/50 text-[10px] text-muted-foreground uppercase">
-						<tr>
-							<th className="px-3 py-2.5">Tanggal</th>
-							<th className="px-3 py-2.5">Shift</th>
-							<th className="px-3 py-2.5">Merchant/Keterangan</th>
-							<th className="px-3 py-2.5">Kategori</th>
-							<th className="px-3 py-2.5">Metode</th>
-							<th className="px-3 py-2.5 text-right">Nominal</th>
-							<th className="px-3 py-2.5 text-center">Aksi</th>
-						</tr>
-					</thead>
-					<tbody>
-						{transactions.map((t: Doc<"financialTransactions">) => {
-							// Determine shift
-							let shiftName = "-";
-							if (historicalShifts) {
-								const shift = historicalShifts.find((s: any) => t.date >= s.startTime && (!s.endTime || t.date <= s.endTime));
-								if (shift) {
-									shiftName = shift.shiftName || "Shift Aktif";
-								}
-							}
-
-							return (
-								<tr
-									className="group border-border border-b transition-colors hover:bg-muted/30 cursor-pointer"
-									key={t._id}
-									onClick={() => {
-										setSelectedTransaction(t);
-										setIsDialogOpen(true);
-									}}
-								>
-										<td className="px-3 py-2.5 font-medium">
-											{new Date(t.date).toLocaleDateString("id-ID", {
-												day: "numeric",
-												month: "short",
-												year: "numeric",
-											})}
-											<div className="text-[10px] text-muted-foreground mt-0.5">
-												{new Date(t.date).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
-											</div>
-										</td>
-										<td className="px-3 py-2.5">
-											{shiftName !== "-" ? (
-												<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary uppercase">
-													{shiftName}
-												</span>
-											) : (
-												<span className="text-muted-foreground text-xs">-</span>
-											)}
-										</td>
-										<td className="px-3 py-2.5 max-w-[200px] md:max-w-[300px]">
-											<div className="font-semibold text-foreground truncate" title={t.merchant || "Umum"}>
-												{t.merchant || "Umum"}
-											</div>
-											<div className="text-xs text-muted-foreground truncate" title={t.description || "-"}>
-												{t.description || "-"}
-											</div>
-										</td>
-										<td className="px-3 py-2.5">
-										<span className={`inline-flex items-center rounded-md border px-2 py-1 font-medium text-[10px] uppercase tracking-wider ${
-											t.category === "makanan_minuman" ? "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/30 dark:bg-orange-900/20 dark:text-orange-400" :
-											t.category === "belanja_stok" ? "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400" :
-											t.category === "peralatan_kantor" ? "border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-900/30 dark:bg-purple-900/20 dark:text-purple-400" :
-											t.category === "utilitas_listrik_air" ? "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-900/30 dark:bg-yellow-900/20 dark:text-yellow-400" :
-											t.category === "transportasi" ? "border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/30 dark:bg-cyan-900/20 dark:text-cyan-400" :
-											"border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400"
-										}`}>
-											{t.category.replace(/_/g, " ")}
-										</span>
-									</td>
-									<td className="px-3 py-2.5 text-[11px] font-mono uppercase">
-										{t.paymentMethod || "CASH"}
-									</td>
-									<td
-										className={`px-3 py-2.5 text-right font-bold ${
-											t.type === "income" ? "text-green-600" : "text-red-600"
-										}`}
-									>
-										{t.type === "income" ? "+ " : "- "}
-										{formatCurrency(t.amount)}
-									</td>
-									<td className="px-3 py-2.5 text-center">
-										<div className="flex items-center justify-center gap-1">
-											<button
-												className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
-												onClick={(e) => {
-													e.stopPropagation();
-													setSelectedTransaction(t);
-													setIsDialogOpen(true);
-												}}
-												title="Edit"
-											>
-												<Pencil className="h-3.5 w-3.5" />
-											</button>
-											<button
-												className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-red-500 transition-colors"
-												onClick={(e) => {
-													e.stopPropagation();
-													handleDeleteTransaction(t._id);
-												}}
-												title="Hapus"
-											>
-												<Trash2 className="h-3.5 w-3.5" />
-											</button>
-										</div>
-									</td>
-								</tr>
-							);
-						})}
-
-						{transactions && transactions.length === 0 && (
-							<tr>
-								<td className="p-12 text-center" colSpan={7}>
-									<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-										<Wallet className="h-6 w-6 text-muted-foreground" />
-									</div>
-									<p className="font-medium text-muted-foreground">
-										Belum ada transaksi
-									</p>
-								</td>
-							</tr>
-						)}
-					</tbody>
-				</table>
-			</div>
-		);
+	const dashboardRange: DateRange = {
+		startDate: startDate ?? 0,
+		endDate: endDate ?? Date.now(),
+		label: RANGE_LABEL_MAP[selectedRange] || "Periode Dipilih",
 	};
 
 	return (
@@ -300,6 +122,18 @@ export function FinanceDashboard() {
 					</p>
 				</div>
 				<div className="flex flex-wrap gap-1.5">
+					<button
+						type="button"
+						onClick={() => setFocusMode((prev) => !prev)}
+						className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[11px] font-semibold transition-colors ${
+							focusMode
+								? "bg-primary text-primary-foreground"
+								: "border border-border bg-muted text-foreground hover:bg-muted/80"
+						}`}
+					>
+						<Focus className="h-3.5 w-3.5" />
+						{focusMode ? "Mode Fokus" : "Mode Lengkap"}
+					</button>
 					<Link
 						to="/admin/finance/reports"
 						className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted/70"
@@ -341,20 +175,24 @@ export function FinanceDashboard() {
 				))}
 			</div>
 
-			{/* Financial Target Panel */}
-			<FinancialTargetPanel />
+			{!focusMode && (
+				<>
+					{/* Financial Target Panel */}
+					<FinancialTargetPanel />
 
-			{/* Period Comparison */}
-			<div className="space-y-2">
-				<h3 className="font-semibold text-sm">Perbandingan Periode</h3>
-				<PeriodComparisonCards />
-			</div>
+					{/* Period Comparison */}
+					<div className="space-y-2">
+						<h3 className="font-semibold text-sm">Perbandingan Periode</h3>
+						<PeriodComparisonCards />
+					</div>
 
-			{/* Charts Row */}
-			<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-				<TrendChart />
-				<ExpenseCategoryPieChart />
-			</div>
+					{/* Charts Row */}
+					<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+						<TrendChart />
+						<ExpenseCategoryPieChart />
+					</div>
+				</>
+			)}
 
 			{/* Summary Cards */}
 			<div className="grid grid-cols-1 gap-2 md:grid-cols-3">
@@ -432,7 +270,7 @@ export function FinanceDashboard() {
 			</div>
 
 			{/* COGS / HPP Analysis */}
-			{hppCogs && hppCogs.matchedOrders > 0 && (
+			{!focusMode && hppCogs && hppCogs.matchedOrders > 0 && (
 				<div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent px-3 py-3">
 					<h3 className="mb-3 flex items-center gap-2 font-semibold text-sm">
 						<Calculator className="h-5 w-5 text-primary" />
@@ -515,54 +353,78 @@ export function FinanceDashboard() {
 			{/* Transaction List */}
 			<div className="rounded-xl border border-border bg-card">
 				<div className="flex flex-wrap items-center justify-between gap-2 border-border/50 border-b px-3 py-2.5">
-					<h3 className="font-semibold text-sm">Riwayat Transaksi</h3>
-					<div className="flex flex-wrap gap-1.5">
+					<div>
+						<h3 className="font-semibold text-sm">Tabel Finance Operasional</h3>
+						<p className="text-[10px] text-muted-foreground">
+							Mode tabel disamakan dengan inventory: padat, informatif, dan siap CRUD.
+						</p>
+					</div>
+					<div className="flex flex-wrap items-center gap-1.5">
 						<button
-							className={`rounded-md px-2.5 py-1.5 font-semibold text-[11px] transition-colors ${
-								filterType === undefined
-									? "bg-muted text-foreground"
-									: "text-muted-foreground hover:bg-muted/50"
-							}`}
-							onClick={() => setFilterType(undefined)}
 							type="button"
+							onClick={() => setTableViewMode("transaction")}
+							className={`rounded-md px-2.5 py-1.5 font-semibold text-[11px] transition-colors ${
+								tableViewMode === "transaction"
+									? "bg-primary text-primary-foreground shadow-sm"
+									: "bg-muted text-muted-foreground hover:bg-muted/70"
+							}`}
 						>
-							Semua
+							Per Transaksi
 						</button>
 						<button
-							className={`rounded-md px-2.5 py-1.5 font-semibold text-[11px] transition-colors ${
-								filterType === "income"
-									? "bg-green-100 text-green-700 dark:bg-green-900/30"
-									: "text-muted-foreground hover:bg-muted/50"
-							}`}
-							onClick={() => setFilterType("income")}
 							type="button"
-						>
-							Pemasukan
-						</button>
-						<button
+							onClick={() => setTableViewMode("item")}
 							className={`rounded-md px-2.5 py-1.5 font-semibold text-[11px] transition-colors ${
-								filterType === "expense"
-									? "bg-red-100 text-red-700 dark:bg-red-900/30"
-									: "text-muted-foreground hover:bg-muted/50"
+								tableViewMode === "item"
+									? "bg-primary text-primary-foreground shadow-sm"
+									: "bg-muted text-muted-foreground hover:bg-muted/70"
 							}`}
-							onClick={() => setFilterType("expense")}
-							type="button"
 						>
-							Pengeluaran
+							Per Item
 						</button>
+						{tableViewMode === "item" && (
+							<>
+								<button
+									type="button"
+									onClick={() => setGroupMode("grouped")}
+									className={`rounded-md px-2.5 py-1.5 font-semibold text-[11px] transition-colors ${
+										groupMode === "grouped"
+											? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30"
+											: "bg-muted text-muted-foreground hover:bg-muted/70"
+									}`}
+								>
+									Grouped
+								</button>
+								<button
+									type="button"
+									onClick={() => setGroupMode("flat")}
+									className={`rounded-md px-2.5 py-1.5 font-semibold text-[11px] transition-colors ${
+										groupMode === "flat"
+											? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30"
+											: "bg-muted text-muted-foreground hover:bg-muted/70"
+									}`}
+								>
+									Flat
+								</button>
+							</>
+						)}
 					</div>
 				</div>
 
-				<div className="p-0">{renderTransactionContent()}</div>
+				<div className="p-0">
+					<TransactionDetailReport
+						range={dashboardRange}
+						viewMode={tableViewMode}
+						groupMode={groupMode}
+					/>
+				</div>
 			</div>
 
 			<NewTransactionDialog
 				isOpen={isDialogOpen}
 				onClose={() => {
 					setIsDialogOpen(false);
-					setSelectedTransaction(null);
 				}}
-				transaction={selectedTransaction}
 			/>
 		</div>
 	);

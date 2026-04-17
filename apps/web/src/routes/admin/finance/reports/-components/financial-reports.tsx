@@ -1,7 +1,7 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useAction, useQuery } from "convex/react";
 import { useState } from "react";
-import { FileSpreadsheet, FileText, Printer, TrendingUp, ArrowLeftRight, Users, Image as ImageIcon, Mail } from "lucide-react";
+import { FileSpreadsheet, FileText, Printer, TrendingUp, ArrowLeftRight, Users, Image as ImageIcon, Mail, Focus } from "lucide-react";
 import { PeriodSelector, getRangeFromPeriod, type PeriodOption, type DateRange } from "./period-selector";
 import { ProfitLossReport } from "./profit-loss-report";
 import { CashFlowReport } from "./cash-flow-report";
@@ -27,6 +27,7 @@ const TABS: { value: ReportTab; label: string; icon: React.ReactNode }[] = [
 
 export function FinancialReports() {
 	const [activeTab, setActiveTab] = useState<ReportTab>("profit_loss");
+	const [focusMode, setFocusMode] = useState(true);
 	const [period, setPeriod] = useState<PeriodOption>("this_month");
 	const [dateRange, setDateRange] = useState<DateRange>(getRangeFromPeriod("this_month"));
 	const [isExporting, setIsExporting] = useState(false);
@@ -119,6 +120,18 @@ export function FinancialReports() {
 				<div className="flex flex-wrap gap-1.5">
 					<button
 						type="button"
+						onClick={() => setFocusMode((prev) => !prev)}
+						className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[11px] font-semibold transition-colors ${
+							focusMode
+								? "bg-primary text-primary-foreground"
+								: "border border-border bg-muted text-foreground hover:bg-muted/80"
+						}`}
+					>
+						<Focus className="h-3.5 w-3.5" />
+						{focusMode ? "Mode Fokus" : "Mode Lengkap"}
+					</button>
+					<button
+						type="button"
 						onClick={() => handleExport("pdf")}
 						disabled={!canExport || isExporting}
 						className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-2.5 text-[11px] font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:opacity-40 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400"
@@ -138,7 +151,7 @@ export function FinancialReports() {
 					<button
 						type="button"
 						onClick={() => handleExport("jpg")}
-						disabled={!canExport || isExporting || activeTab !== "profit_loss"}
+						disabled={!canExport || isExporting || activeTab !== "profit_loss" || focusMode}
 						className="inline-flex h-8 items-center gap-1.5 rounded-md border border-purple-200 bg-purple-50 px-2.5 text-[11px] font-semibold text-purple-700 transition-colors hover:bg-purple-100 disabled:opacity-40 dark:border-purple-900/30 dark:bg-purple-900/20 dark:text-purple-400"
 					>
 						<ImageIcon className="h-3.5 w-3.5" />
@@ -155,7 +168,7 @@ export function FinancialReports() {
 					<button
 						type="button"
 						onClick={handleSendEmail}
-						disabled={!plData || !cfData || isSendingEmail}
+						disabled={!plData || !cfData || isSendingEmail || focusMode}
 						className="inline-flex h-8 items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 text-[11px] font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-40 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-400"
 					>
 						<Mail className="h-3.5 w-3.5" />
@@ -170,6 +183,11 @@ export function FinancialReports() {
 				<p className="mt-1 text-[11px] text-muted-foreground">
 					Periode aktif: <span className="font-semibold text-foreground">{dateRange.label}</span>
 				</p>
+				{focusMode && (
+					<p className="mt-1 text-[10px] text-muted-foreground">
+						Mode fokus aktif: menampilkan alur utama review laporan.
+					</p>
+				)}
 			</div>
 
 			<div className="flex gap-1 rounded-xl border border-border bg-muted/30 p-1">

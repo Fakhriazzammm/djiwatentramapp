@@ -7,6 +7,7 @@ import {
 	Download,
 	FileSpreadsheet,
 	FileText,
+	Focus,
 	Plus,
 	Printer,
 	TrendingUp,
@@ -28,6 +29,7 @@ export function TransactionsView() {
 	const [viewMode, setViewMode] = useState<"transaction" | "item">("item");
 	const [groupMode, setGroupMode] = useState<"flat" | "grouped">("grouped");
 	const [exportMode, setExportMode] = useState<"transaction" | "item">("item");
+	const [focusMode, setFocusMode] = useState(true);
 	const [isExporting, setIsExporting] = useState(false);
 	const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
@@ -104,6 +106,18 @@ export function TransactionsView() {
 						</p>
 					</div>
 					<div className="flex flex-wrap items-center gap-2">
+						<button
+							type="button"
+							onClick={() => setFocusMode((prev) => !prev)}
+							className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[11px] font-semibold transition-colors ${
+								focusMode
+									? "bg-primary text-primary-foreground"
+									: "border border-border bg-muted text-foreground hover:bg-muted/80"
+							}`}
+						>
+							<Focus className="h-3.5 w-3.5" />
+							{focusMode ? "Mode Fokus" : "Mode Lengkap"}
+						</button>
 						<button
 							type="button"
 							onClick={() => setIsAddDialogOpen(true)}
@@ -230,6 +244,7 @@ export function TransactionsView() {
 				</div>
 			</div>
 
+			{!focusMode && (
 			<div className="grid grid-cols-1 gap-2 md:grid-cols-3">
 				<div className="rounded-xl border border-border bg-card px-3 py-2.5 shadow-sm">
 					<div className="mb-1 flex items-center justify-between">
@@ -280,6 +295,7 @@ export function TransactionsView() {
 					<div className="mt-0.5 text-[10px] text-muted-foreground">Selisih arus kas</div>
 				</div>
 			</div>
+			)}
 
 			<div id="report-content" className="overflow-hidden rounded-xl border border-border bg-card">
 				<div className="border-border border-b bg-muted/20 px-3 py-2">

@@ -188,6 +188,16 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 			shouldVirtualize: true,
 		};
 	}, [displayedRows, scrollTop]);
+	const rowNumberByKey = useMemo(() => {
+		const numbers = new Map<string, number>();
+		let counter = 0;
+		for (const row of displayedRows) {
+			if (row.rowType === "group_header") continue;
+			counter += 1;
+			numbers.set(String(row.rowKey || row._id), counter);
+		}
+		return numbers;
+	}, [displayedRows]);
 
 	const selectedVisibleCount = useMemo(
 		() => filteredRowKeys.filter((rowKey) => selectedRowKeys.has(rowKey)).length,
@@ -518,7 +528,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 		return null;
 	};
 
-	const columnCount = viewMode === "item" ? 16 : 15;
+	const columnCount = viewMode === "item" ? 17 : 16;
 
 	return (
 		<div className="space-y-3 p-3">
@@ -743,6 +753,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 										/>
 									</div>
 								</th>
+								<th className="px-4 py-3 text-center">No</th>
 								<th className="px-4 py-3">Tanggal</th>
 								<th className="px-4 py-3">Tipe</th>
 								<th className="px-4 py-3">Shift</th>
@@ -833,6 +844,11 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 														className="rounded-sm border-muted-foreground/40 bg-background data-checked:border-primary data-checked:bg-primary"
 													/>
 												</div>
+											</td>
+											<td className="px-3 py-2.5 text-center">
+												<span className="font-mono text-[10px] text-muted-foreground">
+													{rowNumberByKey.get(rowKey) || "-"}
+												</span>
 											</td>
 											<td className="px-3 py-2.5">
 												<div className="flex min-w-[88px] flex-col leading-tight">
