@@ -739,3 +739,104 @@
 		min-height: 40px;
 	}
 }
+
+/* ============================================
+   ADMIN POPUP CONSISTENCY (compact + clean)
+   Scope: /admin only via body.admin-shell
+   ============================================ */
+
+body.admin-shell [data-slot="dialog-content"],
+body.admin-shell [data-slot="sheet-content"],
+body.admin-shell [data-slot="confirmation-modal-card"] {
+	max-width: min(26rem, calc(100vw - 1.5rem));
+	border-radius: 1rem;
+	padding: 1rem;
+	gap: 0.75rem;
+	font-size: 0.8125rem;
+	line-height: 1.4;
+}
+
+body.admin-shell [data-slot="dialog-header"],
+body.admin-shell [data-slot="sheet-header"] {
+	gap: 0.25rem;
+	padding: 0;
+}
+
+body.admin-shell [data-slot="dialog-title"],
+body.admin-shell [data-slot="sheet-title"],
+body.admin-shell [data-slot="confirmation-modal-card"] h3 {
+	font-size: 0.95rem;
+	line-height: 1.25;
+	font-weight: 700;
+}
+
+body.admin-shell [data-slot="dialog-description"],
+body.admin-shell [data-slot="sheet-description"],
+body.admin-shell [data-slot="confirmation-modal-card"] p {
+	font-size: 0.78rem;
+	line-height: 1.4;
+}
+
+body.admin-shell [data-slot="dialog-footer"],
+body.admin-shell [data-slot="sheet-footer"] {
+	gap: 0.5rem;
+	padding: 0;
+}
+
+body.admin-shell [data-slot="dialog-content"] [data-slot="input"],
+body.admin-shell [data-slot="dialog-content"] [data-slot="textarea"],
+body.admin-shell [data-slot="dialog-content"] [data-slot="select-trigger"],
+body.admin-shell [data-slot="sheet-content"] [data-slot="input"],
+body.admin-shell [data-slot="sheet-content"] [data-slot="textarea"],
+body.admin-shell [data-slot="sheet-content"] [data-slot="select-trigger"],
+body.admin-shell [data-slot="confirmation-modal-card"] input,
+body.admin-shell [data-slot="confirmation-modal-card"] textarea,
+body.admin-shell [data-slot="confirmation-modal-card"] select {
+	font-size: 0.8125rem;
+}
+
+body.admin-shell [data-slot="dialog-content"] [data-slot="input"],
+body.admin-shell [data-slot="dialog-content"] [data-slot="select-trigger"],
+body.admin-shell [data-slot="sheet-content"] [data-slot="input"],
+body.admin-shell [data-slot="sheet-content"] [data-slot="select-trigger"],
+body.admin-shell [data-slot="confirmation-modal-card"] input,
+body.admin-shell [data-slot="confirmation-modal-card"] select {
+	height: 2.2rem;
+	padding-top: 0.35rem;
+	padding-bottom: 0.35rem;
+	padding-left: 0.65rem;
+	padding-right: 0.65rem;
+	border-radius: 0.6rem;
+}
+
+body.admin-shell [data-slot="dialog-content"] [data-slot="textarea"],
+body.admin-shell [data-slot="sheet-content"] [data-slot="textarea"],
+body.admin-shell [data-slot="confirmation-modal-card"] textarea {
+	min-height: 4.5rem;
+	padding: 0.55rem 0.65rem;
+	border-radius: 0.6rem;
+}
+
+body.admin-shell [data-slot="dialog-content"] [data-slot="button"],
+body.admin-shell [data-slot="sheet-content"] [data-slot="button"] {
+	height: 2.2rem;
+	padding-left: 0.75rem;
+	padding-right: 0.75rem;
+	font-size: 0.76rem;
+}
+
+body.admin-shell [data-slot="dialog-content"] [data-slot="dialog-close"],
+body.admin-shell [data-slot="sheet-content"] [data-slot="sheet-close"] {
+	top: 0.5rem;
+	right: 0.5rem;
+}
+
+body.admin-shell [data-slot="confirmation-modal-card"] .h-14.w-14 {
+	height: 2.75rem;
+	width: 2.75rem;
+}
+
+body.admin-shell [data-slot="confirmation-modal-card"] .h-7.w-7 {
+	height: 1.1rem;
+	width: 1.1rem;
+}

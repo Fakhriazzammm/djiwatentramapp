@@ -265,8 +265,15 @@ function AdminLayout() {
 		setIsQuickMenuOpen(false);
 	}, []);
 
+	useEffect(() => {
+		document.body.classList.add("admin-shell");
+		return () => {
+			document.body.classList.remove("admin-shell");
+		};
+	}, []);
+
 	return (
-		<div className="flex h-app w-full overflow-hidden bg-background">
+		<div className="flex h-app w-full overflow-hidden bg-background" data-admin-shell="true">
 			{/* === DESKTOP SIDEBAR (hidden on mobile) === */}
 			<aside
 				className={`relative hidden flex-col border-border border-r bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out md:flex ${isCollapsed ? "w-16" : "w-64"

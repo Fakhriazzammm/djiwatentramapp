@@ -58,11 +58,15 @@ export function ConfirmationModal({
 	const modalContent = (
 		<AnimatePresence>
 			{isOpen && (
-				<div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+				<div
+					className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+					data-slot="confirmation-modal-root"
+				>
 					{/* Backdrop */}
 					<motion.div
 						animate={{ opacity: 1 }}
 						className="fixed inset-0 bg-black/60 backdrop-blur-md"
+						data-slot="confirmation-modal-backdrop"
 						exit={{ opacity: 0 }}
 						initial={{ opacity: 0 }}
 						onClick={onClose}
@@ -72,6 +76,7 @@ export function ConfirmationModal({
 					<motion.div
 						animate={{ opacity: 1, scale: 1, y: 0 }}
 						className="relative w-full max-w-xs overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-2xl"
+						data-slot="confirmation-modal-card"
 						exit={{ opacity: 0, scale: 0.95, y: 10 }}
 						initial={{ opacity: 0, scale: 0.95, y: 10 }}
 					>
