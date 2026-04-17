@@ -228,6 +228,10 @@ function formatNumber(value: number) {
 	}).format(value);
 }
 
+function safeLower(value: unknown) {
+	return typeof value === "string" ? value.toLowerCase() : "";
+}
+
 function getCostPerBaseUnit(ingredient: IngredientRow) {
 	const totalBaseUnits =
 		ingredient.purchaseQuantity * ingredient.conversionFactor;
@@ -491,10 +495,11 @@ function HppCalculatorPage() {
 			: null;
 
 	const filteredPortfolio = useMemo(() => {
+		const searchLower = safeLower(search);
 		return portfolioRows.filter((row) => {
 			const matchesSearch =
-				row.product.name.toLowerCase().includes(search.toLowerCase()) ||
-				(row.calculation?.name.toLowerCase().includes(search.toLowerCase()) ?? false);
+				safeLower(row.product?.name).includes(searchLower) ||
+				safeLower(row.calculation?.name).includes(searchLower);
 			const matchesStatus =
 				statusFilter === "all" ? true : row.status === statusFilter;
 			return matchesSearch && matchesStatus;
@@ -1179,7 +1184,7 @@ function SearchableSelect({
 				onBlur={() => {
 					const matched = options.find(
 						(option) =>
-							option.label.toLowerCase() === inputValue.trim().toLowerCase()
+							safeLower(option.label) === safeLower(inputValue).trim()
 					);
 					if (!matched && value) {
 						const selected = options.find((option) => option.value === value);
@@ -1191,7 +1196,7 @@ function SearchableSelect({
 					setInputValue(nextValue);
 					const matched = options.find(
 						(option) =>
-							option.label.toLowerCase() === nextValue.trim().toLowerCase()
+							safeLower(option.label) === safeLower(nextValue).trim()
 					);
 					if (matched) {
 						onValueChange(matched.value);
@@ -1581,16 +1586,16 @@ function EditorView({
 	}, [form.productId, productSearchOptions, productQuery, isEditingProductQuery]);
 
 	function resolveProductFromInput(value: string) {
-		const normalized = value.trim().toLowerCase();
+		const normalized = safeLower(value).trim();
 		if (!normalized) {
 			return null;
 		}
 		return (
 			productSearchOptions.find(
-				(option) => option.name.trim().toLowerCase() === normalized
+				(option) => safeLower(option.name).trim() === normalized
 			) ??
 			productSearchOptions.find((option) =>
-				option.name.toLowerCase().includes(normalized)
+				safeLower(option.name).includes(normalized)
 			) ??
 			null
 		);
@@ -1607,7 +1612,10 @@ function EditorView({
 			}));
 		}
 		const matched = resolveProductFromInput(rawValue);
-		if (matched && matched.name.trim().toLowerCase() === rawValue.trim().toLowerCase()) {
+		if (
+			matched &&
+			safeLower(matched.name).trim() === safeLower(rawValue).trim()
+		) {
 			onSelectProduct(matched.id);
 			setIsEditingProductQuery(false);
 		}
@@ -1615,12 +1623,12 @@ function EditorView({
 
 	function handleIngredientNameInput(ingredientId: string, rawValue: string) {
 		updateIngredient(ingredientId, "ingredientName", rawValue);
-		const trimmed = rawValue.trim().toLowerCase();
+		const trimmed = safeLower(rawValue).trim();
 		if (!trimmed) {
 			updateIngredient(ingredientId, "inventoryId", undefined);
 			return;
 		}
-		const normalize = (value: string) => value.toLowerCase().trim();
+		const normalize = (value: string) => safeLower(value).trim();
 		const matched =
 			inventory?.find((item) => normalize(item.ingredientName) === trimmed) ??
 			inventory?.find((item) =>
@@ -1771,7 +1779,7 @@ function EditorView({
 										const matched = resolveProductFromInput(trimmed);
 										if (
 											matched &&
-											matched.name.trim().toLowerCase() === trimmed.toLowerCase()
+											safeLower(matched.name).trim() === safeLower(trimmed).trim()
 										) {
 											onSelectProduct(matched.id);
 										}
@@ -1785,8 +1793,8 @@ function EditorView({
 											const matched = resolveProductFromInput(productQuery);
 											if (
 												matched &&
-												matched.name.trim().toLowerCase() ===
-													productQuery.trim().toLowerCase()
+												safeLower(matched.name).trim() ===
+													safeLower(productQuery).trim()
 											) {
 												onSelectProduct(matched.id);
 											}
