@@ -531,11 +531,11 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 	const columnCount = viewMode === "item" ? 17 : 16;
 
 	return (
-		<div className="space-y-1.5 p-1.5">
+		<div className="space-y-1 p-1">
 			{/* Filters & Search */}
-			<div className="flex flex-col gap-1.5 rounded-md border border-border bg-card px-2 py-1.5">
+			<div className="flex flex-col gap-1 rounded-md border border-slate-200 bg-white px-2 py-1.5">
 				<div className="flex flex-wrap items-center justify-between gap-2">
-					<div className="flex gap-1 rounded border border-border bg-muted/50 p-1">
+					<div className="flex gap-1 rounded-md border border-slate-200 bg-slate-50 p-1">
 						{(["all", "income", "expense"] as const).map((t) => (
 							<button
 								key={t}
@@ -548,7 +548,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 										: t === "expense"
 											? "bg-red-600 text-white"
 											: "bg-primary/10 text-primary"
-									: "text-muted-foreground hover:bg-muted hover:text-foreground"
+									: "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
 							}`}
 						>
 							{t === "all" ? "Semua" : t === "income" ? "Pemasukan" : "Pengeluaran"}
@@ -564,13 +564,13 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 								placeholder="Cari transaksi..."
 								value={searchQuery}
 								onChange={(e) => setSearchQuery(e.target.value)}
-								className="h-7 w-60 rounded border border-input bg-background pl-7 pr-2 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+								className="h-7 w-64 rounded border border-slate-300 bg-white pl-7 pr-2 text-[11px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300"
 							/>
 						</div>
 						<select
 							value={filterCategory}
 							onChange={(e) => setFilterCategory(e.target.value)}
-							className="h-7 rounded border border-input bg-background px-2 py-1 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+							className="h-7 rounded border border-slate-300 bg-white px-2 py-1 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300"
 						>
 							<option value="">Semua Kategori</option>
 							{EXPENSE_CATEGORIES.map((cat) => (
@@ -582,7 +582,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 					</div>
 				</div>
 
-				<div className="flex flex-wrap items-center gap-1.5 rounded border border-border bg-muted/20 px-2 py-1.5">
+				<div className="flex flex-wrap items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
 					<div className="flex flex-wrap items-center gap-2">
 						<Filter className="h-3.5 w-3.5 text-muted-foreground" />
 						<span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Nominal:</span>
@@ -592,7 +592,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 								placeholder="Min"
 								value={minAmount}
 								onChange={(e) => setMinAmount(e.target.value)}
-								className="h-6 w-20 rounded-md border border-input bg-background px-2 text-[10px] focus:outline-none focus:ring-1 focus:ring-ring"
+								className="h-6 w-20 rounded border border-slate-300 bg-white px-2 text-[10px] focus:outline-none focus:ring-1 focus:ring-slate-300"
 							/>
 							<span className="text-muted-foreground">-</span>
 							<input
@@ -600,7 +600,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 								placeholder="Max"
 								value={maxAmount}
 								onChange={(e) => setMaxAmount(e.target.value)}
-								className="h-6 w-20 rounded-md border border-input bg-background px-2 text-[10px] focus:outline-none focus:ring-1 focus:ring-ring"
+								className="h-6 w-20 rounded border border-slate-300 bg-white px-2 text-[10px] focus:outline-none focus:ring-1 focus:ring-slate-300"
 							/>
 						</div>
 					</div>
@@ -616,7 +616,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 									if (sortBy === "date") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
 									else setSortBy("date");
 								}}
-								className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${sortBy === "date" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
+								className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${sortBy === "date" ? "bg-slate-200 text-slate-900" : "text-slate-600 hover:bg-slate-100"}`}
 							>
 								Tanggal {sortBy === "date" && (sortOrder === "asc" ? "ASC" : "DESC")}
 							</button>
@@ -625,7 +625,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 									if (sortBy === "amount") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
 									else setSortBy("amount");
 								}}
-								className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${sortBy === "amount" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
+								className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${sortBy === "amount" ? "bg-slate-200 text-slate-900" : "text-slate-600 hover:bg-slate-100"}`}
 							>
 								Nominal {sortBy === "amount" && (sortOrder === "asc" ? "ASC" : "DESC")}
 							</button>
@@ -640,7 +640,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 								setMaxAmount("");
 								setFilterCategory("");
 							}}
-							className="text-[10px] ml-auto text-primary hover:underline"
+							className="ml-auto text-[10px] text-slate-600 hover:text-slate-900 hover:underline"
 						>
 							Reset Filter
 						</button>
@@ -648,34 +648,8 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 				</div>
 			</div>
 
-			{/* Summary */}
-			{data && (
-				<div className="flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1.5 text-[10px] text-muted-foreground">
-					<div className="inline-flex items-center gap-1 rounded border border-input bg-background px-2 py-1">
-						<span className="text-muted-foreground">Total Pemasukan: </span>
-						<span className="font-mono font-semibold text-emerald-400">{formatCurrencyIDR(data.totalIncome)}</span>
-					</div>
-					<div className="inline-flex items-center gap-1 rounded border border-input bg-background px-2 py-1">
-						<span className="text-muted-foreground">Total Pengeluaran: </span>
-						<span className="font-mono font-semibold text-rose-400">{formatCurrencyIDR(data.totalExpense)}</span>
-					</div>
-					<div className="inline-flex items-center gap-1 rounded border border-input bg-background px-2 py-1">
-						<span className="text-muted-foreground">Saldo Bersih: </span>
-						<span className={`font-bold ${data.netBalance >= 0 ? "text-emerald-400" : "text-red-600"}`}>
-							{formatCurrencyIDR(data.netBalance)}
-						</span>
-					</div>
-					<div className="inline-flex items-center gap-1 rounded border border-input bg-background px-2 py-1">
-						<span className="text-muted-foreground">
-							{viewMode === "item" ? "Jumlah Baris: " : "Jumlah Transaksi: "}
-						</span>
-						<span className="font-bold">{data.count}</span>
-					</div>
-				</div>
-			)}
-
 			{selectedVisibleCount > 0 && (
-				<div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-2.5 py-2">
+				<div className="flex items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-2.5 py-2">
 					<p className="text-xs text-foreground">
 						<span className="font-semibold">{selectedVisibleCount}</span> baris dipilih
 					</p>
@@ -683,7 +657,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 						<button
 							type="button"
 							onClick={() => setSelectedRowKeys(new Set())}
-							className="rounded border border-input px-2 py-1 text-[10px] text-foreground hover:text-foreground"
+							className="rounded border border-slate-300 px-2 py-1 text-[10px] text-slate-700 hover:bg-slate-100"
 						>
 							Batal Pilih
 						</button>
@@ -699,22 +673,14 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 				</div>
 			)}
 
-			{data && (
-				<div className="rounded-lg border border-border/60 bg-card/60 px-2 py-1">
-					<span className="text-[10px] text-muted-foreground">
-						{filteredTransactions.length} {viewMode === "item" ? "baris" : "transaksi"} tampil
-					</span>
-				</div>
-			)}
-
 			{/* Transactions Table */}
-			<div className="overflow-hidden rounded-xl border border-border/80 bg-card">
+			<div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
 				<div
 					ref={scrollContainerRef}
 					onScroll={(e) => setScrollTop((e.target as HTMLDivElement).scrollTop)}
-					className="max-h-[74vh] overflow-auto"
+					className="max-h-[76vh] overflow-auto"
 				>
-					<table className="w-full min-w-[1180px] table-auto text-left text-[10px] text-foreground">
+					<table className="w-full min-w-[1180px] table-auto text-left text-[10px] text-slate-800">
 						<colgroup>
 							<col style={{ width: "36px" }} />
 							<col style={{ width: "48px" }} />
@@ -734,9 +700,9 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 							<col style={{ width: "120px" }} />
 							<col style={{ width: "68px" }} />
 						</colgroup>
-						<thead className="sticky top-0 z-10 bg-muted/70 text-[9px] font-bold uppercase tracking-wider text-muted-foreground backdrop-blur">
+						<thead className="sticky top-0 z-10 bg-slate-100 text-[9px] font-semibold uppercase tracking-wider text-slate-500">
 							<tr>
-								<th className="w-9 px-1.5 py-1.5">
+								<th className="sticky left-0 z-20 w-9 border-r border-slate-200 bg-slate-100 px-1.5 py-1">
 									<div className="flex items-center justify-center">
 										<Checkbox
 											checked={allVisibleSelected}
@@ -747,25 +713,25 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 										/>
 									</div>
 								</th>
-								<th className="w-12 px-1.5 py-1.5 text-center">No</th>
-								<th className="w-24 px-2 py-1.5">Tanggal</th>
-								<th className="w-[86px] px-2 py-1.5">Tipe</th>
-								<th className="w-[92px] px-2 py-1.5">Shift</th>
-								<th className="w-28 px-2 py-1.5">Sumber</th>
-								{viewMode === "item" && <th className="w-[120px] px-2 py-1.5">Grup Referensi</th>}
-								<th className="px-2 py-1.5">Merchant</th>
-								<th className="px-2 py-1.5">Deskripsi</th>
-								<th className="w-[148px] px-2 py-1.5">Referensi</th>
-								<th className="w-28 px-2 py-1.5">Kategori</th>
-								<th className="w-[84px] px-2 py-1.5">Metode</th>
-								<th className="w-[110px] px-2 py-1.5">Status</th>
-								<th className="w-[190px] px-2 py-1.5">Detail</th>
-								<th className="w-[170px] px-2 py-1.5">Audit</th>
-								<th className="w-[120px] px-2 py-1.5 text-right">Nominal</th>
-								<th className="w-[68px] px-2 py-1.5 text-center">Aksi</th>
+								<th className="sticky left-[36px] z-20 w-12 border-r border-slate-200 bg-slate-100 px-1.5 py-1 text-center">No</th>
+								<th className="w-24 px-2 py-1">Tanggal</th>
+								<th className="w-[86px] px-2 py-1">Tipe</th>
+								<th className="w-[92px] px-2 py-1">Shift</th>
+								<th className="w-28 px-2 py-1">Sumber</th>
+								{viewMode === "item" && <th className="w-[120px] px-2 py-1">Grup Referensi</th>}
+								<th className="px-2 py-1">Merchant</th>
+								<th className="px-2 py-1">Deskripsi</th>
+								<th className="w-[148px] px-2 py-1">Referensi</th>
+								<th className="w-28 px-2 py-1">Kategori</th>
+								<th className="w-[84px] px-2 py-1">Metode</th>
+								<th className="w-[110px] px-2 py-1">Status</th>
+								<th className="w-[190px] px-2 py-1">Detail</th>
+								<th className="w-[170px] px-2 py-1">Audit</th>
+								<th className="sticky right-[68px] z-20 w-[120px] border-l border-slate-200 bg-slate-100 px-2 py-1 text-right">Nominal</th>
+								<th className="sticky right-0 z-20 w-[68px] border-l border-slate-200 bg-slate-100 px-2 py-1 text-center">Aksi</th>
 							</tr>
 						</thead>
-						<tbody className="divide-y divide-border bg-card">
+						<tbody className="divide-y divide-slate-200 bg-white">
 							{!data ? (
 								Array.from({ length: 5 }).map((_, i) => (
 									<tr key={i}>
@@ -791,12 +757,12 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 									{virtualized.rows.map((t: any) => {
 									if (t.rowType === "group_header") {
 										return (
-											<tr key={t.rowKey} className="bg-muted/40">
+											<tr key={t.rowKey} className="bg-slate-100">
 												<td colSpan={columnCount} className="px-2 py-1.5">
 													<button
 														type="button"
 														onClick={() => toggleGroup(t.groupKey)}
-														className="flex w-full items-center justify-between rounded border border-input bg-background px-2 py-1.5 text-left text-[10px]"
+														className="flex w-full items-center justify-between rounded border border-slate-200 bg-white px-2 py-1 text-left text-[10px]"
 													>
 														<span className="font-semibold text-foreground">
 															{t.isCollapsed ? ">" : "v"} {t.groupLabel} | {t.groupTitle}
@@ -823,13 +789,13 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 									return (
 										<tr
 											key={rowKey}
-											className="group cursor-pointer transition-colors hover:bg-muted/40"
+											className="group cursor-pointer transition-colors hover:bg-slate-50"
 											onClick={() => {
 												if (editingItemRowKey === rowKey) return;
 												handleEdit(t);
 											}}
 										>
-											<td className="w-9 px-1.5 py-1.5" onClick={(e) => e.stopPropagation()}>
+											<td className="sticky left-0 z-10 w-9 border-r border-slate-200 bg-white px-1.5 py-1 group-hover:bg-slate-50" onClick={(e) => e.stopPropagation()}>
 												<div className="flex items-center justify-center">
 													<Checkbox
 														checked={selectedRowKeys.has(rowKey)}
@@ -839,12 +805,12 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 													/>
 												</div>
 											</td>
-											<td className="w-[52px] px-1.5 py-1.5 text-center">
+											<td className="sticky left-[36px] z-10 w-[52px] border-r border-slate-200 bg-white px-1.5 py-1 text-center group-hover:bg-slate-50">
 												<span className="font-mono text-[10px] text-muted-foreground">
 													{rowNumberByKey.get(rowKey) || "-"}
 												</span>
 											</td>
-											<td className="px-2 py-1.5 whitespace-nowrap">
+											<td className="px-2 py-1 whitespace-nowrap">
 												<div className="flex flex-col leading-tight">
 													<span className="font-medium text-foreground text-[11px]">
 														{format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}
@@ -854,7 +820,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 													</span>
 												</div>
 											</td>
-											<td className="px-2 py-1.5 whitespace-nowrap">
+											<td className="px-2 py-1 whitespace-nowrap">
 												<span className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
 													t.type === "income"
 														? "border-emerald-200 bg-emerald-50 text-emerald-700"
@@ -863,7 +829,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 													{t.type === "income" ? "Pemasukan" : "Pengeluaran"}
 												</span>
 											</td>
-											<td className="px-2 py-1.5 whitespace-nowrap">
+											<td className="px-2 py-1 whitespace-nowrap">
 												{shiftName !== "-" ? (
 													<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-[9px] font-bold text-primary uppercase">
 														{shiftName}
@@ -872,7 +838,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 													<span className="text-[11px] text-muted-foreground">-</span>
 												)}
 											</td>
-											<td className="px-2 py-1.5 whitespace-nowrap">
+											<td className="px-2 py-1 whitespace-nowrap">
 												<div className="flex flex-col gap-1">
 													{sourceBadge(t.sourceLabel, t.sourceType)}
 													{t.inputMode && (
@@ -883,7 +849,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 												</div>
 											</td>
 											{viewMode === "item" && (
-												<td className="px-2 py-1.5">
+												<td className="px-2 py-1">
 													{t.rowType === "receipt_item" ? (
 														<div className="flex flex-col gap-1">
 															<span className="inline-flex rounded-md border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-700">
@@ -916,14 +882,14 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 													)}
 												</td>
 											)}
-											<td className="px-2 py-1.5">
+											<td className="px-2 py-1">
 												<div className="max-w-[160px]">
 													<span className="block truncate text-xs font-semibold text-foreground" title={t.displayTitle || t.merchant || "Umum"}>
 														{t.displayTitle || t.merchant || "Umum"}
 													</span>
 												</div>
 											</td>
-											<td className="px-2 py-1.5">
+											<td className="px-2 py-1">
 												<div className="max-w-[220px] space-y-1">
 													<div className="truncate text-[11px] text-muted-foreground" title={t.displaySummary || t.description || "-"}>
 														{t.displaySummary || t.description || "-"}
@@ -935,7 +901,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 													)}
 												</div>
 											</td>
-											<td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
+											<td className="px-2 py-1" onClick={(e) => e.stopPropagation()}>
 												<div className="max-w-[148px] flex flex-col gap-0.5">
 													<span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
 														{t.referenceLabel || "Tanpa referensi"}
@@ -960,15 +926,15 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 													)}
 											</div>
 										</td>
-										<td className="px-2 py-1.5 whitespace-nowrap">
+										<td className="px-2 py-1 whitespace-nowrap">
 											{categoryBadge(t.category, t.type)}
 										</td>
-										<td className="px-2 py-1.5">
+										<td className="px-2 py-1">
 											<span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
 												{t.paymentMethod || "Cash"}
 											</span>
 										</td>
-										<td className="px-2 py-1.5">
+										<td className="px-2 py-1">
 											<div className="flex flex-col gap-1">
 												<span className={`inline-flex w-fit rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
 												t.status === "completed"
@@ -986,7 +952,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 												)}
 											</div>
 										</td>
-										<td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
+										<td className="px-2 py-1" onClick={(e) => e.stopPropagation()}>
 											{t.rowType === "receipt_item" &&
 											editingItemRowKey === rowKey &&
 											itemEditDraft ? (
@@ -1075,7 +1041,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 												</div>
 											)}
 										</td>
-										<td className="px-2 py-1.5">
+										<td className="px-2 py-1">
 											<div className="flex max-w-[170px] flex-wrap gap-1">
 												{t.receiptNumber && (
 													<span className="inline-flex rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] text-blue-700">
@@ -1105,7 +1071,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 													))}
 											</div>
 										</td>
-										<td className="px-2 py-1.5 text-right whitespace-nowrap">
+										<td className="sticky right-[68px] z-10 border-l border-slate-200 bg-white px-2 py-1 text-right whitespace-nowrap group-hover:bg-slate-50">
 											<span className={`font-bold text-xs whitespace-nowrap ${t.type === "income" ? "text-green-600" : "text-red-600"}`}>
 												{t.type === "income" ? "+" : "-"}{" "}
 												{formatCurrencyIDR(
@@ -1117,8 +1083,8 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 												)}
 											</span>
 										</td>
-										<td className="px-2 py-1.5 text-center" onClick={(e) => e.stopPropagation()}>
-												<div className="flex items-center justify-center gap-1 opacity-60 transition-opacity group-hover:opacity-100">
+										<td className="sticky right-0 z-10 border-l border-slate-200 bg-white px-2 py-1 text-center group-hover:bg-slate-50" onClick={(e) => e.stopPropagation()}>
+												<div className="flex items-center justify-center gap-1 opacity-80 transition-opacity group-hover:opacity-100">
 													{t.rowType === "receipt_item" && editingItemRowKey === rowKey ? (
 														<>
 															<button
@@ -1127,10 +1093,10 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 																	void saveInlineEditItem(t);
 																}}
 																disabled={savingItemRowKey === rowKey}
-																className="p-1.5 rounded-md text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-40"
+																className="rounded-md p-1 text-emerald-700 transition-colors hover:bg-emerald-50 disabled:opacity-40"
 																title="Simpan item"
 															>
-																<Check className="h-4 w-4" />
+																<Check className="h-3.5 w-3.5" />
 															</button>
 															<button
 																onClick={(e) => {
@@ -1138,10 +1104,10 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 																	cancelInlineEditItem();
 																}}
 																disabled={savingItemRowKey === rowKey}
-																className="p-1.5 rounded-md text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40"
+																className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted disabled:opacity-40"
 																title="Batal edit item"
 															>
-																<X className="h-4 w-4" />
+																<X className="h-3.5 w-3.5" />
 															</button>
 														</>
 													) : (
@@ -1154,10 +1120,10 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 																}
 																handleEdit(t);
 															}}
-															className="p-1.5 rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+															className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
 															title={t.rowType === "receipt_item" ? "Ubah Item" : "Ubah"}
 														>
-															<Pencil className="h-4 w-4" />
+															<Pencil className="h-3.5 w-3.5" />
 														</button>
 													)}
 													<button
@@ -1165,10 +1131,10 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 															e.stopPropagation();
 															void handleDelete(t);
 														}}
-														className="p-1.5 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+														className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
 														title="Hapus"
 													>
-														<Trash2 className="h-4 w-4" />
+														<Trash2 className="h-3.5 w-3.5" />
 													</button>
 												</div>
 											</td>
@@ -1187,7 +1153,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 				</div>
 			</div>
 			{data && (
-				<div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-card/60 px-2 py-1.5">
+				<div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5">
 					<div className="text-[10px] text-muted-foreground">
 						Halaman {data.page || page} / {data.pageCount || 1} | Total {data.count} baris
 					</div>
@@ -1195,7 +1161,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 						<select
 							value={pageSize}
 							onChange={(e) => setPageSize(Number(e.target.value) || 50)}
-							className="h-7 rounded border border-input bg-background px-2 text-[10px] text-foreground"
+							className="h-7 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700"
 						>
 							<option value={25}>25 / halaman</option>
 							<option value={50}>50 / halaman</option>
@@ -1205,7 +1171,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 							type="button"
 							onClick={() => setPage((prev) => Math.max(1, prev - 1))}
 							disabled={(data.page || page) <= 1}
-							className="rounded border border-input px-2 py-1 text-[10px] text-foreground disabled:opacity-40"
+							className="rounded border border-slate-300 px-2 py-1 text-[10px] text-slate-700 disabled:opacity-40"
 						>
 							Sebelumnya
 						</button>
@@ -1215,7 +1181,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 								setPage((prev) => Math.min(data.pageCount || 1, prev + 1))
 							}
 							disabled={(data.page || page) >= (data.pageCount || 1)}
-							className="rounded border border-input px-2 py-1 text-[10px] text-foreground disabled:opacity-40"
+							className="rounded border border-slate-300 px-2 py-1 text-[10px] text-slate-700 disabled:opacity-40"
 						>
 							Berikutnya
 						</button>
@@ -1234,6 +1200,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 		</div>
 	);
 }
+
 
 
 
