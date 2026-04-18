@@ -646,22 +646,6 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 						</button>
 					)}
 				</div>
-				{viewMode === "item" && (
-					<div className="flex flex-wrap items-center gap-2">
-						<span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-							Grup:
-						</span>
-						<span
-							className={`inline-flex rounded-md border px-2 py-1 text-[11px] ${
-								groupMode === "grouped"
-									? "border-emerald-200 bg-emerald-50 text-emerald-700"
-									: "border-slate-200 bg-slate-50 text-slate-700"
-							}`}
-						>
-							{groupMode === "grouped" ? "Grouped by Struk/Transaksi" : "Flat"}
-						</span>
-					</div>
-				)}
 			</div>
 
 			{/* Summary */}
@@ -720,15 +704,6 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 					<span className="inline-flex rounded-md border border-border bg-background px-2 py-1 text-[10px] font-medium text-foreground">
 						{filteredTransactions.length} {viewMode === "item" ? "baris" : "transaksi"} tampil
 					</span>
-					<span className="inline-flex rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-[10px] font-medium text-violet-700">
-						{filteredTransactions.filter((t: any) => String(t.sourceType || "").startsWith("ai_")).length} transaksi AI
-					</span>
-					<span className="inline-flex rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-[10px] font-medium text-sky-700">
-						{filteredTransactions.filter((t: any) => t.referenceValue).length} punya referensi
-					</span>
-					<span className="inline-flex rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-700">
-						{filteredTransactions.filter((t: any) => t.status === "completed").length} selesai
-					</span>
 				</div>
 			)}
 
@@ -761,7 +736,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 						</colgroup>
 						<thead className="sticky top-0 z-10 bg-muted/70 text-[9px] font-bold uppercase tracking-wider text-muted-foreground backdrop-blur">
 							<tr>
-								<th className="sticky left-0 z-20 w-9 border-border/60 border-r bg-muted/70 px-1.5 py-1.5">
+								<th className="w-9 px-1.5 py-1.5">
 									<div className="flex items-center justify-center">
 										<Checkbox
 											checked={allVisibleSelected}
@@ -772,7 +747,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 										/>
 									</div>
 								</th>
-								<th className="sticky left-[36px] z-20 w-12 border-border/60 border-r bg-muted/70 px-1.5 py-1.5 text-center">No</th>
+								<th className="w-12 px-1.5 py-1.5 text-center">No</th>
 								<th className="w-24 px-2 py-1.5">Tanggal</th>
 								<th className="w-[86px] px-2 py-1.5">Tipe</th>
 								<th className="w-[92px] px-2 py-1.5">Shift</th>
@@ -854,7 +829,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 												handleEdit(t);
 											}}
 										>
-											<td className="sticky left-0 z-10 w-9 border-border/60 border-r bg-card px-1.5 py-1.5" onClick={(e) => e.stopPropagation()}>
+											<td className="w-9 px-1.5 py-1.5" onClick={(e) => e.stopPropagation()}>
 												<div className="flex items-center justify-center">
 													<Checkbox
 														checked={selectedRowKeys.has(rowKey)}
@@ -864,7 +839,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 													/>
 												</div>
 											</td>
-											<td className="sticky left-[36px] z-10 w-[52px] border-border/60 border-r bg-card px-1.5 py-1.5 text-center">
+											<td className="w-[52px] px-1.5 py-1.5 text-center">
 												<span className="font-mono text-[10px] text-muted-foreground">
 													{rowNumberByKey.get(rowKey) || "-"}
 												</span>
@@ -1259,6 +1234,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 		</div>
 	);
 }
+
 
 
 
