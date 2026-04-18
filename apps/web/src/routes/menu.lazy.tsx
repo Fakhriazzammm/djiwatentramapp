@@ -168,7 +168,7 @@ function getShiftSchedule(
 function MenuProductCardSkeleton() {
 	return (
 		<div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-			<div className="relative h-32 w-full bg-muted shrink-0">
+			<div className="relative h-28 sm:h-32 w-full bg-muted shrink-0">
 				<Skeleton className="h-full w-full rounded-none" />
 				<Skeleton className="absolute left-2 top-2 h-5 w-20 rounded-full bg-muted-foreground/20" />
 				<Skeleton className="absolute left-2 bottom-2 h-5 w-12 rounded bg-muted-foreground/20" />
@@ -545,12 +545,12 @@ function MenuPage() {
 	useEffect(() => {
 		const updateColumns = () => {
 			const width = window.innerWidth;
-			if (width >= 1536) setGridColumns(4); // 2xl (fixed 4 columns as requested)
+			if (width >= 1536) setGridColumns(5); // 2xl
 			else if (width >= 1280) setGridColumns(4); // xl
-			else if (width >= 1024) setGridColumns(4); // lg
+			else if (width >= 1024) setGridColumns(3); // lg
 			else if (width >= 768) setGridColumns(2); // md
 			else if (width >= 640) setGridColumns(3); // sm
-			else setGridColumns(3); // default (mobile 3 columns)
+			else setGridColumns(2); // mobile — 2 col for readability
 		};
 		updateColumns();
 		window.addEventListener("resize", updateColumns);
@@ -1285,7 +1285,7 @@ function MenuPage() {
 							</div>
 							<div className={cn("flex flex-nowrap items-center gap-1 px-1.5 py-0.5 rounded-md", isShiftOpen ? "bg-emerald-50 text-emerald-600 shadow-[0_0_8px_rgba(16,185,129,0.1)]" : "bg-rose-50 text-rose-600")}>
 								<span className={cn("h-1.5 w-1.5 rounded-full shrink-0", isShiftOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
-								<span className="whitespace-nowrap leading-none font-semibold text-[9px] sm:text-[10px] uppercase tracking-wider">{isShiftOpen ? "Shift Aktif" : "Shift Tutup"}</span>
+								<span className="whitespace-nowrap leading-none font-semibold text-[10px] sm:text-xs uppercase tracking-wider">{isShiftOpen ? "Shift Aktif" : "Shift Tutup"}</span>
 							</div>
 							{isShiftOpen && shiftStatus?.shiftInfo?.cashierName && (
 								<div className="flex flex-nowrap items-center gap-1 opacity-75 shrink-0">
@@ -1304,10 +1304,10 @@ function MenuPage() {
 							</div>
 							<div className={cn("flex flex-nowrap items-center gap-1 px-1.5 py-0.5 rounded-md whitespace-nowrap", isPrinterConnected ? "bg-blue-50 text-blue-600 shadow-[0_0_8px_rgba(59,130,246,0.1)]" : "bg-muted text-muted-foreground")}>
 								<Printer className="h-3 w-3 shrink-0" />
-								<span className="leading-none text-[9px] sm:text-[10px] font-semibold">{isPrinterConnected ? "Printer Siap" : "Offline"}</span>
+								<span className="leading-none text-[10px] sm:text-xs font-semibold">{isPrinterConnected ? "Printer Siap" : "Offline"}</span>
 							</div>
 							{offlinePendingCount > 0 && (
-								<div className="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-md whitespace-nowrap leading-none font-semibold text-[9px]">
+								<div className="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-md whitespace-nowrap leading-none font-semibold text-[10px]">
 									Sync {offlinePendingCount}
 								</div>
 							)}
@@ -1353,7 +1353,7 @@ function MenuPage() {
 									<h1 className="truncate font-black text-foreground text-xs sm:text-sm uppercase tracking-tight leading-none">
 										{storeName}
 									</h1>
-									<p className="text-muted-foreground text-[7px] uppercase font-bold tracking-widest mt-0.5 opacity-60">POS Kasir & Inventory</p>
+									<p className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest mt-0.5 opacity-60">POS Kasir & Inventory</p>
 								</div>
 							</div>
 
@@ -1374,7 +1374,7 @@ function MenuPage() {
 									className="flex items-center gap-1.5 rounded-full border-2 border-primary/20 px-3 py-1 hover:bg-primary/5 text-primary transition-all active:scale-95"
 									type="button"
 								>
-									<span className="text-[8px] font-bold uppercase tracking-widest">Detail</span>
+									<span className="text-[10px] font-bold uppercase tracking-widest">Detail</span>
 									{isTargetExpanded ? <ChevronUp className="h-3 w-3" strokeWidth={3} /> : <ChevronDown className="h-3 w-3" strokeWidth={3} />}
 								</button>
 							</div>
@@ -1382,7 +1382,7 @@ function MenuPage() {
 							<div className="grid grid-cols-2 gap-4">
 								{/* Shift Progress */}
 								<div className="space-y-1">
-									<div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-widest text-muted-foreground/80 mb-0.5">
+									<div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80 mb-0.5">
 										<span>Shift</span>
 										<span>{Math.round(shiftPct)}%</span>
 									</div>
@@ -1394,7 +1394,7 @@ function MenuPage() {
 										/>
 									</div>
 									{shiftBonusSummary.length > 0 && (
-										<p className="text-[8px] font-black text-primary/80 leading-none pt-0.5">
+										<p className="text-[10px] font-black text-primary/80 leading-none pt-0.5">
 											Bonus Shift: {fmt(totalShiftBonusNow)}
 										</p>
 									)}
@@ -1406,13 +1406,13 @@ function MenuPage() {
 												exit={{ opacity: 0, height: 0 }}
 												className="space-y-1 pt-1"
 											>
-												<p className="text-[9px] font-bold text-muted-foreground/60 leading-none">
+												<p className="text-[10px] font-bold text-muted-foreground/60 leading-none">
 													{fmt(progress.shiftCollected)} / {fmt(progress.shiftTarget)}
 												</p>
 												{shiftBonusSummary.length > 0 && (
 													<div className="space-y-1">
 														{shiftBonusSummary.map((item) => (
-															<div key={`shift-${item.memberName}`} className="rounded-md bg-primary/5 px-1.5 py-1 text-[8px] leading-tight">
+															<div key={`shift-${item.memberName}`} className="rounded-md bg-primary/5 px-1.5 py-1 text-[10px] leading-tight">
 																<p className="font-black uppercase tracking-wide text-primary">
 																	{item.memberName} - Bonus: {fmt(item.achievedBonus)}
 																</p>
@@ -1435,7 +1435,7 @@ function MenuPage() {
 
 								{/* Daily Progress */}
 								<div className="space-y-1">
-									<div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-widest text-muted-foreground/80 mb-0.5">
+									<div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80 mb-0.5">
 										<span>Harian</span>
 										<span>{Math.round(dailyPct)}%</span>
 									</div>
@@ -1447,7 +1447,7 @@ function MenuPage() {
 										/>
 									</div>
 									{dailyBonusSummary.length > 0 && (
-										<p className="text-[8px] font-black text-blue-600/80 leading-none pt-0.5">
+										<p className="text-[10px] font-black text-blue-600/80 leading-none pt-0.5">
 											Bonus Harian: {fmt(totalDailyBonusNow)}
 										</p>
 									)}
@@ -1459,13 +1459,13 @@ function MenuPage() {
 												exit={{ opacity: 0, height: 0 }}
 												className="space-y-1 pt-1"
 											>
-												<p className="text-[9px] font-bold text-muted-foreground/60 leading-none">
+												<p className="text-[10px] font-bold text-muted-foreground/60 leading-none">
 													{fmt(progress.dailyCollected)} / {fmt(progress.dailyTarget)}
 												</p>
 												{dailyBonusSummary.length > 0 && (
 													<div className="space-y-1">
 														{dailyBonusSummary.map((item) => (
-															<div key={`daily-${item.memberName}`} className="rounded-md bg-blue-500/5 px-1.5 py-1 text-[8px] leading-tight">
+															<div key={`daily-${item.memberName}`} className="rounded-md bg-blue-500/5 px-1.5 py-1 text-[10px] leading-tight">
 																<p className="font-black uppercase tracking-wide text-blue-700 dark:text-blue-400">
 																	{item.memberName} - Bonus: {fmt(item.achievedBonus)}
 																</p>
@@ -1495,12 +1495,12 @@ function MenuPage() {
 										exit={{ opacity: 0, height: 0 }}
 										className="mt-2 rounded-md border border-emerald-200/60 bg-emerald-50/70 px-2 py-1.5 dark:border-emerald-400/20 dark:bg-emerald-500/10"
 									>
-										<p className="text-[8px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+										<p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
 											Bonus Bulanan ({Math.round(monthlyPct)}%)
 										</p>
 										<div className="mt-1 space-y-1">
 											{monthlyBonusSummary.map((item) => (
-												<div key={`monthly-${item.memberName}`} className="text-[8px] leading-tight">
+												<div key={`monthly-${item.memberName}`} className="text-[10px] leading-tight">
 													<p className="font-black text-emerald-700 dark:text-emerald-300">
 														{item.memberName} - Bonus: {fmt(item.achievedBonus)}
 													</p>
@@ -1543,7 +1543,7 @@ function MenuPage() {
 								onChange={(e) => setSearchQuery(e.target.value)}
 								onFocus={() => setIsSearchFocused(true)}
 								onBlur={() => setIsSearchFocused(false)}
-								className="h-9 pl-9 pr-9 bg-muted/30 border-transparent focus:bg-background focus:border-primary transition-all text-sm"
+								className="h-10 pl-9 pr-9 bg-background border-border/60 focus:border-primary shadow-sm rounded-xl transition-all text-sm"
 							/>
 							{searchQuery && (
 								<button
@@ -1574,7 +1574,7 @@ function MenuPage() {
 									type="button"
 									onClick={() => handleCategorySelect(index)}
 									className={cn(
-										"shrink-0 rounded-lg py-1.5 px-3.5 text-[11px] font-bold uppercase tracking-wide whitespace-nowrap inline-flex items-center justify-center transition-all",
+										"shrink-0 rounded-lg py-2 px-4 text-xs font-bold uppercase tracking-wide whitespace-nowrap inline-flex items-center justify-center transition-all",
 										isActive
 											? "bg-primary text-primary-foreground shadow-md ring-1 ring-primary"
 											: "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50",
@@ -1626,7 +1626,7 @@ function MenuPage() {
 				<div className="pb-32">
 					<div
 						ref={productGridRef}
-						className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-2 p-3"
+						className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 p-3"
 					>
 						{isLoading ? (
 							// Loading skeletons
@@ -1673,7 +1673,7 @@ function MenuPage() {
 										)}
 									>
 										{/* Image */}
-										<div className="relative h-32 w-full bg-muted shrink-0">
+										<div className="relative h-28 sm:h-32 w-full bg-muted shrink-0">
 											<MenuImageWithSkeleton
 												src={product.image}
 												alt={product.name}
@@ -1701,17 +1701,17 @@ function MenuPage() {
 												</span>
 											)}
 
-											{/* Stock Badge Overlay */}
-											<span className={cn(
-												"absolute right-2 bottom-2 rounded px-1.5 py-0.5 font-bold text-[10px] shadow-sm transition-all",
-												(product.quantity ?? 0) <= 0 
-													? "bg-slate-500 text-white" 
-													: (product.quantity ?? 0) <= 2 
-														? "bg-rose-600 text-white animate-pulse" 
-														: "bg-blue-600 text-white"
-											)}>
-												{(product.quantity ?? 0) <= 0 ? "Habis" : `Stok: ${product.quantity}`}
-											</span>
+											{/* Stock Badge Overlay — only shown for critical stock */}
+											{(product.quantity ?? 0) <= 2 && (
+												<span className={cn(
+													"absolute right-2 bottom-2 rounded px-1.5 py-0.5 font-bold text-[10px] shadow-sm transition-all",
+													(product.quantity ?? 0) <= 0
+														? "bg-slate-500 text-white"
+														: "bg-rose-600 text-white animate-pulse"
+												)}>
+													{(product.quantity ?? 0) <= 0 ? "Habis" : `Stok: ${product.quantity}`}
+												</span>
+											)}
 
 											{/* Keyboard focus indicator */}
 											{isFocused && (
@@ -1784,16 +1784,16 @@ function MenuPage() {
 									type="button"
 								>
 									<div className={cn(
-										"flex h-7 w-7 items-center justify-center rounded-lg transition-all",
+										"flex h-9 w-9 items-center justify-center rounded-lg transition-all",
 										isActive ? "bg-primary/10" : "bg-transparent hover:bg-muted/50",
 										needsAttention && "bg-rose-50 text-rose-600 shadow-[0_0_10px_rgba(225,29,72,0.2)]"
 									)}>
-										<Icon className={cn("h-4 w-4", needsAttention && "animate-bounce")} />
+										<Icon className={cn("h-5 w-5", needsAttention && "animate-bounce")} />
 									</div>
-									<span className="text-[7px] font-bold uppercase tracking-tight leading-none text-center block sm:hidden">
+									<span className="text-[9px] font-bold uppercase tracking-tight leading-none text-center block sm:hidden">
 										{item.label.split(' ')[0]}
 									</span>
-									<span className="text-[8px] font-bold uppercase tracking-tight leading-none text-center hidden sm:block">
+									<span className="text-[10px] font-bold uppercase tracking-tight leading-none text-center hidden sm:block">
 										{item.label}
 									</span>
 								</button>
@@ -1817,7 +1817,7 @@ function MenuPage() {
 
 			{/* === CART BUTTON (Floating Mobile) === */}
 			{(totalItems > 0 || !customerInfo.isSubmitted) && (
-				<div className="fixed bottom-28 left-4 right-4 z-20 px-3 md:hidden">
+				<div className="fixed bottom-[5.5rem] left-4 right-4 z-20 px-3 md:hidden">
 					<button
 						type="button"
 						onClick={() => setIsCartOpen(true)}
