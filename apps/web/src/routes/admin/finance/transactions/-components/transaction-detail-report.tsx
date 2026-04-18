@@ -1,10 +1,10 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Wallet, Pencil, Trash2, Search, Filter, ArrowUpDown, Check, X } from "lucide-react";
+import { Wallet, Pencil, Trash2, Search, Filter, ArrowUpDown, Check, X, FileText, Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { DateRange } from "../../reports/-components/period-selector";
+import type { DateRange, PeriodOption } from "../../reports/-components/period-selector";
 import { formatCurrencyIDR } from "@/lib/export-utils";
 import { NewTransactionDialog } from "../../-components/new-transaction-dialog";
 import { toast } from "sonner";
@@ -32,9 +32,37 @@ interface Props {
 	range: DateRange;
 	viewMode: "transaction" | "item";
 	groupMode?: "flat" | "grouped";
+	period?: PeriodOption;
+	periodButtons?: Array<{ value: PeriodOption; label: string }>;
+	onPeriodChange?: (value: PeriodOption) => void;
+	onViewModeChange?: (mode: "transaction" | "item") => void;
+	onGroupModeChange?: (mode: "flat" | "grouped") => void;
+	onExportPdf?: () => void;
+	isExporting?: boolean;
+	onOpenAddTransaction?: () => void;
+	summary?: {
+		periodLabel: string;
+		totalIncome: number;
+		totalExpense: number;
+		netBalance: number;
+		count: number;
+	};
 }
 
-export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }: Props) {
+export function TransactionDetailReport({
+	range,
+	viewMode,
+	groupMode = "flat",
+	period,
+	periodButtons,
+	onPeriodChange,
+	onViewModeChange,
+	onGroupModeChange,
+	onExportPdf,
+	isExporting,
+	onOpenAddTransaction,
+	summary,
+}: Props) {
 	const [filterType, setFilterType] = useState<"income" | "expense" | undefined>(undefined);
 	const [filterCategory, setFilterCategory] = useState<string>("");
 	const [searchQuery, setSearchQuery] = useState("");
@@ -134,9 +162,38 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 		[filteredTransactions]
 	);
 	const displayedRows = useMemo(() => {
-		if (viewMode !== "item" || groupMode !== "grouped") {
+		if (groupMode !== "grouped") {
 			return filteredTransactions;
 		}
+		if (viewMode === "transaction") {
+			const groups = new Map<string, any[]>();
+			for (const row of filteredTransactions) {
+				const dayKey = format(new Date(row.date), "yyyy-MM-dd");
+				const bucket = groups.get(dayKey) || [];
+				bucket.push(row);
+				groups.set(dayKey, bucket);
+			}
+			const rows: any[] = [];
+			for (const [groupKey, members] of groups.entries()) {
+				const groupAmount = members.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+				rows.push({
+					rowType: "group_header",
+					rowKey: `group::${groupKey}`,
+					groupKey,
+					groupLabel: format(new Date(members[0].date), "dd MMM yyyy", { locale: localeID }),
+					groupTitle: "",
+					groupType: "date_group",
+					groupCount: members.length,
+					groupAmount,
+					isCollapsed: collapsedGroups.has(groupKey),
+				});
+				if (!collapsedGroups.has(groupKey)) {
+					rows.push(...members);
+				}
+			}
+			return rows;
+		}
+
 		const groups = new Map<string, any[]>();
 		for (const row of filteredTransactions) {
 			const key = String(row.receiptGroupId || row._id);
@@ -529,9 +586,131 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 	};
 
 	const columnCount = viewMode === "item" ? 17 : 16;
+	const withMergedHeader = Boolean(
+		period &&
+			periodButtons &&
+			onPeriodChange &&
+			onViewModeChange &&
+			onGroupModeChange &&
+			onExportPdf &&
+			onOpenAddTransaction &&
+			summary
+	);
 
 	return (
 		<div className="space-y-1 p-1">
+			{withMergedHeader && (
+			<div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+				<div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2">
+					<h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-600">Riwayat Transaksi</h2>
+					<div className="flex items-center gap-2">
+						<button
+							type="button"
+							onClick={onExportPdf}
+							disabled={isExporting}
+							className="inline-flex h-8 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+						>
+							<FileText className="h-4 w-4" />
+							PDF
+						</button>
+						<button
+							type="button"
+							onClick={onOpenAddTransaction}
+							className="inline-flex h-8 items-center gap-2 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white hover:bg-emerald-700"
+						>
+							<Plus className="h-4 w-4" />
+							Catat Transaksi
+						</button>
+					</div>
+				</div>
+
+				<div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2">
+					<div className="flex flex-wrap items-center gap-1">
+						{periodButtons!.map((item) => (
+							<button
+								key={item.value}
+								type="button"
+								onClick={() => onPeriodChange!(item.value)}
+								className={`rounded-sm border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+									period === item.value
+										? "border-emerald-500 bg-emerald-50 text-emerald-700"
+										: "border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
+								}`}
+							>
+								{item.label}
+							</button>
+						))}
+					</div>
+
+					<div className="flex items-center gap-1">
+						<button
+							type="button"
+							onClick={() => onViewModeChange!("transaction")}
+							className={`rounded-sm border px-2 py-1 text-[11px] ${
+								viewMode === "transaction"
+									? "border-blue-500 bg-blue-50 font-semibold text-blue-700"
+									: "border-slate-300 bg-white text-slate-600"
+							}`}
+						>
+							Transaksi
+						</button>
+						<button
+							type="button"
+							onClick={() => onViewModeChange!("item")}
+							className={`rounded-sm border px-2 py-1 text-[11px] ${
+								viewMode === "item"
+									? "border-blue-500 bg-blue-50 font-semibold text-blue-700"
+									: "border-slate-300 bg-white text-slate-600"
+							}`}
+						>
+							Item
+						</button>
+						<button
+							type="button"
+							onClick={() => onGroupModeChange!("grouped")}
+							className={`rounded-sm border px-2 py-1 text-[11px] ${
+								groupMode === "grouped"
+									? "border-slate-500 bg-slate-100 font-semibold text-slate-800"
+									: "border-slate-300 bg-white text-slate-600"
+							}`}
+						>
+							Grouped
+						</button>
+						<button
+							type="button"
+							onClick={() => onGroupModeChange!("flat")}
+							className={`rounded-sm border px-2 py-1 text-[11px] ${
+								groupMode === "flat"
+									? "border-slate-500 bg-slate-100 font-semibold text-slate-800"
+									: "border-slate-300 bg-white text-slate-600"
+							}`}
+						>
+							Flat
+						</button>
+					</div>
+				</div>
+
+				<div className="flex flex-wrap items-center gap-4 bg-slate-50 px-3 py-2 text-[11px]">
+					<span className="text-slate-500">Periode: {summary!.periodLabel}</span>
+					<span className="font-medium text-emerald-700">
+						Pemasukan Rp {summary!.totalIncome.toLocaleString("id-ID")}
+					</span>
+					<span className="font-medium text-orange-700">
+						Pengeluaran Rp {summary!.totalExpense.toLocaleString("id-ID")}
+					</span>
+					<span className="font-semibold text-slate-700">
+						Saldo Rp {Math.abs(summary!.netBalance).toLocaleString("id-ID")}
+					</span>
+					<span className="text-slate-600">Transaksi {summary!.count}</span>
+				</div>
+			</div>
+			)}
+
+			<div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+				<div className="border-b border-slate-200 px-3 py-2">
+					<h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Daftar Transaksi Detail</h3>
+				</div>
+
 			{/* Filters & Search */}
 			<div className="flex flex-col gap-1 rounded-md border border-slate-200 bg-white px-2 py-1.5">
 				<div className="flex flex-wrap items-center justify-between gap-2">
@@ -765,10 +944,13 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 														className="flex w-full items-center justify-between rounded border border-slate-200 bg-white px-2 py-1 text-left text-[10px]"
 													>
 														<span className="font-semibold text-foreground">
-															{t.isCollapsed ? ">" : "v"} {t.groupLabel} | {t.groupTitle}
+															{t.isCollapsed ? ">" : "v"} {t.groupLabel}
+															{t.groupType === "date_group"
+																? ` · ${t.groupCount} transaksi`
+																: ` | ${t.groupTitle}`}
 														</span>
-														<span className="text-muted-foreground">
-															{t.groupCount} baris | {formatCurrencyIDR(t.groupAmount)}
+														<span className={`${t.groupAmount >= 0 ? "text-emerald-700" : "text-red-700"} font-medium`}>
+															{t.groupAmount >= 0 ? "+" : "-"} Rp {Math.abs(t.groupAmount).toLocaleString("id-ID")}
 														</span>
 													</button>
 												</td>
@@ -1197,6 +1379,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 				}}
 				transaction={selectedTransaction}
 			/>
+			</div>
 		</div>
 	);
 }
