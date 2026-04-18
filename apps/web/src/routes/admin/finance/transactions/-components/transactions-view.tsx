@@ -1,7 +1,8 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useQuery } from "convex/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FileText, Plus } from "lucide-react";
+import { useTheme } from "next-themes";
 import { getRangeFromPeriod, type PeriodOption, type DateRange } from "../../reports/-components/period-selector";
 import { TransactionDetailReport } from "./transaction-detail-report";
 import { NewTransactionDialog } from "../../-components/new-transaction-dialog";
@@ -18,6 +19,7 @@ export function TransactionsView() {
 	const [exportMode] = useState<"transaction" | "item">("item");
 	const [isExporting, setIsExporting] = useState(false);
 	const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+	const { setTheme } = useTheme();
 
 	const settings = useQuery(api.site_settings.getSettings);
 	const storeName = settings?.storeName || "Toko";
@@ -83,89 +85,74 @@ export function TransactionsView() {
 		{ value: "custom", label: "Custom" },
 	];
 
+	useEffect(() => {
+		setTheme("light");
+	}, [setTheme]);
+
 	return (
-		<div className="space-y-2">
-			<div className="sticky top-0 z-20 overflow-hidden rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
-				<div className="flex flex-wrap items-center justify-between gap-2">
-					<h2 className="text-3xl font-semibold tracking-tight">Riwayat Transaksi</h2>
+		<div className="space-y-2 bg-white text-slate-900">
+			<div className="sticky top-0 z-20 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+				<div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2">
+					<h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-600">Riwayat Transaksi</h2>
 					<div className="flex items-center gap-2">
 						<button
 							type="button"
 							onClick={() => void handleExportPdf()}
 							disabled={!txData || isExporting}
-							className="inline-flex h-11 items-center gap-2 rounded-xl border border-input bg-background px-5 text-base font-semibold hover:bg-muted disabled:opacity-50"
+							className="inline-flex h-8 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
 						>
-							<FileText className="h-5 w-5" />
+							<FileText className="h-4 w-4" />
 							PDF
 						</button>
 						<button
 							type="button"
 							onClick={() => setIsAddDialogOpen(true)}
-							className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-600 px-5 text-base font-semibold text-white hover:bg-emerald-700"
+							className="inline-flex h-8 items-center gap-2 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white hover:bg-emerald-700"
 						>
-							<Plus className="h-5 w-5" />
+							<Plus className="h-4 w-4" />
 							Catat Transaksi
 						</button>
 					</div>
 				</div>
 
-				<div className="mt-4 flex flex-wrap items-center gap-2">
-					{periodButtons.map((item) => (
-						<button
-							key={item.value}
-							type="button"
-							onClick={() => handlePeriodChange(item.value, getRangeFromPeriod(item.value))}
-							className={`rounded-full border px-5 py-2 text-base font-medium transition-colors ${
-								period === item.value
-									? "border-emerald-500 bg-emerald-500/10 text-emerald-700"
-									: "border-input bg-background text-foreground hover:bg-muted"
-							}`}
-						>
-							{item.label}
-						</button>
-					))}
-				</div>
+				<div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2">
+					<div className="flex flex-wrap items-center gap-1">
+						{periodButtons.map((item) => (
+							<button
+								key={item.value}
+								type="button"
+								onClick={() => handlePeriodChange(item.value, getRangeFromPeriod(item.value))}
+								className={`rounded-sm border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+									period === item.value
+										? "border-emerald-500 bg-emerald-50 text-emerald-700"
+										: "border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
+								}`}
+							>
+								{item.label}
+							</button>
+						))}
+					</div>
 
-				<div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
-					<div className="rounded-xl border border-border bg-muted/30 px-5 py-4">
-						<p className="text-sm text-muted-foreground">Total Pemasukan</p>
-						<p className="mt-1 text-3xl font-semibold text-emerald-600">
-							Rp {txData?.totalIncome?.toLocaleString("id-ID") || "0"}
-						</p>
-					</div>
-					<div className="rounded-xl border border-border bg-muted/30 px-5 py-4">
-						<p className="text-sm text-muted-foreground">Total Pengeluaran</p>
-						<p className="mt-1 text-3xl font-semibold text-orange-600">
-							Rp {txData?.totalExpense?.toLocaleString("id-ID") || "0"}
-						</p>
-					</div>
-					<div className="rounded-xl border border-border bg-muted/30 px-5 py-4">
-						<p className="text-sm text-muted-foreground">Saldo Bersih</p>
-						<p className="mt-1 text-3xl font-semibold text-foreground">
-							Rp {Math.abs(txData?.netBalance || 0).toLocaleString("id-ID")}
-						</p>
-					</div>
-					<div className="rounded-xl border border-border bg-muted/30 px-5 py-4">
-						<p className="text-sm text-muted-foreground">Jumlah Transaksi</p>
-						<p className="mt-1 text-3xl font-semibold text-foreground">{txData?.count || 0}</p>
-					</div>
-				</div>
-
-				<div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-					<span>Periode aktif: {dateRange.label}</span>
-					<span>•</span>
 					<div className="flex items-center gap-1">
 						<button
 							type="button"
 							onClick={() => setViewMode("transaction")}
-							className={`rounded border px-2 py-1 ${viewMode === "transaction" ? "bg-primary/10 text-primary" : "bg-background"}`}
+							className={`rounded-sm border px-2 py-1 text-[11px] ${
+								viewMode === "transaction"
+									? "border-blue-500 bg-blue-50 font-semibold text-blue-700"
+									: "border-slate-300 bg-white text-slate-600"
+							}`}
 						>
 							Transaksi
 						</button>
 						<button
 							type="button"
 							onClick={() => setViewMode("item")}
-							className={`rounded border px-2 py-1 ${viewMode === "item" ? "bg-primary/10 text-primary" : "bg-background"}`}
+							className={`rounded-sm border px-2 py-1 text-[11px] ${
+								viewMode === "item"
+									? "border-blue-500 bg-blue-50 font-semibold text-blue-700"
+									: "border-slate-300 bg-white text-slate-600"
+							}`}
 						>
 							Item
 						</button>
@@ -174,14 +161,22 @@ export function TransactionsView() {
 								<button
 									type="button"
 									onClick={() => setGroupMode("grouped")}
-									className={`rounded border px-2 py-1 ${groupMode === "grouped" ? "bg-primary/10 text-primary" : "bg-background"}`}
+									className={`rounded-sm border px-2 py-1 text-[11px] ${
+										groupMode === "grouped"
+											? "border-slate-500 bg-slate-100 font-semibold text-slate-800"
+											: "border-slate-300 bg-white text-slate-600"
+									}`}
 								>
 									Grouped
 								</button>
 								<button
 									type="button"
 									onClick={() => setGroupMode("flat")}
-									className={`rounded border px-2 py-1 ${groupMode === "flat" ? "bg-primary/10 text-primary" : "bg-background"}`}
+									className={`rounded-sm border px-2 py-1 text-[11px] ${
+										groupMode === "flat"
+											? "border-slate-500 bg-slate-100 font-semibold text-slate-800"
+											: "border-slate-300 bg-white text-slate-600"
+									}`}
 								>
 									Flat
 								</button>
@@ -189,11 +184,25 @@ export function TransactionsView() {
 						)}
 					</div>
 				</div>
+
+				<div className="flex flex-wrap items-center gap-4 bg-slate-50 px-3 py-2 text-[11px]">
+					<span className="text-slate-500">Periode: {dateRange.label}</span>
+					<span className="font-medium text-emerald-700">
+						Pemasukan Rp {txData?.totalIncome?.toLocaleString("id-ID") || "0"}
+					</span>
+					<span className="font-medium text-orange-700">
+						Pengeluaran Rp {txData?.totalExpense?.toLocaleString("id-ID") || "0"}
+					</span>
+					<span className="font-semibold text-slate-700">
+						Saldo Rp {Math.abs(txData?.netBalance || 0).toLocaleString("id-ID")}
+					</span>
+					<span className="text-slate-600">Transaksi {txData?.count || 0}</span>
+				</div>
 			</div>
 
-			<div id="report-content" className="overflow-hidden rounded-xl border border-border bg-card">
-				<div className="border-b border-border px-4 py-2">
-					<h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Daftar Transaksi Detail</h3>
+			<div id="report-content" className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+				<div className="border-b border-slate-200 px-3 py-2">
+					<h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Daftar Transaksi Detail</h3>
 				</div>
 				<TransactionDetailReport range={dateRange} viewMode={viewMode} groupMode={groupMode} />
 			</div>
@@ -202,4 +211,3 @@ export function TransactionsView() {
 		</div>
 	);
 }
-
