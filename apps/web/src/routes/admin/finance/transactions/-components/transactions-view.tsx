@@ -2,7 +2,7 @@ import { api } from "@yumipos/backend/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useState } from "react";
 import { Download, Plus } from "lucide-react";
-import { PeriodSelector, getRangeFromPeriod, type PeriodOption, type DateRange } from "../../reports/-components/period-selector";
+import { getRangeFromPeriod, type PeriodOption, type DateRange } from "../../reports/-components/period-selector";
 import { TransactionDetailReport } from "./transaction-detail-report";
 import { NewTransactionDialog } from "../../-components/new-transaction-dialog";
 import {
@@ -87,39 +87,44 @@ export function TransactionsView() {
 	};
 
 	const canExport = !!txData;
+	const periodButtons: Array<{ value: PeriodOption; label: string }> = [
+		{ value: "today", label: "Hari Ini" },
+		{ value: "yesterday", label: "Kemarin" },
+		{ value: "this_week", label: "Minggu Ini" },
+		{ value: "this_month", label: "Bulan Ini" },
+		{ value: "last_month", label: "Bulan Lalu" },
+		{ value: "this_year", label: "Tahun Ini" },
+		{ value: "custom", label: "Custom" },
+	];
+	const summaryItems = [
+		{ label: "Pemasukan", value: txData ? `Rp ${txData.totalIncome.toLocaleString("id-ID")}` : "-", tone: "text-emerald-400" },
+		{ label: "Pengeluaran", value: txData ? `Rp ${txData.totalExpense.toLocaleString("id-ID")}` : "-", tone: "text-rose-400" },
+		{ label: "Saldo Bersih", value: txData ? `Rp ${Math.abs(txData.netBalance).toLocaleString("id-ID")}` : "-", tone: txData && txData.netBalance >= 0 ? "text-emerald-400" : "text-rose-400" },
+		{ label: viewMode === "item" ? "Baris" : "Transaksi", value: txData ? `${txData.count}` : "-", tone: "text-zinc-200" },
+	];
 
 	return (
 		<div className="space-y-2">
-			<div className="sticky top-0 z-30 flex flex-col gap-2 rounded-xl border border-border bg-card/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-card/85">
-				<div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-					<div>
-						<h2 className="font-semibold text-base tracking-tight">Riwayat Transaksi</h2>
-						<p className="text-[10px] text-muted-foreground">Tampilan ringkas untuk monitoring dan edit cepat.</p>
+			<div className="sticky top-0 z-30 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-200">
+				<div className="flex flex-col gap-2 border-zinc-800 border-b px-3 py-2 lg:flex-row lg:items-center lg:justify-between">
+					<div className="min-w-0">
+						<h2 className="font-semibold text-sm tracking-wide text-zinc-100">Riwayat Transaksi</h2>
+						<p className="text-[10px] text-zinc-400">Data-grid finance padat untuk monitoring dan edit cepat.</p>
 					</div>
-					<div className="flex flex-wrap items-center gap-2">
-						<button
-							type="button"
-							onClick={() => setIsAddDialogOpen(true)}
-							className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[10px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-						>
-							<Plus className="h-3.5 w-3.5" />
-							Catat Transaksi
-						</button>
-						<div className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/30 p-1">
+					<div className="flex flex-wrap items-center gap-1">
+						<div className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-900 px-1 py-1">
 							<select
 								value={exportMode}
 								onChange={(e) => setExportMode((e.target.value as "transaction" | "item") || "transaction")}
-								className="h-6 rounded border border-input bg-background px-2 text-[10px]"
+								className="h-7 rounded border border-zinc-700 bg-zinc-950 px-2 text-[11px] text-zinc-200"
 							>
-								<option value="transaction">Per Transaksi</option>
-								<option value="item">Per Item</option>
+								<option value="transaction">Per transaksi</option>
+								<option value="item">Per item</option>
 							</select>
 							<select
 								value={exportFormat}
-								onChange={(e) =>
-									setExportFormat((e.target.value as "pdf" | "excel" | "csv" | "print") || "excel")
-								}
-								className="h-6 rounded border border-input bg-background px-2 text-[10px]"
+								onChange={(e) => setExportFormat((e.target.value as "pdf" | "excel" | "csv" | "print") || "excel")}
+								className="h-7 rounded border border-zinc-700 bg-zinc-950 px-2 text-[11px] text-zinc-200"
 							>
 								<option value="excel">Excel</option>
 								<option value="pdf">PDF</option>
@@ -130,56 +135,70 @@ export function TransactionsView() {
 								type="button"
 								onClick={() => void handleExportAction()}
 								disabled={!canExport || isExporting}
-								className="inline-flex h-6 items-center gap-1 rounded bg-primary px-2 text-[10px] font-semibold text-primary-foreground disabled:opacity-40"
+								className="inline-flex h-7 items-center gap-1 rounded border border-zinc-600 bg-zinc-100 px-2 text-[11px] font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 disabled:opacity-50"
 							>
-								<Download className="h-3 w-3" />
+								<Download className="h-3.5 w-3.5" />
 								Export
 							</button>
 						</div>
+						<button
+							type="button"
+							onClick={() => setIsAddDialogOpen(true)}
+							className="inline-flex h-7 items-center gap-1 rounded border border-zinc-200 bg-zinc-100 px-2.5 text-[11px] font-semibold text-zinc-900 transition-colors hover:bg-zinc-200"
+						>
+							<Plus className="h-3.5 w-3.5" />
+							Catat
+						</button>
 					</div>
 				</div>
 
-				<div className="flex flex-col gap-2 rounded-lg border border-border bg-background px-2.5 py-2 lg:flex-row lg:items-center lg:justify-between">
-					<div className="min-w-0 flex-1">
-						<PeriodSelector value={period} onChange={handlePeriodChange} />
-						<p className="mt-1 text-[10px] text-muted-foreground">
-							Periode aktif: <span className="font-semibold text-foreground">{dateRange.label}</span>
-						</p>
-					</div>
-					<div className="flex flex-wrap items-center gap-2">
-						<div className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
-							<button
-								type="button"
-								onClick={() => setViewMode("transaction")}
-								className={`rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
-									viewMode === "transaction"
-										? "bg-background text-foreground shadow-sm"
-										: "text-muted-foreground hover:bg-muted"
-								}`}
-							>
-								Per Transaksi
-							</button>
-							<button
-								type="button"
-								onClick={() => setViewMode("item")}
-								className={`rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
-									viewMode === "item"
-										? "bg-background text-foreground shadow-sm"
-										: "text-muted-foreground hover:bg-muted"
-								}`}
-							>
-								Per Item
-							</button>
-						</div>
+				<div className="flex flex-wrap items-center gap-1 border-zinc-800 border-b px-3 py-1.5">
+					{periodButtons.map((item) => (
+						<button
+							key={item.value}
+							type="button"
+							onClick={() => handlePeriodChange(item.value, getRangeFromPeriod(item.value))}
+							className={`rounded px-2.5 py-1 text-[11px] transition-colors ${
+								period === item.value
+									? "border border-zinc-500 bg-zinc-700 text-zinc-100"
+									: "border border-transparent text-zinc-400 hover:border-zinc-700 hover:bg-zinc-900 hover:text-zinc-100"
+							}`}
+						>
+							{item.label}
+						</button>
+					))}
+					<div className="ml-auto flex flex-wrap items-center gap-1">
+						<button
+							type="button"
+							onClick={() => setViewMode("transaction")}
+							className={`rounded border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+								viewMode === "transaction"
+									? "border-zinc-500 bg-zinc-700 text-zinc-100"
+									: "border-zinc-700 text-zinc-400 hover:text-zinc-100"
+							}`}
+						>
+							Transaksi
+						</button>
+						<button
+							type="button"
+							onClick={() => setViewMode("item")}
+							className={`rounded border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+								viewMode === "item"
+									? "border-zinc-500 bg-zinc-700 text-zinc-100"
+									: "border-zinc-700 text-zinc-400 hover:text-zinc-100"
+							}`}
+						>
+							Item
+						</button>
 						{viewMode === "item" && (
-							<div className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
+							<>
 								<button
 									type="button"
 									onClick={() => setGroupMode("grouped")}
-									className={`rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
+									className={`rounded border px-2 py-1 text-[10px] ${
 										groupMode === "grouped"
-											? "bg-background text-foreground shadow-sm"
-											: "text-muted-foreground hover:bg-muted"
+											? "border-zinc-500 bg-zinc-700 text-zinc-100"
+											: "border-zinc-700 text-zinc-400 hover:text-zinc-100"
 									}`}
 								>
 									Grouped
@@ -187,27 +206,37 @@ export function TransactionsView() {
 								<button
 									type="button"
 									onClick={() => setGroupMode("flat")}
-									className={`rounded-md px-2 py-1 text-[10px] font-semibold transition-colors ${
+									className={`rounded border px-2 py-1 text-[10px] ${
 										groupMode === "flat"
-											? "bg-background text-foreground shadow-sm"
-											: "text-muted-foreground hover:bg-muted"
+											? "border-zinc-500 bg-zinc-700 text-zinc-100"
+											: "border-zinc-700 text-zinc-400 hover:text-zinc-100"
 									}`}
 								>
 									Flat
 								</button>
-							</div>
+							</>
 						)}
+					</div>
+				</div>
+
+				<div className="flex flex-wrap items-center gap-3 overflow-x-auto px-3 py-1.5">
+					{summaryItems.map((item) => (
+						<div key={item.label} className="flex items-center gap-1.5 whitespace-nowrap border-zinc-800 border-r pr-3 text-[11px] last:border-r-0">
+							<span className="text-zinc-500">{item.label}</span>
+							<span className={`font-mono font-semibold ${item.tone}`}>{item.value}</span>
+						</div>
+					))}
+					<div className="ml-auto text-[10px] text-zinc-500">
+						Periode aktif: <span className="font-semibold text-zinc-300">{dateRange.label}</span>
 					</div>
 				</div>
 			</div>
 
-			<div id="report-content" className="overflow-hidden rounded-xl border border-border bg-card">
-				<div className="border-border border-b bg-muted/20 px-3 py-2">
-					<h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Daftar Transaksi Detail</h3>
+			<div id="report-content" className="overflow-hidden rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-200">
+				<div className="border-zinc-800 border-b px-3 py-1.5">
+					<h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Daftar Transaksi Detail</h3>
 				</div>
-				<div className="p-0">
-					<TransactionDetailReport range={dateRange} viewMode={viewMode} groupMode={groupMode} />
-				</div>
+				<TransactionDetailReport range={dateRange} viewMode={viewMode} groupMode={groupMode} />
 			</div>
 
 			<NewTransactionDialog isOpen={isAddDialogOpen} onClose={() => setIsAddDialogOpen(false)} />
