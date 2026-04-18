@@ -14,7 +14,7 @@ export function TransactionsView() {
 	const [period, setPeriod] = useState<PeriodOption>("this_month");
 	const [dateRange, setDateRange] = useState<DateRange>(getRangeFromPeriod("this_month"));
 	const [viewMode, setViewMode] = useState<"transaction" | "item">("item");
-	const [groupMode, setGroupMode] = useState<"flat" | "grouped">("grouped");
+	const [groupMode, setGroupMode] = useState<"flat" | "grouped">("flat");
 	const [exportMode] = useState<"transaction" | "item">("item");
 	const [isExporting, setIsExporting] = useState(false);
 	const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
