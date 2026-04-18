@@ -165,53 +165,26 @@ export function TransactionDetailReport({
 		if (groupMode !== "grouped") {
 			return filteredTransactions;
 		}
-		if (viewMode === "transaction") {
-			const groups = new Map<string, any[]>();
-			for (const row of filteredTransactions) {
-				const dayKey = format(new Date(row.date), "yyyy-MM-dd");
-				const bucket = groups.get(dayKey) || [];
-				bucket.push(row);
-				groups.set(dayKey, bucket);
-			}
-			const rows: any[] = [];
-			for (const [groupKey, members] of groups.entries()) {
-				const groupAmount = members.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-				rows.push({
-					rowType: "group_header",
-					rowKey: `group::${groupKey}`,
-					groupKey,
-					groupLabel: format(new Date(members[0].date), "dd MMM yyyy", { locale: localeID }),
-					groupTitle: "",
-					groupType: "date_group",
-					groupCount: members.length,
-					groupAmount,
-					isCollapsed: collapsedGroups.has(groupKey),
-				});
-				if (!collapsedGroups.has(groupKey)) {
-					rows.push(...members);
-				}
-			}
-			return rows;
-		}
 
+		// Grouped mode is always grouped by day.
 		const groups = new Map<string, any[]>();
 		for (const row of filteredTransactions) {
-			const key = String(row.receiptGroupId || row._id);
-			const bucket = groups.get(key) || [];
+			const dayKey = format(new Date(row.date), "yyyy-MM-dd");
+			const bucket = groups.get(dayKey) || [];
 			bucket.push(row);
-			groups.set(key, bucket);
+			groups.set(dayKey, bucket);
 		}
+
 		const rows: any[] = [];
 		for (const [groupKey, members] of groups.entries()) {
-			const head = members[0];
 			const groupAmount = members.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 			rows.push({
 				rowType: "group_header",
 				rowKey: `group::${groupKey}`,
 				groupKey,
-				groupLabel: head?.receiptGroupLabel || "GRUP",
-				groupTitle: head?.displayTitle || head?.merchant || "-",
-				groupType: head?.type,
+				groupLabel: format(new Date(members[0].date), "dd MMM yyyy", { locale: localeID }),
+				groupTitle: "",
+				groupType: "date_group",
 				groupCount: members.length,
 				groupAmount,
 				isCollapsed: collapsedGroups.has(groupKey),
@@ -221,7 +194,7 @@ export function TransactionDetailReport({
 			}
 		}
 		return rows;
-	}, [filteredTransactions, viewMode, groupMode, collapsedGroups]);
+	}, [filteredTransactions, groupMode, collapsedGroups]);
 	const virtualized = useMemo(() => {
 		const shouldVirtualize = displayedRows.length > 120;
 		if (!shouldVirtualize) {
