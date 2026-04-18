@@ -739,10 +739,29 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 					onScroll={(e) => setScrollTop((e.target as HTMLDivElement).scrollTop)}
 					className="max-h-[74vh] overflow-auto"
 				>
-					<table className="w-full min-w-[1700px] table-fixed text-left text-[10px]">
+					<table className="w-full min-w-[1180px] table-auto text-left text-[10px]">
+						<colgroup>
+							<col style={{ width: "36px" }} />
+							<col style={{ width: "48px" }} />
+							<col style={{ width: "96px" }} />
+							<col style={{ width: "86px" }} />
+							<col style={{ width: "92px" }} />
+							<col style={{ width: "112px" }} />
+							{viewMode === "item" && <col style={{ width: "120px" }} />}
+							<col />
+							<col />
+							<col style={{ width: "148px" }} />
+							<col style={{ width: "112px" }} />
+							<col style={{ width: "84px" }} />
+							<col style={{ width: "110px" }} />
+							<col style={{ width: "190px" }} />
+							<col style={{ width: "170px" }} />
+							<col style={{ width: "120px" }} />
+							<col style={{ width: "68px" }} />
+						</colgroup>
 						<thead className="sticky top-0 z-10 bg-muted/70 text-[9px] font-bold uppercase tracking-wider text-muted-foreground backdrop-blur">
 							<tr>
-								<th className="sticky left-0 z-20 border-border/60 border-r bg-muted/70 px-2 py-1.5">
+								<th className="sticky left-0 z-20 w-9 border-border/60 border-r bg-muted/70 px-1.5 py-1.5">
 									<div className="flex items-center justify-center">
 										<Checkbox
 											checked={allVisibleSelected}
@@ -753,22 +772,22 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 										/>
 									</div>
 								</th>
-								<th className="sticky left-[40px] z-20 border-border/60 border-r bg-muted/70 px-2 py-1.5 text-center">No</th>
-								<th className="px-2 py-1.5">Tanggal</th>
-								<th className="px-2 py-1.5">Tipe</th>
-								<th className="px-2 py-1.5">Shift</th>
-								<th className="px-2 py-1.5">Sumber</th>
-								{viewMode === "item" && <th className="px-2 py-1.5">Grup Referensi</th>}
+								<th className="sticky left-[36px] z-20 w-12 border-border/60 border-r bg-muted/70 px-1.5 py-1.5 text-center">No</th>
+								<th className="w-24 px-2 py-1.5">Tanggal</th>
+								<th className="w-[86px] px-2 py-1.5">Tipe</th>
+								<th className="w-[92px] px-2 py-1.5">Shift</th>
+								<th className="w-28 px-2 py-1.5">Sumber</th>
+								{viewMode === "item" && <th className="w-[120px] px-2 py-1.5">Grup Referensi</th>}
 								<th className="px-2 py-1.5">Merchant</th>
 								<th className="px-2 py-1.5">Deskripsi</th>
-								<th className="px-2 py-1.5">Referensi</th>
-								<th className="px-2 py-1.5">Kategori</th>
-								<th className="px-2 py-1.5">Metode</th>
-								<th className="px-2 py-1.5">Status</th>
-								<th className="px-2 py-1.5">Detail</th>
-								<th className="px-2 py-1.5">Audit</th>
-								<th className="px-2 py-1.5 text-right">Nominal</th>
-								<th className="px-2 py-1.5 text-center">Aksi</th>
+								<th className="w-[148px] px-2 py-1.5">Referensi</th>
+								<th className="w-28 px-2 py-1.5">Kategori</th>
+								<th className="w-[84px] px-2 py-1.5">Metode</th>
+								<th className="w-[110px] px-2 py-1.5">Status</th>
+								<th className="w-[190px] px-2 py-1.5">Detail</th>
+								<th className="w-[170px] px-2 py-1.5">Audit</th>
+								<th className="w-[120px] px-2 py-1.5 text-right">Nominal</th>
+								<th className="w-[68px] px-2 py-1.5 text-center">Aksi</th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-border bg-card">
@@ -835,7 +854,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 												handleEdit(t);
 											}}
 										>
-											<td className="sticky left-0 z-10 border-border/60 border-r bg-card px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
+											<td className="sticky left-0 z-10 w-9 border-border/60 border-r bg-card px-1.5 py-1.5" onClick={(e) => e.stopPropagation()}>
 												<div className="flex items-center justify-center">
 													<Checkbox
 														checked={selectedRowKeys.has(rowKey)}
@@ -845,13 +864,13 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 													/>
 												</div>
 											</td>
-											<td className="sticky left-[40px] z-10 border-border/60 border-r bg-card px-2 py-1.5 text-center">
+											<td className="sticky left-[36px] z-10 w-[52px] border-border/60 border-r bg-card px-1.5 py-1.5 text-center">
 												<span className="font-mono text-[10px] text-muted-foreground">
 													{rowNumberByKey.get(rowKey) || "-"}
 												</span>
 											</td>
-											<td className="px-2 py-1.5">
-												<div className="flex min-w-[88px] flex-col leading-tight">
+											<td className="px-2 py-1.5 whitespace-nowrap">
+												<div className="flex flex-col leading-tight">
 													<span className="font-medium text-foreground text-[11px]">
 														{format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}
 													</span>
@@ -860,7 +879,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 													</span>
 												</div>
 											</td>
-											<td className="px-2 py-1.5">
+											<td className="px-2 py-1.5 whitespace-nowrap">
 												<span className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
 													t.type === "income"
 														? "border-emerald-200 bg-emerald-50 text-emerald-700"
@@ -869,7 +888,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 													{t.type === "income" ? "Pemasukan" : "Pengeluaran"}
 												</span>
 											</td>
-											<td className="px-2 py-1.5">
+											<td className="px-2 py-1.5 whitespace-nowrap">
 												{shiftName !== "-" ? (
 													<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-[9px] font-bold text-primary uppercase">
 														{shiftName}
@@ -878,8 +897,8 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 													<span className="text-[11px] text-muted-foreground">-</span>
 												)}
 											</td>
-											<td className="px-2 py-1.5">
-												<div className="flex min-w-[112px] flex-col gap-1">
+											<td className="px-2 py-1.5 whitespace-nowrap">
+												<div className="flex flex-col gap-1">
 													{sourceBadge(t.sourceLabel, t.sourceType)}
 													{t.inputMode && (
 														<span className="truncate text-[9px] uppercase tracking-wider text-muted-foreground">
@@ -891,7 +910,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 											{viewMode === "item" && (
 												<td className="px-2 py-1.5">
 													{t.rowType === "receipt_item" ? (
-														<div className="flex min-w-[116px] flex-col gap-1">
+														<div className="flex flex-col gap-1">
 															<span className="inline-flex rounded-md border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-700">
 																{t.receiptGroupLabel || "Struk"}
 															</span>
@@ -900,7 +919,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 															</span>
 														</div>
 													) : t.rowType === "order_item" ? (
-														<div className="flex min-w-[116px] flex-col gap-1">
+														<div className="flex flex-col gap-1">
 															<span className="inline-flex rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
 																{t.receiptGroupLabel || "Order"}
 															</span>
@@ -909,7 +928,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 															</span>
 														</div>
 													) : t.rowType === "booking_item" ? (
-														<div className="flex min-w-[116px] flex-col gap-1">
+														<div className="flex flex-col gap-1">
 															<span className="inline-flex rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-700">
 																{t.receiptGroupLabel || "Booking"}
 															</span>
@@ -923,14 +942,14 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 												</td>
 											)}
 											<td className="px-2 py-1.5">
-												<div className="min-w-[116px] max-w-[148px]">
+												<div className="max-w-[160px]">
 													<span className="block truncate text-xs font-semibold text-foreground" title={t.displayTitle || t.merchant || "Umum"}>
 														{t.displayTitle || t.merchant || "Umum"}
 													</span>
 												</div>
 											</td>
 											<td className="px-2 py-1.5">
-												<div className="min-w-[180px] max-w-[240px] space-y-1">
+												<div className="max-w-[220px] space-y-1">
 													<div className="truncate text-[11px] text-muted-foreground" title={t.displaySummary || t.description || "-"}>
 														{t.displaySummary || t.description || "-"}
 													</div>
@@ -942,7 +961,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 												</div>
 											</td>
 											<td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
-												<div className="flex min-w-[122px] flex-col gap-0.5">
+												<div className="max-w-[148px] flex flex-col gap-0.5">
 													<span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
 														{t.referenceLabel || "Tanpa referensi"}
 													</span>
@@ -966,7 +985,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 													)}
 											</div>
 										</td>
-										<td className="px-2 py-1.5">
+										<td className="px-2 py-1.5 whitespace-nowrap">
 											{categoryBadge(t.category, t.type)}
 										</td>
 										<td className="px-2 py-1.5">
@@ -975,7 +994,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 											</span>
 										</td>
 										<td className="px-2 py-1.5">
-											<div className="flex min-w-[96px] flex-col gap-1">
+											<div className="flex flex-col gap-1">
 												<span className={`inline-flex w-fit rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
 												t.status === "completed"
 													? "border-emerald-200 bg-emerald-50 text-emerald-700"
@@ -996,7 +1015,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 											{t.rowType === "receipt_item" &&
 											editingItemRowKey === rowKey &&
 											itemEditDraft ? (
-												<div className="grid min-w-[220px] max-w-[260px] grid-cols-3 gap-2">
+												<div className="grid grid-cols-3 gap-2">
 													<div className="space-y-1">
 														<span className="block text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
 															Qty
@@ -1056,7 +1075,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 													</div>
 												</div>
 											) : (
-												<div className="flex min-w-[220px] max-w-[260px] flex-wrap gap-1">
+												<div className="flex flex-wrap gap-1">
 														{Array.isArray(t.detailItems) && t.detailItems.length > 0 ? (
 															<>
 																{t.detailItems.slice(0, Array.isArray(t.metadata?.scanItems) && t.metadata.scanItems.length > 0 ? 6 : 4).map((detail: { label: string; value: string }, idx: number) => (
@@ -1082,7 +1101,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 											)}
 										</td>
 										<td className="px-2 py-1.5">
-											<div className="flex min-w-[180px] max-w-[220px] flex-wrap gap-1">
+											<div className="flex max-w-[170px] flex-wrap gap-1">
 												{t.receiptNumber && (
 													<span className="inline-flex rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] text-blue-700">
 														No: {t.receiptNumber}
@@ -1111,7 +1130,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 													))}
 											</div>
 										</td>
-										<td className="px-2 py-1.5 text-right">
+										<td className="px-2 py-1.5 text-right whitespace-nowrap">
 											<span className={`font-bold text-xs whitespace-nowrap ${t.type === "income" ? "text-green-600" : "text-red-600"}`}>
 												{t.type === "income" ? "+" : "-"}{" "}
 												{formatCurrencyIDR(
@@ -1240,6 +1259,8 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 		</div>
 	);
 }
+
+
 
 
 
