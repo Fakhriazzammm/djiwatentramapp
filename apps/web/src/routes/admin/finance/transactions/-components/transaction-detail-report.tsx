@@ -1,7 +1,7 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Wallet, Pencil, Trash2, Search, Filter, ArrowUpDown, Check, X, FileText, Plus } from "lucide-react";
+import { Wallet, Pencil, Trash2, Search, Filter, ArrowUpDown, FileText, Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { DateRange, PeriodOption } from "../../reports/-components/period-selector";
@@ -71,6 +71,7 @@ export function TransactionDetailReport({
 	const [sortBy, setSortBy] = useState<"date" | "amount">("date");
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 	
+	const [showFilters, setShowFilters] = useState(false);
 	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 	const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
 	const [selectedRowKeys, setSelectedRowKeys] = useState<Set<string>>(new Set());
@@ -407,22 +408,6 @@ export function TransactionDetailReport({
 		}
 	}, [page, pageSize, viewMode, groupMode, searchQuery, sortBy, sortOrder]);
 
-	const categoryBadge = (category: string, type: string) => {
-		const colorMap: Record<string, string> = {
-			makanan_minuman: "border-orange-200 bg-orange-50 text-orange-700",
-			belanja_stok: "border-blue-200 bg-blue-50 text-blue-700",
-			peralatan_kantor: "border-purple-200 bg-purple-50 text-purple-700",
-			utilitas_listrik_air: "border-yellow-200 bg-yellow-50 text-yellow-700",
-			transportasi: "border-cyan-200 bg-cyan-50 text-cyan-700",
-			Penjualan: "border-green-200 bg-green-50 text-green-700",
-		};
-		const color = colorMap[category] || "border-gray-200 bg-gray-50 text-gray-700";
-		return (
-			<span className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${color}`}>
-				{category.replace(/_/g, " ")}
-			</span>
-		);
-	};
 
 	const handleDelete = async (transaction: any) => {
 		if (viewMode === "item" && transaction.rowType === "receipt_item") {
@@ -469,20 +454,6 @@ export function TransactionDetailReport({
 		}
 	};
 
-	const sourceBadge = (sourceLabel?: string, sourceType?: string) => {
-		const colorMap: Record<string, string> = {
-			ai_bulk_finance: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700",
-			ai_tool: "border-violet-200 bg-violet-50 text-violet-700",
-			ai_receipt_scan: "border-sky-200 bg-sky-50 text-sky-700",
-			manual: "border-slate-200 bg-slate-50 text-slate-700",
-		};
-		const color = colorMap[sourceType || "manual"] || "border-slate-200 bg-slate-50 text-slate-700";
-		return (
-			<span className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${color}`}>
-				{sourceLabel || "Manual"}
-			</span>
-		);
-	};
 
 	const handleToggleRow = (rowKey: string) => {
 		setSelectedRowKeys((prev) => {
@@ -709,7 +680,7 @@ export function TransactionDetailReport({
 		return null;
 	};
 
-	const columnCount = viewMode === "item" ? 17 : 16;
+	const columnCount = 7;
 	const withMergedHeader = Boolean(
 		period &&
 			periodButtons &&
@@ -721,316 +692,335 @@ export function TransactionDetailReport({
 			summary
 	);
 
+	const hasActiveFilters = !!(searchQuery || minAmount || maxAmount || filterCategory);
+
 	return (
 		<div className="space-y-1 p-1">
+			{/* ── Compact Summary + Period Bar ─────────────────────────────── */}
 			{withMergedHeader && (
-			<div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-				<div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 px-3 py-2">
-					<h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-700">Riwayat Transaksi</h2>
-					<div className="flex items-center gap-2">
-						<button
-							type="button"
-							onClick={onExportPdf}
-							disabled={isExporting}
-							className="inline-flex h-8 items-center gap-2 rounded-md border border-slate-300 bg-slate-50 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-						>
-							<FileText className="h-4 w-4" />
-							PDF
-						</button>
-						<button
-							type="button"
-							onClick={onOpenAddTransaction}
-							className="inline-flex h-8 items-center gap-2 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white hover:bg-emerald-700"
-						>
-							<Plus className="h-4 w-4" />
-							Catat Transaksi
-						</button>
-					</div>
-				</div>
-
-				<div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 px-3 py-2">
-					<div className="flex flex-wrap items-center gap-1">
-						{periodButtons!.map((item) => (
+				<div className="sticky top-0 z-30 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+					{/* Row 1: title + view controls + actions */}
+					<div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 px-3 py-2">
+						<div className="flex items-center gap-3">
+							<h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-700">Transaksi</h2>
+							<div className="flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 p-0.5">
+								<button
+									type="button"
+									onClick={() => onViewModeChange!("transaction")}
+									className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
+										viewMode === "transaction"
+											? "bg-blue-600 text-white"
+											: "text-slate-600 hover:bg-slate-100"
+									}`}
+								>
+									Transaksi
+								</button>
+								<button
+									type="button"
+									onClick={() => onViewModeChange!("item")}
+									className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
+										viewMode === "item"
+											? "bg-blue-600 text-white"
+											: "text-slate-600 hover:bg-slate-100"
+									}`}
+								>
+									Item
+								</button>
+							</div>
+							<div className="flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 p-0.5">
+								<button
+									type="button"
+									onClick={() => onGroupModeChange!("flat")}
+									className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
+										groupMode === "flat"
+											? "bg-slate-700 text-white"
+											: "text-slate-600 hover:bg-slate-100"
+									}`}
+								>
+									Flat
+								</button>
+								<button
+									type="button"
+									onClick={() => onGroupModeChange!("grouped")}
+									className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
+										groupMode === "grouped"
+											? "bg-slate-700 text-white"
+											: "text-slate-600 hover:bg-slate-100"
+									}`}
+								>
+									Grouped
+								</button>
+							</div>
+						</div>
+						<div className="flex items-center gap-2">
 							<button
-								key={item.value}
 								type="button"
-								onClick={() => onPeriodChange!(item.value)}
-								className={`rounded-sm border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-									period === item.value
-										? "border-emerald-400 bg-emerald-50 text-emerald-700"
-										: "border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100"
-								}`}
+								onClick={onExportPdf}
+								disabled={isExporting}
+								className="inline-flex h-7 items-center gap-1.5 rounded-md border border-slate-300 bg-slate-50 px-2.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
 							>
-								{item.label}
+								<FileText className="h-3.5 w-3.5" />
+								PDF
 							</button>
-						))}
+							<button
+								type="button"
+								onClick={onOpenAddTransaction}
+								className="inline-flex h-7 items-center gap-1.5 rounded-md bg-emerald-600 px-2.5 text-[11px] font-semibold text-white hover:bg-emerald-700"
+							>
+								<Plus className="h-3.5 w-3.5" />
+								Catat
+							</button>
+						</div>
 					</div>
 
-					<div className="flex items-center gap-1">
-						<button
-							type="button"
-							onClick={() => onViewModeChange!("transaction")}
-							className={`rounded-sm border px-2 py-1 text-[11px] ${
-								viewMode === "transaction"
-									? "border-blue-400 bg-blue-50 font-semibold text-blue-700"
-									: "border-slate-300 bg-slate-50 text-slate-600"
-							}`}
-						>
-							Transaksi
-						</button>
-						<button
-							type="button"
-							onClick={() => onViewModeChange!("item")}
-							className={`rounded-sm border px-2 py-1 text-[11px] ${
-								viewMode === "item"
-									? "border-blue-400 bg-blue-50 font-semibold text-blue-700"
-									: "border-slate-300 bg-slate-50 text-slate-600"
-							}`}
-						>
-							Item
-						</button>
-						<button
-							type="button"
-							onClick={() => onGroupModeChange!("grouped")}
-							className={`rounded-sm border px-2 py-1 text-[11px] ${
-								groupMode === "grouped"
-									? "border-slate-500 bg-slate-100 font-semibold text-slate-900"
-									: "border-slate-300 bg-slate-50 text-slate-600"
-							}`}
-						>
-							Grouped
-						</button>
-						<button
-							type="button"
-							onClick={() => onGroupModeChange!("flat")}
-							className={`rounded-sm border px-2 py-1 text-[11px] ${
-								groupMode === "flat"
-									? "border-slate-500 bg-slate-100 font-semibold text-slate-900"
-									: "border-slate-300 bg-slate-50 text-slate-600"
-							}`}
-						>
-							Flat
-						</button>
+					{/* Row 2: period buttons + summary stats */}
+					<div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+						<div className="flex flex-wrap items-center gap-1">
+							{periodButtons!.map((item) => (
+								<button
+									key={item.value}
+									type="button"
+									onClick={() => onPeriodChange!(item.value)}
+									className={`rounded-sm border px-2.5 py-1 text-[10px] font-medium transition-colors ${
+										period === item.value
+											? "border-emerald-500 bg-emerald-50 text-emerald-700"
+											: "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+									}`}
+								>
+									{item.label}
+								</button>
+							))}
+						</div>
+						<div className="flex items-center divide-x divide-slate-200 text-[11px]">
+							<span className="pr-3 text-slate-500">{summary!.periodLabel}</span>
+							<span className="px-3 font-semibold text-emerald-600">
+								↑ {formatCurrencyIDR(summary!.totalIncome)}
+							</span>
+							<span className="px-3 font-semibold text-orange-500">
+								↓ {formatCurrencyIDR(summary!.totalExpense)}
+							</span>
+							<span className={`pl-3 font-bold ${summary!.netBalance >= 0 ? "text-slate-900" : "text-red-600"}`}>
+								= {summary!.netBalance < 0 ? "-" : ""}{formatCurrencyIDR(Math.abs(summary!.netBalance))}
+							</span>
+							<span className="pl-3 text-slate-500">{summary!.count} tx</span>
+						</div>
 					</div>
 				</div>
-
-				<div className="flex flex-wrap items-center gap-4 bg-slate-50 px-3 py-2 text-[11px]">
-					<span className="text-slate-500">Periode: {summary!.periodLabel}</span>
-					<span className="font-medium text-emerald-400">
-						Pemasukan Rp {summary!.totalIncome.toLocaleString("id-ID")}
-					</span>
-					<span className="font-medium text-orange-400">
-						Pengeluaran Rp {summary!.totalExpense.toLocaleString("id-ID")}
-					</span>
-					<span className="font-semibold text-slate-900">
-						Saldo Rp {Math.abs(summary!.netBalance).toLocaleString("id-ID")}
-					</span>
-					<span className="text-slate-600">Transaksi {summary!.count}</span>
-				</div>
-			</div>
 			)}
 
 			<div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-				<div className="border-b border-slate-200/80 px-3 py-2">
-					<h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">Daftar Transaksi Detail</h3>
-				</div>
 
-			{/* Filters & Search */}
-			<div className="flex flex-col gap-1 rounded-md border border-slate-200/80 bg-white px-2 py-1.5">
-				<div className="flex flex-wrap items-center justify-between gap-2">
-					<div className="flex gap-1 rounded-md border border-slate-200/80 bg-slate-50 p-1">
-						{(["all", "income", "expense"] as const).map((t) => (
-							<button
-								key={t}
-							type="button"
-							onClick={() => setFilterType(t === "all" ? undefined : t)}
-							className={`rounded px-2 py-1 text-[10px] font-semibold transition-all ${
-								(t === "all" && !filterType) || filterType === t
-									? t === "income"
-										? "bg-green-600 text-white"
-										: t === "expense"
-											? "bg-red-600 text-white"
-											: "bg-primary/10 text-primary"
-									: "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-							}`}
-						>
-							{t === "all" ? "Semua" : t === "income" ? "Pemasukan" : "Pengeluaran"}
-						</button>
-					))}
-					</div>
-
+				{/* ── Single-line filter bar ────────────────────────────────── */}
+				<div className="border-b border-slate-200/80 px-2 py-1.5">
 					<div className="flex flex-wrap items-center gap-2">
-						<div className="relative">
-							<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+						{/* Type filter */}
+						<div className="flex gap-0.5 rounded-md border border-slate-200 bg-slate-50 p-0.5">
+							{(["all", "income", "expense"] as const).map((t) => (
+								<button
+									key={t}
+									type="button"
+									onClick={() => setFilterType(t === "all" ? undefined : t)}
+									className={`rounded px-2.5 py-1 text-[10px] font-semibold transition-all ${
+										(t === "all" && !filterType) || filterType === t
+											? t === "income"
+												? "bg-emerald-600 text-white"
+												: t === "expense"
+													? "bg-orange-500 text-white"
+													: "bg-slate-700 text-white"
+											: "text-slate-600 hover:bg-slate-100"
+									}`}
+								>
+									{t === "all" ? "Semua" : t === "income" ? "Pemasukan" : "Pengeluaran"}
+								</button>
+							))}
+						</div>
+
+						{/* Search */}
+						<div className="relative flex-1 min-w-[180px] max-w-xs">
+							<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
 							<input
 								type="text"
 								placeholder="Cari transaksi..."
 								value={searchQuery}
 								onChange={(e) => setSearchQuery(e.target.value)}
-								className="h-7 w-64 rounded border border-slate-300 bg-slate-50 pl-7 pr-2 text-[11px] text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-300"
+								className="h-7 w-full rounded border border-slate-300 bg-slate-50 pl-7 pr-2 text-[11px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
 							/>
 						</div>
-						<select
-							value={filterCategory}
-							onChange={(e) => setFilterCategory(e.target.value)}
-							className="h-7 rounded border border-slate-300 bg-slate-50 px-2 py-1 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300"
-						>
-							<option value="">Semua Kategori</option>
-							{EXPENSE_CATEGORIES.map((cat) => (
-								<option key={cat} value={cat}>
-									{cat.replace(/_/g, " ")}
-								</option>
-							))}
-						</select>
-					</div>
-				</div>
 
-				<div className="flex flex-wrap items-center gap-1.5 rounded border border-slate-200/80 bg-slate-50 px-2 py-1.5">
-					<div className="flex flex-wrap items-center gap-2">
-						<Filter className="h-3.5 w-3.5 text-slate-500" />
-						<span className="text-[11px] font-medium text-slate-600 uppercase tracking-wider">Nominal:</span>
-						<div className="flex items-center gap-1.5">
-							<input
-								type="number"
-								placeholder="Min"
-								value={minAmount}
-								onChange={(e) => setMinAmount(e.target.value)}
-								className="h-6 w-20 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300"
-							/>
-							<span className="text-slate-500">-</span>
-							<input
-								type="number"
-								placeholder="Max"
-								value={maxAmount}
-								onChange={(e) => setMaxAmount(e.target.value)}
-								className="h-6 w-20 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300"
-							/>
-						</div>
-					</div>
-
-					<div className="hidden" />
-
-					<div className="flex flex-wrap items-center gap-2">
-						<ArrowUpDown className="h-3.5 w-3.5 text-slate-500" />
-						<span className="text-[11px] font-medium text-slate-600 uppercase tracking-wider">Urutkan:</span>
-						<div className="flex gap-1">
-							<button
-								onClick={() => {
-									if (sortBy === "date") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-									else setSortBy("date");
-								}}
-								className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${sortBy === "date" ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-100"}`}
-							>
-								Tanggal {sortBy === "date" && (sortOrder === "asc" ? "ASC" : "DESC")}
-							</button>
-							<button
-								onClick={() => {
-									if (sortBy === "amount") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-									else setSortBy("amount");
-								}}
-								className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${sortBy === "amount" ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-100"}`}
-							>
-								Nominal {sortBy === "amount" && (sortOrder === "asc" ? "ASC" : "DESC")}
-							</button>
-						</div>
-					</div>
-					
-					{(searchQuery || minAmount || maxAmount || filterCategory) && (
-						<button 
+						{/* Sort toggle */}
+						<button
+							type="button"
 							onClick={() => {
-								setSearchQuery("");
-								setMinAmount("");
-								setMaxAmount("");
-								setFilterCategory("");
+								if (sortBy === "date") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+								else setSortBy("date");
 							}}
-							className="ml-auto text-[10px] text-slate-600 hover:text-slate-900 hover:underline"
+							className={`inline-flex h-7 items-center gap-1 rounded border px-2 text-[10px] font-medium transition-colors ${
+								sortBy === "date" ? "border-slate-400 bg-slate-100 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-600"
+							}`}
 						>
-							Reset Filter
+							<ArrowUpDown className="h-3 w-3" />
+							Tanggal {sortBy === "date" ? (sortOrder === "asc" ? "↑" : "↓") : ""}
 						</button>
+						<button
+							type="button"
+							onClick={() => {
+								if (sortBy === "amount") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+								else setSortBy("amount");
+							}}
+							className={`inline-flex h-7 items-center gap-1 rounded border px-2 text-[10px] font-medium transition-colors ${
+								sortBy === "amount" ? "border-slate-400 bg-slate-100 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-600"
+							}`}
+						>
+							Nominal {sortBy === "amount" ? (sortOrder === "asc" ? "↑" : "↓") : ""}
+						</button>
+
+						{/* Filter toggle */}
+						<button
+							type="button"
+							onClick={() => setShowFilters((v) => !v)}
+							className={`inline-flex h-7 items-center gap-1 rounded border px-2 text-[10px] font-medium transition-colors ${
+								showFilters || filterCategory || minAmount || maxAmount
+									? "border-blue-400 bg-blue-50 text-blue-700"
+									: "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+							}`}
+						>
+							<Filter className="h-3 w-3" />
+							Filter
+							{showFilters ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+						</button>
+
+						{hasActiveFilters && (
+							<button
+								type="button"
+								onClick={() => {
+									setSearchQuery("");
+									setMinAmount("");
+									setMaxAmount("");
+									setFilterCategory("");
+								}}
+								className="text-[10px] text-red-500 hover:text-red-700 hover:underline"
+							>
+								Reset
+							</button>
+						)}
+					</div>
+
+					{/* Collapsible extended filters */}
+					{showFilters && (
+						<div className="mt-1.5 flex flex-wrap items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2">
+							<div className="flex items-center gap-1.5">
+								<span className="text-[10px] font-medium text-slate-600 uppercase tracking-wider">Nominal:</span>
+								<input
+									type="number"
+									placeholder="Min"
+									value={minAmount}
+									onChange={(e) => setMinAmount(e.target.value)}
+									className="h-6 w-24 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300"
+								/>
+								<span className="text-slate-400">–</span>
+								<input
+									type="number"
+									placeholder="Max"
+									value={maxAmount}
+									onChange={(e) => setMaxAmount(e.target.value)}
+									className="h-6 w-24 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300"
+								/>
+							</div>
+							<div className="flex items-center gap-1.5">
+								<span className="text-[10px] font-medium text-slate-600 uppercase tracking-wider">Kategori:</span>
+								<select
+									value={filterCategory}
+									onChange={(e) => setFilterCategory(e.target.value)}
+									className="h-6 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300"
+								>
+									<option value="">Semua</option>
+									{EXPENSE_CATEGORIES.map((cat) => (
+										<option key={cat} value={cat}>{cat.replace(/_/g, " ")}</option>
+									))}
+								</select>
+							</div>
+						</div>
 					)}
 				</div>
-			</div>
 
-			{selectedVisibleCount > 0 && (
-				<div className="flex items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-2.5 py-2">
-					<p className="text-xs text-slate-900">
-						<span className="font-semibold">{selectedVisibleCount}</span> baris dipilih
-					</p>
-					<div className="flex flex-wrap items-center gap-2">
-						<button
-							type="button"
-							onClick={() => setSelectedRowKeys(new Set())}
-							className="rounded border border-slate-300 px-2 py-1 text-[10px] text-slate-700 hover:bg-slate-100"
-						>
-							Batal Pilih
-						</button>
-						<button
-							type="button"
-							onClick={handleBulkDelete}
-							className="inline-flex items-center gap-1 rounded-md bg-destructive px-2 py-1 text-[10px] font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90"
-						>
-							<Trash2 className="h-3.5 w-3.5" />
-							Hapus Terpilih
-						</button>
+				{/* ── Bulk action bar ───────────────────────────────────────── */}
+				{selectedVisibleCount > 0 && (
+					<div className="flex items-center justify-between gap-3 border-b border-red-200 bg-red-50 px-3 py-1.5">
+						<p className="text-[11px] text-slate-700">
+							<span className="font-semibold text-slate-900">{selectedVisibleCount}</span> baris dipilih
+						</p>
+						<div className="flex items-center gap-2">
+							<button
+								type="button"
+								onClick={() => setSelectedRowKeys(new Set())}
+								className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px] text-slate-700 hover:bg-slate-100"
+							>
+								Batal
+							</button>
+							<button
+								type="button"
+								onClick={handleBulkDelete}
+								className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2.5 py-1 text-[10px] font-semibold text-white hover:bg-red-700"
+							>
+								<Trash2 className="h-3 w-3" />
+								Hapus {selectedVisibleCount} Terpilih
+							</button>
+						</div>
 					</div>
-				</div>
-			)}
+				)}
 
-			{/* Transactions Table */}
-			<div className="overflow-hidden rounded-lg border border-slate-200/80 bg-white">
+				{/* ── Table ─────────────────────────────────────────────────── */}
 				<div
 					ref={scrollContainerRef}
 					onScroll={(e) => setScrollTop((e.target as HTMLDivElement).scrollTop)}
-					className="max-h-[76vh] overflow-auto"
+					className="max-h-[72vh] overflow-auto"
 				>
-					<table className="w-full min-w-[980px] table-auto text-left text-[10px] text-slate-700">
+					<table className="w-full min-w-[720px] table-auto text-left text-[11px] text-slate-700">
 						<colgroup>
 							<col style={{ width: "36px" }} />
-							<col style={{ width: "48px" }} />
-							<col style={{ width: "132px" }} />
-							<col style={{ width: "140px" }} />
-							<col style={{ width: "124px" }} />
-							<col style={{ width: "116px" }} />
+							<col style={{ width: "44px" }} />
+							<col style={{ width: "120px" }} />
+							<col style={{ width: "110px" }} />
 							<col />
-							<col style={{ width: "176px" }} />
-							<col style={{ width: "68px" }} />
+							<col style={{ width: "160px" }} />
+							<col style={{ width: "88px" }} />
 						</colgroup>
-						<thead className="sticky top-0 z-10 bg-slate-50 text-[9px] font-semibold uppercase tracking-wider text-slate-600">
+						<thead className="sticky top-0 z-10 bg-slate-50 text-[9px] font-semibold uppercase tracking-wider text-slate-500">
 							<tr>
-								<th className="sticky left-0 z-20 w-9 border-r border-slate-200 bg-slate-50 px-1.5 py-1">
+								<th className="sticky left-0 z-20 border-r border-b border-slate-200 bg-slate-50 px-1.5 py-2">
 									<div className="flex items-center justify-center">
 										<Checkbox
 											checked={allVisibleSelected}
 											onCheckedChange={handleToggleSelectAll}
-											aria-label="Pilih semua transaksi di tabel"
+											aria-label="Pilih semua"
 											disabled={filteredRowKeys.length === 0}
 											className="rounded-sm border-muted-foreground/40 bg-muted/40 data-checked:border-primary data-checked:bg-primary"
 										/>
 									</div>
 								</th>
-								<th className="sticky left-[36px] z-20 w-12 border-r border-slate-200 bg-slate-50 px-1.5 py-1 text-center">No</th>
-								<th className="px-2 py-1">Tanggal</th>
-								<th className="px-2 py-1">Tipe</th>
-								<th className="px-2 py-1">Shift</th>
-								<th className="px-2 py-1">Sumber</th>
-								<th className="px-2 py-1">Deskripsi</th>
-								<th className="sticky right-[68px] z-20 border-l border-slate-200 bg-slate-50 px-2 py-1 text-right">Nominal</th>
-								<th className="sticky right-0 z-20 w-[68px] border-l border-slate-200 bg-slate-50 px-2 py-1 text-center">Aksi</th>
+								<th className="sticky left-[36px] z-20 border-r border-b border-slate-200 bg-slate-50 px-1.5 py-2 text-center">No</th>
+								<th className="border-b border-slate-200 px-3 py-2">Tanggal</th>
+								<th className="border-b border-slate-200 px-3 py-2">Sumber</th>
+								<th className="border-b border-slate-200 px-3 py-2">Deskripsi</th>
+								<th className="sticky right-[88px] z-20 border-l border-b border-slate-200 bg-slate-50 px-3 py-2 text-right">Nominal</th>
+								<th className="sticky right-0 z-20 border-l border-b border-slate-200 bg-slate-50 px-2 py-2 text-center">Aksi</th>
 							</tr>
 						</thead>
-						<tbody className="divide-y divide-slate-200 bg-white">
+						<tbody className="divide-y divide-slate-100 bg-white">
 							{!data ? (
-								Array.from({ length: 5 }).map((_, i) => (
+								Array.from({ length: 8 }).map((_, i) => (
 									<tr key={i}>
-										<td colSpan={columnCount} className="px-4 py-4"><Skeleton className="h-4 w-full" /></td>
+										<td colSpan={columnCount} className="px-4 py-3">
+											<Skeleton className="h-4 w-full" />
+										</td>
 									</tr>
 								))
 							) : filteredTransactions.length === 0 ? (
 								<tr>
-									<td colSpan={columnCount} className="px-4 py-12 text-center text-slate-500">
+									<td colSpan={columnCount} className="px-4 py-16 text-center text-slate-400">
 										<div className="flex flex-col items-center gap-2">
 											<Wallet className="h-8 w-8 opacity-20" />
-											<p>Tidak ada transaksi ditemukan</p>
+											<p className="text-[12px]">Tidak ada transaksi ditemukan</p>
 										</div>
 									</td>
 								</tr>
@@ -1042,149 +1032,168 @@ export function TransactionDetailReport({
 										</tr>
 									)}
 									{virtualized.rows.map((t: any) => {
-									if (t.rowType === "hierarchy_node") {
-										const levelPadding: Record<string, string> = {
-											day: "pl-2",
-											shift: "pl-6",
-											type: "pl-10",
-											transaction: "pl-14",
-											item: "pl-[72px]",
-											detail: "pl-[88px]",
-										};
-										const isExpandable = Boolean(t.expandable);
-										const nodeAmount = Number(t.amount || 0);
-										const nodeLabel =
-											t.level === "day"
-												? `${t.label} · ${t.count} transaksi`
-												: t.level === "shift"
-													? `Shift ${t.label} · ${t.count} transaksi`
-													: t.level === "type"
-														? `${t.label} · ${t.count} transaksi`
-														: t.level === "transaction"
-															? `Transaksi ${t.label}`
-															: t.level === "item"
-																? `Item ${t.label}`
-																: `${t.label}: ${t.value}`;
-										return (
-											<tr key={t.nodeKey} className="bg-white border-b border-slate-200">
-												<td colSpan={columnCount} className="px-2 py-1.5">
-													<button
-														type="button"
-														onClick={() => {
-															if (isExpandable) toggleGroup(t.nodeKey);
-														}}
-														className={`flex w-full items-center justify-between rounded-md border border-slate-200 bg-white px-2 py-1 text-left text-[11px] ${isExpandable ? "hover:bg-slate-100" : ""}`}
-													>
-														<span className={`font-medium text-slate-700 ${levelPadding[t.level] || "pl-2"}`}>
-															{isExpandable ? (t.isCollapsed ? ">" : "v") : "•"} {nodeLabel}
-														</span>
-														{t.level !== "detail" && (
-															<span className={`${nodeAmount >= 0 ? "text-emerald-600" : "text-orange-600"} font-mono text-[12px]`}>
-																{nodeAmount >= 0 ? "+" : "-"} Rp {Math.abs(nodeAmount).toLocaleString("id-ID")}
+										if (t.rowType === "hierarchy_node") {
+											const levelPadding: Record<string, string> = {
+												day: "pl-2",
+												shift: "pl-6",
+												type: "pl-10",
+												transaction: "pl-14",
+												item: "pl-[72px]",
+												detail: "pl-[88px]",
+											};
+											const isExpandable = Boolean(t.expandable);
+											const nodeAmount = Number(t.amount || 0);
+											const nodeLabel =
+												t.level === "day"
+													? `${t.label} · ${t.count} transaksi`
+													: t.level === "shift"
+														? `Shift ${t.label} · ${t.count} transaksi`
+														: t.level === "type"
+															? `${t.label} · ${t.count} transaksi`
+															: t.level === "transaction"
+																? `Transaksi ${t.label}`
+																: t.level === "item"
+																	? `Item ${t.label}`
+																	: `${t.label}: ${t.value}`;
+											return (
+												<tr key={t.nodeKey} className="bg-slate-50/60">
+													<td colSpan={columnCount} className="px-2 py-1">
+														<button
+															type="button"
+															onClick={() => { if (isExpandable) toggleGroup(t.nodeKey); }}
+															className={`flex w-full items-center justify-between rounded px-2 py-1 text-left text-[11px] ${isExpandable ? "hover:bg-slate-100" : ""}`}
+														>
+															<span className={`font-medium text-slate-600 ${levelPadding[t.level] || "pl-2"}`}>
+																{isExpandable
+																	? (t.isCollapsed ? <ChevronRight className="inline h-3 w-3 mr-1" /> : <ChevronDown className="inline h-3 w-3 mr-1" />)
+																	: <span className="mr-1 text-slate-400">•</span>
+																}
+																{nodeLabel}
 															</span>
-														)}
-													</button>
+															{t.level !== "detail" && (
+																<span className={`font-mono text-[11px] font-semibold ${nodeAmount >= 0 ? "text-emerald-600" : "text-orange-500"}`}>
+																	{nodeAmount >= 0 ? "+" : "-"} {formatCurrencyIDR(Math.abs(nodeAmount))}
+																</span>
+															)}
+														</button>
+													</td>
+												</tr>
+											);
+										}
+
+										const rowKey = String(t.rowKey || t._id);
+										let shiftName = "-";
+										if (historicalShifts) {
+											const shift = historicalShifts.find(
+												(s: any) => t.date >= s.startTime && (!s.endTime || t.date <= s.endTime)
+											);
+											if (shift) shiftName = shift.shiftName || "Shift Aktif";
+										}
+
+										const isIncome = t.type === "income";
+
+										return (
+											<tr
+												key={rowKey}
+												className={`group cursor-pointer transition-colors hover:bg-slate-50 ${
+													selectedRowKeys.has(rowKey) ? "bg-blue-50/50" : ""
+												}`}
+												onClick={() => {
+													if (editingItemRowKey === rowKey) return;
+													handleEdit(t);
+												}}
+											>
+												{/* Checkbox */}
+												<td
+													className="sticky left-0 z-10 w-9 border-r border-slate-100 bg-white px-1.5 group-hover:bg-slate-50"
+													onClick={(e) => e.stopPropagation()}
+												>
+													{/* Left border indicator */}
+													<div className={`absolute inset-y-0 left-0 w-[3px] ${isIncome ? "bg-emerald-400" : "bg-orange-400"}`} />
+													<div className="flex items-center justify-center pl-1">
+														<Checkbox
+															checked={selectedRowKeys.has(rowKey)}
+															onCheckedChange={() => handleToggleRow(rowKey)}
+															aria-label={`Pilih transaksi ${t.merchant || "Umum"}`}
+															className="rounded-sm border-muted-foreground/40 bg-muted/40 data-checked:border-primary data-checked:bg-primary"
+														/>
+													</div>
+												</td>
+
+												{/* No */}
+												<td className="sticky left-[36px] z-10 w-11 border-r border-slate-100 bg-white px-1.5 py-2 text-center font-mono text-[10px] text-slate-400 group-hover:bg-slate-50">
+													{rowNumberByKey.get(rowKey) || "-"}
+												</td>
+
+												{/* Tanggal — with shift tooltip */}
+												<td className="px-3 py-2 whitespace-nowrap">
+													<div className="flex flex-col leading-tight">
+														<span className="font-medium text-slate-900 text-[11px]">
+															{format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}
+														</span>
+														<span
+															className="text-[10px] text-slate-400"
+															title={shiftName !== "-" ? `Shift: ${shiftName}` : undefined}
+														>
+															{format(new Date(t.date), "HH:mm")}
+															{shiftName !== "-" && (
+																<span className="ml-1 text-slate-300">· {shiftName}</span>
+															)}
+														</span>
+													</div>
+												</td>
+
+												{/* Sumber */}
+												<td className="px-3 py-2 whitespace-nowrap">
+													<span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+														{(t.sourceLabel || t.sourceType || "-").replace(/_/g, " ")}
+													</span>
+												</td>
+
+												{/* Deskripsi */}
+												<td className="px-3 py-2">
+													<span
+														className="block max-w-xs truncate font-medium text-slate-800 text-[11px]"
+														title={t.displaySummary || t.description || "-"}
+													>
+														{t.displaySummary || t.description || "-"}
+													</span>
+												</td>
+
+												{/* Nominal */}
+												<td className="sticky right-[88px] z-10 border-l border-slate-100 bg-white px-3 py-2 text-right whitespace-nowrap group-hover:bg-slate-50">
+													<span className={`font-mono text-[13px] font-semibold tracking-tight ${isIncome ? "text-emerald-600" : "text-orange-500"}`}>
+														{isIncome ? "+" : "−"} {formatCurrencyIDR(t.amount)}
+													</span>
+												</td>
+
+												{/* Aksi — hover: edit + delete */}
+												<td
+													className="sticky right-0 z-10 border-l border-slate-100 bg-white px-2 py-2 group-hover:bg-slate-50"
+													onClick={(e) => e.stopPropagation()}
+												>
+													<div className="flex items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+														<button
+															type="button"
+															onClick={(e) => { e.stopPropagation(); handleEdit(t); }}
+															className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+															title="Edit"
+														>
+															<Pencil className="h-3.5 w-3.5" />
+														</button>
+														<button
+															type="button"
+															onClick={(e) => { e.stopPropagation(); handleDelete(t); }}
+															className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+															title="Hapus"
+														>
+															<Trash2 className="h-3.5 w-3.5" />
+														</button>
+													</div>
 												</td>
 											</tr>
 										);
-									}
-									const rowKey = String(t.rowKey || t._id);
-									let shiftName = "-";
-									if (historicalShifts) {
-										const shift = historicalShifts.find((s: any) => t.date >= s.startTime && (!s.endTime || t.date <= s.endTime));
-										if (shift) {
-											shiftName = shift.shiftName || "Shift Aktif";
-										}
-									}
-
-									return (
-										<tr
-											key={rowKey}
-											className={`group cursor-pointer transition-colors hover:bg-slate-100 ${selectedRowKeys.has(rowKey) ? "border-t-2 border-blue-500 bg-blue-50/40" : ""}`}
-											onClick={() => {
-												if (editingItemRowKey === rowKey) return;
-												handleEdit(t);
-											}}
-										>
-											<td className="sticky left-0 z-10 w-9 border-r border-slate-200 bg-white px-1.5 py-1 group-hover:bg-slate-100" onClick={(e) => e.stopPropagation()}>
-												<div className="flex items-center justify-center">
-													<Checkbox
-														checked={selectedRowKeys.has(rowKey)}
-														onCheckedChange={() => handleToggleRow(rowKey)}
-														aria-label={`Pilih transaksi ${t.merchant || "Umum"} tanggal ${format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}`}
-														className="rounded-sm border-muted-foreground/40 bg-muted/40 data-checked:border-primary data-checked:bg-primary"
-													/>
-												</div>
-											</td>
-											<td className="sticky left-[36px] z-10 w-[52px] border-r border-slate-200 bg-white px-1.5 py-1 text-center group-hover:bg-slate-100">
-												<span className="font-mono text-[10px] text-slate-500">
-													{rowNumberByKey.get(rowKey) || "-"}
-												</span>
-											</td>
-											<td className="px-2 py-1 whitespace-nowrap">
-												<div className="flex flex-col leading-tight">
-													<span className="font-medium text-slate-900 text-[11px]">
-														{format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}
-													</span>
-													<span className="text-[10px] text-slate-500">
-														{format(new Date(t.date), "HH:mm")}
-													</span>
-												</div>
-											</td>
-											<td className="px-2 py-1 whitespace-nowrap">
-												<span className={`inline-flex rounded-sm border px-2.5 py-[1px] text-[11px] font-semibold uppercase tracking-wide ${
-													t.type === "income"
-														? "border-emerald-200 bg-emerald-50 text-emerald-700"
-														: "border-orange-200 bg-orange-50 text-orange-700"
-												}`}>
-													{t.type === "income" ? "Pemasukan" : "Pengeluaran"}
-												</span>
-											</td>
-											<td className="px-2 py-1 whitespace-nowrap">
-												{shiftName !== "-" ? (
-													<span className="inline-flex items-center rounded-sm border border-slate-400 bg-slate-50 px-2.5 py-[1px] text-[11px] font-semibold text-slate-700">
-														{shiftName}
-													</span>
-												) : (
-													<span className="text-[11px] text-slate-500">-</span>
-												)}
-											</td>
-											<td className="px-2 py-1 whitespace-nowrap">
-												<span className="truncate text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-													{(t.sourceLabel || t.sourceType || "-").replace(/_/g, " ")}
-												</span>
-											</td>
-											<td className="px-2 py-1">
-												<div className="max-w-[280px] truncate">
-													<span className="text-slate-500">Pelanggan </span>
-													<span className="font-semibold text-slate-900" title={t.displaySummary || t.description || "-"}>
-														{t.displaySummary || t.description || "-"}
-													</span>
-												</div>
-											</td>
-										<td className="sticky right-[68px] z-10 border-l border-slate-200 bg-white px-2 py-1 text-right whitespace-nowrap group-hover:bg-slate-100">
-											<span className={`font-mono text-[13px] tracking-tight whitespace-nowrap ${t.type === "income" ? "text-emerald-600" : "text-orange-600"}`}>
-												{t.type === "income" ? "+" : "-"}{" "}
-												{formatCurrencyIDR(t.amount)}
-											</span>
-										</td>
-										<td className="sticky right-0 z-10 border-l border-slate-200 bg-white px-2 py-1 text-center group-hover:bg-slate-100" onClick={(e) => e.stopPropagation()}>
-												<div className="flex items-center justify-center opacity-90 transition-opacity group-hover:opacity-100">
-													<button
-														onClick={(e) => {
-															e.stopPropagation();
-															handleEdit(t);
-														}}
-														className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100"
-														title="Detail Aksi"
-													>
-														<span className="text-xs">▾</span>
-													</button>
-												</div>
-											</td>
-										</tr>
-									);
-								})}
+									})}
 									{virtualized.shouldVirtualize && virtualized.bottomSpacer > 0 && (
 										<tr>
 											<td colSpan={columnCount} style={{ height: `${virtualized.bottomSpacer}px`, padding: 0, border: 0 }} />
@@ -1195,44 +1204,45 @@ export function TransactionDetailReport({
 						</tbody>
 					</table>
 				</div>
+
+				{/* ── Pagination ────────────────────────────────────────────── */}
+				{data && (
+					<div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-3 py-2">
+						<span className="text-[10px] text-slate-400">
+							Hal {data.page || page} / {data.pageCount || 1} &middot; {data.count} baris
+						</span>
+						<div className="flex items-center gap-1.5">
+							<select
+								value={pageSize}
+								onChange={(e) => setPageSize(Number(e.target.value) || 50)}
+								className="h-6 rounded border border-slate-200 bg-slate-50 px-1.5 text-[10px] text-slate-700"
+							>
+								<option value={25}>25</option>
+								<option value={50}>50</option>
+								<option value={100}>100</option>
+							</select>
+							<span className="text-[10px] text-slate-400">/ hal</span>
+							<button
+								type="button"
+								onClick={() => setPage((p) => Math.max(1, p - 1))}
+								disabled={(data.page || page) <= 1}
+								className="rounded border border-slate-200 px-2.5 py-1 text-[10px] text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+							>
+								← Prev
+							</button>
+							<button
+								type="button"
+								onClick={() => setPage((p) => Math.min(data.pageCount || 1, p + 1))}
+								disabled={(data.page || page) >= (data.pageCount || 1)}
+								className="rounded border border-slate-200 px-2.5 py-1 text-[10px] text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+							>
+								Next →
+							</button>
+						</div>
+					</div>
+				)}
 			</div>
-			{data && (
-				<div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5">
-					<div className="text-[10px] text-muted-foreground">
-						Halaman {data.page || page} / {data.pageCount || 1} | Total {data.count} baris
-					</div>
-					<div className="flex flex-wrap items-center gap-2">
-						<select
-							value={pageSize}
-							onChange={(e) => setPageSize(Number(e.target.value) || 50)}
-							className="h-7 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700"
-						>
-							<option value={25}>25 / halaman</option>
-							<option value={50}>50 / halaman</option>
-							<option value={100}>100 / halaman</option>
-						</select>
-						<button
-							type="button"
-							onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-							disabled={(data.page || page) <= 1}
-							className="rounded border border-slate-300 px-2 py-1 text-[10px] text-slate-700 disabled:opacity-40"
-						>
-							Sebelumnya
-						</button>
-						<button
-							type="button"
-							onClick={() =>
-								setPage((prev) => Math.min(data.pageCount || 1, prev + 1))
-							}
-							disabled={(data.page || page) >= (data.pageCount || 1)}
-							className="rounded border border-slate-300 px-2 py-1 text-[10px] text-slate-700 disabled:opacity-40"
-						>
-							Berikutnya
-						</button>
-					</div>
-				</div>
-			)}
-			
+
 			<NewTransactionDialog
 				isOpen={isEditDialogOpen}
 				onClose={() => {
@@ -1241,7 +1251,6 @@ export function TransactionDetailReport({
 				}}
 				transaction={selectedTransaction}
 			/>
-			</div>
 		</div>
 	);
 }
