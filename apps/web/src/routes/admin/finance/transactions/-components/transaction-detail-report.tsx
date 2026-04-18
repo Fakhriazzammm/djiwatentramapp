@@ -533,9 +533,9 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 	return (
 		<div className="space-y-1.5 p-1.5">
 			{/* Filters & Search */}
-			<div className="flex flex-col gap-1.5 rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5">
+			<div className="flex flex-col gap-1.5 rounded-md border border-border bg-card px-2 py-1.5">
 				<div className="flex flex-wrap items-center justify-between gap-2">
-					<div className="flex gap-1 rounded border border-zinc-800 bg-zinc-900 p-0.5">
+					<div className="flex gap-1 rounded border border-border bg-muted/50 p-1">
 						{(["all", "income", "expense"] as const).map((t) => (
 							<button
 								key={t}
@@ -544,11 +544,11 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 							className={`rounded px-2 py-1 text-[10px] font-semibold transition-all ${
 								(t === "all" && !filterType) || filterType === t
 									? t === "income"
-										? "bg-emerald-700 text-emerald-50"
+										? "bg-green-600 text-white"
 										: t === "expense"
-											? "bg-rose-700 text-rose-50"
-											: "bg-zinc-700 text-zinc-100"
-									: "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+											? "bg-red-600 text-white"
+											: "bg-primary/10 text-primary"
+									: "text-muted-foreground hover:bg-muted hover:text-foreground"
 							}`}
 						>
 							{t === "all" ? "Semua" : t === "income" ? "Pemasukan" : "Pengeluaran"}
@@ -558,19 +558,19 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 
 					<div className="flex flex-wrap items-center gap-2">
 						<div className="relative">
-							<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+							<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
 							<input
 								type="text"
 								placeholder="Cari transaksi..."
 								value={searchQuery}
 								onChange={(e) => setSearchQuery(e.target.value)}
-								className="h-7 w-60 rounded border border-zinc-700 bg-zinc-900 pl-7 pr-2 text-[11px] text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+								className="h-7 w-60 rounded border border-input bg-background pl-7 pr-2 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
 							/>
 						</div>
 						<select
 							value={filterCategory}
 							onChange={(e) => setFilterCategory(e.target.value)}
-							className="h-7 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-[10px] text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+							className="h-7 rounded border border-input bg-background px-2 py-1 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
 						>
 							<option value="">Semua Kategori</option>
 							{EXPENSE_CATEGORIES.map((cat) => (
@@ -582,7 +582,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 					</div>
 				</div>
 
-				<div className="flex flex-wrap items-center gap-1.5 rounded border border-zinc-800 bg-zinc-900/50 px-2 py-1.5">
+				<div className="flex flex-wrap items-center gap-1.5 rounded border border-border bg-muted/20 px-2 py-1.5">
 					<div className="flex flex-wrap items-center gap-2">
 						<Filter className="h-3.5 w-3.5 text-muted-foreground" />
 						<span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Nominal:</span>
@@ -616,7 +616,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 									if (sortBy === "date") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
 									else setSortBy("date");
 								}}
-								className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${sortBy === "date" ? "bg-zinc-700 text-zinc-100" : "text-muted-foreground hover:bg-muted"}`}
+								className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${sortBy === "date" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
 							>
 								Tanggal {sortBy === "date" && (sortOrder === "asc" ? "ASC" : "DESC")}
 							</button>
@@ -625,7 +625,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 									if (sortBy === "amount") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
 									else setSortBy("amount");
 								}}
-								className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${sortBy === "amount" ? "bg-zinc-700 text-zinc-100" : "text-muted-foreground hover:bg-muted"}`}
+								className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${sortBy === "amount" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"}`}
 							>
 								Nominal {sortBy === "amount" && (sortOrder === "asc" ? "ASC" : "DESC")}
 							</button>
@@ -640,7 +640,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 								setMaxAmount("");
 								setFilterCategory("");
 							}}
-							className="text-[10px] ml-auto rounded border border-zinc-700 px-2 py-1 text-zinc-300 hover:text-zinc-100"
+							className="text-[10px] ml-auto text-primary hover:underline"
 						>
 							Reset Filter
 						</button>
@@ -650,22 +650,22 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 
 			{/* Summary */}
 			{data && (
-				<div className="flex flex-wrap items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-[10px] text-zinc-400">
-					<div className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1">
+				<div className="flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1.5 text-[10px] text-muted-foreground">
+					<div className="inline-flex items-center gap-1 rounded border border-input bg-background px-2 py-1">
 						<span className="text-muted-foreground">Total Pemasukan: </span>
 						<span className="font-mono font-semibold text-emerald-400">{formatCurrencyIDR(data.totalIncome)}</span>
 					</div>
-					<div className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1">
+					<div className="inline-flex items-center gap-1 rounded border border-input bg-background px-2 py-1">
 						<span className="text-muted-foreground">Total Pengeluaran: </span>
 						<span className="font-mono font-semibold text-rose-400">{formatCurrencyIDR(data.totalExpense)}</span>
 					</div>
-					<div className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1">
+					<div className="inline-flex items-center gap-1 rounded border border-input bg-background px-2 py-1">
 						<span className="text-muted-foreground">Saldo Bersih: </span>
 						<span className={`font-bold ${data.netBalance >= 0 ? "text-emerald-400" : "text-red-600"}`}>
 							{formatCurrencyIDR(data.netBalance)}
 						</span>
 					</div>
-					<div className="inline-flex items-center gap-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1">
+					<div className="inline-flex items-center gap-1 rounded border border-input bg-background px-2 py-1">
 						<span className="text-muted-foreground">
 							{viewMode === "item" ? "Jumlah Baris: " : "Jumlah Transaksi: "}
 						</span>
@@ -675,22 +675,22 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 			)}
 
 			{selectedVisibleCount > 0 && (
-				<div className="flex items-center justify-between gap-3 rounded border border-rose-900 bg-rose-950/30 px-2 py-1.5">
-					<p className="text-[10px] text-rose-200">
+				<div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-2.5 py-2">
+					<p className="text-xs text-foreground">
 						<span className="font-semibold">{selectedVisibleCount}</span> baris dipilih
 					</p>
 					<div className="flex flex-wrap items-center gap-2">
 						<button
 							type="button"
 							onClick={() => setSelectedRowKeys(new Set())}
-							className="rounded border border-zinc-700 px-2 py-1 text-[10px] text-zinc-300 hover:text-zinc-100"
+							className="rounded border border-input px-2 py-1 text-[10px] text-foreground hover:text-foreground"
 						>
 							Batal Pilih
 						</button>
 						<button
 							type="button"
 							onClick={handleBulkDelete}
-							className="inline-flex items-center gap-1 rounded border border-rose-700 bg-rose-700 px-2 py-1 text-[10px] font-semibold text-white hover:bg-rose-600"
+							className="inline-flex items-center gap-1 rounded-md bg-destructive px-2 py-1 text-[10px] font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90"
 						>
 							<Trash2 className="h-3.5 w-3.5" />
 							Hapus Terpilih
@@ -700,21 +700,21 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 			)}
 
 			{data && (
-				<div className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1">
-					<span className="text-[10px] text-zinc-400">
+				<div className="rounded-lg border border-border/60 bg-card/60 px-2 py-1">
+					<span className="text-[10px] text-muted-foreground">
 						{filteredTransactions.length} {viewMode === "item" ? "baris" : "transaksi"} tampil
 					</span>
 				</div>
 			)}
 
 			{/* Transactions Table */}
-			<div className="overflow-hidden rounded-md border border-zinc-800 bg-zinc-950">
+			<div className="overflow-hidden rounded-xl border border-border/80 bg-card">
 				<div
 					ref={scrollContainerRef}
 					onScroll={(e) => setScrollTop((e.target as HTMLDivElement).scrollTop)}
 					className="max-h-[74vh] overflow-auto"
 				>
-					<table className="w-full min-w-[1180px] table-auto text-left text-[10px] text-zinc-200">
+					<table className="w-full min-w-[1180px] table-auto text-left text-[10px] text-foreground">
 						<colgroup>
 							<col style={{ width: "36px" }} />
 							<col style={{ width: "48px" }} />
@@ -734,7 +734,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 							<col style={{ width: "120px" }} />
 							<col style={{ width: "68px" }} />
 						</colgroup>
-						<thead className="sticky top-0 z-10 bg-zinc-900 text-[9px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+						<thead className="sticky top-0 z-10 bg-muted/70 text-[9px] font-bold uppercase tracking-wider text-muted-foreground backdrop-blur">
 							<tr>
 								<th className="w-9 px-1.5 py-1.5">
 									<div className="flex items-center justify-center">
@@ -743,7 +743,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 											onCheckedChange={handleToggleSelectAll}
 											aria-label="Pilih semua transaksi di tabel"
 											disabled={filteredRowKeys.length === 0}
-											className="rounded-sm border-zinc-600 bg-zinc-900 data-checked:border-zinc-300 data-checked:bg-zinc-200"
+											className="rounded-sm border-muted-foreground/40 bg-muted/40 data-checked:border-primary data-checked:bg-primary"
 										/>
 									</div>
 								</th>
@@ -765,7 +765,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 								<th className="w-[68px] px-2 py-1.5 text-center">Aksi</th>
 							</tr>
 						</thead>
-						<tbody className="divide-y divide-zinc-800 bg-zinc-950">
+						<tbody className="divide-y divide-border bg-card">
 							{!data ? (
 								Array.from({ length: 5 }).map((_, i) => (
 									<tr key={i}>
@@ -774,7 +774,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 								))
 							) : filteredTransactions.length === 0 ? (
 								<tr>
-									<td colSpan={columnCount} className="px-4 py-12 text-center text-zinc-500">
+									<td colSpan={columnCount} className="px-4 py-12 text-center text-muted-foreground">
 										<div className="flex flex-col items-center gap-2">
 											<Wallet className="h-8 w-8 opacity-20" />
 											<p>Tidak ada transaksi ditemukan</p>
@@ -791,12 +791,12 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 									{virtualized.rows.map((t: any) => {
 									if (t.rowType === "group_header") {
 										return (
-											<tr key={t.rowKey} className="bg-zinc-900">
+											<tr key={t.rowKey} className="bg-muted/40">
 												<td colSpan={columnCount} className="px-2 py-1.5">
 													<button
 														type="button"
 														onClick={() => toggleGroup(t.groupKey)}
-														className="flex w-full items-center justify-between rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-left text-[10px]"
+														className="flex w-full items-center justify-between rounded border border-input bg-background px-2 py-1.5 text-left text-[10px]"
 													>
 														<span className="font-semibold text-foreground">
 															{t.isCollapsed ? ">" : "v"} {t.groupLabel} | {t.groupTitle}
@@ -823,7 +823,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 									return (
 										<tr
 											key={rowKey}
-											className="group cursor-pointer transition-colors hover:bg-zinc-900/60"
+											className="group cursor-pointer transition-colors hover:bg-muted/40"
 											onClick={() => {
 												if (editingItemRowKey === rowKey) return;
 												handleEdit(t);
@@ -835,7 +835,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 														checked={selectedRowKeys.has(rowKey)}
 														onCheckedChange={() => handleToggleRow(rowKey)}
 														aria-label={`Pilih transaksi ${t.merchant || "Umum"} tanggal ${format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}`}
-														className="rounded-sm border-zinc-600 bg-zinc-900 data-checked:border-zinc-300 data-checked:bg-zinc-200"
+														className="rounded-sm border-muted-foreground/40 bg-muted/40 data-checked:border-primary data-checked:bg-primary"
 													/>
 												</div>
 											</td>
@@ -1064,7 +1064,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 															</div>
 																))}
 																{t.detailItems.length > (Array.isArray(t.metadata?.scanItems) && t.metadata.scanItems.length > 0 ? 6 : 4) && (
-																	<div className="inline-flex items-center rounded border border-dashed border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] font-medium text-zinc-500">
+																	<div className="inline-flex items-center rounded border border-dashed border-input bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
 																		+{t.detailItems.length - (Array.isArray(t.metadata?.scanItems) && t.metadata.scanItems.length > 0 ? 6 : 4)} detail
 																	</div>
 																)}
@@ -1187,7 +1187,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 				</div>
 			</div>
 			{data && (
-				<div className="flex flex-wrap items-center justify-between gap-2 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5">
+				<div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-card/60 px-2 py-1.5">
 					<div className="text-[10px] text-muted-foreground">
 						Halaman {data.page || page} / {data.pageCount || 1} | Total {data.count} baris
 					</div>
@@ -1195,7 +1195,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 						<select
 							value={pageSize}
 							onChange={(e) => setPageSize(Number(e.target.value) || 50)}
-							className="h-7 rounded border border-zinc-700 bg-zinc-900 px-2 text-[10px] text-zinc-200"
+							className="h-7 rounded border border-input bg-background px-2 text-[10px] text-foreground"
 						>
 							<option value={25}>25 / halaman</option>
 							<option value={50}>50 / halaman</option>
@@ -1205,7 +1205,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 							type="button"
 							onClick={() => setPage((prev) => Math.max(1, prev - 1))}
 							disabled={(data.page || page) <= 1}
-							className="rounded border border-zinc-700 px-2 py-1 text-[10px] text-zinc-300 disabled:opacity-40"
+							className="rounded border border-input px-2 py-1 text-[10px] text-foreground disabled:opacity-40"
 						>
 							Sebelumnya
 						</button>
@@ -1215,7 +1215,7 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 								setPage((prev) => Math.min(data.pageCount || 1, prev + 1))
 							}
 							disabled={(data.page || page) >= (data.pageCount || 1)}
-							className="rounded border border-zinc-700 px-2 py-1 text-[10px] text-zinc-300 disabled:opacity-40"
+							className="rounded border border-input px-2 py-1 text-[10px] text-foreground disabled:opacity-40"
 						>
 							Berikutnya
 						</button>
@@ -1234,6 +1234,9 @@ export function TransactionDetailReport({ range, viewMode, groupMode = "flat" }:
 		</div>
 	);
 }
+
+
+
 
 
 
