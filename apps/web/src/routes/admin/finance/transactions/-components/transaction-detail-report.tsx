@@ -600,15 +600,15 @@ export function TransactionDetailReport({
 	return (
 		<div className="space-y-1 p-1">
 			{withMergedHeader && (
-			<div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-				<div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2">
-					<h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-600">Riwayat Transaksi</h2>
+			<div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+				<div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 px-3 py-2">
+					<h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-700">Riwayat Transaksi</h2>
 					<div className="flex items-center gap-2">
 						<button
 							type="button"
 							onClick={onExportPdf}
 							disabled={isExporting}
-							className="inline-flex h-8 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+							className="inline-flex h-8 items-center gap-2 rounded-md border border-slate-300 bg-slate-50 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
 						>
 							<FileText className="h-4 w-4" />
 							PDF
@@ -624,7 +624,7 @@ export function TransactionDetailReport({
 					</div>
 				</div>
 
-				<div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2">
+				<div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 px-3 py-2">
 					<div className="flex flex-wrap items-center gap-1">
 						{periodButtons!.map((item) => (
 							<button
@@ -633,8 +633,8 @@ export function TransactionDetailReport({
 								onClick={() => onPeriodChange!(item.value)}
 								className={`rounded-sm border px-2.5 py-1 text-[11px] font-medium transition-colors ${
 									period === item.value
-										? "border-emerald-500 bg-emerald-50 text-emerald-700"
-										: "border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
+										? "border-emerald-400 bg-emerald-50 text-emerald-700"
+										: "border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100"
 								}`}
 							>
 								{item.label}
@@ -648,8 +648,8 @@ export function TransactionDetailReport({
 							onClick={() => onViewModeChange!("transaction")}
 							className={`rounded-sm border px-2 py-1 text-[11px] ${
 								viewMode === "transaction"
-									? "border-blue-500 bg-blue-50 font-semibold text-blue-700"
-									: "border-slate-300 bg-white text-slate-600"
+									? "border-blue-400 bg-blue-50 font-semibold text-blue-700"
+									: "border-slate-300 bg-slate-50 text-slate-600"
 							}`}
 						>
 							Transaksi
@@ -659,8 +659,8 @@ export function TransactionDetailReport({
 							onClick={() => onViewModeChange!("item")}
 							className={`rounded-sm border px-2 py-1 text-[11px] ${
 								viewMode === "item"
-									? "border-blue-500 bg-blue-50 font-semibold text-blue-700"
-									: "border-slate-300 bg-white text-slate-600"
+									? "border-blue-400 bg-blue-50 font-semibold text-blue-700"
+									: "border-slate-300 bg-slate-50 text-slate-600"
 							}`}
 						>
 							Item
@@ -670,8 +670,8 @@ export function TransactionDetailReport({
 							onClick={() => onGroupModeChange!("grouped")}
 							className={`rounded-sm border px-2 py-1 text-[11px] ${
 								groupMode === "grouped"
-									? "border-slate-500 bg-slate-100 font-semibold text-slate-800"
-									: "border-slate-300 bg-white text-slate-600"
+									? "border-slate-500 bg-slate-100 font-semibold text-slate-900"
+									: "border-slate-300 bg-slate-50 text-slate-600"
 							}`}
 						>
 							Grouped
@@ -681,8 +681,8 @@ export function TransactionDetailReport({
 							onClick={() => onGroupModeChange!("flat")}
 							className={`rounded-sm border px-2 py-1 text-[11px] ${
 								groupMode === "flat"
-									? "border-slate-500 bg-slate-100 font-semibold text-slate-800"
-									: "border-slate-300 bg-white text-slate-600"
+									? "border-slate-500 bg-slate-100 font-semibold text-slate-900"
+									: "border-slate-300 bg-slate-50 text-slate-600"
 							}`}
 						>
 							Flat
@@ -692,13 +692,13 @@ export function TransactionDetailReport({
 
 				<div className="flex flex-wrap items-center gap-4 bg-slate-50 px-3 py-2 text-[11px]">
 					<span className="text-slate-500">Periode: {summary!.periodLabel}</span>
-					<span className="font-medium text-emerald-700">
+					<span className="font-medium text-emerald-400">
 						Pemasukan Rp {summary!.totalIncome.toLocaleString("id-ID")}
 					</span>
-					<span className="font-medium text-orange-700">
+					<span className="font-medium text-orange-400">
 						Pengeluaran Rp {summary!.totalExpense.toLocaleString("id-ID")}
 					</span>
-					<span className="font-semibold text-slate-700">
+					<span className="font-semibold text-slate-900">
 						Saldo Rp {Math.abs(summary!.netBalance).toLocaleString("id-ID")}
 					</span>
 					<span className="text-slate-600">Transaksi {summary!.count}</span>
@@ -706,15 +706,15 @@ export function TransactionDetailReport({
 			</div>
 			)}
 
-			<div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-				<div className="border-b border-slate-200 px-3 py-2">
-					<h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Daftar Transaksi Detail</h3>
+			<div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+				<div className="border-b border-slate-200/80 px-3 py-2">
+					<h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">Daftar Transaksi Detail</h3>
 				</div>
 
 			{/* Filters & Search */}
-			<div className="flex flex-col gap-1 rounded-md border border-slate-200 bg-white px-2 py-1.5">
+			<div className="flex flex-col gap-1 rounded-md border border-slate-200/80 bg-white px-2 py-1.5">
 				<div className="flex flex-wrap items-center justify-between gap-2">
-					<div className="flex gap-1 rounded-md border border-slate-200 bg-slate-50 p-1">
+					<div className="flex gap-1 rounded-md border border-slate-200/80 bg-slate-50 p-1">
 						{(["all", "income", "expense"] as const).map((t) => (
 							<button
 								key={t}
@@ -737,19 +737,19 @@ export function TransactionDetailReport({
 
 					<div className="flex flex-wrap items-center gap-2">
 						<div className="relative">
-							<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+							<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
 							<input
 								type="text"
 								placeholder="Cari transaksi..."
 								value={searchQuery}
 								onChange={(e) => setSearchQuery(e.target.value)}
-								className="h-7 w-64 rounded border border-slate-300 bg-white pl-7 pr-2 text-[11px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-300"
+								className="h-7 w-64 rounded border border-slate-300 bg-slate-50 pl-7 pr-2 text-[11px] text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-300"
 							/>
 						</div>
 						<select
 							value={filterCategory}
 							onChange={(e) => setFilterCategory(e.target.value)}
-							className="h-7 rounded border border-slate-300 bg-white px-2 py-1 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300"
+							className="h-7 rounded border border-slate-300 bg-slate-50 px-2 py-1 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300"
 						>
 							<option value="">Semua Kategori</option>
 							{EXPENSE_CATEGORIES.map((cat) => (
@@ -761,25 +761,25 @@ export function TransactionDetailReport({
 					</div>
 				</div>
 
-				<div className="flex flex-wrap items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
+				<div className="flex flex-wrap items-center gap-1.5 rounded border border-slate-200/80 bg-slate-50 px-2 py-1.5">
 					<div className="flex flex-wrap items-center gap-2">
-						<Filter className="h-3.5 w-3.5 text-muted-foreground" />
-						<span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Nominal:</span>
+						<Filter className="h-3.5 w-3.5 text-slate-500" />
+						<span className="text-[11px] font-medium text-slate-600 uppercase tracking-wider">Nominal:</span>
 						<div className="flex items-center gap-1.5">
 							<input
 								type="number"
 								placeholder="Min"
 								value={minAmount}
 								onChange={(e) => setMinAmount(e.target.value)}
-								className="h-6 w-20 rounded border border-slate-300 bg-white px-2 text-[10px] focus:outline-none focus:ring-1 focus:ring-slate-300"
+								className="h-6 w-20 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300"
 							/>
-							<span className="text-muted-foreground">-</span>
+							<span className="text-slate-500">-</span>
 							<input
 								type="number"
 								placeholder="Max"
 								value={maxAmount}
 								onChange={(e) => setMaxAmount(e.target.value)}
-								className="h-6 w-20 rounded border border-slate-300 bg-white px-2 text-[10px] focus:outline-none focus:ring-1 focus:ring-slate-300"
+								className="h-6 w-20 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300"
 							/>
 						</div>
 					</div>
@@ -787,15 +787,15 @@ export function TransactionDetailReport({
 					<div className="hidden" />
 
 					<div className="flex flex-wrap items-center gap-2">
-						<ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-						<span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Urutkan:</span>
+						<ArrowUpDown className="h-3.5 w-3.5 text-slate-500" />
+						<span className="text-[11px] font-medium text-slate-600 uppercase tracking-wider">Urutkan:</span>
 						<div className="flex gap-1">
 							<button
 								onClick={() => {
 									if (sortBy === "date") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
 									else setSortBy("date");
 								}}
-								className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${sortBy === "date" ? "bg-slate-200 text-slate-900" : "text-slate-600 hover:bg-slate-100"}`}
+								className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${sortBy === "date" ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-100"}`}
 							>
 								Tanggal {sortBy === "date" && (sortOrder === "asc" ? "ASC" : "DESC")}
 							</button>
@@ -804,7 +804,7 @@ export function TransactionDetailReport({
 									if (sortBy === "amount") setSortOrder(sortOrder === "asc" ? "desc" : "asc");
 									else setSortBy("amount");
 								}}
-								className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${sortBy === "amount" ? "bg-slate-200 text-slate-900" : "text-slate-600 hover:bg-slate-100"}`}
+								className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${sortBy === "amount" ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-100"}`}
 							>
 								Nominal {sortBy === "amount" && (sortOrder === "asc" ? "ASC" : "DESC")}
 							</button>
@@ -829,7 +829,7 @@ export function TransactionDetailReport({
 
 			{selectedVisibleCount > 0 && (
 				<div className="flex items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-2.5 py-2">
-					<p className="text-xs text-foreground">
+					<p className="text-xs text-slate-900">
 						<span className="font-semibold">{selectedVisibleCount}</span> baris dipilih
 					</p>
 					<div className="flex flex-wrap items-center gap-2">
@@ -853,35 +853,27 @@ export function TransactionDetailReport({
 			)}
 
 			{/* Transactions Table */}
-			<div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+			<div className="overflow-hidden rounded-lg border border-slate-200/80 bg-white">
 				<div
 					ref={scrollContainerRef}
 					onScroll={(e) => setScrollTop((e.target as HTMLDivElement).scrollTop)}
 					className="max-h-[76vh] overflow-auto"
 				>
-					<table className="w-full min-w-[1180px] table-auto text-left text-[10px] text-slate-800">
+					<table className="w-full min-w-[980px] table-auto text-left text-[10px] text-slate-700">
 						<colgroup>
 							<col style={{ width: "36px" }} />
 							<col style={{ width: "48px" }} />
-							<col style={{ width: "96px" }} />
-							<col style={{ width: "86px" }} />
-							<col style={{ width: "92px" }} />
-							<col style={{ width: "112px" }} />
-							{viewMode === "item" && <col style={{ width: "120px" }} />}
+							<col style={{ width: "132px" }} />
+							<col style={{ width: "140px" }} />
+							<col style={{ width: "124px" }} />
+							<col style={{ width: "116px" }} />
 							<col />
-							<col />
-							<col style={{ width: "148px" }} />
-							<col style={{ width: "112px" }} />
-							<col style={{ width: "84px" }} />
-							<col style={{ width: "110px" }} />
-							<col style={{ width: "190px" }} />
-							<col style={{ width: "170px" }} />
-							<col style={{ width: "120px" }} />
+							<col style={{ width: "176px" }} />
 							<col style={{ width: "68px" }} />
 						</colgroup>
-						<thead className="sticky top-0 z-10 bg-slate-100 text-[9px] font-semibold uppercase tracking-wider text-slate-500">
+						<thead className="sticky top-0 z-10 bg-slate-50 text-[9px] font-semibold uppercase tracking-wider text-slate-600">
 							<tr>
-								<th className="sticky left-0 z-20 w-9 border-r border-slate-200 bg-slate-100 px-1.5 py-1">
+								<th className="sticky left-0 z-20 w-9 border-r border-slate-200 bg-slate-50 px-1.5 py-1">
 									<div className="flex items-center justify-center">
 										<Checkbox
 											checked={allVisibleSelected}
@@ -892,22 +884,14 @@ export function TransactionDetailReport({
 										/>
 									</div>
 								</th>
-								<th className="sticky left-[36px] z-20 w-12 border-r border-slate-200 bg-slate-100 px-1.5 py-1 text-center">No</th>
-								<th className="w-24 px-2 py-1">Tanggal</th>
-								<th className="w-[86px] px-2 py-1">Tipe</th>
-								<th className="w-[92px] px-2 py-1">Shift</th>
-								<th className="w-28 px-2 py-1">Sumber</th>
-								{viewMode === "item" && <th className="w-[120px] px-2 py-1">Grup Referensi</th>}
-								<th className="px-2 py-1">Merchant</th>
+								<th className="sticky left-[36px] z-20 w-12 border-r border-slate-200 bg-slate-50 px-1.5 py-1 text-center">No</th>
+								<th className="px-2 py-1">Tanggal</th>
+								<th className="px-2 py-1">Tipe</th>
+								<th className="px-2 py-1">Shift</th>
+								<th className="px-2 py-1">Sumber</th>
 								<th className="px-2 py-1">Deskripsi</th>
-								<th className="w-[148px] px-2 py-1">Referensi</th>
-								<th className="w-28 px-2 py-1">Kategori</th>
-								<th className="w-[84px] px-2 py-1">Metode</th>
-								<th className="w-[110px] px-2 py-1">Status</th>
-								<th className="w-[190px] px-2 py-1">Detail</th>
-								<th className="w-[170px] px-2 py-1">Audit</th>
-								<th className="sticky right-[68px] z-20 w-[120px] border-l border-slate-200 bg-slate-100 px-2 py-1 text-right">Nominal</th>
-								<th className="sticky right-0 z-20 w-[68px] border-l border-slate-200 bg-slate-100 px-2 py-1 text-center">Aksi</th>
+								<th className="sticky right-[68px] z-20 border-l border-slate-200 bg-slate-50 px-2 py-1 text-right">Nominal</th>
+								<th className="sticky right-0 z-20 w-[68px] border-l border-slate-200 bg-slate-50 px-2 py-1 text-center">Aksi</th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-slate-200 bg-white">
@@ -919,7 +903,7 @@ export function TransactionDetailReport({
 								))
 							) : filteredTransactions.length === 0 ? (
 								<tr>
-									<td colSpan={columnCount} className="px-4 py-12 text-center text-muted-foreground">
+									<td colSpan={columnCount} className="px-4 py-12 text-center text-slate-500">
 										<div className="flex flex-col items-center gap-2">
 											<Wallet className="h-8 w-8 opacity-20" />
 											<p>Tidak ada transaksi ditemukan</p>
@@ -936,20 +920,20 @@ export function TransactionDetailReport({
 									{virtualized.rows.map((t: any) => {
 									if (t.rowType === "group_header") {
 										return (
-											<tr key={t.rowKey} className="bg-slate-100">
+											<tr key={t.rowKey} className="bg-slate-50">
 												<td colSpan={columnCount} className="px-2 py-1.5">
 													<button
 														type="button"
 														onClick={() => toggleGroup(t.groupKey)}
-														className="flex w-full items-center justify-between rounded border border-slate-200 bg-white px-2 py-1 text-left text-[10px]"
+														className="flex w-full items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1 text-left text-[10px]"
 													>
-														<span className="font-semibold text-foreground">
+														<span className="font-semibold text-slate-700">
 															{t.isCollapsed ? ">" : "v"} {t.groupLabel}
 															{t.groupType === "date_group"
 																? ` · ${t.groupCount} transaksi`
 																: ` | ${t.groupTitle}`}
 														</span>
-														<span className={`${t.groupAmount >= 0 ? "text-emerald-700" : "text-red-700"} font-medium`}>
+														<span className={`${t.groupAmount >= 0 ? "text-emerald-400" : "text-red-400"} font-medium`}>
 															{t.groupAmount >= 0 ? "+" : "-"} Rp {Math.abs(t.groupAmount).toLocaleString("id-ID")}
 														</span>
 													</button>
@@ -966,18 +950,16 @@ export function TransactionDetailReport({
 										}
 									}
 
-									const referenceHref = getReferenceHref(t);
-
 									return (
 										<tr
 											key={rowKey}
-											className="group cursor-pointer transition-colors hover:bg-slate-50"
+											className={`group cursor-pointer transition-colors hover:bg-slate-100 ${selectedRowKeys.has(rowKey) ? "border-t-2 border-blue-500 bg-blue-50/40" : ""}`}
 											onClick={() => {
 												if (editingItemRowKey === rowKey) return;
 												handleEdit(t);
 											}}
 										>
-											<td className="sticky left-0 z-10 w-9 border-r border-slate-200 bg-white px-1.5 py-1 group-hover:bg-slate-50" onClick={(e) => e.stopPropagation()}>
+											<td className="sticky left-0 z-10 w-9 border-r border-slate-200 bg-white px-1.5 py-1 group-hover:bg-slate-100" onClick={(e) => e.stopPropagation()}>
 												<div className="flex items-center justify-center">
 													<Checkbox
 														checked={selectedRowKeys.has(rowKey)}
@@ -987,336 +969,69 @@ export function TransactionDetailReport({
 													/>
 												</div>
 											</td>
-											<td className="sticky left-[36px] z-10 w-[52px] border-r border-slate-200 bg-white px-1.5 py-1 text-center group-hover:bg-slate-50">
-												<span className="font-mono text-[10px] text-muted-foreground">
+											<td className="sticky left-[36px] z-10 w-[52px] border-r border-slate-200 bg-white px-1.5 py-1 text-center group-hover:bg-slate-100">
+												<span className="font-mono text-[10px] text-slate-500">
 													{rowNumberByKey.get(rowKey) || "-"}
 												</span>
 											</td>
 											<td className="px-2 py-1 whitespace-nowrap">
 												<div className="flex flex-col leading-tight">
-													<span className="font-medium text-foreground text-[11px]">
+													<span className="font-medium text-slate-900 text-[11px]">
 														{format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}
 													</span>
-													<span className="text-[10px] text-muted-foreground">
+													<span className="text-[10px] text-slate-500">
 														{format(new Date(t.date), "HH:mm")}
 													</span>
 												</div>
 											</td>
 											<td className="px-2 py-1 whitespace-nowrap">
-												<span className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+												<span className={`inline-flex rounded-sm border px-2.5 py-[1px] text-[11px] font-semibold uppercase tracking-wide ${
 													t.type === "income"
 														? "border-emerald-200 bg-emerald-50 text-emerald-700"
-														: "border-rose-200 bg-rose-50 text-rose-700"
+														: "border-orange-200 bg-orange-50 text-orange-700"
 												}`}>
 													{t.type === "income" ? "Pemasukan" : "Pengeluaran"}
 												</span>
 											</td>
 											<td className="px-2 py-1 whitespace-nowrap">
 												{shiftName !== "-" ? (
-													<span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-[9px] font-bold text-primary uppercase">
+													<span className="inline-flex items-center rounded-sm border border-slate-400 bg-slate-50 px-2.5 py-[1px] text-[11px] font-semibold text-slate-700">
 														{shiftName}
 													</span>
 												) : (
-													<span className="text-[11px] text-muted-foreground">-</span>
+													<span className="text-[11px] text-slate-500">-</span>
 												)}
 											</td>
 											<td className="px-2 py-1 whitespace-nowrap">
-												<div className="flex flex-col gap-1">
-													{sourceBadge(t.sourceLabel, t.sourceType)}
-													{t.inputMode && (
-														<span className="truncate text-[9px] uppercase tracking-wider text-muted-foreground">
-															{t.inputMode.replace(/_/g, " ")}
-														</span>
-													)}
-												</div>
-											</td>
-											{viewMode === "item" && (
-												<td className="px-2 py-1">
-													{t.rowType === "receipt_item" ? (
-														<div className="flex flex-col gap-1">
-															<span className="inline-flex rounded-md border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-700">
-																{t.receiptGroupLabel || "Struk"}
-															</span>
-															<span className="text-[10px] text-muted-foreground">
-																Item {t.receiptItemIndex}/{t.receiptItemCount}
-															</span>
-														</div>
-													) : t.rowType === "order_item" ? (
-														<div className="flex flex-col gap-1">
-															<span className="inline-flex rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
-																{t.receiptGroupLabel || "Order"}
-															</span>
-															<span className="text-[10px] text-muted-foreground">
-																Item {t.receiptItemIndex}/{t.receiptItemCount}
-															</span>
-														</div>
-													) : t.rowType === "booking_item" ? (
-														<div className="flex flex-col gap-1">
-															<span className="inline-flex rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-700">
-																{t.receiptGroupLabel || "Booking"}
-															</span>
-															<span className="text-[10px] text-muted-foreground">
-																Item {t.receiptItemIndex}/{t.receiptItemCount}
-															</span>
-														</div>
-													) : (
-														<span className="text-[11px] text-muted-foreground">-</span>
-													)}
-												</td>
-											)}
-											<td className="px-2 py-1">
-												<div className="max-w-[160px]">
-													<span className="block truncate text-xs font-semibold text-foreground" title={t.displayTitle || t.merchant || "Umum"}>
-														{t.displayTitle || t.merchant || "Umum"}
-													</span>
-												</div>
-											</td>
-											<td className="px-2 py-1">
-												<div className="max-w-[220px] space-y-1">
-													<div className="truncate text-[11px] text-muted-foreground" title={t.displaySummary || t.description || "-"}>
-														{t.displaySummary || t.description || "-"}
-													</div>
-													{t.rawText && (
-														<div className="inline-flex max-w-full rounded-md border border-border/60 bg-muted/30 px-2 py-0.5 text-[10px] text-muted-foreground">
-															<span className="truncate" title={t.rawText}>AI input tersimpan</span>
-														</div>
-													)}
-												</div>
-											</td>
-											<td className="px-2 py-1" onClick={(e) => e.stopPropagation()}>
-												<div className="max-w-[148px] flex flex-col gap-0.5">
-													<span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-														{t.referenceLabel || "Tanpa referensi"}
-													</span>
-													{referenceHref ? (
-														<a
-															href={referenceHref}
-															className="truncate text-xs font-semibold text-primary hover:underline"
-															title={`Buka ${t.referenceValue}`}
-														>
-															{t.referenceValue || "-"}
-														</a>
-													) : (
-														<span className="truncate text-xs font-medium text-foreground">
-															{t.referenceValue || "-"}
-														</span>
-													)}
-													{t.metadata?.aiSessionId && (
-														<span className="truncate text-[10px] text-muted-foreground">
-															Sesi: {t.metadata.aiSessionId}
-														</span>
-													)}
-											</div>
-										</td>
-										<td className="px-2 py-1 whitespace-nowrap">
-											{categoryBadge(t.category, t.type)}
-										</td>
-										<td className="px-2 py-1">
-											<span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-												{t.paymentMethod || "Cash"}
-											</span>
-										</td>
-										<td className="px-2 py-1">
-											<div className="flex flex-col gap-1">
-												<span className={`inline-flex w-fit rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
-												t.status === "completed"
-													? "border-emerald-200 bg-emerald-50 text-emerald-700"
-													: t.status === "pending"
-														? "border-amber-200 bg-amber-50 text-amber-700"
-														: "border-rose-200 bg-rose-50 text-rose-700"
-												}`}>
-													{t.status}
+												<span className="truncate text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+													{(t.sourceLabel || t.sourceType || "-").replace(/_/g, " ")}
 												</span>
-												{t.isRecurring && (
-													<span className="text-[9px] text-muted-foreground uppercase tracking-wider">
-														berulang {t.recurringInterval || ""}
+											</td>
+											<td className="px-2 py-1">
+												<div className="max-w-[280px] truncate">
+													<span className="text-slate-500">Pelanggan </span>
+													<span className="font-semibold text-slate-900" title={t.displaySummary || t.description || "-"}>
+														{t.displaySummary || t.description || "-"}
 													</span>
-												)}
-											</div>
-										</td>
-										<td className="px-2 py-1" onClick={(e) => e.stopPropagation()}>
-											{t.rowType === "receipt_item" &&
-											editingItemRowKey === rowKey &&
-											itemEditDraft ? (
-												<div className="grid grid-cols-3 gap-2">
-													<div className="space-y-1">
-														<span className="block text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-															Qty
-														</span>
-														<input
-															type="number"
-															min="0"
-															step="1"
-															value={itemEditDraft.qty}
-															onChange={(e) =>
-																setItemEditDraft((prev) =>
-																	prev
-																		? { ...prev, qty: e.target.value }
-																		: prev
-																)
-															}
-															className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
-														/>
-													</div>
-													<div className="space-y-1">
-														<span className="block text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-															Harga
-														</span>
-														<input
-															type="number"
-															min="0"
-															step="1"
-															value={itemEditDraft.price}
-															onChange={(e) =>
-																setItemEditDraft((prev) =>
-																	prev
-																		? { ...prev, price: e.target.value }
-																		: prev
-																)
-															}
-															className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
-														/>
-													</div>
-													<div className="space-y-1">
-														<span className="block text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-															Subtotal
-														</span>
-														<input
-															type="number"
-															min="0"
-															step="1"
-															value={itemEditDraft.subtotal}
-															onChange={(e) =>
-																setItemEditDraft((prev) =>
-																	prev
-																		? { ...prev, subtotal: e.target.value }
-																		: prev
-																)
-															}
-															className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
-														/>
-													</div>
 												</div>
-											) : (
-												<div className="flex flex-wrap gap-1">
-														{Array.isArray(t.detailItems) && t.detailItems.length > 0 ? (
-															<>
-																{t.detailItems.slice(0, Array.isArray(t.metadata?.scanItems) && t.metadata.scanItems.length > 0 ? 6 : 4).map((detail: { label: string; value: string }, idx: number) => (
-															<div key={`${detail.label}-${idx}`} className="inline-flex max-w-[126px] items-center gap-1 rounded-md border border-border/60 bg-background px-2 py-0.5 text-[10px]">
-																<span className="font-semibold uppercase tracking-wider text-muted-foreground">
-																	{detail.label}:
-																</span>
-																<span className="truncate text-foreground" title={detail.value}>
-																	{detail.value}
-																</span>
-															</div>
-																))}
-																{t.detailItems.length > (Array.isArray(t.metadata?.scanItems) && t.metadata.scanItems.length > 0 ? 6 : 4) && (
-																	<div className="inline-flex items-center rounded border border-dashed border-input bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-																		+{t.detailItems.length - (Array.isArray(t.metadata?.scanItems) && t.metadata.scanItems.length > 0 ? 6 : 4)} detail
-																	</div>
-																)}
-															</>
-													) : (
-														<span className="text-[11px] text-muted-foreground">-</span>
-													)}
-												</div>
-											)}
-										</td>
-										<td className="px-2 py-1">
-											<div className="flex max-w-[170px] flex-wrap gap-1">
-												{t.receiptNumber && (
-													<span className="inline-flex rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] text-blue-700">
-														No: {t.receiptNumber}
-													</span>
-												)}
-												{t.sourceRef && (
-													<span className="inline-flex rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-700">
-														Ref: {t.sourceRef}
-													</span>
-												)}
-												{t.sourceFingerprint && (
-													<span className="inline-flex rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-700">
-														FP: {String(t.sourceFingerprint).slice(-8)}
-													</span>
-												)}
-												{t.isPotentialDuplicate && (
-													<span className="inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-														Duplikat
-													</span>
-												)}
-												{Array.isArray(t.ocrFlags) &&
-													t.ocrFlags.slice(0, 2).map((flag: string) => (
-														<span key={flag} className="inline-flex rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] text-rose-700">
-															{flag.replace(/_/g, " ")}
-														</span>
-													))}
-											</div>
-										</td>
-										<td className="sticky right-[68px] z-10 border-l border-slate-200 bg-white px-2 py-1 text-right whitespace-nowrap group-hover:bg-slate-50">
-											<span className={`font-bold text-xs whitespace-nowrap ${t.type === "income" ? "text-green-600" : "text-red-600"}`}>
+											</td>
+										<td className="sticky right-[68px] z-10 border-l border-slate-200 bg-white px-2 py-1 text-right whitespace-nowrap group-hover:bg-slate-100">
+											<span className={`font-mono text-[13px] tracking-tight whitespace-nowrap ${t.type === "income" ? "text-emerald-600" : "text-orange-600"}`}>
 												{t.type === "income" ? "+" : "-"}{" "}
-												{formatCurrencyIDR(
-													t.rowType === "receipt_item" &&
-													editingItemRowKey === rowKey &&
-													itemEditDraft
-														? Number(itemEditDraft.subtotal) || 0
-														: t.amount
-												)}
+												{formatCurrencyIDR(t.amount)}
 											</span>
 										</td>
-										<td className="sticky right-0 z-10 border-l border-slate-200 bg-white px-2 py-1 text-center group-hover:bg-slate-50" onClick={(e) => e.stopPropagation()}>
-												<div className="flex items-center justify-center gap-1 opacity-80 transition-opacity group-hover:opacity-100">
-													{t.rowType === "receipt_item" && editingItemRowKey === rowKey ? (
-														<>
-															<button
-																onClick={(e) => {
-																	e.stopPropagation();
-																	void saveInlineEditItem(t);
-																}}
-																disabled={savingItemRowKey === rowKey}
-																className="rounded-md p-1 text-emerald-700 transition-colors hover:bg-emerald-50 disabled:opacity-40"
-																title="Simpan item"
-															>
-																<Check className="h-3.5 w-3.5" />
-															</button>
-															<button
-																onClick={(e) => {
-																	e.stopPropagation();
-																	cancelInlineEditItem();
-																}}
-																disabled={savingItemRowKey === rowKey}
-																className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted disabled:opacity-40"
-																title="Batal edit item"
-															>
-																<X className="h-3.5 w-3.5" />
-															</button>
-														</>
-													) : (
-														<button
-															onClick={(e) => {
-																e.stopPropagation();
-																if (t.rowType === "receipt_item") {
-																	startInlineEditItem(t);
-																	return;
-																}
-																handleEdit(t);
-															}}
-															className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-															title={t.rowType === "receipt_item" ? "Ubah Item" : "Ubah"}
-														>
-															<Pencil className="h-3.5 w-3.5" />
-														</button>
-													)}
+										<td className="sticky right-0 z-10 border-l border-slate-200 bg-white px-2 py-1 text-center group-hover:bg-slate-100" onClick={(e) => e.stopPropagation()}>
+												<div className="flex items-center justify-center opacity-90 transition-opacity group-hover:opacity-100">
 													<button
 														onClick={(e) => {
 															e.stopPropagation();
-															void handleDelete(t);
+															handleEdit(t);
 														}}
-														className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-														title="Hapus"
+														className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100"
+														title="Detail Aksi"
 													>
-														<Trash2 className="h-3.5 w-3.5" />
+														<span className="text-xs">▾</span>
 													</button>
 												</div>
 											</td>
@@ -1383,6 +1098,7 @@ export function TransactionDetailReport({
 		</div>
 	);
 }
+
 
 
 
