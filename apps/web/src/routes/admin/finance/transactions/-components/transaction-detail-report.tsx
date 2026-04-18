@@ -166,35 +166,186 @@ export function TransactionDetailReport({
 			return filteredTransactions;
 		}
 
-		// Grouped mode is always grouped by day.
-		const groups = new Map<string, any[]>();
-		for (const row of filteredTransactions) {
+		const rows: any[] = [];
+		const itemRowTypes = new Set(["receipt_item", "order_item", "booking_item"]);
+		const sortedByDateDesc = [...filteredTransactions].sort((a: any, b: any) => b.date - a.date);
+		const dayGroups = new Map<string, any[]>();
+
+		for (const row of sortedByDateDesc) {
 			const dayKey = format(new Date(row.date), "yyyy-MM-dd");
-			const bucket = groups.get(dayKey) || [];
+			const bucket = dayGroups.get(dayKey) || [];
 			bucket.push(row);
-			groups.set(dayKey, bucket);
+			dayGroups.set(dayKey, bucket);
 		}
 
-		const rows: any[] = [];
-		for (const [groupKey, members] of groups.entries()) {
-			const groupAmount = members.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+		for (const [dayKey, dayRows] of dayGroups.entries()) {
+			const dayNodeKey = `day::${dayKey}`;
+			const dayAmount = dayRows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+			const dayCollapsed = collapsedGroups.has(dayNodeKey);
 			rows.push({
-				rowType: "group_header",
-				rowKey: `group::${groupKey}`,
-				groupKey,
-				groupLabel: format(new Date(members[0].date), "dd MMM yyyy", { locale: localeID }),
-				groupTitle: "",
-				groupType: "date_group",
-				groupCount: members.length,
-				groupAmount,
-				isCollapsed: collapsedGroups.has(groupKey),
+				rowType: "hierarchy_node",
+				level: "day",
+				nodeKey: dayNodeKey,
+				label: format(new Date(dayRows[0].date), "dd MMM yyyy", { locale: localeID }),
+				count: dayRows.length,
+				amount: dayAmount,
+				expandable: true,
+				isCollapsed: dayCollapsed,
 			});
-			if (!collapsedGroups.has(groupKey)) {
-				rows.push(...members);
+			if (dayCollapsed) continue;
+
+			const shiftGroups = new Map<string, any[]>();
+			for (const row of dayRows) {
+				let shiftLabel = "-";
+				if (historicalShifts) {
+					const matched = historicalShifts.find(
+						(s: any) => row.date >= s.startTime && (!s.endTime || row.date <= s.endTime)
+					);
+					shiftLabel = matched?.shiftName || shiftLabel;
+				}
+				const key = shiftLabel || "-";
+				const bucket = shiftGroups.get(key) || [];
+				bucket.push(row);
+				shiftGroups.set(key, bucket);
+			}
+
+			for (const [shiftKeyRaw, shiftRows] of shiftGroups.entries()) {
+				const shiftNodeKey = `${dayNodeKey}::shift::${shiftKeyRaw}`;
+				const shiftAmount = shiftRows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+				const shiftCollapsed = collapsedGroups.has(shiftNodeKey);
+				rows.push({
+					rowType: "hierarchy_node",
+					level: "shift",
+					nodeKey: shiftNodeKey,
+					label: shiftKeyRaw,
+					count: shiftRows.length,
+					amount: shiftAmount,
+					expandable: true,
+					isCollapsed: shiftCollapsed,
+				});
+				if (shiftCollapsed) continue;
+
+				const typeGroups = new Map<string, any[]>();
+				for (const row of shiftRows) {
+					const typeKey = row.type === "income" ? "Pemasukan" : "Pengeluaran";
+					const bucket = typeGroups.get(typeKey) || [];
+					bucket.push(row);
+					typeGroups.set(typeKey, bucket);
+				}
+
+				for (const [typeKey, typeRows] of typeGroups.entries()) {
+					const typeNodeKey = `${shiftNodeKey}::type::${typeKey}`;
+					const typeAmount = typeRows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+					const typeCollapsed = collapsedGroups.has(typeNodeKey);
+					rows.push({
+						rowType: "hierarchy_node",
+						level: "type",
+						nodeKey: typeNodeKey,
+						label: typeKey,
+						count: typeRows.length,
+						amount: typeAmount,
+						expandable: true,
+						isCollapsed: typeCollapsed,
+					});
+					if (typeCollapsed) continue;
+
+					const txGroups = new Map<string, any[]>();
+					for (const row of typeRows) {
+						const txKey = String(row._id);
+						const bucket = txGroups.get(txKey) || [];
+						bucket.push(row);
+						txGroups.set(txKey, bucket);
+					}
+
+					for (const [txKey, txRows] of txGroups.entries()) {
+						const txHead = txRows[0];
+						const txNodeKey = `${typeNodeKey}::tx::${txKey}`;
+						const txAmount = txRows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+						const txCollapsed = collapsedGroups.has(txNodeKey);
+						rows.push({
+							rowType: "hierarchy_node",
+							level: "transaction",
+							nodeKey: txNodeKey,
+							label: `${format(new Date(txHead.date), "HH:mm")} • ${txHead.displayTitle || txHead.merchant || "Transaksi"}`,
+							count: txRows.length,
+							amount: txAmount,
+							expandable: true,
+							isCollapsed: txCollapsed,
+						});
+						if (txCollapsed) continue;
+
+						const itemRows = txRows.filter((row) => itemRowTypes.has(String(row.rowType)));
+						if (itemRows.length > 0) {
+							for (let itemIndex = 0; itemIndex < itemRows.length; itemIndex += 1) {
+								const itemRow = itemRows[itemIndex];
+								const itemNodeKey = `${txNodeKey}::item::${String(itemRow.rowKey || itemRow._id)}::${itemIndex}`;
+								const itemCollapsed = collapsedGroups.has(itemNodeKey);
+								rows.push({
+									rowType: "hierarchy_node",
+									level: "item",
+									nodeKey: itemNodeKey,
+									label:
+										itemRow.displaySummary ||
+										itemRow.displayTitle ||
+										itemRow.description ||
+										`Item ${itemIndex + 1}`,
+									count: 1,
+									amount: Number(itemRow.amount) || 0,
+									expandable: true,
+									isCollapsed: itemCollapsed,
+								});
+								if (itemCollapsed) continue;
+
+								const detailItems = Array.isArray(itemRow.detailItems) ? itemRow.detailItems : [];
+								for (let detailIndex = 0; detailIndex < detailItems.length; detailIndex += 1) {
+									const detail = detailItems[detailIndex];
+									rows.push({
+										rowType: "hierarchy_node",
+										level: "detail",
+										nodeKey: `${itemNodeKey}::detail::${detailIndex}`,
+										label: detail?.label || "Detail",
+										value: detail?.value || "-",
+										expandable: false,
+										isCollapsed: false,
+									});
+								}
+							}
+						} else {
+							const fallbackItemNodeKey = `${txNodeKey}::item::summary`;
+							const fallbackCollapsed = collapsedGroups.has(fallbackItemNodeKey);
+							rows.push({
+								rowType: "hierarchy_node",
+								level: "item",
+								nodeKey: fallbackItemNodeKey,
+								label: txHead.displaySummary || txHead.description || "Ringkasan transaksi",
+								count: 1,
+								amount: Number(txHead.amount) || 0,
+								expandable: true,
+								isCollapsed: fallbackCollapsed,
+							});
+							if (!fallbackCollapsed) {
+								const detailItems = Array.isArray(txHead.detailItems) ? txHead.detailItems : [];
+								for (let detailIndex = 0; detailIndex < detailItems.length; detailIndex += 1) {
+									const detail = detailItems[detailIndex];
+									rows.push({
+										rowType: "hierarchy_node",
+										level: "detail",
+										nodeKey: `${fallbackItemNodeKey}::detail::${detailIndex}`,
+										label: detail?.label || "Detail",
+										value: detail?.value || "-",
+										expandable: false,
+										isCollapsed: false,
+									});
+								}
+							}
+						}
+					}
+				}
 			}
 		}
+
 		return rows;
-	}, [filteredTransactions, groupMode, collapsedGroups]);
+	}, [filteredTransactions, groupMode, collapsedGroups, historicalShifts]);
 	const virtualized = useMemo(() => {
 		const shouldVirtualize = displayedRows.length > 120;
 		if (!shouldVirtualize) {
@@ -222,7 +373,7 @@ export function TransactionDetailReport({
 		const numbers = new Map<string, number>();
 		let counter = 0;
 		for (const row of displayedRows) {
-			if (row.rowType === "group_header") continue;
+			if (row.rowType === "hierarchy_node") continue;
 			counter += 1;
 			numbers.set(String(row.rowKey || row._id), counter);
 		}
@@ -891,24 +1042,47 @@ export function TransactionDetailReport({
 										</tr>
 									)}
 									{virtualized.rows.map((t: any) => {
-									if (t.rowType === "group_header") {
+									if (t.rowType === "hierarchy_node") {
+										const levelPadding: Record<string, string> = {
+											day: "pl-2",
+											shift: "pl-6",
+											type: "pl-10",
+											transaction: "pl-14",
+											item: "pl-[72px]",
+											detail: "pl-[88px]",
+										};
+										const isExpandable = Boolean(t.expandable);
+										const nodeAmount = Number(t.amount || 0);
+										const nodeLabel =
+											t.level === "day"
+												? `${t.label} · ${t.count} transaksi`
+												: t.level === "shift"
+													? `Shift ${t.label} · ${t.count} transaksi`
+													: t.level === "type"
+														? `${t.label} · ${t.count} transaksi`
+														: t.level === "transaction"
+															? `Transaksi ${t.label}`
+															: t.level === "item"
+																? `Item ${t.label}`
+																: `${t.label}: ${t.value}`;
 										return (
-											<tr key={t.rowKey} className="bg-slate-50">
+											<tr key={t.nodeKey} className="bg-white border-b border-slate-200">
 												<td colSpan={columnCount} className="px-2 py-1.5">
 													<button
 														type="button"
-														onClick={() => toggleGroup(t.groupKey)}
-														className="flex w-full items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1 text-left text-[10px]"
+														onClick={() => {
+															if (isExpandable) toggleGroup(t.nodeKey);
+														}}
+														className={`flex w-full items-center justify-between rounded-md border border-slate-200 bg-white px-2 py-1 text-left text-[11px] ${isExpandable ? "hover:bg-slate-100" : ""}`}
 													>
-														<span className="font-semibold text-slate-700">
-															{t.isCollapsed ? ">" : "v"} {t.groupLabel}
-															{t.groupType === "date_group"
-																? ` · ${t.groupCount} transaksi`
-																: ` | ${t.groupTitle}`}
+														<span className={`font-medium text-slate-700 ${levelPadding[t.level] || "pl-2"}`}>
+															{isExpandable ? (t.isCollapsed ? ">" : "v") : "•"} {nodeLabel}
 														</span>
-														<span className={`${t.groupAmount >= 0 ? "text-emerald-400" : "text-red-400"} font-medium`}>
-															{t.groupAmount >= 0 ? "+" : "-"} Rp {Math.abs(t.groupAmount).toLocaleString("id-ID")}
-														</span>
+														{t.level !== "detail" && (
+															<span className={`${nodeAmount >= 0 ? "text-emerald-600" : "text-orange-600"} font-mono text-[12px]`}>
+																{nodeAmount >= 0 ? "+" : "-"} Rp {Math.abs(nodeAmount).toLocaleString("id-ID")}
+															</span>
+														)}
 													</button>
 												</td>
 											</tr>
