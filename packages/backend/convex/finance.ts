@@ -2061,6 +2061,51 @@ export const endShift = mutation({
 	},
 });
 
+// Admin: update shift metadata (cashier, team, name, notes, startingCash)
+export const adminUpdateShift = mutation({
+	args: {
+		shiftId: v.id("shifts"),
+		cashierName: v.optional(v.string()),
+		teamMembers: v.optional(v.string()),
+		shiftName: v.optional(v.string()),
+		notes: v.optional(v.string()),
+		startingCash: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const { shiftId, ...fields } = args;
+		const shift = await ctx.db.get(shiftId);
+		if (!shift) throw new Error("Shift tidak ditemukan");
+		const patch: Record<string, any> = {};
+		if (fields.cashierName !== undefined) patch.cashierName = fields.cashierName;
+		if (fields.teamMembers !== undefined) patch.teamMembers = fields.teamMembers;
+		if (fields.shiftName !== undefined) patch.shiftName = fields.shiftName;
+		if (fields.notes !== undefined) patch.notes = fields.notes;
+		if (fields.startingCash !== undefined) patch.startingCash = fields.startingCash;
+		await ctx.db.patch(shiftId, patch);
+		return shiftId;
+	},
+});
+
+// Admin: delete a single shift record
+export const adminDeleteShift = mutation({
+	args: { shiftId: v.id("shifts") },
+	handler: async (ctx, args) => {
+		const shift = await ctx.db.get(args.shiftId);
+		if (!shift) throw new Error("Shift tidak ditemukan");
+		await ctx.db.delete(args.shiftId);
+		return args.shiftId;
+	},
+});
+
+// Admin: bulk delete shift records
+export const adminBulkDeleteShifts = mutation({
+	args: { shiftIds: v.array(v.id("shifts")) },
+	handler: async (ctx, args) => {
+		await Promise.all(args.shiftIds.map((id) => ctx.db.delete(id)));
+		return args.shiftIds.length;
+	},
+});
+
 // Get ongoing shift if any
 export const getOngoingShift = query({
 	handler: async (ctx) => {

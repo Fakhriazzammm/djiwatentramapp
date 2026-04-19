@@ -1,5 +1,5 @@
 import { api } from "@yumipos/backend/convex/_generated/api";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
 import {
 	BadgeDollarSign,
@@ -12,10 +12,13 @@ import {
 	Image as ImageIcon,
 	Loader2,
 	Mail,
+	Pencil,
 	ReceiptText,
+	Trash2,
 	TrendingUp,
 	Users,
 	Wallet,
+	X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -191,10 +194,87 @@ export function ShiftReport({ range }: Props) {
 		endDate: range.endDate,
 	}) as ShiftRow[] | undefined;
 
+	const adminUpdateShift = useMutation(api.finance.adminUpdateShift);
+	const adminDeleteShift = useMutation(api.finance.adminDeleteShift);
+	const adminBulkDeleteShifts = useMutation(api.finance.adminBulkDeleteShifts);
+
 	const [selectedShiftStart, setSelectedShiftStart] = useState<number | null>(null);
 	const [sendingShiftStart, setSendingShiftStart] = useState<number | null>(null);
 	const [isExporting, setIsExporting] = useState(false);
 	const [isSendingFullEmail, setIsSendingFullEmail] = useState(false);
+
+	// Checkbox selection state
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+	const [isDeleting, setIsDeleting] = useState(false);
+	const [confirmDeleteIds, setConfirmDeleteIds] = useState<string[] | null>(null);
+
+	// Edit state
+	const [editingShift, setEditingShift] = useState<ShiftRow | null>(null);
+	const [editForm, setEditForm] = useState({ cashierName: "", teamMembers: "", shiftName: "", notes: "", startingCash: 0 });
+	const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+	const allIds = useMemo(() => (rows ?? []).map((r) => r.shiftId), [rows]);
+	const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
+	const someSelected = selectedIds.size > 0;
+
+	function toggleRow(id: string, e: React.MouseEvent) {
+		e.stopPropagation();
+		setSelectedIds((prev) => {
+			const next = new Set(prev);
+			next.has(id) ? next.delete(id) : next.add(id);
+			return next;
+		});
+	}
+
+	function toggleAll(e: React.ChangeEvent<HTMLInputElement>) {
+		setSelectedIds(e.target.checked ? new Set(allIds) : new Set());
+	}
+
+	function openEdit(shift: ShiftRow, e: React.MouseEvent) {
+		e.stopPropagation();
+		setEditingShift(shift);
+		setEditForm({
+			cashierName: shift.cashierName ?? "",
+			teamMembers: shift.teamMembers ?? "",
+			shiftName: shift.shiftName ?? "",
+			notes: "",
+			startingCash: shift.startingCash ?? 0,
+		});
+	}
+
+	async function handleSaveEdit() {
+		if (!editingShift) return;
+		setIsSavingEdit(true);
+		try {
+			await adminUpdateShift({ shiftId: editingShift.shiftId as any, ...editForm });
+			toast.success("Shift berhasil diperbarui");
+			setEditingShift(null);
+		} catch (err: any) {
+			toast.error(err?.message ?? "Gagal memperbarui shift");
+		} finally {
+			setIsSavingEdit(false);
+		}
+	}
+
+	async function handleDeleteConfirmed() {
+		if (!confirmDeleteIds?.length) return;
+		setIsDeleting(true);
+		try {
+			if (confirmDeleteIds.length === 1) {
+				await adminDeleteShift({ shiftId: confirmDeleteIds[0] as any });
+				toast.success("Shift berhasil dihapus");
+			} else {
+				const count = await adminBulkDeleteShifts({ shiftIds: confirmDeleteIds as any[] });
+				toast.success(`${count} shift berhasil dihapus`);
+			}
+			setSelectedIds(new Set());
+			setConfirmDeleteIds(null);
+		} catch (err: any) {
+			toast.error(err?.message ?? "Gagal menghapus shift");
+		} finally {
+			setIsDeleting(false);
+		}
+	}
 
 	useEffect(() => {
 		if (!rows?.length) {
@@ -356,6 +436,7 @@ export function ShiftReport({ range }: Props) {
 	};
 
 	return (
+		<>
 		<div className="space-y-5">
 			<div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
 				<button
@@ -433,11 +514,32 @@ export function ShiftReport({ range }: Props) {
 						<div>
 							<h3 className="font-bold text-base">Tabel Laporan Shift</h3>
 							<p className="text-xs text-muted-foreground">
-								Klik satu baris untuk melihat ringkasan detail shift.
+								Klik baris untuk detail · centang untuk pilih · edit/hapus via tombol aksi.
 							</p>
 						</div>
-						<div className="rounded-full bg-muted px-3 py-1 text-[11px] font-semibold text-muted-foreground">
-							{rows.length} data
+						<div className="flex items-center gap-2">
+							{someSelected && (
+								<div className="flex items-center gap-1.5">
+									<span className="text-[11px] font-semibold text-muted-foreground">{selectedIds.size} dipilih</span>
+									<button
+										type="button"
+										onClick={() => setConfirmDeleteIds(Array.from(selectedIds))}
+										className="inline-flex items-center gap-1 rounded-lg bg-destructive/10 px-2.5 py-1 text-[11px] font-bold text-destructive hover:bg-destructive/20 transition-colors"
+									>
+										<Trash2 className="h-3 w-3" /> Hapus Terpilih
+									</button>
+									<button
+										type="button"
+										onClick={() => setSelectedIds(new Set())}
+										className="inline-flex items-center gap-1 rounded-lg bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:bg-muted/80 transition-colors"
+									>
+										<X className="h-3 w-3" /> Batal
+									</button>
+								</div>
+							)}
+							<div className="rounded-full bg-muted px-3 py-1 text-[11px] font-semibold text-muted-foreground">
+								{rows.length} data
+							</div>
 						</div>
 					</div>
 
@@ -445,6 +547,15 @@ export function ShiftReport({ range }: Props) {
 						<table className="min-w-[1560px] w-full border-collapse text-[13px]">
 							<thead className="bg-muted/40 text-left text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
 								<tr>
+									<th className="w-9 px-3 py-2.5">
+										<input
+											type="checkbox"
+											checked={allSelected}
+											onChange={toggleAll}
+											className="h-3.5 w-3.5 cursor-pointer rounded border-border accent-primary"
+											aria-label="Pilih semua"
+										/>
+									</th>
 									<TableHead>Tanggal</TableHead>
 									<TableHead>Shift</TableHead>
 									<TableHead>Status</TableHead>
@@ -467,16 +578,28 @@ export function ShiftReport({ range }: Props) {
 							<tbody>
 								{rows.map((shift) => {
 									const isSelected = shift.startTime === selectedShift?.startTime;
+									const isChecked = selectedIds.has(shift.shiftId);
 									return (
 										<tr
 											key={shift.shiftId}
 											className={`cursor-pointer border-t border-border transition-colors ${
-												isSelected
+												isChecked
 													? "bg-primary/5"
+													: isSelected
+													? "bg-primary/3"
 													: "hover:bg-muted/30"
 											}`}
 											onClick={() => setSelectedShiftStart(shift.startTime)}
 										>
+											<td className="px-3 py-2.5" onClick={(e) => toggleRow(shift.shiftId, e)}>
+												<input
+													type="checkbox"
+													checked={isChecked}
+													onChange={() => {}}
+													className="h-3.5 w-3.5 cursor-pointer rounded border-border accent-primary"
+													aria-label={`Pilih ${shift.shiftName}`}
+												/>
+											</td>
 											<TableCell>
 												<div className="font-semibold text-foreground whitespace-nowrap">
 													{formatCompactRange(shift.startTime, shift.endTime)}
@@ -553,22 +676,39 @@ export function ShiftReport({ range }: Props) {
 												{shift.totalItemsSold}
 											</TableCell>
 											<TableCell>
-												<button
-													type="button"
-													onClick={(event) => {
-														event.stopPropagation();
-														void handleSendShiftEmail(shift);
-													}}
-													disabled={sendingShiftStart === shift.startTime}
-													className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
-												>
-													{sendingShiftStart === shift.startTime ? (
-														<Loader2 className="h-3 w-3 animate-spin" />
-													) : (
-														<Mail className="h-3 w-3" />
-													)}
-													Email
-												</button>
+												<div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+													<button
+														type="button"
+														onClick={(e) => openEdit(shift, e)}
+														className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted"
+														title="Edit shift"
+													>
+														<Pencil className="h-3 w-3" />
+													</button>
+													<button
+														type="button"
+														onClick={(e) => { e.stopPropagation(); setConfirmDeleteIds([shift.shiftId]); }}
+														className="inline-flex items-center gap-1 rounded-lg border border-destructive/20 bg-destructive/5 px-2 py-1 text-[11px] font-semibold text-destructive transition-colors hover:bg-destructive/15"
+														title="Hapus shift"
+													>
+														<Trash2 className="h-3 w-3" />
+													</button>
+													<button
+														type="button"
+														onClick={(event) => {
+															event.stopPropagation();
+															void handleSendShiftEmail(shift);
+														}}
+														disabled={sendingShiftStart === shift.startTime}
+														className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+													>
+														{sendingShiftStart === shift.startTime ? (
+															<Loader2 className="h-3 w-3 animate-spin" />
+														) : (
+															<Mail className="h-3 w-3" />
+														)}
+													</button>
+												</div>
 											</TableCell>
 										</tr>
 									);
@@ -841,6 +981,117 @@ export function ShiftReport({ range }: Props) {
 				</div>
 			</div>
 		</div>
+
+		{/* ── DELETE CONFIRMATION DIALOG ── */}
+		{confirmDeleteIds && (
+			<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+				<div className="w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-5 space-y-4">
+					<div className="flex items-start gap-3">
+						<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+							<Trash2 className="h-5 w-5 text-destructive" />
+						</div>
+						<div>
+							<h3 className="font-bold text-base text-foreground">Hapus Shift?</h3>
+							<p className="mt-1 text-sm text-muted-foreground">
+								{confirmDeleteIds.length === 1
+									? "Data shift ini akan dihapus permanen dan tidak dapat dikembalikan."
+									: `${confirmDeleteIds.length} data shift akan dihapus permanen dan tidak dapat dikembalikan.`}
+							</p>
+						</div>
+					</div>
+					<div className="flex gap-2 justify-end">
+						<button
+							type="button"
+							onClick={() => setConfirmDeleteIds(null)}
+							disabled={isDeleting}
+							className="rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+						>
+							Batal
+						</button>
+						<button
+							type="button"
+							onClick={() => void handleDeleteConfirmed()}
+							disabled={isDeleting}
+							className="rounded-xl bg-destructive px-4 py-2 text-sm font-bold text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+						>
+							{isDeleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+							Hapus
+						</button>
+					</div>
+				</div>
+			</div>
+		)}
+
+		{/* ── EDIT SHIFT DIALOG ── */}
+		{editingShift && (
+			<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+				<div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl">
+					<div className="flex items-center justify-between border-b border-border px-5 py-4">
+						<div>
+							<h3 className="font-bold text-base text-foreground">Edit Shift</h3>
+							<p className="text-xs text-muted-foreground mt-0.5">
+								{formatCompactRange(editingShift.startTime, editingShift.endTime)}
+							</p>
+						</div>
+						<button
+							type="button"
+							onClick={() => setEditingShift(null)}
+							className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground hover:bg-muted transition-colors"
+						>
+							<X className="h-4 w-4" />
+						</button>
+					</div>
+					<div className="p-5 space-y-4">
+						{[
+							{ key: "shiftName", label: "Nama Shift", type: "text", placeholder: "" },
+							{ key: "cashierName", label: "Kasir", type: "text", placeholder: "" },
+							{ key: "teamMembers", label: "Tim (pisah koma)", type: "text", placeholder: "Rian, Yusrina, ..." },
+							{ key: "startingCash", label: "Modal Awal (Rp)", type: "number", placeholder: "" },
+						].map(({ key, label, type, placeholder }) => (
+							<div key={key} className="space-y-1">
+								<label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</label>
+								<input
+									type={type}
+									value={(editForm as any)[key]}
+									onChange={(e) => setEditForm((f) => ({ ...f, [key]: type === "number" ? Number(e.target.value) : e.target.value }))}
+									placeholder={placeholder}
+									className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+								/>
+							</div>
+						))}
+						<div className="space-y-1">
+							<label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Catatan</label>
+							<textarea
+								value={editForm.notes}
+								onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+								rows={2}
+								className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+							/>
+						</div>
+					</div>
+					<div className="flex gap-2 justify-end border-t border-border px-5 py-4">
+						<button
+							type="button"
+							onClick={() => setEditingShift(null)}
+							disabled={isSavingEdit}
+							className="rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+						>
+							Batal
+						</button>
+						<button
+							type="button"
+							onClick={() => void handleSaveEdit()}
+							disabled={isSavingEdit}
+							className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+						>
+							{isSavingEdit && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+							Simpan
+						</button>
+					</div>
+				</div>
+			</div>
+		)}
+		</>
 	);
 }
 
