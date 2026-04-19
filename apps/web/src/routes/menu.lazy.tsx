@@ -77,6 +77,7 @@ type MemberBonusSummary = {
 	achievedBonus: number;
 	reachedThresholds: number[];
 	nextTier: BonusTier | null;
+	allTiers: BonusTier[];
 };
 
 function normalizePersonName(value?: string | null) {
@@ -118,6 +119,7 @@ function summarizeRoleBonus(achievementPct: number, config: RoleBonusConfig) {
 		achievedBonus,
 		reachedThresholds: reached.map((tier) => tier.thresholdPct),
 		nextTier,
+		allTiers: config.tiers,
 	};
 }
 
@@ -510,6 +512,7 @@ function MenuPage() {
 					achievedBonus: summary.achievedBonus,
 					reachedThresholds: summary.reachedThresholds,
 					nextTier: summary.nextTier,
+					allTiers: summary.allTiers,
 				};
 			})
 			.filter((item): item is MemberBonusSummary => item !== null);
@@ -1410,20 +1413,29 @@ function MenuPage() {
 													{fmt(progress.shiftCollected)} / {fmt(progress.shiftTarget)}
 												</p>
 												{shiftBonusSummary.length > 0 && (
-													<div className="space-y-1">
+													<div className="space-y-1.5">
 														{shiftBonusSummary.map((item) => (
 															<div key={`shift-${item.memberName}`} className="rounded-md bg-primary/5 px-1.5 py-1 text-[10px] leading-tight">
-																<p className="font-black uppercase tracking-wide text-primary">
-																	{item.memberName} - Bonus: {fmt(item.achievedBonus)}
-																</p>
-																<p className="font-bold text-muted-foreground/70 uppercase">
-																	Role: {item.roleName}
-																</p>
-																<p className="font-semibold text-muted-foreground/80">
-																	{item.nextTier
-																		? `Capai ${item.nextTier.thresholdPct}% untuk +${fmt(item.nextTier.bonusAmount)}`
-																		: "Semua level bonus shift tercapai"}
-																</p>
+																<div className="flex items-center justify-between mb-1">
+																	<p className="font-black uppercase tracking-wide text-primary">{item.memberName}</p>
+																	<p className="font-bold text-muted-foreground/60 uppercase text-[9px]">{item.roleName}</p>
+																</div>
+																<div className="flex flex-wrap gap-1 mb-0.5">
+																	{item.allTiers.map((tier) => {
+																		const achieved = item.reachedThresholds.includes(tier.thresholdPct);
+																		return (
+																			<span
+																				key={tier.thresholdPct}
+																				className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-bold border transition-all ${achieved ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
+																			>
+																				{achieved ? "✓" : "○"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
+																			</span>
+																		);
+																	})}
+																</div>
+																{item.achievedBonus > 0 && (
+																	<p className="font-black text-primary text-[9px]">Total: {fmt(item.achievedBonus)}</p>
+																)}
 															</div>
 														))}
 													</div>
@@ -1463,20 +1475,29 @@ function MenuPage() {
 													{fmt(progress.dailyCollected)} / {fmt(progress.dailyTarget)}
 												</p>
 												{dailyBonusSummary.length > 0 && (
-													<div className="space-y-1">
+													<div className="space-y-1.5">
 														{dailyBonusSummary.map((item) => (
 															<div key={`daily-${item.memberName}`} className="rounded-md bg-blue-500/5 px-1.5 py-1 text-[10px] leading-tight">
-																<p className="font-black uppercase tracking-wide text-blue-700 dark:text-blue-400">
-																	{item.memberName} - Bonus: {fmt(item.achievedBonus)}
-																</p>
-																<p className="font-bold text-muted-foreground/70 uppercase">
-																	Role: {item.roleName}
-																</p>
-																<p className="font-semibold text-muted-foreground/80">
-																	{item.nextTier
-																		? `Capai ${item.nextTier.thresholdPct}% untuk +${fmt(item.nextTier.bonusAmount)}`
-																		: "Semua level bonus harian tercapai"}
-																</p>
+																<div className="flex items-center justify-between mb-1">
+																	<p className="font-black uppercase tracking-wide text-blue-700 dark:text-blue-400">{item.memberName}</p>
+																	<p className="font-bold text-muted-foreground/60 uppercase text-[9px]">{item.roleName}</p>
+																</div>
+																<div className="flex flex-wrap gap-1 mb-0.5">
+																	{item.allTiers.map((tier) => {
+																		const achieved = item.reachedThresholds.includes(tier.thresholdPct);
+																		return (
+																			<span
+																				key={tier.thresholdPct}
+																				className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-bold border transition-all ${achieved ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
+																			>
+																				{achieved ? "✓" : "○"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
+																			</span>
+																		);
+																	})}
+																</div>
+																{item.achievedBonus > 0 && (
+																	<p className="font-black text-blue-700 dark:text-blue-400 text-[9px]">Total: {fmt(item.achievedBonus)}</p>
+																)}
 															</div>
 														))}
 													</div>
@@ -1498,20 +1519,29 @@ function MenuPage() {
 										<p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
 											Bonus Bulanan ({Math.round(monthlyPct)}%)
 										</p>
-										<div className="mt-1 space-y-1">
+										<div className="mt-1 space-y-1.5">
 											{monthlyBonusSummary.map((item) => (
-												<div key={`monthly-${item.memberName}`} className="text-[10px] leading-tight">
-													<p className="font-black text-emerald-700 dark:text-emerald-300">
-														{item.memberName} - Bonus: {fmt(item.achievedBonus)}
-													</p>
-													<p className="font-bold text-emerald-700/70 uppercase dark:text-emerald-200/70">
-														Role: {item.roleName}
-													</p>
-													<p className="font-semibold text-emerald-700/80 dark:text-emerald-200/80">
-														{item.nextTier
-															? `Capai ${item.nextTier.thresholdPct}% untuk +${fmt(item.nextTier.bonusAmount)}`
-															: "Semua level bonus bulanan tercapai"}
-													</p>
+												<div key={`monthly-${item.memberName}`} className="rounded-md bg-emerald-100/50 dark:bg-emerald-500/10 px-1.5 py-1 text-[10px] leading-tight">
+													<div className="flex items-center justify-between mb-1">
+														<p className="font-black text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">{item.memberName}</p>
+														<p className="font-bold text-emerald-700/60 dark:text-emerald-300/60 uppercase text-[9px]">{item.roleName}</p>
+													</div>
+													<div className="flex flex-wrap gap-1 mb-0.5">
+														{item.allTiers.map((tier) => {
+															const achieved = item.reachedThresholds.includes(tier.thresholdPct);
+															return (
+																<span
+																	key={tier.thresholdPct}
+																	className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-bold border transition-all ${achieved ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
+																>
+																	{achieved ? "✓" : "○"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
+																</span>
+															);
+														})}
+													</div>
+													{item.achievedBonus > 0 && (
+														<p className="font-black text-emerald-700 dark:text-emerald-300 text-[9px]">Total: {fmt(item.achievedBonus)}</p>
+													)}
 												</div>
 											))}
 										</div>
