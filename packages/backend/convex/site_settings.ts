@@ -212,79 +212,47 @@ export const getSettings = query({
 	handler: async (ctx) => {
 		const settings = await ctx.db.query("siteSettings").first();
 		if (!settings) {
-			// Return default values if nothing exists yet
 			return DEFAULTS;
 		}
 
-		const resolveStorageUrl = async (value?: string) => {
-			if (!value) return value;
-			if (value.startsWith("http")) return value;
-			const url = await ctx.storage.getUrl(value);
-			return url ?? value;
-		};
-
-		// Resolve Storage IDs to URLs
-		const paymentPopupImage = await resolveStorageUrl(settings.paymentPopupImage);
-		const qrisImage = await resolveStorageUrl(settings.qrisImage);
-		const receiptLogo = await resolveStorageUrl(settings.receiptLogo);
-		const logoUrl = await resolveStorageUrl(settings.logoUrl);
-		const headerLogoUrl = await resolveStorageUrl(settings.headerLogoUrl);
-		const faviconUrl = await resolveStorageUrl(settings.faviconUrl);
-		const pwaIcon192Url = await resolveStorageUrl(settings.pwaIcon192Url);
-		const pwaIcon512Url = await resolveStorageUrl(settings.pwaIcon512Url);
-		const pwaMaskableIconUrl = await resolveStorageUrl(settings.pwaMaskableIconUrl);
-		const seoShareImageUrl = await resolveStorageUrl(settings.seoShareImageUrl);
-
-		// Return settings with fallbacks for new fields
 		return {
 			landingIcon: settings.landingIcon ?? DEFAULTS.landingIcon,
 			landingTitle: settings.landingTitle ?? DEFAULTS.landingTitle,
-			landingDescription:
-				settings.landingDescription ?? DEFAULTS.landingDescription,
-			landingButtonText:
-				settings.landingButtonText ?? DEFAULTS.landingButtonText,
-			logoUrl: logoUrl ?? DEFAULTS.logoUrl,
-			headerLogoUrl: headerLogoUrl ?? DEFAULTS.headerLogoUrl,
-			faviconUrl: faviconUrl ?? DEFAULTS.faviconUrl,
-			pwaIcon192Url: pwaIcon192Url ?? DEFAULTS.pwaIcon192Url,
-			pwaIcon512Url: pwaIcon512Url ?? DEFAULTS.pwaIcon512Url,
-			pwaMaskableIconUrl: pwaMaskableIconUrl ?? DEFAULTS.pwaMaskableIconUrl,
+			landingDescription: settings.landingDescription ?? DEFAULTS.landingDescription,
+			landingButtonText: settings.landingButtonText ?? DEFAULTS.landingButtonText,
+			logoUrl: settings.logoUrl ?? DEFAULTS.logoUrl,
+			headerLogoUrl: settings.headerLogoUrl ?? DEFAULTS.headerLogoUrl,
+			faviconUrl: settings.faviconUrl ?? DEFAULTS.faviconUrl,
+			pwaIcon192Url: settings.pwaIcon192Url ?? DEFAULTS.pwaIcon192Url,
+			pwaIcon512Url: settings.pwaIcon512Url ?? DEFAULTS.pwaIcon512Url,
+			pwaMaskableIconUrl: settings.pwaMaskableIconUrl ?? DEFAULTS.pwaMaskableIconUrl,
 			seoMetaTitle: settings.seoMetaTitle ?? DEFAULTS.seoMetaTitle,
-			seoMetaDescription:
-				settings.seoMetaDescription ?? DEFAULTS.seoMetaDescription,
+			seoMetaDescription: settings.seoMetaDescription ?? DEFAULTS.seoMetaDescription,
 			seoMetaKeywords: settings.seoMetaKeywords ?? DEFAULTS.seoMetaKeywords,
 			seoShareTitle: settings.seoShareTitle ?? DEFAULTS.seoShareTitle,
-			seoShareDescription:
-				settings.seoShareDescription ?? DEFAULTS.seoShareDescription,
-			seoShareImageUrl: seoShareImageUrl ?? DEFAULTS.seoShareImageUrl,
+			seoShareDescription: settings.seoShareDescription ?? DEFAULTS.seoShareDescription,
+			seoShareImageUrl: settings.seoShareImageUrl ?? DEFAULTS.seoShareImageUrl,
 			seoCanonicalUrl: settings.seoCanonicalUrl ?? DEFAULTS.seoCanonicalUrl,
-			paymentPopupImage: paymentPopupImage ?? DEFAULTS.paymentPopupImage,
+			paymentPopupImage: settings.paymentPopupImage ?? DEFAULTS.paymentPopupImage,
 			storeName: settings.storeName ?? DEFAULTS.storeName,
 			storeAddress: settings.storeAddress ?? DEFAULTS.storeAddress,
 			storePhone: settings.storePhone ?? DEFAULTS.storePhone,
 			resendFromEmail: settings.resendFromEmail ?? DEFAULTS.resendFromEmail,
 			receiptFooter: settings.receiptFooter ?? DEFAULTS.receiptFooter,
 			autoPrint: settings.autoPrint ?? DEFAULTS.autoPrint,
-			autoPrintKitchenReceipt:
-				settings.autoPrintKitchenReceipt ?? DEFAULTS.autoPrintKitchenReceipt,
-			allowOpenBillPrint:
-				settings.allowOpenBillPrint ?? DEFAULTS.allowOpenBillPrint,
-			// App Branding with fallbacks
+			autoPrintKitchenReceipt: settings.autoPrintKitchenReceipt ?? DEFAULTS.autoPrintKitchenReceipt,
+			allowOpenBillPrint: settings.allowOpenBillPrint ?? DEFAULTS.allowOpenBillPrint,
 			appName: settings.appName ?? DEFAULTS.appName,
 			appVersion: settings.appVersion ?? DEFAULTS.appVersion,
 			developerName: settings.developerName ?? DEFAULTS.developerName,
-			// Mayar Payment Gateway
 			mayarEnabled: settings.mayarEnabled ?? DEFAULTS.mayarEnabled,
 			mayarTestMode: settings.mayarTestMode ?? DEFAULTS.mayarTestMode,
-			// Manual Payment
-			paymentMethodsManual:
-				settings.paymentMethodsManual ?? DEFAULTS.paymentMethodsManual,
+			paymentMethodsManual: settings.paymentMethodsManual ?? DEFAULTS.paymentMethodsManual,
 			orderTypes: settings.orderTypes ?? DEFAULTS.orderTypes,
 			taxRate: settings.taxRate ?? DEFAULTS.taxRate,
 			serviceChargeRate: settings.serviceChargeRate ?? DEFAULTS.serviceChargeRate,
-			qrisImage: qrisImage ?? DEFAULTS.qrisImage,
-			// Receipt Settings
-			receiptLogo: receiptLogo ?? DEFAULTS.receiptLogo,
+			qrisImage: settings.qrisImage ?? DEFAULTS.qrisImage,
+			receiptLogo: settings.receiptLogo ?? DEFAULTS.receiptLogo,
 			receiptHeader: settings.receiptHeader ?? DEFAULTS.receiptHeader,
 			receiptShowLogo: settings.receiptShowLogo ?? DEFAULTS.receiptShowLogo,
 			receiptShowAddress: settings.receiptShowAddress ?? DEFAULTS.receiptShowAddress,
@@ -295,21 +263,12 @@ export const getSettings = query({
 			receiptShowNotes: settings.receiptShowNotes ?? DEFAULTS.receiptShowNotes,
 			receiptFontSize: settings.receiptFontSize ?? DEFAULTS.receiptFontSize,
 			aiModelConfig: normalizeAiModelConfig(settings.aiModelConfig ?? {}),
-			shiftSettings: {
-				...DEFAULTS.shiftSettings,
-				...(settings.shiftSettings ?? {}),
-			},
-			customerOrdering: {
-				...DEFAULTS.customerOrdering,
-				...(settings.customerOrdering ?? {}),
-			},
+			shiftSettings: { ...DEFAULTS.shiftSettings, ...(settings.shiftSettings ?? {}) },
+			customerOrdering: { ...DEFAULTS.customerOrdering, ...(settings.customerOrdering ?? {}) },
 			attendanceLat: settings.attendanceLat ?? DEFAULTS.attendanceLat,
 			attendanceLng: settings.attendanceLng ?? DEFAULTS.attendanceLng,
 			attendanceRadius: settings.attendanceRadius ?? DEFAULTS.attendanceRadius,
-			payrollGlobalConfig: {
-				...DEFAULTS.payrollGlobalConfig,
-				...(settings.payrollGlobalConfig ?? {}),
-			},
+			payrollGlobalConfig: { ...DEFAULTS.payrollGlobalConfig, ...(settings.payrollGlobalConfig ?? {}) },
 		};
 	},
 });
@@ -452,9 +411,29 @@ export const updateSettings = mutation({
 		),
 	},
 	handler: async (ctx, args) => {
-		const normalizedArgs = args.aiModelConfig
-			? { ...args, aiModelConfig: normalizeAiModelConfig(args.aiModelConfig) }
-			: args;
+		const resolveUrl = async (value?: string) => {
+			if (!value || value.startsWith("http")) return value;
+			return (await ctx.storage.getUrl(value as any)) ?? value;
+		};
+
+		const imageFields = {
+			logoUrl: await resolveUrl(args.logoUrl),
+			headerLogoUrl: await resolveUrl(args.headerLogoUrl),
+			faviconUrl: await resolveUrl(args.faviconUrl),
+			pwaIcon192Url: await resolveUrl(args.pwaIcon192Url),
+			pwaIcon512Url: await resolveUrl(args.pwaIcon512Url),
+			pwaMaskableIconUrl: await resolveUrl(args.pwaMaskableIconUrl),
+			seoShareImageUrl: await resolveUrl(args.seoShareImageUrl),
+			paymentPopupImage: await resolveUrl(args.paymentPopupImage),
+			qrisImage: await resolveUrl(args.qrisImage),
+			receiptLogo: await resolveUrl(args.receiptLogo),
+		};
+
+		const normalizedArgs = {
+			...args,
+			...imageFields,
+			...(args.aiModelConfig ? { aiModelConfig: normalizeAiModelConfig(args.aiModelConfig) } : {}),
+		};
 		const existing = await ctx.db.query("siteSettings").first();
 
 		if (existing) {

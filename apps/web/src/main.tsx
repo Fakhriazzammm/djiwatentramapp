@@ -5,6 +5,7 @@ import { routeTree } from "./routeTree.gen";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CartProvider } from "@/context/cart-context";
+import { AppDataProvider } from "@/context/app-data-context";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { registerSW } from "virtual:pwa-register";
 import "./index.css";
@@ -47,10 +48,12 @@ if (!rootElement.innerHTML) {
 			>
 				{convex ? (
 					<ConvexProvider client={convex}>
-						<CartProvider>
-							<RouterProvider router={router} />
-							<Toaster richColors />
-						</CartProvider>
+						<AppDataProvider>
+							<CartProvider>
+								<RouterProvider router={router} />
+								<Toaster richColors />
+							</CartProvider>
+						</AppDataProvider>
 					</ConvexProvider>
 				) : (
 					<CartProvider>
