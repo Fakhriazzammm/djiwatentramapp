@@ -676,22 +676,22 @@ export function ShiftReport({ range }: Props) {
 												{shift.totalItemsSold}
 											</TableCell>
 											<TableCell>
-												<div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+												<div className="flex items-center gap-1.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
 													<button
 														type="button"
 														onClick={(e) => openEdit(shift, e)}
-														className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted"
+														className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 														title="Edit shift"
 													>
-														<Pencil className="h-3 w-3" />
+														<Pencil className="h-3.5 w-3.5" />
 													</button>
 													<button
 														type="button"
 														onClick={(e) => { e.stopPropagation(); setConfirmDeleteIds([shift.shiftId]); }}
-														className="inline-flex items-center gap-1 rounded-lg border border-destructive/20 bg-destructive/5 px-2 py-1 text-[11px] font-semibold text-destructive transition-colors hover:bg-destructive/15"
+														className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-destructive/30 bg-destructive/8 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
 														title="Hapus shift"
 													>
-														<Trash2 className="h-3 w-3" />
+														<Trash2 className="h-3.5 w-3.5" />
 													</button>
 													<button
 														type="button"
@@ -700,12 +700,13 @@ export function ShiftReport({ range }: Props) {
 															void handleSendShiftEmail(shift);
 														}}
 														disabled={sendingShiftStart === shift.startTime}
-														className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+														className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-blue-600 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+														title="Kirim email laporan"
 													>
 														{sendingShiftStart === shift.startTime ? (
-															<Loader2 className="h-3 w-3 animate-spin" />
+															<Loader2 className="h-3.5 w-3.5 animate-spin" />
 														) : (
-															<Mail className="h-3 w-3" />
+															<Mail className="h-3.5 w-3.5" />
 														)}
 													</button>
 												</div>
