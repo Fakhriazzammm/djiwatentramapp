@@ -210,66 +210,71 @@ const DEFAULTS = {
 export const getSettings = query({
 	args: {},
 	handler: async (ctx) => {
-		const settings = await ctx.db.query("siteSettings").first();
-		if (!settings) {
+		try {
+			const settings = await ctx.db.query("siteSettings").first();
+			if (!settings) {
+				return DEFAULTS;
+			}
+
+			return {
+				landingIcon: settings.landingIcon ?? DEFAULTS.landingIcon,
+				landingTitle: settings.landingTitle ?? DEFAULTS.landingTitle,
+				landingDescription: settings.landingDescription ?? DEFAULTS.landingDescription,
+				landingButtonText: settings.landingButtonText ?? DEFAULTS.landingButtonText,
+				logoUrl: settings.logoUrl ?? DEFAULTS.logoUrl,
+				headerLogoUrl: settings.headerLogoUrl ?? DEFAULTS.headerLogoUrl,
+				faviconUrl: settings.faviconUrl ?? DEFAULTS.faviconUrl,
+				pwaIcon192Url: settings.pwaIcon192Url ?? DEFAULTS.pwaIcon192Url,
+				pwaIcon512Url: settings.pwaIcon512Url ?? DEFAULTS.pwaIcon512Url,
+				pwaMaskableIconUrl: settings.pwaMaskableIconUrl ?? DEFAULTS.pwaMaskableIconUrl,
+				seoMetaTitle: settings.seoMetaTitle ?? DEFAULTS.seoMetaTitle,
+				seoMetaDescription: settings.seoMetaDescription ?? DEFAULTS.seoMetaDescription,
+				seoMetaKeywords: settings.seoMetaKeywords ?? DEFAULTS.seoMetaKeywords,
+				seoShareTitle: settings.seoShareTitle ?? DEFAULTS.seoShareTitle,
+				seoShareDescription: settings.seoShareDescription ?? DEFAULTS.seoShareDescription,
+				seoShareImageUrl: settings.seoShareImageUrl ?? DEFAULTS.seoShareImageUrl,
+				seoCanonicalUrl: settings.seoCanonicalUrl ?? DEFAULTS.seoCanonicalUrl,
+				paymentPopupImage: settings.paymentPopupImage ?? DEFAULTS.paymentPopupImage,
+				storeName: settings.storeName ?? DEFAULTS.storeName,
+				storeAddress: settings.storeAddress ?? DEFAULTS.storeAddress,
+				storePhone: settings.storePhone ?? DEFAULTS.storePhone,
+				resendFromEmail: settings.resendFromEmail ?? DEFAULTS.resendFromEmail,
+				receiptFooter: settings.receiptFooter ?? DEFAULTS.receiptFooter,
+				autoPrint: settings.autoPrint ?? DEFAULTS.autoPrint,
+				autoPrintKitchenReceipt: settings.autoPrintKitchenReceipt ?? DEFAULTS.autoPrintKitchenReceipt,
+				allowOpenBillPrint: settings.allowOpenBillPrint ?? DEFAULTS.allowOpenBillPrint,
+				appName: settings.appName ?? DEFAULTS.appName,
+				appVersion: settings.appVersion ?? DEFAULTS.appVersion,
+				developerName: settings.developerName ?? DEFAULTS.developerName,
+				mayarEnabled: settings.mayarEnabled ?? DEFAULTS.mayarEnabled,
+				mayarTestMode: settings.mayarTestMode ?? DEFAULTS.mayarTestMode,
+				paymentMethodsManual: settings.paymentMethodsManual ?? DEFAULTS.paymentMethodsManual,
+				orderTypes: settings.orderTypes ?? DEFAULTS.orderTypes,
+				taxRate: settings.taxRate ?? DEFAULTS.taxRate,
+				serviceChargeRate: settings.serviceChargeRate ?? DEFAULTS.serviceChargeRate,
+				qrisImage: settings.qrisImage ?? DEFAULTS.qrisImage,
+				receiptLogo: settings.receiptLogo ?? DEFAULTS.receiptLogo,
+				receiptHeader: settings.receiptHeader ?? DEFAULTS.receiptHeader,
+				receiptShowLogo: settings.receiptShowLogo ?? DEFAULTS.receiptShowLogo,
+				receiptShowAddress: settings.receiptShowAddress ?? DEFAULTS.receiptShowAddress,
+				receiptShowPhone: settings.receiptShowPhone ?? DEFAULTS.receiptShowPhone,
+				receiptShowOrderNumber: settings.receiptShowOrderNumber ?? DEFAULTS.receiptShowOrderNumber,
+				receiptShowCustomerName: settings.receiptShowCustomerName ?? DEFAULTS.receiptShowCustomerName,
+				receiptShowCashierName: settings.receiptShowCashierName ?? DEFAULTS.receiptShowCashierName,
+				receiptShowNotes: settings.receiptShowNotes ?? DEFAULTS.receiptShowNotes,
+				receiptFontSize: settings.receiptFontSize ?? DEFAULTS.receiptFontSize,
+				aiModelConfig: normalizeAiModelConfig(settings.aiModelConfig ?? {}),
+				shiftSettings: { ...DEFAULTS.shiftSettings, ...(settings.shiftSettings ?? {}) },
+				customerOrdering: { ...DEFAULTS.customerOrdering, ...(settings.customerOrdering ?? {}) },
+				attendanceLat: settings.attendanceLat ?? DEFAULTS.attendanceLat,
+				attendanceLng: settings.attendanceLng ?? DEFAULTS.attendanceLng,
+				attendanceRadius: settings.attendanceRadius ?? DEFAULTS.attendanceRadius,
+				payrollGlobalConfig: { ...DEFAULTS.payrollGlobalConfig, ...(settings.payrollGlobalConfig ?? {}) },
+			};
+		} catch (error) {
+			console.error("[site_settings:getSettings] failed to read siteSettings, using defaults", error);
 			return DEFAULTS;
 		}
-
-		return {
-			landingIcon: settings.landingIcon ?? DEFAULTS.landingIcon,
-			landingTitle: settings.landingTitle ?? DEFAULTS.landingTitle,
-			landingDescription: settings.landingDescription ?? DEFAULTS.landingDescription,
-			landingButtonText: settings.landingButtonText ?? DEFAULTS.landingButtonText,
-			logoUrl: settings.logoUrl ?? DEFAULTS.logoUrl,
-			headerLogoUrl: settings.headerLogoUrl ?? DEFAULTS.headerLogoUrl,
-			faviconUrl: settings.faviconUrl ?? DEFAULTS.faviconUrl,
-			pwaIcon192Url: settings.pwaIcon192Url ?? DEFAULTS.pwaIcon192Url,
-			pwaIcon512Url: settings.pwaIcon512Url ?? DEFAULTS.pwaIcon512Url,
-			pwaMaskableIconUrl: settings.pwaMaskableIconUrl ?? DEFAULTS.pwaMaskableIconUrl,
-			seoMetaTitle: settings.seoMetaTitle ?? DEFAULTS.seoMetaTitle,
-			seoMetaDescription: settings.seoMetaDescription ?? DEFAULTS.seoMetaDescription,
-			seoMetaKeywords: settings.seoMetaKeywords ?? DEFAULTS.seoMetaKeywords,
-			seoShareTitle: settings.seoShareTitle ?? DEFAULTS.seoShareTitle,
-			seoShareDescription: settings.seoShareDescription ?? DEFAULTS.seoShareDescription,
-			seoShareImageUrl: settings.seoShareImageUrl ?? DEFAULTS.seoShareImageUrl,
-			seoCanonicalUrl: settings.seoCanonicalUrl ?? DEFAULTS.seoCanonicalUrl,
-			paymentPopupImage: settings.paymentPopupImage ?? DEFAULTS.paymentPopupImage,
-			storeName: settings.storeName ?? DEFAULTS.storeName,
-			storeAddress: settings.storeAddress ?? DEFAULTS.storeAddress,
-			storePhone: settings.storePhone ?? DEFAULTS.storePhone,
-			resendFromEmail: settings.resendFromEmail ?? DEFAULTS.resendFromEmail,
-			receiptFooter: settings.receiptFooter ?? DEFAULTS.receiptFooter,
-			autoPrint: settings.autoPrint ?? DEFAULTS.autoPrint,
-			autoPrintKitchenReceipt: settings.autoPrintKitchenReceipt ?? DEFAULTS.autoPrintKitchenReceipt,
-			allowOpenBillPrint: settings.allowOpenBillPrint ?? DEFAULTS.allowOpenBillPrint,
-			appName: settings.appName ?? DEFAULTS.appName,
-			appVersion: settings.appVersion ?? DEFAULTS.appVersion,
-			developerName: settings.developerName ?? DEFAULTS.developerName,
-			mayarEnabled: settings.mayarEnabled ?? DEFAULTS.mayarEnabled,
-			mayarTestMode: settings.mayarTestMode ?? DEFAULTS.mayarTestMode,
-			paymentMethodsManual: settings.paymentMethodsManual ?? DEFAULTS.paymentMethodsManual,
-			orderTypes: settings.orderTypes ?? DEFAULTS.orderTypes,
-			taxRate: settings.taxRate ?? DEFAULTS.taxRate,
-			serviceChargeRate: settings.serviceChargeRate ?? DEFAULTS.serviceChargeRate,
-			qrisImage: settings.qrisImage ?? DEFAULTS.qrisImage,
-			receiptLogo: settings.receiptLogo ?? DEFAULTS.receiptLogo,
-			receiptHeader: settings.receiptHeader ?? DEFAULTS.receiptHeader,
-			receiptShowLogo: settings.receiptShowLogo ?? DEFAULTS.receiptShowLogo,
-			receiptShowAddress: settings.receiptShowAddress ?? DEFAULTS.receiptShowAddress,
-			receiptShowPhone: settings.receiptShowPhone ?? DEFAULTS.receiptShowPhone,
-			receiptShowOrderNumber: settings.receiptShowOrderNumber ?? DEFAULTS.receiptShowOrderNumber,
-			receiptShowCustomerName: settings.receiptShowCustomerName ?? DEFAULTS.receiptShowCustomerName,
-			receiptShowCashierName: settings.receiptShowCashierName ?? DEFAULTS.receiptShowCashierName,
-			receiptShowNotes: settings.receiptShowNotes ?? DEFAULTS.receiptShowNotes,
-			receiptFontSize: settings.receiptFontSize ?? DEFAULTS.receiptFontSize,
-			aiModelConfig: normalizeAiModelConfig(settings.aiModelConfig ?? {}),
-			shiftSettings: { ...DEFAULTS.shiftSettings, ...(settings.shiftSettings ?? {}) },
-			customerOrdering: { ...DEFAULTS.customerOrdering, ...(settings.customerOrdering ?? {}) },
-			attendanceLat: settings.attendanceLat ?? DEFAULTS.attendanceLat,
-			attendanceLng: settings.attendanceLng ?? DEFAULTS.attendanceLng,
-			attendanceRadius: settings.attendanceRadius ?? DEFAULTS.attendanceRadius,
-			payrollGlobalConfig: { ...DEFAULTS.payrollGlobalConfig, ...(settings.payrollGlobalConfig ?? {}) },
-		};
 	},
 });
 
@@ -280,8 +285,16 @@ export const generateUploadUrl = mutation(async (ctx) => {
 export const getAiModelSettings = query({
 	args: {},
 	handler: async (ctx) => {
-		const settings = await ctx.db.query("siteSettings").first();
-		return normalizeAiModelConfig(settings?.aiModelConfig ?? {});
+		try {
+			const settings = await ctx.db.query("siteSettings").first();
+			return normalizeAiModelConfig(settings?.aiModelConfig ?? {});
+		} catch (error) {
+			console.error(
+				"[site_settings:getAiModelSettings] failed to read siteSettings, using defaults",
+				error
+			);
+			return DEFAULT_AI_MODEL_CONFIG;
+		}
 	},
 });
 
