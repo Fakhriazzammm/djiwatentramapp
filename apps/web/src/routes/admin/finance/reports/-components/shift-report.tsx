@@ -34,6 +34,15 @@ interface Props {
 	range: DateRange;
 }
 
+type BonusTier = { thresholdPct: number; bonusAmount: number };
+type MemberBonusInfo = {
+	name: string;
+	roleName: string;
+	bonus: number;
+	achievedTiers: number[];
+	allTiers: BonusTier[];
+};
+
 type ShiftRow = {
 	shiftId: string;
 	shiftName: string;
@@ -67,6 +76,7 @@ type ShiftRow = {
 	shiftTargetProgress?: number;
 	isDailyTargetMet?: boolean;
 	isShiftTargetMet?: boolean;
+	memberBonuses?: MemberBonusInfo[];
 };
 
 function formatDateTime(timestamp: number, withTime = false) {
@@ -448,6 +458,7 @@ export function ShiftReport({ range }: Props) {
 									<TableHead>Net</TableHead>
 									<TableHead>Target Shift</TableHead>
 									<TableHead>Target Harian</TableHead>
+									<TableHead className="text-emerald-700">Bonus Tim</TableHead>
 									<TableHead>Pengeluaran</TableHead>
 									<TableHead>Produk</TableHead>
 									<TableHead>Aksi</TableHead>
@@ -520,6 +531,20 @@ export function ShiftReport({ range }: Props) {
 													current={shift.dailyCollected ?? 0}
 													target={shift.dailyTarget ?? 0}
 												/>
+											</TableCell>
+											<TableCell>
+												{shift.memberBonuses && shift.memberBonuses.some((m) => m.bonus > 0) ? (
+													<div className="space-y-0.5">
+														{shift.memberBonuses.filter((m) => m.bonus > 0).map((m) => (
+															<div key={m.name} className="flex items-center gap-1 text-[10px] whitespace-nowrap">
+																<span className="font-bold text-emerald-700 dark:text-emerald-400">{m.name.split(" ")[0]}</span>
+																<span className="text-emerald-600 font-semibold">+{formatCurrencyIDR(m.bonus, true)}</span>
+															</div>
+														))}
+													</div>
+												) : (
+													<span className="text-[10px] text-muted-foreground/50">—</span>
+												)}
 											</TableCell>
 											<TableCell className="whitespace-nowrap text-rose-700">
 												{formatCurrencyIDR(shift.totalExpenses, true)}
@@ -642,6 +667,41 @@ export function ShiftReport({ range }: Props) {
 										</p>
 									)}
 								</div>
+
+								{selectedShift.memberBonuses && selectedShift.memberBonuses.length > 0 && (
+									<div className="rounded-2xl border border-emerald-200/60 bg-emerald-50/60 p-3 dark:border-emerald-400/20 dark:bg-emerald-500/10">
+										<div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-300">
+											<BadgeDollarSign className="h-3.5 w-3.5" />
+											Bonus Tim Shift
+										</div>
+										<div className="space-y-2">
+											{selectedShift.memberBonuses.map((member) => (
+												<div key={member.name} className="rounded-xl bg-emerald-100/60 px-2.5 py-2 dark:bg-emerald-500/15">
+													<div className="flex items-center justify-between mb-1">
+														<span className="text-xs font-bold text-emerald-800 dark:text-emerald-200">{member.name}</span>
+														<span className="text-[10px] font-semibold text-emerald-700/70 dark:text-emerald-300/70 uppercase">{member.roleName}</span>
+													</div>
+													<div className="flex flex-wrap gap-1 mb-1">
+														{member.allTiers.map((tier) => {
+															const achieved = member.achievedTiers.includes(tier.thresholdPct);
+															return (
+																<span
+																	key={tier.thresholdPct}
+																	className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold border transition-all ${achieved ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-white/60 text-muted-foreground/50 border-border/30 dark:bg-muted/30"}`}
+																>
+																	{achieved ? "✓" : "○"} {tier.thresholdPct}% → {formatCurrencyIDR(tier.bonusAmount)}
+																</span>
+															);
+														})}
+													</div>
+													<p className="text-[11px] font-black text-emerald-700 dark:text-emerald-300">
+														Bonus: {formatCurrencyIDR(member.bonus)}
+													</p>
+												</div>
+											))}
+										</div>
+									</div>
+								)}
 
 								<div className="grid gap-3 sm:grid-cols-2">
 									<DetailBlock
