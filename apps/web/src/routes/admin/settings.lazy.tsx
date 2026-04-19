@@ -1698,7 +1698,7 @@ export function SettingsPage({
 											<SelectValue placeholder="Tahun" />
 										</SelectTrigger>
 										<SelectContent>
-											{[2024, 2025, 2026].map((y) => (
+											{Array.from({ length: new Date().getFullYear() - 2022 }, (_, i) => 2023 + i).map((y) => (
 												<SelectItem key={y} value={y.toString()}>
 													{y}
 												</SelectItem>
@@ -1755,7 +1755,12 @@ export function SettingsPage({
 														key={idx}
 														onClick={() => setSelectedPayrollStaff(staff)}
 													>
-														<td className="px-3 py-2.5 font-bold text-foreground text-xs">{staff.name}</td>
+														<td className="px-3 py-2.5 text-xs">
+															<div className="flex items-center gap-1.5">
+																<span className="font-bold text-foreground">{staff.name}</span>
+																{!staff.isActive && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[8px] font-bold text-muted-foreground uppercase tracking-wide">Tidak Aktif</span>}
+															</div>
+														</td>
 														<td className="px-3 py-2.5 text-[10px] font-medium text-muted-foreground">{staff.roleName}</td>
 														<td className="px-3 py-2.5 text-center font-medium text-xs">{(staff.sessionCount || 0)}x</td>
 														<td className="px-3 py-2.5 text-center">
@@ -1814,7 +1819,10 @@ export function SettingsPage({
 									{/* Header */}
 									<div className="text-center border-b pb-3">
 										<p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Slip Gaji</p>
-										<h2 className="text-lg font-black text-foreground mt-0.5">{staff.name}</h2>
+										<div className="flex items-center justify-center gap-2 mt-0.5">
+											<h2 className="text-lg font-black text-foreground">{staff.name}</h2>
+											{!staff.isActive && <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wide">Tidak Aktif</span>}
+										</div>
 										<p className="text-xs text-muted-foreground">{staff.roleName}</p>
 										<p className="text-xs font-semibold text-primary mt-1">{monthName} {reportFilter.year}</p>
 									</div>
