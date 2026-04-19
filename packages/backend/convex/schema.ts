@@ -607,7 +607,7 @@ export default defineSchema({
 		refillAvailability: v.optional(
 			v.union(v.literal("ALWAYS"), v.literal("HAPPY_HOUR"))
 		),
-	}),
+	}).index("by_isActive", ["isActive"]),
 
 	// Variation Presets (Global configurations)
 	variationPresets: defineTable({

@@ -13,7 +13,7 @@ export const getActiveDiscounts = query({
 	handler: async (ctx) => {
 		return await ctx.db
 			.query("discounts")
-			.filter((q) => q.eq(q.field("isActive"), true))
+			.withIndex("by_isActive", (q) => q.eq("isActive", true))
 			.collect();
 	},
 });
