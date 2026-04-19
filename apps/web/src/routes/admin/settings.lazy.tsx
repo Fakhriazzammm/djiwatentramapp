@@ -656,6 +656,8 @@ export function SettingsPage({
 		year: reportFilter.year,
 	});
 
+	const [selectedPayrollStaff, setSelectedPayrollStaff] = useState<any | null>(null);
+
 	const attendanceLogs = useQuery(api.attendance.getAdminLogs, { limit: 100 });
 
 	const adminCreateLog = useMutation(api.attendance.adminCreateLog);
@@ -1696,7 +1698,7 @@ export function SettingsPage({
 											<SelectValue placeholder="Tahun" />
 										</SelectTrigger>
 										<SelectContent>
-											{[2024, 2025, 2026].map((y) => (
+											{Array.from({ length: new Date().getFullYear() - 2022 }, (_, i) => 2023 + i).map((y) => (
 												<SelectItem key={y} value={y.toString()}>
 													{y}
 												</SelectItem>
@@ -1748,8 +1750,17 @@ export function SettingsPage({
 												</tr>
 											) : (
 												payrollReport.rows.map((staff: any, idx: number) => (
-													<tr className="hover:bg-muted/30 transition-colors" key={idx}>
-														<td className="px-3 py-2.5 font-bold text-foreground text-xs">{staff.name}</td>
+													<tr
+														className="hover:bg-muted/30 transition-colors cursor-pointer"
+														key={idx}
+														onClick={() => setSelectedPayrollStaff(staff)}
+													>
+														<td className="px-3 py-2.5 text-xs">
+															<div className="flex items-center gap-1.5">
+																<span className="font-bold text-foreground">{staff.name}</span>
+																{!staff.isActive && <span className="rounded-full bg-muted px-1.5 py-0.5 text-[8px] font-bold text-muted-foreground uppercase tracking-wide">Tidak Aktif</span>}
+															</div>
+														</td>
 														<td className="px-3 py-2.5 text-[10px] font-medium text-muted-foreground">{staff.roleName}</td>
 														<td className="px-3 py-2.5 text-center font-medium text-xs">{(staff.sessionCount || 0)}x</td>
 														<td className="px-3 py-2.5 text-center">
@@ -1786,13 +1797,120 @@ export function SettingsPage({
 							<div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-[10px] text-amber-800 leading-relaxed dark:border-amber-900/30 dark:bg-amber-900/20 dark:text-amber-300">
 								<AlertCircle className="h-4 w-4 shrink-0" />
 								<p>
-									Laporan ini dihitung secara real-time berdasarkan log check-in/out staff dan aturan yang berlaku saat ini. 
+									Laporan ini dihitung secara real-time berdasarkan log check-in/out staff dan aturan yang berlaku saat ini.
 									Pastikan data shift dan geofencing sudah dikonfigurasi dengan benar untuk akurasi data.
 								</p>
 							</div>
 						</section>
 					</div>
 				)}
+
+				{/* Salary Slip Dialog */}
+				<Dialog open={!!selectedPayrollStaff} onOpenChange={(open) => { if (!open) setSelectedPayrollStaff(null); }}>
+					<DialogContent className="max-w-md w-full max-h-[85vh] overflow-y-auto">
+						<DialogTitle className="sr-only">Slip Gaji</DialogTitle>
+						<DialogDescription className="sr-only">Detail slip gaji staff</DialogDescription>
+						{selectedPayrollStaff && (() => {
+							const staff = selectedPayrollStaff;
+							const monthName = new Intl.DateTimeFormat("id-ID", { month: "long" }).format(new Date(reportFilter.year, reportFilter.month - 1, 1));
+							const targets = payrollReport?.targets;
+							return (
+								<div className="space-y-4 text-sm">
+									{/* Header */}
+									<div className="text-center border-b pb-3">
+										<p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Slip Gaji</p>
+										<div className="flex items-center justify-center gap-2 mt-0.5">
+											<h2 className="text-lg font-black text-foreground">{staff.name}</h2>
+											{!staff.isActive && <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wide">Tidak Aktif</span>}
+										</div>
+										<p className="text-xs text-muted-foreground">{staff.roleName}</p>
+										<p className="text-xs font-semibold text-primary mt-1">{monthName} {reportFilter.year}</p>
+									</div>
+
+									{/* Attendance summary */}
+									<div className="rounded-xl border bg-muted/20 p-3 space-y-1 text-xs">
+										<div className="flex justify-between"><span className="text-muted-foreground">Hari Kerja</span><span className="font-semibold">{staff.daysWorked || 0} hari</span></div>
+										<div className="flex justify-between"><span className="text-muted-foreground">Jumlah Shift</span><span className="font-semibold">{staff.sessionCount || 0} shift</span></div>
+										<div className="flex justify-between"><span className="text-muted-foreground">Total Jam</span><span className="font-semibold">{((staff.totalHours || 0)).toFixed(1)} jam</span></div>
+										<div className="flex justify-between"><span className="text-muted-foreground">Keterlambatan</span>
+											<span className={`font-semibold ${(staff.totalLateMinutes || 0) > 0 ? "text-red-600" : "text-emerald-600"}`}>
+												{staff.totalLateMinutes || 0} menit
+											</span>
+										</div>
+									</div>
+
+									{/* Earnings */}
+									<div className="space-y-1">
+										<p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Komponen Gaji</p>
+										<div className="rounded-xl border bg-card divide-y text-xs">
+											{(staff.monthlyFixedSalary || 0) > 0 && (
+												<div className="flex justify-between px-3 py-2"><span className="text-muted-foreground">Gaji Tetap</span><span className="font-semibold">{formatCurrency(staff.monthlyFixedSalary)}</span></div>
+											)}
+											{(staff.totalShiftSalary || 0) > 0 && (
+												<div className="flex justify-between px-3 py-2"><span className="text-muted-foreground">Gaji Shift ({staff.sessionCount}x)</span><span className="font-semibold">{formatCurrency(staff.totalShiftSalary)}</span></div>
+											)}
+											{(staff.totalAllowance || 0) > 0 && (
+												<div className="flex justify-between px-3 py-2"><span className="text-muted-foreground">Tunjangan Harian</span><span className="font-semibold">{formatCurrency(staff.totalAllowance)}</span></div>
+											)}
+											{(staff.totalOvertimeBonus || 0) > 0 && (
+												<div className="flex justify-between px-3 py-2"><span className="text-muted-foreground">Bonus Lembur</span><span className="font-semibold text-emerald-600">+{formatCurrency(staff.totalOvertimeBonus)}</span></div>
+											)}
+											{(staff.totalPenalty || 0) > 0 && (
+												<div className="flex justify-between px-3 py-2"><span className="text-muted-foreground">Denda Keterlambatan</span><span className="font-semibold text-red-600">-{formatCurrency(staff.totalPenalty)}</span></div>
+											)}
+										</div>
+									</div>
+
+									{/* Target Bonus section */}
+									{staff.bonusTargetBasis && (
+										<div className="space-y-1">
+											<p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
+												Bonus Target ({staff.bonusTargetBasis === "shift" ? "Per Shift" : staff.bonusTargetBasis === "daily" ? "Per Hari" : "Per Bulan"})
+											</p>
+											<div className="rounded-xl border border-emerald-200/60 bg-emerald-50/60 dark:bg-emerald-500/10 dark:border-emerald-400/20 p-3 space-y-2">
+												{/* Show per-session bonus if shift basis */}
+												{staff.bonusTargetBasis === "shift" && Array.isArray(staff.sessions) && staff.sessions.length > 0 && (
+													<div className="space-y-1.5">
+														{staff.sessions.map((s: any, i: number) => (
+															<div key={i} className="rounded-lg bg-emerald-100/50 dark:bg-emerald-500/15 px-2 py-1.5 text-[10px]">
+																<div className="flex justify-between mb-0.5">
+																	<span className="font-bold text-emerald-800 dark:text-emerald-200">{s.date} — {s.shiftName}</span>
+																	<span className="font-semibold text-emerald-700 dark:text-emerald-300">{Math.round(s.shiftAchievementPct || 0)}%</span>
+																</div>
+																{targets && targets.shiftTargetRevenue > 0 && (
+																	<div className="flex flex-wrap gap-1 mt-0.5">
+																		{[100, 150, 200].map((pct) => {
+																			const achieved = (s.shiftAchievementPct || 0) >= pct;
+																			return (
+																				<span key={pct} className={`rounded px-1 py-0.5 font-bold border text-[9px] ${achieved ? "bg-emerald-600 text-white border-emerald-600" : "bg-white/60 text-muted-foreground/50 border-border/30 dark:bg-muted/30"}`}>
+																					{achieved ? "✓" : "○"} {pct}%
+																				</span>
+																			);
+																		})}
+																	</div>
+																)}
+															</div>
+														))}
+													</div>
+												)}
+												<div className="flex justify-between items-center pt-1 border-t border-emerald-200/60 dark:border-emerald-400/20">
+													<span className="text-xs font-black text-emerald-700 dark:text-emerald-300">Total Bonus Target</span>
+													<span className="text-sm font-black text-emerald-700 dark:text-emerald-300">+{formatCurrency(staff.totalTargetBonus || 0)}</span>
+												</div>
+											</div>
+										</div>
+									)}
+
+									{/* Total */}
+									<div className="rounded-xl border-2 border-primary/30 bg-primary/5 px-4 py-3 flex justify-between items-center">
+										<span className="text-sm font-black text-foreground uppercase tracking-wide">Total Gaji Bersih</span>
+										<span className="text-lg font-black text-primary">{formatCurrency(staff.netSalary || 0)}</span>
+									</div>
+								</div>
+							);
+						})()}
+					</DialogContent>
+				</Dialog>
 
 				{activeTab === "attendance-logs" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">

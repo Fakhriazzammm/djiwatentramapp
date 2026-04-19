@@ -547,15 +547,17 @@ export const getPayrollReport = query({
 		const reportRows: any[] = [];
 
 		for (const user of users) {
-			if (!user.isActive) continue;
+			// Include inactive users if they have logs in the requested period
+			const userLogsForCheck = userLogs.get(user._id) || [];
+			if (!user.isActive && userLogsForCheck.length === 0) continue;
 
 			const role = roleMap.get(user.roleId);
 			const shiftRate = (role as any)?.baseShiftRate ?? 0;
 			const monthlySalary = (role as any)?.monthlyFixedSalary ?? 0;
 			const allowance = (role as any)?.dailyAllowance ?? 0;
 
-			// Get logs for this user
-			const userLogsForPeriod = userLogs.get(user._id) || [];
+			// Get logs for this user (reuse the check already done above)
+			const userLogsForPeriod = userLogsForCheck;
 			
 			// Sort logs by time
 			const sortedLogs = [...userLogsForPeriod].sort((a, b) => a.timestamp - b.timestamp);
@@ -680,6 +682,7 @@ export const getPayrollReport = query({
 			reportRows.push({
 				userId: user._id,
 				name: user.name,
+				isActive: user.isActive ?? true,
 				roleName: role?.name || "N/A",
 				daysWorked: daysWorked.size,
 				sessionCount,

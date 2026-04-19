@@ -158,6 +158,39 @@ function getDaysInMonth(timestamp: number) {
 	return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 }
 
+type BonusTier = { thresholdPct: number; bonusAmount: number };
+type MemberBonusInfo = {
+	name: string;
+	roleName: string;
+	bonus: number;
+	achievedTiers: number[];
+	allTiers: BonusTier[];
+};
+
+function resolveRoleBonusConfigFinance(rawRole: any): { basis: "shift" | "daily" | "monthly"; tiers: BonusTier[] } | null {
+	const config = rawRole?.bonusTargetConfig;
+	if (!config?.basis) return null;
+	const tiers: BonusTier[] = (Array.isArray(config.tiers) ? config.tiers : [])
+		.map((t: any) => ({ thresholdPct: Number(t?.thresholdPct ?? 0), bonusAmount: Number(t?.bonusAmount ?? 0) }))
+		.filter((t: BonusTier) => t.thresholdPct > 0)
+		.sort((a: BonusTier, b: BonusTier) => a.thresholdPct - b.thresholdPct);
+	if (tiers.length === 0) return null;
+	return { basis: config.basis as "shift" | "daily" | "monthly", tiers };
+}
+
+function calcTierBonus(achievementPct: number, tiers: BonusTier[]) {
+	let total = 0;
+	const reached: number[] = [];
+	for (const tier of tiers) {
+		if (achievementPct >= tier.thresholdPct) { total += tier.bonusAmount; reached.push(tier.thresholdPct); }
+	}
+	return { total, reached };
+}
+
+function parseTeamNames(teamMembers: string): string[] {
+	return teamMembers.split(/[,\n;|]/g).map((n) => n.trim()).filter(Boolean);
+}
+
 function buildShiftTargetSummary(args: {
 	targetRevenue?: number;
 	shiftsPerDay: number;
@@ -2028,6 +2061,51 @@ export const endShift = mutation({
 	},
 });
 
+// Admin: update shift metadata (cashier, team, name, notes, startingCash)
+export const adminUpdateShift = mutation({
+	args: {
+		shiftId: v.id("shifts"),
+		cashierName: v.optional(v.string()),
+		teamMembers: v.optional(v.string()),
+		shiftName: v.optional(v.string()),
+		notes: v.optional(v.string()),
+		startingCash: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const { shiftId, ...fields } = args;
+		const shift = await ctx.db.get(shiftId);
+		if (!shift) throw new Error("Shift tidak ditemukan");
+		const patch: Record<string, any> = {};
+		if (fields.cashierName !== undefined) patch.cashierName = fields.cashierName;
+		if (fields.teamMembers !== undefined) patch.teamMembers = fields.teamMembers;
+		if (fields.shiftName !== undefined) patch.shiftName = fields.shiftName;
+		if (fields.notes !== undefined) patch.notes = fields.notes;
+		if (fields.startingCash !== undefined) patch.startingCash = fields.startingCash;
+		await ctx.db.patch(shiftId, patch);
+		return shiftId;
+	},
+});
+
+// Admin: delete a single shift record
+export const adminDeleteShift = mutation({
+	args: { shiftId: v.id("shifts") },
+	handler: async (ctx, args) => {
+		const shift = await ctx.db.get(args.shiftId);
+		if (!shift) throw new Error("Shift tidak ditemukan");
+		await ctx.db.delete(args.shiftId);
+		return args.shiftId;
+	},
+});
+
+// Admin: bulk delete shift records
+export const adminBulkDeleteShifts = mutation({
+	args: { shiftIds: v.array(v.id("shifts")) },
+	handler: async (ctx, args) => {
+		await Promise.all(args.shiftIds.map((id) => ctx.db.delete(id)));
+		return args.shiftIds.length;
+	},
+});
+
 // Get ongoing shift if any
 export const getOngoingShift = query({
 	handler: async (ctx) => {
@@ -2298,6 +2376,13 @@ export const getShiftReportTable = query({
 			siteSettings?.shiftSettings?.predefinedShifts?.length || 2,
 		);
 
+		const allUsers = await ctx.db.query("users").collect();
+		const allRoles = await ctx.db.query("roles").collect();
+		const roleById = new Map(allRoles.map((r) => [String(r._id), r]));
+		const userByNormName = new Map(
+			allUsers.map((u) => [u.name?.trim().toLowerCase() ?? "", u])
+		);
+
 		const rows = await Promise.all(
 			shifts.map(async (shift) => {
 				const effectiveEndTime = shift.endTime ?? Math.min(endBoundary, now);
@@ -2368,9 +2453,43 @@ export const getShiftReportTable = query({
 				dailyCollected: dateRevenueMap[dateKey] ?? row.totalRevenue,
 			});
 
+			// Calculate per-member bonus for this shift
+			const memberNames = [
+				row.cashierName,
+				...parseTeamNames(row.teamMembers ?? ""),
+			].filter(Boolean);
+			const uniqueNames = Array.from(new Set(memberNames.map((n) => n.trim().toLowerCase())));
+
+			const memberBonuses: MemberBonusInfo[] = [];
+			for (const normName of uniqueNames) {
+				const user = userByNormName.get(normName);
+				if (!user?.roleId) continue;
+				const role = roleById.get(String(user.roleId));
+				const bonusConfig = resolveRoleBonusConfigFinance(role);
+				if (!bonusConfig) continue;
+
+				let achievementPct = 0;
+				if (bonusConfig.basis === "shift" && targetSummary.shiftTarget > 0) {
+					achievementPct = targetSummary.shiftTargetProgress ?? 0;
+				} else if (bonusConfig.basis === "daily" && targetSummary.dailyTarget > 0) {
+					achievementPct = targetSummary.dailyTargetProgress ?? 0;
+				}
+				// monthly basis is not per-shift, skip for shift report
+
+				const { total, reached } = calcTierBonus(achievementPct, bonusConfig.tiers);
+				memberBonuses.push({
+					name: user.name ?? normName,
+					roleName: role?.name ?? "",
+					bonus: total,
+					achievedTiers: reached,
+					allTiers: bonusConfig.tiers,
+				});
+			}
+
 			return {
 				...row,
 				...targetSummary,
+				memberBonuses,
 			};
 		});
 	},

@@ -32,7 +32,9 @@ import {
 	ExternalLink,
 	Users,
 	AlertCircle,
-	Camera
+	Camera,
+	TrendingUp,
+	Zap,
 } from "lucide-react";
 import { FaceRecognition } from "@/components/auth/FaceRecognition";
 import { Button } from "@/components/ui/button";
@@ -292,6 +294,7 @@ function HomePage() {
 		| ShiftRow[]
 		| undefined;
 	const statsToday = useQuery(api.attendance.getStaffStatsToday, user ? { userId: user._id } : "skip");
+	const monthProgress = useQuery(api.finance.getCurrentMonthProgress);
 	const clockIn = useMutation(api.attendance.clockIn);
 	const clockOut = useMutation(api.attendance.clockOut);
 	
@@ -386,6 +389,13 @@ function HomePage() {
 
 	const hasFaceDescriptor = !!user?.hasFace;
 	const workDurationLabel = `${statsToday?.totalHours ?? 0}j ${statsToday?.totalMinutes ?? 0}m`;
+
+	const shiftPct = useMemo(() => {
+		if (!monthProgress?.shiftTarget || monthProgress.shiftTarget <= 0) return null;
+		return Math.round((monthProgress.shiftCollected / monthProgress.shiftTarget) * 100);
+	}, [monthProgress]);
+
+	const firstName = useMemo(() => user?.name?.split(" ")[0] ?? user?.name ?? "", [user?.name]);
 	const primaryActionTitle = !hasFaceDescriptor
 		? "Daftarkan Wajah"
 		: statsToday?.isWorking
@@ -432,125 +442,205 @@ function HomePage() {
 	return (
 		<div className="app-page min-h-app text-foreground">
 			<div className="mx-auto w-full max-w-md px-4 pb-8 pt-6 md:max-w-4xl">
-				{/* Djiwa Personal Hub / Profile Card */}
+				{/* Djiwa Personal Hub / Profile Card — Redesigned */}
 				<motion.div
 					initial={{ opacity: 0, y: 20 }}
 					animate={{ opacity: 1, y: 0 }}
-					className="app-card glass-strong relative mb-5 overflow-hidden p-4 md:p-5"
+					className="app-card glass-strong relative mb-5 overflow-hidden"
 				>
-					<div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.08),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.08),transparent_24%)]" />
+					{/* Layered gradient background */}
+					<div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.10),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.08),transparent_30%)]" />
+					{statsToday?.isWorking && (
+						<div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.07),transparent_40%)]" />
+					)}
 
-					<div className="flex flex-col gap-4">
-						<div className="flex items-start justify-between gap-3">
-							<div className="min-w-0">
-								<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">
-									{storeName}
-								</p>
-								<h2 className="mt-1 text-lg font-black tracking-tight text-foreground md:text-xl">
-									{greeting}, {user?.name}
-								</h2>
-								<p className="mt-1 text-sm text-muted-foreground">
-									{dateText}
-								</p>
+					{/* ── HEADER: Avatar + Identity + Logout ── */}
+					<div className="flex items-center gap-3 px-4 pt-4 pb-3">
+						<Link
+							to={user?.slug ? (`/attendance/${user.slug}` as any) : ("/attendance" as any)}
+							className="relative shrink-0 active:scale-95 transition-transform"
+						>
+							<div className="flex h-14 w-14 items-center justify-center rounded-[1.2rem] bg-gradient-to-br from-primary to-sky-400 text-xl font-black text-white shadow-md">
+								{user?.name?.charAt(0)?.toUpperCase()}
 							</div>
-							<button
-								onClick={handleLogout}
-								type="button"
-								className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-background/80 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-							>
-								<LogOut className="h-4 w-4" />
-							</button>
-						</div>
-
-						<div className="grid gap-3 md:grid-cols-[1.1fr_0.9fr] md:items-center">
-							<div className="flex items-center gap-3 rounded-[1.5rem] border border-border/70 bg-background/70 p-3 shadow-sm">
-								<div className="relative shrink-0">
-									<div className="flex h-16 w-16 items-center justify-center rounded-[1.35rem] bg-gradient-to-br from-primary to-sky-400 text-2xl font-black text-white shadow-sm">
-										{user?.name?.charAt(0)}
-									</div>
-									<div className={`absolute -bottom-1 -right-1 h-5 w-5 rounded-full border-4 border-background ${
-										statsToday?.isWorking ? "bg-emerald-500" : "bg-muted-foreground"
-									}`} />
-								</div>
-								<div className="min-w-0">
-									<div className="flex flex-wrap items-center gap-2">
-										<span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-primary">
-											{userRole?.name || "Staff"}
-										</span>
-										<span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
-											statsToday?.isWorking
-												? "bg-emerald-500/10 text-emerald-600"
-												: "bg-muted text-muted-foreground"
-										}`}>
-											{statsToday?.isWorking ? "Sedang Bertugas" : "Off Duty"}
-										</span>
-									</div>
-									{!hasFaceDescriptor && (
-										<p className="mt-2 text-sm text-muted-foreground animate-pulse text-sky-600 font-bold">
-											Face ID belum aktif. Lengkapi untuk akses absensi.
-										</p>
-									)}
-								</div>
+							{/* Status dot */}
+							<div className={`absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-[2.5px] border-card shadow-sm ${
+								statsToday?.isWorking ? "bg-emerald-500" : "bg-muted-foreground/50"
+							}`}>
+								{statsToday?.isWorking && (
+									<span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
+								)}
 							</div>
+						</Link>
 
-							<div className="grid grid-cols-2 gap-3">
-								<div className="rounded-[1.35rem] border border-border/70 bg-background/80 p-3 shadow-sm">
-									<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-										Total Kerja
-									</p>
-									<p className="mt-2 text-lg font-black text-foreground">{workDurationLabel}</p>
-								</div>
-								<div className="rounded-[1.35rem] border border-border/70 bg-background/80 p-3 shadow-sm">
-									<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-										Shift Aktif
-									</p>
-									<p className="mt-2 line-clamp-1 text-lg font-black text-foreground">
-										{activeShiftInfo ? activeShiftInfo.name : "Belum ada"}
-									</p>
-								</div>
+						<div className="flex-1 min-w-0">
+							<p className="text-[9px] font-bold uppercase tracking-[0.2em] text-primary/60 leading-none mb-0.5">
+								{storeName}
+							</p>
+							<h2 className="text-base font-black tracking-tight text-foreground leading-tight truncate">
+								{greeting}, {firstName}
+							</h2>
+							<div className="flex flex-wrap items-center gap-1.5 mt-1">
+								<span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-primary">
+									{userRole?.name || "Staff"}
+								</span>
+								<span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] transition-colors ${
+									statsToday?.isWorking
+										? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+										: "bg-muted/80 text-muted-foreground"
+								}`}>
+									<span className={`h-1.5 w-1.5 rounded-full ${statsToday?.isWorking ? "bg-emerald-500" : "bg-muted-foreground/50"}`} />
+									{statsToday?.isWorking ? "Bertugas" : "Off Duty"}
+								</span>
 							</div>
 						</div>
 
-						<div className="grid gap-3 md:grid-cols-[1fr_auto]">
-							{(!hasFaceDescriptor || statsToday?.isWorking !== undefined) && (
-								<button
-									onClick={handlePrimaryAttendanceAction}
-									disabled={isProcessing}
-									type="button"
-									className={`flex items-center justify-between rounded-[1.6rem] px-4 py-4 text-left shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-70 ${
-										!hasFaceDescriptor
-											? "bg-sky-500 text-white hover:bg-sky-600"
-											: statsToday?.isWorking
-												? "bg-amber-500 text-amber-950 hover:bg-amber-400"
-												: "bg-emerald-500 text-emerald-950 hover:bg-emerald-400"
-									}`}
-								>
-									<div className="flex items-center gap-3">
-										<div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/20">
-											{!hasFaceDescriptor ? (
-												<Camera className="h-5 w-5" />
-											) : statsToday?.isWorking ? (
-												<Square className="h-5 w-5" />
-											) : (
-												<Play className="h-5 w-5" />
-											)}
-										</div>
-										<div>
-											<p className="text-[11px] font-black uppercase tracking-[0.18em] opacity-80">
-												{!hasFaceDescriptor ? "Setup" : "Sesi Kerja"}
-											</p>
-											<p className="text-base font-black">{primaryActionTitle}</p>
-										</div>
-									</div>
-									<ArrowRight className="h-5 w-5" />
-								</button>
+						<button
+							onClick={handleLogout}
+							type="button"
+							className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-background/70 text-muted-foreground/70 transition-all hover:bg-destructive/10 hover:text-destructive active:scale-90"
+						>
+							<LogOut className="h-3.5 w-3.5" />
+						</button>
+					</div>
+
+					{/* Face ID warning strip */}
+					{!hasFaceDescriptor && (
+						<motion.div
+							initial={{ opacity: 0, height: 0 }}
+							animate={{ opacity: 1, height: "auto" }}
+							className="mx-4 mb-2 flex items-center gap-2 rounded-xl bg-sky-500/10 border border-sky-500/20 px-3 py-2"
+						>
+							<Camera className="h-3.5 w-3.5 text-sky-600 shrink-0" />
+							<p className="text-[10px] font-bold text-sky-700 dark:text-sky-400">
+								Face ID belum aktif — lengkapi untuk akses absensi.
+							</p>
+						</motion.div>
+					)}
+
+					{/* ── STATS: 3-column ── */}
+					<div className="mx-4 grid grid-cols-3 divide-x divide-border/40 rounded-2xl border border-border/50 bg-background/60 shadow-sm overflow-hidden">
+						{/* Hari ini */}
+						<div className="px-3 py-2.5">
+							<p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
+								Hari Ini
+							</p>
+							<p className="mt-1.5 text-base font-black text-foreground leading-none">
+								{workDurationLabel}
+							</p>
+							<p className="mt-0.5 text-[9px] text-muted-foreground/60">total kerja</p>
+						</div>
+
+						{/* Shift */}
+						<div className="px-3 py-2.5">
+							<p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
+								Shift
+							</p>
+							<p className="mt-1.5 text-sm font-black text-foreground leading-none line-clamp-1">
+								{activeShiftInfo ? activeShiftInfo.name : "—"}
+							</p>
+							{activeShiftInfo?.openTime && activeShiftInfo?.closeTime ? (
+								<p className="mt-0.5 text-[9px] text-muted-foreground/60">
+									{activeShiftInfo.openTime}–{activeShiftInfo.closeTime}
+								</p>
+							) : (
+								<p className="mt-0.5 text-[9px] text-muted-foreground/60">belum ada</p>
 							)}
+						</div>
 
+						{/* Target shift */}
+						<div className="px-3 py-2.5">
+							<p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground leading-none">
+								Target
+							</p>
+							{shiftPct !== null ? (
+								<>
+									<p className={`mt-1.5 text-base font-black leading-none ${shiftPct >= 100 ? "text-emerald-600" : "text-foreground"}`}>
+										{shiftPct}%
+									</p>
+									<div className="mt-1.5 h-1 w-full rounded-full bg-muted/50 overflow-hidden">
+										<motion.div
+											className={`h-full rounded-full ${shiftPct >= 100 ? "bg-emerald-500" : shiftPct >= 70 ? "bg-amber-500" : "bg-primary"}`}
+											initial={{ width: 0 }}
+											animate={{ width: `${Math.min(100, shiftPct)}%` }}
+											transition={{ duration: 0.8, ease: "easeOut" }}
+										/>
+									</div>
+								</>
+							) : (
+								<>
+									<p className="mt-1.5 text-sm font-black text-muted-foreground/40 leading-none">—</p>
+									<p className="mt-0.5 text-[9px] text-muted-foreground/40">no target</p>
+								</>
+							)}
+						</div>
+					</div>
+
+					{/* ── ACTION AREA ── */}
+					<div className="px-4 pb-4 pt-3 space-y-2">
+						{/* Live datetime */}
+						<p className="text-center text-[10px] text-muted-foreground/60 font-medium tracking-wide">
+							{dateText}
+						</p>
+
+						{/* Primary CTA: Clock In / Out */}
+						{(!hasFaceDescriptor || statsToday?.isWorking !== undefined) && (
+							<motion.button
+								whileTap={{ scale: 0.97 }}
+								onClick={handlePrimaryAttendanceAction}
+								disabled={isProcessing}
+								type="button"
+								className={`w-full flex items-center justify-between rounded-2xl px-4 py-3.5 text-left shadow-md transition-all disabled:cursor-not-allowed disabled:opacity-70 active:shadow-sm ${
+									!hasFaceDescriptor
+										? "bg-sky-500 text-white hover:bg-sky-600"
+										: statsToday?.isWorking
+											? "bg-amber-500 text-amber-950 hover:bg-amber-400"
+											: "bg-emerald-500 text-emerald-950 hover:bg-emerald-400"
+								}`}
+							>
+								<div className="flex items-center gap-3">
+									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 shrink-0">
+										{isProcessing ? (
+											<Loader2 className="h-5 w-5 animate-spin" />
+										) : !hasFaceDescriptor ? (
+											<Camera className="h-5 w-5" />
+										) : statsToday?.isWorking ? (
+											<Square className="h-5 w-5 fill-current" />
+										) : (
+											<Play className="h-5 w-5 fill-current" />
+										)}
+									</div>
+									<div>
+										<p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 leading-none">
+											{!hasFaceDescriptor ? "Setup" : "Sesi Kerja"}
+										</p>
+										<p className="mt-0.5 text-base font-black leading-tight">{primaryActionTitle}</p>
+									</div>
+								</div>
+								<div className="flex items-center gap-1 shrink-0">
+									{statsToday?.isWorking && (
+										<span className="text-[10px] font-bold opacity-70 mr-1">{workDurationLabel}</span>
+									)}
+									<ArrowRight className="h-5 w-5" />
+								</div>
+							</motion.button>
+						)}
+
+						{/* Secondary actions */}
+						<div className="grid grid-cols-2 gap-2">
 							<Link
 								to={user?.slug ? (`/attendance/${user.slug}` as any) : ("/attendance" as any)}
-								className="inline-flex items-center justify-center rounded-[1.35rem] border border-border/70 bg-background/80 px-4 py-4 text-sm font-bold text-foreground shadow-sm transition-colors hover:bg-muted"
+								className="flex items-center justify-center gap-1.5 rounded-xl border border-border/60 bg-background/70 py-2.5 text-[11px] font-bold text-foreground transition-all hover:bg-muted active:scale-95"
 							>
-								Profil
+								<User className="h-3.5 w-3.5 text-muted-foreground" />
+								Profil Saya
+							</Link>
+							<Link
+								to={"/attendance" as any}
+								className="flex items-center justify-center gap-1.5 rounded-xl border border-border/60 bg-background/70 py-2.5 text-[11px] font-bold text-foreground transition-all hover:bg-muted active:scale-95"
+							>
+								<History className="h-3.5 w-3.5 text-muted-foreground" />
+								Absensi Tim
 							</Link>
 						</div>
 					</div>
