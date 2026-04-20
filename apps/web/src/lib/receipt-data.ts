@@ -1,4 +1,4 @@
-import type { Doc } from "@yumipos/backend/convex/_generated/dataModel";
+﻿import type { Doc } from "@/types/backend-compat";
 import { isDiscountApplicable } from "@/lib/utils/pricing";
 
 export interface ReceiptAdjustmentLine {
@@ -171,3 +171,4 @@ export function buildReceiptMetaFromOrder(params: {
 		adjustmentLines,
 	};
 }
+

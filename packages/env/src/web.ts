@@ -4,8 +4,8 @@ import { z } from "zod";
 export const env = createEnv({
 	clientPrefix: "VITE_",
 	client: {
-		VITE_CONVEX_URL: z.string().url(),
-		VITE_CONVEX_SITE_URL: z.string().url(),
+		VITE_SUPABASE_URL: z.string().url().optional(),
+		VITE_SUPABASE_PUBLISHABLE_KEY: z.string().optional(),
 		// Mayar Payment Gateway
 		VITE_MAYAR_API_BASE: z.string().url().optional(),
 		VITE_MAYAR_AUTH_SCHEME: z.string().optional(),
@@ -16,8 +16,9 @@ export const env = createEnv({
 		VITE_APP_BASE_URL: z.string().url().optional(),
 	},
 	runtimeEnv: {
-		VITE_CONVEX_URL: import.meta.env.VITE_CONVEX_URL,
-		VITE_CONVEX_SITE_URL: import.meta.env.VITE_CONVEX_SITE_URL,
+		VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+		VITE_SUPABASE_PUBLISHABLE_KEY:
+			import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
 		VITE_MAYAR_API_BASE: import.meta.env.VITE_MAYAR_API_BASE,
 		VITE_MAYAR_AUTH_SCHEME: import.meta.env.VITE_MAYAR_AUTH_SCHEME,
 		VITE_MAYAR_API_KEY: import.meta.env.VITE_MAYAR_API_KEY,

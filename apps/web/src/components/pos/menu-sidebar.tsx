@@ -1,6 +1,4 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useAction, useMutation, useQuery } from "convex/react";
+﻿import type { Doc, Id } from "@/types/backend-compat";
 import {
 	AlertCircle,
 	Banknote,
@@ -71,6 +69,33 @@ import {
 	type ReceiptPrintMode,
 } from "@/lib/bluetooth-printer";
 import { useCart } from "@/context/cart-context";
+import {
+	useHybridAllDiscounts,
+	useHybridCategories,
+	useHybridInventory,
+	useHybridLowStockItems,
+	useHybridOrders,
+	useHybridProducts,
+	useHybridShiftStatus,
+	useHybridStaffUsers,
+	useHybridSiteSettings,
+} from "@/hooks/use-hybrid-pos-data";
+import {
+	useHybridAllTransactions,
+	useHybridFinancialSummary,
+} from "@/hooks/use-hybrid-finance-analytics-data";
+import {
+	useHybridApplyInventoryStockAction,
+	useHybridCreateOrder,
+	useHybridCreateTransaction,
+	useHybridDeleteOrder,
+	useHybridEndShift,
+	useHybridProduceBaseRecipeBatch,
+	useHybridSendShiftReportEmail,
+	useHybridStartShift,
+	useHybridUpdateOrder,
+	useHybridUpdateSiteSettings,
+} from "@/hooks/use-hybrid-write-actions";
 import { cn } from "@/lib/utils";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import {
@@ -165,12 +190,12 @@ export function MenuSidebar({
 		},
 	});
 
-	const lowStockItems = useQuery(api.inventory.getLowStockItems);
+	const lowStockItems = useHybridLowStockItems();
 	const lowStockCount = lowStockItems?.length || 0;
 
-	const updateOrder = useMutation(api.orders.updateOrder);
-	const deleteOrder = useMutation(api.orders.deleteOrder);
-	const createOrder = useMutation(api.orders.createOrder);
+	const updateOrder = useHybridUpdateOrder();
+	const deleteOrder = useHybridDeleteOrder();
+	const createOrder = useHybridCreateOrder();
 	const {
 		items,
 		finalTotal,
@@ -183,8 +208,8 @@ export function MenuSidebar({
 		serviceChargeAmount,
 		customerInfo,
 	} = useCart();
-	const siteSettings = useQuery(api.site_settings.getSettings);
-	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const siteSettings = useHybridSiteSettings();
+	const shiftStatus = useHybridShiftStatus();
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
 	const today = useMemo(() => {
@@ -193,11 +218,11 @@ export function MenuSidebar({
 		return d;
 	}, []);
 
-	const todayTransactions = useQuery(api.finance.getAllTransactions, {
+	const todayTransactions = useHybridAllTransactions({
 		startDate: today.getTime(),
 	});
 
-	const categories = useQuery(api.products.getCategories);
+	const categories = useHybridCategories();
 
 	const handleParkOrder = async (data: { customerName: string; tableNumber: string; notes: string }) => {
 		if (!isShiftOpen) {
@@ -270,7 +295,7 @@ export function MenuSidebar({
 	};
 
 	const { setCart, updateCustomerInfo } = useCart();
-	const allDiscounts = useQuery(api.discounts.getDiscounts);
+	const allDiscounts = useHybridAllDiscounts();
 
 	const handleRestoreOrder = async (order: Doc<"orders">) => {
 		try {
@@ -841,20 +866,20 @@ function DashboardTab({
 	todayTransactions: any;
 	categoriesList: any;
 }) {
-	const orders = useQuery(api.orders.getOrders, {});
-	const lowStockItems = useQuery(api.inventory.getLowStockItems);
-	const products = useQuery(api.products.getProducts, {});
+	const orders = useHybridOrders();
+	const lowStockItems = useHybridLowStockItems();
+	const products = useHybridProducts();
 
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
 
-	const financialSummary = useQuery(api.finance.getFinancialSummary, {
+	const financialSummary = useHybridFinancialSummary({
 		startDate: today.getTime(),
 	});
 
-	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const shiftStatus = useHybridShiftStatus();
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
-	const siteSettings = useQuery(api.site_settings.getSettings);
+	const siteSettings = useHybridSiteSettings();
 
 	const income = financialSummary?.totalIncome || 0;
 	const expense = financialSummary?.totalExpense || 0;
@@ -915,7 +940,7 @@ function DashboardTab({
 								</div>
 								<p className="text-[10px] text-muted-foreground uppercase mt-0.5">
 									{isShiftOpen 
-										? `Aktif • Kasir: ${shiftStatus?.shiftInfo?.cashierName || 'Kasir'}` 
+										? `Aktif â€¢ Kasir: ${shiftStatus?.shiftInfo?.cashierName || 'Kasir'}` 
 										: "Tutup (Belum Mulai)"}
 								</p>
 							</div>
@@ -995,7 +1020,7 @@ function DashboardTab({
 							const catTotal = Object.values(prods).reduce((a, b) => a + b, 0);
 							productsText += `- ${cat} (${catTotal}):\n`;
 							Object.entries(prods).forEach(([name, qty]) => {
-								productsText += `  • ${name}: ${qty}\n`;
+								productsText += `  â€¢ ${name}: ${qty}\n`;
 							});
 						});
 						if (!productsText) productsText = "-";
@@ -1086,7 +1111,7 @@ function DashboardTab({
 									const catTotal = Object.values(prods).reduce((a, b) => a + b, 0);
 									sProductsText += `- ${cat} (${catTotal}):\n`;
 									Object.entries(prods).forEach(([name, qty]) => {
-										sProductsText += `  • ${name}: ${qty}\n`;
+										sProductsText += `  â€¢ ${name}: ${qty}\n`;
 									});
 								});
 								if (!sProductsText) sProductsText = "-";
@@ -1112,7 +1137,7 @@ function DashboardTab({
 								const statusLabel = isCurrentActive ? " (AKTIF)" : " (SELESAI)";
 								const teamLabel = shiftObj.teamMembers ? `\nTim: ${shiftObj.teamMembers}` : '';
 
-								allShiftsText += `👥 ${shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`}${statusLabel}
+								allShiftsText += `ðŸ‘¥ ${shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`}${statusLabel}
 Modal Kasir: Rp. ${sModalVal.toLocaleString("id-ID")}
 Tunai: Rp. ${sCash.toLocaleString("id-ID")}
 Debit/QRIS: Rp. ${sQris.toLocaleString("id-ID")}
@@ -1126,28 +1151,28 @@ Produk Terjual: ${sItems}
 Rincian Produk:
 ${sProductsText}
 
-⭐ TOP 3 PRODUK TERLARIS (SHIFT INI):
+â­ TOP 3 PRODUK TERLARIS (SHIFT INI):
 ${sTopProductsText}
 
 Pengeluaran Shift: Rp. ${sExpenseVal.toLocaleString("id-ID")}
 
 Kasir: ${shiftObj.cashierName || 'Kasir'}${teamLabel}
-⸻\n`;
+â¸»\n`;
 							});
 						} else {
 							// Fallback if no shifts found
-							allShiftsText = `👥 BELUM ADA SHIFT
-⸻\n`;
+							allShiftsText = `ðŸ‘¥ BELUM ADA SHIFT
+â¸»\n`;
 						}
 
-						return `📊 Daily Revenue Report 
+						return `ðŸ“Š Daily Revenue Report 
 ${shopName} - 
-📅 Tanggal: ${dateStr} 
-⸻ 
+ðŸ“… Tanggal: ${dateStr} 
+â¸» 
 ${allShiftsText}
-💰 TOTAL REVENUE HARIAN (NET): 
+ðŸ’° TOTAL REVENUE HARIAN (NET): 
 Rp. ${totalRevenue.toLocaleString("id-ID")}
-📦 TOTAL PRODUK TERJUAL: ${totalItems}
+ðŸ“¦ TOTAL PRODUK TERJUAL: ${totalItems}
 Total Penjualan Bruto (Gross): Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
 Total Potongan (Diskon/Voucher): Rp. ${totalDiscountAmount.toLocaleString("id-ID")}
 Net Revenue Harian: Rp. ${totalRevenue.toLocaleString("id-ID")}
@@ -1155,14 +1180,14 @@ Net Revenue Harian: Rp. ${totalRevenue.toLocaleString("id-ID")}
 Rincian Produk Harian:
 ${productsText}
 
-⭐ TOP 3 PRODUK TERLARIS (HARIAN):
+â­ TOP 3 PRODUK TERLARIS (HARIAN):
 ${topProductsText}
-⸻ 
-📝 RINGKASAN PENGELUARAN HARIAN
+â¸» 
+ðŸ“ RINGKASAN PENGELUARAN HARIAN
 ${expensesText}
 Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
-⸻ 
-📝 RINGKASAN HARIAN 
+â¸» 
+ðŸ“ RINGKASAN HARIAN 
 ${dateStr} : 
 Grand Total Revenue (Net): Rp. ${totalRevenue.toLocaleString("id-ID")}
 Total Penjualan Bruto: Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
@@ -1341,7 +1366,7 @@ Total Produk Terjual: ${totalItems}`;
 							const catTotal = Object.values(prods).reduce((a, b) => a + b, 0);
 							productsText += `- ${cat} (${catTotal}):\n`;
 							Object.entries(prods).forEach(([name, qty]) => {
-								productsText += `  • ${name}: ${qty}\n`;
+								productsText += `  â€¢ ${name}: ${qty}\n`;
 							});
 						});
 						if (!productsText) productsText = "-";
@@ -1421,7 +1446,7 @@ Total Produk Terjual: ${totalItems}`;
 									const catTotal = Object.values(prods).reduce((a, b) => a + b, 0);
 									sProductsText += `- ${cat} (${catTotal}):\n`;
 									Object.entries(prods).forEach(([name, qty]) => {
-										sProductsText += `  • ${name}: ${qty}\n`;
+										sProductsText += `  â€¢ ${name}: ${qty}\n`;
 									});
 								});
 								if (!sProductsText) sProductsText = "-";
@@ -1445,7 +1470,7 @@ Total Produk Terjual: ${totalItems}`;
 								const isCurrentActive = !shiftObj.endTime;
 								const statusLabel = isCurrentActive ? " (AKTIF)" : " (SELESAI)";
 
-								allShiftsCopyText += `👥 ${shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`}${statusLabel}
+								allShiftsCopyText += `ðŸ‘¥ ${shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`}${statusLabel}
 Modal Kasir: Rp. ${sModalVal.toLocaleString("id-ID")}
 Tunai: Rp. ${sCash.toLocaleString("id-ID")}
 Debit/QRIS: Rp. ${sQris.toLocaleString("id-ID")}
@@ -1459,29 +1484,29 @@ Produk Terjual: ${sItems}
 Rincian Produk:
 ${sProductsText}
 
-⭐ TOP 3 PRODUK TERLARIS (SHIFT INI):
+â­ TOP 3 PRODUK TERLARIS (SHIFT INI):
 ${sTopProductsText}
 
 Pengeluaran Shift: Rp. ${sExpenseVal.toLocaleString("id-ID")}
 
 Kasir: ${shiftObj.cashierName || 'Kasir'}
-⸻\n`;
+â¸»\n`;
 							});
 						} else {
-							allShiftsCopyText = `👥 BELUM ADA SHIFT\n⸻\n`;
+							allShiftsCopyText = `ðŸ‘¥ BELUM ADA SHIFT\nâ¸»\n`;
 						}
 
 						// No redeclaration needed here, already declared at lines 1219-1224
 
 
-						const text = `📊 Daily Revenue Report 
+						const text = `ðŸ“Š Daily Revenue Report 
 ${shopName} - 
-📅 Tanggal: ${dateStr} 
-⸻ 
+ðŸ“… Tanggal: ${dateStr} 
+â¸» 
 ${allShiftsCopyText}
-💰 TOTAL REVENUE HARIAN (NET): 
+ðŸ’° TOTAL REVENUE HARIAN (NET): 
 Rp. ${totalRevenue.toLocaleString("id-ID")}
-📦 TOTAL PRODUK TERJUAL: ${totalItems}
+ðŸ“¦ TOTAL PRODUK TERJUAL: ${totalItems}
 Total Penjualan Bruto (Gross): Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
 Total Potongan (Diskon/Voucher): Rp. ${totalDiscountAmount.toLocaleString("id-ID")}
 Net Revenue Harian: Rp. ${totalRevenue.toLocaleString("id-ID")}
@@ -1489,14 +1514,14 @@ Net Revenue Harian: Rp. ${totalRevenue.toLocaleString("id-ID")}
 Rincian Produk Harian:
 ${productsText}
 
-⭐ TOP 3 PRODUK TERLARIS (HARIAN):
+â­ TOP 3 PRODUK TERLARIS (HARIAN):
 ${topProductsText}
-⸻ 
-📝 RINGKASAN PENGELUARAN HARIAN
+â¸» 
+ðŸ“ RINGKASAN PENGELUARAN HARIAN
 ${expensesText}
 Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
-⸻ 
-📝 RINGKASAN HARIAN 
+â¸» 
+ðŸ“ RINGKASAN HARIAN 
 ${dateStr} : 
 Grand Total Revenue (Net): Rp. ${totalRevenue.toLocaleString("id-ID")}
 Total Penjualan Bruto: Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
@@ -1528,7 +1553,7 @@ function ParkirTab({
 	onRestore: (order: Doc<"orders">) => void;
 	onPrint?: (order: Doc<"orders">) => void;
 }) {
-	const orders = useQuery(api.orders.getOrders, { status: "pending" });
+	const orders = useHybridOrders({ status: "pending" });
 
 	const formatCurrency = (value: number) =>
 		new Intl.NumberFormat("id-ID", {
@@ -1602,7 +1627,7 @@ function ParkirTab({
 
 								<div className="flex items-center justify-between border-t border-dashed border-border/50 pt-3">
 									<div className="text-[10px] text-muted-foreground">
-										{order.items.length} item • {order.items.reduce((acc: number, i: any) => acc + i.quantity, 0)} qty
+										{order.items.length} item â€¢ {order.items.reduce((acc: number, i: any) => acc + i.quantity, 0)} qty
 									</div>
 									<div className="flex items-center gap-2">
 										{onPrint && (
@@ -1637,8 +1662,8 @@ function ParkirTab({
 }
 
 function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) => void }) {
-	const orders = useQuery(api.orders.getOrders, {});
-	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const orders = useHybridOrders();
+	const shiftStatus = useHybridShiftStatus();
 
 	const [timeFilter, setTimeFilter] = useState("today");
 	const [sortOrder, setSortOrder] = useState("desc");
@@ -1932,11 +1957,11 @@ function KasTab({ onClose }: { onClose: () => void }) {
 
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
-	const todayTransactions = useQuery(api.finance.getAllTransactions, {
+	const todayTransactions = useHybridAllTransactions({
 		startDate: today.getTime(),
 	});
 
-	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const shiftStatus = useHybridShiftStatus();
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
 	const formatCurrency = (value: number) =>
@@ -2024,7 +2049,7 @@ function KasTab({ onClose }: { onClose: () => void }) {
 			<div className="flex items-center justify-between">
 				<div>
 					<h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Laci Kasir</h3>
-					<p className="text-[10px] font-bold text-emerald-600 mt-0.5">SHIFT AKTIF • {shiftStatus?.shiftInfo?.cashierName || "Kasir"}</p>
+					<p className="text-[10px] font-bold text-emerald-600 mt-0.5">SHIFT AKTIF â€¢ {shiftStatus?.shiftInfo?.cashierName || "Kasir"}</p>
 				</div>
 				<Button 
 					variant="destructive" 
@@ -2118,7 +2143,7 @@ function KasTab({ onClose }: { onClose: () => void }) {
 
 function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const { user: currentUser } = useYumiAuth();
-	const allUsers = useQuery(api.users.getUsers);
+	const allUsers = useHybridStaffUsers();
 
 	const staffUsers = useMemo(() =>
 		(allUsers || []).filter(
@@ -2127,9 +2152,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		[allUsers]
 	);
 
-	const startShift = useMutation(api.finance.startShift);
-	const endShift = useMutation(api.finance.endShift);
-	const sendShiftReportEmail = useAction(api.reportsEmail.sendShiftReportEmail);
+	const startShift = useHybridStartShift();
+	const endShift = useHybridEndShift();
+	const sendShiftReportEmail = useHybridSendShiftReportEmail();
 
 	const [shiftType, setShiftType] = useState<"mulai" | "akhiri">("mulai");
 
@@ -2151,9 +2176,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		bill100000: 0, bill50000: 0, bill20000: 0, bill10000: 0, bill5000: 0, bill2000: 0, bill1000: 0, bill500: 0, bill200: 0, bill100: 0
 	});
 
-	const shiftStatus = useQuery(api.finance.getShiftStatus);
-	const siteSettings = useQuery(api.site_settings.getSettings);
-	const todayOrders = useQuery(api.orders.getOrders, {});
+	const shiftStatus = useHybridShiftStatus();
+	const siteSettings = useHybridSiteSettings();
+	const todayOrders = useHybridOrders();
 	const selectedShiftSchedule = useMemo(() => {
 		return siteSettings?.shiftSettings?.shiftSchedules?.find(
 			(schedule: { name: string; openTime?: string; closeTime?: string }) =>
@@ -2163,7 +2188,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
-	const todayTransactions = useQuery(api.finance.getAllTransactions, {
+	const todayTransactions = useHybridAllTransactions({
 		startDate: today.getTime(),
 	});
 
@@ -2506,7 +2531,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 								</div>
 								<div className="mt-1.5 pt-1.5 border-t border-emerald-100 flex justify-between items-center">
 									<p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Saran Setoran:</p>
-									<p className="text-[10px] font-black text-foreground">Rp {(shiftStatus?.ongoingShift?.startingCash + shiftCash - shiftExpense).toLocaleString('id-ID')}</p>
+									<p className="text-[10px] font-black text-foreground">Rp {(((shiftStatus?.ongoingShift?.startingCash ?? 0) + shiftCash - shiftExpense)).toLocaleString('id-ID')}</p>
 								</div>
 							</CardContent>
 						</Card>
@@ -2609,7 +2634,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 }
 
 function IncomeForm({ onClose }: { onClose: () => void }) {
-	const createTransaction = useMutation(api.finance.createTransaction);
+	const createTransaction = useHybridCreateTransaction();
 	const [amount, setAmount] = useState("");
 	const [category, setCategory] = useState("Shift Pagi");
 	const [description, setDescription] = useState("");
@@ -2698,7 +2723,7 @@ function IncomeForm({ onClose }: { onClose: () => void }) {
 }
 
 function ExpenseForm({ onClose }: { onClose: () => void }) {
-	const createTransaction = useMutation(api.finance.createTransaction);
+	const createTransaction = useHybridCreateTransaction();
 	const [amount, setAmount] = useState("");
 	const [category, setCategory] = useState("Bahan Baku");
 	const [description, setDescription] = useState("");
@@ -2799,7 +2824,7 @@ function StokTab({
 }) {
 	const [activeSubTab, setActiveSubTab] = useState<"update" | "beli">("update");
 
-	const lowStockItems = useQuery(api.inventory.getLowStockItems);
+	const lowStockItems = useHybridLowStockItems();
 	const lowStockCount = lowStockItems?.length || 0;
 
 	const subTabs = [
@@ -2874,9 +2899,9 @@ function InventoryTab({
 }: {
 	setConfirmConfig: (config: ConfirmConfig) => void;
 }) {
-	const inventory = useQuery(api.inventory.getInventory);
-	const applyStockAction = useMutation(api.inventory.applyInventoryStockAction);
-	const produceBatch = useMutation(api.inventory.produceBaseRecipeBatch);
+	const inventory = useHybridInventory();
+	const applyStockAction = useHybridApplyInventoryStockAction();
+	const produceBatch = useHybridProduceBaseRecipeBatch();
 
 	const [editingId, setEditingId] = useState<Id<"inventory"> | null>(null);
 	const [manualQty, setManualQty] = useState<string>("");
@@ -3163,7 +3188,7 @@ function InventoryTab({
 }
 
 function MarketList() {
-	const lowStockItems = useQuery(api.inventory.getLowStockItems);
+	const lowStockItems = useHybridLowStockItems();
 
 	if (lowStockItems === undefined) {
 		return <div className="p-4 text-center">Memuat data...</div>;
@@ -3232,8 +3257,8 @@ function MarketList() {
 }
 
 function SettingsTab({ onClose }: { onClose: () => void }) {
-	const siteSettings = useQuery(api.site_settings.getSettings);
-	const updateSiteSettings = useMutation(api.site_settings.updateSettings);
+	const siteSettings = useHybridSiteSettings();
+	const updateSiteSettings = useHybridUpdateSiteSettings();
 
 	const [isSaving, setIsSaving] = useState(false);
 	const [autoPrint, setAutoPrint] = useState(siteSettings?.autoPrint ?? false);
@@ -3420,3 +3445,12 @@ function SettingsTab({ onClose }: { onClose: () => void }) {
 		</div>
 	);
 }
+
+
+
+
+
+
+
+
+

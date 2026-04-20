@@ -1,4 +1,4 @@
-import { useCart } from "@/context/cart-context";
+﻿import { useCart } from "@/context/cart-context";
 import { toast } from "sonner";
 import {
 	User,
@@ -31,10 +31,13 @@ import { useState, useMemo, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { ShimmerSkeleton } from "@/components/ui/loading-state";
-import { useQuery } from "convex/react";
-import { api } from "@yumipos/backend/convex/_generated/api";
 import { isDiscountApplicable } from "@/lib/utils/pricing";
-import type { Doc } from "@yumipos/backend/convex/_generated/dataModel";
+import {
+	useHybridActiveDiscounts,
+	useHybridShiftStatus,
+	useHybridSiteSettings,
+} from "@/hooks/use-hybrid-pos-data";
+import type { Doc } from "@/types/backend-compat";
 
 export function CheckoutSidebar({ 
 	onConfirmPayment,
@@ -85,9 +88,9 @@ export function CheckoutSidebar({
 		clearCart
 	} = useCart();
 
-	const siteSettings = useQuery(api.site_settings.getSettings);
-	const allActiveDiscounts = useQuery(api.discounts.getActiveDiscounts);
-	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const siteSettings = useHybridSiteSettings();
+	const allActiveDiscounts = useHybridActiveDiscounts();
+	const shiftStatus = useHybridShiftStatus();
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
 	const orderTypes = useMemo(() => {
@@ -866,3 +869,4 @@ export function CheckoutSidebar({
 		</div>
 	);
 }
+

@@ -1,5 +1,3 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useQuery } from "convex/react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -13,13 +11,14 @@ import {
 } from "recharts";
 import type { DateRange } from "./period-selector";
 import { formatCurrencyIDR } from "@/lib/export-utils";
+import { useHybridProfitLossReport } from "@/hooks/use-hybrid-finance-analytics-data";
 
 interface Props {
 	range: DateRange;
 }
 
 export function ProfitLossReport({ range }: Props) {
-	const data = useQuery(api.finance.getProfitLossReport, {
+	const data = useHybridProfitLossReport({
 		startDate: range.startDate,
 		endDate: range.endDate,
 	});

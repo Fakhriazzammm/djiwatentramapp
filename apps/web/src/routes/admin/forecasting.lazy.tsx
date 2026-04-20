@@ -1,9 +1,7 @@
-import { createLazyFileRoute, Link } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
+﻿import { createLazyFileRoute, Link } from "@tanstack/react-router";
+import type { Id } from "@/types/backend-compat";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale/id";
-import { useQuery } from "convex/react";
 import {
 	AlertTriangle,
 	BarChart3,
@@ -17,6 +15,14 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useHybridInventory } from "@/hooks/use-hybrid-pos-data";
+import {
+	useHybridPredictBestPromoTime,
+	useHybridPredictBusyHours,
+	useHybridPredictDailyRevenue,
+	useHybridPredictStockOut,
+	useHybridPredictTrendingProducts,
+} from "@/hooks/use-hybrid-finance-analytics-data";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Route = createLazyFileRoute("/admin/forecasting" as any)({
@@ -54,12 +60,13 @@ interface StockoutPrediction {
 }
 
 function ForecastingPage() {
-	// Real AI-powered predictions from Convex
-	const stockoutPredictionsRaw = useQuery(api.ai.predictStockOut, { daysAhead: 7 });
-	const busyHours = useQuery(api.ai.predictBusyHours, {});
-	const revenuePrediction = useQuery(api.ai.predictDailyRevenue, { daysAhead: 7 });
-	const trendingProducts = useQuery(api.ai.predictTrendingProducts, { daysAhead: 7 });
-	const inventoryRaw = useQuery(api.inventory.getInventory);
+	// Real AI-powered predictions from legacy backend
+	const stockoutPredictionsRaw = useHybridPredictStockOut(7);
+	const busyHours = useHybridPredictBusyHours();
+	const revenuePrediction = useHybridPredictDailyRevenue(7);
+	const trendingProducts = useHybridPredictTrendingProducts(7);
+	useHybridPredictBestPromoTime();
+	const inventoryRaw = useHybridInventory();
 
 	// Map AI predictions to the StockoutPrediction interface used by the UI
 	const stockoutPredictions: StockoutPrediction[] | undefined =
@@ -158,7 +165,7 @@ function ForecastingPage() {
 					currentStock: item.quantity,
 					avgDailyUsage: 0,
 				});
-				toast.success("Forecast berhasil — stok aman");
+				toast.success("Forecast berhasil â€” stok aman");
 			} else {
 				toast.error("Item tidak ditemukan");
 			}
@@ -239,23 +246,23 @@ function ForecastingPage() {
 				<div className="rounded-xl border border-border bg-card p-4">
 					<p className="text-muted-foreground text-xs">Item Berisiko</p>
 					<p className="mt-1 font-bold text-2xl text-destructive">
-						{stockoutPredictions?.filter((p) => p.riskLevel === "high").length ?? "—"}
+						{stockoutPredictions?.filter((p) => p.riskLevel === "high").length ?? "â€”"}
 					</p>
-					<p className="text-muted-foreground text-[10px]">Stok kritis ≤ 3 hari</p>
+					<p className="text-muted-foreground text-[10px]">Stok kritis â‰¤ 3 hari</p>
 				</div>
 				<div className="rounded-xl border border-border bg-card p-4">
 					<p className="text-muted-foreground text-xs">Item Waspada</p>
 					<p className="mt-1 font-bold text-2xl text-orange-500">
-						{stockoutPredictions?.filter((p) => p.riskLevel === "medium").length ?? "—"}
+						{stockoutPredictions?.filter((p) => p.riskLevel === "medium").length ?? "â€”"}
 					</p>
-					<p className="text-muted-foreground text-[10px]">Stok rendah ≤ 7 hari</p>
+					<p className="text-muted-foreground text-[10px]">Stok rendah â‰¤ 7 hari</p>
 				</div>
 				<div className="rounded-xl border border-border bg-card p-4">
 					<p className="text-muted-foreground text-xs">Jam Paling Ramai</p>
 					<p className="mt-1 font-bold text-2xl text-primary">
 						{busyHours?.peakHours?.[0]
 							? `${busyHours.peakHours[0].hour}:00`
-							: "—"}
+							: "â€”"}
 					</p>
 					<p className="text-muted-foreground text-[10px]">Berdasarkan histori</p>
 				</div>
@@ -264,7 +271,7 @@ function ForecastingPage() {
 					<p className="mt-1 font-bold text-lg text-primary">
 						{revenuePrediction?.[0]
 							? `Rp${revenuePrediction[0].predictedAmount?.toLocaleString("id-ID")}`
-							: "—"}
+							: "â€”"}
 					</p>
 					<p className="text-muted-foreground text-[10px]">Estimasi AI</p>
 				</div>
@@ -583,7 +590,7 @@ function ForecastingPage() {
 									</div>
 								))}
 								<p className="pt-2 text-muted-foreground text-xs">
-									Hari terbaik: {busyHours.peakDays?.[0]?.dayName || "—"} (
+									Hari terbaik: {busyHours.peakDays?.[0]?.dayName || "â€”"} (
 									{busyHours.peakDays?.[0]?.orderCount || 0} order)
 								</p>
 							</div>
@@ -681,3 +688,5 @@ function ForecastingPage() {
 		</div>
 	);
 }
+
+

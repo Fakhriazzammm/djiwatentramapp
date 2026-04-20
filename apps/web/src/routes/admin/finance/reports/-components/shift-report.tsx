@@ -1,5 +1,3 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useAction, useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
 import {
 	BadgeDollarSign,
@@ -21,6 +19,18 @@ import {
 	X,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+	useHybridShiftReportRows,
+	useHybridShiftDetails,
+	useHybridSiteSettings,
+} from "@/hooks/use-hybrid-pos-data";
+import {
+	useHybridAdminBulkDeleteShifts,
+	useHybridAdminDeleteShift,
+	useHybridAdminUpdateShift,
+	useHybridSendShiftReportEmail,
+	useHybridSendShiftTableReportEmail,
+} from "@/hooks/use-hybrid-write-actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { DateRange } from "./period-selector";
 import {
@@ -183,20 +193,25 @@ function buildShiftSummaryText(shift: ShiftRow, details: any) {
 }
 
 export function ShiftReport({ range }: Props) {
-	const sendShiftReportEmail = useAction(api.reportsEmail.sendShiftReportEmail);
-	const sendShiftTableReportEmail = useAction(
-		api.reportsEmail.sendShiftTableReportEmail,
-	);
-	const settings = useQuery(api.site_settings.getSettings);
+	const sendShiftReportEmail = useHybridSendShiftReportEmail();
+	const sendShiftTableReportEmail = useHybridSendShiftTableReportEmail();
+	const settings = useHybridSiteSettings();
 	const storeName = settings?.storeName || "Toko";
-	const rows = useQuery(api.finance.getShiftReportTable, {
-		startDate: range.startDate,
-		endDate: range.endDate,
-	}) as ShiftRow[] | undefined;
+	const allRows = useHybridShiftReportRows() as ShiftRow[] | undefined;
+	const rows = useMemo(() => {
+		if (!allRows) {
+			return undefined;
+		}
+		const startTime = new Date(`${range.startDate}T00:00:00`).getTime();
+		const endTime = new Date(`${range.endDate}T23:59:59.999`).getTime();
+		return allRows.filter(
+			(row) => row.startTime >= startTime && row.startTime <= endTime
+		);
+	}, [allRows, range.endDate, range.startDate]);
 
-	const adminUpdateShift = useMutation(api.finance.adminUpdateShift);
-	const adminDeleteShift = useMutation(api.finance.adminDeleteShift);
-	const adminBulkDeleteShifts = useMutation(api.finance.adminBulkDeleteShifts);
+	const adminUpdateShift = useHybridAdminUpdateShift();
+	const adminDeleteShift = useHybridAdminDeleteShift();
+	const adminBulkDeleteShifts = useHybridAdminBulkDeleteShifts();
 
 	const [selectedShiftStart, setSelectedShiftStart] = useState<number | null>(null);
 	const [sendingShiftStart, setSendingShiftStart] = useState<number | null>(null);
@@ -293,8 +308,7 @@ export function ShiftReport({ range }: Props) {
 	const selectedShift =
 		rows?.find((shift) => shift.startTime === selectedShiftStart) ?? rows?.[0];
 
-	const details = useQuery(
-		api.finance.getShiftDetails,
+	const details = useHybridShiftDetails(
 		selectedShift
 			? {
 					startTime: selectedShift.startTime,
@@ -1125,9 +1139,17 @@ function SummaryCard({
 	);
 }
 
-function TableHead({ children }: { children: React.ReactNode }) {
+function TableHead({
+	children,
+	className,
+}: {
+	children: React.ReactNode;
+	className?: string;
+}) {
 	return (
-		<th className="whitespace-nowrap px-3 py-2 text-[10px] font-semibold leading-4">
+		<th
+			className={`whitespace-nowrap px-3 py-2 text-[10px] font-semibold leading-4 ${className ?? ""}`}
+		>
 			{children}
 		</th>
 	);

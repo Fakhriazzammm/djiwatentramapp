@@ -6,8 +6,6 @@ import {
 	useNavigate,
 	useSearch,
 } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	Archive,
@@ -47,6 +45,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { authClient } from "@/lib/auth-client";
 import { APP_VERSION } from "@/lib/version";
@@ -201,7 +200,7 @@ function AdminLayout() {
 		return "compact";
 	});
 
-	const settings = useQuery(api.site_settings.getSettings);
+	const settings = useHybridSiteSettings();
 	const storeName = settings?.storeName || "Yumi POS";
 	const appName = settings?.appName || "Yumi POS";
 	const developerName = settings?.developerName || "Zantara Technology";

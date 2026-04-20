@@ -1,11 +1,10 @@
-import { useQuery } from "convex/react";
-import { api } from "@yumipos/backend/convex/_generated/api";
 import { formatCurrencyIDR } from "@/lib/export-utils";
 import { Target, TrendingUp, CheckCircle2, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useHybridShiftTargetProgress } from "@/hooks/use-hybrid-finance-analytics-data";
 
 export function ShiftTargetBanner() {
-	const progress = useQuery(api.finance.getShiftTargetProgress);
+	const progress = useHybridShiftTargetProgress();
 
 	if (!progress) return null;
 

@@ -1,6 +1,4 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useAction, useMutation, useQuery } from "convex/react";
+﻿import type { Doc, Id } from "@/types/backend-compat";
 import {
 	ArrowLeft,
 	Barcode,
@@ -24,6 +22,22 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import {
+	useHybridActiveDiscounts,
+	useHybridCategories,
+	useHybridProducts,
+	useHybridSiteSettings,
+} from "@/hooks/use-hybrid-pos-data";
+import { useHybridBookingSettings } from "@/hooks/use-hybrid-booking-data";
+import { useHybridMayarConfig, useHybridOrderById } from "@/hooks/use-hybrid-ops-data";
+import {
+	useHybridCreateOrder,
+	useHybridCreateServiceRequest,
+	useHybridMayarCreateInvoice,
+	useHybridMayarGetInvoiceDetail,
+	useHybridUpdateOrderPaymentGateway,
+	useHybridUpdateOrderStatus,
+} from "@/hooks/use-hybrid-write-actions";
 import { cn } from "@/lib/utils";
 import {
 	calculateEffectivePrice,
@@ -108,18 +122,18 @@ export function CustomerOrderingPage({
 	brandSlug: string;
 	search: RouteSearch;
 }) {
-	const siteSettings = useQuery(api.site_settings.getSettings);
-	const brandSettings = useQuery(api.booking.getSettings, { slug: brandSlug });
-	const categories = useQuery(api.products.getCategories);
-	const products = useQuery(api.products.getProducts, {});
-	const discounts = useQuery(api.discounts.getActiveDiscounts);
-	const createOrder = useMutation(api.orders.createOrder);
-	const updateOrderPaymentGateway = useMutation(api.orders.updateOrderPaymentGateway);
-	const updateOrderStatus = useMutation(api.orders.updateOrderStatus);
-	const createServiceRequest = useMutation(api.customerService.createRequest);
-	const createMayarInvoice = useAction(api.mayar.createInvoice);
-	const getMayarInvoiceDetail = useAction(api.mayar.getInvoiceDetail);
-	const mayarConfig = useQuery(api.mayar.isConfigured);
+	const siteSettings = useHybridSiteSettings();
+	const brandSettings = useHybridBookingSettings(brandSlug);
+	const categories = useHybridCategories();
+	const products = useHybridProducts();
+	const discounts = useHybridActiveDiscounts();
+	const createOrder = useHybridCreateOrder();
+	const updateOrderPaymentGateway = useHybridUpdateOrderPaymentGateway();
+	const updateOrderStatus = useHybridUpdateOrderStatus();
+	const createServiceRequest = useHybridCreateServiceRequest();
+	const createMayarInvoice = useHybridMayarCreateInvoice();
+	const getMayarInvoiceDetail = useHybridMayarGetInvoiceDetail();
+	const mayarConfig = useHybridMayarConfig();
 
 	const [step, setStep] = useState<Step>("welcome");
 	const [partySize, setPartySize] = useState(1);
@@ -144,8 +158,11 @@ export function CustomerOrderingPage({
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const sessionRef = useRef(getSessionId(search.session));
 
-	const currentOrder = useQuery(api.orders.getOrder, receipt ? { id: receipt.orderId } : "skip");
-	const config = siteSettings?.customerOrdering ?? CUSTOMER_ORDERING_DEFAULTS;
+	const currentOrder = useHybridOrderById(receipt?.orderId);
+	const config = {
+		...CUSTOMER_ORDERING_DEFAULTS,
+		...(siteSettings?.customerOrdering ?? {}),
+	};
 	const themeColor = brandSettings?.themeColor || "var(--color-primary)";
 	const logoUrl = brandSettings?.logoUrl || siteSettings?.logoUrl || "";
 	const storeName = brandSettings?.title || siteSettings?.storeName || "Ordering";
@@ -814,7 +831,7 @@ function renderMenuSection(props: {
 				<div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
 					<BadgePill label={props.tableNumber.trim() ? `Meja ${props.tableNumber.trim()}` : "Meja belum diisi"} />
 					{props.freeRefillCharge > 0 ? <BadgePill label={`Free refill ${currency(props.freeRefillCharge)}`} /> : null}
-					<BadgePill label={`${props.totalItems} item • ${currency(props.total)}`} />
+					<BadgePill label={`${props.totalItems} item â€¢ ${currency(props.total)}`} />
 				</div>
 			</div>
 
@@ -1062,3 +1079,4 @@ function ProductSheet({ discounts, onAdd, onClose, product }: { discounts: Doc<"
 	const unitPrice = pricing.finalPrice + variantPrice;
 	return <div className="flex max-h-[90vh] flex-col"><div className="relative h-60 bg-muted">{product.image ? <img alt={product.name} className="h-full w-full object-cover" src={product.image} /> : null}<button type="button" className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white" onClick={onClose}><X className="h-4 w-4" /></button>{product.menuNumber != null ? <span className="absolute bottom-4 left-4 rounded-full bg-black/55 px-3 py-1 text-xs font-bold text-white">#{product.menuNumber}</span> : null}</div><div className="flex-1 overflow-y-auto px-5 py-5"><h3 className="text-2xl font-black tracking-tight">{product.name}</h3>{product.description ? <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{product.description}</p> : null}<div className="mt-4 flex items-center gap-3"><span className="text-2xl font-black text-primary">{currency(unitPrice)}</span>{pricing.isPromo ? <span className="text-sm font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice + variantPrice)}</span> : null}</div>{groups.length > 0 ? <div className="mt-6 space-y-5">{groups.map((group) => <div key={group.type} className="space-y-2"><p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">{group.type}</p><div className="flex flex-wrap gap-2">{group.options.map((option) => <button type="button" key={option.name} className={cn("rounded-full border px-3 py-2 text-sm font-bold transition-all", variants[group.type] === option.name ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background")} onClick={() => setVariants((value) => ({ ...value, [group.type]: option.name }))}>{option.name}{option.price > 0 ? ` +${currency(option.price)}` : ""}</button>)}</div></div>)}</div> : null}</div><div className="border-t border-border px-5 py-4"><div className="flex items-center gap-3"><div className="flex items-center gap-2 rounded-full border border-border bg-background px-2 py-1"><button type="button" className="flex h-9 w-9 items-center justify-center rounded-full bg-muted" onClick={() => setQuantity((value) => Math.max(1, value - 1))}><Minus className="h-4 w-4" /></button><span className="min-w-[1.5rem] text-center text-sm font-black">{quantity}</span><button type="button" className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground" onClick={() => setQuantity((value) => value + 1)}><Plus className="h-4 w-4" /></button></div><button type="button" className="flex flex-1 items-center justify-between rounded-[1.5rem] bg-primary px-4 py-4 text-sm font-black text-primary-foreground shadow-sm" onClick={() => onAdd({ productId: product._id, name: product.name, price: unitPrice, originalPrice: pricing.originalPrice + variantPrice, quantity, variant: Object.values(variants).length > 0 ? Object.values(variants).join(", ") : undefined, image: product.image, categoryId: product.categoryId, menuNumber: product.menuNumber })}><span>Tambah ke keranjang</span><span>{currency(unitPrice * quantity)}</span></button></div></div></div>;
 }
+

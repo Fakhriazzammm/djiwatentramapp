@@ -1,22 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@yumipos/backend/convex/_generated/api";
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-	User, 
 	ChevronLeft, 
 	Delete, 
 	Fingerprint, 
-	LayoutDashboard,
 	ShieldCheck,
-	Sparkles,
 	Search
 } from "lucide-react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { Footer } from "@/components/layout/Footer";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { listPublicYumiUsers, loginWithYumiPin, type YumiPublicUser } from "@/lib/yumi-auth-client";
 
 export const Route = createFileRoute("/login" as any)({
 	component: LoginPage,
@@ -24,19 +20,43 @@ export const Route = createFileRoute("/login" as any)({
 
 function LoginPage() {
 	const navigate = useNavigate();
-	const { login, isAuthenticated, isAdmin, user: activeUser } = useYumiAuth();
+	const { login, isAuthenticated } = useYumiAuth();
+	const [users, setUsers] = useState<YumiPublicUser[]>([]);
+	const [isUsersLoading, setIsUsersLoading] = useState(true);
 	
-	const users = useQuery(api.users.getPublicUsers);
-	const loginMutation = useMutation(api.users.loginWithPin);
-	
-	const [selectedUser, setSelectedUser] = useState<any>(null);
+	const [selectedUser, setSelectedUser] = useState<YumiPublicUser | null>(null);
 	const [pin, setPin] = useState("");
 	const [isVerifying, setIsVerifying] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 
+	useEffect(() => {
+		let active = true;
+
+		void (async () => {
+			try {
+				const nextUsers = await listPublicYumiUsers();
+				if (active) {
+					setUsers(nextUsers);
+				}
+			} catch (error) {
+				console.error("Failed to load public users:", error);
+				if (active) {
+					toast.error("Gagal memuat daftar pengguna");
+				}
+			} finally {
+				if (active) {
+					setIsUsersLoading(false);
+				}
+			}
+		})();
+
+		return () => {
+			active = false;
+		};
+	}, []);
+
 	const filteredUsers = useMemo(() => {
-		if (!users) return [];
-		return users.filter((u: any) => 
+		return users.filter((u) => 
 			u.name.toLowerCase().includes(searchQuery.toLowerCase())
 		);
 	}, [users, searchQuery]);
@@ -56,10 +76,7 @@ function LoginPage() {
 		
 		setIsVerifying(true);
 		try {
-			const result = await loginMutation({
-				userId: selectedUser._id,
-				pin: pin,
-			});
+			const result = await loginWithYumiPin(selectedUser._id, pin);
 			
 			login(result.token);
 			
@@ -132,20 +149,29 @@ function LoginPage() {
 
 							{searchQuery.trim().length > 0 && (
 								<div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-4 pt-2 md:pt-4">
-									{filteredUsers.map((user: any) => (
-										<motion.button
-											key={user._id}
-											whileHover={{ y: -4 }}
-											whileTap={{ scale: 0.95 }}
-											onClick={() => setSelectedUser(user)}
-											className="group relative flex flex-col items-center gap-2 p-1 md:p-2 transition-all"
-										>
-											<div className="flex h-12 w-12 md:h-[4.5rem] md:w-[4.5rem] items-center justify-center rounded-xl md:rounded-[1.25rem] bg-primary/10 text-xl md:text-3xl font-black text-primary shadow-sm transition-all group-hover:bg-primary/20 group-hover:shadow-md">
-												{user.initial}
-											</div>
-											<span className="text-[11px] md:text-sm font-bold tracking-tight text-foreground text-center line-clamp-2 w-full max-w-[80px] md:max-w-[100px] leading-snug">{user.name}</span>
-										</motion.button>
-									))}
+									{isUsersLoading ? (
+										Array.from({ length: 6 }).map((_, index) => (
+											<div
+												key={index}
+												className="h-24 rounded-2xl bg-muted animate-pulse md:h-32"
+											/>
+										))
+									) : (
+										filteredUsers.map((user) => (
+											<motion.button
+												key={user._id}
+												whileHover={{ y: -4 }}
+												whileTap={{ scale: 0.95 }}
+												onClick={() => setSelectedUser(user)}
+												className="group relative flex flex-col items-center gap-2 p-1 md:p-2 transition-all"
+											>
+												<div className="flex h-12 w-12 md:h-[4.5rem] md:w-[4.5rem] items-center justify-center rounded-xl md:rounded-[1.25rem] bg-primary/10 text-xl md:text-3xl font-black text-primary shadow-sm transition-all group-hover:bg-primary/20 group-hover:shadow-md">
+													{user.initial}
+												</div>
+												<span className="text-[11px] md:text-sm font-bold tracking-tight text-foreground text-center line-clamp-2 w-full max-w-[80px] md:max-w-[100px] leading-snug">{user.name}</span>
+											</motion.button>
+										))
+									)}
 								</div>
 							)}
 						</motion.div>

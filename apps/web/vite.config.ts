@@ -50,10 +50,6 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"@": path.resolve(__dirname, "./src"),
-			"convex/server": path.resolve(
-				__dirname,
-				"./node_modules/convex/dist/esm/server/index.js",
-			),
 		},
 	},
 	server: {

@@ -1,0 +1,4 @@
+project_id = "xaemykhjpkgypqqpfdcb"
+
+[functions.yumi-auth]
+verify_jwt = false

@@ -1,5 +1,3 @@
-import { useQuery } from "convex/react";
-import { api } from "@yumipos/backend/convex/_generated/api";
 import {
 	Dialog,
 	DialogContent,
@@ -9,6 +7,7 @@ import {
 import { formatCurrencyIDR } from "@/lib/export-utils";
 import { Clock, Receipt, ShoppingBag } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useHybridShiftDetails } from "@/hooks/use-hybrid-pos-data";
 
 interface ShiftDetailModalProps {
 	shift: any;
@@ -17,8 +16,7 @@ interface ShiftDetailModalProps {
 }
 
 export function ShiftDetailModal({ shift, isOpen, onOpenChange }: ShiftDetailModalProps) {
-	const details = useQuery(
-		api.finance.getShiftDetails,
+	const details = useHybridShiftDetails(
 		isOpen && shift ? { startTime: shift.startTime, endTime: shift.endTime } : "skip"
 	);
 

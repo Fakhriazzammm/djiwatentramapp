@@ -1,5 +1,3 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import {
@@ -30,6 +28,8 @@ import {
 	format,
 } from "date-fns";
 import { id as localeID } from "date-fns/locale";
+import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
+import { useHybridTransactionDetailReport } from "@/hooks/use-hybrid-finance-analytics-data";
 
 function getPreviousPeriodRange(
 	period: PeriodOption,
@@ -133,34 +133,33 @@ export function TransactionsView() {
 	const [showComparison, setShowComparison] = useState(false);
 	const { setTheme } = useTheme();
 
-	const settings = useQuery(api.site_settings.getSettings);
+	const settings = useHybridSiteSettings();
 	const storeName = settings?.storeName || "Toko";
 
 	const prevRange = showComparison ? getPreviousPeriodRange(period, dateRange) : null;
 
-	const txData = useQuery(api.finance.getTransactionDetailReport, {
+	const txData = useHybridTransactionDetailReport({
 		startDate: dateRange.startDate,
 		endDate: dateRange.endDate,
 		viewMode,
 		page: 1,
 		pageSize: 200,
 	});
-	const txExportTransaction = useQuery(api.finance.getTransactionDetailReport, {
+	const txExportTransaction = useHybridTransactionDetailReport({
 		startDate: dateRange.startDate,
 		endDate: dateRange.endDate,
 		viewMode: "transaction",
 		page: 1,
 		pageSize: 2000,
 	});
-	const txExportItem = useQuery(api.finance.getTransactionDetailReport, {
+	const txExportItem = useHybridTransactionDetailReport({
 		startDate: dateRange.startDate,
 		endDate: dateRange.endDate,
 		viewMode: "item",
 		page: 1,
 		pageSize: 2000,
 	});
-	const prevTxData = useQuery(
-		api.finance.getTransactionDetailReport,
+	const prevTxData = useHybridTransactionDetailReport(
 		prevRange
 			? { startDate: prevRange.startDate, endDate: prevRange.endDate, viewMode: "transaction", page: 1, pageSize: 1 }
 			: "skip"

@@ -1,6 +1,4 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Doc } from "@yumipos/backend/convex/_generated/dataModel";
-import { useQuery } from "convex/react";
+﻿import type { Doc } from "@/types/backend-compat";
 import { AnimatePresence, motion } from "framer-motion";
 import { 
 	Tag, 
@@ -20,6 +18,10 @@ import { createPortal } from "react-dom";
 import { IconButton } from "@/components/ui/icon";
 import { ShimmerSkeleton } from "@/components/ui/loading-state";
 import { useCart } from "@/context/cart-context";
+import {
+	useHybridActiveDiscounts,
+	useHybridSiteSettings,
+} from "@/hooks/use-hybrid-pos-data";
 import { isDiscountApplicable } from "@/lib/utils/pricing";
 
 interface PaymentModalProps {
@@ -66,8 +68,8 @@ export function PaymentConfirmationModal({
 		applyVoucher,
 		customerInfo,
 	} = useCart();
-	const allActiveDiscounts = useQuery(api.discounts.getActiveDiscounts);
-	const siteSettings = useQuery(api.site_settings.getSettings);
+	const allActiveDiscounts = useHybridActiveDiscounts();
+	const siteSettings = useHybridSiteSettings();
 
 	const [selectedDiscountId, setSelectedDiscountId] = useState<string | null>(
 		null
@@ -621,3 +623,4 @@ export function PaymentConfirmationModal({
 
 	return createPortal(modalContent, document.body);
 }
+

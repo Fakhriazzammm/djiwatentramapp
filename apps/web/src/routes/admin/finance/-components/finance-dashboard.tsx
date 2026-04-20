@@ -1,5 +1,3 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useQuery } from "convex/react";
 import {
 	ArrowDownLeft,
 	ArrowUpRight,
@@ -18,6 +16,10 @@ import { FinancialTargetPanel } from "./financial-target-panel";
 import { ExpenseCategoryPieChart, PeriodComparisonCards, TrendChart } from "./finance-charts";
 import { TransactionDetailReport } from "../transactions/-components/transaction-detail-report";
 import type { DateRange } from "../reports/-components/period-selector";
+import {
+	useHybridFinancialSummary,
+	useHybridOrdersCogs,
+} from "@/hooks/use-hybrid-finance-analytics-data";
 
 const RANGE_LABEL_MAP: Record<string, string> = {
 	today: "Hari Ini",
@@ -88,12 +90,12 @@ export function FinanceDashboard() {
 		}
 	};
 
-	const summary = useQuery(api.finance.getFinancialSummary, {
+	const summary = useHybridFinancialSummary({
 		startDate,
 		endDate,
 	});
 
-	const hppCogs = useQuery(api.hpp.getOrdersCogs, {
+	const hppCogs = useHybridOrdersCogs({
 		startDate,
 		endDate,
 	});

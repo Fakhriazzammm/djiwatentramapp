@@ -1,6 +1,4 @@
 import { useNavigate } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useQuery } from "convex/react";
 
 import {
 	DropdownMenu,
@@ -12,12 +10,13 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { authClient } from "@/lib/auth-client";
+import { useYumiAuth } from "@/hooks/useYumiAuth";
 
 import { Button } from "./ui/button";
 
 export default function UserMenu() {
 	const navigate = useNavigate();
-	const user = useQuery(api.auth.getCurrentUser);
+	const { user } = useYumiAuth();
 
 	return (
 		<DropdownMenu>
@@ -28,7 +27,7 @@ export default function UserMenu() {
 				<DropdownMenuGroup>
 					<DropdownMenuLabel>My Account</DropdownMenuLabel>
 					<DropdownMenuSeparator />
-					<DropdownMenuItem>{user?.email}</DropdownMenuItem>
+					<DropdownMenuItem>{user?.username}</DropdownMenuItem>
 					<DropdownMenuItem
 						onClick={() => {
 							authClient.signOut({

@@ -1,7 +1,5 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useAction, useMutation, useQuery, useConvex } from "convex/react";
+﻿import { createLazyFileRoute } from "@tanstack/react-router";
+import type { Id } from "@/types/backend-compat";
 import {
 	BarChart3,
 	Bot,
@@ -39,6 +37,23 @@ import { MenuSidebar } from "@/components/pos/menu-sidebar";
 import { CartDrawer } from "@/components/pos/cart-drawer";
 import { CheckoutSidebar } from "@/components/pos/checkout-sidebar";
 import { PaymentConfirmationModal } from "@/components/pos/payment-modal";
+import {
+	useHybridActiveDiscounts,
+	useHybridAllDiscounts,
+	useHybridCategories,
+	useHybridCurrentMonthProgress,
+	useHybridOrders,
+	useHybridShiftStatus,
+	useHybridProducts,
+	useHybridStaffRoles,
+	useHybridStaffUsers,
+	useHybridSiteSettings,
+} from "@/hooks/use-hybrid-pos-data";
+import { useHybridMayarConfig } from "@/hooks/use-hybrid-ops-data";
+import {
+	useHybridCreateOrder,
+	useHybridMayarCreateInvoice,
+} from "@/hooks/use-hybrid-write-actions";
 import { useMenuKeyboardNav, type FocusZone } from "@/hooks/use-menu-keyboard-nav";
 import { useCart } from "@/context/cart-context";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
@@ -271,18 +286,16 @@ function MenuImageWithSkeleton({
 
 function MenuPage() {
 	// Queries
-	const convex = useConvex();
-	const siteSettings = useQuery(api.site_settings.getSettings);
-	const mayarConfig = useQuery(api.mayar.isConfigured);
-	const categories = useQuery(api.products.getCategories);
-	const activeDiscounts = useQuery(api.discounts.getActiveDiscounts);
-	const allDiscounts = useQuery(api.discounts.getDiscounts);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const roles = useQuery((api as any).roles.getRoles);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const users = useQuery((api as any).users.getUsers);
-	const createOrder = useMutation(api.orders.createOrder);
-	const createMayarInvoice = useAction(api.mayar.createInvoice);
+	const siteSettings = useHybridSiteSettings();
+	const mayarConfig = useHybridMayarConfig();
+	const categories = useHybridCategories();
+	const orders = useHybridOrders();
+	const activeDiscounts = useHybridActiveDiscounts();
+	const allDiscounts = useHybridAllDiscounts();
+	const roles = useHybridStaffRoles();
+	const users = useHybridStaffUsers();
+	const createOrder = useHybridCreateOrder();
+	const createMayarInvoice = useHybridMayarCreateInvoice();
 
 	// Cart context
 	const {
@@ -321,7 +334,7 @@ function MenuPage() {
 	const [visibleProductsCount, setVisibleProductsCount] = useState(INITIAL_PRODUCTS_BATCH);
 	const [isLoadingMoreProducts, setIsLoadingMoreProducts] = useState(false);
 
-	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const shiftStatus = useHybridShiftStatus();
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
 	// Printer State
@@ -365,13 +378,13 @@ function MenuPage() {
 	useEffect(() => {
 		const offlineManager = getOfflineManager();
 		offlineManager.registerExecutor("createOrder", async (action) => {
-			await convex.mutation(api.orders.createOrder, action.data as any);
+			await createOrder(action.data as any);
 		});
 
 		return offlineManager.subscribe((state) => {
 			setOfflinePendingCount(state.pendingSyncCount);
 		});
-	}, [convex]);
+	}, [createOrder]);
 
 	const activeShiftSchedule = useMemo(
 		() =>
@@ -430,7 +443,7 @@ function MenuPage() {
 	const [gridColumns, setGridColumns] = useState(4);
 	const [isTargetExpanded, setIsTargetExpanded] = useState(false);
 	const [isSearchActive, setIsSearchActive] = useState(false);
-	const progress = useQuery(api.finance.getCurrentMonthProgress);
+	const progress = useHybridCurrentMonthProgress();
 
 	const shiftPct = useMemo(
 		() =>
@@ -553,7 +566,7 @@ function MenuPage() {
 			else if (width >= 1024) setGridColumns(3); // lg
 			else if (width >= 768) setGridColumns(2); // md
 			else if (width >= 640) setGridColumns(3); // sm
-			else setGridColumns(2); // mobile — 2 col for readability
+			else setGridColumns(2); // mobile â€” 2 col for readability
 		};
 		updateColumns();
 		window.addEventListener("resize", updateColumns);
@@ -578,13 +591,12 @@ function MenuPage() {
 	const isLoadingMoreRef = useRef(false);
 
 	// Products query with category filter
-	const products = useQuery(
-		api.products.getProducts,
-		activeCategoryId ? { categoryId: activeCategoryId as Id<"categories"> } : {}
+	const products = useHybridProducts(
+		activeCategoryId && activeCategoryId !== "all" ? activeCategoryId : null
 	);
 
 	// All products for search
-	const allProducts = useQuery(api.products.getProducts, {});
+	const allProducts = useHybridProducts();
 
 	// Filtered products based on search
 	const filteredProducts = useMemo(() => {
@@ -906,7 +918,7 @@ function MenuPage() {
 				await bluetoothPrinter.autoReconnectIfNeeded(0);
 			}
 
-			const order = await convex.query(api.orders.getOrder, { id: orderId });
+			const order = orders?.find((candidate: any) => candidate._id === orderId);
 			if (!order) return;
 
 			toast.loading("Mencetak struk...", { id: "printing" });
@@ -984,7 +996,7 @@ function MenuPage() {
 			console.error("Print failed:", error);
 			toast.error("Gagal mencetak struk.", { id: "printing" });
 		}
-	}, [allDiscounts, convex, siteSettings, shiftStatus]);
+	}, [allDiscounts, orders, siteSettings, shiftStatus]);
 
 	const handlePrintCurrentOpenBill = useCallback(async () => {
 		if (!siteSettings || cartItems.length === 0) return;
@@ -1295,7 +1307,7 @@ function MenuPage() {
 									<User className="h-3 w-3 shrink-0" />
 									<span className="whitespace-nowrap leading-none">
 										{shiftStatus.shiftInfo.cashierName}
-										{shiftStatus.shiftInfo.shiftName ? ` • ${shiftStatus.shiftInfo.shiftName}` : ""}
+										{shiftStatus.shiftInfo.shiftName ? ` â€¢ ${shiftStatus.shiftInfo.shiftName}` : ""}
 									</span>
 								</div>
 							)}
@@ -1428,7 +1440,7 @@ function MenuPage() {
 																				key={tier.thresholdPct}
 																				className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-bold border transition-all ${achieved ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
 																			>
-																				{achieved ? "✓" : "○"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
+																				{achieved ? "âœ“" : "â—‹"} {tier.thresholdPct}% â†’ {fmt(tier.bonusAmount)}
 																			</span>
 																		);
 																	})}
@@ -1490,7 +1502,7 @@ function MenuPage() {
 																				key={tier.thresholdPct}
 																				className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-bold border transition-all ${achieved ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
 																			>
-																				{achieved ? "✓" : "○"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
+																				{achieved ? "âœ“" : "â—‹"} {tier.thresholdPct}% â†’ {fmt(tier.bonusAmount)}
 																			</span>
 																		);
 																	})}
@@ -1534,7 +1546,7 @@ function MenuPage() {
 																	key={tier.thresholdPct}
 																	className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-bold border transition-all ${achieved ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
 																>
-																	{achieved ? "✓" : "○"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
+																	{achieved ? "âœ“" : "â—‹"} {tier.thresholdPct}% â†’ {fmt(tier.bonusAmount)}
 																</span>
 															);
 														})}
@@ -1731,7 +1743,7 @@ function MenuPage() {
 												</span>
 											)}
 
-											{/* Stock Badge Overlay — only shown for critical stock */}
+											{/* Stock Badge Overlay â€” only shown for critical stock */}
 											{(product.quantity ?? 0) <= 2 && (
 												<span className={cn(
 													"absolute right-2 bottom-2 rounded px-1.5 py-0.5 font-bold text-[10px] shadow-sm transition-all",
@@ -2224,4 +2236,5 @@ function ProductDetailSheet({
 		</div>
 	);
 }
+
 

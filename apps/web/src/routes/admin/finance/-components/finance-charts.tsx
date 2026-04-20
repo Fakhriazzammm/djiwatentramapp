@@ -1,5 +1,3 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useQuery } from "convex/react";
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -18,6 +16,13 @@ import {
 	YAxis,
 } from "recharts";
 import { TrendingDown, TrendingUp } from "lucide-react";
+import {
+	useHybridDailyTrend,
+	useHybridExpenseCategoryBreakdown,
+	useHybridMonthlyTrend,
+	useHybridPeriodComparison,
+	useHybridWeeklyTrend,
+} from "@/hooks/use-hybrid-finance-analytics-data";
 
 const formatCurrency = (v: number) =>
 	new Intl.NumberFormat("id-ID", {
@@ -48,7 +53,7 @@ const INCOME_COLORS = [
 // ─── Period Comparison Cards ──────────────────────────────────────────────────
 
 export function PeriodComparisonCards() {
-	const comparison = useQuery(api.finance.getPeriodComparison);
+	const comparison = useHybridPeriodComparison();
 
 	if (!comparison) {
 		return (
@@ -158,9 +163,9 @@ export function TrendChart() {
 	const [mode, setMode] = useState<"monthly" | "weekly" | "daily">("daily");
 	const [chartType, setChartType] = useState<"bar" | "line">("bar");
 
-	const monthly = useQuery(api.finance.getMonthlyTrend, { months: 6 });
-	const weekly = useQuery(api.finance.getWeeklyTrend, { weeks: 8 });
-	const daily = useQuery(api.finance.getDailyTrend, { days: 14 });
+	const monthly = useHybridMonthlyTrend(6);
+	const weekly = useHybridWeeklyTrend(8);
+	const daily = useHybridDailyTrend(14);
 
 	const data = mode === "monthly" ? monthly : mode === "weekly" ? weekly : daily;
 
@@ -312,7 +317,7 @@ export function TrendChart() {
 
 export function ExpenseCategoryPieChart() {
 	const [view, setView] = useState<"expense" | "income">("expense");
-	const breakdown = useQuery(api.finance.getExpenseCategoryBreakdown, {});
+	const breakdown = useHybridExpenseCategoryBreakdown({});
 
 	if (!breakdown) {
 		return <div className="h-64 animate-pulse rounded-xl bg-muted/50" />;

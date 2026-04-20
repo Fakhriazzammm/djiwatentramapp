@@ -1,21 +1,35 @@
-{
+﻿{
   "name": "@yumipos/backend",
   "version": "1.0.0",
   "description": "",
   "license": "ISC",
   "author": "",
   "scripts": {
-    "dev": "convex dev",
-    "dev:setup": "convex dev --configure --until-success",
-    "push": "convex deploy",
-    "pull": "convex dev"
+    "dev": "node -e \"console.log('Backend now Supabase-first. Run Supabase migrations/scripts from this package.')\"",
+    "dev:setup": "node -e \"console.log('Use Supabase MCP/CLI setup.')\"",
+    "supabase:migrate:mirror": "node ./supabase/scripts/run-mirror-migration.mjs",
+    "supabase:import:legacy": "node ./supabase/scripts/import-legacy-export.mjs",
+    "supabase:migrate:core": "node ./supabase/scripts/run-core-migration.mjs",
+    "supabase:migrate:public-views": "node ./supabase/scripts/run-public-views-migration.mjs",
+    "supabase:migrate:ops-views": "node ./supabase/scripts/run-ops-views-migration.mjs",
+    "supabase:migrate:booking": "node ./supabase/scripts/run-booking-migration.mjs",
+    "supabase:migrate:inventory-admin-read-support": "node ./supabase/scripts/run-inventory-admin-read-support-migration.mjs",
+    "supabase:migrate:hpp-read-support": "node ./supabase/scripts/run-hpp-read-support-migration.mjs",
+    "supabase:migrate:misc-read-support": "node ./supabase/scripts/run-misc-read-support-migration.mjs",
+    "supabase:migrate:auth": "node ./supabase/scripts/run-auth-core-migration.mjs",
+    "supabase:migrate:shift-support": "node ./supabase/scripts/run-shift-support-migration.mjs",
+    "supabase:transform:core": "node ./supabase/scripts/transform-core-from-mirror.mjs",
+    "supabase:transform:core:sql": "node ./supabase/scripts/transform-core-from-mirror-sql.mjs",
+    "supabase:transform:auth:sql": "node ./supabase/scripts/transform-auth-from-mirror-sql.mjs",
+    "supabase:transform:shift-support:sql": "node ./supabase/scripts/transform-shift-support-from-mirror-sql.mjs",
+    "supabase:transform:booking:sql": "node ./supabase/scripts/transform-booking-from-mirror-sql.mjs",
+    "supabase:transform:inventory-admin-read-support:sql": "node ./supabase/scripts/transform-inventory-admin-read-support-sql.mjs"
   },
   "dependencies": {
-    "@convex-dev/better-auth": "catalog:",
     "better-auth": "catalog:",
-    "convex": "catalog:",
     "dotenv": "catalog:",
     "openai": "^6.16.0",
+    "pg": "^8.20.0",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -24,3 +38,4 @@
     "typescript": "catalog:"
   }
 }
+

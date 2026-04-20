@@ -1,7 +1,5 @@
-import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useAction, useMutation, useQuery } from "convex/react";
+﻿import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import type { Doc, Id } from "@/types/backend-compat";
 import { motion } from "framer-motion";
 import {
 	AlertTriangle,
@@ -32,6 +30,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import {
+	useHybridAllProducts,
+	useHybridInventory,
+	useHybridLatestInventoryCosts,
+} from "@/hooks/use-hybrid-pos-data";
+import {
+	useHybridHppPortfolio,
+	useHybridHppPriceSimulation,
+	useHybridHppWithMarginAnalysis,
+} from "@/hooks/use-hybrid-finance-analytics-data";
+import {
+	useHybridApplyHppSellingPriceToProduct,
+	useHybridCreateHppCalculation,
+	useHybridDeleteHppCalculation,
+	useHybridFillHppInventoryCostsFromTransactions,
+	useHybridSyncHppWithInventoryPrices,
+	useHybridUpdateHppCalculation,
+	useHybridUpsertHppFromRecipe,
+} from "@/hooks/use-hybrid-write-actions";
 
 export const Route = createLazyFileRoute("/admin/hpp-calculator")({
 	component: HppCalculatorPage,
@@ -315,17 +332,17 @@ function createInitialForm(): HppFormData {
 function toFormFromCalculation(calc: Doc<"hppCalculations">): HppFormData {
 	return {
 		name: calc.name,
-		description: calc.description ?? "",
-		ingredients: calc.ingredients.map((ingredient) => ({
-			...ingredient,
-			id: generateId(),
-		})),
-		overheadCosts:
-			calc.overheadCosts.length > 0
-				? calc.overheadCosts.map((overhead) => ({
-						...overhead,
-						id: generateId(),
-					}))
+			description: calc.description ?? "",
+			ingredients: calc.ingredients.map((ingredient: any) => ({
+				...ingredient,
+				id: generateId(),
+			})),
+			overheadCosts:
+				calc.overheadCosts.length > 0
+					? calc.overheadCosts.map((overhead: any) => ({
+							...overhead,
+							id: generateId(),
+						}))
 				: [createEmptyOverhead()],
 		servingsPerBatch: calc.servingsPerBatch,
 		sellingPrice: calc.sellingPrice,
@@ -371,7 +388,7 @@ function toFormFromPortfolioRow(row: PortfolioRow): HppFormData {
 
 function toRecipeSyncForm(row: PortfolioRow): HppFormData {
 	const overheadCosts = row.calculation
-		? row.calculation.overheadCosts.map((overhead) => ({
+		? row.calculation.overheadCosts.map((overhead: any) => ({
 				...overhead,
 				id: generateId(),
 			}))
@@ -437,17 +454,17 @@ function statusLabel(status: PortfolioStatus | "draft") {
 
 function HppCalculatorPage() {
 	const navigate = useNavigate();
-	const workspace = useQuery(api.hpp.getHppPortfolio) as PortfolioData | undefined;
-	const products = useQuery(api.products.getAllProductsAdmin);
-	const inventory = useQuery(api.inventory.getInventory);
-	const inventoryCosts = useQuery(api.hpp.getLatestInventoryCosts);
-	const createHpp = useMutation(api.hpp.createHppCalculation);
-	const updateHpp = useMutation(api.hpp.updateHppCalculation);
-	const deleteHpp = useMutation(api.hpp.deleteHppCalculation);
-	const syncPrices = useMutation(api.hpp.syncHppWithInventoryPrices);
-	const syncFromRecipe = useMutation(api.hpp.upsertHppFromRecipe);
-	const applySellingPrice = useMutation(api.hpp.applyHppSellingPriceToProduct);
-	const fillFromTransactions = useAction(api.ai.fillHppInventoryCostsFromTransactions);
+	const workspace = useHybridHppPortfolio() as PortfolioData | undefined;
+	const products = useHybridAllProducts();
+	const inventory = useHybridInventory();
+	const inventoryCosts = useHybridLatestInventoryCosts();
+	const createHpp = useHybridCreateHppCalculation();
+	const updateHpp = useHybridUpdateHppCalculation();
+	const deleteHpp = useHybridDeleteHppCalculation();
+	const syncPrices = useHybridSyncHppWithInventoryPrices();
+	const syncFromRecipe = useHybridUpsertHppFromRecipe();
+	const applySellingPrice = useHybridApplyHppSellingPriceToProduct();
+	const fillFromTransactions = useHybridFillHppInventoryCostsFromTransactions();
 
 	const [activeView, setActiveView] = useState<"portfolio" | "editor" | "impact">(
 		"portfolio"
@@ -478,9 +495,9 @@ function HppCalculatorPage() {
 	const [simIngredientIdx, setSimIngredientIdx] = useState<number | undefined>(
 		undefined
 	);
-	const marginAnalysis = useQuery(api.hpp.getHppWithMarginAnalysis, {
-		targetMarginPercent: targetMargin,
-	}) as MarginAnalysisRow[] | undefined;
+	const marginAnalysis = useHybridHppWithMarginAnalysis(
+		targetMargin
+	) as MarginAnalysisRow[] | undefined;
 
 	const portfolioRows = workspace?.portfolio ?? [];
 	const drafts = workspace?.drafts ?? [];
@@ -538,8 +555,7 @@ function HppCalculatorPage() {
 		);
 	}, [portfolioRows, products]);
 
-	const simulation = useQuery(
-		api.hpp.simulateHppPriceChange,
+	const simulation = useHybridHppPriceSimulation(
 		simulateId
 			? {
 					id: simulateId,
@@ -1727,11 +1743,11 @@ function EditorView({
 			return;
 		}
 		const normalize = (value: string) => safeLower(value).trim();
-		const matched =
-			inventory?.find((item) => normalize(item.ingredientName) === trimmed) ??
-			inventory?.find((item) =>
-				(item.aliases ?? []).some((alias) => normalize(alias) === trimmed)
-			);
+			const matched =
+				inventory?.find((item) => normalize(item.ingredientName) === trimmed) ??
+				inventory?.find((item) =>
+					(item.aliases ?? []).some((alias: any) => normalize(alias) === trimmed)
+				);
 		if (matched) {
 			linkIngredientToInventory(ingredientId, matched._id);
 			return;
@@ -2869,4 +2885,5 @@ function ImpactView({
 		</div>
 	);
 }
+
 

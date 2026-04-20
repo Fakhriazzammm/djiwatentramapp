@@ -1,7 +1,22 @@
 ﻿import { createLazyFileRoute } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useAction, useMutation, useQuery } from "convex/react";
+import type { Doc, Id } from "@/types/backend-compat";
+import {
+	useHybridAddProduct,
+	useHybridAddVariationPreset,
+	useHybridBulkUpdateProducts,
+	useHybridCreateBaseRecipe,
+	useHybridCreateCategory,
+	useHybridDeleteBaseRecipe,
+	useHybridDeleteCategory,
+	useHybridDeleteProduct,
+	useHybridDeleteVariationPreset,
+	useHybridGenerateProductDescription,
+	useHybridGenerateProductUploadUrl,
+	useHybridUpdateBaseRecipe,
+	useHybridUpdateCategory,
+	useHybridUpdateProduct,
+	useHybridUpdateVariationPreset,
+} from "@/hooks/use-hybrid-write-actions";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	CheckCircle2,
@@ -16,6 +31,17 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+	useHybridAllProducts,
+	useHybridCategories,
+	useHybridHppProductMap,
+	useHybridInventory,
+} from "@/hooks/use-hybrid-pos-data";
+import { useHybridVariationPresets } from "@/hooks/use-hybrid-ops-data";
+import {
+	useHybridBaseRecipes,
+	useHybridRecipes,
+} from "@/hooks/use-hybrid-inventory-admin-data";
 import { compressFileToLimit, isOversized } from "@/lib/image-compress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
@@ -46,9 +72,9 @@ export const Route = createLazyFileRoute("/admin/products")({
 });
 
 function AdminProductsPage() {
-	const products = useQuery(api.products.getAllProductsAdmin);
-	const categories = useQuery(api.products.getCategories);
-	const variationPresets = useQuery(api.products.getVariationPresets);
+	const products = useHybridAllProducts();
+	const categories = useHybridCategories();
+	const variationPresets = useHybridVariationPresets();
 
 	const [activeTab, setActiveTab] = useState<"products" | "settings">("products");
 
@@ -109,13 +135,13 @@ function ProductsTab({
 	categories: Doc<"categories">[] | undefined;
 	variationPresets: Doc<"variationPresets">[] | undefined;
 }) {
-	const hppProductMap = useQuery(api.hpp.getHppProductMap);
+	const hppProductMap = useHybridHppProductMap();
 
-	const addProduct = useMutation(api.products.addProduct);
-	const updateProduct = useMutation(api.products.updateProduct);
-	const deleteProduct = useMutation(api.products.deleteProduct);
-	const bulkUpdateProducts = useMutation(api.products.bulkUpdateProducts);
-	const generateUploadUrl = useMutation(api.products.generateUploadUrl);
+	const addProduct = useHybridAddProduct();
+	const updateProduct = useHybridUpdateProduct();
+	const deleteProduct = useHybridDeleteProduct();
+	const bulkUpdateProducts = useHybridBulkUpdateProducts();
+	const generateUploadUrl = useHybridGenerateProductUploadUrl();
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [deleteId, setDeleteId] = useState<Id<"products"> | null>(null);
@@ -168,7 +194,7 @@ function ProductsTab({
 	});
 	const searchInputRef = useRef<HTMLInputElement | null>(null);
 
-	const generateDescription = useAction(api.ai.generateProductDescription);
+	const generateDescription = useHybridGenerateProductDescription();
 
 	const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
@@ -349,7 +375,7 @@ function ProductsTab({
 			contentType = "image/jpeg";
 		}
 
-		const postUrl = await generateUploadUrl();
+		const postUrl = await generateUploadUrl({});
 		const result = await fetch(postUrl, {
 			method: "POST",
 			headers: { "Content-Type": contentType },
@@ -1813,13 +1839,13 @@ function SettingsTab({
 	categories: Doc<"categories">[] | undefined;
 	variationPresets: Doc<"variationPresets">[] | undefined;
 }) {
-	const createCategory = useMutation(api.products.createCategory);
-	const updateCategory = useMutation(api.products.updateCategory);
-	const deleteCategory = useMutation(api.products.deleteCategory);
+	const createCategory = useHybridCreateCategory();
+	const updateCategory = useHybridUpdateCategory();
+	const deleteCategory = useHybridDeleteCategory();
 
-	const createVariationPreset = useMutation(api.products.addVariationPreset);
-	const updateVariationPreset = useMutation(api.products.updateVariationPreset);
-	const deleteVariationPreset = useMutation(api.products.deleteVariationPreset);
+	const createVariationPreset = useHybridAddVariationPreset();
+	const updateVariationPreset = useHybridUpdateVariationPreset();
+	const deleteVariationPreset = useHybridDeleteVariationPreset();
 	const [settingsSearch, setSettingsSearch] = useState("");
 
 	const [categoryModal, setCategoryModal] = useState<{
@@ -2486,13 +2512,13 @@ function BaseRecipesTab() {
 		"Base Teh",
 		"Lainnya",
 	] as const;
-	const baseRecipes = useQuery(api.inventory.getBaseRecipes);
-	const inventory = useQuery(api.inventory.getInventory);
-	const products = useQuery(api.products.getAllProductsAdmin);
-	const recipes = useQuery(api.inventory.getRecipes);
-	const createBaseRecipe = useMutation(api.inventory.createBaseRecipe);
-	const updateBaseRecipe = useMutation(api.inventory.updateBaseRecipe);
-	const deleteBaseRecipe = useMutation(api.inventory.deleteBaseRecipe);
+	const baseRecipes = useHybridBaseRecipes();
+	const inventory = useHybridInventory();
+	const products = useHybridAllProducts();
+	const recipes = useHybridRecipes();
+	const createBaseRecipe = useHybridCreateBaseRecipe();
+	const updateBaseRecipe = useHybridUpdateBaseRecipe();
+	const deleteBaseRecipe = useHybridDeleteBaseRecipe();
 	const [searchRecipe, setSearchRecipe] = useState("");
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
@@ -3023,11 +3049,11 @@ function BaseRecipesTab() {
 }
 
 function MixedRecipesTab() {
-	const products = useQuery(api.products.getAllProductsAdmin);
-	const baseRecipes = useQuery(api.inventory.getBaseRecipes);
-	const recipes = useQuery(api.inventory.getRecipes);
-	const inventory = useQuery(api.inventory.getInventory);
-	const hppProductMap = useQuery(api.hpp.getHppProductMap);
+	const products = useHybridAllProducts();
+	const baseRecipes = useHybridBaseRecipes();
+	const recipes = useHybridRecipes();
+	const inventory = useHybridInventory();
+	const hppProductMap = useHybridHppProductMap();
 	const [searchMixed, setSearchMixed] = useState("");
 
 	// Group recipes by productId for easy lookup
@@ -3197,4 +3223,6 @@ function MixedRecipesTab() {
 		</div>
 	);
 }
+
+
 

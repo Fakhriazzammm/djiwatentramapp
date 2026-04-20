@@ -1,12 +1,12 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
+﻿import { createLazyFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Gift, Sparkles, Trophy } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useHybridActiveMiniGameByBrand } from "@/hooks/use-hybrid-minigames-data";
+import { useHybridSpin } from "@/hooks/use-hybrid-write-actions";
 
 export const Route = createLazyFileRoute("/$brandSlug/minigames")({
 	component: BrandMiniGamesPage,
@@ -14,8 +14,8 @@ export const Route = createLazyFileRoute("/$brandSlug/minigames")({
 
 function BrandMiniGamesPage() {
 	const { brandSlug } = Route.useParams();
-	const game = useQuery(api.minigames.getActiveGameByBrand, { brandSlug });
-	const spin = useMutation(api.minigames.spin);
+	const game = useHybridActiveMiniGameByBrand(brandSlug);
+	const spin = useHybridSpin();
 
 	const [form, setForm] = useState({
 		fullName: "",

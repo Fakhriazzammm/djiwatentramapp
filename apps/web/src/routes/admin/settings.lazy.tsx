@@ -1,7 +1,5 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
+﻿import { createLazyFileRoute } from "@tanstack/react-router";
+import type { Id } from "@/types/backend-compat";
 import {
 	Bell,
 	Globe,
@@ -58,6 +56,31 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { authClient } from "@/lib/auth-client";
+import {
+	useHybridSiteSettings,
+	useHybridStaffRoles,
+	useHybridStaffUsers,
+} from "@/hooks/use-hybrid-pos-data";
+import { useHybridMayarConfig } from "@/hooks/use-hybrid-ops-data";
+import {
+	useHybridAdminAttendanceLogs,
+	useHybridPayrollReport,
+} from "@/hooks/use-hybrid-attendance-data";
+import {
+	useHybridAdminBulkDeleteAttendanceLogs,
+	useHybridAdminCreateAttendanceLog,
+	useHybridAdminDeleteAttendanceLog,
+	useHybridAdminUpdateAttendanceLog,
+	useHybridBindUserProfile,
+	useHybridCreateRole,
+	useHybridCreateUser,
+	useHybridDeleteRole,
+	useHybridDeleteUser,
+	useHybridGenerateSiteUploadUrl,
+	useHybridUpdateRole,
+	useHybridUpdateSiteSettings,
+	useHybridUpdateUser,
+} from "@/hooks/use-hybrid-write-actions";
 import {
 	bluetoothPrinter,
 	type ReceiptPrintMode,
@@ -538,26 +561,25 @@ export function SettingsPage({
 	mode?: SettingsPageMode;
 }) {
 	// Site Settings
-	const siteSettings = useQuery(api.site_settings.getSettings);
-	const users = useQuery((api as any).users.getUsers);
+	const siteSettings = useHybridSiteSettings();
+	const users = useHybridStaffUsers();
+	const roles = useHybridStaffRoles();
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const roles = useQuery((api as any).roles.getRoles);
+	const _createUser = useHybridCreateUser();
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const _createUser = useMutation((api as any).users.createUser);
+	const _updateUser = useHybridUpdateUser();
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const _updateUser = useMutation((api as any).users.updateUser);
+	const deleteUser = useHybridDeleteUser();
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const deleteUser = useMutation((api as any).users.deleteUser);
+	const createRole = useHybridCreateRole();
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const createRole = useMutation((api as any).roles.createRole);
+	const updateRole = useHybridUpdateRole();
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const updateRole = useMutation((api as any).roles.updateRole);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const deleteRole = useMutation((api as any).roles.deleteRole);
+	const deleteRole = useHybridDeleteRole();
 
-	const mayarConfig = useQuery(api.mayar.isConfigured);
-	const updateSiteSettings = useMutation(api.site_settings.updateSettings);
-	const generateUploadUrl = useMutation(api.site_settings.generateUploadUrl);
+	const mayarConfig = useHybridMayarConfig();
+	const updateSiteSettings = useHybridUpdateSiteSettings();
+	const generateUploadUrl = useHybridGenerateSiteUploadUrl();
 
 	const [settings, setSettings] = useState({
 		storeName: "Coffee Shop",
@@ -651,19 +673,19 @@ export function SettingsPage({
 		year: new Date().getFullYear(),
 	});
 
-	const payrollReport = useQuery(api.attendance.getPayrollReport, {
+	const payrollReport = useHybridPayrollReport({
 		month: reportFilter.month,
 		year: reportFilter.year,
 	});
 
 	const [selectedPayrollStaff, setSelectedPayrollStaff] = useState<any | null>(null);
 
-	const attendanceLogs = useQuery(api.attendance.getAdminLogs, { limit: 100 });
+	const attendanceLogs = useHybridAdminAttendanceLogs(100);
 
-	const adminCreateLog = useMutation(api.attendance.adminCreateLog);
-	const adminUpdateLog = useMutation(api.attendance.adminUpdateLog);
-	const adminDeleteLog = useMutation(api.attendance.adminDeleteLog);
-	const adminBulkDeleteLogs = useMutation(api.attendance.adminBulkDeleteLogs);
+	const adminCreateLog = useHybridAdminCreateAttendanceLog();
+	const adminUpdateLog = useHybridAdminUpdateAttendanceLog();
+	const adminDeleteLog = useHybridAdminDeleteAttendanceLog();
+	const adminBulkDeleteLogs = useHybridAdminBulkDeleteAttendanceLogs();
 
 	const [selectedLogIds, setSelectedLogIds] = useState<Set<string>>(new Set());
 	const [showCreateLog, setShowCreateLog] = useState(false);
@@ -1090,7 +1112,7 @@ export function SettingsPage({
 	};
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const bindProfile = useMutation((api as any).users.bindProfile);
+	const bindProfile = useHybridBindUserProfile();
 
 	const handleCreateUser = async () => {
 		const normalizedEmail = normalizeEmail(newUser.username);
@@ -1110,7 +1132,7 @@ export function SettingsPage({
 			return;
 		}
 		try {
-			// Primary source of truth: always persist user profile to Convex first.
+			// Primary source of truth: always persist user profile to primary backend.
 			const createdUserId = await _createUser({
 				username: normalizedEmail,
 				password: newUser.password,
@@ -1874,7 +1896,7 @@ export function SettingsPage({
 														{staff.sessions.map((s: any, i: number) => (
 															<div key={i} className="rounded-lg bg-emerald-100/50 dark:bg-emerald-500/15 px-2 py-1.5 text-[10px]">
 																<div className="flex justify-between mb-0.5">
-																	<span className="font-bold text-emerald-800 dark:text-emerald-200">{s.date} — {s.shiftName}</span>
+																	<span className="font-bold text-emerald-800 dark:text-emerald-200">{s.date} â€” {s.shiftName}</span>
 																	<span className="font-semibold text-emerald-700 dark:text-emerald-300">{Math.round(s.shiftAchievementPct || 0)}%</span>
 																</div>
 																{targets && targets.shiftTargetRevenue > 0 && (
@@ -1883,7 +1905,7 @@ export function SettingsPage({
 																			const achieved = (s.shiftAchievementPct || 0) >= pct;
 																			return (
 																				<span key={pct} className={`rounded px-1 py-0.5 font-bold border text-[9px] ${achieved ? "bg-emerald-600 text-white border-emerald-600" : "bg-white/60 text-muted-foreground/50 border-border/30 dark:bg-muted/30"}`}>
-																					{achieved ? "✓" : "○"} {pct}%
+																					{achieved ? "âœ“" : "â—‹"} {pct}%
 																				</span>
 																			);
 																		})}
@@ -1969,7 +1991,7 @@ export function SettingsPage({
 							{/* Edit Form */}
 							{editingLog && (
 								<div className="space-y-3 rounded-xl border border-amber-300/30 bg-amber-50 p-4 dark:bg-amber-900/10">
-									<p className="font-bold text-sm text-foreground">Edit Log — {editingLog.userName}</p>
+									<p className="font-bold text-sm text-foreground">Edit Log â€” {editingLog.userName}</p>
 									<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
 										<select className="rounded-lg border border-border bg-background p-2 text-xs" value={editingLog.type} onChange={(e) => setEditingLog({ ...editingLog, type: e.target.value })}>
 											<option value="check_in">Check-In</option>
@@ -4285,7 +4307,7 @@ export function SettingsPage({
 											{!editingUser && (
 												<div className="space-y-1.5">
 													<label className="text-[10px] font-bold uppercase text-muted-foreground">Password</label>
-													<input className="w-full rounded-lg border border-border bg-background p-2.5 text-xs" type="password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} placeholder="••••••••" />
+													<input className="w-full rounded-lg border border-border bg-background p-2.5 text-xs" type="password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
 												</div>
 											)}
 											<div className="space-y-1.5">
@@ -4931,3 +4953,5 @@ export function SettingsPage({
 export const Route = createLazyFileRoute("/admin/settings")({
 	component: SettingsPage,
 });
+
+

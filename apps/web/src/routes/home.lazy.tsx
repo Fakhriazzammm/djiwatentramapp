@@ -1,6 +1,4 @@
 import { createLazyFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
 import {
 	Beer,
 	BookOpen,
@@ -42,6 +40,17 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { formatCurrencyIDR } from "@/lib/export-utils";
+import {
+	useHybridCurrentMonthProgress,
+	useHybridShiftDetails,
+	useHybridShiftReportRows,
+	useHybridSiteSettings,
+} from "@/hooks/use-hybrid-pos-data";
+import { useHybridStaffStatsToday } from "@/hooks/use-hybrid-attendance-data";
+import {
+	useHybridClockIn,
+	useHybridClockOut,
+} from "@/hooks/use-hybrid-write-actions";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 
 type RoleMenuItem = {
@@ -288,15 +297,13 @@ export const Route = createLazyFileRoute("/home")({
 function HomePage() {
 	const navigate = useNavigate();
 	const { user, role: userRole, logout } = useYumiAuth();
-	const settings = useQuery(api.site_settings.getSettings);
+	const settings = useHybridSiteSettings();
 	const storeName = settings?.storeName || "Yumi POS";
-	const shiftRows = useQuery(api.finance.getShiftReportTable, {}) as
-		| ShiftRow[]
-		| undefined;
-	const statsToday = useQuery(api.attendance.getStaffStatsToday, user ? { userId: user._id } : "skip");
-	const monthProgress = useQuery(api.finance.getCurrentMonthProgress);
-	const clockIn = useMutation(api.attendance.clockIn);
-	const clockOut = useMutation(api.attendance.clockOut);
+	const shiftRows = useHybridShiftReportRows() as ShiftRow[] | undefined;
+	const statsToday = useHybridStaffStatsToday(user?._id);
+	const monthProgress = useHybridCurrentMonthProgress();
+	const clockIn = useHybridClockIn();
+	const clockOut = useHybridClockOut();
 	
 	const [showFaceModal, setShowFaceModal] = useState(false);
 	const [isProcessing, setIsProcessing] = useState(false);
@@ -372,8 +379,7 @@ function HomePage() {
 		shiftRows?.find((shift) => shift.startTime === selectedShiftStart) ??
 		shiftRows?.[0];
 
-	const shiftDetails = useQuery(
-		api.finance.getShiftDetails,
+	const shiftDetails = useHybridShiftDetails(
 		selectedShift
 			? {
 					startTime: selectedShift.startTime,

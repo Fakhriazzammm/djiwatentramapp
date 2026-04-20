@@ -1,5 +1,4 @@
 import ReactDOM from "react-dom/client";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import { Toaster } from "@/components/ui/sonner";
@@ -9,10 +8,6 @@ import { AppDataProvider } from "@/context/app-data-context";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { registerSW } from "virtual:pwa-register";
 import "./index.css";
-
-// Set up Convex client (optional - graceful fallback if URL not configured)
-const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
-const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 
 // Set up Router instance
 const router = createRouter({
@@ -46,21 +41,12 @@ if (!rootElement.innerHTML) {
 				disableTransitionOnChange
 				storageKey="vite-ui-theme"
 			>
-				{convex ? (
-					<ConvexProvider client={convex}>
-						<AppDataProvider>
-							<CartProvider>
-								<RouterProvider router={router} />
-								<Toaster richColors />
-							</CartProvider>
-						</AppDataProvider>
-					</ConvexProvider>
-				) : (
+				<AppDataProvider>
 					<CartProvider>
 						<RouterProvider router={router} />
 						<Toaster richColors />
 					</CartProvider>
-				)}
+				</AppDataProvider>
 			</ThemeProvider>
 		</ErrorBoundary>
 	);

@@ -1,6 +1,4 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
+﻿import type { Doc, Id } from "@/types/backend-compat";
 import {
 	ChevronLeft,
 	ClipboardList,
@@ -34,6 +32,11 @@ import {
 	SheetTitle,
 	SheetTrigger,
 } from "@/components/ui/sheet";
+import { useHybridOrders, useHybridShiftStatus, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
+import {
+	useHybridDeleteOrder,
+	useHybridUpdateOrder,
+} from "@/hooks/use-hybrid-write-actions";
 import { bluetoothPrinter, type OrderItem } from "@/lib/bluetooth-printer";
 
 type FilterType =
@@ -173,10 +176,10 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 	const [isEditMode, setIsEditMode] = useState(false);
 	const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
-	const orders = useQuery(api.orders.getOrders, {});
-	const siteSettings = useQuery(api.site_settings.getSettings);
-	const updateOrder = useMutation(api.orders.updateOrder);
-	const deleteOrder = useMutation(api.orders.deleteOrder);
+	const orders = useHybridOrders();
+	const siteSettings = useHybridSiteSettings();
+	const updateOrder = useHybridUpdateOrder();
+	const deleteOrder = useHybridDeleteOrder();
 
 	const filteredOrders = useMemo(() => {
 		if (!orders) return [];
@@ -229,7 +232,7 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 		}
 	};
 
-	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const shiftStatus = useHybridShiftStatus();
 
 	const handlePrintOrder = async (order: Doc<"orders">) => {
 		if (!bluetoothPrinter.isConnected()) {
@@ -630,7 +633,7 @@ function OrderDetailView({
 								#{order.orderNumber}
 							</h3>
 							<p className="text-muted-foreground text-sm">
-								{formatDate(order.createdAt)} • {formatTime(order.createdAt)}
+								{formatDate(order.createdAt)} â€¢ {formatTime(order.createdAt)}
 							</p>
 						</div>
 						{!isEditMode && (
@@ -746,3 +749,7 @@ function OrderDetailView({
 		</>
 	);
 }
+
+
+
+

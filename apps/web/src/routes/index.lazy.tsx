@@ -1,14 +1,13 @@
 import { createLazyFileRoute, Link } from "@tanstack/react-router";
 import { Coffee, Globe, ShoppingCart, Users } from "lucide-react";
-import { useQuery } from "convex/react";
-import { api } from "@yumipos/backend/convex/_generated/api";
+import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 
 export const Route = createLazyFileRoute("/")({
 	component: IndexPage,
 });
 
 function IndexPage() {
-	const settings = useQuery(api.site_settings.getSettings);
+	const settings = useHybridSiteSettings();
 	const appName = settings?.appName || "YumiPOS";
 	const headerLogoUrl = settings?.headerLogoUrl || settings?.logoUrl || "";
 	const landingTitle = settings?.landingTitle || "Point of Sale Modern untuk Bisnis Anda";

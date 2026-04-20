@@ -1,7 +1,5 @@
-import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
+﻿import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import type { Id } from "@/types/backend-compat";
 import {
 	Bell,
 	CheckCircle2,
@@ -18,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useHybridCustomerServiceRequests } from "@/hooks/use-hybrid-finance-analytics-data";
+import { useHybridUpdateCustomerServiceStatus } from "@/hooks/use-hybrid-write-actions";
 
 export const Route = createLazyFileRoute("/admin/customer-service" as any)({
 	component: CustomerServiceRequestsPage,
@@ -29,11 +29,10 @@ function CustomerServiceRequestsPage() {
 	const navigate = useNavigate();
 	const [statusFilter, setStatusFilter] = useState<RequestStatus>("all");
 	const [searchQuery, setSearchQuery] = useState("");
-	const requests = useQuery(
-		api.customerService.listRequests,
+	const requests = useHybridCustomerServiceRequests(
 		statusFilter === "all" ? { limit: 200 } : { status: statusFilter, limit: 200 }
 	);
-	const updateStatus = useMutation(api.customerService.updateRequestStatus);
+	const updateStatus = useHybridUpdateCustomerServiceStatus();
 
 	const filteredRequests = useMemo(() => {
 		if (!requests) return undefined;
@@ -285,3 +284,4 @@ function getStatusClassName(status: Exclude<RequestStatus, "all">) {
 			return "border-slate-200 bg-slate-100 text-slate-700";
 	}
 }
+

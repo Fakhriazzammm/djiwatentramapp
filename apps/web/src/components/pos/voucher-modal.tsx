@@ -1,11 +1,10 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Doc } from "@yumipos/backend/convex/_generated/dataModel";
-import { useQuery } from "convex/react";
+﻿import type { Doc } from "@/types/backend-compat";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Percent, Tag, Ticket, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { AppliedVoucher } from "@/context/cart-context";
+import { useHybridAllDiscounts } from "@/hooks/use-hybrid-pos-data";
 
 interface VoucherModalProps {
 	isOpen: boolean;
@@ -87,7 +86,7 @@ export function VoucherModal({
 		setMounted(true);
 	}, []);
 
-	const allDiscounts = useQuery(api.discounts.getDiscounts);
+	const allDiscounts = useHybridAllDiscounts();
 
 	const availableVouchers =
 		allDiscounts?.filter((d: Doc<"discounts">) => isVoucherAvailable(d).available) || [];
@@ -262,3 +261,4 @@ export function VoucherModal({
 
 	return createPortal(modalContent, document.body);
 }
+

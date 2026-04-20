@@ -1,7 +1,5 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
+﻿import { createLazyFileRoute } from "@tanstack/react-router";
+import type { Id } from "@/types/backend-compat";
 import {
 	endOfDay,
 	endOfMonth,
@@ -36,6 +34,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+	useHybridHppProductMap,
+	useHybridOrders,
+	useHybridShiftReportRows,
+} from "@/hooks/use-hybrid-pos-data";
+import { useHybridOrdersCogs } from "@/hooks/use-hybrid-finance-analytics-data";
+import { useHybridBookingOrders } from "@/hooks/use-hybrid-booking-data";
+import {
+	useHybridDeleteBookingOrder,
+	useHybridDeleteOrder,
+	useHybridUpdateBookingStatus,
+	useHybridUpdateOrderStatus,
+} from "@/hooks/use-hybrid-write-actions";
 import {
 	Select,
 	SelectContent,
@@ -110,17 +121,17 @@ const quickDateFilterOptions: Array<{
 ];
 
 function AdminOrders() {
-	const allOrders = useQuery(api.orders.getOrders, {});
-	const allBookingOrders = useQuery(api.booking.getBookingOrders, { slug: "booking" });
+	const allOrders = useHybridOrders();
+	const allBookingOrders = useHybridBookingOrders({ slug: "booking" });
 	
-	const updateStatus = useMutation(api.orders.updateOrderStatus);
-	const updateBookingStatus = useMutation(api.booking.updateBookingStatus);
-	const deleteOrder = useMutation(api.orders.deleteOrder);
-	const deleteBookingOrder = useMutation(api.booking.deleteBookingOrder);
+	const updateStatus = useHybridUpdateOrderStatus();
+	const updateBookingStatus = useHybridUpdateBookingStatus();
+	const deleteOrder = useHybridDeleteOrder();
+	const deleteBookingOrder = useHybridDeleteBookingOrder();
 	
-	const hppProductMap = useQuery(api.hpp.getHppProductMap);
-	const hppCogs = useQuery(api.hpp.getOrdersCogs);
-	const historicalShifts = useQuery(api.finance.getHistoricalShifts, {});
+	const hppProductMap = useHybridHppProductMap();
+	const hppCogs = useHybridOrdersCogs();
+	const historicalShifts = useHybridShiftReportRows();
 
 	const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 	const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -239,7 +250,7 @@ function AdminOrders() {
 		}
 		return {
 			shiftName: shift.shiftName || "Shift Aktif",
-			cashierName: shift.cashierName || shift.kasirName || "-",
+			cashierName: shift.cashierName || "-",
 		};
 	};
 
@@ -499,7 +510,7 @@ function AdminOrders() {
 							<div>
 								<p className="font-semibold text-xs">Ringkasan Finansial</p>
 								<p className="text-[10px] text-muted-foreground">
-									Revenue {formatrupiah(hppCogs.totalRevenue)} · Laba{" "}
+									Revenue {formatrupiah(hppCogs.totalRevenue)} Â· Laba{" "}
 									{formatrupiah(hppCogs.totalProfit)}
 								</p>
 							</div>
@@ -687,11 +698,11 @@ function AdminOrders() {
 												</Badge>
 											</div>
 											<div className="text-[11px] text-muted-foreground">
-												{order.customerName || "Pelanggan Umum"} ·{" "}
+												{order.customerName || "Pelanggan Umum"} Â·{" "}
 												{(order.paymentMethod || "-").toUpperCase()}
 											</div>
 											<div className="text-[10px] text-muted-foreground">
-												{getOrderLocationLabel(order)} · {shiftMeta.shiftName}
+												{getOrderLocationLabel(order)} Â· {shiftMeta.shiftName}
 											</div>
 											<div className="text-[10px] text-muted-foreground">
 												Kasir: {shiftMeta.cashierName}
@@ -1201,3 +1212,8 @@ function AdminOrders() {
 		</div>
 	);
 }
+
+
+
+
+

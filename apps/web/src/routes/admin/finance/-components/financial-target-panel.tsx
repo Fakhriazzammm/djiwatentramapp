@@ -1,5 +1,3 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	AlertTriangle,
@@ -12,6 +10,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useHybridCurrentMonthProgress } from "@/hooks/use-hybrid-pos-data";
+import { useHybridSetFinancialTarget } from "@/hooks/use-hybrid-write-actions";
 
 const formatCurrency = (amount: number) =>
 	new Intl.NumberFormat("id-ID", {
@@ -55,7 +55,7 @@ function SetTargetModal({
 	const [notes, setNotes] = useState(existing?.notes ?? "");
 	const [saving, setSaving] = useState(false);
 
-	const setTarget = useMutation(api.finance.setFinancialTarget);
+	const setTarget = useHybridSetFinancialTarget();
 
 	const handleSave = async () => {
 		const rev = parseFloat(targetRevenue.replace(/[^0-9.]/g, ""));
@@ -226,7 +226,7 @@ function CircularProgress({
 
 export function FinancialTargetPanel({ compact = false }: { compact?: boolean }) {
 	const [showModal, setShowModal] = useState(false);
-	const progress = useQuery(api.finance.getCurrentMonthProgress);
+	const progress = useHybridCurrentMonthProgress();
 
 	if (progress === undefined) {
 		return (

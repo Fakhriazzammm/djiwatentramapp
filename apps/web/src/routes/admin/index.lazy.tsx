@@ -1,6 +1,4 @@
 import { createLazyFileRoute, Link } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useQuery } from "convex/react";
 import {
 	AlertTriangle,
 	ArrowDownRight,
@@ -15,23 +13,26 @@ import {
 	Users,
 	Wallet,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { FinancialTargetPanel } from "./finance/-components/financial-target-panel";
 import { PeriodComparisonCards, TrendChart } from "./finance/-components/finance-charts";
 import { useMemo, useState } from "react";
 import { formatCurrencyIDR } from "@/lib/export-utils";
-import { useMutation } from "convex/react";
 import { ShiftDetailModal } from "./-components/ShiftDetailModal";
+import {
+	useHybridDashboardStats,
+	useHybridShiftStatus,
+} from "@/hooks/use-hybrid-pos-data";
 
 export const Route = createLazyFileRoute("/admin/")({
 	component: DashboardAdmin,
 });
 
 function DashboardAdmin() {
-	const stats = useQuery(api.dashboard.getDashboardStats);
-	const shiftStatus = useQuery(api.finance.getShiftStatus);
+	const stats = useHybridDashboardStats();
+	const shiftStatus = useHybridShiftStatus();
 	const [selectedShift, setSelectedShift] = useState<any>(null);
 	const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
 	const validShifts = useMemo(

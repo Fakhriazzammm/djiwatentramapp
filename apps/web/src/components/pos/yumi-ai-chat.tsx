@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useQuery } from "convex/react";
+import { useHybridInventory, useHybridOrders } from "@/hooks/use-hybrid-pos-data";
 import AIChatContainer from "../../routes/admin/-components/ai-chat/ai-chat-container";
 
 interface YumiAIChatProps {
@@ -12,8 +11,8 @@ interface YumiAIChatProps {
 export function YumiAIChat({ onClose, cartItems, shiftId }: YumiAIChatProps) {
 	const [contextHint, setContextHint] = useState<string | null>(null);
 
-	const inventory = useQuery(api.inventory.getInventory, {});
-	const pendingOrders = useQuery(api.orders.getOrders, {});
+	const inventory = useHybridInventory();
+	const pendingOrders = useHybridOrders();
 
 	useEffect(() => {
 		const hints: string[] = [];
@@ -27,7 +26,12 @@ export function YumiAIChat({ onClose, cartItems, shiftId }: YumiAIChatProps) {
 		if (inventory) {
 			const low = inventory.filter((i: any) => i.quantity <= i.lowStockThreshold);
 			if (low.length > 0) {
-				hints.push(`Stok rendah: ${low.slice(0, 3).map((i: any) => i.name).join(", ")}`);
+				hints.push(
+					`Stok rendah: ${low
+						.slice(0, 3)
+						.map((i: any) => i.ingredientName)
+						.join(", ")}`
+				);
 			}
 		}
 
@@ -47,3 +51,6 @@ export function YumiAIChat({ onClose, cartItems, shiftId }: YumiAIChatProps) {
 
 	return <AIChatContainer mode="pos" onClose={onClose} contextHint={contextHint ?? undefined} />;
 }
+
+
+

@@ -1,6 +1,9 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useMutation } from "convex/react";
+﻿import type { Id } from "@/types/backend-compat";
+import {
+	useHybridCreateTransaction,
+	useHybridRecordExpenseIntake,
+	useHybridUpdateTransaction,
+} from "@/hooks/use-hybrid-write-actions";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	AlertTriangle,
@@ -96,9 +99,9 @@ export function NewTransactionDialog({
 	onClose,
 	transaction,
 }: NewTransactionDialogProps) {
-	const createTransaction = useMutation(api.finance.createTransaction);
-	const updateTransaction = useMutation(api.finance.updateTransaction);
-	const recordExpense = useMutation((api as any).expenseIntake.recordExpense);
+	const createTransaction = useHybridCreateTransaction();
+	const updateTransaction = useHybridUpdateTransaction();
+	const recordExpense = useHybridRecordExpenseIntake();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const dateId = useId();
@@ -863,3 +866,4 @@ export function NewTransactionDialog({
 		</AnimatePresence>
 	);
 }
+

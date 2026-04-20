@@ -1,6 +1,11 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { compressFileToLimit, isOversized } from "@/lib/image-compress";
-import { useAction } from "convex/react";
+﻿import { compressFileToLimit, isOversized } from "@/lib/image-compress";
+import {
+	useHybridBatchGenerateTransactions,
+	useHybridBatchProcessReceipts,
+	useHybridGenerateScanReport,
+	useHybridProcessImageAndGenerate,
+	useHybridProcessReceipt,
+} from "@/hooks/use-hybrid-write-actions";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	BarChart3,
@@ -63,11 +68,11 @@ export function ImageScanner({
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const streamRef = useRef<MediaStream | null>(null);
 
-	const processReceiptMutation = useAction(api.ai.processReceipt);
-	const processAndGenerateMutation = useAction(api.ai.processImageAndGenerate);
-	const batchProcessMutation = useAction(api.ai.batchProcessReceipts);
-	const batchGenerateMutation = useAction(api.ai.batchGenerateTransactions);
-	const generateScanReportMutation = useAction(api.ai.generateScanReport);
+	const processReceiptMutation = useHybridProcessReceipt();
+	const processAndGenerateMutation = useHybridProcessImageAndGenerate();
+	const batchProcessMutation = useHybridBatchProcessReceipts();
+	const batchGenerateMutation = useHybridBatchGenerateTransactions();
+	const generateScanReportMutation = useHybridGenerateScanReport();
 
 	// File input handler for single/multiple files
 	const handleFileSelect = useCallback(

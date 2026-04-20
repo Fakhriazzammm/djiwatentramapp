@@ -1,21 +1,22 @@
 import { createContext, useContext, type ReactNode } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Doc } from "@yumipos/backend/convex/_generated/dataModel";
+import {
+	useHybridActiveDiscounts,
+	useHybridSiteSettings,
+} from "@/hooks/use-hybrid-pos-data";
 
-type SiteSettings = NonNullable<ReturnType<typeof useQuery<typeof api.site_settings.getSettings>>>;
-type ActiveDiscount = Doc<"discounts">;
+type SiteSettings = ReturnType<typeof useHybridSiteSettings>;
+type ActiveDiscounts = ReturnType<typeof useHybridActiveDiscounts>;
 
 interface AppDataContextType {
-	siteSettings: SiteSettings | undefined;
-	activeDiscounts: ActiveDiscount[] | undefined;
+	siteSettings: SiteSettings;
+	activeDiscounts: ActiveDiscounts;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
-	const siteSettings = useQuery(api.site_settings.getSettings);
-	const activeDiscounts = useQuery(api.discounts.getActiveDiscounts);
+	const siteSettings = useHybridSiteSettings();
+	const activeDiscounts = useHybridActiveDiscounts();
 
 	return (
 		<AppDataContext.Provider value={{ siteSettings, activeDiscounts }}>

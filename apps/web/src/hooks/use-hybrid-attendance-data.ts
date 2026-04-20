@@ -1,0 +1,449 @@
+﻿import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/client";
+
+const hasSupabaseConfig = Boolean(
+	import.meta.env.VITE_SUPABASE_URL &&
+		import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+);
+
+function safeNum(value: unknown) {
+	const n = Number(value ?? 0);
+	return Number.isFinite(n) ? n : 0;
+}
+
+function useSupabaseValue<T>(
+	key: string,
+	load: () => Promise<T | null>,
+	deps: readonly unknown[]
+) {
+	const [data, setData] = useState<T | null>(null);
+
+	useEffect(() => {
+		if (!hasSupabaseConfig) {
+			setData(null);
+			return;
+		}
+
+		let active = true;
+
+		void (async () => {
+			try {
+				const next = await load();
+				if (active) {
+					setData(next);
+				}
+			} catch (error) {
+				console.warn(`[supabase-hybrid:${key}] fallback disabled`, error);
+				if (active) {
+					setData(null);
+				}
+			}
+		})();
+
+		return () => {
+			active = false;
+		};
+	}, deps);
+
+	return data;
+}
+
+async function fetchPublicUsers() {
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.from("pos_users_public")
+		.select("*")
+		.eq("isActive", true)
+		.order("name", { ascending: true });
+
+	if (error) throw error;
+
+	return (data ?? []).map((row: any) => ({
+		_id: row._id,
+		name: row.name,
+		slug: row.slug || String(row.username || "").split("@")[0] || "",
+		initial: row.initial || String(row.name || "").charAt(0).toUpperCase(),
+		hasFace: Boolean(row.hasFace),
+	}));
+}
+
+async function fetchCurrentlyInStore() {
+	const supabase = createClient();
+	const [{ data: users, error: userError }, { data: logs, error: logError }] =
+		await Promise.all([
+			supabase.from("pos_users_public").select("*").eq("isActive", true),
+			supabase
+				.from("pos_attendance_logs")
+				.select("*")
+				.order("timestamp", { ascending: false })
+				.limit(2000),
+		]);
+
+	if (userError) throw userError;
+	if (logError) throw logError;
+
+	const latestByUser = new Map<string, any>();
+	for (const log of logs ?? []) {
+		const userId = String((log as any).userId || "");
+		if (!userId || latestByUser.has(userId)) continue;
+		latestByUser.set(userId, log);
+	}
+
+	return (users ?? [])
+		.map((user: any) => {
+			const latest = latestByUser.get(String(user._id));
+			if (!latest || latest.type !== "check_in") return null;
+			return {
+				_id: user._id,
+				name: user.name,
+				roleId: user.roleId,
+				checkInTime: Number(latest.timestamp ?? 0),
+			};
+		})
+		.filter(Boolean);
+}
+
+async function fetchUserBySlug(slug: string) {
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.from("pos_users_public")
+		.select("*")
+		.eq("slug", slug)
+		.eq("isActive", true)
+		.maybeSingle();
+
+	if (error) throw error;
+	if (!data) return null;
+
+	return {
+		_id: data._id,
+		name: data.name,
+		slug: data.slug,
+		roleName: data.roleName || "Team",
+		hasFace: Boolean(data.hasFace),
+	};
+}
+
+async function fetchStaffLogs(args: { userId: string; month: number; year: number }) {
+	const startOfMonth = new Date(args.year, args.month - 1, 1).getTime();
+	const endOfMonth = new Date(args.year, args.month, 1).getTime();
+
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.from("pos_attendance_logs")
+		.select("*")
+		.eq("userId", args.userId)
+		.gte("timestamp", startOfMonth)
+		.lt("timestamp", endOfMonth)
+		.order("timestamp", { ascending: false });
+
+	if (error) throw error;
+	return data ?? [];
+}
+
+async function fetchStaffStats(args: { userId: string; month: number; year: number }) {
+	const logs = await fetchStaffLogs(args);
+	const asc = [...logs].sort(
+		(left: any, right: any) =>
+			Number(left.timestamp ?? 0) - Number(right.timestamp ?? 0)
+	);
+
+	const uniqueDays = new Set<string>();
+	let totalMs = 0;
+
+	for (let i = 0; i < asc.length; i++) {
+		const entry = asc[i] as any;
+		const dateStr = new Date(Number(entry.timestamp ?? 0)).toDateString();
+		uniqueDays.add(dateStr);
+
+		if (entry.type === "check_in" && i + 1 < asc.length) {
+			const next = asc[i + 1] as any;
+			if (next.type === "check_out") {
+				totalMs += Number(next.timestamp ?? 0) - Number(entry.timestamp ?? 0);
+				i += 1;
+			}
+		}
+	}
+
+	const totalHours = Math.round((totalMs / (1000 * 60 * 60)) * 10) / 10;
+	const attendanceRate = Math.min(100, Math.round((uniqueDays.size / 26) * 100));
+
+	return {
+		totalHours,
+		attendanceRate,
+		daysWorked: uniqueDays.size,
+	};
+}
+
+async function fetchStaffStatsToday(userId: string) {
+	const now = new Date();
+	const startOfDay = new Date(
+		now.getFullYear(),
+		now.getMonth(),
+		now.getDate()
+	).getTime();
+	const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.from("pos_attendance_logs")
+		.select("*")
+		.eq("userId", userId)
+		.gte("timestamp", startOfDay)
+		.lt("timestamp", endOfDay)
+		.order("timestamp", { ascending: true });
+
+	if (error) throw error;
+	const entries = data ?? [];
+
+	let totalMs = 0;
+	let lastCheckIn: number | null = null;
+
+	for (const entry of entries as any[]) {
+		if (entry.type === "check_in") {
+			lastCheckIn = Number(entry.timestamp ?? 0);
+		} else if (entry.type === "check_out" && lastCheckIn) {
+			totalMs += Number(entry.timestamp ?? 0) - lastCheckIn;
+			lastCheckIn = null;
+		}
+	}
+
+	if (lastCheckIn) {
+		totalMs += Date.now() - lastCheckIn;
+	}
+
+	const totalHours = Math.floor(totalMs / (1000 * 60 * 60));
+	const totalMinutes = Math.floor((totalMs / (1000 * 60)) % 60);
+
+	return {
+		totalHours,
+		totalMinutes,
+		totalMs,
+		isWorking: Boolean(lastCheckIn),
+		lastCheckIn,
+	};
+}
+
+async function fetchAdminLogs(limit = 100) {
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.from("pos_attendance_logs")
+		.select("*")
+		.order("timestamp", { ascending: false })
+		.limit(limit);
+
+	if (error) throw error;
+	return data ?? [];
+}
+
+export function useHybridPublicUsers() {
+	const supabaseData = useSupabaseValue("attendance-public-users", fetchPublicUsers, []);
+	return supabaseData as any;
+}
+
+export function useHybridCurrentlyInStore() {
+	const supabaseData = useSupabaseValue(
+		"attendance-currently-in-store",
+		fetchCurrentlyInStore,
+		[]
+	);
+	return supabaseData as any;
+}
+
+export function useHybridStaffBySlug(slug: string) {
+	const supabaseData = useSupabaseValue(
+		`attendance-staff:${slug}`,
+		() => fetchUserBySlug(slug),
+		[slug]
+	);
+	return supabaseData as any;
+}
+
+export function useHybridStaffStats(args?: {
+	userId?: string;
+	month?: number;
+	year?: number;
+}) {
+	const supabaseData = useSupabaseValue(
+		`attendance-staff-stats:${args?.userId ?? "skip"}:${args?.month ?? ""}:${args?.year ?? ""}`,
+		() =>
+			args?.userId && args?.month && args?.year
+				? fetchStaffStats({
+						userId: args.userId,
+						month: args.month,
+						year: args.year,
+				  })
+				: Promise.resolve(null),
+		[args?.userId, args?.month, args?.year]
+	);
+	return supabaseData as any;
+}
+
+export function useHybridStaffLogs(args?: {
+	userId?: string;
+	month?: number;
+	year?: number;
+}) {
+	const supabaseData = useSupabaseValue(
+		`attendance-staff-logs:${args?.userId ?? "skip"}:${args?.month ?? ""}:${args?.year ?? ""}`,
+		() =>
+			args?.userId && args?.month && args?.year
+				? fetchStaffLogs({
+						userId: args.userId,
+						month: args.month,
+						year: args.year,
+				  })
+				: Promise.resolve(null),
+		[args?.userId, args?.month, args?.year]
+	);
+	return supabaseData as any;
+}
+
+export function useHybridStaffStatsToday(userId?: string) {
+	const supabaseData = useSupabaseValue(
+		`attendance-staff-stats-today:${userId ?? "skip"}`,
+		() => (userId ? fetchStaffStatsToday(userId) : Promise.resolve(null)),
+		[userId]
+	);
+	return supabaseData as any;
+}
+
+export function useHybridAdminAttendanceLogs(limit = 100) {
+	const supabaseData = useSupabaseValue(
+		`attendance-admin-logs:${limit}`,
+		() => fetchAdminLogs(limit),
+		[limit]
+	);
+	return supabaseData as any;
+}
+
+async function fetchPrivateStaffData(args: {
+	slug: string;
+	pin?: string;
+	token?: string | null;
+}) {
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.from("pos_users_public")
+		.select("*")
+		.eq("slug", args.slug)
+		.maybeSingle();
+	if (error) throw error;
+	if (!data) return null;
+	return {
+		_id: data._id,
+		name: data.name,
+		slug: data.slug,
+		username: data.username ?? "",
+		roleId: data.roleId ?? null,
+		roleName: data.roleName ?? "Team",
+		hasFace: Boolean(data.hasFace),
+		isActive: Boolean(data.isActive),
+	};
+}
+
+async function fetchPayrollReport(args: { month: number; year: number }) {
+	const supabase = createClient();
+	const [{ data: users, error: usersError }, { data: roles, error: rolesError }] =
+		await Promise.all([
+			supabase.from("pos_users_public").select("*"),
+			supabase.from("pos_staff_roles").select("*"),
+		]);
+	if (usersError) throw usersError;
+	if (rolesError) throw rolesError;
+
+	const roleMap = new Map<string, any>(
+		(roles ?? []).map((role: any) => [String(role._id), role])
+	);
+	const activeUsers = (users ?? []).filter((user: any) => Boolean(user.isActive));
+
+	const rows = await Promise.all(
+		activeUsers.map(async (user: any) => {
+			const logs = await fetchStaffLogs({
+				userId: String(user._id),
+				month: args.month,
+				year: args.year,
+			});
+			const stats = await fetchStaffStats({
+				userId: String(user._id),
+				month: args.month,
+				year: args.year,
+			});
+			const role = roleMap.get(String(user.roleId ?? ""));
+			const raw = (role?.raw ?? {}) as Record<string, any>;
+			const sessionCount = Math.floor((logs?.length ?? 0) / 2);
+			const baseShiftRate = safeNum(raw.baseShiftRate ?? 0);
+			const monthlyFixedSalary = safeNum(raw.monthlyFixedSalary ?? 0);
+			const dailyAllowance = safeNum(raw.dailyAllowance ?? 0);
+			const overtimeBonusPerHour = 10000;
+			const latePenaltyPerMinute = 1000;
+			const totalShiftSalary = sessionCount * baseShiftRate;
+			const totalAllowance = safeNum(stats?.daysWorked ?? 0) * dailyAllowance;
+			const overtimeHours = Math.max(0, safeNum(stats?.totalHours ?? 0) - sessionCount * 8);
+			const totalOvertimeBonus = overtimeHours * overtimeBonusPerHour;
+			const totalLateMinutes = 0;
+			const totalPenalty = totalLateMinutes * latePenaltyPerMinute;
+			const totalTargetBonus = 0;
+			const netSalary =
+				monthlyFixedSalary +
+				totalShiftSalary +
+				totalAllowance +
+				totalOvertimeBonus +
+				totalTargetBonus -
+				totalPenalty;
+
+			return {
+				_id: user._id,
+				name: user.name,
+				roleName: user.roleName ?? role?.name ?? "Team",
+				isActive: Boolean(user.isActive),
+				daysWorked: safeNum(stats?.daysWorked ?? 0),
+				totalHours: safeNum(stats?.totalHours ?? 0),
+				sessionCount,
+				totalLateMinutes,
+				monthlyFixedSalary,
+				totalShiftSalary,
+				totalAllowance,
+				totalOvertimeBonus,
+				totalTargetBonus,
+				totalPenalty,
+				netSalary,
+				bonusTargetBasis:
+					raw?.bonusTargetConfig?.basis ?? role?.bonusTargetConfig?.basis ?? null,
+			};
+		})
+	);
+
+	return {
+		rows: rows.sort((a, b) => String(a.name).localeCompare(String(b.name))),
+		targets: {},
+	};
+}
+
+export function useHybridPayrollReport(args: { month: number; year: number }) {
+	return useSupabaseValue(
+		`attendance-payroll:${args.month}:${args.year}`,
+		() => fetchPayrollReport(args),
+		[args.month, args.year]
+	) as any;
+}
+
+export function useHybridPrivateStaffData(args?: {
+	slug?: string;
+	pin?: string;
+	token?: string | null;
+}) {
+	return useSupabaseValue(
+		`attendance-private-staff:${args?.slug ?? "skip"}`,
+		() =>
+			args?.slug
+				? fetchPrivateStaffData({
+						slug: args.slug,
+						pin: args.pin,
+						token: args.token ?? null,
+				  })
+				: Promise.resolve(null),
+		[args?.slug, args?.pin, args?.token]
+	) as any;
+}
+

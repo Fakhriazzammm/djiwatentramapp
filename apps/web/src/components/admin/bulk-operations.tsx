@@ -1,10 +1,13 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
+﻿import type { Doc, Id } from "@/types/backend-compat";
+import {
+	useHybridBulkCreateProducts,
+	useHybridCreateCategory,
+} from "@/hooks/use-hybrid-write-actions";
 import { Download, Upload } from "lucide-react";
 import Papa from "papaparse";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { useHybridAllProducts, useHybridCategories } from "@/hooks/use-hybrid-pos-data";
 
 interface CSVProductRow {
 	// Normalized keys (lowercase)
@@ -137,10 +140,10 @@ async function processCSVRows(
 }
 
 export function BulkOperations() {
-	const products = useQuery(api.products.getAllProductsAdmin);
-	const categories = useQuery(api.products.getCategories);
-	const bulkCreate = useMutation(api.products.bulkCreateProducts);
-	const createCategory = useMutation(api.products.createCategory);
+	const products = useHybridAllProducts();
+	const categories = useHybridCategories();
+	const bulkCreate = useHybridBulkCreateProducts();
+	const createCategory = useHybridCreateCategory();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [isUploading, setIsUploading] = useState(false);
 
@@ -203,8 +206,8 @@ export function BulkOperations() {
 			return;
 		}
 
-		const { validProducts, skippedRows, createdCategoriesNames } =
-			await processCSVRows(rows, categories, createCategory);
+			const { validProducts, skippedRows, createdCategoriesNames } =
+				await processCSVRows(rows, categories as any, createCategory);
 
 		if (validProducts.length > 0) {
 			await bulkCreate({ products: validProducts });
@@ -299,3 +302,4 @@ export function BulkOperations() {
 		</div>
 	);
 }
+

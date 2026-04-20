@@ -1,7 +1,15 @@
 ﻿import { createLazyFileRoute } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useAction, useMutation, useQuery } from "convex/react";
+import type { Doc, Id } from "@/types/backend-compat";
+import {
+	useHybridApplyInventoryStockAction,
+	useHybridCreateInventoryItem,
+	useHybridCreateInventoryStore,
+	useHybridDeleteInventoryItem,
+	useHybridProduceBaseRecipeBatch,
+	useHybridSetInventoryReferencePrice,
+	useHybridSuggestInventoryAutofill,
+	useHybridUpdateInventoryItem,
+} from "@/hooks/use-hybrid-write-actions";
 import { motion } from "framer-motion";
 import {
 	AlertCircle,
@@ -25,6 +33,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import { useHybridInventory } from "@/hooks/use-hybrid-pos-data";
+import {
+	useHybridBaseRecipes,
+	useHybridInventoryItemBatches,
+	useHybridInventoryItemImpact,
+	useHybridInventoryPriceInsights,
+	useHybridInventoryStores,
+	useHybridInventoryTransactions,
+	useHybridInventoryWorkspace,
+	useHybridInventoryYumiAiInsights,
+	useHybridRealtimePriceMonitor,
+} from "@/hooks/use-hybrid-inventory-admin-data";
 
 interface ConfirmConfig {
 	isOpen: boolean;
@@ -681,26 +701,26 @@ export const Route = createLazyFileRoute("/admin/inventory")({
 
 function InventoryPage() {
 	const [searchQuery, setSearchQuery] = useState("");
-	const inventory = useQuery(api.inventory.getInventory);
-	const stores = useQuery(api.inventory.listInventoryStores) as
+	const inventory = useHybridInventory();
+	const stores = useHybridInventoryStores() as
 		| InventoryStore[]
 		| undefined;
-	const workspace = useQuery(api.inventory.getInventoryWorkspace, {
+	const workspace = useHybridInventoryWorkspace( {
 		daysWindow: 30,
 	}) as InventoryWorkspaceData | undefined;
-	const realtimePriceMonitor = useQuery(api.inventory.getRealtimePriceMonitor, {
+	const realtimePriceMonitor = useHybridRealtimePriceMonitor( {
 		limit: 300,
 		search: searchQuery || undefined,
 	}) as RealtimePriceMonitorData | undefined;
-	const yumiAiInsights = useQuery(api.inventory.getInventoryYumiAiInsights, {
+	const yumiAiInsights = useHybridInventoryYumiAiInsights( {
 		limit: 40,
 	}) as InventoryYumiAiInsightsData | undefined;
-	const applyStockAction = useMutation(api.inventory.applyInventoryStockAction);
-	const createItem = useMutation(api.inventory.createInventoryItem);
-	const updateItem = useMutation(api.inventory.updateInventoryItem);
-	const deleteItem = useMutation(api.inventory.deleteInventoryItem);
-	const createStore = useMutation(api.inventory.createInventoryStore);
-	const setReferencePrice = useMutation(api.inventory.setInventoryReferencePrice);
+	const applyStockAction = useHybridApplyInventoryStockAction();
+	const createItem = useHybridCreateInventoryItem();
+	const updateItem = useHybridUpdateInventoryItem();
+	const deleteItem = useHybridDeleteInventoryItem();
+	const createStore = useHybridCreateInventoryStore();
+	const setReferencePrice = useHybridSetInventoryReferencePrice();
 
 	const [selectedItem, setSelectedItem] = useState<Doc<"inventory"> | null>(
 		null
@@ -1961,8 +1981,8 @@ function InventoryActionModal({
 	onSubmit: (e: React.FormEvent) => void;
 	setConfirmConfig: (config: ConfirmConfig) => void;
 }) {
-	const baseRecipes = useQuery(api.inventory.getBaseRecipes);
-	const produceBatch = useMutation(api.inventory.produceBaseRecipeBatch);
+	const baseRecipes = useHybridBaseRecipes();
+	const produceBatch = useHybridProduceBaseRecipeBatch();
 
 	if (
 		!(selectedItem || actionType === "create") ||
@@ -2177,7 +2197,7 @@ function InventoryPlanningPanel({
 	onSearchQueryChange: (val: string) => void;
 	onFilterLowStockChange: (val: boolean) => void;
 }) {
-	const inventory = useQuery(api.inventory.getInventory);
+	const inventory = useHybridInventory();
 	const inventoryMap = useMemo(() => {
 		const map = new Map<string, Doc<"inventory">>();
 		for (const item of inventory ?? []) {
@@ -2320,15 +2340,9 @@ function InventoryDetailDrawer({
 	item: Doc<"inventory">;
 	onClose: () => void;
 }) {
-	const impact = useQuery(api.inventory.getInventoryItemImpact, {
-		inventoryId: item._id,
-	});
-	const batches = useQuery(api.inventory.getInventoryItemBatches, {
-		inventoryId: item._id,
-	});
-	const priceInsights = useQuery(api.inventory.getInventoryPriceInsights, {
-		inventoryId: item._id,
-	}) as InventoryPriceInsights | undefined;
+	const impact = useHybridInventoryItemImpact(item._id);
+	const batches = useHybridInventoryItemBatches(item._id);
+	const priceInsights = useHybridInventoryPriceInsights(item._id) as InventoryPriceInsights | undefined;
 
 	return (
 		<div className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px]" data-admin-modal-backdrop>
@@ -2895,7 +2909,7 @@ function YumiAiInventoryPanel({
 	const [keyword, setKeyword] = useState("");
 	const [canonicalByGroup, setCanonicalByGroup] = useState<Record<string, string>>({});
 	const [savingGroupKey, setSavingGroupKey] = useState<string | null>(null);
-	const updateItemMutation = useMutation(api.inventory.updateInventoryItem);
+	const updateItemMutation = useHybridUpdateInventoryItem();
 	const normalizedKeyword = keyword.trim().toLowerCase();
 	const fallbackSimilarGroups = useMemo(() => {
 		const items = [...inventoryMap.values()];
@@ -2999,13 +3013,13 @@ function YumiAiInventoryPanel({
 	}, [data?.similarNameGroups, fallbackSimilarGroups]);
 	const nameMatchRows = useMemo(
 		() =>
-			detectedSimilarGroups.filter((group) => {
+			(detectedSimilarGroups as any[]).filter((group: any) => {
 				if (!normalizedKeyword) {
 					return true;
 				}
 				const haystack = [
 					group.canonicalName,
-					...group.items.map((item) => item.ingredientName),
+					...group.items.map((item: any) => item.ingredientName),
 				]
 					.join(" ")
 					.toLowerCase();
@@ -3230,7 +3244,7 @@ function YumiAiInventoryPanel({
 										</div>
 									</div>
 									<div className="mt-2 space-y-2">
-										{group.items.map((entry) => {
+										{group.items.map((entry: any) => {
 											const item = inventoryMap.get(entry.inventoryId);
 											return (
 												<div
@@ -3460,14 +3474,12 @@ function InventoryTable({
 	viewPreset: InventoryViewPreset;
 	unitOptions: string[];
 }) {
-	const updateItemMutation = useMutation(api.inventory.updateInventoryItem);
-	const applyStockAction = useMutation(api.inventory.applyInventoryStockAction);
-	const createItemMutation = useMutation(api.inventory.createInventoryItem);
-	const createStoreMutation = useMutation(api.inventory.createInventoryStore);
-	const setReferencePriceMutation = useMutation(
-		api.inventory.setInventoryReferencePrice
-	);
-	const suggestInventoryAutofill = useAction(api.inventory.suggestInventoryAutofill);
+	const updateItemMutation = useHybridUpdateInventoryItem();
+	const applyStockAction = useHybridApplyInventoryStockAction();
+	const createItemMutation = useHybridCreateInventoryItem();
+	const createStoreMutation = useHybridCreateInventoryStore();
+	const setReferencePriceMutation = useHybridSetInventoryReferencePrice();
+	const suggestInventoryAutofill = useHybridSuggestInventoryAutofill();
 	const quickAddNameRef = useRef<HTMLInputElement | null>(null);
 	const [savingKey, setSavingKey] = useState<string | null>(null);
 	const [saveStateByRow, setSaveStateByRow] = useState<
@@ -5307,7 +5319,7 @@ function InventoryTable({
 									type="checkbox"
 								/>
 								<span>
-									Unit: `{aiReview.item.unit}` → `
+									Unit: `{aiReview.item.unit}` ? `
 									{normalizeUnitOption(aiReview.result.suggestion.unit) || aiReview.item.unit}`
 									{" • "}
 									{Math.round((aiReview.result.suggestion.fieldConfidence?.unit ?? 0) * 100)}%
@@ -5325,7 +5337,7 @@ function InventoryTable({
 									type="checkbox"
 								/>
 								<span>
-									Threshold: `{aiReview.item.lowStockThreshold}` → `
+									Threshold: `{aiReview.item.lowStockThreshold}` ? `
 									{aiReview.result.suggestion.lowStockThreshold || aiReview.item.lowStockThreshold}`
 									{" • "}
 									{Math.round(
@@ -5346,7 +5358,7 @@ function InventoryTable({
 									type="checkbox"
 								/>
 								<span>
-									Brand: `{aiReview.item.defaultBrandName || "-"}` → `
+									Brand: `{aiReview.item.defaultBrandName || "-"}` ? `
 									{aiReview.result.suggestion.defaultBrandName || "-"}`
 									{" • "}
 									{Math.round(
@@ -5370,7 +5382,7 @@ function InventoryTable({
 										aiReview.item.displayUnit,
 										aiReview.item.conversionFactor
 									) || "-"}
-									` → `{aiReview.result.suggestion.unitConversionsText || "-"}`
+									` ? `{aiReview.result.suggestion.unitConversionsText || "-"}`
 									{" • "}
 									{Math.round((aiReview.result.suggestion.fieldConfidence?.conversion ?? 0) * 100)}
 									%
@@ -5382,7 +5394,7 @@ function InventoryTable({
 								Sumber
 							</p>
 							<p className="mt-1 text-xs text-muted-foreground">
-								Flow: {(aiReview.result.fallbackPath ?? []).join(" → ") || "-"}
+								Flow: {(aiReview.result.fallbackPath ?? []).join(" ? ") || "-"}
 							</p>
 							<div className="mt-2 space-y-1 text-xs">
 								{aiReview.result.sources.slice(0, 3).map((source) => (
@@ -5525,9 +5537,7 @@ function InventoryHistoryModal({
 	item: Doc<"inventory">;
 	onClose: () => void;
 }) {
-	const transactions = useQuery(api.inventory.getInventoryTransactions, {
-		inventoryId: item._id,
-	});
+	const transactions = useHybridInventoryTransactions(item._id);
 
 	return (
 		<div
@@ -5655,4 +5665,10 @@ function InventoryHistoryModal({
 		</div>
 	);
 }
+
+
+
+
+
+
 

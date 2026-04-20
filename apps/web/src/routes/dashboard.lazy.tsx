@@ -1,16 +1,10 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import {
-	Authenticated,
-	AuthLoading,
-	Unauthenticated,
-	useQuery,
-} from "convex/react";
 import { useState } from "react";
 
 import SignInForm from "@/components/sign-in-form";
 import SignUpForm from "@/components/sign-up-form";
 import UserMenu from "@/components/user-menu";
+import { useYumiAuth } from "@/hooks/useYumiAuth";
 
 export const Route = createLazyFileRoute("/dashboard")({
 	component: RouteComponent,
@@ -18,27 +12,28 @@ export const Route = createLazyFileRoute("/dashboard")({
 
 function RouteComponent() {
 	const [showSignIn, setShowSignIn] = useState(false);
-	const privateData = useQuery(api.private_data.get);
+	const { isAuthenticated } = useYumiAuth();
+	const privateData = isAuthenticated
+		? { message: "This is private" }
+		: { message: "Not authenticated" };
 
 	return (
 		<>
-			<Authenticated>
+			{isAuthenticated ? (
 				<div>
 					<h1>Dashboard</h1>
 					<p>privateData: {privateData?.message}</p>
 					<UserMenu />
 				</div>
-			</Authenticated>
-			<Unauthenticated>
-				{showSignIn ? (
-					<SignInForm onSwitchToSignUp={() => setShowSignIn(false)} />
-				) : (
-					<SignUpForm onSwitchToSignIn={() => setShowSignIn(true)} />
-				)}
-			</Unauthenticated>
-			<AuthLoading>
-				<div>Loading...</div>
-			</AuthLoading>
+			) : (
+				<>
+					{showSignIn ? (
+						<SignInForm onSwitchToSignUp={() => setShowSignIn(false)} />
+					) : (
+						<SignUpForm onSwitchToSignIn={() => setShowSignIn(true)} />
+					)}
+				</>
+			)}
 		</>
 	);
 }

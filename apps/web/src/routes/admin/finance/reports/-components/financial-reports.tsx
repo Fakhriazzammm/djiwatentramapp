@@ -1,5 +1,3 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useAction, useQuery } from "convex/react";
 import { useState } from "react";
 import { FileSpreadsheet, FileText, Printer, TrendingUp, ArrowLeftRight, Users, Image as ImageIcon, Mail, Focus } from "lucide-react";
 import { PeriodSelector, getRangeFromPeriod, type PeriodOption, type DateRange } from "./period-selector";
@@ -7,6 +5,12 @@ import { ProfitLossReport } from "./profit-loss-report";
 import { CashFlowReport } from "./cash-flow-report";
 import { ShiftReport } from "./shift-report";
 import { toast } from "sonner";
+import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
+import {
+	useHybridCashFlowReport,
+	useHybridProfitLossReport,
+} from "@/hooks/use-hybrid-finance-analytics-data";
+import { useHybridSendDailySummaryEmail } from "@/hooks/use-hybrid-write-actions";
 import {
 	exportProfitLossPDF,
 	exportCashFlowPDF,
@@ -32,17 +36,17 @@ export function FinancialReports() {
 	const [dateRange, setDateRange] = useState<DateRange>(getRangeFromPeriod("this_month"));
 	const [isExporting, setIsExporting] = useState(false);
 	const [isSendingEmail, setIsSendingEmail] = useState(false);
-	const sendDailySummaryEmail = useAction(api.reportsEmail.sendDailySummaryEmail);
+	const sendDailySummaryEmail = useHybridSendDailySummaryEmail();
 
-	const settings = useQuery(api.site_settings.getSettings);
+	const settings = useHybridSiteSettings();
 	const storeName = settings?.storeName || "Toko";
 
 	// Prefetch data for export
-	const plData = useQuery(api.finance.getProfitLossReport, {
+	const plData = useHybridProfitLossReport({
 		startDate: dateRange.startDate,
 		endDate: dateRange.endDate,
 	});
-	const cfData = useQuery(api.finance.getCashFlowReport, {
+	const cfData = useHybridCashFlowReport({
 		startDate: dateRange.startDate,
 		endDate: dateRange.endDate,
 	});

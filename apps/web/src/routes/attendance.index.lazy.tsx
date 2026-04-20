@@ -1,7 +1,5 @@
-import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+﻿import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "@yumipos/backend/convex/_generated/api";
 import { FaceRecognition } from "@/components/auth/FaceRecognition";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,20 +21,31 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
+import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
+import {
+	useHybridCurrentlyInStore,
+	useHybridPublicUsers,
+} from "@/hooks/use-hybrid-attendance-data";
+import {
+	useHybridClockIn,
+	useHybridClockOut,
+	useHybridEnrollFace,
+	useHybridVerifyHomePin,
+} from "@/hooks/use-hybrid-write-actions";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { Footer } from "@/components/layout/Footer";
 
 // Helper for distance calculation
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
 	const R = 6371e3; // metres
-	const φ1 = (lat1 * Math.PI) / 180;
-	const φ2 = (lat2 * Math.PI) / 180;
-	const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-	const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+	const phi1 = (lat1 * Math.PI) / 180;
+	const phi2 = (lat2 * Math.PI) / 180;
+	const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+	const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
 
 	const a =
-		Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-		Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+		Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+		Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
 	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
 	return R * c; // in metres
@@ -56,15 +65,15 @@ function AttendancePage() {
 	const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 	const [locationError, setLocationError] = useState<string | null>(null);
 
-	// Convex Queries/Mutations
-	const siteSettings = useQuery(api.site_settings.getSettings);
-	const allStaff = useQuery(api.users.getPublicUsers);
-	const currentlyIn = useQuery(api.attendance.getCurrentlyInStore);
+	// Data Queries/Mutations
+	const siteSettings = useHybridSiteSettings();
+	const allStaff = useHybridPublicUsers();
+	const currentlyIn = useHybridCurrentlyInStore();
 
-	const verifyPin = useMutation(api.users.verifyHomePin);
-	const enrollFace = useMutation(api.users.enrollFace);
-	const clockIn = useMutation(api.attendance.clockIn);
-	const clockOut = useMutation(api.attendance.clockOut);
+	const verifyPin = useHybridVerifyHomePin();
+	const enrollFace = useHybridEnrollFace();
+	const clockIn = useHybridClockIn();
+	const clockOut = useHybridClockOut();
 
 	// Shift Detection based on local device time
 	const shiftSchedules = siteSettings?.shiftSettings?.shiftSchedules || [];
@@ -96,7 +105,7 @@ function AttendancePage() {
 			}
 		}
 
-		// No active shift found — find nearest upcoming shift
+		// No active shift found - find nearest upcoming shift
 		let nearest: typeof shiftSchedules[number] | null = null;
 		let minDiff = Infinity;
 
@@ -510,7 +519,7 @@ function AttendancePage() {
 											{detectedShift.openTime && detectedShift.closeTime && (
 												<div className="flex items-center gap-2 mt-2 text-xs">
 													<Clock className="h-3.5 w-3.5 text-muted-foreground" />
-													<span className="font-bold">{detectedShift.openTime} — {detectedShift.closeTime}</span>
+													<span className="font-bold">{detectedShift.openTime} â€” {detectedShift.closeTime}</span>
 												</div>
 											)}
 										</div>
@@ -560,7 +569,7 @@ function AttendancePage() {
 											className="h-16 rounded-[1.6rem] border-2 pl-4 text-center text-3xl font-black tracking-[0.45em] transition-all focus:border-primary focus:ring-8 focus:ring-primary/5 md:h-20 md:rounded-[2rem] md:text-4xl"
 											maxLength={6}
 											onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-											placeholder="••••••"
+											placeholder="â€¢â€¢â€¢â€¢â€¢â€¢"
 											type="password"
 											value={pin}
 										/>
@@ -608,7 +617,7 @@ function AttendancePage() {
 									<p className="text-sm font-bold text-muted-foreground truncate">
 										Staff: <span className="text-foreground">{user?.name}</span>
 										{detectedShift && !user?.isCurrentlyIn && (
-											<span className="text-muted-foreground/60"> — {detectedShift.name} ({detectedShift.openTime}{detectedShift.closeTime ? `-${detectedShift.closeTime}` : ""})</span>
+											<span className="text-muted-foreground/60"> â€” {detectedShift.name} ({detectedShift.openTime}{detectedShift.closeTime ? `-${detectedShift.closeTime}` : ""})</span>
 										)}
 									</p>
 								</div>
@@ -772,7 +781,7 @@ function AttendancePage() {
 										{user?.isCurrentlyIn ? "Sudah diabsen keluar. Hati-hati di jalan!" : "Berhasil diabsen masuk. Semangat!"}
 									</p>
 									<p className="text-sm text-muted-foreground">
-										{user?.name} — {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+										{user?.name} â€” {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
 										{detectedShift && !user?.isCurrentlyIn && (
 											<span className="block text-xs mt-1">
 												Shift: <span className="font-bold">{detectedShift.name}</span> ({detectedShift.openTime}{detectedShift.closeTime ? `-${detectedShift.closeTime}` : ""})
@@ -825,3 +834,5 @@ function AttendancePage() {
 export const Route = createLazyFileRoute("/attendance/" as any)({
 	component: AttendancePage,
 });
+
+

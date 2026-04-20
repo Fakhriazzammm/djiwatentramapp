@@ -1,6 +1,4 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
 import {
 	AlertCircle,
 	Calendar,
@@ -19,6 +17,21 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+	useHybridActiveDiscounts,
+	useHybridSiteSettings,
+} from "@/hooks/use-hybrid-pos-data";
+import {
+	useHybridBookingOrders,
+	useHybridBookingMonthSummary,
+	useHybridBookingProducts,
+	useHybridBookingSettings,
+} from "@/hooks/use-hybrid-booking-data";
+import {
+	useHybridCreateBookingOrder,
+	useHybridGenerateBookingUploadUrl,
+	useHybridUploadBookingPaymentProof,
+} from "@/hooks/use-hybrid-write-actions";
 import {
 	calculateEffectivePrice,
 	isFreeRefillActive,
@@ -601,23 +614,20 @@ const MobileWrapper = ({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 function BookingPage() {
-	const settings = useQuery(api.booking.getSettings, { slug: "booking" });
-	const products = useQuery(api.booking.getBookingProducts, { slug: "booking" });
-	const activeDiscounts = useQuery(api.discounts.getActiveDiscounts);
-	const siteSettings = useQuery(api.site_settings.getSettings);
-	const createBookingOrder = useMutation(api.booking.createBookingOrder);
-	const uploadPaymentProof = useMutation(api.booking.uploadPaymentProof);
-	const generateUploadUrl = useMutation(api.booking.generateUploadUrl);
+	const settings = useHybridBookingSettings("booking");
+	const products = useHybridBookingProducts("booking");
+	const activeDiscounts = useHybridActiveDiscounts();
+	const siteSettings = useHybridSiteSettings();
+	const createBookingOrder = useHybridCreateBookingOrder();
+	const uploadPaymentProof = useHybridUploadBookingPaymentProof();
+	const generateUploadUrl = useHybridGenerateBookingUploadUrl();
 
 	const today = new Date();
 	const [calYear, setCalYear] = useState(today.getFullYear());
 	const [calMonth, setCalMonth] = useState(today.getMonth());
 
 	const yearMonth = `${calYear}-${String(calMonth + 1).padStart(2, "0")}`;
-	const monthSummary = useQuery(api.booking.getMonthBookingSummary, {
-		slug: "booking",
-		yearMonth,
-	});
+	const monthSummary = useHybridBookingMonthSummary("booking", yearMonth);
 
 	const [step, setStep] = useState(0);
 	const [guestCount, setGuestCount] = useState(1);
@@ -779,13 +789,12 @@ function BookingPage() {
 	};
 
 	// ── Fetch the completed booking code ──
-	const latestBooking = useQuery(
-		api.booking.getBookingOrders,
+	const latestBooking = useHybridBookingOrders(
 		step >= 5 ? { slug: "booking" } : "skip"
 	);
 
 	const confirmedBooking =
-		latestBooking && latestBooking.length > 0 ? latestBooking[0] : null;
+		step >= 5 && latestBooking && latestBooking.length > 0 ? latestBooking[0] : null;
 
 	// Loading
 	if (settings === undefined || products === undefined) {

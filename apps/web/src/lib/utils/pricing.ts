@@ -1,4 +1,4 @@
-import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
+﻿import type { Doc, Id } from "@/types/backend-compat";
 
 export interface PricingResult {
 	finalPrice: number;
@@ -92,11 +92,11 @@ function getPotentialPrice(
 ): number {
 	const originalPrice = product.price;
 
-	// Check for Happy Hour specific product prices
-	if (discount.isHappyHour && discount.productPrices) {
-		const specificPrice = discount.productPrices.find(
-			(pp) => pp.productId === product._id
-		);
+		// Check for Happy Hour specific product prices
+		if (discount.isHappyHour && discount.productPrices) {
+			const specificPrice = discount.productPrices.find(
+				(pp: any) => pp.productId === product._id
+			);
 		if (specificPrice) {
 			return specificPrice.price;
 		}
@@ -218,3 +218,4 @@ export function isFreeRefillActive(
 
 	return true;
 }
+

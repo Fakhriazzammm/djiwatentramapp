@@ -1,9 +1,8 @@
-import { useQuery } from "convex/react";
-import { api } from "@yumipos/backend/convex/_generated/api";
+import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { APP_VERSION } from "../../lib/version";
 
 export function Footer({ className = "" }: { className?: string }) {
-	const settings = useQuery(api.site_settings.getSettings);
+	const settings = useHybridSiteSettings();
 	const brandName = settings?.storeName || "Djiwa Tentram";
 	
 	return (

@@ -1,8 +1,14 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { Link } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
+import type { Doc, Id } from "@/types/backend-compat";
+import {
+	useHybridCreateBaseRecipe,
+	useHybridDeleteBaseRecipe,
+	useHybridDeleteRecipe,
+	useHybridEnsureInventoryItemForBaseRecipe,
+	useHybridSaveRecipe,
+	useHybridUpdateBaseRecipe,
+} from "@/hooks/use-hybrid-write-actions";
 import {
 	BookOpen,
 	CheckCircle2,
@@ -18,6 +24,17 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+	useHybridAllProducts,
+	useHybridCategories,
+	useHybridHppProductMap,
+	useHybridInventory,
+	useHybridLatestInventoryCosts,
+} from "@/hooks/use-hybrid-pos-data";
+import {
+	useHybridBaseRecipes,
+	useHybridRecipes,
+} from "@/hooks/use-hybrid-inventory-admin-data";
 import { Button } from "@/components/ui/button";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { Input } from "@/components/ui/input";
@@ -507,7 +524,7 @@ function IngredientEditor({
 								<p className={`font-semibold ${tableCellSingleLine()}`}>{inv?.ingredientName || "-"}</p>
 								<p className={`text-xs text-muted-foreground ${tableCellSingleLine()}`}>
 									{unitCost != null
-										? `${formatRupiah(Math.round(unitCost))}/${inv?.unit || "unit"} • ${formatRupiah(Math.round(lineCost ?? 0))}`
+										? `${formatRupiah(Math.round(unitCost))}/${inv?.unit || "unit"} â€¢ ${formatRupiah(Math.round(lineCost ?? 0))}`
 										: "Harga bahan belum tersedia di inventory"}
 								</p>
 								<p className={`text-[11px] text-muted-foreground ${tableCellSingleLine()}`}>
@@ -563,21 +580,20 @@ function IngredientEditor({
 }
 
 export function RecipeStudioPage() {
-	const products = useQuery(api.products.getAllProductsAdmin);
-	const categories = useQuery(api.products.getCategories);
-	const inventory = useQuery(api.inventory.getInventory);
-	const baseRecipes = useQuery(api.inventory.getBaseRecipes);
-	const productRecipes = useQuery(api.inventory.getRecipes);
-	const hppProductMap = useQuery(api.hpp.getHppProductMap);
-	const latestInventoryCosts = useQuery(api.hpp.getLatestInventoryCosts);
-	const createBaseRecipe = useMutation(api.inventory.createBaseRecipe);
-	const updateBaseRecipe = useMutation(api.inventory.updateBaseRecipe);
-	const deleteBaseRecipe = useMutation(api.inventory.deleteBaseRecipe);
-	const ensureInventoryItemForBaseRecipe = useMutation(
-		api.inventory.ensureInventoryItemForBaseRecipe
-	);
-	const saveRecipe = useMutation(api.inventory.saveRecipe);
-	const deleteRecipe = useMutation(api.inventory.deleteRecipe);
+	const products = useHybridAllProducts();
+	const categories = useHybridCategories();
+	const inventory = useHybridInventory();
+	const baseRecipes = useHybridBaseRecipes();
+	const productRecipes = useHybridRecipes();
+	const hppProductMap = useHybridHppProductMap();
+	const latestInventoryCosts = useHybridLatestInventoryCosts();
+	const createBaseRecipe = useHybridCreateBaseRecipe();
+	const updateBaseRecipe = useHybridUpdateBaseRecipe();
+	const deleteBaseRecipe = useHybridDeleteBaseRecipe();
+	const ensureInventoryItemForBaseRecipe =
+		useHybridEnsureInventoryItemForBaseRecipe();
+	const saveRecipe = useHybridSaveRecipe();
+	const deleteRecipe = useHybridDeleteRecipe();
 	const [searchBase, setSearchBase] = useState("");
 	const [searchProduct, setSearchProduct] = useState("");
 	const [baseModalOpen, setBaseModalOpen] = useState(false);
@@ -1036,11 +1052,11 @@ function ModalScaffold({
 }
 
 export function RecipeBookViewPage() {
-	const products = useQuery(api.products.getAllProductsAdmin);
-	const categories = useQuery(api.products.getCategories);
-	const inventory = useQuery(api.inventory.getInventory);
-	const baseRecipes = useQuery(api.inventory.getBaseRecipes);
-	const productRecipes = useQuery(api.inventory.getRecipes);
+	const products = useHybridAllProducts();
+	const categories = useHybridCategories();
+	const inventory = useHybridInventory();
+	const baseRecipes = useHybridBaseRecipes();
+	const productRecipes = useHybridRecipes();
 	const [search, setSearch] = useState("");
 
 	const loading =
@@ -1194,4 +1210,5 @@ export function RecipeBookViewPage() {
 		</div>
 	);
 }
+
 

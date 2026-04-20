@@ -1,23 +1,24 @@
-import { useQuery, useMutation } from "convex/react";
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { api } from "@yumipos/backend/convex/_generated/api";
+import {
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useState,
+	type ReactNode,
+} from "react";
 import { toast } from "sonner";
+import {
+	logoutYumiSession,
+	type YumiSessionRole,
+	type YumiSessionUser,
+	type YumiValidatedSession,
+	validateYumiSession,
+} from "@/lib/yumi-auth-client";
 
 const SESSION_KEY = "yumi_session_token";
 
-export interface YumiUser {
-	_id: string;
-	name: string;
-	username: string;
-	slug?: string;
-	roleId: string;
-	hasFace?: boolean;
-}
-
-export interface YumiRole {
-	name: string;
-	permissions: string[];
-}
+export type YumiUser = YumiSessionUser;
+export type YumiRole = YumiSessionRole;
 
 interface YumiAuthContextType {
 	isLoading: boolean;
@@ -40,42 +41,87 @@ export function YumiAuthProvider({ children }: { children: ReactNode }) {
 		}
 		return null;
 	});
+	const [session, setSession] = useState<YumiValidatedSession | null>(null);
+	const [isLoading, setIsLoading] = useState(Boolean(token));
 
-	const validateSession = useQuery(api.users.validateSession, { token: token ?? undefined });
-	const logoutMutation = useMutation(api.users.logoutSession);
+	const clearSession = useCallback(() => {
+		if (typeof window !== "undefined") {
+			localStorage.removeItem(SESSION_KEY);
+		}
+		setToken(null);
+		setSession(null);
+		setIsLoading(false);
+	}, []);
 
-	const isLoading = token !== null && validateSession === undefined;
-	const isAuthenticated = !!validateSession;
-	const user = validateSession?.user;
-	const role = validateSession?.role;
-	const isAdmin = role?.name?.toLowerCase() === "admin";
+	const refreshSession = useCallback(
+		async (sessionToken: string | null) => {
+			if (!sessionToken) {
+				setSession(null);
+				setIsLoading(false);
+				return;
+			}
+
+			setIsLoading(true);
+			try {
+				const nextSession = await validateYumiSession(sessionToken);
+				if (!nextSession) {
+					clearSession();
+					return;
+				}
+				setSession(nextSession);
+			} catch (error) {
+				console.error("Session validation error:", error);
+				clearSession();
+			} finally {
+				setIsLoading(false);
+			}
+		},
+		[clearSession]
+	);
+
+	useEffect(() => {
+		void refreshSession(token);
+	}, [refreshSession, token]);
+
+	useEffect(() => {
+		if (typeof window === "undefined") return;
+
+		const onStorage = (event: StorageEvent) => {
+			if (event.key === SESSION_KEY) {
+				setToken(event.newValue);
+			}
+		};
+
+		window.addEventListener("storage", onStorage);
+		return () => window.removeEventListener("storage", onStorage);
+	}, []);
+
+	const isAuthenticated = !!session;
+	const user = session?.user;
+	const role = session?.role;
+	const isAdmin = role?.name?.trim().toLowerCase() === "admin";
 	const isStaff = role?.name?.toLowerCase() === "staff" || (!isAdmin && !!role);
 
 	const login = useCallback((newToken: string) => {
-		localStorage.setItem(SESSION_KEY, newToken);
+		if (typeof window !== "undefined") {
+			localStorage.setItem(SESSION_KEY, newToken);
+		}
 		setToken(newToken);
 	}, []);
 
 	const logout = useCallback(async () => {
-		if (token) {
+		const currentToken = token;
+		clearSession();
+
+		if (currentToken) {
 			try {
-				await logoutMutation({ token });
-			} catch (err) {
-				console.error("Logout error:", err);
+				await logoutYumiSession(currentToken);
+			} catch (error) {
+				console.error("Logout error:", error);
 			}
 		}
-		localStorage.removeItem(SESSION_KEY);
-		setToken(null);
 		toast.success("Berhasil keluar");
-	}, [token, logoutMutation]);
-
-	// Auto-cleanup if token is invalid
-	useEffect(() => {
-		if (token && validateSession === null) {
-			localStorage.removeItem(SESSION_KEY);
-			setToken(null);
-		}
-	}, [token, validateSession]);
+	}, [clearSession, token]);
 
 	return (
 		<YumiAuthContext.Provider

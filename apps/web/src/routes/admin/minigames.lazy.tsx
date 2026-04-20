@@ -1,7 +1,13 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
+﻿import { createLazyFileRoute } from "@tanstack/react-router";
+import type { Doc, Id } from "@/types/backend-compat";
+import {
+	useHybridCreateEntryManually,
+	useHybridCreateGame,
+	useHybridDeleteEntry,
+	useHybridDeleteGame,
+	useHybridUpdateEntry,
+	useHybridUpdateGame,
+} from "@/hooks/use-hybrid-write-actions";
 import { Gift, Plus, Save, Trash2, Trophy } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -9,6 +15,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import {
+	useHybridMiniGameEntries,
+	useHybridMiniGameEntryStats,
+	useHybridMiniGamesList,
+} from "@/hooks/use-hybrid-minigames-data";
 
 export const Route = createLazyFileRoute("/admin/minigames")({
 	component: AdminMiniGamesPage,
@@ -140,9 +151,9 @@ function mapGameToForm(game: Doc<"miniGames">): GameForm {
 		endAt: toDateTimeInput(game.endAt),
 		spinDurationMs: game.spinDurationMs ?? 5200,
 		thankYouMessage: game.thankYouMessage ?? "",
-		prizes: game.prizes.map((prize) => ({
-			id: prize.id,
-			label: prize.label,
+			prizes: game.prizes.map((prize: any) => ({
+				id: prize.id,
+				label: prize.label,
 			description: prize.description ?? "",
 			color: prize.color ?? "#f59e0b",
 			weight: prize.weight,
@@ -154,16 +165,16 @@ function mapGameToForm(game: Doc<"miniGames">): GameForm {
 }
 
 function AdminMiniGamesPage() {
-	const games = useQuery(api.minigames.listGames, { includeInactive: true, limit: 100 });
-	const stats = useQuery(api.minigames.getEntryStats, {});
-	const entries = useQuery(api.minigames.listEntries, { limit: 300 });
+	const games = useHybridMiniGamesList({ includeInactive: true, limit: 100 });
+	const stats = useHybridMiniGameEntryStats({});
+	const entries = useHybridMiniGameEntries({ limit: 300 });
 
-	const createGame = useMutation(api.minigames.createGame);
-	const updateGame = useMutation(api.minigames.updateGame);
-	const deleteGame = useMutation(api.minigames.deleteGame);
-	const createEntryManually = useMutation(api.minigames.createEntryManually);
-	const updateEntry = useMutation(api.minigames.updateEntry);
-	const deleteEntry = useMutation(api.minigames.deleteEntry);
+	const createGame = useHybridCreateGame();
+	const updateGame = useHybridUpdateGame();
+	const deleteGame = useHybridDeleteGame();
+	const createEntryManually = useHybridCreateEntryManually();
+	const updateEntry = useHybridUpdateEntry();
+	const deleteEntry = useHybridDeleteEntry();
 
 	const [activeTab, setActiveTab] = useState("settings");
 	const [gameForm, setGameForm] = useState<GameForm>(createEmptyGame);
@@ -608,7 +619,7 @@ function AdminMiniGamesPage() {
 											<div>
 												<p className="font-semibold text-sm">{game.name}</p>
 												<p className="text-muted-foreground text-xs">
-													/{game.brandSlug}/minigames • {game.slug}
+													/{game.brandSlug}/minigames â€¢ {game.slug}
 												</p>
 											</div>
 											<span
@@ -623,7 +634,7 @@ function AdminMiniGamesPage() {
 										</div>
 										<div className="flex items-center justify-between">
 											<p className="text-muted-foreground text-xs">
-												Hadiah: {game.prizes.length} • Spin/Kontak: {game.maxSpinsPerContact}
+												Hadiah: {game.prizes.length} â€¢ Spin/Kontak: {game.maxSpinsPerContact}
 											</p>
 											<div className="flex gap-1">
 												<Button
@@ -996,3 +1007,4 @@ function SwitchField({
 		</label>
 	);
 }
+

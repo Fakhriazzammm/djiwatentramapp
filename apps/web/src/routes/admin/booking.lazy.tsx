@@ -1,7 +1,5 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
+﻿import { createLazyFileRoute } from "@tanstack/react-router";
+import type { Id } from "@/types/backend-compat";
 import {
 	Calendar,
 	Check,
@@ -57,12 +55,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useHybridAllProducts, useHybridCategories } from "@/hooks/use-hybrid-pos-data";
+import {
+	useHybridBookingDateCapacities,
+	useHybridBookingMonthSummary,
+	useHybridBookingOrders,
+	useHybridBookingSettings,
+} from "@/hooks/use-hybrid-booking-data";
+import {
+	useHybridCreateBookingOrder,
+	useHybridDeleteBookingOrder,
+	useHybridPatchBookingOrder,
+	useHybridSetBookingBulkDateCapacity,
+	useHybridSetBookingDateCapacity,
+	useHybridUpdateBookingSettings,
+	useHybridUpdateBookingStatus,
+} from "@/hooks/use-hybrid-write-actions";
 
 export const Route = createLazyFileRoute("/admin/booking")({
 	component: BookingSettingsPage,
 });
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const MONTH_NAMES = [
 	"Januari","Februari","Maret","April","Mei","Juni",
@@ -154,7 +168,7 @@ const PAY_COLOR: Record<string, string> = {
 	cancelled: "bg-red-100 text-red-700",
 };
 
-// ─── Mini Calendar (admin view) ───────────────────────────────────────────────
+// â”€â”€â”€ Mini Calendar (admin view) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function AdminCalendar({
 	year,
@@ -292,7 +306,7 @@ function AdminCalendar({
 	);
 }
 
-// ─── Order Row ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Order Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function OrderRow({
 	order,
@@ -452,7 +466,7 @@ function OrderRow({
 						<div className="space-y-1">
 							{order.items.map((item, i) => (
 								<div className="flex justify-between text-sm" key={i}>
-									<span>{item.name} ×{item.quantity}</span>
+									<span>{item.name} Ã—{item.quantity}</span>
 									<span className="font-medium">Rp {(item.price * item.quantity).toLocaleString("id-ID")}</span>
 								</div>
 							))}
@@ -508,19 +522,19 @@ function OrderRow({
 	);
 }
 
-// ─── Main Component ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function BookingSettingsPage() {
-	const settings = useQuery(api.booking.getSettings, { slug: "booking" });
-	const updateSettings = useMutation(api.booking.updateSettings);
-	const allProducts = useQuery(api.products.getAllProductsAdmin, {});
-	const categories = useQuery(api.products.getCategories, {});
-	const updateBookingStatus = useMutation(api.booking.updateBookingStatus);
-	const patchBookingOrder = useMutation(api.booking.patchBookingOrder);
-	const deleteBookingOrder = useMutation(api.booking.deleteBookingOrder);
-	const setDateCapacity = useMutation(api.booking.setDateCapacity);
-	const setBulkDateCapacity = useMutation(api.booking.setBulkDateCapacity);
-	const dateCapacities = useQuery(api.booking.getDateCapacities, { slug: "booking" });
+	const settings = useHybridBookingSettings("booking");
+	const updateSettings = useHybridUpdateBookingSettings();
+	const allProducts = useHybridAllProducts();
+	const categories = useHybridCategories();
+	const updateBookingStatus = useHybridUpdateBookingStatus();
+	const patchBookingOrder = useHybridPatchBookingOrder();
+	const deleteBookingOrder = useHybridDeleteBookingOrder();
+	const setDateCapacity = useHybridSetBookingDateCapacity();
+	const setBulkDateCapacity = useHybridSetBookingBulkDateCapacity();
+	const dateCapacities = useHybridBookingDateCapacities("booking");
 
 	const capacitySectionRef = useRef<HTMLDivElement>(null);
 
@@ -564,12 +578,9 @@ function BookingSettingsPage() {
 	const [isSaving, setIsSaving] = useState(false);
 
 	const yearMonth = `${calYear}-${String(calMonth + 1).padStart(2, "0")}`;
-	const summary = useQuery(api.booking.getMonthBookingSummary, {
-		slug: "booking",
-		yearMonth,
-	});
+	const summary = useHybridBookingMonthSummary("booking", yearMonth);
 
-	const allOrders = useQuery(api.booking.getBookingOrders, {
+	const allOrders = useHybridBookingOrders({
 		slug: "booking",
 		date: selectedDate ?? undefined,
 		startDate: activeTab === "orders" ? startDate : undefined,
@@ -726,7 +737,7 @@ function BookingSettingsPage() {
 	// Create dialog state
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const [isCreating, setIsCreating] = useState(false);
-	const createBookingOrder = useMutation(api.booking.createBookingOrder);
+	const createBookingOrder = useHybridCreateBookingOrder();
 	const [createFormData, setCreateFormData] = useState({
 		customerName: "",
 		customerPhone: "",
@@ -913,7 +924,7 @@ function BookingSettingsPage() {
 				))}
 			</div>
 
-			{/* ── CALENDAR TAB ── */}
+			{/* â”€â”€ CALENDAR TAB â”€â”€ */}
 			{activeTab === "calendar" && (
 				<div className="space-y-4">
 					<AdminCalendar
@@ -934,7 +945,7 @@ function BookingSettingsPage() {
 						<div className="space-y-3">
 							<div className="flex items-center justify-between">
 								<h3 className="font-bold text-foreground">
-									Booking — {formatDate(selectedDate)}
+									Booking â€” {formatDate(selectedDate)}
 								</h3>
 								<button
 									className="text-muted-foreground text-xs hover:text-foreground"
@@ -976,7 +987,7 @@ function BookingSettingsPage() {
 				</div>
 			)}
 
-			{/* ── ORDERS TAB ── */}
+			{/* â”€â”€ ORDERS TAB â”€â”€ */}
 			{activeTab === "orders" && (
 				<div className="space-y-4">
 					{/* Toolbar */}
@@ -1155,7 +1166,7 @@ function BookingSettingsPage() {
 				</div>
 			)}
 
-			{/* ── CAPACITY TAB ── */}
+			{/* â”€â”€ CAPACITY TAB â”€â”€ */}
 			{activeTab === "capacity" && (
 				<div className="space-y-6" ref={capacitySectionRef}>
 					{/* Add/edit capacity form */}
@@ -1339,16 +1350,16 @@ function BookingSettingsPage() {
 														<div className="flex flex-col gap-1 items-center">
 															<span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-0.5 font-bold text-primary text-[10px]">
 																<Users className="h-3 w-3" />
-																{cap.maxPeople === 0 ? "∞" : cap.maxPeople} org
+																{cap.maxPeople === 0 ? "âˆž" : cap.maxPeople} org
 															</span>
 															<span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-0.5 font-bold text-purple-700 text-[10px]">
 																<Smartphone className="h-3 w-3 rotate-90" />
-																{cap.maxTables === 0 ? "∞" : cap.maxTables} meja
+																{cap.maxTables === 0 ? "âˆž" : cap.maxTables} meja
 															</span>
 														</div>
 													</td>
 													<td className="px-4 py-3 text-muted-foreground text-xs">
-														{cap.notes || "—"}
+														{cap.notes || "â€”"}
 													</td>
 													<td className="px-4 py-3 text-right">
 														<button
@@ -1378,7 +1389,7 @@ function BookingSettingsPage() {
 				</div>
 			)}
 
-			{/* ── GENERAL SETTINGS TAB ── */}
+			{/* â”€â”€ GENERAL SETTINGS TAB â”€â”€ */}
 			{activeTab === "general" && (
 				<section className="space-y-5 rounded-2xl border border-border bg-card p-5 md:p-8">
 					<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -1452,7 +1463,7 @@ function BookingSettingsPage() {
 				</section>
 			)}
 
-			{/* ── PRODUCTS TAB ── */}
+			{/* â”€â”€ PRODUCTS TAB â”€â”€ */}
 			{activeTab === "products" && (
 				<section className="rounded-2xl border border-border bg-card p-5 md:p-8 space-y-4">
 					<div className="flex items-center justify-between">
@@ -1541,7 +1552,7 @@ function BookingSettingsPage() {
 				</section>
 			)}
 
-			{/* ── FORM BUILDER TAB ── */}
+			{/* â”€â”€ FORM BUILDER TAB â”€â”€ */}
 			{activeTab === "form" && (
 				<section className="rounded-2xl border border-border bg-card p-5 md:p-8 space-y-6">
 					<div className="flex items-center justify-between">
@@ -1909,3 +1920,4 @@ function BookingSettingsPage() {
 		</div>
 	);
 }
+

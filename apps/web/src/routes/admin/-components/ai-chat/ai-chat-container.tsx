@@ -1,6 +1,4 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useAction, useMutation, useQuery } from "convex/react";
-import { AnimatePresence, motion } from "framer-motion";
+﻿import { AnimatePresence, motion } from "framer-motion";
 import { Bot, Calendar, Sparkles, Bell, TrendingUp, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -23,6 +21,45 @@ import { SessionHistory } from "./session-history";
 import { PredictionsPanel } from "./predictions-panel";
 import { SuggestionsPanel } from "./suggestions-panel";
 import { TasksPanel } from "./tasks-panel";
+import { useHybridInventory, useHybridOrders } from "@/hooks/use-hybrid-pos-data";
+import {
+	useHybridChatSessions,
+	useHybridConversationContext,
+	useHybridPendingTasks,
+	useHybridPredictBestPromoTime,
+	useHybridPredictBusyHours,
+	useHybridPredictDailyRevenue,
+	useHybridPredictStockOut,
+	useHybridPredictTrendingProducts,
+	useHybridProactiveSuggestions,
+	useHybridStreamingMessage,
+} from "@/hooks/use-hybrid-finance-analytics-data";
+import {
+	useHybridAddStock,
+	useHybridBulkScanImageData,
+	useHybridCompleteTask,
+	useHybridCreateBookingOrder,
+	useHybridCreateChatSession,
+	useHybridCreateDiscount,
+	useHybridCreateInventoryItem,
+	useHybridCreateOrder,
+	useHybridCreateProduct,
+	useHybridDeleteChatSession,
+	useHybridDeleteTransaction,
+	useHybridDismissTask,
+	useHybridEndShift,
+	useHybridRecordExpenseIntake,
+	useHybridRecordStockPurchase,
+	useHybridSaveConversationContext,
+	useHybridSetFinancialTarget,
+	useHybridStartShift,
+	useHybridUpdateBookingStatus,
+	useHybridUpdateDiscount,
+	useHybridUpdateOrderStatus,
+	useHybridUpdateProduct,
+	useHybridYumiChat,
+	useHybridGenerateBusinessBriefing,
+} from "@/hooks/use-hybrid-write-actions";
 
 interface AIChatContainerProps {
 	mode?: ChatMode;
@@ -75,30 +112,30 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const navigate = useNavigate();
 
-	const yumiChat = useAction(api.ai.yumiChat);
-	const bulkScanImageDataAction = useAction(api.ai.bulkScanImageData);
-	const generateBusinessBriefingAction = useAction(api.ai.generateBusinessBriefing);
-	const recordExpenseMutation = useMutation((api as any).expenseIntake.recordExpense);
-	const deleteTransactionMutation = useMutation(api.finance.deleteTransaction);
-	const createSessionMutation = useMutation(api.aiMemory.createChatSession);
-	const deleteSessionMutation = useMutation(api.aiMemory.deleteChatSession);
-	const saveConversationMutation = useMutation(api.aiMemory.saveConversationContext);
-	const completeTaskMutation = useMutation(api.aiMemory.completeTask);
-	const dismissTaskMutation = useMutation(api.aiMemory.dismissTask);
-	const recordStockPurchaseMutation = useMutation(api.stockPurchases.recordStockPurchase);
-	const createProductMutation = useMutation(api.products.createProduct);
-	const updateProductMutation = useMutation(api.products.updateProduct);
-	const createDiscountMutation = useMutation(api.discounts.createDiscount);
-	const toggleDiscountMutation = useMutation(api.discounts.updateDiscount);
-	const createOrderMutation = useMutation(api.orders.createOrder);
-	const updateOrderStatusMutation = useMutation(api.orders.updateOrderStatus);
-	const createBookingOrderMutation = useMutation(api.booking.createBookingOrder);
-	const updateBookingStatusMutation = useMutation(api.booking.updateBookingStatus);
-	const createInventoryItemMutation = useMutation(api.inventory.createInventoryItem);
-	const addStockMutation = useMutation(api.inventory.addStock);
-	const setFinancialTargetMutation = useMutation(api.finance.setFinancialTarget);
-	const startShiftMutation = useMutation(api.finance.startShift);
-	const endShiftMutation = useMutation(api.finance.endShift);
+	const yumiChat = useHybridYumiChat();
+	const bulkScanImageDataAction = useHybridBulkScanImageData();
+	const generateBusinessBriefingAction = useHybridGenerateBusinessBriefing();
+	const recordExpenseMutation = useHybridRecordExpenseIntake();
+	const deleteTransactionMutation = useHybridDeleteTransaction();
+	const createSessionMutation = useHybridCreateChatSession();
+	const deleteSessionMutation = useHybridDeleteChatSession();
+	const saveConversationMutation = useHybridSaveConversationContext();
+	const completeTaskMutation = useHybridCompleteTask();
+	const dismissTaskMutation = useHybridDismissTask();
+	const recordStockPurchaseMutation = useHybridRecordStockPurchase();
+	const createProductMutation = useHybridCreateProduct();
+	const updateProductMutation = useHybridUpdateProduct();
+	const createDiscountMutation = useHybridCreateDiscount();
+	const toggleDiscountMutation = useHybridUpdateDiscount();
+	const createOrderMutation = useHybridCreateOrder();
+	const updateOrderStatusMutation = useHybridUpdateOrderStatus();
+	const createBookingOrderMutation = useHybridCreateBookingOrder();
+	const updateBookingStatusMutation = useHybridUpdateBookingStatus();
+	const createInventoryItemMutation = useHybridCreateInventoryItem();
+	const addStockMutation = useHybridAddStock();
+	const setFinancialTargetMutation = useHybridSetFinancialTarget();
+	const startShiftMutation = useHybridStartShift();
+	const endShiftMutation = useHybridEndShift();
 
 	const [actionButtonDone, setActionButtonDone] = useState<Set<string>>(new Set());
 	const [actionButtonLoading, setActionButtonLoading] = useState<Set<string>>(new Set());
@@ -273,24 +310,18 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 		[recordExpenseMutation]
 	);
 
-	const chatSessions = useQuery(api.aiMemory.getChatSessions, {});
-	const loadConversationQuery = useQuery(
-		api.aiMemory.getConversationContext,
-		currentSessionId ? { sessionId: currentSessionId } : "skip"
-	);
-	const streamingMessage = useQuery(
-		api.ai.getStreamingMessage,
-		streamSessionId ? { sessionId: streamSessionId } : "skip"
-	);
-	const proactiveSuggestions = useQuery(api.ai.getProactiveSuggestions, {});
-	const stockPredictions = useQuery(api.ai.predictStockOut, { daysAhead: 7 });
-	const busyHoursPrediction = useQuery(api.ai.predictBusyHours, {});
-	const revenuePrediction = useQuery(api.ai.predictDailyRevenue, { daysAhead: 7 });
-	const trendingProducts = useQuery(api.ai.predictTrendingProducts, { daysAhead: 7 });
-	const bestPromoTime = useQuery(api.ai.predictBestPromoTime, {});
-	const pendingTasks = useQuery(api.aiMemory.getPendingTasks, {});
-	const inventory = useQuery(api.inventory.getInventory, {});
-	const orders = useQuery(api.orders.getOrders, {});
+	const chatSessions = useHybridChatSessions();
+	const loadConversationQuery = useHybridConversationContext(currentSessionId);
+	const streamingMessage = useHybridStreamingMessage(streamSessionId);
+	const proactiveSuggestions = useHybridProactiveSuggestions();
+	const stockPredictions = useHybridPredictStockOut(7);
+	const busyHoursPrediction = useHybridPredictBusyHours();
+	const revenuePrediction = useHybridPredictDailyRevenue(7);
+	const trendingProducts = useHybridPredictTrendingProducts(7);
+	const bestPromoTime = useHybridPredictBestPromoTime();
+	const pendingTasks = useHybridPendingTasks();
+	const inventory = useHybridInventory();
+	const orders = useHybridOrders();
 
 	useEffect(() => {
 		if (!isStreaming) return;
@@ -1043,31 +1074,31 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 														{isPOS ? (
 															<>
 																<button onClick={() => sendMessage("Catat pengeluaran")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">💰</span><p className="mt-1">Catat Pengeluaran</p>
+																	<span className="text-base">ðŸ’°</span><p className="mt-1">Catat Pengeluaran</p>
 																</button>
 																<button onClick={() => sendMessage("Ringkas pesanan hari ini")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">📋</span><p className="mt-1">Ringkas Pesanan</p>
+																	<span className="text-base">ðŸ“‹</span><p className="mt-1">Ringkas Pesanan</p>
 																</button>
 																<button onClick={() => sendMessage("Berapa total pendapatan hari ini?")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">💵</span><p className="mt-1">Total Pendapatan</p>
+																	<span className="text-base">ðŸ’µ</span><p className="mt-1">Total Pendapatan</p>
 																</button>
 																<button onClick={() => sendMessage("Scan struk belanja")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">📸</span><p className="mt-1">Scan Struk</p>
+																	<span className="text-base">ðŸ“¸</span><p className="mt-1">Scan Struk</p>
 																</button>
 															</>
 														) : (
 															<>
 																<button onClick={() => sendMessage("Bagaimana performa toko hari ini?")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">📊</span><p className="mt-1">Performa Hari Ini</p>
+																	<span className="text-base">ðŸ“Š</span><p className="mt-1">Performa Hari Ini</p>
 																</button>
 																<button onClick={() => sendMessage("Apa saja stok yang rendah?")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">⚠️</span><p className="mt-1">Cek Stok Rendah</p>
+																	<span className="text-base">âš ï¸</span><p className="mt-1">Cek Stok Rendah</p>
 																</button>
 																<button onClick={() => sendMessage("Buatkan laporan laba rugi bulan ini")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">📈</span><p className="mt-1">Laporan Laba Rugi</p>
+																	<span className="text-base">ðŸ“ˆ</span><p className="mt-1">Laporan Laba Rugi</p>
 																</button>
 																<button onClick={() => sendMessage("Prediksi jam sibuk besok")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">🔮</span><p className="mt-1">Prediksi Jam Sibuk</p>
+																	<span className="text-base">ðŸ”®</span><p className="mt-1">Prediksi Jam Sibuk</p>
 																</button>
 															</>
 														)}

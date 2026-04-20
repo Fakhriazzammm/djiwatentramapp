@@ -1,6 +1,4 @@
-import { createLazyFileRoute, Link } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
+﻿import { createLazyFileRoute, Link } from "@tanstack/react-router";
 import { AnimatePresence, motion, LayoutGroup } from "framer-motion";
 import {
 	Check,
@@ -22,6 +20,19 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
+import {
+	useHybridAllProducts,
+	useHybridCategories,
+	useHybridInventory,
+} from "@/hooks/use-hybrid-pos-data";
+import { useHybridRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
+import { useHybridTrackOrders } from "@/hooks/use-hybrid-ops-data";
+import {
+	useHybridBulkUpdateProducts,
+	useHybridDeleteProduct,
+	useHybridUpdateOrderItemStatus,
+	useHybridUpdateProduct,
+} from "@/hooks/use-hybrid-write-actions";
 
 export const Route = createLazyFileRoute("/admin/kitchen" as any)({
 	component: KitchenMonitorPage,
@@ -29,12 +40,12 @@ export const Route = createLazyFileRoute("/admin/kitchen" as any)({
 
 function KitchenMonitorPage() {
 	const { tab = "orders" } = Route.useSearch() as { tab?: string };
-	const orders = useQuery(api.kitchenBar.getTrackOrders, { track: "kitchen" });
+	const orders = useHybridTrackOrders("kitchen");
 	
-	const allProducts = useQuery(api.products.getAllProductsAdmin);
-	const allCategories = useQuery(api.products.getCategories);
-	const inventory = useQuery(api.inventory.getInventory);
-	const recipes = useQuery(api.inventory.getRecipes);
+	const allProducts = useHybridAllProducts();
+	const allCategories = useHybridCategories();
+	const inventory = useHybridInventory();
+	const recipes = useHybridRecipes();
 
 	const products = useMemo(() => {
 		if (!allProducts || !allCategories) return undefined;
@@ -142,7 +153,7 @@ interface KanbanItem {
 }
 
 function ItemsKanban({ orders }: { orders: any[] | undefined }) {
-	const updateStatus = useMutation(api.kitchenBar.updateOrderItemStatus);
+	const updateStatus = useHybridUpdateOrderItemStatus();
 
 	// Flatten orders into individual items
 	const items = useMemo<KanbanItem[]>(() => {
@@ -290,7 +301,7 @@ function KanbanCard({
 						<h4 className="font-bold text-slate-800 leading-tight">{item.productName}</h4>
 						<div className="mt-1 flex items-center gap-1 font-bold text-[9px] text-slate-400 uppercase tracking-wider md:gap-1.5 md:text-[10px]">
 							<span>Meja {item.tableNumber || "Takeaway"}</span>
-							<span>•</span>
+							<span>â€¢</span>
 							<span>#{item.orderNumber.split("-").pop()}</span>
 						</div>
 					</div>
@@ -351,9 +362,9 @@ function FastStockTable({
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [bulkQuantity, setBulkQuantity] = useState<number>(0);
 
-	const updateProduct = useMutation(api.products.updateProduct);
-	const deleteProduct = useMutation(api.products.deleteProduct);
-	const bulkUpdate = useMutation(api.products.bulkUpdateProducts);
+	const updateProduct = useHybridUpdateProduct();
+	const deleteProduct = useHybridDeleteProduct();
+	const bulkUpdate = useHybridBulkUpdateProducts();
 
 	const filteredProducts = useMemo(() => {
 		if (!products) return [];
@@ -631,7 +642,7 @@ function FastStockTable({
 														<h4 className="line-clamp-2 font-bold text-slate-800 leading-tight">{product.name}</h4>
 														<div className="mt-1 flex flex-wrap items-center gap-1.5 font-bold text-[9px] uppercase tracking-widest md:gap-2 md:text-[10px]">
 															<span className="text-orange-600">Rp {product.price.toLocaleString()}</span>
-															<span className="text-slate-300">•</span>
+															<span className="text-slate-300">â€¢</span>
 															<div className="flex items-center gap-1.5">
 																<span className={product.quantity <= 0 ? "text-red-500" : "text-green-600"}>Ready: {product.quantity}</span>
 																<div className="ml-1 flex items-center gap-1">
@@ -692,7 +703,7 @@ function FastStockTable({
 																	key={ing.inventoryId}
 																>
 																	{invItem?.ingredientName || "Unknown"}
-																	<span className="opacity-50">•</span>
+																	<span className="opacity-50">â€¢</span>
 																	{invItem ? `${invItem.quantity} ${invItem.unit}` : "Kosong"}
 																</div>
 															);

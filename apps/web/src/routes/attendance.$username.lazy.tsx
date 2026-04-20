@@ -1,9 +1,7 @@
 import { createLazyFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "convex/react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { Footer } from "@/components/layout/Footer";
-import { api } from "@yumipos/backend/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -26,6 +24,16 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
+import {
+	useHybridPrivateStaffData,
+	useHybridStaffBySlug,
+	useHybridStaffLogs,
+	useHybridStaffStats,
+} from "@/hooks/use-hybrid-attendance-data";
+import {
+	useHybridUpdateUserPin,
+	useHybridUpdateUserProfile,
+} from "@/hooks/use-hybrid-write-actions";
 
 const MONTHS = [
 	"Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -49,8 +57,8 @@ function StaffProfilePage() {
 	const [oldPin, setOldPin] = useState("");
 	const [isUpdatingPin, setIsUpdatingPin] = useState(false);
 
-	const updatePinMutation = useMutation(api.users.updatePin);
-	const updateProfileMutation = useMutation(api.users.updateProfile);
+	const updatePinMutation = useHybridUpdateUserPin();
+	const updateProfileMutation = useHybridUpdateUserProfile();
 
 	const [isEditMode, setIsEditMode] = useState(false);
 	const [editName, setEditName] = useState("");
@@ -70,17 +78,21 @@ function StaffProfilePage() {
 		}
 	}, [isAuthenticated, authUser, isAdmin, username]);
 	
-	const staff = useQuery(api.users.getUserBySlug, { slug: username });
-	const stats = useQuery(api.attendance.getStaffStats, 
-		(isUnlocked && staff) ? { userId: staff._id, month: selectedMonth, year: selectedYear } : undefined
+	const staff = useHybridStaffBySlug(username);
+	const stats = useHybridStaffStats(
+		isUnlocked && staff
+			? { userId: staff._id, month: selectedMonth, year: selectedYear }
+			: undefined
 	);
 
-	const logs = useQuery(api.attendance.getStaffLogs, 
-		(isUnlocked && staff) ? { userId: staff._id, month: selectedMonth, year: selectedYear } : undefined
+	const logs = useHybridStaffLogs(
+		isUnlocked && staff
+			? { userId: staff._id, month: selectedMonth, year: selectedYear }
+			: undefined
 	);
-	
-	const privateData = useQuery(api.users.getPrivateStaffData, 
-		(isUnlocked && staff) ? { slug: username, token: token } : undefined
+
+	const privateData = useHybridPrivateStaffData(
+		isUnlocked && staff ? { slug: username, token } : undefined
 	);
 
 	useEffect(() => {

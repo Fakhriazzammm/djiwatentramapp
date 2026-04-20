@@ -1,6 +1,5 @@
-import { useQuery } from "convex/react";
 import { useEffect } from "react";
-import { api } from "@yumipos/backend/convex/_generated/api";
+import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 
 function upsertMeta(selector: string, attrs: Record<string, string>) {
 	let el = document.head.querySelector(selector) as HTMLMetaElement | null;
@@ -26,7 +25,7 @@ function upsertLink(selector: string, attrs: Record<string, string>) {
 }
 
 export function useSiteBrandingMetadata() {
-	const siteSettings = useQuery(api.site_settings.getSettings);
+	const siteSettings = useHybridSiteSettings();
 
 	useEffect(() => {
 		if (!siteSettings) return;

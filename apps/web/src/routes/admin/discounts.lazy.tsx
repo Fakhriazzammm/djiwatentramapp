@@ -1,7 +1,11 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import { api } from "@yumipos/backend/convex/_generated/api";
-import type { Doc, Id } from "@yumipos/backend/convex/_generated/dataModel";
-import { useAction, useMutation, useQuery } from "convex/react";
+﻿import { createLazyFileRoute } from "@tanstack/react-router";
+import type { Doc, Id } from "@/types/backend-compat";
+import {
+	useHybridCreateDiscount,
+	useHybridDeleteDiscount,
+	useHybridGenerateDiscountStrategy,
+	useHybridUpdateDiscount,
+} from "@/hooks/use-hybrid-write-actions";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	AlertCircle,
@@ -22,6 +26,12 @@ import {
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+	useHybridAllDiscounts,
+	useHybridAllProducts,
+	useHybridCategories,
+	useHybridOrders,
+} from "@/hooks/use-hybrid-pos-data";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createLazyFileRoute("/admin/discounts")({
@@ -29,16 +39,16 @@ export const Route = createLazyFileRoute("/admin/discounts")({
 });
 
 function AdminDiscountsPage() {
-	const discounts = useQuery(api.discounts.getDiscounts);
-	const categories = useQuery(api.products.getCategories);
-	const products = useQuery(api.products.getAllProductsAdmin);
+	const discounts = useHybridAllDiscounts();
+	const categories = useHybridCategories();
+	const products = useHybridAllProducts();
 
-	const createDiscount = useMutation(api.discounts.createDiscount);
-	const updateDiscount = useMutation(api.discounts.updateDiscount);
-	const deleteDiscount = useMutation(api.discounts.deleteDiscount);
+	const createDiscount = useHybridCreateDiscount();
+	const updateDiscount = useHybridUpdateDiscount();
+	const deleteDiscount = useHybridDeleteDiscount();
 
-	const orders = useQuery(api.orders.getOrders, {});
-	const generateDiscountStrategy = useAction(api.ai.generateDiscountStrategy);
+	const orders = useHybridOrders();
+	const generateDiscountStrategy = useHybridGenerateDiscountStrategy();
 
 	const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
 	const [loadingAi, setLoadingAi] = useState(false);
@@ -777,14 +787,14 @@ function AdminDiscountsPage() {
 																	month: "short",
 																}
 															)
-														: "—"}
+														: "â€”"}
 													{" - "}
 													{d.endDate
 														? new Date(d.endDate).toLocaleDateString("id-ID", {
 																day: "numeric",
 																month: "short",
 															})
-														: "—"}
+														: "â€”"}
 												</span>
 											</div>
 										)}
@@ -1288,11 +1298,12 @@ function AdminDiscountsPage() {
 												<button
 													className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground text-sm transition-all hover:brightness-110"
 													onClick={() => {
-														const items =
+														const selectableItems = (
 															formData.targetType === "CATEGORY"
-																? categories || []
-																: products || [];
-														const filteredIds = items
+																? categories ?? []
+																: products ?? []
+														) as Array<{ _id: string; name: string }>;
+														const filteredIds = selectableItems
 															.filter((item: any) =>
 																item.name
 																	.toLowerCase()
@@ -1308,10 +1319,12 @@ function AdminDiscountsPage() {
 											</div>
 
 											<div className="scrollbar-thin max-h-48 space-y-1 overflow-y-auto rounded-lg border bg-background p-2">
-												{(formData.targetType === "CATEGORY"
-													? categories
-													: products
-												)
+												{((formData.targetType === "CATEGORY"
+													? categories ?? []
+													: products ?? []) as Array<{
+													_id: string;
+													name: string;
+												}>)
 													?.filter((item: any) =>
 														item.name
 															.toLowerCase()
@@ -1521,3 +1534,6 @@ function AdminDiscountsPage() {
 		</div>
 	);
 }
+
+
+

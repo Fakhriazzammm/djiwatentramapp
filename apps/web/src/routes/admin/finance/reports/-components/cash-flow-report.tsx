@@ -1,5 +1,3 @@
-import { api } from "@yumipos/backend/convex/_generated/api";
-import { useQuery } from "convex/react";
 import { ArrowDownLeft, ArrowUpRight, Wallet } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -15,13 +13,14 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import type { DateRange } from "./period-selector";
 import { formatCurrencyIDR } from "@/lib/export-utils";
+import { useHybridCashFlowReport } from "@/hooks/use-hybrid-finance-analytics-data";
 
 interface Props {
 	range: DateRange;
 }
 
 export function CashFlowReport({ range }: Props) {
-	const data = useQuery(api.finance.getCashFlowReport, {
+	const data = useHybridCashFlowReport({
 		startDate: range.startDate,
 		endDate: range.endDate,
 	});
