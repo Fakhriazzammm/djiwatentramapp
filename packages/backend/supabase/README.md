@@ -1,4 +1,4 @@
-﻿# Supabase Backend Scripts
+# Supabase Backend Scripts
 
 This folder contains migration SQL and data transformation scripts for the Supabase backend.
 

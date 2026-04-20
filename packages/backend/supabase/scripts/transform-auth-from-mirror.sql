@@ -1,4 +1,4 @@
-﻿insert into public.yumi_roles (
+insert into public.yumi_roles (
   source_id,
   name,
   permissions,

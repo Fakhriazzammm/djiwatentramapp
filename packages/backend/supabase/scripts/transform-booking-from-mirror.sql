@@ -1,4 +1,4 @@
-﻿insert into pos.booking_settings (
+insert into pos.booking_settings (
   source_id,
   slug,
   title,

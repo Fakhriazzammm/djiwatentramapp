@@ -1,4 +1,4 @@
-﻿create schema if not exists legacy_mirror;
+create schema if not exists legacy_mirror;
 
 create table if not exists legacy_mirror.documents (
   table_name text not null,

@@ -1,4 +1,4 @@
-﻿create or replace view public.pos_hpp_calculations
+create or replace view public.pos_hpp_calculations
 with (security_invoker = true) as
 select
   document_id as _id,

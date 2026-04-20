@@ -1,4 +1,4 @@
-﻿insert into pos.financial_targets (
+insert into pos.financial_targets (
   source_id,
   month,
   target_revenue,

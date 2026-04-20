@@ -1,4 +1,4 @@
-﻿insert into pos.categories (
+insert into pos.categories (
   source_id,
   name,
   display_order,

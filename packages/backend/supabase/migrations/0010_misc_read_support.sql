@@ -1,4 +1,4 @@
-﻿create or replace view public.pos_variation_presets
+create or replace view public.pos_variation_presets
 with (security_invoker = true) as
 select
   d.document_id as _id,

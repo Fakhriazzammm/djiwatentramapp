@@ -1,4 +1,4 @@
-﻿insert into pos.inventory_stores (
+insert into pos.inventory_stores (
   source_id,
   name,
   store_type,
