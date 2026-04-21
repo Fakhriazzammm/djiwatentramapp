@@ -4,6 +4,7 @@ export type YumiPublicUser = {
 	_id: string;
 	name: string;
 	slug?: string;
+	username?: string;
 	initial: string;
 	hasFace: boolean;
 };
@@ -149,20 +150,10 @@ async function fetchRoleById(roleId: string) {
 
 export async function listPublicYumiUsers() {
 	try {
-		const data = await invokeAuth<{ users: YumiPublicUser[] }>({
-			action: "listPublicUsers",
-		});
-		return data.users ?? [];
-	} catch (invokeError) {
-		console.warn(
-			"[yumi-auth] listPublicUsers failed, falling back to pos_users_public",
-			invokeError
-		);
-
 		const supabase = createClient();
 		const { data, error } = await supabase
 			.from("pos_users_public")
-			.select("_id,name,slug,initial,hasFace,isActive")
+			.select("_id,name,slug,username,initial,hasFace,isActive")
 			.eq("isActive", true)
 			.order("name", { ascending: true });
 
@@ -170,13 +161,42 @@ export async function listPublicYumiUsers() {
 			throw new Error(error.message || "Gagal memuat daftar pengguna");
 		}
 
-		return (data ?? []).map((row: any) => ({
-			_id: String(row._id ?? ""),
-			name: String(row.name ?? ""),
-			slug: row.slug ? String(row.slug) : undefined,
-			initial: String(row.initial ?? "?"),
-			hasFace: Boolean(row.hasFace),
-		}));
+		const publicUsers = (data ?? [])
+			.map((row: any) => {
+				const name = String(row.name ?? "").trim();
+				const username = String(row.username ?? "").trim();
+				const fallbackInitial =
+					name.charAt(0).toUpperCase() || username.charAt(0).toUpperCase() || "?";
+
+				return {
+					_id: String(row._id ?? ""),
+					name,
+					slug: row.slug ? String(row.slug) : undefined,
+					username: username || undefined,
+					initial: String(row.initial ?? (fallbackInitial || "?")),
+					hasFace: Boolean(row.hasFace),
+				} satisfies YumiPublicUser;
+			})
+			.filter((row: YumiPublicUser) => row._id && row.name);
+
+		if (publicUsers.length > 0) {
+			return publicUsers;
+		}
+	} catch (viewError) {
+		console.warn(
+			"[yumi-auth] listPublicUsers via pos_users_public failed, falling back to edge function",
+			viewError
+		);
+	}
+
+	try {
+		const data = await invokeAuth<{ users: YumiPublicUser[] }>({
+			action: "listPublicUsers",
+		});
+		return (data.users ?? []).filter((user) => user?._id && user?.name);
+	} catch (invokeError) {
+		console.warn("[yumi-auth] listPublicUsers edge function fallback failed", invokeError);
+		throw new Error("Gagal memuat daftar pengguna");
 	}
 }
 

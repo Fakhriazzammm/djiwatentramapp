@@ -56,9 +56,17 @@ function LoginPage() {
 	}, []);
 
 	const filteredUsers = useMemo(() => {
-		return users.filter((u) => 
-			u.name.toLowerCase().includes(searchQuery.toLowerCase())
-		);
+		const keyword = searchQuery.trim().toLowerCase();
+		if (!keyword) {
+			return users;
+		}
+
+		return users.filter((u) => {
+			const haystacks = [u.name, u.slug, u.username, u.initial]
+				.filter((value): value is string => Boolean(value))
+				.map((value) => value.toLowerCase());
+			return haystacks.some((value) => value.includes(keyword));
+		});
 	}, [users, searchQuery]);
 
 	const handlePinInput = (num: string) => {
@@ -147,17 +155,19 @@ function LoginPage() {
 								/>
 							</div>
 
-							{searchQuery.trim().length > 0 && (
-								<div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-4 pt-2 md:pt-4">
-									{isUsersLoading ? (
-										Array.from({ length: 6 }).map((_, index) => (
+							<div className="pt-2 md:pt-4">
+								{isUsersLoading ? (
+									<div className="grid grid-cols-3 gap-2 md:grid-cols-4 md:gap-4">
+										{Array.from({ length: 6 }).map((_, index) => (
 											<div
 												key={index}
 												className="h-24 rounded-2xl bg-muted animate-pulse md:h-32"
 											/>
-										))
-									) : (
-										filteredUsers.map((user) => (
+										))}
+									</div>
+								) : filteredUsers.length > 0 ? (
+									<div className="grid grid-cols-3 gap-2 md:grid-cols-4 md:gap-4">
+										{filteredUsers.map((user) => (
 											<motion.button
 												key={user._id}
 												whileHover={{ y: -4 }}
@@ -170,10 +180,19 @@ function LoginPage() {
 												</div>
 												<span className="text-[11px] md:text-sm font-bold tracking-tight text-foreground text-center line-clamp-2 w-full max-w-[80px] md:max-w-[100px] leading-snug">{user.name}</span>
 											</motion.button>
-										))
-									)}
-								</div>
-							)}
+										))}
+									</div>
+								) : (
+									<div className="mx-auto max-w-md rounded-3xl border border-border/70 bg-card/80 px-5 py-6 text-center shadow-sm backdrop-blur">
+										<p className="text-sm font-bold text-foreground">
+											Pengguna tidak ditemukan
+										</p>
+										<p className="mt-1 text-xs font-medium text-muted-foreground">
+											Coba cari dengan nama lengkap, slug, atau username email.
+										</p>
+									</div>
+								)}
+							</div>
 						</motion.div>
 					) : (
 						<motion.div
