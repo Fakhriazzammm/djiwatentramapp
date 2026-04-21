@@ -2,7 +2,11 @@ import "dotenv/config";
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 import { Client } from "pg";
+
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(scriptDir, "..", "..", "..", "..");
 
 async function main() {
   const dbUrl = process.env.SUPABASE_DB_URL;
@@ -11,7 +15,7 @@ async function main() {
   }
 
   const sqlPath = path.resolve(
-    process.cwd(),
+    repoRoot,
     "supabase",
     "migrations",
     "0001_legacy_mirror.sql"

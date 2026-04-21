@@ -3,6 +3,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 import readline from "node:readline";
 import { Client } from "pg";
 
@@ -47,15 +48,17 @@ function pickCreationTime(doc) {
   return null;
 }
 
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(scriptDir, "..", "..", "..", "..");
+
 async function main() {
   const dbUrl = process.env.SUPABASE_DB_URL;
   if (!dbUrl) throw new Error("SUPABASE_DB_URL is required");
 
   const args = parseArgs(process.argv);
-  const exportDir = path.resolve(
-    process.cwd(),
-    args["export-dir"] ? String(args["export-dir"]) : "../../scratch/legacy-export"
-  );
+  const exportDir = args["export-dir"]
+    ? path.resolve(process.cwd(), String(args["export-dir"]))
+    : path.resolve(repoRoot, "scratch", "legacy-export");
 
   if (!fs.existsSync(exportDir)) {
     throw new Error(`Export directory not found: ${exportDir}`);

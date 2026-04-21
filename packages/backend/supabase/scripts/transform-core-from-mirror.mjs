@@ -1,5 +1,6 @@
 import "dotenv/config";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 import { Client } from "pg";
 
 function num(v) {
@@ -470,6 +471,9 @@ async function upsertSiteSettings(client, docs) {
   }
   return count;
 }
+
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(scriptDir, "..", "..", "..", "..");
 
 async function main() {
   const dbUrl = process.env.SUPABASE_DB_URL;
