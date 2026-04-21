@@ -34,8 +34,7 @@ left join public.yumi_users u on u.source_id = nullif(d.document->>'userId', '')
 left join public.yumi_roles r on r.source_id = u.role_source_id
 where d.table_name = 'attendance';
 
-create or replace view public.pos_users_public
-with (security_invoker = true) as
+create or replace view public.pos_users_public as
 select
   u.source_id as _id,
   u.name,

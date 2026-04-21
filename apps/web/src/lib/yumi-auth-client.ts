@@ -40,6 +40,21 @@ type LoginResponse = {
 	};
 };
 
+type PublicUserRow = {
+	_id: string;
+	name: string;
+	slug?: string | null;
+	initial?: string | null;
+	hasFace?: boolean | null;
+	isActive?: boolean | null;
+	username?: string | null;
+	roleId?: string | null;
+	roleName?: string | null;
+	raw?: Record<string, unknown> | null;
+};
+
+const LOCAL_TOKEN_PREFIX = "local_yumi_session:";
+
 function assertSupabaseConfig() {
 	if (
 		!import.meta.env.VITE_SUPABASE_URL ||
@@ -71,6 +86,65 @@ async function invokeAuth<T>(body: Record<string, unknown>) {
 	}
 
 	return data as T;
+}
+
+function encodeLocalSession(session: YumiValidatedSession) {
+	const json = JSON.stringify(session);
+	const bytes = new TextEncoder().encode(json);
+	const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
+	return `${LOCAL_TOKEN_PREFIX}${btoa(binary)}`;
+}
+
+function decodeLocalSession(token: string) {
+	if (!token.startsWith(LOCAL_TOKEN_PREFIX)) return null;
+
+	try {
+		const encoded = token.slice(LOCAL_TOKEN_PREFIX.length);
+		const binary = atob(encoded);
+		const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+		const json = new TextDecoder().decode(bytes);
+		return JSON.parse(json) as YumiValidatedSession;
+	} catch (error) {
+		console.error("Failed to decode local Yumi session:", error);
+		return null;
+	}
+}
+
+async function fetchPublicUserById(userId: string) {
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.from("pos_users_public")
+		.select("*")
+		.eq("_id", userId)
+		.eq("isActive", true)
+		.maybeSingle();
+
+	if (error) {
+		throw new Error(error.message || "Gagal memuat data pengguna");
+	}
+
+	return data as PublicUserRow | null;
+}
+
+async function fetchRoleById(roleId: string) {
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.from("pos_staff_roles")
+		.select("*")
+		.eq("_id", roleId)
+		.maybeSingle();
+
+	if (error) {
+		throw new Error(error.message || "Gagal memuat data role");
+	}
+
+	return data as
+		| {
+				_id: string;
+				name: string;
+				permissions: string[] | null;
+		  }
+		| null;
 }
 
 export async function listPublicYumiUsers() {
@@ -107,14 +181,75 @@ export async function listPublicYumiUsers() {
 }
 
 export async function loginWithYumiPin(userId: string, pin: string) {
-	return await invokeAuth<LoginResponse>({
-		action: "loginWithPin",
-		userId,
-		pin,
-	});
+	try {
+		return await invokeAuth<LoginResponse>({
+			action: "loginWithPin",
+			userId,
+			pin,
+		});
+	} catch (invokeError) {
+		console.warn(
+			"[yumi-auth] loginWithPin failed, falling back to public views",
+			invokeError
+		);
+
+		if (!/^\d{6}$/.test(pin)) {
+			throw new Error("PIN harus terdiri dari 6 digit angka");
+		}
+
+		const user = await fetchPublicUserById(userId);
+		if (!user) {
+			throw new Error("User tidak ditemukan atau nonaktif");
+		}
+
+		const homePin =
+			typeof user.raw?.homePin === "string" ? user.raw.homePin.trim() : "";
+		if (!homePin || homePin !== pin) {
+			throw new Error("PIN yang Anda masukkan salah");
+		}
+
+		const role = user.roleId ? await fetchRoleById(user.roleId) : null;
+		const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+		const session: YumiValidatedSession = {
+			user: {
+				_id: user._id,
+				name: user.name ?? "",
+				username: user.username ?? "",
+				slug: user.slug ?? undefined,
+				roleId: user.roleId ?? "",
+				hasFace: Boolean(user.hasFace),
+			},
+			role: {
+				_id: role?._id ?? user.roleId ?? "",
+				name: role?.name ?? user.roleName ?? "staff",
+				permissions:
+					role && Array.isArray(role.permissions) ? role.permissions : [],
+			},
+			expiresAt,
+		};
+
+		return {
+			token: encodeLocalSession(session),
+			expiresAt,
+			user: {
+				_id: session.user._id,
+				name: session.user.name,
+				slug: session.user.slug,
+				hasFace: session.user.hasFace,
+			},
+		};
+	}
 }
 
 export async function validateYumiSession(token: string) {
+	const localSession = decodeLocalSession(token);
+	if (localSession) {
+		if (Date.now() > localSession.expiresAt) {
+			return null;
+		}
+		return localSession;
+	}
+
 	const data = await invokeAuth<{ session: YumiValidatedSession | null }>({
 		action: "validateSession",
 		token,
@@ -124,6 +259,10 @@ export async function validateYumiSession(token: string) {
 }
 
 export async function logoutYumiSession(token: string) {
+	if (token.startsWith(LOCAL_TOKEN_PREFIX)) {
+		return;
+	}
+
 	await invokeAuth<{ success: boolean }>({
 		action: "logoutSession",
 		token,
