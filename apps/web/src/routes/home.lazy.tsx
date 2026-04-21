@@ -299,7 +299,8 @@ function HomePage() {
 	const { user, role: userRole, logout } = useYumiAuth();
 	const settings = useHybridSiteSettings();
 	const storeName = settings?.storeName || "Yumi POS";
-	const shiftRows = useHybridShiftReportRows() as ShiftRow[] | undefined;
+	const shiftRowsResult = useHybridShiftReportRows() as ShiftRow[] | null | undefined;
+	const shiftRows = Array.isArray(shiftRowsResult) ? shiftRowsResult : [];
 	const statsToday = useHybridStaffStatsToday(user?._id);
 	const monthProgress = useHybridCurrentMonthProgress();
 	const clockIn = useHybridClockIn();
@@ -865,7 +866,7 @@ function HomePage() {
 						</button>
 					</div>
 
-					{shiftRows === undefined ? (
+					{shiftRowsResult === undefined ? (
 						<div className="px-4 py-8 text-sm text-muted-foreground">
 							Memuat data shift...
 						</div>
