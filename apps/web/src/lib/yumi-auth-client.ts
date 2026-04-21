@@ -74,11 +74,36 @@ async function invokeAuth<T>(body: Record<string, unknown>) {
 }
 
 export async function listPublicYumiUsers() {
-	const data = await invokeAuth<{ users: YumiPublicUser[] }>({
-		action: "listPublicUsers",
-	});
+	try {
+		const data = await invokeAuth<{ users: YumiPublicUser[] }>({
+			action: "listPublicUsers",
+		});
+		return data.users ?? [];
+	} catch (invokeError) {
+		console.warn(
+			"[yumi-auth] listPublicUsers failed, falling back to pos_users_public",
+			invokeError
+		);
 
-	return data.users ?? [];
+		const supabase = createClient();
+		const { data, error } = await supabase
+			.from("pos_users_public")
+			.select("_id,name,slug,initial,hasFace,isActive")
+			.eq("isActive", true)
+			.order("name", { ascending: true });
+
+		if (error) {
+			throw new Error(error.message || "Gagal memuat daftar pengguna");
+		}
+
+		return (data ?? []).map((row: any) => ({
+			_id: String(row._id ?? ""),
+			name: String(row.name ?? ""),
+			slug: row.slug ? String(row.slug) : undefined,
+			initial: String(row.initial ?? "?"),
+			hasFace: Boolean(row.hasFace),
+		}));
+	}
 }
 
 export async function loginWithYumiPin(userId: string, pin: string) {
