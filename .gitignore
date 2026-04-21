@@ -36,3 +36,9 @@ pnpm-debug.log*
 src-tauri/target/
 src-tauri/binaries/
 .vercel
+.claude/worktrees/agitated-bardeen-2a54d3/
+.claude/worktrees/great-galileo-1cd371/
+.claude/worktrees/mystifying-cohen-86fb00/
+.claude/worktrees/reverent-sinoussi-a15b40/
+.claude/worktrees/serene-babbage-863e77/
+.claude/worktrees/sharp-mayer-83e484/
