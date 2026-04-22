@@ -973,24 +973,16 @@ function BookingPage() {
 			// Attempt upload with a single retry on failure
 			let storageId: string | undefined;
 			for (let attempt = 1; attempt <= 2; attempt++) {
-				const postUrl = await generateUploadUrl();
-				const controller = new AbortController();
-				const timeoutId = setTimeout(() => controller.abort(), 60_000);
 				try {
-					const result = await fetch(postUrl, {
-						method: "POST",
-						headers: { "Content-Type": contentType },
-						body: uploadBlob,
-						signal: controller.signal,
+					storageId = await generateUploadUrl({
+						file: uploadBlob,
+						contentType,
+						fileName: file.name,
+						folder: "booking-proofs",
 					});
-					clearTimeout(timeoutId);
-					if (!result.ok) throw new Error(`Upload gagal: ${result.status}`);
-					const json = await result.json();
-					if (!json.storageId) throw new Error("storageId tidak ditemukan");
-					storageId = json.storageId;
+					if (!storageId) throw new Error("storageId tidak ditemukan");
 					break;
 				} catch (err) {
-					clearTimeout(timeoutId);
 					if (attempt === 2) throw err;
 					// Wait briefly before retry
 					await new Promise((res) => setTimeout(res, 1500));

@@ -148,12 +148,73 @@ async function fetchRoleById(roleId: string) {
 		| null;
 }
 
+function mapPublicUsers(rows: PublicUserRow[]) {
+	const isAdmin = (row: PublicUserRow) => {
+		const roleName = String(row.roleName ?? "")
+			.trim()
+			.toLowerCase();
+		if (roleName.includes("admin")) return true;
+
+		// Fallback when roleName is unavailable.
+		const displayName = String(row.name ?? "")
+			.trim()
+			.toLowerCase();
+		return displayName === "admin";
+	};
+
+	return rows
+		.filter((row) => !isAdmin(row))
+		.map((row) => {
+			const name = String(row.name ?? "").trim();
+			const username = String(row.username ?? "").trim();
+			const fallbackInitial =
+				name.charAt(0).toUpperCase() || username.charAt(0).toUpperCase() || "?";
+
+			return {
+				_id: String(row._id ?? ""),
+				name,
+				slug: row.slug ? String(row.slug) : undefined,
+				username: username || undefined,
+				initial: String(row.initial ?? (fallbackInitial || "?")),
+				hasFace: Boolean(row.hasFace),
+			} satisfies YumiPublicUser;
+		})
+		.filter((row: YumiPublicUser) => row._id && row.name);
+}
+
+async function fetchPublicUsersViaRestApi() {
+	assertSupabaseConfig();
+
+	const url = new URL("/rest/v1/pos_users_public", import.meta.env.VITE_SUPABASE_URL);
+	url.searchParams.set(
+		"select",
+		"_id,name,slug,username,initial,hasFace,isActive,roleName"
+	);
+	url.searchParams.set("isActive", "eq.true");
+	url.searchParams.set("order", "name.asc");
+
+	const res = await fetch(url.toString(), {
+		headers: {
+			apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+			Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+		},
+	});
+
+	if (!res.ok) {
+		const text = await res.text();
+		throw new Error(text || `REST API gagal (${res.status})`);
+	}
+
+	const data = (await res.json()) as PublicUserRow[];
+	return mapPublicUsers(data ?? []);
+}
+
 export async function listPublicYumiUsers() {
 	try {
 		const supabase = createClient();
 		const { data, error } = await supabase
 			.from("pos_users_public")
-			.select("_id,name,slug,username,initial,hasFace,isActive")
+			.select("_id,name,slug,username,initial,hasFace,isActive,roleName")
 			.eq("isActive", true)
 			.order("name", { ascending: true });
 
@@ -161,23 +222,7 @@ export async function listPublicYumiUsers() {
 			throw new Error(error.message || "Gagal memuat daftar pengguna");
 		}
 
-		const publicUsers = (data ?? [])
-			.map((row: any) => {
-				const name = String(row.name ?? "").trim();
-				const username = String(row.username ?? "").trim();
-				const fallbackInitial =
-					name.charAt(0).toUpperCase() || username.charAt(0).toUpperCase() || "?";
-
-				return {
-					_id: String(row._id ?? ""),
-					name,
-					slug: row.slug ? String(row.slug) : undefined,
-					username: username || undefined,
-					initial: String(row.initial ?? (fallbackInitial || "?")),
-					hasFace: Boolean(row.hasFace),
-				} satisfies YumiPublicUser;
-			})
-			.filter((row: YumiPublicUser) => row._id && row.name);
+		const publicUsers = mapPublicUsers((data ?? []) as PublicUserRow[]);
 
 		if (publicUsers.length > 0) {
 			return publicUsers;
@@ -190,10 +235,22 @@ export async function listPublicYumiUsers() {
 	}
 
 	try {
+		const restUsers = await fetchPublicUsersViaRestApi();
+		if (restUsers.length > 0) {
+			return restUsers;
+		}
+	} catch (restError) {
+		console.warn("[yumi-auth] listPublicUsers via REST API failed", restError);
+	}
+
+	try {
 		const data = await invokeAuth<{ users: YumiPublicUser[] }>({
 			action: "listPublicUsers",
 		});
-		return (data.users ?? []).filter((user) => user?._id && user?.name);
+		return (data.users ?? []).filter((user) => {
+			if (!user?._id || !user?.name) return false;
+			return String(user.name).trim().toLowerCase() !== "admin";
+		});
 	} catch (invokeError) {
 		console.warn("[yumi-auth] listPublicUsers edge function fallback failed", invokeError);
 		throw new Error("Gagal memuat daftar pengguna");

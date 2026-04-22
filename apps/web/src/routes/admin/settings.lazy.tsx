@@ -1456,17 +1456,12 @@ export function SettingsPage({
 			contentType = "image/jpeg";
 		}
 
-		const postUrl = await generateUploadUrl();
-		const result = await fetch(postUrl, {
-			method: "POST",
-			headers: { "Content-Type": contentType },
-			body: uploadBlob,
+		const storageId = await generateUploadUrl({
+			file: uploadBlob,
+			contentType,
+			fileName: file.name,
+			folder: "site-settings",
 		});
-		if (!result.ok) {
-			throw new Error("Upload failed");
-		}
-
-		const { storageId } = await result.json();
 		const previewUrl = URL.createObjectURL(uploadBlob);
 		setLocalPreviews((prev) => ({ ...prev, [previewKey]: previewUrl }));
 		return storageId as string;
@@ -2986,16 +2981,12 @@ export function SettingsPage({
 															uploadBlob = await fetch(compressed).then((r) => r.blob());
 															contentType = "image/jpeg";
 														}
-														const postUrl = await generateUploadUrl();
-														const result = await fetch(postUrl, {
-															method: "POST",
-															headers: { "Content-Type": contentType },
-															body: uploadBlob,
+														const storageId = await generateUploadUrl({
+															file: uploadBlob,
+															contentType,
+															fileName: file.name,
+															folder: "site-settings",
 														});
-														if (!result.ok) {
-															throw new Error("Upload failed");
-														}
-														const { storageId } = await result.json();
 														const previewUrl = URL.createObjectURL(uploadBlob);
 														setLocalPreviews(prev => ({ ...prev, qrisImage: previewUrl }));
 														setLandingSettings({
@@ -3064,16 +3055,12 @@ export function SettingsPage({
 															uploadBlob = await fetch(compressed).then((r) => r.blob());
 															contentType = "image/jpeg";
 														}
-														const postUrl = await generateUploadUrl();
-														const result = await fetch(postUrl, {
-															method: "POST",
-															headers: { "Content-Type": contentType },
-															body: uploadBlob,
+														const storageId = await generateUploadUrl({
+															file: uploadBlob,
+															contentType,
+															fileName: file.name,
+															folder: "site-settings",
 														});
-														if (!result.ok) {
-															throw new Error("Upload failed");
-														}
-														const { storageId } = await result.json();
 														const previewUrl = URL.createObjectURL(uploadBlob);
 														setLocalPreviews(prev => ({ ...prev, paymentPopupImage: previewUrl }));
 														setLandingSettings({
@@ -4876,14 +4863,12 @@ export function SettingsPage({
 																uploadBlob = await fetch(compressed).then((r) => r.blob());
 																contentType = "image/jpeg";
 															}
-															const postUrl = await generateUploadUrl();
-															const result = await fetch(postUrl, {
-																method: "POST",
-																headers: { "Content-Type": contentType },
-																body: uploadBlob,
+															const storageId = await generateUploadUrl({
+																file: uploadBlob,
+																contentType,
+																fileName: file.name,
+																folder: "site-settings",
 															});
-															if (!result.ok) throw new Error("Upload failed");
-															const { storageId } = await result.json();
 															const previewUrl = URL.createObjectURL(uploadBlob);
 															setLocalPreviews(prev => ({ ...prev, receiptLogo: previewUrl }));
 															setSettings({ ...settings, receiptLogo: storageId });

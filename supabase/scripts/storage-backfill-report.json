@@ -1,0 +1,12 @@
+{
+  "convexUrl": "https://moonlit-ox-799.convex.cloud",
+  "bucket": "app-assets",
+  "uploadedUniqueAssets": 63,
+  "productUpdates": 37,
+  "bookingProofUpdates": 25,
+  "bookingSettingsUpdates": 1,
+  "siteSettingFieldUpdates": 0,
+  "failedAssets": 0,
+  "failures": [],
+  "sqlPath": "A:\\My-Startup\\djiwatentramapp\\supabase\\scripts\\storage-backfill-from-convex.sql"
+}

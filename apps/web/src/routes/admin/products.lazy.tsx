@@ -375,19 +375,12 @@ function ProductsTab({
 			contentType = "image/jpeg";
 		}
 
-		const postUrl = await generateUploadUrl({});
-		const result = await fetch(postUrl, {
-			method: "POST",
-			headers: { "Content-Type": contentType },
-			body: uploadBlob,
+		return await generateUploadUrl({
+			file: uploadBlob,
+			contentType,
+			fileName: file.name,
+			folder: "products",
 		});
-
-		if (!result.ok) {
-			throw new Error("Upload failed");
-		}
-
-		const { storageId } = await result.json();
-		return storageId as string;
 	};
 
 	const handleImageUpload = async () => {

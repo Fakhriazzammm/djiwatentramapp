@@ -20,6 +20,11 @@ const hasSupabaseConfig = Boolean(
 	import.meta.env.VITE_SUPABASE_URL &&
 		import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 );
+const supabaseStorageBucket = (
+	import.meta.env.VITE_SUPABASE_STORAGE_BUCKET as string | undefined
+)
+	?.trim()
+	|| "app-assets";
 
 function makeSourceId(prefix: string) {
 	const random =
@@ -232,6 +237,103 @@ function useLegacyFallbackAction<T extends FunctionReference<"action">>(ref: T) 
 	return useCallback((args: any) => action(args), [action]);
 }
 
+type HybridStorageUploadArgs = {
+	file: Blob;
+	contentType?: string;
+	fileName?: string;
+	folder?: string;
+};
+
+function getExtensionFromFileName(fileName?: string) {
+	if (!fileName) return "";
+	const match = fileName.match(/\.([a-zA-Z0-9]+)$/);
+	return match ? match[1].toLowerCase() : "";
+}
+
+function getExtensionFromContentType(contentType?: string) {
+	const type = String(contentType || "").toLowerCase();
+	if (type.includes("jpeg")) return "jpg";
+	if (type.includes("png")) return "png";
+	if (type.includes("webp")) return "webp";
+	if (type.includes("gif")) return "gif";
+	if (type.includes("svg")) return "svg";
+	return "";
+}
+
+function buildStoragePath(args: {
+	folder: string;
+	fileName?: string;
+	contentType?: string;
+}) {
+	const extension =
+		getExtensionFromFileName(args.fileName) ||
+		getExtensionFromContentType(args.contentType) ||
+		"bin";
+	const random =
+		typeof crypto !== "undefined" && "randomUUID" in crypto
+			? crypto.randomUUID().replace(/-/g, "")
+			: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+	return `${args.folder}/${Date.now()}-${random.slice(0, 20)}.${extension}`;
+}
+
+async function uploadViaLegacyUrl(
+	fallback: (args: any) => Promise<any>,
+	args: HybridStorageUploadArgs
+) {
+	const postUrl = await fallback({});
+	const result = await fetch(postUrl, {
+		method: "POST",
+		headers: { "Content-Type": args.contentType || "application/octet-stream" },
+		body: args.file,
+	});
+	if (!result.ok) throw new Error(`Upload failed: ${result.status}`);
+	const payload = await result.json();
+	const storageId = String(payload?.storageId ?? "");
+	if (!storageId) throw new Error("storageId not found in upload response");
+	return storageId;
+}
+
+function useHybridStorageUpload(
+	fallbackRef: any,
+	defaultFolder: string
+) {
+	const fallback = useMutation(fallbackRef);
+	return useCallback(
+		async (args: HybridStorageUploadArgs) => {
+			if (!args?.file) {
+				throw new Error("file is required");
+			}
+			if (!hasSupabaseConfig) {
+				return uploadViaLegacyUrl(fallback, args);
+			}
+			try {
+				const supabase = createClient();
+				const folder = String(args.folder || defaultFolder).replace(/^\/+|\/+$/g, "") || defaultFolder;
+				const objectPath = buildStoragePath({
+					folder,
+					fileName: args.fileName,
+					contentType: args.contentType,
+				});
+				const { error } = await supabase.storage
+					.from(supabaseStorageBucket)
+					.upload(objectPath, args.file, {
+						contentType: args.contentType || "application/octet-stream",
+						upsert: false,
+					});
+				if (error) throw error;
+				const { data } = supabase.storage
+					.from(supabaseStorageBucket)
+					.getPublicUrl(objectPath);
+				return data.publicUrl || objectPath;
+			} catch (error) {
+				console.warn("[supabase-hybrid:storage-upload] fallback disabled", error);
+				return uploadViaLegacyUrl(fallback, args);
+			}
+		},
+		[defaultFolder, fallback]
+	);
+}
+
 export function useHybridBulkCreateProducts() {
 	return useLegacyFallbackMutation(api.products.bulkCreateProducts);
 }
@@ -269,7 +371,7 @@ export function useHybridBulkUpdateProducts() {
 }
 
 export function useHybridGenerateProductUploadUrl() {
-	return useLegacyFallbackMutation(api.products.generateUploadUrl);
+	return useHybridStorageUpload(api.products.generateUploadUrl, "products");
 }
 
 export function useHybridAddVariationPreset() {
@@ -1309,20 +1411,7 @@ export function useHybridUploadBookingPaymentProof() {
 }
 
 export function useHybridGenerateBookingUploadUrl() {
-	const fallback = useMutation(api.booking.generateUploadUrl);
-	return useCallback(
-		async (args?: any) => {
-			if (!hasSupabaseConfig) return fallback(args);
-			try {
-				// TODO: migrate upload contract to Supabase Storage signed upload URL.
-				// Current UI expects legacy POST URL contract.
-				throw new Error("Supabase upload contract not configured yet");
-			} catch {
-				return fallback(args);
-			}
-		},
-		[fallback]
-	);
+	return useHybridStorageUpload(api.booking.generateUploadUrl, "booking-proofs");
 }
 
 export function useHybridUpdateBookingSettings() {
@@ -2752,20 +2841,7 @@ export function useHybridUpdateSiteSettings() {
 }
 
 export function useHybridGenerateSiteUploadUrl() {
-	const fallback = useMutation(api.site_settings.generateUploadUrl);
-	return useCallback(
-		async (args?: any) => {
-			if (!hasSupabaseConfig) return fallback(args);
-			try {
-				// TODO: migrate upload contract to Supabase Storage signed upload URL.
-				// Current UI expects legacy POST URL contract.
-				throw new Error("Supabase upload contract not configured yet");
-			} catch {
-				return fallback(args);
-			}
-		},
-		[fallback]
-	);
+	return useHybridStorageUpload(api.site_settings.generateUploadUrl, "site-settings");
 }
 
 export function useHybridAdminCreateAttendanceLog() {

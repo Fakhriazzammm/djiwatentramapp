@@ -1,0 +1,339 @@
+{
+  "snapshotDir": "C:\\Users\\fakhr\\Downloads\\snapshot_moonlit-ox-799_1776837706502967763",
+  "tablesScanned": 42,
+  "nonEmptyTables": [
+    {
+      "tableName": "aiInsightsLog",
+      "count": 15
+    },
+    {
+      "tableName": "attendance",
+      "count": 24
+    },
+    {
+      "tableName": "baseRecipes",
+      "count": 28
+    },
+    {
+      "tableName": "bookingDateCapacity",
+      "count": 10
+    },
+    {
+      "tableName": "bookingOrders",
+      "count": 35
+    },
+    {
+      "tableName": "bookingSettings",
+      "count": 1
+    },
+    {
+      "tableName": "categories",
+      "count": 14
+    },
+    {
+      "tableName": "conversationMemory",
+      "count": 6
+    },
+    {
+      "tableName": "customerServiceRequests",
+      "count": 3
+    },
+    {
+      "tableName": "discounts",
+      "count": 3
+    },
+    {
+      "tableName": "financialTargets",
+      "count": 2
+    },
+    {
+      "tableName": "financialTransactions",
+      "count": 1440
+    },
+    {
+      "tableName": "followUpTasks",
+      "count": 64
+    },
+    {
+      "tableName": "hppCalculations",
+      "count": 32
+    },
+    {
+      "tableName": "inventory",
+      "count": 153
+    },
+    {
+      "tableName": "inventoryAuditLogs",
+      "count": 391
+    },
+    {
+      "tableName": "inventoryStores",
+      "count": 27
+    },
+    {
+      "tableName": "inventoryTransactions",
+      "count": 3267
+    },
+    {
+      "tableName": "miniGames",
+      "count": 1
+    },
+    {
+      "tableName": "orders",
+      "count": 634
+    },
+    {
+      "tableName": "products",
+      "count": 41
+    },
+    {
+      "tableName": "recipes",
+      "count": 22
+    },
+    {
+      "tableName": "resendWebhookEvents",
+      "count": 21
+    },
+    {
+      "tableName": "roles",
+      "count": 6
+    },
+    {
+      "tableName": "shifts",
+      "count": 46
+    },
+    {
+      "tableName": "siteSettings",
+      "count": 1
+    },
+    {
+      "tableName": "streamingMessages",
+      "count": 40
+    },
+    {
+      "tableName": "users",
+      "count": 11
+    },
+    {
+      "tableName": "variationPresets",
+      "count": 3
+    },
+    {
+      "tableName": "yumiSessions",
+      "count": 689
+    },
+    {
+      "tableName": "_storage",
+      "count": 88
+    },
+    {
+      "tableName": "_tables",
+      "count": 40
+    }
+  ],
+  "totalRowsPrepared": 7158,
+  "failures": [
+    {
+      "tableName": "_tables",
+      "line": 1,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 2,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 3,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 4,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 5,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 6,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 7,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 8,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 9,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 10,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 11,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 12,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 13,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 14,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 15,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 16,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 17,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 18,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 19,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 20,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 21,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 22,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 23,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 24,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 25,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 26,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 27,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 28,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 29,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 30,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 31,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 32,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 33,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 34,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 35,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 36,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 37,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 38,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 39,
+      "reason": "Missing _id (synthetic id generated)"
+    },
+    {
+      "tableName": "_tables",
+      "line": 40,
+      "reason": "Missing _id (synthetic id generated)"
+    }
+  ],
+  "scriptsDir": "A:\\My-Startup\\djiwatentramapp\\supabase\\scripts\\import-convex-snapshot-chunks",
+  "chunkCount": 49
+}
