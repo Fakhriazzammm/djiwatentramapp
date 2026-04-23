@@ -539,15 +539,51 @@ export function useHybridGenerateProductDescription() {
 }
 
 export function useHybridYumiChat() {
-	return useLegacyFallbackAction(api.ai.yumiChat);
+	return useCallback(
+		async (args: {
+			sessionId?: string;
+			message: string;
+			history?: Array<{ role: string; content: string }>;
+			images?: string[];
+			contextHint?: string;
+		}) => {
+			const supabase = createClient();
+			const { data, error } = await supabase.functions.invoke("yumi-ai", {
+				body: { action: "yumiChat", ...args },
+			});
+			if (error) throw new Error(error.message || "Gagal menghubungi AI");
+			if (data?.error) throw new Error(data.error);
+			return data as { content: string; toolCalls: unknown[] };
+		},
+		[]
+	);
 }
 
 export function useHybridBulkScanImageData() {
-	return useLegacyFallbackAction(api.ai.bulkScanImageData);
+	return useCallback(async (args: { images: string[] }) => {
+		const supabase = createClient();
+		const { data, error } = await supabase.functions.invoke("yumi-ai", {
+			body: { action: "bulkScanImageData", ...args },
+		});
+		if (error) throw new Error(error.message || "Gagal menganalisis gambar");
+		if (data?.error) throw new Error(data.error);
+		return data;
+	}, []);
 }
 
 export function useHybridGenerateBusinessBriefing() {
-	return useLegacyFallbackAction(api.ai.generateBusinessBriefing);
+	return useCallback(
+		async (args: { localHour: number; context?: string }) => {
+			const supabase = createClient();
+			const { data, error } = await supabase.functions.invoke("yumi-ai", {
+				body: { action: "generateBusinessBriefing", ...args },
+			});
+			if (error) throw new Error(error.message || "Gagal membuat briefing");
+			if (data?.error) throw new Error(data.error);
+			return data as { content: string };
+		},
+		[]
+	);
 }
 
 export function useHybridCreateChatSession() {
