@@ -1284,10 +1284,11 @@ async function fetchShiftStatus() {
 		.map((row: any) => ({
 			_id: row.shift_id,
 			startTime: Number(row.start_time ?? 0),
-			endTime:
-				row.end_time === null || row.end_time === undefined
-					? undefined
-					: Number(row.end_time),
+			endTime: (() => {
+				if (row.end_time === null || row.end_time === undefined) return undefined;
+				const endTimeNum = Number(row.end_time);
+				return Number.isFinite(endTimeNum) && endTimeNum > 0 ? endTimeNum : undefined;
+			})(),
 			shiftName: row.shift_name ?? "Shift",
 			cashierName: row.cashier_name ?? "",
 			teamMembers: row.team_members ?? "",
