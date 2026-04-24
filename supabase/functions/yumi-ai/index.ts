@@ -10,6 +10,7 @@ const corsHeaders = {
 };
 
 const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+const openaiBaseUrl = (Deno.env.get("OPENAI_BASE_URL") || "https://api.openai.com/v1").replace(/\/$/, "");
 
 function jsonResponse(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body), {
@@ -25,7 +26,7 @@ function fail(message: string, status = 400) {
 async function callOpenAI(messages: unknown[], model = "gpt-4o-mini") {
 	if (!openaiApiKey) throw new Error("OPENAI_API_KEY tidak dikonfigurasi");
 
-	const res = await fetch("https://api.openai.com/v1/chat/completions", {
+	const res = await fetch(`${openaiBaseUrl}/chat/completions`, {
 		method: "POST",
 		headers: {
 			Authorization: `Bearer ${openaiApiKey}`,
