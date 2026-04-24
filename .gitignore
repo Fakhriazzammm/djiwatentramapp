@@ -33,6 +33,10 @@ yarn-error.log*
 pnpm-debug.log*
 supabase/.temp/
 
+# Yumi AI bot local runtime artifacts
+yumi-ai-bot/.venv/
+yumi-ai-bot/__pycache__/
+
 # Tauri
 src-tauri/target/
 src-tauri/binaries/
