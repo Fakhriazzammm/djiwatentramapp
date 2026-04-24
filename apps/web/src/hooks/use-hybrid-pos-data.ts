@@ -1309,18 +1309,25 @@ async function fetchShiftStatus() {
 		now.getMonth(),
 		now.getDate()
 	).getTime();
+
+	const ongoingShift = rows.find(
+		(row: ShiftStatusRecord["allShifts"][number]) => row.endTime === undefined
+	);
+
 	const allShifts = rows
-		.filter((row: ShiftStatusRecord["allShifts"][number]) => row.startTime >= todayStart)
+		.filter((row: ShiftStatusRecord["allShifts"][number]) => {
+			if (row.startTime >= todayStart) return true;
+			if (ongoingShift && row._id === ongoingShift._id) return true;
+			return false;
+		})
 		.sort(
 			(
 				a: ShiftStatusRecord["allShifts"][number],
 				b: ShiftStatusRecord["allShifts"][number]
 			) => a.startTime - b.startTime
 		);
-	const ongoingShift = allShifts.find(
-		(row: ShiftStatusRecord["allShifts"][number]) => row.endTime === undefined
-	);
-	const latestCompletedShift = [...allShifts]
+
+	const latestCompletedShift = [...rows]
 		.filter((row: ShiftStatusRecord["allShifts"][number]) => row.endTime !== undefined)
 		.sort(
 			(
