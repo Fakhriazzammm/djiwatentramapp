@@ -33,12 +33,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
-import { useHybridInventory } from "@/hooks/use-hybrid-pos-data";
+import {
+	useHybridAllProducts,
+	useHybridCategories,
+	useHybridInventory,
+} from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridBaseRecipes,
 	useHybridInventoryItemBatches,
 	useHybridInventoryItemImpact,
 	useHybridInventoryPriceInsights,
+	useHybridRecipes,
 	useHybridInventoryStores,
 	useHybridInventoryTransactions,
 	useHybridInventoryWorkspace,
@@ -702,6 +707,9 @@ export const Route = createLazyFileRoute("/admin/inventory")({
 function InventoryPage() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const inventory = useHybridInventory();
+	const allProducts = useHybridAllProducts();
+	const categories = useHybridCategories();
+	const recipes = useHybridRecipes();
 	const stores = useHybridInventoryStores() as
 		| InventoryStore[]
 		| undefined;
@@ -721,6 +729,49 @@ function InventoryPage() {
 	const deleteItem = useHybridDeleteInventoryItem();
 	const createStore = useHybridCreateInventoryStore();
 	const setReferencePrice = useHybridSetInventoryReferencePrice();
+
+	const menuCategoryIds = useMemo(() => {
+		if (!categories?.length) return new Set<string>();
+		const rootIds = new Set(
+			categories
+				.filter((category: any) => {
+					const name = String(category?.name || "").toLowerCase();
+					return (
+						name.includes("bar") ||
+						name.includes("kitchen") ||
+						name.includes("makanan") ||
+						name.includes("minuman")
+					);
+				})
+				.map((category: any) => String(category._id))
+		);
+		const allMenuIds = new Set<string>(rootIds);
+		let changed = true;
+		while (changed) {
+			changed = false;
+			for (const category of categories) {
+				const parentId = category.parentId ? String(category.parentId) : null;
+				const categoryId = String(category._id);
+				if (parentId && allMenuIds.has(parentId) && !allMenuIds.has(categoryId)) {
+					allMenuIds.add(categoryId);
+					changed = true;
+				}
+			}
+		}
+		return allMenuIds;
+	}, [categories]);
+
+	const menuProductsWithoutRecipe = useMemo(() => {
+		if (!allProducts?.length || menuCategoryIds.size === 0) return [] as any[];
+		return (allProducts ?? []).filter((product: any) => {
+			const categoryId = String(product.categoryId || "");
+			if (!menuCategoryIds.has(categoryId)) return false;
+			return !(recipes ?? []).some(
+				(recipe: any) =>
+					String(recipe.productId) === String(product._id) && !recipe.variantName
+			);
+		});
+	}, [allProducts, menuCategoryIds, recipes]);
 
 	const [selectedItem, setSelectedItem] = useState<Doc<"inventory"> | null>(
 		null
@@ -1205,6 +1256,23 @@ function InventoryPage() {
 				viewPreset={viewPreset}
 				/>
 			</div>
+
+			{menuProductsWithoutRecipe.length > 0 && (
+				<div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900">
+					<p className="text-[11px] font-semibold uppercase tracking-[0.14em]">
+						⚠ {menuProductsWithoutRecipe.length} menu belum punya recipe
+					</p>
+					<p className="mt-1 text-sm">
+						Sinkron stok per menu akan aktif penuh setelah recipe menu dilengkapi.
+					</p>
+					<a
+						className="mt-2 inline-flex rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white"
+						href="/admin/recipe"
+					>
+						Buka Admin Recipe
+					</a>
+				</div>
+			)}
 
 			{viewPreset === "priceMonitor" ? (
 				<RealtimePriceMonitorTable

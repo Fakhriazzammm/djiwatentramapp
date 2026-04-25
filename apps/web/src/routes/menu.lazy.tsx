@@ -566,7 +566,7 @@ function MenuPage() {
 			else if (width >= 1024) setGridColumns(3); // lg
 			else if (width >= 768) setGridColumns(2); // md
 			else if (width >= 640) setGridColumns(3); // sm
-			else setGridColumns(2); // mobile â€” 2 col for readability
+			else setGridColumns(2); // mobile — 2 col for readability
 		};
 		updateColumns();
 		window.addEventListener("resize", updateColumns);
@@ -1307,7 +1307,7 @@ function MenuPage() {
 									<User className="h-3 w-3 shrink-0" />
 									<span className="whitespace-nowrap leading-none">
 										{shiftStatus.shiftInfo.cashierName}
-										{shiftStatus.shiftInfo.shiftName ? ` â€¢ ${shiftStatus.shiftInfo.shiftName}` : ""}
+										{shiftStatus.shiftInfo.shiftName ? ` • ${shiftStatus.shiftInfo.shiftName}` : ""}
 									</span>
 								</div>
 							)}
@@ -1440,7 +1440,7 @@ function MenuPage() {
 																				key={tier.thresholdPct}
 																				className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-bold border transition-all ${achieved ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
 																			>
-																				{achieved ? "âœ“" : "â—‹"} {tier.thresholdPct}% â†’ {fmt(tier.bonusAmount)}
+																				{achieved ? "✓" : "○"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
 																			</span>
 																		);
 																	})}
@@ -1502,7 +1502,7 @@ function MenuPage() {
 																				key={tier.thresholdPct}
 																				className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-bold border transition-all ${achieved ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
 																			>
-																				{achieved ? "âœ“" : "â—‹"} {tier.thresholdPct}% â†’ {fmt(tier.bonusAmount)}
+																				{achieved ? "✓" : "○"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
 																			</span>
 																		);
 																	})}
@@ -1546,7 +1546,7 @@ function MenuPage() {
 																	key={tier.thresholdPct}
 																	className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-bold border transition-all ${achieved ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
 																>
-																	{achieved ? "âœ“" : "â—‹"} {tier.thresholdPct}% â†’ {fmt(tier.bonusAmount)}
+																	{achieved ? "✓" : "○"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
 																</span>
 															);
 														})}
@@ -1743,7 +1743,7 @@ function MenuPage() {
 												</span>
 											)}
 
-											{/* Stock Badge Overlay â€” only shown for critical stock */}
+											{/* Stock Badge Overlay — only shown for critical stock */}
 											{(product.quantity ?? 0) <= 2 && (
 												<span className={cn(
 													"absolute right-2 bottom-2 rounded px-1.5 py-0.5 font-bold text-[10px] shadow-sm transition-all",

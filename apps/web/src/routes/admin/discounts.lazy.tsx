@@ -787,14 +787,14 @@ function AdminDiscountsPage() {
 																	month: "short",
 																}
 															)
-														: "â€”"}
+														: "—"}
 													{" - "}
 													{d.endDate
 														? new Date(d.endDate).toLocaleDateString("id-ID", {
 																day: "numeric",
 																month: "short",
 															})
-														: "â€”"}
+														: "—"}
 												</span>
 											</div>
 										)}

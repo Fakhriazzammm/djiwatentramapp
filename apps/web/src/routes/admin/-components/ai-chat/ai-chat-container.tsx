@@ -1074,31 +1074,31 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 														{isPOS ? (
 															<>
 																<button onClick={() => sendMessage("Catat pengeluaran")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">ðŸ’°</span><p className="mt-1">Catat Pengeluaran</p>
+																	<span className="text-base">💰</span><p className="mt-1">Catat Pengeluaran</p>
 																</button>
 																<button onClick={() => sendMessage("Ringkas pesanan hari ini")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">ðŸ“‹</span><p className="mt-1">Ringkas Pesanan</p>
+																	<span className="text-base">📋</span><p className="mt-1">Ringkas Pesanan</p>
 																</button>
 																<button onClick={() => sendMessage("Berapa total pendapatan hari ini?")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">ðŸ’µ</span><p className="mt-1">Total Pendapatan</p>
+																	<span className="text-base">💵</span><p className="mt-1">Total Pendapatan</p>
 																</button>
 																<button onClick={() => sendMessage("Scan struk belanja")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">ðŸ“¸</span><p className="mt-1">Scan Struk</p>
+																	<span className="text-base">📸</span><p className="mt-1">Scan Struk</p>
 																</button>
 															</>
 														) : (
 															<>
 																<button onClick={() => sendMessage("Bagaimana performa toko hari ini?")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">ðŸ“Š</span><p className="mt-1">Performa Hari Ini</p>
+																	<span className="text-base">📊</span><p className="mt-1">Performa Hari Ini</p>
 																</button>
 																<button onClick={() => sendMessage("Apa saja stok yang rendah?")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">âš ï¸</span><p className="mt-1">Cek Stok Rendah</p>
+																	<span className="text-base">⚠️</span><p className="mt-1">Cek Stok Rendah</p>
 																</button>
 																<button onClick={() => sendMessage("Buatkan laporan laba rugi bulan ini")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">ðŸ“ˆ</span><p className="mt-1">Laporan Laba Rugi</p>
+																	<span className="text-base">📈</span><p className="mt-1">Laporan Laba Rugi</p>
 																</button>
 																<button onClick={() => sendMessage("Prediksi jam sibuk besok")} className="rounded-xl border border-border/60 bg-background px-3 py-2.5 text-[11px] font-medium text-left hover:bg-muted transition-colors active:scale-[0.97]" type="button">
-																	<span className="text-base">ðŸ”®</span><p className="mt-1">Prediksi Jam Sibuk</p>
+																	<span className="text-base">🔮</span><p className="mt-1">Prediksi Jam Sibuk</p>
 																</button>
 															</>
 														)}

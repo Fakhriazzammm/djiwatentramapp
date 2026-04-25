@@ -23,6 +23,7 @@
     "supabase:migrate:auth-token-normalize": "node ./supabase/scripts/run-normalize-supabase-auth-user-tokens-migration.mjs",
     "supabase:migrate:auth": "node ./supabase/scripts/run-auth-core-migration.mjs",
     "supabase:migrate:shift-support": "node ./supabase/scripts/run-shift-support-migration.mjs",
+    "supabase:check:frontend": "node ./supabase/scripts/check-frontend-supabase-integration.mjs",
     "supabase:transform:core": "node ./supabase/scripts/transform-core-from-mirror.mjs",
     "supabase:transform:core:sql": "node ./supabase/scripts/transform-core-from-mirror-sql.mjs",
     "supabase:transform:auth:sql": "node ./supabase/scripts/transform-auth-from-mirror-sql.mjs",
@@ -31,6 +32,7 @@
     "supabase:transform:inventory-admin-read-support:sql": "node ./supabase/scripts/transform-inventory-admin-read-support-sql.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.103.3",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
     "openai": "^6.16.0",

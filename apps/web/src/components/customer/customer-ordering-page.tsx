@@ -831,7 +831,7 @@ function renderMenuSection(props: {
 				<div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
 					<BadgePill label={props.tableNumber.trim() ? `Meja ${props.tableNumber.trim()}` : "Meja belum diisi"} />
 					{props.freeRefillCharge > 0 ? <BadgePill label={`Free refill ${currency(props.freeRefillCharge)}`} /> : null}
-					<BadgePill label={`${props.totalItems} item â€¢ ${currency(props.total)}`} />
+					<BadgePill label={`${props.totalItems} item • ${currency(props.total)}`} />
 				</div>
 			</div>
 

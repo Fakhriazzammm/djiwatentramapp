@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
+import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 
 type SiteSettingsRecord = Record<string, any>;
 type CategoryRecord = Record<string, any>;
@@ -281,11 +282,6 @@ type InventoryCostMapRecord = Record<
 	}
 >;
 
-const hasSupabaseConfig = Boolean(
-	import.meta.env.VITE_SUPABASE_URL &&
-		import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-);
-
 function safeNum(value: unknown) {
 	const number = Number(value ?? 0);
 	return Number.isFinite(number) ? number : 0;
@@ -296,36 +292,7 @@ function useSupabaseValue<T>(
 	load: () => Promise<T | null>,
 	deps: readonly unknown[]
 ) {
-	const [data, setData] = useState<T | null>(null);
-
-	useEffect(() => {
-		if (!hasSupabaseConfig) {
-			setData(null);
-			return;
-		}
-
-		let active = true;
-
-		void (async () => {
-			try {
-				const next = await load();
-				if (active) {
-					setData(next);
-				}
-			} catch (error) {
-				console.warn(`[supabase-hybrid:${key}] fallback disabled`, error);
-				if (active) {
-					setData(null);
-				}
-			}
-		})();
-
-		return () => {
-			active = false;
-		};
-	}, deps);
-
-	return data;
+	return useSupabaseLiveValue(key, load, deps);
 }
 
 function getHppCostPerBaseUnit(ingredient: HppIngredientRecord) {

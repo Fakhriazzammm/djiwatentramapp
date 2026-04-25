@@ -76,7 +76,7 @@ export const Route = createLazyFileRoute("/admin/booking")({
 	component: BookingSettingsPage,
 });
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const MONTH_NAMES = [
 	"Januari","Februari","Maret","April","Mei","Juni",
@@ -168,7 +168,7 @@ const PAY_COLOR: Record<string, string> = {
 	cancelled: "bg-red-100 text-red-700",
 };
 
-// â”€â”€â”€ Mini Calendar (admin view) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Mini Calendar (admin view) ───────────────────────────────────────────────
 
 function AdminCalendar({
 	year,
@@ -306,7 +306,7 @@ function AdminCalendar({
 	);
 }
 
-// â”€â”€â”€ Order Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Order Row ────────────────────────────────────────────────────────────────
 
 function OrderRow({
 	order,
@@ -466,7 +466,7 @@ function OrderRow({
 						<div className="space-y-1">
 							{order.items.map((item, i) => (
 								<div className="flex justify-between text-sm" key={i}>
-									<span>{item.name} Ã—{item.quantity}</span>
+									<span>{item.name} ×{item.quantity}</span>
 									<span className="font-medium">Rp {(item.price * item.quantity).toLocaleString("id-ID")}</span>
 								</div>
 							))}
@@ -522,7 +522,7 @@ function OrderRow({
 	);
 }
 
-// â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Main Component ────────────────────────────────────────────────────────────
 
 function BookingSettingsPage() {
 	const settings = useHybridBookingSettings("booking");
@@ -924,7 +924,7 @@ function BookingSettingsPage() {
 				))}
 			</div>
 
-			{/* â”€â”€ CALENDAR TAB â”€â”€ */}
+			{/* ── CALENDAR TAB ── */}
 			{activeTab === "calendar" && (
 				<div className="space-y-4">
 					<AdminCalendar
@@ -945,7 +945,7 @@ function BookingSettingsPage() {
 						<div className="space-y-3">
 							<div className="flex items-center justify-between">
 								<h3 className="font-bold text-foreground">
-									Booking â€” {formatDate(selectedDate)}
+									Booking — {formatDate(selectedDate)}
 								</h3>
 								<button
 									className="text-muted-foreground text-xs hover:text-foreground"
@@ -987,7 +987,7 @@ function BookingSettingsPage() {
 				</div>
 			)}
 
-			{/* â”€â”€ ORDERS TAB â”€â”€ */}
+			{/* ── ORDERS TAB ── */}
 			{activeTab === "orders" && (
 				<div className="space-y-4">
 					{/* Toolbar */}
@@ -1166,7 +1166,7 @@ function BookingSettingsPage() {
 				</div>
 			)}
 
-			{/* â”€â”€ CAPACITY TAB â”€â”€ */}
+			{/* ── CAPACITY TAB ── */}
 			{activeTab === "capacity" && (
 				<div className="space-y-6" ref={capacitySectionRef}>
 					{/* Add/edit capacity form */}
@@ -1350,16 +1350,16 @@ function BookingSettingsPage() {
 														<div className="flex flex-col gap-1 items-center">
 															<span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-0.5 font-bold text-primary text-[10px]">
 																<Users className="h-3 w-3" />
-																{cap.maxPeople === 0 ? "âˆž" : cap.maxPeople} org
+																{cap.maxPeople === 0 ? "∞" : cap.maxPeople} org
 															</span>
 															<span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-0.5 font-bold text-purple-700 text-[10px]">
 																<Smartphone className="h-3 w-3 rotate-90" />
-																{cap.maxTables === 0 ? "âˆž" : cap.maxTables} meja
+																{cap.maxTables === 0 ? "∞" : cap.maxTables} meja
 															</span>
 														</div>
 													</td>
 													<td className="px-4 py-3 text-muted-foreground text-xs">
-														{cap.notes || "â€”"}
+														{cap.notes || "—"}
 													</td>
 													<td className="px-4 py-3 text-right">
 														<button
@@ -1389,7 +1389,7 @@ function BookingSettingsPage() {
 				</div>
 			)}
 
-			{/* â”€â”€ GENERAL SETTINGS TAB â”€â”€ */}
+			{/* ── GENERAL SETTINGS TAB ── */}
 			{activeTab === "general" && (
 				<section className="space-y-5 rounded-2xl border border-border bg-card p-5 md:p-8">
 					<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -1463,7 +1463,7 @@ function BookingSettingsPage() {
 				</section>
 			)}
 
-			{/* â”€â”€ PRODUCTS TAB â”€â”€ */}
+			{/* ── PRODUCTS TAB ── */}
 			{activeTab === "products" && (
 				<section className="rounded-2xl border border-border bg-card p-5 md:p-8 space-y-4">
 					<div className="flex items-center justify-between">
@@ -1552,7 +1552,7 @@ function BookingSettingsPage() {
 				</section>
 			)}
 
-			{/* â”€â”€ FORM BUILDER TAB â”€â”€ */}
+			{/* ── FORM BUILDER TAB ── */}
 			{activeTab === "form" && (
 				<section className="rounded-2xl border border-border bg-card p-5 md:p-8 space-y-6">
 					<div className="flex items-center justify-between">

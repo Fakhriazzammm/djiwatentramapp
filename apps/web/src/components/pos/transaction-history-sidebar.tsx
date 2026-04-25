@@ -633,7 +633,7 @@ function OrderDetailView({
 								#{order.orderNumber}
 							</h3>
 							<p className="text-muted-foreground text-sm">
-								{formatDate(order.createdAt)} â€¢ {formatTime(order.createdAt)}
+								{formatDate(order.createdAt)} • {formatTime(order.createdAt)}
 							</p>
 						</div>
 						{!isEditMode && (

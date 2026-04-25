@@ -1489,7 +1489,7 @@ function ProductsTab({
 														<option value={parent._id}>{parent.name} (Utama)</option>
 														{categories?.filter(c => c.parentId === parent._id).map((sub: any) => (
 															<option key={sub._id} value={sub._id}>
-																â†³ {sub.name}
+																↳ {sub.name}
 															</option>
 														))}
 													</optgroup>

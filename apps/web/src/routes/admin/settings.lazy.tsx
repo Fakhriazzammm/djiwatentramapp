@@ -1891,7 +1891,7 @@ export function SettingsPage({
 														{staff.sessions.map((s: any, i: number) => (
 															<div key={i} className="rounded-lg bg-emerald-100/50 dark:bg-emerald-500/15 px-2 py-1.5 text-[10px]">
 																<div className="flex justify-between mb-0.5">
-																	<span className="font-bold text-emerald-800 dark:text-emerald-200">{s.date} â€” {s.shiftName}</span>
+																	<span className="font-bold text-emerald-800 dark:text-emerald-200">{s.date} — {s.shiftName}</span>
 																	<span className="font-semibold text-emerald-700 dark:text-emerald-300">{Math.round(s.shiftAchievementPct || 0)}%</span>
 																</div>
 																{targets && targets.shiftTargetRevenue > 0 && (
@@ -1900,7 +1900,7 @@ export function SettingsPage({
 																			const achieved = (s.shiftAchievementPct || 0) >= pct;
 																			return (
 																				<span key={pct} className={`rounded px-1 py-0.5 font-bold border text-[9px] ${achieved ? "bg-emerald-600 text-white border-emerald-600" : "bg-white/60 text-muted-foreground/50 border-border/30 dark:bg-muted/30"}`}>
-																					{achieved ? "âœ“" : "â—‹"} {pct}%
+																					{achieved ? "✓" : "○"} {pct}%
 																				</span>
 																			);
 																		})}
@@ -1986,7 +1986,7 @@ export function SettingsPage({
 							{/* Edit Form */}
 							{editingLog && (
 								<div className="space-y-3 rounded-xl border border-amber-300/30 bg-amber-50 p-4 dark:bg-amber-900/10">
-									<p className="font-bold text-sm text-foreground">Edit Log â€” {editingLog.userName}</p>
+									<p className="font-bold text-sm text-foreground">Edit Log — {editingLog.userName}</p>
 									<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
 										<select className="rounded-lg border border-border bg-background p-2 text-xs" value={editingLog.type} onChange={(e) => setEditingLog({ ...editingLog, type: e.target.value })}>
 											<option value="check_in">Check-In</option>
@@ -4294,7 +4294,7 @@ export function SettingsPage({
 											{!editingUser && (
 												<div className="space-y-1.5">
 													<label className="text-[10px] font-bold uppercase text-muted-foreground">Password</label>
-													<input className="w-full rounded-lg border border-border bg-background p-2.5 text-xs" type="password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
+													<input className="w-full rounded-lg border border-border bg-background p-2.5 text-xs" type="password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} placeholder="••••••••" />
 												</div>
 											)}
 											<div className="space-y-1.5">

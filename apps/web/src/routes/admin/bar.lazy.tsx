@@ -28,7 +28,7 @@ import {
 import { useHybridRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
 import { useHybridTrackOrders } from "@/hooks/use-hybrid-ops-data";
 import {
-	useHybridApplyInventoryStockAction,
+	useHybridAdjustMenuStockWithRecipe,
 	useHybridBulkUpdateProducts,
 	useHybridDeleteProduct,
 	useHybridUpdateOrderItemStatus,
@@ -364,7 +364,7 @@ function KanbanCard({
 	const updateProduct = useHybridUpdateProduct();
 	const deleteProduct = useHybridDeleteProduct();
 	const bulkUpdate = useHybridBulkUpdateProducts();
-	const applyInventoryStockAction = useHybridApplyInventoryStockAction();
+	const adjustMenuStockWithRecipe = useHybridAdjustMenuStockWithRecipe();
 	const [syncingProductIds, setSyncingProductIds] = useState<Set<string>>(new Set());
 
 	const filteredProducts = useMemo(() => {
@@ -424,19 +424,14 @@ function KanbanCard({
 			});
 
 			try {
-				const nextQuantity = Math.max(0, currentQuantity + delta);
-				await updateProduct({ id: product._id, quantity: nextQuantity });
-
-				const action = delta > 0 ? "add" : "usage";
-				const multiplier = Math.abs(delta);
-				for (const ingredient of ingredients) {
-					await applyInventoryStockAction({
-						inventoryId: ingredient.inventoryId,
-						action,
-						quantity: Number(ingredient.amount) * multiplier,
-						notes: `Sinkron stok menu ${product.name} (${delta > 0 ? "+" : ""}${delta} porsi) dari /admin/bar`,
-					});
-				}
+				await adjustMenuStockWithRecipe({
+					productId: String(product._id),
+					deltaMenu: delta,
+					currentQuantity,
+					source: "/admin/bar",
+					recipe,
+					notes: `Sinkron stok menu ${product.name} (${delta > 0 ? "+" : ""}${delta} porsi) dari /admin/bar`,
+				});
 
 				toast.success(
 					`Stok ${product.name} ${delta > 0 ? "bertambah" : "berkurang"} ${Math.abs(delta)} porsi dan bahan baku tersinkron.`
@@ -453,7 +448,7 @@ function KanbanCard({
 				});
 			}
 		},
-		[applyInventoryStockAction, recipes, updateProduct]
+		[adjustMenuStockWithRecipe, recipes]
 	);
 
 

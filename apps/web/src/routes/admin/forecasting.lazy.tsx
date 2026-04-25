@@ -165,7 +165,7 @@ function ForecastingPage() {
 					currentStock: item.quantity,
 					avgDailyUsage: 0,
 				});
-				toast.success("Forecast berhasil â€” stok aman");
+				toast.success("Forecast berhasil — stok aman");
 			} else {
 				toast.error("Item tidak ditemukan");
 			}
@@ -246,23 +246,23 @@ function ForecastingPage() {
 				<div className="rounded-xl border border-border bg-card p-4">
 					<p className="text-muted-foreground text-xs">Item Berisiko</p>
 					<p className="mt-1 font-bold text-2xl text-destructive">
-						{stockoutPredictions?.filter((p) => p.riskLevel === "high").length ?? "â€”"}
+						{stockoutPredictions?.filter((p) => p.riskLevel === "high").length ?? "—"}
 					</p>
-					<p className="text-muted-foreground text-[10px]">Stok kritis â‰¤ 3 hari</p>
+					<p className="text-muted-foreground text-[10px]">Stok kritis ≤ 3 hari</p>
 				</div>
 				<div className="rounded-xl border border-border bg-card p-4">
 					<p className="text-muted-foreground text-xs">Item Waspada</p>
 					<p className="mt-1 font-bold text-2xl text-orange-500">
-						{stockoutPredictions?.filter((p) => p.riskLevel === "medium").length ?? "â€”"}
+						{stockoutPredictions?.filter((p) => p.riskLevel === "medium").length ?? "—"}
 					</p>
-					<p className="text-muted-foreground text-[10px]">Stok rendah â‰¤ 7 hari</p>
+					<p className="text-muted-foreground text-[10px]">Stok rendah ≤ 7 hari</p>
 				</div>
 				<div className="rounded-xl border border-border bg-card p-4">
 					<p className="text-muted-foreground text-xs">Jam Paling Ramai</p>
 					<p className="mt-1 font-bold text-2xl text-primary">
 						{busyHours?.peakHours?.[0]
 							? `${busyHours.peakHours[0].hour}:00`
-							: "â€”"}
+							: "—"}
 					</p>
 					<p className="text-muted-foreground text-[10px]">Berdasarkan histori</p>
 				</div>
@@ -271,7 +271,7 @@ function ForecastingPage() {
 					<p className="mt-1 font-bold text-lg text-primary">
 						{revenuePrediction?.[0]
 							? `Rp${revenuePrediction[0].predictedAmount?.toLocaleString("id-ID")}`
-							: "â€”"}
+							: "—"}
 					</p>
 					<p className="text-muted-foreground text-[10px]">Estimasi AI</p>
 				</div>
@@ -590,7 +590,7 @@ function ForecastingPage() {
 									</div>
 								))}
 								<p className="pt-2 text-muted-foreground text-xs">
-									Hari terbaik: {busyHours.peakDays?.[0]?.dayName || "â€”"} (
+									Hari terbaik: {busyHours.peakDays?.[0]?.dayName || "—"} (
 									{busyHours.peakDays?.[0]?.orderCount || 0} order)
 								</p>
 							</div>

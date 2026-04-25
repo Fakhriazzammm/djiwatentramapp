@@ -524,7 +524,7 @@ function IngredientEditor({
 								<p className={`font-semibold ${tableCellSingleLine()}`}>{inv?.ingredientName || "-"}</p>
 								<p className={`text-xs text-muted-foreground ${tableCellSingleLine()}`}>
 									{unitCost != null
-										? `${formatRupiah(Math.round(unitCost))}/${inv?.unit || "unit"} â€¢ ${formatRupiah(Math.round(lineCost ?? 0))}`
+										? `${formatRupiah(Math.round(unitCost))}/${inv?.unit || "unit"} • ${formatRupiah(Math.round(lineCost ?? 0))}`
 										: "Harga bahan belum tersedia di inventory"}
 								</p>
 								<p className={`text-[11px] text-muted-foreground ${tableCellSingleLine()}`}>

@@ -519,7 +519,7 @@ function AttendancePage() {
 											{detectedShift.openTime && detectedShift.closeTime && (
 												<div className="flex items-center gap-2 mt-2 text-xs">
 													<Clock className="h-3.5 w-3.5 text-muted-foreground" />
-													<span className="font-bold">{detectedShift.openTime} â€” {detectedShift.closeTime}</span>
+													<span className="font-bold">{detectedShift.openTime} — {detectedShift.closeTime}</span>
 												</div>
 											)}
 										</div>
@@ -569,7 +569,7 @@ function AttendancePage() {
 											className="h-16 rounded-[1.6rem] border-2 pl-4 text-center text-3xl font-black tracking-[0.45em] transition-all focus:border-primary focus:ring-8 focus:ring-primary/5 md:h-20 md:rounded-[2rem] md:text-4xl"
 											maxLength={6}
 											onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-											placeholder="â€¢â€¢â€¢â€¢â€¢â€¢"
+											placeholder="••••••"
 											type="password"
 											value={pin}
 										/>
@@ -617,7 +617,7 @@ function AttendancePage() {
 									<p className="text-sm font-bold text-muted-foreground truncate">
 										Staff: <span className="text-foreground">{user?.name}</span>
 										{detectedShift && !user?.isCurrentlyIn && (
-											<span className="text-muted-foreground/60"> â€” {detectedShift.name} ({detectedShift.openTime}{detectedShift.closeTime ? `-${detectedShift.closeTime}` : ""})</span>
+											<span className="text-muted-foreground/60"> — {detectedShift.name} ({detectedShift.openTime}{detectedShift.closeTime ? `-${detectedShift.closeTime}` : ""})</span>
 										)}
 									</p>
 								</div>
@@ -781,7 +781,7 @@ function AttendancePage() {
 										{user?.isCurrentlyIn ? "Sudah diabsen keluar. Hati-hati di jalan!" : "Berhasil diabsen masuk. Semangat!"}
 									</p>
 									<p className="text-sm text-muted-foreground">
-										{user?.name} â€” {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+										{user?.name} — {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
 										{detectedShift && !user?.isCurrentlyIn && (
 											<span className="block text-xs mt-1">
 												Shift: <span className="font-bold">{detectedShift.name}</span> ({detectedShift.openTime}{detectedShift.closeTime ? `-${detectedShift.closeTime}` : ""})

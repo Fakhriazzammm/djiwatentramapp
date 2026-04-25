@@ -362,6 +362,118 @@ export function useHybridUpdateProduct() {
 	return useLegacyFallbackMutation(api.products.updateProduct);
 }
 
+type MenuRecipeIngredient = {
+	inventoryId: string;
+	amount: number;
+};
+
+type MenuRecipeSnapshot = {
+	_id?: string;
+	productId?: string;
+	variantName?: string | null;
+	ingredients?: MenuRecipeIngredient[];
+};
+
+export function useHybridAdjustMenuStockWithRecipe() {
+	const updateProduct = useHybridUpdateProduct();
+	const applyInventoryStockAction = useHybridApplyInventoryStockAction();
+
+	return useCallback(
+		async (args: {
+			productId: string;
+			deltaMenu: number;
+			currentQuantity?: number;
+			source?: string;
+			notes?: string;
+			recipe?: MenuRecipeSnapshot | null;
+		}) => {
+			const productId = String(args?.productId ?? "").trim();
+			const deltaMenu = Number(args?.deltaMenu ?? 0);
+			if (!productId) throw new Error("productId wajib diisi");
+			if (!Number.isFinite(deltaMenu) || deltaMenu === 0) {
+				throw new Error("deltaMenu tidak valid");
+			}
+
+			const source = String(args?.source ?? "manual").trim() || "manual";
+			let recipe = args?.recipe ?? null;
+
+			if (!recipe && hasSupabaseConfig) {
+				const { data: recipeRow, error: recipeError } = await createClient()
+					.from("pos_recipes")
+					.select("_id, productId, variantName, ingredients")
+					.eq("productId", productId)
+					.is("variantName", null)
+					.maybeSingle();
+				if (recipeError) throw recipeError;
+				recipe = (recipeRow as MenuRecipeSnapshot | null) ?? null;
+			}
+
+			if (!recipe) {
+				throw new Error("Menu belum punya recipe. Buat recipe dulu.");
+			}
+
+			const ingredients = Array.isArray(recipe.ingredients)
+				? recipe.ingredients.filter(
+						(ingredient) =>
+							typeof ingredient?.inventoryId === "string" &&
+							ingredient.inventoryId.trim() !== "" &&
+							Number(ingredient?.amount ?? 0) > 0
+				  )
+				: [];
+			if (ingredients.length === 0) {
+				throw new Error("Recipe menu belum punya komposisi bahan baku.");
+			}
+
+			let currentQuantity = Number(args?.currentQuantity);
+			if (!Number.isFinite(currentQuantity)) {
+				if (!hasSupabaseConfig) {
+					throw new Error("currentQuantity wajib dikirim saat Supabase tidak aktif.");
+				}
+				const { data: productRow, error: productError } = await createClient()
+					.from("pos_products_all")
+					.select("quantity")
+					.eq("_id", productId)
+					.maybeSingle();
+				if (productError) throw productError;
+				currentQuantity = Number(productRow?.quantity ?? 0);
+			}
+
+			const nextQuantityRaw = currentQuantity + deltaMenu;
+			if (deltaMenu < 0 && nextQuantityRaw < 0) {
+				throw new Error("Stok menu tidak mencukupi.");
+			}
+
+			const nextQuantity = Math.max(0, nextQuantityRaw);
+			await updateProduct({
+				id: productId as any,
+				quantity: nextQuantity,
+			});
+
+			const inventoryAction = deltaMenu > 0 ? "add" : "usage";
+			const multiplier = Math.abs(deltaMenu);
+			for (const ingredient of ingredients) {
+				await applyInventoryStockAction({
+					inventoryId: ingredient.inventoryId,
+					action: inventoryAction,
+					quantity: Number(ingredient.amount) * multiplier,
+					notes:
+						args?.notes ??
+						`Sinkron stok menu (${deltaMenu > 0 ? "+" : ""}${deltaMenu}) dari ${source}`,
+				});
+			}
+
+			return {
+				productId,
+				deltaMenu,
+				previousQuantity: currentQuantity,
+				nextQuantity,
+				ingredientUpdatedCount: ingredients.length,
+			};
+		},
+		[applyInventoryStockAction, updateProduct]
+	);
+}
+
 export function useHybridDeleteProduct() {
 	return useLegacyFallbackMutation(api.products.deleteProduct);
 }

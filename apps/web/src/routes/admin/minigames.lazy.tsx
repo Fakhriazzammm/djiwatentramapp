@@ -619,7 +619,7 @@ function AdminMiniGamesPage() {
 											<div>
 												<p className="font-semibold text-sm">{game.name}</p>
 												<p className="text-muted-foreground text-xs">
-													/{game.brandSlug}/minigames â€¢ {game.slug}
+													/{game.brandSlug}/minigames • {game.slug}
 												</p>
 											</div>
 											<span
@@ -634,7 +634,7 @@ function AdminMiniGamesPage() {
 										</div>
 										<div className="flex items-center justify-between">
 											<p className="text-muted-foreground text-xs">
-												Hadiah: {game.prizes.length} â€¢ Spin/Kontak: {game.maxSpinsPerContact}
+												Hadiah: {game.prizes.length} • Spin/Kontak: {game.maxSpinsPerContact}
 											</p>
 											<div className="flex gap-1">
 												<Button

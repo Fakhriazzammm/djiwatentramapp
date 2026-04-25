@@ -15,6 +15,7 @@ import {
 	Pencil,
 	Plus,
 	Printer,
+	Search,
 	Save,
 	Settings2,
 	ShoppingCart,
@@ -87,12 +88,11 @@ import {
 } from "@/hooks/use-hybrid-finance-analytics-data";
 import { useHybridRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
 import {
-	useHybridApplyInventoryStockAction,
+	useHybridAdjustMenuStockWithRecipe,
 	useHybridCreateOrder,
 	useHybridCreateTransaction,
 	useHybridDeleteOrder,
 	useHybridEndShift,
-	useHybridProduceBaseRecipeBatch,
 	useHybridSendShiftReportEmail,
 	useHybridStartShift,
 	useHybridUpdateOrder,
@@ -535,7 +535,7 @@ export function MenuSidebar({
 							{activeTab === "stok" && (
 								<div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin bg-background">
 									<div className="p-4 pb-20">
-										<StokTab setConfirmConfig={setConfirmConfig} />
+										<StokTab />
 									</div>
 								</div>
 							)}
@@ -2847,11 +2847,7 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 	);
 }
 
-function StokTab({
-	setConfirmConfig,
-}: {
-	setConfirmConfig: (config: ConfirmConfig) => void;
-}) {
+function StokTab() {
 	const [activeSubTab, setActiveSubTab] = useState<"update" | "beli">("update");
 
 	const lowStockItems = useHybridLowStockItems();
@@ -2974,99 +2970,114 @@ function StokTab({
 			</div>
 
 			<div className="flex-1 overflow-hidden">
-				{activeSubTab === "update" && (
-					<InventoryTab setConfirmConfig={setConfirmConfig} />
-				)}
+				{activeSubTab === "update" && <InventoryTab />}
 				{activeSubTab === "beli" && <MarketList />}
 			</div>
 		</div>
 	);
 }
 
-function InventoryTab({
-	setConfirmConfig,
-}: {
-	setConfirmConfig: (config: ConfirmConfig) => void;
-}) {
+function InventoryTab() {
+	const allProducts = useHybridAllProducts();
+	const categories = useHybridCategories();
 	const inventory = useHybridInventory();
-	const applyStockAction = useHybridApplyInventoryStockAction();
-	const produceBatch = useHybridProduceBaseRecipeBatch();
+	const recipes = useHybridRecipes();
+	const adjustMenuStockWithRecipe = useHybridAdjustMenuStockWithRecipe();
 
-	const [editingId, setEditingId] = useState<Id<"inventory"> | null>(null);
-	const [manualQty, setManualQty] = useState<string>("");
+	const [searchQuery, setSearchQuery] = useState("");
+	const [syncingProductIds, setSyncingProductIds] = useState<Set<string>>(new Set());
 
-	const handleUpdate = async (
-		id: Id<"inventory">,
-		type: "add" | "usage",
-		currentQty: number
-	) => {
-		try {
-			if (type === "add") {
-				await applyStockAction({
-					inventoryId: id,
-					action: "add",
-					quantity: 1,
-					notes: "Quick Update via Menu",
-				});
-			} else {
-				if (currentQty <= 0) {
-					return;
+	const menuCategoryIds = useMemo(() => {
+		if (!categories?.length) return new Set<string>();
+		const rootIds = new Set(
+			categories
+				.filter((category: any) => {
+					const name = String(category?.name || "").toLowerCase();
+					return (
+						name.includes("bar") ||
+						name.includes("kitchen") ||
+						name.includes("makanan") ||
+						name.includes("minuman")
+					);
+				})
+				.map((category: any) => String(category._id))
+		);
+		const allMenuIds = new Set<string>(rootIds);
+		let changed = true;
+		while (changed) {
+			changed = false;
+			for (const category of categories) {
+				const parentId = category.parentId ? String(category.parentId) : null;
+				const categoryId = String(category._id);
+				if (parentId && allMenuIds.has(parentId) && !allMenuIds.has(categoryId)) {
+					allMenuIds.add(categoryId);
+					changed = true;
 				}
-				await applyStockAction({
-					inventoryId: id,
-					action: "usage",
-					quantity: 1,
-					notes: "Quick Update via Menu",
+			}
+		}
+		return allMenuIds;
+	}, [categories]);
+
+	const menuProducts = useMemo(() => {
+		if (!allProducts?.length || menuCategoryIds.size === 0) return [] as any[];
+		const query = searchQuery.trim().toLowerCase();
+		return allProducts
+			.filter((product: any) => menuCategoryIds.has(String(product.categoryId || "")))
+			.filter((product: any) =>
+				query ? String(product.name || "").toLowerCase().includes(query) : true
+			);
+	}, [allProducts, menuCategoryIds, searchQuery]);
+
+	const handleAdjustMenuStock = useCallback(
+		async (product: any, delta: number) => {
+			if (!delta) return;
+			const recipe = recipes?.find(
+				(recipeItem: any) =>
+					String(recipeItem.productId) === String(product._id) && !recipeItem.variantName
+			);
+			if (!recipe) {
+				toast.error(`Menu ${product.name} belum punya recipe. Buat recipe dulu.`);
+				return;
+			}
+
+			const currentQuantity = Number(product.quantity ?? 0);
+			if (delta < 0 && currentQuantity <= 0) {
+				toast.error("Stok menu sudah 0");
+				return;
+			}
+
+			setSyncingProductIds((prev) => {
+				const next = new Set(prev);
+				next.add(String(product._id));
+				return next;
+			});
+
+			try {
+				await adjustMenuStockWithRecipe({
+					productId: String(product._id),
+					deltaMenu: delta,
+					currentQuantity,
+					source: "/menu?tab=stok",
+					recipe,
+					notes: `Sinkron stok menu ${product.name} (${delta > 0 ? "+" : ""}${delta} porsi) dari /menu`,
+				});
+				toast.success(
+					`Stok ${product.name} ${delta > 0 ? "bertambah" : "berkurang"} ${Math.abs(delta)} porsi dan bahan baku tersinkron.`
+				);
+			} catch (error: any) {
+				toast.error(error?.message || "Gagal sinkron stok menu");
+			} finally {
+				setSyncingProductIds((prev) => {
+					const next = new Set(prev);
+					next.delete(String(product._id));
+					return next;
 				});
 			}
-			toast.success("Stok diperbarui");
-		} catch (_e) {
-			toast.error("Gagal update stok");
-		}
-	};
+		},
+		[adjustMenuStockWithRecipe, recipes]
+	);
 
-	const handleManualAdjust = async (
-		id: Id<"inventory">,
-		action: "add" | "usage" | "set"
-	) => {
-		const qty = Number(manualQty);
-		if (Number.isNaN(qty) || qty <= 0) {
-			toast.error("Masukkan jumlah yang valid");
-			return;
-		}
-
-		try {
-			if (action === "add") {
-				await applyStockAction({
-					inventoryId: id,
-					action: "add",
-					quantity: qty,
-					notes: "Manual Adjustment",
-				});
-			} else if (action === "usage") {
-				await applyStockAction({
-					inventoryId: id,
-					action: "usage",
-					quantity: qty,
-					notes: "Manual Adjustment",
-				});
-			} else {
-				await applyStockAction({
-					inventoryId: id,
-					action: "adjust",
-					quantity: qty,
-					notes: "Opname/Adjustment",
-				});
-			}
-			toast.success("Stok berhasil diperbarui");
-			setEditingId(null);
-			setManualQty("");
-		} catch (_e) {
-			toast.error("Gagal update stok");
-		}
-	};
-
-	if (inventory === undefined) {
+	if (!allProducts || !categories || !recipes || !inventory) {
 		return (
 			<div className="p-4 text-center text-muted-foreground">
 				Memuat data...
@@ -3076,201 +3087,119 @@ function InventoryTab({
 
 	return (
 		<div className="flex-1 flex flex-col gap-3 min-h-0">
-			<div className="flex items-center justify-between shrink-0">
-				<h3 className="font-bold text-sm">Update Stok</h3>
+			<div className="flex items-center justify-between gap-2 shrink-0">
+				<h3 className="font-bold text-sm">Update Stok per Menu</h3>
 				<span className="text-[10px] text-muted-foreground">
-					{inventory.length} item
+					{menuProducts.length} menu
 				</span>
 			</div>
+
+			<div className="relative shrink-0">
+				<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+				<Input
+					className="h-9 pl-9 text-sm"
+					onChange={(event) => setSearchQuery(event.target.value)}
+					placeholder="Cari menu..."
+					value={searchQuery}
+				/>
+			</div>
+
 			<div className="flex-1 overflow-y-auto pr-2 min-h-0 scrollbar-thin pb-12">
-				<div className="space-y-2">
-					{inventory.map((item: Doc<"inventory">) => {
-						const isEditing = editingId === item._id;
-						const isLowStock = item.quantity <= item.lowStockThreshold;
+				{menuProducts.length === 0 ? (
+					<div className="rounded-lg border border-dashed py-10 text-center text-muted-foreground">
+						<Package className="mx-auto mb-2 h-10 w-10 opacity-20" />
+						<p className="font-medium">Belum ada menu yang cocok</p>
+						<p className="text-xs">Coba ubah pencarian atau kategori menu</p>
+					</div>
+				) : (
+					<div className="space-y-2">
+						{menuProducts.map((product: any) => {
+							const recipe = recipes.find(
+								(recipeItem: any) =>
+									String(recipeItem.productId) === String(product._id) &&
+									!recipeItem.variantName
+							);
+							const recipeMissing = !recipe;
+							const isSyncing = syncingProductIds.has(String(product._id));
+							const currentQuantity = Number(product.quantity ?? 0);
 
-						return (
-							<Card
-								className={`overflow-hidden ${
-									isLowStock
-										? "border-destructive/30 bg-destructive/5"
-										: "border-border bg-card/50"
-								}`}
-								key={item._id}
-							>
-								<CardContent className="p-3">
-									<div className="flex items-center justify-between">
-										<div className="flex flex-col">
-											<div className="flex items-center gap-1.5">
-												<span className="font-bold text-sm">
-													{item.ingredientName}
-												</span>
-												{isLowStock && (
-													<AlertCircle className="h-3 w-3 text-destructive" />
-												)}
-											</div>
-											<div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-												Stok:{" "}
-												<span
-													className={`font-bold ${
-														isLowStock ? "text-destructive" : "text-foreground"
-													}`}
-												>
-													{item.displayUnit &&
-													item.conversionFactor &&
-													item.conversionFactor > 0
-														? (item.quantity / item.conversionFactor).toFixed(2)
-														: item.quantity}
-												</span>{" "}
-												{item.displayUnit || item.unit}
-												{item.displayUnit && (
-													<span className="text-[9px] italic opacity-70">
-														({item.quantity} {item.unit})
+							let potentialStock: number | null = null;
+							if (recipe?.ingredients?.length) {
+								const limits = recipe.ingredients
+									.map((ingredient: any) => {
+										const item = inventory.find(
+											(inv: any) => String(inv._id) === String(ingredient.inventoryId)
+										);
+										if (!item || Number(ingredient.amount ?? 0) <= 0) return 0;
+										return Math.floor(Number(item.quantity ?? 0) / Number(ingredient.amount ?? 0));
+									})
+									.filter((value: number) => Number.isFinite(value));
+								potentialStock = limits.length ? Math.min(...limits) : 0;
+							}
+
+							return (
+								<Card className="border-border bg-card/50 overflow-hidden" key={product._id}>
+									<CardContent className="p-3">
+										<div className="flex items-start justify-between gap-2">
+											<div>
+												<p className="font-semibold text-sm text-foreground">
+													{product.name}
+												</p>
+												<div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+													<span>
+														Ready: <span className="font-bold text-foreground">{currentQuantity}</span>
 													</span>
-												)}
-											</div>
-										</div>
-
-										<div className="flex items-center gap-1">
-											{item.baseRecipeId && (
-												<Button
-													className="h-7 px-2 font-bold text-[9px]"
-													onClick={() => {
-														setConfirmConfig({
-															isOpen: true,
-															title: "Konfirmasi Produksi",
-															message: `Buat 1 batch ${item.ingredientName}?`,
-															onConfirm: async () => {
-																try {
-																	if (!item.baseRecipeId) {
-																		return;
-																	}
-																	await produceBatch({
-																		baseRecipeId: item.baseRecipeId,
-																		inventoryId: item._id,
-																		batchMultiplier: 1,
-																	});
-																	toast.success("Produksi berhasil");
-																} catch (e: unknown) {
-																	const error = e as Error;
-																	toast.error(error.message);
-																}
-															},
-														});
-													}}
-													size="sm"
-													variant="outline"
-												>
-													<Sparkles className="mr-1 h-3 w-3 text-accent" />
-													Produksi
-												</Button>
-											)}
-
-											{isEditing ? (
-												<Button
-													className="h-7 w-7"
-													onClick={() => setEditingId(null)}
-													size="icon"
-													variant="ghost"
-												>
-													<X className="h-4 w-4" />
-												</Button>
-											) : (
-												<>
-													<Button
-														className="h-7 w-7 rounded-md"
-														disabled={item.quantity <= 0}
-														onClick={() =>
-															handleUpdate(item._id, "usage", item.quantity)
-														}
-														size="icon"
-														variant="outline"
-													>
-														<Minus className="h-3 w-3" />
-													</Button>
-													<Button
-														className="h-7 w-7 rounded-md"
-														onClick={() =>
-															handleUpdate(item._id, "add", item.quantity)
-														}
-														size="icon"
-														variant="outline"
-													>
-														<Plus className="h-3 w-3" />
-													</Button>
-													<Button
-														className="h-7 w-7 rounded-md text-muted-foreground hover:text-primary"
-														onClick={() => {
-															setEditingId(item._id);
-															setManualQty("");
-														}}
-														size="icon"
-														variant="ghost"
-													>
-														<Pencil className="h-3 w-3" />
-													</Button>
-												</>
-											)}
-										</div>
-									</div>
-
-									{isEditing && (
-										<div className="mt-2 flex flex-col gap-2 rounded-lg bg-muted/50 p-2">
-											<div className="flex items-center gap-2">
-												<Input
-													autoFocus
-													className="h-8 font-bold text-sm"
-													onChange={(e) => setManualQty(e.target.value)}
-													onKeyDown={(e) => {
-														if (e.key === "Enter") {
-															handleManualAdjust(item._id, "add");
-														}
-														if (e.key === "Escape") {
-															setEditingId(null);
-														}
-													}}
-													placeholder="Jumlah..."
-													type="number"
-													value={manualQty}
-												/>
-												<div className="flex gap-1">
-													<Button
-														className="h-8 px-2 font-bold text-[10px]"
-														onClick={() => handleManualAdjust(item._id, "add")}
-														size="sm"
-														variant="outline"
-													>
-														+
-													</Button>
-													<Button
-														className="h-8 px-2 font-bold text-[10px]"
-														onClick={() =>
-															handleManualAdjust(item._id, "usage")
-														}
-														size="sm"
-														variant="outline"
-													>
-														-
-													</Button>
-													<Button
-														className="h-8 px-2 font-bold text-[10px]"
-														onClick={() => handleManualAdjust(item._id, "set")}
-														size="sm"
-														variant="default"
-													>
-														Set
-													</Button>
+													{potentialStock !== null && (
+														<span>
+															Potensi:{" "}
+															<span className="font-bold text-foreground">{potentialStock} porsi</span>
+														</span>
+													)}
 												</div>
 											</div>
-											<p className="text-[9px] text-muted-foreground italic">
-												* Tentukan jumlah lalu pilih aksi (+ / - / Set Total)
-											</p>
+
+											<div className="flex items-center gap-1">
+												<Button
+													className="h-7 w-7 rounded-md"
+													disabled={recipeMissing || isSyncing || currentQuantity <= 0}
+													onClick={() => void handleAdjustMenuStock(product, -1)}
+													size="icon"
+													variant="outline"
+												>
+													<Minus className="h-3 w-3" />
+												</Button>
+												<Button
+													className="h-7 w-7 rounded-md"
+													disabled={recipeMissing || isSyncing}
+													onClick={() => void handleAdjustMenuStock(product, 1)}
+													size="icon"
+													variant="outline"
+												>
+													<Plus className="h-3 w-3" />
+												</Button>
+											</div>
 										</div>
-									)}
-								</CardContent>
-							</Card>
-						);
-					})}
-				</div>
+
+										{recipeMissing && (
+											<div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">
+												Menu belum punya recipe.
+												<button
+													className="ml-1 font-semibold underline"
+													onClick={() => {
+														window.location.href = "/admin/recipe";
+													}}
+													type="button"
+												>
+													Buat recipe dulu
+												</button>
+											</div>
+										)}
+									</CardContent>
+								</Card>
+							);
+						})}
+					</div>
+				)}
 			</div>
 		</div>
 	);

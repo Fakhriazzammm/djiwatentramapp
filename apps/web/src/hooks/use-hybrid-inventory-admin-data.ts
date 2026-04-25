@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import { createClient } from "@/lib/client";
+import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 
 type InventoryStoreType = "store" | "supplier" | "market" | "other";
 
@@ -233,42 +234,12 @@ type InventoryWorkspaceData = {
 	}>;
 };
 
-const hasSupabaseConfig = Boolean(
-	import.meta.env.VITE_SUPABASE_URL &&
-		import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-);
-
 function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
 	deps: readonly unknown[]
 ) {
-	const [data, setData] = useState<T | null>(null);
-
-	useEffect(() => {
-		if (!hasSupabaseConfig) {
-			setData(null);
-			return;
-		}
-
-		let active = true;
-
-		void (async () => {
-			try {
-				const next = await load();
-				if (active) setData(next);
-			} catch (error) {
-				console.warn(`[supabase-hybrid:${key}] fallback disabled`, error);
-				if (active) setData(null);
-			}
-		})();
-
-		return () => {
-			active = false;
-		};
-	}, deps);
-
-	return data;
+	return useSupabaseLiveValue(key, load, deps);
 }
 
 function normalizeLookupText(input?: string | null) {

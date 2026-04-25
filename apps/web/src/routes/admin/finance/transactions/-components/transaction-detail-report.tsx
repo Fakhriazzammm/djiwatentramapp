@@ -256,7 +256,7 @@ export function TransactionDetailReport({
 		return keys;
 	}, [filteredTransactions]);
 
-	// Running balance: cumulative net from oldest â†’ newest
+	// Running balance: cumulative net from oldest → newest
 	const runningBalances = useMemo(() => {
 		if (!showRunningBalance) return new Map<string, number>();
 		const sorted = [...filteredTransactions].sort((a: any, b: any) => a.date - b.date);
@@ -431,7 +431,7 @@ export function TransactionDetailReport({
 		if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
 	}, [page, pageSize, viewMode, groupMode, searchQuery, sortBy, sortOrder]);
 
-	// â”€â”€ Undo Delete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	// ── Undo Delete ──────────────────────────────────────────────────────────
 	const handleDelete = async (transaction: any) => {
 		if (viewMode === "item" && transaction.rowType === "receipt_item") {
 			if (!confirm(`Hapus item ${transaction.receiptItemIndex}/${transaction.receiptItemCount} dari struk ini?`)) return;
@@ -634,7 +634,7 @@ export function TransactionDetailReport({
 		onCustomRangeChange({
 			startDate: startOfDay(start).getTime(),
 			endDate: endOfDay(end).getTime(),
-			label: `${format(start, "dd MMM")} â€“ ${format(end, "dd MMM yyyy", { locale: localeID })}`,
+			label: `${format(start, "dd MMM")} – ${format(end, "dd MMM yyyy", { locale: localeID })}`,
 		});
 	};
 
@@ -670,7 +670,7 @@ export function TransactionDetailReport({
 		const up = pct >= 0;
 		return (
 			<span className={`ml-1 rounded px-1 py-0.5 text-[9px] font-semibold ${up ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
-				{up ? "â–²" : "â–¼"} {Math.abs(pct).toFixed(1)}%
+				{up ? "▲" : "▼"} {Math.abs(pct).toFixed(1)}%
 			</span>
 		);
 	};
@@ -684,7 +684,7 @@ export function TransactionDetailReport({
 
 	return (
 		<div className="space-y-1 p-1">
-			{/* â”€â”€ Header bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+			{/* ── Header bar ──────────────────────────────────────────────── */}
 			{withMergedHeader && (
 				<div className="sticky top-0 z-30 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
 					{/* Row 1: title + controls + actions */}
@@ -781,11 +781,11 @@ export function TransactionDetailReport({
 							<div className="flex items-center divide-x divide-slate-200 text-[11px]">
 								<span className="pr-3 text-slate-500">{summary!.periodLabel}</span>
 								<span className="px-3 font-semibold text-emerald-600">
-									â†‘ {formatCurrencyIDR(summary!.totalIncome)}
+									↑ {formatCurrencyIDR(summary!.totalIncome)}
 									{comparisonChip(summary!.totalIncome, previousSummary?.totalIncome ?? 0, "income")}
 								</span>
 								<span className="px-3 font-semibold text-orange-500">
-									â†“ {formatCurrencyIDR(summary!.totalExpense)}
+									↓ {formatCurrencyIDR(summary!.totalExpense)}
 									{comparisonChip(summary!.totalExpense, previousSummary?.totalExpense ?? 0, "expense")}
 								</span>
 								<span className={`pl-3 font-bold ${summary!.netBalance >= 0 ? "text-slate-900" : "text-red-600"}`}>
@@ -796,7 +796,7 @@ export function TransactionDetailReport({
 							</div>
 							{showComparison && previousSummary && (
 								<div className="text-[9px] text-slate-400">
-									vs {previousSummary.periodLabel}: â†‘ {formatCurrencyIDR(previousSummary.totalIncome)} Â· â†“ {formatCurrencyIDR(previousSummary.totalExpense)}
+									vs {previousSummary.periodLabel}: ↑ {formatCurrencyIDR(previousSummary.totalIncome)} · ↓ {formatCurrencyIDR(previousSummary.totalExpense)}
 								</div>
 							)}
 							{showComparison && previousSummary === null && (
@@ -815,7 +815,7 @@ export function TransactionDetailReport({
 								onChange={(e) => setCustomStartInput(e.target.value)}
 								className="h-6 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
 							/>
-							<span className="text-[10px] text-slate-400">â€“</span>
+							<span className="text-[10px] text-slate-400">–</span>
 							<span className="text-[10px] font-medium text-slate-600">Sampai</span>
 							<input
 								type="date"
@@ -836,7 +836,7 @@ export function TransactionDetailReport({
 			)}
 
 			<div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-				{/* â”€â”€ Filter bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+				{/* ── Filter bar ──────────────────────────────────────────── */}
 				<div className="border-b border-slate-200/80 px-2 py-1.5">
 					<div className="flex flex-wrap items-center gap-2">
 						{/* Type */}
@@ -878,12 +878,12 @@ export function TransactionDetailReport({
 							onClick={() => { if (sortBy === "date") setSortOrder(sortOrder === "asc" ? "desc" : "asc"); else setSortBy("date"); }}
 							className={`inline-flex h-7 items-center gap-1 rounded border px-2 text-[10px] font-medium transition-colors ${sortBy === "date" ? "border-slate-400 bg-slate-100 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
 							<ArrowUpDown className="h-3 w-3" />
-							Tanggal {sortBy === "date" ? (sortOrder === "asc" ? "â†‘" : "â†“") : ""}
+							Tanggal {sortBy === "date" ? (sortOrder === "asc" ? "↑" : "↓") : ""}
 						</button>
 						<button type="button"
 							onClick={() => { if (sortBy === "amount") setSortOrder(sortOrder === "asc" ? "desc" : "asc"); else setSortBy("amount"); }}
 							className={`inline-flex h-7 items-center gap-1 rounded border px-2 text-[10px] font-medium transition-colors ${sortBy === "amount" ? "border-slate-400 bg-slate-100 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
-							Nominal {sortBy === "amount" ? (sortOrder === "asc" ? "â†‘" : "â†“") : ""}
+							Nominal {sortBy === "amount" ? (sortOrder === "asc" ? "↑" : "↓") : ""}
 						</button>
 
 						{/* More filters */}
@@ -919,7 +919,7 @@ export function TransactionDetailReport({
 								<span className="text-[10px] font-medium uppercase tracking-wider text-slate-600">Nominal:</span>
 								<input type="number" placeholder="Min" value={minAmount} onChange={(e) => setMinAmount(e.target.value)}
 									className="h-6 w-24 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300" />
-								<span className="text-slate-400">â€“</span>
+								<span className="text-slate-400">–</span>
 								<input type="number" placeholder="Max" value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)}
 									className="h-6 w-24 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300" />
 							</div>
@@ -937,7 +937,7 @@ export function TransactionDetailReport({
 					)}
 				</div>
 
-				{/* â”€â”€ Bulk action bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+				{/* ── Bulk action bar ──────────────────────────────────────── */}
 				{selectedVisibleCount > 0 && (
 					<div className="flex items-center justify-between gap-3 border-b border-red-200 bg-red-50 px-3 py-1.5">
 						<p className="text-[11px] text-slate-700">
@@ -957,7 +957,7 @@ export function TransactionDetailReport({
 					</div>
 				)}
 
-				{/* â”€â”€ Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+				{/* ── Table ────────────────────────────────────────────────── */}
 				<div
 					ref={scrollContainerRef}
 					onScroll={(e) => setScrollTop((e.target as HTMLDivElement).scrollTop)}
@@ -1022,7 +1022,7 @@ export function TransactionDetailReport({
 										<tr><td colSpan={columnCount} style={{ height: `${virtualized.topSpacer}px`, padding: 0, border: 0 }} /></tr>
 									)}
 									{virtualized.rows.map((t: any) => {
-										// â”€â”€ Date separator (flat mode) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+										// ── Date separator (flat mode) ─────────────────────
 										if (t.rowType === "date_separator") {
 											return (
 												<tr key={`sep-${t.dayKey}`} className="border-t-2 border-slate-200 bg-slate-50">
@@ -1031,8 +1031,8 @@ export function TransactionDetailReport({
 															<span className="text-[11px] font-bold text-slate-700">{t.label}</span>
 															<div className="flex items-center gap-3 text-[10px]">
 																<span className="text-slate-400">{t.count} tx</span>
-																<span className="font-semibold text-emerald-600">â†‘ {formatCurrencyIDR(t.income)}</span>
-																<span className="font-semibold text-orange-500">â†“ {formatCurrencyIDR(t.expense)}</span>
+																<span className="font-semibold text-emerald-600">↑ {formatCurrencyIDR(t.income)}</span>
+																<span className="font-semibold text-orange-500">↓ {formatCurrencyIDR(t.expense)}</span>
 																<span className={`font-bold ${t.net >= 0 ? "text-slate-800" : "text-red-600"}`}>
 																	= {t.net < 0 && "-"}{formatCurrencyIDR(Math.abs(t.net))}
 																</span>
@@ -1043,7 +1043,7 @@ export function TransactionDetailReport({
 											);
 										}
 
-										// â”€â”€ Grouped hierarchy nodes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+										// ── Grouped hierarchy nodes ────────────────────────
 										if (t.rowType === "hierarchy_node") {
 											if (t.level === "day") {
 												const net = Number(t.amount ?? 0);
@@ -1058,8 +1058,8 @@ export function TransactionDetailReport({
 																	<span className="rounded bg-slate-300/70 px-1.5 py-0.5 text-[9px] font-semibold text-slate-600">{t.count} tx</span>
 																</div>
 																<div className="flex items-center gap-3 text-[10px]">
-																	<span className="font-semibold text-emerald-600">â†‘ {formatCurrencyIDR(t.income)}</span>
-																	<span className="font-semibold text-orange-500">â†“ {formatCurrencyIDR(t.expense)}</span>
+																	<span className="font-semibold text-emerald-600">↑ {formatCurrencyIDR(t.income)}</span>
+																	<span className="font-semibold text-orange-500">↓ {formatCurrencyIDR(t.expense)}</span>
 																	<span className={`font-bold ${net >= 0 ? "text-slate-800" : "text-red-600"}`}>
 																		= {net < 0 && "-"}{formatCurrencyIDR(Math.abs(net))}
 																	</span>
@@ -1079,11 +1079,11 @@ export function TransactionDetailReport({
 																<div className="flex items-center gap-1.5">
 																	{t.isCollapsed ? <ChevronRight className="h-3 w-3 text-slate-400" /> : <ChevronDown className="h-3 w-3 text-slate-400" />}
 																	<span className="text-[10px] font-semibold text-slate-600">{t.label !== "-" ? t.label : "Tanpa Shift"}</span>
-																	<span className="text-[9px] text-slate-400">Â· {t.count} tx</span>
+																	<span className="text-[9px] text-slate-400">· {t.count} tx</span>
 																</div>
 																<div className="flex items-center gap-2 text-[10px]">
-																	<span className="text-emerald-600">â†‘ {formatCurrencyIDR(t.income)}</span>
-																	<span className="text-orange-500">â†“ {formatCurrencyIDR(t.expense)}</span>
+																	<span className="text-emerald-600">↑ {formatCurrencyIDR(t.income)}</span>
+																	<span className="text-orange-500">↓ {formatCurrencyIDR(t.expense)}</span>
 																	<span className={`font-semibold ${net >= 0 ? "text-slate-700" : "text-red-600"}`}>
 																		= {net < 0 && "-"}{formatCurrencyIDR(Math.abs(net))}
 																	</span>
@@ -1102,7 +1102,7 @@ export function TransactionDetailReport({
 											);
 										}
 
-										// â”€â”€ Data row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+										// ── Data row ───────────────────────────────────────
 										const rowKey = String(t.rowKey || t._id);
 										let shiftName = "-";
 										if (historicalShifts) {
@@ -1143,7 +1143,7 @@ export function TransactionDetailReport({
 														</span>
 														<span className="text-[10px] text-slate-400" title={shiftName !== "-" ? `Shift: ${shiftName}` : undefined}>
 															{format(new Date(t.date), "HH:mm")}
-															{shiftName !== "-" && <span className="ml-1 text-slate-300">Â· {shiftName}</span>}
+															{shiftName !== "-" && <span className="ml-1 text-slate-300">· {shiftName}</span>}
 														</span>
 													</div>
 												</td>
@@ -1177,7 +1177,7 @@ export function TransactionDetailReport({
 												{/* Nominal */}
 												<td className="sticky right-[88px] z-10 whitespace-nowrap border-l border-slate-100 bg-white px-3 py-2 text-right group-hover:bg-slate-50">
 													<span className={`font-mono text-[13px] font-semibold tracking-tight ${isIncome ? "text-emerald-600" : "text-orange-500"}`}>
-														{isIncome ? "+" : "âˆ’"} {formatCurrencyIDR(t.amount)}
+														{isIncome ? "+" : "−"} {formatCurrencyIDR(t.amount)}
 													</span>
 												</td>
 
@@ -1189,7 +1189,7 @@ export function TransactionDetailReport({
 																{runningBal < 0 && "-"}{formatCurrencyIDR(Math.abs(runningBal))}
 															</span>
 														) : (
-															<span className="text-[10px] text-slate-300">â€”</span>
+															<span className="text-[10px] text-slate-300">—</span>
 														)}
 													</td>
 												)}
@@ -1222,7 +1222,7 @@ export function TransactionDetailReport({
 					</table>
 				</div>
 
-				{/* â”€â”€ Pagination â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+				{/* ── Pagination ─────────────────────────────────────────────── */}
 				{data && (
 					<div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-3 py-2">
 						<span className="text-[10px] text-slate-400">
@@ -1239,12 +1239,12 @@ export function TransactionDetailReport({
 							<button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))}
 								disabled={(data.page || page) <= 1}
 								className="rounded border border-slate-200 px-2.5 py-1 text-[10px] text-slate-600 hover:bg-slate-100 disabled:opacity-40">
-								â† Prev
+								← Prev
 							</button>
 							<button type="button" onClick={() => setPage((p) => Math.min(data.pageCount || 1, p + 1))}
 								disabled={(data.page || page) >= (data.pageCount || 1)}
 								className="rounded border border-slate-200 px-2.5 py-1 text-[10px] text-slate-600 hover:bg-slate-100 disabled:opacity-40">
-								Next â†’
+								Next →
 							</button>
 						</div>
 					</div>

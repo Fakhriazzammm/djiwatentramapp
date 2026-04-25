@@ -510,7 +510,7 @@ function AdminOrders() {
 							<div>
 								<p className="font-semibold text-xs">Ringkasan Finansial</p>
 								<p className="text-[10px] text-muted-foreground">
-									Revenue {formatrupiah(hppCogs.totalRevenue)} Â· Laba{" "}
+									Revenue {formatrupiah(hppCogs.totalRevenue)} · Laba{" "}
 									{formatrupiah(hppCogs.totalProfit)}
 								</p>
 							</div>
@@ -698,11 +698,11 @@ function AdminOrders() {
 												</Badge>
 											</div>
 											<div className="text-[11px] text-muted-foreground">
-												{order.customerName || "Pelanggan Umum"} Â·{" "}
+												{order.customerName || "Pelanggan Umum"} ·{" "}
 												{(order.paymentMethod || "-").toUpperCase()}
 											</div>
 											<div className="text-[10px] text-muted-foreground">
-												{getOrderLocationLabel(order)} Â· {shiftMeta.shiftName}
+												{getOrderLocationLabel(order)} · {shiftMeta.shiftName}
 											</div>
 											<div className="text-[10px] text-muted-foreground">
 												Kasir: {shiftMeta.cashierName}
