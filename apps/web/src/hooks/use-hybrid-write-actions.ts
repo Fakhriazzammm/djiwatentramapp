@@ -326,7 +326,7 @@ function useHybridStorageUpload(
 					.getPublicUrl(objectPath);
 				return data.publicUrl || objectPath;
 			} catch (error) {
-				console.warn("[supabase-hybrid:storage-upload] fallback disabled", error);
+				console.error("[supabase-hybrid:storage-upload] fallback disabled", error);
 				return uploadViaLegacyUrl(fallback, args);
 			}
 		},
@@ -729,8 +729,8 @@ export function useHybridCreateOrder() {
 
 				return orderId;
 			} catch (error) {
-				console.warn("[supabase-hybrid:write-create-order] fallback disabled", error);
-				return fallback(args);
+				console.error("[supabase-hybrid:write-create-order] fallback disabled", error);
+				throw error;
 			}
 		},
 		[fallback]
@@ -775,8 +775,8 @@ export function useHybridUpdateOrder() {
 				if (error) throw error;
 				return;
 			} catch (error) {
-				console.warn("[supabase-hybrid:write-update-order] fallback disabled", error);
-				return fallback(args);
+				console.error("[supabase-hybrid:write-update-order] fallback disabled", error);
+				throw error;
 			}
 		},
 		[fallback]
@@ -818,8 +818,8 @@ export function useHybridDeleteOrder() {
 
 				return;
 			} catch (error) {
-				console.warn("[supabase-hybrid:write-delete-order] fallback disabled", error);
-				return fallback(args);
+				console.error("[supabase-hybrid:write-delete-order] fallback disabled", error);
+				throw error;
 			}
 		},
 		[fallback]
@@ -894,10 +894,10 @@ export function useHybridUpdateOrderStatus() {
 				return;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-update-order-status] fallback disabled",
+					"[supabase-hybrid:write-update-order-status]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -978,10 +978,10 @@ export function useHybridUpdateOrderPaymentGateway() {
 				return;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-update-order-payment-gateway] fallback disabled",
+					"[supabase-hybrid:write-update-order-payment-gateway]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -1099,10 +1099,10 @@ export function useHybridCreateBookingOrder() {
 				return bookingId;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-create-booking-order] fallback disabled",
+					"[supabase-hybrid:write-create-booking-order]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -1175,10 +1175,10 @@ export function useHybridUpdateBookingStatus() {
 				return;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-update-booking-status] fallback disabled",
+					"[supabase-hybrid:write-update-booking-status]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -1316,10 +1316,10 @@ export function useHybridPatchBookingOrder() {
 				return;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-patch-booking-order] fallback disabled",
+					"[supabase-hybrid:write-patch-booking-order]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -1361,10 +1361,10 @@ export function useHybridDeleteBookingOrder() {
 				return;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-delete-booking-order] fallback disabled",
+					"[supabase-hybrid:write-delete-booking-order]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -1436,10 +1436,10 @@ export function useHybridUploadBookingPaymentProof() {
 				return;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-upload-booking-payment-proof] fallback disabled",
+					"[supabase-hybrid:write-upload-booking-payment-proof]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -1509,10 +1509,10 @@ export function useHybridUpdateBookingSettings() {
 				return sourceId;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-update-booking-settings] fallback disabled",
+					"[supabase-hybrid:write-update-booking-settings]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -1573,10 +1573,10 @@ export function useHybridSetBookingDateCapacity() {
 				return;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-set-booking-date-capacity] fallback disabled",
+					"[supabase-hybrid:write-set-booking-date-capacity]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -1656,10 +1656,10 @@ export function useHybridSetBookingBulkDateCapacity() {
 				return;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-set-booking-bulk-date-capacity] fallback disabled",
+					"[supabase-hybrid:write-set-booking-bulk-date-capacity]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -1693,10 +1693,10 @@ export function useHybridCreateServiceRequest() {
 				return id;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-create-customer-service] fallback disabled",
+					"[supabase-hybrid:write-create-customer-service]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -1727,10 +1727,10 @@ export function useHybridUpdateCustomerServiceStatus() {
 				return;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-update-customer-service-status] fallback disabled",
+					"[supabase-hybrid:write-update-customer-service-status]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -1789,10 +1789,10 @@ export function useHybridCreateTransaction() {
 				return sourceId;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-create-transaction] fallback disabled",
+					"[supabase-hybrid:write-create-transaction]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -1849,10 +1849,10 @@ export function useHybridUpdateTransaction() {
 				return;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-update-transaction] fallback disabled",
+					"[supabase-hybrid:write-update-transaction]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -1995,10 +1995,10 @@ export function useHybridRecordExpenseIntake() {
 				};
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-record-expense-intake] fallback disabled",
+					"[supabase-hybrid:write-record-expense-intake]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2026,10 +2026,10 @@ export function useHybridDeleteTransaction() {
 				return;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-delete-transaction] fallback disabled",
+					"[supabase-hybrid:write-delete-transaction]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2058,10 +2058,10 @@ export function useHybridDeleteTransactionsBulk() {
 				return { deletedCount: ids.length };
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-delete-transactions-bulk] fallback disabled",
+					"[supabase-hybrid:write-delete-transactions-bulk]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2119,10 +2119,10 @@ export function useHybridDeleteTransactionScanItem() {
 				return { success: true, remainingItems: scanItems.length };
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-delete-transaction-scan-item] fallback disabled",
+					"[supabase-hybrid:write-delete-transaction-scan-item]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2191,10 +2191,10 @@ export function useHybridUpdateTransactionScanItem() {
 				return { success: true };
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-update-transaction-scan-item] fallback disabled",
+					"[supabase-hybrid:write-update-transaction-scan-item]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2260,8 +2260,8 @@ export function useHybridStartShift() {
 				if (txError) throw txError;
 				return shiftId;
 			} catch (error) {
-				console.warn("[supabase-hybrid:write-start-shift] fallback disabled", error);
-				return fallback(args);
+				console.error("[supabase-hybrid:write-start-shift]", error);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2333,14 +2333,15 @@ export function useHybridEndShift() {
 				};
 
 				const { error: updateError } = await supabase
-					.from("pos_shifts")
+					.schema("pos")
+					.from("shifts")
 					.update({
-						endTime: endTime,
-						endingCashPhysical: Number(args?.endingCashPhysical ?? 0),
-						endingCashExpected: endingCashExpected,
-						nonCashConfirmed: Number(args?.nonCashConfirmed ?? 0),
-						nonCashExpected: nonCashExpected,
-						cashBreakdown: args?.cashBreakdown ?? null,
+						end_time: endTime,
+						ending_cash_physical: Number(args?.endingCashPhysical ?? 0),
+						ending_cash_expected: endingCashExpected,
+						non_cash_confirmed: Number(args?.nonCashConfirmed ?? 0),
+						non_cash_expected: nonCashExpected,
+						cash_breakdown: args?.cashBreakdown ?? null,
 						notes: args?.notes ?? shift.notes ?? null,
 						summary,
 						raw: {
@@ -2348,7 +2349,7 @@ export function useHybridEndShift() {
 							closingTasks: args?.closingTasks ?? null,
 						},
 					})
-					.eq("_id", shiftId);
+					.eq("source_id", shiftId);
 				if (updateError) throw updateError;
 
 				const summaryText = `\n[RINGKASAN SHIFT]\nModal: Rp ${Number(
@@ -2371,24 +2372,27 @@ export function useHybridEndShift() {
 					seed: `${endTime}:${shift.shiftName ?? ""}:${shift.cashierName ?? ""}`,
 				});
 				const { error: closingTxError } = await supabase
-					.from("pos_financial_transactions")
+					.schema("pos")
+					.from("financial_transactions")
 					.insert({
-						_id: makeSourceId("fin"),
-						type: "income",
+						source_id: makeSourceId("fin"),
+						tx_type: "income",
 						amount: Number(args?.endingCashPhysical ?? 0),
 						category: "Setoran Akhir",
 						description: `${args?.notes || "Akhiri Shift"}${summaryText}`,
-						date: endTime,
+						tx_date: endTime,
 						status: "completed",
-						paymentMethod: "tunai",
+						payment_method: "tunai",
 						metadata,
+						creation_time: Date.now(),
+						raw: { shiftId, kind: "shift_close" },
 					});
 				if (closingTxError) {
 					console.warn("[supabase-hybrid:write-end-shift] failed to insert closing transaction", closingTxError);
 				}
 				return shiftId;
 			} catch (error) {
-				console.warn("[supabase-hybrid:write-end-shift] fallback disabled", error);
+				console.error("[supabase-hybrid:write-end-shift] fallback disabled", error);
 				throw error;
 			}
 		},
@@ -2441,10 +2445,10 @@ export function useHybridSetFinancialTarget() {
 				return id;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-set-financial-target] fallback disabled",
+					"[supabase-hybrid:write-set-financial-target]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2476,10 +2480,10 @@ export function useHybridAdminUpdateShift() {
 				return shiftId;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-admin-update-shift] fallback disabled",
+					"[supabase-hybrid:write-admin-update-shift]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2503,10 +2507,10 @@ export function useHybridAdminDeleteShift() {
 				return shiftId;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-admin-delete-shift] fallback disabled",
+					"[supabase-hybrid:write-admin-delete-shift]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2530,10 +2534,10 @@ export function useHybridAdminBulkDeleteShifts() {
 				return ids.length;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-admin-bulk-delete-shifts] fallback disabled",
+					"[supabase-hybrid:write-admin-bulk-delete-shifts]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2585,8 +2589,8 @@ export function useHybridClockIn() {
 				});
 				return id;
 			} catch (error) {
-				console.warn("[supabase-hybrid:write-clock-in] fallback disabled", error);
-				return fallback(args);
+				console.error("[supabase-hybrid:write-clock-in] fallback disabled", error);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2617,8 +2621,8 @@ export function useHybridClockOut() {
 				});
 				return id;
 			} catch (error) {
-				console.warn("[supabase-hybrid:write-clock-out] fallback disabled", error);
-				return fallback(args);
+				console.error("[supabase-hybrid:write-clock-out] fallback disabled", error);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2659,8 +2663,8 @@ export function useHybridVerifyHomePin() {
 					role: role?.name || "user",
 				};
 			} catch (error) {
-				console.warn("[supabase-hybrid:write-verify-home-pin] fallback disabled", error);
-				return fallback(args);
+				console.error("[supabase-hybrid:write-verify-home-pin] fallback disabled", error);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2712,8 +2716,8 @@ export function useHybridEnrollFace() {
 				if (patchError) throw patchError;
 				return { success: true };
 			} catch (error) {
-				console.warn("[supabase-hybrid:write-enroll-face] fallback disabled", error);
-				return fallback(args);
+				console.error("[supabase-hybrid:write-enroll-face] fallback disabled", error);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2759,8 +2763,8 @@ export function useHybridUpdateUserPin() {
 				if (error) throw error;
 				return { success: true };
 			} catch (error) {
-				console.warn("[supabase-hybrid:write-update-user-pin] fallback disabled", error);
-				return fallback(args);
+				console.error("[supabase-hybrid:write-update-user-pin] fallback disabled", error);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2799,10 +2803,10 @@ export function useHybridUpdateUserProfile() {
 				return { success: true };
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-update-user-profile] fallback disabled",
+					"[supabase-hybrid:write-update-user-profile]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2862,10 +2866,10 @@ export function useHybridUpdateSiteSettings() {
 				return sourceId;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-update-site-settings] fallback disabled",
+					"[supabase-hybrid:write-update-site-settings]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2898,10 +2902,10 @@ export function useHybridAdminCreateAttendanceLog() {
 				return id;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-admin-create-attendance-log] fallback disabled",
+					"[supabase-hybrid:write-admin-create-attendance-log]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2937,10 +2941,10 @@ export function useHybridAdminUpdateAttendanceLog() {
 				return;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-admin-update-attendance-log] fallback disabled",
+					"[supabase-hybrid:write-admin-update-attendance-log]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2965,10 +2969,10 @@ export function useHybridAdminDeleteAttendanceLog() {
 				return id;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-admin-delete-attendance-log] fallback disabled",
+					"[supabase-hybrid:write-admin-delete-attendance-log]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -2993,10 +2997,10 @@ export function useHybridAdminBulkDeleteAttendanceLogs() {
 				return { deleted: ids.length };
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-admin-bulk-delete-attendance-logs] fallback disabled",
+					"[supabase-hybrid:write-admin-bulk-delete-attendance-logs]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -3040,8 +3044,8 @@ export function useHybridCreateUser() {
 				if (error) throw error;
 				return sourceId;
 			} catch (error) {
-				console.warn("[supabase-hybrid:write-create-user] fallback disabled", error);
-				return fallback(args);
+				console.error("[supabase-hybrid:write-create-user] fallback disabled", error);
+				throw error;
 			}
 		},
 		[fallback]
@@ -3095,8 +3099,8 @@ export function useHybridUpdateUser() {
 				if (error) throw error;
 				return id;
 			} catch (error) {
-				console.warn("[supabase-hybrid:write-update-user] fallback disabled", error);
-				return fallback(args);
+				console.error("[supabase-hybrid:write-update-user] fallback disabled", error);
+				throw error;
 			}
 		},
 		[fallback]
@@ -3118,8 +3122,8 @@ export function useHybridDeleteUser() {
 				if (error) throw error;
 				return id;
 			} catch (error) {
-				console.warn("[supabase-hybrid:write-delete-user] fallback disabled", error);
-				return fallback(args);
+				console.error("[supabase-hybrid:write-delete-user] fallback disabled", error);
+				throw error;
 			}
 		},
 		[fallback]
@@ -3144,8 +3148,8 @@ export function useHybridCreateRole() {
 				if (error) throw error;
 				return id;
 			} catch (error) {
-				console.warn("[supabase-hybrid:write-create-role] fallback disabled", error);
-				return fallback(args);
+				console.error("[supabase-hybrid:write-create-role] fallback disabled", error);
+				throw error;
 			}
 		},
 		[fallback]
@@ -3171,8 +3175,8 @@ export function useHybridUpdateRole() {
 				if (error) throw error;
 				return id;
 			} catch (error) {
-				console.warn("[supabase-hybrid:write-update-role] fallback disabled", error);
-				return fallback(args);
+				console.error("[supabase-hybrid:write-update-role] fallback disabled", error);
+				throw error;
 			}
 		},
 		[fallback]
@@ -3202,8 +3206,8 @@ export function useHybridDeleteRole() {
 				if (error) throw error;
 				return id;
 			} catch (error) {
-				console.warn("[supabase-hybrid:write-delete-role] fallback disabled", error);
-				return fallback(args);
+				console.error("[supabase-hybrid:write-delete-role] fallback disabled", error);
+				throw error;
 			}
 		},
 		[fallback]
@@ -3280,10 +3284,10 @@ export function useHybridBindUserProfile() {
 				return sourceId;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-bind-user-profile] fallback disabled",
+					"[supabase-hybrid:write-bind-user-profile]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -3374,10 +3378,10 @@ export function useHybridApplyInventoryStockAction() {
 				return;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-apply-inventory-stock-action] fallback disabled",
+					"[supabase-hybrid:write-apply-inventory-stock-action]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
@@ -3491,10 +3495,10 @@ export function useHybridProduceBaseRecipeBatch() {
 				return;
 			} catch (error) {
 				console.warn(
-					"[supabase-hybrid:write-produce-base-recipe-batch] fallback disabled",
+					"[supabase-hybrid:write-produce-base-recipe-batch]",
 					error
 				);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]

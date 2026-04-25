@@ -1,5 +1,8 @@
 project_id = "xaemykhjpkgypqqpfdcb"
 
+[api]
+schemas = ["public", "pos", "legacy_mirror"]
+
 [functions.yumi-auth]
 verify_jwt = false
 
