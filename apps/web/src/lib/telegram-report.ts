@@ -1,30 +1,45 @@
 /**
  * Send a text report to Telegram via the yumi-ai-bot HTTP endpoint.
- * The bot exposes POST /send-report on port 8001 (same VPS).
+ * URL resolution order:
+ *   1. VITE_TELEGRAM_BOT_URL env var (recommended for production)
+ *   2. window.location.hostname:8001 (works when app & bot share the same VPS)
  */
 
-const BOT_REPORT_URL = import.meta.env.VITE_TELEGRAM_BOT_URL ||
-	(typeof window !== "undefined"
-		? `${window.location.protocol}//${window.location.hostname}:8001/send-report`
-		: "http://localhost:8001/send-report");
+function getBotUrl(): string {
+	// Allow explicit override via env var (set in .env / Vercel dashboard)
+	const envUrl = typeof import.meta !== "undefined"
+		? (import.meta as any).env?.VITE_TELEGRAM_BOT_URL
+		: undefined;
+	if (envUrl) return envUrl;
+	if (typeof window !== "undefined") {
+		return `${window.location.protocol}//${window.location.hostname}:8001/send-report`;
+	}
+	return "http://localhost:8001/send-report";
+}
 
-const TELEGRAM_REPORT_CHAT_ID = import.meta.env.VITE_TELEGRAM_REPORT_CHAT_ID;
+const TELEGRAM_REPORT_CHAT_ID = typeof import.meta !== "undefined"
+	? (import.meta as any).env?.VITE_TELEGRAM_REPORT_CHAT_ID
+	: undefined;
 
 export async function sendTelegramReport(
 	text: string,
-	chatId?: string
+	chatId?: number | string
 ): Promise<{ ok: boolean; error?: string }> {
 	if (!text.trim()) return { ok: false, error: "Teks laporan kosong" };
 
-	const targetChatId = chatId || TELEGRAM_REPORT_CHAT_ID;
+	const url = getBotUrl();
+	const body: Record<string, unknown> = { text };
+
+	// Use provided chatId or fall back to env var
+	const targetChatId = chatId !== undefined ? chatId : TELEGRAM_REPORT_CHAT_ID;
+	if (targetChatId) {
+		body.chat_id = typeof targetChatId === "string"
+			? parseInt(targetChatId, 10)
+			: targetChatId;
+	}
 
 	try {
-		const body: { text: string; chat_id?: number } = { text };
-		if (targetChatId) {
-			body.chat_id = parseInt(targetChatId, 10);
-		}
-
-		const res = await fetch(BOT_REPORT_URL, {
+		const res = await fetch(url, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(body),

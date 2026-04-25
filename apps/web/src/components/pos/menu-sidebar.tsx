@@ -882,7 +882,6 @@ function DashboardTab({
 	const shiftStatus = useHybridShiftStatus();
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 	const siteSettings = useHybridSiteSettings();
-	const dailyReportTextRef = useRef<string>("");
 
 	const income = financialSummary?.totalIncome || 0;
 	const expense = financialSummary?.totalExpense || 0;
@@ -917,6 +916,215 @@ function DashboardTab({
 		month: "short",
 	});
 
+	// Minute-tick for shift close reminder
+	const [reminderTick, setReminderTick] = useState(() => new Date());
+	const [shiftCloseReminderShown, setShiftCloseReminderShown] = useState(false);
+	useEffect(() => {
+		const timer = setInterval(() => setReminderTick(new Date()), 60_000);
+		return () => clearInterval(timer);
+	}, []);
+
+	// Show popup reminder N minutes before scheduled shift close
+	useEffect(() => {
+		if (!isShiftOpen || !siteSettings?.shiftSettings?.shiftSchedules) return;
+		const reminderMinutes: number = siteSettings.shiftSettings.reminderMinutesBeforeClose ?? 15;
+		const shiftName = shiftStatus?.shiftInfo?.shiftName;
+		const schedule = siteSettings.shiftSettings.shiftSchedules.find(
+			(s: any) => s.name === shiftName
+		);
+		if (!schedule?.closeTime) return;
+		const [closeH, closeM] = (schedule.closeTime as string).split(":").map(Number);
+		const now = reminderTick;
+		const closeMinutes = closeH * 60 + closeM;
+		const currentMinutes = now.getHours() * 60 + now.getMinutes();
+		const remaining = closeMinutes - currentMinutes;
+		if (remaining > 0 && remaining <= reminderMinutes && !shiftCloseReminderShown) {
+			setShiftCloseReminderShown(true);
+			toast.warning(
+				`⏰ Shift akan berakhir dalam ${remaining} menit. Segera tutup shift!`,
+				{ duration: 15_000 }
+			);
+		}
+		if (remaining > reminderMinutes) setShiftCloseReminderShown(false);
+	}, [reminderTick, isShiftOpen, siteSettings, shiftStatus, shiftCloseReminderShown]);
+
+	// Shared daily report text (used by card display, Salin, and Kirim ke Telegram)
+	const dailyReportText = useMemo(() => {
+		const dateStr = new Date().toLocaleDateString("id-ID", {
+			day: "2-digit", month: "2-digit", year: "numeric",
+		});
+		const completedOrders = todayOrders.filter(
+			(o: Doc<"orders">) => o.status === "completed" || o.status === "paid"
+		);
+		const totalCash = completedOrders
+			.filter((o: Doc<"orders">) => o.paymentMethod === "cash" || o.paymentMethod === "tunai")
+			.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+		const totalQris = completedOrders
+			.filter((o: Doc<"orders">) => o.paymentMethod === "qris" || o.paymentMethod === "transfer")
+			.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+		const totalOther = completedOrders
+			.filter((o: Doc<"orders">) => o.paymentMethod !== "cash" && o.paymentMethod !== "tunai" && o.paymentMethod !== "qris" && o.paymentMethod !== "transfer")
+			.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+		const totalItems = completedOrders.reduce(
+			(acc: number, o: Doc<"orders">) => acc + o.items.reduce((s: number, i: any) => s + i.quantity, 0),
+			0
+		);
+		const totalDiscountAmount = completedOrders.reduce(
+			(acc: number, o: Doc<"orders">) => acc + (o.discountAmount || 0),
+			0
+		);
+		const totalRevenue = totalCash + totalQris + totalOther;
+		const totalGrossRevenue = totalRevenue + totalDiscountAmount;
+
+		const itemsByCatAndProd: Record<string, Record<string, number>> = {};
+		const itemsByName: Record<string, number> = {};
+		completedOrders.forEach((o: Doc<"orders">) => {
+			o.items.forEach((item: any) => {
+				const product = products?.find((p: any) => p._id === item.productId);
+				const cat = categoriesList?.find((c: any) => c._id === product?.categoryId)?.name || "Lainnya";
+				const name = item.productName || "Unknown";
+				if (!itemsByCatAndProd[cat]) itemsByCatAndProd[cat] = {};
+				itemsByCatAndProd[cat][name] = (itemsByCatAndProd[cat][name] || 0) + item.quantity;
+				itemsByName[name] = (itemsByName[name] || 0) + item.quantity;
+			});
+		});
+		let productsText = "";
+		Object.entries(itemsByCatAndProd).forEach(([cat, prods]) => {
+			const catTotal = Object.values(prods).reduce((a, b) => a + b, 0);
+			productsText += `- ${cat} (${catTotal}):\n`;
+			Object.entries(prods).forEach(([name, qty]) => {
+				productsText += `  • ${name}: ${qty}\n`;
+			});
+		});
+		if (!productsText) productsText = "-";
+		else productsText = productsText.trimEnd();
+		const topProductsText = Object.entries(itemsByName)
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, 3)
+			.map(([name, qty]) => `- ${name}: ${qty}`)
+			.join("\n") || "-";
+
+		const expensesByCategory: Record<string, number> = {};
+		let totalExpenseVal = 0;
+		todayTransactions?.filter((t: any) => t.type === "expense" && t.status === "completed").forEach((t: any) => {
+			const cat = t.category || "Lainnya";
+			expensesByCategory[cat] = (expensesByCategory[cat] || 0) + t.amount;
+			totalExpenseVal += t.amount;
+		});
+		const netBalance = totalRevenue - totalExpenseVal;
+		const expensesText = Object.entries(expensesByCategory)
+			.map(([cat, amount]) => `${cat}: Rp. ${amount.toLocaleString("id-ID")}`)
+			.join("\n") || "Tidak ada pengeluaran hari ini";
+
+		const shopName = siteSettings?.storeName || "YUMI POS";
+
+		let allShiftsText = "";
+		if (shiftStatus?.allShifts && shiftStatus.allShifts.length > 0) {
+			shiftStatus.allShifts.forEach((shiftObj: any, index: number) => {
+				const sStart = shiftObj.startTime;
+				const sEnd = shiftObj.endTime || Date.now();
+				const sOrders = todayOrders.filter((o: Doc<"orders">) => o.createdAt >= sStart && o.createdAt <= sEnd);
+				const sCompleted = sOrders.filter((o: Doc<"orders">) => o.status === "completed" || o.status === "paid");
+				const sCash = sCompleted.filter((o: Doc<"orders">) => o.paymentMethod === "cash" || o.paymentMethod === "tunai").reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+				const sQris = sCompleted.filter((o: Doc<"orders">) => o.paymentMethod === "qris" || o.paymentMethod === "transfer").reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+				const sOther = sCompleted.filter((o: Doc<"orders">) => o.paymentMethod !== "cash" && o.paymentMethod !== "tunai" && o.paymentMethod !== "qris" && o.paymentMethod !== "transfer").reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
+				const sItems = sCompleted.reduce((acc: number, o: Doc<"orders">) => acc + o.items.reduce((s: number, i: any) => s + i.quantity, 0), 0);
+				const sDiscountAmount = sCompleted.reduce((acc: number, o: Doc<"orders">) => acc + (o.discountAmount || 0), 0);
+				const sRevenue = sCash + sQris + sOther;
+				const sGrossRevenue = sRevenue + sDiscountAmount;
+
+				const sItemsByCatAndProd: Record<string, Record<string, number>> = {};
+				const sItemsByName: Record<string, number> = {};
+				sCompleted.forEach((o: Doc<"orders">) => {
+					o.items.forEach((item: any) => {
+						const product = products?.find((p: any) => p._id === item.productId);
+						const cat = categoriesList?.find((c: any) => c._id === product?.categoryId)?.name || "Lainnya";
+						const name = item.productName || "Unknown";
+						if (!sItemsByCatAndProd[cat]) sItemsByCatAndProd[cat] = {};
+						sItemsByCatAndProd[cat][name] = (sItemsByCatAndProd[cat][name] || 0) + item.quantity;
+						sItemsByName[name] = (sItemsByName[name] || 0) + item.quantity;
+					});
+				});
+				let sProductsText = "";
+				Object.entries(sItemsByCatAndProd).forEach(([cat, prods]) => {
+					const catTotal = Object.values(prods).reduce((a, b) => a + b, 0);
+					sProductsText += `- ${cat} (${catTotal}):\n`;
+					Object.entries(prods).forEach(([name, qty]) => {
+						sProductsText += `  • ${name}: ${qty}\n`;
+					});
+				});
+				if (!sProductsText) sProductsText = "-";
+				else sProductsText = sProductsText.trimEnd();
+				const sTopProductsText = Object.entries(sItemsByName).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name, qty]) => `- ${name}: ${qty}`).join("\n") || "-";
+
+				const sTransactions = todayTransactions?.filter((t: any) => t.date >= sStart && t.date <= sEnd) || [];
+				let sExpenseVal = 0;
+				let sModalVal = 0;
+				sTransactions.filter((t: any) => t.status === "completed").forEach((t: any) => {
+					if (t.type === "expense") sExpenseVal += t.amount;
+					if (t.type === "income" && t.category?.toLowerCase().includes("modal")) sModalVal += t.amount;
+				});
+
+				const statusLabel = shiftObj.endTime ? " (SELESAI)" : " (AKTIF)";
+				const teamLabel = shiftObj.teamMembers ? `\nTim: ${shiftObj.teamMembers}` : "";
+				allShiftsText += `👥 ${(shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`)}${statusLabel}
+Modal Kasir: Rp. ${sModalVal.toLocaleString("id-ID")}
+Tunai: Rp. ${sCash.toLocaleString("id-ID")}
+Debit/QRIS: Rp. ${sQris.toLocaleString("id-ID")}
+Lainnya (Poin/Lain): Rp. ${sOther.toLocaleString("id-ID")}
+
+Total Penjualan Bruto: Rp. ${sGrossRevenue.toLocaleString("id-ID")}
+Total Potongan (Diskon): Rp. ${sDiscountAmount.toLocaleString("id-ID")}
+Total Revenue Bersih ${shiftObj.shiftName || "Shift"}: Rp. ${sRevenue.toLocaleString("id-ID")}
+
+Produk Terjual: ${sItems}
+Rincian Produk:
+${sProductsText}
+
+⭐ TOP 3 PRODUK TERLARIS (SHIFT INI):
+${sTopProductsText}
+
+Pengeluaran Shift: Rp. ${sExpenseVal.toLocaleString("id-ID")}
+
+Kasir: ${shiftObj.cashierName || "Kasir"}${teamLabel}
+---\n`;
+			});
+		} else {
+			allShiftsText = `👥 BELUM ADA SHIFT\n---\n`;
+		}
+
+		return `📊 Daily Revenue Report
+${shopName} -
+📅 Tanggal: ${dateStr}
+---
+${allShiftsText}
+💰 TOTAL REVENUE HARIAN (NET):
+Rp. ${totalRevenue.toLocaleString("id-ID")}
+📦 TOTAL PRODUK TERJUAL: ${totalItems}
+Total Penjualan Bruto (Gross): Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
+Total Potongan (Diskon/Voucher): Rp. ${totalDiscountAmount.toLocaleString("id-ID")}
+Net Revenue Harian: Rp. ${totalRevenue.toLocaleString("id-ID")}
+
+Rincian Produk Harian:
+${productsText}
+
+⭐ TOP 3 PRODUK TERLARIS (HARIAN):
+${topProductsText}
+---
+📝 RINGKASAN PENGELUARAN HARIAN
+${expensesText}
+Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
+---
+📝 RINGKASAN HARIAN
+${dateStr} :
+Grand Total Revenue (Net): Rp. ${totalRevenue.toLocaleString("id-ID")}
+Total Penjualan Bruto: Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
+Total Potongan: Rp. ${totalDiscountAmount.toLocaleString("id-ID")}
+Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
+Kas Bersih (Net): Rp. ${netBalance.toLocaleString("id-ID")}
+Total Produk Terjual: ${totalItems}`;
+	}, [todayOrders, products, categoriesList, shiftStatus, siteSettings, todayTransactions]);
+
 	return (
 		<div className="space-y-3">
 			<div className="flex items-center justify-between">
@@ -943,7 +1151,7 @@ function DashboardTab({
 								</div>
 								<p className="text-[10px] text-muted-foreground uppercase mt-0.5">
 									{isShiftOpen 
-										? `Aktif â€¢ Kasir: ${shiftStatus?.shiftInfo?.cashierName || 'Kasir'}` 
+										? `Aktif • Kasir: ${shiftStatus?.shiftInfo?.cashierName || 'Kasir'}` 
 										: "Tutup (Belum Mulai)"}
 								</p>
 							</div>
@@ -973,232 +1181,8 @@ function DashboardTab({
 						<RefreshCw className="h-4 w-4" />
 					</Button>
 				</div>
-				<Card className="border-border bg-card shadow-sm text-xs font-mono whitespace-pre-wrap p-4 overflow-x-auto">
-					{(() => {
-						const dateStr = new Date().toLocaleDateString('id-ID', {
-							day: '2-digit', month: '2-digit', year: 'numeric'
-						});
-
-						// 1. Daily calculation (Total for all orders today)
-						const totalCash = todayOrders
-							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'cash' || o.paymentMethod === 'tunai'))
-							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
-							
-						const totalQris = todayOrders
-							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
-							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
-							
-						const totalOther = todayOrders
-							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod !== 'cash' && o.paymentMethod !== 'tunai' && o.paymentMethod !== 'qris' && o.paymentMethod !== 'transfer')
-							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
-							
-						const totalItems = todayOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
-							.reduce((acc: number, o: Doc<"orders">) => {
-								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
-							}, 0);
-
-						// Calculate products sold by category (Daily)
-						const itemsByCatAndProd: Record<string, Record<string, number>> = {};
-						const itemsByName: Record<string, number> = {};
-						
-						todayOrders.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid').forEach((o: Doc<"orders">) => {
-							o.items.forEach((item: any) => {
-								const product = products?.find((p: any) => p._id === item.productId);
-								const cat = categoriesList?.find((c: any) => c._id === product?.categoryId)?.name || 'Lainnya';
-								const name = item.productName || 'Unknown';
-								
-								if (!itemsByCatAndProd[cat]) itemsByCatAndProd[cat] = {};
-								itemsByCatAndProd[cat][name] = (itemsByCatAndProd[cat][name] || 0) + item.quantity;
-								itemsByName[name] = (itemsByName[name] || 0) + item.quantity;
-							});
-						});
-
-						const sortedProducts = Object.entries(itemsByName)
-							.sort((a, b) => b[1] - a[1])
-							.slice(0, 3); // Top 3 products
-
-						let productsText = "";
-						Object.entries(itemsByCatAndProd).forEach(([cat, prods]) => {
-							const catTotal = Object.values(prods).reduce((a, b) => a + b, 0);
-							productsText += `- ${cat} (${catTotal}):\n`;
-							Object.entries(prods).forEach(([name, qty]) => {
-								productsText += `  â€¢ ${name}: ${qty}\n`;
-							});
-						});
-						if (!productsText) productsText = "-";
-						else productsText = productsText.trimEnd();
-
-						let topProductsText = sortedProducts
-							.map(([name, qty]) => `- ${name}: ${qty}`)
-							.join('\n');
-						if (!topProductsText) topProductsText = "-";
-
-						// Calculate expenses by category
-						const expensesByCategory: Record<string, number> = {};
-						let totalExpenseVal = 0;
-						
-						todayTransactions?.filter((t: any) => t.type === 'expense' && t.status === 'completed').forEach((t: any) => {
-							const cat = t.category || 'Lainnya';
-							expensesByCategory[cat] = (expensesByCategory[cat] || 0) + t.amount;
-							totalExpenseVal += t.amount;
-						});
-
-						const totalRevenue = totalCash + totalQris + totalOther;
-						const totalDiscountAmount = todayOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
-							.reduce((acc: number, o: Doc<"orders">) => acc + (o.discountAmount || 0), 0);
-						const totalGrossRevenue = totalRevenue + totalDiscountAmount;
-						const netBalance = totalRevenue - totalExpenseVal;
-
-						let expensesText = Object.entries(expensesByCategory)
-							.map(([cat, amount]) => `${cat}: Rp. ${amount.toLocaleString("id-ID")}`)
-							.join('\n');
-							
-						if (!expensesText) expensesText = "Tidak ada pengeluaran hari ini";
-
-						const shopName = siteSettings?.storeName || "YUMI POS";
-
-						// --- GENERATE SHIFTS TEXT ---
-						let allShiftsText = "";
-						
-						if (shiftStatus?.allShifts && shiftStatus.allShifts.length > 0) {
-							shiftStatus.allShifts.forEach((shiftObj: any, index: number) => {
-								const sStart = shiftObj.startTime;
-								const sEnd = shiftObj.endTime || Date.now(); // If open, until now
-								
-								// Shift specific calculation
-								const sOrders = todayOrders.filter((o: Doc<"orders">) => o.createdAt >= sStart && o.createdAt <= sEnd);
-								
-								const sCash = sOrders
-									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'cash' || o.paymentMethod === 'tunai'))
-									.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
-									
-								const sQris = sOrders
-									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
-									.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
-									
-								const sOther = sOrders
-									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod !== 'cash' && o.paymentMethod !== 'tunai' && o.paymentMethod !== 'qris' && o.paymentMethod !== 'transfer')
-									.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
-									
-								const sItems = sOrders
-									.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
-									.reduce((acc: number, o: Doc<"orders">) => acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0), 0);
-								
-								const sDiscountAmount = sOrders
-									.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
-									.reduce((acc: number, o: Doc<"orders">) => acc + (o.discountAmount || 0), 0);
-								
-								const sRevenue = sCash + sQris + sOther;
-								const sGrossRevenue = sRevenue + sDiscountAmount;
-
-								// Shift products
-								const sItemsByCatAndProd: Record<string, Record<string, number>> = {};
-								const sItemsByName: Record<string, number> = {};
-
-								sOrders.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid').forEach((o: Doc<"orders">) => {
-									o.items.forEach((item: any) => {
-										const product = products?.find((p: any) => p._id === item.productId);
-										const cat = categoriesList?.find((c: any) => c._id === product?.categoryId)?.name || 'Lainnya';
-										const name = item.productName || 'Unknown';
-										
-										if (!sItemsByCatAndProd[cat]) sItemsByCatAndProd[cat] = {};
-										sItemsByCatAndProd[cat][name] = (sItemsByCatAndProd[cat][name] || 0) + item.quantity;
-										sItemsByName[name] = (sItemsByName[name] || 0) + item.quantity;
-									});
-								});
-								
-								let sProductsText = "";
-								Object.entries(sItemsByCatAndProd).forEach(([cat, prods]) => {
-									const catTotal = Object.values(prods).reduce((a, b) => a + b, 0);
-									sProductsText += `- ${cat} (${catTotal}):\n`;
-									Object.entries(prods).forEach(([name, qty]) => {
-										sProductsText += `  â€¢ ${name}: ${qty}\n`;
-									});
-								});
-								if (!sProductsText) sProductsText = "-";
-								else sProductsText = sProductsText.trimEnd();
-
-								const sTopProducts = Object.entries(sItemsByName)
-									.sort((a, b) => b[1] - a[1])
-									.slice(0, 3);
-								let sTopProductsText = sTopProducts.length > 0
-									? sTopProducts.map(([name, qty]) => `- ${name}: ${qty}`).join('\n')
-									: "-";
-
-								// Shift expenses & modal
-								const sTransactions = todayTransactions?.filter((t: any) => t.date >= sStart && t.date <= sEnd) || [];
-								let sExpenseVal = 0;
-								let sModalVal = 0;
-								sTransactions.filter((t: any) => t.status === 'completed').forEach((t: any) => {
-									if (t.type === 'expense') sExpenseVal += t.amount;
-									if (t.type === 'income' && t.category?.toLowerCase().includes('modal')) sModalVal += t.amount;
-								});
-
-								const isCurrentActive = !shiftObj.endTime;
-								const statusLabel = isCurrentActive ? " (AKTIF)" : " (SELESAI)";
-								const teamLabel = shiftObj.teamMembers ? `\nTim: ${shiftObj.teamMembers}` : '';
-
-								allShiftsText += `ðŸ‘¥ ${shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`}${statusLabel}
-Modal Kasir: Rp. ${sModalVal.toLocaleString("id-ID")}
-Tunai: Rp. ${sCash.toLocaleString("id-ID")}
-Debit/QRIS: Rp. ${sQris.toLocaleString("id-ID")}
-Lainnya (Poin/Lain): Rp. ${sOther.toLocaleString("id-ID")}
-
-Total Penjualan Bruto: Rp. ${sGrossRevenue.toLocaleString("id-ID")}
-Total Potongan (Diskon): Rp. ${sDiscountAmount.toLocaleString("id-ID")}
-Total Revenue Bersih ${shiftObj.shiftName || 'Shift'}: Rp. ${sRevenue.toLocaleString("id-ID")}
-
-Produk Terjual: ${sItems}
-Rincian Produk:
-${sProductsText}
-
-â­ TOP 3 PRODUK TERLARIS (SHIFT INI):
-${sTopProductsText}
-
-Pengeluaran Shift: Rp. ${sExpenseVal.toLocaleString("id-ID")}
-
-Kasir: ${shiftObj.cashierName || 'Kasir'}${teamLabel}
-â¸»\n`;
-							});
-						} else {
-							// Fallback if no shifts found
-							allShiftsText = `ðŸ‘¥ BELUM ADA SHIFT
-â¸»\n`;
-						}
-
-						return `ðŸ“Š Daily Revenue Report 
-${shopName} - 
-ðŸ“… Tanggal: ${dateStr} 
-â¸» 
-${allShiftsText}
-ðŸ’° TOTAL REVENUE HARIAN (NET): 
-Rp. ${totalRevenue.toLocaleString("id-ID")}
-ðŸ“¦ TOTAL PRODUK TERJUAL: ${totalItems}
-Total Penjualan Bruto (Gross): Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
-Total Potongan (Diskon/Voucher): Rp. ${totalDiscountAmount.toLocaleString("id-ID")}
-Net Revenue Harian: Rp. ${totalRevenue.toLocaleString("id-ID")}
-
-Rincian Produk Harian:
-${productsText}
-
-â­ TOP 3 PRODUK TERLARIS (HARIAN):
-${topProductsText}
-â¸» 
-ðŸ“ RINGKASAN PENGELUARAN HARIAN
-${expensesText}
-Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
-â¸» 
-ðŸ“ RINGKASAN HARIAN 
-${dateStr} : 
-Grand Total Revenue (Net): Rp. ${totalRevenue.toLocaleString("id-ID")}
-Total Penjualan Bruto: Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
-Total Potongan: Rp. ${totalDiscountAmount.toLocaleString("id-ID")}
-Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
-Kas Bersih (Net): Rp. ${netBalance.toLocaleString("id-ID")}
-Total Produk Terjual: ${totalItems}`;
-					})()}
+								<Card className="border-border bg-card shadow-sm text-xs font-mono whitespace-pre-wrap p-4 overflow-x-auto">
+					{dailyReportText}
 				</Card>
 			</div>
 
@@ -1312,230 +1296,8 @@ Total Produk Terjual: ${totalItems}`;
 					variant="outline" 
 					className="w-full h-10 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary transition-all font-semibold shadow-sm"
 					onClick={() => {
-						// Format tanggal: DD/MM/YYYY
-						const now = new Date();
-						const dateStr = now.toLocaleDateString('id-ID', {
-							day: '2-digit', month: '2-digit', year: 'numeric'
-						});
-						
-						// 1. Daily calculation (Total for all orders today)
-						const totalCash = todayOrders
-							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'cash' || o.paymentMethod === 'tunai'))
-							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
-							
-						const totalQris = todayOrders
-							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
-							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
-							
-						const totalOther = todayOrders
-							.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod !== 'cash' && o.paymentMethod !== 'tunai' && o.paymentMethod !== 'qris' && o.paymentMethod !== 'transfer')
-							.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
-							
-						const totalItems = todayOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
-							.reduce((acc: number, o: Doc<"orders">) => {
-								return acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0);
-							}, 0);
-
-						const totalDiscountAmount = todayOrders
-							.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
-							.reduce((acc: number, o: Doc<"orders">) => acc + (o.discountAmount || 0), 0);
-
-						const totalRevenue = totalCash + totalQris + totalOther;
-						const totalGrossRevenue = totalRevenue + totalDiscountAmount;
-
-						// Calculate products sold by category (Daily)
-						const itemsByCatAndProd: Record<string, Record<string, number>> = {};
-						const itemsByName: Record<string, number> = {};
-						
-						todayOrders.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid').forEach((o: Doc<"orders">) => {
-							o.items.forEach((item: any) => {
-								const product = products?.find((p: any) => p._id === item.productId);
-								const cat = categoriesList?.find((c: any) => c._id === product?.categoryId)?.name || 'Lainnya';
-								const name = item.productName || 'Unknown';
-								
-								if (!itemsByCatAndProd[cat]) itemsByCatAndProd[cat] = {};
-								itemsByCatAndProd[cat][name] = (itemsByCatAndProd[cat][name] || 0) + item.quantity;
-								itemsByName[name] = (itemsByName[name] || 0) + item.quantity;
-							});
-						});
-
-						const sortedProducts = Object.entries(itemsByName)
-							.sort((a, b) => b[1] - a[1])
-							.slice(0, 3); // Top 3 products
-
-						let productsText = "";
-						Object.entries(itemsByCatAndProd).forEach(([cat, prods]) => {
-							const catTotal = Object.values(prods).reduce((a, b) => a + b, 0);
-							productsText += `- ${cat} (${catTotal}):\n`;
-							Object.entries(prods).forEach(([name, qty]) => {
-								productsText += `  â€¢ ${name}: ${qty}\n`;
-							});
-						});
-						if (!productsText) productsText = "-";
-						else productsText = productsText.trimEnd();
-
-						let topProductsText = sortedProducts
-							.map(([name, qty]) => `- ${name}: ${qty}`)
-							.join('\n');
-						if (!topProductsText) topProductsText = "-";
-
-						// Calculate expenses by category
-						const expensesByCategory: Record<string, number> = {};
-						let totalExpenseVal = 0;
-						
-						todayTransactions?.filter((t: any) => t.type === 'expense' && t.status === 'completed').forEach((t: any) => {
-							const cat = t.category || 'Lainnya';
-							expensesByCategory[cat] = (expensesByCategory[cat] || 0) + t.amount;
-							totalExpenseVal += t.amount;
-						});
-
-						const netBalance = totalRevenue - totalExpenseVal;
-
-						let expensesText = Object.entries(expensesByCategory)
-							.map(([cat, amount]) => `${cat}: Rp. ${amount.toLocaleString("id-ID")}`)
-							.join('\n');
-							
-						if (!expensesText) expensesText = "Tidak ada pengeluaran hari ini";
-
-						const shopName = siteSettings?.storeName || "YUMI POS";
-
-						// --- GENERATE SHIFTS TEXT FOR COPY ---
-						let allShiftsCopyText = "";
-						
-						if (shiftStatus?.allShifts && shiftStatus.allShifts.length > 0) {
-							shiftStatus.allShifts.forEach((shiftObj: any, index: number) => {
-								const sStart = shiftObj.startTime;
-								const sEnd = shiftObj.endTime || Date.now();
-								
-								const sOrders = todayOrders.filter((o: Doc<"orders">) => o.createdAt >= sStart && o.createdAt <= sEnd);
-								const sCash = sOrders
-									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'cash' || o.paymentMethod === 'tunai'))
-									.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
-								const sQris = sOrders
-									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
-									.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
-								const sOther = sOrders
-									.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod !== 'cash' && o.paymentMethod !== 'tunai' && o.paymentMethod !== 'qris' && o.paymentMethod !== 'transfer')
-									.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
-								const sItems = sOrders
-									.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
-									.reduce((acc: number, o: Doc<"orders">) => acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0), 0);
-								
-								const sDiscountAmount = sOrders
-									.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid')
-									.reduce((acc: number, o: Doc<"orders">) => acc + (o.discountAmount || 0), 0);
-
-								const sRevenue = sCash + sQris + sOther;
-								const sGrossRevenue = sRevenue + sDiscountAmount;
-
-								const sItemsByCatAndProd: Record<string, Record<string, number>> = {};
-								const sItemsByName: Record<string, number> = {};
-								
-								sOrders.filter((o: Doc<"orders">) => o.status === 'completed' || o.status === 'paid').forEach((o: Doc<"orders">) => {
-									o.items.forEach((item: any) => {
-										const product = products?.find((p: any) => p._id === item.productId);
-										const cat = categoriesList?.find((c: any) => c._id === product?.categoryId)?.name || 'Lainnya';
-										const name = item.productName || 'Unknown';
-										
-										if (!sItemsByCatAndProd[cat]) sItemsByCatAndProd[cat] = {};
-										sItemsByCatAndProd[cat][name] = (sItemsByCatAndProd[cat][name] || 0) + item.quantity;
-										sItemsByName[name] = (sItemsByName[name] || 0) + item.quantity;
-									});
-								});
-								
-								let sProductsText = "";
-								Object.entries(sItemsByCatAndProd).forEach(([cat, prods]) => {
-									const catTotal = Object.values(prods).reduce((a, b) => a + b, 0);
-									sProductsText += `- ${cat} (${catTotal}):\n`;
-									Object.entries(prods).forEach(([name, qty]) => {
-										sProductsText += `  â€¢ ${name}: ${qty}\n`;
-									});
-								});
-								if (!sProductsText) sProductsText = "-";
-								else sProductsText = sProductsText.trimEnd();
-
-								const sTopProducts = Object.entries(sItemsByName)
-									.sort((a, b) => b[1] - a[1])
-									.slice(0, 3);
-								let sTopProductsText = sTopProducts.length > 0
-									? sTopProducts.map(([name, qty]) => `- ${name}: ${qty}`).join('\n')
-									: "-";
-
-								const sTransactions = todayTransactions?.filter((t: any) => t.date >= sStart && t.date <= sEnd) || [];
-								let sExpenseVal = 0;
-								let sModalVal = 0;
-								sTransactions.filter((t: any) => t.status === 'completed').forEach((t: any) => {
-									if (t.type === 'expense') sExpenseVal += t.amount;
-									if (t.type === 'income' && t.category?.toLowerCase().includes('modal')) sModalVal += t.amount;
-								});
-
-								const isCurrentActive = !shiftObj.endTime;
-								const statusLabel = isCurrentActive ? " (AKTIF)" : " (SELESAI)";
-
-								allShiftsCopyText += `ðŸ‘¥ ${shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`}${statusLabel}
-Modal Kasir: Rp. ${sModalVal.toLocaleString("id-ID")}
-Tunai: Rp. ${sCash.toLocaleString("id-ID")}
-Debit/QRIS: Rp. ${sQris.toLocaleString("id-ID")}
-Lainnya (Poin/Lain): Rp. ${sOther.toLocaleString("id-ID")}
-
-Total Penjualan Bruto (Shift): Rp. ${sGrossRevenue.toLocaleString("id-ID")}
-Total Potongan (Diskon): Rp. ${sDiscountAmount.toLocaleString("id-ID")}
-Total Revenue Bersih ${shiftObj.shiftName || 'Shift'}: Rp. ${sRevenue.toLocaleString("id-ID")}
-
-Produk Terjual: ${sItems}
-Rincian Produk:
-${sProductsText}
-
-â­ TOP 3 PRODUK TERLARIS (SHIFT INI):
-${sTopProductsText}
-
-Pengeluaran Shift: Rp. ${sExpenseVal.toLocaleString("id-ID")}
-
-Kasir: ${shiftObj.cashierName || 'Kasir'}
-â¸»\n`;
-							});
-						} else {
-							allShiftsCopyText = `ðŸ‘¥ BELUM ADA SHIFT\nâ¸»\n`;
-						}
-
-						// No redeclaration needed here, already declared at lines 1219-1224
-
-
-						const text = `ðŸ“Š Daily Revenue Report 
-${shopName} - 
-ðŸ“… Tanggal: ${dateStr} 
-â¸» 
-${allShiftsCopyText}
-ðŸ’° TOTAL REVENUE HARIAN (NET): 
-Rp. ${totalRevenue.toLocaleString("id-ID")}
-ðŸ“¦ TOTAL PRODUK TERJUAL: ${totalItems}
-Total Penjualan Bruto (Gross): Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
-Total Potongan (Diskon/Voucher): Rp. ${totalDiscountAmount.toLocaleString("id-ID")}
-Net Revenue Harian: Rp. ${totalRevenue.toLocaleString("id-ID")}
-
-Rincian Produk Harian:
-${productsText}
-
-â­ TOP 3 PRODUK TERLARIS (HARIAN):
-${topProductsText}
-â¸» 
-ðŸ“ RINGKASAN PENGELUARAN HARIAN
-${expensesText}
-Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
-â¸» 
-ðŸ“ RINGKASAN HARIAN 
-${dateStr} : 
-Grand Total Revenue (Net): Rp. ${totalRevenue.toLocaleString("id-ID")}
-Total Penjualan Bruto: Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
-Total Potongan: Rp. ${totalDiscountAmount.toLocaleString("id-ID")}
-Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
-Kas Bersih (Net): Rp. ${netBalance.toLocaleString("id-ID")}
-Total Produk Terjual: ${totalItems}`;
-
-			navigator.clipboard.writeText(text);
-				dailyReportTextRef.current = text;
-				toast.success("Laporan Harian Berhasil Disalin!");
+						navigator.clipboard.writeText(dailyReportText);
+						toast.success("Laporan Harian Berhasil Disalin!");
 					}}
 				>
 					<Copy className="mr-2 h-4 w-4" />
@@ -1545,14 +1307,9 @@ Total Produk Terjual: ${totalItems}`;
 					variant="outline"
 					className="w-full h-10 border-blue-500/20 bg-blue-500/5 text-blue-600 hover:bg-blue-500/10 hover:text-blue-700 transition-all font-semibold shadow-sm"
 					onClick={async () => {
-						const reportText = dailyReportTextRef.current;
-						if (!reportText) {
-							toast.error("Klik \"Salin Laporan Harian\" dulu untuk generate teks");
-							return;
-						}
 						try {
 							const { sendTelegramReport } = await import("@/lib/telegram-report");
-							const result = await sendTelegramReport(reportText);
+							const result = await sendTelegramReport(dailyReportText);
 							if (result.ok) {
 								toast.success("Laporan berhasil dikirim ke Telegram!");
 							} else {
@@ -1656,7 +1413,7 @@ function ParkirTab({
 
 								<div className="flex items-center justify-between border-t border-dashed border-border/50 pt-3">
 									<div className="text-[10px] text-muted-foreground">
-										{order.items.length} item â€¢ {order.items.reduce((acc: number, i: any) => acc + i.quantity, 0)} qty
+										{order.items.length} item • {order.items.reduce((acc: number, i: any) => acc + i.quantity, 0)} qty
 									</div>
 									<div className="flex items-center gap-2">
 										{onPrint && (
@@ -1993,6 +1750,14 @@ function KasTab({ onClose }: { onClose: () => void }) {
 	const shiftStatus = useHybridShiftStatus();
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
+	// Detect if the last completed shift was auto-closed
+	const lastAutoClosedShift = useMemo(() => {
+		if (isShiftOpen) return null;
+		const completed = (shiftStatus?.allShifts ?? []).filter(s => s.endTime !== undefined);
+		const last = completed.sort((a, b) => (b.endTime ?? 0) - (a.endTime ?? 0))[0];
+		return last?.isAutoClosed ? last : null;
+	}, [isShiftOpen, shiftStatus?.allShifts]);
+
 	const formatCurrency = (value: number) =>
 		new Intl.NumberFormat("id-ID", {
 			style: "currency",
@@ -2074,22 +1839,37 @@ function KasTab({ onClose }: { onClose: () => void }) {
 
 	return (
 		<div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+			{/* Auto-close notification banner */}
+			{lastAutoClosedShift && (
+				<div className="rounded-xl border border-orange-400/30 bg-orange-50 dark:bg-orange-950/20 p-3 flex gap-2 items-start">
+					<AlertCircle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+					<div className="text-xs">
+						<p className="font-bold text-orange-700 dark:text-orange-400">
+							Shift {lastAutoClosedShift.shiftName} ditutup otomatis
+						</p>
+						<p className="text-orange-600 dark:text-orange-300 mt-0.5">
+							Shift sebelumnya telah melewati jadwal dan ditutup oleh sistem. Buka shift baru untuk memulai kembali.
+						</p>
+					</div>
+				</div>
+			)}
+
 			{/* Shift Header Actions */}
 			<div className="flex items-center justify-between">
 				<div>
 					<h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Laci Kasir</h3>
-					<p className="text-[10px] font-bold text-emerald-600 mt-0.5">SHIFT AKTIF â€¢ {shiftStatus?.shiftInfo?.cashierName || "Kasir"}</p>
+					<p className="text-[10px] font-bold text-emerald-600 mt-0.5">SHIFT AKTIF • {shiftStatus?.shiftInfo?.cashierName || "Kasir"}</p>
 				</div>
-				<Button 
-					variant="destructive" 
-					size="sm" 
+				<Button
+					variant="destructive"
+					size="sm"
 					className="h-8 text-[10px] font-bold shadow-sm"
 					onClick={() => setActiveForm("shift")}
 				>
 					Akhiri Shift
 				</Button>
 			</div>
-			
+
 			<Card className="overflow-hidden border-border bg-card shadow-sm">
 				<CardContent className="p-4">
 					<div className="space-y-4">
