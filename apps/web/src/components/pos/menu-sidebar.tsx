@@ -2348,7 +2348,8 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			onClose();
 		} catch (error) {
 			console.error(error);
-			toast.error("Gagal memproses data shift");
+			const message = error instanceof Error ? error.message : "Gagal memproses data shift";
+			toast.error(message);
 		} finally {
 			setIsSubmitting(false);
 		}

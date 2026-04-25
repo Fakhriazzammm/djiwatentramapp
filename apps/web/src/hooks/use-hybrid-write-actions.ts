@@ -2278,25 +2278,24 @@ export function useHybridEndShift() {
 				if (!shiftId) throw new Error("shiftId wajib");
 				const endTime = Number(args?.endTime ?? Date.now());
 				const supabase = createClient();
-				const pos = supabase.schema("pos");
 
-				const { data: shift, error: shiftError } = await pos
-					.from("shifts")
+				const { data: shift, error: shiftError } = await supabase
+					.from("pos_shifts")
 					.select("*")
-					.eq("source_id", shiftId)
+					.eq("_id", shiftId)
 					.maybeSingle();
 				if (shiftError) throw shiftError;
 				if (!shift) throw new Error("Shift not found");
-				if (shift.end_time) throw new Error("Shift already ended");
-				if (endTime < Number(shift.start_time ?? 0)) {
+				if (shift.endTime) throw new Error("Shift already ended");
+				if (endTime < Number(shift.startTime ?? 0)) {
 					throw new Error("Waktu akhir shift tidak boleh lebih awal dari waktu mulai");
 				}
 
-				const { data: txRows, error: txError } = await pos
-					.from("financial_transactions")
-					.select("tx_type, amount, category, payment_method, status")
-					.gte("tx_date", Number(shift.start_time))
-					.lte("tx_date", endTime);
+				const { data: txRows, error: txError } = await supabase
+					.from("pos_financial_transactions")
+					.select("type, amount, category, paymentMethod, status")
+					.gte("date", Number(shift.startTime))
+					.lte("date", endTime);
 				if (txError) throw txError;
 				const rows = txRows ?? [];
 				const completed = rows.filter(
@@ -2308,12 +2307,12 @@ export function useHybridEndShift() {
 				let totalExpenses = 0;
 				for (const row of completed) {
 					const amount = Number(row.amount ?? 0);
-					if (String(row.tx_type) === "income") {
+					if (String(row.type) === "income") {
 						if (row.category === "Modal Awal" || row.category === "Setoran Akhir") {
 							continue;
 						}
 						totalRevenue += amount;
-						const method = String(row.payment_method ?? "").toLowerCase();
+						const method = String(row.paymentMethod ?? "").toLowerCase();
 						if (method === "cash" || method === "tunai") cashRevenue += amount;
 						else qrisRevenue += amount;
 					} else {
@@ -2322,7 +2321,7 @@ export function useHybridEndShift() {
 				}
 
 				const endingCashExpected =
-					Number(shift.starting_cash ?? 0) + cashRevenue - totalExpenses;
+					Number(shift.startingCash ?? 0) + cashRevenue - totalExpenses;
 				const nonCashExpected = qrisRevenue;
 				const summary = {
 					totalRevenue,
@@ -2333,15 +2332,15 @@ export function useHybridEndShift() {
 					totalDiscount: Number((shift.summary as any)?.totalDiscount ?? 0),
 				};
 
-				const { error: updateError } = await pos
-					.from("shifts")
+				const { error: updateError } = await supabase
+					.from("pos_shifts")
 					.update({
-						end_time: endTime,
-						ending_cash_physical: Number(args?.endingCashPhysical ?? 0),
-						ending_cash_expected: endingCashExpected,
-						non_cash_confirmed: Number(args?.nonCashConfirmed ?? 0),
-						non_cash_expected: nonCashExpected,
-						cash_breakdown: args?.cashBreakdown ?? null,
+						endTime: endTime,
+						endingCashPhysical: Number(args?.endingCashPhysical ?? 0),
+						endingCashExpected: endingCashExpected,
+						nonCashConfirmed: Number(args?.nonCashConfirmed ?? 0),
+						nonCashExpected: nonCashExpected,
+						cashBreakdown: args?.cashBreakdown ?? null,
 						notes: args?.notes ?? shift.notes ?? null,
 						summary,
 						raw: {
@@ -2349,11 +2348,11 @@ export function useHybridEndShift() {
 							closingTasks: args?.closingTasks ?? null,
 						},
 					})
-					.eq("source_id", shiftId);
+					.eq("_id", shiftId);
 				if (updateError) throw updateError;
 
 				const summaryText = `\n[RINGKASAN SHIFT]\nModal: Rp ${Number(
-					shift.starting_cash ?? 0
+					shift.startingCash ?? 0
 				).toLocaleString("id-ID")}\nCash: Rp ${cashRevenue.toLocaleString(
 					"id-ID"
 				)}\nQRIS: Rp ${qrisRevenue.toLocaleString(
@@ -2369,31 +2368,28 @@ export function useHybridEndShift() {
 						source: "shift_close",
 						sourceLabel: "Shift Close",
 					},
-					seed: `${endTime}:${shift.shift_name ?? ""}:${shift.cashier_name ?? ""}`,
+					seed: `${endTime}:${shift.shiftName ?? ""}:${shift.cashierName ?? ""}`,
 				});
-				const { error: closingTxError } = await pos
-					.from("financial_transactions")
+				const { error: closingTxError } = await supabase
+					.from("pos_financial_transactions")
 					.insert({
-						source_id: makeSourceId("fin"),
-						tx_type: "income",
+						_id: makeSourceId("fin"),
+						type: "income",
 						amount: Number(args?.endingCashPhysical ?? 0),
 						category: "Setoran Akhir",
 						description: `${args?.notes || "Akhiri Shift"}${summaryText}`,
-						tx_date: endTime,
+						date: endTime,
 						status: "completed",
-						payment_method: "tunai",
+						paymentMethod: "tunai",
 						metadata,
-						creation_time: Date.now(),
-						raw: {
-							shiftId,
-							kind: "shift_close",
-						},
 					});
-				if (closingTxError) throw closingTxError;
+				if (closingTxError) {
+					console.warn("[supabase-hybrid:write-end-shift] failed to insert closing transaction", closingTxError);
+				}
 				return shiftId;
 			} catch (error) {
 				console.warn("[supabase-hybrid:write-end-shift] fallback disabled", error);
-				return fallback(args);
+				throw error;
 			}
 		},
 		[fallback]
