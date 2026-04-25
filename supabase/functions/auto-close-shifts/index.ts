@@ -10,7 +10,7 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
-const GRACE_PERIOD_MS = 60 * 60 * 1000;
+const GRACE_PERIOD_MS = 30 * 60 * 1000;
 
 if (!supabaseUrl || !supabaseServiceRoleKey) {
   throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
@@ -161,7 +161,7 @@ Deno.serve(async (req: Request) => {
           raw: {
             auto_closed: true,
             auto_closed_at: now,
-            auto_close_reason: `Shift "${shiftName}" ditutup otomatis: melewati jadwal ${schedule.closeTime} WIB + 1 jam grace period.`,
+            auto_close_reason: `Shift "${shiftName}" ditutup otomatis: melewati jadwal ${schedule.closeTime} WIB + 30 menit grace period.`,
           },
         })
         .eq("source_id", shift.shift_id);

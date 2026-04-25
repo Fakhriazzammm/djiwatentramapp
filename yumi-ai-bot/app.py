@@ -19,6 +19,8 @@ ALLOWED_USERS = {
     for x in os.getenv("ALLOWED_USERS", "").split(",")
     if x.strip().isdigit()
 }
+# Default chat_id for /send-report (group or user). Set to group ID (negative number for groups).
+TELEGRAM_REPORT_CHAT_ID = os.getenv("TELEGRAM_REPORT_CHAT_ID", "")
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
@@ -376,21 +378,33 @@ async def _handle_send_report(request):
     import json as _json
     from aiohttp import web
 
+    cors_headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+    }
+
+    if request.method == "OPTIONS":
+        return web.Response(status=204, headers=cors_headers)
+
     try:
         body = _json.loads(await request.read())
     except Exception:
-        return web.json_response({"ok": False, "error": "invalid json"}, status=400)
+        return web.json_response({"ok": False, "error": "invalid json"}, status=400, headers=cors_headers)
 
     text = str(body.get("text", "")).strip()
     if not text:
-        return web.json_response({"ok": False, "error": "text is required"}, status=400)
+        return web.json_response({"ok": False, "error": "text is required"}, status=400, headers=cors_headers)
 
     chat_id = body.get("chat_id")
     if not chat_id:
-        if ALLOWED_USERS:
+        # Prefer TELEGRAM_REPORT_CHAT_ID (group), fall back to first ALLOWED_USER
+        if TELEGRAM_REPORT_CHAT_ID:
+            chat_id = int(TELEGRAM_REPORT_CHAT_ID)
+        elif ALLOWED_USERS:
             chat_id = next(iter(ALLOWED_USERS))
         else:
-            return web.json_response({"ok": False, "error": "no target chat_id"}, status=400)
+            return web.json_response({"ok": False, "error": "no target chat_id"}, status=400, headers=cors_headers)
 
     chunks = [text[i : i + 4096] for i in range(0, len(text), 4096)]
     if len(chunks) > 20:
@@ -403,9 +417,9 @@ async def _handle_send_report(request):
             sent.append(msg.message_id)
         except Exception as exc:
             logger.error("Failed to send telegram message: %s", exc)
-            return web.json_response({"ok": False, "error": str(exc)}, status=502)
+            return web.json_response({"ok": False, "error": str(exc)}, status=502, headers=cors_headers)
 
-    return web.json_response({"ok": True, "message_ids": sent})
+    return web.json_response({"ok": True, "message_ids": sent}, headers=cors_headers)
 
 
 async def _start_http_server(bot_app, port=8001):
@@ -414,6 +428,7 @@ async def _start_http_server(bot_app, port=8001):
     app = web.Application()
     app["bot"] = bot_app.bot
     app.router.add_post("/send-report", _handle_send_report)
+    app.router.add_route("OPTIONS", "/send-report", _handle_send_report)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", port)

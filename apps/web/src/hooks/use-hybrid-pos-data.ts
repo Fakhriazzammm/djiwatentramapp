@@ -103,6 +103,7 @@ type ShiftStatusRecord = {
 		shiftName: string;
 		cashierName: string;
 		teamMembers?: string;
+		isAutoClosed?: boolean;
 		revenue: number;
 		cashRevenue: number;
 		qrisRevenue: number;
@@ -1259,6 +1260,7 @@ async function fetchShiftStatus() {
 			shiftName: row.shift_name ?? "Shift",
 			cashierName: row.cashier_name ?? "",
 			teamMembers: row.team_members ?? "",
+			isAutoClosed: Boolean((row.raw as any)?.auto_closed),
 			revenue: Number(row.total_revenue ?? 0),
 			cashRevenue: Number(row.cash_revenue ?? 0),
 			qrisRevenue: Number(row.qris_revenue ?? 0),

@@ -5,7 +5,21 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**"],
+      "env": [
+        "RESEND_API_KEY",
+        "MAYAR_BASE_URL",
+        "MAYAR_API_KEY",
+        "MAYAR_WEBHOOK_TOKEN",
+        "SUPABASE_PROJECT_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "SUPABASE_DB_URL",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "SUPABASE_SECRET_KEY",
+        "SUPABASE_JWT_SECRET",
+        "SUPABASE_DATA_API_URL"
+      ]
     },
     "lint": {
       "dependsOn": ["^lint"]
