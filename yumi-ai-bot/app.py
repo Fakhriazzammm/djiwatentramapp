@@ -371,13 +371,66 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+async def _handle_send_report(request):
+    """POST /send-report  { "text": "...", "chat_id"?: 12345 }"""
+    import json as _json
+    from aiohttp import web
+
+    try:
+        body = _json.loads(await request.read())
+    except Exception:
+        return web.json_response({"ok": False, "error": "invalid json"}, status=400)
+
+    text = str(body.get("text", "")).strip()
+    if not text:
+        return web.json_response({"ok": False, "error": "text is required"}, status=400)
+
+    chat_id = body.get("chat_id")
+    if not chat_id:
+        if ALLOWED_USERS:
+            chat_id = next(iter(ALLOWED_USERS))
+        else:
+            return web.json_response({"ok": False, "error": "no target chat_id"}, status=400)
+
+    chunks = [text[i : i + 4096] for i in range(0, len(text), 4096)]
+    if len(chunks) > 20:
+        return web.json_response({"ok": False, "error": "text too long"}, status=400)
+
+    sent = []
+    for chunk in chunks:
+        try:
+            msg = await request.app["bot"].send_message(chat_id=chat_id, text=chunk)
+            sent.append(msg.message_id)
+        except Exception as exc:
+            logger.error("Failed to send telegram message: %s", exc)
+            return web.json_response({"ok": False, "error": str(exc)}, status=502)
+
+    return web.json_response({"ok": True, "message_ids": sent})
+
+
+async def _start_http_server(bot_app, port=8001):
+    from aiohttp import web
+
+    app = web.Application()
+    app["bot"] = bot_app.bot
+    app.router.add_post("/send-report", _handle_send_report)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info("HTTP push-report endpoint listening on port %s", port)
+
+
 def main():
     if not BOT_TOKEN:
         raise RuntimeError("TELEGRAM_BOT_TOKEN belum di-set")
     if not SUPABASE_URL or not SUPABASE_KEY:
         raise RuntimeError("SUPABASE_URL / SUPABASE_KEY belum di-set")
 
-    app = Application.builder().token(BOT_TOKEN).build()
+    async def _post_init(application: Application):
+        await _start_http_server(application, port=8001)
+
+    app = Application.builder().token(BOT_TOKEN).post_init(_post_init).build()
 
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("help", cmd_help))
