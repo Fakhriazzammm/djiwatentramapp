@@ -18,7 +18,7 @@ import {
 	ExternalLink,
 	Database,
 } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useCallback, useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import {
 	useHybridAllProducts,
@@ -28,6 +28,7 @@ import {
 import { useHybridRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
 import { useHybridTrackOrders } from "@/hooks/use-hybrid-ops-data";
 import {
+	useHybridApplyInventoryStockAction,
 	useHybridBulkUpdateProducts,
 	useHybridDeleteProduct,
 	useHybridUpdateOrderItemStatus,
@@ -363,6 +364,8 @@ function KanbanCard({
 	const updateProduct = useHybridUpdateProduct();
 	const deleteProduct = useHybridDeleteProduct();
 	const bulkUpdate = useHybridBulkUpdateProducts();
+	const applyInventoryStockAction = useHybridApplyInventoryStockAction();
+	const [syncingProductIds, setSyncingProductIds] = useState<Set<string>>(new Set());
 
 	const filteredProducts = useMemo(() => {
 		if (!products) return [];
@@ -380,6 +383,79 @@ function KanbanCard({
 		});
 		return groups;
 	}, [filteredProducts, categories, products]);
+	const productsWithoutRecipe = useMemo(() => {
+		if (!filteredProducts.length) return [] as any[];
+		return filteredProducts.filter(
+			(product) => !recipes?.some((r: any) => r.productId === product._id && !r.variantName)
+		);
+	}, [filteredProducts, recipes]);
+
+	const handleAdjustMenuStock = useCallback(
+		async (product: any, delta: number) => {
+			if (!delta) return;
+			const recipe = recipes?.find(
+				(r: any) => r.productId === product._id && !r.variantName
+			);
+			if (!recipe) {
+				toast.error(`Menu ${product.name} belum punya recipe. Buat recipe dulu.`);
+				return;
+			}
+			const ingredients = Array.isArray(recipe.ingredients)
+				? recipe.ingredients.filter(
+					(ing: any) =>
+						typeof ing?.inventoryId === "string" && Number(ing?.amount ?? 0) > 0
+				)
+				: [];
+			if (ingredients.length === 0) {
+				toast.error(`Recipe ${product.name} belum punya komposisi bahan baku.`);
+				return;
+			}
+
+			const currentQuantity = Number(product.quantity ?? 0);
+			if (delta < 0 && currentQuantity <= 0) {
+				toast.error("Stok menu sudah 0");
+				return;
+			}
+
+			setSyncingProductIds((prev) => {
+				const next = new Set(prev);
+				next.add(String(product._id));
+				return next;
+			});
+
+			try {
+				const nextQuantity = Math.max(0, currentQuantity + delta);
+				await updateProduct({ id: product._id, quantity: nextQuantity });
+
+				const action = delta > 0 ? "add" : "usage";
+				const multiplier = Math.abs(delta);
+				for (const ingredient of ingredients) {
+					await applyInventoryStockAction({
+						inventoryId: ingredient.inventoryId,
+						action,
+						quantity: Number(ingredient.amount) * multiplier,
+						notes: `Sinkron stok menu ${product.name} (${delta > 0 ? "+" : ""}${delta} porsi) dari /admin/bar`,
+					});
+				}
+
+				toast.success(
+					`Stok ${product.name} ${delta > 0 ? "bertambah" : "berkurang"} ${Math.abs(delta)} porsi dan bahan baku tersinkron.`
+				);
+			} catch (error: any) {
+				toast.error(
+					error?.message || "Gagal sinkron stok menu dengan bahan baku"
+				);
+			} finally {
+				setSyncingProductIds((prev) => {
+					const next = new Set(prev);
+					next.delete(String(product._id));
+					return next;
+				});
+			}
+		},
+		[applyInventoryStockAction, recipes, updateProduct]
+	);
+
 
 	if (!products) {
 		return <div className="space-y-4">{Array.from({ length: 5 }).map((_, i) => <div className="h-16 animate-pulse rounded-2xl bg-slate-100" key={i} />)}</div>;
@@ -504,6 +580,25 @@ function KanbanCard({
 				/>
 			</div>
 
+			{productsWithoutRecipe.length > 0 && (
+				<div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900">
+					<p className="font-black text-[11px] uppercase tracking-wider">
+						⚠ {productsWithoutRecipe.length} menu belum punya recipe
+					</p>
+					<p className="mt-1 text-xs">
+						Menu tanpa recipe tidak bisa update stok sinkron bahan baku.
+					</p>
+					<div className="mt-2 flex gap-2">
+						<a
+							className="inline-flex items-center rounded-lg bg-amber-600 px-3 py-1.5 text-[11px] font-bold text-white"
+							href="/admin/recipe"
+						>
+							Buat Recipe
+						</a>
+					</div>
+				</div>
+			)}
+
 			<div className="space-y-6 md:space-y-8">
 				{Object.entries(groupedProducts).map(([categoryName, items]) => (
 					<div className="space-y-3" key={categoryName}>
@@ -527,6 +622,8 @@ function KanbanCard({
 						
 						{items.map((product) => {
 							const recipe = recipes?.find((r: any) => r.productId === product._id && !r.variantName);
+							const recipeMissing = !recipe;
+							const isSyncing = syncingProductIds.has(String(product._id));
 							
 							// Calculate potential portions based on inventory
 							let potentialStock: number | null = null;
@@ -646,13 +743,15 @@ function KanbanCard({
 																<div className="ml-1 flex items-center gap-1">
 																	<button 
 																		className="flex h-5 w-5 items-center justify-center rounded bg-slate-100 text-slate-500 shadow-sm active:scale-90"
-																		onClick={() => updateProduct({ id: product._id, quantity: Math.max(0, (product.quantity || 0) - 1) })}
+																		disabled={recipeMissing || isSyncing || (product.quantity || 0) <= 0}
+												onClick={() => void handleAdjustMenuStock(product, -1)}
 																	>
 																		<Minus className="h-3 w-3" />
 																	</button>
 																	<button 
 																		className="flex h-5 w-5 items-center justify-center rounded bg-indigo-600 text-white shadow-sm active:scale-90"
-																		onClick={() => updateProduct({ id: product._id, quantity: (product.quantity || 0) + 1 })}
+																		disabled={recipeMissing || isSyncing}
+												onClick={() => void handleAdjustMenuStock(product, 1)}
 																	>
 																		<Plus className="h-3 w-3" />
 																	</button>
@@ -681,6 +780,15 @@ function KanbanCard({
 													</button>
 												</div>
 											</div>
+
+											{recipeMissing && (
+												<div className="rounded-xl border border-amber-300 bg-amber-50 px-2.5 py-2 text-[10px] font-semibold text-amber-900">
+													Menu ini belum punya recipe. Stok menu tidak bisa disinkronkan ke bahan baku.
+													<a className="ml-1 underline" href="/admin/recipe">
+														Buat recipe
+													</a>
+												</div>
+											)}
 
 											{/* Inventory Integration Section */}
 											{recipe && (

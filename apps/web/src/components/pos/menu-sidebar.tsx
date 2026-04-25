@@ -71,6 +71,7 @@ import {
 import { useCart } from "@/context/cart-context";
 import {
 	useHybridAllDiscounts,
+	useHybridAllProducts,
 	useHybridCategories,
 	useHybridInventory,
 	useHybridLowStockItems,
@@ -84,6 +85,7 @@ import {
 	useHybridAllTransactions,
 	useHybridFinancialSummary,
 } from "@/hooks/use-hybrid-finance-analytics-data";
+import { useHybridRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
 import {
 	useHybridApplyInventoryStockAction,
 	useHybridCreateOrder,
@@ -2827,6 +2829,46 @@ function StokTab({
 
 	const lowStockItems = useHybridLowStockItems();
 	const lowStockCount = lowStockItems?.length || 0;
+	const allProducts = useHybridAllProducts();
+	const categories = useHybridCategories();
+	const recipes = useHybridRecipes();
+
+	const menuCategoryIds = useMemo(() => {
+		if (!categories) return new Set<string>();
+		const rootIds = new Set(
+			categories
+				.filter((category: any) => {
+					const name = String(category?.name || "").toLowerCase();
+					return name.includes("bar") || name.includes("kitchen");
+				})
+				.map((category: any) => String(category._id))
+		);
+
+		const allMenuIds = new Set<string>(rootIds);
+		let changed = true;
+		while (changed) {
+			changed = false;
+			for (const category of categories) {
+				const parentId = category.parentId ? String(category.parentId) : null;
+				const categoryId = String(category._id);
+				if (parentId && allMenuIds.has(parentId) && !allMenuIds.has(categoryId)) {
+					allMenuIds.add(categoryId);
+					changed = true;
+				}
+			}
+		}
+
+		return allMenuIds;
+	}, [categories]);
+
+	const menuProductsWithoutRecipe = useMemo(() => {
+		if (!allProducts?.length || menuCategoryIds.size === 0) return [] as any[];
+		return allProducts.filter((product: any) => {
+			const categoryId = String(product.categoryId || "");
+			if (!menuCategoryIds.has(categoryId)) return false;
+			return !recipes?.some((recipe: any) => recipe.productId === product._id && !recipe.variantName);
+		});
+	}, [allProducts, menuCategoryIds, recipes]);
 
 	const subTabs = [
 		{ value: "update" as const, label: "Update Stok", icon: Package },
@@ -2858,6 +2900,25 @@ function StokTab({
 					<span className="text-[10px] uppercase tracking-wider">Monitor Bar</span>
 				</Button>
 			</div>
+
+			{menuProductsWithoutRecipe.length > 0 && (
+				<div className="shrink-0 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-900">
+					<p className="font-bold text-[11px] uppercase tracking-wide">
+						⚠ {menuProductsWithoutRecipe.length} menu belum punya recipe
+					</p>
+					<p className="mt-1 text-[11px]">
+						Lengkapi recipe agar stok menu bisa sinkron dengan bahan baku.
+					</p>
+					<button
+						className="mt-2 inline-flex rounded-md bg-amber-600 px-2 py-1 text-[11px] font-semibold text-white"
+						onClick={() => {
+							window.location.href = "/admin/recipe";
+						}}
+					>
+						Buka Recipe Admin
+					</button>
+				</div>
+			)}
 
 			<div className="flex shrink-0 gap-1 rounded-lg bg-muted/50 p-1">
 				{subTabs.map((tab) => {
