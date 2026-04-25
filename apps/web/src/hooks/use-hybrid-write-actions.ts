@@ -334,32 +334,177 @@ function useHybridStorageUpload(
 	);
 }
 
+async function invokeYumiAiAction(action: string, payload: Record<string, unknown>) {
+	const supabase = createClient();
+	const { data, error } = await supabase.functions.invoke("yumi-ai", {
+		body: { action, ...payload },
+	});
+	if (error) throw new Error(error.message || "Gagal menghubungi AI");
+	if ((data as any)?.error) throw new Error((data as any).error);
+	return data;
+}
+
 export function useHybridBulkCreateProducts() {
-	return useLegacyFallbackMutation(api.products.bulkCreateProducts);
+	const fallback = useMutation(api.products.bulkCreateProducts);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const products = Array.isArray(args?.products) ? args.products : [];
+			if (products.length === 0) return [];
+			const rows = products.map((product: any) => {
+				const sourceId = String(product?._id ?? makeSourceId("prod"));
+				return {
+					source_id: sourceId,
+					category_source_id: product?.categoryId ?? null,
+					name: String(product?.name ?? "Produk").trim() || "Produk",
+					description: product?.description ?? null,
+					price: Number(product?.price ?? 0),
+					promo_price:
+						product?.promoPrice === undefined ? null : Number(product.promoPrice ?? 0),
+					image: product?.image ?? null,
+					is_available: product?.isAvailable === undefined ? true : Boolean(product.isAvailable),
+					quantity: product?.quantity === undefined ? null : Number(product.quantity ?? 0),
+					menu_number:
+						product?.menuNumber === undefined ? null : Number(product.menuNumber ?? 0),
+					variations: Array.isArray(product?.variations) ? product.variations : null,
+					creation_time: Number(product?._creationTime ?? Date.now()),
+					raw: product ?? {},
+				};
+			});
+			const { error } = await createClient().schema("pos").from("products").insert(rows);
+			if (error) throw error;
+			return rows.map((row: any) => row.source_id);
+		},
+		[fallback]
+	);
 }
 
 export function useHybridCreateCategory() {
-	return useLegacyFallbackMutation(api.products.createCategory);
+	const fallback = useMutation(api.products.createCategory);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const sourceId = makeSourceId("cat");
+			const row = {
+				source_id: sourceId,
+				name: String(args?.name ?? "").trim() || "Kategori",
+				display_order: Number(args?.displayOrder ?? 0),
+				parent_source_id: args?.parentId ?? null,
+				track: args?.track ?? null,
+				creation_time: Date.now(),
+				raw: args ?? {},
+			};
+			const { error } = await createClient().schema("pos").from("categories").insert(row);
+			if (error) throw error;
+			return sourceId;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridUpdateCategory() {
-	return useLegacyFallbackMutation(api.products.updateCategory);
+	const fallback = useMutation(api.products.updateCategory);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id kategori wajib diisi");
+			const updates: Record<string, unknown> = {};
+			if (args?.name !== undefined) updates.name = String(args.name ?? "").trim() || "Kategori";
+			if (args?.displayOrder !== undefined) updates.display_order = Number(args.displayOrder ?? 0);
+			if (args?.parentId !== undefined) updates.parent_source_id = args.parentId ?? null;
+			if (args?.track !== undefined) updates.track = args.track ?? null;
+			if (Object.keys(updates).length === 0) return;
+			const { error } = await createClient()
+				.schema("pos")
+				.from("categories")
+				.update(updates)
+				.eq("source_id", id);
+			if (error) throw error;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridDeleteCategory() {
-	return useLegacyFallbackMutation(api.products.deleteCategory);
+	const fallback = useMutation(api.products.deleteCategory);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id kategori wajib diisi");
+			const { error } = await createClient().schema("pos").from("categories").delete().eq("source_id", id);
+			if (error) throw error;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridAddProduct() {
-	return useLegacyFallbackMutation(api.products.addProduct);
+	return useHybridCreateProduct();
 }
 
 export function useHybridCreateProduct() {
-	return useLegacyFallbackMutation(api.products.createProduct);
+	const fallback = useMutation(api.products.createProduct);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const sourceId = String(args?._id ?? makeSourceId("prod"));
+			const row = {
+				source_id: sourceId,
+				category_source_id: args?.categoryId ?? null,
+				name: String(args?.name ?? "").trim() || "Produk",
+				description: args?.description ?? null,
+				price: Number(args?.price ?? 0),
+				promo_price: args?.promoPrice === undefined ? null : Number(args.promoPrice ?? 0),
+				image: args?.image ?? null,
+				is_available: args?.isAvailable === undefined ? true : Boolean(args.isAvailable),
+				quantity: args?.quantity === undefined ? null : Number(args.quantity ?? 0),
+				menu_number: args?.menuNumber === undefined ? null : Number(args.menuNumber ?? 0),
+				variations: Array.isArray(args?.variations) ? args.variations : null,
+				creation_time: Number(args?._creationTime ?? Date.now()),
+				raw: args ?? {},
+			};
+			const { error } = await createClient().schema("pos").from("products").insert(row);
+			if (error) throw error;
+			return sourceId;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridUpdateProduct() {
-	return useLegacyFallbackMutation(api.products.updateProduct);
+	const fallback = useMutation(api.products.updateProduct);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id produk wajib diisi");
+			const updates: Record<string, unknown> = {};
+			if (args?.categoryId !== undefined) updates.category_source_id = args.categoryId ?? null;
+			if (args?.name !== undefined) updates.name = String(args.name ?? "").trim() || "Produk";
+			if (args?.description !== undefined) updates.description = args.description ?? null;
+			if (args?.price !== undefined) updates.price = Number(args.price ?? 0);
+			if (args?.promoPrice !== undefined) {
+				updates.promo_price = args.promoPrice === null ? null : Number(args.promoPrice ?? 0);
+			}
+			if (args?.image !== undefined) updates.image = args.image ?? null;
+			if (args?.isAvailable !== undefined) updates.is_available = Boolean(args.isAvailable);
+			if (args?.quantity !== undefined) updates.quantity = Number(args.quantity ?? 0);
+			if (args?.menuNumber !== undefined) updates.menu_number = Number(args.menuNumber ?? 0);
+			if (args?.variations !== undefined) {
+				updates.variations = Array.isArray(args.variations) ? args.variations : null;
+			}
+			if (Object.keys(updates).length === 0) return;
+			const { error } = await createClient()
+				.schema("pos")
+				.from("products")
+				.update(updates)
+				.eq("source_id", id);
+			if (error) throw error;
+		},
+		[fallback]
+	);
 }
 
 type MenuRecipeIngredient = {
@@ -475,11 +620,32 @@ export function useHybridAdjustMenuStockWithRecipe() {
 }
 
 export function useHybridDeleteProduct() {
-	return useLegacyFallbackMutation(api.products.deleteProduct);
+	const fallback = useMutation(api.products.deleteProduct);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id produk wajib diisi");
+			const { error } = await createClient().schema("pos").from("products").delete().eq("source_id", id);
+			if (error) throw error;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridBulkUpdateProducts() {
-	return useLegacyFallbackMutation(api.products.bulkUpdateProducts);
+	const fallback = useMutation(api.products.bulkUpdateProducts);
+	const updateProduct = useHybridUpdateProduct();
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const ids = Array.isArray(args?.ids) ? args.ids : [];
+			const updates = args?.updates ?? {};
+			await Promise.all(ids.map((id: string) => updateProduct({ id, ...updates })));
+			return { updatedCount: ids.length };
+		},
+		[fallback, updateProduct]
+	);
 }
 
 export function useHybridGenerateProductUploadUrl() {
@@ -487,167 +653,1490 @@ export function useHybridGenerateProductUploadUrl() {
 }
 
 export function useHybridAddVariationPreset() {
-	return useLegacyFallbackMutation(api.products.addVariationPreset);
+	const fallback = useMutation(api.products.addVariationPreset);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = makeSourceId("variation");
+			await insertMirrorDocument({
+				tableName: "variationPresets",
+				documentId: id,
+				document: {
+					_id: id,
+					name: String(args?.name ?? "").trim() || "Preset Variasi",
+					options: Array.isArray(args?.options) ? args.options : [],
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+			});
+			return id;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridUpdateVariationPreset() {
-	return useLegacyFallbackMutation(api.products.updateVariationPreset);
+	const fallback = useMutation(api.products.updateVariationPreset);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id preset wajib diisi");
+			const current = (await getMirrorDocument("variationPresets", id)) ?? {};
+			await updateMirrorDocument({
+				tableName: "variationPresets",
+				documentId: id,
+				document: {
+					...current,
+					...args,
+					_id: id,
+					name: args?.name === undefined ? current.name : args.name,
+					options: args?.options === undefined ? current.options : args.options,
+					updatedAt: Date.now(),
+				},
+			});
+		},
+		[fallback]
+	);
 }
 
 export function useHybridDeleteVariationPreset() {
-	return useLegacyFallbackMutation(api.products.deleteVariationPreset);
+	const fallback = useMutation(api.products.deleteVariationPreset);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id preset wajib diisi");
+			const { error } = await createClient()
+				.schema("legacy_mirror")
+				.from("documents")
+				.delete()
+				.eq("table_name", "variationPresets")
+				.eq("document_id", id);
+			if (error) throw error;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridCreateBaseRecipe() {
-	return useLegacyFallbackMutation(api.inventory.createBaseRecipe);
+	const fallback = useMutation(api.inventory.createBaseRecipe);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = makeSourceId("baser");
+			const row = {
+				source_id: id,
+				name: String(args?.name ?? "").trim() || "Base Recipe",
+				description: args?.description ?? null,
+				category: args?.category ?? null,
+				target_unit: String(args?.targetUnit ?? "ml").trim() || "ml",
+				target_quantity: Number(args?.targetQuantity ?? 0),
+				ingredients: Array.isArray(args?.ingredients) ? args.ingredients : [],
+				creation_time: Date.now(),
+				raw: args ?? {},
+			};
+			const { error } = await createClient().schema("pos").from("base_recipes").insert(row);
+			if (error) throw error;
+			return id;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridUpdateBaseRecipe() {
-	return useLegacyFallbackMutation(api.inventory.updateBaseRecipe);
+	const fallback = useMutation(api.inventory.updateBaseRecipe);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id base recipe wajib diisi");
+			const updates: Record<string, unknown> = {};
+			if (args?.name !== undefined) updates.name = String(args.name ?? "").trim() || "Base Recipe";
+			if (args?.description !== undefined) updates.description = args.description ?? null;
+			if (args?.category !== undefined) updates.category = args.category ?? null;
+			if (args?.targetUnit !== undefined) updates.target_unit = String(args.targetUnit ?? "").trim() || "ml";
+			if (args?.targetQuantity !== undefined) updates.target_quantity = Number(args.targetQuantity ?? 0);
+			if (args?.ingredients !== undefined) {
+				updates.ingredients = Array.isArray(args.ingredients) ? args.ingredients : [];
+			}
+			if (Object.keys(updates).length === 0) return;
+			const { error } = await createClient().schema("pos").from("base_recipes").update(updates).eq("source_id", id);
+			if (error) throw error;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridDeleteBaseRecipe() {
-	return useLegacyFallbackMutation(api.inventory.deleteBaseRecipe);
+	const fallback = useMutation(api.inventory.deleteBaseRecipe);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id base recipe wajib diisi");
+			const pos = createClient().schema("pos");
+			await pos.from("inventory").update({ base_recipe_source_id: null }).eq("base_recipe_source_id", id);
+			const { error } = await pos.from("base_recipes").delete().eq("source_id", id);
+			if (error) throw error;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridSaveRecipe() {
-	return useLegacyFallbackMutation(api.inventory.saveRecipe);
+	const fallback = useMutation(api.inventory.saveRecipe);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const productId = String(args?.productId ?? "");
+			if (!productId) throw new Error("productId wajib diisi");
+			const variantName = args?.variantName ?? null;
+			const pos = createClient().schema("pos");
+			const { data: existing, error: existingError } = await pos
+				.from("recipes")
+				.select("source_id")
+				.eq("product_source_id", productId)
+				.is("variant_name", variantName)
+				.maybeSingle();
+			if (existingError) throw existingError;
+			const recipeId = String(existing?.source_id ?? makeSourceId("recipe"));
+			const payload = {
+				source_id: recipeId,
+				product_source_id: productId,
+				variant_name: variantName,
+				ingredients: Array.isArray(args?.ingredients) ? args.ingredients : [],
+				creation_time: Date.now(),
+				raw: args ?? {},
+			};
+			if (existing?.source_id) {
+				const { error } = await pos.from("recipes").update(payload).eq("source_id", recipeId);
+				if (error) throw error;
+			} else {
+				const { error } = await pos.from("recipes").insert(payload);
+				if (error) throw error;
+			}
+			return recipeId;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridDeleteRecipe() {
-	return useLegacyFallbackMutation(api.inventory.deleteRecipe);
+	const fallback = useMutation(api.inventory.deleteRecipe);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id recipe wajib diisi");
+			const { error } = await createClient().schema("pos").from("recipes").delete().eq("source_id", id);
+			if (error) throw error;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridEnsureInventoryItemForBaseRecipe() {
-	return useLegacyFallbackMutation(api.inventory.ensureInventoryItemForBaseRecipe);
+	const fallback = useMutation(api.inventory.ensureInventoryItemForBaseRecipe);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const baseRecipeId = String(args?.baseRecipeId ?? "");
+			if (!baseRecipeId) throw new Error("baseRecipeId wajib diisi");
+			const pos = createClient().schema("pos");
+			const { data: existing, error: existingError } = await pos
+				.from("inventory")
+				.select("source_id")
+				.eq("base_recipe_source_id", baseRecipeId)
+				.maybeSingle();
+			if (existingError) throw existingError;
+			if (existing?.source_id) {
+				return { inventoryId: existing.source_id, created: false };
+			}
+
+			const { data: baseRecipe, error: baseError } = await pos
+				.from("base_recipes")
+				.select("*")
+				.eq("source_id", baseRecipeId)
+				.maybeSingle();
+			if (baseError) throw baseError;
+			if (!baseRecipe) throw new Error("Base recipe tidak ditemukan");
+
+			const inventoryId = makeSourceId("inv");
+			const row = {
+				source_id: inventoryId,
+				ingredient_name: String(baseRecipe.name ?? "Base Recipe"),
+				unit: String(baseRecipe.target_unit ?? "pcs"),
+				quantity: Number(baseRecipe.target_quantity ?? 0),
+				low_stock_threshold: 0,
+				display_unit: String(baseRecipe.target_unit ?? "pcs"),
+				conversion_factor: 1,
+				unit_conversions: [],
+				base_recipe_source_id: baseRecipeId,
+				default_brand_name: null,
+				preferred_store_source_id: null,
+				preferred_purchase_quantity: null,
+				preferred_purchase_unit: null,
+				aliases: [],
+				last_purchase_price: null,
+				last_purchase_at: null,
+				last_purchase_store_source_id: null,
+				creation_time: Date.now(),
+				raw: {
+					source: "ensureInventoryItemForBaseRecipe",
+					baseRecipeId,
+				},
+			};
+			const { error } = await pos.from("inventory").insert(row);
+			if (error) throw error;
+			return { inventoryId, created: true };
+		},
+		[fallback]
+	);
 }
 
 export function useHybridCreateInventoryItem() {
-	return useLegacyFallbackMutation(api.inventory.createInventoryItem);
+	const fallback = useMutation(api.inventory.createInventoryItem);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const sourceId = makeSourceId("inv");
+			const row = {
+				source_id: sourceId,
+				ingredient_name: String(args?.ingredientName ?? "").trim() || "Bahan",
+				unit: String(args?.unit ?? "").trim() || "pcs",
+				quantity: Number(args?.quantity ?? 0),
+				low_stock_threshold: Number(args?.lowStockThreshold ?? 0),
+				display_unit: args?.displayUnit ?? null,
+				conversion_factor:
+					args?.conversionFactor === undefined ? null : Number(args.conversionFactor ?? 0),
+				unit_conversions: Array.isArray(args?.unitConversions) ? args.unitConversions : null,
+				base_recipe_source_id: args?.baseRecipeId ?? null,
+				default_brand_name: args?.defaultBrandName ?? null,
+				preferred_store_source_id: args?.preferredStoreId ?? null,
+				preferred_purchase_quantity:
+					args?.preferredPurchaseQuantity === undefined
+						? null
+						: Number(args.preferredPurchaseQuantity ?? 0),
+				preferred_purchase_unit: args?.preferredPurchaseUnit ?? null,
+				aliases: Array.isArray(args?.aliases) ? args.aliases : null,
+				last_purchase_price:
+					args?.lastPurchasePrice === undefined ? null : Number(args.lastPurchasePrice ?? 0),
+				last_purchase_at:
+					args?.lastPurchaseAt === undefined ? null : Number(args.lastPurchaseAt ?? 0),
+				last_purchase_store_source_id: args?.lastPurchaseStoreId ?? null,
+				creation_time: Date.now(),
+				raw: args ?? {},
+			};
+			const { error } = await createClient().schema("pos").from("inventory").insert(row);
+			if (error) throw error;
+			return sourceId;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridUpdateInventoryItem() {
-	return useLegacyFallbackMutation(api.inventory.updateInventoryItem);
+	const fallback = useMutation(api.inventory.updateInventoryItem);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id inventory wajib diisi");
+			const updates: Record<string, unknown> = {};
+			if (args?.ingredientName !== undefined) updates.ingredient_name = args.ingredientName ?? null;
+			if (args?.unit !== undefined) updates.unit = args.unit ?? null;
+			if (args?.quantity !== undefined) updates.quantity = Number(args.quantity ?? 0);
+			if (args?.lowStockThreshold !== undefined) updates.low_stock_threshold = Number(args.lowStockThreshold ?? 0);
+			if (args?.displayUnit !== undefined) updates.display_unit = args.displayUnit ?? null;
+			if (args?.conversionFactor !== undefined) {
+				updates.conversion_factor = args.conversionFactor === null ? null : Number(args.conversionFactor ?? 0);
+			}
+			if (args?.unitConversions !== undefined) updates.unit_conversions = Array.isArray(args.unitConversions) ? args.unitConversions : null;
+			if (args?.baseRecipeId !== undefined) updates.base_recipe_source_id = args.baseRecipeId ?? null;
+			if (args?.defaultBrandName !== undefined) updates.default_brand_name = args.defaultBrandName ?? null;
+			if (args?.preferredStoreId !== undefined) updates.preferred_store_source_id = args.preferredStoreId ?? null;
+			if (args?.preferredPurchaseQuantity !== undefined) updates.preferred_purchase_quantity = Number(args.preferredPurchaseQuantity ?? 0);
+			if (args?.preferredPurchaseUnit !== undefined) updates.preferred_purchase_unit = args.preferredPurchaseUnit ?? null;
+			if (args?.lastPurchasePrice !== undefined) updates.last_purchase_price = Number(args.lastPurchasePrice ?? 0);
+			if (args?.lastPurchaseAt !== undefined) updates.last_purchase_at = Number(args.lastPurchaseAt ?? 0);
+			if (args?.lastPurchaseStoreId !== undefined) updates.last_purchase_store_source_id = args.lastPurchaseStoreId ?? null;
+			if (Object.keys(updates).length === 0) return;
+			const { error } = await createClient().schema("pos").from("inventory").update(updates).eq("source_id", id);
+			if (error) throw error;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridDeleteInventoryItem() {
-	return useLegacyFallbackMutation(api.inventory.deleteInventoryItem);
+	const fallback = useMutation(api.inventory.deleteInventoryItem);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id inventory wajib diisi");
+			const pos = createClient().schema("pos");
+			await pos.from("inventory_transactions").delete().eq("inventory_source_id", id);
+			const { error } = await pos.from("inventory").delete().eq("source_id", id);
+			if (error) throw error;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridCreateInventoryStore() {
-	return useLegacyFallbackMutation(api.inventory.createInventoryStore);
+	const fallback = useMutation(api.inventory.createInventoryStore);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = makeSourceId("store");
+			const row = {
+				source_id: id,
+				name: String(args?.name ?? "").trim() || "Store",
+				store_type: args?.type ?? "store",
+				phone: args?.phone ?? null,
+				address: args?.address ?? null,
+				notes: args?.notes ?? null,
+				is_active: args?.isActive === undefined ? true : Boolean(args.isActive),
+				creation_time: Date.now(),
+				raw: args ?? {},
+			};
+			const { error } = await createClient().schema("pos").from("inventory_stores").insert(row);
+			if (error) throw error;
+			return id;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridSetInventoryReferencePrice() {
-	return useLegacyFallbackMutation(api.inventory.setInventoryReferencePrice);
+	const fallback = useMutation(api.inventory.setInventoryReferencePrice);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const inventoryId = String(args?.inventoryId ?? "");
+			const price = Number(args?.price ?? 0);
+			if (!inventoryId || price <= 0) throw new Error("inventoryId dan price wajib valid");
+			const now = Date.now();
+			const pos = createClient().schema("pos");
+			const { error: txError } = await pos.from("inventory_transactions").insert({
+				source_id: makeSourceId("invtx"),
+				inventory_source_id: inventoryId,
+				quantity: 0,
+				tx_type: "costing_reference",
+				cost_per_unit: price,
+				remaining_quantity: null,
+				tx_timestamp: now,
+				notes: args?.notes ?? "Harga referensi",
+				expiry_date: null,
+				brand_name: args?.brandName ?? null,
+				store_source_id: args?.storeId ?? null,
+				purchase_unit: args?.purchaseUnit ?? null,
+				purchase_quantity: null,
+				line_total: null,
+				source_transaction_id: null,
+				source_label: "manual_reference",
+				source_fingerprint: null,
+				creation_time: now,
+				raw: args ?? {},
+			});
+			if (txError) throw txError;
+
+			const { error: invError } = await pos
+				.from("inventory")
+				.update({
+					last_purchase_price: price,
+					last_purchase_at: now,
+					last_purchase_store_source_id: args?.storeId ?? null,
+				})
+				.eq("source_id", inventoryId);
+			if (invError) throw invError;
+			return { ok: true };
+		},
+		[fallback]
+	);
 }
 
 export function useHybridAddStock() {
-	return useLegacyFallbackMutation(api.inventory.addStock);
+	const fallback = useMutation(api.inventory.addStock);
+	const applyInventoryStockAction = useHybridApplyInventoryStockAction();
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			return applyInventoryStockAction({
+				inventoryId: args?.inventoryId,
+				action: "add",
+				quantity: Number(args?.quantity ?? 0),
+				notes: args?.notes,
+				costPerUnit: args?.costPerUnit,
+				timestamp: args?.timestamp,
+				expiryDate: args?.expiryDate,
+				brandName: args?.brandName,
+				storeId: args?.storeId,
+				purchaseUnit: args?.purchaseUnit,
+				purchaseQuantity: args?.purchaseQuantity,
+				lineTotal: args?.lineTotal,
+			});
+		},
+		[applyInventoryStockAction, fallback]
+	);
 }
 
 export function useHybridSuggestInventoryAutofill() {
-	return useLegacyFallbackAction(api.inventory.suggestInventoryAutofill);
+	const fallback = useAction(api.inventory.suggestInventoryAutofill);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const ingredientName = String(args?.ingredientName ?? "").trim();
+			if (!ingredientName) throw new Error("ingredientName wajib diisi");
+			const { data, error } = await createClient()
+				.from("pos_inventory")
+				.select("*")
+				.ilike("ingredientName", `%${ingredientName}%`)
+				.limit(5);
+			if (error) throw error;
+			const best = Array.isArray(data) && data.length > 0 ? data[0] : null;
+			const suggestion = {
+				unit: best?.unit ?? "gram",
+				lowStockThreshold: Number(best?.lowStockThreshold ?? 100),
+				defaultBrandName: best?.defaultBrandName ?? "",
+				displayUnit: best?.displayUnit ?? "",
+				conversionFactor:
+					best?.conversionFactor === undefined || best?.conversionFactor === null
+						? null
+						: Number(best.conversionFactor),
+				unitConversionsText: Array.isArray(best?.unitConversions)
+					? best.unitConversions
+							.map((row: any) => `${row?.unit ?? ""}:${row?.factor ?? ""}`)
+							.filter((txt: string) => txt !== ":")
+							.join(", ")
+					: "",
+				confidence: best ? 0.82 : 0.45,
+				category: best ? "history" : "default",
+				fieldConfidence: {
+					unit: best ? 0.85 : 0.5,
+					lowStockThreshold: best ? 0.8 : 0.45,
+					defaultBrandName: best ? 0.7 : 0.3,
+					conversion: best?.conversionFactor ? 0.72 : 0.35,
+				},
+				fieldReason: {
+					unit: best ? "Menggunakan data item serupa di inventory" : "Fallback default",
+					lowStockThreshold: best ? "Rata-rata dari item serupa" : "Fallback default",
+					defaultBrandName: best ? "Merek terakhir yang sering dipakai" : "Belum ada riwayat",
+					conversion: best ? "Konversi dari item serupa" : "Belum ada riwayat",
+				},
+				reason: best
+					? `Saran berdasarkan item serupa: ${best.ingredientName ?? ingredientName}`
+					: "Saran default karena belum ada riwayat item serupa",
+				conflictWarning: null,
+			};
+			return {
+				ok: true,
+				message: "Saran inventory berhasil dibuat",
+				suggestion,
+				fallbackPath: best ? ["inventory_history"] : ["default_profile"],
+				refreshedAt: Date.now(),
+				sources: best ? [best._id] : [],
+			};
+		},
+		[fallback]
+	);
 }
 
 export function useHybridUpdateOrderItemStatus() {
-	return useLegacyFallbackMutation(api.kitchenBar.updateOrderItemStatus);
+	const fallback = useMutation(api.kitchenBar.updateOrderItemStatus);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const orderId = String(args?.orderId ?? "");
+			const itemIndex = Number(args?.itemIndex ?? -1);
+			const status = String(args?.status ?? "").trim();
+			if (!orderId || itemIndex < 0 || !status) throw new Error("Payload update status item order tidak valid");
+			const lineNo = itemIndex + 1;
+			const { error } = await createClient()
+				.schema("pos")
+				.from("order_items")
+				.update({ status })
+				.eq("order_source_id", orderId)
+				.eq("line_no", lineNo);
+			if (error) throw error;
+			return { ok: true };
+		},
+		[fallback]
+	);
 }
 
 export function useHybridCreateDiscount() {
-	return useLegacyFallbackMutation(api.discounts.createDiscount);
+	const fallback = useMutation(api.discounts.createDiscount);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const sourceId = makeSourceId("disc");
+			const row = {
+				source_id: sourceId,
+				name: String(args?.name ?? "").trim() || "Diskon",
+				code: args?.code ?? null,
+				discount_type: args?.type ?? "PERCENTAGE",
+				value: Number(args?.value ?? 0),
+				target_type: args?.targetType ?? "ALL",
+				target_id: args?.targetId ?? null,
+				target_ids: Array.isArray(args?.targetIds) ? args.targetIds : null,
+				formatted_id: args?.formattedId ?? null,
+				is_active: args?.isActive === undefined ? true : Boolean(args.isActive),
+				min_order_value:
+					args?.minOrderValue === undefined ? null : Number(args.minOrderValue ?? 0),
+				start_date: args?.startDate === undefined ? null : Number(args.startDate ?? 0),
+				end_date: args?.endDate === undefined ? null : Number(args.endDate ?? 0),
+				start_time: args?.startTime ?? null,
+				end_time: args?.endTime ?? null,
+				days: Array.isArray(args?.days) ? args.days : null,
+				is_happy_hour: args?.isHappyHour === undefined ? null : Boolean(args.isHappyHour),
+				product_prices: Array.isArray(args?.productPrices) ? args.productPrices : null,
+				is_free_refill:
+					args?.isFreeRefill === undefined ? null : Boolean(args.isFreeRefill),
+				refill_price:
+					args?.refillPrice === undefined ? null : Number(args.refillPrice ?? 0),
+				refill_availability: args?.refillAvailability ?? null,
+				creation_time: Date.now(),
+				raw: args ?? {},
+			};
+			const { error } = await createClient().schema("pos").from("discounts").insert(row);
+			if (error) throw error;
+			return sourceId;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridUpdateDiscount() {
-	return useLegacyFallbackMutation(api.discounts.updateDiscount);
+	const fallback = useMutation(api.discounts.updateDiscount);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id diskon wajib diisi");
+			const updates: Record<string, unknown> = {};
+			if (args?.name !== undefined) updates.name = args.name ?? null;
+			if (args?.code !== undefined) updates.code = args.code ?? null;
+			if (args?.type !== undefined) updates.discount_type = args.type ?? null;
+			if (args?.value !== undefined) updates.value = Number(args.value ?? 0);
+			if (args?.targetType !== undefined) updates.target_type = args.targetType ?? null;
+			if (args?.targetId !== undefined) updates.target_id = args.targetId ?? null;
+			if (args?.targetIds !== undefined) updates.target_ids = Array.isArray(args.targetIds) ? args.targetIds : null;
+			if (args?.formattedId !== undefined) updates.formatted_id = args.formattedId ?? null;
+			if (args?.isActive !== undefined) updates.is_active = Boolean(args.isActive);
+			if (args?.minOrderValue !== undefined) updates.min_order_value = Number(args.minOrderValue ?? 0);
+			if (args?.startDate !== undefined) updates.start_date = args.startDate === null ? null : Number(args.startDate ?? 0);
+			if (args?.endDate !== undefined) updates.end_date = args.endDate === null ? null : Number(args.endDate ?? 0);
+			if (args?.startTime !== undefined) updates.start_time = args.startTime ?? null;
+			if (args?.endTime !== undefined) updates.end_time = args.endTime ?? null;
+			if (args?.days !== undefined) updates.days = Array.isArray(args.days) ? args.days : null;
+			if (args?.isHappyHour !== undefined) updates.is_happy_hour = Boolean(args.isHappyHour);
+			if (args?.productPrices !== undefined) updates.product_prices = Array.isArray(args.productPrices) ? args.productPrices : null;
+			if (args?.isFreeRefill !== undefined) updates.is_free_refill = Boolean(args.isFreeRefill);
+			if (args?.refillPrice !== undefined) updates.refill_price = Number(args.refillPrice ?? 0);
+			if (args?.refillAvailability !== undefined) updates.refill_availability = args.refillAvailability ?? null;
+			if (Object.keys(updates).length === 0) return;
+			const { error } = await createClient().schema("pos").from("discounts").update(updates).eq("source_id", id);
+			if (error) throw error;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridDeleteDiscount() {
-	return useLegacyFallbackMutation(api.discounts.deleteDiscount);
+	const fallback = useMutation(api.discounts.deleteDiscount);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id diskon wajib diisi");
+			const { error } = await createClient().schema("pos").from("discounts").delete().eq("source_id", id);
+			if (error) throw error;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridCreateHppCalculation() {
-	return useLegacyFallbackMutation(api.hpp.createHppCalculation);
+	const fallback = useMutation(api.hpp.createHppCalculation);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = makeSourceId("hpp");
+			await insertMirrorDocument({
+				tableName: "hppCalculations",
+				documentId: id,
+				document: {
+					_id: id,
+					name: String(args?.name ?? "").trim() || "HPP Calculation",
+					description: args?.description ?? null,
+					productId: args?.productId ?? null,
+					sellingPrice: Number(args?.sellingPrice ?? 0),
+					servingsPerBatch: Number(args?.servingsPerBatch ?? 1),
+					ingredients: Array.isArray(args?.ingredients) ? args.ingredients : [],
+					overheadCosts: Array.isArray(args?.overheadCosts) ? args.overheadCosts : [],
+					sourceType: args?.sourceType ?? "manual",
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+			});
+			return id;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridUpdateHppCalculation() {
-	return useLegacyFallbackMutation(api.hpp.updateHppCalculation);
+	const fallback = useMutation(api.hpp.updateHppCalculation);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id HPP wajib diisi");
+			const current = (await getMirrorDocument("hppCalculations", id)) ?? {};
+			await updateMirrorDocument({
+				tableName: "hppCalculations",
+				documentId: id,
+				document: {
+					...current,
+					...args,
+					_id: id,
+					updatedAt: Date.now(),
+				},
+			});
+		},
+		[fallback]
+	);
 }
 
 export function useHybridDeleteHppCalculation() {
-	return useLegacyFallbackMutation(api.hpp.deleteHppCalculation);
+	const fallback = useMutation(api.hpp.deleteHppCalculation);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id HPP wajib diisi");
+			const { error } = await createClient()
+				.schema("legacy_mirror")
+				.from("documents")
+				.delete()
+				.eq("table_name", "hppCalculations")
+				.eq("document_id", id);
+			if (error) throw error;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridSyncHppWithInventoryPrices() {
-	return useLegacyFallbackMutation(api.hpp.syncHppWithInventoryPrices);
+	const fallback = useMutation(api.hpp.syncHppWithInventoryPrices);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id HPP wajib diisi");
+			const doc = await getMirrorDocument("hppCalculations", id);
+			if (!doc) throw new Error("Data HPP tidak ditemukan");
+			const ingredients = Array.isArray((doc as any).ingredients) ? (doc as any).ingredients : [];
+			const inventoryIds = ingredients
+				.map((item: any) => String(item?.inventoryId ?? ""))
+				.filter((value: string) => value.length > 0);
+			if (inventoryIds.length === 0) return { updatedCount: 0 };
+			const { data: costs, error } = await createClient()
+				.from("pos_inventory_latest_costs")
+				.select("*")
+				.in("inventoryId", inventoryIds);
+			if (error) throw error;
+			const costMap = new Map<string, number>();
+			for (const row of costs ?? []) {
+				costMap.set(String((row as any).inventoryId), Number((row as any).latestCostPerUnit ?? 0));
+			}
+			let updatedCount = 0;
+			const nextIngredients = ingredients.map((item: any) => {
+				const inventoryId = String(item?.inventoryId ?? "");
+				const latestCost = costMap.get(inventoryId);
+				if (latestCost === undefined) return item;
+				updatedCount += 1;
+				const conversionFactor = Number(item?.conversionFactor ?? 1);
+				return {
+					...item,
+					purchasePrice: latestCost * conversionFactor,
+					purchaseQuantity: Number(item?.purchaseQuantity ?? 1) || 1,
+					usagePerServing: Number(item?.usagePerServing ?? 1) || 1,
+				};
+			});
+			await updateMirrorDocument({
+				tableName: "hppCalculations",
+				documentId: id,
+				document: {
+					...(doc as any),
+					ingredients: nextIngredients,
+					updatedAt: Date.now(),
+				},
+			});
+			return { updatedCount };
+		},
+		[fallback]
+	);
 }
 
 export function useHybridUpsertHppFromRecipe() {
-	return useLegacyFallbackMutation(api.hpp.upsertHppFromRecipe);
+	const fallback = useMutation(api.hpp.upsertHppFromRecipe);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const productId = String(args?.productId ?? "");
+			if (!productId) throw new Error("productId wajib diisi");
+			const supabase = createClient();
+			const pos = supabase.schema("pos");
+			const { data: recipe, error: recipeError } = await pos
+				.from("recipes")
+				.select("*")
+				.eq("product_source_id", productId)
+				.is("variant_name", null)
+				.maybeSingle();
+			if (recipeError) throw recipeError;
+			if (!recipe) throw new Error("Recipe produk belum tersedia");
+
+			const ingredientRows = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+			const inventoryIds = ingredientRows.map((item: any) => String(item?.inventoryId ?? "")).filter(Boolean);
+			let costMap = new Map<string, any>();
+			if (inventoryIds.length > 0) {
+				const { data: costs, error: costsError } = await supabase
+					.from("pos_inventory_latest_costs")
+					.select("*")
+					.in("inventoryId", inventoryIds);
+				if (costsError) throw costsError;
+				costMap = new Map<string, any>((costs ?? []).map((row: any) => [String(row.inventoryId), row]));
+			}
+
+			const { data: product, error: productError } = await supabase
+				.from("pos_products_all")
+				.select("*")
+				.eq("_id", productId)
+				.maybeSingle();
+			if (productError) throw productError;
+
+			const ingredients = ingredientRows.map((item: any) => {
+				const inventoryId = String(item?.inventoryId ?? "");
+				const costRow = costMap.get(inventoryId);
+				const latestCost = Number(costRow?.latestCostPerUnit ?? 0);
+				const conversionFactor = Number(costRow?.conversionFactor ?? 1);
+				return {
+					inventoryId,
+					ingredientName: costRow?.ingredientName ?? item?.ingredientName ?? "Bahan",
+					purchasePrice: latestCost * conversionFactor,
+					purchaseQuantity: 1,
+					purchaseUnit: costRow?.displayUnit ?? costRow?.unit ?? "unit",
+					usagePerServing: Number(item?.amount ?? 0),
+					usageUnit: costRow?.unit ?? "unit",
+					conversionFactor,
+				};
+			});
+
+			const { data: existingDoc, error: existingError } = await supabase
+				.schema("legacy_mirror")
+				.from("documents")
+				.select("document_id")
+				.eq("table_name", "hppCalculations")
+				.eq("document->>productId", productId)
+				.limit(1)
+				.maybeSingle();
+			if (existingError) throw existingError;
+
+			const id = String(existingDoc?.document_id ?? makeSourceId("hpp"));
+			const nextDocument = {
+				_id: id,
+				productId,
+				name: `HPP ${String(product?.name ?? "Produk")}`,
+				description: `Sinkron dari recipe ${String(product?.name ?? "produk")}`,
+				servingsPerBatch: 1,
+				sellingPrice: Number(product?.promoPrice ?? product?.price ?? 0),
+				ingredients,
+				overheadCosts: [],
+				sourceType: "recipe_based",
+				updatedAt: Date.now(),
+				createdAt: Number(Date.now()),
+			};
+
+			if (existingDoc?.document_id) {
+				await updateMirrorDocument({
+					tableName: "hppCalculations",
+					documentId: id,
+					document: nextDocument,
+				});
+			} else {
+				await insertMirrorDocument({
+					tableName: "hppCalculations",
+					documentId: id,
+					document: nextDocument,
+				});
+			}
+			return {
+				id,
+				created: !existingDoc?.document_id,
+				calculation: nextDocument,
+			};
+		},
+		[fallback]
+	);
 }
 
 export function useHybridApplyHppSellingPriceToProduct() {
-	return useLegacyFallbackMutation(api.hpp.applyHppSellingPriceToProduct);
+	const fallback = useMutation(api.hpp.applyHppSellingPriceToProduct);
+	const updateProduct = useHybridUpdateProduct();
+	const updateHpp = useHybridUpdateHppCalculation();
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id HPP wajib diisi");
+			const sellingPrice = Number(args?.sellingPrice ?? 0);
+			await updateHpp({ id, sellingPrice });
+			let productUpdated = false;
+			if (Boolean(args?.syncProductPrice)) {
+				const doc = await getMirrorDocument("hppCalculations", id);
+				const productId = String((doc as any)?.productId ?? "");
+				if (productId) {
+					await updateProduct({
+						id: productId,
+						price: sellingPrice,
+					});
+					productUpdated = true;
+				}
+			}
+			return { productUpdated };
+		},
+		[fallback, updateHpp, updateProduct]
+	);
 }
 
 export function useHybridCreateGame() {
-	return useLegacyFallbackMutation(api.minigames.createGame);
+	const fallback = useMutation(api.minigames.createGame);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = makeSourceId("game");
+			await insertMirrorDocument({
+				tableName: "miniGames",
+				documentId: id,
+				document: {
+					_id: id,
+					brandSlug: String(args?.brandSlug ?? "").trim(),
+					name: String(args?.name ?? "").trim() || "Mini Game",
+					slug: String(args?.slug ?? "").trim() || `minigame-${Date.now()}`,
+					description: args?.description ?? null,
+					isActive: args?.isActive === undefined ? true : Boolean(args.isActive),
+					requireUniqueContact:
+						args?.requireUniqueContact === undefined ? true : Boolean(args.requireUniqueContact),
+					maxSpinsPerContact: Number(args?.maxSpinsPerContact ?? 1),
+					startAt: args?.startAt ?? null,
+					endAt: args?.endAt ?? null,
+					spinDurationMs: Number(args?.spinDurationMs ?? 5200),
+					thankYouMessage:
+						args?.thankYouMessage ??
+						"Terima kasih sudah bermain. Tim kami akan menghubungi Anda.",
+					prizes: Array.isArray(args?.prizes) ? args.prizes : [],
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+			});
+			return id;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridUpdateGame() {
-	return useLegacyFallbackMutation(api.minigames.updateGame);
+	const fallback = useMutation(api.minigames.updateGame);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id game wajib diisi");
+			const current = (await getMirrorDocument("miniGames", id)) ?? {};
+			await updateMirrorDocument({
+				tableName: "miniGames",
+				documentId: id,
+				document: {
+					...current,
+					...args,
+					_id: id,
+					updatedAt: Date.now(),
+				},
+			});
+		},
+		[fallback]
+	);
 }
 
 export function useHybridDeleteGame() {
-	return useLegacyFallbackMutation(api.minigames.deleteGame);
+	const fallback = useMutation(api.minigames.deleteGame);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id game wajib diisi");
+			const supabase = createClient();
+			await supabase
+				.schema("legacy_mirror")
+				.from("documents")
+				.delete()
+				.eq("table_name", "miniGameEntries")
+				.eq("document->>gameId", id);
+			const { error } = await supabase
+				.schema("legacy_mirror")
+				.from("documents")
+				.delete()
+				.eq("table_name", "miniGames")
+				.eq("document_id", id);
+			if (error) throw error;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridCreateEntryManually() {
-	return useLegacyFallbackMutation(api.minigames.createEntryManually);
+	const fallback = useMutation(api.minigames.createEntryManually);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = makeSourceId("entry");
+			await insertMirrorDocument({
+				tableName: "miniGameEntries",
+				documentId: id,
+				document: {
+					_id: id,
+					gameId: args?.gameId ?? null,
+					brandSlug: args?.brandSlug ?? "",
+					fullName: args?.fullName ?? null,
+					email: args?.email ?? null,
+					whatsapp: args?.whatsapp ?? null,
+					instagram: args?.instagram ?? null,
+					prizeId: args?.prizeId ?? null,
+					prizeLabel: args?.prizeLabel ?? null,
+					prizeDescription: args?.prizeDescription ?? null,
+					voucherCode: args?.voucherCode ?? null,
+					spinAngle: args?.spinAngle ?? null,
+					contactStatus: args?.contactStatus ?? "new",
+					adminNotes: args?.adminNotes ?? null,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+			});
+			return id;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridUpdateEntry() {
-	return useLegacyFallbackMutation(api.minigames.updateEntry);
+	const fallback = useMutation(api.minigames.updateEntry);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id entry wajib diisi");
+			const current = (await getMirrorDocument("miniGameEntries", id)) ?? {};
+			await updateMirrorDocument({
+				tableName: "miniGameEntries",
+				documentId: id,
+				document: {
+					...current,
+					...args,
+					_id: id,
+					updatedAt: Date.now(),
+				},
+			});
+		},
+		[fallback]
+	);
 }
 
 export function useHybridDeleteEntry() {
-	return useLegacyFallbackMutation(api.minigames.deleteEntry);
+	const fallback = useMutation(api.minigames.deleteEntry);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const id = String(args?.id ?? "");
+			if (!id) throw new Error("id entry wajib diisi");
+			const { error } = await createClient()
+				.schema("legacy_mirror")
+				.from("documents")
+				.delete()
+				.eq("table_name", "miniGameEntries")
+				.eq("document_id", id);
+			if (error) throw error;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridSpin() {
-	return useLegacyFallbackMutation(api.minigames.spin);
+	const fallback = useMutation(api.minigames.spin);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const gameId = String(args?.gameId ?? "");
+			if (!gameId) throw new Error("gameId wajib diisi");
+			const game = await getMirrorDocument("miniGames", gameId);
+			if (!game) throw new Error("Mini game tidak ditemukan");
+			if (!(game as any).isActive) throw new Error("Mini game tidak aktif");
+			const now = Date.now();
+			const startAt = Number((game as any).startAt ?? 0);
+			const endAt = Number((game as any).endAt ?? 0);
+			if (startAt > 0 && now < startAt) throw new Error("Mini game belum dimulai");
+			if (endAt > 0 && now > endAt) throw new Error("Mini game sudah berakhir");
+
+			const supabase = createClient();
+			const contactQuery = supabase
+				.schema("legacy_mirror")
+				.from("documents")
+				.select("document")
+				.eq("table_name", "miniGameEntries")
+				.eq("document->>gameId", gameId);
+			if (args?.email) {
+				contactQuery.eq("document->>email", String(args.email));
+			} else if (args?.whatsapp) {
+				contactQuery.eq("document->>whatsapp", String(args.whatsapp));
+			}
+			const { data: previousEntries, error: previousError } = await contactQuery.limit(100);
+			if (previousError) throw previousError;
+			const priorCount = Array.isArray(previousEntries) ? previousEntries.length : 0;
+			if (Boolean((game as any).requireUniqueContact) && priorCount > 0) {
+				throw new Error("Kontak ini sudah pernah spin di mini game ini");
+			}
+			const maxSpins = Math.max(1, Number((game as any).maxSpinsPerContact ?? 1));
+			if (priorCount >= maxSpins) throw new Error("Batas spin untuk kontak ini sudah tercapai");
+
+			const allPrizes = Array.isArray((game as any).prizes) ? (game as any).prizes : [];
+			const availablePrizes = allPrizes.filter((prize: any) => {
+				if (!prize?.isActive) return false;
+				if (prize?.stock === undefined || prize?.stock === null) return true;
+				const stock = Number(prize.stock ?? 0);
+				const claimed = Number(prize.claimedCount ?? 0);
+				return claimed < stock;
+			});
+			if (availablePrizes.length === 0) throw new Error("Hadiah sedang tidak tersedia");
+
+			const weightedPool: any[] = [];
+			for (const prize of availablePrizes) {
+				const weight = Math.max(1, Number(prize?.weight ?? 1));
+				for (let i = 0; i < weight; i += 1) weightedPool.push(prize);
+			}
+			const winner = weightedPool[Math.floor(Math.random() * weightedPool.length)];
+			const spinDurationMs = Math.max(2500, Number((game as any).spinDurationMs ?? 5200));
+			const spinAngle = 360 * (4 + Math.floor(Math.random() * 3)) + Math.floor(Math.random() * 360);
+
+			const updatedPrizes = allPrizes.map((prize: any) => {
+				if (String(prize?.id ?? "") !== String(winner?.id ?? "")) return prize;
+				return {
+					...prize,
+					claimedCount: Number(prize?.claimedCount ?? 0) + 1,
+				};
+			});
+			await updateMirrorDocument({
+				tableName: "miniGames",
+				documentId: gameId,
+				document: {
+					...(game as any),
+					prizes: updatedPrizes,
+					updatedAt: Date.now(),
+				},
+			});
+
+			const entryId = makeSourceId("entry");
+			await insertMirrorDocument({
+				tableName: "miniGameEntries",
+				documentId: entryId,
+				document: {
+					_id: entryId,
+					gameId,
+					brandSlug: (game as any).brandSlug ?? "",
+					fullName: args?.fullName ?? null,
+					email: args?.email ?? null,
+					whatsapp: args?.whatsapp ?? null,
+					instagram: args?.instagram ?? null,
+					prizeId: winner?.id ?? null,
+					prizeLabel: winner?.label ?? "Hadiah",
+					prizeDescription: winner?.description ?? null,
+					voucherCode: winner?.voucherCode ?? null,
+					spinAngle,
+					contactStatus: "new",
+					adminNotes: null,
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+			});
+
+			return {
+				entryId,
+				prizeId: winner?.id ?? null,
+				prizeLabel: winner?.label ?? "Hadiah",
+				prizeDescription: winner?.description ?? undefined,
+				voucherCode: winner?.voucherCode ?? undefined,
+				spinAngle,
+				spinDurationMs,
+				thankYouMessage:
+					(game as any).thankYouMessage ??
+					"Terima kasih sudah bermain. Tim kami akan menghubungi Anda.",
+			};
+		},
+		[fallback]
+	);
 }
 
 export function useHybridProcessReceipt() {
-	return useLegacyFallbackAction(api.ai.processReceipt);
+	const fallback = useAction(api.ai.processReceipt);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const image = String(args?.image ?? "");
+			if (!image) throw new Error("image wajib diisi");
+			const batch = (await invokeYumiAiAction("bulkScanImageData", {
+				images: [image],
+			})) as any[];
+			const first = Array.isArray(batch) ? batch[0] : null;
+			if (!first?.success || !first?.data) {
+				throw new Error(first?.error || "Gagal memproses gambar");
+			}
+			const data = first.data ?? {};
+			const mappedItems = Array.isArray(data.items)
+				? data.items.map((item: any) => ({
+						name: String(item?.name ?? "").trim() || "Item",
+						quantity: Number(item?.qty ?? item?.quantity ?? 1) || 1,
+						price: Number(item?.price ?? 0) || 0,
+				  }))
+				: [];
+			return {
+				type:
+					String(data.type ?? data.transactionType ?? "expense").toLowerCase() === "income"
+						? "transaction"
+						: "expense",
+				data: {
+					amount: Number(data.total ?? data.amount ?? 0),
+					items: mappedItems,
+					category: data.category ?? "Lainnya",
+					description: data.notes ?? data.name ?? "",
+					paymentMethod: data.paymentMethod ?? "cash",
+					notes: data.rawText ?? "",
+				},
+				confidence: Number(data.confidence ?? 0.75),
+				rawText: String(data.rawText ?? ""),
+			};
+		},
+		[fallback]
+	);
 }
 
 export function useHybridProcessImageAndGenerate() {
-	return useLegacyFallbackAction(api.ai.processImageAndGenerate);
+	const fallback = useAction(api.ai.processImageAndGenerate);
+	const processReceipt = useHybridProcessReceipt();
+	const createTransaction = useHybridCreateTransaction();
+	const createInventoryItem = useHybridCreateInventoryItem();
+	const addStock = useHybridAddStock();
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const scan = (await processReceipt({ image: args?.image })) as any;
+			const parsedType = String(args?.generateType ?? scan?.type ?? "auto").toLowerCase();
+			const normalizedType =
+				parsedType === "income" || parsedType === "order" ? "income" : "expense";
+			const amount = Number(scan?.data?.amount ?? 0);
+			let transactionId: string | null = null;
+
+			if (args?.syncMode !== "none") {
+				transactionId = await createTransaction({
+					type: normalizedType,
+					amount,
+					category: scan?.data?.category ?? (normalizedType === "income" ? "Pemasukan" : "Pengeluaran"),
+					description: scan?.data?.description ?? "Hasil scan AI",
+					paymentMethod: scan?.data?.paymentMethod ?? "cash",
+					date: Date.now(),
+					status: "completed",
+					metadata: {
+						source: "ai_receipt_scan",
+						scanType: scan?.type ?? "expense",
+					},
+				});
+			}
+
+			if (args?.syncMode === "finance_plus_inventory" && normalizedType === "expense") {
+				const items = Array.isArray(scan?.data?.items) ? scan.data.items : [];
+				for (const item of items) {
+					const ingredientName = String(item?.name ?? "").trim();
+					if (!ingredientName) continue;
+					const quantity = Number(item?.quantity ?? 0);
+					const price = Number(item?.price ?? 0);
+					const { data: existing } = await createClient()
+						.from("pos_inventory")
+						.select("*")
+						.ilike("ingredientName", ingredientName)
+						.limit(1)
+						.maybeSingle();
+					let inventoryId = String((existing as any)?._id ?? "");
+					if (!inventoryId) {
+						inventoryId = await createInventoryItem({
+							ingredientName,
+							unit: "pcs",
+							quantity: 0,
+							lowStockThreshold: 1,
+						});
+					}
+					if (quantity > 0) {
+						await addStock({
+							inventoryId,
+							quantity,
+							costPerUnit: price > 0 ? price : undefined,
+							notes: "Sinkron item dari AI scanner",
+						});
+					}
+				}
+			}
+
+			return {
+				success: true,
+				message: "Scan dan generate berhasil diproses",
+				generated: {
+					type: normalizedType === "expense" ? "transaction" : "income",
+					transactionId,
+					amount,
+					payload: scan,
+				},
+			};
+		},
+		[addStock, createInventoryItem, createTransaction, fallback, processReceipt]
+	);
 }
 
 export function useHybridBatchProcessReceipts() {
-	return useLegacyFallbackAction(api.ai.batchProcessReceipts);
+	const fallback = useAction(api.ai.batchProcessReceipts);
+	const processReceipt = useHybridProcessReceipt();
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const images = Array.isArray(args?.images) ? args.images : [];
+			const results: any[] = [];
+			let totalFailed = 0;
+			for (const image of images) {
+				try {
+					results.push(await processReceipt({ image }));
+				} catch {
+					totalFailed += 1;
+					results.push(null);
+				}
+			}
+			return {
+				results,
+				summary: {
+					totalProcessed: images.length - totalFailed,
+					totalFailed,
+					totalImages: images.length,
+				},
+			};
+		},
+		[fallback, processReceipt]
+	);
 }
 
 export function useHybridBatchGenerateTransactions() {
-	return useLegacyFallbackAction(api.ai.batchGenerateTransactions);
+	const fallback = useAction(api.ai.batchGenerateTransactions);
+	const processAndGenerate = useHybridProcessImageAndGenerate();
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const images = Array.isArray(args?.images) ? args.images : [];
+			const generated: any[] = [];
+			let totalFailed = 0;
+			let totalAmount = 0;
+			for (const image of images) {
+				try {
+					const result = await processAndGenerate({
+						image,
+						generateType: args?.generateType ?? "auto",
+						syncMode: args?.syncMode ?? "auto",
+					});
+					if (result?.generated) {
+						generated.push(result.generated);
+						totalAmount += Number(result.generated.amount ?? 0);
+					}
+				} catch {
+					totalFailed += 1;
+				}
+			}
+			return {
+				generated,
+				summary: {
+					totalGenerated: generated.length,
+					totalFailed,
+					totalAmount,
+				},
+			};
+		},
+		[fallback, processAndGenerate]
+	);
 }
 
 export function useHybridGenerateScanReport() {
-	return useLegacyFallbackAction(api.ai.generateScanReport);
+	const fallback = useAction(api.ai.generateScanReport);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const period = String(args?.period ?? "daily") as "daily" | "weekly" | "monthly";
+			const days = period === "daily" ? 1 : period === "weekly" ? 7 : 30;
+			const start = Date.now() - days * 24 * 60 * 60 * 1000;
+			const { data, error } = await createClient()
+				.from("pos_financial_transactions")
+				.select("*")
+				.gte("date", start)
+				.order("date", { ascending: false });
+			if (error) throw error;
+			const expenseRows = (data ?? []).filter((row: any) => String(row.type) === "expense");
+			const totalExpense = expenseRows.reduce(
+				(sum: number, row: any) => sum + Number(row.amount ?? 0),
+				0
+			);
+			const txCount = expenseRows.length;
+			const byCategory = new Map<string, number>();
+			for (const row of expenseRows) {
+				const key = String(row.category ?? "lainnya").toLowerCase();
+				byCategory.set(key, (byCategory.get(key) ?? 0) + Number(row.amount ?? 0));
+			}
+			const topCategories = Array.from(byCategory.entries())
+				.map(([category, total]) => ({
+					category,
+					total,
+					percentage: totalExpense > 0 ? Math.round((total / totalExpense) * 100) : 0,
+				}))
+				.sort((a, b) => b.total - a.total)
+				.slice(0, 5);
+			return {
+				period,
+				summary: {
+					totalExpense,
+					transactionCount: txCount,
+					avgPerTransaction: txCount > 0 ? totalExpense / txCount : 0,
+				},
+				topCategories,
+			};
+		},
+		[fallback]
+	);
 }
 
 export function useHybridGenerateDiscountStrategy() {
-	return useLegacyFallbackAction(api.ai.generateDiscountStrategy);
+	const fallback = useAction(api.ai.generateDiscountStrategy);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const prompt = [
+				"Kamu adalah analis promo F&B Indonesia.",
+				"Susun strategi diskon yang actionable, singkat, dan spesifik.",
+				"Data ringkas penjualan: ",
+				String(args?.salesSummary ?? "[]"),
+				"Diskon yang sudah ada:",
+				String(args?.existingDiscounts ?? "[]"),
+			].join("\n");
+			const response = (await invokeYumiAiAction("yumiChat", {
+				message: prompt,
+				history: [],
+				contextHint: "Berikan rekomendasi diskon dalam poin-poin markdown.",
+			})) as any;
+			return String(response?.content ?? "").trim();
+		},
+		[fallback]
+	);
 }
 
 export function useHybridFillHppInventoryCostsFromTransactions() {
-	return useLegacyFallbackAction(api.ai.fillHppInventoryCostsFromTransactions);
+	const fallback = useAction(api.ai.fillHppInventoryCostsFromTransactions);
+	const updateHpp = useHybridUpdateHppCalculation();
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const hppCalculationId = String(args?.hppCalculationId ?? "");
+			if (!hppCalculationId) throw new Error("hppCalculationId wajib diisi");
+			const doc = await getMirrorDocument("hppCalculations", hppCalculationId);
+			if (!doc) throw new Error("Data HPP tidak ditemukan");
+			const ingredients = Array.isArray((doc as any).ingredients) ? (doc as any).ingredients : [];
+			const inventoryIds = ingredients
+				.map((item: any) => String(item?.inventoryId ?? ""))
+				.filter((value: string) => value.length > 0);
+			if (inventoryIds.length === 0) {
+				return {
+					suggestions: [],
+					updatedIngredients: 0,
+					appliedCount: 0,
+				};
+			}
+			const { data: latestCosts, error } = await createClient()
+				.from("pos_inventory_latest_costs")
+				.select("*")
+				.in("inventoryId", inventoryIds);
+			if (error) throw error;
+			const costMap = new Map<string, any>();
+			for (const row of latestCosts ?? []) {
+				costMap.set(String((row as any).inventoryId), row);
+			}
+			let appliedCount = 0;
+			const suggestions = ingredients
+				.map((item: any) => {
+					const row = costMap.get(String(item?.inventoryId ?? ""));
+					if (!row) return null;
+					appliedCount += 1;
+					return {
+						inventoryId: String(row.inventoryId),
+						ingredientName: row.ingredientName,
+						costPerUnit: Number(row.latestCostPerUnit ?? 0),
+						referenceDate: Number(row.latestRestockDate ?? Date.now()),
+					};
+				})
+				.filter(Boolean);
+			const updatedIngredients = ingredients.map((item: any) => {
+				const suggestion = suggestions.find(
+					(s: any) => String(s.inventoryId) === String(item?.inventoryId ?? "")
+				);
+				if (!suggestion) return item;
+				return {
+					...item,
+					purchasePrice:
+						Number(suggestion.costPerUnit ?? 0) * Number(item?.conversionFactor ?? 1),
+				};
+			});
+			await updateHpp({
+				id: hppCalculationId,
+				ingredients: updatedIngredients,
+			});
+			return {
+				suggestions,
+				updatedIngredients: appliedCount,
+				appliedCount,
+			};
+		},
+		[fallback, updateHpp]
+	);
 }
 
 export function useHybridGenerateProductDescription() {
-	return useLegacyFallbackAction(api.ai.generateProductDescription);
+	const fallback = useAction(api.ai.generateProductDescription);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const prompt = `Buat deskripsi menu restoran dalam Bahasa Indonesia.
+Nama produk: ${String(args?.productName ?? "Produk")}
+Kategori: ${String(args?.category ?? "Menu")}
+Harga: ${Number(args?.price ?? 0)}
+Panjang maksimal 2 kalimat, tone menarik dan mudah dipahami.`;
+			const response = (await invokeYumiAiAction("yumiChat", {
+				message: prompt,
+				history: [],
+			})) as any;
+			return String(response?.content ?? "").trim();
+		},
+		[fallback]
+	);
 }
 
 export function useHybridYumiChat() {
@@ -699,27 +2188,167 @@ export function useHybridGenerateBusinessBriefing() {
 }
 
 export function useHybridCreateChatSession() {
-	return useLegacyFallbackMutation(api.aiMemory.createChatSession);
+	const fallback = useMutation(api.aiMemory.createChatSession);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const sessionId = makeSourceId("chat");
+			await insertMirrorDocument({
+				tableName: "conversationMemory",
+				documentId: makeSourceId("memory"),
+				document: {
+					sessionId,
+					role: "system",
+					content: String(args?.title ?? "Percakapan Baru"),
+					metadata: {
+						kind: "session_bootstrap",
+					},
+					timestamp: Date.now(),
+				},
+			});
+			return { sessionId };
+		},
+		[fallback]
+	);
 }
 
 export function useHybridDeleteChatSession() {
-	return useLegacyFallbackMutation(api.aiMemory.deleteChatSession);
+	const fallback = useMutation(api.aiMemory.deleteChatSession);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const sessionId = String(args?.sessionId ?? "");
+			if (!sessionId) throw new Error("sessionId wajib diisi");
+			const { error } = await createClient()
+				.schema("legacy_mirror")
+				.from("documents")
+				.delete()
+				.eq("table_name", "conversationMemory")
+				.eq("document->>sessionId", sessionId);
+			if (error) throw error;
+		},
+		[fallback]
+	);
 }
 
 export function useHybridSaveConversationContext() {
-	return useLegacyFallbackMutation(api.aiMemory.saveConversationContext);
+	const fallback = useMutation(api.aiMemory.saveConversationContext);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const sessionId = String(args?.sessionId ?? "").trim() || "default";
+			const role = String(args?.role ?? "user").trim() || "user";
+			const content = String(args?.content ?? "").trim();
+			if (!content) return;
+			await insertMirrorDocument({
+				tableName: "conversationMemory",
+				documentId: makeSourceId("memory"),
+				document: {
+					sessionId,
+					role,
+					content,
+					metadata: args?.metadata ?? {},
+					timestamp: Date.now(),
+				},
+			});
+			return { ok: true };
+		},
+		[fallback]
+	);
 }
 
 export function useHybridCompleteTask() {
-	return useLegacyFallbackMutation(api.aiMemory.completeTask);
+	const fallback = useMutation(api.aiMemory.completeTask);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const taskId = String(args?.taskId ?? "");
+			if (!taskId) throw new Error("taskId wajib diisi");
+			const doc = await getMirrorDocument("followUpTasks", taskId);
+			if (!doc) throw new Error("Task tidak ditemukan");
+			await updateMirrorDocument({
+				tableName: "followUpTasks",
+				documentId: taskId,
+				document: {
+					...(doc as any),
+					status: "completed",
+					completedAt: Date.now(),
+					completedBy: (args?.completedBy as string | undefined) ?? "system",
+				},
+			});
+			return { ok: true };
+		},
+		[fallback]
+	);
 }
 
 export function useHybridDismissTask() {
-	return useLegacyFallbackMutation(api.aiMemory.dismissTask);
+	const fallback = useMutation(api.aiMemory.dismissTask);
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			const taskId = String(args?.taskId ?? "");
+			if (!taskId) throw new Error("taskId wajib diisi");
+			const doc = await getMirrorDocument("followUpTasks", taskId);
+			if (!doc) throw new Error("Task tidak ditemukan");
+			await updateMirrorDocument({
+				tableName: "followUpTasks",
+				documentId: taskId,
+				document: {
+					...(doc as any),
+					status: "dismissed",
+					dismissalReason: args?.reason ?? "manual_dismiss",
+					completedAt: Date.now(),
+				},
+			});
+			return { ok: true };
+		},
+		[fallback]
+	);
 }
 
 export function useHybridRecordStockPurchase() {
-	return useLegacyFallbackMutation(api.stockPurchases.recordStockPurchase);
+	const fallback = useMutation(api.stockPurchases.recordStockPurchase);
+	const addStock = useHybridAddStock();
+	const createTransaction = useHybridCreateTransaction();
+	return useCallback(
+		async (args: any) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			await addStock({
+				inventoryId: args?.inventoryId,
+				quantity: Number(args?.quantity ?? 0),
+				costPerUnit: args?.costPerUnit,
+				notes: args?.notes ?? "Pembelian stok",
+				brandName: args?.brandName,
+				storeId: args?.storeId,
+				purchaseUnit: args?.purchaseUnit,
+				purchaseQuantity: args?.purchaseQuantity,
+				lineTotal: args?.lineTotal,
+			});
+			const totalAmount =
+				args?.lineTotal !== undefined
+					? Number(args.lineTotal ?? 0)
+					: Number(args?.quantity ?? 0) * Number(args?.costPerUnit ?? 0);
+			if (totalAmount > 0) {
+				await createTransaction({
+					type: "expense",
+					amount: totalAmount,
+					category: args?.category ?? "Stok Bahan",
+					merchant: args?.merchant ?? args?.storeName ?? null,
+					description: args?.notes ?? "Pembelian stok",
+					paymentMethod: args?.paymentMethod ?? "cash",
+					date: Number(args?.date ?? Date.now()),
+					status: "completed",
+					metadata: {
+						source: "inventory_stock_purchase",
+						inventoryId: args?.inventoryId ?? null,
+					},
+				});
+			}
+			return { ok: true };
+		},
+		[addStock, createTransaction, fallback]
+	);
 }
 
 export function useHybridCreateOrder() {
