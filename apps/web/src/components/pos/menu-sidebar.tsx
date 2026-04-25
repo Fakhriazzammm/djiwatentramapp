@@ -1140,7 +1140,7 @@ function DashboardTab({
 								const statusLabel = isCurrentActive ? " (AKTIF)" : " (SELESAI)";
 								const teamLabel = shiftObj.teamMembers ? `\nTim: ${shiftObj.teamMembers}` : '';
 
-								allShiftsText += `ðŸ‘¥ ${shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`}${statusLabel}
+								allShiftsText += `👥 ${shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`}${statusLabel}
 Modal Kasir: Rp. ${sModalVal.toLocaleString("id-ID")}
 Tunai: Rp. ${sCash.toLocaleString("id-ID")}
 Debit/QRIS: Rp. ${sQris.toLocaleString("id-ID")}
@@ -1154,28 +1154,28 @@ Produk Terjual: ${sItems}
 Rincian Produk:
 ${sProductsText}
 
-â­ TOP 3 PRODUK TERLARIS (SHIFT INI):
+⭐ TOP 3 PRODUK TERLARIS (SHIFT INI):
 ${sTopProductsText}
 
 Pengeluaran Shift: Rp. ${sExpenseVal.toLocaleString("id-ID")}
 
 Kasir: ${shiftObj.cashierName || 'Kasir'}${teamLabel}
-â¸»\n`;
+⸻\n`;
 							});
 						} else {
 							// Fallback if no shifts found
-							allShiftsText = `ðŸ‘¥ BELUM ADA SHIFT
-â¸»\n`;
+							allShiftsText = `👥 BELUM ADA SHIFT
+⸻\n`;
 						}
 
-						return `ðŸ“Š Daily Revenue Report 
+						return `📊 Daily Revenue Report 
 ${shopName} - 
-ðŸ“… Tanggal: ${dateStr} 
-â¸» 
+📅 Tanggal: ${dateStr} 
+⸻ 
 ${allShiftsText}
-ðŸ’° TOTAL REVENUE HARIAN (NET): 
+💰 TOTAL REVENUE HARIAN (NET): 
 Rp. ${totalRevenue.toLocaleString("id-ID")}
-ðŸ“¦ TOTAL PRODUK TERJUAL: ${totalItems}
+📦 TOTAL PRODUK TERJUAL: ${totalItems}
 Total Penjualan Bruto (Gross): Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
 Total Potongan (Diskon/Voucher): Rp. ${totalDiscountAmount.toLocaleString("id-ID")}
 Net Revenue Harian: Rp. ${totalRevenue.toLocaleString("id-ID")}
@@ -1183,14 +1183,14 @@ Net Revenue Harian: Rp. ${totalRevenue.toLocaleString("id-ID")}
 Rincian Produk Harian:
 ${productsText}
 
-â­ TOP 3 PRODUK TERLARIS (HARIAN):
+⭐ TOP 3 PRODUK TERLARIS (HARIAN):
 ${topProductsText}
-â¸» 
-ðŸ“ RINGKASAN PENGELUARAN HARIAN
+⸻ 
+📝 RINGKASAN PENGELUARAN HARIAN
 ${expensesText}
 Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
-â¸» 
-ðŸ“ RINGKASAN HARIAN 
+⸻ 
+📝 RINGKASAN HARIAN 
 ${dateStr} : 
 Grand Total Revenue (Net): Rp. ${totalRevenue.toLocaleString("id-ID")}
 Total Penjualan Bruto: Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
@@ -1473,7 +1473,7 @@ Total Produk Terjual: ${totalItems}`;
 								const isCurrentActive = !shiftObj.endTime;
 								const statusLabel = isCurrentActive ? " (AKTIF)" : " (SELESAI)";
 
-								allShiftsCopyText += `ðŸ‘¥ ${shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`}${statusLabel}
+								allShiftsCopyText += `👥 ${shiftObj.shiftName?.toUpperCase() || `SHIFT ${index + 1}`}${statusLabel}
 Modal Kasir: Rp. ${sModalVal.toLocaleString("id-ID")}
 Tunai: Rp. ${sCash.toLocaleString("id-ID")}
 Debit/QRIS: Rp. ${sQris.toLocaleString("id-ID")}
@@ -1487,29 +1487,29 @@ Produk Terjual: ${sItems}
 Rincian Produk:
 ${sProductsText}
 
-â­ TOP 3 PRODUK TERLARIS (SHIFT INI):
+⭐ TOP 3 PRODUK TERLARIS (SHIFT INI):
 ${sTopProductsText}
 
 Pengeluaran Shift: Rp. ${sExpenseVal.toLocaleString("id-ID")}
 
 Kasir: ${shiftObj.cashierName || 'Kasir'}
-â¸»\n`;
+⸻\n`;
 							});
 						} else {
-							allShiftsCopyText = `ðŸ‘¥ BELUM ADA SHIFT\nâ¸»\n`;
+							allShiftsCopyText = `👥 BELUM ADA SHIFT\n⸻\n`;
 						}
 
 						// No redeclaration needed here, already declared at lines 1219-1224
 
 
-						const text = `ðŸ“Š Daily Revenue Report 
+						const text = `📊 Daily Revenue Report 
 ${shopName} - 
-ðŸ“… Tanggal: ${dateStr} 
-â¸» 
+📅 Tanggal: ${dateStr} 
+⸻ 
 ${allShiftsCopyText}
-ðŸ’° TOTAL REVENUE HARIAN (NET): 
+💰 TOTAL REVENUE HARIAN (NET): 
 Rp. ${totalRevenue.toLocaleString("id-ID")}
-ðŸ“¦ TOTAL PRODUK TERJUAL: ${totalItems}
+📦 TOTAL PRODUK TERJUAL: ${totalItems}
 Total Penjualan Bruto (Gross): Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
 Total Potongan (Diskon/Voucher): Rp. ${totalDiscountAmount.toLocaleString("id-ID")}
 Net Revenue Harian: Rp. ${totalRevenue.toLocaleString("id-ID")}
@@ -1517,14 +1517,14 @@ Net Revenue Harian: Rp. ${totalRevenue.toLocaleString("id-ID")}
 Rincian Produk Harian:
 ${productsText}
 
-â­ TOP 3 PRODUK TERLARIS (HARIAN):
+⭐ TOP 3 PRODUK TERLARIS (HARIAN):
 ${topProductsText}
-â¸» 
-ðŸ“ RINGKASAN PENGELUARAN HARIAN
+⸻ 
+📝 RINGKASAN PENGELUARAN HARIAN
 ${expensesText}
 Total Pengeluaran: Rp. ${totalExpenseVal.toLocaleString("id-ID")}
-â¸» 
-ðŸ“ RINGKASAN HARIAN 
+⸻ 
+📝 RINGKASAN HARIAN 
 ${dateStr} : 
 Grand Total Revenue (Net): Rp. ${totalRevenue.toLocaleString("id-ID")}
 Total Penjualan Bruto: Rp. ${totalGrossRevenue.toLocaleString("id-ID")}
