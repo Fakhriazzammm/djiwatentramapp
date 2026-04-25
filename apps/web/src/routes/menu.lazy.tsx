@@ -1,5 +1,6 @@
 ﻿import { createLazyFileRoute } from "@tanstack/react-router";
 import type { Id } from "@/types/backend-compat";
+import { createClient } from "@/lib/client";
 import {
 	BarChart3,
 	Bot,
@@ -918,7 +919,21 @@ function MenuPage() {
 				await bluetoothPrinter.autoReconnectIfNeeded(0);
 			}
 
-			const order = orders?.find((candidate: any) => candidate._id === orderId);
+			let order = orders?.find((candidate: any) => candidate._id === orderId);
+			if (!order) {
+				// Order not yet in local cache (just created) — fetch directly from Supabase
+				try {
+					const supabase = createClient();
+					const { data } = await supabase
+						.from("pos_orders")
+						.select("*")
+						.eq("_id", String(orderId))
+						.maybeSingle();
+					if (data) order = data;
+				} catch {
+					// fall through
+				}
+			}
 			if (!order) return;
 
 			toast.loading("Mencetak struk...", { id: "printing" });

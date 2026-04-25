@@ -1,6 +1,7 @@
 ﻿import { createClient } from "@/lib/client";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useCallback } from "react";
+import { invalidateHybridPosCache } from "@/hooks/use-hybrid-pos-data";
 
 type FunctionReference<_Kind extends "mutation" | "action"> = unknown;
 const api = new Proxy(
@@ -727,6 +728,7 @@ export function useHybridCreateOrder() {
 					if (financialError) throw financialError;
 				}
 
+				invalidateHybridPosCache();
 				return orderId;
 			} catch (error) {
 				console.error("[supabase-hybrid:write-create-order] fallback disabled", error);
@@ -891,6 +893,7 @@ export function useHybridUpdateOrderStatus() {
 					.update({ status })
 					.eq("source_id", id);
 				if (updateError) throw updateError;
+				invalidateHybridPosCache();
 				return;
 			} catch (error) {
 				console.warn(
@@ -1786,6 +1789,7 @@ export function useHybridCreateTransaction() {
 					.from("financial_transactions")
 					.insert(row);
 				if (error) throw error;
+				invalidateHybridPosCache();
 				return sourceId;
 			} catch (error) {
 				console.warn(
@@ -2258,6 +2262,7 @@ export function useHybridStartShift() {
 					},
 				});
 				if (txError) throw txError;
+				invalidateHybridPosCache();
 				return shiftId;
 			} catch (error) {
 				console.error("[supabase-hybrid:write-start-shift]", error);
@@ -2390,6 +2395,7 @@ export function useHybridEndShift() {
 				if (closingTxError) {
 					console.warn("[supabase-hybrid:write-end-shift] failed to insert closing transaction", closingTxError);
 				}
+				invalidateHybridPosCache();
 				return shiftId;
 			} catch (error) {
 				console.error("[supabase-hybrid:write-end-shift] fallback disabled", error);

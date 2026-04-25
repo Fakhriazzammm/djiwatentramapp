@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import { createClient } from "@/lib/client";
+import { _cacheInvalidationListeners } from "@/hooks/use-hybrid-pos-data";
 
 type InventoryStoreType = "store" | "supplier" | "market" | "other";
 
@@ -244,6 +245,15 @@ function useSupabaseValue<T>(
 	deps: readonly unknown[]
 ) {
 	const [data, setData] = useState<T | null>(null);
+	const [fetchTrigger, setFetchTrigger] = useState(0);
+
+	useEffect(() => {
+		const refetch = () => setFetchTrigger((v) => v + 1);
+		_cacheInvalidationListeners.add(refetch);
+		return () => {
+			_cacheInvalidationListeners.delete(refetch);
+		};
+	}, []);
 
 	useEffect(() => {
 		if (!hasSupabaseConfig) {
@@ -266,7 +276,8 @@ function useSupabaseValue<T>(
 		return () => {
 			active = false;
 		};
-	}, deps);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [...deps, fetchTrigger]);
 
 	return data;
 }

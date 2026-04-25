@@ -291,12 +291,30 @@ function safeNum(value: unknown) {
 	return Number.isFinite(number) ? number : 0;
 }
 
+// Shared module-level registry — exported so other hook files can also subscribe.
+// When a write action calls invalidateHybridPosCache(), every registered listener
+// (from both this file and other data hooks) gets notified to re-fetch.
+export const _cacheInvalidationListeners = new Set<() => void>();
+
+export function invalidateHybridPosCache() {
+	_cacheInvalidationListeners.forEach((fn) => fn());
+}
+
 function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
 	deps: readonly unknown[]
 ) {
 	const [data, setData] = useState<T | null>(null);
+	const [fetchTrigger, setFetchTrigger] = useState(0);
+
+	useEffect(() => {
+		const refetch = () => setFetchTrigger((v) => v + 1);
+		_cacheInvalidationListeners.add(refetch);
+		return () => {
+			_cacheInvalidationListeners.delete(refetch);
+		};
+	}, []);
 
 	useEffect(() => {
 		if (!hasSupabaseConfig) {
@@ -323,7 +341,8 @@ function useSupabaseValue<T>(
 		return () => {
 			active = false;
 		};
-	}, deps);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [...deps, fetchTrigger]);
 
 	return data;
 }
