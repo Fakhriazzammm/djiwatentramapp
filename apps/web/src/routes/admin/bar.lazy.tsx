@@ -302,7 +302,7 @@ function KanbanCard({
 						<h4 className="font-bold text-slate-800 leading-tight">{item.productName}</h4>
 						<div className="mt-1 flex items-center gap-1 font-bold text-[9px] text-slate-400 uppercase tracking-wider md:gap-1.5 md:text-[10px]">
 							<span>Meja {item.tableNumber || "Takeaway"}</span>
-							<span>â€¢</span>
+							<span>•</span>
 							<span>#{item.orderNumber.split("-").pop()}</span>
 						</div>
 					</div>
@@ -732,7 +732,7 @@ function KanbanCard({
 														<h4 className="line-clamp-2 font-bold text-slate-800 leading-tight">{product.name}</h4>
 														<div className="mt-1 flex flex-wrap items-center gap-1.5 font-bold text-[9px] uppercase tracking-widest md:gap-2 md:text-[10px]">
 															<span className="text-indigo-600">Rp {product.price.toLocaleString()}</span>
-															<span className="text-slate-300">â€¢</span>
+															<span className="text-slate-300">•</span>
 															<div className="flex items-center gap-1.5">
 																<span className={product.quantity <= 0 ? "text-red-500" : "text-green-600"}>Ready: {product.quantity}</span>
 																<div className="ml-1 flex items-center gap-1">
@@ -804,7 +804,7 @@ function KanbanCard({
 																	key={ing.inventoryId}
 																>
 																	{invItem?.ingredientName || "Unknown"}
-																	<span className="opacity-50">â€¢</span>
+																	<span className="opacity-50">•</span>
 																	{invItem ? `${invItem.quantity} ${invItem.unit}` : "Kosong"}
 																</div>
 															);
