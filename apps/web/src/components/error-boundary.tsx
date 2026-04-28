@@ -99,9 +99,10 @@ export class ErrorBoundary extends Component<Props, State> {
 				: new Error(event.message || "Unknown runtime error");
 		if (isChunkLoadError(nextError)) {
 			void this.recoverFromChunkLoadError();
-			return;
 		}
-		this.setState({ hasError: true, error: nextError, countdown: this.retryDelaySeconds });
+		// Non-chunk errors (API failures, RLS errors, network errors, etc.) are
+		// intentionally NOT escalated to maintenance mode here — they should be
+		// handled at the component/hook level, not by taking down the whole UI.
 	};
 
 	private handleUnhandledRejection = (event: PromiseRejectionEvent) => {
@@ -112,9 +113,9 @@ export class ErrorBoundary extends Component<Props, State> {
 				: new Error(typeof reason === "string" ? reason : "Unhandled promise rejection");
 		if (isChunkLoadError(nextError)) {
 			void this.recoverFromChunkLoadError();
-			return;
 		}
-		this.setState({ hasError: true, error: nextError, countdown: this.retryDelaySeconds });
+		// Same as above: only chunk-load failures trigger recovery here.
+		// Promise rejections from Supabase / fetch / etc. must not show maintenance mode.
 	};
 
 	private recoverFromChunkLoadError = async () => {

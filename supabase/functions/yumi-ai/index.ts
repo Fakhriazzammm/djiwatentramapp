@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing";
+type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing" | "sendTelegram";
 type JsonRecord = Record<string, unknown>;
 
 const corsHeaders = {
@@ -11,6 +11,19 @@ const corsHeaders = {
 
 const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
 const openaiBaseUrl = (Deno.env.get("OPENAI_BASE_URL") || "https://api.openai.com/v1").replace(/\/$/, "");
+const openaiModelChat = Deno.env.get("OPENAI_MODEL_CHAT") || "gpt-4o-mini";
+const openaiModelVision = Deno.env.get("OPENAI_MODEL_VISION") || "gpt-4o";
+
+// Read bot token — try the correct key first, then the typo variant as fallback
+const telegramBotToken =
+	Deno.env.get("TELEGRAM_BOT_TOKEN") ??
+	Deno.env.get("TELELEGRAM_BOT_TOKEN");
+
+// Read default chat ID — the secret is named TELEGRAM_REPORT_CHAT_ID in this project
+const telegramDefaultChatId =
+	Deno.env.get("TELEGRAM_REPORT_CHAT_ID") ??
+	Deno.env.get("TELEGRAM_CHAT_ID") ??
+	Deno.env.get("TELELEGRAM_CHAT_ID");
 
 function jsonResponse(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body), {
@@ -23,7 +36,7 @@ function fail(message: string, status = 400) {
 	return jsonResponse({ error: message }, status);
 }
 
-async function callOpenAI(messages: unknown[], model = "gpt-4o-mini") {
+async function callOpenAI(messages: unknown[], model = openaiModelChat) {
 	if (!openaiApiKey) throw new Error("OPENAI_API_KEY tidak dikonfigurasi");
 
 	const res = await fetch(`${openaiBaseUrl}/chat/completions`, {
@@ -140,7 +153,7 @@ Jika ada informasi yang tidak bisa dibaca, gunakan null atau 0. confidence antar
 						],
 					},
 				],
-				"gpt-4o"
+				openaiModelVision
 			);
 
 			const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -197,6 +210,68 @@ Format dengan markdown yang rapi. Singkat dan to the point (maksimal 200 kata).`
 	return { content };
 }
 
+async function sendTelegram(
+	payload: JsonRecord
+): Promise<{ ok: boolean; error?: string; messageId?: number }> {
+	// Return { ok: false } with status 200 for all logical errors so that
+	// supabase.functions.invoke() never sees a non-2xx and the real error
+	// message reaches the caller instead of the generic SDK wrapper text.
+
+	if (!telegramBotToken) {
+		return {
+			ok: false,
+			error:
+				"TELEGRAM_BOT_TOKEN belum dikonfigurasi. Tambahkan di Supabase Dashboard → Edge Functions → Manage secrets.",
+		};
+	}
+
+	const text = String(payload.text ?? "").trim();
+	if (!text) return { ok: false, error: "Teks pesan kosong" };
+
+	const rawChatId =
+		payload.chatId !== undefined ? payload.chatId : telegramDefaultChatId;
+	if (!rawChatId) {
+		return {
+			ok: false,
+			error:
+				"chat_id tidak ditemukan. Tambahkan TELEGRAM_CHAT_ID di Supabase secrets atau kirim chatId di request body.",
+		};
+	}
+
+	// Group chat IDs are negative integers; parse string values from env
+	const chatId =
+		typeof rawChatId === "string" ? parseInt(rawChatId, 10) : (rawChatId as number);
+
+	try {
+		const apiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+		const res = await fetch(apiUrl, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ chat_id: chatId, text }),
+		});
+
+		const data = (await res.json()) as {
+			ok: boolean;
+			description?: string;
+			result?: { message_id: number };
+		};
+
+		if (!res.ok || !data.ok) {
+			return {
+				ok: false,
+				error: data.description || `Telegram API error: ${res.status}`,
+			};
+		}
+
+		return { ok: true, messageId: data.result?.message_id };
+	} catch (err) {
+		return {
+			ok: false,
+			error: err instanceof Error ? err.message : "Gagal menghubungi Telegram API",
+		};
+	}
+}
+
 Deno.serve(async (req) => {
 	if (req.method === "OPTIONS") {
 		return new Response("ok", { headers: corsHeaders });
@@ -213,6 +288,8 @@ Deno.serve(async (req) => {
 				return jsonResponse(await bulkScanImageData(body));
 			case "generateBusinessBriefing":
 				return jsonResponse(await generateBusinessBriefing(body));
+			case "sendTelegram":
+				return jsonResponse(await sendTelegram(body));
 			default:
 				return fail("AI action tidak dikenali", 404);
 		}

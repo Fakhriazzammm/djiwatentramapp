@@ -149,21 +149,7 @@ async function fetchRoleById(roleId: string) {
 }
 
 function mapPublicUsers(rows: PublicUserRow[]) {
-	const isAdmin = (row: PublicUserRow) => {
-		const roleName = String(row.roleName ?? "")
-			.trim()
-			.toLowerCase();
-		if (roleName.includes("admin")) return true;
-
-		// Fallback when roleName is unavailable.
-		const displayName = String(row.name ?? "")
-			.trim()
-			.toLowerCase();
-		return displayName === "admin";
-	};
-
 	return rows
-		.filter((row) => !isAdmin(row))
 		.map((row) => {
 			const name = String(row.name ?? "").trim();
 			const username = String(row.username ?? "").trim();
