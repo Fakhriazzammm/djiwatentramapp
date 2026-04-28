@@ -1,23 +1,18 @@
 /**
- * Send a text report to Telegram via the yumi-ai-bot HTTP endpoint.
- * URL resolution order:
- *   1. VITE_TELEGRAM_BOT_URL env var (recommended for production)
- *   2. window.location.hostname:8001 (works when app & bot share the same VPS)
+ * Send a text report to Telegram via the yumi-ai Supabase Edge Function.
+ *
+ * The edge function calls the Telegram Bot API server-side using secrets
+ * TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID (set in Supabase Dashboard →
+ * Edge Functions → Secrets).  This works on any hosting (Vercel, etc.)
+ * without needing a separate bot server process.
+ *
+ * Optional: VITE_TELEGRAM_REPORT_CHAT_ID in the frontend .env overrides
+ * the default chat_id for this specific app instance.
  */
 
-function getBotUrl(): string {
-	// Allow explicit override via env var (set in .env / Vercel dashboard)
-	const envUrl = typeof import.meta !== "undefined"
-		? (import.meta as any).env?.VITE_TELEGRAM_BOT_URL
-		: undefined;
-	if (envUrl) return envUrl;
-	if (typeof window !== "undefined") {
-		return `${window.location.protocol}//${window.location.hostname}:8001/send-report`;
-	}
-	return "http://localhost:8001/send-report";
-}
+import { createClient } from "@/lib/client";
 
-const TELEGRAM_REPORT_CHAT_ID = typeof import.meta !== "undefined"
+const FRONTEND_CHAT_ID = typeof import.meta !== "undefined"
 	? (import.meta as any).env?.VITE_TELEGRAM_REPORT_CHAT_ID
 	: undefined;
 
@@ -27,30 +22,24 @@ export async function sendTelegramReport(
 ): Promise<{ ok: boolean; error?: string }> {
 	if (!text.trim()) return { ok: false, error: "Teks laporan kosong" };
 
-	const url = getBotUrl();
-	const body: Record<string, unknown> = { text };
+	const targetChatId = chatId !== undefined ? chatId : FRONTEND_CHAT_ID;
 
-	// Use provided chatId or fall back to env var
-	const targetChatId = chatId !== undefined ? chatId : TELEGRAM_REPORT_CHAT_ID;
-	if (targetChatId) {
-		body.chat_id = typeof targetChatId === "string"
-			? parseInt(targetChatId, 10)
-			: targetChatId;
+	const supabase = createClient();
+	const { data, error } = await supabase.functions.invoke("yumi-ai", {
+		body: {
+			action: "sendTelegram",
+			text,
+			...(targetChatId !== undefined ? { chatId: targetChatId } : {}),
+		},
+	});
+
+	if (error) {
+		return { ok: false, error: error.message || "Gagal memanggil edge function" };
 	}
 
-	try {
-		const res = await fetch(url, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(body),
-		});
-
-		const data = await res.json();
-		if (!res.ok || !data.ok) {
-			return { ok: false, error: data.error || `HTTP ${res.status}` };
-		}
-		return { ok: true };
-	} catch (err: any) {
-		return { ok: false, error: err?.message || "Gagal menghubungi server Telegram bot" };
+	if (!data?.ok) {
+		return { ok: false, error: data?.error || "Gagal mengirim ke Telegram" };
 	}
+
+	return { ok: true };
 }

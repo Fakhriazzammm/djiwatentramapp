@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing";
+type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing" | "sendTelegram";
 type JsonRecord = Record<string, unknown>;
 
 const corsHeaders = {
@@ -11,6 +11,9 @@ const corsHeaders = {
 
 const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
 const openaiBaseUrl = (Deno.env.get("OPENAI_BASE_URL") || "https://api.openai.com/v1").replace(/\/$/, "");
+
+const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+const telegramDefaultChatId = Deno.env.get("TELEGRAM_CHAT_ID");
 
 function jsonResponse(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body), {
@@ -197,6 +200,40 @@ Format dengan markdown yang rapi. Singkat dan to the point (maksimal 200 kata).`
 	return { content };
 }
 
+async function sendTelegram(payload: JsonRecord) {
+	if (!telegramBotToken) {
+		throw new Error("TELEGRAM_BOT_TOKEN belum dikonfigurasi di Supabase Edge Function secrets");
+	}
+
+	const text = String(payload.text ?? "").trim();
+	if (!text) throw new Error("Teks pesan kosong");
+
+	// Use chatId from request body, or fall back to TELEGRAM_CHAT_ID secret
+	const rawChatId = payload.chatId !== undefined ? payload.chatId : telegramDefaultChatId;
+	if (!rawChatId) {
+		throw new Error(
+			"chat_id tidak ditemukan. Set TELEGRAM_CHAT_ID di Supabase secrets atau kirim chatId di request body."
+		);
+	}
+
+	// Telegram expects chat_id as integer for group IDs (negative numbers)
+	const chatId = typeof rawChatId === "string" ? parseInt(rawChatId, 10) : rawChatId;
+
+	const apiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+	const res = await fetch(apiUrl, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ chat_id: chatId, text }),
+	});
+
+	const data = (await res.json()) as { ok: boolean; description?: string; result?: { message_id: number } };
+	if (!res.ok || !data.ok) {
+		throw new Error(data.description || `Telegram API error: ${res.status}`);
+	}
+
+	return { ok: true, messageId: data.result?.message_id };
+}
+
 Deno.serve(async (req) => {
 	if (req.method === "OPTIONS") {
 		return new Response("ok", { headers: corsHeaders });
@@ -213,6 +250,8 @@ Deno.serve(async (req) => {
 				return jsonResponse(await bulkScanImageData(body));
 			case "generateBusinessBriefing":
 				return jsonResponse(await generateBusinessBriefing(body));
+			case "sendTelegram":
+				return jsonResponse(await sendTelegram(body));
 			default:
 				return fail("AI action tidak dikenali", 404);
 		}
