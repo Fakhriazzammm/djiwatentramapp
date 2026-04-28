@@ -2776,6 +2776,7 @@ function InventoryTab() {
 
 	const [searchQuery, setSearchQuery] = useState("");
 	const [syncingProductIds, setSyncingProductIds] = useState<Set<string>>(new Set());
+	const [stockInputValues, setStockInputValues] = useState<Record<string, string>>({});
 
 	const menuCategoryIds = useMemo(() => {
 		if (!categories?.length) return new Set<string>();
@@ -2818,21 +2819,21 @@ function InventoryTab() {
 			);
 	}, [allProducts, menuCategoryIds, searchQuery]);
 
-	const handleAdjustMenuStock = useCallback(
-		async (product: any, delta: number) => {
-			if (!delta) return;
+	const handleStockChangeDirect = useCallback(
+		async (product: any, newQuantity: number) => {
+			if (newQuantity < 0) {
+				toast.error("Stok tidak boleh negatif");
+				return;
+			}
+			const current = Number(product.quantity ?? 0);
+			const delta = newQuantity - current;
+			if (delta === 0) return;
 			const recipe = recipes?.find(
 				(recipeItem: any) =>
 					String(recipeItem.productId) === String(product._id) && !recipeItem.variantName
 			);
 			if (!recipe) {
 				toast.error(`Menu ${product.name} belum punya recipe. Buat recipe dulu.`);
-				return;
-			}
-
-			const currentQuantity = Number(product.quantity ?? 0);
-			if (delta < 0 && currentQuantity <= 0) {
-				toast.error("Stok menu sudah 0");
 				return;
 			}
 
@@ -2846,7 +2847,7 @@ function InventoryTab() {
 				await adjustMenuStockWithRecipe({
 					productId: String(product._id),
 					deltaMenu: delta,
-					currentQuantity,
+					currentQuantity: current,
 					source: "/menu?tab=stok",
 					recipe,
 					notes: `Sinkron stok menu ${product.name} (${delta > 0 ? "+" : ""}${delta} porsi) dari /menu`,
@@ -2936,8 +2937,31 @@ function InventoryTab() {
 													{product.name}
 												</p>
 												<div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-													<span>
-														Ready: <span className="font-bold text-foreground">{currentQuantity}</span>
+													<span className="flex items-center gap-1">
+														Ready:{" "}
+														<input
+															type="number"
+															min={0}
+															className="w-14 h-5 rounded border bg-background text-center font-bold text-foreground text-[11px] px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+															disabled={recipeMissing || isSyncing}
+															value={stockInputValues[String(product._id)] ?? String(currentQuantity)}
+															onChange={(e) => setStockInputValues(prev => ({...prev, [String(product._id)]: e.target.value}))}
+															onBlur={(e) => {
+																const newVal = Number(e.target.value);
+																if (isNaN(newVal) || newVal < 0 || newVal === currentQuantity) {
+																	setStockInputValues(prev => {
+																		const next = {...prev};
+																		delete next[String(product._id)];
+																		return next;
+																	});
+																	return;
+																}
+																void handleStockChangeDirect(product, newVal);
+															}}
+															onKeyDown={(e) => {
+																if (e.key === 'Enter') e.currentTarget.blur();
+															}}
+														/>
 													</span>
 													{potentialStock !== null && (
 														<span>
@@ -2948,26 +2972,7 @@ function InventoryTab() {
 												</div>
 											</div>
 
-											<div className="flex items-center gap-1">
-												<Button
-													className="h-7 w-7 rounded-md"
-													disabled={recipeMissing || isSyncing || currentQuantity <= 0}
-													onClick={() => void handleAdjustMenuStock(product, -1)}
-													size="icon"
-													variant="outline"
-												>
-													<Minus className="h-3 w-3" />
-												</Button>
-												<Button
-													className="h-7 w-7 rounded-md"
-													disabled={recipeMissing || isSyncing}
-													onClick={() => void handleAdjustMenuStock(product, 1)}
-													size="icon"
-													variant="outline"
-												>
-													<Plus className="h-3 w-3" />
-												</Button>
-											</div>
+
 										</div>
 
 										{recipeMissing && (
