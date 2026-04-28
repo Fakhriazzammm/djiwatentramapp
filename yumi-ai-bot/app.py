@@ -798,7 +798,7 @@ async def cmd_briefing_hari_ini(update: Update, context: ContextTypes.DEFAULT_TY
             data = resp.json()
             briefing = str(data.get("content") or "Briefing belum tersedia.")
 
-        await _reply_msg(update, context, briefing, reply_markup=_reply_keyboard())
+        await _reply_msg(update, context, briefing, parse_mode="HTML", reply_markup=_reply_keyboard())
     except Exception as e:
         logger.exception("briefing_hari_ini failed")
         await _reply_msg(update, context, f"Gagal generate briefing: {e}")
@@ -875,7 +875,7 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         # Add OCR action buttons
-        await _reply_msg(update, context, reply, reply_markup=_ocr_action_keyboard())
+        await _reply_msg(update, context, reply, parse_mode="HTML", reply_markup=_ocr_action_keyboard())
 
     except Exception as e:
         logger.exception("Photo handling failed")
@@ -937,11 +937,12 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Split long messages for Telegram (4096 char limit)
         if len(reply) <= 4000:
-            await _reply_msg(update, context, reply, reply_markup=_reply_keyboard())
+            await _reply_msg(update, context, reply, parse_mode="HTML", reply_markup=_reply_keyboard())
         else:
             chunks = [reply[i:i + 4000] for i in range(0, len(reply), 4000)]
             for i, chunk in enumerate(chunks):
-                await _reply_msg(update, context, chunk, reply_markup=_reply_keyboard() if i == len(chunks) - 1 else None)
+                await _reply_msg(update, context, chunk, parse_mode="HTML",
+                                 reply_markup=_reply_keyboard() if i == len(chunks) - 1 else None)
 
     except Exception as e:
         logger.exception("free-text yumi-ai failed")

@@ -76,7 +76,44 @@ Kamu membantu pemilik bisnis dan kasir dalam:
 - Memproses dan menganalisis struk/nota belanja
 - Menjawab pertanyaan seputar operasional bisnis
 
-Gunakan bahasa Indonesia yang ramah dan profesional. Format jawaban dengan jelas menggunakan markdown jika diperlukan.${contextHint ? `\nKonteks tambahan: ${contextHint}` : ""}`;
+⚠️ PENTING — Format HTML untuk Telegram:
+Gunakan HTML formatting untuk SEMUA respons. Format yang didukung Telegram:
+- <b>tebal</b> untuk judul/heading
+- <i>miring</i> untuk penekanan
+- <u>garis bawah</u> untuk highlight
+- <code>inline code</code> untuk data/angka
+- <pre>blok teks</pre> untuk tabel/data terstruktur
+- Emoji diperbolehkan (✅ ❌ 📊 💰 ⚠️ 🔥 📦 dll)
+
+Untuk STRUK/BON — format ringkasan:
+<b>🧾 RINGKASAN STRUK</b>
+<b>📅 Tanggal:</b> DD-MM-YY  <b>⏰ Waktu:</b> HH:MM
+<b>🔢 No. Transaksi:</b> XXXXXX
+<b>🏪 Merchant:</b> Nama Toko (jika terbaca)
+
+<b>🛒 RINCIAN BELANJA:</b>
+1. <b>Nama Item</b> — Qty: X • Rp X.XXX
+2. ...
+
+<b>💰 TOTAL: Rp XX.XXX</b>
+<b>💳 Pembayaran:</b> Cash/Debit/QRIS
+
+<b>📊 ANALISIS CEPAT:</b>
+• Total item: X produk
+• Item termahal: Nama (Rp X.XXX)
+• Item termurah: Nama (Rp X.XXX)
+• Rata-rata harga/item: Rp X.XXX
+
+Jika ada hal menarik (diskon, pajak, item dalam jumlah banyak), sebutkan di bagian <b>💡 CATATAN</b>.
+
+Untuk PERTANYAAN BISNIS — gunakan format:
+<b>[Judul Section]</b>
+• Poin dengan <b>highlight</b> untuk data penting
+• Gunakan emoji sebagai bullet
+• Data numerik pakai <code>Rp 50.000</code>
+• Akhiri dengan rekomendasi actionable
+
+Gunakan bahasa Indonesia yang ramah, profesional, dan to-the-point.${contextHint ? `\nKonteks tambahan: ${contextHint}` : ""}`;
 
 	const openAiMessages: unknown[] = [
 		{ role: "system", content: systemPrompt },
@@ -103,7 +140,8 @@ Gunakan bahasa Indonesia yang ramah dan profesional. Format jawaban dengan jelas
 		openAiMessages.push({ role: "user", content: message });
 	}
 
-	const content = await callOpenAI(openAiMessages, "gpt-4o-mini");
+	const model = images.length > 0 ? openaiModelVision : openaiModelChat;
+	const content = await callOpenAI(openAiMessages, model);
 	return { content, toolCalls: [] };
 }
 
@@ -189,13 +227,18 @@ async function generateBusinessBriefing(payload: JsonRecord) {
 	const prompt = `${greeting}! Buat briefing bisnis harian yang singkat dan informatif dalam bahasa Indonesia.
 ${context ? `\nData bisnis saat ini:\n${context}` : ""}
 
-Sertakan:
-1. Salam pembuka sesuai waktu
-2. Ringkasan kondisi bisnis saat ini (berdasarkan data yang tersedia)
-3. 2-3 rekomendasi actionable untuk hari ini
-4. Pertanyaan yang bisa dijawab oleh Yumi untuk membantu bisnis
+⚠️ Format pakai HTML untuk Telegram:
+- <b>bold</b> untuk judul/heading
+- <i>italic</i> untuk penekanan
+- Emoji diperbolehkan
 
-Format dengan markdown yang rapi. Singkat dan to the point (maksimal 200 kata).`;
+Sertakan:
+1. <b>Salam pembuka</b> sesuai waktu dengan emoji (🌅 pagi, ☀️ siang, 🌤️ sore, 🌙 malam)
+2. <b>Ringkasan kondisi bisnis</b> saat ini (berdasarkan data yang tersedia)
+3. <b>2-3 rekomendasi actionable</b> untuk hari ini — bold untuk tindakan utama
+4. <b>Pertanyaan yang bisa dijawab Yumi</b> — format sebagai daftar dengan emoji bullet
+
+Singkat dan to the point (maksimal 200 kata). Gunakan <b>highlight bold</b> untuk data angka penting.`;
 
 	const content = await callOpenAI(
 		[
