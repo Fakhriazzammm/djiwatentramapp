@@ -366,6 +366,7 @@ function KanbanCard({
 	const bulkUpdate = useHybridBulkUpdateProducts();
 	const adjustMenuStockWithRecipe = useHybridAdjustMenuStockWithRecipe();
 	const [syncingProductIds, setSyncingProductIds] = useState<Set<string>>(new Set());
+	const [stockInputValues, setStockInputValues] = useState<Record<string, string>>({});
 
 	const filteredProducts = useMemo(() => {
 		if (!products) return [];
@@ -390,9 +391,15 @@ function KanbanCard({
 		);
 	}, [filteredProducts, recipes]);
 
-	const handleAdjustMenuStock = useCallback(
-		async (product: any, delta: number) => {
-			if (!delta) return;
+	const handleStockChangeDirect = useCallback(
+		async (product: any, newQuantity: number) => {
+			if (newQuantity < 0) {
+				toast.error("Stok tidak boleh negatif");
+				return;
+			}
+			const currentQuantity = Number(product.quantity ?? 0);
+			const delta = newQuantity - currentQuantity;
+			if (delta === 0) return;
 			const recipe = recipes?.find(
 				(r: any) => r.productId === product._id && !r.variantName
 			);
@@ -408,12 +415,6 @@ function KanbanCard({
 				: [];
 			if (ingredients.length === 0) {
 				toast.error(`Recipe ${product.name} belum punya komposisi bahan baku.`);
-				return;
-			}
-
-			const currentQuantity = Number(product.quantity ?? 0);
-			if (delta < 0 && currentQuantity <= 0) {
-				toast.error("Stok menu sudah 0");
 				return;
 			}
 
@@ -734,23 +735,31 @@ function KanbanCard({
 															<span className="text-indigo-600">Rp {product.price.toLocaleString()}</span>
 															<span className="text-slate-300">•</span>
 															<div className="flex items-center gap-1.5">
-																<span className={product.quantity <= 0 ? "text-red-500" : "text-green-600"}>Ready: {product.quantity}</span>
-																<div className="ml-1 flex items-center gap-1">
-																	<button 
-																		className="flex h-5 w-5 items-center justify-center rounded bg-slate-100 text-slate-500 shadow-sm active:scale-90"
-																		disabled={recipeMissing || isSyncing || (product.quantity || 0) <= 0}
-												onClick={() => void handleAdjustMenuStock(product, -1)}
-																	>
-																		<Minus className="h-3 w-3" />
-																	</button>
-																	<button 
-																		className="flex h-5 w-5 items-center justify-center rounded bg-indigo-600 text-white shadow-sm active:scale-90"
-																		disabled={recipeMissing || isSyncing}
-												onClick={() => void handleAdjustMenuStock(product, 1)}
-																	>
-																		<Plus className="h-3 w-3" />
-																	</button>
-																</div>
+																Ready:{" "}
+																<input
+																	type="number"
+																	min={0}
+																	className="w-14 h-5 rounded border bg-white text-center font-bold text-[10px] px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+																	disabled={recipeMissing || isSyncing}
+																	value={stockInputValues[String(product._id)] ?? String(product.quantity ?? 0)}
+																	onChange={(e) => setStockInputValues(prev => ({...prev, [String(product._id)]: e.target.value}))}
+																	onBlur={(e) => {
+																		const newVal = Number(e.target.value);
+																		const currentQuantity = Number(product.quantity ?? 0);
+																		if (isNaN(newVal) || newVal < 0 || newVal === currentQuantity) {
+																			setStockInputValues(prev => {
+																				const next = {...prev};
+																				delete next[String(product._id)];
+																				return next;
+																			});
+																			return;
+																		}
+																		void handleStockChangeDirect(product, newVal);
+																	}}
+																	onKeyDown={(e) => {
+																		if (e.key === 'Enter') e.currentTarget.blur();
+																	}}
+																/>
 															</div>
 														</div>
 													</div>
