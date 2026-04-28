@@ -711,6 +711,7 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 				? row.paymentGateway
 				: null,
 		gatewayInvoiceId: row.gatewayInvoiceId ?? null,
+		authUserId: row.authUserId ?? null,
 		items: Array.isArray(row.items)
 			? row.items.map((item: any) => ({
 						productId: String(item.productId ?? ""),

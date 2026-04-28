@@ -65,6 +65,7 @@ export function buildPublicOrderRow(args: {
     paymentReceiptKind: payload.paymentReceiptKind ?? null,
     paymentGateway: payload.paymentGateway ?? null,
     gatewayInvoiceId: payload.paymentGateway?.invoiceId ?? null,
+    authUserId: payload.authUserId ?? null,
     items: mapOrderItems(payload.items),
   };
 }

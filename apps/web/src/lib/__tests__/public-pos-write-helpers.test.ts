@@ -56,6 +56,7 @@ describe("public POS write helpers", () => {
       paymentReceiptKind: null,
       paymentGateway: null,
       gatewayInvoiceId: null,
+      authUserId: null,
       items: [
         {
           productId: "prod_1",
