@@ -495,7 +495,7 @@ async def cmd_ringkasan_hari_ini(update: Update, context: ContextTypes.DEFAULT_T
             "start_time,end_time,cashier_name,team_members,starting_cash,"
             "cash_revenue,qris_revenue,other_revenue,total_revenue,total_gross_sales,"
             "total_discount,total_items_sold,total_expenses"
-            "&order=start_time.desc&limit=10",
+            f"&start_time=gte.{start_ms}&order=start_time.desc&limit=20",
         )
 
         # ── 4) Build report ──
