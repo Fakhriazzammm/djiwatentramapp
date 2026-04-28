@@ -270,6 +270,129 @@ def _reply_keyboard() -> InlineKeyboardMarkup:
     ])
 
 
+
+def _ocr_action_keyboard(amount: float = 0, merchant: str = "") -> InlineKeyboardMarkup:
+    """Inline keyboard for OCR scan results with save actions."""
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("💰 Simpan Pemasukan", callback_data=f"ocr_income_{amount}_{merchant[:20]}"),
+            InlineKeyboardButton("💸 Simpan Pengeluaran", callback_data=f"ocr_expense_{amount}_{merchant[:20]}"),
+        ],
+        [
+            InlineKeyboardButton("📦 Catat Stok", callback_data=f"ocr_stock_{merchant[:20]}"),
+            InlineKeyboardButton("❌ Batal", callback_data="ocr_cancel"),
+        ],
+    ])
+
+
+# ===================================================================
+# OCR Action Handler
+# ===================================================================
+
+async def _handle_ocr_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle OCR save buttons: income, expense, stock, cancel."""
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    chat_id = query.message.chat_id
+
+    if data == "ocr_cancel":
+        await query.edit_message_text(
+            query.message.text + "\n\n❌ Dibatalkan.",
+            reply_markup=None,
+        )
+        return
+
+    try:
+        # Parse: ocr_income_12345_MerchantName or ocr_expense_...
+        parts = data.split("_", 3)  # ["ocr", "income", "12345", "MerchantName"]
+        action = parts[1]  # income / expense / stock
+        amount_str = parts[2] if len(parts) > 2 else "0"
+        merchant = parts[3] if len(parts) > 3 else ""
+
+        try:
+            amount = float(amount_str)
+        except ValueError:
+            amount = 0
+
+        # Extract description from the OCR result message
+        ocr_text = query.message.text or ""
+        desc = f"Scan struk{f' - {merchant}' if merchant else ''}"
+
+        if action == "income":
+            payload = {
+                "type": "income",
+                "amount": amount,
+                "category": "penjualan",
+                "description": desc,
+                "date": int(_now_wib().timestamp() * 1000),
+                "paymentMethod": "cash",
+                "status": "completed",
+            }
+            label = "pemasukan"
+
+        elif action == "expense":
+            # Try to determine category from OCR text
+            category = "lainnya"
+            if any(k in ocr_text.lower() for k in ["belanja", "stok", "bahan"]):
+                category = "belanja_stok"
+            elif any(k in ocr_text.lower() for k in ["listrik", "air", "wifi"]):
+                category = "utilitas"
+            elif any(k in ocr_text.lower() for k in ["gaji", "gajih"]):
+                category = "gaji"
+
+            payload = {
+                "type": "expense",
+                "amount": amount,
+                "category": category,
+                "description": desc,
+                "date": int(_now_wib().timestamp() * 1000),
+                "paymentMethod": "cash",
+                "status": "completed",
+            }
+            label = "pengeluaran"
+
+        elif action == "stock":
+            # For stock, we just acknowledge — actual processing via web app
+            await query.edit_message_text(
+                query.message.text + f"\n\n📦 *Catat sebagai stok:* buka web app untuk mencatat pembelian stok dari {merchant or 'struk'}.",
+                parse_mode="Markdown",
+                reply_markup=None,
+            )
+            return
+        else:
+            await query.edit_message_text(query.message.text + "\n\n❌ Aksi tidak dikenal.")
+            return
+
+        # Insert into pos_financial_transactions
+        url = f"{SUPABASE_URL}/rest/v1/pos_financial_transactions"
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                url,
+                headers=_service_headers(),
+                json=payload,
+            )
+            if resp.status_code < 400:
+                await query.edit_message_text(
+                    query.message.text + f"\n\n✅ Berhasil disimpan sebagai *{label}* — Rp {amount:,.0f}",
+                    parse_mode="Markdown",
+                    reply_markup=None,
+                )
+            else:
+                await query.edit_message_text(
+                    query.message.text + f"\n\n❌ Gagal menyimpan: {resp.status_code}",
+                    reply_markup=None,
+                )
+
+    except Exception as e:
+        logger.exception("OCR action failed")
+        await query.edit_message_text(
+            query.message.text + f"\n\n❌ Gagal: {e}",
+            reply_markup=None,
+        )
+
+
+
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _is_allowed(update):
         await _reply_msg(update, context, "Maaf, Anda tidak diizinkan menggunakan bot ini.")
@@ -560,7 +683,6 @@ async def cmd_top_produk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         lines = [f"{i}. {n} — {q:.0f} pcs (Rp {omzet[n]:,.0f})" for i, (n, q) in enumerate(top, 1)]
         await _reply_msg(update, context, 
             "🔥 *Top Produk Hari Ini*\n" + "\n".join(lines),
-            parse_mode="Markdown",
             reply_markup=_reply_keyboard(),
         )
     except Exception as e:
@@ -589,7 +711,6 @@ async def cmd_stok_menipis(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = "\n".join([f"• {n}: {q:g}/{t:g} {u}" for n, q, t, u in alerts[:30]])
         await _reply_msg(update, context, 
             f"⚠️ *Stok Menipis ({len(alerts)} item)*\n{text}",
-            parse_mode="Markdown",
             reply_markup=_reply_keyboard(),
         )
     except Exception as e:
@@ -619,7 +740,6 @@ async def cmd_absen_hari_ini(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
         await _reply_msg(update, context, 
             "🕒 *Absensi Hari Ini*\n" + "\n".join(lines),
-            parse_mode="Markdown",
             reply_markup=_reply_keyboard(),
         )
     except Exception as e:
@@ -650,7 +770,6 @@ async def cmd_booking_aktif(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await _reply_msg(update, context, 
             "📅 *Booking Aktif*\n" + "\n".join(lines),
-            parse_mode="Markdown",
             reply_markup=_reply_keyboard(),
         )
     except Exception as e:
@@ -706,6 +825,11 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "help": cmd_help,
     }
 
+    # OCR action callbacks (ocr_income_12345_MerchantName)
+    if data.startswith("ocr_"):
+        await _handle_ocr_action(update, context)
+        return
+
     handler_fn = handlers.get(data)
     if handler_fn:
         # _reply_msg internally checks callback_query.message when update.message is None
@@ -752,7 +876,8 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             action="yumiChat",
         )
 
-        await _reply_msg(update, context, reply, reply_markup=_reply_keyboard())
+        # Add OCR action buttons
+        await _reply_msg(update, context, reply, reply_markup=_ocr_action_keyboard())
 
     except Exception as e:
         logger.exception("Photo handling failed")
@@ -826,7 +951,6 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Aku siap bantu! 📌\n"
             "Coba: *omzet hari ini*, *top produk*, *stok menipis*, atau kirim foto struk.\n"
             f"(error: {e})",
-            parse_mode="Markdown",
             reply_markup=_reply_keyboard(),
         )
 
