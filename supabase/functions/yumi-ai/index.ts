@@ -200,38 +200,66 @@ Format dengan markdown yang rapi. Singkat dan to the point (maksimal 200 kata).`
 	return { content };
 }
 
-async function sendTelegram(payload: JsonRecord) {
+async function sendTelegram(
+	payload: JsonRecord
+): Promise<{ ok: boolean; error?: string; messageId?: number }> {
+	// Return { ok: false } with status 200 for all logical errors so that
+	// supabase.functions.invoke() never sees a non-2xx and the real error
+	// message reaches the caller instead of the generic SDK wrapper text.
+
 	if (!telegramBotToken) {
-		throw new Error("TELEGRAM_BOT_TOKEN belum dikonfigurasi di Supabase Edge Function secrets");
+		return {
+			ok: false,
+			error:
+				"TELEGRAM_BOT_TOKEN belum dikonfigurasi. Tambahkan di Supabase Dashboard → Edge Functions → Manage secrets.",
+		};
 	}
 
 	const text = String(payload.text ?? "").trim();
-	if (!text) throw new Error("Teks pesan kosong");
+	if (!text) return { ok: false, error: "Teks pesan kosong" };
 
-	// Use chatId from request body, or fall back to TELEGRAM_CHAT_ID secret
-	const rawChatId = payload.chatId !== undefined ? payload.chatId : telegramDefaultChatId;
+	const rawChatId =
+		payload.chatId !== undefined ? payload.chatId : telegramDefaultChatId;
 	if (!rawChatId) {
-		throw new Error(
-			"chat_id tidak ditemukan. Set TELEGRAM_CHAT_ID di Supabase secrets atau kirim chatId di request body."
-		);
+		return {
+			ok: false,
+			error:
+				"chat_id tidak ditemukan. Tambahkan TELEGRAM_CHAT_ID di Supabase secrets atau kirim chatId di request body.",
+		};
 	}
 
-	// Telegram expects chat_id as integer for group IDs (negative numbers)
-	const chatId = typeof rawChatId === "string" ? parseInt(rawChatId, 10) : rawChatId;
+	// Group chat IDs are negative integers; parse string values from env
+	const chatId =
+		typeof rawChatId === "string" ? parseInt(rawChatId, 10) : (rawChatId as number);
 
-	const apiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
-	const res = await fetch(apiUrl, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ chat_id: chatId, text }),
-	});
+	try {
+		const apiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+		const res = await fetch(apiUrl, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ chat_id: chatId, text }),
+		});
 
-	const data = (await res.json()) as { ok: boolean; description?: string; result?: { message_id: number } };
-	if (!res.ok || !data.ok) {
-		throw new Error(data.description || `Telegram API error: ${res.status}`);
+		const data = (await res.json()) as {
+			ok: boolean;
+			description?: string;
+			result?: { message_id: number };
+		};
+
+		if (!res.ok || !data.ok) {
+			return {
+				ok: false,
+				error: data.description || `Telegram API error: ${res.status}`,
+			};
+		}
+
+		return { ok: true, messageId: data.result?.message_id };
+	} catch (err) {
+		return {
+			ok: false,
+			error: err instanceof Error ? err.message : "Gagal menghubungi Telegram API",
+		};
 	}
-
-	return { ok: true, messageId: data.result?.message_id };
 }
 
 Deno.serve(async (req) => {
