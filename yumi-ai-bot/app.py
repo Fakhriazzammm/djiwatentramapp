@@ -261,13 +261,13 @@ def _reply_keyboard() -> InlineKeyboardMarkup:
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _is_allowed(update):
-        await update.message.reply_text("Maaf, Anda tidak diizinkan menggunakan bot ini.")
+        await _reply_msg(update, context, "Maaf, Anda tidak diizinkan menggunakan bot ini.")
         return
 
     # Reset session on start
     user_sessions.pop(update.effective_user.id, None)
 
-    await update.message.reply_text(
+    await _reply_msg(update, context, 
         "🤖 *Yumi AI — Asisten YumiPOS*\n\n"
         "Saya bisa bantu:\n"
         "• Cek KPI & omzet realtime\n"
@@ -284,9 +284,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _is_allowed(update):
-        await update.message.reply_text("Unauthorized")
+        await _reply_msg(update, context, "Unauthorized")
         return
-    await update.message.reply_text(
+    await _reply_msg(update, context, 
         "💡 *Cara pakai Yumi AI*\n\n"
         "📋 *Commands:*\n"
         "/kpi_hari_ini — KPI & omzet hari ini\n"
@@ -305,7 +305,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_kpi_hari_ini(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _is_allowed(update):
-        await update.message.reply_text("Unauthorized")
+        await _reply_msg(update, context, "Unauthorized")
         return
     try:
         now = _now_wib()
@@ -338,7 +338,7 @@ async def cmd_kpi_hari_ini(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"{int(active_shift.get('order_count') or 0)} order, Rp {daily_collected:,.0f}"
             )
 
-        await update.message.reply_text(
+        await _reply_msg(update, context, 
             f"📊 *KPI Hari Ini*\n\n"
             f"Order selesai: *{order_count}*\n"
             f"Omzet order: *Rp {order_total:,.0f}*\n"
@@ -350,12 +350,12 @@ async def cmd_kpi_hari_ini(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         logger.exception("kpi_hari_ini failed")
-        await update.message.reply_text(f"Gagal ambil KPI: {e}")
+        await _reply_msg(update, context, f"Gagal ambil KPI: {e}")
 
 
 async def cmd_top_produk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _is_allowed(update):
-        await update.message.reply_text("Unauthorized")
+        await _reply_msg(update, context, "Unauthorized")
         return
     try:
         now = _now_wib()
@@ -375,23 +375,23 @@ async def cmd_top_produk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         top = cnt.most_common(10)
         if not top:
-            await update.message.reply_text("Belum ada order selesai hari ini.")
+            await _reply_msg(update, context, "Belum ada order selesai hari ini.")
             return
 
         lines = [f"{i}. {n} — {q:.0f} pcs (Rp {omzet[n]:,.0f})" for i, (n, q) in enumerate(top, 1)]
-        await update.message.reply_text(
+        await _reply_msg(update, context, 
             "🔥 *Top Produk Hari Ini*\n" + "\n".join(lines),
             parse_mode="Markdown",
             reply_markup=_reply_keyboard(),
         )
     except Exception as e:
         logger.exception("top_produk failed")
-        await update.message.reply_text(f"Gagal ambil top produk: {e}")
+        await _reply_msg(update, context, f"Gagal ambil top produk: {e}")
 
 
 async def cmd_stok_menipis(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _is_allowed(update):
-        await update.message.reply_text("Unauthorized")
+        await _reply_msg(update, context, "Unauthorized")
         return
     try:
         rows = await _fetch("pos_inventory", "select=ingredientName,quantity,lowStockThreshold,unit")
@@ -403,24 +403,24 @@ async def cmd_stok_menipis(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 alerts.append((r.get("ingredientName") or "Unknown", q, t, r.get("unit") or "unit"))
 
         if not alerts:
-            await update.message.reply_text("✅ Tidak ada stok menipis.", reply_markup=_reply_keyboard())
+            await _reply_msg(update, context, "✅ Tidak ada stok menipis.", reply_markup=_reply_keyboard())
             return
 
         alerts.sort(key=lambda x: (x[1] - x[2]))
         text = "\n".join([f"• {n}: {q:g}/{t:g} {u}" for n, q, t, u in alerts[:30]])
-        await update.message.reply_text(
+        await _reply_msg(update, context, 
             f"⚠️ *Stok Menipis ({len(alerts)} item)*\n{text}",
             parse_mode="Markdown",
             reply_markup=_reply_keyboard(),
         )
     except Exception as e:
         logger.exception("stok_menipis failed")
-        await update.message.reply_text(f"Gagal cek stok: {e}")
+        await _reply_msg(update, context, f"Gagal cek stok: {e}")
 
 
 async def cmd_absen_hari_ini(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _is_allowed(update):
-        await update.message.reply_text("Unauthorized")
+        await _reply_msg(update, context, "Unauthorized")
         return
     try:
         now = _now_wib()
@@ -428,7 +428,7 @@ async def cmd_absen_hari_ini(update: Update, context: ContextTypes.DEFAULT_TYPE)
         q = f"select=userName,type,timestamp,shiftName&timestamp=gte.{start_ms}&order=timestamp.desc"
         rows = await _fetch("pos_attendance_logs", q)
         if not rows:
-            await update.message.reply_text("Belum ada data absensi.", reply_markup=_reply_keyboard())
+            await _reply_msg(update, context, "Belum ada data absensi.", reply_markup=_reply_keyboard())
             return
 
         lines = []
@@ -438,19 +438,19 @@ async def cmd_absen_hari_ini(update: Update, context: ContextTypes.DEFAULT_TYPE)
             icon = "✅" if r.get("type") == "check_in" else "🔴"
             lines.append(f"{icon} {dt} | {r.get('userName','?')} | {r.get('shiftName') or '-'}")
 
-        await update.message.reply_text(
+        await _reply_msg(update, context, 
             "🕒 *Absensi Hari Ini*\n" + "\n".join(lines),
             parse_mode="Markdown",
             reply_markup=_reply_keyboard(),
         )
     except Exception as e:
         logger.exception("absen_hari_ini failed")
-        await update.message.reply_text(f"Gagal ambil absensi: {e}")
+        await _reply_msg(update, context, f"Gagal ambil absensi: {e}")
 
 
 async def cmd_booking_aktif(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _is_allowed(update):
-        await update.message.reply_text("Unauthorized")
+        await _reply_msg(update, context, "Unauthorized")
         return
     try:
         q = "select=bookingCode,customerName,bookingDate,guestCount,tableCount,paymentStatus,bookingStatus,totalAmount&order=_creationTime.desc&limit=20"
@@ -458,7 +458,7 @@ async def cmd_booking_aktif(update: Update, context: ContextTypes.DEFAULT_TYPE):
         active = [r for r in rows if str(r.get("bookingStatus", "")).lower() in {"confirmed", "pending", "booked"}]
 
         if not active:
-            await update.message.reply_text("Tidak ada booking aktif.", reply_markup=_reply_keyboard())
+            await _reply_msg(update, context, "Tidak ada booking aktif.", reply_markup=_reply_keyboard())
             return
 
         lines = []
@@ -469,22 +469,22 @@ async def cmd_booking_aktif(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"{r.get('bookingStatus','-')} | Rp {float(r.get('totalAmount') or 0):,.0f}"
             )
 
-        await update.message.reply_text(
+        await _reply_msg(update, context, 
             "📅 *Booking Aktif*\n" + "\n".join(lines),
             parse_mode="Markdown",
             reply_markup=_reply_keyboard(),
         )
     except Exception as e:
         logger.exception("booking_aktif failed")
-        await update.message.reply_text(f"Gagal ambil booking: {e}")
+        await _reply_msg(update, context, f"Gagal ambil booking: {e}")
 
 
 async def cmd_briefing_hari_ini(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _is_allowed(update):
-        await update.message.reply_text("Unauthorized")
+        await _reply_msg(update, context, "Unauthorized")
         return
     try:
-        await update.message.chat.send_action("typing")
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
         date_str = _today_wib_str()
         url = f"{SUPABASE_URL}/functions/v1/yumi-ai"
         payload = {
@@ -502,10 +502,10 @@ async def cmd_briefing_hari_ini(update: Update, context: ContextTypes.DEFAULT_TY
             data = resp.json()
             briefing = str(data.get("content") or "Briefing belum tersedia.")
 
-        await update.message.reply_text(briefing, reply_markup=_reply_keyboard())
+        await _reply_msg(update, context, briefing, reply_markup=_reply_keyboard())
     except Exception as e:
         logger.exception("briefing_hari_ini failed")
-        await update.message.reply_text(f"Gagal generate briefing: {e}")
+        await _reply_msg(update, context, f"Gagal generate briefing: {e}")
 
 
 # ===================================================================
@@ -529,10 +529,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     handler_fn = handlers.get(data)
     if handler_fn:
-        # Monkey-patch: callback query has no update.message, but handlers need it.
-        # The CallbackQuery's message IS the chat message — inject it.
-        update.message = query.message
-        update.effective_message = query.message
+        # _reply_msg internally checks callback_query.message when update.message is None
         await handler_fn(update, context)
     else:
         await query.edit_message_text("Menu tidak dikenal.", reply_markup=_reply_keyboard())
@@ -544,11 +541,11 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _is_allowed(update):
-        await update.message.reply_text("Unauthorized")
+        await _reply_msg(update, context, "Unauthorized")
         return
 
     try:
-        await update.message.chat.send_action("typing")
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
         # Get the largest photo
         photo = update.message.photo[-1]
@@ -576,11 +573,11 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             action="yumiChat",
         )
 
-        await update.message.reply_text(reply, reply_markup=_reply_keyboard())
+        await _reply_msg(update, context, reply, reply_markup=_reply_keyboard())
 
     except Exception as e:
         logger.exception("Photo handling failed")
-        await update.message.reply_text(
+        await _reply_msg(update, context, 
             f"Gagal memproses gambar: {e}\n\nCoba kirim ulang atau gunakan teks.",
             reply_markup=_reply_keyboard(),
         )
@@ -592,7 +589,7 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _is_allowed(update):
-        await update.message.reply_text("Unauthorized")
+        await _reply_msg(update, context, "Unauthorized")
         return
 
     text = (update.message.text or "").strip()
@@ -618,7 +615,7 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Free-text AI chat with rich context
     try:
-        await update.message.chat.send_action("typing")
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
         user_id = update.effective_user.id
         context_hint = await _gather_context()
         context_hint += (
@@ -638,15 +635,15 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Split long messages for Telegram (4096 char limit)
         if len(reply) <= 4000:
-            await update.message.reply_text(reply, reply_markup=_reply_keyboard())
+            await _reply_msg(update, context, reply, reply_markup=_reply_keyboard())
         else:
             chunks = [reply[i:i + 4000] for i in range(0, len(reply), 4000)]
             for i, chunk in enumerate(chunks):
-                await update.message.reply_text(chunk, reply_markup=_reply_keyboard() if i == len(chunks) - 1 else None)
+                await _reply_msg(update, context, chunk, reply_markup=_reply_keyboard() if i == len(chunks) - 1 else None)
 
     except Exception as e:
         logger.exception("free-text yumi-ai failed")
-        await update.message.reply_text(
+        await _reply_msg(update, context, 
             "Aku siap bantu! 📌\n"
             "Coba: *omzet hari ini*, *top produk*, *stok menipis*, atau kirim foto struk.\n"
             f"(error: {e})",
