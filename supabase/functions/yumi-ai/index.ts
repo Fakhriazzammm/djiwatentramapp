@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
-type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing" | "sendTelegram";
+type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing" | "sendTelegram" | "recordTransaction";
 type JsonRecord = Record<string, unknown>;
 
 const corsHeaders = {
@@ -210,6 +211,55 @@ Format dengan markdown yang rapi. Singkat dan to the point (maksimal 200 kata).`
 	return { content };
 }
 
+async function recordTransaction(
+	payload: JsonRecord
+): Promise<{ ok: boolean; error?: string; sourceId?: string }> {
+	const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+	const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+	if (!supabaseUrl || !supabaseKey) {
+		return { ok: false, error: "SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY belum dikonfigurasi" };
+	}
+
+	const supabase = createClient(supabaseUrl, supabaseKey, {
+		db: { schema: "pos" },
+	});
+
+	const sourceId = `fin_${crypto.randomUUID().replace(/-/g, "")}`;
+	const txType = String(payload.tx_type ?? payload.txType ?? "income");
+	const amount = Number(payload.amount ?? 0);
+	const category = String(payload.category ?? "lainnya");
+	const description = String(payload.description ?? "");
+	const txDate = Number(payload.tx_date ?? payload.txDate ?? Date.now());
+	const paymentMethod = String(payload.payment_method ?? payload.paymentMethod ?? "cash");
+	const status = String(payload.status ?? "completed");
+	const metadata = payload.metadata ?? { source: "telegram_bot", action: "ocr_scan" };
+	const raw = payload.raw ?? {};
+	const creationTime = Number(payload.creation_time ?? Date.now());
+
+	const { error } = await supabase
+		.from("financial_transactions")
+		.insert({
+			source_id: sourceId,
+			tx_type: txType,
+			amount,
+			category,
+			description,
+			tx_date: txDate,
+			payment_method: paymentMethod,
+			status,
+			metadata,
+			raw,
+			creation_time: creationTime,
+		});
+
+	if (error) {
+		console.error("recordTransaction failed:", error);
+		return { ok: false, error: error.message };
+	}
+
+	return { ok: true, sourceId };
+}
+
 async function sendTelegram(
 	payload: JsonRecord
 ): Promise<{ ok: boolean; error?: string; messageId?: number }> {
@@ -290,6 +340,8 @@ Deno.serve(async (req) => {
 				return jsonResponse(await generateBusinessBriefing(body));
 			case "sendTelegram":
 				return jsonResponse(await sendTelegram(body));
+			case "recordTransaction":
+				return jsonResponse(await recordTransaction(body));
 			default:
 				return fail("AI action tidak dikenali", 404);
 		}

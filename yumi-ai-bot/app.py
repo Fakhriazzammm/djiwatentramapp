@@ -320,36 +320,21 @@ async def _handle_ocr_action(update: Update, context: ContextTypes.DEFAULT_TYPE)
         desc = f"Scan struk{f' - {merchant}' if merchant else ''}"
 
         if action == "income":
-            payload = {
-                "type": "income",
-                "amount": amount,
-                "category": "penjualan",
-                "description": desc,
-                "date": int(_now_wib().timestamp() * 1000),
-                "paymentMethod": "cash",
-                "status": "completed",
-            }
+            tx_type = "income"
+            category = "penjualan"
             label = "pemasukan"
 
         elif action == "expense":
+            tx_type = "expense"
             # Try to determine category from OCR text
             category = "lainnya"
             if any(k in ocr_text.lower() for k in ["belanja", "stok", "bahan"]):
                 category = "belanja_stok"
             elif any(k in ocr_text.lower() for k in ["listrik", "air", "wifi"]):
                 category = "utilitas"
-            elif any(k in ocr_text.lower() for k in ["gaji", "gajih"]):
+            if any(k in ocr_text.lower() for k in ["gaji", "gajih"]):
                 category = "gaji"
 
-            payload = {
-                "type": "expense",
-                "amount": amount,
-                "category": category,
-                "description": desc,
-                "date": int(_now_wib().timestamp() * 1000),
-                "paymentMethod": "cash",
-                "status": "completed",
-            }
             label = "pengeluaran"
 
         elif action == "stock":
@@ -360,24 +345,37 @@ async def _handle_ocr_action(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 reply_markup=None,
             )
             return
-        else:
-            await query.edit_message_text(query.message.text + "\n\n❌ Aksi tidak dikenal.")
-            return
-
-        # Insert into pos_financial_transactions
-        url = f"{SUPABASE_URL}/rest/v1/pos_financial_transactions"
+        # Send to yumi-ai Edge Function (which has pos schema access)
+        url = f"{SUPABASE_URL}/functions/v1/yumi-ai"
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.post(
                 url,
-                headers=_service_headers(),
-                json=payload,
+                headers={**_headers(), "Content-Type": "application/json"},
+                json={
+                    "action": "recordTransaction",
+                    "tx_type": tx_type,
+                    "amount": amount,
+                    "category": category,
+                    "description": desc,
+                    "tx_date": int(_now_wib().timestamp() * 1000),
+                    "payment_method": "cash",
+                    "status": "completed",
+                    "metadata": {"source": "telegram_bot", "action": "ocr_scan", "merchant": merchant},
+                },
             )
             if resp.status_code < 400:
-                await query.edit_message_text(
-                    query.message.text + f"\n\n✅ Berhasil disimpan sebagai *{label}* — Rp {amount:,.0f}",
-                    parse_mode="Markdown",
-                    reply_markup=None,
-                )
+                data = resp.json()
+                if data.get("ok"):
+                    await query.edit_message_text(
+                        query.message.text + f"\n\n✅ Berhasil disimpan sebagai *{label}* — Rp {amount:,.0f}",
+                        parse_mode="Markdown",
+                        reply_markup=None,
+                    )
+                else:
+                    await query.edit_message_text(
+                        query.message.text + f"\n\n❌ Gagal: {data.get('error', 'Unknown')}",
+                        reply_markup=None,
+                    )
             else:
                 await query.edit_message_text(
                     query.message.text + f"\n\n❌ Gagal menyimpan: {resp.status_code}",
