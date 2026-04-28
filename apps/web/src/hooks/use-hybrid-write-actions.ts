@@ -587,24 +587,95 @@ export function useHybridAdjustMenuStockWithRecipe() {
 			if (deltaMenu < 0 && nextQuantityRaw < 0) {
 				throw new Error("Stok menu tidak mencukupi.");
 			}
-
 			const nextQuantity = Math.max(0, nextQuantityRaw);
+
+			const inventoryAction = deltaMenu > 0 ? "add" : "usage";
+			const multiplier = Math.abs(deltaMenu);
+
+			// --- ATOMIC SECTION ---
+			// Pre-flight: verifikasi semua ingredient ada dan cukup stok (untuk usage)
+			if (inventoryAction === "usage" && hasSupabaseConfig) {
+				const pos = createClient().schema("pos");
+				for (const ingredient of ingredients) {
+					const { data: inv, error: invError } = await pos
+						.from("inventory")
+						.select("quantity, ingredient_name")
+						.eq("source_id", ingredient.inventoryId)
+						.maybeSingle();
+					if (invError) throw invError;
+					if (!inv) {
+						throw new Error(
+							`Bahan baku "${ingredient.inventoryId}" tidak ditemukan di inventory.`
+						);
+					}
+					const needed = Number(ingredient.amount) * multiplier;
+					if (Number(inv.quantity ?? 0) < needed) {
+						throw new Error(
+							`Stok "${(inv as any).ingredient_name ?? ingredient.inventoryId}" tidak cukup (butuh ${needed}, tersedia ${inv.quantity}).`
+						);
+					}
+				}
+			}
+
+			// Step 1: Update product quantity
 			await updateProduct({
 				id: productId as any,
 				quantity: nextQuantity,
 			});
 
-			const inventoryAction = deltaMenu > 0 ? "add" : "usage";
-			const multiplier = Math.abs(deltaMenu);
-			for (const ingredient of ingredients) {
-				await applyInventoryStockAction({
-					inventoryId: ingredient.inventoryId,
-					action: inventoryAction,
-					quantity: Number(ingredient.amount) * multiplier,
-					notes:
-						args?.notes ??
-						`Sinkron stok menu (${deltaMenu > 0 ? "+" : ""}${deltaMenu}) dari ${source}`,
-				});
+			// Step 2: Update semua ingredient dengan rollback on failure
+			const updatedIngredients: string[] = [];
+			try {
+				for (const ingredient of ingredients) {
+					await applyInventoryStockAction({
+						inventoryId: ingredient.inventoryId,
+						action: inventoryAction,
+						quantity: Number(ingredient.amount) * multiplier,
+						notes:
+							args?.notes ??
+							`Sinkron stok menu (${deltaMenu > 0 ? "+" : ""}${deltaMenu}) dari ${source}`,
+					});
+					updatedIngredients.push(ingredient.inventoryId);
+				}
+			} catch (error) {
+				// Rollback product quantity
+				console.error(
+					`[atomic-adjust-menu-stock] Gagal update ingredient, rollback product ${productId}`,
+					error
+				);
+				try {
+					await updateProduct({
+						id: productId as any,
+						quantity: currentQuantity,
+					});
+				} catch (rollbackError) {
+					console.error(
+						`[atomic-adjust-menu-stock] CRITICAL: rollback gagal! Product ${productId} quantity mismatch. Previous: ${currentQuantity}, attempted: ${nextQuantity}`,
+						rollbackError
+					);
+				}
+
+				// Rollback ingredient yang sudah terlanjur di-update
+				const rollbackAction = inventoryAction === "add" ? "usage" : "add";
+				for (const rolledBackId of updatedIngredients) {
+					const ing = ingredients.find((i) => i.inventoryId === rolledBackId);
+					if (!ing) continue;
+					try {
+						await applyInventoryStockAction({
+							inventoryId: rolledBackId,
+							action: rollbackAction,
+							quantity: Number(ing.amount) * multiplier,
+							notes: `ROLLBACK: ${error instanceof Error ? error.message : "unknown error"}`,
+						});
+					} catch (rbError) {
+						console.error(
+							`[atomic-adjust-menu-stock] CRITICAL: ingredient rollback gagal untuk ${rolledBackId}`,
+							rbError
+						);
+					}
+				}
+
+				throw error;
 			}
 
 			return {
@@ -2569,6 +2640,8 @@ export function useHybridDeleteOrder() {
 
 export function useHybridUpdateOrderStatus() {
 	const fallback = useMutation(api.orders.updateOrderStatus);
+	const deductInventory = useHybridDeductOrderInventory();
+
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) {
@@ -2632,6 +2705,23 @@ export function useHybridUpdateOrderStatus() {
 					.update({ status })
 					.eq("source_id", id);
 				if (updateError) throw updateError;
+
+				// Auto-deduct inventory saat order completed
+				if (status === "completed") {
+					try {
+						const result = await deductInventory({
+							orderId: id,
+							orderNumber: String(order.order_number ?? ""),
+						});
+						console.log(
+							`[auto-deduct] Order #${order.order_number}: ${result.deductedCount} deducted, ${result.skippedCount} skipped`
+						);
+					} catch (deductError) {
+						// Jangan throw — deduct gagal tidak boleh batalkan order
+						console.error("[auto-deduct] Failed:", deductError);
+					}
+				}
+
 				return;
 			} catch (error) {
 				console.warn(
@@ -2641,7 +2731,7 @@ export function useHybridUpdateOrderStatus() {
 				throw error;
 			}
 		},
-		[fallback]
+		[fallback, deductInventory]
 	);
 }
 
@@ -5307,6 +5397,83 @@ export function useHybridSendDailySummaryEmail() {
 			}
 		},
 		[fallback]
+	);
+}
+
+export function useHybridDeductOrderInventory() {
+	const applyStockAction = useHybridApplyInventoryStockAction();
+
+	return useCallback(
+		async (args: { orderId: string; orderNumber?: string }) => {
+			if (!hasSupabaseConfig) return { deductedCount: 0, skippedCount: 0 };
+
+			const orderId = String(args?.orderId ?? "");
+			if (!orderId) throw new Error("orderId wajib diisi");
+
+			const supabase = createClient();
+			const pos = supabase.schema("pos");
+
+			const { data: items, error: itemsError } = await pos
+				.from("order_items")
+				.select("source_id, product_source_id, product_name, quantity")
+				.eq("order_source_id", orderId);
+			if (itemsError) throw itemsError;
+			if (!items?.length) return { deductedCount: 0, skippedCount: 0 };
+
+			const productIds: string[] = Array.from(
+				new Set(items.map((i: any) => String(i.product_source_id)))
+			);
+			const { data: recipes, error: recipesError } = await pos
+				.from("recipes")
+				.select("source_id, product_source_id, variant_name, ingredients")
+				.in("product_source_id", productIds)
+				.is("variant_name", null);
+			if (recipesError) throw recipesError;
+
+			const recipeMap = new Map<string, any>();
+			for (const r of recipes ?? []) {
+				recipeMap.set(r.product_source_id, r);
+			}
+
+			let deductedCount = 0;
+			let skippedCount = 0;
+			const orderNumber = args?.orderNumber ?? orderId.slice(-6);
+
+			for (const item of items as any[]) {
+				const recipe = recipeMap.get(item.product_source_id);
+				if (!recipe) {
+					skippedCount++;
+					continue;
+				}
+
+				const ingredients = Array.isArray(recipe.ingredients)
+					? recipe.ingredients.filter(
+							(ing: any) =>
+								typeof ing?.inventoryId === "string" &&
+								Number(ing?.amount ?? 0) > 0
+					  )
+					: [];
+
+				if (ingredients.length === 0) {
+					skippedCount++;
+					continue;
+				}
+
+				const multiplier = Number(item.quantity ?? 1);
+				for (const ing of ingredients) {
+					await applyStockAction({
+						inventoryId: ing.inventoryId,
+						action: "usage",
+						quantity: Number(ing.amount) * multiplier,
+						notes: `Auto-deduct order #${orderNumber}: ${item.product_name} x${multiplier}`,
+					});
+					deductedCount++;
+				}
+			}
+
+			return { deductedCount, skippedCount };
+		},
+		[applyStockAction]
 	);
 }
 
