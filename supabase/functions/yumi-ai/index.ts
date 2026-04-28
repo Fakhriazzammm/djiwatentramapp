@@ -11,9 +11,19 @@ const corsHeaders = {
 
 const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
 const openaiBaseUrl = (Deno.env.get("OPENAI_BASE_URL") || "https://api.openai.com/v1").replace(/\/$/, "");
+const openaiModelChat = Deno.env.get("OPENAI_MODEL_CHAT") || "gpt-4o-mini";
+const openaiModelVision = Deno.env.get("OPENAI_MODEL_VISION") || "gpt-4o";
 
-const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-const telegramDefaultChatId = Deno.env.get("TELEGRAM_CHAT_ID");
+// Read bot token — try the correct key first, then the typo variant as fallback
+const telegramBotToken =
+	Deno.env.get("TELEGRAM_BOT_TOKEN") ??
+	Deno.env.get("TELELEGRAM_BOT_TOKEN");
+
+// Read default chat ID — the secret is named TELEGRAM_REPORT_CHAT_ID in this project
+const telegramDefaultChatId =
+	Deno.env.get("TELEGRAM_REPORT_CHAT_ID") ??
+	Deno.env.get("TELEGRAM_CHAT_ID") ??
+	Deno.env.get("TELELEGRAM_CHAT_ID");
 
 function jsonResponse(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body), {
@@ -26,7 +36,7 @@ function fail(message: string, status = 400) {
 	return jsonResponse({ error: message }, status);
 }
 
-async function callOpenAI(messages: unknown[], model = "gpt-4o-mini") {
+async function callOpenAI(messages: unknown[], model = openaiModelChat) {
 	if (!openaiApiKey) throw new Error("OPENAI_API_KEY tidak dikonfigurasi");
 
 	const res = await fetch(`${openaiBaseUrl}/chat/completions`, {
@@ -143,7 +153,7 @@ Jika ada informasi yang tidak bisa dibaca, gunakan null atau 0. confidence antar
 						],
 					},
 				],
-				"gpt-4o"
+				openaiModelVision
 			);
 
 			const jsonMatch = content.match(/\{[\s\S]*\}/);
