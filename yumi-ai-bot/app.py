@@ -238,6 +238,17 @@ async def _ask_yumi_ai(
 # Commands
 # ===================================================================
 
+async def _reply_msg(update, context, text, **kwargs):
+    msg = update.message
+    if msg is None and update.callback_query:
+        msg = update.callback_query.message
+    if msg:
+        return await msg.reply_text(text, **kwargs)
+    return await context.bot.send_message(
+        chat_id=update.effective_chat.id, text=text, **kwargs
+    )
+
+
 def _reply_keyboard() -> InlineKeyboardMarkup:
     """Quick action inline keyboard for /start and fallback."""
     return InlineKeyboardMarkup([
