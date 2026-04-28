@@ -517,8 +517,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     data = query.data
 
-    # Route callback to corresponding command
-    cmd_map = {
+    handlers = {
         "kpi": cmd_kpi_hari_ini,
         "top": cmd_top_produk,
         "stok": cmd_stok_menipis,
@@ -528,10 +527,13 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "help": cmd_help,
     }
 
-    handler = cmd_map.get(data)
-    if handler:
-        # Build a synthetic message update
-        await handler(update, context)
+    handler_fn = handlers.get(data)
+    if handler_fn:
+        # Monkey-patch: callback query has no update.message, but handlers need it.
+        # The CallbackQuery's message IS the chat message — inject it.
+        update.message = query.message
+        update.effective_message = query.message
+        await handler_fn(update, context)
     else:
         await query.edit_message_text("Menu tidak dikenal.", reply_markup=_reply_keyboard())
 
