@@ -1,5 +1,6 @@
 ﻿import { createClient } from "@/lib/client";
 import { useAction, useMutation } from "@/lib/backend-bridge";
+import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback } from "react";
 
 type FunctionReference<_Kind extends "mutation" | "action"> = unknown;
@@ -2424,6 +2425,7 @@ export function useHybridRecordStockPurchase() {
 
 export function useHybridCreateOrder() {
 	const fallback = useMutation(api.orders.createOrder);
+	const { user: currentUser } = useYumiAuth();
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) {
@@ -2486,7 +2488,7 @@ export function useHybridCreateOrder() {
 					payment_gateway: args?.paymentGateway ?? null,
 					gateway_invoice_id: args?.paymentGateway?.invoiceId ?? null,
 					creation_time: orderCreatedAt,
-					raw: args ?? {},
+					raw: { ...(args ?? {}), authUserId: currentUser?._id ?? null },
 				};
 
 				const { error: orderError } = await pos.from("orders").insert(orderRow);
