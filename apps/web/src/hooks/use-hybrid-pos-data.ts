@@ -1243,10 +1243,60 @@ async function fetchStaffUsers() {
 
 export async function fetchShiftStatus() {
 	const supabase = createClient();
-	const { data, error } = await supabase
-		.from("pos_shift_reports")
-		.select("*")
-		.order("start_time", { ascending: false });
+
+	// Try the full view first; fall back to lightweight direct query on timeout
+	let data: any[] | null = null;
+	let error: any = null;
+
+	try {
+		const result = await supabase
+			.from("pos_shift_reports")
+			.select("*")
+			.order("start_time", { ascending: false });
+		data = result.data;
+		error = result.error;
+	} catch (_err) {
+		error = _err;
+	}
+
+	// Fallback: pos_shift_reports view timed out (statement_timeout) — use direct pos_shifts query
+	if (error && (error?.code === "57014" || String(error?.message ?? "").includes("timeout"))) {
+		console.warn("[hybrid] pos_shift_reports timed out, falling back to direct pos_shifts query");
+		const fb = await supabase
+			.from("pos_shifts")
+			.select("*")
+			.order("start_time", { ascending: false });
+
+		if (fb.error) throw fb.error;
+
+		// Map direct pos_shifts rows to the same shape expected by the rest of the code
+		data = (fb.data ?? []).map((row: any) => ({
+			shift_id: row._id,
+			shift_name: row.shiftName ?? "Shift",
+			cashier_name: row.cashierName ?? "",
+			team_members: row.teamMembers ?? "",
+			start_time: row.startTime,
+			end_time: row.endTime ?? null,
+			status: row.endTime ? "SELESAI" : "AKTIF",
+			starting_cash: row.startingCash ?? 0,
+			cash_revenue: row.summary?.cashRevenue ?? 0,
+			qris_revenue: row.summary?.qrisRevenue ?? 0,
+			other_revenue: 0,
+			total_revenue: row.summary?.totalRevenue ?? 0,
+			total_discount: row.summary?.totalDiscount ?? 0,
+			total_expenses: row.summary?.totalExpenses ?? 0,
+			total_items_sold: row.summary?.totalItemsSold ?? 0,
+			target_revenue: null,
+			has_target: false,
+			daily_target: 0,
+			shift_target: 0,
+			daily_collected: 0,
+			shift_collected: row.summary?.totalRevenue ?? 0,
+			is_shift_target_met: false,
+			is_daily_target_met: false,
+		}));
+		error = null; // clear the error since we recovered
+	}
 
 	if (error) throw error;
 
