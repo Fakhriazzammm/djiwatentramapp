@@ -81,6 +81,7 @@ import {
 	useHybridShiftStatus,
 	useHybridStaffUsers,
 	useHybridSiteSettings,
+	fetchShiftStatus,
 } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridAllTransactions,
@@ -1995,7 +1996,8 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		bill100000: 0, bill50000: 0, bill20000: 0, bill10000: 0, bill5000: 0, bill2000: 0, bill1000: 0, bill500: 0, bill200: 0, bill100: 0
 	});
 
-	const shiftStatus = useHybridShiftStatus();
+	const [shiftRefreshTrigger, setShiftRefreshTrigger] = useState(0);
+	const shiftStatus = useHybridShiftStatus(shiftRefreshTrigger);
 	const siteSettings = useHybridSiteSettings();
 	const todayOrders = useHybridOrders();
 	const selectedShiftSchedule = useMemo(() => {
@@ -2122,6 +2124,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					notes,
 				});
 				toast.success("Shift berhasil dimulai");
+				setShiftRefreshTrigger((c) => c + 1);
 			} else {
 				if (!shiftStatus?.shiftInfo?.shiftId) {
 					// Fallback if it's a legacy shift without ID

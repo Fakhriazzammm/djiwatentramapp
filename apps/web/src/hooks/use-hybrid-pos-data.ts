@@ -291,9 +291,10 @@ function safeNum(value: unknown) {
 function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
-	deps: readonly unknown[]
+	deps: readonly unknown[],
+	options?: { refreshTrigger?: number }
 ) {
-	return useSupabaseLiveValue(key, load, deps);
+	return useSupabaseLiveValue(key, load, deps, options);
 }
 
 function getHppCostPerBaseUnit(ingredient: HppIngredientRecord) {
@@ -1792,8 +1793,8 @@ export function useHybridStaffUsers() {
 	return supabaseData as StaffUserRecord[] | undefined;
 }
 
-export function useHybridShiftStatus() {
-	const supabaseData = useSupabaseValue("shift-status", fetchShiftStatus, []);
+export function useHybridShiftStatus(refreshTrigger?: number) {
+	const supabaseData = useSupabaseValue("shift-status", fetchShiftStatus, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
 	return supabaseData as ShiftStatusRecord | undefined;
 }
 

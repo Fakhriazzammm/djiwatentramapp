@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/client";
 
 type UseSupabaseLiveValueOptions = {
 	realtimeSchemas?: string[];
 	refreshMs?: number;
+	refreshTrigger?: number;
 };
 
 const hasSupabaseConfig = Boolean(
@@ -18,6 +19,7 @@ export function useSupabaseLiveValue<T>(
 	options?: UseSupabaseLiveValueOptions
 ) {
 	const [data, setData] = useState<T | null>(null);
+	const reloadFnRef = useRef<() => Promise<void>>(async () => {});
 
 	useEffect(() => {
 		if (!hasSupabaseConfig) {
@@ -49,6 +51,7 @@ export function useSupabaseLiveValue<T>(
 			}
 		};
 
+		reloadFnRef.current = reload;
 		void reload();
 
 		let channel = supabase.channel(channelName);
@@ -76,7 +79,7 @@ export function useSupabaseLiveValue<T>(
 			window.clearInterval(timer);
 			void supabase.removeChannel(channel);
 		};
-	}, [key, ...deps]);
+	}, [key, ...deps, options?.refreshTrigger]);
 
 	return data;
 }
