@@ -1127,10 +1127,36 @@ async def _send_daily_summary(app):
         date_str = now.strftime("%d/%m/%Y")
         end_ms = int(now.timestamp() * 1000)
 
-        # Orders
+        # ── Shifts today ──
+        shift_rows = await _fetch(
+            "pos_shift_reports",
+            "select=shift_name,status,cashier_name,team_members,order_count,"
+            "total_revenue,total_expenses"
+            f"&start_time=gte.{start_ms}&order=start_time.desc&limit=10",
+        )
+        # Deduplicate: AKTIF first, then 1 SELESAI per name if no AKTIF
+        active_names = set()
+        shifts = []
+        for s in shift_rows:
+            if s.get("status") == "AKTIF":
+                active_names.add(s["shift_name"])
+                shifts.append(s)
+        seen = set()
+        for s in shift_rows:
+            if s.get("status") == "AKTIF":
+                continue
+            name = s["shift_name"]
+            if name in active_names:
+                continue
+            key = (name, s.get("status", ""))
+            if key not in seen:
+                seen.add(key)
+                shifts.append(s)
+
+        # ── Orders ──
         orders = await _fetch(
             "pos_orders",
-            f"select=orderNumber,totalAmount,paymentMethod,createdAt,items"
+            f"select=orderNumber,totalAmount,paymentMethod,createdAt"
             f"&status=eq.completed"
             f"&_creationTime=gte.{start_ms}"
             f"&_creationTime=lte.{end_ms}"
@@ -1138,29 +1164,24 @@ async def _send_daily_summary(app):
         )
 
         total_omzet = 0.0
+        tunai = 0.0; qris = 0.0
         order_lines = []
         for o in orders:
             ts = int(float(o.get("createdAt") or o.get("_creationTime") or 0))
             order_no = o.get("orderNumber", "???")
             amount = float(o.get("totalAmount") or 0)
             payment = (o.get("paymentMethod") or "-").upper()
-
-            shift = await _find_shift_at_time(ts)
-            cashier = shift.get("cashier_name", "?")
-            team = shift.get("team_members", "")
-
             total_omzet += amount
-            line = f"✅ `{order_no}`  Rp{amount:,.0f}  {payment}"
-            line += f"  🕐{_format_time_ms(ts, '%H:%M')}"
-            line += f"  👥{cashier}"
-            if team:
-                line += f" | {team}"
-            order_lines.append(line)
+            if payment in ("TUNAI", "CASH"): tunai += amount
+            elif payment in ("QRIS", "TRANSFER"): qris += amount
+            order_lines.append(
+                f"✅ `{order_no}`  Rp{amount:,.0f}  {payment}  🕐{_format_time_ms(ts, '%H:%M')}"
+            )
 
-        # Expenses
+        # ── Expenses ──
         fin_rows = await _fetch(
             "pos_financial_transactions",
-            f"select=amount,category,description"
+            f"select=amount,category"
             f"&type=eq.expense"
             f"&date=gte.{start_ms}"
             f"&date=lte.{end_ms}"
@@ -1168,18 +1189,42 @@ async def _send_daily_summary(app):
         )
 
         total_expense = 0.0
-        expense_lines = []
+        expense_by_cat = Counter()
         for x in fin_rows:
             amount = float(x.get("amount") or 0)
             cat = x.get("category") or "Lainnya"
             total_expense += amount
-            expense_lines.append(f"💸 {cat}  Rp{amount:,.0f}")
+            expense_by_cat[cat] += amount
 
-        # Build report
+        # ── Build report ──
         lines = [f"📊 *Ringkasan {date_str}*", ""]
+
+        # Per-shift header
+        for s in shifts:
+            name = s["shift_name"]
+            cashier = s.get("cashier_name") or "?"
+            team = s.get("team_members") or ""
+            is_active = s.get("status") == "AKTIF"
+            icon = "🟢" if is_active else "⚫"
+            rev = float(s.get("total_revenue") or 0)
+            exp = float(s.get("total_expenses") or 0)
+            orders_n = int(s.get("order_count") or 0)
+
+            header = f"{icon} *{name}* — {cashier}"
+            if team:
+                header += f" | Tim: {team}"
+            header += f"  ({orders_n} order | Omzet Rp{rev:,.0f} | Biaya Rp{exp:,.0f})"
+            lines.append(header)
+        lines.append("")
+
         lines.append(f"🧾 {len(orders)} Transaksi Masuk")
+        if tunai or qris:
+            parts = []
+            if tunai: parts.append(f"Tunai Rp{tunai:,.0f}")
+            if qris: parts.append(f"QRIS Rp{qris:,.0f}")
+            lines.append(f"   {' | '.join(parts)}")
         lines.append(f"💰 Total Omzet: Rp{total_omzet:,.0f}")
-        if expense_lines:
+        if total_expense > 0:
             lines.append(f"💸 {len(fin_rows)} Pengeluaran: Rp{total_expense:,.0f}")
         lines.append(f"🏦 Kas Bersih: Rp{total_omzet - total_expense:,.0f}")
         lines.append("")
@@ -1189,9 +1234,10 @@ async def _send_daily_summary(app):
             lines.extend(order_lines)
             lines.append("")
 
-        if expense_lines:
+        if expense_by_cat:
             lines.append("📤 *Detail Pengeluaran:*")
-            lines.extend(expense_lines)
+            for cat, amt in expense_by_cat.most_common():
+                lines.append(f"💸 {cat}  Rp{amt:,.0f}")
 
         await _send_to_group(app, "\n".join(lines))
         logger.info("Daily summary sent to group %s", REPORT_GROUP_ID)
