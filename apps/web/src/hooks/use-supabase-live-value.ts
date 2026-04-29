@@ -18,7 +18,7 @@ export function useSupabaseLiveValue<T>(
 	deps: readonly unknown[],
 	options?: UseSupabaseLiveValueOptions
 ) {
-	const [data, setData] = useState<T | null>(null);
+	const [data, setData] = useState<T | null | undefined>(undefined);
 	const reloadFnRef = useRef<() => Promise<void>>(async () => {});
 
 	useEffect(() => {
