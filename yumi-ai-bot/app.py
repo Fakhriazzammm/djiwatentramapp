@@ -31,10 +31,15 @@ ALLOWED_USERS = {
 TELEGRAM_REPORT_CHAT_ID = os.getenv("TELEGRAM_REPORT_CHAT_ID", "")
 REPORT_GROUP_ID = int(os.getenv("AUTO_REPORT_GROUP_ID", "-5044633519"))
 BARISTA_GROUP_ID = int(os.getenv("BARISTA_GROUP_ID", "-5044633519"))
+KITCHEN_GROUP_ID = int(os.getenv("KITCHEN_GROUP_ID", "-5199093599"))
 
 # Beverage category tracking
 _BEVERAGE_CATEGORY_IDS: set[str] = set()
 _BEVERAGE_PRODUCT_IDS: set[str] = set()
+
+# Food category tracking
+_FOOD_CATEGORY_IDS: set[str] = set()
+_FOOD_PRODUCT_IDS: set[str] = set()
 
 # Dedup: track already-reported orders to prevent re-sending
 _reported_order_nos: set[str] = set()
@@ -1149,6 +1154,81 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
         logger.error("send_barista_notification failed for %s: %s", order_no, e)
 
 
+async def _build_food_lookup():
+    """Fetch all food-category product IDs. Called once at startup."""
+    global _FOOD_CATEGORY_IDS, _FOOD_PRODUCT_IDS
+    try:
+        cats = await _fetch("pos_categories", "select=_id,name,parentId")
+        makanan_id = None
+        for c in cats:
+            if c.get("name", "").strip().lower() == "makanan":
+                makanan_id = c["_id"]
+                break
+        if not makanan_id:
+            logger.warning("build_food_lookup: 'Makanan' category not found")
+            return
+        food_cats = {makanan_id}
+        for c in cats:
+            if c.get("parentId") == makanan_id:
+                food_cats.add(c["_id"])
+        _FOOD_CATEGORY_IDS = food_cats
+        logger.info("Food category IDs: %s", _FOOD_CATEGORY_IDS)
+        products = await _fetch("pos_products", "select=_id,categoryId&limit=500")
+        _FOOD_PRODUCT_IDS = {
+            p["_id"]
+            for p in products
+            if p.get("categoryId") in _FOOD_CATEGORY_IDS
+        }
+        logger.info("Food product IDs loaded: %d", len(_FOOD_PRODUCT_IDS))
+    except Exception as e:
+        logger.warning("build_food_lookup failed: %s", e)
+
+
+def _is_food_item(item: dict) -> bool:
+    pid = item.get("productId", "")
+    return pid in _FOOD_PRODUCT_IDS
+
+
+def _get_food_items(items: list) -> list[dict]:
+    return [i for i in items if _is_food_item(i)]
+
+
+async def _send_kitchen_notification(app, order_no: str, customer: str, order_type: str, food_items: list[dict], ts_ms: int):
+    """Send kitchen-focused notification — only food items shown."""
+    type_labels = {
+        "dine_in": "🍽 Dine-in",
+        "takeaway": "🛍 Takeaway",
+        "online": "📱 Online",
+    }
+    type_label = type_labels.get(order_type, f"📋 {order_type}")
+
+    item_lines = []
+    for item in food_items:
+        qty = int(float(item.get("quantity", 1)))
+        name = (item.get("productName") or "?").strip()
+        variant = item.get("variant")
+        if variant:
+            item_lines.append(f"  • {qty}× {name}  *({variant})*")
+        else:
+            item_lines.append(f"  • {qty}× {name}")
+
+    lines = [
+        f"🍳 *PESANAN BARU — KITCHEN* 🕐 {_format_time_hm(ts_ms)}",
+        f"`{order_no}`  |  {type_label}  |  👤 {customer}",
+        "",
+        "📋 *Makanan:*",
+    ]
+    lines.extend(item_lines)
+    lines.append("")
+    lines.append("⏳ Mohon segera dibuat!")
+
+    try:
+        await app.bot.send_message(chat_id=KITCHEN_GROUP_ID, text="\n".join(lines))
+        logger.info("Kitchen notification sent for %s (%d food items)", order_no, len(food_items))
+    except Exception as e:
+        logger.error("send_kitchen_notification failed for %s: %s", order_no, e)
+
+
 async def _check_new_transactions(app):
     """Poll for new orders and expenses, report to group."""
     global _last_order_check_ms, _last_expense_check_ms, _reported_order_nos
@@ -1218,6 +1298,12 @@ async def _check_new_transactions(app):
             bev_items = _get_beverage_items(items)
             if bev_items:
                 await _send_barista_notification(app, order_no, customer, order_type, bev_items, ts)
+                await asyncio.sleep(0.3)
+
+            # ── Kitchen notification: only if order has food items ──
+            food_items = _get_food_items(items)
+            if food_items:
+                await _send_kitchen_notification(app, order_no, customer, order_type, food_items, ts)
                 await asyncio.sleep(0.3)
 
             # Mark as reported
@@ -1396,6 +1482,9 @@ async def _start_auto_reporter(app):
 
     # Build beverage product lookup for barista notifications
     await _build_beverage_lookup()
+
+    # Build food product lookup for kitchen notifications
+    await _build_food_lookup()
 
     # Daily summary at 22:00 WIB (15:00 UTC)
     scheduler = AsyncIOScheduler(timezone="Asia/Jakarta")
