@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import base64
 import logging
@@ -289,6 +290,40 @@ def _ocr_action_keyboard(amount: float = 0, merchant: str = "") -> InlineKeyboar
             InlineKeyboardButton("❌ Batal", callback_data="ocr_cancel"),
         ],
     ])
+
+
+def _parse_ocr_reply(reply_text):
+    """Parse Yumi AI OCR reply to extract total amount and merchant name."""
+    amount = 0.0
+    merchant = ""
+
+    total_patterns = [
+        r'💰\s*\*?TOTAL:?\*?\s*Rp\s*([\d.,]+)',
+        r'\*\*TOTAL:?\*\*\s*Rp\s*([\d.,]+)',
+        r'TOTAL:?\s*Rp\s*([\d.,]+)',
+    ]
+    for pat in total_patterns:
+        m = _re_mod.search(pat, reply_text)
+        if m:
+            raw = m.group(1).replace('.', '').replace(',', '.')
+            try:
+                amount = float(raw)
+            except ValueError:
+                amount = 0.0
+            break
+
+    merchant_patterns = [
+        r'🏪\s*\*?Merchant:?\*?\s*(.+?)(?:\n|$)',
+        r'\*\*Merchant:?\*\*\s*(.+?)(?:\n|$)',
+        r'Merchant:?\s*(.+?)(?:\n|$)',
+    ]
+    for pat in merchant_patterns:
+        m = _re_mod.search(pat, reply_text)
+        if m:
+            merchant = m.group(1).strip()
+            break
+
+    return amount, merchant
 
 
 # ===================================================================
@@ -902,8 +937,12 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             action="yumiChat",
         )
 
+        # Parse OCR reply to extract amount & merchant for the save buttons
+        ocr_amount, ocr_merchant = _parse_ocr_reply(reply)
+
         # Add OCR action buttons
-        await _reply_msg(update, context, reply, parse_mode="HTML", reply_markup=_ocr_action_keyboard())
+        await _reply_msg(update, context, reply, parse_mode="HTML",
+                         reply_markup=_ocr_action_keyboard(ocr_amount, ocr_merchant))
 
     except Exception as e:
         logger.exception("Photo handling failed")
