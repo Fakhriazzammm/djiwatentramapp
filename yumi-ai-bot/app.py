@@ -1476,6 +1476,17 @@ async def _send_daily_summary(app):
         logger.exception("send_daily_summary failed")
 
 
+async def _refresh_product_lookups():
+    """Periodically refresh beverage and food product lookups for new products."""
+    try:
+        await _build_beverage_lookup()
+        await _build_food_lookup()
+        logger.info("Product lookups refreshed (beverage=%d, food=%d)",
+                     len(_BEVERAGE_PRODUCT_IDS), len(_FOOD_PRODUCT_IDS))
+    except Exception as e:
+        logger.warning("refresh_product_lookups failed: %s", e)
+
+
 async def _start_auto_reporter(app):
     """Start polling loop and daily summary scheduler."""
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -1495,6 +1506,13 @@ async def _start_auto_reporter(app):
         minute=0,
         args=[app],
         id="daily_summary",
+    )
+    # Refresh product lookups every 15 minutes to pick up new products
+    scheduler.add_job(
+        _refresh_product_lookups,
+        "interval",
+        minutes=15,
+        id="refresh_product_lookups",
     )
     scheduler.start()
     logger.info("Auto-reporter: daily summary scheduled at 22:00 WIB")
