@@ -421,7 +421,8 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _reply_msg(update, context, 
         "💡 *Cara pakai Yumi AI*\n\n"
         "📋 *Commands:*\n"
-        "/ringkasan — Ringkasan harian lengkap\n"
+        "/ringkasan — Ringkasan (default: hari ini)\n"
+        "  └ Filter: /ringkasan kemarin / minggu_ini / bulan_ini\n"
         "/top_produk — Produk terlaris\n"
         "/stok_menipis — Stok yang perlu dibeli\n"
         "/absen_hari_ini — Absensi staff\n"
@@ -435,29 +436,105 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+# ── Period helpers ──
+PERIOD_LABELS = {
+    "hari_ini": "Hari Ini",
+    "kemarin": "Kemarin",
+    "minggu_ini": "Minggu Ini",
+    "minggu_kemarin": "Minggu Kemarin",
+    "bulan_ini": "Bulan Ini",
+    "bulan_kemarin": "Bulan Kemarin",
+}
+
+def _parse_period(text: str | None) -> tuple[str, int, int, str]:
+    """Parse period from command text. Returns (period_key, start_ms, end_ms, label)."""
+    now = _now_wib()
+    arg = (text or "").strip().lower().replace("/ringkasan_hari_ini", "").replace("/ringkasan", "").strip()
+    period = arg if arg in PERIOD_LABELS else "hari_ini"
+
+    sod = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    if period == "hari_ini":
+        start = sod
+        end = now
+    elif period == "kemarin":
+        start = sod - timedelta(days=1)
+        end = sod
+    elif period == "minggu_ini":
+        start = sod - timedelta(days=now.weekday())  # Monday
+        end = now
+    elif period == "minggu_kemarin":
+        this_monday = sod - timedelta(days=now.weekday())
+        start = this_monday - timedelta(days=7)
+        end = this_monday
+    elif period == "bulan_ini":
+        start = sod.replace(day=1)
+        end = now
+    elif period == "bulan_kemarin":
+        first_this_month = sod.replace(day=1)
+        start = (first_this_month - timedelta(days=1)).replace(day=1)
+        end = first_this_month
+    else:
+        start = sod
+        end = now
+
+    return period, int(start.timestamp() * 1000), int(end.timestamp() * 1000), PERIOD_LABELS.get(period, period)
+
+
+def _period_keyboard(current_period: str = "hari_ini") -> InlineKeyboardMarkup:
+    """Inline keyboard with period filter buttons."""
+    buttons = []
+    row = []
+    for key, label in PERIOD_LABELS.items():
+        prefix = "✅ " if key == current_period else ""
+        row.append(InlineKeyboardButton(f"{prefix}{label}", callback_data=f"ringkasan_period:{key}"))
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+    return InlineKeyboardMarkup(buttons)
+
+
 async def cmd_ringkasan_hari_ini(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not _is_allowed(update):
         await _reply_msg(update, context, "Unauthorized")
         return
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     try:
-        now = _now_wib()
-        start_ms = _start_of_day_ms(now)
-        date_str = now.strftime("%d/%m/%Y")
+        # Parse period — check callback data first, then command text
+        period = "hari_ini"
+        if update.callback_query and update.callback_query.data.startswith("ringkasan_period:"):
+            period = update.callback_query.data.split(":", 1)[1]
+        elif update.message and update.message.text:
+            _, _, _, _ = _parse_period(update.message.text)
+            period = _parse_period(update.message.text)[0]
 
-        # ── 1) Completed orders today ──
+        period_key, start_ms, end_ms, period_label = _parse_period(f"/ringkasan {period}")
+
+        date_fmt = "%d/%m" if period_key in ("minggu_ini", "minggu_kemarin", "bulan_ini", "bulan_kemarin") else "%d/%m/%Y"
+        if period_key in ("minggu_ini", "minggu_kemarin"):
+            sd = datetime.fromtimestamp(start_ms / 1000, tz=WIB)
+            ed = datetime.fromtimestamp((end_ms - 1) / 1000, tz=WIB) if end_ms else _now_wib()
+            date_str = f"{sd.strftime(date_fmt)} – {ed.strftime(date_fmt)}"
+        elif period_key in ("bulan_ini", "bulan_kemarin"):
+            sd = datetime.fromtimestamp(start_ms / 1000, tz=WIB)
+            date_str = sd.strftime("%B %Y")
+        else:
+            sd = datetime.fromtimestamp(start_ms / 1000, tz=WIB)
+            date_str = sd.strftime(date_fmt)
+
+        # ── 1) Completed orders in period ──
         q_orders = (
-            "select=orderNumber,totalAmount,status,paymentMethod,discountAmount,"
-            "items,customerName,createdAt,_creationTime"
-            f"&status=eq.completed&_creationTime=gte.{start_ms}&order=_creationTime.desc"
+            "select=totalAmount,paymentMethod,discountAmount,items"
+            f"&status=eq.completed&_creationTime=gte.{start_ms}"
+            + (f"&_creationTime=lte.{end_ms}" if end_ms else "")
+            + "&order=_creationTime.desc&limit=500"
         )
         orders = await _fetch("pos_orders", q_orders)
 
-        # Aggregate total
         total_cash = 0.0; total_qris = 0.0; total_other = 0.0
         total_discount = 0.0; total_items_sold = 0
         items_by_name = Counter()
-
         for o in orders:
             amt = float(o.get("totalAmount") or 0)
             pm = (o.get("paymentMethod") or "").lower()
@@ -470,184 +547,117 @@ async def cmd_ringkasan_hari_ini(update: Update, context: ContextTypes.DEFAULT_T
                 qty = int(float(item.get("quantity") or 0))
                 items_by_name[name] += qty
                 total_items_sold += qty
-
         total_revenue = total_cash + total_qris + total_other
         total_gross = total_revenue + total_discount
 
         # ── 2) Financial transactions ──
-        q_fin = f"select=amount,type,category,description,date&date=gte.{start_ms}"
+        q_fin = f"select=amount,type,category&type=eq.expense&date=gte.{start_ms}"
+        if end_ms:
+            q_fin += f"&date=lte.{end_ms}"
         fin_rows = await _fetch("pos_financial_transactions", q_fin)
         expense_by_cat = Counter()
         total_expense = 0.0
         for x in fin_rows:
-            if x.get("type") == "expense":
-                amt = float(x.get("amount") or 0)
-                expense_by_cat[x.get("category") or "Lainnya"] += amt
-                total_expense += amt
+            amt = float(x.get("amount") or 0)
+            expense_by_cat[x.get("category") or "Lainnya"] += amt
+            total_expense += amt
         net_balance = total_revenue - total_expense
 
-        # ── 3) Shift reports ──
+        # ── 3) Shift reports (deduplicated) ──
         shift_rows = await _fetch(
             "pos_shift_reports",
-            "select=shift_name,status,order_count,daily_collected,shift_collected,"
+            "select=shift_name,status,shift_collected,order_count,"
             "start_time,end_time,cashier_name,team_members,starting_cash,"
-            "cash_revenue,qris_revenue,other_revenue,total_revenue,total_gross_sales,"
-            "total_discount,total_items_sold,total_expenses"
-            f"&start_time=gte.{start_ms}&order=start_time.desc&limit=20",
+            "total_revenue,total_gross_sales,total_discount,total_items_sold,total_expenses"
+            f"&start_time=gte.{start_ms}"
+            + (f"&start_time=lte.{end_ms}" if end_ms else "")
+            + "&order=start_time.desc&limit=20",
         )
 
-        # ── 4) Build report ──
+        # Deduplicate: keep latest per (shift_name, status), active shifts always kept
+        seen = set()
+        deduped = []
+        active_shifts = []
+        for s in shift_rows:
+            key = (s["shift_name"], s.get("status", ""))
+            if s.get("status") == "AKTIF":
+                active_shifts.append(s)
+                deduped.append(s)
+            elif key not in seen:
+                seen.add(key)
+                deduped.append(s)
+
+        # ── 4) Build compact report ──
         lines = [
-            "📊 Daily Revenue Report",
+            f"📊 *Ringkasan {period_label}*",
             f"Djiwa Tentram Cafe & Resto",
-            f"📅 Tanggal: {date_str}",
-            f"---",
+            f"📅 {date_str}",
+            "",
         ]
 
-        # Per-shift breakdown (like dashboard)
-        if shift_rows:
-            for idx, s in enumerate(shift_rows):
-                s_start = s.get("start_time")
-                s_end = s.get("end_time")
-                if not s_start:
-                    continue
-
-                s_start_ms = int(s_start)
-                s_end_ms = int(s_end) if s_end else int(now.timestamp() * 1000)
-
-                # Filter orders by shift time window
-                s_orders = [o for o in orders if o.get("createdAt") and s_start_ms <= o["createdAt"] <= s_end_ms]
-                s_cash = 0.0; s_qris = 0.0; s_other = 0.0; s_discount = 0.0; s_items = 0
-                s_items_by_name = Counter()
-
-                for o in s_orders:
-                    amt = float(o.get("totalAmount") or 0)
-                    pm = (o.get("paymentMethod") or "").lower()
-                    if pm in ("cash", "tunai"): s_cash += amt
-                    elif pm in ("qris", "transfer"): s_qris += amt
-                    else: s_other += amt
-                    s_discount += float(o.get("discountAmount") or 0)
-                    for item in (o.get("items") or []):
-                        name = (item.get("productName") or "Unknown").strip()
-                        qty = int(float(item.get("quantity") or 0))
-                        s_items_by_name[name] += qty
-                        s_items += qty
-
-                s_revenue = s_cash + s_qris + s_other
-                s_gross = s_revenue + s_discount
-
-                # Filter expenses by shift time window
-                s_expenses = 0.0
-                for x in fin_rows:
-                    if x.get("type") != "expense":
-                        continue
-                    d = x.get("date")
-                    if d and s_start_ms <= d <= s_end_ms:
-                        s_expenses += float(x.get("amount") or 0)
-
-                # Shift modal/starting_cash
-                starting_cash = float(s.get("starting_cash") or 0)
-                team = s.get("team_members") or "-"
-                cashier = s.get("cashier_name") or "Kasir"
-                shift_name = s.get("shift_name") or f"Shift {idx+1}"
-                status = s.get("status") or "?"
+        # Shift summary — 1 line per shift
+        if deduped:
+            for s in deduped:
+                name = s["shift_name"]
+                status = s.get("status", "?")
                 is_active = status == "AKTIF"
-                status_label = " (AKTIF)" if is_active else (" (SELESAI)" if s_end else "")
+                icon = "🟢" if is_active else "⚫"
+                cashier = s.get("cashier_name") or "?"
+                start_cash = float(s.get("starting_cash") or 0)
+                rev = float(s.get("total_revenue") or 0)
+                exp = float(s.get("total_expenses") or 0)
+                gross = float(s.get("total_gross_sales") or 0)
+                items = int(s.get("total_items_sold") or 0)
+                orders_n = int(s.get("order_count") or 0)
+                collected = float(s.get("shift_collected") or 0)
+                team = s.get("team_members") or ""
+                status_badge = " [AKTIF]" if is_active else ""
 
-                # Top 3 per shift
-                s_top3 = s_items_by_name.most_common(3)
-
-                lines.append(
-                    f"👥 {shift_name.upper()}{status_label}"
-                )
-                if is_active:
-                    lines.append(f"   🟢 SHIFT SEDANG BERJALAN")
-                lines.append(f"   Modal Kasir: Rp {starting_cash:,.0f}")
-                lines.append(f"   Tunai: Rp {s_cash:,.0f}")
-                lines.append(f"   Debit/QRIS: Rp {s_qris:,.0f}")
-                if s_other > 0:
-                    lines.append(f"   Lainnya: Rp {s_other:,.0f}")
-                lines.append(f"")
-                lines.append(f"   Total Penjualan Bruto: Rp {s_gross:,.0f}")
-                lines.append(f"   Total Potongan (Diskon): Rp {s_discount:,.0f}")
-                lines.append(f"   Total Revenue Bersih: Rp {s_revenue:,.0f}")
-                lines.append(f"")
-                lines.append(f"   Produk Terjual: {s_items}")
-                if s_top3:
-                    lines.append(f"   ⭐ TOP 3:")
-                    for i, (pn, pq) in enumerate(s_top3, 1):
-                        lines.append(f"     {i}. {pn}: {pq}")
-                lines.append(f"")
-                lines.append(f"   Pengeluaran Shift: Rp {s_expenses:,.0f}")
-                lines.append(f"")
-                lines.append(f"   Kasir: {cashier}")
-                if team and team != "-":
+                lines.append(f"{icon} *{name}*{status_badge} — {cashier}")
+                lines.append(f"   Modal Rp{start_cash:,.0f} | {orders_n} order | {items} item | Omzet Rp{gross:,.0f} | Biaya Rp{exp:,.0f}")
+                if is_active and collected > 0:
+                    lines.append(f"   📡 Real-time: Rp{collected:,.0f}")
+                if team:
                     lines.append(f"   Tim: {team}")
-                lines.append(f"---")
+                lines.append("")
         else:
-            lines.append("👥 BELUM ADA SHIFT HARI INI")
-            lines.append(f"---")
+            lines.append("👥 Belum ada shift untuk periode ini.\n")
 
-        # ── 5) Daily totals ──
-        lines.append(f"💰 TOTAL REVENUE HARIAN (NET):")
-        lines.append(f"Rp {total_revenue:,.0f}")
-        lines.append(f"📦 TOTAL PRODUK TERJUAL: {total_items_sold}")
-        lines.append(f"Total Penjualan Bruto (Gross): Rp {total_gross:,.0f}")
-        lines.append(f"Total Potongan (Diskon/Voucher): Rp {total_discount:,.0f}")
-        lines.append(f"Net Revenue Harian: Rp {total_revenue:,.0f}")
-        lines.append(f"")
+        # ── 5) Compact totals ──
+        lines.append("───")
+        lines.append(f"💰 *Total Omzet*: Rp{total_gross:,.0f} (Net: Rp{total_revenue:,.0f})")
+        lines.append(f"🏷️ Diskon: Rp{total_discount:,.0f}")
+        lines.append(f"📦 Produk Terjual: {total_items_sold}")
+        lines.append(f"💸 Pengeluaran: Rp{total_expense:,.0f}")
+        lines.append(f"🏦 Kas Bersih: Rp{net_balance:,.0f}")
 
-        # Top 3 harian
+        # Top 3
         top3 = items_by_name.most_common(3)
         if top3:
-            lines.append(f"⭐ TOP 3 PRODUK TERLARIS (HARIAN):")
-            for i, (pn, pq) in enumerate(top3, 1):
-                lines.append(f"  {i}. {pn}: {pq}")
-            lines.append(f"")
+            lines.append(f"⭐ Top 3: {', '.join(f'{n} ({q})' for n,q in top3)}")
 
-        # Expenses harian
-        lines.append(f"---")
-        if total_expense > 0:
-            lines.append(f"📝 RINGKASAN PENGELUARAN HARIAN")
-            for cat, amt in expense_by_cat.most_common(10):
-                lines.append(f"  {cat}: Rp {amt:,.0f}")
-            lines.append(f"Total Pengeluaran: Rp {total_expense:,.0f}")
-        else:
-            lines.append(f"📝 Belum ada pengeluaran hari ini")
-        lines.append(f"---")
-
-        # Final ringkasan
-        lines.append(f"📝 RINGKASAN HARIAN")
-        lines.append(f"{date_str} :")
-        lines.append(f"Grand Total Revenue (Net): Rp {total_revenue:,.0f}")
-        lines.append(f"Total Penjualan Bruto: Rp {total_gross:,.0f}")
-        lines.append(f"Total Potongan: Rp {total_discount:,.0f}")
-        lines.append(f"Total Pengeluaran: Rp {total_expense:,.0f}")
-        lines.append(f"Kas Bersih (Net): Rp {net_balance:,.0f}")
-        lines.append(f"Total Produk Terjual: {total_items_sold}")
-
-        # Active shift realtime KPI
-        active_shifts = [s for s in shift_rows if s.get("status") == "AKTIF"]
-        if active_shifts:
-            lines.append(f"")
-            lines.append(f"📡 REALTIME KPI (Shift Aktif):")
-            for s in active_shifts[:2]:
-                lines.append(
-                    f"  {s.get('shift_name','?')}: "
-                    f"{int(s.get('order_count') or 0)} order, "
-                    f"Rp {float(s.get('daily_collected') or float(s.get('shift_collected') or 0)):,.0f}"
-                )
+        # Expenses summary
+        if expense_by_cat:
+            exp_lines = [f"📝 Biaya: {cat} Rp{amt:,.0f}" for cat, amt in expense_by_cat.most_common(5)]
+            lines.append(" | ".join(exp_lines))
 
         text = "\n".join(lines)
 
-        # Split if too long
-        if len(text) <= 4000:
-            await _reply_msg(update, context, text, reply_markup=_reply_keyboard())
+        # Period keyboard + standard keyboard
+        kb = InlineKeyboardMarkup([
+            *_period_keyboard(period_key).inline_keyboard,
+            [InlineKeyboardButton("🔄 Refresh", callback_data=f"ringkasan_period:{period_key}")],
+        ])
+
+        if update.callback_query:
+            try:
+                await update.callback_query.edit_message_text(text, parse_mode="Markdown", reply_markup=kb)
+            except Exception:
+                await update.callback_query.edit_message_text(
+                    text.replace("*", ""), reply_markup=kb
+                )
         else:
-            chunks = [text[i:i+4000] for i in range(0, len(text), 4000)]
-            for i, chunk in enumerate(chunks):
-                await _reply_msg(update, context, chunk,
-                                 reply_markup=_reply_keyboard() if i == len(chunks)-1 else None)
+            await _reply_msg(update, context, text, parse_mode="Markdown", reply_markup=kb)
 
     except Exception as e:
         logger.exception("ringkasan failed")
@@ -822,6 +832,11 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "briefing": cmd_briefing_hari_ini,
         "help": cmd_help,
     }
+
+    # Period filter callbacks
+    if data.startswith("ringkasan_period:"):
+        await cmd_ringkasan_hari_ini(update, context)
+        return
 
     # OCR action callbacks (ocr_income_12345_MerchantName)
     if data.startswith("ocr_"):
