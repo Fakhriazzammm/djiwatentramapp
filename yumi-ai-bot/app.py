@@ -574,16 +574,23 @@ async def cmd_ringkasan_hari_ini(update: Update, context: ContextTypes.DEFAULT_T
             + "&order=start_time.desc&limit=20",
         )
 
-        # Deduplicate: keep latest per (shift_name, status), active shifts always kept
-        seen = set()
+        # Deduplicate: active shifts shown, SELESAI only if no AKTIF with same name
+        active_names = set()
         deduped = []
-        active_shifts = []
         for s in shift_rows:
-            key = (s["shift_name"], s.get("status", ""))
             if s.get("status") == "AKTIF":
-                active_shifts.append(s)
+                active_names.add(s["shift_name"])
                 deduped.append(s)
-            elif key not in seen:
+        # Add SELESAI shifts only for names not covered by AKTIF
+        seen = set()
+        for s in shift_rows:
+            if s.get("status") == "AKTIF":
+                continue
+            name = s["shift_name"]
+            if name in active_names:
+                continue  # skip — already shown as AKTIF
+            key = (name, s.get("status", ""))
+            if key not in seen:
                 seen.add(key)
                 deduped.append(s)
 
