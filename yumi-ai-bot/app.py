@@ -5,6 +5,7 @@ import logging
 import io
 from datetime import datetime, timedelta, timezone
 from collections import Counter
+import asyncio
 
 import httpx
 from dotenv import load_dotenv
@@ -27,6 +28,11 @@ ALLOWED_USERS = {
     if x.strip().isdigit()
 }
 TELEGRAM_REPORT_CHAT_ID = os.getenv("TELEGRAM_REPORT_CHAT_ID", "")
+REPORT_GROUP_ID = int(os.getenv("AUTO_REPORT_GROUP_ID", "-5044633519"))
+
+# Polling state for real-time transaction monitoring
+_last_order_check_ms = 0
+_last_expense_check_ms = 0
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
@@ -977,6 +983,251 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ===================================================================
+# Auto-Report: Real-time Transaction Monitor + Daily Summary
+# ===================================================================
+
+async def _find_shift_at_time(timestamp_ms: int) -> dict:
+    """Find active shift at a given timestamp. Returns {cashier_name, team_members, shift_name} or empty."""
+    try:
+        shifts = await _fetch(
+            "pos_shift_reports",
+            "select=cashier_name,team_members,shift_name,start_time,end_time"
+            f"&start_time=lte.{timestamp_ms}"
+            "&order=start_time.desc&limit=3",
+        )
+        for s in shifts:
+            s_start = int(s.get("start_time") or 0)
+            s_end = s.get("end_time")
+            if s_end is not None and timestamp_ms > int(s_end):
+                continue  # shift already closed before this time
+            return {
+                "cashier_name": s.get("cashier_name") or "",
+                "team_members": s.get("team_members") or "",
+                "shift_name": s.get("shift_name") or "",
+            }
+    except Exception as e:
+        logger.warning("find_shift_at_time failed: %s", e)
+    return {}
+
+
+async def _send_to_group(app, text: str):
+    """Send a message to the auto-report group."""
+    try:
+        await app.bot.send_message(chat_id=REPORT_GROUP_ID, text=text)
+    except Exception as e:
+        logger.error("send_to_group failed: %s", e)
+
+
+def _format_time_ms(ts_ms, fmt="%d/%m %H:%M"):
+    return datetime.fromtimestamp(ts_ms / 1000, tz=WIB).strftime(fmt)
+
+
+async def _check_new_transactions(app):
+    """Poll for new orders and expenses, report to group."""
+    global _last_order_check_ms, _last_expense_check_ms
+    now_ms = int(_now_wib().timestamp() * 1000)
+
+    # Initialize on first run
+    if _last_order_check_ms == 0:
+        _last_order_check_ms = now_ms - 60_000  # 1 min lookback
+    if _last_expense_check_ms == 0:
+        _last_expense_check_ms = now_ms - 60_000
+
+    try:
+        # ── Check new orders ──
+        orders = await _fetch(
+            "pos_orders",
+            f"select=orderNumber,totalAmount,paymentMethod,createdAt,items,customerName"
+            f"&status=eq.completed"
+            f"&_creationTime=gt.{_last_order_check_ms}"
+            f"&_creationTime=lte.{now_ms}"
+            f"&order=_creationTime.asc&limit=10",
+        )
+
+        for o in orders:
+            ts = int(float(o.get("createdAt") or o.get("_creationTime") or 0))
+            order_no = o.get("orderNumber", "???")
+            amount = float(o.get("totalAmount") or 0)
+            payment = (o.get("paymentMethod") or "-").upper()
+            customer = o.get("customerName") or "Pelanggan"
+            items = o.get("items") or []
+            item_list = ", ".join(
+                f"{i.get('productName', '?').strip()} x{int(float(i.get('quantity', 1)))}"
+                for i in items[:3]
+            )
+            if len(items) > 3:
+                item_list += f" +{len(items) - 3} item"
+
+            shift = await _find_shift_at_time(ts)
+            cashier = shift.get("cashier_name", "?")
+            team = shift.get("team_members", "")
+
+            lines = [
+                f"🧾 *Pesanan Baru* — {_format_time_ms(ts)}",
+                f"`{order_no}` | Rp{amount:,.0f} | {payment}",
+                f"📦 {item_list}",
+                f"👤 {customer}",
+                f"👥 Kasir: {cashier}" + (f" | Tim: {team}" if team else ""),
+            ]
+            await _send_to_group(app, "\n".join(lines))
+            # Brief pause between messages
+            await asyncio.sleep(0.3)
+
+        if orders:
+            _last_order_check_ms = max(
+                _last_order_check_ms,
+                max(int(float(o.get("createdAt") or o.get("_creationTime") or 0)) for o in orders),
+            )
+
+        # ── Check new expenses ──
+        fin_rows = await _fetch(
+            "pos_financial_transactions",
+            f"select=amount,category,description,date,metadata"
+            f"&type=eq.expense"
+            f"&date=gt.{_last_expense_check_ms}"
+            f"&date=lte.{now_ms}"
+            f"&order=date.asc&limit=10",
+        )
+
+        for x in fin_rows:
+            ts = int(float(x.get("date") or 0))
+            amount = float(x.get("amount") or 0)
+            cat = x.get("category") or "Lainnya"
+            desc = x.get("description") or ""
+
+            shift = await _find_shift_at_time(ts)
+            cashier = shift.get("cashier_name", "?")
+
+            lines = [
+                f"💸 *Pengeluaran* — {_format_time_ms(ts)}",
+                f"{cat} | Rp{amount:,.0f}",
+            ]
+            if desc:
+                lines.append(f"📝 {desc}")
+            if cashier:
+                lines.append(f"👥 Kasir: {cashier}")
+            await _send_to_group(app, "\n".join(lines))
+            await asyncio.sleep(0.3)
+
+        if fin_rows:
+            _last_expense_check_ms = max(
+                _last_expense_check_ms,
+                max(int(float(x.get("date") or 0)) for x in fin_rows),
+            )
+
+    except Exception as e:
+        logger.warning("check_new_transactions failed: %s", e)
+
+
+async def _send_daily_summary(app):
+    """Send daily summary report to group at 22:00 WIB."""
+    try:
+        now = _now_wib()
+        start_ms = _start_of_day_ms(now)
+        date_str = now.strftime("%d/%m/%Y")
+        end_ms = int(now.timestamp() * 1000)
+
+        # Orders
+        orders = await _fetch(
+            "pos_orders",
+            f"select=orderNumber,totalAmount,paymentMethod,createdAt,items"
+            f"&status=eq.completed"
+            f"&_creationTime=gte.{start_ms}"
+            f"&_creationTime=lte.{end_ms}"
+            f"&order=_creationTime.asc&limit=200",
+        )
+
+        total_omzet = 0.0
+        order_lines = []
+        for o in orders:
+            ts = int(float(o.get("createdAt") or o.get("_creationTime") or 0))
+            order_no = o.get("orderNumber", "???")
+            amount = float(o.get("totalAmount") or 0)
+            payment = (o.get("paymentMethod") or "-").upper()
+
+            shift = await _find_shift_at_time(ts)
+            cashier = shift.get("cashier_name", "?")
+            team = shift.get("team_members", "")
+
+            total_omzet += amount
+            line = f"✅ `{order_no}`  Rp{amount:,.0f}  {payment}"
+            line += f"  🕐{_format_time_ms(ts, '%H:%M')}"
+            line += f"  👥{cashier}"
+            if team:
+                line += f" | {team}"
+            order_lines.append(line)
+
+        # Expenses
+        fin_rows = await _fetch(
+            "pos_financial_transactions",
+            f"select=amount,category,description"
+            f"&type=eq.expense"
+            f"&date=gte.{start_ms}"
+            f"&date=lte.{end_ms}"
+            f"&order=date.asc&limit=50",
+        )
+
+        total_expense = 0.0
+        expense_lines = []
+        for x in fin_rows:
+            amount = float(x.get("amount") or 0)
+            cat = x.get("category") or "Lainnya"
+            total_expense += amount
+            expense_lines.append(f"💸 {cat}  Rp{amount:,.0f}")
+
+        # Build report
+        lines = [f"📊 *Ringkasan {date_str}*", ""]
+        lines.append(f"🧾 {len(orders)} Transaksi Masuk")
+        lines.append(f"💰 Total Omzet: Rp{total_omzet:,.0f}")
+        if expense_lines:
+            lines.append(f"💸 {len(fin_rows)} Pengeluaran: Rp{total_expense:,.0f}")
+        lines.append(f"🏦 Kas Bersih: Rp{total_omzet - total_expense:,.0f}")
+        lines.append("")
+
+        if order_lines:
+            lines.append("📥 *Detail Pesanan:*")
+            lines.extend(order_lines)
+            lines.append("")
+
+        if expense_lines:
+            lines.append("📤 *Detail Pengeluaran:*")
+            lines.extend(expense_lines)
+
+        await _send_to_group(app, "\n".join(lines))
+        logger.info("Daily summary sent to group %s", REPORT_GROUP_ID)
+
+    except Exception as e:
+        logger.exception("send_daily_summary failed")
+
+
+async def _start_auto_reporter(app):
+    """Start polling loop and daily summary scheduler."""
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+    # Daily summary at 22:00 WIB (15:00 UTC)
+    scheduler = AsyncIOScheduler(timezone="Asia/Jakarta")
+    scheduler.add_job(
+        _send_daily_summary,
+        "cron",
+        hour=22,
+        minute=0,
+        args=[app],
+        id="daily_summary",
+    )
+    scheduler.start()
+    logger.info("Auto-reporter: daily summary scheduled at 22:00 WIB")
+
+    # Real-time polling every 30 seconds
+    async def _poll_loop():
+        while True:
+            await asyncio.sleep(30)
+            await _check_new_transactions(app)
+
+    asyncio.create_task(_poll_loop())
+    logger.info("Auto-reporter: real-time polling started (30s interval)")
+
+
+# ===================================================================
 # HTTP Endpoint: /send-report
 # ===================================================================
 
@@ -1052,21 +1303,23 @@ def main():
 
     async def _post_init(application: Application):
         await _start_http_server(application, port=8001)
+        await _start_auto_reporter(application)
 
     app = Application.builder().token(BOT_TOKEN).post_init(_post_init).build()
 
     # Commands
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("help", cmd_help))
-    app.add_handler(CommandHandler("kpi_hari_ini", cmd_ringkasan_hari_ini))
+    app.add_handler(CommandHandler("ringkasan_hari_ini", cmd_ringkasan_hari_ini))
+    app.add_handler(CommandHandler("ringkasan", cmd_ringkasan_hari_ini))
     app.add_handler(CommandHandler("top_produk", cmd_top_produk))
     app.add_handler(CommandHandler("stok_menipis", cmd_stok_menipis))
     app.add_handler(CommandHandler("absen_hari_ini", cmd_absen_hari_ini))
     app.add_handler(CommandHandler("booking_aktif", cmd_booking_aktif))
     app.add_handler(CommandHandler("briefing_hari_ini", cmd_briefing_hari_ini))
 
-    # Alias
-    app.add_handler(CommandHandler("kpi_hari_ini", cmd_ringkasan_hari_ini))  # backward compat
+    # Alias (backward compat)
+    app.add_handler(CommandHandler("kpi_hari_ini", cmd_ringkasan_hari_ini))  # deprecated
 
     # Callbacks (inline keyboard)
     app.add_handler(CallbackQueryHandler(on_callback))
