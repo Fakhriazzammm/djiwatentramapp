@@ -1109,13 +1109,51 @@ async def _build_beverage_lookup():
         logger.warning("build_beverage_lookup failed: %s", e)
 
 
-def _is_beverage_item(item: dict) -> bool:
+
+async def _lazy_fetch_product_category(pid: str) -> str:
+    """Fetch a single product's categoryId and cache it. Returns 'beverage', 'food', or 'other'."""
+    global _BEVERAGE_PRODUCT_IDS, _FOOD_PRODUCT_IDS
+    try:
+        rows = await _fetch("pos_products", f"select=categoryId&_id=eq.{pid}&limit=1")
+        if not rows:
+            _BEVERAGE_PRODUCT_IDS.add(pid); _FOOD_PRODUCT_IDS.add(pid)
+            return "other"
+        cat_id = rows[0].get("categoryId", "")
+        if cat_id in _BEVERAGE_CATEGORY_IDS:
+            _BEVERAGE_PRODUCT_IDS.add(pid)
+            logger.info("lazy_fetch: new product %s → beverage", pid)
+            return "beverage"
+        elif cat_id in _FOOD_CATEGORY_IDS:
+            _FOOD_PRODUCT_IDS.add(pid)
+            logger.info("lazy_fetch: new product %s → food", pid)
+            return "food"
+        else:
+            _BEVERAGE_PRODUCT_IDS.add(pid); _FOOD_PRODUCT_IDS.add(pid)
+            logger.info("lazy_fetch: product %s is neither (cat=%s)", pid, cat_id[:12])
+            return "other"
+    except Exception as e:
+        logger.warning("lazy_fetch failed for %s: %s", pid, e)
+        return "other"
+
+
+async def _is_beverage_item(item: dict) -> bool:
+    """Check if order item is beverage — lazy-fetches unknown products from Supabase."""
     pid = item.get("productId", "")
-    return pid in _BEVERAGE_PRODUCT_IDS
+    if not pid:
+        return False
+    if pid in _BEVERAGE_PRODUCT_IDS:
+        return True
+    if pid in _FOOD_PRODUCT_IDS:
+        return False
+    return await _lazy_fetch_product_category(pid) == "beverage"
 
 
-def _get_beverage_items(items: list) -> list[dict]:
-    return [i for i in items if _is_beverage_item(i)]
+async def _get_beverage_items(items: list) -> list[dict]:
+    result = []
+    for i in items:
+        if await _is_beverage_item(i):
+            result.append(i)
+    return result
 
 
 async def _send_barista_notification(app, order_no: str, customer: str, order_type: str, bev_items: list[dict], ts_ms: int):
@@ -1184,13 +1222,24 @@ async def _build_food_lookup():
         logger.warning("build_food_lookup failed: %s", e)
 
 
-def _is_food_item(item: dict) -> bool:
+async def _is_food_item(item: dict) -> bool:
+    """Check if order item is food — lazy-fetches unknown products from Supabase."""
     pid = item.get("productId", "")
-    return pid in _FOOD_PRODUCT_IDS
+    if not pid:
+        return False
+    if pid in _FOOD_PRODUCT_IDS:
+        return True
+    if pid in _BEVERAGE_PRODUCT_IDS:
+        return False
+    return await _lazy_fetch_product_category(pid) == "food"
 
 
-def _get_food_items(items: list) -> list[dict]:
-    return [i for i in items if _is_food_item(i)]
+async def _get_food_items(items: list) -> list[dict]:
+    result = []
+    for i in items:
+        if await _is_food_item(i):
+            result.append(i)
+    return result
 
 
 async def _send_kitchen_notification(app, order_no: str, customer: str, order_type: str, food_items: list[dict], ts_ms: int):
@@ -1295,13 +1344,13 @@ async def _check_new_transactions(app):
             await asyncio.sleep(0.3)
 
             # ── Barista notification: only if order has beverage items ──
-            bev_items = _get_beverage_items(items)
+            bev_items = await _get_beverage_items(items)
             if bev_items:
                 await _send_barista_notification(app, order_no, customer, order_type, bev_items, ts)
                 await asyncio.sleep(0.3)
 
             # ── Kitchen notification: only if order has food items ──
-            food_items = _get_food_items(items)
+            food_items = await _get_food_items(items)
             if food_items:
                 await _send_kitchen_notification(app, order_no, customer, order_type, food_items, ts)
                 await asyncio.sleep(0.3)
@@ -1476,16 +1525,6 @@ async def _send_daily_summary(app):
         logger.exception("send_daily_summary failed")
 
 
-async def _refresh_product_lookups():
-    """Periodically refresh beverage and food product lookups for new products."""
-    try:
-        await _build_beverage_lookup()
-        await _build_food_lookup()
-        logger.info("Product lookups refreshed (beverage=%d, food=%d)",
-                     len(_BEVERAGE_PRODUCT_IDS), len(_FOOD_PRODUCT_IDS))
-    except Exception as e:
-        logger.warning("refresh_product_lookups failed: %s", e)
-
 
 async def _start_auto_reporter(app):
     """Start polling loop and daily summary scheduler."""
@@ -1506,13 +1545,6 @@ async def _start_auto_reporter(app):
         minute=0,
         args=[app],
         id="daily_summary",
-    )
-    # Refresh product lookups every 15 minutes to pick up new products
-    scheduler.add_job(
-        _refresh_product_lookups,
-        "interval",
-        minutes=15,
-        id="refresh_product_lookups",
     )
     scheduler.start()
     logger.info("Auto-reporter: daily summary scheduled at 22:00 WIB")
