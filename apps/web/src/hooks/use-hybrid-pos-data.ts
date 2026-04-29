@@ -1244,31 +1244,17 @@ async function fetchStaffUsers() {
 export async function fetchShiftStatus() {
 	const supabase = createClient();
 
-	// Try the full view first; fall back to lightweight direct query on timeout
 	let data: any[] | null = null;
 	let error: any = null;
 
-	try {
-		const result = await supabase
-			.from("pos_shift_reports")
-			.select("*")
-			.order("start_time", { ascending: false });
-		data = result.data;
-		error = result.error;
-	} catch (_err) {
-		error = _err;
-	}
+	// Prefer direct pos_shifts query — lightning fast, no view timeout risk
+	// Only fall back to pos_shift_reports if pos_shifts is unavailable
+	const fb = await supabase
+		.from("pos_shifts")
+		.select("*")
+		.order("startTime", { ascending: false });
 
-	// Fallback: pos_shift_reports view timed out (statement_timeout) — use direct pos_shifts query
-	if (error && (error?.code === "57014" || String(error?.message ?? "").includes("timeout"))) {
-		console.warn("[hybrid] pos_shift_reports timed out, falling back to direct pos_shifts query");
-		const fb = await supabase
-			.from("pos_shifts")
-			.select("*")
-			.order("startTime", { ascending: false });
-
-		if (fb.error) throw fb.error;
-
+	if (!fb.error) {
 		// Map direct pos_shifts rows to the same shape expected by the rest of the code
 		data = (fb.data ?? []).map((row: any) => ({
 			shift_id: row._id,
@@ -1295,7 +1281,19 @@ export async function fetchShiftStatus() {
 			is_shift_target_met: false,
 			is_daily_target_met: false,
 		}));
-		error = null; // clear the error since we recovered
+	} else {
+		// Fallback: pos_shifts not available, try pos_shift_reports view
+		console.warn("[hybrid] pos_shifts query failed, falling back to pos_shift_reports");
+		try {
+			const result = await supabase
+				.from("pos_shift_reports")
+				.select("*")
+				.order("start_time", { ascending: false });
+			data = result.data;
+			error = result.error;
+		} catch (_err) {
+			error = _err;
+		}
 	}
 
 	if (error) throw error;
