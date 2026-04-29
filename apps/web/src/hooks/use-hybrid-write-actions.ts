@@ -4045,6 +4045,20 @@ export function useHybridStartShift() {
 				const supabase = createClient();
 				const pos = supabase.schema("pos");
 
+				// Cegah shift ganda: tolak jika sudah ada shift AKTIF
+				const { data: existingActive, error: checkError } = await pos
+					.from("shifts")
+					.select("source_id, shift_name, cashier_name")
+					.is("end_time", null)
+					.limit(1);
+				if (checkError) throw checkError;
+				if (existingActive && existingActive.length > 0) {
+					const active = existingActive[0];
+					throw new Error(
+						`Shift masih berjalan: ${active.shift_name} oleh ${active.cashier_name ?? "?"}. Tutup shift aktif terlebih dahulu sebelum membuka shift baru.`
+					);
+				}
+
 				const { error: shiftError } = await pos.from("shifts").insert({
 					source_id: shiftId,
 					shift_name: args?.shiftName ?? "Shift",
