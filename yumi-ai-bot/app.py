@@ -1078,7 +1078,7 @@ async def _check_new_transactions(app):
             "pos_orders",
             f"select=orderNumber,totalAmount,paymentMethod,createdAt,items,customerName"
             f"&status=eq.completed"
-            f"&_creationTime=gt.{_last_order_check_ms}"
+            f"&_creationTime=gt.{_last_order_check_ms - 1}"
             f"&_creationTime=lte.{now_ms}"
             f"&order=_creationTime.asc&limit=10",
         )
@@ -1123,7 +1123,7 @@ async def _check_new_transactions(app):
             "pos_financial_transactions",
             f"select=amount,category,description,date,metadata"
             f"&type=eq.expense"
-            f"&date=gt.{_last_expense_check_ms}"
+            f"&date=gt.{_last_expense_check_ms - 1}"
             f"&date=lte.{now_ms}"
             f"&order=date.asc&limit=10",
         )
