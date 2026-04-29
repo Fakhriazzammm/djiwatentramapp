@@ -300,7 +300,20 @@ function HomePage() {
 	const settings = useHybridSiteSettings();
 	const storeName = settings?.storeName || "Yumi POS";
 	const shiftRowsResult = useHybridShiftReportRows() as ShiftRow[] | null | undefined;
-	const shiftRows = Array.isArray(shiftRowsResult) ? shiftRowsResult : [];
+	const shiftRows = useMemo(() => {
+		const raw = Array.isArray(shiftRowsResult) ? shiftRowsResult : [];
+		// Deduplicate by (shiftName, date) — keep latest startTime
+		const seen = new Map<string, ShiftRow>();
+		for (const row of raw) {
+			const dateKey = new Date(row.startTime).toLocaleDateString("id-ID");
+			const dedupKey = `${row.shiftName}::${dateKey}`;
+			const existing = seen.get(dedupKey);
+			if (!existing || row.startTime > existing.startTime) {
+				seen.set(dedupKey, row);
+			}
+		}
+		return Array.from(seen.values()).sort((a, b) => b.startTime - a.startTime);
+	}, [shiftRowsResult]);
 	const statsToday = useHybridStaffStatsToday(user?._id);
 	const monthProgress = useHybridCurrentMonthProgress();
 	const clockIn = useHybridClockIn();

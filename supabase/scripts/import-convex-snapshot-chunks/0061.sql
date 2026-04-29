@@ -1,0 +1,28 @@
+begin;
+insert into legacy_mirror.documents (table_name, document_id, creation_time, document, source_path)
+values
+('yumiSessions', 'ph7fmhwrq7cc1vp33q5kp2vpkd84qdvx', 1775974724500.9246, '{"_creationTime":1775974724500.9246,"_id":"ph7fmhwrq7cc1vp33q5kp2vpkd84qdvx","expiresAt":1776061124501,"token":"qulpepasxmmnvdhvo5","userId":"jx77w0gfdb65dach7jf6j2pkh184cy4q"}'::jsonb, 'yumiSessions/documents.jsonl:706'),
+('yumiSessions', 'ph7fmm7hjhyw8k08jztjrsse7n85349p', 1776520669452.7085, '{"_creationTime":1776520669452.7085,"_id":"ph7fmm7hjhyw8k08jztjrsse7n85349p","expiresAt":1776607069452,"token":"uprnkxrrfoqmo4ejdho","userId":"jx767bshrxen3eb103r4m3zkc1845sf5"}'::jsonb, 'yumiSessions/documents.jsonl:707'),
+('yumiSessions', 'ph7fncz7b3kjbkw507g4htbqwh84pngk', 1775974688713.328, '{"_creationTime":1775974688713.328,"_id":"ph7fncz7b3kjbkw507g4htbqwh84pngk","expiresAt":1776061088713,"token":"jfna4zhkk7lmnvdh421","userId":"jx77w0gfdb65dach7jf6j2pkh184cy4q"}'::jsonb, 'yumiSessions/documents.jsonl:708'),
+('yumiSessions', 'ph7fnvcwwkwy0v001dsnv04n5584prpy', 1775974065749.9043, '{"_creationTime":1775974065749.9043,"_id":"ph7fnvcwwkwy0v001dsnv04n5584prpy","expiresAt":1776060465749,"token":"x14jw7apz38mnvd3rdh","userId":"jx77w0gfdb65dach7jf6j2pkh184cy4q"}'::jsonb, 'yumiSessions/documents.jsonl:709'),
+('yumiSessions', 'ph7fqbf7795wa1gn7j8aswfd0x84qvkj', 1775974701211.1956, '{"_creationTime":1775974701211.1956,"_id":"ph7fqbf7795wa1gn7j8aswfd0x84qvkj","expiresAt":1776061101211,"token":"34ulo68r2efmnvdhdp7","userId":"jx77w0gfdb65dach7jf6j2pkh184cy4q"}'::jsonb, 'yumiSessions/documents.jsonl:710'),
+('yumiSessions', 'ph7fqx9y7dhyfvps5431sb9rbd84q8gs', 1775974071023.36, '{"_creationTime":1775974071023.36,"_id":"ph7fqx9y7dhyfvps5431sb9rbd84q8gs","expiresAt":1776060471023,"token":"job2pp18mkemnvd3vfz","userId":"jx77w0gfdb65dach7jf6j2pkh184cy4q"}'::jsonb, 'yumiSessions/documents.jsonl:711'),
+('yumiSessions', 'ph7fs1tbjrrxa8jtsdyemznqzd84qs4e', 1775974081869.5, '{"_creationTime":1775974081869.5,"_id":"ph7fs1tbjrrxa8jtsdyemznqzd84qs4e","expiresAt":1776060481869,"token":"xob0rk3o9mbmnvd43t9","userId":"jx77w0gfdb65dach7jf6j2pkh184cy4q"}'::jsonb, 'yumiSessions/documents.jsonl:712'),
+('yumiSessions', 'ph7fs3q0wxs4epbpnhfgqdpnh184q7w8', 1776020689836.4915, '{"_creationTime":1776020689836.4915,"_id":"ph7fs3q0wxs4epbpnhfgqdpnh184q7w8","expiresAt":1776107089836,"token":"5m2rta2iuqbmnw4v2r0","userId":"jx767bshrxen3eb103r4m3zkc1845sf5"}'::jsonb, 'yumiSessions/documents.jsonl:713'),
+('yumiSessions', 'ph7fsjsk9249vz1yaarfjzwmvh84rack', 1776082296500.4128, '{"_creationTime":1776082296500.4128,"_id":"ph7fsjsk9249vz1yaarfjzwmvh84rack","expiresAt":1776168696500,"token":"1ldtkas9lvwmnx5jir8","userId":"jx767bshrxen3eb103r4m3zkc1845sf5"}'::jsonb, 'yumiSessions/documents.jsonl:714'),
+('yumiSessions', 'ph7fte96rymbbtrq255jv8w7gx84pp9y', 1775974073644.9963, '{"_creationTime":1775974073644.9963,"_id":"ph7fte96rymbbtrq255jv8w7gx84pp9y","expiresAt":1776060473645,"token":"ki6rh7b2oqmnvd3xgt","userId":"jx77w0gfdb65dach7jf6j2pkh184cy4q"}'::jsonb, 'yumiSessions/documents.jsonl:715'),
+('yumiSessions', 'ph7fv6k563x2a3c6mq2v5xkfh984q1qk', 1775974703794.0596, '{"_creationTime":1775974703794.0596,"_id":"ph7fv6k563x2a3c6mq2v5xkfh984q1qk","expiresAt":1776061103794,"token":"4w95o0jla0cmnvdhfoy","userId":"jx77w0gfdb65dach7jf6j2pkh184cy4q"}'::jsonb, 'yumiSessions/documents.jsonl:716'),
+('yumiSessions', 'ph7fvfwn49nzw6cc8ex5pha87h84pfzk', 1776001152755.4253, '{"_creationTime":1776001152755.4253,"_id":"ph7fvfwn49nzw6cc8ex5pha87h84pfzk","expiresAt":1776087552755,"token":"3ajn97ic39jmnvt8bub","userId":"jx77w0gfdb65dach7jf6j2pkh184cy4q"}'::jsonb, 'yumiSessions/documents.jsonl:717'),
+('yumiSessions', 'ph7fvq93705zrzw4hq49yhkzvs84rx67', 1776054781804.7778, '{"_creationTime":1776054781804.7778,"_id":"ph7fvq93705zrzw4hq49yhkzvs84rx67","expiresAt":1776141181804,"token":"4tmd0vtuvt9mnwp5sa4","userId":"jx77w0gfdb65dach7jf6j2pkh184cy4q"}'::jsonb, 'yumiSessions/documents.jsonl:718'),
+('yumiSessions', 'ph7fvwkafzc1h9y2mr6eqqxmj184q3jz', 1775974697101.5652, '{"_creationTime":1775974697101.5652,"_id":"ph7fvwkafzc1h9y2mr6eqqxmj184q3jz","expiresAt":1776061097101,"token":"cofw8yui8udmnvdhaj1","userId":"jx77w0gfdb65dach7jf6j2pkh184cy4q"}'::jsonb, 'yumiSessions/documents.jsonl:719'),
+('yumiSessions', 'ph7fwvt315a46t4ydjjh2mfk5d84v1px', 1776157390373.3892, '{"_creationTime":1776157390373.3892,"_id":"ph7fwvt315a46t4ydjjh2mfk5d84v1px","expiresAt":1776243790373,"token":"gbmuxxdlxudmnye91k5","userId":"jx767bshrxen3eb103r4m3zkc1845sf5"}'::jsonb, 'yumiSessions/documents.jsonl:720'),
+('yumiSessions', 'ph7fx2jgdsdbwbnymaxcdxehjn84ps0z', 1775974690243.7422, '{"_creationTime":1775974690243.7422,"_id":"ph7fx2jgdsdbwbnymaxcdxehjn84ps0z","expiresAt":1776061090243,"token":"qy75pb4xelmnvdh58j","userId":"jx77w0gfdb65dach7jf6j2pkh184cy4q"}'::jsonb, 'yumiSessions/documents.jsonl:721'),
+('yumiSessions', 'ph7fy5tbc5wrfatr40zb0zkvcs84qkxp', 1776020677668.0994, '{"_creationTime":1776020677668.0994,"_id":"ph7fy5tbc5wrfatr40zb0zkvcs84qkxp","expiresAt":1776107077668,"token":"h1mtmncmlpdmnw4utd0","userId":"jx767bshrxen3eb103r4m3zkc1845sf5"}'::jsonb, 'yumiSessions/documents.jsonl:722'),
+('yumiSessions', 'ph7fzdy45q232ph1g1dwnh1t8s85799j', 1776644822442.5676, '{"_creationTime":1776644822442.5676,"_id":"ph7fzdy45q232ph1g1dwnh1t8s85799j","expiresAt":1776731222442,"token":"5nw0kklvje5mo6ggeju","userId":"jx7egsw30v0bnmzbjapq5419gs84s09n"}'::jsonb, 'yumiSessions/documents.jsonl:723')
+on conflict (table_name, document_id)
+do update set
+  creation_time = excluded.creation_time,
+  document = excluded.document,
+  source_path = excluded.source_path,
+  imported_at = now();
+commit;

@@ -334,7 +334,9 @@ function MenuPage() {
 	const [visibleProductsCount, setVisibleProductsCount] = useState(INITIAL_PRODUCTS_BATCH);
 	const [isLoadingMoreProducts, setIsLoadingMoreProducts] = useState(false);
 
-	const shiftStatus = useHybridShiftStatus();
+	const [shiftStatusMountKey, setShiftStatusMountKey] = useState(0);
+	useEffect(() => { setShiftStatusMountKey(c => c + 1); }, []);
+	const shiftStatus = useHybridShiftStatus(shiftStatusMountKey);
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
 	// Printer State
