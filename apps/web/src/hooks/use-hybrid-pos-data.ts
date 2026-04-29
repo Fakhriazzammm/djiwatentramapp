@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 
@@ -1241,7 +1241,7 @@ async function fetchStaffUsers() {
 	})) as StaffUserRecord[];
 }
 
-async function fetchShiftStatus() {
+export async function fetchShiftStatus() {
 	const supabase = createClient();
 	const { data, error } = await supabase
 		.from("pos_shift_reports")

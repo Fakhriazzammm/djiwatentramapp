@@ -6,6 +6,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { CartProvider } from "@/context/cart-context";
 import { AppDataProvider } from "@/context/app-data-context";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { AppUpdatePrompt } from "@/components/app-update-prompt";
+import { notifyAppUpdateAvailable, setPwaUpdateHandler, startAppUpdatePolling } from "@/lib/app-update";
 import { registerSW } from "virtual:pwa-register";
 import { APP_VERSION } from "@/lib/version";
 import "./index.css";
@@ -79,9 +81,14 @@ async function refreshAppShellIfVersionChanged() {
 void refreshAppShellIfVersionChanged().finally(() => {
 	updateSW = registerSW({
 		onNeedRefresh() {
-			void updateSW?.(true);
+			notifyAppUpdateAvailable({
+				latestVersion: "versi terbaru",
+				latestCommit: "service-worker-update",
+			});
 		},
 	});
+	setPwaUpdateHandler(updateSW);
+	startAppUpdatePolling();
 });
 
 if (!rootElement.innerHTML) {
@@ -97,6 +104,7 @@ if (!rootElement.innerHTML) {
 				<AppDataProvider>
 					<CartProvider>
 						<RouterProvider router={router} />
+						<AppUpdatePrompt />
 						<Toaster richColors />
 					</CartProvider>
 				</AppDataProvider>
