@@ -1990,6 +1990,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [nonCashConfirmed, setNonCashConfirmed] = useState("");
 	const [notes, setNotes] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [submitError, setSubmitError] = useState<string | null>(null);
 	
 	// Cash Breakdown State
 	const [breakdown, setBreakdown] = useState<Record<string, number>>({
@@ -2109,6 +2110,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		e.preventDefault();
 		
 		setIsSubmitting(true);
+		setSubmitError(null);
 		try {
 			if (shiftType === "mulai") {
 				if (!amount || !cashierName) {
@@ -2171,6 +2173,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		} catch (error) {
 			console.error(error);
 			const message = error instanceof Error ? error.message : "Gagal memproses data shift";
+			setSubmitError(message);
 			toast.error(message);
 		} finally {
 			setIsSubmitting(false);
@@ -2438,6 +2441,12 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 						onChange={(e) => setNotes(e.target.value)}
 					/>
 				</div>
+
+				{submitError && (
+					<div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-[11px] font-medium text-destructive">
+						{submitError}
+					</div>
+				)}
 
 				<Button
 					className={`w-full h-9 font-black uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 ${shiftType === 'mulai' ? 'bg-primary hover:bg-primary/90' : 'bg-destructive hover:bg-destructive/90'}`}
