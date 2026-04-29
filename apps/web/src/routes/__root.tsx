@@ -15,15 +15,15 @@ function RootContent() {
 	useEffect(() => {
 		if (isLoading) return;
 
-		const isLoginPage = location.pathname === "/login";
+		const isPublicPage = location.pathname === "/login" || location.pathname === "/register";
 		
 		if (!isAuthenticated) {
-			if (!isLoginPage) {
+			if (!isPublicPage) {
 				navigate({ to: "/login" as any, replace: true });
 			}
 		} else {
 			// If we are authenticated and on the login page, move to home
-			if (isLoginPage) {
+			if (location.pathname === "/login") {
 				navigate({ to: "/home" as any, replace: true });
 			}
 		}

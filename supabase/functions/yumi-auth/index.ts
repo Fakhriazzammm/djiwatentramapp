@@ -71,6 +71,14 @@ function buildSessionToken() {
 	return `ys_${crypto.randomUUID().replaceAll("-", "")}_${randomPart}`;
 }
 
+async function sha256Hex(input: string): Promise<string> {
+	const encoder = new TextEncoder();
+	const data = encoder.encode(input);
+	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+	const hashArray = Array.from(new Uint8Array(hashBuffer));
+	return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 async function listPublicUsers() {
 	const { data, error } = await supabaseAdmin
 		.from("yumi_users")
@@ -104,7 +112,7 @@ async function loginWithPin(payload: JsonRecord) {
 	const { data: user, error } = await supabaseAdmin
 		.from("yumi_users")
 		.select(
-			"source_id, name, slug, home_pin_hash, is_active, role_source_id, face_descriptor"
+			"source_id, name, slug, home_pin_hash, home_pin_fingerprint, is_active, role_source_id, face_descriptor"
 		)
 		.eq("source_id", userId)
 		.maybeSingle();
@@ -114,7 +122,13 @@ async function loginWithPin(payload: JsonRecord) {
 		throw new Error("User tidak ditemukan atau nonaktif");
 	}
 
-	if (!user.home_pin_hash || !(await bcrypt.compare(pin, user.home_pin_hash))) {
+	const pinValid = user.home_pin_hash
+		? await bcrypt.compare(pin, user.home_pin_hash)
+		: user.home_pin_fingerprint
+			? await sha256Hex(pin) === user.home_pin_fingerprint
+			: false;
+
+	if (!pinValid) {
 		throw new Error("PIN yang Anda masukkan salah");
 	}
 

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as MenuRouteImport } from './routes/menu'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HomeRouteImport } from './routes/home'
@@ -27,6 +28,7 @@ import { Route as AdminRecipeRouteImport } from './routes/admin/recipe'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminOperationalTeamRouteImport } from './routes/admin/operational-team'
+import { Route as AdminOnboardingRouteImport } from './routes/admin/onboarding'
 import { Route as AdminMinigamesRouteImport } from './routes/admin/minigames'
 import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
@@ -46,6 +48,11 @@ import { Route as AdminFinanceShiftReportsRouteImport } from './routes/admin/fin
 import { Route as AdminFinanceTransactionsRouteRouteImport } from './routes/admin/finance/transactions/route'
 import { Route as AdminFinanceReportsRouteRouteImport } from './routes/admin/finance/reports/route'
 
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/register.lazy').then((d) => d.Route))
 const MenuRoute = MenuRouteImport.update({
   id: '/menu',
   path: '/menu',
@@ -145,6 +152,13 @@ const AdminOperationalTeamRoute = AdminOperationalTeamRouteImport.update({
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
   import('./routes/admin/operational-team.lazy').then((d) => d.Route),
+)
+const AdminOnboardingRoute = AdminOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/onboarding.lazy').then((d) => d.Route),
 )
 const AdminMinigamesRoute = AdminMinigamesRouteImport.update({
   id: '/minigames',
@@ -266,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/home': typeof HomeRouteWithChildren
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
+  '/register': typeof RegisterRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
@@ -278,6 +293,7 @@ export interface FileRoutesByFullPath {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/minigames': typeof AdminMinigamesRoute
+  '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/operational-team': typeof AdminOperationalTeamRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
@@ -302,6 +318,7 @@ export interface FileRoutesByTo {
   '/home': typeof HomeRouteWithChildren
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
+  '/register': typeof RegisterRoute
   '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
@@ -313,6 +330,7 @@ export interface FileRoutesByTo {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/minigames': typeof AdminMinigamesRoute
+  '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/operational-team': typeof AdminOperationalTeamRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
@@ -339,6 +357,7 @@ export interface FileRoutesById {
   '/home': typeof HomeRouteWithChildren
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
+  '/register': typeof RegisterRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
@@ -351,6 +370,7 @@ export interface FileRoutesById {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/minigames': typeof AdminMinigamesRoute
+  '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/operational-team': typeof AdminOperationalTeamRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
@@ -379,6 +399,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/login'
     | '/menu'
+    | '/register'
     | '/admin/finance'
     | '/$brandSlug/minigames'
     | '/admin/ai-chat'
@@ -391,6 +412,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/kitchen'
     | '/admin/minigames'
+    | '/admin/onboarding'
     | '/admin/operational-team'
     | '/admin/orders'
     | '/admin/products'
@@ -415,6 +437,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/login'
     | '/menu'
+    | '/register'
     | '/$brandSlug/minigames'
     | '/admin/ai-chat'
     | '/admin/bar'
@@ -426,6 +449,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/kitchen'
     | '/admin/minigames'
+    | '/admin/onboarding'
     | '/admin/operational-team'
     | '/admin/orders'
     | '/admin/products'
@@ -451,6 +475,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/login'
     | '/menu'
+    | '/register'
     | '/admin/finance'
     | '/$brandSlug/minigames'
     | '/admin/ai-chat'
@@ -463,6 +488,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/kitchen'
     | '/admin/minigames'
+    | '/admin/onboarding'
     | '/admin/operational-team'
     | '/admin/orders'
     | '/admin/products'
@@ -490,10 +516,18 @@ export interface RootRouteChildren {
   HomeRoute: typeof HomeRouteWithChildren
   LoginRoute: typeof LoginRoute
   MenuRoute: typeof MenuRoute
+  RegisterRoute: typeof RegisterRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/menu': {
       id: '/menu'
       path: '/menu'
@@ -618,6 +652,13 @@ declare module '@tanstack/react-router' {
       path: '/operational-team'
       fullPath: '/admin/operational-team'
       preLoaderRoute: typeof AdminOperationalTeamRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/onboarding': {
+      id: '/admin/onboarding'
+      path: '/onboarding'
+      fullPath: '/admin/onboarding'
+      preLoaderRoute: typeof AdminOnboardingRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/minigames': {
@@ -792,6 +833,7 @@ interface AdminRouteRouteChildren {
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminKitchenRoute: typeof AdminKitchenRoute
   AdminMinigamesRoute: typeof AdminMinigamesRoute
+  AdminOnboardingRoute: typeof AdminOnboardingRoute
   AdminOperationalTeamRoute: typeof AdminOperationalTeamRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
@@ -812,6 +854,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminInventoryRoute: AdminInventoryRoute,
   AdminKitchenRoute: AdminKitchenRoute,
   AdminMinigamesRoute: AdminMinigamesRoute,
+  AdminOnboardingRoute: AdminOnboardingRoute,
   AdminOperationalTeamRoute: AdminOperationalTeamRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
@@ -870,6 +913,7 @@ const rootRouteChildren: RootRouteChildren = {
   HomeRoute: HomeRouteWithChildren,
   LoginRoute: LoginRoute,
   MenuRoute: MenuRoute,
+  RegisterRoute: RegisterRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
