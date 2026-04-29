@@ -1265,7 +1265,7 @@ export async function fetchShiftStatus() {
 		const fb = await supabase
 			.from("pos_shifts")
 			.select("*")
-			.order("start_time", { ascending: false });
+			.order("startTime", { ascending: false });
 
 		if (fb.error) throw fb.error;
 
