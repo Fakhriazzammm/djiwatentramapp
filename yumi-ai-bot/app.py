@@ -30,6 +30,14 @@ ALLOWED_USERS = {
 }
 TELEGRAM_REPORT_CHAT_ID = os.getenv("TELEGRAM_REPORT_CHAT_ID", "")
 REPORT_GROUP_ID = int(os.getenv("AUTO_REPORT_GROUP_ID", "-5044633519"))
+BARISTA_GROUP_ID = int(os.getenv("BARISTA_GROUP_ID", "-5044633519"))
+
+# Beverage category tracking
+_BEVERAGE_CATEGORY_IDS: set[str] = set()
+_BEVERAGE_PRODUCT_IDS: set[str] = set()
+
+# Dedup: track already-reported orders to prevent re-sending
+_reported_order_nos: set[str] = set()
 
 # Polling state for real-time transaction monitoring
 _last_order_check_ms = 0
@@ -1061,10 +1069,95 @@ def _format_time_ms(ts_ms, fmt="%d/%m %H:%M"):
     return datetime.fromtimestamp(ts_ms / 1000, tz=WIB).strftime(fmt)
 
 
+def _format_time_hm(ts_ms) -> str:
+    """Format timestamp to HH:MM only."""
+    return datetime.fromtimestamp(ts_ms / 1000, tz=WIB).strftime("%H:%M")
+
+
+async def _build_beverage_lookup():
+    """Fetch all beverage-category product IDs. Called once at startup."""
+    global _BEVERAGE_CATEGORY_IDS, _BEVERAGE_PRODUCT_IDS
+    try:
+        cats = await _fetch("pos_categories", "select=_id,name,parentId")
+        minuman_id = None
+        for c in cats:
+            if c.get("name", "").strip().lower() == "minuman":
+                minuman_id = c["_id"]
+                break
+        if not minuman_id:
+            logger.warning("build_beverage_lookup: 'Minuman' category not found")
+            return
+        beverage_cats = {minuman_id}
+        for c in cats:
+            if c.get("parentId") == minuman_id:
+                beverage_cats.add(c["_id"])
+        _BEVERAGE_CATEGORY_IDS = beverage_cats
+        logger.info("Beverage category IDs: %s", _BEVERAGE_CATEGORY_IDS)
+        products = await _fetch("pos_products", "select=_id,categoryId&limit=500")
+        _BEVERAGE_PRODUCT_IDS = {
+            p["_id"]
+            for p in products
+            if p.get("categoryId") in _BEVERAGE_CATEGORY_IDS
+        }
+        logger.info("Beverage product IDs loaded: %d", len(_BEVERAGE_PRODUCT_IDS))
+    except Exception as e:
+        logger.warning("build_beverage_lookup failed: %s", e)
+
+
+def _is_beverage_item(item: dict) -> bool:
+    pid = item.get("productId", "")
+    return pid in _BEVERAGE_PRODUCT_IDS
+
+
+def _get_beverage_items(items: list) -> list[dict]:
+    return [i for i in items if _is_beverage_item(i)]
+
+
+async def _send_barista_notification(app, order_no: str, customer: str, order_type: str, bev_items: list[dict], ts_ms: int):
+    """Send barista-focused notification — only beverage items shown."""
+    type_labels = {
+        "dine_in": "🍽 Dine-in",
+        "takeaway": "🛍 Takeaway",
+        "online": "📱 Online",
+    }
+    type_label = type_labels.get(order_type, f"📋 {order_type}")
+
+    item_lines = []
+    for item in bev_items:
+        qty = int(float(item.get("quantity", 1)))
+        name = (item.get("productName") or "?").strip()
+        variant = item.get("variant")
+        if variant:
+            item_lines.append(f"  • {qty}× {name}  *({variant})*")
+        else:
+            item_lines.append(f"  • {qty}× {name}")
+
+    lines = [
+        f"☕ *PESANAN BARU — BARISTA* 🕐 {_format_time_hm(ts_ms)}",
+        f"`{order_no}`  |  {type_label}  |  👤 {customer}",
+        "",
+        "📋 *Minuman:*",
+    ]
+    lines.extend(item_lines)
+    lines.append("")
+    lines.append("⏳ Mohon segera dibuat!")
+
+    try:
+        await app.bot.send_message(chat_id=BARISTA_GROUP_ID, text="\n".join(lines))
+        logger.info("Barista notification sent for %s (%d beverages)", order_no, len(bev_items))
+    except Exception as e:
+        logger.error("send_barista_notification failed for %s: %s", order_no, e)
+
+
 async def _check_new_transactions(app):
     """Poll for new orders and expenses, report to group."""
-    global _last_order_check_ms, _last_expense_check_ms
+    global _last_order_check_ms, _last_expense_check_ms, _reported_order_nos
     now_ms = int(_now_wib().timestamp() * 1000)
+
+    # Periodic dedup set cleanup (max 500 entries)
+    if len(_reported_order_nos) > 500:
+        _reported_order_nos.clear()
+        logger.info("Cleared reported order dedup set")
 
     # Initialize on first run
     if _last_order_check_ms == 0:
@@ -1073,22 +1166,31 @@ async def _check_new_transactions(app):
         _last_expense_check_ms = now_ms - 60_000
 
     try:
-        # ── Check new orders ──
+        # ── Check new orders (5-minute lookback to catch late-completing orders) ──
+        lookback_ms = now_ms - 300_000  # 5 minutes
+        if _last_order_check_ms < lookback_ms:
+            _last_order_check_ms = lookback_ms
+
         orders = await _fetch(
             "pos_orders",
-            f"select=orderNumber,totalAmount,paymentMethod,createdAt,items,customerName"
+            f"select=orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,orderType,_creationTime"
             f"&status=eq.completed"
             f"&_creationTime=gt.{_last_order_check_ms - 1}"
             f"&_creationTime=lte.{now_ms}"
-            f"&order=_creationTime.asc&limit=10",
+            f"&order=_creationTime.asc&limit=20",
         )
 
         for o in orders:
-            ts = int(float(o.get("createdAt") or o.get("_creationTime") or 0))
             order_no = o.get("orderNumber", "???")
+            # Skip if already reported in this session
+            if order_no in _reported_order_nos:
+                continue
+
+            ts = int(float(o.get("_creationTime") or o.get("createdAt") or 0))
             amount = float(o.get("totalAmount") or 0)
             payment = (o.get("paymentMethod") or "-").upper()
             customer = o.get("customerName") or "Pelanggan"
+            order_type = (o.get("orderType") or "dine_in")
             items = o.get("items") or []
             item_list = ", ".join(
                 f"{i.get('productName', '?').strip()} x{int(float(i.get('quantity', 1)))}"
@@ -1101,6 +1203,7 @@ async def _check_new_transactions(app):
             cashier = shift.get("cashier_name", "?")
             team = shift.get("team_members", "")
 
+            # ── Regular transaction report ──
             lines = [
                 f"🧾 *Pesanan Baru* — {_format_time_ms(ts)}",
                 f"`{order_no}` | Rp{amount:,.0f} | {payment}",
@@ -1109,14 +1212,19 @@ async def _check_new_transactions(app):
                 f"👥 Kasir: {cashier}" + (f" | Tim: {team}" if team else ""),
             ]
             await _send_to_group(app, "\n".join(lines))
-            # Brief pause between messages
             await asyncio.sleep(0.3)
 
-        if orders:
-            _last_order_check_ms = max(
-                _last_order_check_ms,
-                max(int(float(o.get("createdAt") or o.get("_creationTime") or 0)) for o in orders),
-            )
+            # ── Barista notification: only if order has beverage items ──
+            bev_items = _get_beverage_items(items)
+            if bev_items:
+                await _send_barista_notification(app, order_no, customer, order_type, bev_items, ts)
+                await asyncio.sleep(0.3)
+
+            # Mark as reported
+            _reported_order_nos.add(order_no)
+
+        # Always advance cursor to prevent re-querying same window
+        _last_order_check_ms = now_ms
 
         # ── Check new expenses ──
         fin_rows = await _fetch(
@@ -1148,11 +1256,8 @@ async def _check_new_transactions(app):
             await _send_to_group(app, "\n".join(lines))
             await asyncio.sleep(0.3)
 
-        if fin_rows:
-            _last_expense_check_ms = max(
-                _last_expense_check_ms,
-                max(int(float(x.get("date") or 0)) for x in fin_rows),
-            )
+        # Always advance expense cursor
+        _last_expense_check_ms = now_ms
 
     except Exception as e:
         logger.warning("check_new_transactions failed: %s", e)
@@ -1288,6 +1393,9 @@ async def _send_daily_summary(app):
 async def _start_auto_reporter(app):
     """Start polling loop and daily summary scheduler."""
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+    # Build beverage product lookup for barista notifications
+    await _build_beverage_lookup()
 
     # Daily summary at 22:00 WIB (15:00 UTC)
     scheduler = AsyncIOScheduler(timezone="Asia/Jakarta")
