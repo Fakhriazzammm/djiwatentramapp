@@ -373,6 +373,36 @@ function buildHppProductMap(calculations: HppCalculationRecord[]) {
 	return result;
 }
 
+const DEFAULT_ORDER_TYPES = [
+	{
+		id: "dine_in",
+		name: "dine_in",
+		label: "Dine In",
+		icon: "Utensils",
+		isActive: true,
+		sortOrder: 1,
+		requiresTableNumber: true,
+	},
+	{
+		id: "takeaway",
+		name: "takeaway",
+		label: "Takeaway",
+		icon: "ShoppingBag",
+		isActive: true,
+		sortOrder: 2,
+		requiresTableNumber: false,
+	},
+	{
+		id: "online",
+		name: "online",
+		label: "Online",
+		icon: "Bike",
+		isActive: true,
+		sortOrder: 3,
+		requiresTableNumber: false,
+	},
+];
+
 async function fetchSiteSettings() {
 	const supabase = createClient();
 	const { data, error } = await supabase
@@ -384,9 +414,17 @@ async function fetchSiteSettings() {
 	if (error) throw error;
 	if (!data?.raw || typeof data.raw !== "object") return null;
 
+	const raw = data.raw as Record<string, unknown>;
+	// Fallback: if orderTypes is missing or empty, use defaults
+	const orderTypes =
+		Array.isArray(raw.orderTypes) && raw.orderTypes.length > 0
+			? raw.orderTypes
+			: DEFAULT_ORDER_TYPES;
+
 	return {
 		_id: data._id,
-		...(data.raw as Record<string, unknown>),
+		...raw,
+		orderTypes,
 	} as SiteSettingsRecord;
 }
 
