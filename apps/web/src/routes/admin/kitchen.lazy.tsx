@@ -741,7 +741,7 @@ function FastStockTable({
 																<input
 																	type="number"
 																	min={0}
-																	className="w-20 h-10 rounded border bg-white text-center font-bold text-base px-2 md:w-14 md:h-5 md:text-[10px] md:px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+																	className="w-14 h-8 rounded border bg-white text-center font-bold text-[13px] px-1 md:h-5 md:text-[10px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
 																	disabled={recipeMissing || isSyncing}
 																	value={stockInputValues[String(product._id)] ?? String(product.quantity ?? 0)}
 																	onChange={(e) => setStockInputValues(prev => ({...prev, [String(product._id)]: e.target.value}))}

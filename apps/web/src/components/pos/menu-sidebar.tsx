@@ -2954,7 +2954,7 @@ function InventoryTab() {
 														<input
 															type="number"
 															min={0}
-															className="w-20 h-10 rounded border bg-background text-center font-bold text-foreground text-base px-2 md:w-14 md:h-5 md:text-[11px] md:px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+															className="w-14 h-8 rounded border bg-background text-center font-bold text-foreground text-[13px] px-1 md:h-5 md:text-[10px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
 															disabled={recipeMissing || isSyncing}
 															value={stockInputValues[String(product._id)] ?? String(currentQuantity)}
 															onChange={(e) => setStockInputValues(prev => ({...prev, [String(product._id)]: e.target.value}))}
