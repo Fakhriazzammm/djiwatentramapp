@@ -378,6 +378,7 @@ async function fetchSiteSettings() {
 	const { data, error } = await supabase
 		.from("pos_site_settings")
 		.select("*")
+		.not("raw->shiftSettings", "is", null)
 		.maybeSingle();
 
 	if (error) throw error;
