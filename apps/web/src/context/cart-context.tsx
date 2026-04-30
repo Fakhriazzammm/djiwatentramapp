@@ -13,6 +13,7 @@ export interface CartItem {
 	name: string;
 	price: number;
 	originalPrice?: number;
+	platformPrice?: number; // harga override dari platform (GoFood/GrabFood/dll)
 	quantity: number;
 	variant?: string; // e.g. "Large, Less Sugar"
 	image?: string;
@@ -52,6 +53,9 @@ interface CartContextType {
 	taxAmount: number;
 	serviceChargeRate: number;
 	serviceChargeAmount: number;
+	platformTotal: number;
+	commissionAmount: number;
+	netRevenue: number;
 	customerInfo: {
 		name: string;
 		orderType: string;
@@ -61,6 +65,9 @@ interface CartContextType {
 		isSubmitted: boolean;
 	};
 	updateCustomerInfo: (info: Partial<CartContextType["customerInfo"]>) => void;
+	platformTotal: number;
+	commissionAmount: number;
+	netRevenue: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -106,6 +113,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 		notes: string;
 		isFreeRefill: boolean;
 		isSubmitted: boolean;
+		platform?: string;        // "grab" | "gofood" | "maxim" | "shopeefood"
+		platformCommission?: number; // commission rate (e.g. 0.20)
 	}>({
 		name: "",
 		orderType: "dine_in",
@@ -297,6 +306,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 	const finalTotal = subTotalAfterDiscount + serviceChargeAmount + taxAmount;
 
+	// Platform-specific calculations (for online orders)
+	const platformTotal = items.reduce((sum, i) => sum + (i.platformPrice ?? i.price) * i.quantity, 0);
+	const commissionAmount = Math.round(platformTotal * (customerInfo.platformCommission ?? 0));
+	const netRevenue = platformTotal - commissionAmount;
+
 	return (
 		<CartContext.Provider
 			value={{
@@ -321,6 +335,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 				taxAmount,
 				serviceChargeRate,
 				serviceChargeAmount,
+				platformTotal,
+				commissionAmount,
+				netRevenue,
 			}}
 		>
 			{children}

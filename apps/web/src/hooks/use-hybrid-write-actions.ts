@@ -2487,7 +2487,12 @@ export function useHybridCreateOrder() {
 					payment_receipt_kind: args?.paymentReceiptKind ?? null,
 					payment_gateway: args?.paymentGateway ?? null,
 					gateway_invoice_id: args?.paymentGateway?.invoiceId ?? null,
-					creation_time: orderCreatedAt,
+				creation_time: orderCreatedAt,
+					platform: args?.platform ?? null,
+					platform_commission_rate:
+						args?.platformCommission === undefined
+							? null
+							: Number(args.platformCommission ?? 0),
 					raw: { ...(args ?? {}), authUserId: currentUser?._id ?? null },
 				};
 
@@ -2503,10 +2508,14 @@ export function useHybridCreateOrder() {
 							variant: item?.variant ?? null,
 							quantity: Number(item?.quantity ?? 0),
 							price: Number(item?.price ?? 0),
-							original_price:
-								item?.originalPrice === undefined
-									? null
-									: Number(item.originalPrice ?? 0),
+						original_price:
+							item?.originalPrice === undefined
+								? null
+								: Number(item.originalPrice ?? 0),
+						platform_price:
+							item?.platformPrice === undefined
+								? null
+								: Number(item.platformPrice ?? 0),
 							status: item?.status ?? null,
 							hpp_snapshot: item?.hppSnapshot ?? null,
 							raw: item ?? {},

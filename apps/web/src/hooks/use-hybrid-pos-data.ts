@@ -403,6 +403,13 @@ const DEFAULT_ORDER_TYPES = [
 	},
 ];
 
+const DEFAULT_PLATFORMS = [
+	{ id: "grab", name: "GrabFood", icon: "Bike", commissionRate: 0.20, isActive: true, sortOrder: 1 },
+	{ id: "gofood", name: "GoFood", icon: "Bike", commissionRate: 0.20, isActive: true, sortOrder: 2 },
+	{ id: "maxim", name: "Maxim", icon: "Bike", commissionRate: 0.15, isActive: true, sortOrder: 3 },
+	{ id: "shopeefood", name: "ShopeeFood", icon: "ShoppingBag", commissionRate: 0.20, isActive: true, sortOrder: 4 },
+];
+
 async function fetchSiteSettings() {
 	const supabase = createClient();
 	const { data, error } = await supabase
@@ -415,16 +422,20 @@ async function fetchSiteSettings() {
 	if (!data?.raw || typeof data.raw !== "object") return null;
 
 	const raw = data.raw as Record<string, unknown>;
-	// Fallback: if orderTypes is missing or empty, use defaults
 	const orderTypes =
 		Array.isArray(raw.orderTypes) && raw.orderTypes.length > 0
 			? raw.orderTypes
 			: DEFAULT_ORDER_TYPES;
+	const platforms =
+		Array.isArray(raw.platforms) && raw.platforms.length > 0
+			? raw.platforms
+			: DEFAULT_PLATFORMS;
 
 	return {
 		_id: data._id,
 		...raw,
 		orderTypes,
+		platforms,
 	} as SiteSettingsRecord;
 }
 
