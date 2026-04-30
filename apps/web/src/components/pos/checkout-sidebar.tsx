@@ -85,7 +85,10 @@ export function CheckoutSidebar({
 		serviceChargeAmount,
 		appliedVoucher,
 		applyVoucher,
-		clearCart
+		clearCart,
+		platformTotal,
+		commissionAmount,
+		netRevenue,
 	} = useCart();
 
 	const siteSettings = useHybridSiteSettings();
@@ -103,6 +106,15 @@ export function CheckoutSidebar({
 	const selectedOrderType = useMemo(() => {
 		return orderTypes.find((type: any) => type.id === customerInfo.orderType) || orderTypes[0];
 	}, [orderTypes, customerInfo.orderType]);
+
+	const platforms = useMemo(() => {
+		const raw = siteSettings?.platforms ?? [];
+		return raw.filter((p) => p.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+	}, [siteSettings]);
+	const selectedPlatform = useMemo(() => {
+		return platforms.find((p) => p.id === customerInfo.platform) || null;
+	}, [platforms, customerInfo.platform]);
+	const platformName = selectedPlatform?.name ?? "";
 
 	const [activeStep, setActiveStep] = useState<"customer" | "menu" | "payment">(
 		initialStep || "menu"
@@ -410,9 +422,9 @@ export function CheckoutSidebar({
 													<button
 														key={type.id}
 														type="button"
-														onClick={() => updateCustomerInfo({ orderType: type.id })}
-														className={cn(
-															"flex min-h-[40px] flex-col items-center justify-center gap-0.5 rounded-[0.9rem] px-2 py-1.5 text-[10px] font-black transition-all md:min-h-[42px] md:rounded-[1rem] md:px-2.5 md:py-2 md:text-[11px]",
+														onClick={() => { updateCustomerInfo({ orderType: type.id, ...(type.id !== "online" ? { platform: undefined, platformCommission: undefined } : {}) }); }}
+								className={cn(
+									"flex min-h-[40px] flex-col items-centerjustify-center gap-0.5 rounded-[0.9rem] px-2 py-1.5 text-[10px] font-black transition-all md:min-h-[42px] md:rounded-[1rem] md:px-2.5 md:py-2 md:text-[11px]",
 															customerInfo.orderType === type.id
 																? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
 																: "text-muted-foreground hover:bg-muted"
@@ -422,10 +434,24 @@ export function CheckoutSidebar({
 														<span className="truncate">{type.label}</span>
 													</button>
 												);
+})}
+									</div>
+								</div>
+								{selectedOrderType?.id === "online" && platforms.length > 0 && (
+									<div className="space-y-1.5">
+										<Label className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">Platform</Label>
+										<div className="grid grid-cols-2 gap-1 rounded-[1rem] border border-orange-200 bg-orange-50/50 p-1 shadow-sm md:gap-1.5 md:rounded-[1.15rem] md:p-1.5">
+											{platforms.map((p) => {
+												const Icon = getIcon(p.icon);
+												return (<button key={p.id} type="button" onClick={() => updateCustomerInfo({ platform: p.id, platformCommission: p.commissionRate })}
+													className={cn("flex min-h-[40px] flex-col items-center justify-center gap-0.5 rounded-[0.9rem] px-2 py-1.5 text-[10px] font-black transition-all md:min-h-[42px] md:rounded-[1rem] md:px-2.5 md:py-2 md:text-[11px]",
+														customerInfo.platform === p.id ? "bg-orange-500 text-white shadow-md shadow-orange-500/20" : "text-muted-foreground hover:bg-orange-100")}>
+													<Icon className="h-3.5 w-3.5 md:h-4 md:w-4" /><span className="truncate">{p.name}</span></button>);
 											})}
 										</div>
 									</div>
-									{selectedOrderType?.requiresTableNumber && (
+								)}
+								{selectedOrderType?.requiresTableNumber && (
 										<div className="space-y-1.5">
 											<Label htmlFor="table-number" className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">No. Meja</Label>
 											<Input
@@ -512,8 +538,11 @@ export function CheckoutSidebar({
 													<p className="text-[11px] font-bold shrink-0">{fmt(item.price * item.quantity)}</p>
 												</div>
 												{item.variant && <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-tight truncate">{item.variant}</p>}
-												
-												<div className="mt-1.5 flex items-center justify-between">
+										{item.platformPrice && item.platformPrice !== item.originalPrice && (
+											<p className="text-[9px] text-muted-foreground line-through">Menu: {fmt((item.originalPrice ?? item.price) * item.quantity)}</p>
+										)}
+										
+										<div className="mt-1.5 flex items-center justify-between">
 													<div className="flex items-center gap-1.5 bg-muted rounded-md p-0.5">
 														<button 
 															onClick={() => updateQuantity(item.productId, item.variant, -1)}
@@ -620,6 +649,15 @@ export function CheckoutSidebar({
 							</div>
 
 							{/* Total Box */}
+							{customerInfo.orderType === "online" && selectedPlatform && (
+								<div className="rounded-xl border border-orange-200 bg-orange-50/70 p-3 space-y-1.5 mb-3">
+									<p className="text-[9px] font-bold uppercase tracking-widest text-orange-600 mb-1">Ringkasan {platformName}</p>
+									<div className="flex justify-between text-xs"><span>Total {platformName}</span><span className="font-bold">{fmt(platformTotal)}</span></div>
+									<div className="flex justify-between text-xs text-muted-foreground"><span>Komisi ({(selectedPlatform.commissionRate * 100).toFixed(0)}%)</span><span className="text-red-500">-{fmt(commissionAmount)}</span></div>
+									<Separator />
+									<div className="flex justify-between text-sm font-black text-green-700"><span>Pendapatan Bersih</span><span>{fmt(netRevenue)}</span></div>
+								</div>
+							)}
 							<div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-center">
 								<p className="text-[10px] font-bold uppercase tracking-widest text-primary/60 mb-0.5">Total Tagihan</p>
 								<p className="text-2xl font-black text-primary tracking-tighter">{fmt(finalTotal)}</p>
