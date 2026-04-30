@@ -491,57 +491,42 @@ export function CheckoutSidebar({
 					{/* Section 2: Pilih Menu (Cart Items) */}
 				{activeStep === "menu" && (
 					<div className="space-y-4 fade-in animate-in slide-in-from-right-4 duration-300">
-						{/* Order Type + Platform selector langsung di atas Pesanan */}
-						<div className="space-y-2">
-							{/* Order Type Selector */}
-							<div className="rounded-[1rem] border border-border/70 bg-white p-1.5 shadow-sm md:rounded-[1.15rem] md:p-2">
-								<div className="grid grid-cols-2 gap-1 md:gap-1.5">
-									{orderTypes.map((type: any) => {
-										const Icon = getIcon(type.icon);
-										return (
-											<button
-												key={type.id}
-												type="button"
-												onClick={() => { updateCustomerInfo({ orderType: type.id, ...(type.id !== "online" ? { platform: undefined, platformCommission: undefined } : {}) }); }}
-												className={cn(
-													"flex min-h-[36px] flex-col items-center justify-center gap-0.5 rounded-[0.9rem] px-2 py-1 text-[10px] font-black transition-all md:min-h-[38px] md:rounded-[1rem] md:px-2.5 md:py-1.5 md:text-[11px]",
-													customerInfo.orderType === type.id
-														? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-														: "text-muted-foreground hover:bg-muted"
-												)}
-											>
-												<Icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
-												<span className="truncate">{type.label}</span>
-											</button>
-										);
-									})}
-								</div>
-							</div>
-							{/* Platform Selector (only when Online) */}
+						{/* Order Type + Platform — 1 baris compact */}
+						<div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
+							{orderTypes.map((type: any) => (
+								<button
+									key={type.id}
+									type="button"
+									onClick={() => { updateCustomerInfo({ orderType: type.id, ...(type.id !== "online" ? { platform: undefined, platformCommission: undefined } : {}) }); }}
+									className={cn(
+										"shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide transition-all",
+										customerInfo.orderType === type.id
+											? "bg-primary text-primary-foreground shadow-sm"
+											: "bg-muted/60 text-muted-foreground hover:bg-muted"
+									)}
+								>
+									{type.label}
+								</button>
+							))}
 							{selectedOrderType?.id === "online" && platforms.length > 0 && (
-								<div className="rounded-[1rem] border border-orange-200 bg-orange-50/60 p-1.5 shadow-sm md:rounded-[1.15rem] md:p-2">
-									<div className="grid grid-cols-2 gap-1 md:gap-1.5">
-										{platforms.map((p) => {
-											const Icon = getIcon(p.icon);
-											return (
-												<button
-													key={p.id}
-													type="button"
-													onClick={() => updateCustomerInfo({ platform: p.id, platformCommission: p.commissionRate })}
-													className={cn(
-														"flex min-h-[36px] flex-col items-center justify-center gap-0.5 rounded-[0.9rem] px-2 py-1 text-[10px] font-black transition-all md:min-h-[38px] md:rounded-[1rem] md:px-2.5 md:py-1.5 md:text-[11px]",
-														customerInfo.platform === p.id
-															? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
-															: "text-muted-foreground hover:bg-orange-100"
-													)}
-												>
-													<Icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
-													<span className="truncate">{p.name}</span>
-												</button>
-											);
-										})}
-									</div>
-								</div>
+								<>
+									<span className="mx-0.5 h-4 w-px shrink-0 bg-border" />
+									{platforms.map((p) => (
+										<button
+											key={p.id}
+											type="button"
+											onClick={() => updateCustomerInfo({ platform: p.id, platformCommission: p.commissionRate })}
+											className={cn(
+												"shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide transition-all",
+												customerInfo.platform === p.id
+													? "bg-orange-500 text-white shadow-sm"
+													: "bg-orange-50 text-orange-600 hover:bg-orange-100"
+											)}
+										>
+											{p.name}
+										</button>
+									))}
+								</>
 							)}
 						</div>
 						<div className="flex items-center justify-between">
