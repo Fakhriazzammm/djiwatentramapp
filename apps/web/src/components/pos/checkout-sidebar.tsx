@@ -437,21 +437,7 @@ export function CheckoutSidebar({
 })}
 									</div>
 								</div>
-								{selectedOrderType?.id === "online" && platforms.length > 0 && (
-									<div className="space-y-1.5">
-										<Label className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">Platform</Label>
-										<div className="grid grid-cols-2 gap-1 rounded-[1rem] border border-orange-200 bg-orange-50/50 p-1 shadow-sm md:gap-1.5 md:rounded-[1.15rem] md:p-1.5">
-											{platforms.map((p) => {
-												const Icon = getIcon(p.icon);
-												return (<button key={p.id} type="button" onClick={() => updateCustomerInfo({ platform: p.id, platformCommission: p.commissionRate })}
-													className={cn("flex min-h-[40px] flex-col items-center justify-center gap-0.5 rounded-[0.9rem] px-2 py-1.5 text-[10px] font-black transition-all md:min-h-[42px] md:rounded-[1rem] md:px-2.5 md:py-2 md:text-[11px]",
-														customerInfo.platform === p.id ? "bg-orange-500 text-white shadow-md shadow-orange-500/20" : "text-muted-foreground hover:bg-orange-100")}>
-													<Icon className="h-3.5 w-3.5 md:h-4 md:w-4" /><span className="truncate">{p.name}</span></button>);
-											})}
-										</div>
-									</div>
-								)}
-								{selectedOrderType?.requiresTableNumber && (
+							{selectedOrderType?.requiresTableNumber && (
 										<div className="space-y-1.5">
 											<Label htmlFor="table-number" className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">No. Meja</Label>
 											<Input
@@ -505,37 +491,30 @@ export function CheckoutSidebar({
 					{/* Section 2: Pilih Menu (Cart Items) */}
 				{activeStep === "menu" && (
 					<div className="space-y-4 fade-in animate-in slide-in-from-right-4 duration-300">
-						{/* Compact Order Online indicator card */}
-						{selectedOrderType?.id === "online" && (
-							<div className="flex items-center justify-between rounded-[1rem] border border-orange-200 bg-orange-50/70 px-3 py-2 shadow-sm md:rounded-[1.15rem] md:px-3.5 md:py-2.5">
-								<div className="flex items-center gap-2 md:gap-2.5 min-w-0">
-									{selectedPlatform ? (
-										<>
-											{(() => { const Icon = getIcon(selectedPlatform.icon); return <Icon className="h-4 w-4 shrink-0 text-orange-600 md:h-4.5 md:w-4.5" />; })()}
-											<div className="min-w-0">
-												<p className="text-[11px] font-black uppercase tracking-[0.12em] text-orange-700 md:text-[11px] truncate">
-													{selectedPlatform.name}
-												</p>
-												<p className="text-[9px] font-medium text-orange-500 md:text-[10px]">
-													Komisi {selectedPlatform.commissionRate}%
-												</p>
-											</div>
-										</>
-									) : (
-										<div className="flex items-center gap-2">
-											<ShoppingBag className="h-4 w-4 shrink-0 text-orange-400" />
-											<p className="text-[11px] font-semibold text-orange-400 uppercase tracking-wide">Pilih Platform</p>
-										</div>
-									)}
+						{/* Platform selector langsung di atas Pesanan (mode Online) */}
+						{selectedOrderType?.id === "online" && platforms.length > 0 && (
+							<div className="rounded-[1rem] border border-orange-200 bg-orange-50/60 p-2 shadow-sm md:rounded-[1.15rem] md:p-2.5">
+								<div className="grid grid-cols-2 gap-1 md:gap-1.5">
+									{platforms.map((p) => {
+										const Icon = getIcon(p.icon);
+										return (
+											<button
+												key={p.id}
+												type="button"
+												onClick={() => updateCustomerInfo({ platform: p.id, platformCommission: p.commissionRate })}
+												className={cn(
+													"flex min-h-[40px] flex-col items-center justify-center gap-0.5 rounded-[0.9rem] px-2 py-1.5 text-[10px] font-black transition-all md:min-h-[42px] md:rounded-[1rem] md:px-2.5 md:py-2 md:text-[11px]",
+													customerInfo.platform === p.id
+														? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
+														: "text-muted-foreground hover:bg-orange-100"
+												)}
+											>
+												<Icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
+												<span className="truncate">{p.name}</span>
+											</button>
+										);
+									})}
 								</div>
-								<Button
-									variant="ghost"
-									size="sm"
-									className="h-7 px-2 text-[10px] text-orange-600 font-bold hover:bg-orange-100 shrink-0"
-									onClick={() => setActiveStep("customer")}
-								>
-									Ubah
-								</Button>
 							</div>
 						)}
 						<div className="flex items-center justify-between">
