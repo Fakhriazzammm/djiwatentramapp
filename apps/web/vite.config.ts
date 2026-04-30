@@ -44,6 +44,20 @@ export default defineConfig({
 			workbox: {
 				navigateFallback: "/index.html",
 				maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+				runtimeCaching: [
+					{
+						// Navigation requests (HTML pages) — NetworkFirst so
+						// PWA always fetches latest index.html from server first.
+						// Falls back to cache only when offline.
+						urlPattern: ({ request }) => request.mode === "navigate",
+						handler: "NetworkFirst",
+						options: {
+							cacheName: "pages",
+							networkTimeoutSeconds: 5,
+							expiration: { maxEntries: 3, maxAgeSeconds: 60 },
+						},
+					},
+				],
 			},
 		}),
 	],

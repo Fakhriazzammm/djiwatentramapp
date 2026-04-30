@@ -89,6 +89,35 @@ void refreshAppShellIfVersionChanged().finally(() => {
 	});
 	setPwaUpdateHandler(updateSW);
 	startAppUpdatePolling();
+
+	// Force service worker update check when user returns to the PWA
+	// (critical for mobile where SW lifecycle is throttled by the OS)
+	if (typeof document !== "undefined") {
+		let lastCheck = 0;
+		const MIN_CHECK_INTERVAL = 30_000; // throttle to max once per 30s
+
+		const forceUpdateCheck = async () => {
+			if (!("serviceWorker" in navigator)) return;
+			try {
+				const registrations = await navigator.serviceWorker.getRegistrations();
+				await Promise.all(
+					registrations.map(async (reg) => {
+						await reg.update().catch(() => undefined);
+					}),
+				);
+			} catch {
+				// silently ignore — browser may throttle
+			}
+		};
+
+		document.addEventListener("visibilitychange", () => {
+			if (document.visibilityState !== "visible") return;
+			const now = Date.now();
+			if (now - lastCheck < MIN_CHECK_INTERVAL) return;
+			lastCheck = now;
+			void forceUpdateCheck();
+		});
+	}
 });
 
 if (!rootElement.innerHTML) {
