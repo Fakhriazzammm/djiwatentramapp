@@ -332,6 +332,8 @@ function MenuPage() {
 	const [lastOrderId, setLastOrderId] = useState<Id<"orders"> | null>(null);
 	const [offlinePendingCount, setOfflinePendingCount] = useState(0);
 	const [visibleProductsCount, setVisibleProductsCount] = useState(INITIAL_PRODUCTS_BATCH);
+	const [priceDialogProduct, setPriceDialogProduct] = useState(null);
+	const [priceDialogValue, setPriceDialogValue] = useState("");
 	const [isLoadingMoreProducts, setIsLoadingMoreProducts] = useState(false);
 
 	const [shiftStatusMountKey, setShiftStatusMountKey] = useState(0);
@@ -714,6 +716,7 @@ function MenuPage() {
 						},
 						activeDiscounts
 					);
+					if (customerInfo.orderType === "online") { setPriceDialogProduct({ product, defaultPrice: pricing.finalPrice }); setPriceDialogValue(String(pricing.finalPrice)); return; }
 					addToCart({
 						productId: product._id,
 						name: product.name,
@@ -727,7 +730,7 @@ function MenuPage() {
 				}
 			}
 		},
-		[filteredProducts, activeDiscounts, addToCart]
+		[filteredProducts, activeDiscounts, addToCart, customerInfo.orderType]
 	);
 
 	const handleCategorySelect = useCallback(
@@ -1152,6 +1155,7 @@ function MenuPage() {
 							quantity: i.quantity,
 							price: i.price,
 							originalPrice: i.originalPrice,
+originalPrice: i.originalPrice,
 							platformPrice: i.platformPrice,
 						})),
 						totalAmount: finalAmount,
@@ -1162,6 +1166,8 @@ function MenuPage() {
 						orderType: orderData?.orderType,
 						notes: orderData?.notes || customerInfo.notes,
 						platform: customerInfo.platform,
+						platformCommission: customerInfo.platformCommission,
+						voucherId:
 						platformCommission: customerInfo.platformCommission,
 						voucherId: discountId as Id<"discounts"> | undefined,
 						discountAmount,
@@ -2003,6 +2009,42 @@ function MenuPage() {
 					<span>Esc: Kembali</span>
 				</div>
 			</div>
+			{priceDialogProduct && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setPriceDialogProduct(null)}>
+					<div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+						<h3 className="text-center text-sm font-black uppercase tracking-wider text-foreground">Harga Online</h3>
+						<p className="mb-4 text-center text-xs text-muted-foreground">{priceDialogProduct.product.name}</p>
+						<div className="flex items-center gap-2 rounded-xl border border-border bg-muted/30 p-3 mb-3">
+							<span className="text-sm font-bold text-muted-foreground">Rp</span>
+							<input autoFocus type="text" inputMode="numeric" className="flex-1 bg-transparent text-lg font-black text-foreground outline-none"
+								value={priceDialogValue}
+								onChange={(e) => { const v = e.target.value.replace(/\D/g, ""); setPriceDialogValue(v); }}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										const customPrice = parseInt(priceDialogValue) || priceDialogProduct.defaultPrice;
+										const p = priceDialogProduct.product;
+										addToCart({ productId: p._id, name: p.name, price: customPrice, originalPrice: p.price, platformPrice: customPrice, quantity: 1, image: p.image, category: p.categoryId });
+										toast.success(p.name + " ditambahkan (Rp " + customPrice.toLocaleString("id-ID") + ")");
+										setPriceDialogProduct(null);
+									}
+									if (e.key === "Escape") setPriceDialogProduct(null);
+								}}
+							/>
+						</div>
+						<div className="text-center text-[11px] text-muted-foreground mb-4">Menu: {fmt(priceDialogProduct.product.price)}</div>
+						<div className="flex gap-2">
+							<button type="button" onClick={() => setPriceDialogProduct(null)} className="flex-1 rounded-xl border border-border bg-background py-2.5 text-sm font-bold text-muted-foreground hover:bg-muted">Batal</button>
+							<button type="button" onClick={() => {
+								const customPrice = parseInt(priceDialogValue) || priceDialogProduct.defaultPrice;
+								const p = priceDialogProduct.product;
+								addToCart({ productId: p._id, name: p.name, price: customPrice, originalPrice: p.price, platformPrice: customPrice, quantity: 1, image: p.image, category: p.categoryId });
+								toast.success(p.name + " ditambahkan (Rp " + customPrice.toLocaleString("id-ID") + ")");
+								setPriceDialogProduct(null);
+							}} className="flex-1 rounded-xl bg-orange-500 py-2.5 text-sm font-bold text-white shadow-md shadow-orange-500/20 hover:opacity-90">Tambah</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
