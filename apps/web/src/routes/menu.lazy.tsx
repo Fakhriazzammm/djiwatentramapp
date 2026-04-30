@@ -1167,8 +1167,6 @@ originalPrice: i.originalPrice,
 						notes: orderData?.notes || customerInfo.notes,
 						platform: customerInfo.platform,
 						platformCommission: customerInfo.platformCommission,
-						voucherId:
-						platformCommission: customerInfo.platformCommission,
 						voucherId: discountId as Id<"discounts"> | undefined,
 						discountAmount,
 						taxAmount,
