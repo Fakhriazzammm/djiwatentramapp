@@ -491,32 +491,59 @@ export function CheckoutSidebar({
 					{/* Section 2: Pilih Menu (Cart Items) */}
 				{activeStep === "menu" && (
 					<div className="space-y-4 fade-in animate-in slide-in-from-right-4 duration-300">
-						{/* Platform selector langsung di atas Pesanan (mode Online) */}
-						{selectedOrderType?.id === "online" && platforms.length > 0 && (
-							<div className="rounded-[1rem] border border-orange-200 bg-orange-50/60 p-2 shadow-sm md:rounded-[1.15rem] md:p-2.5">
+						{/* Order Type + Platform selector langsung di atas Pesanan */}
+						<div className="space-y-2">
+							{/* Order Type Selector */}
+							<div className="rounded-[1rem] border border-border/70 bg-white p-1.5 shadow-sm md:rounded-[1.15rem] md:p-2">
 								<div className="grid grid-cols-2 gap-1 md:gap-1.5">
-									{platforms.map((p) => {
-										const Icon = getIcon(p.icon);
+									{orderTypes.map((type: any) => {
+										const Icon = getIcon(type.icon);
 										return (
 											<button
-												key={p.id}
+												key={type.id}
 												type="button"
-												onClick={() => updateCustomerInfo({ platform: p.id, platformCommission: p.commissionRate })}
+												onClick={() => { updateCustomerInfo({ orderType: type.id, ...(type.id !== "online" ? { platform: undefined, platformCommission: undefined } : {}) }); }}
 												className={cn(
-													"flex min-h-[40px] flex-col items-center justify-center gap-0.5 rounded-[0.9rem] px-2 py-1.5 text-[10px] font-black transition-all md:min-h-[42px] md:rounded-[1rem] md:px-2.5 md:py-2 md:text-[11px]",
-													customerInfo.platform === p.id
-														? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
-														: "text-muted-foreground hover:bg-orange-100"
+													"flex min-h-[36px] flex-col items-center justify-center gap-0.5 rounded-[0.9rem] px-2 py-1 text-[10px] font-black transition-all md:min-h-[38px] md:rounded-[1rem] md:px-2.5 md:py-1.5 md:text-[11px]",
+													customerInfo.orderType === type.id
+														? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+														: "text-muted-foreground hover:bg-muted"
 												)}
 											>
 												<Icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
-												<span className="truncate">{p.name}</span>
+												<span className="truncate">{type.label}</span>
 											</button>
 										);
 									})}
 								</div>
 							</div>
-						)}
+							{/* Platform Selector (only when Online) */}
+							{selectedOrderType?.id === "online" && platforms.length > 0 && (
+								<div className="rounded-[1rem] border border-orange-200 bg-orange-50/60 p-1.5 shadow-sm md:rounded-[1.15rem] md:p-2">
+									<div className="grid grid-cols-2 gap-1 md:gap-1.5">
+										{platforms.map((p) => {
+											const Icon = getIcon(p.icon);
+											return (
+												<button
+													key={p.id}
+													type="button"
+													onClick={() => updateCustomerInfo({ platform: p.id, platformCommission: p.commissionRate })}
+													className={cn(
+														"flex min-h-[36px] flex-col items-center justify-center gap-0.5 rounded-[0.9rem] px-2 py-1 text-[10px] font-black transition-all md:min-h-[38px] md:rounded-[1rem] md:px-2.5 md:py-1.5 md:text-[11px]",
+														customerInfo.platform === p.id
+															? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
+															: "text-muted-foreground hover:bg-orange-100"
+													)}
+												>
+													<Icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
+													<span className="truncate">{p.name}</span>
+												</button>
+											);
+										})}
+									</div>
+								</div>
+							)}
+						</div>
 						<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
 									<ShoppingBag className="h-4 w-4 text-primary" />
@@ -547,7 +574,16 @@ export function CheckoutSidebar({
 											<div className="flex flex-1 flex-col justify-between min-w-0">
 												<div className="flex justify-between items-start gap-1">
 													<h4 className="line-clamp-1 text-[11px] font-bold text-foreground leading-tight">{item.name}</h4>
-													<p className="text-[11px] font-bold shrink-0">{fmt(item.price * item.quantity)}</p>
+													{customerInfo.orderType === "online" ? (
+														<input
+															type="number"
+															value={item.price}
+															onChange={(e) => updateItemPrice(item.productId, item.variant, parseInt(e.target.value) || 0)}
+															className="w-16 text-right text-[11px] font-bold bg-transparent border-b border-dashed border-orange-300 focus:outline-none focus:border-orange-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+														/>
+													) : (
+														<p className="text-[11px] font-bold shrink-0">{fmt(item.price * item.quantity)}</p>
+													)}
 												</div>
 												{item.variant && <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-tight truncate">{item.variant}</p>}
 										{item.platformPrice && item.platformPrice !== item.originalPrice && (
