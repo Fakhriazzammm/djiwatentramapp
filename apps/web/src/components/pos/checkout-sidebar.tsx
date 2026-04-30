@@ -74,6 +74,7 @@ export function CheckoutSidebar({
 	const {
 		items,
 		updateQuantity,
+		updateItemPrice,
 		grossAmount,
 		totalItems,
 		customerInfo,
