@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing" | "sendTelegram" | "recordTransaction";
+type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing" | "sendTelegram" | "recordTransaction" | "executeSql" | "insertInventory";
 type JsonRecord = Record<string, unknown>;
 
 const corsHeaders = {
@@ -303,6 +303,36 @@ async function recordTransaction(
 	return { ok: true, sourceId };
 }
 
+async function executeSql(payload: JsonRecord): Promise<{ ok: boolean; error?: string; result?: unknown }> {
+	const sql = String(payload.sql ?? "").trim();
+	if (!sql) return { ok: false, error: "sql is required" };
+	const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+	const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+	const supabase = createClient(supabaseUrl, supabaseKey);
+	const { error } = await supabase.rpc("exec_sql", { sql });
+	if (error) return { ok: false, error: error.message };
+	return { ok: true, result: "SQL executed successfully" };
+}
+
+async function insertInventory(payload: JsonRecord): Promise<{ ok: boolean; error?: string; sourceId?: string }> {
+	const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+	const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+	const supabase = createClient(supabaseUrl, supabaseKey);
+	const sourceId = "inv_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+	const { error } = await supabase.schema("pos").from("inventory").insert({
+		source_id: sourceId, ingredient_name: String(payload.ingredientName ?? ""), unit: String(payload.unit ?? "pcs"),
+		quantity: Number(payload.quantity ?? 0), low_stock_threshold: Number(payload.lowStockThreshold ?? 0),
+		conversion_factor: payload.conversionFactor ? Number(payload.conversionFactor) : null,
+		preferred_purchase_unit: payload.preferredPurchaseUnit || null,
+		preferred_purchase_quantity: payload.preferredPurchaseQuantity ? Number(payload.preferredPurchaseQuantity) : null,
+		last_purchase_price: payload.lastPurchasePrice ? Number(payload.lastPurchasePrice) : null,
+		last_purchase_at: payload.lastPurchaseAt ? Number(payload.lastPurchaseAt) : null,
+		raw: payload.raw || null, creation_time: Date.now(),
+	});
+	if (error) { console.error("insertInventory failed:", error); return { ok: false, error: error.message }; }
+	return { ok: true, sourceId };
+}
+
 async function sendTelegram(
 	payload: JsonRecord
 ): Promise<{ ok: boolean; error?: string; messageId?: number }> {
@@ -385,6 +415,10 @@ Deno.serve(async (req) => {
 				return jsonResponse(await sendTelegram(body));
 			case "recordTransaction":
 				return jsonResponse(await recordTransaction(body));
+			case "executeSql":
+				return jsonResponse(await executeSql(body));
+			case "insertInventory":
+				return jsonResponse(await insertInventory(body));
 			default:
 				return fail("AI action tidak dikenali", 404);
 		}

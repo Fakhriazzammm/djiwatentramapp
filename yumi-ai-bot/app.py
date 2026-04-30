@@ -16,6 +16,7 @@ from telegram.ext import (
     CallbackQueryHandler, ContextTypes, filters,
 )
 from PIL import Image
+from receipt_restock import handle_restock_from_ocr
 
 load_dotenv()
 
@@ -283,6 +284,7 @@ def _reply_keyboard() -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton("📅 Booking Aktif", callback_data="booking"),
             InlineKeyboardButton("📋 Briefing", callback_data="briefing"),
+            InlineKeyboardButton("Purchaselog", callback_data="purchaselog"),
         ],
         [
             InlineKeyboardButton("💬 Tanya Bebas", callback_data="help"),
@@ -392,12 +394,24 @@ async def _handle_ocr_action(update: Update, context: ContextTypes.DEFAULT_TYPE)
             label = "pengeluaran"
 
         elif action == "stock":
-            # For stock, we just acknowledge — actual processing via web app
+            ocr_text = query.message.text or ""
             await query.edit_message_text(
-                query.message.text + f"\n\n📦 *Catat sebagai stok:* buka web app untuk mencatat pembelian stok dari {merchant or 'struk'}.",
+                query.message.text + "\n\nMemproses update stok otomatis...",
                 parse_mode="Markdown",
                 reply_markup=None,
             )
+            try:
+                msg, _ = await handle_restock_from_ocr(
+                    ocr_text, merchant,
+                    SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY,
+                )
+                await query.edit_message_text(msg, reply_markup=None)
+            except Exception as e:
+                logger.exception("Restock failed")
+                await query.edit_message_text(
+                    query.message.text + f"\n\nGagal: {e}",
+                    reply_markup=None,
+                )
             return
         # Send to yumi-ai Edge Function (which has pos schema access)
         url = f"{SUPABASE_URL}/functions/v1/yumi-ai"
@@ -876,6 +890,38 @@ async def cmd_briefing_hari_ini(update: Update, context: ContextTypes.DEFAULT_TY
 
 
 # ===================================================================
+
+async def cmd_purchaselog(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not _is_allowed(update):
+        await _reply_msg(update, context, "Unauthorized")
+        return
+    try:
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+        logs = await _fetch("pos_purchase_logs", "select=*&order=created_at.desc&limit=10")
+        if not logs:
+            await _reply_msg(update, context, "Belum ada riwayat pembelian.", reply_markup=_reply_keyboard())
+            return
+        lines = ["RIWAYAT PEMBELIAN (10 terakhir)", ""]
+        for l in logs:
+            name = str(l.get("ingredient_name", "?"))[:30]
+            qty = float(l.get("quantity_added") or 0)
+            unit = str(l.get("unit", ""))
+            cost = float(l.get("total_cost") or 0)
+            merchant = str(l.get("merchant") or "")[:20]
+            dt = str(l.get("created_at", ""))[:16].replace("T", " ")
+            lines.append(f"{dt}  {merchant}")
+            lines.append(f"  +{qty:g} {unit} {name}  Rp {cost:,.0f}")
+            lines.append("")
+        msg = "\n".join(lines)
+        if len(msg) <= 4000:
+            await _reply_msg(update, context, msg, reply_markup=_reply_keyboard())
+        else:
+            for chunk in [msg[i:i+4000] for i in range(0, len(msg), 4000)]:
+                await _reply_msg(update, context, chunk)
+    except Exception as e:
+        logger.exception("purchaselog failed")
+        await _reply_msg(update, context, f"Gagal: {e}", reply_markup=_reply_keyboard())
+
 # Inline Keyboard Callback Handler
 # ===================================================================
 
@@ -891,6 +937,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "absen": cmd_absen_hari_ini,
         "booking": cmd_booking_aktif,
         "briefing": cmd_briefing_hari_ini,
+        "purchaselog": cmd_purchaselog,
         "help": cmd_help,
     }
 
@@ -1649,6 +1696,7 @@ def main():
     app.add_handler(CommandHandler("absen_hari_ini", cmd_absen_hari_ini))
     app.add_handler(CommandHandler("booking_aktif", cmd_booking_aktif))
     app.add_handler(CommandHandler("briefing_hari_ini", cmd_briefing_hari_ini))
+    app.add_handler(CommandHandler("purchaselog", cmd_purchaselog))
 
     # Alias (backward compat)
     app.add_handler(CommandHandler("kpi_hari_ini", cmd_ringkasan_hari_ini))  # deprecated
