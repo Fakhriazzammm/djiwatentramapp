@@ -1,5 +1,5 @@
 import { RefreshCw, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,10 +20,26 @@ import {
 const REMIND_AFTER_MS = 15 * 60 * 1000;
 const NEXT_REMINDER_KEY = "__app_update_next_reminder_at__";
 
+const PROGRESS_MESSAGES: { threshold: number; text: string }[] = [
+	{ threshold: 0, text: "Menghubungi server..." },
+	{ threshold: 25, text: "Mengunduh versi terbaru..." },
+	{ threshold: 55, text: "Memasang pembaruan..." },
+	{ threshold: 85, text: "Me-refresh halaman..." },
+];
+
 function getNextReminderAt() {
 	const value = window.localStorage.getItem(NEXT_REMINDER_KEY);
 	const parsed = value ? Number.parseInt(value, 10) : 0;
 	return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getProgressText(percent: number): string {
+	for (let i = PROGRESS_MESSAGES.length - 1; i >= 0; i--) {
+		if (percent >= PROGRESS_MESSAGES[i].threshold) {
+			return PROGRESS_MESSAGES[i].text;
+		}
+	}
+	return PROGRESS_MESSAGES[0].text;
 }
 
 export function AppUpdatePrompt() {
@@ -33,6 +49,8 @@ export function AppUpdatePrompt() {
 	});
 	const [open, setOpen] = useState(false);
 	const [isUpdating, setIsUpdating] = useState(false);
+	const [progress, setProgress] = useState(0);
+	const isUpdatingRef = useRef(false);
 
 	useEffect(() => {
 		if (typeof window === "undefined") return;
@@ -80,6 +98,15 @@ export function AppUpdatePrompt() {
 		};
 	}, []);
 
+	// Reset progress & state when dialog closes (user clicked "Nanti Saja" or dismissed)
+	useEffect(() => {
+		if (!open) {
+			setProgress(0);
+			setIsUpdating(false);
+			isUpdatingRef.current = false;
+		}
+	}, [open]);
+
 	if (!updateInfo) return null;
 
 	const handleLater = () => {
@@ -93,24 +120,67 @@ export function AppUpdatePrompt() {
 	};
 
 	const handleUpdateNow = async () => {
-		window.localStorage.removeItem(NEXT_REMINDER_KEY);
+		if (isUpdatingRef.current) return;
+		isUpdatingRef.current = true;
 		setIsUpdating(true);
-		await applyAppUpdate();
+		setProgress(0);
+
+		// Simulated progress animation (applyAppUpdate is fast but we want perceived feedback)
+		const startTime = Date.now();
+		const progressInterval = window.setInterval(() => {
+			setProgress((prev) => {
+				const elapsed = Date.now() - startTime;
+				// Quick ramp up to 20%, then slow down, max 90% (last 10% on actual reload)
+				const simulated = Math.min(
+					90,
+					elapsed < 800
+						? (elapsed / 800) * 20 // 0-800ms: 0-20%
+						: 20 + ((elapsed - 800) / 4000) * 70, // 800-4800ms: 20-90%
+				);
+				return Math.round(simulated);
+			});
+		}, 150);
+
+		try {
+			window.localStorage.removeItem(NEXT_REMINDER_KEY);
+			await applyAppUpdate();
+		} catch {
+			// If update fails, reset so user can retry
+			setIsUpdating(false);
+			isUpdatingRef.current = false;
+			setProgress(0);
+		} finally {
+			window.clearInterval(progressInterval);
+		}
 	};
+
+	const progressText = getProgressText(progress);
 
 	return (
 		<Dialog open={open}>
-			<DialogContent className="max-w-sm overflow-hidden p-0" showCloseButton={false}>
+			<DialogContent className="max-w-sm overflow-hidden p-0" showCloseButton={!isUpdating}>
 				<div className="bg-gradient-to-br from-primary/15 via-background to-background p-6">
 					<div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-						<Sparkles className="h-5 w-5" />
+						{isUpdating ? (
+							<RefreshCw className="h-5 w-5 animate-spin" />
+						) : (
+							<Sparkles className="h-5 w-5" />
+						)}
 					</div>
 
 					<DialogHeader>
-						<DialogTitle className="text-base font-bold">Update aplikasi tersedia</DialogTitle>
+						<DialogTitle className="text-base font-bold">
+							{isUpdating ? "Sedang memperbarui..." : "Update aplikasi tersedia"}
+						</DialogTitle>
 						<DialogDescription className="text-sm/relaxed">
-							Ada versi baru Djiwa Tentram POS. Klik <strong>Update Sekarang</strong> agar
-							 aplikasi melakukan hard refresh otomatis dan memakai bundle terbaru.
+							{isUpdating
+								? "Mohon tunggu sebentar, aplikasi sedang diperbarui ke versi terbaru."
+								: (
+									<>
+										Ada versi baru Djiwa Tentram POS. Klik <strong>Update Sekarang</strong> agar
+										aplikasi melakukan hard refresh otomatis dan memakai bundle terbaru.
+									</>
+								)}
 						</DialogDescription>
 					</DialogHeader>
 
@@ -125,19 +195,41 @@ export function AppUpdatePrompt() {
 						</div>
 					</div>
 
-					<DialogFooter className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
-						<Button type="button" variant="outline" onClick={handleLater} disabled={isUpdating}>
-							Nanti Saja
-						</Button>
-						<Button type="button" onClick={handleUpdateNow} loading={isUpdating} loadingText="Update...">
-							<RefreshCw className="h-4 w-4" />
-							Update Sekarang
-						</Button>
-					</DialogFooter>
+					{/* Progress section — shown during update */}
+					{isUpdating && (
+						<div className="mt-4 space-y-2">
+							<div className="flex items-center justify-between text-[11px] text-muted-foreground">
+								<span>{progressText}</span>
+								<span className="font-mono font-semibold tabular-nums text-foreground">
+									{progress}%
+								</span>
+							</div>
+							<div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+								<div
+									className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+									style={{ width: `${progress}%` }}
+								/>
+							</div>
+						</div>
+					)}
 
-					<p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-						Jika memilih Nanti Saja, pengingat akan muncul lagi setiap 15 menit di halaman manapun.
-					</p>
+					{!isUpdating && (
+						<>
+							<DialogFooter className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+								<Button type="button" variant="outline" onClick={handleLater}>
+									Nanti Saja
+								</Button>
+								<Button type="button" onClick={handleUpdateNow}>
+									<RefreshCw className="h-4 w-4" />
+									Update Sekarang
+								</Button>
+							</DialogFooter>
+
+							<p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+								Jika memilih Nanti Saja, pengingat akan muncul lagi setiap 15 menit di halaman manapun.
+							</p>
+						</>
+					)}
 				</div>
 			</DialogContent>
 		</Dialog>
