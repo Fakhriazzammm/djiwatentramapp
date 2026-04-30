@@ -814,7 +814,16 @@ function KanbanCard({
 																>
 																	{invItem?.ingredientName || "Unknown"}
 																	<span className="opacity-50">•</span>
-																	{invItem ? `${invItem.quantity} ${invItem.unit}` : "Kosong"}
+																	{invItem
+													? invItem.displayUnit &&
+													  invItem.conversionFactor &&
+													  invItem.conversionFactor > 0
+														? `${
+																invItem.quantity /
+																invItem.conversionFactor
+														  }.toFixed(2)} ${invItem.displayUnit}`
+														: `${invItem.quantity} ${invItem.unit}`
+													: "Kosong"}
 																</div>
 															);
 														})}
