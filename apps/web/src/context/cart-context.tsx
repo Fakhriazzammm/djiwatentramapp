@@ -38,6 +38,11 @@ interface CartContextType {
 		variant: string | undefined,
 		delta: number
 	) => void;
+	updateItemPrice: (
+		productId: string,
+		variant: string | undefined,
+		newPrice: number
+	) => void;
 	clearCart: () => void;
 	totalAmount: number;
 	grossAmount: number;
@@ -231,6 +236,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
 		);
 	};
 
+	const updateItemPrice = (
+		productId: string,
+		variant: string | undefined,
+		newPrice: number
+	) => {
+		setItems((prev) =>
+			prev.map((i) => {
+				if (i.productId === productId && i.variant === variant) {
+					return { ...i, price: newPrice, platformPrice: newPrice };
+				}
+				return i;
+			})
+		);
+	};
+
 	const clearCart = () => {
 		setItems([]);
 		setAppliedVoucher(null);
@@ -318,6 +338,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 				addToCart,
 				removeFromCart,
 				updateQuantity,
+				updateItemPrice,
 				clearCart,
 				totalAmount,
 				grossAmount,
