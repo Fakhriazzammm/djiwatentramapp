@@ -503,9 +503,42 @@ export function CheckoutSidebar({
 					)}
 
 					{/* Section 2: Pilih Menu (Cart Items) */}
-					{activeStep === "menu" && (
-						<div className="space-y-4 fade-in animate-in slide-in-from-right-4 duration-300">
-							<div className="flex items-center justify-between">
+				{activeStep === "menu" && (
+					<div className="space-y-4 fade-in animate-in slide-in-from-right-4 duration-300">
+						{/* Compact Order Online indicator card */}
+						{selectedOrderType?.id === "online" && (
+							<div className="flex items-center justify-between rounded-[1rem] border border-orange-200 bg-orange-50/70 px-3 py-2 shadow-sm md:rounded-[1.15rem] md:px-3.5 md:py-2.5">
+								<div className="flex items-center gap-2 md:gap-2.5 min-w-0">
+									{selectedPlatform ? (
+										<>
+											{(() => { const Icon = getIcon(selectedPlatform.icon); return <Icon className="h-4 w-4 shrink-0 text-orange-600 md:h-4.5 md:w-4.5" />; })()}
+											<div className="min-w-0">
+												<p className="text-[11px] font-black uppercase tracking-[0.12em] text-orange-700 md:text-[11px] truncate">
+													{selectedPlatform.name}
+												</p>
+												<p className="text-[9px] font-medium text-orange-500 md:text-[10px]">
+													Komisi {selectedPlatform.commissionRate}%
+												</p>
+											</div>
+										</>
+									) : (
+										<div className="flex items-center gap-2">
+											<ShoppingBag className="h-4 w-4 shrink-0 text-orange-400" />
+											<p className="text-[11px] font-semibold text-orange-400 uppercase tracking-wide">Pilih Platform</p>
+										</div>
+									)}
+								</div>
+								<Button
+									variant="ghost"
+									size="sm"
+									className="h-7 px-2 text-[10px] text-orange-600 font-bold hover:bg-orange-100 shrink-0"
+									onClick={() => setActiveStep("customer")}
+								>
+									Ubah
+								</Button>
+							</div>
+						)}
+						<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
 									<ShoppingBag className="h-4 w-4 text-primary" />
 									<h3 className="text-sm font-bold uppercase tracking-wider">Pesanan ({totalItems})</h3>
