@@ -17,11 +17,7 @@ import {
 	Tag,
 	Coffee,
 	X,
-	Printer,
-	Utensils,
-	Bike,
-	Truck,
-	Package
+	Printer
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -230,18 +226,6 @@ export function CheckoutSidebar({
 		return [...new Set(labels)];
 	}, [allActiveDiscounts, items, promoDiscountAmount, selectedDiscountId]);
 
-	// Icon mapping helper
-	const getIcon = (iconName?: string) => {
-		switch (iconName) {
-			case "Utensils": return Utensils;
-			case "ShoppingBag": return ShoppingBag;
-			case "Bike": return Bike;
-			case "Truck": return Truck;
-			case "Package": return Package;
-			default: return Utensils;
-		}
-	};
-
 	useEffect(() => {
 		if (!allActiveDiscounts) return;
 
@@ -414,31 +398,7 @@ export function CheckoutSidebar({
 									"grid gap-2.5",
 									selectedOrderType?.requiresTableNumber ? "grid-cols-2" : "grid-cols-1"
 								)}>
-									<div className="space-y-1.5">
-										<Label className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">Tipe Order</Label>
-										<div className="grid grid-cols-2 gap-1 rounded-[1rem] border border-border/70 bg-white p-1 shadow-sm md:gap-1.5 md:rounded-[1.15rem] md:p-1.5">
-											{orderTypes.map((type: any) => {
-												const Icon = getIcon(type.icon);
-												return (
-													<button
-														key={type.id}
-														type="button"
-														onClick={() => { updateCustomerInfo({ orderType: type.id, ...(type.id !== "online" ? { platform: undefined, platformCommission: undefined } : {}) }); }}
-								className={cn(
-									"flex min-h-[40px] flex-col items-centerjustify-center gap-0.5 rounded-[0.9rem] px-2 py-1.5 text-[10px] font-black transition-all md:min-h-[42px] md:rounded-[1rem] md:px-2.5 md:py-2 md:text-[11px]",
-															customerInfo.orderType === type.id
-																? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-																: "text-muted-foreground hover:bg-muted"
-														)}
-													>
-														<Icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
-														<span className="truncate">{type.label}</span>
-													</button>
-												);
-})}
-									</div>
-								</div>
-							{selectedOrderType?.requiresTableNumber && (
+									{selectedOrderType?.requiresTableNumber && (
 										<div className="space-y-1.5">
 											<Label htmlFor="table-number" className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">No. Meja</Label>
 											<Input
