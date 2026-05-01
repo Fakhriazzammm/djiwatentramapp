@@ -891,6 +891,7 @@ export function SettingsPage({
 	const [newRoleBonusOpen, setNewRoleBonusOpen] = useState(false);
 	const [editRoleBonusOpen, setEditRoleBonusOpen] = useState(false);
 	const [showFaceEnrollment, setShowFaceEnrollment] = useState(false);
+	const [savingUser, setSavingUser] = useState(false);
 	const [confirmConfig, setConfirmConfig] = useState<{
 		isOpen: boolean;
 		title: string;

@@ -93,6 +93,8 @@ export function CheckoutSidebar({
 	const shiftStatus = useHybridShiftStatus();
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
 
+	const [hasChosenOrderType, setHasChosenOrderType] = useState(false);
+
 	const orderTypes = useMemo(() => {
 		const types = siteSettings?.orderTypes ?? [];
 		return types
@@ -452,19 +454,20 @@ export function CheckoutSidebar({
 					{/* Section 2: Pilih Menu (Cart Items) */}
 				{activeStep === "menu" && (
 					<div className="space-y-4 fade-in animate-in slide-in-from-right-4 duration-300">
-						{/* Order Type + Platform — 1 baris compact */}
-						<div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
-							{orderTypes.map((type: any) => (
-								<button
-									key={type.id}
-									type="button"
-									onClick={() => { updateCustomerInfo({ orderType: type.id, ...(type.id !== "online" ? { platform: undefined, platformCommission: undefined } : {}) }); }}
-									className={cn(
-										"shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide transition-all",
-										customerInfo.orderType === type.id
-											? "bg-primary text-primary-foreground shadow-sm"
-											: "bg-muted/60 text-muted-foreground hover:bg-muted"
-									)}
+						{/* Order Type + Platform — 1 baris center */}
+						<div className="flex flex-col items-center gap-2">
+							<div className="flex items-center justify-center gap-1 flex-wrap">
+								{orderTypes.map((type: any) => (
+									<button
+										key={type.id}
+										type="button"
+										onClick={() => { updateCustomerInfo({ orderType: type.id, ...(type.id !== "online" ? { platform: undefined, platformCommission: undefined } : {}) }); setHasChosenOrderType(true); }}
+										className={cn(
+											"shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-wide transition-all",
+											customerInfo.orderType === type.id
+												? "bg-primary text-primary-foreground shadow-sm scale-105"
+												: "bg-muted/60 text-muted-foreground hover:bg-muted"
+										)}
 								>
 									{type.label}
 								</button>
@@ -488,6 +491,12 @@ export function CheckoutSidebar({
 										</button>
 									))}
 								</>
+							)}
+							</div>
+							{!hasChosenOrderType && (
+								<span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 animate-pulse shadow-sm">
+									👆 Ketuk untuk pilih tipe pesanan
+								</span>
 							)}
 						</div>
 						<div className="flex items-center justify-between">

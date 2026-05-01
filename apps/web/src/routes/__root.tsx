@@ -4,7 +4,6 @@ import { useSiteBrandingMetadata } from "../hooks/useSiteBrandingMetadata";
 import { useHybridSiteSettings } from "../hooks/use-hybrid-pos-data";
 import { useYumiAuth, YumiAuthProvider } from "../hooks/useYumiAuth";
 import { useEffect } from "react";
-import { Toaster } from "sonner";
 
 function RootContent() {
 	const navigate = useNavigate();
@@ -29,7 +28,6 @@ function RootContent() {
 				navigate({ to: "/login" as any, replace: true });
 			}
 		} else {
-			// If we are authenticated and on the login page, move to home
 			if (location.pathname === "/login") {
 				navigate({ to: "/home" as any, replace: true });
 			}
@@ -50,7 +48,6 @@ function RootContent() {
 	return (
 		<div className="min-h-app bg-background font-sans text-foreground antialiased">
 			<Outlet />
-			<Toaster position="top-right" richColors closeButton />
 		</div>
 	);
 }
