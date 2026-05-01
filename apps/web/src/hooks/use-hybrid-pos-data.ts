@@ -2,6 +2,26 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 
+// Global refresh — call triggerHybridRefresh() after any write to
+// instantly refresh ALL hybrid data hooks across the entire app.
+let _refreshCounter = 0;
+const _refreshListeners = new Set<() => void>();
+
+export function triggerHybridRefresh() {
+	_refreshCounter++;
+	_refreshListeners.forEach((fn) => fn());
+}
+
+function useGlobalRefreshTrigger() {
+	const [, setTick] = useState(0);
+	useEffect(() => {
+		const listener = () => setTick((n) => n + 1);
+		_refreshListeners.add(listener);
+		return () => { _refreshListeners.delete(listener); };
+	}, []);
+	return _refreshCounter;
+}
+
 type SiteSettingsRecord = Record<string, any>;
 type CategoryRecord = Record<string, any>;
 type ProductRecord = Record<string, any>;
@@ -294,7 +314,11 @@ function useSupabaseValue<T>(
 	deps: readonly unknown[],
 	options?: { refreshTrigger?: number; refreshMs?: number }
 ) {
-	return useSupabaseLiveValue(key, load, deps, options);
+	const globalTick = useGlobalRefreshTrigger();
+	const mergedTrigger = options?.refreshTrigger !== undefined
+		? options.refreshTrigger + globalTick
+		: globalTick;
+	return useSupabaseLiveValue(key, load, deps, { ...options, refreshTrigger: mergedTrigger });
 }
 
 function getHppCostPerBaseUnit(ingredient: HppIngredientRecord) {
