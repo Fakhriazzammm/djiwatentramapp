@@ -193,7 +193,8 @@ async function fetchHppCalculations() {
 function computeHppMetrics(calc: any) {
 	const ingredients = Array.isArray(calc.ingredients) ? calc.ingredients : [];
 	const overheads = Array.isArray(calc.overheadCosts) ? calc.overheadCosts : [];
-	const ingredientsCost = ingredients.reduce((sum: number, item: any) => {
+	const servingsPerBatch = safeNum(calc.servingsPerBatch) || 1;
+	const ingredientCostPerServing = ingredients.reduce((sum: number, item: any) => {
 		const price = safeNum(item.purchasePrice);
 		const qty = safeNum(item.purchaseQuantity);
 		const factor = safeNum(item.conversionFactor) || 1;
@@ -201,16 +202,32 @@ function computeHppMetrics(calc: any) {
 		if (price <= 0 || qty <= 0 || factor <= 0 || usage <= 0) return sum;
 		return sum + (price / (qty * factor)) * usage;
 	}, 0);
-	const overheadCost = overheads.reduce(
+	const overheadCostPerServing = overheads.reduce(
 		(sum: number, item: any) => sum + safeNum(item.costPerServing),
 		0
 	);
-	const hppPerServing = ingredientsCost + overheadCost;
+	const totalHppPerServing = ingredientCostPerServing + overheadCostPerServing;
+	const totalHppPerBatch = totalHppPerServing * servingsPerBatch;
 	const sellingPrice = safeNum(calc.sellingPrice);
-	const profitPerServing = sellingPrice - hppPerServing;
+	const profitPerServing = sellingPrice - totalHppPerServing;
 	const marginPercent =
 		sellingPrice > 0 ? (profitPerServing / sellingPrice) * 100 : 0;
-	return { hppPerServing, sellingPrice, profitPerServing, marginPercent };
+	const markupPercent =
+		totalHppPerServing > 0 ? (profitPerServing / totalHppPerServing) * 100 : 0;
+	const breakEvenServings =
+		totalHppPerServing > 0 ? Math.ceil(totalHppPerBatch / totalHppPerServing) : 0;
+	return {
+		ingredientCostPerServing,
+		overheadCostPerServing,
+		totalHppPerServing,
+		totalHppPerBatch,
+		hppPerServing: totalHppPerServing,
+		sellingPrice,
+		profitPerServing,
+		marginPercent,
+		markupPercent,
+		breakEvenServings,
+	};
 }
 
 async function fetchCurrentMonthProgress() {
@@ -751,6 +768,7 @@ export function useHybridHppPortfolio() {
 			const calculations = await fetchHppCalculations();
 			const portfolio = calculations.map((calc: any) => {
 				const metrics = computeHppMetrics(calc);
+				const ingredients = Array.isArray(calc.ingredients) ? calc.ingredients : [];
 				const status =
 					metrics.marginPercent >= 55
 						? "excellent"
@@ -759,42 +777,64 @@ export function useHybridHppPortfolio() {
 							: metrics.marginPercent >= 20
 								? "watch"
 								: "critical";
+				const reason =
+					metrics.marginPercent < 20
+						? "Margin terlalu rendah, pertimbangkan kenaikan harga"
+						: metrics.marginPercent < 35
+							? "Margin perlu dipantau"
+							: "";
+				// Build a product proxy from the calculation data since we don't
+				// query a separate products table here.
+				const product = {
+					_id: calc.productId ?? calc._id,
+					name: calc.name ?? "Produk",
+					price: metrics.sellingPrice,
+					promoPrice: null,
+				};
 				return {
-					id: calc._id,
-					productId: calc.productId ?? undefined,
-					productName: calc.name ?? "Produk",
-					name: calc.name ?? "HPP",
-					hppPerServing: metrics.hppPerServing,
-					sellingPrice: metrics.sellingPrice,
-					marginPercent: metrics.marginPercent,
-					profitPerServing: metrics.profitPerServing,
-					status,
-					updatedAt: safeNum(calc.updatedAt),
+					product,
+					recipe: null,
+					recipeItems: [],
 					calculation: calc,
 					metrics,
+					status,
+					reason,
+					linkedIngredientCount: ingredients.filter((i: any) => i.inventoryId).length,
+					ingredientCount: ingredients.length,
+					missingInventoryLinks: ingredients.filter((i: any) => !i.inventoryId).length,
+					missingCostCount: ingredients.filter(
+						(i: any) => !safeNum(i.purchasePrice) || !safeNum(i.purchaseQuantity)
+					).length,
+					outdatedIngredientCount: 0,
+					recommendedSellingPrice:
+						metrics.totalHppPerServing > 0
+							? Math.ceil(metrics.totalHppPerServing / 0.7 / 100) * 100
+							: null,
 				};
 			});
+			const avgMargin =
+				portfolio.length > 0
+					? portfolio.reduce((sum: number, row: any) => sum + row.metrics.marginPercent, 0) /
+						portfolio.length
+					: 0;
 			return {
 				summary: {
 					totalProducts: portfolio.length,
-					criticalCount: portfolio.filter((row: any) => row.marginPercent < 20).length,
-					watchCount: portfolio.filter((row: any) => row.marginPercent >= 20 && row.marginPercent < 35).length,
-					healthyCount: portfolio.filter((row: any) => row.marginPercent >= 35).length,
-					avgMarginPercent:
-						portfolio.length > 0
-							? portfolio.reduce((sum: number, row: any) => sum + row.marginPercent, 0) / portfolio.length
-							: 0,
+					linkedProducts: portfolio.filter((row: any) => row.product._id !== row.calculation._id).length,
+					outdatedProducts: 0,
+					missingRecipeProducts: portfolio.filter((row: any) => !row.recipe).length,
+					missingCostProducts: portfolio.filter((row: any) => row.missingCostCount > 0).length,
+					draftCount: 0,
+					averageMargin: avgMargin,
+					lowMarginCount: portfolio.filter((row: any) => row.metrics.marginPercent < 35).length,
 				},
 				alerts: portfolio
-					.filter((row: any) => row.marginPercent < 35)
+					.filter((row: any) => row.metrics.marginPercent < 35)
 					.map((row: any) => ({
-						productId: row.productId ?? row.id,
-						productName: row.productName,
-						status: row.marginPercent < 20 ? "critical" : "warning",
-						reason:
-							row.marginPercent < 20
-								? "Margin terlalu rendah"
-								: "Margin perlu dipantau",
+						productId: row.product._id,
+						productName: row.product.name,
+						status: row.metrics.marginPercent < 20 ? "critical" : "warning",
+						reason: row.reason,
 					})),
 				portfolio,
 				drafts: [],
