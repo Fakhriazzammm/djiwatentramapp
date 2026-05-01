@@ -292,7 +292,7 @@ function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
 	deps: readonly unknown[],
-	options?: { refreshTrigger?: number }
+	options?: { refreshTrigger?: number; refreshMs?: number }
 ) {
 	return useSupabaseLiveValue(key, load, deps, options);
 }
@@ -948,66 +948,53 @@ async function fetchDetailedShifts() {
 
 async function fetchShiftReports() {
 	const supabase = createClient();
+	// Gunakan public.pos_shifts (view ringan dari pos.shifts) alih-alih
+	// pos_shift_reports yang berat dengan subquery COUNT/SUM.
+	// Financial data diambil dari kolom summary (JSON) yang sudah
+	// di-populate saat shift ditutup.
 	const { data, error } = await supabase
-		.schema("public")
-		.from("pos_shift_reports")
+		.from("pos_shifts")
 		.select("*")
-		.order("start_time", { ascending: false });
+		.order("startTime", { ascending: false });
 
 	if (error) throw error;
 
-	return (data ?? []).map((row: any) => ({
-		shiftId: row.shift_id,
-		shiftName: row.shift_name,
-		cashierName: row.cashier_name ?? "",
-		teamMembers: row.team_members ?? "",
-		startTime: Number(row.start_time ?? 0),
-		endTime:
-			row.end_time === null || row.end_time === undefined
+	return (data ?? []).map((row: any) => {
+		const summary = row.summary && typeof row.summary === "object" ? row.summary : {};
+		const endTime =
+			row.endTime === null || row.endTime === undefined
 				? undefined
-				: Number(row.end_time),
-		status: row.status === "AKTIF" ? "AKTIF" : "SELESAI",
-		startingCash: Number(row.starting_cash ?? 0),
-		cashRevenue: Number(row.cash_revenue ?? 0),
-		qrisRevenue: Number(row.qris_revenue ?? 0),
-		otherRevenue: Number(row.other_revenue ?? 0),
-		totalGrossSales: Number(row.total_gross_sales ?? 0),
-		totalDiscount: Number(row.total_discount ?? 0),
-		totalRevenue: Number(row.total_revenue ?? 0),
-		totalExpenses: Number(row.total_expenses ?? 0),
-		totalItemsSold: Number(row.total_items_sold ?? 0),
-		orderCount: Number(row.order_count ?? 0),
-		bookingCount: Number(row.booking_count ?? 0),
-		hasTarget: Boolean(row.has_target),
-		targetRevenue:
-			row.target_revenue === null || row.target_revenue === undefined
-				? undefined
-				: Number(row.target_revenue),
-		shiftTarget:
-			row.shift_target === null || row.shift_target === undefined
-				? undefined
-				: Number(row.shift_target),
-		shiftCollected:
-			row.shift_collected === null || row.shift_collected === undefined
-				? undefined
-				: Number(row.shift_collected),
-		dailyTarget:
-			row.daily_target === null || row.daily_target === undefined
-				? undefined
-				: Number(row.daily_target),
-		dailyCollected:
-			row.daily_collected === null || row.daily_collected === undefined
-				? undefined
-				: Number(row.daily_collected),
-		isShiftTargetMet:
-			row.is_shift_target_met === null || row.is_shift_target_met === undefined
-				? undefined
-				: Boolean(row.is_shift_target_met),
-		isDailyTargetMet:
-			row.is_daily_target_met === null || row.is_daily_target_met === undefined
-				? undefined
-				: Boolean(row.is_daily_target_met),
-		})) as ShiftReportRecord[];
+				: Number(row.endTime);
+
+		return {
+			shiftId: row._id ?? row.shiftId,
+			shiftName: row.shiftName ?? "",
+			cashierName: row.cashierName ?? "",
+			teamMembers: row.teamMembers ?? "",
+			startTime: Number(row.startTime ?? 0),
+			endTime,
+			status: endTime ? "SELESAI" : "AKTIF",
+			startingCash: Number(row.startingCash ?? 0),
+			cashRevenue: Number(summary.cashRevenue ?? 0),
+			qrisRevenue: Number(summary.qrisRevenue ?? 0),
+			otherRevenue: Number(summary.otherRevenue ?? 0),
+			totalGrossSales: Number(summary.totalGrossSales ?? 0),
+			totalDiscount: Number(summary.totalDiscount ?? 0),
+			totalRevenue: Number(summary.totalRevenue ?? 0),
+			totalExpenses: Number(summary.totalExpenses ?? 0),
+			totalItemsSold: Number(summary.totalItemsSold ?? 0),
+			orderCount: Number(row.orderCount ?? 0),
+			bookingCount: 0,
+			hasTarget: false,
+			targetRevenue: undefined,
+			shiftTarget: undefined,
+			shiftCollected: undefined,
+			dailyTarget: undefined,
+			dailyCollected: undefined,
+			isShiftTargetMet: undefined,
+			isDailyTargetMet: undefined,
+		} as ShiftReportRecord;
+	});
 }
 
 async function fetchShiftDetails(args: { startTime: number; endTime?: number }) {
@@ -1848,7 +1835,14 @@ export function useHybridLatestInventoryCosts() {
 }
 
 export function useHybridShiftReportRows() {
-	const supabaseData = useSupabaseValue("shift-reports", fetchShiftReports, []);
+	// Bug #12: Polling 10 detik untuk ringkasan shift realtime.
+	// useSupabaseLiveValue sudah subscribe postgres_changes di schema public.
+	const supabaseData = useSupabaseValue(
+		"shift-reports",
+		fetchShiftReports,
+		[],
+		{ refreshMs: 10_000 }
+	);
 	return supabaseData as ShiftReportRecord[] | undefined;
 }
 
