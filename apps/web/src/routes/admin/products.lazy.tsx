@@ -962,20 +962,30 @@ function ProductsTab({
 								{products &&
 									filteredProducts.map((product) => (
 										<div className="group rounded-xl border border-border bg-card p-3" key={product._id}>
-											<div className="mb-2 flex items-center justify-between">
-												<input
-													checked={selectedSet.has(product._id)}
-													onChange={() => toggleSelected(product._id)}
-													type="checkbox"
-												/>
-												<button
-													className="rounded p-1 text-destructive hover:bg-destructive/10"
-													onClick={() => setDeleteId(product._id)}
-													type="button"
-												>
-													<Trash2 className="h-3.5 w-3.5" />
-												</button>
-											</div>
+								<div className="mb-2 flex items-center justify-between">
+														<input
+															checked={selectedSet.has(product._id)}
+															onChange={() => toggleSelected(product._id)}
+															type="checkbox"
+														/>
+														<div className="flex gap-0.5">
+															<button
+																className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+																onClick={() => handleEdit(product)}
+																type="button"
+																title="Edit produk"
+															>
+																<Edit className="h-3.5 w-3.5" />
+															</button>
+															<button
+																className="rounded p-1 text-destructive hover:bg-destructive/10"
+																onClick={() => setDeleteId(product._id)}
+																type="button"
+															>
+																<Trash2 className="h-3.5 w-3.5" />
+															</button>
+														</div>
+													</div>
 											<div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
 												{product.image ? (
 													<img alt={product.name} className="h-full w-full object-cover" src={product.image} />
@@ -1393,8 +1403,11 @@ function ProductsTab({
 																</div>
 															</td>
 															<td className="px-3 py-3">
-																<div className="flex justify-end gap-1">
-																	<button className="rounded-md p-1.5 text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(product._id)} type="button">
+								<div className="flex justify-end gap-1">
+													<button className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary" onClick={() => handleEdit(product)} type="button" title="Edit produk">
+														<Edit className="h-3.5 w-3.5" />
+													</button>
+													<button className="rounded-md p-1.5 text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(product._id)} type="button">
 																		<Trash2 className="h-3.5 w-3.5" />
 																	</button>
 																</div>
