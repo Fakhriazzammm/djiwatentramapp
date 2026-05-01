@@ -699,6 +699,27 @@ function HomePage() {
 											try {
 												const location = await getCurrentLocation();
 												if (statsToday?.isWorking) {
+													// Check if role needs stock opname
+													const roleName = (userRole?.name || "").toLowerCase();
+													const needsOpname = roleName.includes("bar") || roleName.includes("kitchen");
+													if (needsOpname) {
+														const opnameRole = roleName.includes("bar") ? "bar" : "kitchen";
+														toast.dismiss(toastId);
+														setShowFaceModal(false);
+														navigate({ 
+															to: "/attendance/stock-opname",
+															search: {
+																role: opnameRole,
+																shiftId: detectedShift?.id || "",
+																shiftName: detectedShift?.name || "Shift",
+																userId: user!._id,
+																userName: user?.name || "Staff",
+																faceDescriptor: descriptor.join(","),
+																location: JSON.stringify(location),
+															}
+														} as any);
+														return;
+													}
 													await clockOut({
 														userId: user!._id,
 														faceDescriptor: descriptor,

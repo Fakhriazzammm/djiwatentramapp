@@ -22,6 +22,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as HomeSectionRouteImport } from './routes/home.$section'
+import { Route as AttendanceStockOpnameRouteImport } from './routes/attendance/stock-opname'
 import { Route as AttendanceUsernameRouteImport } from './routes/attendance.$username'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminRecipeRouteImport } from './routes/admin/recipe'
@@ -115,6 +116,13 @@ const HomeSectionRoute = HomeSectionRouteImport.update({
   path: '/$section',
   getParentRoute: () => HomeRoute,
 } as any).lazy(() => import('./routes/home.$section.lazy').then((d) => d.Route))
+const AttendanceStockOpnameRoute = AttendanceStockOpnameRouteImport.update({
+  id: '/stock-opname',
+  path: '/stock-opname',
+  getParentRoute: () => AttendanceRoute,
+} as any).lazy(() =>
+  import('./routes/attendance/stock-opname.lazy').then((d) => d.Route),
+)
 const AttendanceUsernameRoute = AttendanceUsernameRouteImport.update({
   id: '/$username',
   path: '/$username',
@@ -300,6 +308,7 @@ export interface FileRoutesByFullPath {
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/attendance/$username': typeof AttendanceUsernameRoute
+  '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
@@ -336,6 +345,7 @@ export interface FileRoutesByTo {
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/attendance/$username': typeof AttendanceUsernameRoute
+  '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
   '/admin': typeof AdminIndexRoute
   '/attendance': typeof AttendanceIndexRoute
@@ -377,6 +387,7 @@ export interface FileRoutesById {
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/attendance/$username': typeof AttendanceUsernameRoute
+  '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
@@ -419,6 +430,7 @@ export interface FileRouteTypes {
     | '/admin/recipe'
     | '/admin/settings'
     | '/attendance/$username'
+    | '/attendance/stock-opname'
     | '/home/$section'
     | '/admin/'
     | '/attendance/'
@@ -455,6 +467,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/settings'
     | '/attendance/$username'
+    | '/attendance/stock-opname'
     | '/home/$section'
     | '/admin'
     | '/attendance'
@@ -495,6 +508,7 @@ export interface FileRouteTypes {
     | '/admin/recipe'
     | '/admin/settings'
     | '/attendance/$username'
+    | '/attendance/stock-opname'
     | '/home/$section'
     | '/admin/'
     | '/attendance/'
@@ -611,6 +625,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/home/$section'
       preLoaderRoute: typeof HomeSectionRouteImport
       parentRoute: typeof HomeRoute
+    }
+    '/attendance/stock-opname': {
+      id: '/attendance/stock-opname'
+      path: '/stock-opname'
+      fullPath: '/attendance/stock-opname'
+      preLoaderRoute: typeof AttendanceStockOpnameRouteImport
+      parentRoute: typeof AttendanceRoute
     }
     '/attendance/$username': {
       id: '/attendance/$username'
@@ -881,11 +902,13 @@ const BrandSlugRouteWithChildren = BrandSlugRoute._addFileChildren(
 
 interface AttendanceRouteChildren {
   AttendanceUsernameRoute: typeof AttendanceUsernameRoute
+  AttendanceStockOpnameRoute: typeof AttendanceStockOpnameRoute
   AttendanceIndexRoute: typeof AttendanceIndexRoute
 }
 
 const AttendanceRouteChildren: AttendanceRouteChildren = {
   AttendanceUsernameRoute: AttendanceUsernameRoute,
+  AttendanceStockOpnameRoute: AttendanceStockOpnameRoute,
   AttendanceIndexRoute: AttendanceIndexRoute,
 }
 
