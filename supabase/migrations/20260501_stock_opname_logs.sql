@@ -24,4 +24,3 @@ create index if not exists idx_pos_stock_opname_creation
 
 -- Grant write access to anon & authenticated
 grant insert, select, update on pos.stock_opname_logs to anon, authenticated;
-grant usage, select on sequence pos.stock_opname_logs_id_seq to anon, authenticated;
