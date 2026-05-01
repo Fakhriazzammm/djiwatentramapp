@@ -1146,6 +1146,7 @@ export function SettingsPage({
 			toast.error("PIN akses home harus 6 digit angka");
 			return;
 		}
+		setSavingUser(true);
 		try {
 			// Primary source of truth: always persist user profile to primary backend.
 			const createdUserId = await _createUser({
