@@ -1,6 +1,7 @@
 import { Outlet, createRootRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { useGlobalKeyboardNavigation } from "../hooks/useGlobalKeyboardNavigation";
 import { useSiteBrandingMetadata } from "../hooks/useSiteBrandingMetadata";
+import { useHybridSiteSettings } from "../hooks/use-hybrid-pos-data";
 import { useYumiAuth, YumiAuthProvider } from "../hooks/useYumiAuth";
 import { useEffect } from "react";
 import { Toaster } from "sonner";
