@@ -1,4 +1,4 @@
-﻿import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute } from "@tanstack/react-router";
 import type { Id } from "@/types/backend-compat";
 import {
 	Bell,
@@ -795,6 +795,11 @@ export function SettingsPage({
 		}).format(amount);
 	};
 
+	const [employeeOnboardingSettings, setEmployeeOnboardingSettings] = useState({
+		registrationEnabled: true,
+		defaultPassword: "djiwatentram123",
+	});
+
 	const [customerOrderingSettings, setCustomerOrderingSettings] = useState({
 		enabled: true,
 		welcomeTitle: "Welcome",
@@ -829,6 +834,7 @@ export function SettingsPage({
 		| "payroll"
 		| "attendance-report"
 		| "attendance-logs"
+		| "register"
 	>(mode === "operational-team" ? "users" : "landing");
 
 	useEffect(() => {
@@ -1019,6 +1025,10 @@ export function SettingsPage({
 					"QRIS",
 			});
 			setAiModelConfig(normalizeAiModelConfig(siteSettings.aiModelConfig ?? {}));
+			setEmployeeOnboardingSettings({
+				registrationEnabled: siteSettings.employeeOnboarding?.registrationEnabled ?? true,
+				defaultPassword: siteSettings.employeeOnboarding?.defaultPassword ?? "djiwatentram123",
+			});
 		}
 		setIsConnected(bluetoothPrinter.isConnected());
 		setPrinterName(bluetoothPrinter.getDeviceName());
@@ -1101,6 +1111,7 @@ export function SettingsPage({
 				payrollGlobalConfig,
 				customerOrdering: customerOrderingSettings,
 				aiModelConfig: normalizeAiModelConfig(aiModelConfig),
+				employeeOnboarding: employeeOnboardingSettings,
 			};
 			console.log("Saving settings:", payload);
 			await updateSiteSettings(payload);
@@ -1476,6 +1487,7 @@ export function SettingsPage({
 					{ id: "attendance-report", label: "Data Absensi", icon: FileBarChart },
 					{ id: "attendance-logs", label: "Log Absensi", icon: ClipboardList },
 					{ id: "payroll", label: "Gaji & Role", icon: Wallet },
+					{ id: "register", label: "Register Karyawan", icon: UserPlus },
 				] as const)
 			: ([
 					{ id: "landing", label: "Halaman Utama", icon: Layout },
@@ -2685,6 +2697,36 @@ export function SettingsPage({
 									<li>Bonus Target dapat dihitung per shift, per hari, atau per bulan sesuai role dan level target.</li>
 									<li>Denda keterlambatan hanya dihitung terhadap menit yang melebihi masa toleransi.</li>
 								</ul>
+							</div>
+						</section>
+					</div>
+				)}
+
+				{activeTab === "register" && (
+					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
+						<section className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-8">
+							<div className="flex items-center gap-4">
+								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+									<UserPlus className="h-6 w-6" />
+								</div>
+								<div>
+									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">Pengaturan Register Karyawan</h3>
+									<p className="text-muted-foreground text-sm">Konfigurasi halaman pendaftaran publik /register</p>
+								</div>
+							</div>
+							<div className="space-y-4">
+								<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-4 shadow-sm">
+									<div>
+										<p className="font-medium text-foreground text-sm">Aktifkan Pendaftaran</p>
+										<p className="text-muted-foreground text-xs">Izinkan calon karyawan mendaftar via halaman /register</p>
+									</div>
+									<button className={`relative h-6 w-10 rounded-full transition-all duration-300 $\{employeeOnboardingSettings.registrationEnabled ? "bg-primary" : "bg-muted-foreground/20"}`} onClick={() => setEmployeeOnboardingSettings({ ...employeeOnboardingSettings, registrationEnabled: !employeeOnboardingSettings.registrationEnabled })} type="button"><div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 $\{employeeOnboardingSettings.registrationEnabled ? "right-1" : "left-1"}`} /></button>
+								</div>
+								<div className="space-y-2 rounded-lg border border-border/50 bg-background p-4 shadow-sm">
+									<label className="font-medium text-foreground text-sm">Password Default User Baru</label>
+									<p className="text-muted-foreground text-xs">Password awal untuk user yang dibuat saat pendaftaran disetujui.</p>
+									<Input value={employeeOnboardingSettings.defaultPassword} onChange={(e) => setEmployeeOnboardingSettings({ ...employeeOnboardingSettings, defaultPassword: e.target.value })} className="max-w-xs" />
+								</div>
 							</div>
 						</section>
 					</div>

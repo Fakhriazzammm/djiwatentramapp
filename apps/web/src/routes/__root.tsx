@@ -9,6 +9,7 @@ function RootContent() {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const { isAuthenticated, isLoading, isStaff, isAdmin, user } = useYumiAuth();
+	const siteSettings = useHybridSiteSettings();
 
 	useGlobalKeyboardNavigation();
 	useSiteBrandingMetadata();
@@ -19,6 +20,10 @@ function RootContent() {
 		const isPublicPage = location.pathname === "/login" || location.pathname === "/register";
 		
 		if (!isAuthenticated) {
+			if (location.pathname === "/register" && siteSettings?.employeeOnboarding?.registrationEnabled === false) {
+				navigate({ to: "/login" as any, replace: true });
+				return;
+			}
 			if (!isPublicPage) {
 				navigate({ to: "/login" as any, replace: true });
 			}
