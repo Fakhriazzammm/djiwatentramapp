@@ -1314,6 +1314,28 @@ export function SettingsPage({
 		}
 	};
 
+	const handleAutoSaveRole = async () => {
+		if (!editingRole) return;
+		if (!editingRole.name.trim()) return; // silent skip, jangan tutup edit mode
+		try {
+			await updateRole({
+				id: editingRole._id,
+				name: editingRole.name,
+				permissions: editingRole.permissions,
+				baseHourlyRate: editingRole.baseHourlyRate,
+				baseShiftRate: editingRole.baseShiftRate,
+				monthlyFixedSalary: editingRole.monthlyFixedSalary,
+				dailyAllowance: editingRole.dailyAllowance,
+				bonusTargetConfig: normalizeRoleBonusTargetConfig(
+					editingRole.bonusTargetConfig
+				),
+			});
+			setRefreshTrigger(n => n + 1);
+		} catch (error) {
+			console.error(error);
+		}
+	};
+
 	const handleDeleteUser = (id: Id<"users">) => {
 		setConfirmConfig({
 			isOpen: true,
@@ -2274,12 +2296,13 @@ export function SettingsPage({
 															className="w-full rounded-lg border border-primary/30 bg-background p-2 text-xs outline-none focus:ring-2 focus:ring-primary/20"
 															type="text"
 															value={editingRole?.name ?? ""}
-															onChange={(e) =>
-																setEditingRole((prev) =>
-																	prev ? { ...prev, name: e.target.value } : prev
-																)
-															}
-														/>
+						onChange={(e) =>
+										setEditingRole((prev) =>
+											prev ? { ...prev, name: e.target.value } : prev
+										)
+									}
+									onBlur={handleAutoSaveRole}
+								/>
 																		) : (
 																			<span className="font-semibold text-xs text-foreground">{role.name}</span>
 																		)}
@@ -2289,15 +2312,16 @@ export function SettingsPage({
 														<input
 															className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
 															type="number"
-															value={editingRole?.baseShiftRate ?? 0}
-															onChange={(e) =>
-																setEditingRole((prev) =>
-																	prev
-																		? { ...prev, baseShiftRate: Number(e.target.value) }
-																		: prev
-																)
-															}
-														/>
+							value={editingRole?.baseShiftRate ?? 0}
+								onChange={(e) =>
+									setEditingRole((prev) =>
+										prev
+											? { ...prev, baseShiftRate: Number(e.target.value) }
+											: prev
+									)
+								}
+								onBlur={handleAutoSaveRole}
+							/>
 																		) : (
 																			<span className="text-xs text-muted-foreground font-mono">
 																				{role.baseShiftRate?.toLocaleString("id-ID") || 0}
@@ -2309,15 +2333,16 @@ export function SettingsPage({
 														<input
 															className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
 															type="number"
-															value={editingRole?.monthlyFixedSalary ?? 0}
-															onChange={(e) =>
-																setEditingRole((prev) =>
-																	prev
-																		? { ...prev, monthlyFixedSalary: Number(e.target.value) }
-																		: prev
-																)
-															}
-														/>
+							value={editingRole?.monthlyFixedSalary ?? 0}
+								onChange={(e) =>
+									setEditingRole((prev) =>
+										prev
+											? { ...prev, monthlyFixedSalary: Number(e.target.value) }
+											: prev
+									)
+								}
+								onBlur={handleAutoSaveRole}
+							/>
 																		) : (
 																			<span className="text-xs text-muted-foreground font-mono">
 																				{role.monthlyFixedSalary?.toLocaleString("id-ID") || 0}
@@ -2329,15 +2354,16 @@ export function SettingsPage({
 														<input
 															className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
 															type="number"
-															value={editingRole?.dailyAllowance ?? 0}
-															onChange={(e) =>
-																setEditingRole((prev) =>
-																	prev
-																		? { ...prev, dailyAllowance: Number(e.target.value) }
-																		: prev
-																)
-															}
-														/>
+							value={editingRole?.dailyAllowance ?? 0}
+								onChange={(e) =>
+									setEditingRole((prev) =>
+										prev
+											? { ...prev, dailyAllowance: Number(e.target.value) }
+											: prev
+									)
+								}
+								onBlur={handleAutoSaveRole}
+							/>
 																		) : (
 																			<span className="text-xs text-muted-foreground font-mono">
 																				{role.dailyAllowance?.toLocaleString("id-ID") || 0}
@@ -2457,7 +2483,7 @@ export function SettingsPage({
 								</DialogContent>
 							</Dialog>
 
-							<Dialog open={editRolePermOpen} onOpenChange={setEditRolePermOpen}>
+							<Dialog open={editRolePermOpen} onOpenChange={(open) => { if (!open) handleAutoSaveRole(); setEditRolePermOpen(open); }}>
 								<DialogContent className="sm:max-w-sm">
 									<DialogTitle>Izin Akses - {editingRole?.name}</DialogTitle>
 									<DialogDescription>Pilih izin akses untuk role ini.</DialogDescription>
@@ -2570,7 +2596,7 @@ export function SettingsPage({
 								</DialogContent>
 							</Dialog>
 
-							<Dialog open={editRoleBonusOpen} onOpenChange={setEditRoleBonusOpen}>
+							<Dialog open={editRoleBonusOpen} onOpenChange={(open) => { if (!open) handleAutoSaveRole(); setEditRoleBonusOpen(open); }}>
 								<DialogContent className="sm:max-w-lg">
 									<DialogTitle>Bonus Target - {editingRole?.name}</DialogTitle>
 									<DialogDescription>
