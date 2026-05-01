@@ -949,6 +949,7 @@ async function fetchDetailedShifts() {
 async function fetchShiftReports() {
 	const supabase = createClient();
 	const { data, error } = await supabase
+		.schema("public")
 		.from("pos_shift_reports")
 		.select("*")
 		.order("start_time", { ascending: false });
