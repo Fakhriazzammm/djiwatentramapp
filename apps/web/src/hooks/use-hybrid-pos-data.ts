@@ -1946,13 +1946,13 @@ export function useHybridShiftDetails(
 	return supabaseData as any;
 }
 
-export function useHybridStaffRoles() {
-	const supabaseData = useSupabaseValue("staff-roles", fetchStaffRoles, []);
+export function useHybridStaffRoles(refreshTrigger?: number) {
+	const supabaseData = useSupabaseValue("staff-roles", fetchStaffRoles, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
 	return supabaseData as StaffRoleRecord[] | undefined;
 }
 
-export function useHybridStaffUsers() {
-	const supabaseData = useSupabaseValue("staff-users", fetchStaffUsers, []);
+export function useHybridStaffUsers(refreshTrigger?: number) {
+	const supabaseData = useSupabaseValue("staff-users", fetchStaffUsers, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
 	return supabaseData as StaffUserRecord[] | undefined;
 }
 

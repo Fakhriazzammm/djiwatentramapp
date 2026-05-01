@@ -30,6 +30,8 @@ import {
 	FileBarChart,
 	ClipboardList,
 	ArrowUpRight,
+	Eye,
+	ChevronDown,
 	Coins,
 	ShoppingBag,
 	Bike,
@@ -568,9 +570,10 @@ export function SettingsPage({
 	mode?: SettingsPageMode;
 }) {
 	// Site Settings
+	const [refreshTrigger, setRefreshTrigger] = useState(0);
 	const siteSettings = useHybridSiteSettings();
-	const users = useHybridStaffUsers();
-	const roles = useHybridStaffRoles();
+	const users = useHybridStaffUsers(refreshTrigger);
+	const roles = useHybridStaffRoles(refreshTrigger);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const _createUser = useHybridCreateUser();
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1189,6 +1192,7 @@ export function SettingsPage({
 					slug: "",
 				});
 				toast.success("User berhasil dibuat!");
+				setRefreshTrigger(n => n + 1);
 			}
 		} catch (error) {
 			console.error(error);
@@ -1248,6 +1252,7 @@ export function SettingsPage({
 				faceDescriptor: (editingUser as any).faceDescriptor,
 			});
 			toast.success("Pengguna berhasil diperbarui");
+			setRefreshTrigger(n => n + 1);
 			setEditingUser(null);
 		} catch (error) {
 			console.error(error);
@@ -1291,6 +1296,7 @@ export function SettingsPage({
 				),
 			});
 			toast.success("Role berhasil diperbarui");
+			setRefreshTrigger(n => n + 1);
 			setEditingRole(null);
 		} catch (error) {
 			console.error(error);
@@ -1309,6 +1315,7 @@ export function SettingsPage({
 				try {
 					await deleteUser({ id });
 					toast.success("User dihapus");
+					setRefreshTrigger(n => n + 1);
 				} catch (_error) {
 					toast.error("Gagal menghapus user");
 				} finally {
@@ -1336,6 +1343,7 @@ export function SettingsPage({
 				),
 			});
 			toast.success("Role baru berhasil dibuat");
+			setRefreshTrigger(n => n + 1);
 			setNewRole({
 				name: "",
 				permissions: [],
@@ -1362,6 +1370,7 @@ export function SettingsPage({
 				try {
 					await deleteRole({ id });
 					toast.success("Role dihapus");
+					setRefreshTrigger(n => n + 1);
 				} catch (error) {
 					toast.error((error as Error).message);
 				}
@@ -2717,24 +2726,154 @@ export function SettingsPage({
 
 				{activeTab === "register" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
-						<section className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-8">
-							<div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-								<div className="flex items-center gap-4">
-									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary"><UserPlus className="h-6 w-6" /></div>
-									<div><h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">Pengaturan Register Karyawan</h3><p className="text-muted-foreground text-sm">Atur akses /register, field, step, role/gaji, dokumen, probation, dan approval.</p></div>
+						<section className="space-y-4 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-6">
+							{/* ── Header ── */}
+							<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+								<div className="flex items-center gap-3">
+									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><UserPlus className="h-5 w-5" /></div>
+									<div>
+										<h3 className="font-bold text-base text-foreground tracking-tight">Register Karyawan</h3>
+										<p className="text-muted-foreground text-xs">Konfigurasi halaman pendaftaran publik /register</p>
+									</div>
 								</div>
-								<div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => window.open("/register?preview=admin", "_blank")} type="button"><ArrowUpRight className="mr-1.5 h-4 w-4" />Preview Kandidat</Button><Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/onboarding"} type="button"><ClipboardList className="mr-1.5 h-4 w-4" />Review Pendaftar</Button></div>
+								<div className="flex gap-2">
+									<Button size="sm" variant="outline" onClick={() => window.open("/register?preview=admin", "_blank")} type="button"><Eye className="mr-1.5 h-3.5 w-3.5" />Preview</Button>
+									<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/onboarding"} type="button"><ClipboardList className="mr-1.5 h-3.5 w-3.5" />Pendaftar</Button>
+								</div>
 							</div>
 
-							<div className="grid gap-4 lg:grid-cols-3">
-								<div className="space-y-3 rounded-xl border bg-background p-4 lg:col-span-2">
-									<div className="flex items-center justify-between"><div><p className="font-semibold text-sm">Status & Akses</p><p className="text-xs text-muted-foreground">Mode public/internal/invite only dan pesan tutup.</p></div><button className={`relative h-7 w-12 rounded-full transition-all ${employeeOnboardingSettings.registrationEnabled ? "bg-primary" : "bg-muted-foreground/20"}`} onClick={() => setEmployeeOnboardingSettings((prev) => ({ ...prev, registrationEnabled: !prev.registrationEnabled }))} type="button"><div className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${employeeOnboardingSettings.registrationEnabled ? "right-1" : "left-1"}`} /></button></div>
-									<div className="grid gap-3 md:grid-cols-3"><Select value={employeeOnboardingSettings.registrationMode} onValueChange={(value) => setEmployeeOnboardingSettings((prev) => ({ ...prev, registrationMode: value as EmployeeOnboardingSettings["registrationMode"] }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="public">Publik</SelectItem><SelectItem value="internal">Internal</SelectItem><SelectItem value="invite_only">Invite Only</SelectItem></SelectContent></Select><Input value={employeeOnboardingSettings.inviteCode} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, inviteCode: e.target.value }))} placeholder="Kode invite" /><Input value={employeeOnboardingSettings.defaultPassword} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, defaultPassword: e.target.value }))} placeholder="Password default" /><Textarea className="md:col-span-3" value={employeeOnboardingSettings.closedMessage} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, closedMessage: e.target.value }))} /></div>
+							{/* ── Status Pendaftaran ── */}
+							<div className="rounded-xl border bg-background/50 p-4">
+								<div className="flex items-center justify-between mb-3">
+									<div>
+										<p className="font-semibold text-sm">Status Pendaftaran</p>
+										<p className="text-muted-foreground text-xs">Aktifkan halaman /register agar kandidat bisa mendaftar</p>
+									</div>
+									<button
+										className={`relative h-6 w-11 rounded-full transition-all ${employeeOnboardingSettings.registrationEnabled ? "bg-primary" : "bg-muted-foreground/25"}`}
+										onClick={() => setEmployeeOnboardingSettings((prev) => ({ ...prev, registrationEnabled: !prev.registrationEnabled }))}
+										type="button"
+									>
+										<div className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-all ${employeeOnboardingSettings.registrationEnabled ? "right-0.5" : "left-0.5"}`} />
+									</button>
 								</div>
-								<div className="space-y-3 rounded-xl border bg-background p-4"><p className="font-semibold text-sm">Default Pekerjaan</p><Select value={employeeOnboardingSettings.defaultRoleId || "none"} onValueChange={(value) => setEmployeeOnboardingSettings((prev) => ({ ...prev, defaultRoleId: value === "none" ? "" : value }))}><SelectTrigger><SelectValue placeholder="Default role" /></SelectTrigger><SelectContent><SelectItem value="none">Tidak ada</SelectItem>{roles.map((role: any) => <SelectItem key={role._id} value={role._id}>{role.name}</SelectItem>)}</SelectContent></Select><Input value={employeeOnboardingSettings.defaultLocation} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, defaultLocation: e.target.value }))} placeholder="Lokasi default" /><label className="flex gap-2 text-xs"><input checked={employeeOnboardingSettings.prefillSalaryFromRole} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, prefillSalaryFromRole: e.target.checked }))} type="checkbox" />Ambil gaji dari Gaji & Role</label><p className="text-xs text-muted-foreground">Gaji role default: {formatOnboardingCurrency((roles.find((role: any) => role._id === employeeOnboardingSettings.defaultRoleId) as any)?.monthlyFixedSalary)}</p></div>
+								<div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+									<div>
+										<label className="mb-1 block text-xs font-medium text-muted-foreground">Mode Pendaftaran</label>
+										<Select value={employeeOnboardingSettings.registrationMode} onValueChange={(value) => setEmployeeOnboardingSettings((prev) => ({ ...prev, registrationMode: value as EmployeeOnboardingSettings["registrationMode"] }))}>
+											<SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+											<SelectContent>
+												<SelectItem value="public">Publik</SelectItem>
+												<SelectItem value="internal">Internal</SelectItem>
+												<SelectItem value="invite_only">Invite Only</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
+									<div>
+										<label className="mb-1 block text-xs font-medium text-muted-foreground">Kode Invite</label>
+										<Input className="h-9 text-xs" value={employeeOnboardingSettings.inviteCode} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, inviteCode: e.target.value }))} placeholder="Kode invite" />
+									</div>
+									<div>
+										<label className="mb-1 block text-xs font-medium text-muted-foreground">Password Default</label>
+										<Input className="h-9 text-xs" type="password" value={employeeOnboardingSettings.defaultPassword} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, defaultPassword: e.target.value }))} placeholder="Password default" />
+									</div>
+									<div className="sm:col-span-2 lg:col-span-4">
+										<label className="mb-1 block text-xs font-medium text-muted-foreground">Pesan Saat Pendaftaran Ditutup</label>
+										<Textarea className="text-xs" rows={2} value={employeeOnboardingSettings.closedMessage} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, closedMessage: e.target.value }))} />
+									</div>
+								</div>
 							</div>
 
-							<div className="grid gap-4 lg:grid-cols-2"><div className="space-y-3 rounded-xl border bg-background p-4"><p className="font-semibold text-sm">Field Form</p><div className="grid gap-2 sm:grid-cols-2">{(Object.keys(employeeOnboardingSettings.fields) as EmployeeOnboardingFieldKey[]).map((key) => <div key={key} className="flex items-center justify-between rounded-lg border p-2 text-xs"><span>{key}</span><span className="flex gap-2"><label><input checked={employeeOnboardingSettings.fields[key].visible} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, fields: { ...prev.fields, [key]: { ...prev.fields[key], visible: e.target.checked } } }))} type="checkbox" /> Tampil</label><label><input checked={employeeOnboardingSettings.fields[key].required} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, fields: { ...prev.fields, [key]: { ...prev.fields[key], required: e.target.checked } } }))} type="checkbox" /> Wajib</label></span></div>)}</div></div><div className="space-y-3 rounded-xl border bg-background p-4"><p className="font-semibold text-sm">Step, Pipeline & Approval</p>{employeeOnboardingSettings.steps.map((step) => <label key={step.id} className="flex items-center justify-between rounded-lg border p-2 text-xs"><span>{step.title}</span><input checked={step.enabled} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, steps: prev.steps.map((item) => item.id === step.id ? { ...item, enabled: e.target.checked } : item) }))} type="checkbox" /></label>)}<Input value={employeeOnboardingSettings.pipeline.statuses.join(", ")} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, pipeline: { ...prev.pipeline, statuses: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) } }))} /><label className="flex gap-2 text-xs"><input checked={employeeOnboardingSettings.approvalPreview.enabled} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, approvalPreview: { ...prev.approvalPreview, enabled: e.target.checked } }))} type="checkbox" />Approval preview aktif</label><label className="flex gap-2 text-xs"><input checked={employeeOnboardingSettings.approvalPreview.requireConfirmation} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, approvalPreview: { ...prev.approvalPreview, requireConfirmation: e.target.checked } }))} type="checkbox" />Wajib konfirmasi approve</label></div></div>
+							{/* ── Default Akun Baru ── */}
+							<div className="rounded-xl border bg-background/50 p-4">
+								<p className="font-semibold text-sm mb-3">Default Akun Baru</p>
+								<div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+									<div>
+										<label className="mb-1 block text-xs font-medium text-muted-foreground">Role</label>
+										<Select value={employeeOnboardingSettings.defaultRoleId || "none"} onValueChange={(value) => setEmployeeOnboardingSettings((prev) => ({ ...prev, defaultRoleId: value === "none" ? "" : value }))}>
+											<SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Pilih role" /></SelectTrigger>
+											<SelectContent>
+												<SelectItem value="none">Tidak ada</SelectItem>
+												{roles.map((role: any) => <SelectItem key={role._id} value={role._id}>{role.name}</SelectItem>)}
+											</SelectContent>
+										</Select>
+									</div>
+									<div>
+										<label className="mb-1 block text-xs font-medium text-muted-foreground">Lokasi</label>
+										<Input className="h-9 text-xs" value={employeeOnboardingSettings.defaultLocation} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, defaultLocation: e.target.value }))} placeholder="Djiwa Tentram" />
+									</div>
+									<div className="flex items-end pb-0.5">
+										<label className="flex cursor-pointer items-center gap-2 rounded-lg border bg-background px-3 py-2 text-xs transition-colors hover:bg-muted/50">
+											<input checked={employeeOnboardingSettings.prefillSalaryFromRole} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, prefillSalaryFromRole: e.target.checked }))} type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" />
+											Isi gaji dari role
+										</label>
+									</div>
+									<div>
+										<label className="mb-1 block text-xs font-medium text-muted-foreground">Preview Gaji Default</label>
+										<p className="text-sm font-semibold text-primary">{formatOnboardingCurrency((roles.find((role: any) => role._id === employeeOnboardingSettings.defaultRoleId) as any)?.monthlyFixedSalary)}</p>
+									</div>
+								</div>
+							</div>
+
+							{/* ── Pengaturan Lanjutan (collapsible) ── */}
+							<details className="group rounded-xl border bg-background/50">
+								<summary className="flex cursor-pointer list-none items-center justify-between p-4 font-semibold text-sm select-none">
+									Pengaturan Lanjutan
+									<ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+								</summary>
+								<div className="space-y-4 px-4 pb-4">
+									{/* Fields */}
+									<div className="space-y-2">
+										<p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Field Form</p>
+										<div className="grid gap-1 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+											{(Object.keys(employeeOnboardingSettings.fields) as EmployeeOnboardingFieldKey[]).map((key) => (
+												<div key={key} className="flex items-center justify-between gap-1 rounded-md bg-background px-2 py-1.5 text-xs border">
+													<span className="truncate text-muted-foreground">{key}</span>
+													<span className="flex items-center gap-1.5 shrink-0">
+														<label className="flex items-center gap-0.5 cursor-pointer"><input checked={employeeOnboardingSettings.fields[key].visible} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, fields: { ...prev.fields, [key]: { ...prev.fields[key], visible: e.target.checked } } }))} type="checkbox" className="h-3 w-3 rounded accent-primary" /><span className="text-[10px]">T</span></label>
+														<label className="flex items-center gap-0.5 cursor-pointer"><input checked={employeeOnboardingSettings.fields[key].required} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, fields: { ...prev.fields, [key]: { ...prev.fields[key], required: e.target.checked } } }))} type="checkbox" className="h-3 w-3 rounded accent-primary" /><span className="text-[10px]">W</span></label>
+													</span>
+												</div>
+											))}
+										</div>
+										<p className="text-[10px] text-muted-foreground">T = Tampil, W = Wajib</p>
+									</div>
+
+									{/* Steps */}
+									<div className="space-y-2">
+										<p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Step Form</p>
+										<div className="flex flex-wrap gap-1.5">
+											{employeeOnboardingSettings.steps.map((step) => (
+												<label
+													key={step.id}
+													className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${step.enabled ? "border-primary/30 bg-primary/5 text-primary" : "border-transparent bg-muted text-muted-foreground"}`}
+												>
+													<input checked={step.enabled} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, steps: prev.steps.map((item) => item.id === step.id ? { ...item, enabled: e.target.checked } : item) }))} type="checkbox" className="sr-only" />
+													{step.title}
+												</label>
+											))}
+										</div>
+									</div>
+
+									{/* Pipeline & Approval */}
+									<div className="grid gap-2.5 sm:grid-cols-2">
+										<div>
+											<label className="mb-1 block text-xs font-medium text-muted-foreground">Pipeline Status</label>
+											<Input className="h-8 text-xs" value={employeeOnboardingSettings.pipeline.statuses.join(", ")} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, pipeline: { ...prev.pipeline, statuses: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) } }))} placeholder="submitted, screening, interview, ..." />
+										</div>
+										<div className="flex flex-col gap-2 justify-end pb-0.5">
+											<label className="flex cursor-pointer items-center gap-2 text-xs">
+												<input checked={employeeOnboardingSettings.approvalPreview.enabled} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, approvalPreview: { ...prev.approvalPreview, enabled: e.target.checked } }))} type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" />
+												Preview akun sebelum approve
+											</label>
+											<label className="flex cursor-pointer items-center gap-2 text-xs">
+												<input checked={employeeOnboardingSettings.approvalPreview.requireConfirmation} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, approvalPreview: { ...prev.approvalPreview, requireConfirmation: e.target.checked } }))} type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" />
+												Konfirmasi sebelum approve
+											</label>
+										</div>
+									</div>
+								</div>
+							</details>
 						</section>
 					</div>
 				)}
