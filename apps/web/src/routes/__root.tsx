@@ -3,6 +3,7 @@ import { useGlobalKeyboardNavigation } from "../hooks/useGlobalKeyboardNavigatio
 import { useSiteBrandingMetadata } from "../hooks/useSiteBrandingMetadata";
 import { useYumiAuth, YumiAuthProvider } from "../hooks/useYumiAuth";
 import { useEffect } from "react";
+import { Toaster } from "sonner";
 
 function RootContent() {
 	const navigate = useNavigate();
@@ -43,6 +44,7 @@ function RootContent() {
 	return (
 		<div className="min-h-app bg-background font-sans text-foreground antialiased">
 			<Outlet />
+			<Toaster position="top-right" richColors closeButton />
 		</div>
 	);
 }
