@@ -19,7 +19,6 @@ import {
 	ClipboardList,
 	Coffee,
 	ChefHat,
-	Clock,
 	Beer,
 	FileBarChart,
 	Gamepad2,
@@ -29,7 +28,6 @@ import {
 	MoreHorizontal,
 	Package,
 	Percent,
-	MapPin,
 	Settings,
 	Sparkles,
 	User,
@@ -75,10 +73,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/ai-chat": "Yumi AI",
 	"/admin/settings": "Pengaturan",
 	"/admin/operational-team": "Tim Operasional",
-	"/admin/operational-team/shifts": "Manajemen Shift",
-	"/admin/operational-team/attendance": "Lokasi & Radius",
-	"/admin/operational-team/attendance-report": "Data Absensi",
-	"/admin/operational-team/attendance-logs": "Log Absensi",
+	"/admin/operational-team/attendance": "Absensi",
 	"/admin/operational-team/payroll": "Gaji & Role",
 	"/admin/operational-team/register": "Register Karyawan",
 	"/admin/forecasting": "Forecasting",
@@ -118,10 +113,7 @@ const MORE_MENU_PATHS = [
 	"/admin/customer-service",
 	"/admin/minigames",
 	"/admin/operational-team",
-	"/admin/operational-team/shifts",
 	"/admin/operational-team/attendance",
-	"/admin/operational-team/attendance-report",
-	"/admin/operational-team/attendance-logs",
 	"/admin/operational-team/payroll",
 	"/admin/operational-team/register",
 	"/admin/settings",
@@ -192,10 +184,7 @@ const FINANCE_PATHS = [
 
 const OPERATIONAL_TEAM_PATHS = [
 	"/admin/operational-team",
-	"/admin/operational-team/shifts",
 	"/admin/operational-team/attendance",
-	"/admin/operational-team/attendance-report",
-	"/admin/operational-team/attendance-logs",
 	"/admin/operational-team/payroll",
 	"/admin/operational-team/register",
 ];
@@ -442,10 +431,7 @@ function AdminLayout() {
 					{isCollapsed ? (
 						<>
 							<DesktopNavLink icon={<Users />} isCollapsed={isCollapsed} label="Pengguna" to="/admin/operational-team" permission="users:manage" />
-							<DesktopNavLink icon={<Clock />} isCollapsed={isCollapsed} label="Shift" to="/admin/operational-team/shifts" permission="users:manage" />
-							<DesktopNavLink icon={<MapPin />} isCollapsed={isCollapsed} label="Lokasi Absensi" to="/admin/operational-team/attendance" permission="users:manage" />
-							<DesktopNavLink icon={<FileBarChart />} isCollapsed={isCollapsed} label="Data Absensi" to="/admin/operational-team/attendance-report" permission="users:manage" />
-							<DesktopNavLink icon={<ClipboardList />} isCollapsed={isCollapsed} label="Log Absensi" to="/admin/operational-team/attendance-logs" permission="users:manage" />
+							<DesktopNavLink icon={<FileBarChart />} isCollapsed={isCollapsed} label="Absensi" to="/admin/operational-team/attendance" permission="users:manage" />
 							<DesktopNavLink icon={<Wallet />} isCollapsed={isCollapsed} label="Gaji & Role" to="/admin/operational-team/payroll" permission="users:manage" />
 							<DesktopNavLink icon={<UserPlus />} isCollapsed={isCollapsed} label="Register" to="/admin/operational-team/register" permission="users:manage" />
 						</>
@@ -463,10 +449,7 @@ function AdminLayout() {
 									<motion.div animate={{ height: "auto", opacity: 1 }} className="overflow-hidden" exit={{ height: 0, opacity: 0 }} initial={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }}>
 										<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
 											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<Users />} label="Pengguna" to="/admin/operational-team" permission="users:manage" />
-											<DesktopSubNavLink icon={<Clock />} label="Manajemen Shift" to="/admin/operational-team/shifts" permission="users:manage" />
-											<DesktopSubNavLink icon={<MapPin />} label="Lokasi & Radius" to="/admin/operational-team/attendance" permission="users:manage" />
-											<DesktopSubNavLink icon={<FileBarChart />} label="Data Absensi" to="/admin/operational-team/attendance-report" permission="users:manage" />
-											<DesktopSubNavLink icon={<ClipboardList />} label="Log Absensi" to="/admin/operational-team/attendance-logs" permission="users:manage" />
+											<DesktopSubNavLink icon={<FileBarChart />} label="Absensi" to="/admin/operational-team/attendance" permission="users:manage" />
 											<DesktopSubNavLink icon={<Wallet />} label="Gaji & Role" to="/admin/operational-team/payroll" permission="users:manage" />
 											<DesktopSubNavLink icon={<UserPlus />} label="Register Karyawan" to="/admin/operational-team/register" permission="users:manage" />
 										</div>

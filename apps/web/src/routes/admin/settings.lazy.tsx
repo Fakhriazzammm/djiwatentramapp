@@ -1610,6 +1610,32 @@ export function SettingsPage({
 				</div>
 			)}
 
+			{/* Attendance sub-tabs (operational-team only) */}
+			{mode === "operational-team" && ["attendance", "attendance-report", "attendance-logs", "shifts"].includes(activeTab) && (
+				<div className="no-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-muted/50 p-1 shadow-inner md:p-1.5">
+					<Tabs className="w-full" onValueChange={(value) => setActiveTab(value as any)} value={activeTab}>
+						<TabsList className="w-full justify-start md:justify-stretch" variant="default">
+							<TabsTrigger className="shrink-0 md:flex-1" value="attendance-report">
+								<FileBarChart className="h-4 w-4" />
+								<span className="text-xs md:text-sm">Data Absensi</span>
+							</TabsTrigger>
+							<TabsTrigger className="shrink-0 md:flex-1" value="attendance-logs">
+								<ClipboardList className="h-4 w-4" />
+								<span className="text-xs md:text-sm">Log Absensi</span>
+							</TabsTrigger>
+							<TabsTrigger className="shrink-0 md:flex-1" value="shifts">
+								<Clock className="h-4 w-4" />
+								<span className="text-xs md:text-sm">Manajemen Shift</span>
+							</TabsTrigger>
+							<TabsTrigger className="shrink-0 md:flex-1" value="attendance">
+								<MapPin className="h-4 w-4" />
+								<span className="text-xs md:text-sm">Lokasi & Radius</span>
+							</TabsTrigger>
+						</TabsList>
+					</Tabs>
+				</div>
+			)}
+
 			{/* Tab Content */}
 			<div className="space-y-6">
 				{activeTab === "landing" && (
