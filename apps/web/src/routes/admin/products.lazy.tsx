@@ -1432,7 +1432,7 @@ function ProductsTab({
 
 			</div>
 
-			{/* Post Modals for Products */}
+			{/* Product Add/Edit Modal — Redesigned */}
 			<AnimatePresence>
 				{isModalOpen && (
 					<div
@@ -1441,157 +1441,203 @@ function ProductsTab({
 					>
 						<motion.div
 							animate={{ opacity: 1, scale: 1 }}
-							className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+							className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
 							data-admin-modal-card
 							exit={{ opacity: 0, scale: 0.95 }}
 							initial={{ opacity: 0, scale: 0.95 }}
 						>
-							<div className="border-b border-border/60 p-5">
-								<h3 className="font-bold text-xl text-foreground">
-									{editingId ? "Edit Produk" : "Tambah Produk Baru"}
-								</h3>
+							{/* Header */}
+							<div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
+								<div>
+									<h3 className="font-bold text-lg text-foreground">
+										{editingId ? "Edit Produk" : "Produk Baru"}
+									</h3>
+									{editingId && (
+										<p className="mt-0.5 text-[11px] text-muted-foreground">
+											Perbarui detail, gambar, dan variasi
+										</p>
+									)}
+								</div>
+								<button
+									className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+									onClick={resetForm}
+									type="button"
+								>
+									<X className="h-4 w-4" />
+								</button>
 							</div>
 
 							<form
 								className="flex flex-1 flex-col overflow-hidden"
 								onSubmit={handleCreateOrUpdate}
 							>
-								<div className="custom-scrollbar flex-1 space-y-4 overflow-y-auto p-5">
-									<div className="space-y-2">
-										<label
-											className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
-											htmlFor="product-name"
-										>
-											Nama Produk
-										</label>
-										<input
-											className="w-full rounded-md bg-muted p-4 font-bold text-foreground text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-ring/20"
-											id="product-name"
-											onChange={(e) =>
-												setFormData({ ...formData, name: e.target.value })
-											}
-											placeholder="Pesen Es Kopi..."
-											required
-											value={formData.name}
-										/>
-									</div>
-
-									<div className="grid grid-cols-2 gap-5">
-										<div className="col-span-1 space-y-2">
+								<div className="custom-scrollbar flex-1 space-y-5 overflow-y-auto p-5">
+									{/* Top Section: Image + Core Info */}
+									<div className="flex flex-col gap-4 sm:flex-row">
+										{/* Image Drop Zone */}
+										<div className="shrink-0 sm:w-36">
 											<label
-												className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
-												htmlFor="product-category"
+												className={`relative flex aspect-square cursor-pointer flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border-2 border-dashed transition-all ${
+													isDragOver
+														? "border-primary bg-primary/5"
+														: formData.image || imageFile
+															? "border-transparent"
+															: "border-muted-foreground/25 bg-muted/50 hover:border-primary/40 hover:bg-muted"
+												}`}
+												htmlFor="product-image-upload"
+												onDragLeave={(e) => {
+													e.preventDefault();
+													setIsDragOver(false);
+												}}
+												onDragOver={(e) => {
+													e.preventDefault();
+													setIsDragOver(true);
+												}}
+												onDrop={(e) => {
+													e.preventDefault();
+													setIsDragOver(false);
+													const file = e.dataTransfer.files?.[0];
+													if (file) setImageFile(file);
+												}}
 											>
-												Kategori
-											</label>
-											<select
-												className="w-full appearance-none rounded-md bg-muted p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring/20"
-												id="product-category"
-												onChange={(e) =>
-													setFormData({
-														...formData,
-														categoryId: e.target.value,
-													})
-												}
-												required
-												value={formData.categoryId}
-											>
-												<option value="">Pilih Kategori</option>
-												{categories?.filter(c => !c.parentId).map((parent: any) => (
-													<optgroup key={parent._id} label={parent.name}>
-														<option value={parent._id}>{parent.name} (Utama)</option>
-														{categories?.filter(c => c.parentId === parent._id).map((sub: any) => (
-															<option key={sub._id} value={sub._id}>
-																↳ {sub.name}
-															</option>
-														))}
-													</optgroup>
-												))}
-											</select>
-										</div>
-										<div className="col-span-1 space-y-2">
-											<label
-												className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
-												htmlFor="product-price"
-											>
-												Harga (Rp)
+												{imageFile ? (
+													<img
+														alt="Preview"
+														className="absolute inset-0 h-full w-full object-cover"
+														src={URL.createObjectURL(imageFile)}
+													/>
+												) : formData.image ? (
+													<img
+														alt={formData.name}
+														className="absolute inset-0 h-full w-full object-cover"
+														src={formData.image}
+													/>
+												) : (
+													<>
+														<Upload className="h-5 w-5 text-muted-foreground/60" />
+														<span className="text-center text-[9px] font-medium text-muted-foreground/60 leading-tight">
+															Tambah
+															<br />
+															Gambar
+														</span>
+													</>
+												)}
+												{(imageFile || formData.image) && (
+													<div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity hover:opacity-100">
+														<span className="rounded-md bg-white/90 px-2 py-1 text-[10px] font-semibold text-black">
+															Ganti
+														</span>
+													</div>
+												)}
 											</label>
 											<input
-												className="w-full rounded-md bg-muted p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring/20"
-												id="product-price"
-												onChange={(e) =>
-													setFormData({ ...formData, price: e.target.value })
-												}
-												placeholder="20000"
-												required
-												type="number"
-												value={formData.price}
+												accept="image/*"
+												className="hidden"
+												id="product-image-upload"
+												onChange={(e) => {
+													const file = e.target.files?.[0];
+													if (file) setImageFile(file);
+												}}
+												type="file"
 											/>
+											{imageFile && (
+												<p className="mt-1 truncate text-center text-[9px] text-muted-foreground">
+													{imageFile.name}
+												</p>
+											)}
+											{(imageFile || formData.image) && (
+												<button
+													className="mt-1 w-full rounded-md py-0.5 text-[9px] font-medium text-destructive hover:bg-destructive/5 transition-colors"
+													onClick={() => {
+														setImageFile(null);
+														if (!imageFile) setFormData({ ...formData, image: "" });
+													}}
+													type="button"
+												>
+													Hapus Gambar
+												</button>
+											)}
+										</div>
+
+										{/* Core Form Fields */}
+										<div className="min-w-0 flex-1 space-y-3">
+											<div className="space-y-1.5">
+												<label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground" htmlFor="product-name">
+													Nama Produk
+												</label>
+												<input
+													className="w-full rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-sm font-medium text-foreground outline-none transition-all placeholder:text-muted-foreground/40 focus:border-primary/40 focus:bg-background focus:ring-2 focus:ring-primary/10"
+													id="product-name"
+													onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+													placeholder="Nama menu..."
+													required
+													value={formData.name}
+												/>
+											</div>
+
+											<div className="grid grid-cols-2 gap-3">
+												<div className="space-y-1.5">
+													<label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground" htmlFor="product-category">
+														Kategori
+													</label>
+													<select
+														className="w-full rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-sm font-medium text-foreground outline-none transition-all focus:border-primary/40 focus:bg-background focus:ring-2 focus:ring-primary/10"
+														id="product-category"
+														onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+														required
+														value={formData.categoryId}
+													>
+														<option value="">Pilih Kategori</option>
+														{categories?.filter(c => !c.parentId).map((parent: any) => (
+															<optgroup key={parent._id} label={parent.name}>
+																<option value={parent._id}>{parent.name} (Utama)</option>
+																{categories?.filter(c => c.parentId === parent._id).map((sub: any) => (
+																	<option key={sub._id} value={sub._id}>
+																		↳ {sub.name}
+																	</option>
+																))}
+															</optgroup>
+														))}
+													</select>
+												</div>
+												<div className="space-y-1.5">
+													<label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground" htmlFor="product-price">
+														Harga
+													</label>
+													<div className="relative">
+														<span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground/60">Rp</span>
+														<input
+															className="w-full rounded-lg border border-border bg-muted/50 py-2.5 pl-9 pr-3 text-sm font-medium text-foreground outline-none transition-all focus:border-primary/40 focus:bg-background focus:ring-2 focus:ring-primary/10"
+															id="product-price"
+															onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+															placeholder="0"
+															required
+															type="number"
+															value={formData.price}
+														/>
+													</div>
+												</div>
+											</div>
 										</div>
 									</div>
 
-									<div className="space-y-2">
-										<label
-											className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
-											htmlFor="product-menu-number"
-										>
-											Nomor Menu
-										</label>
-										<input
-											className="w-full rounded-md bg-muted p-4 font-bold text-foreground text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-ring/20"
-											id="product-menu-number"
-											min="1"
-											onChange={(e) =>
-												setFormData({ ...formData, menuNumber: e.target.value })
-											}
-											placeholder="Contoh: 1, 2, 3..."
-											type="number"
-											value={formData.menuNumber}
-										/>
-										<p className="text-muted-foreground text-[10px]">
-											Nomor urut yang tampil di pojok kiri atas thumbnail menu. Kosongkan jika tidak diperlukan.
-										</p>
-									</div>
-
-									<div className="relative space-y-2">
-										<label
-											className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
-											htmlFor="product-desc"
-										>
-											Deskripsi
-										</label>
-										<div className="relative">
-											<textarea
-												className="h-28 w-full rounded-md bg-muted p-4 pr-12 font-medium text-foreground text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:ring-2 focus:ring-ring/20"
-												id="product-desc"
-												onChange={(e) =>
-													setFormData({
-														...formData,
-														description: e.target.value,
-													})
-												}
-												placeholder="Perpaduan espresso pilihan..."
-												value={formData.description}
-											/>
+									{/* Description */}
+									<div className="space-y-1.5">
+										<div className="flex items-center justify-between">
+											<label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground" htmlFor="product-desc">
+												Deskripsi
+											</label>
 											<button
-												className="absolute top-3 right-3 rounded-xl bg-gradient-to-br from-[#A855F7] to-[#EC4899] p-2 text-white transition-all hover:scale-110 active:scale-95 disabled:opacity-50"
-												disabled={
-													isGeneratingDesc ||
-													!formData.name ||
-													!formData.categoryId
-												}
+												className="inline-flex items-center gap-1 rounded-md bg-gradient-to-r from-purple-500 to-pink-500 px-2.5 py-1 text-[10px] font-semibold text-white transition-all hover:brightness-110 disabled:opacity-50"
+												disabled={isGeneratingDesc || !formData.name || !formData.categoryId}
 												onClick={async () => {
 													if (!(formData.name && formData.categoryId)) {
-														toast.error(
-															"Isi nama dan kategori terlebih dahulu"
-														);
+														toast.error("Isi nama dan kategori terlebih dahulu");
 														return;
 													}
 													setIsGeneratingDesc(true);
 													try {
-														const category = categories?.find(
-															(c: any) => c._id === formData.categoryId
-														);
+														const category = categories?.find((c: any) => c._id === formData.categoryId);
 														const desc = await generateDescription({
 															productName: formData.name,
 															category: category?.name || "Produk",
@@ -1607,213 +1653,171 @@ function ProductsTab({
 														setIsGeneratingDesc(false);
 													}
 												}}
-												title="Generate deskripsi dengan AI"
 												type="button"
 											>
-												<Sparkles
-													className={`h-4 w-4 ${isGeneratingDesc ? "animate-pulse" : ""}`}
-												/>
+												<Sparkles className={`h-3 w-3 ${isGeneratingDesc ? "animate-pulse" : ""}`} />
+												AI
 											</button>
 										</div>
+										<textarea
+											className="h-20 w-full resize-none rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground/40 focus:border-primary/40 focus:bg-background focus:ring-2 focus:ring-primary/10"
+											id="product-desc"
+											onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+											placeholder="Deskripsi singkat produk..."
+											value={formData.description}
+										/>
 									</div>
 
-									<div className="space-y-2">
-										<label
-											className="font-bold text-muted-foreground text-[10px] uppercase tracking-widest"
-											htmlFor="product-image-upload"
+									{/* Variations — Collapsible */}
+									<div className="rounded-xl border border-border/60 bg-muted/20">
+										<button
+											className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-muted/30"
+											onClick={() => setShowVariations(!showVariations)}
+											type="button"
 										>
-											Gambar Produk
-										</label>
-										{formData.image && !imageFile && (
-											<div className="relative mb-3 h-32 w-full overflow-hidden rounded-md border border-border bg-muted">
-												<img
-													alt="Preview"
-													className="h-full w-full object-cover"
-													height={225}
-													src={formData.image}
-													width={400}
-												/>
-												<button
-													className="absolute top-2 right-2 rounded-full bg-destructive p-1.5 text-destructive-foreground transition-all hover:scale-110"
-													onClick={() =>
-														setFormData({ ...formData, image: "" })
-													}
-													type="button"
-												>
-													<Trash2 className="h-4 w-4" />
-												</button>
+											<div className="flex items-center gap-2">
+												<List className="h-3.5 w-3.5 text-muted-foreground" />
+												<span className="text-sm font-semibold text-foreground">Variasi</span>
+												{formData.variations.length > 0 && (
+													<span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+														{formData.variations.length}
+													</span>
+												)}
 											</div>
-										)}
-										<div className="relative">
-											<input
-												accept="image/*"
-												className="hidden"
-												id="product-image-upload"
-												onChange={(e) => {
-													const file = e.target.files?.[0];
-													if (file) {
-														setImageFile(file);
-													}
-												}}
-												type="file"
-											/>
-											<label
-												className="flex cursor-pointer items-center justify-between rounded-md bg-muted p-4 font-bold text-muted-foreground text-xs transition-all hover:bg-muted/80"
-												htmlFor="product-image-upload"
-											>
-												<span className="flex items-center gap-2">
-													<div className="rounded-lg bg-foreground px-3 py-1.5 text-background">
-														Choose File
-													</div>
-													{imageFile ? imageFile.name : "No file chosen"}
-												</span>
-											</label>
-										</div>
-									</div>
-
-									{/* Variations Section */}
-									<div className="space-y-4 rounded-lg border border-border bg-muted/30 p-6">
-										<div className="flex items-center justify-between">
-											<h4 className="font-bold text-foreground text-xs uppercase tracking-widest">
-												Variasi
-											</h4>
-											<select
-												className="rounded-md bg-muted px-3 py-1.5 font-bold text-foreground text-[10px] outline-none"
-												onChange={(e) => addVariationFromPreset(e.target.value)}
-												value=""
-											>
-												<option value="">+ Preset</option>
-												{variationPresets?.map((vp: any) => (
-													<option key={vp._id} value={vp._id}>
-														{vp.name}
-													</option>
-												))}
-											</select>
-										</div>
-										{formData.variations.length === 0 ? (
-											<p className="text-center font-medium text-muted-foreground/70 text-[10px] italic">
-												Belum ada variasi. Pilih preset di atas.
-											</p>
-										) : (
-											<div className="space-y-3">
-												{formData.variations.map((v: any, vIdx: number) => (
-													<div
-														className="rounded-lg border border-border bg-card p-4"
-														key={v.name}
-													>
-														<div className="mb-3 flex items-center justify-between">
-															<span className="font-bold text-foreground text-[11px] uppercase tracking-wider">
-																{v.name}
-															</span>
-															<button
-																className="text-muted-foreground transition-colors hover:text-destructive"
-																onClick={() =>
-																	removeVariation(
-																		formData.variations.findIndex(
-																			(vari) => vari.name === v.name
-																		)
-																	)
-																}
-																type="button"
-															>
-																<XCircle className="h-4 w-4" />
-															</button>
-														</div>
-														<div className="space-y-2">
-															{v.options.map((opt: any, oIdx: number) => (
-																<div
-																	className="flex items-center gap-3"
-																	key={opt.name}
-																>
-																	<span className="flex-1 text-foreground/80 text-[11px]">
-																		{opt.name}
+											{showVariations ? (
+												<ChevronUp className="h-4 w-4 text-muted-foreground" />
+											) : (
+												<ChevronDown className="h-4 w-4 text-muted-foreground" />
+											)}
+										</button>
+										{showVariations && (
+											<div className="border-t border-border/50 px-4 py-3 space-y-3">
+												<select
+													className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/10"
+													onChange={(e) => addVariationFromPreset(e.target.value)}
+													value=""
+												>
+													<option value="">+ Tambah dari preset</option>
+													{variationPresets?.map((vp: any) => (
+														<option key={vp._id} value={vp._id}>
+															{vp.name}
+														</option>
+													))}
+												</select>
+												{formData.variations.length === 0 ? (
+													<p className="text-center text-[10px] italic text-muted-foreground/60">
+														Belum ada variasi
+													</p>
+												) : (
+													<div className="space-y-2">
+														{formData.variations.map((v: any, vIdx: number) => (
+															<div className="rounded-lg border border-border/60 bg-background p-3" key={v.name}>
+																<div className="mb-2 flex items-center justify-between">
+																	<span className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+																		{v.name}
 																	</span>
-																	<div className="flex items-center gap-1.5">
-																		<span className="text-muted-foreground text-[10px]">
-																			+Rp
-																		</span>
-																		<input
-																			className="w-24 rounded-md bg-muted px-2 py-1 text-right font-bold text-foreground text-[11px] outline-none focus:ring-1 focus:ring-primary/30"
-																			min="0"
-																			onChange={(e) => {
-																				const newVariations =
-																					formData.variations.map(
-																						(variation: any, vi: number) => {
-																							if (vi !== vIdx)
-																								return variation;
+																	<button
+																		className="text-muted-foreground hover:text-destructive transition-colors"
+																		onClick={() => removeVariation(formData.variations.findIndex((vari: any) => vari.name === v.name))}
+																		type="button"
+																	>
+																		<XCircle className="h-3.5 w-3.5" />
+																	</button>
+																</div>
+																<div className="space-y-1.5">
+																	{v.options.map((opt: any, oIdx: number) => (
+																		<div className="flex items-center gap-2" key={opt.name}>
+																			<span className="flex-1 text-[11px] text-foreground/80">{opt.name}</span>
+																			<div className="flex items-center gap-1">
+																				<span className="text-[10px] text-muted-foreground">+Rp</span>
+																				<input
+																					className="w-20 rounded-md border border-border bg-muted/50 px-2 py-1 text-right text-[11px] font-bold outline-none focus:ring-1 focus:ring-primary/20"
+																					min="0"
+																					onChange={(e) => {
+																						const newVariations = formData.variations.map((variation: any, vi: number) => {
+																							if (vi !== vIdx) return variation;
 																							return {
 																								...variation,
-																								options:
-																									variation.options.map(
-																										(
-																											o: any,
-																											oi: number
-																										) =>
-																											oi !== oIdx
-																												? o
-																												: {
-																														...o,
-																														price:
-																															Number(
-																																e
-																																	.target
-																																	.value
-																															) || 0,
-																													}
-																									),
+																								options: variation.options.map((o: any, oi: number) =>
+																									oi !== oIdx ? o : { ...o, price: Number(e.target.value) || 0 }
+																								),
 																							};
-																						}
-																					);
-																				setFormData({
-																					...formData,
-																					variations: newVariations,
-																				});
-																			}}
-																			type="number"
-																			value={opt.price}
-																		/>
-																	</div>
+																						});
+																						setFormData({ ...formData, variations: newVariations });
+																					}}
+																					type="number"
+																					value={opt.price}
+																				/>
+																			</div>
+																		</div>
+																	))}
 																</div>
-															))}
-														</div>
+															</div>
+														))}
 													</div>
-												))}
+												)}
 											</div>
 										)}
 									</div>
 
-									<div className="space-y-4 rounded-lg border border-border bg-muted/30 p-6">
-										<div className="flex items-center justify-between gap-3">
-											<div>
-												<h4 className="font-bold text-foreground text-xs uppercase tracking-widest">
-													Recipe Workspace
-												</h4>
-												<p className="mt-2 text-xs leading-5 text-muted-foreground">
-													Produk dan recipe sekarang dipisahkan. Simpan dulu produk,
-													lalu kelola formula raciknya dari halaman khusus recipe agar
-													lebih rapi dan mudah dibaca tim operasional.
-												</p>
+									{/* Advanced — Collapsible */}
+									<div className="rounded-xl border border-border/60 bg-muted/20">
+										<button
+											className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-muted/30"
+											onClick={() => setShowAdvanced(!showAdvanced)}
+											type="button"
+										>
+											<div className="flex items-center gap-2">
+												<Edit className="h-3.5 w-3.5 text-muted-foreground" />
+												<span className="text-sm font-semibold text-foreground">Lanjutan</span>
 											</div>
-											<a
-												className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm transition hover:brightness-110"
-												href="/admin/recipe"
-											>
-												Buka /admin/recipe
-											</a>
-										</div>
+											{showAdvanced ? (
+												<ChevronUp className="h-4 w-4 text-muted-foreground" />
+											) : (
+												<ChevronDown className="h-4 w-4 text-muted-foreground" />
+											)}
+										</button>
+										{showAdvanced && (
+											<div className="border-t border-border/50 px-4 py-3 space-y-3">
+												<div className="space-y-1.5">
+													<label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground" htmlFor="product-menu-number">
+														Nomor Menu
+													</label>
+													<input
+														className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/10"
+														id="product-menu-number"
+														min="1"
+														onChange={(e) => setFormData({ ...formData, menuNumber: e.target.value })}
+														placeholder="Urutan di menu (opsional)"
+														type="number"
+														value={formData.menuNumber}
+													/>
+												</div>
+												<div className="rounded-lg border border-border/40 bg-muted/20 p-3">
+													<p className="text-[11px] leading-relaxed text-muted-foreground">
+														Recipe dikelola terpisah di{" "}
+														<a className="font-semibold text-primary underline" href="/admin/recipe">
+															/admin/recipe
+														</a>
+														. Simpan produk dulu, lalu atur formula racik di sana.
+													</p>
+												</div>
+											</div>
+										)}
 									</div>
 								</div>
 
-								<div className="sticky bottom-0 flex gap-3 border-t border-border/60 bg-card/95 p-4 backdrop-blur">
+								{/* Footer */}
+								<div className="flex gap-3 border-t border-border/60 bg-card/95 px-5 py-3 backdrop-blur">
 									<button
-										className="flex-1 rounded-lg border border-border bg-muted py-2.5 font-semibold text-sm transition-all hover:bg-muted/80"
+										className="flex-1 rounded-lg border border-border bg-muted/50 py-2 text-sm font-semibold text-foreground transition-all hover:bg-muted"
 										onClick={resetForm}
 										type="button"
 									>
 										Batal
 									</button>
 									<button
-										className="flex-1 rounded-lg bg-primary py-2.5 font-semibold text-primary-foreground text-sm shadow-sm transition-all hover:brightness-110"
+										className="flex-1 rounded-lg bg-primary py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:brightness-110"
 										type="submit"
 									>
 										{editingId ? "Simpan Perubahan" : "Simpan Produk"}
@@ -1824,7 +1828,6 @@ function ProductsTab({
 					</div>
 				)}
 			</AnimatePresence>
-
 			<ConfirmationModal
 				confirmText="Hapus"
 				isOpen={!!deleteId}
