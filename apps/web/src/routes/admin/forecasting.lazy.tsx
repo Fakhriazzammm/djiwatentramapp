@@ -16,6 +16,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useHybridInventory } from "@/hooks/use-hybrid-pos-data";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridPredictBestPromoTime,
 	useHybridPredictBusyHours,
@@ -142,7 +143,7 @@ function ForecastingPage() {
 					currentStock: item.quantity,
 					avgDailyUsage: prediction.avgDailyUsage,
 				});
-				toast.success("Forecast berhasil dibuat dari data AI");
+				toast.success("Forecast berhasil dibuat dari data AI"); triggerHybridRefresh();
 			} else if (item) {
 				// Item has no risk prediction (stock is fine)
 				const forecasts = Array.from({ length: daysToForecast }, (_, idx) => {
@@ -165,7 +166,7 @@ function ForecastingPage() {
 					currentStock: item.quantity,
 					avgDailyUsage: 0,
 				});
-				toast.success("Forecast berhasil — stok aman");
+				toast.success("Forecast berhasil — stok aman"); triggerHybridRefresh();
 			} else {
 				toast.error("Item tidak ditemukan");
 			}

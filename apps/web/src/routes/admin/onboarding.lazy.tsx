@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ContractPreview } from "@/components/employee-onboarding/contract-preview";
 import { createClient } from "@/lib/client";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridCreateUser, useHybridUpdateEmployeeApplicationStatus } from "@/hooks/use-employee-onboarding-actions";
 import { formatOnboardingCurrency, generateSixDigitPin, normalizeEmployeeOnboardingSettings } from "@/lib/employee-onboarding-settings";
 
@@ -77,7 +78,7 @@ function AdminOnboardingPage() {
 				onboardingApplicationId: app.id,
 			});
 			await updateStatus({ id: app.id, status: "approved", approvedUserSourceId: createdUserId, reviewNotes: notes });
-			toast.success("Pendaftaran disetujui & user dibuat");
+			toast.success("Pendaftaran disetujui & user dibuat"); triggerHybridRefresh();
 			closeDialog();
 		} catch (e: any) { toast.error(e?.message || "Gagal approve"); }
 		finally { setIsSaving(false); }

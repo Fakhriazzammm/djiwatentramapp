@@ -8,6 +8,7 @@ import {
 	useHybridUpdateEntry,
 	useHybridUpdateGame,
 } from "@/hooks/use-hybrid-write-actions";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { Gift, Plus, Save, Trash2, Trophy } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -232,10 +233,10 @@ function AdminMiniGamesPage() {
 
 			if (gameForm.id) {
 				await updateGame({ id: gameForm.id, ...payload });
-				toast.success("Mini game berhasil diperbarui");
+				toast.success("Mini game berhasil diperbarui"); triggerHybridRefresh();
 			} else {
 				await createGame(payload);
-				toast.success("Mini game berhasil dibuat");
+				toast.success("Mini game berhasil dibuat"); triggerHybridRefresh();
 				setGameForm(createEmptyGame());
 			}
 		} catch (error: any) {
@@ -272,7 +273,7 @@ function AdminMiniGamesPage() {
 				contactStatus: entryDraft.contactStatus,
 				adminNotes: entryDraft.adminNotes.trim() || undefined,
 			});
-			toast.success("Data peserta berhasil ditambahkan");
+			toast.success("Data peserta berhasil ditambahkan"); triggerHybridRefresh();
 			setEntryDraft(createEntryDraft());
 		} catch (error: any) {
 			toast.error(error?.message ?? "Gagal menambahkan data");
@@ -296,7 +297,7 @@ function AdminMiniGamesPage() {
 				contactStatus: editingEntry.contactStatus,
 				adminNotes: editingEntry.adminNotes.trim() || undefined,
 			});
-			toast.success("Data peserta diperbarui");
+			toast.success("Data peserta diperbarui"); triggerHybridRefresh();
 			setEditingEntry(null);
 		} catch (error: any) {
 			toast.error(error?.message ?? "Gagal memperbarui data");
@@ -649,7 +650,7 @@ function AdminMiniGamesPage() {
 													onClick={async () => {
 														try {
 															await deleteGame({ id: game._id });
-															toast.success("Mini game dihapus");
+															toast.success("Mini game dihapus"); triggerHybridRefresh();
 															if (gameForm.id === game._id) {
 																setGameForm(createEmptyGame());
 															}
@@ -841,7 +842,7 @@ function AdminMiniGamesPage() {
 															onClick={async () => {
 																try {
 																	await deleteEntry({ id: entry._id });
-																	toast.success("Data peserta dihapus");
+																	toast.success("Data peserta dihapus"); triggerHybridRefresh();
 																} catch (error: any) {
 																	toast.error(error?.message ?? "Gagal menghapus data");
 																}

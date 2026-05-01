@@ -35,6 +35,7 @@ import {
 	useHybridInventory,
 	useHybridLatestInventoryCosts,
 } from "@/hooks/use-hybrid-pos-data";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridHppPortfolio,
 	useHybridHppPriceSimulation,
@@ -49,6 +50,7 @@ import {
 	useHybridUpdateHppCalculation,
 	useHybridUpsertHppFromRecipe,
 } from "@/hooks/use-hybrid-write-actions";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 
 export const Route = createLazyFileRoute("/admin/hpp-calculator")({
 	component: HppCalculatorPage,
@@ -707,7 +709,7 @@ function HppCalculatorPage() {
 					productId: form.productId,
 					sourceType: form.sourceType,
 				});
-				toast.success("Workspace costing berhasil diperbarui");
+				toast.success("Workspace costing berhasil diperbarui"); triggerHybridRefresh();
 			} else {
 				const createdId = await createHpp({
 					name: form.name,
@@ -720,7 +722,7 @@ function HppCalculatorPage() {
 					sourceType: form.sourceType,
 				});
 				setEditingId(createdId);
-				toast.success("Workspace costing berhasil dibuat");
+				toast.success("Workspace costing berhasil dibuat"); triggerHybridRefresh();
 			}
 		} catch {
 			toast.error("Gagal menyimpan workspace costing");
@@ -739,7 +741,7 @@ function HppCalculatorPage() {
 			if (editingId === deleteTarget) {
 				openNewDraft();
 			}
-			toast.success("Kalkulasi HPP berhasil dihapus");
+			toast.success("Kalkulasi HPP berhasil dihapus"); triggerHybridRefresh();
 		} catch {
 			toast.error("Gagal menghapus kalkulasi HPP");
 		}
@@ -750,7 +752,7 @@ function HppCalculatorPage() {
 		try {
 			const result = await syncPrices({ id });
 			if (result.updatedCount > 0) {
-				toast.success(`${result.updatedCount} harga bahan berhasil diperbarui`);
+				toast.success(`${result.updatedCount} harga bahan berhasil diperbarui`); triggerHybridRefresh();
 			} else {
 				toast.info("Harga bahan sudah sinkron");
 			}

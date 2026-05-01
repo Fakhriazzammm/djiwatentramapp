@@ -39,6 +39,7 @@ import {
 	useHybridOrders,
 	useHybridShiftReportRows,
 } from "@/hooks/use-hybrid-pos-data";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridOrdersCogs } from "@/hooks/use-hybrid-finance-analytics-data";
 import { useHybridBookingOrders } from "@/hooks/use-hybrid-booking-data";
 import {
@@ -47,6 +48,7 @@ import {
 	useHybridUpdateBookingStatus,
 	useHybridUpdateOrderStatus,
 } from "@/hooks/use-hybrid-write-actions";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import {
 	Select,
 	SelectContent,
@@ -346,7 +348,7 @@ function AdminOrders() {
 			} else {
 				await deleteOrder({ id: order._id });
 			}
-			toast.success("Berhasil dihapus");
+			toast.success("Berhasil dihapus"); triggerHybridRefresh();
 			setIsDetailOpen(false);
 		} catch (_e) {
 			toast.error("Gagal menghapus");

@@ -46,11 +46,13 @@ import {
 	useHybridShiftReportRows,
 	useHybridSiteSettings,
 } from "@/hooks/use-hybrid-pos-data";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridStaffStatsToday } from "@/hooks/use-hybrid-attendance-data";
 import {
 	useHybridClockIn,
 	useHybridClockOut,
 } from "@/hooks/use-hybrid-write-actions";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 
 type RoleMenuItem = {
@@ -891,7 +893,7 @@ function HomePage() {
 							onClick={async () => {
 								if (!summaryText) return;
 								await navigator.clipboard.writeText(summaryText);
-								toast.success("Ringkasan shift berhasil disalin");
+								toast.success("Ringkasan shift berhasil disalin"); triggerHybridRefresh();
 							}}
 							className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
 						>
@@ -907,7 +909,7 @@ function HomePage() {
 									const { sendTelegramReport } = await import("@/lib/telegram-report");
 									const result = await sendTelegramReport(summaryText);
 									if (result.ok) {
-										toast.success("Ringkasan shift berhasil dikirim ke Telegram!");
+										toast.success("Ringkasan shift berhasil dikirim ke Telegram!"); triggerHybridRefresh();
 									} else {
 										toast.error(result.error || "Gagal mengirim ke Telegram");
 									}

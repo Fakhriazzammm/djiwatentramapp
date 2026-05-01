@@ -25,6 +25,7 @@ import {
 	useHybridCategories,
 	useHybridInventory,
 } from "@/hooks/use-hybrid-pos-data";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
 import { useHybridTrackOrders } from "@/hooks/use-hybrid-ops-data";
 import {
@@ -34,6 +35,7 @@ import {
 	useHybridUpdateOrderItemStatus,
 	useHybridUpdateProduct,
 } from "@/hooks/use-hybrid-write-actions";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 
 export const Route = createLazyFileRoute("/admin/bar" as any)({
 	component: BarMonitorPage,
@@ -496,7 +498,7 @@ function KanbanCard({
 				...editForm,
 			});
 			setEditingId(null);
-			toast.success("Produk berhasil diperbarui");
+			toast.success("Produk berhasil diperbarui"); triggerHybridRefresh();
 		} catch (error) {
 			toast.error("Gagal memperbarui produk");
 		}

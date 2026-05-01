@@ -17,6 +17,7 @@ import {
 	useHybridUpdateProduct,
 	useHybridUpdateVariationPreset,
 } from "@/hooks/use-hybrid-write-actions";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	CheckCircle2,
@@ -494,7 +495,7 @@ function ProductsTab({
 		}
 		try {
 			await deleteProduct({ id: deleteId });
-			toast.success("Produk dihapus");
+			toast.success("Produk dihapus"); triggerHybridRefresh();
 			setDeleteId(null);
 		} catch (error) {
 			console.error(error);
@@ -504,7 +505,7 @@ function ProductsTab({
 
 	const toggleAvailability = async (id: Id<"products">, current: boolean) => {
 		await updateProduct({ id, isAvailable: !current });
-		toast.success("Status produk diperbarui");
+		toast.success("Status produk diperbarui"); triggerHybridRefresh();
 	};
 
 	const runBulkAvailability = async (isAvailable: boolean) => {
@@ -535,7 +536,7 @@ function ProductsTab({
 				})
 			)
 		);
-		toast.success(`${selectedIds.length} produk dipindahkan kategori`);
+		toast.success(`${selectedIds.length} produk dipindahkan kategori`); triggerHybridRefresh();
 	};
 
 	const runBulkDiscount = async () => {
@@ -555,7 +556,7 @@ function ProductsTab({
 				})
 			)
 		);
-		toast.success(`Diskon ${discountPercent}% diterapkan ke ${selectedIds.length} produk`);
+		toast.success(`Diskon ${discountPercent}% diterapkan ke ${selectedIds.length} produk`); triggerHybridRefresh();
 	};
 
 	const runBulkDelete = async () => {
@@ -564,7 +565,7 @@ function ProductsTab({
 		}
 		await Promise.all(selectedIds.map((id) => deleteProduct({ id })));
 		setSelectedIds([]);
-		toast.success("Produk terpilih berhasil dihapus");
+		toast.success("Produk terpilih berhasil dihapus"); triggerHybridRefresh();
 	};
 
 	const handleInlineNumberUpdate = async (
@@ -606,7 +607,7 @@ function ProductsTab({
 						: field === "promoPrice"
 							? "Harga promo"
 							: "Nomor menu";
-			toast.success(`${label} diperbarui`);
+			toast.success(`${label} diperbarui`); triggerHybridRefresh();
 		} finally {
 			setIsSavingInline((prev) => ({
 				...prev,
@@ -630,7 +631,7 @@ function ProductsTab({
 			return;
 		}
 		await updateProduct({ id, [field]: normalized });
-		toast.success(`${field === "name" ? "Nama" : "Deskripsi"} diperbarui`);
+		toast.success(`${field === "name" ? "Nama" : "Deskripsi"} diperbarui`); triggerHybridRefresh();
 	};
 
 	const handleInlineCategoryUpdate = async (
@@ -642,7 +643,7 @@ function ProductsTab({
 			return;
 		}
 		await updateProduct({ id, categoryId: value });
-		toast.success("Kategori diperbarui");
+		toast.success("Kategori diperbarui"); triggerHybridRefresh();
 	};
 
 	const resetInlineCreateRow = () => {
@@ -716,7 +717,7 @@ function ProductsTab({
 				menuNumber,
 				variations: [],
 			});
-			toast.success("Produk berhasil ditambahkan");
+			toast.success("Produk berhasil ditambahkan"); triggerHybridRefresh();
 			toast.info("Kelola recipe produk dari halaman /admin/recipe bila diperlukan");
 			resetInlineCreateRow();
 		} catch (error) {
@@ -744,7 +745,7 @@ function ProductsTab({
 			});
 			if (desc) {
 				setInlineFormData((prev) => ({ ...prev, description: desc }));
-				toast.success("Deskripsi berhasil di-generate");
+				toast.success("Deskripsi berhasil di-generate"); triggerHybridRefresh();
 			}
 		} catch {
 			toast.error("Gagal generate deskripsi");
@@ -766,7 +767,7 @@ function ProductsTab({
 			});
 			if (desc) {
 				await updateProduct({ id: product._id, description: desc });
-				toast.success("Deskripsi produk diperbarui");
+				toast.success("Deskripsi produk diperbarui"); triggerHybridRefresh();
 			}
 		} catch {
 			toast.error("Gagal generate deskripsi");
@@ -1645,7 +1646,7 @@ function ProductsTab({
 														});
 														if (desc) {
 															setFormData({ ...formData, description: desc });
-															toast.success("Deskripsi berhasil di-generate!");
+															toast.success("Deskripsi berhasil di-generate!"); triggerHybridRefresh();
 														}
 													} catch {
 														toast.error("Gagal generate deskripsi");
@@ -1928,14 +1929,14 @@ function SettingsTab({
 					parentId: categoryModal.parentId || undefined,
 					track: categoryModal.track || undefined,
 				});
-				toast.success("Kategori diperbarui");
+				toast.success("Kategori diperbarui"); triggerHybridRefresh();
 			} else {
 				await createCategory({ 
 					name: categoryModal.name,
 					parentId: categoryModal.parentId || undefined,
 					track: categoryModal.track || undefined,
 				});
-				toast.success("Kategori ditambahkan");
+				toast.success("Kategori ditambahkan"); triggerHybridRefresh();
 			}
 			setCategoryModal({ isOpen: false, editingId: null, name: "", parentId: null, track: null });
 		} catch (_error) {
@@ -1957,13 +1958,13 @@ function SettingsTab({
 					name: variationModal.name,
 					options: formattedOptions,
 				});
-				toast.success("Variasi diperbarui");
+				toast.success("Variasi diperbarui"); triggerHybridRefresh();
 			} else {
 				await createVariationPreset({
 					name: variationModal.name,
 					options: formattedOptions,
 				});
-				toast.success("Variasi ditambahkan");
+				toast.success("Variasi ditambahkan"); triggerHybridRefresh();
 			}
 			setVariationModal({
 				isOpen: false,
@@ -2588,10 +2589,10 @@ function BaseRecipesTab() {
 		try {
 			if (editingId) {
 				await updateBaseRecipe({ id: editingId, ...data });
-				toast.success("Resep base diperbarui");
+				toast.success("Resep base diperbarui"); triggerHybridRefresh();
 			} else {
 				await createBaseRecipe(data);
-				toast.success("Resep base dibuat");
+				toast.success("Resep base dibuat"); triggerHybridRefresh();
 			}
 			resetForm();
 		} catch (error) {
@@ -3047,7 +3048,7 @@ function BaseRecipesTab() {
 				onConfirm={async () => {
 					if (confirmDeleteId) {
 						await deleteBaseRecipe({ id: confirmDeleteId });
-						toast.success("Resep base dihapus");
+						toast.success("Resep base dihapus"); triggerHybridRefresh();
 					}
 				}}
 				title="Konfirmasi Hapus"

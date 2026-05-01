@@ -49,11 +49,13 @@ import {
 	useHybridStaffUsers,
 	useHybridSiteSettings,
 } from "@/hooks/use-hybrid-pos-data";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridMayarConfig } from "@/hooks/use-hybrid-ops-data";
 import {
 	useHybridCreateOrder,
 	useHybridMayarCreateInvoice,
 } from "@/hooks/use-hybrid-write-actions";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useMenuKeyboardNav, type FocusZone } from "@/hooks/use-menu-keyboard-nav";
 import { useCart } from "@/context/cart-context";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
@@ -726,7 +728,7 @@ function MenuPage() {
 						image: product.image,
 						category: product.categoryId,
 					});
-					toast.success(`${product.name} ditambahkan ke keranjang`);
+					toast.success(`${product.name} ditambahkan ke keranjang`); triggerHybridRefresh();
 				}
 			}
 		},
@@ -908,7 +910,7 @@ function MenuPage() {
 				image: product.image,
 				category: product.categoryId,
 			});
-			toast.success(`${product.name} ditambahkan ke keranjang`);
+			toast.success(`${product.name} ditambahkan ke keranjang`); triggerHybridRefresh();
 		}
 	};
 
@@ -996,7 +998,7 @@ function MenuPage() {
 						receiptFontSize: siteSettings.receiptFontSize,
 					}
 				);
-			toast.success("Struk berhasil dicetak", { id: "printing" });
+			toast.success("Struk berhasil dicetak", { id: "printing" }); triggerHybridRefresh();
 		} catch (error) {
 			console.error("Print failed:", error);
 			toast.error("Gagal mencetak struk.", { id: "printing" });
@@ -1064,7 +1066,7 @@ function MenuPage() {
 					receiptFontSize: siteSettings.receiptFontSize,
 				}
 			);
-			toast.success("Open bill berhasil dicetak", { id: "printing-open-bill" });
+			toast.success("Open bill berhasil dicetak", { id: "printing-open-bill" }); triggerHybridRefresh();
 		} catch (error) {
 			console.error("Open bill print failed:", error);
 			toast.error("Gagal mencetak open bill.", { id: "printing-open-bill" });
@@ -1206,16 +1208,16 @@ function MenuPage() {
 
 				if (shouldOpenBill) {
 					if (useMayarGateway) {
-						toast.success("Invoice Mayar berhasil dibuat");
+						toast.success("Invoice Mayar berhasil dibuat"); triggerHybridRefresh();
 						if (mayarInvoice?.link && typeof window !== "undefined") {
 							window.open(mayarInvoice.link, "_blank", "noopener,noreferrer");
 						}
 					} else {
-						toast.success("Open bill berhasil disimpan!");
+						toast.success("Open bill berhasil disimpan!"); triggerHybridRefresh();
 					}
 					setLastOrderId(orderId);
 				} else {
-					toast.success("Pesanan berhasil dibuat!");
+					toast.success("Pesanan berhasil dibuat!"); triggerHybridRefresh();
 					setLastOrderId(orderId);
 
 					if (siteSettings?.autoPrint !== false) {
@@ -1906,7 +1908,7 @@ function MenuPage() {
 						onAddToCart={(item) => {
 							addToCart(item);
 							setSelectedProduct(null);
-							toast.success(`${item.name} ditambahkan ke keranjang`);
+							toast.success(`${item.name} ditambahkan ke keranjang`); triggerHybridRefresh();
 						}}
 					/>
 				</SheetContent>

@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useHybridCustomerServiceRequests } from "@/hooks/use-hybrid-finance-analytics-data";
 import { useHybridUpdateCustomerServiceStatus } from "@/hooks/use-hybrid-write-actions";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 
 export const Route = createLazyFileRoute("/admin/customer-service" as any)({
 	component: CustomerServiceRequestsPage,
@@ -66,7 +67,7 @@ function CustomerServiceRequestsPage() {
 	) => {
 		try {
 			await updateStatus({ id, status });
-			toast.success("Status request berhasil diperbarui");
+			toast.success("Status request berhasil diperbarui"); triggerHybridRefresh();
 		} catch (error) {
 			toast.error((error as Error).message || "Gagal memperbarui request");
 		}

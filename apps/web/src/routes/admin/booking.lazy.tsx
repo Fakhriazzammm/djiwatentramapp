@@ -56,6 +56,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useHybridAllProducts, useHybridCategories } from "@/hooks/use-hybrid-pos-data";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridBookingDateCapacities,
 	useHybridBookingMonthSummary,
@@ -71,6 +72,7 @@ import {
 	useHybridUpdateBookingSettings,
 	useHybridUpdateBookingStatus,
 } from "@/hooks/use-hybrid-write-actions";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 
 export const Route = createLazyFileRoute("/admin/booking")({
 	component: BookingSettingsPage,
@@ -642,7 +644,7 @@ function BookingSettingsPage() {
 				bookingStatus: bookingStatus as any,
 				paymentStatus: paymentStatus as any,
 			});
-			toast.success("Status diperbarui");
+			toast.success("Status diperbarui"); triggerHybridRefresh();
 		} catch {
 			toast.error("Gagal memperbarui status");
 		}
@@ -654,7 +656,7 @@ function BookingSettingsPage() {
 		const tid = toast.loading("Menghapus booking...");
 		try {
 			await deleteBookingOrder({ id });
-			toast.success("Booking berhasil dihapus", { id: tid });
+			toast.success("Booking berhasil dihapus", { id: tid }); triggerHybridRefresh();
 		} catch {
 			toast.error("Gagal menghapus booking", { id: tid });
 		}
@@ -686,7 +688,7 @@ function BookingSettingsPage() {
 				guestCount: Number(editFormData.guestCount),
 				totalAmount: Number(editFormData.totalAmount),
 			});
-			toast.success("Booking berhasil diperbarui", { id: tid });
+			toast.success("Booking berhasil diperbarui", { id: tid }); triggerHybridRefresh();
 			setIsEditDialogOpen(false);
 		} catch {
 			toast.error("Gagal memperbarui booking", { id: tid });
@@ -777,7 +779,7 @@ function BookingSettingsPage() {
 					},
 				],
 			});
-			toast.success("Booking berhasil ditambahkan", { id: tid });
+			toast.success("Booking berhasil ditambahkan", { id: tid }); triggerHybridRefresh();
 			setIsCreateDialogOpen(false);
 			setCreateFormData({
 				customerName: "",

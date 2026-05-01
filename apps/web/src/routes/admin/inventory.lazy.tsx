@@ -10,6 +10,7 @@ import {
 	useHybridSuggestInventoryAutofill,
 	useHybridUpdateInventoryItem,
 } from "@/hooks/use-hybrid-write-actions";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { motion } from "framer-motion";
 import {
 	AlertCircle,
@@ -38,6 +39,7 @@ import {
 	useHybridCategories,
 	useHybridInventory,
 } from "@/hooks/use-hybrid-pos-data";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridBaseRecipes,
 	useHybridInventoryItemBatches,
@@ -1083,7 +1085,7 @@ function InventoryPage() {
 			defaultBrandName: newItem.defaultBrandName.trim() || undefined,
 			preferredStoreId,
 		});
-		toast.success("Bahan baku ditambahkan");
+		toast.success("Bahan baku ditambahkan"); triggerHybridRefresh(); triggerHybridRefresh();
 	};
 
 	const handleEditItem = async (selected: Doc<"inventory">) => {
@@ -1134,7 +1136,7 @@ function InventoryPage() {
 			defaultBrandName: newItem.defaultBrandName.trim() || undefined,
 			preferredStoreId,
 		});
-		toast.success("Bahan baku diperbarui");
+		toast.success("Bahan baku diperbarui"); triggerHybridRefresh(); triggerHybridRefresh();
 	};
 
 	const handleStockAction = async (
@@ -1170,7 +1172,7 @@ function InventoryPage() {
 				costPerUnit: costPerUnit ? Number(costPerUnit) : undefined,
 				timestamp: entryDate ? new Date(entryDate).getTime() : undefined,
 			});
-			toast.success(`Stok ${selected.ingredientName} ditambahkan`);
+			toast.success(`Stok ${selected.ingredientName} ditambahkan`); triggerHybridRefresh(); triggerHybridRefresh();
 		} else if (type === "usage") {
 			await applyStockAction({
 				...baseArgs,
@@ -1196,7 +1198,7 @@ function InventoryPage() {
 				await handleEditItem(selectedItem);
 			} else if (actionType === "delete" && selectedItem) {
 				await deleteItem({ id: selectedItem._id });
-				toast.success("Bahan baku dihapus");
+				toast.success("Bahan baku dihapus"); triggerHybridRefresh(); triggerHybridRefresh();
 			} else if (
 				selectedItem &&
 				(actionType === "add" ||
@@ -1713,7 +1715,7 @@ function InventoryModalContent({
 													inventoryId: selectedItem._id,
 													batchMultiplier: 1,
 												});
-												toast.success("Produksi berhasil");
+												toast.success("Produksi berhasil"); triggerHybridRefresh(); triggerHybridRefresh();
 												onActionTypeChange(null);
 												onSelectedItemChange(null);
 											} catch (e: unknown) {
@@ -4188,7 +4190,7 @@ function InventoryTable({
 				brandName: inline.defaultBrandName?.trim() || undefined,
 			});
 			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
-			toast.success("Harga terakhir diperbarui");
+			toast.success("Harga terakhir diperbarui"); triggerHybridRefresh(); triggerHybridRefresh();
 			setPriceDraftByRow((prev) => {
 				const next = { ...prev };
 				delete next[row.inventoryId];

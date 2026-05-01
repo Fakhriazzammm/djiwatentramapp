@@ -410,6 +410,14 @@ const AVAILABLE_PERMISSIONS = [
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HOME_PIN_REGEX = /^\d{6}$/;
 type SettingsPageMode = "settings" | "operational-team";
+type OperationalTeamTab =
+	| "users"
+	| "shifts"
+	| "attendance"
+	| "attendance-report"
+	| "attendance-logs"
+	| "payroll"
+	| "register";
 type BonusTargetBasis = "shift" | "daily" | "monthly";
 type BonusTierConfig = { thresholdPct: number; bonusAmount: number };
 type RoleBonusTargetConfig = {
@@ -566,8 +574,10 @@ const DEFAULT_AI_MODEL_CONFIG: AiModelConfig = {
 
 export function SettingsPage({
 	mode = "settings",
+	initialOperationalTab,
 }: {
 	mode?: SettingsPageMode;
+	initialOperationalTab?: OperationalTeamTab;
 }) {
 	// Site Settings
 	const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -844,11 +854,11 @@ export function SettingsPage({
 		| "attendance-report"
 		| "attendance-logs"
 		| "register"
-	>(mode === "operational-team" ? "users" : "landing");
+	>(mode === "operational-team" ? (initialOperationalTab ?? "users") : "landing");
 
 	useEffect(() => {
-		setActiveTab(mode === "operational-team" ? "users" : "landing");
-	}, [mode]);
+		setActiveTab(mode === "operational-team" ? (initialOperationalTab ?? "users") : "landing");
+	}, [mode, initialOperationalTab]);
 
 	// User/Role Form States
 	const [newUser, setNewUser] = useState({
@@ -1557,24 +1567,26 @@ export function SettingsPage({
 			</div>
 
 			{/* Tab Switcher - horizontal scroll on mobile */}
-			<div className="no-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-muted/50 p-1 shadow-inner md:p-1.5">
-				<Tabs
-					className="w-full"
-					onValueChange={(value) =>
-						setActiveTab(value as (typeof tabs)[number]["id"])
-					}
-					value={activeTab}
-				>
-					<TabsList className="w-full justify-start md:justify-stretch" variant="default">
-						{tabs.map((tab: any) => (
-							<TabsTrigger className="shrink-0 md:flex-1" key={tab.id} value={tab.id}>
-								<tab.icon className="h-4 w-4" />
-								<span className="text-xs md:text-sm">{tab.label}</span>
-							</TabsTrigger>
-						))}
-					</TabsList>
-				</Tabs>
-			</div>
+			{mode !== "operational-team" && (
+				<div className="no-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-muted/50 p-1 shadow-inner md:p-1.5">
+					<Tabs
+						className="w-full"
+						onValueChange={(value) =>
+							setActiveTab(value as (typeof tabs)[number]["id"])
+						}
+						value={activeTab}
+					>
+						<TabsList className="w-full justify-start md:justify-stretch" variant="default">
+							{tabs.map((tab: any) => (
+								<TabsTrigger className="shrink-0 md:flex-1" key={tab.id} value={tab.id}>
+									<tab.icon className="h-4 w-4" />
+									<span className="text-xs md:text-sm">{tab.label}</span>
+								</TabsTrigger>
+							))}
+						</TabsList>
+					</Tabs>
+				</div>
+			)}
 
 			{/* Tab Content */}
 			<div className="space-y-6">

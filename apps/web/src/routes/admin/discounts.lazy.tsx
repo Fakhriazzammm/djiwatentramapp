@@ -6,6 +6,7 @@ import {
 	useHybridGenerateDiscountStrategy,
 	useHybridUpdateDiscount,
 } from "@/hooks/use-hybrid-write-actions";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	AlertCircle,
@@ -32,6 +33,7 @@ import {
 	useHybridCategories,
 	useHybridOrders,
 } from "@/hooks/use-hybrid-pos-data";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createLazyFileRoute("/admin/discounts")({
@@ -212,10 +214,10 @@ function AdminDiscountsPage() {
 					id: formData.id,
 					...submissionData,
 				});
-				toast.success("Diskon diperbarui");
+				toast.success("Diskon diperbarui"); triggerHybridRefresh(); triggerHybridRefresh();
 			} else {
 				await createDiscount(submissionData);
-				toast.success("Diskon dibuat");
+				toast.success("Diskon dibuat"); triggerHybridRefresh(); triggerHybridRefresh();
 			}
 			setIsModalOpen(false);
 			resetForm();
@@ -232,7 +234,7 @@ function AdminDiscountsPage() {
 				onClick: async () => {
 					try {
 						await deleteDiscount({ id });
-						toast.success("Diskon dihapus");
+						toast.success("Diskon dihapus"); triggerHybridRefresh(); triggerHybridRefresh();
 					} catch (error) {
 						console.error(error);
 						toast.error("Gagal menghapus diskon");
@@ -1089,7 +1091,7 @@ function AdminDiscountsPage() {
 																	...formData,
 																	productPrices: newProductPrices,
 																});
-																toast.success("Harga diterapkan ke semua target");
+																toast.success("Harga diterapkan ke semua target"); triggerHybridRefresh(); triggerHybridRefresh();
 															}}
 															type="button"
 														>
