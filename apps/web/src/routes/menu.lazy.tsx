@@ -1155,7 +1155,6 @@ function MenuPage() {
 							quantity: i.quantity,
 							price: i.price,
 							originalPrice: i.originalPrice,
-originalPrice: i.originalPrice,
 							platformPrice: i.platformPrice,
 						})),
 						totalAmount: finalAmount,

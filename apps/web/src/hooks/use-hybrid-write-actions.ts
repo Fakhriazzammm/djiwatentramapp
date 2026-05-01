@@ -2487,12 +2487,7 @@ export function useHybridCreateOrder() {
 					payment_receipt_kind: args?.paymentReceiptKind ?? null,
 					payment_gateway: args?.paymentGateway ?? null,
 					gateway_invoice_id: args?.paymentGateway?.invoiceId ?? null,
-				creation_time: orderCreatedAt,
-					platform: args?.platform ?? null,
-					platform_commission_rate:
-						args?.platformCommission === undefined
-							? null
-							: Number(args.platformCommission ?? 0),
+					creation_time: orderCreatedAt,
 					raw: { ...(args ?? {}), authUserId: currentUser?._id ?? null },
 				};
 
@@ -2512,10 +2507,6 @@ export function useHybridCreateOrder() {
 							item?.originalPrice === undefined
 								? null
 								: Number(item.originalPrice ?? 0),
-						platform_price:
-							item?.platformPrice === undefined
-								? null
-								: Number(item.platformPrice ?? 0),
 							status: item?.status ?? null,
 							hpp_snapshot: item?.hppSnapshot ?? null,
 							raw: item ?? {},
