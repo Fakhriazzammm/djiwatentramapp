@@ -19,6 +19,7 @@ import {
 	ClipboardList,
 	Coffee,
 	ChefHat,
+	Clock,
 	Beer,
 	FileBarChart,
 	Gamepad2,
@@ -28,9 +29,11 @@ import {
 	MoreHorizontal,
 	Package,
 	Percent,
+	MapPin,
 	Settings,
 	Sparkles,
 	User,
+	UserPlus,
 	Users,
 	Wallet,
 	X,
@@ -187,6 +190,16 @@ const FINANCE_PATHS = [
 	"/admin/hpp-calculator",
 ];
 
+const OPERATIONAL_TEAM_PATHS = [
+	"/admin/operational-team",
+	"/admin/operational-team/shifts",
+	"/admin/operational-team/attendance",
+	"/admin/operational-team/attendance-report",
+	"/admin/operational-team/attendance-logs",
+	"/admin/operational-team/payroll",
+	"/admin/operational-team/register",
+];
+
 function AdminLayout() {
 	const navigate = useNavigate();
 	const { user: authUser, logout, isAdmin, role, isAuthenticated, isLoading } = useYumiAuth();
@@ -264,6 +277,21 @@ function AdminLayout() {
 		if (isOnFinancePath) setIsFinanceOpen(true);
 	}, [isOnFinancePath]);
 
+	const isOnOperationalTeamPath = OPERATIONAL_TEAM_PATHS.some((p) =>
+		location.pathname.startsWith(p),
+	);
+	const [isOperationalTeamOpen, setIsOperationalTeamOpen] = useState(() => {
+		if (typeof window !== "undefined") {
+			const saved = localStorage.getItem("admin-operational-team-open");
+			if (saved !== null) return saved === "true";
+		}
+		return isOnOperationalTeamPath;
+	});
+
+	useEffect(() => {
+		if (isOnOperationalTeamPath) setIsOperationalTeamOpen(true);
+	}, [isOnOperationalTeamPath]);
+
 	useEffect(() => {
 		localStorage.setItem("admin-sidebar-collapsed", String(isCollapsed));
 	}, [isCollapsed]);
@@ -271,6 +299,10 @@ function AdminLayout() {
 	useEffect(() => {
 		localStorage.setItem("admin-finance-open", String(isFinanceOpen));
 	}, [isFinanceOpen]);
+
+	useEffect(() => {
+		localStorage.setItem("admin-operational-team-open", String(isOperationalTeamOpen));
+	}, [isOperationalTeamOpen]);
 
 	useEffect(() => {
 		if (isFromHomeEntry) {
@@ -404,32 +436,45 @@ function AdminLayout() {
 
 					{/* OPERASIONAL */}
 					<SidebarSection isCollapsed={isCollapsed} label="Operasional" />
-					<DesktopNavLink
-						icon={<ChefHat />}
-						isCollapsed={isCollapsed}
-						label="Dapur"
-						to="/admin/kitchen"
-					/>
-					<DesktopNavLink
-						icon={<Beer />}
-						isCollapsed={isCollapsed}
-						label="Bar"
-						to="/admin/bar"
-					/>
-					<DesktopNavLink
-						icon={<Bell />}
-						isCollapsed={isCollapsed}
-						label="Layanan Customer"
-						to="/admin/customer-service"
-						permission="orders:view"
-					/>
-					<DesktopNavLink
-						icon={<Users />}
-						isCollapsed={isCollapsed}
-						label="Tim Operasional"
-						to="/admin/operational-team"
-						permission="users:manage"
-					/>
+					<DesktopNavLink icon={<ChefHat />} isCollapsed={isCollapsed} label="Dapur" to="/admin/kitchen" />
+					<DesktopNavLink icon={<Beer />} isCollapsed={isCollapsed} label="Bar" to="/admin/bar" />
+					<DesktopNavLink icon={<Bell />} isCollapsed={isCollapsed} label="Layanan Customer" to="/admin/customer-service" permission="orders:view" />
+					{isCollapsed ? (
+						<>
+							<DesktopNavLink icon={<Users />} isCollapsed={isCollapsed} label="Pengguna" to="/admin/operational-team" permission="users:manage" />
+							<DesktopNavLink icon={<Clock />} isCollapsed={isCollapsed} label="Shift" to="/admin/operational-team/shifts" permission="users:manage" />
+							<DesktopNavLink icon={<MapPin />} isCollapsed={isCollapsed} label="Lokasi Absensi" to="/admin/operational-team/attendance" permission="users:manage" />
+							<DesktopNavLink icon={<FileBarChart />} isCollapsed={isCollapsed} label="Data Absensi" to="/admin/operational-team/attendance-report" permission="users:manage" />
+							<DesktopNavLink icon={<ClipboardList />} isCollapsed={isCollapsed} label="Log Absensi" to="/admin/operational-team/attendance-logs" permission="users:manage" />
+							<DesktopNavLink icon={<Wallet />} isCollapsed={isCollapsed} label="Gaji & Role" to="/admin/operational-team/payroll" permission="users:manage" />
+							<DesktopNavLink icon={<UserPlus />} isCollapsed={isCollapsed} label="Register" to="/admin/operational-team/register" permission="users:manage" />
+						</>
+					) : (
+						<>
+							<button className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all ${
+								isOnOperationalTeamPath ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+							}`} onClick={() => setIsOperationalTeamOpen(!isOperationalTeamOpen)} type="button">
+								<span className="shrink-0 [&>svg]:h-5 [&>svg]:w-5"><Users /></span>
+								<span className="flex-1 truncate text-left">Tim Operasional</span>
+								<motion.span animate={{ rotate: isOperationalTeamOpen ? 180 : 0 }} className="shrink-0" transition={{ duration: 0.2 }}><ChevronDown className="h-4 w-4" /></motion.span>
+							</button>
+							<AnimatePresence initial={false}>
+								{isOperationalTeamOpen && (
+									<motion.div animate={{ height: "auto", opacity: 1 }} className="overflow-hidden" exit={{ height: 0, opacity: 0 }} initial={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }}>
+										<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
+											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<Users />} label="Pengguna" to="/admin/operational-team" permission="users:manage" />
+											<DesktopSubNavLink icon={<Clock />} label="Manajemen Shift" to="/admin/operational-team/shifts" permission="users:manage" />
+											<DesktopSubNavLink icon={<MapPin />} label="Lokasi & Radius" to="/admin/operational-team/attendance" permission="users:manage" />
+											<DesktopSubNavLink icon={<FileBarChart />} label="Data Absensi" to="/admin/operational-team/attendance-report" permission="users:manage" />
+											<DesktopSubNavLink icon={<ClipboardList />} label="Log Absensi" to="/admin/operational-team/attendance-logs" permission="users:manage" />
+											<DesktopSubNavLink icon={<Wallet />} label="Gaji & Role" to="/admin/operational-team/payroll" permission="users:manage" />
+											<DesktopSubNavLink icon={<UserPlus />} label="Register Karyawan" to="/admin/operational-team/register" permission="users:manage" />
+										</div>
+									</motion.div>
+								)}
+							</AnimatePresence>
+						</>
+					)}
 
 					{/* KEUANGAN - Collapsible */}
 					<SidebarSection isCollapsed={isCollapsed} label="Keuangan" />
