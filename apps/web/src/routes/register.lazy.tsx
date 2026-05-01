@@ -1,6 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ChevronLeft, ChevronRight, FileSignature, Loader2, Sparkles, UserPlus } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, FileSignature, Loader2, Sparkles, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ContractPreview } from "@/components/employee-onboarding/contract-preview";
 import { SignaturePad } from "@/components/employee-onboarding/signature-pad";
-import { useHybridStaffRoles } from "@/hooks/use-hybrid-pos-data";
+import { useHybridSiteSettings, useHybridStaffRoles } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridGenerateEmployeeContract,
 	useHybridGenerateEmployeeOnboardingUploadUrl,
@@ -69,6 +69,8 @@ function moneyValue(v?: number) {
 /* -------- page component -------- */
 function RegisterPage() {
 	const roles = useHybridStaffRoles() ?? [];
+	const siteSettings = useHybridSiteSettings();
+	const registrationEnabled = siteSettings?.employeeOnboarding?.registrationEnabled !== false;
 	const generateContract = useHybridGenerateEmployeeContract();
 	const uploadFile = useHybridGenerateEmployeeOnboardingUploadUrl();
 	const submitApplication = useHybridSubmitEmployeeApplication();
@@ -173,6 +175,30 @@ function RegisterPage() {
 	}
 
 	/* -------- render -------- */
+
+	// Jika registration dinonaktifkan, tampilkan halaman tertutup
+	if (!registrationEnabled) {
+		return (
+			<div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/10 px-3 py-6 sm:px-4 sm:py-8">
+				<div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
+					<Card className="mx-auto max-w-md text-center sm:max-w-xl">
+						<CardContent className="space-y-4 px-6 py-8 sm:px-10 sm:py-12">
+							<XCircle className="mx-auto h-12 w-12 text-amber-500 sm:h-16 sm:w-16" />
+							<h2 className="text-lg font-bold sm:text-2xl">Pendaftaran Ditutup</h2>
+							<p className="text-muted-foreground text-sm">
+								Saat ini pendaftaran karyawan baru sedang tidak dibuka.{" "}
+								Silakan hubungi admin untuk informasi lebih lanjut.
+							</p>
+							<Button onClick={() => { window.location.href = "/login"; }}>
+								Kembali ke Login
+							</Button>
+						</CardContent>
+					</Card>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/10 px-3 py-6 sm:px-4 sm:py-8">
 			<div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
