@@ -1,5 +1,5 @@
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,14 @@ function StockOpnamePage() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const role = (search.role || "bar") as OpnameRole;
+
+  // Read sensitive clock-out payload from sessionStorage instead of URL
+  const clockoutPayload = useMemo(() => {
+    try {
+      const raw = sessionStorage.getItem("__clockout_payload__");
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }, []);
 
   // Load ingredients on mount
   useEffect(() => {
@@ -78,12 +86,9 @@ function StockOpnamePage() {
       // 2. Clock out
       await clockOut({
         userId: search.userId,
-        faceDescriptor: search.faceDescriptor
-          ? search.faceDescriptor.split(",").map(Number)
-          : undefined,
-        location: search.location
-          ? JSON.parse(search.location)
-          : undefined,
+        faceDescriptor: clockoutPayload?.faceDescriptor ?? undefined,
+        pinCode: clockoutPayload?.pinCode ?? undefined,
+        location: clockoutPayload?.location ?? undefined,
         notes: `Stock opname ${role} selesai`,
       });
 

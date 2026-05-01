@@ -147,6 +147,79 @@ async function sha256Hex(value: string) {
 		.join("");
 }
 
+/**
+ * Euclidean distance between two face descriptor vectors.
+ * Returns a value between 0 (identical) and ~2 (completely different).
+ * Threshold 0.6 is the standard for face recognition.
+ */
+function euclideanDistance(a: number[], b: number[]): number {
+	if (a.length !== b.length) return Infinity;
+	let sum = 0;
+	for (let i = 0; i < a.length; i++) {
+		const diff = a[i] - b[i];
+		sum += diff * diff;
+	}
+	return Math.sqrt(sum);
+}
+
+/**
+ * Verify attendance identity via PIN (SHA-256) and/or face descriptor (euclidean distance ≤ 0.6).
+ * At least one of pinCode or faceDescriptor must pass for the identity to be verified.
+ * Throws if verification fails.
+ */
+async function verifyAttendanceIdentity(args: {
+	userId: string;
+	pinCode?: string;
+	faceDescriptor?: number[];
+}): Promise<void> {
+	const { userId, pinCode, faceDescriptor } = args;
+	if (!pinCode && (!faceDescriptor || faceDescriptor.length === 0)) {
+		throw new Error("Verifikasi identitas diperlukan: PIN atau wajah");
+	}
+
+	const supabase = createClient();
+	const { data: user, error } = await supabase
+		.from("yumi_users")
+		.select("source_id, is_active, home_pin_fingerprint, raw")
+		.eq("source_id", userId)
+		.maybeSingle();
+
+	if (error) throw error;
+	if (!user || user.is_active === false) {
+		throw new Error("User tidak ditemukan atau tidak aktif");
+	}
+
+	// Verify PIN via SHA-256
+	let pinVerified = !pinCode;
+	if (pinCode) {
+		const fingerprint = await sha256Hex(pinCode.trim());
+		if (user.home_pin_fingerprint && fingerprint !== user.home_pin_fingerprint) {
+			pinVerified = false;
+		} else if (!user.home_pin_fingerprint) {
+			pinVerified = false;
+		} else {
+			pinVerified = true;
+		}
+	}
+
+	// Verify face via euclidean distance
+	let faceVerified = !faceDescriptor || faceDescriptor.length === 0;
+	if (faceDescriptor && faceDescriptor.length > 0) {
+		const raw = user.raw as Record<string, any> | null;
+		const storedDescriptor = raw?.faceDescriptor as number[] | undefined;
+		if (!storedDescriptor || storedDescriptor.length === 0) {
+			faceVerified = false;
+		} else {
+			const distance = euclideanDistance(faceDescriptor, storedDescriptor);
+			faceVerified = distance <= 0.6;
+		}
+	}
+
+	if (!pinVerified && !faceVerified) {
+		throw new Error("Verifikasi identitas gagal: PIN atau wajah tidak cocok");
+	}
+}
+
 async function getSessionUserByToken(token: string) {
 	const supabase = createClient();
 	const nowIso = new Date().toISOString();
@@ -4452,6 +4525,14 @@ export function useHybridClockOut() {
 			try {
 				const userId = String(args?.userId ?? "");
 				if (!userId) throw new Error("userId wajib");
+
+				// Verify identity before clocking out
+				await verifyAttendanceIdentity({
+					userId,
+					pinCode: args?.pinCode ?? undefined,
+					faceDescriptor: args?.faceDescriptor ?? undefined,
+				});
+
 				const id = makeSourceId("attendance");
 				const timestamp = Date.now();
 				await insertMirrorDocument({

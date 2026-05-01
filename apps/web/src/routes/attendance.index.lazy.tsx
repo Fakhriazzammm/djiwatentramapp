@@ -54,7 +54,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 function AttendancePage() {
 	const navigate = useNavigate();
 	const [step, setStep] = useState<"select" | "pin" | "face" | "success">("select");
-	const { user: authUser, isAuthenticated } = useYumiAuth();
+	const { user: authUser, isAuthenticated, role: authRole } = useYumiAuth();
 	
 	const [pin, setPin] = useState("");
 	const [user, setUser] = useState<{ id: string; name: string; hasFace?: boolean; isCurrentlyIn?: boolean; roleName?: string } | null>(null);
@@ -176,11 +176,13 @@ function AttendancePage() {
 	useEffect(() => {
 		if (isAuthenticated && authUser && step === "select") {
 			const isCurrentlyIn = currentlyIn?.some((s: any) => s._id === authUser._id);
+			const staffFromList = allStaff?.find((s: any) => s._id === authUser._id);
 			setUser({
 				id: authUser._id,
 				name: authUser.name,
 				hasFace: !!authUser.hasFace,
-				isCurrentlyIn
+				isCurrentlyIn,
+				roleName: authRole?.name || staffFromList?.roleName || "",
 			});
 			if (authUser.hasFace) {
 				setIsEnrolling(false);
@@ -275,9 +277,6 @@ function AttendancePage() {
 							shiftName: detectedShift?.name || "Shift",
 							userId: user.id,
 							userName: user.name,
-							faceDescriptor: descriptor ? descriptor.join(",") : undefined,
-							pin: pin || undefined,
-							location: attendanceLocation ? JSON.stringify(attendanceLocation) : undefined,
 						}
 					} as any);
 					return;
