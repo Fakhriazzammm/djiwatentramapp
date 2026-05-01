@@ -958,20 +958,26 @@ async function fetchShiftReports() {
 	if (shiftsError) throw shiftsError;
 	if (!shifts || shifts.length === 0) return [];
 
-	// Step 2: Untuk shift aktif, query orders langsung untuk revenue realtime
-	// (summary NULL saat shift belum ditutup)
-	const activeShifts = shifts.filter((s: any) => !s.endTime);
-	const activeShiftIds = activeShifts.map((s: any) => s._id ?? s.shiftId);
-
-	let activeReports: Record<string, any> = {};
-	if (activeShiftIds.length > 0) {
-		const { data: ad, error: ae } = await supabase
-			.schema("public")
-			.from("pos_shift_reports")
-			.select("shift_id,order_count,booking_count,total_items_sold,total_discount,total_expenses,other_revenue,has_target,target_revenue,shift_target,shift_collected,daily_target,daily_collected,is_shift_target_met,is_daily_target_met")
-			.in("shift_id", activeShiftIds);
-		if (!ae && ad) for (const row of ad) activeReports[row.shift_id] = row;
+	// Step 2: Ambil semua shift report (target + metrik) dari view
+	// pos_shift_reports berisi data untuk SEMUA shift (aktif & selesai)
+	const allShiftIds = shifts.map((s: any) => s._id ?? s.shiftId);
+	let shiftReports: Record<string, any> = {};
+	if (allShiftIds.length > 0) {
+		// Batch query per 100 ID (Supabase .in() limit)
+		const batchSize = 100;
+		for (let i = 0; i < allShiftIds.length; i += batchSize) {
+			const batch = allShiftIds.slice(i, i + batchSize);
+			const { data: ad, error: ae } = await supabase
+				.schema("public")
+				.from("pos_shift_reports")
+				.select("shift_id,order_count,booking_count,total_items_sold,total_discount,total_expenses,other_revenue,has_target,target_revenue,shift_target,shift_collected,daily_target,daily_collected,is_shift_target_met,is_daily_target_met")
+				.in("shift_id", batch);
+			if (!ae && ad) for (const row of ad) shiftReports[row.shift_id] = row;
+		}
 	}
+
+	// Step 3: Untuk shift aktif, query orders langsung untuk revenue realtime
+	const activeShifts = shifts.filter((s: any) => !s.endTime);
 
 	let activeRevenue: Record<string, { total: number; cash: number; qris: number }> = {};
 	for (const s of activeShifts) {
@@ -1006,7 +1012,7 @@ async function fetchShiftReports() {
 
 		let financial: any;
 		if (isActive) {
-			const r = activeReports[shiftId];
+			const r = shiftReports[shiftId];
 			const rev = activeRevenue[shiftId] || { total: 0, cash: 0, qris: 0 };
 			financial = {
 				cashRevenue: rev.cash, qrisRevenue: rev.qris,
@@ -1029,6 +1035,7 @@ async function fetchShiftReports() {
 			};
 		} else {
 			const s = row.summary && typeof row.summary === "object" ? row.summary : {};
+			const r = shiftReports[shiftId];
 			financial = {
 				cashRevenue: Number(s.cashRevenue ?? 0), qrisRevenue: Number(s.qrisRevenue ?? 0),
 				otherRevenue: Number(s.otherRevenue ?? 0),
@@ -1038,10 +1045,14 @@ async function fetchShiftReports() {
 				totalExpenses: Number(s.totalExpenses ?? 0),
 				totalItemsSold: Number(s.totalItemsSold ?? 0),
 				orderCount: Number(row.orderCount ?? 0), bookingCount: 0,
-				hasTarget: false, targetRevenue: undefined,
-				shiftTarget: undefined, shiftCollected: undefined,
-				dailyTarget: undefined, dailyCollected: undefined,
-				isShiftTargetMet: undefined, isDailyTargetMet: undefined,
+				hasTarget: Boolean(r?.has_target),
+				targetRevenue: r?.target_revenue == null ? undefined : Number(r.target_revenue),
+				shiftTarget: r?.shift_target == null ? undefined : Number(r.shift_target),
+				shiftCollected: r?.shift_collected == null ? undefined : Number(r.shift_collected),
+				dailyTarget: r?.daily_target == null ? undefined : Number(r.daily_target),
+				dailyCollected: r?.daily_collected == null ? undefined : Number(r.daily_collected),
+				isShiftTargetMet: r?.is_shift_target_met == null ? undefined : Boolean(r.is_shift_target_met),
+				isDailyTargetMet: r?.is_daily_target_met == null ? undefined : Boolean(r.is_daily_target_met),
 			};
 		}
 
