@@ -1,6 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Eye, FileSignature, XCircle } from "lucide-react";
+import { CheckCircle2, Eye, FileSignature, ShieldCheck, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ContractPreview } from "@/components/employee-onboarding/contract-preview";
 import { createClient } from "@/lib/client";
+import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { useHybridCreateUser, useHybridUpdateEmployeeApplicationStatus } from "@/hooks/use-employee-onboarding-actions";
+import { formatOnboardingCurrency, generateSixDigitPin, normalizeEmployeeOnboardingSettings } from "@/lib/employee-onboarding-settings";
 
 /* -------- helpers -------- */
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -25,6 +27,8 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 function AdminOnboardingPage() {
 	const [applications, setApplications] = useState<any[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
+	const siteSettings = useHybridSiteSettings();
+	const onboardingSettings = useMemo(() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding), [siteSettings?.employeeOnboarding]);
 	const createUser = useHybridCreateUser();
 	const updateStatus = useHybridUpdateEmployeeApplicationStatus();
 
@@ -41,10 +45,11 @@ function AdminOnboardingPage() {
 	}, []);
 
 	const [selected, setSelected] = useState<any | null>(null);
-	const [password, setPassword] = useState("djiwatentram123");
+	const [password, setPassword] = useState(onboardingSettings.defaultPassword);
 	const [pin, setPin] = useState("");
 	const [notes, setNotes] = useState("");
 	const [isSaving, setIsSaving] = useState(false);
+	useEffect(() => { setPassword(onboardingSettings.defaultPassword); }, [onboardingSettings.defaultPassword]);
 
 	const stats = useMemo(
 		() => ({
@@ -57,6 +62,7 @@ function AdminOnboardingPage() {
 
 	/* ---- actions ---- */
 	async function approveApplication(app: any) {
+		if (onboardingSettings.approvalPreview.requireConfirmation && !window.confirm(`Approve ${app.full_name} dan buat akun user?`)) return;
 		setIsSaving(true);
 		try {
 			const employment = app.employment ?? {};
@@ -89,7 +95,8 @@ function AdminOnboardingPage() {
 
 	function openDialog(app: any) {
 		setSelected(app);
-		setPin("");
+		setPassword(onboardingSettings.defaultPassword);
+		setPin(app.employment?.homePinProvided ? "" : generateSixDigitPin(app.full_name || app.id));
 		setNotes(app.review_notes ?? "");
 	}
 	function closeDialog() {
@@ -207,10 +214,21 @@ function AdminOnboardingPage() {
 										<p><b>Mulai:</b> {selected.employment?.startDate}</p>
 										<p><b>Username:</b> {selected.employment?.username}</p>
 										<p><b>PIN dari form:</b> {selected.employment?.homePinProvided ? "Diisi" : "Tidak diisi"}</p>
+										<p><b>Gaji:</b> {formatOnboardingCurrency(selected.employment?.monthlySalary)}</p>
+										<p><b>Uang harian:</b> {formatOnboardingCurrency(selected.employment?.dailyAllowance)}</p>
+										<p><b>Pipeline:</b> {selected.raw?.pipelineStatus ?? "submitted"}</p>
 									</CardContent>
 								</Card>
 							</div>
 
+							{onboardingSettings.approvalPreview.enabled && (
+								<Card className="border-primary/30 bg-primary/5">
+									<CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><ShieldCheck className="h-4 w-4" />Preview Akun Sebelum Approve</CardTitle></CardHeader>
+									<CardContent className="grid gap-2 text-xs sm:grid-cols-2">
+										<p><b>Nama:</b> {selected.full_name}</p><p><b>Username:</b> {selected.employment?.username || selected.email || `${selected.id}@djiwatentram.local`}</p><p><b>Slug:</b> {selected.employment?.slug || "-"}</p><p><b>PIN:</b> {pin || "isi 6 digit"}</p><p><b>Role:</b> {selected.employment?.roleName || "-"}</p><p><b>Mulai:</b> {selected.employment?.startDate || "-"}</p>
+									</CardContent>
+								</Card>
+							)}
 							<ContractPreview contract={selected.contract} employeeName={selected.full_name} signatureDataUrl={selected.signature_url} />
 
 							<div className="grid gap-3 sm:grid-cols-3">

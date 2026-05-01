@@ -27,6 +27,13 @@ import {
 	validateEmployeeOnboardingDraft,
 } from "@/lib/employee-onboarding-schema";
 import { dataUrlToBlob, generateContractPdfBlob } from "@/lib/contract-pdf";
+import {
+	applyOnboardingDefaultsToDraft,
+	formatOnboardingCurrency,
+	getRoleSalaryDefaults,
+	normalizeEmployeeOnboardingSettings,
+	validateDraftForSettings,
+} from "@/lib/employee-onboarding-settings";
 
 /* -------- constants -------- */
 const DRAFT_KEY = "employee-register-draft-v1";
@@ -70,7 +77,8 @@ function moneyValue(v?: number) {
 function RegisterPage() {
 	const roles = useHybridStaffRoles() ?? [];
 	const siteSettings = useHybridSiteSettings();
-	const registrationEnabled = siteSettings?.employeeOnboarding?.registrationEnabled !== false;
+	const onboardingSettings = useMemo(() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding), [siteSettings?.employeeOnboarding]);
+	const registrationEnabled = onboardingSettings.registrationEnabled;
 	const generateContract = useHybridGenerateEmployeeContract();
 	const uploadFile = useHybridGenerateEmployeeOnboardingUploadUrl();
 	const submitApplication = useHybridSubmitEmployeeApplication();
@@ -89,15 +97,23 @@ function RegisterPage() {
 	/* persist draft */
 	useEffect(() => { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); }, [draft]);
 
+	useEffect(() => {
+		setDraft((prev) => applyOnboardingDefaultsToDraft(prev, onboardingSettings, roles as any[]));
+	}, [onboardingSettings.defaultRoleId, onboardingSettings.defaultLocation, onboardingSettings.defaultEmploymentType, onboardingSettings.prefillSalaryFromRole, roles]);
+
 	/* auto slug */
 	useEffect(() => {
 		if (!draft.personal.fullName) return;
 		const slug = createEmployeeSlug(draft.personal.fullName);
 		setDraft((prev) => ({
 			...prev,
-			employment: { ...prev.employment, username: prev.employment.username || slug, slug: prev.employment.slug || slug },
+			employment: {
+				...prev.employment,
+				username: prev.employment.username || (onboardingSettings.autoGenerate.username ? slug : ""),
+				slug: prev.employment.slug || (onboardingSettings.autoGenerate.slug ? slug : ""),
+			},
 		}));
-	}, [draft.personal.fullName]);
+	}, [draft.personal.fullName, onboardingSettings.autoGenerate.username, onboardingSettings.autoGenerate.slug]);
 
 	const contractPreview = useMemo(() => {
 		if (draft.contract.plainText || draft.contract.clauses.length > 0) return draft.contract;
@@ -152,7 +168,11 @@ function RegisterPage() {
 
 	async function handleSubmit() {
 		const validation = validateEmployeeOnboardingDraft({ ...draft, contract: contractPreview });
-		if (!validation.success) { validation.errors.forEach((e) => toast.error(e)); return; }
+		const settingErrors = validateDraftForSettings({ ...draft, contract: contractPreview }, onboardingSettings);
+		if (!validation.success || settingErrors.length) {
+			[...validation.errors, ...settingErrors].forEach((e) => toast.error(e));
+			return;
+		}
 		setIsSubmitting(true);
 		try {
 			const appKey = crypto.randomUUID();
@@ -164,6 +184,13 @@ function RegisterPage() {
 				contractPdfUrl = await uploadFile({ file: pdfBlob, contentType: "application/pdf", fileName: `${appKey}-contract.pdf`, folder: "employee-contracts/contracts" });
 			} catch (e) { console.warn("PDF gen failed", e); }
 			const payload = buildEmployeeOnboardingPayload({ ...draft, contract: contractPreview }, { signatureUrl, contractPdfUrl });
+			payload.raw = {
+				...payload.raw,
+				registrationMode: onboardingSettings.registrationMode,
+				pipelineStatus: onboardingSettings.pipeline.defaultStatus,
+				documentChecklist: onboardingSettings.documentChecklist,
+				salaryPreview: onboardingSettings.salaryPreview,
+			};
 			const id = await submitApplication({ payload });
 			setApplicationId(String(id ?? appKey));
 			localStorage.removeItem(DRAFT_KEY);
@@ -271,9 +298,10 @@ function RegisterPage() {
 								</select>
 							</Field>
 							<Field label="Lokasi"><Input value={draft.employment.location} onChange={(e) => updateEmployment("location", e.target.value)} /></Field>
-							<Field label="Gaji bulanan"><Input inputMode="numeric" value={moneyValue(draft.employment.monthlySalary)} onChange={(e) => updateEmployment("monthlySalary", Number(e.target.value || 0))} /></Field>
-							<Field label="Uang harian"><Input inputMode="numeric" value={moneyValue(draft.employment.dailyAllowance)} onChange={(e) => updateEmployment("dailyAllowance", Number(e.target.value || 0))} /></Field>
-							<Field label="Rate shift"><Input inputMode="numeric" value={moneyValue(draft.employment.shiftRate)} onChange={(e) => updateEmployment("shiftRate", Number(e.target.value || 0))} /></Field>
+							{onboardingSettings.salaryPreview.enabled && onboardingSettings.salaryPreview.candidateVisibility !== "hidden" && <div className="rounded-lg border bg-primary/5 p-3 text-sm md:col-span-2"><p className="font-medium">Preview Gaji</p><p className="text-muted-foreground">Bulanan {formatOnboardingCurrency(draft.employment.monthlySalary)} • Harian {formatOnboardingCurrency(draft.employment.dailyAllowance)} • Shift {formatOnboardingCurrency(draft.employment.shiftRate)}</p></div>}
+							<Field label="Gaji bulanan"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.monthlySalary)} onChange={(e) => updateEmployment("monthlySalary", Number(e.target.value || 0))} /></Field>
+							<Field label="Uang harian"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.dailyAllowance)} onChange={(e) => updateEmployment("dailyAllowance", Number(e.target.value || 0))} /></Field>
+							<Field label="Rate shift"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.shiftRate)} onChange={(e) => updateEmployment("shiftRate", Number(e.target.value || 0))} /></Field>
 							<Field label="PIN login (6 digit)"><Input maxLength={6} inputMode="numeric" value={draft.employment.homePin} onChange={(e) => updateEmployment("homePin", e.target.value.replace(/\D/g, ""))} /></Field>
 							<Field label="Username"><Input value={draft.employment.username} onChange={(e) => updateEmployment("username", e.target.value)} /></Field>
 							<Field label="Slug"><Input value={draft.employment.slug} onChange={(e) => updateEmployment("slug", e.target.value)} /></Field>

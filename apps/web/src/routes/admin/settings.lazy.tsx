@@ -85,6 +85,13 @@ import {
 	bluetoothPrinter,
 	type ReceiptPrintMode,
 } from "@/lib/bluetooth-printer";
+import {
+	DEFAULT_EMPLOYEE_ONBOARDING_SETTINGS,
+	formatOnboardingCurrency,
+	normalizeEmployeeOnboardingSettings,
+	type EmployeeOnboardingFieldKey,
+	type EmployeeOnboardingSettings,
+} from "@/lib/employee-onboarding-settings";
 
 type ShiftSchedule = {
 	name: string;
@@ -795,10 +802,9 @@ export function SettingsPage({
 		}).format(amount);
 	};
 
-	const [employeeOnboardingSettings, setEmployeeOnboardingSettings] = useState({
-		registrationEnabled: true,
-		defaultPassword: "djiwatentram123",
-	});
+	const [employeeOnboardingSettings, setEmployeeOnboardingSettings] = useState<EmployeeOnboardingSettings>(() =>
+		normalizeEmployeeOnboardingSettings(DEFAULT_EMPLOYEE_ONBOARDING_SETTINGS)
+	);
 
 	const [customerOrderingSettings, setCustomerOrderingSettings] = useState({
 		enabled: true,
@@ -1025,10 +1031,7 @@ export function SettingsPage({
 					"QRIS",
 			});
 			setAiModelConfig(normalizeAiModelConfig(siteSettings.aiModelConfig ?? {}));
-			setEmployeeOnboardingSettings({
-				registrationEnabled: siteSettings.employeeOnboarding?.registrationEnabled ?? true,
-				defaultPassword: siteSettings.employeeOnboarding?.defaultPassword ?? "djiwatentram123",
-			});
+			setEmployeeOnboardingSettings(normalizeEmployeeOnboardingSettings(siteSettings.employeeOnboarding));
 		}
 		setIsConnected(bluetoothPrinter.isConnected());
 		setPrinterName(bluetoothPrinter.getDeviceName());
@@ -1111,7 +1114,7 @@ export function SettingsPage({
 				payrollGlobalConfig,
 				customerOrdering: customerOrderingSettings,
 				aiModelConfig: normalizeAiModelConfig(aiModelConfig),
-				employeeOnboarding: employeeOnboardingSettings,
+				employeeOnboarding: normalizeEmployeeOnboardingSettings(employeeOnboardingSettings),
 			};
 			console.log("Saving settings:", payload);
 			await updateSiteSettings(payload);
@@ -1188,6 +1191,8 @@ export function SettingsPage({
 		} catch (error) {
 			console.error(error);
 			toast.error((error as Error).message || "Gagal membuat user");
+		} finally {
+			setSavingUser(false);
 		}
 	};
 
@@ -1227,6 +1232,7 @@ export function SettingsPage({
 			return;
 		}
 
+		setSavingUser(true);
 		try {
 			await _updateUser({
 				id: editingUser._id,
@@ -1244,6 +1250,8 @@ export function SettingsPage({
 		} catch (error) {
 			console.error(error);
 			toast.error((error as Error).message || "Gagal memperbarui pengguna");
+		} finally {
+			setSavingUser(false);
 		}
 	};
 
@@ -1295,11 +1303,14 @@ export function SettingsPage({
 			message: "Akun ini tidak akan bisa login lagi ke sistem.",
 			variant: "danger",
 			onConfirm: async () => {
+				setSavingUser(true);
 				try {
 					await deleteUser({ id });
 					toast.success("User dihapus");
 				} catch (_error) {
 					toast.error("Gagal menghapus user");
+				} finally {
+					setSavingUser(false);
 				}
 			},
 		});
@@ -2705,29 +2716,23 @@ export function SettingsPage({
 				{activeTab === "register" && (
 					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
 						<section className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-8">
-							<div className="flex items-center gap-4">
-								<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-									<UserPlus className="h-6 w-6" />
+							<div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+								<div className="flex items-center gap-4">
+									<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary"><UserPlus className="h-6 w-6" /></div>
+									<div><h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">Pengaturan Register Karyawan</h3><p className="text-muted-foreground text-sm">Atur akses /register, field, step, role/gaji, dokumen, probation, dan approval.</p></div>
 								</div>
-								<div>
-									<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">Pengaturan Register Karyawan</h3>
-									<p className="text-muted-foreground text-sm">Konfigurasi halaman pendaftaran publik /register</p>
-								</div>
+								<div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => window.open("/register?preview=admin", "_blank")} type="button"><ArrowUpRight className="mr-1.5 h-4 w-4" />Preview Kandidat</Button><Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/onboarding"} type="button"><ClipboardList className="mr-1.5 h-4 w-4" />Review Pendaftar</Button></div>
 							</div>
-							<div className="space-y-4">
-								<div className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-4 shadow-sm">
-									<div>
-										<p className="font-medium text-foreground text-sm">Aktifkan Pendaftaran</p>
-										<p className="text-muted-foreground text-xs">Izinkan calon karyawan mendaftar via halaman /register</p>
-									</div>
-									<button className={`relative h-6 w-10 rounded-full transition-all duration-300 $\{employeeOnboardingSettings.registrationEnabled ? "bg-primary" : "bg-muted-foreground/20"}`} onClick={() => setEmployeeOnboardingSettings({ ...employeeOnboardingSettings, registrationEnabled: !employeeOnboardingSettings.registrationEnabled })} type="button"><div className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 $\{employeeOnboardingSettings.registrationEnabled ? "right-1" : "left-1"}`} /></button>
+
+							<div className="grid gap-4 lg:grid-cols-3">
+								<div className="space-y-3 rounded-xl border bg-background p-4 lg:col-span-2">
+									<div className="flex items-center justify-between"><div><p className="font-semibold text-sm">Status & Akses</p><p className="text-xs text-muted-foreground">Mode public/internal/invite only dan pesan tutup.</p></div><button className={`relative h-7 w-12 rounded-full transition-all ${employeeOnboardingSettings.registrationEnabled ? "bg-primary" : "bg-muted-foreground/20"}`} onClick={() => setEmployeeOnboardingSettings((prev) => ({ ...prev, registrationEnabled: !prev.registrationEnabled }))} type="button"><div className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${employeeOnboardingSettings.registrationEnabled ? "right-1" : "left-1"}`} /></button></div>
+									<div className="grid gap-3 md:grid-cols-3"><Select value={employeeOnboardingSettings.registrationMode} onValueChange={(value) => setEmployeeOnboardingSettings((prev) => ({ ...prev, registrationMode: value as EmployeeOnboardingSettings["registrationMode"] }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="public">Publik</SelectItem><SelectItem value="internal">Internal</SelectItem><SelectItem value="invite_only">Invite Only</SelectItem></SelectContent></Select><Input value={employeeOnboardingSettings.inviteCode} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, inviteCode: e.target.value }))} placeholder="Kode invite" /><Input value={employeeOnboardingSettings.defaultPassword} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, defaultPassword: e.target.value }))} placeholder="Password default" /><Textarea className="md:col-span-3" value={employeeOnboardingSettings.closedMessage} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, closedMessage: e.target.value }))} /></div>
 								</div>
-								<div className="space-y-2 rounded-lg border border-border/50 bg-background p-4 shadow-sm">
-									<label className="font-medium text-foreground text-sm">Password Default User Baru</label>
-									<p className="text-muted-foreground text-xs">Password awal untuk user yang dibuat saat pendaftaran disetujui.</p>
-									<Input value={employeeOnboardingSettings.defaultPassword} onChange={(e) => setEmployeeOnboardingSettings({ ...employeeOnboardingSettings, defaultPassword: e.target.value })} className="max-w-xs" />
-								</div>
+								<div className="space-y-3 rounded-xl border bg-background p-4"><p className="font-semibold text-sm">Default Pekerjaan</p><Select value={employeeOnboardingSettings.defaultRoleId || "none"} onValueChange={(value) => setEmployeeOnboardingSettings((prev) => ({ ...prev, defaultRoleId: value === "none" ? "" : value }))}><SelectTrigger><SelectValue placeholder="Default role" /></SelectTrigger><SelectContent><SelectItem value="none">Tidak ada</SelectItem>{roles.map((role: any) => <SelectItem key={role._id} value={role._id}>{role.name}</SelectItem>)}</SelectContent></Select><Input value={employeeOnboardingSettings.defaultLocation} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, defaultLocation: e.target.value }))} placeholder="Lokasi default" /><label className="flex gap-2 text-xs"><input checked={employeeOnboardingSettings.prefillSalaryFromRole} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, prefillSalaryFromRole: e.target.checked }))} type="checkbox" />Ambil gaji dari Gaji & Role</label><p className="text-xs text-muted-foreground">Gaji role default: {formatOnboardingCurrency((roles.find((role: any) => role._id === employeeOnboardingSettings.defaultRoleId) as any)?.monthlyFixedSalary)}</p></div>
 							</div>
+
+							<div className="grid gap-4 lg:grid-cols-2"><div className="space-y-3 rounded-xl border bg-background p-4"><p className="font-semibold text-sm">Field Form</p><div className="grid gap-2 sm:grid-cols-2">{(Object.keys(employeeOnboardingSettings.fields) as EmployeeOnboardingFieldKey[]).map((key) => <div key={key} className="flex items-center justify-between rounded-lg border p-2 text-xs"><span>{key}</span><span className="flex gap-2"><label><input checked={employeeOnboardingSettings.fields[key].visible} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, fields: { ...prev.fields, [key]: { ...prev.fields[key], visible: e.target.checked } } }))} type="checkbox" /> Tampil</label><label><input checked={employeeOnboardingSettings.fields[key].required} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, fields: { ...prev.fields, [key]: { ...prev.fields[key], required: e.target.checked } } }))} type="checkbox" /> Wajib</label></span></div>)}</div></div><div className="space-y-3 rounded-xl border bg-background p-4"><p className="font-semibold text-sm">Step, Pipeline & Approval</p>{employeeOnboardingSettings.steps.map((step) => <label key={step.id} className="flex items-center justify-between rounded-lg border p-2 text-xs"><span>{step.title}</span><input checked={step.enabled} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, steps: prev.steps.map((item) => item.id === step.id ? { ...item, enabled: e.target.checked } : item) }))} type="checkbox" /></label>)}<Input value={employeeOnboardingSettings.pipeline.statuses.join(", ")} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, pipeline: { ...prev.pipeline, statuses: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) } }))} /><label className="flex gap-2 text-xs"><input checked={employeeOnboardingSettings.approvalPreview.enabled} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, approvalPreview: { ...prev.approvalPreview, enabled: e.target.checked } }))} type="checkbox" />Approval preview aktif</label><label className="flex gap-2 text-xs"><input checked={employeeOnboardingSettings.approvalPreview.requireConfirmation} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, approvalPreview: { ...prev.approvalPreview, requireConfirmation: e.target.checked } }))} type="checkbox" />Wajib konfirmasi approve</label></div></div>
 						</section>
 					</div>
 				)}
@@ -4368,9 +4373,9 @@ export function SettingsPage({
 											</div>
 										)}
 										<div className="flex justify-end gap-2 pt-2">
-											<Button onClick={editingUser ? handleSaveEditUser : handleCreateUser} size="sm">
-												{editingUser ? "Simpan Perubahan" : "Simpan Pengguna"}
-											</Button>
+										<Button onClick={editingUser ? handleSaveEditUser : handleCreateUser} size="sm" loading={savingUser}>
+											{editingUser ? "Simpan Perubahan" : "Simpan Pengguna"}
+										</Button>
 										</div>
 									</div>
 								)}
@@ -4424,9 +4429,9 @@ export function SettingsPage({
 																</div>
 															</td>
 															<td className="px-4 py-3 text-right">
-																<div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
+																<div className="flex items-center justify-end gap-1 transition-all">
 																	<button title="Edit Staf" className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors" onClick={() => handleStartEditUser(user)}><Pencil className="h-3.5 w-3.5" /></button>
-																	<button title="Hapus Staf" className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg transition-colors" onClick={() => handleDeleteUser(user._id)}><Trash2 className="h-3.5 w-3.5" /></button>
+																	<button title="Hapus Staf" className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg transition-colors" onClick={() => handleDeleteUser(user._id)} disabled={savingUser}><Trash2 className="h-3.5 w-3.5" /></button>
 																</div>
 															</td>
 														</tr>

@@ -131,7 +131,10 @@ export function useHybridSubmitEmployeeApplication() {
 					signature_url: payload.signature_url ?? null,
 					contract_pdf_url: payload.contract_pdf_url ?? null,
 					attachments: payload.attachments ?? {},
-					raw: payload.raw ?? {},
+					raw: {
+						...(payload.raw ?? {}),
+						pipelineStatus: payload.raw?.pipelineStatus ?? "submitted",
+					},
 				})
 				.select("id")
 				.single();
