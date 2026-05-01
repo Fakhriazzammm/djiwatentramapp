@@ -948,51 +948,110 @@ async function fetchDetailedShifts() {
 
 async function fetchShiftReports() {
 	const supabase = createClient();
-	// Gunakan public.pos_shifts (view ringan dari pos.shifts) alih-alih
-	// pos_shift_reports yang berat dengan subquery COUNT/SUM.
-	// Financial data diambil dari kolom summary (JSON) yang sudah
-	// di-populate saat shift ditutup.
-	const { data, error } = await supabase
+
+	// Step 1: Ambil daftar shift dari pos_shifts (view ringan)
+	const { data: shifts, error: shiftsError } = await supabase
 		.from("pos_shifts")
 		.select("*")
 		.order("startTime", { ascending: false });
 
-	if (error) throw error;
+	if (shiftsError) throw shiftsError;
+	if (!shifts || shifts.length === 0) return [];
 
-	return (data ?? []).map((row: any) => {
-		const summary = row.summary && typeof row.summary === "object" ? row.summary : {};
-		const endTime =
-			row.endTime === null || row.endTime === undefined
-				? undefined
-				: Number(row.endTime);
+	// Step 2: Untuk shift aktif, query orders langsung untuk revenue realtime
+	// (summary NULL saat shift belum ditutup)
+	const activeShifts = shifts.filter((s: any) => !s.endTime);
+	const activeShiftIds = activeShifts.map((s: any) => s._id ?? s.shiftId);
+
+	let activeReports: Record<string, any> = {};
+	if (activeShiftIds.length > 0) {
+		const { data: ad, error: ae } = await supabase
+			.schema("public")
+			.from("pos_shift_reports")
+			.select("shift_id,order_count,booking_count,total_items_sold,total_discount,total_expenses,other_revenue,has_target,target_revenue,shift_target,shift_collected,daily_target,daily_collected,is_shift_target_met,is_daily_target_met")
+			.in("shift_id", activeShiftIds);
+		if (!ae && ad) for (const row of ad) activeReports[row.shift_id] = row;
+	}
+
+	let activeRevenue: Record<string, { total: number; cash: number; qris: number }> = {};
+	for (const s of activeShifts) {
+		const sid = s._id ?? s.shiftId;
+		const st = Number(s.startTime ?? 0);
+		try {
+			const { data: orders, error: oe } = await supabase
+				.schema("pos")
+				.from("orders")
+				.select("total_amount,payment_method,status")
+				.gte("created_at", st)
+				.in("status", ["completed", "paid"]);
+			if (!oe && orders) {
+				let total = 0, cash = 0, qris = 0;
+				for (const o of orders as any[]) {
+					const p = Number(o.total_amount ?? 0);
+					total += p;
+					const m = String(o.payment_method ?? "").toLowerCase();
+					if (m.includes("cash") || m.includes("tunai")) cash += p;
+					else if (m.includes("qris") || m.includes("qr")) qris += p;
+				}
+				activeRevenue[sid] = { total, cash, qris };
+			}
+		} catch {}
+		if (!activeRevenue[sid]) activeRevenue[sid] = { total: 0, cash: 0, qris: 0 };
+	}
+
+	return shifts.map((row: any) => {
+		const endTime = row.endTime == null ? undefined : Number(row.endTime);
+		const isActive = !endTime;
+		const shiftId = row._id ?? row.shiftId;
+
+		let financial: any;
+		if (isActive) {
+			const r = activeReports[shiftId];
+			const rev = activeRevenue[shiftId] || { total: 0, cash: 0, qris: 0 };
+			financial = {
+				cashRevenue: rev.cash, qrisRevenue: rev.qris,
+				otherRevenue: Number(r?.other_revenue ?? 0),
+				totalGrossSales: rev.total,
+				totalDiscount: Number(r?.total_discount ?? 0),
+				totalRevenue: rev.total,
+				totalExpenses: Number(r?.total_expenses ?? 0),
+				totalItemsSold: Number(r?.total_items_sold ?? 0),
+				orderCount: Number(r?.order_count ?? 0),
+				bookingCount: Number(r?.booking_count ?? 0),
+				hasTarget: Boolean(r?.has_target),
+				targetRevenue: r?.target_revenue == null ? undefined : Number(r.target_revenue),
+				shiftTarget: r?.shift_target == null ? undefined : Number(r.shift_target),
+				shiftCollected: r?.shift_collected == null ? undefined : Number(r.shift_collected),
+				dailyTarget: r?.daily_target == null ? undefined : Number(r.daily_target),
+				dailyCollected: r?.daily_collected == null ? undefined : Number(r.daily_collected),
+				isShiftTargetMet: r?.is_shift_target_met == null ? undefined : Boolean(r.is_shift_target_met),
+				isDailyTargetMet: r?.is_daily_target_met == null ? undefined : Boolean(r.is_daily_target_met),
+			};
+		} else {
+			const s = row.summary && typeof row.summary === "object" ? row.summary : {};
+			financial = {
+				cashRevenue: Number(s.cashRevenue ?? 0), qrisRevenue: Number(s.qrisRevenue ?? 0),
+				otherRevenue: Number(s.otherRevenue ?? 0),
+				totalGrossSales: Number(s.totalGrossSales ?? 0),
+				totalDiscount: Number(s.totalDiscount ?? 0),
+				totalRevenue: Number(s.totalRevenue ?? 0),
+				totalExpenses: Number(s.totalExpenses ?? 0),
+				totalItemsSold: Number(s.totalItemsSold ?? 0),
+				orderCount: Number(row.orderCount ?? 0), bookingCount: 0,
+				hasTarget: false, targetRevenue: undefined,
+				shiftTarget: undefined, shiftCollected: undefined,
+				dailyTarget: undefined, dailyCollected: undefined,
+				isShiftTargetMet: undefined, isDailyTargetMet: undefined,
+			};
+		}
 
 		return {
-			shiftId: row._id ?? row.shiftId,
-			shiftName: row.shiftName ?? "",
-			cashierName: row.cashierName ?? "",
-			teamMembers: row.teamMembers ?? "",
-			startTime: Number(row.startTime ?? 0),
-			endTime,
-			status: endTime ? "SELESAI" : "AKTIF",
+			shiftId, shiftName: row.shiftName ?? "",
+			cashierName: row.cashierName ?? "", teamMembers: row.teamMembers ?? "",
+			startTime: Number(row.startTime ?? 0), endTime,
+			status: isActive ? "AKTIF" : "SELESAI",
 			startingCash: Number(row.startingCash ?? 0),
-			cashRevenue: Number(summary.cashRevenue ?? 0),
-			qrisRevenue: Number(summary.qrisRevenue ?? 0),
-			otherRevenue: Number(summary.otherRevenue ?? 0),
-			totalGrossSales: Number(summary.totalGrossSales ?? 0),
-			totalDiscount: Number(summary.totalDiscount ?? 0),
-			totalRevenue: Number(summary.totalRevenue ?? 0),
-			totalExpenses: Number(summary.totalExpenses ?? 0),
-			totalItemsSold: Number(summary.totalItemsSold ?? 0),
-			orderCount: Number(row.orderCount ?? 0),
-			bookingCount: 0,
-			hasTarget: false,
-			targetRevenue: undefined,
-			shiftTarget: undefined,
-			shiftCollected: undefined,
-			dailyTarget: undefined,
-			dailyCollected: undefined,
-			isShiftTargetMet: undefined,
-			isDailyTargetMet: undefined,
+			...financial,
 		} as ShiftReportRecord;
 	});
 }
