@@ -50,7 +50,6 @@ import {
 	useHybridUpdateHppCalculation,
 	useHybridUpsertHppFromRecipe,
 } from "@/hooks/use-hybrid-write-actions";
-import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 
 export const Route = createLazyFileRoute("/admin/hpp-calculator")({
 	component: HppCalculatorPage,

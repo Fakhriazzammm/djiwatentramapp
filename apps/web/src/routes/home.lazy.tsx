@@ -52,7 +52,6 @@ import {
 	useHybridClockIn,
 	useHybridClockOut,
 } from "@/hooks/use-hybrid-write-actions";
-import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 
 type RoleMenuItem = {

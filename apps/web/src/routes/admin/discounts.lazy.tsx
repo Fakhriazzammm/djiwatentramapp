@@ -33,7 +33,6 @@ import {
 	useHybridCategories,
 	useHybridOrders,
 } from "@/hooks/use-hybrid-pos-data";
-import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createLazyFileRoute("/admin/discounts")({

@@ -55,7 +55,6 @@ import {
 	useHybridCreateOrder,
 	useHybridMayarCreateInvoice,
 } from "@/hooks/use-hybrid-write-actions";
-import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useMenuKeyboardNav, type FocusZone } from "@/hooks/use-menu-keyboard-nav";
 import { useCart } from "@/context/cart-context";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";

@@ -72,7 +72,6 @@ import {
 	useHybridUpdateBookingSettings,
 	useHybridUpdateBookingStatus,
 } from "@/hooks/use-hybrid-write-actions";
-import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 
 export const Route = createLazyFileRoute("/admin/booking")({
 	component: BookingSettingsPage,

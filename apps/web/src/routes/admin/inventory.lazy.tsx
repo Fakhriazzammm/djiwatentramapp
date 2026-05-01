@@ -39,7 +39,6 @@ import {
 	useHybridCategories,
 	useHybridInventory,
 } from "@/hooks/use-hybrid-pos-data";
-import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridBaseRecipes,
 	useHybridInventoryItemBatches,
