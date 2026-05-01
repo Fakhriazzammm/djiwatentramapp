@@ -202,8 +202,10 @@ export function ShiftReport({ range }: Props) {
 		if (!allRows) {
 			return undefined;
 		}
-		const startTime = new Date(`${range.startDate}T00:00:00`).getTime();
-		const endTime = new Date(`${range.endDate}T23:59:59.999`).getTime();
+		// range.startDate/endDate sudah dalam bentuk timestamp (ms) dari date-fns
+		// (startOfDay/endOfDay). Gunakan langsung, bukan dibungkus new Date() lagi.
+		const startTime = range.startDate;
+		const endTime = range.endDate;
 		return allRows.filter(
 			(row) => row.startTime >= startTime && row.startTime <= endTime
 		);
