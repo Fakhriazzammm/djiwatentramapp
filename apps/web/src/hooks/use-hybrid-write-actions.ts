@@ -2,6 +2,9 @@
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback } from "react";
+import { isFaceDescriptorMatch } from "@/lib/attendance-utils";
+
+const FACE_MATCH_THRESHOLD = 0.6;
 
 type FunctionReference<_Kind extends "mutation" | "action"> = unknown;
 const api = new Proxy(
@@ -4391,6 +4394,60 @@ export function useHybridAdminBulkDeleteShifts() {
 	);
 }
 
+async function verifyAttendanceIdentity(args: {
+	userId: string;
+	pinCode?: string;
+	faceDescriptor?: number[];
+}) {
+	const { data: user, error } = await createClient()
+		.from("yumi_users")
+		.select("source_id,is_active,home_pin_fingerprint,face_descriptor")
+		.eq("source_id", args.userId)
+		.maybeSingle();
+	if (error) throw error;
+	if (!user || user.is_active === false) {
+		throw new Error("User tidak ditemukan atau tidak aktif");
+	}
+
+	const pin = args.pinCode ? String(args.pinCode).trim() : "";
+	const hasPin = pin.length > 0;
+	const candidateFace = Array.isArray(args.faceDescriptor)
+		? args.faceDescriptor
+		: [];
+	const hasFace = candidateFace.length > 0;
+
+	if (!hasPin && !hasFace) {
+		throw new Error("Verifikasi PIN atau wajah diperlukan");
+	}
+
+	if (hasPin) {
+		const pinFingerprint = await sha256Hex(pin);
+		if (
+			user.home_pin_fingerprint &&
+			pinFingerprint !== user.home_pin_fingerprint
+		) {
+			throw new Error("PIN tidak valid");
+		}
+	}
+
+	if (hasFace) {
+		const target = Array.isArray(user.face_descriptor)
+			? (user.face_descriptor as number[])
+			: [];
+		if (target.length === 0) {
+			if (!hasPin) {
+				throw new Error("Wajah belum terdaftar untuk user ini");
+			}
+		} else if (
+			!isFaceDescriptorMatch(candidateFace, target, FACE_MATCH_THRESHOLD)
+		) {
+			throw new Error("Wajah tidak cocok");
+		}
+	}
+
+	return user;
+}
+
 export function useHybridClockIn() {
 	const fallback = useMutation(api.attendance.clockIn);
 	return useCallback(
@@ -4399,24 +4456,11 @@ export function useHybridClockIn() {
 			try {
 				const userId = String(args?.userId ?? "");
 				if (!userId) throw new Error("userId wajib");
-				const { data: user, error: userError } = await createClient()
-					.from("yumi_users")
-					.select("source_id,is_active,home_pin_fingerprint")
-					.eq("source_id", userId)
-					.maybeSingle();
-				if (userError) throw userError;
-				if (!user || user.is_active === false) {
-					throw new Error("User not found or inactive");
-				}
-				if (args?.pinCode) {
-					const pinFingerprint = await sha256Hex(String(args.pinCode).trim());
-					if (
-						user.home_pin_fingerprint &&
-						pinFingerprint !== user.home_pin_fingerprint
-					) {
-						throw new Error("PIN tidak valid");
-					}
-				}
+				await verifyAttendanceIdentity({
+					userId,
+					pinCode: args?.pinCode,
+					faceDescriptor: args?.faceDescriptor,
+				});
 				const id = makeSourceId("attendance");
 				const timestamp = Date.now();
 				await insertMirrorDocument({
@@ -4452,6 +4496,11 @@ export function useHybridClockOut() {
 			try {
 				const userId = String(args?.userId ?? "");
 				if (!userId) throw new Error("userId wajib");
+				await verifyAttendanceIdentity({
+					userId,
+					pinCode: args?.pinCode,
+					faceDescriptor: args?.faceDescriptor,
+				});
 				const id = makeSourceId("attendance");
 				const timestamp = Date.now();
 				await insertMirrorDocument({

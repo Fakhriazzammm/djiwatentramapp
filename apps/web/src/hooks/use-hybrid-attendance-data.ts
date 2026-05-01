@@ -31,6 +31,8 @@ async function fetchPublicUsers() {
 		slug: row.slug || String(row.username || "").split("@")[0] || "",
 		initial: row.initial || String(row.name || "").charAt(0).toUpperCase(),
 		hasFace: Boolean(row.hasFace),
+		roleName: row.roleName || "",
+		roleId: row.roleId ?? null,
 	}));
 }
 

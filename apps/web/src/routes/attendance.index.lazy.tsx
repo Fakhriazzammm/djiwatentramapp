@@ -54,7 +54,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 function AttendancePage() {
 	const navigate = useNavigate();
 	const [step, setStep] = useState<"select" | "pin" | "face" | "success">("select");
-	const { user: authUser, isAuthenticated } = useYumiAuth();
+	const { user: authUser, role: authRole, isAuthenticated } = useYumiAuth();
 	
 	const [pin, setPin] = useState("");
 	const [user, setUser] = useState<{ id: string; name: string; hasFace?: boolean; isCurrentlyIn?: boolean; roleName?: string } | null>(null);
@@ -176,11 +176,16 @@ function AttendancePage() {
 	useEffect(() => {
 		if (isAuthenticated && authUser && step === "select") {
 			const isCurrentlyIn = currentlyIn?.some((s: any) => s._id === authUser._id);
+			const staffRecord = (allStaff as any[] | undefined)?.find(
+				(s: any) => s._id === authUser._id
+			);
+			const roleName = authRole?.name || staffRecord?.roleName || "";
 			setUser({
 				id: authUser._id,
 				name: authUser.name,
 				hasFace: !!authUser.hasFace,
-				isCurrentlyIn
+				isCurrentlyIn,
+				roleName,
 			});
 			if (authUser.hasFace) {
 				setIsEnrolling(false);
@@ -190,7 +195,7 @@ function AttendancePage() {
 				setStep("pin");
 			}
 		}
-	}, [isAuthenticated, authUser, step, currentlyIn]);
+	}, [isAuthenticated, authUser, authRole, step, currentlyIn, allStaff]);
 	
 	const handleUserSelect = (staff: any) => {
 		const isCurrentlyIn = currentlyIn?.some((s: any) => s._id === staff._id);
@@ -254,7 +259,9 @@ function AttendancePage() {
 				const needsOpname = roleName.includes("bar") || roleName.includes("kitchen");
 				
 				if (needsOpname) {
-					// Save clock-out payload for opname page to complete
+					// Save clock-out payload for opname page to complete.
+					// Sensitive data (face descriptor, PIN, location) goes to
+					// sessionStorage — never to URL params.
 					const opnameRole = roleName.includes("bar") ? "bar" : "kitchen";
 					sessionStorage.setItem("__clockout_payload__", JSON.stringify({
 						userId: user.id,
@@ -267,7 +274,7 @@ function AttendancePage() {
 						shiftId: detectedShift?.id || "",
 					}));
 					toast.dismiss("clocking");
-					navigate({ 
+					navigate({
 						to: "/attendance/stock-opname",
 						search: {
 							role: opnameRole,
@@ -275,10 +282,7 @@ function AttendancePage() {
 							shiftName: detectedShift?.name || "Shift",
 							userId: user.id,
 							userName: user.name,
-							faceDescriptor: descriptor ? descriptor.join(",") : undefined,
-							pin: pin || undefined,
-							location: attendanceLocation ? JSON.stringify(attendanceLocation) : undefined,
-						}
+						},
 					} as any);
 					return;
 				}

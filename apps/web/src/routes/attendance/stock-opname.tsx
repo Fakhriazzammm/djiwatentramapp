@@ -7,8 +7,5 @@ export const Route = createFileRoute("/attendance/stock-opname")({
     shiftName: (search.shiftName as string) || "",
     userId: (search.userId as string) || "",
     userName: (search.userName as string) || "",
-    faceDescriptor: search.faceDescriptor ? String(search.faceDescriptor) : undefined,
-    pin: search.pin ? String(search.pin) : undefined,
-    location: search.location ? String(search.location) : undefined,
   }),
 });

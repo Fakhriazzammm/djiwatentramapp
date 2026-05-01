@@ -75,17 +75,30 @@ function StockOpnamePage() {
         search.userName || "Staff",
       );
 
-      // 2. Clock out
+      // 2. Clock out — sensitive payload comes from sessionStorage, not URL.
+      let storedPayload:
+        | {
+            faceDescriptor?: number[];
+            pinCode?: string;
+            location?: { lat: number; lng: number };
+          }
+        | null = null;
+      try {
+        const raw = sessionStorage.getItem("__clockout_payload__");
+        storedPayload = raw ? JSON.parse(raw) : null;
+      } catch {
+        storedPayload = null;
+      }
+
       await clockOut({
         userId: search.userId,
-        faceDescriptor: search.faceDescriptor
-          ? search.faceDescriptor.split(",").map(Number)
-          : undefined,
-        location: search.location
-          ? JSON.parse(search.location)
-          : undefined,
+        faceDescriptor: storedPayload?.faceDescriptor,
+        pinCode: storedPayload?.pinCode,
+        location: storedPayload?.location,
         notes: `Stock opname ${role} selesai`,
       });
+
+      sessionStorage.removeItem("__clockout_payload__");
 
       toast.success("Stock opname tersimpan & Clock Out berhasil!");
       navigate({ to: "/home" });
