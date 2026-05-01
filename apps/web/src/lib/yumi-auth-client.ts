@@ -51,8 +51,16 @@ type PublicUserRow = {
 	username?: string | null;
 	roleId?: string | null;
 	roleName?: string | null;
-	raw?: Record<string, unknown> | null;
+	homePinFingerprint?: string | null;
 };
+
+async function sha256Hex(input: string): Promise<string> {
+	const encoder = new TextEncoder();
+	const data = encoder.encode(input);
+	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+	const hashArray = Array.from(new Uint8Array(hashBuffer));
+	return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 const LOCAL_TOKEN_PREFIX = "local_yumi_session:";
 
@@ -265,9 +273,8 @@ export async function loginWithYumiPin(userId: string, pin: string) {
 			throw new Error("User tidak ditemukan atau nonaktif");
 		}
 
-		const homePin =
-			typeof user.raw?.homePin === "string" ? user.raw.homePin.trim() : "";
-		if (!homePin || homePin !== pin) {
+		const fingerprint = user.homePinFingerprint;
+		if (!fingerprint || fingerprint !== (await sha256Hex(pin))) {
 			throw new Error("PIN yang Anda masukkan salah");
 		}
 

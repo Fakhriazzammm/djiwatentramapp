@@ -4601,10 +4601,6 @@ export function useHybridUpdateUserPin() {
 					.from("yumi_users")
 					.update({
 						home_pin_fingerprint: nextFingerprint,
-						raw: {
-							...(user.raw ?? {}),
-							homePin: newPin,
-						},
 					})
 					.eq("source_id", user.source_id);
 				if (error) throw error;
@@ -4885,7 +4881,6 @@ export function useHybridCreateUser() {
 					home_pin_fingerprint: homePinFingerprint,
 					raw: {
 						...(args ?? {}),
-						homePin: homePin || undefined,
 					},
 				});
 				if (error) throw error;
@@ -4937,7 +4932,9 @@ export function useHybridUpdateUser() {
 				}
 				updates.raw = {
 					...(existing?.raw ?? {}),
-					...(args ?? {}),
+					...Object.fromEntries(
+						Object.entries(args ?? {}).filter(([key]) => key !== "homePin")
+					),
 				};
 				const { error } = await supabase
 					.from("yumi_users")

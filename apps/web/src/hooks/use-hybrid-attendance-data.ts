@@ -36,38 +36,16 @@ async function fetchPublicUsers() {
 
 async function fetchCurrentlyInStore() {
 	const supabase = createClient();
-	const [{ data: users, error: userError }, { data: logs, error: logError }] =
-		await Promise.all([
-			supabase.from("pos_users_public").select("*").eq("isActive", true),
-			supabase
-				.from("pos_attendance_logs")
-				.select("*")
-				.order("timestamp", { ascending: false })
-				.limit(2000),
-		]);
+	const { data, error } = await supabase.rpc("get_currently_in_store");
 
-	if (userError) throw userError;
-	if (logError) throw logError;
+	if (error) throw error;
 
-	const latestByUser = new Map<string, any>();
-	for (const log of logs ?? []) {
-		const userId = String((log as any).userId || "");
-		if (!userId || latestByUser.has(userId)) continue;
-		latestByUser.set(userId, log);
-	}
-
-	return (users ?? [])
-		.map((user: any) => {
-			const latest = latestByUser.get(String(user._id));
-			if (!latest || latest.type !== "check_in") return null;
-			return {
-				_id: user._id,
-				name: user.name,
-				roleId: user.roleId,
-				checkInTime: Number(latest.timestamp ?? 0),
-			};
-		})
-		.filter(Boolean);
+	return (data ?? []).map((row: any) => ({
+		_id: row.user_id,
+		name: row.user_name,
+		roleId: row.role_id,
+		checkInTime: Number(row.check_in_time ?? 0),
+	}));
 }
 
 async function fetchUserBySlug(slug: string) {
