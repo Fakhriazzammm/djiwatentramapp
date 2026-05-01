@@ -219,13 +219,16 @@ function AttendancePage() {
 
 		try {
 			// 1. Double check Geofencing before mutation
-			if (!isInRadius && siteSettings?.attendanceLat) {
-				toast.error("Gagal: Anda berada di luar radius kafe.");
-				return;
-			}
-			if (siteSettings?.attendanceLat && !attendanceLocation) {
-				toast.error("Lokasi belum siap. Aktifkan GPS lalu coba lagi.");
-				return;
+			// Bug #11: Jangan skip saat siteSettings belum load
+			if (siteSettings?.attendanceLat) {
+				if (!attendanceLocation) {
+					toast.error("Lokasi belum siap. Aktifkan GPS lalu coba lagi.");
+					return;
+				}
+				if (!isInRadius) {
+					toast.error("Gagal: Anda berada di luar radius kafe.");
+					return;
+				}
 			}
 
 			// 2. If in enroll mode, save the face data first

@@ -4464,6 +4464,50 @@ export function useHybridAdminBulkDeleteShifts() {
 	);
 }
 
+
+/**
+ * Validate that the user's location is within the cafe's geofence radius.
+ * Fetches site settings from the pos schema and computes haversine distance.
+ * Throws if location is invalid or outside radius.
+ */
+async function validateGeofence(location?: { lat: number; lng: number } | null): Promise<void> {
+	if (!location || typeof location.lat !== "number" || typeof location.lng !== "number") {
+		throw new Error("Lokasi tidak tersedia — aktifkan GPS dan coba lagi");
+	}
+
+	const supabase = createClient();
+	const { data: settings, error } = await supabase
+		.from("pos_site_settings")
+		.select("attendance_lat, attendance_lng, attendance_radius")
+		.maybeSingle();
+
+	if (error || !settings) {
+		// If settings don't exist yet, allow (first-time setup)
+		return;
+	}
+
+	const storeLat = Number(settings.attendance_lat);
+	const storeLng = Number(settings.attendance_lng);
+	const radius = Number(settings.attendance_radius) || 50;
+
+	if (!storeLat || !storeLng) return; // Not configured yet
+
+	// Haversine distance in meters
+	const R = 6371e3;
+	const phi1 = (location.lat * Math.PI) / 180;
+	const phi2 = (storeLat * Math.PI) / 180;
+	const dPhi = ((storeLat - location.lat) * Math.PI) / 180;
+	const dLambda = ((storeLng - location.lng) * Math.PI) / 180;
+	const a = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
+	const distance = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+	if (distance > radius) {
+		throw new Error(
+			`Anda berada di luar radius kafe (${Math.round(distance)}m dari ${radius}m yang diizinkan)`
+		);
+	}
+}
+
 export function useHybridClockIn() {
 	const fallback = useMutation(api.attendance.clockIn);
 	return useCallback(
@@ -4472,6 +4516,10 @@ export function useHybridClockIn() {
 			try {
 				const userId = String(args?.userId ?? "");
 				if (!userId) throw new Error("userId wajib");
+
+				// Bug #11: Validate geofence server-side
+				await validateGeofence(args?.location ?? null);
+
 				const { data: user, error: userError } = await createClient()
 					.from("yumi_users")
 					.select("source_id,is_active,home_pin_fingerprint")
@@ -4525,6 +4573,9 @@ export function useHybridClockOut() {
 			try {
 				const userId = String(args?.userId ?? "");
 				if (!userId) throw new Error("userId wajib");
+
+				// Bug #11: Validate geofence server-side
+				await validateGeofence(args?.location ?? null);
 
 				// Verify identity before clocking out
 				await verifyAttendanceIdentity({

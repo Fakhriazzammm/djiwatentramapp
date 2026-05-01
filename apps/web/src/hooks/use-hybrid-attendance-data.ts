@@ -95,25 +95,47 @@ async function fetchStaffStats(args: { userId: string; month: number; year: numb
 			Number(left.timestamp ?? 0) - Number(right.timestamp ?? 0)
 	);
 
+	// Calculate month boundaries for cross-month shift handling
+	const monthStart = new Date(args.year, args.month - 1, 1).getTime();
+	const monthEnd = new Date(args.year, args.month, 1).getTime();
+
 	const uniqueDays = new Set<string>();
 	let totalMs = 0;
 
 	for (let i = 0; i < asc.length; i++) {
 		const entry = asc[i] as any;
-		const dateStr = new Date(Number(entry.timestamp ?? 0)).toDateString();
-		uniqueDays.add(dateStr);
 
-		if (entry.type === "check_in" && i + 1 < asc.length) {
-			const next = asc[i + 1] as any;
-			if (next.type === "check_out") {
-				totalMs += Number(next.timestamp ?? 0) - Number(entry.timestamp ?? 0);
-				i += 1;
+		// Bug #8: Only count check_in timestamps for daysWorked
+		// (overnight shifts: check_in 22:00 Mon + check_out 02:00 Tue = 1 hari kerja)
+		if (entry.type === "check_in") {
+			const dateStr = new Date(Number(entry.timestamp ?? 0)).toDateString();
+			uniqueDays.add(dateStr);
+		}
+
+		if (entry.type === "check_in") {
+			const checkInTime = Number(entry.timestamp ?? 0);
+			if (i + 1 < asc.length) {
+				const next = asc[i + 1] as any;
+				if (next.type === "check_out") {
+					totalMs += Number(next.timestamp ?? 0) - checkInTime;
+					i += 1;
+				} else {
+					// Bug #10: Next entry is not check_out (e.g., another check_in or
+					// check_out is in next month) — count hours to end of month
+					totalMs += Math.max(0, monthEnd - checkInTime);
+				}
+			} else {
+				// Last entry in month is a check_in — count hours to end of month
+				totalMs += Math.max(0, monthEnd - checkInTime);
 			}
 		}
 	}
 
 	const totalHours = Math.round((totalMs / (1000 * 60 * 60)) * 10) / 10;
-	const attendanceRate = Math.min(100, Math.round((uniqueDays.size / 26) * 100));
+
+	// Bug #9: Dynamic working days based on actual calendar days in the month
+	const daysInMonth = new Date(args.year, args.month, 0).getDate();
+	const attendanceRate = Math.min(100, Math.round((uniqueDays.size / daysInMonth) * 100));
 
 	return {
 		totalHours,
