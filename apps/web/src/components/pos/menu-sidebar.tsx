@@ -1430,17 +1430,34 @@ function ParkirTab({
 										{order.items.length} item • {order.items.reduce((acc: number, i: any) => acc + i.quantity, 0)} qty
 									</div>
 									<div className="flex items-center gap-2">
-										{onPrint && (
-											<Button
-												variant="ghost"
-												size="icon"
-												className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-												onClick={() => onPrint(order)}
-												title="Cetak Open Bill"
-											>
-												<Printer className="h-4 w-4" />
-											</Button>
-										)}
+									{onPrint && (
+										<DropdownMenu>
+											<DropdownMenuTrigger asChild>
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+													title="Cetak Struk"
+												>
+													<Printer className="h-4 w-4" />
+												</Button>
+											</DropdownMenuTrigger>
+											<DropdownMenuContent align="end" className="w-52">
+												<DropdownMenuItem onClick={() => onPrint(order, "paid")} className="gap-2 cursor-pointer">
+													<Receipt className="h-4 w-4 text-blue-500" />
+													<span>Cetak Struk Lunas</span>
+												</DropdownMenuItem>
+												<DropdownMenuItem onClick={() => onPrint(order, "open_bill")} className="gap-2 cursor-pointer">
+													<FileText className="h-4 w-4 text-amber-500" />
+													<span>Cetak Open Bill</span>
+												</DropdownMenuItem>
+												<DropdownMenuItem onClick={() => onPrint(order, "kitchen")} className="gap-2 cursor-pointer">
+													<ChefHat className="h-4 w-4 text-green-500" />
+													<span>Cetak Tiket Kitchen</span>
+												</DropdownMenuItem>
+											</DropdownMenuContent>
+										</DropdownMenu>
+									)}
 										<Button
 											className="h-8 rounded-lg bg-orange-500 px-3 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm hover:bg-orange-600 active:scale-95"
 											onClick={() => onRestore(order)}
