@@ -52,11 +52,14 @@ function generateOrderNumber(args: {
 	orderType?: "dine_in" | "takeaway";
 	createdAt: number;
 }) {
-	const sourcePrefix = getOrderSourcePrefix(args.source);
+	const d = new Date(args.createdAt);
+	const dd = String(d.getDate()).padStart(2, "0");
+	const mm = String(d.getMonth() + 1).padStart(2, "0");
+	const yy = String(d.getFullYear()).slice(-2);
+	const dateCode = `${dd}${mm}${yy}`;
+	const randomCode = Math.random().toString(36).toUpperCase().slice(2, 6);
 	const typeCode = getOrderTypeCode(args.orderType);
-	const timeCode = args.createdAt.toString(36).toUpperCase().slice(-6);
-	const randomCode = Math.random().toString(36).toUpperCase().slice(2, 4);
-	return `${sourcePrefix}-${typeCode}-${timeCode}${randomCode}`;
+	return `ORD-${typeCode}-${randomCode}${dateCode}`;
 }
 
 function generateBookingCode(timestamp: number) {
@@ -2522,6 +2525,19 @@ export function useHybridCreateOrder() {
 					: autoComplete
 						? "completed"
 						: "paid";
+
+			// Daily receipt numbering
+			const kind = args?.source === "pos"
+				? (args?.orderType === "takeaway" ? "takeaway" : "dine_in")
+				: "online";
+			let dailyReceiptNo = null;
+			try {
+				const { data: rpcData, error: rpcErr } = await supabase.rpc(
+					"next_daily_receipt_no",
+					{ p_order_kind: kind }
+				);
+				if (!rpcErr && rpcData != null) dailyReceiptNo = rpcData;
+			} catch (_) {} // best-effort
 				const orderId = makeSourceId("order");
 
 				const orderRow = {
@@ -2558,6 +2574,8 @@ export function useHybridCreateOrder() {
 							: Number(args.serviceChargeAmount ?? 0),
 					receipt_meta: args?.receiptMeta ?? null,
 					payment_receipt_kind: args?.paymentReceiptKind ?? null,
+					daily_receipt_no: dailyReceiptNo,
+					receipt_kind: kind,
 					payment_gateway: args?.paymentGateway ?? null,
 					gateway_invoice_id: args?.paymentGateway?.invoiceId ?? null,
 					creation_time: orderCreatedAt,

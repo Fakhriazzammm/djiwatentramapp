@@ -126,6 +126,8 @@ export interface ReceiptOrderPayload {
 	receiptMode?: ReceiptPrintMode;
 	paymentStatusLabel?: string;
 	receiptMeta?: ReceiptMeta;
+	dailyReceiptNo?: number;
+	receiptKind?: string;
 }
 
 export interface ReceiptSettings {
@@ -487,6 +489,14 @@ export class BluetoothPrinterService {
 
 		if (settings.receiptShowOrderNumber !== false) {
 			printKeyValue("ID", order.orderNumber.toUpperCase());
+		}
+
+		if (order.dailyReceiptNo && order.receiptKind) {
+			const receiptLabel =
+				order.receiptKind === "dine_in" ? "STRUK Dine In" :
+				order.receiptKind === "takeaway" ? "STRUK Takeaway" :
+				"STRUK Online";
+			printKeyValue(receiptLabel, `#${order.dailyReceiptNo}`);
 		}
 
 		if (order.cashierName && settings.receiptShowCashierName !== false) {

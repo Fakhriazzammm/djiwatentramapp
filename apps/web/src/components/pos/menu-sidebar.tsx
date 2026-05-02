@@ -409,6 +409,8 @@ export function MenuSidebar({
 						},
 						allDiscounts,
 					}),
+				dailyReceiptNo: order.dailyReceiptNo,
+				receiptKind: order.receiptKind,
 				},
 				{
 					storeName: siteSettings.storeName,

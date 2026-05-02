@@ -1203,7 +1203,7 @@ async def _get_beverage_items(items: list) -> list[dict]:
     return result
 
 
-async def _send_barista_notification(app, order_no: str, customer: str, order_type: str, bev_items: list[dict], ts_ms: int):
+async def _send_barista_notification(app, order_no: str, customer: str, order_type: str, bev_items: list[dict], ts_ms: int, struk_line = None):
     """Send barista-focused notification — only beverage items shown."""
     type_labels = {
         "dine_in": "🍽 Dine-in",
@@ -1223,11 +1223,14 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
             item_lines.append(f"  • {qty}× {name}")
 
     lines = [
-        f"☕ *PESANAN BARU — BARISTA* 🕐 {_format_time_hm(ts_ms)}",
-        f"`{order_no}`  |  {type_label}  |  👤 {customer}",
-        "",
-        "📋 *Minuman:*",
+        f"☕ PESANAN BARU — BARISTA 🕐 {_format_time_hm(ts_ms)}",
     ]
+    if struk_line:
+        lines.append(f"{struk_line}  |  {type_label}  |  👤 {customer}")
+    else:
+        lines.append(f"{order_no}  |  {type_label}  |  👤 {customer}")
+    lines.append("")
+    lines.append("📋 Minuman:")
     lines.extend(item_lines)
     lines.append("")
     lines.append("⏳ Mohon segera dibuat!")
@@ -1289,7 +1292,7 @@ async def _get_food_items(items: list) -> list[dict]:
     return result
 
 
-async def _send_kitchen_notification(app, order_no: str, customer: str, order_type: str, food_items: list[dict], ts_ms: int):
+async def _send_kitchen_notification(app, order_no: str, customer: str, order_type: str, food_items: list[dict], ts_ms: int, struk_line = None):
     """Send kitchen-focused notification — only food items shown."""
     type_labels = {
         "dine_in": "🍽 Dine-in",
@@ -1309,11 +1312,14 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
             item_lines.append(f"  • {qty}× {name}")
 
     lines = [
-        f"🍳 *PESANAN BARU — KITCHEN* 🕐 {_format_time_hm(ts_ms)}",
-        f"`{order_no}`  |  {type_label}  |  👤 {customer}",
-        "",
-        "📋 *Makanan:*",
+        f"🍳 PESANAN BARU — KITCHEN 🕐 {_format_time_hm(ts_ms)}",
     ]
+    if struk_line:
+        lines.append(f"{struk_line}  |  {type_label}  |  👤 {customer}")
+    else:
+        lines.append(f"{order_no}  |  {type_label}  |  👤 {customer}")
+    lines.append("")
+    lines.append("📋 Makanan:")
     lines.extend(item_lines)
     lines.append("")
     lines.append("⏳ Mohon segera dibuat!")
@@ -1349,8 +1355,8 @@ async def _check_new_transactions(app):
 
         orders = await _fetch(
             "pos_orders",
-            f"select=orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,orderType,_creationTime"
-            f"&status=eq.completed"
+            f"select=orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,orderType,_creationTime,daily_receipt_no,receipt_kind"
+            f"&status=in.(completed,paid)"
             f"&_creationTime=gt.{_last_order_check_ms - 1}"
             f"&_creationTime=lte.{now_ms}"
             f"&order=_creationTime.asc&limit=20",
@@ -1375,31 +1381,40 @@ async def _check_new_transactions(app):
             if len(items) > 3:
                 item_list += f" +{len(items) - 3} item"
 
+            daily_no = o.get("daily_receipt_no")
+            receipt_kind = o.get("receipt_kind")
+            receipt_labels = {"dine_in": "Dine In", "takeaway": "Takeaway", "online": "Online"}
+            receipt_label = receipt_labels.get(receipt_kind, "Struk") if receipt_kind else None
+            struk_line = f"STRUK {receipt_label} #{daily_no}" if (daily_no and receipt_label) else None
+
             shift = await _find_shift_at_time(ts)
             cashier = shift.get("cashier_name", "?")
             team = shift.get("team_members", "")
 
             # ── Regular transaction report ──
-            lines = [
-                f"🧾 *Pesanan Baru* — {_format_time_ms(ts)}",
-                f"`{order_no}` | Rp{amount:,.0f} | {payment}",
-                f"📦 {item_list}",
-                f"👤 {customer}",
-                f"👥 Kasir: {cashier}" + (f" | Tim: {team}" if team else ""),
-            ]
+            lines = []
+            if struk_line:
+                lines.append(f"🧾 Pesanan Baru — {_format_time_ms(ts)}")
+                lines.append(f"{struk_line} | {order_no} | Rp{amount:,.0f} | {payment}")
+            else:
+                lines.append(f"🧾 Pesanan Baru — {_format_time_ms(ts)}")
+                lines.append(f"{order_no} | Rp{amount:,.0f} | {payment}")
+            lines.append(f"📦 {item_list}")
+            lines.append(f"👤 {customer}")
+            lines.append(f"👥 Kasir: {cashier}" + (f" | Tim: {team}" if team else ""))
             await _send_to_group(app, "\n".join(lines))
             await asyncio.sleep(0.3)
 
             # ── Barista notification: only if order has beverage items ──
             bev_items = await _get_beverage_items(items)
             if bev_items:
-                await _send_barista_notification(app, order_no, customer, order_type, bev_items, ts)
+                await _send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line)
                 await asyncio.sleep(0.3)
 
             # ── Kitchen notification: only if order has food items ──
             food_items = await _get_food_items(items)
             if food_items:
-                await _send_kitchen_notification(app, order_no, customer, order_type, food_items, ts)
+                await _send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line)
                 await asyncio.sleep(0.3)
 
             # Mark as reported

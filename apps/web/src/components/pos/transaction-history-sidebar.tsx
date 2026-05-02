@@ -272,6 +272,8 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 					notes: order.notes,
 					cashierName: shiftStatus?.shiftInfo?.cashierName || undefined,
 					shiftName: shiftStatus?.shiftInfo?.shiftName || undefined,
+				dailyReceiptNo: order.dailyReceiptNo,
+				receiptKind: order.receiptKind,
 				},
 				{
 					storeName: siteSettings.storeName,
