@@ -397,7 +397,7 @@ function buildHppProductMap(calculations: HppCalculationRecord[]) {
 	return result;
 }
 
-const DEFAULT_ORDER_TYPES = [
+export const DEFAULT_ORDER_TYPES = [
 	{
 		id: "dine_in",
 		name: "dine_in",

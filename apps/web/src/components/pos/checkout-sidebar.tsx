@@ -32,6 +32,7 @@ import {
 	useHybridActiveDiscounts,
 	useHybridShiftStatus,
 	useHybridSiteSettings,
+	DEFAULT_ORDER_TYPES,
 } from "@/hooks/use-hybrid-pos-data";
 import type { Doc } from "@/types/backend-compat";
 
@@ -96,7 +97,7 @@ export function CheckoutSidebar({
 	const [hasChosenOrderType, setHasChosenOrderType] = useState(false);
 
 	const orderTypes = useMemo(() => {
-		const types = siteSettings?.orderTypes ?? [];
+		const types = siteSettings?.orderTypes ?? DEFAULT_ORDER_TYPES;
 		return types
 			.filter((type: any) => type.isActive)
 			.sort((a: any, b: any) => a.sortOrder - b.sortOrder);
