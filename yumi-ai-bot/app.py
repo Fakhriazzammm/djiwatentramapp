@@ -435,7 +435,7 @@ async def _handle_ocr_action(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 data = resp.json()
                 if data.get("ok"):
                     await query.edit_message_text(
-                        query.message.text + f"\n\n✅ Berhasil disimpan sebagai *{label}* — Rp {amount:,.0f}",
+                        query.message.text + f"\n\n✅ Berhasil disimpan sebagai {label} — Rp {amount:,.0f}",
                         parse_mode="Markdown",
                         reply_markup=None,
                     )
@@ -468,7 +468,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_sessions.pop(update.effective_user.id, None)
 
     await _reply_msg(update, context, 
-        "🤖 *Yumi AI — Asisten YumiPOS*\n\n"
+        "🤖 Yumi AI — Asisten YumiPOS\n\n"
         "Saya bisa bantu:\n"
         "• Ringkasan harian (omzet, produk, pengeluaran)\n"
         "• Top produk & stok menipis\n"
@@ -487,8 +487,8 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _reply_msg(update, context, "Unauthorized")
         return
     await _reply_msg(update, context, 
-        "💡 *Cara pakai Yumi AI*\n\n"
-        "📋 *Commands:*\n"
+        "💡 Cara pakai Yumi AI\n\n"
+        "📋 Commands:\n"
         "/ringkasan — Ringkasan (default: hari ini)\n"
         "  └ Filter: /ringkasan kemarin / minggu_ini / bulan_ini\n"
         "/top_produk — Produk terlaris\n"
@@ -496,8 +496,8 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/absen_hari_ini — Absensi staff\n"
         "/booking_aktif — Booking aktif\n"
         "/briefing_hari_ini — Briefing bisnis\n\n"
-        "💬 *Chat bebas:* ketik apa saja\n"
-        "📸 *Scan struk:* kirim foto struk\n\n"
+        "💬 Chat bebas: ketik apa saja\n"
+        "📸 Scan struk: kirim foto struk\n\n"
         "Contoh: _omzet hari ini_, _produk terlaris minggu ini_, _berapa stok kopi?_",
         parse_mode="Markdown",
         reply_markup=_reply_keyboard(),
@@ -664,7 +664,7 @@ async def cmd_ringkasan_hari_ini(update: Update, context: ContextTypes.DEFAULT_T
 
         # ── 4) Build compact report ──
         lines = [
-            f"📊 *Ringkasan {period_label}*",
+            f"📊 Ringkasan {period_label}",
             f"Djiwa Tentram Cafe & Resto",
             f"📅 {date_str}",
             "",
@@ -688,7 +688,7 @@ async def cmd_ringkasan_hari_ini(update: Update, context: ContextTypes.DEFAULT_T
                 team = s.get("team_members") or ""
                 status_badge = " [AKTIF]" if is_active else ""
 
-                lines.append(f"{icon} *{name}*{status_badge} — {cashier}")
+                lines.append(f"{icon} {name}{status_badge} — {cashier}")
                 lines.append(f"   Modal Rp{start_cash:,.0f} | {orders_n} order | {items} item | Omzet Rp{gross:,.0f} | Biaya Rp{exp:,.0f}")
                 if is_active and collected > 0:
                     lines.append(f"   📡 Real-time: Rp{collected:,.0f}")
@@ -700,7 +700,7 @@ async def cmd_ringkasan_hari_ini(update: Update, context: ContextTypes.DEFAULT_T
 
         # ── 5) Compact totals ──
         lines.append("───")
-        lines.append(f"💰 *Total Omzet*: Rp{total_gross:,.0f} (Net: Rp{total_revenue:,.0f})")
+        lines.append(f"💰 Total Omzet: Rp{total_gross:,.0f} (Net: Rp{total_revenue:,.0f})")
         lines.append(f"🏷️ Diskon: Rp{total_discount:,.0f}")
         lines.append(f"📦 Produk Terjual: {total_items_sold}")
         lines.append(f"💸 Pengeluaran: Rp{total_expense:,.0f}")
@@ -765,7 +765,7 @@ async def cmd_top_produk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         lines = [f"{i}. {n} — {q:.0f} pcs (Rp {omzet[n]:,.0f})" for i, (n, q) in enumerate(top, 1)]
         await _reply_msg(update, context, 
-            "🔥 *Top Produk Hari Ini*\n" + "\n".join(lines),
+            "🔥 Top Produk Hari Ini\n" + "\n".join(lines),
             reply_markup=_reply_keyboard(),
         )
     except Exception as e:
@@ -793,7 +793,7 @@ async def cmd_stok_menipis(update: Update, context: ContextTypes.DEFAULT_TYPE):
         alerts.sort(key=lambda x: (x[1] - x[2]))
         text = "\n".join([f"• {n}: {q:g}/{t:g} {u}" for n, q, t, u in alerts[:30]])
         await _reply_msg(update, context, 
-            f"⚠️ *Stok Menipis ({len(alerts)} item)*\n{text}",
+            f"⚠️ Stok Menipis ({len(alerts)} item)\n{text}",
             reply_markup=_reply_keyboard(),
         )
     except Exception as e:
@@ -822,7 +822,7 @@ async def cmd_absen_hari_ini(update: Update, context: ContextTypes.DEFAULT_TYPE)
             lines.append(f"{icon} {dt} | {r.get('userName','?')} | {r.get('shiftName') or '-'}")
 
         await _reply_msg(update, context, 
-            "🕒 *Absensi Hari Ini*\n" + "\n".join(lines),
+            "🕒 Absensi Hari Ini\n" + "\n".join(lines),
             reply_markup=_reply_keyboard(),
         )
     except Exception as e:
@@ -852,7 +852,7 @@ async def cmd_booking_aktif(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
         await _reply_msg(update, context, 
-            "📅 *Booking Aktif*\n" + "\n".join(lines),
+            "📅 Booking Aktif\n" + "\n".join(lines),
             reply_markup=_reply_keyboard(),
         )
     except Exception as e:
@@ -1075,7 +1075,7 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.exception("free-text yumi-ai failed")
         await _reply_msg(update, context, 
             "Aku siap bantu! 📌\n"
-            "Coba: *omzet hari ini*, *top produk*, *stok menipis*, atau kirim foto struk.\n"
+            "Coba: omzet hari ini, top produk, stok menipis, atau kirim foto struk.\n"
             f"(error: {e})",
             reply_markup=_reply_keyboard(),
         )
@@ -1218,7 +1218,7 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
         name = (item.get("productName") or "?").strip()
         variant = item.get("variant")
         if variant:
-            item_lines.append(f"  • {qty}× {name}  *({variant})*")
+            item_lines.append(f"  • {qty}× {name}  ({variant})")
         else:
             item_lines.append(f"  • {qty}× {name}")
 
@@ -1307,7 +1307,7 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
         name = (item.get("productName") or "?").strip()
         variant = item.get("variant")
         if variant:
-            item_lines.append(f"  • {qty}× {name}  *({variant})*")
+            item_lines.append(f"  • {qty}× {name}  ({variant})")
         else:
             item_lines.append(f"  • {qty}× {name}")
 
@@ -1385,7 +1385,7 @@ async def _check_new_transactions(app):
             receipt_kind = o.get("receipt_kind")
             receipt_labels = {"dine_in": "Dine In", "takeaway": "Takeaway", "online": "Online"}
             receipt_label = receipt_labels.get(receipt_kind, "Struk") if receipt_kind else None
-            struk_line = f"STRUK {receipt_label} #{daily_no}" if (daily_no and receipt_label) else None
+            struk_line = f"STRUK {receipt_label} No.{daily_no}" if (daily_no and receipt_label) else None
 
             shift = await _find_shift_at_time(ts)
             cashier = shift.get("cashier_name", "?")
@@ -1443,7 +1443,7 @@ async def _check_new_transactions(app):
             cashier = shift.get("cashier_name", "?")
 
             lines = [
-                f"💸 *Pengeluaran* — {_format_time_ms(ts)}",
+                f"💸 Pengeluaran — {_format_time_ms(ts)}",
                 f"{cat} | Rp{amount:,.0f}",
             ]
             if desc:
@@ -1516,7 +1516,7 @@ async def _send_daily_summary(app):
             if payment in ("TUNAI", "CASH"): tunai += amount
             elif payment in ("QRIS", "TRANSFER"): qris += amount
             order_lines.append(
-                f"✅ `{order_no}`  Rp{amount:,.0f}  {payment}  🕐{_format_time_ms(ts, '%H:%M')}"
+                f"✅ {order_no}  Rp{amount:,.0f}  {payment}  🕐{_format_time_ms(ts, '%H:%M')}"
             )
 
         # ── Expenses ──
@@ -1538,7 +1538,7 @@ async def _send_daily_summary(app):
             expense_by_cat[cat] += amount
 
         # ── Build report ──
-        lines = [f"📊 *Ringkasan {date_str}*", ""]
+        lines = [f"📊 Ringkasan {date_str}", ""]
 
         # Per-shift header
         for s in shifts:
@@ -1551,7 +1551,7 @@ async def _send_daily_summary(app):
             exp = float(s.get("total_expenses") or 0)
             orders_n = int(s.get("order_count") or 0)
 
-            header = f"{icon} *{name}* — {cashier}"
+            header = f"{icon} {name} — {cashier}"
             if team:
                 header += f" | Tim: {team}"
             header += f"  ({orders_n} order | Omzet Rp{rev:,.0f} | Biaya Rp{exp:,.0f})"
@@ -1571,12 +1571,12 @@ async def _send_daily_summary(app):
         lines.append("")
 
         if order_lines:
-            lines.append("📥 *Detail Pesanan:*")
+            lines.append("📥 Detail Pesanan:")
             lines.extend(order_lines)
             lines.append("")
 
         if expense_by_cat:
-            lines.append("📤 *Detail Pengeluaran:*")
+            lines.append("📤 Detail Pengeluaran:")
             for cat, amt in expense_by_cat.most_common():
                 lines.append(f"💸 {cat}  Rp{amt:,.0f}")
 
