@@ -30,13 +30,21 @@ import {
 	Copy,
 	RefreshCw,
 	ChefHat,
-	CupSoda
+	CupSoda,
+	FileText,
+	Receipt
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -353,7 +361,7 @@ export function MenuSidebar({
 		}
 	};
 	
-	const handlePrintOrder = async (order: Doc<"orders">) => {
+	const handlePrintOrder = async (order: Doc<"orders">, mode?: ReceiptPrintMode) => {
 		if (!siteSettings) return;
 
 		try {
@@ -362,7 +370,11 @@ export function MenuSidebar({
 			}
 
 			toast.loading(
-				order.status === "pending" ? "Mencetak open bill..." : "Mencetak struk...",
+				mode === "open_bill"
+					? "Mencetak open bill..."
+					: mode === "kitchen"
+						? "Mencetak tiket kitchen..."
+						: "Mencetak struk...",
 				{ id: "printing" }
 			);
 			const items = order.items.map((i: any) => ({
@@ -379,7 +391,13 @@ export function MenuSidebar({
 				0
 			);
 			const receiptMode: ReceiptPrintMode =
-				order.status === "pending" ? "open_bill" : "paid";
+				mode ?? (order.status === "pending" ? "open_bill" : "paid");
+			const paymentStatusLabel =
+				receiptMode === "kitchen"
+					? "TIKET KITCHEN"
+					: receiptMode === "open_bill"
+						? "OPEN BILL"
+						: "LUNAS";
 
 			await bluetoothPrinter.print(
 				{
@@ -397,7 +415,7 @@ export function MenuSidebar({
 					cashierName: shiftStatus?.shiftInfo?.cashierName || undefined,
 					shiftName: shiftStatus?.shiftInfo?.shiftName || undefined,
 					receiptMode,
-					paymentStatusLabel: receiptMode === "open_bill" ? "OPEN BILL" : "LUNAS",
+					paymentStatusLabel,
 					receiptMeta: buildReceiptMetaFromOrder({
 						order: {
 							discountAmount: order.discountAmount,
@@ -409,8 +427,8 @@ export function MenuSidebar({
 						},
 						allDiscounts,
 					}),
-				dailyReceiptNo: order.dailyReceiptNo,
-				receiptKind: order.receiptKind,
+					dailyReceiptNo: order.dailyReceiptNo,
+					receiptKind: order.receiptKind,
 				},
 				{
 					storeName: siteSettings.storeName,
@@ -430,9 +448,11 @@ export function MenuSidebar({
 				}
 			);
 			toast.success(
-				order.status === "pending"
-					? "Open bill sedang dicetak"
-					: "Struk sedang dicetak",
+				receiptMode === "kitchen"
+					? "Tiket kitchen sedang dicetak"
+					: receiptMode === "open_bill"
+						? "Open bill sedang dicetak"
+						: "Struk sedang dicetak",
 				{ id: "printing" }
 			);
 		} catch (error) {
@@ -592,7 +612,7 @@ export function MenuSidebar({
 										}}
 										onEdit={() => setIsEditMode(true)}
 										onSave={(data) => handleUpdateOrder(selectedOrder._id, data)}
-										onPrint={() => handlePrintOrder(selectedOrder)}
+										onPrint={(mode) => handlePrintOrder(selectedOrder, mode)}
 										order={selectedOrder}
 									/>
 								</div>
@@ -719,7 +739,7 @@ function OrderSimpleDetail({
 	onEdit: () => void;
 	onDelete: () => void;
 	onSave: (data: any) => void;
-	onPrint?: () => void;
+	onPrint?: (mode: ReceiptPrintMode) => void;
 }) {
 	const [customerName, setCustomerName] = useState(order.customerName || "");
 	const [paymentMethod, setPaymentMethod] = useState(order.paymentMethod);
@@ -769,16 +789,33 @@ function OrderSimpleDetail({
 						</Button>
 					)}
 					{!isEditMode && onPrint && (
+				<DropdownMenu>
+					<DropdownMenuTrigger>
 						<Button
 							size="icon"
 							variant="ghost"
-							onClick={onPrint}
 							className="h-8 w-8 text-primary hover:bg-primary/10"
-							title={order.status === "pending" ? "Cetak Open Bill" : "Cetak Struk Lunas"}
+							title={order.status === "pending" ? "Cetak Open Bill" : "Cetak Struk"}
 						>
 							<Printer className="h-4 w-4" />
 						</Button>
-					)}
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" className="w-52">
+						<DropdownMenuItem onClick={() => onPrint("paid")} className="gap-2 cursor-pointer">
+							<Receipt className="h-4 w-4 text-blue-500" />
+							<span>Cetak Struk Lunas</span>
+						</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => onPrint("open_bill")} className="gap-2 cursor-pointer">
+							<FileText className="h-4 w-4 text-amber-500" />
+							<span>Cetak Open Bill</span>
+						</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => onPrint("kitchen")} className="gap-2 cursor-pointer">
+							<ChefHat className="h-4 w-4 text-green-500" />
+							<span>Cetak Tiket Kitchen</span>
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			)}
 				</div>
 			</div>
 
@@ -1353,7 +1390,7 @@ function ParkirTab({
 }: {
 	onClose: () => void;
 	onRestore: (order: Doc<"orders">) => void;
-	onPrint?: (order: Doc<"orders">) => void;
+	onPrint?: (order: Doc<"orders">, mode: ReceiptPrintMode) => void;
 }) {
 	const orders = useHybridOrders({ status: "pending" });
 
@@ -1434,7 +1471,7 @@ function ParkirTab({
 									<div className="flex items-center gap-2">
 									{onPrint && (
 										<DropdownMenu>
-											<DropdownMenuTrigger asChild>
+										<DropdownMenuTrigger>
 												<Button
 													variant="ghost"
 													size="icon"

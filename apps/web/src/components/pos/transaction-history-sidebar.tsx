@@ -1,11 +1,14 @@
 ﻿import type { Doc, Id } from "@/types/backend-compat";
 import {
 	ChevronLeft,
+	ChefHat,
 	ClipboardList,
+	FileText,
 	History,
 	Loader2,
 	Pencil,
 	Printer,
+	Receipt,
 	Save,
 	Trash2,
 	X,
@@ -15,6 +18,12 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,7 +46,8 @@ import {
 	useHybridDeleteOrder,
 	useHybridUpdateOrder,
 } from "@/hooks/use-hybrid-write-actions";
-import { bluetoothPrinter, type OrderItem } from "@/lib/bluetooth-printer";
+import { bluetoothPrinter, type OrderItem, type ReceiptPrintMode } from "@/lib/bluetooth-printer";
+import { buildReceiptMetaFromOrder } from "@/lib/receipt-data";
 
 type FilterType =
 	| "today"
@@ -234,7 +244,7 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 
 	const shiftStatus = useHybridShiftStatus();
 
-	const handlePrintOrder = async (order: Doc<"orders">) => {
+	const handlePrintOrder = async (order: Doc<"orders">, mode?: ReceiptPrintMode) => {
 		if (!bluetoothPrinter.isConnected()) {
 			toast.error("Printer tidak terhubung. Silakan hubungkan di Pengaturan.");
 			return;
@@ -243,7 +253,14 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 		if (!siteSettings) return;
 
 		try {
-			toast.loading("Mencetak struk...", { id: "printing" });
+			toast.loading(
+				mode === "open_bill"
+					? "Mencetak open bill..."
+					: mode === "kitchen"
+						? "Mencetak tiket kitchen..."
+						: "Mencetak struk...",
+				{ id: "printing" }
+			);
 			const items = order.items.map((i: (typeof order.items)[0]) => ({
 				productId: i.productId,
 				name: i.productName,
@@ -256,6 +273,14 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 				(sum: number, item: OrderItem) => sum + (item.originalPrice ?? item.price) * item.quantity,
 				0
 			);
+			const receiptMode: ReceiptPrintMode =
+				mode ?? (order.status === "pending" ? "open_bill" : "paid");
+			const paymentStatusLabel =
+				receiptMode === "kitchen"
+					? "TIKET KITCHEN"
+					: receiptMode === "open_bill"
+						? "OPEN BILL"
+						: "LUNAS";
 
 			await bluetoothPrinter.print(
 				{
@@ -272,8 +297,21 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 					notes: order.notes,
 					cashierName: shiftStatus?.shiftInfo?.cashierName || undefined,
 					shiftName: shiftStatus?.shiftInfo?.shiftName || undefined,
-				dailyReceiptNo: order.dailyReceiptNo,
-				receiptKind: order.receiptKind,
+					receiptMode,
+					paymentStatusLabel,
+					receiptMeta: buildReceiptMetaFromOrder({
+						order: {
+							discountAmount: order.discountAmount,
+							taxAmount: order.taxAmount,
+							serviceChargeAmount: order.serviceChargeAmount,
+							voucherId: order.voucherId,
+							receiptMeta: (order as { receiptMeta?: any }).receiptMeta,
+							items,
+						},
+						allDiscounts: null,
+					}),
+					dailyReceiptNo: order.dailyReceiptNo,
+					receiptKind: order.receiptKind,
 				},
 				{
 					storeName: siteSettings.storeName,
@@ -287,11 +325,19 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 					receiptShowPhone: siteSettings.receiptShowPhone,
 					receiptShowOrderNumber: siteSettings.receiptShowOrderNumber,
 					receiptShowCustomerName: siteSettings.receiptShowCustomerName,
+					receiptShowCashierName: siteSettings.receiptShowCashierName,
 					receiptShowNotes: siteSettings.receiptShowNotes,
 					receiptFontSize: siteSettings.receiptFontSize,
 				}
 			);
-			toast.success("Struk sedang dicetak", { id: "printing" });
+			toast.success(
+				receiptMode === "kitchen"
+					? "Tiket kitchen sedang dicetak"
+					: receiptMode === "open_bill"
+						? "Open bill sedang dicetak"
+						: "Struk sedang dicetak",
+				{ id: "printing" }
+			);
 		} catch (error) {
 			console.error("Print failed:", error);
 			toast.error("Gagal mencetak struk.", { id: "printing" });
@@ -740,7 +786,7 @@ function OrderDetailView({
 					</span>
 				</div>
 			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
+				<DropdownMenuTrigger>
 					<Button
 						className="w-full gap-2"
 						variant="outline"
