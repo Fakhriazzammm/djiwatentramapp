@@ -193,6 +193,10 @@ export function AppUpdatePrompt() {
 							<span>Versi terbaru</span>
 							<span className="font-semibold text-foreground">{updateInfo.latestVersion}</span>
 						</div>
+						<div className="mt-1 flex justify-between gap-3">
+							<span>Tanggal build</span>
+							<span className="font-semibold text-foreground">{updateInfo.buildDate || "-"}</span>
+						</div>
 					</div>
 
 					{/* Progress section — shown during update */}

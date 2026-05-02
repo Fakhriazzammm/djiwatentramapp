@@ -81,10 +81,25 @@ async function refreshAppShellIfVersionChanged() {
 void refreshAppShellIfVersionChanged().finally(() => {
 	updateSW = registerSW({
 		onNeedRefresh() {
-			notifyAppUpdateAvailable({
-				latestVersion: "versi terbaru",
-				latestCommit: "service-worker-update",
-			});
+			// Fetch actual latest version from version.json for accurate display
+			fetch(`/version.json?t=${Date.now()}`, {
+				cache: "no-store",
+				headers: { "Cache-Control": "no-cache" },
+			})
+				.then((res) => (res.ok ? res.json() : null))
+				.then((payload) => {
+					notifyAppUpdateAvailable({
+						latestVersion: payload?.version || APP_VERSION.semantic,
+						latestCommit: payload?.commitHash || payload?.commit || "service-worker-update",
+						buildDate: payload?.buildDate || undefined,
+					});
+				})
+				.catch(() => {
+					notifyAppUpdateAvailable({
+						latestVersion: APP_VERSION.semantic,
+						latestCommit: "service-worker-update",
+					});
+				});
 		},
 	});
 	setPwaUpdateHandler(updateSW);

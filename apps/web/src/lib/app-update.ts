@@ -42,9 +42,9 @@ export function setPwaUpdateHandler(handler: ((reloadPage?: boolean) => Promise<
 export function notifyAppUpdateAvailable(info?: Partial<AppUpdateInfo>) {
 	latestUpdateInfo = {
 		currentVersion: APP_VERSION.semantic,
-		latestVersion: info?.latestVersion || latestUpdateInfo?.latestVersion || "versi terbaru",
+		latestVersion: info?.latestVersion || latestUpdateInfo?.latestVersion || APP_VERSION.semantic,
 		currentCommit: APP_VERSION.commitHash,
-		latestCommit: info?.latestCommit || latestUpdateInfo?.latestCommit || "latest",
+		latestCommit: info?.latestCommit || latestUpdateInfo?.latestCommit || APP_VERSION.commitHash,
 		buildDate: info?.buildDate || latestUpdateInfo?.buildDate,
 	};
 
@@ -70,9 +70,9 @@ export async function checkForAppUpdate() {
 
 		const updateInfo: AppUpdateInfo = {
 			currentVersion: APP_VERSION.semantic,
-			latestVersion: normalizeVersionValue(payload.version) || "versi terbaru",
+			latestVersion: normalizeVersionValue(payload.version) || APP_VERSION.semantic,
 			currentCommit: APP_VERSION.commitHash,
-			latestCommit: normalizeVersionValue(payload.commitHash ?? payload.commit) || "latest",
+			latestCommit: normalizeVersionValue(payload.commitHash ?? payload.commit) || APP_VERSION.commitHash,
 			buildDate: normalizeVersionValue(payload.buildDate) || undefined,
 		};
 
