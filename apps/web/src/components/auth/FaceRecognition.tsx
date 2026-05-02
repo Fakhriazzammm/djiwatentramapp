@@ -89,6 +89,45 @@ export function FaceRecognition({
 	const [loadStartMs, setLoadStartMs] = useState(Date.now());
 	const [loadElapsedSec, setLoadElapsedSec] = useState(0);
 	const [cooldown, setCooldown] = useState(false);
+	const [hintIndex, setHintIndex] = useState(0);
+
+	const hints = {
+		noFace: [
+			"Arahkan wajah ke depan kamera",
+			"Pastikan pencahayaan cukup terang",
+			"Lepas masker atau kacamata hitam",
+			"Jaga jarak 30–50 cm dari kamera",
+			"Hadapkan wajah lurus ke kamera",
+		],
+		faceDetected: [
+			"Tahan posisi — wajah terdeteksi",
+			"Jangan bergerak, sistem memindai",
+			"Lihat lurus ke kamera",
+			"Pertahankan ekspresi netral",
+		],
+		scanning: [
+			"Memindai... tahan posisi",
+			"Jangan bergerak sebentar",
+			"Scan sedang berlangsung",
+			"Sedikit lagi...",
+		],
+		success: {
+			enroll: "Wajah berhasil didaftarkan!",
+			verify: "Absensi berhasil — selamat bekerja!",
+		},
+		fail: {
+			noFace: "Wajah tidak terdeteksi — coba lagi",
+			noMatch: "Wajah tidak dikenali — coba PIN",
+		},
+	};
+
+	// Cycle hints every 2.5 seconds
+	useEffect(() => {
+		const interval = setInterval(() => {
+			setHintIndex((prev) => prev + 1);
+		}, 2500);
+		return () => clearInterval(interval);
+	}, []);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -505,7 +544,7 @@ export function FaceRecognition({
 							<div className="flex items-center gap-2 rounded-full bg-emerald-500/20 px-4 py-2 backdrop-blur-md border border-emerald-500/30">
 								<div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
 								<span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
-									Wajah Terdeteksi — Otomatis Memindai...
+									{hints.faceDetected[hintIndex % hints.faceDetected.length]}
 								</span>
 							</div>
 						</motion.div>
@@ -524,7 +563,7 @@ export function FaceRecognition({
 							<div className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur-md border border-white/20">
 								<ScanFace className="h-4 w-4 text-white/70" />
 								<span className="text-xs font-medium text-white/70">
-									Posisikan wajah di dalam area oval
+									{hints.noFace[hintIndex % hints.noFace.length]}
 								</span>
 							</div>
 						</motion.div>
@@ -544,7 +583,7 @@ export function FaceRecognition({
 								<div className="flex items-center gap-3 mb-2">
 									<Loader2 className="h-4 w-4 animate-spin text-blue-400" />
 									<span className="text-xs font-bold text-white uppercase tracking-wider">
-										Memindai Wajah...
+										{hints.scanning[hintIndex % hints.scanning.length]}
 									</span>
 									<span className="text-xs font-mono text-blue-300 ml-auto">
 										{(elapsedMs / 1000).toFixed(1)}s
@@ -597,7 +636,7 @@ export function FaceRecognition({
 							>
 								<p className="text-2xl font-black text-white uppercase tracking-wide">Terverifikasi!</p>
 								<p className="mt-1 text-sm text-emerald-200">
-									{mode === "enroll" ? "Wajah berhasil didaftarkan" : "Identitas terkonfirmasi"}
+									{mode === "enroll" ? hints.success.enroll : hints.success.verify}
 								</p>
 								<p className="mt-1 text-xs font-mono text-emerald-300/70">
 									{(elapsedMs / 1000).toFixed(2)} detik
@@ -655,8 +694,8 @@ export function FaceRecognition({
 								</p>
 								<p className="mt-1 text-sm text-red-200">
 									{faceDetected
-										? "Wajah tidak sesuai dengan data terdaftar."
-										: "Pastikan wajah terlihat jelas dan pencahayaan cukup."}
+										? hints.fail.noMatch
+										: hints.fail.noFace}
 								</p>
 							</motion.div>
 							<motion.div
@@ -706,7 +745,7 @@ export function FaceRecognition({
 						<Camera className="h-6 w-6" />
 					</Button>
 					<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-						{faceDetected ? "Ketuk untuk memindai" : "Menunggu wajah..."}
+						{faceDetected ? "Ketuk untuk absen sekarang" : hints.noFace[hintIndex % hints.noFace.length]}
 					</p>
 				</motion.div>
 			)}
