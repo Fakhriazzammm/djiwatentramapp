@@ -24,6 +24,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as HomeSectionRouteImport } from './routes/home.$section'
 import { Route as AttendanceStockOpnameRouteImport } from './routes/attendance/stock-opname'
 import { Route as AttendanceUsernameRouteImport } from './routes/attendance.$username'
+import { Route as AdminStockOverviewRouteImport } from './routes/admin/stock-overview'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminRecipeRouteImport } from './routes/admin/recipe'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
@@ -134,6 +135,13 @@ const AttendanceUsernameRoute = AttendanceUsernameRouteImport.update({
   getParentRoute: () => AttendanceRoute,
 } as any).lazy(() =>
   import('./routes/attendance.$username.lazy').then((d) => d.Route),
+)
+const AdminStockOverviewRoute = AdminStockOverviewRouteImport.update({
+  id: '/stock-overview',
+  path: '/stock-overview',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/stock-overview.lazy').then((d) => d.Route),
 )
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
@@ -358,6 +366,7 @@ export interface FileRoutesByFullPath {
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/stock-overview': typeof AdminStockOverviewRoute
   '/attendance/$username': typeof AttendanceUsernameRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
@@ -399,6 +408,7 @@ export interface FileRoutesByTo {
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/stock-overview': typeof AdminStockOverviewRoute
   '/attendance/$username': typeof AttendanceUsernameRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
@@ -446,6 +456,7 @@ export interface FileRoutesById {
   '/admin/products': typeof AdminProductsRoute
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/stock-overview': typeof AdminStockOverviewRoute
   '/attendance/$username': typeof AttendanceUsernameRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
@@ -494,6 +505,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/recipe'
     | '/admin/settings'
+    | '/admin/stock-overview'
     | '/attendance/$username'
     | '/attendance/stock-opname'
     | '/home/$section'
@@ -535,6 +547,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
+    | '/admin/stock-overview'
     | '/attendance/$username'
     | '/attendance/stock-opname'
     | '/home/$section'
@@ -581,6 +594,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/recipe'
     | '/admin/settings'
+    | '/admin/stock-overview'
     | '/attendance/$username'
     | '/attendance/stock-opname'
     | '/home/$section'
@@ -718,6 +732,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/attendance/$username'
       preLoaderRoute: typeof AttendanceUsernameRouteImport
       parentRoute: typeof AttendanceRoute
+    }
+    '/admin/stock-overview': {
+      id: '/admin/stock-overview'
+      path: '/stock-overview'
+      fullPath: '/admin/stock-overview'
+      preLoaderRoute: typeof AdminStockOverviewRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/settings': {
       id: '/admin/settings'
@@ -1007,6 +1028,7 @@ interface AdminRouteRouteChildren {
   AdminProductsRoute: typeof AdminProductsRoute
   AdminRecipeRoute: typeof AdminRecipeRouteWithChildren
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminStockOverviewRoute: typeof AdminStockOverviewRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
@@ -1028,6 +1050,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminProductsRoute: AdminProductsRoute,
   AdminRecipeRoute: AdminRecipeRouteWithChildren,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminStockOverviewRoute: AdminStockOverviewRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 

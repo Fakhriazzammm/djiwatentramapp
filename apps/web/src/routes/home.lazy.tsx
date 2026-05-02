@@ -786,8 +786,13 @@ function HomePage() {
 									</Link>
 								))}
 							</div>
-						</div>
-					))}
+
+						{/* Quick Stock Set */}
+						{(section.role === "Barista" || section.role === "Kitchen") && (
+							<QuickStockSection role={section.role} />
+						)}
+					</div>
+				))}
 				</div>
 
 				<div className="app-card mt-4 p-4 md:p-5">
@@ -994,6 +999,116 @@ function HomePage() {
 					)}
 				</div>
 			</div>
+		</div>
+	);
+}
+
+/* ─── Quick Stock Set Component ─── */
+
+type StockItem = {
+	_id: string;
+	name: string;
+	quantity: number;
+	unit: string;
+};
+
+function QuickStockSection({ role }: { role: string }) {
+	const [open, setOpen] = useState(false);
+	const [items, setItems] = useState<StockItem[]>([]);
+	const [loading, setLoading] = useState(false);
+
+	useEffect(() => {
+		if (!open || items.length > 0) return;
+		setLoading(true);
+		(async () => {
+			const supabase = (await import("@/lib/client")).createClient();
+			const { data } = await supabase
+				.from("pos_products_all")
+				.select("_id, name, quantity, unit")
+				.limit(6);
+			if (data) setItems(data);
+		})().finally(() => setLoading(false));
+	}, [open, role]);
+
+	const adjustStock = async (id: string, delta: number) => {
+		setItems((prev) =>
+			prev.map((i) =>
+				i._id === id ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i
+			)
+		);
+	};
+
+	return (
+		<div className="mt-3">
+			<button
+				className="flex w-full items-center justify-between rounded-xl border border-dashed border-border bg-muted/10 px-3 py-2 text-left transition-all hover:border-primary/30 hover:bg-muted/20"
+				onClick={() => setOpen(!open)}
+				type="button"
+			>
+				<span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+					<Package className="h-3.5 w-3.5" />
+					Stock Cepat
+				</span>
+				<motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+					<ChevronDown className="h-3.5 w-3.5 text-muted-foreground/60" />
+				</motion.div>
+			</button>
+			<AnimatePresence>
+				{open && (
+					<motion.div
+						animate={{ height: "auto", opacity: 1 }}
+						className="mt-2 space-y-1.5 overflow-hidden"
+						exit={{ height: 0, opacity: 0 }}
+						initial={{ height: 0, opacity: 0 }}
+						transition={{ duration: 0.2 }}
+					>
+						{loading ? (
+							<div className="flex items-center justify-center py-4">
+								<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+							</div>
+						) : items.length === 0 ? (
+							<p className="py-2 text-center text-[11px] text-muted-foreground">
+								Tidak ada item stock
+							</p>
+						) : (
+							items.map((item) => (
+								<div
+									className="flex items-center justify-between rounded-xl border border-border/60 bg-background px-3 py-2 transition-all hover:border-primary/30"
+									key={item._id}
+								>
+									<div className="min-w-0 flex-1">
+										<p className="truncate text-[12px] font-semibold text-foreground leading-tight">
+											{item.name}
+										</p>
+										<p className="text-[10px] font-medium text-muted-foreground">
+											Stok: {item.quantity} {item.unit ?? "pcs"}
+										</p>
+									</div>
+									<div className="ml-2 flex items-center gap-1 shrink-0">
+										<button
+											className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-all hover:bg-red-50 hover:text-red-600 active:scale-90"
+											onClick={() => adjustStock(item._id, -1)}
+											type="button"
+										>
+											<Minus className="h-3 w-3" />
+										</button>
+										<span className="flex h-7 min-w-[2rem] items-center justify-center rounded-lg bg-muted/40 px-1.5 font-bold text-[13px] tabular-nums">
+											{item.quantity}
+										</span>
+										<button
+											className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-all hover:bg-emerald-50 hover:text-emerald-600 active:scale-90"
+											onClick={() => adjustStock(item._id, 1)}
+											type="button"
+										>
+											<Plus className="h-3 w-3" />
+										</button>
+									</div>
+								</div>
+							))
+						)}
+					</motion.div>
+				)}
+			</AnimatePresence>
 		</div>
 	);
 }

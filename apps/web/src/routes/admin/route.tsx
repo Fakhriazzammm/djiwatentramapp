@@ -36,6 +36,7 @@ import {
 	Wallet,
 	X,
 	ArrowLeft,
+	BarChart3,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -63,6 +64,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/recipe": "Resep",
 	"/admin/recipe/view": "Buku Resep",
 	"/admin/inventory": "Inventaris",
+	"/admin/stock-overview": "Ringkasan Stok",
 	"/admin/finance": "Keuangan",
 	"/admin/finance/reports": "Laporan Keuangan",
 	"/admin/finance/shift-reports": "Laporan Shift",
@@ -105,6 +107,7 @@ const MORE_MENU_PATHS = [
 	"/admin/products",
 	"/admin/recipe",
 	"/admin/inventory",
+	"/admin/stock-overview",
 	"/admin/discounts",
 	"/admin/hpp-calculator",
 	"/admin/forecasting",
@@ -129,6 +132,7 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/products", icon: Package, label: "Produk", permission: "products:manage" },
 			{ to: "/admin/recipe", icon: BookOpen, label: "Resep", permission: "inventory:manage" },
 			{ to: "/admin/inventory", icon: Archive, label: "Inventaris", permission: "inventory:manage" },
+			{ to: '/admin/stock-overview', icon: BarChart3, label: 'Ringkasan Stok', permission: 'inventory:manage' },
 			{ to: "/admin/booking", icon: Calendar, label: "Booking", permission: "orders:view" },
 		],
 	},
@@ -416,6 +420,13 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Inventaris"
 						to="/admin/inventory"
+						permission="inventory:manage"
+					/>
+					<DesktopNavLink
+						icon={<BarChart3 />}
+						isCollapsed={isCollapsed}
+						label="Ringkasan Stok"
+						to="/admin/stock-overview"
 						permission="inventory:manage"
 					/>
 					<DesktopNavLink

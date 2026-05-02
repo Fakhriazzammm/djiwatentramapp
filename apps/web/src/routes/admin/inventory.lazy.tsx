@@ -19,6 +19,8 @@ import {
 	Boxes,
 	ArrowDown,
 	ArrowUp,
+	ChevronDown,
+	ChevronUp,
 	Edit,
 	History,
 	PackageSearch,
@@ -29,11 +31,14 @@ import {
 	Settings2,
 	ShieldAlert,
 	Trash2,
+	ShoppingCart,
+	Clock,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import { ReorderCard } from "@/components/inventory/reorder-card";
 import {
 	useHybridAllProducts,
 	useHybridCategories,
@@ -1273,6 +1278,10 @@ function InventoryPage() {
 						Buka Admin Recipe
 					</a>
 				</div>
+			)}
+
+			{viewPreset === "operational" && workspace?.rows && workspace.rows.length > 0 && (
+				<ReorderCard items={workspace.rows} />
 			)}
 
 			{viewPreset === "priceMonitor" ? (

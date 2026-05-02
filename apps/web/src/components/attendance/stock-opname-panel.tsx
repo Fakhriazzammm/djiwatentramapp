@@ -68,6 +68,7 @@ type StockOpnamePanelProps = {
   state: OpnameState;
   onUpdateItem: (index: number, qty: number) => void;
   onMarkAllSame: () => void;
+  onMarkAllZero?: () => void;
   onSubmit: () => void;
   isLoading: boolean;
 };
@@ -76,6 +77,7 @@ export function StockOpnamePanel({
   state,
   onUpdateItem,
   onMarkAllSame,
+  onMarkAllZero,
   onSubmit,
   isLoading,
 }: StockOpnamePanelProps) {
@@ -157,12 +159,20 @@ export function StockOpnamePanel({
         <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
           {totalItems} bahan · {changedCount} berubah
         </p>
-        <button
-          onClick={onMarkAllSame}
-          className="text-[10px] font-bold text-primary hover:underline"
-        >
-          Tandai Semua Tetap
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onMarkAllZero}
+            className="text-[10px] font-bold text-red-500 hover:underline"
+          >
+            Setel Semua 0
+          </button>
+          <button
+            onClick={onMarkAllSame}
+            className="text-[10px] font-bold text-primary hover:underline"
+          >
+            Tandai Semua Tetap
+          </button>
+        </div>
       </div>
 
       {/* Items list */}
@@ -179,62 +189,144 @@ export function StockOpnamePanel({
               const changed = Math.abs(item.qtyAfter - item.qtyBefore) > 0.01;
               const depleted = item.qtyAfter <= 0;
               return (
-                <div
+                <motion.div
                   key={item.inventoryId}
-                  className={cn(
-                    "flex items-center gap-2 rounded-xl border px-3 py-2 transition-all",
+                  animate={
                     changed
-                      ? "border-primary/30 bg-primary/5"
+                      ? {
+                          backgroundColor: [
+                            "rgba(59,130,246,0.08)",
+                            "rgba(59,130,246,0.18)",
+                            "rgba(59,130,246,0.08)",
+                          ],
+                          transition: {
+                            duration: 2,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                          },
+                        }
+                      : {}
+                  }
+                  className={cn(
+                    "rounded-xl border overflow-hidden",
+                    changed
+                      ? "border-primary/30"
                       : "border-transparent bg-muted/30",
                     depleted && "border-red-300 bg-red-50"
                   )}
                 >
-                  {/* Name + unit */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-bold truncate leading-tight">
-                      {item.name}
-                    </p>
-                    <p className="text-[9px] text-muted-foreground">
-                      {changed ? (
-                        <span>
-                          <span className="line-through">{item.qtyBefore.toLocaleString()} {item.unit}</span>
-                          {" → "}
-                          <span className={cn("font-bold", depleted ? "text-red-600" : "text-emerald-600")}>
-                            {item.qtyAfter.toLocaleString()} {item.unit}
-                          </span>
-                        </span>
-                      ) : (
-                        <span>{item.qtyBefore.toLocaleString()} {item.unit} (tetap)</span>
-                      )}
-                    </p>
+                  <div className="px-3 py-2">
+                    {/* Name + unit */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-bold truncate leading-tight">
+                          {item.name}
+                        </p>
+                        <p className="text-[9px] text-muted-foreground">
+                          {changed ? (
+                            <span>
+                              <span className="line-through">{item.qtyBefore.toLocaleString()} {item.unit}</span>
+                              {" → "}
+                              <span className={cn("font-bold", depleted ? "text-red-600" : "text-emerald-600")}>
+                                {item.qtyAfter.toLocaleString()} {item.unit}
+                              </span>
+                            </span>
+                          ) : (
+                            <span>{item.qtyBefore.toLocaleString()} {item.unit} (tetap)</span>
+                          )}
+                        </p>
+                      </div>
+
+                      {/* Quick adjust buttons */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => adjustQty(i, -Math.max(1, Math.round(item.qtyAfter * 0.1)))}
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border bg-white hover:bg-red-50 hover:border-red-200"
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <Input
+                          type="number"
+                          value={Math.round(item.qtyAfter)}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            if (!isNaN(v) && v >= 0) onUpdateItem(i, v);
+                          }}
+                          className="h-9 w-16 text-center text-[11px] font-bold p-0"
+                          min={0}
+                        />
+                        <button
+                          onClick={() => adjustQty(i, Math.max(1, Math.round(item.qtyAfter * 0.1)))}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg border bg-white hover:bg-emerald-50 hover:border-emerald-200"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Quick adjust buttons */}
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => adjustQty(i, -Math.max(1, Math.round(item.qtyAfter * 0.1)))}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border bg-white hover:bg-red-50 hover:border-red-200"
-                    >
-                      <Minus className="h-3 w-3" />
-                    </button>
-                    <Input
-                      type="number"
-                      value={Math.round(item.qtyAfter)}
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value);
-                        if (!isNaN(v) && v >= 0) onUpdateItem(i, v);
-                      }}
-                      className="h-7 w-16 text-center text-[11px] font-bold p-0"
-                      min={0}
-                    />
-                    <button
-                      onClick={() => adjustQty(i, Math.max(1, Math.round(item.qtyAfter * 0.1)))}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border bg-white hover:bg-emerald-50 hover:border-emerald-200"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
+                  {/* Adaptive step: adjust granularity based on stock magnitude */}
+                  {(() => {
+                    const adaptiveStep = Math.max(1, Math.round(item.qtyBefore / 50));
+                    const maxVal = Math.max(item.qtyBefore * 2, 10);
+                    return (
+                      <div className="mt-1.5">
+                        <input
+                          type="range"
+                          min={0}
+                          max={maxVal}
+                          step={adaptiveStep}
+                          value={Math.round(item.qtyAfter)}
+                          onChange={(e) => onUpdateItem(i, parseInt(e.target.value))}
+                          className="w-full h-1.5 appearance-none rounded-full bg-muted/50 cursor-pointer accent-primary
+                            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5
+                            [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-sm
+                            [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-125"
+                        />
+                        {adaptiveStep > 1 && (
+                          <p className="mt-0.5 text-[9px] text-muted-foreground">
+                            Step {adaptiveStep} (stok besar)
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Preset buttons row */}
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <button
+                        onClick={() => onUpdateItem(i, 0)}
+                        className="flex h-8 min-w-[2.5rem] items-center justify-center rounded-lg border border-red-200 bg-red-50 text-[10px] font-bold text-red-600 hover:bg-red-100"
+                      >
+                        0
+                      </button>
+                      <button
+                        onClick={() => onUpdateItem(i, Math.round(item.qtyBefore / 2))}
+                        className="flex h-8 min-w-[2.5rem] items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-[10px] font-bold text-amber-700 hover:bg-amber-100"
+                      >
+                        ½
+                      </button>
+                      <button
+                        onClick={() => onUpdateItem(i, item.qtyBefore)}
+                        className="flex h-8 min-w-[2.5rem] items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100"
+                      >
+                        1
+                      </button>
+                      <button
+                        onClick={() => adjustQty(i, 1)}
+                        className="flex h-8 min-w-[2.5rem] items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[10px] font-bold text-gray-700 hover:bg-gray-100"
+                      >
+                        +1
+                      </button>
+                      <button
+                        onClick={() => adjustQty(i, -1)}
+                        disabled={item.qtyAfter <= 0}
+                        className="flex h-8 min-w-[2.5rem] items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[10px] font-bold text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        -1
+                      </button>
+                    </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </motion.div>

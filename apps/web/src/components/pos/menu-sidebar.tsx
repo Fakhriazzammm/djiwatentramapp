@@ -7,6 +7,8 @@ import {
 	ClipboardList,
 	Clock,
 	CreditCard,
+	Eye,
+	EyeOff,
 	Loader2,
 	type LucideIcon,
 	Menu,
@@ -34,40 +36,6 @@ import {
 	FileText,
 	Receipt
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { ConfirmationModal } from "@/components/ui/confirmation-modal";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import {
-	Sheet,
-	SheetContent,
-	SheetHeader,
-	SheetTitle,
-	SheetTrigger,
-} from "@/components/ui/sheet";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -2848,6 +2816,7 @@ function InventoryTab() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [syncingProductIds, setSyncingProductIds] = useState<Set<string>>(new Set());
 	const [stockInputValues, setStockInputValues] = useState<Record<string, string>>({});
+	const [hideSoldOut, setHideSoldOut] = useState(false);
 
 	const menuCategoryIds = useMemo(() => {
 		if (!categories?.length) return new Set<string>();
@@ -2887,8 +2856,11 @@ function InventoryTab() {
 			.filter((product: any) => menuCategoryIds.has(String(product.categoryId || "")))
 			.filter((product: any) =>
 				query ? String(product.name || "").toLowerCase().includes(query) : true
+			)
+			.filter((product: any) =>
+				hideSoldOut ? Number(product.quantity ?? 0) > 0 : true
 			);
-	}, [allProducts, menuCategoryIds, searchQuery]);
+	}, [allProducts, menuCategoryIds, searchQuery, hideSoldOut]);
 
 	const handleStockChangeDirect = useCallback(
 		async (product: any, newQuantity: number) => {
@@ -2951,9 +2923,23 @@ function InventoryTab() {
 		<div className="flex-1 flex flex-col gap-3 min-h-0">
 			<div className="flex items-center justify-between gap-2 shrink-0">
 				<h3 className="font-bold text-sm">Update Stok per Menu</h3>
-				<span className="text-[10px] text-muted-foreground">
-					{menuProducts.length} menu
-				</span>
+				<div className="flex items-center gap-2">
+					<button
+						type="button"
+						onClick={() => setHideSoldOut(!hideSoldOut)}
+						className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all ${
+							hideSoldOut
+								? "bg-primary text-primary-foreground shadow-sm"
+								: "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+						}`}
+					>
+						{hideSoldOut ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+						<span>Sembunyikan Habis</span>
+					</button>
+					<span className="text-[10px] text-muted-foreground">
+						{menuProducts.length} menu
+					</span>
+				</div>
 			</div>
 
 			<div className="relative shrink-0">
@@ -3003,11 +2989,39 @@ function InventoryTab() {
 								<Card className="border-border bg-card/50 overflow-hidden" key={product._id}>
 									<CardContent className="p-3">
 										<div className="flex items-start justify-between gap-2">
-											<div>
-												<p className="font-semibold text-sm text-foreground">
-													{product.name}
-												</p>
-												<div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+							<div>
+								<p className="font-semibold text-sm text-foreground">
+									{product.name}
+								</p>
+								{(() => {
+									const qty = currentQuantity;
+									const maxStock = potentialStock !== null ? Math.max(potentialStock, qty) : Math.max(qty * 2, 10);
+									const pct = maxStock > 0 ? Math.min(qty / maxStock, 1) : 0;
+									const barColor = qty === 0
+										? "bg-red-500"
+										: pct > 0.5
+											? "bg-green-500"
+											: pct >= 0.2
+												? "bg-yellow-500"
+												: "bg-red-500";
+									const barBg = qty === 0 ? "bg-red-100" : "bg-muted";
+									return (
+										<div className="mt-1.5 flex items-center gap-2">
+											<div className={`flex-1 h-1.5 rounded-full overflow-hidden ${barBg}`}>
+												<div
+													className={`h-full rounded-full transition-all ${barColor}`}
+													style={{ width: `${qty === 0 ? 100 : pct * 100}%` }}
+												/>
+											</div>
+											{qty === 0 ? (
+												<span className="text-[10px] font-bold text-red-600 uppercase leading-none">Habis</span>
+											) : (
+												<span className="text-[10px] font-medium text-muted-foreground tabular-nums leading-none">{qty}</span>
+											)}
+										</div>
+									);
+								})()}
+								<div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
 													<span className="flex items-center gap-1">
 														Ready:{" "}
 														<input

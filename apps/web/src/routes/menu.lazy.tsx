@@ -1775,7 +1775,39 @@ function MenuPage() {
 											<p className="line-clamp-2 font-bold text-foreground text-[13px] leading-tight">
 												{product.name}
 											</p>
-											<div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+
+						{/* Visual Stock Gauge Bar */}
+						{(product.quantity ?? 0) >= 0 && (
+							<div className="mt-1.5 flex items-center gap-1.5">
+								<div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden min-w-[20px]">
+									<motion.div
+										className={cn(
+											"h-full rounded-full",
+											(product.quantity ?? 0) <= 0
+												? "bg-red-500"
+												: (product.quantity ?? 0) <= 5
+													? "bg-amber-500"
+													: "bg-emerald-500"
+										)}
+										initial={{ width: 0 }}
+										animate={{ width: Math.min(100, ((product.quantity ?? 0) / 30) * 100) + "%" }}
+										transition={{ duration: 0.5, ease: "easeOut" }}
+									/>
+								</div>
+								<span className={cn(
+									"text-[9px] font-bold shrink-0 whitespace-nowrap",
+									(product.quantity ?? 0) <= 0
+										? "text-red-500"
+										: (product.quantity ?? 0) <= 5
+											? "text-amber-600"
+											: "text-emerald-600"
+								)}>
+									{product.quantity}
+								</span>
+			</div>
+						)}
+
+						<div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
 												<p
 													className="font-black text-sm leading-none"
 													style={{ color: themeColor ?? "var(--color-primary)" }}
