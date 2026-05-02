@@ -309,59 +309,39 @@ function RegisterPage() {
 					</Card>
 				)}
 
-				{/* ---- step 2: kontrak ---- */}
-				{step === 2 && (
-					<div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
-						<Card className="flex-1 border sm:rounded-xl">
-							<CardHeader className="pb-2 sm:pb-4">
-								<CardTitle className="flex items-center gap-2 text-base sm:text-lg"><FileSignature className="h-4 w-4 sm:h-5 sm:w-5" />Kontrak Kerja</CardTitle>
-							</CardHeader>
-							<CardContent className="space-y-3 sm:space-y-4">
-								<div className="flex flex-wrap gap-2">
-									<Button size="sm" onClick={applyTemplate} type="button" variant="outline" className="sm:h-10 sm:px-4 sm:text-sm">Gunakan Template</Button>
-									<Button size="sm" disabled={isGenerating} onClick={handleGenerateAi} type="button" className="sm:h-10 sm:px-4 sm:text-sm">
-										<Sparkles className="mr-1.5 h-4 w-4" />{isGenerating ? "Generate..." : "Generate AI"}
-									</Button>
+			{/* ---- step 2: kontrak (read-only) ---- */}
+			{step === 2 && (
+				<div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
+					<Card className="flex-1 border sm:rounded-xl">
+						<CardHeader className="pb-2 sm:pb-4">
+							<CardTitle className="flex items-center gap-2 text-base sm:text-lg"><FileSignature className="h-4 w-4 sm:h-5 sm:w-5" />Kontrak Kerja</CardTitle>
+							<p className="text-muted-foreground text-xs sm:text-sm">Kontrak disiapkan oleh admin. Baca dengan saksama sebelum tanda tangan.</p>
+						</CardHeader>
+						<CardContent>
+							{!contractPreview.plainText && !contractPreview.clauses.length ? (
+								<div className="flex flex-col items-center gap-3 py-8 text-center">
+									<FileSignature className="h-10 w-10 text-muted-foreground/40" />
+									<p className="text-muted-foreground text-sm">Belum ada kontrak.</p>
+									<p className="text-muted-foreground text-xs">Admin akan menyiapkan kontrak kerja untuk Anda.</p>
 								</div>
-								<Field label="Catatan untuk AI">
-									<Textarea
-										value={draft.contract.aiPrompt ?? ""}
-										onChange={(e) => setDraft((p) => ({ ...p, contract: { ...p.contract, aiPrompt: e.target.value } }))}
-										placeholder="Masa probation 3 bulan, training barista, libur menyesuaikan jadwal outlet"
-										className="text-sm"
-									/>
-								</Field>
-								<Field label="Judul kontrak">
-									<Input value={contractPreview.title} onChange={(e) => setDraft((p) => ({ ...p, contract: { ...contractPreview, title: e.target.value } }))} />
-								</Field>
-								<div className="space-y-2.5 sm:space-y-3">
+							) : (
+								<div className="prose prose-sm max-w-none text-sm">
+									<h3 className="text-base font-semibold">{contractPreview.title}</h3>
 									{contractPreview.clauses.map((clause, idx) => (
-										<div key={`${clause.title}-${idx}`} className="rounded-lg border p-2.5 sm:rounded-xl sm:p-3">
-											<Input className="mb-2 text-sm" value={clause.title} onChange={(e) => updateClause(idx, "title", e.target.value)} />
-											<Textarea className="text-sm" value={clause.body} onChange={(e) => updateClause(idx, "body", e.target.value)} />
+										<div key={idx} className="mb-3">
+											<h4 className="text-sm font-medium">{idx + 1}. {clause.title}</h4>
+											<p className="whitespace-pre-wrap text-muted-foreground">{clause.body}</p>
 										</div>
 									))}
-									<Button
-										size="sm"
-										type="button"
-										variant="outline"
-										onClick={() =>
-											setDraft((p) => ({
-												...p,
-												contract: { ...contractPreview, mode: "custom", clauses: [...contractPreview.clauses, { title: "Pasal Baru", body: "Isi klausul..." }] },
-											}))
-										}
-									>
-										Tambah Klausul
-									</Button>
 								</div>
-							</CardContent>
-						</Card>
-						<div className="flex-1">
-							<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} />
-						</div>
+							)}
+						</CardContent>
+					</Card>
+					<div className="flex-1">
+						<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} />
 					</div>
-				)}
+				</div>
+			)}
 
 				{/* ---- step 3: tanda tangan ---- */}
 				{step === 3 && (
