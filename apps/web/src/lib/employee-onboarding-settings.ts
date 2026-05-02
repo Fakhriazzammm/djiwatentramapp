@@ -378,3 +378,13 @@ export function validateDraftForSettings(draft: EmployeeOnboardingDraft, setting
 	if (isOnboardingFieldRequired(settings, "signature") && !draft.signatureDataUrl) errors.push("Tanda tangan wajib diisi");
 	return errors;
 }
+
+export function calculateProbationEndDate(startDate: string, months: number): string | null {
+	if (!startDate || !months || months <= 0) return null;
+	try {
+		const d = new Date(startDate);
+		if (isNaN(d.getTime())) return null;
+		d.setMonth(d.getMonth() + months);
+		return d.toISOString().slice(0, 10);
+	} catch { return null; }
+}

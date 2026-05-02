@@ -33,6 +33,7 @@ import {
 	getRoleSalaryDefaults,
 	normalizeEmployeeOnboardingSettings,
 	validateDraftForSettings,
+	calculateProbationEndDate,
 } from "@/lib/employee-onboarding-settings";
 
 /* -------- constants -------- */
@@ -117,8 +118,18 @@ function RegisterPage() {
 
 	const contractPreview = useMemo(() => {
 		if (draft.contract.plainText || draft.contract.clauses.length > 0) return draft.contract;
+		const roleTemplate = onboardingSettings.contractTemplatesByRoleId[draft.employment.roleId];
+		if (roleTemplate) {
+			return {
+				mode: "template" as const,
+				title: `Perjanjian Kerja ${draft.employment.roleName || ""}`,
+				plainText: roleTemplate,
+				html: `<article><p>${roleTemplate.replace(/\n/g, "<br/>")}</p></article>`,
+				clauses: [{ title: "Ketentuan Kontrak", body: roleTemplate }],
+			};
+		}
 		return buildEmployeeContractTemplate(draft.personal, draft.employment);
-	}, [draft]);
+	}, [draft, onboardingSettings.contractTemplatesByRoleId]);
 
 	/* helpers */
 	const updatePersonal = (k: keyof EmployeeOnboardingDraft["personal"], v: string) =>
@@ -292,11 +303,15 @@ function RegisterPage() {
 								</select>
 							</Field>
 							<Field label="Tanggal mulai"><Input type="date" value={draft.employment.startDate} onChange={(e) => updateEmployment("startDate", e.target.value)} /></Field>
-							<Field label="Tipe kerja">
+							{onboardingSettings.fields.employmentType?.visible !== false && <Field label="Tipe kerja">
 								<select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.employment.employmentType} onChange={(e) => updateEmployment("employmentType", e.target.value)}>
 									<option value="probation">Probation</option><option value="full_time">Full-time</option><option value="part_time">Part-time</option><option value="freelance">Freelance</option>
 								</select>
-							</Field>
+								{draft.employment.employmentType === "probation" && onboardingSettings.probation.enabled && (() => {
+									const endDate = calculateProbationEndDate(draft.employment.startDate, onboardingSettings.probation.defaultMonths);
+									return endDate ? <p className="mt-1 text-xs text-muted-foreground">Masa probation berakhir: <span className="font-semibold text-amber-600">{new Date(endDate).toLocaleDateString("id-ID")}</span></p> : null;
+								})()}
+							</Field>}
 							<Field label="Lokasi"><Input value={draft.employment.location} onChange={(e) => updateEmployment("location", e.target.value)} /></Field>
 							{onboardingSettings.salaryPreview.enabled && onboardingSettings.salaryPreview.candidateVisibility !== "hidden" && <div className="rounded-lg border bg-primary/5 p-3 text-sm md:col-span-2"><p className="font-medium">Preview Gaji</p><p className="text-muted-foreground">Bulanan {formatOnboardingCurrency(draft.employment.monthlySalary)} • Harian {formatOnboardingCurrency(draft.employment.dailyAllowance)} • Shift {formatOnboardingCurrency(draft.employment.shiftRate)}</p></div>}
 							<Field label="Gaji bulanan"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.monthlySalary)} onChange={(e) => updateEmployment("monthlySalary", Number(e.target.value || 0))} /></Field>

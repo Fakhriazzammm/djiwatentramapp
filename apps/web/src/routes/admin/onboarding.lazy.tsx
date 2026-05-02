@@ -14,7 +14,7 @@ import { createClient } from "@/lib/client";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridCreateUser, useHybridUpdateEmployeeApplicationStatus } from "@/hooks/use-employee-onboarding-actions";
-import { formatOnboardingCurrency, generateSixDigitPin, normalizeEmployeeOnboardingSettings } from "@/lib/employee-onboarding-settings";
+import { formatOnboardingCurrency, generateSixDigitPin, normalizeEmployeeOnboardingSettings, calculateProbationEndDate } from "@/lib/employee-onboarding-settings";
 
 /* -------- helpers -------- */
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -213,6 +213,10 @@ function AdminOnboardingPage() {
 									<CardContent className="space-y-1.5 text-xs sm:space-y-2 sm:text-sm">
 										<p><b>Role:</b> {selected.employment?.roleName}</p>
 										<p><b>Mulai:</b> {selected.employment?.startDate}</p>
+										{selected.employment?.employmentType === "probation" && (() => {
+											const endDate = calculateProbationEndDate(selected.employment?.startDate, onboardingSettings.probation.defaultMonths);
+											return endDate ? <p><b>Probation berakhir:</b> <span className="text-amber-600 font-semibold">{new Date(endDate).toLocaleDateString("id-ID")}</span></p> : null;
+										})()}
 										<p><b>Username:</b> {selected.employment?.username}</p>
 										<p><b>PIN dari form:</b> {selected.employment?.homePinProvided ? "Diisi" : "Tidak diisi"}</p>
 										<p><b>Gaji:</b> {formatOnboardingCurrency(selected.employment?.monthlySalary)}</p>
