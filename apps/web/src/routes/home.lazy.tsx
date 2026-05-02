@@ -1012,7 +1012,6 @@ type StockItem = {
 	_id: string;
 	name: string;
 	quantity: number;
-	unit: string;
 };
 
 function QuickStockSection({ role }: { role: string }) {
@@ -1027,7 +1026,7 @@ function QuickStockSection({ role }: { role: string }) {
 			const supabase = (await import("@/lib/client")).createClient();
 			const { data } = await supabase
 				.from("pos_products_all")
-				.select("_id, name, quantity, unit")
+				.select("_id, name, quantity")
 				.limit(6);
 			if (data) setItems(data);
 		})().finally(() => setLoading(false));
@@ -1084,7 +1083,7 @@ function QuickStockSection({ role }: { role: string }) {
 											{item.name}
 										</p>
 										<p className="text-[10px] font-medium text-muted-foreground">
-											Stok: {item.quantity} {item.unit ?? "pcs"}
+											Stok: {item.quantity} "-"
 										</p>
 									</div>
 									<div className="ml-2 flex items-center gap-1 shrink-0">
