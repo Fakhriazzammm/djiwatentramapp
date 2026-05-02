@@ -51,6 +51,7 @@ import { Route as AdminOperationalTeamAttendanceRouteImport } from './routes/adm
 import { Route as AdminFinanceShiftReportsRouteImport } from './routes/admin/finance/shift-reports'
 import { Route as AdminFinanceTransactionsRouteRouteImport } from './routes/admin/finance/transactions/route'
 import { Route as AdminFinanceReportsRouteRouteImport } from './routes/admin/finance/reports/route'
+import { Route as AdminOperationalTeamRegisterContractRouteImport } from './routes/admin/operational-team/register/contract'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -308,6 +309,16 @@ const AdminFinanceReportsRouteRoute =
     path: '/reports',
     getParentRoute: () => AdminFinanceRouteRoute,
   } as any)
+const AdminOperationalTeamRegisterContractRoute =
+  AdminOperationalTeamRegisterContractRouteImport.update({
+    id: '/contract',
+    path: '/contract',
+    getParentRoute: () => AdminOperationalTeamRegisterRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/register/contract.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -348,10 +359,11 @@ export interface FileRoutesByFullPath {
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRoute
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollRoute
-  '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRoute
+  '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
+  '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -388,10 +400,11 @@ export interface FileRoutesByTo {
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRoute
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollRoute
-  '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRoute
+  '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/admin/finance': typeof AdminFinanceIndexRoute
   '/admin/recipe': typeof AdminRecipeIndexRoute
+  '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -433,10 +446,11 @@ export interface FileRoutesById {
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRoute
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollRoute
-  '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRoute
+  '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
+  '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -483,6 +497,7 @@ export interface FileRouteTypes {
     | '/admin/recipe/view'
     | '/admin/finance/'
     | '/admin/recipe/'
+    | '/admin/operational-team/register/contract'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -523,6 +538,7 @@ export interface FileRouteTypes {
     | '/admin/recipe/view'
     | '/admin/finance'
     | '/admin/recipe'
+    | '/admin/operational-team/register/contract'
   id:
     | '__root__'
     | '/'
@@ -567,6 +583,7 @@ export interface FileRouteTypes {
     | '/admin/recipe/view'
     | '/admin/finance/'
     | '/admin/recipe/'
+    | '/admin/operational-team/register/contract'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -878,6 +895,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFinanceReportsRouteRouteImport
       parentRoute: typeof AdminFinanceRouteRoute
     }
+    '/admin/operational-team/register/contract': {
+      id: '/admin/operational-team/register/contract'
+      path: '/contract'
+      fullPath: '/admin/operational-team/register/contract'
+      preLoaderRoute: typeof AdminOperationalTeamRegisterContractRouteImport
+      parentRoute: typeof AdminOperationalTeamRegisterRoute
+    }
   }
 }
 
@@ -898,16 +922,32 @@ const AdminFinanceRouteRouteChildren: AdminFinanceRouteRouteChildren = {
 const AdminFinanceRouteRouteWithChildren =
   AdminFinanceRouteRoute._addFileChildren(AdminFinanceRouteRouteChildren)
 
+interface AdminOperationalTeamRegisterRouteChildren {
+  AdminOperationalTeamRegisterContractRoute: typeof AdminOperationalTeamRegisterContractRoute
+}
+
+const AdminOperationalTeamRegisterRouteChildren: AdminOperationalTeamRegisterRouteChildren =
+  {
+    AdminOperationalTeamRegisterContractRoute:
+      AdminOperationalTeamRegisterContractRoute,
+  }
+
+const AdminOperationalTeamRegisterRouteWithChildren =
+  AdminOperationalTeamRegisterRoute._addFileChildren(
+    AdminOperationalTeamRegisterRouteChildren,
+  )
+
 interface AdminOperationalTeamRouteChildren {
   AdminOperationalTeamAttendanceRoute: typeof AdminOperationalTeamAttendanceRoute
   AdminOperationalTeamPayrollRoute: typeof AdminOperationalTeamPayrollRoute
-  AdminOperationalTeamRegisterRoute: typeof AdminOperationalTeamRegisterRoute
+  AdminOperationalTeamRegisterRoute: typeof AdminOperationalTeamRegisterRouteWithChildren
 }
 
 const AdminOperationalTeamRouteChildren: AdminOperationalTeamRouteChildren = {
   AdminOperationalTeamAttendanceRoute: AdminOperationalTeamAttendanceRoute,
   AdminOperationalTeamPayrollRoute: AdminOperationalTeamPayrollRoute,
-  AdminOperationalTeamRegisterRoute: AdminOperationalTeamRegisterRoute,
+  AdminOperationalTeamRegisterRoute:
+    AdminOperationalTeamRegisterRouteWithChildren,
 }
 
 const AdminOperationalTeamRouteWithChildren =

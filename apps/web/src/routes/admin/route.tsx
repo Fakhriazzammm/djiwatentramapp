@@ -76,6 +76,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/operational-team/attendance": "Absensi",
 	"/admin/operational-team/payroll": "Gaji & Role",
 	"/admin/operational-team/register": "Register Karyawan",
+	"/admin/operational-team/register/contract": "Kontrak Kerja",
 	"/admin/forecasting": "Forecasting",
 	"/admin/booking": "Booking",
 	"/admin/kitchen": "Dapur",
@@ -116,6 +117,7 @@ const MORE_MENU_PATHS = [
 	"/admin/operational-team/attendance",
 	"/admin/operational-team/payroll",
 	"/admin/operational-team/register",
+	"/admin/operational-team/register/contract",
 	"/admin/settings",
 ];
 
@@ -187,6 +189,7 @@ const OPERATIONAL_TEAM_PATHS = [
 	"/admin/operational-team/attendance",
 	"/admin/operational-team/payroll",
 	"/admin/operational-team/register",
+	"/admin/operational-team/register/contract",
 ];
 
 function AdminLayout() {
