@@ -43,6 +43,7 @@ import { Route as AdminAiChatRouteImport } from './routes/admin/ai-chat'
 import { Route as BrandSlugMinigamesRouteImport } from './routes/$brandSlug.minigames'
 import { Route as AdminFinanceRouteRouteImport } from './routes/admin/finance/route'
 import { Route as AdminRecipeIndexRouteImport } from './routes/admin/recipe.index'
+import { Route as AdminOperationalTeamIndexRouteImport } from './routes/admin/operational-team/index'
 import { Route as AdminFinanceIndexRouteImport } from './routes/admin/finance/index'
 import { Route as AdminRecipeViewRouteImport } from './routes/admin/recipe.view'
 import { Route as AdminOperationalTeamRegisterRouteImport } from './routes/admin/operational-team/register'
@@ -251,6 +252,14 @@ const AdminRecipeIndexRoute = AdminRecipeIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRecipeRoute,
 } as any)
+const AdminOperationalTeamIndexRoute =
+  AdminOperationalTeamIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminOperationalTeamRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/index.lazy').then((d) => d.Route),
+  )
 const AdminFinanceIndexRoute = AdminFinanceIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -362,6 +371,7 @@ export interface FileRoutesByFullPath {
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
+  '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
 }
@@ -386,7 +396,6 @@ export interface FileRoutesByTo {
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
-  '/admin/operational-team': typeof AdminOperationalTeamRouteWithChildren
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -403,6 +412,7 @@ export interface FileRoutesByTo {
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/admin/finance': typeof AdminFinanceIndexRoute
+  '/admin/operational-team': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe': typeof AdminRecipeIndexRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
 }
@@ -449,6 +459,7 @@ export interface FileRoutesById {
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
+  '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
 }
@@ -496,6 +507,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team/register'
     | '/admin/recipe/view'
     | '/admin/finance/'
+    | '/admin/operational-team/'
     | '/admin/recipe/'
     | '/admin/operational-team/register/contract'
   fileRoutesByTo: FileRoutesByTo
@@ -520,7 +532,6 @@ export interface FileRouteTypes {
     | '/admin/kitchen'
     | '/admin/minigames'
     | '/admin/onboarding'
-    | '/admin/operational-team'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
@@ -537,6 +548,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team/register'
     | '/admin/recipe/view'
     | '/admin/finance'
+    | '/admin/operational-team'
     | '/admin/recipe'
     | '/admin/operational-team/register/contract'
   id:
@@ -582,6 +594,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team/register'
     | '/admin/recipe/view'
     | '/admin/finance/'
+    | '/admin/operational-team/'
     | '/admin/recipe/'
     | '/admin/operational-team/register/contract'
   fileRoutesById: FileRoutesById
@@ -839,6 +852,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRecipeIndexRouteImport
       parentRoute: typeof AdminRecipeRoute
     }
+    '/admin/operational-team/': {
+      id: '/admin/operational-team/'
+      path: '/'
+      fullPath: '/admin/operational-team/'
+      preLoaderRoute: typeof AdminOperationalTeamIndexRouteImport
+      parentRoute: typeof AdminOperationalTeamRoute
+    }
     '/admin/finance/': {
       id: '/admin/finance/'
       path: '/'
@@ -941,6 +961,7 @@ interface AdminOperationalTeamRouteChildren {
   AdminOperationalTeamAttendanceRoute: typeof AdminOperationalTeamAttendanceRoute
   AdminOperationalTeamPayrollRoute: typeof AdminOperationalTeamPayrollRoute
   AdminOperationalTeamRegisterRoute: typeof AdminOperationalTeamRegisterRouteWithChildren
+  AdminOperationalTeamIndexRoute: typeof AdminOperationalTeamIndexRoute
 }
 
 const AdminOperationalTeamRouteChildren: AdminOperationalTeamRouteChildren = {
@@ -948,6 +969,7 @@ const AdminOperationalTeamRouteChildren: AdminOperationalTeamRouteChildren = {
   AdminOperationalTeamPayrollRoute: AdminOperationalTeamPayrollRoute,
   AdminOperationalTeamRegisterRoute:
     AdminOperationalTeamRegisterRouteWithChildren,
+  AdminOperationalTeamIndexRoute: AdminOperationalTeamIndexRoute,
 }
 
 const AdminOperationalTeamRouteWithChildren =

@@ -339,7 +339,7 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 							}}
 							onDelete={() => setIsConfirmDeleteOpen(true)}
 							onEdit={() => setIsEditMode(true)}
-							onPrint={() => handlePrintOrder(selectedOrder)}
+							onPrint={(mode) => handlePrintOrder(selectedOrder, mode)}
 							onSave={(data) => handleUpdateOrder(selectedOrder._id, data)}
 							order={selectedOrder}
 						/>
@@ -549,7 +549,7 @@ function OrderDetailView({
 		paymentMethod: string;
 		status: any;
 	}) => void;
-	onPrint: () => void;
+	onPrint: (mode: ReceiptPrintMode) => void;
 }) {
 	const [customerName, setCustomerName] = useState(order.customerName || "");
 	const [paymentMethod, setPaymentMethod] = useState(order.paymentMethod);
@@ -737,14 +737,31 @@ function OrderDetailView({
 						{formatCurrency(order.totalAmount)}
 					</span>
 				</div>
-				<Button
-					className="w-full gap-2"
-					onClick={onPrint}
-					variant="outline"
-				>
-					<Printer className="h-4 w-4" />
-					Cetak Ulang Struk
-				</Button>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button
+						className="w-full gap-2"
+						variant="outline"
+					>
+						<Printer className="h-4 w-4" />
+						Cetak Ulang Struk
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end" className="w-52">
+					<DropdownMenuItem onClick={() => onPrint("paid")} className="gap-2 cursor-pointer">
+						<Receipt className="h-4 w-4 text-blue-500" />
+						<span>Cetak Struk Lunas</span>
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={() => onPrint("open_bill")} className="gap-2 cursor-pointer">
+						<FileText className="h-4 w-4 text-amber-500" />
+						<span>Cetak Open Bill</span>
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={() => onPrint("kitchen")} className="gap-2 cursor-pointer">
+						<ChefHat className="h-4 w-4 text-green-500" />
+						<span>Cetak Tiket Kitchen</span>
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
 			</div>
 		</>
 	);
