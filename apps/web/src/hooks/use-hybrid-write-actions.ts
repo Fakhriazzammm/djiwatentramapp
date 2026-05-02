@@ -51,15 +51,21 @@ function generateOrderNumber(args: {
 	source?: "pos" | "customer_self_service" | "booking";
 	orderType?: "dine_in" | "takeaway";
 	createdAt: number;
+	customerName?: string;
+	receiptNo?: number;
 }) {
 	const d = new Date(args.createdAt);
 	const dd = String(d.getDate()).padStart(2, "0");
 	const mm = String(d.getMonth() + 1).padStart(2, "0");
 	const yy = String(d.getFullYear()).slice(-2);
 	const dateCode = `${dd}${mm}${yy}`;
-	const randomCode = Math.random().toString(36).toUpperCase().slice(2, 6);
 	const typeCode = getOrderTypeCode(args.orderType);
-	return `ORD-${typeCode}-${randomCode}${dateCode}`;
+	const custCode = (args.customerName || "UMUM")
+		.replace(/[^a-zA-Z0-9]/g, "")
+		.toUpperCase()
+		.slice(0, 5) || "UMUM";
+	const noCode = args.receiptNo != null ? String(args.receiptNo).padStart(3, "0") : "000";
+	return `ORD-${typeCode}-${custCode}${noCode}${dateCode}`;
 }
 
 function generateBookingCode(timestamp: number) {
@@ -2512,19 +2518,14 @@ export function useHybridCreateOrder() {
 				const supabase = createClient();
 				const pos = supabase.schema("pos");
 
-				const orderCreatedAt = Number(args?.createdAt ?? Date.now());
-				const orderNumber = generateOrderNumber({
-					source: args?.source,
-					orderType: args?.orderType,
-					createdAt: orderCreatedAt,
-				});
-				const isOpenBill = Boolean(args?.isOpenBill);
-				const autoComplete = Boolean(args?.autoComplete);
-				const nextStatus = isOpenBill
-					? "pending"
-					: autoComplete
-						? "completed"
-						: "paid";
+			const orderCreatedAt = Number(args?.createdAt ?? Date.now());
+			const isOpenBill = Boolean(args?.isOpenBill);
+			const autoComplete = Boolean(args?.autoComplete);
+			const nextStatus = isOpenBill
+				? "pending"
+				: autoComplete
+					? "completed"
+					: "paid";
 
 			// Daily receipt numbering
 			const kind = args?.source === "pos"
@@ -2538,6 +2539,14 @@ export function useHybridCreateOrder() {
 				);
 				if (!rpcErr && rpcData != null) dailyReceiptNo = rpcData;
 			} catch (_) {} // best-effort
+
+			const orderNumber = generateOrderNumber({
+				source: args?.source,
+				orderType: args?.orderType,
+				createdAt: orderCreatedAt,
+				customerName: args?.customerName || undefined,
+				receiptNo: dailyReceiptNo ?? undefined,
+			});
 				const orderId = makeSourceId("order");
 
 				const orderRow = {
