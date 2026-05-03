@@ -2320,6 +2320,7 @@ function InventoryPlanningPanel({
 						<thead className="border-b border-border bg-muted/30 text-muted-foreground">
 							<tr>
 								<th className="p-3 font-semibold">Bahan</th>
+								<th className="p-3 text-center font-semibold">Sumber</th>
 								<th className="p-3 text-center font-semibold">Avg/Hari</th>
 								<th className="p-3 text-center font-semibold">ROP</th>
 								<th className="p-3 text-center font-semibold">Saran Order</th>
@@ -2337,6 +2338,23 @@ function InventoryPlanningPanel({
 											<p className="text-[11px] text-muted-foreground">
 												Stok saat ini {row.currentStock} {row.unit}
 											</p>
+										</td>
+										<td className="p-3 text-center">
+											{row.latestTransaction?.sourceLabel ? (
+												<span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+													row.latestTransaction.sourceLabel.toLowerCase().includes("ocr")
+														? "bg-emerald-100 text-emerald-700"
+														: row.latestTransaction.sourceLabel.toLowerCase().includes("order")
+															? "bg-blue-100 text-blue-700"
+															: "bg-slate-100 text-slate-600"
+												}`}>
+													{row.latestTransaction.sourceLabel.toLowerCase().includes("ocr") ? "📸 OCR" :
+													 row.latestTransaction.sourceLabel.toLowerCase().includes("order") ? "🛒 Order" :
+													 row.latestTransaction.sourceLabel}
+												</span>
+											) : (
+												<span className="text-[10px] text-muted-foreground">—</span>
+											)}
 										</td>
 										<td className="p-3 text-center font-semibold">
 											{row.avgDailyUsage.toFixed(2)} {row.unit}
