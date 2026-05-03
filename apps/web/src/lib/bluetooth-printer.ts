@@ -171,20 +171,73 @@ export class BluetoothPrinterService {
 		"00004953-0000-1000-8000-00805f9b34fb",
 	];
 
+	/** 🔍 Kumpulkan info diagnostik lengkap — panggil dari DevTools Console */
+	debugInfo(): Record<string, unknown> {
+		const storedId = localStorage.getItem(STORAGE_KEY);
+		const info: Record<string, unknown> = {
+			timestamp: new Date().toISOString(),
+			browser: navigator.userAgent,
+			platform: navigator.platform,
+			// ⚠️ Web Bluetooth HANYA berfungsi di secure context (HTTPS / localhost)
+			isSecureContext: typeof window !== 'undefined' && window.isSecureContext,
+			protocol: typeof location !== 'undefined' ? location.protocol : null,
+			hostname: typeof location !== 'undefined' ? location.hostname : null,
+			port: typeof location !== 'undefined' ? location.port : null,
+			// status API Bluetooth
+			bluetoothAvailable: typeof navigator !== 'undefined' && 'bluetooth' in navigator,
+			// status koneksi
+			hasDevice: this.device !== null,
+			hasServer: this.server !== null,
+			hasCharacteristic: this.characteristic !== null,
+			isConnected: this.server?.connected ?? false,
+			// device ID tersimpan
+			storedDeviceId: storedId || null,
+			storedDeviceIdLength: storedId ? storedId.length : 0,
+		};
+
+		if (this.device) {
+			info.deviceName = this.device.name || '(tanpa nama)';
+			info.deviceId = this.device.id;
+		}
+
+		// cek permission API (beberapa browser)
+		if (typeof navigator !== 'undefined' && 'permissions' in navigator) {
+			(navigator as any).permissions.query({ name: 'bluetooth' }).then((status: any) => {
+				console.log('🔍 [BluetoothDebug] Permission status:', status.state);
+			}).catch(() => {
+				console.log('🔍 [BluetoothDebug] Permission API tidak support query bluetooth');
+			});
+		}
+
+		// cek service worker
+		if ('serviceWorker' in navigator) {
+			navigator.serviceWorker.getRegistrations().then((regs) => {
+				console.log('🔍 [BluetoothDebug] Service workers:', regs.length, regs.map(r => r.scope));
+			});
+		}
+
+		return info;
+	}
+
 	async connect(): Promise<string> {
+		console.log('🔌 [BluetoothPrinter] connect() dipanggil');
+		console.log('🔌 [BluetoothPrinter] isSecureContext:', window.isSecureContext, 'protocol:', location.protocol, 'host:', location.hostname);
 		if (!navigator.bluetooth) {
+			console.error('❌ [BluetoothPrinter] navigator.bluetooth tidak tersedia — pastikan HTTPS/localhost!');
 			throw new Error("Browser ini tidak mendukung Bluetooth.");
 		}
 
 		try {
+			console.log('🔌 [BluetoothPrinter] Meminta device... (user harus pilih printer)');
 			this.device = await navigator.bluetooth.requestDevice({
 				acceptAllDevices: true,
 				optionalServices: this.optionalServices,
 			});
+			console.log('✅ [BluetoothPrinter] Device dipilih:', this.device.name, '| id:', this.device.id);
 			this.persistDeviceId(this.device.id);
 			return await this.establishConnection();
 		} catch (error) {
-			console.error("Bluetooth connection error:", error);
+			console.error('❌ [BluetoothPrinter] Gagal koneksi:', error);
 			throw error;
 		}
 	}
@@ -219,14 +272,20 @@ export class BluetoothPrinterService {
 
 	private async performAutoConnect(): Promise<string | null> {
 		if (!navigator.bluetooth || !navigator.bluetooth.getDevices) {
+			console.log('🔌 [BluetoothPrinter] getDevices() tidak tersedia — browser tidak support auto-connect');
 			return null;
 		}
 
 		try {
 			const devices = await navigator.bluetooth.getDevices();
-			if (devices.length === 0) return null;
+			console.log('🔌 [BluetoothPrinter] autoConnect: ditemukan', devices.length, 'known devices');
+			if (devices.length === 0) {
+				console.log('🔌 [BluetoothPrinter] autoConnect: tidak ada known device — user harus pairing manual');
+				return null;
+			}
 
 			const preferredDeviceId = this.getPersistedDeviceId();
+			console.log('🔌 [BluetoothPrinter] autoConnect: preferredId =', preferredDeviceId || '(tidak ada)');
 			this.device =
 				(preferredDeviceId
 					? devices.find((device) => device.id === preferredDeviceId)
@@ -260,11 +319,13 @@ export class BluetoothPrinterService {
 	}
 
 	private async establishConnection(): Promise<string> {
+		console.log('🔌 [BluetoothPrinter] establishConnection: connecting GATT...');
 		if (!this.device?.gatt) {
 			throw new Error("Gagal menghubungkan ke perangkat.");
 		}
 
 		this.server = await this.device.gatt.connect();
+		console.log('🔌 [BluetoothPrinter] GATT connected, scanning characteristics...');
 		const services = await this.server.getPrimaryServices();
 		let writeCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
 
@@ -273,6 +334,7 @@ export class BluetoothPrinterService {
 
 			for (const char of characteristics) {
 				if (char.properties.writeWithoutResponse) {
+					console.log('✅ [BluetoothPrinter] Found writeWithoutResponse char:', char.uuid);
 					writeCharacteristic = char;
 					break;
 				}
@@ -281,6 +343,7 @@ export class BluetoothPrinterService {
 			if (!writeCharacteristic) {
 				for (const char of characteristics) {
 					if (char.properties.write) {
+						console.log('✅ [BluetoothPrinter] Found write char:', char.uuid);
 						writeCharacteristic = char;
 						break;
 					}
@@ -365,11 +428,13 @@ export class BluetoothPrinterService {
 	}
 
 	private async writeBuffer(buffer: Uint8Array) {
+		console.log(`📤 [BluetoothPrinter] writeBuffer: mengirim ${buffer.length} bytes dalam chunk 20-byte...`);
 		if (!this.characteristic) {
 			throw new Error("Printer tidak terhubung.");
 		}
 
 		const chunkSize = 20;
+		let bytesSent = 0;
 
 		for (let i = 0; i < buffer.length; i += chunkSize) {
 			const chunk = buffer.slice(i, i + chunkSize);
@@ -384,27 +449,35 @@ export class BluetoothPrinterService {
 						await this.characteristic.writeValue(chunk);
 					}
 					sent = true;
+					bytesSent += chunk.length;
 				} catch (error) {
 					attempts++;
 					if (attempts >= 3) {
+						console.error(`❌ [BluetoothPrinter] Gagal kirim chunk di offset ${i} setelah 3x retry:`, error);
 						throw error;
 					}
+					console.warn(`⚠️ [BluetoothPrinter] Retry chunk offset ${i}, attempt ${attempts}`);
 					await new Promise((resolve) => setTimeout(resolve, 150));
 				}
 			}
 
 			await new Promise((resolve) => setTimeout(resolve, 10));
 		}
+		console.log(`✅ [BluetoothPrinter] writeBuffer selesai: ${bytesSent}/${buffer.length} bytes terkirim`);
 	}
 
 	async print(order: ReceiptOrderPayload, settings: ReceiptSettings) {
+		console.log('🖨️ [BluetoothPrinter] print() dipanggil');
 		if (!(this.isConnected() && this.characteristic)) {
+			console.log('🔌 [BluetoothPrinter] Tidak connected — mencoba autoConnect...');
 			await this.autoConnect();
 		}
 
 		if (!(this.isConnected() && this.characteristic)) {
+			console.error('❌ [BluetoothPrinter] Masih tidak connected setelah autoConnect');
 			throw new Error("Printer tidak terhubung.");
 		}
+		console.log('✅ [BluetoothPrinter] Printer connected — membangun receipt...');
 
 		const encoder = new EscPosEncoder();
 		const result = encoder.initialize();
@@ -665,3 +738,20 @@ export class BluetoothPrinterService {
 }
 
 export const bluetoothPrinter = new BluetoothPrinterService();
+
+// 🔍 Expose debug info to DevTools Console — ketik __bluetoothDebug() di console
+if (typeof window !== 'undefined') {
+	(window as any).__bluetoothDebug = () => {
+		const storedId = localStorage.getItem('bluetooth_printer_device_id');
+		console.group('🔍 Bluetooth Printer Diagnostics');
+		console.log('isSecureContext:', window.isSecureContext);
+		console.log('Protocol:', location.protocol);
+		console.log('Host:', location.hostname);
+		console.log('navigator.bluetooth:', !!navigator.bluetooth);
+		console.log('navigator.bluetooth.getDevices:', !!(navigator.bluetooth && navigator.bluetooth.getDevices));
+		console.log('Saved device ID:', storedId || '(none)');
+		console.log('Service status:', bluetoothPrinter.getStatus());
+		console.log('Service debugInfo:', bluetoothPrinter.debugInfo());
+		console.groupEnd();
+	};
+}

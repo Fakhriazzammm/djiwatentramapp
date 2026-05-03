@@ -6,13 +6,16 @@ tanpa melalui Supabase Edge Function.
 
 import httpx
 import logging
+import re
 from typing import Optional
+from datetime import datetime, timezone, timedelta
 
 logger = logging.getLogger("yumi-finance.sumopod")
 
 SUMODOP_BASE = "https://ai.sumopod.com/v1"
-VISION_MODEL = "gpt-4o-mini"
-TEXT_MODEL = "kimi-k2.6"
+VISION_MODEL = "seed-2-0-mini"
+TEXT_MODEL = "gpt-4o-mini"
+WIB = timezone(timedelta(hours=7))
 
 SYSTEM_PROMPT = """Kamu adalah Yumi Finance AI Agent — asisten keuangan & inventory untuk YumiPOS.
 Tugasmu: memahami intent user dan menentukan action.
@@ -85,8 +88,6 @@ class SumoPodClient:
                 reply = data["choices"][0]["message"]["content"]
 
             # Parse structured response
-            import re
-
             action_match = re.search(r"ACTION:\s*(\w+)", reply)
             amount_match = re.search(r"AMOUNT:\s*([\d.,]+)", reply)
             cat_match = re.search(r"CATEGORY:\s*(\w+)", reply)
@@ -137,6 +138,10 @@ class SumoPodClient:
 
         image_base64_uri: data:image/jpeg;base64,<data>
         """
+        # Validate format
+        if not image_base64_uri.startswith("data:image"):
+            raise ValueError("Format URI gambar tidak valid.")
+
         payload = {
             "model": model,
             "messages": [
@@ -152,7 +157,7 @@ class SumoPodClient:
                 }
             ],
             "temperature": 0.1,
-            "max_tokens": 1024,
+            "max_tokens": 2048,
         }
 
         try:
@@ -168,3 +173,79 @@ class SumoPodClient:
         except Exception as e:
             logger.warning("SumoPod vision failed: %s", e)
             return f"Gagal OCR: {e}"
+
+    async def vision_json(
+        self,
+        image_base64_uri: str,
+        model: str = VISION_MODEL,
+        timeout: int = 90,
+    ) -> dict:
+        """Vision/OCR via SumoPod — return structured JSON data from receipt.
+
+        Returns dict with: type, name, category, items, total, date, time, merchant, receiptNumber, paymentMethod, confidence, rawText
+        """
+        prompt = """Analisis gambar struk/nota belanja ini dan ekstrak data dalam format JSON berikut (tanpa markdown, hanya JSON murni):
+{
+  "type": "expense",
+  "name": "Nama Merchant/Toko",
+  "category": "Kategori pengeluaran (misal: Makanan, Belanja, dll)",
+  "transactionType": "expense",
+  "total": 0,
+  "subtotal": 0,
+  "tax": 0,
+  "serviceCharge": 0,
+  "discount": 0,
+  "items": [{"name": "Nama item", "qty": 1, "price": 0, "subtotal": 0, "unit": "pcs"}],
+  "date": "YYYY-MM-DD",
+  "time": "HH:MM",
+  "receiptNumber": "Nomor struk",
+  "paymentMethod": "Cash/Debit/Credit/QRIS",
+  "notes": "",
+  "confidence": 0.9,
+  "rawText": "Teks dari struk"
+}
+Jika ada informasi yang tidak bisa dibaca, gunakan null atau 0. confidence antara 0-1."""
+
+        if not image_base64_uri.startswith("data:image"):
+            return {"success": False, "error": "Format URI gambar tidak valid."}
+
+        payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": image_base64_uri},
+                        },
+                    ],
+                }
+            ],
+            "temperature": 0.1,
+            "max_tokens": 2048,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers=self._headers(),
+                    json=payload,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                content = data["choices"][0]["message"]["content"]
+
+                # Extract JSON from response
+                json_match = re.search(r'\{[\s\S]*\}', content)
+                if not json_match:
+                    return {"success": False, "error": "Tidak bisa parse JSON dari respons AI", "raw": content}
+
+                import json
+                parsed = json.loads(json_match[0])
+                return {"success": True, "data": parsed, "raw": content}
+        except Exception as e:
+            logger.warning("SumoPod vision_json failed: %s", e)
+            return {"success": False, "error": str(e)}

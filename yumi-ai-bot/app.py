@@ -25,6 +25,9 @@ BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+SUMOPOD_API_KEY = os.getenv("SUMOPOD_API_KEY", "")
+SUMOPOD_BASE_URL = os.getenv("SUMOPOD_BASE_URL", "https://ai.sumopod.com/v1")
+SUMOPOD_VISION_MODEL = os.getenv("SUMOPOD_VISION_MODEL", "seed-2-0-mini")
 ALLOWED_USERS = {
     int(x.strip())
     for x in os.getenv("ALLOWED_USERS", "").split(",")
@@ -60,6 +63,192 @@ logging.basicConfig(
 logger = logging.getLogger("yumi-ai-bot")
 
 WIB = timezone(timedelta(hours=7))
+
+
+# ===================================================================
+# SumoPod Vision/OCR Client
+# ===================================================================
+
+async def _sumopod_vision(image_base64_uri: str, prompt: str) -> str:
+    """Call SumoPod vision API for OCR."""
+    if not SUMOPOD_API_KEY:
+        return "SumoPod API key tidak dikonfigurasi."
+
+    payload = {
+        "model": SUMOPOD_VISION_MODEL,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": image_base64_uri},
+                    },
+                ],
+            }
+        ],
+        "temperature": 0.1,
+        "max_tokens": 2048,
+    }
+
+    async with httpx.AsyncClient(timeout=90) as client:
+        resp = await client.post(
+            f"{SUMOPOD_BASE_URL}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {SUMOPOD_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data["choices"][0]["message"]["content"]
+
+
+async def _sumopod_vision_json(image_base64_uri: str) -> dict:
+    """Call SumoPod vision API and return structured JSON from receipt."""
+    if not SUMOPOD_API_KEY:
+        return {"success": False, "error": "SumoPod API key tidak dikonfigurasi."}
+
+    prompt = """Analisis gambar struk/nota belanja ini dan ekstrak data dalam format JSON berikut (tanpa markdown, hanya JSON murni):
+{
+  "type": "expense",
+  "name": "Nama Merchant/Toko",
+  "category": "Kategori pengeluaran (misal: Makanan, Belanja, dll)",
+  "transactionType": "expense",
+  "total": 0,
+  "subtotal": 0,
+  "tax": 0,
+  "serviceCharge": 0,
+  "discount": 0,
+  "items": [{"name": "Nama item", "qty": 1, "price": 0, "subtotal": 0, "unit": "pcs"}],
+  "date": "YYYY-MM-DD",
+  "time": "HH:MM",
+  "receiptNumber": "Nomor struk",
+  "paymentMethod": "Cash/Debit/Credit/QRIS",
+  "notes": "",
+  "confidence": 0.9,
+  "rawText": "Teks dari struk"
+}
+Jika ada informasi yang tidak bisa dibaca, gunakan null atau 0. confidence antara 0-1."""
+
+    payload = {
+        "model": SUMOPOD_VISION_MODEL,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": image_base64_uri},
+                    },
+                ],
+            }
+        ],
+        "temperature": 0.1,
+        "max_tokens": 2048,
+    }
+
+    async with httpx.AsyncClient(timeout=90) as client:
+        resp = await client.post(
+            f"{SUMOPOD_BASE_URL}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {SUMOPOD_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        content = data["choices"][0]["message"]["content"]
+
+        # Extract JSON from response
+        import re
+        json_match = re.search(r'\{[\s\S]*\}', content)
+        if not json_match:
+            return {"success": False, "error": "Tidak bisa parse JSON dari respons AI", "raw": content}
+
+        try:
+            parsed = json.loads(json_match[0])
+            return {"success": True, "data": parsed, "raw": content}
+        except json.JSONDecodeError as e:
+            return {"success": False, "error": f"JSON decode error: {e}", "raw": content}
+
+
+async def _save_ocr_receipt_to_db(ocr_data: dict) -> dict:
+    """Save OCR receipt data to Supabase financial_transactions table."""
+    if not SUPABASE_SERVICE_ROLE_KEY:
+        return {"success": False, "error": "Supabase service key tidak tersedia."}
+
+    # Prepare data
+    now_ms = int(datetime.now(WIB).timestamp() * 1000)
+    source_id = f"ocr_{datetime.now(WIB).strftime('%Y%m%d%H%M%S')}_{crypto.randomUUID().replace('-', '')[:8]}" if 'crypto' in dir() else f"ocr_{now_ms}"
+
+    # Generate source_id
+    import uuid
+    source_id = f"ocr_{datetime.now(WIB).strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}"
+
+    items = ocr_data.get("items", [])
+    total = ocr_data.get("total", 0)
+    merchant = ocr_data.get("name", "Unknown")
+    category = ocr_data.get("category", "belanja_stok")
+
+    # Format items as string
+    items_str = ""
+    for i, item in enumerate(items, 1):
+        item_name = item.get("name", "Unknown")
+        item_qty = item.get("qty", 1)
+        item_subtotal = item.get("subtotal", 0)
+        items_str += f"{i}. {item_name} x{item_qty} = Rp{item_subtotal:,.0f}\n"
+
+    description = f"Scan struk - {merchant}: {len(items)} item, Total Rp{total:,.0f}"
+
+    # Build metadata with full OCR data
+    metadata = {
+        "source": "telegram_bot",
+        "action": "ocr_scan",
+        "merchant": merchant,
+        "receipt_number": ocr_data.get("receiptNumber"),
+        "date": ocr_data.get("date"),
+        "time": ocr_data.get("time"),
+        "payment_method": ocr_data.get("paymentMethod"),
+        "items_count": len(items),
+        "confidence": ocr_data.get("confidence", 0.5),
+    }
+
+    payload = {
+        "action": "recordTransaction",
+        "tx_type": "expense",
+        "amount": total,
+        "category": category,
+        "description": description,
+        "tx_date": now_ms,
+        "payment_method": ocr_data.get("paymentMethod", "cash"),
+        "status": "completed",
+        "metadata": metadata,
+        "raw": ocr_data,
+        "creation_time": now_ms,
+    }
+
+    url = f"{SUPABASE_URL}/functions/v1/yumi-ai"
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            url,
+            headers={**_headers(), "Content-Type": "application/json"},
+            json=payload,
+        )
+
+    if resp.status_code < 400:
+        data = resp.json()
+        if data.get("ok"):
+            return {"success": True, "sourceId": data.get("sourceId"), "amount": total, "merchant": merchant, "items_count": len(items)}
+        else:
+            return {"success": False, "error": data.get("error", "Unknown error")}
+    else:
+        return {"success": False, "error": f"HTTP {resp.status_code}: {resp.text}"}
+
 MAX_IMAGE_SIZE = 1024  # max dimension for compression
 JPEG_QUALITY = 75
 SESSION_MAX_HISTORY = 20  # max messages kept per user session
@@ -983,6 +1172,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ===================================================================
 
 async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle photo upload — OCR receipt via SumoPod vision API, save to DB, show summary."""
     if not _is_allowed(update):
         await _reply_msg(update, context, "Unauthorized")
         return
@@ -1000,35 +1190,93 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         compressed_uri = _compress_image(image_bytes)
         logger.info("Photo compressed: %d → %d bytes", len(image_bytes), len(compressed_uri))
 
-        # Send to Yumi AI for OCR
-        caption = update.message.caption or ""
-        message = caption.strip() if caption.strip() else "Scan struk ini dan ekstrak detail transaksinya"
+        # Step 1: Call SumoPod vision for structured JSON extraction
+        logger.info("Calling SumoPod vision for OCR...")
+        ocr_result = await _sumopod_vision_json(compressed_uri)
 
-        user_id = update.effective_user.id
-        context_hint = await _gather_context()
-        context_hint += "\nUser mengirim gambar struk/foto. Lakukan OCR dan berikan ringkasan transaksi."
+        if not ocr_result.get("success"):
+            error_msg = ocr_result.get("error", "Unknown OCR error")
+            logger.error("SumoPod vision failed: %s", error_msg)
+            await _reply_msg(update, context,
+                f"❌ Gagal OCR: {error_msg}\n\nCoba kirim ulang dengan gambar yang lebih jelas.",
+                reply_markup=_reply_keyboard(),
+            )
+            return
 
-        reply = await _ask_yumi_ai(
-            user_id=user_id,
-            message=message,
-            context_hint=context_hint,
-            images=[compressed_uri],
-            action="yumiChat",
-        )
+        ocr_data = ocr_result["data"]
+        logger.info("OCR successful: merchant=%s, total=%.2f, items=%d",
+                    ocr_data.get("name", "Unknown"),
+                    ocr_data.get("total", 0),
+                    len(ocr_data.get("items", [])))
 
-        # Parse OCR reply to extract amount & merchant for the save buttons
-        ocr_amount, ocr_merchant = _parse_ocr_reply(reply)
+        # Step 2: Save to database
+        logger.info("Saving OCR receipt to database...")
+        db_result = await _save_ocr_receipt_to_db(ocr_data)
 
-        # Add OCR action buttons
-        await _reply_msg(update, context, reply, parse_mode="HTML",
-                         reply_markup=_ocr_action_keyboard(ocr_amount, ocr_merchant))
+        # Step 3: Build formatted summary
+        merchant = ocr_data.get("name", "Unknown")
+        total = ocr_data.get("total", 0)
+        date = ocr_data.get("date", "")
+        time_val = ocr_data.get("time", "")
+        items = ocr_data.get("items", [])
+        payment_method = ocr_data.get("paymentMethod", "")
+        receipt_number = ocr_data.get("receiptNumber", "")
+
+        # Format summary
+        summary_lines = [
+            "<b>🧾 RINGKASAN STRUK</b>",
+            f"<b>🏪 Merchant:</b> {merchant}",
+        ]
+
+        if date:
+            summary_lines.append(f"<b>📅 Tanggal:</b> {date}")
+        if time_val:
+            summary_lines.append(f"<b>⏰ Waktu:</b> {time_val}")
+        if receipt_number:
+            summary_lines.append(f"<b>🔢 No. Transaksi:</b> {receipt_number}")
+
+        summary_lines.append("")
+        summary_lines.append("<b>🛒 RINCIAN BELANJA:</b>")
+
+        for i, item in enumerate(items, 1):
+            item_name = item.get("name", "Unknown")
+            item_qty = item.get("qty", 1)
+            item_subtotal = item.get("subtotal", 0)
+            item_unit = item.get("unit", "pcs")
+            summary_lines.append(
+                f"{i}. <b>{item_name}</b> — Qty: {item_qty} {item_unit} • Rp{item_subtotal:,.0f}"
+            )
+
+        summary_lines.append("")
+        summary_lines.append(f"<b>💰 TOTAL: Rp{total:,.0f}</b>")
+
+        if payment_method:
+            summary_lines.append(f"<b>💳 Pembayaran:</b> {payment_method}")
+
+        # Database save status
+        if db_result.get("success"):
+            summary_lines.append("")
+            summary_lines.append(f"✅ <b>Berhasil disimpan ke database!</b>")
+            summary_lines.append(f"   Kategori: {ocr_data.get('category', 'belanja_stok')}")
+            summary_lines.append(f"   Items: {len(items)} produk")
+        else:
+            summary_lines.append("")
+            summary_lines.append(f"⚠️ <b>Gagal menyimpan ke database:</b> {db_result.get('error', 'Unknown')}")
+            summary_lines.append("   Data OCR tetap tersedia di atas.")
+
+        summary = "\n".join(summary_lines)
+
+        # Send summary
+        await _reply_msg(update, context, summary, parse_mode="HTML",
+                         reply_markup=_reply_keyboard())
 
     except Exception as e:
         logger.exception("Photo handling failed")
-        await _reply_msg(update, context, 
-            f"Gagal memproses gambar: {e}\n\nCoba kirim ulang atau gunakan teks.",
+        await _reply_msg(update, context,
+            f"❌ Gagal memproses gambar: {e}\n\nCoba kirim ulang atau gunakan teks.",
             reply_markup=_reply_keyboard(),
         )
+
 
 
 # ===================================================================
