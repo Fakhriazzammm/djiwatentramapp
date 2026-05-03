@@ -17,6 +17,7 @@ from telegram.ext import (
 )
 from PIL import Image
 from receipt_restock import handle_restock_from_ocr
+from marketlist import generate_marketlist
 
 load_dotenv()
 
@@ -33,6 +34,9 @@ TELEGRAM_REPORT_CHAT_ID = os.getenv("TELEGRAM_REPORT_CHAT_ID", "")
 REPORT_GROUP_ID = int(os.getenv("AUTO_REPORT_GROUP_ID", "-5044633519"))
 BARISTA_GROUP_ID = int(os.getenv("BARISTA_GROUP_ID", "-5044633519"))
 KITCHEN_GROUP_ID = int(os.getenv("KITCHEN_GROUP_ID", "-5199093599"))
+
+# Marketlist auto-send to Telegram group
+MARKETLIST_GROUP_ID = int(os.getenv("MARKETLIST_GROUP_ID", "-5288006237"))
 
 # Beverage category tracking
 _BEVERAGE_CATEGORY_IDS: set[str] = set()
@@ -284,9 +288,10 @@ def _reply_keyboard() -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton("📅 Booking Aktif", callback_data="booking"),
             InlineKeyboardButton("📋 Briefing", callback_data="briefing"),
-            InlineKeyboardButton("Purchaselog", callback_data="purchaselog"),
+            InlineKeyboardButton("📝 Purchaselog", callback_data="purchaselog"),
         ],
         [
+            InlineKeyboardButton("🛒 Marketlist", callback_data="marketlist"),
             InlineKeyboardButton("💬 Tanya Bebas", callback_data="help"),
         ],
     ])
@@ -922,6 +927,19 @@ async def cmd_purchaselog(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.exception("purchaselog failed")
         await _reply_msg(update, context, f"Gagal: {e}", reply_markup=_reply_keyboard())
 
+
+async def cmd_marketlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not _is_allowed(update):
+        await _reply_msg(update, context, "Unauthorized")
+        return
+    try:
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+        text = await generate_marketlist(_fetch)
+        await _reply_msg(update, context, text, reply_markup=_reply_keyboard())
+    except Exception as e:
+        logger.exception("marketlist failed")
+        await _reply_msg(update, context, f"Gagal ambil marketlist: {e}")
+
 # Inline Keyboard Callback Handler
 # ===================================================================
 
@@ -938,6 +956,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "booking": cmd_booking_aktif,
         "briefing": cmd_briefing_hari_ini,
         "purchaselog": cmd_purchaselog,
+        "marketlist": cmd_marketlist,
         "help": cmd_help,
     }
 
@@ -1031,6 +1050,7 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         (["stok", "menipis", "habis", "inventory", "inventori"], cmd_stok_menipis),
         (["absen", "attendance", "clock in", "clock out", "absensi"], cmd_absen_hari_ini),
         (["booking", "reservasi"], cmd_booking_aktif),
+        (["marketlist", "belanja", "daftar belanja", "shopping list"], cmd_marketlist),
         (["briefing", "ringkasan bisnis", "insight hari ini", "laporan"], cmd_briefing_hari_ini),
     ]
 
@@ -1588,6 +1608,19 @@ async def _send_daily_summary(app):
 
 
 
+async def _send_marketlist_to_group(app):
+    """Generate and send marketlist to marketlist group."""
+    try:
+        text = await generate_marketlist(_fetch)
+        if text:
+            await app.bot.send_message(chat_id=MARKETLIST_GROUP_ID, text=text)
+            logger.info("Marketlist sent to group %s", MARKETLIST_GROUP_ID)
+        else:
+            logger.warning("Marketlist empty, nothing sent")
+    except Exception as e:
+        logger.exception("send_marketlist_to_group failed")
+
+
 async def _start_auto_reporter(app):
     """Start polling loop and daily summary scheduler."""
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -1597,6 +1630,14 @@ async def _start_auto_reporter(app):
 
     # Build food product lookup for kitchen notifications
     await _build_food_lookup()
+
+    # Build marketlist ingredient category lookup
+    from marketlist import build_lookup
+    try:
+        await build_lookup(_fetch)
+        logger.info("Marketlist ingredient category lookup built")
+    except Exception as e:
+        logger.warning("Marketlist build_lookup failed: %s", e)
 
     # Daily summary at 22:00 WIB (15:00 UTC)
     scheduler = AsyncIOScheduler(timezone="Asia/Jakarta")
@@ -1610,6 +1651,17 @@ async def _start_auto_reporter(app):
     )
     scheduler.start()
     logger.info("Auto-reporter: daily summary scheduled at 22:00 WIB")
+
+    # Marketlist at 07:00 WIB (every day)
+    scheduler.add_job(
+        _send_marketlist_to_group,
+        "cron",
+        hour=7,
+        minute=0,
+        args=[app],
+        id="marketlist_0700",
+    )
+    logger.info("Auto-reporter: marketlist scheduled at 07:00 WIB")
 
     # Real-time polling every 30 seconds
     async def _poll_loop():
@@ -1712,6 +1764,7 @@ def main():
     app.add_handler(CommandHandler("booking_aktif", cmd_booking_aktif))
     app.add_handler(CommandHandler("briefing_hari_ini", cmd_briefing_hari_ini))
     app.add_handler(CommandHandler("purchaselog", cmd_purchaselog))
+    app.add_handler(CommandHandler("marketlist", cmd_marketlist))
 
     # Alias (backward compat)
     app.add_handler(CommandHandler("kpi_hari_ini", cmd_ringkasan_hari_ini))  # deprecated

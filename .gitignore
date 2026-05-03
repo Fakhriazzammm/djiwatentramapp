@@ -37,6 +37,9 @@ supabase/.temp/
 yumi-ai-bot/.venv/
 yumi-ai-bot/__pycache__/
 
+yumi-finance-agent/.venv/
+yumi-finance-agent/__pycache__/
+
 # Tauri
 src-tauri/target/
 src-tauri/binaries/

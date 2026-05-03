@@ -66,8 +66,29 @@ def _parse_item(item: dict):
     return name, qty, thresh, unit, price, inv_id
 
 
+async def generate_marketlist(fetch_fn):
+    """Fetch inventory from Supabase and generate full marketlist message."""
+    await build_lookup(fetch_fn)
+    try:
+        rows = await fetch_fn(
+            "pos_inventory",
+            "select=ingredientName,quantity,lowStockThreshold,unit,lastPurchasePrice,_id"
+        )
+    except Exception:
+        rows = await fetch_fn(
+            "pos_inventory",
+            "select=ingredientName,quantity,lowStockThreshold,unit,last_purchase_price,_id"
+        )
+
+    low_items = [
+        r for r in rows
+        if float(r.get("quantity") or 0) <= float(r.get("lowStockThreshold") or 0)
+    ]
+    return format_marketlist(low_items)
+
+
 def format_marketlist(items):
-    """Format daftar belanja compact dengan grouping bar/kitchen/lainnya."""
+    """Format daftar belanja seperti list belanja pasar dengan numbering."""
     if not items:
         return "✅ Semua stok aman, tidak ada yang perlu dibeli."
 
@@ -75,10 +96,8 @@ def format_marketlist(items):
     header = f"🛒 MARKETLIST — {now.strftime('%d/%m %H:%M')}"
 
     groups = {"bar": [], "kitchen": [], "lainnya": []}
-    total_habis = 0
-    total_menipis = 0
-    harga_habis = 0
-    harga_menipis = 0
+    total_cost = 0
+    total_item = 0
 
     labels = {"bar": "☕ BAR", "kitchen": "🍳 KITCHEN", "lainnya": "📦 LAINNYA"}
     lines = [header]
@@ -95,46 +114,49 @@ def format_marketlist(items):
 
         if not group_items:
             continue
+
         lines.append("")
         lines.append(labels[key])
+        lines.append("Nama Barang / Banyaknya / Harga")
 
-        for name, qty, thresh, unit, price in group_items:
-            icon = "❌" if qty <= 0 else "⚠️"
-            need = max(thresh, 1) if qty <= 0 else max(thresh - qty, 0)
-            unit_s = f" {unit}" if unit else ""
+        for i, (name, qty, thresh, unit, price) in enumerate(group_items, 1):
+            # Hitung kebutuhan (yang perlu dibeli)
+            need = max(thresh - qty, 0)
+            if need <= 0:
+                need = max(thresh, 1)
+
             cost = int(need * price) if price else 0
 
-            # Format harga compact
+            # Format banyaknya
+            if unit:
+                if unit in ("ml", "gr", "g"):
+                    if need >= 1000:
+                        banyaknya = f"{need/1000:.0f}{unit.replace('ml','L').replace('gr','kg').replace('g','kg')}"
+                    else:
+                        banyaknya = f"{int(need)} {unit}"
+                elif unit in ("pcs", "biji", "pack", "bungkus", "ikat", "toros"):
+                    banyaknya = f"{int(need)} {unit}"
+                else:
+                    banyaknya = f"{int(need)} {unit}"
+            else:
+                banyaknya = str(int(need))
+
+            # Format harga dengan titik (Rp7.000, Rp45.000)
             if cost >= 1_000_000:
-                raw = f"{cost/1_000_000:.1f}"
-                h_str = raw.rstrip('0').rstrip('.') + 'jt'
-            elif cost >= 10_000:
-                h_str = f"{cost//1000}k"
+                h_str = f"Rp{cost:,}".replace(",", ".")
+            elif cost >= 1_000:
+                h_str = f"Rp{cost:,}".replace(",", ".")
             elif cost > 0:
                 h_str = f"Rp{cost:,}"
             else:
                 h_str = "Rp0"
 
-            line = f"{icon} {name} — {int(qty)}/{int(thresh)}{unit_s} — {h_str}"
-            lines.append(line)
+            lines.append(f" {i}. {name} / {banyaknya} / {h_str}")
+            total_cost += cost
+            total_item += 1
 
-            if qty <= 0:
-                total_habis += 1
-                harga_habis += cost
-            else:
-                total_menipis += 1
-                harga_menipis += cost
-
-    total_harga = harga_habis + harga_menipis
-    total_item = total_habis + total_menipis
-
+    lines.append("")
     lines.append("────────────────────────────────")
-    parts = []
-    if total_habis:
-        parts.append(f"❌ {total_habis} habis {harga_habis:,}")
-    if total_menipis:
-        parts.append(f"⚠️ {total_menipis} menipis {harga_menipis:,}")
-    lines.append("  ".join(parts))
-    lines.append(f"🛍 {total_item} item  •  Rp {total_harga:,}")
+    lines.append(f"🛍 {total_item} item • Total: Rp{total_cost:,}".replace(",", "."))
 
     return "\n".join(lines)
