@@ -917,7 +917,10 @@ function MenuPage() {
 		orderId: Id<"orders">,
 		modeOverride?: ReceiptPrintMode
 	) => {
-		if (!siteSettings) return;
+		if (!siteSettings) {
+			toast.error("Data toko belum siap. Coba lagi sebentar.", { id: "printing" });
+			return;
+		}
 
 		try {
 			if (!bluetoothPrinter.isConnected()) {
@@ -1000,7 +1003,9 @@ function MenuPage() {
 			toast.success("Struk berhasil dicetak", { id: "printing" }); triggerHybridRefresh();
 		} catch (error) {
 			console.error("Print failed:", error);
-			toast.error("Gagal mencetak struk.", { id: "printing" });
+			const message =
+				error instanceof Error ? error.message : "Gagal mencetak";
+			toast.error(`Gagal mencetak: ${message}. ${!bluetoothPrinter.isConnected() ? 'Pastikan printer Bluetooth sudah terhubung — klik "Hubungkan Printer".' : ""}`, { id: "printing" });
 		}
 	}, [allDiscounts, orders, siteSettings, shiftStatus]);
 

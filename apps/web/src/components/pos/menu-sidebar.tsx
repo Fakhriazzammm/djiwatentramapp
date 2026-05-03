@@ -364,14 +364,17 @@ export function MenuSidebar({
 	};
 	
 	const handlePrintOrder = async (order: Doc<"orders">, mode?: ReceiptPrintMode) => {
-		if (!siteSettings) return;
+	if (!siteSettings) {
+		toast.error("Data toko belum siap. Coba lagi sebentar.", { id: "printing" });
+		return;
+	}
 
-		try {
-			if (!bluetoothPrinter.isConnected()) {
-				await bluetoothPrinter.autoReconnectIfNeeded(0);
-			}
+	try {
+		if (!bluetoothPrinter.isConnected()) {
+			await bluetoothPrinter.autoReconnectIfNeeded(0);
+		}
 
-			toast.loading(
+		toast.loading(
 				mode === "open_bill"
 					? "Mencetak open bill..."
 					: mode === "kitchen"
@@ -458,8 +461,10 @@ export function MenuSidebar({
 				{ id: "printing" }
 			);
 		} catch (error) {
-			console.error("Print failed:", error);
-			toast.error("Gagal mencetak struk.", { id: "printing" });
+		console.error("Print failed:", error);
+		const message =
+			error instanceof Error ? error.message : "Gagal mencetak";
+		toast.error(`Gagal mencetak: ${message}. ${!bluetoothPrinter.isConnected() ? 'Pastikan printer Bluetooth sudah terhubung — klik "Hubungkan Printer".' : ""}`, { id: "printing" });
 		}
 	};
 
