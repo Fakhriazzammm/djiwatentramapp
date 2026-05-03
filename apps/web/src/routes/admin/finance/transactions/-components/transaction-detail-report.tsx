@@ -54,6 +54,7 @@ interface Props {
 	range: DateRange;
 	viewMode: "transaction" | "item";
 	groupMode?: "flat" | "grouped";
+	filterCategory?: string;
 	period?: PeriodOption;
 	periodButtons?: Array<{ value: PeriodOption; label: string }>;
 	onPeriodChange?: (value: PeriodOption) => void;
@@ -89,6 +90,7 @@ export function TransactionDetailReport({
 	range,
 	viewMode,
 	groupMode = "flat",
+	filterCategory: filterCategoryProp,
 	period,
 	periodButtons,
 	onPeriodChange,
@@ -125,6 +127,7 @@ export function TransactionDetailReport({
 	const [pageSize, setPageSize] = useState(50);
 	const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 	const [scrollTop, setScrollTop] = useState(0);
+	const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 	const [editingItemRowKey, setEditingItemRowKey] = useState<string | null>(null);
 	const [itemEditDraft, setItemEditDraft] = useState<{ qty: string; price: string; subtotal: string } | null>(null);
 	const [savingItemRowKey, setSavingItemRowKey] = useState<string | null>(null);
@@ -675,7 +678,7 @@ export function TransactionDetailReport({
 		);
 	};
 
-	const columnCount = showRunningBalance ? 8 : 7;
+	const columnCount = showRunningBalance ? 9 : 8;
 	const withMergedHeader = Boolean(
 		period && periodButtons && onPeriodChange && onViewModeChange &&
 		onGroupModeChange && onExportPdf && onOpenAddTransaction && summary
@@ -964,16 +967,17 @@ export function TransactionDetailReport({
 					className="max-h-[72vh] overflow-auto"
 				>
 					<table className="w-full min-w-[720px] table-auto text-left text-[11px] text-slate-700">
-						<colgroup>
-							<col style={{ width: "36px" }} />
-							<col style={{ width: "44px" }} />
-							<col style={{ width: "120px" }} />
-							<col style={{ width: "110px" }} />
-							<col />
-							<col style={{ width: "160px" }} />
-							{showRunningBalance && <col style={{ width: "130px" }} />}
-							<col style={{ width: "88px" }} />
-						</colgroup>
+					<colgroup>
+						<col style={{ width: "36px" }} />
+						<col style={{ width: "44px" }} />
+						<col style={{ width: "120px" }} />
+						<col style={{ width: "110px" }} />
+						<col style={{ width: "90px" }} />
+						<col />
+						<col style={{ width: "160px" }} />
+						{showRunningBalance && <col style={{ width: "130px" }} />}
+						<col style={{ width: "88px" }} />
+					</colgroup>
 						<thead className="sticky top-0 z-10 bg-slate-50 text-[9px] font-semibold uppercase tracking-wider text-slate-500">
 							<tr>
 								<th className="sticky left-0 z-20 border-r border-b border-slate-200 bg-slate-50 px-1.5 py-2">
@@ -985,8 +989,9 @@ export function TransactionDetailReport({
 								</th>
 								<th className="sticky left-[36px] z-20 border-r border-b border-slate-200 bg-slate-50 px-1.5 py-2 text-center">No</th>
 								<th className="border-b border-slate-200 px-3 py-2">Tanggal</th>
-								<th className="border-b border-slate-200 px-3 py-2">Sumber</th>
-								<th className="border-b border-slate-200 px-3 py-2">Deskripsi</th>
+							<th className="border-b border-slate-200 px-3 py-2">Sumber</th>
+							<th className="border-b border-slate-200 px-3 py-2">Pembayaran</th>
+							<th className="border-b border-slate-200 px-3 py-2">Deskripsi</th>
 								<th className="sticky right-[88px] z-20 border-l border-b border-slate-200 bg-slate-50 px-3 py-2 text-right">
 									{showRunningBalance ? "Nominal" : "Nominal"}
 								</th>
@@ -1102,24 +1107,51 @@ export function TransactionDetailReport({
 											);
 										}
 
-										// ── Data row ───────────────────────────────────────
-										const rowKey = String(t.rowKey || t._id);
-										let shiftName = "-";
-										if (historicalShifts) {
-											const shift = historicalShifts.find(
-												(s: any) => t.date >= s.startTime && (!s.endTime || t.date <= s.endTime)
-											);
-											if (shift) shiftName = shift.shiftName || "Shift Aktif";
-										}
-										const isIncome = t.type === "income";
-										const isDuplicate = duplicateRowKeys.has(rowKey);
-										const runningBal = runningBalances.get(rowKey);
+									{/* ── Data row ─────────────────────────────────────── */}
+									const rowKey = String(t.rowKey || t._id);
+									let shiftName = "-";
+									if (historicalShifts) {
+										const shift = historicalShifts.find(
+											(s: any) => t.date >= s.startTime && (!s.endTime || t.date <= s.endTime)
+										);
+										if (shift) shiftName = shift.shiftName || "Shift Aktif";
+									}
+									const isIncome = t.type === "income";
+									const isDuplicate = duplicateRowKeys.has(rowKey);
+									const runningBal = runningBalances.get(rowKey);
+									const isExpanded = expandedRows.has(rowKey);
+									const hasScanItems = t.metadata?.scanItems && t.metadata.scanItems.length > 0;
+									const hasReceiptMeta = t.metadata?.receiptDetails || t.metadata?.ocr;
 
-										return (
-											<tr key={rowKey}
-												className={`group cursor-pointer transition-colors hover:bg-slate-50 ${selectedRowKeys.has(rowKey) ? "bg-blue-50/50" : ""} ${isDuplicate ? "bg-amber-50/40" : ""}`}
-												onClick={() => { if (editingItemRowKey === rowKey) return; handleEdit(t); }}
-											>
+									const toggleExpand = () => {
+										if (editingItemRowKey === rowKey) return;
+										setExpandedRows((prev) => {
+											const next = new Set(prev);
+											if (next.has(rowKey)) next.delete(rowKey);
+											else next.add(rowKey);
+											return next;
+										});
+									};
+
+									const getPaymentIcon = (method: string | undefined): string => {
+										if (!method) return "";
+										const m = method.toLowerCase();
+										if (m.includes("cash") || m.includes("tunai")) return "💵";
+										if (m.includes("debit") || m.includes("kartu")) return "💳";
+										if (m.includes("qris") || m.includes("qr")) return "📱";
+										if (m.includes("transfer")) return "🏦";
+										return "💳";
+									};
+
+									const expandable = hasScanItems || hasReceiptMeta;
+
+									return (
+										<>
+										<tr key={rowKey}
+											className={`group cursor-pointer transition-colors ${isIncome ? "bg-emerald-50/30 hover:bg-emerald-50/50" : "bg-red-50/20 hover:bg-red-50/40"} ${selectedRowKeys.has(rowKey) ? "bg-blue-50/50" : ""} ${isDuplicate ? "bg-amber-50/40" : ""}`}
+											onClick={toggleExpand}
+											onDoubleClick={() => { if (editingItemRowKey === rowKey) return; handleEdit(t); }}
+										>
 												{/* Checkbox */}
 												<td className="sticky left-0 z-10 w-9 border-r border-slate-100 bg-white px-1.5 group-hover:bg-slate-50"
 													onClick={(e) => e.stopPropagation()}>
@@ -1148,31 +1180,51 @@ export function TransactionDetailReport({
 													</div>
 												</td>
 
-												{/* Sumber */}
-												<td className="whitespace-nowrap px-3 py-2">
-													<div className="flex flex-col gap-0.5">
-														{getSourceBadge(t)}
-														{isDuplicate && (
-															<span className="inline-flex items-center gap-0.5 text-[8px] font-semibold text-amber-600">
-																<AlertTriangle className="h-2.5 w-2.5" />
-																duplikat
-															</span>
-														)}
-													</div>
-												</td>
+								{/* Sumber */}
+								<td className="whitespace-nowrap px-3 py-2">
+									<div className="flex flex-col gap-0.5">
+										{getSourceBadge(t)}
+										{t.metadata?.ocr && (
+											<span className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">
+												📸 OCR
+											</span>
+										)}
+										{isDuplicate && (
+											<span className="inline-flex items-center gap-0.5 text-[8px] font-semibold text-amber-600">
+												<AlertTriangle className="h-2.5 w-2.5" />
+												duplikat
+											</span>
+										)}
+										{expandable && (
+											<span className="inline-flex items-center gap-0.5 text-[8px] text-slate-400">
+												<ChevronRight className={`h-2.5 w-2.5 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+												{hasScanItems ? `${t.metadata.scanItems.length} item` : "Detail"}
+											</span>
+										)}
+									</div>
+								</td>
 
-												{/* Deskripsi */}
-												<td className="px-3 py-2">
-													<div className="flex flex-col gap-0.5">
-														<span className="block max-w-xs truncate text-[11px] font-medium text-slate-800"
-															title={t.displaySummary || t.description || "-"}>
-															{t.displaySummary || t.description || "-"}
-														</span>
-														{t.paymentMethod && (
-															<span className="text-[9px] text-slate-400">{t.paymentMethod}</span>
-														)}
-													</div>
-												</td>
+									{/* Pembayaran */}
+									<td className="whitespace-nowrap px-3 py-2">
+										{t.paymentMethod ? (
+											<span className="inline-flex items-center gap-1 text-[11px] text-slate-600">
+												<span>{getPaymentIcon(t.paymentMethod)}</span>
+												<span className="capitalize">{t.paymentMethod.toLowerCase().replace(/_/g, " ")}</span>
+											</span>
+										) : (
+											<span className="text-[10px] text-slate-300">—</span>
+										)}
+									</td>
+
+									{/* Deskripsi */}
+									<td className="px-3 py-2">
+										<div className="flex flex-col gap-0.5">
+											<span className="block max-w-xs truncate text-[11px] font-medium text-slate-800"
+												title={t.displaySummary || t.description || "-"}>
+												{t.displaySummary || t.description || "-"}
+											</span>
+										</div>
+									</td>
 
 												{/* Nominal */}
 												<td className="sticky right-[88px] z-10 whitespace-nowrap border-l border-slate-100 bg-white px-3 py-2 text-right group-hover:bg-slate-50">
@@ -1209,10 +1261,90 @@ export function TransactionDetailReport({
 															<Trash2 className="h-3.5 w-3.5" />
 														</button>
 													</div>
-												</td>
-											</tr>
-										);
-									})}
+										</td>
+									</tr>
+									{isExpanded && expandable && (
+										<tr key={`${rowKey}-expanded`} className={`${isIncome ? "bg-emerald-50/20" : "bg-red-50/10"}`}>
+											<td colSpan={columnCount} className="px-4 py-3">
+												<div className="ml-10 space-y-2">
+													<div className="flex items-center gap-2 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+														<ChevronDown className="h-3 w-3" />
+														Detail Transaksi
+													</div>
+													{hasScanItems && (
+														<div className="overflow-hidden rounded-md border border-slate-200">
+															<table className="w-full text-[10px]">
+																<thead className="bg-slate-50">
+																	<tr>
+																		<th className="px-3 py-1.5 text-left font-medium text-slate-600">Item</th>
+																		<th className="px-3 py-1.5 text-right font-medium text-slate-600">Qty</th>
+																		<th className="px-3 py-1.5 text-right font-medium text-slate-600">Harga</th>
+																		<th className="px-3 py-1.5 text-right font-medium text-slate-600">Total</th>
+																	</tr>
+																</thead>
+																<tbody className="divide-y divide-slate-100">
+																	{t.metadata.scanItems.map((item: any, i: number) => (
+																		<tr key={i} className="hover:bg-slate-50/50">
+																			<td className="px-3 py-1.5 font-medium text-slate-700">{item.name || "—"}</td>
+																			<td className="px-3 py-1.5 text-right text-slate-600">{item.quantity ?? "—"}</td>
+																			<td className="px-3 py-1.5 text-right font-mono text-slate-600">{Number.isFinite(Number(item.price)) ? formatCurrencyIDR(Number(item.price)) : "—"}</td>
+																			<td className="px-3 py-1.5 text-right font-mono font-semibold text-slate-800">{Number.isFinite(Number(item.total)) ? formatCurrencyIDR(Number(item.total)) : "—"}</td>
+																		</tr>
+																	))}
+																</tbody>
+															</table>
+														</div>
+													)}
+													{hasReceiptMeta && t.metadata?.receiptDetails && (
+														<div className="space-y-1 rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2 text-[10px]">
+															{t.metadata.receiptDetails.receiptNumber && (
+																<div className="flex gap-2">
+																	<span className="text-slate-400 w-28 shrink-0">No. Struk</span>
+																	<span className="font-mono font-medium text-slate-700">{t.metadata.receiptDetails.receiptNumber}</span>
+																</div>
+															)}
+															{t.metadata.receiptDetails.merchantName && (
+																<div className="flex gap-2">
+																	<span className="text-slate-400 w-28 shrink-0">Toko</span>
+																	<span className="text-slate-700">{t.metadata.receiptDetails.merchantName}</span>
+																</div>
+															)}
+															{t.metadata.receiptDetails.date && (
+																<div className="flex gap-2">
+																	<span className="text-slate-400 w-28 shrink-0">Tanggal</span>
+																	<span className="text-slate-700">{t.metadata.receiptDetails.date}</span>
+																</div>
+															)}
+															{Number.isFinite(Number(t.metadata.receiptDetails.tax)) && (
+																<div className="flex gap-2">
+																	<span className="text-slate-400 w-28 shrink-0">Pajak</span>
+																	<span className="text-slate-700">{formatCurrencyIDR(Number(t.metadata.receiptDetails.tax))}</span>
+																</div>
+															)}
+															{Number.isFinite(Number(t.metadata.receiptDetails.serviceCharge)) && (
+																<div className="flex gap-2">
+																	<span className="text-slate-400 w-28 shrink-0">Biaya Layanan</span>
+																	<span className="text-slate-700">{formatCurrencyIDR(Number(t.metadata.receiptDetails.serviceCharge))}</span>
+																</div>
+															)}
+															{Number.isFinite(Number(t.metadata.receiptDetails.discount)) && (
+																<div className="flex gap-2">
+																	<span className="text-slate-400 w-28 shrink-0">Diskon</span>
+																	<span className="text-slate-700">{formatCurrencyIDR(Number(t.metadata.receiptDetails.discount))}</span>
+																</div>
+															)}
+														</div>
+													)}
+													{hasReceiptMeta && t.metadata?.ocr && !t.metadata?.receiptDetails && (
+														<p className="text-[10px] text-slate-400 italic">Data OCR tersedia (detail tidak lengkap)</p>
+													)}
+												</div>
+											</td>
+										</tr>
+									)}
+									</>
+								);
+							})}
 									{virtualized.shouldVirtualize && virtualized.bottomSpacer > 0 && (
 										<tr><td colSpan={columnCount} style={{ height: `${virtualized.bottomSpacer}px`, padding: 0, border: 0 }} /></tr>
 									)}
