@@ -137,6 +137,13 @@ export function TransactionDetailReport({
 	const pendingDeleteTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 	const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
+	// Sync external filterCategory prop to internal state
+	useEffect(() => {
+		if (filterCategoryProp !== undefined) {
+			setFilterCategory(filterCategoryProp);
+		}
+	}, [filterCategoryProp]);
+
 	const deleteTransaction = useHybridDeleteTransaction();
 	const deleteTransactionsBulk = useHybridDeleteTransactionsBulk();
 	const deleteTransactionScanItem = useHybridDeleteTransactionScanItem();

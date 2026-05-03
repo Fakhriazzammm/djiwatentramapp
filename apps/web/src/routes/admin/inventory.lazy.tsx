@@ -107,6 +107,8 @@ type InventoryWorkspaceRow = {
 		storeId?: Id<"inventoryStores">;
 		purchaseQuantity?: number;
 		purchaseUnit?: string;
+		sourceLabel?: string | null;
+		sourceFingerprint?: string | null;
 	} | null;
 };
 
@@ -4624,7 +4626,7 @@ function InventoryTable({
 				</datalist>
 				<div className="overflow-x-auto">
 				<table
-					className={`min-w-[1410px] w-full table-fixed text-left ${
+					className={`min-w-[1530px] w-full table-fixed text-left ${
 						tableMode === "detail" ? "text-[9px] md:text-[10px]" : "text-[8px] md:text-[9px]"
 					}`}
 				>
@@ -4643,6 +4645,7 @@ function InventoryTable({
 						<col className="w-[8%]" />
 						<col className="w-[8%]" />
 						<col className="w-[8%]" />
+						<col className="w-[9%]" />
 						<col className="w-[11rem]" />
 					</colgroup>
 					<thead className="bg-card">
@@ -4727,6 +4730,7 @@ function InventoryTable({
 								</div>
 							</th>
 							<th className="px-2 py-1.5 font-semibold">Harga Terakhir</th>
+							<th className="px-2 py-1.5 font-semibold">Sumber Restok</th>
 							<th className="px-2 py-1.5 font-semibold">Status</th>
 							<th className="px-2 py-1.5 text-right font-semibold">Aksi</th>
 						</tr>
@@ -4898,6 +4902,7 @@ function InventoryTable({
 							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">-</div></td>
 							<td className="px-2 py-1.5"><div className="text-[10px] text-muted-foreground">-</div></td>
 							<td className="px-2 py-1.5"><div className="text-[10px] text-muted-foreground">-</div></td>
+							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
 							<td className="px-2 py-1.5">
 								<div className="rounded-lg border border-dashed border-border px-2 py-1 text-[10px] text-muted-foreground">
 									Autosave
@@ -4965,6 +4970,9 @@ function InventoryTable({
 									</td>
 									<td className="p-4">
 										<Skeleton className="h-4 w-20" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="mx-auto h-4 w-16" />
 									</td>
 									<td className="p-4">
 										<Skeleton className="h-6 w-20" />
@@ -5238,6 +5246,17 @@ function InventoryTable({
 												type="number"
 												value={getPriceDraft(row)}
 											/>
+										</td>
+										<td className="px-2 py-1.5 align-middle text-center text-[10px]">
+											{(() => {
+												const tx = row.latestTransaction;
+												if (!tx || tx.type !== "restock") return <span className="text-muted-foreground">—</span>;
+												const label = (tx.sourceLabel ?? "").toLowerCase();
+												const fp = tx.sourceFingerprint ?? "";
+												if (fp.includes("ocr") || label.includes("ocr")) return <span title={fp || label}>📸 OCR</span>;
+												if (label.includes("order") || label.includes("pesan")) return <span>🛒 Order</span>;
+												return <span>✋ Manual</span>;
+											})()}
 										</td>
 										<td className="px-2 py-1.5 align-middle">
 											<div className="flex items-center gap-1.5 whitespace-nowrap text-[10px]">

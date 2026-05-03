@@ -8,7 +8,7 @@ import {
 	TrendingUp,
 	Wallet,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NewTransactionDialog } from "./new-transaction-dialog";
@@ -16,6 +16,7 @@ import { FinancialTargetPanel } from "./financial-target-panel";
 import { ExpenseCategoryPieChart, PeriodComparisonCards, TrendChart } from "./finance-charts";
 import { TransactionDetailReport } from "../transactions/-components/transaction-detail-report";
 import type { DateRange } from "../reports/-components/period-selector";
+import { createClient } from "@/lib/client";
 import {
 	useHybridFinancialSummary,
 	useHybridOrdersCogs,
@@ -42,6 +43,42 @@ export function FinanceDashboard() {
 		return new Date(now.getFullYear(), now.getMonth(), 1).getTime(); // Default: This Month
 	});
 	const [endDate, setEndDate] = useState<number | undefined>(undefined);
+
+	// Task 6: Quick category filter
+	const [quickFilterCategory, setQuickFilterCategory] = useState<string>("");
+
+	// Task 5: Struk Hari Ini widget data
+	const [strukData, setStrukData] = useState<{ count: number; total: number } | null>(null);
+	const [strukLoading, setStrukLoading] = useState(true);
+
+	useEffect(() => {
+		let cancelled = false;
+		async function fetchStrukHariIni() {
+			setStrukLoading(true);
+			try {
+				const supabase = createClient();
+				const todayStart = new Date();
+				todayStart.setHours(0, 0, 0, 0);
+				const todayStartMs = todayStart.getTime();
+				const { data, error } = await supabase
+					.from("pos_financial_transactions")
+					.select("amount")
+					.gte("date", todayStartMs)
+					.eq("metadata->>ocr", "true");
+				if (error) throw error;
+				if (cancelled) return;
+				const rows = data ?? [];
+				const total = rows.reduce((sum: number, r: any) => sum + (Number(r.amount) || 0), 0);
+				setStrukData({ count: rows.length, total });
+			} catch {
+				if (!cancelled) setStrukData(null);
+			} finally {
+				if (!cancelled) setStrukLoading(false);
+			}
+		}
+		fetchStrukHariIni();
+		return () => { cancelled = true; };
+	}, []);
 
 	const handleRangeChange = (range: string) => {
 		setSelectedRange(range);
@@ -186,6 +223,33 @@ export function FinanceDashboard() {
 					<div className="space-y-2">
 						<h3 className="font-semibold text-sm">Perbandingan Periode</h3>
 						<PeriodComparisonCards />
+					</div>
+
+					{/* Struk Hari Ini */}
+					<div className="rounded-xl border border-border bg-card px-3 py-2.5">
+						<div className="flex items-center justify-between">
+							<div className="flex items-center gap-2">
+								<span className="text-lg">📸</span>
+								<div>
+									<p className="font-semibold text-sm">Struk Hari Ini</p>
+									{strukLoading ? (
+										<Skeleton className="mt-1 h-4 w-48" />
+									) : strukData && strukData.count > 0 ? (
+										<p className="text-xs text-muted-foreground">
+											{strukData.count} struk diproses · {formatCurrency(strukData.total)}
+										</p>
+									) : (
+										<p className="text-xs text-muted-foreground">Belum ada</p>
+									)}
+								</div>
+							</div>
+							<Link
+								to="/admin/finance/transactions"
+								className="text-xs font-medium text-primary hover:underline"
+							>
+								Lihat Semua →
+							</Link>
+						</div>
 					</div>
 
 					{/* Charts Row */}
@@ -352,6 +416,30 @@ export function FinanceDashboard() {
 				</div>
 			)}
 
+			{/* Quick Category Filters */}
+			<div className="flex flex-wrap items-center gap-1.5">
+				<span className="mr-1 text-xs font-medium text-muted-foreground">Filter:</span>
+				{([
+					{ id: "", label: "Semua" },
+					{ id: "belanja_stok", label: "Belanja Stok" },
+					{ id: "operasional", label: "Operasional" },
+					{ id: "makanan_minuman", label: "Makanan & Minuman" },
+				] as const).map((f) => (
+					<button
+						key={f.id}
+						type="button"
+						onClick={() => setQuickFilterCategory(f.id)}
+						className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${
+							quickFilterCategory === f.id
+								? "bg-primary text-primary-foreground shadow-sm"
+								: "bg-muted text-muted-foreground hover:bg-muted/70"
+						}`}
+					>
+						{f.label}
+					</button>
+				))}
+			</div>
+
 			{/* Transaction List */}
 			<div className="rounded-xl border border-border bg-card">
 				<div className="flex flex-wrap items-center justify-between gap-2 border-border/50 border-b px-3 py-2.5">
@@ -418,6 +506,7 @@ export function FinanceDashboard() {
 						range={dashboardRange}
 						viewMode={tableViewMode}
 						groupMode={groupMode}
+						filterCategory={quickFilterCategory || undefined}
 					/>
 				</div>
 			</div>

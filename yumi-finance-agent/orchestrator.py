@@ -8,6 +8,8 @@ import re
 import logging
 from datetime import datetime, timezone, timedelta
 
+from sumopod_client import SumoPodClient, TEXT_MODEL
+
 logger = logging.getLogger(__name__)
 WIB = timezone(timedelta(hours=7))
 
@@ -227,8 +229,6 @@ class FinanceOrchestrator:
 
     async def _call_sumopod(self, text: str) -> OrchestratorResult:
         """Panggil SumoPod API untuk memahami input kompleks."""
-        from .sumopod_client import SumoPodClient, TEXT_MODEL, SYSTEM_PROMPT
-
         client = SumoPodClient(self.sumopod_api_key)
         result = await client.chat(message=text, model=TEXT_MODEL)
 

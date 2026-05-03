@@ -727,6 +727,8 @@ async function loadWorkspace(daysWindow: number) {
 							costPerUnit: latestTransaction.costPerUnit ?? null,
 							purchaseQuantity: latestTransaction.purchaseQuantity ?? null,
 							purchaseUnit: latestTransaction.purchaseUnit ?? null,
+							sourceLabel: latestTransaction.sourceLabel ?? null,
+							sourceFingerprint: latestTransaction.sourceFingerprint ?? null,
 					  }
 					: null,
 			};
