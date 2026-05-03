@@ -388,6 +388,15 @@ export class BluetoothPrinterService {
 		return !!(this.server?.connected && this.characteristic);
 	}
 
+	/** 🔍 Cek apakah ada known device di cache browser (tanpa attempt reconnect) */
+	hasKnownDevices(): boolean {
+		if (typeof navigator === "undefined" || !navigator.bluetooth?.getDevices) {
+			return false;
+		}
+		const storedId = this.getPersistedDeviceId();
+		return storedId !== null;
+	}
+
 	getStatus() {
 		return {
 			connected: this.isConnected(),
@@ -475,7 +484,16 @@ export class BluetoothPrinterService {
 
 		if (!(this.isConnected() && this.characteristic)) {
 			console.error('❌ [BluetoothPrinter] Masih tidak connected setelah autoConnect');
-			throw new Error("Printer tidak terhubung.");
+			// Cek apakah ada known devices sama sekali — kasih hint yang tepat
+			const hasDevices = this.hasKnownDevices();
+			if (!hasDevices) {
+				throw new Error(
+					"Printer belum dikenali browser.\nKlik tombol 'Hubungkan Printer' di sidebar lalu pilih printer dari dialog."
+				);
+			}
+			throw new Error(
+				"Tidak bisa menyambung ke printer.\nPastikan printer menyala dan dalam jangkauan, lalu klik 'Hubungkan Printer'."
+			);
 		}
 		console.log('✅ [BluetoothPrinter] Printer connected — membangun receipt...');
 
