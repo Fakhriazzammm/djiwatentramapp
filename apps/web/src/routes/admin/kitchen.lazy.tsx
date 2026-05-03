@@ -125,7 +125,7 @@ function KitchenMonitorPage() {
 							initial={{ opacity: 0, y: 10 }}
 							key="stock-tab"
 						>
-\t\t\t\t\t\t\t<FastStockTable categories={allCategories} inventory={inventory} products={products} recipes={recipes} source="/admin/kitchen" placeholder="Cari menu dapur..." />
+							<FastStockTable categories={allCategories} inventory={inventory} products={products} recipes={recipes} source="/admin/kitchen" placeholder="Cari menu dapur..." />
 						</motion.div>
 					)}
 				</AnimatePresence>

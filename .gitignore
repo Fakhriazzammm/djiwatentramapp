@@ -50,3 +50,4 @@ src-tauri/binaries/
 .claude/worktrees/friendly-matsumoto-192bef/
 .claude/worktrees/wonderful-ishizaka-4e0f14/
 .claude/worktrees/admiring-saha-9b7776/
+*.backup

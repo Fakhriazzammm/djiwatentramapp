@@ -115,7 +115,7 @@ function BarMonitorPage() {
 							initial={{ opacity: 0, y: 10 }}
 							key="stock-tab"
 						>
-\t\t\t\t\t\t\t<FastStockTable categories={allCategories} inventory={inventory} products={products} recipes={recipes} source="/admin/bar" placeholder="Cari menu bar..." />
+							<FastStockTable categories={allCategories} inventory={inventory} products={products} recipes={recipes} source="/admin/bar" placeholder="Cari menu bar..." />
 						</motion.div>
 					)}
 				</AnimatePresence>
