@@ -9,6 +9,7 @@ import re
 import json
 import base64
 import io
+import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
 
@@ -226,6 +227,15 @@ async def _handle_new_ingredient(update: Update, context: ContextTypes.DEFAULT_T
 # Pending receipt confirmations (terpisah dari _pending_actions ingredient)
 _receipt_pending: dict[str, dict] = {}
 
+# ── Bulk OCR: album multi-foto ──────────────────────────────────────
+_album_buffer: dict[str, dict] = {}
+_album_lock = asyncio.Lock()
+ALBUM_TIMEOUT = 1.5  # detik
+_MAX_CONCURRENT_OCR = 3
+_ocr_semaphore = asyncio.Semaphore(_MAX_CONCURRENT_OCR)
+_bulk_pending: dict[str, list[dict]] = {}
+_bulk_select_state: dict[str, dict] = {}
+
 
 async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle foto struk — OCR structured JSON → tampilkan item → minta konfirmasi."""
@@ -389,6 +399,232 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text(f"❌ Gagal memproses struk: {e}", reply_markup=_finance_keyboard())
 
 
+# ── Bulk OCR: Album Multi-Foto ─────────────────────────────────────
+
+async def on_album(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle foto — route ke single atau bulk berdasarkan media_group_id."""
+    if not _is_finance_group(update):
+        return
+
+    media_group_id = update.message.media_group_id
+    if not media_group_id:
+        # Single photo — fallback ke handler existing
+        return await on_photo(update, context)
+
+    # Bulk/album mode
+    photo = update.message.photo[-1]
+    chat_id = update.effective_chat.id
+
+    async with _album_lock:
+        if media_group_id not in _album_buffer:
+            status_msg = await update.message.reply_text("📸 Mengumpulkan foto...")
+            _album_buffer[media_group_id] = {
+                "photos": [],
+                "status_msg_id": status_msg.message_id,
+                "chat_id": chat_id,
+                "timer": None,
+            }
+        buf = _album_buffer[media_group_id]
+        buf["photos"].append(photo)
+        if buf.get("timer"):
+            buf["timer"].cancel()
+        buf["timer"] = asyncio.create_task(
+            _process_album_after_delay(media_group_id, chat_id, context, buf["status_msg_id"])
+        )
+
+
+async def _process_album_after_delay(media_group_id: str, chat_id: int, context, status_msg_id: int):
+    """Tunggu 1.5 detik setelah foto terakhir, lalu proses semua."""
+    await asyncio.sleep(ALBUM_TIMEOUT)
+
+    async with _album_lock:
+        buf = _album_buffer.pop(media_group_id, None)
+        if not buf:
+            return
+
+    photos = buf.get("photos", [])
+    if not photos:
+        return
+
+    n = len(photos)
+    await context.bot.edit_message_text(
+        chat_id=chat_id, message_id=status_msg_id,
+        text=f"🔍 Memproses {n} struk sekaligus..."
+    )
+    await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+
+    results = await _ocr_bulk(context, photos, chat_id, status_msg_id)
+    await _display_bulk_summary(context, results, chat_id, status_msg_id)
+
+
+async def _ocr_one(sp_client, photo, context, idx: int, total: int, chat_id: int, status_msg_id: int):
+    """OCR satu foto — return hasil vision_json."""
+    try:
+        file = await context.bot.get_file(photo.file_id)
+        image_bytes = bytes(await file.download_as_bytearray())
+        compressed_uri = _compress_image(image_bytes)
+
+        async with _ocr_semaphore:
+            vision_result = await sp_client.vision_json(image_base64_uri=compressed_uri, timeout=90)
+
+        done = idx + 1
+        try:
+            await context.bot.edit_message_text(
+                chat_id=chat_id, message_id=status_msg_id,
+                text=f"🔍 Memproses {total} struk... ({done}/{total})"
+            )
+        except Exception:
+            pass
+        return vision_result
+    except Exception as e:
+        logger.error(f"OCR bulk error [{idx}/{total}]: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def _ocr_bulk(context, photos: list, chat_id: int, status_msg_id: int) -> list[dict]:
+    """Proses semua foto dalam album concurrent — return list of OCR results."""
+    total = len(photos)
+    sp_client = SumoPodClient(SUMOPOD_API_KEY)
+    tasks = [
+        _ocr_one(sp_client, photo, context, i, total, chat_id, status_msg_id)
+        for i, photo in enumerate(photos)
+    ]
+    results = await asyncio.gather(*tasks)
+    return list(results)
+
+
+async def _display_bulk_summary(context, results: list[dict], chat_id: int, status_msg_id: int):
+    """Tampilkan ringkasan semua struk + keyboard bulk action."""
+    successes = [r for r in results if r.get("success")]
+    failures = [r for r in results if not r.get("success")]
+
+    if not successes:
+        await context.bot.edit_message_text(
+            chat_id=chat_id, message_id=status_msg_id,
+            text="❌ Semua struk gagal dibaca.\nCoba foto ulang dengan pencahayaan lebih baik.",
+            reply_markup=_finance_keyboard(),
+        )
+        return
+
+    lines = [f"📸 {len(successes)} Struk Berhasil Dibaca!", ""]
+
+    grand_total = 0
+    receipt_list = []
+    # ── Bulk vs Satuan counters ───────────────────────────────
+    bulk_count = 0
+    bulk_amount = 0
+    satuan_count = 0
+    satuan_amount = 0
+    # Max item lines per receipt (to avoid Telegram 4096 char limit)
+    MAX_ITEM_LINES = 8
+
+    for i, r in enumerate(successes):
+        data = r["data"]
+        merchant = (data.get("name") or "Tanpa Nama").strip()
+        total_val = float(data.get("total") or 0)
+        items = data.get("items") or []
+        date_str = data.get("date") or "?"
+
+        grand_total += total_val
+        receipt_list.append({
+            "idx": i + 1,
+            "merchant": merchant,
+            "date": date_str,
+            "total": total_val,
+            "items": items,
+            "time": data.get("time") or "",
+            "payment_method": data.get("paymentMethod") or "",
+            "receipt_number": data.get("receiptNumber") or "",
+            "subtotal": float(data.get("subtotal") or 0),
+            "tax": float(data.get("tax") or 0),
+            "discount": float(data.get("discount") or 0),
+            "service_charge": float(data.get("serviceCharge") or 0),
+            "raw_text": data.get("rawText") or "",
+            "confidence": data.get("confidence", 0),
+            "category": data.get("category") or "",
+        })
+
+        # ── Header receipt ────────────────────────────────────
+        status_icon = "✅"
+        lines.append(f"{i+1}. {status_icon} {merchant}")
+        lines.append(f"   📅 {date_str}  |  💰 {format_amount(int(total_val))}")
+        lines.append(f"   📦 {len(items)} item:")
+        # ── Detail item ───────────────────────────────────────
+        for j, item in enumerate(items):
+            if j >= MAX_ITEM_LINES:
+                lines.append(f"      ... + {len(items) - MAX_ITEM_LINES} item lain")
+                break
+            name = item.get("name", f"Item {j+1}").strip()
+            qty = float(item.get("qty") or 1)
+            price = float(item.get("price") or 0)
+            item_sub = float(item.get("subtotal") or 0)
+            unit = item.get("unit", "").strip()
+            if item_sub <= 0:
+                item_sub = price * qty
+
+            # ── Classify bulk vs satuan ─────────────────────
+            is_bulk = qty > 1 or unit.lower() in ("karton", "dus", "pack", "lusin", "kg", "liter", "bal")
+            if is_bulk:
+                bulk_count += 1
+                bulk_amount += item_sub
+            else:
+                satuan_count += 1
+                satuan_amount += item_sub
+
+            qty_str = f"{qty:.0f}" if qty == int(qty) else f"{qty:.1f}"
+            unit_str = f" {unit}" if unit else ""
+            price_fmt = format_amount(int(price))
+            sub_fmt = format_amount(int(item_sub))
+            flag = "🛒" if is_bulk else "🛍️"
+            lines.append(f"     {flag} {name} — {qty_str}{unit_str}×{price_fmt} = {sub_fmt}")
+        lines.append("")
+
+    if failures:
+        lines.append(f"⚠️ {len(failures)} struk gagal dibaca")
+        for f in failures:
+            err = str(f.get("error", "Unknown"))[:60]
+            lines.append(f"   ↳ {err}")
+
+    lines.append("─" * 20)
+    lines.append(f"💸 TOTAL GABUNGAN: {format_amount(int(grand_total))}")
+    lines.append(f"📦 Total Item: {sum(len(ri['items']) for ri in receipt_list)}")
+    # ── Breakdown Bulk vs Satuan ──────────────────────────────
+    if bulk_count > 0 or satuan_count > 0:
+        lines.append("")
+        lines.append("📊 Breakdown:")
+        if bulk_count > 0:
+            lines.append(f"  🛒 Bulk/Grosir: {bulk_count} item — {format_amount(int(bulk_amount))}")
+        if satuan_count > 0:
+            lines.append(f"  🛍️ Satuan/Ecer: {satuan_count} item — {format_amount(int(satuan_amount))}")
+    lines.append("")
+
+    # Simpan receipt list untuk callback
+    global _bulk_pending
+    bulk_id = f"bulk_{len(_bulk_pending)}"
+    _bulk_pending[bulk_id] = receipt_list
+
+    lines.append("Simpan semua sebagai apa?")
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("💰 Semua Pemasukan", callback_data=f"bulk_income_{bulk_id}"),
+            InlineKeyboardButton("💸 Semua Pengeluaran", callback_data=f"bulk_expense_{bulk_id}"),
+        ],
+        [
+            InlineKeyboardButton("📋 Pilih per Struk", callback_data=f"bulk_select_{bulk_id}"),
+        ],
+        [
+            InlineKeyboardButton("❌ Batal", callback_data=f"bulk_cancel_{bulk_id}"),
+        ],
+    ])
+
+    await context.bot.edit_message_text(
+        chat_id=chat_id, message_id=status_msg_id,
+        text="\n".join(lines),
+        reply_markup=keyboard,
+    )
+
+
 async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle callback dari konfirmasi struk (simpan sebagai pemasukan/pengeluaran)."""
     query = update.callback_query
@@ -505,6 +741,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
         category=category,
         merchant=merchant,
         payment_method=receipt.get("payment_method", "cash"),
+        receipt_date_str=receipt.get("date", ""),
         metadata={
             "source": "yumi_finance_agent",
             "ocr": True,
@@ -898,6 +1135,14 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _handle_receipt_callback(update, context)
         return
 
+    # Handle bulk OCR callbacks (album multi-foto)
+    if query.data.startswith("bulk_"):
+        await _handle_bulk_callback(update, context)
+        return
+    if query.data.startswith("bulkitem_"):
+        await _handle_bulkitem_callback(update, context)
+        return
+
     # Handle new ingredient callbacks
     if query.data.startswith("new_ingredient_"):
         await _handle_new_ingredient(update, context)
@@ -1121,6 +1366,369 @@ async def cmd_rekap(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Gagal mengambil rekap: {e}", reply_markup=_finance_keyboard())
 
 
+# ── Bulk Callback Handlers ──────────────────────────────────────────
+
+async def _handle_bulk_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle bulk action: income/expense/select/cancel."""
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+
+    # Parse: bulk_{action}_{bulk_id}
+    parts = data.split("_", 2)
+    if len(parts) < 3:
+        return
+    action = parts[1]  # income | expense | select | cancel
+    bulk_id = parts[2]
+
+    receipts = _bulk_pending.pop(bulk_id, None)
+    if not receipts:
+        try:
+            await query.edit_message_text("❌ Sesi kadaluarsa. Silakan kirim ulang foto.", reply_markup=_finance_keyboard())
+        except Exception:
+            pass
+        return
+
+    if action == "cancel":
+        await query.edit_message_text("❌ Dibatalkan.", reply_markup=_finance_keyboard())
+        return
+
+    if action in ("income", "expense"):
+        tx_type = action
+        saved = 0
+        failed = 0
+        total_all = 0
+
+        for ri in receipts:
+            # Kategorisasi
+            category_text = ri["merchant"] + " " + " ".join(it.get("name", "") for it in ri.get("items", []))
+            category, _ = auto_categorize(category_text)
+
+            # Build description
+            items = ri.get("items", [])
+            if items:
+                item_names = ", ".join(f"{it.get('name', '?')} ×{it.get('qty', 1)}" for it in items[:5])
+                if len(items) > 5:
+                    item_names += f" + {len(items) - 5} item lain"
+                desc = f"Bulk {'Pemasukan' if tx_type == 'income' else 'Belanja'} - {ri['merchant']}: {item_names}"
+            else:
+                desc = f"Bulk {'Pemasukan' if tx_type == 'income' else 'Belanja'} - {ri['merchant']}"
+
+            tx_result = await finance.record_transaction(
+                tx_type=tx_type,
+                amount=ri["total"] or 1,
+                description=desc[:500],
+                category=category,
+                merchant=ri["merchant"],
+                payment_method=ri.get("payment_method", "cash"),
+                receipt_date_str=ri.get("date", ""),
+                metadata={
+                    "source": "yumi_finance_agent",
+                    "ocr": True,
+                    "bulk": True,
+                    "bulk_id": bulk_id,
+                    "receipt_number": ri.get("receipt_number", ""),
+                    "receipt_date": ri.get("date", ""),
+                    "item_count": len(ri.get("items", [])),
+                },
+            )
+
+            if tx_result.get("ok"):
+                saved += 1
+                total_all += ri["total"]
+            else:
+                failed += 1
+
+            # Restok inventory untuk expense
+            if tx_type == "expense" and tx_result.get("ok"):
+                await _restok_bulk_items(ri)
+
+        icon = "💰" if tx_type == "income" else "💸"
+        type_label = "Pemasukan" if tx_type == "income" else "Pengeluaran"
+        lines = [
+            f"{icon} Bulk {type_label} Tercatat!",
+            "",
+            f"✅ {saved}/{len(receipts)} struk berhasil disimpan",
+            f"💸 Total: {format_amount(int(total_all))}",
+        ]
+        if failed:
+            lines.append(f"⚠️ {failed} struk gagal disimpan")
+
+        # Simpan lagi ke pending untuk fallback (dibutuhkan untuk re-process)
+        _bulk_pending[bulk_id] = receipts
+
+        await query.edit_message_text("\n".join(lines), reply_markup=_finance_keyboard())
+        return
+
+    if action == "select":
+        # Pilih per struk — navigasi
+        await _display_bulk_select(query, bulk_id, receipts)
+        return
+
+
+async def _restok_bulk_items(receipt: dict):
+    """Auto-restok inventory dari satu struk bulk expense."""
+    items = receipt.get("items", [])
+    if not items:
+        return
+
+    try:
+        inventory_list = await inventory.get_all_inventory()
+        for item in items:
+            item_name = item.get("name", "").strip()
+            if not item_name:
+                continue
+            matched = _find_inventory_match(item_name, inventory_list)
+            if matched and matched.get("score", 0) >= 60:
+                inv_id = matched.get("_id")
+                await inventory.restock_item(
+                    inv_id,
+                    float(matched.get("quantity", 0)),
+                    item.get("qty", 0),
+                    item.get("unit", "pcs")
+                )
+    except Exception as e:
+        logger.warning(f"Bulk restok partial error: {e}")
+
+
+async def _display_bulk_select(query, bulk_id: str, receipts: list[dict]):
+    """Tampilkan navigasi per struk."""
+    _bulk_select_state[bulk_id] = {
+        "receipts": receipts,
+        "current_idx": 0,
+        "processed": {},
+    }
+    await _show_bulk_receipt(query, bulk_id, 0)
+
+
+async def _show_bulk_receipt(query, bulk_id: str, idx: int):
+    """Tampilkan satu struk dari bulk dengan keyboard navigasi."""
+    state = _bulk_select_state.get(bulk_id)
+    if not state:
+        try:
+            await query.edit_message_text("❌ Sesi kadaluarsa.", reply_markup=_finance_keyboard())
+        except Exception:
+            pass
+        return
+
+    receipts = state["receipts"]
+    n = len(receipts)
+    ri = receipts[idx]
+
+    lines = [f"📸 Struk {idx+1}/{n}", ""]
+    lines.append(f"🏪 {ri['merchant']}")
+    if ri.get("date") and ri["date"] != "?":
+        dt_str = ri["date"]
+        if ri.get("time"):
+            dt_str += f" {ri['time']}"
+        lines.append(f"📅 {dt_str}")
+    if ri.get("receipt_number"):
+        lines.append(f"🧾 No: {ri['receipt_number']}")
+    if ri.get("payment_method"):
+        lines.append(f"💳 {ri['payment_method']}")
+    lines.append("")
+
+    # Items
+    ri_items = ri.get("items", [])
+    if ri_items:
+        lines.append("Daftar Item:")
+        for j, item in enumerate(ri_items[:10]):
+            name = item.get("name", "?")
+            qty = item.get("qty", 1)
+            price = item.get("price", 0)
+            subtotal = item.get("subtotal", price * qty)
+            unit = item.get("unit", "")
+            unit_str = f" {unit}" if unit else ""
+            lines.append(f"  {j+1}. {name} — {qty}{unit_str} x {format_amount(int(price))} = {format_amount(int(subtotal))}")
+        if len(ri_items) > 10:
+            lines.append(f"  ... +{len(ri_items) - 10} item lain")
+    lines.append("")
+
+    if ri.get("discount"):
+        lines.append(f"  Diskon: -{format_amount(int(ri['discount']))}")
+    if ri.get("tax"):
+        lines.append(f"  Pajak: {format_amount(int(ri['tax']))}")
+    lines.append(f"  TOTAL: {format_amount(int(ri['total']))}")
+    lines.append("")
+
+    # Status processed
+    processed = state.get("processed", {})
+    if idx in processed:
+        action = processed[idx]
+        icon = "💰" if action == "income" else "💸" if action == "expense" else "⏭️"
+        lines.append(f"Status: {icon} {action}")
+
+    # Keyboard
+    buttons = []
+    if idx not in processed:
+        buttons.append([
+            InlineKeyboardButton("💰 Pemasukan", callback_data=f"bulkitem_income_{bulk_id}_{idx}"),
+            InlineKeyboardButton("💸 Pengeluaran", callback_data=f"bulkitem_expense_{bulk_id}_{idx}"),
+        ])
+        buttons.append([
+            InlineKeyboardButton("⏭️ Lewati", callback_data=f"bulkitem_skip_{bulk_id}_{idx}"),
+        ])
+    else:
+        buttons.append([
+            InlineKeyboardButton("✏️ Ubah", callback_data=f"bulkitem_redo_{bulk_id}_{idx}"),
+        ])
+
+    # Nav
+    nav = []
+    if idx > 0:
+        nav.append(InlineKeyboardButton("◀️ Sebelumnya", callback_data=f"bulkitem_prev_{bulk_id}_{idx}"))
+    if idx < n - 1:
+        nav.append(InlineKeyboardButton("Selanjutnya ▶️", callback_data=f"bulkitem_next_{bulk_id}_{idx}"))
+    if nav:
+        buttons.append(nav)
+
+    # Done button
+    total_processed = len(state.get("processed", {}))
+    buttons.append([
+        InlineKeyboardButton(
+            f"💾 Selesai ({total_processed}/{n})",
+            callback_data=f"bulkitem_done_{bulk_id}"
+        ),
+    ])
+
+    await query.edit_message_text(
+        "\n".join(lines),
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
+
+
+async def _handle_bulkitem_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle bulkitem_* callbacks: income/expense/skip/prev/next/done/redo."""
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+
+    parts = data.split("_")
+    if len(parts) < 3:
+        return
+    action = parts[1]  # income | expense | skip | prev | next | done | redo
+    bulk_id = parts[2]
+
+    state = _bulk_select_state.get(bulk_id)
+    if not state:
+        try:
+            await query.edit_message_text("❌ Sesi kadaluarsa.", reply_markup=_finance_keyboard())
+        except Exception:
+            pass
+        return
+
+    receipts = state["receipts"]
+    n = len(receipts)
+
+    if action == "done":
+        return await _finalize_bulk_items(query, bulk_id)
+
+    idx = int(parts[3]) if len(parts) > 3 else 0
+
+    if action in ("income", "expense"):
+        # Record single struk
+        ri = receipts[idx]
+        category_text = ri["merchant"] + " " + " ".join(it.get("name", "") for it in ri.get("items", []))
+        category, _ = auto_categorize(category_text)
+
+        items = ri.get("items", [])
+        if items:
+            item_names = ", ".join(f"{it.get('name', '?')} ×{it.get('qty', 1)}" for it in items[:5])
+            if len(items) > 5:
+                item_names += f" + {len(items) - 5} item lain"
+            desc = f"Bulk {'Pemasukan' if action == 'income' else 'Belanja'} - {ri['merchant']}: {item_names}"
+        else:
+            desc = f"Bulk {'Pemasukan' if action == 'income' else 'Belanja'} - {ri['merchant']}"
+
+        tx_result = await finance.record_transaction(
+            tx_type=action,
+            amount=ri["total"] or 1,
+            description=desc[:500],
+            category=category,
+            merchant=ri["merchant"],
+            payment_method=ri.get("payment_method", "cash"),
+            receipt_date_str=ri.get("date", ""),
+            metadata={
+                "source": "yumi_finance_agent",
+                "ocr": True,
+                "bulk": True,
+                "bulk_id": bulk_id,
+                "receipt_number": ri.get("receipt_number", ""),
+                "receipt_date": ri.get("date", ""),
+                "item_count": len(ri.get("items", [])),
+            },
+        )
+
+        state["processed"][idx] = action
+        if tx_result.get("ok") and action == "expense":
+            await _restok_bulk_items(ri)
+
+        # Auto-advance ke next
+        next_idx = idx + 1
+        if next_idx < n:
+            return await _show_bulk_receipt(query, bulk_id, next_idx)
+        else:
+            return await _finalize_bulk_items(query, bulk_id)
+
+    elif action == "skip":
+        state["processed"][idx] = "skip"
+        next_idx = idx + 1
+        if next_idx < n:
+            return await _show_bulk_receipt(query, bulk_id, next_idx)
+        else:
+            return await _finalize_bulk_items(query, bulk_id)
+
+    elif action == "redo":
+        # Hapus dari processed
+        state["processed"].pop(idx, None)
+        return await _show_bulk_receipt(query, bulk_id, idx)
+
+    elif action in ("prev", "next"):
+        target_idx = idx - 1 if action == "prev" else idx + 1
+        if 0 <= target_idx < n:
+            return await _show_bulk_receipt(query, bulk_id, target_idx)
+
+    # Fallback
+    await query.edit_message_text("❌ Aksi tidak dikenal.", reply_markup=_finance_keyboard())
+
+
+async def _finalize_bulk_items(query, bulk_id: str):
+    """Finalisasi bulk selection — tampilkan summary akhir."""
+    state = _bulk_select_state.pop(bulk_id, None)
+    if not state:
+        try:
+            await query.edit_message_text("❌ Sesi kadaluarsa.", reply_markup=_finance_keyboard())
+        except Exception:
+            pass
+        return
+
+    receipts = state["receipts"]
+    processed = state["processed"]
+
+    income_count = sum(1 for v in processed.values() if v == "income")
+    expense_count = sum(1 for v in processed.values() if v == "expense")
+    skip_count = sum(1 for v in processed.values() if v == "skip")
+
+    income_total = sum(ri["total"] for i, ri in enumerate(receipts) if processed.get(i) == "income")
+    expense_total = sum(ri["total"] for i, ri in enumerate(receipts) if processed.get(i) == "expense")
+
+    lines = ["📊 Bulk Processing Selesai!", ""]
+    if income_count:
+        lines.append(f"💰 Pemasukan: {income_count} struk — {format_amount(int(income_total))}")
+    if expense_count:
+        lines.append(f"💸 Pengeluaran: {expense_count} struk — {format_amount(int(expense_total))}")
+    if skip_count:
+        lines.append(f"⏭️ Dilewati: {skip_count} struk")
+    lines.append("")
+    total_saved = income_count + expense_count
+    lines.append(f"✅ {total_saved} transaksi tersimpan di database!")
+
+    await query.edit_message_text(
+        "\n".join(lines),
+        reply_markup=_finance_keyboard(),
+    )
+
+
 # ── Main ──────────────────────────────────────────────────────────
 
 def main():
@@ -1137,7 +1745,7 @@ def main():
     app.add_handler(CallbackQueryHandler(on_callback))
 
     # Message handlers
-    app.add_handler(MessageHandler(filters.PHOTO, on_photo))
+    app.add_handler(MessageHandler(filters.PHOTO, on_album))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
 
     logger.info("Starting Yumi Finance AI Agent...")
