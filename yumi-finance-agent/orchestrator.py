@@ -96,6 +96,12 @@ class FinanceOrchestrator:
         re.IGNORECASE,
     )
 
+    # Low stock: "stok menipis", "low stock"
+    _LOW_STOCK_RE = re.compile(
+        r'^(?:stok\s+menipis|low\s+stock)$',
+        re.IGNORECASE,
+    )
+
     # ── Parse nominal ──────────────────────────────────────────────
 
     def _parse_nominal(self, text: str) -> float:
@@ -204,6 +210,10 @@ class FinanceOrchestrator:
         # Marketlist
         if self._MARKETLIST_RE.match(text_stripped):
             return OrchestratorResult("marketlist")
+
+        # Low stock: "stok menipis" / "low stock"
+        if self._LOW_STOCK_RE.match(text_stripped):
+            return OrchestratorResult("low_stock")
 
         # Restok
         m = self._RESTOK_RE.match(text_stripped)

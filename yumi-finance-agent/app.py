@@ -366,12 +366,16 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "receipt_number": receipt_number,
             "category": category,
             "raw_text": raw_text,
+            "confidence": confidence,
         }
 
         keyboard = InlineKeyboardMarkup([
             [
                 InlineKeyboardButton("💰 Pemasukan", callback_data=f"receipt_income_{ref_id}"),
                 InlineKeyboardButton("💸 Pengeluaran", callback_data=f"receipt_expense_{ref_id}"),
+            ],
+            [
+                InlineKeyboardButton("✏️ Edit Kategori", callback_data=f"receipt_editcat_{ref_id}"),
             ],
             [
                 InlineKeyboardButton("❌ Batal", callback_data=f"receipt_cancel_{ref_id}"),
@@ -393,6 +397,71 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
     data = query.data
     if not data.startswith("receipt_"):
         return False  # Bukan receipt callback
+
+    # ── Handle edit kategori ───────────────────────────────────
+    if data.startswith("receipt_editcat_"):
+        ref_id = data[len("receipt_editcat_"):]
+        receipt = _receipt_pending.get(ref_id)
+        if not receipt:
+            try:
+                await query.edit_message_text("❌ Sesi kadaluarsa. Silakan kirim ulang struk.", reply_markup=_finance_keyboard())
+            except Exception:
+                pass
+            return True
+        # Tampilkan daftar kategori
+        cat_buttons = []
+        current_row = []
+        for cat_key, cat_info in FINANCE_CATEGORIES.items():
+            label = f"{cat_info['icon']} {cat_info['label']}"
+            current_row.append(InlineKeyboardButton(label, callback_data=f"receipt_setcat_{ref_id}_{cat_key}"))
+            if len(current_row) == 2:
+                cat_buttons.append(current_row)
+                current_row = []
+        if current_row:
+            cat_buttons.append(current_row)
+        cat_buttons.append([InlineKeyboardButton("⬅️ Kembali", callback_data=f"receipt_back_{ref_id}")])
+        cat_keyboard = InlineKeyboardMarkup(cat_buttons)
+
+        cur_cat = receipt.get("category", "lainnya")
+        cur_label = FINANCE_CATEGORIES.get(cur_cat, {}).get("label", cur_cat)
+        await query.edit_message_text(
+            f"✏️ Edit Kategori Struk\n\nKategori saat ini: {cur_label}\n\nPilih kategori baru:",
+            reply_markup=cat_keyboard,
+        )
+        return True
+
+    if data.startswith("receipt_setcat_"):
+        rest = data[len("receipt_setcat_"):]
+        m = re.match(r'(rcpt_\d+)_(.+)', rest)
+        if not m:
+            return True
+        ref_id = m.group(1)
+        cat_key = m.group(2)
+        receipt = _receipt_pending.get(ref_id)
+        if not receipt:
+            try:
+                await query.edit_message_text("❌ Sesi kadaluarsa.", reply_markup=_finance_keyboard())
+            except Exception:
+                pass
+            return True
+        # Update kategori
+        receipt["category"] = cat_key
+
+        # Rebuild tampilan dengan kategori baru
+        await _redisplay_receipt(query, ref_id, receipt)
+        return True
+
+    if data.startswith("receipt_back_"):
+        ref_id = data[len("receipt_back_"):]
+        receipt = _receipt_pending.get(ref_id)
+        if not receipt:
+            try:
+                await query.edit_message_text("❌ Sesi kadaluarsa.", reply_markup=_finance_keyboard())
+            except Exception:
+                pass
+            return True
+        await _redisplay_receipt(query, ref_id, receipt)
+        return True
 
     # Parse: receipt_{action}_{ref_id}
     parts = data.split("_", 2)
@@ -503,6 +572,90 @@ def _extract_unit(name: str) -> str:
     if m:
         return m.group(2).lower()
     return ""
+
+
+async def _redisplay_receipt(query, ref_id: str, receipt: dict):
+    """Rebuild tampilan struk dengan kategori terbaru dan keyboard konfirmasi."""
+    merchant = receipt.get("merchant", "")
+    receipt_date = receipt.get("date", "")
+    receipt_time = receipt.get("time", "")
+    items = receipt.get("items", [])
+    total = receipt.get("total", 0)
+    subtotal = receipt.get("subtotal", 0)
+    tax = receipt.get("tax", 0)
+    discount = receipt.get("discount", 0)
+    service_charge = receipt.get("service_charge", 0)
+    payment_method = receipt.get("payment_method", "")
+    receipt_number = receipt.get("receipt_number", "")
+    category = receipt.get("category", "lainnya")
+    confidence = receipt.get("confidence", 0)
+    raw_text = receipt.get("raw_text", "")
+
+    # ── Format tampilan ─────────────────────────────────────
+    lines = ["📸 Struk Berhasil Dibaca!", ""]
+
+    if merchant:
+        lines.append(f"🏪 {merchant}")
+    if receipt_date:
+        dt = receipt_date
+        if receipt_time:
+            dt += f" {receipt_time}"
+        lines.append(f"📅 {dt}")
+    if receipt_number:
+        lines.append(f"🧾 No: {receipt_number}")
+    if payment_method:
+        lines.append(f"💳 Bayar: {payment_method}")
+    lines.append("")
+
+    if items:
+        lines.append("📋 Daftar Item:")
+        for i, item in enumerate(items, 1):
+            name = item.get("name", f"Item {i}").strip()
+            qty = float(item.get("qty") or 1)
+            price = float(item.get("price") or 0)
+            item_sub = float(item.get("subtotal") or 0)
+            unit = item.get("unit", "").strip()
+            if item_sub <= 0:
+                item_sub = price * qty
+
+            qty_str = f"{qty:.0f}" if qty == int(qty) else f"{qty:.1f}"
+            unit_str = f" {unit}" if unit else ""
+            item_sub_fmt = format_amount(int(item_sub))
+            lines.append(f"  {i}. {name} — {qty_str}{unit_str} × {format_amount(int(price))} = {item_sub_fmt}")
+        lines.append("")
+
+    # Ringkasan total
+    lines.append("💰 Ringkasan:")
+    if subtotal > 0 and abs(subtotal - total) > 1:
+        lines.append(f"  Subtotal: {format_amount(int(subtotal))}")
+    if discount > 0:
+        lines.append(f"  Diskon: -{format_amount(int(discount))}")
+    if tax > 0:
+        lines.append(f"  Pajak: {format_amount(int(tax))}")
+    if service_charge > 0:
+        lines.append(f"  Service: {format_amount(int(service_charge))}")
+    lines.append(f"  TOTAL: {format_amount(int(total))}")
+    lines.append("")
+    lines.append(f"📁 Kategori: {get_category_label(category)}")
+    if confidence < 0.8 and confidence > 0:
+        lines.append(f"  ⚠️ Confidence AI: {confidence:.0%}")
+    lines.append("")
+    lines.append("Simpan sebagai apa?")
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("💰 Pemasukan", callback_data=f"receipt_income_{ref_id}"),
+            InlineKeyboardButton("💸 Pengeluaran", callback_data=f"receipt_expense_{ref_id}"),
+        ],
+        [
+            InlineKeyboardButton("✏️ Edit Kategori", callback_data=f"receipt_editcat_{ref_id}"),
+        ],
+        [
+            InlineKeyboardButton("❌ Batal", callback_data=f"receipt_cancel_{ref_id}"),
+        ],
+    ])
+
+    await query.edit_message_text("\n".join(lines), reply_markup=keyboard)
 
 
 MIN_SCORE_AUTO = 60
@@ -621,6 +774,27 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 logger.warning("marketlist failed: %s", e)
                 await update.message.reply_text("❌ Gagal generate marketlist.", reply_markup=_finance_keyboard())
+
+        elif result.action == "low_stock":
+            # Cari semua item dengan stok menipis
+            all_items = await inventory.get_all_inventory()
+            low_items = []
+            for r in all_items:
+                qty = float(r.get("quantity") or 0)
+                thresh = float(r.get("lowStockThreshold") or 0)
+                name = r.get("ingredientName", "?")
+                unit = r.get("unit") or ""
+                if qty <= thresh and thresh > 0:
+                    unit_s = f" {unit}" if unit else ""
+                    thresh_s = f" (min: {thresh:g}{unit_s})" if thresh > 0 else ""
+                    low_items.append(f"• {name}: {qty:g}{unit_s}{thresh_s}")
+
+            if low_items:
+                lines = ["⚠️ Stok Menipis:", ""]
+                lines.extend(low_items[:20])
+                await update.message.reply_text("\n".join(lines), reply_markup=_finance_keyboard())
+            else:
+                await update.message.reply_text("✅ Semua stok aman.", reply_markup=_finance_keyboard())
 
         elif result.action == "restock":
             item_name = result.description
@@ -865,6 +1039,88 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def cmd_rekap(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler /rekap — rekap struk OCR yang diproses."""
+    if not _is_finance_group(update):
+        return
+
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+
+    # Parse argumen periode
+    args = (update.message.text or "").split()
+    period_text = " ".join(args[1:]).strip().lower() if len(args) > 1 else "hari ini"
+
+    period_map = {
+        "hari ini": "Hari Ini",
+        "kemarin": "Kemarin",
+        "minggu ini": "Minggu Ini",
+        "bulan ini": "Bulan Ini",
+    }
+    label = "Hari Ini"
+    for key, val in period_map.items():
+        if key in period_text:
+            label = val
+            break
+
+    # Hitung rentang timestamp
+    now = datetime.now(WIB)
+    if "kemarin" in period_text:
+        yesterday = now - timedelta(days=1)
+        start = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
+    elif "minggu" in period_text:
+        start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = now
+    elif "bulan" in period_text:
+        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end = now
+    else:  # hari ini
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = now
+
+    start_ms = int(start.timestamp() * 1000)
+    end_ms = int(end.timestamp() * 1000)
+
+    # Query transaksi dengan metadata->>ocr = true
+    try:
+        q = (
+            f"select=source_id,amount,category,description,merchant,tx_date,metadata&"
+            f"metadata->>ocr=eq.true&"
+            f"tx_date=gte.{start_ms}&tx_date=lte.{end_ms}&"
+            f"order=tx_date.asc&limit=200"
+        )
+        rows = await finance._fetch("financial_transactions", q)
+
+        if not rows:
+            label_lower = label.lower()
+            await update.message.reply_text(
+                f"Belum ada struk diproses {label_lower}.",
+                reply_markup=_finance_keyboard(),
+            )
+            return
+
+        lines = [f"📸 Rekap Struk {label}:"]
+        total_amount = 0.0
+        for i, r in enumerate(rows, 1):
+            merchant = (r.get("merchant") or "").strip() or "Tanpa Nama"
+            amount = float(r.get("amount") or 0)
+            category = r.get("category", "lainnya") or "lainnya"
+            tx_date_ms = int(r.get("tx_date", 0))
+            dt = datetime.fromtimestamp(tx_date_ms / 1000, tz=WIB).strftime("%d/%m")
+            cat_label = FINANCE_CATEGORIES.get(category, {}).get("label", category)
+            short_merchant = merchant[:20]
+            lines.append(f"{i}. {short_merchant} — {format_amount(int(amount))} ({cat_label}) {dt}")
+            total_amount += amount
+
+        lines.append("─────────────────")
+        lines.append(f"Total: {len(rows)} struk · {format_amount(int(total_amount))}")
+
+        await update.message.reply_text("\n".join(lines), reply_markup=_finance_keyboard())
+    except Exception as e:
+        logger.exception("cmd_rekap failed")
+        await update.message.reply_text(f"❌ Gagal mengambil rekap: {e}", reply_markup=_finance_keyboard())
+
+
 # ── Main ──────────────────────────────────────────────────────────
 
 def main():
@@ -875,6 +1131,7 @@ def main():
 
     # Commands
     app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("rekap", cmd_rekap))
 
     # Callbacks
     app.add_handler(CallbackQueryHandler(on_callback))
