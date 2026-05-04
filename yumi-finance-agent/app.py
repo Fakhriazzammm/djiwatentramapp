@@ -48,7 +48,7 @@ JPEG_QUALITY = 75
 from finance import FinanceManager
 from inventory import InventoryManager
 from orchestrator import FinanceOrchestrator, OrchestratorResult
-from categories import auto_categorize, get_category_label, format_amount, FINANCE_CATEGORIES
+from categories import auto_categorize, categorize_item, get_category_label, format_amount, FINANCE_CATEGORIES, get_all_categories, add_dynamic_category
 from sumopod_client import SumoPodClient
 
 finance = FinanceManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, f"{SUPABASE_URL}/functions/v1/yumi-ai")
@@ -550,6 +550,7 @@ async def _display_bulk_summary(context, results: list[dict], chat_id: int, stat
         lines.append(f"   📅 {date_str}  |  💰 {format_amount(int(total_val))}")
         lines.append(f"   📦 {len(items)} item:")
         # ── Detail item ───────────────────────────────────────
+        unknown_items = []
         for j, item in enumerate(items):
             if j >= MAX_ITEM_LINES:
                 lines.append(f"      ... + {len(items) - MAX_ITEM_LINES} item lain")
@@ -571,12 +572,36 @@ async def _display_bulk_summary(context, results: list[dict], chat_id: int, stat
                 satuan_count += 1
                 satuan_amount += item_sub
 
+            # ── Per-item categorization ──────────────────────
+            cat_key, cat_conf, cat_suggest = categorize_item(name, price)
+            cat_info = FINANCE_CATEGORIES.get(cat_key, {})
+            if cat_conf == "low":
+                unknown_items.append({"name": name, "suggested": cat_suggest})
+                cat_tag = "❓"
+            elif cat_conf == "medium":
+                cat_tag = cat_info.get("icon", "📌") if cat_info else "📌"
+                cat_tag = f"~{cat_tag}"
+            else:
+                cat_tag = cat_info.get("icon", "📌") if cat_info else "📌"
+
+            # Store category in item for later saving
+            item["_category"] = cat_key
+            item["_cat_confidence"] = cat_conf
+            item["_cat_suggested"] = cat_suggest
+
             qty_str = f"{qty:.0f}" if qty == int(qty) else f"{qty:.1f}"
             unit_str = f" {unit}" if unit else ""
             price_fmt = format_amount(int(price))
             sub_fmt = format_amount(int(item_sub))
             flag = "🛒" if is_bulk else "🛍️"
-            lines.append(f"     {flag} {name} — {qty_str}{unit_str}×{price_fmt} = {sub_fmt}")
+            lines.append(f"     {flag}{cat_tag} {name} — {qty_str}{unit_str}×{price_fmt} = {sub_fmt}")
+        # ── Unknown items warning ────────────────────────────
+        if unknown_items:
+            lines.append(f"   ⚠️ {len(unknown_items)} item belum terkategori:")
+            for ui in unknown_items[:3]:
+                lines.append(f"      ❓ {ui['name']}")
+            if len(unknown_items) > 3:
+                lines.append(f"      ... + {len(unknown_items) - 3} lain")
         lines.append("")
 
     if failures:
@@ -1399,6 +1424,9 @@ async def _handle_bulk_callback(update: Update, context: ContextTypes.DEFAULT_TY
         failed = 0
         total_all = 0
 
+        # ── Auto-create categories for unknown items ────────────
+        await _auto_create_missing_categories(receipts)
+
         for ri in receipts:
             # Kategorisasi
             category_text = ri["merchant"] + " " + " ".join(it.get("name", "") for it in ri.get("items", []))
@@ -1430,6 +1458,10 @@ async def _handle_bulk_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     "receipt_number": ri.get("receipt_number", ""),
                     "receipt_date": ri.get("date", ""),
                     "item_count": len(ri.get("items", [])),
+                    "item_categories": {
+                        it.get("name", "?")[:40]: it.get("_category", "lainnya")
+                        for it in ri.get("items", [])
+                    },
                 },
             )
 
@@ -1730,6 +1762,71 @@ async def _finalize_bulk_items(query, bulk_id: str):
 
 
 # ── Main ──────────────────────────────────────────────────────────
+
+# ── Auto Category Creation ──────────────────────────────────────────
+
+async def _auto_create_missing_categories(receipts: list[dict]):
+    """Auto-detect unknown items, gunakan AI untuk menyarankan kategori, buat di Supabase."""
+    # Collect semua item dengan confidence rendah
+    unknown = []
+    for ri in receipts:
+        for item in ri.get("items", []):
+            cat_conf = item.get("_cat_confidence", "")
+            if cat_conf == "low":
+                name = item.get("name", "").strip()
+                if name and name not in [u["name"] for u in unknown]:
+                    unknown.append({"name": name, "suggested": item.get("_cat_suggested", name.title())})
+
+    if not unknown:
+        return
+
+    logger.info(f"Auto-categorizing {len(unknown)} unknown items via AI...")
+
+    # Gunakan SumoPod AI untuk menyarankan grouping
+    try:
+        sp_client = SumoPodClient(SUMOPOD_API_KEY)
+        item_names = [u["name"] for u in unknown]
+        prompt = (
+            "Berikut adalah daftar item belanjaan yang belum memiliki kategori. "
+            "Kelompokkan item-item ini ke dalam maksimal 5 kategori. "
+            "Untuk setiap kategori, berikan: nama kategori (singkat, 1-2 kata), "
+            "icon emoji yang cocok, dan keyword tambahan untuk matching.\n\n"
+            "Item:\n" + "\n".join(f"- {n}" for n in item_names) + "\n\n"
+            "Balas dengan JSON:\n"
+            '{"categories": [{"key": "snack", "label": "Snack & Cemilan", "icon": "🍿", '
+            '"items": ["Chitato", "Taro"], "keywords": ["snack", "cemilan", "keripik"]}]}'
+        )
+        ai_result = await sp_client.chat(message=prompt, model="gpt-4o-mini", timeout=30)
+        ai_reply = ai_result.get("reply", "")
+
+        # Parse AI response
+        import json as _json
+        json_match = re.search(r'\{[\s\S]*\}', str(ai_reply))
+        if json_match:
+            cat_data = _json.loads(json_match.group())
+            for cat in cat_data.get("categories", []):
+                cat_key = cat.get("key", "").lower().replace(" ", "_")
+                cat_label = cat.get("label", cat_key.title())
+                cat_icon = cat.get("icon", "📌")
+                cat_keywords = cat.get("keywords", [cat_label.lower()])
+
+                # Simpan ke Supabase
+                await inventory.create_category(name=cat_label)
+                # Tambah ke cache in-memory
+                add_dynamic_category(cat_key, cat_label, cat_icon, "expense")
+                logger.info(f"Created dynamic category: {cat_label} ({cat_key})")
+
+                # Update item category assignment
+                cat_item_names = [i.lower() for i in cat.get("items", [])]
+                for ri in receipts:
+                    for item in ri.get("items", []):
+                        item_name = item.get("name", "").strip().lower()
+                        if item_name in cat_item_names:
+                            item["_category"] = cat_key
+                            item["_cat_confidence"] = "high"
+    except Exception as e:
+        logger.warning(f"Auto-category creation failed: {e}")
+
 
 def main():
     if not BOT_TOKEN:

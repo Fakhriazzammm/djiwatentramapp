@@ -260,3 +260,32 @@ class InventoryManager:
         }
         result = await self._post("pos_purchase_logs", data)
         return result is not None
+
+    # ── Category Management ─────────────────────────────────────────
+
+    async def get_all_categories(self) -> list[dict]:
+        """Ambil semua kategori dari pos.categories."""
+        try:
+            return await self._fetch(
+                "pos_categories",
+                "select=_id,name,displayOrder,parentId,track&order=displayOrder.asc",
+            )
+        except Exception:
+            return []
+
+    async def create_category(
+        self, name: str, display_order: int = 99, parent_id: str | None = None
+    ) -> dict | None:
+        """Buat kategori baru di pos.categories."""
+        import uuid
+        source_id = str(uuid.uuid4())
+        data = {
+            "source_id": source_id,
+            "name": name.strip(),
+            "display_order": display_order,
+            "parent_source_id": parent_id,
+            "track": "inventory",
+            "creation_time": datetime.now(WIB).timestamp(),
+            "raw": {"created_by": "yumi_finance_agent", "created_at": datetime.now(WIB).isoformat()},
+        }
+        return await self._post("categories", data)

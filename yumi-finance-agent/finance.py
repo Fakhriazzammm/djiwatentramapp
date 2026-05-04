@@ -70,6 +70,7 @@ class FinanceManager:
         merchant: str = "",
         payment_method: str = "cash",
         metadata: dict | None = None,
+        receipt_date_str: str | None = None,
     ) -> dict:
         """Catat pemasukan atau pengeluaran.
 
@@ -81,6 +82,8 @@ class FinanceManager:
             merchant: nama merchant/toko
             payment_method: metode bayar
             metadata: data tambahan
+            receipt_date_str: tanggal struk dari OCR (format "YYYY-MM-DD" atau "YYYY-MM-DD HH:MM").
+                              Jika valid, dipakai sebagai tx_date. Fallback ke datetime.now(WIB).
 
         Returns:
             {"ok": True, "sourceId": "..."} atau {"ok": False, "error": "..."}
@@ -91,6 +94,21 @@ class FinanceManager:
             if confidence == "low" and amount < 100000:
                 category = "operasional" if tx_type == "expense" else "penjualan"
 
+        # Tentukan tx_date: pakai receipt_date dari OCR jika valid, fallback ke NOW
+        tx_date_ms = int(datetime.now(WIB).timestamp() * 1000)
+        if receipt_date_str:
+            try:
+                # Coba parse "YYYY-MM-DD" atau "YYYY-MM-DD HH:MM"
+                dt_str = receipt_date_str.strip()
+                if " " in dt_str:
+                    parsed = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
+                else:
+                    parsed = datetime.strptime(dt_str, "%Y-%m-%d")
+                # Asumsikan input dalam WIB
+                tx_date_ms = int(parsed.replace(tzinfo=WIB).timestamp() * 1000)
+            except ValueError:
+                pass  # fallback ke NOW
+
         payload = {
             "action": "recordTransaction",
             "tx_type": tx_type,
@@ -98,7 +116,7 @@ class FinanceManager:
             "category": category,
             "description": description,
             "merchant": merchant,
-            "tx_date": int(datetime.now(WIB).timestamp() * 1000),
+            "tx_date": tx_date_ms,
             "payment_method": payment_method,
             "status": "completed",
             "metadata": metadata or {"source": "yumi_finance_agent", "group_id": -4995568785},
