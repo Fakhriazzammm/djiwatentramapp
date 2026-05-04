@@ -1054,16 +1054,37 @@ export function useHybridCreateInventoryItem() {
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
+			// #2: Duplicate check — before INSERT, verify ingredientName doesn't already exist
+			const ingredientName = String(args?.ingredientName ?? "").trim() || "Bahan";
+			const { data: existingItem } = await createClient()
+				.from("pos_inventory")
+				.select("source_id")
+				.ilike("ingredientName", ingredientName)
+				.limit(1)
+				.maybeSingle();
+			if (existingItem) {
+				throw new Error(`Item '${ingredientName}' sudah ada di inventory`);
+			}
+
+			// #3: CF Validation — if conversionFactor > 1, must be integer between 2 and 100000
+			let cf = args?.conversionFactor === undefined ? null : Number(args.conversionFactor ?? 0);
+			if (cf !== null && cf > 1) {
+				if (!Number.isInteger(cf) || cf < 2 || cf > 100000) {
+					throw new Error(
+						`Faktor konversi harus bilangan bulat antara 2 dan 100.000. Nilai saat ini: ${cf}. Gunakan 1 atau kosongkan jika tidak ada konversi.`
+					);
+				}
+			}
+
 			const sourceId = makeSourceId("inv");
 			const row = {
 				source_id: sourceId,
-				ingredient_name: String(args?.ingredientName ?? "").trim() || "Bahan",
+				ingredient_name: ingredientName,
 				unit: String(args?.unit ?? "").trim() || "pcs",
 				quantity: Number(args?.quantity ?? 0),
 				low_stock_threshold: Number(args?.lowStockThreshold ?? 0),
 				display_unit: args?.displayUnit ?? null,
-				conversion_factor:
-					args?.conversionFactor === undefined ? null : Number(args.conversionFactor ?? 0),
+				conversion_factor: cf,
 				unit_conversions: Array.isArray(args?.unitConversions) ? args.unitConversions : null,
 				base_recipe_source_id: args?.baseRecipeId ?? null,
 				default_brand_name: args?.defaultBrandName ?? null,
@@ -1104,7 +1125,16 @@ export function useHybridUpdateInventoryItem() {
 			if (args?.lowStockThreshold !== undefined) updates.low_stock_threshold = Number(args.lowStockThreshold ?? 0);
 			if (args?.displayUnit !== undefined) updates.display_unit = args.displayUnit ?? null;
 			if (args?.conversionFactor !== undefined) {
-				updates.conversion_factor = args.conversionFactor === null ? null : Number(args.conversionFactor ?? 0);
+				// #3: CF Validation
+				const cfVal = args.conversionFactor === null ? null : Number(args.conversionFactor ?? 0);
+				if (cfVal !== null && cfVal > 1) {
+					if (!Number.isInteger(cfVal) || cfVal < 2 || cfVal > 100000) {
+						throw new Error(
+							`Faktor konversi harus bilangan bulat antara 2 dan 100.000. Nilai saat ini: ${cfVal}. Gunakan 1 atau kosongkan jika tidak ada konversi.`
+						);
+					}
+				}
+				updates.conversion_factor = cfVal;
 			}
 			if (args?.unitConversions !== undefined) updates.unit_conversions = Array.isArray(args.unitConversions) ? args.unitConversions : null;
 			if (args?.baseRecipeId !== undefined) updates.base_recipe_source_id = args.baseRecipeId ?? null;
@@ -3794,6 +3824,8 @@ export function useHybridUpdateTransaction() {
 
 export function useHybridRecordExpenseIntake() {
 	const fallback = useMutation((api as any).expenseIntake.recordExpense);
+	const createInventoryItem = useHybridCreateInventoryItem();
+	const addStock = useHybridAddStock();
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
@@ -3832,11 +3864,31 @@ export function useHybridRecordExpenseIntake() {
 					},
 				});
 
+				// Auto-detect syncMode from category if not explicitly set by user
+				const explicitSyncMode = String(args?.syncMode ?? "").trim().toLowerCase();
+				let effectiveSyncMode: "finance_only" | "finance_plus_inventory" = "finance_only";
+				if (explicitSyncMode === "finance_plus_inventory" || explicitSyncMode === "finance_only") {
+					effectiveSyncMode = explicitSyncMode as "finance_only" | "finance_plus_inventory";
+				} else {
+					const normalizedCat = category.trim().toLowerCase().replace(/\s+/g, "_");
+					if (normalizedCat === "belanja_stok" || normalizedCat === "bahan_baku" || normalizedCat === "pembelian_stok") {
+						effectiveSyncMode = "finance_plus_inventory";
+					}
+				}
+
+				// #10: Tag description as template when isRecurring=true
+				const isRecurringTx = tx?.isRecurring === undefined ? false : Boolean(tx.isRecurring);
+				const effectiveDescription = isRecurringTx
+					? (tx?.description ? `${tx.description} (Template pengeluaran berulang)` : "Template pengeluaran berulang")
+					: (tx?.description ?? null);
+
 				const supabase = createClient();
 				const pos = supabase.schema("pos");
 				const existingId = args?.existingTransactionId
 					? String(args.existingTransactionId)
 					: "";
+
+				let transactionId: string;
 
 				if (existingId) {
 					const { error: updateError } = await pos
@@ -3846,7 +3898,7 @@ export function useHybridRecordExpenseIntake() {
 							amount,
 							category,
 							merchant: tx?.merchant ?? null,
-							description: tx?.description ?? null,
+							description: effectiveDescription,
 							tx_date: date,
 							payment_method: tx?.paymentMethod ?? null,
 							status: tx?.status ?? "completed",
@@ -3867,64 +3919,101 @@ export function useHybridRecordExpenseIntake() {
 						})
 						.eq("source_id", existingId);
 					if (updateError) throw updateError;
-					return {
-						transactionId: existingId,
-						createdTransaction: false,
-						syncOutcome: "finance_only",
-						warnings: [] as string[],
-						createdCount: 0,
-						matchedCount: 0,
-						updatedCount: 0,
-						hppUpdatedCalculations: 0,
-						hppUpdatedIngredients: 0,
-						items: [],
-						message: "Transaksi keuangan berhasil diperbarui",
-					};
+					transactionId = existingId;
+				} else {
+					transactionId = makeSourceId("fin");
+					const { error: createError } = await pos
+						.from("financial_transactions")
+						.insert({
+							source_id: transactionId,
+							tx_type: type,
+							amount,
+							category,
+							merchant: tx?.merchant ?? null,
+							description: effectiveDescription,
+							tx_date: date,
+							payment_method: tx?.paymentMethod ?? null,
+							status: tx?.status ?? "completed",
+							attachment_url: tx?.attachmentUrl ?? null,
+							source_fingerprint:
+								args?.sourceFingerprint ?? null,
+							is_recurring:
+								tx?.isRecurring === undefined
+									? null
+									: Boolean(tx.isRecurring),
+							recurring_interval: tx?.recurringInterval ?? null,
+							tags: Array.isArray(tx?.tags) ? tx.tags : null,
+							metadata,
+							creation_time: Date.now(),
+							raw: {
+								...(args ?? {}),
+								transaction: tx,
+							},
+						});
+					if (createError) throw createError;
 				}
 
-				const transactionId = makeSourceId("fin");
-				const { error: createError } = await pos
-					.from("financial_transactions")
-					.insert({
-						source_id: transactionId,
-						tx_type: type,
-						amount,
-						category,
-						merchant: tx?.merchant ?? null,
-						description: tx?.description ?? null,
-						tx_date: date,
-						payment_method: tx?.paymentMethod ?? null,
-						status: tx?.status ?? "completed",
-						attachment_url: tx?.attachmentUrl ?? null,
-						source_fingerprint:
-							args?.sourceFingerprint ?? null,
-						is_recurring:
-							tx?.isRecurring === undefined
-								? null
-								: Boolean(tx.isRecurring),
-						recurring_interval: tx?.recurringInterval ?? null,
-						tags: Array.isArray(tx?.tags) ? tx.tags : null,
-						metadata,
-						creation_time: Date.now(),
-						raw: {
-							...(args ?? {}),
-							transaction: tx,
-						},
-					});
-				if (createError) throw createError;
+				// Sync to inventory if finance_plus_inventory and expense
+				let createdCount = 0;
+				let matchedCount = 0;
+				if (effectiveSyncMode === "finance_plus_inventory" && type === "expense" && normalizedItems.length > 0) {
+					for (const item of normalizedItems) {
+						const ingredientName = String(item?.name ?? "").trim();
+						if (!ingredientName) continue;
+						const quantity = Number(item?.quantity ?? 0);
+						const price = Number(item?.price ?? 0);
+						const { data: existing } = await supabase
+							.from("pos_inventory")
+							.select("*")
+							.ilike("ingredientName", ingredientName)
+							.limit(1)
+							.maybeSingle();
+						let inventoryId = String((existing as any)?._id ?? "");
+						if (!inventoryId) {
+							try {
+								inventoryId = await createInventoryItem({
+									ingredientName,
+									unit: item?.unit || "pcs",
+									quantity: 0,
+									lowStockThreshold: 1,
+								});
+								createdCount++;
+							} catch {
+								// inventory creation failed, skip stock add
+								continue;
+							}
+						} else {
+							matchedCount++;
+						}
+						if (quantity > 0) {
+							try {
+								await addStock({
+									inventoryId,
+									quantity,
+									costPerUnit: price > 0 ? price : undefined,
+									notes: `Sinkron dari transaksi ${transactionId}`,
+								});
+							} catch {
+								// stock add failed, non-fatal
+							}
+						}
+					}
+				}
 
 				return {
 					transactionId,
-					createdTransaction: true,
-					syncOutcome: "finance_only",
+					createdTransaction: !existingId,
+					syncOutcome: effectiveSyncMode,
 					warnings: [] as string[],
-					createdCount: 0,
-					matchedCount: 0,
-					updatedCount: 0,
+					createdCount,
+					matchedCount,
+					updatedCount: existingId ? 1 : 0,
 					hppUpdatedCalculations: 0,
 					hppUpdatedIngredients: 0,
-					items: [],
-					message: "Transaksi keuangan berhasil disimpan",
+					items: normalizedItems,
+					message: existingId
+						? "Transaksi keuangan berhasil diperbarui"
+						: "Transaksi keuangan berhasil disimpan",
 				};
 			} catch (error) {
 				console.warn(
@@ -3934,7 +4023,7 @@ export function useHybridRecordExpenseIntake() {
 				throw error;
 			}
 		},
-		[fallback]
+		[fallback, createInventoryItem, addStock]
 	);
 }
 

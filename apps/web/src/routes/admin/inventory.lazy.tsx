@@ -1,4 +1,4 @@
-﻿import { createLazyFileRoute } from "@tanstack/react-router";
+﻿import { createLazyFileRoute, Link } from "@tanstack/react-router";
 import type { Doc, Id } from "@/types/backend-compat";
 import {
 	useHybridApplyInventoryStockAction,
@@ -33,6 +33,7 @@ import {
 	Trash2,
 	ShoppingCart,
 	Clock,
+	X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -774,12 +775,30 @@ function InventoryPage() {
 		return (allProducts ?? []).filter((product: any) => {
 			const categoryId = String(product.categoryId || "");
 			if (!menuCategoryIds.has(categoryId)) return false;
+			if (product.isAvailable !== true) return false;
 			return !(recipes ?? []).some(
 				(recipe: any) =>
 					String(recipe.productId) === String(product._id) && !recipe.variantName
 			);
 		});
 	}, [allProducts, menuCategoryIds, recipes]);
+
+	const RECIPE_WARNING_DISMISS_KEY = "inventory:recipe-warning-dismissed:v1";
+	const [recipeWarningDismissed, setRecipeWarningDismissed] = useState(() => {
+		try {
+			return window.localStorage.getItem(RECIPE_WARNING_DISMISS_KEY) === "1";
+		} catch {
+			return false;
+		}
+	});
+	const dismissRecipeWarning = () => {
+		setRecipeWarningDismissed(true);
+		try {
+			window.localStorage.setItem(RECIPE_WARNING_DISMISS_KEY, "1");
+		} catch {
+			// ignore
+		}
+	};
 
 	const [selectedItem, setSelectedItem] = useState<Doc<"inventory"> | null>(
 		null
@@ -789,6 +808,10 @@ function InventoryPage() {
 	>(null);
 	const [amount, setAmount] = useState("");
 	const [filterLowStock, setFilterLowStock] = useState(false);
+	const [filterActiveOnly, setFilterActiveOnly] = useState(() => {
+		const stored = readJsonStorage<boolean>("inventory:active-only-filter");
+		return stored === true;
+	});
 	const [advancedFilter, setAdvancedFilter] = useState<
 		"all" | "priceUp" | "missingConversion"
 	>("all");
@@ -837,6 +860,11 @@ function InventoryPage() {
 			/* no-op */
 		},
 	});
+
+	// Persist filterActiveOnly ke localStorage (#9)
+	useEffect(() => {
+		writeJsonStorage("inventory:active-only-filter", filterActiveOnly);
+	}, [filterActiveOnly]);
 
 	const priceMonitorDeltaMap = useMemo(() => {
 		const map = new Map<string, number>();
@@ -938,6 +966,37 @@ function InventoryPage() {
 			return matchesSearch && matchesFilter && matchesPreset && matchesAdvanced;
 		});
 
+		const totalBeforeFilter = workspace.rows.length;
+
+		// Filter: hanya item yang dipakai di recipe (menu aktif)
+		if (filterActiveOnly) {
+			const activeSet = new Set<Id<"inventory">>();
+			for (const r of recipes ?? []) {
+				for (const ing of r.ingredients ?? []) {
+					if (ing.inventoryId) activeSet.add(ing.inventoryId as Id<"inventory">);
+				}
+			}
+			const filteredByActive = result.filter((row) => activeSet.has(row.inventoryId));
+			filteredByActive.sort((a, b) => {
+				const aValue =
+					sortConfig.key === "rowNumber"
+						? inventoryMap.get(a.inventoryId)?._creationTime ?? 0
+						: a[sortConfig.key] ?? "";
+				const bValue =
+					sortConfig.key === "rowNumber"
+						? inventoryMap.get(b.inventoryId)?._creationTime ?? 0
+						: b[sortConfig.key] ?? "";
+				if (aValue < bValue) {
+					return sortConfig.direction === "asc" ? -1 : 1;
+				}
+				if (aValue > bValue) {
+					return sortConfig.direction === "asc" ? 1 : -1;
+				}
+				return 0;
+			});
+			return filteredByActive;
+		}
+
 		result.sort((a, b) => {
 			const aValue =
 				sortConfig.key === "rowNumber"
@@ -961,11 +1020,13 @@ function InventoryPage() {
 		workspace,
 		searchQuery,
 		filterLowStock,
+		filterActiveOnly,
 		viewPreset,
 		sortConfig,
 		advancedFilter,
 		priceMonitorDeltaMap,
 		inventoryMap,
+		recipes,
 	]);
 
 	const unitOptions = useMemo(
@@ -1253,8 +1314,10 @@ function InventoryPage() {
 			<div className="sticky top-0 z-50 bg-background pb-3">
 				<InventoryHeader
 				advancedFilter={advancedFilter}
+				filterActiveOnly={filterActiveOnly}
 				filterLowStock={filterLowStock}
 				onAdvancedFilterChange={setAdvancedFilter}
+				onFilterActiveOnlyChange={setFilterActiveOnly}
 				onFilterLowStockChange={setFilterLowStock}
 				onSearchQueryChange={setSearchQuery}
 				onTableModeChange={setTableMode}
@@ -1265,20 +1328,34 @@ function InventoryPage() {
 				/>
 			</div>
 
-			{menuProductsWithoutRecipe.length > 0 && (
-				<div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900">
+			{viewPreset === "operational" && workspace?.rows && (
+				<p className="text-[11px] text-muted-foreground px-1">
+					Menampilkan {filteredRows.length} dari {workspace.rows.length} item
+				</p>
+			)}
+
+			{menuProductsWithoutRecipe.length > 0 && !recipeWarningDismissed && (
+				<div className="relative rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 pr-10 text-amber-900">
+					<button
+						aria-label="Tutup peringatan"
+						className="absolute top-2 right-2 rounded-md p-1 text-amber-600 transition-colors hover:bg-amber-200 hover:text-amber-800"
+						onClick={dismissRecipeWarning}
+						type="button"
+					>
+						<X className="h-3.5 w-3.5" />
+					</button>
 					<p className="text-[11px] font-semibold uppercase tracking-[0.14em]">
-						⚠ {menuProductsWithoutRecipe.length} menu belum punya recipe
+						⚠️ {menuProductsWithoutRecipe.length} menu aktif belum punya recipe — stok tidak akan terpotong otomatis
 					</p>
 					<p className="mt-1 text-sm">
-						Sinkron stok per menu akan aktif penuh setelah recipe menu dilengkapi.
+						Lengkapi recipe menu agar stok bahan baku otomatis berkurang tiap penjualan.
 					</p>
-					<a
-						className="mt-2 inline-flex rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white"
-						href="/admin/recipe"
+					<Link
+						className="mt-2 inline-flex rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-700"
+						to="/admin/recipe"
 					>
 						Buka Admin Recipe
-					</a>
+					</Link>
 				</div>
 			)}
 
@@ -3797,6 +3874,16 @@ function InventoryTable({
 			}
 		}
 
+		// Duplicate check: cek apakah ingredientName sudah ada
+		const nameKey = ingredientName.toLowerCase();
+		const duplicate = inventoryItems.find(
+			(item) => (item.ingredientName ?? "").trim().toLowerCase() === nameKey
+		);
+		if (duplicate) {
+			toast.error(`Item "${ingredientName}" sudah ada. Gunakan merge/edit item yang sudah ada.`);
+			return;
+		}
+
 		const existingStore = preferredStoreNameNorm
 			? stores.find(
 					(store) => store.name.trim().toLowerCase() === preferredStoreNameNorm
@@ -4013,6 +4100,24 @@ function InventoryTable({
 		const normalizedUnit = normalizeUnitOption(current.unit);
 		const lowStockThresholdNum = Number(current.lowStockThreshold);
 		const conversionFactorNum = Number(current.conversionFactor);
+		// Validasi conversion factor: harus integer > 1 dan < 100000
+		const conversionFactorRaw = current.conversionFactor.trim();
+		if (conversionFactorRaw) {
+			if (
+				!Number.isInteger(Number(conversionFactorRaw)) ||
+				!Number.isFinite(conversionFactorNum) ||
+				conversionFactorNum <= 1 ||
+				conversionFactorNum >= 100000
+			) {
+				toast.error("Faktor konversi harus bilangan bulat lebih dari 1 dan kurang dari 100.000");
+				setInlineField(row, "conversionFactor",
+					typeof row.conversionFactor === "number" && row.conversionFactor > 0
+						? String(row.conversionFactor)
+						: ""
+				);
+				return;
+			}
+		}
 		const normalizedDisplayUnit = current.displayUnit.trim().toLowerCase();
 		const preferredStoreName = current.preferredStoreName.trim();
 		const preferredStoreNameNorm = preferredStoreName.toLowerCase();
@@ -5240,31 +5345,77 @@ function InventoryTable({
 												{row.avgDailyUsage.toFixed(2)}/hari
 											</span>
 										</td>
-										<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
-											<input
-												className="w-full rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-[11px] font-semibold text-foreground outline-none focus:border-border focus:bg-background"
-												min={0}
-												onBlur={() => void saveReferencePrice(row)}
-												onChange={(e) =>
-													setPriceDraftByRow((prev) => ({
-														...prev,
-														[row.inventoryId]: e.target.value,
-													}))
+									<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
+										<input
+											className="w-full rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-[11px] font-semibold text-foreground outline-none focus:border-border focus:bg-background"
+											min={0}
+											onBlur={() => void saveReferencePrice(row)}
+											onChange={(e) =>
+												setPriceDraftByRow((prev) => ({
+													...prev,
+													[row.inventoryId]: e.target.value,
+												}))
+											}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") {
+													void saveReferencePrice(row);
+													(e.target as HTMLInputElement).blur();
 												}
-												onKeyDown={(e) => {
-													if (e.key === "Enter") {
-														void saveReferencePrice(row);
-														(e.target as HTMLInputElement).blur();
-													}
-												}}
-												placeholder={
-													row.lastPurchasePrice == null ? "Isi harga" : undefined
-												}
-												step="0.01"
-												type="number"
-												value={getPriceDraft(row)}
-											/>
-										</td>
+											}}
+											placeholder={
+												row.lastPurchasePrice == null ? "Isi harga" : undefined
+											}
+											step="0.01"
+											type="number"
+											value={getPriceDraft(row)}
+										/>
+									{/* #7: Harga per unit beli — tampilkan harga per satuan & per unit beli */}
+									{row.lastPurchasePrice != null &&
+									typeof row.conversionFactor === "number" &&
+									row.conversionFactor > 1 &&
+									row.preferredPurchaseUnit != null && (() => {
+										const purchasePrice = row.lastPurchasePrice * row.conversionFactor;
+										const baseUnit = row.displayUnit || row.unit;
+										return (
+											<p className="mt-0.5 text-[9px] leading-tight text-muted-foreground">
+												{row.lastPurchasePrice.toLocaleString("id-ID")}/{baseUnit}
+												{" ("}
+												{purchasePrice.toLocaleString("id-ID")}/
+												{row.preferredPurchaseUnit}
+												{")"}
+											</p>
+										);
+									})()}
+									{/* #4: Auto-detect harga janggal per unit beli */}
+									{row.lastPurchasePrice != null &&
+									typeof row.conversionFactor === "number" &&
+									row.conversionFactor > 1 &&
+									row.preferredPurchaseUnit != null && (() => {
+										const purchasePrice = row.lastPurchasePrice * row.conversionFactor;
+										const baseUnit = row.displayUnit || row.unit;
+										if (purchasePrice > 500000) {
+											return (
+												<span
+													className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-red-100 px-1.5 py-0.5 text-[8px] font-bold text-red-700"
+													title={`Harga per unit beli: ${purchasePrice.toLocaleString("id-ID")}/${row.preferredPurchaseUnit} — di luar range normal`}
+												>
+													⚠️ Mahal
+												</span>
+											);
+										}
+										if (purchasePrice < 100 && purchasePrice > 0) {
+											return (
+												<span
+													className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-orange-100 px-1.5 py-0.5 text-[8px] font-bold text-orange-700"
+													title={`Harga per unit beli: ${purchasePrice.toLocaleString("id-ID")}/${row.preferredPurchaseUnit} — di luar range normal`}
+												>
+													⚠️ Murah
+												</span>
+											);
+										}
+										return null;
+									})()}
+									</td>
 										<td className="px-2 py-1.5 align-middle text-center text-[10px]">
 											{(() => {
 												const tx = row.latestTransaction;
@@ -5555,8 +5706,10 @@ function InventoryTable({
 
 function InventoryHeader({
 	advancedFilter,
+	filterActiveOnly,
 	filterLowStock,
 	onAdvancedFilterChange,
+	onFilterActiveOnlyChange,
 	onFilterLowStockChange,
 	searchQuery,
 	onSearchQueryChange,
@@ -5566,8 +5719,10 @@ function InventoryHeader({
 	onViewPresetChange,
 }: {
 	advancedFilter: "all" | "priceUp" | "missingConversion";
+	filterActiveOnly: boolean;
 	filterLowStock: boolean;
 	onAdvancedFilterChange: (val: "all" | "priceUp" | "missingConversion") => void;
+	onFilterActiveOnlyChange: (val: boolean) => void;
 	onFilterLowStockChange: (val: boolean) => void;
 	searchQuery: string;
 	onSearchQueryChange: (val: string) => void;
@@ -5602,6 +5757,36 @@ function InventoryHeader({
 				>
 					Kritis Saja
 				</button>
+				{/* #9: Switch toggle Hanya yang dipakai menu */}
+				<label
+					className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-colors select-none cursor-pointer ${
+						viewPreset !== "operational"
+							? "opacity-40 pointer-events-none"
+							: filterActiveOnly
+								? "border border-emerald-400/30 bg-emerald-50 text-emerald-700"
+								: "border border-border bg-background text-muted-foreground hover:text-foreground"
+					}`}
+				>
+					<input
+						checked={filterActiveOnly}
+						className="sr-only"
+						disabled={viewPreset !== "operational"}
+						onChange={(e) => onFilterActiveOnlyChange(e.target.checked)}
+						type="checkbox"
+					/>
+					<span
+						className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors ${
+							filterActiveOnly ? "bg-emerald-500" : "bg-muted-foreground/30"
+						}`}
+					>
+						<span
+							className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-sm transition-transform ${
+								filterActiveOnly ? "translate-x-3.5" : "translate-x-0.5"
+							}`}
+						/>
+					</span>
+					Hanya yang dipakai menu
+				</label>
 				<select
 					className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none"
 					disabled={viewPreset !== "operational"}
@@ -5636,7 +5821,7 @@ function InventoryHeader({
 								? "Cari bahan, brand, toko..."
 								: viewPreset === "yumiAi"
 									? "Cari di tab Operasional/Monitoring..."
-								: "Cari bahan atau satuan..."
+									: "Cari bahan atau satuan..."
 						}
 						value={searchQuery}
 					/>

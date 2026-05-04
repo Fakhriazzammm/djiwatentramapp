@@ -179,11 +179,110 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // 5. Process recurring expenses
+    const recurringCreated: string[] = [];
+    try {
+      const { data: recurringTx, error: recurringError } = await supabaseAdmin
+        .schema("pos")
+        .from("financial_transactions")
+        .select("source_id, tx_type, amount, category, merchant, description, payment_method, tags, metadata, raw")
+        .eq("is_recurring", true)
+        .eq("tx_type", "expense");
+
+      if (!recurringError && recurringTx && recurringTx.length > 0) {
+        const nowWib = new Date(now + WIB_OFFSET_MS);
+        const monthStart = new Date(Date.UTC(nowWib.getUTCFullYear(), nowWib.getUTCMonth(), 1)).getTime();
+        const monthEnd = new Date(Date.UTC(nowWib.getUTCFullYear(), nowWib.getUTCMonth() + 1, 0, 23, 59, 59, 999)).getTime();
+
+        log(`Checking ${recurringTx.length} recurring expenses for month ${nowWib.getUTCFullYear()}-${String(nowWib.getUTCMonth() + 1).padStart(2, "0")}`);
+
+        // Group by category to avoid duplicates
+        const templateByCategory = new Map<string, typeof recurringTx[0]>();
+        for (const tx of recurringTx) {
+          const cat = (tx.category || "").trim().toLowerCase();
+          if (cat && !templateByCategory.has(cat)) {
+            templateByCategory.set(cat, tx);
+          }
+        }
+
+        for (const [, template] of templateByCategory) {
+          const cat = (template.category || "").trim().toLowerCase();
+          // Check if any transaction with this category already exists this month
+          const { data: existingInMonth, error: checkError } = await supabaseAdmin
+            .schema("pos")
+            .from("financial_transactions")
+            .select("source_id")
+            .eq("category", template.category)
+            .gte("tx_date", monthStart)
+            .lte("tx_date", monthEnd)
+            .limit(1);
+
+          if (checkError) {
+            log(`  Recurring check error for '${cat}': ${checkError.message}`);
+            continue;
+          }
+
+          if (existingInMonth && existingInMonth.length > 0) {
+            log(`  Recurring '${cat}' already exists this month, skipping`);
+            continue;
+          }
+
+          // Create new recurring expense for this month
+          const newId = `fin_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
+          const meta = (template.metadata as Record<string, unknown> | null) ?? {};
+          const raw = (template.raw as Record<string, unknown> | null) ?? {};
+
+          const { error: createRecurringError } = await supabaseAdmin
+            .schema("pos")
+            .from("financial_transactions")
+            .insert({
+              source_id: newId,
+              tx_type: "expense",
+              amount: template.amount,
+              category: template.category,
+              merchant: template.merchant,
+              description: template.description,
+              tx_date: now,
+              payment_method: template.payment_method,
+              status: "completed",
+              is_recurring: true,
+              recurring_interval: "monthly",
+              tags: template.tags,
+              metadata: {
+                ...meta,
+                source: "recurring_auto",
+                recurringParentId: template.source_id,
+                autoCreatedAt: now,
+              },
+              creation_time: now,
+              raw: {
+                ...raw,
+                source: "recurring_auto",
+                recurringParentId: template.source_id,
+                autoCreatedAt: now,
+              },
+            });
+
+          if (createRecurringError) {
+            log(`  ERROR creating recurring '${cat}': ${createRecurringError.message}`);
+          } else {
+            log(`  Created recurring expense '${cat}' for this month (Rp ${template.amount})`);
+            recurringCreated.push(cat);
+          }
+        }
+      }
+    } catch (recurringProcError) {
+      const msg = recurringProcError instanceof Error ? recurringProcError.message : String(recurringProcError);
+      log(`Recurring expense processing error: ${msg}`);
+      console.error("[auto-close-shifts] Recurring error:", msg);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         closed: closedShifts.length,
         closedShifts,
+        recurringCreated,
         logs: debugLogs,
         checkedAt: new Date().toISOString(),
       }),

@@ -14,6 +14,7 @@ import {
 	Store,
 	ClipboardList,
 	AlertTriangle,
+	Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -22,6 +23,25 @@ import {
 	useHybridLowStockItems,
 	useHybridCategories,
 } from "@/hooks/use-hybrid-pos-data";
+import { useHybridRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
+import {
+	useHybridAdjustMenuStockWithRecipe,
+	useHybridUpdateProduct,
+} from "@/hooks/use-hybrid-write-actions";
+import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
+import { toast } from "sonner";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export const Route = createLazyFileRoute("/admin/stock-overview" as any)({
 	component: StockOverviewPage,
@@ -34,6 +54,67 @@ function StockOverviewPage() {
 	const categories = useHybridCategories();
 
 	const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+	const recipes = useHybridRecipes();
+	const adjustMenuStock = useHybridAdjustMenuStockWithRecipe();
+	const updateProduct = useHybridUpdateProduct();
+
+	// Restock dialog state
+	const [restockTarget, setRestockTarget] = useState<any | null>(null);
+	const [restockQty, setRestockQty] = useState("");
+	const [restockPrice, setRestockPrice] = useState("");
+	const [restockOpen, setRestockOpen] = useState(false);
+	const [restocking, setRestocking] = useState(false);
+
+	const handleRestock = async () => {
+		const product = restockTarget;
+		if (!product) return;
+		const qty = Number(restockQty);
+		if (!Number.isFinite(qty) || qty <= 0) {
+			toast.error("Quantity harus lebih dari 0");
+			return;
+		}
+		const price = restockPrice.trim() ? Number(restockPrice) : undefined;
+		if (price !== undefined && (!Number.isFinite(price) || price < 0)) {
+			toast.error("Harga beli tidak valid");
+			return;
+		}
+		setRestocking(true);
+		try {
+			// Try recipe-based stock adjustment first
+			const recipe = (recipes ?? []).find(
+				(r: any) => String(r.productId) === String(product._id) && !r.variantName
+			);
+			if (recipe) {
+				await adjustMenuStock({
+					productId: String(product._id),
+					deltaMenu: qty,
+					currentQuantity: Number(product.quantity ?? 0),
+					notes:
+						"Quick restock dari Stock Overview" +
+						(price !== undefined ? ` (harga beli: Rp${price.toLocaleString("id-ID")})` : ""),
+					recipe,
+				});
+			} else {
+				// Fallback: update product quantity directly
+				await updateProduct({
+					id: product._id,
+					quantity: Number(product.quantity ?? 0) + qty,
+				});
+			}
+			triggerHybridRefresh();
+			toast.success(`Berhasil restock ${product.name} +${qty}`);
+			setRestockOpen(false);
+			setRestockTarget(null);
+			setRestockQty("");
+			setRestockPrice("");
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : "Gagal restock";
+			toast.error(message);
+		} finally {
+			setRestocking(false);
+		}
+	};
 
 	// Total inventory count
 	const totalInventoryCount = useMemo(() => {
@@ -456,6 +537,9 @@ function StockOverviewPage() {
 											<th className="pb-2 pl-2 font-bold text-muted-foreground text-[10px] uppercase tracking-wider text-right">
 												Status
 											</th>
+											<th className="pb-2 pl-2 font-bold text-muted-foreground text-[10px] uppercase tracking-wider text-right">
+												Aksi
+											</th>
 										</tr>
 									</thead>
 									<tbody>
@@ -491,25 +575,82 @@ function StockOverviewPage() {
 														{qty}
 													</td>
 													<td className="pl-2 py-2.5 text-right">
-														<span
-															className={cn(
-																"inline-block rounded-md border px-2 py-0.5 text-[10px] font-bold",
-																status.color
-															)}
-														>
-															{status.label}
-														</span>
-													</td>
+												<span
+													className={cn(
+														"inline-block rounded-md border px-2 py-0.5 text-[10px] font-bold",
+														status.color
+													)}
+												>
+													{status.label}
+												</span>
+											</td>
+											<td className="pl-2 py-2.5 text-right">
+												<button
+													className="inline-flex items-center gap-0.5 rounded-lg bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-95"
+													onClick={() => {
+														setRestockTarget(product);
+														setRestockQty("");
+														setRestockPrice("");
+														setRestockOpen(true);
+													}}
+													type="button"
+												>
+													<Plus className="h-3 w-3" />
+													Restock
+												</button>
+											</td>
 												</tr>
 											);
 										})}
-									</tbody>
-								</table>
-							</div>
-						)}
-					</motion.div>
+							</tbody>
+						</table>
+					</div>
+				)}
+			</motion.div>
+		</div>
+	</div>
+
+	{/* Restock Dialog */}
+	<Dialog onOpenChange={(open) => { setRestockOpen(open); if (!open) setRestockTarget(null); }} open={restockOpen}>
+		<DialogContent className="sm:max-w-[360px]">
+			<DialogHeader>
+				<DialogTitle>Restock Menu</DialogTitle>
+				<DialogDescription>
+					Tambah stok untuk <strong>{restockTarget?.name ?? "—"}</strong>
+				</DialogDescription>
+			</DialogHeader>
+			<div className="space-y-3">
+				<div className="space-y-1.5">
+					<Label htmlFor="restock-qty">Quantity</Label>
+					<Input
+						autoFocus
+						id="restock-qty"
+						min="1"
+						onChange={(e) => setRestockQty(e.target.value)}
+						placeholder="Masukkan jumlah"
+						type="number"
+						value={restockQty}
+					/>
+				</div>
+				<div className="space-y-1.5">
+					<Label htmlFor="restock-price">Harga Beli (opsional)</Label>
+					<Input
+						id="restock-price"
+						min="0"
+						onChange={(e) => setRestockPrice(e.target.value)}
+						placeholder="Rp 0"
+						type="number"
+						value={restockPrice}
+					/>
 				</div>
 			</div>
-		</div>
-	);
+			<DialogFooter>
+				<Button disabled={restocking} onClick={handleRestock} variant="default">
+					{restocking ? "Menyimpan..." : "Restock"}
+				</Button>
+			</DialogFooter>
+		</DialogContent>
+	</Dialog>
+</div>
+);
 }
