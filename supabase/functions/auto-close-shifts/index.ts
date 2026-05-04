@@ -129,22 +129,43 @@ Deno.serve(async (req: Request) => {
       const endTime = deadline;
       const cashRevenue = Number(shift.cash_revenue ?? 0);
       const qrisRevenue = Number(shift.qris_revenue ?? 0);
-      const totalRevenue = Number(shift.total_revenue ?? 0);
       const totalExpenses = Number(shift.total_expenses ?? 0);
-      const totalItemsSold = Number(shift.total_items_sold ?? 0);
-      const totalDiscount = Number(shift.total_discount ?? 0);
       const startingCash = Number(shift.starting_cash ?? 0);
+
+      // Hitung bruto & diskon dari orders aktual di periode shift
+      let totalGrossSales = 0;
+      let totalDiscountFromOrders = 0;
+      let totalRevenueFromOrders = 0;
+      let totalItemsSoldCalc = 0;
+      const { data: shiftOrders, error: ordersError } = await supabaseAdmin
+        .schema("pos")
+        .from("orders")
+        .select("total_amount, discount_amount")
+        .gte("creation_time", startTime)
+        .lt("creation_time", deadline)
+        .limit(1000);
+      if (!ordersError && shiftOrders && shiftOrders.length > 0) {
+        totalRevenueFromOrders = shiftOrders.reduce(
+          (sum, o) => sum + Number(o.total_amount ?? 0), 0
+        );
+        totalDiscountFromOrders = shiftOrders.reduce(
+          (sum, o) => sum + Number(o.discount_amount ?? 0), 0
+        );
+        totalGrossSales = totalRevenueFromOrders + totalDiscountFromOrders;
+        totalItemsSoldCalc = shiftOrders.length;
+      }
 
       const endingCashExpected = startingCash + cashRevenue - totalExpenses;
       const nonCashExpected = qrisRevenue;
 
       const summary = {
-        totalRevenue,
+        totalRevenue: totalRevenueFromOrders || Number(cashRevenue + qrisRevenue),
+        totalGrossSales,
         totalExpenses,
-        totalItemsSold,
+        totalItemsSold: totalItemsSoldCalc,
         cashRevenue,
         qrisRevenue,
-        totalDiscount,
+        totalDiscount: totalDiscountFromOrders,
       };
 
       // Update via pos schema
