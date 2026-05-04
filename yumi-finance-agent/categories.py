@@ -3,8 +3,9 @@
 import re
 
 # ── Master kategori ────────────────────────────────────────────────
+# Kategori spesifik untuk café/resto — Djiwa Tentram Cafe & Resto
 FINANCE_CATEGORIES = {
-    # Income
+    # ── Income ──────────────────────────────────────────────────
     "penjualan": {
         "label": "Penjualan",
         "icon": "💰",
@@ -14,44 +15,227 @@ FINANCE_CATEGORIES = {
             "takeaway", "online", "gojek", "grab", "shopee",
         ],
     },
-    # Expense
-    "belanja_stok": {
-        "label": "Belanja Stok",
+
+    # ── Expense: Bahan Baku ────────────────────────────────────
+    "bahan_minuman": {
+        "label": "Bahan Minuman",
+        "icon": "☕",
+        "type": "expense",
+        "keywords": [
+            # Kopi
+            "kopi", "coffee", "biji kopi", "coffee bean", "robusta", "arabica",
+            "espresso", "latte", "cappuccino", "americano", "cold brew",
+            "kopi bubuk", "kopi sachet", "kopi instan", "ground coffee",
+            "luwak", "gayo", "toraja", "mandailing", "kopi robusta",
+            # Susu & Creamer
+            "susu", "milk", "creamer", "krimer", "fresh milk", "uht",
+            "susu segar", "susu kental", "susu evaporated", "susu almond",
+            "susu oat", "oat milk", "soy milk", "susu kedelai",
+            "whipped cream", "whip cream", "foam", "steam milk",
+            # Sirup & Pemanis
+            "sirup", "syrup", "monin", "torani", "da vinci", "caramel",
+            "vanilla", "hazelnut", "chocolate", "coklat", "mocha",
+            "gula aren", "brown sugar", "palm sugar", "gula merah",
+            "gula cair", "liquid sugar", "simple syrup", "honey", "madu",
+            # Teh & Bubuk
+            "teh", "tea", "matcha", "green tea", "black tea", "earl grey",
+            "chamomile", "jasmine", "teh tarik", "thai tea", "taro",
+            "coklat bubuk", "cocoa", "red velvet", "milkshake", "smoothie",
+            # Es & Air
+            "es batu", "ice cube", "ice block", "es kristal",
+            "air mineral", "aqua", "le minerale", "nestle",
+        ],
+        "item_keywords": [
+            "kopi", "coffee", "robusta", "arabica", "espresso", "latte",
+            "susu", "milk", "creamer", "krimer", "uht", "fresh milk",
+            "sirup", "syrup", "monin", "torani", "caramel", "vanilla",
+            "teh", "tea", "matcha", "taro", "coklat bubuk", "cocoa",
+            "gula aren", "brown sugar", "whip", "foam",
+            "es batu", "ice", "aqua", "mineral",
+        ],
+    },
+    "bahan_makanan": {
+        "label": "Bahan Makanan",
+        "icon": "🍳",
+        "type": "expense",
+        "keywords": [
+            # Karbohidrat
+            "beras", "nasi", "rice", "mie", "noodle", "pasta", "spaghetti",
+            "fettuccine", "indomie", "mie instan", "kwetiau", "bihun", "vermicelli",
+            "roti", "bread", "tortilla", "burger bun", "hotdog bun",
+            # Tepung & Adonan
+            "tepung", "flour", "terigu", "tapioka", "maizena", "sagu",
+            "corn starch", "breadcrumb", "baking powder", "ragi",
+            # Minyak & Lemak
+            "minyak", "oil", "minyak goreng", "cooking oil", "olive oil",
+            "mentega", "butter", "margarin", "wisman", "blue band",
+            "butter", "anchor", "elle vire",
+            # Protein
+            "daging", "meat", "ayam", "chicken", "sapi", "beef", "kambing",
+            "ikan", "fish", "udang", "shrimp", "cumi", "squid", "telur", "egg",
+            "tahu", "tofu", "tempe", "nugget", "sosis", "bakso",
+            # Bumbu & Saus
+            "bumbu", "seasoning", "kecap", "saos", "saus", "sambal",
+            "garam", "salt", "merica", "pepper", "lada", "ketumbar",
+            "bawang putih", "garlic", "bawang merah", "shallot", "jahe",
+            "kunyit", "lengkuas", "serai", "daun salam", "kemiri",
+            "cabe", "cabai", "chili", "paprika", "bombay", "onion",
+            "kaldu", "broth", "stock", "royco", "maggi", "masako",
+        ],
+        "item_keywords": [
+            "beras", "mie", "indomie", "pasta", "roti", "bread",
+            "tepung", "flour", "terigu", "maizena", "tapioka",
+            "minyak", "oil", "mentega", "butter", "margarin",
+            "daging", "ayam", "sapi", "ikan", "udang", "telur",
+            "tahu", "tempe", "nugget", "sosis", "bakso",
+            "bumbu", "kecap", "saos", "saus", "sambal",
+            "garam", "merica", "lada", "royco", "masako",
+        ],
+    },
+    "bahan_segar": {
+        "label": "Sayur & Bahan Segar",
+        "icon": "🥬",
+        "type": "expense",
+        "keywords": [
+            # Sayuran
+            "sayur", "sayuran", "vegetable", "selada", "lettuce", "kol", "cabbage",
+            "wortel", "carrot", "tomat", "tomato", "mentimun", "timun", "cucumber",
+            "brokoli", "broccoli", "kembang kol", "cauliflower", "seledri",
+            "bayam", "spinach", "kangkung", "sawi", "pakcoy", "caisim",
+            "kentang", "potato", "ubi", "singkong", "jagung", "corn",
+            "jamur", "mushroom", "terong", "buncis", "kacang panjang",
+            # Buah
+            "buah", "fruit", "jeruk", "orange", "lemon", "lime",
+            "alpukat", "avocado", "pisang", "banana", "stroberi", "strawberry",
+            "mangga", "mango", "nanas", "pineapple", "semangka", "melon",
+            "anggur", "grape", "apel", "apple", "pir", "pear",
+            # Herba & Rempah Segar
+            "daun mint", "mint", "basil", "kemangi", "rosemary", "thyme",
+            "daun bawang", "spring onion", "seledri segar",
+            # Susu & Produk Segar
+            "yogurt", "yoghurt", "keju", "cheese", "cheddar", "mozzarella",
+            "cream cheese", "mascarpone", "parmesan",
+        ],
+        "item_keywords": [
+            "sayur", "selada", "lettuce", "kol", "wortel", "tomat",
+            "brokoli", "bayam", "kangkung", "sawi", "kentang",
+            "buah", "jeruk", "lemon", "alpukat", "pisang", "stroberi",
+            "mint", "basil", "kemangi", "daun bawang",
+            "yogurt", "keju", "cheese", "cheddar", "mozzarella",
+        ],
+    },
+
+    # ── Expense: Operasional Café ──────────────────────────────
+    "packaging": {
+        "label": "Packaging & Wadah",
         "icon": "📦",
         "type": "expense",
         "keywords": [
-            "beli", "belanja", "stok", "bahan", "baku", "restok",
-            "gula", "kopi", "susu", "teh", "sirup", "cream",
-            "sayur", "buah", "daging", "ayam", "ikan", "telur",
-            "tepung", "minyak", "bumbu", "kecap", "saos", "saus",
-            "beras", "mie", "indomie",
+            # Gelas & Cup
+            "cup", "gelas", "lid", "tutup", "dome lid", "flat lid",
+            "paper cup", "plastic cup", "hot cup", "cold cup",
+            "gelas kertas", "gelas plastik", "cup sealing",
+            # Kemasan
+            "plastik", "plastic", "kantong", "tas", "bag", "paper bag",
+            "kotak", "box", "styrofoam", "aluminium foil", "cling wrap",
+            # Sedotan & Alat Makan
+            "sedotan", "straw", "sendok", "spoon", "garpu", "fork",
+            "sumpit", "tusuk", "stirrer", "pengaduk",
+            # Tissue & Lap
+            "tisu", "tissue", "napkin", "serbet", "lap", "towel",
+            "kertas", "paper", "receipt", "struk", "thermal paper",
+        ],
+        "item_keywords": [
+            "cup", "gelas", "lid", "tutup", "sedotan", "straw",
+            "plastik", "kantong", "tas", "kotak", "box",
+            "sendok", "garpu", "tisu", "napkin", "serbet",
+            "kertas", "thermal", "aluminium", "cling",
         ],
     },
-    "utilitas": {
-        "label": "Utilitas",
-        "icon": "💡",
+    "cleaning": {
+        "label": "Cleaning & Sanitasi",
+        "icon": "🧹",
         "type": "expense",
         "keywords": [
-            "listrik", "air", "wifi", "pdam", "pln", "pulsa",
-            "internet", "telepon", "sewa",
+            "sabun", "soap", "deterjen", "detergent", "pembersih",
+            "cleaner", "disinfektan", "karbol", "wipol", "sos",
+            "spons", "sponge", "sikat", "brush", "kanebo",
+            "pel", "mop", "ember", "bucket", "sarung tangan", "gloves",
+            "hand sanitizer", "sanitizer", "alkohol", "alcohol",
+            "pembersih lantai", "pembersih kaca", "glass cleaner",
+            "kamper", "kapur barus", "pengharum", "air freshener",
+            "trash bag", "sampah", "garbage",
+        ],
+        "item_keywords": [
+            "sabun", "soap", "deterjen", "pembersih", "cleaner",
+            "disinfektan", "karbol", "wipol", "spons", "sikat",
+            "pel", "mop", "sanitizer", "alkohol", "pengharum",
         ],
     },
+    "gas_energi": {
+        "label": "Gas & Energi",
+        "icon": "🔥",
+        "type": "expense",
+        "keywords": [
+            "gas", "lpg", "elpiji", "gas elpiji", "tabung gas",
+            "bright gas", "gas 3kg", "gas 12kg", "isian gas",
+            "listrik", "pln", "token", "pulsa listrik", "electricity",
+            "token listrik", "voucher listrik",
+            "air", "pdam", "air bersih", "water",
+        ],
+        "item_keywords": [
+            "gas", "lpg", "elpiji", "tabung", "bright gas",
+            "token", "listrik", "pln", "pdam", "pulsa",
+        ],
+    },
+    "peralatan": {
+        "label": "Peralatan & Mesin",
+        "icon": "🔧",
+        "type": "expense",
+        "keywords": [
+            # Mesin Kopi
+            "mesin kopi", "coffee machine", "grinder", "penggiling",
+            "espresso machine", "portafilter", "tamper", "group head",
+            # Blender & Alat Dapur
+            "blender", "mixer", "juicer", "toaster", "oven", "microwave",
+            "kompor", "stove", "fryer", "deep fryer", "rice cooker",
+            # Peralatan
+            "pisau", "knife", "talenan", "wajan", "pan", "panci", "pot",
+            "spatula", "saringan", "strainer", "timbangan", "scale",
+            "termometer", "thermometer", "timer", "jigger", "shaker",
+            # Perbaikan
+            "service", "perbaikan", "maintenance", "renovasi",
+            "spare part", "suku cadang", "filter", "gasket",
+            "kulkas", "freezer", "chiller", "refrigerator", "ac",
+        ],
+        "item_keywords": [
+            "mesin", "grinder", "blender", "mixer", "kompor", "oven",
+            "pisau", "wajan", "panci", "spatula", "timbangan",
+            "service", "spare part", "filter", "gasket",
+            "kulkas", "freezer", "chiller", "ac",
+            "portafilter", "tamper", "shaker", "jigger",
+        ],
+    },
+
+    # ── Expense: Non-Bahan ────────────────────────────────────
     "gaji": {
         "label": "Gaji & Honor",
         "icon": "👥",
         "type": "expense",
         "keywords": [
             "gaji", "honor", "upah", "thr", "bonus", "lembur",
-            "staff", "karyawan",
+            "staff", "karyawan", "barista", "kasir", "koki",
+            "chef", "waiter", "waitress", "pelayan", "kitchen",
         ],
     },
-    "transportasi": {
-        "label": "Transportasi",
+    "transport": {
+        "label": "Transport & Delivery",
         "icon": "🚗",
         "type": "expense",
         "keywords": [
             "bensin", "solar", "transport", "ojek", "grabcar",
-            "gosend", "kirim", "delivery", "ongkir",
+            "gosend", "grabexpress", "kirim", "delivery", "ongkir",
+            "parkir", "parking", "tol", "bbm", "pertamina",
         ],
     },
     "promosi": {
@@ -60,26 +244,31 @@ FINANCE_CATEGORIES = {
         "type": "expense",
         "keywords": [
             "iklan", "promosi", "marketing", "spanduk", "banner",
-            "instagram", "tiktok", "facebook", "ads",
+            "instagram", "tiktok", "facebook", "ads", "poster",
+            "brosur", "flyer", "mural", "neon box", "signage",
+            "menu", "daftar menu", "menu book",
         ],
     },
-    "perawatan": {
-        "label": "Perawatan & Perbaikan",
-        "icon": "🔧",
+    "sewa_wifi": {
+        "label": "Sewa & Internet",
+        "icon": "🏠",
         "type": "expense",
         "keywords": [
-            "service", "perbaikan", "renovasi", "ac", "kulkas",
-            "mesin", "alat", "perawatan", "maintenance",
+            "sewa", "rent", "wifi", "internet", "indihome", "biznet",
+            "cctv", "keamanan", "security", "pajak", "tax",
+            "asuransi", "insurance",
         ],
     },
+
+    # ── Fallback ───────────────────────────────────────────────
     "operasional": {
         "label": "Operasional Lain",
         "icon": "📋",
         "type": "expense",
         "keywords": [
-            "kertas", "plastik", "gelas", "sendok", "cup", "lid",
-            "tas", "kantong", "serbet", "tisu", "cleaning",
-            "sabun", "pembersih",
+            "lain", "operasional", "umum", "general", "admin",
+            "fotokopi", "print", "atk", "alat tulis",
+            "dekorasi", "decoration", "bunga", "flower",
         ],
     },
     "lainnya": {
@@ -99,23 +288,22 @@ def auto_categorize(text: str, amount: float = 0) -> tuple[str, str]:
     """
     text_lower = text.lower().strip()
 
-    # Score tiap kategori
+    # Score tiap kategori (termasuk dynamic)
+    all_cats = get_all_categories()
     best_cat = "lainnya"
     best_score = 0
 
-    for cat_key, cat_info in FINANCE_CATEGORIES.items():
+    for cat_key, cat_info in all_cats.items():
         if cat_key == "lainnya":
             continue
-        keywords = cat_info["keywords"]
+        keywords = cat_info.get("keywords", [])
         score = 0
         for kw in keywords:
             if kw in text_lower:
-                # Weight: exact word match > partial match
                 if re.search(r'\b' + re.escape(kw) + r'\b', text_lower):
                     score += 3
                 else:
                     score += 1
-        # Bonus untuk jumlah kata yang match
         if score > best_score:
             best_score = score
             best_cat = cat_key
@@ -145,9 +333,12 @@ def categorize_item(item_name: str, item_price: float = 0) -> tuple[str, str, st
     best_cat = "lainnya"
     best_score = 0
 
-    for cat_key, cat_info in FINANCE_CATEGORIES.items():
+    # Check semua kategori (built-in + dynamic)
+    all_cats = get_all_categories()
+    for cat_key, cat_info in all_cats.items():
         if cat_key == "lainnya":
             continue
+        # Prioritaskan item_keywords, fallback ke keywords
         keywords = cat_info.get("item_keywords", cat_info.get("keywords", []))
         score = 0
         for kw in keywords:
@@ -213,7 +404,8 @@ def reset_categories_cache():
     _db_categories_loaded = False
 def get_category_label(cat_key: str) -> str:
     """Dapatkan label + icon untuk kategori."""
-    info = FINANCE_CATEGORIES.get(cat_key, FINANCE_CATEGORIES["lainnya"])
+    all_cats = get_all_categories()
+    info = all_cats.get(cat_key, all_cats.get("lainnya", FINANCE_CATEGORIES["lainnya"]))
     return f"{info['icon']} {info['label']}"
 
 

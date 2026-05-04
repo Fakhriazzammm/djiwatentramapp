@@ -747,7 +747,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
     tx_type = "income" if action == "income" else "expense"
     merchant = receipt.get("merchant", "")
     total = receipt.get("total", 0)
-    category = receipt.get("category", "belanja_stok" if tx_type == "expense" else "penjualan")
+    category = receipt.get("category", "operasional" if tx_type == "expense" else "penjualan")
 
     # Build description dari items
     items = receipt.get("items", [])
@@ -1074,7 +1074,8 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 total_cost = price * qty
                 await inventory.log_purchase(inv_name, qty, unit, total_cost)
                 if total_cost > 0:
-                    await finance.record_transaction("expense", total_cost, f"Restok {inv_name} {qty} {unit}", "belanja_stok")
+                    restok_cat, _ = auto_categorize(inv_name)
+                    await finance.record_transaction("expense", total_cost, f"Restok {inv_name} {qty} {unit}", restok_cat)
                 await update.message.reply_text(
                     f"✅ Restok Berhasil\n"
                     f"   {inv_name} +{qty:.0f} {unit}\n"
@@ -1787,14 +1788,19 @@ async def _auto_create_missing_categories(receipts: list[dict]):
         sp_client = SumoPodClient(SUMOPOD_API_KEY)
         item_names = [u["name"] for u in unknown]
         prompt = (
-            "Berikut adalah daftar item belanjaan yang belum memiliki kategori. "
-            "Kelompokkan item-item ini ke dalam maksimal 5 kategori. "
-            "Untuk setiap kategori, berikan: nama kategori (singkat, 1-2 kata), "
-            "icon emoji yang cocok, dan keyword tambahan untuk matching.\n\n"
+            "Kamu adalah AI untuk kategorisasi keuangan sebuah café/resto bernama 'Djiwa Tentram Cafe & Resto'. "
+            "Berikut daftar item belanjaan yang belum memiliki kategori. "
+            "Kelompokkan item-item ini ke dalam maksimal 5 kategori yang relevan untuk operasional café. "
+            "Contoh kategori café: Bahan Minuman (kopi, susu, sirup), Bahan Makanan (tepung, minyak, bumbu), "
+            "Sayur & Bahan Segar, Packaging (cup, sedotan, plastik), Cleaning (sabun, pembersih), "
+            "Gas & Energi, Peralatan & Mesin, dll.\n\n"
+            "Untuk setiap kategori, berikan: key (snake_case english), label (Bahasa Indonesia), "
+            "icon emoji yang cocok, daftar item yang masuk kategori ini, "
+            "dan keyword tambahan (minimal 5 kata) untuk matching item serupa di masa depan.\n\n"
             "Item:\n" + "\n".join(f"- {n}" for n in item_names) + "\n\n"
             "Balas dengan JSON:\n"
-            '{"categories": [{"key": "snack", "label": "Snack & Cemilan", "icon": "🍿", '
-            '"items": ["Chitato", "Taro"], "keywords": ["snack", "cemilan", "keripik"]}]}'
+            '{"categories": [{"key": "bahan_minuman", "label": "Bahan Minuman", "icon": "☕", '
+            '"items": ["Kopi Arabica", "Susu UHT"], "keywords": ["kopi", "susu", "sirup", "teh", "creamer"]}]}'
         )
         ai_result = await sp_client.chat(message=prompt, model="gpt-4o-mini", timeout=30)
         ai_reply = ai_result.get("reply", "")
