@@ -51,11 +51,13 @@ from orchestrator import FinanceOrchestrator, OrchestratorResult
 from categories import auto_categorize, categorize_item, get_category_label, format_amount, FINANCE_CATEGORIES, get_all_categories, add_dynamic_category
 from sumopod_client import SumoPodClient
 from memory import MemoryManager, normalize_name
+from supplier import SupplierManager
 
 finance = FinanceManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, f"{SUPABASE_URL}/functions/v1/yumi-ai")
 inventory = InventoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY)
 orchestrator = FinanceOrchestrator(SUMOPOD_API_KEY)
 memory = MemoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY)
+supplier = SupplierManager(SUPABASE_URL, SUPABASE_KEY)
 
 # ── In-memory state: pending confirmations ─────────────────────────
 # { callback_data: {"type": "new_ingredient", "data": {...}} }
@@ -1055,7 +1057,7 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         resp.raise_for_status()
                         return resp.json()
 
-                ml_text = await generate_marketlist(fetch_fn)
+                ml_text = await generate_marketlist(fetch_fn, supplier)
                 await update.message.reply_text(ml_text, reply_markup=_finance_keyboard())
             except Exception as e:
                 logger.warning("marketlist failed: %s", e)
@@ -1414,6 +1416,50 @@ async def cmd_rekap(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.exception("cmd_rekap failed")
         await update.message.reply_text(f"❌ Gagal mengambil rekap: {e}", reply_markup=_finance_keyboard())
+
+
+async def cmd_supplier(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler /supplier <keyword|kategori> — cari supplier."""
+    if not _is_finance_group(update):
+        return
+
+    args = (update.message.text or "").split(maxsplit=1)
+    keyword = args[1].strip() if len(args) > 1 else ""
+
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+
+    if not keyword:
+        # Tampilkan semua kategori
+        cats = await supplier.get_all_categories()
+        lines = ["📋 Kategori Supplier:", ""]
+        for c in cats:
+            lines.append(f"  • {c}")
+        lines.append("")
+        lines.append("Ketik /supplier <kategori> untuk lihat detail.\nContoh: /supplier daging")
+        await update.message.reply_text("\n".join(lines))
+        return
+
+    # Search
+    results = await supplier.search(keyword)
+    if not results:
+        await update.message.reply_text(
+            f"❌ Tidak ada supplier untuk '{keyword}'.\n"
+            f"Ketik /supplier untuk lihat semua kategori.",
+            reply_markup=_finance_keyboard(),
+        )
+        return
+
+    text = SupplierManager.format_supplier_list(results, f"📋 Supplier: {keyword}")
+    # Handle 4096 char limit
+    if len(text) > 4000:
+        # Split per supplier
+        for s in results:
+            await update.message.reply_text(
+                SupplierManager.format_supplier(s),
+                reply_markup=_finance_keyboard() if results.index(s) == len(results) - 1 else None,
+            )
+    else:
+        await update.message.reply_text(text, reply_markup=_finance_keyboard())
 
 
 # ── Bulk Callback Handlers ──────────────────────────────────────────
@@ -1917,6 +1963,7 @@ def main():
     # Commands
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("rekap", cmd_rekap))
+    app.add_handler(CommandHandler("supplier", cmd_supplier))
 
     # Callbacks
     app.add_handler(CallbackQueryHandler(on_callback))

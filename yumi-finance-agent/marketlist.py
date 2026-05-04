@@ -66,7 +66,7 @@ def _parse_item(item: dict):
     return name, qty, thresh, unit, price, inv_id
 
 
-async def generate_marketlist(fetch_fn):
+async def generate_marketlist(fetch_fn, supplier_manager=None):
     """Fetch inventory from Supabase and generate full marketlist message."""
     await build_lookup(fetch_fn)
     try:
@@ -84,10 +84,38 @@ async def generate_marketlist(fetch_fn):
         r for r in rows
         if float(r.get("quantity") or 0) <= float(r.get("lowStockThreshold") or 0)
     ]
-    return format_marketlist(low_items)
+    ml_text = format_marketlist(low_items)
+
+    # ── Supplier Recommendations (async) ──────────────────────
+    if supplier_manager and low_items:
+        try:
+            item_names = set()
+            for item in low_items:
+                name = (item.get("ingredientName") or "").strip()
+                if name:
+                    item_names.add(name.lower())
+            found = {}
+            for name in list(item_names)[:10]:  # limit to 10 searches
+                results = await supplier_manager.search(name)
+                for s in results:
+                    if s["name"] not in found:
+                        found[s["name"]] = s
+            if found:
+                lines = ["", "📞 Supplier Terkait:"]
+                for s in list(found.values())[:5]:
+                    phone = s.get("phone", "")
+                    phone_str = f" 📞{phone}" if phone else ""
+                    grade = s.get("grade", "")
+                    grade_str = f" ⭐{grade}" if grade else ""
+                    lines.append(f"  • {s['name']}{grade_str}{phone_str}")
+                ml_text += "\n".join(lines)
+        except Exception:
+            pass
+
+    return ml_text
 
 
-def format_marketlist(items):
+def format_marketlist(items, supplier_manager=None):
     """Format daftar belanja seperti list belanja pasar dengan numbering."""
     if not items:
         return "✅ Semua stok aman, tidak ada yang perlu dibeli."

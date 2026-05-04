@@ -1,0 +1,25 @@
+-- Data migration: import supplier CSV
+INSERT INTO pos.suppliers (name, category, grade, price_range, address, phone, notes) VALUES
+('T-ICE (Delivery)', 'Es Batu', 'A', 'Rp 15.000 - Rp 30.000', NULL, '0878-2315-0008', '- Es Batu Kristal'),
+('Amidis (Delivery)', 'Galon', 'A', 'Rp 21.000 - Rp 40.000', NULL, '0857-4689-0478', '- Galon Amidis - Galon Cleo - Air Kemasan Le Minerale'),
+('A Aldy Daging (Offline)', 'Daging', 'B', 'Rp 7.000 - Rp 46.000', 'Pasar Mayasari Plaza', '0818-1847-0187', '- Semua Daging Ayam'),
+('Ibu Teti Pasar (Offline)', 'Sayur', 'B', 'Rp 1.000 - Rp 60.000', 'Pasar Mayasari Plaza', '0813-1296-6706', '- Semua Sayuran'),
+('Gia Ayam Potong (Delivery/Offline)', 'Daging', 'C', 'Rp 12.000 - Rp 43.000', 'Jl. Cinehel No.27, Kota Tasikmalaya', '0812-1114-0043', '- Semua Daging Ayam'),
+('Mahai Roastery (Delivery/Offline)', 'Roastery', 'A', 'Rp 25.000 - Rp 180.000', 'Jl. Cibaregbeg No.16, Kota Tasikmalaya', '0812-4606-5052', '- Semua Biji Kopi (Arabica, Robusta, Single Origin)'),
+('Ayam Cikurubuk (Offline)', 'Daging', 'B', 'Rp 7.000 - Rp 48.000', 'Pasar Daging Cikurubuk', '0852-8933-1291', '- Semua Daging Ayam'),
+('PT. Mulia Raya (Delivery)', 'Toko Bahan Kue', 'B', 'Rp 180.000 - Rp 300.000', 'Gudang berada di Bandung', '0878-7918-5552', '- Grandairy Fullcream - Anchor Butter - Wedges Grade B'),
+('Barkah Culinary (Delivery)', 'Toko Bahan Kue', 'A', 'Rp 100.000 - Rp 300.000', 'Jl. Raya Mangin, Bungursari', '0859-3929-8957', '- Toko Bahan Pastry - Greenfield Freshmilk'),
+('Bina Karya (Delivery/Offline)', 'Toko Bahan Kue', 'A', 'Rp 100.000 - Rp 300.000', 'Jl. Mitra Batik No.100, Cipedes', NULL, '- Toko Bahan Pastry - Semua Sirup'),
+('Merpati Plastik (Delivery/Offline)', 'Toko Bahan Kue', 'A', 'Rp 2.000 - Rp 300.000', 'Jl. Veteran No.59, Nagarawangi', '0812-2287-5454', '- Toko Bahan Kue - Semua Sirup - Bahan Plastik - Botol/Cup Plastik'),
+('Mamang Supplier (Offline)', 'Bahan Minuman', 'B', 'Rp 115.000 - Rp 250.000', 'Jl. Cimuncang, Sukamulya', NULL, '- Semua Sirup Tofico - Semua Powder termasuk Matcha dan Coklat - Semua Biji Kopi (Arabica, Robusta)'),
+('Manggala Print (Offline)', 'Print/Percetakan', 'B', 'Rp 1.000 - Rp 100.000', 'Jl. Mitra Batik No.52, Cipedes', '0822-8886-8678', '- Semua Percetakan (Print Banner, Menu dll)'),
+('BR Group Fotocopy (Offline)', 'Print/Percetakan', 'A', 'Rp 1.000 - Rp 20.000', 'Jl. Bojong Tengah No. 2, Cipedes', '0822-9549-2549', '- Semua Peralatan Kantor - Print Kertas'),
+('Ubi Cilembu (Offline)', 'Ubi', 'A', 'Rp 24.000 - Rp 48.000', 'Belakang Mayasari Plaza', '0813-6370-7456', '- Semua Ubi Cilembu'),
+('A Uus Daging Cikurubuk', 'Daging', 'B', 'Rp 24.000 - Rp 45.000', 'Pasar Cikurubuk Dalam', '0895-2601-9327', '- Semua Daging Ayam'),
+('Ibu Dede Daging Cikurubuk', 'Daging', 'A', 'Rp 24.000 - Rp 45.000', 'Pasar Cikurubuk Dalam', '0821-2953-3785', '- Semua Daging Ayam'),
+('Dripp Syrup (Dona Rasa)', 'Sirup', 'B', 'Rp 50.000 - Rp 200.000', NULL, '0811-1660-1997', '- Semua Syrup Dripp'),
+('Kedai Mamaina', 'Bahan Baku Fresh', 'A', 'Rp 20.000 - Rp 150.000', 'Jl. Seladarma No. 58, Tawangsari', '0852-2340-8604', '- Semua Daging Ayam - Semua Daging Sapi - Bumbu Dapur'),
+('Yellow Box (Offline/Delivery Maxim)', 'Roastery', 'A', 'Rp 150.000 - Rp 350.000', 'Jl. Nagarawangi', '0857-1648-9320', '- Beans Arabika & Robusta'),
+('Supplier Susu Freshmilk GF', 'Milk', 'A', 'Rp 250.000 - Rp 300.000', NULL, '0856-0334-8144', '- Freshmilk Greenfield'),
+('Berdikari Supplies', 'Bahan Minuman & Makanan', NULL, 'Rp 50.000 - Rp 300.000', NULL, '0822-1177-7900', '- Freshmilk Greenfield - Persausan - Bahan Minuman Lainnya')
+ON CONFLICT DO NOTHING;
