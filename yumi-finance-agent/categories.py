@@ -409,6 +409,52 @@ def get_category_label(cat_key: str) -> str:
     return f"{info['icon']} {info['label']}"
 
 
+def categorize_item_with_memory(
+    item_name: str,
+    item_price: float = 0,
+    merchant: str = "",
+    memory_manager=None,
+) -> tuple[str, str, str, float]:
+    """Enhanced categorization: keyword matching + AI memory + merchant hints.
+
+    Args:
+        item_name: nama item dari OCR
+        item_price: harga satuan
+        merchant: nama toko (untuk merchant hint)
+        memory_manager: instance MemoryManager (optional)
+
+    Returns:
+        (category_key, confidence_label, suggested_label, score_0_to_1)
+    """
+    # 1. Keyword matching (existing)
+    cat_key, cat_conf, suggested = categorize_item(item_name, item_price)
+    conf_scores = {"high": 0.8, "medium": 0.5, "low": 0.2}
+    score = conf_scores.get(cat_conf, 0.2)
+
+    # 2. AI Memory lookup
+    if memory_manager:
+        mem_cat, mem_conf = memory_manager.get_item_category(item_name)
+        if mem_cat and mem_conf > score:
+            cat_key = mem_cat
+            score = mem_conf
+            cat_conf = "high" if mem_conf > 0.8 else "medium"
+            # Don't set suggested — memory match means we found it
+
+    # 3. Merchant hint — if still uncertain
+    if memory_manager and merchant and score < 0.7:
+        merchant_hint = memory_manager.get_merchant_hint(merchant)
+        if merchant_hint:
+            typical_cats = merchant_hint.get("typical_categories", {}) or {}
+            if typical_cats:
+                top_cat = max(typical_cats, key=lambda k: typical_cats.get(k, 0))
+                if top_cat != "lainnya" and cat_key == "lainnya":
+                    cat_key = top_cat
+                    score = 0.6
+                    cat_conf = "medium"
+
+    return cat_key, cat_conf, suggested, score
+
+
 def format_amount(amount: int | float) -> str:
     """Format number with dots: 1500000 → Rp1.500.000"""
     if amount >= 1_000_000:

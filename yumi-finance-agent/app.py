@@ -50,10 +50,12 @@ from inventory import InventoryManager
 from orchestrator import FinanceOrchestrator, OrchestratorResult
 from categories import auto_categorize, categorize_item, get_category_label, format_amount, FINANCE_CATEGORIES, get_all_categories, add_dynamic_category
 from sumopod_client import SumoPodClient
+from memory import MemoryManager, normalize_name
 
 finance = FinanceManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, f"{SUPABASE_URL}/functions/v1/yumi-ai")
 inventory = InventoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY)
 orchestrator = FinanceOrchestrator(SUMOPOD_API_KEY)
+memory = MemoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY)
 
 # ── In-memory state: pending confirmations ─────────────────────────
 # { callback_data: {"type": "new_ingredient", "data": {...}} }
@@ -574,6 +576,14 @@ async def _display_bulk_summary(context, results: list[dict], chat_id: int, stat
 
             # ── Per-item categorization ──────────────────────
             cat_key, cat_conf, cat_suggest = categorize_item(name, price)
+
+            # ── Memory boost: check learned item→category ─────
+            mem_cat, mem_conf = memory.get_item_category(name)
+            if mem_cat and mem_conf > 0.6:
+                if cat_conf == "low" or mem_conf > 0.8:
+                    cat_key = mem_cat
+                    cat_conf = "high" if mem_conf > 0.8 else "medium"
+
             cat_info = FINANCE_CATEGORIES.get(cat_key, {})
             if cat_conf == "low":
                 unknown_items.append({"name": name, "suggested": cat_suggest})
@@ -706,7 +716,21 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
                 pass
             return True
         # Update kategori
+        old_cat = receipt.get("category", "lainnya")
         receipt["category"] = cat_key
+
+        # ── Log feedback for AI learning ──────────────────────
+        items = receipt.get("items", [])
+        for item in items:
+            item_name = item.get("name", "").strip()
+            if item_name:
+                await memory.log_feedback(
+                    item_name=item_name,
+                    original_category=item.get("_category", old_cat),
+                    corrected_category=cat_key,
+                    merchant=receipt.get("merchant", ""),
+                    receipt_date=receipt.get("date", ""),
+                )
 
         # Rebuild tampilan dengan kategori baru
         await _redisplay_receipt(query, ref_id, receipt)
@@ -1469,6 +1493,29 @@ async def _handle_bulk_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if tx_result.get("ok"):
                 saved += 1
                 total_all += ri["total"]
+
+                # ── Record to AI memory ──────────────────────────
+                for item in ri.get("items", []):
+                    await memory.record_item_category(
+                        item.get("name", ""),
+                        item.get("_category", "operasional"),
+                        source="ai", confidence_boost=0.1,
+                        merchant=ri.get("merchant", ""),
+                    )
+                await memory.record_prices(
+                    ri.get("items", []), ri.get("merchant", ""),
+                    ri.get("date", ""), ri.get("receipt_number", ""),
+                )
+                # Update merchant profile
+                item_cats = {}
+                for it in ri.get("items", []):
+                    cat = it.get("_category", "lainnya")
+                    item_cats[cat] = item_cats.get(cat, 0) + 1
+                item_names = [it.get("name", "") for it in ri.get("items", [])]
+                await memory.update_merchant_profile(
+                    ri.get("merchant", "Tanpa Nama"),
+                    item_cats, item_names, ri.get("total", 0),
+                )
             else:
                 failed += 1
 
@@ -1486,6 +1533,22 @@ async def _handle_bulk_callback(update: Update, context: ContextTypes.DEFAULT_TY
         ]
         if failed:
             lines.append(f"⚠️ {failed} struk gagal disimpan")
+
+        # ── Price anomaly detection ────────────────────────────
+        anomaly_alerts = []
+        for ri in receipts:
+            for item in ri.get("items", []):
+                name = (item.get("name") or "").strip()
+                price = float(item.get("price") or 0)
+                if name and price > 0:
+                    warning = await memory.detect_price_anomaly(name, price)
+                    if warning and warning not in anomaly_alerts:
+                        anomaly_alerts.append(warning)
+        if anomaly_alerts:
+            lines.append("")
+            lines.append("🔍 Peringatan Harga:")
+            for a in anomaly_alerts[:5]:
+                lines.append(f"  {a}")
 
         # Simpan lagi ke pending untuk fallback (dibutuhkan untuk re-process)
         _bulk_pending[bulk_id] = receipts
@@ -1837,6 +1900,17 @@ async def _auto_create_missing_categories(receipts: list[dict]):
 def main():
     if not BOT_TOKEN:
         raise RuntimeError("TELEGRAM_BOT_TOKEN belum di-set")
+
+    # ── Load AI memory before bot starts ────────────────────────
+    import asyncio as _asyncio
+    try:
+        loop = _asyncio.get_event_loop()
+        if loop.is_running():
+            _asyncio.ensure_future(memory.load_all())
+        else:
+            loop.run_until_complete(memory.load_all())
+    except Exception as e:
+        logger.warning("Memory load failed (non-fatal): %s", e)
 
     app = Application.builder().token(BOT_TOKEN).build()
 
