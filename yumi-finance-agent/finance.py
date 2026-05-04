@@ -129,6 +129,51 @@ class FinanceManager:
     def _now_wib(self) -> datetime:
         return datetime.now(WIB)
 
+    def _period_range(self, period: str, now: datetime = None) -> tuple[int, int]:
+        """Hitung start_ms dan end_ms untuk periode tertentu.
+        Returns (start_ms, end_ms) — timestamp dalam milidetik.
+        """
+        if now is None:
+            now = self._now_wib()
+        end_ms = int(now.timestamp() * 1000)
+
+        if period == "hari_ini":
+            start_ms = self._start_of_day_ms(now)
+        elif period == "kemarin":
+            yesterday = now - timedelta(days=1)
+            start_ms = self._start_of_day_ms(yesterday)
+            end_ms = int(yesterday.replace(hour=23, minute=59, second=59, microsecond=999000).timestamp() * 1000)
+        elif period == "minggu_ini":
+            start_ms = int((now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000)
+        elif period == "minggu_lalu":
+            last_monday = now - timedelta(days=now.weekday() + 7)
+            start_ms = int(last_monday.replace(hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000)
+            end_ms = int((last_monday + timedelta(days=6)).replace(hour=23, minute=59, second=59, microsecond=999000).timestamp() * 1000)
+        elif period == "bulan_ini":
+            start_ms = int(now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000)
+        elif period == "bulan_lalu":
+            first_of_this = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            last_month_end = first_of_this - timedelta(days=1)
+            last_month_start = last_month_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            start_ms = int(last_month_start.timestamp() * 1000)
+            end_ms = int(last_month_end.replace(hour=23, minute=59, second=59, microsecond=999000).timestamp() * 1000)
+        else:
+            start_ms = self._start_of_day_ms(now)
+        return start_ms, end_ms
+
+    async def get_transactions(self, tx_type: str = None, period: str = "hari_ini", limit: int = 50) -> list:
+        """Ambil daftar transaksi filter by type dan periode."""
+        now = self._now_wib()
+        start_ms, end_ms = self._period_range(period, now)
+        q = f"select=source_id,tx_type,amount,category,description,merchant,tx_date,payment_method"
+        q += f"&tx_date=gte.{start_ms}&tx_date=lte.{end_ms}"
+        q += f"&order=tx_date.desc&limit={limit}"
+        if tx_type:
+            q += f"&tx_type=eq.{tx_type}"
+        # HPP (cost of goods sold) bukan pengeluaran riil — filter dari tampilan
+        q += "&category=neq.HPP"
+        return await self._fetch("financial_transactions", q)
+
     def _start_of_day_ms(self, dt: datetime = None) -> int:
         if dt is None:
             dt = self._now_wib()
@@ -144,15 +189,8 @@ class FinanceManager:
             {"income": float, "expense": float, "balance": float, "count_income": int, "count_expense": int}
         """
         now = self._now_wib()
-        start_ms = self._start_of_day_ms(now)
-        end_ms = int(now.timestamp() * 1000)
-
-        if period == "minggu_ini":
-            start_ms = int((now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000)
-        elif period == "bulan_ini":
-            start_ms = int(now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000)
-
-        q = f"select=tx_type,amount&tx_date=gte.{start_ms}&tx_date=lte.{end_ms}&limit=1000"
+        start_ms, end_ms = self._period_range(period, now)
+        q = f"select=tx_type,amount,category&tx_date=gte.{start_ms}&tx_date=lte.{end_ms}&limit=1000&category=neq.HPP"
         rows = await self._fetch("financial_transactions", q)
 
         income = 0.0
@@ -162,6 +200,10 @@ class FinanceManager:
         for r in rows:
             amt = float(r.get("amount") or 0)
             tx_type = r.get("tx_type", "")
+            category = r.get("category", "")
+            # HPP (cost of goods sold) bukan pengeluaran riil — skip
+            if category == "HPP":
+                continue
             if tx_type == "income":
                 income += amt
                 count_income += 1
@@ -186,7 +228,9 @@ class FinanceManager:
             "hari_ini": "Hari Ini",
             "kemarin": "Kemarin",
             "minggu_ini": "Minggu Ini",
+            "minggu_lalu": "Minggu Lalu",
             "bulan_ini": "Bulan Ini",
+            "bulan_lalu": "Bulan Lalu",
         }
         label = period_labels.get(period, period)
 
@@ -211,7 +255,7 @@ class FinanceManager:
         start_ms = int(now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000)
         end_ms = int(now.timestamp() * 1000)
 
-        q = f"select=category,amount&tx_date=gte.{start_ms}&tx_date=lte.{end_ms}&tx_type=eq.expense&limit=1000"
+        q = f"select=category,amount&tx_date=gte.{start_ms}&tx_date=lte.{end_ms}&tx_type=eq.expense&category=neq.HPP&limit=1000"
         rows = await self._fetch("financial_transactions", q)
 
         if not rows:
