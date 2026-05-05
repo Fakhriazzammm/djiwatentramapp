@@ -57,6 +57,7 @@ import {
 	useHybridInventoryYumiAiInsights,
 	useHybridRealtimePriceMonitor,
 } from "@/hooks/use-hybrid-inventory-admin-data";
+import { formatCurrencyIDR } from "@/lib/export-utils";
 
 interface ConfirmConfig {
 	isOpen: boolean;
@@ -2928,6 +2929,52 @@ function RealtimePriceMonitorTable({
 						<col className="w-[10%]" />
 						<col className="w-[13%]" />
 					</colgroup>
+					<div className="mb-2 flex items-center gap-1.5 px-1">
+						<button
+							className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+								statusFilter === "all"
+									? "bg-primary text-primary-foreground"
+									: "border border-border bg-background text-muted-foreground hover:text-foreground"
+							}`}
+							onClick={() => setStatusFilter("all")}
+							type="button"
+						>
+							Semua
+						</button>
+						<button
+							className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+								statusFilter === "critical"
+									? "bg-rose-600 text-white"
+									: "border border-border bg-background text-muted-foreground hover:text-foreground"
+							}`}
+							onClick={() => setStatusFilter("critical")}
+							type="button"
+						>
+							Kritis
+						</button>
+						<button
+							className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+								statusFilter === "warning"
+									? "bg-amber-500 text-white"
+									: "border border-border bg-background text-muted-foreground hover:text-foreground"
+							}`}
+							onClick={() => setStatusFilter("warning")}
+							type="button"
+						>
+							Warning
+						</button>
+						<button
+							className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+								statusFilter === "healthy"
+									? "bg-emerald-600 text-white"
+									: "border border-border bg-background text-muted-foreground hover:text-foreground"
+							}`}
+							onClick={() => setStatusFilter("healthy")}
+							type="button"
+						>
+							Sehat
+						</button>
+					</div>
 					<thead className="bg-card">
 						<tr className="border-border border-b text-muted-foreground">
 							<th className="px-2.5 py-2 font-semibold">Nama (Dedup)</th>
@@ -3657,6 +3704,12 @@ function InventoryTable({
 	const suggestInventoryAutofill = useHybridSuggestInventoryAutofill();
 	const quickAddNameRef = useRef<HTMLInputElement | null>(null);
 	const [savingKey, setSavingKey] = useState<string | null>(null);
+	const [statusFilter, setStatusFilter] = useState<"all" | "critical" | "warning" | "healthy">("all");
+	const statusFilteredRows = useMemo(() => {
+		return statusFilter === "all"
+			? filteredRows
+			: filteredRows.filter((r) => r.status === statusFilter);
+	}, [filteredRows, statusFilter]);
 	const [saveStateByRow, setSaveStateByRow] = useState<
 		Record<string, "idle" | "saving" | "saved" | "error">
 	>({});
@@ -4801,12 +4854,7 @@ function InventoryTable({
 									))}
 								</div>
 							</th>
-							<th className="px-2 py-1.5 font-semibold">
-								Brand
-							</th>
-							<th className="px-2 py-1.5 font-semibold">Toko</th>
-							<th className="px-2 py-1.5 text-center font-semibold">Ukuran</th>
-							<th className="px-2 py-1.5 text-center font-semibold">Satuan Ukuran</th>
+							<th className="px-2 py-1.5 font-semibold">Supplier</th>
 							<th
 								className="cursor-pointer px-2 py-1.5 text-center font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("lowStockThreshold")}
@@ -4832,12 +4880,11 @@ function InventoryTable({
 											<ArrowUp className="h-3 w-3" />
 										) : (
 											<ArrowDown className="h-3 w-3" />
-									))}
+										))}
 								</div>
 							</th>
-							<th className="px-2 py-1.5 text-center font-semibold">Satuan Stok</th>
-							<th className="px-2 py-1.5 text-center font-semibold">Jml Pembelian</th>
-							<th className="px-2 py-1.5 text-center font-semibold">Satuan Beli</th>
+							<th className="px-2 py-1.5 text-center font-semibold group relative cursor-help">Satuan<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Stok: satuan stok · Beli: satuan beli</span></th>
+							<th className="px-2 py-1.5 text-center font-semibold">Jml Beli</th>
 							<th
 								className="cursor-pointer px-2 py-1.5 font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("avgDailyUsage")}
@@ -4849,10 +4896,11 @@ function InventoryTable({
 											<ArrowUp className="h-3 w-3" />
 										) : (
 											<ArrowDown className="h-3 w-3" />
-									))}
+										))}
 								</div>
 							</th>
 							<th className="px-2 py-1.5 font-semibold">Harga Terakhir</th>
+							<th className="px-2 py-1.5 text-right font-semibold">Nilai Stok</th>
 							<th className="px-2 py-1.5 font-semibold">Sumber Restok</th>
 							<th className="px-2 py-1.5 font-semibold">Status</th>
 							<th className="px-2 py-1.5 text-right font-semibold">Aksi</th>
@@ -4888,15 +4936,11 @@ function InventoryTable({
 							</td>
 							<td className="px-2 py-1.5">
 								<input
-									className={`w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary ${getSuggestionHighlightClass(
-										quickAdd.defaultBrandName.trim() !== "" &&
-											brandOptionSet.has(normalizeLookupText(quickAdd.defaultBrandName))
-									)}`}
-									list="inventory-brand-suggestions-table"
+									className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({
 											...prev,
-											defaultBrandName: e.target.value,
+											supplier: e.target.value,
 										}))
 									}
 									onKeyDown={(e) => {
@@ -4904,71 +4948,8 @@ function InventoryTable({
 											void quickCreate();
 										}
 									}}
-									placeholder="Brand opsional"
-									value={quickAdd.defaultBrandName}
-								/>
-							</td>
-							<td className="px-2 py-1.5">
-								<input
-									className={`w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary ${getSuggestionHighlightClass(
-										quickAdd.preferredStoreName.trim() !== "" &&
-											storeOptionSet.has(normalizeLookupText(quickAdd.preferredStoreName))
-									)}`}
-									list="inventory-store-suggestions-table"
-									onChange={(e) =>
-										setQuickAdd((prev) => ({
-											...prev,
-											preferredStoreName: e.target.value,
-										}))
-									}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											void quickCreate();
-										}
-									}}
-									placeholder="Pilih / ketik toko"
-									value={quickAdd.preferredStoreName}
-								/>
-							</td>
-							<td className="px-2 py-1.5 text-center">
-								<input
-									className="mx-auto w-16 rounded-lg border border-border bg-background px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-primary"
-									onChange={(e) =>
-										setQuickAdd((prev) => ({
-											...prev,
-											conversionFactor: e.target.value,
-										}))
-									}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											void quickCreate();
-										}
-									}}
-									placeholder="1000"
-									type="number"
-									value={quickAdd.conversionFactor}
-								/>
-							</td>
-							<td className="px-2 py-1.5 text-center">
-								<input
-									className={`mx-auto w-20 rounded-lg border border-border bg-background px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-primary ${getSuggestionHighlightClass(
-										quickAdd.displayUnit.trim() !== "" &&
-											unitOptionSet.has(normalizeUnitOption(quickAdd.displayUnit))
-									)}`}
-									list="inventory-unit-options-table"
-									onChange={(e) =>
-										setQuickAdd((prev) => ({
-											...prev,
-											displayUnit: normalizeUnitOption(e.target.value),
-										}))
-									}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											void quickCreate();
-										}
-									}}
-									placeholder="gram / ml"
-									value={quickAdd.displayUnit}
+									placeholder="Toko - Brand"
+									value={quickAdd.supplier || ""}
 								/>
 							</td>
 							<td className="px-2 py-1.5 text-center">
@@ -5022,7 +5003,6 @@ function InventoryTable({
 								/>
 							</td>
 							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">-</div></td>
-							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">-</div></td>
 							<td className="px-2 py-1.5"><div className="text-[10px] text-muted-foreground">-</div></td>
 							<td className="px-2 py-1.5"><div className="text-[10px] text-muted-foreground">-</div></td>
 							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
@@ -5062,13 +5042,7 @@ function InventoryTable({
 										<Skeleton className="h-4 w-32" />
 									</td>
 									<td className="p-4">
-										<Skeleton className="h-8 w-24" />
-									</td>
-									<td className="p-4">
-										<Skeleton className="mx-auto h-4 w-12" />
-									</td>
-									<td className="p-4">
-										<Skeleton className="mx-auto h-4 w-20" />
+										<Skeleton className="h-6 w-24" />
 									</td>
 									<td className="p-4">
 										<Skeleton className="mx-auto h-4 w-16" />
@@ -5077,13 +5051,7 @@ function InventoryTable({
 										<Skeleton className="mx-auto h-8 w-16" />
 									</td>
 									<td className="p-4">
-										<Skeleton className="mx-auto h-8 w-16" />
-									</td>
-									<td className="p-4">
-										<Skeleton className="h-8 w-24" />
-									</td>
-									<td className="p-4">
-										<Skeleton className="mx-auto h-4 w-12" />
+										<Skeleton className="mx-auto h-4 w-16" />
 									</td>
 									<td className="p-4">
 										<Skeleton className="mx-auto h-4 w-12" />
@@ -5093,6 +5061,9 @@ function InventoryTable({
 									</td>
 									<td className="p-4">
 										<Skeleton className="h-4 w-20" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="mx-auto h-4 w-16" />
 									</td>
 									<td className="p-4">
 										<Skeleton className="mx-auto h-4 w-16" />
@@ -5105,9 +5076,9 @@ function InventoryTable({
 									</td>
 								</tr>
 							))}
-						{inventoryMap.size > 0 &&
-							filteredRows.length > 0 &&
-							filteredRows.map((row, index) => {
+					{inventoryMap.size > 0 &&
+							statusFilteredRows.length > 0 &&
+							statusFilteredRows.map((row, index) => {
 								const item = inventoryMap.get(row.inventoryId);
 								if (!item) {
 									return null;
@@ -5149,96 +5120,7 @@ function InventoryTable({
 												value={inline.ingredientName}
 											/>
 										</td>
-										<td className="px-2 py-1.5 align-middle">
-											<input
-												className={`w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-semibold text-[10px] outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
-													inline.defaultBrandName.trim() !== "" &&
-														brandOptionSet.has(normalizeLookupText(inline.defaultBrandName))
-												)}`}
-												list="inventory-brand-suggestions-table"
-												onBlur={() => void saveMeta(row)}
-												onChange={(e) =>
-													setInlineField(row, "defaultBrandName", e.target.value)
-												}
-												onKeyDown={(e) => {
-													if (e.key === "Enter") {
-														void saveMeta(row);
-														(e.target as HTMLInputElement).blur();
-													}
-												}}
-												placeholder="-"
-												value={inline.defaultBrandName}
-											/>
-										</td>
-										<td className="px-2 py-1.5 align-middle">
-											<input
-												className={`w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-[10px] font-semibold text-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
-													inline.preferredStoreName.trim() !== "" &&
-														storeOptionSet.has(normalizeLookupText(inline.preferredStoreName))
-												)}`}
-												list="inventory-store-suggestions-table"
-												onBlur={() => void saveMeta(row)}
-												onChange={(e) =>
-													setInlineField(row, "preferredStoreName", e.target.value)
-												}
-												onKeyDown={(e) => {
-													if (e.key === "Enter") {
-														void saveMeta(row);
-														(e.target as HTMLInputElement).blur();
-													}
-												}}
-												placeholder={row.lastPurchaseStoreName || row.preferredStoreName || "Toko"}
-												value={inline.preferredStoreName}
-											/>
-										</td>
-										<td className="px-2 py-1.5 align-middle text-center">
-											<input
-												className="mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-border focus:bg-background"
-												min={0}
-												onBlur={() => void saveMeta(row)}
-												onChange={(e) =>
-													setInlineField(row, "conversionFactor", e.target.value)
-												}
-												onKeyDown={(e) => {
-													if (e.key === "Enter") {
-														void saveMeta(row);
-														(e.target as HTMLInputElement).blur();
-													}
-												}}
-												placeholder={
-													typeof row.unitConversions?.[0]?.factor === "number"
-														? String(row.unitConversions?.[0]?.factor)
-														: "-"
-												}
-												type="number"
-												value={inline.conversionFactor}
-											/>
-										</td>
-										<td className="px-2 py-1.5 align-middle text-center">
-											<input
-												className={`mx-auto w-20 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
-													inline.displayUnit.trim() !== "" &&
-														unitOptionSet.has(normalizeUnitOption(inline.displayUnit))
-												)}`}
-												list="inventory-unit-options-table"
-												onBlur={() => void saveMeta(row)}
-												onChange={(e) =>
-													setInlineField(
-														row,
-														"displayUnit",
-														normalizeUnitOption(e.target.value)
-													)
-												}
-												onKeyDown={(e) => {
-													if (e.key === "Enter") {
-														void saveMeta(row);
-														(e.target as HTMLInputElement).blur();
-													}
-												}}
-												placeholder={row.unitConversions?.[0]?.unit || "ml / gram"}
-												value={inline.displayUnit}
-											/>
-										</td>
+										<td className="px-2 py-1.5 align-middle text-[10px] font-semibold text-muted-foreground">{row.preferredStoreName || row.lastPurchaseStoreName || "—"}{row.defaultBrandName ? ` · ${row.defaultBrandName}` : ""}</td>
 										<td className="px-2 py-1.5 align-middle text-center">
 											<input
 												className="mx-auto w-12 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] outline-none focus:border-border focus:bg-background"
@@ -5273,25 +5155,28 @@ function InventoryTable({
 												value={inline.quantity}
 											/>
 										</td>
-										<td className="px-2 py-1.5 align-middle text-center">
-											<input
-												className={`mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
-													inline.preferredPurchaseUnit.trim() !== "" &&
-														unitOptionSet.has(normalizeUnitOption(inline.preferredPurchaseUnit))
-												)}`}
-												list="inventory-unit-options-table"
-												onBlur={() => void saveMeta(row)}
-												onChange={(e) =>
-													setInlineField(
-														row,
-														"unit",
-														normalizeUnitOption(e.target.value)
-													)
-												}
-												placeholder="unit"
-												value={inline.unit}
-											/>
-										</td>
+									<td className="px-2 py-1.5 align-middle text-center group relative">
+										<input
+											className={`mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
+												inline.unit.trim() !== "" &&
+													unitOptionSet.has(normalizeUnitOption(inline.unit))
+											)}`}
+											list="inventory-unit-options-table"
+											onBlur={() => void saveMeta(row)}
+											onChange={(e) =>
+												setInlineField(
+													row,
+													"unit",
+													normalizeUnitOption(e.target.value)
+												)
+											}
+											placeholder="unit"
+											value={inline.unit}
+										/>
+										{row.preferredPurchaseUnit && row.preferredPurchaseUnit !== inline.unit && (
+											<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Stok: {inline.unit} · Beli: {row.preferredPurchaseUnit}</span>
+										)}
+									</td>
 										<td className="px-2 py-1.5 align-middle text-center">
 											<input
 												className="mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] outline-none focus:border-border focus:bg-background"
@@ -5416,6 +5301,7 @@ function InventoryTable({
 										return null;
 									})()}
 									</td>
+										<td className="px-2 py-1.5 text-right font-mono text-[11px] font-semibold">{row.lastPurchasePrice ? formatCurrencyIDR(row.currentStock * row.lastPurchasePrice) : "—"}</td>
 										<td className="px-2 py-1.5 align-middle text-center text-[10px]">
 											{(() => {
 												const tx = row.latestTransaction;
@@ -5529,9 +5415,9 @@ function InventoryTable({
 									</tr>
 								);
 							})}
-						{inventoryMap.size > 0 && filteredRows.length === 0 && (
+						{inventoryMap.size > 0 && statusFilteredRows.length === 0 && (
 							<tr>
-								<td className="p-8 text-center text-muted-foreground" colSpan={14}>
+								<td className="p-8 text-center text-muted-foreground" colSpan={13}>
 									Tidak ada bahan baku ditemukan
 								</td>
 							</tr>
