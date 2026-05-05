@@ -833,6 +833,7 @@ function InventoryPage() {
 		baseRecipeId: "" as string,
 		defaultBrandName: "",
 		preferredStoreId: "" as string,
+		netWeight: "",
 		newStoreName: "",
 	});
 	const [notes, setNotes] = useState("");
@@ -907,6 +908,7 @@ function InventoryPage() {
 				baseRecipeId: (selectedItem.baseRecipeId as string) || "",
 				defaultBrandName: selectedItem.defaultBrandName || "",
 				preferredStoreId: (selectedItem.preferredStoreId as string) || "",
+				netWeight: selectedItem.netWeight || "",
 				newStoreName: "",
 			});
 		}
@@ -1187,6 +1189,7 @@ function InventoryPage() {
 			baseRecipeId: (newItem.baseRecipeId as Id<"baseRecipes">) || undefined,
 			defaultBrandName: newItem.defaultBrandName.trim() || undefined,
 			preferredStoreId,
+			netWeight: newItem.netWeight || undefined,
 		});
 		toast.success("Bahan baku ditambahkan"); triggerHybridRefresh(); triggerHybridRefresh();
 	};
@@ -1238,6 +1241,7 @@ function InventoryPage() {
 			baseRecipeId: (newItem.baseRecipeId as Id<"baseRecipes">) || undefined,
 			defaultBrandName: newItem.defaultBrandName.trim() || undefined,
 			preferredStoreId,
+			netWeight: newItem.netWeight || undefined,
 		});
 		toast.success("Bahan baku diperbarui"); triggerHybridRefresh(); triggerHybridRefresh();
 	};
@@ -1700,6 +1704,26 @@ function InventoryModalContent({
 							}
 							placeholder="Contoh: Indomilk"
 							value={newItem.defaultBrandName}
+						/>
+					</div>
+					<div className="space-y-2">
+						<label
+							className="font-bold text-foreground/60 text-[10px] uppercase tracking-widest"
+							htmlFor="netWeight"
+						>
+							Berat Bersih / Isi Per Kemasan
+						</label>
+						<input
+							className="w-full rounded-md border border-border bg-background p-4 font-bold text-foreground text-sm outline-none transition-all focus:ring-2 focus:ring-ring"
+							id="netWeight"
+							onChange={(e) =>
+								onNewItemChange({
+									...newItem,
+									netWeight: e.target.value,
+								})
+							}
+							placeholder="Contoh: 48 gelas, 250 ml, 1 kg"
+							value={newItem.netWeight}
 						/>
 					</div>
 					<div className="space-y-2">
@@ -4353,7 +4377,7 @@ function InventoryTable({
 						: undefined),
 				unitConversions: parsedUnitConversions,
 				baseRecipeId: item.baseRecipeId || undefined,
-				defaultBrandName: current.defaultBrandName.trim() || undefined,
+			defaultBrandName: draft.defaultBrandName.trim() || undefined,
 				preferredStoreId,
 				preferredPurchaseQuantity: preferredPurchaseQuantityNum ?? undefined,
 				preferredPurchaseUnit: preferredPurchaseUnit || undefined,
@@ -5369,67 +5393,26 @@ function InventoryTable({
 											type="number"
 											value={getPriceDraft(row)}
 										/>
-									{/* #7: Harga per unit beli — tampilkan harga per satuan & per unit beli */}
-									{row.lastPurchasePrice != null &&
-									typeof row.conversionFactor === "number" &&
-									row.conversionFactor > 1 &&
-									row.preferredPurchaseUnit != null && (() => {
-										const purchasePrice = row.lastPurchasePrice * row.conversionFactor;
-										const baseUnit = row.displayUnit || row.unit;
-										return (
-											<p className="mt-0.5 text-[9px] leading-tight text-muted-foreground">
-												{row.lastPurchasePrice.toLocaleString("id-ID")}/{baseUnit}
-												{" ("}
-												{purchasePrice.toLocaleString("id-ID")}/
-												{row.preferredPurchaseUnit}
-												{")"}
-											</p>
-										);
-									})()}
-									{/* #4: Auto-detect harga janggal per unit beli */}
-									{row.lastPurchasePrice != null &&
-									typeof row.conversionFactor === "number" &&
-									row.conversionFactor > 1 &&
-									row.preferredPurchaseUnit != null && (() => {
-										const purchasePrice = row.lastPurchasePrice * row.conversionFactor;
-										const baseUnit = row.displayUnit || row.unit;
-										if (purchasePrice > 500000) {
-											return (
-												<span
-													className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-red-100 px-1.5 py-0.5 text-[8px] font-bold text-red-700"
-													title={`Harga per unit beli: ${purchasePrice.toLocaleString("id-ID")}/${row.preferredPurchaseUnit} — di luar range normal`}
-												>
-													⚠️ Mahal
-												</span>
-											);
-										}
-										if (purchasePrice < 100 && purchasePrice > 0) {
-											return (
-												<span
-													className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-orange-100 px-1.5 py-0.5 text-[8px] font-bold text-orange-700"
-													title={`Harga per unit beli: ${purchasePrice.toLocaleString("id-ID")}/${row.preferredPurchaseUnit} — di luar range normal`}
-												>
-													⚠️ Murah
-												</span>
-											);
-										}
-										return null;
-									})()}
-									{/* Price age indicator */}
-									{(() => {
-										if (row.lastPurchasePrice == null) return null;
-										const tx = row.latestTransaction;
-										if (!tx?.timestamp) return null;
-										const now = Date.now();
-										const ageMs = now - tx.timestamp;
-										const ageDays = Math.floor(ageMs / 86400000);
-										if (ageDays <= 0) return <p className="mt-0.5 text-[9px] font-semibold text-emerald-600">Hari ini</p>;
-										if (ageDays === 1) return <p className="mt-0.5 text-[9px] font-semibold text-emerald-600">1 hari lalu</p>;
-										if (ageDays <= 7) return <p className="mt-0.5 text-[9px] text-emerald-600">{ageDays} hari lalu</p>;
-										if (ageDays <= 14) return <p className="mt-0.5 text-[9px] font-semibold text-amber-600">{ageDays} hari lalu</p>;
-										if (ageDays <= 30) return <p className="mt-0.5 text-[9px] text-amber-600">{ageDays} hari lalu</p>;
-										return <p className="mt-0.5 text-[9px] font-semibold text-rose-600">{ageDays} hari lalu ⚠️</p>;
-									})()}
+									<div className="text-right">
+										<p className="font-semibold text-foreground text-[11px]">
+											{formatCurrencyIDR(row.lastPurchasePrice)}
+										</p>
+										<p className="text-[9px] text-muted-foreground/70">
+											per {row.preferredPurchaseUnit || row.unit || "unit"}
+										</p>
+										{row.netWeight && (() => {
+											const match = row.netWeight.match(/^(\d+)/);
+											const qty = match ? parseInt(match[1], 10) : 0;
+											if (qty > 0 && row.lastPurchasePrice > 0) {
+												return (
+													<p className="text-[9px] text-muted-foreground/50">
+														{formatCurrencyIDR(Math.round(row.lastPurchasePrice / qty))} / {row.displayUnit || "pcs"}
+													</p>
+												);
+											}
+											return null;
+										})()}
+									</div>
 									</td>
 									<td className="px-2 py-1.5 align-middle text-center text-[10px]">
 											{(() => {
