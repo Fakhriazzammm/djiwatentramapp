@@ -22,6 +22,12 @@ from telegram.ext import (
 )
 from PIL import Image
 
+# ── HTTP Server for transaction analysis ────────────────────────────
+try:
+    from aiohttp import web
+except ImportError:
+    web = None  # fallback: endpoint not available
+
 load_dotenv()
 
 # ── Config ─────────────────────────────────────────────────────────
@@ -52,12 +58,14 @@ from orchestrator import FinanceOrchestrator, OrchestratorResult
 from categories import auto_categorize, categorize_item, get_category_label, format_amount, FINANCE_CATEGORIES, get_all_categories, add_dynamic_category
 from sumopod_client import SumoPodClient
 from memory import MemoryManager, normalize_name
+from analyzer import TransactionAnalyzer
 # (no supplier import needed — moved to Yumi Purchasing)
 
 finance = FinanceManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, f"{SUPABASE_URL}/functions/v1/yumi-ai")
 inventory = InventoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ACCESS_TOKEN)
 orchestrator = FinanceOrchestrator(SUMOPOD_API_KEY)
 memory = MemoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY)
+analyzer = TransactionAnalyzer(SUMOPOD_API_KEY, os.getenv("SUMOPOD_BASE_URL", "https://ai.sumopod.com/v1"), SUPABASE_URL, SUPABASE_ACCESS_TOKEN)
 # supplier moved to Yumi Purchasing
 
 # ── In-memory state: pending confirmations ─────────────────────────
@@ -2030,6 +2038,93 @@ async def _auto_create_missing_categories(receipts: list[dict]):
         logger.warning(f"Auto-category creation failed: {e}")
 
 
+# ── HTTP Endpoints ──────────────────────────────────────────────────
+
+ANALYZER_PORT = int(os.getenv("ANALYZER_PORT", "8002"))
+
+async def _handle_analyze_transaction(request):
+    """POST /analyze-transaction  { "source_id": "...", ... }"""
+    from aiohttp import web
+    try:
+        body = json.loads(await request.read())
+        source_id = body.get("source_id")
+        if not source_id:
+            return web.json_response({"ok": False, "error": "source_id required"}, status=400)
+
+        # Fetch transaction from DB
+        rows = analyzer._mgmt_sql(f"""
+            SELECT source_id, tx_type, amount, category, description,
+                   payment_method, tx_date, metadata
+            FROM pos.financial_transactions
+            WHERE source_id = '{source_id.replace(chr(39), chr(39)*2)}'
+            LIMIT 1
+        """)
+        if not rows:
+            return web.json_response({"ok": False, "error": "Transaction not found"}, status=404)
+
+        tx = rows[0]
+        result = await analyzer.analyze_transaction(tx)
+        return web.json_response({"ok": True, "result": result})
+    except Exception as e:
+        logger.exception("analyze_transaction error")
+        return web.json_response({"ok": False, "error": str(e)}, status=500)
+
+
+async def _handle_batch_analyze(request):
+    """POST /batch-analyze — analyze all unanalyzed transactions from today"""
+    from aiohttp import web
+    try:
+        start_of_day = datetime.now(WIB).replace(hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000
+
+        # Find unanalyzed transactions
+        rows = analyzer._mgmt_sql(f"""
+            SELECT ft.source_id, ft.tx_type, ft.amount, ft.category,
+                   ft.description, ft.payment_method, ft.tx_date, ft.metadata
+            FROM pos.financial_transactions ft
+            LEFT JOIN pos.transaction_analytics ta ON ft.source_id = ta.source_id
+            WHERE ta.source_id IS NULL
+              AND ft.tx_date >= {start_of_day}
+            LIMIT 50
+        """)
+
+        results = []
+        for tx in rows:
+            try:
+                result = await analyzer.analyze_transaction(tx)
+                results.append(result)
+            except Exception as e:
+                logger.error(f"Failed to analyze {tx.get('source_id')}: {e}")
+                results.append({"source_id": tx.get("source_id"), "error": str(e)})
+
+        return web.json_response({"ok": True, "analyzed": len(results), "results": results})
+    except Exception as e:
+        logger.exception("batch_analyze error")
+        return web.json_response({"ok": False, "error": str(e)}, status=500)
+
+
+async def _handle_health(request):
+    """GET /health"""
+    from aiohttp import web
+    return web.json_response({"ok": True, "service": "yumi-finance-analyzer"})
+
+
+async def _start_http_server(bot_app, port=ANALYZER_PORT):
+    """Start aiohttp server in the bot's event loop via post_init."""
+    if web is None:
+        logger.warning("aiohttp not installed, HTTP analyzer endpoint disabled")
+        return
+    app = web.Application()
+    app["bot"] = bot_app.bot
+    app.router.add_post("/analyze-transaction", _handle_analyze_transaction)
+    app.router.add_post("/batch-analyze", _handle_batch_analyze)
+    app.router.add_get("/health", _handle_health)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info(f"Transaction analyzer HTTP endpoint listening on port {port}")
+
+
 def main():
     if not BOT_TOKEN:
         raise RuntimeError("TELEGRAM_BOT_TOKEN belum di-set")
@@ -2049,7 +2144,7 @@ def main():
     _load_pending()
     logger.info("Loaded %d receipt(s) and %d action(s) from pending sessions", len(_receipt_pending), len(_pending_actions))
 
-    app = Application.builder().token(BOT_TOKEN).build()
+    app = Application.builder().token(BOT_TOKEN).post_init(_start_http_server).build()
 
     # Commands
     app.add_handler(CommandHandler("start", cmd_start))

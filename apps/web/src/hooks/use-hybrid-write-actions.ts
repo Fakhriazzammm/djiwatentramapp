@@ -3818,6 +3818,17 @@ export function useHybridCreateTransaction() {
 					.from("financial_transactions")
 					.insert(row);
 				if (error) throw error;
+
+				// Fire-and-forget: notify Yumi Finance Analyzer for real-time AI analysis
+				const analyzerUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_ANALYZER_URL) ||
+					"http://43.129.54.5:8002";
+				fetch(`${analyzerUrl}/analyze-transaction`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ source_id: sourceId }),
+					keepalive: true,
+				}).catch(() => {}); // silent fail
+
 				return sourceId;
 			} catch (error) {
 				console.warn(

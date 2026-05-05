@@ -31,6 +31,7 @@ type InventoryRecord = {
 	lastPurchasePrice?: number | null;
 	lastPurchaseAt?: number | null;
 	lastPurchaseStoreId?: string | null;
+	netWeight?: string | null;
 	_creationTime?: number;
 };
 
@@ -376,6 +377,7 @@ async function fetchInventoryRows() {
 				? null
 				: Number(row.lastPurchaseAt),
 		lastPurchaseStoreId: row.lastPurchaseStoreId ?? null,
+		netWeight: row.net_weight ?? null,
 		_creationTime:
 			row._creationTime === null || row._creationTime === undefined
 				? Number(row.lastPurchaseAt ?? 0)
@@ -731,6 +733,7 @@ async function loadWorkspace(daysWindow: number) {
 							sourceFingerprint: latestTransaction.sourceFingerprint ?? null,
 					  }
 					: null,
+				netWeight: item.netWeight ?? null,
 			};
 		})
 		.sort((left, right) => {
