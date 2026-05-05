@@ -903,6 +903,8 @@ export function SettingsPage({
 	const [editRolePermOpen, setEditRolePermOpen] = useState(false);
 	const [newRoleBonusOpen, setNewRoleBonusOpen] = useState(false);
 	const [editRoleBonusOpen, setEditRoleBonusOpen] = useState(false);
+	const [editRolePermTarget, setEditRolePermTarget] = useState<any>(null);
+	const [editRoleBonusTarget, setEditRoleBonusTarget] = useState<any>(null);
 	const [showFaceEnrollment, setShowFaceEnrollment] = useState(false);
 	const [savingUser, setSavingUser] = useState(false);
 	const [confirmConfig, setConfirmConfig] = useState<{
@@ -1285,7 +1287,44 @@ export function SettingsPage({
 		});
 	};
 
-	const handleSaveEditRole = async () => {
+	// Bonus target helpers for edit-role dialog (uses editRoleBonusTarget)
+	const updateEditRoleBonusTier = (index: number, field: keyof BonusTierConfig, value: number) => {
+		setEditRoleBonusTarget((prev: any) => {
+			if (!prev) return prev;
+			return {
+				...prev,
+				bonusTargetConfig: {
+					...prev.bonusTargetConfig,
+					tiers: prev.bonusTargetConfig.tiers.map((tier: any, tierIndex: number) =>
+						tierIndex === index ? { ...tier, [field]: value } : tier
+					),
+				},
+			};
+		});
+	};
+	const addEditRoleBonusTier = () => {
+		setEditRoleBonusTarget((prev: any) => {
+			if (!prev) return prev;
+			const tiers = [...prev.bonusTargetConfig.tiers];
+			const lastThreshold = tiers.length > 0 ? tiers[tiers.length - 1].thresholdPct : 50;
+			tiers.push({ thresholdPct: lastThreshold + 50, bonusAmount: 0 });
+			return { ...prev, bonusTargetConfig: { ...prev.bonusTargetConfig, tiers } };
+		});
+	};
+	const removeEditRoleBonusTier = (index: number) => {
+		setEditRoleBonusTarget((prev: any) => {
+			if (!prev || prev.bonusTargetConfig.tiers.length <= 1) return prev;
+			return {
+				...prev,
+				bonusTargetConfig: {
+					...prev.bonusTargetConfig,
+					tiers: prev.bonusTargetConfig.tiers.filter((_: any, i: number) => i !== index),
+				},
+			};
+		});
+	};
+
+	const handleEditRoleBonusSave = async () => {
 		if (!editingRole) return;
 		if (!editingRole.name.trim()) {
 			toast.error("Nama role wajib diisi");
@@ -2313,157 +2352,130 @@ export function SettingsPage({
 															</tr>
 														)}
 														{roles.map((role: any) => {
-															const isEditing = editingRole?._id === role._id;
 															return (
-																<tr key={role._id} className={`transition-colors ${isEditing ? "bg-primary/5" : "hover:bg-muted/30"}`}>
+																<tr key={role._id} className="transition-colors hover:bg-muted/30">
 																	<td className="px-3 py-2">
-																		{isEditing ? (
-														<input
-															className="w-full rounded-lg border border-primary/30 bg-background p-2 text-xs outline-none focus:ring-2 focus:ring-primary/20"
-															type="text"
-															value={editingRole?.name ?? ""}
-						onChange={(e) =>
-										setEditingRole((prev) =>
-											prev ? { ...prev, name: e.target.value } : prev
-										)
-									}
-									onBlur={handleAutoSaveRole}
-								/>
-																		) : (
-																			<span className="font-semibold text-xs text-foreground">{role.name}</span>
-																		)}
+																		<input
+																			className="w-full rounded-lg border border-border bg-background p-2 text-xs outline-none focus:ring-2 focus:ring-primary/20"
+																			type="text"
+																			defaultValue={role.name}
+																			onBlur={(e) => {
+																				const val = e.target.value.trim();
+																				if (val && val !== role.name) {
+																					updateRole({
+																						id: role._id,
+																						name: val,
+																						permissions: role.permissions,
+																						baseHourlyRate: role.baseHourlyRate ?? 0,
+																						baseShiftRate: role.baseShiftRate ?? 0,
+																						monthlyFixedSalary: role.monthlyFixedSalary ?? 0,
+																						dailyAllowance: role.dailyAllowance ?? 0,
+																						bonusTargetConfig: normalizeRoleBonusTargetConfig(role.bonusTargetConfig),
+																					}).then(() => setRefreshTrigger(n => n + 1)).catch(console.error);
+																				}
+																			}}
+																		/>
 																	</td>
 																	<td className="px-3 py-2 text-right">
-																		{isEditing ? (
-														<input
-															className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
-															type="number"
-							value={editingRole?.baseShiftRate ?? 0}
-								onChange={(e) =>
-									setEditingRole((prev) =>
-										prev
-											? { ...prev, baseShiftRate: Number(e.target.value) }
-											: prev
-									)
-								}
-								onBlur={handleAutoSaveRole}
-							/>
-																		) : (
-																			<span className="text-xs text-muted-foreground font-mono">
-																				{role.baseShiftRate?.toLocaleString("id-ID") || 0}
-																			</span>
-																		)}
+																		<input
+																			className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
+																			type="number"
+																			defaultValue={role.baseShiftRate ?? 0}
+																			onBlur={(e) => {
+																				const val = Number(e.target.value);
+																				if (val !== (role.baseShiftRate ?? 0)) {
+																					updateRole({
+																						id: role._id,
+																						name: role.name,
+																						permissions: role.permissions,
+																						baseHourlyRate: role.baseHourlyRate ?? 0,
+																						baseShiftRate: val,
+																						monthlyFixedSalary: role.monthlyFixedSalary ?? 0,
+																						dailyAllowance: role.dailyAllowance ?? 0,
+																						bonusTargetConfig: normalizeRoleBonusTargetConfig(role.bonusTargetConfig),
+																					}).then(() => setRefreshTrigger(n => n + 1)).catch(console.error);
+																				}
+																			}}
+																		/>
 																	</td>
 																	<td className="px-3 py-2 text-right">
-																		{isEditing ? (
-														<input
-															className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
-															type="number"
-							value={editingRole?.monthlyFixedSalary ?? 0}
-								onChange={(e) =>
-									setEditingRole((prev) =>
-										prev
-											? { ...prev, monthlyFixedSalary: Number(e.target.value) }
-											: prev
-									)
-								}
-								onBlur={handleAutoSaveRole}
-							/>
-																		) : (
-																			<span className="text-xs text-muted-foreground font-mono">
-																				{role.monthlyFixedSalary?.toLocaleString("id-ID") || 0}
-																			</span>
-																		)}
+																		<input
+																			className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
+																			type="number"
+																			defaultValue={role.monthlyFixedSalary ?? 0}
+																			onBlur={(e) => {
+																				const val = Number(e.target.value);
+																				if (val !== (role.monthlyFixedSalary ?? 0)) {
+																					updateRole({
+																						id: role._id,
+																						name: role.name,
+																						permissions: role.permissions,
+																						baseHourlyRate: role.baseHourlyRate ?? 0,
+																						baseShiftRate: role.baseShiftRate ?? 0,
+																						monthlyFixedSalary: val,
+																						dailyAllowance: role.dailyAllowance ?? 0,
+																						bonusTargetConfig: normalizeRoleBonusTargetConfig(role.bonusTargetConfig),
+																					}).then(() => setRefreshTrigger(n => n + 1)).catch(console.error);
+																				}
+																			}}
+																		/>
 																	</td>
 																	<td className="px-3 py-2 text-right">
-																		{isEditing ? (
-														<input
-															className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
-															type="number"
-							value={editingRole?.dailyAllowance ?? 0}
-								onChange={(e) =>
-									setEditingRole((prev) =>
-										prev
-											? { ...prev, dailyAllowance: Number(e.target.value) }
-											: prev
-									)
-								}
-								onBlur={handleAutoSaveRole}
-							/>
-																		) : (
-																			<span className="text-xs text-muted-foreground font-mono">
-																				{role.dailyAllowance?.toLocaleString("id-ID") || 0}
-																			</span>
-																		)}
+																		<input
+																			className="w-24 ml-auto block rounded-lg border border-border bg-background p-2 text-xs text-right outline-none focus:ring-2 focus:ring-primary/20"
+																			type="number"
+																			defaultValue={role.dailyAllowance ?? 0}
+																			onBlur={(e) => {
+																				const val = Number(e.target.value);
+																				if (val !== (role.dailyAllowance ?? 0)) {
+																					updateRole({
+																						id: role._id,
+																						name: role.name,
+																						permissions: role.permissions,
+																						baseHourlyRate: role.baseHourlyRate ?? 0,
+																						baseShiftRate: role.baseShiftRate ?? 0,
+																						monthlyFixedSalary: role.monthlyFixedSalary ?? 0,
+																						dailyAllowance: val,
+																						bonusTargetConfig: normalizeRoleBonusTargetConfig(role.bonusTargetConfig),
+																					}).then(() => setRefreshTrigger(n => n + 1)).catch(console.error);
+																				}
+																			}}
+																		/>
 																	</td>
 																	<td className="px-3 py-2">
-																		{isEditing ? (
-																			<button
-																				className="w-full rounded-lg border border-primary/30 bg-primary/10 px-2 py-1 text-left text-[10px] font-semibold text-primary hover:bg-primary/20"
-																				onClick={() => setEditRoleBonusOpen(true)}
-																				type="button"
-																			>
-																				{formatRoleBonusSummary(editingRole?.bonusTargetConfig)}
-																			</button>
-																		) : (
-																			<span className="block text-[10px] font-medium text-muted-foreground leading-relaxed">
-																				{formatRoleBonusSummary(role.bonusTargetConfig)}
-																			</span>
-																		)}
+																		<button
+																			className="w-full rounded-lg border border-border px-2 py-1 text-left text-[10px] font-semibold text-foreground hover:bg-muted/40"
+																			onClick={() => {
+																				setEditRoleBonusData(role);
+																				setEditRoleBonusOpen(true);
+																			}}
+																			type="button"
+																		>
+																			{formatRoleBonusSummary(role.bonusTargetConfig)}
+																		</button>
 																	</td>
 																	<td className="px-3 py-2">
-																		{isEditing ? (
-																			<button
-																				className="mx-auto flex items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-primary/20 transition-colors"
-																				onClick={() => setEditRolePermOpen(true)}
-																				type="button"
-																			>
-																				<ShieldCheck className="h-3 w-3" />
-																				{editingRole?.permissions.length ?? 0}
-																			</button>
-																		) : (
-																			<span className="block text-center text-[10px] font-semibold text-muted-foreground">
-																				{role.permissions.length} hak
-																			</span>
-																		)}
+																		<button
+																			className="mx-auto flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[10px] font-semibold text-muted-foreground hover:bg-muted/50 transition-colors"
+																			onClick={() => {
+																				setEditRolePermData(role);
+																				setEditRolePermOpen(true);
+																			}}
+																			type="button"
+																		>
+																			<ShieldCheck className="h-3 w-3" />
+																			{role.permissions.length}
+																		</button>
 																	</td>
 																	<td className="px-3 py-2">
 																		<div className="flex items-center justify-end gap-1">
-																			{isEditing ? (
-																				<>
-																					<button
-																						className="rounded-lg border border-border px-2 py-1 text-[10px] font-semibold text-muted-foreground hover:bg-muted/50 transition-colors"
-																						onClick={() => setEditingRole(null)}
-																						type="button"
-																					>
-																						Batal
-																					</button>
-																					<button
-																						className="rounded-lg bg-primary px-2 py-1 text-[10px] font-bold text-primary-foreground hover:opacity-90 transition-opacity"
-																						onClick={handleSaveEditRole}
-																						type="button"
-																					>
-																						Simpan
-																					</button>
-																				</>
-																			) : (
-																				<>
-																					<button
-																						title="Edit Role"
-																						className="rounded-lg p-1.5 text-primary hover:bg-primary/10 transition-colors"
-																						onClick={() => handleStartEditRole(role)}
-																					>
-																						<Pencil className="h-3.5 w-3.5" />
-																					</button>
-																					<button
-																						title="Hapus Role"
-																						className="rounded-lg p-1.5 text-destructive hover:bg-destructive/10 transition-colors"
-																						onClick={() => handleDeleteRole(role._id)}
-																					>
-																						<Trash2 className="h-3.5 w-3.5" />
-																					</button>
-																				</>
-																			)}
+																			<button
+																				title="Hapus Role"
+																				className="rounded-lg p-1.5 text-destructive hover:bg-destructive/10 transition-colors"
+																				onClick={() => handleDeleteRole(role._id)}
+																			>
+																				<Trash2 className="h-3.5 w-3.5" />
+																			</button>
 																		</div>
 																	</td>
 																</tr>
@@ -2509,26 +2521,38 @@ export function SettingsPage({
 								</DialogContent>
 							</Dialog>
 
-							<Dialog open={editRolePermOpen} onOpenChange={(open) => { if (!open) handleAutoSaveRole(); setEditRolePermOpen(open); }}>
+							<Dialog open={editRolePermOpen} onOpenChange={(open) => {
+								if (!open && editRolePermTarget) {
+									updateRole({
+										id: editRolePermTarget._id,
+										name: editRolePermTarget.name,
+										permissions: editRolePermTarget.permissions,
+										baseHourlyRate: editRolePermTarget.baseHourlyRate ?? 0,
+										baseShiftRate: editRolePermTarget.baseShiftRate ?? 0,
+										monthlyFixedSalary: editRolePermTarget.monthlyFixedSalary ?? 0,
+										dailyAllowance: editRolePermTarget.dailyAllowance ?? 0,
+										bonusTargetConfig: normalizeRoleBonusTargetConfig(editRolePermTarget.bonusTargetConfig),
+									}).then(() => setRefreshTrigger(n => n + 1)).catch(console.error);
+								}
+								setEditRolePermOpen(open);
+							}}>
 								<DialogContent className="sm:max-w-sm">
-									<DialogTitle>Izin Akses - {editingRole?.name}</DialogTitle>
+									<DialogTitle>Izin Akses - {editRolePermTarget?.name}</DialogTitle>
 									<DialogDescription>Pilih izin akses untuk role ini.</DialogDescription>
-									{editingRole && (
+									{editRolePermTarget && (
 										<div className="max-h-72 space-y-1 overflow-y-auto">
 											{AVAILABLE_PERMISSIONS.map((perm) => (
 												<label key={perm.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-muted/50">
 													<input
 														type="checkbox"
 														className="h-3.5 w-3.5 rounded border-border"
-														checked={editingRole.permissions.includes(perm.id)}
+														checked={editRolePermTarget.permissions.includes(perm.id)}
 														onChange={(e) => {
 															const nextPermissions = e.target.checked
-																? [...editingRole.permissions, perm.id]
-																: editingRole.permissions.filter((id) => id !== perm.id);
-															setEditingRole((prev) =>
-																prev
-																	? { ...prev, permissions: nextPermissions }
-																	: prev
+																? [...editRolePermTarget.permissions, perm.id]
+																: editRolePermTarget.permissions.filter((id: string) => id !== perm.id);
+															setEditRolePermTarget((prev: any) =>
+																prev ? { ...prev, permissions: nextPermissions } : prev
 															);
 														}}
 													/>
@@ -2622,13 +2646,27 @@ export function SettingsPage({
 								</DialogContent>
 							</Dialog>
 
-							<Dialog open={editRoleBonusOpen} onOpenChange={(open) => { if (!open) handleAutoSaveRole(); setEditRoleBonusOpen(open); }}>
+							<Dialog open={editRoleBonusOpen} onOpenChange={(open) => {
+								if (!open && editRoleBonusTarget) {
+									updateRole({
+										id: editRoleBonusTarget._id,
+										name: editRoleBonusTarget.name,
+										permissions: editRoleBonusTarget.permissions,
+										baseHourlyRate: editRoleBonusTarget.baseHourlyRate ?? 0,
+										baseShiftRate: editRoleBonusTarget.baseShiftRate ?? 0,
+										monthlyFixedSalary: editRoleBonusTarget.monthlyFixedSalary ?? 0,
+										dailyAllowance: editRoleBonusTarget.dailyAllowance ?? 0,
+										bonusTargetConfig: normalizeRoleBonusTargetConfig(editRoleBonusTarget.bonusTargetConfig),
+									}).then(() => setRefreshTrigger(n => n + 1)).catch(console.error);
+								}
+								setEditRoleBonusOpen(open);
+							}}>
 								<DialogContent className="sm:max-w-lg">
-									<DialogTitle>Bonus Target - {editingRole?.name}</DialogTitle>
+									<DialogTitle>Bonus Target - {editRoleBonusTarget?.name}</DialogTitle>
 									<DialogDescription>
 										Bonus bersifat akumulatif setiap level target yang tercapai.
 									</DialogDescription>
-									{editingRole && (
+									{editRoleBonusTarget && (
 										<div className="space-y-4">
 											<div className="space-y-2">
 												<label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -2636,17 +2674,17 @@ export function SettingsPage({
 												</label>
 												<select
 													className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-													value={editingRole.bonusTargetConfig.basis}
+													value={editRoleBonusTarget.bonusTargetConfig.basis}
 													onChange={(e) =>
-														setEditingRole((prev) =>
+														setEditRoleBonusTarget((prev: any) =>
 															prev
 																? {
-																		...prev,
-																		bonusTargetConfig: {
-																			...prev.bonusTargetConfig,
-																			basis: e.target.value as BonusTargetBasis,
-																		},
-																	}
+																	...prev,
+																	bonusTargetConfig: {
+																		...prev.bonusTargetConfig,
+																		basis: e.target.value as BonusTargetBasis,
+																	},
+																}
 																: prev
 														)
 													}
@@ -2661,20 +2699,20 @@ export function SettingsPage({
 													<label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
 														Level Bonus
 													</label>
-													<Button size="sm" type="button" variant="outline" onClick={addEditingRoleBonusTier}>
+													<Button size="sm" type="button" variant="outline" onClick={addEditRoleBonusTier}>
 														<Plus className="h-3 w-3" />
 														Tambah Level
 													</Button>
 												</div>
 												<div className="space-y-2">
-													{editingRole.bonusTargetConfig.tiers.map((tier, index) => (
+													{editRoleBonusTarget.bonusTargetConfig.tiers.map((tier: any, index: number) => (
 														<div key={`${tier.thresholdPct}-${index}`} className="grid grid-cols-[1fr_1fr_auto] items-center gap-2">
 															<input
 																type="number"
 																className="rounded-lg border border-border bg-background px-3 py-2 text-xs"
 																value={tier.thresholdPct}
 																onChange={(e) =>
-																	updateEditingRoleBonusTier(
+																	updateEditRoleBonusTier(
 																		index,
 																		"thresholdPct",
 																		Number(e.target.value)
@@ -2686,7 +2724,7 @@ export function SettingsPage({
 																className="rounded-lg border border-border bg-background px-3 py-2 text-xs"
 																value={tier.bonusAmount}
 																onChange={(e) =>
-																	updateEditingRoleBonusTier(
+																	updateEditRoleBonusTier(
 																		index,
 																		"bonusAmount",
 																		Number(e.target.value)
@@ -2697,7 +2735,7 @@ export function SettingsPage({
 																size="icon"
 																type="button"
 																variant="ghost"
-																onClick={() => removeEditingRoleBonusTier(index)}
+																onClick={() => removeEditRoleBonusTier(index)}
 															>
 																<Trash2 className="h-3.5 w-3.5" />
 															</Button>
