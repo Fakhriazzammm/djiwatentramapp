@@ -23,6 +23,7 @@ import {
 	ChevronUp,
 	Edit,
 	History,
+	MoreVertical,
 	PackageSearch,
 	PanelRight,
 	Minus,
@@ -3754,6 +3755,14 @@ function InventoryTable({
 	const quickAddNameRef = useRef<HTMLInputElement | null>(null);
 	const [savingKey, setSavingKey] = useState<string | null>(null);
 	const [statusFilter, setStatusFilter] = useState<"all" | "critical" | "warning" | "healthy">("all");
+	const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+	// Click outside to close dropdown
+	useEffect(() => {
+		if (!openDropdownId) return;
+		const handleClick = () => setOpenDropdownId(null);
+		window.addEventListener("click", handleClick);
+		return () => window.removeEventListener("click", handleClick);
+	}, [openDropdownId]);
 	const statusFilteredRows = useMemo(() => {
 		return statusFilter === "all"
 			? filteredRows
@@ -5437,94 +5446,56 @@ function InventoryTable({
 												</span>
 											</div>
 										</td>
-										<td className="px-2 py-1.5 align-middle text-right">
-											<div className="flex items-center justify-end gap-1 whitespace-nowrap">
-												<button
-													className={
-														tableMode === "simple"
-															? "inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-300 bg-slate-50 text-slate-700 shadow-sm transition-colors hover:bg-slate-100"
-															: "inline-flex items-center justify-center rounded-lg border border-border/90 bg-background p-0.5 text-foreground shadow-[inset_0_0_0_1px_rgba(15,23,42,0.03)] transition-colors hover:bg-muted"
-													}
-													onClick={() => void applyAiAutofillForRow(row, item)}
-													title="Autofill AI"
-													type="button"
-												>
-													<Settings2
-														className={
-															tableMode === "simple"
-																? "h-4 w-4 text-slate-700"
-																: "h-3.5 w-3.5 text-foreground"
-														}
-													/>
-												</button>
-												<button
-													className={
-														tableMode === "simple"
-															? "inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-300 bg-slate-50 text-slate-700 shadow-sm transition-colors hover:bg-slate-100"
-															: "inline-flex items-center justify-center rounded-lg border border-border/90 bg-background p-0.5 text-foreground shadow-[inset_0_0_0_1px_rgba(15,23,42,0.03)] transition-colors hover:bg-muted"
-													}
-													onClick={() => onDetailItemChange(item)}
-													title="Info"
-													type="button"
-												>
-													<PanelRight
-														className={
-															tableMode === "simple"
-																? "h-4 w-4 text-slate-700"
-																: "h-3.5 w-3.5 text-foreground"
-														}
-													/>
-												</button>
-												<button
-													className={
-														tableMode === "simple"
-															? "inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-300 bg-slate-50 text-slate-700 shadow-sm transition-colors hover:bg-slate-100"
-															: "inline-flex items-center justify-center rounded-lg border border-border/90 bg-background p-0.5 text-foreground shadow-[inset_0_0_0_1px_rgba(15,23,42,0.03)] transition-colors hover:bg-muted"
-													}
-													onClick={() => {
-														onSelectedItemChange(item);
-														onActionTypeChange("history");
-													}}
-													title="Riwayat"
-													type="button"
-												>
-													<History
-														className={
-															tableMode === "simple"
-																? "h-4 w-4 text-slate-700"
-																: "h-3.5 w-3.5 text-foreground"
-														}
-													/>
-												</button>
-												<button
-													className={
-														tableMode === "simple"
-															? "inline-flex h-7 w-7 items-center justify-center rounded-lg border border-rose-300 bg-rose-50 text-rose-600 shadow-sm transition-colors hover:bg-rose-100"
-															: "inline-flex items-center justify-center rounded-lg border border-rose-200 bg-background p-0.5 text-rose-600 shadow-[inset_0_0_0_1px_rgba(225,29,72,0.05)] transition-colors hover:bg-rose-50"
-													}
-													onClick={() => {
-														onSelectedItemChange(item);
-														onActionTypeChange("delete");
-													}}
-													title="Hapus"
-													type="button"
-												>
-													<Trash2
-														className={
-															tableMode === "simple"
-																? "h-4 w-4 text-rose-600"
-																: "h-3.5 w-3.5 text-rose-600"
-														}
-													/>
-												</button>
-											</div>
-										</td>
+									<td className="px-2 py-1.5 align-middle text-right">
+										<div className="relative flex items-center justify-end">
+											<button
+												className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border/80 bg-background text-muted-foreground transition-colors hover:bg-muted"
+												onClick={(e) => {
+													e.stopPropagation();
+													setOpenDropdownId(openDropdownId === row.inventoryId ? null : row.inventoryId);
+												}}
+												title="Aksi"
+												type="button"
+											>
+												<MoreVertical className="h-3.5 w-3.5" />
+											</button>
+											{openDropdownId === row.inventoryId && (
+												<div className="absolute bottom-full right-0 z-50 mb-1 min-w-[130px] rounded-lg border border-border bg-popover py-1 shadow-xl" onClick={(e) => e.stopPropagation()}>
+													<button
+														className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11px] text-popover-foreground transition-colors hover:bg-muted"
+														onClick={() => { onDetailItemChange(item); setOpenDropdownId(null); }}
+														type="button"
+													>
+														<PanelRight className="h-3.5 w-3.5" />
+														Info
+													</button>
+													<button
+														className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11px] text-popover-foreground transition-colors hover:bg-muted"
+														onClick={() => { onSelectedItemChange(item); onActionTypeChange("history"); setOpenDropdownId(null); }}
+														type="button"
+													>
+														<History className="h-3.5 w-3.5" />
+														Riwayat
+													</button>
+													<div className="my-1 border-t border-border" />
+													<button
+														className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11px] text-rose-600 transition-colors hover:bg-rose-50"
+														onClick={() => { onSelectedItemChange(item); onActionTypeChange("delete"); setOpenDropdownId(null); }}
+														type="button"
+													>
+														<Trash2 className="h-3.5 w-3.5" />
+														Hapus
+													</button>
+												</div>
+											)}
+										</div>
+									</td>
 									</tr>
 								);
 							})}
 						{inventoryMap.size > 0 && statusFilteredRows.length === 0 && (
 							<tr>
-								<td className="p-8 text-center text-muted-foreground" colSpan={13}>
+								<td className="p-8 text-center text-muted-foreground" colSpan={14}>
 									Tidak ada bahan baku ditemukan
 								</td>
 							</tr>
