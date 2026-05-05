@@ -4988,6 +4988,7 @@ function InventoryTable({
 							<td className="px-2 py-1.5 text-center align-middle text-[10px] font-semibold text-muted-foreground">
 								#
 							</td>
+							<td className="px-1 py-1.5 text-center align-middle" />
 							<td className="px-2.5 py-1.5">
 								<input
 									ref={quickAddNameRef}
