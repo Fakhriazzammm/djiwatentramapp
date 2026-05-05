@@ -1050,7 +1050,7 @@ function InventoryPage() {
 	);
 
 	const handleExportCSV = useCallback(() => {
-		const headers = ["Bahan", "Supplier", "Stok", "Satuan", "Min", "Pemakaian", "Harga", "Nilai Stok", "Status"];
+		const headers = ["Bahan", "Supplier", "Stok", "Satuan", "Min", "Pemakaian", "Harga", "Status"];
 		const rows = filteredRows.map((row) => {
 			return [
 				row.ingredientName,
@@ -1060,7 +1060,6 @@ function InventoryPage() {
 				row.lowStockThreshold,
 				row.avgDailyUsage?.toFixed(1) || "0",
 				row.lastPurchasePrice ? `Rp${row.lastPurchasePrice.toLocaleString()}` : "—",
-				row.lastPurchasePrice ? `Rp${(row.currentStock * row.lastPurchasePrice).toLocaleString()}` : "—",
 				row.status,
 			].join(",");
 		});
@@ -4891,7 +4890,6 @@ function InventoryTable({
 						<col className="w-[5%]" />
 						<col className="w-[7%]" />
 						<col className="w-[7%]" />
-						<col className="w-[7%]" />
 						<col className="w-[8%]" />
 						<col className="w-[8%]" />
 						<col className="w-[11rem]" />
@@ -4976,7 +4974,6 @@ function InventoryTable({
 								</div>
 							</th>
 							<th className="px-2 py-1.5 font-semibold">Harga Terakhir</th>
-							<th className="px-2 py-1.5 text-right font-semibold">Nilai Stok</th>
 							<th className="px-2 py-1.5 font-semibold">Sumber Restok</th>
 							<th className="px-2 py-1.5 font-semibold">Status</th>
 							<th className="px-2 py-1.5 text-right font-semibold">Aksi</th>
@@ -5082,10 +5079,9 @@ function InventoryTable({
 							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">-</div></td>
 							<td className="px-2 py-1.5"><div className="text-[10px] text-muted-foreground">-</div></td>
 							<td className="px-2 py-1.5"><div className="text-[10px] text-muted-foreground">-</div></td>
-							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
-							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
-							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
-							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
+						<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
+						<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
+						<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
 							<td className="px-2 py-1.5 text-right">
 								<div className="flex items-center justify-end gap-1.5">
 									<button
@@ -5139,9 +5135,6 @@ function InventoryTable({
 									</td>
 									<td className="p-4">
 										<Skeleton className="h-4 w-20" />
-									</td>
-									<td className="p-4">
-										<Skeleton className="mx-auto h-4 w-16" />
 									</td>
 									<td className="p-4">
 										<Skeleton className="mx-auto h-4 w-16" />
@@ -5418,8 +5411,7 @@ function InventoryTable({
 										return <p className="mt-0.5 text-[9px] font-semibold text-rose-600">{ageDays} hari lalu ⚠️</p>;
 									})()}
 									</td>
-										<td className="px-2 py-1.5 text-right font-mono text-[11px] font-semibold">{row.lastPurchasePrice ? formatCurrencyIDR(row.currentStock * row.lastPurchasePrice) : "—"}</td>
-										<td className="px-2 py-1.5 align-middle text-center text-[10px]">
+									<td className="px-2 py-1.5 align-middle text-center text-[10px]">
 											{(() => {
 												const tx = row.latestTransaction;
 												if (!tx || tx.type !== "restock") return <span className="text-muted-foreground">—</span>;
@@ -5496,7 +5488,7 @@ function InventoryTable({
 							})}
 						{inventoryMap.size > 0 && statusFilteredRows.length === 0 && (
 							<tr>
-								<td className="p-8 text-center text-muted-foreground" colSpan={15}>
+								<td className="p-8 text-center text-muted-foreground" colSpan={14}>
 									Tidak ada bahan baku ditemukan
 								</td>
 							</tr>
