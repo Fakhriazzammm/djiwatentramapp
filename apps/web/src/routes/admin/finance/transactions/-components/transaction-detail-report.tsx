@@ -1342,9 +1342,34 @@ export function TransactionDetailReport({
 															)}
 														</div>
 													)}
-													{hasReceiptMeta && t.metadata?.ocr && !t.metadata?.receiptDetails && (
-														<p className="text-[10px] text-slate-400 italic">Data OCR tersedia (detail tidak lengkap)</p>
-													)}
+												{hasReceiptMeta && t.metadata?.ocr && !t.metadata?.receiptDetails && (
+													<div className="space-y-1.5 rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2 text-[10px]">
+														{t.metadata.receipt_number && (
+															<div className="flex gap-2">
+																<span className="text-slate-400 w-28 shrink-0">No. Struk</span>
+																<span className="font-mono font-medium text-slate-700">{t.metadata.receipt_number}</span>
+															</div>
+														)}
+														{t.metadata.receipt_date && (
+															<div className="flex gap-2">
+																<span className="text-slate-400 w-28 shrink-0">Tanggal</span>
+																<span className="text-slate-700">{t.metadata.receipt_date}</span>
+															</div>
+														)}
+														{t.metadata.item_count && (
+															<div className="flex gap-2">
+																<span className="text-slate-400 w-28 shrink-0">Jumlah Item</span>
+																<span className="font-semibold text-slate-700">{t.metadata.item_count}</span>
+															</div>
+														)}
+														{t.description && (
+															<div className="border-slate-200 border-t pt-1.5 mt-1.5">
+																<span className="block text-[10px] font-medium text-slate-500 mb-1">Daftar Item:</span>
+																<p className="text-[10px] text-slate-700 leading-relaxed whitespace-pre-wrap">{t.description}</p>
+															</div>
+														)}
+													</div>
+												)}
 												</div>
 											</td>
 										</tr>
