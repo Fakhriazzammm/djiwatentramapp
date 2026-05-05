@@ -5401,8 +5401,9 @@ function InventoryTable({
 											per {row.preferredPurchaseUnit || row.unit || "unit"}
 										</p>
 										{row.netWeight && (() => {
-											const match = row.netWeight.match(/^(\d+)/);
-											const qty = match ? parseInt(match[1], 10) : 0;
+											const match = row.netWeight.match(/\(isi\s+([\d,]+)\)/) || row.netWeight.match(/^([\d,]+)/);
+											const qtyStr = match ? match[1].replace(",", ".") : "";
+											const qty = parseFloat(qtyStr) || 0;
 											if (qty > 0 && row.lastPurchasePrice > 0) {
 												return (
 													<p className="text-[9px] text-muted-foreground/50">
