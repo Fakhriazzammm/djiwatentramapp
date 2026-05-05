@@ -17,17 +17,19 @@ import {
 	XCircle,
 	ExternalLink,
 	Database,
+	Bot as BotIcon,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
 	useHybridAllProducts,
 	useHybridCategories,
 	useHybridInventory,
 } from "@/hooks/use-hybrid-pos-data";
 import { useHybridRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
-import { useHybridTrackOrders } from "@/hooks/use-hybrid-ops-data";
+import { useHybridTrackOrders, useHybridOrderStatus } from "@/hooks/use-hybrid-ops-data";
 import { FastStockTable } from "@/components/inventory/fast-stock-table";
 import { useHybridUpdateOrderItemStatus } from "@/hooks/use-hybrid-write-actions";
+import { createClient } from "@/lib/client";
 
 export const Route = createLazyFileRoute("/admin/kitchen" as any)({
 	component: KitchenMonitorPage,
@@ -36,6 +38,7 @@ export const Route = createLazyFileRoute("/admin/kitchen" as any)({
 function KitchenMonitorPage() {
 	const { tab = "orders" } = Route.useSearch() as { tab?: string };
 	const orders = useHybridTrackOrders("kitchen");
+	const botOrders = useHybridOrderStatus("kitchen");
 	
 	const allProducts = useHybridAllProducts();
 	const allCategories = useHybridCategories();
@@ -106,16 +109,19 @@ function KitchenMonitorPage() {
 			</div>
 
 			<div className="flex-1 overflow-auto">
-				<AnimatePresence mode="wait">
+			<AnimatePresence mode="wait">
 					{tab === "orders" ? (
 						<motion.div
 							animate={{ opacity: 1, y: 0 }}
-							className="h-full"
+							className="min-h-full pb-28"
 							exit={{ opacity: 0, y: 10 }}
 							initial={{ opacity: 0, y: 10 }}
 							key="orders-tab"
 						>
-							<ItemsKanban orders={orders} />
+							<ItemsKanban botOrders={botOrders} orders={orders} />
+							<div className="px-3 md:px-4">
+								<BotOrdersView orders={botOrders} track="kitchen" />
+							</div>
 						</motion.div>
 					) : (
 						<motion.div
@@ -147,8 +153,17 @@ interface KanbanItem {
 	orderCreatedAt: number;
 }
 
-function ItemsKanban({ orders }: { orders: any[] | undefined }) {
+function ItemsKanban({ orders, botOrders }: { orders: any[] | undefined; botOrders?: any[] }) {
 	const updateStatus = useHybridUpdateOrderItemStatus();
+
+	const safeBotArr = Array.isArray(botOrders) ? botOrders.filter(Boolean) : [];
+	const botStatusMap = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const o of safeBotArr) {
+			map.set(o.order_no, o.status);
+		}
+		return map;
+	}, [safeBotArr]);
 
 	// Flatten orders into individual items
 	const items = useMemo<KanbanItem[]>(() => {
@@ -200,6 +215,7 @@ function ItemsKanban({ orders }: { orders: any[] | undefined }) {
 	return (
 		<div className="flex h-full flex-nowrap gap-3 overflow-x-auto overflow-y-hidden p-3 snap-x snap-mandatory focus-visible:outline-none scrollbar-hide md:grid md:grid-cols-3 md:gap-4 md:p-4">
 			<KanbanColumn
+				botStatusMap={botStatusMap}
 				color="bg-slate-200"
 				items={categories.pending}
 				label="Antrian"
@@ -208,6 +224,7 @@ function ItemsKanban({ orders }: { orders: any[] | undefined }) {
 				textColor="text-slate-600"
 			/>
 			<KanbanColumn
+				botStatusMap={botStatusMap}
 				color="bg-orange-100"
 				items={categories.preparing}
 				label="Diproses"
@@ -216,10 +233,11 @@ function ItemsKanban({ orders }: { orders: any[] | undefined }) {
 				textColor="text-orange-700"
 			/>
 			<KanbanColumn
+				botStatusMap={botStatusMap}
 				color="bg-green-100"
 				items={categories.ready}
 				label="Selesai"
-				onItemAction={(item: KanbanItem) => updateStatus({ orderId: item.orderId, itemIndex: item.originalIndex, status: "preparing" })} // Back to prep
+				onItemAction={(item: KanbanItem) => updateStatus({ orderId: item.orderId, itemIndex: item.originalIndex, status: "preparing" })}
 				status="ready"
 				textColor="text-green-700"
 			/>
@@ -233,7 +251,8 @@ function KanbanColumn({
 	status, 
 	color, 
 	textColor, 
-	onItemAction 
+	onItemAction,
+	botStatusMap,
 }: { 
 	label: string; 
 	items: KanbanItem[]; 
@@ -241,6 +260,7 @@ function KanbanColumn({
 	color: string; 
 	textColor: string; 
 	onItemAction: (item: KanbanItem) => void;
+	botStatusMap: Map<string, string>;
 }) {
 	return (
 		<div className="flex h-full w-[82vw] max-w-[340px] shrink-0 flex-col gap-2 snap-center sm:w-[72vw] md:w-auto md:max-w-none md:gap-3">
@@ -258,7 +278,7 @@ function KanbanColumn({
 				<LayoutGroup>
 					<AnimatePresence>
 						{items.map((item) => (
-							<KanbanCard item={item} key={`${item.orderId}-${item.originalIndex}`} onAction={() => onItemAction(item)} status={status} />
+							<KanbanCard botStatusMap={botStatusMap} item={item} key={`${item.orderId}-${item.originalIndex}`} onAction={() => onItemAction(item)} status={status} />
 						))}
 					</AnimatePresence>
 				</LayoutGroup>
@@ -270,14 +290,22 @@ function KanbanColumn({
 function KanbanCard({ 
 	item, 
 	status, 
-	onAction 
+	onAction,
+	botStatusMap,
 }: { 
 	item: KanbanItem; 
 	status: string; 
-	onAction: () => void; 
+	onAction: () => void;
+	botStatusMap: Map<string, string>;
 }) {
 	const minutesAgo = Math.floor((Date.now() - item.orderCreatedAt) / 60000);
 	const isLate = minutesAgo > 20;
+	const botStatus = botStatusMap.get(item.orderNumber) || null;
+
+	const botBadge = botStatus === "new" ? { label: "🆕", class: "bg-amber-100 text-amber-700" }
+		: botStatus === "dibuat" ? { label: "🔧", class: "bg-indigo-100 text-indigo-700" }
+		: botStatus === "selesai" ? { label: "✅", class: "bg-green-100 text-green-700" }
+		: null;
 
 	return (
 		<motion.div
@@ -298,6 +326,9 @@ function KanbanCard({
 							<span>Meja {item.tableNumber || "Takeaway"}</span>
 							<span>•</span>
 							<span>#{item.orderNumber.split("-").pop()}</span>
+							{botBadge && (
+								<span className={`ml-1 rounded px-1 py-px text-[8px] ${botBadge.class}`}>{botBadge.label}</span>
+							)}
 						</div>
 					</div>
 				</div>
@@ -337,5 +368,142 @@ function KanbanCard({
 				</button>
 			</div>
 		</motion.div>
+	);
+}
+
+function BotOrdersView({ orders, track }: { orders: any[]; track: string }) {
+	const supabase = createClient();
+	const [refreshing, setRefreshing] = useState(false);
+
+	const updateStatus = async (orderNo: string, status: string) => {
+		setRefreshing(true);
+		try {
+			const now = new Date().toISOString();
+			const payload: any = { status, updated_at: now };
+			if (status === "dibuat") payload.dibuat_at = now;
+			if (status === "selesai") payload.selesai_at = now;
+			const { error } = await supabase
+				.from("pos_order_status")
+				.update(payload)
+				.eq("order_no", orderNo)
+				.eq("group_type", track);
+			if (error) console.error("Update error:", error);
+		} catch (e) {
+			console.error(e);
+		}
+		setRefreshing(false);
+	};
+
+	const safeArr = Array.isArray(orders) ? orders.filter(Boolean) : [];
+
+	if (safeArr.length === 0) {
+		return (
+			<div className="flex h-[30vh] flex-col items-center justify-center gap-3 text-center">
+				<div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-300">
+					<BotIcon className="h-6 w-6" />
+				</div>
+				<div className="space-y-1">
+					<h3 className="font-black text-base text-slate-600">Tidak Ada Notifikasi Bot</h3>
+					<p className="max-w-[260px] font-medium text-slate-400 text-xs">
+						Notifikasi dari Telegram Bot akan muncul di sini.
+					</p>
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<div className="space-y-3 pt-4">
+			<div className="flex items-center justify-between">
+				<h3 className="font-black text-sm text-slate-500 uppercase tracking-widest">
+					Status Bot — {track === "barista" ? "Barista" : "Kitchen"}
+				</h3>
+				<span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-500">
+					{safeArr.length}
+				</span>
+			</div>
+			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+				{safeArr.map((order: any) => {
+					const items = typeof order.items === "string" ? JSON.parse(order.items) : (order.items ?? []);
+					const itemSummary = Array.isArray(items) ? items.map((i: any) => `${i.qty || "?"}× ${i.name || "?"}`).join(", ") : "";
+					const createdAt = order.created_at ? new Date(order.created_at).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit" }) : "-";
+					const dibuatAt = order.dibuat_at ? new Date(order.dibuat_at).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit" }) : null;
+					const selesaiAt = order.selesai_at ? new Date(order.selesai_at).toLocaleString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit" }) : null;
+
+					const statusColors: Record<string, string> = {
+						new: "border-l-4 border-l-amber-400 bg-amber-50/50",
+						dibuat: "border-l-4 border-l-indigo-400 bg-indigo-50/50",
+						selesai: "border-l-4 border-l-green-400 bg-green-50/50 opacity-70",
+					};
+					const statusBadge: Record<string, { label: string; class: string }> = {
+						new: { label: "🆕 Baru", class: "bg-amber-100 text-amber-800" },
+						dibuat: { label: "🔧 Dibuat", class: "bg-indigo-100 text-indigo-800" },
+						selesai: { label: "✅ Selesai", class: "bg-green-100 text-green-800" },
+					};
+					const badge = statusBadge[order.status] || statusBadge.new;
+
+					const timerText = order.status === "new"
+						? "Klik tombol ✅ Dibuat atau otomatis dalam 10 detik"
+						: order.status === "dibuat"
+							? "Klik tombol 🏁 Selesai atau otomatis dalam 10 menit"
+							: null;
+
+					return (
+						<div
+							className={`rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 ${statusColors[order.status] || ""}`}
+							key={order.id || order.order_no}
+						>
+							<div className="flex items-start justify-between">
+								<div>
+									<h4 className="font-black text-sm text-slate-800">#{order.order_no}</h4>
+									<span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-black ${badge.class}`}>
+										{badge.label}
+									</span>
+								</div>
+								<span className="text-[10px] font-bold text-slate-400">{createdAt}</span>
+							</div>
+							{itemSummary && (
+								<p className="mt-2 text-[11px] font-medium text-slate-500 leading-relaxed">{itemSummary}</p>
+							)}
+							{timerText && (
+								<p className="mt-1.5 text-[10px] font-bold text-slate-400 italic">{timerText}</p>
+							)}
+							{order.dibuat_by && (
+								<p className="mt-1 text-[10px] font-bold text-indigo-600">
+									Dibuat oleh: {order.dibuat_by} {dibuatAt ? `🕐 ${dibuatAt}` : ""}
+								</p>
+							)}
+							{order.selesai_by && (
+								<p className="mt-1 text-[10px] font-bold text-green-600">
+									Selesai oleh: {order.selesai_by} {selesaiAt ? `🕐 ${selesaiAt}` : ""}
+								</p>
+							)}
+							{order.status !== "selesai" && (
+								<div className="mt-3 flex gap-2">
+									{order.status === "new" && (
+										<button
+											className="flex-1 rounded-xl bg-indigo-600 py-2 text-[10px] font-black text-white uppercase tracking-widest transition-all hover:bg-indigo-700 disabled:opacity-50"
+											disabled={refreshing}
+											onClick={() => updateStatus(order.order_no, "dibuat")}
+										>
+											✅ Dibuat
+										</button>
+									)}
+									{(order.status === "new" || order.status === "dibuat") && (
+										<button
+											className="flex-1 rounded-xl bg-green-500 py-2 text-[10px] font-black text-white uppercase tracking-widest transition-all hover:bg-green-600 disabled:opacity-50"
+											disabled={refreshing}
+											onClick={() => updateStatus(order.order_no, "selesai")}
+										>
+											🏁 Selesai
+										</button>
+									)}
+								</div>
+							)}
+						</div>
+					);
+				})}
+			</div>
+		</div>
 	);
 }

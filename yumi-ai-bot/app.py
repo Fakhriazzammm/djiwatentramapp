@@ -35,19 +35,7 @@ ALLOWED_USERS = {
 }
 TELEGRAM_REPORT_CHAT_ID = os.getenv("TELEGRAM_REPORT_CHAT_ID", "")
 REPORT_GROUP_ID = int(os.getenv("AUTO_REPORT_GROUP_ID", "-5044633519"))
-BARISTA_GROUP_ID = int(os.getenv("BARISTA_GROUP_ID", "-5044633519"))
-KITCHEN_GROUP_ID = int(os.getenv("KITCHEN_GROUP_ID", "-5199093599"))
-
-# Marketlist auto-send to Telegram group
 MARKETLIST_GROUP_ID = int(os.getenv("MARKETLIST_GROUP_ID", "-5288006237"))
-
-# Beverage category tracking
-_BEVERAGE_CATEGORY_IDS: set[str] = set()
-_BEVERAGE_PRODUCT_IDS: set[str] = set()
-
-# Food category tracking
-_FOOD_CATEGORY_IDS: set[str] = set()
-_FOOD_PRODUCT_IDS: set[str] = set()
 
 # Dedup: track already-reported orders to prevent re-sending
 _reported_order_nos: set[str] = set()
@@ -1409,211 +1397,6 @@ def _format_time_hm(ts_ms) -> str:
     return datetime.fromtimestamp(ts_ms / 1000, tz=WIB).strftime("%H:%M")
 
 
-async def _build_beverage_lookup():
-    """Fetch all beverage-category product IDs. Called once at startup."""
-    global _BEVERAGE_CATEGORY_IDS, _BEVERAGE_PRODUCT_IDS
-    try:
-        cats = await _fetch("pos_categories", "select=_id,name,parentId")
-        minuman_id = None
-        for c in cats:
-            if c.get("name", "").strip().lower() == "minuman":
-                minuman_id = c["_id"]
-                break
-        if not minuman_id:
-            logger.warning("build_beverage_lookup: 'Minuman' category not found")
-            return
-        beverage_cats = {minuman_id}
-        for c in cats:
-            if c.get("parentId") == minuman_id:
-                beverage_cats.add(c["_id"])
-        _BEVERAGE_CATEGORY_IDS = beverage_cats
-        logger.info("Beverage category IDs: %s", _BEVERAGE_CATEGORY_IDS)
-        products = await _fetch("pos_products", "select=_id,categoryId&limit=500")
-        _BEVERAGE_PRODUCT_IDS = {
-            p["_id"]
-            for p in products
-            if p.get("categoryId") in _BEVERAGE_CATEGORY_IDS
-        }
-        logger.info("Beverage product IDs loaded: %d", len(_BEVERAGE_PRODUCT_IDS))
-    except Exception as e:
-        logger.warning("build_beverage_lookup failed: %s", e)
-
-
-
-async def _lazy_fetch_product_category(pid: str) -> str:
-    """Fetch a single product's categoryId and cache it. Returns 'beverage', 'food', or 'other'."""
-    global _BEVERAGE_PRODUCT_IDS, _FOOD_PRODUCT_IDS
-    try:
-        rows = await _fetch("pos_products", f"select=categoryId&_id=eq.{pid}&limit=1")
-        if not rows:
-            _BEVERAGE_PRODUCT_IDS.add(pid); _FOOD_PRODUCT_IDS.add(pid)
-            return "other"
-        cat_id = rows[0].get("categoryId", "")
-        if cat_id in _BEVERAGE_CATEGORY_IDS:
-            _BEVERAGE_PRODUCT_IDS.add(pid)
-            logger.info("lazy_fetch: new product %s → beverage", pid)
-            return "beverage"
-        elif cat_id in _FOOD_CATEGORY_IDS:
-            _FOOD_PRODUCT_IDS.add(pid)
-            logger.info("lazy_fetch: new product %s → food", pid)
-            return "food"
-        else:
-            _BEVERAGE_PRODUCT_IDS.add(pid); _FOOD_PRODUCT_IDS.add(pid)
-            logger.info("lazy_fetch: product %s is neither (cat=%s)", pid, cat_id[:12])
-            return "other"
-    except Exception as e:
-        logger.warning("lazy_fetch failed for %s: %s", pid, e)
-        return "other"
-
-
-async def _is_beverage_item(item: dict) -> bool:
-    """Check if order item is beverage — lazy-fetches unknown products from Supabase."""
-    pid = item.get("productId", "")
-    if not pid:
-        return False
-    if pid in _BEVERAGE_PRODUCT_IDS:
-        return True
-    if pid in _FOOD_PRODUCT_IDS:
-        return False
-    return await _lazy_fetch_product_category(pid) == "beverage"
-
-
-async def _get_beverage_items(items: list) -> list[dict]:
-    result = []
-    for i in items:
-        if await _is_beverage_item(i):
-            result.append(i)
-    return result
-
-
-async def _send_barista_notification(app, order_no: str, customer: str, order_type: str, bev_items: list[dict], ts_ms: int, struk_line = None):
-    """Send barista-focused notification — only beverage items shown."""
-    type_labels = {
-        "dine_in": "🍽 Dine-in",
-        "takeaway": "🛍 Takeaway",
-        "online": "📱 Online",
-    }
-    type_label = type_labels.get(order_type, f"📋 {order_type}")
-
-    item_lines = []
-    for item in bev_items:
-        qty = int(float(item.get("quantity", 1)))
-        name = (item.get("productName") or "?").strip()
-        variant = item.get("variant")
-        if variant:
-            item_lines.append(f"  • {qty}× {name}  ({variant})")
-        else:
-            item_lines.append(f"  • {qty}× {name}")
-
-    lines = [
-        f"☕ PESANAN BARU — BARISTA 🕐 {_format_time_hm(ts_ms)}",
-    ]
-    if struk_line:
-        lines.append(f"{struk_line}  |  {type_label}  |  👤 {customer}")
-    else:
-        lines.append(f"{order_no}  |  {type_label}  |  👤 {customer}")
-    lines.append("")
-    lines.append("📋 Minuman:")
-    lines.extend(item_lines)
-    lines.append("")
-    lines.append("⏳ Mohon segera dibuat!")
-
-    try:
-        await app.bot.send_message(chat_id=BARISTA_GROUP_ID, text="\n".join(lines))
-        logger.info("Barista notification sent for %s (%d beverages)", order_no, len(bev_items))
-    except Exception as e:
-        logger.error("send_barista_notification failed for %s: %s", order_no, e)
-
-
-async def _build_food_lookup():
-    """Fetch all food-category product IDs. Called once at startup."""
-    global _FOOD_CATEGORY_IDS, _FOOD_PRODUCT_IDS
-    try:
-        cats = await _fetch("pos_categories", "select=_id,name,parentId")
-        makanan_id = None
-        for c in cats:
-            if c.get("name", "").strip().lower() == "makanan":
-                makanan_id = c["_id"]
-                break
-        if not makanan_id:
-            logger.warning("build_food_lookup: 'Makanan' category not found")
-            return
-        food_cats = {makanan_id}
-        for c in cats:
-            if c.get("parentId") == makanan_id:
-                food_cats.add(c["_id"])
-        _FOOD_CATEGORY_IDS = food_cats
-        logger.info("Food category IDs: %s", _FOOD_CATEGORY_IDS)
-        products = await _fetch("pos_products", "select=_id,categoryId&limit=500")
-        _FOOD_PRODUCT_IDS = {
-            p["_id"]
-            for p in products
-            if p.get("categoryId") in _FOOD_CATEGORY_IDS
-        }
-        logger.info("Food product IDs loaded: %d", len(_FOOD_PRODUCT_IDS))
-    except Exception as e:
-        logger.warning("build_food_lookup failed: %s", e)
-
-
-async def _is_food_item(item: dict) -> bool:
-    """Check if order item is food — lazy-fetches unknown products from Supabase."""
-    pid = item.get("productId", "")
-    if not pid:
-        return False
-    if pid in _FOOD_PRODUCT_IDS:
-        return True
-    if pid in _BEVERAGE_PRODUCT_IDS:
-        return False
-    return await _lazy_fetch_product_category(pid) == "food"
-
-
-async def _get_food_items(items: list) -> list[dict]:
-    result = []
-    for i in items:
-        if await _is_food_item(i):
-            result.append(i)
-    return result
-
-
-async def _send_kitchen_notification(app, order_no: str, customer: str, order_type: str, food_items: list[dict], ts_ms: int, struk_line = None):
-    """Send kitchen-focused notification — only food items shown."""
-    type_labels = {
-        "dine_in": "🍽 Dine-in",
-        "takeaway": "🛍 Takeaway",
-        "online": "📱 Online",
-    }
-    type_label = type_labels.get(order_type, f"📋 {order_type}")
-
-    item_lines = []
-    for item in food_items:
-        qty = int(float(item.get("quantity", 1)))
-        name = (item.get("productName") or "?").strip()
-        variant = item.get("variant")
-        if variant:
-            item_lines.append(f"  • {qty}× {name}  ({variant})")
-        else:
-            item_lines.append(f"  • {qty}× {name}")
-
-    lines = [
-        f"🍳 PESANAN BARU — KITCHEN 🕐 {_format_time_hm(ts_ms)}",
-    ]
-    if struk_line:
-        lines.append(f"{struk_line}  |  {type_label}  |  👤 {customer}")
-    else:
-        lines.append(f"{order_no}  |  {type_label}  |  👤 {customer}")
-    lines.append("")
-    lines.append("📋 Makanan:")
-    lines.extend(item_lines)
-    lines.append("")
-    lines.append("⏳ Mohon segera dibuat!")
-
-    try:
-        await app.bot.send_message(chat_id=KITCHEN_GROUP_ID, text="\n".join(lines))
-        logger.info("Kitchen notification sent for %s (%d food items)", order_no, len(food_items))
-    except Exception as e:
-        logger.error("send_kitchen_notification failed for %s: %s", order_no, e)
-
-
 async def _check_new_transactions(app):
     """Poll for new orders and expenses, report to group."""
     global _last_order_check_ms, _last_expense_check_ms, _reported_order_nos
@@ -1687,18 +1470,6 @@ async def _check_new_transactions(app):
             lines.append(f"👥 Kasir: {cashier}" + (f" | Tim: {team}" if team else ""))
             await _send_to_group(app, "\n".join(lines))
             await asyncio.sleep(0.3)
-
-            # ── Barista notification: only if order has beverage items ──
-            bev_items = await _get_beverage_items(items)
-            if bev_items:
-                await _send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line)
-                await asyncio.sleep(0.3)
-
-            # ── Kitchen notification: only if order has food items ──
-            food_items = await _get_food_items(items)
-            if food_items:
-                await _send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line)
-                await asyncio.sleep(0.3)
 
             # Mark as reported
             _reported_order_nos.add(order_no)
@@ -1887,12 +1658,6 @@ async def _send_marketlist_to_group(app):
 async def _start_auto_reporter(app):
     """Start polling loop and daily summary scheduler."""
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
-    # Build beverage product lookup for barista notifications
-    await _build_beverage_lookup()
-
-    # Build food product lookup for kitchen notifications
-    await _build_food_lookup()
 
     # Build marketlist ingredient category lookup
     from marketlist import build_lookup

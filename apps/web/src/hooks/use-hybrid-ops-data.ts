@@ -158,3 +158,45 @@ export function useHybridTrackOrders(track: "kitchen" | "bar") {
 	return supabaseData as any;
 }
 
+async function fetchOrderStatus(track: "barista" | "kitchen") {
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.from("pos_order_status")
+		.select("*")
+		.neq("status", "selesai")
+		.eq("group_type", track)
+		.order("created_at", { ascending: false });
+	if (error) throw error;
+	return (data ?? []) as any[];
+}
+
+export function useHybridOrderStatus(track: "barista" | "kitchen") {
+	const supabaseData = useSupabaseValue(
+		`order-status:${track}`,
+		() => fetchOrderStatus(track),
+		[track]
+	);
+	return supabaseData as any;
+}
+
+export function useHybridAllOrderStatus() {
+	const supabase = createClient();
+	const [records, setRecords] = useState<any[]>([]);
+	const [loading, setLoading] = useState(true);
+	useEffect(() => {
+		fetchAllActiveOrderStatus().then(setRecords).finally(() => setLoading(false));
+	}, []);
+	return { records, loading };
+}
+
+async function fetchAllActiveOrderStatus() {
+	const supabase = createClient();
+	const { data, error } = await supabase
+		.from("pos_order_status")
+		.select("*")
+		.neq("status", "selesai")
+		.order("created_at", { ascending: false });
+	if (error) throw error;
+	return (data ?? []) as any[];
+}
+
