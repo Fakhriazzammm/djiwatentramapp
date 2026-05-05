@@ -5806,38 +5806,40 @@ function InventoryHistoryModal({
 
 	return (
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+			className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px]"
 			data-admin-modal-backdrop
 		>
 			<motion.div
-				animate={{ opacity: 1, scale: 1 }}
-				className="w-full max-w-xl rounded-[40px] border border-border bg-card shadow-2xl"
-				data-admin-modal-card
-				exit={{ opacity: 0, scale: 0.95 }}
-				initial={{ opacity: 0, scale: 0.95 }}
+				animate={{ x: 0 }}
+				className="h-full w-full max-w-2xl overflow-y-auto border-l border-border bg-card p-6 shadow-2xl"
+				data-admin-modal-drawer
+				exit={{ x: "100%" }}
+				initial={{ x: "100%" }}
+				transition={{ type: "spring", damping: 30, stiffness: 300 }}
 			>
-				<div className="flex items-center justify-between border-border border-b p-8 pb-4">
-					<h3 className="font-bold text-2xl text-foreground tracking-tight">
-						Riwayat: {item.ingredientName}
-					</h3>
+				<div className="mb-6 flex items-start justify-between gap-4">
+					<div>
+						<p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+							Riwayat Transaksi
+						</p>
+						<h3 className="mt-1 font-black text-2xl text-foreground">{item.ingredientName}</h3>
+					</div>
 					<button
-						className="rounded-full bg-muted p-2 text-foreground transition-all hover:bg-muted/80"
+						className="rounded-full bg-muted p-2 transition-all hover:bg-muted/80"
 						onClick={onClose}
 						type="button"
 					>
 						<Plus className="h-5 w-5 rotate-45" />
 					</button>
 				</div>
-				<div className="p-8">
-					<div className="max-h-[60vh] overflow-y-auto rounded-[32px] border border-border bg-muted/30">
+				<div>
+					<div className="max-h-[75vh] overflow-y-auto rounded-2xl border border-border bg-muted/30">
 						<table className="w-full text-left text-xs">
-							<thead className="sticky top-0 border-border border-b bg-background border border-border">
+							<thead className="sticky top-0 z-10 border-border border-b bg-background">
 								<tr className="text-foreground/40 uppercase tracking-widest">
-									<th className="p-4 font-bold text-[9px]">Tanggal</th>
-									<th className="p-4 font-bold text-[9px]">Tipe</th>
-									<th className="p-4 text-right font-bold text-[9px]">
-										Jumlah
-									</th>
+									<th className="p-3 font-bold text-[9px]">Tanggal</th>
+									<th className="p-3 font-bold text-[9px]">Tipe</th>
+									<th className="p-3 text-right font-bold text-[9px]">Jumlah</th>
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-border">
