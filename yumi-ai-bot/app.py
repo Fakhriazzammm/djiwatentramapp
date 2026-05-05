@@ -1288,6 +1288,21 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _reply_msg(update, context, "Unauthorized")
         return
 
+    # Di grup: harus @mention atau reply ke bot
+    chat = update.effective_chat
+    if chat and chat.type in ("group", "supergroup"):
+        msg = update.effective_message
+        if not msg:
+            return
+        mentioned = False
+        if msg.reply_to_message and msg.reply_to_message.from_user and msg.reply_to_message.from_user.is_bot:
+            mentioned = True
+        message_text = msg.text or msg.caption or ""
+        if "@YummeAIbot".lower() in message_text.lower():
+            mentioned = True
+        if not mentioned:
+            return
+
     text = (update.message.text or "").strip()
     text_lower = text.lower()
 

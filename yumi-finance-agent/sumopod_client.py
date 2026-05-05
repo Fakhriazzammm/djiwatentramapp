@@ -14,7 +14,7 @@ logger = logging.getLogger("yumi-finance.sumopod")
 
 SUMODOP_BASE = "https://ai.sumopod.com/v1"
 VISION_MODEL = "seed-2-0-mini"
-TEXT_MODEL = "gpt-4o-mini"
+TEXT_MODEL = "gpt-4o"
 WIB = timezone(timedelta(hours=7))
 
 SYSTEM_PROMPT = """Kamu adalah Yumi Finance AI Agent — asisten keuangan & inventory untuk YumiPOS.

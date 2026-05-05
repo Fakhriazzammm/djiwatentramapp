@@ -2351,7 +2351,7 @@ export function SettingsPage({
 																</td>
 															</tr>
 														)}
-														{roles.map((role: any) => {
+														{roles?.map((role: any) => {
 															return (
 																<tr key={role._id} className="transition-colors hover:bg-muted/30">
 																	<td className="px-3 py-2">
@@ -2445,10 +2445,10 @@ export function SettingsPage({
 																	<td className="px-3 py-2">
 																		<button
 																			className="w-full rounded-lg border border-border px-2 py-1 text-left text-[10px] font-semibold text-foreground hover:bg-muted/40"
-																			onClick={() => {
-																				setEditRoleBonusData(role);
-																				setEditRoleBonusOpen(true);
-																			}}
+																	onClick={() => {
+																		setEditRoleBonusTarget(role);
+																		setEditRoleBonusOpen(true);
+																	}}
 																			type="button"
 																		>
 																			{formatRoleBonusSummary(role.bonusTargetConfig)}
@@ -2457,10 +2457,10 @@ export function SettingsPage({
 																	<td className="px-3 py-2">
 																		<button
 																			className="mx-auto flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[10px] font-semibold text-muted-foreground hover:bg-muted/50 transition-colors"
-																			onClick={() => {
-																				setEditRolePermData(role);
-																				setEditRolePermOpen(true);
-																			}}
+																	onClick={() => {
+																		setEditRolePermTarget(role);
+																		setEditRolePermOpen(true);
+																	}}
 																			type="button"
 																		>
 																			<ShieldCheck className="h-3 w-3" />
@@ -2481,7 +2481,7 @@ export function SettingsPage({
 																</tr>
 															);
 														})}
-														{roles.length === 0 && !newRole._show && (
+														{roles?.length === 0 && !newRole._show && (
 															<tr>
 																<td colSpan={7} className="py-8 text-center text-muted-foreground text-xs italic">
 																	Belum ada role. Klik "Tambah Role" untuk membuat baru.
@@ -2896,7 +2896,7 @@ export function SettingsPage({
 											<SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Pilih role" /></SelectTrigger>
 											<SelectContent>
 												<SelectItem value="none">Tidak ada</SelectItem>
-												{roles.map((role: any) => <SelectItem key={role._id} value={role._id}>{role.name}</SelectItem>)}
+												{roles?.map((role: any) => <SelectItem key={role._id} value={role._id}>{role.name}</SelectItem>)}
 											</SelectContent>
 										</Select>
 									</div>
@@ -2912,7 +2912,7 @@ export function SettingsPage({
 									</div>
 									<div>
 										<label className="mb-1 block text-xs font-medium text-muted-foreground">Preview Gaji Default</label>
-										<p className="text-sm font-semibold text-primary">{formatOnboardingCurrency((roles.find((role: any) => role._id === employeeOnboardingSettings.defaultRoleId) as any)?.monthlyFixedSalary)}</p>
+										<p className="text-sm font-semibold text-primary">{formatOnboardingCurrency((roles?.find((role: any) => role._id === employeeOnboardingSettings.defaultRoleId) as any)?.monthlyFixedSalary)}</p>
 									</div>
 								</div>
 							</div>

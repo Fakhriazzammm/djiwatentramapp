@@ -182,7 +182,7 @@ class FinanceManager:
 
     # ── Query ──────────────────────────────────────────────────────
 
-    async def get_balance(self, period: str = "hari_ini") -> dict:
+    async def get_balance(self, period: str = "hari_ini", tx_type: str = None) -> dict:
         """Hitung saldo (income - expense) untuk periode tertentu.
 
         Returns:
@@ -199,12 +199,18 @@ class FinanceManager:
         count_expense = 0
         for r in rows:
             amt = float(r.get("amount") or 0)
-            tx_type = r.get("tx_type", "")
+            tx_t = r.get("tx_type", "")
             category = r.get("category", "")
             # HPP (cost of goods sold) bukan pengeluaran riil — skip
             if category == "HPP":
                 continue
-            if tx_type == "income":
+            # Filter by requested tx_type if specified
+            if tx_type and tx_t != tx_type:
+                if tx_type == "income" and tx_t == "expense":
+                    continue
+                if tx_type == "expense" and tx_t == "income":
+                    continue
+            if tx_t == "income":
                 income += amt
                 count_income += 1
             else:
@@ -219,10 +225,15 @@ class FinanceManager:
             "count_expense": count_expense,
         }
 
-    async def get_summary(self, period: str = "hari_ini") -> str:
-        """Dapatkan ringkasan keuangan dalam format teks untuk Telegram."""
+    async def get_summary(self, period: str = "hari_ini", tx_type: str = None) -> str:
+        """Dapatkan ringkasan keuangan dalam format teks untuk Telegram.
+
+        Args:
+            period: periode (hari_ini, kemarin, minggu_ini, bulan_ini)
+            tx_type: opsional filter — "income" atau "expense" untuk lihat spesifik
+        """
         now = self._now_wib()
-        balance = await self.get_balance(period)
+        balance = await self.get_balance(period, tx_type=tx_type)
 
         period_labels = {
             "hari_ini": "Hari Ini",
@@ -240,12 +251,32 @@ class FinanceManager:
             "",
         ]
 
-        if balance["count_income"] > 0:
-            lines.append(f"💰 Pemasukan:    {format_amount(balance['income'])} ({balance['count_income']} transaksi)")
-        if balance["count_expense"] > 0:
-            lines.append(f"💸 Pengeluaran:  {format_amount(balance['expense'])} ({balance['count_expense']} transaksi)")
-        lines.append("")
-        lines.append(f"🏦 Saldo Bersih: {format_amount(balance['balance'])}")
+        if tx_type == "income":
+            # Hanya pemasukan
+            title_icon = "💰"
+            title_text = "Pemasukan"
+            if balance["count_income"] > 0:
+                lines.append(f"{title_icon} Total {title_text}:  {format_amount(balance['income'])} ({balance['count_income']} transaksi)")
+            else:
+                lines.append(f"{title_icon} Belum ada {title_text.lower()} untuk {label}.")
+            lines.append("")
+            lines.append(f"🏦 Saldo Akhir: {format_amount(balance['balance'])}")
+        elif tx_type == "expense":
+            # Hanya pengeluaran
+            title_icon = "💸"
+            title_text = "Pengeluaran"
+            if balance["count_expense"] > 0:
+                lines.append(f"{title_icon} Total {title_text}:  {format_amount(balance['expense'])} ({balance['count_expense']} transaksi)")
+            else:
+                lines.append(f"{title_icon} Belum ada {title_text.lower()} untuk {label}.")
+        else:
+            # Keduanya
+            if balance["count_income"] > 0:
+                lines.append(f"💰 Pemasukan:    {format_amount(balance['income'])} ({balance['count_income']} transaksi)")
+            if balance["count_expense"] > 0:
+                lines.append(f"💸 Pengeluaran:  {format_amount(balance['expense'])} ({balance['count_expense']} transaksi)")
+            lines.append("")
+            lines.append(f"🏦 Saldo Bersih: {format_amount(balance['balance'])}")
 
         return "\n".join(lines)
 

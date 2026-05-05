@@ -1174,7 +1174,8 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         elif result.action == "summary":
             period = result.text or "hari_ini"
-            text_summary = await finance.get_summary(period)
+            tx_type_filter = result.description if result.description in ("income", "expense") else None
+            text_summary = await finance.get_summary(period, tx_type=tx_type_filter)
             await update.message.reply_text(text_summary, reply_markup=_finance_keyboard())
 
         elif result.action == "category_breakdown":

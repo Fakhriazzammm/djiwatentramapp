@@ -102,6 +102,17 @@ class FinanceOrchestrator:
         re.IGNORECASE,
     )
 
+    # Query total pengeluaran/pemasukan/transaksi per periode
+    # Cocok: "total pengeluaran hari ini", "total pemasukan minggu ini",
+    #        "total pengeluaran", "total pemasukan kemarin",
+    #        "pengeluaran hari ini", "pemasukan bulan ini"
+    _TOTAL_RE = re.compile(
+        r'^(?:total\s+)?'
+        r'(pengeluaran|pemasukan|pendapatan|income|expense|transaksi|belanja|keluar|masuk)'
+        r'\s*(.*?)$',
+        re.IGNORECASE,
+    )
+
     # ── Parse nominal ──────────────────────────────────────────────
 
     def _parse_nominal(self, text: str) -> float:
@@ -131,6 +142,62 @@ class FinanceOrchestrator:
         if any(k in text for k in ["bulan", "month"]):
             return "bulan_ini"
         return "hari_ini"
+
+    # ── AI System Prompt (finance-only, post-split) ─────
+    FINANCE_SYSTEM_PROMPT = """Kamu adalah Yumi Finance — AI Keuangan untuk YumiPOS.
+Tugasmu: membantu user mengelola keuangan, memahami input, dan menjawab pertanyaan.
+
+Action yang tersedia:
+1. record_income — catat pemasukan (amount, description)
+2. record_expense — catat pengeluaran (amount, description, category)
+3. balance — cek saldo/neraca
+4. summary — ringkasan periode (total pemasukan, pengeluaran, saldo)
+5. category_breakdown — lihat breakdown per kategori
+6. search — cari transaksi
+7. chat — tanya jawab, analisis, saran keuangan
+
+PENTING — Mapping input ke action:
+- "total pengeluaran [hari ini/kemarin/minggu ini/bulan ini]" → ACTION: summary
+- "total pemasukan [period]" → ACTION: summary
+- "total transaksi [period]" → ACTION: summary
+- "pengeluaran hari ini", "pengeluaran kemarin" → ACTION: summary
+- "berapa pengeluaran hari ini?" → ACTION: summary
+- "berapa pemasukan kemarin?" → ACTION: summary
+- "ringkasan [period]" → ACTION: summary
+- "saldo [period]" → ACTION: balance
+- Cari nominal Rp → record_income / record_expense
+- Pertanyaan umum/analisis → ACTION: chat (dengan jawaban langsung)
+
+Contoh:
+User: total pengeluaran hari ini
+ACTION: summary
+...
+REPLY: aku cek dulu datanya...
+
+User: berapa pemasukan kemarin?
+ACTION: summary
+...
+REPLY: aku cek dulu...
+
+User: bagaimana cara menghemat pengeluaran?
+ACTION: chat
+CONFIDENCE: medium
+REPLY: 💡 Tips hemat: 1) Bandingkan harga supplier sebelum beli, 2) Beli grosir untuk barang fast-moving, 3) Cek laporan kategori — lihat mana yg boros.
+
+User: total pengeluaran bulan ini untuk bahan minuman?
+ACTION: chat
+CONFIDENCE: medium
+REPLY: Untuk detail per kategori, coba ketik "kategori" atau "breakdown bulan ini". Mau aku tampilkan?
+
+Balas dengan format:
+ACTION: <action_name>
+AMOUNT: <angka (jika ada)>
+CATEGORY: <category (jika ada)>
+DESCRIPTION: <deskripsi>
+CONFIDENCE: high|medium|low
+REPLY: <balasan ke user dalam Bahasa Indonesia friendly dan informatif>
+
+Jangan tanya balik untuk klarifikasi jika maksudnya sudah jelas — langsung pilih action yang paling sesuai."""
 
     # ── Orchestrate ────────────────────────────────────────────────
 
@@ -207,15 +274,30 @@ class FinanceOrchestrator:
             item = m.group(1).strip()
             return OrchestratorResult("check_stock", text=item or None)
 
-        # Marketlist
+        # Marketlist: "marketlist", "belanja", "daftar belanja"
         if self._MARKETLIST_RE.match(text_stripped):
             return OrchestratorResult("marketlist")
 
-        # Low stock: "stok menipis" / "low stock"
+        # Low stock / inventory check
         if self._LOW_STOCK_RE.match(text_stripped):
             return OrchestratorResult("low_stock")
 
-        # Restok
+        # Query total pengeluaran/pemasukan — "total pengeluaran hari ini"
+        m = self._TOTAL_RE.match(text_stripped)
+        if m:
+            keyword = m.group(1).lower()
+            period_text = m.group(2).strip()
+            period = self._parse_period(period_text) if period_text else "hari_ini"
+            income_words = {"pemasukan", "pendapatan", "income", "masuk"}
+            expense_words = {"pengeluaran", "expense", "belanja", "keluar"}
+            if keyword in income_words:
+                return OrchestratorResult("summary", text=period, description="income", confidence="high")
+            elif keyword in expense_words:
+                return OrchestratorResult("summary", text=period, description="expense", confidence="high")
+            else:
+                return OrchestratorResult("summary", text=period, confidence="high")
+
+        # Restok: "restok gula 2kg 30rb", "tambah stok"
         m = self._RESTOK_RE.match(text_stripped)
         if m:
             item_name = m.group(1).strip()
@@ -240,7 +322,11 @@ class FinanceOrchestrator:
     async def _call_sumopod(self, text: str) -> OrchestratorResult:
         """Panggil SumoPod API untuk memahami input kompleks."""
         client = SumoPodClient(self.sumopod_api_key)
-        result = await client.chat(message=text, model=TEXT_MODEL)
+        result = await client.chat(
+            message=text,
+            system_prompt=self.FINANCE_SYSTEM_PROMPT,
+            model=TEXT_MODEL,
+        )
 
         return OrchestratorResult(
             action=result["action"],
