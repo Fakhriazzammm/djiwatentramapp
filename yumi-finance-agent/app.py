@@ -64,6 +64,32 @@ memory = MemoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY)
 # { callback_data: {"type": "new_ingredient", "data": {...}} }
 _pending_actions: dict[str, dict] = {}
 
+# ── File persistence untuk session ─────────────────────────────────
+import json as _json
+PENDING_FILE = os.path.join(os.path.dirname(__file__), ".pending_sessions.json")
+
+def _load_pending():
+    global _receipt_pending, _pending_actions
+    try:
+        if os.path.exists(PENDING_FILE):
+            with open(PENDING_FILE) as f:
+                data = _json.load(f)
+            _receipt_pending.update(data.get("receipts", {}))
+            _pending_actions.update(data.get("actions", {}))
+    except Exception as e:
+        logger.warning("Failed to load pending sessions: %s", e)
+
+def _save_pending():
+    try:
+        data = {
+            "receipts": _receipt_pending,
+            "actions": _pending_actions,
+        }
+        with open(PENDING_FILE, "w") as f:
+            _json.dump(data, f, default=str)
+    except Exception as e:
+        logger.warning("Failed to save pending sessions: %s", e)
+
 
 # ── Helpers ────────────────────────────────────────────────────────
 
@@ -234,11 +260,13 @@ async def _handle_new_ingredient(update: Update, context: ContextTypes.DEFAULT_T
         else:
             await query.edit_message_text(f"❌ Gagal menyimpan {item['name']}.")
         _pending_actions.pop(idx, None)
+        _save_pending()
 
     elif data.startswith("new_ingredient_skip_"):
         idx = data.replace("new_ingredient_skip_", "")
         pending = _pending_actions.pop(idx, None)
         await query.edit_message_text(f"⏭️ {pending['item']['name']} dilewati." if pending else "⏭️ Dilewati.")
+        _save_pending()
 
     elif data.startswith("new_ingredient_overwrite_"):
         idx = data.replace("new_ingredient_overwrite_", "")
@@ -259,6 +287,7 @@ async def _handle_new_ingredient(update: Update, context: ContextTypes.DEFAULT_T
                 f"   Total biaya: {format_amount(int(item.get('price', 0) * item.get('qty', 1)))}"
             )
         _pending_actions.pop(idx, None)
+        _save_pending()
 
 
 # ── OCR Photo Handler ──────────────────────────────────────────────
@@ -417,6 +446,7 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "raw_text": raw_text,
             "confidence": confidence,
         }
+        _save_pending()
 
         keyboard = InlineKeyboardMarkup([
             [
@@ -802,6 +832,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
 
     if action == "cancel":
         await query.edit_message_text("❌ Dibatalkan.", reply_markup=_finance_keyboard())
+        _save_pending()
         return True
 
     # ── Record transaction ──────────────────────────────────────
@@ -892,6 +923,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
             logger.warning("Menu stock sync failed after OCR restock: %s", e)
 
     await query.edit_message_text("\n".join(lines), reply_markup=_finance_keyboard())
+    _save_pending()
     return True
 
 
@@ -1964,6 +1996,10 @@ def main():
             loop.run_until_complete(memory.load_all())
     except Exception as e:
         logger.warning("Memory load failed (non-fatal): %s", e)
+
+    # ── Load pending sessions ───────────────────────────────────
+    _load_pending()
+    logger.info("Loaded %d receipt(s) and %d action(s) from pending sessions", len(_receipt_pending), len(_pending_actions))
 
     app = Application.builder().token(BOT_TOKEN).build()
 
