@@ -4888,14 +4888,12 @@ function InventoryTable({
 						<col className="w-[7%]" />
 						<col className="w-[8%]" />
 						<col className="w-[5%]" />
-						<col className="w-[7%]" />
+						<col className="w-[5%]" />
 						<col className="w-[7%]" />
 						<col className="w-[7%]" />
 						<col className="w-[7%]" />
 						<col className="w-[8%]" />
 						<col className="w-[8%]" />
-						<col className="w-[8%]" />
-						<col className="w-[9%]" />
 						<col className="w-[11rem]" />
 					</colgroup>
 					<thead className="bg-card">
@@ -4962,6 +4960,7 @@ function InventoryTable({
 							</th>
 							<th className="px-2 py-1.5 text-center font-semibold group relative cursor-help">Satuan<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Stok: satuan stok · Beli: satuan beli</span></th>
 							<th className="px-2 py-1.5 text-center font-semibold">Jml Beli</th>
+							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70">Satuan Beli</th>
 							<th
 								className="cursor-pointer px-2 py-1.5 font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("avgDailyUsage")}
@@ -5496,7 +5495,7 @@ function InventoryTable({
 							})}
 						{inventoryMap.size > 0 && statusFilteredRows.length === 0 && (
 							<tr>
-								<td className="p-8 text-center text-muted-foreground" colSpan={14}>
+								<td className="p-8 text-center text-muted-foreground" colSpan={15}>
 									Tidak ada bahan baku ditemukan
 								</td>
 							</tr>
