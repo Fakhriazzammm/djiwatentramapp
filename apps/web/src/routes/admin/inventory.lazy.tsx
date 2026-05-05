@@ -1346,7 +1346,7 @@ function InventoryPage() {
 
 	return (
 		<div className="space-y-4">
-			<div className="sticky top-0 z-50 bg-background pb-3">
+			<div className="bg-background pb-3">
 				<div className="flex items-center gap-2">
 					<div className="flex-1">
 						<InventoryHeader
@@ -3461,14 +3461,23 @@ function YumiAiInventoryPanel({
 									? "Harga Supplier Intelligence"
 								: "Anomali Pemakaian"}
 					</p>
-					<div className="relative w-full max-w-xs">
-						<Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+					<div className="relative w-full">
+						<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 						<input
-							className="w-full rounded-md border border-border bg-background py-1.5 pr-2 pl-8 text-xs outline-none"
+							className="w-full rounded-xl border border-border bg-background py-2 pr-9 pl-10 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
 							onChange={(event) => setKeyword(event.target.value)}
-							placeholder="Cari bahan..."
+							placeholder="Cari bahan di panel AI..."
 							value={keyword}
 						/>
+						{keyword && (
+							<button
+								className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+								onClick={() => setKeyword("")}
+								type="button"
+							>
+								<X className="h-3.5 w-3.5" />
+							</button>
+						)}
 					</div>
 				</div>
 				<div className="max-h-[500px] overflow-auto">
@@ -5690,99 +5699,111 @@ function InventoryHeader({
 }) {
 	return (
 		<div className="rounded-xl border border-border bg-background px-3 py-3">
-			<div className="flex flex-wrap items-center gap-2">
-				<select
-					className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none"
-					onChange={(e) =>
-						onViewPresetChange(e.target.value as InventoryViewPreset)
-					}
-					value={viewPreset}
-				>
-					<option value="operational">Operasional</option>
-					<option value="priceMonitor">Monitoring Harga</option>
-					<option value="yumiAi">Yumi AI</option>
-				</select>
-				<button
-					className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
-						filterLowStock
-							? "border border-destructive/20 bg-destructive/10 text-destructive"
-							: "border border-border bg-background text-muted-foreground hover:text-foreground"
-					}`}
-					disabled={viewPreset !== "operational"}
-					onClick={() => onFilterLowStockChange(!filterLowStock)}
-					type="button"
-				>
-					Kritis Saja
-				</button>
-				{/* #9: Switch toggle Hanya yang dipakai menu */}
-				<label
-					className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-colors select-none cursor-pointer ${
-						viewPreset !== "operational"
-							? "opacity-40 pointer-events-none"
-							: filterActiveOnly
-								? "border border-emerald-400/30 bg-emerald-50 text-emerald-700"
+			{/* Row 1: View tabs + filters */}
+			<div className="flex flex-wrap items-center gap-1.5">
+				{([
+					{ value: "operational" as const, label: "Operasional" },
+					{ value: "priceMonitor" as const, label: "Harga" },
+					{ value: "yumiAi" as const, label: "Yumi AI" },
+				]).map((tab) => (
+					<button
+						key={tab.value}
+						className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
+							viewPreset === tab.value
+								? "bg-foreground text-background shadow-sm"
 								: "border border-border bg-background text-muted-foreground hover:text-foreground"
-					}`}
-				>
-					<input
-						checked={filterActiveOnly}
-						className="sr-only"
-						disabled={viewPreset !== "operational"}
-						onChange={(e) => onFilterActiveOnlyChange(e.target.checked)}
-						type="checkbox"
-					/>
-					<span
-						className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors ${
-							filterActiveOnly ? "bg-emerald-500" : "bg-muted-foreground/30"
 						}`}
+						onClick={() => onViewPresetChange(tab.value)}
+						type="button"
 					>
-						<span
-							className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-sm transition-transform ${
-								filterActiveOnly ? "translate-x-3.5" : "translate-x-0.5"
+						{tab.label}
+					</button>
+				))}
+				{viewPreset === "operational" && (
+					<>
+						<span className="mx-0.5 h-4 w-px bg-border" />
+						<button
+							className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+								filterLowStock
+									? "border border-destructive/20 bg-destructive/10 text-destructive"
+									: "border border-border bg-background text-muted-foreground hover:text-foreground"
 							}`}
-						/>
-					</span>
-					Hanya yang dipakai menu
-				</label>
-				<select
-					className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none"
-					disabled={viewPreset !== "operational"}
-					onChange={(e) =>
-						onAdvancedFilterChange(
-							e.target.value as "all" | "priceUp" | "missingConversion"
-						)
+							onClick={() => onFilterLowStockChange(!filterLowStock)}
+							type="button"
+						>
+							Kritis
+						</button>
+						<label
+							className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold select-none cursor-pointer transition-colors ${
+								filterActiveOnly
+									? "border border-emerald-400/30 bg-emerald-50 text-emerald-700"
+									: "border border-border bg-background text-muted-foreground hover:text-foreground"
+							}`}
+						>
+							<input
+								checked={filterActiveOnly}
+								className="sr-only"
+								onChange={(e) => onFilterActiveOnlyChange(e.target.checked)}
+								type="checkbox"
+							/>
+							<span
+								className={`relative inline-flex h-3.5 w-6 shrink-0 items-center rounded-full transition-colors ${
+									filterActiveOnly ? "bg-emerald-500" : "bg-muted-foreground/30"
+								}`}
+							>
+								<span
+									className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition-transform ${
+										filterActiveOnly ? "translate-x-3" : "translate-x-0.5"
+									}`}
+								/>
+							</span>
+							Menu
+						</label>
+						<select
+							className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground outline-none"
+							onChange={(e) => onAdvancedFilterChange(e.target.value as "all" | "priceUp" | "missingConversion")}
+							value={advancedFilter}
+						>
+							<option value="all">Semua</option>
+							<option value="priceUp">Harga Naik</option>
+							<option value="missingConversion">Belum takaran</option>
+						</select>
+						<select
+							className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground outline-none"
+							onChange={(e) => onTableModeChange(e.target.value as "simple" | "detail")}
+							value={tableMode}
+						>
+							<option value="simple">Simple</option>
+							<option value="detail">Detail</option>
+						</select>
+					</>
+				)}
+			</div>
+			{/* Row 2: Search bar full width */}
+			<div className="relative mt-3">
+				<Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+				<input
+					id="inventory-search-input"
+					className="w-full rounded-xl border border-border bg-background py-2.5 pr-10 pl-10 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
+					onChange={(e) => onSearchQueryChange(e.target.value)}
+					placeholder={
+						viewPreset === "priceMonitor"
+							? "Cari bahan, brand, atau toko..."
+							: viewPreset === "yumiAi"
+								? "Cari di tab Operasional / Monitoring..."
+								: "Cari nama bahan atau satuan..."
 					}
-					value={advancedFilter}
-				>
-					<option value="all">Semua</option>
-					<option value="priceUp">Harga Naik</option>
-					<option value="missingConversion">Belum ada takaran</option>
-				</select>
-				<select
-					className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none"
-					disabled={viewPreset !== "operational"}
-					onChange={(e) => onTableModeChange(e.target.value as "simple" | "detail")}
-					value={tableMode}
-				>
-					<option value="simple">Mode Simple</option>
-					<option value="detail">Mode Detail</option>
-				</select>
-				<div className="relative min-w-[260px] flex-1">
-					<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-					<input
-						id="inventory-search-input"
-						className="w-full rounded-lg border border-border bg-background py-2 pr-3 pl-9 text-sm outline-none transition-all focus:border-primary"
-						onChange={(e) => onSearchQueryChange(e.target.value)}
-						placeholder={
-							viewPreset === "priceMonitor"
-								? "Cari bahan, brand, toko..."
-								: viewPreset === "yumiAi"
-									? "Cari di tab Operasional/Monitoring..."
-									: "Cari bahan atau satuan..."
-						}
-						value={searchQuery}
-					/>
-				</div>
+					value={searchQuery}
+				/>
+				{searchQuery && (
+					<button
+						className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+						onClick={() => onSearchQueryChange("")}
+						type="button"
+					>
+						<X className="h-3.5 w-3.5" />
+					</button>
+				)}
 			</div>
 		</div>
 	);
