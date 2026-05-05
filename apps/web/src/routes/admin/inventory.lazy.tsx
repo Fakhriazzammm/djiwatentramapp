@@ -2897,6 +2897,7 @@ function RealtimePriceMonitorTable({
 	) => Promise<void>;
 }) {
 	const [trendFilter, setTrendFilter] = useState<"all" | "up" | "down">("all");
+	const [statusFilter, setStatusFilter] = useState<"all" | "critical" | "warning" | "healthy">("all");
 	const visibleRows = useMemo(() => {
 		const rows = [...(data?.rows ?? [])];
 		const filtered = rows.filter((row) => {
