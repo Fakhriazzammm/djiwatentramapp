@@ -73,16 +73,18 @@ def _format_qty(amount: float, unit: str) -> str:
 class InventoryManager:
     """Manager untuk operasi inventory."""
 
-    def __init__(self, supabase_url: str, supabase_key: str, service_role_key: str):
+    def __init__(self, supabase_url: str, supabase_key: str, service_role_key: str, supabase_access_token: str = ""):
         self.supabase_url = supabase_url.rstrip("/")
         self.supabase_key = supabase_key
         self.service_role_key = service_role_key
+        self.supabase_access_token = supabase_access_token
+        # Extract project ref from URL
+        self.project_ref = supabase_url.rstrip("/").split("//")[-1].split(".")[0] if supabase_url else ""
 
     def _headers(self):
         return {
             "apikey": self.supabase_key,
             "Authorization": f"Bearer {self.supabase_key}",
-            "Accept-Profile": "pos",
         }
 
     def _service_headers(self):
@@ -91,7 +93,6 @@ class InventoryManager:
             "Authorization": f"Bearer {self.service_role_key}",
             "Content-Type": "application/json",
             "Prefer": "return=representation",
-            "Accept-Profile": "pos",
         }
 
     async def _fetch(self, view: str, query: str = "select=*") -> list:
@@ -260,6 +261,136 @@ class InventoryManager:
         }
         result = await self._post("pos_purchase_logs", data)
         return result is not None
+
+    # ── Menu Stock Sync ────────────────────────────────────────────
+
+    async def _sync_menu_stocks(self, inventory_ids: list[str] | None = None) -> int:
+        """Recalculate menu product quantities based on bottleneck ingredients.
+
+        For each recipe, calculates potentialStock = min over ingredients of
+        (inventory.quantity / ingredient.amount) rounded down, then updates the
+        product's quantity to max(current, potentialStock).
+
+        Args:
+            inventory_ids: If provided, only recalculate products whose recipes
+                           use these inventory IDs. If None, recalculate all.
+
+        Returns:
+            Number of products updated.
+        """
+        # 1. Fetch all recipes
+        recipes = await self._fetch("pos_recipes", "select=ingredients,productId")
+        if not recipes:
+            logger.info("Menu stock sync: no recipes found.")
+            return 0
+
+        # 2. Fetch all inventory for quick lookup
+        inventory_rows = await self._fetch("pos_inventory", "select=_id,quantity")
+        inv_qty_map: dict[str, float] = {}
+        for row in inventory_rows:
+            inv_qty_map[row["_id"]] = float(row.get("quantity", 0) or 0)
+
+        # 3. Fetch all products for current quantity lookup
+        products = await self._fetch("pos_products_all", "select=_id,quantity&limit=1000")
+        prod_map: dict[str, dict] = {}
+        for p in products:
+            prod_map[p["_id"]] = p
+
+        updated_count = 0
+        target_inv_set = set(inventory_ids) if inventory_ids else None
+
+        for recipe in recipes:
+            product_id = recipe.get("productId", "")
+            if not product_id:
+                continue
+
+            ingredients: list = recipe.get("ingredients", [])
+            if not ingredients:
+                continue
+
+            # If filtering by inventory IDs, skip recipes that don't use any
+            if target_inv_set is not None:
+                recipe_inv_ids = {ing.get("inventoryId", "") for ing in ingredients}
+                if not recipe_inv_ids.intersection(target_inv_set):
+                    continue
+
+            # Calculate bottleneck: min servings across all ingredients
+            potential_stock: int | None = None
+            has_valid_ingredient = False
+            for ing in ingredients:
+                inv_id = ing.get("inventoryId", "")
+                amount = float(ing.get("amount", 0) or 0)
+                if not inv_id or amount <= 0:
+                    continue
+                has_valid_ingredient = True
+                inv_qty = inv_qty_map.get(inv_id, 0)
+                servings = int(inv_qty / amount)  # floor division
+                if potential_stock is None or servings < potential_stock:
+                    potential_stock = servings
+
+            if not has_valid_ingredient or potential_stock is None:
+                continue
+
+            # Get current product quantity
+            product = prod_map.get(product_id)
+            if not product:
+                continue
+
+            current_qty = float(product.get("quantity", 0) or 0)
+            new_qty = max(current_qty, float(potential_stock))
+
+            if new_qty == current_qty:
+                continue
+
+            # Update via Management API SQL endpoint
+            if self.supabase_access_token and self.project_ref:
+                mgmt_url = f"https://api.supabase.com/v1/projects/{self.project_ref}/database/query"
+                sql = f"UPDATE pos.products SET quantity = {new_qty} WHERE source_id = '{product_id}'"
+                async with httpx.AsyncClient(timeout=15) as client:
+                    resp = await client.post(
+                        mgmt_url,
+                        headers={"Authorization": f"Bearer {self.supabase_access_token}", "Content-Type": "application/json"},
+                        json={"query": sql},
+                    )
+                    if resp.status_code < 400:
+                        updated_count += 1
+                    logger.debug(
+                        "Menu stock sync: product %s qty %s -> %s",
+                        product_id, current_qty, new_qty,
+                    )
+
+        logger.info("Menu stock sync: %d product(s) updated", updated_count)
+        return updated_count
+
+    async def sync_menu_stock_from_inventory(self) -> int:
+        """Recalculate all menu product quantities based on bottleneck ingredients.
+
+        After restocking, call this to update every menu product's quantity
+        to reflect the limiting ingredient.
+
+        Returns:
+            Number of products updated.
+        """
+        return await self._sync_menu_stocks()
+
+    async def sync_all_menu_stocks(self) -> int:
+        """Full recalculation for ALL products with recipes.
+
+        Calculates bottleneck (min servings across all ingredients) and sets
+        each product's quantity to max(current, potential_stock).
+        """
+        return await self._sync_menu_stocks()
+
+    async def sync_menu_stock_for_inventory(self, inventory_ids: list) -> int:
+        """Recalculate only products whose recipes use the given inventory IDs.
+
+        Args:
+            inventory_ids: List of inventory _id values that were restocked.
+
+        Returns:
+            Number of products updated.
+        """
+        return await self._sync_menu_stocks(inventory_ids=inventory_ids)
 
     # ── Category Management ─────────────────────────────────────────
 

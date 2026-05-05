@@ -102,12 +102,14 @@ import {
 	useHybridAdjustMenuStockWithRecipe,
 	useHybridCreateOrder,
 	useHybridCreateTransaction,
+	useHybridRecordExpenseIntake,
 	useHybridDeleteOrder,
 	useHybridEndShift,
 	useHybridSendShiftReportEmail,
 	useHybridStartShift,
 	useHybridUpdateOrder,
 	useHybridUpdateSiteSettings,
+	useHybridSyncMenuStockFromInventory,
 } from "@/hooks/use-hybrid-write-actions";
 import { cn } from "@/lib/utils";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
@@ -2622,10 +2624,15 @@ function IncomeForm({ onClose }: { onClose: () => void }) {
 
 function ExpenseForm({ onClose }: { onClose: () => void }) {
 	const createTransaction = useHybridCreateTransaction();
+	const recordExpenseIntake = useHybridRecordExpenseIntake();
+	const syncMenuStock = useHybridSyncMenuStockFromInventory();
 	const [amount, setAmount] = useState("");
 	const [category, setCategory] = useState("Bahan Baku");
 	const [description, setDescription] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [itemName, setItemName] = useState("");
+	const [itemQty, setItemQty] = useState("1");
+	const [itemUnit, setItemUnit] = useState("");
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -2635,18 +2642,53 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 
 		setIsSubmitting(true);
 		try {
-			await createTransaction({
-				type: "expense",
-				amount: Number(amount),
-				category,
-				description,
-				date: Date.now(),
-				status: "completed",
-				paymentMethod: "tunai",
+			const hasItem = itemName.trim().length > 0;
+			const items = hasItem
+				? [
+						{
+							name: itemName.trim(),
+							quantity: Number(itemQty) || 1,
+							unit: itemUnit.trim() || undefined,
+							price: Number(amount) / (Number(itemQty) || 1),
+							total: Number(amount),
+						},
+				  ]
+				: [];
+
+			await recordExpenseIntake({
+				source: "pos_menu_sidebar",
+				syncMode: "auto",
+				transaction: {
+					type: "expense",
+					amount: Number(amount),
+					category,
+					description: description || itemName,
+					date: Date.now(),
+					status: "completed",
+					paymentMethod: "tunai",
+				},
+				items: items.length > 0 ? items : undefined,
 			});
-			toast.success("Pengeluaran berhasil dicatat");
+
+			// Sync menu stock from inventory after expense intake
+			if (hasItem) {
+				try {
+					await syncMenuStock();
+				} catch (syncError) {
+					console.error("[ExpenseForm] syncMenuStock failed", syncError);
+				}
+			}
+
+			toast.success(
+				hasItem
+					? "Pengeluaran & stok berhasil dicatat"
+					: "Pengeluaran berhasil dicatat",
+			);
 			setAmount("");
 			setDescription("");
+			setItemName("");
+			setItemQty("1");
+			setItemUnit("");
 			onClose();
 		} catch (error) {
 			console.error(error);
@@ -2687,6 +2729,47 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 						type="number"
 						value={amount}
 					/>
+				</div>
+
+				{/* ── Item (untuk restok inventory) ── */}
+				<div className="rounded-lg border border-border/50 bg-muted/30 p-3 space-y-3">
+					<div className="flex items-center gap-2">
+						<Package className="h-3.5 w-3.5 text-muted-foreground" />
+						<span className="text-xs font-medium text-muted-foreground">
+							Item Belanja (isi untuk auto-restok stok)
+						</span>
+					</div>
+					<div className="grid grid-cols-3 gap-2">
+						<div className="col-span-3">
+							<Input
+								placeholder="Nama barang (contoh: Minyak Goreng)"
+								value={itemName}
+								onChange={(e) => setItemName(e.target.value)}
+							/>
+						</div>
+						<Input
+							placeholder="Qty"
+							type="number"
+							min={0}
+							step="any"
+							value={itemQty}
+							onChange={(e) => setItemQty(e.target.value)}
+						/>
+						<Input
+							placeholder="Satuan"
+							value={itemUnit}
+							onChange={(e) => setItemUnit(e.target.value)}
+						/>
+						<div className="flex items-center text-[10px] text-muted-foreground px-1">
+							contoh: liter, kg, pcs
+						</div>
+					</div>
+					{itemName.trim() && (
+						<div className="text-[10px] text-emerald-600 font-medium">
+							✅ Stok akan otomatis bertambah +{Number(itemQty) || 1}{" "}
+							{itemUnit.trim() || "pcs"} "{itemName.trim()}"
+						</div>
+					)}
 				</div>
 
 				<div className="space-y-2">

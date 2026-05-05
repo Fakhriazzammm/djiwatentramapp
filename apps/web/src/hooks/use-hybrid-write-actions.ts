@@ -2538,6 +2538,7 @@ export function useHybridRecordStockPurchase() {
 export function useHybridCreateOrder() {
 	const fallback = useMutation(api.orders.createOrder);
 	const { user: currentUser } = useYumiAuth();
+	const deductInventory = useHybridDeductOrderInventory();
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) {
@@ -2671,13 +2672,35 @@ export function useHybridCreateOrder() {
 					if (financialError) throw financialError;
 				}
 
+				// Auto-deduct inventory untuk order completed (direct create)
+				if (nextStatus === "completed" || nextStatus === "paid") {
+					try {
+						const result = await deductInventory({
+							orderId,
+							orderNumber,
+						});
+						console.log(
+							`[create-order-deduct] Order #${orderNumber}: ${result.deductedCount} deducted, ${result.skippedCount} skipped`
+						);
+						if (result.lowStockWarnings?.length) {
+							console.warn("[create-order-deduct] Menu stock warnings:", result.lowStockWarnings.join("; "));
+						}
+						if (result.inventoryWarnings?.length) {
+							console.warn("[create-order-deduct] Inventory restock needed:", result.inventoryWarnings.join("; "));
+						}
+					} catch (deductError) {
+						// Jangan throw — deduct gagal tidak boleh batalkan order
+						console.error("[create-order-deduct] Failed:", deductError);
+					}
+				}
+
 				return orderId;
 			} catch (error) {
 				console.error("[supabase-hybrid:write-create-order] fallback disabled", error);
 				throw error;
 			}
 		},
-		[fallback]
+		[fallback, deductInventory]
 	);
 }
 
@@ -2841,13 +2864,19 @@ export function useHybridUpdateOrderStatus() {
 				// Auto-deduct inventory saat order completed
 				if (status === "completed") {
 					try {
-						const result = await deductInventory({
+					const result = await deductInventory({
 							orderId: id,
 							orderNumber: String(order.order_number ?? ""),
 						});
 						console.log(
 							`[auto-deduct] Order #${order.order_number}: ${result.deductedCount} deducted, ${result.skippedCount} skipped`
 						);
+						if (result.lowStockWarnings?.length) {
+							console.warn("[auto-deduct] Menu stock warnings:", result.lowStockWarnings.join("; "));
+						}
+						if (result.inventoryWarnings?.length) {
+							console.warn("[auto-deduct] Inventory restock needed:", result.inventoryWarnings.join("; "));
+						}
 					} catch (deductError) {
 						// Jangan throw — deduct gagal tidak boleh batalkan order
 						console.error("[auto-deduct] Failed:", deductError);
@@ -3826,6 +3855,7 @@ export function useHybridRecordExpenseIntake() {
 	const fallback = useMutation((api as any).expenseIntake.recordExpense);
 	const createInventoryItem = useHybridCreateInventoryItem();
 	const addStock = useHybridAddStock();
+	const syncMenuStock = useHybridSyncMenuStockFromInventory();
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
@@ -4000,6 +4030,19 @@ export function useHybridRecordExpenseIntake() {
 					}
 				}
 
+				// Sync menu stock from inventory after expense intake
+				let syncMenuStockResult = { updatedCount: 0 };
+				if (type === "expense" && normalizedItems.length > 0) {
+					try {
+						syncMenuStockResult = await syncMenuStock();
+					} catch (syncError) {
+						console.warn(
+							"[supabase-hybrid:write-record-expense-intake] syncMenuStock failed",
+							syncError
+						);
+					}
+				}
+
 				return {
 					transactionId,
 					createdTransaction: !existingId,
@@ -4023,7 +4066,7 @@ export function useHybridRecordExpenseIntake() {
 				throw error;
 			}
 		},
-		[fallback, createInventoryItem, addStock]
+		[fallback, createInventoryItem, addStock, syncMenuStock]
 	);
 }
 
@@ -5666,7 +5709,7 @@ export function useHybridDeductOrderInventory() {
 
 	return useCallback(
 		async (args: { orderId: string; orderNumber?: string }) => {
-			if (!hasSupabaseConfig) return { deductedCount: 0, skippedCount: 0 };
+			if (!hasSupabaseConfig) return { deductedCount: 0, skippedCount: 0, lowStockWarnings: [], inventoryWarnings: [] };
 
 			const orderId = String(args?.orderId ?? "");
 			if (!orderId) throw new Error("orderId wajib diisi");
@@ -5679,7 +5722,7 @@ export function useHybridDeductOrderInventory() {
 				.select("source_id, product_source_id, product_name, quantity")
 				.eq("order_source_id", orderId);
 			if (itemsError) throw itemsError;
-			if (!items?.length) return { deductedCount: 0, skippedCount: 0 };
+			if (!items?.length) return { deductedCount: 0, skippedCount: 0, lowStockWarnings: [], inventoryWarnings: [] };
 
 			const productIds: string[] = Array.from(
 				new Set(items.map((i: any) => String(i.product_source_id)))
@@ -5698,10 +5741,41 @@ export function useHybridDeductOrderInventory() {
 
 			let deductedCount = 0;
 			let skippedCount = 0;
+			const lowStockWarnings: string[] = [];
+			const inventoryWarnings: string[] = [];
 			const orderNumber = args?.orderNumber ?? orderId.slice(-6);
 
 			for (const item of items as any[]) {
-				const recipe = recipeMap.get(item.product_source_id);
+				const productId = String(item.product_source_id);
+				const multiplier = Number(item.quantity ?? 1);
+				const productName = String(item.product_name ?? "");
+
+				// Step 1: Decrement menu product stock
+				try {
+					const { data: productRow } = await pos
+						.from("products")
+						.select("quantity")
+						.eq("source_id", productId)
+						.maybeSingle();
+					if (productRow) {
+						const currentQty = Number(productRow.quantity ?? 0);
+						const newQty = Math.max(0, currentQty - multiplier);
+						await pos
+							.from("products")
+							.update({ quantity: newQty })
+							.eq("source_id", productId);
+						if (newQty <= 2 && newQty > 0) {
+							lowStockWarnings.push(`⚠️ Stok "${productName}" sisa ${newQty} porsi lagi!`);
+						} else if (newQty <= 0) {
+							lowStockWarnings.push(`❌ "${productName}" sudah habis!`);
+						}
+					}
+				} catch (e) {
+					console.warn(`[deduct-menu-stock] Gagal update stok menu ${productId}:`, e);
+				}
+
+				// Step 2: Deduct inventory ingredients (existing logic)
+				const recipe = recipeMap.get(productId);
 				if (!recipe) {
 					skippedCount++;
 					continue;
@@ -5720,8 +5794,26 @@ export function useHybridDeductOrderInventory() {
 					continue;
 				}
 
-				const multiplier = Number(item.quantity ?? 1);
 				for (const ing of ingredients) {
+					// Fetch current inventory qty and threshold BEFORE deducting
+					let lowThreshold = 0;
+					try {
+						const { data: invRow } = await pos
+							.from("inventory")
+							.select("quantity, low_stock_threshold, ingredient_name")
+							.eq("source_id", ing.inventoryId)
+							.maybeSingle();
+						if (invRow) {
+							const invQty = Number(invRow.quantity ?? 0);
+							lowThreshold = Number((invRow as any).low_stock_threshold ?? 0);
+							const afterQty = invQty - Number(ing.amount) * multiplier;
+							if (lowThreshold > 0 && afterQty <= lowThreshold && invQty > lowThreshold) {
+								const invName = String((invRow as any).ingredient_name ?? ing.inventoryId);
+								inventoryWarnings.push(`🛒 "${invName}" perlu dibeli! Stok sisa ${Math.max(0, afterQty)} (threshold: ${lowThreshold})`);
+							}
+						}
+					} catch (_) {}
+
 					await applyStockAction({
 						inventoryId: ing.inventoryId,
 						action: "usage",
@@ -5732,9 +5824,98 @@ export function useHybridDeductOrderInventory() {
 				}
 			}
 
-			return { deductedCount, skippedCount };
+			return { deductedCount, skippedCount, lowStockWarnings, inventoryWarnings };
 		},
 		[applyStockAction]
+	);
+}
+export function useHybridSyncMenuStockFromInventory() {
+	return useCallback(
+		async () => {
+			if (!hasSupabaseConfig) return { updatedCount: 0 };
+
+			const supabase = createClient();
+			const pos = supabase.schema("pos");
+
+			// 1. Fetch all recipes from pos_recipes view
+			const { data: recipes, error: recipesError } = await supabase
+				.from("pos_recipes")
+				.select("_id, productId, ingredients");
+			if (recipesError) throw recipesError;
+			if (!recipes?.length) return { updatedCount: 0 };
+
+			let updatedCount = 0;
+
+			for (const recipe of recipes as any[]) {
+				const ingredients = Array.isArray(recipe.ingredients)
+					? recipe.ingredients.filter(
+							(ing: any) =>
+								typeof ing?.inventoryId === "string" &&
+								Number(ing?.amount ?? 0) > 0
+					  )
+					: [];
+
+				if (ingredients.length === 0) continue;
+				if (!recipe.productId) continue;
+
+				// 2. Extract all inventoryIds from ingredients
+				const inventoryIds: string[] = ingredients.map(
+					(ing: any) => ing.inventoryId
+				);
+
+				// 3. Fetch current quantities of those inventory items
+				const { data: inventoryItems, error: invError } = await pos
+					.from("inventory")
+					.select("source_id, quantity")
+					.in("source_id", inventoryIds);
+				if (invError) throw invError;
+
+				const invMap = new Map<string, number>();
+				for (const inv of inventoryItems ?? []) {
+					invMap.set(inv.source_id, Number(inv.quantity ?? 0));
+				}
+
+				// 4. Calculate potentialStock = min over ingredients of (inv.quantity / ing.amount) using FLOOR
+				let potentialStock = Infinity;
+				for (const ing of ingredients) {
+					const invQty = invMap.get(ing.inventoryId) ?? 0;
+					const amount = Number(ing.amount ?? 0);
+					if (amount <= 0) continue;
+					const possible = Math.floor(invQty / amount);
+					if (possible < potentialStock) {
+						potentialStock = possible;
+					}
+				}
+
+				if (!Number.isFinite(potentialStock) || potentialStock < 0) {
+					potentialStock = 0;
+				}
+
+				// 5. Get current product quantity from pos.products table
+				const { data: productRow, error: prodError } = await pos
+					.from("products")
+					.select("quantity")
+					.eq("source_id", recipe.productId)
+					.maybeSingle();
+				if (prodError) throw prodError;
+
+				const currentQuantity = Number(productRow?.quantity ?? 0);
+
+				// 6. Update product quantity to max(current, potentialStock)
+				const newQuantity = Math.max(currentQuantity, potentialStock);
+				if (newQuantity !== currentQuantity) {
+					const { error: updateError } = await pos
+						.from("products")
+						.update({ quantity: newQuantity })
+						.eq("source_id", recipe.productId);
+					if (updateError) throw updateError;
+					updatedCount++;
+				}
+			}
+
+			return { updatedCount };
+		},
+		[]
 	);
 }
 

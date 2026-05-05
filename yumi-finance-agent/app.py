@@ -30,6 +30,7 @@ FINANCE_GROUP_ID = int(os.getenv("FINANCE_GROUP_ID", "-4995568785"))
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+SUPABASE_ACCESS_TOKEN = os.getenv("SUPABASE_ACCESS_TOKEN", "")
 
 # SumoPod API — untuk AI chat & vision/OCR
 SUMOPOD_API_KEY = os.getenv("SUMOPOD_API_KEY", "sk-UfA-KXloOB3ZLHSQWxb0Cw")
@@ -51,13 +52,13 @@ from orchestrator import FinanceOrchestrator, OrchestratorResult
 from categories import auto_categorize, categorize_item, get_category_label, format_amount, FINANCE_CATEGORIES, get_all_categories, add_dynamic_category
 from sumopod_client import SumoPodClient
 from memory import MemoryManager, normalize_name
-from supplier import SupplierManager
+# (no supplier import needed — moved to Yumi Purchasing)
 
 finance = FinanceManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, f"{SUPABASE_URL}/functions/v1/yumi-ai")
-inventory = InventoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY)
+inventory = InventoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ACCESS_TOKEN)
 orchestrator = FinanceOrchestrator(SUMOPOD_API_KEY)
 memory = MemoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY)
-supplier = SupplierManager(SUPABASE_URL, SUPABASE_KEY)
+# supplier moved to Yumi Purchasing
 
 # ── In-memory state: pending confirmations ─────────────────────────
 # { callback_data: {"type": "new_ingredient", "data": {...}} }
@@ -94,10 +95,28 @@ async def _edit_msg(msg, text: str, **kwargs):
     """Edit a specific message with clean_output() applied."""
     await msg.edit_text(clean_output(text), **kwargs)
 
-def _is_finance_group(update: Update) -> bool:
-    """Cek apakah pesan dari grup keuangan."""
+def _can_respond(update: Update) -> bool:
+    """Cek apakah bot boleh merespon — DM owner atau grup dengan @mention."""
+    user = update.effective_user
     chat = update.effective_chat
-    return chat is not None and chat.id == FINANCE_GROUP_ID
+    if not user or not chat:
+        return False
+    # Hanya owner 323151437 yang bisa DM
+    if chat.type == "private":
+        return user.id == 323151437
+    # Di grup: harus @mention, reply ke bot, atau foto dari owner
+    msg = update.effective_message
+    if not msg:
+        return False
+    if msg.reply_to_message and msg.reply_to_message.from_user and msg.reply_to_message.from_user.is_bot:
+        return True
+    message_text = msg.text or msg.caption or ""
+    if "@YummeFinanceAIbot".lower() in message_text.lower():
+        return True
+    # Foto dari owner selalu diproses di grup (biar gak perlu @mention tiap foto)
+    if user.id == 323151437 and msg.photo:
+        return True
+    return False
 
 
 async def _send_or_edit(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, keyboard=None):
@@ -117,13 +136,29 @@ def _finance_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("💰 Pemasukan", callback_data="quick_income"),
          InlineKeyboardButton("💸 Pengeluaran", callback_data="quick_expense")],
-        [InlineKeyboardButton("🏦 Saldo", callback_data="quick_balance"),
-         InlineKeyboardButton("📊 Ringkasan", callback_data="quick_summary")],
-        [InlineKeyboardButton("📁 Kategori", callback_data="quick_category"),
-         InlineKeyboardButton("📦 Cek Stok", callback_data="quick_stock")],
-        [InlineKeyboardButton("🛒 Marketlist", callback_data="quick_marketlist"),
-         InlineKeyboardButton("💬 Tanya AI", callback_data="quick_ask")],
+        [InlineKeyboardButton("💬 AI Chat", callback_data="quick_ai")],
     ])
+
+
+def _period_keyboard(tx_type: str) -> InlineKeyboardMarkup:
+    """Keyboard filter periode untuk pemasukan/pengeluaran."""
+    periods = [
+        ("Hari Ini", "hari_ini"),
+        ("Kemarin", "kemarin"),
+        ("Minggu Ini", "minggu_ini"),
+        ("Minggu Lalu", "minggu_lalu"),
+        ("Bulan Ini", "bulan_ini"),
+        ("Bulan Lalu", "bulan_lalu"),
+    ]
+    buttons = []
+    for label, key in periods:
+        buttons.append(
+            InlineKeyboardButton(f"📅 {label}", callback_data=f"period_{tx_type}_{key}")
+        )
+    # Split jadi 2 per baris
+    rows = [buttons[i:i+2] for i in range(0, len(buttons), 2)]
+    rows.append([InlineKeyboardButton("⬅️ Kembali", callback_data="back_main")])
+    return InlineKeyboardMarkup(rows)
 
 
 # ── Image Compression (OCR) ───────────────────────────────────────
@@ -234,8 +269,8 @@ _receipt_pending: dict[str, dict] = {}
 # ── Bulk OCR: album multi-foto ──────────────────────────────────────
 _album_buffer: dict[str, dict] = {}
 _album_lock = asyncio.Lock()
-ALBUM_TIMEOUT = 1.5  # detik
-_MAX_CONCURRENT_OCR = 3
+ALBUM_TIMEOUT = 5.0  # detik — tunggu semua foto terkumpul
+_MAX_CONCURRENT_OCR = 5
 _ocr_semaphore = asyncio.Semaphore(_MAX_CONCURRENT_OCR)
 _bulk_pending: dict[str, list[dict]] = {}
 _bulk_select_state: dict[str, dict] = {}
@@ -243,7 +278,7 @@ _bulk_select_state: dict[str, dict] = {}
 
 async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle foto struk — OCR structured JSON → tampilkan item → minta konfirmasi."""
-    if not _is_finance_group(update):
+    if not _can_respond(update):
         return
 
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
@@ -407,7 +442,7 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def on_album(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle foto — route ke single atau bulk berdasarkan media_group_id."""
-    if not _is_finance_group(update):
+    if not _can_respond(update):
         return
 
     media_group_id = update.message.media_group_id
@@ -755,7 +790,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
     if len(parts) < 3:
         return False
     action = parts[1]  # income | expense | cancel
-    ref_id = f"rcpt_{parts[2]}" if parts[2] else ""
+    ref_id = parts[2] if parts[2] else ""
 
     receipt = _receipt_pending.pop(ref_id, None)
     if not receipt:
@@ -850,6 +885,12 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
             lines.append("📦 Inventory Update:")
             lines.extend(restok_lines)
 
+        # Sinkronisasi stok menu setelah restock
+        try:
+            await inventory.sync_all_menu_stocks()
+        except Exception as e:
+            logger.warning("Menu stock sync failed after OCR restock: %s", e)
+
     await query.edit_message_text("\n".join(lines), reply_markup=_finance_keyboard())
     return True
 
@@ -860,6 +901,74 @@ def _extract_unit(name: str) -> str:
     if m:
         return m.group(2).lower()
     return ""
+
+
+# ── Manual restock untuk input manual ────────────────────────────
+
+async def _manual_restock(result):
+    """Restok inventory dari input pengeluaran manual (sama seperti OCR)."""
+    try:
+        items_to_restock = []
+
+        # Cek apakah orchestrator sudah parse items
+        if result.items:
+            items_to_restock = result.items
+        elif result.description:
+            # Parse manual dari description: "2 kg ubi" or "Minyak rizki 3 btl"
+            desc = result.description.strip()
+            m = re.match(r'(\d+(?:[.,]\d+)?)\s*(ml|liter|l|kg|gram|gr|g|pcs|pack|ikat|bungkus|toros|botol|btl|kilo|kantong|dus)\s+(.+)', desc, re.IGNORECASE)
+            if m:
+                qty_str = m.group(1).replace(",", ".")
+                unit = m.group(2).lower()
+                unit = {"btl": "botol", "kilo": "kg", "gr": "gram", "l": "liter"}.get(unit, unit)
+                name = m.group(3).strip()
+                unit_price = result.amount / float(qty_str) if float(qty_str) > 0 else result.amount
+                items_to_restock = [{"name": name, "qty": float(qty_str), "unit": unit, "price": unit_price}]
+            else:
+                # Fallback: seluruh description sebagai nama item, qty=1
+                items_to_restock = [{"name": desc, "qty": 1, "unit": "pcs", "price": result.amount}]
+
+        if not items_to_restock:
+            return
+
+        inventory_list = await inventory.get_all_inventory()
+        merchant = result.merchant or "Input Manual"
+        restok_lines = []
+
+        for item in items_to_restock:
+            item_name = item.get("name", "").strip()
+            if not item_name:
+                continue
+            item_qty = float(item.get("qty") or 1)
+            item_price = float(item.get("price") or 0)
+            unit = item.get("unit", "").strip() or _extract_unit(item_name) or "pcs"
+
+            matched, score = await inventory.fuzzy_match_item(item_name, inventory_list)
+            if matched and score >= MIN_SCORE_AUTO:
+                inv_name = matched["ingredientName"]
+                inv_qty = float(matched.get("quantity", 0))
+                try:
+                    await inventory.restock_item(matched["_id"], inv_qty, item_qty, unit)
+                    await inventory.log_purchase(inv_name, item_qty, unit, item_price * item_qty, merchant)
+                    restok_lines.append(f"  ✅ {inv_name} +{item_qty:.0f} {unit}")
+                except Exception as e:
+                    restok_lines.append(f"  ⚠️ {item_name}: {e}")
+            elif matched and score >= MIN_SCORE_SUGGEST:
+                restok_lines.append(f"  🤔 {item_name} ≈ {matched['ingredientName']}? ({score}%)")
+            else:
+                restok_lines.append(f"  🆕 {item_name} — belum di database")
+
+        if restok_lines:
+            logger.info("Manual restock: %s", "; ".join(restok_lines))
+
+        # Sinkronisasi stok menu setelah restock
+        try:
+            await inventory.sync_all_menu_stocks()
+        except Exception as e:
+            logger.warning("Menu stock sync failed after manual restock: %s", e)
+
+    except Exception as e:
+        logger.warning("Manual restock failed: %s", e)
 
 
 async def _redisplay_receipt(query, ref_id: str, receipt: dict):
@@ -954,7 +1063,7 @@ MIN_SCORE_SUGGEST = 45
 
 async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle text dari grup keuangan."""
-    if not _is_finance_group(update):
+    if not _can_respond(update):
         return
 
     text = (update.message.text or "").strip()
@@ -1008,6 +1117,9 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"   {cat_label}",
                     reply_markup=_finance_keyboard(),
                 )
+
+                # ── Restok inventory (sama seperti OCR) ─────
+                asyncio.ensure_future(_manual_restock(result))
             else:
                 await update.message.reply_text(f"❌ Gagal: {tx.get('error', '?')}", reply_markup=_finance_keyboard())
 
@@ -1037,108 +1149,6 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             breakdown = await finance.get_category_breakdown()
             await update.message.reply_text(breakdown, reply_markup=_finance_keyboard())
 
-        elif result.action == "check_stock":
-            item = result.text
-            stock_text = await inventory.check_stock(item)
-            await update.message.reply_text(stock_text, reply_markup=_finance_keyboard())
-
-        elif result.action == "marketlist":
-            # Generate marketlist — reuse logic dari yumi-ai-bot marketlist.py
-            try:
-                from marketlist import generate_marketlist
-
-                async def fetch_fn(view, query="select=*"):
-                    url = f"{SUPABASE_URL}/rest/v1/{view}?{query}"
-                    async with httpx.AsyncClient(timeout=20) as client:
-                        resp = await client.get(url, headers={
-                            "apikey": SUPABASE_KEY,
-                            "Authorization": f"Bearer {SUPABASE_KEY}",
-                        })
-                        resp.raise_for_status()
-                        return resp.json()
-
-                ml_text = await generate_marketlist(fetch_fn, supplier)
-                await update.message.reply_text(ml_text, reply_markup=_finance_keyboard())
-            except Exception as e:
-                logger.warning("marketlist failed: %s", e)
-                await update.message.reply_text("❌ Gagal generate marketlist.", reply_markup=_finance_keyboard())
-
-        elif result.action == "low_stock":
-            # Cari semua item dengan stok menipis
-            all_items = await inventory.get_all_inventory()
-            low_items = []
-            for r in all_items:
-                qty = float(r.get("quantity") or 0)
-                thresh = float(r.get("lowStockThreshold") or 0)
-                name = r.get("ingredientName", "?")
-                unit = r.get("unit") or ""
-                if qty <= thresh and thresh > 0:
-                    unit_s = f" {unit}" if unit else ""
-                    thresh_s = f" (min: {thresh:g}{unit_s})" if thresh > 0 else ""
-                    low_items.append(f"• {name}: {qty:g}{unit_s}{thresh_s}")
-
-            if low_items:
-                lines = ["⚠️ Stok Menipis:", ""]
-                lines.extend(low_items[:20])
-                await update.message.reply_text("\n".join(lines), reply_markup=_finance_keyboard())
-            else:
-                await update.message.reply_text("✅ Semua stok aman.", reply_markup=_finance_keyboard())
-
-        elif result.action == "restock":
-            item_name = result.description
-            qty = result.amount
-            unit = result.merchant or "pcs"
-            price = float(result.text or "0") if result.text else 0
-
-            # Cari item di inventory
-            matched, score = await inventory.fuzzy_match_item(item_name)
-            if matched and score >= MIN_SCORE_AUTO:
-                inv_id = matched["_id"]
-                inv_qty = float(matched.get("quantity", 0))
-                inv_name = matched["ingredientName"]
-                await inventory.restock_item(inv_id, inv_qty, qty, unit)
-                total_cost = price * qty
-                await inventory.log_purchase(inv_name, qty, unit, total_cost)
-                if total_cost > 0:
-                    restok_cat, _ = auto_categorize(inv_name)
-                    await finance.record_transaction("expense", total_cost, f"Restok {inv_name} {qty} {unit}", restok_cat)
-                await update.message.reply_text(
-                    f"✅ Restok Berhasil\n"
-                    f"   {inv_name} +{qty:.0f} {unit}\n"
-                    f"   Total biaya: {format_amount(int(total_cost))}" if total_cost > 0 else f"✅ {inv_name} +{qty:.0f} {unit}",
-                    reply_markup=_finance_keyboard(),
-                )
-            elif matched and score >= MIN_SCORE_SUGGEST:
-                cb_idx = f"restock_{len(_pending_actions)}"
-                _pending_actions[cb_idx] = {"item": {"name": item_name, "qty": qty, "unit": unit, "price": price}, "matched": matched}
-                keyboard = InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton("✅ Ya", callback_data=f"new_ingredient_overwrite_{cb_idx}"),
-                        InlineKeyboardButton("❌ Batal", callback_data=f"new_ingredient_skip_{cb_idx}"),
-                    ]
-                ])
-                await update.message.reply_text(
-                    f"🤔 Maksud {matched['ingredientName']}? ({score}% match)",
-                    reply_markup=keyboard,
-                )
-            else:
-                # Barang baru
-                cb_idx = f"new_{len(_pending_actions)}"
-                item_data = {"name": item_name, "qty": qty, "unit": unit, "price": price}
-                _pending_actions[cb_idx] = {"item": item_data, "matched": None}
-                keyboard = InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton("✅ Simpan Baru", callback_data=f"new_ingredient_save_{cb_idx}"),
-                        InlineKeyboardButton("❌ Batal", callback_data=f"new_ingredient_skip_{cb_idx}"),
-                    ]
-                ])
-                await update.message.reply_text(
-                    f"🆕 {item_name} belum ada di database. Simpan sebagai bahan baru?\n"
-                    f"   Qty: {qty:.0f} {unit}\n"
-                    f"   Harga: {format_amount(int(price * qty))}",
-                    reply_markup=keyboard,
-                )
-
         elif result.action == "search":
             keyword = result.text or ""
             matches = await finance.search_transactions(keyword)
@@ -1159,15 +1169,15 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("\n".join(lines), reply_markup=_finance_keyboard())
 
         else:
-            # Unknown atau AI chat — kirim balasan AI
+            # Unknown / chat — kirim balasan AI
             reply_text = result.text or (
-                "Maaf, saya belum paham. 😅\n"
+                "Maaf, saya belum paham. 😅\n\n"
                 "Coba ketik:\n"
-                "• `pemasukan 50000`\n"
-                "• `pengeluaran 25000 beli gula`\n"
-                "• `saldo`\n"
-                "• `cek stok`\n"
-                "• `ringkasan bulan ini`"
+                "• `pemasukan 50000` — catat pemasukan\n"
+                "• `pengeluaran 25000 beli gula` — catat pengeluaran\n"
+                "• `saldo` — cek saldo\n"
+                "• `ringkasan bulan ini` — laporan\n"
+                "• Atau tanya bebas — aku bisa reasoning!"
             )
             await update.message.reply_text(reply_text, reply_markup=_finance_keyboard())
 
@@ -1207,24 +1217,100 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await query.answer()
 
-    # Quick action buttons
+    # ── Navigation: period filter & back ──────────────────
+    # Back ke menu utama
+    if query.data == "back_main":
+        await query.edit_message_text(
+            "🏠 Menu utama. Pilih opsi di bawah:",
+            reply_markup=_finance_keyboard(),
+        )
+        return
+
+    # Pemasukan / Pengeluaran → pilih periode
+    if query.data == "quick_income":
+        await query.edit_message_text(
+            "📅 Pilih periode pemasukan:",
+            reply_markup=_period_keyboard("income"),
+        )
+        return
+    if query.data == "quick_expense":
+        await query.edit_message_text(
+            "📅 Pilih periode pengeluaran:",
+            reply_markup=_period_keyboard("expense"),
+        )
+        return
+
+    # Period filter: period_{income/expense}_{period_key}
+    pm = re.match(r"period_(income|expense)_(.+)", query.data)
+    if pm:
+        tx_type = pm.group(1)
+        period_key = pm.group(2)
+        type_label = "Pemasukan" if tx_type == "income" else "Pengeluaran"
+        period_labels = {
+            "hari_ini": "Hari Ini", "kemarin": "Kemarin",
+            "minggu_ini": "Minggu Ini", "minggu_lalu": "Minggu Lalu",
+            "bulan_ini": "Bulan Ini", "bulan_lalu": "Bulan Lalu",
+        }
+        label = period_labels.get(period_key, period_key)
+
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+        try:
+            SKIP_CATEGORIES = {"Modal Awal", "Setoran Akhir"}
+            txns = await finance.get_transactions(tx_type=tx_type, period=period_key)
+            if not txns:
+                await query.edit_message_text(
+                    f"📭 Tidak ada {type_label.lower()} periode **{label}**.",
+                    reply_markup=_period_keyboard(tx_type),
+                )
+                return
+
+            # Filter: skip Modal Awal & Setoran Akhir (bukan penjualan riil)
+            filtered = [t for t in txns if (t.get("category") or "") not in SKIP_CATEGORIES]
+            skipped = len(txns) - len(filtered)
+            txns = filtered
+
+            lines = [f"📋 *{type_label} — {label}*", ""]
+            total = 0
+            for t in txns:
+                amt = float(t.get("amount") or 0)
+                desc = (t.get("description") or "").strip()[:50]
+                date_str = ""
+                ts = t.get("tx_date")
+                if ts:
+                    dt = datetime.fromtimestamp(ts / 1000, tz=WIB)
+                    date_str = dt.strftime("%d/%m")
+                total += amt
+                lines.append(f"  {date_str}  {format_amount(int(amt))}  {desc}")
+
+            lines.append("")
+            lines.append(f"─── ⋆ ───")
+            lines.append(f"💰 *Total: {format_amount(int(total))}*")
+            if skipped > 0:
+                lines.append(f"ℹ️ {skipped} transaksi shift (modal/setoran) tidak dihitung")
+            lines.append("")
+            lines.append("Pilih periode lain:")
+            await query.edit_message_text("\n".join(lines), reply_markup=_period_keyboard(tx_type))
+        except Exception as e:
+            logger.exception("Period query failed")
+            await query.edit_message_text(f"❌ Error: {e}", reply_markup=_period_keyboard(tx_type))
+        return
+
+    # ── Quick action buttons ──────────────────────────────
     action_map = {
         "quick_income": "pemasukan ",
         "quick_expense": "pengeluaran ",
         "quick_balance": "saldo",
         "quick_summary": "ringkasan hari ini",
         "quick_category": "kategori",
-        "quick_stock": "cek stok",
-        "quick_marketlist": "marketlist",
-        "quick_ask": (
+        "quick_ai": (
             "Halo! Aku Yumi Finance AI Agent. 👋\n\n"
             "Aku bisa bantu:\n"
             "• Catat pemasukan & pengeluaran\n"
             "• Cek saldo & ringkasan keuangan\n"
-            "• Cek stok inventory\n"
             "• Scan struk belanja (kirim foto)\n"
-            "• Generate marketlist\n\n"
-            "Coba ketik langsung atau pilih menu di bawah 👇"
+            "• Tanya bebas — aku bisa reasoning!\n\n"
+            "Untuk inventory: pakai @YumiPurchasingBot\n\n"
+            "Coba ketik bebas atau pilih menu di bawah 👇"
         ),
     }
 
@@ -1232,20 +1318,10 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if action is None:
         return
 
-    if query.data == "quick_ask":
+    if query.data == "quick_ai":
         await query.edit_message_text(action, reply_markup=_finance_keyboard())
         return
-
-    # Untuk quick_income/quick_expense, kirim prompt
-    if query.data in ("quick_income", "quick_expense"):
-        await query.edit_message_text(
-            f"Silakan ketik:\n`{action}<nominal> <deskripsi>`\n\n"
-            f"Contoh:\n`{action}50000 beli gula`",
-            reply_markup=_finance_keyboard(),
-        )
-        return
-
-    # Untuk sisanya, trigger orchestrator
+    # Untuk quick_balance, quick_summary, quick_category — trigger orchestrator
     text = action
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     result = await orchestrator.orchestrate(text)
@@ -1275,30 +1351,6 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             breakdown = await finance.get_category_breakdown()
             await query.edit_message_text(breakdown, reply_markup=_finance_keyboard())
 
-        elif result.action == "check_stock":
-            stock_text = await inventory.check_stock()
-            await query.edit_message_text(stock_text, reply_markup=_finance_keyboard())
-
-        elif result.action == "marketlist":
-            try:
-                from marketlist import generate_marketlist
-
-                async def fetch_fn(view, query="select=*"):
-                    url = f"{SUPABASE_URL}/rest/v1/{view}?{query}"
-                    async with httpx.AsyncClient(timeout=20) as client:
-                        resp = await client.get(url, headers={
-                            "apikey": SUPABASE_KEY,
-                            "Authorization": f"Bearer {SUPABASE_KEY}",
-                        })
-                        resp.raise_for_status()
-                        return resp.json()
-
-                ml_text = await generate_marketlist(fetch_fn)
-                await query.edit_message_text(ml_text, reply_markup=_finance_keyboard())
-            except Exception as e:
-                logger.warning("marketlist failed: %s", e)
-                await query.edit_message_text("❌ Gagal generate marketlist.", reply_markup=_finance_keyboard())
-
     except Exception as e:
         logger.exception("Callback handler failed")
         try:
@@ -1311,26 +1363,25 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler /start"""
-    if not _is_finance_group(update):
+    if not _can_respond(update):
         await update.message.reply_text("Bot ini hanya untuk grup keuangan khusus.")
         return
 
     await update.message.reply_text(
         "🤖 Yumi Finance AI Agent\n\n"
-        "Asisten keuangan & inventory untuk bisnis kamu.\n\n"
+        "Asisten keuangan untuk bisnis kamu.\n\n"
         "Fitur:\n"
         "💰 Catat pemasukan & pengeluaran\n"
         "🏦 Cek saldo & ringkasan keuangan\n"
-        "📦 Cek stok & restok inventory\n"
-        "🛒 Marketlist otomatis\n"
-        "📸 Scan struk belanja (OCR)\n\n"
+        "📸 Scan struk belanja (OCR)\n"
+        "💬 AI Chat — tanya bebas!\n\n"
+        "Untuk inventory & marketlist: @YumiPurchasingBot\n\n"
         "Cara pakai:\n"
         "• `pemasukan 50000` — catat pemasukan\n"
         "• `pengeluaran 25000 beli gula` — catat pengeluaran\n"
         "• `saldo` — cek saldo\n"
-        "• `cek stok` — cek inventory\n"
-        "• `restok gula 2kg 30000` — restok stok\n"
-        "• Kirim `foto struk` — auto catat + restok\n\n"
+        "• Kirim `foto struk` — auto catat\n"
+        "• Tanya bebas — aku bisa reasoning!\n\n"
         "Pilih menu di bawah 👇",
         reply_markup=_finance_keyboard(),
     )
@@ -1338,7 +1389,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_rekap(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler /rekap — rekap struk OCR yang diproses."""
-    if not _is_finance_group(update):
+    if not _can_respond(update):
         return
 
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
@@ -1416,50 +1467,6 @@ async def cmd_rekap(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.exception("cmd_rekap failed")
         await update.message.reply_text(f"❌ Gagal mengambil rekap: {e}", reply_markup=_finance_keyboard())
-
-
-async def cmd_supplier(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handler /supplier <keyword|kategori> — cari supplier."""
-    if not _is_finance_group(update):
-        return
-
-    args = (update.message.text or "").split(maxsplit=1)
-    keyword = args[1].strip() if len(args) > 1 else ""
-
-    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
-
-    if not keyword:
-        # Tampilkan semua kategori
-        cats = await supplier.get_all_categories()
-        lines = ["📋 Kategori Supplier:", ""]
-        for c in cats:
-            lines.append(f"  • {c}")
-        lines.append("")
-        lines.append("Ketik /supplier <kategori> untuk lihat detail.\nContoh: /supplier daging")
-        await update.message.reply_text("\n".join(lines))
-        return
-
-    # Search
-    results = await supplier.search(keyword)
-    if not results:
-        await update.message.reply_text(
-            f"❌ Tidak ada supplier untuk '{keyword}'.\n"
-            f"Ketik /supplier untuk lihat semua kategori.",
-            reply_markup=_finance_keyboard(),
-        )
-        return
-
-    text = SupplierManager.format_supplier_list(results, f"📋 Supplier: {keyword}")
-    # Handle 4096 char limit
-    if len(text) > 4000:
-        # Split per supplier
-        for s in results:
-            await update.message.reply_text(
-                SupplierManager.format_supplier(s),
-                reply_markup=_finance_keyboard() if results.index(s) == len(results) - 1 else None,
-            )
-    else:
-        await update.message.reply_text(text, reply_markup=_finance_keyboard())
 
 
 # ── Bulk Callback Handlers ──────────────────────────────────────────
@@ -1963,7 +1970,6 @@ def main():
     # Commands
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("rekap", cmd_rekap))
-    app.add_handler(CommandHandler("supplier", cmd_supplier))
 
     # Callbacks
     app.add_handler(CallbackQueryHandler(on_callback))
