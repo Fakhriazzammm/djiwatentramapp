@@ -1397,24 +1397,28 @@ export function TransactionDetailReport({
 													return (
 														<div className="border-slate-200 border-t pt-1.5 mt-1.5">
 															<span className="block text-[10px] font-medium text-slate-500 mb-1">Daftar Item:</span>
-															<div className="overflow-hidden rounded-md border border-slate-200">
-																<table className="w-full text-[10px]">
-																	<thead className="bg-slate-50">
-																		<tr>
-																			<th className="px-3 py-1.5 text-left font-medium text-slate-600">Item</th>
-																			<th className="px-3 py-1.5 text-right font-medium text-slate-600">Qty</th>
-																		</tr>
-																	</thead>
-																	<tbody className="divide-y divide-slate-100">
-																		{parsedItems.map((item, i) => (
-																			<tr key={i} className="hover:bg-slate-50/50">
-																				<td className="px-3 py-1.5 font-medium text-slate-700">{item.name}</td>
-																				<td className="px-3 py-1.5 text-right font-mono text-slate-600">{item.qty}</td>
-																			</tr>
-																		))}
-																	</tbody>
-																</table>
-															</div>
+		<div className="overflow-hidden rounded-md border border-slate-200">
+			<table className="w-full text-[10px]">
+				<thead className="bg-slate-50">
+					<tr>
+						<th className="px-3 py-1.5 text-left font-medium text-slate-600">Item</th>
+						<th className="px-3 py-1.5 text-right font-medium text-slate-600">Qty</th>
+						<th className="px-3 py-1.5 text-right font-medium text-slate-600">Harga</th>
+						<th className="px-3 py-1.5 text-right font-medium text-slate-600">Total</th>
+					</tr>
+				</thead>
+				<tbody className="divide-y divide-slate-100">
+					{parsedItems.map((item, i) => (
+						<tr key={i} className="hover:bg-slate-50/50">
+							<td className="px-3 py-1.5 font-medium text-slate-700">{item.name}</td>
+							<td className="px-3 py-1.5 text-right font-mono text-slate-600">{item.qty}</td>
+							<td className="px-3 py-1.5 text-right font-mono text-slate-400">—</td>
+							<td className="px-3 py-1.5 text-right font-mono text-slate-400">—</td>
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</div>
 														</div>
 													);
 												})()}
