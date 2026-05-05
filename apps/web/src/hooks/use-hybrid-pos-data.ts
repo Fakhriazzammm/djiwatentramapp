@@ -1348,8 +1348,13 @@ async function fetchStaffRoles() {
 			row.bonusTargetConfig && typeof row.bonusTargetConfig === "object"
 				? row.bonusTargetConfig
 				: null,
+		// Salary fields — stored in raw JSONB by updateRole
+		baseShiftRate: row.baseShiftRate ?? row.raw?.baseShiftRate ?? 0,
+		monthlyFixedSalary: row.monthlyFixedSalary ?? row.raw?.monthlyFixedSalary ?? 0,
+		dailyAllowance: row.dailyAllowance ?? row.raw?.dailyAllowance ?? 0,
+		baseHourlyRate: row.baseHourlyRate ?? row.raw?.baseHourlyRate ?? 0,
 		raw: row.raw,
-	})) as StaffRoleRecord[];
+	})) as any[];
 }
 
 async function fetchStaffUsers() {

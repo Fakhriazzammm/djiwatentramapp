@@ -5299,14 +5299,14 @@ export function useHybridUpdateRole() {
 			try {
 				const id = String(args?.id ?? "");
 				if (!id) throw new Error("id role wajib");
-				const { error } = await createClient()
-					.from("yumi_roles")
-					.update({
-						name: String(args?.name ?? "").trim(),
-						permissions: Array.isArray(args?.permissions) ? args.permissions : [],
-						raw: args ?? {},
-					})
-					.eq("source_id", id);
+			const { error } = await createClient()
+				.from("yumi_roles")
+				.update({
+					name: String(args?.name ?? "").trim(),
+					permissions: Array.isArray(args?.permissions) ? args.permissions : [],
+					raw: args ?? {},
+				})
+				.eq("source_id", id);
 				if (error) throw error;
 				return id;
 			} catch (error) {
