@@ -1050,10 +1050,11 @@ function InventoryPage() {
 	);
 
 	const handleExportCSV = useCallback(() => {
-		const headers = ["Bahan", "Supplier", "Stok", "Satuan", "Min", "Pemakaian", "Harga", "Status"];
+		const headers = ["Bahan", "Berat Bersih", "Supplier", "Stok", "Satuan", "Min", "Pemakaian", "Harga", "Status"];
 		const rows = filteredRows.map((row) => {
 			return [
 				row.ingredientName,
+				row.netWeight || "—",
 				[row.preferredStoreName, row.defaultBrandName].filter(Boolean).join(" · ") || "—",
 				row.currentStock,
 				row.unit || "—",
@@ -4884,14 +4885,15 @@ function InventoryTable({
 				</datalist>
 				<div className="overflow-x-auto">
 				<table
-					className={`min-w-[1530px] w-full table-fixed text-left ${
+					className={`min-w-[1680px] w-full table-fixed text-left ${
 						tableMode === "detail" ? "text-[9px] md:text-[10px]" : "text-[8px] md:text-[9px]"
 					}`}
 				>
 					<colgroup>
 						<col className="w-[3.5rem]" />
 						<col className="w-[2.2rem]" />
-						<col className="w-[16%]" />
+						<col className="w-[14%]" />
+						<col className="w-[7%]" />
 						<col className="w-[10%]" />
 						<col className="w-[9%]" />
 						<col className="w-[7%]" />
@@ -4936,6 +4938,9 @@ function InventoryTable({
 											<ArrowDown className="h-3 w-3" />
 									))}
 								</div>
+							</th>
+							<th className="px-2 py-1.5 font-semibold text-muted-foreground/70" title="Berat bersih standar">
+								Berat
 							</th>
 							<th className="px-2 py-1.5 font-semibold">Supplier</th>
 							<th
@@ -5018,6 +5023,7 @@ function InventoryTable({
 									value={quickAdd.ingredientName}
 								/>
 							</td>
+							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
 							<td className="px-2 py-1.5">
 								<input
 									className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
@@ -5126,6 +5132,9 @@ function InventoryTable({
 										<Skeleton className="h-4 w-32" />
 									</td>
 									<td className="p-4">
+										<Skeleton className="mx-auto h-3 w-10" />
+									</td>
+									<td className="p-4">
 										<Skeleton className="h-6 w-24" />
 									</td>
 									<td className="p-4">
@@ -5225,6 +5234,7 @@ function InventoryTable({
 												value={inline.ingredientName}
 											/>
 										</td>
+										<td className="px-2 py-1.5 align-middle text-[9px] text-muted-foreground/60">{row.netWeight || "—"}</td>
 										<td className="px-2 py-1.5 align-middle text-[10px] font-semibold text-muted-foreground">{row.preferredStoreName || row.lastPurchaseStoreName || "—"}{row.defaultBrandName ? ` · ${row.defaultBrandName}` : ""}</td>
 										<td className="px-2 py-1.5 align-middle text-center">
 											<input
