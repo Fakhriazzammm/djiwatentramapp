@@ -5083,11 +5083,9 @@ function InventoryTable({
 							<td className="px-2 py-1.5"><div className="text-[10px] text-muted-foreground">-</div></td>
 							<td className="px-2 py-1.5"><div className="text-[10px] text-muted-foreground">-</div></td>
 							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
-							<td className="px-2 py-1.5">
-								<div className="rounded-lg border border-dashed border-border px-2 py-1 text-[10px] text-muted-foreground">
-									Autosave
-								</div>
-							</td>
+							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
+							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
+							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
 							<td className="px-2 py-1.5 text-right">
 								<div className="flex items-center justify-end gap-1.5">
 									<button
@@ -5150,6 +5148,9 @@ function InventoryTable({
 									</td>
 									<td className="p-4">
 										<Skeleton className="h-6 w-20" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="mx-auto h-4 w-14" />
 									</td>
 									<td className="p-4 text-right">
 										<Skeleton className="ml-auto h-8 w-24 rounded-lg" />
