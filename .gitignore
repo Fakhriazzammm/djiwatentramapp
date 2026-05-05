@@ -1,19 +1,26 @@
-# Dependencies
 node_modules/
-.pnp
-.pnp.*
+.yarn/
+.pnpm-store/
 
-# Build outputs
-dist/
-build/
-.turbo/
-.next/
-out/
+# Python virtualenv
+.venv/
+venv/
+__pycache__/
+*.pyc
 
-# Environment files
+# Env files
 .env
 .env.local
-.env.*.local
+.env.production
+
+# Build output
+dist/
+.next/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
 
 # IDE
 .vscode/
@@ -21,36 +28,5 @@ out/
 *.swp
 *.swo
 
-# OS files
-.DS_Store
-Thumbs.db
-
 # Logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-supabase/.temp/
-
-# Yumi AI bot local runtime artifacts
-yumi-ai-bot/.venv/
-yumi-ai-bot/__pycache__/
-
-yumi-finance-agent/.venv/
-yumi-finance-agent/__pycache__/
-
-# Tauri
-src-tauri/target/
-src-tauri/binaries/
-.vercel
-.claude/worktrees/agitated-bardeen-2a54d3/
-.claude/worktrees/great-galileo-1cd371/
-.claude/worktrees/mystifying-cohen-86fb00/
-.claude/worktrees/reverent-sinoussi-a15b40/
-.claude/worktrees/serene-babbage-863e77/
-.claude/worktrees/sharp-mayer-83e484/
-.claude/worktrees/friendly-matsumoto-192bef/
-.claude/worktrees/wonderful-ishizaka-4e0f14/
-.claude/worktrees/admiring-saha-9b7776/
-*.backup
