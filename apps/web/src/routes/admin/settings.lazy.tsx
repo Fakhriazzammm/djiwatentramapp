@@ -2910,10 +2910,6 @@ export function SettingsPage({
 											Isi gaji dari role
 										</label>
 									</div>
-									<div>
-										<label className="mb-1 block text-xs font-medium text-muted-foreground">Preview Gaji Default</label>
-										<p className="text-sm font-semibold text-primary">{formatOnboardingCurrency((roles?.find((role: any) => role._id === employeeOnboardingSettings.defaultRoleId) as any)?.monthlyFixedSalary)}</p>
-									</div>
 								</div>
 							</div>
 
