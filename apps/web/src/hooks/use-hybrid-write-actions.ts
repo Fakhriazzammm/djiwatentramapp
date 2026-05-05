@@ -2734,6 +2734,46 @@ export function useHybridUpdateOrder() {
 				}
 
 				const supabase = createClient();
+
+				// Jika status berubah ke paid/completed, buat financial transaction
+				const newStatus = updates.status as string | null;
+				if (newStatus === "paid" || newStatus === "completed") {
+					const { data: order, error: getError } = await supabase
+						.schema("pos")
+						.from("orders")
+						.select("source_id, status, order_number, total_amount, payment_method, created_at")
+						.eq("source_id", id)
+						.maybeSingle();
+					if (getError) throw getError;
+					if (!order) throw new Error("Order not found");
+
+					const wasPaid =
+						order.status === "paid" || order.status === "completed";
+					if (!wasPaid) {
+						const txDate = Number(args?.date ?? order.created_at ?? Date.now());
+						const { error: txError } = await supabase
+							.schema("pos")
+							.from("financial_transactions")
+							.insert({
+								source_id: makeSourceId("fin"),
+								tx_type: "income",
+								amount: Number(order.total_amount ?? 0),
+								category: "Penjualan",
+								description: `Penjualan Pesanan #${order.order_number ?? "-"}`,
+								tx_date: txDate,
+								payment_method: order.payment_method ?? null,
+								status: "completed",
+								order_source_id: id,
+								creation_time: Date.now(),
+								raw: {
+									kind: "order_settlement_update_order",
+									orderId: id,
+								},
+							});
+						if (txError) throw txError;
+					}
+				}
+
 				const { error } = await supabase
 					.schema("pos")
 					.from("orders")
