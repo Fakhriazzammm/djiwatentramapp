@@ -1362,12 +1362,62 @@ export function TransactionDetailReport({
 																<span className="font-semibold text-slate-700">{t.metadata.item_count}</span>
 															</div>
 														)}
-														{t.description && (
+												{t.description && !hasScanItems && !t.metadata?.receiptDetails && (() => {
+													// Parse description: "Belanja - MERCHANT: ITEM ×QTY, ITEM2 × QTY..."
+													let merchant = "";
+													let parsedItems: { name: string; qty: number }[] = [];
+													const desc = t.description || "";
+													
+													// Coba parse format "PREFIX - MERCHANT: ITEM1 ×QTY1, ITEM2 ×QTY2 ..."
+													const merchantMatch = desc.match(/^[^:]+:\s*/);
+													if (merchantMatch) {
+														const afterPrefix = desc.slice(merchantMatch[0].length);
+														// Extract items separated by comma
+														const parts = afterPrefix.split(/, ?\+ \d+ (item|produk) lain/);
+														const mainPart = parts[0];
+														const itemParts = mainPart.split(/, (?=\S)/);
+														for (const ip of itemParts) {
+															const m = ip.match(/^(.+?)\s*[×xX]\s*([\d.]+)/);
+															if (m) {
+																parsedItems.push({ name: m[1].trim(), qty: parseFloat(m[2]) || 0 });
+															}
+														}
+													}
+													
+													if (parsedItems.length === 0) {
+														// Fallback: tampilkan description sebagai teks biasa
+														return (
 															<div className="border-slate-200 border-t pt-1.5 mt-1.5">
 																<span className="block text-[10px] font-medium text-slate-500 mb-1">Daftar Item:</span>
-																<p className="text-[10px] text-slate-700 leading-relaxed whitespace-pre-wrap">{t.description}</p>
+																<p className="text-[10px] text-slate-700 leading-relaxed whitespace-pre-wrap">{desc}</p>
 															</div>
-														)}
+														);
+													}
+													
+													return (
+														<div className="border-slate-200 border-t pt-1.5 mt-1.5">
+															<span className="block text-[10px] font-medium text-slate-500 mb-1">Daftar Item:</span>
+															<div className="overflow-hidden rounded-md border border-slate-200">
+																<table className="w-full text-[10px]">
+																	<thead className="bg-slate-50">
+																		<tr>
+																			<th className="px-3 py-1.5 text-left font-medium text-slate-600">Item</th>
+																			<th className="px-3 py-1.5 text-right font-medium text-slate-600">Qty</th>
+																		</tr>
+																	</thead>
+																	<tbody className="divide-y divide-slate-100">
+																		{parsedItems.map((item, i) => (
+																			<tr key={i} className="hover:bg-slate-50/50">
+																				<td className="px-3 py-1.5 font-medium text-slate-700">{item.name}</td>
+																				<td className="px-3 py-1.5 text-right font-mono text-slate-600">{item.qty}</td>
+																			</tr>
+																		))}
+																	</tbody>
+																</table>
+															</div>
+														</div>
+													);
+												})()}
 													</div>
 												)}
 												</div>
