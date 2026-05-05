@@ -34,6 +34,7 @@ import {
 	ShoppingCart,
 	Clock,
 	Download,
+	Sparkles,
 	X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -1425,6 +1426,7 @@ function InventoryPage() {
 				<InventoryTable
 				filteredRows={filteredRows}
 				inventoryMap={inventoryMap}
+					yumiAiInsights={yumiAiInsights}
 					stores={stores ?? []}
 					onActionTypeChange={setActionType}
 					onDetailItemChange={setDetailItem}
@@ -3698,6 +3700,7 @@ function InventoryTable({
 	onDetailItemChange,
 	onActionTypeChange,
 	inventoryMap,
+	yumiAiInsights,
 	stores,
 	viewPreset,
 	unitOptions,
@@ -3737,6 +3740,7 @@ function InventoryTable({
 			| null
 	) => void;
 	inventoryMap: Map<Id<"inventory">, Doc<"inventory">>;
+	yumiAiInsights?: InventoryYumiAiInsightsData;
 	stores: InventoryStore[];
 	viewPreset: InventoryViewPreset;
 	unitOptions: string[];
@@ -3859,6 +3863,21 @@ function InventoryTable({
 		() => new Set(unitOptions.map((unit) => normalizeUnitOption(unit))),
 		[unitOptions]
 	);
+
+	const stockoutItemIds = useMemo(() => {
+		if (!yumiAiInsights?.stockoutPredictions) return new Set<Id<"inventory">>();
+		return new Set(yumiAiInsights.stockoutPredictions.map((p) => p.inventoryId));
+	}, [yumiAiInsights?.stockoutPredictions]);
+
+	const supplierInsightItemIds = useMemo(() => {
+		if (!yumiAiInsights?.supplierIntelligence) return new Set<Id<"inventory">>();
+		return new Set(yumiAiInsights.supplierIntelligence.map((s) => s.inventoryId));
+	}, [yumiAiInsights?.supplierIntelligence]);
+
+	const anomalyItemIds = useMemo(() => {
+		if (!yumiAiInsights?.usageAnomalies) return new Set<Id<"inventory">>();
+		return new Set(yumiAiInsights.usageAnomalies.map((a) => a.inventoryId));
+	}, [yumiAiInsights?.usageAnomalies]);
 
 	const getSuggestionHighlightClass = (matched: boolean) =>
 		matched
@@ -4853,6 +4872,7 @@ function InventoryTable({
 				>
 					<colgroup>
 						<col className="w-[3.5rem]" />
+						<col className="w-[2.2rem]" />
 						<col className="w-[16%]" />
 						<col className="w-[10%]" />
 						<col className="w-[9%]" />
@@ -4884,6 +4904,9 @@ function InventoryTable({
 											<ArrowDown className="h-3 w-3" />
 										))}
 								</div>
+							</th>
+							<th className="w-[2.2rem] px-1 py-2 text-center font-semibold text-muted-foreground/60" title="Insight AI">
+								<Sparkles className="mx-auto h-3 w-3" />
 							</th>
 							<th
 								className="sticky left-0 z-20 cursor-pointer border-border/70 border-r bg-card px-2.5 py-2 font-semibold shadow-[6px_0_10px_-8px_rgba(15,23,42,0.35)] transition-colors hover:text-foreground"
@@ -5084,6 +5107,9 @@ function InventoryTable({
 										<Skeleton className="mx-auto h-4 w-6" />
 									</td>
 									<td className="p-4">
+										<Skeleton className="mx-auto h-3 w-3" />
+									</td>
+									<td className="p-4">
 										<Skeleton className="h-4 w-32" />
 									</td>
 									<td className="p-4">
@@ -5143,10 +5169,31 @@ function InventoryTable({
 										}`}
 										key={row.inventoryId}
 									>
-										<td className="px-2 py-1.5 text-center align-middle text-[10px] font-semibold text-muted-foreground">
-											{index + 1}
-										</td>
-										<td className="sticky left-0 z-10 border-border/60 border-r bg-card px-2.5 py-1.5 align-middle shadow-[6px_0_10px_-8px_rgba(15,23,42,0.2)]">
+									<td className="px-2 py-1.5 text-center align-middle text-[10px] font-semibold text-muted-foreground">
+										{index + 1}
+									</td>
+									<td className="px-1 py-1.5 text-center align-middle">
+										{(() => {
+											const id = row.inventoryId;
+											const hasStockout = stockoutItemIds.has(id);
+											const hasSupplier = supplierInsightItemIds.has(id);
+											const hasAnomaly = anomalyItemIds.has(id);
+											if (!hasStockout && !hasSupplier && !hasAnomaly) return null;
+											const badges: string[] = [];
+											if (hasStockout) badges.push("🔴 Prediksi stok habis");
+											if (hasSupplier) badges.push("🔵 Rekomendasi supplier");
+											if (hasAnomaly) badges.push("🟣 Anomali pemakaian");
+											return (
+												<span className="group relative inline-flex cursor-help" title={badges.join(" · ")}>
+													<Sparkles className="h-3 w-3 text-violet-500/80" />
+													<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md z-50">
+														{badges.map((b, i) => (<span key={i} className="block">{b}</span>))}
+													</span>
+												</span>
+											);
+										})()}
+									</td>
+									<td className="sticky left-0 z-10 border-border/60 border-r bg-card px-2.5 py-1.5 align-middle shadow-[6px_0_10px_-8px_rgba(15,23,42,0.2)]">
 											<input
 												className={`w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold leading-4 outline-none focus:border-border focus:bg-background ${
 													tableMode === "simple" ? "text-[10px]" : "text-[11px]"
@@ -5344,6 +5391,21 @@ function InventoryTable({
 											);
 										}
 										return null;
+									})()}
+									{/* Price age indicator */}
+									{(() => {
+										if (row.lastPurchasePrice == null) return null;
+										const tx = row.latestTransaction;
+										if (!tx?.timestamp) return null;
+										const now = Date.now();
+										const ageMs = now - tx.timestamp;
+										const ageDays = Math.floor(ageMs / 86400000);
+										if (ageDays <= 0) return <p className="mt-0.5 text-[9px] font-semibold text-emerald-600">Hari ini</p>;
+										if (ageDays === 1) return <p className="mt-0.5 text-[9px] font-semibold text-emerald-600">1 hari lalu</p>;
+										if (ageDays <= 7) return <p className="mt-0.5 text-[9px] text-emerald-600">{ageDays} hari lalu</p>;
+										if (ageDays <= 14) return <p className="mt-0.5 text-[9px] font-semibold text-amber-600">{ageDays} hari lalu</p>;
+										if (ageDays <= 30) return <p className="mt-0.5 text-[9px] text-amber-600">{ageDays} hari lalu</p>;
+										return <p className="mt-0.5 text-[9px] font-semibold text-rose-600">{ageDays} hari lalu ⚠️</p>;
 									})()}
 									</td>
 										<td className="px-2 py-1.5 text-right font-mono text-[11px] font-semibold">{row.lastPurchasePrice ? formatCurrencyIDR(row.currentStock * row.lastPurchasePrice) : "—"}</td>
