@@ -865,6 +865,23 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
             "receipt_number": receipt.get("receipt_number", ""),
             "receipt_date": receipt.get("date", ""),
             "item_count": len(items),
+            "scanItems": [
+                {
+                    "name": it.get("name", ""),
+                    "quantity": it.get("qty", 1),
+                    "price": it.get("price", 0),
+                    "total": (it.get("qty", 1) or 1) * (it.get("price", 0) or 0),
+                }
+                for it in items
+            ],
+            "receiptDetails": {
+                "receiptNumber": receipt.get("receipt_number", ""),
+                "merchantName": merchant,
+                "date": receipt.get("date", ""),
+                "tax": receipt.get("tax", 0),
+                "discount": receipt.get("discount", 0),
+                "serviceCharge": receipt.get("service_charge", 0),
+            },
         },
     )
 
@@ -1569,9 +1586,22 @@ async def _handle_bulk_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     "receipt_number": ri.get("receipt_number", ""),
                     "receipt_date": ri.get("date", ""),
                     "item_count": len(ri.get("items", [])),
-                    "item_categories": {
-                        it.get("name", "?")[:40]: it.get("_category", "lainnya")
+                    "scanItems": [
+                        {
+                            "name": it.get("name", ""),
+                            "quantity": it.get("qty", 1),
+                            "price": it.get("price", 0),
+                            "total": (it.get("qty", 1) or 1) * (it.get("price", 0) or 0),
+                        }
                         for it in ri.get("items", [])
+                    ],
+                    "receiptDetails": {
+                        "receiptNumber": ri.get("receipt_number", ""),
+                        "merchantName": ri.get("merchant", ""),
+                        "date": ri.get("date", ""),
+                        "tax": ri.get("tax", 0),
+                        "discount": ri.get("discount", 0),
+                        "serviceCharge": ri.get("service_charge", 0),
                     },
                 },
             )
@@ -1838,6 +1868,23 @@ async def _handle_bulkitem_callback(update: Update, context: ContextTypes.DEFAUL
                 "receipt_number": ri.get("receipt_number", ""),
                 "receipt_date": ri.get("date", ""),
                 "item_count": len(ri.get("items", [])),
+                "scanItems": [
+                    {
+                        "name": it.get("name", ""),
+                        "quantity": it.get("qty", 1),
+                        "price": it.get("price", 0),
+                        "total": (it.get("qty", 1) or 1) * (it.get("price", 0) or 0),
+                    }
+                    for it in ri.get("items", [])
+                ],
+                "receiptDetails": {
+                    "receiptNumber": ri.get("receipt_number", ""),
+                    "merchantName": ri.get("merchant", ""),
+                    "date": ri.get("date", ""),
+                    "tax": ri.get("tax", 0),
+                    "discount": ri.get("discount", 0),
+                    "serviceCharge": ri.get("service_charge", 0),
+                },
             },
         )
 
