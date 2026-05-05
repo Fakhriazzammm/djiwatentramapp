@@ -33,9 +33,10 @@ import {
 	Trash2,
 	ShoppingCart,
 	Clock,
+	Download,
 	X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
@@ -935,11 +936,18 @@ function InventoryPage() {
 		}
 		const result = workspace.rows.filter((row) => {
 			const query = searchQuery.toLowerCase();
+			const item = inventoryMap.get(row.inventoryId);
+			const aliases = item?.aliases
+				? Array.isArray(item.aliases)
+					? item.aliases.join(" ")
+					: String(item.aliases)
+				: "";
 			const matchesSearch = [
 				row.ingredientName,
 				row.defaultBrandName || "",
 				row.lastPurchaseStoreName || "",
 				row.preferredStoreName || "",
+				aliases,
 			]
 				.join(" ")
 				.toLowerCase()
@@ -1038,6 +1046,31 @@ function InventoryPage() {
 			}),
 		[inventory, workspace?.rows]
 	);
+
+	const handleExportCSV = useCallback(() => {
+		const headers = ["Bahan", "Supplier", "Stok", "Satuan", "Min", "Pemakaian", "Harga", "Nilai Stok", "Status"];
+		const rows = filteredRows.map((row) => {
+			return [
+				row.ingredientName,
+				[row.preferredStoreName, row.defaultBrandName].filter(Boolean).join(" · ") || "—",
+				row.currentStock,
+				row.unit || "—",
+				row.lowStockThreshold,
+				row.avgDailyUsage?.toFixed(1) || "0",
+				row.lastPurchasePrice ? `Rp${row.lastPurchasePrice.toLocaleString()}` : "—",
+				row.lastPurchasePrice ? `Rp${(row.currentStock * row.lastPurchasePrice).toLocaleString()}` : "—",
+				row.status,
+			].join(",");
+		});
+		const csv = [headers.join(","), ...rows].join("\n");
+		const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `inventory-${new Date().toISOString().slice(0, 10)}.csv`;
+		a.click();
+		URL.revokeObjectURL(url);
+	}, [filteredRows, inventoryMap]);
 
 	const handleSort = (
 		key:
@@ -1313,7 +1346,9 @@ function InventoryPage() {
 	return (
 		<div className="space-y-4">
 			<div className="sticky top-0 z-50 bg-background pb-3">
-				<InventoryHeader
+				<div className="flex items-center gap-2">
+					<div className="flex-1">
+						<InventoryHeader
 				advancedFilter={advancedFilter}
 				filterActiveOnly={filterActiveOnly}
 				filterLowStock={filterLowStock}
@@ -1327,6 +1362,16 @@ function InventoryPage() {
 				tableMode={tableMode}
 				viewPreset={viewPreset}
 				/>
+					</div>
+					<button
+						className="shrink-0 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+						onClick={handleExportCSV}
+						type="button"
+					>
+						<Download className="mr-1.5 inline-block h-3.5 w-3.5" />
+						Export CSV
+					</button>
+				</div>
 			</div>
 
 			{viewPreset === "operational" && workspace?.rows && (
