@@ -1,6 +1,10 @@
 import type { EmployeeContractDraft } from "@/lib/employee-onboarding-schema";
 import { sanitizeContractHtml } from "@/lib/sanitize-contract-html";
 
+function escapeRegExp(value: string) {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 type ContractPreviewProps = {
 	contract: EmployeeContractDraft;
 	signatureDataUrl?: string;
@@ -9,6 +13,9 @@ type ContractPreviewProps = {
 
 export function ContractPreview({ contract, signatureDataUrl, employeeName }: ContractPreviewProps) {
 	const safeHtml = contract.html ? sanitizeContractHtml(contract.html) : "";
+	const displayPlainText = contract.plainText
+		? contract.plainText.replace(new RegExp(`^\\s*${escapeRegExp(contract.title || "Perjanjian Kerja")}\\s*\\n+`, "i"), "")
+		: "";
 
 	return (
 		<div
@@ -29,7 +36,7 @@ export function ContractPreview({ contract, signatureDataUrl, employeeName }: Co
 			{safeHtml ? (
 				<div className="prose prose-slate max-w-none text-sm sm:text-base" dangerouslySetInnerHTML={{ __html: safeHtml }} />
 			) : (
-				<div className="whitespace-pre-wrap text-xs leading-6 sm:text-sm sm:leading-7">{contract.plainText}</div>
+				<div className="whitespace-pre-wrap text-xs leading-6 sm:text-sm sm:leading-7">{displayPlainText}</div>
 			)}
 
 			{/* signature area */}

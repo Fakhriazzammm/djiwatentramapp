@@ -1,7 +1,14 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { SettingsPage } from "../settings.lazy";
 
 function OperationalTeamRegisterPage() {
+	const location = useLocation();
+	const isNestedContractRoute = location.pathname.endsWith("/register/contract");
+
+	if (isNestedContractRoute) {
+		return <Outlet />;
+	}
+
 	return <SettingsPage key="register" initialOperationalTab="register" mode="operational-team" />;
 }
 
