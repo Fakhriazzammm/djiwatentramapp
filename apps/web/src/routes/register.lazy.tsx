@@ -157,6 +157,12 @@ function RegisterPage() {
 				contractPdfUrl = await uploadFile({ file: pdfBlob, contentType: "application/pdf", fileName: `${appKey}-contract.pdf`, folder: "employee-contracts/contracts" });
 			} catch (e) { console.warn("PDF gen failed", e); }
 			const payload = buildEmployeeOnboardingPayload({ ...draft, contract: contractPreview }, { signatureUrl, contractPdfUrl });
+			// Generate registration number: NAME-XXXX-YYYYMMDD
+			const slugName = createEmployeeSlug(draft.personal.fullName);
+			const uniqueCode = crypto.randomUUID().slice(0, 8).toUpperCase().replace(/-/g, "");
+			const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+			const registrationNumber = `${slugName.toUpperCase()}-${uniqueCode}-${dateStr}`;
+			payload.raw.registrationNumber = registrationNumber;
 			payload.raw = {
 				...payload.raw,
 				registrationMode: onboardingSettings.registrationMode,
@@ -165,7 +171,8 @@ function RegisterPage() {
 				salaryPreview: onboardingSettings.salaryPreview,
 			};
 			const id = await submitApplication({ payload });
-			setApplicationId(String(id ?? appKey));
+			const displayId = registrationNumber;
+			setApplicationId(displayId);
 			localStorage.removeItem(DRAFT_KEY);
 			setStep(4);
 			toast.success("Pendaftaran berhasil dikirim");

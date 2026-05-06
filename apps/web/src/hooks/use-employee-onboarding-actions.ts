@@ -115,7 +115,7 @@ export function useHybridSubmitEmployeeApplication() {
 			if (!hasSupabaseConfig) return fallback(args);
 			const payload = args?.payload ?? args;
 			if (!payload?.full_name || !payload?.phone) throw new Error("Data pendaftaran tidak lengkap");
-			const { error } = await createClient()
+			const { data, error } = await createClient()
 				.from("employee_onboarding_applications")
 				.insert({
 					status: "pending",
@@ -135,10 +135,11 @@ export function useHybridSubmitEmployeeApplication() {
 						...(payload.raw ?? {}),
 						pipelineStatus: payload.raw?.pipelineStatus ?? "submitted",
 					},
-				});
+				})
+				.select("id")
+				.single();
 			if (error) throw error;
-			// Insert successful — caller provides fallback id (appKey UUID)
-			return null;
+			return data?.id ?? null;
 		},
 		[fallback]
 	);
