@@ -18,7 +18,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { ContractPreview } from "@/components/employee-onboarding/contract-preview";
-import { useHybridGenerateEmployeeContract } from "@/hooks/use-employee-onboarding-actions";
 import { useHybridSiteSettings, useHybridStaffRoles } from "@/hooks/use-hybrid-pos-data";
 import { useHybridUpdateSiteSettings } from "@/hooks/use-hybrid-write-actions";
 import { compressFileToLimit, isOversized } from "@/lib/image-compress";
@@ -105,7 +104,6 @@ function buildPlaceholderContract(roleName = "[Jabatan]", role?: any, signatoryN
 export default function AdminContractPage() {
 	const siteSettings = useHybridSiteSettings();
 	const roles = useHybridStaffRoles() ?? [];
-	const generateContract = useHybridGenerateEmployeeContract();
 	const updateSiteSettings = useHybridUpdateSiteSettings();
 
 	const onboardingSettings = useMemo(
@@ -191,15 +189,54 @@ export default function AdminContractPage() {
 		}
 		setIsGenerating(true);
 		try {
-			const c = await generateContract({
-				employee: { fullName: "[Nama Karyawan]" },
-				employment: { roleName: selectedRoleName === "Semua Jabatan" ? "[Jabatan]" : selectedRoleName, startDate: "[Tanggal Mulai]" },
-				company: { name: signatoryNameLocal || "Djiwa Tentram Cafe & Resto" },
-				options: { tone: "formal", customNotes: draft.aiPrompt },
+			const roleName = selectedRoleName === "Semua Jabatan" ? "[Jabatan]" : selectedRoleName;
+			const companyName = signatoryNameLocal || "Djiwa Tentram Cafe & Resto";
+
+			const systemPrompt = `Kamu adalah asisten HR yang membantu membuat kontrak kerja perusahaan F&B.
+Buat kontrak kerja dalam bahasa Indonesia yang profesional dan lengkap.
+Format response HARUS JSON saja, tanpa markdown, tanpa teks lain di luar JSON:
+{
+  "title": "Perjanjian Kerja [Jabatan]",
+  "clauses": [
+    { "title": "Pasal 1 — Para Pihak", "body": "..." },
+    { "title": "Pasal 2 — Jabatan dan Lokasi Kerja", "body": "..." },
+    { "title": "Pasal 3 — Masa Percobaan dan Tanggal Mulai", "body": "..." },
+    { "title": "Pasal 4 — Kompensasi", "body": "..." },
+    { "title": "Pasal 5 — Kewajiban Karyawan", "body": "..." },
+    { "title": "Pasal 6 — Penutup", "body": "..." }
+  ]
+}
+Setiap body pasal harus berupa paragraf lengkap 2-3 kalimat dalam bahasa Indonesia formal.
+Pastikan body pasal 1 menyebut "${companyName} sebagai perwakilan perusahaan".`;
+
+			const userMessage = `Buat kontrak kerja untuk jabatan: ${roleName}.
+Perusahaan: ${companyName}.
+Instruksi tambahan: ${draft.aiPrompt}.`;
+
+			const { data, error } = await createClient().functions.invoke("yumi-ai", {
+				body: {
+					action: "yumiChat",
+					messages: [
+						{ role: "system", content: systemPrompt },
+						{ role: "user", content: userMessage },
+					],
+					chat_id: `generate-contract-${Date.now()}`,
+				},
 			});
+			if (error) throw new Error(error.message);
+			if (data?.error) throw new Error(data.error);
+
+			const content: string = data?.content || "";
+			const jsonMatch = content.match(/\{[\s\S]*\}/);
+			if (!jsonMatch) throw new Error("AI tidak menghasilkan format kontrak yang valid");
+
+			const parsed = JSON.parse(jsonMatch[0]);
+			const clauses = Array.isArray(parsed.clauses) ? parsed.clauses : [];
+			if (clauses.length === 0) throw new Error("AI tidak menghasilkan pasal kontrak");
+
 			setDraft({
-				title: c.title ?? "Perjanjian Kerja",
-				clauses: c.clauses ?? [],
+				title: parsed.title || `Perjanjian Kerja ${roleName}`,
+				clauses,
 				aiPrompt: draft.aiPrompt,
 			});
 			toast.success("Kontrak berhasil dibuat oleh AI");
@@ -208,7 +245,7 @@ export default function AdminContractPage() {
 		} finally {
 			setIsGenerating(false);
 		}
-	}, [draft.aiPrompt, generateContract, selectedRoleName]);
+	}, [draft.aiPrompt, selectedRoleName, signatoryNameLocal]);
 
 	const addClause = useCallback(() => {
 		setDraft((p) => ({
