@@ -119,10 +119,15 @@ export default function AdminContractPage() {
 	const [isSaving, setIsSaving] = useState(false);
 	const [draft, setDraft] = useState<ContractDraft>(() => contractToDraft(buildPlaceholderContract("", undefined, onboardingSettings.signatoryName)));
 	const [signatoryNameLocal, setSignatoryNameLocal] = useState(onboardingSettings.signatoryName || "Djiwa Tentram Cafe & Resto");
+	const [signatorySigUrlLocal, setSignatorySigUrlLocal] = useState(signatorySigUrlLocal || "");
 
 	useEffect(() => {
 		setSignatoryNameLocal(onboardingSettings.signatoryName || "Djiwa Tentram Cafe & Resto");
 	}, [onboardingSettings.signatoryName]);
+
+	useEffect(() => {
+		setSignatorySigUrlLocal(onboardingSettings.signatorySignatureUrl || "");
+	}, [onboardingSettings.signatorySignatureUrl]);
 
 	const selectedRole = useMemo(
 		() => roles.find((role: any) => String(role?._id) === selectedTemplateKey),
@@ -334,6 +339,7 @@ export default function AdminContractPage() {
 			const { data, error } = await createClient().storage.from("employee-contracts").upload(path, blob, { upsert: true });
 			if (error) throw error;
 			const { data: urlData } = createClient().storage.from("employee-contracts").getPublicUrl(data.path);
+			setSignatorySigUrlLocal(urlData.publicUrl);
 			await saveSignatorySettings({ signatorySignatureUrl: urlData.publicUrl });
 			return urlData.publicUrl;
 		} catch (e: any) {
@@ -421,18 +427,18 @@ export default function AdminContractPage() {
 					<div className="flex-1 space-y-2">
 						<Label className="text-sm font-medium">Tanda Tangan Perusahaan</Label>
 						<div className="flex items-center gap-3">
-							{onboardingSettings.signatorySignatureUrl ? (
+							{signatorySigUrlLocal ? (
 								<div className="relative">
 									<img
 										alt="Tanda tangan perusahaan"
 										className="h-12 w-auto object-contain rounded border"
-										src={onboardingSettings.signatorySignatureUrl}
+										src={signatorySigUrlLocal}
 									/>
 									<Button
 										size="icon"
 										variant="ghost"
 										className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
-										onClick={() => saveSignatorySettings({ signatorySignatureUrl: "" })}
+										onClick={() => { setSignatorySigUrlLocal(''); saveSignatorySettings({ signatorySignatureUrl: '' }); }}
 									>
 										<Trash2 className="h-3 w-3" />
 									</Button>
@@ -464,7 +470,7 @@ export default function AdminContractPage() {
 								) : (
 									<Upload className="mr-1.5 h-3.5 w-3.5" />
 								)}
-								{isUploadingSig ? "Mengunggah..." : (onboardingSettings.signatorySignatureUrl ? "Ganti" : "Unggah")}
+								{isUploadingSig ? "Mengunggah..." : (signatorySigUrlLocal ? "Ganti" : "Unggah")}
 							</Button>
 						</div>
 					</div>
@@ -621,7 +627,7 @@ export default function AdminContractPage() {
 						contract={contractPreview}
 						employeeName="[Nama Karyawan]"
 						signatoryName={signatoryNameLocal}
-						signatorySignatureUrl={onboardingSettings.signatorySignatureUrl}
+						signatorySignatureUrl={signatorySigUrlLocal}
 					/>
 				</div>
 			</div>
