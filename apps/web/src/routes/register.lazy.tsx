@@ -13,16 +13,13 @@ import { ContractPreview } from "@/components/employee-onboarding/contract-previ
 import { SignaturePad } from "@/components/employee-onboarding/signature-pad";
 import { useHybridSiteSettings, useHybridStaffRoles } from "@/hooks/use-hybrid-pos-data";
 import {
-	useHybridGenerateEmployeeContract,
 	useHybridGenerateEmployeeOnboardingUploadUrl,
 	useHybridSubmitEmployeeApplication,
 } from "@/hooks/use-employee-onboarding-actions";
 import {
 	buildEmployeeContractTemplate,
 	buildEmployeeOnboardingPayload,
-	clausesToPlainText,
 	createEmployeeSlug,
-	type EmployeeContractClause,
 	type EmployeeOnboardingDraft,
 	validateEmployeeOnboardingDraft,
 } from "@/lib/employee-onboarding-schema";
@@ -80,7 +77,6 @@ function RegisterPage() {
 	const siteSettings = useHybridSiteSettings();
 	const onboardingSettings = useMemo(() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding), [siteSettings?.employeeOnboarding]);
 	const registrationEnabled = onboardingSettings.registrationEnabled;
-	const generateContract = useHybridGenerateEmployeeContract();
 	const uploadFile = useHybridGenerateEmployeeOnboardingUploadUrl();
 	const submitApplication = useHybridSubmitEmployeeApplication();
 
@@ -91,7 +87,6 @@ function RegisterPage() {
 			return saved ? { ...initialDraft, ...JSON.parse(saved) } : initialDraft;
 		} catch { return initialDraft; }
 	});
-	const [isGenerating, setIsGenerating] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [applicationId, setApplicationId] = useState<string | null>(null);
 
@@ -119,13 +114,15 @@ function RegisterPage() {
 	const contractPreview = useMemo(() => {
 		if (draft.contract.plainText || draft.contract.clauses.length > 0) return draft.contract;
 		const roleTemplate = onboardingSettings.contractTemplatesByRoleId[draft.employment.roleId];
-		if (roleTemplate) {
+		const defaultTemplate = onboardingSettings.contractTemplatesByRoleId.__default__;
+		const templateText = roleTemplate || defaultTemplate;
+		if (templateText) {
 			return {
 				mode: "template" as const,
 				title: `Perjanjian Kerja ${draft.employment.roleName || ""}`,
-				plainText: roleTemplate,
-				html: `<article><p>${roleTemplate.replace(/\n/g, "<br/>")}</p></article>`,
-				clauses: [{ title: "Ketentuan Kontrak", body: roleTemplate }],
+				plainText: templateText,
+				html: `<article><p>${templateText.replace(/\n/g, "<br/>")}</p></article>`,
+				clauses: [{ title: "Ketentuan Kontrak", body: templateText }],
 			};
 		}
 		return buildEmployeeContractTemplate(draft.personal, draft.employment);
@@ -138,43 +135,7 @@ function RegisterPage() {
 		setDraft((p) => ({ ...p, employment: { ...p.employment, [k]: v } }));
 
 	function applyTemplate() {
-		const c = buildEmployeeContractTemplate(draft.personal, draft.employment);
-		setDraft((p) => ({ ...p, contract: c }));
-		toast.success("Template kontrak dibuat");
-	}
-
-	async function handleGenerateAi() {
-		setIsGenerating(true);
-		try {
-			const c = await generateContract({
-				employee: draft.personal,
-				employment: draft.employment,
-				company: { name: "Djiwa Tentram Cafe & Resto" },
-				options: { tone: "formal", customNotes: draft.contract.aiPrompt },
-			});
-			setDraft((p) => ({
-				...p,
-				contract: {
-					mode: "ai",
-					title: c.title ?? "Perjanjian Kerja",
-					plainText: c.plainText ?? clausesToPlainText(c.title ?? "Perjanjian Kerja", c.clauses ?? []),
-					html: c.html,
-					clauses: c.clauses ?? [],
-					aiPrompt: p.contract.aiPrompt,
-				},
-			}));
-			toast.success("Kontrak AI berhasil dibuat");
-		} catch (e: any) {
-			toast.error(e?.message || "Gagal generate kontrak");
-		} finally { setIsGenerating(false); }
-	}
-
-	function updateClause(idx: number, key: keyof EmployeeContractClause, value: string) {
-		setDraft((p) => {
-			const clauses = [...p.contract.clauses];
-			clauses[idx] = { ...clauses[idx], [key]: value };
-			return { ...p, contract: { ...p.contract, mode: "custom" as const, clauses, plainText: clausesToPlainText(p.contract.title, clauses), html: undefined } };
-		});
+		setDraft((p) => ({ ...p, contract: contractPreview }));
 	}
 
 	async function handleSubmit() {
