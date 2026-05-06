@@ -278,6 +278,28 @@ export default function AdminContractPage() {
 		}
 	}
 
+	async function saveCompanyName(name: string) {
+		try {
+			const { error } = await createClient()
+				.from("site_settings")
+				.update({
+					settings: {
+						...(siteSettings?.settings || {}),
+						employeeOnboarding: {
+							...(siteSettings?.settings?.employeeOnboarding || {}),
+							companyName: name,
+						},
+					},
+				})
+				.eq("key", "site");
+			if (error) throw error;
+			setCompanyNameLocal(name);
+			toast.success("Nama perusahaan disimpan");
+		} catch (e: any) {
+			toast.error(e?.message || "Gagal menyimpan nama perusahaan");
+		}
+	}
+
 	async function saveCompanySettings(updates: { companyName?: string; companySignatureUrl?: string }) {
 		try {
 			const nextSettings = normalizeEmployeeOnboardingSettings({
@@ -389,7 +411,7 @@ export default function AdminContractPage() {
 							onChange={(e) => setCompanyNameLocal(e.target.value)}
 							onBlur={() => {
 								if (companyNameLocal !== onboardingSettings.companyName) {
-									saveCompanySettings({ companyName: companyNameLocal });
+									saveCompanyName(companyNameLocal);
 								}
 							}}
 							placeholder="Nama perusahaan yang tercantum di kontrak"
