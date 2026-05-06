@@ -477,13 +477,14 @@ export class BluetoothPrinterService {
 
 	async print(order: ReceiptOrderPayload, settings: ReceiptSettings) {
 		console.log('🖨️ [BluetoothPrinter] print() dipanggil');
+		// Gunakan autoReconnectIfNeeded agar ter-dedup kalau caller sudah reconnect
 		if (!(this.isConnected() && this.characteristic)) {
-			console.log('🔌 [BluetoothPrinter] Tidak connected — mencoba autoConnect...');
-			await this.autoConnect();
+			console.log('🔌 [BluetoothPrinter] Tidak connected — mencoba reconnect...');
+			await this.autoReconnectIfNeeded(0);
 		}
 
 		if (!(this.isConnected() && this.characteristic)) {
-			console.error('❌ [BluetoothPrinter] Masih tidak connected setelah autoConnect');
+			console.error('❌ [BluetoothPrinter] Masih tidak connected setelah reconnect');
 			// Cek apakah ada known devices sama sekali — kasih hint yang tepat
 			const hasDevices = this.hasKnownDevices();
 			if (!hasDevices) {
@@ -544,10 +545,9 @@ export class BluetoothPrinterService {
 		const headerText = settings.receiptHeader || settings.storeName || "YUMI POS";
 		const fontSize = settings.receiptFontSize || "normal";
 		if (fontSize === "large") {
-			(result as { size: (value: string) => void }).size("double");
-		} else {
-			result.size("normal");
+			result.width(2).height(2);
 		}
+		// v3 EscPosEncoder: width/height untuk ukuran font, size() string sudah deprecated
 
 		result.bold(true);
 		printCenteredLines(headerText.toUpperCase(), RECEIPT_HEADER_WIDTH);

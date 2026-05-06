@@ -369,6 +369,14 @@ async def _do_selesai(key: str, by: str = "auto"):
 
 async def _auto_dibuat(key: str, delay: int):
     """Auto-dibuat with live countdown in message text."""
+    # Keep the initial keyboard (✅ Dibuat + 🏁 Selesai) visible during countdown
+    order_no, group_type = key.split("|")
+    kb = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("✅ Dibuat", callback_data=f"dibuat|{order_no}|{group_type}"),
+            InlineKeyboardButton("🏁 Selesai", callback_data=f"selesai|{order_no}|{group_type}"),
+        ]
+    ])
     remaining = delay
     while remaining > 0:
         order = _active_orders.get(key)
@@ -376,7 +384,7 @@ async def _auto_dibuat(key: str, delay: int):
             return  # User already clicked
         base = order["base_text"]
         text = f"{base}\n\nKlik tombol ✅ Dibuat atau otomatis dalam {remaining} detik..."
-        await _update_message(order, text)
+        await _update_message(order, text, kb)
         step = min(2, remaining)
         await asyncio.sleep(step)
         remaining -= step
@@ -387,6 +395,11 @@ async def _auto_dibuat(key: str, delay: int):
 
 async def _auto_selesai(key: str, delay: int):
     """Auto-selesai with live countdown in message text."""
+    # Keep 🏁 Selesai button visible during the entire 10-minute countdown
+    order_no, group_type = key.split("|")
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🏁 Selesai", callback_data=f"selesai|{order_no}|{group_type}")]
+    ])
     remaining = delay
     while remaining > 0:
         order = _active_orders.get(key)
@@ -395,7 +408,7 @@ async def _auto_selesai(key: str, delay: int):
         base = _build_status_text(order)
         m, s = divmod(remaining, 60)
         text = f"{base}\n\nKlik tombol 🏁 Selesai atau otomatis dalam {m}:{s:02d}..."
-        await _update_message(order, text)
+        await _update_message(order, text, kb)
         step = min(30, remaining)
         await asyncio.sleep(step)
         remaining -= step

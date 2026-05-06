@@ -373,7 +373,11 @@ export function MenuSidebar({
 
 	try {
 		if (!bluetoothPrinter.isConnected()) {
-			await bluetoothPrinter.autoReconnectIfNeeded(0);
+			const connected = await bluetoothPrinter.autoReconnectIfNeeded(0);
+			if (!connected) {
+				toast.error("Printer Bluetooth tidak terhubung. Klik tombol 'Hubungkan Printer' di sidebar.", { id: "printing" });
+				return;
+			}
 		}
 
 		toast.loading(
@@ -798,16 +802,9 @@ function OrderSimpleDetail({
 						</Button>
 					)}
 					{!isEditMode && onPrint && (
-				<DropdownMenu>
-					<DropdownMenuTrigger>
-						<Button
-							size="icon"
-							variant="ghost"
-							className="h-8 w-8 text-primary hover:bg-primary/10"
-							title={order.status === "pending" ? "Cetak Open Bill" : "Cetak Struk"}
-						>
-							<Printer className="h-4 w-4" />
-						</Button>
+					<DropdownMenu>
+					<DropdownMenuTrigger render={<Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" title={order.status === "pending" ? "Cetak Open Bill" : "Cetak Struk"} />}>
+						<Printer className="h-4 w-4" />
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end" className="w-52">
 						<DropdownMenuItem onClick={() => onPrint("paid")} className="gap-2 cursor-pointer">
@@ -1479,17 +1476,10 @@ function ParkirTab({
 									</div>
 									<div className="flex items-center gap-2">
 									{onPrint && (
-										<DropdownMenu>
-										<DropdownMenuTrigger>
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-													title="Cetak Struk"
-												>
-													<Printer className="h-4 w-4" />
-												</Button>
-											</DropdownMenuTrigger>
+									<DropdownMenu>
+									<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10" title="Cetak Struk" />}>
+											<Printer className="h-4 w-4" />
+										</DropdownMenuTrigger>
 											<DropdownMenuContent align="end" className="w-52">
 												<DropdownMenuItem onClick={() => onPrint(order, "paid")} className="gap-2 cursor-pointer">
 													<Receipt className="h-4 w-4 text-blue-500" />
