@@ -28,6 +28,7 @@ import {
 	type EmployeeContractDraft,
 } from "@/lib/employee-onboarding-schema";
 import {
+	getRoleSalaryDefaults,
 	normalizeEmployeeOnboardingSettings,
 	type EmployeeOnboardingSettings,
 } from "@/lib/employee-onboarding-settings";
@@ -79,7 +80,8 @@ function parseTemplateText(text: string): ContractDraft {
 	};
 }
 
-function buildPlaceholderContract(roleName = "[Jabatan]") {
+function buildPlaceholderContract(roleName = "[Jabatan]", role?: any) {
+	const salaryDefaults = role ? getRoleSalaryDefaults(role) : {};
 	return buildEmployeeContractTemplate(
 		{ fullName: "[Nama Karyawan]", phone: "" },
 		{
@@ -88,9 +90,9 @@ function buildPlaceholderContract(roleName = "[Jabatan]") {
 			startDate: "[Tanggal Mulai]",
 			employmentType: "probation",
 			location: "Djiwa Tentram",
-			monthlySalary: 0,
-			dailyAllowance: 0,
-			shiftRate: 0,
+			monthlySalary: salaryDefaults.monthlySalary ?? 0,
+			dailyAllowance: salaryDefaults.dailyAllowance ?? 0,
+			shiftRate: salaryDefaults.shiftRate ?? 0,
 			username: "",
 			slug: "",
 		}
@@ -147,7 +149,8 @@ export default function AdminContractPage() {
 		}
 		const role = roles.find((item: any) => String(item?._id) === templateKey);
 		setDraft(contractToDraft(buildPlaceholderContract(
-			templateKey === DEFAULT_TEMPLATE_KEY ? "[Jabatan]" : (role?.name || "[Jabatan]")
+			templateKey === DEFAULT_TEMPLATE_KEY ? "[Jabatan]" : (role?.name || "[Jabatan]"),
+			role
 		)));
 	}, [localTemplates, roles]);
 
@@ -158,12 +161,13 @@ export default function AdminContractPage() {
 	const resetToDefault = useCallback(() => {
 		setDraft((prev) => ({
 			...contractToDraft(buildPlaceholderContract(
-				selectedRoleName === "Semua Jabatan" ? "[Jabatan]" : selectedRoleName
+				selectedRoleName === "Semua Jabatan" ? "[Jabatan]" : selectedRoleName,
+				selectedRole
 			)),
 			aiPrompt: prev.aiPrompt,
 		}));
 		toast.success("Direset ke template dasar");
-	}, [selectedRoleName]);
+	}, [selectedRoleName, selectedRole]);
 
 	const handleGenerateAi = useCallback(async () => {
 		if (!draft.aiPrompt.trim()) {
@@ -252,7 +256,8 @@ export default function AdminContractPage() {
 			await updateSiteSettings({ employeeOnboarding: nextSettings });
 			setLocalTemplates(nextTemplates);
 			setDraft(contractToDraft(buildPlaceholderContract(
-				selectedRoleName === "Semua Jabatan" ? "[Jabatan]" : selectedRoleName
+				selectedRoleName === "Semua Jabatan" ? "[Jabatan]" : selectedRoleName,
+				selectedRole
 			)));
 			toast.success("Template dihapus");
 		} catch (e: any) {
