@@ -84,7 +84,7 @@ describe("employee onboarding schema", () => {
 	});
 
 	it("builds readable Indonesian contract template", () => {
-		const contract = buildEmployeeContractTemplate(validDraft.personal, validDraft.employment);
+		const contract = buildEmployeeContractTemplate(validDraft.personal, validDraft.employment, "Djiwa Tentram Cafe & Resto");
 
 		expect(contract.title).toContain("Perjanjian Kerja");
 		expect(contract.plainText).toContain("Fakhri Azzam");
