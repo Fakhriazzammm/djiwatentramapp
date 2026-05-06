@@ -275,27 +275,8 @@ function RegisterPage() {
 								})()}
 							</Field>}
 							<Field label="Lokasi"><Input value={draft.employment.location} onChange={(e) => updateEmployment("location", e.target.value)} /></Field>
-							{onboardingSettings.salaryPreview.enabled && onboardingSettings.salaryPreview.candidateVisibility !== "hidden" && (() => {
-								const estMonthly = calculateEstimatedMonthlySalary(draft.employment);
-								const hasMonthly = (draft.employment.monthlySalary ?? 0) > 0;
-								return (
-									<div className="rounded-lg border bg-primary/5 p-3 text-sm md:col-span-2">
-										<p className="font-medium">Estimasi Gaji Bulanan</p>
-										<p className="text-foreground font-semibold">{formatOnboardingCurrency(estMonthly)}</p>
-										<p className="text-muted-foreground mt-1">
-											{hasMonthly ? `Gaji pokok ${formatOnboardingCurrency(draft.employment.monthlySalary)}` : null}
-											{hasMonthly && (draft.employment.dailyAllowance ?? 0) > 0 ? " • " : ""}
-											{(draft.employment.dailyAllowance ?? 0) > 0 ? `Harian ${formatOnboardingCurrency(draft.employment.dailyAllowance)} × 22 hari` : null}
-											{((hasMonthly || (draft.employment.dailyAllowance ?? 0) > 0) && (draft.employment.shiftRate ?? 0) > 0) ? " • " : ""}
-											{(draft.employment.shiftRate ?? 0) > 0 ? `Shift ${formatOnboardingCurrency(draft.employment.shiftRate)} × 22 hari` : null}
-										</p>
-									</div>
-								);
-							})()}
-							<Field label="Gaji bulanan"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.monthlySalary)} onChange={(e) => updateEmployment("monthlySalary", Number(e.target.value || 0))} /></Field>
-							<Field label="Tunjangan transportasi"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.dailyAllowance)} onChange={(e) => updateEmployment("dailyAllowance", Number(e.target.value || 0))} /></Field>
-							<Field label="Rate shift"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.shiftRate)} onChange={(e) => updateEmployment("shiftRate", Number(e.target.value || 0))} /></Field>
-							<Field label="PIN login (6 digit)"><Input maxLength={6} inputMode="numeric" value={draft.employment.homePin} onChange={(e) => updateEmployment("homePin", e.target.value.replace(/\D/g, ""))} /></Field>
+						{onboardingSettings.salaryPreview.enabled && onboardingSettings.salaryPreview.candidateVisibility !== "hidden" && <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground md:col-span-2">Estimasi gaji akan diinformasikan oleh admin setelah pendaftaran disetujui.</div>}
+						<Field label="PIN login (6 digit)"><Input maxLength={6} inputMode="numeric" value={draft.employment.homePin} onChange={(e) => updateEmployment("homePin", e.target.value.replace(/\D/g, ""))} /></Field>
 							<Field label="Username"><Input value={draft.employment.username} onChange={(e) => updateEmployment("username", e.target.value)} /></Field>
 							<Field label="Slug"><Input value={draft.employment.slug} onChange={(e) => updateEmployment("slug", e.target.value)} /></Field>
 						</CardContent>
