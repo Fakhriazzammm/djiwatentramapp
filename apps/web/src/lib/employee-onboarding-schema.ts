@@ -200,11 +200,9 @@ export function calculateEstimatedMonthlySalary(employment: EmployeeEmploymentDa
 	const dailyAllowance = employment.dailyAllowance ?? 0;
 	const shiftRate = employment.shiftRate ?? 0;
 
-	if (monthlySalary > 0 && shiftRate === 0 && dailyAllowance === 0) return monthlySalary;
-
 	let estimatedMonthly = monthlySalary;
-	if (shiftRate > 0) estimatedMonthly = Math.max(estimatedMonthly, shiftRate * WORKING_DAYS_PER_MONTH);
-	if (dailyAllowance > 0) estimatedMonthly = Math.max(estimatedMonthly, dailyAllowance * WORKING_DAYS_PER_MONTH);
+	if (shiftRate > 0) estimatedMonthly += shiftRate * WORKING_DAYS_PER_MONTH;
+	if (dailyAllowance > 0) estimatedMonthly += dailyAllowance * WORKING_DAYS_PER_MONTH;
 
 	return estimatedMonthly;
 }
@@ -227,8 +225,8 @@ function buildCompensationBody(employment: EmployeeEmploymentData): string {
 	}
 	if (daily > 0) {
 		const estMonthly = daily * WORKING_DAYS_PER_MONTH;
-		items.push(`uang harian ${formatMoney(daily)}/hari`);
-		details.push(`Uang harian: ${formatMoney(daily)}/hari × ${WORKING_DAYS_PER_MONTH} hari = ${formatMoney(estMonthly)}/bulan`);
+		items.push(`tunjangan transportasi ${formatMoney(daily)}/hari`);
+		details.push(`Tunjangan transportasi: ${formatMoney(daily)}/hari × ${WORKING_DAYS_PER_MONTH} hari = ${formatMoney(estMonthly)}/bulan`);
 	}
 	if (shift > 0) {
 		const estMonthly = shift * WORKING_DAYS_PER_MONTH;

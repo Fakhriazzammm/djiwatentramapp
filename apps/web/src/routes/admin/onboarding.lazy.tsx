@@ -228,7 +228,7 @@ function AdminOnboardingPage() {
 											}
 											return null;
 										})()}</p>
-										<p><b>Uang harian:</b> {formatOnboardingCurrency(selected.employment?.dailyAllowance)}</p>
+										<p><b>Tunjangan transportasi:</b> {formatOnboardingCurrency(selected.employment?.dailyAllowance)}</p>
 										<p><b>Rate shift:</b> {formatOnboardingCurrency(selected.employment?.shiftRate)}</p>
 										<p><b>Status:</b> {selected.raw?.pipelineStatus ?? "submitted"}</p>
 									</CardContent>

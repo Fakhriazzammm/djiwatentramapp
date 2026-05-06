@@ -878,6 +878,7 @@ export function SettingsPage({
 		monthlyFixedSalary: 0,
 		dailyAllowance: 0,
 		bonusTargetConfig: createDefaultRoleBonusTargetConfig(),
+		customAllowances: [] as { name: string; amount: number }[],
 		_show: false,
 	});
 	const [editingUser, setEditingUser] = useState<{
@@ -899,13 +900,17 @@ export function SettingsPage({
 		monthlyFixedSalary: number;
 		dailyAllowance: number;
 		bonusTargetConfig: RoleBonusTargetConfig;
+		customAllowances: { name: string; amount: number }[];
 	} | null>(null);
 	const [newRolePermOpen, setNewRolePermOpen] = useState(false);
 	const [editRolePermOpen, setEditRolePermOpen] = useState(false);
 	const [newRoleBonusOpen, setNewRoleBonusOpen] = useState(false);
 	const [editRoleBonusOpen, setEditRoleBonusOpen] = useState(false);
+	const [newRoleCustomAllowOpen, setNewRoleCustomAllowOpen] = useState(false);
+	const [editRoleCustomAllowOpen, setEditRoleCustomAllowOpen] = useState(false);
 	const [editRolePermTarget, setEditRolePermTarget] = useState<any>(null);
 	const [editRoleBonusTarget, setEditRoleBonusTarget] = useState<any>(null);
+	const [editRoleCustomAllowTarget, setEditRoleCustomAllowTarget] = useState<any>(null);
 	const [showFaceEnrollment, setShowFaceEnrollment] = useState(false);
 	const [savingUser, setSavingUser] = useState(false);
 	const [confirmConfig, setConfirmConfig] = useState<{
@@ -1285,6 +1290,7 @@ export function SettingsPage({
 			monthlyFixedSalary: role.monthlyFixedSalary ?? 0,
 			dailyAllowance: role.dailyAllowance ?? 0,
 			bonusTargetConfig: normalizeRoleBonusTargetConfig(role.bonusTargetConfig),
+			customAllowances: role.customAllowances ?? [],
 		});
 	};
 
@@ -1344,6 +1350,7 @@ export function SettingsPage({
 				bonusTargetConfig: normalizeRoleBonusTargetConfig(
 					editingRole.bonusTargetConfig
 				),
+				customAllowances: editingRole.customAllowances,
 			});
 			toast.success("Role berhasil diperbarui");
 			setRefreshTrigger(n => n + 1);
@@ -1369,6 +1376,7 @@ export function SettingsPage({
 				bonusTargetConfig: normalizeRoleBonusTargetConfig(
 					editingRole.bonusTargetConfig
 				),
+				customAllowances: editingRole.customAllowances,
 			});
 			setRefreshTrigger(n => n + 1);
 		} catch (error) {
@@ -1413,6 +1421,7 @@ export function SettingsPage({
 				bonusTargetConfig: normalizeRoleBonusTargetConfig(
 					newRole.bonusTargetConfig
 				),
+				customAllowances: newRole.customAllowances,
 			});
 			toast.success("Role baru berhasil dibuat");
 			setRefreshTrigger(n => n + 1);
@@ -1424,6 +1433,7 @@ export function SettingsPage({
 				monthlyFixedSalary: 0,
 				dailyAllowance: 0,
 				bonusTargetConfig: createDefaultRoleBonusTargetConfig(),
+				customAllowances: [],
 				_show: false,
 			});
 		} catch (error) {
@@ -2001,7 +2011,7 @@ export function SettingsPage({
 												<div className="flex justify-between px-3 py-2"><span className="text-muted-foreground">Gaji Shift ({staff.sessionCount}x)</span><span className="font-semibold">{formatCurrency(staff.totalShiftSalary)}</span></div>
 											)}
 											{(staff.totalAllowance || 0) > 0 && (
-												<div className="flex justify-between px-3 py-2"><span className="text-muted-foreground">Tunjangan Harian</span><span className="font-semibold">{formatCurrency(staff.totalAllowance)}</span></div>
+												<div className="flex justify-between px-3 py-2"><span className="text-muted-foreground">Tunjangan Transportasi</span><span className="font-semibold">{formatCurrency(staff.totalAllowance)}</span></div>
 											)}
 											{(staff.totalOvertimeBonus || 0) > 0 && (
 												<div className="flex justify-between px-3 py-2"><span className="text-muted-foreground">Bonus Lembur</span><span className="font-semibold text-emerald-600">+{formatCurrency(staff.totalOvertimeBonus)}</span></div>
@@ -2270,8 +2280,9 @@ export function SettingsPage({
 													<th className="px-4 py-3">Nama Role</th>
 													<th className="px-4 py-3 text-right">Gaji/Shift (Rp)</th>
 													<th className="px-4 py-3 text-right">Gaji Tetap (Rp)</th>
-													<th className="px-4 py-3 text-right">Tunjangan/Hari (Rp)</th>
+													<th className="px-4 py-3 text-right">Tunj. Transportasi (Rp)</th>
 													<th className="px-4 py-3">Bonus Target</th>
+													<th className="px-4 py-3">Tunj. Lain</th>
 													<th className="px-4 py-3 text-center">Akses</th>
 													<th className="px-4 py-3 text-right">Aksi</th>
 												</tr>
@@ -2280,7 +2291,7 @@ export function SettingsPage({
 												{!roles ? (
 													Array.from({ length: 3 }).map((_, i) => (
 														<tr key={i}>
-															<td colSpan={7} className="px-4 py-4">
+															<td colSpan={8} className="px-4 py-4">
 																<Skeleton className="h-8 w-full" />
 															</td>
 														</tr>
@@ -2328,10 +2339,19 @@ export function SettingsPage({
 																		onClick={() => setNewRoleBonusOpen(true)}
 																		type="button"
 																	>
-																		{formatRoleBonusSummary(newRole.bonusTargetConfig)}
+																	{formatRoleBonusSummary(newRole.bonusTargetConfig)}
 																	</button>
-																</td>
-																<td className="px-3 py-2">
+															</td>
+															<td className="px-3 py-2">
+																	<button
+																		className="w-full rounded-lg border border-border px-2 py-1 text-left text-[10px] font-semibold text-foreground hover:bg-muted/40"
+																		onClick={() => setNewRoleCustomAllowOpen(true)}
+																		type="button"
+																	>
+																		{newRole.customAllowances.length > 0 ? `${newRole.customAllowances.length} item` : "+ Atur"}
+																	</button>
+															</td>
+															<td className="px-3 py-2">
 																	<button
 																		className="mx-auto flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[10px] font-semibold text-muted-foreground hover:bg-muted/50 transition-colors"
 																		onClick={() => setNewRolePermOpen(true)}
@@ -2372,6 +2392,7 @@ export function SettingsPage({
 																						monthlyFixedSalary: role.monthlyFixedSalary ?? 0,
 																						dailyAllowance: role.dailyAllowance ?? 0,
 																						bonusTargetConfig: normalizeRoleBonusTargetConfig(role.bonusTargetConfig),
+																					customAllowances: role.customAllowances ?? [],
 																					}).then(() => setRefreshTrigger(n => n + 1)).catch(console.error);
 																				}
 																			}}
@@ -2394,6 +2415,7 @@ export function SettingsPage({
 																						monthlyFixedSalary: role.monthlyFixedSalary ?? 0,
 																						dailyAllowance: role.dailyAllowance ?? 0,
 																						bonusTargetConfig: normalizeRoleBonusTargetConfig(role.bonusTargetConfig),
+																					customAllowances: role.customAllowances ?? [],
 																					}).then(() => setRefreshTrigger(n => n + 1)).catch(console.error);
 																				}
 																			}}
@@ -2416,6 +2438,7 @@ export function SettingsPage({
 																						monthlyFixedSalary: val,
 																						dailyAllowance: role.dailyAllowance ?? 0,
 																						bonusTargetConfig: normalizeRoleBonusTargetConfig(role.bonusTargetConfig),
+																					customAllowances: role.customAllowances ?? [],
 																					}).then(() => setRefreshTrigger(n => n + 1)).catch(console.error);
 																				}
 																			}}
@@ -2438,6 +2461,7 @@ export function SettingsPage({
 																						monthlyFixedSalary: role.monthlyFixedSalary ?? 0,
 																						dailyAllowance: val,
 																						bonusTargetConfig: normalizeRoleBonusTargetConfig(role.bonusTargetConfig),
+																					customAllowances: role.customAllowances ?? [],
 																					}).then(() => setRefreshTrigger(n => n + 1)).catch(console.error);
 																				}
 																			}}
@@ -2452,15 +2476,27 @@ export function SettingsPage({
 																	}}
 																			type="button"
 																		>
-																			{formatRoleBonusSummary(role.bonusTargetConfig)}
+																				{formatRoleBonusSummary(role.bonusTargetConfig)}
+																		</button>
+																	</td>
+																	<td className="px-3 py-2">
+																		<button
+																			className="w-full rounded-lg border border-border px-2 py-1 text-left text-[10px] font-semibold text-foreground hover:bg-muted/40"
+																		onClick={() => {
+																			setEditRoleCustomAllowTarget(role);
+																			setEditRoleCustomAllowOpen(true);
+																		}}
+																			type="button"
+																		>
+																			{Array.isArray(role.customAllowances) && role.customAllowances.length > 0 ? `${role.customAllowances.length} item` : "+ Atur"}
 																		</button>
 																	</td>
 																	<td className="px-3 py-2">
 																		<button
 																			className="mx-auto flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[10px] font-semibold text-muted-foreground hover:bg-muted/50 transition-colors"
-																	onClick={() => {
-																		setEditRolePermTarget(role);
-																		setEditRolePermOpen(true);
+																		onClick={() => {
+																			setEditRolePermTarget(role);
+																			setEditRolePermOpen(true);
 																	}}
 																			type="button"
 																		>
@@ -2484,7 +2520,7 @@ export function SettingsPage({
 														})}
 														{roles?.length === 0 && !newRole._show && (
 															<tr>
-																<td colSpan={7} className="py-8 text-center text-muted-foreground text-xs italic">
+																<td colSpan={8} className="py-8 text-center text-muted-foreground text-xs italic">
 																	Belum ada role. Klik "Tambah Role" untuk membuat baru.
 																</td>
 															</tr>
@@ -2533,6 +2569,7 @@ export function SettingsPage({
 										monthlyFixedSalary: editRolePermTarget.monthlyFixedSalary ?? 0,
 										dailyAllowance: editRolePermTarget.dailyAllowance ?? 0,
 										bonusTargetConfig: normalizeRoleBonusTargetConfig(editRolePermTarget.bonusTargetConfig),
+										customAllowances: editRolePermTarget.customAllowances ?? [],
 									}).then(() => setRefreshTrigger(n => n + 1)).catch(console.error);
 								}
 								setEditRolePermOpen(open);
@@ -2658,6 +2695,7 @@ export function SettingsPage({
 										monthlyFixedSalary: editRoleBonusTarget.monthlyFixedSalary ?? 0,
 										dailyAllowance: editRoleBonusTarget.dailyAllowance ?? 0,
 										bonusTargetConfig: normalizeRoleBonusTargetConfig(editRoleBonusTarget.bonusTargetConfig),
+										customAllowances: editRoleBonusTarget.customAllowances ?? [],
 									}).then(() => setRefreshTrigger(n => n + 1)).catch(console.error);
 								}
 								setEditRoleBonusOpen(open);
@@ -2749,6 +2787,189 @@ export function SettingsPage({
 								</DialogContent>
 							</Dialog>
 
+							<Dialog open={newRoleCustomAllowOpen} onOpenChange={setNewRoleCustomAllowOpen}>
+								<DialogContent className="sm:max-w-lg">
+									<DialogTitle>Tunjangan Lain - Role Baru</DialogTitle>
+									<DialogDescription>Kelola tunjangan tambahan untuk role ini.</DialogDescription>
+									<div className="space-y-4">
+										<div className="space-y-2">
+											<div className="flex items-center justify-between">
+												<label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+													Daftar Tunjangan
+												</label>
+												<Button
+													size="sm"
+													type="button"
+													variant="outline"
+													onClick={() =>
+														setNewRole((prev) => ({
+															...prev,
+															customAllowances: [...prev.customAllowances, { name: "", amount: 0 }],
+														}))
+													}
+												>
+													<Plus className="h-3 w-3" />
+													Tambah Tunjangan
+												</Button>
+											</div>
+											<div className="space-y-2">
+												{newRole.customAllowances.map((allowance, index) => (
+													<div key={index} className="grid grid-cols-[1fr_1fr_auto] items-center gap-2">
+														<input
+															type="text"
+															placeholder="Nama tunjangan"
+															className="rounded-lg border border-border bg-background px-3 py-2 text-xs"
+															value={allowance.name}
+															onChange={(e) =>
+																setNewRole((prev) => {
+																	const next = [...prev.customAllowances];
+																	next[index] = { ...next[index], name: e.target.value };
+																	return { ...prev, customAllowances: next };
+																})
+																}
+														/>
+															<input
+															type="number"
+															placeholder="Jumlah (Rp)"
+															className="rounded-lg border border-border bg-background px-3 py-2 text-xs"
+															value={allowance.amount}
+															onChange={(e) =>
+																setNewRole((prev) => {
+																	const next = [...prev.customAllowances];
+																	next[index] = { ...next[index], amount: Number(e.target.value) };
+																	return { ...prev, customAllowances: next };
+																})
+																}
+														/>
+															<Button
+																size="icon"
+																type="button"
+																variant="ghost"
+																onClick={() =>
+																	setNewRole((prev) => ({
+																		...prev,
+																		customAllowances: prev.customAllowances.filter((_, i) => i !== index),
+																	}))
+																}
+														>
+																<Trash2 className="h-3.5 w-3.5" />
+															</Button>
+													</div>
+												))}
+											</div>
+										</div>
+										<Button size="sm" type="button" onClick={() => setNewRoleCustomAllowOpen(false)}>
+											Simpan
+										</Button>
+									</div>
+								</DialogContent>
+							</Dialog>
+
+							<Dialog open={editRoleCustomAllowOpen} onOpenChange={(open) => {
+								if (!open && editRoleCustomAllowTarget) {
+									updateRole({
+										id: editRoleCustomAllowTarget._id,
+										name: editRoleCustomAllowTarget.name,
+										permissions: editRoleCustomAllowTarget.permissions,
+										baseHourlyRate: editRoleCustomAllowTarget.baseHourlyRate ?? 0,
+										baseShiftRate: editRoleCustomAllowTarget.baseShiftRate ?? 0,
+										monthlyFixedSalary: editRoleCustomAllowTarget.monthlyFixedSalary ?? 0,
+										dailyAllowance: editRoleCustomAllowTarget.dailyAllowance ?? 0,
+										bonusTargetConfig: normalizeRoleBonusTargetConfig(editRoleCustomAllowTarget.bonusTargetConfig),
+										customAllowances: editRoleCustomAllowTarget.customAllowances ?? [],
+									}).then(() => setRefreshTrigger(n => n + 1)).catch(console.error);
+								}
+								setEditRoleCustomAllowOpen(open);
+							}}>
+								<DialogContent className="sm:max-w-lg">
+									<DialogTitle>Tunjangan Lain - {editRoleCustomAllowTarget?.name}</DialogTitle>
+									<DialogDescription>Kelola tunjangan tambahan untuk role ini.</DialogDescription>
+									{editRoleCustomAllowTarget && (
+										<div className="space-y-4">
+											<div className="space-y-2">
+												<div className="flex items-center justify-between">
+													<label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+														Daftar Tunjangan
+													</label>
+													<Button
+														size="sm"
+														type="button"
+														variant="outline"
+														onClick={() =>
+															setEditRoleCustomAllowTarget((prev: any) =>
+																prev
+																	? {
+																			...prev,
+																			customAllowances: [...prev.customAllowances, { name: "", amount: 0 }],
+																		}
+																	: prev
+															)
+														}
+													>
+														<Plus className="h-3 w-3" />
+														Tambah Tunjangan
+													</Button>
+												</div>
+												<div className="space-y-2">
+													{editRoleCustomAllowTarget.customAllowances.map((allowance: any, index: number) => (
+														<div key={index} className="grid grid-cols-[1fr_1fr_auto] items-center gap-2">
+															<input
+																type="text"
+																placeholder="Nama tunjangan"
+																className="rounded-lg border border-border bg-background px-3 py-2 text-xs"
+																value={allowance.name}
+																onChange={(e) =>
+																	setEditRoleCustomAllowTarget((prev: any) => {
+																		if (!prev) return prev;
+																		const next = [...prev.customAllowances];
+																		next[index] = { ...next[index], name: e.target.value };
+																		return { ...prev, customAllowances: next };
+																	})
+																	}
+															/>
+															<input
+																type="number"
+																placeholder="Jumlah (Rp)"
+																className="rounded-lg border border-border bg-background px-3 py-2 text-xs"
+																value={allowance.amount}
+																onChange={(e) =>
+																	setEditRoleCustomAllowTarget((prev: any) => {
+																		if (!prev) return prev;
+																		const next = [...prev.customAllowances];
+																		next[index] = { ...next[index], amount: Number(e.target.value) };
+																		return { ...prev, customAllowances: next };
+																	})
+																	}
+															/>
+															<Button
+																size="icon"
+																type="button"
+																variant="ghost"
+																onClick={() =>
+																	setEditRoleCustomAllowTarget((prev: any) =>
+																		prev
+																			? {
+																					...prev,
+																					customAllowances: prev.customAllowances.filter((_: any, i: number) => i !== index),
+																				}
+																			: prev
+																		)
+																	}
+															>
+																<Trash2 className="h-3.5 w-3.5" />
+															</Button>
+														</div>
+													))}
+												</div>
+											</div>
+											<Button size="sm" type="button" onClick={() => setEditRoleCustomAllowOpen(false)}>
+												Simpan
+											</Button>
+										</div>
+									)}
+								</DialogContent>
+							</Dialog>
+
 								<div className="border-t border-border pt-6">
 									<h4 className="px-2 mb-4 font-bold text-sm text-foreground uppercase tracking-wider">
 										Konfigurasi Payroll & Laporan Global
@@ -2818,7 +3039,7 @@ export function SettingsPage({
 								<ul className="mt-2 list-inside list-disc space-y-1">
 									<li>Gaji tetap bulanan diberikan sebagai kompensasi dasar staff per bulan.</li>
 									<li>Gaji Shift dihitung dari jumlah check-in/out harian yang berhasil dilakukan oleh staff.</li>
-									<li>Tunjangan Harian diberikan otomatis setiap kali staff melakukan Check-in di hari tersebut.</li>
+									<li>Tunjangan Transportasi diberikan otomatis setiap kali staff melakukan Check-in di hari tersebut.</li>
 									<li>Bonus Target dapat dihitung per shift, per hari, atau per bulan sesuai role dan level target.</li>
 									<li>Denda keterlambatan hanya dihitung terhadap menit yang melebihi masa toleransi.</li>
 								</ul>

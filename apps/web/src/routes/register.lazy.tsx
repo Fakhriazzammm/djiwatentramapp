@@ -293,7 +293,7 @@ function RegisterPage() {
 								);
 							})()}
 							<Field label="Gaji bulanan"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.monthlySalary)} onChange={(e) => updateEmployment("monthlySalary", Number(e.target.value || 0))} /></Field>
-							<Field label="Uang harian"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.dailyAllowance)} onChange={(e) => updateEmployment("dailyAllowance", Number(e.target.value || 0))} /></Field>
+							<Field label="Tunjangan transportasi"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.dailyAllowance)} onChange={(e) => updateEmployment("dailyAllowance", Number(e.target.value || 0))} /></Field>
 							<Field label="Rate shift"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.shiftRate)} onChange={(e) => updateEmployment("shiftRate", Number(e.target.value || 0))} /></Field>
 							<Field label="PIN login (6 digit)"><Input maxLength={6} inputMode="numeric" value={draft.employment.homePin} onChange={(e) => updateEmployment("homePin", e.target.value.replace(/\D/g, ""))} /></Field>
 							<Field label="Username"><Input value={draft.employment.username} onChange={(e) => updateEmployment("username", e.target.value)} /></Field>

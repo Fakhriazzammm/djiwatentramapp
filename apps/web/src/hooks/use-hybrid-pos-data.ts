@@ -86,6 +86,7 @@ type StaffRoleRecord = {
 		basis?: "shift" | "daily" | "monthly";
 		tiers?: Array<{ thresholdPct: number; bonusAmount: number }>;
 	} | null;
+	customAllowances?: { name: string; amount: number }[];
 	raw?: Record<string, unknown>;
 };
 type StaffUserRecord = {
@@ -1353,6 +1354,7 @@ async function fetchStaffRoles() {
 		baseShiftRate: row.baseShiftRate ?? row.raw?.baseShiftRate ?? 0,
 		monthlyFixedSalary: row.monthlyFixedSalary ?? row.raw?.monthlyFixedSalary ?? 0,
 		dailyAllowance: row.dailyAllowance ?? row.raw?.dailyAllowance ?? 0,
+		customAllowances: Array.isArray(row.raw?.customAllowances) ? row.raw.customAllowances : [],
 		baseHourlyRate: row.baseHourlyRate ?? row.raw?.baseHourlyRate ?? 0,
 		raw: row.raw,
 	})) as any[];
