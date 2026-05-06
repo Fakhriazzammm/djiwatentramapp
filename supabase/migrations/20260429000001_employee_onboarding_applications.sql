@@ -51,17 +51,17 @@ create policy "employee_onboarding_public_insert"
   with check (status = 'pending');
 
 drop policy if exists "employee_onboarding_authenticated_select" on public.employee_onboarding_applications;
-create policy "employee_onboarding_authenticated_select"
+create policy "employee_onboarding_anon_select"
   on public.employee_onboarding_applications
-  for select to authenticated
+  for select to anon, authenticated
   using (true);
 
 drop policy if exists "employee_onboarding_authenticated_update" on public.employee_onboarding_applications;
-create policy "employee_onboarding_authenticated_update"
+create policy "employee_onboarding_anon_update"
   on public.employee_onboarding_applications
-  for update to authenticated
+  for update to anon, authenticated
   using (true)
   with check (status in ('pending', 'approved', 'rejected', 'needs_revision'));
 
 grant insert on public.employee_onboarding_applications to anon, authenticated;
-grant select, update on public.employee_onboarding_applications to authenticated;
+grant select, update on public.employee_onboarding_applications to anon, authenticated;
