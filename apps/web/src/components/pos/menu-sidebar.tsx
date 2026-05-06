@@ -2613,9 +2613,9 @@ function IncomeForm({ onClose }: { onClose: () => void }) {
 }
 
 function ExpenseForm({ onClose }: { onClose: () => void }) {
-	const createTransaction = useHybridCreateTransaction();
 	const recordExpenseIntake = useHybridRecordExpenseIntake();
 	const syncMenuStock = useHybridSyncMenuStockFromInventory();
+	const inventory = useHybridInventory();
 	const [amount, setAmount] = useState("");
 	const [category, setCategory] = useState("Bahan Baku");
 	const [description, setDescription] = useState("");
@@ -2623,6 +2623,44 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 	const [itemName, setItemName] = useState("");
 	const [itemQty, setItemQty] = useState("1");
 	const [itemUnit, setItemUnit] = useState("");
+	const [allowNewInventoryItem, setAllowNewInventoryItem] = useState(false);
+
+	const inventoryItems = useMemo(() => inventory ?? [], [inventory]);
+	const selectedInventoryItem = useMemo(() => {
+		const normalizedName = itemName.trim().toLowerCase();
+		if (!normalizedName) return null;
+		return (
+			inventoryItems.find(
+				(item: any) => String(item?.ingredientName || "").trim().toLowerCase() === normalizedName
+			) ?? null
+		);
+	}, [inventoryItems, itemName]);
+	const categoryOptions = useMemo(() => {
+		const values = new Set(["Bahan Baku", "Belanja Stok", "Operasional", "Lainnya"]);
+		for (const item of inventoryItems as any[]) {
+			const inventoryCategory =
+				item?.category ||
+				item?.itemCategory ||
+				item?.group ||
+				item?.type ||
+				item?.raw?.category;
+			if (inventoryCategory) values.add(String(inventoryCategory));
+		}
+		return Array.from(values).filter(Boolean).sort((a, b) => a.localeCompare(b, "id"));
+	}, [inventoryItems]);
+
+	const handleItemNameChange = (value: string) => {
+		setItemName(value);
+		const matched = inventoryItems.find(
+			(item: any) => String(item?.ingredientName || "").trim().toLowerCase() === value.trim().toLowerCase()
+		) as any | undefined;
+		if (matched?.unit) {
+			setItemUnit(String(matched.unit));
+		}
+		if (matched) {
+			setAllowNewInventoryItem(false);
+		}
+	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -2630,16 +2668,24 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 			return;
 		}
 
+		const hasItem = itemName.trim().length > 0;
+		if (hasItem && !selectedInventoryItem && !allowNewInventoryItem) {
+			toast.error("Pilih item dari database inventory, atau centang 'item baru' jika memang belum ada.");
+			return;
+		}
+
 		setIsSubmitting(true);
 		try {
-			const hasItem = itemName.trim().length > 0;
+			const quantity = Number(itemQty) || 1;
+			const normalizedItemName = selectedInventoryItem?.ingredientName || itemName.trim();
+			const normalizedUnit = itemUnit.trim() || selectedInventoryItem?.unit || undefined;
 			const items = hasItem
 				? [
 						{
-							name: itemName.trim(),
-							quantity: Number(itemQty) || 1,
-							unit: itemUnit.trim() || undefined,
-							price: Number(amount) / (Number(itemQty) || 1),
+							name: normalizedItemName,
+							quantity,
+							unit: normalizedUnit,
+							price: Number(amount) / quantity,
 							total: Number(amount),
 						},
 				  ]
@@ -2647,17 +2693,24 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 
 			await recordExpenseIntake({
 				source: "pos_menu_sidebar",
-				syncMode: "auto",
+				syncMode: hasItem ? "finance_plus_inventory" : "finance_only",
+				allowCreateInventoryItem: allowNewInventoryItem,
 				transaction: {
 					type: "expense",
 					amount: Number(amount),
 					category,
-					description: description || itemName,
+					description: description || normalizedItemName,
 					date: Date.now(),
 					status: "completed",
 					paymentMethod: "tunai",
 				},
 				items: items.length > 0 ? items : undefined,
+				metadata: {
+					inputMode: "pos_menu_sidebar_expense",
+					sourceLabel: "Menu Kas",
+					inventoryItemId: selectedInventoryItem?._id,
+					allowNewInventoryItem,
+				},
 			});
 
 			// Sync menu stock from inventory after expense intake
@@ -2679,10 +2732,11 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 			setItemName("");
 			setItemQty("1");
 			setItemUnit("");
+			setAllowNewInventoryItem(false);
 			onClose();
-		} catch (error) {
+		} catch (error: any) {
 			console.error(error);
-			toast.error("Gagal mencatat pengeluaran");
+			toast.error(error?.message || "Gagal mencatat pengeluaran");
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -2701,11 +2755,20 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 				<div className="space-y-2">
 					<Label>Kategori <span className="text-destructive">*</span></Label>
 					<Input
-						placeholder="Contoh: Bahan Baku, Operasional"
+						list="expense-inventory-categories"
+						placeholder="Cari kategori dari inventory / keuangan..."
 						value={category}
 						onChange={(e) => setCategory(e.target.value)}
 						required
 					/>
+					<datalist id="expense-inventory-categories">
+						{categoryOptions.map((option) => (
+							<option key={option} value={option} />
+						))}
+					</datalist>
+					<p className="text-[10px] text-muted-foreground">
+						Kategori bisa diketik/search. Untuk restok otomatis pakai kategori bahan/stok.
+					</p>
 				</div>
 
 				<div className="space-y-2">
@@ -2726,16 +2789,25 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 					<div className="flex items-center gap-2">
 						<Package className="h-3.5 w-3.5 text-muted-foreground" />
 						<span className="text-xs font-medium text-muted-foreground">
-							Item Belanja (isi untuk auto-restok stok)
+							Item Belanja (search inventory untuk auto-restok stok)
 						</span>
 					</div>
 					<div className="grid grid-cols-3 gap-2">
 						<div className="col-span-3">
 							<Input
-								placeholder="Nama barang (contoh: Minyak Goreng)"
+								list="expense-inventory-items"
+								placeholder="Cari item inventory (contoh: Es Batu, Galon)"
 								value={itemName}
-								onChange={(e) => setItemName(e.target.value)}
+								onChange={(e) => handleItemNameChange(e.target.value)}
 							/>
+							<datalist id="expense-inventory-items">
+								{inventoryItems.map((item: any) => (
+									<option
+										key={String(item._id)}
+										value={String(item.ingredientName || "")}
+									/>
+								))}
+							</datalist>
 						</div>
 						<Input
 							placeholder="Qty"
@@ -2754,10 +2826,22 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 							contoh: liter, kg, pcs
 						</div>
 					</div>
+					{itemName.trim() && !selectedInventoryItem && (
+						<label className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-2 text-[10px] text-amber-800">
+							<Checkbox
+								checked={allowNewInventoryItem}
+								onCheckedChange={(checked) => setAllowNewInventoryItem(Boolean(checked))}
+							/>
+							<span>
+								Item belum ada di database inventory. Centang hanya jika ingin membuat item inventory baru.
+							</span>
+						</label>
+					)}
 					{itemName.trim() && (
-						<div className="text-[10px] text-emerald-600 font-medium">
-							✅ Stok akan otomatis bertambah +{Number(itemQty) || 1}{" "}
-							{itemUnit.trim() || "pcs"} "{itemName.trim()}"
+						<div className={`text-[10px] font-medium ${selectedInventoryItem || allowNewInventoryItem ? "text-emerald-600" : "text-amber-700"}`}>
+							{selectedInventoryItem || allowNewInventoryItem
+								? `✅ Stok akan otomatis bertambah +${Number(itemQty) || 1} ${itemUnit.trim() || selectedInventoryItem?.unit || "pcs"} "${selectedInventoryItem?.ingredientName || itemName.trim()}"`
+								: "Pilih item inventory yang sudah ada sebelum menyimpan."}
 						</div>
 					)}
 				</div>
@@ -2774,7 +2858,7 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 
 				<Button
 					className="w-full"
-					disabled={isSubmitting}
+					disabled={isSubmitting || (itemName.trim().length > 0 && !selectedInventoryItem && !allowNewInventoryItem)}
 					type="submit"
 					variant="destructive"
 				>

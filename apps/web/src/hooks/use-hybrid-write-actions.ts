@@ -3919,6 +3919,9 @@ export function useHybridRecordExpenseIntake() {
 				const date = Number(tx.date ?? Date.now());
 				const source = String(args?.source ?? "manual_form");
 				const normalizedItems = Array.isArray(args?.items) ? args.items : [];
+				const allowCreateInventoryItem = args?.allowCreateInventoryItem === undefined
+					? true
+					: Boolean(args.allowCreateInventoryItem);
 				const metadata = enrichFinancialMetadataWithRef({
 					type,
 					category,
@@ -4052,6 +4055,9 @@ export function useHybridRecordExpenseIntake() {
 							.maybeSingle();
 						let inventoryId = String((existing as any)?._id ?? "");
 						if (!inventoryId) {
+							if (!allowCreateInventoryItem) {
+								throw new Error(`Item inventory "${ingredientName}" tidak ditemukan. Pilih dari database inventory atau aktifkan item baru.`);
+							}
 							try {
 								inventoryId = await createInventoryItem({
 									ingredientName,
