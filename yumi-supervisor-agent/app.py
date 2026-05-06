@@ -260,7 +260,7 @@ async def _load_active_orders(bot: Bot):
             # Restore auto timers
             if row["status"] == "new" and created_at:
                 elapsed = (datetime.now(timezone.utc) - created_at).total_seconds()
-                remaining = max(0, 10 - elapsed)
+                remaining = max(0, 20 - elapsed)
                 _active_orders[key]["auto_dibuat_task"] = asyncio.create_task(_auto_dibuat(key, int(remaining)))
                 logger.info("[%s] Restored: auto-dibuat in %ds", key, int(remaining))
             elif row["status"] == "dibuat" and dibuat_at:
@@ -449,7 +449,7 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
         "",
         "⏳ Mohon segera dibuat!",
         "",
-        "Klik tombol ✅ Dibuat atau otomatis dalam 10 detik",
+        "Tekan tombol untuk memproses pesanan",
     ])
 
     kb = InlineKeyboardMarkup([
@@ -476,7 +476,7 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
             "items": bev_items,
             "struk_line": struk_line,
         }
-        _active_orders[key]["auto_dibuat_task"] = asyncio.create_task(_auto_dibuat(key, 10))
+        _active_orders[key]["auto_dibuat_task"] = asyncio.create_task(_auto_dibuat(key, 20))
         await _insert_order_status(key, _active_orders[key])
         logger.info("Barista notification sent for %s (%d beverages)", order_no, len(bev_items))
     except Exception as e:
@@ -509,7 +509,7 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
         "",
         "⏳ Mohon segera dibuat!",
         "",
-        "Klik tombol ✅ Dibuat atau otomatis dalam 10 detik",
+        "Tekan tombol untuk memproses pesanan",
     ])
 
     kb = InlineKeyboardMarkup([
@@ -536,7 +536,7 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
             "items": food_items,
             "struk_line": struk_line,
         }
-        _active_orders[key]["auto_dibuat_task"] = asyncio.create_task(_auto_dibuat(key, 10))
+        _active_orders[key]["auto_dibuat_task"] = asyncio.create_task(_auto_dibuat(key, 20))
         await _insert_order_status(key, _active_orders[key])
         logger.info("Kitchen notification sent for %s (%d food items)", order_no, len(food_items))
     except Exception as e:
