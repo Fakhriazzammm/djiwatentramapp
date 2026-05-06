@@ -41,10 +41,34 @@ export function AdminOnboardingPage() {
 			.select("*")
 			.order("created_at", { ascending: false })
 			.then(({ data, error }) => {
-				if (!error && data) setApplications(data as any[]);
+				if (error) {
+					console.error("[Onboarding] Query error:", error);
+					toast.error("Gagal memuat data pendaftaran: " + error.message);
+				}
+				if (data) setApplications(data as any[]);
 				setIsLoading(false);
 			});
 	}, []);
+
+	function refreshApplications() {
+		setIsLoading(true);
+		const supabase = createClient();
+		supabase
+			.from("employee_onboarding_applications")
+			.select("*")
+			.order("created_at", { ascending: false })
+			.then(({ data, error }) => {
+				if (error) {
+					console.error("[Onboarding] Refresh error:", error);
+					toast.error("Gagal refresh: " + error.message);
+				}
+				if (data) {
+					setApplications(data as any[]);
+					toast.success(`Data dimuat: ${data.length} pendaftaran`);
+				}
+				setIsLoading(false);
+			});
+	}
 
 	const [selected, setSelected] = useState<any | null>(null);
 	const [password, setPassword] = useState(onboardingSettings.defaultPassword);
