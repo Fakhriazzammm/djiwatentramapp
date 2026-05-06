@@ -277,7 +277,7 @@ export function buildEmployeeContractTemplate(
 			body: "Kontrak ini berlaku setelah ditandatangani secara digital oleh karyawan dan disetujui oleh admin/perwakilan perusahaan.",
 		},
 	];
-	const plainText = [`PERJANJIAN KERJA ${_companyName.toUpperCase()}`, "", ...clauses.flatMap((clause) => [clause.title, clause.body, ""])].join("\n");
+	const plainText = clauses.flatMap((clause) => [clause.title, clause.body, ""]).join("\n");
 	const html = `<article>${clauses
 		.map(
 			(clause) =>
