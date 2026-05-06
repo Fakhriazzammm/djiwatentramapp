@@ -1,4 +1,4 @@
-﻿import type { Doc, Id } from "@/types/backend-compat";
+import type { Doc, Id } from "@/types/backend-compat";
 import {
 	AlertCircle,
 	Banknote,
@@ -2624,6 +2624,8 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 	const [itemQty, setItemQty] = useState("1");
 	const [itemUnit, setItemUnit] = useState("");
 	const [allowNewInventoryItem, setAllowNewInventoryItem] = useState(false);
+	const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+	const [isItemDropdownOpen, setIsItemDropdownOpen] = useState(false);
 
 	const inventoryItems = useMemo(() => inventory ?? [], [inventory]);
 	const selectedInventoryItem = useMemo(() => {
@@ -2648,6 +2650,23 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 		}
 		return Array.from(values).filter(Boolean).sort((a, b) => a.localeCompare(b, "id"));
 	}, [inventoryItems]);
+	const filteredCategoryOptions = useMemo(() => {
+		const query = category.trim().toLowerCase();
+		return categoryOptions
+			.filter((option) => !query || option.toLowerCase().includes(query))
+			.slice(0, 8);
+	}, [category, categoryOptions]);
+	const filteredInventoryItems = useMemo(() => {
+		const query = itemName.trim().toLowerCase();
+		return inventoryItems
+			.filter((item: any) => {
+				const name = String(item?.ingredientName || "").toLowerCase();
+				const unit = String(item?.unit || "").toLowerCase();
+				const categoryName = String(item?.category || item?.itemCategory || item?.group || item?.type || "").toLowerCase();
+				return !query || name.includes(query) || unit.includes(query) || categoryName.includes(query);
+			})
+			.slice(0, 10);
+	}, [inventoryItems, itemName]);
 
 	const handleItemNameChange = (value: string) => {
 		setItemName(value);
@@ -2660,6 +2679,13 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 		if (matched) {
 			setAllowNewInventoryItem(false);
 		}
+		setIsItemDropdownOpen(true);
+	};
+	const selectInventoryItem = (item: any) => {
+		setItemName(String(item?.ingredientName || ""));
+		setItemUnit(String(item?.unit || ""));
+		setAllowNewInventoryItem(false);
+		setIsItemDropdownOpen(false);
 	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -2754,20 +2780,39 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 			<form className="space-y-4" onSubmit={handleSubmit}>
 				<div className="space-y-2">
 					<Label>Kategori <span className="text-destructive">*</span></Label>
-					<Input
-						list="expense-inventory-categories"
-						placeholder="Cari kategori dari inventory / keuangan..."
-						value={category}
-						onChange={(e) => setCategory(e.target.value)}
-						required
-					/>
-					<datalist id="expense-inventory-categories">
-						{categoryOptions.map((option) => (
-							<option key={option} value={option} />
-						))}
-					</datalist>
+					<div className="relative">
+						<Input
+							placeholder="Ketik untuk cari kategori..."
+							value={category}
+							onBlur={() => setTimeout(() => setIsCategoryDropdownOpen(false), 120)}
+							onChange={(e) => {
+								setCategory(e.target.value);
+								setIsCategoryDropdownOpen(true);
+							}}
+							onFocus={() => setIsCategoryDropdownOpen(true)}
+							required
+						/>
+						{isCategoryDropdownOpen && filteredCategoryOptions.length > 0 && (
+							<div className="absolute z-50 mt-1 max-h-44 w-full overflow-auto rounded-md border bg-background p-1 shadow-lg">
+								{filteredCategoryOptions.map((option) => (
+									<button
+										className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-xs hover:bg-muted"
+										key={option}
+										onMouseDown={(event) => {
+											event.preventDefault();
+											setCategory(option);
+											setIsCategoryDropdownOpen(false);
+										}}
+										type="button"
+									>
+										{option}
+									</button>
+								))}
+							</div>
+						)}
+					</div>
 					<p className="text-[10px] text-muted-foreground">
-						Kategori bisa diketik/search. Untuk restok otomatis pakai kategori bahan/stok.
+						Dropdown muncul saat mengetik. Untuk restok otomatis pakai kategori bahan/stok.
 					</p>
 				</div>
 
@@ -2793,21 +2838,34 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 						</span>
 					</div>
 					<div className="grid grid-cols-3 gap-2">
-						<div className="col-span-3">
+						<div className="relative col-span-3">
 							<Input
-								list="expense-inventory-items"
-								placeholder="Cari item inventory (contoh: Es Batu, Galon)"
+								placeholder="Ketik untuk cari item inventory..."
 								value={itemName}
+								onBlur={() => setTimeout(() => setIsItemDropdownOpen(false), 120)}
 								onChange={(e) => handleItemNameChange(e.target.value)}
+								onFocus={() => setIsItemDropdownOpen(true)}
 							/>
-							<datalist id="expense-inventory-items">
-								{inventoryItems.map((item: any) => (
-									<option
-										key={String(item._id)}
-										value={String(item.ingredientName || "")}
-									/>
-								))}
-							</datalist>
+							{isItemDropdownOpen && filteredInventoryItems.length > 0 && (
+								<div className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border bg-background p-1 shadow-lg">
+									{filteredInventoryItems.map((item: any) => (
+										<button
+											className="flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-left text-xs hover:bg-muted"
+											key={String(item._id)}
+											onMouseDown={(event) => {
+												event.preventDefault();
+												selectInventoryItem(item);
+											}}
+											type="button"
+										>
+											<span className="truncate font-medium">{String(item.ingredientName || "")}</span>
+											<span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+												{String(item.unit || "pcs")}
+											</span>
+										</button>
+									))}
+								</div>
+							)}
 						</div>
 						<Input
 							placeholder="Qty"
