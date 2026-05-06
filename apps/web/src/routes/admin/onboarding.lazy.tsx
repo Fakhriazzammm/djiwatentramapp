@@ -14,6 +14,7 @@ import { createClient } from "@/lib/client";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridCreateUser, useHybridUpdateEmployeeApplicationStatus } from "@/hooks/use-employee-onboarding-actions";
+import { calculateEstimatedMonthlySalary } from "@/lib/employee-onboarding-schema";
 import { formatOnboardingCurrency, generateSixDigitPin, normalizeEmployeeOnboardingSettings, calculateProbationEndDate } from "@/lib/employee-onboarding-settings";
 
 /* -------- helpers -------- */
@@ -219,9 +220,17 @@ function AdminOnboardingPage() {
 										})()}
 										<p><b>Username:</b> {selected.employment?.username}</p>
 										<p><b>PIN dari form:</b> {selected.employment?.homePinProvided ? "Diisi" : "Tidak diisi"}</p>
-										<p><b>Gaji:</b> {formatOnboardingCurrency(selected.employment?.monthlySalary)}</p>
+										<p><b>Gaji:</b> {formatOnboardingCurrency(selected.employment?.monthlySalary)} {(() => {
+											const est = calculateEstimatedMonthlySalary(selected.employment ?? {});
+											const base = selected.employment?.monthlySalary ?? 0;
+											if (est > 0 && est !== base) {
+												return <span className="text-muted-foreground">(estimasi {formatOnboardingCurrency(est)}/bulan)</span>;
+											}
+											return null;
+										})()}</p>
 										<p><b>Uang harian:</b> {formatOnboardingCurrency(selected.employment?.dailyAllowance)}</p>
-										<p><b>Pipeline:</b> {selected.raw?.pipelineStatus ?? "submitted"}</p>
+										<p><b>Rate shift:</b> {formatOnboardingCurrency(selected.employment?.shiftRate)}</p>
+										<p><b>Status:</b> {selected.raw?.pipelineStatus ?? "submitted"}</p>
 									</CardContent>
 								</Card>
 							</div>

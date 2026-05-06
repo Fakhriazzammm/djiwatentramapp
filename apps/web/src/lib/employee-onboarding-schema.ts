@@ -193,6 +193,56 @@ function employmentTypeLabel(type: EmployeeEmploymentData["employmentType"]) {
 	return labels[type] ?? type;
 }
 
+const WORKING_DAYS_PER_MONTH = 22;
+
+export function calculateEstimatedMonthlySalary(employment: EmployeeEmploymentData): number {
+	const monthlySalary = employment.monthlySalary ?? 0;
+	const dailyAllowance = employment.dailyAllowance ?? 0;
+	const shiftRate = employment.shiftRate ?? 0;
+
+	if (monthlySalary > 0 && shiftRate === 0 && dailyAllowance === 0) return monthlySalary;
+
+	let estimatedMonthly = monthlySalary;
+	if (shiftRate > 0) estimatedMonthly = Math.max(estimatedMonthly, shiftRate * WORKING_DAYS_PER_MONTH);
+	if (dailyAllowance > 0) estimatedMonthly = Math.max(estimatedMonthly, dailyAllowance * WORKING_DAYS_PER_MONTH);
+
+	return estimatedMonthly;
+}
+
+function buildCompensationBody(employment: EmployeeEmploymentData): string {
+	const monthly = employment.monthlySalary ?? 0;
+	const daily = employment.dailyAllowance ?? 0;
+	const shift = employment.shiftRate ?? 0;
+
+	if (monthly <= 0 && daily <= 0 && shift <= 0) {
+		return "Kompensasi akan diatur sesuai kebijakan perusahaan.";
+	}
+
+	const items: string[] = [];
+	const details: string[] = [];
+
+	if (monthly > 0) {
+		items.push(`gaji bulanan ${formatMoney(monthly)}`);
+		details.push(`Gaji pokok: ${formatMoney(monthly)}/bulan`);
+	}
+	if (daily > 0) {
+		const estMonthly = daily * WORKING_DAYS_PER_MONTH;
+		items.push(`uang harian ${formatMoney(daily)}/hari`);
+		details.push(`Uang harian: ${formatMoney(daily)}/hari × ${WORKING_DAYS_PER_MONTH} hari = ${formatMoney(estMonthly)}/bulan`);
+	}
+	if (shift > 0) {
+		const estMonthly = shift * WORKING_DAYS_PER_MONTH;
+		items.push(`rate shift ${formatMoney(shift)}/shift`);
+		details.push(`Rate shift: ${formatMoney(shift)}/shift × ${WORKING_DAYS_PER_MONTH} shift = ${formatMoney(estMonthly)}/bulan`);
+	}
+
+	const totalMonthly = calculateEstimatedMonthlySalary(employment);
+	const itemsText = items.join(", ");
+	const detailsText = details.join(". ");
+
+	return `${itemsText}. ${detailsText}. Estimasi total penghasilan per bulan: ${formatMoney(totalMonthly)}. Perhitungan berdasarkan ${WORKING_DAYS_PER_MONTH} hari kerja per bulan.`;
+}
+
 export function buildEmployeeContractTemplate(
 	personal: EmployeePersonalData,
 	employment: EmployeeEmploymentData
@@ -217,7 +267,7 @@ export function buildEmployeeContractTemplate(
 		},
 		{
 			title: "Pasal 4 — Kompensasi",
-			body: `Kompensasi yang disepakati meliputi gaji bulanan ${formatMoney(employment.monthlySalary)}, uang harian ${formatMoney(employment.dailyAllowance)}, dan/atau rate shift ${formatMoney(employment.shiftRate)} sesuai jadwal dan kebijakan perusahaan.`,
+			body: buildCompensationBody(employment),
 		},
 		{
 			title: "Pasal 5 — Kewajiban Karyawan",
