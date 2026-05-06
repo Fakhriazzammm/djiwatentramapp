@@ -82,7 +82,7 @@ function parseTemplateText(text: string): ContractDraft {
 	};
 }
 
-function buildPlaceholderContract(roleName = "[Jabatan]", role?: any, companyName?: string) {
+function buildPlaceholderContract(roleName = "[Jabatan]", role?: any, signatoryName?: string) {
 	const salaryDefaults = role ? getRoleSalaryDefaults(role) : {};
 	return buildEmployeeContractTemplate(
 		{ fullName: "[Nama Karyawan]", phone: "" },
@@ -98,7 +98,7 @@ function buildPlaceholderContract(roleName = "[Jabatan]", role?: any, companyNam
 			username: "",
 			slug: "",
 		},
-		companyName
+		signatoryName
 	);
 }
 
@@ -117,12 +117,12 @@ export default function AdminContractPage() {
 	const [localTemplates, setLocalTemplates] = useState<Record<string, string>>({});
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
-	const [draft, setDraft] = useState<ContractDraft>(() => contractToDraft(buildPlaceholderContract("", undefined, onboardingSettings.companyName)));
-	const [companyNameLocal, setCompanyNameLocal] = useState(onboardingSettings.companyName || "Djiwa Tentram Cafe & Resto");
+	const [draft, setDraft] = useState<ContractDraft>(() => contractToDraft(buildPlaceholderContract("", undefined, onboardingSettings.signatoryName)));
+	const [signatoryNameLocal, setSignatoryNameLocal] = useState(onboardingSettings.signatoryName || "Djiwa Tentram Cafe & Resto");
 
 	useEffect(() => {
-		setCompanyNameLocal(onboardingSettings.companyName || "Djiwa Tentram Cafe & Resto");
-	}, [onboardingSettings.companyName]);
+		setSignatoryNameLocal(onboardingSettings.signatoryName || "Djiwa Tentram Cafe & Resto");
+	}, [onboardingSettings.signatoryName]);
 
 	const selectedRole = useMemo(
 		() => roles.find((role: any) => String(role?._id) === selectedTemplateKey),
@@ -159,9 +159,9 @@ export default function AdminContractPage() {
 		setDraft(contractToDraft(buildPlaceholderContract(
 			templateKey === DEFAULT_TEMPLATE_KEY ? "[Jabatan]" : (role?.name || "[Jabatan]"),
 			role,
-			onboardingSettings.companyName
+			signatoryNameLocal
 		)));
-	}, [localTemplates, roles]);
+	}, [localTemplates, roles, signatoryNameLocal]);
 
 	useEffect(() => {
 		loadTemplate(selectedTemplateKey, onboardingSettings);
@@ -172,12 +172,12 @@ export default function AdminContractPage() {
 			...contractToDraft(buildPlaceholderContract(
 				selectedRoleName === "Semua Jabatan" ? "[Jabatan]" : selectedRoleName,
 				selectedRole,
-				onboardingSettings.companyName
+				signatoryNameLocal
 			)),
 			aiPrompt: prev.aiPrompt,
 		}));
 		toast.success("Direset ke template dasar");
-	}, [selectedRoleName, selectedRole, onboardingSettings.companyName]);
+	}, [selectedRoleName, selectedRole, signatoryNameLocal]);
 
 	const handleGenerateAi = useCallback(async () => {
 		if (!draft.aiPrompt.trim()) {
@@ -189,7 +189,7 @@ export default function AdminContractPage() {
 			const c = await generateContract({
 				employee: { fullName: "[Nama Karyawan]" },
 				employment: { roleName: selectedRoleName === "Semua Jabatan" ? "[Jabatan]" : selectedRoleName, startDate: "[Tanggal Mulai]" },
-				company: { name: onboardingSettings.companyName || "Djiwa Tentram Cafe & Resto" },
+				company: { name: signatoryNameLocal || "Djiwa Tentram Cafe & Resto" },
 				options: { tone: "formal", customNotes: draft.aiPrompt },
 			});
 			setDraft({
@@ -268,7 +268,7 @@ export default function AdminContractPage() {
 			setDraft(contractToDraft(buildPlaceholderContract(
 				selectedRoleName === "Semua Jabatan" ? "[Jabatan]" : selectedRoleName,
 				selectedRole,
-				onboardingSettings.companyName
+				signatoryNameLocal
 			)));
 			toast.success("Template dihapus");
 		} catch (e: any) {
@@ -278,7 +278,7 @@ export default function AdminContractPage() {
 		}
 	}
 
-	async function saveCompanyName(name: string) {
+	async function saveSignatoryName(name: string) {
 		try {
 			const { error } = await createClient()
 				.from("site_settings")
@@ -287,20 +287,20 @@ export default function AdminContractPage() {
 						...(siteSettings?.settings || {}),
 						employeeOnboarding: {
 							...(siteSettings?.settings?.employeeOnboarding || {}),
-							companyName: name,
+							signatoryName: name,
 						},
 					},
 				})
 				.eq("key", "site");
 			if (error) throw error;
-			setCompanyNameLocal(name);
+			setSignatoryNameLocal(name);
 			toast.success("Nama perusahaan disimpan");
 		} catch (e: any) {
 			toast.error(e?.message || "Gagal menyimpan nama perusahaan");
 		}
 	}
 
-	async function saveCompanySettings(updates: { companyName?: string; companySignatureUrl?: string }) {
+	async function saveSignatorySettings(updates: { signatoryName?: string; signatorySignatureUrl?: string }) {
 		try {
 			const nextSettings = normalizeEmployeeOnboardingSettings({
 				...onboardingSettings,
@@ -313,10 +313,10 @@ export default function AdminContractPage() {
 		}
 	}
 
-	const companySigRef = useRef<HTMLInputElement>(null);
+	const signatorySigRef = useRef<HTMLInputElement>(null);
 	const [isUploadingSig, setIsUploadingSig] = useState(false);
 
-	async function uploadCompanySignature(file: File) {
+	async function uploadSignatorySignature(file: File) {
 		if (!file.type.startsWith("image/")) {
 			toast.error("Hanya file gambar yang diperbolehkan");
 			return;
@@ -334,7 +334,7 @@ export default function AdminContractPage() {
 			const { data, error } = await createClient().storage.from("employee-contracts").upload(path, blob, { upsert: true });
 			if (error) throw error;
 			const { data: urlData } = createClient().storage.from("employee-contracts").getPublicUrl(data.path);
-			await saveCompanySettings({ companySignatureUrl: urlData.publicUrl });
+			await saveSignatorySettings({ signatorySignatureUrl: urlData.publicUrl });
 			return urlData.publicUrl;
 		} catch (e: any) {
 			toast.error(e?.message || "Gagal mengunggah tanda tangan");
@@ -407,11 +407,11 @@ export default function AdminContractPage() {
 					<div className="flex-1 space-y-2">
 						<Label className="text-sm font-medium">Nama Pihak Perusahaan</Label>
 						<Input
-							value={companyNameLocal}
-							onChange={(e) => setCompanyNameLocal(e.target.value)}
+							value={signatoryNameLocal}
+							onChange={(e) => setSignatoryNameLocal(e.target.value)}
 							onBlur={() => {
-								if (companyNameLocal !== onboardingSettings.companyName) {
-									saveCompanyName(companyNameLocal);
+								if (signatoryNameLocal !== onboardingSettings.signatoryName) {
+									saveSignatoryName(signatoryNameLocal);
 								}
 							}}
 							placeholder="Nama perusahaan yang tercantum di kontrak"
@@ -421,18 +421,18 @@ export default function AdminContractPage() {
 					<div className="flex-1 space-y-2">
 						<Label className="text-sm font-medium">Tanda Tangan Perusahaan</Label>
 						<div className="flex items-center gap-3">
-							{onboardingSettings.companySignatureUrl ? (
+							{onboardingSettings.signatorySignatureUrl ? (
 								<div className="relative">
 									<img
 										alt="Tanda tangan perusahaan"
 										className="h-12 w-auto object-contain rounded border"
-										src={onboardingSettings.companySignatureUrl}
+										src={onboardingSettings.signatorySignatureUrl}
 									/>
 									<Button
 										size="icon"
 										variant="ghost"
 										className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
-										onClick={() => saveCompanySettings({ companySignatureUrl: "" })}
+										onClick={() => saveSignatorySettings({ signatorySignatureUrl: "" })}
 									>
 										<Trash2 className="h-3 w-3" />
 									</Button>
@@ -441,22 +441,22 @@ export default function AdminContractPage() {
 								<span className="text-xs text-muted-foreground">Belum ada tanda tangan</span>
 							)}
 							<input
-								ref={companySigRef}
+								ref={signatorySigRef}
 								type="file"
 								accept="image/*"
 								className="hidden"
 								onChange={async (e) => {
 									const file = e.target.files?.[0];
 									if (!file) return;
-									await uploadCompanySignature(file);
-									if (companySigRef.current) companySigRef.current.value = "";
+									await uploadSignatorySignature(file);
+									if (signatorySigRef.current) signatorySigRef.current.value = "";
 								}}
 							/>
 							<Button
 								size="sm"
 								variant="outline"
 								disabled={isUploadingSig}
-								onClick={() => companySigRef.current?.click()}
+								onClick={() => signatorySigRef.current?.click()}
 								type="button"
 							>
 								{isUploadingSig ? (
@@ -464,7 +464,7 @@ export default function AdminContractPage() {
 								) : (
 									<Upload className="mr-1.5 h-3.5 w-3.5" />
 								)}
-								{isUploadingSig ? "Mengunggah..." : (onboardingSettings.companySignatureUrl ? "Ganti" : "Unggah")}
+								{isUploadingSig ? "Mengunggah..." : (onboardingSettings.signatorySignatureUrl ? "Ganti" : "Unggah")}
 							</Button>
 						</div>
 					</div>
@@ -618,11 +618,11 @@ export default function AdminContractPage() {
 						<span className="text-[10px] text-muted-foreground uppercase tracking-wider">Tampilan kandidat</span>
 					</div>
 		<ContractPreview
-							contract={contractPreview}
-							employeeName="[Nama Karyawan]"
-							companyName={onboardingSettings.companyName}
-							companySignatureUrl={onboardingSettings.companySignatureUrl}
-						/>
+						contract={contractPreview}
+						employeeName="[Nama Karyawan]"
+						signatoryName={signatoryNameLocal}
+						signatorySignatureUrl={onboardingSettings.signatorySignatureUrl}
+					/>
 				</div>
 			</div>
 		</div>

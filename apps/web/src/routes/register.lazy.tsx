@@ -126,7 +126,7 @@ function RegisterPage() {
 				clauses: [{ title: "Ketentuan Kontrak", body: templateText }],
 			};
 		}
-		return buildEmployeeContractTemplate(draft.personal, draft.employment, onboardingSettings.companyName);
+		return buildEmployeeContractTemplate(draft.personal, draft.employment, onboardingSettings.signatoryName);
 	}, [draft, onboardingSettings.contractTemplatesByRoleId]);
 
 	/* helpers */
@@ -307,7 +307,7 @@ function RegisterPage() {
 								<p className="text-muted-foreground text-xs">Admin akan menyiapkan kontrak kerja untuk Anda.</p>
 							</div>
 						) : (
-							<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} companyName={onboardingSettings.companyName} companySignatureUrl={onboardingSettings.companySignatureUrl} />
+							<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} signatoryName={onboardingSettings.signatoryName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
 						)}
 					</CardContent>
 				</Card>
@@ -340,7 +340,7 @@ function RegisterPage() {
 							</CardContent>
 						</Card>
 						<div className="flex-1">
-							<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} signatureDataUrl={draft.signatureDataUrl} companyName={onboardingSettings.companyName} companySignatureUrl={onboardingSettings.companySignatureUrl} />
+							<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} signatureDataUrl={draft.signatureDataUrl} signatoryName={onboardingSettings.signatoryName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
 						</div>
 					</div>
 				)}

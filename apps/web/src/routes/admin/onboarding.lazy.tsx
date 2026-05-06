@@ -377,7 +377,7 @@ export function AdminOnboardingPage() {
 									</CardContent>
 								</Card>
 							)}
-							<ContractPreview contract={selected.contract} employeeName={selected.full_name} signatureDataUrl={selected.signature_url} companyName={onboardingSettings.companyName} companySignatureUrl={onboardingSettings.companySignatureUrl} />
+							<ContractPreview contract={selected.contract} employeeName={selected.full_name} signatureDataUrl={selected.signature_url} signatoryName={onboardingSettings.signatoryName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
 
 							<div className="grid gap-3 sm:grid-cols-3">
 								<Field label="Password awal"><Input value={password} onChange={(e) => setPassword(e.target.value)} /></Field>

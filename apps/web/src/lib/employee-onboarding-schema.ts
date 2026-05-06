@@ -244,9 +244,9 @@ function buildCompensationBody(employment: EmployeeEmploymentData): string {
 export function buildEmployeeContractTemplate(
 	personal: EmployeePersonalData,
 	employment: EmployeeEmploymentData,
-	companyName?: string
+	signatoryName?: string
 ): EmployeeContractDraft {
-	const _companyName = companyName || "Djiwa Tentram Cafe & Resto";
+	const _signatoryName = signatoryName || "Djiwa Tentram Cafe & Resto";
 	const employeeName = cleanText(personal.fullName) || "Karyawan";
 	const roleName = cleanText(employment.roleName) || "Team";
 	const startDate = cleanText(employment.startDate) || "tanggal yang disepakati";
@@ -254,7 +254,7 @@ export function buildEmployeeContractTemplate(
 	const clauses: EmployeeContractClause[] = [
 		{
 			title: "Pasal 1 — Para Pihak",
-			body: `${_companyName} sebagai pihak perusahaan dan ${employeeName} sebagai karyawan menyepakati hubungan kerja sesuai ketentuan dalam kontrak ini.`,
+			body: `${_signatoryName} sebagai perwakilan perusahaan dan ${employeeName} sebagai karyawan menyepakati hubungan kerja sesuai ketentuan dalam kontrak ini.`,
 		},
 		{
 			title: "Pasal 2 — Jabatan dan Lokasi Kerja",
