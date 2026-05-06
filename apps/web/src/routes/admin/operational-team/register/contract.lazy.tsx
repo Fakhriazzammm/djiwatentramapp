@@ -117,6 +117,11 @@ export default function AdminContractPage() {
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
 	const [draft, setDraft] = useState<ContractDraft>(() => contractToDraft(buildPlaceholderContract()));
+	const [companyNameLocal, setCompanyNameLocal] = useState(onboardingSettings.companyName || "Djiwa Tentram Cafe & Resto");
+
+	useEffect(() => {
+		setCompanyNameLocal(onboardingSettings.companyName || "Djiwa Tentram Cafe & Resto");
+	}, [onboardingSettings.companyName]);
 
 	const selectedRole = useMemo(
 		() => roles.find((role: any) => String(role?._id) === selectedTemplateKey),
@@ -376,8 +381,13 @@ export default function AdminContractPage() {
 					<div className="flex-1 space-y-2">
 						<Label className="text-sm font-medium">Nama Pihak Perusahaan</Label>
 						<Input
-							value={onboardingSettings.companyName}
-							onChange={(e) => saveCompanySettings({ companyName: e.target.value })}
+							value={companyNameLocal}
+							onChange={(e) => setCompanyNameLocal(e.target.value)}
+							onBlur={() => {
+								if (companyNameLocal !== onboardingSettings.companyName) {
+									saveCompanySettings({ companyName: companyNameLocal });
+								}
+							}}
 							placeholder="Nama perusahaan yang tercantum di kontrak"
 							className="h-10"
 						/>

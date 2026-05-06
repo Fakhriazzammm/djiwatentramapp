@@ -1,10 +1,11 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Eye, FileSignature, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, Eye, FileSignature, ShieldCheck, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,8 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 export function AdminOnboardingPage() {
 	const [applications, setApplications] = useState<any[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+	const [isDeleting, setIsDeleting] = useState(false);
 	const siteSettings = useHybridSiteSettings();
 	const onboardingSettings = useMemo(() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding), [siteSettings?.employeeOnboarding]);
 	const createUser = useHybridCreateUser();
@@ -52,6 +55,7 @@ export function AdminOnboardingPage() {
 
 	function refreshApplications() {
 		setIsLoading(true);
+		setSelectedIds(new Set());
 		const supabase = createClient();
 		supabase
 			.from("employee_onboarding_applications")
@@ -68,6 +72,70 @@ export function AdminOnboardingPage() {
 				}
 				setIsLoading(false);
 			});
+	}
+
+	/* ---- selection ---- */
+	const allSelected = applications.length > 0 && selectedIds.size === applications.length;
+	const someSelected = selectedIds.size > 0 && selectedIds.size < applications.length;
+
+	function toggleSelectAll() {
+		if (allSelected) {
+			setSelectedIds(new Set());
+		} else {
+			setSelectedIds(new Set(applications.map((a) => String(a.id))));
+		}
+	}
+
+	function toggleSelect(id: string) {
+		setSelectedIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) {
+				next.delete(id);
+			} else {
+				next.add(id);
+			}
+			return next;
+		});
+	}
+
+	async function deleteSingle(id: string, name: string) {
+		if (!window.confirm(`Hapus pendaftaran "${name}"? Aksi ini tidak bisa dibatalkan.`)) return;
+		setIsDeleting(true);
+		try {
+			const supabase = createClient();
+			const { error } = await supabase.from("employee_onboarding_applications").delete().eq("id", id);
+			if (error) throw error;
+			setApplications((prev) => prev.filter((a) => String(a.id) !== id));
+			setSelectedIds((prev) => {
+				const next = new Set(prev);
+				next.delete(id);
+				return next;
+			});
+			toast.success(`Pendaftaran "${name}" dihapus`);
+		} catch (e: any) {
+			toast.error(e?.message || "Gagal menghapus pendaftaran");
+		} finally {
+			setIsDeleting(false);
+		}
+	}
+
+	async function deleteBulk() {
+		if (selectedIds.size === 0) return;
+		if (!window.confirm(`Hapus ${selectedIds.size} pendaftaran terpilih? Aksi ini tidak bisa dibatalkan.`)) return;
+		setIsDeleting(true);
+		try {
+			const supabase = createClient();
+			const ids = Array.from(selectedIds);
+			const { error } = await supabase.from("employee_onboarding_applications").delete().in("id", ids);
+			if (error) throw error;
+			setApplications((prev) => prev.filter((a) => !selectedIds.has(String(a.id))));
+			toast.success(`${selectedIds.size} pendaftaran dihapus`);
+			setSelectedIds(new Set());
+		} catch (e: any) {
+			toast.error(e?.message || "Gagal menghapus pendaftaran");
+		} finally {
+			setIsDeleting(false);
+		}
 	}
 
 	const [selected, setSelected] = useState<any | null>(null);
@@ -154,8 +222,24 @@ export function AdminOnboardingPage() {
 
 			{/* ---- list ---- */}
 			<Card className="border sm:rounded-xl">
-				<CardHeader className="pb-2 sm:pb-3">
+				<CardHeader className="pb-2 sm:pb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 					<CardTitle className="text-base sm:text-lg">Daftar Pendaftaran</CardTitle>
+					<div className="flex items-center gap-2">
+						{selectedIds.size > 0 && (
+							<Button
+								size="sm"
+								variant="destructive"
+								disabled={isDeleting}
+								onClick={deleteBulk}
+							>
+								<Trash2 className="mr-1.5 h-3.5 w-3.5" />
+								Hapus {selectedIds.size} terpilih
+							</Button>
+						)}
+						<Button size="sm" variant="outline" onClick={refreshApplications} disabled={isLoading}>
+							{isLoading ? "Memuat..." : "Refresh"}
+						</Button>
+					</div>
 				</CardHeader>
 				<CardContent className="px-0 sm:px-6">
 					{applications.length === 0 ? (
@@ -166,20 +250,38 @@ export function AdminOnboardingPage() {
 							<div className="hidden overflow-x-auto rounded-xl border sm:block">
 								<table className="w-full text-left text-sm">
 									<thead className="bg-muted/50 text-muted-foreground">
-										<tr><th className="p-3">Nama</th><th className="p-3">Role</th><th className="p-3 hidden md:table-cell">Kontak</th><th className="p-3 hidden md:table-cell">Tanggal</th><th className="p-3">Status</th><th className="p-3 text-right">Aksi</th></tr>
+										<tr>
+											<th className="p-3 w-10">
+												<Checkbox checked={allSelected} data-state={someSelected ? "indeterminate" : undefined} onCheckedChange={toggleSelectAll} />
+											</th>
+											<th className="p-3">Nama</th>
+											<th className="p-3">Role</th>
+											<th className="p-3 hidden md:table-cell">Kontak</th>
+											<th className="p-3 hidden md:table-cell">Tanggal</th>
+											<th className="p-3">Status</th>
+											<th className="p-3 text-right">Aksi</th>
+										</tr>
 									</thead>
 									<tbody className="divide-y">
 										{applications.map((app: any) => (
 											<tr key={app.id} className="hover:bg-muted/30">
+												<td className="p-3">
+													<Checkbox checked={selectedIds.has(String(app.id))} onCheckedChange={() => toggleSelect(String(app.id))} />
+												</td>
 												<td className="p-3 font-medium">{app.full_name}</td>
 												<td className="p-3">{app.employment?.roleName ?? "-"}</td>
 												<td className="p-3 hidden md:table-cell">{app.phone}<br /><span className="text-muted-foreground">{app.email}</span></td>
 												<td className="p-3 hidden md:table-cell text-xs">{new Date(app.created_at).toLocaleDateString("id-ID")}</td>
 												<td className="p-3"><Badge variant={STATUS_VARIANT[app.status] ?? "secondary"} className="text-xs">{app.status}</Badge></td>
 												<td className="p-3 text-right">
-													<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-8 px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm">
-														<Eye className="mr-1 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />Review
-													</Button>
+													<div className="flex items-center justify-end gap-1.5">
+														<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-8 px-2.5 text-xs">
+															<Eye className="mr-1 h-3.5 w-3.5" />Review
+														</Button>
+														<Button size="sm" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteSingle(String(app.id), app.full_name)} disabled={isDeleting}>
+															<Trash2 className="h-3.5 w-3.5" />
+														</Button>
+													</div>
 												</td>
 											</tr>
 										))}
@@ -192,17 +294,25 @@ export function AdminOnboardingPage() {
 								{applications.map((app: any) => (
 									<div key={app.id} className="rounded-xl border p-3 space-y-2">
 										<div className="flex items-start justify-between gap-2">
-											<div>
-												<div className="font-medium text-sm">{app.full_name}</div>
-												<div className="text-muted-foreground text-xs">{app.employment?.roleName ?? "-"}</div>
+											<div className="flex items-center gap-2">
+												<Checkbox checked={selectedIds.has(String(app.id))} onCheckedChange={() => toggleSelect(String(app.id))} />
+												<div>
+													<div className="font-medium text-sm">{app.full_name}</div>
+													<div className="text-muted-foreground text-xs">{app.employment?.roleName ?? "-"}</div>
+												</div>
 											</div>
 											<Badge variant={STATUS_VARIANT[app.status] ?? "secondary"} className="text-xs flex-shrink-0">{app.status}</Badge>
 										</div>
 										<div className="text-muted-foreground text-xs">{app.phone} &middot; {app.email}</div>
 										<div className="text-muted-foreground text-xs">{new Date(app.created_at).toLocaleDateString("id-ID")}</div>
-										<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-8 w-full text-xs">
-											<Eye className="mr-1.5 h-3.5 w-3.5" />Review
-										</Button>
+										<div className="flex items-center gap-2">
+											<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-8 flex-1 text-xs">
+												<Eye className="mr-1.5 h-3.5 w-3.5" />Review
+											</Button>
+											<Button size="sm" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteSingle(String(app.id), app.full_name)} disabled={isDeleting}>
+												<Trash2 className="h-3.5 w-3.5" />
+											</Button>
+										</div>
 									</div>
 								))}
 							</div>

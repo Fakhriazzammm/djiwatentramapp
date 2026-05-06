@@ -53,6 +53,7 @@ import { Route as AdminOperationalTeamAttendanceRouteImport } from './routes/adm
 import { Route as AdminFinanceShiftReportsRouteImport } from './routes/admin/finance/shift-reports'
 import { Route as AdminFinanceTransactionsRouteRouteImport } from './routes/admin/finance/transactions/route'
 import { Route as AdminFinanceReportsRouteRouteImport } from './routes/admin/finance/reports/route'
+import { Route as AdminOperationalTeamRegisterOnboardingRouteImport } from './routes/admin/operational-team/register/onboarding'
 import { Route as AdminOperationalTeamRegisterContractRouteImport } from './routes/admin/operational-team/register/contract'
 
 const RegisterRoute = RegisterRouteImport.update({
@@ -326,6 +327,16 @@ const AdminFinanceReportsRouteRoute =
     path: '/reports',
     getParentRoute: () => AdminFinanceRouteRoute,
   } as any)
+const AdminOperationalTeamRegisterOnboardingRoute =
+  AdminOperationalTeamRegisterOnboardingRouteImport.update({
+    id: '/onboarding',
+    path: '/onboarding',
+    getParentRoute: () => AdminOperationalTeamRegisterRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/register/onboarding.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 const AdminOperationalTeamRegisterContractRoute =
   AdminOperationalTeamRegisterContractRouteImport.update({
     id: '/contract',
@@ -383,6 +394,7 @@ export interface FileRoutesByFullPath {
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
+  '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -425,6 +437,7 @@ export interface FileRoutesByTo {
   '/admin/operational-team': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe': typeof AdminRecipeIndexRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
+  '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -473,6 +486,7 @@ export interface FileRoutesById {
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
+  '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -522,6 +536,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team/'
     | '/admin/recipe/'
     | '/admin/operational-team/register/contract'
+    | '/admin/operational-team/register/onboarding'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -564,6 +579,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team'
     | '/admin/recipe'
     | '/admin/operational-team/register/contract'
+    | '/admin/operational-team/register/onboarding'
   id:
     | '__root__'
     | '/'
@@ -611,6 +627,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team/'
     | '/admin/recipe/'
     | '/admin/operational-team/register/contract'
+    | '/admin/operational-team/register/onboarding'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -936,6 +953,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFinanceReportsRouteRouteImport
       parentRoute: typeof AdminFinanceRouteRoute
     }
+    '/admin/operational-team/register/onboarding': {
+      id: '/admin/operational-team/register/onboarding'
+      path: '/onboarding'
+      fullPath: '/admin/operational-team/register/onboarding'
+      preLoaderRoute: typeof AdminOperationalTeamRegisterOnboardingRouteImport
+      parentRoute: typeof AdminOperationalTeamRegisterRoute
+    }
     '/admin/operational-team/register/contract': {
       id: '/admin/operational-team/register/contract'
       path: '/contract'
@@ -965,12 +989,15 @@ const AdminFinanceRouteRouteWithChildren =
 
 interface AdminOperationalTeamRegisterRouteChildren {
   AdminOperationalTeamRegisterContractRoute: typeof AdminOperationalTeamRegisterContractRoute
+  AdminOperationalTeamRegisterOnboardingRoute: typeof AdminOperationalTeamRegisterOnboardingRoute
 }
 
 const AdminOperationalTeamRegisterRouteChildren: AdminOperationalTeamRegisterRouteChildren =
   {
     AdminOperationalTeamRegisterContractRoute:
       AdminOperationalTeamRegisterContractRoute,
+    AdminOperationalTeamRegisterOnboardingRoute:
+      AdminOperationalTeamRegisterOnboardingRoute,
   }
 
 const AdminOperationalTeamRegisterRouteWithChildren =

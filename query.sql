@@ -1,1 +1,1 @@
-SELECT i.id, i.name, i.unit, i.price, i.quantity FROM pos_inventory i JOIN pos_recipes r ON i.id = ANY(r.ingredients) WHERE i.quantity > 0 AND i.quantity <= (SELECT lowStockThreshold FROM settings) AND r.active = TRUE;
+SELECT * FROM pos_inventory WHERE quantity > 0 AND quantity <= lowStockThreshold;
