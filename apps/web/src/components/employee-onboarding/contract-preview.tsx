@@ -9,13 +9,16 @@ type ContractPreviewProps = {
 	contract: EmployeeContractDraft;
 	signatureDataUrl?: string;
 	employeeName?: string;
+	companyName?: string;
+	companySignatureUrl?: string;
 };
 
-export function ContractPreview({ contract, signatureDataUrl, employeeName }: ContractPreviewProps) {
+export function ContractPreview({ contract, signatureDataUrl, employeeName, companyName, companySignatureUrl }: ContractPreviewProps) {
 	const safeHtml = contract.html ? sanitizeContractHtml(contract.html) : "";
 	const displayPlainText = contract.plainText
 		? contract.plainText.replace(new RegExp(`^\\s*${escapeRegExp(contract.title || "Perjanjian Kerja")}\\s*\\n+`, "i"), "")
 		: "";
+	const displayCompanyName = companyName || "Djiwa Tentram Cafe & Resto";
 
 	return (
 		<div
@@ -25,7 +28,7 @@ export function ContractPreview({ contract, signatureDataUrl, employeeName }: Co
 			{/* header */}
 			<div className="mb-4 border-b pb-3 text-center sm:mb-6 sm:pb-4">
 				<p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500 sm:text-xs sm:tracking-[0.2em]">
-					Djiwa Tentram Cafe &amp; Resto
+					{displayCompanyName}
 				</p>
 				<h2 className="mt-1.5 text-lg font-bold sm:mt-2 sm:text-2xl">
 					{contract.title || "Perjanjian Kerja"}
@@ -43,8 +46,17 @@ export function ContractPreview({ contract, signatureDataUrl, employeeName }: Co
 			<div className="mt-8 grid gap-6 sm:mt-10 sm:grid-cols-2 sm:gap-8">
 				<div>
 					<p className="text-[10px] text-slate-500 sm:text-sm">Pihak Perusahaan</p>
-					<div className="mt-12 border-slate-400 border-t pt-2 text-sm font-semibold sm:mt-16 sm:text-base">
-						Djiwa Tentram Cafe &amp; Resto
+					{companySignatureUrl ? (
+						<img
+							alt="Tanda tangan perusahaan"
+							className="mt-3 h-16 object-contain sm:mt-4 sm:h-24"
+							src={companySignatureUrl}
+						/>
+					) : (
+						<div className="mt-12 sm:mt-16" />
+					)}
+					<div className="border-slate-400 border-t pt-2 text-sm font-semibold sm:mt-2 sm:text-base">
+						{displayCompanyName}
 					</div>
 				</div>
 				<div>

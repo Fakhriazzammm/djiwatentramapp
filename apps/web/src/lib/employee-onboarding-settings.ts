@@ -49,6 +49,8 @@ export type EmployeeOnboardingSettings = {
 	registrationMode: "public" | "internal" | "invite_only";
 	inviteCode: string;
 	closedMessage: string;
+	companyName: string;
+	companySignatureUrl: string;
 	defaultPassword: string;
 	defaultRoleId: string;
 	defaultEmploymentType: EmployeeEmploymentData["employmentType"];
@@ -113,6 +115,8 @@ export const DEFAULT_EMPLOYEE_ONBOARDING_SETTINGS: EmployeeOnboardingSettings = 
 	registrationMode: "public",
 	inviteCode: "",
 	closedMessage: "Saat ini pendaftaran karyawan baru sedang tidak dibuka. Silakan hubungi admin untuk informasi lebih lanjut.",
+	companyName: "Djiwa Tentram Cafe & Resto",
+	companySignatureUrl: "",
 	defaultPassword: "djiwatentram123",
 	defaultRoleId: "",
 	defaultEmploymentType: "probation",
@@ -250,6 +254,8 @@ export function normalizeEmployeeOnboardingSettings(value: unknown): EmployeeOnb
 		registrationMode: mode as EmployeeOnboardingSettings["registrationMode"],
 		inviteCode: cleanString(source.inviteCode),
 		closedMessage: cleanString(source.closedMessage, defaults.closedMessage),
+		companyName: cleanString(source.companyName, defaults.companyName),
+		companySignatureUrl: cleanString(source.companySignatureUrl),
 		defaultPassword: cleanString(source.defaultPassword, defaults.defaultPassword),
 		defaultRoleId: cleanString(source.defaultRoleId),
 		defaultEmploymentType: employmentType as EmployeeEmploymentData["employmentType"],

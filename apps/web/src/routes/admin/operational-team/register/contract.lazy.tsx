@@ -1,6 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileSignature, Loader2, Plus, Save, Sparkles, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FileSignature, Loader2, Plus, Save, Sparkles, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ import { ContractPreview } from "@/components/employee-onboarding/contract-previ
 import { useHybridGenerateEmployeeContract } from "@/hooks/use-employee-onboarding-actions";
 import { useHybridSiteSettings, useHybridStaffRoles } from "@/hooks/use-hybrid-pos-data";
 import { useHybridUpdateSiteSettings } from "@/hooks/use-hybrid-write-actions";
+import { compressFileToLimit, isOversized } from "@/lib/image-compress";
+import { createClient } from "@/lib/client";
 import {
 	buildEmployeeContractTemplate,
 	clausesToPlainText,
@@ -179,7 +181,7 @@ export default function AdminContractPage() {
 			const c = await generateContract({
 				employee: { fullName: "[Nama Karyawan]" },
 				employment: { roleName: selectedRoleName === "Semua Jabatan" ? "[Jabatan]" : selectedRoleName, startDate: "[Tanggal Mulai]" },
-				company: { name: "Djiwa Tentram Cafe & Resto" },
+				company: { name: onboardingSettings.companyName || "Djiwa Tentram Cafe & Resto" },
 				options: { tone: "formal", customNotes: draft.aiPrompt },
 			});
 			setDraft({
@@ -267,6 +269,50 @@ export default function AdminContractPage() {
 		}
 	}
 
+	async function saveCompanySettings(updates: { companyName?: string; companySignatureUrl?: string }) {
+		try {
+			const nextSettings = normalizeEmployeeOnboardingSettings({
+				...onboardingSettings,
+				...updates,
+			});
+			await updateSiteSettings({ employeeOnboarding: nextSettings });
+			toast.success("Pengaturan perusahaan disimpan");
+		} catch (e: any) {
+			toast.error(e?.message || "Gagal menyimpan pengaturan");
+		}
+	}
+
+	const companySigRef = useRef<HTMLInputElement>(null);
+	const [isUploadingSig, setIsUploadingSig] = useState(false);
+
+	async function uploadCompanySignature(file: File) {
+		if (!file.type.startsWith("image/")) {
+			toast.error("Hanya file gambar yang diperbolehkan");
+			return;
+		}
+		if (isOversized(file)) {
+			toast.error("Ukuran file terlalu besar (max 5MB)");
+			return;
+		}
+		setIsUploadingSig(true);
+		try {
+			const compressed = await compressFileToLimit(file);
+			const blob = await fetch(compressed).then((r) => r.blob());
+			const ext = file.name.split(".").pop() || "png";
+			const path = `company/signatures/signature-${Date.now()}.${ext}`;
+			const { data, error } = await createClient().storage.from("site-assets").upload(path, blob, { upsert: true });
+			if (error) throw error;
+			const { data: urlData } = createClient().storage.from("site-assets").getPublicUrl(data.path);
+			await saveCompanySettings({ companySignatureUrl: urlData.publicUrl });
+			return urlData.publicUrl;
+		} catch (e: any) {
+			toast.error(e?.message || "Gagal mengunggah tanda tangan");
+			throw e;
+		} finally {
+			setIsUploadingSig(false);
+		}
+	}
+
 	return (
 		<div className="mx-auto w-full max-w-7xl space-y-6">
 			{/* ── Header ── */}
@@ -323,6 +369,71 @@ export default function AdminContractPage() {
 					</Button>
 				</div>
 			</div>
+
+			{/* ── Company Info ── */}
+			<Card className="border-border/60">
+				<CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
+					<div className="flex-1 space-y-2">
+						<Label className="text-sm font-medium">Nama Pihak Perusahaan</Label>
+						<Input
+							value={onboardingSettings.companyName}
+							onChange={(e) => saveCompanySettings({ companyName: e.target.value })}
+							placeholder="Nama perusahaan yang tercantum di kontrak"
+							className="h-10"
+						/>
+					</div>
+					<div className="flex-1 space-y-2">
+						<Label className="text-sm font-medium">Tanda Tangan Perusahaan</Label>
+						<div className="flex items-center gap-3">
+							{onboardingSettings.companySignatureUrl ? (
+								<div className="relative">
+									<img
+										alt="Tanda tangan perusahaan"
+										className="h-12 w-auto object-contain rounded border"
+										src={onboardingSettings.companySignatureUrl}
+									/>
+									<Button
+										size="icon"
+										variant="ghost"
+										className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+										onClick={() => saveCompanySettings({ companySignatureUrl: "" })}
+									>
+										<Trash2 className="h-3 w-3" />
+									</Button>
+								</div>
+							) : (
+								<span className="text-xs text-muted-foreground">Belum ada tanda tangan</span>
+							)}
+							<input
+								ref={companySigRef}
+								type="file"
+								accept="image/*"
+								className="hidden"
+								onChange={async (e) => {
+									const file = e.target.files?.[0];
+									if (!file) return;
+									await uploadCompanySignature(file);
+									if (companySigRef.current) companySigRef.current.value = "";
+								}}
+							/>
+							<Button
+								size="sm"
+								variant="outline"
+								disabled={isUploadingSig}
+								onClick={() => companySigRef.current?.click()}
+								type="button"
+							>
+								{isUploadingSig ? (
+									<Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+								) : (
+									<Upload className="mr-1.5 h-3.5 w-3.5" />
+								)}
+								{isUploadingSig ? "Mengunggah..." : (onboardingSettings.companySignatureUrl ? "Ganti" : "Unggah")}
+							</Button>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
 
 			{/* ── Toolbar ── */}
 			<Card className="border-border/60">
@@ -470,10 +581,12 @@ export default function AdminContractPage() {
 						<h3 className="text-sm font-semibold text-foreground">Pratinjau Kontrak</h3>
 						<span className="text-[10px] text-muted-foreground uppercase tracking-wider">Tampilan kandidat</span>
 					</div>
-					<ContractPreview
-						contract={contractPreview}
-						employeeName="[Nama Karyawan]"
-					/>
+		<ContractPreview
+							contract={contractPreview}
+							employeeName="[Nama Karyawan]"
+							companyName={onboardingSettings.companyName}
+							companySignatureUrl={onboardingSettings.companySignatureUrl}
+						/>
 				</div>
 			</div>
 		</div>
