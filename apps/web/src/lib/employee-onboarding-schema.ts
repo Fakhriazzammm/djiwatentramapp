@@ -243,9 +243,10 @@ function buildCompensationBody(employment: EmployeeEmploymentData): string {
 
 export function buildEmployeeContractTemplate(
 	personal: EmployeePersonalData,
-	employment: EmployeeEmploymentData
+	employment: EmployeeEmploymentData,
+	companyName?: string
 ): EmployeeContractDraft {
-	const companyName = "Djiwa Tentram Cafe & Resto";
+	const _companyName = companyName || "Djiwa Tentram Cafe & Resto";
 	const employeeName = cleanText(personal.fullName) || "Karyawan";
 	const roleName = cleanText(employment.roleName) || "Team";
 	const startDate = cleanText(employment.startDate) || "tanggal yang disepakati";
@@ -253,7 +254,7 @@ export function buildEmployeeContractTemplate(
 	const clauses: EmployeeContractClause[] = [
 		{
 			title: "Pasal 1 — Para Pihak",
-			body: `${companyName} sebagai pihak perusahaan dan ${employeeName} sebagai karyawan menyepakati hubungan kerja sesuai ketentuan dalam kontrak ini.`,
+			body: `${_companyName} sebagai pihak perusahaan dan ${employeeName} sebagai karyawan menyepakati hubungan kerja sesuai ketentuan dalam kontrak ini.`,
 		},
 		{
 			title: "Pasal 2 — Jabatan dan Lokasi Kerja",
@@ -276,7 +277,7 @@ export function buildEmployeeContractTemplate(
 			body: "Kontrak ini berlaku setelah ditandatangani secara digital oleh karyawan dan disetujui oleh admin/perwakilan perusahaan.",
 		},
 	];
-	const plainText = [`PERJANJIAN KERJA ${companyName.toUpperCase()}`, "", ...clauses.flatMap((clause) => [clause.title, clause.body, ""])].join("\n");
+	const plainText = [`PERJANJIAN KERJA ${_companyName.toUpperCase()}`, "", ...clauses.flatMap((clause) => [clause.title, clause.body, ""])].join("\n");
 	const html = `<article>${clauses
 		.map(
 			(clause) =>
