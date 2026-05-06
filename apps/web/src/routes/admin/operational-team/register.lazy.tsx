@@ -5,7 +5,7 @@ function OperationalTeamRegisterPage() {
 	const location = useLocation();
 	const isNestedContractRoute = location.pathname.endsWith("/register/contract");
 
-	if (isNestedContractRoute) {
+	if (isNestedContractRoute || location.pathname.endsWith("/register/onboarding")) {
 		return <Outlet />;
 	}
 

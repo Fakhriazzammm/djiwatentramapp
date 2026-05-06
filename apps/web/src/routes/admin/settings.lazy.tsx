@@ -3061,7 +3061,7 @@ export function SettingsPage({
 							</div>
 							<div className="flex gap-2">
 								<Button size="sm" variant="outline" onClick={() => window.open("/register?preview=admin", "_blank")} type="button"><Eye className="mr-1.5 h-3.5 w-3.5" />Lihat Pratinjau</Button>
-								<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/onboarding"} type="button"><ClipboardList className="mr-1.5 h-3.5 w-3.5" />Daftar Pendaftar</Button>
+								<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/operational-team/register/onboarding"} type="button"><ClipboardList className="mr-1.5 h-3.5 w-3.5" />Daftar Pendaftar</Button>
 							</div>
 						</div>
 
