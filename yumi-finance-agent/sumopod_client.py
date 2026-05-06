@@ -4,6 +4,7 @@ Gunakan untuk AI chat & vision/OCR langsung dari SumoPod,
 tanpa melalui Supabase Edge Function.
 """
 
+import os
 import httpx
 import logging
 import re
@@ -13,8 +14,8 @@ from datetime import datetime, timezone, timedelta
 logger = logging.getLogger("yumi-finance.sumopod")
 
 SUMODOP_BASE = "https://ai.sumopod.com/v1"
-VISION_MODEL = "seed-2-0-mini"
-TEXT_MODEL = "gpt-4o"
+VISION_MODEL = os.getenv("SUMOPOD_VISION_MODEL", "seed-2-0-mini")
+TEXT_MODEL = os.getenv("SUMOPOD_TEXT_MODEL", "gpt-4o")
 WIB = timezone(timedelta(hours=7))
 
 SYSTEM_PROMPT = """Kamu adalah Yumi Finance AI Agent — asisten keuangan & inventory untuk YumiPOS.
@@ -209,43 +210,65 @@ Jika ada informasi yang tidak bisa dibaca, gunakan null atau 0. confidence antar
         if not image_base64_uri.startswith("data:image"):
             return {"success": False, "error": "Format URI gambar tidak valid."}
 
-        payload = {
-            "model": model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": image_base64_uri},
-                        },
-                    ],
-                }
-            ],
-            "temperature": 0.1,
-            "max_tokens": 2048,
-        }
+        model_candidates = []
+        for candidate in [model, TEXT_MODEL, VISION_MODEL]:
+            if candidate and candidate not in model_candidates:
+                model_candidates.append(candidate)
 
-        try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
-                resp = await client.post(
-                    f"{self.base_url}/chat/completions",
-                    headers=self._headers(),
-                    json=payload,
-                )
-                resp.raise_for_status()
-                data = resp.json()
-                content = data["choices"][0]["message"]["content"]
+        last_error: Exception | None = None
+        import json
 
-                # Extract JSON from response
-                json_match = re.search(r'\{[\s\S]*\}', content)
-                if not json_match:
-                    return {"success": False, "error": "Tidak bisa parse JSON dari respons AI", "raw": content}
+        for idx, candidate in enumerate(model_candidates):
+            payload = {
+                "model": candidate,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": image_base64_uri},
+                            },
+                        ],
+                    }
+                ],
+                "temperature": 0.1,
+                "max_tokens": 2048,
+            }
 
-                import json
-                parsed = json.loads(json_match[0])
-                return {"success": True, "data": parsed, "raw": content}
-        except Exception as e:
-            logger.warning("SumoPod vision_json failed: %s", e)
-            return {"success": False, "error": str(e)}
+            try:
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    resp = await client.post(
+                        f"{self.base_url}/chat/completions",
+                        headers=self._headers(),
+                        json=payload,
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+                    content = data["choices"][0]["message"]["content"]
+
+                    # Extract JSON from response
+                    json_match = re.search(r'\{[\s\S]*\}', content)
+                    if not json_match:
+                        return {"success": False, "error": "Tidak bisa parse JSON dari respons AI", "raw": content, "model": candidate}
+
+                    parsed = json.loads(json_match[0])
+                    if idx > 0:
+                        logger.info("SumoPod vision_json fallback succeeded with model=%s", candidate)
+                    return {"success": True, "data": parsed, "raw": content, "model": candidate}
+            except httpx.HTTPStatusError as e:
+                last_error = e
+                code = getattr(e.response, "status_code", None)
+                logger.warning("SumoPod vision_json model=%s failed with HTTP %s: %s", candidate, code, e)
+                if code in (401, 403) and idx < len(model_candidates) - 1:
+                    continue
+                return {"success": False, "error": str(e), "model": candidate}
+            except Exception as e:
+                last_error = e
+                logger.warning("SumoPod vision_json model=%s failed: %s", candidate, e)
+                if idx < len(model_candidates) - 1:
+                    continue
+                return {"success": False, "error": str(e), "model": candidate}
+
+        return {"success": False, "error": str(last_error) if last_error else "Unknown OCR error", "model": model_candidates[-1] if model_candidates else model}

@@ -108,6 +108,19 @@ def clean_output(text: str) -> str:
     return text
 
 
+def _format_ocr_error(error_text: str) -> str:
+    """Pesan error OCR yang lebih akurat berdasarkan jenis kegagalan."""
+    err = (error_text or "").lower()
+    if "403" in err or "forbidden" in err or "401" in err:
+        return (
+            f"❌ Layanan OCR sedang menolak request: {error_text}\n\n"
+            f"Coba lagi sebentar. Kalau masih sama, kemungkinan akses model OCR sedang dibatasi."
+        )
+    return (
+        f"❌ Gagal membaca struk: {error_text}\n\n"
+        f"Coba foto ulang dengan pencahayaan lebih baik."
+    )
+
 
 async def _reply(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, **kwargs):
     """Send a reply with clean_output() applied automatically."""
@@ -334,8 +347,7 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if not vision_result.get("success"):
             await msg.edit_text(
-                f"❌ Gagal membaca struk: {vision_result.get('error', 'Unknown')}\n\n"
-                f"Coba foto ulang dengan pencahayaan lebih baik.",
+                _format_ocr_error(vision_result.get('error', 'Unknown')),
                 reply_markup=_finance_keyboard(),
             )
             return
@@ -576,9 +588,16 @@ async def _display_bulk_summary(context, results: list[dict], chat_id: int, stat
     failures = [r for r in results if not r.get("success")]
 
     if not successes:
+        failed_errors = [str(r.get("error", "Unknown")) for r in failures if r.get("error")]
+        detail = "\n".join(failed_errors[:2])
+        message = "❌ Semua struk gagal dibaca."
+        if detail:
+            message += f"\n{detail}"
+        else:
+            message += "\nCoba foto ulang atau kirim ulang sebentar lagi."
         await context.bot.edit_message_text(
             chat_id=chat_id, message_id=status_msg_id,
-            text="❌ Semua struk gagal dibaca.\nCoba foto ulang dengan pencahayaan lebih baik.",
+            text=message,
             reply_markup=_finance_keyboard(),
         )
         return
