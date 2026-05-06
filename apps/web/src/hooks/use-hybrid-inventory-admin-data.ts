@@ -209,6 +209,7 @@ type InventoryWorkspaceData = {
 		preferredPurchaseUnit: string | null;
 		lastPurchaseStoreName: string | null;
 		lastPurchasePrice: number | null;
+		netWeight: string | null;
 		lowStockThreshold: number;
 		avgDailyUsage: number;
 		daysUntilStockout: number | null;
@@ -377,7 +378,7 @@ async function fetchInventoryRows() {
 				? null
 				: Number(row.lastPurchaseAt),
 		lastPurchaseStoreId: row.lastPurchaseStoreId ?? null,
-		netWeight: row.net_weight ?? null,
+		netWeight: row.net_weight ?? row.netWeight ?? row.berat ?? null,
 		_creationTime:
 			row._creationTime === null || row._creationTime === undefined
 				? Number(row.lastPurchaseAt ?? 0)

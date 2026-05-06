@@ -849,6 +849,7 @@ async function fetchInventory() {
 				? undefined
 				: Number(row.lastPurchaseAt),
 		lastPurchaseStoreId: row.lastPurchaseStoreId ?? undefined,
+		netWeight: row.net_weight ?? row.netWeight ?? row.berat ?? null,
 	})) as InventoryRecord[];
 }
 
