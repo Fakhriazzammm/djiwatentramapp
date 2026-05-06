@@ -28,6 +28,7 @@ import {
 	Utensils,
 	History,
 	FileBarChart,
+	FileSignature,
 	ClipboardList,
 	ArrowUpRight,
 	Eye,
@@ -2827,24 +2828,38 @@ export function SettingsPage({
 				)}
 
 				{activeTab === "register" && (
-					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500">
-						<section className="space-y-4 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-6">
-							{/* ── Header ── */}
-							<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-								<div className="flex items-center gap-3">
-									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><UserPlus className="h-5 w-5" /></div>
-									<div>
-										<h3 className="font-bold text-base text-foreground tracking-tight">Register Karyawan</h3>
-										<p className="text-muted-foreground text-xs">Konfigurasi halaman pendaftaran publik /register</p>
-									</div>
-								</div>
-								<div className="flex gap-2">
-									<Button size="sm" variant="outline" onClick={() => window.open("/register?preview=admin", "_blank")} type="button"><Eye className="mr-1.5 h-3.5 w-3.5" />Preview</Button>
-									<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/onboarding"} type="button"><ClipboardList className="mr-1.5 h-3.5 w-3.5" />Pendaftar</Button>
+					<div className="fade-in slide-in-from-bottom-4 animate-in duration-500 space-y-4">
+						{/* ── Header ── */}
+						<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+							<div className="flex items-center gap-3">
+								<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><UserPlus className="h-5 w-5" /></div>
+								<div>
+									<h3 className="font-bold text-base text-foreground tracking-tight">Pendaftaran Karyawan</h3>
+									<p className="text-muted-foreground text-xs">Konfigurasi halaman pendaftaran publik /register</p>
 								</div>
 							</div>
+							<div className="flex gap-2">
+								<Button size="sm" variant="outline" onClick={() => window.open("/register?preview=admin", "_blank")} type="button"><Eye className="mr-1.5 h-3.5 w-3.5" />Lihat Pratinjau</Button>
+								<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/onboarding"} type="button"><ClipboardList className="mr-1.5 h-3.5 w-3.5" />Daftar Pendaftar</Button>
+							</div>
+						</div>
 
-							{/* ── Status Pendaftaran ── */}
+						{/* ── Kontrak Card ── */}
+						<div className="rounded-2xl border border-border bg-card p-4 shadow-sm md:p-5">
+							<div className="flex items-center justify-between gap-3">
+								<div className="flex items-center gap-3">
+									<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 text-amber-700"><FileSignature className="h-4 w-4" /></div>
+									<div>
+										<p className="text-sm font-semibold">Template Kontrak Kerja</p>
+										<p className="text-muted-foreground text-xs">Atur isi kontrak per jabatan yang dibaca kandidat</p>
+									</div>
+								</div>
+								<Button size="sm" onClick={() => window.location.href = "/admin/operational-team/register/contract"} type="button"><FileSignature className="mr-1.5 h-3.5 w-3.5" />Kelola Kontrak</Button>
+							</div>
+						</div>
+
+						{/* ── Status Pendaftaran ── */}
+						<section className="space-y-4 rounded-2xl border border-border bg-card p-4 shadow-sm md:p-6">
 							<div className="rounded-xl border bg-background/50 p-4">
 								<div className="flex items-center justify-between mb-3">
 									<div>
@@ -2872,8 +2887,8 @@ export function SettingsPage({
 										</Select>
 									</div>
 									<div>
-										<label className="mb-1 block text-xs font-medium text-muted-foreground">Kode Invite</label>
-										<Input className="h-9 text-xs" value={employeeOnboardingSettings.inviteCode} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, inviteCode: e.target.value }))} placeholder="Kode invite" />
+										<label className="mb-1 block text-xs font-medium text-muted-foreground">Kode Undangan</label>
+										<Input className="h-9 text-xs" value={employeeOnboardingSettings.inviteCode} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, inviteCode: e.target.value }))} placeholder="Kode undangan" />
 									</div>
 									<div>
 										<label className="mb-1 block text-xs font-medium text-muted-foreground">Password Default</label>
@@ -2922,7 +2937,7 @@ export function SettingsPage({
 								<div className="space-y-4 px-4 pb-4">
 									{/* Fields */}
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Field Form</p>
+										<p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Kolom Formulir</p>
 										<div className="grid gap-1 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
 											{(Object.keys(employeeOnboardingSettings.fields) as EmployeeOnboardingFieldKey[]).map((key) => (
 												<div key={key} className="flex items-center justify-between gap-1 rounded-md bg-background px-2 py-1.5 text-xs border">
@@ -2939,7 +2954,7 @@ export function SettingsPage({
 
 									{/* Steps */}
 									<div className="space-y-2">
-										<p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Step Form</p>
+										<p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tahapan Formulir</p>
 										<div className="flex flex-wrap gap-1.5">
 											{employeeOnboardingSettings.steps.map((step) => (
 												<label
@@ -2962,11 +2977,11 @@ export function SettingsPage({
 										<div className="flex flex-col gap-2 justify-end pb-0.5">
 											<label className="flex cursor-pointer items-center gap-2 text-xs">
 												<input checked={employeeOnboardingSettings.approvalPreview.enabled} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, approvalPreview: { ...prev.approvalPreview, enabled: e.target.checked } }))} type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" />
-												Preview akun sebelum approve
+												Pratinjau akun sebelum disetujui
 											</label>
 											<label className="flex cursor-pointer items-center gap-2 text-xs">
 												<input checked={employeeOnboardingSettings.approvalPreview.requireConfirmation} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, approvalPreview: { ...prev.approvalPreview, requireConfirmation: e.target.checked } }))} type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" />
-												Konfirmasi sebelum approve
+												Konfirmasi sebelum menyetujui
 											</label>
 										</div>
 									</div>
