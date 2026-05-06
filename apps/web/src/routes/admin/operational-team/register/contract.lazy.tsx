@@ -305,9 +305,9 @@ export default function AdminContractPage() {
 			const blob = await fetch(compressed).then((r) => r.blob());
 			const ext = file.name.split(".").pop() || "png";
 			const path = `company/signatures/signature-${Date.now()}.${ext}`;
-			const { data, error } = await createClient().storage.from("site-assets").upload(path, blob, { upsert: true });
+			const { data, error } = await createClient().storage.from("employee-contracts").upload(path, blob, { upsert: true });
 			if (error) throw error;
-			const { data: urlData } = createClient().storage.from("site-assets").getPublicUrl(data.path);
+			const { data: urlData } = createClient().storage.from("employee-contracts").getPublicUrl(data.path);
 			await saveCompanySettings({ companySignatureUrl: urlData.publicUrl });
 			return urlData.publicUrl;
 		} catch (e: any) {
