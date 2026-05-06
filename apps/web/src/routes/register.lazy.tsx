@@ -60,6 +60,7 @@ const initialDraft: EmployeeOnboardingDraft = {
 		username: "",
 		slug: "",
 		homePin: "",
+		contractDuration: 6,
 	},
 	contract: { mode: "template", title: "Perjanjian Kerja", plainText: "", clauses: [] },
 	signatureDataUrl: "",
@@ -281,6 +282,18 @@ function RegisterPage() {
 									return endDate ? <p className="mt-1 text-xs text-muted-foreground">Masa probation berakhir: <span className="font-semibold text-amber-600">{new Date(endDate).toLocaleDateString("id-ID")}</span></p> : null;
 								})()}
 							</Field>}
+							<Field label="Masa kontrak">
+								<select
+									className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+									value={String(draft.employment.contractDuration || 6)}
+									onChange={(e) => updateEmployment("contractDuration", parseInt(e.target.value, 10))}
+								>
+									<option value="6">6 bulan</option>
+									<option value="12">1 tahun (12 bulan)</option>
+									<option value="18">1,5 tahun (18 bulan)</option>
+									<option value="24">2 tahun (24 bulan)</option>
+								</select>
+							</Field>
 							<Field label="Lokasi"><Input value={draft.employment.location} onChange={(e) => updateEmployment("location", e.target.value)} /></Field>
 						{onboardingSettings.salaryPreview.enabled && onboardingSettings.salaryPreview.candidateVisibility !== "hidden" && <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground md:col-span-2">Estimasi gaji akan diinformasikan oleh admin setelah pendaftaran disetujui.</div>}
 						<Field label="PIN login (6 digit)"><Input maxLength={6} inputMode="numeric" value={draft.employment.homePin} onChange={(e) => updateEmployment("homePin", e.target.value.replace(/\D/g, ""))} /></Field>

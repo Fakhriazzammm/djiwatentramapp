@@ -21,6 +21,7 @@ export type EmployeeEmploymentData = {
 	username: string;
 	slug: string;
 	homePin?: string;
+	contractDuration?: number;
 };
 
 export type EmployeeContractClause = {
@@ -251,6 +252,7 @@ export function buildEmployeeContractTemplate(
 	const roleName = cleanText(employment.roleName) || "Team";
 	const startDate = cleanText(employment.startDate) || "tanggal yang disepakati";
 	const location = cleanText(employment.location) || "Djiwa Tentram";
+	const duration = employment.contractDuration && employment.contractDuration >= 6 ? employment.contractDuration : 0;
 	const clauses: EmployeeContractClause[] = [
 		{
 			title: "Pasal 1 — Para Pihak",
@@ -262,7 +264,7 @@ export function buildEmployeeContractTemplate(
 		},
 		{
 			title: "Pasal 3 — Mulai Kerja dan Status",
-			body: `Hubungan kerja dimulai pada ${startDate} dengan status ${employmentTypeLabel(employment.employmentType)}. Evaluasi kinerja dapat dilakukan secara berkala oleh perusahaan.`,
+			body: `Hubungan kerja dimulai pada ${startDate} dengan status ${employmentTypeLabel(employment.employmentType)}${duration > 0 ? ` untuk jangka waktu ${duration} bulan` : ""}. Evaluasi kinerja dapat dilakukan secara berkala oleh perusahaan.`,
 		},
 		{
 			title: "Pasal 4 — Kompensasi",
