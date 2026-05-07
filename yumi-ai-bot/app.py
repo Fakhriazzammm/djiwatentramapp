@@ -1441,34 +1441,36 @@ async def _check_new_transactions(app):
             customer = o.get("customerName") or "Pelanggan"
             order_type = (o.get("orderType") or "dine_in")
             items = o.get("items") or []
-            item_list = ", ".join(
-                f"{i.get('productName', '?').strip()} x{int(float(i.get('quantity', 1)))}"
-                for i in items[:3]
-            )
-            if len(items) > 3:
-                item_list += f" +{len(items) - 3} item"
 
             daily_no = o.get("daily_receipt_no")
             receipt_kind = o.get("receipt_kind")
             receipt_labels = {"dine_in": "Dine In", "takeaway": "Takeaway", "online": "Online"}
             receipt_label = receipt_labels.get(receipt_kind, "Struk") if receipt_kind else None
-            struk_line = f"STRUK {receipt_label} No.{daily_no}" if (daily_no and receipt_label) else None
+            struk_line = f"{receipt_label} No.{daily_no}" if (daily_no and receipt_label) else None
 
             shift = await _find_shift_at_time(ts)
             cashier = shift.get("cashier_name", "?")
             team = shift.get("team_members", "")
 
-            # ── Regular transaction report ──
-            lines = []
+            # ── Transaction report (per baris, tanpa |) ──
+            lines = [
+                f"🧾 Pesanan Baru — {_format_time_ms(ts)}",
+                "━━━━━━━━━━━━━━━━━━",
+                f"🆔 {order_no}",
+            ]
             if struk_line:
-                lines.append(f"🧾 Pesanan Baru — {_format_time_ms(ts)}")
-                lines.append(f"{struk_line} | {order_no} | Rp{amount:,.0f} | {payment}")
-            else:
-                lines.append(f"🧾 Pesanan Baru — {_format_time_ms(ts)}")
-                lines.append(f"{order_no} | Rp{amount:,.0f} | {payment}")
-            lines.append(f"📦 {item_list}")
+                lines.append(f"📍 {struk_line}")
+            lines.append(f"💰 Rp{amount:,.0f} — {payment}")
             lines.append(f"👤 {customer}")
-            lines.append(f"👥 Kasir: {cashier}" + (f" | Tim: {team}" if team else ""))
+            lines.append(f"👥 Kasir: {cashier}")
+            if team:
+                lines.append(f"📋 Tim: {team}")
+            lines.append("")
+            lines.append("Items:")
+            for i in items:
+                pn = i.get("productName", "?").strip()
+                q = int(float(i.get("quantity", 1)))
+                lines.append(f"  • {pn} x{q}")
             await _send_to_group(app, "\n".join(lines))
             await asyncio.sleep(0.3)
 

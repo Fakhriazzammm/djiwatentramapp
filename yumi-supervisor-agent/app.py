@@ -441,12 +441,20 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
             item_lines.append(f"  • {qty}× {name}")
 
     base_text = "\n".join([
-        f"☕ PESANAN BARU — BARISTA 🕐 {_format_time_hm(ts_ms)}",
-        struk_line or f"{order_no}  |  {type_label}  |  👤 {customer}",
+        f"☕ PESANAN BARU — 🕐 {_format_time_hm(ts_ms)}",
+        "━━━━━━━━━━━━━━━━━━",
+        f"🆔 {order_no}",
+    ])
+    if struk_line:
+        base_text += f"\n📍 {struk_line}"
+    base_text += "\n".join([
         "",
-        "📋 Minuman:",
+        f"{type_label}",
+        f"👤 {customer}",
+        "",
+        "Minuman:",
         *item_lines,
-        "",
+        "━━━━━━━━━━━━━━━━━━",
         "⏳ Mohon segera dibuat!",
         "",
         "Tekan tombol untuk memproses pesanan",
@@ -501,12 +509,20 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
             item_lines.append(f"  • {qty}× {name}")
 
     base_text = "\n".join([
-        f"🍳 PESANAN BARU — KITCHEN 🕐 {_format_time_hm(ts_ms)}",
-        struk_line or f"{order_no}  |  {type_label}  |  👤 {customer}",
+        f"🍳 PESANAN BARU — 🕐 {_format_time_hm(ts_ms)}",
+        "━━━━━━━━━━━━━━━━━━",
+        f"🆔 {order_no}",
+    ])
+    if struk_line:
+        base_text += f"\n📍 {struk_line}"
+    base_text += "\n".join([
         "",
-        "📋 Makanan:",
+        f"{type_label}",
+        f"👤 {customer}",
+        "",
+        "Makanan:",
         *item_lines,
-        "",
+        "━━━━━━━━━━━━━━━━━━",
         "⏳ Mohon segera dibuat!",
         "",
         "Tekan tombol untuk memproses pesanan",
