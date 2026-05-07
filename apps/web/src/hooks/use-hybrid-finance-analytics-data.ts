@@ -71,7 +71,38 @@ async function fetchFinancialTransactions(args?: {
 		tags: Array.isArray(row.tags) ? row.tags : [],
 		metadata: row.metadata && typeof row.metadata === "object" ? row.metadata : {},
 	}));
-	// ── Safety dedup: jika ada 2+ transaksi dengan fingerprint sama, retain pertama ──
+	// ── Batch-fetch order items untuk income transaksi ──
+	const orderTxIds = mapped
+		.filter((tx: any) => tx.type === "income" && tx.orderId)
+		.map((tx: any) => tx.orderId);
+	if (orderTxIds.length > 0) {
+		const { data: orderItems, error: oiError } = await supabase
+			.from("pos_order_items")
+			.select("*")
+			.in("order_source_id", orderTxIds);
+		if (!oiError && orderItems) {
+			const itemsByOrder = new Map<string, any[]>();
+			for (const item of orderItems) {
+				const oid = String(item.order_source_id);
+				if (!itemsByOrder.has(oid)) itemsByOrder.set(oid, []);
+				itemsByOrder.get(oid)!.push({
+					name: item.product_name ?? `Item ${item.line_no}`,
+					quantity: safeNum(item.quantity) || 1,
+					price: safeNum(item.price) || 0,
+					total: (safeNum(item.quantity) || 1) * (safeNum(item.price) || 0),
+				});
+			}
+			for (const tx of mapped) {
+				if (tx.type === "income" && tx.orderId) {
+					const items = itemsByOrder.get(String(tx.orderId));
+					if (items && items.length > 0) {
+						tx.metadata = { ...tx.metadata, scanItems: items };
+					}
+				}
+			}
+		}
+	}
+	// ── Safety dedup ──
 	const seen = new Set<string>();
 	const deduped: typeof mapped = [];
 	for (const tx of mapped) {
@@ -103,7 +134,12 @@ function summarizeTransactions(transactions: any[]) {
 		(tx) => (tx.status ?? "completed") === "completed"
 	);
 	const totalIncome = completed
-		.filter((tx) => tx.type === "income")
+		.filter(
+			(tx) =>
+				tx.type === "income" &&
+				tx.category !== "Modal Awal" &&
+				tx.category !== "Setoran Akhir"
+		)
 		.reduce((sum, tx) => sum + safeNum(tx.amount), 0);
 	const totalExpense = completed
 		.filter((tx) => tx.type === "expense")
@@ -127,7 +163,12 @@ function buildTrendRows(
 				tx.date <= bucket.end
 		);
 		const income = rows
-			.filter((tx) => tx.type === "income")
+			.filter(
+				(tx) =>
+					tx.type === "income" &&
+					tx.category !== "Modal Awal" &&
+					tx.category !== "Setoran Akhir"
+			)
 			.reduce((sum, tx) => sum + safeNum(tx.amount), 0);
 		const expense = rows
 			.filter((tx) => tx.type === "expense")
@@ -144,7 +185,7 @@ function mapTransactionRows(transactions: any[], mode: "transaction" | "item") {
 			displaySummary: tx.description || tx.category || "-",
 			receiptGroupLabel: tx.metadata?.receiptNumber || tx._id,
 			referenceValue: tx.orderId || tx.bookingOrderId || "",
-			sourceLabel: tx.type,
+			sourceLabel: tx.metadata?.sourceLabel || tx.type,
 			sourceRef: tx.metadata?.sourceRef || "",
 		}));
 	}
@@ -164,7 +205,7 @@ function mapTransactionRows(transactions: any[], mode: "transaction" | "item") {
 				displaySummary: tx.description || tx.category || "-",
 				receiptGroupLabel: tx.metadata?.receiptNumber || tx._id,
 				referenceValue: tx.orderId || tx.bookingOrderId || "",
-				sourceLabel: tx.type,
+				sourceLabel: tx.metadata?.sourceLabel || tx.type,
 				sourceRef: tx.metadata?.sourceRef || "",
 			});
 			continue;
@@ -188,8 +229,8 @@ function mapTransactionRows(transactions: any[], mode: "transaction" | "item") {
 				displaySummary: `${item.name ?? "Item"} x${qty}`,
 				receiptGroupLabel: tx.metadata?.receiptNumber || tx._id,
 				referenceValue: tx.orderId || tx.bookingOrderId || "",
-				sourceLabel: tx.type,
-				sourceRef: tx.metadata?.sourceRef || "",
+			sourceLabel: tx.metadata?.sourceLabel || tx.type,
+			sourceRef: tx.metadata?.sourceRef || "",
 			});
 		});
 	}
