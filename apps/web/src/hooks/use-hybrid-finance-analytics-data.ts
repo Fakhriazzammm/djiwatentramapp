@@ -1231,3 +1231,110 @@ export function useHybridHppPriceSimulation(
 	) as any;
 }
 
+// ── Accounting Data ─────────────────────────────────────
+
+async function fetchAccountingEntries(args?: {
+	startDate?: number;
+	endDate?: number;
+}): Promise<any[]> {
+	const supabase = createClient();
+	const { startDate, endDate } = getRange(args);
+	const { data: txDates, error: txError } = await supabase
+		.from("pos_financial_transactions")
+		.select("_id")
+		.gte("date", startDate)
+		.lte("date", endDate);
+	if (txError) throw txError;
+	const ids = (txDates ?? []).map((r: any) => r._id);
+	if (ids.length === 0) return [];
+
+	const { data: entries, error: eError } = await supabase
+		.from("accounting_entries")
+		.select("*")
+		.in("transaction_source_id", ids)
+		.order("transaction_source_id", { ascending: true })
+		.order("item_index", { ascending: true });
+	if (eError) throw eError;
+
+	const { data: coas, error: cError } = await supabase
+		.from("accounting_chart_of_accounts")
+		.select("id, code, name, type, normal_balance")
+		.limit(100);
+	if (cError) throw cError;
+
+	const coaMap = new Map<string, any>();
+	for (const c of coas ?? []) coaMap.set(c.id, c);
+
+	return (entries ?? []).map((e: any) => ({
+		...e,
+		coa: coaMap.get(e.coa_id) ?? null,
+		coaCode: coaMap.get(e.coa_id)?.code ?? "",
+		coaName: coaMap.get(e.coa_id)?.name ?? "",
+		coaType: coaMap.get(e.coa_id)?.type ?? "",
+	}));
+}
+
+async function fetchAccountingSummary(args?: {
+	startDate?: number;
+	endDate?: number;
+}): Promise<any> {
+	const entries = await fetchAccountingEntries(args);
+	let totalDebit = 0;
+	let totalKredit = 0;
+	for (const e of entries) {
+		if (e.entry_type === "debit") totalDebit += safeNum(e.amount);
+		else totalKredit += safeNum(e.amount);
+	}
+	return {
+		totalDebit,
+		totalKredit,
+		selisih: totalDebit - totalKredit,
+		balance: Math.abs(totalDebit - totalKredit) < 0.01,
+		count: entries.length,
+	};
+}
+
+export function useHybridAccountingReport(args?: {
+	startDate?: number;
+	endDate?: number;
+}): {
+	entries: any[];
+	summary: { totalDebit: number; totalKredit: number; selisih: number; balance: boolean; count: number };
+	loading: boolean;
+} {
+	const key = args
+		? `accounting:${args.startDate ?? ""}:${args.endDate ?? ""}`
+		: "accounting:skip";
+
+	const entries = useSupabaseValue(
+		`${key}:entries`,
+		() => {
+			if (!args) return Promise.resolve([]);
+			return fetchAccountingEntries(args);
+		},
+		[args?.startDate, args?.endDate]
+	) as any[];
+
+	const summary = useSupabaseValue(
+		`${key}:summary`,
+		() => {
+			if (!args)
+				return Promise.resolve({
+					totalDebit: 0,
+					totalKredit: 0,
+					selisih: 0,
+					balance: true,
+					count: 0,
+				});
+			return fetchAccountingSummary(args);
+		},
+		[args?.startDate, args?.endDate]
+	) as any;
+
+	return {
+		entries: entries ?? [],
+		summary: summary ?? { totalDebit: 0, totalKredit: 0, selisih: 0, balance: true, count: 0 },
+		loading: entries === undefined,
+	};
+}
+

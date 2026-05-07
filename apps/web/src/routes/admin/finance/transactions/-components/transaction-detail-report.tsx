@@ -15,6 +15,7 @@ import {
 	TrendingUp,
 	BarChart2,
 	AlertTriangle,
+	BookOpen,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,6 +28,7 @@ import { format, startOfDay, endOfDay } from "date-fns";
 import { id as localeID } from "date-fns/locale";
 import { useHybridShiftReportRows } from "@/hooks/use-hybrid-pos-data";
 import { useHybridTransactionDetailReport } from "@/hooks/use-hybrid-finance-analytics-data";
+import { useHybridAccountingReport } from "@/hooks/use-hybrid-finance-analytics-data";
 import {
 	useHybridDeleteTransaction,
 	useHybridDeleteTransactionScanItem,
@@ -120,6 +122,7 @@ export function TransactionDetailReport({
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 	const [showFilters, setShowFilters] = useState(false);
 	const [showRunningBalance, setShowRunningBalance] = useState(false);
+	const [accountingMode, setAccountingMode] = useState(false);
 	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 	const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
 	const [selectedRowKeys, setSelectedRowKeys] = useState<Set<string>>(new Set());
@@ -699,6 +702,9 @@ export function TransactionDetailReport({
 	};
 
 	const columnCount = showRunningBalance ? 10 : 9;
+	const accData = useHybridAccountingReport(
+		accountingMode && range ? { startDate: range.startDate, endDate: range.endDate } : undefined
+	);
 	const withMergedHeader = Boolean(
 		period && periodButtons && onPeriodChange && onViewModeChange &&
 		onGroupModeChange && onExportPdf && onOpenAddTransaction && summary
@@ -738,6 +744,13 @@ export function TransactionDetailReport({
 								title="Tampilkan saldo berjalan">
 								<BarChart2 className="h-2.5 w-2.5" />
 								Saldo
+							</button>
+							{/* Accounting mode toggle */}
+							<button type="button" onClick={() => setAccountingMode((v) => !v)}
+								className={`inline-flex h-5 items-center gap-1 rounded border px-1.5 text-[9px] font-medium transition-colors ${accountingMode ? "border-amber-500 bg-amber-50 text-amber-700" : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"}`}
+								title="Mode akuntansi dengan Debit/Kredit">
+								<BookOpen className="h-2.5 w-2.5" />
+								{accountingMode ? "Akuntansi" : "Akuntansi"}
 							</button>
 							{/* Comparison toggle */}
 							{onToggleComparison && (
@@ -801,7 +814,22 @@ export function TransactionDetailReport({
 
 						{/* Summary stats */}
 						<div className="flex flex-col items-end gap-0.5">
-							<div className="flex items-center divide-x divide-slate-200 text-[10px]">
+							{accountingMode && accData.summary ? (
+								<div className="flex items-center divide-x divide-slate-200 text-[10px]">
+									<span className="pr-2 text-slate-500">{summary!.periodLabel}</span>
+									<span className="px-2 font-semibold text-sky-600">
+										💳 Debit: {formatCurrencyIDR(accData.summary.totalDebit)}
+									</span>
+									<span className="px-2 font-semibold text-violet-600">
+										💰 Kredit: {formatCurrencyIDR(accData.summary.totalKredit)}
+									</span>
+									<span className={`pl-2 font-bold ${accData.summary.balance ? "text-emerald-600" : "text-red-600"}`}>
+										⚖️ {accData.summary.balance ? "BALANCE" : `Selisih ${formatCurrencyIDR(Math.abs(accData.summary.selisih))}`}
+									</span>
+									<span className="pl-2 text-slate-500">{accData.summary.count} entries</span>
+								</div>
+							) : (
+								<div className="flex items-center divide-x divide-slate-200 text-[10px]">
 								<span className="pr-2 text-slate-500">{summary!.periodLabel}</span>
 								<span className="px-2 font-semibold text-emerald-600">
 									↑ {formatCurrencyIDR(summary!.totalIncome)}
@@ -817,6 +845,7 @@ export function TransactionDetailReport({
 								</span>
 								<span className="pl-2 text-slate-500">{summary!.count} tx</span>
 							</div>
+							)}
 							{showComparison && previousSummary && (
 								<div className="text-[8px] text-slate-400">
 									vs {previousSummary.periodLabel}: ↑ {formatCurrencyIDR(previousSummary.totalIncome)} · ↓ {formatCurrencyIDR(previousSummary.totalExpense)}
@@ -981,6 +1010,84 @@ export function TransactionDetailReport({
 				)}
 
 				{/* ── Table ────────────────────────────────────────────────── */}
+				{accountingMode ? (
+					<div className="overflow-auto">
+						<table className="w-full min-w-[680px] table-auto text-left text-[10px] text-slate-700">
+							<colgroup>
+								<col style={{ width: "32px" }} />
+								<col style={{ width: "80px" }} />
+								<col style={{ width: "98px" }} />
+								<col style={{ width: "70px" }} />
+								<col />
+								<col style={{ width: "120px" }} />
+								<col style={{ width: "120px" }} />
+								<col style={{ width: "50px" }} />
+							</colgroup>
+							<thead className="sticky top-0 z-10 bg-slate-50 text-[8px] font-semibold uppercase tracking-wider text-slate-500">
+								<tr>
+									<th className="border-b border-slate-200 bg-slate-50 px-1 py-1 text-center">No</th>
+									<th className="border-b border-slate-200 px-2 py-1">Tanggal</th>
+									<th className="border-b border-slate-200 px-2 py-1">ID</th>
+									<th className="border-b border-slate-200 px-2 py-1">Sumber</th>
+									<th className="border-b border-slate-200 px-2 py-1">Akun / COA</th>
+									<th className="border-b border-slate-200 bg-sky-50 px-2 py-1 text-right text-sky-700">Debit</th>
+									<th className="border-b border-slate-200 bg-violet-50 px-2 py-1 text-right text-violet-700">Kredit</th>
+									<th className="border-b border-slate-200 px-1 py-1 text-center">✅</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-slate-100 bg-white">
+								{accData.loading ? (
+									Array.from({ length: 5 }).map((_, i) => (
+										<tr key={i}>
+											<td colSpan={8} className="px-2 py-1"><Skeleton className="h-3 w-full" /></td>
+										</tr>
+									))
+								) : accData.entries.length === 0 ? (
+									<tr>
+										<td colSpan={8} className="px-2 py-8 text-center text-[10px] text-slate-400">
+											Belum ada entry akuntansi untuk periode ini.
+										</td>
+									</tr>
+								) : (
+									accData.entries.map((e: any, i: number) => {
+										const isDebit = e.entry_type === "debit";
+										return (
+											<tr key={e.id || i}
+												className={`group transition-colors hover:bg-slate-50 ${isDebit ? "" : ""}`}>
+												<td className="px-1 py-0.5 text-center font-mono text-[9px] text-slate-400">{i + 1}</td>
+												<td className="whitespace-nowrap px-2 py-0.5">
+													<span className="text-[9px] text-slate-500">{e.created_at ? new Date(e.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short" }) : "-"}</span>
+												</td>
+												<td className="whitespace-nowrap px-2 py-0.5">
+													<span className="font-mono text-[8px] text-slate-400">{String(e.transaction_source_id).slice(-10)}</span>
+												</td>
+												<td className="whitespace-nowrap px-2 py-0.5">
+													<span className="text-[9px] text-slate-600">{isDebit ? "💳" : "💰"}</span>
+												</td>
+												<td className="px-2 py-0.5">
+													<span className="text-[10px] font-medium text-slate-800">
+														{e.coaName || "—"}
+													</span>
+													{e.coaCode && <span className="ml-1 text-[8px] text-slate-400">({e.coaCode})</span>}
+													{e.description && <span className="ml-1 text-[8px] text-slate-400">· {e.description}</span>}
+												</td>
+												<td className="whitespace-nowrap px-2 py-0.5 text-right font-mono text-[10px] text-sky-600">
+													{isDebit ? formatCurrencyIDR(e.amount) : ""}
+												</td>
+												<td className="whitespace-nowrap px-2 py-0.5 text-right font-mono text-[10px] text-violet-600">
+													{!isDebit ? formatCurrencyIDR(e.amount) : ""}
+												</td>
+												<td className="px-1 py-0.5 text-center text-[9px]">
+													<span>✅</span>
+												</td>
+											</tr>
+										);
+									})
+								)}
+							</tbody>
+						</table>
+					</div>
+				) : (
 				<div
 					ref={scrollContainerRef}
 					onScroll={(e) => setScrollTop((e.target as HTMLDivElement).scrollTop)}
@@ -1460,6 +1567,7 @@ export function TransactionDetailReport({
 						</tbody>
 					</table>
 				</div>
+				)}
 
 				{/* ── Pagination ─────────────────────────────────────────────── */}
 				{data && (
