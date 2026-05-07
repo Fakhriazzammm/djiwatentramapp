@@ -1368,24 +1368,26 @@ export function TransactionDetailReport({
 													{hasScanItems && (
 														<div className="overflow-hidden rounded-md border border-slate-200">
 															<table className="w-full text-[10px]">
-																<thead className="bg-slate-50">
-																	<tr>
-																		<th className="px-3 py-1.5 text-left font-medium text-slate-600">Item</th>
-																		<th className="px-3 py-1.5 text-right font-medium text-slate-600">Qty</th>
-																		<th className="px-3 py-1.5 text-right font-medium text-slate-600">Harga</th>
-																		<th className="px-3 py-1.5 text-right font-medium text-slate-600">Total</th>
-																	</tr>
-																</thead>
-																<tbody className="divide-y divide-slate-100">
-																	{t.metadata.scanItems.map((item: any, i: number) => (
-																		<tr key={i} className="hover:bg-slate-50/50">
-																			<td className="px-3 py-1.5 font-medium text-slate-700">{item.name || "—"}</td>
-																			<td className="px-3 py-1.5 text-right text-slate-600">{item.quantity ?? "—"}</td>
-																			<td className="px-3 py-1.5 text-right font-mono text-slate-600">{Number.isFinite(Number(item.price)) ? formatCurrencyIDR(Number(item.price)) : "—"}</td>
-																			<td className="px-3 py-1.5 text-right font-mono font-semibold text-slate-800">{Number.isFinite(Number(item.total)) ? formatCurrencyIDR(Number(item.total)) : "—"}</td>
-																		</tr>
-																	))}
-																</tbody>
+							<thead className="bg-slate-50">
+								<tr>
+									<th className="w-8 px-2 py-1.5 text-center font-medium text-slate-600">No</th>
+									<th className="px-3 py-1.5 text-left font-medium text-slate-600">Nama / Item</th>
+									<th className="px-3 py-1.5 text-right font-medium text-slate-600">Qty</th>
+									<th className="px-3 py-1.5 text-right font-medium text-slate-600">Harga</th>
+									<th className="px-3 py-1.5 text-right font-medium text-slate-600">Total</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-slate-100">
+								{t.metadata.scanItems.map((item: any, i: number) => (
+									<tr key={i} className="hover:bg-slate-50/50">
+										<td className="px-2 py-1.5 text-center font-mono text-[10px] text-slate-400">{i + 1}</td>
+										<td className="px-3 py-1.5 font-medium text-slate-700">{item.name || "—"}</td>
+										<td className="px-3 py-1.5 text-right text-slate-600 font-mono">{item.quantity ?? "—"}x</td>
+										<td className="px-3 py-1.5 text-right font-mono text-slate-600">{Number.isFinite(Number(item.price)) ? formatCurrencyIDR(Number(item.price)) : "—"}</td>
+										<td className="px-3 py-1.5 text-right font-mono font-semibold text-slate-800">{Number.isFinite(Number(item.total)) ? formatCurrencyIDR(Number(item.total)) : "—"}</td>
+									</tr>
+								))}
+							</tbody>
 															</table>
 														</div>
 													)}
