@@ -76,21 +76,22 @@ async function fetchFinancialTransactions(args?: {
 		.filter((tx: any) => tx.type === "income" && tx.orderId)
 		.map((tx: any) => tx.orderId);
 	if (orderTxIds.length > 0) {
-		const { data: orderItems, error: oiError } = await supabase
-			.from("pos_order_items")
-			.select("*")
-			.in("order_source_id", orderTxIds);
-		if (!oiError && orderItems) {
+		// items ada di view public.pos_orders (kolom JSONB `items`)
+		const { data: orders, error: oError } = await supabase
+			.from("pos_orders")
+			.select("_id, items")
+			.in("_id", orderTxIds);
+		if (!oError && orders) {
 			const itemsByOrder = new Map<string, any[]>();
-			for (const item of orderItems) {
-				const oid = String(item.order_source_id);
-				if (!itemsByOrder.has(oid)) itemsByOrder.set(oid, []);
-				itemsByOrder.get(oid)!.push({
-					name: item.product_name ?? `Item ${item.line_no}`,
+			for (const order of orders) {
+				const orderItems = Array.isArray(order.items) ? order.items : [];
+				const mapped = orderItems.map((item: any, idx: number) => ({
+					name: item.productName ?? `Item ${idx + 1}`,
 					quantity: safeNum(item.quantity) || 1,
 					price: safeNum(item.price) || 0,
 					total: (safeNum(item.quantity) || 1) * (safeNum(item.price) || 0),
-				});
+				}));
+				itemsByOrder.set(String(order._id), mapped);
 			}
 			for (const tx of mapped) {
 				if (tx.type === "income" && tx.orderId) {
@@ -1274,20 +1275,21 @@ async function fetchAccountingEntries(args?: {
 		.map((tx: any) => tx.orderId || tx.bookingOrderId);
 	const itemsByOrder = new Map<string, any[]>();
 	if (incomeTxIds.length > 0) {
-		const { data: orderItems, error: oiError } = await supabase
-			.from("pos_order_items")
-			.select("*")
-			.in("order_source_id", incomeTxIds);
-		if (!oiError && orderItems) {
-			for (const item of orderItems) {
-				const oid = String(item.order_source_id);
-				if (!itemsByOrder.has(oid)) itemsByOrder.set(oid, []);
-				itemsByOrder.get(oid)!.push({
-					name: item.product_name ?? `Item ${item.line_no}`,
+		// items ada di view public.pos_orders (kolom JSONB `items`)
+		const { data: orders, error: oError } = await supabase
+			.from("pos_orders")
+			.select("_id, items")
+			.in("_id", incomeTxIds);
+		if (!oError && orders) {
+			for (const order of orders) {
+				const orderItems = Array.isArray(order.items) ? order.items : [];
+				const mapped = orderItems.map((item: any, idx: number) => ({
+					name: item.productName ?? `Item ${idx + 1}`,
 					quantity: safeNum(item.quantity) || 1,
 					price: safeNum(item.price) || 0,
 					total: (safeNum(item.quantity) || 1) * (safeNum(item.price) || 0),
-				});
+				}));
+				itemsByOrder.set(String(order._id), mapped);
 			}
 		}
 		// Inject items into tx metadata
