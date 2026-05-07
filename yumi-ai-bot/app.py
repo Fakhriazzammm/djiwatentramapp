@@ -39,6 +39,7 @@ MARKETLIST_GROUP_ID = int(os.getenv("MARKETLIST_GROUP_ID", "-5288006237"))
 
 # Dedup: track already-reported orders to prevent re-sending
 _reported_order_nos: set[str] = set()
+_reported_expense_ids: set[str] = set()
 
 # Polling state for real-time transaction monitoring
 _last_order_check_ms = 0
@@ -1399,7 +1400,7 @@ def _format_time_hm(ts_ms) -> str:
 
 async def _check_new_transactions(app):
     """Poll for new orders and expenses, report to group."""
-    global _last_order_check_ms, _last_expense_check_ms, _reported_order_nos
+    global _last_order_check_ms, _last_expense_check_ms, _reported_order_nos, _reported_expense_ids
     now_ms = int(_now_wib().timestamp() * 1000)
 
     # Periodic dedup set cleanup (max 500 entries)
@@ -1477,17 +1478,23 @@ async def _check_new_transactions(app):
         # Always advance cursor to prevent re-querying same window
         _last_order_check_ms = now_ms
 
-        # ── Check new expenses ──
+        # ── Check new expenses (look back to today's midnight for OCR receipts) ──
+        today_start_ms = _start_of_day_ms(_now_wib())
+        expense_lookback = min(_last_expense_check_ms, today_start_ms) if _last_expense_check_ms > 0 else today_start_ms
         fin_rows = await _fetch(
             "pos_financial_transactions",
-            f"select=amount,category,description,date,metadata"
+            f"select=_id,amount,category,description,date,metadata"
             f"&type=eq.expense"
-            f"&date=gt.{_last_expense_check_ms - 1}"
+            f"&date=gte.{expense_lookback}"
             f"&date=lte.{now_ms}"
-            f"&order=date.asc&limit=10",
+            f"&order=date.asc&limit=20",
         )
 
         for x in fin_rows:
+            exp_id = x.get("_id") or ""
+            if exp_id and exp_id in _reported_expense_ids:
+                continue
+
             ts = int(float(x.get("date") or 0))
             amount = float(x.get("amount") or 0)
             cat = x.get("category") or "Lainnya"
@@ -1517,6 +1524,8 @@ async def _check_new_transactions(app):
             if cashier:
                 lines.append(f"👥 Kasir: {cashier}")
             await _send_to_group(app, "\n".join(lines))
+            if exp_id:
+                _reported_expense_ids.add(exp_id)
             await asyncio.sleep(0.3)
 
         # Always advance expense cursor
