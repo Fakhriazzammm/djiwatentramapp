@@ -3792,72 +3792,72 @@ export function useHybridCreateTransaction() {
 					metadata: (args?.metadata as Record<string, any> | undefined) ?? undefined,
 				});
 
-\t\t\t\tconst fingerprint = args?.sourceFingerprint;
+				const fingerprint = args?.sourceFingerprint;
 
-\t\t\t\t// ── Dedup: cek apakah transaksi sudah ada ──
-\t\t\t\tconst client = createClient();
-\t\t\t\tif (fingerprint) {
-\t\t\t\t\tconst { data: existing } = await client
-\t\t\t\t\t\t.schema("pos")
-\t\t\t\t\t\t.from("financial_transactions")
-\t\t\t\t\t\t.select("source_id")
-\t\t\t\t\t\t.eq("source_fingerprint", fingerprint)
-\t\t\t\t\t\t.maybeSingle();
-\t\t\t\t\tif (existing) {
-\t\t\t\t\t\treturn existing.source_id;
-\t\t\t\t\t}
-\t\t\t\t}
+				// ── Dedup: cek apakah transaksi sudah ada ──
+				const client = createClient();
+				if (fingerprint) {
+					const { data: existing } = await client
+						.schema("pos")
+						.from("financial_transactions")
+						.select("source_id")
+						.eq("source_fingerprint", fingerprint)
+						.maybeSingle();
+					if (existing) {
+						return existing.source_id;
+					}
+				}
 
-\t\t\t\t// Fallback dedup: cek combination type+amount+category+description dalam 2 menit
-\t\t\t\tconst description = args?.description ?? "";
-\t\t\t\tconst amount = Number(args?.amount ?? 0);
-\t\t\t\tif (!fingerprint && amount > 0 && type && category) {
-\t\t\t\t\tconst { data: similar } = await client
-\t\t\t\t\t\t.schema("pos")
-\t\t\t\t\t\t.from("financial_transactions")
-\t\t\t\t\t\t.select("source_id")
-\t\t\t\t\t\t.eq("tx_type", type)
-\t\t\t\t\t\t.eq("amount", amount)
-\t\t\t\t\t\t.eq("category", category)
-\t\t\t\t\t\t.eq("description", description)
-\t\t\t\t\t\t.gte("tx_date", date - 2 * 60 * 1000)
-\t\t\t\t\t\t.lte("tx_date", date + 60 * 1000)
-\t\t\t\t\t\t.limit(1)
-\t\t\t\t\t\t.maybeSingle();
-\t\t\t\t\tif (similar) {
-\t\t\t\t\t\tconsole.log("[DEDUP] Duplicate detected by match, returning existing source_id", similar.source_id);
-\t\t\t\t\t\treturn similar.source_id;
-\t\t\t\t\t}
-\t\t\t\t}
+				// Fallback dedup: cek combination type+amount+category+description dalam 2 menit
+				const description = args?.description ?? "";
+				const amount = Number(args?.amount ?? 0);
+				if (!fingerprint && amount > 0 && type && category) {
+					const { data: similar } = await client
+						.schema("pos")
+						.from("financial_transactions")
+						.select("source_id")
+						.eq("tx_type", type)
+						.eq("amount", amount)
+						.eq("category", category)
+						.eq("description", description)
+						.gte("tx_date", date - 2 * 60 * 1000)
+						.lte("tx_date", date + 60 * 1000)
+						.limit(1)
+						.maybeSingle();
+					if (similar) {
+						console.log("[DEDUP] Duplicate detected by match, returning existing source_id", similar.source_id);
+						return similar.source_id;
+					}
+				}
 
-\t\t\t\tconst sourceId = makeSourceId("fin");
-\t\t\t\tconst txDate = date;
-\t\t\t\tconst row = {
-\t\t\t\t\tsource_id: sourceId,
-\t\t\t\t\ttx_type: type,
-\t\t\t\t\tamount,
-\t\t\t\t\tcategory,
-\t\t\t\t\tmerchant: args?.merchant ?? null,
-\t\t\t\t\tdescription,
-\t\t\t\t\ttx_date: txDate,
-\t\t\t\t\tpayment_method: args?.paymentMethod ?? null,
-\t\t\t\t\tstatus: args?.status ?? "completed",
-\t\t\t\t\tattachment_url: args?.attachmentUrl ?? null,
-\t\t\t\t\tsource_fingerprint: fingerprint ?? null,
-\t\t\t\t\tis_recurring:
-\t\t\t\t\t\targs?.isRecurring === undefined ? null : Boolean(args.isRecurring),
-\t\t\t\t\trecurring_interval: args?.recurringInterval ?? null,
-\t\t\t\t\ttags: Array.isArray(args?.tags) ? args.tags : null,
-\t\t\t\t\tmetadata,
-\t\t\t\t\tcreation_time: Date.now(),
-\t\t\t\t\traw: args ?? {},
-\t\t\t\t};
+				const sourceId = makeSourceId("fin");
+				const txDate = date;
+				const row = {
+					source_id: sourceId,
+					tx_type: type,
+					amount,
+					category,
+					merchant: args?.merchant ?? null,
+					description,
+					tx_date: txDate,
+					payment_method: args?.paymentMethod ?? null,
+					status: args?.status ?? "completed",
+					attachment_url: args?.attachmentUrl ?? null,
+					source_fingerprint: fingerprint ?? null,
+					is_recurring:
+						args?.isRecurring === undefined ? null : Boolean(args.isRecurring),
+					recurring_interval: args?.recurringInterval ?? null,
+					tags: Array.isArray(args?.tags) ? args.tags : null,
+					metadata,
+					creation_time: Date.now(),
+					raw: args ?? {},
+				};
 
-\t\t\t\tconst { error } = await client
-\t\t\t\t\t.schema("pos")
-\t\t\t\t\t.from("financial_transactions")
-\t\t\t\t\t.insert(row);
-\t\t\t\tif (error) throw error;
+				const { error } = await client
+					.schema("pos")
+					.from("financial_transactions")
+					.insert(row);
+				if (error) throw error;
 
 				// Fire-and-forget: notify Yumi Finance Analyzer for real-time AI analysis
 				const analyzerUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_ANALYZER_URL) ||

@@ -1473,6 +1473,26 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             category, _ = auto_categorize(result.description, result.amount)
             if result.category:
                 category = result.category
+            # Parse items dari description utk non-OCR: "Pembelian bahan: Timun, Selada..."
+            scan_items = []
+            if result.items:
+                scan_items = [
+                    {"name": it.get("name", ""), "quantity": float(it.get("qty", 1)), "unit": it.get("unit", ""), "price": float(it.get("price", 0)), "total": float(it.get("qty", 1)) * float(it.get("price", 0))}
+                    for it in result.items
+                ]
+            elif result.description:
+                # Fallback: parse item names from comma-separated list in description
+                desc = result.description
+                for prefix in ["Pembelian bahan: ", "Belanja bahan: ", "Belanja - ", "Pembelian: "]:
+                    if prefix in desc:
+                        after = desc.split(prefix, 1)[1]
+                        # Hapus keterangan sesudahnya kalo ada
+                        after = re.split(r' \+(?: \d+ item|dll)', after)[0]
+                        names = [n.strip() for n in after.split(",") if n.strip()]
+                        if names:
+                            scan_items = [{"name": n, "quantity": 1, "price": 0, "total": 0} for n in names]
+                        break
+
             tx = await finance.record_transaction(
                 tx_type="expense",
                 amount=result.amount,
@@ -1480,11 +1500,8 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 category=category,
                 metadata={
                     "source": "yumi_finance_agent",
-                    "scanItems": [
-                        {"name": it.get("name", ""), "quantity": float(it.get("qty", 1)), "price": float(it.get("price", 0)), "total": float(it.get("qty", 1)) * float(it.get("price", 0))}
-                        for it in (result.items or [])
-                    ] if result.items else None,
-                } if result.items else None,
+                    "scanItems": scan_items if scan_items else None,
+                },
             )
             if tx.get("ok"):
                 cat_label = get_category_label(category)

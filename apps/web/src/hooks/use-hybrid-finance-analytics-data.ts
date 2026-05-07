@@ -37,52 +37,52 @@ function groupBy(items: any[], key: (item: any) => string) {
 }
 
 async function fetchFinancialTransactions(args?: {
-\ttype?: "income" | "expense";
-\tstartDate?: number;
-\tendDate?: number;
+	type?: "income" | "expense";
+	startDate?: number;
+	endDate?: number;
 }): Promise<any[]> {
-\tconst supabase = createClient();
-\tconst { startDate, endDate } = getRange(args);
-\tlet query = supabase
-\t\t.from("pos_financial_transactions")
-\t\t.select("*")
-\t\t.gte("date", startDate)
-\t\t.lte("date", endDate)
-\t\t.order("date", { ascending: false });
-\tif (args?.type) query = query.eq("type", args.type);
-\tconst { data, error } = await query;
-\tif (error) throw error;
-\tconst mapped = (data ?? []).map((row: any) => ({
-\t\t_id: row._id,
-\t\ttype: row.type ?? "expense",
-\t\tamount: safeNum(row.amount),
-\t\tcategory: row.category ?? "",
-\t\tmerchant: row.merchant ?? "",
-\t\tdescription: row.description ?? "",
-\t\tdate: safeNum(row.date),
-\t\tpaymentMethod: row.paymentMethod ?? "cash",
-\t\tstatus: row.status ?? "completed",
-\t\torderId: row.orderId ?? null,
-\t\tbookingOrderId: row.bookingOrderId ?? null,
-\t\tattachmentUrl: row.attachmentUrl ?? null,
-\t\tsourceFingerprint: row.sourceFingerprint ?? null,
-\t\tisRecurring: Boolean(row.isRecurring),
-\t\trecurringInterval: row.recurringInterval ?? null,
-\t\ttags: Array.isArray(row.tags) ? row.tags : [],
-\t\tmetadata: row.metadata && typeof row.metadata === "object" ? row.metadata : {},
-\t}));
-\t// ── Safety dedup: jika ada 2+ transaksi dengan fingerprint sama, retain pertama ──
-\tconst seen = new Set<string>();
-\tconst deduped: typeof mapped = [];
-\tfor (const tx of mapped) {
-\t\tconst key = tx.sourceFingerprint ||
-\t\t\t`${tx.type}|${tx.amount}|${tx.category}|${tx.description}|${Math.floor(tx.date / 60000)}`;
-\t\tif (!seen.has(key)) {
-\t\t\tseen.add(key);
-\t\t\tdeduped.push(tx);
-\t\t}
-\t}
-\treturn deduped;
+	const supabase = createClient();
+	const { startDate, endDate } = getRange(args);
+	let query = supabase
+		.from("pos_financial_transactions")
+		.select("*")
+		.gte("date", startDate)
+		.lte("date", endDate)
+		.order("date", { ascending: false });
+	if (args?.type) query = query.eq("type", args.type);
+	const { data, error } = await query;
+	if (error) throw error;
+	const mapped = (data ?? []).map((row: any) => ({
+		_id: row._id,
+		type: row.type ?? "expense",
+		amount: safeNum(row.amount),
+		category: row.category ?? "",
+		merchant: row.merchant ?? "",
+		description: row.description ?? "",
+		date: safeNum(row.date),
+		paymentMethod: row.paymentMethod ?? "cash",
+		status: row.status ?? "completed",
+		orderId: row.orderId ?? null,
+		bookingOrderId: row.bookingOrderId ?? null,
+		attachmentUrl: row.attachmentUrl ?? null,
+		sourceFingerprint: row.sourceFingerprint ?? null,
+		isRecurring: Boolean(row.isRecurring),
+		recurringInterval: row.recurringInterval ?? null,
+		tags: Array.isArray(row.tags) ? row.tags : [],
+		metadata: row.metadata && typeof row.metadata === "object" ? row.metadata : {},
+	}));
+	// ── Safety dedup: jika ada 2+ transaksi dengan fingerprint sama, retain pertama ──
+	const seen = new Set<string>();
+	const deduped: typeof mapped = [];
+	for (const tx of mapped) {
+		const key = tx.sourceFingerprint ||
+			`${tx.type}|${tx.amount}|${tx.category}|${tx.description}|${Math.floor(tx.date / 60000)}`;
+		if (!seen.has(key)) {
+			seen.add(key);
+			deduped.push(tx);
+		}
+	}
+	return deduped;
 }
 
 async function fetchOrders(args?: { startDate?: number; endDate?: number }) {

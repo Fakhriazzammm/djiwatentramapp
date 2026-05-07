@@ -1385,6 +1385,7 @@ async def _send_to_group(app, text: str):
     """Send a message to the auto-report group."""
     try:
         await app.bot.send_message(chat_id=REPORT_GROUP_ID, text=text)
+        logger.info("Sent notification to group %s", REPORT_GROUP_ID)
     except Exception as e:
         logger.error("send_to_group failed: %s", e)
 
@@ -1455,7 +1456,7 @@ async def _check_new_transactions(app):
             # ── Transaction report (per baris, tanpa |) ──
             lines = [
                 f"🧾 Pesanan Baru — {_format_time_ms(ts)}",
-                "━━━━━━━━━━━━━━━━━━",
+                "────────────",
                 f"🆔 {order_no}",
             ]
             if struk_line:
@@ -1511,7 +1512,7 @@ async def _check_new_transactions(app):
             header = "📸💸 Pengeluaran" if is_ocr else "💸 Pengeluaran"
             lines = [
                 f"{header} — {_format_time_ms(ts)}",
-                "━━━━━━━━━━━━━━━━━━",
+                "────────────",
             ]
 
             # Merchant dari OCR metadata
@@ -1534,6 +1535,15 @@ async def _check_new_transactions(app):
                 parsed = re.findall(r'([A-Za-z][A-Za-z .]+?)\s*[×x]\s*([\d.]+)', desc)
                 if parsed:
                     scan_items = [{"name": p[0].strip(), "quantity": float(p[1]), "price": 0, "total": 0} for p in parsed]
+                else:
+                    # Fallback: parse comma-separated names dari description
+                    for prefix in ["Pembelian bahan: ", "Belanja bahan: ", "Belanja - ", "Pembelian: "]:
+                        if prefix in desc:
+                            after = desc.split(prefix, 1)[1]
+                            names = [n.strip() for n in re.split(r'[,;]\s*', after) if n.strip()]
+                            if names:
+                                scan_items = [{"name": n, "quantity": 1, "price": 0, "total": 0} for n in names]
+                            break
 
             if scan_items:
                 lines.append("")
@@ -1543,10 +1553,12 @@ async def _check_new_transactions(app):
                     sq = float(si.get("quantity", 1))
                     sp = float(si.get("price", 0) or 0)
                     st = float(si.get("total", 0) or 0)
-                    sq_str = f"{sq:.0f}" if sq == int(sq) else f"{sq:.1f}"
+                    su = (si.get("unit", "") or "").strip()
+                    sq_str = f"{sq:.0f}" if sq == int(sq) else f"{sq:.3f}".rstrip("0").rstrip(".")
+                    unit_str = f" {su}" if su else ""
                     price_str = f" @ Rp{sp:,.0f}" if sp > 0 else ""
                     total_str = f" = Rp{st:,.0f}" if st > 0 else ""
-                    lines.append(f"  • {sn} x{sq_str}{price_str}{total_str}")
+                    lines.append(f"  • {sn} x{sq_str}{unit_str}{price_str}{total_str}")
 
             if desc:
                 lines.append(f"📝 {desc}")

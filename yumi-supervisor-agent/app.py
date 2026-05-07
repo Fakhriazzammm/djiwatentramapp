@@ -442,7 +442,7 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
 
     base_text = "\n".join([
         f"☕ PESANAN BARU — 🕐 {_format_time_hm(ts_ms)}",
-        "━━━━━━━━━━━━━━━━━━",
+        "────────────",
         f"🆔 {order_no}",
     ])
     if struk_line:
@@ -454,7 +454,7 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
         "",
         "Minuman:",
         *item_lines,
-        "━━━━━━━━━━━━━━━━━━",
+        "────────────",
         "⏳ Mohon segera dibuat!",
         "",
         "Tekan tombol untuk memproses pesanan",
@@ -510,7 +510,7 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
 
     base_text = "\n".join([
         f"🍳 PESANAN BARU — 🕐 {_format_time_hm(ts_ms)}",
-        "━━━━━━━━━━━━━━━━━━",
+        "────────────",
         f"🆔 {order_no}",
     ])
     if struk_line:
@@ -522,7 +522,7 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
         "",
         "Makanan:",
         *item_lines,
-        "━━━━━━━━━━━━━━━━━━",
+        "────────────",
         "⏳ Mohon segera dibuat!",
         "",
         "Tekan tombol untuk memproses pesanan",

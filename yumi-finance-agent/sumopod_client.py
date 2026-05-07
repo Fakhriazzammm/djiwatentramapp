@@ -107,26 +107,56 @@ class SumoPodClient:
                 except ValueError:
                     amount = 0
 
-            # Parse items: "ITEMS: Timun|1|8000, Selada|1|40000"
+            # Parse items: "ITEMS: Timun|1|kg|8000, Selada|1|kg|40000" atau "ITEMS: Timun|1||8000, Selada|1||40000"
             items = []
             items_match = re.search(r"ITEMS:\s*(.+)", reply)
             if items_match:
                 raw_items = items_match.group(1).strip()
                 for part in re.split(r'[,;]\s*', raw_items):
                     item_parts = part.split("|")
-                    if len(item_parts) >= 3:
+                    if len(item_parts) >= 4:
+                        # name|qty|unit|price
                         try:
+                            qty_raw = item_parts[1].strip()
+                            # Handle fractions: "1/4" → 0.25
+                            if "/" in qty_raw:
+                                num, den = qty_raw.split("/", 1)
+                                qty = float(num.strip()) / float(den.strip())
+                            else:
+                                qty = float(qty_raw)
+                            # Strip dots from Indonesian thousands separator in price
+                            price_raw = item_parts[3].strip().replace(",", "").replace(".", "")
                             items.append({
                                 "name": item_parts[0].strip(),
-                                "qty": float(item_parts[1].strip()),
-                                "price": float(item_parts[2].strip().replace(",", "")),
+                                "qty": qty,
+                                "unit": item_parts[2].strip(),
+                                "price": float(price_raw),
                             })
-                        except ValueError:
+                        except (ValueError, ZeroDivisionError):
+                            pass
+                    elif len(item_parts) >= 3:
+                        # name|qty|price
+                        try:
+                            qty_raw = item_parts[1].strip()
+                            if "/" in qty_raw:
+                                num, den = qty_raw.split("/", 1)
+                                qty = float(num.strip()) / float(den.strip())
+                            else:
+                                qty = float(qty_raw)
+                            price_raw = item_parts[2].strip().replace(",", "").replace(".", "")
+                            items.append({
+                                "name": item_parts[0].strip(),
+                                "qty": qty,
+                                "unit": "",
+                                "price": float(price_raw),
+                            })
+                        except (ValueError, ZeroDivisionError):
                             pass
                     elif len(item_parts) >= 1:
                         items.append({
                             "name": item_parts[0].strip(),
                             "qty": 1,
+                            "unit": "",
                             "price": 0,
                         })
 

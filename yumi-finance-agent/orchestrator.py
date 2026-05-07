@@ -194,22 +194,47 @@ ACTION: <action_name>
 AMOUNT: <angka (jika ada)>
 CATEGORY: <category (jika ada)>
 DESCRIPTION: <deskripsi>
-ITEMS: <nama1>|<qty1>|<harga1>, <nama2>|<qty2>|<harga2> (jika ada item detail)
+ITEMS: <nama1>|<qty1>|<unit1>|<harga1>, <nama2>|<qty2>|<unit2>|<harga2> (jika ada item detail)
 CONFIDENCE: high|medium|low
 REPLY: <balasan ke user dalam Bahasa Indonesia friendly dan informatif>
 
-Contoh ITEMS:
+Contoh ITEMS dengan unit:
+User: Tanggal: 7-5-2026
+ 1. Timun / 1 kg / 8.000
+ 2. Selada / 1 kg / 40.000
+Total: 204.000
+OUTPUT:
+ACTION: record_expense
+AMOUNT: 204000
+CATEGORY: bahan_makanan
+DESCRIPTION: Pembelian bahan: Timun, Selada, Bawang daun, Kemangi, Bawang putih, Jeruk Limau, Muncang, Bawang merah, Ebi, Cabe merah besar, Cabe Rawit
+ITEMS: Timun|1|kg|8000, Selada|1|kg|40000, Bawang daun|1|ikat|13000, Kemangi|5|ikat|10000, Bawang putih|1|kg|84000, Jeruk Limau|0.25|kg|7000, Muncang|0.25|kg|12000, Bawang merah|0.5|kg|18000, Ebi|0.25|kg|27000, Cabe merah besar|0.25|kg|18000, Cabe Rawit|0.25|kg|17000
+CONFIDENCE: high
+REPLY: 💸 Pengeluaran tercatat! Rp204.000 untuk belanja bahan.
+
+Contoh ITEMS tanpa unit:
 User: pengeluaran 204000 beli: 1. Timun / 8000, 2. Selada / 40000
 OUTPUT:
 ACTION: record_expense
 AMOUNT: 204000
 CATEGORY: bahan_makanan
 DESCRIPTION: Belanja bahan: Timun, Selada
-ITEMS: Timun|1|8000, Selada|1|40000
+ITEMS: Timun|1||8000, Selada|1||40000
 CONFIDENCE: high
 REPLY: 💸 Pengeluaran tercatat! Rp204.000 untuk belanja bahan.
 
-Jika user kirim daftar item dengan format "1. Nama / Harga" atau "Nama | Qty | Harga", parse item2 tsb dan masukkan ke ITEMS:.
+PENTING — Cara parse input user:
+1. Format item: "Nama / qty unit / harga" atau "Nama / harga" atau "Nama | Qty | Harga"
+2. ANGKA: titik (.) di Indonesia adalah pemisah ribuan, bukan desimal. 8.000 = 8000, 204.000 = 204000.
+   Untuk jumlah (qty): "1/4 kg" = 0.25 kg, "1/2" = 0.5
+3. TANGGAL: jika user menulis "Tanggal: 7-5-2026", parse tanggal tsb dan masukkan di DESCRIPTION.
+   Jangan simpan tanggal di ITEMS.
+4. SELALU output ITEMS jika user menyebutkan nama-nama item. Jika tanpa qty/harga, gunakan qty=1, unit="", harga=0.
+   Contoh: ITEMS: Timun|1||0, Selada|1||0
+5. DESCRIPTION: buat dari gabungan nama item. Prefix "Pembelian bahan: " untuk expense bahan makanan.
+6. AMOUNT: total dari angka di "Total:" atau jumlahkan semua harga item.
+   Hapus semua titik dari angka: 204.000 → AMOUNT: 204000
+
 KATEGORI untuk belanja bahan makanan: bahan_makanan (bukan lainnya).
 Untuk item seperti Timun, Selada, Daun, Kemangi, Bawang, Jeruk, Cabai, Ebi → kategori bahan_makanan.
 
