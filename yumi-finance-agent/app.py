@@ -1193,6 +1193,17 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
         },
     )
 
+    # ── Accounting dual-write ────────────────────────────────────
+    if tx_result.get("ok") and items and tx_type == "expense":
+        source_id = tx_result.get("sourceId", "")
+        asyncio.ensure_future(_write_accounting_entries(
+            source_id=source_id,
+            items=items,
+            category=category,
+            payment_method=receipt.get("payment_method", "cash"),
+            total_amount=total,
+        ))
+
     # ── Format balasan ──────────────────────────────────────────
     icon = "💰" if tx_type == "income" else "💸"
     type_label = "Pemasukan" if tx_type == "income" else "Pengeluaran"
@@ -1206,6 +1217,9 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
     lines.append(f"📁 Kategori: {get_category_label(category)}")
     if tx_result.get("ok"):
         lines.append(f"✅ Berhasil disimpan")
+        # Accounting badge jika ada entries
+        if tx_type == "expense" and items:
+            lines.append(f"📊 Entri akuntansi dibuat")
     else:
         lines.append(f"⚠️ Gagal: {tx_result.get('error', '?')}")
 
@@ -1412,6 +1426,322 @@ async def _redisplay_receipt(query, ref_id: str, receipt: dict):
     await query.edit_message_text("\n".join(lines), reply_markup=keyboard)
 
 
+# ── Accounting Dual-Write ──────────────────────────────────────────
+
+
+async def _write_accounting_entries(
+    source_id: str,
+    items: list[dict],
+    category: str,
+    payment_method: str,
+    total_amount: float,
+):
+    """Catat accounting entries via edge function classifyTransactionItems.
+
+    Args:
+        source_id: financial_transactions source_id (dari record_transaction return)
+        items: list of dict dengan keys name, quantity, price, total
+        category: category transaksi
+        payment_method: metode pembayaran
+        total_amount: total nominal transaksi
+    """
+    if not source_id or not items:
+        logger.info("Skipping accounting dual-write: no source_id or items")
+        return
+
+    try:
+        # Format items untuk edge function
+        scan_items = [
+            {
+                "name": it.get("name", ""),
+                "quantity": float(it.get("qty", 1)),
+                "price": float(it.get("price", 0)),
+                "total": float(it.get("qty", 1)) * float(it.get("price", 0)),
+            }
+            for it in items
+        ]
+
+        payload = {
+            "action": "classifyTransactionItems",
+            "transaction_id": source_id,
+            "items": scan_items,
+            "category": category,
+            "payment_method": payment_method,
+            "total_amount": total_amount,
+        }
+
+        url = f"{SUPABASE_URL}/functions/v1/yumi-ai"
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                url,
+                json=payload,
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                },
+            )
+            if resp.status_code >= 400:
+                logger.warning(
+                    "Accounting dual-write failed: %s %s",
+                    resp.status_code, resp.text[:200],
+                )
+                return
+
+            result = resp.json()
+            if result.get("ok"):
+                classifications = result.get("classifications", [])
+                logger.info(
+                    "Accounting entries created: %d items for tx %s",
+                    len(classifications), source_id,
+                )
+            else:
+                logger.warning(
+                    "Accounting classification failed: %s",
+                    result.get("error", "?"),
+                )
+
+    except Exception as e:
+        logger.warning("Accounting dual-write error (non-fatal): %s", e)
+
+
+# ── Accounting Query Helpers ───────────────────────────────────────
+
+
+def _parse_accounting_period(text: str) -> str:
+    """Parse periode untuk query accounting."""
+    t = text.lower().strip()
+    if any(k in t for k in ["kemarin", "yesterday"]):
+        return "kemarin"
+    if any(k in t for k in ["minggu", "week", "pekan"]):
+        return "minggu_ini"
+    if any(k in t for k in ["bulan", "month"]):
+        return "bulan_ini"
+    return "hari_ini"
+
+
+def _accounting_period_range(period: str) -> tuple[int, int]:
+    """Hitung start_ms dan end_ms untuk periode akuntansi."""
+    now = datetime.now(WIB)
+    if period == "hari_ini":
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        return int(start.timestamp() * 1000), int(now.timestamp() * 1000)
+    elif period == "kemarin":
+        yesterday = now - timedelta(days=1)
+        start = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = yesterday.replace(hour=23, minute=59, second=59, microsecond=999000)
+        return int(start.timestamp() * 1000), int(end.timestamp() * 1000)
+    elif period == "minggu_ini":
+        start = (now - timedelta(days=now.weekday())).replace(
+            hour=0, minute=0, second=0, microsecond=0,
+        )
+        return int(start.timestamp() * 1000), int(now.timestamp() * 1000)
+    elif period == "bulan_ini":
+        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return int(start.timestamp() * 1000), int(now.timestamp() * 1000)
+    return int(now.timestamp() * 1000), int(now.timestamp() * 1000)
+
+
+async def _query_account_balance(query: str) -> str:
+    """Cari akun (by code or name) dan tampilkan saldo debit/kredit."""
+    # Cari COA by code atau name
+    q = f"select=id,code,name,type&or=(code.ilike.%{query}%,name.ilike.%{query}%)&limit=10"
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(
+            f"{SUPABASE_URL}/rest/v1/accounting_chart_of_accounts?{q}",
+            headers={
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+            },
+        )
+        if resp.status_code >= 400:
+            return f"❌ Gagal query akun: {resp.status_code}"
+        accounts = resp.json()
+
+    if not accounts:
+        return f"🔍 Akun '{query}' tidak ditemukan."
+
+    if len(accounts) > 5:
+        # Banyak hasil — tampilkan daftar
+        lines = [f"🔍 Ditemukan {len(accounts)} akun untuk '{query}':", ""]
+        for a in accounts[:10]:
+            lines.append(f"  {a['code']} — {a['name']} ({a['type']})")
+        return "\n".join(lines)
+
+    lines = []
+    for a in accounts:
+        code = a["code"]
+        name = a["name"]
+        atype = a["type"]
+        coa_id = a["id"]
+
+        # Hitung total debit
+        q_debit = (
+            f"select=coalesce(sum(amount),0) as total"
+            f"&coa_id=eq.{coa_id}&entry_type=eq.debit"
+        )
+        q_kredit = (
+            f"select=coalesce(sum(amount),0) as total"
+            f"&coa_id=eq.{coa_id}&entry_type=eq.kredit"
+        )
+
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp_debit = await client.get(
+                f"{SUPABASE_URL}/rest/v1/accounting_entries?{q_debit}",
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                },
+            )
+            resp_kredit = await client.get(
+                f"{SUPABASE_URL}/rest/v1/accounting_entries?{q_kredit}",
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                },
+            )
+
+        debit = 0
+        kredit = 0
+        if resp_debit.status_code == 200:
+            data = resp_debit.json()
+            debit = float(data[0]["total"]) if data else 0
+        if resp_kredit.status_code == 200:
+            data = resp_kredit.json()
+            kredit = float(data[0]["total"]) if data else 0
+
+        if atype in ("asset", "expense"):
+            saldo = debit - kredit
+        else:
+            saldo = kredit - debit
+
+        lines.append(f"📊 **{code} — {name}** ({atype})")
+        lines.append(f"   💰 Debit: {format_amount(int(debit))}")
+        lines.append(f"   💰 Kredit: {format_amount(int(kredit))}")
+        lines.append(f"   📈 Saldo: {format_amount(int(saldo))}")
+        lines.append("")
+
+    return "\n".join(lines).strip()
+
+
+async def _list_accounts() -> str:
+    """Tampilkan daftar semua akun COA."""
+    q = "select=id,code,name,type&order=code.asc&limit=50"
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(
+            f"{SUPABASE_URL}/rest/v1/accounting_chart_of_accounts?{q}",
+            headers={
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+            },
+        )
+        if resp.status_code >= 400:
+            return f"❌ Gagal mengambil daftar akun."
+        accounts = resp.json()
+
+    if not accounts:
+        return "📭 Belum ada akun COA."
+
+    lines = ["📋 **Daftar Akun (COA)**", ""]
+    current_type = ""
+    for a in accounts:
+        if a["type"] != current_type:
+            current_type = a["type"]
+            type_icon = {"asset": "💵", "liability": "💳", "equity": "🏦", "revenue": "💰", "expense": "💸"}.get(current_type, "📁")
+            lines.append(f"{type_icon} **{current_type.upper()}**")
+        lines.append(f"  {a['code']} — {a['name']}")
+
+    return "\n".join(lines)
+
+
+async def _query_debit_kredit(period: str) -> str:
+    """Hitung total debit dan kredit untuk periode tertentu."""
+    start_ms, end_ms = _accounting_period_range(period)
+
+    period_labels = {
+        "hari_ini": "Hari Ini",
+        "kemarin": "Kemarin",
+        "minggu_ini": "Minggu Ini",
+        "bulan_ini": "Bulan Ini",
+    }
+    label = period_labels.get(period, period)
+
+    # Join accounting_entries dengan financial_transactions untuk filter by tx_date
+    q = (
+        f"select=entry_type,amount&tx_date=gte.{start_ms}&tx_date=lte.{end_ms}&limit=10000"
+    )
+    # Use service_role to join across schemas
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        "Accept-Profile": "pos",
+    }
+
+    # Query langsung financial_transactions untuk periode
+    q_tx = f"select=source_id&tx_date=gte.{start_ms}&tx_date=lte.{end_ms}&limit=5000"
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get(
+            f"{SUPABASE_URL}/rest/v1/financial_transactions?{q_tx}",
+            headers=headers,
+        )
+        if resp.status_code >= 400:
+            return f"❌ Gagal query transaksi."
+        txns = resp.json()
+
+    if not txns:
+        return f"📭 Tidak ada transaksi periode **{label}**."
+
+    source_ids = [t["source_id"] for t in txns]
+
+    # Query accounting_entries by source_ids
+    total_debit = 0.0
+    total_kredit = 0.0
+
+    # Batch in chunks of 100
+    for i in range(0, len(source_ids), 100):
+        batch = source_ids[i:i + 100]
+        ids_csv = ",".join(batch)
+        q_ae = (
+            f"select=entry_type,amount&transaction_source_id=in.({ids_csv})&limit=10000"
+        )
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp_ae = await client.get(
+                f"{SUPABASE_URL}/rest/v1/accounting_entries?{q_ae}",
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                },
+            )
+            if resp_ae.status_code == 200:
+                entries = resp_ae.json()
+                for e in entries:
+                    amt = float(e.get("amount", 0))
+                    if e.get("entry_type") == "debit":
+                        total_debit += amt
+                    else:
+                        total_kredit += amt
+
+    selisih = abs(total_debit - total_kredit)
+    balanced = abs(selisih) < 1  # toleransi 1 rupiah
+
+    lines = [
+        f"📊 **Debit & Kredit — {label}**",
+        "",
+        f"💳 Total Debit:  {format_amount(int(total_debit))}",
+        f"💳 Total Kredit: {format_amount(int(total_kredit))}",
+        "",
+    ]
+
+    if balanced:
+        lines.append(f"✅ **SEIMBANG** (selisih Rp{format_amount(int(selisih))})")
+    else:
+        lines.append(f"⚠️ **TIDAK SEIMBANG** (selisih Rp{format_amount(int(selisih))})")
+
+    lines.append("")
+    lines.append(f"📦 {len(source_ids)} transaksi di periode ini")
+
+    return "\n".join(lines)
+
+
 MIN_SCORE_AUTO = 60
 MIN_SCORE_SUGGEST = 45
 
@@ -1445,6 +1775,50 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
     # Route ke orchestrator
+    # ── Accounting query patterns ──────────────────────────────
+    # These are handled directly without orchestrator (fast path)
+    accounting_match = re.match(
+        r'^(?:cek|lihat|check|hitung|total)\s+(?:akun|akuntansi|coa)\s+(.+)',
+        text, re.IGNORECASE,
+    )
+    if accounting_match:
+        coa_query = accounting_match.group(1).strip()
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+        try:
+            result_text = await _query_account_balance(coa_query)
+            await update.message.reply_text(result_text, reply_markup=_finance_keyboard())
+        except Exception as e:
+            logger.exception("Accounting query failed")
+            await update.message.reply_text(f"❌ Error: {e}", reply_markup=_finance_keyboard())
+        return
+
+    if re.match(r'^(?:daftar|list)\s+(?:akun|akuntansi|coa)', text, re.IGNORECASE):
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+        try:
+            result_text = await _list_accounts()
+            await update.message.reply_text(result_text, reply_markup=_finance_keyboard())
+        except Exception as e:
+            logger.exception("List accounts failed")
+            await update.message.reply_text(f"❌ Error: {e}", reply_markup=_finance_keyboard())
+        return
+
+    debit_kredit_match = re.match(
+        r'^(?:cek|lihat|check|total|hitung)\s+(?:debit|kredit|double.?entry)\s*(.*?)$',
+        text, re.IGNORECASE,
+    )
+    if debit_kredit_match:
+        period_text = debit_kredit_match.group(1).strip()
+        period_key = _parse_accounting_period(period_text) if period_text else "hari_ini"
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+        try:
+            result_text = await _query_debit_kredit(period_key)
+            await update.message.reply_text(result_text, reply_markup=_finance_keyboard())
+        except Exception as e:
+            logger.exception("Debit/kredit query failed")
+            await update.message.reply_text(f"❌ Error: {e}", reply_markup=_finance_keyboard())
+        return
+
+    # ── End accounting patterns ────────────────────────────────
     result = await orchestrator.orchestrate(text)
 
     try:
@@ -1530,6 +1904,18 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 # ── Restok inventory (sama seperti OCR) ─────
                 asyncio.ensure_future(_manual_restock(result))
+
+                # ── Accounting dual-write ─────────────────
+                if result.items:
+                    source_id = tx.get("sourceId", "")
+                    if source_id:
+                        asyncio.ensure_future(_write_accounting_entries(
+                            source_id=source_id,
+                            items=result.items,
+                            category=category,
+                            payment_method=result.payment_method or "cash",
+                            total_amount=result.amount,
+                        ))
             else:
                 await update.message.reply_text(f"❌ Gagal: {tx.get('error', '?')}", reply_markup=_finance_keyboard())
 
@@ -2013,6 +2399,19 @@ async def _handle_bulk_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if tx_type == "expense" and tx_result.get("ok"):
                 await _restok_bulk_items(ri)
 
+            # ── Accounting dual-write untuk expense ────────────
+            if tx_type == "expense" and tx_result.get("ok"):
+                source_id = tx_result.get("sourceId", "")
+                items_list = ri.get("items", [])
+                if source_id and items_list:
+                    asyncio.ensure_future(_write_accounting_entries(
+                        source_id=source_id,
+                        items=items_list,
+                        category=ri.get("category", "operasional"),
+                        payment_method=ri.get("payment_method", "cash"),
+                        total_amount=ri.get("total", 0),
+                    ))
+
         icon = "💰" if tx_type == "income" else "💸"
         type_label = "Pemasukan" if tx_type == "income" else "Pengeluaran"
         lines = [
@@ -2265,6 +2664,19 @@ async def _handle_bulkitem_callback(update: Update, context: ContextTypes.DEFAUL
         state["processed"][idx] = action
         if tx_result.get("ok") and action == "expense":
             await _restok_bulk_items(ri)
+
+        # ── Accounting dual-write untuk expense ────────────
+        if tx_result.get("ok") and action == "expense":
+            source_id = tx_result.get("sourceId", "")
+            items_list = ri.get("items", [])
+            if source_id and items_list:
+                asyncio.ensure_future(_write_accounting_entries(
+                    source_id=source_id,
+                    items=items_list,
+                    category=ri.get("category", "operasional"),
+                    payment_method=ri.get("payment_method", "cash"),
+                    total_amount=ri.get("total", 0),
+                ))
 
         # Auto-advance ke next
         next_idx = idx + 1
