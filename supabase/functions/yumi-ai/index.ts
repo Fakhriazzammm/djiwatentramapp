@@ -279,6 +279,51 @@ async function recordTransaction(
 	const raw = payload.raw ?? {};
 	const creationTime = Number(payload.creation_time ?? Date.now());
 
+	// ── Deduplication check ──────────────────────────────────────
+	// Cek apakah transaksi dengan amount, category, description, dan tx_date
+	// yang sama sudah ada dalam 5 menit terakhir. Ini mencegah duplikasi
+	// dari Telegram callback retry atau double-click.
+	if (amount > 0 && txDate > 0) {
+		const { data: existing } = await supabase
+			.from("financial_transactions")
+			.select("source_id, metadata")
+			.eq("tx_type", txType)
+			.eq("amount", amount)
+			.eq("category", category)
+			.eq("status", status)
+			.gte("tx_date", txDate - 5 * 60 * 1000) // 5 menit window
+			.lte("tx_date", txDate + 60 * 1000) // +1 menit buffer
+			.limit(5);
+
+		if (existing && existing.length > 0) {
+			// Cari yang paling mirip: cek metadata description atau receipt_number
+			for (const row of existing) {
+				const meta = row.metadata as Record<string, unknown> | null;
+				const metaDesc = (meta?.receiptDetails as Record<string, unknown> | undefined)
+					?.receiptNumber as string | undefined;
+				const thisReceipt = (metadata as Record<string, unknown>).receipt_number as string | undefined;
+
+				// Match jika receipt_number sama
+				if (thisReceipt && metaDesc && thisReceipt === metaDesc) {
+					console.log(`[DEDUP] Duplicate detected: receipt ${thisReceipt}, returning existing source_id ${row.source_id}`);
+					return { ok: true, sourceId: row.source_id };
+				}
+
+				// Match jika description mirip (same merchant + items)
+				const metaDescText = (meta?.description as string) || "";
+				if (description && metaDescText && description.length > 10) {
+					// Extract merchant dari description
+					const thisMerchant = description.split(":")[0] || description;
+					const otherMerchant = metaDescText.split(":")[0] || metaDescText;
+					if (thisMerchant.toLowerCase() === otherMerchant.toLowerCase()) {
+						console.log(`[DEDUP] Duplicate detected: amount=${amount}, category=${category}, merchant=${thisMerchant}, returning existing source_id ${row.source_id}`);
+						return { ok: true, sourceId: row.source_id };
+					}
+				}
+			}
+		}
+	}
+
 	const { error } = await supabase
 		.from("financial_transactions")
 		.insert({

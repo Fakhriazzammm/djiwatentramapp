@@ -159,7 +159,10 @@ function mapTransactionRows(transactions: any[], mode: "transaction" | "item") {
 		}
 		items.forEach((item: any, index: number) => {
 			const qty = safeNum(item.quantity ?? item.qty ?? 1) || 1;
-			const total = safeNum(item.total ?? item.subtotal ?? tx.amount);
+			// Jangan fallback ke tx.amount — gunakan item.total / item.price saja.
+			// Jika item.total=0 dan item.price=0, total=0 (bukan penuh transaksi).
+			const itemTotal = safeNum(item.total ?? item.subtotal);
+			const total = itemTotal > 0 ? itemTotal : safeNum(item.price ?? 0) * qty;
 			const price = safeNum(item.price ?? (qty > 0 ? total / qty : 0));
 			rows.push({
 				...tx,
