@@ -3824,40 +3824,33 @@ export function useHybridCreateTransaction() {
 						.lte("tx_date", date + 60 * 1000)
 						.limit(1)
 						.maybeSingle();
-					if (similar) {
-						console.log("[DEDUP] Duplicate detected by match, returning existing source_id", similar.source_id);
-						return similar.source_id;
-					}
+				if (similar) {
+					console.log("[DEDUP] Duplicate detected by match, returning existing source_id", similar.source_id);
+					return similar.source_id;
 				}
+			}
 
-				const sourceId = makeSourceId("fin");
-				const txDate = date;
-				const row = {
-					source_id: sourceId,
-					tx_type: type,
-					amount,
-					category,
-					merchant: args?.merchant ?? null,
-					description,
-					tx_date: txDate,
-					payment_method: args?.paymentMethod ?? null,
-					status: args?.status ?? "completed",
-					attachment_url: args?.attachmentUrl ?? null,
-					source_fingerprint: fingerprint ?? null,
-					is_recurring:
-						args?.isRecurring === undefined ? null : Boolean(args.isRecurring),
-					recurring_interval: args?.recurringInterval ?? null,
-					tags: Array.isArray(args?.tags) ? args.tags : null,
-					metadata,
-					creation_time: Date.now(),
-					raw: args ?? {},
-				};
-
-				const { error } = await client
-					.schema("pos")
-					.from("financial_transactions")
-					.insert(row);
-				if (error) throw error;
+			// ── Call API Gateway (edge function) ────────────────
+			const { data: gwResult, error: gwError } = await createClient().functions.invoke(
+				"record-financial-transaction",
+				{
+					body: {
+						tx_type: type,
+						amount,
+						category,
+						description: description || undefined,
+						merchant: args?.merchant || undefined,
+						tx_date: date,
+						payment_method: args?.paymentMethod || "cash",
+						status: args?.status || "completed",
+						source_fingerprint: fingerprint || undefined,
+						metadata,
+					},
+				}
+			);
+			if (gwError) throw new Error(gwError.message || "Gateway error");
+			const sourceId = (gwResult as any)?.sourceId;
+			if (!sourceId) throw new Error("Gateway returned no sourceId");
 
 				// Fire-and-forget: notify Yumi Finance Analyzer for real-time AI analysis
 				const analyzerUrl = (typeof import.meta !== "undefined" && import.meta.env?.VITE_ANALYZER_URL) ||
@@ -4045,36 +4038,28 @@ export function useHybridRecordExpenseIntake() {
 					if (updateError) throw updateError;
 					transactionId = existingId;
 				} else {
-					transactionId = makeSourceId("fin");
-					const { error: createError } = await pos
-						.from("financial_transactions")
-						.insert({
-							source_id: transactionId,
-							tx_type: type,
-							amount,
-							category,
-							merchant: tx?.merchant ?? null,
-							description: effectiveDescription,
-							tx_date: date,
-							payment_method: tx?.paymentMethod ?? null,
-							status: tx?.status ?? "completed",
-							attachment_url: tx?.attachmentUrl ?? null,
-							source_fingerprint:
-								args?.sourceFingerprint ?? null,
-							is_recurring:
-								tx?.isRecurring === undefined
-									? null
-									: Boolean(tx.isRecurring),
-							recurring_interval: tx?.recurringInterval ?? null,
-							tags: Array.isArray(tx?.tags) ? tx.tags : null,
-							metadata,
-							creation_time: Date.now(),
-							raw: {
-								...(args ?? {}),
-								transaction: tx,
+					// ── Create via API Gateway ──────────────────────
+					const { data: gwResult, error: gwError } = await createClient().functions.invoke(
+						"record-financial-transaction",
+						{
+							body: {
+								tx_type: type,
+								amount,
+								category,
+								description: effectiveDescription || undefined,
+								merchant: tx?.merchant || undefined,
+								tx_date: date,
+								payment_method: tx?.paymentMethod || "cash",
+								status: tx?.status || "completed",
+								source_fingerprint: args?.sourceFingerprint || undefined,
+								metadata,
 							},
-						});
-					if (createError) throw createError;
+						}
+					);
+					if (gwError) throw new Error(gwError.message || "Gateway error");
+					const gwSourceId = (gwResult as any)?.sourceId;
+					if (!gwSourceId) throw new Error("Gateway returned no sourceId");
+					transactionId = gwSourceId;
 				}
 
 				// Sync to inventory if finance_plus_inventory and expense
