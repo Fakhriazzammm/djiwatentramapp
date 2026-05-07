@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { TransactionsView } from "./-components/transactions-view";
+import { TransactionsTabs } from "./-components/transaction-tabs";
 
 export const Route = createFileRoute("/admin/finance/transactions")({
-	component: TransactionsView,
+	component: TransactionsTabs,
 });
