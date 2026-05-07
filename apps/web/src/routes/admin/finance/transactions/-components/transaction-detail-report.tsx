@@ -698,7 +698,7 @@ export function TransactionDetailReport({
 		);
 	};
 
-	const columnCount = showRunningBalance ? 9 : 8;
+	const columnCount = showRunningBalance ? 10 : 9;
 	const withMergedHeader = Boolean(
 		period && periodButtons && onPeriodChange && onViewModeChange &&
 		onGroupModeChange && onExportPdf && onOpenAddTransaction && summary
@@ -984,43 +984,45 @@ export function TransactionDetailReport({
 				<div
 					ref={scrollContainerRef}
 					onScroll={(e) => setScrollTop((e.target as HTMLDivElement).scrollTop)}
-					className="max-h-[72vh] overflow-auto"
+					className="max-h-[calc(100vh-320px)] overflow-auto"
 				>
-					<table className="w-full min-w-[720px] table-auto text-left text-[11px] text-slate-700">
+					<table className="w-full min-w-[720px] table-auto text-left text-[10px] text-slate-700">
 					<colgroup>
-						<col style={{ width: "36px" }} />
-						<col style={{ width: "44px" }} />
-						<col style={{ width: "120px" }} />
-						<col style={{ width: "110px" }} />
+						<col style={{ width: "30px" }} />
+						<col style={{ width: "32px" }} />
+						<col style={{ width: "80px" }} />
+						<col style={{ width: "98px" }} />
 						<col style={{ width: "90px" }} />
+						<col style={{ width: "80px" }} />
 						<col />
-						<col style={{ width: "160px" }} />
-						{showRunningBalance && <col style={{ width: "130px" }} />}
-						<col style={{ width: "88px" }} />
+						<col style={{ width: "120px" }} />
+						{showRunningBalance && <col style={{ width: "100px" }} />}
+						<col style={{ width: "72px" }} />
 					</colgroup>
-						<thead className="sticky top-0 z-10 bg-slate-50 text-[9px] font-semibold uppercase tracking-wider text-slate-500">
+						<thead className="sticky top-0 z-10 bg-slate-50 text-[8px] font-semibold uppercase tracking-wider text-slate-500">
 							<tr>
-								<th className="sticky left-0 z-20 border-r border-b border-slate-200 bg-slate-50 px-1.5 py-2">
+								<th className="sticky left-0 z-20 border-r border-b border-slate-200 bg-slate-50 px-1 py-1.5">
 									<div className="flex items-center justify-center">
 										<Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectAll}
 											disabled={filteredRowKeys.length === 0}
 											className="rounded-sm border-muted-foreground/40 bg-muted/40 data-checked:border-primary data-checked:bg-primary" />
 									</div>
 								</th>
-								<th className="sticky left-[36px] z-20 border-r border-b border-slate-200 bg-slate-50 px-1.5 py-2 text-center">No</th>
-								<th className="border-b border-slate-200 px-3 py-2">Tanggal</th>
-							<th className="border-b border-slate-200 px-3 py-2">Sumber</th>
-							<th className="border-b border-slate-200 px-3 py-2">Pembayaran</th>
-							<th className="border-b border-slate-200 px-3 py-2">Deskripsi</th>
-								<th className="sticky right-[88px] z-20 border-l border-b border-slate-200 bg-slate-50 px-3 py-2 text-right">
+								<th className="sticky left-[30px] z-20 border-r border-b border-slate-200 bg-slate-50 px-1 py-1.5 text-center">No</th>
+								<th className="border-b border-slate-200 px-2 py-1.5">Tanggal</th>
+							<th className="border-b border-slate-200 px-2 py-1.5">ID</th>
+							<th className="border-b border-slate-200 px-2 py-1.5">Sumber</th>
+							<th className="border-b border-slate-200 px-2 py-1.5">Pembayaran</th>
+							<th className="border-b border-slate-200 px-2 py-1.5">Deskripsi</th>
+								<th className="sticky right-[72px] z-20 border-l border-b border-slate-200 bg-slate-50 px-2 py-1.5 text-right">
 									{showRunningBalance ? "Nominal" : "Nominal"}
 								</th>
 								{showRunningBalance && (
-									<th className="sticky right-[88px] z-20 border-l border-b border-slate-200 bg-indigo-50 px-3 py-2 text-right text-indigo-600">
+									<th className="sticky right-[72px] z-20 border-l border-b border-slate-200 bg-indigo-50 px-2 py-1.5 text-right text-indigo-600">
 										Saldo
 									</th>
 								)}
-								<th className="sticky right-0 z-20 border-l border-b border-slate-200 bg-slate-50 px-2 py-2 text-center">Aksi</th>
+								<th className="sticky right-0 z-20 border-l border-b border-slate-200 bg-slate-50 px-1 py-1.5 text-center">Aksi</th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-slate-100 bg-white">
@@ -1051,10 +1053,10 @@ export function TransactionDetailReport({
 										if (t.rowType === "date_separator") {
 											return (
 												<tr key={`sep-${t.dayKey}`} className="border-t-2 border-slate-200 bg-slate-50">
-													<td colSpan={columnCount} className="px-3 py-2">
+													<td colSpan={columnCount} className="px-2 py-1.5">
 														<div className="flex items-center justify-between">
-															<span className="text-[11px] font-bold text-slate-700">{t.label}</span>
-															<div className="flex items-center gap-3 text-[10px]">
+															<span className="text-[10px] font-bold text-slate-700">{t.label}</span>
+															<div className="flex items-center gap-2 text-[9px]">
 																<span className="text-slate-400">{t.count} tx</span>
 																<span className="font-semibold text-emerald-600">↑ {formatCurrencyIDR(t.income)}</span>
 																<span className="font-semibold text-orange-500">↓ {formatCurrencyIDR(t.expense)}</span>
@@ -1182,26 +1184,33 @@ export function TransactionDetailReport({
 													</div>
 												</td>
 
-												{/* No */}
-												<td className="sticky left-[36px] z-10 w-11 border-r border-slate-100 bg-white px-1.5 py-2 text-center font-mono text-[10px] text-slate-400 group-hover:bg-slate-50">
-													{rowNumberByKey.get(rowKey) || "-"}
-												</td>
+						{/* No */}
+						<td className="sticky left-[30px] z-10 w-8 border-r border-slate-100 bg-white px-1 py-1.5 text-center font-mono text-[9px] text-slate-400 group-hover:bg-slate-50">
+							{rowNumberByKey.get(rowKey) || "-"}
+						</td>
 
-												{/* Tanggal */}
-												<td className="whitespace-nowrap px-3 py-2">
-													<div className="flex flex-col leading-tight">
-														<span className="text-[11px] font-medium text-slate-900">
-															{format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}
-														</span>
-														<span className="text-[10px] text-slate-400" title={shiftName !== "-" ? `Shift: ${shiftName}` : undefined}>
-															{format(new Date(t.date), "HH:mm")}
-															{shiftName !== "-" && <span className="ml-1 text-slate-300">· {shiftName}</span>}
-														</span>
-													</div>
-												</td>
+						{/* Tanggal */}
+						<td className="whitespace-nowrap px-2 py-1.5">
+							<div className="flex flex-col leading-tight">
+								<span className="text-[10px] font-medium text-slate-900">
+									{format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}
+								</span>
+								<span className="text-[9px] text-slate-400" title={shiftName !== "-" ? `Shift: ${shiftName}` : undefined}>
+									{format(new Date(t.date), "HH:mm")}
+									{shiftName !== "-" && <span className="ml-1 text-slate-300">· {shiftName}</span>}
+								</span>
+							</div>
+						</td>
 
-								{/* Sumber */}
-								<td className="whitespace-nowrap px-3 py-2">
+						{/* ID */}
+						<td className="whitespace-nowrap px-2 py-1.5">
+							<span className="font-mono text-[9px] text-slate-500" title={t._id}>
+								{t.orderId ? `#${String(t.orderId).slice(-8)}` : t.metadata?.sourceRef ? String(t.metadata.sourceRef).slice(-12) : String(t._id).slice(-8)}
+							</span>
+						</td>
+
+						{/* Sumber */}
+						<td className="whitespace-nowrap px-2 py-1.5">
 									<div className="flex flex-col gap-0.5">
 										{getSourceBadge(t)}
 										{t.metadata?.ocr && (
@@ -1224,64 +1233,64 @@ export function TransactionDetailReport({
 									</div>
 								</td>
 
-									{/* Pembayaran */}
-									<td className="whitespace-nowrap px-3 py-2">
-										{t.paymentMethod ? (
-											<span className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-												<span>{getPaymentIcon(t.paymentMethod)}</span>
-												<span className="capitalize">{t.paymentMethod.toLowerCase().replace(/_/g, " ")}</span>
-											</span>
-										) : (
-											<span className="text-[10px] text-slate-300">—</span>
-										)}
-									</td>
+						{/* Pembayaran */}
+						<td className="whitespace-nowrap px-2 py-1.5">
+							{t.paymentMethod ? (
+								<span className="inline-flex items-center gap-1 text-[10px] text-slate-600">
+									<span>{getPaymentIcon(t.paymentMethod)}</span>
+									<span className="capitalize">{t.paymentMethod.toLowerCase().replace(/_/g, " ")}</span>
+								</span>
+							) : (
+								<span className="text-[9px] text-slate-300">—</span>
+							)}
+							</td>
 
-									{/* Deskripsi */}
-									<td className="px-3 py-2">
-										<div className="flex flex-col gap-0.5">
-											<span className="block max-w-xs truncate text-[11px] font-medium text-slate-800"
-												title={t.displaySummary || t.description || "-"}>
-												{t.displaySummary || t.description || "-"}
-											</span>
-										</div>
-									</td>
+							{/* Deskripsi */}
+							<td className="px-2 py-1.5">
+								<div className="flex flex-col gap-0.5">
+									<span className="block max-w-xs truncate text-[10px] font-medium text-slate-800"
+										title={t.displaySummary || t.description || "-"}>
+										{t.displaySummary || t.description || "-"}
+									</span>
+								</div>
+							</td>
 
-												{/* Nominal */}
-												<td className="sticky right-[88px] z-10 whitespace-nowrap border-l border-slate-100 bg-white px-3 py-2 text-right group-hover:bg-slate-50">
-													<span className={`font-mono text-[13px] font-semibold tracking-tight ${isIncome ? "text-emerald-600" : "text-orange-500"}`}>
-														{isIncome ? "+" : "−"} {formatCurrencyIDR(t.itemIndex !== undefined ? t.total : t.amount)}
-													</span>
-												</td>
+							{/* Nominal */}
+							<td className="sticky right-[72px] z-10 whitespace-nowrap border-l border-slate-100 bg-white px-2 py-1.5 text-right group-hover:bg-slate-50">
+								<span className={`font-mono text-[11px] font-semibold tracking-tight ${isIncome ? "text-emerald-600" : "text-orange-500"}`}>
+									{isIncome ? "+" : "−"} {formatCurrencyIDR(t.itemIndex !== undefined ? t.total : t.amount)}
+								</span>
+							</td>
 
-												{/* Running balance */}
-												{showRunningBalance && (
-													<td className="whitespace-nowrap border-l border-indigo-100 bg-indigo-50/30 px-3 py-2 text-right group-hover:bg-indigo-50/50">
-														{runningBal !== undefined ? (
-															<span className={`font-mono text-[11px] font-medium ${runningBal >= 0 ? "text-indigo-700" : "text-red-600"}`}>
-																{runningBal < 0 && "-"}{formatCurrencyIDR(Math.abs(runningBal))}
-															</span>
-														) : (
-															<span className="text-[10px] text-slate-300">—</span>
-														)}
-													</td>
-												)}
+							{/* Running balance */}
+							{showRunningBalance && (
+								<td className="whitespace-nowrap border-l border-indigo-100 bg-indigo-50/30 px-2 py-1.5 text-right group-hover:bg-indigo-50/50">
+									{runningBal !== undefined ? (
+										<span className={`font-mono text-[10px] font-medium ${runningBal >= 0 ? "text-indigo-700" : "text-red-600"}`}>
+											{runningBal < 0 && "-"}{formatCurrencyIDR(Math.abs(runningBal))}
+										</span>
+									) : (
+										<span className="text-[9px] text-slate-300">—</span>
+									)}
+								</td>
+							)}
 
-												{/* Aksi */}
-												<td className="sticky right-0 z-10 border-l border-slate-100 bg-white px-2 py-2 group-hover:bg-slate-50"
-													onClick={(e) => e.stopPropagation()}>
-													<div className="flex items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-														<button type="button" onClick={(e) => { e.stopPropagation(); handleEdit(t); }}
-															className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-															title="Edit">
-															<Pencil className="h-3.5 w-3.5" />
-														</button>
-														<button type="button" onClick={(e) => { e.stopPropagation(); void handleDelete(t); }}
-															className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
-															title="Hapus">
-															<Trash2 className="h-3.5 w-3.5" />
-														</button>
-													</div>
-										</td>
+							{/* Aksi */}
+							<td className="sticky right-0 z-10 border-l border-slate-100 bg-white px-1 py-1.5 group-hover:bg-slate-50"
+								onClick={(e) => e.stopPropagation()}>
+								<div className="flex items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+									<button type="button" onClick={(e) => { e.stopPropagation(); handleEdit(t); }}
+										className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+										title="Edit">
+										<Pencil className="h-3 w-3" />
+									</button>
+									<button type="button" onClick={(e) => { e.stopPropagation(); void handleDelete(t); }}
+										className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+										title="Hapus">
+										<Trash2 className="h-3 w-3" />
+									</button>
+								</div>
+						</td>
 									</tr>
 									{isExpanded && expandable && (
 										<tr key={`${rowKey}-expanded`} className={`${isIncome ? "bg-emerald-50/20" : "bg-red-50/10"}`}>
