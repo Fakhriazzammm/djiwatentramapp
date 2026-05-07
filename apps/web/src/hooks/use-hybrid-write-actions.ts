@@ -4538,7 +4538,7 @@ export function useHybridEndShift() {
 					.insert({
 						source_id: makeSourceId("fin"),
 						tx_type: "income",
-						amount: Number(args?.endingCashPhysical ?? 0),
+						amount: 0,  // Setoran Akhir selalu amount=0 (informational only)
 						category: "Setoran Akhir",
 						description: `${args?.notes || "Akhiri Shift"}${summaryText}`,
 						tx_date: endTime,
