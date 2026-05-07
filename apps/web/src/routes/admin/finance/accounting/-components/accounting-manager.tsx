@@ -378,8 +378,8 @@ export function AccountingManager() {
 															{absBalance.toLocaleString("id-ID")}
 														</p>
 														<p className="text-[10px] text-muted-foreground">
-															D:{acct.balance_debit?.toLocaleString("id-ID") || "0"}{" "}
-															K:{acct.balance_kredit?.toLocaleString("id-ID") || "0"}
+															Debit: {acct.balance_debit?.toLocaleString("id-ID") || "0"}{" "}
+															Kredit: {acct.balance_kredit?.toLocaleString("id-ID") || "0"}
 														</p>
 													</div>
 													<div className="flex shrink-0 gap-0.5">
