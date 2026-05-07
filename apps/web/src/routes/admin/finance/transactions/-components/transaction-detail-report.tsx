@@ -719,41 +719,7 @@ export function TransactionDetailReport({
 					{/* Row 1: title + controls + actions */}
 					<div className="flex flex-wrap items-center justify-between gap-1 border-b border-slate-200/80 px-2 py-1">
 							<div className="flex items-center gap-1">
-							<h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-700">Riwayat</h2>
-							{/* View mode */}
-							<div className="flex items-center gap-0.5 rounded border border-slate-200 bg-slate-50 p-0.5">
-								{(["item", "transaction"] as const).map((m) => (
-									<button key={m} type="button" onClick={() => onViewModeChange!(m)}
-										className={`rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${viewMode === m ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
-										{m === "item" ? "Detail" : "Ringkas"}
-									</button>
-								))}
-							</div>
-							{/* Group mode */}
-							<div className="flex items-center gap-0.5 rounded border border-slate-200 bg-slate-50 p-0.5">
-								{(["flat", "grouped"] as const).map((m) => (
-									<button key={m} type="button" onClick={() => onGroupModeChange!(m)}
-										className={`rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${groupMode === m ? "bg-slate-700 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
-										{m === "flat" ? "Flat" : "Grouped"}
-									</button>
-								))}
-							</div>
-							{/* Running balance toggle */}
-							<button type="button" onClick={() => setShowRunningBalance((v) => !v)}
-								className={`inline-flex h-5 items-center gap-1 rounded border px-1.5 text-[9px] font-medium transition-colors ${showRunningBalance ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"}`}
-								title="Tampilkan saldo berjalan">
-								<BarChart2 className="h-2.5 w-2.5" />
-								Saldo
-							</button>
-							{/* Comparison toggle */}
-							{onToggleComparison && (
-								<button type="button" onClick={onToggleComparison}
-									className={`inline-flex h-5 items-center gap-1 rounded border px-1.5 text-[9px] font-medium transition-colors ${showComparison ? "border-violet-400 bg-violet-50 text-violet-700" : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"}`}
-									title="Bandingkan dengan periode sebelumnya">
-									<TrendingUp className="h-2.5 w-2.5" />
-									vs Sebelumnya
-								</button>
-							)}
+							<h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-700">Transaksi</h2>
 						</div>
 						<div className="flex items-center gap-1">
 							{onExportCsv && (
