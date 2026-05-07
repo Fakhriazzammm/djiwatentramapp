@@ -1241,7 +1241,7 @@ async function fetchAccountingEntries(args?: {
 	const { startDate, endDate } = getRange(args);
 	const { data: txDates, error: txError } = await supabase
 		.from("pos_financial_transactions")
-		.select("_id, description, metadata")
+		.select("_id, description, metadata, type, orderId, bookingOrderId")
 		.gte("date", startDate)
 		.lte("date", endDate);
 	if (txError) throw txError;
@@ -1268,6 +1268,37 @@ async function fetchAccountingEntries(args?: {
 	const txMap = new Map<string, any>();
 	for (const t of txDates ?? []) txMap.set(t._id, t);
 
+	// ── Batch-fetch order items untuk income transaksi ──
+	const incomeTxIds = (txDates ?? [])
+		.filter((tx: any) => tx.type === "income" && (tx.orderId || tx.bookingOrderId))
+		.map((tx: any) => tx.orderId || tx.bookingOrderId);
+	const itemsByOrder = new Map<string, any[]>();
+	if (incomeTxIds.length > 0) {
+		const { data: orderItems, error: oiError } = await supabase
+			.from("pos_order_items")
+			.select("*")
+			.in("order_source_id", incomeTxIds);
+		if (!oiError && orderItems) {
+			for (const item of orderItems) {
+				const oid = String(item.order_source_id);
+				if (!itemsByOrder.has(oid)) itemsByOrder.set(oid, []);
+				itemsByOrder.get(oid)!.push({
+					name: item.product_name ?? `Item ${item.line_no}`,
+					quantity: safeNum(item.quantity) || 1,
+					price: safeNum(item.price) || 0,
+					total: (safeNum(item.quantity) || 1) * (safeNum(item.price) || 0),
+				});
+			}
+		}
+		// Inject items into tx metadata
+		for (const tx of txDates ?? []) {
+			const oid = tx.orderId || tx.bookingOrderId;
+			if (oid && itemsByOrder.has(String(oid))) {
+				tx.metadata = { ...(tx.metadata || {}), scanItems: itemsByOrder.get(String(oid)) };
+			}
+		}
+	}
+
 	return (entries ?? []).map((e: any) => {
 		const tx = txMap.get(e.transaction_source_id);
 		const metadata = tx?.metadata || {};
@@ -1277,6 +1308,10 @@ async function fetchAccountingEntries(args?: {
 				  (metadata as any).source ||
 				  ""
 				: "";
+		const scanItems =
+			metadata && typeof metadata === "object"
+				? (metadata as any).scanItems
+				: undefined;
 		return {
 			...e,
 			coa: coaMap.get(e.coa_id) ?? null,
@@ -1285,6 +1320,7 @@ async function fetchAccountingEntries(args?: {
 			coaType: coaMap.get(e.coa_id)?.type ?? "",
 			source_label: sourceLabel,
 			tx_description: tx?.description || "",
+			scanItems: Array.isArray(scanItems) ? scanItems : [],
 		};
 	});
 }
