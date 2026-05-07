@@ -178,6 +178,7 @@ function mapTransactionRows(transactions: any[], mode: "transaction" | "item") {
 			const price = safeNum(item.price ?? (qty > 0 ? total / qty : 0));
 			rows.push({
 				...tx,
+				amount: total, // override ke total item, bukan full transaksi
 				itemIndex: index,
 				itemName: item.name ?? `Item ${index + 1}`,
 				qty,

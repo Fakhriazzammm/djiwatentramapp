@@ -236,7 +236,7 @@ export function TransactionDetailReport({
 			if (sortBy === "date") {
 				return sortOrder === "asc" ? a.date - b.date : b.date - a.date;
 			}
-			return sortOrder === "asc" ? a.amount - b.amount : b.amount - a.amount;
+			return sortOrder === "asc" ? (a.itemIndex !== undefined ? a.total - b.total : a.amount - b.amount) : (b.itemIndex !== undefined ? b.total - a.total : b.amount - a.amount);
 		});
 
 		return result;
@@ -305,10 +305,10 @@ export function TransactionDetailReport({
 					);
 					const dayIncome = dayBucket
 						.filter((r: any) => r.type === "income")
-						.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
+						.reduce((sum: number, r: any) => sum + Number(r.itemIndex !== undefined ? r.total : r.amount), 0);
 					const dayExpense = dayBucket
 						.filter((r: any) => r.type !== "income")
-						.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
+						.reduce((sum: number, r: any) => sum + Number(r.itemIndex !== undefined ? r.total : r.amount), 0);
 					rows.push({
 						rowType: "date_separator",
 						dayKey,
@@ -339,10 +339,10 @@ export function TransactionDetailReport({
 		for (const [dayKey, dayRows] of dayGroups.entries()) {
 			const dayIncome = dayRows
 				.filter((r: any) => r.type === "income")
-				.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
+				.reduce((sum: number, r: any) => sum + Number(r.itemIndex !== undefined ? r.total : r.amount), 0);
 			const dayExpense = dayRows
 				.filter((r: any) => r.type !== "income")
-				.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
+				.reduce((sum: number, r: any) => sum + Number(r.itemIndex !== undefined ? r.total : r.amount), 0);
 			const dayNodeKey = `day::${dayKey}`;
 			const dayCollapsed = collapsedGroups.has(dayNodeKey);
 			rows.push({
@@ -374,12 +374,12 @@ export function TransactionDetailReport({
 			}
 
 			for (const [shiftKeyRaw, shiftRows] of shiftGroups.entries()) {
-				const shiftIncome = shiftRows
-					.filter((r: any) => r.type === "income")
-					.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
-				const shiftExpense = shiftRows
-					.filter((r: any) => r.type !== "income")
-					.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
+			const shiftIncome = shiftRows
+				.filter((r: any) => r.type === "income")
+				.reduce((sum: number, r: any) => sum + Number(r.itemIndex !== undefined ? r.total : r.amount), 0);
+			const shiftExpense = shiftRows
+				.filter((r: any) => r.type !== "income")
+				.reduce((sum: number, r: any) => sum + Number(r.itemIndex !== undefined ? r.total : r.amount), 0);
 				const shiftNodeKey = `${dayNodeKey}::shift::${shiftKeyRaw}`;
 				const shiftCollapsed = collapsedGroups.has(shiftNodeKey);
 				rows.push({
