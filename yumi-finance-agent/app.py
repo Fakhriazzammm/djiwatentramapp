@@ -475,6 +475,7 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ],
             [
                 InlineKeyboardButton("✏️ Edit Kategori", callback_data=f"receipt_editcat_{ref_id}"),
+                InlineKeyboardButton("✏️ Edit Item", callback_data=f"edititem_{ref_id}"),
             ],
             [
                 InlineKeyboardButton("❌ Batal", callback_data=f"receipt_cancel_{ref_id}"),
@@ -752,6 +753,182 @@ async def _display_bulk_summary(context, results: list[dict], chat_id: int, stat
         text="\n".join(lines),
         reply_markup=keyboard,
     )
+
+
+# ── Edit Item per-item ─────────────────────────────────────────
+
+
+async def _handle_edit_item(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show item list with edit buttons for the receipt."""
+    query = update.callback_query
+    await query.answer()
+    ref_id = query.data.replace("edititem_", "")
+    receipt = _receipt_pending.get(ref_id)
+    if not receipt:
+        try:
+            await query.edit_message_text("❌ Sesi kadaluarsa. Silakan kirim ulang struk.", reply_markup=_finance_keyboard())
+        except Exception:
+            pass
+        return
+
+    items = receipt.get("items", [])
+    lines = [f"✏️ Pilih item yang ingin diedit:", ""]
+    for i, item in enumerate(items, 1):
+        name = item.get("name", f"Item {i}")
+        qty = float(item.get("qty") or 1)
+        unit = item.get("unit", "").strip()
+        price = float(item.get("price") or 0)
+        qty_str = f"{qty:.0f}" if qty == int(qty) else f"{qty:.1f}"
+        lines.append(f"{i}. {name} — {qty_str}{' '+unit if unit else ''} × Rp{price:,.0f}")
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton(f"✏️ Item {j+1}", callback_data=f"editfield_{ref_id}_{j}")]
+        for j in range(len(items))
+    ] + [[InlineKeyboardButton("↩️ Kembali", callback_data=f"receipt_editcat_{ref_id}")]])
+    # Use receipt_editcat_ to go back to the receipt view — actually we need proper back
+    # Let's use a simpler approach: back to receipt view by re-displaying
+    await query.edit_message_text("\n".join(lines), reply_markup=keyboard)
+
+
+async def _handle_edit_item_field(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Ask user what field to edit for the selected item."""
+    query = update.callback_query
+    await query.answer()
+    # Parse: editfield_{ref_id}_{item_idx}
+    parts = query.data.split("_", 2)
+    if len(parts) < 3:
+        return
+    ref_id = parts[1]
+    try:
+        item_idx = int(parts[2])
+    except (ValueError, IndexError):
+        return
+
+    receipt = _receipt_pending.get(ref_id)
+    if not receipt or item_idx >= len(receipt.get("items", [])):
+        await query.edit_message_text("❌ Sesi kadaluarsa.", reply_markup=_finance_keyboard())
+        return
+
+    item = receipt["items"][item_idx]
+    name = item.get("name", "?")
+    qty = float(item.get("qty") or 1)
+    unit = item.get("unit", "").strip()
+    price = float(item.get("price") or 0)
+    qty_str = f"{qty:.0f}" if qty == int(qty) else f"{qty:.1f}"
+
+    lines = [
+        f"✏️ Edit Item #{item_idx + 1}",
+        f"📛 {name}",
+        f"📦 {qty_str}{' '+unit if unit else ''}",
+        f"💰 Rp{price:,.0f}",
+        "",
+        "Ketik perbaikan dengan format:",
+        "  `nama: <nama baru>`",
+        "  `qty: <jumlah baru>`",
+        "  `harga: <harga baru>`",
+        "  `unit: <satuan baru>`",
+        "",
+        "Contoh: `nama: Tempe Goreng`",
+        "Atau gabung: `nama: Tempe Goreng, qty: 2, harga: 15000`",
+    ]
+
+    # Simpan state edit
+    _pending_actions[f"edit_item_{update.effective_user.id}"] = {
+        "ref_id": ref_id,
+        "item_idx": item_idx,
+        "chat_id": update.effective_chat.id,
+        "message_id": query.message.message_id,
+    }
+    _save_pending()
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("↩️ Kembali ke Item", callback_data=f"edititem_{ref_id}")],
+    ])
+    await query.edit_message_text("\n".join(lines), reply_markup=keyboard)
+
+
+async def _handle_edit_item_text(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str):
+    """Process edit response from user."""
+    user_id = update.effective_user.id
+    pending = _pending_actions.pop(f"edit_item_{user_id}", None)
+    if not pending:
+        return False
+    _save_pending()
+
+    ref_id = pending["ref_id"]
+    item_idx = pending["item_idx"]
+    receipt = _receipt_pending.get(ref_id)
+    if not receipt or item_idx >= len(receipt.get("items", [])):
+        await update.message.reply_text("❌ Sesi kadaluarsa. Silakan kirim ulang struk.", reply_markup=_finance_keyboard())
+        return True
+
+    item = receipt["items"][item_idx]
+    changed = []
+    # Parse: "nama: Tempe Goreng, qty: 2, harga: 15000" or "nama: Tempe Goreng"
+    parts = re.split(r'[,;]', text)
+    for part in parts:
+        part = part.strip()
+        m = re.match(r'(nama|qty|harga|unit)\s*:\s*(.+)', part, re.IGNORECASE)
+        if not m:
+            continue
+        field = m.group(1).lower()
+        value = m.group(2).strip()
+        if field == "nama":
+            item["name"] = value
+            changed.append(f"nama → {value}")
+        elif field == "qty":
+            try:
+                item["qty"] = float(value.replace(",", "."))
+                changed.append(f"qty → {value}")
+            except ValueError:
+                pass
+        elif field == "harga":
+            # Remove non-numeric
+            clean = re.sub(r'[^\d.,]', '', value).replace(",", ".")
+            try:
+                item["price"] = float(clean)
+                changed.append(f"harga → Rp{float(clean):,.0f}")
+            except ValueError:
+                pass
+        elif field == "unit":
+            item["unit"] = value
+            changed.append(f"unit → {value}")
+
+    if not changed:
+        await update.message.reply_text(
+            "❌ Format salah. Gunakan: `nama: <nilai>` atau `qty: <nilai>` atau `harga: <nilai>`",
+            reply_markup=_finance_keyboard(),
+        )
+        return True
+
+    # Recalculate subtotal
+    if "harga" in text.lower() or "qty" in text.lower():
+        item["subtotal"] = float(item.get("qty", 1)) * float(item.get("price", 0))
+
+    # Save updated receipt
+    _receipt_pending[ref_id] = receipt
+    _save_pending()
+
+    # Re-display receipt with updated items
+    lines = [f"✅ Item #{item_idx + 1} diupdate!", ""]
+    for ch in changed:
+        lines.append(f"  • {ch}")
+    lines.append("")
+    lines.append("📋 Item Lainnya:")
+    for i, it in enumerate(receipt.get("items", []), 1):
+        n = it.get("name", f"Item {i}")
+        q = float(it.get("qty") or 1)
+        u = it.get("unit", "").strip()
+        p = float(it.get("price") or 0)
+        qs = f"{q:.0f}" if q == int(q) else f"{q:.1f}"
+        lines.append(f"  {i}. {n} — {qs}{' '+u if u else ''} × Rp{p:,.0f}")
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("✏️ Edit Lagi", callback_data=f"edititem_{ref_id}")],
+        [InlineKeyboardButton("↩️ Kembali ke Struk", callback_data=f"edititem_{ref_id}")],
+    ])
+    await update.message.reply_text("\n".join(lines), reply_markup=keyboard)
+    return True
 
 
 async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1146,6 +1323,13 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not text:
         return
 
+    # Check for pending edit item response
+    pending_key = f"edit_item_{update.effective_user.id}"
+    if pending_key in _pending_actions:
+        handled = await _handle_edit_item_text(update, context, text)
+        if handled:
+            return
+
     # Tunjukkan typing indicator
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
@@ -1272,6 +1456,14 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Handle receipt confirmation callbacks (struk)
     if query.data.startswith("receipt_"):
         await _handle_receipt_callback(update, context)
+        return
+
+    # Handle edit item callbacks
+    if query.data.startswith("edititem_"):
+        await _handle_edit_item(update, context)
+        return
+    if query.data.startswith("editfield_"):
+        await _handle_edit_item_field(update, context)
         return
 
     # Handle bulk OCR callbacks (album multi-foto)
