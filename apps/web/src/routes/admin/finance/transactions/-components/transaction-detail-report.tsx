@@ -1249,7 +1249,7 @@ export function TransactionDetailReport({
 												{/* Nominal */}
 												<td className="sticky right-[88px] z-10 whitespace-nowrap border-l border-slate-100 bg-white px-3 py-2 text-right group-hover:bg-slate-50">
 													<span className={`font-mono text-[13px] font-semibold tracking-tight ${isIncome ? "text-emerald-600" : "text-orange-500"}`}>
-														{isIncome ? "+" : "−"} {formatCurrencyIDR(t.amount)}
+														{isIncome ? "+" : "−"} {formatCurrencyIDR(t.itemIndex !== undefined ? t.total : t.amount)}
 													</span>
 												</td>
 
