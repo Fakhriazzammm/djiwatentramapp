@@ -102,10 +102,17 @@ class FinanceManager:
                 dt_str = receipt_date_str.strip()
                 if " " in dt_str:
                     parsed = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
+                    # Asumsikan input dalam WIB
+                    tx_date_ms = int(parsed.replace(tzinfo=WIB).timestamp() * 1000)
                 else:
-                    parsed = datetime.strptime(dt_str, "%Y-%m-%d")
-                # Asumsikan input dalam WIB
-                tx_date_ms = int(parsed.replace(tzinfo=WIB).timestamp() * 1000)
+                    # Hanya tanggal tanpa jam → pakai jam sekarang biar tidak 00:00
+                    parsed_date = datetime.strptime(dt_str, "%Y-%m-%d")
+                    now = datetime.now(WIB)
+                    combined = parsed_date.replace(
+                        hour=now.hour, minute=now.minute, second=now.second,
+                        tzinfo=WIB,
+                    )
+                    tx_date_ms = int(combined.timestamp() * 1000)
             except ValueError:
                 pass  # fallback ke NOW
 
