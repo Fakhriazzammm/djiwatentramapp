@@ -1524,6 +1524,23 @@ async def _check_new_transactions(app):
             lines.append(f"📁 {cat}")
             lines.append(f"💰 Rp{amount:,.0f}")
 
+            # Items dari OCR metadata (scanItems)
+            scan_items = []
+            if isinstance(metadata, dict):
+                scan_items = metadata.get("scanItems") or []
+            if scan_items:
+                lines.append("")
+                lines.append("Items:")
+                for si in scan_items:
+                    sn = si.get("name", "?").strip()
+                    sq = float(si.get("quantity", 1))
+                    sp = float(si.get("price", 0) or 0)
+                    st = float(si.get("total", 0) or 0)
+                    sq_str = f"{sq:.0f}" if sq == int(sq) else f"{sq:.1f}"
+                    price_str = f" @ Rp{sp:,.0f}" if sp > 0 else ""
+                    total_str = f" = Rp{st:,.0f}" if st > 0 else ""
+                    lines.append(f"  • {sn} x{sq_str}{price_str}{total_str}")
+
             if desc:
                 lines.append(f"📝 {desc}")
             if cashier:
