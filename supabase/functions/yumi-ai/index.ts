@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing" | "sendTelegram" | "recordTransaction" | "executeSql" | "insertInventory";
+type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing" | "sendTelegram" | "recordTransaction" | "executeSql" | "insertInventory" | "classifyTransactionItems";
 type JsonRecord = Record<string, unknown>;
 
 const corsHeaders = {
@@ -373,6 +373,225 @@ async function recordTransaction(
 	return { ok: true, sourceId };
 }
 
+// ── COA Classification + Accounting Entries ─────────────────
+
+// Keyword-based COA mapping for item names
+const ITEM_COA_KEYWORDS: Array<{ keywords: string[]; coaCode: string }> = [
+	{ keywords: ["kopi", "susu", "cream", "creamer", "krim"], coaCode: "5-2100" },
+	{ keywords: ["tepung", "roti", "croissant", "terigu", "gandum", "baguette"], coaCode: "5-2200" },
+	{ keywords: ["sirup", "soda", "coca", "fanta", "sprite", "rich gold", "delmonte", "tomat", "jus", "minuman"], coaCode: "5-2300" },
+	{ keywords: ["pack", "gelas", "cup", "lid", "sedotan", "tutup", "kemasan", "kantong plastik", "paper bag"], coaCode: "5-2400" },
+	{ keywords: ["gaji", "upah", "honor"], coaCode: "5-1000" },
+	{ keywords: ["listrik", "air", "pdam", "pln", "pulsa"], coaCode: "5-3100" },
+	{ keywords: ["sewa", "kontrak", "sewa tempat"], coaCode: "5-3200" },
+	{ keywords: ["bensin", "transport", "ojol", "grab", "gojek", "bahan bakar"], coaCode: "5-3300" },
+	{ keywords: ["iklan", "promo", "instagram", "facebook", "tiktok", "marketing"], coaCode: "5-4000" },
+	{ keywords: ["penyusutan", "depresiasi", "amortisasi"], coaCode: "5-5000" },
+	{ keywords: ["gula", "gkp", "gulaku", "gula pasir"], coaCode: "5-2000" },
+	{ keywords: ["telur", "ayam", "daging", "ikan", "udang"], coaCode: "5-2000" },
+	{ keywords: ["minyak", "mentega", "butter", "margarin"], coaCode: "5-2000" },
+	{ keywords: ["keju", "yogurt", "yoghurt"], coaCode: "5-2100" },
+	{ keywords: ["coklat", "cokelat", "cocoa", "matcha", "green tea", "tea"], coaCode: "5-2300" },
+	{ keywords: ["nasi", "beras"], coaCode: "5-2000" },
+	{ keywords: ["bumbu", "rempah", "bawang", "jahe", "kunyit", "laos", "lengkuas", "sereh"], coaCode: "5-2000" },
+	{ keywords: ["sayur", "selada", "kangkung", "bayam", "wortel", "kol", "toge", "tauge"], coaCode: "5-2000" },
+	{ keywords: ["buah", "jeruk", "lemon", "alpukat", "pisang", "mangga", "melon", "strawberry", "blueberry"], coaCode: "5-2300" },
+	{ keywords: ["perlengkapan", "sabun", "lap", "spons", "tissue", "alkohol", "sanitizer", "masker"], coaCode: "5-3000" },
+];
+
+function classifyItemByKeyword(itemName: string): string | null {
+	const name = itemName.toLowerCase().trim();
+	for (const rule of ITEM_COA_KEYWORDS) {
+		for (const kw of rule.keywords) {
+			if (name.includes(kw)) return rule.coaCode;
+		}
+	}
+	// Check if item name contains the word "gula" etc.
+	// Default to Bahan Baku for anything that looks like ingredient
+	if (/^\d/.test(name) || name.includes("kg") || name.includes("gr") || name.includes("liter") || name.includes("ml")) {
+		return "5-2000"; // measureable ingredients → Bahan Baku
+	}
+	return null;
+}
+
+function categoryToCoa(category: string): string {
+	const cat = category.toLowerCase();
+	if (cat.includes("bahan") || cat.includes("baku")) return "5-2000";
+	if (cat.includes("gaji")) return "5-1000";
+	if (cat.includes("operasional") || cat.includes("operational")) return "5-3000";
+	if (cat.includes("promosi") || cat.includes("iklan")) return "5-4000";
+	if (cat.includes("listrik") || cat.includes("air")) return "5-3100";
+	if (cat.includes("sewa")) return "5-3200";
+	if (cat.includes("transport")) return "5-3300";
+	return "5-3000"; // default operasional
+}
+
+function paymentMethodToCoa(method: string): string {
+	const m = method.toLowerCase();
+	if (m.includes("qris") || m.includes("qr")) return "1-1100";
+	return "1-1000"; // cash/tunai default
+}
+
+async function classifyTransactionItems(payload: JsonRecord): Promise<{ ok: boolean; error?: string; classifications?: unknown[] }> {
+	const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+	const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+	const supabase = createClient(supabaseUrl, supabaseKey);
+
+	const transactionId = String(payload.transaction_id ?? "");
+	const items = payload.items as Array<{ name: string; quantity: number; price: number; total: number }> | undefined;
+	const category = String(payload.category ?? "");
+	const paymentMethod = String(payload.payment_method ?? payload.paymentMethod ?? "tunai");
+	const totalAmount = Number(payload.total_amount ?? 0);
+
+	if (!transactionId || !items || items.length === 0) {
+		return { ok: false, error: "transaction_id dan items wajib diisi" };
+	}
+
+	// Fetch all existing item embeddings for exact matching
+	const { data: existingMappings } = await supabase
+		.from("accounting_item_embeddings")
+		.select("item_name, coa_id");
+	const embeddingMap = new Map<string, string>();
+	if (existingMappings) {
+		for (const m of existingMappings) {
+			embeddingMap.set(m.item_name.toLowerCase().trim(), m.coa_id);
+		}
+	}
+
+	// Fetch COA codes to IDs mapping
+	const { data: coaList } = await supabase
+		.from("accounting_chart_of_accounts")
+		.select("id, code");
+	const coaCodeToId = new Map<string, string>();
+	if (coaList) {
+		for (const c of coaList) {
+			coaCodeToId.set(c.code, c.id);
+		}
+	}
+
+	const classifications: Array<{
+		itemName: string;
+		coaCode: string;
+		coaName: string;
+		amount: number;
+		entryType: string;
+		method: "exact" | "keyword" | "category" | "ai";
+	}> = [];
+	let totalDebit = 0;
+
+	for (const item of items) {
+		const itemName = String(item.name ?? "").trim();
+		const itemTotal = Number(item.total ?? item.price ?? 0) * Math.max(1, Number(item.quantity ?? 1));
+		let coaCode = "";
+		let method: "exact" | "keyword" | "category" | "ai" = "keyword";
+
+		// Level 1: Exact match from stored embeddings
+		const stored = embeddingMap.get(itemName.toLowerCase());
+		if (stored) {
+			coaCode = coaList?.find(c => c.id === stored)?.code ?? "";
+			method = "exact";
+		}
+
+		// Level 2: Keyword matching
+		if (!coaCode) {
+			const kw = classifyItemByKeyword(itemName);
+			if (kw) coaCode = kw;
+		}
+
+		// Level 3: Category-based fallback
+		if (!coaCode) {
+			coaCode = categoryToCoa(category);
+			method = "category";
+		}
+
+		const coaId = coaCodeToId.get(coaCode);
+		if (!coaId) continue;
+
+		classifications.push({
+			itemName,
+			coaCode,
+			coaName: coaList?.find(c => c.code === coaCode)?.name ?? coaCode,
+			amount: itemTotal,
+			entryType: "debit",
+			method,
+		});
+		totalDebit += itemTotal;
+
+		// Store new mapping if not already known
+		if (method !== "exact") {
+			await supabase.from("accounting_item_embeddings").upsert(
+				{
+					item_name: itemName,
+					coa_id: coaId,
+					usage_count: 1,
+					last_used_at: new Date().toISOString(),
+				},
+				{ onConflict: "item_name", ignoreDuplicates: false }
+			).eq("item_name", itemName);
+		}
+	}
+
+	// Generate accounting entries: DEBIT per item + KREDIT total to Kas
+	const entries: Array<{
+		transaction_source_id: string;
+		coa_id: string;
+		entry_type: string;
+		amount: number;
+		description: string;
+		item_index: number;
+	}> = [];
+
+	// DEBIT entries per item
+	for (const c of classifications) {
+		const coaId = coaCodeToId.get(c.coaCode);
+		if (!coaId) continue;
+		entries.push({
+			transaction_source_id: transactionId,
+			coa_id: coaId,
+			entry_type: "debit",
+			amount: c.amount,
+			description: c.itemName,
+			item_index: classifications.indexOf(c) + 1,
+		});
+	}
+
+	// KREDIT entry to Kas
+	const kasCoaCode = paymentMethodToCoa(paymentMethod);
+	const kasCoaId = coaCodeToId.get(kasCoaCode);
+	if (kasCoaId && totalDebit > 0) {
+		entries.push({
+			transaction_source_id: transactionId,
+			coa_id: kasCoaId,
+			entry_type: "kredit",
+			amount: Math.max(totalDebit, totalAmount),
+			description: `Pembayaran ${paymentMethod} (${items.length} item)`,
+			item_index: 0,
+		});
+	}
+
+	// Bulk insert entries
+	if (entries.length > 0) {
+		const { error: insertError } = await supabase
+			.from("accounting_entries")
+			.insert(entries);
+		if (insertError) {
+			console.error("Failed to insert accounting entries:", insertError);
+			return { ok: false, error: insertError.message };
+		}
+	}
+
+	return {
+		ok: true,
+		classifications: classifications.map(c => ({
+			item: c.itemName,
+			akun: `${c.coaCode} — ${c.coaName}`,
+			debit: c.entryType === "debit" ? c.amount : 0,
+			kredit: c.entryType === "kredit" ? c.amount : 0,
+			metode: c.method,
+		})),
+	};
+}
+
 async function executeSql(payload: JsonRecord): Promise<{ ok: boolean; error?: string; result?: unknown }> {
 	const sql = String(payload.sql ?? "").trim();
 	if (!sql) return { ok: false, error: "sql is required" };
@@ -485,6 +704,8 @@ Deno.serve(async (req) => {
 				return jsonResponse(await sendTelegram(body));
 			case "recordTransaction":
 				return jsonResponse(await recordTransaction(body));
+			case "classifyTransactionItems":
+				return jsonResponse(await classifyTransactionItems(body));
 			case "executeSql":
 				return jsonResponse(await executeSql(body));
 			case "insertInventory":
