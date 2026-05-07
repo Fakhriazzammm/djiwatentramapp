@@ -214,30 +214,34 @@ export function AccountingEntriesView() {
 												<td colSpan={8} className="bg-slate-50/80 p-0">
 													<div className="border-t border-slate-200">
 														<table className="w-full">
-															<thead>
-																<tr className="text-[8px] font-semibold uppercase tracking-wider text-slate-400">
-																	<th className="w-8 px-3 py-1.5 text-center">No</th>
-																	<th className="px-2 py-1.5 text-left">Nama / Item</th>
-																	<th className="w-16 px-2 py-1.5 text-right">Qty</th>
-																	<th className="w-24 px-2 py-1.5 text-right">Harga</th>
-																</tr>
-															</thead>
-															<tbody className="divide-y divide-slate-100">
-																{e.scanItems.map((item: any, idx: number) => (
-																	<tr key={idx} className="text-[10px] text-slate-600">
-																		<td className="px-3 py-1.5 text-center text-slate-400 font-mono">
-																			{idx + 1}
-																		</td>
-																		<td className="px-2 py-1.5">{item.name || "—"}</td>
-																		<td className="px-2 py-1.5 text-right font-mono">
-																			{item.quantity}x
-																		</td>
-																		<td className="px-2 py-1.5 text-right font-mono">
-																			{formatCurrencyIDR(item.price)}
-																		</td>
-																	</tr>
-																))}
-															</tbody>
+							<thead>
+								<tr className="text-[8px] font-semibold uppercase tracking-wider text-slate-400">
+									<th className="w-8 px-3 py-1.5 text-center">No</th>
+									<th className="px-2 py-1.5 text-left">Nama / Item</th>
+									<th className="w-14 px-2 py-1.5 text-right">Qty</th>
+									<th className="w-24 px-2 py-1.5 text-right">Harga</th>
+									<th className="w-24 px-2 py-1.5 text-right">Total</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-slate-100">
+								{e.scanItems.map((item: any, idx: number) => (
+									<tr key={idx} className="text-[10px] text-slate-600">
+										<td className="px-3 py-1.5 text-center text-slate-400 font-mono">
+											{idx + 1}
+										</td>
+										<td className="px-2 py-1.5">{item.name || "—"}</td>
+										<td className="px-2 py-1.5 text-right font-mono">
+											{item.quantity}x
+										</td>
+										<td className="px-2 py-1.5 text-right font-mono">
+											{Number.isFinite(Number(item.price)) ? formatCurrencyIDR(Number(item.price)) : "—"}
+										</td>
+										<td className="px-2 py-1.5 text-right font-mono font-semibold text-slate-800">
+											{Number.isFinite(Number(item.total)) ? formatCurrencyIDR(Number(item.total)) : formatCurrencyIDR((Number(item.quantity) || 1) * (Number(item.price) || 0))}
+										</td>
+									</tr>
+								))}
+							</tbody>
 														</table>
 													</div>
 												</td>
