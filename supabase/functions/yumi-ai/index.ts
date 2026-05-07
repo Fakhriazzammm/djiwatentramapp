@@ -288,25 +288,25 @@ async function recordTransaction(
 	const raw = payload.raw ?? {};
 	const creationTime = Number(payload.creation_time ?? Date.now());
 
-\tconst sourceFingerprint = String(payload.source_fingerprint ?? payload.sourceFingerprint ?? "").trim();
+	const sourceFingerprint = String(payload.source_fingerprint ?? payload.sourceFingerprint ?? "").trim();
 
-\t// ── Dedup by source_fingerprint (strong match) ─────────────
-\tif (sourceFingerprint) {
-\t\tconst { data: fpMatch } = await supabase
-\t\t\t.from("financial_transactions")
-\t\t\t.select("source_id")
-\t\t\t.eq("source_fingerprint", sourceFingerprint)
-\t\t\t.maybeSingle();
-\t\tif (fpMatch) {
-\t\t\tconsole.log(`[DEDUP] Duplicate detected by source_fingerprint ${sourceFingerprint}, returning existing ${fpMatch.source_id}`);
-\t\t\treturn { ok: true, sourceId: fpMatch.source_id };
-\t\t}
-\t}
+	// ── Dedup by source_fingerprint (strong match) ─────────────
+	if (sourceFingerprint) {
+		const { data: fpMatch } = await supabase
+			.from("financial_transactions")
+			.select("source_id")
+			.eq("source_fingerprint", sourceFingerprint)
+			.maybeSingle();
+		if (fpMatch) {
+			console.log(`[DEDUP] Duplicate detected by source_fingerprint ${sourceFingerprint}, returning existing ${fpMatch.source_id}`);
+			return { ok: true, sourceId: fpMatch.source_id };
+		}
+	}
 
-\t// ── Deduplication check ──────────────────────────────────────
-\t// Cek apakah transaksi dengan amount, category, description, dan tx_date
-\t// yang sama sudah ada dalam 5 menit terakhir. Ini mencegah duplikasi
-\t// dari Telegram callback retry atau double-click.
+	// ── Deduplication check ──────────────────────────────────────
+	// Cek apakah transaksi dengan amount, category, description, dan tx_date
+	// yang sama sudah ada dalam 5 menit terakhir. Ini mencegah duplikasi
+	// dari Telegram callback retry atau double-click.
 	if (amount > 0 && txDate > 0) {
 		const { data: existing } = await supabase
 			.from("financial_transactions")
@@ -348,22 +348,22 @@ async function recordTransaction(
 		}
 	}
 
-\tconst { error } = await supabase
-\t\t.from("financial_transactions")
-\t\t.insert({
-\t\t\tsource_id: sourceId,
-\t\t\ttx_type: txType,
-\t\t\tamount,
-\t\t\tcategory,
-\t\t\tdescription,
-\t\t\ttx_date: txDate,
-\t\t\tpayment_method: paymentMethod,
-\t\t\tstatus,
-\t\t\tmetadata,
-\t\t\traw,
-\t\t\tsource_fingerprint: sourceFingerprint || null,
-\t\t\tcreation_time: creationTime,
-\t\t});
+	const { error } = await supabase
+		.from("financial_transactions")
+		.insert({
+			source_id: sourceId,
+			tx_type: txType,
+			amount,
+			category,
+			description,
+			tx_date: txDate,
+			payment_method: paymentMethod,
+			status,
+			metadata,
+			raw,
+			source_fingerprint: sourceFingerprint || null,
+			creation_time: creationTime,
+		});
 
 	if (error) {
 		console.error("recordTransaction failed:", error);
