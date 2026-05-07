@@ -160,8 +160,8 @@ def _can_respond(update: Update) -> bool:
     message_text = msg.text or msg.caption or ""
     if "@YummeFinanceAIbot".lower() in message_text.lower():
         return True
-    # Foto dari owner selalu diproses di grup (biar gak perlu @mention tiap foto)
-    if user.id == 323151437 and msg.photo:
+    # Foto dari anggota grup mana pun langsung diproses (tanpa perlu @mention)
+    if msg.photo:
         return True
     return False
 

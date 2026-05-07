@@ -1492,14 +1492,26 @@ async def _check_new_transactions(app):
             amount = float(x.get("amount") or 0)
             cat = x.get("category") or "Lainnya"
             desc = x.get("description") or ""
+            metadata = x.get("metadata") or {}
+            is_ocr = isinstance(metadata, dict) and metadata.get("ocr") is True
 
             shift = await _find_shift_at_time(ts)
             cashier = shift.get("cashier_name", "?")
 
+            # Header with OCR badge jika dari struk
+            header = "📸💸 Pengeluaran" if is_ocr else "💸 Pengeluaran"
             lines = [
-                f"💸 Pengeluaran — {_format_time_ms(ts)}",
+                f"{header} — {_format_time_ms(ts)}",
                 f"{cat} | Rp{amount:,.0f}",
             ]
+
+            # Merchant dari OCR metadata
+            if is_ocr:
+                receipt_details = metadata.get("receiptDetails") or {}
+                merchant = receipt_details.get("merchantName") or ""
+                if merchant:
+                    lines.append(f"🏪 {merchant}")
+
             if desc:
                 lines.append(f"📝 {desc}")
             if cashier:
