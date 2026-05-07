@@ -1511,7 +1511,7 @@ async def _check_new_transactions(app):
             header = "📸💸 Pengeluaran" if is_ocr else "💸 Pengeluaran"
             lines = [
                 f"{header} — {_format_time_ms(ts)}",
-                f"{cat} | Rp{amount:,.0f}",
+                "━━━━━━━━━━━━━━━━━━",
             ]
 
             # Merchant dari OCR metadata
@@ -1520,6 +1520,9 @@ async def _check_new_transactions(app):
                 merchant = receipt_details.get("merchantName") or ""
                 if merchant:
                     lines.append(f"🏪 {merchant}")
+
+            lines.append(f"📁 {cat}")
+            lines.append(f"💰 Rp{amount:,.0f}")
 
             if desc:
                 lines.append(f"📝 {desc}")
