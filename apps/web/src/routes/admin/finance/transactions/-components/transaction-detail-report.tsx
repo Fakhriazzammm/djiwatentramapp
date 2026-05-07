@@ -706,151 +706,151 @@ export function TransactionDetailReport({
 	const hasActiveFilters = !!(searchQuery || minAmount || maxAmount || filterCategory || filterShift);
 
 	return (
-		<div className="space-y-1 p-1">
+		<div className="space-y-0.5 p-0.5">
 			{/* ── Header bar ──────────────────────────────────────────────── */}
 			{withMergedHeader && (
-				<div className="sticky top-0 z-30 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+				<div className="overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-xs">
 					{/* Row 1: title + controls + actions */}
-					<div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 px-3 py-2">
-						<div className="flex items-center gap-2">
-							<h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-700">Transaksi</h2>
+					<div className="flex flex-wrap items-center justify-between gap-1 border-b border-slate-200/80 px-2 py-1">
+							<div className="flex items-center gap-1">
+							<h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-700">Transaksi</h2>
 							{/* View mode */}
-							<div className="flex items-center gap-0.5 rounded-md border border-slate-200 bg-slate-50 p-0.5">
+							<div className="flex items-center gap-0.5 rounded border border-slate-200 bg-slate-50 p-0.5">
 								{(["transaction", "item"] as const).map((m) => (
 									<button key={m} type="button" onClick={() => onViewModeChange!(m)}
-										className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${viewMode === m ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+										className={`rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${viewMode === m ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
 										{m === "transaction" ? "Transaksi" : "Item"}
 									</button>
 								))}
 							</div>
 							{/* Group mode */}
-							<div className="flex items-center gap-0.5 rounded-md border border-slate-200 bg-slate-50 p-0.5">
+							<div className="flex items-center gap-0.5 rounded border border-slate-200 bg-slate-50 p-0.5">
 								{(["flat", "grouped"] as const).map((m) => (
 									<button key={m} type="button" onClick={() => onGroupModeChange!(m)}
-										className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${groupMode === m ? "bg-slate-700 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+										className={`rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${groupMode === m ? "bg-slate-700 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
 										{m === "flat" ? "Flat" : "Grouped"}
 									</button>
 								))}
 							</div>
 							{/* Running balance toggle */}
 							<button type="button" onClick={() => setShowRunningBalance((v) => !v)}
-								className={`inline-flex h-6 items-center gap-1 rounded border px-2 text-[10px] font-medium transition-colors ${showRunningBalance ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"}`}
+								className={`inline-flex h-5 items-center gap-1 rounded border px-1.5 text-[9px] font-medium transition-colors ${showRunningBalance ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"}`}
 								title="Tampilkan saldo berjalan">
-								<BarChart2 className="h-3 w-3" />
+								<BarChart2 className="h-2.5 w-2.5" />
 								Saldo
 							</button>
 							{/* Comparison toggle */}
 							{onToggleComparison && (
 								<button type="button" onClick={onToggleComparison}
-									className={`inline-flex h-6 items-center gap-1 rounded border px-2 text-[10px] font-medium transition-colors ${showComparison ? "border-violet-400 bg-violet-50 text-violet-700" : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"}`}
+									className={`inline-flex h-5 items-center gap-1 rounded border px-1.5 text-[9px] font-medium transition-colors ${showComparison ? "border-violet-400 bg-violet-50 text-violet-700" : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"}`}
 									title="Bandingkan dengan periode sebelumnya">
-									<TrendingUp className="h-3 w-3" />
+									<TrendingUp className="h-2.5 w-2.5" />
 									vs Sebelumnya
 								</button>
 							)}
 						</div>
-						<div className="flex items-center gap-1.5">
+						<div className="flex items-center gap-1">
 							{onExportCsv && (
 								<button type="button" onClick={onExportCsv} disabled={isExportingCsv}
-									className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-300 bg-slate-50 px-2.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+									className="inline-flex h-6 items-center gap-1 rounded-md border border-slate-300 bg-slate-50 px-2 text-[10px] font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
 									title="Export CSV">
-									<Download className="h-3.5 w-3.5" />
+									<Download className="h-3 w-3" />
 									CSV
 								</button>
 							)}
 							<button type="button" onClick={onExportPdf} disabled={isExporting}
-								className="inline-flex h-7 items-center gap-1.5 rounded-md border border-slate-300 bg-slate-50 px-2.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50">
-								<FileText className="h-3.5 w-3.5" />
+								className="inline-flex h-6 items-center gap-1 rounded-md border border-slate-300 bg-slate-50 px-2 text-[10px] font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50">
+								<FileText className="h-3 w-3" />
 								PDF
 							</button>
 							<button type="button" onClick={onOpenAddTransaction}
-								className="inline-flex h-7 items-center gap-1.5 rounded-md bg-emerald-600 px-2.5 text-[11px] font-semibold text-white hover:bg-emerald-700">
-								<Plus className="h-3.5 w-3.5" />
+								className="inline-flex h-6 items-center gap-1 rounded-md bg-emerald-600 px-2 text-[10px] font-semibold text-white hover:bg-emerald-700">
+								<Plus className="h-3 w-3" />
 								Catat
 							</button>
 						</div>
 					</div>
 
 					{/* Row 2: period navigation + stats */}
-					<div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+					<div className="flex flex-wrap items-center justify-between gap-1 px-2 py-1">
 						<div className="flex flex-wrap items-center gap-1">
 							{/* Prev period */}
 							{onPrevPeriod && (
 								<button type="button" onClick={onPrevPeriod}
-									className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+									className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
 									title="Periode sebelumnya">
-									<ChevronLeft className="h-3.5 w-3.5" />
+									<ChevronLeft className="h-3 w-3" />
 								</button>
 							)}
 							{periodButtons!.map((item) => (
 								<button key={item.value} type="button"
 									onClick={() => onPeriodChange!(item.value)}
-									className={`rounded-sm border px-2.5 py-1 text-[10px] font-medium transition-colors ${period === item.value ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"}`}>
+									className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-medium transition-colors ${period === item.value ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"}`}>
 									{item.label}
 								</button>
 							))}
 							{/* Next period */}
 							{onNextPeriod && (
 								<button type="button" onClick={onNextPeriod} disabled={!canGoNext}
-									className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-30"
+									className="inline-flex h-6 w-6 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-30"
 									title="Periode berikutnya">
-									<ChevronRight className="h-3.5 w-3.5" />
+									<ChevronRight className="h-3 w-3" />
 								</button>
 							)}
 						</div>
 
 						{/* Summary stats */}
 						<div className="flex flex-col items-end gap-0.5">
-							<div className="flex items-center divide-x divide-slate-200 text-[11px]">
-								<span className="pr-3 text-slate-500">{summary!.periodLabel}</span>
-								<span className="px-3 font-semibold text-emerald-600">
+							<div className="flex items-center divide-x divide-slate-200 text-[10px]">
+								<span className="pr-2 text-slate-500">{summary!.periodLabel}</span>
+								<span className="px-2 font-semibold text-emerald-600">
 									↑ {formatCurrencyIDR(summary!.totalIncome)}
 									{comparisonChip(summary!.totalIncome, previousSummary?.totalIncome ?? 0, "income")}
 								</span>
-								<span className="px-3 font-semibold text-orange-500">
+								<span className="px-2 font-semibold text-orange-500">
 									↓ {formatCurrencyIDR(summary!.totalExpense)}
 									{comparisonChip(summary!.totalExpense, previousSummary?.totalExpense ?? 0, "expense")}
 								</span>
-								<span className={`pl-3 font-bold ${summary!.netBalance >= 0 ? "text-slate-900" : "text-red-600"}`}>
+								<span className={`pl-2 font-bold ${summary!.netBalance >= 0 ? "text-slate-900" : "text-red-600"}`}>
 									= {summary!.netBalance < 0 ? "-" : ""}{formatCurrencyIDR(Math.abs(summary!.netBalance))}
 									{comparisonChip(summary!.netBalance, previousSummary?.netBalance ?? 0, "net")}
 								</span>
-								<span className="pl-3 text-slate-500">{summary!.count} tx</span>
+								<span className="pl-2 text-slate-500">{summary!.count} tx</span>
 							</div>
 							{showComparison && previousSummary && (
-								<div className="text-[9px] text-slate-400">
+								<div className="text-[8px] text-slate-400">
 									vs {previousSummary.periodLabel}: ↑ {formatCurrencyIDR(previousSummary.totalIncome)} · ↓ {formatCurrencyIDR(previousSummary.totalExpense)}
 								</div>
 							)}
 							{showComparison && previousSummary === null && (
-								<div className="text-[9px] text-slate-400 animate-pulse">Memuat data pembanding...</div>
+								<div className="text-[8px] text-slate-400 animate-pulse">Memuat data pembanding...</div>
 							)}
 						</div>
 					</div>
 
 					{/* Row 3: Custom date picker (only when period = custom) */}
 					{period === "custom" && onCustomRangeChange && (
-						<div className="flex items-center gap-2 border-t border-slate-100 bg-slate-50 px-3 py-2">
-							<span className="text-[10px] font-medium text-slate-600">Dari</span>
+						<div className="flex items-center gap-2 border-t border-slate-100 bg-slate-50 px-2 py-1">
+							<span className="text-[9px] font-medium text-slate-600">Dari</span>
 							<input
 								type="date"
 								value={customStartInput}
 								onChange={(e) => setCustomStartInput(e.target.value)}
-								className="h-6 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
+								className="h-5 rounded border border-slate-300 bg-white px-1.5 text-[9px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
 							/>
-							<span className="text-[10px] text-slate-400">–</span>
-							<span className="text-[10px] font-medium text-slate-600">Sampai</span>
+							<span className="text-[9px] text-slate-400">–</span>
+							<span className="text-[9px] font-medium text-slate-600">Sampai</span>
 							<input
 								type="date"
 								value={customEndInput}
 								onChange={(e) => setCustomEndInput(e.target.value)}
-								className="h-6 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
+								className="h-5 rounded border border-slate-300 bg-white px-1.5 text-[9px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
 							/>
 							<button type="button" onClick={applyCustomRange}
-								className="inline-flex h-6 items-center rounded bg-emerald-600 px-2.5 text-[10px] font-semibold text-white hover:bg-emerald-700">
+								className="inline-flex h-5 items-center rounded bg-emerald-600 px-2 text-[9px] font-semibold text-white hover:bg-emerald-700">
 								Terapkan
 							</button>
-							<span className="text-[10px] text-slate-400">
+							<span className="text-[9px] text-slate-400">
 								{range.label && `Aktif: ${range.label}`}
 							</span>
 						</div>
@@ -858,16 +858,16 @@ export function TransactionDetailReport({
 				</div>
 			)}
 
-			<div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+			<div className="overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-xs">
 				{/* ── Filter bar ──────────────────────────────────────────── */}
-				<div className="border-b border-slate-200/80 px-2 py-1.5">
-					<div className="flex flex-wrap items-center gap-2">
+				<div className="border-b border-slate-200/80 px-2 py-1">
+					<div className="flex flex-wrap items-center gap-1">
 						{/* Type */}
-						<div className="flex gap-0.5 rounded-md border border-slate-200 bg-slate-50 p-0.5">
+						<div className="flex gap-0.5 rounded border border-slate-200 bg-slate-50 p-0.5">
 							{(["all", "income", "expense"] as const).map((t) => (
 								<button key={t} type="button"
 									onClick={() => setFilterType(t === "all" ? undefined : t)}
-									className={`rounded px-2.5 py-1 text-[10px] font-semibold transition-all ${
+									className={`rounded px-1.5 py-0.5 text-[9px] font-semibold transition-all ${
 										(t === "all" && !filterType) || filterType === t
 											? t === "income" ? "bg-emerald-600 text-white" : t === "expense" ? "bg-orange-500 text-white" : "bg-slate-700 text-white"
 											: "text-slate-600 hover:bg-slate-100"
@@ -878,17 +878,17 @@ export function TransactionDetailReport({
 						</div>
 
 						{/* Search */}
-						<div className="relative min-w-[180px] max-w-xs flex-1">
-							<Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-							<input type="text" placeholder="Cari transaksi..." value={searchQuery}
+						<div className="relative min-w-[140px] max-w-[200px] flex-1">
+							<Search className="absolute left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
+							<input type="text" placeholder="Cari..." value={searchQuery}
 								onChange={(e) => setSearchQuery(e.target.value)}
-								className="h-7 w-full rounded border border-slate-300 bg-slate-50 pl-7 pr-2 text-[11px] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400" />
+								className="h-6 w-full rounded border border-slate-300 bg-slate-50 pl-6 pr-1.5 text-[10px] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400" />
 						</div>
 
 						{/* Shift filter */}
 						{availableShifts.length > 0 && (
 							<select value={filterShift} onChange={(e) => setFilterShift(e.target.value)}
-								className={`h-7 rounded border px-2 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300 ${filterShift ? "border-teal-400 bg-teal-50 text-teal-700" : "border-slate-200 bg-slate-50"}`}>
+								className={`h-6 rounded border px-1.5 text-[9px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300 ${filterShift ? "border-teal-400 bg-teal-50 text-teal-700" : "border-slate-200 bg-slate-50"}`}>
 								<option value="">Semua Shift</option>
 								{availableShifts.map((s: string) => (
 									<option key={s} value={s}>{s}</option>
@@ -899,28 +899,28 @@ export function TransactionDetailReport({
 						{/* Sort */}
 						<button type="button"
 							onClick={() => { if (sortBy === "date") setSortOrder(sortOrder === "asc" ? "desc" : "asc"); else setSortBy("date"); }}
-							className={`inline-flex h-7 items-center gap-1 rounded border px-2 text-[10px] font-medium transition-colors ${sortBy === "date" ? "border-slate-400 bg-slate-100 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
-							<ArrowUpDown className="h-3 w-3" />
+							className={`inline-flex h-6 items-center gap-1 rounded border px-1.5 text-[9px] font-medium transition-colors ${sortBy === "date" ? "border-slate-400 bg-slate-100 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+							<ArrowUpDown className="h-2.5 w-2.5" />
 							Tanggal {sortBy === "date" ? (sortOrder === "asc" ? "↑" : "↓") : ""}
 						</button>
 						<button type="button"
 							onClick={() => { if (sortBy === "amount") setSortOrder(sortOrder === "asc" ? "desc" : "asc"); else setSortBy("amount"); }}
-							className={`inline-flex h-7 items-center gap-1 rounded border px-2 text-[10px] font-medium transition-colors ${sortBy === "amount" ? "border-slate-400 bg-slate-100 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+							className={`inline-flex h-6 items-center gap-1 rounded border px-1.5 text-[9px] font-medium transition-colors ${sortBy === "amount" ? "border-slate-400 bg-slate-100 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
 							Nominal {sortBy === "amount" ? (sortOrder === "asc" ? "↑" : "↓") : ""}
 						</button>
 
 						{/* More filters */}
 						<button type="button" onClick={() => setShowFilters((v) => !v)}
-							className={`inline-flex h-7 items-center gap-1 rounded border px-2 text-[10px] font-medium transition-colors ${showFilters || filterCategory || minAmount || maxAmount ? "border-blue-400 bg-blue-50 text-blue-700" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"}`}>
-							<Filter className="h-3 w-3" />
+							className={`inline-flex h-6 items-center gap-1 rounded border px-1.5 text-[9px] font-medium transition-colors ${showFilters || filterCategory || minAmount || maxAmount ? "border-blue-400 bg-blue-50 text-blue-700" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"}`}>
+							<Filter className="h-2.5 w-2.5" />
 							Filter
-							{showFilters ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+							{showFilters ? <ChevronDown className="h-2.5 w-2.5" /> : <ChevronRight className="h-2.5 w-2.5" />}
 						</button>
 
 						{hasActiveFilters && (
 							<button type="button"
 								onClick={() => { setSearchQuery(""); setMinAmount(""); setMaxAmount(""); setFilterCategory(""); setFilterShift(""); }}
-								className="text-[10px] text-red-500 hover:text-red-700 hover:underline">
+								className="text-[9px] text-red-500 hover:text-red-700 hover:underline">
 								Reset
 							</button>
 						)}
@@ -937,19 +937,19 @@ export function TransactionDetailReport({
 
 					{/* Extended filters */}
 					{showFilters && (
-						<div className="mt-1.5 flex flex-wrap items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2">
-							<div className="flex items-center gap-1.5">
-								<span className="text-[10px] font-medium uppercase tracking-wider text-slate-600">Nominal:</span>
+						<div className="mt-1 flex flex-wrap items-center gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1">
+							<div className="flex items-center gap-1">
+								<span className="text-[9px] font-medium uppercase tracking-wider text-slate-600">Nominal:</span>
 								<input type="number" placeholder="Min" value={minAmount} onChange={(e) => setMinAmount(e.target.value)}
-									className="h-6 w-24 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300" />
-								<span className="text-slate-400">–</span>
+									className="h-5 w-20 rounded border border-slate-300 bg-white px-1.5 text-[9px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300" />
+								<span className="text-slate-300">–</span>
 								<input type="number" placeholder="Max" value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)}
-									className="h-6 w-24 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300" />
+									className="h-5 w-20 rounded border border-slate-300 bg-white px-1.5 text-[9px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300" />
 							</div>
-							<div className="flex items-center gap-1.5">
-								<span className="text-[10px] font-medium uppercase tracking-wider text-slate-600">Kategori:</span>
+							<div className="flex items-center gap-1">
+								<span className="text-[9px] font-medium uppercase tracking-wider text-slate-600">Kategori:</span>
 								<select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
-									className="h-6 rounded border border-slate-300 bg-white px-2 text-[10px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300">
+									className="h-5 rounded border border-slate-300 bg-white px-1.5 text-[9px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300">
 									<option value="">Semua</option>
 									{EXPENSE_CATEGORIES.map((cat) => (
 										<option key={cat} value={cat}>{cat.replace(/_/g, " ")}</option>
@@ -984,9 +984,9 @@ export function TransactionDetailReport({
 				<div
 					ref={scrollContainerRef}
 					onScroll={(e) => setScrollTop((e.target as HTMLDivElement).scrollTop)}
-					className="max-h-[calc(100vh-320px)] overflow-auto"
+					className="overflow-auto"
 				>
-					<table className="w-full min-w-[720px] table-auto text-left text-[10px] text-slate-700">
+					<table className="w-full min-w-[680px] table-auto text-left text-[10px] text-slate-700">
 					<colgroup>
 						<col style={{ width: "30px" }} />
 						<col style={{ width: "32px" }} />
@@ -1001,28 +1001,28 @@ export function TransactionDetailReport({
 					</colgroup>
 						<thead className="sticky top-0 z-10 bg-slate-50 text-[8px] font-semibold uppercase tracking-wider text-slate-500">
 							<tr>
-								<th className="sticky left-0 z-20 border-r border-b border-slate-200 bg-slate-50 px-1 py-1.5">
+								<th className="border-r border-b border-slate-200 bg-slate-50 px-1 py-1">
 									<div className="flex items-center justify-center">
 										<Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectAll}
 											disabled={filteredRowKeys.length === 0}
 											className="rounded-sm border-muted-foreground/40 bg-muted/40 data-checked:border-primary data-checked:bg-primary" />
 									</div>
 								</th>
-								<th className="sticky left-[30px] z-20 border-r border-b border-slate-200 bg-slate-50 px-1 py-1.5 text-center">No</th>
-								<th className="border-b border-slate-200 px-2 py-1.5">Tanggal</th>
-							<th className="border-b border-slate-200 px-2 py-1.5">ID</th>
-							<th className="border-b border-slate-200 px-2 py-1.5">Sumber</th>
-							<th className="border-b border-slate-200 px-2 py-1.5">Pembayaran</th>
-							<th className="border-b border-slate-200 px-2 py-1.5">Deskripsi</th>
-								<th className="sticky right-[72px] z-20 border-l border-b border-slate-200 bg-slate-50 px-2 py-1.5 text-right">
+								<th className="border-r border-b border-slate-200 bg-slate-50 px-1 py-1 text-center">No</th>
+								<th className="border-b border-slate-200 px-2 py-1">Tanggal</th>
+							<th className="border-b border-slate-200 px-2 py-1">ID</th>
+							<th className="border-b border-slate-200 px-2 py-1">Sumber</th>
+							<th className="border-b border-slate-200 px-2 py-1">Pembayaran</th>
+							<th className="border-b border-slate-200 px-2 py-1">Deskripsi</th>
+								<th className="border-l border-b border-slate-200 bg-slate-50 px-2 py-1 text-right">
 									{showRunningBalance ? "Nominal" : "Nominal"}
 								</th>
 								{showRunningBalance && (
-									<th className="sticky right-[72px] z-20 border-l border-b border-slate-200 bg-indigo-50 px-2 py-1.5 text-right text-indigo-600">
+									<th className="border-l border-b border-slate-200 bg-indigo-50 px-2 py-1 text-right text-indigo-600">
 										Saldo
 									</th>
 								)}
-								<th className="sticky right-0 z-20 border-l border-b border-slate-200 bg-slate-50 px-1 py-1.5 text-center">Aksi</th>
+								<th className="border-l border-b border-slate-200 bg-slate-50 px-1 py-1 text-center">Aksi</th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-slate-100 bg-white">
@@ -1175,22 +1175,21 @@ export function TransactionDetailReport({
 											onDoubleClick={() => { if (editingItemRowKey === rowKey) return; handleEdit(t); }}
 										>
 												{/* Checkbox */}
-												<td className="sticky left-0 z-10 w-9 border-r border-slate-100 bg-white px-1.5 group-hover:bg-slate-50"
+												<td className="w-9 border-r border-slate-100 bg-white px-1 group-hover:bg-slate-50"
 													onClick={(e) => e.stopPropagation()}>
-													<div className={`absolute inset-y-0 left-0 w-[3px] ${isIncome ? "bg-emerald-400" : "bg-orange-400"}`} />
-													<div className="flex items-center justify-center pl-1">
+													<div className="flex items-center justify-center">
 														<Checkbox checked={selectedRowKeys.has(rowKey)} onCheckedChange={() => handleToggleRow(rowKey)}
 															className="rounded-sm border-muted-foreground/40 bg-muted/40 data-checked:border-primary data-checked:bg-primary" />
 													</div>
 												</td>
 
 						{/* No */}
-						<td className="sticky left-[30px] z-10 w-8 border-r border-slate-100 bg-white px-1 py-1.5 text-center font-mono text-[9px] text-slate-400 group-hover:bg-slate-50">
+						<td className="w-8 border-r border-slate-100 bg-white px-1 py-1 text-center font-mono text-[9px] text-slate-400 group-hover:bg-slate-50">
 							{rowNumberByKey.get(rowKey) || "-"}
 						</td>
 
 						{/* Tanggal */}
-						<td className="whitespace-nowrap px-2 py-1.5">
+						<td className="whitespace-nowrap px-2 py-1">
 							<div className="flex flex-col leading-tight">
 								<span className="text-[10px] font-medium text-slate-900">
 									{format(new Date(t.date), "dd MMM yyyy", { locale: localeID })}
@@ -1203,14 +1202,14 @@ export function TransactionDetailReport({
 						</td>
 
 						{/* ID */}
-						<td className="whitespace-nowrap px-2 py-1.5">
+						<td className="whitespace-nowrap px-2 py-1">
 							<span className="font-mono text-[9px] text-slate-500" title={t._id}>
 								{t.orderId ? `#${String(t.orderId).slice(-8)}` : t.metadata?.sourceRef ? String(t.metadata.sourceRef).slice(-12) : String(t._id).slice(-8)}
 							</span>
 						</td>
 
 						{/* Sumber */}
-						<td className="whitespace-nowrap px-2 py-1.5">
+						<td className="whitespace-nowrap px-2 py-1">
 									<div className="flex flex-col gap-0.5">
 										{getSourceBadge(t)}
 										{t.metadata?.ocr && (
@@ -1234,7 +1233,7 @@ export function TransactionDetailReport({
 								</td>
 
 						{/* Pembayaran */}
-						<td className="whitespace-nowrap px-2 py-1.5">
+						<td className="whitespace-nowrap px-2 py-1">
 							{t.paymentMethod ? (
 								<span className="inline-flex items-center gap-1 text-[10px] text-slate-600">
 									<span>{getPaymentIcon(t.paymentMethod)}</span>
@@ -1246,7 +1245,7 @@ export function TransactionDetailReport({
 							</td>
 
 							{/* Deskripsi */}
-							<td className="px-2 py-1.5">
+							<td className="px-2 py-1">
 								<div className="flex flex-col gap-0.5">
 									<span className="block max-w-xs truncate text-[10px] font-medium text-slate-800"
 										title={t.displaySummary || t.description || "-"}>
@@ -1256,7 +1255,7 @@ export function TransactionDetailReport({
 							</td>
 
 							{/* Nominal */}
-							<td className="sticky right-[72px] z-10 whitespace-nowrap border-l border-slate-100 bg-white px-2 py-1.5 text-right group-hover:bg-slate-50">
+							<td className="whitespace-nowrap border-l border-slate-100 bg-white px-2 py-1 text-right group-hover:bg-slate-50">
 								<span className={`font-mono text-[11px] font-semibold tracking-tight ${isIncome ? "text-emerald-600" : "text-orange-500"}`}>
 									{isIncome ? "+" : "−"} {formatCurrencyIDR(t.itemIndex !== undefined ? t.total : t.amount)}
 								</span>
@@ -1264,7 +1263,7 @@ export function TransactionDetailReport({
 
 							{/* Running balance */}
 							{showRunningBalance && (
-								<td className="whitespace-nowrap border-l border-indigo-100 bg-indigo-50/30 px-2 py-1.5 text-right group-hover:bg-indigo-50/50">
+								<td className="whitespace-nowrap border-l border-indigo-100 bg-indigo-50/30 px-2 py-1 text-right group-hover:bg-indigo-50/50">
 									{runningBal !== undefined ? (
 										<span className={`font-mono text-[10px] font-medium ${runningBal >= 0 ? "text-indigo-700" : "text-red-600"}`}>
 											{runningBal < 0 && "-"}{formatCurrencyIDR(Math.abs(runningBal))}
@@ -1276,7 +1275,7 @@ export function TransactionDetailReport({
 							)}
 
 							{/* Aksi */}
-							<td className="sticky right-0 z-10 border-l border-slate-100 bg-white px-1 py-1.5 group-hover:bg-slate-50"
+							<td className="border-l border-slate-100 bg-white px-1 py-1 group-hover:bg-slate-50"
 								onClick={(e) => e.stopPropagation()}>
 								<div className="flex items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
 									<button type="button" onClick={(e) => { e.stopPropagation(); handleEdit(t); }}
