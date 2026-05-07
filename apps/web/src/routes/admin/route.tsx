@@ -70,6 +70,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/finance/reports": "Laporan Keuangan",
 	"/admin/finance/shift-reports": "Laporan Shift",
 	"/admin/finance/transactions": "Riwayat Transaksi",
+	"/admin/finance/accounting": "Chart of Accounts",
 	"/admin/orders": "Pesanan",
 	"/admin/discounts": "Promosi",
 	"/admin/hpp-calculator": "HPP Kalkulator",
@@ -144,6 +145,7 @@ const QUICK_MENU_SECTIONS = [
 		items: [
 			{ to: "/admin/finance", icon: Wallet, label: "Keuangan", permission: "finance:view" },
 			{ to: "/admin/finance/transactions", icon: ClipboardList, label: "Transaksi", permission: "finance:view" },
+			{ to: "/admin/finance/accounting", icon: BookOpen, label: "Akuntansi", permission: "finance:view" },
 			{ to: "/admin/finance/reports", icon: FileBarChart, label: "Laporan", permission: "finance:view" },
 			{ to: "/admin/finance/shift-reports", icon: Users, label: "Laporan Shift", permission: "finance:view" },
 			{ to: "/admin/hpp-calculator", icon: Calculator, label: "HPP", permission: "finance:view" },
@@ -188,6 +190,7 @@ const FINANCE_PATHS = [
 	"/admin/finance/reports",
 	"/admin/finance/shift-reports",
 	"/admin/finance/transactions",
+	"/admin/finance/accounting",
 	"/admin/hpp-calculator",
 ];
 
@@ -500,6 +503,13 @@ function AdminLayout() {
 								permission="finance:view"
 							/>
 							<DesktopNavLink
+								icon={<BookOpen />}
+								isCollapsed={isCollapsed}
+								label="Akuntansi"
+								to="/admin/finance/accounting"
+								permission="finance:view"
+							/>
+							<DesktopNavLink
 								icon={<FileBarChart />}
 								isCollapsed={isCollapsed}
 								label="Laporan"
@@ -563,12 +573,18 @@ function AdminLayout() {
 												to="/admin/finance"
 												permission="finance:view"
 											/>
-											<DesktopSubNavLink
-												icon={<ClipboardList />}
-												label="Transaksi"
-												to="/admin/finance/transactions"
-												permission="finance:view"
-											/>
+									<DesktopSubNavLink
+										icon={<ClipboardList />}
+										label="Transaksi"
+										to="/admin/finance/transactions"
+										permission="finance:view"
+									/>
+									<DesktopSubNavLink
+										icon={<BookOpen />}
+										label="Akuntansi"
+										to="/admin/finance/accounting"
+										permission="finance:view"
+									/>
 											<DesktopSubNavLink
 												icon={<FileBarChart />}
 												label="Laporan"

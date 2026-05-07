@@ -53,6 +53,7 @@ import { Route as AdminOperationalTeamAttendanceRouteImport } from './routes/adm
 import { Route as AdminFinanceShiftReportsRouteImport } from './routes/admin/finance/shift-reports'
 import { Route as AdminFinanceTransactionsRouteRouteImport } from './routes/admin/finance/transactions/route'
 import { Route as AdminFinanceReportsRouteRouteImport } from './routes/admin/finance/reports/route'
+import { Route as AdminFinanceAccountingRouteRouteImport } from './routes/admin/finance/accounting/route'
 import { Route as AdminOperationalTeamRegisterOnboardingRouteImport } from './routes/admin/operational-team/register/onboarding'
 import { Route as AdminOperationalTeamRegisterContractRouteImport } from './routes/admin/operational-team/register/contract'
 
@@ -327,6 +328,12 @@ const AdminFinanceReportsRouteRoute =
     path: '/reports',
     getParentRoute: () => AdminFinanceRouteRoute,
   } as any)
+const AdminFinanceAccountingRouteRoute =
+  AdminFinanceAccountingRouteRouteImport.update({
+    id: '/accounting',
+    path: '/accounting',
+    getParentRoute: () => AdminFinanceRouteRoute,
+  } as any)
 const AdminOperationalTeamRegisterOnboardingRoute =
   AdminOperationalTeamRegisterOnboardingRouteImport.update({
     id: '/onboarding',
@@ -383,6 +390,7 @@ export interface FileRoutesByFullPath {
   '/home/$section': typeof HomeSectionRoute
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
+  '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
@@ -426,6 +434,7 @@ export interface FileRoutesByTo {
   '/home/$section': typeof HomeSectionRoute
   '/admin': typeof AdminIndexRoute
   '/attendance': typeof AttendanceIndexRoute
+  '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
@@ -475,6 +484,7 @@ export interface FileRoutesById {
   '/home/$section': typeof HomeSectionRoute
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
+  '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
@@ -525,6 +535,7 @@ export interface FileRouteTypes {
     | '/home/$section'
     | '/admin/'
     | '/attendance/'
+    | '/admin/finance/accounting'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
@@ -568,6 +579,7 @@ export interface FileRouteTypes {
     | '/home/$section'
     | '/admin'
     | '/attendance'
+    | '/admin/finance/accounting'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
@@ -616,6 +628,7 @@ export interface FileRouteTypes {
     | '/home/$section'
     | '/admin/'
     | '/attendance/'
+    | '/admin/finance/accounting'
     | '/admin/finance/reports'
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
@@ -953,6 +966,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFinanceReportsRouteRouteImport
       parentRoute: typeof AdminFinanceRouteRoute
     }
+    '/admin/finance/accounting': {
+      id: '/admin/finance/accounting'
+      path: '/accounting'
+      fullPath: '/admin/finance/accounting'
+      preLoaderRoute: typeof AdminFinanceAccountingRouteRouteImport
+      parentRoute: typeof AdminFinanceRouteRoute
+    }
     '/admin/operational-team/register/onboarding': {
       id: '/admin/operational-team/register/onboarding'
       path: '/onboarding'
@@ -971,6 +991,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminFinanceRouteRouteChildren {
+  AdminFinanceAccountingRouteRoute: typeof AdminFinanceAccountingRouteRoute
   AdminFinanceReportsRouteRoute: typeof AdminFinanceReportsRouteRoute
   AdminFinanceTransactionsRouteRoute: typeof AdminFinanceTransactionsRouteRoute
   AdminFinanceShiftReportsRoute: typeof AdminFinanceShiftReportsRoute
@@ -978,6 +999,7 @@ interface AdminFinanceRouteRouteChildren {
 }
 
 const AdminFinanceRouteRouteChildren: AdminFinanceRouteRouteChildren = {
+  AdminFinanceAccountingRouteRoute: AdminFinanceAccountingRouteRoute,
   AdminFinanceReportsRouteRoute: AdminFinanceReportsRouteRoute,
   AdminFinanceTransactionsRouteRoute: AdminFinanceTransactionsRouteRoute,
   AdminFinanceShiftReportsRoute: AdminFinanceShiftReportsRoute,
