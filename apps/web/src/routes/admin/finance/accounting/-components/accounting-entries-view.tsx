@@ -148,10 +148,10 @@ export function AccountingEntriesView() {
 										<td className="px-2 py-1">
 											<div className="flex items-center gap-1.5">
 												<code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[8px] text-slate-500">
-													{e.coa_code || ""}
+													{e.coaCode || ""}
 												</code>
 												<span className="truncate text-[10px] text-slate-700">
-													{e.coa_name || ""}
+													{e.coaName || ""}
 												</span>
 											</div>
 										</td>

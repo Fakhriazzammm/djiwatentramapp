@@ -1241,7 +1241,7 @@ async function fetchAccountingEntries(args?: {
 	const { startDate, endDate } = getRange(args);
 	const { data: txDates, error: txError } = await supabase
 		.from("pos_financial_transactions")
-		.select("_id")
+		.select("_id, description, metadata")
 		.gte("date", startDate)
 		.lte("date", endDate);
 	if (txError) throw txError;
@@ -1265,13 +1265,28 @@ async function fetchAccountingEntries(args?: {
 	const coaMap = new Map<string, any>();
 	for (const c of coas ?? []) coaMap.set(c.id, c);
 
-	return (entries ?? []).map((e: any) => ({
-		...e,
-		coa: coaMap.get(e.coa_id) ?? null,
-		coaCode: coaMap.get(e.coa_id)?.code ?? "",
-		coaName: coaMap.get(e.coa_id)?.name ?? "",
-		coaType: coaMap.get(e.coa_id)?.type ?? "",
-	}));
+	const txMap = new Map<string, any>();
+	for (const t of txDates ?? []) txMap.set(t._id, t);
+
+	return (entries ?? []).map((e: any) => {
+		const tx = txMap.get(e.transaction_source_id);
+		const metadata = tx?.metadata || {};
+		const sourceLabel =
+			typeof metadata === "object" && metadata !== null
+				? (metadata as any).sourceLabel ||
+				  (metadata as any).source ||
+				  ""
+				: "";
+		return {
+			...e,
+			coa: coaMap.get(e.coa_id) ?? null,
+			coaCode: coaMap.get(e.coa_id)?.code ?? "",
+			coaName: coaMap.get(e.coa_id)?.name ?? "",
+			coaType: coaMap.get(e.coa_id)?.type ?? "",
+			source_label: sourceLabel,
+			tx_description: tx?.description || "",
+		};
+	});
 }
 
 async function fetchAccountingSummary(args?: {
