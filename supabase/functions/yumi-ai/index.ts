@@ -272,17 +272,41 @@ async function recordTransaction(
 	const amount = Number(payload.amount ?? 0);
 	const category = String(payload.category ?? "lainnya");
 	const description = String(payload.description ?? "");
-	const txDate = Number(payload.tx_date ?? payload.txDate ?? Date.now());
+	let txDate = Number(payload.tx_date ?? payload.txDate ?? Date.now());
+	// ── Midnight protection ──────────────────────────────────────────
+	// If txDate is midnight (00:00:00 WIB) it's a date-only OCR receipt timestamp
+	// Use current time instead so Yumi AI Bot's polling doesn't see it forever
+	const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
+	if ((txDate + WIB_OFFSET_MS) % (24 * 60 * 60 * 1000) === 0) {
+		const fallbackTime = Date.now();
+		console.log(`[MIDNIGHT FIX] tx_date ${new Date(txDate).toISOString()} is midnight, overriding to ${new Date(fallbackTime).toISOString()}`);
+		txDate = fallbackTime;
+	}
 	const paymentMethod = String(payload.payment_method ?? payload.paymentMethod ?? "cash");
 	const status = String(payload.status ?? "completed");
 	const metadata = payload.metadata ?? { source: "telegram_bot", action: "ocr_scan" };
 	const raw = payload.raw ?? {};
 	const creationTime = Number(payload.creation_time ?? Date.now());
 
-	// ── Deduplication check ──────────────────────────────────────
-	// Cek apakah transaksi dengan amount, category, description, dan tx_date
-	// yang sama sudah ada dalam 5 menit terakhir. Ini mencegah duplikasi
-	// dari Telegram callback retry atau double-click.
+\tconst sourceFingerprint = String(payload.source_fingerprint ?? payload.sourceFingerprint ?? "").trim();
+
+\t// ── Dedup by source_fingerprint (strong match) ─────────────
+\tif (sourceFingerprint) {
+\t\tconst { data: fpMatch } = await supabase
+\t\t\t.from("financial_transactions")
+\t\t\t.select("source_id")
+\t\t\t.eq("source_fingerprint", sourceFingerprint)
+\t\t\t.maybeSingle();
+\t\tif (fpMatch) {
+\t\t\tconsole.log(`[DEDUP] Duplicate detected by source_fingerprint ${sourceFingerprint}, returning existing ${fpMatch.source_id}`);
+\t\t\treturn { ok: true, sourceId: fpMatch.source_id };
+\t\t}
+\t}
+
+\t// ── Deduplication check ──────────────────────────────────────
+\t// Cek apakah transaksi dengan amount, category, description, dan tx_date
+\t// yang sama sudah ada dalam 5 menit terakhir. Ini mencegah duplikasi
+\t// dari Telegram callback retry atau double-click.
 	if (amount > 0 && txDate > 0) {
 		const { data: existing } = await supabase
 			.from("financial_transactions")
@@ -324,21 +348,22 @@ async function recordTransaction(
 		}
 	}
 
-	const { error } = await supabase
-		.from("financial_transactions")
-		.insert({
-			source_id: sourceId,
-			tx_type: txType,
-			amount,
-			category,
-			description,
-			tx_date: txDate,
-			payment_method: paymentMethod,
-			status,
-			metadata,
-			raw,
-			creation_time: creationTime,
-		});
+\tconst { error } = await supabase
+\t\t.from("financial_transactions")
+\t\t.insert({
+\t\t\tsource_id: sourceId,
+\t\t\ttx_type: txType,
+\t\t\tamount,
+\t\t\tcategory,
+\t\t\tdescription,
+\t\t\ttx_date: txDate,
+\t\t\tpayment_method: paymentMethod,
+\t\t\tstatus,
+\t\t\tmetadata,
+\t\t\traw,
+\t\t\tsource_fingerprint: sourceFingerprint || null,
+\t\t\tcreation_time: creationTime,
+\t\t});
 
 	if (error) {
 		console.error("recordTransaction failed:", error);

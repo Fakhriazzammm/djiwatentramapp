@@ -247,24 +247,37 @@ export function TransactionDetailReport({
 		[filteredTransactions]
 	);
 
-	// Detect likely duplicates: same type+amount within 5 min
-	const duplicateRowKeys = useMemo(() => {
-		const keys = new Set<string>();
-		const sorted = [...filteredTransactions].sort((a: any, b: any) => a.date - b.date);
-		for (let i = 0; i < sorted.length - 1; i++) {
-			const a = sorted[i];
-			const b = sorted[i + 1];
-			if (
-				a.amount === b.amount &&
-				a.type === b.type &&
-				Math.abs(a.date - b.date) < 5 * 60 * 1000
-			) {
-				keys.add(String(a.rowKey || a._id));
-				keys.add(String(b.rowKey || b._id));
-			}
-		}
-		return keys;
-	}, [filteredTransactions]);
+\t// Detect likely duplicates: same type+amount within 5 min
+\t// Ignores item-rows from the same parent transaction (diff itemIndex but same _id)
+\tconst duplicateRowKeys = useMemo(() => {
+\t\tconst keys = new Set<string>();
+\t\tif (!filteredTransactions || filteredTransactions.length < 2) return keys;
+\t\t// Group by _id first — item-mode rows share _id, skip those comparisons
+\t\tconst byId = new Map<string, any[]>();
+\t\tfor (const row of filteredTransactions) {
+\t\t\tconst id = String(row._id);
+\t\t\tif (!byId.has(id)) byId.set(id, []);
+\t\t\tbyId.get(id)!.push(row);
+\t\t}
+\t\tconst uniques = Array.from(byId.values()).map((group) => group[0]);
+\t\tuniques.sort((a: any, b: any) => a.date - b.date);
+\t\tfor (let i = 0; i < uniques.length - 1; i++) {
+\t\t\tconst a = uniques[i];
+\t\t\tconst b = uniques[i + 1];
+\t\t\tif (
+\t\t\t\ta.amount === b.amount &&
+\t\t\t\ta.type === b.type &&
+\t\t\t\tMath.abs(a.date - b.date) < 5 * 60 * 1000
+\t\t\t) {
+\t\t\t\t// Flag ALL rows belonging to both transactions (all item-rows included)
+\t\t\t\tconst aGroup = byId.get(String(a._id))!;
+\t\t\t\tconst bGroup = byId.get(String(b._id))!;
+\t\t\t\tfor (const r of aGroup) keys.add(String(r.rowKey || r._id));
+\t\t\t\tfor (const r of bGroup) keys.add(String(r.rowKey || r._id));
+\t\t\t}
+\t\t}
+\t\treturn keys;
+\t}, [filteredTransactions]);
 
 	// Running balance: cumulative net from oldest → newest
 	const runningBalances = useMemo(() => {

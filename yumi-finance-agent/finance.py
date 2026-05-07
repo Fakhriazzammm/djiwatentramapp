@@ -4,6 +4,7 @@ Catat pemasukan/pengeluaran, ringkasan, saldo, query transaksi.
 Semua data via Supabase REST API & Edge Function yumi-ai.
 """
 
+import hashlib
 import logging
 import httpx
 from datetime import datetime, timezone, timedelta
@@ -116,6 +117,10 @@ class FinanceManager:
             except ValueError:
                 pass  # fallback ke NOW
 
+        # ── Source fingerprint untuk dedup ────────────────────────────
+        fingerprint_raw = f"{tx_type}|{amount:.2f}|{category}|{description}|{merchant}|{tx_date_ms // 60000}"
+        source_fingerprint = hashlib.sha256(fingerprint_raw.encode()).hexdigest()
+
         payload = {
             "action": "recordTransaction",
             "tx_type": tx_type,
@@ -126,6 +131,8 @@ class FinanceManager:
             "tx_date": tx_date_ms,
             "payment_method": payment_method,
             "status": "completed",
+            "sourceFingerprint": source_fingerprint,
+            "source_fingerprint": source_fingerprint,
             "metadata": metadata or {"source": "yumi_finance_agent", "group_id": -4995568785},
         }
 
