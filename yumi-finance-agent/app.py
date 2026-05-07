@@ -768,6 +768,7 @@ async def _handle_edit_item(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     ref_id = query.data.replace("edititem_", "")
+    logger.info("Edit item callback: data=%s ref_id=%s pending_keys=%s", query.data, ref_id, list(_receipt_pending.keys()))
     receipt = _receipt_pending.get(ref_id)
     if not receipt:
         try:
@@ -1480,11 +1481,26 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             if tx.get("ok"):
                 cat_label = get_category_label(category)
+
+                # Build response with items if available
+                reply_lines = [
+                    f"💸 Pengeluaran Tercatat",
+                    f"   {format_amount(int(result.amount))}",
+                    f"   📝 {result.description or 'Pengeluaran'}",
+                ]
+                if result.items:
+                    for it in result.items[:5]:
+                        n = it.get("name", "?")
+                        q = float(it.get("qty", 1))
+                        p = float(it.get("price", 0))
+                        qs = f"{q:.0f}" if q == int(q) else f"{q:.1f}"
+                        reply_lines.append(f"     {n} — {qs} × Rp{p:,.0f}")
+                    if len(result.items) > 5:
+                        reply_lines.append(f"     ... +{len(result.items)-5} item")
+                reply_lines.append(f"   {cat_label}")
+
                 await update.message.reply_text(
-                    f"💸 Pengeluaran Tercatat\n"
-                    f"   {format_amount(int(result.amount))}\n"
-                    f"   📝 {result.description or 'Pengeluaran'}\n"
-                    f"   {cat_label}",
+                    "\n".join(reply_lines),
                     reply_markup=_finance_keyboard(),
                 )
 

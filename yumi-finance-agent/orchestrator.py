@@ -189,13 +189,29 @@ ACTION: chat
 CONFIDENCE: medium
 REPLY: Untuk detail per kategori, coba ketik "kategori" atau "breakdown bulan ini". Mau aku tampilkan?
 
-Balas dengan format:
+    Balas dengan format:
 ACTION: <action_name>
 AMOUNT: <angka (jika ada)>
 CATEGORY: <category (jika ada)>
 DESCRIPTION: <deskripsi>
+ITEMS: <nama1>|<qty1>|<harga1>, <nama2>|<qty2>|<harga2> (jika ada item detail)
 CONFIDENCE: high|medium|low
 REPLY: <balasan ke user dalam Bahasa Indonesia friendly dan informatif>
+
+Contoh ITEMS:
+User: pengeluaran 204000 beli: 1. Timun / 8000, 2. Selada / 40000
+OUTPUT:
+ACTION: record_expense
+AMOUNT: 204000
+CATEGORY: bahan_makanan
+DESCRIPTION: Belanja bahan: Timun, Selada
+ITEMS: Timun|1|8000, Selada|1|40000
+CONFIDENCE: high
+REPLY: 💸 Pengeluaran tercatat! Rp204.000 untuk belanja bahan.
+
+Jika user kirim daftar item dengan format "1. Nama / Harga" atau "Nama | Qty | Harga", parse item2 tsb dan masukkan ke ITEMS:.
+KATEGORI untuk belanja bahan makanan: bahan_makanan (bukan lainnya).
+Untuk item seperti Timun, Selada, Daun, Kemangi, Bawang, Jeruk, Cabai, Ebi → kategori bahan_makanan.
 
 Jangan tanya balik untuk klarifikasi jika maksudnya sudah jelas — langsung pilih action yang paling sesuai."""
 
@@ -333,6 +349,7 @@ Jangan tanya balik untuk klarifikasi jika maksudnya sudah jelas — langsung pil
             amount=result["amount"],
             category=result["category"],
             description=result["description"],
+            items=result.get("items", []),
             confidence=result["confidence"],
             text=result["reply"],
         )

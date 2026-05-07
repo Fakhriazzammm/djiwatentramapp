@@ -107,6 +107,29 @@ class SumoPodClient:
                 except ValueError:
                     amount = 0
 
+            # Parse items: "ITEMS: Timun|1|8000, Selada|1|40000"
+            items = []
+            items_match = re.search(r"ITEMS:\s*(.+)", reply)
+            if items_match:
+                raw_items = items_match.group(1).strip()
+                for part in re.split(r'[,;]\s*', raw_items):
+                    item_parts = part.split("|")
+                    if len(item_parts) >= 3:
+                        try:
+                            items.append({
+                                "name": item_parts[0].strip(),
+                                "qty": float(item_parts[1].strip()),
+                                "price": float(item_parts[2].strip().replace(",", "")),
+                            })
+                        except ValueError:
+                            pass
+                    elif len(item_parts) >= 1:
+                        items.append({
+                            "name": item_parts[0].strip(),
+                            "qty": 1,
+                            "price": 0,
+                        })
+
             return {
                 "action": action,
                 "amount": amount,
@@ -114,6 +137,7 @@ class SumoPodClient:
                 "description": desc_match.group(1).strip() if desc_match else message,
                 "confidence": conf_match.group(1) if conf_match else "medium",
                 "reply": reply_match.group(1).strip() if reply_match else "",
+                "items": items,
                 "raw": reply,
             }
         except Exception as e:
