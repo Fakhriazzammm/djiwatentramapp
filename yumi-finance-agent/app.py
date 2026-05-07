@@ -407,6 +407,8 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if receipt_time:
                 dt += f" {receipt_time}"
             lines.append(f"📅 {dt}")
+        else:
+            lines.append("⚠️ Tanggal tidak terbaca — klik ✏️ Edit Tanggal untuk isi")
         if receipt_number:
             lines.append(f"🧾 No: {receipt_number}")
         if payment_method:
@@ -475,6 +477,9 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ],
             [
                 InlineKeyboardButton("✏️ Edit Kategori", callback_data=f"receipt_editcat_{ref_id}"),
+                InlineKeyboardButton("✏️ Edit Tanggal", callback_data=f"editdate_{ref_id}"),
+            ],
+            [
                 InlineKeyboardButton("✏️ Edit Item", callback_data=f"edititem_{ref_id}"),
             ],
             [
@@ -931,6 +936,104 @@ async def _handle_edit_item_text(update: Update, context: ContextTypes.DEFAULT_T
     return True
 
 
+# ── Edit Tanggal ──────────────────────────────────────────────
+
+
+async def _handle_edit_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Ask user to type the correct date/time."""
+    query = update.callback_query
+    await query.answer()
+    ref_id = query.data.replace("editdate_", "")
+    receipt = _receipt_pending.get(ref_id)
+    if not receipt:
+        try:
+            await query.edit_message_text("❌ Sesi kadaluarsa.", reply_markup=_finance_keyboard())
+        except Exception:
+            pass
+        return
+
+    cur_date = receipt.get("date", "") or ""
+    cur_time = receipt.get("time", "") or ""
+    cur_display = f"{cur_date} {cur_time}".strip() or "(kosong)"
+
+    lines = [
+        f"✏️ Edit Tanggal & Jam",
+        "",
+        f"Saat ini: {cur_display}",
+        "",
+        "Ketik tanggal & jam dengan format:",
+        "  `2026-05-07 14:30`  (tanggal + jam)",
+        "  `2026-05-07`         (tanggal saja, jam sekarang)",
+        "",
+        "Atau kirim `/batal` untuk batal.",
+    ]
+
+    _pending_actions[f"edit_date_{update.effective_user.id}"] = {
+        "ref_id": ref_id,
+    }
+    _save_pending()
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("↩️ Kembali", callback_data=f"receipt_cancel_{ref_id}")],
+    ])
+    await query.edit_message_text("\n".join(lines), reply_markup=keyboard)
+
+
+async def _handle_edit_date_text(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str) -> bool:
+    """Process date edit response from user."""
+    if text.startswith("/"):
+        return False  # not for us
+
+    user_id = update.effective_user.id
+    pending = _pending_actions.pop(f"edit_date_{user_id}", None)
+    if not pending:
+        return False
+    _save_pending()
+
+    ref_id = pending["ref_id"]
+    receipt = _receipt_pending.get(ref_id)
+    if not receipt:
+        await update.message.reply_text("❌ Sesi kadaluarsa.", reply_markup=_finance_keyboard())
+        return True
+
+    # Parse input
+    text = text.strip()
+    try:
+        if " " in text:
+            # "2026-05-07 14:30" or "2026-05-07 14:30:00"
+            parts = text.split(" ")
+            date_part = parts[0]
+            time_part = parts[1][:5]  # HH:MM
+            parsed = datetime.strptime(f"{date_part} {time_part}", "%Y-%m-%d %H:%M")
+            receipt["date"] = date_part
+            receipt["time"] = time_part
+        else:
+            # Just date "2026-05-07"
+            parsed = datetime.strptime(text, "%Y-%m-%d")
+            receipt["date"] = text
+            receipt["time"] = ""  # reset time, will use now on save
+    except ValueError:
+        await update.message.reply_text(
+            "❌ Format salah. Gunakan `YYYY-MM-DD HH:MM` atau `YYYY-MM-DD`",
+            reply_markup=_finance_keyboard(),
+        )
+        return True
+
+    _receipt_pending[ref_id] = receipt
+    _save_pending()
+
+    # Show updated date
+    display = f"{receipt['date']}"
+    if receipt.get("time"):
+        display += f" {receipt['time']}"
+    await update.message.reply_text(
+        f"✅ Tanggal diupdate: {display}\n\n"
+        f"Sekarang bisa klik 💰 Pemasukan / 💸 Pengeluaran untuk menyimpan.",
+        reply_markup=_finance_keyboard(),
+    )
+    return True
+
+
 async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle callback dari konfirmasi struk (simpan sebagai pemasukan/pengeluaran)."""
     query = update.callback_query
@@ -1330,6 +1433,13 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if handled:
             return
 
+    # Check for pending edit date response
+    pending_date_key = f"edit_date_{update.effective_user.id}"
+    if pending_date_key in _pending_actions:
+        handled = await _handle_edit_date_text(update, context, text)
+        if handled:
+            return
+
     # Tunjukkan typing indicator
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
@@ -1464,6 +1574,11 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if query.data.startswith("editfield_"):
         await _handle_edit_item_field(update, context)
+        return
+
+    # Handle edit date callbacks
+    if query.data.startswith("editdate_"):
+        await _handle_edit_date(update, context)
         return
 
     # Handle bulk OCR callbacks (album multi-foto)
