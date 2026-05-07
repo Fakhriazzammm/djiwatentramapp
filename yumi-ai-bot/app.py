@@ -1524,10 +1524,17 @@ async def _check_new_transactions(app):
             lines.append(f"📁 {cat}")
             lines.append(f"💰 Rp{amount:,.0f}")
 
-            # Items dari OCR metadata (scanItems)
+            # Items dari metadata (scanItems) atau parse dari description
             scan_items = []
             if isinstance(metadata, dict):
                 scan_items = metadata.get("scanItems") or []
+
+            # Fallback: parse items dari description untuk non-OCR
+            if not scan_items and desc:
+                parsed = re.findall(r'([A-Za-z][A-Za-z .]+?)\s*[×x]\s*([\d.]+)', desc)
+                if parsed:
+                    scan_items = [{"name": p[0].strip(), "quantity": float(p[1]), "price": 0, "total": 0} for p in parsed]
+
             if scan_items:
                 lines.append("")
                 lines.append("Items:")

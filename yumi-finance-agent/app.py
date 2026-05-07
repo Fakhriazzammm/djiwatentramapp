@@ -1478,6 +1478,13 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 amount=result.amount,
                 description=result.description or "Pengeluaran",
                 category=category,
+                metadata={
+                    "source": "yumi_finance_agent",
+                    "scanItems": [
+                        {"name": it.get("name", ""), "quantity": float(it.get("qty", 1)), "price": float(it.get("price", 0)), "total": float(it.get("qty", 1)) * float(it.get("price", 0))}
+                        for it in (result.items or [])
+                    ] if result.items else None,
+                } if result.items else None,
             )
             if tx.get("ok"):
                 cat_label = get_category_label(category)
