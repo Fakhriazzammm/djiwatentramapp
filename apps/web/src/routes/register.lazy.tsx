@@ -19,6 +19,7 @@ import {
 import {
 	buildEmployeeContractTemplate,
 	buildEmployeeOnboardingPayload,
+	buildCompensationBody,
 	calculateEstimatedMonthlySalary,
 	createEmployeeSlug,
 	type EmployeeOnboardingDraft,
@@ -73,6 +74,18 @@ function moneyValue(v?: number) {
 	return v ? String(v) : "";
 }
 
+function syncCompensationClause(templateText: string, employment: EmployeeOnboardingDraft["employment"]) {
+	const compensationBody = buildCompensationBody(employment);
+	const nextClausePattern = "\\n\\s*Pasal\\s+\\d+\\s+[—-]";
+	const clausePattern = new RegExp(`(Pasal\\s+4\\s+[—-]\\s+Kompensasi\\s*\\n)([\\s\\S]*?)(?=${nextClausePattern}|$)`, "i");
+
+	if (clausePattern.test(templateText)) {
+		return templateText.replace(clausePattern, `$1${compensationBody}\n\n`);
+	}
+
+	return templateText;
+}
+
 /* -------- page component -------- */
 function RegisterPage() {
 	const roles = useHybridStaffRoles() ?? [];
@@ -118,12 +131,13 @@ function RegisterPage() {
 		const defaultTemplate = onboardingSettings.contractTemplatesByRoleId.__default__;
 		const templateText = roleTemplate || defaultTemplate;
 		if (templateText) {
+			const syncedTemplateText = syncCompensationClause(templateText, draft.employment);
 			return {
 				mode: "template" as const,
 				title: `Perjanjian Kerja ${draft.employment.roleName || ""}`,
-				plainText: templateText,
-				html: `<article><p>${templateText.replace(/\n/g, "<br/>")}</p></article>`,
-				clauses: [{ title: "Ketentuan Kontrak", body: templateText }],
+				plainText: syncedTemplateText,
+				html: `<article><p>${syncedTemplateText.replace(/\n/g, "<br/>")}</p></article>`,
+				clauses: [{ title: "Ketentuan Kontrak", body: syncedTemplateText }],
 			};
 		}
 		return buildEmployeeContractTemplate(draft.personal, draft.employment, onboardingSettings.signatoryName);

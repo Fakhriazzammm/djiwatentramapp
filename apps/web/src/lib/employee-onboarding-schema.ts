@@ -208,7 +208,7 @@ export function calculateEstimatedMonthlySalary(employment: EmployeeEmploymentDa
 	return estimatedMonthly;
 }
 
-function buildCompensationBody(employment: EmployeeEmploymentData): string {
+export function buildCompensationBody(employment: EmployeeEmploymentData): string {
 	const monthly = employment.monthlySalary ?? 0;
 	const daily = employment.dailyAllowance ?? 0;
 	const shift = employment.shiftRate ?? 0;
