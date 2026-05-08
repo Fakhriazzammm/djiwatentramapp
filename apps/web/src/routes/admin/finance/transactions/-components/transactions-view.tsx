@@ -124,9 +124,9 @@ function getAdjacentPeriod(
 export function TransactionsView() {
 	const [period, setPeriod] = useState<PeriodOption>("this_month");
 	const [dateRange, setDateRange] = useState<DateRange>(getRangeFromPeriod("this_month"));
-	const [viewMode, setViewMode] = useState<"transaction" | "item">("item");
+	const [viewMode, setViewMode] = useState<"transaction" | "item">("transaction");
 	const [groupMode, setGroupMode] = useState<"flat" | "grouped">("flat");
-	const [exportMode] = useState<"transaction" | "item">("item");
+	const [exportMode] = useState<"transaction" | "item">("transaction");
 	const [isExporting, setIsExporting] = useState(false);
 	const [isExportingCsv, setIsExportingCsv] = useState(false);
 	const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
