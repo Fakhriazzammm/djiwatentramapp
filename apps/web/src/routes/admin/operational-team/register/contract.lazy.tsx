@@ -321,25 +321,8 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 	}
 
 	async function saveSignatoryName(name: string) {
-		try {
-			const { error } = await createClient()
-				.from("site_settings")
-				.update({
-					settings: {
-						...(siteSettings?.settings || {}),
-						employeeOnboarding: {
-							...(siteSettings?.settings?.employeeOnboarding || {}),
-							signatoryName: name,
-						},
-					},
-				})
-				.eq("key", "site");
-			if (error) throw error;
-			setSignatoryNameLocal(name);
-			toast.success("Nama perusahaan disimpan");
-		} catch (e: any) {
-			toast.error(e?.message || "Gagal menyimpan nama perusahaan");
-		}
+		setSignatoryNameLocal(name);
+		await saveSignatorySettings({ signatoryName: name });
 	}
 
 	async function saveSignatorySettings(updates: { signatoryName?: string; signatorySignatureUrl?: string }) {
