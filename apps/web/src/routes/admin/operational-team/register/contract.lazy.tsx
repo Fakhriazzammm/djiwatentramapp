@@ -117,7 +117,7 @@ export default function AdminContractPage() {
 	const [isSaving, setIsSaving] = useState(false);
 	const [draft, setDraft] = useState<ContractDraft>(() => contractToDraft(buildPlaceholderContract("", undefined, onboardingSettings.signatoryName)));
 	const [signatoryNameLocal, setSignatoryNameLocal] = useState(onboardingSettings.signatoryName || "Djiwa Tentram Cafe & Resto");
-	const [signatorySigUrlLocal, setSignatorySigUrlLocal] = useState(signatorySigUrlLocal || "");
+	const [signatorySigUrlLocal, setSignatorySigUrlLocal] = useState(onboardingSettings.signatorySignatureUrl || "");
 
 	useEffect(() => {
 		setSignatoryNameLocal(onboardingSettings.signatoryName || "Djiwa Tentram Cafe & Resto");
