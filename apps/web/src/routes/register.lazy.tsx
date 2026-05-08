@@ -114,7 +114,6 @@ function RegisterPage() {
 	}, [draft.personal.fullName, onboardingSettings.autoGenerate.username, onboardingSettings.autoGenerate.slug]);
 
 	const contractPreview = useMemo(() => {
-		if (draft.contract.plainText || draft.contract.clauses.length > 0) return draft.contract;
 		const roleTemplate = onboardingSettings.contractTemplatesByRoleId[draft.employment.roleId];
 		const defaultTemplate = onboardingSettings.contractTemplatesByRoleId.__default__;
 		const templateText = roleTemplate || defaultTemplate;
@@ -128,7 +127,7 @@ function RegisterPage() {
 			};
 		}
 		return buildEmployeeContractTemplate(draft.personal, draft.employment, onboardingSettings.signatoryName);
-	}, [draft, onboardingSettings.contractTemplatesByRoleId]);
+	}, [draft.employment, draft.personal, onboardingSettings.contractTemplatesByRoleId, onboardingSettings.signatoryName]);
 
 	/* helpers */
 	const updatePersonal = (k: keyof EmployeeOnboardingDraft["personal"], v: string) =>
@@ -264,8 +263,19 @@ function RegisterPage() {
 									value={draft.employment.roleId}
 									onChange={(e) => {
 										const role = roles.find((r: any) => r._id === e.target.value);
-										updateEmployment("roleId", e.target.value);
-										updateEmployment("roleName", role?.name ?? "");
+										const salaryDefaults = onboardingSettings.prefillSalaryFromRole && role ? getRoleSalaryDefaults(role) : {};
+										setDraft((prev) => ({
+											...prev,
+											contract: { mode: "template", title: "Perjanjian Kerja", plainText: "", clauses: [] },
+											employment: {
+												...prev.employment,
+												roleId: e.target.value,
+												roleName: role?.name ?? "",
+												monthlySalary: salaryDefaults.monthlySalary ?? 0,
+												dailyAllowance: salaryDefaults.dailyAllowance ?? 0,
+												shiftRate: salaryDefaults.shiftRate ?? 0,
+											},
+										}));
 									}}
 								>
 									<option value="">Pilih jabatan</option>
