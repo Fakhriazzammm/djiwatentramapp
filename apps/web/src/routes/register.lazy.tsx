@@ -74,16 +74,28 @@ function moneyValue(v?: number) {
 	return v ? String(v) : "";
 }
 
-function syncCompensationClause(templateText: string, employment: EmployeeOnboardingDraft["employment"]) {
-	const compensationBody = buildCompensationBody(employment);
+function replaceClauseBody(templateText: string, clauseNumber: number, clauseTitle: string, body: string) {
 	const nextClausePattern = "\\n\\s*Pasal\\s+\\d+\\s+[—-]";
-	const clausePattern = new RegExp(`(Pasal\\s+4\\s+[—-]\\s+Kompensasi\\s*\\n)([\\s\\S]*?)(?=${nextClausePattern}|$)`, "i");
+	const clausePattern = new RegExp(`(Pasal\\s+${clauseNumber}\\s+[—-]\\s+${clauseTitle}\\s*\\n)([\\s\\S]*?)(?=${nextClausePattern}|$)`, "i");
 
 	if (clausePattern.test(templateText)) {
-		return templateText.replace(clausePattern, `$1${compensationBody}\n\n`);
+		return templateText.replace(clausePattern, `$1${body}\n\n`);
 	}
 
 	return templateText;
+}
+
+function syncDynamicContractClauses(templateText: string, personal: EmployeeOnboardingDraft["personal"], employment: EmployeeOnboardingDraft["employment"], signatoryName: string) {
+	const displaySignatoryName = signatoryName || "Djiwa Tentram Cafe & Resto";
+	const employeeName = personal.fullName || "Karyawan";
+	const partiesBody = `${displaySignatoryName} sebagai perwakilan perusahaan dan ${employeeName} sebagai karyawan menyepakati hubungan kerja sesuai ketentuan dalam kontrak ini.`;
+
+	return replaceClauseBody(
+		replaceClauseBody(templateText, 1, "Para Pihak", partiesBody),
+		4,
+		"Kompensasi",
+		buildCompensationBody(employment)
+	);
 }
 
 /* -------- page component -------- */
@@ -131,7 +143,7 @@ function RegisterPage() {
 		const defaultTemplate = onboardingSettings.contractTemplatesByRoleId.__default__;
 		const templateText = roleTemplate || defaultTemplate;
 		if (templateText) {
-			const syncedTemplateText = syncCompensationClause(templateText, draft.employment);
+			const syncedTemplateText = syncDynamicContractClauses(templateText, draft.personal, draft.employment, onboardingSettings.signatoryName);
 			return {
 				mode: "template" as const,
 				title: `Perjanjian Kerja ${draft.employment.roleName || ""}`,

@@ -5040,6 +5040,7 @@ export function useHybridUpdateSiteSettings() {
 				const { data: existing, error: existingError } = await pos
 					.from("site_settings")
 					.select("source_id, raw")
+					.not("raw->shiftSettings", "is", null)
 					.order("creation_time", { ascending: false })
 					.limit(1)
 					.maybeSingle();
