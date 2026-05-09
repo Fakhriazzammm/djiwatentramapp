@@ -34,6 +34,8 @@ export function AdminOnboardingPage() {
 	const [isDeleting, setIsDeleting] = useState(false);
 	const siteSettings = useHybridSiteSettings();
 	const onboardingSettings = useMemo(() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding), [siteSettings?.employeeOnboarding]);
+	const companyDisplayName = String(siteSettings?.companyName || siteSettings?.businessName || siteSettings?.storeName || siteSettings?.name || onboardingSettings.signatoryName || "Djiwa Tentram").trim();
+	const signatoryPersonName = onboardingSettings.signatoryPersonName || onboardingSettings.signatoryName;
 	const createUser = useHybridCreateUser();
 	const updateStatus = useHybridUpdateEmployeeApplicationStatus();
 
@@ -387,7 +389,7 @@ export function AdminOnboardingPage() {
 									</CardContent>
 								</Card>
 							)}
-							<ContractPreview contract={selected.contract} employeeName={selected.full_name} signatureDataUrl={selected.signature_url} signatoryName={onboardingSettings.signatoryName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
+							<ContractPreview contract={selected.contract} employeeName={selected.full_name} signatureDataUrl={selected.signature_url} companyName={companyDisplayName} signatoryName={signatoryPersonName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
 
 							<div className="grid gap-3 sm:grid-cols-3">
 								<Field label="Password awal"><Input value={password} onChange={(e) => setPassword(e.target.value)} /></Field>

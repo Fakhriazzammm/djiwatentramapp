@@ -94,10 +94,11 @@ function getCompanyDisplayName(siteSettings: any, signatoryName: string) {
 	return String(siteSettings?.companyName || siteSettings?.businessName || siteSettings?.storeName || siteSettings?.name || signatoryName || "Djiwa Tentram").trim();
 }
 
-function syncDynamicContractClauses(templateText: string, personal: EmployeeOnboardingDraft["personal"], employment: EmployeeOnboardingDraft["employment"], signatoryName: string) {
-	const displaySignatoryName = signatoryName || "Djiwa Tentram";
+function syncDynamicContractClauses(templateText: string, personal: EmployeeOnboardingDraft["personal"], employment: EmployeeOnboardingDraft["employment"], companyName: string, signatoryName: string) {
+	const displayCompanyName = companyName || "Djiwa Tentram";
+	const displaySignatoryName = signatoryName || "perwakilan perusahaan";
 	const employeeName = personal.fullName || "Karyawan";
-	const partiesBody = `${displaySignatoryName} sebagai perwakilan perusahaan dan ${employeeName} sebagai karyawan menyepakati hubungan kerja sesuai ketentuan dalam kontrak ini.`;
+	const partiesBody = `${displayCompanyName}, diwakili oleh ${displaySignatoryName}, dan ${employeeName} sebagai karyawan menyepakati hubungan kerja sesuai ketentuan dalam kontrak ini.`;
 
 	return replaceClauseBody(
 		replaceClauseBody(templateText, 1, "Para Pihak", partiesBody),
@@ -113,6 +114,7 @@ function RegisterPage() {
 	const siteSettings = useHybridSiteSettings();
 	const onboardingSettings = useMemo(() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding), [siteSettings?.employeeOnboarding]);
 	const companyDisplayName = useMemo(() => getCompanyDisplayName(siteSettings, onboardingSettings.signatoryName), [siteSettings, onboardingSettings.signatoryName]);
+	const signatoryPersonName = onboardingSettings.signatoryPersonName || onboardingSettings.signatoryName;
 	const registrationEnabled = onboardingSettings.registrationEnabled;
 	const uploadFile = useHybridGenerateEmployeeOnboardingUploadUrl();
 	const submitApplication = useHybridSubmitEmployeeApplication();
@@ -153,7 +155,7 @@ function RegisterPage() {
 		const defaultTemplate = onboardingSettings.contractTemplatesByRoleId.__default__;
 		const templateText = roleTemplate || defaultTemplate;
 		if (templateText) {
-			const syncedTemplateText = syncDynamicContractClauses(templateText, draft.personal, draft.employment, companyDisplayName);
+			const syncedTemplateText = syncDynamicContractClauses(templateText, draft.personal, draft.employment, companyDisplayName, signatoryPersonName);
 			return {
 				mode: "template" as const,
 				title: `Perjanjian Kerja ${draft.employment.roleName || ""}`,
@@ -407,7 +409,7 @@ function RegisterPage() {
 								<p className="text-muted-foreground text-xs">Admin akan menyiapkan kontrak kerja untuk Anda.</p>
 							</div>
 						) : (
-							<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} signatoryName={companyDisplayName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
+							<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} companyName={companyDisplayName} signatoryName={signatoryPersonName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
 						)}
 					</CardContent>
 				</Card>
@@ -437,7 +439,7 @@ function RegisterPage() {
 							</CardContent>
 						</Card>
 						<div className="flex-1">
-							<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} signatureDataUrl={draft.signatureDataUrl} signatoryName={companyDisplayName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
+							<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} signatureDataUrl={draft.signatureDataUrl} companyName={companyDisplayName} signatoryName={signatoryPersonName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
 						</div>
 					</div>
 				)}

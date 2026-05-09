@@ -9,16 +9,18 @@ type ContractPreviewProps = {
 	contract: EmployeeContractDraft;
 	signatureDataUrl?: string;
 	employeeName?: string;
+	companyName?: string;
 	signatoryName?: string;
 	signatorySignatureUrl?: string;
 };
 
-export function ContractPreview({ contract, signatureDataUrl, employeeName, signatoryName, signatorySignatureUrl }: ContractPreviewProps) {
+export function ContractPreview({ contract, signatureDataUrl, employeeName, companyName, signatoryName, signatorySignatureUrl }: ContractPreviewProps) {
 	const safeHtml = contract.html ? sanitizeContractHtml(contract.html) : "";
 	const displayPlainText = contract.plainText
 		? contract.plainText.replace(new RegExp(`^\\s*${escapeRegExp(contract.title || "Perjanjian Kerja")}\\s*\\n+`, "i"), "")
 		: "";
-	const displaySignatoryName = signatoryName || "Djiwa Tentram Cafe & Resto";
+	const displayCompanyName = companyName || "Djiwa Tentram Cafe & Resto";
+	const displaySignatoryName = signatoryName || "Penanggung Jawab Perusahaan";
 
 	return (
 		<div
@@ -28,7 +30,7 @@ export function ContractPreview({ contract, signatureDataUrl, employeeName, sign
 			{/* header */}
 			<div className="mb-4 border-b pb-3 text-center sm:mb-6 sm:pb-4">
 				<p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500 sm:text-xs sm:tracking-[0.2em]">
-					{displaySignatoryName}
+					{displayCompanyName}
 				</p>
 				<h2 className="mt-1.5 text-lg font-bold sm:mt-2 sm:text-2xl">
 					{contract.title || "Perjanjian Kerja"}
@@ -46,6 +48,7 @@ export function ContractPreview({ contract, signatureDataUrl, employeeName, sign
 			<div className="mt-8 grid gap-6 sm:mt-10 sm:grid-cols-2 sm:gap-8">
 				<div>
 					<p className="text-[10px] text-slate-500 sm:text-sm">Pihak Perusahaan</p>
+					<p className="text-[10px] font-medium text-slate-700 sm:text-xs">{displayCompanyName}</p>
 					{signatorySignatureUrl ? (
 						<img
 							alt="Tanda tangan perusahaan"

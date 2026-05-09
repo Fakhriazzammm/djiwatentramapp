@@ -3115,6 +3115,16 @@ export function SettingsPage({
 										<label className="mb-1 block text-xs font-medium text-muted-foreground">Password Default</label>
 										<Input className="h-9 text-xs" type="password" value={employeeOnboardingSettings.defaultPassword} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, defaultPassword: e.target.value }))} placeholder="Password default" />
 									</div>
+									<div className="sm:col-span-2">
+										<label className="mb-1 block text-xs font-medium text-muted-foreground">Nama Perusahaan di Kontrak</label>
+										<Input className="h-9 text-xs" value={employeeOnboardingSettings.signatoryName} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, signatoryName: e.target.value }))} placeholder="Nama perusahaan/bisnis" />
+										<p className="mt-1 text-[10px] text-muted-foreground">Dipakai sebagai nama perusahaan pada header dan pihak perusahaan.</p>
+									</div>
+									<div className="sm:col-span-2">
+										<label className="mb-1 block text-xs font-medium text-muted-foreground">Nama Orang Penandatangan</label>
+										<Input className="h-9 text-xs" value={employeeOnboardingSettings.signatoryPersonName} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, signatoryPersonName: e.target.value }))} placeholder="Nama orang yang menandatangani" />
+										<p className="mt-1 text-[10px] text-muted-foreground">Dipakai di area tanda tangan perusahaan.</p>
+									</div>
 									<div className="sm:col-span-2 lg:col-span-4">
 										<label className="mb-1 block text-xs font-medium text-muted-foreground">Pesan Saat Pendaftaran Ditutup</label>
 										<Textarea className="text-xs" rows={2} value={employeeOnboardingSettings.closedMessage} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, closedMessage: e.target.value }))} />

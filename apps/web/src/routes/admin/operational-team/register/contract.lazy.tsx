@@ -646,7 +646,8 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 		<ContractPreview
 						contract={contractPreview}
 						employeeName="[Nama Karyawan]"
-						signatoryName={signatoryNameLocal}
+						companyName={signatoryNameLocal}
+						signatoryName={onboardingSettings.signatoryPersonName || signatoryNameLocal}
 						signatorySignatureUrl={signatorySigUrlLocal}
 					/>
 				</div>

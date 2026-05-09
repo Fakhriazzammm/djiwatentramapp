@@ -50,6 +50,7 @@ export type EmployeeOnboardingSettings = {
 	inviteCode: string;
 	closedMessage: string;
 	signatoryName: string;
+	signatoryPersonName: string;
 	signatorySignatureUrl: string;
 	defaultPassword: string;
 	defaultRoleId: string;
@@ -116,6 +117,7 @@ export const DEFAULT_EMPLOYEE_ONBOARDING_SETTINGS: EmployeeOnboardingSettings = 
 	inviteCode: "",
 	closedMessage: "Saat ini pendaftaran karyawan baru sedang tidak dibuka. Silakan hubungi admin untuk informasi lebih lanjut.",
 	signatoryName: "Djiwa Tentram Cafe & Resto",
+	signatoryPersonName: "",
 	signatorySignatureUrl: "",
 	defaultPassword: "djiwatentram123",
 	defaultRoleId: "",
@@ -255,6 +257,7 @@ export function normalizeEmployeeOnboardingSettings(value: unknown): EmployeeOnb
 		inviteCode: cleanString(source.inviteCode),
 		closedMessage: cleanString(source.closedMessage, defaults.closedMessage),
 		signatoryName: cleanString(source.signatoryName, defaults.signatoryName),
+		signatoryPersonName: cleanString(source.signatoryPersonName),
 		signatorySignatureUrl: cleanString(source.signatorySignatureUrl),
 		defaultPassword: cleanString(source.defaultPassword, defaults.defaultPassword),
 		defaultRoleId: cleanString(source.defaultRoleId),
