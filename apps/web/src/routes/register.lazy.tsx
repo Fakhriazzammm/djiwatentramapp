@@ -1,5 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/client";
 import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -85,8 +86,16 @@ function replaceClauseBody(templateText: string, clauseNumber: number, clauseTit
 	return templateText;
 }
 
+function normalizeUsername(value: string) {
+	return createEmployeeSlug(value).replace(/^-+|-+$/g, "");
+}
+
+function getCompanyDisplayName(siteSettings: any, signatoryName: string) {
+	return String(siteSettings?.companyName || siteSettings?.businessName || siteSettings?.storeName || siteSettings?.name || signatoryName || "Djiwa Tentram").trim();
+}
+
 function syncDynamicContractClauses(templateText: string, personal: EmployeeOnboardingDraft["personal"], employment: EmployeeOnboardingDraft["employment"], signatoryName: string) {
-	const displaySignatoryName = signatoryName || "Djiwa Tentram Cafe & Resto";
+	const displaySignatoryName = signatoryName || "Djiwa Tentram";
 	const employeeName = personal.fullName || "Karyawan";
 	const partiesBody = `${displaySignatoryName} sebagai perwakilan perusahaan dan ${employeeName} sebagai karyawan menyepakati hubungan kerja sesuai ketentuan dalam kontrak ini.`;
 
@@ -103,6 +112,7 @@ function RegisterPage() {
 	const roles = useHybridStaffRoles() ?? [];
 	const siteSettings = useHybridSiteSettings();
 	const onboardingSettings = useMemo(() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding), [siteSettings?.employeeOnboarding]);
+	const companyDisplayName = useMemo(() => getCompanyDisplayName(siteSettings, onboardingSettings.signatoryName), [siteSettings, onboardingSettings.signatoryName]);
 	const registrationEnabled = onboardingSettings.registrationEnabled;
 	const uploadFile = useHybridGenerateEmployeeOnboardingUploadUrl();
 	const submitApplication = useHybridSubmitEmployeeApplication();
@@ -124,26 +134,26 @@ function RegisterPage() {
 		setDraft((prev) => applyOnboardingDefaultsToDraft(prev, onboardingSettings, roles as any[]));
 	}, [onboardingSettings.defaultRoleId, onboardingSettings.defaultLocation, onboardingSettings.defaultEmploymentType, onboardingSettings.prefillSalaryFromRole, roles]);
 
-	/* auto slug */
+	/* auto username + slug */
 	useEffect(() => {
-		if (!draft.personal.fullName) return;
-		const slug = createEmployeeSlug(draft.personal.fullName);
+		if (!draft.personal.fullName || draft.employment.username) return;
+		const username = normalizeUsername(draft.personal.fullName);
 		setDraft((prev) => ({
 			...prev,
 			employment: {
 				...prev.employment,
-				username: prev.employment.username || (onboardingSettings.autoGenerate.username ? slug : ""),
-				slug: prev.employment.slug || (onboardingSettings.autoGenerate.slug ? slug : ""),
+				username: onboardingSettings.autoGenerate.username ? username : prev.employment.username,
+				slug: onboardingSettings.autoGenerate.slug ? username : prev.employment.slug,
 			},
 		}));
-	}, [draft.personal.fullName, onboardingSettings.autoGenerate.username, onboardingSettings.autoGenerate.slug]);
+	}, [draft.personal.fullName, draft.employment.username, onboardingSettings.autoGenerate.username, onboardingSettings.autoGenerate.slug]);
 
 	const contractPreview = useMemo(() => {
 		const roleTemplate = onboardingSettings.contractTemplatesByRoleId[draft.employment.roleId];
 		const defaultTemplate = onboardingSettings.contractTemplatesByRoleId.__default__;
 		const templateText = roleTemplate || defaultTemplate;
 		if (templateText) {
-			const syncedTemplateText = syncDynamicContractClauses(templateText, draft.personal, draft.employment, onboardingSettings.signatoryName);
+			const syncedTemplateText = syncDynamicContractClauses(templateText, draft.personal, draft.employment, companyDisplayName);
 			return {
 				mode: "template" as const,
 				title: `Perjanjian Kerja ${draft.employment.roleName || ""}`,
@@ -152,8 +162,8 @@ function RegisterPage() {
 				clauses: [{ title: "Ketentuan Kontrak", body: syncedTemplateText }],
 			};
 		}
-		return buildEmployeeContractTemplate(draft.personal, draft.employment, onboardingSettings.signatoryName);
-	}, [draft.employment, draft.personal, onboardingSettings.contractTemplatesByRoleId, onboardingSettings.signatoryName]);
+		return buildEmployeeContractTemplate(draft.personal, draft.employment, companyDisplayName);
+	}, [draft.employment, draft.personal, onboardingSettings.contractTemplatesByRoleId, companyDisplayName]);
 
 	/* helpers */
 	const updatePersonal = (k: keyof EmployeeOnboardingDraft["personal"], v: string) =>
@@ -165,43 +175,69 @@ function RegisterPage() {
 		setDraft((p) => ({ ...p, contract: contractPreview }));
 	}
 
+	async function isUsernameTaken(username: string) {
+		const cleanUsername = normalizeUsername(username);
+		if (!cleanUsername) return false;
+		const supabase = createClient();
+		const [{ data: existingUser, error: userError }, { data: existingApplication, error: appError }] = await Promise.all([
+			supabase.from("yumi_users").select("source_id").eq("username", cleanUsername).maybeSingle(),
+			supabase.from("employee_onboarding_applications").select("id").eq("employment->>username", cleanUsername).neq("status", "rejected").limit(1).maybeSingle(),
+		]);
+		if (userError) throw userError;
+		if (appError) throw appError;
+		return Boolean(existingUser || existingApplication);
+	}
+
 	async function handleSubmit() {
-		const validation = validateEmployeeOnboardingDraft({ ...draft, contract: contractPreview });
-		const settingErrors = validateDraftForSettings({ ...draft, contract: contractPreview }, onboardingSettings);
+		const username = normalizeUsername(draft.employment.username || draft.personal.fullName);
+		const finalDraft = {
+			...draft,
+			employment: {
+				...draft.employment,
+				username,
+				slug: username,
+				startDate: new Date().toISOString().slice(0, 10),
+			},
+			contract: contractPreview,
+		};
+		const validation = validateEmployeeOnboardingDraft(finalDraft);
+		const settingErrors = validateDraftForSettings(finalDraft, onboardingSettings);
 		if (!validation.success || settingErrors.length) {
 			[...validation.errors, ...settingErrors].forEach((e) => toast.error(e));
 			return;
 		}
 		setIsSubmitting(true);
 		try {
+			if (await isUsernameTaken(username)) {
+				toast.error("Username sudah dipakai. Silakan ganti username terlebih dahulu.");
+				setStep(1);
+				return;
+			}
 			const appKey = crypto.randomUUID();
 			const sigBlob = await dataUrlToBlob(draft.signatureDataUrl || "");
 			const signatureUrl = await uploadFile({ file: sigBlob, contentType: "image/png", fileName: `${appKey}-signature.png`, folder: "employee-contracts/signatures" });
 			let contractPdfUrl: string | null = null;
 			try {
-				const pdfBlob = await generateContractPdfBlob({ ...draft, contract: contractPreview }, document.getElementById("employee-contract-preview"));
+				const pdfBlob = await generateContractPdfBlob(finalDraft, document.getElementById("employee-contract-preview"));
 				contractPdfUrl = await uploadFile({ file: pdfBlob, contentType: "application/pdf", fileName: `${appKey}-contract.pdf`, folder: "employee-contracts/contracts" });
 			} catch (e) { console.warn("PDF gen failed", e); }
-			const payload = buildEmployeeOnboardingPayload({ ...draft, contract: contractPreview }, { signatureUrl, contractPdfUrl });
-			// Generate registration number: NAME-XXXX-YYYYMMDD
-			const slugName = createEmployeeSlug(draft.personal.fullName);
+			const payload = buildEmployeeOnboardingPayload(finalDraft, { signatureUrl, contractPdfUrl });
 			const uniqueCode = crypto.randomUUID().slice(0, 8).toUpperCase().replace(/-/g, "");
 			const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-			const registrationNumber = `${slugName.toUpperCase()}-${uniqueCode}-${dateStr}`;
-			payload.raw.registrationNumber = registrationNumber;
+			const registrationNumber = `${username.toUpperCase()}-${uniqueCode}-${dateStr}`;
 			payload.raw = {
 				...payload.raw,
+				registrationNumber,
 				registrationMode: onboardingSettings.registrationMode,
 				pipelineStatus: onboardingSettings.pipeline.defaultStatus,
 				documentChecklist: onboardingSettings.documentChecklist,
 				salaryPreview: onboardingSettings.salaryPreview,
 			};
-			const id = await submitApplication({ payload });
-			const displayId = registrationNumber;
-			setApplicationId(displayId);
+			await submitApplication({ payload });
+			setApplicationId(registrationNumber);
 			localStorage.removeItem(DRAFT_KEY);
-			setStep(4);
 			toast.success("Pendaftaran berhasil dikirim");
+			window.location.href = `/register/selesai-${registrationNumber}`;
 		} catch (e: any) {
 			toast.error(e?.message || "Gagal submit pendaftaran");
 		} finally { setIsSubmitting(false); }
@@ -288,8 +324,9 @@ function RegisterPage() {
 									className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
 									value={draft.employment.roleId}
 									onChange={(e) => {
-										const role = roles.find((r: any) => r._id === e.target.value);
-										const salaryDefaults = onboardingSettings.prefillSalaryFromRole && role ? getRoleSalaryDefaults(role) : {};
+						const role = roles.find((r: any) => r._id === e.target.value);
+						const salaryDefaults: Partial<Pick<EmployeeOnboardingDraft["employment"], "monthlySalary" | "dailyAllowance" | "shiftRate">> =
+							onboardingSettings.prefillSalaryFromRole && role ? getRoleSalaryDefaults(role) : {};
 										setDraft((prev) => ({
 											...prev,
 											contract: { mode: "template", title: "Perjanjian Kerja", plainText: "", clauses: [] },
@@ -308,15 +345,17 @@ function RegisterPage() {
 									{roles.map((r: any) => <option key={r._id} value={r._id}>{r.name}</option>)}
 								</select>
 							</Field>
-							<Field label="Tanggal mulai"><Input type="date" value={draft.employment.startDate} onChange={(e) => updateEmployment("startDate", e.target.value)} /></Field>
+							<div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+								<p className="font-semibold text-foreground">Tanggal mulai</p>
+								<p>Tanggal mulai kerja akan otomatis mengikuti tanggal admin approve pendaftaran.</p>
+							</div>
 							{onboardingSettings.fields.employmentType?.visible !== false && <Field label="Tipe kerja">
 								<select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.employment.employmentType} onChange={(e) => updateEmployment("employmentType", e.target.value)}>
 									<option value="probation">Probation</option><option value="full_time">Full-time</option><option value="part_time">Part-time</option><option value="freelance">Freelance</option>
 								</select>
-								{draft.employment.employmentType === "probation" && onboardingSettings.probation.enabled && (() => {
-									const endDate = calculateProbationEndDate(draft.employment.startDate, onboardingSettings.probation.defaultMonths);
-									return endDate ? <p className="mt-1 text-xs text-muted-foreground">Masa probation berakhir: <span className="font-semibold text-amber-600">{new Date(endDate).toLocaleDateString("id-ID")}</span></p> : null;
-								})()}
+								{draft.employment.employmentType === "probation" && onboardingSettings.probation.enabled && (
+									<p className="mt-1 text-xs text-muted-foreground">Masa probation dihitung mulai tanggal approval admin.</p>
+								)}
 							</Field>}
 							<Field label="Masa kontrak">
 								<select
@@ -335,8 +374,18 @@ function RegisterPage() {
 							<div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 md:col-span-2">
 								Akses login akan aktif setelah admin menyetujui pendaftaran. Admin akan membuat PIN 6 digit dan memberikannya ke karyawan saat approval.
 							</div>
-							<Field label="Username"><Input value={draft.employment.username} onChange={(e) => updateEmployment("username", e.target.value)} /></Field>
-							<Field label="Slug"><Input value={draft.employment.slug} onChange={(e) => updateEmployment("slug", e.target.value)} /></Field>
+							<Field label="Username">
+								<Input
+									value={draft.employment.username}
+									onChange={(e) => {
+										const username = normalizeUsername(e.target.value);
+										updateEmployment("username", username);
+										updateEmployment("slug", username);
+									}}
+									placeholder="contoh: adam"
+								/>
+								<p className="mt-1 text-xs text-muted-foreground">Slug otomatis mengikuti username. Jika username sudah ada, sistem akan meminta Anda menggantinya saat submit.</p>
+							</Field>
 						</CardContent>
 					</Card>
 				)}
@@ -358,7 +407,7 @@ function RegisterPage() {
 								<p className="text-muted-foreground text-xs">Admin akan menyiapkan kontrak kerja untuk Anda.</p>
 							</div>
 						) : (
-							<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} signatoryName={onboardingSettings.signatoryName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
+							<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} signatoryName={companyDisplayName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
 						)}
 					</CardContent>
 				</Card>
@@ -385,13 +434,10 @@ function RegisterPage() {
 									/>
 									<span>Saya menyetujui isi kontrak kerja.</span>
 								</label>
-								<Button className="w-full" disabled={isSubmitting} onClick={handleSubmit}>
-									{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Kirim Pendaftaran
-								</Button>
 							</CardContent>
 						</Card>
 						<div className="flex-1">
-							<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} signatureDataUrl={draft.signatureDataUrl} signatoryName={onboardingSettings.signatoryName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
+							<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} signatureDataUrl={draft.signatureDataUrl} signatoryName={companyDisplayName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
 						</div>
 					</div>
 				)}
@@ -436,13 +482,18 @@ function RegisterPage() {
 
 						<Button
 							onClick={() => {
+								if (step === 3) {
+									handleSubmit();
+									return;
+								}
 								if (step === 1 && !draft.contract.plainText) applyTemplate();
 								setStep((s) => Math.min(3, s + 1));
 							}}
+							disabled={isSubmitting}
 							size="sm"
 							className="sm:h-10 sm:px-4 sm:text-sm"
 						>
-							Lanjut<ChevronRight className="ml-1 h-4 w-4 sm:ml-2" />
+							{step === 3 ? (isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Mengirim</> : "Kirim Pendaftaran") : <>Lanjut<ChevronRight className="ml-1 h-4 w-4 sm:ml-2" /></>}
 						</Button>
 					</div>
 				)}

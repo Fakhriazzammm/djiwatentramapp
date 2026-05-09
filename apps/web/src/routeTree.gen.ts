@@ -21,6 +21,7 @@ import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as RegisterSelesaiRegistrationNumberRouteImport } from './routes/register.selesai-$registrationNumber'
 import { Route as HomeSectionRouteImport } from './routes/home.$section'
 import { Route as AttendanceStockOpnameRouteImport } from './routes/attendance/stock-opname'
 import { Route as AttendanceUsernameRouteImport } from './routes/attendance.$username'
@@ -119,6 +120,16 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() => import('./routes/admin/index.lazy').then((d) => d.Route))
+const RegisterSelesaiRegistrationNumberRoute =
+  RegisterSelesaiRegistrationNumberRouteImport.update({
+    id: '/selesai-$registrationNumber',
+    path: '/selesai-$registrationNumber',
+    getParentRoute: () => RegisterRoute,
+  } as any).lazy(() =>
+    import('./routes/register.selesai-$registrationNumber.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 const HomeSectionRoute = HomeSectionRouteImport.update({
   id: '/$section',
   path: '/$section',
@@ -365,7 +376,7 @@ export interface FileRoutesByFullPath {
   '/home': typeof HomeRouteWithChildren
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
-  '/register': typeof RegisterRoute
+  '/register': typeof RegisterRouteWithChildren
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
@@ -388,6 +399,7 @@ export interface FileRoutesByFullPath {
   '/attendance/$username': typeof AttendanceUsernameRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
+  '/register/selesai-$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
   '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
@@ -412,7 +424,7 @@ export interface FileRoutesByTo {
   '/home': typeof HomeRouteWithChildren
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
-  '/register': typeof RegisterRoute
+  '/register': typeof RegisterRouteWithChildren
   '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
   '/admin/bar': typeof AdminBarRoute
@@ -432,6 +444,7 @@ export interface FileRoutesByTo {
   '/attendance/$username': typeof AttendanceUsernameRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
+  '/register/selesai-$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
   '/admin': typeof AdminIndexRoute
   '/attendance': typeof AttendanceIndexRoute
   '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
@@ -459,7 +472,7 @@ export interface FileRoutesById {
   '/home': typeof HomeRouteWithChildren
   '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
-  '/register': typeof RegisterRoute
+  '/register': typeof RegisterRouteWithChildren
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
   '/$brandSlug/minigames': typeof BrandSlugMinigamesRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
@@ -482,6 +495,7 @@ export interface FileRoutesById {
   '/attendance/$username': typeof AttendanceUsernameRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
+  '/register/selesai-$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
   '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
@@ -533,6 +547,7 @@ export interface FileRouteTypes {
     | '/attendance/$username'
     | '/attendance/stock-opname'
     | '/home/$section'
+    | '/register/selesai-$registrationNumber'
     | '/admin/'
     | '/attendance/'
     | '/admin/finance/accounting'
@@ -577,6 +592,7 @@ export interface FileRouteTypes {
     | '/attendance/$username'
     | '/attendance/stock-opname'
     | '/home/$section'
+    | '/register/selesai-$registrationNumber'
     | '/admin'
     | '/attendance'
     | '/admin/finance/accounting'
@@ -626,6 +642,7 @@ export interface FileRouteTypes {
     | '/attendance/$username'
     | '/attendance/stock-opname'
     | '/home/$section'
+    | '/register/selesai-$registrationNumber'
     | '/admin/'
     | '/attendance/'
     | '/admin/finance/accounting'
@@ -653,7 +670,7 @@ export interface RootRouteChildren {
   HomeRoute: typeof HomeRouteWithChildren
   LoginRoute: typeof LoginRoute
   MenuRoute: typeof MenuRoute
-  RegisterRoute: typeof RegisterRoute
+  RegisterRoute: typeof RegisterRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -741,6 +758,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/register/selesai-$registrationNumber': {
+      id: '/register/selesai-$registrationNumber'
+      path: '/selesai-$registrationNumber'
+      fullPath: '/register/selesai-$registrationNumber'
+      preLoaderRoute: typeof RegisterSelesaiRegistrationNumberRouteImport
+      parentRoute: typeof RegisterRoute
     }
     '/home/$section': {
       id: '/home/$section'
@@ -1145,6 +1169,19 @@ const HomeRouteChildren: HomeRouteChildren = {
 
 const HomeRouteWithChildren = HomeRoute._addFileChildren(HomeRouteChildren)
 
+interface RegisterRouteChildren {
+  RegisterSelesaiRegistrationNumberRoute: typeof RegisterSelesaiRegistrationNumberRoute
+}
+
+const RegisterRouteChildren: RegisterRouteChildren = {
+  RegisterSelesaiRegistrationNumberRoute:
+    RegisterSelesaiRegistrationNumberRoute,
+}
+
+const RegisterRouteWithChildren = RegisterRoute._addFileChildren(
+  RegisterRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
@@ -1155,7 +1192,7 @@ const rootRouteChildren: RootRouteChildren = {
   HomeRoute: HomeRouteWithChildren,
   LoginRoute: LoginRoute,
   MenuRoute: MenuRoute,
-  RegisterRoute: RegisterRoute,
+  RegisterRoute: RegisterRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

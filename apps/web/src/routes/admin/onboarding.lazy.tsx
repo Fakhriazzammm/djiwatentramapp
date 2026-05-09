@@ -163,7 +163,8 @@ export function AdminOnboardingPage() {
 		if (onboardingSettings.approvalPreview.requireConfirmation && !window.confirm(`Approve ${app.full_name} dan buat akun user?`)) return;
 		setIsSaving(true);
 		try {
-			const employment = app.employment ?? {};
+			const approvalStartDate = new Date().toISOString().slice(0, 10);
+			const employment = { ...(app.employment ?? {}), startDate: approvalStartDate };
 			const createdUserId = await createUser({
 				username: employment.username || app.email || `${app.id}@djiwatentram.local`,
 				password,
@@ -175,6 +176,11 @@ export function AdminOnboardingPage() {
 				receiveReportEmails: false,
 				onboardingApplicationId: app.id,
 			});
+			const { error: employmentError } = await createClient()
+				.from("employee_onboarding_applications")
+				.update({ employment })
+				.eq("id", app.id);
+			if (employmentError) throw employmentError;
 			await updateStatus({ id: app.id, status: "approved", approvedUserSourceId: createdUserId, reviewNotes: notes });
 			toast.success("Pendaftaran disetujui & user dibuat"); triggerHybridRefresh();
 			closeDialog();
@@ -352,11 +358,10 @@ export function AdminOnboardingPage() {
 									<CardHeader className="pb-1 sm:pb-2"><CardTitle className="text-sm sm:text-base">Data Kerja</CardTitle></CardHeader>
 									<CardContent className="space-y-1.5 text-xs sm:space-y-2 sm:text-sm">
 										<p><b>Role:</b> {selected.employment?.roleName}</p>
-										<p><b>Mulai:</b> {selected.employment?.startDate}</p>
-										{selected.employment?.employmentType === "probation" && (() => {
-											const endDate = calculateProbationEndDate(selected.employment?.startDate, onboardingSettings.probation.defaultMonths);
-											return endDate ? <p><b>Probation berakhir:</b> <span className="text-amber-600 font-semibold">{new Date(endDate).toLocaleDateString("id-ID")}</span></p> : null;
-										})()}
+										<p><b>Mulai:</b> Otomatis tanggal approval admin</p>
+										{selected.employment?.employmentType === "probation" && (
+											<p><b>Probation:</b> dihitung dari tanggal approval admin</p>
+										)}
 										<p><b>Username:</b> {selected.employment?.username}</p>
 										<p><b>PIN login:</b> Dibuat admin saat approval</p>
 										<p><b>Gaji:</b> {formatOnboardingCurrency(selected.employment?.monthlySalary)} {(() => {
@@ -378,7 +383,7 @@ export function AdminOnboardingPage() {
 								<Card className="border-primary/30 bg-primary/5">
 									<CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><ShieldCheck className="h-4 w-4" />Preview Akun Sebelum Approve</CardTitle></CardHeader>
 									<CardContent className="grid gap-2 text-xs sm:grid-cols-2">
-										<p><b>Nama:</b> {selected.full_name}</p><p><b>Username:</b> {selected.employment?.username || selected.email || `${selected.id}@djiwatentram.local`}</p><p><b>Slug:</b> {selected.employment?.slug || "-"}</p><p><b>PIN:</b> {pin || "isi 6 digit"}</p><p><b>Role:</b> {selected.employment?.roleName || "-"}</p><p><b>Mulai:</b> {selected.employment?.startDate || "-"}</p>
+										<p><b>Nama:</b> {selected.full_name}</p><p><b>Username:</b> {selected.employment?.username || selected.email || `${selected.id}@djiwatentram.local`}</p><p><b>Slug:</b> {selected.employment?.slug || "-"}</p><p><b>PIN:</b> {pin || "isi 6 digit"}</p><p><b>Role:</b> {selected.employment?.roleName || "-"}</p><p><b>Mulai:</b> tanggal approval admin</p>
 									</CardContent>
 								</Card>
 							)}
