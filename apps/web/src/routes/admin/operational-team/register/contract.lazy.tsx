@@ -117,11 +117,16 @@ export default function AdminContractPage() {
 	const [isSaving, setIsSaving] = useState(false);
 	const [draft, setDraft] = useState<ContractDraft>(() => contractToDraft(buildPlaceholderContract("", undefined, onboardingSettings.signatoryName)));
 	const [signatoryNameLocal, setSignatoryNameLocal] = useState(onboardingSettings.signatoryName || "Djiwa Tentram Cafe & Resto");
+	const [signatoryPersonNameLocal, setSignatoryPersonNameLocal] = useState(onboardingSettings.signatoryPersonName || "");
 	const [signatorySigUrlLocal, setSignatorySigUrlLocal] = useState(onboardingSettings.signatorySignatureUrl || "");
 
 	useEffect(() => {
 		setSignatoryNameLocal(onboardingSettings.signatoryName || "Djiwa Tentram Cafe & Resto");
 	}, [onboardingSettings.signatoryName]);
+
+	useEffect(() => {
+		setSignatoryPersonNameLocal(onboardingSettings.signatoryPersonName || "");
+	}, [onboardingSettings.signatoryPersonName]);
 
 	useEffect(() => {
 		setSignatorySigUrlLocal(onboardingSettings.signatorySignatureUrl || "");
@@ -325,7 +330,12 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 		await saveSignatorySettings({ signatoryName: name });
 	}
 
-	async function saveSignatorySettings(updates: { signatoryName?: string; signatorySignatureUrl?: string }) {
+	async function saveSignatoryPersonName(name: string) {
+		setSignatoryPersonNameLocal(name);
+		await saveSignatorySettings({ signatoryPersonName: name });
+	}
+
+	async function saveSignatorySettings(updates: { signatoryName?: string; signatoryPersonName?: string; signatorySignatureUrl?: string }) {
 		try {
 			const nextSettings = normalizeEmployeeOnboardingSettings({
 				...onboardingSettings,
@@ -429,9 +439,9 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 
 			{/* ── Company Info ── */}
 			<Card className="border-border/60">
-				<CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
-					<div className="flex-1 space-y-2">
-						<Label className="text-sm font-medium">Nama Pihak Perusahaan</Label>
+				<CardContent className="grid gap-4 p-4 md:grid-cols-3 md:items-start">
+					<div className="space-y-2">
+						<Label className="text-sm font-medium">Nama Perusahaan</Label>
 						<Input
 							value={signatoryNameLocal}
 							onChange={(e) => setSignatoryNameLocal(e.target.value)}
@@ -440,11 +450,25 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 									saveSignatoryName(signatoryNameLocal);
 								}
 							}}
-							placeholder="Nama perusahaan yang tercantum di kontrak"
+							placeholder="Nama perusahaan/bisnis di header kontrak"
 							className="h-10"
 						/>
 					</div>
-					<div className="flex-1 space-y-2">
+					<div className="space-y-2">
+						<Label className="text-sm font-medium">Nama Pihak Perusahaan</Label>
+						<Input
+							value={signatoryPersonNameLocal}
+							onChange={(e) => setSignatoryPersonNameLocal(e.target.value)}
+							onBlur={() => {
+								if (signatoryPersonNameLocal !== onboardingSettings.signatoryPersonName) {
+									saveSignatoryPersonName(signatoryPersonNameLocal);
+								}
+							}}
+							placeholder="Nama orang yang tanda tangan"
+							className="h-10"
+						/>
+					</div>
+					<div className="space-y-2">
 						<Label className="text-sm font-medium">Tanda Tangan Perusahaan</Label>
 						<div className="flex items-center gap-3">
 							{signatorySigUrlLocal ? (
@@ -647,7 +671,7 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 						contract={contractPreview}
 						employeeName="[Nama Karyawan]"
 						companyName={signatoryNameLocal}
-						signatoryName={onboardingSettings.signatoryPersonName || signatoryNameLocal}
+						signatoryName={signatoryPersonNameLocal || signatoryNameLocal}
 						signatorySignatureUrl={signatorySigUrlLocal}
 					/>
 				</div>
