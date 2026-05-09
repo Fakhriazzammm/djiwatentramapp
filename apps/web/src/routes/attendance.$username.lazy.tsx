@@ -44,6 +44,7 @@ function StaffProfilePage() {
 	const { username } = useParams({ from: "/attendance/$username" as any }) as { username: string };
 	const navigate = useNavigate();
 	const { user: authUser, isAdmin, isAuthenticated, token } = useYumiAuth();
+	const requiresPinChange = Boolean(authUser?.requiresPinChange && authUser.slug === username);
 	
 	const [pin, setPin] = useState("");
 	const [isUnlocked, setIsUnlocked] = useState(false);
@@ -74,6 +75,9 @@ function StaffProfilePage() {
 			const isOwner = authUser.slug === username;
 			if (isOwner || isAdmin) {
 				setIsUnlocked(true);
+			}
+			if (isOwner && authUser.requiresPinChange) {
+				setShowChangePin(true);
 			}
 		}
 	}, [isAuthenticated, authUser, isAdmin, username]);
@@ -477,6 +481,12 @@ function StaffProfilePage() {
 									Pengaturan Akun
 								</h3>
 								<div className="rounded-2xl border bg-card p-3 space-y-3">
+									{requiresPinChange && (
+										<div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
+											<p className="text-[10px] font-black uppercase tracking-wide">PIN default masih aktif</p>
+											<p className="mt-1 text-[11px] font-medium">Untuk keamanan akun, ganti PIN 696969 dengan PIN baru milik Anda.</p>
+										</div>
+									)}
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-3">
 											<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
@@ -493,7 +503,7 @@ function StaffProfilePage() {
 											className="rounded-lg font-bold text-[10px] h-8 px-3"
 											onClick={() => setShowChangePin(!showChangePin)}
 										>
-											{showChangePin ? "BATAL" : "UBAH PIN"}
+											{showChangePin ? "BATAL" : requiresPinChange ? "GANTI SEKARANG" : "UBAH PIN"}
 										</Button>
 									</div>
 
@@ -511,6 +521,10 @@ function StaffProfilePage() {
 														e.preventDefault();
 														if (newPin.length !== 6 || oldPin.length !== 6) {
 															toast.error("PIN harus 6 digit");
+															return;
+														}
+														if (newPin === "696969") {
+															toast.error("PIN baru tidak boleh sama dengan PIN default");
 															return;
 														}
 														setIsUpdatingPin(true);

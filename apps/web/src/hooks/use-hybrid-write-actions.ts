@@ -4970,10 +4970,15 @@ export function useHybridUpdateUserPin() {
 					}
 				}
 				const nextFingerprint = await sha256Hex(newPin);
+				const raw =
+					user.raw && typeof user.raw === "object" && !Array.isArray(user.raw)
+						? { ...user.raw, requiresPinChange: false }
+						: { requiresPinChange: false };
 				const { error } = await createClient()
 					.from("yumi_users")
 					.update({
 						home_pin_fingerprint: nextFingerprint,
+						raw,
 					})
 					.eq("source_id", user.source_id);
 				if (error) throw error;
@@ -5243,6 +5248,11 @@ export function useHybridCreateUser() {
 					args?.slug !== undefined && String(args.slug).trim() !== ""
 						? String(args.slug).trim()
 						: username.split("@")[0];
+				const { password: _password, homePin: _rawHomePin, ...safeRawArgs } = args ?? {};
+				const raw = {
+					...safeRawArgs,
+					requiresPinChange: Boolean(args?.requiresPinChange),
+				};
 				const { error } = await createClient().from("yumi_users").insert({
 					source_id: sourceId,
 					username,
@@ -5253,9 +5263,7 @@ export function useHybridCreateUser() {
 					auth_user_id: args?.authUserId ?? null,
 					slug,
 					home_pin_fingerprint: homePinFingerprint,
-					raw: {
-						...(args ?? {}),
-					},
+					raw,
 				});
 				if (error) throw error;
 				return sourceId;

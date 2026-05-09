@@ -16,7 +16,7 @@ import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridCreateUser, useHybridUpdateEmployeeApplicationStatus } from "@/hooks/use-employee-onboarding-actions";
 import { calculateEstimatedMonthlySalary } from "@/lib/employee-onboarding-schema";
-import { formatOnboardingCurrency, generateSixDigitPin, normalizeEmployeeOnboardingSettings, calculateProbationEndDate } from "@/lib/employee-onboarding-settings";
+import { formatOnboardingCurrency, normalizeEmployeeOnboardingSettings, calculateProbationEndDate } from "@/lib/employee-onboarding-settings";
 
 /* -------- helpers -------- */
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -156,6 +156,10 @@ export function AdminOnboardingPage() {
 
 	/* ---- actions ---- */
 	async function approveApplication(app: any) {
+		if (app.status === "approved" || app.approved_user_source_id) {
+			toast.info("Pendaftaran ini sudah disetujui dan user sudah dibuat.");
+			return;
+		}
 		if (onboardingSettings.approvalPreview.requireConfirmation && !window.confirm(`Approve ${app.full_name} dan buat akun user?`)) return;
 		setIsSaving(true);
 		try {
@@ -166,6 +170,7 @@ export function AdminOnboardingPage() {
 				name: app.full_name,
 				roleId: employment.roleId,
 				homePin: pin || undefined,
+				requiresPinChange: pin === "696969",
 				slug: employment.slug,
 				receiveReportEmails: false,
 				onboardingApplicationId: app.id,
@@ -190,7 +195,7 @@ export function AdminOnboardingPage() {
 	function openDialog(app: any) {
 		setSelected(app);
 		setPassword(onboardingSettings.defaultPassword);
-		setPin(app.employment?.homePinProvided ? "" : generateSixDigitPin(app.full_name || app.id));
+		setPin("696969");
 		setNotes(app.review_notes ?? "");
 	}
 	function closeDialog() {
@@ -353,7 +358,7 @@ export function AdminOnboardingPage() {
 											return endDate ? <p><b>Probation berakhir:</b> <span className="text-amber-600 font-semibold">{new Date(endDate).toLocaleDateString("id-ID")}</span></p> : null;
 										})()}
 										<p><b>Username:</b> {selected.employment?.username}</p>
-										<p><b>PIN dari form:</b> {selected.employment?.homePinProvided ? "Diisi" : "Tidak diisi"}</p>
+										<p><b>PIN login:</b> Dibuat admin saat approval</p>
 										<p><b>Gaji:</b> {formatOnboardingCurrency(selected.employment?.monthlySalary)} {(() => {
 											const est = calculateEstimatedMonthlySalary(selected.employment ?? {});
 											const base = selected.employment?.monthlySalary ?? 0;

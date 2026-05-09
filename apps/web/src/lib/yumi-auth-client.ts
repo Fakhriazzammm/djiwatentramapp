@@ -16,6 +16,7 @@ export type YumiSessionUser = {
 	slug?: string;
 	roleId: string;
 	hasFace: boolean;
+	requiresPinChange?: boolean;
 };
 
 export type YumiSessionRole = {

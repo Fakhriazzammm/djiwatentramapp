@@ -332,7 +332,9 @@ function RegisterPage() {
 							</Field>
 							<Field label="Lokasi"><Input value={draft.employment.location} onChange={(e) => updateEmployment("location", e.target.value)} /></Field>
 						{onboardingSettings.salaryPreview.enabled && onboardingSettings.salaryPreview.candidateVisibility !== "hidden" && <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground md:col-span-2">Estimasi gaji akan diinformasikan oleh admin setelah pendaftaran disetujui.</div>}
-						<Field label="PIN login (6 digit)"><Input maxLength={6} inputMode="numeric" value={draft.employment.homePin} onChange={(e) => updateEmployment("homePin", e.target.value.replace(/\D/g, ""))} /></Field>
+							<div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 md:col-span-2">
+								Akses login akan aktif setelah admin menyetujui pendaftaran. Admin akan membuat PIN 6 digit dan memberikannya ke karyawan saat approval.
+							</div>
 							<Field label="Username"><Input value={draft.employment.username} onChange={(e) => updateEmployment("username", e.target.value)} /></Field>
 							<Field label="Slug"><Input value={draft.employment.slug} onChange={(e) => updateEmployment("slug", e.target.value)} /></Field>
 						</CardContent>
@@ -404,7 +406,10 @@ function RegisterPage() {
 								Status saat ini: <b>menunggu approval admin</b>.<br />
 								Nomor pendaftaran: <b className="break-all">{applicationId}</b>
 							</p>
-							<Button onClick={() => { window.location.href = "/login"; }}>Kembali ke Login</Button>
+							<div className="rounded-xl border bg-muted/40 p-3 text-left text-xs text-muted-foreground">
+								Setelah admin approve, nama Anda akan muncul di halaman login dan admin akan memberikan PIN 6 digit untuk masuk.
+							</div>
+							<Button onClick={() => { window.location.href = "/login"; }}>Ke Halaman Login</Button>
 						</CardContent>
 					</Card>
 				)}

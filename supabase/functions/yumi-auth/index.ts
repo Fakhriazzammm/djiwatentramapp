@@ -112,7 +112,7 @@ async function loginWithPin(payload: JsonRecord) {
 	const { data: user, error } = await supabaseAdmin
 		.from("yumi_users")
 		.select(
-			"source_id, name, slug, home_pin_hash, home_pin_fingerprint, is_active, role_source_id, face_descriptor"
+			"source_id, name, slug, home_pin_hash, home_pin_fingerprint, is_active, role_source_id, face_descriptor, raw"
 		)
 		.eq("source_id", userId)
 		.maybeSingle();
@@ -157,6 +157,7 @@ async function loginWithPin(payload: JsonRecord) {
 			slug: toTrimmedString(user.slug) || undefined,
 			hasFace:
 				Array.isArray(user.face_descriptor) && user.face_descriptor.length > 0,
+			requiresPinChange: Boolean(user.raw?.requiresPinChange),
 		},
 	};
 }
@@ -187,7 +188,7 @@ async function validateSession(payload: JsonRecord) {
 	const { data: user, error: userError } = await supabaseAdmin
 		.from("yumi_users")
 		.select(
-			"source_id, username, name, slug, role_source_id, is_active, face_descriptor"
+			"source_id, username, name, slug, role_source_id, is_active, face_descriptor, raw"
 		)
 		.eq("source_id", session.user_source_id)
 		.maybeSingle();
@@ -221,6 +222,7 @@ async function validateSession(payload: JsonRecord) {
 				roleId: user.role_source_id,
 				hasFace:
 					Array.isArray(user.face_descriptor) && user.face_descriptor.length > 0,
+				requiresPinChange: Boolean(user.raw?.requiresPinChange),
 			},
 			role: {
 				_id: role?.source_id ?? "",
