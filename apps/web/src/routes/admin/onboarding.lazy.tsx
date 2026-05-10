@@ -1,6 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Eye, FileSignature, ShieldCheck, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, Download, Eye, FileSignature, Loader2, ShieldCheck, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridCreateUser, useHybridUpdateEmployeeApplicationStatus } from "@/hooks/use-employee-onboarding-actions";
 import { calculateEstimatedMonthlySalary } from "@/lib/employee-onboarding-schema";
 import { formatOnboardingCurrency, normalizeEmployeeOnboardingSettings, calculateProbationEndDate } from "@/lib/employee-onboarding-settings";
+import { jsPDF } from "jspdf";
 
 /* -------- helpers -------- */
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -145,7 +146,62 @@ export function AdminOnboardingPage() {
 	const [pin, setPin] = useState("");
 	const [notes, setNotes] = useState("");
 	const [isSaving, setIsSaving] = useState(false);
+	const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 	useEffect(() => { setPassword(onboardingSettings.defaultPassword); }, [onboardingSettings.defaultPassword]);
+
+	async function downloadContractPdf() {
+		const element = document.getElementById("employee-contract-preview");
+		if (!element) { toast.error("Elemen kontrak tidak ditemukan"); return; }
+		setIsDownloadingPdf(true);
+		try {
+			const pdf = new jsPDF("p", "mm", "a4");
+			const pw = pdf.internal.pageSize.getWidth();
+			const ph = pdf.internal.pageSize.getHeight();
+			const m = 15; const uw = pw - m * 2;
+			let y = m;
+
+			const head = element.querySelector(".text-\\[10px\\]");
+			if (head) { pdf.setFontSize(10); pdf.setFont("helvetica", "bold"); pdf.text(String(head.textContent || companyDisplayName), pw / 2, y, { align: "center" }); y += 5; }
+			const h2 = element.querySelector("h2");
+			if (h2) { pdf.setFontSize(16); pdf.setFont("helvetica", "bold"); pdf.text(String(h2.textContent || selected?.contract?.title || "Perjanjian Kerja"), pw / 2, y, { align: "center" }); y += 8; }
+			pdf.setDrawColor(180); pdf.line(m, y, pw - m, y); y += 6;
+
+			const bodyEl = element.querySelector(".whitespace-pre-wrap, .prose");
+			if (bodyEl) {
+				pdf.setFontSize(10); pdf.setFont("helvetica", "normal");
+				for (const ln of pdf.splitTextToSize(bodyEl.textContent || "", uw)) {
+					if (y + 5 > ph - m) { pdf.addPage(); y = m; }
+					pdf.text(ln, m, y); y += 5;
+				}
+			}
+			y += 6;
+
+			const sigDivs = element.querySelector(".grid")?.querySelectorAll(":scope > div");
+			if (sigDivs && sigDivs.length >= 2) {
+				const cw = uw / 2 - 5;
+				const cy = y;
+				const c0 = sigDivs[0].querySelectorAll("p");
+				const c0Name = sigDivs[0].querySelector(".border-slate-400");
+				let yy = cy;
+				if (c0[0]) { pdf.setFontSize(9); pdf.setFont("helvetica", "normal"); pdf.text(c0[0].textContent || "Pihak Perusahaan", m, yy); yy += 4; }
+				if (c0[1]) { pdf.setFontSize(8); pdf.setFont("helvetica", "bold"); pdf.text(c0[1].textContent || "", m, yy); yy += 4; }
+				yy += 16; pdf.setDrawColor(180); pdf.line(m, yy, m + cw, yy); yy += 4;
+				if (c0Name) { pdf.setFontSize(10); pdf.setFont("helvetica", "bold"); pdf.text(c0Name.textContent || "", m, yy); }
+
+				const c1 = sigDivs[1].querySelector("p");
+				const c1Name = sigDivs[1].querySelector(".border-slate-400");
+				let ey = cy;
+				if (c1) { pdf.setFontSize(9); pdf.setFont("helvetica", "normal"); pdf.text(c1.textContent || "Karyawan", m + cw + 10, ey); ey += 4; }
+				ey += 20; pdf.setDrawColor(180); pdf.line(m + cw + 10, ey, m + cw + 10 + cw, ey); ey += 4;
+				if (c1Name) { pdf.setFontSize(10); pdf.setFont("helvetica", "bold"); pdf.text(c1Name.textContent || "", m + cw + 10, ey); }
+			}
+
+			const safeName = (selected?.full_name || "kontrak").replace(/\\s+/g, "-").toLowerCase();
+			pdf.save(`kontrak-${safeName}.pdf`);
+			toast.success("PDF kontrak berhasil diunduh");
+		} catch (e: any) { toast.error(e?.message || "Gagal mengunduh PDF"); }
+		finally { setIsDownloadingPdf(false); }
+	}
 
 	const stats = useMemo(
 		() => ({
@@ -389,6 +445,13 @@ export function AdminOnboardingPage() {
 									</CardContent>
 								</Card>
 							)}
+							<div className="flex items-center justify-between">
+								<h3 className="text-sm font-semibold">Kontrak Kerja</h3>
+								<Button size="sm" variant="outline" onClick={downloadContractPdf} disabled={isDownloadingPdf} type="button" className="h-7 gap-1.5 text-xs">
+									{isDownloadingPdf ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+									PDF
+								</Button>
+							</div>
 							<ContractPreview contract={selected.contract} employeeName={selected.full_name} signatureDataUrl={selected.signature_url} companyName={companyDisplayName} signatoryName={signatoryPersonName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
 
 							<div className="grid gap-3 sm:grid-cols-3">

@@ -1,7 +1,8 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FileSignature, Loader2, Plus, Save, Sparkles, Trash2, Upload } from "lucide-react";
+import { FileSignature, Download, Loader2, Plus, Save, Sparkles, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { jsPDF } from "jspdf";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -145,6 +146,7 @@ export default function AdminContractPage() {
 		[localTemplates, onboardingSettings.contractTemplatesByRoleId]
 	);
 	const savedTemplate = effectiveTemplates[selectedTemplateKey] || "";
+	const companyDisplayName = String(siteSettings?.companyName || siteSettings?.businessName || siteSettings?.storeName || siteSettings?.name || signatoryNameLocal || "Djiwa Tentram").trim();
 
 	useEffect(() => {
 		setLocalTemplates(onboardingSettings.contractTemplatesByRoleId);
@@ -350,6 +352,7 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 
 	const signatorySigRef = useRef<HTMLInputElement>(null);
 	const [isUploadingSig, setIsUploadingSig] = useState(false);
+	const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
 	async function uploadSignatorySignature(file: File) {
 		if (!file.type.startsWith("image/")) {
@@ -378,6 +381,61 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 		} finally {
 			setIsUploadingSig(false);
 		}
+	}
+
+	async function downloadContractPdf() {
+		const element = document.getElementById("employee-contract-preview");
+		if (!element) { toast.error("Elemen pratinjau kontrak tidak ditemukan"); return; }
+		setIsDownloadingPdf(true);
+		try {
+			const pdf = new jsPDF("p", "mm", "a4");
+			const pw = pdf.internal.pageSize.getWidth();
+			const ph = pdf.internal.pageSize.getHeight();
+			const m = 15; const uw = pw - m * 2;
+			let y = m;
+
+			const head = element.querySelector(".text-\\[10px\\]");
+			if (head) { pdf.setFontSize(10); pdf.setFont("helvetica", "bold"); pdf.text(String(head.textContent || companyDisplayName), pw / 2, y, { align: "center" }); y += 5; }
+			const h2 = element.querySelector("h2");
+			if (h2) { pdf.setFontSize(16); pdf.setFont("helvetica", "bold"); pdf.text(String(h2.textContent || contractPreview.title || "Perjanjian Kerja"), pw / 2, y, { align: "center" }); y += 8; }
+			pdf.setDrawColor(180); pdf.line(m, y, pw - m, y); y += 6;
+
+			const bodyEl = element.querySelector(".whitespace-pre-wrap");
+			if (bodyEl) {
+				pdf.setFontSize(10); pdf.setFont("helvetica", "normal");
+				for (const ln of pdf.splitTextToSize(bodyEl.textContent || "", uw)) {
+					if (y + 5 > ph - m) { pdf.addPage(); y = m; }
+					pdf.text(ln, m, y); y += 5;
+				}
+			}
+			y += 6;
+
+			const sigDivs = element.querySelector(".grid")?.querySelectorAll(":scope > div");
+			if (sigDivs && sigDivs.length >= 2) {
+				const cw = uw / 2 - 5;
+				const cy = y;
+				const c0 = sigDivs[0].querySelectorAll("p");
+				const c0Name = sigDivs[0].querySelector(".border-slate-400");
+				let yy = cy;
+				if (c0[0]) { pdf.setFontSize(9); pdf.setFont("helvetica", "normal"); pdf.text(c0[0].textContent || "Pihak Perusahaan", m, yy); yy += 4; }
+				if (c0[1]) { pdf.setFontSize(8); pdf.setFont("helvetica", "bold"); pdf.text(c0[1].textContent || "", m, yy); yy += 4; }
+				yy += 16;
+				pdf.setDrawColor(180); pdf.line(m, yy, m + cw, yy); yy += 4;
+				if (c0Name) { pdf.setFontSize(10); pdf.setFont("helvetica", "bold"); pdf.text(c0Name.textContent || "", m, yy); }
+
+				const c1 = sigDivs[1].querySelector("p");
+				const c1Name = sigDivs[1].querySelector(".border-slate-400");
+				let ey = cy;
+				if (c1) { pdf.setFontSize(9); pdf.setFont("helvetica", "normal"); pdf.text(c1.textContent || "Karyawan", m + cw + 10, ey); ey += 4; }
+				ey += 20;
+				pdf.setDrawColor(180); pdf.line(m + cw + 10, ey, m + cw + 10 + cw, ey); ey += 4;
+				if (c1Name) { pdf.setFontSize(10); pdf.setFont("helvetica", "bold"); pdf.text(c1Name.textContent || "", m + cw + 10, ey); }
+			}
+
+			pdf.save(`kontrak-${(contractPreview.title || "perjanjian-kerja").replace(/\\s+/g, "-").toLowerCase()}.pdf`);
+			toast.success("PDF berhasil diunduh");
+		} catch (e: any) { toast.error(e?.message || "Gagal mengunduh PDF"); }
+		finally { setIsDownloadingPdf(false); }
 	}
 
 	return (
@@ -665,13 +723,19 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 				<div className="flex-1 space-y-3 min-w-0">
 					<div className="flex items-center justify-between">
 						<h3 className="text-sm font-semibold text-foreground">Pratinjau Kontrak</h3>
-						<span className="text-[10px] text-muted-foreground uppercase tracking-wider">Tampilan kandidat</span>
+						<div className="flex items-center gap-2">
+							<Button size="sm" variant="outline" onClick={downloadContractPdf} disabled={isDownloadingPdf} type="button" className="h-7 gap-1.5 text-xs">
+								{isDownloadingPdf ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+								PDF
+							</Button>
+							<span className="text-[10px] text-muted-foreground uppercase tracking-wider">Tampilan kandidat</span>
+						</div>
 					</div>
 		<ContractPreview
 						contract={contractPreview}
 						employeeName="[Nama Karyawan]"
-						companyName={signatoryNameLocal}
-						signatoryName={signatoryPersonNameLocal || signatoryNameLocal}
+						companyName={companyDisplayName}
+						signatoryName={signatoryPersonNameLocal || companyDisplayName}
 						signatorySignatureUrl={signatorySigUrlLocal}
 					/>
 				</div>
