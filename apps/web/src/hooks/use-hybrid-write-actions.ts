@@ -5078,30 +5078,27 @@ export function useHybridUpdateSiteSettings() {
 				const pos = supabase.schema("pos");
 				const { data: existing, error: existingError } = await pos
 					.from("site_settings")
-					.select("source_id, raw")
-					.not("raw->shiftSettings", "is", null)
+					.select("*")
 					.order("creation_time", { ascending: false })
 					.limit(1)
 					.maybeSingle();
 				if (existingError) throw existingError;
 
-				const payload = {
-					store_name: args?.storeName ?? null,
-					store_address: args?.storeAddress ?? null,
-					store_phone: args?.storePhone ?? null,
-					app_name: args?.appName ?? null,
-					app_version: args?.appVersion ?? null,
-					tax_rate:
-						args?.taxRate === undefined ? null : Number(args.taxRate ?? 0),
-					service_charge_rate:
-						args?.serviceChargeRate === undefined
-							? null
-							: Number(args.serviceChargeRate ?? 0),
+				const payload: any = {
 					raw: {
 						...(existing?.raw ?? {}),
 						...(args ?? {}),
 					},
 				};
+
+				if (args?.storeName !== undefined) payload.store_name = args.storeName;
+				if (args?.storeAddress !== undefined) payload.store_address = args.storeAddress;
+				if (args?.storePhone !== undefined) payload.store_phone = args.storePhone;
+				if (args?.appName !== undefined) payload.app_name = args.appName;
+				if (args?.appVersion !== undefined) payload.app_version = args.appVersion;
+				if (args?.taxRate !== undefined) payload.tax_rate = Number(args.taxRate ?? 0);
+				if (args?.serviceChargeRate !== undefined)
+					payload.service_charge_rate = Number(args.serviceChargeRate ?? 0);
 
 				if (existing?.source_id) {
 					const { error } = await pos
