@@ -3065,6 +3065,32 @@ export function SettingsPage({
 							</div>
 						</div>
 
+						{/* ── Register Command Center ── */}
+						<div className="overflow-hidden rounded-3xl border border-sky-200/70 bg-gradient-to-br from-sky-50 via-white to-emerald-50 p-4 shadow-sm dark:border-sky-900/40 dark:from-sky-950/30 dark:via-card dark:to-emerald-950/20 md:p-5">
+							<div className="grid gap-4 lg:grid-cols-[1.4fr_1fr] lg:items-center">
+								<div className="space-y-3">
+									<div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-sky-700 shadow-sm dark:bg-background/60 dark:text-sky-300">
+										<span className={`h-2 w-2 rounded-full ${employeeOnboardingSettings.registrationEnabled ? "bg-emerald-500" : "bg-amber-500"}`} />
+										{employeeOnboardingSettings.registrationEnabled ? "Pendaftaran Aktif" : "Pendaftaran Ditutup"}
+									</div>
+									<div>
+										<h4 className="text-lg font-black tracking-tight text-foreground md:text-2xl">Register Center</h4>
+										<p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground md:text-sm">Satu tempat untuk mengatur form kandidat, kontrak kerja, tanda tangan, dan review onboarding. Urutan aman: aktifkan form, cek kontrak, preview, lalu review pendaftar.</p>
+									</div>
+									<div className="flex flex-wrap gap-2">
+										<Button size="sm" onClick={() => window.open("/register?preview=admin", "_blank")} type="button"><Eye className="mr-1.5 h-3.5 w-3.5" />Preview Form</Button>
+										<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/operational-team/register/contract"} type="button"><FileSignature className="mr-1.5 h-3.5 w-3.5" />Template Kontrak</Button>
+										<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/operational-team/register/onboarding"} type="button"><ClipboardList className="mr-1.5 h-3.5 w-3.5" />Review Kandidat</Button>
+									</div>
+								</div>
+								<div className="grid grid-cols-3 gap-2 text-center">
+									<div className="rounded-2xl border bg-white/75 p-3 shadow-sm dark:bg-background/60"><p className="text-lg font-black">{Object.keys(employeeOnboardingSettings.contractTemplatesByRoleId || {}).length}</p><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Template</p></div>
+									<div className="rounded-2xl border bg-white/75 p-3 shadow-sm dark:bg-background/60"><p className="text-lg font-black">{Object.values(employeeOnboardingSettings.fields || {}).filter((field: any) => field?.required).length}</p><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Wajib</p></div>
+									<div className="rounded-2xl border bg-white/75 p-3 shadow-sm dark:bg-background/60"><p className="text-lg font-black">{employeeOnboardingSettings.documentChecklist?.filter((item: any) => item?.required).length || 0}</p><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Dokumen</p></div>
+								</div>
+							</div>
+						</div>
+
 						{/* ── Kontrak Card ── */}
 						<div className="rounded-2xl border border-border bg-card p-4 shadow-sm md:p-5">
 							<div className="flex items-center justify-between gap-3">

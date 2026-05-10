@@ -1,6 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FileSignature, Download, Loader2, Plus, Save, Sparkles, Trash2, Upload } from "lucide-react";
+import { AlertCircle, CheckCircle2, FileSignature, Download, Loader2, Plus, Save, Sparkles, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { jsPDF } from "jspdf";
 import { Badge } from "@/components/ui/badge";
@@ -145,7 +145,8 @@ export default function AdminContractPage() {
 		() => ({ ...onboardingSettings.contractTemplatesByRoleId, ...localTemplates }),
 		[localTemplates, onboardingSettings.contractTemplatesByRoleId]
 	);
-	const savedTemplate = effectiveTemplates[selectedTemplateKey] || "";
+	const persistedTemplate = effectiveTemplates[selectedTemplateKey] || "";
+	const savedTemplate = persistedTemplate;
 	const companyDisplayName = String(siteSettings?.companyName || siteSettings?.businessName || siteSettings?.storeName || siteSettings?.name || signatoryNameLocal || "Djiwa Tentram").trim();
 
 	useEffect(() => {
@@ -158,6 +159,18 @@ export default function AdminContractPage() {
 		plainText: clausesToPlainText(draft.title, draft.clauses),
 		clauses: draft.clauses,
 	}), [draft]);
+	const currentTemplateText = contractPreview.plainText;
+	const isDirty = normalizeLineBreaks(currentTemplateText) !== normalizeLineBreaks(persistedTemplate);
+
+	useEffect(() => {
+		const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+			if (!isDirty) return;
+			event.preventDefault();
+			event.returnValue = "";
+		};
+		window.addEventListener("beforeunload", handleBeforeUnload);
+		return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+	}, [isDirty]);
 
 	const lastLoadedRef = useRef<string | null>(null);
 
@@ -454,8 +467,14 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 							<FileSignature className="h-3 w-3" />
 							Kontrak Kerja
 						</Badge>
-						{savedTemplate ? (
-							<Badge variant="default" className="gap-1">Tersimpan</Badge>
+						{isDirty ? (
+							<Badge variant="outline" className="gap-1 border-amber-300 bg-amber-50 text-amber-700">
+								<AlertCircle className="h-3 w-3" /> Ada perubahan
+							</Badge>
+						) : savedTemplate ? (
+							<Badge variant="default" className="gap-1">
+								<CheckCircle2 className="h-3 w-3" /> Tersimpan
+							</Badge>
 						) : (
 							<Badge variant="outline" className="text-muted-foreground">Belum tersimpan</Badge>
 						)}
@@ -468,7 +487,7 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 					</p>
 				</div>
 
-				<div className="flex items-center gap-2">
+				<div className="sticky bottom-3 z-20 flex w-full flex-wrap items-center gap-2 rounded-2xl border bg-card/95 p-2 shadow-xl backdrop-blur md:static md:w-auto md:flex-nowrap md:border-0 md:bg-transparent md:p-0 md:shadow-none">
 					<Button
 						size="sm"
 						variant="outline"
@@ -592,7 +611,10 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 						<Label className="shrink-0 text-sm font-medium">Template untuk</Label>
 						<Select
 							value={selectedTemplateKey}
-							onValueChange={setSelectedTemplateKey}
+							onValueChange={(nextKey) => {
+								if (isDirty && !window.confirm("Template belum disimpan. Pindah template dan buang perubahan?")) return;
+								setSelectedTemplateKey(nextKey);
+							}}
 						>
 							<SelectTrigger className="w-56">
 								<SelectValue />
