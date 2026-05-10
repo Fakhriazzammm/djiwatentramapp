@@ -1,14 +1,11 @@
 ﻿import type { Doc, Id } from "@/types/backend-compat";
 import {
 	ChevronLeft,
-	ChefHat,
 	ClipboardList,
-	FileText,
 	History,
 	Loader2,
 	Pencil,
 	Printer,
-	Receipt,
 	Save,
 	Trash2,
 	X,
@@ -18,12 +15,6 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -245,17 +236,20 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 	const shiftStatus = useHybridShiftStatus();
 
 	const handlePrintOrder = async (order: Doc<"orders">, mode?: ReceiptPrintMode) => {
-		if (!bluetoothPrinter.isConnected()) {
-			const connected = await bluetoothPrinter.autoReconnectIfNeeded(0);
-			if (!connected) {
-				toast.loading("Pilih printer Bluetooth untuk mencetak...", { id: "printing" });
-				await bluetoothPrinter.connect();
-			}
+		if (!siteSettings) {
+			toast.error("Data toko belum siap. Coba lagi sebentar.", { id: "printing" });
+			return;
 		}
 
-		if (!siteSettings) return;
-
 		try {
+			if (!bluetoothPrinter.isConnected()) {
+				const connected = await bluetoothPrinter.autoReconnectIfNeeded(0);
+				if (!connected) {
+					toast.loading("Pilih printer Bluetooth untuk mencetak...", { id: "printing" });
+					await bluetoothPrinter.connect();
+				}
+			}
+
 			toast.loading(
 				mode === "open_bill"
 					? "Mencetak open bill..."
@@ -343,7 +337,11 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 			);
 		} catch (error) {
 			console.error("Print failed:", error);
-			toast.error("Gagal mencetak struk.", { id: "printing" });
+			const message = error instanceof Error ? error.message : "Gagal mencetak";
+			toast.error(
+				`Gagal mencetak: ${message}. ${!bluetoothPrinter.isConnected() ? 'Pastikan printer Bluetooth sudah terhubung — klik "Hubungkan Printer".' : ""}`,
+				{ id: "printing" }
+			);
 		}
 	};
 
@@ -788,31 +786,14 @@ function OrderDetailView({
 						{formatCurrency(order.totalAmount)}
 					</span>
 				</div>
-			<DropdownMenu>
-				<DropdownMenuTrigger>
-					<Button
-						className="w-full gap-2"
-						variant="outline"
-					>
-						<Printer className="h-4 w-4" />
-						Cetak Ulang Struk
-					</Button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="end" className="w-52">
-					<DropdownMenuItem onClick={() => onPrint("paid")} className="gap-2 cursor-pointer">
-						<Receipt className="h-4 w-4 text-blue-500" />
-						<span>Cetak Struk Lunas</span>
-					</DropdownMenuItem>
-					<DropdownMenuItem onClick={() => onPrint("open_bill")} className="gap-2 cursor-pointer">
-						<FileText className="h-4 w-4 text-amber-500" />
-						<span>Cetak Open Bill</span>
-					</DropdownMenuItem>
-					<DropdownMenuItem onClick={() => onPrint("kitchen")} className="gap-2 cursor-pointer">
-						<ChefHat className="h-4 w-4 text-green-500" />
-						<span>Cetak Tiket Kitchen</span>
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
+			<Button
+				className="w-full gap-2"
+				variant="outline"
+				onClick={() => onPrint(order.status === "pending" ? "open_bill" : "paid")}
+			>
+				<Printer className="h-4 w-4" />
+				Cetak Ulang Struk
+			</Button>
 			</div>
 		</>
 	);

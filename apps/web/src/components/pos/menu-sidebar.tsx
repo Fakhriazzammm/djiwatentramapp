@@ -802,26 +802,16 @@ function OrderSimpleDetail({
 						</Button>
 					)}
 					{!isEditMode && onPrint && (
-					<DropdownMenu>
-					<DropdownMenuTrigger render={<Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" title={order.status === "pending" ? "Cetak Open Bill" : "Cetak Struk"} />}>
-						<Printer className="h-4 w-4" />
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end" className="w-52">
-						<DropdownMenuItem onClick={() => onPrint("paid")} className="gap-2 cursor-pointer">
-							<Receipt className="h-4 w-4 text-blue-500" />
-							<span>Cetak Struk Lunas</span>
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => onPrint("open_bill")} className="gap-2 cursor-pointer">
-							<FileText className="h-4 w-4 text-amber-500" />
-							<span>Cetak Open Bill</span>
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => onPrint("kitchen")} className="gap-2 cursor-pointer">
-							<ChefHat className="h-4 w-4 text-green-500" />
-							<span>Cetak Tiket Kitchen</span>
-						</DropdownMenuItem>
-					</DropdownMenuContent>
-				</DropdownMenu>
-			)}
+						<Button
+							size="icon"
+							variant="ghost"
+							className="h-8 w-8 text-primary hover:bg-primary/10"
+							title={order.status === "pending" ? "Cetak Open Bill" : "Cetak Struk"}
+							onClick={() => onPrint(order.status === "pending" ? "open_bill" : "paid")}
+						>
+							<Printer className="h-4 w-4" />
+						</Button>
+					)}
 				</div>
 			</div>
 

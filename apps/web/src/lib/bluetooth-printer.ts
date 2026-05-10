@@ -5,6 +5,16 @@ const RECEIPT_HEADER_WIDTH = 24;
 const RECEIPT_SEPARATOR_WIDTH = 28;
 const BLUETOOTH_PRINTER_DEVICE_ID_KEY = "pos_bluetooth_printer_device_id";
 const LEGACY_BLUETOOTH_PRINTER_DEVICE_ID_KEY = "bluetooth_printer_device_id";
+const BLE_UUID_SUFFIX = "-0000-1000-8000-00805f9b34fb";
+const normalizeBluetoothUuid = (uuid: string) => uuid.toLowerCase();
+const expandBluetoothUuid = (uuid: string) =>
+	uuid.length === 4 ? `0000${uuid}${BLE_UUID_SUFFIX}` : normalizeBluetoothUuid(uuid);
+const getCharacteristicWriteMode = (characteristic: BluetoothRemoteGATTCharacteristic) =>
+	characteristic.properties.writeWithoutResponse
+		? "writeWithoutResponse"
+		: characteristic.properties.write
+			? "write"
+			: null;
 
 const formatReceiptCurrency = (value: number) =>
 	new Intl.NumberFormat("id-ID").format(Math.round(value || 0));
@@ -164,21 +174,34 @@ export class BluetoothPrinterService {
 		  }
 		| null = null;
 	private optionalServices = [
-		"000018f0-0000-1000-8000-00805f9b34fb",
-		"000018f1-0000-1000-8000-00805f9b34fb",
+		"18f0",
+		"18f1",
+		"ff00",
+		"af00",
+		"4953",
+		"ffe0",
+		"ffe1",
+		"18a0",
+		"18a1",
+		"dfb0",
+		"a001",
+		"18fb",
 		"e7e11001-49d2-4cc3-a291-0016260c533c",
-		"0000ff00-0000-1000-8000-00805f9b34fb",
-		"0000af00-0000-1000-8000-00805f9b34fb",
-		"00004953-0000-1000-8000-00805f9b34fb",
-		// BLE UART (HM-10/CC2541) — dipakai banyak printer thermal murah
-		"0000ffe0-0000-1000-8000-00805f9b34fb",
-		"0000ffe1-0000-1000-8000-00805f9b34fb",
-		// Device Information — sering ada di printer BLE
-		"0000180a-0000-1000-8000-00805f9b34fb",
-		// Generic attribute / vendor
-		"0000dfb0-0000-1000-8000-00805f9b34fb",
-		"0000a001-0000-1000-8000-00805f9b34fb",
-	];
+		"e7810a71-73ae-499d-8c15-faa9aef0c3f2",
+	].map(expandBluetoothUuid);
+	private preferredWriteCharacteristicUuids = new Set([
+		"2af1",
+		"2af0",
+		"ff01",
+		"ff02",
+		"ff03",
+		"ffe1",
+		"dfb1",
+		"a002",
+		"49535343-8841-43f4-a8d4-ecbe34729bb3",
+		"49535343-1e4d-4bd9-ba61-23c647249616",
+		"bef8d6c9-9c21-4c9e-b632-bd58c1009f9f",
+	].map(expandBluetoothUuid));
 
 	/** 🔍 Kumpulkan info diagnostik lengkap — panggil dari DevTools Console */
 	debugInfo(): Record<string, unknown> {
@@ -341,31 +364,43 @@ export class BluetoothPrinterService {
 		console.log('🔌 [BluetoothPrinter] GATT connected, scanning characteristics...');
 		const services = await this.server.getPrimaryServices();
 		let writeCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
+		const writeCandidates: BluetoothRemoteGATTCharacteristic[] = [];
 
 		for (const service of services) {
 			const characteristics = await service.getCharacteristics();
+			console.log(
+				'🔎 [BluetoothPrinter] Service',
+				service.uuid,
+				'characteristics:',
+				characteristics.map((char) => ({
+					uuid: char.uuid,
+					write: char.properties.write,
+					writeWithoutResponse: char.properties.writeWithoutResponse,
+				}))
+			);
 
 			for (const char of characteristics) {
-				if (char.properties.writeWithoutResponse) {
-					console.log('✅ [BluetoothPrinter] Found writeWithoutResponse char:', char.uuid);
-					writeCharacteristic = char;
-					break;
+				if (getCharacteristicWriteMode(char)) {
+					writeCandidates.push(char);
 				}
 			}
+		}
 
-			if (!writeCharacteristic) {
-				for (const char of characteristics) {
-					if (char.properties.write) {
-						console.log('✅ [BluetoothPrinter] Found write char:', char.uuid);
-						writeCharacteristic = char;
-						break;
-					}
-				}
-			}
+		writeCharacteristic =
+			writeCandidates.find((char) =>
+				this.preferredWriteCharacteristicUuids.has(normalizeBluetoothUuid(char.uuid))
+			) ??
+			writeCandidates.find((char) => char.properties.writeWithoutResponse) ??
+			writeCandidates.find((char) => char.properties.write) ??
+			null;
 
-			if (writeCharacteristic) {
-				break;
-			}
+		if (writeCharacteristic) {
+			console.log(
+				'✅ [BluetoothPrinter] Selected write char:',
+				writeCharacteristic.uuid,
+				'mode:',
+				getCharacteristicWriteMode(writeCharacteristic)
+			);
 		}
 
 		if (!writeCharacteristic) {
@@ -465,10 +500,17 @@ export class BluetoothPrinterService {
 
 			while (!sent && attempts < 3) {
 				try {
-					if (this.characteristic.properties.writeWithoutResponse) {
+					const mode = getCharacteristicWriteMode(this.characteristic);
+					if (mode === "writeWithoutResponse") {
 						await this.characteristic.writeValueWithoutResponse(chunk);
+					} else if (mode === "write") {
+						if (typeof this.characteristic.writeValueWithResponse === "function") {
+							await this.characteristic.writeValueWithResponse(chunk);
+						} else {
+							await this.characteristic.writeValue(chunk);
+						}
 					} else {
-						await this.characteristic.writeValue(chunk);
+						throw new Error("Characteristic printer tidak mendukung mode tulis.");
 					}
 					sent = true;
 					bytesSent += chunk.length;
