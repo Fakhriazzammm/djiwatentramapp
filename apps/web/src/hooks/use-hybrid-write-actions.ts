@@ -4056,10 +4056,44 @@ export function useHybridRecordExpenseIntake() {
 							},
 						}
 					);
-					if (gwError) throw new Error(gwError.message || "Gateway error");
 					const gwSourceId = (gwResult as any)?.sourceId;
-					if (!gwSourceId) throw new Error("Gateway returned no sourceId");
-					transactionId = gwSourceId;
+					if (gwError || !gwSourceId) {
+						console.warn("[supabase-hybrid:write-record-expense-intake] gateway failed, using direct insert", gwError);
+						const directSourceId =
+							typeof crypto !== "undefined" && "randomUUID" in crypto
+								? crypto.randomUUID()
+								: `tx_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+						const { error: insertError } = await pos
+							.from("financial_transactions")
+							.insert({
+								source_id: directSourceId,
+								tx_type: type,
+								amount,
+								category,
+								merchant: tx?.merchant ?? null,
+								description: effectiveDescription,
+								tx_date: date,
+								payment_method: tx?.paymentMethod ?? "cash",
+								status: tx?.status ?? "completed",
+								attachment_url: tx?.attachmentUrl ?? null,
+								source_fingerprint: args?.sourceFingerprint ?? null,
+								is_recurring:
+									tx?.isRecurring === undefined
+										? null
+										: Boolean(tx.isRecurring),
+								recurring_interval: tx?.recurringInterval ?? null,
+								tags: Array.isArray(tx?.tags) ? tx.tags : null,
+								metadata,
+								raw: {
+									...(args ?? {}),
+									transaction: tx,
+								},
+							});
+						if (insertError) throw insertError;
+						transactionId = directSourceId;
+					} else {
+						transactionId = gwSourceId;
+					}
 				}
 
 				// Sync to inventory if finance_plus_inventory and expense
