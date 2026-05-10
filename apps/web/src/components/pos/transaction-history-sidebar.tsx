@@ -246,8 +246,11 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 
 	const handlePrintOrder = async (order: Doc<"orders">, mode?: ReceiptPrintMode) => {
 		if (!bluetoothPrinter.isConnected()) {
-			toast.error("Printer tidak terhubung. Silakan hubungkan di Pengaturan.");
-			return;
+			const connected = await bluetoothPrinter.autoReconnectIfNeeded(0);
+			if (!connected) {
+				toast.loading("Pilih printer Bluetooth untuk mencetak...", { id: "printing" });
+				await bluetoothPrinter.connect();
+			}
 		}
 
 		if (!siteSettings) return;

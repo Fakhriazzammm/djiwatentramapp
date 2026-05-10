@@ -170,6 +170,14 @@ export class BluetoothPrinterService {
 		"0000ff00-0000-1000-8000-00805f9b34fb",
 		"0000af00-0000-1000-8000-00805f9b34fb",
 		"00004953-0000-1000-8000-00805f9b34fb",
+		// BLE UART (HM-10/CC2541) — dipakai banyak printer thermal murah
+		"0000ffe0-0000-1000-8000-00805f9b34fb",
+		"0000ffe1-0000-1000-8000-00805f9b34fb",
+		// Device Information — sering ada di printer BLE
+		"0000180a-0000-1000-8000-00805f9b34fb",
+		// Generic attribute / vendor
+		"0000dfb0-0000-1000-8000-00805f9b34fb",
+		"0000a001-0000-1000-8000-00805f9b34fb",
 	];
 
 	/** 🔍 Kumpulkan info diagnostik lengkap — panggil dari DevTools Console */
