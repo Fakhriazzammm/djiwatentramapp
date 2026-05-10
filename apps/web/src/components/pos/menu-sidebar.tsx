@@ -375,8 +375,8 @@ export function MenuSidebar({
 		if (!bluetoothPrinter.isConnected()) {
 			const connected = await bluetoothPrinter.autoReconnectIfNeeded(0);
 			if (!connected) {
-				toast.error("Printer Bluetooth tidak terhubung. Klik tombol 'Hubungkan Printer' di sidebar.", { id: "printing" });
-				return;
+				toast.loading("Pilih printer Bluetooth untuk mencetak...", { id: "printing" });
+				await bluetoothPrinter.connect();
 			}
 		}
 
@@ -2690,7 +2690,9 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!amount) {
+		const numericAmount = Number(amount);
+		if (!amount || !Number.isFinite(numericAmount) || numericAmount <= 0) {
+			toast.error("Jumlah pengeluaran harus lebih dari Rp 0");
 			return;
 		}
 
@@ -2711,8 +2713,8 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 							name: normalizedItemName,
 							quantity,
 							unit: normalizedUnit,
-							price: Number(amount) / quantity,
-							total: Number(amount),
+							price: numericAmount / quantity,
+							total: numericAmount,
 						},
 				  ]
 				: [];
@@ -2723,7 +2725,7 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 				allowCreateInventoryItem: allowNewInventoryItem,
 				transaction: {
 					type: "expense",
-					amount: Number(amount),
+					amount: numericAmount,
 					category,
 					description: description || normalizedItemName,
 					date: Date.now(),

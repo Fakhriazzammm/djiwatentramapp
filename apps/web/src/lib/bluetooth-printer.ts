@@ -4,6 +4,7 @@ const RECEIPT_LINE_WIDTH = 32;
 const RECEIPT_HEADER_WIDTH = 24;
 const RECEIPT_SEPARATOR_WIDTH = 28;
 const BLUETOOTH_PRINTER_DEVICE_ID_KEY = "pos_bluetooth_printer_device_id";
+const LEGACY_BLUETOOTH_PRINTER_DEVICE_ID_KEY = "bluetooth_printer_device_id";
 
 const formatReceiptCurrency = (value: number) =>
 	new Intl.NumberFormat("id-ID").format(Math.round(value || 0));
@@ -173,7 +174,7 @@ export class BluetoothPrinterService {
 
 	/** 🔍 Kumpulkan info diagnostik lengkap — panggil dari DevTools Console */
 	debugInfo(): Record<string, unknown> {
-		const storedId = localStorage.getItem(STORAGE_KEY);
+		const storedId = this.getPersistedDeviceId();
 		const info: Record<string, unknown> = {
 			timestamp: new Date().toISOString(),
 			browser: navigator.userAgent,
@@ -310,12 +311,16 @@ export class BluetoothPrinterService {
 
 	private getPersistedDeviceId(): string | null {
 		if (typeof window === "undefined") return null;
-		return window.localStorage.getItem(BLUETOOTH_PRINTER_DEVICE_ID_KEY);
+		return (
+			window.localStorage.getItem(BLUETOOTH_PRINTER_DEVICE_ID_KEY) ||
+			window.localStorage.getItem(LEGACY_BLUETOOTH_PRINTER_DEVICE_ID_KEY)
+		);
 	}
 
 	private persistDeviceId(deviceId?: string | null) {
 		if (typeof window === "undefined" || !deviceId) return;
 		window.localStorage.setItem(BLUETOOTH_PRINTER_DEVICE_ID_KEY, deviceId);
+		window.localStorage.removeItem(LEGACY_BLUETOOTH_PRINTER_DEVICE_ID_KEY);
 	}
 
 	private async establishConnection(): Promise<string> {
@@ -760,7 +765,7 @@ export const bluetoothPrinter = new BluetoothPrinterService();
 // 🔍 Expose debug info to DevTools Console — ketik __bluetoothDebug() di console
 if (typeof window !== 'undefined') {
 	(window as any).__bluetoothDebug = () => {
-		const storedId = localStorage.getItem('bluetooth_printer_device_id');
+		const storedId = bluetoothPrinter.debugInfo().storedDeviceId;
 		console.group('🔍 Bluetooth Printer Diagnostics');
 		console.log('isSecureContext:', window.isSecureContext);
 		console.log('Protocol:', location.protocol);

@@ -924,7 +924,11 @@ function MenuPage() {
 
 		try {
 			if (!bluetoothPrinter.isConnected()) {
-				await bluetoothPrinter.autoReconnectIfNeeded(0);
+				const connected = await bluetoothPrinter.autoReconnectIfNeeded(0);
+				if (!connected) {
+					toast.loading("Pilih printer Bluetooth untuk mencetak...", { id: "printing" });
+					await bluetoothPrinter.connect();
+				}
 			}
 
 			const order = orders?.find((candidate: any) => candidate._id === orderId);
@@ -1014,7 +1018,11 @@ function MenuPage() {
 
 		try {
 			if (!bluetoothPrinter.isConnected()) {
-				await bluetoothPrinter.autoReconnectIfNeeded(0);
+				const connected = await bluetoothPrinter.autoReconnectIfNeeded(0);
+				if (!connected) {
+					toast.loading("Pilih printer Bluetooth untuk mencetak...", { id: "printing" });
+					await bluetoothPrinter.connect();
+				}
 			}
 
 			toast.loading("Mencetak open bill...", { id: "printing-open-bill" });
