@@ -104,24 +104,31 @@ grant all on all sequences in schema public to anon, authenticated;
 
 -- 7) RLS Policies
 alter table public.accounting_chart_of_accounts enable row level security;
+drop policy if exists coa_anon_select on public.accounting_chart_of_accounts;
 create policy coa_anon_select on public.accounting_chart_of_accounts
   for select to anon, authenticated using (true);
 
 alter table public.accounting_entries enable row level security;
+drop policy if exists entries_anon_select on public.accounting_entries;
 create policy entries_anon_select on public.accounting_entries
   for select to anon, authenticated using (true);
+drop policy if exists entries_anon_insert on public.accounting_entries;
 create policy entries_anon_insert on public.accounting_entries
   for insert to anon, authenticated with check (true);
 
 alter table public.accounting_item_embeddings enable row level security;
+drop policy if exists emb_anon_select on public.accounting_item_embeddings;
 create policy emb_anon_select on public.accounting_item_embeddings
   for select to anon, authenticated using (true);
+drop policy if exists emb_anon_insert on public.accounting_item_embeddings;
 create policy emb_anon_insert on public.accounting_item_embeddings
   for insert to anon, authenticated with check (true);
 
 alter table public.accounting_reconciliation_logs enable row level security;
+drop policy if exists recon_anon_select on public.accounting_reconciliation_logs;
 create policy recon_anon_select on public.accounting_reconciliation_logs
   for select to anon, authenticated using (true);
+drop policy if exists recon_anon_insert on public.accounting_reconciliation_logs;
 create policy recon_anon_insert on public.accounting_reconciliation_logs
   for insert to anon, authenticated with check (true);
 
@@ -136,6 +143,7 @@ begin
 end;
 $$;
 
+drop trigger if exists set_updated_at_coa on public.accounting_chart_of_accounts;
 create trigger set_updated_at_coa
   before update on public.accounting_chart_of_accounts
   for each row
