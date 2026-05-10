@@ -159,10 +159,13 @@ export default function AdminContractPage() {
 		clauses: draft.clauses,
 	}), [draft]);
 
+	const lastLoadedRef = useRef<string | null>(null);
+
 	const loadTemplate = useCallback((templateKey: string, settings: EmployeeOnboardingSettings) => {
 		const templateText = { ...settings.contractTemplatesByRoleId, ...localTemplates }[templateKey];
 		if (templateText) {
 			setDraft(parseTemplateText(templateText));
+			lastLoadedRef.current = templateKey;
 			return;
 		}
 		const role = roles.find((item: any) => String(item?._id) === templateKey);
@@ -171,10 +174,13 @@ export default function AdminContractPage() {
 			role,
 			signatoryNameLocal
 		)));
+		lastLoadedRef.current = templateKey;
 	}, [localTemplates, roles, signatoryNameLocal]);
 
 	useEffect(() => {
-		loadTemplate(selectedTemplateKey, onboardingSettings);
+		if (lastLoadedRef.current !== selectedTemplateKey) {
+			loadTemplate(selectedTemplateKey, onboardingSettings);
+		}
 	}, [loadTemplate, onboardingSettings, selectedTemplateKey]);
 
 	const resetToDefault = useCallback(() => {
