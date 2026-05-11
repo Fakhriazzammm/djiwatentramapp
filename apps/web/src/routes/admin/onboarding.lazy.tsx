@@ -16,7 +16,7 @@ import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridCreateUser, useHybridUpdateEmployeeApplicationStatus } from "@/hooks/use-employee-onboarding-actions";
 import { calculateEstimatedMonthlySalary } from "@/lib/employee-onboarding-schema";
-import { formatOnboardingCurrency, normalizeEmployeeOnboardingSettings, calculateProbationEndDate } from "@/lib/employee-onboarding-settings";
+import { formatOnboardingCurrency, generateSixDigitPin, normalizeEmployeeOnboardingSettings, calculateProbationEndDate } from "@/lib/employee-onboarding-settings";
 import { jsPDF } from "jspdf";
 
 /* -------- helpers -------- */
@@ -150,53 +150,61 @@ export function AdminOnboardingPage() {
 	useEffect(() => { setPassword(onboardingSettings.defaultPassword); }, [onboardingSettings.defaultPassword]);
 
 	async function downloadContractPdf() {
-		const element = document.getElementById("employee-contract-preview");
-		if (!element) { toast.error("Elemen kontrak tidak ditemukan"); return; }
+		if (!selected) return;
 		setIsDownloadingPdf(true);
 		try {
 			const pdf = new jsPDF("p", "mm", "a4");
 			const pw = pdf.internal.pageSize.getWidth();
 			const ph = pdf.internal.pageSize.getHeight();
-			const m = 15; const uw = pw - m * 2;
+			const m = 15;
+			const uw = pw - m * 2;
 			let y = m;
 
-			const head = element.querySelector(".text-\\[10px\\]");
-			if (head) { pdf.setFontSize(10); pdf.setFont("helvetica", "bold"); pdf.text(String(head.textContent || companyDisplayName), pw / 2, y, { align: "center" }); y += 5; }
-			const h2 = element.querySelector("h2");
-			if (h2) { pdf.setFontSize(16); pdf.setFont("helvetica", "bold"); pdf.text(String(h2.textContent || selected?.contract?.title || "Perjanjian Kerja"), pw / 2, y, { align: "center" }); y += 8; }
-			pdf.setDrawColor(180); pdf.line(m, y, pw - m, y); y += 6;
-
-			const bodyEl = element.querySelector(".whitespace-pre-wrap, .prose");
-			if (bodyEl) {
-				pdf.setFontSize(10); pdf.setFont("helvetica", "normal");
-				for (const ln of pdf.splitTextToSize(bodyEl.textContent || "", uw)) {
-					if (y + 5 > ph - m) { pdf.addPage(); y = m; }
-					pdf.text(ln, m, y); y += 5;
+			function addWrappedText(text: string, fontSize = 10, style: "normal" | "bold" = "normal", align: "left" | "center" = "left") {
+				pdf.setFont("helvetica", style);
+				pdf.setFontSize(fontSize);
+				for (const ln of pdf.splitTextToSize(String(text || ""), uw) as string[]) {
+					if (y + fontSize * 0.45 > ph - m) { pdf.addPage(); y = m; }
+					pdf.text(ln, align === "center" ? pw / 2 : m, y, { align });
+					y += fontSize * 0.45 + 1.5;
 				}
 			}
+
+			addWrappedText(companyDisplayName, 10, "bold", "center");
+			addWrappedText(selected.contract?.title || "Perjanjian Kerja", 16, "bold", "center");
+			y += 2;
+			pdf.setDrawColor(180);
+			pdf.line(m, y, pw - m, y);
 			y += 6;
 
-			const sigDivs = element.querySelector(".grid")?.querySelectorAll(":scope > div");
-			if (sigDivs && sigDivs.length >= 2) {
-				const cw = uw / 2 - 5;
-				const cy = y;
-				const c0 = sigDivs[0].querySelectorAll("p");
-				const c0Name = sigDivs[0].querySelector(".border-slate-400");
-				let yy = cy;
-				if (c0[0]) { pdf.setFontSize(9); pdf.setFont("helvetica", "normal"); pdf.text(c0[0].textContent || "Pihak Perusahaan", m, yy); yy += 4; }
-				if (c0[1]) { pdf.setFontSize(8); pdf.setFont("helvetica", "bold"); pdf.text(c0[1].textContent || "", m, yy); yy += 4; }
-				yy += 16; pdf.setDrawColor(180); pdf.line(m, yy, m + cw, yy); yy += 4;
-				if (c0Name) { pdf.setFontSize(10); pdf.setFont("helvetica", "bold"); pdf.text(c0Name.textContent || "", m, yy); }
+			const bodyText = selected.contract?.plainText ||
+				(selected.contract?.clauses ?? []).map((c: any) => `${c.title}\n${c.body}`).join("\n\n");
 
-				const c1 = sigDivs[1].querySelector("p");
-				const c1Name = sigDivs[1].querySelector(".border-slate-400");
-				let ey = cy;
-				if (c1) { pdf.setFontSize(9); pdf.setFont("helvetica", "normal"); pdf.text(c1.textContent || "Karyawan", m + cw + 10, ey); ey += 4; }
-				ey += 20; pdf.setDrawColor(180); pdf.line(m + cw + 10, ey, m + cw + 10 + cw, ey); ey += 4;
-				if (c1Name) { pdf.setFontSize(10); pdf.setFont("helvetica", "bold"); pdf.text(c1Name.textContent || "", m + cw + 10, ey); }
+			for (const paragraph of String(bodyText || "").split(/\n+/)) {
+				const trimmed = paragraph.trim();
+				if (!trimmed) { y += 2; continue; }
+				addWrappedText(trimmed, 10);
+				y += 1;
 			}
 
-			const safeName = (selected?.full_name || "kontrak").replace(/\\s+/g, "-").toLowerCase();
+			if (y > ph - 55) { pdf.addPage(); y = m; }
+			y += 8;
+			const cw = uw / 2 - 6;
+			pdf.setFontSize(9);
+			pdf.setFont("helvetica", "normal");
+			pdf.text("Pihak Perusahaan", m, y);
+			pdf.text("Karyawan", m + cw + 12, y);
+			y += 28;
+			pdf.setDrawColor(180);
+			pdf.line(m, y, m + cw, y);
+			pdf.line(m + cw + 12, y, m + cw + 12 + cw, y);
+			y += 5;
+			pdf.setFont("helvetica", "bold");
+			pdf.setFontSize(10);
+			pdf.text(signatoryPersonName || companyDisplayName, m, y);
+			pdf.text(selected.full_name || "Karyawan", m + cw + 12, y);
+
+			const safeName = (selected.full_name || "kontrak").replace(/\s+/g, "-").toLowerCase();
 			pdf.save(`kontrak-${safeName}.pdf`);
 			toast.success("PDF kontrak berhasil diunduh");
 		} catch (e: any) { toast.error(e?.message || "Gagal mengunduh PDF"); }
@@ -229,7 +237,7 @@ export function AdminOnboardingPage() {
 				name: app.full_name,
 				roleId: employment.roleId,
 				homePin: pin || undefined,
-				requiresPinChange: pin === "696969",
+				requiresPinChange: true,
 				slug: employment.slug,
 				receiveReportEmails: false,
 				onboardingApplicationId: app.id,
@@ -259,7 +267,7 @@ export function AdminOnboardingPage() {
 	function openDialog(app: any) {
 		setSelected(app);
 		setPassword(onboardingSettings.defaultPassword);
-		setPin("696969");
+		setPin(generateSixDigitPin(app.full_name + app.id));
 		setNotes(app.review_notes ?? "");
 	}
 	function closeDialog() {

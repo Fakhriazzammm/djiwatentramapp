@@ -110,8 +110,8 @@ export function validateEmployeeOnboardingDraft(draft: EmployeeOnboardingDraft):
 	if (personal.email && !EMAIL_REGEX.test(cleanText(personal.email))) {
 		errors.push("Email tidak valid");
 	}
-	if (personal.identityNumber && !/^\d{8,20}$/.test(cleanText(personal.identityNumber))) {
-		errors.push("NIK/nomor identitas harus angka minimal 8 digit");
+	if (personal.identityNumber && !/^\d{16}$/.test(cleanText(personal.identityNumber))) {
+		errors.push("NIK/nomor identitas harus 16 digit angka");
 	}
 	if (!cleanText(employment.roleId)) errors.push("Jabatan wajib dipilih");
 	if (!cleanText(employment.startDate)) errors.push("Tanggal mulai kerja wajib diisi");
