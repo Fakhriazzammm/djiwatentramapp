@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
-import { CheckCircle2, ChevronLeft, ChevronRight, FileText, Loader2, PenLine, ShieldCheck, UserPlus, XCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, Loader2, PenLine, ShieldCheck, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -127,7 +127,6 @@ function RegisterPage() {
 		} catch { return initialDraft; }
 	});
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [applicationId, setApplicationId] = useState<string | null>(null);
 
 	/* persist draft */
 	useEffect(() => { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); }, [draft]);
@@ -172,6 +171,24 @@ function RegisterPage() {
 		setDraft((p) => ({ ...p, personal: { ...p.personal, [k]: v } }));
 	const updateEmployment = (k: keyof EmployeeOnboardingDraft["employment"], v: any) =>
 		setDraft((p) => ({ ...p, employment: { ...p.employment, [k]: v } }));
+
+	function validateCurrentStep(): boolean {
+		const errors: string[] = [];
+		if (step === 0) {
+			if (!draft.personal.fullName.trim()) errors.push("Nama lengkap wajib diisi");
+			if (!draft.personal.phone.trim()) errors.push("Nomor HP wajib diisi");
+			if (draft.personal.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.personal.email))
+				errors.push("Format email tidak valid");
+			if (draft.personal.identityNumber && !/^\d{16}$/.test(draft.personal.identityNumber))
+				errors.push("NIK harus 16 digit angka");
+		}
+		if (step === 1) {
+			if (!draft.employment.roleId) errors.push("Jabatan wajib dipilih");
+			if (!draft.employment.username.trim()) errors.push("Username wajib diisi");
+		}
+		if (errors.length) { errors.forEach((e) => toast.error(e)); return false; }
+		return true;
+	}
 
 	function applyTemplate() {
 		setDraft((p) => ({ ...p, contract: contractPreview }));
@@ -236,7 +253,6 @@ function RegisterPage() {
 				salaryPreview: onboardingSettings.salaryPreview,
 			};
 			await submitApplication({ payload });
-			setApplicationId(registrationNumber);
 			localStorage.removeItem(DRAFT_KEY);
 			toast.success("Pendaftaran berhasil dikirim");
 			window.location.href = `/register/selesai-${registrationNumber}`;
@@ -456,24 +472,6 @@ function RegisterPage() {
 					</div>
 				)}
 
-				{/* ---- step 4: selesai ---- */}
-				{step === 4 && (
-					<Card className="mx-auto max-w-md text-center sm:max-w-xl">
-						<CardContent className="space-y-4 px-6 py-8 sm:px-10 sm:py-12">
-							<CheckCircle2 className="mx-auto h-12 w-12 text-green-500 sm:h-16 sm:w-16" />
-							<h2 className="text-lg font-bold sm:text-2xl">Pendaftaran berhasil dikirim</h2>
-							<p className="text-muted-foreground text-sm">
-								Status saat ini: <b>menunggu approval admin</b>.<br />
-								Nomor pendaftaran: <b className="break-all">{applicationId}</b>
-							</p>
-							<div className="rounded-xl border bg-muted/40 p-3 text-left text-xs text-muted-foreground">
-								Setelah admin approve, nama Anda akan muncul di halaman login dan admin akan memberikan PIN 6 digit untuk masuk.
-							</div>
-							<Button onClick={() => { window.location.href = "/login"; }}>Ke Halaman Login</Button>
-						</CardContent>
-					</Card>
-				)}
-
 				{/* ---- navigation ---- */}
 				{step < 4 && (
 					<div className="sticky bottom-3 z-20 flex items-center justify-between gap-3 rounded-2xl border bg-card/95 p-2 shadow-xl backdrop-blur sm:static sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
@@ -500,6 +498,7 @@ function RegisterPage() {
 									handleSubmit();
 									return;
 								}
+								if (!validateCurrentStep()) return;
 								if (step === 1 && !draft.contract.plainText) applyTemplate();
 								setStep((s) => Math.min(3, s + 1));
 							}}

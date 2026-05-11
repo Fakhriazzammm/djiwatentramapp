@@ -19,7 +19,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { ContractPreview } from "@/components/employee-onboarding/contract-preview";
-import { useHybridSiteSettings, useHybridStaffRoles } from "@/hooks/use-hybrid-pos-data";
+import { useHybridSiteSettings, useHybridStaffRoles, triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridUpdateSiteSettings } from "@/hooks/use-hybrid-write-actions";
 import { compressFileToLimit, isOversized } from "@/lib/image-compress";
 import { createClient } from "@/lib/client";
@@ -64,7 +64,7 @@ function parseTemplateText(text: string): ContractDraft {
 	for (const raw of lines) {
 		const line = raw.trim();
 		if (!line) continue;
-		const looksLikeTitle = /^(pasal|bab|klausul|ketentuan)\b/i.test(line) || (line.length <= 80 && !/[.!?]$/.test(line));
+		const looksLikeTitle = /^(pasal|bab|klausul|ketentuan)\s*\d*/i.test(line);
 		if (looksLikeTitle) {
 			if (current) clauses.push(current);
 			current = { title: line, body: "" };
@@ -309,9 +309,15 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 			const nextSettings = normalizeEmployeeOnboardingSettings({
 				...onboardingSettings,
 				contractTemplatesByRoleId: nextTemplates,
+				// Gunakan local state agar tidak menimpa nilai yang baru disimpan
+				// tapi belum sempat di-refresh ke onboardingSettings (race condition)
+				signatoryName: signatoryNameLocal,
+				signatoryPersonName: signatoryPersonNameLocal,
+				signatorySignatureUrl: signatorySigUrlLocal,
 			});
 			await updateSiteSettings({ employeeOnboarding: nextSettings });
 			setLocalTemplates(nextTemplates);
+			triggerHybridRefresh();
 			toast.success(`Template untuk ${selectedRoleName} disimpan`);
 		} catch (e: any) {
 			toast.error(e?.message || "Gagal menyimpan template");
@@ -330,6 +336,9 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 			const nextSettings = normalizeEmployeeOnboardingSettings({
 				...onboardingSettings,
 				contractTemplatesByRoleId: nextTemplates,
+				signatoryName: signatoryNameLocal,
+				signatoryPersonName: signatoryPersonNameLocal,
+				signatorySignatureUrl: signatorySigUrlLocal,
 			});
 			await updateSiteSettings({ employeeOnboarding: nextSettings });
 			setLocalTemplates(nextTemplates);
@@ -338,6 +347,7 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 				selectedRole,
 				signatoryNameLocal
 			)));
+			triggerHybridRefresh();
 			toast.success("Template dihapus");
 		} catch (e: any) {
 			toast.error(e?.message || "Gagal menghapus template");
@@ -360,9 +370,13 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 		try {
 			const nextSettings = normalizeEmployeeOnboardingSettings({
 				...onboardingSettings,
+				signatoryName: signatoryNameLocal,
+				signatoryPersonName: signatoryPersonNameLocal,
+				signatorySignatureUrl: signatorySigUrlLocal,
 				...updates,
 			});
 			await updateSiteSettings({ employeeOnboarding: nextSettings });
+			triggerHybridRefresh();
 			toast.success("Pengaturan perusahaan disimpan");
 		} catch (e: any) {
 			toast.error(e?.message || "Gagal menyimpan pengaturan");
@@ -403,55 +417,60 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 	}
 
 	async function downloadContractPdf() {
-		const element = document.getElementById("employee-contract-preview");
-		if (!element) { toast.error("Elemen pratinjau kontrak tidak ditemukan"); return; }
 		setIsDownloadingPdf(true);
 		try {
 			const pdf = new jsPDF("p", "mm", "a4");
 			const pw = pdf.internal.pageSize.getWidth();
 			const ph = pdf.internal.pageSize.getHeight();
-			const m = 15; const uw = pw - m * 2;
+			const m = 15;
+			const uw = pw - m * 2;
 			let y = m;
 
-			const head = element.querySelector(".text-\\[10px\\]");
-			if (head) { pdf.setFontSize(10); pdf.setFont("helvetica", "bold"); pdf.text(String(head.textContent || companyDisplayName), pw / 2, y, { align: "center" }); y += 5; }
-			const h2 = element.querySelector("h2");
-			if (h2) { pdf.setFontSize(16); pdf.setFont("helvetica", "bold"); pdf.text(String(h2.textContent || contractPreview.title || "Perjanjian Kerja"), pw / 2, y, { align: "center" }); y += 8; }
-			pdf.setDrawColor(180); pdf.line(m, y, pw - m, y); y += 6;
-
-			const bodyEl = element.querySelector(".whitespace-pre-wrap");
-			if (bodyEl) {
-				pdf.setFontSize(10); pdf.setFont("helvetica", "normal");
-				for (const ln of pdf.splitTextToSize(bodyEl.textContent || "", uw)) {
-					if (y + 5 > ph - m) { pdf.addPage(); y = m; }
-					pdf.text(ln, m, y); y += 5;
+			function addWrappedText(text: string, fontSize = 10, style: "normal" | "bold" = "normal", align: "left" | "center" = "left") {
+				pdf.setFont("helvetica", style);
+				pdf.setFontSize(fontSize);
+				for (const ln of pdf.splitTextToSize(String(text || ""), uw) as string[]) {
+					if (y + fontSize * 0.45 > ph - m) { pdf.addPage(); y = m; }
+					pdf.text(ln, align === "center" ? pw / 2 : m, y, { align });
+					y += fontSize * 0.45 + 1.5;
 				}
 			}
+
+			addWrappedText(companyDisplayName, 10, "bold", "center");
+			addWrappedText(contractPreview.title || "Perjanjian Kerja", 16, "bold", "center");
+			y += 2;
+			pdf.setDrawColor(180);
+			pdf.line(m, y, pw - m, y);
 			y += 6;
 
-			const sigDivs = element.querySelector(".grid")?.querySelectorAll(":scope > div");
-			if (sigDivs && sigDivs.length >= 2) {
-				const cw = uw / 2 - 5;
-				const cy = y;
-				const c0 = sigDivs[0].querySelectorAll("p");
-				const c0Name = sigDivs[0].querySelector(".border-slate-400");
-				let yy = cy;
-				if (c0[0]) { pdf.setFontSize(9); pdf.setFont("helvetica", "normal"); pdf.text(c0[0].textContent || "Pihak Perusahaan", m, yy); yy += 4; }
-				if (c0[1]) { pdf.setFontSize(8); pdf.setFont("helvetica", "bold"); pdf.text(c0[1].textContent || "", m, yy); yy += 4; }
-				yy += 16;
-				pdf.setDrawColor(180); pdf.line(m, yy, m + cw, yy); yy += 4;
-				if (c0Name) { pdf.setFontSize(10); pdf.setFont("helvetica", "bold"); pdf.text(c0Name.textContent || "", m, yy); }
+			const bodyText = contractPreview.plainText ||
+				contractPreview.clauses.map((c) => `${c.title}\n${c.body}`).join("\n\n");
 
-				const c1 = sigDivs[1].querySelector("p");
-				const c1Name = sigDivs[1].querySelector(".border-slate-400");
-				let ey = cy;
-				if (c1) { pdf.setFontSize(9); pdf.setFont("helvetica", "normal"); pdf.text(c1.textContent || "Karyawan", m + cw + 10, ey); ey += 4; }
-				ey += 20;
-				pdf.setDrawColor(180); pdf.line(m + cw + 10, ey, m + cw + 10 + cw, ey); ey += 4;
-				if (c1Name) { pdf.setFontSize(10); pdf.setFont("helvetica", "bold"); pdf.text(c1Name.textContent || "", m + cw + 10, ey); }
+			for (const paragraph of String(bodyText || "").split(/\n+/)) {
+				const trimmed = paragraph.trim();
+				if (!trimmed) { y += 2; continue; }
+				addWrappedText(trimmed, 10);
+				y += 1;
 			}
 
-			pdf.save(`kontrak-${(contractPreview.title || "perjanjian-kerja").replace(/\\s+/g, "-").toLowerCase()}.pdf`);
+			if (y > ph - 55) { pdf.addPage(); y = m; }
+			y += 8;
+			const cw = uw / 2 - 6;
+			pdf.setFontSize(9);
+			pdf.setFont("helvetica", "normal");
+			pdf.text("Pihak Perusahaan", m, y);
+			pdf.text("[Nama Karyawan]", m + cw + 12, y);
+			y += 28;
+			pdf.setDrawColor(180);
+			pdf.line(m, y, m + cw, y);
+			pdf.line(m + cw + 12, y, m + cw + 12 + cw, y);
+			y += 5;
+			pdf.setFont("helvetica", "bold");
+			pdf.setFontSize(10);
+			pdf.text(signatoryPersonNameLocal || companyDisplayName, m, y);
+			pdf.text("[Nama Karyawan]", m + cw + 12, y);
+
+			pdf.save(`kontrak-${(contractPreview.title || "perjanjian-kerja").replace(/\s+/g, "-").toLowerCase()}.pdf`);
 			toast.success("PDF berhasil diunduh");
 		} catch (e: any) { toast.error(e?.message || "Gagal mengunduh PDF"); }
 		finally { setIsDownloadingPdf(false); }
