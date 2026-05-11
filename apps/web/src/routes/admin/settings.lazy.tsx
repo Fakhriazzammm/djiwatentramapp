@@ -1063,6 +1063,10 @@ export function SettingsPage({
 
 	const handleConnectPrinter = async () => {
 		try {
+			if (!navigator.bluetooth) {
+				toast.error("Browser ini tidak mendukung Web Bluetooth (gunakan Chrome/Edge).", { id: "printing" });
+				return;
+			}
 			const name = await bluetoothPrinter.connect();
 			setPrinterName(name);
 			setIsConnected(true);
