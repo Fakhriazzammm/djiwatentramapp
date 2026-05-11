@@ -6,7 +6,15 @@ from datetime import datetime, timezone, timedelta
 import httpx
 from dotenv import load_dotenv
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Application, CallbackQueryHandler
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
+
+from hermes_adapter import (
+    TelegramContext,
+    audit_event,
+    build_request,
+    project_scope_summary,
+    validate_response,
+)
 from telegram.request import HTTPXRequest
 
 load_dotenv()
@@ -693,6 +701,78 @@ async def _post_init(app):
     logger.info("Polling loop started (30s interval)")
 
 
+def _telegram_context_from_update(update: Update) -> TelegramContext:
+    user = update.effective_user
+    chat = update.effective_chat
+    msg = update.effective_message
+    return TelegramContext(
+        chat_id=str(chat.id) if chat else "unknown",
+        user_id=str(user.id) if user else "unknown",
+        username=user.username if user else None,
+        message_id=msg.message_id if msg else None,
+    )
+
+
+async def cmd_hermes_scope(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    scope = project_scope_summary()
+    await update.message.reply_text(
+        "Hermes Supervisor scope\n"
+        f"Profile: supervisor\n"
+        f"Project: {scope['project_root']}\n"
+        f"Mode: {scope['mode']}\n"
+        "Batas: read-only diagnostic; callback order tetap deterministic."
+    )
+
+
+async def cmd_hermes_test(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    request = build_request(
+        profile_id="supervisor",
+        message="supervisor adapter diagnostic",
+        telegram=_telegram_context_from_update(update),
+        can_write=False,
+    )
+    response = {"reply_text": "Hermes supervisor adapter OK", "actions": [], "metadata": {"profile_id": "supervisor"}}
+    validate_response(response)
+    audit_event({
+        "event": "telegram_command",
+        "profile_id": "supervisor",
+        "mode": "read_only",
+        "telegram": request["telegram"],
+        "message": "telegram command /hermes_test",
+        "actions": [],
+    })
+    await update.message.reply_text(response["reply_text"])
+
+
+async def cmd_yumi(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = " ".join(context.args).strip()
+    if not text:
+        await update.message.reply_text("Pakai format: /yumi pertanyaan supervisor kamu")
+        return
+    request = build_request(
+        profile_id="supervisor",
+        message=text,
+        telegram=_telegram_context_from_update(update),
+        can_write=False,
+    )
+    response = {
+        "reply_text": "Hermes supervisor read-only menerima request. Callback operasional tetap memakai flow deterministic existing.",
+        "actions": [],
+        "metadata": {"profile_id": "supervisor"},
+    }
+    validate_response(response)
+    audit_event({
+        "event": "telegram_command",
+        "profile_id": "supervisor",
+        "mode": "read_only",
+        "telegram": request["telegram"],
+        "message": "telegram command /yumi",
+        "input_preview": text[:160],
+        "actions": [],
+    })
+    await update.message.reply_text(response["reply_text"])
+
+
 def main():
     req = HTTPXRequest(
         read_timeout=2.0,
@@ -701,6 +781,9 @@ def main():
         pool_timeout=3.0,
     )
     app = Application.builder().token(BOT_TOKEN).request(req).post_init(_post_init).build()
+    app.add_handler(CommandHandler("yumi", cmd_yumi))
+    app.add_handler(CommandHandler("hermes_scope", cmd_hermes_scope))
+    app.add_handler(CommandHandler("hermes_test", cmd_hermes_test))
     app.add_handler(CallbackQueryHandler(_handle_callback, pattern=r"^(dibuat|selesai)\|"))
     app.run_polling(timeout=1, drop_pending_updates=True)
 

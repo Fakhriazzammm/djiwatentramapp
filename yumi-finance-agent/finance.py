@@ -188,6 +188,76 @@ class FinanceManager:
         q += "&category=neq.HPP"
         return await self._fetch("financial_transactions", q)
 
+    async def delete_transaction(self, source_id: str) -> dict:
+        """Hapus transaksi dan semua data terkait (accounting, analytics)."""
+        if not source_id:
+            return {"ok": False, "error": "source_id required"}
+
+        sani = source_id.replace("'", "''")
+        deleted = {"transaction": 0, "accounting": 0, "analytics": 0}
+        errors = []
+
+        # 1. Hapus accounting_entries
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                url = f"{self.supabase_url}/rest/v1/accounting_entries?source_id=eq.{sani}"
+                resp = await client.delete(url, headers=self._service_headers())
+                if resp.status_code < 300:
+                    try:
+                        del_data = resp.json()
+                        if isinstance(del_data, list):
+                            deleted["accounting"] = len(del_data)
+                    except Exception:
+                        deleted["accounting"] = 1
+                elif resp.status_code != 404:
+                    errors.append(f"accounting:{resp.status_code}")
+        except Exception as e:
+            errors.append(f"accounting:{e}")
+
+        # 2. Hapus transaction_analytics
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                url = f"{self.supabase_url}/rest/v1/transaction_analytics?or=(source_id.eq.{sani},tx_source_id.eq.{sani})"
+                resp = await client.delete(url, headers=self._service_headers())
+                if resp.status_code < 300:
+                    try:
+                        del_data = resp.json()
+                        if isinstance(del_data, list):
+                            deleted["analytics"] = len(del_data)
+                    except Exception:
+                        deleted["analytics"] = 1
+                elif resp.status_code != 404:
+                    errors.append(f"analytics:{resp.status_code}")
+        except Exception as e:
+            errors.append(f"analytics:{e}")
+
+        # 3. Hapus financial_transactions
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                url = f"{self.supabase_url}/rest/v1/financial_transactions?source_id=eq.{sani}"
+                resp = await client.delete(url, headers=self._service_headers())
+                if resp.status_code < 300:
+                    try:
+                        del_data = resp.json()
+                        if isinstance(del_data, list):
+                            deleted["transaction"] = len(del_data)
+                    except Exception:
+                        deleted["transaction"] = 1
+                elif resp.status_code == 404:
+                    errors.append("transaction:not_found")
+                else:
+                    errors.append(f"transaction:{resp.status_code}")
+        except Exception as e:
+            errors.append(f"transaction:{e}")
+
+        ok = deleted["transaction"] > 0
+        return {
+            "ok": ok,
+            "deleted": deleted,
+            "errors": errors,
+            "source_id": source_id,
+        }
+
     def _start_of_day_ms(self, dt: datetime = None) -> int:
         if dt is None:
             dt = self._now_wib()

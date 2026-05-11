@@ -14,7 +14,15 @@ from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application, ApplicationBuilder, CommandHandler,
-    MessageHandler, CallbackQueryHandler, filters,
+    MessageHandler, CallbackQueryHandler, ContextTypes, filters,
+)
+
+from hermes_adapter import (
+    TelegramContext,
+    audit_event,
+    build_request,
+    project_scope_summary,
+    validate_response,
 )
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -203,6 +211,83 @@ async def cmd_supplier(update: Update, context):
 
     await update.message.reply_text(
         "\n".join(lines), parse_mode="Markdown", reply_markup=_keyboard())
+
+
+# ── Hermes diagnostic commands ──────────────────────────────────
+
+
+def _telegram_context_from_update(update: Update) -> TelegramContext:
+    user = update.effective_user
+    chat = update.effective_chat
+    msg = update.effective_message
+    return TelegramContext(
+        chat_id=str(chat.id) if chat else "unknown",
+        user_id=str(user.id) if user else "unknown",
+        username=user.username if user else None,
+        message_id=msg.message_id if msg else None,
+    )
+
+
+async def cmd_hermes_scope(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    scope = project_scope_summary()
+    await update.message.reply_text(
+        "Hermes Purchasing scope\n"
+        f"Profile: purchasing\n"
+        f"Project: {scope['project_root']}\n"
+        f"Mode: {scope['mode']}\n"
+        "Batas: read-only diagnostic; tidak execute purchase/order/write action.",
+        reply_markup=_keyboard(),
+    )
+
+
+async def cmd_hermes_test(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    request = build_request(
+        profile_id="purchasing",
+        message="purchasing adapter diagnostic",
+        telegram=_telegram_context_from_update(update),
+        can_write=False,
+    )
+    response = {"reply_text": "Hermes purchasing adapter OK", "actions": [], "metadata": {"profile_id": "purchasing"}}
+    validate_response(response)
+    audit_event({
+        "event": "telegram_command",
+        "profile_id": "purchasing",
+        "mode": "read_only",
+        "telegram": request["telegram"],
+        "message": "telegram command /hermes_test",
+        "actions": [],
+    })
+    await update.message.reply_text(response["reply_text"], reply_markup=_keyboard())
+
+
+async def cmd_yumi(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = " ".join(context.args).strip()
+    if not text:
+        await update.message.reply_text("Pakai format: /yumi pertanyaan purchasing kamu", reply_markup=_keyboard())
+        return
+    request = build_request(
+        profile_id="purchasing",
+        message=text,
+        telegram=_telegram_context_from_update(update),
+        can_write=False,
+    )
+    response = {
+        "reply_text": "Hermes purchasing read-only menerima request. Draft/action belanja belum dieksekusi; gunakan flow purchasing existing untuk action.",
+        "actions": [],
+        "metadata": {"profile_id": "purchasing"},
+    }
+    validate_response(response)
+    audit_event({
+        "event": "telegram_command",
+        "profile_id": "purchasing",
+        "mode": "read_only",
+        "telegram": request["telegram"],
+        "message": "telegram command /yumi",
+        "input_preview": text[:160],
+        "actions": [],
+    })
+    await update.message.reply_text(response["reply_text"], reply_markup=_keyboard())
+
 
 # ── Message Handler ─────────────────────────────────────────────
 
@@ -509,6 +594,9 @@ async def main():
 
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("supplier", cmd_supplier))
+    app.add_handler(CommandHandler("yumi", cmd_yumi))
+    app.add_handler(CommandHandler("hermes_scope", cmd_hermes_scope))
+    app.add_handler(CommandHandler("hermes_test", cmd_hermes_test))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
 

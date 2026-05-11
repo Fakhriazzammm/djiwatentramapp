@@ -22,6 +22,14 @@ from telegram.ext import (
 )
 from PIL import Image
 
+from hermes_adapter import (
+    TelegramContext,
+    audit_event,
+    build_request,
+    project_scope_summary,
+    validate_response,
+)
+
 # ── HTTP Server for transaction analysis ────────────────────────────
 try:
     from aiohttp import web
@@ -48,14 +56,14 @@ logging.basicConfig(
 logger = logging.getLogger("yumi-finance")
 
 WIB = timezone(timedelta(hours=7))
-MAX_IMAGE_SIZE = 1024
-JPEG_QUALITY = 75
+MAX_IMAGE_SIZE = 1800
+JPEG_QUALITY = 88
 
 # ── Inisialisasi module ────────────────────────────────────────────
 from finance import FinanceManager
 from inventory import InventoryManager
 from orchestrator import FinanceOrchestrator, OrchestratorResult
-from categories import auto_categorize, categorize_item, get_category_label, format_amount, FINANCE_CATEGORIES, get_all_categories, add_dynamic_category
+from categories import auto_categorize, categorize_item, get_category_label, format_amount, FINANCE_CATEGORIES, get_all_categories, add_dynamic_category, ai_categorize_item, auto_create_category_in_db
 from sumopod_client import SumoPodClient
 from memory import MemoryManager, normalize_name
 from analyzer import TransactionAnalyzer
@@ -65,7 +73,8 @@ finance = FinanceManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, 
 inventory = InventoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ACCESS_TOKEN)
 orchestrator = FinanceOrchestrator(SUMOPOD_API_KEY)
 memory = MemoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY)
-analyzer = TransactionAnalyzer(SUMOPOD_API_KEY, os.getenv("SUMOPOD_BASE_URL", "https://ai.sumopod.com/v1"), SUPABASE_URL, SUPABASE_ACCESS_TOKEN)
+AI_BASE_URL = os.getenv("NINEROUTER_BASE_URL") or os.getenv("SUMOPOD_BASE_URL", "http://127.0.0.1:20128/v1")
+analyzer = TransactionAnalyzer(SUMOPOD_API_KEY, AI_BASE_URL, SUPABASE_URL, SUPABASE_ACCESS_TOKEN)
 # supplier moved to Yumi Purchasing
 
 # ── In-memory state: pending confirmations ─────────────────────────
@@ -227,25 +236,71 @@ def _compress_image(image_bytes: bytes) -> str:
 
 # ── OCR Parser ─────────────────────────────────────────────────────
 
+def _parse_amount_text(value: str | None) -> float:
+    """Parse Indonesian receipt amounts like 345.375 or Rp 10,900."""
+    if not value:
+        return 0.0
+    digits = re.sub(r"[^0-9]", "", str(value))
+    return float(digits or 0)
+
+
+def _parse_receipt_summary(raw_text: str) -> dict:
+    """Extract receipt-level fields from raw OCR text when AI skips JSON."""
+    text = raw_text or ""
+    summary = {}
+    total_patterns = [
+        r"(?im)^\s*TOTAL\s+(?:Rp\s*)?([0-9][0-9.,]*)\s*$",
+        r"(?im)\bTOTAL\s*[:=]?\s*(?:Rp\s*)?([0-9][0-9.,]*)",
+    ]
+    for pattern in total_patterns:
+        match = re.search(pattern, text)
+        if match:
+            summary["total"] = _parse_amount_text(match.group(1))
+            break
+    subtotal = re.search(r"(?im)^\s*(?:SUB\s*TOTAL|SUBTOTAL)\s+(?:Rp\s*)?([0-9][0-9.,]*)", text)
+    if subtotal:
+        summary["subtotal"] = _parse_amount_text(subtotal.group(1))
+    discount = re.search(r"(?im)TOTAL\s+DISCOUNT\s+(?:Rp\s*)?([0-9][0-9.,]*)", text)
+    if discount:
+        summary["discount"] = _parse_amount_text(discount.group(1))
+    date_time = re.search(r"\b(\d{2}/\d{2}/\d{2,4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\b", text)
+    if date_time:
+        summary["date"] = date_time.group(1)
+        summary["time"] = date_time.group(2)
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if lines:
+        summary["name"] = next((line for line in lines[:8] if not line.lower().startswith(("item", "rp", "http"))), "")
+    return summary
+
+
 async def _parse_ocr_text(ai_reply: str) -> list[dict]:
     """Parse AI reply dari OCR untuk extract item belanjaan."""
     items = []
-    # Cari pola item: "Nama Barang — Qty: X • Rp Y.YYY" or numbered list
     item_patterns = [
         r'\d+\.\s*<b>(.+?)</b>\s*—\s*Qty:\s*(\d+(?:\.\d+)?)\s*•\s*<b>Rp\s*([\d.,]+)</b>',
         r'\d+\.\s*(.+?)\s*/\s*(\d+(?:\.\d+)?)\s*(ml|liter|l|kg|gram|gr|g|pcs|pack|ikat|bungkus)?\s*/\s*Rp\s*([\d.,]+)',
         r'\d+\.\s*(.+?)\s*—\s*(\d+(?:\.\d+)?)\s*\S*\s*—\s*Rp\s*([\d.,]+)',
         r'\d+\.\s*(.+?)\s*\((\d+)\s*\S*\)\s*Rp\s*([\d.,]+)',
+        r'(?im)^\s*([A-Z0-9][A-Z0-9 .&/+-]{3,}?)\s+(\d+(?:\.\d+)?)\s*[xX]\s*([0-9][0-9.,]*)\s*$',
+        r'(?im)^\s*([A-Z0-9][A-Z0-9 .&/+-]{3,}?)\s+(?:Rp\s*)?([0-9][0-9.,]*)\s*$'
     ]
     for pattern in item_patterns:
         for m in re.finditer(pattern, ai_reply):
-            name = m.group(1).strip()
-            qty = float(m.group(2).replace(",", "."))
-            price_text = m.group(3) if len(m.groups()) >= 3 else "0"
-            price_text = m.group(4) if len(m.groups()) >= 4 else price_text
-            price = float(price_text.replace(".", "").replace(",", "."))
-            items.append({"name": name, "qty": qty, "price": price})
-    return items
+            groups = m.groups()
+            name = groups[0].strip(" -")
+            if any(skip in name.upper() for skip in ("TOTAL", "SUBTOTAL", "CASH", "CHANGE", "DISCOUNT", "MEMBER")):
+                continue
+            if len(groups) >= 3 and re.search(r'[xX]', m.group(0)):
+                qty = float(groups[1].replace(",", "."))
+                price = _parse_amount_text(groups[2])
+            elif len(groups) >= 2:
+                qty = 1.0
+                price = _parse_amount_text(groups[-1])
+            else:
+                continue
+            if price > 0:
+                items.append({"name": name[:80], "qty": qty, "price": price, "subtotal": price * qty})
+    return items[:30]
 
 
 # ── New Ingredient Confirmation ────────────────────────────────────
@@ -370,7 +425,21 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         confidence = data.get("confidence", 0)
         raw_text = data.get("rawText") or ""
 
-        # Kalau items kosong, fallback parse dari raw_text
+        if raw_text:
+            summary = _parse_receipt_summary(raw_text)
+            merchant = merchant or summary.get("name", "")
+            receipt_date = receipt_date or summary.get("date", "")
+            receipt_time = receipt_time or summary.get("time", "")
+            total = total or float(summary.get("total") or 0)
+            subtotal = subtotal or float(summary.get("subtotal") or 0)
+            discount = discount or float(summary.get("discount") or 0)
+
+        # Kalau items kosong, panggil OCR khusus item agar daftar barang tetap tampil.
+        if not items:
+            try:
+                items = await sp_client.vision_items(compressed_uri, timeout=90)
+            except Exception as e:
+                logger.warning("vision_items fallback failed: %s", e)
         if not items and raw_text:
             items = await _parse_ocr_text(raw_text)
 
@@ -386,6 +455,8 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             total = items_total
         if subtotal <= 0:
             subtotal = items_total
+        if discount <= 0 and subtotal > 0 and total > 0 and subtotal > total:
+            discount = subtotal - total
 
         # Kategorisasi
         category_text = merchant + " " + " ".join(item.get("name", "") for item in items)
@@ -415,6 +486,7 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             lines.append(f"💳 Bayar: {payment_method}")
         lines.append("")
 
+        # ── Kategorisasi per-item (AI-enhanced) ─────────────
         if items:
             lines.append("📋 Daftar Item:")
             for i, item in enumerate(items, 1):
@@ -426,13 +498,29 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if item_sub <= 0:
                     item_sub = price * qty
 
+                # ── AI kategori per-item ────────────────────────
+                item_cat, item_cat_conf, _ = categorize_item(name, price)
+                if item_cat_conf == "low":
+                    ai_c, ai_cf, _ = await ai_categorize_item(
+                        name, price, merchant
+                    )
+                    if ai_cf == "high" and ai_c != "lainnya":
+                        item_cat = ai_c
+                        item_cat_conf = "high"
+                        asyncio.ensure_future(memory.record_item_category(
+                            name, ai_c, source="ai", merchant=merchant,
+                        ))
+
+                item_cat_info = FINANCE_CATEGORIES.get(item_cat) \
+                    or get_all_categories().get(item_cat, {})
+                item_icon = item_cat_info.get("icon", "📌") if item_cat_info else "📌"
+                cat_tag = f"{item_icon}" if item_cat_conf in ("high", "medium") else "❓"
+
                 qty_str = f"{qty:.0f}" if qty == int(qty) else f"{qty:.1f}"
                 unit_str = f" {unit}" if unit else ""
                 item_sub_fmt = format_amount(int(item_sub))
-                lines.append(f"  {i}. {name} — {qty_str}{unit_str} × {format_amount(int(price))} = {item_sub_fmt}")
+                lines.append(f"  {i}. {cat_tag} {name} — {qty_str}{unit_str} × {format_amount(int(price))} = {item_sub_fmt}")
             lines.append("")
-
-        # Ringkasan total
         lines.append("💰 Ringkasan:")
         if subtotal > 0 and abs(subtotal - total) > 1:
             lines.append(f"  Subtotal: {format_amount(int(subtotal))}")
@@ -553,7 +641,7 @@ async def _process_album_after_delay(media_group_id: str, chat_id: int, context,
 
 
 async def _ocr_one(sp_client, photo, context, idx: int, total: int, chat_id: int, status_msg_id: int):
-    """OCR satu foto — return hasil vision_json."""
+    """OCR satu foto — return hasil vision_json + fallback item parsing."""
     try:
         file = await context.bot.get_file(photo.file_id)
         image_bytes = bytes(await file.download_as_bytearray())
@@ -570,6 +658,38 @@ async def _ocr_one(sp_client, photo, context, idx: int, total: int, chat_id: int
             )
         except Exception:
             pass
+
+        # ── Fallback item extraction ──────────────────────────
+        if vision_result.get("success"):
+            data = vision_result.get("data", {})
+            items = data.get("items") or []
+            raw_text = data.get("rawText") or ""
+
+            if not items:
+                try:
+                    fallback_items = await sp_client.vision_items(compressed_uri, timeout=90)
+                    if fallback_items:
+                        if not isinstance(data, dict):
+                            data = {}
+                        data["items"] = fallback_items
+                        vision_result["data"] = data
+                        logger.info(f"Bulk OCR fallback vision_items: {len(fallback_items)} item for struk #{idx+1}")
+                except Exception as e:
+                    logger.warning(f"Bulk OCR vision_items fallback failed for struk #{idx+1}: {e}")
+
+            if not items and raw_text:
+                try:
+                    text_items = await _parse_ocr_text(raw_text)
+                    if text_items:
+                        data = vision_result.get("data", {})
+                        if not isinstance(data, dict):
+                            data = {}
+                        data["items"] = text_items
+                        vision_result["data"] = data
+                        logger.info(f"Bulk OCR fallback _parse_ocr_text: {len(text_items)} item for struk #{idx+1}")
+                except Exception as e:
+                    logger.warning(f"Bulk OCR _parse_ocr_text fallback failed for struk #{idx+1}: {e}")
+
         return vision_result
     except Exception as e:
         logger.error(f"OCR bulk error [{idx}/{total}]: {e}")
@@ -684,7 +804,31 @@ async def _display_bulk_summary(context, results: list[dict], chat_id: int, stat
                     cat_key = mem_cat
                     cat_conf = "high" if mem_conf > 0.8 else "medium"
 
-            cat_info = FINANCE_CATEGORIES.get(cat_key, {})
+            # ── AI fallback: kalo masih low, minta AI ─────────
+            if cat_conf == "low":
+                ai_cat, ai_conf, ai_label = await ai_categorize_item(
+                    name, price, merchant or receipt.get("merchant", "")
+                )
+                if ai_conf == "high" and ai_cat != "lainnya":
+                    cat_key = ai_cat
+                    cat_conf = "high"
+                    cat_suggest = ""
+                    # Record ke memory biar next time langsung
+                    asyncio.ensure_future(memory.record_item_category(
+                        name, ai_cat, source="ai",
+                        merchant=merchant or receipt.get("merchant", ""),
+                    ))
+                    # Auto-create category kalo dari AI & gak ada di DB
+                    if ai_cat not in FINANCE_CATEGORIES:
+                        cat_info_all = get_all_categories().get(ai_cat, {})
+                        ai_label_name = cat_info_all.get("label", ai_label)
+                        asyncio.ensure_future(auto_create_category_in_db(
+                            SUPABASE_URL, SUPABASE_ACCESS_TOKEN,
+                            ai_label_name, icon="📌", cat_type="expense",
+                        ))
+
+            # ── Lookup icon: fallback to dynamic categories ───
+            cat_info = FINANCE_CATEGORIES.get(cat_key) or get_all_categories().get(cat_key, {})
             if cat_conf == "low":
                 unknown_items.append({"name": name, "suggested": cat_suggest})
                 cat_tag = "❓"
@@ -1023,14 +1167,26 @@ async def _handle_edit_date_text(update: Update, context: ContextTypes.DEFAULT_T
     _receipt_pending[ref_id] = receipt
     _save_pending()
 
-    # Show updated date
+    # Show updated date and keep the user inside this receipt flow.
     display = f"{receipt['date']}"
     if receipt.get("time"):
         display += f" {receipt['time']}"
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("💰 Pemasukan", callback_data=f"receipt_income_{ref_id}"),
+            InlineKeyboardButton("💸 Pengeluaran", callback_data=f"receipt_expense_{ref_id}"),
+        ],
+        [
+            InlineKeyboardButton("✏️ Edit Kategori", callback_data=f"receipt_editcat_{ref_id}"),
+            InlineKeyboardButton("✏️ Edit Tanggal", callback_data=f"editdate_{ref_id}"),
+        ],
+        [InlineKeyboardButton("✏️ Edit Item", callback_data=f"edititem_{ref_id}")],
+        [InlineKeyboardButton("❌ Batal", callback_data=f"receipt_cancel_{ref_id}")],
+    ])
     await update.message.reply_text(
         f"✅ Tanggal diupdate: {display}\n\n"
-        f"Sekarang bisa klik 💰 Pemasukan / 💸 Pengeluaran untuk menyimpan.",
-        reply_markup=_finance_keyboard(),
+        f"Sekarang klik 💸 Pengeluaran atau 💰 Pemasukan untuk menyimpan struk ini.",
+        reply_markup=keyboard,
     )
     return True
 
@@ -1194,7 +1350,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
     )
 
     # ── Accounting dual-write ────────────────────────────────────
-    if tx_result.get("ok") and items and tx_type == "expense":
+    if tx_result.get("ok") and items and tx_type in ("income", "expense"):
         source_id = tx_result.get("sourceId", "")
         asyncio.ensure_future(_write_accounting_entries(
             source_id=source_id,
@@ -1202,6 +1358,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
             category=category,
             payment_method=receipt.get("payment_method", "cash"),
             total_amount=total,
+            tx_type=tx_type,
         ))
 
     # ── Format balasan ──────────────────────────────────────────
@@ -1218,7 +1375,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
     if tx_result.get("ok"):
         lines.append(f"✅ Berhasil disimpan")
         # Accounting badge jika ada entries
-        if tx_type == "expense" and items:
+        if items:
             lines.append(f"📊 Entri akuntansi dibuat")
     else:
         lines.append(f"⚠️ Gagal: {tx_result.get('error', '?')}")
@@ -1435,6 +1592,7 @@ async def _write_accounting_entries(
     category: str,
     payment_method: str,
     total_amount: float,
+    tx_type: str = "expense",
 ):
     """Catat accounting entries via edge function classifyTransactionItems.
 
@@ -1444,6 +1602,7 @@ async def _write_accounting_entries(
         category: category transaksi
         payment_method: metode pembayaran
         total_amount: total nominal transaksi
+        tx_type: "income" atau "expense"
     """
     if not source_id or not items:
         logger.info("Skipping accounting dual-write: no source_id or items")
@@ -1468,6 +1627,7 @@ async def _write_accounting_entries(
             "category": category,
             "payment_method": payment_method,
             "total_amount": total_amount,
+            "tx_type": tx_type,
         }
 
         url = f"{SUPABASE_URL}/functions/v1/yumi-ai"
@@ -1750,11 +1910,41 @@ MIN_SCORE_SUGGEST = 45
 
 async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle text dari grup keuangan."""
-    if not _can_respond(update):
-        return
-
     text = (update.message.text or "").strip()
     if not text:
+        return
+
+    # Pending edit replies are plain text in the group, so accept them without
+    # requiring @mention/reply to the bot.
+    user_id = update.effective_user.id if update.effective_user else None
+    if user_id:
+        pending_item_key = f"edit_item_{user_id}"
+        pending_date_key = f"edit_date_{user_id}"
+        if pending_item_key in _pending_actions:
+            handled = await _handle_edit_item_text(update, context, text)
+            if handled:
+                return
+        if pending_date_key in _pending_actions:
+            handled = await _handle_edit_date_text(update, context, text)
+            if handled:
+                return
+
+        # Safety net: if the pending edit marker disappeared after a restart,
+        # accept a date-only reply for the newest receipt that still has no date.
+        if re.match(r"^\d{4}-\d{2}-\d{2}(?:\s+\d{2}:\d{2}(?::\d{2})?)?$", text):
+            open_receipts = [
+                (ref, rcpt) for ref, rcpt in _receipt_pending.items()
+                if not rcpt.get("date")
+            ]
+            if open_receipts:
+                ref_id, _ = open_receipts[-1]
+                _pending_actions[pending_date_key] = {"ref_id": ref_id}
+                _save_pending()
+                handled = await _handle_edit_date_text(update, context, text)
+                if handled:
+                    return
+
+    if not _can_respond(update):
         return
 
     # Check for pending edit item response
@@ -1892,7 +2082,15 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         q = float(it.get("qty", 1))
                         p = float(it.get("price", 0))
                         qs = f"{q:.0f}" if q == int(q) else f"{q:.1f}"
-                        reply_lines.append(f"     {n} — {qs} × Rp{p:,.0f}")
+
+                        # ── Kategori per-item ──────────────────────
+                        item_cat, item_conf, _ = categorize_item(n, p)
+                        item_cat_info = FINANCE_CATEGORIES.get(item_cat) \
+                            or get_all_categories().get(item_cat, {})
+                        item_icon = item_cat_info.get("icon", "📌") if item_cat_info else "📌"
+                        icn = f"{item_icon}" if item_conf in ("high", "medium") else "❓"
+
+                        reply_lines.append(f"     {icn} {n} — {qs} × Rp{p:,.0f}")
                     if len(result.items) > 5:
                         reply_lines.append(f"     ... +{len(result.items)-5} item")
                 reply_lines.append(f"   {cat_label}")
@@ -1915,6 +2113,7 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             category=category,
                             payment_method=result.payment_method or "cash",
                             total_amount=result.amount,
+                            tx_type="expense",
                         ))
             else:
                 await update.message.reply_text(f"❌ Gagal: {tx.get('error', '?')}", reply_markup=_finance_keyboard())
@@ -2013,6 +2212,11 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if query.data.startswith("bulkitem_"):
         await _handle_bulkitem_callback(update, context)
+        return
+
+    # Handle daftar transaksi callbacks
+    if query.data.startswith("daftar_"):
+        await _handle_daftar_callback(update, context)
         return
 
     # Handle new ingredient callbacks
@@ -2169,6 +2373,88 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
 
 
+# ── Hermes diagnostic commands ────────────────────────────────────
+
+
+def _telegram_context_from_update(update: Update) -> TelegramContext:
+    user = update.effective_user
+    chat = update.effective_chat
+    msg = update.effective_message
+    return TelegramContext(
+        chat_id=str(chat.id) if chat else "unknown",
+        user_id=str(user.id) if user else "unknown",
+        username=user.username if user else None,
+        message_id=msg.message_id if msg else None,
+    )
+
+
+async def cmd_hermes_scope(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not _can_respond(update):
+        return
+    scope = project_scope_summary()
+    await update.message.reply_text(
+        "Hermes Finance scope\n"
+        f"Profile: finance\n"
+        f"Project: {scope['project_root']}\n"
+        f"Mode: {scope['mode']}\n"
+        "Batas: read-only diagnostic; tidak sudo/systemctl/VPS/outside project.",
+        reply_markup=_finance_keyboard(),
+    )
+
+
+async def cmd_hermes_test(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not _can_respond(update):
+        return
+    request = build_request(
+        profile_id="finance",
+        message="finance adapter diagnostic",
+        telegram=_telegram_context_from_update(update),
+        can_write=False,
+    )
+    response = {"reply_text": "Hermes finance adapter OK", "actions": [], "metadata": {"profile_id": "finance"}}
+    validate_response(response)
+    audit_event({
+        "event": "telegram_command",
+        "profile_id": "finance",
+        "mode": "read_only",
+        "telegram": request["telegram"],
+        "message": "telegram command /hermes_test",
+        "actions": [],
+    })
+    await update.message.reply_text(response["reply_text"], reply_markup=_finance_keyboard())
+
+
+async def cmd_yumi(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not _can_respond(update):
+        return
+    text = " ".join(context.args).strip()
+    if not text:
+        await update.message.reply_text("Pakai format: /yumi pertanyaan finance kamu", reply_markup=_finance_keyboard())
+        return
+    request = build_request(
+        profile_id="finance",
+        message=text,
+        telegram=_telegram_context_from_update(update),
+        can_write=False,
+    )
+    response = {
+        "reply_text": "Hermes finance read-only menerima request. Action keuangan belum dieksekusi; gunakan flow finance existing untuk catat transaksi.",
+        "actions": [],
+        "metadata": {"profile_id": "finance"},
+    }
+    validate_response(response)
+    audit_event({
+        "event": "telegram_command",
+        "profile_id": "finance",
+        "mode": "read_only",
+        "telegram": request["telegram"],
+        "message": "telegram command /yumi",
+        "input_preview": text[:160],
+        "actions": [],
+    })
+    await update.message.reply_text(response["reply_text"], reply_markup=_finance_keyboard())
+
+
 # ── Commands ──────────────────────────────────────────────────────
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2277,6 +2563,263 @@ async def cmd_rekap(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.exception("cmd_rekap failed")
         await update.message.reply_text(f"❌ Gagal mengambil rekap: {e}", reply_markup=_finance_keyboard())
+
+
+async def cmd_daftar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler /daftar — menu tombol: Pemasukan / Pengeluaran / Semua."""
+    if not _can_respond(update):
+        return
+
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+
+    try:
+        text, keyboard = await _build_daftar_menu()
+        await update.message.reply_text(text, reply_markup=keyboard)
+    except Exception as e:
+        logger.exception("cmd_daftar failed")
+        await update.message.reply_text(f"❌ Gagal: {e}", reply_markup=_finance_keyboard())
+
+
+async def _build_daftar_menu():
+    """Bangun teks dan keyboard menu daftar transaksi."""
+    now = datetime.now(WIB)
+    start_ms = int((now - timedelta(days=7)).timestamp() * 1000)
+    end_ms = int(now.timestamp() * 1000)
+
+    base_q = f"select=amount&tx_date=gte.{start_ms}&tx_date=lte.{end_ms}&category=neq.HPP&limit=500"
+    income_rows = await finance._fetch("financial_transactions", base_q + "&tx_type=eq.income")
+    expense_rows = await finance._fetch("financial_transactions", base_q + "&tx_type=eq.expense")
+
+    total_in = sum(float(r.get("amount") or 0) for r in income_rows) if income_rows else 0
+    total_out = sum(float(r.get("amount") or 0) for r in expense_rows) if expense_rows else 0
+    count_in = len(income_rows) if income_rows else 0
+    count_out = len(expense_rows) if expense_rows else 0
+
+    lines = [
+        "📋 *Daftar Transaksi 7 Hari*",
+        "",
+        f"💰 Pemasukan: {format_amount(int(total_in))} ({count_in}x)" if count_in else "💰 Pemasukan: -",
+        f"💸 Pengeluaran: {format_amount(int(total_out))} ({count_out}x)" if count_out else "💸 Pengeluaran: -",
+        "",
+        "Pilih jenis transaksi untuk lihat detail + source_id:",
+    ]
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("💰 Pemasukan", callback_data="daftar_income"),
+         InlineKeyboardButton("💸 Pengeluaran", callback_data="daftar_expense")],
+        [InlineKeyboardButton("📋 Semua", callback_data="daftar_all")],
+    ])
+
+    return "\n".join(lines), keyboard
+
+
+async def _show_transaction_list(tx_type: str, update: Update, context: ContextTypes.DEFAULT_TYPE, query):
+    """Tampilkan daftar transaksi berdasarkan tipe, dengan tombol kembali."""
+    now = datetime.now(WIB)
+    start_ms = int((now - timedelta(days=7)).timestamp() * 1000)
+    end_ms = int(now.timestamp() * 1000)
+
+    type_label = "Pemasukan" if tx_type == "income" else "Pengeluaran" if tx_type == "expense" else "Semua"
+    icon = "💰" if tx_type == "income" else "💸" if tx_type == "expense" else "📋"
+
+    q = f"select=source_id,tx_type,amount,category,description,merchant,tx_date&tx_date=gte.{start_ms}&tx_date=lte.{end_ms}&order=tx_date.desc&limit=30&category=neq.HPP"
+    if tx_type in ("income", "expense"):
+        q += f"&tx_type=eq.{tx_type}"
+
+    rows = await finance._fetch("financial_transactions", q)
+
+    if not rows:
+        await query.edit_message_text(
+            f"{icon} {type_label}: belum ada transaksi dalam 7 hari terakhir.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("⬅️ Kembali", callback_data="daftar_menu")]
+            ])
+        )
+        return
+
+    def _fmt(t):
+        sid = t.get("source_id", "-")[:28]
+        amt = float(t.get("amount") or 0)
+        cat = (t.get("category") or "lainnya")[:15]
+        merchant = (t.get("merchant") or "").strip()[:20]
+        desc = (t.get("description") or "").strip()[:30]
+        ts = t.get("tx_date")
+        date_str = ""
+        if ts:
+            dt = datetime.fromtimestamp(ts / 1000, tz=WIB)
+            date_str = dt.strftime("%d/%m %H:%M")
+        label = merchant or desc or cat
+        return f"• {format_amount(int(amt))}  {date_str}\n  🏷️ {label}\n  `{sid}`"
+
+    lines = [f"{icon} *{type_label}* ({len(rows)} transaksi)"]
+    for i, t in enumerate(rows, 1):
+        lines.append(f"{i}. " + _fmt(t))
+
+    max_msg = 4000
+    parts = []
+    current = []
+    for line in lines:
+        current.append(line)
+        if len("\n".join(current)) > max_msg:
+            parts.append("\n".join(current[:-1]))
+            current = [current[-1]]
+    if current:
+        parts.append("\n".join(current))
+
+    back_kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("⬅️ Kembali", callback_data="daftar_menu")]
+    ])
+
+    # Edit pesan pertama
+    await query.edit_message_text(parts[0], reply_markup=back_kb if len(parts) == 1 else None)
+
+    # Kirim sisanya sebagai pesan baru
+    for p in parts[1:]:
+        await query.message.reply_text(p)
+
+
+async def _handle_daftar_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler tombol daftar transaksi: income / expense / all / menu."""
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+
+    if data == "daftar_menu":
+        text, keyboard = await _build_daftar_menu()
+        await query.edit_message_text(text, reply_markup=keyboard)
+        return
+
+    tx_type = data.replace("daftar_", "")  # "income", "expense", "all"
+    await _show_transaction_list(tx_type, update, context, query)
+
+
+async def cmd_hapus_struk(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler /hapus_struk <source_id> — hapus transaksi beserta data terkait."""
+    if not _can_respond(update):
+        return
+
+    args = context.args
+    if not args:
+        await update.message.reply_text(
+            "📋 Gunakan: /hapus_struk <source_id>\n\n"
+            "Cari source_id dengan perintah /daftar dulu.",
+            reply_markup=_finance_keyboard(),
+        )
+        return
+
+    source_id = args[0].strip().strip("`")
+    if not source_id:
+        await update.message.reply_text("❌ source_id tidak valid.")
+        return
+
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+
+    try:
+        # Ambil detail transaksi dulu
+        sani = source_id.replace("'", "''")
+        q = f"source_id=eq.{sani}&select=source_id,tx_type,amount,category,description,merchant,tx_date,payment_method"
+        rows = await finance._fetch("financial_transactions", q)
+
+        if not rows:
+            await update.message.reply_text(
+                f"❌ Transaksi `{source_id[:32]}...` tidak ditemukan.\n"
+                "Cek /daftar untuk source_id yang valid.",
+                reply_markup=_finance_keyboard(),
+            )
+            return
+
+        tx = rows[0]
+        amt = float(tx.get("amount") or 0)
+        tx_t = tx.get("tx_type", "?")
+        icon = "💰" if tx_t == "income" else "💸"
+        type_label = "Pemasukan" if tx_t == "income" else "Pengeluaran"
+        cat = tx.get("category", "lainnya")
+        merchant = (tx.get("merchant") or "").strip()
+        desc = (tx.get("description") or "").strip()
+        ts = tx.get("tx_date")
+        date_str = ""
+        if ts:
+            dt = datetime.fromtimestamp(ts / 1000, tz=WIB)
+            date_str = dt.strftime("%d/%m/%Y %H:%M")
+
+        lines = [
+            f"⚠️ *Konfirmasi Hapus Transaksi*",
+            "",
+            f"{icon} {type_label}",
+            f"💰 {format_amount(int(amt))}",
+            f"📅 {date_str}",
+            f"🏷️ {cat}",
+        ]
+        if merchant:
+            lines.append(f"🏪 {merchant}")
+        if desc:
+            lines.append(f"📝 {desc[:60]}")
+        lines.append(f"🆔 `{source_id}`")
+        lines.append("")
+        lines.append("Data terkait yang akan dihapus:")
+        lines.append("- financial_transactions")
+        lines.append("- accounting_entries")
+        lines.append("- transaction_analytics")
+        lines.append("")
+        lines.append("Ketik: **/hapus_konfirmasi** untuk melanjutkan.")
+        lines.append("Atau abaikan untuk membatalkan.")
+
+        # Simpan source_id di user_data buat konfirmasi
+        context.user_data["delete_source_id"] = source_id
+
+        await update.message.reply_text(
+            "\n".join(lines),
+            reply_markup=_finance_keyboard(),
+        )
+    except Exception as e:
+        logger.exception("cmd_hapus_struk failed")
+        await update.message.reply_text(f"❌ Gagal: {e}", reply_markup=_finance_keyboard())
+
+
+async def cmd_hapus_konfirmasi(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler /hapus_konfirmasi — eksekusi hapus setelah konfirmasi."""
+    if not _can_respond(update):
+        return
+
+    source_id = context.user_data.pop("delete_source_id", None)
+    if not source_id:
+        await update.message.reply_text(
+            "❌ Tidak ada transaksi yang dikonfirmasi untuk dihapus.\n"
+            "Gunakan /hapus_struk <source_id> dulu.",
+            reply_markup=_finance_keyboard(),
+        )
+        return
+
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+
+    try:
+        result = await finance.delete_transaction(source_id)
+        if result.get("ok"):
+            d = result["deleted"]
+            parts = [f"✅ *Transaksi berhasil dihapus*"]
+            parts.append(f"🆔 `{source_id[:32]}...`")
+            if d["transaction"]:
+                parts.append(f"📋 Transaksi: {d['transaction']}")
+            if d["accounting"]:
+                parts.append(f"📊 Accounting: {d['accounting']}")
+            if d["analytics"]:
+                parts.append(f"📈 Analytics: {d['analytics']}")
+            if result.get("errors"):
+                parts.append(f"⚠️ Partial errors: {', '.join(result['errors'])}")
+            await update.message.reply_text(
+                "\n".join(parts),
+                reply_markup=_finance_keyboard(),
+            )
+        else:
+            err = "; ".join(result.get("errors", ["unknown"]))
+            await update.message.reply_text(
+                f"❌ Gagal hapus: {err}\n"
+                f"Source ID: `{source_id[:32]}...`",
+                reply_markup=_finance_keyboard(),
+            )
+    except Exception as e:
+        logger.exception("cmd_hapus_konfirmasi failed")
+        await update.message.reply_text(f"❌ Error: {e}", reply_markup=_finance_keyboard())
 
 
 # ── Bulk Callback Handlers ──────────────────────────────────────────
@@ -2784,7 +3327,7 @@ async def _auto_create_missing_categories(receipts: list[dict]):
             '{"categories": [{"key": "bahan_minuman", "label": "Bahan Minuman", "icon": "☕", '
             '"items": ["Kopi Arabica", "Susu UHT"], "keywords": ["kopi", "susu", "sirup", "teh", "creamer"]}]}'
         )
-        ai_result = await sp_client.chat(message=prompt, model="gpt-4o-mini", timeout=30)
+        ai_result = await sp_client.chat(message=prompt, model=os.getenv("NINEROUTER_TEXT_MODEL", "ag/gemini-3-flash"), timeout=30)
         ai_reply = ai_result.get("reply", "")
 
         # Parse AI response
@@ -2927,6 +3470,12 @@ def main():
     # Commands
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("rekap", cmd_rekap))
+    app.add_handler(CommandHandler("yumi", cmd_yumi))
+    app.add_handler(CommandHandler("hermes_scope", cmd_hermes_scope))
+    app.add_handler(CommandHandler("hermes_test", cmd_hermes_test))
+    app.add_handler(CommandHandler("daftar", cmd_daftar))
+    app.add_handler(CommandHandler("hapus_struk", cmd_hapus_struk))
+    app.add_handler(CommandHandler("hapus_konfirmasi", cmd_hapus_konfirmasi))
 
     # Callbacks
     app.add_handler(CallbackQueryHandler(on_callback))

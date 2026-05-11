@@ -5,6 +5,7 @@ Dengan AI-powered auto supplier category tagging.
 """
 import json
 import logging
+import os
 import re
 from datetime import datetime, timezone, timedelta
 
@@ -310,13 +311,14 @@ async def ai_categorize_suppliers(
         base_url = sp_client.base_url
 
         payload = {
-            "model": "gpt-4o-mini",
+            "model": os.getenv("NINEROUTER_TEXT_MODEL", "ag/gemini-3-flash"),
             "messages": [
                 {"role": "system", "content": "Kamu adalah asisten inventory. Balas HANYA dengan JSON object."},
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0.0,
             "max_tokens": 1024,
+            "stream": False,
         }
 
         async with httpx.AsyncClient(timeout=timeout) as client:

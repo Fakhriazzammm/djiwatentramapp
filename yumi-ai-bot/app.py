@@ -18,8 +18,97 @@ from telegram.ext import (
 from PIL import Image
 from receipt_restock import handle_restock_from_ocr
 from marketlist import generate_marketlist
+from hermes_adapter import (
+    TelegramContext,
+    audit_event,
+    build_request,
+    project_scope_summary,
+    validate_response,
+)
 
 load_dotenv()
+
+# ── Category icon mapping (mirror dari yumi-finance-agent/categories.py) ──
+_CATEGORY_MAP = {
+    "penjualan": "💰", "bahan_minuman": "☕", "bahan_makanan": "🍳",
+    "packaging": "📦", "cleaning": "🧹", "utilities": "💡",
+    "operational": "🔧", "marketing": "📢", "transport": "🚗",
+    "gaji": "👥", "sewa": "🏢", "lainnya": "📁",
+}
+
+_CATEGORY_KEYWORDS: list[tuple[str, str]] = [
+    # packaging
+    ("packaging", "piring kertas"), ("packaging", "paper cup"), ("packaging", "paper bowl"),
+    ("packaging", "cup"), ("packaging", "lid"), ("packaging", "tutup"),
+    ("packaging", "gelas"), ("packaging", "pouch"), ("packaging", "kresek"),
+    ("packaging", "plastik"), ("packaging", "bag"), ("packaging", "kantong"),
+    ("packaging", "box"), ("packaging", "mangkok"), ("packaging", "straw"),
+    ("packaging", "sedotan"), ("packaging", "tissue"), ("packaging", "serbet"),
+    ("packaging", "kertas"), ("packaging", "napkin"), ("packaging", "take away"),
+    ("packaging", "lunch box"), ("packaging", "styrofoam"), ("packaging", "sterofoam"),
+    ("packaging", "wadah"), ("packaging", "container"), ("packaging", "klip"),
+    ("packaging", "ice cup"), ("packaging", "hot cup"), ("packaging", "sleeve"),
+    # cleaning
+    ("cleaning", "sabun"), ("cleaning", "detergent"), ("cleaning", "deterjen"),
+    ("cleaning", "pembersih"), ("cleaning", "cleaner"), ("cleaning", "lap"),
+    ("cleaning", "sponge"), ("cleaning", "spon"), ("cleaning", "sikat"),
+    ("cleaning", "kain pel"), ("cleaning", "pel"), ("cleaning", "wipe"),
+    ("cleaning", "disinfect"), ("cleaning", "clorin"), ("cleaning", "pemutih"),
+    ("cleaning", "bleach"), ("cleaning", "sapu"), ("cleaning", "sampo"),
+    ("cleaning", "shampoo"), ("cleaning", "pasta gigi"), ("cleaning", "toothpaste"),
+    ("cleaning", "handuk"), ("cleaning", "towel"),
+    # bahan_minuman
+    ("bahan_minuman", "kopi"), ("bahan_minuman", "coffee"), ("bahan_minuman", "susu"),
+    ("bahan_minuman", "milk"), ("bahan_minuman", "creamer"), ("bahan_minuman", "krimer"),
+    ("bahan_minuman", "uht"), ("bahan_minuman", "sirup"), ("bahan_minuman", "syrup"),
+    ("bahan_minuman", "teh"), ("bahan_minuman", "tea"), ("bahan_minuman", "matcha"),
+    ("bahan_minuman", "taro"), ("bahan_minuman", "coklat"), ("bahan_minuman", "cocoa"),
+    ("bahan_minuman", "gula"), ("bahan_minuman", "sprite"), ("bahan_minuman", "soda"),
+    ("bahan_minuman", "schweppes"), ("bahan_minuman", "you c"), ("bahan_minuman", "c1000"),
+    ("bahan_minuman", "sunquick"), ("bahan_minuman", "aqua"), ("bahan_minuman", "mineral"),
+    ("bahan_minuman", "es batu"), ("bahan_minuman", "ice"), ("bahan_minuman", "air"),
+    ("bahan_minuman", "jus"), ("bahan_minuman", "juice"), ("bahan_minuman", "minuman"),
+    ("bahan_minuman", "soda"), ("bahan_minuman", "sirop"),
+    # bahan_makanan
+    ("bahan_makanan", "beras"), ("bahan_makanan", "nasi"), ("bahan_makanan", "rice"),
+    ("bahan_makanan", "mie"), ("bahan_makanan", "noodle"), ("bahan_makanan", "roti"),
+    ("bahan_makanan", "bread"), ("bahan_makanan", "tepung"), ("bahan_makanan", "flour"),
+    ("bahan_makanan", "minyak"), ("bahan_makanan", "oil"), ("bahan_makanan", "mentega"),
+    ("bahan_makanan", "butter"), ("bahan_makanan", "margarin"), ("bahan_makanan", "ayam"),
+    ("bahan_makanan", "chicken"), ("bahan_makanan", "daging"), ("bahan_makanan", "meat"),
+    ("bahan_makanan", "telur"), ("bahan_makanan", "egg"), ("bahan_makanan", "tahu"),
+    ("bahan_makanan", "tempe"), ("bahan_makanan", "sosis"), ("bahan_makanan", "bakso"),
+    ("bahan_makanan", "nugget"), ("bahan_makanan", "ikan"), ("bahan_makanan", "fish"),
+    ("bahan_makanan", "sayur"), ("bahan_makanan", "vegetable"), ("bahan_makanan", "bumbu"),
+    ("bahan_makanan", "sauce"), ("bahan_makanan", "sambal"), ("bahan_makanan", "kecap"),
+    ("bahan_makanan", "ketchup"), ("bahan_makanan", "garam"), ("bahan_makanan", "salt"),
+    ("bahan_makanan", "keju"), ("bahan_makanan", "cheese"), ("bahan_makanan", "mayonaise"),
+    ("bahan_makanan", "mayonnaise"), ("bahan_makanan", "saos"), ("bahan_makanan", "saus"),
+    ("bahan_makanan", "cireng"), ("bahan_makanan", "jempol"), ("bahan_makanan", "brex"),
+    ("bahan_makanan", "kerupuk"), ("bahan_makanan", "snack"), ("bahan_makanan", "biskuit"),
+    ("bahan_makanan", "kayu manis"), ("bahan_makanan", "cinnamon"),
+    # operational
+    ("operational", "sprei"), ("operational", "sheet"), ("operational", "bantal"),
+    # utilities
+    ("utilities", "listrik"), ("utilities", "electric"), ("utilities", "air pdam"),
+    ("utilities", "pdam"), ("utilities", "pulsa"), ("utilities", "token"),
+    ("utilities", "internet"), ("utilities", "wifi"), ("utilities", "gas"),
+    ("utilities", "elpiji"), ("utilities", "bensin"), ("utilities", "solar"),
+    # transport
+    ("transport", "bensin"), ("transport", "solar"), ("transport", "toll"),
+    ("transport", "parkir"), ("transport", "bengkel"),
+]
+
+def _categorize_item(name: str) -> str:
+    """Quick keyword-based item categorization, returns category key."""
+    nl = name.lower().strip()
+    for cat, kw in _CATEGORY_KEYWORDS:
+        if kw in nl:
+            return cat
+    return "lainnya"
+
+def _cat_icon(cat_key: str) -> str:
+    return _CATEGORY_MAP.get(cat_key, "📁")
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
@@ -437,6 +526,35 @@ async def _ask_yumi_ai(
     return reply
 
 
+async def _ask_yumi_ai_readonly(user_id: int, message: str) -> str:
+    """Ask the existing Yumi AI endpoint without saving chat memory from the bot."""
+    url = f"{SUPABASE_URL}/functions/v1/yumi-ai"
+    context_hint = await _gather_context()
+    scoped_message = (
+        "Mode Hermes project-scoped read-only. Jawab hanya berdasarkan konteks "
+        "operasional Yumi/Djiwatentramapp. Jangan instruksikan perubahan VPS, "
+        "systemd, sudo, file di luar project, atau write action.\n\n"
+        f"Pertanyaan user: {message}"
+    )
+    payload = {
+        "action": "yumiChat",
+        "message": scoped_message,
+        "history": [],
+        "contextHint": context_hint,
+        "images": [],
+    }
+
+    async with httpx.AsyncClient(timeout=90) as client:
+        resp = await client.post(
+            url,
+            headers={**_headers(), "Content-Type": "application/json"},
+            json=payload,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return str(data.get("content") or "Maaf, Hermes read-only belum bisa menjawab sekarang.")
+
+
 # ===================================================================
 # Commands
 # ===================================================================
@@ -678,13 +796,137 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/stok_menipis — Stok yang perlu dibeli\n"
         "/absen_hari_ini — Absensi staff\n"
         "/booking_aktif — Booking aktif\n"
-        "/briefing_hari_ini — Briefing bisnis\n\n"
+        "/briefing_hari_ini — Briefing bisnis\n"
+        "/yumi <pesan> — Opt-in Hermes read-only\n"
+        "/hermes_scope — Cek scope Hermes project agent\n"
+        "/hermes_test — Test adapter Hermes read-only\n\n"
         "💬 Chat bebas: ketik apa saja\n"
         "📸 Scan struk: kirim foto struk\n\n"
         "Contoh: _omzet hari ini_, _produk terlaris minggu ini_, _berapa stok kopi?_",
         parse_mode="Markdown",
         reply_markup=_reply_keyboard(),
     )
+
+
+async def cmd_hermes_scope(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not _is_allowed(update):
+        await _reply_msg(update, context, "Unauthorized")
+        return
+
+    scope = project_scope_summary()
+    await _reply_msg(
+        update,
+        context,
+        "Hermes project agent: passive/read-only\n\n"
+        f"Project root: `{scope['project_root']}`\n"
+        f"Hermes root: `{scope['hermes_root']}`\n"
+        f"Audit log: `{scope['audit_log']}`\n"
+        f"Mode: `{scope['mode']}`\n\n"
+        "Batasan: tidak mengatur VPS, tidak sudo, tidak systemctl, "
+        "dan tidak akses file di luar project.",
+        parse_mode="Markdown",
+    )
+
+
+def _telegram_context_from_update(update: Update) -> TelegramContext:
+    user = update.effective_user
+    chat = update.effective_chat
+    msg = update.effective_message
+    return TelegramContext(
+        chat_id=str(chat.id if chat else ""),
+        user_id=str(user.id if user else ""),
+        username=(user.username if user and user.username else ""),
+        message_id=str(msg.message_id if msg else ""),
+        chat_type=(chat.type if chat else ""),
+    )
+
+
+async def cmd_hermes_test(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not _is_allowed(update):
+        await _reply_msg(update, context, "Unauthorized")
+        return
+
+    request = build_request(
+        "general_ops",
+        _telegram_context_from_update(update),
+        "text",
+        text="hermes adapter smoke test",
+        can_write=False,
+    )
+    response = {
+        "reply_text": "Hermes adapter OK dalam mode read-only.",
+        "actions": [],
+        "requires_confirmation": False,
+        "audit": {"profile_id": "general_ops", "mode": "read_only"},
+    }
+    validate_response(response)
+    audit_event({
+        "profile_id": "general_ops",
+        "mode": "read_only",
+        "telegram": request["telegram"],
+        "message": "telegram command /hermes_test",
+    })
+
+    await _reply_msg(
+        update,
+        context,
+        "Hermes adapter OK.\n\n"
+        "Profile: `general_ops`\n"
+        "Mode: `read_only`\n"
+        "Actions: `0`\n"
+        "Runtime routing: `disabled`\n"
+        "Audit: `written`",
+        parse_mode="Markdown",
+    )
+
+
+async def cmd_yumi(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not _is_allowed(update):
+        await _reply_msg(update, context, "Unauthorized")
+        return
+
+    text = " ".join(context.args).strip()
+    if not text:
+        await _reply_msg(
+            update,
+            context,
+            "Pakai format: `/yumi pertanyaan kamu`\n\n"
+            "Mode saat ini masih read-only dan opt-in.",
+            parse_mode="Markdown",
+        )
+        return
+
+    request = build_request(
+        "general_ops",
+        _telegram_context_from_update(update),
+        "text",
+        text=text,
+        can_write=False,
+    )
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+    try:
+        reply = await _ask_yumi_ai_readonly(update.effective_user.id, text)
+    except Exception as e:
+        logger.exception("Hermes read-only bridge failed")
+        reply = f"Hermes read-only gagal menjawab: {e}"
+
+    response = {
+        "reply_text": reply,
+        "actions": [],
+        "requires_confirmation": False,
+        "audit": {"profile_id": "general_ops", "mode": "read_only"},
+    }
+    validate_response(response)
+    audit_event({
+        "profile_id": "general_ops",
+        "mode": "read_only",
+        "telegram": request["telegram"],
+        "message": "telegram command /yumi",
+        "input_preview": text[:160],
+        "actions": [],
+    })
+
+    await _reply_msg(update, context, response["reply_text"])
 
 
 # ── Period helpers ──
@@ -1522,8 +1764,27 @@ async def _check_new_transactions(app):
                 if merchant:
                     lines.append(f"🏪 {merchant}")
 
-            lines.append(f"📁 {cat}")
+            # Category line with icon
+            cat_icon = _cat_icon(cat.lower())
+            lines.append(f"{cat_icon} {cat}")
             lines.append(f"💰 Rp{amount:,.0f}")
+
+            # Payment method dari metadata
+            payment_method = None
+            if is_ocr:
+                payment_method = receipt_details.get("paymentMethod") or ""
+            if not payment_method:
+                payment_method = metadata.get("paymentMethod") or ""
+            if payment_method:
+                lines.append(f"💳 {payment_method}")
+
+            # Accounting badge
+            accounting_ref = metadata.get("accounting_ref") or metadata.get("accounting_journal_id")
+            acct_entries = metadata.get("accounting_entries")
+            if accounting_ref:
+                lines.append("📊 Akuntansi tercatat")
+            elif isinstance(acct_entries, list) and len(acct_entries) > 0:
+                lines.append("📊 Akuntansi tercatat")
 
             # Items dari metadata (scanItems) atau parse dari description
             scan_items = []
@@ -1558,10 +1819,21 @@ async def _check_new_transactions(app):
                     unit_str = f" {su}" if su else ""
                     price_str = f" @ Rp{sp:,.0f}" if sp > 0 else ""
                     total_str = f" = Rp{st:,.0f}" if st > 0 else ""
-                    lines.append(f"  • {sn} x{sq_str}{unit_str}{price_str}{total_str}")
+                    # Per-item category icon
+                    item_cat = _categorize_item(sn)
+                    item_icon = _cat_icon(item_cat)
+                    lines.append(f"  {item_icon} {sn} x{sq_str}{unit_str}{price_str}{total_str}")
 
+            # Clean description — skip if it's just a raw dump of items
+            cleaner_desc = None
             if desc:
-                lines.append(f"📝 {desc}")
+                bulk_pattern = re.match(r'^Bulk Belanja\s*-\s*(.+?):\s*\S', desc)
+                if bulk_pattern:
+                    cleaner_desc = f"🛒 Bulk — {bulk_pattern.group(1)}"
+                else:
+                    cleaner_desc = f"📝 {desc}"
+            if cleaner_desc:
+                lines.append(cleaner_desc)
             if cashier:
                 lines.append(f"👥 Kasir: {cashier}")
             await _send_to_group(app, "\n".join(lines))
@@ -1755,12 +2027,18 @@ async def _start_auto_reporter(app):
 
     # Real-time polling every 30 seconds
     async def _poll_loop():
+        # Immediate catch-up on startup
+        try:
+            await _check_new_transactions(app)
+            logger.info("Auto-reporter: catch-up check complete")
+        except Exception as e:
+            logger.warning("Auto-reporter: catch-up check failed: %s", e)
         while True:
             await asyncio.sleep(30)
             await _check_new_transactions(app)
 
     asyncio.create_task(_poll_loop())
-    logger.info("Auto-reporter: real-time polling started (30s interval)")
+    logger.info("Auto-reporter: real-time polling started (30s interval, immediate catch-up)")
 
 
 # ===================================================================
@@ -1838,7 +2116,10 @@ def main():
         raise RuntimeError("SUPABASE_URL / SUPABASE_KEY belum di-set")
 
     async def _post_init(application: Application):
-        await _start_http_server(application, port=8001)
+        try:
+            await _start_http_server(application, port=8001)
+        except Exception as e:
+            logger.warning("HTTP server on port 8001 failed to start: %s (continuing without it)", e)
         await _start_auto_reporter(application)
 
     app = Application.builder().token(BOT_TOKEN).post_init(_post_init).build()
@@ -1855,6 +2136,9 @@ def main():
     app.add_handler(CommandHandler("briefing_hari_ini", cmd_briefing_hari_ini))
     app.add_handler(CommandHandler("purchaselog", cmd_purchaselog))
     app.add_handler(CommandHandler("marketlist", cmd_marketlist))
+    app.add_handler(CommandHandler("yumi", cmd_yumi))
+    app.add_handler(CommandHandler("hermes_scope", cmd_hermes_scope))
+    app.add_handler(CommandHandler("hermes_test", cmd_hermes_test))
 
     # Alias (backward compat)
     app.add_handler(CommandHandler("kpi_hari_ini", cmd_ringkasan_hari_ini))  # deprecated

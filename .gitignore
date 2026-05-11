@@ -30,3 +30,25 @@ Thumbs.db
 
 # Logs
 *.log
+logs/
+
+# Hermes agent
+hermes/
+
+# Test output
+test-results/
+
+# Backup files
+*.bak
+
+# Worktrees / AI state
+.claude/worktrees/
+
+# Python venv (local)
+myenv/
+.venv/
+venv/
+
+# Temp files
+result_batch_analyze.txt
+=

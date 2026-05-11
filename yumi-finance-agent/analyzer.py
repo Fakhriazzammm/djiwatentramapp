@@ -10,6 +10,7 @@ Menganalisis transaksi secara AI (via SumoPod):
 
 import json
 import logging
+import os
 import re
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -90,13 +91,14 @@ class TransactionAnalyzer:
 Berikan analisis JSON sesuai format yang ditentukan."""
 
         payload = {
-            "model": "gpt-4o",
+            "model": os.getenv("NINEROUTER_TEXT_MODEL", "ag/gemini-3-flash"),
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0.1,
             "max_tokens": 1024,
+            "stream": False,
         }
 
         try:

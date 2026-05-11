@@ -1,6 +1,12 @@
 """categories.py — Kategori keuangan & auto-kategorisasi berbasis keyword."""
 
 import re
+import os
+import logging
+import httpx
+import json
+
+logger = logging.getLogger("yumi-finance.categories")
 
 # ── Master kategori ────────────────────────────────────────────────
 # Kategori spesifik untuk café/resto — Djiwa Tentram Cafe & Resto
@@ -463,3 +469,238 @@ def format_amount(amount: int | float) -> str:
         return f"Rp{int(amount):,}".replace(",", ".")
     else:
         return f"Rp{int(amount):,}"
+
+
+# ── AI-powered categorization ──────────────────────────────────────
+
+# Cache kategori dinamis: (item_name_lower → category_key)
+_ai_category_cache: dict[str, str] = {}
+
+_AI_CAT_SYSTEM_PROMPT = """Kamu adalah asisten kategorisasi item cafe/resto.
+Kategorikan SATU item berdasarkan keyword kategorinya.
+
+Kategori yang tersedia:
+{category_list}
+
+Aturan:
+1. Jawab HANYA dengan kode kategori (satu kata, huruf kecil).
+2. Jika item mengandung kata dari keyword kategori, pilih kategori itu.
+3. Gunakan akal sehat: "gula" → bahan_minuman, "kresek/kantong/pouch/plastik" → packaging
+4. Jangan beri penjelasan, markdown, atau JSON.
+5. Jika benar-benar tidak yakin: lainnya
+
+Item: {item_name}"""
+
+
+async def ai_categorize_item(
+    item_name: str,
+    item_price: float = 0,
+    merchant: str = "",
+) -> tuple[str, str, str]:
+    """Kategorikan item pakai AI (LLM via 9router).
+
+    Returns:
+        (category_key, confidence, suggested_label)
+    """
+    name_lower = item_name.lower().strip()
+    if not name_lower:
+        return "lainnya", "low", ""
+
+    # 1. Cek cache dulu (biar cepat & konsisten)
+    cached = _ai_category_cache.get(name_lower)
+    if cached:
+        cat_info = get_all_categories().get(cached, {})
+        label = cat_info.get("label", cached.title())
+        return cached, "high", label
+
+    # 2. Cek keyword matching dulu — kalo high confidence, skip AI
+    cat_key, cat_conf, suggested = categorize_item(item_name, item_price)
+    if cat_conf == "high":
+        _ai_category_cache[name_lower] = cat_key
+        return cat_key, "high", ""
+
+    # 3. Panggil LLM via 9router
+    all_cats = get_all_categories()
+    cat_lines = []
+    for k, v in all_cats.items():
+        if k == "lainnya":
+            continue
+        label = v.get("label", k)
+        keywords = v.get("item_keywords", v.get("keywords", []))
+        kw_str = ", ".join(keywords[:8])
+        cat_lines.append(f"  {k}: {label} — cocok untuk: {kw_str}")
+
+    category_list_str = "\n".join(cat_lines)
+    prompt = _AI_CAT_SYSTEM_PROMPT.format(
+        category_list=category_list_str,
+        item_name=item_name,
+    )
+
+    try:
+        base_url = os.getenv("NINEROUTER_BASE_URL", "http://127.0.0.1:20128/v1")
+        api_key = os.getenv("SUMOPOD_API_KEY", "")
+        model = os.getenv("NINEROUTER_TEXT_MODEL", "ag/gemini-3-flash")
+
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                f"{base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": prompt},
+                        {"role": "user", "content": f"Kategorikan item: {item_name}"},
+                    ],
+                    "temperature": 0.1,
+                    "max_tokens": 300,
+                    "stream": False,
+                },
+            )
+            resp.raise_for_status()
+
+            # Handle streaming response (SSE chunks)
+            raw = resp.text
+            content = ""
+            for line in raw.split("\n"):
+                line = line.strip()
+                if line.startswith("data: ") and line != "data: [DONE]":
+                    try:
+                        chunk = json.loads(line[6:])
+                        delta = chunk.get("choices", [{}])[0].get("delta", {})
+                        if "content" in delta:
+                            content += delta["content"]
+                    except (json.JSONDecodeError, IndexError, KeyError):
+                        pass
+
+            if not content:
+                # Non-streaming response
+                result = resp.json()
+                content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+            ai_cat = content.strip().lower()
+
+            # Handle JSON wrapping (```json {...}``` or bare JSON)
+            if ai_cat.startswith("```"):
+                import re as _re
+                m = _re.search(r"```(?:json)?\s*([\s\S]*?)```", ai_cat)
+                if m:
+                    ai_cat = m.group(1).strip().lower()
+            if ai_cat.startswith("{"):
+                try:
+                    parsed = json.loads(ai_cat)
+                    ai_cat = parsed.get("category") or parsed.get("key") or ai_cat
+                except json.JSONDecodeError:
+                    pass
+
+            # Strip non-alphanumeric
+            ai_cat = re.sub(r"[^a-z0-9_\s]", "", ai_cat).strip()
+
+            # Try to extract first valid category from multi-word response
+            if ai_cat not in all_cats and " " in ai_cat:
+                words = ai_cat.split()
+                for w in words:
+                    wc = w.strip().lower()
+                    if wc in all_cats:
+                        ai_cat = wc
+                        break
+
+            # Last resort: keyword matching on model's response words
+            if ai_cat not in all_cats and ai_cat:
+                response_keywords = {
+                    "packaging": "packaging", "wrap": "packaging", "bag": "packaging",
+                    "plastic": "packaging", "container": "packaging",
+                    "drink": "bahan_minuman", "beverage": "bahan_minuman", "minuman": "bahan_minuman",
+                    "food": "bahan_makanan", "makanan": "bahan_makanan", "ingredient": "bahan_makanan",
+                    "bahan": "bahan_makanan",
+                    "vegetable": "bahan_segar", "sayur": "bahan_segar",
+                    "clean": "cleaning", "cleaning": "cleaning",
+                    "equipment": "peralatan", "alat": "peralatan",
+                }
+                words = ai_cat.lower().split()
+                for w in words:
+                    if w in response_keywords:
+                        ai_cat = response_keywords[w]
+                        break
+
+        # Validasi: kalo response bukan kategori valid, fallback
+        if ai_cat in all_cats:
+            # Cache hasil AI
+            _ai_category_cache[name_lower] = ai_cat
+            category_info = all_cats.get(ai_cat, {})
+            label = category_info.get("label", ai_cat.title())
+            return ai_cat, "high", label
+
+        # AI returned something weird — fallback ke keyword
+        logger.warning("AI returned unknown category '%s' for '%s'", ai_cat, item_name)
+        return cat_key, cat_conf, suggested
+
+    except Exception as e:
+        logger.warning("AI categorization failed for '%s': %s", item_name, e)
+        return cat_key, cat_conf, suggested
+
+
+async def auto_create_category_in_db(
+    supabase_url: str,
+    supabase_key: str,
+    label: str,
+    icon: str = "📌",
+    cat_type: str = "expense",
+) -> str | None:
+    """Auto-create category di pos.categories (Supabase) + cache lokal.
+
+    Returns category_key (slug) atau None jika gagal.
+    """
+    # Generate key dari label
+    cat_key = re.sub(r'[^a-z0-9]', '_', label.lower().strip())
+    cat_key = re.sub(r'_+', '_', cat_key).strip('_')
+    if not cat_key:
+        return None
+
+    # Cek apakah sudah ada
+    all_cats = get_all_categories()
+    if cat_key in all_cats:
+        return cat_key  # Already exists
+
+    payload = {
+        "name": label,
+        "key": cat_key,
+        "icon": icon,
+        "type": cat_type,
+    }
+
+    try:
+        rest_url = supabase_url.rstrip("/")
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(
+                f"{rest_url}/rest/v1/pos.categories",
+                headers={
+                    "apikey": supabase_key,
+                    "Authorization": f"Bearer {supabase_key}",
+                    "Content-Type": "application/json",
+                    "Prefer": "return=minimal",
+                },
+                json=payload,
+            )
+            if resp.status_code in (200, 201, 204):
+                # Cache locally
+                add_dynamic_category(cat_key, label, icon, cat_type)
+                logger.info("Created dynamic category: %s (%s)", cat_key, label)
+                return cat_key
+            else:
+                logger.warning("Failed to create category: %s %s", resp.status_code, resp.text)
+                # Even if DB fails, cache locally
+                add_dynamic_category(cat_key, label, icon, cat_type)
+                return cat_key
+    except Exception as e:
+        logger.warning("Failed to create category in DB: %s", e)
+        # Still cache locally
+        add_dynamic_category(cat_key, label, icon, cat_type)
+        return cat_key
+
+
+def clear_ai_category_cache():
+    """Reset AI cache (dipanggil saat reload)."""
+    _ai_category_cache.clear()
