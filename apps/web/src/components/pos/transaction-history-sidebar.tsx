@@ -242,6 +242,11 @@ export function TransactionHistorySidebar({ trigger }: { trigger?: React.ReactEl
 		}
 
 		try {
+			if (!navigator.bluetooth) {
+				toast.error("Browser ini tidak mendukung Web Bluetooth (gunakan Chrome/Edge).", { id: "printing" });
+				return;
+			}
+			
 			if (!bluetoothPrinter.isConnected()) {
 				const connected = await bluetoothPrinter.autoReconnectIfNeeded(0);
 				if (!connected) {

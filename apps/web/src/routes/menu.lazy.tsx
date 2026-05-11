@@ -923,6 +923,11 @@ function MenuPage() {
 		}
 
 		try {
+			if (!navigator.bluetooth) {
+				toast.error("Browser ini tidak mendukung Web Bluetooth (gunakan Chrome/Edge).", { id: "printing" });
+				return;
+			}
+			
 			if (!bluetoothPrinter.isConnected()) {
 				const connected = await bluetoothPrinter.autoReconnectIfNeeded(0);
 				if (!connected) {
@@ -1017,6 +1022,11 @@ function MenuPage() {
 		if (!siteSettings || cartItems.length === 0) return;
 
 		try {
+			if (!navigator.bluetooth) {
+				toast.error("Browser ini tidak mendukung Web Bluetooth (gunakan Chrome/Edge).", { id: "printing" });
+				return;
+			}
+			
 			if (!bluetoothPrinter.isConnected()) {
 				const connected = await bluetoothPrinter.autoReconnectIfNeeded(0);
 				if (!connected) {

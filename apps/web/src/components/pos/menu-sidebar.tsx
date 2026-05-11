@@ -372,13 +372,18 @@ export function MenuSidebar({
 	}
 
 	try {
-		if (!bluetoothPrinter.isConnected()) {
-			const connected = await bluetoothPrinter.autoReconnectIfNeeded(0);
-			if (!connected) {
-				toast.loading("Pilih printer Bluetooth untuk mencetak...", { id: "printing" });
-				await bluetoothPrinter.connect();
+			if (!navigator.bluetooth) {
+				toast.error("Browser ini tidak mendukung Web Bluetooth (gunakan Chrome/Edge).", { id: "printing" });
+				return;
 			}
-		}
+			
+			if (!bluetoothPrinter.isConnected()) {
+				const connected = await bluetoothPrinter.autoReconnectIfNeeded(0);
+				if (!connected) {
+					toast.loading("Pilih printer Bluetooth untuk mencetak...", { id: "printing" });
+					await bluetoothPrinter.connect();
+				}
+			}
 
 		toast.loading(
 				mode === "open_bill"
