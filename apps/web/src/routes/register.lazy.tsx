@@ -53,7 +53,7 @@ const initialDraft: EmployeeOnboardingDraft = {
 	employment: {
 		roleId: "",
 		roleName: "",
-		startDate: new Date().toISOString().slice(0, 10),
+		startDate: "",
 		employmentType: "probation",
 		monthlySalary: 0,
 		dailyAllowance: 0,
@@ -239,7 +239,10 @@ function RegisterPage() {
 			try {
 				const pdfBlob = await generateContractPdfBlob(finalDraft, document.getElementById("employee-contract-preview"));
 				contractPdfUrl = await uploadFile({ file: pdfBlob, contentType: "application/pdf", fileName: `${appKey}-contract.pdf`, folder: "employee-contracts/contracts" });
-			} catch (e) { console.warn("PDF gen failed", e); }
+			} catch (e) {
+				console.warn("PDF gen failed", e);
+				toast.warning("Gagal generate PDF kontrak, pendaftaran tetap dilanjutkan tanpa PDF");
+			}
 			const payload = buildEmployeeOnboardingPayload(finalDraft, { signatureUrl, contractPdfUrl });
 			const uniqueCode = crypto.randomUUID().slice(0, 8).toUpperCase().replace(/-/g, "");
 			const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");

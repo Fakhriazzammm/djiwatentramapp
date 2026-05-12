@@ -21,6 +21,7 @@ const hasSupabaseConfig = Boolean(
 	import.meta.env.VITE_SUPABASE_URL &&
 		import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 );
+const adminSecret = import.meta.env.VITE_ADMIN_SECRET || "";
 
 type HybridStorageUploadArgs = {
 	file: Blob;
@@ -63,6 +64,29 @@ async function invokeYumiAiAction(action: string, payload: Record<string, unknow
 	if ((data as any)?.error) throw new Error((data as any).error);
 	return data;
 }
+
+// ---------------------------------------------------------------------------
+// Edge Function helper for admin operations (approve, reject, delete)
+// Uses service_role key on the server side — bypasses RLS and authenticates
+// via the VITE_ADMIN_SECRET env var sent as x-admin-secret header.
+// ---------------------------------------------------------------------------
+async function invokeAdminAction(action: string, payload: Record<string, unknown>) {
+	if (!adminSecret) {
+		throw new Error("VITE_ADMIN_SECRET tidak dikonfigurasi. Tambahkan ke .env");
+	}
+	const supabase = createClient();
+	const { data, error } = await supabase.functions.invoke("onboarding-admin", {
+		body: { action, ...payload },
+		headers: { "x-admin-secret": adminSecret },
+	});
+	if (error) throw new Error(error.message || "Gagal menghubungi server");
+	if ((data as any)?.error) throw new Error((data as any).error);
+	return data;
+}
+
+// ---------------------------------------------------------------------------
+// Public hooks (still use direct Supabase — anon key is fine for these)
+// ---------------------------------------------------------------------------
 
 export function useHybridGenerateEmployeeOnboardingUploadUrl() {
 	const fallback = useMutation((api as any).employee_onboarding?.generateUploadUrl);
@@ -145,31 +169,125 @@ export function useHybridSubmitEmployeeApplication() {
 	);
 }
 
-export function useHybridUpdateEmployeeApplicationStatus() {
+// ---------------------------------------------------------------------------
+// Admin hooks — all go through the onboarding-admin Edge Function
+// (service_role key → bypasses RLS, authenticated via admin secret)
+// ---------------------------------------------------------------------------
+
+/**
+ * Approve application: creates yumi_users account + updates application status
+ * in a single Edge Function call (atomic, server-side).
+ */
+export function useHybridApproveApplication() {
+	return useCallback(async (args: {
+		applicationId: string;
+		username: string;
+		password?: string;
+		name: string;
+		roleId: string;
+		homePin?: string;
+		requiresPinChange?: boolean;
+		slug?: string;
+		receiveReportEmails?: boolean;
+		onboardingApplicationId?: string;
+		reviewNotes?: string;
+		reviewedBy?: string;
+		employment?: Record<string, unknown>;
+	}) => {
+		if (!hasSupabaseConfig) {
+			throw new Error("Edge Function tidak tersedia tanpa Supabase config");
+		}
+		return invokeAdminAction("approve", args);
+	}, []);
+}
+
+/**
+ * Reject application.
+ */
+export function useHybridRejectApplication() {
 	const fallback = useMutation((api as any).employee_onboarding?.updateStatus);
+	return useCallback(
+		async (args: { id: string; reviewNotes?: string; reviewedBy?: string }) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			return invokeAdminAction("reject", args);
+		},
+		[fallback]
+	);
+}
+
+/**
+ * Mark application as needs_revision.
+ */
+export function useHybridMarkRevision() {
+	const fallback = useMutation((api as any).employee_onboarding?.updateStatus);
+	return useCallback(
+		async (args: { id: string; reviewNotes?: string; reviewedBy?: string }) => {
+			if (!hasSupabaseConfig) return fallback(args);
+			return invokeAdminAction("mark_revision", args);
+		},
+		[fallback]
+	);
+}
+
+/**
+ * Delete a single application (only allowed if not yet approved).
+ */
+export function useHybridDeleteApplication() {
+	const fallback = useMutation((api as any).employee_onboarding?.delete);
+	return useCallback(
+		async (id: string) => {
+			if (!hasSupabaseConfig) return fallback({ id });
+			return invokeAdminAction("delete", { id });
+		},
+		[fallback]
+	);
+}
+
+/**
+ * Bulk delete applications (only non-approved ones).
+ */
+export function useHybridBulkDeleteApplications() {
+	const fallback = useMutation((api as any).employee_onboarding?.bulkDelete);
+	return useCallback(
+		async (ids: string[]) => {
+			if (!hasSupabaseConfig) return fallback({ ids });
+			return invokeAdminAction("bulk_delete", { ids });
+		},
+		[fallback]
+	);
+}
+
+/**
+ * (Deprecated) Use useHybridApproveApplication + useHybridRejectApplication instead.
+ * Kept for backwards compatibility — calls the same edge function.
+ */
+export function useHybridUpdateEmployeeApplicationStatus() {
 	const { user } = useYumiAuth();
 	return useCallback(
 		async (args: any) => {
-			if (!hasSupabaseConfig) return fallback(args);
 			const id = String(args?.id ?? "");
 			const status = String(args?.status ?? "");
 			if (!id || !["approved", "rejected", "needs_revision", "pending"].includes(status)) {
 				throw new Error("Status pendaftaran tidak valid");
 			}
-			const { error } = await createClient()
-				.from("employee_onboarding_applications")
-				.update({
-					status,
-					approved_user_source_id: args?.approvedUserSourceId ?? null,
-					review_notes: args?.reviewNotes ?? null,
-					reviewed_by: user?.name ?? user?.username ?? "admin",
-					reviewed_at: new Date().toISOString(),
-				})
-				.eq("id", id);
-			if (error) throw error;
+			const reviewedBy = user?.name ?? user?.username ?? "admin";
+
+			if (status === "approved") {
+				// Call the dedicated approve hook
+				throw new Error(
+					"Gunakan useHybridApproveApplication untuk approve. " +
+					"useHybridUpdateEmployeeApplicationStatus tidak support approve."
+				);
+			}
+			if (status === "rejected") {
+				return invokeAdminAction("reject", { id, reviewNotes: args?.reviewNotes ?? null, reviewedBy });
+			}
+			if (status === "needs_revision") {
+				return invokeAdminAction("mark_revision", { id, reviewNotes: args?.reviewNotes ?? null, reviewedBy });
+			}
 			return id;
 		},
-		[fallback, user?.name, user?.username]
+		[user?.name, user?.username]
 	);
 }
 

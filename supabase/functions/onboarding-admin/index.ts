@@ -1,0 +1,312 @@
+// =============================================================================
+// Edge Function: onboarding-admin
+// Handles admin operations on employee_onboarding_applications using
+// service_role key to bypass RLS. This is needed because the app uses
+// Better Auth (not Supabase Auth), so the admin frontend also uses the
+// anon key and cannot be distinguished from public users at the RLS level.
+//
+// Authentication: x-admin-secret header matching ONBOARDING_ADMIN_SECRET
+// env var on the Supabase Edge Function. Set it via:
+//   supabase secrets set ONBOARDING_ADMIN_SECRET=your-secret-here
+//
+// The frontend sends VITE_ADMIN_SECRET from .env as this header.
+// =============================================================================
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const ADMIN_SECRET = Deno.env.get("ONBOARDING_ADMIN_SECRET") ?? "";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+if (!ADMIN_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error("Missing required environment variables: ONBOARDING_ADMIN_SECRET, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY");
+}
+
+serve(async (req) => {
+  // ── Auth check ──────────────────────────────────────────────
+  const authHeader = req.headers.get("x-admin-secret");
+  if (authHeader !== ADMIN_SECRET) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized: invalid or missing admin secret" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  try {
+    const body = await req.json();
+    const { action, ...payload } = body;
+
+    switch (action) {
+      case "list":
+        return await handleList(supabase, payload);
+      case "approve":
+        return await handleApprove(supabase, payload);
+      case "reject":
+        return await handleStatusUpdate(supabase, payload, "rejected");
+      case "mark_revision":
+        return await handleStatusUpdate(supabase, payload, "needs_revision");
+      case "delete":
+        return await handleDelete(supabase, payload);
+      case "bulk_delete":
+        return await handleBulkDelete(supabase, payload);
+      default:
+        return jsonResponse({ error: `Unknown action: ${action}` }, 400);
+    }
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Internal server error";
+    console.error("[onboarding-admin] Error:", message);
+    return jsonResponse({ error: message }, 500);
+  }
+});
+
+// ── Response helper ───────────────────────────────────────────
+function jsonResponse(data: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+// ── 1. List applications ──────────────────────────────────────
+async function handleList(
+  supabase: ReturnType<typeof createClient>,
+  payload: Record<string, unknown>
+) {
+  const { data, error } = await supabase
+    .from("employee_onboarding_applications")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[onboarding-admin] list error:", error);
+    return jsonResponse({ error: error.message }, 500);
+  }
+
+  return jsonResponse({ data });
+}
+
+// ── 2. Approve application ────────────────────────────────────
+async function handleApprove(
+  supabase: ReturnType<typeof createClient>,
+  payload: Record<string, unknown>
+) {
+  const {
+    applicationId,
+    username,
+    password,
+    name,
+    roleId,
+    homePin,
+    requiresPinChange,
+    slug,
+    receiveReportEmails,
+    onboardingApplicationId,
+    reviewNotes,
+    authUserId,
+  } = payload as Record<string, unknown>;
+
+  if (!applicationId || !username || !name || !roleId) {
+    return jsonResponse(
+      { error: "Data tidak lengkap: applicationId, username, name, roleId wajib" },
+      400
+    );
+  }
+
+  // Check if already approved
+  const { data: app, error: appError } = await supabase
+    .from("employee_onboarding_applications")
+    .select("id, status, approved_user_source_id")
+    .eq("id", String(applicationId))
+    .maybeSingle();
+
+  if (appError) return jsonResponse({ error: appError.message }, 500);
+  if (!app) return jsonResponse({ error: "Pendaftaran tidak ditemukan" }, 404);
+  if (app.status === "approved" || app.approved_user_source_id) {
+    return jsonResponse({ error: "Pendaftaran ini sudah disetujui" }, 409);
+  }
+
+  // Generate source ID for new user
+  const sourceId = `user_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
+
+  // Hash home PIN if provided
+  let homePinFingerprint: string | null = null;
+  if (homePin && typeof homePin === "string" && /^\d{6}$/.test(homePin)) {
+    const hashBuffer = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(homePin)
+    );
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    homePinFingerprint = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  // Build raw JSON for user
+  const raw: Record<string, unknown> = {
+    ...(payload.raw as Record<string, unknown> ?? {}),
+    password,
+    requiresPinChange: Boolean(requiresPinChange),
+    onboardingApplicationId,
+  };
+
+  // Create user
+  const { error: createUserError } = await supabase.from("yumi_users").insert({
+    source_id: sourceId,
+    username: String(username).toLowerCase().trim(),
+    name: String(name).trim(),
+    role_source_id: String(roleId),
+    is_active: true,
+    receive_report_emails: Boolean(receiveReportEmails ?? false),
+    auth_user_id: authUserId ? String(authUserId) : null,
+    slug: slug && String(slug).trim() !== "" ? String(slug).trim() : String(username).toLowerCase().split("@")[0],
+    home_pin_fingerprint: homePinFingerprint,
+    raw,
+  });
+
+  if (createUserError) {
+    console.error("[onboarding-admin] createUser error:", createUserError);
+    return jsonResponse({ error: `Gagal buat user: ${createUserError.message}` }, 500);
+  }
+
+  // Update employment startDate to today
+  const approvalStartDate = new Date().toISOString().slice(0, 10);
+  const employment = {
+    ...((payload.employment as Record<string, unknown>) ?? {}),
+    startDate: approvalStartDate,
+  };
+
+  // Update application: approve + link user
+  const { error: updateAppError } = await supabase
+    .from("employee_onboarding_applications")
+    .update({
+      status: "approved",
+      approved_user_source_id: sourceId,
+      employment,
+      review_notes: reviewNotes ? String(reviewNotes) : null,
+      reviewed_by: payload.reviewed_by ? String(payload.reviewed_by) : "admin",
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", String(applicationId));
+
+  if (updateAppError) {
+    console.error("[onboarding-admin] updateApp error:", updateAppError);
+    return jsonResponse({ error: updateAppError.message }, 500);
+  }
+
+  return jsonResponse({
+    success: true,
+    sourceId,
+    message: "Pendaftaran disetujui & user dibuat",
+  });
+}
+
+// ── 3. Reject / mark needs_revision ───────────────────────────
+async function handleStatusUpdate(
+  supabase: ReturnType<typeof createClient>,
+  payload: Record<string, unknown>,
+  status: "rejected" | "needs_revision"
+) {
+  const { id, reviewNotes, reviewedBy } = payload as Record<string, unknown>;
+
+  if (!id) {
+    return jsonResponse({ error: "id wajib diisi" }, 400);
+  }
+
+  const { error } = await supabase
+    .from("employee_onboarding_applications")
+    .update({
+      status,
+      review_notes: reviewNotes ? String(reviewNotes) : null,
+      reviewed_by: reviewedBy ? String(reviewedBy) : "admin",
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", String(id));
+
+  if (error) {
+    console.error(`[onboarding-admin] update ${status} error:`, error);
+    return jsonResponse({ error: error.message }, 500);
+  }
+
+  return jsonResponse({ success: true, message: `Status diubah ke ${status}` });
+}
+
+// ── 4. Delete single application ──────────────────────────────
+async function handleDelete(
+  supabase: ReturnType<typeof createClient>,
+  payload: Record<string, unknown>
+) {
+  const { id } = payload as Record<string, unknown>;
+
+  if (!id) {
+    return jsonResponse({ error: "id wajib diisi" }, 400);
+  }
+
+  // Don't allow deleting approved applications
+  const { data: app, error: checkError } = await supabase
+    .from("employee_onboarding_applications")
+    .select("status, approved_user_source_id")
+    .eq("id", String(id))
+    .maybeSingle();
+
+  if (checkError) return jsonResponse({ error: checkError.message }, 500);
+  if (!app) return jsonResponse({ error: "Pendaftaran tidak ditemukan" }, 404);
+  if (app.status === "approved" && app.approved_user_source_id) {
+    return jsonResponse({ error: "Tidak bisa menghapus pendaftaran yang sudah disetujui" }, 403);
+  }
+
+  const { error } = await supabase
+    .from("employee_onboarding_applications")
+    .delete()
+    .eq("id", String(id));
+
+  if (error) {
+    console.error("[onboarding-admin] delete error:", error);
+    return jsonResponse({ error: error.message }, 500);
+  }
+
+  return jsonResponse({ success: true, message: "Pendaftaran dihapus" });
+}
+
+// ── 5. Bulk delete applications ───────────────────────────────
+async function handleBulkDelete(
+  supabase: ReturnType<typeof createClient>,
+  payload: Record<string, unknown>
+) {
+  const { ids } = payload as { ids?: string[] };
+
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return jsonResponse({ error: "ids array wajib diisi" }, 400);
+  }
+
+  // Only allow deleting non-approved applications
+  const { data: apps, error: checkError } = await supabase
+    .from("employee_onboarding_applications")
+    .select("id, status, approved_user_source_id")
+    .in("id", ids);
+
+  if (checkError) return jsonResponse({ error: checkError.message }, 500);
+
+  const approvedIds = (apps ?? [])
+    .filter((a: any) => a.status === "approved" && a.approved_user_source_id)
+    .map((a: any) => a.id);
+
+  if (approvedIds.length > 0) {
+    return jsonResponse({
+      error: `${approvedIds.length} pendaftaran sudah disetujui dan tidak bisa dihapus`,
+      approvedIds,
+    }, 403);
+  }
+
+  const { error } = await supabase
+    .from("employee_onboarding_applications")
+    .delete()
+    .in("id", ids);
+
+  if (error) {
+    console.error("[onboarding-admin] bulk delete error:", error);
+    return jsonResponse({ error: error.message }, 500);
+  }
+
+  return jsonResponse({ success: true, message: `${ids.length} pendaftaran dihapus` });
+}

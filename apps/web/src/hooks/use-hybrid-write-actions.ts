@@ -2729,6 +2729,15 @@ export function useHybridUpdateOrder() {
 				if (args.status !== undefined) {
 					updates.status = args.status ?? null;
 				}
+				if (args.notes !== undefined) {
+					updates.notes = args.notes ?? null;
+				}
+				if (args.orderType !== undefined) {
+					updates.order_type = args.orderType ?? null;
+				}
+				if (args.tableNumber !== undefined) {
+					updates.table_number = args.tableNumber ?? null;
+				}
 
 				if (Object.keys(updates).length === 0) {
 					return;
@@ -5084,12 +5093,23 @@ export function useHybridUpdateSiteSettings() {
 					.maybeSingle();
 				if (existingError) throw existingError;
 
-				const payload: any = {
-					raw: {
-						...(existing?.raw ?? {}),
-						...(args ?? {}),
-					},
-				};
+			const payload: any = {
+				raw: {
+					...(existing?.raw ?? {}),
+					...(args ?? {}),
+				},
+			};
+
+			// Preserve existing image URLs if the new value is empty
+			const existingRaw = existing?.raw as Record<string, unknown> | undefined;
+			if (existingRaw) {
+				const imageFields = ["receiptLogo", "qrisImage", "paymentPopupImage", "headerLogoUrl", "faviconUrl", "pwaIcon192Url", "pwaIcon512Url", "seoShareImageUrl"];
+				for (const field of imageFields) {
+					if (!payload.raw[field] && existingRaw[field]) {
+						payload.raw[field] = existingRaw[field];
+					}
+				}
+			}
 
 				if (args?.storeName !== undefined) payload.store_name = args.storeName;
 				if (args?.storeAddress !== undefined) payload.store_address = args.storeAddress;
@@ -5279,7 +5299,7 @@ export function useHybridCreateUser() {
 					args?.slug !== undefined && String(args.slug).trim() !== ""
 						? String(args.slug).trim()
 						: username.split("@")[0];
-				const { password: _password, homePin: _rawHomePin, ...safeRawArgs } = args ?? {};
+				const { homePin: _rawHomePin, ...safeRawArgs } = args ?? {};
 				const raw = {
 					...safeRawArgs,
 					requiresPinChange: Boolean(args?.requiresPinChange),

@@ -14,7 +14,7 @@ import { ContractPreview } from "@/components/employee-onboarding/contract-previ
 import { createClient } from "@/lib/client";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
-import { useHybridCreateUser, useHybridUpdateEmployeeApplicationStatus } from "@/hooks/use-employee-onboarding-actions";
+import { useHybridApproveApplication, useHybridRejectApplication, useHybridMarkRevision, useHybridDeleteApplication, useHybridBulkDeleteApplications } from "@/hooks/use-employee-onboarding-actions";
 import { calculateEstimatedMonthlySalary } from "@/lib/employee-onboarding-schema";
 import { formatOnboardingCurrency, generateSixDigitPin, normalizeEmployeeOnboardingSettings, calculateProbationEndDate } from "@/lib/employee-onboarding-settings";
 import { jsPDF } from "jspdf";
@@ -37,8 +37,11 @@ export function AdminOnboardingPage() {
 	const onboardingSettings = useMemo(() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding), [siteSettings?.employeeOnboarding]);
 	const companyDisplayName = String(siteSettings?.companyName || siteSettings?.businessName || siteSettings?.storeName || siteSettings?.name || onboardingSettings.signatoryName || "Djiwa Tentram").trim();
 	const signatoryPersonName = onboardingSettings.signatoryPersonName || onboardingSettings.signatoryName;
-	const createUser = useHybridCreateUser();
-	const updateStatus = useHybridUpdateEmployeeApplicationStatus();
+	const approveApp = useHybridApproveApplication();
+	const rejectApp = useHybridRejectApplication();
+	const markRevision = useHybridMarkRevision();
+	const deleteApp = useHybridDeleteApplication();
+	const bulkDeleteApps = useHybridBulkDeleteApplications();
 
 	useEffect(() => {
 		const supabase = createClient();
@@ -105,9 +108,7 @@ export function AdminOnboardingPage() {
 		if (!window.confirm(`Hapus pendaftaran "${name}"? Aksi ini tidak bisa dibatalkan.`)) return;
 		setIsDeleting(true);
 		try {
-			const supabase = createClient();
-			const { error } = await supabase.from("employee_onboarding_applications").delete().eq("id", id);
-			if (error) throw error;
+			await deleteApp(id);
 			setApplications((prev) => prev.filter((a) => String(a.id) !== id));
 			setSelectedIds((prev) => {
 				const next = new Set(prev);
@@ -127,10 +128,8 @@ export function AdminOnboardingPage() {
 		if (!window.confirm(`Hapus ${selectedIds.size} pendaftaran terpilih? Aksi ini tidak bisa dibatalkan.`)) return;
 		setIsDeleting(true);
 		try {
-			const supabase = createClient();
 			const ids = Array.from(selectedIds);
-			const { error } = await supabase.from("employee_onboarding_applications").delete().in("id", ids);
-			if (error) throw error;
+			await bulkDeleteApps(ids);
 			setApplications((prev) => prev.filter((a) => !selectedIds.has(String(a.id))));
 			toast.success(`${selectedIds.size} pendaftaran dihapus`);
 			setSelectedIds(new Set());
@@ -231,7 +230,8 @@ export function AdminOnboardingPage() {
 		try {
 			const approvalStartDate = new Date().toISOString().slice(0, 10);
 			const employment = { ...(app.employment ?? {}), startDate: approvalStartDate };
-			const createdUserId = await createUser({
+			await approveApp({
+				applicationId: app.id,
 				username: employment.username || app.email || `${app.id}@djiwatentram.local`,
 				password,
 				name: app.full_name,
@@ -241,13 +241,9 @@ export function AdminOnboardingPage() {
 				slug: employment.slug,
 				receiveReportEmails: false,
 				onboardingApplicationId: app.id,
+				reviewNotes: notes || undefined,
+				employment,
 			});
-			const { error: employmentError } = await createClient()
-				.from("employee_onboarding_applications")
-				.update({ employment })
-				.eq("id", app.id);
-			if (employmentError) throw employmentError;
-			await updateStatus({ id: app.id, status: "approved", approvedUserSourceId: createdUserId, reviewNotes: notes });
 			toast.success("Pendaftaran disetujui & user dibuat"); triggerHybridRefresh();
 			closeDialog();
 		} catch (e: any) { toast.error(e?.message || "Gagal approve"); }
@@ -257,7 +253,11 @@ export function AdminOnboardingPage() {
 	async function markStatus(app: any, s: "rejected" | "needs_revision") {
 		setIsSaving(true);
 		try {
-			await updateStatus({ id: app.id, status: s, reviewNotes: notes });
+			if (s === "rejected") {
+				await rejectApp({ id: app.id, reviewNotes: notes || undefined });
+			} else {
+				await markRevision({ id: app.id, reviewNotes: notes || undefined });
+			}
 			toast.success(s === "rejected" ? "Pendaftaran ditolak" : "Ditandai perlu revisi");
 			closeDialog();
 		} catch (e: any) { toast.error(e?.message || "Gagal update status"); }
