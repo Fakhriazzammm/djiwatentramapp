@@ -3220,7 +3220,16 @@ function MixedRecipesTab() {
 										</span>
 									</td>
 									<td className="px-3 py-2">
-										{hpp ? `HPP ${Math.round(hpp.hppPerServing).toLocaleString("id-ID")} | Margin ${hpp.marginPercent.toFixed(0)}%` : "-"}
+										{hpp ? (
+											<Link
+												className="text-primary underline hover:text-primary/80"
+												to={`/admin/recipe/hpp?productId=${product._id}` as any}
+											>
+												HPP {Math.round(hpp.hppPerServing).toLocaleString("id-ID")} | Margin {hpp.marginPercent.toFixed(0)}%
+											</Link>
+										) : (
+											<span className="text-muted-foreground">-</span>
+										)}
 									</td>
 								</tr>
 							);

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { Doc, Id } from "@/types/backend-compat";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -392,10 +392,22 @@ function UnitSelectCell({
 
 export function RecipeHppPage() {
 	const navigate = useNavigate();
+	const search = useSearch({ from: "/admin/recipe/hpp" }) as { productId?: string };
 	const products = useHybridAllProducts() as ProductItem[] | undefined;
 	const inventory = useHybridInventory() as InventoryItem[] | undefined;
 	const inventoryCosts = useHybridLatestInventoryCosts();
 	const recipes = useHybridRecipes();
+
+	// Loading state
+	const loading = !products || !inventory || !recipes;
+	const emptyProductList = products && products.length === 0;
+
+	// Auto-select product from query param
+	useEffect(() => {
+		if (search?.productId && products && !selectedProductId) {
+			setSelectedProductId(search.productId);
+		}
+	}, [search?.productId, products]);
 
 	const createHpp = useHybridCreateHppCalculation();
 	const updateHpp = useHybridUpdateHppCalculation();
@@ -826,17 +838,49 @@ export function RecipeHppPage() {
 				</CardContent>
 			</Card>
 
-			{/* ── Empty State ── */}
+			{/* ── Loading / Empty State ── */}
 			{!selectedProduct && (
 				<Card className="border-dashed">
 					<CardContent className="flex flex-col items-center justify-center py-12">
-						<Calculator className="mb-3 h-10 w-10 text-muted-foreground/40" />
-						<p className="text-sm font-medium text-muted-foreground">
-							Pilih produk dulu untuk memulai perhitungan HPP
-						</p>
-						<p className="mt-1 text-xs text-muted-foreground/60">
-							Gunakan pencarian di atas untuk memilih menu
-						</p>
+						{loading ? (
+							<>
+								<div className="mb-3 flex flex-col items-center gap-2">
+									<Skeleton className="h-10 w-10 rounded-full" />
+									<Skeleton className="h-4 w-48" />
+									<Skeleton className="h-3 w-32" />
+								</div>
+								<p className="text-xs text-muted-foreground/50">Memuat data...</p>
+							</>
+						) : emptyProductList ? (
+							<>
+								<Package className="mb-3 h-10 w-10 text-muted-foreground/40" />
+								<p className="text-sm font-medium text-muted-foreground">
+									Belum ada produk
+								</p>
+								<p className="mt-1 text-xs text-muted-foreground/60">
+									Tambahkan produk dulu di halaman Produk
+								</p>
+								<Button
+									variant="outline"
+									size="sm"
+									className="mt-4 h-8 text-xs"
+									onClick={() => navigate({ to: "/admin/products" as any })}
+								>
+									<Package className="mr-1 h-3.5 w-3.5" />
+									Buka Produk
+								</Button>
+							</>
+						) : (
+							<>
+								<Calculator className="mb-3 h-10 w-10 text-muted-foreground/40" />
+								<p className="text-sm font-medium text-muted-foreground">
+									Pilih produk dulu untuk memulai perhitungan HPP
+								</p>
+								<p className="mt-1 text-xs text-muted-foreground/60">
+									Gunakan pencarian di atas untuk memilih menu
+								</p>
+							</>
+						)}
 					</CardContent>
 				</Card>
 			)}
