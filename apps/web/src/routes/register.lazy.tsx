@@ -127,6 +127,7 @@ function RegisterPage() {
 		} catch { return initialDraft; }
 	});
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [cvFile, setCvFile] = useState<File | null>(null);
 
 	/* persist draft */
 	useEffect(() => { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); }, [draft]);
@@ -233,6 +234,17 @@ function RegisterPage() {
 				return;
 			}
 			const appKey = crypto.randomUUID();
+			let cvUrl: string | null = null;
+			if (cvFile) {
+				try {
+					const ext = cvFile.name.split(".").pop() || "pdf";
+					const contentType = cvFile.type || "application/pdf";
+					cvUrl = await uploadFile({ file: cvFile, contentType, fileName: `${appKey}-cv.${ext}`, folder: "employee-contracts/cvs" });
+				} catch (e) {
+					console.warn("CV upload failed", e);
+					toast.warning("Gagal mengupload CV, pendaftaran tetap dilanjutkan");
+				}
+			}
 			const sigBlob = await dataUrlToBlob(draft.signatureDataUrl || "");
 			const signatureUrl = await uploadFile({ file: sigBlob, contentType: "image/png", fileName: `${appKey}-signature.png`, folder: "employee-contracts/signatures" });
 			let contractPdfUrl: string | null = null;
@@ -243,7 +255,7 @@ function RegisterPage() {
 				console.warn("PDF gen failed", e);
 				toast.warning("Gagal generate PDF kontrak, pendaftaran tetap dilanjutkan tanpa PDF");
 			}
-			const payload = buildEmployeeOnboardingPayload(finalDraft, { signatureUrl, contractPdfUrl });
+			const payload = buildEmployeeOnboardingPayload(finalDraft, { signatureUrl, contractPdfUrl, cvUrl });
 			const uniqueCode = crypto.randomUUID().slice(0, 8).toUpperCase().replace(/-/g, "");
 			const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 			const registrationNumber = `${username.toUpperCase()}-${uniqueCode}-${dateStr}`;
@@ -343,6 +355,51 @@ function RegisterPage() {
 							<Field label="Kontak darurat"><Input value={draft.personal.emergencyContactName} onChange={(e) => updatePersonal("emergencyContactName", e.target.value)} placeholder="Nama kontak darurat" /></Field>
 							<Field label="No kontak darurat"><Input value={draft.personal.emergencyContactPhone} onChange={(e) => updatePersonal("emergencyContactPhone", e.target.value)} /></Field>
 							<Field className="md:col-span-2" label="Alamat"><Textarea value={draft.personal.address} onChange={(e) => updatePersonal("address", e.target.value)} /></Field>
+							{/* Upload CV */}
+							<div className="md:col-span-2 space-y-1.5 sm:space-y-2">
+								<Label className="text-xs sm:text-sm">Upload CV / Resume</Label>
+								<div className="flex items-center gap-3">
+									<input
+										type="file"
+										accept=".pdf,.png,.jpg,.jpeg,.webp"
+										className="hidden"
+										id="cv-upload"
+										onChange={(e) => {
+											const file = e.target.files?.[0];
+											if (file) setCvFile(file);
+										}}
+									/>
+									<Button
+										type="button"
+										size="sm"
+										variant="outline"
+										onClick={() => document.getElementById("cv-upload")?.click()}
+									>
+										{cvFile ? "Ganti CV" : "Pilih File CV"}
+									</Button>
+									{cvFile && (
+										<>
+											<span className="text-xs text-muted-foreground truncate max-w-[200px]">
+												{cvFile.name}
+											</span>
+											<Button
+												type="button"
+												size="icon"
+												variant="ghost"
+												className="h-6 w-6 text-destructive"
+												onClick={() => setCvFile(null)}
+											>
+												<XCircle className="h-4 w-4" />
+											</Button>
+										</>
+									)}
+									{!cvFile && (
+										<span className="text-xs text-muted-foreground">
+											Opsional. Format: PDF, PNG, JPG (max 5MB)
+										</span>
+									)}
+								</div>
+							</div>
 						</CardContent>
 					</Card>
 				)}

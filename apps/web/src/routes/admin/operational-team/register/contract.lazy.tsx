@@ -21,7 +21,7 @@ import {
 import { ContractPreview } from "@/components/employee-onboarding/contract-preview";
 import { useHybridSiteSettings, useHybridStaffRoles, triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridUpdateSiteSettings } from "@/hooks/use-hybrid-write-actions";
-import { compressFileToLimit, isOversized } from "@/lib/image-compress";
+import { compressFileToLimit, dataURLtoBlob, isOversized } from "@/lib/image-compress";
 import { createClient } from "@/lib/client";
 import {
 	buildEmployeeContractTemplate,
@@ -398,11 +398,11 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 		}
 		setIsUploadingSig(true);
 		try {
-			const compressed = await compressFileToLimit(file);
-			const blob = await fetch(compressed).then((r) => r.blob());
-			const ext = file.name.split(".").pop() || "png";
+			const compressedDataUrl = await compressFileToLimit(file);
+			const blob = dataURLtoBlob(compressedDataUrl);
+			const ext = blob.type === "image/jpeg" ? "jpg" : blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "png";
 			const path = `company/signatures/signature-${Date.now()}.${ext}`;
-			const { data, error } = await createClient().storage.from("employee-contracts").upload(path, blob, { upsert: true });
+			const { data, error } = await createClient().storage.from("employee-contracts").upload(path, blob, { contentType: blob.type, upsert: true });
 			if (error) throw error;
 			const { data: urlData } = createClient().storage.from("employee-contracts").getPublicUrl(data.path);
 			setSignatorySigUrlLocal(urlData.publicUrl);

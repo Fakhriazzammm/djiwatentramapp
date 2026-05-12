@@ -317,6 +317,19 @@ function ApplicationDetailPage() {
 							<div className="col-span-2">
 								<InfoRow label="Alamat" value={app.address || "-"} />
 							</div>
+							{app.cv_url && (
+								<div className="col-span-2 mt-1">
+									<a
+										href={app.cv_url}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+									>
+										<Eye className="h-3.5 w-3.5" />
+										Lihat CV
+									</a>
+								</div>
+							)}
 						</div>
 					</div>
 
