@@ -2023,7 +2023,7 @@ export function useHybridTransactionCosts(inventoryIds: string[]) {
 		(async () => {
 			const supabase = createClient();
 			const { data, error } = await supabase
-				.from("financialTransactions")
+				.from("pos_financial_transactions")
 				.select("inventoryId, amount, createdAt")
 				.in("inventoryId", validIds)
 				.eq("type", "expense")
