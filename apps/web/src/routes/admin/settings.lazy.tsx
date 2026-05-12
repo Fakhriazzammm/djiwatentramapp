@@ -112,6 +112,15 @@ type OrderType = {
 	sortOrder: number;
 };
 
+type Platform = {
+	id: string;
+	name: string;
+	icon?: string;
+	commissionRate: number;
+	isActive: boolean;
+	sortOrder: number;
+};
+
 function buildShiftSchedules(
 	predefinedShifts: string[],
 	existingSchedules: ShiftSchedule[] = []
@@ -661,6 +670,7 @@ export function SettingsPage({
 		attendanceRadius: 50,
 		// Order Types
 		orderTypes: [] as OrderType[],
+		platforms: [] as Platform[],
 	});
 
 	const [isConnected, setIsConnected] = useState(false);
@@ -1008,6 +1018,7 @@ export function SettingsPage({
 				attendanceLng: siteSettings.attendanceLng ?? 106.816666,
 				attendanceRadius: siteSettings.attendanceRadius ?? 50,
 				orderTypes: siteSettings.orderTypes ?? [],
+				platforms: siteSettings.platforms ?? [],
 			}));
 			setPaymentSettings({
 				mayarEnabled: siteSettings.mayarEnabled ?? false,
@@ -1132,6 +1143,8 @@ export function SettingsPage({
 				serviceChargeRate: settings.serviceChargeRate,
 				// Order Types
 				orderTypes: settings.orderTypes,
+				// Platforms
+				platforms: settings.platforms,
 				// Receipt Customization
 				receiptLogo: settings.receiptLogo,
 				receiptHeader: settings.receiptHeader,
@@ -3507,10 +3520,115 @@ export function SettingsPage({
 											<Plus className="mr-2 h-4 w-4" />
 											Tambah Tipe Pesanan
 										</Button>
-									</div>
+								</div>
+							</div>
+
+							{/* Platforms Configuration */}
+							<div className="space-y-4 pt-4 border-t border-border/50">
+								<div className="space-y-1.5">
+									<label className="block font-medium text-muted-foreground text-xs uppercase tracking-widest">
+										Platform Online
+									</label>
+									<p className="text-muted-foreground text-xs">
+										Platform ojol yang tersedia untuk tipe Online (GoFood, GrabFood, dll).
+									</p>
 								</div>
 
-								{/* QRIS Statis Image Upload */}
+								<div className="space-y-3">
+									{settings.platforms?.map((platform, index) => (
+										<div
+											key={platform.id}
+											className="flex items-center gap-3 rounded-lg border border-border/50 bg-background p-3 shadow-sm"
+										>
+											<div className="flex items-center gap-2 flex-1">
+												<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600">
+													<Bike className="h-4 w-4" />
+												</div>
+												<div className="flex-1">
+													<input
+														className="w-full bg-transparent font-bold text-foreground text-sm outline-none focus:ring-1 focus:ring-primary/20"
+														onChange={(e) => {
+															const newPlatforms = [...(settings.platforms || [])];
+															newPlatforms[index] = { ...newPlatforms[index], name: e.target.value };
+															setSettings({ ...settings, platforms: newPlatforms });
+														}}
+														value={platform.name}
+													/>
+												</div>
+											</div>
+
+											<div className="flex items-center gap-2">
+												<input
+													className="w-20 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs font-bold text-foreground text-right outline-none transition-all focus:border-primary/50"
+													onChange={(e) => {
+														const val = Number(e.target.value);
+														const newPlatforms = [...(settings.platforms || [])];
+														newPlatforms[index] = { ...newPlatforms[index], commissionRate: isNaN(val) ? 0 : val / 100 };
+														setSettings({ ...settings, platforms: newPlatforms });
+													}}
+													placeholder="20"
+													type="number"
+													value={Math.round(platform.commissionRate * 100)}
+												/>
+												<span className="text-[10px] font-bold text-muted-foreground">%</span>
+												<button
+													className={`relative h-5 w-9 rounded-full transition-all duration-300 ${platform.isActive ? "bg-primary" : "bg-input"}`}
+													onClick={() => {
+														const newPlatforms = [...(settings.platforms || [])];
+														newPlatforms[index] = { ...newPlatforms[index], isActive: !newPlatforms[index].isActive };
+														setSettings({ ...settings, platforms: newPlatforms });
+													}}
+													title="Aktifkan/Nonaktifkan"
+													type="button"
+												>
+													<div
+														className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 ${platform.isActive ? "right-0.5" : "left-0.5"}`}
+													/>
+												</button>
+												<button
+													className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+													onClick={() => {
+														if (settings.platforms && settings.platforms.length > 1) {
+															const newPlatforms = settings.platforms.filter((_, i) => i !== index);
+															setSettings({ ...settings, platforms: newPlatforms });
+														} else {
+															toast.error("Minimal harus ada satu platform");
+														}
+													}}
+													title="Hapus"
+													type="button"
+												>
+													<Trash2 className="h-3.5 w-3.5" />
+												</button>
+											</div>
+										</div>
+									))}
+
+									<Button
+										className="w-full border-dashed border-2"
+										onClick={() => {
+											const newPlatform = {
+												id: `platform_${Date.now()}`,
+												name: "Platform Baru",
+												icon: "Bike",
+												commissionRate: 0,
+												isActive: true,
+												sortOrder: (settings.platforms?.length || 0) + 1,
+											};
+											setSettings({
+												...settings,
+												platforms: [...(settings.platforms || []), newPlatform],
+											});
+										}}
+										variant="outline"
+									>
+										<Plus className="mr-2 h-4 w-4" />
+										Tambah Platform
+									</Button>
+								</div>
+							</div>
+
+							{/* QRIS Statis Image Upload */}
 								<div className="space-y-4 pt-4 border-t border-border/50">
 									<div className="space-y-1.5">
 										<label
