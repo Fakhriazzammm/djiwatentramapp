@@ -338,6 +338,7 @@ function IngredientEditor({
 	setIngredients,
 	latestInventoryCosts,
 	ensureInventoryItemForBaseRecipe,
+	sellingPrice,
 }: {
 	inventory: Doc<"inventory">[];
 	baseRecipes?: Doc<"baseRecipes">[];
@@ -347,6 +348,7 @@ function IngredientEditor({
 	ensureInventoryItemForBaseRecipe?: (args: {
 		baseRecipeId: Id<"baseRecipes">;
 	}) => Promise<{ inventoryId: Id<"inventory">; created: boolean }>;
+	sellingPrice?: number;
 }) {
 	const [ingredientQuery, setIngredientQuery] = useState("");
 
@@ -369,11 +371,15 @@ function IngredientEditor({
 	const totalEstimatedCost = useMemo(
 		() =>
 			ingredients.reduce((sum, ingredient) => {
-				const unitCost = latestInventoryCosts?.[String(ingredient.inventoryId)]?.latestCostPerUnit;
+				const costInfo = latestInventoryCosts?.[String(ingredient.inventoryId)];
+				const unitCost = costInfo?.latestCostPerUnit;
 				if (unitCost == null || unitCost <= 0) {
 					return sum;
 				}
-				return sum + unitCost * ingredient.amount;
+				// Normalize ke base unit (gram/ml) via conversionFactor
+				const cf = costInfo.conversionFactor;
+				const baseUnitCost = cf != null && cf > 0 ? unitCost / cf : unitCost;
+				return sum + baseUnitCost * ingredient.amount;
 			}, 0),
 		[ingredients, latestInventoryCosts]
 	);
@@ -510,21 +516,28 @@ function IngredientEditor({
 				</p>
 				{ingredients.map((ingredient, index) => {
 					const inv = inventory.find((item) => item._id === ingredient.inventoryId);
-					const latestCost =
-						latestInventoryCosts?.[String(ingredient.inventoryId)]?.latestCostPerUnit;
+					const costInfo = latestInventoryCosts?.[String(ingredient.inventoryId)];
+					const latestCost = costInfo?.latestCostPerUnit;
+					const conversionFactor = costInfo?.conversionFactor;
+					const displayUnit = costInfo?.displayUnit;
 					const fallbackCost =
 						typeof inv?.lastPurchasePrice === "number" && inv.lastPurchasePrice > 0
 							? inv.lastPurchasePrice
 							: undefined;
 					const unitCost = latestCost ?? fallbackCost;
-					const lineCost = unitCost != null ? unitCost * ingredient.amount : null;
+					// Normalize: latestCostPerUnit adalah per inventory unit (kg/L), konversi ke base unit (gram/ml)
+					const costPerBaseUnit =
+						unitCost != null && conversionFactor != null && conversionFactor > 0
+							? unitCost / conversionFactor
+							: unitCost;
+					const lineCost = costPerBaseUnit != null ? costPerBaseUnit * ingredient.amount : null;
 					return (
 						<div className="grid gap-2 rounded-xl border border-border bg-background p-3 md:grid-cols-[1fr_130px_70px]" key={`${ingredient.inventoryId}-${index}`}>
 							<div>
 								<p className={`font-semibold ${tableCellSingleLine()}`}>{inv?.ingredientName || "-"}</p>
 								<p className={`text-xs text-muted-foreground ${tableCellSingleLine()}`}>
 									{unitCost != null
-										? `${formatRupiah(Math.round(unitCost))}/${inv?.unit || "unit"} • ${formatRupiah(Math.round(lineCost ?? 0))}`
+										? <>{formatRupiah(Math.round(unitCost))}/{inv?.unit || "unit"}{conversionFactor != null && conversionFactor > 0 && displayUnit ? <> → {formatRupiah(Math.round(costPerBaseUnit ?? 0))}/{displayUnit}</> : ""} • {formatRupiah(Math.round(lineCost ?? 0))}</>
 										: "Harga bahan belum tersedia di inventory"}
 								</p>
 								<p className={`text-[11px] text-muted-foreground ${tableCellSingleLine()}`}>
@@ -572,6 +585,18 @@ function IngredientEditor({
 							{formatRupiah(Math.round(totalEstimatedCost))}
 						</span>{" "}
 						(dari harga terbaru inventory)
+					</div>
+				)}
+				{sellingPrice != null && sellingPrice > 0 && ingredients.length > 0 && totalEstimatedCost > 0 && (
+					<div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs">
+						<span className="text-emerald-800">
+							Harga Jual: <span className="font-semibold">{formatRupiah(Math.round(sellingPrice))}</span>
+							{" • "}Margin:{" "}
+							<span className={`font-semibold ${sellingPrice - totalEstimatedCost >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+								{formatRupiah(Math.round(sellingPrice - totalEstimatedCost))}
+							</span>
+							{" "}({((sellingPrice - totalEstimatedCost) / sellingPrice * 100).toFixed(0)}%)
+						</span>
 					</div>
 				)}
 			</div>
@@ -937,22 +962,44 @@ export function RecipeStudioPage() {
 								))}
 							</datalist>
 						</div>
-						<IngredientEditor
-							ingredients={productForm.ingredients}
-							inventory={inventory}
-							baseRecipes={baseRecipes}
-							ensureInventoryItemForBaseRecipe={ensureInventoryItemForBaseRecipe}
-							latestInventoryCosts={latestInventoryCosts}
-							setIngredients={(next) =>
-								setProductForm((current) => ({ ...current, ingredients: next }))
-							}
-						/>
-						<div className="flex justify-end gap-2">
-							<Button onClick={() => setProductModalOpen(false)} type="button" variant="outline">
-								Batal
-							</Button>
-							<Button type="submit">Simpan</Button>
-						</div>
+						{(() => {
+							const selectedProduct = products?.find((p) => String(p._id) === productForm.productId);
+							const modalSellingPrice = selectedProduct?.promoPrice ?? selectedProduct?.price ?? 0;
+							return (
+								<>
+								<IngredientEditor
+									ingredients={productForm.ingredients}
+									inventory={inventory}
+									baseRecipes={baseRecipes}
+									ensureInventoryItemForBaseRecipe={ensureInventoryItemForBaseRecipe}
+									latestInventoryCosts={latestInventoryCosts}
+									sellingPrice={modalSellingPrice}
+									setIngredients={(next) =>
+										setProductForm((current) => ({ ...current, ingredients: next }))
+									}
+								/>
+								<div className="flex items-center justify-between gap-2">
+									{productForm.productId && (
+										<Link
+											className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+											to="/admin/recipe/hpp"
+											search={{ productId: productForm.productId }}
+										>
+											<Calculator className="h-3.5 w-3.5" />
+											Buka Kalkulator HPP
+										</Link>
+									)}
+									<div className="flex-1" />
+									<div className="flex gap-2">
+										<Button onClick={() => setProductModalOpen(false)} type="button" variant="outline">
+											Batal
+										</Button>
+										<Button type="submit">Simpan</Button>
+									</div>
+								</div>
+								</>
+							);
+						})()}
 					</form>
 				</ModalScaffold>
 			)}

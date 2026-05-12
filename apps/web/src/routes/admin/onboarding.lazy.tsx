@@ -1,6 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Download, Eye, FileSignature, Loader2, ShieldCheck, Trash2, XCircle, PlusCircle, PencilLine, UserPlus, RefreshCw } from "lucide-react";
+import { CheckCircle2, Download, Eye, FileSignature, FileText, Loader2, PencilLine, PlusCircle, ShieldCheck, Trash2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -358,15 +358,14 @@ export function AdminOnboardingPage() {
 												<Checkbox checked={allSelected} data-state={someSelected ? "indeterminate" : undefined} onCheckedChange={toggleSelectAll} />
 											</th>
 											<th className="p-3">Nama</th>
-											<th className="p-3">Role</th>
 											<th className="p-3 hidden md:table-cell">Kontak</th>
 											<th className="p-3 hidden md:table-cell">Tanggal</th>
-												<th className="p-3">Status</th>
-												<th className="p-3 text-right w-40">
-													<span className="inline-flex items-center gap-2">
-														<span className="flex items-center gap-1 text-blue-600"><Eye className="h-4 w-4" /><span className="text-[11px] font-medium">Baca</span></span>
-														<span className="flex items-center gap-1 text-amber-600"><PencilLine className="h-4 w-4" /><span className="text-[11px] font-medium">Edit</span></span>
-														<span className="flex items-center gap-1 text-red-600"><Trash2 className="h-4 w-4" /><span className="text-[11px] font-medium">Hapus</span></span>
+											<th className="p-3">Status</th>
+												<th className="p-3 text-right">
+													<span className="inline-flex items-center gap-1.5">
+														<Eye className="h-3.5 w-3.5 text-blue-500" />
+														<PencilLine className="h-3.5 w-3.5 text-amber-500" />
+														<Trash2 className="h-3.5 w-3.5 text-red-500" />
 													</span>
 												</th>
 										</tr>
@@ -374,23 +373,26 @@ export function AdminOnboardingPage() {
 									<tbody className="divide-y">
 										{applications.map((app: any) => (
 											<tr key={app.id} className="hover:bg-muted/30">
-												<td className="p-3">
+												<td className="p-2 sm:p-3">
 													<Checkbox checked={selectedIds.has(String(app.id))} onCheckedChange={() => toggleSelect(String(app.id))} />
 												</td>
-												<td className="p-3 font-medium">{app.full_name}</td>
-												<td className="p-3">{app.employment?.roleName ?? "-"}</td>
-												<td className="p-3 hidden md:table-cell">{app.phone}<br /><span className="text-muted-foreground">{app.email}</span></td>
-												<td className="p-3 hidden md:table-cell text-xs">{new Date(app.created_at).toLocaleDateString("id-ID")}</td>
-												<td className="p-3"><Badge variant={STATUS_VARIANT[app.status] ?? "secondary"} className="text-xs">{app.status}</Badge></td>
-												<td className="p-3 text-right">
+												<td className="p-2 sm:p-3 font-medium">{app.full_name}
+													{app.employment?.roleName && <span className="block text-[11px] text-muted-foreground">{app.employment.roleName}</span>}
+												</td>
+												<td className="p-2 sm:p-3 hidden md:table-cell text-xs text-muted-foreground">{app.phone}
+													{app.email && <span className="block truncate">{app.email}</span>}
+												</td>
+												<td className="p-2 sm:p-3 hidden md:table-cell text-xs">{new Date(app.created_at).toLocaleDateString("id-ID")}</td>
+												<td className="p-2 sm:p-3"><Badge variant={STATUS_VARIANT[app.status] ?? "secondary"} className="text-[10px]">{app.status}</Badge></td>
+												<td className="p-2 sm:p-3 text-right">
 													<div className="flex items-center justify-end gap-1">
-														<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-9 min-w-[4.5rem] gap-1.5 px-3 text-xs font-medium" title="Lihat & Edit">
+														<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-9 min-w-[4.5rem] gap-1.5 px-2.5 text-xs font-medium" title="Lihat & Edit">
 															<Eye className="h-4 w-4 text-blue-500" />
-															<span>Review</span>
+															<span className="hidden sm:inline">Review</span>
 															<PencilLine className="h-4 w-4 text-amber-500" />
 														</Button>
 														<Button size="sm" variant="outline" className="h-9 w-9 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => deleteSingle(String(app.id), app.full_name)} disabled={isDeleting} title="Hapus">
-															<Trash2 className="h-4 w-4" />
+															<Trash2 className="h-5 w-5" />
 														</Button>
 													</div>
 												</td>
@@ -423,7 +425,7 @@ export function AdminOnboardingPage() {
 												<PencilLine className="h-4 w-4 text-amber-500" />
 											</Button>
 											<Button size="sm" variant="outline" className="h-10 w-10 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => deleteSingle(String(app.id), app.full_name)} disabled={isDeleting} title="Hapus">
-												<Trash2 className="h-4 w-4" />
+												<Trash2 className="h-5 w-5" />
 											</Button>
 										</div>
 									</div>
@@ -436,84 +438,140 @@ export function AdminOnboardingPage() {
 
 			{/* ---- review dialog ---- */}
 			<Dialog open={Boolean(selected)} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-				<DialogContent className="max-h-[90dvh] max-w-[calc(100vw-1rem)] overflow-y-auto sm:max-h-[90vh] sm:max-w-4xl">
+				<DialogContent className="max-h-[90dvh] max-w-[calc(100vw-1rem)] overflow-y-auto sm:max-h-[90vh] sm:max-w-5xl">
 					{selected && (
-						<div className="space-y-4 sm:space-y-5">
-							<div>
-								<DialogTitle className="text-base sm:text-lg">Review {selected.full_name}</DialogTitle>
-								<DialogDescription className="text-xs sm:text-sm">
-									Periksa data, kontrak, dan tanda tangan sebelum approve.
-								</DialogDescription>
+						<>
+							<DialogTitle className="flex items-center gap-2 pr-10 text-base sm:text-lg">
+								<UserPlus className="h-5 w-5 text-primary" />
+								<span>Review Pendaftaran</span>
+								<Badge variant={STATUS_VARIANT[selected.status] ?? "secondary"} className="ml-auto text-xs">
+									{selected.status}
+								</Badge>
+							</DialogTitle>
+							<DialogDescription className="text-xs sm:text-sm">
+								{selected.full_name} &middot; {selected.employment?.roleName || "-"}
+							</DialogDescription>
+
+							<div className="grid gap-4 md:grid-cols-[1fr_1.4fr] md:gap-6">
+								{/* ── LEFT: data + form ── */}
+								<div className="space-y-3">
+
+									{/* Data Diri — compact grid */}
+									<div className="rounded-lg border bg-card p-3 sm:p-4">
+										<h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+											<UserPlus className="h-3.5 w-3.5" /> Data Diri
+										</h4>
+										<div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+											<InfoRow label="HP" value={selected.phone} />
+											<InfoRow label="Email" value={selected.email || "-"} />
+											<InfoRow label="NIK" value={selected.identity_number || "-"} />
+											<InfoRow label="Tgl Lahir" value={selected.birth_date ? new Date(selected.birth_date).toLocaleDateString("id-ID") : "-"} />
+											<div className="col-span-2">
+												<InfoRow label="Alamat" value={selected.address || "-"} />
+											</div>
+										</div>
+									</div>
+
+									{/* Data Kerja — compact grid */}
+									<div className="rounded-lg border bg-card p-3 sm:p-4">
+										<h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+											<FileText className="h-3.5 w-3.5" /> Data Kerja
+										</h4>
+										<div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+											<InfoRow label="Role" value={selected.employment?.roleName} />
+											<InfoRow label="Tipe" value={selected.employment?.employmentType || "-"} />
+											<InfoRow label="Username" value={selected.employment?.username} />
+											<InfoRow label="Slug" value={selected.employment?.slug || "-"} />
+											<InfoRow label="Gaji Pokok" value={formatOnboardingCurrency(selected.employment?.monthlySalary)} />
+											<InfoRow label="T. Transport" value={formatOnboardingCurrency(selected.employment?.dailyAllowance)} />
+											<InfoRow label="Rate Shift" value={formatOnboardingCurrency(selected.employment?.shiftRate)} />
+											<InfoRow label="Estimasi/bln" value={formatOnboardingCurrency(
+												calculateEstimatedMonthlySalary(selected.employment ?? {})
+											)} highlight />
+											<InfoRow label="Durasi" value={
+												selected.employment?.contractDuration
+													? `${selected.employment.contractDuration} bulan`
+													: "-"
+											} />
+											<InfoRow label="Lokasi" value={selected.employment?.location || "Djiwa Tentram"} />
+										</div>
+									</div>
+
+									{/* Preview Akun + Form */}
+									{onboardingSettings.approvalPreview.enabled && (
+										<div className="rounded-lg border border-primary/30 bg-primary/5 p-3 sm:p-4">
+											<h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-primary uppercase tracking-wider">
+												<ShieldCheck className="h-3.5 w-3.5" /> Preview Akun
+											</h4>
+											<div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+												<InfoRow label="Nama" value={selected.full_name} />
+												<InfoRow label="Username" value={selected.employment?.username || selected.email || `${selected.id}@djiwatentram.local`} />
+												<InfoRow label="Slug" value={selected.employment?.slug || "-"} />
+												<InfoRow label="PIN" value={pin || "isi 6 digit"} />
+												<InfoRow label="Role" value={selected.employment?.roleName || "-"} />
+												<InfoRow label="Mulai" value="Tanggal approval" />
+											</div>
+										</div>
+									)}
+
+									{/* Form fields */}
+									<div className="rounded-lg border bg-card p-3 sm:p-4">
+										<h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+											<ShieldCheck className="h-3.5 w-3.5" /> Konfigurasi Akun
+										</h4>
+										<div className="space-y-2.5">
+											<div className="grid grid-cols-2 gap-2.5">
+												<Field label="Password awal">
+													<Input value={password} onChange={(e) => setPassword(e.target.value)} className="h-8 text-xs" />
+												</Field>
+												<Field label="PIN 6 digit">
+													<Input maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} className="h-8 text-xs" />
+												</Field>
+											</div>
+											<Field label="Catatan review">
+												<Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[60px] text-xs" placeholder="Tambahkan catatan untuk karyawan..." />
+											</Field>
+										</div>
+									</div>
+								</div>
+
+								{/* ── RIGHT: contract preview ── */}
+								<div className="flex flex-col gap-3">
+									<div className="flex items-center justify-between">
+										<h3 className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+											<FileSignature className="h-3.5 w-3.5" /> Kontrak Kerja
+										</h3>
+										<Button size="sm" variant="outline" onClick={downloadContractPdf} disabled={isDownloadingPdf} type="button" className="h-8 gap-1.5 px-3 text-xs font-medium">
+											{isDownloadingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+											Unduh PDF
+										</Button>
+									</div>
+									<div className="max-h-[420px] overflow-y-auto rounded-xl border bg-white shadow-sm md:max-h-[520px]">
+										<ContractPreview
+											contract={selected.contract}
+											employeeName={selected.full_name}
+											signatureDataUrl={selected.signature_url}
+											companyName={companyDisplayName}
+											signatoryName={signatoryPersonName}
+											signatorySignatureUrl={onboardingSettings.signatorySignatureUrl}
+										/>
+									</div>
+								</div>
 							</div>
 
-							<div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
-								<Card className="border">
-									<CardHeader className="pb-1 sm:pb-2"><CardTitle className="text-sm sm:text-base">Data Diri</CardTitle></CardHeader>
-									<CardContent className="space-y-1.5 text-xs sm:space-y-2 sm:text-sm">
-										<p><b>HP:</b> {selected.phone}</p>
-										<p><b>Email:</b> {selected.email || "-"}</p>
-										<p><b>NIK:</b> {selected.identity_number || "-"}</p>
-										<p><b>Alamat:</b> {selected.address || "-"}</p>
-									</CardContent>
-								</Card>
-								<Card className="border">
-									<CardHeader className="pb-1 sm:pb-2"><CardTitle className="text-sm sm:text-base">Data Kerja</CardTitle></CardHeader>
-									<CardContent className="space-y-1.5 text-xs sm:space-y-2 sm:text-sm">
-										<p><b>Role:</b> {selected.employment?.roleName}</p>
-										<p><b>Mulai:</b> Otomatis tanggal approval admin</p>
-										{selected.employment?.employmentType === "probation" && (
-											<p><b>Probation:</b> dihitung dari tanggal approval admin</p>
-										)}
-										<p><b>Username:</b> {selected.employment?.username}</p>
-										<p><b>PIN login:</b> Dibuat admin saat approval</p>
-										<p><b>Gaji:</b> {formatOnboardingCurrency(selected.employment?.monthlySalary)} {(() => {
-											const est = calculateEstimatedMonthlySalary(selected.employment ?? {});
-											const base = selected.employment?.monthlySalary ?? 0;
-											if (est > 0 && est !== base) {
-												return <span className="text-muted-foreground">(estimasi {formatOnboardingCurrency(est)}/bulan)</span>;
-											}
-											return null;
-										})()}</p>
-										<p><b>Tunjangan transportasi:</b> {formatOnboardingCurrency(selected.employment?.dailyAllowance)}</p>
-										<p><b>Rate shift:</b> {formatOnboardingCurrency(selected.employment?.shiftRate)}</p>
-										<p><b>Status:</b> {selected.raw?.pipelineStatus ?? "submitted"}</p>
-									</CardContent>
-								</Card>
-							</div>
-
-							{onboardingSettings.approvalPreview.enabled && (
-								<Card className="border-primary/30 bg-primary/5">
-									<CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><ShieldCheck className="h-4 w-4" />Preview Akun Sebelum Approve</CardTitle></CardHeader>
-									<CardContent className="grid gap-2 text-xs sm:grid-cols-2">
-										<p><b>Nama:</b> {selected.full_name}</p><p><b>Username:</b> {selected.employment?.username || selected.email || `${selected.id}@djiwatentram.local`}</p><p><b>Slug:</b> {selected.employment?.slug || "-"}</p><p><b>PIN:</b> {pin || "isi 6 digit"}</p><p><b>Role:</b> {selected.employment?.roleName || "-"}</p><p><b>Mulai:</b> tanggal approval admin</p>
-									</CardContent>
-								</Card>
-							)}
-							<div className="flex items-center justify-between">
-								<h3 className="text-sm font-semibold">Kontrak Kerja</h3>
-								<Button size="sm" variant="outline" onClick={downloadContractPdf} disabled={isDownloadingPdf} type="button" className="h-7 gap-1.5 text-xs">
-									{isDownloadingPdf ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-									PDF
+							{/* ── Action buttons ── */}
+							<div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end sm:gap-2">
+								<Button disabled={isSaving} size="sm" variant="outline" onClick={() => markStatus(selected, "needs_revision")} className="gap-1.5">
+									<FileText className="h-4 w-4" />Minta Revisi
+								</Button>
+								<Button disabled={isSaving} size="sm" variant="destructive" onClick={() => markStatus(selected, "rejected")} className="gap-1.5">
+									<XCircle className="h-4 w-4" />Tolak
+								</Button>
+								<Button disabled={isSaving || !pin || pin.length !== 6} size="sm" onClick={() => approveApplication(selected)} className="gap-1.5 sm:mr-auto">
+									<CheckCircle2 className="h-4 w-4" />Approve & Buat User
 								</Button>
 							</div>
-							<ContractPreview contract={selected.contract} employeeName={selected.full_name} signatureDataUrl={selected.signature_url} companyName={companyDisplayName} signatoryName={signatoryPersonName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
-
-							<div className="grid gap-3 sm:grid-cols-3">
-								<Field label="Password awal"><Input value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
-								<Field label="PIN 6 digit"><Input maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} /></Field>
-								<Field label="Catatan review" className="sm:col-span-3"><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
-							</div>
-
-							<div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-2">
-								<Button disabled={isSaving} size="sm" variant="outline" onClick={() => markStatus(selected, "needs_revision")}>Minta Revisi</Button>
-								<Button disabled={isSaving} size="sm" variant="destructive" onClick={() => markStatus(selected, "rejected")}>
-									<XCircle className="mr-1.5 h-4 w-4" />Tolak
-								</Button>
-								<Button disabled={isSaving || !pin || pin.length !== 6} size="sm" onClick={() => approveApplication(selected)} className="sm:order-first sm:mr-auto">
-									<CheckCircle2 className="mr-1.5 h-4 w-4" />Approve & Buat User
-								</Button>
-							</div>
-						</div>
+						</>
 					)}
 				</DialogContent>
 			</Dialog>
@@ -537,6 +595,16 @@ function Field({ label, children, className }: { label: string; children: React.
 		<div className={`space-y-1.5 sm:space-y-2 ${className ?? ""}`}>
 			<Label className="text-xs sm:text-sm">{label}</Label>
 			{children}
+		</div>
+	);
+}
+
+/* -------- info row helper -------- */
+function InfoRow({ label, value, highlight }: { label: string; value: React.ReactNode; highlight?: boolean }) {
+	return (
+		<div className="flex items-baseline justify-between gap-2">
+			<span className="text-muted-foreground whitespace-nowrap">{label}:</span>
+			<span className={`truncate text-right font-medium ${highlight ? "text-emerald-600" : "text-foreground"}`}>{value ?? "-"}</span>
 		</div>
 	);
 }
