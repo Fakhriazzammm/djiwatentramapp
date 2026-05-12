@@ -749,7 +749,7 @@ export class BluetoothPrinterService {
 				let detailLine = `  ${item.quantity} x ${formatReceiptCurrency(item.price)}`;
 				if (hasDiscount) {
 					const originalTotal = (item.originalPrice ?? item.price) * item.quantity;
-					detailLine += ` ~~ ${formatReceiptCurrency(originalTotal)}`;
+					detailLine += ` ~~${formatReceiptCurrency(originalTotal)}~~`;
 				}
 				result.line(detailLine);
 
