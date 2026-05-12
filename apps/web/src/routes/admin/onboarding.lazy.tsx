@@ -1,23 +1,16 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Download, Eye, FileSignature, FileText, Loader2, PencilLine, PlusCircle, ShieldCheck, Trash2, UserPlus, XCircle } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Eye, FileSignature, Loader2, PencilLine, PlusCircle, Trash2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { ContractPreview } from "@/components/employee-onboarding/contract-preview";
 import { createClient } from "@/lib/client";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
-import { useHybridApproveApplication, useHybridRejectApplication, useHybridMarkRevision, useHybridDeleteApplication, useHybridBulkDeleteApplications } from "@/hooks/use-employee-onboarding-actions";
-import { calculateEstimatedMonthlySalary } from "@/lib/employee-onboarding-schema";
-import { formatOnboardingCurrency, generateSixDigitPin, normalizeEmployeeOnboardingSettings, calculateProbationEndDate } from "@/lib/employee-onboarding-settings";
-import { jsPDF } from "jspdf";
+import { useHybridDeleteApplication, useHybridBulkDeleteApplications } from "@/hooks/use-employee-onboarding-actions";
+import { normalizeEmployeeOnboardingSettings } from "@/lib/employee-onboarding-settings";
 
 /* -------- helpers -------- */
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -35,11 +28,6 @@ export function AdminOnboardingPage() {
 	const [isDeleting, setIsDeleting] = useState(false);
 	const siteSettings = useHybridSiteSettings();
 	const onboardingSettings = useMemo(() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding), [siteSettings?.employeeOnboarding]);
-	const companyDisplayName = String(siteSettings?.companyName || siteSettings?.businessName || siteSettings?.storeName || siteSettings?.name || onboardingSettings.signatoryName || "Djiwa Tentram").trim();
-	const signatoryPersonName = onboardingSettings.signatoryPersonName || onboardingSettings.signatoryName;
-	const approveApp = useHybridApproveApplication();
-	const rejectApp = useHybridRejectApplication();
-	const markRevision = useHybridMarkRevision();
 	const deleteApp = useHybridDeleteApplication();
 	const bulkDeleteApps = useHybridBulkDeleteApplications();
 
@@ -140,76 +128,6 @@ export function AdminOnboardingPage() {
 		}
 	}
 
-	const [selected, setSelected] = useState<any | null>(null);
-	const [password, setPassword] = useState(onboardingSettings.defaultPassword);
-	const [pin, setPin] = useState("");
-	const [notes, setNotes] = useState("");
-	const [isSaving, setIsSaving] = useState(false);
-	const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
-	useEffect(() => { setPassword(onboardingSettings.defaultPassword); }, [onboardingSettings.defaultPassword]);
-
-	async function downloadContractPdf() {
-		if (!selected) return;
-		setIsDownloadingPdf(true);
-		try {
-			const pdf = new jsPDF("p", "mm", "a4");
-			const pw = pdf.internal.pageSize.getWidth();
-			const ph = pdf.internal.pageSize.getHeight();
-			const m = 15;
-			const uw = pw - m * 2;
-			let y = m;
-
-			function addWrappedText(text: string, fontSize = 10, style: "normal" | "bold" = "normal", align: "left" | "center" = "left") {
-				pdf.setFont("helvetica", style);
-				pdf.setFontSize(fontSize);
-				for (const ln of pdf.splitTextToSize(String(text || ""), uw) as string[]) {
-					if (y + fontSize * 0.45 > ph - m) { pdf.addPage(); y = m; }
-					pdf.text(ln, align === "center" ? pw / 2 : m, y, { align });
-					y += fontSize * 0.45 + 1.5;
-				}
-			}
-
-			addWrappedText(companyDisplayName, 10, "bold", "center");
-			addWrappedText(selected.contract?.title || "Perjanjian Kerja", 16, "bold", "center");
-			y += 2;
-			pdf.setDrawColor(180);
-			pdf.line(m, y, pw - m, y);
-			y += 6;
-
-			const bodyText = selected.contract?.plainText ||
-				(selected.contract?.clauses ?? []).map((c: any) => `${c.title}\n${c.body}`).join("\n\n");
-
-			for (const paragraph of String(bodyText || "").split(/\n+/)) {
-				const trimmed = paragraph.trim();
-				if (!trimmed) { y += 2; continue; }
-				addWrappedText(trimmed, 10);
-				y += 1;
-			}
-
-			if (y > ph - 55) { pdf.addPage(); y = m; }
-			y += 8;
-			const cw = uw / 2 - 6;
-			pdf.setFontSize(9);
-			pdf.setFont("helvetica", "normal");
-			pdf.text("Pihak Perusahaan", m, y);
-			pdf.text("Karyawan", m + cw + 12, y);
-			y += 28;
-			pdf.setDrawColor(180);
-			pdf.line(m, y, m + cw, y);
-			pdf.line(m + cw + 12, y, m + cw + 12 + cw, y);
-			y += 5;
-			pdf.setFont("helvetica", "bold");
-			pdf.setFontSize(10);
-			pdf.text(signatoryPersonName || companyDisplayName, m, y);
-			pdf.text(selected.full_name || "Karyawan", m + cw + 12, y);
-
-			const safeName = (selected.full_name || "kontrak").replace(/\s+/g, "-").toLowerCase();
-			pdf.save(`kontrak-${safeName}.pdf`);
-			toast.success("PDF kontrak berhasil diunduh");
-		} catch (e: any) { toast.error(e?.message || "Gagal mengunduh PDF"); }
-		finally { setIsDownloadingPdf(false); }
-	}
-
 	const stats = useMemo(
 		() => ({
 			pending: applications.filter((a: any) => a.status === "pending").length,
@@ -218,63 +136,6 @@ export function AdminOnboardingPage() {
 		}),
 		[applications],
 	);
-
-	/* ---- actions ---- */
-	async function approveApplication(app: any) {
-		if (app.status === "approved" || app.approved_user_source_id) {
-			toast.info("Pendaftaran ini sudah disetujui dan user sudah dibuat.");
-			return;
-		}
-		if (onboardingSettings.approvalPreview.requireConfirmation && !window.confirm(`Approve ${app.full_name} dan buat akun user?`)) return;
-		setIsSaving(true);
-		try {
-			const approvalStartDate = new Date().toISOString().slice(0, 10);
-			const employment = { ...(app.employment ?? {}), startDate: approvalStartDate };
-			await approveApp({
-				applicationId: app.id,
-				username: employment.username || app.email || `${app.id}@djiwatentram.local`,
-				password,
-				name: app.full_name,
-				roleId: employment.roleId,
-				homePin: pin || undefined,
-				requiresPinChange: true,
-				slug: employment.slug,
-				receiveReportEmails: false,
-				onboardingApplicationId: app.id,
-				reviewNotes: notes || undefined,
-				employment,
-			});
-			toast.success("Pendaftaran disetujui & user dibuat"); triggerHybridRefresh();
-			closeDialog();
-		} catch (e: any) { toast.error(e?.message || "Gagal approve"); }
-		finally { setIsSaving(false); }
-	}
-
-	async function markStatus(app: any, s: "rejected" | "needs_revision") {
-		setIsSaving(true);
-		try {
-			if (s === "rejected") {
-				await rejectApp({ id: app.id, reviewNotes: notes || undefined });
-			} else {
-				await markRevision({ id: app.id, reviewNotes: notes || undefined });
-			}
-			toast.success(s === "rejected" ? "Pendaftaran ditolak" : "Ditandai perlu revisi");
-			closeDialog();
-		} catch (e: any) { toast.error(e?.message || "Gagal update status"); }
-		finally { setIsSaving(false); }
-	}
-
-	function openDialog(app: any) {
-		setSelected(app);
-		setPassword(onboardingSettings.defaultPassword);
-		setPin(generateSixDigitPin(app.full_name + app.id));
-		setNotes(app.review_notes ?? "");
-	}
-	function closeDialog() {
-		setSelected(null);
-		setPin("");
-		setNotes("");
-	}
 
 	/* ---- render ---- */
 	return (
@@ -386,11 +247,16 @@ export function AdminOnboardingPage() {
 												<td className="p-2 sm:p-3"><Badge variant={STATUS_VARIANT[app.status] ?? "secondary"} className="text-[10px]">{app.status}</Badge></td>
 												<td className="p-2 sm:p-3 text-right">
 													<div className="flex items-center justify-end gap-1">
-														<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-9 min-w-[4.5rem] gap-1.5 px-2.5 text-xs font-medium" title="Lihat & Edit">
+														<Link
+															to="/admin/operational-team/register/application/$registrationNumber"
+															params={{ registrationNumber: app.raw?.registrationNumber || app.id }}
+															className="inline-flex h-9 min-w-[4.5rem] items-center justify-center gap-1.5 rounded-md border bg-background px-2.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground"
+															title="Lihat & Edit"
+														>
 															<Eye className="h-4 w-4 text-blue-500" />
 															<span className="hidden sm:inline">Review</span>
 															<PencilLine className="h-4 w-4 text-amber-500" />
-														</Button>
+														</Link>
 														<Button size="sm" variant="outline" className="h-9 w-9 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => deleteSingle(String(app.id), app.full_name)} disabled={isDeleting} title="Hapus">
 															<Trash2 className="h-5 w-5" />
 														</Button>
@@ -419,11 +285,16 @@ export function AdminOnboardingPage() {
 										<div className="text-muted-foreground text-xs">{app.phone} &middot; {app.email}</div>
 										<div className="text-muted-foreground text-xs">{new Date(app.created_at).toLocaleDateString("id-ID")}</div>
 										<div className="flex items-center gap-2">
-											<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-10 flex-1 gap-1.5 px-3 text-xs font-medium" title="Lihat & Edit">
-												<Eye className="h-4 w-4 text-blue-500" />
-												<span>Review</span>
-												<PencilLine className="h-4 w-4 text-amber-500" />
-											</Button>
+										<Link
+											to="/admin/operational-team/register/application/$registrationNumber"
+											params={{ registrationNumber: app.raw?.registrationNumber || app.id }}
+											className="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-md border bg-background px-3 text-xs font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground"
+											title="Lihat & Edit"
+										>
+											<Eye className="h-4 w-4 text-blue-500" />
+											<span>Review</span>
+											<PencilLine className="h-4 w-4 text-amber-500" />
+										</Link>
 											<Button size="sm" variant="outline" className="h-10 w-10 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => deleteSingle(String(app.id), app.full_name)} disabled={isDeleting} title="Hapus">
 												<Trash2 className="h-5 w-5" />
 											</Button>
@@ -436,145 +307,6 @@ export function AdminOnboardingPage() {
 				</CardContent>
 			</Card>
 
-			{/* ---- review dialog ---- */}
-			<Dialog open={Boolean(selected)} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-				<DialogContent className="max-h-[90dvh] max-w-[calc(100vw-1rem)] overflow-y-auto sm:max-h-[90vh] sm:max-w-5xl">
-					{selected && (
-						<>
-							<DialogTitle className="flex items-center gap-2 pr-10 text-base sm:text-lg">
-								<UserPlus className="h-5 w-5 text-primary" />
-								<span>Review Pendaftaran</span>
-								<Badge variant={STATUS_VARIANT[selected.status] ?? "secondary"} className="ml-auto text-xs">
-									{selected.status}
-								</Badge>
-							</DialogTitle>
-							<DialogDescription className="text-xs sm:text-sm">
-								{selected.full_name} &middot; {selected.employment?.roleName || "-"}
-							</DialogDescription>
-
-							<div className="grid gap-4 md:grid-cols-[1fr_1.4fr] md:gap-6">
-								{/* ── LEFT: data + form ── */}
-								<div className="space-y-3">
-
-									{/* Data Diri — compact grid */}
-									<div className="rounded-lg border bg-card p-3 sm:p-4">
-										<h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-											<UserPlus className="h-3.5 w-3.5" /> Data Diri
-										</h4>
-										<div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-											<InfoRow label="HP" value={selected.phone} />
-											<InfoRow label="Email" value={selected.email || "-"} />
-											<InfoRow label="NIK" value={selected.identity_number || "-"} />
-											<InfoRow label="Tgl Lahir" value={selected.birth_date ? new Date(selected.birth_date).toLocaleDateString("id-ID") : "-"} />
-											<div className="col-span-2">
-												<InfoRow label="Alamat" value={selected.address || "-"} />
-											</div>
-										</div>
-									</div>
-
-									{/* Data Kerja — compact grid */}
-									<div className="rounded-lg border bg-card p-3 sm:p-4">
-										<h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-											<FileText className="h-3.5 w-3.5" /> Data Kerja
-										</h4>
-										<div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-											<InfoRow label="Role" value={selected.employment?.roleName} />
-											<InfoRow label="Tipe" value={selected.employment?.employmentType || "-"} />
-											<InfoRow label="Username" value={selected.employment?.username} />
-											<InfoRow label="Slug" value={selected.employment?.slug || "-"} />
-											<InfoRow label="Gaji Pokok" value={formatOnboardingCurrency(selected.employment?.monthlySalary)} />
-											<InfoRow label="T. Transport" value={formatOnboardingCurrency(selected.employment?.dailyAllowance)} />
-											<InfoRow label="Rate Shift" value={formatOnboardingCurrency(selected.employment?.shiftRate)} />
-											<InfoRow label="Estimasi/bln" value={formatOnboardingCurrency(
-												calculateEstimatedMonthlySalary(selected.employment ?? {})
-											)} highlight />
-											<InfoRow label="Durasi" value={
-												selected.employment?.contractDuration
-													? `${selected.employment.contractDuration} bulan`
-													: "-"
-											} />
-											<InfoRow label="Lokasi" value={selected.employment?.location || "Djiwa Tentram"} />
-										</div>
-									</div>
-
-									{/* Preview Akun + Form */}
-									{onboardingSettings.approvalPreview.enabled && (
-										<div className="rounded-lg border border-primary/30 bg-primary/5 p-3 sm:p-4">
-											<h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-primary uppercase tracking-wider">
-												<ShieldCheck className="h-3.5 w-3.5" /> Preview Akun
-											</h4>
-											<div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-												<InfoRow label="Nama" value={selected.full_name} />
-												<InfoRow label="Username" value={selected.employment?.username || selected.email || `${selected.id}@djiwatentram.local`} />
-												<InfoRow label="Slug" value={selected.employment?.slug || "-"} />
-												<InfoRow label="PIN" value={pin || "isi 6 digit"} />
-												<InfoRow label="Role" value={selected.employment?.roleName || "-"} />
-												<InfoRow label="Mulai" value="Tanggal approval" />
-											</div>
-										</div>
-									)}
-
-									{/* Form fields */}
-									<div className="rounded-lg border bg-card p-3 sm:p-4">
-										<h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-											<ShieldCheck className="h-3.5 w-3.5" /> Konfigurasi Akun
-										</h4>
-										<div className="space-y-2.5">
-											<div className="grid grid-cols-2 gap-2.5">
-												<Field label="Password awal">
-													<Input value={password} onChange={(e) => setPassword(e.target.value)} className="h-8 text-xs" />
-												</Field>
-												<Field label="PIN 6 digit">
-													<Input maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} className="h-8 text-xs" />
-												</Field>
-											</div>
-											<Field label="Catatan review">
-												<Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[60px] text-xs" placeholder="Tambahkan catatan untuk karyawan..." />
-											</Field>
-										</div>
-									</div>
-								</div>
-
-								{/* ── RIGHT: contract preview ── */}
-								<div className="flex flex-col gap-3">
-									<div className="flex items-center justify-between">
-										<h3 className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-											<FileSignature className="h-3.5 w-3.5" /> Kontrak Kerja
-										</h3>
-										<Button size="sm" variant="outline" onClick={downloadContractPdf} disabled={isDownloadingPdf} type="button" className="h-8 gap-1.5 px-3 text-xs font-medium">
-											{isDownloadingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-											Unduh PDF
-										</Button>
-									</div>
-									<div className="max-h-[420px] overflow-y-auto rounded-xl border bg-white shadow-sm md:max-h-[520px]">
-										<ContractPreview
-											contract={selected.contract}
-											employeeName={selected.full_name}
-											signatureDataUrl={selected.signature_url}
-											companyName={companyDisplayName}
-											signatoryName={signatoryPersonName}
-											signatorySignatureUrl={onboardingSettings.signatorySignatureUrl}
-										/>
-									</div>
-								</div>
-							</div>
-
-							{/* ── Action buttons ── */}
-							<div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end sm:gap-2">
-								<Button disabled={isSaving} size="sm" variant="outline" onClick={() => markStatus(selected, "needs_revision")} className="gap-1.5">
-									<FileText className="h-4 w-4" />Minta Revisi
-								</Button>
-								<Button disabled={isSaving} size="sm" variant="destructive" onClick={() => markStatus(selected, "rejected")} className="gap-1.5">
-									<XCircle className="h-4 w-4" />Tolak
-								</Button>
-								<Button disabled={isSaving || !pin || pin.length !== 6} size="sm" onClick={() => approveApplication(selected)} className="gap-1.5 sm:mr-auto">
-									<CheckCircle2 className="h-4 w-4" />Approve & Buat User
-								</Button>
-							</div>
-						</>
-					)}
-				</DialogContent>
-			</Dialog>
 		</div>
 	);
 }

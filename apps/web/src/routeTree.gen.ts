@@ -58,6 +58,7 @@ import { Route as AdminFinanceReportsRouteRouteImport } from './routes/admin/fin
 import { Route as AdminFinanceAccountingRouteRouteImport } from './routes/admin/finance/accounting/route'
 import { Route as AdminOperationalTeamRegisterOnboardingRouteImport } from './routes/admin/operational-team/register/onboarding'
 import { Route as AdminOperationalTeamRegisterContractRouteImport } from './routes/admin/operational-team/register/contract'
+import { Route as AdminOperationalTeamRegisterApplicationRegistrationNumberRouteImport } from './routes/admin/operational-team/register.application.$registrationNumber'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -373,6 +374,16 @@ const AdminOperationalTeamRegisterContractRoute =
       (d) => d.Route,
     ),
   )
+const AdminOperationalTeamRegisterApplicationRegistrationNumberRoute =
+  AdminOperationalTeamRegisterApplicationRegistrationNumberRouteImport.update({
+    id: '/application/$registrationNumber',
+    path: '/application/$registrationNumber',
+    getParentRoute: () => AdminOperationalTeamRegisterRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/register.application.$registrationNumber.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -424,6 +435,7 @@ export interface FileRoutesByFullPath {
   '/admin/recipe/': typeof AdminRecipeIndexRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
+  '/admin/operational-team/register/application/$registrationNumber': typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -470,6 +482,7 @@ export interface FileRoutesByTo {
   '/admin/recipe': typeof AdminRecipeIndexRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
+  '/admin/operational-team/register/application/$registrationNumber': typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -522,6 +535,7 @@ export interface FileRoutesById {
   '/admin/recipe/': typeof AdminRecipeIndexRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
+  '/admin/operational-team/register/application/$registrationNumber': typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -575,6 +589,7 @@ export interface FileRouteTypes {
     | '/admin/recipe/'
     | '/admin/operational-team/register/contract'
     | '/admin/operational-team/register/onboarding'
+    | '/admin/operational-team/register/application/$registrationNumber'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -621,6 +636,7 @@ export interface FileRouteTypes {
     | '/admin/recipe'
     | '/admin/operational-team/register/contract'
     | '/admin/operational-team/register/onboarding'
+    | '/admin/operational-team/register/application/$registrationNumber'
   id:
     | '__root__'
     | '/'
@@ -672,6 +688,7 @@ export interface FileRouteTypes {
     | '/admin/recipe/'
     | '/admin/operational-team/register/contract'
     | '/admin/operational-team/register/onboarding'
+    | '/admin/operational-team/register/application/$registrationNumber'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1032,6 +1049,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOperationalTeamRegisterContractRouteImport
       parentRoute: typeof AdminOperationalTeamRegisterRoute
     }
+    '/admin/operational-team/register/application/$registrationNumber': {
+      id: '/admin/operational-team/register/application/$registrationNumber'
+      path: '/application/$registrationNumber'
+      fullPath: '/admin/operational-team/register/application/$registrationNumber'
+      preLoaderRoute: typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRouteImport
+      parentRoute: typeof AdminOperationalTeamRegisterRoute
+    }
   }
 }
 
@@ -1057,6 +1081,7 @@ const AdminFinanceRouteRouteWithChildren =
 interface AdminOperationalTeamRegisterRouteChildren {
   AdminOperationalTeamRegisterContractRoute: typeof AdminOperationalTeamRegisterContractRoute
   AdminOperationalTeamRegisterOnboardingRoute: typeof AdminOperationalTeamRegisterOnboardingRoute
+  AdminOperationalTeamRegisterApplicationRegistrationNumberRoute: typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
 }
 
 const AdminOperationalTeamRegisterRouteChildren: AdminOperationalTeamRegisterRouteChildren =
@@ -1065,6 +1090,8 @@ const AdminOperationalTeamRegisterRouteChildren: AdminOperationalTeamRegisterRou
       AdminOperationalTeamRegisterContractRoute,
     AdminOperationalTeamRegisterOnboardingRoute:
       AdminOperationalTeamRegisterOnboardingRoute,
+    AdminOperationalTeamRegisterApplicationRegistrationNumberRoute:
+      AdminOperationalTeamRegisterApplicationRegistrationNumberRoute,
   }
 
 const AdminOperationalTeamRegisterRouteWithChildren =
