@@ -172,8 +172,10 @@ function ReceiptPreview({
 			qty: 2,
 			name: "CROISSANT BUTTER",
 			variant: "Hangat",
-			price: "18.000",
-			total: "36.000",
+			price: "9.000",
+			total: "18.000",
+			discounted: true,
+			originalTotal: "36.000",
 		},
 	];
 	const kitchenItems = [
@@ -181,7 +183,8 @@ function ReceiptPreview({
 		{ qty: 1, name: "CROISSANT BUTTER", variant: "Hangat" },
 	];
 	const infoRows = [
-		settings.receiptShowOrderNumber ? ["ID", "ORD-D-6034"] : null,
+		settings.receiptShowOrderNumber ? ["ORDER", "ORD-D-6034"] : null,
+		[null, "#001 / DINE IN"],
 		settings.receiptShowCashierName ? ["KASIR", "AYU"] : null,
 		settings.receiptShowCashierName ? ["SHIFT", "SORE"] : null,
 		["WAKTU", "31/03/2026 15:09"],
@@ -190,7 +193,8 @@ function ReceiptPreview({
 		["TIPE", "MAKAN DI SINI"],
 		["MEJA", "07"],
 		settings.receiptShowCustomerName ? ["PELANGGAN", "PELANGGAN UMUM"] : null,
-	].filter(Boolean) as Array<[string, string]>;
+	].filter(Boolean) as Array<[string | null, string]>;
+	const receiptKindLabel = " / DINE IN";
 	const statusLabel =
 		mode === "kitchen"
 			? "TIKET KITCHEN"
@@ -260,10 +264,10 @@ function ReceiptPreview({
 
 							<div className="space-y-1">
 								{infoRows.map(([label, value]) => (
-									<div className="flex items-start justify-between gap-3" key={label}>
-										<span className="text-zinc-500">{label}</span>
+									<div className="flex items-start justify-between gap-3" key={value}>
+										<span className="text-zinc-500">{label ?? "STRUK"}</span>
 										<span className="max-w-[58%] text-right font-semibold">
-											{value}
+											{label === null && mode !== "kitchen" ? receiptKindLabel : value}
 										</span>
 									</div>
 								))}
@@ -317,9 +321,9 @@ function ReceiptPreview({
 													</span>
 													<span className="shrink-0 font-bold">{item.total}</span>
 												</div>
-												<p className="text-zinc-500">
-													{item.qty} x {item.price}
-												</p>
+										<p className="text-zinc-500">
+											{item.qty} x {item.price}{item.discounted ? ` ~~${item.originalTotal}~~` : ""}
+										</p>
 												{item.variant ? (
 													<p className="pl-3 text-[10px] leading-snug text-zinc-500">
 														+ {item.variant}
@@ -334,19 +338,23 @@ function ReceiptPreview({
 									<div className="space-y-1">
 										<div className="flex justify-between gap-3">
 											<span className="text-zinc-600">SUBTOTAL</span>
-											<span>61.000</span>
+											<span>RP 61.000</span>
 										</div>
 										<div className="flex justify-between gap-3 text-zinc-700">
 											<span>PROMO / HAPPY HOUR</span>
-											<span>-RP 5.000</span>
+											<span>-RP 6.000</span>
 										</div>
 										<div className="flex justify-between gap-3 text-zinc-700">
-											<span>VOUCHER MEMBER</span>
+											<span>VOUCHER / DISKON</span>
 											<span>-RP 6.100</span>
 										</div>
 										<div className="flex justify-between gap-3">
 											<span className="text-zinc-600">PAJAK</span>
 											<span>RP 0</span>
+										</div>
+										<div className="flex justify-between gap-3">
+											<span className="text-zinc-600">SERVICE CHARGE</span>
+											<span>RP 3.000</span>
 										</div>
 										<div className="border-zinc-300 border-t border-dashed pt-1" />
 										<div className="flex justify-between gap-3 font-bold text-[13px]">
@@ -377,6 +385,11 @@ function ReceiptPreview({
 								<p className="font-bold uppercase tracking-[0.22em]">
 									{settings.receiptFooter || "Terima kasih atas kunjungan Anda!"}
 								</p>
+								{mode === "kitchen" ? (
+									<p className="font-bold text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+										TANPA HARGA - UNTUK PRODUKSI
+									</p>
+								) : null}
 								<p className="text-[9px] uppercase tracking-[0.18em] text-zinc-400">
 									{mode === "kitchen" ? "tiket produksi 58mm" : "preview thermal 58mm"}
 								</p>
