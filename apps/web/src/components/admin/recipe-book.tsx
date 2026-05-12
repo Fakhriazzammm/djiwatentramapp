@@ -11,6 +11,7 @@ import {
 } from "@/hooks/use-hybrid-write-actions";
 import {
 	BookOpen,
+	Calculator,
 	CheckCircle2,
 	ChevronRight,
 	Edit,

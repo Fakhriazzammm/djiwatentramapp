@@ -1007,6 +1007,7 @@ export function SettingsPage({
 				attendanceLat: siteSettings.attendanceLat ?? -6.200000,
 				attendanceLng: siteSettings.attendanceLng ?? 106.816666,
 				attendanceRadius: siteSettings.attendanceRadius ?? 50,
+				orderTypes: siteSettings.orderTypes ?? [],
 			}));
 			setPaymentSettings({
 				mayarEnabled: siteSettings.mayarEnabled ?? false,
@@ -1129,6 +1130,8 @@ export function SettingsPage({
 				paymentMethodsManual: paymentSettings.manualMethods,
 				taxRate: settings.taxRate,
 				serviceChargeRate: settings.serviceChargeRate,
+				// Order Types
+				orderTypes: settings.orderTypes,
 				// Receipt Customization
 				receiptLogo: settings.receiptLogo,
 				receiptHeader: settings.receiptHeader,
