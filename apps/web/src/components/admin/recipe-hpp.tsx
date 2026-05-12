@@ -4,13 +4,14 @@ import type { Doc, Id } from "@/types/backend-compat";
 import { motion, AnimatePresence } from "framer-motion";
 import {
 	AlertTriangle,
-	ArrowUpDown,
+	Archive,
+	ArrowDown,
+	ArrowUp,
+	BookOpen,
 	Calculator,
 	CheckCircle2,
 	ChevronDown,
-	ChevronRight,
 	CircleDollarSign,
-	Copy,
 	Link2,
 	Package,
 	Plus,
@@ -19,10 +20,6 @@ import {
 	Sparkles,
 	Trash2,
 	X,
-	ArrowUp,
-	ArrowDown,
-	ChevronUp,
-	BookOpen,
 } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -821,18 +818,40 @@ export function RecipeHppPage() {
 						</div>
 					</div>
 
-					{/* Recipe info banner */}
+					{/* Recipe info banner — data source indicators */}
 					{selectedProduct && (
-						<div className="mt-3 flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] text-blue-800">
-							<BookOpen className="h-3.5 w-3.5 shrink-0 text-blue-500" />
-							<span className="flex-1">
-								{selectedRecipe
-									? `Resep: ${selectedProduct.name} — ${form.ingredients.length} bahan baku`
-									: `${selectedProduct.name} — Belum ada resep. Bisa input manual.`}
-							</span>
-							<span className="shrink-0 font-medium">
-								{formatCurrency(selectedProduct.promoPrice ?? selectedProduct.price)}
-							</span>
+						<div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
+							<div className="flex items-center gap-2 text-[11px] text-blue-800">
+								<BookOpen className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+								<span className="flex-1">
+									{selectedRecipe
+										? `Resep: ${selectedProduct.name} — ${form.ingredients.length} bahan baku`
+										: `${selectedProduct.name} — Belum ada resep. Bisa input manual.`}
+								</span>
+								<span className="shrink-0 font-medium">
+									{formatCurrency(selectedProduct.promoPrice ?? selectedProduct.price)}
+								</span>
+							</div>
+							<div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px] text-blue-600/70">
+								<span className="inline-flex items-center gap-1 rounded bg-white/60 px-1.5 py-0.5">
+									<Package className="h-3 w-3" />
+									Produk: {products?.length ?? 0} item
+								</span>
+								<span className="inline-flex items-center gap-1 rounded bg-white/60 px-1.5 py-0.5">
+									<Archive className="h-3 w-3" />
+									Inventaris: {inventory?.length ?? 0} bahan
+								</span>
+								<span className="inline-flex items-center gap-1 rounded bg-white/60 px-1.5 py-0.5">
+									<BookOpen className="h-3 w-3" />
+									Resep: {(recipes as any[] | undefined)?.length ?? 0} resep
+								</span>
+								{inventoryCosts && Object.keys(inventoryCosts).length > 0 && (
+									<span className="inline-flex items-center gap-1 rounded bg-white/60 px-1.5 py-0.5">
+										<CircleDollarSign className="h-3 w-3" />
+										Harga: {Object.keys(inventoryCosts).length} item
+									</span>
+								)}
+							</div>
 						</div>
 					)}
 				</CardContent>
