@@ -3,12 +3,12 @@ import { Link } from "@tanstack/react-router";
 import type { Doc, Id } from "@/types/backend-compat";
 import {
 	Calculator,
-	ChevronDown,
 	Loader2,
 	Package,
 	Plus,
 	Search,
 	Settings2,
+	Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -102,14 +102,16 @@ export function RecipeMatrixPage() {
 	const hppMap = useHybridHppProductMap();
 	const costs = useHybridLatestInventoryCosts();
 	const saveRecipe = useHybridSaveRecipe();
+	const deleteRecipe = useHybridDeleteRecipe();
 
 	// State
 	const [search, setSearch] = useState("");
 	const [editingCell, setEditingCell] = useState<string | null>(null);
 	const [savingCells, setSavingCells] = useState<Set<string>>(new Set());
 	const [localAmounts, setLocalAmounts] = useState<Record<string, number>>({});
-	const [showAllIngredients, setShowAllIngredients] = useState(false);
+	const [showAllIngredients, setShowAllIngredients] = useState(true);
 	const [baseSectionOpen, setBaseSectionOpen] = useState(false);
+	const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
 
 	const loading = !products || !inventory || !recipes;
 
@@ -226,6 +228,27 @@ export function RecipeMatrixPage() {
 		},
 		[recipeByProduct, saveRecipe]
 	);
+
+	// ── Delete recipe ──
+
+	const handleDeleteRecipe = useCallback(async (productId: string) => {
+		const recipe = [...(recipes ?? [])].find(
+			(r) => String(r.productId) === productId && !r.variantName
+		);
+		if (!recipe) {
+			toast.error("Resep tidak ditemukan");
+			return;
+		}
+		setDeletingProductId(productId);
+		try {
+			await deleteRecipe({ id: recipe._id as Id<"recipes"> });
+			toast.success("Resep dihapus");
+		} catch (err: any) {
+			toast.error(err?.message ?? "Gagal menghapus resep");
+		} finally {
+			setDeletingProductId(null);
+		}
+	}, [recipes, deleteRecipe]);
 
 	// ── Cell interaction ──
 
@@ -379,14 +402,34 @@ export function RecipeMatrixPage() {
 								>
 									{/* Product name */}
 									<td className="sticky left-0 z-10 bg-card group-hover:bg-primary/[0.03] border-r border-border/40 px-3 py-1.5">
-										<Link
-											to="/admin/recipe/hpp"
-											search={{ productId: String(product._id) }}
-											className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-primary transition-colors"
-										>
-											<span className="truncate">{product.name}</span>
-											<Calculator className="h-3 w-3 shrink-0 text-muted-foreground/30 group-hover:text-primary/50" />
-										</Link>
+										<div className="flex items-center gap-1">
+											<Link
+												to="/admin/recipe/hpp"
+												search={{ productId: String(product._id) }}
+												className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-primary transition-colors flex-1 min-w-0"
+											>
+												<span className="truncate">{product.name}</span>
+												<Calculator className="h-3 w-3 shrink-0 text-muted-foreground/30 group-hover:text-primary/50" />
+											</Link>
+											{hasRecipe && (
+												<button
+													className="shrink-0 rounded p-0.5 text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
+													onClick={(e) => {
+														e.preventDefault();
+														e.stopPropagation();
+														handleDeleteRecipe(String(product._id));
+													}}
+													title="Hapus resep"
+													disabled={deletingProductId === String(product._id)}
+												>
+													{deletingProductId === String(product._id) ? (
+														<Loader2 className="h-3 w-3 animate-spin" />
+													) : (
+														<Trash2 className="h-3 w-3" />
+													)}
+												</button>
+											)}
+										</div>
 									</td>
 									{/* Category */}
 									<td className="sticky left-[130px] z-10 bg-card group-hover:bg-primary/[0.03] border-r border-border/40 px-1 py-1.5 text-center text-[9px] text-muted-foreground tabular-nums">
