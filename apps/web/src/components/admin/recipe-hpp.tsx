@@ -1014,7 +1014,7 @@ export function RecipeHppPage() {
 										<th className="w-24 px-1 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
 											Subtotal
 										</th>
-										<th className="w-16 px-1 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+										<th className="w-24 px-1 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
 											Aksi
 										</th>
 									</tr>
@@ -1096,34 +1096,34 @@ export function RecipeHppPage() {
 													<td className="px-1 py-1.5">
 														<div className="flex items-center justify-center gap-0.5">
 															<button
-																className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+																className="rounded p-1 text-foreground/50 hover:bg-accent hover:text-accent-foreground"
 																onClick={() => handleMoveRow(ing.id, "up")}
 																disabled={idx === 0}
 																title="Naik"
 															>
-																<ArrowUp className="h-3 w-3" />
+																<ArrowUp className="h-3.5 w-3.5" />
 															</button>
 															<button
-																className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+																className="rounded p-1 text-foreground/50 hover:bg-accent hover:text-accent-foreground"
 																onClick={() => handleMoveRow(ing.id, "down")}
 																disabled={idx === form.ingredients.length - 1}
 																title="Turun"
 															>
-																<ArrowDown className="h-3 w-3" />
+																<ArrowDown className="h-3.5 w-3.5" />
 															</button>
 															<button
-																className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+																className="rounded p-1 text-foreground/50 hover:bg-accent hover:text-accent-foreground"
 																onClick={() => handleInsertRow(ing.id)}
 																title="Sisip"
 															>
-																<Plus className="h-3 w-3" />
+																<Plus className="h-3.5 w-3.5" />
 															</button>
 															<button
-																className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+																className="rounded p-1 text-foreground/50 hover:bg-destructive/10 hover:text-destructive"
 																onClick={() => handleDeleteRow(ing.id)}
 																title="Hapus"
 															>
-																<X className="h-3 w-3" />
+																<X className="h-3.5 w-3.5" />
 															</button>
 														</div>
 													</td>

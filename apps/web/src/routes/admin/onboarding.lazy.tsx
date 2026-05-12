@@ -291,17 +291,17 @@ export function AdminOnboardingPage() {
 					</p>
 					{/* ── CRUD icon badges ── */}
 					<div className="mt-2 flex flex-wrap gap-1.5">
-						<Badge variant="outline" className="gap-1 border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100 text-[10px]">
-							<PlusCircle className="h-3 w-3" /> Create
+						<Badge variant="outline" className="gap-1.5 border-sky-300 bg-sky-50 text-sky-700 text-[11px] font-semibold px-2.5 py-1">
+							<PlusCircle className="h-4 w-4" /> Create
 						</Badge>
-						<Badge variant="outline" className="gap-1 border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 text-[10px]">
-							<Eye className="h-3 w-3" /> Read
+						<Badge variant="outline" className="gap-1.5 border-blue-300 bg-blue-50 text-blue-700 text-[11px] font-semibold px-2.5 py-1">
+							<Eye className="h-4 w-4" /> Read
 						</Badge>
-						<Badge variant="outline" className="gap-1 border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 text-[10px]">
-							<PencilLine className="h-3 w-3" /> Update
+						<Badge variant="outline" className="gap-1.5 border-amber-300 bg-amber-50 text-amber-700 text-[11px] font-semibold px-2.5 py-1">
+							<PencilLine className="h-4 w-4" /> Update
 						</Badge>
-						<Badge variant="outline" className="gap-1 border-red-300 bg-red-50 text-red-700 hover:bg-red-100 text-[10px]">
-							<Trash2 className="h-3 w-3" /> Delete
+						<Badge variant="outline" className="gap-1.5 border-red-300 bg-red-50 text-red-700 text-[11px] font-semibold px-2.5 py-1">
+							<Trash2 className="h-4 w-4" /> Delete
 						</Badge>
 					</div>
 				</div>
@@ -362,11 +362,11 @@ export function AdminOnboardingPage() {
 											<th className="p-3 hidden md:table-cell">Kontak</th>
 											<th className="p-3 hidden md:table-cell">Tanggal</th>
 												<th className="p-3">Status</th>
-												<th className="p-3 text-right">
-													<span className="inline-flex items-center gap-1">
-														<Eye className="h-3 w-3 text-blue-500" />
-														<PencilLine className="h-3 w-3 text-amber-500" />
-														<Trash2 className="h-3 w-3 text-red-500" />
+												<th className="p-3 text-right w-40">
+													<span className="inline-flex items-center gap-2">
+														<span className="flex items-center gap-1 text-blue-600"><Eye className="h-4 w-4" /><span className="text-[11px] font-medium">Baca</span></span>
+														<span className="flex items-center gap-1 text-amber-600"><PencilLine className="h-4 w-4" /><span className="text-[11px] font-medium">Edit</span></span>
+														<span className="flex items-center gap-1 text-red-600"><Trash2 className="h-4 w-4" /><span className="text-[11px] font-medium">Hapus</span></span>
 													</span>
 												</th>
 										</tr>
@@ -383,12 +383,14 @@ export function AdminOnboardingPage() {
 												<td className="p-3 hidden md:table-cell text-xs">{new Date(app.created_at).toLocaleDateString("id-ID")}</td>
 												<td className="p-3"><Badge variant={STATUS_VARIANT[app.status] ?? "secondary"} className="text-xs">{app.status}</Badge></td>
 												<td className="p-3 text-right">
-													<div className="flex items-center justify-end gap-1.5">
-														<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-8 px-2.5 text-xs" title="Lihat & Edit">
-															<Eye className="mr-1 h-3.5 w-3.5 text-blue-500" /><PencilLine className="h-3.5 w-3.5 text-amber-500" />
+													<div className="flex items-center justify-end gap-1">
+														<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-9 min-w-[4.5rem] gap-1.5 px-3 text-xs font-medium" title="Lihat & Edit">
+															<Eye className="h-4 w-4 text-blue-500" />
+															<span>Review</span>
+															<PencilLine className="h-4 w-4 text-amber-500" />
 														</Button>
-														<Button size="sm" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteSingle(String(app.id), app.full_name)} disabled={isDeleting} title="Hapus">
-															<Trash2 className="h-3.5 w-3.5" />
+														<Button size="sm" variant="outline" className="h-9 w-9 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => deleteSingle(String(app.id), app.full_name)} disabled={isDeleting} title="Hapus">
+															<Trash2 className="h-4 w-4" />
 														</Button>
 													</div>
 												</td>
@@ -415,11 +417,13 @@ export function AdminOnboardingPage() {
 										<div className="text-muted-foreground text-xs">{app.phone} &middot; {app.email}</div>
 										<div className="text-muted-foreground text-xs">{new Date(app.created_at).toLocaleDateString("id-ID")}</div>
 										<div className="flex items-center gap-2">
-											<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-8 flex-1 text-xs" title="Lihat & Edit">
-												<Eye className="mr-1 h-3.5 w-3.5 text-blue-500" /><PencilLine className="h-3.5 w-3.5 text-amber-500" />
+											<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-10 flex-1 gap-1.5 px-3 text-xs font-medium" title="Lihat & Edit">
+												<Eye className="h-4 w-4 text-blue-500" />
+												<span>Review</span>
+												<PencilLine className="h-4 w-4 text-amber-500" />
 											</Button>
-											<Button size="sm" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteSingle(String(app.id), app.full_name)} disabled={isDeleting} title="Hapus">
-												<Trash2 className="h-3.5 w-3.5" />
+											<Button size="sm" variant="outline" className="h-10 w-10 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => deleteSingle(String(app.id), app.full_name)} disabled={isDeleting} title="Hapus">
+												<Trash2 className="h-4 w-4" />
 											</Button>
 										</div>
 									</div>
