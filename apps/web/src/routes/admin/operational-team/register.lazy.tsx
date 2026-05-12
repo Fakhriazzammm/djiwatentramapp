@@ -4,8 +4,9 @@ import { SettingsPage } from "../settings.lazy";
 function OperationalTeamRegisterPage() {
 	const location = useLocation();
 	const isNestedContractRoute = location.pathname.endsWith("/register/contract");
+	const isNestedApplicationRoute = location.pathname.includes("/register/application/");
 
-	if (isNestedContractRoute || location.pathname.endsWith("/register/onboarding")) {
+	if (isNestedContractRoute || location.pathname.endsWith("/register/onboarding") || isNestedApplicationRoute) {
 		return <Outlet />;
 	}
 
