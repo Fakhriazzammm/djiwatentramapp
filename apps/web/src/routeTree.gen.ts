@@ -48,6 +48,7 @@ import { Route as AdminRecipeIndexRouteImport } from './routes/admin/recipe.inde
 import { Route as AdminOperationalTeamIndexRouteImport } from './routes/admin/operational-team/index'
 import { Route as AdminFinanceIndexRouteImport } from './routes/admin/finance/index'
 import { Route as AdminRecipeViewRouteImport } from './routes/admin/recipe.view'
+import { Route as AdminRecipeHppRouteImport } from './routes/admin/recipe/hpp'
 import { Route as AdminOperationalTeamRegisterRouteImport } from './routes/admin/operational-team/register'
 import { Route as AdminOperationalTeamPayrollRouteImport } from './routes/admin/operational-team/payroll'
 import { Route as AdminOperationalTeamAttendanceRouteImport } from './routes/admin/operational-team/attendance'
@@ -293,6 +294,13 @@ const AdminRecipeViewRoute = AdminRecipeViewRouteImport.update({
 } as any).lazy(() =>
   import('./routes/admin/recipe.view.lazy').then((d) => d.Route),
 )
+const AdminRecipeHppRoute = AdminRecipeHppRouteImport.update({
+  id: '/hpp',
+  path: '/hpp',
+  getParentRoute: () => AdminRecipeRoute,
+} as any).lazy(() =>
+  import('./routes/admin/recipe/hpp.lazy').then((d) => d.Route),
+)
 const AdminOperationalTeamRegisterRoute =
   AdminOperationalTeamRegisterRouteImport.update({
     id: '/register',
@@ -409,6 +417,7 @@ export interface FileRoutesByFullPath {
   '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRoute
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollRoute
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
+  '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
@@ -454,6 +463,7 @@ export interface FileRoutesByTo {
   '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRoute
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollRoute
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
+  '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/admin/finance': typeof AdminFinanceIndexRoute
   '/admin/operational-team': typeof AdminOperationalTeamIndexRoute
@@ -505,6 +515,7 @@ export interface FileRoutesById {
   '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRoute
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollRoute
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
+  '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
@@ -557,6 +568,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team/attendance'
     | '/admin/operational-team/payroll'
     | '/admin/operational-team/register'
+    | '/admin/recipe/hpp'
     | '/admin/recipe/view'
     | '/admin/finance/'
     | '/admin/operational-team/'
@@ -602,6 +614,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team/attendance'
     | '/admin/operational-team/payroll'
     | '/admin/operational-team/register'
+    | '/admin/recipe/hpp'
     | '/admin/recipe/view'
     | '/admin/finance'
     | '/admin/operational-team'
@@ -652,6 +665,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team/attendance'
     | '/admin/operational-team/payroll'
     | '/admin/operational-team/register'
+    | '/admin/recipe/hpp'
     | '/admin/recipe/view'
     | '/admin/finance/'
     | '/admin/operational-team/'
@@ -948,6 +962,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRecipeViewRouteImport
       parentRoute: typeof AdminRecipeRoute
     }
+    '/admin/recipe/hpp': {
+      id: '/admin/recipe/hpp'
+      path: '/hpp'
+      fullPath: '/admin/recipe/hpp'
+      preLoaderRoute: typeof AdminRecipeHppRouteImport
+      parentRoute: typeof AdminRecipeRoute
+    }
     '/admin/operational-team/register': {
       id: '/admin/operational-team/register'
       path: '/register'
@@ -1070,11 +1091,13 @@ const AdminOperationalTeamRouteWithChildren =
   AdminOperationalTeamRoute._addFileChildren(AdminOperationalTeamRouteChildren)
 
 interface AdminRecipeRouteChildren {
+  AdminRecipeHppRoute: typeof AdminRecipeHppRoute
   AdminRecipeViewRoute: typeof AdminRecipeViewRoute
   AdminRecipeIndexRoute: typeof AdminRecipeIndexRoute
 }
 
 const AdminRecipeRouteChildren: AdminRecipeRouteChildren = {
+  AdminRecipeHppRoute: AdminRecipeHppRoute,
   AdminRecipeViewRoute: AdminRecipeViewRoute,
   AdminRecipeIndexRoute: AdminRecipeIndexRoute,
 }

@@ -2112,7 +2112,7 @@ function ProductDetailSheet({
 	product: any;
 	activeDiscounts: any;
 	onClose: () => void;
-	onAddToCart: (item: { productId: string; name: string; price: number; quantity: number; variant?: string; image?: string; category?: string }) => void;
+	onAddToCart: (item: { productId: string; name: string; price: number; originalPrice?: number; quantity: number; variant?: string; image?: string; category?: string }) => void;
 }) {
 	const [quantity, setQuantity] = useState(1);
 	const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
@@ -2165,6 +2165,7 @@ function ProductDetailSheet({
 			productId: product._id,
 			name: product.name,
 			price: unitPrice,
+			originalPrice: pricing.originalPrice + variantPrice,
 			quantity,
 			variant: variantLabel || undefined,
 			image: product.image,

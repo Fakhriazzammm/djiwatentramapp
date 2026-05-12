@@ -2007,6 +2007,46 @@ export function useHybridDashboardStats() {
 	return supabaseData as DashboardStatsRecord | undefined;
 }
 
+
+export function useHybridTransactionCosts(inventoryIds: string[]) {
+	const [costs, setCosts] = useState<Record<string, number>>({});
+
+	useEffect(() => {
+		if (!inventoryIds.length || !inventoryIds.some(Boolean)) {
+			setCosts({});
+			return;
+		}
+
+		const validIds = inventoryIds.filter(Boolean);
+		let cancelled = false;
+
+		(async () => {
+			const supabase = createClient();
+			const { data, error } = await supabase
+				.from("financialTransactions")
+				.select("inventoryId, amount, createdAt")
+				.in("inventoryId", validIds)
+				.eq("type", "expense")
+				.order("createdAt", { ascending: false });
+
+			if (error || cancelled) return;
+
+			const map: Record<string, number> = {};
+			for (const row of data ?? []) {
+				const invId = String(row.inventoryId ?? "");
+				if (invId && map[invId] === undefined) {
+					map[invId] = Number(row.amount ?? 0);
+				}
+			}
+			setCosts(map);
+		})();
+
+		return () => { cancelled = true; };
+	}, [inventoryIds.filter(Boolean).sort().join(",")]);
+
+	return costs;
+}
+
 export type {
 	BookingOrderRecord,
 	CategoryRecord,

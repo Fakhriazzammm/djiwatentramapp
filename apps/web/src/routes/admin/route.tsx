@@ -64,6 +64,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/products": "Produk",
 	"/admin/recipe": "Resep",
 	"/admin/recipe/view": "Buku Resep",
+	"/admin/recipe/hpp": "HPP Resep",
 	"/admin/inventory": "Inventaris",
 	"/admin/stock-overview": "Ringkasan Stok",
 	"/admin/finance": "Keuangan",
@@ -109,6 +110,8 @@ const BOTTOM_NAV_ITEMS = [
 const MORE_MENU_PATHS = [
 	"/admin/products",
 	"/admin/recipe",
+	"/admin/recipe/view",
+	"/admin/recipe/hpp",
 	"/admin/inventory",
 	"/admin/stock-overview",
 	"/admin/discounts",
@@ -135,6 +138,7 @@ const QUICK_MENU_SECTIONS = [
 		items: [
 			{ to: "/admin/products", icon: Package, label: "Produk", permission: "products:manage" },
 			{ to: "/admin/recipe", icon: BookOpen, label: "Resep", permission: "inventory:manage" },
+			{ to: "/admin/recipe/hpp", icon: Calculator, label: "HPP Resep", permission: "inventory:manage" },
 			{ to: "/admin/inventory", icon: Archive, label: "Inventaris", permission: "inventory:manage" },
 			{ to: '/admin/stock-overview', icon: BarChart3, label: 'Ringkasan Stok', permission: 'inventory:manage' },
 			{ to: "/admin/booking", icon: Calendar, label: "Booking", permission: "orders:view" },
@@ -420,6 +424,13 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Resep"
 						to="/admin/recipe"
+						permission="inventory:manage"
+					/>
+					<DesktopNavLink
+						icon={<Calculator />}
+						isCollapsed={isCollapsed}
+						label="HPP Resep"
+						to="/admin/recipe/hpp"
 						permission="inventory:manage"
 					/>
 					<DesktopNavLink
