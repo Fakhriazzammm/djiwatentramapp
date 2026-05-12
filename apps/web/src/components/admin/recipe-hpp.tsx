@@ -431,9 +431,23 @@ export function RecipeHppPage() {
 	const [aiPanelOpen, setAiPanelOpen] = useState(false);
 	const [syncPanelOpen, setSyncPanelOpen] = useState(false);
 	const [aiAnalyzing, setAiAnalyzing] = useState(false);
+	const [recipeFilter, setRecipeFilter] = useState(false);
 
 	// ── Derived ──
 	const metrics = useMemo(() => computeHpp(form), [form]);
+
+	// Map productId → has recipe (for badges)
+	const recipesByProduct = useMemo(() => {
+		const map = new Map<string, boolean>();
+		if (!recipes) return map;
+		const allRecipes = recipes as RecipeData[];
+		for (const r of allRecipes) {
+			if (r.productId && !r.variantName) {
+				map.set(r.productId, true);
+			}
+		}
+		return map;
+	}, [recipes]);
 
 	const selectedProduct = useMemo(() => {
 		if (!selectedProductId || !products) return null;
@@ -448,11 +462,17 @@ export function RecipeHppPage() {
 
 	const filteredProducts = useMemo(() => {
 		if (!products) return [];
-		if (!productSearch) return products;
-		return products.filter((p) =>
-			safeLower(p.name).includes(safeLower(productSearch))
-		);
-	}, [products, productSearch]);
+		let result = products;
+		if (productSearch) {
+			result = result.filter((p) =>
+				safeLower(p.name).includes(safeLower(productSearch))
+			);
+		}
+		if (recipeFilter) {
+			result = result.filter((p) => recipesByProduct.has(p._id));
+		}
+		return result;
+	}, [products, productSearch, recipeFilter, recipesByProduct]);
 
 	const usedInventoryIds = useMemo(() => {
 		return new Set(form.ingredients.map((ing) => ing.inventoryId).filter(Boolean) as string[]);
@@ -733,89 +753,111 @@ export function RecipeHppPage() {
 			{/* ── Product Selector ── */}
 			<Card className="border-border/50">
 				<CardContent className="p-4">
-					<div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
-						<div className="flex-1">
-							<Label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-								Pilih Produk
-							</Label>
-							<div className="relative">
-								<div
-									className="flex cursor-pointer items-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm hover:border-primary/50"
-									onClick={() => setProductDropdownOpen(!productDropdownOpen)}
-									role="combobox"
-									tabIndex={0}
-									onKeyDown={(e) => { if (e.key === "Enter") setProductDropdownOpen(!productDropdownOpen); }}
+					<div className="flex flex-col gap-3">
+						{/* Search bar — always visible */}
+						<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+							<div className="relative flex-1">
+								<Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+								<Input
+									placeholder="Cari produk... (nama, kategori)"
+									value={productSearch}
+									onChange={(e) => {
+										setProductSearch(e.target.value);
+										if (!productDropdownOpen) setProductDropdownOpen(true);
+									}}
+									className="h-9 pl-8 text-xs"
+									onFocus={() => setProductDropdownOpen(true)}
+								/>
+							</div>
+							{/* Filter toggles */}
+							<div className="flex items-center gap-2">
+								<Button
+									variant={recipeFilter ? "default" : "outline"}
+									size="sm"
+									className="h-8 text-[10px]"
+									onClick={() => setRecipeFilter(!recipeFilter)}
 								>
-									<Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-									<span className={`flex-1 ${!selectedProduct ? "text-muted-foreground" : ""}`}>
-										{selectedProduct ? selectedProduct.name : "Cari produk..."}
-									</span>
-									<ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${productDropdownOpen ? "rotate-180" : ""}`} />
+									<BookOpen className="mr-1 h-3 w-3" />
+									Ada Resep
+									{recipeFilter && ` (${filteredProducts.length})`}
+								</Button>
+								<div className="w-28 sm:w-32">
+									<Label className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+										Porsi
+									</Label>
+									<Input
+										type="number"
+										value={form.servingsPerBatch}
+										onChange={(e) =>
+											setForm((prev) => ({ ...prev, servingsPerBatch: Math.max(1, parseInt(e.target.value) || 1) }))
+										}
+										className="h-8 text-xs"
+										min={1}
+									/>
 								</div>
-								{productDropdownOpen && (
-									<div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-auto rounded-lg border bg-popover p-1 shadow-lg">
-										<div className="sticky top-0 mb-1 bg-popover px-1 pt-1">
-											<Input
-												placeholder="Cari produk..."
-												value={productSearch}
-												onChange={(e) => setProductSearch(e.target.value)}
-												className="h-8 text-xs"
-												autoFocus
-											/>
-										</div>
-										{filteredProducts.length === 0 ? (
-											<div className="px-2 py-4 text-center text-xs text-muted-foreground">
-												Tidak ada produk ditemukan
-											</div>
-										) : (
-											filteredProducts.map((product) => (
-												<div
-													key={product._id}
-													className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-xs hover:bg-accent ${product._id === selectedProductId ? "bg-accent font-medium" : ""}`}
-													onClick={() => handleSelectProduct(product._id)}
-												>
-													<span className="flex-1 truncate">{product.name}</span>
-													<span className="shrink-0 text-[10px] text-muted-foreground">
-														{formatCurrency(product.price)}
-													</span>
-												</div>
-											))
-										)}
-									</div>
-								)}
 							</div>
 						</div>
 
-						<div className="w-full sm:w-32">
-							<Label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-								Porsi/Batch
-							</Label>
-							<Input
-								type="number"
-								value={form.servingsPerBatch}
-								onChange={(e) =>
-									setForm((prev) => ({ ...prev, servingsPerBatch: Math.max(1, parseInt(e.target.value) || 1) }))
-								}
-								className="h-9 text-xs"
-								min={1}
-							/>
-						</div>
+						{/* Product info + save bar */}
+						{selectedProduct && (
+							<div className="flex items-center gap-2">
+								<Button
+									size="sm"
+									className="h-8 text-xs"
+									onClick={handleSave}
+									disabled={saving}
+								>
+									{saving ? (
+										<RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" />
+									) : (
+										<CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+									)}
+									{editingId ? "Perbarui" : "Simpan"}
+								</Button>
+							</div>
+						)}
 
-						<div className="flex gap-2">
-							<Button
-								size="sm"
-								className="h-9 text-xs"
-								onClick={handleSave}
-								disabled={saving || !selectedProduct}
-							>
-								{saving ? (
-									<RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" />
-								) : (
-									<CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-								)}
-								{editingId ? "Perbarui" : "Simpan"}
-							</Button>
-						</div>
+						{/* Product dropdown — shows when search focused or filtering */}
+						{productDropdownOpen && (
+							<div className="relative">
+								<div className="max-h-52 overflow-auto rounded-lg border bg-popover p-1 shadow-lg">
+									{filteredProducts.length === 0 ? (
+										<div className="px-3 py-4 text-center text-xs text-muted-foreground">
+											{productSearch
+												? `Tidak ada produk "${productSearch}" ${recipeFilter ? "dengan resep" : ""}`
+												: recipeFilter
+													? "Semua produk sudah punya resep"
+													: "Tidak ada produk tersedia"}
+										</div>
+									) : (
+										filteredProducts.map((product) => {
+											const hasRecipe = recipesByProduct?.has(product._id);
+											return (
+												<div
+													key={product._id}
+													className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-xs hover:bg-accent ${product._id === selectedProductId ? "bg-accent font-medium" : ""}`}
+													onClick={() => {
+														handleSelectProduct(product._id);
+														setProductDropdownOpen(false);
+													}}
+												>
+													<span className="flex-1 truncate">{product.name}</span>
+													{hasRecipe && (
+														<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold text-blue-600">
+															<BookOpen className="h-2.5 w-2.5" />
+															Resep
+														</span>
+													)}
+													<span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
+														{formatCurrency(product.promoPrice ?? product.price)}
+													</span>
+												</div>
+											);
+										})
+									)}
+								</div>
+							</div>
+						)}
 					</div>
 
 					{/* Recipe info banner — data source indicators */}

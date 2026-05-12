@@ -1,6 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Download, Eye, FileSignature, Loader2, ShieldCheck, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, Download, Eye, FileSignature, Loader2, ShieldCheck, Trash2, XCircle, PlusCircle, PencilLine, UserPlus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -289,13 +289,33 @@ export function AdminOnboardingPage() {
 					<p className="mt-1 text-muted-foreground text-xs sm:text-sm">
 						Approve pendaftaran dari halaman publik /register.
 					</p>
+					{/* ── CRUD icon badges ── */}
+					<div className="mt-2 flex flex-wrap gap-1.5">
+						<Badge variant="outline" className="gap-1 border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100 text-[10px]">
+							<PlusCircle className="h-3 w-3" /> Create
+						</Badge>
+						<Badge variant="outline" className="gap-1 border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 text-[10px]">
+							<Eye className="h-3 w-3" /> Read
+						</Badge>
+						<Badge variant="outline" className="gap-1 border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 text-[10px]">
+							<PencilLine className="h-3 w-3" /> Update
+						</Badge>
+						<Badge variant="outline" className="gap-1 border-red-300 bg-red-50 text-red-700 hover:bg-red-100 text-[10px]">
+							<Trash2 className="h-3 w-3" /> Delete
+						</Badge>
+					</div>
 				</div>
-				<div className="grid grid-cols-3 gap-1.5 text-center sm:gap-2">
+				<div className="flex flex-col gap-2">
+					<Button size="sm" variant="default" onClick={() => window.open("/register", "_blank")} className="gap-1.5">
+						<PlusCircle className="h-4 w-4" /> Tambah Pendaftaran
+					</Button>
+					<div className="grid grid-cols-3 gap-1.5 text-center sm:gap-2">
 					<Stat label="Pending" value={stats.pending} />
 					<Stat label="Approved" value={stats.approved} />
 					<Stat label="Revisi" value={stats.revision} />
 				</div>
 			</div>
+		</div>
 
 			{/* ---- list ---- */}
 			<Card className="border sm:rounded-xl">
@@ -320,7 +340,13 @@ export function AdminOnboardingPage() {
 				</CardHeader>
 				<CardContent className="px-0 sm:px-6">
 					{applications.length === 0 ? (
-						<p className="px-4 py-10 text-center text-muted-foreground text-sm">Belum ada pendaftaran.</p>
+						<div className="flex flex-col items-center gap-3 px-4 py-14 text-center">
+							<UserPlus className="h-12 w-12 text-muted-foreground/40" />
+							<p className="text-muted-foreground text-sm">Belum ada pendaftaran.</p>
+							<Button size="sm" variant="outline" onClick={() => window.open("/register", "_blank")} className="gap-1.5">
+								<PlusCircle className="h-4 w-4" /> Buat Pendaftaran Baru
+							</Button>
+						</div>
 					) : (
 						<>
 							{/* ---- desktop table ---- */}
@@ -335,8 +361,14 @@ export function AdminOnboardingPage() {
 											<th className="p-3">Role</th>
 											<th className="p-3 hidden md:table-cell">Kontak</th>
 											<th className="p-3 hidden md:table-cell">Tanggal</th>
-											<th className="p-3">Status</th>
-											<th className="p-3 text-right">Aksi</th>
+												<th className="p-3">Status</th>
+												<th className="p-3 text-right">
+													<span className="inline-flex items-center gap-1">
+														<Eye className="h-3 w-3 text-blue-500" />
+														<PencilLine className="h-3 w-3 text-amber-500" />
+														<Trash2 className="h-3 w-3 text-red-500" />
+													</span>
+												</th>
 										</tr>
 									</thead>
 									<tbody className="divide-y">
@@ -352,10 +384,10 @@ export function AdminOnboardingPage() {
 												<td className="p-3"><Badge variant={STATUS_VARIANT[app.status] ?? "secondary"} className="text-xs">{app.status}</Badge></td>
 												<td className="p-3 text-right">
 													<div className="flex items-center justify-end gap-1.5">
-														<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-8 px-2.5 text-xs">
-															<Eye className="mr-1 h-3.5 w-3.5" />Review
+														<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-8 px-2.5 text-xs" title="Lihat & Edit">
+															<Eye className="mr-1 h-3.5 w-3.5 text-blue-500" /><PencilLine className="h-3.5 w-3.5 text-amber-500" />
 														</Button>
-														<Button size="sm" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteSingle(String(app.id), app.full_name)} disabled={isDeleting}>
+														<Button size="sm" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteSingle(String(app.id), app.full_name)} disabled={isDeleting} title="Hapus">
 															<Trash2 className="h-3.5 w-3.5" />
 														</Button>
 													</div>
@@ -383,10 +415,10 @@ export function AdminOnboardingPage() {
 										<div className="text-muted-foreground text-xs">{app.phone} &middot; {app.email}</div>
 										<div className="text-muted-foreground text-xs">{new Date(app.created_at).toLocaleDateString("id-ID")}</div>
 										<div className="flex items-center gap-2">
-											<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-8 flex-1 text-xs">
-												<Eye className="mr-1.5 h-3.5 w-3.5" />Review
+											<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-8 flex-1 text-xs" title="Lihat & Edit">
+												<Eye className="mr-1 h-3.5 w-3.5 text-blue-500" /><PencilLine className="h-3.5 w-3.5 text-amber-500" />
 											</Button>
-											<Button size="sm" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteSingle(String(app.id), app.full_name)} disabled={isDeleting}>
+											<Button size="sm" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteSingle(String(app.id), app.full_name)} disabled={isDeleting} title="Hapus">
 												<Trash2 className="h-3.5 w-3.5" />
 											</Button>
 										</div>
