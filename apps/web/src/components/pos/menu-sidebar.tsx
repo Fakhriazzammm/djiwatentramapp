@@ -1,6 +1,7 @@
 import type { Doc, Id } from "@/types/backend-compat";
 import {
 	AlertCircle,
+	AlertTriangle,
 	Banknote,
 	BarChart3,
 	Bot,
@@ -294,7 +295,7 @@ export function MenuSidebar({
 
 	const handleUpdateOrder = async (
 		id: Id<"orders">,
-		data: { customerName?: string; paymentMethod?: string; status?: any }
+		data: { customerName?: string; paymentMethod?: string; status?: any; notes?: string; orderType?: string; tableNumber?: string }
 	) => {
 		try {
 			await updateOrder({ id, ...data });
@@ -560,9 +561,10 @@ export function MenuSidebar({
 							{activeTab === "history" && (
 								<div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin bg-background">
 									<div className="p-4 pb-20">
-										<HistoryTab
-											onSelectOrder={setSelectedOrder}
-										/>
+						<HistoryTab
+							onSelectOrder={setSelectedOrder}
+							onPrint={siteSettings?.allowOpenBillPrint !== false ? handlePrintOrder : undefined}
+						/>
 									</div>
 								</div>
 							)}
@@ -762,6 +764,9 @@ function OrderSimpleDetail({
 	const [customerName, setCustomerName] = useState(order.customerName || "");
 	const [paymentMethod, setPaymentMethod] = useState(order.paymentMethod);
 	const [status, setStatus] = useState(order.status);
+	const [notes, setNotes] = useState(order.notes || "");
+	const [orderType, setOrderType] = useState(order.orderType || "dine_in");
+	const [tableNumber, setTableNumber] = useState(order.tableNumber || "");
 
 	const statusLabels: Record<string, string> = {
 		pending: "Pending",
@@ -777,18 +782,68 @@ function OrderSimpleDetail({
 			maximumFractionDigits: 0,
 		}).format(value);
 
+	const totalQty = order.items?.reduce((acc: number, i: any) => acc + (i.quantity || 0), 0) || 0;
+	const promoLabels: string[] = order.receiptMeta?.promotionLabels ?? [];
+	const subtotal = order.items?.reduce((sum: number, i: any) => sum + (i.originalPrice ?? i.price) * (i.quantity || 0), 0) ?? 0;
+	const totalDiscount = order.discountAmount ?? 0;
+	const orderTypeLabel =
+		order.orderType === "dine_in" ? "Makan di Tempat"
+		: order.orderType === "takeaway" ? "Bungkus"
+		: order.orderType === "online" ? "Online"
+		: order.orderType ?? "—";
+	const payMethodLabel =
+		order.paymentMethod === "tunai" ? "Tunai"
+		: order.paymentMethod === "qris" ? "QRIS"
+		: order.paymentMethod === "transfer" ? "Transfer"
+		: order.paymentMethod ?? "—";
+	const statusBg =
+		order.status === "paid" || order.status === "completed"
+			? "bg-emerald-50 text-emerald-600 border-emerald-200"
+			: order.status === "pending"
+				? "bg-orange-50 text-orange-600 border-orange-200"
+				: "bg-rose-50 text-rose-600 border-rose-200";
+
 	return (
-		<div className="space-y-6 p-4">
-			<div className="flex items-start justify-between">
-				<div>
-					<p className="font-mono text-lg font-bold">#{order.orderNumber}</p>
-					<p className="text-xs text-muted-foreground">
-						{new Date(order.createdAt).toLocaleString("id-ID")}
+		<div className="flex flex-col gap-5 p-4">
+			{/* Header Row */}
+			<div className="flex items-start justify-between gap-3">
+				<div className="min-w-0">
+					<div className="flex items-center gap-2 flex-wrap">
+						<p className="font-mono text-base font-bold truncate">#{order.orderNumber}</p>
+						<span className={`rounded-lg border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${statusBg}`}>
+							{statusLabels[order.status] || order.status}
+						</span>
+					</div>
+					<p className="mt-0.5 text-[10px] text-muted-foreground">
+						{new Date(order.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+						{" · "}
+						{new Date(order.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
 					</p>
 				</div>
-				<div className="flex gap-1">
+				<div className="flex gap-0.5 shrink-0">
 					{!isEditMode ? (
 						<>
+							{onPrint && (
+								<DropdownMenu>
+									<DropdownMenuTrigger render={<Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" title="Cetak" />}>
+										<Printer className="h-4 w-4" />
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end" className="w-48">
+										<DropdownMenuItem onClick={() => onPrint("paid")} className="gap-2 cursor-pointer text-xs">
+											<Receipt className="h-3.5 w-3.5 text-blue-500" />
+											<span>Cetak Struk Lunas</span>
+										</DropdownMenuItem>
+										<DropdownMenuItem onClick={() => onPrint("open_bill")} className="gap-2 cursor-pointer text-xs">
+											<FileText className="h-3.5 w-3.5 text-amber-500" />
+											<span>Cetak Open Bill</span>
+										</DropdownMenuItem>
+										<DropdownMenuItem onClick={() => onPrint("kitchen")} className="gap-2 cursor-pointer text-xs">
+											<ChefHat className="h-3.5 w-3.5 text-green-500" />
+											<span>Cetak Tiket Kitchen</span>
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
+							)}
 							<Button size="icon" variant="ghost" onClick={onEdit} className="h-8 w-8">
 								<Pencil className="h-4 w-4" />
 							</Button>
@@ -800,63 +855,34 @@ function OrderSimpleDetail({
 						<Button
 							size="icon"
 							variant="ghost"
-							onClick={() => onSave({ customerName, paymentMethod, status })}
+							onClick={() => onSave({ customerName, paymentMethod, status, notes, orderType, tableNumber })}
 							className="h-8 w-8 text-primary"
 						>
 							<Save className="h-4 w-4" />
 						</Button>
 					)}
-					{!isEditMode && onPrint && (
-						<Button
-							size="icon"
-							variant="ghost"
-							className="h-8 w-8 text-primary hover:bg-primary/10"
-							title={order.status === "pending" ? "Cetak Open Bill" : "Cetak Struk"}
-							onClick={() => onPrint(order.status === "pending" ? "open_bill" : "paid")}
-						>
-							<Printer className="h-4 w-4" />
-						</Button>
-					)}
 				</div>
 			</div>
 
-			<div className="space-y-4 rounded-xl border bg-muted/20 p-4">
-				<div className="space-y-1.5">
-					<Label className="text-[10px] uppercase text-muted-foreground">Pelanggan</Label>
-					{isEditMode ? (
-						<Input
-							value={customerName}
-							onChange={(e) => setCustomerName(e.target.value)}
-							className="h-9"
-						/>
-					) : (
-						<p className="font-medium">{order.customerName || "-"}</p>
-					)}
+			{/* Detail Grid */}
+			<div className="grid grid-cols-2 gap-x-4 gap-y-2.5 rounded-xl border bg-muted/20 p-3.5 text-[11px]">
+				<div>
+					<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Pelanggan</span>
+					<p className="mt-0.5 font-medium">{order.customerName || "—"}</p>
 				</div>
-
-				<div className="space-y-1.5">
-					<Label className="text-[10px] uppercase text-muted-foreground">Metode</Label>
-					{isEditMode ? (
-						<Select value={paymentMethod} onValueChange={(v) => v && setPaymentMethod(v)}>
-							<SelectTrigger className="h-9">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="cash">Tunai</SelectItem>
-								<SelectItem value="qris">QRIS</SelectItem>
-								<SelectItem value="transfer">Transfer</SelectItem>
-							</SelectContent>
-						</Select>
-					) : (
-						<p className="font-medium capitalize">{order.paymentMethod}</p>
-					)}
+				<div>
+					<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Tipe Order</span>
+					<p className="mt-0.5 font-medium">{orderTypeLabel}{order.tableNumber ? ` · Meja ${order.tableNumber}` : ""}</p>
 				</div>
-
-				<div className="space-y-1.5">
-					<Label className="text-[10px] uppercase text-muted-foreground">Status</Label>
+				<div>
+					<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Pembayaran</span>
+					<p className="mt-0.5 font-medium capitalize">{payMethodLabel}</p>
+				</div>
+				<div>
+					<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Status</span>
 					{isEditMode ? (
 						<Select value={status} onValueChange={(v) => v && setStatus(v as any)}>
-							<SelectTrigger className="h-9">
+							<SelectTrigger className="h-7 text-[11px] mt-0.5">
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
@@ -867,25 +893,125 @@ function OrderSimpleDetail({
 							</SelectContent>
 						</Select>
 					) : (
-						<p className="font-medium">{statusLabels[order.status] || order.status}</p>
+						<p className="mt-0.5 font-medium">{statusLabels[order.status] || order.status}</p>
 					)}
+				</div>
+				{promoLabels.length > 0 && (
+					<div className="col-span-2">
+						<span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Promo</span>
+						<div className="mt-0.5 flex flex-wrap gap-1">
+							{promoLabels.map((label: string, idx: number) => (
+								<span key={idx} className="rounded bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-amber-600 uppercase tracking-wider leading-none">
+									{label}
+								</span>
+							))}
+						</div>
+					</div>
+				)}
+			</div>
+
+			{/* Edit mode fields */}
+			{isEditMode && (
+				<div className="space-y-3 rounded-xl border bg-muted/20 p-3.5">
+					<div className="space-y-1">
+						<Label className="text-[9px] uppercase text-muted-foreground">Nama Pelanggan</Label>
+						<Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="h-8 text-xs" />
+					</div>
+					<div className="space-y-1">
+						<Label className="text-[9px] uppercase text-muted-foreground">Tipe Order</Label>
+						<Select value={orderType} onValueChange={(v) => v && setOrderType(v)}>
+							<SelectTrigger className="h-8 text-xs">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="dine_in">Makan di Tempat</SelectItem>
+								<SelectItem value="takeaway">Bungkus</SelectItem>
+								<SelectItem value="online">Online</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+					<div className="space-y-1">
+						<Label className="text-[9px] uppercase text-muted-foreground">Nomor Meja</Label>
+						<Input value={tableNumber} onChange={(e) => setTableNumber(e.target.value)} placeholder="Cth: 7" className="h-8 text-xs" />
+					</div>
+					<div className="space-y-1">
+						<Label className="text-[9px] uppercase text-muted-foreground">Metode Pembayaran</Label>
+						<Select value={paymentMethod} onValueChange={(v) => v && setPaymentMethod(v)}>
+							<SelectTrigger className="h-8 text-xs">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="tunai">Tunai</SelectItem>
+								<SelectItem value="qris">QRIS</SelectItem>
+								<SelectItem value="transfer">Transfer</SelectItem>
+								<SelectItem value="edc">EDC</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+					<div className="space-y-1">
+						<Label className="text-[9px] uppercase text-muted-foreground">Catatan</Label>
+						<Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Catatan pesanan..." className="h-8 text-xs" />
+					</div>
+				</div>
+			)}
+
+			{/* Items List */}
+			<div className="space-y-2.5">
+				<div className="flex items-center justify-between">
+					<h4 className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Daftar Item ({totalQty})</h4>
+					<span className="text-[9px] text-muted-foreground">{order.items?.length || 0} jenis</span>
+				</div>
+				<div className="divide-y divide-border/50 rounded-xl border">
+					{order.items.map((item: { quantity: number; productName: string; variant?: string; price: number; originalPrice?: number | null; status?: string | null }, idx: number) => {
+						const itemSubtotal = (item.originalPrice ?? item.price) * item.quantity;
+						const hasDiscount = item.originalPrice != null && item.originalPrice > item.price;
+						return (
+							<div key={idx} className="flex items-center justify-between px-3 py-2">
+								<div className="min-w-0 flex-1">
+									<div className="flex items-center gap-1.5">
+										<span className="font-bold text-xs">{item.quantity}x</span>
+										<span className="text-xs font-medium truncate">{item.productName}</span>
+										{item.variant && <span className="text-[9px] text-muted-foreground truncate">({item.variant})</span>}
+									</div>
+									{hasDiscount && (
+										<div className="mt-0.5 flex items-center gap-1">
+											<span className="text-[9px] text-rose-500 line-through">{formatCurrency(item.originalPrice!)}</span>
+											<span className="text-[9px] text-emerald-500">{formatCurrency(item.price)}/item</span>
+										</div>
+									)}
+								</div>
+								<span className="text-xs font-medium shrink-0 ml-2">{formatCurrency(itemSubtotal)}</span>
+							</div>
+						);
+					})}
 				</div>
 			</div>
 
-			<div className="space-y-3">
-				<h4 className="text-xs font-bold uppercase text-muted-foreground">Daftar Item</h4>
-				<div className="space-y-2">
-					{order.items.map((item: { quantity: number; productName: string; price: number }, idx: number) => (
-						<div key={idx} className="flex justify-between text-sm">
-							<div className="flex gap-2">
-								<span className="font-bold">{item.quantity}x</span>
-								<span>{item.productName}</span>
-							</div>
-							<span className="font-medium">{formatCurrency(item.price * item.quantity)}</span>
-						</div>
-					))}
+			{/* Totals */}
+			<div className="space-y-1 rounded-xl border bg-muted/20 p-3.5 text-[11px]">
+				<div className="flex justify-between">
+					<span className="text-muted-foreground">Subtotal</span>
+					<span>{formatCurrency(subtotal)}</span>
 				</div>
-				<div className="mt-4 flex justify-between border-t pt-3 font-bold">
+				{totalDiscount > 0 && (
+					<div className="flex justify-between">
+						<span className="text-muted-foreground">Diskon</span>
+						<span className="text-rose-500">-{formatCurrency(totalDiscount)}</span>
+					</div>
+				)}
+				{order.serviceChargeAmount != null && order.serviceChargeAmount > 0 && (
+					<div className="flex justify-between">
+						<span className="text-muted-foreground">Service Charge</span>
+						<span>{formatCurrency(order.serviceChargeAmount)}</span>
+					</div>
+				)}
+				{order.taxAmount != null && order.taxAmount > 0 && (
+					<div className="flex justify-between">
+						<span className="text-muted-foreground">Pajak</span>
+						<span>{formatCurrency(order.taxAmount)}</span>
+					</div>
+				)}
+				<div className="flex justify-between border-t border-border/50 pt-1.5 font-bold text-sm">
 					<span>Total</span>
 					<span className="text-primary">{formatCurrency(order.totalAmount)}</span>
 				</div>
@@ -1511,7 +1637,7 @@ function ParkirTab({
 	);
 }
 
-function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) => void }) {
+function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"orders">) => void; onPrint?: (order: Doc<"orders">, mode: ReceiptPrintMode) => void }) {
 	const orders = useHybridOrders();
 	const shiftStatus = useHybridShiftStatus();
 
@@ -1722,75 +1848,138 @@ function HistoryTab({ onSelectOrder }: { onSelectOrder: (order: Doc<"orders">) =
 					</p>
 				</div>
 			) : (
-				<div className="space-y-2">
+				<div className="space-y-1.5">
 					{filteredOrders.map((order: Doc<"orders">) => {
 						const matchedShift = getShiftForOrder(order.createdAt) as any;
 						const shiftLabel = matchedShift?.shiftName || "Di luar shift";
-						const shiftMeta = matchedShift?.cashierName
-							? `Kasir: ${matchedShift.cashierName}`
-							: "Kasir tidak tercatat";
+						const cashierName = matchedShift?.cashierName || "—";
+						const totalQty = order.items?.reduce((acc: number, i: any) => acc + (i.quantity || 0), 0) || 0;
+						const promoLabels: string[] = order.receiptMeta?.promotionLabels ?? [];
+						const orderTypeLabel =
+							order.orderType === "dine_in" ? "Makan di Tempat"
+							: order.orderType === "takeaway" ? "Bungkus"
+							: order.orderType === "online" ? "Online"
+							: order.orderType ?? "—";
+						const payMethodLabel =
+							order.paymentMethod === "tunai" ? "Tunai"
+							: order.paymentMethod === "qris" ? "QRIS"
+							: order.paymentMethod === "transfer" ? "Transfer"
+							: order.paymentMethod ?? "—";
+						const statusBadge =
+							order.status === "paid" || order.status === "completed"
+								? "text-emerald-600"
+								: order.status === "pending"
+									? "text-orange-600"
+									: "text-rose-600";
+						const statusLabel =
+							order.status === "paid" ? "Lunas"
+							: order.status === "completed" ? "Selesai"
+							: order.status === "pending" ? "Pending"
+							: "Batal";
+						const statusBg =
+							order.status === "paid" || order.status === "completed"
+								? "bg-emerald-50"
+								: order.status === "pending"
+									? "bg-orange-50"
+									: "bg-rose-50";
+						const isDineIn = order.orderType === "dine_in";
 
 						return (
-							<button
+							<div
 								key={order._id}
-								onClick={() => onSelectOrder(order)}
-								className="flex w-full items-center justify-between rounded-xl border bg-card p-3 text-left transition-all hover:border-primary/50 hover:shadow-sm active:scale-[0.98]"
-								type="button"
+								className="group rounded-xl border bg-card transition-all hover:border-primary/30 hover:shadow-sm"
 							>
-								<div className="flex items-center gap-3">
-									<div
-										className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-											order.status === "completed" || order.status === "paid"
-												? "bg-emerald-100 text-emerald-600"
-												: order.status === "pending"
-													? "bg-orange-100 text-orange-600"
-													: "bg-rose-100 text-rose-600"
-										}`}
+								<div className="flex items-stretch">
+									{/* Clickable main area */}
+									<button
+										onClick={() => onSelectOrder(order)}
+										className="flex flex-1 flex-col gap-0.5 p-2.5 min-w-0 text-left"
+										type="button"
 									>
-										<ClipboardList className="h-5 w-5" />
-									</div>
-									<div>
-										<div className="flex items-center gap-2 flex-wrap">
-											<p className="font-bold text-sm">#{order.orderNumber}</p>
-											<span className={`text-[9px] font-bold uppercase tracking-wider ${
-												order.status === "completed" || order.status === "paid"
-													? "text-emerald-600"
-													: order.status === "pending"
-														? "text-orange-600"
-														: "text-rose-600"
-											}`}>
-												{order.status === "paid"
-													? "Lunas"
-													: order.status === "completed"
-														? "Selesai"
-														: order.status === "pending"
-															? "Pending"
-															: "Batal"}
+										{/* Line 1: Order # + status + shift */}
+										<div className="flex items-center gap-1.5 flex-wrap">
+											<span className="font-bold text-xs text-foreground tracking-tight truncate max-w-[150px]">
+												#{order.orderNumber}
 											</span>
-											<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
+											<span className={`text-[9px] font-bold uppercase tracking-wider ${statusBadge}`}>
+												● {statusLabel}
+											</span>
+											<span className="text-[9px] text-muted-foreground/60">•</span>
+											<span className="text-[9px] font-medium text-muted-foreground truncate">
 												{shiftLabel}
 											</span>
+											<span className="text-[9px] text-muted-foreground/60">•</span>
+											<span className="text-[9px] text-muted-foreground">
+												{orderTypeLabel}
+											</span>
+											{isDineIn && order.tableNumber && (
+												<>
+													<span className="text-[9px] text-muted-foreground/60">•</span>
+													<span className="text-[9px] font-medium text-primary/70">Meja {order.tableNumber}</span>
+												</>
+											)}
 										</div>
-										<p className="text-[10px] text-muted-foreground">
-											{formatDate(order.createdAt)} - {formatTime(order.createdAt)}
-										</p>
-										<p className="mt-0.5 text-[10px] font-medium text-muted-foreground">
-											{shiftMeta}
-										</p>
-										<p className="mt-0.5 text-xs font-medium">
-											{order.customerName || "Tanpa Nama"}
-										</p>
-									</div>
+										{/* Line 2: Date/Time + Kasir + Customer */}
+										<div className="flex items-center gap-1 flex-wrap text-[10px] text-muted-foreground">
+											<span>{formatDate(order.createdAt)} {formatTime(order.createdAt)}</span>
+											<span className="text-muted-foreground/40">•</span>
+											<span>{cashierName}</span>
+											{order.customerName && order.customerName !== "Pelanggan" && (
+												<>
+													<span className="text-muted-foreground/40">•</span>
+													<span className="truncate max-w-[120px]">{order.customerName}</span>
+												</>
+											)}
+										</div>
+										{/* Line 3: Items + Amount + Method + Promo */}
+										<div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+											<span className="font-medium text-foreground/80">
+												{totalQty} item · {formatCurrency(order.totalAmount)}
+											</span>
+											<span className="text-muted-foreground/40">•</span>
+											<span className="text-muted-foreground">{payMethodLabel}</span>
+											{promoLabels.length > 0 && (
+												<>
+													<span className="text-muted-foreground/40">•</span>
+													<span className="rounded bg-amber-50 px-1.5 py-0.5 text-[8px] font-bold text-amber-600 uppercase tracking-wider leading-none">
+														{promoLabels[0].length > 20 ? promoLabels[0].slice(0, 20) + "…" : promoLabels[0]}
+													</span>
+												</>
+											)}
+											{order.discountAmount && order.discountAmount > 0 && !promoLabels.length && (
+												<>
+													<span className="text-muted-foreground/40">•</span>
+													<span className="rounded bg-rose-50 px-1.5 py-0.5 text-[8px] font-bold text-rose-500 uppercase tracking-wider leading-none">Diskon</span>
+												</>
+											)}
+										</div>
+									</button>
+									{/* Print dropdown on the right */}
+									{onPrint && (
+										<div className="flex items-center pr-1.5">
+											<DropdownMenu>
+												<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground/50 hover:text-primary hover:bg-primary/5" title="Cetak" />}>
+													<Printer className="h-3.5 w-3.5" />
+												</DropdownMenuTrigger>
+												<DropdownMenuContent align="end" className="w-48">
+													<DropdownMenuItem onClick={() => onPrint(order, "paid")} className="gap-2 cursor-pointer text-xs">
+														<Receipt className="h-3.5 w-3.5 text-blue-500" />
+														<span>Cetak Struk Lunas</span>
+													</DropdownMenuItem>
+													<DropdownMenuItem onClick={() => onPrint(order, "open_bill")} className="gap-2 cursor-pointer text-xs">
+														<FileText className="h-3.5 w-3.5 text-amber-500" />
+														<span>Cetak Open Bill</span>
+													</DropdownMenuItem>
+													<DropdownMenuItem onClick={() => onPrint(order, "kitchen")} className="gap-2 cursor-pointer text-xs">
+														<ChefHat className="h-3.5 w-3.5 text-green-500" />
+														<span>Cetak Tiket Kitchen</span>
+													</DropdownMenuItem>
+												</DropdownMenuContent>
+											</DropdownMenu>
+										</div>
+									)}
 								</div>
-								<div className="text-right">
-									<p className="font-bold text-primary">
-										{formatCurrency(order.totalAmount)}
-									</p>
-									<p className="mt-1 text-[10px] text-muted-foreground">
-										{order.items?.length || 0} item
-									</p>
-								</div>
-							</button>
+							</div>
 						);
 					})}
 				</div>
@@ -2523,6 +2712,8 @@ function IncomeForm({ onClose }: { onClose: () => void }) {
 	const [amount, setAmount] = useState("");
 	const [category, setCategory] = useState("Shift Pagi");
 	const [description, setDescription] = useState("");
+	const [paymentMethod, setPaymentMethod] = useState("tunai");
+	const [merchant, setMerchant] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -2538,13 +2729,16 @@ function IncomeForm({ onClose }: { onClose: () => void }) {
 				amount: Number(amount),
 				category,
 				description,
+				merchant: merchant || undefined,
 				date: Date.now(),
 				status: "completed",
-				paymentMethod: "tunai",
+				paymentMethod: paymentMethod || "tunai",
 			});
 			toast.success("Pemasukan berhasil dicatat");
 			setAmount("");
 			setDescription("");
+			setPaymentMethod("tunai");
+			setMerchant("");
 			onClose();
 		} catch (error) {
 			console.error(error);
@@ -2596,6 +2790,31 @@ function IncomeForm({ onClose }: { onClose: () => void }) {
 					/>
 				</div>
 
+				{/* ── Metode Bayar & Merchant ── */}
+				<div className="grid grid-cols-2 gap-2">
+					<div className="space-y-1.5">
+						<Label className="text-[10px] font-bold uppercase text-muted-foreground">Metode Bayar</Label>
+						<select
+							className="w-full rounded-lg border border-border bg-background px-2 py-2 text-xs"
+							value={paymentMethod}
+							onChange={(e) => setPaymentMethod(e.target.value)}
+						>
+							<option value="tunai">Tunai</option>
+							<option value="QRIS">QRIS</option>
+							<option value="BANK_TRANSFER">Transfer Bank</option>
+							<option value="CREDIT_CARD">Kartu Kredit</option>
+						</select>
+					</div>
+					<div className="space-y-1.5">
+						<Label className="text-[10px] font-bold uppercase text-muted-foreground">Merchant / Sumber</Label>
+						<Input
+							placeholder="Misal: Pelanggan, Katering..."
+							value={merchant}
+							onChange={(e) => setMerchant(e.target.value)}
+						/>
+					</div>
+				</div>
+
 				<Button className="w-full" disabled={isSubmitting} type="submit">
 					{isSubmitting ? (
 						<Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -2614,6 +2833,8 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 	const [amount, setAmount] = useState("");
 	const [category, setCategory] = useState("Bahan Baku");
 	const [description, setDescription] = useState("");
+	const [paymentMethod, setPaymentMethod] = useState("tunai");
+	const [merchant, setMerchant] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [itemName, setItemName] = useState("");
 	const [itemQty, setItemQty] = useState("1");
@@ -2621,6 +2842,19 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 	const [allowNewInventoryItem, setAllowNewInventoryItem] = useState(false);
 	const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 	const [isItemDropdownOpen, setIsItemDropdownOpen] = useState(false);
+	const [aiParsing, setAiParsing] = useState(false);
+	const [aiBantuUsed, setAiBantuUsed] = useState(false);
+
+	// Detect apakah deskripsi sudah dalam format terstruktur (ada separator "—" + payment method)
+	const isStructuredDescription = useMemo(() => {
+		const text = description?.trim() || "";
+		if (!text || text.length < 5) return false;
+		const STRUCTURED_RE = /(?:—|--|–|-)\s*(?:QRIS|Tunai|Transfer|Bank|Cash|Cashless|Kartu|Debit|Gopay|Ovo|Dana)/i;
+		return STRUCTURED_RE.test(text);
+	}, [description]);
+
+	// Wajib pakai AI Bantu kalau deskripsi free-text & belum pernah diklik
+	const needsAiBantu = description?.trim().length >= 5 && !isStructuredDescription && !aiBantuUsed;
 
 	const inventoryItems = useMemo(() => inventory ?? [], [inventory]);
 	const selectedInventoryItem = useMemo(() => {
@@ -2683,8 +2917,55 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 		setIsItemDropdownOpen(false);
 	};
 
+	const handleAiParse = async () => {
+		const textToParse = (description || amount)?.trim();
+		if (!textToParse || textToParse.length < 5) {
+			toast.warning("Ketik deskripsi dulu (min 5 karakter)");
+			return;
+		}
+		setAiParsing(true);
+		setAiBantuUsed(false); // reset dulu, nanti di-set true kalau sukses
+		try {
+			const res = await fetch("http://localhost:8002/ai-parse-text", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ text: textToParse }),
+			});
+			const data = await res.json();
+			if (!data.ok) throw new Error(data.error || "AI parsing gagal");
+
+			if (data.category) setCategory(data.category);
+			if (data.merchant) setMerchant(data.merchant);
+			if (data.payment_method && !["CASH", "cash", "tunai"].includes(data.payment_method)) {
+				setPaymentMethod(data.payment_method.toLowerCase());
+			}
+			if (data.description && data.description !== description) {
+				setDescription(data.description);
+			}
+			if (data.items && data.items.length > 0) {
+				const firstItem = data.items[0];
+				setItemName(firstItem.name || "");
+				setItemQty(String(firstItem.qty || 1));
+				setItemUnit(firstItem.unit || "");
+			}
+			toast.success(`AI: ${data.reply || "Form terisi"}`);
+			setAiBantuUsed(true); // AI Bantu berhasil — unlock submit
+		} catch (err: any) {
+			toast.error(err.message || "Gagal hubungi AI");
+		} finally {
+			setAiParsing(false);
+		}
+	};
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
+
+		// Wajib klik AI Bantu dulu kalau deskripsi free-text
+		if (needsAiBantu) {
+			toast.error("Ketik deskripsi dengan format '— QRIS — Toko' atau klik ✨ AI Bantu untuk parsing otomatis");
+			return;
+		}
+
 		const numericAmount = Number(amount);
 		if (!amount || !Number.isFinite(numericAmount) || numericAmount <= 0) {
 			toast.error("Jumlah pengeluaran harus lebih dari Rp 0");
@@ -2723,9 +3004,10 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 					amount: numericAmount,
 					category,
 					description: description || normalizedItemName,
+					merchant: merchant || undefined,
 					date: Date.now(),
 					status: "completed",
-					paymentMethod: "tunai",
+					paymentMethod: paymentMethod || "tunai",
 				},
 				items: items.length > 0 ? items : undefined,
 				metadata: {
@@ -2750,13 +3032,16 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 					? "Pengeluaran & stok berhasil dicatat"
 					: "Pengeluaran berhasil dicatat",
 			);
-			setAmount("");
-			setDescription("");
-			setItemName("");
-			setItemQty("1");
-			setItemUnit("");
-			setAllowNewInventoryItem(false);
-			onClose();
+		setAmount("");
+		setDescription("");
+		setItemName("");
+		setItemQty("1");
+		setItemUnit("");
+		setAllowNewInventoryItem(false);
+		setPaymentMethod("tunai");
+		setMerchant("");
+		setAiBantuUsed(false);
+		onClose();
 		} catch (error: any) {
 			console.error(error);
 			toast.error(error?.message || "Gagal mencatat pengeluaran");
@@ -2811,6 +3096,31 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 					<p className="text-[10px] text-muted-foreground">
 						Dropdown muncul saat mengetik. Untuk restok otomatis pakai kategori bahan/stok.
 					</p>
+				</div>
+
+				{/* ── Metode Bayar & Merchant ── */}
+				<div className="grid grid-cols-2 gap-2">
+					<div className="space-y-1.5">
+						<Label className="text-[10px] font-bold uppercase text-muted-foreground">Metode Bayar</Label>
+						<select
+							className="w-full rounded-lg border border-border bg-background px-2 py-2 text-xs"
+							value={paymentMethod}
+							onChange={(e) => setPaymentMethod(e.target.value)}
+						>
+							<option value="tunai">Tunai</option>
+							<option value="QRIS">QRIS</option>
+							<option value="BANK_TRANSFER">Transfer Bank</option>
+							<option value="CREDIT_CARD">Kartu Kredit</option>
+						</select>
+					</div>
+					<div className="space-y-1.5">
+						<Label className="text-[10px] font-bold uppercase text-muted-foreground">Merchant / Toko</Label>
+						<Input
+							placeholder="Misal: Yogya, Plaza Asia..."
+							value={merchant}
+							onChange={(e) => setMerchant(e.target.value)}
+						/>
+					</div>
 				</div>
 
 				<div className="space-y-2">
@@ -2902,18 +3212,45 @@ function ExpenseForm({ onClose }: { onClose: () => void }) {
 				</div>
 
 				<div className="space-y-2">
-					<Label>Keterangan</Label>
+					<div className="flex items-center justify-between">
+						<Label>Keterangan</Label>
+						<button
+							type="button"
+							onClick={handleAiParse}
+							disabled={aiParsing || !((description || amount)?.trim().length >= 5)}
+							className="inline-flex items-center gap-1 rounded-md bg-gradient-to-r from-purple-500 to-indigo-500 px-2 py-1 text-[10px] font-bold text-white shadow-xs transition-all hover:from-purple-600 hover:to-indigo-600 disabled:opacity-40"
+						>
+							{aiParsing ? (
+								<><Loader2 className="h-3 w-3 animate-spin" /> Memproses...</>
+							) : (
+								<><Sparkles className="h-3 w-3" /> AI Bantu</>
+							)}
+						</button>
+					</div>
 					<Textarea
-						onChange={(e) => setDescription(e.target.value)}
+						onChange={(e) => {
+							setDescription(e.target.value);
+							if (aiBantuUsed) setAiBantuUsed(false);
+						}}
 						placeholder="Rincian belanja..."
 						required
 						value={description}
 					/>
 				</div>
 
+					{/* ── Warning: wajib pakai AI Bantu ── */}
+					{needsAiBantu && (
+						<div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+							<AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+							<span>
+								Deskripsi belum terstruktur. Klik <strong>✨ AI Bantu</strong> di atas untuk isi otomatis kategori, merchant &amp; metode bayar. Atau gunakan format: <code>"— QRIS — Toko"</code>
+							</span>
+						</div>
+					)}
+
 				<Button
 					className="w-full"
-					disabled={isSubmitting || (itemName.trim().length > 0 && !selectedInventoryItem && !allowNewInventoryItem)}
+					disabled={isSubmitting || needsAiBantu || (itemName.trim().length > 0 && !selectedInventoryItem && !allowNewInventoryItem)}
 					type="submit"
 					variant="destructive"
 				>

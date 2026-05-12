@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing" | "sendTelegram" | "recordTransaction" | "executeSql" | "insertInventory" | "classifyTransactionItems";
+type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing" | "sendTelegram" | "recordTransaction" | "executeSql" | "insertInventory" | "classifyTransactionItems" | "submitEmployeeApplication";
 type JsonRecord = Record<string, unknown>;
 
 const corsHeaders = {
@@ -684,6 +684,64 @@ async function sendTelegram(
 	}
 }
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function submitEmployeeApplication(body: JsonRecord) {
+	const payload = (body.payload ?? body) as JsonRecord;
+
+	// --- server-side validation ---
+	const fullName = String(payload.full_name ?? "").trim();
+	const phone = String(payload.phone ?? "").trim();
+	if (!fullName) throw new Error("Nama lengkap wajib diisi");
+	if (!phone) throw new Error("Nomor HP wajib diisi");
+
+	const email = payload.email ? String(payload.email).trim() : null;
+	if (email && !EMAIL_REGEX.test(email)) {
+		throw new Error("Format email tidak valid");
+	}
+
+	const identityNumber = payload.identity_number
+		? String(payload.identity_number).trim()
+		: null;
+	if (identityNumber && !/^\d{16}$/.test(identityNumber)) {
+		throw new Error("NIK harus 16 digit angka");
+	}
+
+	// Force status to pending (prevent client spoofing)
+	const row = {
+		status: "pending",
+		full_name: fullName,
+		email,
+		phone,
+		identity_number: identityNumber,
+		address: payload.address ? String(payload.address).trim() : null,
+		birth_date: payload.birth_date ? String(payload.birth_date).trim() : null,
+		emergency_contact: payload.emergency_contact ?? {},
+		employment: payload.employment ?? {},
+		contract: payload.contract ?? {},
+		signature_url: payload.signature_url ?? null,
+		contract_pdf_url: payload.contract_pdf_url ?? null,
+		attachments: payload.attachments ?? {},
+		raw: {
+			...((payload.raw as JsonRecord) ?? {}),
+			pipelineStatus: "submitted",
+			validatedByEdgeFunction: true,
+		},
+	};
+
+	const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+	const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+	const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+	const { data, error } = await adminClient
+		.from("employee_onboarding_applications")
+		.insert(row)
+		.select("id")
+		.single();
+	if (error) throw new Error(error.message);
+	return { id: data.id };
+}
+
 Deno.serve(async (req) => {
 	if (req.method === "OPTIONS") {
 		return new Response("ok", { headers: corsHeaders });
@@ -708,8 +766,10 @@ Deno.serve(async (req) => {
 				return jsonResponse(await classifyTransactionItems(body));
 			case "executeSql":
 				return jsonResponse(await executeSql(body));
-			case "insertInventory":
-				return jsonResponse(await insertInventory(body));
+		case "insertInventory":
+			return jsonResponse(await insertInventory(body));
+		case "submitEmployeeApplication":
+			return jsonResponse(await submitEmployeeApplication(body));
 			default:
 				return fail("AI action tidak dikenali", 404);
 		}

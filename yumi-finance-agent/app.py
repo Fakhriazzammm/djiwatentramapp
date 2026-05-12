@@ -71,7 +71,7 @@ from analyzer import TransactionAnalyzer
 
 finance = FinanceManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, f"{SUPABASE_URL}/functions/v1/yumi-ai")
 inventory = InventoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ACCESS_TOKEN)
-orchestrator = FinanceOrchestrator(SUMOPOD_API_KEY)
+orchestrator = FinanceOrchestrator(SUMOPOD_API_KEY, SUPABASE_URL, SUPABASE_KEY)
 memory = MemoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY)
 AI_BASE_URL = os.getenv("NINEROUTER_BASE_URL") or os.getenv("SUMOPOD_BASE_URL", "http://127.0.0.1:20128/v1")
 analyzer = TransactionAnalyzer(SUMOPOD_API_KEY, AI_BASE_URL, SUPABASE_URL, SUPABASE_ACCESS_TOKEN)
@@ -2019,13 +2019,17 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 amount=result.amount,
                 description=result.description or "Pemasukan",
                 category="penjualan",
+                merchant=result.merchant or "",
+                payment_method=result.payment_method or "cash",
             )
             if tx.get("ok"):
                 cat_label = get_category_label("penjualan")
+                pay_str = f" via {result.payment_method}" if result.payment_method and result.payment_method.upper() != "CASH" else ""
+                merch_str = f" di {result.merchant}" if result.merchant else ""
                 await update.message.reply_text(
                     f"✅ Pemasukan Tercatat\n"
                     f"   {format_amount(int(result.amount))}\n"
-                    f"   📝 {result.description or 'Pemasukan'}\n"
+                    f"   📝 {result.description or 'Pemasukan'}{merch_str}{pay_str}\n"
                     f"   {cat_label}",
                     reply_markup=_finance_keyboard(),
                 )
@@ -2062,6 +2066,8 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 amount=result.amount,
                 description=result.description or "Pengeluaran",
                 category=category,
+                merchant=result.merchant or "",
+                payment_method=result.payment_method or "cash",
                 metadata={
                     "source": "yumi_finance_agent",
                     "scanItems": scan_items if scan_items else None,
@@ -2071,10 +2077,12 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 cat_label = get_category_label(category)
 
                 # Build response with items if available
+                pay_str = f" — {result.payment_method}" if result.payment_method and result.payment_method.upper() != "CASH" else ""
+                merch_str = f" di {result.merchant}" if result.merchant else ""
                 reply_lines = [
                     f"💸 Pengeluaran Tercatat",
                     f"   {format_amount(int(result.amount))}",
-                    f"   📝 {result.description or 'Pengeluaran'}",
+                    f"   📝 {result.description or 'Pengeluaran'}{merch_str}{pay_str}",
                 ]
                 if result.items:
                     for it in result.items[:5]:
@@ -3429,6 +3437,35 @@ async def _handle_health(request):
     return web.json_response({"ok": True, "service": "yumi-finance-analyzer"})
 
 
+async def _handle_ai_parse(request):
+    """POST /ai-parse-text  { "text": "pengeluaran 25000 beli gula" }
+    Returns: { action, amount, category, merchant, payment_method, description, items, confidence }
+    """
+    from aiohttp import web
+    try:
+        body = json.loads(await request.read())
+        text = body.get("text", "").strip()
+        if not text:
+            return web.json_response({"ok": False, "error": "text required"}, status=400)
+
+        result = await orchestrator.orchestrate(text)
+        return web.json_response({
+            "ok": True,
+            "action": result.action,
+            "amount": result.amount,
+            "category": result.category,
+            "merchant": result.merchant,
+            "payment_method": result.payment_method,
+            "description": result.description,
+            "items": result.items,
+            "confidence": result.confidence,
+            "reply": result.text,
+        })
+    except Exception as e:
+        logger.exception("AI parse failed")
+        return web.json_response({"ok": False, "error": str(e)}, status=500)
+
+
 async def _start_http_server(bot_app, port=ANALYZER_PORT):
     """Start aiohttp server in the bot's event loop via post_init."""
     if web is None:
@@ -3438,6 +3475,7 @@ async def _start_http_server(bot_app, port=ANALYZER_PORT):
     app["bot"] = bot_app.bot
     app.router.add_post("/analyze-transaction", _handle_analyze_transaction)
     app.router.add_post("/batch-analyze", _handle_batch_analyze)
+    app.router.add_post("/ai-parse-text", _handle_ai_parse)
     app.router.add_get("/health", _handle_health)
     runner = web.AppRunner(app)
     await runner.setup()

@@ -35,6 +35,12 @@ logs/
 # Hermes agent
 hermes/
 
+# Build cache
+.turbo/
+
+# Planning docs
+PLAN_*.md
+
 # Test output
 test-results/
 

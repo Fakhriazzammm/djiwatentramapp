@@ -5,7 +5,10 @@ Bisa handle structured command langsung, atau fallback ke SumoPod AI.
 """
 
 import re
+import json
 import logging
+import httpx
+from collections import Counter
 from datetime import datetime, timezone, timedelta
 
 from sumopod_client import SumoPodClient, TEXT_MODEL
@@ -25,6 +28,7 @@ class OrchestratorResult:
         category: str | None = None,
         description: str = "",
         merchant: str = "",
+        payment_method: str = "",
         items: list[dict] | None = None,
         confidence: str = "high",
         needs_confirmation: bool = False,
@@ -35,6 +39,7 @@ class OrchestratorResult:
         self.category = category
         self.description = description
         self.merchant = merchant
+        self.payment_method = payment_method
         self.items = items or []
         self.confidence = confidence
         self.needs_confirmation = needs_confirmation
@@ -47,8 +52,12 @@ class FinanceOrchestrator:
     bukan Supabase Edge Function.
     """
 
-    def __init__(self, sumopod_api_key: str):
+    def __init__(self, sumopod_api_key: str, supabase_url: str = "", supabase_key: str = ""):
         self.sumopod_api_key = sumopod_api_key
+        self._supabase_url = supabase_url.rstrip("/")
+        self._supabase_key = supabase_key
+        # Cache: refresh setiap 5 menit
+        self._context_cache = {"data": None, "fetched_at": 0}
 
     # ── Regex patterns ──────────────────────────────────────────────
 
@@ -143,6 +152,81 @@ class FinanceOrchestrator:
             return "bulan_ini"
         return "hari_ini"
 
+    # ── Extract merchant & payment method from description text ──
+    # Pola: "beli gula — QRIS — Toko Sinar" or "di Yogya" or "dari Bu Dian"
+    _MERCHANT_RE = re.compile(
+        r'(?:di\s+|dari\s+)([A-Za-z\u00C0-\u024F .\u2019&#@()-]+?)(?:\s*\u2014|\s*$|(?=\s*(?:qris|tunai|cash|transfer|bank|kredit|cc)))',
+        re.IGNORECASE,
+    )
+    _MERCHANT_EM_RE = re.compile(
+        r'(?:\u2014\s+)(?!\s*(?:qris|tunai|cash|transfer|bank|kartu|cc|kredit))([A-Za-z\u00C0-\u024F .\u2019&#@()-]+?)(?:\s*$|(?=\s*(?:qris|tunai|cash|transfer|bank|kredit|cc|\u2014)))',
+        re.IGNORECASE,
+    )
+    _PAYMENT_RE = re.compile(
+        r'(?:pembayaran[:\s]+|metode[:\s]+|via\s+|\u2014\s*)(qris|tunai|cash|transfer|bank|kartu\s*kredit|cc|kredit)',
+        re.IGNORECASE,
+    )
+    _PAYMENT_KEYWORD_RE = re.compile(
+        r'\b(qris|tunai|cash|transfer|bank|kartu\s*kredit|cc)\b',
+        re.IGNORECASE,
+    )
+
+    @staticmethod
+    def _extract_merchant(text: str) -> str:
+        """Extract merchant name from text: 'di Yogya', '— Toko Sinar', 'dari Bu Dian'"""
+        # Try em-dash merchant first (but skip payment keywords)
+        m = FinanceOrchestrator._MERCHANT_EM_RE.search(text)
+        if m:
+            merchant = m.group(1).strip().rstrip(".,;!")
+            if len(merchant) >= 2:
+                return merchant
+        # Then try "di X" / "dari X"
+        m = FinanceOrchestrator._MERCHANT_RE.search(text)
+        if m:
+            merchant = m.group(1).strip().rstrip(".,;!")
+            if len(merchant) >= 2:
+                return merchant
+        return ""
+
+    @staticmethod
+    def _extract_payment_method(text: str) -> str:
+        """Extract payment method from text: QRIS, Tunai, Transfer, etc."""
+        m = FinanceOrchestrator._PAYMENT_RE.search(text)
+        if m:
+            raw = m.group(1).strip().lower()
+        else:
+            m2 = FinanceOrchestrator._PAYMENT_KEYWORD_RE.search(text)
+            if m2:
+                raw = m2.group(1).strip().lower()
+            else:
+                return "CASH"
+        mapping = {
+            "tunai": "CASH", "cash": "CASH",
+            "qris": "QRIS",
+            "transfer": "BANK_TRANSFER", "bank": "BANK_TRANSFER",
+            "kartu kredit": "CREDIT_CARD", "cc": "CREDIT_CARD", "kredit": "CREDIT_CARD",
+        }
+        return mapping.get(raw, "CASH")
+
+    @staticmethod
+    def _clean_description(text: str) -> str:
+        """Remove merchant and payment info from description.
+        'beli gula — QRIS — Toko Sinar' → 'beli gula'
+        """
+        cleaned = re.sub(
+            r'(?:\u2014\s*(?:qris|tunai|cash|transfer|bank|kartu\s*kredit|cc|kredit)\s*(?:\u2014\s*.*?)?(?:\s*$|$))',
+            '', text, flags=re.IGNORECASE,
+        )
+        cleaned = re.sub(
+            r'\s*\u2014\s*.*?(?:\s*$|$)',
+            '', cleaned, flags=re.IGNORECASE,
+        ).strip()
+        cleaned = re.sub(
+            r'\s*(?:di|dari)\s+[A-Za-z\u00C0-\u024F .\u2019&#@()-]+\s*$',
+            '', cleaned, flags=re.IGNORECASE,
+        ).strip()
+        return cleaned
+
     # ── AI System Prompt (finance-only, post-split) ─────
     FINANCE_SYSTEM_PROMPT = """Kamu adalah Yumi Finance — AI Keuangan untuk YumiPOS.
 Tugasmu: membantu user mengelola keuangan, memahami input, dan menjawab pertanyaan.
@@ -193,6 +277,8 @@ REPLY: Untuk detail per kategori, coba ketik "kategori" atau "breakdown bulan in
 ACTION: <action_name>
 AMOUNT: <angka (jika ada)>
 CATEGORY: <category (jika ada)>
+MERCHANT: <nama toko/supplier (jika ada)>
+PAYMENT_METHOD: <metode bayar — CASH|QRIS|BANK_TRANSFER|CREDIT_CARD (isi default CASH jika tidak disebut)>
 DESCRIPTION: <deskripsi>
 ITEMS: <nama1>|<qty1>|<unit1>|<harga1>, <nama2>|<qty2>|<unit2>|<harga2> (jika ada item detail)
 CONFIDENCE: high|medium|low
@@ -218,10 +304,49 @@ OUTPUT:
 ACTION: record_expense
 AMOUNT: 204000
 CATEGORY: bahan_makanan
+MERCHANT:
+PAYMENT_METHOD: CASH
 DESCRIPTION: Belanja bahan: Timun, Selada
 ITEMS: Timun|1||8000, Selada|1||40000
 CONFIDENCE: high
 REPLY: 💸 Pengeluaran tercatat! Rp204.000 untuk belanja bahan.
+
+Contoh dengan MERCHANT dan PAYMENT_METHOD:
+User: pengeluaran 25000 bayar es — QRIS — Toko Es Mambo
+OUTPUT:
+ACTION: record_expense
+AMOUNT: 25000
+CATEGORY: bahan_minuman
+MERCHANT: Toko Es Mambo
+PAYMENT_METHOD: QRIS
+DESCRIPTION: Beli es
+CONFIDENCE: high
+REPLY: 💸 Pengeluaran Rp25.000 via QRIS di Toko Es Mambo tercatat!
+
+User: pengeluaran 350000 belanja bulanan — Transfer — Yogya
+  1. Minyak goreng / 2 L / 35.000
+  2. Gula pasir / 5 kg / 75.000
+OUTPUT:
+ACTION: record_expense
+AMOUNT: 350000
+CATEGORY: bahan_makanan
+MERCHANT: Yogya
+PAYMENT_METHOD: BANK_TRANSFER
+DESCRIPTION: Belanja bulanan: Minyak goreng, Gula pasir
+ITEMS: Minyak goreng|2|L|35000, Gula pasir|5|kg|75000
+CONFIDENCE: high
+REPLY: 💸 Pengeluaran Rp350.000 via Transfer di Yogya tercatat! 2 item.
+
+User: pemasukan 150000 penjualan kopi — QRIS
+OUTPUT:
+ACTION: record_income
+AMOUNT: 150000
+CATEGORY: penjualan
+MERCHANT:
+PAYMENT_METHOD: QRIS
+DESCRIPTION: Penjualan kopi
+CONFIDENCE: high
+REPLY: 💰 Pemasukan Rp150.000 via QRIS tercatat!
 
 PENTING — Cara parse input user:
 1. Format item: "Nama / qty unit / harga" atau "Nama / harga" atau "Nama | Qty | Harga"
@@ -234,9 +359,24 @@ PENTING — Cara parse input user:
 5. DESCRIPTION: buat dari gabungan nama item. Prefix "Pembelian bahan: " untuk expense bahan makanan.
 6. AMOUNT: total dari angka di "Total:" atau jumlahkan semua harga item.
    Hapus semua titik dari angka: 204.000 → AMOUNT: 204000
+7. MERCHANT: cari kata setelah "di ", "dari ", "— " yang menandakan nama toko/supplier.
+   Jika tidak disebut, biarkan kosong.
+8. PAYMENT_METHOD: cari kata kunci pembayaran:
+   - "tunai", "cash" → CASH
+   - "qris" → QRIS
+   - "transfer", "bank" → BANK_TRANSFER
+   - "kartu kredit", "cc", "kredit" → CREDIT_CARD
+   Jika tidak disebut, default CASH.
+   Simpan PAYMENT_METHOD juga di DESCRIPTION agar user tahu metode bayar yang digunakan.
 
 KATEGORI untuk belanja bahan makanan: bahan_makanan (bukan lainnya).
 Untuk item seperti Timun, Selada, Daun, Kemangi, Bawang, Jeruk, Cabai, Ebi → kategori bahan_makanan.
+
+ATAURAN ISI KOSONG:
+- Jika user tidak sebut MERCHANT: lihat DATA KONTEKS BISNIS di atas. Cari merchant langganan yang cocok dengan item yang dibeli. Contoh: user beli telor, biasanya beli di Yogya MB → MERCHANT: Yogya MB. Jika tidak ada kecocokan, biarkan kosong.
+- Jika user tidak sebut PAYMENT_METHOD: default CASH.
+- Jika user tidak sebut brand di ITEMS: lihat "Brand default per item" di konteks. Jika ada, gunakan brand tersebut. Contoh: "Minyak Goreng" → "Minyak Goreng - Tropical".
+- Jika user tidak sebut kategori: lihat "Kategori sering dipakai" dan sesuaikan dengan jenis barang.
 
 Jangan tanya balik untuk klarifikasi jika maksudnya sudah jelas — langsung pilih action yang paling sesuai."""
 
@@ -259,12 +399,17 @@ Jangan tanya balik untuk klarifikasi jika maksudnya sudah jelas — langsung pil
         if m:
             amount = self._parse_nominal(m.group(1))
             desc = m.group(2).strip()
+            merchant = self._extract_merchant(desc)
+            payment_method = self._extract_payment_method(desc)
+            clean_desc = self._clean_description(desc)
             if amount <= 0:
                 return OrchestratorResult("unknown", text="Nominal tidak valid. Contoh: 'pemasukan 50000 penjualan kopi'")
             return OrchestratorResult(
                 "record_income",
                 amount=amount,
-                description=desc or "Pemasukan",
+                description=clean_desc or "Pemasukan",
+                merchant=merchant,
+                payment_method=payment_method,
                 confidence="high",
             )
 
@@ -273,12 +418,17 @@ Jangan tanya balik untuk klarifikasi jika maksudnya sudah jelas — langsung pil
         if m:
             amount = self._parse_nominal(m.group(1))
             desc = m.group(2).strip()
+            merchant = self._extract_merchant(desc)
+            payment_method = self._extract_payment_method(desc)
+            clean_desc = self._clean_description(desc)
             if amount <= 0:
                 return OrchestratorResult("unknown", text="Nominal tidak valid. Contoh: 'pengeluaran 25000 beli gula'")
             return OrchestratorResult(
                 "record_expense",
                 amount=amount,
-                description=desc or "Pengeluaran",
+                description=clean_desc or "Pengeluaran",
+                merchant=merchant,
+                payment_method=payment_method,
                 confidence="high" if desc else "medium",
             )
 
@@ -360,12 +510,100 @@ Jangan tanya balik untuk klarifikasi jika maksudnya sudah jelas — langsung pil
         # ── 2. Fallback ke SumoPod AI ─────────────────────────────
         return await self._call_sumopod(text_stripped)
 
+    async def _fetch_context_data(self) -> str:
+        """Fetch existing data dari Supabase untuk bantu AI."""
+        import time
+        now = time.time()
+        if self._context_cache["data"] and (now - self._context_cache["fetched_at"]) < 300:
+            return self._context_cache["data"]
+
+        context_parts = ["DATA KONTEKS BISNIS — gunakan info ini untuk akurasi lebih tinggi:"]
+
+        if self._supabase_url and self._supabase_key:
+            headers = {
+                "apikey": self._supabase_key,
+                "Authorization": f"Bearer {self._supabase_key}",
+            }
+            try:
+                async with httpx.AsyncClient(timeout=10) as client:
+                    # 1. Merchant langganan (top 20 paling sering)
+                    resp = await client.get(
+                        f"{self._supabase_url}/rest/v1/pos_financial_transactions"
+                        f"?select=merchant&merchant=not.is.null&merchant=neq."
+                        f"&order=date.desc&limit=50",
+                        headers=headers,
+                    )
+                    if resp.status_code == 200:
+                        merchants = list(dict.fromkeys(
+                            m.get("merchant", "") for m in resp.json() if m.get("merchant")
+                        ))[:20]
+                        if merchants:
+                            context_parts.append(f"📍 Merchant langganan: {', '.join(merchants[:10])}")
+                            if len(merchants) > 10:
+                                context_parts.append(f"   Lainnya: {', '.join(merchants[10:])}")
+                            context_parts.append("   ⚠️ Jika user tidak sebut merchant, isi dari daftar ini berdasarkan item/barang yang biasa dibeli dari merchant tersebut.")
+
+                    # 2. Inventory items dengan brand + store preference (top 50)
+                    resp2 = await client.get(
+                        f"{self._supabase_url}/rest/v1/pos_inventory"
+                        f"?select=ingredientName,defaultBrandName,unit,netWeight,preferredStoreId"
+                        f"&order=ingredientName.asc&limit=50",
+                        headers=headers,
+                    )
+                    if resp2.status_code == 200:
+                        items = resp2.json()
+                        inventory_lines = []
+                        brand_patterns = []
+                        for i in items:
+                            name = i.get("ingredientName", "")
+                            brand = i.get("defaultBrandName") or ""
+                            unit = i.get("unit", "")
+                            store_id = i.get("preferredStoreId") or ""
+                            display = f"{name} ({unit})" if not brand else f"{name} - {brand} ({unit})"
+                            inventory_lines.append(display)
+                            if brand:
+                                brand_patterns.append(f"{name} biasa pakai {brand}")
+                        if inventory_lines:
+                            context_parts.append(f"📦 Inventory tersedia: {'; '.join(inventory_lines[:30])}")
+                        if brand_patterns:
+                            context_parts.append(f"🏷 Brand default per item: {'; '.join(brand_patterns[:15])}")
+                            context_parts.append("   ⚠️ Jika user beli item tanpa sebut brand, isi brand default-nya.")
+
+                    # 3. Pola kategori dari transaksi terakhir
+                    resp3 = await client.get(
+                        f"{self._supabase_url}/rest/v1/pos_financial_transactions"
+                        f"?select=category,description,merchant,amount"
+                        f"&type=eq.expense&order=date.desc&limit=20",
+                        headers=headers,
+                    )
+                    if resp3.status_code == 200:
+                        txs = resp3.json()
+                        if txs:
+                            cat_counter = Counter()
+                            for t in txs:
+                                cat_counter[t.get("category", "lainnya")] += 1
+                            top_cats = cat_counter.most_common(5)
+                            if top_cats:
+                                cats_str = ", ".join(f"{c} ({n}x)" for c, n in top_cats)
+                                context_parts.append(f"📊 Kategori sering dipakai: {cats_str}")
+                                context_parts.append("   ⚠️ Jika user tidak sebut kategori, gunakan yang paling sering untuk jenis item serupa.")
+            except Exception as e:
+                logger.warning("fetch_context_data failed: %s", e)
+
+        result = "\n".join(context_parts)
+        self._context_cache["data"] = result
+        self._context_cache["fetched_at"] = now
+        return result
+
     async def _call_sumopod(self, text: str) -> OrchestratorResult:
         """Panggil SumoPod API untuk memahami input kompleks."""
         client = SumoPodClient(self.sumopod_api_key)
+        # Inject context data ke system prompt
+        context = await self._fetch_context_data()
+        enhanced_prompt = f"{self.FINANCE_SYSTEM_PROMPT}\n\n{context}"
         result = await client.chat(
             message=text,
-            system_prompt=self.FINANCE_SYSTEM_PROMPT,
+            system_prompt=enhanced_prompt,
             model=TEXT_MODEL,
         )
 
@@ -375,6 +613,8 @@ Jangan tanya balik untuk klarifikasi jika maksudnya sudah jelas — langsung pil
             category=result["category"],
             description=result["description"],
             items=result.get("items", []),
+            merchant=result.get("merchant", ""),
+            payment_method=result.get("payment_method", ""),
             confidence=result["confidence"],
             text=result["reply"],
         )

@@ -8,6 +8,7 @@ import asyncio
 import logging
 import os
 import sys
+from datetime import datetime, timezone, timedelta
 
 import httpx
 from dotenv import load_dotenv
@@ -662,6 +663,23 @@ async def main():
                 logger.debug("Completed order monitor check: %s", e)
             await asyncio.sleep(120)  # Cek tiap 2 menit
 
+    async def _scheduled_stock_report():
+        """Kirim laporan stok terjadwal tiap pagi 08:00 & sore 17:00 WIB."""
+        _WIB = timezone(timedelta(hours=7))
+        while True:
+            now = datetime.now(_WIB)
+            today = now.date()
+            pagi = datetime(today.year, today.month, today.day, 8, 0, tzinfo=_WIB)
+            sore = datetime(today.year, today.month, today.day, 17, 0, tzinfo=_WIB)
+            jadwal = [pagi, sore]
+            # Skip jadwal yang sudah lewat hari ini
+            next_run = min((s for s in jadwal if s > now), default=pagi + timedelta(days=1))
+            delay = (next_run - now).total_seconds()
+            logger.info("Stock report scheduler: next run at %s WIB (%d detik)", next_run.strftime("%H:%M"), delay)
+            await asyncio.sleep(delay)
+            await _notify_stock_update()
+
+    asyncio.ensure_future(_scheduled_stock_report())
     asyncio.ensure_future(_monitor_stock_changes())
     asyncio.ensure_future(_monitor_completed_orders())
 

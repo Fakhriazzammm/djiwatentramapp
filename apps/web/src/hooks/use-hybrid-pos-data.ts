@@ -441,6 +441,8 @@ async function fetchSiteSettings() {
 		.from("pos_site_settings")
 		.select("*")
 		.not("raw->shiftSettings", "is", null)
+		.order("_id", { ascending: false })
+		.limit(1)
 		.maybeSingle();
 
 	if (error) throw error;

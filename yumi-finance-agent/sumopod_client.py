@@ -31,10 +31,12 @@ Action yang tersedia:
 7. restock — tambah stok barang
 8. search — cari transaksi
 
-Balas dengan format:
+            Balas dengan format:
 ACTION: <action_name>
 AMOUNT: <angka>
 CATEGORY: <category>
+MERCHANT: <nama toko/supplier>
+PAYMENT_METHOD: <metode bayar — CASH|QRIS|BANK_TRANSFER|CREDIT_CARD>
 DESCRIPTION: <deskripsi>
 CONFIDENCE: high|medium|low
 REPLY: <balasan ke user>
@@ -96,6 +98,8 @@ class SumoPodClient:
             desc_match = re.search(r"DESCRIPTION:\s*(.+?)(?:\n|$)", reply)
             conf_match = re.search(r"CONFIDENCE:\s*(\w+)", reply)
             reply_match = re.search(r"REPLY:\s*(.+?)$", reply, re.DOTALL)
+            merchant_match = re.search(r"MERCHANT:\s*(.*?)(?:\n|$)", reply)
+            pm_match = re.search(r"PAYMENT_METHOD:\s*(.*?)(?:\n|$)", reply)
 
             action = action_match.group(1) if action_match else "unknown"
 
@@ -166,6 +170,8 @@ class SumoPodClient:
                 "amount": amount,
                 "category": cat_match.group(1) if cat_match else None,
                 "description": desc_match.group(1).strip() if desc_match else message,
+                "merchant": merchant_match.group(1).strip() if merchant_match else "",
+                "payment_method": pm_match.group(1).strip().upper() if pm_match else "CASH",
                 "confidence": conf_match.group(1) if conf_match else "medium",
                 "reply": reply_match.group(1).strip() if reply_match else "",
                 "items": items,
