@@ -634,15 +634,15 @@ export class BluetoothPrinterService {
 		printSeparator("=");
 
 		if (settings.receiptShowOrderNumber !== false) {
-			printKeyValue("ID", order.orderNumber.toUpperCase());
+			printKeyValue("ORDER", order.orderNumber.toUpperCase());
 		}
 
 		if (order.dailyReceiptNo && order.receiptKind) {
-			const receiptLabel =
-				order.receiptKind === "dine_in" ? "STRUK Dine In" :
-				order.receiptKind === "takeaway" ? "STRUK Takeaway" :
-				"STRUK Online";
-			printKeyValue(receiptLabel, `#${order.dailyReceiptNo}`);
+			const receiptKindLabel =
+				order.receiptKind === "dine_in" ? "DINE IN"
+				: order.receiptKind === "takeaway" ? "BUNGKUS"
+				: "ONLINE";
+			printKeyValue("STRUK", `#${order.dailyReceiptNo} / ${receiptKindLabel}`);
 		}
 
 		if (order.cashierName && settings.receiptShowCashierName !== false) {
@@ -662,7 +662,6 @@ export class BluetoothPrinterService {
 		printKeyValue("WAKTU", dateStr);
 
 		if (mode === "paid") {
-			printKeyValue("STATUS", order.paymentStatusLabel || "LUNAS");
 			printKeyValue("BAYAR", order.paymentMethod.toUpperCase());
 		} else if (mode === "open_bill") {
 			printKeyValue("STATUS", "OPEN BILL");
@@ -684,6 +683,12 @@ export class BluetoothPrinterService {
 
 		if (settings.receiptShowCustomerName && order.customerName) {
 			printKeyValue("PELANGGAN", order.customerName.toUpperCase());
+		}
+
+		if (settings.receiptShowNotes && order.notes) {
+			printSeparator("-");
+			result.bold(true).line("CATATAN").bold(false);
+			printWrappedLines(order.notes);
 		}
 
 		if (mode !== "kitchen" && order.receiptMeta?.promotionLabels?.length) {
@@ -723,7 +728,11 @@ export class BluetoothPrinterService {
 			printSeparator("-");
 
 			for (const item of order.items) {
-				const totalStr = formatReceiptCurrency(item.price * item.quantity);
+				const hasDiscount = item.originalPrice != null && item.originalPrice > item.price;
+				const itemTotal = item.price * item.quantity;
+				const totalStr = formatReceiptCurrency(itemTotal);
+
+				// Item name line (bold)
 				const nameLines = wrapReceiptText(
 					item.name.toUpperCase(),
 					RECEIPT_LINE_WIDTH - totalStr.length - 1
@@ -736,7 +745,13 @@ export class BluetoothPrinterService {
 					result.line(extraLine);
 				}
 
-				result.line(`  ${item.quantity} x ${formatReceiptCurrency(item.price)}`);
+				// Quantity, price, and discount info
+				let detailLine = `  ${item.quantity} x ${formatReceiptCurrency(item.price)}`;
+				if (hasDiscount) {
+					const originalTotal = (item.originalPrice ?? item.price) * item.quantity;
+					detailLine += ` ~~ ${formatReceiptCurrency(originalTotal)}`;
+				}
+				result.line(detailLine);
 
 				const variantText = normalizeReceiptText(item.variant);
 				if (variantText) {
@@ -748,19 +763,32 @@ export class BluetoothPrinterService {
 
 			printSeparator("-");
 
+			// Subtotal (before discounts)
 			if (order.subtotal !== undefined) {
 				printKeyValue("SUBTOTAL", formatReceiptAmount(order.subtotal));
 			}
 
+			// Adjustment lines (e.g. promo discounts, voucher)
+			let hasAdjustments = false;
 			for (const adjustment of order.receiptMeta?.adjustmentLines || []) {
 				printKeyValue(adjustment.label.toUpperCase(), formatReceiptAmount(adjustment.amount));
+				hasAdjustments = true;
 			}
 
+			// Generic discount (if not covered by adjustments)
 			if (
-				(order.receiptMeta?.adjustmentLines?.length ?? 0) === 0 &&
+				!hasAdjustments &&
 				(order.discountAmount ?? 0) > 0
 			) {
 				printKeyValue("DISKON", formatReceiptAmount(-(order.discountAmount ?? 0)));
+			}
+
+			// Tax & service charge
+			if (order.taxAmount != null && order.taxAmount > 0) {
+				printKeyValue("PAJAK", formatReceiptAmount(order.taxAmount));
+			}
+			if (order.serviceChargeAmount != null && order.serviceChargeAmount > 0) {
+				printKeyValue("SERVICE", formatReceiptAmount(order.serviceChargeAmount));
 			}
 
 			printSeparator("-");
@@ -775,12 +803,6 @@ export class BluetoothPrinterService {
 						.bold(false);
 				}
 			}
-		}
-
-		if (settings.receiptShowNotes && order.notes) {
-			printSeparator("-");
-			result.bold(true).line("CATATAN").bold(false);
-			printWrappedLines(order.notes);
 		}
 
 		result.align("center");
