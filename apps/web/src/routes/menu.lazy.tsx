@@ -991,6 +991,8 @@ function MenuPage() {
 							},
 							allDiscounts,
 						}),
+						dailyReceiptNo: order.dailyReceiptNo,
+						receiptKind: order.receiptKind,
 					},
 					{
 						storeName: siteSettings.storeName,

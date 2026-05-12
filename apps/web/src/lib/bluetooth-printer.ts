@@ -637,12 +637,13 @@ export class BluetoothPrinterService {
 			printKeyValue("ORDER", order.orderNumber.toUpperCase());
 		}
 
-		if (order.dailyReceiptNo && order.receiptKind) {
-			const receiptKindLabel =
-				order.receiptKind === "dine_in" ? "DINE IN"
-				: order.receiptKind === "takeaway" ? "BUNGKUS"
-				: "ONLINE";
-			printKeyValue("STRUK", `#${order.dailyReceiptNo} / ${receiptKindLabel}`);
+		if (order.dailyReceiptNo) {
+			const receiptKindLabel = order.receiptKind
+				? order.receiptKind === "dine_in" ? " / DINE IN"
+				: order.receiptKind === "takeaway" ? " / BUNGKUS"
+				: " / ONLINE"
+				: "";
+			printKeyValue("STRUK", `#${order.dailyReceiptNo}${receiptKindLabel}`);
 		}
 
 		if (order.cashierName && settings.receiptShowCashierName !== false) {
