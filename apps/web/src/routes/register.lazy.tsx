@@ -167,7 +167,52 @@ function RegisterPage() {
 				clauses: [{ title: "Ketentuan Kontrak", body: syncedTemplateText }],
 			};
 		}
-		return buildEmployeeContractTemplate(draft.personal, draft.employment, companyDisplayName);
+		const built = buildEmployeeContractTemplate(draft.personal, draft.employment, companyDisplayName);
+		const ctx = buildContractVariableContext(
+			draft.personal as any,
+			draft.employment as any,
+			companyDisplayName,
+			signatoryPersonName,
+			onboardingSettings.signatoryCompanyAddress,
+			onboardingSettings.signatoryCompanyNIB,
+			onboardingSettings.signatoryPersonTitle,
+			onboardingSettings.signatoryLocation,
+		);
+		return {
+			...built,
+			plainText: replaceContractVariables(built.plainText, ctx),
+			clauses: built.clauses.map((c) => ({ ...c, body: replaceContractVariables(c.body, ctx) })),
+			html: built.html ? built.html.replace(/\{\{[^}]+\}\}/g, (m) => {
+				const key = m.slice(2, -2);
+				const entries: Record<string, string> = {
+					nama_karyawan: draft.personal.fullName || "Karyawan",
+					nik: draft.personal.identityNumber || "-",
+					alamat: draft.personal.address || "-",
+					tempat_lahir: draft.personal.placeOfBirth || "-",
+					tanggal_lahir: draft.personal.birthDate || "-",
+					telepon: draft.personal.phone || "-",
+					jabatan: draft.employment.roleName || "Karyawan",
+					lokasi_kerja: draft.employment.location || "-",
+					tanggal_mulai: draft.employment.startDate || "-",
+					durasi_kontrak: String(draft.employment.contractDuration || 12),
+					tipe_kontrak: employmentTypeLabel(draft.employment.employmentType),
+					nama_perusahaan: companyDisplayName,
+					alamat_perusahaan: onboardingSettings.signatoryCompanyAddress || "-",
+					nib_perusahaan: onboardingSettings.signatoryCompanyNIB || "-",
+					penandatangan: signatoryPersonName,
+					jabatan_penandatangan: onboardingSettings.signatoryPersonTitle || "Direktur",
+					lokasi_ttd: onboardingSettings.signatoryLocation || "Tangerang",
+				};
+				const startDate = draft.employment.startDate || new Date().toISOString().slice(0, 10);
+				const startDateObj = new Date(startDate + "T00:00:00");
+				const dur = draft.employment.contractDuration || 12;
+				const endD = new Date(startDateObj);
+				endD.setMonth(endD.getMonth() + dur);
+				const endStr = startDateObj.getTime() ? endD.toISOString().slice(0, 10) : "-";
+				entries.tanggal_akhir = endStr;
+				return entries[key] || m;
+			}) : built.html,
+		};
 	}, [draft.employment, draft.personal, onboardingSettings.contractTemplatesByRoleId, companyDisplayName]);
 
 	/* helpers */

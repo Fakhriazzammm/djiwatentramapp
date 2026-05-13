@@ -281,41 +281,146 @@ export function buildEmployeeContractTemplate(
 	customAllowances?: { name?: string; amount?: number; type?: string }[],
 ): EmployeeContractDraft {
 	const _signatoryName = signatoryName || "Djiwa Tentram Cafe & Resto";
-	const employeeName = cleanText(personal.fullName) || "Karyawan";
 	const roleName = cleanText(employment.roleName) || "Team";
-	const startDate = cleanText(employment.startDate) || "tanggal yang disepakati";
 	const location = cleanText(employment.location) || "Djiwa Tentram";
-	const duration = employment.contractDuration && employment.contractDuration >= 6 ? employment.contractDuration : 0;
+	const durationMonths = employment.contractDuration && employment.contractDuration >= 1 ? employment.contractDuration : 12;
 	const bonusBody = buildBonusClause(bonusConfig);
 	const allowancesBody = buildCustomAllowancesBody(customAllowances);
+
 	const clauseList: EmployeeContractClause[] = [
 		{
 			title: "Pasal 1 — Para Pihak",
-			body: `${_signatoryName} sebagai perwakilan perusahaan dan ${employeeName} sebagai karyawan menyepakati hubungan kerja sesuai ketentuan dalam kontrak ini.`,
+			body: `Yang bertanda tangan di bawah ini:
+
+1. {{nama_perusahaan}}, berkedudukan di {{alamat_perusahaan}} dengan Nomor Induk Berusaha (NIB) {{nib_perusahaan}} dalam hal ini diwakili oleh {{penandatangan}}, selaku {{jabatan_penandatangan}}, yang selanjutnya disebut sebagai "PIHAK PERTAMA" atau "Perusahaan".
+
+2. {{nama_karyawan}}, NIK {{nik}}, bertempat tinggal di {{alamat}}, lahir di {{tempat_lahir}}, {{tanggal_lahir}}, yang selanjutnya disebut sebagai "PIHAK KEDUA" atau "Karyawan".
+
+PIHAK PERTAMA dan PIHAK KEDUA secara bersama-sama disebut "Para Pihak" sepakat untuk mengadakan Perjanjian Kerja dengan ketentuan sebagai berikut.`,
 		},
 		{
-			title: "Pasal 2 — Jabatan dan Lokasi Kerja",
-			body: `Karyawan ditempatkan sebagai ${roleName} di ${location} atau lokasi lain yang ditetapkan perusahaan sesuai kebutuhan operasional.`,
+			title: "Pasal 2 — Kedudukan dan Penempatan",
+			body: `(1) PIHAK KEDUA diangkat dan ditempatkan sebagai {{jabatan}} di {{lokasi_kerja}} atau lokasi lain yang ditetapkan oleh PIHAK PERTAMA sesuai kebutuhan operasional perusahaan.
+
+(2) PIHAK PERTAMA berhak melakukan mutasi, rotasi, atau promosi jabatan dengan memberikan pemberitahuan tertulis kepada PIHAK KEDUA paling lambat 7 (tujuh) hari sebelum perubahan berlaku.`,
 		},
 		{
-			title: "Pasal 3 — Mulai Kerja dan Status",
-			body: `Hubungan kerja dimulai pada ${startDate} dengan status ${employmentTypeLabel(employment.employmentType)}${duration > 0 ? ` untuk jangka waktu ${duration} bulan` : ""}. Evaluasi kinerja dapat dilakukan secara berkala oleh perusahaan.`,
+			title: "Pasal 3 — Masa Perjanjian dan Status Kerja",
+			body: `(1) Perjanjian kerja ini berlaku untuk jangka waktu {{durasi_kontrak}} bulan, terhitung mulai {{tanggal_mulai}} sampai dengan {{tanggal_akhir}}.
+
+(2) Status hubungan kerja PIHAK KEDUA adalah {{tipe_kontrak}}.
+
+(3) Perjanjian ini dapat diperpanjang kembali atas kesepakatan tertulis Para Pihak dengan mengadakan perjanjian baru atau addendum.
+
+(4) Apabila perjanjian ini berakhir dan PIHAK KEDUA tetap bekerja, maka perjanjian ini dinyatakan diperpanjang secara otomatis untuk jangka waktu yang sama, kecuali Para Pihak menyatakan lain secara tertulis.`,
 		},
 		{
-			title: "Pasal 4 — Kompensasi",
+			title: "Pasal 4 — Masa Percobaan",
+			body: `(1) Dalam hal PIHAK KEDUA berstatus Masa Percobaan (Probation), maka PIHAK KEDUA menjalani masa percobaan sesuai ketentuan undang-undang yang berlaku.
+
+(2) Selama masa percobaan, PIHAK PERTAMA berhak melakukan evaluasi berkala terhadap kinerja PIHAK KEDUA.
+
+(3) PiHAK PERTAMA berhak mengakhiri hubungan kerja tanpa kewajiban memberikan pesangon apabila PIHAK KEDUA tidak memenuhi standar kinerja yang ditetapkan selama masa percobaan, sesuai dengan ketentuan peraturan perundang-undangan.`,
+		},
+		{
+			title: "Pasal 5 — Kompensasi dan Tunjangan",
 			body: buildCompensationBody(employment),
 		},
 		{
-			title: "Pasal 5 — Kewajiban Karyawan",
-			body: "Karyawan wajib hadir tepat waktu, menjaga kebersihan, melayani pelanggan dengan baik, menjaga kerahasiaan data usaha, dan mematuhi SOP yang berlaku.",
+			title: "Pasal 6 — Waktu Kerja",
+			body: `(1) Waktu kerja ditentukan oleh PIHAK PERTAMA sesuai dengan kebutuhan operasional dan ketentuan peraturan perundang-undangan yang berlaku.
+
+(2) PIHAK KEDUA wajib mematuhi jadwal kerja yang ditetapkan dan hadir tepat waktu.
+
+(3) Setiap perubahan jadwal kerja akan diberitahukan oleh PIHAK PERTAMA kepada PIHAK KEDUA dalam waktu yang wajar.`,
+		},
+		{
+			title: "Pasal 7 — Hak dan Kewajiban PIHAK KEDUA",
+			body: `PIHAK KEDUA berhak atas:
+a) Gaji dan tunjangan sebagaimana diatur dalam Pasal 5;
+b) Lingkungan kerja yang aman dan layak;
+c) Cuti sesuai ketentuan yang berlaku;
+d) Perlindungan keselamatan dan kesehatan kerja.
+
+PIHAK KEDUA berkewajiban untuk:
+a) Melaksanakan tugas dan pekerjaan dengan penuh tanggung jawab, jujur, dan disiplin;
+b) Menaati seluruh peraturan, SOP, dan kebijakan perusahaan;
+c) Menjaga kerahasiaan data, informasi, dan rahasia dagang perusahaan;
+d) Menjaga nama baik dan citra perusahaan;
+e) Melaporkan segala hambatan atau masalah dalam pekerjaan kepada atasan;
+f) Menggunakan aset dan fasilitas perusahaan dengan bijak dan bertanggung jawab.`,
+		},
+		{
+			title: "Pasal 8 — Hak dan Kewajiban PIHAK PERTAMA",
+			body: `PIHAK PERTAMA berhak untuk:
+a) Mengevaluasi dan menilai kinerja PIHAK KEDUA secara berkala;
+b) Mengenakan sanksi yang proporsional atas pelanggaran yang dilakukan PIHAK KEDUA;
+c) Mengakhiri hubungan kerja sesuai dengan ketentuan peraturan perundang-undangan.
+
+PIHAK PERTAMA berkewajiban untuk:
+a) Membayar kompensasi tepat waktu sesuai dengan ketentuan Pasal 5;
+b) Menyediakan sarana dan lingkungan kerja yang layak dan aman;
+c) Memberikan pelatihan dan pengembangan yang diperlukan.`,
+		},
+		{
+			title: "Pasal 9 — Kerahasiaan",
+			body: `(1) PIHAK KEDUA wajib menjaga kerahasiaan seluruh informasi, data, dokumen, dan rahasia dagang PIHAK PERTAMA yang diperoleh selama menjalankan pekerjaan.
+
+(2) Kewajiban kerahasiaan ini tetap berlaku untuk jangka waktu 2 (dua) tahun setelah berakhirnya hubungan kerja.
+
+(3) Pelanggaran terhadap ketentuan kerahasiaan ini dapat mengakibatkan sanksi sesuai dengan ketentuan perusahaan dan/atau tuntutan hukum sesuai peraturan perundang-undangan.`,
+		},
+		{
+			title: "Pasal 10 — Disiplin dan Tata Tertib",
+			body: `(1) PIHAK KEDUA wajib mematuhi seluruh peraturan disiplin dan tata tertib yang ditetapkan oleh PIHAK PERTAMA.
+
+(2) Pelanggaran disiplin akan dikenakan sanksi bertahap berupa:
+a) Teguran lisan;
+b) Teguran tertulis;
+c) Skorsing; dan/atau
+d) Pemutusan hubungan kerja (PHK).
+
+(3) PIHAK KEDUA yang tidak masuk kerja tanpa keterangan yang sah selama 5 (lima) hari kerja berturut-turut dianggap mengundurkan diri.`,
+		},
+		{
+			title: "Pasal 11 — Pengakhiran Hubungan Kerja",
+			body: `(1) Hubungan kerja dapat berakhir karena:
+a) Berakhirnya jangka waktu perjanjian;
+b) PIHAK KEDUA mengundurkan diri secara tertulis;
+c) PHK oleh PIHAK PERTAMA karena pelanggaran berat;
+d) Meninggal dunia;
+e) Adanya putusan pengadilan yang berkekuatan hukum tetap;
+f) Keadaan memaksa (force majeure).
+
+(2) PIHAK KEDUA yang akan mengundurkan diri wajib mengajukan permohonan secara tertulis paling lambat 30 (tiga puluh) hari sebelum tanggal pengunduran diri.
+
+(3) Segala hak dan kewajiban Para Pihak atas pengakhiran hubungan kerja akan diselesaikan sesuai dengan peraturan perundang-undangan yang berlaku di bidang ketenagakerjaan.`,
+		},
+		{
+			title: "Pasal 12 — Penyelesaian Perselisihan",
+			body: `(1) Apabila terjadi perselisihan antara Para Pihak, kedua belah pihak sepakat untuk menyelesaikannya secara musyawarah untuk mencapai mufakat terlebih dahulu.
+
+(2) Apabila tidak tercapai kesepakatan melalui musyawarah, Para Pihak sepakat untuk menyelesaikan perselisihan melalui mekanisme yang diatur dalam peraturan perundang-undangan yang berlaku di bidang ketenagakerjaan.`,
+		},
+		{
+			title: "Pasal 13 — Penutup",
+			body: `(1) Perjanjian ini dibuat dalam rangkap 2 (dua) bermeterai cukup, masing-masing memiliki kekuatan hukum yang sama.
+
+(2) Hal-hal yang belum diatur dalam perjanjian ini akan diatur kemudian melalui addendum yang merupakan satu kesatuan dan bagian yang tidak terpisahkan dari perjanjian ini.
+
+(3) Perjanjian ini berlaku setelah ditandatangani secara digital oleh Para Pihak dan disetujui oleh admin/perwakilan perusahaan.`,
 		},
 	];
-	if (bonusBody) clauseList.push({ title: "Pasal 6 — Bonus & Insentif", body: bonusBody });
-	if (allowancesBody) clauseList.push({ title: "Pasal 7 — Tunjangan Tambahan", body: allowancesBody });
-	const lastPasalNum = bonusBody || allowancesBody ? 8 : 6;
-	clauseList.push({ title: `Pasal ${lastPasalNum} — Penutup`, body: "Kontrak ini berlaku setelah ditandatangani secara digital oleh karyawan dan disetujui oleh admin/perwakilan perusahaan." });
+
+	if (bonusBody) {
+		clauseList.splice(5, 0, { title: "Pasal 5A — Bonus dan Insentif", body: bonusBody });
+	}
+	if (allowancesBody) {
+		clauseList.splice(allowancesBody ? 6 : 5, 0, { title: "Pasal 5B — Tunjangan Tambahan", body: allowancesBody });
+	}
+
 	const clauses = clauseList;
-	const plainText = clauses.flatMap((clause) => [clause.title, clause.body, ""]).join("\n");
+	const rawPlainText = clauses.flatMap((clause) => [clause.title, clause.body, ""]).join("\n");
 	const html = `<article>${clauses
 		.map(
 			(clause) =>
@@ -326,8 +431,8 @@ export function buildEmployeeContractTemplate(
 	return {
 		mode: "template",
 		title: `Perjanjian Kerja ${roleName}`,
-		plainText,
-		html,
+		plainText: rawPlainText,
+		html: html.replace(/\n/g, "<br/>"),
 		clauses,
 	};
 }
@@ -397,6 +502,18 @@ export function buildContractVariableContext(
 	};
 }
 
+export function numberToWords(n: number): string {
+	const words = ["", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh", "sebelas", "dua belas", "tiga belas", "empat belas", "lima belas", "enam belas", "tujuh belas", "delapan belas", "sembilan belas", "dua puluh", "dua puluh satu", "dua puluh dua", "dua puluh tiga", "dua puluh empat"];
+	return words[n] || String(n);
+}
+
+export function formatDateId(isoDate: string): string {
+	if (!isoDate || isoDate === "-") return "-";
+	const d = new Date(isoDate + "T00:00:00");
+	if (!d.getTime()) return isoDate;
+	return `${d.getDate()} ${MONTHS_INDONESIA[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 export function replaceContractVariables(text: string, ctx: ContractVariableContext): string {
 	const { personal, employment, company } = ctx;
 
@@ -438,9 +555,9 @@ export function replaceContractVariables(text: string, ctx: ContractVariableCont
 
 		// --- Employment data ---
 		"{{jabatan}}": employment.roleName || "Karyawan",
-		"{{tanggal_mulai}}": startDate,
-		"{{tanggal_akhir}}": endDateStr || "-",
-		"{{durasi_kontrak}}": String(durationMonths),
+		"{{tanggal_mulai}}": formatDateId(startDate),
+		"{{tanggal_akhir}}": formatDateId(endDateStr) || "-",
+		"{{durasi_kontrak}}": String(durationMonths) + " (" + numberToWords(durationMonths) + ")",
 		"{{tipe_kontrak}}": employmentTypeLabel(employment.employmentType),
 		"{{lokasi_kerja}}": employment.location || "-",
 		"{{nama_atasan}}": "-",
