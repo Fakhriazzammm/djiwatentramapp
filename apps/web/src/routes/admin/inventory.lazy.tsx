@@ -4783,78 +4783,6 @@ function InventoryTable({
 		}
 	};
 
-	const bulkAutofillMissingRows = async () => {
-		const candidates = filteredRows
-			.filter((row) => {
-				const item = inventoryMap.get(row.inventoryId);
-				if (!item) {
-					return false;
-				}
-				const missingBrand = !(item.defaultBrandName || "").trim();
-				const missingConversion = hasMissingConversion({
-					unit: item.unit,
-					displayUnit: item.displayUnit,
-					conversionFactor: item.conversionFactor,
-					unitConversions: item.unitConversions,
-				});
-				return missingBrand || missingConversion;
-			})
-			.slice(0, 40);
-		if (candidates.length === 0) {
-			toast.message("Tidak ada baris prioritas untuk bulk autofill");
-			return;
-		}
-
-		let updated = 0;
-		let skipped = 0;
-		for (const row of candidates) {
-			const item = inventoryMap.get(row.inventoryId);
-			if (!item) {
-				continue;
-			}
-			const result = await requestAutofillSuggestion(item.ingredientName);
-			if (!result.ok || !result.suggestion) {
-				skipped += 1;
-				continue;
-			}
-			const suggestion = result.suggestion;
-			if (suggestion.confidence < 0.7) {
-				skipped += 1;
-				continue;
-			}
-			try {
-				await updateItemMutation({
-					id: item._id,
-					ingredientName: item.ingredientName,
-					unit: normalizeUnitOption(suggestion.unit) || item.unit,
-					lowStockThreshold:
-						suggestion.lowStockThreshold > 0
-							? suggestion.lowStockThreshold
-							: item.lowStockThreshold,
-					displayUnit:
-						normalizeUnitOption(suggestion.displayUnit) || item.displayUnit || undefined,
-					conversionFactor:
-						suggestion.conversionFactor != null && suggestion.conversionFactor > 0
-							? suggestion.conversionFactor
-							: item.conversionFactor || undefined,
-					unitConversions:
-						parseUnitConversionsText(suggestion.unitConversionsText || "") ??
-						item.unitConversions,
-					baseRecipeId: item.baseRecipeId || undefined,
-					defaultBrandName:
-						(suggestion.defaultBrandName || "").trim() ||
-						item.defaultBrandName ||
-						undefined,
-					preferredStoreId: item.preferredStoreId || undefined,
-				});
-				updated += 1;
-			} catch {
-				skipped += 1;
-			}
-		}
-		toast.success(`Bulk autofill selesai: ${updated} update, ${skipped} skip`);
-	};
-
 	const getStatusMeta = (status: InventoryWorkspaceRow["status"]) => {
 		if (status === "critical") {
 			return {
@@ -4877,16 +4805,7 @@ function InventoryTable({
 	return (
 		<div className="rounded-xl border border-border/80 bg-card shadow-sm">
 			<div>
-				<div className="flex justify-end px-2.5 py-2">
-					<button
-						className="rounded-lg border border-border bg-background px-2.5 py-1 text-[10px] font-semibold text-foreground hover:bg-muted"
-						onClick={() => void bulkAutofillMissingRows()}
-						type="button"
-					>
-						Bulk Autofill Prioritas
-					</button>
-				</div>
-				<datalist id="inventory-unit-options-table">
+<datalist id="inventory-unit-options-table">
 					{unitOptions.map((unit) => (
 						<option key={unit} value={unit} />
 					))}
@@ -4916,7 +4835,8 @@ function InventoryTable({
 						<col className="w-[2.2rem]" />
 						<col className="w-[14%]" />
 						<col className="w-[10%]" />
-						<col className="w-[9%]" />
+						<col className="w-[8%]" />
+						<col className="w-[6%]" />
 						<col className="w-[8%]" />
 						<col className="w-[7%]" />
 						<col className="w-[7%]" />
@@ -4948,7 +4868,7 @@ function InventoryTable({
 								onClick={() => onSort("currentStock")}
 							>
 								<div className="flex items-center justify-center gap-1">
-									Stok / Min
+									Stok
 									{sortConfig.key === "currentStock" &&
 										(sortConfig.direction === "asc" ? (
 											<ArrowUp className="h-3 w-3" />
@@ -4957,6 +4877,7 @@ function InventoryTable({
 										))}
 								</div>
 							</th>
+							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px]">Min</th>
 							<th className="px-2 py-1.5 text-center font-semibold group relative cursor-help">Satuan<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Stok: satuan stok · Beli: satuan beli</span></th>
 							<th
 								className="cursor-pointer px-2 py-1.5 font-semibold transition-colors hover:text-foreground"
@@ -5022,7 +4943,6 @@ function InventoryTable({
 								/>
 							</td>
 							<td className="px-2 py-1.5 text-center">
-								<div className="flex items-center gap-0.5">
 									<input
 										className="w-14 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[10px] outline-none focus:border-primary"
 										onChange={(e) =>
@@ -5036,24 +4956,25 @@ function InventoryTable({
 										type="number"
 										value={quickAdd.quantity}
 									/>
-									<input
-										className="w-14 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[10px] outline-none focus:border-primary"
-										onChange={(e) =>
-											setQuickAdd((prev) => ({
-												...prev,
-												lowStockThreshold: e.target.value,
-											}))
+							</td>
+							<td className="px-2 py-1.5 text-center">
+								<input
+									className="w-14 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[10px] outline-none focus:border-primary"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({
+											...prev,
+											lowStockThreshold: e.target.value,
+										}))
+									}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											void quickCreate();
 										}
-										onKeyDown={(e) => {
-											if (e.key === "Enter") {
-												void quickCreate();
-											}
-										}}
-										type="number"
-										value={quickAdd.lowStockThreshold}
-										placeholder="Min"
-									/>
-								</div>
+									}}
+									type="number"
+									value={quickAdd.lowStockThreshold}
+									placeholder="Min"
+								/>
 							</td>
 							<td className="px-2 py-1.5 text-center">
 								<input
@@ -5112,7 +5033,10 @@ function InventoryTable({
 									</td>
 									<td className="p-4">
 										<Skeleton className="mx-auto h-8 w-16" />
-									<div className="text-[8px] text-muted-foreground/60 mt-0.5">Min: <span className="font-semibold">{0}</span></div></td>
+									</td>
+									<td className="p-4">
+										<Skeleton className="mx-auto h-4 w-10" />
+									</td>
 									<td className="p-4">
 										<Skeleton className="mx-auto h-4 w-16" />
 									</td>
@@ -5212,8 +5136,11 @@ function InventoryTable({
 												}}
 												type="number"
 												value={inline.quantity}
-											/>
-										<div className="text-[8px] text-muted-foreground/60 mt-0.5">Min: <span className="font-semibold">{inline.lowStockThreshold}</span></div></td>
+								/>
+									</td>
+									<td className="px-2 py-1.5 align-middle text-center">
+										<div className="text-[10px] font-semibold text-muted-foreground">{inline.lowStockThreshold}</div>
+									</td>
 									<td className="px-2 py-1.5 align-middle text-center group relative">
 										<input
 											className={`mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
@@ -5349,7 +5276,7 @@ function InventoryTable({
 						}
 						{(statusFilteredRows.length ?? 0) === 0 && (
 							<tr>
-							<td className="p-8 text-center text-muted-foreground" colSpan={9}>
+							<td className="p-8 text-center text-muted-foreground" colSpan={10}>
 								Tidak ada bahan baku ditemukan
 								</td>
 							</tr>
