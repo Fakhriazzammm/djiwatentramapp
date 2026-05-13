@@ -5,6 +5,28 @@ function escapeRegExp(value: string) {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/**
+ * Generate HTML from saved clauses for backward compatibility
+ * (contracts saved before html field was added)
+ */
+function clausesToHtml(clauses: { title: string; body: string }[], title?: string) {
+	const article = document.createElement("article");
+	for (const clause of clauses) {
+		const section = document.createElement("section");
+		const h3 = document.createElement("h3");
+		h3.textContent = clause.title;
+		section.appendChild(h3);
+		const lines = clause.body.split("\n").map((l) => l.trim()).filter(Boolean);
+		for (const line of lines) {
+			const p = document.createElement("p");
+			p.textContent = line;
+			section.appendChild(p);
+		}
+		article.appendChild(section);
+	}
+	return article.outerHTML;
+}
+
 type ContractPreviewProps = {
 	contract: EmployeeContractDraft;
 	signatureDataUrl?: string;
@@ -15,7 +37,11 @@ type ContractPreviewProps = {
 };
 
 export function ContractPreview({ contract, signatureDataUrl, employeeName, companyName, signatoryName, signatorySignatureUrl }: ContractPreviewProps) {
-	const safeHtml = contract.html ? sanitizeContractHtml(contract.html) : "";
+	const safeHtml = contract.html
+		? sanitizeContractHtml(contract.html)
+		: contract.clauses?.length
+			? sanitizeContractHtml(clausesToHtml(contract.clauses, contract.title))
+			: "";
 	const displayPlainText = contract.plainText
 		? contract.plainText.replace(new RegExp(`^\\s*${escapeRegExp(contract.title || "Perjanjian Kerja")}\\s*\\n+`, "i"), "")
 		: "";

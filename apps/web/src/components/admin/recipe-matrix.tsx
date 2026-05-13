@@ -106,6 +106,7 @@ export function RecipeMatrixPage() {
 
 	// State
 	const [search, setSearch] = useState("");
+	const [searchBahan, setSearchBahan] = useState("");
 	const [editingCell, setEditingCell] = useState<string | null>(null);
 	const [savingCells, setSavingCells] = useState<Set<string>>(new Set());
 	const [localAmounts, setLocalAmounts] = useState<Record<string, number>>({});
@@ -150,10 +151,21 @@ export function RecipeMatrixPage() {
 		const filtered = (inventory ?? []).filter((item) =>
 			showAllIngredients ? true : usedIngredientIds.has(String(item._id))
 		);
-		return filtered.sort((a, b) =>
-			(a.ingredientName ?? "").localeCompare(b.ingredientName ?? "", "id")
-		);
-	}, [inventory, usedIngredientIds, showAllIngredients]);
+		const keyword = searchBahan.trim().toLowerCase();
+		return filtered
+			.filter((item) => {
+				if (!keyword) return true;
+				return (item.ingredientName ?? "")
+					.toLowerCase()
+					.includes(keyword);
+			})
+			.sort((a, b) =>
+				(a.ingredientName ?? "").localeCompare(
+					(b.ingredientName ?? ""),
+					"id"
+				)
+			);
+	}, [inventory, usedIngredientIds, showAllIngredients, searchBahan]);
 
 	const productRows = useMemo(() => {
 		const keyword = search.trim().toLowerCase();
@@ -313,6 +325,15 @@ export function RecipeMatrixPage() {
 						placeholder="Cari produk..."
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
+						className="h-7 pl-7 text-[11px]"
+					/>
+				</div>
+				<div className="relative flex-1 max-w-[220px]">
+					<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+					<Input
+						placeholder="Cari bahan..."
+						value={searchBahan}
+						onChange={(e) => setSearchBahan(e.target.value)}
 						className="h-7 pl-7 text-[11px]"
 					/>
 				</div>
