@@ -272,10 +272,13 @@ function RegisterCompletePage() {
                         </p>
                       </div>
 
-                      <div className="w-full space-y-2 rounded-xl bg-muted/40 px-4 py-3">
-                        <p className="flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground">
-                          <MailQuestion className="h-3.5 w-3.5" />
-                          Anda akan mendapat notifikasi jika status berubah
+                      <div className="w-full space-y-3 rounded-xl bg-muted/40 px-4 py-4">
+                        <p className="flex items-start justify-center gap-1.5 text-xs font-medium text-muted-foreground">
+                          <MailQuestion className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <span>
+                            Anda akan mendapatkan pemberitahuan melalui email atau
+                            WhatsApp, atau cek halaman ini secara berkala.
+                          </span>
                         </p>
                         <p className="text-xs text-muted-foreground">
                           Hubungi admin jika belum ada perubahan dalam 3 hari.
@@ -437,6 +440,24 @@ function RegisterCompletePage() {
                   )}
                 </CardContent>
               </Card>
+            </motion.div>
+
+            {/* ── Save Link ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <div className="rounded-xl border border-dashed border-sky-200 bg-sky-50/60 p-5 text-center dark:border-sky-800/50 dark:bg-sky-950/10">
+                <p className="mb-2 text-xs font-bold text-sky-700 uppercase tracking-wider dark:text-sky-400">
+                  💾 Simpan Halaman Ini
+                </p>
+                <p className="text-sm leading-relaxed text-sky-600 dark:text-sky-300">
+                  Simpan URL halaman ini untuk mengecek status pendaftaran
+                  nanti. Kamu bisa <strong>copy link</strong> dari browser atau
+                  bookmark halaman ini.
+                </p>
+              </div>
             </motion.div>
 
             {/* ── Registration Number ── */}
