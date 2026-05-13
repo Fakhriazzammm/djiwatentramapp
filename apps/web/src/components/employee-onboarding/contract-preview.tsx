@@ -27,6 +27,24 @@ function clausesToHtml(clauses: { title: string; body: string }[], title?: strin
 	return article.outerHTML;
 }
 
+/**
+ * Fix <br/>-based HTML from old saved contracts:
+ * - <br/><br/> → </p><p> (paragraph break)
+ * - single <br/> → </p><p> (line-as-paragraph)
+ * - Ensures content still wrapped in <p> tags
+ * Only applies when <p> contains <br/> inside it (old format)
+ */
+function fixBrBasedHtml(html: string): string {
+	// Old format: <article><p>line1<br/>line2<br/><br/>line3</p></article>
+	// Convert: each <br/> becomes </p><p> to split into proper paragraphs
+	let fixed = html
+		// Double br = paragraph break
+		.replace(/<br\s*\/?>\s*<br\s*\/?>/gi, "</p><p>")
+		// Single br = line-as-paragraph
+		.replace(/<br\s*\/?>/gi, "</p><p>");
+	return fixed;
+}
+
 type ContractPreviewProps = {
 	contract: EmployeeContractDraft;
 	signatureDataUrl?: string;
@@ -37,11 +55,13 @@ type ContractPreviewProps = {
 };
 
 export function ContractPreview({ contract, signatureDataUrl, employeeName, companyName, signatoryName, signatorySignatureUrl }: ContractPreviewProps) {
-	const safeHtml = contract.html
-		? sanitizeContractHtml(contract.html)
+	const rawHtml = contract.html
+		? contract.html
 		: contract.clauses?.length
-			? sanitizeContractHtml(clausesToHtml(contract.clauses, contract.title))
+			? clausesToHtml(contract.clauses, contract.title)
 			: "";
+	// Fix old <br/>-based HTML, then sanitize
+	const safeHtml = rawHtml ? sanitizeContractHtml(fixBrBasedHtml(rawHtml)) : "";
 	const displayPlainText = contract.plainText
 		? contract.plainText.replace(new RegExp(`^\\s*${escapeRegExp(contract.title || "Perjanjian Kerja")}\\s*\\n+`, "i"), "")
 		: "";
