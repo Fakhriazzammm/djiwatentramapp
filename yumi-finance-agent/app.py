@@ -355,7 +355,7 @@ async def _handle_new_ingredient(update: Update, context: ContextTypes.DEFAULT_T
         matched = pending.get("matched")
         if matched:
             inv_id = matched.get("_id")
-            await inventory.restock_item(inv_id, float(matched.get("quantity", 0)), item.get("qty", 0), item.get("unit", "pcs"))
+            await inventory.restock_item(inv_id, float(matched.get("quantity", 0)), item.get("qty", 0), item.get("unit", "pcs"), price=float(item.get("price", 0) or 0))
             await inventory.log_purchase(matched.get("ingredientName", item["name"]), item.get("qty", 0), item.get("unit", "pcs"), item.get("price", 0) * item.get("qty", 1), item.get("merchant", "Yumi Finance"))
             await query.edit_message_text(
                 f"🔄 {matched['ingredientName']} di-update.\n"
@@ -1397,7 +1397,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
                 inv_name = matched["ingredientName"]
                 inv_qty = float(matched.get("quantity", 0))
                 try:
-                    await inventory.restock_item(matched["_id"], inv_qty, item_qty, unit)
+                    await inventory.restock_item(matched["_id"], inv_qty, item_qty, unit, price=item_price)
                     await inventory.log_purchase(inv_name, item_qty, unit, item_price * item_qty, merchant)
                     restok_lines.append(f"  ✅ {inv_name} +{item_qty:.0f} {unit}")
                 except Exception as e:
@@ -1433,6 +1433,91 @@ def _extract_unit(name: str) -> str:
 
 # ── Manual restock untuk input manual ────────────────────────────
 
+def _save_learning_entries(items: list[dict], inventory_list: list[dict], merchant: str = ""):
+    """Save learning memory entries for Yumi Purchasing Agent."""
+    import json as _json
+    from difflib import SequenceMatcher
+    from datetime import timezone
+    
+    LEARNING_FILE = os.path.join(os.path.dirname(__file__), "..", "yumi-purchasing-agent", "learning_memory.json")
+    if not os.path.exists(LEARNING_FILE):
+        return
+    
+    try:
+        with open(LEARNING_FILE) as f:
+            learning_data = _json.load(f)
+    except Exception:
+        return
+    
+    def _clean(n: str) -> str:
+        n = n.lower().strip()
+        n = re.sub(r'\\bRp?\\s*[\\d.,]+\\b', '', n)
+        n = re.sub(r'\\d+(?:[.,]\\d+)?\\s*(?:kg|gram|gr|g|ml|l|liter|pcs|pack)\\b', '', n)
+        return re.sub(r'\\s+', ' ', n).strip()
+    
+    def _score(a: str, b: str) -> float:
+        return SequenceMatcher(None, _clean(a), _clean(b)).ratio() if a and b else 0.0
+    
+    added = 0
+    for item in items:
+        item_name = item.get("name", "").strip()
+        if not item_name:
+            continue
+        
+        # Find best inventory match
+        best = None
+        best_score = 0
+        for inv in inventory_list:
+            inv_name = inv.get("ingredientName", "") or ""
+            score = _score(item_name, inv_name)
+            if score > best_score:
+                best_score = score
+                best = inv
+        
+        if best and best_score >= 0.7:
+            inv_id = best.get("_id", "")
+            inv_name = best.get("ingredientName", "")
+            entry_id = f"exp_{inv_id[:12]}"
+            
+            # Avoid duplicates
+            existing_ids = {e.get("id") for e in learning_data.get("entries", [])}
+            if entry_id not in existing_ids:
+                learning_data["entries"].append({
+                    "id": entry_id,
+                    "userInput": item_name,
+                    "parsedName": inv_name,
+                    "matchedInventoryId": inv_id,
+                    "matchedIngredientName": inv_name,
+                    "suggestedSupplier": merchant,
+                    "suggestedSupplierPhone": "",
+                    "suggestedQty": float(item.get("qty", 1)),
+                    "suggestedUnit": item.get("unit", ""),
+                    "suggestedPrice": float(item.get("price", 0)),
+                    "isCorrected": False,
+                    "correctionType": None,
+                    "correctionPayload": None,
+                    "confirmedByUser": False,
+                    "confidence": 0.85,
+                    "usageCount": 1,
+                    "createdAt": datetime.now(timezone.utc).isoformat(),
+                    "updatedAt": datetime.now(timezone.utc).isoformat(),
+                    "source": "finance_agent_manual_expense",
+                })
+                added += 1
+    
+    if added > 0:
+        learning_data["version"] = learning_data.get("version", 1) + 1
+        learning_data["last_updated"] = datetime.now(timezone.utc).isoformat()
+        try:
+            tmp = LEARNING_FILE + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                _json.dump(learning_data, f, indent=2, ensure_ascii=False)
+            os.replace(tmp, LEARNING_FILE)
+            logger.info("Learning memory: +%d entries from manual expense", added)
+        except Exception as e:
+            logger.warning("Failed to write learning memory: %s", e)
+
+
 async def _manual_restock(result):
     """Restok inventory dari input pengeluaran manual (sama seperti OCR)."""
     try:
@@ -1442,19 +1527,61 @@ async def _manual_restock(result):
         if result.items:
             items_to_restock = result.items
         elif result.description:
-            # Parse manual dari description: "2 kg ubi" or "Minyak rizki 3 btl"
             desc = result.description.strip()
-            m = re.match(r'(\d+(?:[.,]\d+)?)\s*(ml|liter|l|kg|gram|gr|g|pcs|pack|ikat|bungkus|toros|botol|btl|kilo|kantong|dus)\s+(.+)', desc, re.IGNORECASE)
+            
+            # Bersihkan kata/frasa yang bukan nama item
+            for prefix in ["beli", "bayar", "pesan", "order", "hari ini", "bulan ini", "tadi"]:
+                if desc.lower().startswith(prefix + " "):
+                    desc = desc[len(prefix):].strip()
+            # Hapus info tanggal: "11 mei 2026", "13/05", "(...)"
+            desc = re.sub(r'\d{1,2}\s+\w+\s+\d{4}', '', desc)
+            desc = re.sub(r'\d{1,2}/\d{1,2}', '', desc)
+            desc = re.sub(r'\([^)]*\)', '', desc)
+            desc = re.sub(r'\bRp\s*[\d.,]+\b', '', desc)
+            desc = re.sub(r'\brp\s*[\d.,]+\b', '', desc)
+            desc = re.sub(r'\s+', ' ', desc).strip()
+            
+            UNIT_PATTERN = r'(ml|liter|l|kg|gram|gr|g|pcs|pack|ikat|bungkus|toros|botol|btl|kilo|kantong|dus|bal|krat)'
+            UNIT_MAP = {"btl": "botol", "kilo": "kg", "gr": "gram", "l": "liter", "bal": "bal"}
+            
+            # Pattern 1: qty unit name — "2 kg ubi", "3 btl minyak"
+            m = re.match(r'(\d+(?:[.,]\d+)?)\s*' + UNIT_PATTERN + r'\s+(.+)', desc, re.IGNORECASE)
             if m:
-                qty_str = m.group(1).replace(",", ".")
-                unit = m.group(2).lower()
-                unit = {"btl": "botol", "kilo": "kg", "gr": "gram", "l": "liter"}.get(unit, unit)
+                qty = float(m.group(1).replace(",", "."))
+                unit = UNIT_MAP.get(m.group(2).lower(), m.group(2).lower())
                 name = m.group(3).strip()
-                unit_price = result.amount / float(qty_str) if float(qty_str) > 0 else result.amount
-                items_to_restock = [{"name": name, "qty": float(qty_str), "unit": unit, "price": unit_price}]
+                unit_price = result.amount / qty if qty > 0 else result.amount
+                items_to_restock = [{"name": name, "qty": qty, "unit": unit, "price": unit_price}]
             else:
-                # Fallback: seluruh description sebagai nama item, qty=1
-                items_to_restock = [{"name": desc, "qty": 1, "unit": "pcs", "price": result.amount}]
+                # Pattern 2: name qty unit — "ubi cilembu 2kg", "minyak goreng 3 btl"
+                m = re.match(r'(.+?)\s+(\d+(?:[.,]\d+)?)\s*' + UNIT_PATTERN + r'\s*$', desc, re.IGNORECASE)
+                if m:
+                    name = m.group(1).strip()
+                    qty = float(m.group(2).replace(",", "."))
+                    unit_m = m.group(3).lower()
+                    # Pastikan name tidak startsWith angka (ambiguitas)
+                    if re.match(r'^\d', name):
+                        # Mungkin pattern 1 gagal karena unit melekat — coba parse ulang
+                        m2 = re.match(r'(\d+(?:[.,]\d+)?)\s*' + UNIT_PATTERN + r'\s+(.+)', name + ' ' + str(qty) + unit_m, re.IGNORECASE)
+                        if m2:
+                            qty = float(m2.group(1).replace(",", "."))
+                            unit = UNIT_MAP.get(m2.group(2).lower(), m2.group(2).lower())
+                            name = m2.group(3).strip()
+                    else:
+                        unit = UNIT_MAP.get(unit_m, unit_m)
+                    unit_price = result.amount / qty if qty > 0 else result.amount
+                    items_to_restock = [{"name": name, "qty": qty, "unit": unit, "price": unit_price}]
+                else:
+                    # Pattern 3: name qty — "es batu 2", "ubi 3"
+                    m = re.match(r'(.+?)\s+(\d+(?:[.,]\d+)?)\s*$', desc)
+                    if m:
+                        name = m.group(1).strip()
+                        qty = float(m.group(2).replace(",", "."))
+                        unit_price = result.amount / qty if qty > 0 else result.amount
+                        items_to_restock = [{"name": name, "qty": qty, "unit": "", "price": unit_price}]
+                    else:
+                        # Pattern 4: name only — "galon cleo", "ubi cilembu"
+                        items_to_restock = [{"name": desc, "qty": 1, "unit": "pcs", "price": result.amount}]
 
         if not items_to_restock:
             return
@@ -1476,7 +1603,7 @@ async def _manual_restock(result):
                 inv_name = matched["ingredientName"]
                 inv_qty = float(matched.get("quantity", 0))
                 try:
-                    await inventory.restock_item(matched["_id"], inv_qty, item_qty, unit)
+                    await inventory.restock_item(matched["_id"], inv_qty, item_qty, unit, price=item_price)
                     await inventory.log_purchase(inv_name, item_qty, unit, item_price * item_qty, merchant)
                     restok_lines.append(f"  ✅ {inv_name} +{item_qty:.0f} {unit}")
                 except Exception as e:
@@ -1488,6 +1615,12 @@ async def _manual_restock(result):
 
         if restok_lines:
             logger.info("Manual restock: %s", "; ".join(restok_lines))
+        
+        # ── Save to learning memory (Purchasing Agent) ─────
+        try:
+            _save_learning_entries(items_to_restock, inventory_list, merchant)
+        except Exception as e:
+            logger.warning("Failed to save learning memory: %s", e)
 
         # Sinkronisasi stok menu setelah restock
         try:
@@ -3017,11 +3150,13 @@ async def _restok_bulk_items(receipt: dict):
             matched = _find_inventory_match(item_name, inventory_list)
             if matched and matched.get("score", 0) >= 60:
                 inv_id = matched.get("_id")
+                item_price = float(item.get("price", 0) or 0)
                 await inventory.restock_item(
                     inv_id,
                     float(matched.get("quantity", 0)),
                     item.get("qty", 0),
-                    item.get("unit", "pcs")
+                    item.get("unit", "pcs"),
+                    price=item_price,
                 )
     except Exception as e:
         logger.warning(f"Bulk restok partial error: {e}")

@@ -41,13 +41,14 @@ Tugasmu: membantu user mengelola inventory, marketlist, dan supplier.
 
 Action yang tersedia:
 1. marketlist — generate daftar belanja
-2. check_stock — cek stok (semua atau spesifik)
-3. low_stock — cek stok menipis
-4. restock — tambah stok barang
-5. supplier_search — cari supplier
-6. analyze — analisis inventory (tren, saran, efisiensi)
-7. chat — tanya jawab umum (FAQ, tips, rekomendasi)
-8. unknown — jika tidak yakin
+2. marketlist_input — proses teks marketlist dari user (list item yang ingin dibeli)
+3. check_stock — cek stok (semua atau spesifik)
+4. low_stock — cek stok menipis
+5. restock — tambah stok barang
+6. supplier_search — cari supplier
+7. analyze — analisis inventory (tren, saran, efisiensi)
+8. chat — tanya jawab umum (FAQ, tips, rekomendasi)
+9. unknown — jika tidak yakin
 
 Balas dengan format:
 ACTION: <action_name>
@@ -81,7 +82,11 @@ Untuk input yang tidak jelas, tanya balik dengan ramah."""
 
     # ── Regex patterns ───────────────────────────────────────
     _MARKETLIST_RE = re.compile(
-        r'^(marketlist|daftar\s+belanja|shopping\s+list|belanja|list\s+belanja)\s*$',
+        r'^(?:marketlist|market\s+list|daftar\s+belanja|shopping\s+list|belanja|list\s+belanja)\s*$',
+        re.IGNORECASE,
+    )
+    _MARKETLIST_INPUT_RE = re.compile(
+        r'^(?:marketlist|market\s+list|belanja\s+list|market)\s+.+',
         re.IGNORECASE,
     )
     _LOW_STOCK_RE = re.compile(
@@ -123,9 +128,13 @@ Untuk input yang tidak jelas, tanya balik dengan ramah."""
         if self._HELP_RE.match(text_stripped):
             return PurchasingResult("chat", text=self._help_text(), confidence="high")
 
-        # 2. Marketlist
+        # 2. Marketlist (auto-generated)
         if self._MARKETLIST_RE.match(text_stripped):
             return PurchasingResult("marketlist", confidence="high")
+
+        # 2b. Marketlist input (user posts a list — starts with "market list" or "belanja list")
+        if self._MARKETLIST_INPUT_RE.match(text_stripped):
+            return PurchasingResult("marketlist_input", text=text_stripped, confidence="high")
 
         # 3. Low stock
         if self._LOW_STOCK_RE.match(text_stripped):
@@ -195,11 +204,20 @@ Untuk input yang tidak jelas, tanya balik dengan ramah."""
             "🛒 *Yumi Purchasing* — Inventory & Marketlist Assistant\n\n"
             "*Perintah:*\n"
             "• `marketlist` — Daftar belanja + AI tag supplier\n"
+            "• `market list ...` — Proses daftar belanja manual + grouping merchant\n"
             "• `stok menipis` — Cek stok menipis\n"
             "• `stok <nama>` — Cek stok spesifik\n"
             "• `restok <nama> <qty> <unit> <harga>` — Tambah stok\n"
             "• `/supplier <kategori>` — Cari supplier\n"
             "• Tanya bebas — Aku bisa bantu analisis 😊\n\n"
+            "*Contoh market list manual:*\n"
+            "```\n"
+            "market list kitchen\n"
+            "-kentang (abis)\n"
+            "-paha fillet\n"
+            "-timun\n"
+            "```\n"
+            "Nanti otomatis ke-group per merchant dengan nomor WhatsApp! 🎯\n\n"
             "*Contoh tanya bebas:*\n"
             "• \"Supplier daging termurah siapa?\"\n"
             "• \"Kenapa marketlist kopi banyak banget?\"\n"

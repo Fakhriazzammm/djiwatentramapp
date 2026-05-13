@@ -192,7 +192,7 @@ class InventoryManager:
         """Ambil semua inventory untuk fuzzy matching."""
         return await self._fetch(
             "pos_inventory",
-            "select=_id,ingredientName,quantity,lowStockThreshold,unit,lastPurchasePrice",
+            "select=_id,ingredientName,quantity,lowStockThreshold,unit,lastPurchasePrice,preferredPurchaseUnit,preferredPurchaseQuantity,conversionFactor,displayUnit",
         )
 
     async def fuzzy_match_item(
@@ -229,13 +229,16 @@ class InventoryManager:
         return best, best_score
 
     async def restock_item(
-        self, inventory_id: str, current_qty: float, add_qty: float, unit: str = ""
+        self, inventory_id: str, current_qty: float, add_qty: float,
+        unit: str = "", price: float = 0,
     ) -> bool:
-        """Tambah stok item."""
+        """Tambah stok item. Jika price > 0, update lastPurchasePrice juga."""
         new_qty = current_qty + add_qty
         data = {"quantity": new_qty}
         if unit:
             data["unit"] = unit
+        if price > 0:
+            data["lastPurchasePrice"] = price
         return await self._patch("pos_inventory", f"_id=eq.{inventory_id}", data)
 
     async def add_new_item(self, name: str, qty: float, unit: str, price: float = 0) -> dict | None:

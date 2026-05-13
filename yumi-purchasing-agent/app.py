@@ -30,8 +30,21 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from sumopod_client import SumoPodClient
 from purchasing_orchestrator import PurchasingOrchestrator, PurchasingResult
-from marketlist import generate_marketlist, ai_categorize_suppliers
+from marketlist import (
+    generate_marketlist,
+    ai_categorize_suppliers,
+    process_input_marketlist,
+    format_merchant_marketlist,
+    recalculate_with_qty,
+    remove_item_and_reformat,
+)
 from inventory import InventoryManager
+from callback_manager import (
+    build_marketlist_keyboard,
+    handle_marketlist_callback,
+    handle_marketlist_text_input,
+)
+from learning_memory import update_learning_entry
 
 load_dotenv()
 
@@ -66,23 +79,27 @@ class SupplierManager:
         try:
             async with httpx.AsyncClient(timeout=15) as client:
                 resp = await client.get(
-                    f"{SUPABASE_URL}/rest/v1/suppliers?select=*&order=name",
+                    f"{SUPABASE_URL}/rest/v1/pos_inventory_stores?select=*&isActive=eq.true&order=name",
                     headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
                 )
                 resp.raise_for_status()
                 data = resp.json()
             self._cache = {}
             for s in data:
+                store_id = s.get("_id", "").strip()
                 name = s.get("name", "").strip()
                 if name:
                     self._cache[name.lower()] = s
-                    cat = (s.get("category") or "").strip()
+                    # Also index by ID for preferredStoreId lookups
+                    if store_id:
+                        self._cache[store_id] = s
+                    cat = (s.get("type") or "").strip()
                     if cat:
                         self._categories.add(cat.lower())
-            logger.info("Supplier DB loaded: %d suppliers, %d categories",
+            logger.info("Supplier DB loaded: %d suppliers from pos_inventory_stores, %d categories",
                         len(self._cache), len(self._categories))
         except Exception as e:
-            logger.warning("Supplier load failed: %s", e)
+            logger.warning("Supplier load from pos_inventory_stores failed: %s", e)
             self._cache = {}
 
     async def search(self, query: str) -> list[dict]:
@@ -91,16 +108,41 @@ class SupplierManager:
             return []
         q = query.lower().strip()
         results = []
+        seen = set()
         for key, s in self._cache.items():
-            if q in key or q in (s.get("category") or "").lower():
+            name = s.get("name", "").lower()
+            cat = (s.get("type") or "").lower()
+            if q in name or q in cat:
+                sid = s.get("_id", "")
+                if sid not in seen:
+                    seen.add(sid)
+                    results.append({
+                        "_id": s.get("_id", ""),
+                        "name": s.get("name", ""),
+                        "category": s.get("type", ""),
+                        "grade": s.get("grade", ""),
+                        "phone": s.get("phone", ""),
+                        "address": s.get("address", ""),
+                        "notes": s.get("notes", ""),
+                    })
+        return results
+
+    async def get_all_suppliers(self) -> list[dict]:
+        """Return all suppliers with _id, name, type, phone for merchant grouping."""
+        await self._load()
+        if not self._cache:
+            return []
+        seen = set()
+        results = []
+        for s in self._cache.values():
+            sid = s.get("_id", "")
+            if sid and sid not in seen:
+                seen.add(sid)
                 results.append({
+                    "_id": sid,
                     "name": s.get("name", ""),
-                    "category": s.get("category", ""),
-                    "grade": s.get("grade", ""),
+                    "category": s.get("type", ""),
                     "phone": s.get("phone", ""),
-                    "address": s.get("address", ""),
-                    "price_range": s.get("price_range", ""),
-                    "notes": s.get("notes", ""),
                 })
         return results
 
@@ -108,7 +150,35 @@ class SupplierManager:
         await self._load()
         return sorted(self._categories)
 
+    async def get_supplier_by_id(self, store_id: str) -> dict | None:
+        """Lookup supplier by _id."""
+        await self._load()
+        if not self._cache:
+            return None
+        # Direct lookup by ID from cache
+        s = self._cache.get(store_id) or self._cache.get(store_id.lower())
+        if s:
+            return {
+                "_id": s.get("_id", ""),
+                "name": s.get("name", ""),
+                "phone": s.get("phone", ""),
+                "category": s.get("type", ""),
+            }
+        # Fallback: search all
+        for key, s in self._cache.items():
+            if s.get("_id", "") == store_id:
+                return {
+                    "_id": s.get("_id", ""),
+                    "name": s.get("name", ""),
+                    "phone": s.get("phone", ""),
+                    "category": s.get("type", ""),
+                }
+        return None
+
 supplier = SupplierManager()
+
+# ── Session storage for marketlist callbacks ────────────────────
+marketlist_sessions: dict[str, dict] = {}
 
 # ── Keyboard ────────────────────────────────────────────────────
 def _keyboard():
@@ -200,8 +270,6 @@ async def cmd_supplier(update: Update, context):
         lines.append(f"*{s['name']}*{grade_str}")
         if s.get("category"):
             lines.append(f"  🏷️ {s['category']}")
-        if s.get("price_range"):
-            lines.append(f"  💰 {s['price_range']}")
         if s.get("phone"):
             lines.append(f"  📞 {s['phone']}")
         if s.get("address"):
@@ -293,13 +361,19 @@ async def cmd_yumi(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ── Message Handler ─────────────────────────────────────────────
 
 def _can_respond(update: Update) -> bool:
-    """Cek apakah bot boleh merespon — DM owner atau grup dengan @mention."""
+    """Cek apakah bot boleh merespon — DM owner, grup marketlist, atau grup dengan @mention."""
     user = update.effective_user
     chat = update.effective_chat
     if not user or not chat:
         return False
+    # DM owner
     if chat.type == "private":
         return user.id == 323151437
+    # Marketlist group — auto-respond to all messages
+    MARKETLIST_GROUP_ID = int(os.getenv("MARKETLIST_GROUP_ID", "0"))
+    if MARKETLIST_GROUP_ID and chat.id == MARKETLIST_GROUP_ID:
+        return True
+    # Reply to bot or @mention
     msg = update.effective_message
     if not msg:
         return False
@@ -313,22 +387,95 @@ def _can_respond(update: Update) -> bool:
 async def handle_message(update: Update, context):
     if not _can_respond(update):
         return
-    text = (update.message.text or "").strip()
+    msg = update.effective_message
+    if not msg or not msg.text:
+        return
+    text = msg.text.strip()
     if not text:
-        await update.message.reply_text("Ketik perintah atau tanya bebas.", reply_markup=_keyboard())
+        await msg.reply_text("Ketik perintah atau tanya bebas.", reply_markup=_keyboard())
         return
 
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     result = await orchestrator.orchestrate(text)
 
-    await _execute_action(update.message, result, is_callback=False)
+    # Check if it's a marketlist input (user posted a list starting with "market list" or "belanja list")
+    if result.action == "marketlist_input":
+        await _handle_marketlist_input(update, context, result.text or text)
+        return
+
+    await _execute_action(msg, result, is_callback=False)
+
+async def _handle_marketlist_input(update: Update, context, text: str):
+    """Handle user posting a marketlist text — parse, match, group, format, send with keyboard."""
+    import uuid
+    from datetime import datetime, timezone, timedelta
+
+    try:
+        sp_client = SumoPodClient(SUMOPOD_API_KEY)
+        result = await process_input_marketlist(text, sp_client, inventory, supplier)
+
+        if not result.get("success"):
+            await update.message.reply_text(result.get("formatted_text", "❌ Gagal memproses marketlist."))
+            return
+
+        # Generate a unique entry_id for this session
+        entry_id = result.get("entry_id") or str(uuid.uuid4())
+        session_key = f"marketlist_{entry_id}"
+
+        # Store session data
+        unmatched_names = [
+            e.get("input_name", e.get("name", "?"))
+            for e in result.get("enriched", []) if not e.get("matched")
+        ]
+        user_id = str(update.effective_user.id) if update.effective_user else ""
+        marketlist_sessions[session_key] = {
+            "groups": result.get("groups", []),
+            "grand_total": result.get("grand_total", 0),
+            "items_count": result.get("items_count", 0),
+            "entry_id": entry_id,
+            "original_text": text,
+            "unmatched_names": unmatched_names,
+            "user_id": user_id,
+            "timestamp": datetime.now(timezone(timedelta(hours=7))).isoformat(),
+        }
+
+        formatted = result.get("formatted_text", "")
+        items_count = result.get("items_count", 0)
+        keyboard = build_marketlist_keyboard(entry_id, items_count)
+
+        await update.message.reply_text(
+            formatted,
+            reply_markup=keyboard,
+            parse_mode="Markdown",
+        )
+
+        logger.info(
+            "Marketlist processed: %d items, entry=%s",
+            items_count, entry_id,
+        )
+    except Exception as e:
+        logger.exception("Marketlist input processing failed")
+        await update.message.reply_text(f"❌ Gagal memproses marketlist: {e}")
 
 # ── Callback Handler ────────────────────────────────────────────
 
-async def handle_callback(update: Update, _context):
+async def handle_callback(update: Update, context):
     query = update.callback_query
     await query.answer()
     data = query.data
+
+    # Route marketlist callbacks (ml_ prefix) to callback_manager
+    if data.startswith("ml_"):
+        sp_client = SumoPodClient(SUMOPOD_API_KEY)
+        await handle_marketlist_callback(
+            update, context, marketlist_sessions,
+            format_merchant_marketlist,
+            recalculate_with_qty,
+            remove_item_and_reformat,
+            process_input_marketlist,
+            sp_client, inventory, supplier,
+        )
+        return
 
     if data == "ai_chat":
         await query.edit_message_text(
@@ -439,8 +586,6 @@ async def _execute_action(target, result: PurchasingResult, is_callback: bool = 
                     grade_str = f" ⭐{s['grade']}" if s.get("grade") else ""
                     phone_str = f" 📞{s['phone']}" if s.get("phone") else ""
                     lines.append(f"*{s['name']}*{grade_str} | {s['category']}{phone_str}")
-                    if s.get("price_range"):
-                        lines.append(f"  💰 {s['price_range']}")
                 await reply("\n".join(lines))
 
         elif result.action == "chat" or result.action == "analyze":
@@ -492,7 +637,7 @@ async def _handle_restock(target, result: PurchasingResult, is_callback: bool):
         inv_id = matched["_id"]
         inv_qty = float(matched.get("quantity", 0))
         inv_name = matched["ingredientName"]
-        await inventory.restock_item(inv_id, inv_qty, result.qty, result.unit)
+        await inventory.restock_item(inv_id, inv_qty, result.qty, result.unit, price=result.price)
         total_cost = result.price * result.qty
         if total_cost > 0:
             await inventory.log_purchase(inv_name, result.qty, result.unit, total_cost)
@@ -598,6 +743,17 @@ async def main():
     app.add_handler(CommandHandler("yumi", cmd_yumi))
     app.add_handler(CommandHandler("hermes_scope", cmd_hermes_scope))
     app.add_handler(CommandHandler("hermes_test", cmd_hermes_test))
+    # Message handlers — ordered by priority
+    # Marketlist text input (after callback prompt) goes before general text
+    app.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND,
+        lambda u, c: handle_marketlist_text_input(
+            u, c, marketlist_sessions,
+            format_merchant_marketlist,
+            recalculate_with_qty,
+            SumoPodClient(SUMOPOD_API_KEY), inventory,
+        ),
+    ), group=1)  # Higher priority group
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(handle_callback))
 
