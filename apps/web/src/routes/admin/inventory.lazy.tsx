@@ -5112,7 +5112,7 @@ function InventoryTable({
 									</td>
 									<td className="p-4">
 										<Skeleton className="mx-auto h-8 w-16" />
-									<div className="text-[8px] text-muted-foreground/60 mt-0.5">Min: <span className="font-semibold">"0"</span></div></td>
+									<div className="text-[8px] text-muted-foreground/60 mt-0.5">Min: <span className="font-semibold">{0}</span></div></td>
 									<td className="p-4">
 										<Skeleton className="mx-auto h-4 w-16" />
 									</td>
@@ -5213,7 +5213,7 @@ function InventoryTable({
 												type="number"
 												value={inline.quantity}
 											/>
-										<div className="text-[8px] text-muted-foreground/60 mt-0.5">Min: <span className="font-semibold">inline.lowStockThreshold</span></div></td>
+										<div className="text-[8px] text-muted-foreground/60 mt-0.5">Min: <span className="font-semibold">{inline.lowStockThreshold}</span></div></td>
 									<td className="px-2 py-1.5 align-middle text-center group relative">
 										<input
 											className={`mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
