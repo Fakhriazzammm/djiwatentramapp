@@ -218,6 +218,10 @@ export default function AdminContractPage() {
 		mode: "custom",
 		title: draft.title,
 		plainText: clausesToPlainText(draft.title, draft.clauses),
+		html: `<article>${draft.clauses.map((c) => {
+			const paragraphs = c.body.split(/\n{2,}/).filter(Boolean).map((para: string) => `<p>${para.replace(/\n/g, "<br/>")}</p>`).join("\n");
+			return `<section><h3>${c.title}</h3>${paragraphs}</section>`;
+		}).join("")}</article>`,
 		clauses: draft.clauses,
 	}), [draft]);
 	const currentTemplateText = contractPreview.plainText;
