@@ -11,8 +11,8 @@
 | Phase | Status | Keterangan |
 |-------|--------|------------|
 | **Phase 1: Foundation** | ✅ **Selesai** | Structured JSON storage, 23+ dynamic variables, signatory expansion, employment-type templates, clause library |
-| **Phase 2: Integration** | ⏳ **3/4 selesai** | Payroll role rules merged ✅, Bonus target config ✅, Custom allowances ✅, Admin preview data ⬜ |
-| **Phase 3: Workflow** | ⬜ **Belum** | Contract approval, history, renewal |
+| **Phase 2: Integration** | ✅ **Selesai** | Payroll role rules merged, Bonus target config, Custom allowances, Admin preview real data |
+| **Phase 3: Workflow** | ✅ **Selesai** | Contract history page, Approval workflow, Renewal/Extension with cron + UI |
 
 ---
 

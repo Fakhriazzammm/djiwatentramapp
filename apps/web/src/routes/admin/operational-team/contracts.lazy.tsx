@@ -1,6 +1,8 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { FileText, Search, Clock, CheckCircle2, XCircle, Download, Loader2 } from "lucide-react";
+import { FileText, Search, Clock, CheckCircle2, XCircle, Download, Loader2, RefreshCw, Calendar } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,6 +28,46 @@ function ContractHistoryPage() {
 	const [loading, setLoading] = useState(true);
 	const [search, setSearch] = useState("");
 	const [statusFilter, setStatusFilter] = useState<string>("");
+	const [extendDialog, setExtendDialog] = useState<{ app: any; months: number } | null>(null);
+	const [extending, setExtending] = useState(false);
+
+	const handleExtend = async () => {
+		if (!extendDialog) return;
+		setExtending(true);
+		try {
+			const supabase = createClient();
+			const app = extendDialog.app;
+			const oldContract = app.contract || {};
+			const oldEmployment = { ...(app.employment || {}) };
+			const oldDuration = oldEmployment.contractDuration || 12;
+			const newDuration = oldDuration + extendDialog.months;
+			const startDate = oldEmployment.startDate || new Date().toISOString().slice(0, 10);
+			const startObj = new Date(startDate);
+			let newEndDate = "";
+			if (startObj.getTime()) {
+				const end = new Date(startObj);
+				end.setMonth(end.getMonth() + newDuration);
+				newEndDate = end.toISOString().slice(0, 10);
+			}
+			const { error } = await supabase
+				.from("employee_onboarding_applications")
+				.update({
+					employment: { ...oldEmployment, contractDuration: newDuration },
+					raw: { ...(app.raw || {}), contractStatus: "renewed", extendedAt: new Date().toISOString(), extendedMonths: extendDialog.months, previousDuration: oldDuration },
+				})
+				.eq("id", app.id);
+			if (error) throw error;
+			toast.success(`Kontrak ${app.full_name} diperpanjang ${extendDialog.months} bulan`);
+			// Refresh data
+			const { data } = await supabase.from("employee_onboarding_applications").select("*").order("created_at", { ascending: false }).limit(200);
+			if (data) setApplications(data);
+			setExtendDialog(null);
+		} catch (e: any) {
+			toast.error("Gagal: " + (e?.message || ""));
+		} finally {
+			setExtending(false);
+		}
+	};
 
 	useEffect(() => {
 		(async () => {
@@ -137,6 +179,7 @@ function ContractHistoryPage() {
 								<th className="px-4 py-3 text-left font-medium">Mulai</th>
 								<th className="px-4 py-3 text-left font-medium">Status</th>
 								<th className="px-4 py-3 text-right font-medium">Aksi</th>
+								<th className="px-4 py-3 text-right font-medium">Perpanjang</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -169,6 +212,16 @@ function ContractHistoryPage() {
 												<span className="text-[10px] text-muted-foreground">-</span>
 											)}
 										</td>
+										<td className="px-4 py-3 text-right">
+											<Button
+												size="sm"
+												variant="outline"
+												className="h-7 gap-1 text-xs"
+												onClick={() => setExtendDialog({ app, months: 6 })}
+											>
+												<RefreshCw className="h-3 w-3" /> Perpanjang
+											</Button>
+										</td>
 									</tr>
 								);
 							})}
@@ -176,6 +229,47 @@ function ContractHistoryPage() {
 					</table>
 				</div>
 			)}
+
+			{/* ── Extension Dialog ── */}
+			<Dialog open={!!extendDialog} onOpenChange={(open) => !open && setExtendDialog(null)}>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle>Perpanjang Kontrak</DialogTitle>
+						<DialogDescription>
+							{extendDialog?.app?.full_name || "Karyawan"}
+						</DialogDescription>
+					</DialogHeader>
+					<div className="space-y-4">
+						<div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+							<div className="flex items-center justify-between text-sm">
+								<span className="text-muted-foreground">Perpanjang selama</span>
+								<div className="flex items-center gap-2">
+									{[3, 6, 12].map((m) => (
+										<Button
+											key={m}
+											size="sm"
+											variant={extendDialog?.months === m ? "default" : "outline"}
+											onClick={() => setExtendDialog((prev) => prev ? { ...prev, months: m } : null)}
+											className="h-8 text-xs"
+										>
+											{m} bulan
+										</Button>
+									))}
+								</div>
+							</div>
+						</div>
+						<div className="flex justify-end gap-2">
+							<Button size="sm" variant="outline" onClick={() => setExtendDialog(null)} disabled={extending}>
+								Batal
+							</Button>
+							<Button size="sm" onClick={handleExtend} disabled={extending || !extendDialog?.months}>
+								{extending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
+								{extending ? "Memperpanjang..." : `Perpanjang ${extendDialog?.months || 0} Bulan`}
+							</Button>
+						</div>
+					</div>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

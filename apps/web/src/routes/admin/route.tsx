@@ -21,6 +21,7 @@ import {
 	ChefHat,
 	Beer,
 	FileBarChart,
+	FileText,
 	FileSignature,
 	Gamepad2,
 	Grid3X3,
@@ -83,6 +84,8 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/operational-team/register": "Register Karyawan",
 	"/admin/operational-team/register/onboarding": "Onboarding Karyawan",
 	"/admin/operational-team/register/contract": "Kontrak Kerja",
+	"/admin/operational-team/register/approval": "Persetujuan Kontrak",
+	"/admin/operational-team/contracts": "Riwayat Kontrak",
 	"/admin/forecasting": "Forecasting",
 	"/admin/booking": "Booking",
 	"/admin/kitchen": "Dapur",
@@ -205,6 +208,7 @@ const OPERATIONAL_TEAM_PATHS = [
 	"/admin/operational-team/register",
 	"/admin/operational-team/register/onboarding",
 	"/admin/operational-team/register/contract",
+	"/admin/operational-team/contracts",
 ];
 
 function AdminLayout() {
@@ -468,6 +472,8 @@ function AdminLayout() {
 							<DesktopNavLink icon={<UserPlus />} isCollapsed={isCollapsed} label="Register" to="/admin/operational-team/register" permission="users:manage" />
 							<DesktopNavLink icon={<ClipboardList />} isCollapsed={isCollapsed} label="Onboarding" to="/admin/operational-team/register/onboarding" permission="users:manage" />
 							<DesktopNavLink icon={<FileSignature />} isCollapsed={isCollapsed} label="Kontrak" to="/admin/operational-team/register/contract" permission="users:manage" />
+							<DesktopNavLink icon={<FileText />} isCollapsed={isCollapsed} label="Riwayat Kontrak" to="/admin/operational-team/contracts" permission="users:manage" />
+							<DesktopNavLink icon={<CheckCircle2 />} isCollapsed={isCollapsed} label="Persetujuan" to="/admin/operational-team/register/approval" permission="users:manage" />
 						</>
 					) : (
 						<>
@@ -488,6 +494,8 @@ function AdminLayout() {
 										<DesktopSubNavLink icon={<UserPlus />} label="Register Karyawan" to="/admin/operational-team/register" permission="users:manage" />
 										<DesktopSubNavLink icon={<ClipboardList />} label="Onboarding" to="/admin/operational-team/register/onboarding" permission="users:manage" />
 										<DesktopSubNavLink icon={<FileSignature />} label="Kontrak Kerja" to="/admin/operational-team/register/contract" permission="users:manage" />
+										<DesktopSubNavLink icon={<CheckCircle2 />} label="Persetujuan" to="/admin/operational-team/register/approval" permission="users:manage" />
+										<DesktopSubNavLink icon={<FileText />} label="Riwayat Kontrak" to="/admin/operational-team/contracts" permission="users:manage" />
 										</div>
 									</motion.div>
 								)}
