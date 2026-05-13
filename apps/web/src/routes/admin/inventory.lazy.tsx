@@ -5103,39 +5103,51 @@ function InventoryTable({
 						{inventoryMap.size === 0 &&
 							Array.from({ length: 8 }).map((_, i) => (
 								
-<tr key={i}>
-<td className="p-4">
+									<tr key={i}>
+									<td className="p-4">
 										<Skeleton className="mx-auto h-3 w-3" />
 									</td>
-<td className="p-4">
+									<td className="p-4">
 										<Skeleton className="h-4 w-32" />
 									</td>
-<td className="p-4">
+									<td className="p-4">
 										<Skeleton className="h-6 w-24" />
 									</td>
-<td className="p-4">
+									<td className="p-4">
 										<Skeleton className="mx-auto h-8 w-16" />
 									<div className="text-[8px] text-muted-foreground/60 mt-0.5">Min: <span className="font-semibold">"0"</span></div></td>
-<td className="p-4">
+									<td className="p-4">
 										<Skeleton className="mx-auto h-4 w-16" />
 									</td>
-<td className="p-4">
+									<td className="p-4">
 										<Skeleton className="h-4 w-20" />
 									</td>
-<td className="p-4">
+									<td className="p-4">
 										<Skeleton className="mx-auto h-4 w-16" />
 									</td>
 									<td className="px-2 py-1.5 align-middle text-right text-[11px] font-semibold text-foreground/80 font-mono">
 										-
 									</td>
-<td className="p-4">
+									<td className="p-4">
 										<Skeleton className="mx-auto h-4 w-14" />
 									</td>
-<td className="p-4 text-right">
+									<td className="p-4 text-right">
 										<Skeleton className="ml-auto h-8 w-24 rounded-lg" />
 									</td>
 									</tr>
-<tr
+
+						))}
+						{inventoryMap.size > 0 &&
+							statusFilteredRows.length > 0 &&
+							statusFilteredRows.map((row, index) => {
+								const item = inventoryMap.get(row.inventoryId);
+								if (!item) {
+									return null;
+								}
+								const inline = getInlineValue(row);
+								const statusMeta = getStatusMeta(row.status);
+								return (
+									<tr
 										className={`transition-colors hover:bg-muted/20 ${
 											row.status === "critical"
 												? "bg-rose-50/40"
@@ -5147,7 +5159,7 @@ function InventoryTable({
 										}`}
 										key={row.inventoryId}
 									>
-<td className="px-1 py-1.5 text-center align-middle">
+									<td className="px-1 py-1.5 text-center align-middle">
 										{(() => {
 											const id = row.inventoryId;
 											const hasStockout = stockoutItemIds.has(id);
@@ -5168,7 +5180,7 @@ function InventoryTable({
 											);
 										})()}
 									</td>
-<td className="sticky left-0 z-10 border-border/60 border-r bg-card px-2.5 py-1.5 align-middle shadow-[6px_0_10px_-8px_rgba(15,23,42,0.2)]">
+									<td className="sticky left-0 z-10 border-border/60 border-r bg-card px-2.5 py-1.5 align-middle shadow-[6px_0_10px_-8px_rgba(15,23,42,0.2)]">
 											<input
 												className={`w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold leading-4 outline-none focus:border-border focus:bg-background ${
 													tableMode === "simple" ? "text-[10px]" : "text-[11px]"
@@ -5187,8 +5199,8 @@ function InventoryTable({
 												value={inline.ingredientName}
 											/>
 										</td>
-<td className="px-2 py-1.5 align-middle text-[10px] font-semibold text-muted-foreground">{row.preferredStoreName || row.lastPurchaseStoreName || "—"}{row.defaultBrandName ? ` · ${row.defaultBrandName}` : ""}</td>
-<td className="px-2 py-1.5 align-middle text-center">
+									<td className="px-2 py-1.5 align-middle text-[10px] font-semibold text-muted-foreground">{row.preferredStoreName || row.lastPurchaseStoreName || "—"}{row.defaultBrandName ? ` · ${row.defaultBrandName}` : ""}</td>
+									<td className="px-2 py-1.5 align-middle text-center">
 											<input
 												className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono text-[12px] font-bold outline-none focus:border-border focus:bg-background"
 												onBlur={() => void saveQuantity(row)}
@@ -5205,7 +5217,7 @@ function InventoryTable({
 												value={inline.quantity}
 											/>
 										<div className="text-[8px] text-muted-foreground/60 mt-0.5">Min: <span className="font-semibold">inline.lowStockThreshold</span></div></td>
-<td className="px-2 py-1.5 align-middle text-center group relative">
+									<td className="px-2 py-1.5 align-middle text-center group relative">
 										<input
 											className={`mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
 												inline.unit.trim() !== "" &&
@@ -5227,12 +5239,12 @@ function InventoryTable({
 											<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Stok: {inline.unit} · Beli: {row.preferredPurchaseUnit}</span>
 										)}
 									</td>
-<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
+									<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
 											<span className="font-semibold text-foreground">
 												{row.avgDailyUsage.toFixed(2)}/hari
 											</span>
 										</td>
-<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
+									<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
 										<input
 											className="w-full rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-[11px] font-semibold text-foreground outline-none focus:border-border focus:bg-background"
 											min={0}
@@ -5281,7 +5293,7 @@ function InventoryTable({
 									<td className="px-2 py-1.5 align-middle text-right text-[11px] font-semibold text-foreground/80 font-mono">
 										-
 									</td>
-<td className="px-2 py-1.5 align-middle">
+									<td className="px-2 py-1.5 align-middle">
 											<div className="flex items-center gap-1.5 whitespace-nowrap text-[10px]">
 												<span
 													className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${statusMeta.tone}`}
@@ -5298,7 +5310,7 @@ function InventoryTable({
 												</span>
 											</div>
 										</td>
-<td className="px-2 py-1.5 align-middle text-right">
+									<td className="px-2 py-1.5 align-middle text-right">
 										<div className="relative flex items-center justify-end">
 											<button
 												className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border/80 bg-background text-muted-foreground transition-colors hover:bg-muted"
@@ -5343,12 +5355,18 @@ function InventoryTable({
 										</div>
 									</td>
 									</tr>
-<tr>
+
+								);
+							})
+						}
+						{(statusFilteredRows.length ?? 0) === 0 && (
+							<tr>
 								<td className="p-8 text-center text-muted-foreground" colSpan={10}>
 									Tidak ada bahan baku ditemukan
 								</td>
 							</tr>
 						)}
+					</tbody>
 					
 
 				</table>
