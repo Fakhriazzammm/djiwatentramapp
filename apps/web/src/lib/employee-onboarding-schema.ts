@@ -425,9 +425,10 @@ f) Keadaan memaksa (force majeure).
 		.map(
 			(clause) =>
 				`<section><h3>${clause.title}</h3>${clause.body
-					.split(/\n{2,}/)
+					.split("\n")
+					.map((l) => l.trim())
 					.filter(Boolean)
-					.map((para) => `<p>${para.replace(/\n/g, "<br/>")}</p>`)
+					.map((para) => `<p>${para}</p>`)
 					.join("\n")}</section>`
 		)
 		.join("")}</article>`;

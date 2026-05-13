@@ -219,7 +219,7 @@ export default function AdminContractPage() {
 		title: draft.title,
 		plainText: clausesToPlainText(draft.title, draft.clauses),
 		html: `<article>${draft.clauses.map((c) => {
-			const paragraphs = c.body.split(/\n{2,}/).filter(Boolean).map((para: string) => `<p>${para.replace(/\n/g, "<br/>")}</p>`).join("\n");
+			const paragraphs = c.body.split("\n").map((l: string) => l.trim()).filter(Boolean).map((para: string) => `<p>${para}</p>`).join("\n");
 			return `<section><h3>${c.title}</h3>${paragraphs}</section>`;
 		}).join("")}</article>`,
 		clauses: draft.clauses,
@@ -711,7 +711,7 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 						<div className="p-3 max-h-[70vh] overflow-y-auto">
 							<ContractPreview
 								contract={testPreviewText ? (() => {
-	const paragraphs = testPreviewText.split(/\n{2,}/).filter(Boolean).map((para: string) => `<p>${para.replace(/\n/g, "<br/>")}</p>`).join("\n");
+	const paragraphs = testPreviewText.split("\n").map((l: string) => l.trim()).filter(Boolean).map((para: string) => `<p>${para}</p>`).join("\n");
 	return { ...contractPreview, plainText: testPreviewText, html: `<article>${paragraphs}</article>` };
 })() : contractPreview}
 								employeeName={testPreviewName || "[Nama Karyawan]"}

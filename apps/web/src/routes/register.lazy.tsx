@@ -162,9 +162,10 @@ function RegisterPage() {
 			const templateStr = typeof templateText === "string" ? templateText : (templateText as any).title + "\n" + (templateText as any).clauses?.map((c: any) => c.title + "\n" + c.body).join("\n\n") || "";
 			const syncedTemplateText = syncDynamicContractClauses(templateStr, draft.personal, draft.employment, companyDisplayName, signatoryPersonName, onboardingSettings.signatoryCompanyAddress, onboardingSettings.signatoryCompanyNIB, onboardingSettings.signatoryPersonTitle, onboardingSettings.signatoryLocation);
 			const htmlParagraphs = syncedTemplateText
-				.split(/\n{2,}/)
+				.split("\n")
+				.map((l: string) => l.trim())
 				.filter(Boolean)
-				.map((para) => `<p>${para.replace(/\n/g, "<br/>")}</p>`)
+				.map((para: string) => `<p>${para}</p>`)
 				.join("\n");
 			return {
 				mode: "template" as const,
@@ -195,11 +196,11 @@ function RegisterPage() {
 				...built,
 				plainText: replaceContractVariables(built.plainText, ctx),
 				clauses: built.clauses.map((c) => ({ ...c, body: replaceContractVariables(c.body, ctx) })),
-				html: `<article>${built.clauses.map((c) => {
-					const body = replaceContractVariables(c.body, ctx);
-					const paragraphs = body.split(/\n{2,}/).filter(Boolean).map((para) => `<p>${para.replace(/\n/g, "<br/>")}</p>`).join("\n");
-					return `<section><h3>${c.title}</h3>${paragraphs}</section>`;
-				}).join("")}</article>`,
+			html: `<article>${built.clauses.map((c) => {
+				const body = replaceContractVariables(c.body, ctx);
+				const paragraphs = body.split("\n").map((l: string) => l.trim()).filter(Boolean).map((para: string) => `<p>${para}</p>`).join("\n");
+				return `<section><h3>${c.title}</h3>${paragraphs}</section>`;
+			}).join("")}</article>`,
 			};
 	}, [draft.employment, draft.personal, onboardingSettings.contractTemplatesByRoleId, companyDisplayName]);
 
