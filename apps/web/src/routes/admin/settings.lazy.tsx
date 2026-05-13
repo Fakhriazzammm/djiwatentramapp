@@ -33,6 +33,7 @@ import {
 	ArrowUpRight,
 	Eye,
 	ChevronDown,
+	CheckCircle2,
 	Coins,
 	ShoppingBag,
 	Bike,
@@ -821,7 +822,8 @@ export function SettingsPage({
 			s.monthlyFixedSalary||0, s.totalShiftSalary||0, s.totalAllowance||0,
 			s.totalOvertimeBonus||0, s.totalTargetBonus||0, s.totalPenalty||0, s.netSalary||0,
 		]);
-		const csv = [headers.join(","), ...rows.map((r: any) => r.join(","))].join("\n");
+		const csv = [headers.join(","), ...rows.map((r: any) => r.join(","))].join("
+");
 		const blob = new Blob([csv], { type: "text/csv" });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement("a");
@@ -3107,6 +3109,8 @@ export function SettingsPage({
 									<div className="flex flex-wrap gap-2">
 										<Button size="sm" onClick={() => window.open("/register?preview=admin", "_blank")} type="button"><Eye className="mr-1.5 h-3.5 w-3.5" />Preview Form</Button>
 										<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/operational-team/register/contract"} type="button"><FileSignature className="mr-1.5 h-3.5 w-3.5" />Template Kontrak</Button>
+										<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/operational-team/contracts"} type="button"><FileText className="mr-1.5 h-3.5 w-3.5" />Riwayat Kontrak</Button>
+										<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/operational-team/register/approval"} type="button"><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />Persetujuan</Button>
 										<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/operational-team/register/onboarding"} type="button"><ClipboardList className="mr-1.5 h-3.5 w-3.5" />Review Kandidat</Button>
 									</div>
 								</div>
@@ -3177,6 +3181,26 @@ export function SettingsPage({
 										<label className="mb-1 block text-xs font-medium text-muted-foreground">Nama Orang Penandatangan</label>
 										<Input className="h-9 text-xs" value={employeeOnboardingSettings.signatoryPersonName} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, signatoryPersonName: e.target.value }))} placeholder="Nama orang yang menandatangani" />
 										<p className="mt-1 text-[10px] text-muted-foreground">Dipakai di area tanda tangan perusahaan.</p>
+									</div>
+									<div className="sm:col-span-2">
+										<label className="mb-1 block text-xs font-medium text-muted-foreground">Jabatan Penandatangan</label>
+										<Input className="h-9 text-xs" value={employeeOnboardingSettings.signatoryPersonTitle} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, signatoryPersonTitle: e.target.value }))} placeholder="Direktur / HR Manager / Owner" />
+										<p className="mt-1 text-[10px] text-muted-foreground">Dicetak di kontrak setelah nama penandatangan.</p>
+									</div>
+									<div className="sm:col-span-2">
+										<label className="mb-1 block text-xs font-medium text-muted-foreground">Alamat Perusahaan</label>
+										<Input className="h-9 text-xs" value={employeeOnboardingSettings.signatoryCompanyAddress} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, signatoryCompanyAddress: e.target.value }))} placeholder="Jl. Contoh No. 123, Kota" />
+										<p className="mt-1 text-[10px] text-muted-foreground">Alamat lengkap untuk identitas Pihak Pertama di kontrak.</p>
+									</div>
+									<div className="sm:col-span-1">
+										<label className="mb-1 block text-xs font-medium text-muted-foreground">NIB / NPWP</label>
+										<Input className="h-9 text-xs" value={employeeOnboardingSettings.signatoryCompanyNIB} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, signatoryCompanyNIB: e.target.value }))} placeholder="912000xxx" />
+										<p className="mt-1 text-[10px] text-muted-foreground">Nomor induk berusaha perusahaan.</p>
+									</div>
+									<div className="sm:col-span-1">
+										<label className="mb-1 block text-xs font-medium text-muted-foreground">Kota Penandatanganan</label>
+										<Input className="h-9 text-xs" value={employeeOnboardingSettings.signatoryLocation} onChange={(e) => setEmployeeOnboardingSettings((prev) => ({ ...prev, signatoryLocation: e.target.value }))} placeholder="Tangerang" />
+										<p className="mt-1 text-[10px] text-muted-foreground">Kota untuk tanggal penandatanganan kontrak.</p>
 									</div>
 									<div className="sm:col-span-2 lg:col-span-4">
 										<label className="mb-1 block text-xs font-medium text-muted-foreground">Pesan Saat Pendaftaran Ditutup</label>
