@@ -54,6 +54,37 @@ export function parseUnitConversionsText(input?: string | null): Array<{ unit: s
 }
 
 /**
+ * Collect all conversion entries from both unitConversions (parsed array)
+ * and unitConversionsText (raw string), deduplicated by unit name.
+ */
+function collectConversions(item: {
+	unitConversions?: Array<{ unit: string; factor: number }> | null;
+	unitConversionsText?: string | null;
+}): Array<{ unit: string; factor: number }> {
+	const map = new Map<string, number>();
+
+	// unitConversions (parsed array from DB) takes priority
+	if (item.unitConversions && Array.isArray(item.unitConversions)) {
+		for (const c of item.unitConversions) {
+			const key = normalizeUnit(c.unit);
+			if (key && c.factor > 0) map.set(key, c.factor);
+		}
+	}
+
+	// unitConversionsText (raw string) as fallback/supplement
+	const parsed = parseUnitConversionsText(item.unitConversionsText);
+	if (parsed) {
+		for (const c of parsed) {
+			const key = normalizeUnit(c.unit);
+			if (key && c.factor > 0 && !map.has(key)) map.set(key, c.factor);
+		}
+	}
+
+	if (map.size === 0) return [];
+	return Array.from(map.entries()).map(([unit, factor]) => ({ unit, factor }));
+}
+
+/**
  * Return { unit, factor } for the smallest display unit (gram/ml/pcs).
  * If the item already uses a small unit, factor = 1.
  * If the item uses a large unit (kg, dus, etc.), factor > 1 to convert.
@@ -63,6 +94,7 @@ export function getSmallestUnitInfo(item: {
 	unit?: string | null;
 	displayUnit?: string | null;
 	conversionFactor?: number | null;
+	unitConversions?: Array<{ unit: string; factor: number }> | null;
 	unitConversionsText?: string | null;
 }): { unit: string; factor: number } | null {
 	const normUnit = normalizeUnit(item.unit);
@@ -80,12 +112,10 @@ export function getSmallestUnitInfo(item: {
 
 	let factor: number | null = null;
 
-	// 1. Check unitConversionsText for explicit mapping to smallest unit
-	const conversions = parseUnitConversionsText(item.unitConversionsText);
-	if (conversions && conversions.length > 0) {
-		const match = conversions.find((c) => normalizeUnit(c.unit) === smallestLabel);
-		if (match && match.factor > 0) factor = match.factor;
-	}
+	// 1. Check all conversion sources (unitConversions array + unitConversionsText)
+	const conversions = collectConversions(item);
+	const match = conversions.find((c) => normalizeUnit(c.unit) === smallestLabel);
+	if (match && match.factor > 0) factor = match.factor;
 
 	// 2. Check legacy displayUnit + conversionFactor
 	if (factor === null && item.displayUnit && item.conversionFactor && item.conversionFactor > 0) {
@@ -114,6 +144,7 @@ export function getSmallestUnitLabel(item: {
 	unit?: string | null;
 	displayUnit?: string | null;
 	conversionFactor?: number | null;
+	unitConversions?: Array<{ unit: string; factor: number }> | null;
 	unitConversionsText?: string | null;
 }): string {
 	return getSmallestUnitInfo(item)?.unit ?? item?.unit ?? "";
@@ -128,6 +159,7 @@ export function convertToSmallestUnit(
 		unit?: string | null;
 		displayUnit?: string | null;
 		conversionFactor?: number | null;
+		unitConversions?: Array<{ unit: string; factor: number }> | null;
 		unitConversionsText?: string | null;
 	}
 ): { amount: number; unit: string } | null {

@@ -1,6 +1,7 @@
 ﻿// @ts-nocheck
 import { Link } from "@tanstack/react-router";
 import type { Doc, Id } from "@/types/backend-compat";
+import { convertToSmallestUnit, getSmallestUnitInfo, getSmallestUnitLabel } from "@/lib/inventory-units";
 import {
 	useHybridCreateBaseRecipe,
 	useHybridDeleteBaseRecipe,
@@ -95,15 +96,11 @@ function getRecipeAmountHint(item?: Doc<"inventory">) {
 	if (!item) {
 		return "Isi angka sesuai satuan bahan di inventory.";
 	}
-	if (
-		item.unit === "pcs" &&
-		typeof item.conversionFactor === "number" &&
-		item.conversionFactor > 0 &&
-		item.displayUnit
-	) {
-		return `Satuan recipe: pcs. Patokan: 1 pcs = ${item.conversionFactor} ${item.displayUnit}.`;
+	const smallest = getSmallestUnitInfo(item);
+	if (smallest && smallest.factor > 1) {
+		return `Satuan recipe: ${smallest.unit}. Patokan: 1 ${item.unit} = ${smallest.factor} ${smallest.unit}.`;
 	}
-	return `Satuan recipe: ${item.unit} per porsi.`;
+	return `Satuan recipe: ${smallest?.unit || item.unit} per porsi.`;
 }
 
 function HeaderCard({
@@ -359,7 +356,7 @@ function IngredientEditor({
 		const keyword = ingredientQuery.trim().toLowerCase();
 		if (!keyword) return sortedInventory;
 		return sortedInventory.filter((item) =>
-			`${item.ingredientName} ${item.unit}`.toLowerCase().includes(keyword)
+			`${item.ingredientName} ${getSmallestUnitLabel(item)}`.toLowerCase().includes(keyword)
 		);
 	}, [ingredientQuery, sortedInventory]);
 	const filteredBaseRecipes = useMemo(() => {
@@ -405,7 +402,7 @@ function IngredientEditor({
 		const exactInventory = sortedInventory.find(
 			(item) =>
 				item.ingredientName.toLowerCase() === value ||
-				`${item.ingredientName} (${item.unit})`.toLowerCase() === value
+				`${item.ingredientName} (${getSmallestUnitLabel(item)})`.toLowerCase() === value
 		);
 		if (exactInventory) {
 			return {
@@ -427,7 +424,7 @@ function IngredientEditor({
 		}
 
 		const partialInventory = sortedInventory.find((item) =>
-			`${item.ingredientName} ${item.unit}`.toLowerCase().includes(value)
+			`${item.ingredientName} ${getSmallestUnitLabel(item)}`.toLowerCase().includes(value)
 		);
 		if (partialInventory) {
 			return {
@@ -503,7 +500,7 @@ function IngredientEditor({
 				</div>
 				<datalist id="ingredient-options">
 					{filteredInventory.map((item) => (
-						<option key={item._id} value={`${item.ingredientName} (${item.unit})`} />
+						<option key={item._id} value={`${item.ingredientName} (${getSmallestUnitLabel(item)})`} />
 					))}
 					{filteredBaseRecipes.map((recipe) => (
 						<option key={recipe._id} value={baseRecipeLabel(recipe)} />
@@ -538,7 +535,7 @@ function IngredientEditor({
 								<p className={`font-semibold ${tableCellSingleLine()}`}>{inv?.ingredientName || "-"}</p>
 								<p className={`text-xs text-muted-foreground ${tableCellSingleLine()}`}>
 									{unitCost != null
-										? <>{formatRupiah(Math.round(unitCost))}/{inv?.unit || "unit"}{conversionFactor != null && conversionFactor > 0 && displayUnit ? <> → {formatRupiah(Math.round(costPerBaseUnit ?? 0))}/{displayUnit}</> : ""} • {formatRupiah(Math.round(lineCost ?? 0))}</>
+										? <>{formatRupiah(Math.round(unitCost))}/{getSmallestUnitLabel(inv)}{conversionFactor != null && conversionFactor > 0 && displayUnit ? <> → {formatRupiah(Math.round(costPerBaseUnit ?? 0))}/{displayUnit}</> : ""} • {formatRupiah(Math.round(lineCost ?? 0))}</>
 										: "Harga bahan belum tersedia di inventory"}
 								</p>
 								<p className={`text-[11px] text-muted-foreground ${tableCellSingleLine()}`}>
@@ -547,7 +544,7 @@ function IngredientEditor({
 							</div>
 							<Input
 								min="0"
-								placeholder={inv ? `${inv.unit} / porsi` : "jumlah / porsi"}
+								placeholder={inv ? `${getSmallestUnitLabel(inv)} / porsi` : "jumlah / porsi"}
 								step="0.01"
 								onChange={(event) => {
 									const amount = Number(event.target.value);
@@ -1217,8 +1214,8 @@ export function RecipeBookViewPage() {
 										<div className="flex items-center gap-2 text-sm" key={`${recipe._id}-${index}`}>
 											<ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
 											<p className={tableCellSingleLine()}>
-												{item?.ingredientName || "Bahan"}: {ingredient.amount}{" "}
-												{item?.unit || "unit"}
+												{item?.ingredientName || "Bahan"}: {convertToSmallestUnit(ingredient.amount, item)?.amount ?? ingredient.amount}{" "}
+												{getSmallestUnitLabel(item)}
 											</p>
 										</div>
 									);
@@ -1253,8 +1250,8 @@ export function RecipeBookViewPage() {
 												{index + 1}
 											</div>
 											<p className="text-sm leading-5">
-												{item?.ingredientName || "Bahan"} sebanyak {ingredient.amount}{" "}
-												{item?.unit || "unit"}
+												{item?.ingredientName || "Bahan"} sebanyak {convertToSmallestUnit(ingredient.amount, item)?.amount ?? ingredient.amount}{" "}
+												{getSmallestUnitLabel(item)}
 											</p>
 										</div>
 									);

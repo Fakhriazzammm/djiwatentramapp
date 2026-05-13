@@ -499,9 +499,9 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 											return (
 												<td key={invId} className="border-r border-border/40 px-1 py-0.5 bg-primary/[0.04]">
 													<CellEditor
-														value={amount != null ? String(amount) : ""}
+														value={displayAmount != null ? String(displayAmount) : ""}
 														unit={(getSmallestUnitInfo(ing)?.unit || ing.displayUnit || ing.unit || "")}
-														onSave={(val) => handleCellSave(prodId, invId, val)}
+														onSave={(val) => { const f = cellUnitInfo?.factor ?? 1; handleCellSave(prodId, invId, Number(val) / f); }}
 														onCancel={handleCellCancel}
 													/>
 												</td>
@@ -519,15 +519,15 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 												)}
 												onClick={() => handleCellClick(prodId, invId)}
 												title={
-													amount != null
-														? `${amount} ${getSmallestUnitInfo(ing)?.unit || ing.displayUnit || ing.unit}`
+													displayAmount != null
+														? `${displayAmount} ${getSmallestUnitInfo(ing)?.unit || ing.displayUnit || ing.unit}`
 														: "Klik untuk isi"
 												}
 											>
 												{isSaving ? (
 													<Loader2 className="h-3 w-3 animate-spin mx-auto text-muted-foreground" />
-												) : amount != null ? (
-													amount
+												) : displayAmount != null ? (
+													displayAmount
 												) : (
 													<span className="text-[8px] opacity-40">·</span>
 												)}
