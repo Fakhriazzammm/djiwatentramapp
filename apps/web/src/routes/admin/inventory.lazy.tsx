@@ -543,6 +543,84 @@ function buildConversionHint(
 	return `1 ${showUnit} = ${factor} ${baseUnit}`;
 }
 
+
+// ─── Unit hierarchy for auto-conversion ───────────────
+
+type UnitGroup = "mass" | "volume" | "count";
+
+const UNIT_HIERARCHY: Record<string, { group: UnitGroup; defaultFactor?: number }> = {
+	kg: { group: "mass", defaultFactor: 1000 },
+	gram: { group: "mass" },
+	gr: { group: "mass" },
+	g: { group: "mass" },
+	liter: { group: "volume", defaultFactor: 1000 },
+	l: { group: "volume", defaultFactor: 1000 },
+	ml: { group: "volume" },
+	dus: { group: "count" },
+	karton: { group: "count" },
+	box: { group: "count" },
+	pack: { group: "count" },
+	botol: { group: "count" },
+	sachet: { group: "count" },
+	toros: { group: "count" },
+};
+
+const SMALLEST_UNIT_LABEL: Record<UnitGroup, string> = {
+	mass: "gram",
+	volume: "ml",
+	count: "pcs",
+};
+
+function computeMinUnitPrice(
+	unit: string | null | undefined,
+	purchasePrice: number | null | undefined,
+	unitConversions?: Array<{ unit: string; factor: number }> | null,
+	legacyDisplayUnit?: string | null,
+	legacyConversionFactor?: number | null
+): { price: number; minUnit: string } | null {
+	if (!purchasePrice || purchasePrice <= 0 || !unit) return null;
+	const normUnit = normalizeUnitOption(unit);
+	if (!normUnit) return null;
+	const hierarchy = UNIT_HIERARCHY[normUnit];
+	if (!hierarchy) return null;
+
+	// If already at or below smallest unit, no conversion
+	const smallestLabel = SMALLEST_UNIT_LABEL[hierarchy.group];
+	if (normUnit === smallestLabel) return null;
+
+	let factor: number | null = null;
+
+	if (hierarchy.group === "mass" || hierarchy.group === "volume") {
+		// Use default factor (1000) — check unitConversions first for override
+		if (unitConversions && unitConversions.length > 0) {
+			const match = unitConversions.find(
+				(c) => normalizeUnitOption(c.unit) === smallestLabel
+			);
+			if (match && match.factor > 0) factor = match.factor;
+		}
+		if (factor === null) {
+			factor = hierarchy.defaultFactor ?? null;
+		}
+	} else if (hierarchy.group === "count") {
+		// Check unitConversions for factor to pcs
+		if (unitConversions && unitConversions.length > 0) {
+			const match = unitConversions.find(
+				(c) => normalizeUnitOption(c.unit) === "pcs"
+			);
+			if (match && match.factor > 0) factor = match.factor;
+		}
+		// Fallback to legacy conversionFactor/displayUnit (e.g. displayUnit="pcs")
+		if (factor === null && legacyDisplayUnit && legacyConversionFactor && legacyConversionFactor > 0) {
+			if (normalizeUnitOption(legacyDisplayUnit) === "pcs") {
+				factor = legacyConversionFactor;
+			}
+		}
+	}
+
+	if (!factor || factor <= 0) return null;
+	return { price: Math.round(purchasePrice / factor), minUnit: smallestLabel };
+}
+
 function getInventorySizeLabel({
 	unit,
 	displayUnit,
@@ -4840,6 +4918,7 @@ function InventoryTable({
 						<col className="w-[8%]" />
 						<col className="w-[7%]" />
 						<col className="w-[7%]" />
+						<col className="w-[8%]" />
 						<col className="w-[6%]" />
 						<col className="w-[11rem]" />
 					</colgroup>
@@ -4894,6 +4973,7 @@ function InventoryTable({
 								</div>
 							</th>
 							<th className="px-2 py-1.5 font-semibold text-right">Nilai Stok</th>
+							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px]">Harga/Unit</th>
 							<th className="px-2 py-1.5 font-semibold">Status</th>
 							<th className="px-2 py-1.5 text-right font-semibold">Aksi</th>
 						</tr>
@@ -4997,6 +5077,7 @@ function InventoryTable({
 							<td className="px-2 py-1.5"><div className="text-[10px] text-muted-foreground">-</div></td>
 							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
 							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
+							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
 							<td className="px-2 py-1.5 text-right">
 								<div className="flex items-center justify-end gap-1.5">
 									<button
@@ -5050,6 +5131,9 @@ function InventoryTable({
 										-
 									</td>
 									<td className="p-4">
+										<Skeleton className="mx-auto h-4 w-14" />
+									</td>
+									<td className="p-4 text-center">
 										<Skeleton className="mx-auto h-4 w-14" />
 									</td>
 									<td className="p-4 text-right">
@@ -5208,6 +5292,17 @@ function InventoryTable({
 									<td className="px-2 py-1.5 align-middle text-right text-[11px] font-semibold text-foreground/80 font-mono">
 										{formatCurrencyIDR((Number(inline.quantity) || 0) * (row.lastPurchasePrice || 0))}
 									</td>
+									<td className="px-2 py-1.5 align-middle text-center text-[10px] text-muted-foreground/60">
+										{(() => {
+											const costEntry = inventoryCosts?.[row.inventoryId];
+											const costPerUnit = costEntry?.latestCostPerUnit ?? costEntry?.avgCostPerUnit ?? row.lastPurchasePrice;
+											const minInfo = computeMinUnitPrice(row.unit, costPerUnit, row.unitConversions, row.displayUnit, row.conversionFactor);
+											if (minInfo) {
+												return <>{formatCurrencyIDR(minInfo.price)} / {minInfo.minUnit}</>;
+											}
+											return <span className="text-muted-foreground/30">—</span>;
+										})()}
+									</td>
 									<td className="px-2 py-1.5 align-middle">
 											<div className="flex items-center gap-1.5 whitespace-nowrap text-[10px]">
 												<span
@@ -5276,7 +5371,7 @@ function InventoryTable({
 						}
 						{(statusFilteredRows.length ?? 0) === 0 && (
 							<tr>
-							<td className="p-8 text-center text-muted-foreground" colSpan={10}>
+							<td className="p-8 text-center text-muted-foreground" colSpan={11}>
 								Tidak ada bahan baku ditemukan
 								</td>
 							</tr>
