@@ -307,7 +307,7 @@ function RegisterPage() {
 			await submitApplication({ payload });
 			localStorage.removeItem(DRAFT_KEY);
 			toast.success("Pendaftaran berhasil dikirim");
-			window.location.href = `/register/selesai-${registrationNumber}`;
+			window.location.href = `/register/selesai/${registrationNumber}`;
 		} catch (e: any) {
 			toast.error(e?.message || "Gagal submit pendaftaran");
 		} finally { setIsSubmitting(false); }
@@ -626,7 +626,7 @@ function Field({ label, children, className }: { label: string; children: React.
 
 function RegisterLayout() {
 	const location = useLocation();
-	const isSelesai = location.pathname.includes("/register/selesai-");
+	const isSelesai = location.pathname.includes("/register/selesai/");
 	if (isSelesai) return <Outlet />;
 	return <RegisterPage />;
 }

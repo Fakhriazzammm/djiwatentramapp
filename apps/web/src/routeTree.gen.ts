@@ -21,7 +21,6 @@ import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as RegisterSelesaiRegistrationNumberRouteImport } from './routes/register.selesai-$registrationNumber'
 import { Route as HomeSectionRouteImport } from './routes/home.$section'
 import { Route as AttendanceStockOpnameRouteImport } from './routes/attendance/stock-opname'
 import { Route as AttendanceUsernameRouteImport } from './routes/attendance.$username'
@@ -47,6 +46,7 @@ import { Route as AdminFinanceRouteRouteImport } from './routes/admin/finance/ro
 import { Route as AdminRecipeIndexRouteImport } from './routes/admin/recipe.index'
 import { Route as AdminOperationalTeamIndexRouteImport } from './routes/admin/operational-team/index'
 import { Route as AdminFinanceIndexRouteImport } from './routes/admin/finance/index'
+import { Route as RegisterSelesaiRegistrationNumberRouteImport } from './routes/register.selesai.$registrationNumber'
 import { Route as AdminRecipeViewRouteImport } from './routes/admin/recipe.view'
 import { Route as AdminRecipeHppRouteImport } from './routes/admin/recipe/hpp'
 import { Route as AdminOperationalTeamRegisterRouteImport } from './routes/admin/operational-team/register'
@@ -124,16 +124,6 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() => import('./routes/admin/index.lazy').then((d) => d.Route))
-const RegisterSelesaiRegistrationNumberRoute =
-  RegisterSelesaiRegistrationNumberRouteImport.update({
-    id: '/selesai-$registrationNumber',
-    path: '/selesai-$registrationNumber',
-    getParentRoute: () => RegisterRoute,
-  } as any).lazy(() =>
-    import('./routes/register.selesai-$registrationNumber.lazy').then(
-      (d) => d.Route,
-    ),
-  )
 const HomeSectionRoute = HomeSectionRouteImport.update({
   id: '/$section',
   path: '/$section',
@@ -290,6 +280,16 @@ const AdminFinanceIndexRoute = AdminFinanceIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminFinanceRouteRoute,
 } as any)
+const RegisterSelesaiRegistrationNumberRoute =
+  RegisterSelesaiRegistrationNumberRouteImport.update({
+    id: '/selesai/$registrationNumber',
+    path: '/selesai/$registrationNumber',
+    getParentRoute: () => RegisterRoute,
+  } as any).lazy(() =>
+    import('./routes/register.selesai.$registrationNumber.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 const AdminRecipeViewRoute = AdminRecipeViewRouteImport.update({
   id: '/view',
   path: '/view',
@@ -440,7 +440,6 @@ export interface FileRoutesByFullPath {
   '/attendance/$username': typeof AttendanceUsernameRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
-  '/register/selesai-$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
   '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
@@ -453,6 +452,7 @@ export interface FileRoutesByFullPath {
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
+  '/register/selesai/$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
@@ -489,7 +489,6 @@ export interface FileRoutesByTo {
   '/attendance/$username': typeof AttendanceUsernameRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
-  '/register/selesai-$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
   '/admin': typeof AdminIndexRoute
   '/attendance': typeof AttendanceIndexRoute
   '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
@@ -502,6 +501,7 @@ export interface FileRoutesByTo {
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
+  '/register/selesai/$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
   '/admin/finance': typeof AdminFinanceIndexRoute
   '/admin/operational-team': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe': typeof AdminRecipeIndexRoute
@@ -544,7 +544,6 @@ export interface FileRoutesById {
   '/attendance/$username': typeof AttendanceUsernameRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
-  '/register/selesai-$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
   '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
@@ -557,6 +556,7 @@ export interface FileRoutesById {
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
   '/admin/recipe/view': typeof AdminRecipeViewRoute
+  '/register/selesai/$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
@@ -600,7 +600,6 @@ export interface FileRouteTypes {
     | '/attendance/$username'
     | '/attendance/stock-opname'
     | '/home/$section'
-    | '/register/selesai-$registrationNumber'
     | '/admin/'
     | '/attendance/'
     | '/admin/finance/accounting'
@@ -613,6 +612,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team/register'
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
+    | '/register/selesai/$registrationNumber'
     | '/admin/finance/'
     | '/admin/operational-team/'
     | '/admin/recipe/'
@@ -649,7 +649,6 @@ export interface FileRouteTypes {
     | '/attendance/$username'
     | '/attendance/stock-opname'
     | '/home/$section'
-    | '/register/selesai-$registrationNumber'
     | '/admin'
     | '/attendance'
     | '/admin/finance/accounting'
@@ -662,6 +661,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team/register'
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
+    | '/register/selesai/$registrationNumber'
     | '/admin/finance'
     | '/admin/operational-team'
     | '/admin/recipe'
@@ -703,7 +703,6 @@ export interface FileRouteTypes {
     | '/attendance/$username'
     | '/attendance/stock-opname'
     | '/home/$section'
-    | '/register/selesai-$registrationNumber'
     | '/admin/'
     | '/attendance/'
     | '/admin/finance/accounting'
@@ -716,6 +715,7 @@ export interface FileRouteTypes {
     | '/admin/operational-team/register'
     | '/admin/recipe/hpp'
     | '/admin/recipe/view'
+    | '/register/selesai/$registrationNumber'
     | '/admin/finance/'
     | '/admin/operational-team/'
     | '/admin/recipe/'
@@ -823,13 +823,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
-    }
-    '/register/selesai-$registrationNumber': {
-      id: '/register/selesai-$registrationNumber'
-      path: '/selesai-$registrationNumber'
-      fullPath: '/register/selesai-$registrationNumber'
-      preLoaderRoute: typeof RegisterSelesaiRegistrationNumberRouteImport
-      parentRoute: typeof RegisterRoute
     }
     '/home/$section': {
       id: '/home/$section'
@@ -1005,6 +998,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/finance/'
       preLoaderRoute: typeof AdminFinanceIndexRouteImport
       parentRoute: typeof AdminFinanceRouteRoute
+    }
+    '/register/selesai/$registrationNumber': {
+      id: '/register/selesai/$registrationNumber'
+      path: '/selesai/$registrationNumber'
+      fullPath: '/register/selesai/$registrationNumber'
+      preLoaderRoute: typeof RegisterSelesaiRegistrationNumberRouteImport
+      parentRoute: typeof RegisterRoute
     }
     '/admin/recipe/view': {
       id: '/admin/recipe/view'
