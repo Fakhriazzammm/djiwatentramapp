@@ -195,9 +195,11 @@ function RegisterPage() {
 				...built,
 				plainText: replaceContractVariables(built.plainText, ctx),
 				clauses: built.clauses.map((c) => ({ ...c, body: replaceContractVariables(c.body, ctx) })),
-				html: `<article>${built.clauses.map((c) =>
-					`<section><h3>${c.title}</h3><p>${replaceContractVariables(c.body, ctx)}</p></section>`
-				).join("")}</article>`.replace(/\n/g, "<br/>"),
+				html: `<article>${built.clauses.map((c) => {
+					const body = replaceContractVariables(c.body, ctx);
+					const paragraphs = body.split(/\n{2,}/).filter(Boolean).map((para) => `<p>${para.replace(/\n/g, "<br/>")}</p>`).join("\n");
+					return `<section><h3>${c.title}</h3>${paragraphs}</section>`;
+				}).join("")}</article>`,
 			};
 	}, [draft.employment, draft.personal, onboardingSettings.contractTemplatesByRoleId, companyDisplayName]);
 

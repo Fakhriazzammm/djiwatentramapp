@@ -436,7 +436,7 @@ f) Keadaan memaksa (force majeure).
 		mode: "template",
 		title: `Perjanjian Kerja ${roleName}`,
 		plainText: rawPlainText,
-		html: html.replace(/\n/g, "<br/>"),
+		html,
 		clauses,
 	};
 }

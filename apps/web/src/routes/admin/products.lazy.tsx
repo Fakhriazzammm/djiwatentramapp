@@ -2530,6 +2530,7 @@ function BaseRecipesTab() {
 	const updateBaseRecipe = useHybridUpdateBaseRecipe();
 	const deleteBaseRecipe = useHybridDeleteBaseRecipe();
 	const [searchRecipe, setSearchRecipe] = useState("");
+	const [searchBahan, setSearchBahan] = useState("");
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingId, setEditingId] = useState<Id<"baseRecipes"> | null>(null);
@@ -2691,39 +2692,53 @@ function BaseRecipesTab() {
 		if (!baseRecipes) {
 			return [];
 		}
-		const keyword = searchRecipe.trim().toLowerCase();
-		if (!keyword) {
-			return baseRecipes;
-		}
+		const rowKeyword = searchRecipe.trim().toLowerCase();
+		const colKeyword = searchBahan.trim().toLowerCase();
 		return baseRecipes.filter((recipe: any) => {
+			// Row filter: nama / deskripsi / kategori
 			const category =
 				typeof recipe.category === "string" ? recipe.category.toLowerCase() : "";
-			const matchesIngredient = (recipe.ingredients ?? []).some((ing: any) => {
+			const matchesRow =
+				!rowKeyword ||
+				recipe.name.toLowerCase().includes(rowKeyword) ||
+				(recipe.description ?? "").toLowerCase().includes(rowKeyword) ||
+				category.includes(rowKeyword);
+			if (!matchesRow) return false;
+
+			// Column filter: bahan baku
+			if (!colKeyword) return true;
+			return (recipe.ingredients ?? []).some((ing: any) => {
 				const inv = (inventory ?? []).find(
 					(v: any) => v._id === ing.inventoryId
 				);
-				return inv?.ingredientName?.toLowerCase().includes(keyword);
+				return inv?.ingredientName?.toLowerCase().includes(colKeyword);
 			});
-			return (
-				recipe.name.toLowerCase().includes(keyword) ||
-				(recipe.description ?? "").toLowerCase().includes(keyword) ||
-				category.includes(keyword) ||
-				matchesIngredient
-			);
 		});
-	}, [baseRecipes, inventory, searchRecipe]);
+	}, [baseRecipes, inventory, searchRecipe, searchBahan]);
 
 	return (
 		<>
 			<div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 				<h2 className="font-bold text-xl">Daftar Resep</h2>
 				<div className="flex items-center gap-2">
-					<Input
-						className="h-9 w-56"
-						onChange={(event) => setSearchRecipe(event.target.value)}
-						placeholder="Cari resep..."
-						value={searchRecipe}
-					/>
+					<div className="relative">
+						<Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+						<Input
+							className="h-9 w-44 pl-8"
+							onChange={(event) => setSearchRecipe(event.target.value)}
+							placeholder="Cari baris resep..."
+							value={searchRecipe}
+						/>
+					</div>
+					<div className="relative">
+						<Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+						<Input
+							className="h-9 w-44 pl-8"
+							onChange={(event) => setSearchBahan(event.target.value)}
+							placeholder="Cari bahan baku..."
+							value={searchBahan}
+						/>
+					</div>
 					<Button
 						className="h-9 gap-2"
 						onClick={() => {
