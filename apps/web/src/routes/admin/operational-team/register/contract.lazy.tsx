@@ -35,7 +35,7 @@ import {
 	getRoleSalaryDefaults,
 	normalizeEmployeeOnboardingSettings,
 	ContractTemplateHelpers,
-	ContractTemplateValue,
+	type ContractTemplateValue,
 	type EmployeeOnboardingSettings,
 } from "@/lib/employee-onboarding-settings";
 
@@ -86,8 +86,16 @@ function parseTemplateText(text: string): ContractDraft {
 	};
 }
 
+function templateToString(t: string | ContractTemplateValue | null | undefined): string {
+	if (typeof t === "string") return t;
+	if (t && typeof t === "object" && "title" in t) {
+		return t.title + "\n" + (t as any).clauses?.map((c: any) => c.title + "\n" + c.body).join("\n\n") || t.title;
+	}
+	return "";
+}
+
 function buildPlaceholderContract(roleName = "[Jabatan]", role?: any, signatoryName?: string) {
-	const salaryDefaults = role ? getRoleSalaryDefaults(role) : {};
+	const salaryDefaults = role ? getRoleSalaryDefaults(role) : { monthlySalary: 0, dailyAllowance: 0, shiftRate: 0 };
 	return buildEmployeeContractTemplate(
 		{ fullName: "[Nama Karyawan]", phone: "" },
 		{
@@ -117,7 +125,7 @@ export default function AdminContractPage() {
 	);
 
 	const [selectedTemplateKey, setSelectedTemplateKey] = useState(DEFAULT_TEMPLATE_KEY);
-	const [localTemplates, setLocalTemplates] = useState<Record<string, string>>({});
+	const [localTemplates, setLocalTemplates] = useState<Record<string, string | ContractTemplateValue>>({});
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
 	const [draft, setDraft] = useState<ContractDraft>(() => contractToDraft(buildPlaceholderContract("", undefined, onboardingSettings.signatoryName)));
@@ -175,7 +183,7 @@ export default function AdminContractPage() {
 		() => ({ ...onboardingSettings.contractTemplatesByRoleId, ...localTemplates }),
 		[localTemplates, onboardingSettings.contractTemplatesByRoleId]
 	);
-	const persistedTemplate = effectiveTemplates[selectedTemplateKey] || "";
+	const persistedTemplate = templateToString(effectiveTemplates[selectedTemplateKey]);
 	const savedTemplate = persistedTemplate;
 	const companyDisplayName = String(siteSettings?.companyName || siteSettings?.businessName || siteSettings?.storeName || siteSettings?.name || signatoryNameLocal || "Djiwa Tentram").trim();
 
@@ -242,7 +250,7 @@ export default function AdminContractPage() {
 	const loadTemplate = useCallback((templateKey: string, settings: EmployeeOnboardingSettings) => {
 		const templateText = { ...settings.contractTemplatesByRoleId, ...localTemplates }[templateKey];
 		if (templateText) {
-			setDraft(parseTemplateText(templateText));
+			setDraft(parseTemplateText(templateToString(templateText)));
 			lastLoadedRef.current = templateKey;
 			return;
 		}
@@ -809,7 +817,7 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 							value={selectedEmploymentType}
 							onValueChange={(v) => {
 								if (isDirty && !window.confirm("Ganti tipe kerja? Perubahan belum disimpan.")) return;
-								setSelectedEmploymentType(v);
+								setSelectedEmploymentType(v || "probation");
 							}}
 						>
 							<SelectTrigger className="w-44">
@@ -826,7 +834,7 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 							value={selectedTemplateKey}
 							onValueChange={(nextKey) => {
 								if (isDirty && !window.confirm("Template belum disimpan. Pindah template dan buang perubahan?")) return;
-								setSelectedTemplateKey(nextKey);
+								setSelectedTemplateKey(nextKey || DEFAULT_TEMPLATE_KEY);
 							}}
 						>
 							<SelectTrigger className="w-56">

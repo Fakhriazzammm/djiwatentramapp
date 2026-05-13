@@ -39,6 +39,7 @@ import {
 	X,
 	ArrowLeft,
 	BarChart3,
+	CheckCircle2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
