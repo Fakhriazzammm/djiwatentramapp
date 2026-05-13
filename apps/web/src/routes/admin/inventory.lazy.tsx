@@ -4956,8 +4956,21 @@ function InventoryTable({
 								</div>
 							</th>
 							<th className="px-2 py-1.5 text-center font-semibold group relative cursor-help">Satuan<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Stok: satuan stok · Beli: satuan beli</span></th>
-							<th className="px-2 py-1.5 font-semibold">Harga Terakhir</th>
-							<th className="px-2 py-1.5 font-semibold">Nilai Stok</th>
+							<th
+								className="cursor-pointer px-2 py-1.5 font-semibold transition-colors hover:text-foreground"
+								onClick={() => onSort("lastPurchasePrice")}
+							>
+								<div className="flex items-center gap-1">
+									Harga Terakhir
+									{sortConfig.key === "lastPurchasePrice" &&
+										(sortConfig.direction === "asc" ? (
+											<ArrowUp className="h-3 w-3" />
+										) : (
+											<ArrowDown className="h-3 w-3" />
+										))}
+								</div>
+							</th>
+							<th className="px-2 py-1.5 font-semibold text-right">Nilai Stok</th>
 							<th className="px-2 py-1.5 font-semibold">Status</th>
 							<th className="px-2 py-1.5 text-right font-semibold">Aksi</th>
 						</tr>
