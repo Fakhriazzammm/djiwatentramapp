@@ -381,11 +381,7 @@ const AdminOperationalTeamRegisterContractRoute =
     id: '/contract',
     path: '/contract',
     getParentRoute: () => AdminOperationalTeamRegisterRoute,
-  } as any).lazy(() =>
-    import('./routes/admin/operational-team/register/contract.lazy').then(
-      (d) => d.Route,
-    ),
-  )
+  } as any)
 const AdminOperationalTeamRegisterApprovalRoute =
   AdminOperationalTeamRegisterApprovalRouteImport.update({
     id: '/approval',

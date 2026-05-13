@@ -5259,9 +5259,6 @@ function InventoryTable({
 											value={getPriceDraft(row)}
 										/>
 									<div className="text-right">
-										<p className="font-semibold text-foreground text-[11px]">
-											{formatCurrencyIDR(row.lastPurchasePrice)}
-										</p>
 										<p className="text-[9px] text-muted-foreground/70">
 											per {row.preferredPurchaseUnit || row.unit || "unit"}
 										</p>

@@ -626,224 +626,100 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 		} catch (e: any) { toast.error(e?.message || "Gagal mengunduh PDF"); }
 		finally { setIsDownloadingPdf(false); }
 	}
-
 	return (
-		<div className="mx-auto w-full max-w-7xl space-y-6">
-			{/* ── Header ── */}
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-				<div className="space-y-1">
-					<div className="flex items-center gap-2">
-						<Badge variant="secondary" className="gap-1">
-							<FileSignature className="h-3 w-3" />
-							Kontrak Kerja
+		<div className="mx-auto w-full max-w-7xl">
+			<div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+				<div className="flex items-center gap-3 flex-wrap">
+					<Badge variant="secondary" className="gap-1 shrink-0">
+						<FileSignature className="h-3 w-3" />
+						Kontrak Kerja
+					</Badge>
+					{isDirty ? (
+						<Badge variant="outline" className="gap-1 border-amber-300 bg-amber-50 text-amber-700">
+							<AlertCircle className="h-3 w-3" /> Ada perubahan
 						</Badge>
-						{isDirty ? (
-							<Badge variant="outline" className="gap-1 border-amber-300 bg-amber-50 text-amber-700">
-								<AlertCircle className="h-3 w-3" /> Ada perubahan
-							</Badge>
-						) : savedTemplate ? (
-							<Badge variant="default" className="gap-1">
-								<CheckCircle2 className="h-3 w-3" /> Tersimpan
-							</Badge>
-						) : (
-							<Badge variant="outline" className="text-muted-foreground">Belum tersimpan</Badge>
-						)}
-					</div>
-					<h1 className="text-xl font-bold tracking-tight md:text-2xl">
-						Kelola Template Kontrak
-					</h1>
-					<p className="text-sm text-muted-foreground max-w-xl">
-						Template ini dibaca kandidat di halaman /register sebelum menandatangani. Role spesifik diprioritaskan, lalu default, lalu fallback sistem.
-					</p>
+					) : savedTemplate ? (
+						<Badge variant="default" className="gap-1">
+							<CheckCircle2 className="h-3 w-3" /> Tersimpan
+						</Badge>
+					) : (
+						<Badge variant="outline" className="text-muted-foreground">Belum tersimpan</Badge>
+					)}
+					{selectedRole && getRoleSalaryDefaults(selectedRole).bonusTargetConfig && (
+						<BonusSummaryBadge config={getRoleSalaryDefaults(selectedRole).bonusTargetConfig} />
+					)}
 				</div>
-
-				<div className="sticky bottom-3 z-20 flex w-full flex-wrap items-center gap-2 rounded-2xl border bg-card/95 p-2 shadow-xl backdrop-blur md:static md:w-auto md:flex-nowrap md:border-0 md:bg-transparent md:p-0 md:shadow-none">
-					<Button
-						size="sm"
-						variant="outline"
-						onClick={resetToDefault}
-						disabled={isSaving || isGenerating}
-					>
-						Reset ke Dasar
+				<div className="flex items-center gap-2 flex-wrap">
+					<Select value={selectedTemplateKey} onValueChange={(nextKey) => {
+						if (isDirty && !window.confirm("Template belum disimpan. Pindah dan buang perubahan?")) return;
+						setSelectedTemplateKey(nextKey || DEFAULT_TEMPLATE_KEY);
+					}}>
+						<SelectTrigger className="h-8 w-44 text-xs">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value={DEFAULT_TEMPLATE_KEY}>Semua Jabatan (default)</SelectItem>
+							{roles.map((role: any) => (
+								<SelectItem key={role._id} value={role._id}>{role.name}</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					<Button size="sm" variant="outline" onClick={downloadContractPdf} disabled={isDownloadingPdf} type="button" className="h-8 gap-1.5 text-xs">
+						{isDownloadingPdf ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+						PDF
 					</Button>
-					<Button
-						size="sm"
-						variant="destructive"
-						onClick={deleteTemplate}
-						disabled={isSaving || !savedTemplate}
-					>
-						<Trash2 className="mr-1.5 h-3.5 w-3.5" />
+					<Button size="sm" variant="outline" onClick={resetToDefault} disabled={isSaving || isGenerating} className="h-8 text-xs">
+						Reset
+					</Button>
+					<Button size="sm" variant="outline" onClick={deleteTemplate} disabled={isSaving || !savedTemplate} className="h-8 text-xs">
+						<Trash2 className="mr-1 h-3 w-3" />
 						Hapus
 					</Button>
-					<Button
-						size="sm"
-						onClick={saveTemplate}
-						disabled={isSaving}
-					>
-						{isSaving ? (
-							<Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-						) : (
-							<Save className="mr-1.5 h-4 w-4" />
-						)}
-						Simpan Template
+					<Button size="sm" onClick={saveTemplate} disabled={isSaving} className="h-8 text-xs">
+						{isSaving ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Save className="mr-1 h-3 w-3" />}
+						{isSaving ? "Menyimpan..." : "Simpan"}
 					</Button>
 				</div>
 			</div>
 
-			{/* ── Company Info ── */}
-			<Card className="border-border/60">
-				<CardContent className="grid gap-4 p-4 md:grid-cols-3 md:items-start">
-					<div className="space-y-2">
-						<Label className="text-sm font-medium">Nama Perusahaan</Label>
-						<Input
-							value={signatoryNameLocal}
-							onChange={(e) => setSignatoryNameLocal(e.target.value)}
-							onBlur={() => {
-								if (signatoryNameLocal !== onboardingSettings.signatoryName) {
-									saveSignatoryName(signatoryNameLocal);
-								}
-							}}
-							placeholder="Nama perusahaan/bisnis di header kontrak"
-							className="h-10"
-						/>
+			<div className="flex flex-col gap-4 lg:flex-row">
+				<div className="flex-1 min-w-0 space-y-3 lg:w-[60%]">
+					<div className="rounded-lg border bg-card p-2.5">
+						<div className="flex items-center justify-between mb-2">
+							<button type="button" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors" onClick={() => setShowTestPreview(!showTestPreview)}>
+								{showTestPreview ? "\u25BC" : "\u25B6"} Preview Data Uji
+							</button>
+							<span className="text-[10px] text-muted-foreground">Isi data untuk preview realtime</span>
+						</div>
+						{showTestPreview && (
+							<div className="grid gap-2 sm:grid-cols-3">
+								<input value={testPreviewName} onChange={(e) => setTestPreviewName(e.target.value)} placeholder="Nama karyawan" className="h-7 rounded-md border bg-background px-2 text-xs" />
+								<input value={testPreviewNIK} onChange={(e) => setTestPreviewNIK(e.target.value)} placeholder="NIK 16 digit" className="h-7 rounded-md border bg-background px-2 text-xs" />
+								<input value={testPreviewAddress} onChange={(e) => setTestPreviewAddress(e.target.value)} placeholder="Alamat" className="h-7 rounded-md border bg-background px-2 text-xs" />
+							</div>
+						)}
 					</div>
-					<div className="space-y-2">
-						<Label className="text-sm font-medium">Nama Pihak Perusahaan</Label>
-						<Input
-							value={signatoryPersonNameLocal}
-							onChange={(e) => setSignatoryPersonNameLocal(e.target.value)}
-							onBlur={() => {
-								if (signatoryPersonNameLocal !== onboardingSettings.signatoryPersonName) {
-									saveSignatoryPersonName(signatoryPersonNameLocal);
-								}
-							}}
-							placeholder="Nama orang yang tanda tangan"
-							className="h-10"
-						/>
-					</div>
-					<div className="space-y-2">
-						<Label className="text-sm font-medium">Tanda Tangan Perusahaan</Label>
-						<div className="flex items-center gap-3">
-							{signatorySigUrlLocal ? (
-								<div className="relative">
-									<img
-										alt="Tanda tangan perusahaan"
-										className="h-12 w-auto object-contain rounded border"
-										src={signatorySigUrlLocal}
-									/>
-									<Button
-										size="icon"
-										variant="ghost"
-										className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
-										onClick={() => { setSignatorySigUrlLocal(''); saveSignatorySettings({ signatorySignatureUrl: '' }); }}
-									>
-										<Trash2 className="h-3 w-3" />
-									</Button>
-								</div>
-							) : (
-								<span className="text-xs text-muted-foreground">Belum ada tanda tangan</span>
-							)}
-							<input
-								ref={signatorySigRef}
-								type="file"
-								accept="image/*"
-								className="hidden"
-								onChange={async (e) => {
-									const file = e.target.files?.[0];
-									if (!file) return;
-									await uploadSignatorySignature(file);
-									if (signatorySigRef.current) signatorySigRef.current.value = "";
-								}}
+					<div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+						<div className="flex items-center justify-between border-b bg-muted/20 px-3 py-1.5">
+							<h3 className="text-xs font-semibold text-foreground">{contractPreview.title || "Perjanjian Kerja"}</h3>
+							<span className="text-[10px] text-muted-foreground uppercase tracking-wider">Tampilan kandidat</span>
+						</div>
+						<div className="p-3 max-h-[70vh] overflow-y-auto">
+							<ContractPreview
+								contract={testPreviewText ? { ...contractPreview, plainText: testPreviewText, html: "<article><p>" + testPreviewText.replace(/\\n/g, "<br/>") + "</p></article>" } : contractPreview}
+								employeeName={testPreviewName || "[Nama Karyawan]"}
+								companyName={companyDisplayName}
+								signatoryName={signatoryPersonNameLocal || companyDisplayName}
+								signatorySignatureUrl={signatorySigUrlLocal}
 							/>
-							<Button
-								size="sm"
-								variant="outline"
-								disabled={isUploadingSig}
-								onClick={() => signatorySigRef.current?.click()}
-								type="button"
-							>
-								{isUploadingSig ? (
-									<Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-								) : (
-									<Upload className="mr-1.5 h-3.5 w-3.5" />
-								)}
-								{isUploadingSig ? "Mengunggah..." : (signatorySigUrlLocal ? "Ganti" : "Unggah")}
-							</Button>
 						</div>
 					</div>
-					{/* ── New Signatory Fields ── */}
-					<div className="space-y-2">
-						<Label className="text-sm font-medium">Alamat Perusahaan</Label>
-						<Input
-							value={companyAddressLocal}
-							onChange={(e) => setCompanyAddressLocal(e.target.value)}
-							onBlur={() => {
-								if (companyAddressLocal !== onboardingSettings.signatoryCompanyAddress) {
-									saveSignatorySettings({ signatoryCompanyAddress: companyAddressLocal });
-								}
-							}}
-							placeholder="Jl. Contoh No. 123, Kota"
-							className="h-10"
-						/>
-					</div>
-					<div className="space-y-2">
-						<Label className="text-sm font-medium">NIB / NPWP Perusahaan</Label>
-						<Input
-							value={companyNIBLocal}
-							onChange={(e) => setCompanyNIBLocal(e.target.value)}
-							onBlur={() => {
-								if (companyNIBLocal !== onboardingSettings.signatoryCompanyNIB) {
-									saveSignatorySettings({ signatoryCompanyNIB: companyNIBLocal });
-								}
-							}}
-							placeholder="912000xxx"
-							className="h-10"
-						/>
-					</div>
-					<div className="space-y-2">
-						<Label className="text-sm font-medium">Jabatan Penandatangan</Label>
-						<Input
-							value={personTitleLocal}
-							onChange={(e) => setPersonTitleLocal(e.target.value)}
-							onBlur={() => {
-								if (personTitleLocal !== onboardingSettings.signatoryPersonTitle) {
-									saveSignatorySettings({ signatoryPersonTitle: personTitleLocal });
-								}
-							}}
-							placeholder="Direktur / HR Manager / Owner"
-							className="h-10"
-						/>
-					</div>
-					<div className="space-y-2">
-						<Label className="text-sm font-medium">Kota Penandatanganan</Label>
-						<Input
-							value={signatoryLocationLocal}
-							onChange={(e) => setSignatoryLocationLocal(e.target.value)}
-							onBlur={() => {
-								if (signatoryLocationLocal !== onboardingSettings.signatoryLocation) {
-									saveSignatorySettings({ signatoryLocation: signatoryLocationLocal });
-								}
-							}}
-							placeholder="Tangerang"
-							className="h-10"
-						/>
-					</div>
-				</CardContent>
-			</Card>
-
-{/* ── Toolbar ── */}
-			<Card className="border-border/60">
-				<CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-					<div className="flex items-center gap-3">
-						<Label className="shrink-0 text-sm font-medium">Template untuk</Label>
-						<Select
-							value={selectedEmploymentType}
-							onValueChange={(v) => {
-								if (isDirty && !window.confirm("Ganti tipe kerja? Perubahan belum disimpan.")) return;
-								setSelectedEmploymentType(v || "probation");
-							}}
-						>
-							<SelectTrigger className="w-44">
+				</div>
+				<div className="flex flex-col gap-3 lg:w-[40%] lg:max-w-md">
+					<div className="rounded-lg border bg-card p-2.5 flex items-center gap-2">
+						<span className="text-[11px] font-medium text-muted-foreground shrink-0">Tipe:</span>
+						<Select value={selectedEmploymentType} onValueChange={(v) => { if (isDirty && !window.confirm("Ganti tipe kerja? Perubahan belum disimpan.")) return; setSelectedEmploymentType(v || "probation"); }}>
+							<SelectTrigger className="h-7 text-xs flex-1">
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
@@ -853,244 +729,88 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 								<SelectItem value="freelance">Freelance</SelectItem>
 							</SelectContent>
 						</Select>
-						<Select
-							value={selectedTemplateKey}
-							onValueChange={(nextKey) => {
-								if (isDirty && !window.confirm("Template belum disimpan. Pindah template dan buang perubahan?")) return;
-								setSelectedTemplateKey(nextKey || DEFAULT_TEMPLATE_KEY);
-							}}
-						>
-							<SelectTrigger className="w-56">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value={DEFAULT_TEMPLATE_KEY}>Semua Jabatan (default)</SelectItem>
-								{roles.map((role: any) => (
-									<SelectItem key={role._id} value={role._id}>{role.name}</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
 					</div>
-					<div className="flex items-center gap-2 text-xs text-muted-foreground">
-						{savedTemplate ? (
-							<>
-								<span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-								Template aktif
-								</>
-							) : (
-								<>
-								<span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
-								Menggunakan template dasar
-								</>
-							)}
-							{selectedRole && getRoleSalaryDefaults(selectedRole).bonusTargetConfig && (
-								<BonusSummaryBadge config={getRoleSalaryDefaults(selectedRole).bonusTargetConfig} />
-							)}
-					</div>
-				</CardContent>
-			</Card>
-
-			{/* ── Editor + Preview ── */}
-			<div className="flex flex-col gap-6 lg:flex-row">
-				{/* Editor */}
-				<div className="flex flex-col gap-5 lg:w-[55%]">
-					{/* AI Section */}
-					<Card className="border-border/60">
-						<CardContent className="p-4 space-y-3">
-							<div className="flex items-center justify-between">
-								<Label className="text-sm font-semibold">Buat Kontrak dengan AI</Label>
-								<Button
-									size="sm"
-									disabled={isGenerating}
-									onClick={handleGenerateAi}
-									type="button"
-								>
-									{isGenerating ? (
-										<Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-									) : (
-										<Sparkles className="mr-1.5 h-4 w-4" />
-									)}
-									{isGenerating ? "Membuat..." : "Buat dengan AI"}
+					<details className="rounded-lg border bg-card" open={false}>
+						<summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground select-none">
+							Informasi Perusahaan
+						</summary>
+						<div className="space-y-2 px-3 pb-3">
+							<input value={signatoryNameLocal} onChange={(e) => setSignatoryNameLocal(e.target.value)} onBlur={() => { if (signatoryNameLocal !== onboardingSettings.signatoryName) saveSignatoryName(signatoryNameLocal); }} placeholder="Nama perusahaan" className="h-7 w-full rounded-md border bg-background px-2 text-xs" />
+							<input value={signatoryPersonNameLocal} onChange={(e) => setSignatoryPersonNameLocal(e.target.value)} onBlur={() => { if (signatoryPersonNameLocal !== onboardingSettings.signatoryPersonName) saveSignatoryPersonName(signatoryPersonNameLocal); }} placeholder="Nama penandatangan" className="h-7 w-full rounded-md border bg-background px-2 text-xs" />
+							<input value={companyAddressLocal} onChange={(e) => setCompanyAddressLocal(e.target.value)} onBlur={() => { if (companyAddressLocal !== onboardingSettings.signatoryCompanyAddress) saveSignatorySettings({ signatoryCompanyAddress: companyAddressLocal }); }} placeholder="Alamat perusahaan" className="h-7 w-full rounded-md border bg-background px-2 text-xs" />
+							<div className="flex gap-2">
+								<input value={companyNIBLocal} onChange={(e) => setCompanyNIBLocal(e.target.value)} onBlur={() => { if (companyNIBLocal !== onboardingSettings.signatoryCompanyNIB) saveSignatorySettings({ signatoryCompanyNIB: companyNIBLocal }); }} placeholder="NIB" className="h-7 flex-1 rounded-md border bg-background px-2 text-xs" />
+								<input value={personTitleLocal} onChange={(e) => setPersonTitleLocal(e.target.value)} onBlur={() => { if (personTitleLocal !== onboardingSettings.signatoryPersonTitle) saveSignatorySettings({ signatoryPersonTitle: personTitleLocal }); }} placeholder="Jabatan" className="h-7 flex-1 rounded-md border bg-background px-2 text-xs" />
+							</div>
+							<input value={signatoryLocationLocal} onChange={(e) => setSignatoryLocationLocal(e.target.value)} onBlur={() => { if (signatoryLocationLocal !== onboardingSettings.signatoryLocation) saveSignatorySettings({ signatoryLocation: signatoryLocationLocal }); }} placeholder="Kota penandatanganan" className="h-7 w-full rounded-md border bg-background px-2 text-xs" />
+							<div className="flex items-center gap-2">
+								{signatorySigUrlLocal ? (
+									<div className="relative">
+										<img alt="TTD" className="h-8 w-auto rounded border object-contain" src={signatorySigUrlLocal} />
+										<Button size="icon" variant="ghost" className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { setSignatorySigUrlLocal(''); saveSignatorySettings({ signatorySignatureUrl: '' }); }}>
+											<Trash2 className="h-2.5 w-2.5" />
+										</Button>
+									</div>
+								) : <span className="text-[10px] text-muted-foreground">Belum ada TTD</span>}
+								<input ref={signatorySigRef} type="file" accept="image/*" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; await uploadSignatorySignature(file); if (signatorySigRef.current) signatorySigRef.current.value = ""; }} />
+								<Button size="sm" variant="outline" disabled={isUploadingSig} onClick={() => signatorySigRef.current?.click()} type="button" className="h-7 text-xs">
+									{isUploadingSig ? <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" /> : <Upload className="mr-1 h-2.5 w-2.5" />}
+									{isUploadingSig ? "..." : (signatorySigUrlLocal ? "Ganti" : "Unggah TTD")}
 								</Button>
 							</div>
-							<Textarea
-								value={draft.aiPrompt}
-								onChange={(e) => setDraft((p) => ({ ...p, aiPrompt: e.target.value }))}
-								placeholder="Contoh: masa percobaan 3 bulan, training barista, libur menyesuaikan jadwal outlet"
-								className="text-sm min-h-[80px] resize-y"
-							/>
-						</CardContent>
-					</Card>
-
-					{/* Title */}
-					<div className="space-y-1.5">
-						<Label className="text-sm font-medium">Judul Kontrak</Label>
-						<Input
-							value={draft.title}
-							onChange={(e) => setDraft((p) => ({ ...p, title: e.target.value }))}
-							placeholder="Perjanjian Kerja"
-							className="h-10"
-						/>
-					</div>
-
-					{/* Clauses */}
-					<div className="space-y-3">
+						</div>
+					</details>
+					<div className="rounded-lg border bg-card p-3 space-y-2">
 						<div className="flex items-center justify-between">
-							<Label className="text-sm font-medium">
-								Klausul
-								<Badge variant="secondary" className="ml-2 text-[10px] font-normal">
-									{draft.clauses.length} pasal
-								</Badge>
+							<Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+								Pasal <Badge variant="secondary" className="ml-1 text-[10px]">{draft.clauses.length}</Badge>
 							</Label>
-							<Button
-								size="sm"
-								variant="outline"
-								onClick={() => setShowClauseLibrary(!showClauseLibrary)}
-								type="button"
-							>
-								{showClauseLibrary ? "Tutup" : "Klausul Siap Pakai"}
-							</Button>
-							<Button
-								size="sm"
-								variant="outline"
-								onClick={addClause}
-								type="button"
-							>
-								<Plus className="mr-1 h-3.5 w-3.5" />
-								Tambah Klausul
+							<Button size="sm" variant="outline" onClick={addClause} type="button" className="h-6 text-[10px] gap-1">
+								<Plus className="h-2.5 w-2.5" /> Pasal
 							</Button>
 						</div>
-
-						<ScrollArea className="max-h-[420px] rounded-xl border pr-2">
-							<div className="space-y-3 p-3">
-								{draft.clauses.map((clause, idx) => (
-									<div
-										key={idx}
-										className="rounded-lg border bg-background p-3 space-y-2"
-									>
-										<div className="flex items-center gap-2">
-											<Badge variant="outline" className="shrink-0 text-[10px] tabular-nums">
-												{idx + 1}
-											</Badge>
-											<Input
-												className="h-8 text-sm flex-1"
-												value={clause.title}
-												onChange={(e) => updateClause(idx, "title", e.target.value)}
-												placeholder={`Judul pasal ${idx + 1}`}
-											/>
-											<Button
-												size="icon"
-												variant="ghost"
-												className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-												onClick={() => removeClause(idx)}
-											>
-												<Trash2 className="h-3.5 w-3.5" />
-											</Button>
-										</div>
-										<Textarea
-											className="text-sm min-h-[72px] resize-y"
-											value={clause.body}
-											onChange={(e) => updateClause(idx, "body", e.target.value)}
-											placeholder="Isi pasal..."
-										/>
+						<div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
+							{draft.clauses.map((clause, idx) => (
+								<div key={idx} className="rounded-md border bg-background p-2 space-y-1.5">
+									<div className="flex items-center gap-1.5">
+										<Badge variant="outline" className="shrink-0 text-[9px] tabular-nums h-5 w-5 flex items-center justify-center p-0">{idx + 1}</Badge>
+										<input className="h-7 flex-1 rounded border-0 bg-transparent px-1 text-xs font-medium outline-none focus:ring-1 focus:ring-border" value={clause.title} onChange={(e) => updateClause(idx, "title", e.target.value)} placeholder={"Pasal " + (idx + 1)} />
+										<Button size="icon" variant="ghost" className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => removeClause(idx)}>
+											<Trash2 className="h-3 w-3" />
+										</Button>
 									</div>
-								))}
-							</div>
-						</ScrollArea>
-
-					{showClauseLibrary && (
-						<div className="rounded-lg border bg-muted/30 p-3 space-y-2">
-							<h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Klausul Siap Pakai</h4>
-							<p className="text-[11px] text-muted-foreground">Klik untuk menambahkan klausul ke kontrak</p>
-							<div className="space-y-1.5">
-								{CLAUSE_LIBRARY.map((clause, idx) => (
-									<button
-										key={idx}
-										type="button"
-										className="w-full rounded-md border bg-background px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
-										onClick={() => {
-											setDraft((p) => ({ ...p, clauses: [...p.clauses, { title: clause.title, body: clause.body }] }));
-										}}
-									>
-										<span className="font-medium">{clause.title}</span>
-										<p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{clause.body}</p>
-									</button>
-								))}
-							</div>
+									<textarea className="w-full min-h-[48px] resize-y rounded border-0 bg-transparent px-1 text-[11px] leading-relaxed text-foreground outline-none focus:ring-1 focus:ring-border" value={clause.body} onChange={(e) => updateClause(idx, "body", e.target.value)} placeholder="Isi pasal..." />
+								</div>
+							))}
 						</div>
-					)}
 					</div>
-				</div>
-
-				<Separator orientation="vertical" className="hidden lg:block" />
-
-				{/* Preview */}
-				<div className="flex-1 space-y-3 min-w-0">
-					{/* ── Test Data Preview Toggle ── */}
-					<div className="rounded-lg border p-3 space-y-2">
-						<button
-							type="button"
-							className="flex w-full items-center justify-between text-sm"
-							onClick={() => setShowTestPreview(!showTestPreview)}
-						>
-							<span className="font-medium">Preview dengan Data Uji</span>
-							<span className="text-xs text-muted-foreground">{showTestPreview ? "Sembunyikan" : "Tampilkan"}</span>
-						</button>
-						{showTestPreview && (
-							<div className="grid gap-3 sm:grid-cols-3">
-								<div className="space-y-1">
-									<label className="text-[11px] font-medium text-muted-foreground">Nama Karyawan</label>
-									<input
-										value={testPreviewName}
-										onChange={(e) => setTestPreviewName(e.target.value)}
-										placeholder="Contoh: Ahmad Fauzi"
-										className="h-8 w-full rounded-md border bg-background px-2 text-xs"
-									/>
-								</div>
-								<div className="space-y-1">
-									<label className="text-[11px] font-medium text-muted-foreground">NIK</label>
-									<input
-										value={testPreviewNIK}
-										onChange={(e) => setTestPreviewNIK(e.target.value)}
-										placeholder="16 digit"
-										className="h-8 w-full rounded-md border bg-background px-2 text-xs"
-									/>
-								</div>
-								<div className="space-y-1">
-									<label className="text-[11px] font-medium text-muted-foreground">Alamat</label>
-									<input
-										value={testPreviewAddress}
-										onChange={(e) => setTestPreviewAddress(e.target.value)}
-										placeholder="Alamat KTP"
-										className="h-8 w-full rounded-md border bg-background px-2 text-xs"
-									/>
-								</div>
-							</div>
-						)}
-					</div>
-					<div className="flex items-center justify-between">
-						<h3 className="text-sm font-semibold text-foreground">Pratinjau Kontrak</h3>
-						<div className="flex items-center gap-2">
-							<Button size="sm" variant="outline" onClick={downloadContractPdf} disabled={isDownloadingPdf} type="button" className="h-7 gap-1.5 text-xs">
-								{isDownloadingPdf ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-								PDF
+					<details className="rounded-lg border bg-card">
+						<summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground select-none">
+							<Sparkles className="h-3 w-3" /> AI Assistant
+						</summary>
+						<div className="space-y-2 px-3 pb-3">
+							<textarea value={draft.aiPrompt} onChange={(e) => setDraft((p) => ({ ...p, aiPrompt: e.target.value }))} placeholder="Contoh: masa percobaan 3 bulan, training barista..." className="w-full min-h-[60px] resize-y rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-border" />
+							<Button size="sm" disabled={isGenerating} onClick={handleGenerateAi} type="button" className="h-7 w-full text-xs">
+								{isGenerating ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Sparkles className="mr-1 h-3 w-3" />}
+								{isGenerating ? "Membuat..." : "Buat dengan AI"}
 							</Button>
-							<span className="text-[10px] text-muted-foreground uppercase tracking-wider">Tampilan kandidat</span>
 						</div>
-					</div>
-		<ContractPreview
-						contract={testPreviewText ? { ...contractPreview, plainText: testPreviewText, html: `<article><p>${testPreviewText.replace(/\n/g, "<br/>")}</p></article>` } : contractPreview}
-						employeeName={testPreviewName || "[Nama Karyawan]"}
-						companyName={companyDisplayName}
-						signatoryName={signatoryPersonNameLocal || companyDisplayName}
-						signatorySignatureUrl={signatorySigUrlLocal}
-					/>
+					</details>
+					<details className="rounded-lg border bg-card">
+						<summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground select-none">
+							Klausul Siap Pakai
+						</summary>
+						<div className="space-y-1 px-3 pb-3 max-h-[200px] overflow-y-auto">
+							{CLAUSE_LIBRARY.map((clause, idx) => (
+								<button key={idx} type="button" className="w-full rounded-md border bg-background px-2.5 py-1.5 text-left text-[11px] hover:bg-accent transition-colors" onClick={() => setDraft((p) => ({ ...p, clauses: [...p.clauses, { title: clause.title, body: clause.body }] }))}>
+									<span className="font-medium text-xs">{clause.title}</span>
+									<p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">{clause.body}</p>
+								</button>
+							))}
+						</div>
+					</details>
 				</div>
 			</div>
 		</div>
 	);
 }
-
-export const Route = createLazyFileRoute("/admin/operational-team/register/contract" as any)({
-	component: AdminContractPage,
-});
