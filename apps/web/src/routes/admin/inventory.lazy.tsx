@@ -47,6 +47,7 @@ import {
 	useHybridAllProducts,
 	useHybridCategories,
 	useHybridInventory,
+	useHybridLatestInventoryCosts,
 } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridBaseRecipes,
@@ -3794,6 +3795,7 @@ function InventoryTable({
 		window.addEventListener("click", handleClick);
 		return () => window.removeEventListener("click", handleClick);
 	}, [openDropdownId]);
+	const inventoryCosts = useHybridLatestInventoryCosts();
 	const statusFilteredRows = useMemo(() => {
 		return statusFilter === "all"
 			? filteredRows
@@ -5262,19 +5264,18 @@ function InventoryTable({
 										<p className="text-[9px] text-muted-foreground/70">
 											per {row.preferredPurchaseUnit || row.unit || "unit"}
 										</p>
-										{row.netWeight && (() => {
-											const match = row.netWeight.match(/\(isi\s+([\d,]+)\)/) || row.netWeight.match(/^([\d,]+)/);
-											const qtyStr = match ? match[1].replace(",", ".") : "";
-											const qty = parseFloat(qtyStr) || 0;
-											if (qty > 0 && row.lastPurchasePrice > 0) {
-												return (
-													<p className="text-[9px] text-muted-foreground/50">
-														{formatCurrencyIDR(Math.round(row.lastPurchasePrice / qty))} / {row.displayUnit || "pcs"}
-													</p>
-												);
-											}
-											return null;
-										})()}
+									{(() => {
+										const costEntry = inventoryCosts?.[row.inventoryId];
+										const costPerUnit = costEntry?.latestCostPerUnit ?? costEntry?.avgCostPerUnit;
+										if (costPerUnit && costPerUnit > 0) {
+											return (
+												<p className="text-[9px] text-muted-foreground/50">
+													{formatCurrencyIDR(Math.round(costPerUnit))} / {costEntry?.displayUnit || costEntry?.unit || row.displayUnit || row.unit || "unit"}
+												</p>
+											);
+										}
+										return null;
+									})()}
 									</div>
 									</td>
 									<td className="px-2 py-1.5 align-middle text-right text-[11px] font-semibold text-foreground/80 font-mono">
