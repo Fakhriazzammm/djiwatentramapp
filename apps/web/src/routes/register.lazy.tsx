@@ -547,19 +547,21 @@ function RegisterPage() {
 							<CardHeader className="pb-2 sm:pb-4"><CardTitle className="text-base sm:text-lg">Tanda Tangan &amp; Submit</CardTitle></CardHeader>
 							<CardContent className="space-y-4">
 								<SignaturePad value={draft.signatureDataUrl} onChange={(v) => setDraft((p) => ({ ...p, signatureDataUrl: v }))} />
-								<label className="flex items-start gap-3 text-sm">
+								<label className="flex items-center gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2.5 text-sm cursor-pointer hover:bg-muted/50 transition-colors">
 									<Checkbox
 										checked={draft.agreements.dataIsTrue}
 										onCheckedChange={(v) => setDraft((p) => ({ ...p, agreements: { ...p.agreements, dataIsTrue: Boolean(v) } }))}
+										className="size-5 border-2"
 									/>
-									<span>Saya menyatakan data yang saya isi benar.</span>
+									<span className="font-medium text-foreground select-none">Saya menyatakan data yang saya isi benar.</span>
 								</label>
-								<label className="flex items-start gap-3 text-sm">
+								<label className="flex items-center gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2.5 text-sm cursor-pointer hover:bg-muted/50 transition-colors">
 									<Checkbox
 										checked={draft.agreements.contractApproved}
 										onCheckedChange={(v) => setDraft((p) => ({ ...p, agreements: { ...p.agreements, contractApproved: Boolean(v) } }))}
+										className="size-5 border-2"
 									/>
-									<span>Saya menyetujui isi kontrak kerja.</span>
+									<span className="font-medium text-foreground select-none">Saya menyetujui isi kontrak kerja.</span>
 								</label>
 							</CardContent>
 						</Card>
