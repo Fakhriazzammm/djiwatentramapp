@@ -1,4 +1,4 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
 import { ChevronLeft, ChevronRight, FileText, Loader2, PenLine, ShieldCheck, UserPlus, XCircle } from "lucide-react";
@@ -588,4 +588,11 @@ function Field({ label, children, className }: { label: string; children: React.
 	);
 }
 
-export const Route = createLazyFileRoute("/register" as any)({ component: RegisterPage });
+function RegisterLayout() {
+	const location = useLocation();
+	const isSelesai = location.pathname.includes("/register/selesai-");
+	if (isSelesai) return <Outlet />;
+	return <RegisterPage />;
+}
+
+export const Route = createLazyFileRoute("/register" as any)({ component: RegisterLayout });
