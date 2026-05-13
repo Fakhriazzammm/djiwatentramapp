@@ -660,13 +660,20 @@ export function RecipeStudioPage() {
 		const keyword = searchBase.trim().toLowerCase();
 		return sortByName(baseRecipes ?? []).filter((item) => {
 			if (!keyword) return true;
+			const matchesIngredient = (item.ingredients ?? []).some((ing: any) => {
+				const inv = (inventory ?? []).find(
+					(v: any) => v._id === ing.inventoryId
+				);
+				return inv?.ingredientName?.toLowerCase().includes(keyword);
+			});
 			return (
 				item.name.toLowerCase().includes(keyword) ||
 				(item.description ?? "").toLowerCase().includes(keyword) ||
-				(item.category ?? "").toLowerCase().includes(keyword)
+				(item.category ?? "").toLowerCase().includes(keyword) ||
+				matchesIngredient
 			);
 		});
-	}, [baseRecipes, searchBase]);
+	}, [baseRecipes, inventory, searchBase]);
 
 	const productRows = useMemo(() => {
 		const keyword = searchProduct.trim().toLowerCase();
@@ -1119,12 +1126,17 @@ export function RecipeBookViewPage() {
 		const keyword = search.trim().toLowerCase();
 		return sortByName(baseRecipes ?? []).filter((recipe) => {
 			if (!keyword) return true;
+			const matchesIngredient = (recipe.ingredients ?? []).some((ing: any) => {
+				const inv = inventoryMap.get(String(ing.inventoryId));
+				return inv?.ingredientName?.toLowerCase().includes(keyword);
+			});
 			return (
 				recipe.name.toLowerCase().includes(keyword) ||
-				(recipe.description ?? "").toLowerCase().includes(keyword)
+				(recipe.description ?? "").toLowerCase().includes(keyword) ||
+				matchesIngredient
 			);
 		});
-	}, [baseRecipes, search]);
+	}, [baseRecipes, inventoryMap, search]);
 
 	const productRows = useMemo(() => {
 		const keyword = search.trim().toLowerCase();

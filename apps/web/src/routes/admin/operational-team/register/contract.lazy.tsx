@@ -706,7 +706,10 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 						</div>
 						<div className="p-3 max-h-[70vh] overflow-y-auto">
 							<ContractPreview
-								contract={testPreviewText ? { ...contractPreview, plainText: testPreviewText, html: "<article><p>" + testPreviewText.replace(/\\n/g, "<br/>") + "</p></article>" } : contractPreview}
+								contract={testPreviewText ? (() => {
+	const paragraphs = testPreviewText.split(/\n{2,}/).filter(Boolean).map((para: string) => `<p>${para.replace(/\n/g, "<br/>")}</p>`).join("\n");
+	return { ...contractPreview, plainText: testPreviewText, html: `<article>${paragraphs}</article>` };
+})() : contractPreview}
 								employeeName={testPreviewName || "[Nama Karyawan]"}
 								companyName={companyDisplayName}
 								signatoryName={signatoryPersonNameLocal || companyDisplayName}

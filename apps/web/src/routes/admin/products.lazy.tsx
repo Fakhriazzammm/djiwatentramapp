@@ -2698,13 +2698,20 @@ function BaseRecipesTab() {
 		return baseRecipes.filter((recipe: any) => {
 			const category =
 				typeof recipe.category === "string" ? recipe.category.toLowerCase() : "";
+			const matchesIngredient = (recipe.ingredients ?? []).some((ing: any) => {
+				const inv = (inventory ?? []).find(
+					(v: any) => v._id === ing.inventoryId
+				);
+				return inv?.ingredientName?.toLowerCase().includes(keyword);
+			});
 			return (
 				recipe.name.toLowerCase().includes(keyword) ||
 				(recipe.description ?? "").toLowerCase().includes(keyword) ||
-				category.includes(keyword)
+				category.includes(keyword) ||
+				matchesIngredient
 			);
 		});
-	}, [baseRecipes, searchRecipe]);
+	}, [baseRecipes, inventory, searchRecipe]);
 
 	return (
 		<>

@@ -161,11 +161,16 @@ function RegisterPage() {
 		if (templateText) {
 			const templateStr = typeof templateText === "string" ? templateText : (templateText as any).title + "\n" + (templateText as any).clauses?.map((c: any) => c.title + "\n" + c.body).join("\n\n") || "";
 			const syncedTemplateText = syncDynamicContractClauses(templateStr, draft.personal, draft.employment, companyDisplayName, signatoryPersonName, onboardingSettings.signatoryCompanyAddress, onboardingSettings.signatoryCompanyNIB, onboardingSettings.signatoryPersonTitle, onboardingSettings.signatoryLocation);
+			const htmlParagraphs = syncedTemplateText
+				.split(/\n{2,}/)
+				.filter(Boolean)
+				.map((para) => `<p>${para.replace(/\n/g, "<br/>")}</p>`)
+				.join("\n");
 			return {
 				mode: "template" as const,
 				title: `Perjanjian Kerja ${draft.employment.roleName || ""}`,
 				plainText: syncedTemplateText,
-				html: `<article><p>${syncedTemplateText.replace(/\n/g, "<br/>")}</p></article>`,
+				html: `<article>${htmlParagraphs}</article>`,
 				clauses: [{ title: "Ketentuan Kontrak", body: syncedTemplateText }],
 			};
 		}
