@@ -23,7 +23,7 @@ import {
 	useHybridInventory,
 	useHybridLatestInventoryCosts,
 } from "@/hooks/use-hybrid-pos-data";
-import { useHybridRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
+import { useHybridRecipes, useHybridBaseRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
 import { useHybridSaveRecipe, useHybridDeleteRecipe } from "@/hooks/use-hybrid-write-actions";
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -100,6 +100,7 @@ export function RecipeMatrixPage() {
 	const categories = useHybridCategories();
 	const inventory = useHybridInventory();
 	const recipes = useHybridRecipes();
+	const baseRecipes = useHybridBaseRecipes();
 	const hppMap = useHybridHppProductMap();
 	const costs = useHybridLatestInventoryCosts();
 	const saveRecipe = useHybridSaveRecipe();
@@ -594,12 +595,33 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 							Base Recipe
 						</p>
 						<Badge variant="outline" className="text-[9px] h-4 px-1">
-							segera hadir di matrix
+							{baseRecipes?.length ?? 0} formula
 						</Badge>
 					</div>
-					<p className="text-[10px] text-muted-foreground/60">
-						Base recipe (formula setengah jadi) masih dikelola di halaman sebelumnya. Akan diintegrasikan ke matrix ini.
-					</p>
+					<div className="flex flex-wrap gap-2">
+						{(baseRecipes ?? []).length === 0 ? (
+							<p className="text-[10px] text-muted-foreground/60">
+								Belum ada base recipe. Buat di halaman <Link to="/admin/recipe/view" className="text-primary underline">Recipe Studio</Link>.
+							</p>
+						) : (
+							(baseRecipes ?? []).map((br: any) => (
+								<div
+									key={br._id}
+									className="rounded-lg border border-border/40 bg-card px-3 py-2 text-[10px] min-w-[180px] flex-1 max-w-[240px]"
+								>
+									<div className="font-semibold text-foreground truncate">{br.name}</div>
+									<div className="mt-0.5 text-muted-foreground/60">
+										Target: {br.targetQuantity} {br.targetUnit} &mdash; {br.ingredients?.length ?? 0} bahan
+									</div>
+									{br.category && (
+										<Badge variant="secondary" className="mt-1 text-[8px] h-3.5 px-1">
+											{br.category}
+										</Badge>
+									)}
+								</div>
+							))
+						)}
+					</div>
 				</div>
 			)}
 		</div>

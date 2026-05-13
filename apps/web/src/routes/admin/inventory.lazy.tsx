@@ -5281,23 +5281,11 @@ function InventoryTable({
 											type="number"
 											value={getPriceDraft(row)}
 										/>
-									<div className="text-right">
-										<p className="text-[9px] text-muted-foreground/70">
-											per {row.preferredPurchaseUnit || row.unit || "unit"}
-										</p>
-									{(() => {
-										const costEntry = inventoryCosts?.[row.inventoryId];
-										const costPerUnit = costEntry?.latestCostPerUnit ?? costEntry?.avgCostPerUnit;
-										if (costPerUnit && costPerUnit > 0) {
-											return (
-												<p className="text-[9px] text-muted-foreground/50">
-													{formatCurrencyIDR(Math.round(costPerUnit))} / {costEntry?.displayUnit || costEntry?.unit || row.displayUnit || row.unit || "unit"}
-												</p>
-											);
-										}
-										return null;
-									})()}
-									</div>
+	\t\t\t\t\t\t\t\t<div className="text-right">
+	\t\t\t\t\t\t\t\t\t<p className="text-[9px] text-muted-foreground/70">
+	\t\t\t\t\t\t\t\t\t\tper {row.preferredPurchaseUnit || row.unit || "unit"}
+	\t\t\t\t\t\t\t\t\t</p>
+	\t\t\t\t\t\t\t\t</div>
 									</td>
 									<td className="px-2 py-1.5 align-middle text-right text-[11px] font-semibold text-foreground/80 font-mono">
 										{formatCurrencyIDR((Number(inline.quantity) || 0) * (row.lastPurchasePrice || 0))}

@@ -60,7 +60,6 @@ import { Route as AdminFinanceReportsRouteRouteImport } from './routes/admin/fin
 import { Route as AdminFinanceAccountingRouteRouteImport } from './routes/admin/finance/accounting/route'
 import { Route as AdminOperationalTeamRegisterOnboardingRouteImport } from './routes/admin/operational-team/register/onboarding'
 import { Route as AdminOperationalTeamRegisterContractRouteImport } from './routes/admin/operational-team/register/contract'
-import { Route as AdminOperationalTeamRegisterApprovalRouteImport } from './routes/admin/operational-team/register/approval'
 import { Route as AdminOperationalTeamRegisterApplicationRegistrationNumberRouteImport } from './routes/admin/operational-team/register.application.$registrationNumber'
 
 const RegisterRoute = RegisterRouteImport.update({
@@ -394,16 +393,6 @@ const AdminOperationalTeamRegisterContractRoute =
       (d) => d.Route,
     ),
   )
-const AdminOperationalTeamRegisterApprovalRoute =
-  AdminOperationalTeamRegisterApprovalRouteImport.update({
-    id: '/approval',
-    path: '/approval',
-    getParentRoute: () => AdminOperationalTeamRegisterRoute,
-  } as any).lazy(() =>
-    import('./routes/admin/operational-team/register/approval.lazy').then(
-      (d) => d.Route,
-    ),
-  )
 const AdminOperationalTeamRegisterApplicationRegistrationNumberRoute =
   AdminOperationalTeamRegisterApplicationRegistrationNumberRouteImport.update({
     id: '/application/$registrationNumber',
@@ -465,7 +454,6 @@ export interface FileRoutesByFullPath {
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
-  '/admin/operational-team/register/approval': typeof AdminOperationalTeamRegisterApprovalRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
   '/admin/operational-team/register/application/$registrationNumber': typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
@@ -515,7 +503,6 @@ export interface FileRoutesByTo {
   '/admin/finance': typeof AdminFinanceIndexRoute
   '/admin/operational-team': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe': typeof AdminRecipeIndexRoute
-  '/admin/operational-team/register/approval': typeof AdminOperationalTeamRegisterApprovalRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
   '/admin/operational-team/register/application/$registrationNumber': typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
@@ -571,7 +558,6 @@ export interface FileRoutesById {
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
-  '/admin/operational-team/register/approval': typeof AdminOperationalTeamRegisterApprovalRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
   '/admin/operational-team/register/application/$registrationNumber': typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
@@ -628,7 +614,6 @@ export interface FileRouteTypes {
     | '/admin/finance/'
     | '/admin/operational-team/'
     | '/admin/recipe/'
-    | '/admin/operational-team/register/approval'
     | '/admin/operational-team/register/contract'
     | '/admin/operational-team/register/onboarding'
     | '/admin/operational-team/register/application/$registrationNumber'
@@ -678,7 +663,6 @@ export interface FileRouteTypes {
     | '/admin/finance'
     | '/admin/operational-team'
     | '/admin/recipe'
-    | '/admin/operational-team/register/approval'
     | '/admin/operational-team/register/contract'
     | '/admin/operational-team/register/onboarding'
     | '/admin/operational-team/register/application/$registrationNumber'
@@ -733,7 +717,6 @@ export interface FileRouteTypes {
     | '/admin/finance/'
     | '/admin/operational-team/'
     | '/admin/recipe/'
-    | '/admin/operational-team/register/approval'
     | '/admin/operational-team/register/contract'
     | '/admin/operational-team/register/onboarding'
     | '/admin/operational-team/register/application/$registrationNumber'
@@ -1113,13 +1096,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOperationalTeamRegisterContractRouteImport
       parentRoute: typeof AdminOperationalTeamRegisterRoute
     }
-    '/admin/operational-team/register/approval': {
-      id: '/admin/operational-team/register/approval'
-      path: '/approval'
-      fullPath: '/admin/operational-team/register/approval'
-      preLoaderRoute: typeof AdminOperationalTeamRegisterApprovalRouteImport
-      parentRoute: typeof AdminOperationalTeamRegisterRoute
-    }
     '/admin/operational-team/register/application/$registrationNumber': {
       id: '/admin/operational-team/register/application/$registrationNumber'
       path: '/application/$registrationNumber'
@@ -1150,7 +1126,6 @@ const AdminFinanceRouteRouteWithChildren =
   AdminFinanceRouteRoute._addFileChildren(AdminFinanceRouteRouteChildren)
 
 interface AdminOperationalTeamRegisterRouteChildren {
-  AdminOperationalTeamRegisterApprovalRoute: typeof AdminOperationalTeamRegisterApprovalRoute
   AdminOperationalTeamRegisterContractRoute: typeof AdminOperationalTeamRegisterContractRoute
   AdminOperationalTeamRegisterOnboardingRoute: typeof AdminOperationalTeamRegisterOnboardingRoute
   AdminOperationalTeamRegisterApplicationRegistrationNumberRoute: typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
@@ -1158,8 +1133,6 @@ interface AdminOperationalTeamRegisterRouteChildren {
 
 const AdminOperationalTeamRegisterRouteChildren: AdminOperationalTeamRegisterRouteChildren =
   {
-    AdminOperationalTeamRegisterApprovalRoute:
-      AdminOperationalTeamRegisterApprovalRoute,
     AdminOperationalTeamRegisterContractRoute:
       AdminOperationalTeamRegisterContractRoute,
     AdminOperationalTeamRegisterOnboardingRoute:

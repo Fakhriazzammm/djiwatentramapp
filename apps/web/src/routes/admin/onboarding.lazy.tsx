@@ -1,11 +1,12 @@
-import { createLazyFileRoute, Link } from "@tanstack/react-router";
+import { createLazyFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, CheckCircle2, Eye, FileSignature, Loader2, PencilLine, PlusCircle, Trash2, UserPlus, XCircle } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Eye, FileSignature, Loader2, PencilLine, PlusCircle, Search, Trash2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/client";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
@@ -26,6 +27,8 @@ export function AdminOnboardingPage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [isDeleting, setIsDeleting] = useState(false);
+	const [search, setSearch] = useState("");
+	const navigate = useNavigate();
 	const siteSettings = useHybridSiteSettings();
 	const onboardingSettings = useMemo(() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding), [siteSettings?.employeeOnboarding]);
 	const deleteApp = useHybridDeleteApplication();
@@ -137,6 +140,19 @@ export function AdminOnboardingPage() {
 		[applications],
 	);
 
+	const filtered = useMemo(() => {
+		if (!search.trim()) return applications;
+		const q = search.toLowerCase();
+		return applications.filter(
+			(a: any) =>
+				(a.full_name || "").toLowerCase().includes(q) ||
+				(a.phone || "").includes(q) ||
+				(a.employment?.roleName || "").toLowerCase().includes(q) ||
+				(a.status || "").toLowerCase().includes(q) ||
+				(a.raw?.registrationNumber || "").toLowerCase().includes(q),
+		);
+	}, [applications, search]);
+
 	/* ---- render ---- */
 	return (
 		<div className="mx-auto max-w-6xl space-y-4 px-3 py-4 sm:px-4 sm:py-6 sm:space-y-6">
@@ -178,6 +194,21 @@ export function AdminOnboardingPage() {
 			</div>
 		</div>
 
+			{/* ---- search ---- */}
+			<Card className="border-border/60">
+				<CardContent className="p-3 sm:p-4">
+					<div className="relative">
+						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+						<Input
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
+							placeholder="Cari nama, nomor HP, role, status, atau no. registrasi..."
+							className="h-9 pl-9 text-sm"
+						/>
+					</div>
+				</CardContent>
+			</Card>
+
 			{/* ---- list ---- */}
 			<Card className="border sm:rounded-xl">
 				<CardHeader className="pb-2 sm:pb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -200,10 +231,10 @@ export function AdminOnboardingPage() {
 					</div>
 				</CardHeader>
 				<CardContent className="px-0 sm:px-6">
-					{applications.length === 0 ? (
+					{filtered.length === 0 ? (
 						<div className="flex flex-col items-center gap-3 px-4 py-14 text-center">
 							<UserPlus className="h-12 w-12 text-muted-foreground/40" />
-							<p className="text-muted-foreground text-sm">Belum ada pendaftaran.</p>
+							<p className="text-muted-foreground text-sm">{search ? "Pendaftaran tidak ditemukan" : "Belum ada pendaftaran."}</p>
 							<Button size="sm" variant="outline" onClick={() => window.open("/register", "_blank")} className="gap-1.5">
 								<PlusCircle className="h-4 w-4" /> Buat Pendaftaran Baru
 							</Button>
@@ -232,7 +263,7 @@ export function AdminOnboardingPage() {
 										</tr>
 									</thead>
 									<tbody className="divide-y">
-										{applications.map((app: any) => (
+										{filtered.map((app: any) => (
 											<tr key={app.id} className="hover:bg-muted/30">
 												<td className="p-2 sm:p-3">
 													<Checkbox checked={selectedIds.has(String(app.id))} onCheckedChange={() => toggleSelect(String(app.id))} />
@@ -245,9 +276,26 @@ export function AdminOnboardingPage() {
 												</td>
 												<td className="p-2 sm:p-3 hidden md:table-cell text-xs">{new Date(app.created_at).toLocaleDateString("id-ID")}</td>
 												<td className="p-2 sm:p-3"><Badge variant={STATUS_VARIANT[app.status] ?? "secondary"} className="text-[10px]">{app.status}</Badge></td>
-												<td className="p-2 sm:p-3 text-right">
-													<div className="flex items-center justify-end gap-1">
-														<Link
+														<td className="p-2 sm:p-3 text-right">
+															<div className="flex items-center justify-end gap-1">
+																{app.status === "pending" && (
+																	<Button
+																		size="sm"
+																		variant="default"
+																		className="h-9 gap-1 text-xs"
+																		onClick={() =>
+																			navigate({
+																				to: "/admin/operational-team/register/application/$registrationNumber",
+																				params: { registrationNumber: app.raw?.registrationNumber || app.id },
+																			})
+																		}
+																		title="Setujui"
+																	>
+																		<CheckCircle2 className="h-4 w-4" />
+																		<span className="hidden sm:inline">Setujui</span>
+																	</Button>
+																)}
+																<Link
 															to="/admin/operational-team/register/application/$registrationNumber"
 															params={{ registrationNumber: app.raw?.registrationNumber || app.id }}
 															className="inline-flex h-9 min-w-[4.5rem] items-center justify-center gap-1.5 rounded-md border bg-background px-2.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground"
@@ -270,7 +318,7 @@ export function AdminOnboardingPage() {
 
 							{/* ---- mobile cards ---- */}
 							<div className="flex flex-col gap-2 px-3 sm:hidden">
-								{applications.map((app: any) => (
+								{filtered.map((app: any) => (
 									<div key={app.id} className="rounded-xl border p-3 space-y-2">
 										<div className="flex items-start justify-between gap-2">
 											<div className="flex items-center gap-2">
