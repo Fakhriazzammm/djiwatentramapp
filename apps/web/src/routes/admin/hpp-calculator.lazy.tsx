@@ -1,6 +1,7 @@
 ﻿import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import type { Doc, Id } from "@/types/backend-compat";
 import { motion } from "framer-motion";
+import { getSmallestUnitLabel } from "@/lib/inventory-units";
 import {
 	AlertTriangle,
 	ArrowRight,
@@ -1633,7 +1634,7 @@ function EditorView({
 					: "harga terakhir item";
 			return {
 				tone: "ok" as const,
-				text: `Harga inventory: ${formatCurrency(latestUnitCost)} / ${inventoryItem.unit} (${sourceLabel})`,
+				text: `Harga inventory: ${formatCurrency(latestUnitCost)} / ${getSmallestUnitLabel(inventoryItem)} (${sourceLabel})`,
 			};
 		}
 		return {
@@ -2064,9 +2065,9 @@ function EditorView({
 													/>
 													<datalist id={`inventory-ingredient-options-${ingredient.id}`}>
 														{(inventory ?? []).map((item) => (
-															<option key={item._id} value={item.ingredientName}>
-																{item.unit}
-															</option>
+										<option key={item._id} value={item.ingredientName}>
+												{getSmallestUnitLabel(item)}
+											</option>
 														))}
 													</datalist>
 												</td>
@@ -2086,7 +2087,7 @@ function EditorView({
 														options={[
 															{ label: "Manual (tanpa link)", value: "" },
 															...(inventory ?? []).map((item) => ({
-																label: `${item.ingredientName} (${item.unit})`,
+																label: `${item.ingredientName} (${getSmallestUnitLabel(item)})`,
 																value: item._id,
 															})),
 														]}
@@ -2325,9 +2326,9 @@ function EditorView({
 											/>
 											<datalist id={`inventory-ingredient-options-mobile-${ingredient.id}`}>
 												{(inventory ?? []).map((item) => (
-													<option key={`${item._id}-mobile`} value={item.ingredientName}>
-														{item.unit}
-													</option>
+								<option key={`${item._id}-mobile`} value={item.ingredientName}>
+									{getSmallestUnitLabel(item)}
+								</option>
 												))}
 											</datalist>
 											<Input

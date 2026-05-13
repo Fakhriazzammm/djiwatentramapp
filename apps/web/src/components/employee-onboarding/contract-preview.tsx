@@ -29,19 +29,28 @@ function clausesToHtml(clauses: { title: string; body: string }[], title?: strin
 
 /**
  * Fix <br/>-based HTML from old saved contracts:
- * - <br/><br/> → </p><p> (paragraph break)
- * - single <br/> → </p><p> (line-as-paragraph)
- * - Ensures content still wrapped in <p> tags
- * Only applies when <p> contains <br/> inside it (old format)
+ * 1. <br/><br/> → </p><p> (double break = paragraph separator)
+ * 2. single <br/> → </p><p> (each line becomes its own paragraph)
+ * 3. Detects pasal titles (e.g. "Pasal 1 — Para Pihak") and wraps in <h3>
+ *    so they render as bold + centered, not just another justified paragraph
  */
 function fixBrBasedHtml(html: string): string {
-	// Old format: <article><p>line1<br/>line2<br/><br/>line3</p></article>
-	// Convert: each <br/> becomes </p><p> to split into proper paragraphs
+	// Old format: <article><p>line1<br/><br/>Pasal 1 — Title<br/>body...</p></article>
+	// Step 1: split <br/> into separate <p> tags
 	let fixed = html
-		// Double br = paragraph break
 		.replace(/<br\s*\/?>\s*<br\s*\/?>/gi, "</p><p>")
-		// Single br = line-as-paragraph
 		.replace(/<br\s*\/?>/gi, "</p><p>");
+	// Step 2: promote pasal titles from <p> to <h3>
+	// Matches: <p>Pasal X — ...</p> or <p>Pasal X -- ...</p>
+	fixed = fixed.replace(
+		/<p>(Pasal\s+\d+\s*[—–-].*?)<\/p>/gi,
+		"<h3>$1</h3>"
+	);
+	// Step 3: promote "Perjanjian Kerja" title line to <h3>
+	fixed = fixed.replace(
+		/<p>(Perjanjian Kerja\s*(?:\[.*?\])?)<\/p>/gi,
+		"<h3>$1</h3>"
+	);
 	return fixed;
 }
 

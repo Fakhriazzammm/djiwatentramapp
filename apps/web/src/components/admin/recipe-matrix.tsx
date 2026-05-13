@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { Link } from "@tanstack/react-router";
 import type { Doc, Id } from "@/types/backend-compat";
+import { convertToSmallestUnit, getSmallestUnitInfo } from "@/lib/inventory-units";
 import {
 	Calculator,
 	Loader2,
@@ -375,18 +376,23 @@ export function RecipeMatrixPage() {
 							{ingredientColumns.map((ing) => {
 								const costInfo = costs?.[String(ing._id)];
 								const costVal = costInfo?.latestCostPerUnit;
-								const dispUnit = costInfo?.displayUnit || ing.displayUnit || ing.unit;
+								const unitInfo = getSmallestUnitInfo(ing);
+								const dispUnit = unitInfo?.unit || ing.displayUnit || ing.unit;
+								const costPerSmallestUnit = costVal && unitInfo && unitInfo.factor > 1
+									? costVal / unitInfo.factor
+									: costVal;
 								return (
 									<th
 										key={ing._id}
 										className="sticky top-0 z-10 bg-muted/60 border-b border-r border-border/40 px-2 py-1.5 text-center min-w-[72px] backdrop-blur-sm"
-										title={`${ing.ingredientName}\n${costVal ? formatRupiah(costVal) + "/" + (ing.unit) : "harga -"}`}
+										title={`${ing.ingredientName}
+${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "harga -"}`}
 									>
 										<div className="text-[10px] font-bold text-muted-foreground leading-tight truncate max-w-[64px] mx-auto">
 											{ing.ingredientName}
 										</div>
 										<div className="text-[8px] font-normal text-muted-foreground/50 truncate max-w-[64px] mx-auto">
-											{costVal ? formatRupiah(costVal) : "-"}/{dispUnit}
+											{costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) : "-"}/{dispUnit}
 										</div>
 									</th>
 								);
@@ -486,13 +492,15 @@ export function RecipeMatrixPage() {
 										const key = `${prodId}:${invId}`;
 										const isEditing = editingCell === key;
 										const isSaving = savingCells.has(key);
+										const cellUnitInfo = getSmallestUnitInfo(ing);
+										const displayAmount = amount != null ? amount * (cellUnitInfo?.factor ?? 1) : null;
 
 										if (isEditing) {
 											return (
 												<td key={invId} className="border-r border-border/40 px-1 py-0.5 bg-primary/[0.04]">
 													<CellEditor
 														value={amount != null ? String(amount) : ""}
-														unit={ing.displayUnit || ing.unit || ""}
+														unit={(getSmallestUnitInfo(ing)?.unit || ing.displayUnit || ing.unit || "")}
 														onSave={(val) => handleCellSave(prodId, invId, val)}
 														onCancel={handleCellCancel}
 													/>
@@ -512,7 +520,7 @@ export function RecipeMatrixPage() {
 												onClick={() => handleCellClick(prodId, invId)}
 												title={
 													amount != null
-														? `${amount} ${ing.displayUnit || ing.unit}`
+														? `${amount} ${getSmallestUnitInfo(ing)?.unit || ing.displayUnit || ing.unit}`
 														: "Klik untuk isi"
 												}
 											>

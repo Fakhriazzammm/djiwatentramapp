@@ -2,6 +2,7 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { Doc, Id } from "@/types/backend-compat";
 import { motion, AnimatePresence } from "framer-motion";
+import { getSmallestUnitLabel } from "@/lib/inventory-units";
 import {
 	AlertTriangle,
 	Archive,
@@ -293,7 +294,7 @@ function ComboboxCell({
 								<Package className="h-3 w-3 shrink-0 text-muted-foreground" />
 								<span className="flex-1 truncate">{item.ingredientName}</span>
 								<span className="shrink-0 text-[10px] text-muted-foreground">
-									{item.displayUnit || item.unit}
+									{getSmallestUnitLabel(item)}
 								</span>
 							</div>
 						))
