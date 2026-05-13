@@ -3076,10 +3076,7 @@ function RealtimePriceMonitorTable({
 									<td className="p-4">
 										<Skeleton className="h-4 w-28" />
 									</td>
-									<td className="p-4">
-										<Skeleton className="h-4 w-20" />
-									</td>
-									<td className="p-4">
+<td className="p-4">
 										<Skeleton className="h-4 w-36" />
 									</td>
 									<td className="p-4">
@@ -4959,20 +4956,6 @@ function InventoryTable({
 								</div>
 							</th>
 							<th className="px-2 py-1.5 text-center font-semibold group relative cursor-help">Satuan<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Stok: satuan stok · Beli: satuan beli</span></th>
-							<th
-								className="cursor-pointer px-2 py-1.5 font-semibold transition-colors hover:text-foreground"
-								onClick={() => onSort("avgDailyUsage")}
-							>
-								<div className="flex items-center gap-1">
-									Pemakaian
-									{sortConfig.key === "avgDailyUsage" &&
-										(sortConfig.direction === "asc" ? (
-											<ArrowUp className="h-3 w-3" />
-										) : (
-											<ArrowDown className="h-3 w-3" />
-										))}
-								</div>
-							</th>
 							<th className="px-2 py-1.5 font-semibold">Harga Terakhir</th>
 							<th className="px-2 py-1.5 font-semibold">Nilai Stok</th>
 							<th className="px-2 py-1.5 font-semibold">Status</th>
@@ -5075,7 +5058,6 @@ function InventoryTable({
 									value={quickAdd.unit}
 								/>
 							</td>
-							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">-</div></td>
 							<td className="px-2 py-1.5"><div className="text-[10px] text-muted-foreground">-</div></td>
 							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
 							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
@@ -5239,12 +5221,7 @@ function InventoryTable({
 											<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Stok: {inline.unit} · Beli: {row.preferredPurchaseUnit}</span>
 										)}
 									</td>
-									<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
-											<span className="font-semibold text-foreground">
-												{row.avgDailyUsage.toFixed(2)}/hari
-											</span>
-										</td>
-									<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
+<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
 										<input
 											className="w-full rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-[11px] font-semibold text-foreground outline-none focus:border-border focus:bg-background"
 											min={0}
@@ -5291,7 +5268,7 @@ function InventoryTable({
 									</div>
 									</td>
 									<td className="px-2 py-1.5 align-middle text-right text-[11px] font-semibold text-foreground/80 font-mono">
-										-
+										{formatCurrencyIDR((Number(inline.quantity) || 0) * (row.lastPurchasePrice || 0))}
 									</td>
 									<td className="px-2 py-1.5 align-middle">
 											<div className="flex items-center gap-1.5 whitespace-nowrap text-[10px]">
@@ -5361,8 +5338,8 @@ function InventoryTable({
 						}
 						{(statusFilteredRows.length ?? 0) === 0 && (
 							<tr>
-								<td className="p-8 text-center text-muted-foreground" colSpan={10}>
-									Tidak ada bahan baku ditemukan
+							<td className="p-8 text-center text-muted-foreground" colSpan={9}>
+								Tidak ada bahan baku ditemukan
 								</td>
 							</tr>
 						)}
