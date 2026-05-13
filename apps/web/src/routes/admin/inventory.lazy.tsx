@@ -556,6 +556,8 @@ const UNIT_HIERARCHY: Record<string, { group: UnitGroup; defaultFactor?: number 
 	liter: { group: "volume", defaultFactor: 1000 },
 	l: { group: "volume", defaultFactor: 1000 },
 	ml: { group: "volume" },
+	galon: { group: "volume" },
+	gal: { group: "volume" },
 	dus: { group: "count" },
 	karton: { group: "count" },
 	box: { group: "count" },
@@ -563,6 +565,14 @@ const UNIT_HIERARCHY: Record<string, { group: UnitGroup; defaultFactor?: number 
 	botol: { group: "count" },
 	sachet: { group: "count" },
 	toros: { group: "count" },
+	sak: { group: "count" },
+	krat: { group: "count" },
+	kardus: { group: "count" },
+	renceng: { group: "count" },
+	ikat: { group: "count" },
+	paket: { group: "count" },
+	slop: { group: "count" },
+	karung: { group: "count" },
 };
 
 const SMALLEST_UNIT_LABEL: Record<UnitGroup, string> = {
