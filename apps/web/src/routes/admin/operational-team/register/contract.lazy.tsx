@@ -95,7 +95,7 @@ function templateToString(t: string | ContractTemplateValue | null | undefined):
 }
 
 function buildPlaceholderContract(roleName = "[Jabatan]", role?: any, signatoryName?: string) {
-	const salaryDefaults = role ? getRoleSalaryDefaults(role) : { monthlySalary: 0, dailyAllowance: 0, shiftRate: 0 };
+	const salaryDefaults = role ? getRoleSalaryDefaults(role) : { monthlySalary: 0, dailyAllowance: 0, shiftRate: 0, bonusTargetConfig: null, customAllowances: [] };
 	return buildEmployeeContractTemplate(
 		{ fullName: "[Nama Karyawan]", phone: "" },
 		{
@@ -110,7 +110,30 @@ function buildPlaceholderContract(roleName = "[Jabatan]", role?: any, signatoryN
 			username: "",
 			slug: "",
 		},
-		signatoryName
+		signatoryName,
+		salaryDefaults.bonusTargetConfig ?? undefined,
+		salaryDefaults.customAllowances ?? []
+	);
+}
+
+function getBonusBasisLabel(basis: string) {
+	if (basis === "daily") return "Per Hari";
+	if (basis === "monthly") return "Per Bulan";
+	return "Per Shift";
+}
+
+function BonusSummaryBadge({ config }: { config?: { basis?: string; tiers?: { thresholdPct: number; bonusAmount: number }[] } | null }) {
+	if (!config || !Array.isArray(config.tiers) || config.tiers.length === 0) return null;
+	const basis = getBonusBasisLabel(config.basis || "shift");
+	const tiers = config.tiers
+		.filter((t) => t.bonusAmount > 0)
+		.map((t) => `${t.thresholdPct}%: Rp${t.bonusAmount.toLocaleString("id-ID")}`)
+		.join(" | ");
+	if (!tiers) return null;
+	return (
+		<Badge variant="secondary" className="gap-1 text-[10px] border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+			🎯 Bonus: {basis} — {tiers}
+		</Badge>
 	);
 }
 
@@ -859,6 +882,9 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 								<span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
 								Menggunakan template dasar
 								</>
+							)}
+							{selectedRole && getRoleSalaryDefaults(selectedRole).bonusTargetConfig && (
+								<BonusSummaryBadge config={getRoleSalaryDefaults(selectedRole).bonusTargetConfig} />
 							)}
 					</div>
 				</CardContent>

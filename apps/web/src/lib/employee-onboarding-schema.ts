@@ -514,7 +514,7 @@ export function formatDateId(isoDate: string): string {
 	return `${d.getDate()} ${MONTHS_INDONESIA[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-export function replaceContractVariables(text: string, ctx: ContractVariableContext): string {
+export function replaceContractVariables(text: string, ctx: ContractVariableContext, bonusConfig?: { basis?: string; tiers?: { thresholdPct: number; bonusAmount: number }[] }): string {
 	const { personal, employment, company } = ctx;
 
 	const monthly = employment.monthlySalary ?? 0;
@@ -567,6 +567,15 @@ export function replaceContractVariables(text: string, ctx: ContractVariableCont
 		"{{tunjangan_harian}}": formatMoney(daily),
 		"{{rate_shift}}": formatMoney(shift),
 		"{{estimasi_total}}": formatMoney(estimatedTotal),
+
+		// --- Bonus Target ---
+		"{{bonus_target_basis}}": bonusConfig ? (bonusConfig.basis === "daily" ? "Per Hari" : bonusConfig.basis === "monthly" ? "Per Bulan" : "Per Shift") : "-",
+		"{{bonus_target_summary}}": bonusConfig && Array.isArray(bonusConfig.tiers) && bonusConfig.tiers.length > 0
+			? bonusConfig.tiers
+				.filter((t) => t.bonusAmount > 0)
+				.map((t) => `${t.thresholdPct}% → ${formatMoney(t.bonusAmount)}`)
+				.join("; ")
+			: "Tidak ada target bonus",
 
 		// --- Date ---
 		"{{hari}}": DAYS_INDONESIA[now.getDay()],

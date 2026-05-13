@@ -156,6 +156,8 @@ function RegisterPage() {
 		const roleTemplate = onboardingSettings.contractTemplatesByRoleId[draft.employment.roleId];
 		const defaultTemplate = onboardingSettings.contractTemplatesByRoleId.__default__;
 		const templateText = roleTemplate || defaultTemplate;
+		const selectedRole = roles.find((r: any) => String(r?._id) === draft.employment.roleId);
+		const roleDefaults = selectedRole ? getRoleSalaryDefaults(selectedRole) : { bonusTargetConfig: null, customAllowances: [] };
 		if (templateText) {
 			const templateStr = typeof templateText === "string" ? templateText : (templateText as any).title + "\n" + (templateText as any).clauses?.map((c: any) => c.title + "\n" + c.body).join("\n\n") || "";
 			const syncedTemplateText = syncDynamicContractClauses(templateStr, draft.personal, draft.employment, companyDisplayName, signatoryPersonName, onboardingSettings.signatoryCompanyAddress, onboardingSettings.signatoryCompanyNIB, onboardingSettings.signatoryPersonTitle, onboardingSettings.signatoryLocation);
@@ -167,7 +169,13 @@ function RegisterPage() {
 				clauses: [{ title: "Ketentuan Kontrak", body: syncedTemplateText }],
 			};
 		}
-		const built = buildEmployeeContractTemplate(draft.personal, draft.employment, companyDisplayName);
+		const built = buildEmployeeContractTemplate(
+			draft.personal,
+			draft.employment,
+			companyDisplayName,
+			roleDefaults.bonusTargetConfig ?? undefined,
+			roleDefaults.customAllowances ?? []
+		);
 		const ctx = buildContractVariableContext(
 			draft.personal as any,
 			draft.employment as any,

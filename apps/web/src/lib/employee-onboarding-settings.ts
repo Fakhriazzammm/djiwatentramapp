@@ -405,6 +405,8 @@ export function getRoleSalaryDefaults(role: unknown) {
 		monthlySalary: cleanNumber(data.monthlyFixedSalary, 0),
 		dailyAllowance: cleanNumber(data.dailyAllowance, 0),
 		shiftRate: cleanNumber(data.baseShiftRate, cleanNumber(data.baseHourlyRate, 0)),
+		bonusTargetConfig: (data as Record<string, unknown>).bonusTargetConfig ?? null,
+		customAllowances: (data as Record<string, unknown>).customAllowances ?? [],
 	};
 }
 
