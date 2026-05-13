@@ -814,3 +814,8 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 		</div>
 	);
 }
+
+
+export const Route = createLazyFileRoute("/admin/operational-team/register/contract" as any)({
+	component: AdminContractPage,
+});
