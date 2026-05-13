@@ -178,41 +178,14 @@ function RegisterPage() {
 			onboardingSettings.signatoryPersonTitle,
 			onboardingSettings.signatoryLocation,
 		);
-		return {
-			...built,
-			plainText: replaceContractVariables(built.plainText, ctx),
-			clauses: built.clauses.map((c) => ({ ...c, body: replaceContractVariables(c.body, ctx) })),
-			html: built.html ? built.html.replace(/\{\{[^}]+\}\}/g, (m) => {
-				const key = m.slice(2, -2);
-				const entries: Record<string, string> = {
-					nama_karyawan: draft.personal.fullName || "Karyawan",
-					nik: draft.personal.identityNumber || "-",
-					alamat: draft.personal.address || "-",
-					tempat_lahir: draft.personal.placeOfBirth || "-",
-					tanggal_lahir: draft.personal.birthDate || "-",
-					telepon: draft.personal.phone || "-",
-					jabatan: draft.employment.roleName || "Karyawan",
-					lokasi_kerja: draft.employment.location || "-",
-					tanggal_mulai: draft.employment.startDate || "-",
-					durasi_kontrak: String(draft.employment.contractDuration || 12),
-					tipe_kontrak: employmentTypeLabel(draft.employment.employmentType),
-					nama_perusahaan: companyDisplayName,
-					alamat_perusahaan: onboardingSettings.signatoryCompanyAddress || "-",
-					nib_perusahaan: onboardingSettings.signatoryCompanyNIB || "-",
-					penandatangan: signatoryPersonName,
-					jabatan_penandatangan: onboardingSettings.signatoryPersonTitle || "Direktur",
-					lokasi_ttd: onboardingSettings.signatoryLocation || "Tangerang",
-				};
-				const startDate = draft.employment.startDate || new Date().toISOString().slice(0, 10);
-				const startDateObj = new Date(startDate + "T00:00:00");
-				const dur = draft.employment.contractDuration || 12;
-				const endD = new Date(startDateObj);
-				endD.setMonth(endD.getMonth() + dur);
-				const endStr = startDateObj.getTime() ? endD.toISOString().slice(0, 10) : "-";
-				entries.tanggal_akhir = endStr;
-				return entries[key] || m;
-			}) : built.html,
-		};
+			return {
+				...built,
+				plainText: replaceContractVariables(built.plainText, ctx),
+				clauses: built.clauses.map((c) => ({ ...c, body: replaceContractVariables(c.body, ctx) })),
+				html: `<article>${built.clauses.map((c) =>
+					`<section><h3>${c.title}</h3><p>${replaceContractVariables(c.body, ctx)}</p></section>`
+				).join("")}</article>`.replace(/\n/g, "<br/>"),
+			};
 	}, [draft.employment, draft.personal, onboardingSettings.contractTemplatesByRoleId, companyDisplayName]);
 
 	/* helpers */

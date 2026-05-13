@@ -4980,10 +4980,7 @@ function InventoryTable({
 						</tr>
 					</thead>
 					<tbody className="divide-y divide-border">
-<tr className="bg-primary/[0.04]">
-							<td className="px-2 py-1.5 text-center align-middle text-[10px] font-semibold text-muted-foreground">
-								#
-							</td>
+						<tr className="bg-primary/[0.04]">
 							<td className="px-1 py-1.5 text-center align-middle" />
 							<td className="px-2.5 py-1.5">
 								<input
@@ -5008,7 +5005,6 @@ function InventoryTable({
 									value={quickAdd.ingredientName}
 								/>
 							</td>
-							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
 							<td className="px-2 py-1.5">
 								<input
 									className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
@@ -5028,44 +5024,46 @@ function InventoryTable({
 								/>
 							</td>
 							<td className="px-2 py-1.5 text-center">
-								<input
-									className="mx-auto w-14 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[10px] outline-none focus:border-primary"
-									onChange={(e) =>
-										setQuickAdd((prev) => ({
-											...prev,
-											lowStockThreshold: e.target.value,
-										}))
-									}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											void quickCreate();
+								<div className="flex items-center gap-0.5">
+									<input
+										className="w-14 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[10px] outline-none focus:border-primary"
+										onChange={(e) =>
+											setQuickAdd((prev) => ({ ...prev, quantity: e.target.value }))
 										}
-									}}
-									type="number"
-									value={quickAdd.lowStockThreshold}
-								/>
+										onKeyDown={(e) => {
+											if (e.key === "Enter") {
+												void quickCreate();
+											}
+										}}
+										type="number"
+										value={quickAdd.quantity}
+									/>
+									<input
+										className="w-14 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[10px] outline-none focus:border-primary"
+										onChange={(e) =>
+											setQuickAdd((prev) => ({
+												...prev,
+												lowStockThreshold: e.target.value,
+											}))
+										}
+										onKeyDown={(e) => {
+											if (e.key === "Enter") {
+												void quickCreate();
+											}
+										}}
+										type="number"
+										value={quickAdd.lowStockThreshold}
+										placeholder="Min"
+									/>
+								</div>
 							</td>
 							<td className="px-2 py-1.5 text-center">
 								<input
-									className="mx-auto w-14 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[10px] outline-none focus:border-primary"
-									onChange={(e) =>
-										setQuickAdd((prev) => ({ ...prev, quantity: e.target.value }))
-									}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											void quickCreate();
-										}
-									}}
-									type="number"
-									value={quickAdd.quantity}
-								/>
-							</td>
-							<td className="px-2 py-1.5 text-center">
-								<input
-									className={`mx-auto w-16 rounded-lg border border-border bg-background px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-primary ${getSuggestionHighlightClass(
-										quickAdd.unit.trim() !== "" &&
-											unitOptionSet.has(normalizeUnitOption(quickAdd.unit))
-									)}`}
+									className={`mx-auto w-16 rounded-lg border border-border bg-background px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-primary ${
+										getSuggestionHighlightClass(
+											quickAdd.unit.trim() !== "" &&
+												unitOptionSet.has(normalizeUnitOption(quickAdd.unit))
+										)}`}
 									list="inventory-unit-options-table"
 									onChange={(e) =>
 										setQuickAdd((prev) => ({
@@ -5079,10 +5077,8 @@ function InventoryTable({
 							</td>
 							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">-</div></td>
 							<td className="px-2 py-1.5"><div className="text-[10px] text-muted-foreground">-</div></td>
-							<td className="px-2 py-1.5"><div className="text-[10px] text-muted-foreground">-</div></td>
-						<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
-						<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
-						<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
+							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
+							<td className="px-2 py-1.5 text-center"><div className="text-[10px] text-muted-foreground">—</div></td>
 							<td className="px-2 py-1.5 text-right">
 								<div className="flex items-center justify-end gap-1.5">
 									<button
