@@ -5230,7 +5230,21 @@ function InventoryTable({
 								/>
 									</td>
 									<td className="px-2 py-1.5 align-middle text-center">
-										<div className="text-[10px] font-semibold text-muted-foreground">{inline.lowStockThreshold}</div>
+										<input
+											className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background"
+											onBlur={() => void saveMeta(row)}
+											onChange={(e) =>
+												setInlineField(row, "lowStockThreshold", e.target.value)
+											}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") {
+													void saveMeta(row);
+													(e.target as HTMLInputElement).blur();
+												}
+											}}
+											type="number"
+											value={inline.lowStockThreshold}
+										/>
 									</td>
 									<td className="px-2 py-1.5 align-middle text-center group relative">
 										<input
