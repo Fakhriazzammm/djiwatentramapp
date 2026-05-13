@@ -5,6 +5,9 @@ export type EmployeePersonalData = {
 	identityNumber?: string;
 	address?: string;
 	birthDate?: string;
+	placeOfBirth?: string;
+	religion?: string;
+	maritalStatus?: string;
 	emergencyContactName?: string;
 	emergencyContactPhone?: string;
 };
@@ -244,10 +247,38 @@ export function buildCompensationBody(employment: EmployeeEmploymentData): strin
 	return `${itemsText}. ${detailsText}. Estimasi total penghasilan per bulan: ${formatMoney(totalMonthly)}. Perhitungan berdasarkan ${WORKING_DAYS_PER_MONTH} hari kerja per bulan.`;
 }
 
+export function buildBonusClause(bonusConfig?: { basis?: string; tiers?: { thresholdPct: number; bonusAmount: number }[] }): string {
+	if (!bonusConfig || !Array.isArray(bonusConfig.tiers) || bonusConfig.tiers.length === 0) {
+		return "";
+	}
+	const basis = bonusConfig.basis === "shift" ? "per shift" : "per bulan";
+	const tiers = bonusConfig.tiers
+		.sort((a, b) => a.thresholdPct - b.thresholdPct)
+		.map((t) => `Pencapaian ${t.thresholdPct}% target: bonus ${formatMoney(t.bonusAmount)}`)
+		.join(". ");
+	return `Pihak Kedua berhak mendapatkan bonus insentif berdasarkan pencapaian target kerja ${basis}: ${tiers}. Bonus dibayarkan bersamaan dengan gaji periode berikutnya setelah evaluasi pencapaian target.`;
+}
+
+export function buildCustomAllowancesBody(customAllowances?: { name?: string; amount?: number; type?: string }[]): string {
+	if (!Array.isArray(customAllowances) || customAllowances.length === 0) {
+		return "";
+	}
+	const lines = customAllowances
+		.filter((a) => a.name && a.amount && a.amount > 0)
+		.map((a) => {
+			const period = a.type === "monthly" ? "bulan" : a.type === "daily" ? "hari" : "bulan";
+			return `${a.name}: ${formatMoney(a.amount)}/${period}`;
+		});
+	if (lines.length === 0) return "";
+	return `Selain gaji pokok dan tunjangan transportasi, Pihak Kedua berhak atas tunjangan berikut: ${lines.join(", ")}.`;
+}
+
 export function buildEmployeeContractTemplate(
 	personal: EmployeePersonalData,
 	employment: EmployeeEmploymentData,
-	signatoryName?: string
+	signatoryName?: string,
+	bonusConfig?: { basis?: string; tiers?: { thresholdPct: number; bonusAmount: number }[] },
+	customAllowances?: { name?: string; amount?: number; type?: string }[],
 ): EmployeeContractDraft {
 	const _signatoryName = signatoryName || "Djiwa Tentram Cafe & Resto";
 	const employeeName = cleanText(personal.fullName) || "Karyawan";
@@ -255,7 +286,9 @@ export function buildEmployeeContractTemplate(
 	const startDate = cleanText(employment.startDate) || "tanggal yang disepakati";
 	const location = cleanText(employment.location) || "Djiwa Tentram";
 	const duration = employment.contractDuration && employment.contractDuration >= 6 ? employment.contractDuration : 0;
-	const clauses: EmployeeContractClause[] = [
+	const bonusBody = buildBonusClause(bonusConfig);
+	const allowancesBody = buildCustomAllowancesBody(customAllowances);
+	const clauseList: EmployeeContractClause[] = [
 		{
 			title: "Pasal 1 — Para Pihak",
 			body: `${_signatoryName} sebagai perwakilan perusahaan dan ${employeeName} sebagai karyawan menyepakati hubungan kerja sesuai ketentuan dalam kontrak ini.`,
@@ -276,11 +309,12 @@ export function buildEmployeeContractTemplate(
 			title: "Pasal 5 — Kewajiban Karyawan",
 			body: "Karyawan wajib hadir tepat waktu, menjaga kebersihan, melayani pelanggan dengan baik, menjaga kerahasiaan data usaha, dan mematuhi SOP yang berlaku.",
 		},
-		{
-			title: "Pasal 6 — Penutup",
-			body: "Kontrak ini berlaku setelah ditandatangani secara digital oleh karyawan dan disetujui oleh admin/perwakilan perusahaan.",
-		},
 	];
+	if (bonusBody) clauseList.push({ title: "Pasal 6 — Bonus & Insentif", body: bonusBody });
+	if (allowancesBody) clauseList.push({ title: "Pasal 7 — Tunjangan Tambahan", body: allowancesBody });
+	const lastPasalNum = bonusBody || allowancesBody ? 8 : 6;
+	clauseList.push({ title: `Pasal ${lastPasalNum} — Penutup`, body: "Kontrak ini berlaku setelah ditandatangani secara digital oleh karyawan dan disetujui oleh admin/perwakilan perusahaan." });
+	const clauses = clauseList;
 	const plainText = clauses.flatMap((clause) => [clause.title, clause.body, ""]).join("\n");
 	const html = `<article>${clauses
 		.map(
@@ -300,4 +334,133 @@ export function buildEmployeeContractTemplate(
 
 export function clausesToPlainText(title: string, clauses: EmployeeContractClause[]) {
 	return [title, "", ...clauses.flatMap((clause) => [clause.title, clause.body, ""])].join("\n");
+}
+
+/* -------- dynamic variable replacement -------- */
+
+export type ContractVariableContext = {
+	personal: EmployeePersonalData;
+	employment: EmployeeEmploymentData;
+	company: {
+		name: string;
+		address: string;
+		nib: string;
+		signatoryName: string;
+		signatoryTitle: string;
+		signatoryLocation: string;
+	};
+};
+
+const MONTHS_INDONESIA = [
+	"Januari", "Februari", "Maret", "April", "Mei", "Juni",
+	"Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+
+const DAYS_INDONESIA = [
+	"Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu",
+];
+
+export function buildContractVariableContext(
+	personal: EmployeePersonalData,
+	employment: EmployeeEmploymentData,
+	companyName: string,
+	signatoryName: string,
+	companyAddress?: string,
+	companyNib?: string,
+	signatoryTitle?: string,
+	signatoryLocation?: string,
+): ContractVariableContext {
+	const estimatedTotal = calculateEstimatedMonthlySalary(employment);
+	const startDate = employment.startDate || new Date().toISOString().slice(0, 10);
+	const startDateObj = new Date(startDate + "T00:00:00");
+	const now = new Date();
+
+	let endDateStr = "";
+	let durationMonths = employment.contractDuration || 12;
+	if (durationMonths > 0 && startDateObj.getTime()) {
+		const end = new Date(startDateObj);
+		end.setMonth(end.getMonth() + durationMonths);
+		endDateStr = end.toISOString().slice(0, 10);
+	}
+
+	return {
+		personal,
+		employment,
+		company: {
+			name: companyName || "Djiwa Tentram",
+			address: companyAddress || "-",
+			nib: companyNib || "-",
+			signatoryName: signatoryName || companyName || "perwakilan perusahaan",
+			signatoryTitle: signatoryTitle || "Direktur",
+			signatoryLocation: signatoryLocation || "Tangerang",
+		},
+	};
+}
+
+export function replaceContractVariables(text: string, ctx: ContractVariableContext): string {
+	const { personal, employment, company } = ctx;
+
+	const monthly = employment.monthlySalary ?? 0;
+	const daily = employment.dailyAllowance ?? 0;
+	const shift = employment.shiftRate ?? 0;
+	const estimatedTotal = calculateEstimatedMonthlySalary(employment);
+	const durationMonths = employment.contractDuration || 12;
+
+	const startDate = employment.startDate || new Date().toISOString().slice(0, 10);
+	const startDateObj = new Date(startDate + "T00:00:00");
+	let endDateStr = "";
+	if (durationMonths > 0 && startDateObj.getTime()) {
+		const end = new Date(startDateObj);
+		end.setMonth(end.getMonth() + durationMonths);
+		endDateStr = end.toISOString().slice(0, 10);
+	}
+
+	const now = new Date();
+
+	const vars: Record<string, string> = {
+		// --- Employee data ---
+		"{{nama_karyawan}}": personal.fullName || "Karyawan",
+		"{{nik}}": personal.identityNumber || "-",
+		"{{tempat_lahir}}": personal.placeOfBirth || "-",
+		"{{tanggal_lahir}}": personal.birthDate || "-",
+		"{{alamat}}": personal.address || "-",
+		"{{agama}}": personal.religion || "-",
+		"{{status_pernikahan}}": personal.maritalStatus || "-",
+		"{{telepon}}": personal.phone || "-",
+
+		// --- Company data ---
+		"{{nama_perusahaan}}": company.name,
+		"{{alamat_perusahaan}}": company.address,
+		"{{nib_perusahaan}}": company.nib,
+		"{{penandatangan}}": company.signatoryName,
+		"{{jabatan_penandatangan}}": company.signatoryTitle,
+		"{{lokasi_ttd}}": company.signatoryLocation,
+
+		// --- Employment data ---
+		"{{jabatan}}": employment.roleName || "Karyawan",
+		"{{tanggal_mulai}}": startDate,
+		"{{tanggal_akhir}}": endDateStr || "-",
+		"{{durasi_kontrak}}": String(durationMonths),
+		"{{tipe_kontrak}}": employmentTypeLabel(employment.employmentType),
+		"{{lokasi_kerja}}": employment.location || "-",
+		"{{nama_atasan}}": "-",
+
+		// --- Compensation ---
+		"{{gaji_pokok}}": formatMoney(monthly),
+		"{{tunjangan_harian}}": formatMoney(daily),
+		"{{rate_shift}}": formatMoney(shift),
+		"{{estimasi_total}}": formatMoney(estimatedTotal),
+
+		// --- Date ---
+		"{{hari}}": DAYS_INDONESIA[now.getDay()],
+		"{{tgl}}": String(now.getDate()),
+		"{{bulan}}": MONTHS_INDONESIA[now.getMonth()],
+		"{{tahun}}": String(now.getFullYear()),
+	};
+
+	let result = text;
+	for (const [key, value] of Object.entries(vars)) {
+		result = result.split(key).join(value);
+	}
+	return result;
 }

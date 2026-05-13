@@ -192,7 +192,7 @@ class InventoryManager:
         """Ambil semua inventory untuk fuzzy matching."""
         return await self._fetch(
             "pos_inventory",
-            "select=_id,ingredientName,quantity,lowStockThreshold,unit,lastPurchasePrice,preferredPurchaseUnit,preferredPurchaseQuantity,conversionFactor,displayUnit",
+            "select=_id,ingredientName,quantity,lowStockThreshold,unit,lastPurchasePrice,preferredStoreId,preferredPurchaseUnit,preferredPurchaseQuantity,conversionFactor,displayUnit",
         )
 
     async def fuzzy_match_item(

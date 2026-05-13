@@ -977,6 +977,21 @@ def _stock_normalize(qty: float, unit: str, price: float) -> tuple[float, float]
     return norm_qty, norm_qty * price
 
 
+def _unit_min_qty(unit: str) -> float:
+    """Return minimum meaningful purchase quantity for a unit type.
+    
+    Items stocked in grams/ml shouldn't default to 1 unit (= 1 gram = useless).
+    """
+    u = (unit or "").lower().strip()
+    if u in ("gram", "gr", "g"):
+        return 250.0    # 250g — minimum wajar
+    if u in ("ml", "milliliter"):
+        return 250.0    # 250ml
+    if u in ("kg", "l", "liter", "pack", "pcs", "bottle", "botol", "toros", "ikat", "toros"):
+        return 1.0
+    return 1.0
+
+
 def _calc_buy_qty(item: dict) -> float:
     """Calculate recommended buy quantity for an item (in stock unit).
     
@@ -984,11 +999,14 @@ def _calc_buy_qty(item: dict) -> float:
     1. _suggestedQty from learning memory (validated by previous AI/human)
     2. Threshold-based: fill up to lowStockThreshold (dynamic, always correct)
     3. preferredPurchaseQuantity — only if explicitly meaningful (> 1)
-    4. Fallback: max(lowStockThreshold, 1) to prevent zero
+    4. Fallback: unit-aware minimum to prevent absurd quantities
     """
+    unit = item.get("unit", "")
+    min_qty = _unit_min_qty(unit)
+
     # Priority 1: Suggested qty from previous successful matches (learning memory)
     sq = float(item.get("_suggestedQty", 0) or 0)
-    if sq > 0:
+    if sq > 0 and sq >= min_qty:
         return sq
 
     # Priority 2: Threshold-based — fill up to lowStockThreshold
@@ -996,15 +1014,16 @@ def _calc_buy_qty(item: dict) -> float:
     thresh = float(item.get("lowStockThreshold", 0) or 0)
     need = max(thresh - qty, 0)
     if need <= 0:
-        # Already at/above threshold — still restock to threshold (or min 1)
-        need = max(thresh, 1)
+        # Already at/above threshold — still restock at least threshold or min
+        need = max(thresh, min_qty)
 
-    # Priority 3: preferredPurchaseQuantity — only when it's explicitly set (not DB default 1)
+    # Priority 3: preferredPurchaseQuantity — only when meaningful
     ppq = float(item.get("preferredPurchaseQuantity", 0) or 0)
     if ppq > 1 and ppq >= need:
         return ppq
 
-    return need
+    # Ensure result meets minimum
+    return max(need, min_qty)
 
 
 async def _ai_group_unmatched(

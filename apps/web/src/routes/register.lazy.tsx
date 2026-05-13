@@ -23,6 +23,8 @@ import {
 	buildCompensationBody,
 	calculateEstimatedMonthlySalary,
 	createEmployeeSlug,
+	replaceContractVariables,
+	buildContractVariableContext,
 	type EmployeeOnboardingDraft,
 	validateEmployeeOnboardingDraft,
 } from "@/lib/employee-onboarding-schema";
@@ -94,18 +96,18 @@ function getCompanyDisplayName(siteSettings: any, signatoryName: string) {
 	return String(siteSettings?.companyName || siteSettings?.businessName || siteSettings?.storeName || siteSettings?.name || signatoryName || "Djiwa Tentram").trim();
 }
 
-function syncDynamicContractClauses(templateText: string, personal: EmployeeOnboardingDraft["personal"], employment: EmployeeOnboardingDraft["employment"], companyName: string, signatoryName: string) {
-	const displayCompanyName = companyName || "Djiwa Tentram";
-	const displaySignatoryName = signatoryName || "perwakilan perusahaan";
-	const employeeName = personal.fullName || "Karyawan";
-	const partiesBody = `${displayCompanyName}, diwakili oleh ${displaySignatoryName}, dan ${employeeName} sebagai karyawan menyepakati hubungan kerja sesuai ketentuan dalam kontrak ini.`;
-
-	return replaceClauseBody(
-		replaceClauseBody(templateText, 1, "Para Pihak", partiesBody),
-		4,
-		"Kompensasi",
-		buildCompensationBody(employment)
+function syncDynamicContractClauses(templateText: string, personal: EmployeeOnboardingDraft["personal"], employment: EmployeeOnboardingDraft["employment"], companyName: string, signatoryName: string, signatoryAddress = "", signatoryNib = "", signatoryTitle = "", signatoryLocation = "") {
+	const ctx = buildContractVariableContext(
+		personal as any,
+		employment as any,
+		companyName,
+		signatoryName,
+		signatoryAddress,
+		signatoryNib,
+		signatoryTitle,
+		signatoryLocation,
 	);
+	return replaceContractVariables(templateText, ctx);
 }
 
 /* -------- page component -------- */
@@ -155,7 +157,8 @@ function RegisterPage() {
 		const defaultTemplate = onboardingSettings.contractTemplatesByRoleId.__default__;
 		const templateText = roleTemplate || defaultTemplate;
 		if (templateText) {
-			const syncedTemplateText = syncDynamicContractClauses(templateText, draft.personal, draft.employment, companyDisplayName, signatoryPersonName);
+			const templateStr = typeof templateText === "string" ? templateText : (templateText as any).title + "\n" + (templateText as any).clauses?.map((c: any) => c.title + "\n" + c.body).join("\n\n") || "";
+			const syncedTemplateText = syncDynamicContractClauses(templateStr, draft.personal, draft.employment, companyDisplayName, signatoryPersonName, onboardingSettings.signatoryCompanyAddress, onboardingSettings.signatoryCompanyNIB, onboardingSettings.signatoryPersonTitle, onboardingSettings.signatoryLocation);
 			return {
 				mode: "template" as const,
 				title: `Perjanjian Kerja ${draft.employment.roleName || ""}`,

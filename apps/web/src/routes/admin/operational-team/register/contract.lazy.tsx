@@ -25,6 +25,8 @@ import { compressFileToLimit, dataURLtoBlob, isOversized } from "@/lib/image-com
 import { createClient } from "@/lib/client";
 import {
 	buildEmployeeContractTemplate,
+	buildContractVariableContext,
+	replaceContractVariables,
 	clausesToPlainText,
 	type EmployeeContractClause,
 	type EmployeeContractDraft,
@@ -32,6 +34,8 @@ import {
 import {
 	getRoleSalaryDefaults,
 	normalizeEmployeeOnboardingSettings,
+	ContractTemplateHelpers,
+	ContractTemplateValue,
 	type EmployeeOnboardingSettings,
 } from "@/lib/employee-onboarding-settings";
 
@@ -120,6 +124,16 @@ export default function AdminContractPage() {
 	const [signatoryNameLocal, setSignatoryNameLocal] = useState(onboardingSettings.signatoryName || "Djiwa Tentram Cafe & Resto");
 	const [signatoryPersonNameLocal, setSignatoryPersonNameLocal] = useState(onboardingSettings.signatoryPersonName || "");
 	const [signatorySigUrlLocal, setSignatorySigUrlLocal] = useState(onboardingSettings.signatorySignatureUrl || "");
+	const [companyAddressLocal, setCompanyAddressLocal] = useState(onboardingSettings.signatoryCompanyAddress || "");
+	const [companyNIBLocal, setCompanyNIBLocal] = useState(onboardingSettings.signatoryCompanyNIB || "");
+	const [personTitleLocal, setPersonTitleLocal] = useState(onboardingSettings.signatoryPersonTitle || "");
+	const [signatoryLocationLocal, setSignatoryLocationLocal] = useState(onboardingSettings.signatoryLocation || "");
+	const [showClauseLibrary, setShowClauseLibrary] = useState(false);
+	const [showTestPreview, setShowTestPreview] = useState(false);
+	const [testPreviewName, setTestPreviewName] = useState("");
+	const [testPreviewNIK, setTestPreviewNIK] = useState("");
+	const [testPreviewAddress, setTestPreviewAddress] = useState("");
+	const [selectedEmploymentType, setSelectedEmploymentType] = useState("full_time");
 
 	useEffect(() => {
 		setSignatoryNameLocal(onboardingSettings.signatoryName || "Djiwa Tentram Cafe & Resto");
@@ -132,6 +146,22 @@ export default function AdminContractPage() {
 	useEffect(() => {
 		setSignatorySigUrlLocal(onboardingSettings.signatorySignatureUrl || "");
 	}, [onboardingSettings.signatorySignatureUrl]);
+
+	useEffect(() => {
+		setCompanyAddressLocal(onboardingSettings.signatoryCompanyAddress || "");
+	}, [onboardingSettings.signatoryCompanyAddress]);
+
+	useEffect(() => {
+		setCompanyNIBLocal(onboardingSettings.signatoryCompanyNIB || "");
+	}, [onboardingSettings.signatoryCompanyNIB]);
+
+	useEffect(() => {
+		setPersonTitleLocal(onboardingSettings.signatoryPersonTitle || "");
+	}, [onboardingSettings.signatoryPersonTitle]);
+
+	useEffect(() => {
+		setSignatoryLocationLocal(onboardingSettings.signatoryLocation || "");
+	}, [onboardingSettings.signatoryLocation]);
 
 	const selectedRole = useMemo(
 		() => roles.find((role: any) => String(role?._id) === selectedTemplateKey),
@@ -160,6 +190,41 @@ export default function AdminContractPage() {
 		clauses: draft.clauses,
 	}), [draft]);
 	const currentTemplateText = contractPreview.plainText;
+
+	/* ── Test data preview ── */
+	const testPreviewText = useMemo(() => {
+		if (!testPreviewName.trim()) return null;
+		const ctx = buildContractVariableContext(
+			{
+				fullName: testPreviewName,
+				phone: "",
+				identityNumber: testPreviewNIK || undefined,
+				address: testPreviewAddress || undefined,
+				birthDate: undefined,
+				placeOfBirth: undefined,
+			},
+			{
+				roleId: selectedRole?._id || "",
+				roleName: selectedRoleName === "Semua Jabatan" ? "[Jabatan]" : selectedRoleName,
+				startDate: new Date().toISOString().slice(0, 10),
+				employmentType: selectedEmploymentType as any,
+				location: onboardingSettings.defaultLocation || "Djiwa Tentram",
+				monthlySalary: selectedRole ? getRoleSalaryDefaults(selectedRole).monthlySalary : 0,
+				dailyAllowance: selectedRole ? getRoleSalaryDefaults(selectedRole).dailyAllowance : 0,
+				shiftRate: selectedRole ? getRoleSalaryDefaults(selectedRole).shiftRate : 0,
+				username: "",
+				slug: "",
+				contractDuration: 12,
+			},
+			companyDisplayName,
+			signatoryPersonNameLocal || companyDisplayName,
+			onboardingSettings.signatoryCompanyAddress,
+			onboardingSettings.signatoryCompanyNIB,
+			onboardingSettings.signatoryPersonTitle,
+			onboardingSettings.signatoryLocation,
+		);
+		return replaceContractVariables(currentTemplateText, ctx);
+	}, [testPreviewName, testPreviewNIK, testPreviewAddress, currentTemplateText, selectedRole, selectedRoleName, selectedEmploymentType, companyDisplayName, signatoryPersonNameLocal, onboardingSettings]);
 	const isDirty = normalizeLineBreaks(currentTemplateText) !== normalizeLineBreaks(persistedTemplate);
 
 	useEffect(() => {
@@ -295,6 +360,35 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 		}));
 	}, []);
 
+	/* ── Clause Library ── */
+	const CLAUSE_LIBRARY: { title: string; body: string }[] = [
+		{
+			title: "Pasal Kerahasiaan (Non-Disclosure)",
+			body: "Pihak Kedua wajib menjaga kerahasiaan seluruh data perusahaan, termasuk namun tidak terbatas pada resep, SOP, daftar pelanggan, strategi bisnis, dan informasi keuangan. Pelanggaran terhadap ketentuan ini dapat dikenakan sanksi sesuai peraturan perusahaan dan/atau tuntutan hukum yang berlaku.",
+		},
+		{
+			title: "Pasal Non-Compete",
+			body: "Pihak Kedua tidak diperkenankan bekerja atau terlibat dengan usaha sejenis yang berada dalam radius kompetitif yang ditetapkan perusahaan selama masa kerja dan 3 (tiga) bulan setelah berakhirnya hubungan kerja.",
+		},
+		{
+			title: "Pasal Lembur (Overtime)",
+			body: "Pihak Kedua diwajibkan bekerja lembur apabila diperlukan untuk memenuhi kebutuhan operasional. Lembur dihitung dan dikompensasikan sesuai dengan ketentuan yang berlaku di perusahaan dan peraturan perundang-undangan ketenagakerjaan.",
+		},
+		{
+			title: "Pasal Disiplin & Sanksi",
+			body: "Pelanggaran terhadap tata tertib dan SOP perusahaan akan dikenakan sanksi bertahap mulai dari surat peringatan (SP1, SP2, SP3) hingga pemutusan hubungan kerja untuk pelanggaran berat. Keputusan sanksi bersifat final dan mengikat.",
+		},
+		{
+			title: "Pasal Masa Percobaan (Probation)",
+			body: "Pihak Kedua menjalani masa percobaan selama 3 (tiga) bulan terhitung sejak tanggal mulai kerja. Selama masa percobaan, kedua pihak berhak mengakhiri hubungan kerja tanpa pemberitahuan terlebih dahulu. Setelah masa percobaan berakhir dan dinyatakan lulus, Pihak Kedua akan diangkat menjadi karyawan tetap.",
+		},
+		{
+			title: "Pasal Cuti & Izin",
+			body: "Pihak Kedua berhak atas cuti tahunan sebanyak 12 (dua belas) hari kerja setelah bekerja selama 12 (dua belas) bulan berturut-turut. Izin tidak masuk kerja karena alasan darurat dapat diberikan dengan pemberitahuan minimal 1 (satu) jam sebelum jam kerja dimulai.",
+		},
+	];
+
+
 	async function saveTemplate() {
 		if (!contractPreview.plainText.trim()) {
 			toast.error("Isi kontrak tidak boleh kosong");
@@ -302,18 +396,32 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 		}
 		setIsSaving(true);
 		try {
+			// Save as structured JSON
+			const templateValue: ContractTemplateValue = {
+				version: 2,
+				title: draft.title,
+				clauses: draft.clauses.map((c, i) => ({ ...c, order: i })),
+				metadata: {
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					updatedBy: "admin",
+				},
+				salaryFieldMappings: ["monthlyFixedSalary", "dailyAllowance", "baseShiftRate"],
+			};
 			const nextTemplates = {
 				...effectiveTemplates,
-				[selectedTemplateKey]: contractPreview.plainText,
+				[selectedTemplateKey]: templateValue,
 			};
 			const nextSettings = normalizeEmployeeOnboardingSettings({
 				...onboardingSettings,
 				contractTemplatesByRoleId: nextTemplates,
-				// Gunakan local state agar tidak menimpa nilai yang baru disimpan
-				// tapi belum sempat di-refresh ke onboardingSettings (race condition)
 				signatoryName: signatoryNameLocal,
 				signatoryPersonName: signatoryPersonNameLocal,
 				signatorySignatureUrl: signatorySigUrlLocal,
+				signatoryCompanyAddress: companyAddressLocal,
+				signatoryCompanyNIB: companyNIBLocal,
+				signatoryPersonTitle: personTitleLocal,
+				signatoryLocation: signatoryLocationLocal,
 			});
 			await updateSiteSettings({ employeeOnboarding: nextSettings });
 			setLocalTemplates(nextTemplates);
@@ -339,6 +447,10 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 				signatoryName: signatoryNameLocal,
 				signatoryPersonName: signatoryPersonNameLocal,
 				signatorySignatureUrl: signatorySigUrlLocal,
+				signatoryCompanyAddress: companyAddressLocal,
+				signatoryCompanyNIB: companyNIBLocal,
+				signatoryPersonTitle: personTitleLocal,
+				signatoryLocation: signatoryLocationLocal,
 			});
 			await updateSiteSettings({ employeeOnboarding: nextSettings });
 			setLocalTemplates(nextTemplates);
@@ -366,13 +478,21 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 		await saveSignatorySettings({ signatoryPersonName: name });
 	}
 
-	async function saveSignatorySettings(updates: { signatoryName?: string; signatoryPersonName?: string; signatorySignatureUrl?: string }) {
+	async function saveSignatorySettings(updates: {
+		signatoryName?: string; signatoryPersonName?: string; signatorySignatureUrl?: string;
+		signatoryCompanyAddress?: string; signatoryCompanyNIB?: string;
+		signatoryPersonTitle?: string; signatoryLocation?: string;
+	}) {
 		try {
 			const nextSettings = normalizeEmployeeOnboardingSettings({
 				...onboardingSettings,
 				signatoryName: signatoryNameLocal,
 				signatoryPersonName: signatoryPersonNameLocal,
 				signatorySignatureUrl: signatorySigUrlLocal,
+				signatoryCompanyAddress: companyAddressLocal,
+				signatoryCompanyNIB: companyNIBLocal,
+				signatoryPersonTitle: personTitleLocal,
+				signatoryLocation: signatoryLocationLocal,
 				...updates,
 			});
 			await updateSiteSettings({ employeeOnboarding: nextSettings });
@@ -620,14 +740,90 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 							</Button>
 						</div>
 					</div>
+						</div>
+					</div>
+					{/* ── New Signatory Fields ── */}
+					<div className="space-y-2">
+						<Label className="text-sm font-medium">Alamat Perusahaan</Label>
+						<Input
+							value={companyAddressLocal}
+							onChange={(e) => setCompanyAddressLocal(e.target.value)}
+							onBlur={() => {
+								if (companyAddressLocal !== onboardingSettings.signatoryCompanyAddress) {
+									saveSignatorySettings({ signatoryCompanyAddress: companyAddressLocal });
+								}
+							}}
+							placeholder="Jl. Contoh No. 123, Kota"
+							className="h-10"
+						/>
+					</div>
+					<div className="space-y-2">
+						<Label className="text-sm font-medium">NIB / NPWP Perusahaan</Label>
+						<Input
+							value={companyNIBLocal}
+							onChange={(e) => setCompanyNIBLocal(e.target.value)}
+							onBlur={() => {
+								if (companyNIBLocal !== onboardingSettings.signatoryCompanyNIB) {
+									saveSignatorySettings({ signatoryCompanyNIB: companyNIBLocal });
+								}
+							}}
+							placeholder="912000xxx"
+							className="h-10"
+						/>
+					</div>
+					<div className="space-y-2">
+						<Label className="text-sm font-medium">Jabatan Penandatangan</Label>
+						<Input
+							value={personTitleLocal}
+							onChange={(e) => setPersonTitleLocal(e.target.value)}
+							onBlur={() => {
+								if (personTitleLocal !== onboardingSettings.signatoryPersonTitle) {
+									saveSignatorySettings({ signatoryPersonTitle: personTitleLocal });
+								}
+							}}
+							placeholder="Direktur / HR Manager / Owner"
+							className="h-10"
+						/>
+					</div>
+					<div className="space-y-2">
+						<Label className="text-sm font-medium">Kota Penandatanganan</Label>
+						<Input
+							value={signatoryLocationLocal}
+							onChange={(e) => setSignatoryLocationLocal(e.target.value)}
+							onBlur={() => {
+								if (signatoryLocationLocal !== onboardingSettings.signatoryLocation) {
+									saveSignatorySettings({ signatoryLocation: signatoryLocationLocal });
+								}
+							}}
+							placeholder="Tangerang"
+							className="h-10"
+						/>
+					</div>
 				</CardContent>
 			</Card>
 
-			{/* ── Toolbar ── */}
+{/* ── Toolbar ── */}
 			<Card className="border-border/60">
 				<CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
 					<div className="flex items-center gap-3">
 						<Label className="shrink-0 text-sm font-medium">Template untuk</Label>
+						<Select
+							value={selectedEmploymentType}
+							onValueChange={(v) => {
+								if (isDirty && !window.confirm("Ganti tipe kerja? Perubahan belum disimpan.")) return;
+								setSelectedEmploymentType(v);
+							}}
+						>
+							<SelectTrigger className="w-44">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="full_time">Penuh Waktu</SelectItem>
+								<SelectItem value="probation">Masa Percobaan</SelectItem>
+								<SelectItem value="part_time">Paruh Waktu</SelectItem>
+								<SelectItem value="freelance">Freelance</SelectItem>
+							</SelectContent>
+						</Select>
 						<Select
 							value={selectedTemplateKey}
 							onValueChange={(nextKey) => {
@@ -717,6 +913,14 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 							<Button
 								size="sm"
 								variant="outline"
+								onClick={() => setShowClauseLibrary(!showClauseLibrary)}
+								type="button"
+							>
+								{showClauseLibrary ? "Tutup" : "Klausul Siap Pakai"}
+							</Button>
+							<Button
+								size="sm"
+								variant="outline"
 								onClick={addClause}
 								type="button"
 							>
@@ -761,6 +965,28 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 								))}
 							</div>
 						</ScrollArea>
+
+					{showClauseLibrary && (
+						<div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+							<h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Klausul Siap Pakai</h4>
+							<p className="text-[11px] text-muted-foreground">Klik untuk menambahkan klausul ke kontrak</p>
+							<div className="space-y-1.5">
+								{CLAUSE_LIBRARY.map((clause, idx) => (
+									<button
+										key={idx}
+										type="button"
+										className="w-full rounded-md border bg-background px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
+										onClick={() => {
+											setDraft((p) => ({ ...p, clauses: [...p.clauses, { title: clause.title, body: clause.body }] }));
+										}}
+									>
+										<span className="font-medium">{clause.title}</span>
+										<p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{clause.body}</p>
+									</button>
+								))}
+							</div>
+						</div>
+					)}
 					</div>
 				</div>
 
@@ -768,6 +994,48 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 
 				{/* Preview */}
 				<div className="flex-1 space-y-3 min-w-0">
+					{/* ── Test Data Preview Toggle ── */}
+					<div className="rounded-lg border p-3 space-y-2">
+						<button
+							type="button"
+							className="flex w-full items-center justify-between text-sm"
+							onClick={() => setShowTestPreview(!showTestPreview)}
+						>
+							<span className="font-medium">Preview dengan Data Uji</span>
+							<span className="text-xs text-muted-foreground">{showTestPreview ? "Sembunyikan" : "Tampilkan"}</span>
+						</button>
+						{showTestPreview && (
+							<div className="grid gap-3 sm:grid-cols-3">
+								<div className="space-y-1">
+									<label className="text-[11px] font-medium text-muted-foreground">Nama Karyawan</label>
+									<input
+										value={testPreviewName}
+										onChange={(e) => setTestPreviewName(e.target.value)}
+										placeholder="Contoh: Ahmad Fauzi"
+										className="h-8 w-full rounded-md border bg-background px-2 text-xs"
+									/>
+								</div>
+								<div className="space-y-1">
+									<label className="text-[11px] font-medium text-muted-foreground">NIK</label>
+									<input
+										value={testPreviewNIK}
+										onChange={(e) => setTestPreviewNIK(e.target.value)}
+										placeholder="16 digit"
+										className="h-8 w-full rounded-md border bg-background px-2 text-xs"
+									/>
+								</div>
+								<div className="space-y-1">
+									<label className="text-[11px] font-medium text-muted-foreground">Alamat</label>
+									<input
+										value={testPreviewAddress}
+										onChange={(e) => setTestPreviewAddress(e.target.value)}
+										placeholder="Alamat KTP"
+										className="h-8 w-full rounded-md border bg-background px-2 text-xs"
+									/>
+								</div>
+							</div>
+						)}
+					</div>
 					<div className="flex items-center justify-between">
 						<h3 className="text-sm font-semibold text-foreground">Pratinjau Kontrak</h3>
 						<div className="flex items-center gap-2">
@@ -779,8 +1047,8 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 						</div>
 					</div>
 		<ContractPreview
-						contract={contractPreview}
-						employeeName="[Nama Karyawan]"
+						contract={testPreviewText ? { ...contractPreview, plainText: testPreviewText, html: `<article><p>${testPreviewText.replace(/\n/g, "<br/>")}</p></article>` } : contractPreview}
+						employeeName={testPreviewName || "[Nama Karyawan]"}
 						companyName={companyDisplayName}
 						signatoryName={signatoryPersonNameLocal || companyDisplayName}
 						signatorySignatureUrl={signatorySigUrlLocal}
