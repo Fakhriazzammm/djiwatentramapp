@@ -507,7 +507,12 @@ Jangan tanya balik untuk klarifikasi jika maksudnya sudah jelas — langsung pil
                 confidence="high",
             )
 
-        # ── 2. Fallback ke SumoPod AI ─────────────────────────────
+        # ── 2. Multi-line manual expense pre-parser ─────────────────
+        multiline_result = self._parse_multiline_expense(text)
+        if multiline_result:
+            return multiline_result
+
+        # ── 3. Fallback ke SumoPod AI ─────────────────────────────
         return await self._call_sumopod(text_stripped)
 
     async def _fetch_context_data(self) -> str:
@@ -595,6 +600,136 @@ Jangan tanya balik untuk klarifikasi jika maksudnya sudah jelas — langsung pil
         self._context_cache["fetched_at"] = now
         return result
 
+    @staticmethod
+    @staticmethod
+    def _parse_multiline_expense(text: str) -> OrchestratorResult | None:
+        """Parse multi-line manual expense text with item list.
+
+        Detects format like:
+          @YummeFinanceAIbot pengelauran
+          Toko Merpati - 13 mei 2026
+
+          1kg Tepung Panir Mix  9.000
+          2 x 750ml Kecap Ikan 78.000
+          ...
+          Jumlah Rp. 501.600
+
+        Tidak cocok untuk OCR foto -- hanya untuk manual teks.
+        Returns OrchestratorResult jika berhasil, None jika tidak cocok.
+        """
+        text = text.strip()
+        lines = [l.strip() for l in text.split(chr(10)) if l.strip()]
+        if len(lines) < 3:
+            return None
+
+        # -- 1. Deteksi: apakah ini input manual pengeluaran? ------
+        text_lower = text.lower()
+        expense_keywords = ['pengeluaran', 'pengelauran', 'belanja',
+                            'expense', 'keluar', 'pembelian']
+        has_expense_kw = any(kw in text_lower for kw in expense_keywords)
+        has_mention = bool(re.search(r'@\w+', text))
+
+        # -- Item line regex ---------------------------------------
+        ITEM_RE = re.compile(
+            r'^(\d+(?:[.,]\d+)?)\s*'    # leading quantity
+            r'(.*?)'                       # name body (non-greedy)
+            r'\s+(\d+(?:\.\d{3})*(?:[.,]\d+)?)\s*$',  # trailing price
+            re.DOTALL,
+        )
+        _UNIT = '(?:ml|liter|l|kg|gram|gr|g|pcs|pack|ikat|bungkus|toros|botol|btl|kilo|kantong|dus|bal|krat|pax)'
+
+        def _clean_name(raw: str) -> str:
+            """Bersihkan nama item dari prefix seperti kg, x, size qty."""
+            n = raw.strip()
+            n = re.sub(r'^x\s+', '', n, flags=re.IGNORECASE)
+            n = re.sub(r'^' + _UNIT + r'\s+', '', n, flags=re.IGNORECASE)
+            n = re.sub(r'^\d+(?:[.,]\d+)?\s*' + _UNIT + r'\s+', '', n, flags=re.IGNORECASE)
+            n = re.sub(r'\s+', ' ', n).strip()
+            return n
+
+        total_extra = None
+        item_lines = []
+
+        for line in lines:
+            # Skip "Jumlah Rp." or "Total" lines
+            if re.match(r'^(?:jumlah|total|subtotal|grand\s*total)', line, re.IGNORECASE):
+                m = re.search(r'(\d+(?:\.\d{3})*(?:[.,]\d+)?)', line)
+                if m:
+                    total_extra = float(m.group(1).replace('.', ''))
+                continue
+            # Skip bare number lines (total on its own line)
+            if re.match(r'^\d+(?:\.\d{3})*(?:[.,]\d+)?\s*$', line):
+                total_extra = float(line.replace('.', ''))
+                continue
+            # Skip date-only lines (e.g. "14 mei 2026" or "13/05")
+            if re.match(r'^\d{1,2}\s+\w+\s+\d{4}$', line) or re.match(r'^\d{1,2}/\d{1,2}', line):
+                continue
+
+            m = ITEM_RE.match(line)
+            if m:
+                raw_name = m.group(2).strip()
+                if raw_name:
+                    qty = float(m.group(1).replace(',', '.'))
+                    name = _clean_name(raw_name)
+                    line_total = float(m.group(3).replace('.', ''))
+                    unit_price = round(line_total / qty, 2) if qty > 0 else line_total
+                    item_lines.append({
+                        'name': name[:120] if name else raw_name[:120],
+                        'qty': qty,
+                        'price': unit_price,
+                        'total': line_total,
+                    })
+
+        if not item_lines or not (has_expense_kw or has_mention):
+            return None
+
+        # -- 2. Extract merchant dari header -----------------------
+        first_idx = len(lines)
+        for i, line in enumerate(lines):
+            m = ITEM_RE.match(line)
+            if m and m.group(2).strip():
+                first_idx = i
+                break
+
+        header_parts = []
+        for hline in lines[:first_idx]:
+            cleaned = re.sub(r'@\S+\s*', '', hline)
+            cleaned = re.sub(r'(?:pengeluaran|pengelauran|belanja|expense|keluar)\s*', '', cleaned, flags=re.IGNORECASE)
+            cleaned = re.sub(r'\d{1,2}\s+\w+\s+\d{4}', '', cleaned)
+            cleaned = re.sub(r'\d{1,2}/\d{1,2}', '', cleaned)
+            cleaned = re.sub(r'[\-\u2013\u2014]', '', cleaned)
+            cleaned = cleaned.strip().strip(',').strip()
+            if cleaned and not re.match(r'^[\s\-\u2013\u2014]+$', cleaned):
+                header_parts.append(cleaned)
+        merchant = ' '.join(header_parts).strip() if header_parts else ''
+        # Guard: merchant should not be pure numbers/dates
+        if re.match(r'^[\d\s/\.\-:,\u2013\u2014]+$', merchant):
+            merchant = ''
+
+        # -- 3. Tentukan total -------------------------------------
+        final_total = total_extra if total_extra else round(sum(it['total'] for it in item_lines), 2)
+
+        # -- 4. Buat DESCRIPTION -----------------------------------
+        names_list = [it['name'] for it in item_lines]
+        description = 'Pembelian bahan: ' + ', '.join(names_list[:15])
+        if len(names_list) > 15:
+            description += ' +{} item'.format(len(names_list) - 15)
+
+        return OrchestratorResult(
+            action='record_expense',
+            amount=final_total,
+            category='bahan_makanan',
+            description=description,
+            merchant=merchant,
+            payment_method='CASH',
+            items=[{
+                'name': it['name'],
+                'qty': it['qty'],
+                'unit': '',
+                'price': it['price'],
+            } for it in item_lines],
+            confidence='high',
+        )
     async def _call_sumopod(self, text: str) -> OrchestratorResult:
         """Panggil SumoPod API untuk memahami input kompleks."""
         client = SumoPodClient(self.sumopod_api_key)
