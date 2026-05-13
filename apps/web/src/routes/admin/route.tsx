@@ -656,9 +656,9 @@ function AdminLayout() {
 							}`}
 						onClick={() => {
 							const profilePath = authUser?.slug 
-								? `/attendance/${authUser.slug}` 
+								? `/karyawan/${authUser.slug}` 
 								: (authUser as any)?.username 
-									? `/attendance/${(authUser as any).username}` 
+									? `/karyawan/${(authUser as any).username}` 
 									: "/attendance";
 							navigate({ to: profilePath as any });
 						}}
@@ -779,9 +779,9 @@ function AdminLayout() {
 								</DropdownMenuItem>
 								<DropdownMenuItem onClick={() => {
 									const profilePath = authUser?.slug 
-										? `/attendance/${authUser.slug}` 
+										? `/karyawan/${authUser.slug}` 
 										: (authUser as any)?.username 
-											? `/attendance/${(authUser as any).username}` 
+											? `/karyawan/${(authUser as any).username}` 
 											: "/attendance";
 									navigate({ to: profilePath as any });
 								}}>

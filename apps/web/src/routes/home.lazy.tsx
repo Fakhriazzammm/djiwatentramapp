@@ -481,7 +481,7 @@ function HomePage() {
 					{/* ── HEADER: Avatar + Identity + Logout ── */}
 					<div className="flex items-center gap-3 px-4 pt-4 pb-3">
 						<Link
-							to={user?.slug ? (`/attendance/${user.slug}` as any) : ("/attendance" as any)}
+							to={user?.slug ? (`/karyawan/${user.slug}` as any) : ("/attendance" as any)}
 							className="relative shrink-0 active:scale-95 transition-transform"
 						>
 							<div className="flex h-14 w-14 items-center justify-center rounded-[1.2rem] bg-gradient-to-br from-primary to-sky-400 text-xl font-black text-white shadow-md">
@@ -653,7 +653,7 @@ function HomePage() {
 						{/* Secondary actions */}
 						<div className="grid grid-cols-2 gap-2">
 							<Link
-								to={user?.slug ? (`/attendance/${user.slug}` as any) : ("/attendance" as any)}
+								to={user?.slug ? (`/karyawan/${user.slug}` as any) : ("/attendance" as any)}
 								className="flex items-center justify-center gap-1.5 rounded-xl border border-border/60 bg-background/70 py-2.5 text-[11px] font-bold text-foreground transition-all hover:bg-muted active:scale-95"
 							>
 								<User className="h-3.5 w-3.5 text-muted-foreground" />

@@ -41,7 +41,7 @@ const MONTHS = [
 ];
 
 function StaffProfilePage() {
-	const { username } = useParams({ from: "/attendance/$username" as any }) as { username: string };
+	const { username } = useParams({ from: "/karyawan/$username" as any }) as { username: string };
 	const navigate = useNavigate();
 	const { user: authUser, isAdmin, isAuthenticated, token } = useYumiAuth();
 	const requiresPinChange = Boolean(authUser?.requiresPinChange && authUser.slug === username);
@@ -397,7 +397,7 @@ function StaffProfilePage() {
 													setEditNewPassword("");
 													
 													if (editSlug !== username) {
-														navigate({ to: `/attendance/${editSlug}` as any, replace: true });
+														navigate({ to: `/profile/${editSlug}` as any, replace: true });
 													}
 												} catch (err: any) {
 													toast.error(err.message || "Gagal memperbarui profil");
@@ -603,6 +603,6 @@ function StaffProfilePage() {
 	);
 }
 
-export const Route = createLazyFileRoute("/attendance/$username" as any)({
+export const Route = createLazyFileRoute("/karyawan/$username" as any)({
 	component: StaffProfilePage,
 });

@@ -21,9 +21,10 @@ import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as KaryawanLoginRouteImport } from './routes/karyawan/login'
+import { Route as KaryawanUsernameRouteImport } from './routes/karyawan.$username'
 import { Route as HomeSectionRouteImport } from './routes/home.$section'
 import { Route as AttendanceStockOpnameRouteImport } from './routes/attendance/stock-opname'
-import { Route as AttendanceUsernameRouteImport } from './routes/attendance.$username'
 import { Route as AdminStockOverviewRouteImport } from './routes/admin/stock-overview'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminRecipeRouteImport } from './routes/admin/recipe'
@@ -124,6 +125,20 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() => import('./routes/admin/index.lazy').then((d) => d.Route))
+const KaryawanLoginRoute = KaryawanLoginRouteImport.update({
+  id: '/karyawan/login',
+  path: '/karyawan/login',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() =>
+  import('./routes/karyawan/login.lazy').then((d) => d.Route),
+)
+const KaryawanUsernameRoute = KaryawanUsernameRouteImport.update({
+  id: '/karyawan/$username',
+  path: '/karyawan/$username',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() =>
+  import('./routes/karyawan.$username.lazy').then((d) => d.Route),
+)
 const HomeSectionRoute = HomeSectionRouteImport.update({
   id: '/$section',
   path: '/$section',
@@ -135,13 +150,6 @@ const AttendanceStockOpnameRoute = AttendanceStockOpnameRouteImport.update({
   getParentRoute: () => AttendanceRoute,
 } as any).lazy(() =>
   import('./routes/attendance/stock-opname.lazy').then((d) => d.Route),
-)
-const AttendanceUsernameRoute = AttendanceUsernameRouteImport.update({
-  id: '/$username',
-  path: '/$username',
-  getParentRoute: () => AttendanceRoute,
-} as any).lazy(() =>
-  import('./routes/attendance.$username.lazy').then((d) => d.Route),
 )
 const AdminStockOverviewRoute = AdminStockOverviewRouteImport.update({
   id: '/stock-overview',
@@ -437,9 +445,10 @@ export interface FileRoutesByFullPath {
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/stock-overview': typeof AdminStockOverviewRoute
-  '/attendance/$username': typeof AttendanceUsernameRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
+  '/karyawan/$username': typeof KaryawanUsernameRoute
+  '/karyawan/login': typeof KaryawanLoginRoute
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
   '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
@@ -486,9 +495,10 @@ export interface FileRoutesByTo {
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/stock-overview': typeof AdminStockOverviewRoute
-  '/attendance/$username': typeof AttendanceUsernameRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
+  '/karyawan/$username': typeof KaryawanUsernameRoute
+  '/karyawan/login': typeof KaryawanLoginRoute
   '/admin': typeof AdminIndexRoute
   '/attendance': typeof AttendanceIndexRoute
   '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
@@ -541,9 +551,10 @@ export interface FileRoutesById {
   '/admin/recipe': typeof AdminRecipeRouteWithChildren
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/stock-overview': typeof AdminStockOverviewRoute
-  '/attendance/$username': typeof AttendanceUsernameRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/home/$section': typeof HomeSectionRoute
+  '/karyawan/$username': typeof KaryawanUsernameRoute
+  '/karyawan/login': typeof KaryawanLoginRoute
   '/admin/': typeof AdminIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
   '/admin/finance/accounting': typeof AdminFinanceAccountingRouteRoute
@@ -597,9 +608,10 @@ export interface FileRouteTypes {
     | '/admin/recipe'
     | '/admin/settings'
     | '/admin/stock-overview'
-    | '/attendance/$username'
     | '/attendance/stock-opname'
     | '/home/$section'
+    | '/karyawan/$username'
+    | '/karyawan/login'
     | '/admin/'
     | '/attendance/'
     | '/admin/finance/accounting'
@@ -646,9 +658,10 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/settings'
     | '/admin/stock-overview'
-    | '/attendance/$username'
     | '/attendance/stock-opname'
     | '/home/$section'
+    | '/karyawan/$username'
+    | '/karyawan/login'
     | '/admin'
     | '/attendance'
     | '/admin/finance/accounting'
@@ -700,9 +713,10 @@ export interface FileRouteTypes {
     | '/admin/recipe'
     | '/admin/settings'
     | '/admin/stock-overview'
-    | '/attendance/$username'
     | '/attendance/stock-opname'
     | '/home/$section'
+    | '/karyawan/$username'
+    | '/karyawan/login'
     | '/admin/'
     | '/attendance/'
     | '/admin/finance/accounting'
@@ -736,6 +750,8 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MenuRoute: typeof MenuRoute
   RegisterRoute: typeof RegisterRouteWithChildren
+  KaryawanUsernameRoute: typeof KaryawanUsernameRoute
+  KaryawanLoginRoute: typeof KaryawanLoginRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -824,6 +840,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/karyawan/login': {
+      id: '/karyawan/login'
+      path: '/karyawan/login'
+      fullPath: '/karyawan/login'
+      preLoaderRoute: typeof KaryawanLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/karyawan/$username': {
+      id: '/karyawan/$username'
+      path: '/karyawan/$username'
+      fullPath: '/karyawan/$username'
+      preLoaderRoute: typeof KaryawanUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/home/$section': {
       id: '/home/$section'
       path: '/$section'
@@ -836,13 +866,6 @@ declare module '@tanstack/react-router' {
       path: '/stock-opname'
       fullPath: '/attendance/stock-opname'
       preLoaderRoute: typeof AttendanceStockOpnameRouteImport
-      parentRoute: typeof AttendanceRoute
-    }
-    '/attendance/$username': {
-      id: '/attendance/$username'
-      path: '/$username'
-      fullPath: '/attendance/$username'
-      preLoaderRoute: typeof AttendanceUsernameRouteImport
       parentRoute: typeof AttendanceRoute
     }
     '/admin/stock-overview': {
@@ -1247,13 +1270,11 @@ const BrandSlugRouteWithChildren = BrandSlugRoute._addFileChildren(
 )
 
 interface AttendanceRouteChildren {
-  AttendanceUsernameRoute: typeof AttendanceUsernameRoute
   AttendanceStockOpnameRoute: typeof AttendanceStockOpnameRoute
   AttendanceIndexRoute: typeof AttendanceIndexRoute
 }
 
 const AttendanceRouteChildren: AttendanceRouteChildren = {
-  AttendanceUsernameRoute: AttendanceUsernameRoute,
   AttendanceStockOpnameRoute: AttendanceStockOpnameRoute,
   AttendanceIndexRoute: AttendanceIndexRoute,
 }
@@ -1296,6 +1317,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MenuRoute: MenuRoute,
   RegisterRoute: RegisterRouteWithChildren,
+  KaryawanUsernameRoute: KaryawanUsernameRoute,
+  KaryawanLoginRoute: KaryawanLoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
