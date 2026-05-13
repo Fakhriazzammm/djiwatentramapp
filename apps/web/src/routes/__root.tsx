@@ -17,7 +17,10 @@ function RootContent() {
 	useEffect(() => {
 		if (isLoading) return;
 
-		const isPublicPage = location.pathname === "/login" || location.pathname === "/register";
+		const isPublicPage =
+			location.pathname === "/login" ||
+			location.pathname === "/register" ||
+			location.pathname.startsWith("/register/selesai/");
 		
 		if (!isAuthenticated) {
 			if (location.pathname === "/register" && siteSettings?.employeeOnboarding?.registrationEnabled === false) {
