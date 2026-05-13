@@ -5281,11 +5281,11 @@ function InventoryTable({
 											type="number"
 											value={getPriceDraft(row)}
 										/>
-	\t\t\t\t\t\t\t\t<div className="text-right">
-	\t\t\t\t\t\t\t\t\t<p className="text-[9px] text-muted-foreground/70">
-	\t\t\t\t\t\t\t\t\t\tper {row.preferredPurchaseUnit || row.unit || "unit"}
-	\t\t\t\t\t\t\t\t\t</p>
-	\t\t\t\t\t\t\t\t</div>
+									<div className="text-right">
+										<p className="text-[9px] text-muted-foreground/70">
+											per {row.preferredPurchaseUnit || row.unit || "unit"}
+										</p>
+									</div>
 									</td>
 									<td className="px-2 py-1.5 align-middle text-right text-[11px] font-semibold text-foreground/80 font-mono">
 										{formatCurrencyIDR((Number(inline.quantity) || 0) * (row.lastPurchasePrice || 0))}
