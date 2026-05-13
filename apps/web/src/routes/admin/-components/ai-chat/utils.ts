@@ -136,7 +136,7 @@ export function generateQuickActions(userMsg: string, aiResponse: string): Quick
 				{ word: "biaya overhead", weight: 3 }, { word: "harga beli", weight: 2 },
 			],
 			buttons: [
-				{ label: "HPP Kalkulator", icon: "🧮", variant: "misc", actionType: "navigate", href: "/admin/hpp-calculator" },
+				{ label: "HPP", icon: "🧮", variant: "misc", actionType: "navigate", href: "/admin/recipe/hpp" },
 				{ label: "Analisis Margin", icon: "📊", variant: "misc", actionType: "sendPrompt", prompt: "Tampilkan analisis margin semua produk, mana yang marginnya rendah?" },
 			],
 		},

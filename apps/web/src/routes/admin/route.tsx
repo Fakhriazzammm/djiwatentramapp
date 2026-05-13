@@ -66,7 +66,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/products": "Produk",
 	"/admin/recipe": "Resep",
 	"/admin/recipe/view": "Buku Resep",
-	"/admin/recipe/hpp": "HPP Resep",
+	"/admin/recipe/hpp": "HPP",
 	"/admin/inventory": "Inventaris",
 	"/admin/stock-overview": "Ringkasan Stok",
 	"/admin/finance": "Keuangan",
@@ -76,7 +76,6 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/finance/accounting": "Chart of Accounts",
 	"/admin/orders": "Pesanan",
 	"/admin/discounts": "Promosi",
-	"/admin/hpp-calculator": "HPP Kalkulator",
 	"/admin/ai-chat": "Yumi AI",
 	"/admin/settings": "Pengaturan",
 	"/admin/operational-team": "Tim Operasional",
@@ -118,7 +117,6 @@ const MORE_MENU_PATHS = [
 	"/admin/inventory",
 	"/admin/stock-overview",
 	"/admin/discounts",
-	"/admin/hpp-calculator",
 	"/admin/forecasting",
 	"/admin/booking",
 	"/admin/kitchen",
@@ -141,7 +139,7 @@ const QUICK_MENU_SECTIONS = [
 		items: [
 			{ to: "/admin/products", icon: Package, label: "Produk", permission: "products:manage" },
 			{ to: "/admin/recipe", icon: BookOpen, label: "Resep", permission: "inventory:manage" },
-			{ to: "/admin/recipe/hpp", icon: Calculator, label: "HPP Resep", permission: "inventory:manage" },
+			{ to: "/admin/recipe/hpp", icon: Calculator, label: "HPP", permission: "inventory:manage" },
 			{ to: "/admin/inventory", icon: Archive, label: "Inventaris", permission: "inventory:manage" },
 			{ to: '/admin/stock-overview', icon: BarChart3, label: 'Ringkasan Stok', permission: 'inventory:manage' },
 			{ to: "/admin/booking", icon: Calendar, label: "Booking", permission: "orders:view" },
@@ -155,7 +153,7 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/finance/accounting", icon: BookOpen, label: "Akuntansi", permission: "finance:view" },
 			{ to: "/admin/finance/reports", icon: FileBarChart, label: "Laporan", permission: "finance:view" },
 			{ to: "/admin/finance/shift-reports", icon: Users, label: "Laporan Shift", permission: "finance:view" },
-			{ to: "/admin/hpp-calculator", icon: Calculator, label: "HPP", permission: "finance:view" },
+			{ to: "/admin/recipe/hpp", icon: Calculator, label: "HPP", permission: "finance:view" },
 		],
 	},
 	{
@@ -198,7 +196,6 @@ const FINANCE_PATHS = [
 	"/admin/finance/shift-reports",
 	"/admin/finance/transactions",
 	"/admin/finance/accounting",
-	"/admin/hpp-calculator",
 ];
 
 const OPERATIONAL_TEAM_PATHS = [
@@ -433,7 +430,7 @@ function AdminLayout() {
 					<DesktopNavLink
 						icon={<Calculator />}
 						isCollapsed={isCollapsed}
-						label="HPP Resep"
+						label="HPP"
 						to="/admin/recipe/hpp"
 						permission="inventory:manage"
 					/>
@@ -543,8 +540,8 @@ function AdminLayout() {
 							<DesktopNavLink
 								icon={<Calculator />}
 								isCollapsed={isCollapsed}
-								label="HPP Kalkulator"
-								to="/admin/hpp-calculator"
+								label="HPP"
+								to="/admin/recipe/hpp"
 								permission="finance:view"
 							/>
 						</>
@@ -616,8 +613,8 @@ function AdminLayout() {
 											/>
 											<DesktopSubNavLink
 												icon={<Calculator />}
-												label="HPP Kalkulator"
-												to="/admin/hpp-calculator"
+												label="HPP"
+												to="/admin/recipe/hpp"
 												permission="finance:view"
 											/>
 										</div>

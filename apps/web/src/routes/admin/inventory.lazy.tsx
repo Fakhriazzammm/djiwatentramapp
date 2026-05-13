@@ -4927,9 +4927,9 @@ function InventoryTable({
 						<col className="w-[6%]" />
 						<col className="w-[8%]" />
 						<col className="w-[7%]" />
-						<col className="w-[7%]" />
 						<col className="w-[8%]" />
 						<col className="w-[6%]" />
+						<col className="w-[7%]" />
 						<col className="w-[11rem]" />
 					</colgroup>
 					<thead className="bg-card">
@@ -4982,9 +4982,9 @@ function InventoryTable({
 										))}
 								</div>
 							</th>
-							<th className="px-2 py-1.5 font-semibold text-right">Nilai Stok</th>
 							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px]">Harga/Unit</th>
 							<th className="px-2 py-1.5 font-semibold">Status</th>
+							<th className="px-2 py-1.5 text-right">Nilai Stok</th>
 							<th className="px-2 py-1.5 text-right font-semibold">Aksi</th>
 						</tr>
 					</thead>
@@ -5134,17 +5134,14 @@ function InventoryTable({
 									<td className="p-4">
 										<Skeleton className="h-4 w-20" />
 									</td>
-									<td className="p-4">
-										<Skeleton className="mx-auto h-4 w-16" />
-									</td>
 									<td className="px-2 py-1.5 align-middle text-right text-[11px] font-semibold text-foreground/80 font-mono">
 										-
 									</td>
 									<td className="p-4">
 										<Skeleton className="mx-auto h-4 w-14" />
 									</td>
-									<td className="p-4 text-center">
-										<Skeleton className="mx-auto h-4 w-14" />
+									<td className="p-4">
+										<Skeleton className="mx-auto h-4 w-16" />
 									</td>
 									<td className="p-4 text-right">
 										<Skeleton className="ml-auto h-8 w-24 rounded-lg" />
@@ -5287,9 +5284,6 @@ function InventoryTable({
 										</p>
 									</div>
 									</td>
-									<td className="px-2 py-1.5 align-middle text-right text-[11px] font-semibold text-foreground/80 font-mono">
-										{formatCurrencyIDR((Number(inline.quantity) || 0) * (row.lastPurchasePrice || 0))}
-									</td>
 									<td className="px-2 py-1.5 align-middle text-center text-[10px] text-muted-foreground/60">
 										{(() => {
 											const costEntry = inventoryCosts?.[row.inventoryId];
@@ -5318,6 +5312,9 @@ function InventoryTable({
 												</span>
 											</div>
 										</td>
+									<td className="px-2 py-1.5 align-middle text-right text-[11px] font-semibold text-foreground/80 font-mono">
+										{formatCurrencyIDR((Number(inline.quantity) || 0) * (row.lastPurchasePrice || 0))}
+									</td>
 									<td className="px-2 py-1.5 align-middle text-right">
 										<div className="relative flex items-center justify-end">
 											<button
