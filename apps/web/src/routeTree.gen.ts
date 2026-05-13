@@ -51,6 +51,7 @@ import { Route as AdminRecipeViewRouteImport } from './routes/admin/recipe.view'
 import { Route as AdminRecipeHppRouteImport } from './routes/admin/recipe/hpp'
 import { Route as AdminOperationalTeamRegisterRouteImport } from './routes/admin/operational-team/register'
 import { Route as AdminOperationalTeamPayrollRouteImport } from './routes/admin/operational-team/payroll'
+import { Route as AdminOperationalTeamContractsRouteImport } from './routes/admin/operational-team/contracts'
 import { Route as AdminOperationalTeamAttendanceRouteImport } from './routes/admin/operational-team/attendance'
 import { Route as AdminFinanceShiftReportsRouteImport } from './routes/admin/finance/shift-reports'
 import { Route as AdminFinanceTransactionsRouteRouteImport } from './routes/admin/finance/transactions/route'
@@ -58,6 +59,7 @@ import { Route as AdminFinanceReportsRouteRouteImport } from './routes/admin/fin
 import { Route as AdminFinanceAccountingRouteRouteImport } from './routes/admin/finance/accounting/route'
 import { Route as AdminOperationalTeamRegisterOnboardingRouteImport } from './routes/admin/operational-team/register/onboarding'
 import { Route as AdminOperationalTeamRegisterContractRouteImport } from './routes/admin/operational-team/register/contract'
+import { Route as AdminOperationalTeamRegisterApprovalRouteImport } from './routes/admin/operational-team/register/approval'
 import { Route as AdminOperationalTeamRegisterApplicationRegistrationNumberRouteImport } from './routes/admin/operational-team/register.application.$registrationNumber'
 
 const RegisterRoute = RegisterRouteImport.update({
@@ -320,6 +322,16 @@ const AdminOperationalTeamPayrollRoute =
   } as any).lazy(() =>
     import('./routes/admin/operational-team/payroll.lazy').then((d) => d.Route),
   )
+const AdminOperationalTeamContractsRoute =
+  AdminOperationalTeamContractsRouteImport.update({
+    id: '/contracts',
+    path: '/contracts',
+    getParentRoute: () => AdminOperationalTeamRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/contracts.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 const AdminOperationalTeamAttendanceRoute =
   AdminOperationalTeamAttendanceRouteImport.update({
     id: '/attendance',
@@ -371,6 +383,16 @@ const AdminOperationalTeamRegisterContractRoute =
     getParentRoute: () => AdminOperationalTeamRegisterRoute,
   } as any).lazy(() =>
     import('./routes/admin/operational-team/register/contract.lazy').then(
+      (d) => d.Route,
+    ),
+  )
+const AdminOperationalTeamRegisterApprovalRoute =
+  AdminOperationalTeamRegisterApprovalRouteImport.update({
+    id: '/approval',
+    path: '/approval',
+    getParentRoute: () => AdminOperationalTeamRegisterRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/register/approval.lazy').then(
       (d) => d.Route,
     ),
   )
@@ -426,6 +448,7 @@ export interface FileRoutesByFullPath {
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRoute
+  '/admin/operational-team/contracts': typeof AdminOperationalTeamContractsRoute
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollRoute
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
@@ -433,6 +456,7 @@ export interface FileRoutesByFullPath {
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
+  '/admin/operational-team/register/approval': typeof AdminOperationalTeamRegisterApprovalRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
   '/admin/operational-team/register/application/$registrationNumber': typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
@@ -473,6 +497,7 @@ export interface FileRoutesByTo {
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRoute
+  '/admin/operational-team/contracts': typeof AdminOperationalTeamContractsRoute
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollRoute
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
@@ -480,6 +505,7 @@ export interface FileRoutesByTo {
   '/admin/finance': typeof AdminFinanceIndexRoute
   '/admin/operational-team': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe': typeof AdminRecipeIndexRoute
+  '/admin/operational-team/register/approval': typeof AdminOperationalTeamRegisterApprovalRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
   '/admin/operational-team/register/application/$registrationNumber': typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
@@ -526,6 +552,7 @@ export interface FileRoutesById {
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRoute
+  '/admin/operational-team/contracts': typeof AdminOperationalTeamContractsRoute
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollRoute
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
@@ -533,6 +560,7 @@ export interface FileRoutesById {
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
+  '/admin/operational-team/register/approval': typeof AdminOperationalTeamRegisterApprovalRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
   '/admin/operational-team/register/application/$registrationNumber': typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
@@ -580,6 +608,7 @@ export interface FileRouteTypes {
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
     | '/admin/operational-team/attendance'
+    | '/admin/operational-team/contracts'
     | '/admin/operational-team/payroll'
     | '/admin/operational-team/register'
     | '/admin/recipe/hpp'
@@ -587,6 +616,7 @@ export interface FileRouteTypes {
     | '/admin/finance/'
     | '/admin/operational-team/'
     | '/admin/recipe/'
+    | '/admin/operational-team/register/approval'
     | '/admin/operational-team/register/contract'
     | '/admin/operational-team/register/onboarding'
     | '/admin/operational-team/register/application/$registrationNumber'
@@ -627,6 +657,7 @@ export interface FileRouteTypes {
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
     | '/admin/operational-team/attendance'
+    | '/admin/operational-team/contracts'
     | '/admin/operational-team/payroll'
     | '/admin/operational-team/register'
     | '/admin/recipe/hpp'
@@ -634,6 +665,7 @@ export interface FileRouteTypes {
     | '/admin/finance'
     | '/admin/operational-team'
     | '/admin/recipe'
+    | '/admin/operational-team/register/approval'
     | '/admin/operational-team/register/contract'
     | '/admin/operational-team/register/onboarding'
     | '/admin/operational-team/register/application/$registrationNumber'
@@ -679,6 +711,7 @@ export interface FileRouteTypes {
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
     | '/admin/operational-team/attendance'
+    | '/admin/operational-team/contracts'
     | '/admin/operational-team/payroll'
     | '/admin/operational-team/register'
     | '/admin/recipe/hpp'
@@ -686,6 +719,7 @@ export interface FileRouteTypes {
     | '/admin/finance/'
     | '/admin/operational-team/'
     | '/admin/recipe/'
+    | '/admin/operational-team/register/approval'
     | '/admin/operational-team/register/contract'
     | '/admin/operational-team/register/onboarding'
     | '/admin/operational-team/register/application/$registrationNumber'
@@ -1000,6 +1034,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOperationalTeamPayrollRouteImport
       parentRoute: typeof AdminOperationalTeamRoute
     }
+    '/admin/operational-team/contracts': {
+      id: '/admin/operational-team/contracts'
+      path: '/contracts'
+      fullPath: '/admin/operational-team/contracts'
+      preLoaderRoute: typeof AdminOperationalTeamContractsRouteImport
+      parentRoute: typeof AdminOperationalTeamRoute
+    }
     '/admin/operational-team/attendance': {
       id: '/admin/operational-team/attendance'
       path: '/attendance'
@@ -1049,6 +1090,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOperationalTeamRegisterContractRouteImport
       parentRoute: typeof AdminOperationalTeamRegisterRoute
     }
+    '/admin/operational-team/register/approval': {
+      id: '/admin/operational-team/register/approval'
+      path: '/approval'
+      fullPath: '/admin/operational-team/register/approval'
+      preLoaderRoute: typeof AdminOperationalTeamRegisterApprovalRouteImport
+      parentRoute: typeof AdminOperationalTeamRegisterRoute
+    }
     '/admin/operational-team/register/application/$registrationNumber': {
       id: '/admin/operational-team/register/application/$registrationNumber'
       path: '/application/$registrationNumber'
@@ -1079,6 +1127,7 @@ const AdminFinanceRouteRouteWithChildren =
   AdminFinanceRouteRoute._addFileChildren(AdminFinanceRouteRouteChildren)
 
 interface AdminOperationalTeamRegisterRouteChildren {
+  AdminOperationalTeamRegisterApprovalRoute: typeof AdminOperationalTeamRegisterApprovalRoute
   AdminOperationalTeamRegisterContractRoute: typeof AdminOperationalTeamRegisterContractRoute
   AdminOperationalTeamRegisterOnboardingRoute: typeof AdminOperationalTeamRegisterOnboardingRoute
   AdminOperationalTeamRegisterApplicationRegistrationNumberRoute: typeof AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
@@ -1086,6 +1135,8 @@ interface AdminOperationalTeamRegisterRouteChildren {
 
 const AdminOperationalTeamRegisterRouteChildren: AdminOperationalTeamRegisterRouteChildren =
   {
+    AdminOperationalTeamRegisterApprovalRoute:
+      AdminOperationalTeamRegisterApprovalRoute,
     AdminOperationalTeamRegisterContractRoute:
       AdminOperationalTeamRegisterContractRoute,
     AdminOperationalTeamRegisterOnboardingRoute:
@@ -1101,6 +1152,7 @@ const AdminOperationalTeamRegisterRouteWithChildren =
 
 interface AdminOperationalTeamRouteChildren {
   AdminOperationalTeamAttendanceRoute: typeof AdminOperationalTeamAttendanceRoute
+  AdminOperationalTeamContractsRoute: typeof AdminOperationalTeamContractsRoute
   AdminOperationalTeamPayrollRoute: typeof AdminOperationalTeamPayrollRoute
   AdminOperationalTeamRegisterRoute: typeof AdminOperationalTeamRegisterRouteWithChildren
   AdminOperationalTeamIndexRoute: typeof AdminOperationalTeamIndexRoute
@@ -1108,6 +1160,7 @@ interface AdminOperationalTeamRouteChildren {
 
 const AdminOperationalTeamRouteChildren: AdminOperationalTeamRouteChildren = {
   AdminOperationalTeamAttendanceRoute: AdminOperationalTeamAttendanceRoute,
+  AdminOperationalTeamContractsRoute: AdminOperationalTeamContractsRoute,
   AdminOperationalTeamPayrollRoute: AdminOperationalTeamPayrollRoute,
   AdminOperationalTeamRegisterRoute:
     AdminOperationalTeamRegisterRouteWithChildren,
