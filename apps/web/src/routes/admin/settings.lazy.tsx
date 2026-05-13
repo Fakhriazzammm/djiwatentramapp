@@ -822,8 +822,7 @@ export function SettingsPage({
 			s.monthlyFixedSalary||0, s.totalShiftSalary||0, s.totalAllowance||0,
 			s.totalOvertimeBonus||0, s.totalTargetBonus||0, s.totalPenalty||0, s.netSalary||0,
 		]);
-		const csv = [headers.join(","), ...rows.map((r: any) => r.join(","))].join("
-");
+		const csv = [headers.join(","), ...rows.map((r: any) => r.join(","))].join("\n");
 		const blob = new Blob([csv], { type: "text/csv" });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement("a");

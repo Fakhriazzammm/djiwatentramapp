@@ -740,8 +740,6 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 							</Button>
 						</div>
 					</div>
-						</div>
-					</div>
 					{/* ── New Signatory Fields ── */}
 					<div className="space-y-2">
 						<Label className="text-sm font-medium">Alamat Perusahaan</Label>
