@@ -28,6 +28,7 @@ import {
 	PanelRight,
 	Minus,
 	Plus,
+	RotateCw,
 	Search,
 	Settings2,
 	ShieldAlert,
@@ -809,6 +810,8 @@ export const Route = createLazyFileRoute("/admin/inventory")({
 
 function InventoryPage() {
 	const [searchQuery, setSearchQuery] = useState("");
+	const [lastRefreshedAt, setLastRefreshedAt] = useState(new Date());
+
 	const inventory = useHybridInventory();
 	const allProducts = useHybridAllProducts();
 	const categories = useHybridCategories();
@@ -820,6 +823,12 @@ function InventoryPage() {
 	const workspace = useHybridInventoryWorkspace( {
 		daysWindow: 30,
 	}) as InventoryWorkspaceData | undefined;
+	// Update last refreshed timestamp when workspace data loads
+	useEffect(() => {
+		if (workspace !== undefined) {
+			setLastRefreshedAt(new Date());
+		}
+	}, [workspace]);
 	const realtimePriceMonitor = useHybridRealtimePriceMonitor( {
 		limit: 300,
 		search: searchQuery || undefined,
@@ -5037,7 +5046,24 @@ function InventoryTable({
 							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px]">Harga/Unit</th>
 							<th className="px-2 py-1.5 font-semibold">Status</th>
 							<th className="px-2 py-1.5 text-right">Nilai Stok</th>
-							<th className="px-2 py-1.5 text-right font-semibold">Aksi</th>
+							<th className="px-2 py-1.5 text-right font-semibold">
+								<div className="flex flex-col items-end">
+									<div className="flex items-center gap-0.5">
+										<button
+											className="rounded p-0.5 text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors"
+											onClick={() => { triggerHybridRefresh(); triggerHybridRefresh(); setLastRefreshedAt(new Date()); }}
+											title="Refresh data bahan baku"
+											type="button"
+										>
+											<RotateCw className="h-3 w-3" />
+										</button>
+										<span>Aksi</span>
+									</div>
+									<span className="text-[7px] text-muted-foreground/50 whitespace-nowrap">
+										{lastRefreshedAt.toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+									</span>
+								</div>
+							</th>
 						</tr>
 					</thead>
 					<tbody className="divide-y divide-border">
