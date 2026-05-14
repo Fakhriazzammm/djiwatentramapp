@@ -816,42 +816,42 @@ async function fetchInventory() {
 	const { data, error } = await supabase
 		.from("pos_inventory")
 		.select("*")
-		.order("ingredientName", { ascending: true });
+		.order("ingredient_name", { ascending: true });
 
 	if (error) throw error;
 
 	return (data ?? []).map((row: any) => ({
-		_id: row.source_id,
-		ingredientName: row.ingredient_name ?? "",
+		_id: row._id ?? row.source_id,
+		ingredientName: row.ingredientName ?? row.ingredient_name ?? "",
 		unit: row.unit ?? "",
 		quantity: Number(row.quantity ?? 0),
-		lowStockThreshold: Number(row.low_stock_threshold ?? 0),
-		displayUnit: row.display_unit ?? undefined,
+		lowStockThreshold: Number(row.lowStockThreshold ?? row.low_stock_threshold ?? 0),
+		displayUnit: row.displayUnit ?? row.display_unit ?? undefined,
 		conversionFactor:
-			row.conversion_factor === null || row.conversion_factor === undefined
+			(row.conversionFactor ?? row.conversion_factor) === null || (row.conversionFactor ?? row.conversion_factor) === undefined
 				? undefined
-				: Number(row.conversion_factor),
-		unitConversions: Array.isArray(row.unit_conversions)
-			? row.unit_conversions
+				: Number(row.conversionFactor ?? row.conversion_factor),
+		unitConversions: Array.isArray(row.unitConversions ?? row.unit_conversions)
+			? (row.unitConversions ?? row.unit_conversions)
 			: undefined,
-		baseRecipeId: row.base_recipe_source_id ?? undefined,
-		defaultBrandName: row.default_brand_name ?? undefined,
-		preferredStoreId: row.preferred_store_source_id ?? undefined,
+		baseRecipeId: row.baseRecipeId ?? row.base_recipe_source_id ?? undefined,
+		defaultBrandName: row.defaultBrandName ?? row.default_brand_name ?? undefined,
+		preferredStoreId: row.preferredStoreId ?? row.preferred_store_source_id ?? undefined,
 		preferredPurchaseQuantity:
-			row.preferred_purchase_quantity === null ||
-			row.preferred_purchase_quantity === undefined
+			(row.preferredPurchaseQuantity ?? row.preferred_purchase_quantity) === null ||
+			(row.preferredPurchaseQuantity ?? row.preferred_purchase_quantity) === undefined
 				? undefined
-				: Number(row.preferred_purchase_quantity),
-		preferredPurchaseUnit: row.preferred_purchase_unit ?? undefined,
+				: Number(row.preferredPurchaseQuantity ?? row.preferred_purchase_quantity),
+		preferredPurchaseUnit: row.preferredPurchaseUnit ?? row.preferred_purchase_unit ?? undefined,
 		lastPurchasePrice:
-			row.last_purchase_price === null || row.last_purchase_price === undefined
+			(row.lastPurchasePrice ?? row.last_purchase_price) === null || (row.lastPurchasePrice ?? row.last_purchase_price) === undefined
 				? undefined
-				: Number(row.last_purchase_price),
+				: Number(row.lastPurchasePrice ?? row.last_purchase_price),
 		lastPurchaseAt:
-			row.last_purchase_at === null || row.last_purchase_at === undefined
+			(row.lastPurchaseAt ?? row.last_purchase_at) === null || (row.lastPurchaseAt ?? row.last_purchase_at) === undefined
 				? undefined
-				: Number(row.last_purchase_at),
-		lastPurchaseStoreId: row.last_purchase_store_source_id ?? undefined,
+				: Number(row.lastPurchaseAt ?? row.last_purchase_at),
+		lastPurchaseStoreId: row.lastPurchaseStoreId ?? row.last_purchase_store_source_id ?? undefined,
 		netWeight: row.net_weight ?? row.netWeight ?? row.berat ?? null,
 		category: row.category ?? "kitchen",
 	})) as InventoryRecord[];
