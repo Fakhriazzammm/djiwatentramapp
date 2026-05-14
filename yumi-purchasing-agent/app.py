@@ -401,29 +401,46 @@ def _can_respond(update: Update) -> bool:
 
 async def _parse_stock_reaction(text: str) -> dict | None:
     """Parse 🔴 or 🟡 reaction from user message.
-    Returns {"type": "🔴"|"🟡", "items": [str, ...]} or None if no reaction."""
+    Returns {"items": [{"name": str, "type": "🔴"|"🟡"}, ...]} or None."""
     text = text.strip()
-    symbol = None
-    if "🔴" in text:
-        symbol = "🔴"
-    elif "🟡" in text:
-        symbol = "🟡"
-    else:
+    if "🔴" not in text and "🟡" not in text:
         return None
     
-    # Remove the symbol and clean
-    rest = text.replace("🔴", "").replace("🟡", "").strip()
-    if not rest:
-        return None
+    # Split by newline or comma first
+    lines = re.split(r'[,\n\r]+', text)
     
-    # Split by comma, newline, or bullet
-    items = re.split(r'[,\n\r•\-\*]+', rest)
-    items = [i.strip() for i in items if i.strip()]
+    items = []
+    _HEADER_KW = ["market list", "belanja list", "marketlist"]
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        # Remove bullet markers
+        line = re.sub(r'^[•\-\*]+\s*', '', line).strip()
+        
+        # Determine type from symbol
+        if "🔴" in line:
+            item_type = "🔴"
+        elif "🟡" in line:
+            item_type = "🟡"
+        else:
+            continue  # line without symbol is skipped (header etc)
+        
+        name = line.replace("🔴", "").replace("🟡", "").strip()
+        if not name:
+            continue
+        
+        # Filter header lines
+        if any(kw in name.lower() for kw in _HEADER_KW):
+            continue
+        
+        items.append({"name": name, "type": item_type})
     
     if not items:
         return None
     
-    return {"type": symbol, "items": items}
+    return {"items": items}
 
 async def handle_message(update: Update, context):
     if not _can_respond(update):
@@ -445,11 +462,6 @@ async def handle_message(update: Update, context):
 
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     result = await orchestrator.orchestrate(text)
-
-    # Check if it's a marketlist input (user posted a list starting with "market list" or "belanja list")
-    if result.action == "marketlist_input":
-        await _handle_marketlist_input(update, context, result.text or text)
-        return
 
     await _execute_action(msg, result, is_callback=False)
 
@@ -936,14 +948,14 @@ def _fuzzy_match_fallback(items: list[str], all_inv: list[dict]) -> list[dict]:
 
 # ── Stock Reaction: Apply Deductions ──────────────────────────────
 
-async def _apply_stock_deductions(matches: list[dict], action_type: str, all_inv: list[dict]) -> dict:
+async def _apply_stock_deductions(matches: list[dict], all_inv: list[dict]) -> dict:
     """Apply 🔴 (set to 0) or 🟡 (half) to matched inventory items.
-    Returns {success: [{name, old_qty, new_qty, unit}], failed: [{input, reason}], history_entry}."""
+    Each match dict must have 'type' field for per-item action type.
+    Returns {success: [{name, old_qty, new_qty, unit, action_type}], failed: [{input, reason}], history_entry}."""
     success = []
     failed = []
     history_items = []
     
-    # Build quick lookup
     inv_map = {i.get("_id", ""): i for i in all_inv}
     
     headers = {
@@ -955,6 +967,8 @@ async def _apply_stock_deductions(matches: list[dict], action_type: str, all_inv
     
     async with httpx.AsyncClient(timeout=30) as client:
         for match in matches:
+            action_type = match.get("type", "🟡")
+            
             if not match["matched"] or not match["_id"]:
                 failed.append({"input": match["input"], "reason": "Tidak ditemukan di database"})
                 continue
@@ -977,7 +991,6 @@ async def _apply_stock_deductions(matches: list[dict], action_type: str, all_inv
                 if old_qty <= 0:
                     failed.append({"input": match["input"], "reason": f'"{name}" sudah 0, tidak bisa dipotong'})
                     continue
-                # Floor for discrete units, float for continuous
                 if unit.lower() in ("pcs", "pack", "botol", "pouch", "toros"):
                     new_qty = math.floor(old_qty / 2)
                 else:
@@ -985,7 +998,6 @@ async def _apply_stock_deductions(matches: list[dict], action_type: str, all_inv
             else:
                 continue
             
-            # PATCH database
             try:
                 resp = await client.patch(
                     f"{SUPABASE_URL}/rest/v1/pos_inventory?_id=eq.{match['_id']}",
@@ -993,7 +1005,12 @@ async def _apply_stock_deductions(matches: list[dict], action_type: str, all_inv
                     headers=headers,
                 )
                 if resp.status_code == 204:
-                    success.append({"name": name, "old_qty": old_qty, "new_qty": new_qty, "unit": unit})
+                    success.append({"name": name, "old_qty": old_qty, "new_qty": new_qty, "unit": unit, "action_type": action_type,
+                                    "threshold": float(inv_item.get("lowStockThreshold") or 0),
+                                    "price": float(inv_item.get("lastPurchasePrice") or 0),
+                                    "purchase_unit": (inv_item.get("preferredPurchaseUnit") or unit or "").strip(),
+                                    "purchase_qty": float(inv_item.get("preferredPurchaseQuantity") or 1),
+                                    "conversion_factor": inv_item.get("conversionFactor")})
                     history_items.append({
                         "_id": match["_id"], "name": name,
                         "old_qty": old_qty, "new_qty": new_qty, "unit": unit
@@ -1146,17 +1163,12 @@ async def _generate_marketlist_detail() -> str:
 # ── Handle Stock Reaction (main entry point) ──────────────────────
 
 async def _handle_stock_reaction(update: Update, context, reaction: dict):
-    """Handle 🔴/🟡 reaction from user."""
+    """Handle 🔴/🟡 reaction from user (per-item types supported)."""
     msg = update.effective_message
     if not msg:
         return
     
-    action_type = reaction["type"]
-    items = reaction["items"]
-    
-    if len(items) > 10:
-        await msg.reply_text(f"\u26a0\ufe0f Maksimal 10 item per pesan. Kirim lagi untuk sisanya.")
-        return
+    items = reaction["items"]  # list of {name, type}
     
     # Fetch current inventory
     try:
@@ -1165,39 +1177,54 @@ async def _handle_stock_reaction(update: Update, context, reaction: dict):
         await msg.reply_text(f"\u274c Gagal ambil data inventory: {e}")
         return
     
-    # AI match items to inventory
+    # AI match items to inventory (pass just names)
+    names = [i["name"] for i in items]
     sp_client = SumoPodClient(SUMOPOD_API_KEY)
-    matches = await _ai_match_inventory(sp_client, items, all_inv)
+    matches = await _ai_match_inventory(sp_client, names, all_inv)
     
-    # Apply deductions
-    result = await _apply_stock_deductions(matches, action_type, all_inv)
+    # Merge match results with per-item types
+    for i, item in enumerate(items):
+        if i < len(matches):
+            matches[i]["type"] = item["type"]
     
-    # Build reply
-    reply_lines = []
-    for s in result["success"]:
-        action_label = "HABIS" if action_type == "🔴" else "50%"
-        reply_lines.append(f"\u2705 {s['name']} \u2192 {s['new_qty']:g} {s['unit']} ({action_label})")
+    # Apply deductions (per-item types)
+    result = await _apply_stock_deductions(matches, all_inv)
     
-    for f in result["failed"]:
-        reason = f["reason"]
-        if "tidak ditemukan" in reason.lower():
-            # Suggest using fuzzy fallback
-            all_names = [i.get("ingredientName", "") for i in all_inv if _is_kitchen(i.get("ingredientName", ""))]
-            best = fuzz_process.extractOne(f["input"], all_names, scorer=fuzz.WRatio, score_cutoff=50)
-            if best:
-                reply_lines.append(f'\u274c "' + str(f['input']) + '" tidak ditemukan. Mungkin \u2192 "' + str(best[0]) + '"?')
-            else:
-                reply_lines.append(f'\u274c "' + str(f['input']) + '" tidak ditemukan di inventory.')
-        else:
-            reply_lines.append(f"\u274c {f['input']}: {reason}")
-    
-    if not reply_lines:
-        await msg.reply_text("\u274c Tidak ada item yang diproses. Cek format: \ud83d\udd34 Minyak Goreng")
+    if not result["success"] and not result["failed"]:
+        # Nothing to process - silent fail
         return
+    
+    # Build simple marketlist reply (only affected items)
+    reply_lines = [f"\U0001f6d2 Marketlist — {datetime.now(timezone(timedelta(hours=7))):%d/%m %H:%M}", ""]
+    for s in result["success"]:
+        symbol = "\U0001f534" if s.get("action_type") == "\U0001f534" else "\U0001f7e1"
+        sisa = s["new_qty"]
+        th = s["threshold"]
+        # Need to buy = threshold - current stock (minimum 0)
+        butuh_raw = max(0, th - sisa)
+        price = s["price"]
+        punit = s["purchase_unit"]
+        
+        # Convert to purchase unit if conversionFactor exists
+        conv = s.get("conversion_factor")
+        if conv and conv > 0:
+            butuh = max(1, round(butuh_raw / conv))
+            butuh_str = f"{butuh} {punit}"
+        else:
+            # Fallback: show in base unit
+            butuh_str = f"{butuh_raw:g}" if butuh_raw == int(butuh_raw) else f"{butuh_raw:.1f}"
+            butuh_str += f" {s['unit']}"
+        
+        # Format numbers nicely
+        sisa_str = f"{sisa:g}" if sisa == int(sisa) else f"{sisa:.1f}"
+        price_fmt = f"Rp{price:,.0f}"
+        
+        reply_lines.append(f"  {symbol} {s['name']} — sisa {sisa_str} {s['unit']} — butuh {butuh_str} — {price_fmt}")
+    for f in result["failed"]:
+        reply_lines.append(f"  \u274c {f['input']}: {f['reason']}")
     
     reply_text = "\n".join(reply_lines)
     
-    # Add undo button if there's a history entry
     reply_markup = None
     if result["history_entry"]:
         ts = result["history_entry"]["ts"]
@@ -1205,13 +1232,6 @@ async def _handle_stock_reaction(update: Update, context, reaction: dict):
         reply_markup = InlineKeyboardMarkup(keyboard)
     
     await msg.reply_text(reply_text, reply_markup=reply_markup)
-    
-    # Generate and send marketlist detail
-    try:
-        marketlist_text = await _generate_marketlist_detail()
-        await msg.reply_text(marketlist_text)
-    except Exception as e:
-        logger.warning("Marketlist detail send failed: %s", e)
 
 
 # ── Undo Callback Handler ─────────────────────────────────────────

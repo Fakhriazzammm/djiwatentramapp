@@ -4978,6 +4978,7 @@ function InventoryTable({
 						<col className="w-[8%]" />
 						<col className="w-[6%]" />
 						<col className="w-[7%]" />
+						<col className="w-[7%]" />
 						<col className="w-[11rem]" />
 					</colgroup>
 					<thead className="bg-card">

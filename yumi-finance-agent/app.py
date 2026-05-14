@@ -1305,15 +1305,20 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
     total = receipt.get("total", 0)
     category = receipt.get("category", "operasional" if tx_type == "expense" else "penjualan")
 
-    # Build description dari items
+    # Build description dari items (or use saved _description for manual input)
     items = receipt.get("items", [])
-    if items:
-        item_names = ", ".join(f"{it.get('name', '?')} ×{it.get('qty', 1)}" for it in items[:5])
-        if len(items) > 5:
-            item_names += f" + {len(items) - 5} item lain"
-        desc = f"{'Pemasukan' if tx_type == 'income' else 'Belanja'}{' - ' + merchant if merchant else ''}: {item_names}"
-    else:
-        desc = f"Struk belanja{' - ' + merchant if merchant else ''}"
+    desc = receipt.get("_description", "") or ""
+    if not desc:
+        if items:
+            item_names = ", ".join(f"{it.get('name', '?')} ×{it.get('qty', 1)}" for it in items[:5])
+            if len(items) > 5:
+                item_names += f" + {len(items) - 5} item lain"
+            desc = f"{'Pemasukan' if tx_type == 'income' else 'Belanja'}{' - ' + merchant if merchant else ''}: {item_names}"
+        else:
+            desc = f"Struk belanja{' - ' + merchant if merchant else ''}"
+
+    # Determine if this came from OCR or manual text
+    is_ocr = "_description" not in receipt
 
     tx_result = await finance.record_transaction(
         tx_type=tx_type,
@@ -1325,7 +1330,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
         receipt_date_str=receipt.get("date", ""),
         metadata={
             "source": "yumi_finance_agent",
-            "ocr": True,
+            "ocr": is_ocr,
             "receipt_number": receipt.get("receipt_number", ""),
             "receipt_date": receipt.get("date", ""),
             "item_count": len(items),
@@ -2145,119 +2150,85 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result = await orchestrator.orchestrate(text)
 
     try:
-        if result.action == "record_income":
-            # Catat pemasukan
-            tx = await finance.record_transaction(
-                tx_type="income",
-                amount=result.amount,
-                description=result.description or "Pemasukan",
-                category="penjualan",
-                merchant=result.merchant or "",
-                payment_method=result.payment_method or "cash",
-            )
-            if tx.get("ok"):
-                cat_label = get_category_label("penjualan")
-                pay_str = f" via {result.payment_method}" if result.payment_method and result.payment_method.upper() != "CASH" else ""
-                merch_str = f" di {result.merchant}" if result.merchant else ""
-                await update.message.reply_text(
-                    f"✅ Pemasukan Tercatat\n"
-                    f"   {format_amount(int(result.amount))}\n"
-                    f"   📝 {result.description or 'Pemasukan'}{merch_str}{pay_str}\n"
-                    f"   {cat_label}",
-                    reply_markup=_finance_keyboard(),
-                )
-            else:
-                await update.message.reply_text(f"❌ Gagal: {tx.get('error', '?')}", reply_markup=_finance_keyboard())
-
-        elif result.action == "record_expense":
-            # Catat pengeluaran
+        if result.action in ("record_income", "record_expense"):
+            # ── Tampilkan preview + konfirmasi sebelum simpan ─────
+            tx_type_label = "Pemasukan" if result.action == "record_income" else "Pengeluaran"
             category, _ = auto_categorize(result.description, result.amount)
             if result.category:
                 category = result.category
-            # Parse items dari description utk non-OCR: "Pembelian bahan: Timun, Selada..."
-            scan_items = []
+
+            # Build receipt items dari orchestrator result
+            items = []
             if result.items:
-                scan_items = [
-                    {"name": it.get("name", ""), "quantity": float(it.get("qty", 1)), "unit": it.get("unit", ""), "price": float(it.get("price", 0)), "total": float(it.get("qty", 1)) * float(it.get("price", 0))}
-                    for it in result.items
-                ]
-            elif result.description:
-                # Fallback: parse item names from comma-separated list in description
-                desc = result.description
-                for prefix in ["Pembelian bahan: ", "Belanja bahan: ", "Belanja - ", "Pembelian: "]:
-                    if prefix in desc:
-                        after = desc.split(prefix, 1)[1]
-                        # Hapus keterangan sesudahnya kalo ada
-                        after = re.split(r' \+(?: \d+ item|dll)', after)[0]
-                        names = [n.strip() for n in after.split(",") if n.strip()]
-                        if names:
-                            scan_items = [{"name": n, "quantity": 1, "price": 0, "total": 0} for n in names]
-                        break
+                for it in result.items:
+                    qty = float(it.get("qty", 1))
+                    price = float(it.get("price", 0))
+                    items.append({
+                        "name": it.get("name", ""),
+                        "qty": qty,
+                        "price": price,
+                        "subtotal": qty * price,
+                        "unit": it.get("unit", ""),
+                    })
 
-            tx = await finance.record_transaction(
-                tx_type="expense",
-                amount=result.amount,
-                description=result.description or "Pengeluaran",
-                category=category,
-                merchant=result.merchant or "",
-                payment_method=result.payment_method or "cash",
-                metadata={
-                    "source": "yumi_finance_agent",
-                    "scanItems": scan_items if scan_items else None,
-                },
-            )
-            if tx.get("ok"):
-                cat_label = get_category_label(category)
+            # Simpan ke pending receipt — reuses existing _handle_receipt_callback
+            ref_id = f"rcpt_{len(_receipt_pending)}"
+            _receipt_pending[ref_id] = {
+                "merchant": result.merchant or "",
+                "date": "",
+                "time": "",
+                "items": items,
+                "total": result.amount,
+                "subtotal": 0,
+                "tax": 0,
+                "discount": 0,
+                "service_charge": 0,
+                "payment_method": result.payment_method or "cash",
+                "receipt_number": "",
+                "category": category,
+                "raw_text": result.description or "",
+                "confidence": 1.0,
+                "tx_type": result.action.replace("record_", ""),
+                "_description": result.description or tx_type_label,
+            }
+            _save_pending()
 
-                # Build response with items if available
-                pay_str = f" — {result.payment_method}" if result.payment_method and result.payment_method.upper() != "CASH" else ""
-                merch_str = f" di {result.merchant}" if result.merchant else ""
-                reply_lines = [
-                    f"💸 Pengeluaran Tercatat",
-                    f"   {format_amount(int(result.amount))}",
-                    f"   📝 {result.description or 'Pengeluaran'}{merch_str}{pay_str}",
-                ]
-                if result.items:
-                    for it in result.items[:5]:
-                        n = it.get("name", "?")
-                        q = float(it.get("qty", 1))
-                        p = float(it.get("price", 0))
-                        qs = f"{q:.0f}" if q == int(q) else f"{q:.1f}"
+            # Format preview
+            pay_str = f" — {result.payment_method}" if result.payment_method and result.payment_method.upper() != "CASH" else ""
+            merch_str = f" di {result.merchant}" if result.merchant else ""
+            lines = [f"📝 {tx_type_label} — Konfirmasi", ""]
+            lines.append(f"💰 Total: {format_amount(int(result.amount))}")
+            if result.merchant:
+                lines.append(f"🏪 {result.merchant}")
+            if result.payment_method and result.payment_method.upper() != "CASH":
+                lines.append(f"💳 {result.payment_method}")
+            lines.append(f"📝 {result.description or tx_type_label}{merch_str}{pay_str}")
+            if items:
+                lines.append("")
+                lines.append("📋 Daftar Item:")
+                for i, item in enumerate(items, 1):
+                    name = item.get("name", "?")
+                    _q = item["qty"]
+                    _p = item["price"]
+                    qs = f"{_q:.0f}" if _q == int(_q) else f"{_q:.1f}"
+                    us = f" {item.get('unit','')}" if item.get('unit') else ""
+                    lines.append(f"  {i}. {name} — {qs}{us} × Rp{_p:,.0f} = {format_amount(int(item['subtotal']))}")
+            lines.append("")
+            lines.append(f"📁 Kategori: {get_category_label(category)}")
+            lines.append("")
+            lines.append("Simpan?")
 
-                        # ── Kategori per-item ──────────────────────
-                        item_cat, item_conf, _ = categorize_item(n, p)
-                        item_cat_info = FINANCE_CATEGORIES.get(item_cat) \
-                            or get_all_categories().get(item_cat, {})
-                        item_icon = item_cat_info.get("icon", "📌") if item_cat_info else "📌"
-                        icn = f"{item_icon}" if item_conf in ("high", "medium") else "❓"
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Simpan", callback_data=f"receipt_{result.action.replace('record_','')}_{ref_id}")],
+                [
+                    InlineKeyboardButton("✏️ Edit Kategori", callback_data=f"receipt_editcat_{ref_id}"),
+                    InlineKeyboardButton("✏️ Edit Tanggal", callback_data=f"editdate_{ref_id}"),
+                ],
+                [InlineKeyboardButton("✏️ Edit Item", callback_data=f"edititem_{ref_id}")],
+                [InlineKeyboardButton("❌ Batal", callback_data=f"receipt_cancel_{ref_id}")],
+            ])
 
-                        reply_lines.append(f"     {icn} {n} — {qs} × Rp{p:,.0f}")
-                    if len(result.items) > 5:
-                        reply_lines.append(f"     ... +{len(result.items)-5} item")
-                reply_lines.append(f"   {cat_label}")
-
-                await update.message.reply_text(
-                    "\n".join(reply_lines),
-                    reply_markup=_finance_keyboard(),
-                )
-
-                # ── Restok inventory (sama seperti OCR) ─────
-                asyncio.ensure_future(_manual_restock(result))
-
-                # ── Accounting dual-write ─────────────────
-                if result.items:
-                    source_id = tx.get("sourceId", "")
-                    if source_id:
-                        asyncio.ensure_future(_write_accounting_entries(
-                            source_id=source_id,
-                            items=result.items,
-                            category=category,
-                            payment_method=result.payment_method or "cash",
-                            total_amount=result.amount,
-                            tx_type="expense",
-                        ))
-            else:
-                await update.message.reply_text(f"❌ Gagal: {tx.get('error', '?')}", reply_markup=_finance_keyboard())
+            await update.message.reply_text("\n".join(lines), reply_markup=keyboard)
 
         elif result.action == "balance":
             period = result.text or "hari_ini"

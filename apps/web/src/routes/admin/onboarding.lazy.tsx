@@ -335,9 +335,9 @@ export function AdminOnboardingPage() {
   const stats = useMemo(
     () => ({
       pending: applications.filter((a: any) => a.status === "pending").length,
-      approved: applications.filter((a: any) => a.status === "approved" && a.raw?.pipelineStep !== "contract_signed").length,
+      approved: applications.filter((a: any) => a.status === "approved").length,
       waitingContract: applications.filter((a: any) => a.status === "approved" && a.raw?.pipelineStep !== "contract_signed").length,
-      selesai: applications.filter((a: any) => a.raw?.pipelineStep === "contract_signed" || a.status === "contract_signed").length,
+      selesai: applications.filter((a: any) => a.raw?.pipelineStep === "contract_signed").length,
       revision: applications.filter((a: any) => a.status === "needs_revision").length,
     }),
     [applications],
@@ -428,7 +428,7 @@ export function AdminOnboardingPage() {
 
       {/* ---- pipeline filter ---- */}
       <div className="flex flex-wrap gap-1.5">
-        {["", "pending", "approved", "waiting_contract", "contract_signed", "rejected"].map((s) => (
+        {["", "pending", "approved", "waiting_contract", "contract_signed", "rejected", "needs_revision"].map((s) => (
           <Button
             key={s}
             size="sm"
@@ -436,7 +436,7 @@ export function AdminOnboardingPage() {
             onClick={() => setPipelineFilter(s)}
             className="h-7 text-[11px] px-2.5"
           >
-            {s ? (s === "waiting_contract" ? "Tunggu Kontrak" : s === "contract_signed" ? "Selesai" : s.charAt(0).toUpperCase() + s.slice(1)) : "Semua"}
+            {s ? (s === "waiting_contract" ? "Tunggu Kontrak" : s === "contract_signed" ? "Selesai" : s === "needs_revision" ? "Revisi" : s.charAt(0).toUpperCase() + s.slice(1)) : "Semua"}
           </Button>
         ))}
       </div>
