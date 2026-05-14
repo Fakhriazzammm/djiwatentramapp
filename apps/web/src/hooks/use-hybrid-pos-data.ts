@@ -853,6 +853,7 @@ async function fetchInventory() {
 				: Number(row.lastPurchaseAt),
 		lastPurchaseStoreId: row.lastPurchaseStoreId ?? undefined,
 		netWeight: row.net_weight ?? row.netWeight ?? row.berat ?? null,
+		category: row.category ?? "kitchen",
 	})) as InventoryRecord[];
 }
 

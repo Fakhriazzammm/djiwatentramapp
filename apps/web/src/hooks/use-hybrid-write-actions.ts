@@ -1101,6 +1101,7 @@ export function useHybridCreateInventoryItem() {
 					args?.lastPurchaseAt === undefined ? null : Number(args.lastPurchaseAt ?? 0),
 				last_purchase_store_source_id: args?.lastPurchaseStoreId ?? null,
 				creation_time: Date.now(),
+				category: args?.category ?? "kitchen",
 				raw: args ?? {},
 			};
 			const { error } = await createClient().schema("pos").from("inventory").insert(row);
@@ -1143,6 +1144,7 @@ export function useHybridUpdateInventoryItem() {
 			if (args?.preferredPurchaseQuantity !== undefined) updates.preferred_purchase_quantity = Number(args.preferredPurchaseQuantity ?? 0);
 			if (args?.preferredPurchaseUnit !== undefined) updates.preferred_purchase_unit = args.preferredPurchaseUnit ?? null;
 			if (args?.netWeight !== undefined) updates.net_weight = args.netWeight ?? null;
+			if (args?.category !== undefined) updates.category = args.category ?? null;
 			if (args?.lastPurchasePrice !== undefined) updates.last_purchase_price = Number(args.lastPurchasePrice ?? 0);
 			if (args?.lastPurchaseAt !== undefined) updates.last_purchase_at = Number(args.lastPurchaseAt ?? 0);
 			if (args?.lastPurchaseStoreId !== undefined) updates.last_purchase_store_source_id = args.lastPurchaseStoreId ?? null;

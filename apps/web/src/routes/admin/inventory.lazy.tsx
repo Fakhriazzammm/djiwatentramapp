@@ -4922,6 +4922,7 @@ function InventoryTable({
 					<colgroup>
 						<col className="w-[2.2rem]" />
 						<col className="w-[14%]" />
+						<col className="w-[7%]" />
 						<col className="w-[10%]" />
 						<col className="w-[8%]" />
 						<col className="w-[6%]" />
@@ -4951,6 +4952,7 @@ function InventoryTable({
 										))}
 								</div>
 							</th>
+							<th className="px-2 py-1.5 font-semibold text-center">Kategori</th>
 							<th className="px-2 py-1.5 font-semibold">Supplier</th>
 							<th
 								className="cursor-pointer px-2 py-1.5 text-center font-semibold transition-colors hover:text-foreground"
@@ -5013,6 +5015,24 @@ function InventoryTable({
 									placeholder="Tambah cepat: nama bahan"
 									value={quickAdd.ingredientName}
 								/>
+							</td>
+							<td className="px-2 py-1.5 text-center">
+								<select
+									className="w-full rounded-lg border border-border bg-background px-1.5 py-1 text-center text-[10px] font-semibold outline-none focus:border-primary"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({
+											...prev,
+											category: e.target.value,
+										}))
+									}
+									value={quickAdd.category || "kitchen"}
+								>
+									<option value="kitchen">🍳 kitchen</option>
+									<option value="bar">🥤 bar</option>
+									<option value="packaging">📦 packaging</option>
+									<option value="cleaning">🧹 cleaning</option>
+									<option value="other">🔧 other</option>
+								</select>
 							</td>
 							<td className="px-2 py-1.5">
 								<input
@@ -5120,6 +5140,9 @@ function InventoryTable({
 										<Skeleton className="h-4 w-32" />
 									</td>
 									<td className="p-4">
+										<Skeleton className="mx-auto h-5 w-16" />
+									</td>
+									<td className="p-4">
 										<Skeleton className="h-6 w-24" />
 									</td>
 									<td className="p-4">
@@ -5211,7 +5234,27 @@ function InventoryTable({
 												value={inline.ingredientName}
 											/>
 										</td>
-									<td className="px-2 py-1.5 align-middle text-[10px] font-semibold text-muted-foreground">{row.preferredStoreName || row.lastPurchaseStoreName || "—"}{row.defaultBrandName ? ` · ${row.defaultBrandName}` : ""}</td>
+										<td className="px-2 py-1.5 text-center align-middle">
+											<span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold ${
+												item.category === "kitchen"
+													? "bg-emerald-100 text-emerald-700"
+													: item.category === "bar"
+														? "bg-blue-100 text-blue-700"
+														: item.category === "packaging"
+															? "bg-purple-100 text-purple-700"
+															: item.category === "cleaning"
+																? "bg-amber-100 text-amber-700"
+																: "bg-slate-100 text-slate-600"
+											}`}>
+												{item.category === "kitchen" && "🍳"}
+												{item.category === "bar" && "🥤"}
+												{item.category === "packaging" && "📦"}
+												{item.category === "cleaning" && "🧹"}
+												{item.category === "other" && "🔧"}
+												<span className="ml-0.5">{item.category}</span>
+											</span>
+										</td>
+										<td className="px-2 py-1.5 align-middle text-[10px] font-semibold text-muted-foreground">{row.preferredStoreName || row.lastPurchaseStoreName || "—"}{row.defaultBrandName ? ` · ${row.defaultBrandName}` : ""}</td>
 									<td className="px-2 py-1.5 align-middle text-center">
 											<input
 												className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono text-[12px] font-bold outline-none focus:border-border focus:bg-background"
