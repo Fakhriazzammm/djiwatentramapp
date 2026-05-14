@@ -155,43 +155,39 @@ function LoginPage() {
 								/>
 							</div>
 
-							<div className="pt-2 md:pt-4">
+							{/* ── Dropdown hasil pencarian ── */}
+							<div className="relative mx-auto max-w-lg">
 								{isUsersLoading ? (
-									<div className="grid grid-cols-3 gap-2 md:grid-cols-4 md:gap-4">
-										{Array.from({ length: 6 }).map((_, index) => (
-											<div
-												key={index}
-												className="h-24 rounded-2xl bg-muted animate-pulse md:h-32"
-											/>
-										))}
+									<div className="absolute z-20 mt-1 w-full rounded-2xl border border-border bg-card p-4 text-center shadow-xl">
+										<div className="flex items-center justify-center gap-1.5">
+											<div className="h-2 w-2 animate-bounce rounded-full bg-primary" />
+											<div className="h-2 w-2 animate-bounce rounded-full bg-primary delay-75" />
+											<div className="h-2 w-2 animate-bounce rounded-full bg-primary delay-150" />
+										</div>
 									</div>
-								) : filteredUsers.length > 0 ? (
-									<div className="grid grid-cols-3 gap-2 md:grid-cols-4 md:gap-4">
+								) : searchQuery.trim() && filteredUsers.length > 0 ? (
+									<div className="absolute z-20 mt-2 w-full rounded-2xl border border-border bg-card shadow-xl max-h-72 overflow-y-auto">
 										{filteredUsers.map((user) => (
-											<motion.button
+											<button
 												key={user._id}
-												whileHover={{ y: -4 }}
-												whileTap={{ scale: 0.95 }}
 												onClick={() => setSelectedUser(user)}
-												className="group relative flex flex-col items-center gap-2 p-1 md:p-2 transition-all"
+												className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60 first:rounded-t-2xl last:rounded-b-2xl"
 											>
-												<div className="flex h-12 w-12 md:h-[4.5rem] md:w-[4.5rem] items-center justify-center rounded-xl md:rounded-[1.25rem] bg-primary/10 text-xl md:text-3xl font-black text-primary shadow-sm transition-all group-hover:bg-primary/20 group-hover:shadow-md">
+												<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-black text-primary">
 													{user.initial}
 												</div>
-												<span className="text-[11px] md:text-sm font-bold tracking-tight text-foreground text-center line-clamp-2 w-full max-w-[80px] md:max-w-[100px] leading-snug">{user.name}</span>
-											</motion.button>
+												<div className="min-w-0 flex-1">
+													<p className="text-sm font-bold text-foreground truncate">{user.name}</p>
+													<p className="text-xs font-medium text-muted-foreground truncate">{user.slug || user.username}</p>
+												</div>
+											</button>
 										))}
 									</div>
-								) : (
-									<div className="mx-auto max-w-md rounded-3xl border border-border/70 bg-card/80 px-5 py-6 text-center shadow-sm backdrop-blur">
-										<p className="text-sm font-bold text-foreground">
-											Pengguna tidak ditemukan
-										</p>
-										<p className="mt-1 text-xs font-medium text-muted-foreground">
-											Coba cari dengan nama lengkap, slug, atau username email.
-										</p>
+								) : searchQuery.trim() && filteredUsers.length === 0 ? (
+									<div className="absolute z-20 mt-2 w-full rounded-2xl border border-border bg-card px-5 py-4 text-center shadow-xl">
+										<p className="text-xs font-bold text-muted-foreground">Pengguna tidak ditemukan</p>
 									</div>
-								)}
+								) : null}
 							</div>
 						</motion.div>
 					) : (
