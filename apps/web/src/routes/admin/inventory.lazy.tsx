@@ -5594,8 +5594,27 @@ function InventoryTable({
 							</tr>
 						)}
 					</tbody>
-					
-
+					<tfoot className="border-t-2 border-border bg-muted/20 text-[10px] font-semibold">
+						{(statusFilteredRows.length ?? 0) > 0 && (
+							<tr>
+								<td className="px-2 py-1.5 text-[10px] text-muted-foreground" colSpan={2}>
+									Total ({statusFilteredRows.length})
+								</td>
+								<td className="px-2 py-1.5 text-right font-mono text-muted-foreground">
+									{statusFilteredRows.reduce((s, r) => s + (r.currentStock || 0), 0).toLocaleString()}
+								</td>
+								<td className="px-2 py-1.5" colSpan={3}></td>
+								<td className="px-2 py-1.5 text-right font-mono text-foreground">
+									{formatCurrencyIDR(statusFilteredRows.reduce((s, r) => s + (r.lastPurchasePrice || 0), 0))}
+								</td>
+								<td className="px-2 py-1.5" colSpan={2}></td>
+								<td className="px-2 py-1.5 text-right font-mono text-foreground">
+									{formatCurrencyIDR(statusFilteredRows.reduce((s, r) => s + ((r.currentStock || 0) * ((r.lastPurchasePrice || 0) / (r.preferredPurchaseQuantity || 1))), 0))}
+								</td>
+								<td className="px-2 py-1.5" colSpan={4}></td>
+							</tr>
+						)}
+					</tfoot>
 				</table>
 				</div>
 			</div>
