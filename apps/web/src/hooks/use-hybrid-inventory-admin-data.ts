@@ -350,39 +350,39 @@ async function fetchInventoryRows() {
 		.order("ingredientName", { ascending: true });
 	if (error) throw error;
 	return (data ?? []).map((row: any) => ({
-		_id: row._id,
-		ingredientName: row.ingredientName ?? "",
+		_id: row.source_id,
+		ingredientName: row.ingredient_name ?? "",
 		unit: row.unit ?? "",
 		quantity: Number(row.quantity ?? 0),
-		lowStockThreshold: Number(row.lowStockThreshold ?? 0),
-		displayUnit: row.displayUnit ?? null,
+		lowStockThreshold: Number(row.low_stock_threshold ?? 0),
+		displayUnit: row.display_unit ?? null,
 		conversionFactor:
-			row.conversionFactor === null || row.conversionFactor === undefined
+			row.conversion_factor === null || row.conversion_factor === undefined
 				? null
-				: Number(row.conversionFactor),
-		unitConversions: Array.isArray(row.unitConversions) ? row.unitConversions : null,
-		baseRecipeId: row.baseRecipeId ?? null,
-		defaultBrandName: row.defaultBrandName ?? null,
-		preferredStoreId: row.preferredStoreId ?? null,
+				: Number(row.conversion_factor),
+		unitConversions: Array.isArray(row.unit_conversions) ? row.unit_conversions : null,
+		baseRecipeId: row.base_recipe_source_id ?? null,
+		defaultBrandName: row.default_brand_name ?? null,
+		preferredStoreId: row.preferred_store_source_id ?? null,
 		preferredPurchaseQuantity:
-			row.preferredPurchaseQuantity === null || row.preferredPurchaseQuantity === undefined
+			row.preferred_purchase_quantity === null || row.preferred_purchase_quantity === undefined
 				? null
-				: Number(row.preferredPurchaseQuantity),
-		preferredPurchaseUnit: row.preferredPurchaseUnit ?? null,
+				: Number(row.preferred_purchase_quantity),
+		preferredPurchaseUnit: row.preferred_purchase_unit ?? null,
 		lastPurchasePrice:
-			row.lastPurchasePrice === null || row.lastPurchasePrice === undefined
+			row.last_purchase_price === null || row.last_purchase_price === undefined
 				? null
-				: Number(row.lastPurchasePrice),
+				: Number(row.last_purchase_price),
 		lastPurchaseAt:
-			row.lastPurchaseAt === null || row.lastPurchaseAt === undefined
+			row.last_purchase_at === null || row.last_purchase_at === undefined
 				? null
-				: Number(row.lastPurchaseAt),
-		lastPurchaseStoreId: row.lastPurchaseStoreId ?? null,
+				: Number(row.last_purchase_at),
+		lastPurchaseStoreId: row.last_purchase_store_source_id ?? null,
 		netWeight: row.net_weight ?? row.netWeight ?? row.berat ?? null,
 		_creationTime:
-			row._creationTime === null || row._creationTime === undefined
-				? Number(row.lastPurchaseAt ?? 0)
-				: Number(row._creationTime),
+			row.creation_time === null || row.creation_time === undefined
+				? Number(row.last_purchase_at ?? 0)
+				: Number(row.creation_time),
 	})) as InventoryRecord[];
 }
 

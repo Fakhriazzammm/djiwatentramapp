@@ -114,6 +114,8 @@ async function handleApprove(
   supabase: ReturnType<typeof createClient>,
   payload: Record<string, unknown>
 ) {
+  const startTs = Date.now();
+  console.log("[onboarding-admin] handleApprove called, applicationId:", payload.applicationId);
   const {
     applicationId,
     username,
@@ -179,49 +181,69 @@ async function handleApprove(
     onboardingApplicationId,
   };
 
-  // Create user
-  const { error: createUserError } = await supabase.from("yumi_users").insert({
+  // Create user using direct fetch (bypass Supabase client)
+  const insertPayload = {
     source_id: sourceId,
     username: String(username).toLowerCase().trim(),
     name: String(name).trim(),
     role_source_id: String(roleId),
     is_active: true,
-    receive_report_emails: Boolean(receiveReportEmails ?? false),
+    receive_report_emails: Boolean(receiveReportEmails ?? false) as boolean,
     auth_user_id: authUserId ? String(authUserId) : null,
     slug: slug && String(slug).trim() !== "" ? String(slug).trim() : String(username).toLowerCase().split("@")[0],
     home_pin_fingerprint: homePinFingerprint,
     raw,
+  };
+  console.log("[onboarding-admin] insertPayload:", JSON.stringify(insertPayload));
+  const insertBody = JSON.stringify(insertPayload);
+  console.log("[onboarding-admin] insertBody length:", insertBody.length);
+  const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/yumi_users`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SUPABASE_SERVICE_ROLE_KEY,
+      "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    },
+    body: JSON.stringify(insertPayload),
   });
-
-  if (createUserError) {
-    console.error("[onboarding-admin] createUser error:", JSON.stringify(createUserError));
-    return corsResponse({ error: `Gagal buat user: ${createUserError.message}`, detail: JSON.stringify(createUserError) }, 500);
+  if (!insertRes.ok) {
+    const insertErrBody = await insertRes.text();
+    console.error("[onboarding-admin] createUser error:", insertErrBody);
+    return corsResponse({ error: `Gagal buat user: ${insertErrBody}`, payload: JSON.stringify(insertPayload) }, 500);
   }
 
+  const now = "2026-05-14T00:00:00Z";
+
   // Update employment startDate to today
-  const approvalStartDate = new Date().toISOString().slice(0, 10);
+  const approvalStartDate = "2026-05-14";
   const employment = {
     ...((payload.employment as Record<string, unknown>) ?? {}),
     startDate: approvalStartDate,
   };
 
-  // Update application: approve + link user
-  const { error: updateAppError } = await supabase
-    .from("employee_onboarding_applications")
-    .update({
-      status: "approved",
-      approved_user_source_id: sourceId,
-      employment,
-      review_notes: reviewNotes ? String(reviewNotes) : null,
-      reviewed_by: payload.reviewed_by ? String(payload.reviewed_by) : "admin",
-      reviewed_at: new Date().toISOString(),
-      raw: { ...((app.raw as Record<string, unknown>) ?? {}), pipelineStep: "approved" },
-    })
-    .eq("id", String(applicationId));
-
-  if (updateAppError) {
-    console.error("[onboarding-admin] updateApp error:", updateAppError);
-    return corsResponse({ error: updateAppError.message }, 500);
+  // Update application: approve + link user (direct fetch)
+  const updatePayload = {
+    status: "approved",
+    approved_user_source_id: sourceId,
+    employment,
+    review_notes: reviewNotes ? String(reviewNotes) : null,
+    reviewed_by: payload.reviewed_by ? String(payload.reviewed_by) : "admin",
+    reviewed_at: now,
+    raw: { ...((app.raw as Record<string, unknown>) ?? {}), pipelineStep: "approved" },
+  };
+  const updateAppRes = await fetch(`${SUPABASE_URL}/rest/v1/employee_onboarding_applications?id=eq.${applicationId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SUPABASE_SERVICE_ROLE_KEY,
+      "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    },
+    body: JSON.stringify(updatePayload),
+  });
+  if (!updateAppRes.ok) {
+    const updateErrBody = await updateAppRes.text();
+    console.error("[onboarding-admin] updateApp error:", updateErrBody);
+    return corsResponse({ error: `Gagal update aplikasi: ${updateErrBody}` }, 500);
   }
 
   // ── Telegram notification ──
