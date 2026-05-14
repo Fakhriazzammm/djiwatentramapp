@@ -5452,37 +5452,53 @@ function InventoryTable({
 										{row.preferredPurchaseUnit && row.preferredPurchaseUnit !== inline.unit && (
 											<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Satuan stok: {inline.unit}</span>
 										)}
-									</td>
-<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
-										<input
-											className="w-full rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-[11px] font-semibold text-foreground outline-none focus:border-border focus:bg-background"
-											min={0}
-											onBlur={() => void saveReferencePrice(row)}
-											onChange={(e) =>
-												setPriceDraftByRow((prev) => ({
-													...prev,
-													[row.inventoryId]: e.target.value,
-												}))
-											}
-											onKeyDown={(e) => {
-												if (e.key === "Enter") {
-													void saveReferencePrice(row);
-													(e.target as HTMLInputElement).blur();
-												}
-											}}
-											placeholder={
-												row.lastPurchasePrice == null ? "Isi harga" : undefined
-											}
-											step="0.01"
-											type="number"
-											value={getPriceDraft(row)}
-										/>
-									<div className="text-right">
-										<p className="text-[9px] text-muted-foreground/70">
-											per {row.preferredPurchaseUnit || row.unit || "unit"}
-										</p>
-									</div>
-									</td>
+										</td>
+									<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
+						<div className="flex items-center gap-1">
+							<input
+								className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-[11px] font-semibold text-foreground outline-none focus:border-border focus:bg-background"
+								min={0}
+								onBlur={() => void saveReferencePrice(row)}
+								onChange={(e) =>
+									setPriceDraftByRow((prev) => ({
+										...prev,
+										[row.inventoryId]: e.target.value,
+									}))
+								}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										void saveReferencePrice(row);
+										(e.target as HTMLInputElement).blur();
+									}
+								}}
+								placeholder={
+									row.lastPurchasePrice == null ? "Isi harga" : undefined
+								}
+								step="0.01"
+								type="number"
+								value={getPriceDraft(row)}
+							/>
+							<div className="flex shrink-0 items-center gap-0.5">
+								<span className="text-[8px] text-muted-foreground/30">/</span>
+								<input
+									className="w-10 rounded-lg border border-transparent bg-transparent px-0.5 py-0.5 text-[9px] text-muted-foreground text-center outline-none focus:border-border focus:bg-background"
+									list="inventory-unit-options-table"
+									onBlur={() => void saveMeta(row)}
+									onChange={(e) =>
+										setInlineField(row, "preferredPurchaseUnit", normalizeUnitOption(e.target.value))
+									}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											void saveMeta(row);
+											(e.target as HTMLInputElement).blur();
+										}
+									}}
+									placeholder="unit"
+									value={inline.preferredPurchaseUnit}
+								/>
+							</div>
+						</div>
+					</td>
 									<td className="px-2 py-1.5 align-middle text-center text-[10px] text-muted-foreground/60">
 										{(() => {
 											const costEntry = inventoryCosts?.[row.inventoryId];
