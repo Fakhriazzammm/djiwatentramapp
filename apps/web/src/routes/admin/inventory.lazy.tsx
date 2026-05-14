@@ -5501,13 +5501,9 @@ function InventoryTable({
 					</td>
 									<td className="px-2 py-1.5 align-middle text-center text-[10px] text-muted-foreground/60">
 										{(() => {
-											const costEntry = inventoryCosts?.[row.inventoryId];
-											const costPerUnit = costEntry?.latestCostPerUnit ?? costEntry?.avgCostPerUnit ?? row.lastPurchasePrice;
-											const minInfo = computeMinUnitPrice(row.unit, costPerUnit, row.unitConversions, row.displayUnit, row.conversionFactor);
-											if (minInfo) {
-												return <>{formatCurrencyIDR(minInfo.price)} / {minInfo.minUnit}</>;
-											}
-											return <span className="text-muted-foreground/30">—</span>;
+											const unitPrice = (row.lastPurchasePrice || 0) / (row.preferredPurchaseQuantity || 1);
+											const displayUnit = row.preferredPurchaseUnit || row.unit || "unit";
+											return <>{formatCurrencyIDR(unitPrice)} / {displayUnit}</>;
 										})()}
 									</td>
 									<td className="px-2 py-1.5 align-middle">
