@@ -810,7 +810,6 @@ export const Route = createLazyFileRoute("/admin/inventory")({
 
 function InventoryPage() {
 	const [searchQuery, setSearchQuery] = useState("");
-	const [lastRefreshedAt, setLastRefreshedAt] = useState(new Date());
 
 	const inventory = useHybridInventory();
 	const allProducts = useHybridAllProducts();
@@ -3924,6 +3923,8 @@ function InventoryTable({
 	const [savingKey, setSavingKey] = useState<string | null>(null);
 	const [statusFilter, setStatusFilter] = useState<"all" | "critical" | "warning" | "healthy">("all");
 	const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+		const [lastRefreshedAt, setLastRefreshedAt] = useState(new Date());
+
 	// Click outside to close dropdown
 	useEffect(() => {
 		if (!openDropdownId) return;
