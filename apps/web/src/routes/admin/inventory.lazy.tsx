@@ -5512,7 +5512,7 @@ function InventoryTable({
 											</div>
 										</td>
 									<td className="px-2 py-1.5 align-middle text-right text-[11px] font-semibold text-foreground/80 font-mono">
-										{formatCurrencyIDR((Number(inline.quantity) || 0) * (row.lastPurchasePrice || 0))}
+										{formatCurrencyIDR((Number(inline.quantity) || 0) * ((row.lastPurchasePrice || 0) / (row.preferredPurchaseQuantity || 1)))}
 									</td>
 									<td className="px-2 py-1.5 align-middle text-right">
 										<div className="relative flex items-center justify-end">
