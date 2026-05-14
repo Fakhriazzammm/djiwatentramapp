@@ -5409,23 +5409,6 @@ function InventoryTable({
 											value={inline.preferredPurchaseQuantity}
 										/>
 									</td>
-									<td className="px-2 py-1.5 align-middle text-center">
-										<input
-											className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background"
-											onBlur={() => void saveMeta(row)}
-											onChange={(e) =>
-												setInlineField(row, "preferredPurchaseQuantity", e.target.value)
-											}
-											onKeyDown={(e) => {
-												if (e.key === "Enter") {
-													void saveMeta(row);
-													(e.target as HTMLInputElement).blur();
-												}
-											}}
-											type="number"
-											value={inline.preferredPurchaseQuantity}
-										/>
-									</td>
 									<td className="px-2 py-1.5 align-middle text-center group relative">
 										<input
 											className={`mx-auto w-16 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background ${getSuggestionHighlightClass(
@@ -5560,7 +5543,7 @@ function InventoryTable({
 						}
 						{(statusFilteredRows.length ?? 0) === 0 && (
 							<tr>
-							<td className="p-8 text-center text-muted-foreground" colSpan={11}>
+							<td className="p-8 text-center text-muted-foreground" colSpan={14}>
 								Tidak ada bahan baku ditemukan
 								</td>
 							</tr>
