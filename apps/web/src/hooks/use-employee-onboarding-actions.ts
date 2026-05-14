@@ -22,6 +22,7 @@ const hasSupabaseConfig = Boolean(
 		import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 );
 const adminSecret = import.meta.env.VITE_ADMIN_SECRET || "";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
 
 type HybridStorageUploadArgs = {
 	file: Blob;
@@ -69,17 +70,24 @@ async function invokeYumiAiAction(action: string, payload: Record<string, unknow
 // Edge Function helper for admin operations (approve, reject, delete)
 // Uses service_role key on the server side — bypasses RLS and authenticates
 // via the VITE_ADMIN_SECRET env var sent as x-admin-secret header.
+// Uses direct fetch() instead of supabase.functions.invoke to avoid
+// CORS/SDK issues with @supabase/ssr.
 // ---------------------------------------------------------------------------
 async function invokeAdminAction(action: string, payload: Record<string, unknown>) {
 	if (!adminSecret) {
 		throw new Error("VITE_ADMIN_SECRET tidak dikonfigurasi. Tambahkan ke .env");
 	}
-	const supabase = createClient();
-	const { data, error } = await supabase.functions.invoke("onboarding-admin", {
-		body: { action, ...payload },
-		headers: { "x-admin-secret": adminSecret },
+	const functionUrl = `${supabaseUrl}/functions/v1/onboarding-admin`;
+	const response = await fetch(functionUrl, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"x-admin-secret": adminSecret,
+		},
+		body: JSON.stringify({ action, ...payload }),
 	});
-	if (error) throw new Error(error.message || "Gagal menghubungi server");
+	const data = await response.json();
+	if (!response.ok) throw new Error((data as any)?.error || `Gagal: ${response.status}`);
 	if ((data as any)?.error) throw new Error((data as any).error);
 	return data;
 }
