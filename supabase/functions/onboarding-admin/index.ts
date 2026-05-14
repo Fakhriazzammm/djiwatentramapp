@@ -130,8 +130,13 @@ async function handleApprove(
   } = payload as Record<string, unknown>;
 
   if (!applicationId || !username || !name || !roleId) {
+    const missing = [];
+    if (!applicationId) missing.push("applicationId");
+    if (!username) missing.push("username");
+    if (!name) missing.push("name");
+    if (!roleId) missing.push("roleId");
     return corsResponse(
-      { error: "Data tidak lengkap: applicationId, username, name, roleId wajib" },
+      { error: `Data tidak lengkap: ${missing.join(", ")} wajib`, debug: { applicationId, username, name, roleId } },
       400
     );
   }
@@ -143,8 +148,11 @@ async function handleApprove(
     .eq("id", String(applicationId))
     .maybeSingle();
 
-  if (appError) return corsResponse({ error: appError.message }, 500);
-  if (!app) return corsResponse({ error: "Pendaftaran tidak ditemukan" }, 404);
+  if (appError) {
+    console.error("[onboarding-admin] approve fetch error:", JSON.stringify(appError));
+    return corsResponse({ error: `Query error: ${appError.message}`, detail: JSON.stringify(appError) }, 500);
+  }
+  if (!app) return corsResponse({ error: `Pendaftaran tidak ditemukan (${applicationId})` }, 404);
   if (app.status === "approved" || app.approved_user_source_id) {
     return corsResponse({ error: "Pendaftaran ini sudah disetujui" }, 409);
   }
@@ -186,8 +194,8 @@ async function handleApprove(
   });
 
   if (createUserError) {
-    console.error("[onboarding-admin] createUser error:", createUserError);
-    return corsResponse({ error: `Gagal buat user: ${createUserError.message}` }, 500);
+    console.error("[onboarding-admin] createUser error:", JSON.stringify(createUserError));
+    return corsResponse({ error: `Gagal buat user: ${createUserError.message}`, detail: JSON.stringify(createUserError) }, 500);
   }
 
   // Update employment startDate to today

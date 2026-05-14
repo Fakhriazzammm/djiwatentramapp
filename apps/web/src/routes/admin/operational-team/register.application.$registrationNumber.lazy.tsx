@@ -50,6 +50,7 @@ function ApplicationDetailPage() {
 	const [isSaving, setIsSaving] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+	const [username, setUsername] = useState("");
 
 	useEffect(() => { setPassword(onboardingSettings.defaultPassword); }, [onboardingSettings.defaultPassword]);
 
@@ -70,6 +71,7 @@ function ApplicationDetailPage() {
 					setApp(data);
 					setPin(generateSixDigitPin(data.full_name + data.id));
 					setNotes(data.review_notes ?? "");
+					setUsername(data.employment?.username || data.email || `${data.id}@djiwatentram.local`);
 				} else {
 					setNotFound(true);
 				}
@@ -158,7 +160,7 @@ function ApplicationDetailPage() {
 			const employment = { ...(app.employment ?? {}), startDate: approvalStartDate };
 			await approveApp({
 				applicationId: app.id,
-				username: employment.username || app.email || `${app.id}@djiwatentram.local`,
+				username: username || app.employment?.username || app.email || `${app.id}@djiwatentram.local`,
 				password,
 				name: app.full_name,
 				roleId: employment.roleId,
@@ -397,7 +399,7 @@ function ApplicationDetailPage() {
 									</h4>
 									<div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
 										<InfoRow label="Nama" value={app.full_name} />
-										<InfoRow label="Username" value={app.employment?.username || app.email || `${app.id}@djiwatentram.local`} />
+										<InfoRow label="Username" value={username || "-"} />
 										<InfoRow label="Slug" value={app.employment?.slug || "-"} />
 										<InfoRow label="PIN" value={pin || "isi 6 digit"} />
 										<InfoRow label="Role" value={app.employment?.roleName || "-"} />
@@ -413,6 +415,9 @@ function ApplicationDetailPage() {
 								</h4>
 								<div className="space-y-2.5">
 									<div className="grid grid-cols-2 gap-2.5">
+										<Field label="Username">
+											<Input value={username} onChange={(e) => setUsername(e.target.value)} className="h-8 text-xs" placeholder="username untuk login" />
+										</Field>
 										<Field label="Password awal">
 											<Input value={password} onChange={(e) => setPassword(e.target.value)} className="h-8 text-xs" />
 										</Field>
