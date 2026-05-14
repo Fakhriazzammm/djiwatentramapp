@@ -9,6 +9,8 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone, timedelta
+import math
+import re
 
 import httpx
 from dotenv import load_dotenv
@@ -44,6 +46,7 @@ from callback_manager import (
     handle_marketlist_callback,
     handle_marketlist_text_input,
 )
+from rapidfuzz import fuzz, process as fuzz_process
 from learning_memory import update_learning_entry
 
 load_dotenv()
@@ -179,6 +182,17 @@ supplier = SupplierManager()
 
 # ── Session storage for marketlist callbacks ────────────────────
 marketlist_sessions: dict[str, dict] = {}
+
+# ── Stock Reaction State ─────────────────────────────────────────
+_stock_reaction_history: dict = {}
+_stock_reaction_lock = asyncio.Lock()
+STOCK_REACTION_EXPIRY = 300  # 5 menit
+
+def _is_kitchen(name: str) -> bool:
+    _NON_KITCHEN_KW = ["gas", "baterai", "kresek", "sedotan", "sendok garpu",
+                       "botol 1", "ekonomi", "soklin", "lifebuoy", "cling", "bento tupai",
+                       "paperbowl", "cup 12", "multi tisu", "tutup cup"]
+    return not any(kw in name.lower() for kw in _NON_KITCHEN_KW)
 
 # ── Keyboard ────────────────────────────────────────────────────
 def _keyboard():
@@ -384,6 +398,33 @@ def _can_respond(update: Update) -> bool:
         return True
     return False
 
+
+async def _parse_stock_reaction(text: str) -> dict | None:
+    """Parse 🔴 or 🟡 reaction from user message.
+    Returns {"type": "🔴"|"🟡", "items": [str, ...]} or None if no reaction."""
+    text = text.strip()
+    symbol = None
+    if "🔴" in text:
+        symbol = "🔴"
+    elif "🟡" in text:
+        symbol = "🟡"
+    else:
+        return None
+    
+    # Remove the symbol and clean
+    rest = text.replace("🔴", "").replace("🟡", "").strip()
+    if not rest:
+        return None
+    
+    # Split by comma, newline, or bullet
+    items = re.split(r'[,\n\r•\-\*]+', rest)
+    items = [i.strip() for i in items if i.strip()]
+    
+    if not items:
+        return None
+    
+    return {"type": symbol, "items": items}
+
 async def handle_message(update: Update, context):
     if not _can_respond(update):
         return
@@ -393,6 +434,13 @@ async def handle_message(update: Update, context):
     text = msg.text.strip()
     if not text:
         await msg.reply_text("Ketik perintah atau tanya bebas.", reply_markup=_keyboard())
+        return
+
+    # ── Check for 🔴/🟡 stock reaction ──
+    reaction = await _parse_stock_reaction(text)
+    if reaction:
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+        await _handle_stock_reaction(update, context, reaction)
         return
 
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
@@ -475,6 +523,12 @@ async def handle_callback(update: Update, context):
             process_input_marketlist,
             sp_client, inventory, supplier,
         )
+        return
+
+    # Route undo callbacks
+    if data.startswith("undo_"):
+        ts_str = data.replace("undo_", "")
+        await _handle_undo_callback(update, context, ts_str)
         return
 
     if data == "ai_chat":
@@ -785,6 +839,473 @@ async def _notify_stock_update():
 
 
 
+
+
+
+# ── Stock Reaction: AI Match ─────────────────────────────────────
+
+_MATCH_SYSTEM_PROMPT = """Kamu adalah asisten inventory yang mencocokkan nama bahan dari user ke database inventory.
+
+ATURAN:
+- Handle typo, singkatan, nama tidak lengkap, case, spasi berlebih
+- "minyak" bisa berarti Minyak Goreng, Minyak Sunco, Minyak Rizki, dll
+- Jika ada MULTIPLE match, pilih yang PALING UMUM
+- Jika ragu, pilih yang quantity-nya lebih kecil (lebih urgent)
+- JANGAN beri lebih dari 1 jawaban per input
+- Jika TIDAK ADA yang cocok, jawab: TIDAK_COCOK
+- Jawab persis sesuai format, 1 baris per item user
+
+Format jawaban untuk SETIAP item user (1 baris):
+TULISAN_USER -> NAMA_INVENTORY|_ID|CONFIDENCE(0-100)
+
+Contoh:
+User: minyak goreng
+Inventory: Minyak Goreng|id1|600ml, Minyak Sunco|id2|600ml
+Jawab: minyak goreng -> Minyak Goreng|id1|95"""
+
+async def _ai_match_inventory(sp_client: SumoPodClient, items: list[str], all_inv: list[dict]) -> list[dict]:
+    """AI-match setiap item user ke inventory. Returns [{input, matched: bool, inv_name, _id, score}]."""
+    # Build inventory list for prompt (limit to prevent token overflow)
+    inv_lines = [f"{i.get('ingredientName','?')}|{i.get('_id','?')}|{i.get('quantity',0):g} {i.get('unit','')}"
+                 for i in all_inv if _is_kitchen(i.get('ingredientName', ''))]
+    inv_text = "\n".join(inv_lines)
+    
+    if len(inv_text) > 8000:
+        inv_text = "\n".join(inv_lines[:200])
+    
+    user_items = "\n".join(items)
+    prompt = f"""Cocokkan SETIAP nama bahan berikut ke database inventory.
+
+Item dari user (satu baris per item):
+{user_items}
+
+Daftar inventory (nama|id|qty):
+{inv_text}
+
+Format jawaban (1 baris per item, urutan sesuai input):
+TULISAN_USER -> NAMA_INVENTORY|_ID|CONFIDENCE
+Atau: TULISAN_USER -> TIDAK_COCOK"""
+
+    try:
+        result = await sp_client.chat(prompt, system_prompt=_MATCH_SYSTEM_PROMPT, timeout=30)
+        reply = result.get("reply", "") or result.get("text", "") or result.get("raw", "") or ""
+        
+        matched = []
+        for line in reply.strip().split("\n"):
+            line = line.strip()
+            if not line or "->" not in line:
+                continue
+            parts = line.split("->", 1)
+            input_name = parts[0].strip()
+            response_part = parts[1].strip()
+            
+            if response_part == "TIDAK_COCOK" or "TIDAK_COCOK" in response_part:
+                matched.append({"input": input_name, "matched": False, "inv_name": None, "_id": None, "score": 0})
+                continue
+            
+            resp_parts = response_part.split("|")
+            if len(resp_parts) >= 2:
+                inv_name = resp_parts[0].strip()
+                inv_id = resp_parts[1].strip()
+                score = int(resp_parts[2].strip()) if len(resp_parts) >= 3 and resp_parts[2].strip().isdigit() else 0
+                matched.append({"input": input_name, "matched": True, "inv_name": inv_name, "_id": inv_id, "score": score})
+            else:
+                matched.append({"input": input_name, "matched": False, "inv_name": None, "_id": None, "score": 0})
+        
+        return matched
+    except Exception as e:
+        logger.warning("AI match failed: %s, falling back to rapidfuzz", e)
+        return _fuzzy_match_fallback(items, all_inv)
+
+
+def _fuzzy_match_fallback(items: list[str], all_inv: list[dict]) -> list[dict]:
+    """Fallback fuzzy matching using rapidfuzz."""
+    inv_names = {i.get("ingredientName", ""): i for i in all_inv if i.get("ingredientName")}
+    results = []
+    for item in items:
+        best = fuzz_process.extractOne(item, list(inv_names.keys()), scorer=fuzz.WRatio, score_cutoff=70)
+        if best:
+            match_name, score = best[0], best[1]
+            inv_item = inv_names[match_name]
+            results.append({"input": item, "matched": True, "inv_name": match_name,
+                           "_id": inv_item.get("_id", ""), "score": score})
+        else:
+            results.append({"input": item, "matched": False, "inv_name": None, "_id": None, "score": 0})
+    return results
+
+
+# ── Stock Reaction: Apply Deductions ──────────────────────────────
+
+async def _apply_stock_deductions(matches: list[dict], action_type: str, all_inv: list[dict]) -> dict:
+    """Apply 🔴 (set to 0) or 🟡 (half) to matched inventory items.
+    Returns {success: [{name, old_qty, new_qty, unit}], failed: [{input, reason}], history_entry}."""
+    success = []
+    failed = []
+    history_items = []
+    
+    # Build quick lookup
+    inv_map = {i.get("_id", ""): i for i in all_inv}
+    
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+    
+    async with httpx.AsyncClient(timeout=30) as client:
+        for match in matches:
+            if not match["matched"] or not match["_id"]:
+                failed.append({"input": match["input"], "reason": "Tidak ditemukan di database"})
+                continue
+            
+            inv_item = inv_map.get(match["_id"])
+            if not inv_item:
+                failed.append({"input": match["input"], "reason": "Item tidak ditemukan di lookup"})
+                continue
+            
+            name = inv_item.get("ingredientName", match["input"])
+            old_qty = float(inv_item.get("quantity") or 0)
+            unit = inv_item.get("unit", "") or ""
+            
+            if action_type == "🔴":
+                if old_qty <= 0:
+                    failed.append({"input": match["input"], "reason": f'"{name}" sudah 0 (HABIS)'})
+                    continue
+                new_qty = 0.0
+            elif action_type == "🟡":
+                if old_qty <= 0:
+                    failed.append({"input": match["input"], "reason": f'"{name}" sudah 0, tidak bisa dipotong'})
+                    continue
+                # Floor for discrete units, float for continuous
+                if unit.lower() in ("pcs", "pack", "botol", "pouch", "toros"):
+                    new_qty = math.floor(old_qty / 2)
+                else:
+                    new_qty = old_qty / 2
+            else:
+                continue
+            
+            # PATCH database
+            try:
+                resp = await client.patch(
+                    f"{SUPABASE_URL}/rest/v1/pos_inventory?_id=eq.{match['_id']}",
+                    json={"quantity": new_qty},
+                    headers=headers,
+                )
+                if resp.status_code == 204:
+                    success.append({"name": name, "old_qty": old_qty, "new_qty": new_qty, "unit": unit})
+                    history_items.append({
+                        "_id": match["_id"], "name": name,
+                        "old_qty": old_qty, "new_qty": new_qty, "unit": unit
+                    })
+                else:
+                    failed.append({"input": match["input"], "reason": f"DB error: {resp.status_code}"})
+            except Exception as e:
+                failed.append({"input": match["input"], "reason": f"Network error: {e}"})
+    
+    history_entry = None
+    if history_items:
+        ts = datetime.now().timestamp()
+        history_entry = {
+            "ts": ts,
+            "items": history_items,
+            "timestamp": datetime.now(timezone(timedelta(hours=7))).strftime("%H:%M"),
+        }
+        _stock_reaction_history[ts] = history_entry
+    
+    return {"success": success, "failed": failed, "history_entry": history_entry}
+
+
+async def _get_stores() -> dict:
+    """Fetch all active stores. Returns {store_id: {name, phone, type}}."""
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{SUPABASE_URL}/rest/v1/pos_inventory_stores?select=_id,name,phone,type,notes&isActive=eq.true",
+                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
+            )
+            if resp.status_code < 400:
+                stores = resp.json()
+                return {s["_id"]: s for s in stores}
+    except Exception as e:
+        logger.warning("Failed to fetch stores: %s", e)
+    return {}
+
+
+# ── Generate Marketlist Detail ────────────────────────────────────
+
+async def _generate_marketlist_detail() -> str:
+    """Generate marketlist detail (what to buy) based on current inventory."""
+    try:
+        all_inv = await inventory.get_all_inventory()
+        stores = await _get_stores()
+    except Exception as e:
+        logger.warning("Marketlist detail generation failed: %s", e)
+        return "❌ Gagal generate marketlist."
+    
+    items_to_buy = []
+    for item in all_inv:
+        name = item.get("ingredientName", "")
+        if not _is_kitchen(name):
+            continue
+        
+        qty = float(item.get("quantity") or 0)
+        th = float(item.get("lowStockThreshold") or 0)
+        price = float(item.get("lastPurchasePrice") or 0)
+        unit = (item.get("unit") or "").strip()
+        store_id = (item.get("preferredStoreId") or "") or ""
+        
+        if th <= 0 or qty > th:
+            continue
+        
+        buy_qty = max(0.01, th - qty)  # minimum 0.01 to avoid zero
+        total_cost = buy_qty * price
+        
+        items_to_buy.append({
+            "name": name, "buy_qty": buy_qty, "unit": unit,
+            "price": price, "total": total_cost, "store_id": store_id
+        })
+    
+    if not items_to_buy:
+        return "✅ Semua stok aman. Tidak ada yang perlu dibeli."
+    
+    # Group per merchant
+    groups = {}
+    for item in items_to_buy:
+        sid = item["store_id"]
+        store = stores.get(sid, {"name": "Lainnya", "phone": "", "type": "", "notes": ""})
+        if sid not in groups:
+            groups[sid] = {"store": store, "items": [], "subtotal": 0}
+        groups[sid]["items"].append(item)
+        groups[sid]["subtotal"] += item["total"]
+    
+    _WIB = timezone(timedelta(hours=7))
+    now = datetime.now(_WIB)
+    
+    lines = [f"\U0001f6d2 Marketlist Detail \u2014 {now:%d/%m %H:%M}", ""]
+    total_items = 0
+    grand_total = 0
+    
+    for sid, grp in sorted(groups.items(), key=lambda x: -x[1]["subtotal"]):
+        store = grp["store"]
+        sname = store.get("name", "Lainnya")
+        phone = store.get("phone", "") or ""
+        notes = store.get("notes", "") or ""
+        stype = store.get("type", "") or ""
+        
+        # Category emoji based on notes/type
+        cat_emoji = "\U0001f3ea"  # default: store
+        notes_lower = notes.lower()
+        if any(kw in notes_lower for kw in ["sayur", "bumbu"]):
+            cat_emoji = "\U0001f96c"  # leafy green
+        elif any(kw in notes_lower for kw in ["daging", "ayam"]):
+            cat_emoji = "\U0001f969"  # meat
+        elif any(kw in notes_lower for kw in ["kopi", "beans"]):
+            cat_emoji = "\u2615"  # coffee
+        elif any(kw in notes_lower for kw in ["plastik", "cup", "botol"]):
+            cat_emoji = "\U0001f9f0"  # packaging
+        elif any(kw in notes_lower for kw in ["susu", "pastry"]):
+            cat_emoji = "\U0001f95e"  # pastry
+        
+        cat_tag = f" {cat_emoji} {stype}" if stype else f" {cat_emoji}"
+        
+        lines.append(f"\U0001f3ea {sname}{cat_tag}")
+        if phone:
+            lines.append(f"\U0001f4ce {phone}")
+        for item in grp["items"]:
+            bq = item["buy_qty"]
+            # Format buy_qty nicely
+            un = item["unit"]
+            if un.lower() in ("gram", "g") and bq >= 1000:
+                bq_str = f"{bq/1000:.2f}".rstrip("0").rstrip(".")
+                un = "kg"
+            elif un.lower() in ("ml",) and bq >= 1000:
+                bq_str = f"{bq/1000:.2f}".rstrip("0").rstrip(".")
+                un = "L"
+            else:
+                bq_str = f"{bq:.2f}".rstrip("0").rstrip(".")
+            
+            price_fmt = f"Rp{item['price']:,.0f}"
+            total_fmt = f"Rp{item['total']:,.0f}"
+            lines.append(f"  \u2022 {item['name']} \u2014 {bq_str} {un} @ {price_fmt} = {total_fmt}")
+        
+        sub_fmt = f"Rp{grp['subtotal']:,.0f}"
+        lines.append(f"  \U0001f4b0 Subtotal: {sub_fmt}")
+        lines.append("")
+        total_items += len(grp["items"])
+        grand_total += grp["subtotal"]
+    
+    # Footer
+    lines.append("\u2500" * 28)
+    gt_fmt = f"Rp{grand_total:,.0f}"
+    lines.append(f"\U0001f6cd Total: {total_items} item \u2022 {gt_fmt}")
+    
+    return "\n".join(lines)
+
+
+# ── Handle Stock Reaction (main entry point) ──────────────────────
+
+async def _handle_stock_reaction(update: Update, context, reaction: dict):
+    """Handle 🔴/🟡 reaction from user."""
+    msg = update.effective_message
+    if not msg:
+        return
+    
+    action_type = reaction["type"]
+    items = reaction["items"]
+    
+    if len(items) > 10:
+        await msg.reply_text(f"\u26a0\ufe0f Maksimal 10 item per pesan. Kirim lagi untuk sisanya.")
+        return
+    
+    # Fetch current inventory
+    try:
+        all_inv = await inventory.get_all_inventory()
+    except Exception as e:
+        await msg.reply_text(f"\u274c Gagal ambil data inventory: {e}")
+        return
+    
+    # AI match items to inventory
+    sp_client = SumoPodClient(SUMOPOD_API_KEY)
+    matches = await _ai_match_inventory(sp_client, items, all_inv)
+    
+    # Apply deductions
+    result = await _apply_stock_deductions(matches, action_type, all_inv)
+    
+    # Build reply
+    reply_lines = []
+    for s in result["success"]:
+        action_label = "HABIS" if action_type == "🔴" else "50%"
+        reply_lines.append(f"\u2705 {s['name']} \u2192 {s['new_qty']:g} {s['unit']} ({action_label})")
+    
+    for f in result["failed"]:
+        reason = f["reason"]
+        if "tidak ditemukan" in reason.lower():
+            # Suggest using fuzzy fallback
+            all_names = [i.get("ingredientName", "") for i in all_inv if _is_kitchen(i.get("ingredientName", ""))]
+            best = fuzz_process.extractOne(f["input"], all_names, scorer=fuzz.WRatio, score_cutoff=50)
+            if best:
+                reply_lines.append(f'\u274c "' + str(f['input']) + '" tidak ditemukan. Mungkin \u2192 "' + str(best[0]) + '"?')
+            else:
+                reply_lines.append(f'\u274c "' + str(f['input']) + '" tidak ditemukan di inventory.')
+        else:
+            reply_lines.append(f"\u274c {f['input']}: {reason}")
+    
+    if not reply_lines:
+        await msg.reply_text("\u274c Tidak ada item yang diproses. Cek format: \ud83d\udd34 Minyak Goreng")
+        return
+    
+    reply_text = "\n".join(reply_lines)
+    
+    # Add undo button if there's a history entry
+    reply_markup = None
+    if result["history_entry"]:
+        ts = result["history_entry"]["ts"]
+        keyboard = [[InlineKeyboardButton("\u21a9\ufe0f Undo", callback_data=f"undo_{ts}")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await msg.reply_text(reply_text, reply_markup=reply_markup)
+    
+    # Generate and send marketlist detail
+    try:
+        marketlist_text = await _generate_marketlist_detail()
+        await msg.reply_text(marketlist_text)
+    except Exception as e:
+        logger.warning("Marketlist detail send failed: %s", e)
+
+
+# ── Undo Callback Handler ─────────────────────────────────────────
+
+async def _handle_undo_callback(update: Update, context, ts_str: str):
+    """Handle undo button click - restore previous quantities."""
+    query = update.callback_query
+    try:
+        ts = float(ts_str)
+    except ValueError:
+        await query.answer("\u274c Invalid undo data", show_alert=True)
+        return
+    
+    history = _stock_reaction_history.get(ts)
+    if not history:
+        await query.answer("\u274c Undo tidak tersedia atau sudah expired (max 5 menit)", show_alert=True)
+        return
+    
+    # Check expiry
+    now = datetime.now().timestamp()
+    if now - ts > STOCK_REACTION_EXPIRY:
+        del _stock_reaction_history[ts]
+        await query.answer("\u23f0 Undo expired (maks 5 menit)", show_alert=True)
+        # Edit message to remove keyboard
+        try:
+            await query.edit_message_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        return
+    
+    # Restore quantities
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+    
+    restored = []
+    failed = []
+    async with httpx.AsyncClient(timeout=30) as client:
+        for item in history["items"]:
+            try:
+                resp = await client.patch(
+                    f"{SUPABASE_URL}/rest/v1/pos_inventory?_id=eq.{item['_id']}",
+                    json={"quantity": item["old_qty"]},
+                    headers=headers,
+                )
+                if resp.status_code == 204:
+                    restored.append(item["name"])
+                else:
+                    failed.append(item["name"])
+            except Exception as e:
+                failed.append(item["name"])
+    
+    # Clean up history
+    del _stock_reaction_history[ts]
+    
+    # Reply
+    lines = ["\u21a9\ufe0f **Undone!** Qty dikembalikan ke sebelum:", ""]
+    for name in restored:
+        lines.append(f"  \u2705 {name}")
+    for name in failed:
+        lines.append(f"  \u274c {name} (gagal restore)")
+    
+    await query.answer()
+    try:
+        await query.edit_message_text("\n".join(lines))
+    except Exception:
+        await query.message.reply_text("\n".join(lines))
+    
+    # Also send updated marketlist after undo
+    try:
+        marketlist_text = await _generate_marketlist_detail()
+        await query.message.reply_text(marketlist_text)
+    except Exception as e:
+        logger.warning("Marketlist after undo failed: %s", e)
+
+
+# ── Stock Reaction History Cleanup ─────────────────────────────
+
+async def _cleanup_stock_reaction_history():
+    """Periodic cleanup of expired undo entries (runs every 5 minutes)."""
+    while True:
+        await asyncio.sleep(300)  # 5 minutes
+        now = datetime.now().timestamp()
+        expired = [ts for ts, entry in list(_stock_reaction_history.items())
+                   if now - float(ts) > STOCK_REACTION_EXPIRY]
+        for ts in expired:
+            del _stock_reaction_history[ts]
+        if expired:
+            logger.info("Cleaned %d expired stock reaction history entries", len(expired))
+
+
 # ── Main ────────────────────────────────────────────────────────
 
 async def main():
@@ -893,6 +1414,7 @@ async def main():
     asyncio.ensure_future(_scheduled_stock_report())
     asyncio.ensure_future(_monitor_stock_changes())
     asyncio.ensure_future(_monitor_completed_orders())
+    asyncio.ensure_future(_cleanup_stock_reaction_history())
 
     stop = asyncio.get_event_loop().create_future()
     try:
