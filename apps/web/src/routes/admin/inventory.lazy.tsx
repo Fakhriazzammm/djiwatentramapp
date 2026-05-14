@@ -5016,6 +5016,7 @@ function InventoryTable({
 								</div>
 							</th>
 							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px]">Min</th>
+							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px]">Beli</th>
 							<th className="px-2 py-1.5 text-center font-semibold group relative cursor-help">Satuan<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Stok: satuan stok · Beli: satuan beli</span></th>
 							<th
 								className="cursor-pointer px-2 py-1.5 font-semibold transition-colors hover:text-foreground"
@@ -5136,6 +5137,25 @@ function InventoryTable({
 							</td>
 							<td className="px-2 py-1.5 text-center">
 								<input
+									className="w-14 rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold text-[10px] outline-none focus:border-primary"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({
+											...prev,
+											preferredPurchaseQuantity: e.target.value,
+										}))
+									}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											void quickCreate();
+										}
+									}}
+									type="number"
+									value={quickAdd.preferredPurchaseQuantity}
+									placeholder="Beli"
+								/>
+							</td>
+							<td className="px-2 py-1.5 text-center">
+								<input
 									className={`mx-auto w-16 rounded-lg border border-border bg-background px-1.5 py-0.5 text-center text-[10px] font-semibold outline-none focus:border-primary ${
 										getSuggestionHighlightClass(
 											quickAdd.unit.trim() !== "" &&
@@ -5198,6 +5218,9 @@ function InventoryTable({
 									</td>
 									<td className="p-4">
 										<Skeleton className="mx-auto h-8 w-16" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="mx-auto h-4 w-10" />
 									</td>
 									<td className="p-4">
 										<Skeleton className="mx-auto h-4 w-10" />
@@ -5366,6 +5389,40 @@ function InventoryTable({
 											}}
 											type="number"
 											value={inline.lowStockThreshold}
+										/>
+									</td>
+									<td className="px-2 py-1.5 align-middle text-center">
+										<input
+											className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background"
+											onBlur={() => void saveMeta(row)}
+											onChange={(e) =>
+												setInlineField(row, "preferredPurchaseQuantity", e.target.value)
+											}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") {
+													void saveMeta(row);
+													(e.target as HTMLInputElement).blur();
+												}
+											}}
+											type="number"
+											value={inline.preferredPurchaseQuantity}
+										/>
+									</td>
+									<td className="px-2 py-1.5 align-middle text-center">
+										<input
+											className="mx-auto w-14 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-center font-semibold text-[10px] text-muted-foreground outline-none focus:border-border focus:bg-background"
+											onBlur={() => void saveMeta(row)}
+											onChange={(e) =>
+												setInlineField(row, "preferredPurchaseQuantity", e.target.value)
+											}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") {
+													void saveMeta(row);
+													(e.target as HTMLInputElement).blur();
+												}
+											}}
+											type="number"
+											value={inline.preferredPurchaseQuantity}
 										/>
 									</td>
 									<td className="px-2 py-1.5 align-middle text-center group relative">
