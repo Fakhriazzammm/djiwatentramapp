@@ -40,7 +40,7 @@ function DashboardAdmin() {
 		[shiftStatus?.allShifts]
 	);
 
-	if (stats === undefined || shiftStatus === undefined) {
+	if (stats == null || shiftStatus == null) {
 		return (
 			<div className="space-y-6 md:space-y-8 animate-pulse pb-10">
 				{/* Top Card Skeleton (Compact) */}
