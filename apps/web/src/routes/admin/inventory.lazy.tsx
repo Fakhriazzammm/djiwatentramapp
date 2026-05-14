@@ -3858,6 +3858,7 @@ function InventoryTable({
 	onDetailItemChange,
 	onActionTypeChange,
 	inventoryMap,
+	inventoryMenuMap,
 	yumiAiInsights,
 	stores,
 	viewPreset,
