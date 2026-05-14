@@ -5455,6 +5455,7 @@ function InventoryTable({
 										</td>
 									<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
 						<div className="flex items-center gap-1">
+							<span className="text-[10px] font-semibold text-muted-foreground/50 shrink-0">Rp</span>
 							<input
 								className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-[11px] font-semibold text-foreground outline-none focus:border-border focus:bg-background"
 								min={0}
