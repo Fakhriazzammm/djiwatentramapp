@@ -38,6 +38,7 @@ import {
 	Download,
 	Sparkles,
 	X,
+	Loader2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -5504,6 +5505,9 @@ function InventoryTable({
 					</td>
 									<td className="px-2 py-1.5 align-middle text-center text-[10px] text-muted-foreground/60">
 										{(() => {
+											if (saveStateByRow[row.inventoryId] === "saving") {
+												return <Loader2 className="mx-auto h-3 w-3 animate-spin text-muted-foreground/50" />;
+											}
 											const unitPrice = (row.lastPurchasePrice || 0) / (row.preferredPurchaseQuantity || 1);
 											const displayUnit = row.preferredPurchaseUnit || row.unit || "unit";
 											return <>{formatCurrencyIDR(unitPrice)} / {displayUnit}</>;
@@ -5527,7 +5531,11 @@ function InventoryTable({
 											</div>
 										</td>
 									<td className="px-2 py-1.5 align-middle text-right text-[11px] font-semibold text-foreground/80 font-mono">
-										{formatCurrencyIDR((Number(inline.quantity) || 0) * ((row.lastPurchasePrice || 0) / (row.preferredPurchaseQuantity || 1)))}
+										{saveStateByRow[row.inventoryId] === "saving" ? (
+											<Loader2 className="ml-auto h-3 w-3 animate-spin text-muted-foreground/50" />
+										) : (
+											formatCurrencyIDR((Number(inline.quantity) || 0) * ((row.lastPurchasePrice || 0) / (row.preferredPurchaseQuantity || 1)))
+										)}
 									</td>
 									<td className="px-2 py-1.5 align-middle text-right">
 										<div className="relative flex items-center justify-end">
