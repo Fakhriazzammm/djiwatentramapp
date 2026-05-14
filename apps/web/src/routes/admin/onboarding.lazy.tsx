@@ -38,7 +38,9 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 /* -------- transitions -------- */
 type Transition = { value: string; label: string; icon: React.ReactNode };
 
-function getValidTransitions(status: string): Transition[] {
+function getValidTransitions(app: any): Transition[] {
+  const status = app.status;
+  const isContractSigned = app.raw?.pipelineStep === "contract_signed";
   const map: Record<string, Transition[]> = {
     pending: [
       { value: "approve", label: "Setujui", icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
@@ -54,6 +56,13 @@ function getValidTransitions(status: string): Transition[] {
       { value: "pending", label: "Kembalikan ke Pending", icon: <RefreshCw className="h-3.5 w-3.5" /> },
     ],
   };
+  // Approved yang belum tanda tangan kontrak: bisa dibatalkan/tolak
+  if (status === "approved" && !isContractSigned) {
+    return [
+      { value: "pending", label: "Batalkan Persetujuan", icon: <RefreshCw className="h-3.5 w-3.5" /> },
+      { value: "rejected", label: "Tolak", icon: <XCircle className="h-3.5 w-3.5" /> },
+    ];
+  }
   return map[status] ?? [];
 }
 
@@ -74,7 +83,7 @@ function StatusCell({
   const deleteApp = useHybridDeleteApplication();
   const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
-  const options = useMemo(() => getValidTransitions(app.status), [app.status]);
+  const options = useMemo(() => getValidTransitions(app), [app]);
   const canDelete = app.status !== "approved" && app.status !== "contract_signed";
 
   async function handleTransition(option: Transition) {

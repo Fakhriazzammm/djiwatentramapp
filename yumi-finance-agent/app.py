@@ -1305,17 +1305,16 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
     total = receipt.get("total", 0)
     category = receipt.get("category", "operasional" if tx_type == "expense" else "penjualan")
 
-    # Build description dari items (or use saved _description for manual input)
+    # Build description: utk OCR items udah di scanItems — cukup clean
     items = receipt.get("items", [])
     desc = receipt.get("_description", "") or ""
     if not desc:
-        if items:
-            item_names = ", ".join(f"{it.get('name', '?')} ×{it.get('qty', 1)}" for it in items[:5])
-            if len(items) > 5:
-                item_names += f" + {len(items) - 5} item lain"
-            desc = f"{'Pemasukan' if tx_type == 'income' else 'Belanja'}{' - ' + merchant if merchant else ''}: {item_names}"
+        if merchant:
+            desc = f"{'Pemasukan' if tx_type == 'income' else 'Belanja'} - {merchant}"
         else:
-            desc = f"Struk belanja{' - ' + merchant if merchant else ''}"
+            desc = f"{'Pemasukan' if tx_type == 'income' else 'Belanja'}"
+        if receipt.get("receipt_number"):
+            desc += f" (No. {receipt['receipt_number']})"
 
     # Determine if this came from OCR or manual text
     is_ocr = "_description" not in receipt

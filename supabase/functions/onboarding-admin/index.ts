@@ -393,7 +393,7 @@ async function handleSetStatus(
     pending:         ["rejected", "needs_revision"],
     rejected:        ["pending"],
     needs_revision:  ["pending", "rejected"],
-    approved:        [],
+    approved:        ["pending", "rejected"],
     contract_signed: [],
   };
 
@@ -402,6 +402,16 @@ async function handleSetStatus(
     return jsonResponse({
       error: `Transisi tidak valid: ${app.status} → ${status}. Transisi yang diizinkan: ${allowed.join(", ") || "tidak ada"}`,
     }, 400);
+  }
+
+  // Approved → pending/rejected only allowed if not yet signed contract
+  if (app.status === "approved" && (status === "pending" || status === "rejected")) {
+    const raw = (app.raw as Record<string, unknown>) ?? {};
+    if (raw.pipelineStep === "contract_signed") {
+      return jsonResponse({
+        error: "Tidak bisa mengubah status: karyawan sudah menandatangani kontrak",
+      }, 409);
+    }
   }
 
   // ── Execute update ──
