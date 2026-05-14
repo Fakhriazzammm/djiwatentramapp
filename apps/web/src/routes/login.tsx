@@ -147,7 +147,7 @@ function LoginPage() {
 									<Search className="h-4 w-4 md:h-5 md:w-5 text-primary/70" />
 								</div>
 								<Input 
-									placeholder="Cari Kasir, Barista..." 
+									placeholder="Tulis nama kamu" 
 									autoFocus
 									className="h-12 md:h-14 w-full rounded-full border-border bg-card pl-12 pr-4 text-base md:text-lg font-semibold shadow-sm focus:border-primary focus:ring-primary/20 transition-all placeholder:font-medium placeholder:text-muted-foreground/60"
 									value={searchQuery}
