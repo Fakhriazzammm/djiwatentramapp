@@ -4506,9 +4506,9 @@ function InventoryTable({
 					(current.conversionFactor
 						? Number(current.conversionFactor)
 						: undefined),
-				unitConversions: parsedUnitConversions,
-				baseRecipeId: item.baseRecipeId || undefined,
-			defaultBrandName: draft.defaultBrandName.trim() || undefined,
+			unitConversions: parsedUnitConversions,
+			baseRecipeId: item.baseRecipeId || undefined,
+			defaultBrandName: current.defaultBrandName.trim() || undefined,
 				preferredStoreId,
 				preferredPurchaseQuantity: preferredPurchaseQuantityNum ?? undefined,
 				preferredPurchaseUnit: preferredPurchaseUnit || undefined,
