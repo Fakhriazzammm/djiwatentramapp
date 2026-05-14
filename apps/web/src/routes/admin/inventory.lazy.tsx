@@ -822,12 +822,6 @@ function InventoryPage() {
 	const workspace = useHybridInventoryWorkspace( {
 		daysWindow: 30,
 	}) as InventoryWorkspaceData | undefined;
-	// Update last refreshed timestamp when workspace data loads
-	useEffect(() => {
-		if (workspace !== undefined) {
-			setLastRefreshedAt(new Date());
-		}
-	}, [workspace]);
 	const realtimePriceMonitor = useHybridRealtimePriceMonitor( {
 		limit: 300,
 		search: searchQuery || undefined,
@@ -2609,7 +2603,7 @@ function InventoryPlanningPanel({
 								<th className="p-3 text-center font-semibold">ROP</th>
 								<th className="p-3 text-center font-semibold">Saran Order</th>
 								<th className="p-3 text-center font-semibold">Stockout</th>
-								<th className="p-3 text-right font-semibold">Aksi</th>
+						<th className="p-3 text-right font-semibold">Aksi</th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-border">
