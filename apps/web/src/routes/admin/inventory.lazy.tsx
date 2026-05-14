@@ -5454,6 +5454,7 @@ function InventoryTable({
 										)}
 										</td>
 									<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
+						<div className="flex flex-col gap-0.5">
 						<div className="flex items-center gap-1">
 							<span className="text-[10px] font-semibold text-muted-foreground/50 shrink-0">Rp</span>
 							<input
@@ -5479,9 +5480,10 @@ function InventoryTable({
 								type="number"
 								value={getPriceDraft(row)}
 							/>
-							<div className="flex shrink-0 items-center gap-0.5">
-								<span className="text-[8px] text-muted-foreground/30">/</span>
-								<input
+						</div>
+						<div className="flex items-center gap-1 self-end">
+							<span className="text-[8px] text-muted-foreground/30">/</span>
+							<input
 									className="w-10 rounded-lg border border-transparent bg-transparent px-0.5 py-0.5 text-[9px] text-muted-foreground text-center outline-none focus:border-border focus:bg-background"
 									list="inventory-unit-options-table"
 									onBlur={() => void saveMeta(row)}
