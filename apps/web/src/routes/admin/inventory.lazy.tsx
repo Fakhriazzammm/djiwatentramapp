@@ -5509,7 +5509,7 @@ function InventoryTable({
 												return <Loader2 className="mx-auto h-3 w-3 animate-spin text-muted-foreground/50" />;
 											}
 											const unitPrice = (row.lastPurchasePrice || 0) / (row.preferredPurchaseQuantity || 1);
-											const displayUnit = row.preferredPurchaseUnit || row.unit || "unit";
+											const displayUnit = row.unit || "unit";
 											return <>{formatCurrencyIDR(unitPrice)} / {displayUnit}</>;
 										})()}
 									</td>
