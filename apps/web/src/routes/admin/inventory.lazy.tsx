@@ -3924,6 +3924,7 @@ function InventoryTable({
 				displayUnit: string;
 				conversionFactor: string;
 				unitConversionsText: string;
+				category: string;
 			}
 		>
 	>({});
@@ -4234,6 +4235,7 @@ function InventoryTable({
 				row.displayUnit,
 				row.conversionFactor
 			),
+			category: (inventoryMap.get(row.inventoryId) as any)?.category ?? "kitchen",
 		};
 
 	const setInlineField = (
@@ -4249,7 +4251,8 @@ function InventoryTable({
 			| "preferredPurchaseUnit"
 			| "displayUnit"
 			| "conversionFactor"
-			| "unitConversionsText",
+			| "unitConversionsText"
+			| "category",
 		value: string
 	) => {
 		setInlineValues((prev) => {
@@ -4280,6 +4283,7 @@ function InventoryTable({
 					row.displayUnit,
 					row.conversionFactor
 				),
+				category: (inventoryMap.get(row.inventoryId) as any)?.category ?? "kitchen",
 			};
 			return {
 				...prev,
@@ -4431,7 +4435,8 @@ function InventoryTable({
 					row.unitConversions,
 					row.displayUnit,
 					row.conversionFactor
-				)
+				) &&
+				current.category.trim() === ((inventoryMap.get(row.inventoryId) as any)?.category ?? "kitchen")
 		) {
 			return;
 		}
@@ -4468,6 +4473,7 @@ function InventoryTable({
 				preferredStoreId,
 				preferredPurchaseQuantity: preferredPurchaseQuantityNum ?? undefined,
 				preferredPurchaseUnit: preferredPurchaseUnit || undefined,
+				category: current.category.trim(),
 			});
 			saveLearnedProfile(ingredientName, {
 				unit: normalizedUnit,
@@ -5235,24 +5241,30 @@ function InventoryTable({
 											/>
 										</td>
 										<td className="px-2 py-1.5 text-center align-middle">
-											<span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold ${
-												item.category === "kitchen"
-													? "bg-emerald-100 text-emerald-700"
-													: item.category === "bar"
-														? "bg-blue-100 text-blue-700"
-														: item.category === "packaging"
-															? "bg-purple-100 text-purple-700"
-															: item.category === "cleaning"
-																? "bg-amber-100 text-amber-700"
-																: "bg-slate-100 text-slate-600"
-											}`}>
-												{item.category === "kitchen" && "🍳"}
-												{item.category === "bar" && "🥤"}
-												{item.category === "packaging" && "📦"}
-												{item.category === "cleaning" && "🧹"}
-												{item.category === "other" && "🔧"}
-												<span className="ml-0.5">{item.category}</span>
-											</span>
+											<select
+												className={`rounded-lg border px-1.5 py-0.5 text-[9px] font-semibold outline-none transition-all ${
+													inline.category === "kitchen"
+														? "border-emerald-200 bg-emerald-50 text-emerald-700 focus:border-emerald-400"
+														: inline.category === "bar"
+															? "border-blue-200 bg-blue-50 text-blue-700 focus:border-blue-400"
+															: inline.category === "packaging"
+																? "border-purple-200 bg-purple-50 text-purple-700 focus:border-purple-400"
+																: inline.category === "cleaning"
+																	? "border-amber-200 bg-amber-50 text-amber-700 focus:border-amber-400"
+																	: "border-slate-200 bg-slate-50 text-slate-600 focus:border-slate-400"
+												}`}
+												onBlur={() => void saveMeta(row)}
+												onChange={(e) =>
+													setInlineField(row, "category", e.target.value)
+												}
+												value={inline.category}
+											>
+												<option value="kitchen">🍳 kitchen</option>
+												<option value="bar">🥤 bar</option>
+												<option value="packaging">📦 packaging</option>
+												<option value="cleaning">🧹 cleaning</option>
+												<option value="other">🔧 other</option>
+											</select>
 										</td>
 										<td className="px-2 py-1.5 align-middle text-[10px] font-semibold text-muted-foreground">{row.preferredStoreName || row.lastPurchaseStoreName || "—"}{row.defaultBrandName ? ` · ${row.defaultBrandName}` : ""}</td>
 									<td className="px-2 py-1.5 align-middle text-center">
