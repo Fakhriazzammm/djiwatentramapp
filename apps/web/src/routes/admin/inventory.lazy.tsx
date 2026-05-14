@@ -876,6 +876,33 @@ function InventoryPage() {
 		});
 	}, [allProducts, menuCategoryIds, recipes]);
 
+	const inventoryMenuMap = useMemo(() => {
+		const map: Record<string, string[]> = {};
+		if (!allProducts?.length || !recipes?.length) return map;
+
+		const productNames = new Map<string, string>();
+		for (const p of allProducts) {
+			productNames.set(p._id, p.name);
+		}
+
+		for (const recipe of recipes) {
+			const productName = productNames.get(recipe.productId);
+			if (!productName) continue;
+			for (const ing of recipe.ingredients) {
+				if (!ing.inventoryId) continue;
+				if (!map[ing.inventoryId]) map[ing.inventoryId] = [];
+				if (!map[ing.inventoryId].includes(productName)) {
+					map[ing.inventoryId].push(productName);
+				}
+			}
+		}
+
+		for (const key of Object.keys(map)) {
+			map[key].sort();
+		}
+		return map;
+	}, [allProducts, recipes]);
+
 	const RECIPE_WARNING_DISMISS_KEY = "inventory:recipe-warning-dismissed:v1";
 	const [recipeWarningDismissed, setRecipeWarningDismissed] = useState(() => {
 		try {
@@ -1517,20 +1544,21 @@ function InventoryPage() {
 					onSelectedItemChange={setSelectedItem}
 				/>
 			) : (
-				<InventoryTable
+			<InventoryTable
 				filteredRows={filteredRows}
 				inventoryMap={inventoryMap}
-					yumiAiInsights={yumiAiInsights}
-					stores={stores ?? []}
-					onActionTypeChange={setActionType}
-					onDetailItemChange={setDetailItem}
-					onSelectedItemChange={setSelectedItem}
-					onSort={handleSort}
-					sortConfig={sortConfig}
-					tableMode={tableMode}
-					unitOptions={unitOptions}
-					viewPreset={viewPreset}
-				/>
+				inventoryMenuMap={inventoryMenuMap}
+				yumiAiInsights={yumiAiInsights}
+				stores={stores ?? []}
+				onActionTypeChange={setActionType}
+				onDetailItemChange={setDetailItem}
+				onSelectedItemChange={setSelectedItem}
+				onSort={handleSort}
+				sortConfig={sortConfig}
+				tableMode={tableMode}
+				unitOptions={unitOptions}
+				viewPreset={viewPreset}
+			/>
 			)}
 
 			<InventoryActionModal
@@ -3861,6 +3889,7 @@ function InventoryTable({
 			| null
 	) => void;
 	inventoryMap: Map<Id<"inventory">, Doc<"inventory">>;
+	inventoryMenuMap: Record<string, string[]>;
 	yumiAiInsights?: InventoryYumiAiInsightsData;
 	stores: InventoryStore[];
 	viewPreset: InventoryViewPreset;
@@ -4929,6 +4958,7 @@ function InventoryTable({
 						<col className="w-[2.2rem]" />
 						<col className="w-[14%]" />
 						<col className="w-[7%]" />
+						<col className="w-[12%]" />
 						<col className="w-[10%]" />
 						<col className="w-[8%]" />
 						<col className="w-[6%]" />
@@ -4959,6 +4989,7 @@ function InventoryTable({
 								</div>
 							</th>
 							<th className="px-2 py-1.5 font-semibold text-center">Kategori</th>
+							<th className="px-2 py-1.5 font-semibold text-center">Menu</th>
 							<th className="px-2 py-1.5 font-semibold">Supplier</th>
 							<th
 								className="cursor-pointer px-2 py-1.5 text-center font-semibold transition-colors hover:text-foreground"
@@ -5040,6 +5071,7 @@ function InventoryTable({
 									<option value="other">🔧 other</option>
 								</select>
 							</td>
+							<td className="px-2 py-1.5 text-center"><div className="text-[9px] text-muted-foreground/40 italic">—</div></td>
 							<td className="px-2 py-1.5">
 								<input
 									className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
@@ -5147,6 +5179,9 @@ function InventoryTable({
 									</td>
 									<td className="p-4">
 										<Skeleton className="mx-auto h-5 w-16" />
+									</td>
+									<td className="p-4">
+										<Skeleton className="h-4 w-24" />
 									</td>
 									<td className="p-4">
 										<Skeleton className="h-6 w-24" />
@@ -5265,6 +5300,28 @@ function InventoryTable({
 												<option value="cleaning">🧹 cleaning</option>
 												<option value="other">🔧 other</option>
 											</select>
+										</td>
+										<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground max-w-[200px]">
+											{(inventoryMenuMap[row.inventoryId]?.length ?? 0) > 0 ? (
+												<div className="flex flex-wrap gap-0.5">
+													{inventoryMenuMap[row.inventoryId].slice(0, 6).map((menuName) => (
+														<span
+															key={menuName}
+															className="inline-block rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary truncate max-w-full"
+															title={menuName}
+														>
+															{menuName}
+														</span>
+													))}
+													{inventoryMenuMap[row.inventoryId].length > 6 && (
+														<span className="text-[9px] text-muted-foreground/60 font-medium">
+															+{inventoryMenuMap[row.inventoryId].length - 6}
+														</span>
+													)}
+												</div>
+											) : (
+												<span className="text-[9px] text-muted-foreground/40 italic">—</span>
+											)}
 										</td>
 										<td className="px-2 py-1.5 align-middle text-[10px] font-semibold text-muted-foreground">{row.preferredStoreName || row.lastPurchaseStoreName || "—"}{row.defaultBrandName ? ` · ${row.defaultBrandName}` : ""}</td>
 									<td className="px-2 py-1.5 align-middle text-center">
