@@ -159,6 +159,7 @@ export function useHybridSubmitEmployeeApplication() {
 					raw: {
 						...(payload.raw ?? {}),
 						pipelineStatus: payload.raw?.pipelineStatus ?? "submitted",
+						pipelineStep: "submitted",
 					},
 				})
 				.select("id")
@@ -290,6 +291,23 @@ export function useHybridUpdateEmployeeApplicationStatus() {
 		},
 		[user?.name, user?.username]
 	);
+}
+
+/**
+ * Sign contract: uploads PDF + signature, updates application to contract_signed.
+ */
+export function useHybridSignContract() {
+	return useCallback(async (args: {
+		applicationId: string;
+		signatureUrl: string;
+		contractPdfUrl: string;
+		contractText: string;
+	}) => {
+		if (!hasSupabaseConfig) {
+			throw new Error("Edge Function tidak tersedia tanpa Supabase config");
+		}
+		return invokeAdminAction("sign_contract", args);
+	}, []);
 }
 
 export { useHybridCreateUser };

@@ -660,73 +660,129 @@ async def _handle_restock(target, result: PurchasingResult, is_callback: bool):
 STOCK_NOTIFY_LOCK = asyncio.Lock()
 
 async def _notify_stock_update():
-    """Kirim update stok bahan baku + menu ke grup stock."""
+    """Kirim Stock Opname bahan baku per merchant ke grup stock."""
     async with STOCK_NOTIFY_LOCK:
         try:
             all_inv = await inventory.get_all_inventory()
-            low_items = []
+
+            # Ambil data merchant
+            store_url = f"{SUPABASE_URL}/rest/v1/pos_inventory_stores?select=_id,name,phone&isActive=eq.true"
+            async with httpx.AsyncClient(timeout=20) as client:
+                store_resp = await client.get(store_url, headers={
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                })
+                stores_raw = store_resp.json() if store_resp.status_code < 400 else []
+            store_map = {s["_id"]: s for s in stores_raw}
+            UNKNOWN = {"name": "Lainnya", "phone": ""}
+
+            def fmt_sisa(qty, unit):
+                u = unit.lower().strip()
+                if qty <= 0:
+                    return "HABIS"
+                if u in ("gram", "g"):
+                    return f"sisa {qty:.0f} gram" if qty < 1000 else f"sisa {qty/1000:.1f} kg"
+                elif u in ("ml", "milliliter"):
+                    return f"sisa {qty:.0f} ml" if qty < 1000 else f"sisa {qty/1000:.1f} L"
+                elif u in ("liter", "l"):
+                    return f"sisa {qty:.1f} L"
+                elif u in ("kg",):
+                    return f"sisa {qty:.1f} kg"
+                else:
+                    return f"sisa {qty:.0f} {unit}"
+
+            urgent_by_store = {}
+            menipis_by_store = {}
+
             for item in all_inv:
                 name = item.get("ingredientName", "")
+                
+                # Skip non-kitchen items
+                name_lower = name.lower()
+                skip_kw = ["gas", "baterai", "kresek", "sedotan", "sendok garpu",
+                           "botol 1", "ekonomi", "soklin", "lifebuoy", "cling", "bento tupai",
+                           "paperbowl", "cup 12", "multi tisu", "tutup cup"]
+                if any(kw in name_lower for kw in skip_kw):
+                    continue
+                
                 qty = float(item.get("quantity") or 0)
                 th = float(item.get("lowStockThreshold") or 0)
                 unit = (item.get("unit") or "").strip()
-                unit_s = f" {unit}" if unit else ""
-                if qty <= 0:
-                    low_items.append(f"  ❌ {name} — HABIS")
-                elif th > 0 and qty <= th:
-                    low_items.append(f"  ⚠️ {name} — sisa {qty:g}{unit_s}")
+                store_id = (item.get("preferredStoreId") or "") or ""
 
-            prod_url = f"{SUPABASE_URL}/rest/v1/pos_products?select=name,categoryId,quantity&order=name"
-            cat_url = f"{SUPABASE_URL}/rest/v1/pos_categories?select=_id,name&order=displayOrder"
-            async with httpx.AsyncClient(timeout=20) as client:
-                prod_resp = await client.get(prod_url, headers={
-                    "apikey": SUPABASE_KEY,
-                    "Authorization": f"Bearer {SUPABASE_KEY}",
-                })
-                products = prod_resp.json() if prod_resp.status_code < 400 else []
-                cat_resp = await client.get(cat_url, headers={
-                    "apikey": SUPABASE_KEY,
-                    "Authorization": f"Bearer {SUPABASE_KEY}",
-                })
-                categories = cat_resp.json() if cat_resp.status_code < 400 else []
-            cat_map = {c.get("_id"): c.get("name", "?") for c in categories}
-            EXCLUDED_CATS = {"Event", "Promo", "Paket Ramadhan"}
+                if th <= 0 or qty > th:
+                    continue
 
-            habis_menu = [p for p in products if float(p.get("quantity") or 0) <= 0
-                          and cat_map.get(p.get("categoryId", ""), "").strip() not in EXCLUDED_CATS]
-            hampir_habis = [p for p in products if 0 < float(p.get("quantity") or 0) < 5
-                            and cat_map.get(p.get("categoryId", ""), "").strip() not in EXCLUDED_CATS]
-            total_menu = sum(1 for p in products if cat_map.get(p.get("categoryId", ""), "").strip() not in EXCLUDED_CATS)
-            habis_bahan = sum(1 for i in all_inv if float(i.get("quantity") or 0) <= 0)
+                sisa = fmt_sisa(qty, unit)
+                st = store_map.get(store_id, UNKNOWN)
+                sname = st["name"]
+                phone = st.get("phone", "") or ""
+                entry = {"name": name, "sisa": sisa}
 
-            lines = ["📋 *UPDATE STOK TERBARU*\n"]
-            lines.append(f"📦 *Bahan Baku:* {len(all_inv) - habis_bahan} tersedia / {habis_bahan} habis")
-            if low_items:
-                lines.extend(low_items[:8])
-                if len(low_items) > 8:
-                    lines.append(f"  ... +{len(low_items) - 8} lainnya")
+                if qty <= 0 or qty <= th * 0.3:
+                    if sname not in urgent_by_store:
+                        urgent_by_store[sname] = {"phone": phone, "items": []}
+                    urgent_by_store[sname]["items"].append(entry)
+                    if phone:
+                        urgent_by_store[sname]["phone"] = phone
+                else:
+                    if sname not in menipis_by_store:
+                        menipis_by_store[sname] = {"phone": phone, "items": []}
+                    menipis_by_store[sname]["items"].append(entry)
+                    if phone:
+                        menipis_by_store[sname]["phone"] = phone
+
+            for grp in (urgent_by_store, menipis_by_store):
+                for sn in grp:
+                    grp[sn]["items"].sort(key=lambda x: x["name"].lower())
+
+            urgent_order = sorted(urgent_by_store, key=lambda sn: (-len(urgent_by_store[sn]["items"]), sn))
+            menipis_order = sorted(menipis_by_store, key=lambda sn: (-len(menipis_by_store[sn]["items"]), sn))
+
+            total_urgent = sum(len(urgent_by_store[s]["items"]) for s in urgent_by_store)
+            total_menipis = sum(len(menipis_by_store[s]["items"]) for s in menipis_by_store)
+
+            lines = ["📋 STOCK OPNAME"]
+            lines.append(f"🔴 Urgent: {total_urgent} item  |  🟡 Menipis: {total_menipis} item")
             lines.append("")
-            lines.append(f"🍽️ *Menu:* {total_menu - len(habis_menu)} tersedia / {len(habis_menu)} habis")
-            if habis_menu:
-                for p in habis_menu[:5]:
-                    ct = cat_map.get(p.get("categoryId", ""), "")
-                    lines.append(f"  ❌ [{ct}] {p.get('name', '?')}" if ct else f"  ❌ {p.get('name', '?')}")
-                if len(habis_menu) > 5:
-                    lines.append(f"  ... +{len(habis_menu) - 5} lainnya")
-            if hampir_habis:
-                lines.append("⚠️ *Menipis:*")
-                for p in hampir_habis[:5]:
-                    ct = cat_map.get(p.get("categoryId", ""), "")
-                    tag = f"[{ct}] " if ct else ""
-                    lines.append(f"  ⚠️ {tag}{p.get('name', '?')} — sisa {float(p.get('quantity') or 0):g}")
+
+            if urgent_by_store:
+                lines.append("━━━ 🔴 URGENT ━━━")
+                lines.append("")
+                for idx, sname in enumerate(urgent_order, 1):
+                    grp = urgent_by_store[sname]
+                    phone = grp["phone"]
+                    h = f"{idx}. {sname}"
+                    if phone:
+                        h += f"  ☎️ {phone}"
+                    lines.append(h)
+                    for item in grp["items"]:
+                        lines.append(f"🔴 {item['name']} — {item['sisa']}")
+                    lines.append("")
+                lines.append("")
+
+            if menipis_by_store:
+                lines.append("━━━ 🟡 MENIPIS ━━━")
+                lines.append("")
+                for idx, sname in enumerate(menipis_order, 1):
+                    grp = menipis_by_store[sname]
+                    phone = grp["phone"]
+                    h = f"{idx}. {sname}"
+                    if phone:
+                        h += f"  ☎️ {phone}"
+                    lines.append(h)
+                    for item in grp["items"]:
+                        lines.append(f"🟡 {item['name']} — {item['sisa']}")
+                    lines.append("")
 
             async with httpx.AsyncClient(timeout=10) as client:
                 await client.post(
                     f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                    json={"chat_id": STOCK_GROUP_ID, "text": "\n".join(lines), "parse_mode": "Markdown"},
+                    json={"chat_id": STOCK_GROUP_ID, "text": "\n".join(lines)},
                 )
         except Exception as e:
             logger.warning("Stock auto-notify failed: %s", e)
+
 
 
 # ── Main ────────────────────────────────────────────────────────
@@ -812,8 +868,7 @@ async def main():
                             if latest_id and latest_id != last_completed_order_id:
                                 if last_completed_order_id:
                                     order_num = rows[0].get("orderNumber", latest_id[-6:])
-                                    logger.info("New completed order #%s, check low stock", order_num)
-                                    await _notify_stock_update()
+                                    logger.info("New completed order #%s (skip notification)", order_num)
                                 last_completed_order_id = latest_id
             except Exception as e:
                 logger.debug("Completed order monitor check: %s", e)

@@ -48,6 +48,8 @@ serve(async (req) => {
         return await handleStatusUpdate(supabase, payload, "rejected");
       case "mark_revision":
         return await handleStatusUpdate(supabase, payload, "needs_revision");
+      case "sign_contract":
+        return await handleSignContract(supabase, payload);
       case "delete":
         return await handleDelete(supabase, payload);
       case "bulk_delete":
@@ -186,12 +188,42 @@ async function handleApprove(
       review_notes: reviewNotes ? String(reviewNotes) : null,
       reviewed_by: payload.reviewed_by ? String(payload.reviewed_by) : "admin",
       reviewed_at: new Date().toISOString(),
+      raw: { ...((app.raw as Record<string, unknown>) ?? {}), pipelineStep: "approved" },
     })
     .eq("id", String(applicationId));
 
   if (updateAppError) {
     console.error("[onboarding-admin] updateApp error:", updateAppError);
     return jsonResponse({ error: updateAppError.message }, 500);
+  }
+
+  // ── Telegram notification ──
+  const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
+  const telegramChatId = Deno.env.get("TELEGRAM_REPORT_CHAT_ID") ?? "";
+  if (telegramBotToken && telegramChatId) {
+    try {
+      const appData = await supabase
+        .from("employee_onboarding_applications")
+        .select("raw, phone, full_name, employment")
+        .eq("id", String(applicationId))
+        .maybeSingle();
+      const regNumber = (appData.data?.raw as any)?.registrationNumber ?? "";
+      const msg = [
+        `✅ *Pendaftaran Disetujui*`,
+        `Nama: ${name}`,
+        `Role: ${String((payload.employment as any)?.roleName ?? "-")}`,
+        `Username: \`${username}\``,
+        regNumber ? `Registrasi: \`${regNumber}\`` : "",
+        `Link: /register/selesai/${regNumber}`,
+      ].filter(Boolean).join("\n");
+      await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: parseInt(telegramChatId, 10), text: msg, parse_mode: "Markdown" }),
+      });
+    } catch (_e) {
+      console.warn("[onboarding-admin] Telegram notification failed:", _e);
+    }
   }
 
   return jsonResponse({
@@ -266,6 +298,58 @@ async function handleDelete(
   }
 
   return jsonResponse({ success: true, message: "Pendaftaran dihapus" });
+}
+
+// ── 6. Sign contract ──────────────────────────────────────
+async function handleSignContract(
+  supabase: ReturnType<typeof createClient>,
+  payload: Record<string, unknown>
+) {
+  const { applicationId, signatureUrl, contractPdfUrl, contractText } = payload as Record<string, unknown>;
+
+  if (!applicationId || !signatureUrl || !contractPdfUrl || !contractText) {
+    return jsonResponse(
+      { error: "Data tidak lengkap: applicationId, signatureUrl, contractPdfUrl, contractText wajib" },
+      400
+    );
+  }
+
+  // Get current application data
+  const { data: app, error: appError } = await supabase
+    .from("employee_onboarding_applications")
+    .select("*")
+    .eq("id", String(applicationId))
+    .maybeSingle();
+
+  if (appError) return jsonResponse({ error: appError.message }, 500);
+  if (!app) return jsonResponse({ error: "Pendaftaran tidak ditemukan" }, 404);
+  if (app.status !== "approved") {
+    return jsonResponse({ error: "Pendaftaran harus disetujui terlebih dahulu" }, 409);
+  }
+
+  // Update application with signed contract
+  const raw = { ...((app.raw as Record<string, unknown>) ?? {}), pipelineStep: "contract_signed" };
+  const { error: updateError } = await supabase
+    .from("employee_onboarding_applications")
+    .update({
+      contract_pdf_url: String(contractPdfUrl),
+      signature_url: String(signatureUrl),
+      raw,
+      contract: { ...((app.contract as Record<string, unknown>) ?? {}), plainText: String(contractText) },
+    })
+    .eq("id", String(applicationId));
+
+  if (updateError) {
+    console.error("[onboarding-admin] sign_contract update error:", updateError);
+    return jsonResponse({ error: updateError.message }, 500);
+  }
+
+  return jsonResponse({
+    success: true,
+    message: "Kontrak berhasil ditandatangani",
+    contractPdfUrl,
+    signatureUrl,
+  });
 }
 
 // ── 5. Bulk delete applications ───────────────────────────────

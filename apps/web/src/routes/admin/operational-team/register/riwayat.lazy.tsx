@@ -14,6 +14,7 @@ const STATUS_LABELS: Record<string, string> = {
 	expired: "Berakhir",
 	terminated: "PHK",
 	renewed: "Diperpanjang",
+	waiting_sign: "Menunggu TTD",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -21,6 +22,7 @@ const STATUS_COLORS: Record<string, string> = {
 	expired: "bg-amber-100 text-amber-700 border-amber-200",
 	terminated: "bg-red-100 text-red-700 border-red-200",
 	renewed: "bg-blue-100 text-blue-700 border-blue-200",
+	waiting_sign: "bg-yellow-100 text-yellow-700 border-yellow-200",
 };
 
 function ContractHistoryPage() {
@@ -59,7 +61,7 @@ function ContractHistoryPage() {
 			if (error) throw error;
 			toast.success(`Kontrak ${app.full_name} diperpanjang ${extendDialog.months} bulan`);
 			// Refresh data
-			const { data } = await supabase.from("employee_onboarding_applications").select("*").order("created_at", { ascending: false }).limit(200);
+			const { data } = await supabase.from("employee_onboarding_applications").select("*").eq("status", "approved").order("created_at", { ascending: false }).limit(200);
 			if (data) setApplications(data);
 			setExtendDialog(null);
 		} catch (e: any) {
@@ -76,6 +78,7 @@ function ContractHistoryPage() {
 				const { data, error } = await supabase
 					.from("employee_onboarding_applications")
 					.select("*")
+					.eq("status", "approved")
 					.order("created_at", { ascending: false })
 					.limit(200);
 				if (error) throw error;
@@ -188,7 +191,9 @@ function ContractHistoryPage() {
 								const roleName = app.employment?.roleName || "-";
 								const empType = app.employment?.employmentType || "-";
 								const startDate = app.employment?.startDate || "-";
-								const status = app.raw?.contractStatus || "active";
+								const status = app.status === "approved"
+	? (app.raw?.contractStatus || (app.raw?.pipelineStep === "contract_signed" ? "active" : "waiting_sign"))
+	: app.status;
 								const pdfUrl = app.contract_pdf_url;
 								return (
 									<tr key={app.id} className="border-b last:border-0 hover:bg-muted/30">
@@ -202,6 +207,9 @@ function ContractHistoryPage() {
 											<Badge variant="outline" className={`text-[10px] ${STATUS_COLORS[status] || ""}`}>
 												{STATUS_LABELS[status] || status}
 											</Badge>
+											{app.raw?.pipelineStep === "contract_signed" && (
+												<Badge variant="default" className="ml-1 text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">✓ TTD</Badge>
+											)}
 										</td>
 										<td className="px-4 py-3 text-right">
 											{pdfUrl ? (
@@ -276,6 +284,6 @@ function ContractHistoryPage() {
 
 export default ContractHistoryPage;
 
-export const Route = createLazyFileRoute("/admin/operational-team/contracts" as any)({
+export const Route = createLazyFileRoute("/admin/operational-team/register/riwayat" as any)({
 	component: ContractHistoryPage,
 });

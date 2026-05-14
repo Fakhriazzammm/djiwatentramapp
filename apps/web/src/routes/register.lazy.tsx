@@ -71,7 +71,7 @@ const initialDraft: EmployeeOnboardingDraft = {
 	agreements: { dataIsTrue: false, contractApproved: false },
 };
 
-const STEPS = ["Data Diri", "Data Kerja", "Kontrak", "Tanda Tangan", "Selesai"];
+const STEPS = ["Data Diri", "Data Kerja"];
 
 function moneyValue(v?: number) {
 	return v ? String(v) : "";
@@ -152,58 +152,6 @@ function RegisterPage() {
 		}));
 	}, [draft.personal.fullName, draft.employment.username, onboardingSettings.autoGenerate.username, onboardingSettings.autoGenerate.slug]);
 
-	const contractPreview = useMemo(() => {
-		const roleTemplate = onboardingSettings.contractTemplatesByRoleId[draft.employment.roleId];
-		const defaultTemplate = onboardingSettings.contractTemplatesByRoleId.__default__;
-		const templateText = roleTemplate || defaultTemplate;
-		const selectedRole = roles.find((r: any) => String(r?._id) === draft.employment.roleId);
-		const roleDefaults = selectedRole ? getRoleSalaryDefaults(selectedRole) : { bonusTargetConfig: null, customAllowances: [] };
-		if (templateText) {
-			const templateStr = typeof templateText === "string" ? templateText : (templateText as any).title + "\n" + (templateText as any).clauses?.map((c: any) => c.title + "\n" + c.body).join("\n\n") || "";
-			const syncedTemplateText = syncDynamicContractClauses(templateStr, draft.personal, draft.employment, companyDisplayName, signatoryPersonName, onboardingSettings.signatoryCompanyAddress, onboardingSettings.signatoryCompanyNIB, onboardingSettings.signatoryPersonTitle, onboardingSettings.signatoryLocation);
-			const htmlParagraphs = syncedTemplateText
-				.split("\n")
-				.map((l: string) => l.trim())
-				.filter(Boolean)
-				.map((para: string) => `<p>${para}</p>`)
-				.join("\n");
-			return {
-				mode: "template" as const,
-				title: `Perjanjian Kerja ${draft.employment.roleName || ""}`,
-				plainText: syncedTemplateText,
-				html: `<article>${htmlParagraphs}</article>`,
-				clauses: [{ title: "Ketentuan Kontrak", body: syncedTemplateText }],
-			};
-		}
-		const built = buildEmployeeContractTemplate(
-			draft.personal,
-			draft.employment,
-			companyDisplayName,
-			roleDefaults.bonusTargetConfig ?? undefined,
-			roleDefaults.customAllowances ?? []
-		);
-		const ctx = buildContractVariableContext(
-			draft.personal as any,
-			draft.employment as any,
-			companyDisplayName,
-			signatoryPersonName,
-			onboardingSettings.signatoryCompanyAddress,
-			onboardingSettings.signatoryCompanyNIB,
-			onboardingSettings.signatoryPersonTitle,
-			onboardingSettings.signatoryLocation,
-		);
-			return {
-				...built,
-				plainText: replaceContractVariables(built.plainText, ctx),
-				clauses: built.clauses.map((c) => ({ ...c, body: replaceContractVariables(c.body, ctx) })),
-			html: `<article>${built.clauses.map((c) => {
-				const body = replaceContractVariables(c.body, ctx);
-				const paragraphs = body.split("\n").map((l: string) => l.trim()).filter(Boolean).map((para: string) => `<p>${para}</p>`).join("\n");
-				return `<section><h3>${c.title}</h3>${paragraphs}</section>`;
-			}).join("")}</article>`,
-			};
-	}, [draft.employment, draft.personal, onboardingSettings.contractTemplatesByRoleId, companyDisplayName]);
-
 	/* helpers */
 	const updatePersonal = (k: keyof EmployeeOnboardingDraft["personal"], v: string) =>
 		setDraft((p) => ({ ...p, personal: { ...p.personal, [k]: v } }));
@@ -228,9 +176,6 @@ function RegisterPage() {
 		return true;
 	}
 
-	function applyTemplate() {
-		setDraft((p) => ({ ...p, contract: contractPreview }));
-	}
 
 	async function isUsernameTaken(username: string) {
 		const cleanUsername = normalizeUsername(username);
@@ -247,16 +192,7 @@ function RegisterPage() {
 
 	async function handleSubmit() {
 		const username = normalizeUsername(draft.employment.username || draft.personal.fullName);
-		const finalDraft = {
-			...draft,
-			employment: {
-				...draft.employment,
-				username,
-				slug: username,
-				startDate: new Date().toISOString().slice(0, 10),
-			},
-			contract: contractPreview,
-		};
+		const finalDraft = { ...draft, employment: { ...draft.employment, username, slug: username, startDate: new Date().toISOString().slice(0, 10) } };
 		const validation = validateEmployeeOnboardingDraft(finalDraft);
 		const settingErrors = validateDraftForSettings(finalDraft, onboardingSettings);
 		if (!validation.success || settingErrors.length) {
@@ -279,20 +215,9 @@ function RegisterPage() {
 					cvUrl = await uploadFile({ file: cvFile, contentType, fileName: `${appKey}-cv.${ext}`, folder: "employee-contracts/cvs" });
 				} catch (e) {
 					console.warn("CV upload failed", e);
-					toast.warning("Gagal mengupload CV, pendaftaran tetap dilanjutkan");
 				}
 			}
-			const sigBlob = await dataUrlToBlob(draft.signatureDataUrl || "");
-			const signatureUrl = await uploadFile({ file: sigBlob, contentType: "image/png", fileName: `${appKey}-signature.png`, folder: "employee-contracts/signatures" });
-			let contractPdfUrl: string | null = null;
-			try {
-				const pdfBlob = await generateContractPdfBlob(finalDraft, document.getElementById("employee-contract-preview"));
-				contractPdfUrl = await uploadFile({ file: pdfBlob, contentType: "application/pdf", fileName: `${appKey}-contract.pdf`, folder: "employee-contracts/contracts" });
-			} catch (e) {
-				console.warn("PDF gen failed", e);
-				toast.warning("Gagal generate PDF kontrak, pendaftaran tetap dilanjutkan tanpa PDF");
-			}
-			const payload = buildEmployeeOnboardingPayload(finalDraft, { signatureUrl, contractPdfUrl, cvUrl });
+			const payload = buildEmployeeOnboardingPayload(finalDraft, { cvUrl });
 			const uniqueCode = crypto.randomUUID().slice(0, 8).toUpperCase().replace(/-/g, "");
 			const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 			const registrationNumber = `${username.toUpperCase()}-${uniqueCode}-${dateStr}`;
@@ -300,7 +225,6 @@ function RegisterPage() {
 				...payload.raw,
 				registrationNumber,
 				registrationMode: onboardingSettings.registrationMode,
-				pipelineStatus: onboardingSettings.pipeline.defaultStatus,
 				documentChecklist: onboardingSettings.documentChecklist,
 				salaryPreview: onboardingSettings.salaryPreview,
 			};
@@ -351,25 +275,24 @@ function RegisterPage() {
 							</Badge>
 							<h1 className="text-2xl font-black tracking-tight sm:text-4xl">Pendaftaran Karyawan Baru</h1>
 							<p className="mt-2 max-w-2xl text-muted-foreground text-xs leading-relaxed sm:text-sm">
-								Isi data singkat, baca kontrak, tanda tangan digital, lalu admin akan review pendaftaran Anda.
+								Isi data diri dan data kerja, setelah itu tim admin akan mereview pendaftaran Anda. Jika disetujui, Anda akan melanjutkan ke penandatanganan kontrak.
 							</p>
 							<div className="mt-3 flex flex-wrap gap-2 text-[11px] font-medium text-muted-foreground">
 								<span className="inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-1"><ShieldCheck className="h-3 w-3 text-emerald-600" />Draft tersimpan di perangkat</span>
-								<span className="inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-1"><FileText className="h-3 w-3 text-sky-600" />Kontrak jadi PDF otomatis</span>
-								<span className="inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-1"><PenLine className="h-3 w-3 text-amber-600" />Tanda tangan digital</span>
+								<span className="inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-1"><FileText className="h-3 w-3 text-sky-600" />Kontrak ditandatangani setelah approval admin</span>
 							</div>
 						</div>
 
 						<div className="space-y-3">
 							<div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
 								<span>Progress</span>
-								<span>{Math.min(step + 1, 4)} dari 4</span>
+								<span>{Math.min(step + 1, 2)} dari 2</span>
 							</div>
 							<div className="h-2 overflow-hidden rounded-full bg-muted">
-								<div className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-500 transition-all" style={{ width: `${Math.min(((step + 1) / 4) * 100, 100)}%` }} />
+								<div className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-500 transition-all" style={{ width: `${Math.min(((step + 1) / 2) * 100, 100)}%` }} />
 							</div>
-							<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-								{STEPS.slice(0, 4).map((label, idx) => (
+							<div className="grid grid-cols-2 gap-2">
+								{STEPS.map((label, idx) => (
 									<div key={label} className={`rounded-2xl border px-3 py-2 text-xs font-semibold transition-all ${idx === step ? "border-primary bg-primary text-primary-foreground shadow-sm" : idx < step ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "bg-background text-muted-foreground"}`}>
 										<span className="block text-[10px] opacity-75">Langkah {idx + 1}</span>{label}
 									</div>
@@ -517,62 +440,8 @@ function RegisterPage() {
 					</Card>
 				)}
 
-			{/* ---- step 2: kontrak (read-only) ---- */}
-			{/* ---- step 2: kontrak ---- */}
-			{step === 2 && (
-				<Card className="border sm:rounded-xl">
-					<CardHeader className="pb-2 sm:pb-4">
-						<CardTitle className="text-base sm:text-lg">Kontrak Kerja</CardTitle>
-						<CardDescription className="text-xs sm:text-sm">
-							Kontrak disiapkan oleh admin. Baca dengan saksama sebelum tanda tangan.
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						{!contractPreview.plainText && contractPreview.clauses.length === 0 ? (
-							<div className="rounded-lg border border-dashed p-4 text-center">
-								<p className="text-muted-foreground text-sm">Belum ada kontrak.</p>
-								<p className="text-muted-foreground text-xs">Admin akan menyiapkan kontrak kerja untuk Anda.</p>
-							</div>
-						) : (
-							<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} companyName={companyDisplayName} signatoryName={signatoryPersonName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
-						)}
-					</CardContent>
-				</Card>
-			)}
-
-				{/* ---- step 3: tanda tangan ---- */}
-				{step === 3 && (
-					<div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
-						<Card className="flex-1 border sm:rounded-xl">
-							<CardHeader className="pb-2 sm:pb-4"><CardTitle className="text-base sm:text-lg">Tanda Tangan &amp; Submit</CardTitle></CardHeader>
-							<CardContent className="space-y-4">
-								<SignaturePad value={draft.signatureDataUrl} onChange={(v) => setDraft((p) => ({ ...p, signatureDataUrl: v }))} />
-								<label className="flex items-center gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2.5 text-sm cursor-pointer hover:bg-muted/50 transition-colors">
-									<Checkbox
-										checked={draft.agreements.dataIsTrue}
-										onCheckedChange={(v) => setDraft((p) => ({ ...p, agreements: { ...p.agreements, dataIsTrue: Boolean(v) } }))}
-										className="size-5 border-2"
-									/>
-									<span className="font-medium text-foreground select-none">Saya menyatakan data yang saya isi benar.</span>
-								</label>
-								<label className="flex items-center gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2.5 text-sm cursor-pointer hover:bg-muted/50 transition-colors">
-									<Checkbox
-										checked={draft.agreements.contractApproved}
-										onCheckedChange={(v) => setDraft((p) => ({ ...p, agreements: { ...p.agreements, contractApproved: Boolean(v) } }))}
-										className="size-5 border-2"
-									/>
-									<span className="font-medium text-foreground select-none">Saya menyetujui isi kontrak kerja.</span>
-								</label>
-							</CardContent>
-						</Card>
-						<div className="flex-1">
-							<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} signatureDataUrl={draft.signatureDataUrl} companyName={companyDisplayName} signatoryName={signatoryPersonName} signatorySignatureUrl={onboardingSettings.signatorySignatureUrl} />
-						</div>
-					</div>
-				)}
-
-				{/* ---- navigation ---- */}
-				{step < 4 && (
+\t\t\t\t{/* ---- navigation ---- */}
+				{step < 2 && (
 					<div className="sticky bottom-3 z-20 flex items-center justify-between gap-3 rounded-2xl border bg-card/95 p-2 shadow-xl backdrop-blur sm:static sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
 						<Button
 							disabled={step === 0}
@@ -586,26 +455,25 @@ function RegisterPage() {
 
 						{/* mobile step dots */}
 						<div className="flex gap-1 sm:hidden">
-							{STEPS.slice(0, 4).map((_, idx) => (
+							{STEPS.map((_, idx) => (
 								<div key={idx} className={`h-1.5 w-1.5 rounded-full transition-colors ${idx === step ? "bg-primary" : "bg-border"}`} />
 							))}
 						</div>
 
 						<Button
 							onClick={() => {
-								if (step === 3) {
+								if (step === 1) {
 									handleSubmit();
 									return;
 								}
 								if (!validateCurrentStep()) return;
-								if (step === 1 && !draft.contract.plainText) applyTemplate();
-								setStep((s) => Math.min(3, s + 1));
+								setStep((s) => Math.min(1, s + 1));
 							}}
 							disabled={isSubmitting}
 							size="sm"
 							className="sm:h-10 sm:px-4 sm:text-sm"
 						>
-							{step === 3 ? (isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Mengirim</> : "Kirim Pendaftaran") : <>Lanjut<ChevronRight className="ml-1 h-4 w-4 sm:ml-2" /></>}
+							{step === 1 ? (isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Mengirim</> : "Kirim Pendaftaran") : <>Lanjut<ChevronRight className="ml-1 h-4 w-4 sm:ml-2" /></>}
 						</Button>
 					</div>
 				)}

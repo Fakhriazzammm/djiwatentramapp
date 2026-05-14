@@ -28,6 +28,7 @@ export function AdminOnboardingPage() {
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [search, setSearch] = useState("");
+	const [pipelineFilter, setPipelineFilter] = useState<string>("");
 	const navigate = useNavigate();
 	const siteSettings = useHybridSiteSettings();
 	const onboardingSettings = useMemo(() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding), [siteSettings?.employeeOnboarding]);
@@ -134,24 +135,38 @@ export function AdminOnboardingPage() {
 	const stats = useMemo(
 		() => ({
 			pending: applications.filter((a: any) => a.status === "pending").length,
-			approved: applications.filter((a: any) => a.status === "approved").length,
+			approved: applications.filter((a: any) => a.status === "approved" && a.raw?.pipelineStep !== "contract_signed").length,
+			waitingContract: applications.filter((a: any) => a.status === "approved" && a.raw?.pipelineStep !== "contract_signed").length,
+			selesai: applications.filter((a: any) => a.raw?.pipelineStep === "contract_signed" || a.status === "contract_signed").length,
 			revision: applications.filter((a: any) => a.status === "needs_revision").length,
 		}),
 		[applications],
 	);
 
 	const filtered = useMemo(() => {
-		if (!search.trim()) return applications;
-		const q = search.toLowerCase();
-		return applications.filter(
-			(a: any) =>
-				(a.full_name || "").toLowerCase().includes(q) ||
-				(a.phone || "").includes(q) ||
-				(a.employment?.roleName || "").toLowerCase().includes(q) ||
-				(a.status || "").toLowerCase().includes(q) ||
-				(a.raw?.registrationNumber || "").toLowerCase().includes(q),
-		);
-	}, [applications, search]);
+		let list = applications;
+		if (search.trim()) {
+			const q = search.toLowerCase();
+			list = list.filter(
+				(a: any) =>
+					(a.full_name || "").toLowerCase().includes(q) ||
+					(a.phone || "").includes(q) ||
+					(a.employment?.roleName || "").toLowerCase().includes(q) ||
+					(a.status || "").toLowerCase().includes(q) ||
+					(a.raw?.registrationNumber || "").toLowerCase().includes(q),
+			);
+		}
+		if (pipelineFilter) {
+			if (pipelineFilter === "waiting_contract") {
+				list = list.filter((a: any) => a.status === "approved" && a.raw?.pipelineStep !== "contract_signed");
+			} else if (pipelineFilter === "contract_signed") {
+				list = list.filter((a: any) => a.raw?.pipelineStep === "contract_signed");
+			} else {
+				list = list.filter((a: any) => a.status === pipelineFilter);
+			}
+		}
+		return list;
+	}, [applications, search, pipelineFilter]);
 
 	/* ---- render ---- */
 	return (
@@ -186,9 +201,11 @@ export function AdminOnboardingPage() {
 					<Button size="sm" variant="default" onClick={() => window.open("/register", "_blank")} className="gap-1.5">
 						<PlusCircle className="h-4 w-4" /> Tambah Pendaftaran
 					</Button>
-					<div className="grid grid-cols-3 gap-1.5 text-center sm:gap-2">
+					<div className="grid grid-cols-5 gap-1.5 text-center sm:gap-2">
 					<Stat label="Pending" value={stats.pending} />
 					<Stat label="Approved" value={stats.approved} />
+					<Stat label="Kontrak" value={stats.waitingContract} />
+					<Stat label="Selesai" value={stats.selesai} />
 					<Stat label="Revisi" value={stats.revision} />
 				</div>
 			</div>
@@ -208,6 +225,21 @@ export function AdminOnboardingPage() {
 					</div>
 				</CardContent>
 			</Card>
+
+			{/* ---- pipeline filter ---- */}
+			<div className="flex flex-wrap gap-1.5">
+				{["", "pending", "approved", "waiting_contract", "contract_signed", "rejected"].map((s) => (
+					<Button
+						key={s}
+						size="sm"
+						variant={pipelineFilter === s ? "default" : "outline"}
+						onClick={() => setPipelineFilter(s)}
+						className="h-7 text-[11px] px-2.5"
+					>
+						{s ? (s === "waiting_contract" ? "Tunggu Kontrak" : s === "contract_signed" ? "Selesai" : s.charAt(0).toUpperCase() + s.slice(1)) : "Semua"}
+					</Button>
+				))}
+			</div>
 
 			{/* ---- list ---- */}
 			<Card className="border sm:rounded-xl">
@@ -275,7 +307,10 @@ export function AdminOnboardingPage() {
 													{app.email && <span className="block truncate">{app.email}</span>}
 												</td>
 												<td className="p-2 sm:p-3 hidden md:table-cell text-xs">{new Date(app.created_at).toLocaleDateString("id-ID")}</td>
-												<td className="p-2 sm:p-3"><Badge variant={STATUS_VARIANT[app.status] ?? "secondary"} className="text-[10px]">{app.status}</Badge></td>
+												<td className="p-2 sm:p-3">
+												<Badge variant={STATUS_VARIANT[app.status] ?? "secondary"} className="text-[10px]">{app.status}</Badge>
+												{app.raw?.pipelineStep === "contract_signed" && <Badge variant="default" className="ml-1 text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">Kontrak ✅</Badge>}
+											</td>
 														<td className="p-2 sm:p-3 text-right">
 															<div className="flex items-center justify-end gap-1">
 																{app.status === "pending" && (
@@ -329,6 +364,7 @@ export function AdminOnboardingPage() {
 												</div>
 											</div>
 											<Badge variant={STATUS_VARIANT[app.status] ?? "secondary"} className="text-xs flex-shrink-0">{app.status}</Badge>
+										{app.raw?.pipelineStep === "contract_signed" && <Badge variant="default" className="ml-1 text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">Kontrak ✅</Badge>}
 										</div>
 										<div className="text-muted-foreground text-xs">{app.phone} &middot; {app.email}</div>
 										<div className="text-muted-foreground text-xs">{new Date(app.created_at).toLocaleDateString("id-ID")}</div>

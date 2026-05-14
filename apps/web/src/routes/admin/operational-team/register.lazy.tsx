@@ -12,6 +12,7 @@ function OperationalTeamRegisterPage() {
 	const isNestedRoute =
 		location.pathname.endsWith("/register/contract") ||
 		location.pathname.endsWith("/register/onboarding") ||
+		location.pathname.endsWith("/register/riwayat") ||
 		location.pathname.includes("/register/application/");
 
 	if (isNestedRoute) {
@@ -102,7 +103,7 @@ function RegisterLanding() {
 					<Button size="sm" variant="outline" onClick={() => window.open("/register?preview=admin", "_blank")} className="gap-1.5 text-xs">
 						<Eye className="h-3.5 w-3.5" /> Preview
 					</Button>
-					<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/operational-team/contracts"} className="gap-1.5 text-xs">
+					<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/operational-team/register/riwayat"} className="gap-1.5 text-xs">
 						<FileText className="h-3.5 w-3.5" /> Riwayat
 					</Button>
 				</div>
