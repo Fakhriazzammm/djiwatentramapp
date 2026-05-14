@@ -353,8 +353,8 @@ async def _do_dibuat(key: str, by: str = "auto"):
     await _update_order_status(key, "dibuat", by)
     logger.info("[%s] Status: DIBUAT oleh %s", key, by)
 
-    # Auto selesai setelah 10 menit (600 detik)
-    order["auto_selesai_task"] = asyncio.create_task(_auto_selesai(key, 600))
+    # Auto selesai setelah 30 menit (1800 detik)
+    order["auto_selesai_task"] = asyncio.create_task(_auto_selesai(key, 1800))
 
 async def _do_selesai(key: str, by: str = "auto"):
     order = _active_orders.get(key)
@@ -448,13 +448,15 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
         else:
             item_lines.append(f"  • {qty}× {name}")
 
-    base_text = "\n".join([
+    lines = []
+    if struk_line:
+        lines.append(f"📍 {struk_line}")
+    lines.extend([
         f"☕ PESANAN BARU — 🕐 {_format_time_hm(ts_ms)}",
         "────────────",
         f"🆔 {order_no}",
     ])
-    if struk_line:
-        base_text += f"\n📍 {struk_line}"
+    base_text = "\n".join(lines)
     base_text += "\n".join([
         "",
         f"{type_label}",
@@ -492,7 +494,7 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
             "items": bev_items,
             "struk_line": struk_line,
         }
-        _active_orders[key]["auto_dibuat_task"] = asyncio.create_task(_auto_dibuat(key, 20))
+        _active_orders[key]["auto_dibuat_task"] = asyncio.create_task(_auto_dibuat(key, 30))
         await _insert_order_status(key, _active_orders[key])
         logger.info("Barista notification sent for %s (%d beverages)", order_no, len(bev_items))
     except Exception as e:
@@ -516,13 +518,15 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
         else:
             item_lines.append(f"  • {qty}× {name}")
 
-    base_text = "\n".join([
+    lines = []
+    if struk_line:
+        lines.append(f"📍 {struk_line}")
+    lines.extend([
         f"🍳 PESANAN BARU — 🕐 {_format_time_hm(ts_ms)}",
         "────────────",
         f"🆔 {order_no}",
     ])
-    if struk_line:
-        base_text += f"\n📍 {struk_line}"
+    base_text = "\n".join(lines)
     base_text += "\n".join([
         "",
         f"{type_label}",
@@ -560,7 +564,7 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
             "items": food_items,
             "struk_line": struk_line,
         }
-        _active_orders[key]["auto_dibuat_task"] = asyncio.create_task(_auto_dibuat(key, 20))
+        _active_orders[key]["auto_dibuat_task"] = asyncio.create_task(_auto_dibuat(key, 30))
         await _insert_order_status(key, _active_orders[key])
         logger.info("Kitchen notification sent for %s (%d food items)", order_no, len(food_items))
     except Exception as e:
@@ -643,9 +647,16 @@ async def _check_new_orders(app):
 
         daily_no = row.get("daily_receipt_no")
         receipt_kind = row.get("receipt_kind")
-        receipt_labels = {"dine_in": "Dine In", "takeaway": "Takeaway", "online": "Online"}
-        receipt_label = receipt_labels.get(receipt_kind) if receipt_kind else None
-        struk_line = f"STRUK {receipt_label} No.{daily_no}" if (daily_no and receipt_label) else None
+        receipt_kind_labels = {"dine_in": "DINE IN", "takeaway": "TAKEAWAY", "online": "ONLINE"}
+        kind_label = receipt_kind_labels.get(receipt_kind) if receipt_kind else None
+        if daily_no and kind_label:
+            if receipt_kind == "online" and order_type not in ("online", "dine_in", "takeaway"):
+                sub = order_type.replace("_", " ").title()
+                struk_line = f"STRUK NO. {daily_no} - {kind_label} ({sub})"
+            else:
+                struk_line = f"STRUK NO. {daily_no} - {kind_label}"
+        else:
+            struk_line = None
 
         # Cek ulang nama customer dari items jika kosong
         if customer in ("", "Pelanggan") and items:

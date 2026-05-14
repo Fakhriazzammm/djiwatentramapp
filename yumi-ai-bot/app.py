@@ -1687,22 +1687,30 @@ async def _check_new_transactions(app):
 
             daily_no = o.get("daily_receipt_no")
             receipt_kind = o.get("receipt_kind")
-            receipt_labels = {"dine_in": "Dine In", "takeaway": "Takeaway", "online": "Online"}
-            receipt_label = receipt_labels.get(receipt_kind, "Struk") if receipt_kind else None
-            struk_line = f"{receipt_label} No.{daily_no}" if (daily_no and receipt_label) else None
+            receipt_kind_labels = {"dine_in": "DINE IN", "takeaway": "TAKEAWAY", "online": "ONLINE"}
+            kind_label = receipt_kind_labels.get(receipt_kind) if receipt_kind else None
+            if daily_no and kind_label:
+                if receipt_kind == "online" and order_type not in ("online", "dine_in", "takeaway"):
+                    sub = order_type.replace("_", " ").title()
+                    struk_line = f"STRUK NO. {daily_no} - {kind_label} ({sub})"
+                else:
+                    struk_line = f"STRUK NO. {daily_no} - {kind_label}"
+            else:
+                struk_line = None
 
             shift = await _find_shift_at_time(ts)
             cashier = shift.get("cashier_name", "?")
             team = shift.get("team_members", "")
 
             # ── Transaction report (per baris, tanpa |) ──
-            lines = [
+            lines = []
+            if struk_line:
+                lines.append(f"📍 {struk_line}")
+            lines.extend([
                 f"🧾 Pesanan Baru — {_format_time_ms(ts)}",
                 "────────────",
                 f"🆔 {order_no}",
-            ]
-            if struk_line:
-                lines.append(f"📍 {struk_line}")
+            ])
             lines.append(f"💰 Rp{amount:,.0f} — {payment}")
             lines.append(f"👤 {customer}")
             lines.append(f"👥 Kasir: {cashier}")
