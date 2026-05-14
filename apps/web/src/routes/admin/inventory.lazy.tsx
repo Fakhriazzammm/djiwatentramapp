@@ -60,6 +60,7 @@ import {
 	useHybridInventoryWorkspace,
 	useHybridInventoryYumiAiInsights,
 	useHybridRealtimePriceMonitor,
+	useHybridHppRecipes,
 } from "@/hooks/use-hybrid-inventory-admin-data";
 import { formatCurrencyIDR } from "@/lib/export-utils";
 
@@ -812,6 +813,7 @@ function InventoryPage() {
 	const allProducts = useHybridAllProducts();
 	const categories = useHybridCategories();
 	const recipes = useHybridRecipes();
+	const hppRecipes = useHybridHppRecipes();
 	const stores = useHybridInventoryStores() as
 		| InventoryStore[]
 		| undefined;
@@ -878,30 +880,37 @@ function InventoryPage() {
 
 	const inventoryMenuMap = useMemo(() => {
 		const map: Record<string, string[]> = {};
-		if (!allProducts?.length || !recipes?.length) return map;
+		if (!allProducts?.length) return map;
 
 		const productNames = new Map<string, string>();
 		for (const p of allProducts) {
 			productNames.set(p._id, p.name);
 		}
 
-		for (const recipe of recipes) {
-			const productName = productNames.get(recipe.productId);
-			if (!productName) continue;
-			for (const ing of recipe.ingredients) {
-				if (!ing.inventoryId) continue;
-				if (!map[ing.inventoryId]) map[ing.inventoryId] = [];
-				if (!map[ing.inventoryId].includes(productName)) {
-					map[ing.inventoryId].push(productName);
+		const addIngredients = (entries: any[], productIdField: string) => {
+			for (const entry of entries) {
+				const productName = productNames.get(entry[productIdField]);
+				if (!productName) continue;
+				const ingredients = entry.ingredients ?? [];
+				for (const ing of ingredients) {
+					const invId = ing.inventoryId;
+					if (!invId) continue;
+					if (!map[invId]) map[invId] = [];
+					if (!map[invId].includes(productName)) {
+						map[invId].push(productName);
+					}
 				}
 			}
-		}
+		};
+
+		if (recipes?.length) addIngredients(recipes, "productId");
+		if (hppRecipes?.length) addIngredients(hppRecipes, "productId");
 
 		for (const key of Object.keys(map)) {
 			map[key].sort();
 		}
 		return map;
-	}, [allProducts, recipes]);
+	}, [allProducts, recipes, hppRecipes]);
 
 	const RECIPE_WARNING_DISMISS_KEY = "inventory:recipe-warning-dismissed:v1";
 	const [recipeWarningDismissed, setRecipeWarningDismissed] = useState(() => {

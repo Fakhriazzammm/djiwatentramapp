@@ -1559,6 +1559,18 @@ export function useHybridRecipes() {
 	return supabaseData as any;
 }
 
+async function fetchHppRecipes() {
+	const supabase = createClient();
+	const { data, error } = await supabase.from("pos_hpp_calculations").select("productId,ingredients");
+	if (error) throw error;
+	return data ?? [];
+}
+
+export function useHybridHppRecipes() {
+	const supabaseData = useSupabaseValue("hpp-recipes", fetchHppRecipes, []);
+	return supabaseData as any;
+}
+
 export function useHybridInventoryWorkspace(options?: { daysWindow?: number }) {
 	const daysWindow = Math.max(1, Math.min(90, options?.daysWindow ?? 30));
 	const supabaseData = useSupabaseValue(
