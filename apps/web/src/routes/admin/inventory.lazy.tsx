@@ -3975,6 +3975,7 @@ function InventoryTable({
 		quantity: "0",
 		unit: "gram",
 		lowStockThreshold: "100",
+		preferredPurchaseQuantity: "",
 		defaultBrandName: "",
 		preferredStoreName: "",
 		displayUnit: "",
@@ -5017,7 +5018,7 @@ function InventoryTable({
 							</th>
 							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px]">Min</th>
 							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px]">Beli</th>
-							<th className="px-2 py-1.5 text-center font-semibold group relative cursor-help">Satuan<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Stok: satuan stok · Beli: satuan beli</span></th>
+							<th className="px-2 py-1.5 text-center font-semibold group relative cursor-help">Satuan<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Satuan stok untuk stok. Lihat kolom Beli utk jumlah &amp; satuan beli.</span></th>
 							<th
 								className="cursor-pointer px-2 py-1.5 font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("lastPurchasePrice")}
@@ -5444,7 +5445,7 @@ function InventoryTable({
 											value={inline.unit}
 										/>
 										{row.preferredPurchaseUnit && row.preferredPurchaseUnit !== inline.unit && (
-											<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Stok: {inline.unit} · Beli: {row.preferredPurchaseUnit}</span>
+											<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Satuan stok: {inline.unit} | Beli dlm: {row.preferredPurchaseUnit}</span>
 										)}
 									</td>
 <td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
