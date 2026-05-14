@@ -310,4 +310,20 @@ export function useHybridSignContract() {
 	}, []);
 }
 
+/**
+ * Set status (lightweight transitions: reject, needs_revision, pending).
+ * For approve, use useHybridApproveApplication instead.
+ */
+export function useHybridSetOnboardingStatus() {
+	return useCallback(async (args: {
+		id: string;
+		status: "pending" | "rejected" | "needs_revision";
+	}) => {
+		if (!hasSupabaseConfig) {
+			throw new Error("Edge Function tidak tersedia tanpa Supabase config");
+		}
+		return invokeAdminAction("set_status", args);
+	}, []);
+}
+
 export { useHybridCreateUser };

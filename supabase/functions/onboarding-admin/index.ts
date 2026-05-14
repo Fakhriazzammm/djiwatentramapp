@@ -52,6 +52,8 @@ serve(async (req) => {
         return await handleSignContract(supabase, payload);
       case "delete":
         return await handleDelete(supabase, payload);
+      case "set_status":
+        return await handleSetStatus(supabase, payload);
       case "bulk_delete":
         return await handleBulkDelete(supabase, payload);
       default:
@@ -352,7 +354,84 @@ async function handleSignContract(
   });
 }
 
-// ── 5. Bulk delete applications ───────────────────────────────
+// ── 5. Set status (lightweight transitions) ────────────────────
+async function handleSetStatus(
+  supabase: ReturnType<typeof createClient>,
+  payload: Record<string, unknown>
+) {
+  const { id, status } = payload as { id?: string; status?: string };
+
+  // ── Validate input ──
+  if (!id || !status) {
+    return jsonResponse({ error: "Parameter id dan status wajib diisi" }, 400);
+  }
+
+  const VALID_TARGETS = ["pending", "rejected", "needs_revision"] as const;
+  if (!VALID_TARGETS.includes(status as any)) {
+    return jsonResponse({
+      error: `Status target tidak valid. Gunakan: ${VALID_TARGETS.join(", ")}`,
+    }, 400);
+  }
+
+  // ── Check current application ──
+  const { data: app, error: appError } = await supabase
+    .from("employee_onboarding_applications")
+    .select("id, status")
+    .eq("id", String(id))
+    .maybeSingle();
+
+  if (appError) {
+    console.error("[onboarding-admin] set_status fetch error:", appError);
+    return jsonResponse({ error: appError.message }, 500);
+  }
+  if (!app) {
+    return jsonResponse({ error: "Pendaftaran tidak ditemukan" }, 404);
+  }
+
+  // ── Validate transition ──
+  const VALID_TRANSITIONS: Record<string, string[]> = {
+    pending:         ["rejected", "needs_revision"],
+    rejected:        ["pending"],
+    needs_revision:  ["pending", "rejected"],
+    approved:        [],
+    contract_signed: [],
+  };
+
+  const allowed = VALID_TRANSITIONS[app.status] ?? [];
+  if (!allowed.includes(status)) {
+    return jsonResponse({
+      error: `Transisi tidak valid: ${app.status} → ${status}. Transisi yang diizinkan: ${allowed.join(", ") || "tidak ada"}`,
+    }, 400);
+  }
+
+  // ── Execute update ──
+  const updatePayload: Record<string, unknown> = {
+    status,
+    reviewed_at: new Date().toISOString(),
+  };
+
+  // Only set reviewed_by if transitioning away from pending (a review decision)
+  if (app.status === "pending" && (status === "rejected" || status === "needs_revision")) {
+    updatePayload.reviewed_by = payload.reviewedBy ?? "admin";
+  }
+
+  const { error: updateError } = await supabase
+    .from("employee_onboarding_applications")
+    .update(updatePayload)
+    .eq("id", String(id));
+
+  if (updateError) {
+    console.error("[onboarding-admin] set_status update error:", updateError);
+    return jsonResponse({ error: updateError.message }, 500);
+  }
+
+  return jsonResponse({
+    success: true,
+    message: `Status diubah ke ${status}`,
+  });
+}
+
+// ── 6. Bulk delete applications ───────────────────────────────
 async function handleBulkDelete(
   supabase: ReturnType<typeof createClient>,
   payload: Record<string, unknown>
