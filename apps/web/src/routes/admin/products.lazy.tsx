@@ -28,6 +28,7 @@ import {
 	Search,
 	Sparkles,
 	Trash2,
+	X,
 	XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";

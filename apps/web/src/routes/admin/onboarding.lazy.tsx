@@ -25,7 +25,7 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 };
 
 /* -------- page -------- */
-function AdminOnboardingPage() {
+export function AdminOnboardingPage() {
 	const [applications, setApplications] = useState<any[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const siteSettings = useHybridSiteSettings();
