@@ -347,7 +347,7 @@ async function fetchInventoryRows() {
 	const { data, error } = await supabase
 		.from("pos_inventory")
 		.select("*")
-		.order("ingredient_name", { ascending: true });
+		.order("ingredientName", { ascending: true });
 	if (error) throw error;
 	return (data ?? []).map((row: any) => ({
 		_id: row._id ?? row.source_id,
