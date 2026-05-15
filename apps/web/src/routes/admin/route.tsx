@@ -487,7 +487,7 @@ function AdminLayout() {
 							<AnimatePresence initial={false}>
 								{isOperationalTeamOpen && (
 									<motion.div animate={{ height: "auto", opacity: 1 }} className="overflow-hidden" exit={{ height: 0, opacity: 0 }} initial={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }}>
-\t\t\t\t\t\t\t\t\t\t<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
+										<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
 											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/operational-team" permission="users:manage" />
 											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<Users />} label="Karyawan" to="/admin/operational-team/karyawan" permission="users:manage" />
 											<DesktopSubNavLink icon={<FileBarChart />} label="Absensi" to="/admin/operational-team/attendance" permission="users:manage" />
