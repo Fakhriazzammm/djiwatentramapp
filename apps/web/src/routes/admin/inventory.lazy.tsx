@@ -5033,11 +5033,43 @@ function InventoryTable({
 										) : (
 											<ArrowDown className="h-3 w-3" />
 										))}
+									<button
+										className="ml-0.5 rounded p-0.5 text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors"
+										onClick={(e) => { e.stopPropagation(); triggerHybridRefresh(); triggerHybridRefresh(); setLastRefreshedAt(new Date()); }}
+										title="Hitung ulang harga"
+										type="button"
+									>
+										<RotateCw className="h-2.5 w-2.5" />
+									</button>
 								</div>
 							</th>
-							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px]">Harga/Unit</th>
+							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px]">
+								<div className="flex items-center justify-center gap-1">
+									Harga/Unit
+									<button
+										className="rounded p-0.5 text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors"
+										onClick={() => { triggerHybridRefresh(); triggerHybridRefresh(); setLastRefreshedAt(new Date()); }}
+										title="Hitung ulang harga/unit"
+										type="button"
+									>
+										<RotateCw className="h-2.5 w-2.5" />
+									</button>
+								</div>
+							</th>
 							<th className="px-2 py-1.5 font-semibold">Status</th>
-							<th className="px-2 py-1.5 text-right">Nilai Stok</th>
+							<th className="px-2 py-1.5 text-right">
+								<div className="flex items-center justify-end gap-1">
+									Nilai Stok
+									<button
+										className="rounded p-0.5 text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors"
+										onClick={() => { triggerHybridRefresh(); triggerHybridRefresh(); setLastRefreshedAt(new Date()); }}
+										title="Hitung ulang nilai stok"
+										type="button"
+									>
+										<RotateCw className="h-2.5 w-2.5" />
+									</button>
+								</div>
+							</th>
 							<th className="px-2 py-1.5 text-right font-semibold">
 								<div className="flex flex-col items-end">
 									<div className="flex items-center gap-0.5">
