@@ -816,7 +816,7 @@ async function fetchInventory() {
 	const { data, error } = await supabase
 		.from("pos_inventory")
 		.select("*")
-		.order("ingredient_name", { ascending: true });
+		.order("ingredientName", { ascending: true });
 
 	if (error) throw error;
 
