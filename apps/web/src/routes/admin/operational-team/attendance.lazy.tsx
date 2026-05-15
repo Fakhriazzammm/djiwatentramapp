@@ -1,12 +1,7 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import { SettingsPage } from "../settings.lazy";
+import { createLazyFileRoute, Outlet } from "@tanstack/react-router";
 
 function OperationalTeamAttendancePage() {
-	return (
-		<div className="space-y-4">
-			<SettingsPage key="attendance" initialOperationalTab="attendance-report" mode="operational-team" />
-		</div>
-	);
+	return <Outlet />;
 }
 
 export const Route = createLazyFileRoute("/admin/operational-team/attendance" as any)({
