@@ -1,6 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Eye, FileSignature, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, Eye, FileSignature, ShieldCheck, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,8 @@ export function AdminOnboardingPage() {
 	}, []);
 
 	const [selected, setSelected] = useState<any | null>(null);
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+	const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 	const [password, setPassword] = useState(onboardingSettings.defaultPassword);
 	const [pin, setPin] = useState("");
 	const [notes, setNotes] = useState("");
@@ -106,6 +108,49 @@ export function AdminOnboardingPage() {
 		setNotes("");
 	}
 
+	async function handleDeleteApplication(id: string) {
+		if (!window.confirm("Hapus pendaftaran ini? Data tidak bisa dikembalikan.")) return;
+		setDeletingIds((prev) => new Set(prev).add(id));
+		try {
+			const { error } = await createClient()
+				.from("employee_onboarding_applications")
+				.delete()
+				.eq("id", id);
+			if (error) throw error;
+			setApplications((prev) => prev.filter((a: any) => a.id !== id));
+			toast.success("Pendaftaran dihapus");
+		} catch (e: any) { toast.error(e?.message || "Gagal menghapus"); }
+		finally { setDeletingIds((prev) => { const n = new Set(prev); n.delete(id); return n; }); }
+	}
+
+	async function handleBulkDelete() {
+		if (selectedIds.size === 0) return;
+		if (!window.confirm("Hapus " + selectedIds.size + " pendaftaran? Data tidak bisa dikembalikan.")) return;
+		try {
+			const ids = Array.from(selectedIds);
+			const { error } = await createClient()
+				.from("employee_onboarding_applications")
+				.delete()
+				.in("id", ids);
+			if (error) throw error;
+			setApplications((prev) => prev.filter((a: any) => !ids.includes(a.id)));
+			setSelectedIds(new Set());
+			toast.success(ids.length + " pendaftaran dihapus");
+		} catch (e: any) { toast.error(e?.message || "Gagal menghapus"); }
+	}
+
+	const toggleSelect = (id: string) => {
+		setSelectedIds((prev) => {
+			const n = new Set(prev);
+			if (n.has(id)) n.delete(id); else n.add(id);
+			return n;
+		});
+	};
+	const toggleSelectAll = () => {
+		if (selectedIds.size === applications.length) { setSelectedIds(new Set()); }
+		else { setSelectedIds(new Set(applications.map((a: any) => a.id))); }
+	};
+
 	/* ---- render ---- */
 	return (
 		<div className="mx-auto max-w-6xl space-y-4 px-3 py-4 sm:px-4 sm:py-6 sm:space-y-6">
@@ -137,15 +182,22 @@ export function AdminOnboardingPage() {
 						<p className="px-4 py-10 text-center text-muted-foreground text-sm">Belum ada pendaftaran.</p>
 					) : (
 						<>
+							{selectedIds.size > 0 && (
+								<div className="flex items-center gap-2 mb-2 bg-destructive/5 border border-destructive/20 rounded-lg px-3 py-2">
+									<span className="text-xs font-medium text-muted-foreground">{selectedIds.size} dipilih</span>
+									<Button variant="destructive" size="sm" onClick={handleBulkDelete} className="text-xs h-8 ml-auto"><Trash2 className="h-3.5 w-3.5 mr-1.5" /> Hapus {selectedIds.size}</Button>
+								</div>
+							)}
 							{/* ---- desktop table ---- */}
 							<div className="hidden overflow-x-auto rounded-xl border sm:block">
 								<table className="w-full text-left text-sm">
 									<thead className="bg-muted/50 text-muted-foreground">
-										<tr><th className="p-3">Nama</th><th className="p-3">Role</th><th className="p-3 hidden md:table-cell">Kontak</th><th className="p-3 hidden md:table-cell">Tanggal</th><th className="p-3">Status</th><th className="p-3 text-right">Aksi</th></tr>
+										<tr><th className="p-3 w-10"><input type="checkbox" className="h-3.5 w-3.5 rounded" checked={applications.length > 0 && selectedIds.size === applications.length} onChange={toggleSelectAll} /></th><th className="p-3">Nama</th><th className="p-3">Role</th><th className="p-3 hidden md:table-cell">Kontak</th><th className="p-3 hidden md:table-cell">Tanggal</th><th className="p-3">Status</th><th className="p-3 text-right">Aksi</th></tr>
 									</thead>
 									<tbody className="divide-y">
 										{applications.map((app: any) => (
 											<tr key={app.id} className="hover:bg-muted/30">
+												<td className="p-3 w-10"><input type="checkbox" className="h-3.5 w-3.5 rounded" checked={selectedIds.has(app.id)} onChange={() => toggleSelect(app.id)} /></td>
 												<td className="p-3 font-medium">{app.full_name}</td>
 												<td className="p-3">{app.employment?.roleName ?? "-"}</td>
 												<td className="p-3 hidden md:table-cell">{app.phone}<br /><span className="text-muted-foreground">{app.email}</span></td>
@@ -154,6 +206,9 @@ export function AdminOnboardingPage() {
 												<td className="p-3 text-right">
 													<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-8 px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm">
 														<Eye className="mr-1 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" />Review
+													</Button>
+													<Button size="sm" variant="ghost" onClick={() => handleDeleteApplication(app.id)} disabled={deletingIds.has(app.id)} className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 ml-1">
+														<Trash2 className="h-3.5 w-3.5" />
 													</Button>
 												</td>
 											</tr>
@@ -175,10 +230,15 @@ export function AdminOnboardingPage() {
 										</div>
 										<div className="text-muted-foreground text-xs">{app.phone} &middot; {app.email}</div>
 										<div className="text-muted-foreground text-xs">{new Date(app.created_at).toLocaleDateString("id-ID")}</div>
-										<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-8 w-full text-xs">
+										<div className="flex gap-2">
+											<Button size="sm" variant="outline" onClick={() => openDialog(app)} className="h-8 flex-1 text-xs">
 											<Eye className="mr-1.5 h-3.5 w-3.5" />Review
 										</Button>
+											<Button size="sm" variant="ghost" onClick={() => handleDeleteApplication(app.id)} disabled={deletingIds.has(app.id)} className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0">
+											<Trash2 className="h-3.5 w-3.5" />
+										</Button>
 									</div>
+								</div>
 								))}
 							</div>
 						</>
