@@ -44,7 +44,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
-import { ReorderCard } from "@/components/inventory/reorder-card";
+
 import {
 	useHybridAllProducts,
 	useHybridCategories,
@@ -1537,10 +1537,6 @@ function InventoryPage() {
 						Buka Admin Recipe
 					</Link>
 				</div>
-			)}
-
-			{viewPreset === "operational" && workspace?.rows && workspace.rows.length > 0 && (
-				<ReorderCard items={workspace.rows} />
 			)}
 
 			{viewPreset === "priceMonitor" ? (

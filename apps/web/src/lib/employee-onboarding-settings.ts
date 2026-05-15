@@ -1,4 +1,4 @@
-import { createEmployeeSlug, type EmployeeContractClause, type EmployeeEmploymentData, type EmployeeOnboardingDraft } from "./employee-onboarding-schema";
+import { createEmployeeSlug, type EmployeeEmploymentData, type EmployeeOnboardingDraft } from "./employee-onboarding-schema";
 
 export type EmployeeOnboardingFieldKey =
 	| "fullName"
@@ -49,13 +49,6 @@ export type EmployeeOnboardingSettings = {
 	registrationMode: "public" | "internal" | "invite_only";
 	inviteCode: string;
 	closedMessage: string;
-	signatoryName: string;
-	signatoryPersonName: string;
-	signatorySignatureUrl: string;
-	signatoryCompanyAddress: string;
-	signatoryCompanyNIB: string;
-	signatoryPersonTitle: string;
-	signatoryLocation: string;
 	defaultPassword: string;
 	defaultRoleId: string;
 	defaultEmploymentType: EmployeeEmploymentData["employmentType"];
@@ -81,7 +74,7 @@ export type EmployeeOnboardingSettings = {
 	};
 	documentChecklist: EmployeeOnboardingDocumentSetting[];
 	documentUploads: EmployeeOnboardingDocumentSetting[];
-	contractTemplatesByRoleId: Record<string, string | ContractTemplateValue>;
+	contractTemplatesByRoleId: Record<string, string>;
 	probation: {
 		enabled: boolean;
 		defaultMonths: number;
@@ -120,13 +113,6 @@ export const DEFAULT_EMPLOYEE_ONBOARDING_SETTINGS: EmployeeOnboardingSettings = 
 	registrationMode: "public",
 	inviteCode: "",
 	closedMessage: "Saat ini pendaftaran karyawan baru sedang tidak dibuka. Silakan hubungi admin untuk informasi lebih lanjut.",
-	signatoryName: "Djiwa Tentram Cafe & Resto",
-	signatoryPersonName: "",
-	signatorySignatureUrl: "",
-	signatoryCompanyAddress: "",
-	signatoryCompanyNIB: "",
-	signatoryPersonTitle: "",
-	signatoryLocation: "",
 	defaultPassword: "djiwatentram123",
 	defaultRoleId: "",
 	defaultEmploymentType: "probation",
@@ -177,65 +163,6 @@ export const DEFAULT_EMPLOYEE_ONBOARDING_SETTINGS: EmployeeOnboardingSettings = 
 		requireConfirmation: true,
 	},
 };
-
-export type ContractTemplateClause = {
-	title: string;
-	body: string;
-	order?: number;
-	locked?: boolean;
-};
-
-export type ContractTemplateValue = {
-	version: number;
-	title: string;
-	clauses: ContractTemplateClause[];
-	metadata: {
-		createdAt: string;
-		updatedAt: string;
-		updatedBy?: string;
-	};
-	salaryFieldMappings?: string[];
-};
-
-export namespace ContractTemplateHelpers {
-	export function isStructured(v: unknown): v is ContractTemplateValue {
-		return Boolean(v && typeof v === "object" && "version" in v && Array.isArray((v as any).clauses));
-	}
-
-	export function toPlainText(v: string | ContractTemplateValue): string {
-		if (typeof v === "string") return v;
-		return [v.title, "", ...v.clauses.flatMap(c => [c.title, c.body, ""])].join("\n");
-	}
-
-	export function toStructured(v: string | ContractTemplateValue): ContractTemplateValue {
-		if (typeof v !== "string") return v;
-		// Parse old plain text format into structured
-		const lines = v.replace(/\r\n/g, "\n").trim().split("\n");
-		const title = lines[0]?.trim() || "Perjanjian Kerja";
-		const clauses: ContractTemplateClause[] = [];
-		let current: ContractTemplateClause | null = null;
-
-		for (const raw of lines.slice(1)) {
-			const line = raw.trim();
-			if (!line) continue;
-			if (/^(pasal|bab|klausul|ketentuan)\s*\d*/i.test(line)) {
-				if (current) clauses.push(current);
-				current = { title: line, body: "" };
-				continue;
-			}
-			if (!current) current = { title: "Ketentuan Kontrak", body: line };
-			else current.body = [current.body, line].filter(Boolean).join("\n");
-		}
-		if (current) clauses.push(current);
-
-		return {
-			version: 2,
-			title,
-			clauses: clauses.length ? clauses : [{ title: "Ketentuan Kontrak", body: v }],
-			metadata: { createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-		};
-	}
-}
 
 function isObject(value: unknown): value is Record<string, unknown> {
 	return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -323,13 +250,6 @@ export function normalizeEmployeeOnboardingSettings(value: unknown): EmployeeOnb
 		registrationMode: mode as EmployeeOnboardingSettings["registrationMode"],
 		inviteCode: cleanString(source.inviteCode),
 		closedMessage: cleanString(source.closedMessage, defaults.closedMessage),
-		signatoryName: cleanString(source.signatoryName, defaults.signatoryName),
-		signatoryPersonName: cleanString(source.signatoryPersonName),
-		signatorySignatureUrl: cleanString(source.signatorySignatureUrl),
-		signatoryCompanyAddress: cleanString(source.signatoryCompanyAddress),
-		signatoryCompanyNIB: cleanString(source.signatoryCompanyNIB),
-		signatoryPersonTitle: cleanString(source.signatoryPersonTitle),
-		signatoryLocation: cleanString(source.signatoryLocation),
 		defaultPassword: cleanString(source.defaultPassword, defaults.defaultPassword),
 		defaultRoleId: cleanString(source.defaultRoleId),
 		defaultEmploymentType: employmentType as EmployeeEmploymentData["employmentType"],
@@ -357,18 +277,9 @@ export function normalizeEmployeeOnboardingSettings(value: unknown): EmployeeOnb
 		},
 		documentChecklist: mergeDocuments(source.documentChecklist, defaults.documentChecklist),
 		documentUploads: mergeDocuments(source.documentUploads, defaults.documentUploads),
-	contractTemplatesByRoleId: isObject(source.contractTemplatesByRoleId)
-		? (Object.fromEntries(Object.entries(source.contractTemplatesByRoleId).map(([key, value]) => {
-			if (typeof value === "string") {
-				try {
-					const parsed = JSON.parse(value);
-					if (ContractTemplateHelpers.isStructured(parsed)) return [key, parsed];
-				} catch {}
-				return [key, value];
-			}
-			return [key, value];
-		})) as Record<string, string | ContractTemplateValue>)
-		: {},
+		contractTemplatesByRoleId: isObject(source.contractTemplatesByRoleId)
+			? Object.fromEntries(Object.entries(source.contractTemplatesByRoleId).map(([key, text]) => [key, String(text ?? "")]))
+			: {},
 		probation: {
 			enabled: probation.enabled !== false,
 			defaultMonths: cleanNumber(probation.defaultMonths, defaults.probation.defaultMonths),
@@ -405,33 +316,6 @@ export function getRoleSalaryDefaults(role: unknown) {
 		monthlySalary: cleanNumber(data.monthlyFixedSalary, 0),
 		dailyAllowance: cleanNumber(data.dailyAllowance, 0),
 		shiftRate: cleanNumber(data.baseShiftRate, cleanNumber(data.baseHourlyRate, 0)),
-		bonusTargetConfig: (data as Record<string, unknown>).bonusTargetConfig ?? null,
-		customAllowances: (data as Record<string, unknown>).customAllowances ?? [],
-	};
-}
-
-export type PayrollRoleRuleData = {
-	role_name?: string;
-	source_role_id?: string;
-	base_salary?: number;
-	base_shift_rate?: number;
-	overtime_rate_per_hour?: number;
-	late_penalty_per_minute?: number;
-	daily_allowance?: number;
-	monthly_fixed_salary?: number;
-};
-
-export function mergePayrollRuleWithDefaults(
-	salaryDefaults: ReturnType<typeof getRoleSalaryDefaults>,
-	payrollRule?: PayrollRoleRuleData | null
-) {
-	if (!payrollRule) return salaryDefaults;
-	return {
-		monthlySalary: payrollRule.monthly_fixed_salary ?? payrollRule.base_salary ?? salaryDefaults.monthlySalary,
-		dailyAllowance: payrollRule.daily_allowance ?? salaryDefaults.dailyAllowance,
-		shiftRate: payrollRule.base_shift_rate ?? salaryDefaults.shiftRate,
-		overtimeRatePerHour: cleanNumber(payrollRule.overtime_rate_per_hour, 0),
-		latePenaltyPerMinute: cleanNumber(payrollRule.late_penalty_per_minute, 0),
 	};
 }
 
@@ -503,4 +387,16 @@ export function calculateProbationEndDate(startDate: string, months: number): st
 		d.setMonth(d.getMonth() + months);
 		return d.toISOString().slice(0, 10);
 	} catch { return null; }
+}
+
+export function getProbationInfo(employment: { startDate?: string; employmentType?: string }, settings: EmployeeOnboardingSettings): { enabled: boolean; endDate: string | null; label: string } {
+	if (employment.employmentType !== "probation" || !settings.probation.enabled) {
+		return { enabled: false, endDate: null, label: "Tidak ada masa probation" };
+	}
+	const endDate = calculateProbationEndDate(employment.startDate || "", settings.probation.defaultMonths);
+	return {
+		enabled: true,
+		endDate,
+		label: endDate ? `Masa probation: ${new Date(endDate).toLocaleDateString("id-ID")}` : "Masa probation aktif",
+	};
 }
