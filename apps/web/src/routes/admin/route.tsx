@@ -39,6 +39,7 @@ import {
 	X,
 	ArrowLeft,
 	BarChart3,
+	CalendarDays,
 	CheckCircle2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -470,6 +471,7 @@ function AdminLayout() {
 							<DesktopNavLink icon={<LayoutDashboard />} isCollapsed={isCollapsed} label="Dashboard" to="/admin/operational-team" permission="users:manage" />
 							<DesktopNavLink icon={<Users />} isCollapsed={isCollapsed} label="Karyawan" to="/admin/operational-team/karyawan" permission="users:manage" />
 							<DesktopNavLink icon={<FileBarChart />} isCollapsed={isCollapsed} label="Absensi" to="/admin/operational-team/attendance" permission="users:manage" />
+							<DesktopNavLink icon={<CalendarDays />} isCollapsed={isCollapsed} label="Jadwal" to="/admin/operational-team/attendance/jadwal" permission="users:manage" />
 							<DesktopNavLink icon={<Settings />} isCollapsed={isCollapsed} label="Pengaturan Absensi" to="/admin/operational-team/attendance/pengaturan" permission="users:manage" />
 							<DesktopNavLink icon={<Wallet />} isCollapsed={isCollapsed} label="Gaji & Role" to="/admin/operational-team/payroll" permission="users:manage" />
 							<DesktopNavLink icon={<UserPlus />} isCollapsed={isCollapsed} label="Register" to="/admin/operational-team/register" permission="users:manage" />
@@ -493,6 +495,7 @@ function AdminLayout() {
 											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/operational-team" permission="users:manage" />
 											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<Users />} label="Karyawan" to="/admin/operational-team/karyawan" permission="users:manage" />
 											<DesktopSubNavLink icon={<FileBarChart />} label="Absensi" to="/admin/operational-team/attendance" permission="users:manage" />
+										<DesktopSubNavLink icon={<CalendarDays />} label="Jadwal" to="/admin/operational-team/attendance/jadwal" permission="users:manage" />
 										<DesktopSubNavLink icon={<Settings />} label="Pengaturan Absensi" to="/admin/operational-team/attendance/pengaturan" permission="users:manage" />
 											<DesktopSubNavLink icon={<Wallet />} label="Gaji & Role" to="/admin/operational-team/payroll" permission="users:manage" />
 										<DesktopSubNavLink icon={<UserPlus />} label="Register Karyawan" to="/admin/operational-team/register" permission="users:manage" />
