@@ -13,6 +13,7 @@ import {
 	CheckCircle2,
 	ChevronDown,
 	CircleDollarSign,
+	Database,
 	Link2,
 	Package,
 	Plus,
@@ -736,6 +737,57 @@ export function RecipeHppPage() {
 		}
 	}, [selectedProductId, form.overheadCosts, upsertFromRecipe]);
 
+	const handleSyncFromInventory = useCallback(() => {
+		let synced = 0;
+		let unmatched = 0;
+		setForm((prev) => ({
+			...prev,
+			ingredients: prev.ingredients.map((ing) => {
+				// 1. Cari via inventoryId langsung
+				let costInfo = ing.inventoryId ? inventoryCosts?.[ing.inventoryId] : undefined;
+				let matchedInvId = ing.inventoryId;
+
+				// 2. Fallback: cocokkan nama bahan baku ke inventory
+				if (!costInfo?.latestCostPerUnit && ing.ingredientName && inventory) {
+					const byName = (inventory as InventoryItem[]).find(
+						(item) => safeLower(item.ingredientName) === safeLower(ing.ingredientName)
+					);
+					if (byName) {
+						matchedInvId = byName._id;
+						costInfo = inventoryCosts?.[byName._id];
+					}
+				}
+
+				if (costInfo?.latestCostPerUnit && costInfo.latestCostPerUnit > 0) {
+					synced++;
+					const unitPair = findUnitPair(
+						costInfo.unit ?? ing.purchaseUnit,
+						costInfo.displayUnit ?? ing.usageUnit
+					);
+					return {
+						...ing,
+						inventoryId: matchedInvId ?? ing.inventoryId,
+						purchasePrice: costInfo.latestCostPerUnit * unitPair.factor,
+						purchaseQuantity: 1,
+						purchaseUnit: costInfo.unit ?? unitPair.purchase,
+						usageUnit: costInfo.displayUnit ?? unitPair.usage,
+						conversionFactor: unitPair.factor,
+						costSource: "inventory" as PriceSource,
+					};
+				}
+				unmatched++;
+				return ing;
+			}),
+		}));
+		hasUnsavedChanges.current = true;
+
+		if (synced > 0) {
+			toast.success(`${synced} harga bahan disinkron dari Inventory ✅` + (unmatched > 0 ? ` (${unmatched} tidak cocok)` : ""));
+		} else {
+			toast.error("Tidak ada bahan yang bisa disinkron — periksa nama bahan atau data inventory");
+		}
+	}, [inventory, inventoryCosts]);
+
 	const handleAiAnalyze = useCallback(async () => {
 		if (form.ingredients.length === 0) {
 			toast.error("Tidak ada bahan untuk dianalisis");
@@ -966,6 +1018,16 @@ export function RecipeHppPage() {
 										Sinkron Resep
 									</Button>
 								)}
+								<Button
+									variant="outline"
+									size="sm"
+									className="h-7 text-[10px]"
+									onClick={handleSyncFromInventory}
+									disabled={saving}
+								>
+									<Database className="mr-1 h-3 w-3" />
+									Sinkron Bahan Baku
+								</Button>
 								<Button
 									variant="outline"
 									size="sm"
