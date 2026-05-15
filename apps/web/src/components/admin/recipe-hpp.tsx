@@ -760,18 +760,21 @@ export function RecipeHppPage() {
 
 				if (costInfo?.latestCostPerUnit && costInfo.latestCostPerUnit > 0) {
 					synced++;
-					const unitPair = findUnitPair(
+					// Pakai conversionFactor dari inventory kalau ada (misal 1000 = liter->ml)
+					// Fallback ke findUnitPair kalau null
+					const factor = costInfo.conversionFactor ?? findUnitPair(
 						costInfo.unit ?? ing.purchaseUnit,
 						costInfo.displayUnit ?? ing.usageUnit
-					);
+					).factor;
+					const baseUnit = costInfo.displayUnit ?? costInfo.unit ?? "ml";
 					return {
 						...ing,
 						inventoryId: matchedInvId ?? ing.inventoryId,
-						purchasePrice: costInfo.latestCostPerUnit * unitPair.factor,
+						purchasePrice: costInfo.latestCostPerUnit * factor,
 						purchaseQuantity: 1,
-						purchaseUnit: costInfo.unit ?? unitPair.purchase,
-						usageUnit: costInfo.displayUnit ?? unitPair.usage,
-						conversionFactor: unitPair.factor,
+						purchaseUnit: costInfo.unit ?? ing.purchaseUnit,
+						usageUnit: baseUnit,
+						conversionFactor: factor,
 						costSource: "inventory" as PriceSource,
 					};
 				}
