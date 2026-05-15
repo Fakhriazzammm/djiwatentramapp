@@ -4766,15 +4766,17 @@ export function SettingsPage({
 															<td className="px-4 py-3 w-10">
 																<input type="checkbox" className="h-3.5 w-3.5 rounded" checked={selectedUserIds.has(user._id)} onChange={() => toggleSelectUser(user._id)} />
 															</td>
-																<td className="px-4 py-3">
-																	<div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 font-bold text-primary text-[10px]">
-																		{user.name.charAt(0)}
-																	</div>
-																	<div>
-																		<p className="font-bold text-foreground text-xs">{user.name}</p>
-																		<p className="text-[10px] text-muted-foreground">{user.username}</p>
-																	</div>
-																</td>
+									<td className="px-4 py-3">
+										<div className="flex items-center gap-3">
+											<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary text-[10px]">
+												{user.name.charAt(0)}
+											</div>
+											<div className="min-w-0">
+												<p className="truncate font-bold text-foreground text-xs">{user.name}</p>
+												<p className="truncate text-[10px] text-muted-foreground">{user.username}</p>
+											</div>
+										</div>
+									</td>
 															<td className="px-4 py-3">
 																<span className="text-[11px] font-medium text-muted-foreground">{user.roleName || "Tanpa Role"}</span>
 															</td>
