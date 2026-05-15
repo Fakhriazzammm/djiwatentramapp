@@ -733,6 +733,7 @@ export function SettingsPage({
 	const adminBulkDeleteLogs = useHybridAdminBulkDeleteAttendanceLogs();
 
 	const [selectedLogIds, setSelectedLogIds] = useState<Set<string>>(new Set());
+	const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
 	const [showCreateLog, setShowCreateLog] = useState(false);
 	const [editingLog, setEditingLog] = useState<any>(null);
 	const [newLog, setNewLog] = useState({
@@ -1432,6 +1433,47 @@ export function SettingsPage({
 					setRefreshTrigger(n => n + 1);
 				} catch (_error) {
 					toast.error("Gagal menghapus user");
+				} finally {
+					setSavingUser(false);
+				}
+			},
+		});
+	};
+
+	const toggleSelectUser = (id: string) => {
+		setSelectedUserIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	};
+
+	const toggleSelectAllUsers = () => {
+		if (!users) return;
+		if (selectedUserIds.size === users.length) {
+			setSelectedUserIds(new Set());
+		} else {
+			setSelectedUserIds(new Set(users.map((u: any) => u._id)));
+		}
+	};
+
+	const handleBulkDeleteUsers = async () => {
+		if (selectedUserIds.size === 0) return;
+		setConfirmConfig({
+			isOpen: true,
+			title: `Hapus ${selectedUserIds.size} Pengguna?`,
+			message: "Akun-akun ini tidak akan bisa login lagi ke sistem.",
+			variant: "danger",
+			onConfirm: async () => {
+				setSavingUser(true);
+				try {
+					await Promise.all(Array.from(selectedUserIds).map((id) => deleteUser({ id })));
+					toast.success(`${selectedUserIds.size} pengguna dihapus`);
+					setSelectedUserIds(new Set());
+					setRefreshTrigger(n => n + 1);
+				} catch (_error) {
+					toast.error("Gagal menghapus beberapa pengguna");
 				} finally {
 					setSavingUser(false);
 				}
@@ -5046,11 +5088,20 @@ export function SettingsPage({
 									</div>
 								)}
 
+								{selectedUserIds.size > 0 && (
+									<div className="flex items-center gap-2 bg-destructive/5 border border-destructive/20 rounded-xllll px-4 py-2.5">
+										<span className="text-xs font-medium text-muted-foreground">{selectedUserIds.size} pengguna dipilih</span>
+										<Button variant="destructive" size="sm" onClick={handleBulkDeleteUsers} className="text-xs h-8 ml-auto"><Trash2 className="h-3.5 w-3.5 mr-1.5" /> Hapus {selectedUserIds.size}</Button>
+									</div>
+								)}
 								<div className="overflow-hidden rounded-xllll border border-border bg-background shadow-sm">
 									<div className="overflow-x-auto">
 										<table className="w-full text-left text-sm">
 											<thead className="bg-muted/50 font-bold text-muted-foreground text-[10px] uppercase tracking-widest border-b border-border">
 												<tr>
+													<th className="px-4 py-3 w-10">
+														<input type="checkbox" className="h-3.5 w-3.5 rounded" checked={users ? selectedUserIds.size === users.length && users.length > 0 : false} onChange={toggleSelectAllUsers} />
+													</th>
 													<th className="px-4 py-3">Staf</th>
 													<th className="px-4 py-3">Role</th>
 													<th className="px-4 py-3">Status</th>
@@ -5061,14 +5112,16 @@ export function SettingsPage({
 											<tbody className="divide-y divide-border/50">
 												{!users ? (
 													Array.from({ length: 5 }).map((_, i) => (
-														<tr key={i}><td colSpan={5} className="px-4 py-4"><Skeleton className="h-10 w-full" /></td></tr>
+														<tr key={i}><td colSpan={6} className="px-4 py-4"><Skeleton className="h-10 w-full" /></td></tr>
 													))
 												) : users.length === 0 ? (
-													<tr><td colSpan={5} className="py-12 text-center text-muted-foreground italic">Belum ada staf terdaftar.</td></tr>
+													<tr><td colSpan={6} className="py-12 text-center text-muted-foreground italic">Belum ada staf terdaftar.</td></tr>
 												) : (
 													users.map((user: any) => (
 														<tr key={user._id} className="hover:bg-muted/30 transition-colors group">
-															<td className="px-4 py-3">
+															<td className="px-4 py-3 w-10">
+																<input type="checkbox" className="h-3.5 w-3.5 rounded" checked={selectedUserIds.has(user._id)} onChange={() => toggleSelectUser(user._id)} />
+															</td>
 																<div className="flex items-center gap-3">
 																	<div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 font-bold text-primary text-[10px]">
 																		{user.name.charAt(0)}

@@ -5600,6 +5600,7 @@ function InventoryTable({
 								<td className="px-2 py-1.5 text-[10px] text-muted-foreground" colSpan={6}>
 									Total ({statusFilteredRows.length} bahan)
 								</td>
+								<td className="px-2 py-1.5" colSpan={3}></td>
 								<td className="px-2 py-1.5 text-right font-mono text-foreground">
 									{formatCurrencyIDR(statusFilteredRows.reduce((s, r) => s + (r.lastPurchasePrice || 0), 0))}
 								</td>
@@ -5607,7 +5608,7 @@ function InventoryTable({
 								<td className="px-2 py-1.5 text-right font-mono text-foreground">
 									{formatCurrencyIDR(statusFilteredRows.reduce((s, r) => s + ((r.currentStock || 0) * ((r.lastPurchasePrice || 0) / (r.preferredPurchaseQuantity || 1))), 0))}
 								</td>
-								<td className="px-2 py-1.5" colSpan={4}></td>
+								<td className="px-2 py-1.5"></td>
 							</tr>
 						)}
 					</tfoot>
