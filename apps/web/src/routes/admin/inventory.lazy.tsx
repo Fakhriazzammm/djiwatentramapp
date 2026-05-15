@@ -1319,7 +1319,7 @@ function InventoryPage() {
 			preferredStoreId,
 			netWeight: newItem.netWeight || undefined,
 		});
-		toast.success("Bahan baku ditambahkan"); triggerHybridRefresh(); triggerHybridRefresh();
+		toast.success("Bahan baku ditambahkan"); triggerHybridRefresh();
 	};
 
 	const handleEditItem = async (selected: Doc<"inventory">) => {
@@ -1371,7 +1371,7 @@ function InventoryPage() {
 			preferredStoreId,
 			netWeight: newItem.netWeight || undefined,
 		});
-		toast.success("Bahan baku diperbarui"); triggerHybridRefresh(); triggerHybridRefresh();
+		toast.success("Bahan baku diperbarui"); triggerHybridRefresh();
 	};
 
 	const handleStockAction = async (
@@ -1407,7 +1407,7 @@ function InventoryPage() {
 				costPerUnit: costPerUnit ? Number(costPerUnit) : undefined,
 				timestamp: entryDate ? new Date(entryDate).getTime() : undefined,
 			});
-			toast.success(`Stok ${selected.ingredientName} ditambahkan`); triggerHybridRefresh(); triggerHybridRefresh();
+			toast.success(`Stok ${selected.ingredientName} ditambahkan`); triggerHybridRefresh();
 		} else if (type === "usage") {
 			await applyStockAction({
 				...baseArgs,
@@ -1433,7 +1433,7 @@ function InventoryPage() {
 				await handleEditItem(selectedItem);
 			} else if (actionType === "delete" && selectedItem) {
 				await deleteItem({ id: selectedItem._id });
-				toast.success("Bahan baku dihapus"); triggerHybridRefresh(); triggerHybridRefresh();
+				toast.success("Bahan baku dihapus"); triggerHybridRefresh();
 			} else if (
 				selectedItem &&
 				(actionType === "add" ||
@@ -2000,7 +2000,7 @@ function InventoryModalContent({
 													inventoryId: selectedItem._id,
 													batchMultiplier: 1,
 												});
-												toast.success("Produksi berhasil"); triggerHybridRefresh(); triggerHybridRefresh();
+												toast.success("Produksi berhasil"); triggerHybridRefresh();
 												onActionTypeChange(null);
 												onSelectedItemChange(null);
 											} catch (e: unknown) {
@@ -4525,6 +4525,7 @@ function InventoryTable({
 				unitConversionsText: (current.unitConversionsText || "").trim(),
 			});
 			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
+			triggerHybridRefresh();
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : "Gagal menyimpan perubahan";
@@ -4561,6 +4562,7 @@ function InventoryTable({
 				notes: "Quick inline update",
 			});
 			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
+			triggerHybridRefresh();
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : "Gagal menyimpan stok";
@@ -4617,7 +4619,7 @@ function InventoryTable({
 				brandName: inline.defaultBrandName?.trim() || undefined,
 			});
 			setSaveStateByRow((prev) => ({ ...prev, [row.inventoryId]: "saved" }));
-			toast.success("Harga terakhir diperbarui"); triggerHybridRefresh(); triggerHybridRefresh();
+			toast.success("Harga terakhir diperbarui"); triggerHybridRefresh();
 			setPriceDraftByRow((prev) => {
 				const next = { ...prev };
 				delete next[row.inventoryId];
@@ -5035,7 +5037,7 @@ function InventoryTable({
 										))}
 									<button
 										className="ml-0.5 rounded p-0.5 text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors"
-										onClick={(e) => { e.stopPropagation(); triggerHybridRefresh(); triggerHybridRefresh(); setLastRefreshedAt(new Date()); }}
+										onClick={(e) => { e.stopPropagation(); triggerHybridRefresh(); setLastRefreshedAt(new Date()); }}
 										title="Hitung ulang harga"
 										type="button"
 									>
@@ -5048,7 +5050,7 @@ function InventoryTable({
 									Harga/Unit
 									<button
 										className="rounded p-0.5 text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors"
-										onClick={() => { triggerHybridRefresh(); triggerHybridRefresh(); setLastRefreshedAt(new Date()); }}
+										onClick={() => { triggerHybridRefresh(); setLastRefreshedAt(new Date()); }}
 										title="Hitung ulang harga/unit"
 										type="button"
 									>
@@ -5062,7 +5064,7 @@ function InventoryTable({
 									Nilai Stok
 									<button
 										className="rounded p-0.5 text-muted-foreground/40 hover:text-foreground hover:bg-muted/50 transition-colors"
-										onClick={() => { triggerHybridRefresh(); triggerHybridRefresh(); setLastRefreshedAt(new Date()); }}
+										onClick={() => { triggerHybridRefresh(); setLastRefreshedAt(new Date()); }}
 										title="Hitung ulang nilai stok"
 										type="button"
 									>
@@ -5075,7 +5077,7 @@ function InventoryTable({
 									<div className="flex items-center gap-0.5">
 										<button
 											className="rounded p-0.5 text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors"
-											onClick={() => { triggerHybridRefresh(); triggerHybridRefresh(); setLastRefreshedAt(new Date()); }}
+											onClick={() => { triggerHybridRefresh(); setLastRefreshedAt(new Date()); }}
 											title="Refresh data bahan baku"
 											type="button"
 										>
