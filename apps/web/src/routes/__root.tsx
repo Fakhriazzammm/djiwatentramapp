@@ -20,7 +20,12 @@ function RootContent() {
 		const isPublicPage =
 			location.pathname === "/login" ||
 			location.pathname === "/register" ||
-			location.pathname.startsWith("/register/selesai/");
+			location.pathname.startsWith("/register/selesai/") ||
+			// Brand slug customer ordering pages are public (e.g. /djiwatentram)
+			(location.pathname.split("/").length === 2 &&
+				!["/", "/admin", "/home", "/dashboard", "/attendance", "/booking",
+					"/menu", "/login", "/register", "/karyawan",
+					"/stock-opname", "/stock-overview", "/settings"].includes(location.pathname));
 		
 		if (!isAuthenticated) {
 			if (location.pathname === "/register" && siteSettings?.employeeOnboarding?.registrationEnabled === false) {
