@@ -53,6 +53,7 @@ import {
 	useHybridUpdateHppCalculation,
 	useHybridDeleteHppCalculation,
 	useHybridUpsertHppFromRecipe,
+	useHybridSaveRecipe,
 } from "@/hooks/use-hybrid-write-actions";
 
 // ─── Types ───────────────────────────────────────────────────
@@ -411,6 +412,7 @@ export function RecipeHppPage() {
 	const updateHpp = useHybridUpdateHppCalculation();
 	const deleteHpp = useHybridDeleteHppCalculation();
 	const upsertFromRecipe = useHybridUpsertHppFromRecipe();
+	const saveRecipe = useHybridSaveRecipe();
 
 	// ── State ──
 	const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -687,12 +689,32 @@ export function RecipeHppPage() {
 			}
 			triggerHybridRefresh();
 			hasUnsavedChanges.current = false;
+
+			// Sync ingredient amounts back to recipe (HPP → Recipe)
+			if (form.sourceType === "recipe_based" && form.productId) {
+				try {
+					const ingredients = form.ingredients
+						.filter((ing) => ing.inventoryId && ing.usagePerServing > 0)
+						.map((ing) => ({
+							inventoryId: ing.inventoryId as Id<"inventory">,
+							amount: ing.usagePerServing,
+						}));
+					if (ingredients.length > 0) {
+						await saveRecipe({
+							productId: form.productId as Id<"products">,
+							ingredients,
+						});
+					}
+				} catch {
+					// Non-blocking — recipe sync failure shouldn't fail the save
+				}
+			}
 		} catch (err: any) {
 			toast.error(err?.message ?? "Gagal menyimpan HPP");
 		} finally {
 			setSaving(false);
 		}
-	}, [form, editingId, createHpp, updateHpp]);
+	}, [form, editingId, createHpp, updateHpp, saveRecipe]);
 
 	const handleSyncFromRecipe = useCallback(async () => {
 		if (!selectedProductId) {
@@ -739,16 +761,7 @@ export function RecipeHppPage() {
 					<h1 className="text-lg font-bold">HPP Resep</h1>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						className="h-8 text-xs"
-						onClick={() => navigate({ to: "/admin/hpp-calculator" as any })}
-					>
-						<BookOpen className="mr-1 h-3.5 w-3.5" />
-						Lihat Portfolio
-					</Button>
-				</div>
+			</div>
 			</div>
 
 			{/* ── Product Selector ── */}
@@ -798,25 +811,6 @@ export function RecipeHppPage() {
 								</div>
 							</div>
 						</div>
-
-						{/* Product info + save bar */}
-						{selectedProduct && (
-							<div className="flex items-center gap-2">
-								<Button
-									size="sm"
-									className="h-8 text-xs"
-									onClick={handleSave}
-									disabled={saving}
-								>
-									{saving ? (
-										<RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" />
-									) : (
-										<CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-									)}
-									{editingId ? "Perbarui" : "Simpan"}
-								</Button>
-							</div>
-						)}
 
 						{/* Product dropdown — shows when search focused or filtering */}
 						{productDropdownOpen && (
@@ -982,6 +976,21 @@ export function RecipeHppPage() {
 									<Sparkles className="mr-1 h-3 w-3" />
 									{aiAnalyzing ? "Menganalisis..." : "AI Analisis"}
 								</Button>
+								{selectedProduct && (
+									<Button
+										size="sm"
+										className="h-7 text-[10px]"
+										onClick={handleSave}
+										disabled={saving}
+									>
+										{saving ? (
+											<RefreshCw className="mr-1 h-3 w-3 animate-spin" />
+										) : (
+											<CheckCircle2 className="mr-1 h-3 w-3" />
+										)}
+										{editingId ? "Perbarui" : "Simpan"}
+									</Button>
+								)}
 							</div>
 						</div>
 					</CardHeader>

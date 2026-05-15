@@ -24,7 +24,7 @@ import {
 	useHybridLatestInventoryCosts,
 } from "@/hooks/use-hybrid-pos-data";
 import { useHybridRecipes, useHybridBaseRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
-import { useHybridSaveRecipe, useHybridDeleteRecipe } from "@/hooks/use-hybrid-write-actions";
+import { useHybridSaveRecipe, useHybridDeleteRecipe, useHybridUpsertHppFromRecipe } from "@/hooks/use-hybrid-write-actions";
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -105,6 +105,7 @@ export function RecipeMatrixPage() {
 	const costs = useHybridLatestInventoryCosts();
 	const saveRecipe = useHybridSaveRecipe();
 	const deleteRecipe = useHybridDeleteRecipe();
+	const upsertHppFromRecipe = useHybridUpsertHppFromRecipe();
 
 	// State
 	const [search, setSearch] = useState("");
@@ -230,6 +231,14 @@ export function RecipeMatrixPage() {
 					delete next[key];
 					return next;
 				});
+
+				// Sync HPP after recipe change (Recipe → HPP)
+				upsertHppFromRecipe({
+					productId,
+					overheadCosts: [],
+				}).catch(() => {
+					// Non-blocking — HPP sync shouldn't fail the cell save
+				});
 			} catch (err: any) {
 				toast.error(err?.message ?? "Gagal menyimpan");
 			} finally {
@@ -240,7 +249,7 @@ export function RecipeMatrixPage() {
 				});
 			}
 		},
-		[recipeByProduct, saveRecipe]
+		[recipeByProduct, saveRecipe, upsertHppFromRecipe]
 	);
 
 	// ── Delete recipe ──

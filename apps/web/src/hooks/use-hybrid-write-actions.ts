@@ -1671,34 +1671,6 @@ export function useHybridUpsertHppFromRecipe() {
 	);
 }
 
-export function useHybridApplyHppSellingPriceToProduct() {
-	const fallback = useMutation(api.hpp.applyHppSellingPriceToProduct);
-	const updateProduct = useHybridUpdateProduct();
-	const updateHpp = useHybridUpdateHppCalculation();
-	return useCallback(
-		async (args: any) => {
-			if (!hasSupabaseConfig) return fallback(args);
-			const id = String(args?.id ?? "");
-			if (!id) throw new Error("id HPP wajib diisi");
-			const sellingPrice = Number(args?.sellingPrice ?? 0);
-			await updateHpp({ id, sellingPrice });
-			let productUpdated = false;
-			if (Boolean(args?.syncProductPrice)) {
-				const doc = await getMirrorDocument("hppCalculations", id);
-				const productId = String((doc as any)?.productId ?? "");
-				if (productId) {
-					await updateProduct({
-						id: productId,
-						price: sellingPrice,
-					});
-					productUpdated = true;
-				}
-			}
-			return { productUpdated };
-		},
-		[fallback, updateHpp, updateProduct]
-	);
-}
 
 export function useHybridCreateGame() {
 	const fallback = useMutation(api.minigames.createGame);
@@ -2237,74 +2209,6 @@ export function useHybridGenerateDiscountStrategy() {
 	);
 }
 
-export function useHybridFillHppInventoryCostsFromTransactions() {
-	const fallback = useAction(api.ai.fillHppInventoryCostsFromTransactions);
-	const updateHpp = useHybridUpdateHppCalculation();
-	return useCallback(
-		async (args: any) => {
-			if (!hasSupabaseConfig) return fallback(args);
-			const hppCalculationId = String(args?.hppCalculationId ?? "");
-			if (!hppCalculationId) throw new Error("hppCalculationId wajib diisi");
-			const doc = await getMirrorDocument("hppCalculations", hppCalculationId);
-			if (!doc) throw new Error("Data HPP tidak ditemukan");
-			const ingredients = Array.isArray((doc as any).ingredients) ? (doc as any).ingredients : [];
-			const inventoryIds = ingredients
-				.map((item: any) => String(item?.inventoryId ?? ""))
-				.filter((value: string) => value.length > 0);
-			if (inventoryIds.length === 0) {
-				return {
-					suggestions: [],
-					updatedIngredients: 0,
-					appliedCount: 0,
-				};
-			}
-			const { data: latestCosts, error } = await createClient()
-				.from("pos_inventory_latest_costs")
-				.select("*")
-				.in("inventoryId", inventoryIds);
-			if (error) throw error;
-			const costMap = new Map<string, any>();
-			for (const row of latestCosts ?? []) {
-				costMap.set(String((row as any).inventoryId), row);
-			}
-			let appliedCount = 0;
-			const suggestions = ingredients
-				.map((item: any) => {
-					const row = costMap.get(String(item?.inventoryId ?? ""));
-					if (!row) return null;
-					appliedCount += 1;
-					return {
-						inventoryId: String(row.inventoryId),
-						ingredientName: row.ingredientName,
-						costPerUnit: Number(row.latestCostPerUnit ?? 0),
-						referenceDate: Number(row.latestRestockDate ?? Date.now()),
-					};
-				})
-				.filter(Boolean);
-			const updatedIngredients = ingredients.map((item: any) => {
-				const suggestion = suggestions.find(
-					(s: any) => String(s.inventoryId) === String(item?.inventoryId ?? "")
-				);
-				if (!suggestion) return item;
-				return {
-					...item,
-					purchasePrice:
-						Number(suggestion.costPerUnit ?? 0) * Number(item?.conversionFactor ?? 1),
-				};
-			});
-			await updateHpp({
-				id: hppCalculationId,
-				ingredients: updatedIngredients,
-			});
-			return {
-				suggestions,
-				updatedIngredients: appliedCount,
-				appliedCount,
-			};
-		},
-		[fallback, updateHpp]
-	);
-}
 
 export function useHybridGenerateProductDescription() {
 	const fallback = useAction(api.ai.generateProductDescription);

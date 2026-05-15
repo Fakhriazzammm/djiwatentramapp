@@ -248,28 +248,6 @@ async function fetchHppCalculations() {
 	return (data ?? []) as any[];
 }
 
-function computeHppMetrics(calc: any) {
-	const ingredients = Array.isArray(calc.ingredients) ? calc.ingredients : [];
-	const overheads = Array.isArray(calc.overheadCosts) ? calc.overheadCosts : [];
-	const ingredientsCost = ingredients.reduce((sum: number, item: any) => {
-		const price = safeNum(item.purchasePrice);
-		const qty = safeNum(item.purchaseQuantity);
-		const factor = safeNum(item.conversionFactor) || 1;
-		const usage = safeNum(item.usagePerServing);
-		if (price <= 0 || qty <= 0 || factor <= 0 || usage <= 0) return sum;
-		return sum + (price / (qty * factor)) * usage;
-	}, 0);
-	const overheadCost = overheads.reduce(
-		(sum: number, item: any) => sum + safeNum(item.costPerServing),
-		0
-	);
-	const hppPerServing = ingredientsCost + overheadCost;
-	const sellingPrice = safeNum(calc.sellingPrice);
-	const profitPerServing = sellingPrice - hppPerServing;
-	const marginPercent =
-		sellingPrice > 0 ? (profitPerServing / sellingPrice) * 100 : 0;
-	return { hppPerServing, sellingPrice, profitPerServing, marginPercent };
-}
 
 async function fetchCurrentMonthProgress() {
 	const supabase = createClient();
@@ -802,100 +780,6 @@ export function useHybridOrdersCogs(args?: { startDate?: number; endDate?: numbe
 	) as any;
 }
 
-export function useHybridHppPortfolio() {
-	return useSupabaseValue(
-		"hpp-portfolio",
-		async () => {
-			const calculations = await fetchHppCalculations();
-			const portfolio = calculations.map((calc: any) => {
-				const metrics = computeHppMetrics(calc);
-				const status =
-					metrics.marginPercent >= 55
-						? "excellent"
-						: metrics.marginPercent >= 35
-							? "healthy"
-							: metrics.marginPercent >= 20
-								? "watch"
-								: "critical";
-				return {
-					id: calc._id,
-					productId: calc.productId ?? undefined,
-					productName: calc.name ?? "Produk",
-					name: calc.name ?? "HPP",
-					hppPerServing: metrics.hppPerServing,
-					sellingPrice: metrics.sellingPrice,
-					marginPercent: metrics.marginPercent,
-					profitPerServing: metrics.profitPerServing,
-					status,
-					updatedAt: safeNum(calc.updatedAt),
-					calculation: calc,
-					metrics,
-				};
-			});
-			return {
-				summary: {
-					totalProducts: portfolio.length,
-					criticalCount: portfolio.filter((row: any) => row.marginPercent < 20).length,
-					watchCount: portfolio.filter((row: any) => row.marginPercent >= 20 && row.marginPercent < 35).length,
-					healthyCount: portfolio.filter((row: any) => row.marginPercent >= 35).length,
-					avgMarginPercent:
-						portfolio.length > 0
-							? portfolio.reduce((sum: number, row: any) => sum + row.marginPercent, 0) / portfolio.length
-							: 0,
-				},
-				alerts: portfolio
-					.filter((row: any) => row.marginPercent < 35)
-					.map((row: any) => ({
-						productId: row.productId ?? row.id,
-						productName: row.productName,
-						status: row.marginPercent < 20 ? "critical" : "warning",
-						reason:
-							row.marginPercent < 20
-								? "Margin terlalu rendah"
-								: "Margin perlu dipantau",
-					})),
-				portfolio,
-				drafts: [],
-			};
-		},
-		[]
-	) as any;
-}
-
-export function useHybridHppWithMarginAnalysis(targetMarginPercent = 30) {
-	return useSupabaseValue(
-		`hpp-margin-analysis:${targetMarginPercent}`,
-		async () => {
-			const calculations = await fetchHppCalculations();
-			return calculations.map((calc: any) => {
-				const metrics = computeHppMetrics(calc);
-				const recommendedSellingPrice =
-					metrics.hppPerServing / Math.max(0.01, 1 - targetMarginPercent / 100);
-				const priceDiff = recommendedSellingPrice - metrics.sellingPrice;
-				return {
-					id: calc._id,
-					name: calc.name ?? "HPP",
-					productId: calc.productId ?? undefined,
-					hppPerServing: metrics.hppPerServing,
-					currentSellingPrice: metrics.sellingPrice,
-					currentMarginPercent: metrics.marginPercent,
-					currentProfitPerServing: metrics.profitPerServing,
-					targetMarginPercent,
-					recommendedSellingPrice,
-					priceDiff,
-					isLowMargin: metrics.marginPercent < targetMarginPercent,
-					status:
-						metrics.marginPercent < 20
-							? "critical"
-							: metrics.marginPercent < targetMarginPercent
-								? "warning"
-								: "ok",
-				};
-			});
-		},
-		[targetMarginPercent]
-	) as any;
-}
 
 export function useHybridPredictStockOut(daysAhead = 7) {
 	return useSupabaseValue(
@@ -1172,65 +1056,6 @@ export function useHybridCustomerServiceRequests(args?: {
 	) as any;
 }
 
-export function useHybridHppPriceSimulation(
-	args:
-		| {
-				id: string;
-				priceChangePercent: number;
-				ingredientIndex?: number;
-		  }
-		| "skip"
-) {
-	return useSupabaseValue(
-		args === "skip"
-			? "hpp-price-sim:skip"
-			: `hpp-price-sim:${args.id}:${args.priceChangePercent}:${args.ingredientIndex ?? "all"}`,
-		async () => {
-			if (args === "skip") return null;
-			const calculations = await fetchHppCalculations();
-			const calc = calculations.find((row: any) => row._id === args.id);
-			if (!calc) return null;
-			const original = computeHppMetrics(calc);
-			const simulatedCalc = JSON.parse(JSON.stringify(calc));
-			if (
-				typeof args.ingredientIndex === "number" &&
-				Array.isArray(simulatedCalc.ingredients) &&
-				simulatedCalc.ingredients[args.ingredientIndex]
-			) {
-				simulatedCalc.ingredients[args.ingredientIndex].purchasePrice =
-					safeNum(simulatedCalc.ingredients[args.ingredientIndex].purchasePrice) *
-					(1 + args.priceChangePercent / 100);
-			} else if (Array.isArray(simulatedCalc.ingredients)) {
-				simulatedCalc.ingredients = simulatedCalc.ingredients.map((ingredient: any) => ({
-					...ingredient,
-					purchasePrice:
-						safeNum(ingredient.purchasePrice) * (1 + args.priceChangePercent / 100),
-				}));
-			}
-			const simulated = computeHppMetrics(simulatedCalc);
-			const recommendedSellingPrice = simulated.hppPerServing / (1 - 0.3);
-			return {
-				hppId: calc._id,
-				name: calc.name ?? "HPP",
-				priceChangePercent: args.priceChangePercent,
-				ingredientIndex: args.ingredientIndex,
-				original,
-				simulated,
-				delta: {
-					hppDelta: simulated.hppPerServing - original.hppPerServing,
-					profitDelta: simulated.profitPerServing - original.profitPerServing,
-					marginDelta: simulated.marginPercent - original.marginPercent,
-				},
-				recommendedSellingPrice,
-			};
-		},
-		[
-			args === "skip" ? "skip" : args.id,
-			args === "skip" ? "skip" : args.priceChangePercent,
-			args === "skip" ? "skip" : args.ingredientIndex,
-		]
-	) as any;
-}
 
 // ── Accounting Data ─────────────────────────────────────
 
