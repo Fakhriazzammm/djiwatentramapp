@@ -35,7 +35,6 @@ import { Route as AdminOnboardingRouteImport } from './routes/admin/onboarding'
 import { Route as AdminMinigamesRouteImport } from './routes/admin/minigames'
 import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
-import { Route as AdminHppCalculatorRouteImport } from './routes/admin/hpp-calculator'
 import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting'
 import { Route as AdminDiscountsRouteImport } from './routes/admin/discounts'
 import { Route as AdminCustomerServiceRouteImport } from './routes/admin/customer-service'
@@ -52,6 +51,7 @@ import { Route as AdminRecipeViewRouteImport } from './routes/admin/recipe.view'
 import { Route as AdminRecipeHppRouteImport } from './routes/admin/recipe/hpp'
 import { Route as AdminOperationalTeamRegisterRouteImport } from './routes/admin/operational-team/register'
 import { Route as AdminOperationalTeamPayrollRouteImport } from './routes/admin/operational-team/payroll'
+import { Route as AdminOperationalTeamKaryawanRouteImport } from './routes/admin/operational-team/karyawan'
 import { Route as AdminOperationalTeamAttendanceRouteImport } from './routes/admin/operational-team/attendance'
 import { Route as AdminFinanceShiftReportsRouteImport } from './routes/admin/finance/shift-reports'
 import { Route as AdminFinanceTransactionsRouteRouteImport } from './routes/admin/finance/transactions/route'
@@ -60,6 +60,7 @@ import { Route as AdminFinanceAccountingRouteRouteImport } from './routes/admin/
 import { Route as AdminOperationalTeamRegisterRiwayatRouteImport } from './routes/admin/operational-team/register/riwayat'
 import { Route as AdminOperationalTeamRegisterOnboardingRouteImport } from './routes/admin/operational-team/register/onboarding'
 import { Route as AdminOperationalTeamRegisterContractRouteImport } from './routes/admin/operational-team/register/contract'
+import { Route as AdminOperationalTeamAttendancePengaturanRouteImport } from './routes/admin/operational-team/attendance/pengaturan'
 import { Route as AdminOperationalTeamRegisterApplicationRegistrationNumberRouteImport } from './routes/admin/operational-team/register.application.$registrationNumber'
 
 const RegisterRoute = RegisterRouteImport.update({
@@ -214,13 +215,6 @@ const AdminInventoryRoute = AdminInventoryRouteImport.update({
 } as any).lazy(() =>
   import('./routes/admin/inventory.lazy').then((d) => d.Route),
 )
-const AdminHppCalculatorRoute = AdminHppCalculatorRouteImport.update({
-  id: '/hpp-calculator',
-  path: '/hpp-calculator',
-  getParentRoute: () => AdminRouteRoute,
-} as any).lazy(() =>
-  import('./routes/admin/hpp-calculator.lazy').then((d) => d.Route),
-)
 const AdminForecastingRoute = AdminForecastingRouteImport.update({
   id: '/forecasting',
   path: '/forecasting',
@@ -329,6 +323,16 @@ const AdminOperationalTeamPayrollRoute =
   } as any).lazy(() =>
     import('./routes/admin/operational-team/payroll.lazy').then((d) => d.Route),
   )
+const AdminOperationalTeamKaryawanRoute =
+  AdminOperationalTeamKaryawanRouteImport.update({
+    id: '/karyawan',
+    path: '/karyawan',
+    getParentRoute: () => AdminOperationalTeamRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/karyawan.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 const AdminOperationalTeamAttendanceRoute =
   AdminOperationalTeamAttendanceRouteImport.update({
     id: '/attendance',
@@ -393,6 +397,16 @@ const AdminOperationalTeamRegisterContractRoute =
       (d) => d.Route,
     ),
   )
+const AdminOperationalTeamAttendancePengaturanRoute =
+  AdminOperationalTeamAttendancePengaturanRouteImport.update({
+    id: '/pengaturan',
+    path: '/pengaturan',
+    getParentRoute: () => AdminOperationalTeamAttendanceRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/operational-team/attendance/pengaturan.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 const AdminOperationalTeamRegisterApplicationRegistrationNumberRoute =
   AdminOperationalTeamRegisterApplicationRegistrationNumberRouteImport.update({
     id: '/application/$registrationNumber',
@@ -423,7 +437,6 @@ export interface FileRoutesByFullPath {
   '/admin/customer-service': typeof AdminCustomerServiceRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/forecasting': typeof AdminForecastingRoute
-  '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/minigames': typeof AdminMinigamesRoute
@@ -444,7 +457,8 @@ export interface FileRoutesByFullPath {
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
-  '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRoute
+  '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRouteWithChildren
+  '/admin/operational-team/karyawan': typeof AdminOperationalTeamKaryawanRoute
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollRoute
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
@@ -453,6 +467,7 @@ export interface FileRoutesByFullPath {
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
+  '/admin/operational-team/attendance/pengaturan': typeof AdminOperationalTeamAttendancePengaturanRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
   '/admin/operational-team/register/riwayat': typeof AdminOperationalTeamRegisterRiwayatRoute
@@ -474,7 +489,6 @@ export interface FileRoutesByTo {
   '/admin/customer-service': typeof AdminCustomerServiceRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/forecasting': typeof AdminForecastingRoute
-  '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/minigames': typeof AdminMinigamesRoute
@@ -493,7 +507,8 @@ export interface FileRoutesByTo {
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
-  '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRoute
+  '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRouteWithChildren
+  '/admin/operational-team/karyawan': typeof AdminOperationalTeamKaryawanRoute
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollRoute
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
@@ -502,6 +517,7 @@ export interface FileRoutesByTo {
   '/admin/finance': typeof AdminFinanceIndexRoute
   '/admin/operational-team': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe': typeof AdminRecipeIndexRoute
+  '/admin/operational-team/attendance/pengaturan': typeof AdminOperationalTeamAttendancePengaturanRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
   '/admin/operational-team/register/riwayat': typeof AdminOperationalTeamRegisterRiwayatRoute
@@ -527,7 +543,6 @@ export interface FileRoutesById {
   '/admin/customer-service': typeof AdminCustomerServiceRoute
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/forecasting': typeof AdminForecastingRoute
-  '/admin/hpp-calculator': typeof AdminHppCalculatorRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/minigames': typeof AdminMinigamesRoute
@@ -548,7 +563,8 @@ export interface FileRoutesById {
   '/admin/finance/reports': typeof AdminFinanceReportsRouteRoute
   '/admin/finance/transactions': typeof AdminFinanceTransactionsRouteRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
-  '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRoute
+  '/admin/operational-team/attendance': typeof AdminOperationalTeamAttendanceRouteWithChildren
+  '/admin/operational-team/karyawan': typeof AdminOperationalTeamKaryawanRoute
   '/admin/operational-team/payroll': typeof AdminOperationalTeamPayrollRoute
   '/admin/operational-team/register': typeof AdminOperationalTeamRegisterRouteWithChildren
   '/admin/recipe/hpp': typeof AdminRecipeHppRoute
@@ -557,6 +573,7 @@ export interface FileRoutesById {
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/operational-team/': typeof AdminOperationalTeamIndexRoute
   '/admin/recipe/': typeof AdminRecipeIndexRoute
+  '/admin/operational-team/attendance/pengaturan': typeof AdminOperationalTeamAttendancePengaturanRoute
   '/admin/operational-team/register/contract': typeof AdminOperationalTeamRegisterContractRoute
   '/admin/operational-team/register/onboarding': typeof AdminOperationalTeamRegisterOnboardingRoute
   '/admin/operational-team/register/riwayat': typeof AdminOperationalTeamRegisterRiwayatRoute
@@ -583,7 +600,6 @@ export interface FileRouteTypes {
     | '/admin/customer-service'
     | '/admin/discounts'
     | '/admin/forecasting'
-    | '/admin/hpp-calculator'
     | '/admin/inventory'
     | '/admin/kitchen'
     | '/admin/minigames'
@@ -605,6 +621,7 @@ export interface FileRouteTypes {
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
     | '/admin/operational-team/attendance'
+    | '/admin/operational-team/karyawan'
     | '/admin/operational-team/payroll'
     | '/admin/operational-team/register'
     | '/admin/recipe/hpp'
@@ -613,6 +630,7 @@ export interface FileRouteTypes {
     | '/admin/finance/'
     | '/admin/operational-team/'
     | '/admin/recipe/'
+    | '/admin/operational-team/attendance/pengaturan'
     | '/admin/operational-team/register/contract'
     | '/admin/operational-team/register/onboarding'
     | '/admin/operational-team/register/riwayat'
@@ -634,7 +652,6 @@ export interface FileRouteTypes {
     | '/admin/customer-service'
     | '/admin/discounts'
     | '/admin/forecasting'
-    | '/admin/hpp-calculator'
     | '/admin/inventory'
     | '/admin/kitchen'
     | '/admin/minigames'
@@ -654,6 +671,7 @@ export interface FileRouteTypes {
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
     | '/admin/operational-team/attendance'
+    | '/admin/operational-team/karyawan'
     | '/admin/operational-team/payroll'
     | '/admin/operational-team/register'
     | '/admin/recipe/hpp'
@@ -662,6 +680,7 @@ export interface FileRouteTypes {
     | '/admin/finance'
     | '/admin/operational-team'
     | '/admin/recipe'
+    | '/admin/operational-team/attendance/pengaturan'
     | '/admin/operational-team/register/contract'
     | '/admin/operational-team/register/onboarding'
     | '/admin/operational-team/register/riwayat'
@@ -686,7 +705,6 @@ export interface FileRouteTypes {
     | '/admin/customer-service'
     | '/admin/discounts'
     | '/admin/forecasting'
-    | '/admin/hpp-calculator'
     | '/admin/inventory'
     | '/admin/kitchen'
     | '/admin/minigames'
@@ -708,6 +726,7 @@ export interface FileRouteTypes {
     | '/admin/finance/transactions'
     | '/admin/finance/shift-reports'
     | '/admin/operational-team/attendance'
+    | '/admin/operational-team/karyawan'
     | '/admin/operational-team/payroll'
     | '/admin/operational-team/register'
     | '/admin/recipe/hpp'
@@ -716,6 +735,7 @@ export interface FileRouteTypes {
     | '/admin/finance/'
     | '/admin/operational-team/'
     | '/admin/recipe/'
+    | '/admin/operational-team/attendance/pengaturan'
     | '/admin/operational-team/register/contract'
     | '/admin/operational-team/register/onboarding'
     | '/admin/operational-team/register/riwayat'
@@ -921,13 +941,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminInventoryRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/admin/hpp-calculator': {
-      id: '/admin/hpp-calculator'
-      path: '/hpp-calculator'
-      fullPath: '/admin/hpp-calculator'
-      preLoaderRoute: typeof AdminHppCalculatorRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
     '/admin/forecasting': {
       id: '/admin/forecasting'
       path: '/forecasting'
@@ -1040,6 +1053,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOperationalTeamPayrollRouteImport
       parentRoute: typeof AdminOperationalTeamRoute
     }
+    '/admin/operational-team/karyawan': {
+      id: '/admin/operational-team/karyawan'
+      path: '/karyawan'
+      fullPath: '/admin/operational-team/karyawan'
+      preLoaderRoute: typeof AdminOperationalTeamKaryawanRouteImport
+      parentRoute: typeof AdminOperationalTeamRoute
+    }
     '/admin/operational-team/attendance': {
       id: '/admin/operational-team/attendance'
       path: '/attendance'
@@ -1096,6 +1116,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOperationalTeamRegisterContractRouteImport
       parentRoute: typeof AdminOperationalTeamRegisterRoute
     }
+    '/admin/operational-team/attendance/pengaturan': {
+      id: '/admin/operational-team/attendance/pengaturan'
+      path: '/pengaturan'
+      fullPath: '/admin/operational-team/attendance/pengaturan'
+      preLoaderRoute: typeof AdminOperationalTeamAttendancePengaturanRouteImport
+      parentRoute: typeof AdminOperationalTeamAttendanceRoute
+    }
     '/admin/operational-team/register/application/$registrationNumber': {
       id: '/admin/operational-team/register/application/$registrationNumber'
       path: '/application/$registrationNumber'
@@ -1125,6 +1152,21 @@ const AdminFinanceRouteRouteChildren: AdminFinanceRouteRouteChildren = {
 const AdminFinanceRouteRouteWithChildren =
   AdminFinanceRouteRoute._addFileChildren(AdminFinanceRouteRouteChildren)
 
+interface AdminOperationalTeamAttendanceRouteChildren {
+  AdminOperationalTeamAttendancePengaturanRoute: typeof AdminOperationalTeamAttendancePengaturanRoute
+}
+
+const AdminOperationalTeamAttendanceRouteChildren: AdminOperationalTeamAttendanceRouteChildren =
+  {
+    AdminOperationalTeamAttendancePengaturanRoute:
+      AdminOperationalTeamAttendancePengaturanRoute,
+  }
+
+const AdminOperationalTeamAttendanceRouteWithChildren =
+  AdminOperationalTeamAttendanceRoute._addFileChildren(
+    AdminOperationalTeamAttendanceRouteChildren,
+  )
+
 interface AdminOperationalTeamRegisterRouteChildren {
   AdminOperationalTeamRegisterContractRoute: typeof AdminOperationalTeamRegisterContractRoute
   AdminOperationalTeamRegisterOnboardingRoute: typeof AdminOperationalTeamRegisterOnboardingRoute
@@ -1150,14 +1192,17 @@ const AdminOperationalTeamRegisterRouteWithChildren =
   )
 
 interface AdminOperationalTeamRouteChildren {
-  AdminOperationalTeamAttendanceRoute: typeof AdminOperationalTeamAttendanceRoute
+  AdminOperationalTeamAttendanceRoute: typeof AdminOperationalTeamAttendanceRouteWithChildren
+  AdminOperationalTeamKaryawanRoute: typeof AdminOperationalTeamKaryawanRoute
   AdminOperationalTeamPayrollRoute: typeof AdminOperationalTeamPayrollRoute
   AdminOperationalTeamRegisterRoute: typeof AdminOperationalTeamRegisterRouteWithChildren
   AdminOperationalTeamIndexRoute: typeof AdminOperationalTeamIndexRoute
 }
 
 const AdminOperationalTeamRouteChildren: AdminOperationalTeamRouteChildren = {
-  AdminOperationalTeamAttendanceRoute: AdminOperationalTeamAttendanceRoute,
+  AdminOperationalTeamAttendanceRoute:
+    AdminOperationalTeamAttendanceRouteWithChildren,
+  AdminOperationalTeamKaryawanRoute: AdminOperationalTeamKaryawanRoute,
   AdminOperationalTeamPayrollRoute: AdminOperationalTeamPayrollRoute,
   AdminOperationalTeamRegisterRoute:
     AdminOperationalTeamRegisterRouteWithChildren,
@@ -1191,7 +1236,6 @@ interface AdminRouteRouteChildren {
   AdminCustomerServiceRoute: typeof AdminCustomerServiceRoute
   AdminDiscountsRoute: typeof AdminDiscountsRoute
   AdminForecastingRoute: typeof AdminForecastingRoute
-  AdminHppCalculatorRoute: typeof AdminHppCalculatorRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminKitchenRoute: typeof AdminKitchenRoute
   AdminMinigamesRoute: typeof AdminMinigamesRoute
@@ -1213,7 +1257,6 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminCustomerServiceRoute: AdminCustomerServiceRoute,
   AdminDiscountsRoute: AdminDiscountsRoute,
   AdminForecastingRoute: AdminForecastingRoute,
-  AdminHppCalculatorRoute: AdminHppCalculatorRoute,
   AdminInventoryRoute: AdminInventoryRoute,
   AdminKitchenRoute: AdminKitchenRoute,
   AdminMinigamesRoute: AdminMinigamesRoute,

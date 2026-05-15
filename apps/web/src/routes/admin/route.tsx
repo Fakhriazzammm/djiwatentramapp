@@ -84,6 +84,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/operational-team/register": "Register Karyawan",
 	"/admin/operational-team/register/onboarding": "Onboarding Karyawan",
 	"/admin/operational-team/register/contract": "Kontrak Kerja",
+	"/admin/operational-team/karyawan": "Karyawan",
 	"/admin/operational-team/register/riwayat": "Riwayat Kontrak",
 	"/admin/forecasting": "Forecasting",
 	"/admin/booking": "Booking",
@@ -123,6 +124,7 @@ const MORE_MENU_PATHS = [
 	"/admin/bar",
 	"/admin/customer-service",
 	"/admin/minigames",
+	"/admin/operational-team/karyawan",
 	"/admin/operational-team",
 	"/admin/operational-team/attendance",
 	"/admin/operational-team/payroll",
@@ -162,7 +164,7 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/kitchen", icon: ChefHat, label: "Dapur" },
 			{ to: "/admin/bar", icon: Beer, label: "Bar" },
 			{ to: "/admin/customer-service", icon: Bell, label: "Layanan", permission: "orders:view" },
-			{ to: "/admin/operational-team", icon: Users, label: "Tim Operasional", permission: "users:manage" },
+			{ to: "/admin/operational-team/karyawan", icon: Users, label: "Karyawan", permission: "users:manage" },
 		],
 	},
 	{
@@ -199,6 +201,7 @@ const FINANCE_PATHS = [
 ];
 
 const OPERATIONAL_TEAM_PATHS = [
+	"/admin/operational-team/karyawan",
 	"/admin/operational-team",
 	"/admin/operational-team/attendance",
 	"/admin/operational-team/payroll",
@@ -463,7 +466,8 @@ function AdminLayout() {
 					<DesktopNavLink icon={<Bell />} isCollapsed={isCollapsed} label="Layanan Customer" to="/admin/customer-service" permission="orders:view" />
 					{isCollapsed ? (
 						<>
-							<DesktopNavLink icon={<Users />} isCollapsed={isCollapsed} label="Pengguna" to="/admin/operational-team" permission="users:manage" />
+							<DesktopNavLink icon={<LayoutDashboard />} isCollapsed={isCollapsed} label="Dashboard" to="/admin/operational-team" permission="users:manage" />
+							<DesktopNavLink icon={<Users />} isCollapsed={isCollapsed} label="Karyawan" to="/admin/operational-team/karyawan" permission="users:manage" />
 							<DesktopNavLink icon={<FileBarChart />} isCollapsed={isCollapsed} label="Absensi" to="/admin/operational-team/attendance" permission="users:manage" />
 							<DesktopNavLink icon={<Wallet />} isCollapsed={isCollapsed} label="Gaji & Role" to="/admin/operational-team/payroll" permission="users:manage" />
 							<DesktopNavLink icon={<UserPlus />} isCollapsed={isCollapsed} label="Register" to="/admin/operational-team/register" permission="users:manage" />
@@ -483,8 +487,9 @@ function AdminLayout() {
 							<AnimatePresence initial={false}>
 								{isOperationalTeamOpen && (
 									<motion.div animate={{ height: "auto", opacity: 1 }} className="overflow-hidden" exit={{ height: 0, opacity: 0 }} initial={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }}>
-										<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
-											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<Users />} label="Pengguna" to="/admin/operational-team" permission="users:manage" />
+\t\t\t\t\t\t\t\t\t\t<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
+											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/operational-team" permission="users:manage" />
+											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<Users />} label="Karyawan" to="/admin/operational-team/karyawan" permission="users:manage" />
 											<DesktopSubNavLink icon={<FileBarChart />} label="Absensi" to="/admin/operational-team/attendance" permission="users:manage" />
 											<DesktopSubNavLink icon={<Wallet />} label="Gaji & Role" to="/admin/operational-team/payroll" permission="users:manage" />
 										<DesktopSubNavLink icon={<UserPlus />} label="Register Karyawan" to="/admin/operational-team/register" permission="users:manage" />

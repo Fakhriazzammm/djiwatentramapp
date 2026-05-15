@@ -1,8 +1,8 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { SettingsPage } from "../settings.lazy";
+import OperationalDashboard from "./-components/OperationalDashboard";
 
 function OperationalTeamIndexPage() {
-	return <SettingsPage mode="operational-team" />;
+	return <OperationalDashboard />;
 }
 
 export const Route = createLazyFileRoute("/admin/operational-team/" as any)({
