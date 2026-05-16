@@ -49,6 +49,7 @@ import {
 } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridRecipes,
+	useHybridBaseRecipes,
 } from "@/hooks/use-hybrid-inventory-admin-data";
 import {
 	useHybridCreateHppCalculation,
@@ -446,10 +447,18 @@ export function RecipeHppPage() {
 	const inventory = useHybridInventory() as InventoryItem[] | undefined;
 	const inventoryCosts = useHybridLatestInventoryCosts();
 	const recipes = useHybridRecipes();
+	const baseRecipes = useHybridBaseRecipes() as any[] | undefined;
 
 	// Loading state
 	const loading = !products || !inventory || !recipes;
 	const emptyProductList = products && products.length === 0;
+
+	const [hppType, setHppType] = useState<"product" | "base_recipe">("product");
+
+	const selectedBaseRecipe = useMemo(() => {
+		if (!selectedProductId || !baseRecipes || hppType !== "base_recipe") return null;
+		return (baseRecipes as any[]).find((br: any) => br._id === selectedProductId) ?? null;
+	}, [selectedProductId, baseRecipes, hppType]);
 
 	// Auto-select product from query param
 	useEffect(() => {
@@ -515,6 +524,16 @@ export function RecipeHppPage() {
 	}, [selectedProductId, recipes]);
 
 	const filteredProducts = useMemo(() => {
+		if (hppType === "base_recipe") {
+			if (!baseRecipes) return [];
+			let result = baseRecipes as any[];
+			if (productSearch) {
+				result = result.filter((br: any) =>
+					safeLower(br.name).includes(safeLower(productSearch))
+				);
+			}
+			return result;
+		}
 		if (!products) return [];
 		let result = products;
 		if (productSearch) {
@@ -526,7 +545,7 @@ export function RecipeHppPage() {
 			result = result.filter((p) => recipesByProduct.has(p._id));
 		}
 		return result;
-	}, [products, productSearch, recipeFilter, recipesByProduct]);
+	}, [products, baseRecipes, productSearch, recipeFilter, recipesByProduct, hppType]);
 
 	const usedInventoryIds = useMemo(() => {
 		return new Set(form.ingredients.map((ing) => ing.inventoryId).filter(Boolean) as string[]);
@@ -540,6 +559,53 @@ export function RecipeHppPage() {
 		setSelectedProductId(productId);
 		setProductDropdownOpen(false);
 		setProductSearch("");
+
+		// Handle base recipe selection
+		if (hppType === "base_recipe" && baseRecipes) {
+			const baseRecipe = (baseRecipes as any[]).find((br: any) => br._id === productId);
+			if (!baseRecipe) return;
+
+			const ingredients: IngredientRow[] = (baseRecipe.ingredients ?? []).map((ing: any) => {
+				const invItem = (inventory ?? []).find((i) => i._id === ing.inventoryId);
+				const costInfo = inventoryCosts?.[ing.inventoryId];
+				const price = costInfo?.latestCostPerUnit ?? 0;
+				const source: PriceSource = costInfo?.latestCostPerUnit ? "inventory" : "manual";
+				const unitPair = findUnitPair(
+					invItem?.unit ?? "liter",
+					invItem?.displayUnit ?? "ml"
+				);
+
+				return {
+					id: generateId(),
+					inventoryId: ing.inventoryId,
+					ingredientName: invItem?.ingredientName ?? "",
+					purchasePrice: price * (unitPair.factor),
+					purchaseQuantity: 1,
+					purchaseUnit: invItem?.unit ?? unitPair.purchase,
+					usagePerServing: ing.amount,
+					usageUnit: invItem?.displayUnit ?? unitPair.usage,
+					conversionFactor: unitPair.factor,
+					costSource: source,
+				};
+			});
+
+			const targetQty = parseInt(baseRecipe.targetQuantity) || 1;
+			const newForm: HppFormData = {
+				name: `HPP ${baseRecipe.name}`,
+				description: `Perhitungan biaya base recipe ${baseRecipe.name} (${baseRecipe.category ?? ""})`,
+				ingredients: ingredients.length > 0 ? ingredients : [createEmptyIngredient()],
+				overheadCosts: [],
+				servingsPerBatch: targetQty,
+				sellingPrice: 0,
+				happyHourPrice: 0,
+				productId,
+				sourceType: "recipe_based",
+			};
+			setForm(newForm);
+			setSelectedRows(new Set());
+			setEditingId(null);
+			return;
+		}
 
 		const product = products?.find((p) => p._id === productId);
 		if (!product) return;
@@ -587,7 +653,7 @@ export function RecipeHppPage() {
 		setForm(newForm);
 		setSelectedRows(new Set());
 		setEditingId(null);
-	}, [products, recipes, inventory, inventoryCosts]);
+	}, [products, recipes, inventory, inventoryCosts, hppType, baseRecipes]);
 
 	const handleIngredientChange = useCallback((id: string, field: keyof IngredientRow, value: any) => {
 		setForm((prev) => ({
@@ -893,6 +959,26 @@ export function RecipeHppPage() {
 							</div>
 							{/* Filter toggles */}
 							<div className="flex items-center gap-2">
+								<div className="flex items-center rounded-md border bg-background p-0.5">
+									<Button
+										variant={hppType === "product" ? "default" : "ghost"}
+										size="sm"
+										className="h-7 px-2 text-[10px]"
+										onClick={() => setHppType("product")}
+									>
+										<Package className="mr-1 h-3 w-3" />
+										Produk
+									</Button>
+									<Button
+										variant={hppType === "base_recipe" ? "default" : "ghost"}
+										size="sm"
+										className="h-7 px-2 text-[10px]"
+										onClick={() => setHppType("base_recipe")}
+									>
+										<BookOpen className="mr-1 h-3 w-3" />
+										Base Recipe
+									</Button>
+								</div>
 								<Button
 									variant={recipeFilter ? "default" : "outline"}
 									size="sm"
@@ -933,8 +1019,9 @@ export function RecipeHppPage() {
 													: "Tidak ada produk tersedia"}
 										</div>
 									) : (
-										filteredProducts.map((product) => {
-											const hasRecipe = recipesByProduct?.has(product._id);
+										filteredProducts.map((product: any) => {
+											const isBaseRecipe = hppType === "base_recipe";
+											const hasRecipe = !isBaseRecipe && recipesByProduct?.has(product._id);
 											return (
 												<div
 													key={product._id}
@@ -945,15 +1032,23 @@ export function RecipeHppPage() {
 													}}
 												>
 													<span className="flex-1 truncate">{product.name}</span>
+													{isBaseRecipe && (
+														<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-600">
+															<BookOpen className="h-2.5 w-2.5" />
+															{product.targetQuantity} {product.targetUnit}
+														</span>
+													)}
 													{hasRecipe && (
 														<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold text-blue-600">
 															<BookOpen className="h-2.5 w-2.5" />
 															Resep
 														</span>
 													)}
-													<span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
-														{formatCurrency(product.promoPrice ?? product.price)}
-													</span>
+													{!isBaseRecipe && (
+														<span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
+															{formatCurrency(product.promoPrice ?? product.price)}
+														</span>
+													)}
 												</div>
 											);
 										})
@@ -964,7 +1059,7 @@ export function RecipeHppPage() {
 					</div>
 
 					{/* Recipe info banner — data source indicators */}
-					{selectedProduct && (
+					{selectedProduct && !selectedBaseRecipe && (
 						<div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
 							<div className="flex items-center gap-2 text-[11px] text-blue-800">
 								<BookOpen className="h-3.5 w-3.5 shrink-0 text-blue-500" />
@@ -996,6 +1091,21 @@ export function RecipeHppPage() {
 										Harga: {Object.keys(inventoryCosts).length} item
 									</span>
 								)}
+							</div>
+						</div>
+					)}
+
+					{/* Base Recipe info banner */}
+					{selectedBaseRecipe && (
+						<div className="mt-3 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2">
+							<div className="flex items-center gap-2 text-[11px] text-amber-800">
+								<BookOpen className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+								<span className="flex-1">
+									Base Recipe: {selectedBaseRecipe.name} — {form.ingredients.length} bahan baku
+								</span>
+								<span className="shrink-0 font-medium">
+									{selectedBaseRecipe.targetQuantity} {selectedBaseRecipe.targetUnit}
+								</span>
 							</div>
 						</div>
 					)}
