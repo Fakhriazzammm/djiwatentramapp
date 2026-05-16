@@ -7,6 +7,8 @@ import {
 	Save,
 	Plus,
 	Trash2,
+	Layers,
+	X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,11 +25,12 @@ type ShiftSchedule = {
 	closeTime?: string;
 };
 
-type PengaturanTab = "shift" | "geofencing";
+type PengaturanTab = "shift" | "geofencing" | "template";
 
 const pengaturanTabs: { id: PengaturanTab; label: string; icon: typeof Clock }[] = [
 	{ id: "shift", label: "Manajemen Shift", icon: Clock },
 	{ id: "geofencing", label: "Pengaturan Absensi & Geofencing", icon: MapPin },
+	{ id: "template", label: "Template Export", icon: Layers },
 ];
 
 function buildShiftSchedules(
@@ -61,6 +64,11 @@ function AttendancePengaturanPage() {
 	const [attendanceLng, setAttendanceLng] = useState(106.816666);
 	const [attendanceRadius, setAttendanceRadius] = useState(50);
 
+	type RosterGroupStaff = { rawName: string; userId?: string; displayName?: string };
+	type RosterGroup = { label: string; roleLabel?: string; colorKey?: string; staff: RosterGroupStaff[] };
+	type RosterTemplate = { groups: RosterGroup[]; updatedAt?: string };
+	const [rosterTemplate, setRosterTemplate] = useState<RosterTemplate>({ groups: [] });
+
 	useEffect(() => {
 		if (siteSettings) {
 			setShiftSettings({
@@ -78,6 +86,11 @@ function AttendancePengaturanPage() {
 			setAttendanceLat(siteSettings.attendanceLat ?? -6.2);
 			setAttendanceLng(siteSettings.attendanceLng ?? 106.816666);
 			setAttendanceRadius(siteSettings.attendanceRadius ?? 50);
+			const raw = siteSettings.raw ?? {};
+			const saved = (raw as any)?.attendanceRosterTemplate;
+			if (saved?.groups) {
+				setRosterTemplate(saved as RosterTemplate);
+			}
 		}
 	}, [siteSettings]);
 
@@ -478,6 +491,180 @@ function AttendancePengaturanPage() {
 							>
 								<MapPin className="mr-2 h-4 w-4" /> Gunakan Lokasi Saya Saat Ini
 							</Button>
+						</div>
+					</div>
+				</section>
+			)}
+
+			{/* ── TAB: Template Export ── */}
+			{activeTab === "template" && (
+				<section className="space-y-6 rounded-xllll border border-border bg-card p-4 md:p-6">
+					<div className="flex items-center gap-4">
+						<div className="flex h-12 w-12 items-center justify-center rounded-xllll bg-primary/10 text-primary">
+							<Layers className="h-5 w-5" />
+						</div>
+						<div>
+							<h3 className="font-bold text-base text-foreground tracking-tight md:text-xl">
+								Template Export Roster
+							</h3>
+							<p className="text-muted-foreground text-sm">
+								Atur urutan, group, dan warna staff saat export format gambar
+							</p>
+						</div>
+					</div>
+
+					<div className="rounded-xllll border border-blue-200 bg-blue-50 p-4 text-xs text-blue-700 leading-relaxed dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300">
+						Template ini menentukan bagaimana staff dikelompokkan dan diurutkan saat export Excel format gambar / roster matrix. Jika tidak dikonfigurasi, sistem akan mengelompokkan otomatis berdasarkan role.
+					</div>
+
+					{/* Existing groups */}
+					<div className="space-y-4">
+						<div className="flex items-center justify-between">
+							<h4 className="font-bold text-foreground text-sm uppercase tracking-wider">
+								Grup Staff ({rosterTemplate.groups.length})
+							</h4>
+							<button
+								onClick={() => {
+									const label = window.prompt("Nama grup (contoh: DJIWA TENTRAM):");
+									if (label?.trim()) {
+										setRosterTemplate((prev) => ({
+											...prev,
+											groups: [...prev.groups, { label: label.trim(), roleLabel: "", staff: [] }],
+										}));
+									}
+								}}
+								className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5 font-bold text-primary text-xs transition-all hover:bg-primary/20"
+								type="button"
+							>
+								<Plus className="h-3 w-3" /> Tambah Grup
+							</button>
+						</div>
+
+						{rosterTemplate.groups.length === 0 && (
+							<div className="col-span-full py-8 text-center border-2 border-dashed border-border rounded-xllll">
+								<p className="text-muted-foreground text-sm">
+									Belum ada grup. Tambah grup untuk mengatur urutan staff saat export.
+								</p>
+							</div>
+						)}
+
+						<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+							{rosterTemplate.groups.map((group, gi) => (
+								<div key={gi} className="space-y-3 rounded-xllll border border-border bg-muted/30 p-4">
+									<div className="flex items-start justify-between gap-2">
+										<div className="flex-1 space-y-2">
+											<input
+												className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm font-semibold"
+												value={group.label}
+												onChange={(e) => {
+													const newGroups = [...rosterTemplate.groups];
+													newGroups[gi] = { ...newGroups[gi], label: e.target.value };
+													setRosterTemplate((prev) => ({ ...prev, groups: newGroups }));
+												}}
+												placeholder="Nama grup"
+											/>
+											<input
+												className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-muted-foreground"
+												value={group.roleLabel ?? ""}
+												onChange={(e) => {
+													const newGroups = [...rosterTemplate.groups];
+													newGroups[gi] = { ...newGroups[gi], roleLabel: e.target.value };
+													setRosterTemplate((prev) => ({ ...prev, groups: newGroups }));
+												}}
+												placeholder="Role label (contoh: BARISTA, CHEF)"
+											/>
+										</div>
+										<button
+											onClick={() => {
+												const newGroups = rosterTemplate.groups.filter((_, i) => i !== gi);
+												setRosterTemplate((prev) => ({ ...prev, groups: newGroups }));
+											}}
+											className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+											type="button"
+										>
+											<Trash2 className="h-4 w-4" />
+										</button>
+									</div>
+
+									{/* Staff in this group */}
+									<div className="space-y-1">
+										{group.staff.map((member, si) => (
+											<div key={si} className="flex items-center gap-2">
+												<input
+													className="flex-1 rounded border border-border bg-background px-2 py-1.5 text-xs"
+													value={member.displayName || member.rawName}
+													onChange={(e) => {
+														const newGroups = [...rosterTemplate.groups];
+														newGroups[gi] = { ...newGroups[gi] };
+														newGroups[gi].staff = [...newGroups[gi].staff];
+														newGroups[gi].staff[si] = { ...newGroups[gi].staff[si], displayName: e.target.value };
+														setRosterTemplate((prev) => ({ ...prev, groups: newGroups }));
+													}}
+													placeholder="Nama display"
+												/>
+												<button
+													onClick={() => {
+														const newGroups = [...rosterTemplate.groups];
+														newGroups[gi] = { ...newGroups[gi] };
+														newGroups[gi].staff = newGroups[gi].staff.filter((_, i) => i !== si);
+														setRosterTemplate((prev) => ({ ...prev, groups: newGroups }));
+													}}
+													className="text-muted-foreground hover:text-destructive"
+													type="button"
+												>
+													<X className="h-3 w-3" />
+												</button>
+											</div>
+										))}
+									</div>
+
+									<button
+										onClick={() => {
+											const rawName = window.prompt("Nama staff (raw name dari import):");
+											if (rawName?.trim()) {
+												const newGroups = [...rosterTemplate.groups];
+												newGroups[gi] = { ...newGroups[gi] };
+												newGroups[gi].staff = [...newGroups[gi].staff, { rawName: rawName.trim(), displayName: rawName.trim() }];
+												setRosterTemplate((prev) => ({ ...prev, groups: newGroups }));
+											}
+										}}
+										className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+										type="button"
+									>
+										<Plus className="h-3 w-3" /> Tambah staff
+									</button>
+
+									{/* Move up/down */}
+									<div className="flex gap-1">
+										<button
+											onClick={() => {
+												if (gi === 0) return;
+												const newGroups = [...rosterTemplate.groups];
+												[newGroups[gi - 1], newGroups[gi]] = [newGroups[gi], newGroups[gi - 1]];
+												setRosterTemplate((prev) => ({ ...prev, groups: newGroups }));
+											}}
+											className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
+											disabled={gi === 0}
+											type="button"
+										>
+											↑ Naik
+										</button>
+										<button
+											onClick={() => {
+												if (gi === rosterTemplate.groups.length - 1) return;
+												const newGroups = [...rosterTemplate.groups];
+												[newGroups[gi], newGroups[gi + 1]] = [newGroups[gi + 1], newGroups[gi]];
+												setRosterTemplate((prev) => ({ ...prev, groups: newGroups }));
+											}}
+											className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
+											disabled={gi === rosterTemplate.groups.length - 1}
+											type="button"
+										>
+											↓ Turun
+										</button>
+									</div>
+								</div>
+							))}
 						</div>
 					</div>
 				</section>
