@@ -986,7 +986,7 @@ function computeMemberBonuses(
 	isDailyTargetMet: boolean | undefined,
 	shiftPct: number,
 	dailyPct: number,
-	staffRoles: Array<{ name: string; bonusTargetConfig?: StaffRoleBonusConfig | null }>,
+	staffNameToRole: Map<string, { roleName: string; bonusTargetConfig?: StaffRoleBonusConfig | null }>,
 ): Array<{
 	name: string;
 	roleName: string;
@@ -999,13 +999,24 @@ function computeMemberBonuses(
 	if (members.length === 0) return [];
 
 	return members.map((memberName) => {
-		// Cari role berdasarkan nama member (case-insensitive)
-		const matchedRole = staffRoles.find(
-			(r) => memberName.toUpperCase().includes(r.name) || r.name.includes(memberName.toUpperCase())
-		);
-		const config = matchedRole?.bonusTargetConfig;
+		// Cari staff by name (case-insensitive, trim)
+		const lookupKey = memberName.toUpperCase().trim();
+		let matched = staffNameToRole.get(lookupKey);
+		if (!matched) {
+			// Fallback: partial match - cari nama staff yang mengandung nama member
+			for (const [fullName, info] of staffNameToRole) {
+				if (fullName.includes(lookupKey) || lookupKey.includes(fullName)) {
+					matched = info;
+					break;
+				}
+			}
+		}
+
+		const config = matched?.bonusTargetConfig;
+		const roleName = matched?.roleName ?? "-";
+
 		if (!config?.tiers || config.tiers.length === 0) {
-			return { name: memberName, roleName: matchedRole?.name ?? "-", bonus: 0, achievedTiers: [], allTiers: [] };
+			return { name: memberName, roleName, bonus: 0, achievedTiers: [], allTiers: [] };
 		}
 
 		const allTiers = config.tiers;
@@ -1016,7 +1027,6 @@ function computeMemberBonuses(
 		let bonus = 0;
 
 		if (met) {
-			// Hitung achieved tiers berdasarkan target progress
 			const pct = basis === "daily" ? dailyPct : shiftPct;
 			for (const tier of allTiers) {
 				if (pct >= tier.thresholdPct) {
@@ -1028,7 +1038,7 @@ function computeMemberBonuses(
 
 		return {
 			name: memberName,
-			roleName: matchedRole?.name ?? "-",
+			roleName,
 			bonus,
 			achievedTiers,
 			allTiers: allTiers.map((t) => ({ thresholdPct: t.thresholdPct, bonusAmount: t.bonusAmount })),

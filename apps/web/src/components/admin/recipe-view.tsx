@@ -9,13 +9,11 @@ import {
 	FileText,
 	Package,
 	CheckCircle2,
-	Eye,
-	ArrowRight,
-	ShoppingBag,
 	Beaker,
 	Utensils,
 	Scale,
 	Clock,
+	ShoppingBag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,22 +23,12 @@ import {
 	useHybridAllProducts,
 	useHybridCategories,
 	useHybridInventory,
-	useHybridLatestInventoryCosts,
 } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridBaseRecipes,
 	useHybridRecipes,
 } from "@/hooks/use-hybrid-inventory-admin-data";
 import { getSmallestUnitLabel } from "@/lib/inventory-units";
-
-function formatRupiah(value: number) {
-	return new Intl.NumberFormat("id-ID", {
-		style: "currency",
-		currency: "IDR",
-		maximumFractionDigits: 0,
-		minimumFractionDigits: 0,
-	}).format(value);
-}
 
 function cn(...classes: (string | false | null | undefined)[]) {
 	return classes.filter(Boolean).join(" ");
@@ -52,12 +40,10 @@ export function RecipeViewPage() {
 	const inventory = useHybridInventory();
 	const recipes = useHybridRecipes();
 	const baseRecipes = useHybridBaseRecipes();
-	const inventoryCosts = useHybridLatestInventoryCosts();
 
 	const [search, setSearch] = useState("");
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [selectedType, setSelectedType] = useState<"product" | "base_recipe" | null>(null);
-	const [expandedRecipe, setExpandedRecipe] = useState<string | null>(null);
 
 	const loading = !products || !inventory || !recipes;
 
@@ -124,28 +110,12 @@ export function RecipeViewPage() {
 		if (selectedType === "base_recipe") {
 			const recipe = (baseRecipes ?? []).find((r: any) => r._id === selectedId);
 			if (!recipe) return null;
-			const totalCost = (recipe.ingredients ?? []).reduce((sum, ing) => {
-				const costInfo = inventoryCosts?.[ing.inventoryId];
-				const unitCost = costInfo?.latestCostPerUnit;
-				const cf = costInfo?.conversionFactor;
-				if (unitCost == null || unitCost <= 0) return sum;
-				const baseUnitCost = cf != null && cf > 0 ? unitCost / cf : unitCost;
-				return sum + baseUnitCost * ing.amount;
-			}, 0);
-			return { type: "base_recipe" as const, item: recipe, totalCost };
+			return { type: "base_recipe" as const, item: recipe };
 		}
 		const row = productRecipes.find((r) => r.product._id === selectedId);
 		if (!row) return null;
-		const totalCost = (row.recipe.ingredients ?? []).reduce((sum, ing) => {
-			const costInfo = inventoryCosts?.[ing.inventoryId];
-			const unitCost = costInfo?.latestCostPerUnit;
-			const cf = costInfo?.conversionFactor;
-			if (unitCost == null || unitCost <= 0) return sum;
-			const baseUnitCost = cf != null && cf > 0 ? unitCost / cf : unitCost;
-			return sum + baseUnitCost * ing.amount;
-		}, 0);
-		return { type: "product" as const, item: row, totalCost };
-	}, [selectedId, selectedType, baseRecipes, productRecipes, inventoryCosts]);
+		return { type: "product" as const, item: row };
+	}, [selectedId, selectedType, baseRecipes, productRecipes]);
 
 	if (loading) {
 		return (
@@ -163,7 +133,7 @@ export function RecipeViewPage() {
 		<div className="mx-auto max-w-4xl space-y-4 p-3 md:p-6">
 			{/* Header */}
 			<div className="flex items-center gap-2">
-				<Eye className="h-5 w-5 text-primary" />
+				<BookOpen className="h-5 w-5 text-primary" />
 				<div>
 					<h1 className="font-bold text-lg tracking-tight">Resep &amp; Panduan</h1>
 					<p className="text-xs text-muted-foreground">
@@ -208,16 +178,13 @@ export function RecipeViewPage() {
 					{selectedDetail.type === "base_recipe" ? (
 						<BaseRecipeDetail
 							recipe={selectedDetail.item}
-							totalCost={selectedDetail.totalCost}
 							inventoryMap={inventoryMap}
 						/>
 					) : (
 						<ProductRecipeDetail
 							row={selectedDetail.item}
-							totalCost={selectedDetail.totalCost}
 							inventoryMap={inventoryMap}
 							baseRecipes={baseRecipes ?? []}
-							sellingPrice={selectedDetail.item.product.promoPrice ?? selectedDetail.item.product.price}
 						/>
 					)}
 				</div>
@@ -285,7 +252,7 @@ export function RecipeViewPage() {
 
 					{totalRecipes === 0 && (
 						<div className="flex flex-col items-center gap-3 py-16 text-center">
-							<Eye className="h-12 w-12 text-muted-foreground/30" />
+							<BookOpen className="h-12 w-12 text-muted-foreground/30" />
 							<p className="text-sm text-muted-foreground">
 								{search ? `Tidak ada resep "${search}"` : "Belum ada resep yang tersedia"}
 							</p>
@@ -301,11 +268,9 @@ export function RecipeViewPage() {
 
 function BaseRecipeDetail({
 	recipe,
-	totalCost,
 	inventoryMap,
 }: {
 	recipe: any;
-	totalCost: number;
 	inventoryMap: Map<string, any>;
 }) {
 	return (
@@ -320,11 +285,6 @@ function BaseRecipeDetail({
 					<Badge variant="outline" className="ml-auto text-[10px]">
 						{recipe.targetQuantity} {recipe.targetUnit}
 					</Badge>
-				</div>
-
-				<div className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 text-xs text-amber-800">
-					Estimasi biaya: <span className="font-bold">{formatRupiah(Math.round(totalCost))}</span>
-					{" • "}per batch ({recipe.targetQuantity} {recipe.targetUnit})
 				</div>
 
 				<div>
@@ -365,32 +325,25 @@ function BaseRecipeDetail({
 
 function ProductRecipeDetail({
 	row,
-	totalCost,
 	inventoryMap,
 	baseRecipes,
-	sellingPrice,
 }: {
 	row: any;
-	totalCost: number;
 	inventoryMap: Map<string, any>;
 	baseRecipes: any[];
-	sellingPrice: number;
 }) {
 	const { product, recipe, categoryName } = row;
 
 	// Identify which ingredients are base recipes vs inventory items
 	const splitIngredients = useMemo(() => {
-		const baseRecipeIds = new Set((baseRecipes ?? []).map((br: any) => br._id));
 		const baseItems: any[] = [];
 		const directItems: any[] = [];
 
-		// Check each ingredient - it could be a base recipe inventory item
-		// Base recipes are also in inventory (ensured by ensureInventoryItemForBaseRecipe)
 		for (const ing of recipe.ingredients ?? []) {
 			const invItem = inventoryMap.get(String(ing.inventoryId));
 			const isBase = invItem && (baseRecipes ?? []).some((br: any) => {
-				const baseInvId = String(br._id);
-				return invItem.ingredientName?.toLowerCase().includes(br.name.toLowerCase());
+				const brName = br.name?.toLowerCase() ?? "";
+				return invItem.ingredientName?.toLowerCase().includes(brName);
 			});
 			if (isBase) {
 				baseItems.push(ing);
@@ -402,9 +355,6 @@ function ProductRecipeDetail({
 	}, [recipe, baseRecipes, inventoryMap]);
 
 	const hasBaseItems = splitIngredients.baseItems.length > 0;
-	const totalSteps = 2 + (hasBaseItems ? 1 : 0); // prepare, base recipe (optional), serve
-
-	const margin = sellingPrice > 0 ? ((sellingPrice - totalCost) / sellingPrice * 100) : 0;
 
 	return (
 		<Card className="border-primary/20">
@@ -416,31 +366,9 @@ function ProductRecipeDetail({
 						<h2 className="font-bold text-sm">{product.name}</h2>
 						<p className="text-[10px] text-muted-foreground">{categoryName}</p>
 					</div>
-					<Badge variant="secondary" className="ml-auto text-[10px]">
-						{formatRupiah(Math.round(sellingPrice))}
+					<Badge variant="outline" className="ml-auto text-[10px]">
+						{recipe.ingredients.length} bahan
 					</Badge>
-				</div>
-
-				{/* Cost Summary */}
-				<div className="grid grid-cols-3 gap-2">
-					<div className="rounded-lg bg-muted/40 px-2 py-1.5 text-center">
-						<p className="text-[9px] text-muted-foreground uppercase">Modal</p>
-						<p className="text-xs font-bold tabular-nums text-rose-600">
-							{formatRupiah(Math.round(totalCost))}
-						</p>
-					</div>
-					<div className="rounded-lg bg-muted/40 px-2 py-1.5 text-center">
-						<p className="text-[9px] text-muted-foreground uppercase">Harga Jual</p>
-						<p className="text-xs font-bold tabular-nums">
-							{formatRupiah(Math.round(sellingPrice))}
-						</p>
-					</div>
-					<div className="rounded-lg bg-muted/40 px-2 py-1.5 text-center">
-						<p className="text-[9px] text-muted-foreground uppercase">Margin</p>
-						<p className={`text-xs font-bold tabular-nums ${margin >= 30 ? "text-emerald-600" : margin >= 15 ? "text-amber-600" : "text-rose-600"}`}>
-							{margin.toFixed(0)}%
-						</p>
-					</div>
 				</div>
 
 				{/* Steps */}
@@ -526,13 +454,6 @@ function ProductRecipeDetail({
 								<Clock className="inline h-3 w-3 align-text-top" />
 								{' '}Siap disajikan.
 							</p>
-							<div className="mt-2 flex items-center gap-2 text-xs">
-								<ShoppingBag className="h-3.5 w-3.5 text-emerald-600" />
-								<span className="text-emerald-700">
-									Harga jual: <strong>{formatRupiah(Math.round(sellingPrice))}</strong>
-									{' '}per porsi
-								</span>
-							</div>
 						</div>
 					</div>
 				</div>
