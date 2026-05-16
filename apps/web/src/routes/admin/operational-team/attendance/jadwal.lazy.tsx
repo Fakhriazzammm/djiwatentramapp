@@ -1,5 +1,5 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useMemo, memo, useEffect } from "react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, getDay, isSameMonth, isSameDay, isToday } from "date-fns";
 import { id } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, CalendarPlus, Download, Upload, CalendarDays, X, Clock, Plus } from "lucide-react";
@@ -55,16 +55,16 @@ const statusColors: Record<string, string> = {
 };
 
 // ─── Ghost Card (DragOverlay) ────────────────────────────────
-function ShiftCardGhost({ schedule }: { schedule: AttendanceSchedule }) {
+const ShiftCardGhost = memo(function ShiftCardGhost({ schedule }: { schedule: AttendanceSchedule }) {
   return (
     <div className="rounded-md border-2 border-primary/50 bg-primary/10 px-2 py-1.5 text-xs shadow-xl rotate-2">
       <span className="font-medium">{schedule.userName}</span>
       <span className="ml-1 text-muted-foreground">— {schedule.shiftName}</span>
     </div>
   );
-}
+});
 
-function ShiftCard({
+const ShiftCard = memo(function ShiftCard({
   schedule,
   onEdit,
   onDelete,
@@ -135,11 +135,11 @@ function ShiftCard({
       </div>
     </div>
   );
-}
+});
 
 // ─── DayColumn ────────────────────────────────────────────────
 
-function DayColumn({
+const DayColumn = memo(function DayColumn({
   date,
   dateStr,
   isToday,
@@ -213,7 +213,7 @@ function DayColumn({
       </div>
     </div>
   );
-}
+});
 
 // ─── Roster Matrix ──────────────────────────────────────────
 
@@ -238,7 +238,7 @@ function getRosterCellClass(schedule?: AttendanceSchedule): string {
 
 // ─── MatrixCell ────────────────────────────────────────────
 
-function MatrixCell({
+const MatrixCell = memo(function MatrixCell({
   dateStr,
   userId,
   userName,
@@ -327,9 +327,9 @@ function MatrixCell({
       )}
     </button>
   );
-}
+});
 
-function RosterMatrix({
+const RosterMatrix = memo(function RosterMatrix({
   monthDays,
   schedulesByDate,
   users,
@@ -452,7 +452,7 @@ function RosterMatrix({
       </div>
     </div>
   );
-}
+});
 
 // ─── CalendarHeader ──────────────────────────────────────────
 
@@ -969,33 +969,33 @@ function AttendanceJadwalPage() {
     }
   }, [schedulesByDate, isCtrlHeld]);
 
-  // Calendar navigation
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const calStart = startOfWeek(monthStart);
-  const calEnd = endOfWeek(monthEnd);
-  const days = eachDayOfInterval({ start: calStart, end: calEnd });
-  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  // Calendar navigation — memoized to avoid recalculation on every render
+  const monthStart = useMemo(() => startOfMonth(currentDate), [currentDate]);
+  const monthEnd = useMemo(() => endOfMonth(currentDate), [currentDate]);
+  const calStart = useMemo(() => startOfWeek(monthStart), [monthStart]);
+  const calEnd = useMemo(() => endOfWeek(monthEnd), [monthEnd]);
+  const days = useMemo(() => eachDayOfInterval({ start: calStart, end: calEnd }), [calStart, calEnd]);
+  const monthDays = useMemo(() => eachDayOfInterval({ start: monthStart, end: monthEnd }), [monthStart, monthEnd]);
 
-  const handlePrev = () => setCurrentDate((d) => subMonths(d, 1));
-  const handleNext = () => setCurrentDate((d) => addMonths(d, 1));
-  const handleToday = () => setCurrentDate(new Date());
+  const handlePrev = useCallback(() => setCurrentDate((d) => subMonths(d, 1)), []);
+  const handleNext = useCallback(() => setCurrentDate((d) => addMonths(d, 1)), []);
+  const handleToday = useCallback(() => setCurrentDate(new Date()), []);
 
-  const handleAdd = (dateStr?: string) => {
+  const handleAdd = useCallback((dateStr?: string) => {
     setPanelMode("create");
     setEditSchedule(undefined);
     setPanelDefaultDate(dateStr ?? formatDateStr(new Date()));
     setPanelOpen(true);
-  };
+  }, []);
 
-  const handleEdit = (schedule: AttendanceSchedule) => {
+  const handleEdit = useCallback((schedule: AttendanceSchedule) => {
     setPanelMode("edit");
     setEditSchedule(schedule);
     setPanelDefaultDate(schedule.date);
     setPanelOpen(true);
-  };
+  }, []);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     try {
       await remove(id);
       toast.success("Jadwal dihapus");
@@ -1003,20 +1003,20 @@ function AttendanceJadwalPage() {
     } catch {
       toast.error("Gagal menghapus jadwal");
     }
-  };
+  }, [remove]);
 
-  const handleSave = async (input: CreateScheduleInput) => {
+  const handleSave = useCallback(async (input: CreateScheduleInput) => {
     await create(input);
     refresh();
-  };
+  }, [create]);
 
-  const handleUpdate = async (
+  const handleUpdate = useCallback(async (
     id: string,
     changes: Partial<CreateScheduleInput>
   ) => {
     await update(id, changes);
     refresh();
-  };
+  }, [update]);
 
   const { bulkReplace } = useHybridBulkReplaceAttendanceSchedules();
 
