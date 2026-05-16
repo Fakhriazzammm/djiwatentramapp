@@ -975,6 +975,67 @@ async function fetchDetailedShifts() {
 	})) as ShiftOperationalRecord[];
 }
 
+type StaffRoleBonusConfig = {
+	basis?: "shift" | "daily" | "monthly";
+	tiers?: Array<{ thresholdPct: number; bonusAmount: number }>;
+};
+
+function computeMemberBonuses(
+	teamMembers: string,
+	isShiftTargetMet: boolean | undefined,
+	isDailyTargetMet: boolean | undefined,
+	shiftPct: number,
+	dailyPct: number,
+	staffRoles: Array<{ name: string; bonusTargetConfig?: StaffRoleBonusConfig | null }>,
+): Array<{
+	name: string;
+	roleName: string;
+	bonus: number;
+	achievedTiers: number[];
+	allTiers: Array<{ thresholdPct: number; bonusAmount: number }>;
+}> {
+	if (!teamMembers) return [];
+	const members = teamMembers.split(",").map((m) => m.trim()).filter(Boolean);
+	if (members.length === 0) return [];
+
+	return members.map((memberName) => {
+		// Cari role berdasarkan nama member (case-insensitive)
+		const matchedRole = staffRoles.find(
+			(r) => memberName.toUpperCase().includes(r.name) || r.name.includes(memberName.toUpperCase())
+		);
+		const config = matchedRole?.bonusTargetConfig;
+		if (!config?.tiers || config.tiers.length === 0) {
+			return { name: memberName, roleName: matchedRole?.name ?? "-", bonus: 0, achievedTiers: [], allTiers: [] };
+		}
+
+		const allTiers = config.tiers;
+		const basis = config.basis ?? "shift";
+		const met = basis === "daily" ? isDailyTargetMet : isShiftTargetMet;
+
+		let achievedTiers: number[] = [];
+		let bonus = 0;
+
+		if (met) {
+			// Hitung achieved tiers berdasarkan target progress
+			const pct = basis === "daily" ? dailyPct : shiftPct;
+			for (const tier of allTiers) {
+				if (pct >= tier.thresholdPct) {
+					achievedTiers.push(tier.thresholdPct);
+					bonus += tier.bonusAmount;
+				}
+			}
+		}
+
+		return {
+			name: memberName,
+			roleName: matchedRole?.name ?? "-",
+			bonus,
+			achievedTiers,
+			allTiers: allTiers.map((t) => ({ thresholdPct: t.thresholdPct, bonusAmount: t.bonusAmount })),
+		};
+	});
+}
+
 async function fetchShiftReports() {
 	const supabase = createClient();
 
@@ -984,7 +1045,52 @@ async function fetchShiftReports() {
 		.select("*")
 		.order("startTime", { ascending: false });
 
-	if (shiftsError) throw shiftsError;
+	if (shiftsError) {
+		console.warn("[hybrid] pos_shifts query failed, falling back to pos_shift_reports", shiftsError);
+		// Fallback: query pos_shift_reports langsung (sudah include semua data shift + target)
+		try {
+			const { data: fallbackData, error: fallbackError } = await supabase
+				.from("pos_shift_reports")
+				.select("*")
+				.order("start_time", { ascending: false });
+			if (fallbackError) throw fallbackError;
+			if (!fallbackData || fallbackData.length === 0) return [];
+			return fallbackData.map((row: any) => {
+				const endTime = row.end_time == null ? undefined : Number(row.end_time);
+				const isActive = !endTime;
+				const result: ShiftReportRecord = {
+				shiftId: row.shift_id,
+				shiftName: row.shift_name ?? "Shift",
+				cashierName: row.cashier_name ?? "",
+				teamMembers: row.team_members ?? "",
+				startTime: Number(row.start_time ?? 0),
+				endTime: row.end_time == null ? undefined : Number(row.end_time),
+				status: !row.end_time ? "AKTIF" : "SELESAI",
+				startingCash: Number(row.starting_cash ?? 0),
+				cashRevenue: Number(row.cash_revenue ?? 0),
+				qrisRevenue: Number(row.qris_revenue ?? 0),
+				otherRevenue: Number(row.other_revenue ?? 0),
+				totalGrossSales: Number(row.total_gross_sales ?? 0),
+				totalDiscount: Number(row.total_discount ?? 0),
+				totalRevenue: Number(row.total_revenue ?? 0),
+				totalExpenses: Number(row.total_expenses ?? 0),
+				totalItemsSold: Number(row.total_items_sold ?? 0),
+				orderCount: Number(row.order_count ?? 0),
+				bookingCount: Number(row.booking_count ?? 0),
+				hasTarget: Boolean(row.has_target),
+				targetRevenue: row.target_revenue == null ? undefined : Number(row.target_revenue),
+				shiftTarget: row.shift_target == null ? undefined : Number(row.shift_target),
+				shiftCollected: row.shift_collected == null ? undefined : Number(row.shift_collected),
+				dailyTarget: row.daily_target == null ? undefined : Number(row.daily_target),
+				dailyCollected: row.daily_collected == null ? undefined : Number(row.daily_collected),
+				isShiftTargetMet: row.is_shift_target_met == null ? undefined : Boolean(row.is_shift_target_met),
+				isDailyTargetMet: row.is_daily_target_met == null ? undefined : Boolean(row.is_daily_target_met),
+			};
+				return result;
+			});
+		} catch (fallbackErr) {
+		}
+	}
 	if (!shifts || shifts.length === 0) return [];
 
 	// Step 2: Ambil semua shift report (target + metrik) dari view
@@ -997,7 +1103,6 @@ async function fetchShiftReports() {
 		for (let i = 0; i < allShiftIds.length; i += batchSize) {
 			const batch = allShiftIds.slice(i, i + batchSize);
 			const { data: ad, error: ae } = await supabase
-				.schema("public")
 				.from("pos_shift_reports")
 				.select("shift_id,order_count,booking_count,total_items_sold,total_discount,total_expenses,other_revenue,has_target,target_revenue,shift_target,shift_collected,daily_target,daily_collected,is_shift_target_met,is_daily_target_met")
 				.in("shift_id", batch);
@@ -1033,6 +1138,15 @@ async function fetchShiftReports() {
 		} catch {}
 		if (!activeRevenue[sid]) activeRevenue[sid] = { total: 0, cash: 0, qris: 0 };
 	}
+
+	// Step 4: Ambil staff roles untuk komputasi bonus
+	let staffRoles: Array<{ name: string; bonusTargetConfig?: StaffRoleBonusConfig | null }> = [];
+	try {
+		const { data: rolesData, error: rolesError } = await supabase
+			.from("pos_staff_roles")
+			.select("name, bonusTargetConfig");
+		if (!rolesError && rolesData) staffRoles = rolesData as any;
+	} catch {}
 
 	return shifts.map((row: any) => {
 		const endTime = row.endTime == null ? undefined : Number(row.endTime);
@@ -1092,6 +1206,18 @@ async function fetchShiftReports() {
 			status: isActive ? "AKTIF" : "SELESAI",
 			startingCash: Number(row.startingCash ?? 0),
 			...financial,
+			memberBonuses: computeMemberBonuses(
+				row.teamMembers ?? "",
+				financial.isShiftTargetMet,
+				financial.isDailyTargetMet,
+				financial.shiftTarget && financial.shiftTarget > 0
+					? (financial.shiftCollected ?? 0) / financial.shiftTarget * 100
+					: 0,
+				financial.dailyTarget && financial.dailyTarget > 0
+					? (financial.dailyCollected ?? 0) / financial.dailyTarget * 100
+					: 0,
+				staffRoles,
+			),
 		} as ShiftReportRecord;
 	});
 }
