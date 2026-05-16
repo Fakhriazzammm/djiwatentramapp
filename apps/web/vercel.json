@@ -1,5 +1,5 @@
 {
-  "buildCommand": "node ../../scripts/update-version.mjs && node ../../scripts/write-version-manifest.mjs && NODE_OPTIONS=--max-old-space-size=1024 npx vite build",
+  "buildCommand": "node ../../scripts/update-version.mjs && node ../../scripts/write-version-manifest.mjs && NODE_OPTIONS=--max-old-space-size=4096 npx vite build",
   "outputDirectory": "dist",
   "installCommand": "cd ../.. && bun install",
   "headers": [
