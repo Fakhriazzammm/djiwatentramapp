@@ -25,6 +25,8 @@ export type EmployeeEmploymentData = {
 	slug: string;
 	homePin?: string;
 	contractDuration?: number;
+	/** Selected by candidate: 6, 12, or 24 months for probation type; fixed 1 for others */
+	probationDurationMonths?: 1 | 6 | 12 | 24;
 };
 
 export type EmployeeContractClause = {
@@ -107,7 +109,6 @@ export function validateEmployeeOnboardingDraft(draft: EmployeeOnboardingDraft):
 	const errors: string[] = [];
 	const personal = draft.personal ?? ({} as EmployeePersonalData);
 	const employment = draft.employment ?? ({} as EmployeeEmploymentData);
-	const contract = draft.contract ?? ({} as EmployeeContractDraft);
 
 	if (!cleanText(personal.fullName)) errors.push("Nama lengkap wajib diisi");
 	if (!cleanText(personal.phone)) errors.push("Nomor HP wajib diisi");
@@ -123,15 +124,14 @@ export function validateEmployeeOnboardingDraft(draft: EmployeeOnboardingDraft):
 	if (employment.homePin && !HOME_PIN_REGEX.test(cleanText(employment.homePin))) {
 		errors.push("PIN harus 6 digit angka");
 	}
-	if (!cleanText(contract.plainText) && (!contract.clauses || contract.clauses.length === 0)) {
-		errors.push("Kontrak kerja wajib diisi");
+	/* probation duration */
+	if (employment.employmentType === "probation") {
+		if (![6, 12, 24].includes(employment.probationDurationMonths ?? 0)) {
+			errors.push("Pilih durasi masa probation: 6, 12, atau 24 bulan");
+		}
 	}
-	if (!cleanText(draft.signatureDataUrl)) errors.push("Tanda tangan wajib diisi");
 	if (!draft.agreements?.dataIsTrue) {
 		errors.push("Persetujuan kebenaran data wajib dicentang");
-	}
-	if (!draft.agreements?.contractApproved) {
-		errors.push("Persetujuan kontrak kerja wajib dicentang");
 	}
 
 	return errors.length ? { success: false, errors } : { success: true, errors: [] };

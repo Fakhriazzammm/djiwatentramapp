@@ -389,14 +389,38 @@ export function calculateProbationEndDate(startDate: string, months: number): st
 	} catch { return null; }
 }
 
-export function getProbationInfo(employment: { startDate?: string; employmentType?: string }, settings: EmployeeOnboardingSettings): { enabled: boolean; endDate: string | null; label: string } {
-	if (employment.employmentType !== "probation" || !settings.probation.enabled) {
+/**
+ * Get probation months for a given employment type:
+ * - "probation" (kandidat): candidate selects 6, 12, or 24 (default 6)
+ * - "full_time" | "part_time" | "freelance": fixed 1 month
+ */
+export function getProbationMonthsForType(employmentType: string, candidateSelection?: number): number {
+	if (employmentType === "probation") {
+		const valid = [6, 12, 24];
+		return valid.includes(candidateSelection ?? 0) ? (candidateSelection ?? 6) : 6;
+	}
+	return 1;
+}
+
+export function getProbationEndDate(
+	startDate: string,
+	employmentType: string,
+	candidateSelection?: number
+): string | null {
+	const months = getProbationMonthsForType(employmentType, candidateSelection);
+	return calculateProbationEndDate(startDate, months);
+}
+
+export function getProbationInfo(employment: { startDate?: string; employmentType?: string; probationDurationMonths?: number }, settings: EmployeeOnboardingSettings): { enabled: boolean; endDate: string | null; label: string } {
+	if (!settings.probation.enabled) {
 		return { enabled: false, endDate: null, label: "Tidak ada masa probation" };
 	}
-	const endDate = calculateProbationEndDate(employment.startDate || "", settings.probation.defaultMonths);
+	const months = getProbationMonthsForType(employment.employmentType || "", employment.probationDurationMonths);
+	const endDate = calculateProbationEndDate(employment.startDate || "", months);
+	const typeLabel = employment.employmentType === "probation" ? "Masa percobaan" : "Probation";
 	return {
 		enabled: true,
 		endDate,
-		label: endDate ? `Masa probation: ${new Date(endDate).toLocaleDateString("id-ID")}` : "Masa probation aktif",
+		label: endDate ? `${typeLabel}: ${new Date(endDate).toLocaleDateString("id-ID")} (${months} bulan)` : `${typeLabel} aktif`,
 	};
 }
