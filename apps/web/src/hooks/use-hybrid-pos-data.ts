@@ -1049,8 +1049,8 @@ function computeMemberBonuses(
 async function fetchShiftReports() {
 	const supabase = createClient();
 
-	// Step 1: Ambil semua shift langsung dari pos.shifts (cepat)
-	// View pos_shift_reports terlalu lambat hingga timeout, jadi query langsung saja
+	// Step 1: Ambil semua shift langsung dari pos.shifts (cepat, hindari timeout view)
+	// View pos_shift_reports terlalu lambat, jadi query shifts langsung
 	const { data: shifts, error: shiftsError } = await supabase
 		.schema("pos")
 		.from("shifts")
