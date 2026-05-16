@@ -379,7 +379,7 @@ function RegisterCompletePage() {
               )}
             </CardContent>
           </Card>
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setPhase("tracking")}>
               Batal
             </Button>
@@ -425,7 +425,7 @@ function RegisterCompletePage() {
               )}
             </div>
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setPhase("contract")} disabled={isSigning}>
               Kembali
             </Button>

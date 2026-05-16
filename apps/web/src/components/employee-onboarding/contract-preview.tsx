@@ -85,10 +85,10 @@ export function ContractPreview({ contract, signatureDataUrl, employeeName, comp
 		>
 			{/* header */}
 			<div className="mb-5 border-b-2 border-slate-300 pb-4 text-center sm:mb-8 sm:pb-5">
-				<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 sm:text-xs">
+				<p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 sm:text-sm">
 					{displayCompanyName}
 				</p>
-				<h2 className="mt-2 text-xl font-bold uppercase tracking-wide sm:mt-3 sm:text-2xl">
+				<h2 className="mt-2 text-lg font-bold uppercase tracking-wide sm:mt-3 sm:text-2xl">
 					{contract.title || "Perjanjian Kerja"}
 				</h2>
 			</div>
@@ -96,7 +96,7 @@ export function ContractPreview({ contract, signatureDataUrl, employeeName, comp
 			{/* body */}
 			{safeHtml ? (
 				<div
-					className="text-justify text-[11px] leading-[1.8] sm:text-xs sm:leading-[1.9] space-y-2"
+					className="text-justify text-xs leading-[1.7] sm:text-sm sm:leading-[1.9] space-y-2"
 					style={{ fontFamily: "'Times New Roman', Times, Georgia, serif" }}
 					dangerouslySetInnerHTML={{
 						__html: safeHtml
@@ -108,7 +108,7 @@ export function ContractPreview({ contract, signatureDataUrl, employeeName, comp
 				/>
 			) : (
 				<div
-					className="whitespace-pre-wrap text-justify text-[11px] leading-[1.8] sm:text-xs sm:leading-[1.9]"
+					className="whitespace-pre-wrap text-justify text-xs leading-[1.7] sm:text-sm sm:leading-[1.9]"
 					style={{ fontFamily: "'Times New Roman', Times, Georgia, serif" }}
 				>
 					{displayPlainText}
@@ -118,33 +118,33 @@ export function ContractPreview({ contract, signatureDataUrl, employeeName, comp
 			{/* signature area */}
 			<div className="mt-8 grid gap-6 sm:mt-10 sm:grid-cols-2 sm:gap-8" style={{ fontFamily: "'Times New Roman', Times, Georgia, serif" }}>
 				<div>
-					<p className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider sm:text-xs">Pihak Perusahaan</p>
-					<p className="text-[11px] font-medium text-slate-800 sm:text-sm">{displayCompanyName}</p>
+					<p className="text-xs font-semibold text-slate-600 uppercase tracking-wider sm:text-sm">Pihak Perusahaan</p>
+					<p className="text-xs font-medium text-slate-800 sm:text-sm">{displayCompanyName}</p>
 					{signatorySignatureUrl ? (
 						<img
 							alt="Tanda tangan perusahaan"
-							className="mt-3 h-16 object-contain sm:mt-4 sm:h-24"
+							className="mt-3 h-20 object-contain sm:mt-4 sm:h-24"
 							src={signatorySignatureUrl}
 						/>
 					) : (
 						<div className="mt-12 sm:mt-16" />
 					)}
-					<div className="border-slate-400 border-t pt-2 text-sm font-semibold sm:mt-2 sm:text-base">
+					<div className="border-slate-400 border-t pt-2 text-xs font-semibold sm:mt-2 sm:text-base">
 						{displaySignatoryName}
 					</div>
 				</div>
 				<div>
-					<p className="text-[10px] text-slate-500 sm:text-sm">Karyawan</p>
+					<p className="text-xs text-slate-500 sm:text-sm">Karyawan</p>
 					{signatureDataUrl ? (
 						<img
 							alt="Tanda tangan karyawan"
-							className="mt-3 h-16 object-contain sm:mt-4 sm:h-24"
+							className="mt-3 h-20 object-contain sm:mt-4 sm:h-24"
 							src={signatureDataUrl}
 						/>
 					) : (
 						<div className="mt-12 sm:mt-16" />
 					)}
-					<div className="border-slate-400 border-t pt-2 text-sm font-semibold sm:text-base">
+					<div className="border-slate-400 border-t pt-2 text-xs font-semibold sm:text-base">
 						{employeeName || "Karyawan"}
 					</div>
 				</div>

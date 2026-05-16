@@ -91,7 +91,7 @@ export function SignaturePad({ value, onChange }: SignaturePadProps) {
 				/>
 			</div>
 			<div className="flex items-center justify-between gap-2">
-				<p className="flex-1 text-[10px] text-muted-foreground sm:text-xs">
+				<p className="flex-1 text-xs text-muted-foreground sm:text-sm">
 					Tanda tangan di area putih menggunakan sentuhan / mouse.
 				</p>
 				<Button size="sm" onClick={clear} type="button" variant="outline" className="h-8 text-xs sm:h-9 sm:text-sm">

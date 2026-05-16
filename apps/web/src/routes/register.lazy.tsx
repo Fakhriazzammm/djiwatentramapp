@@ -1,5 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, ChevronLeft, ChevronRight, FileSignature, Loader2, Sparkles, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -82,6 +83,7 @@ function RegisterPage() {
 	const siteSettings = useHybridSiteSettings();
 	const onboardingSettings = useMemo(() => normalizeEmployeeOnboardingSettings(siteSettings?.employeeOnboarding), [siteSettings?.employeeOnboarding]);
 	const registrationEnabled = onboardingSettings.registrationEnabled;
+	const isDataLoading = useMemo(() => siteSettings === undefined && roles.length === 0, [siteSettings, roles]);
 	const generateContract = useHybridGenerateEmployeeContract();
 	const uploadFile = useHybridGenerateEmployeeOnboardingUploadUrl();
 	const submitApplication = useHybridSubmitEmployeeApplication();
@@ -214,12 +216,71 @@ function RegisterPage() {
 		} finally { setIsSubmitting(false); }
 	}
 
+	/* -------- validation -------- */
+	function validateStep(step: number): boolean {
+		const errors: string[] = [];
+		switch (step) {
+			case 0: {
+				const p = draft.personal;
+				if (!p.fullName.trim()) errors.push("Nama lengkap wajib diisi");
+				if (!p.phone.trim()) errors.push("No HP / WhatsApp wajib diisi");
+				if (!p.identityNumber.trim()) errors.push("NIK / No identitas wajib diisi");
+				break;
+			}
+			case 1: {
+				const e = draft.employment;
+				if (!e.roleId) errors.push("Jabatan / role wajib dipilih");
+				if (!e.homePin || e.homePin.length < 6) errors.push("PIN login harus 6 digit");
+				if (!e.username.trim()) errors.push("Username wajib diisi");
+				break;
+			}
+			case 2: {
+				// contract — read-only, no validation needed
+				break;
+			}
+			case 3: {
+				if (!draft.signatureDataUrl) errors.push("Tanda tangan wajib diisi");
+				if (!draft.agreements.dataIsTrue) errors.push("Centang pernyataan data benar");
+				if (!draft.agreements.contractApproved) errors.push("Centang persetujuan kontrak");
+				break;
+			}
+		}
+		errors.forEach((e) => toast.error(e));
+		return errors.length === 0;
+	}
+
 	/* -------- render -------- */
+
+	// Jika data masih loading, tampilkan skeleton
+	if (isDataLoading) {
+		return (
+			<div className="flex min-h-dvh items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 px-4 py-8">
+				<div className="w-full max-w-lg space-y-4">
+					<div className="mx-auto flex h-14 w-14 animate-pulse items-center justify-center rounded-2xl bg-muted" />
+					<div className="mx-auto h-5 w-48 animate-pulse rounded-md bg-muted" />
+					<div className="mx-auto h-3 w-32 animate-pulse rounded bg-muted" />
+					<div className="rounded-xl border bg-card shadow-sm">
+						<div className="space-y-4 px-6 py-10">
+							<div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
+							<div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
+							<div className="h-10 w-full animate-pulse rounded-lg bg-muted" />
+							<div className="h-10 w-2/3 animate-pulse rounded-lg bg-muted" />
+							<div className="flex justify-between pt-2">
+								<div className="h-10 w-24 animate-pulse rounded-lg bg-muted" />
+								<div className="h-10 w-24 animate-pulse rounded-lg bg-muted" />
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		);
+	}
 
 	// Jika registration dinonaktifkan, tampilkan halaman tertutup
 	if (!registrationEnabled) {
 		return (
-			<div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/10 px-3 py-6 sm:px-4 sm:py-8">
+			<div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/10 px-3 py-6 sm:px-4 sm:py-8"
+				style={{ paddingLeft: "calc(0.75rem + var(--safe-area-left, 0px))", paddingRight: "calc(0.75rem + var(--safe-area-right, 0px))", paddingBottom: "calc(1.5rem + var(--safe-area-bottom, 0px))" }}>
 				<div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
 					<Card className="mx-auto max-w-md text-center sm:max-w-xl">
 						<CardContent className="space-y-4 px-6 py-8 sm:px-10 sm:py-12">
@@ -240,7 +301,8 @@ function RegisterPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/10 px-3 py-6 sm:px-4 sm:py-8">
+		<div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/10 px-3 py-6 sm:px-4 sm:py-8"
+			style={{ paddingLeft: "calc(0.75rem + var(--safe-area-left, 0px))", paddingRight: "calc(0.75rem + var(--safe-area-right, 0px))", paddingBottom: "calc(1.5rem + var(--safe-area-bottom, 0px))" }}>
 			<div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
 
 				{/* ---- header ---- */}
@@ -268,144 +330,186 @@ function RegisterPage() {
 					</div>
 				</div>
 
-				{/* ---- step 0: data diri ---- */}
-				{step === 0 && (
-					<Card className="border sm:rounded-xl">
-						<CardHeader className="pb-2 sm:pb-4"><CardTitle className="text-base sm:text-lg">Data Diri</CardTitle></CardHeader>
-						<CardContent className="grid gap-3 sm:gap-4 md:grid-cols-2">
-							<Field label="Nama lengkap"><Input value={draft.personal.fullName} onChange={(e) => updatePersonal("fullName", e.target.value)} placeholder="Nama sesuai identitas" /></Field>
-							<Field label="No HP / WhatsApp"><Input value={draft.personal.phone} onChange={(e) => updatePersonal("phone", e.target.value)} placeholder="08xxxxxxxxxx" /></Field>
-							<Field label="Email"><Input value={draft.personal.email} onChange={(e) => updatePersonal("email", e.target.value)} placeholder="nama@email.com" /></Field>
-							<Field label="NIK / No Identitas"><Input value={draft.personal.identityNumber} onChange={(e) => updatePersonal("identityNumber", e.target.value)} /></Field>
-							<Field label="Tanggal lahir"><Input type="date" value={draft.personal.birthDate} onChange={(e) => updatePersonal("birthDate", e.target.value)} /></Field>
-							<Field label="Kontak darurat"><Input value={draft.personal.emergencyContactName} onChange={(e) => updatePersonal("emergencyContactName", e.target.value)} placeholder="Nama kontak darurat" /></Field>
-							<Field label="No kontak darurat"><Input value={draft.personal.emergencyContactPhone} onChange={(e) => updatePersonal("emergencyContactPhone", e.target.value)} /></Field>
-							<Field className="md:col-span-2" label="Alamat"><Textarea value={draft.personal.address} onChange={(e) => updatePersonal("address", e.target.value)} /></Field>
-						</CardContent>
-					</Card>
-				)}
-
-				{/* ---- step 1: data kerja ---- */}
-				{step === 1 && (
-					<Card className="border sm:rounded-xl">
-						<CardHeader className="pb-2 sm:pb-4"><CardTitle className="text-base sm:text-lg">Data Kerja</CardTitle></CardHeader>
-						<CardContent className="grid gap-3 sm:gap-4 md:grid-cols-2">
-							<Field label="Jabatan / Role">
-								<select
-									className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
-									value={draft.employment.roleId}
-									onChange={(e) => {
-										const role = roles.find((r: any) => r._id === e.target.value);
-										updateEmployment("roleId", e.target.value);
-										updateEmployment("roleName", role?.name ?? "");
-									}}
-								>
-									<option value="">Pilih jabatan</option>
-									{roles.map((r: any) => <option key={r._id} value={r._id}>{r.name}</option>)}
-								</select>
-							</Field>
-							<Field label="Tanggal mulai"><Input type="date" value={draft.employment.startDate} onChange={(e) => updateEmployment("startDate", e.target.value)} /></Field>
-							{onboardingSettings.fields.employmentType?.visible !== false && <Field label="Tipe kerja">
-								<select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.employment.employmentType} onChange={(e) => updateEmployment("employmentType", e.target.value)}>
-									<option value="probation">Probation</option><option value="full_time">Full-time</option><option value="part_time">Part-time</option><option value="freelance">Freelance</option>
-								</select>
-								{draft.employment.employmentType === "probation" && onboardingSettings.probation.enabled && (() => {
-									const endDate = calculateProbationEndDate(draft.employment.startDate, onboardingSettings.probation.defaultMonths);
-									return endDate ? <p className="mt-1 text-xs text-muted-foreground">Masa probation berakhir: <span className="font-semibold text-amber-600">{new Date(endDate).toLocaleDateString("id-ID")}</span></p> : null;
-								})()}
-							</Field>}
-							<Field label="Lokasi"><Input value={draft.employment.location} onChange={(e) => updateEmployment("location", e.target.value)} /></Field>
-							{onboardingSettings.salaryPreview.enabled && onboardingSettings.salaryPreview.candidateVisibility !== "hidden" && <div className="rounded-lg border bg-primary/5 p-3 text-sm md:col-span-2"><p className="font-medium">Preview Gaji</p><p className="text-muted-foreground">Bulanan {formatOnboardingCurrency(draft.employment.monthlySalary)} • Harian {formatOnboardingCurrency(draft.employment.dailyAllowance)} • Shift {formatOnboardingCurrency(draft.employment.shiftRate)}</p></div>}
-							<Field label="Gaji bulanan"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.monthlySalary)} onChange={(e) => updateEmployment("monthlySalary", Number(e.target.value || 0))} /></Field>
-							<Field label="Uang harian"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.dailyAllowance)} onChange={(e) => updateEmployment("dailyAllowance", Number(e.target.value || 0))} /></Field>
-							<Field label="Rate shift"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.shiftRate)} onChange={(e) => updateEmployment("shiftRate", Number(e.target.value || 0))} /></Field>
-							<Field label="PIN login (6 digit)"><Input maxLength={6} inputMode="numeric" value={draft.employment.homePin} onChange={(e) => updateEmployment("homePin", e.target.value.replace(/\D/g, ""))} /></Field>
-							<Field label="Username"><Input value={draft.employment.username} onChange={(e) => updateEmployment("username", e.target.value)} /></Field>
-							<Field label="Slug"><Input value={draft.employment.slug} onChange={(e) => updateEmployment("slug", e.target.value)} /></Field>
-						</CardContent>
-					</Card>
-				)}
-
-			{/* ---- step 2: kontrak (read-only) ---- */}
-			{step === 2 && (
-				<div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
-					<Card className="flex-1 border sm:rounded-xl">
-						<CardHeader className="pb-2 sm:pb-4">
-							<CardTitle className="flex items-center gap-2 text-base sm:text-lg"><FileSignature className="h-4 w-4 sm:h-5 sm:w-5" />Kontrak Kerja</CardTitle>
-							<p className="text-muted-foreground text-xs sm:text-sm">Kontrak disiapkan oleh admin. Baca dengan saksama sebelum tanda tangan.</p>
-						</CardHeader>
-						<CardContent>
-							{!contractPreview.plainText && !contractPreview.clauses.length ? (
-								<div className="flex flex-col items-center gap-3 py-8 text-center">
-									<FileSignature className="h-10 w-10 text-muted-foreground/40" />
-									<p className="text-muted-foreground text-sm">Belum ada kontrak.</p>
-									<p className="text-muted-foreground text-xs">Admin akan menyiapkan kontrak kerja untuk Anda.</p>
-								</div>
-							) : (
-								<div className="prose prose-sm max-w-none text-sm">
-									<h3 className="text-base font-semibold">{contractPreview.title}</h3>
-									{contractPreview.clauses.map((clause, idx) => (
-										<div key={idx} className="mb-3">
-											<h4 className="text-sm font-medium">{idx + 1}. {clause.title}</h4>
-											<p className="whitespace-pre-wrap text-muted-foreground">{clause.body}</p>
-										</div>
-									))}
-								</div>
-							)}
-						</CardContent>
-					</Card>
-					<div className="flex-1">
-						<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} />
-					</div>
-				</div>
-			)}
-
-				{/* ---- step 3: tanda tangan ---- */}
-				{step === 3 && (
-					<div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
-						<Card className="flex-1 border sm:rounded-xl">
-							<CardHeader className="pb-2 sm:pb-4"><CardTitle className="text-base sm:text-lg">Tanda Tangan &amp; Submit</CardTitle></CardHeader>
-							<CardContent className="space-y-4">
-								<SignaturePad value={draft.signatureDataUrl} onChange={(v) => setDraft((p) => ({ ...p, signatureDataUrl: v }))} />
-								<label className="flex items-start gap-3 text-sm">
-									<Checkbox
-										checked={draft.agreements.dataIsTrue}
-										onCheckedChange={(v) => setDraft((p) => ({ ...p, agreements: { ...p.agreements, dataIsTrue: Boolean(v) } }))}
-									/>
-									<span>Saya menyatakan data yang saya isi benar.</span>
-								</label>
-								<label className="flex items-start gap-3 text-sm">
-									<Checkbox
-										checked={draft.agreements.contractApproved}
-										onCheckedChange={(v) => setDraft((p) => ({ ...p, agreements: { ...p.agreements, contractApproved: Boolean(v) } }))}
-									/>
-									<span>Saya menyetujui isi kontrak kerja.</span>
-								</label>
-								<Button className="w-full" disabled={isSubmitting} onClick={handleSubmit}>
-									{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Kirim Pendaftaran
-								</Button>
+				<AnimatePresence mode="wait">
+					{/* ---- step 0: data diri ---- */}
+					{step === 0 && (
+						<motion.div
+							key="step-0"
+							initial={{ opacity: 0, y: 12 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: -12 }}
+							transition={{ duration: 0.2, ease: "easeOut" }}
+						>
+						<Card className="border sm:rounded-xl">
+							<CardHeader className="pb-2 sm:pb-4"><CardTitle className="text-base sm:text-lg">Data Diri</CardTitle></CardHeader>
+							<CardContent className="grid gap-3 sm:gap-4 md:grid-cols-2">
+								<Field label="Nama lengkap"><Input value={draft.personal.fullName} onChange={(e) => updatePersonal("fullName", e.target.value)} placeholder="Nama sesuai identitas" /></Field>
+								<Field label="No HP / WhatsApp"><Input value={draft.personal.phone} onChange={(e) => updatePersonal("phone", e.target.value)} placeholder="08xxxxxxxxxx" /></Field>
+								<Field label="Email"><Input value={draft.personal.email} onChange={(e) => updatePersonal("email", e.target.value)} placeholder="nama@email.com" /></Field>
+								<Field label="NIK / No Identitas"><Input value={draft.personal.identityNumber} onChange={(e) => updatePersonal("identityNumber", e.target.value)} /></Field>
+								<Field label="Tanggal lahir"><Input type="date" value={draft.personal.birthDate} onChange={(e) => updatePersonal("birthDate", e.target.value)} /></Field>
+								<Field label="Kontak darurat"><Input value={draft.personal.emergencyContactName} onChange={(e) => updatePersonal("emergencyContactName", e.target.value)} placeholder="Nama kontak darurat" /></Field>
+								<Field label="No kontak darurat"><Input value={draft.personal.emergencyContactPhone} onChange={(e) => updatePersonal("emergencyContactPhone", e.target.value)} /></Field>
+								<Field className="md:col-span-2" label="Alamat"><Textarea value={draft.personal.address} onChange={(e) => updatePersonal("address", e.target.value)} /></Field>
 							</CardContent>
 						</Card>
-						<div className="flex-1">
-							<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} signatureDataUrl={draft.signatureDataUrl} />
-						</div>
-					</div>
-				)}
+						</motion.div>
+					)}
 
-				{/* ---- step 4: selesai ---- */}
-				{step === 4 && (
-					<Card className="mx-auto max-w-md text-center sm:max-w-xl">
-						<CardContent className="space-y-4 px-6 py-8 sm:px-10 sm:py-12">
-							<CheckCircle2 className="mx-auto h-12 w-12 text-green-500 sm:h-16 sm:w-16" />
-							<h2 className="text-lg font-bold sm:text-2xl">Pendaftaran berhasil dikirim</h2>
-							<p className="text-muted-foreground text-sm">
-								Status saat ini: <b>menunggu approval admin</b>.<br />
-								Nomor pendaftaran: <b className="break-all">{applicationId}</b>
-							</p>
-							<Button onClick={() => { window.location.href = "/login"; }}>Kembali ke Login</Button>
-						</CardContent>
-					</Card>
-				)}
+					{/* ---- step 1: data kerja ---- */}
+					{step === 1 && (
+						<motion.div
+							key="step-1"
+							initial={{ opacity: 0, y: 12 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: -12 }}
+							transition={{ duration: 0.2, ease: "easeOut" }}
+						>
+						<Card className="border sm:rounded-xl">
+							<CardHeader className="pb-2 sm:pb-4"><CardTitle className="text-base sm:text-lg">Data Kerja</CardTitle></CardHeader>
+							<CardContent className="grid gap-3 sm:gap-4 md:grid-cols-2 scroll-mb-40">
+								<Field label="Jabatan / Role">
+									<select
+										className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+										value={draft.employment.roleId}
+										onChange={(e) => {
+											const role = roles.find((r: any) => r._id === e.target.value);
+											updateEmployment("roleId", e.target.value);
+											updateEmployment("roleName", role?.name ?? "");
+										}}
+									>
+										<option value="">Pilih jabatan</option>
+										{roles.map((r: any) => <option key={r._id} value={r._id}>{r.name}</option>)}
+									</select>
+								</Field>
+								<Field label="Tanggal mulai"><Input type="date" value={draft.employment.startDate} onChange={(e) => updateEmployment("startDate", e.target.value)} /></Field>
+								{onboardingSettings.fields.employmentType?.visible !== false && <Field label="Tipe kerja">
+									<select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.employment.employmentType} onChange={(e) => updateEmployment("employmentType", e.target.value)}>
+										<option value="probation">Probation</option><option value="full_time">Full-time</option><option value="part_time">Part-time</option><option value="freelance">Freelance</option>
+									</select>
+									{draft.employment.employmentType === "probation" && onboardingSettings.probation.enabled && (() => {
+										const endDate = calculateProbationEndDate(draft.employment.startDate, onboardingSettings.probation.defaultMonths);
+										return endDate ? <p className="mt-1 text-xs text-muted-foreground">Masa probation berakhir: <span className="font-semibold text-amber-600">{new Date(endDate).toLocaleDateString("id-ID")}</span></p> : null;
+									})()}
+								</Field>}
+								<Field label="Lokasi"><Input value={draft.employment.location} onChange={(e) => updateEmployment("location", e.target.value)} /></Field>
+								{onboardingSettings.salaryPreview.enabled && onboardingSettings.salaryPreview.candidateVisibility !== "hidden" && <div className="rounded-lg border bg-primary/5 p-3 text-sm md:col-span-2"><p className="font-medium">Preview Gaji</p><div className="mt-1 flex flex-col gap-0.5 text-muted-foreground sm:flex-row sm:gap-3"><span>Bulanan {formatOnboardingCurrency(draft.employment.monthlySalary)}</span><span className="hidden sm:inline">•</span><span>Harian {formatOnboardingCurrency(draft.employment.dailyAllowance)}</span><span className="hidden sm:inline">•</span><span>Shift {formatOnboardingCurrency(draft.employment.shiftRate)}</span></div></div>}
+								<Field label="Gaji bulanan"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.monthlySalary)} onChange={(e) => updateEmployment("monthlySalary", Number(e.target.value || 0))} /></Field>
+								<Field label="Uang harian"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.dailyAllowance)} onChange={(e) => updateEmployment("dailyAllowance", Number(e.target.value || 0))} /></Field>
+								<Field label="Rate shift"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.shiftRate)} onChange={(e) => updateEmployment("shiftRate", Number(e.target.value || 0))} /></Field>
+								<Field label="PIN login (6 digit)"><Input maxLength={6} inputMode="numeric" value={draft.employment.homePin} onChange={(e) => updateEmployment("homePin", e.target.value.replace(/\D/g, ""))} /></Field>
+								<Field label="Username"><Input value={draft.employment.username} onChange={(e) => updateEmployment("username", e.target.value)} /></Field>
+								<Field label="Slug"><Input value={draft.employment.slug} onChange={(e) => updateEmployment("slug", e.target.value)} /></Field>
+							</CardContent>
+						</Card>
+						</motion.div>
+					)}
+
+					{/* ---- step 2: kontrak (read-only) ---- */}
+					{step === 2 && (
+						<motion.div
+							key="step-2"
+							initial={{ opacity: 0, y: 12 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: -12 }}
+							transition={{ duration: 0.2, ease: "easeOut" }}
+						>
+						<div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
+							<Card className="flex-1 border sm:rounded-xl">
+								<CardHeader className="pb-2 sm:pb-4">
+									<CardTitle className="flex items-center gap-2 text-base sm:text-lg"><FileSignature className="h-4 w-4 sm:h-5 sm:w-5" />Kontrak Kerja</CardTitle>
+									<p className="text-muted-foreground text-xs sm:text-sm">Kontrak disiapkan oleh admin. Baca dengan saksama sebelum tanda tangan.</p>
+								</CardHeader>
+								<CardContent>
+									{!contractPreview.plainText && !contractPreview.clauses.length ? (
+										<div className="flex flex-col items-center gap-3 py-8 text-center">
+											<FileSignature className="h-10 w-10 text-muted-foreground/40" />
+											<p className="text-muted-foreground text-sm">Belum ada kontrak.</p>
+											<p className="text-muted-foreground text-xs">Admin akan menyiapkan kontrak kerja untuk Anda.</p>
+										</div>
+									) : (
+										<div className="prose prose-sm max-w-none text-sm">
+											<h3 className="text-base font-semibold">{contractPreview.title}</h3>
+											{contractPreview.clauses.map((clause, idx) => (
+												<div key={idx} className="mb-3">
+													<h4 className="text-sm font-medium">{idx + 1}. {clause.title}</h4>
+													<p className="whitespace-pre-wrap text-muted-foreground">{clause.body}</p>
+												</div>
+											))}
+										</div>
+									)}
+								</CardContent>
+							</Card>
+							<div className="flex-1">
+								<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} />
+							</div>
+						</div>
+						</motion.div>
+					)}
+
+					{/* ---- step 3: tanda tangan ---- */}
+					{step === 3 && (
+						<motion.div
+							key="step-3"
+							initial={{ opacity: 0, y: 12 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: -12 }}
+							transition={{ duration: 0.2, ease: "easeOut" }}
+						>
+						<div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
+							<Card className="flex-1 border sm:rounded-xl">
+								<CardHeader className="pb-2 sm:pb-4"><CardTitle className="text-base sm:text-lg">Tanda Tangan &amp; Submit</CardTitle></CardHeader>
+								<CardContent className="space-y-4">
+									<SignaturePad value={draft.signatureDataUrl} onChange={(v) => setDraft((p) => ({ ...p, signatureDataUrl: v }))} />
+									<label className="flex items-start gap-3 text-sm">
+										<Checkbox
+											checked={draft.agreements.dataIsTrue}
+											onCheckedChange={(v) => setDraft((p) => ({ ...p, agreements: { ...p.agreements, dataIsTrue: Boolean(v) } }))}
+										/>
+										<span>Saya menyatakan data yang saya isi benar.</span>
+									</label>
+									<label className="flex items-start gap-3 text-sm">
+										<Checkbox
+											checked={draft.agreements.contractApproved}
+											onCheckedChange={(v) => setDraft((p) => ({ ...p, agreements: { ...p.agreements, contractApproved: Boolean(v) } }))}
+										/>
+										<span>Saya menyetujui isi kontrak kerja.</span>
+									</label>
+									<Button className="w-full" disabled={isSubmitting} onClick={handleSubmit}>
+										{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Kirim Pendaftaran
+									</Button>
+								</CardContent>
+							</Card>
+							<div className="flex-1">
+								<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} signatureDataUrl={draft.signatureDataUrl} />
+							</div>
+						</div>
+						</motion.div>
+					)}
+
+					{/* ---- step 4: selesai ---- */}
+					{step === 4 && (
+						<motion.div
+							key="step-4"
+							initial={{ opacity: 0, y: 12 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: -12 }}
+							transition={{ duration: 0.2, ease: "easeOut" }}
+						>
+						<Card className="mx-auto max-w-md text-center sm:max-w-xl">
+							<CardContent className="space-y-4 px-6 py-8 sm:px-10 sm:py-12">
+								<CheckCircle2 className="mx-auto h-12 w-12 text-green-500 sm:h-16 sm:w-16" />
+								<h2 className="text-lg font-bold sm:text-2xl">Pendaftaran berhasil dikirim</h2>
+								<p className="text-muted-foreground text-sm">
+									Status saat ini: <b>menunggu approval admin</b>.<br />
+									Nomor pendaftaran: <b className="break-all">{applicationId}</b>
+								</p>
+								<Button onClick={() => { window.location.href = "/login"; }}>Kembali ke Login</Button>
+							</CardContent>
+						</Card>
+						</motion.div>
+					)}
+				</AnimatePresence>
 
 				{/* ---- navigation ---- */}
 				{step < 4 && (
@@ -429,6 +533,7 @@ function RegisterPage() {
 
 						<Button
 							onClick={() => {
+								if (!validateStep(step)) return;
 								if (step === 1 && !draft.contract.plainText) applyTemplate();
 								setStep((s) => Math.min(3, s + 1));
 							}}
