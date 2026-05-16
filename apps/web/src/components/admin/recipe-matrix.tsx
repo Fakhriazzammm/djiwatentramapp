@@ -348,8 +348,12 @@ export function RecipeMatrixPage() {
 		if (!baseForm.name.trim()) return toast.error("Nama recipe wajib diisi");
 		if (baseForm.ingredients.length === 0) return toast.error("Tambahkan minimal satu bahan");
 		if (baseForm.ingredients.some((item) => item.amount <= 0)) return toast.error("Jumlah bahan harus lebih dari 0");
+		let baseName = baseForm.name.trim();
+		if (baseName && !baseName.toLowerCase().includes("(base recipe)")) {
+			baseName = `${baseName} (Base Recipe)`;
+		}
 		const payload = {
-			name: baseForm.name.trim(),
+			name: baseName,
 			description: baseForm.description.trim() || undefined,
 			category: baseForm.category,
 			targetUnit: baseForm.targetUnit.trim(),
