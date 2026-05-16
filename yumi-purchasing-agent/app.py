@@ -5,6 +5,7 @@ Handle: marketlist, stock check, restock, supplier lookup, AI chat.
 Terintegrasi dengan Yumi Finance Agent via shared Supabase DB.
 """
 import asyncio
+import json
 import logging
 import os
 import sys
@@ -222,19 +223,410 @@ async def _fetch_fn(view: str, query: str = "select=*"):
         resp.raise_for_status()
         return resp.json()
 
+
+
+# ── Expense Matching: Konstanta ───────────────────────────────
+POLL_INTERVAL = 30  # detik — polling expense baru dari financial_transactions
+PROCESSED_CURSOR_FILE = "/tmp/yumi_purchasing_processed.txt"
+MATCH_EXPENSE_CATEGORIES = {"belanja_stok", "pembelian_stok", "bahan_baku", "belanja_bahan"}
+
+def _load_processed_cursor() -> set:
+    """Load source_id yang sudah diproses dari file."""
+    try:
+        with open(PROCESSED_CURSOR_FILE) as f:
+            return set(line.strip() for line in f if line.strip())
+    except FileNotFoundError:
+        return set()
+
+def _save_processed_cursor(processed: set):
+    """Simpan source_id yang sudah diproses ke file."""
+    with open(PROCESSED_CURSOR_FILE, "w") as f:
+        for sid in sorted(processed):
+            f.write(f"{sid}\n")
+
+# ── Expense Matching Helper ─────────────────────────────────────
+_EXPENSE_MATCH_SYSTEM_PROMPT = """Kamu adalah asisten inventory yang mencocokkan nama bahan dari transaksi expense ke database inventory YumiPOS.
+
+ATURAN:
+- Handle: typo, singkatan, nama tidak lengkap (Tepung Terigu Kompas → Tepung Terigu)
+- Jika ada MULTIPLE match, pilih yang PALING COCOK berdasarkan:
+  1. Nama persis (case-insensitive)
+  2. Brand match (jika disebut)
+  3. Kategori match
+- Jika ragu, pilih yang quantity-nya lebih kecil (lebih urgent)
+- JANGAN beri lebih dari 1 jawaban per input
+- Jika TIDAK ADA yang cocok, jawab: TIDAK_COCOK
+- Jawab persis sesuai format
+
+Format:
+TULISAN_USER -> NAMA_INVENTORY|_ID|CONFIDENCE(0-100)|UNIT
+
+Contoh:
+User: minyak goreng
+Inventory: Minyak Goreng|id1|10 pcs, Minyak Sunco|id2|5 pcs
+Jawab: minyak goreng -> Minyak Goreng|id1|95|pcs"""
+
+
+async def _ai_match_expense_items(sp_client, items: list[dict], all_inv: list[dict]) -> list[dict]:
+    """AI match expense items (from scanItems) ke inventory DB."""
+    # Build inventory list
+    inv_lines = []
+    for i in all_inv:
+        name = i.get('ingredientName', '?')
+        sid = i.get('_id', '?')
+        qty = float(i.get('quantity') or 0)
+        unit = i.get('unit', '')
+        brand = i.get('defaultBrandName', '') or ''
+        cat = i.get('category', '') or ''
+        brand_s = f" [{brand}]" if brand else ""
+        cat_s = f" ({cat})" if cat else ""
+        inv_lines.append(f"{name}{brand_s}{cat_s}|{sid}|{qty:g}|{unit}")
+    
+    inv_text = "\n".join(inv_lines)
+    if len(inv_text) > 8000:
+        inv_text = "\n".join(inv_lines[:150])
+    
+    # Build user items text
+    user_lines = []
+    for it in items:
+        name = it.get('name', '')
+        qty = it.get('quantity', 1)
+        price = it.get('price', 0)
+        user_lines.append(f"{name} (qty:{qty}, price:{price})")
+    user_text = "\n".join(user_lines)
+    
+    prompt = f"""Cocokkan SETIAP item expense berikut ke database inventory.
+
+Item expense (satu baris per item):
+{user_text}
+
+Daftar inventory (nama|id|qty|unit):
+{inv_text}
+
+Format jawaban (1 baris per item, urutan sesuai input):
+TULISAN_USER -> NAMA_INVENTORY|_ID|CONFIDENCE|UNIT
+Atau: TULISAN_USER -> TIDAK_COCOK"""
+    
+    try:
+        result = await sp_client.chat(prompt, system_prompt=_EXPENSE_MATCH_SYSTEM_PROMPT, timeout=30)
+        reply = result.get("reply", "") or result.get("text", "") or result.get("raw", "") or ""
+        
+        matched = []
+        for line in reply.strip().split("\n"):
+            line = line.strip()
+            if not line or "->" not in line:
+                continue
+            parts = line.split("->", 1)
+            input_name = parts[0].strip()
+            response_part = parts[1].strip()
+            
+            if "TIDAK_COCOK" in response_part.upper():
+                matched.append({"input": input_name, "matched": False, "inv_name": None, "_id": None, "score": 0, "unit": None})
+                continue
+            
+            resp_parts = response_part.split("|")
+            if len(resp_parts) >= 2:
+                inv_name = resp_parts[0].strip()
+                inv_id = resp_parts[1].strip()
+                score = int(resp_parts[2].strip()) if len(resp_parts) >= 3 and resp_parts[2].strip().isdigit() else 0
+                unit = resp_parts[3].strip() if len(resp_parts) >= 4 else None
+                matched.append({"input": input_name, "matched": True, "inv_name": inv_name, "_id": inv_id, "score": score, "unit": unit})
+            else:
+                matched.append({"input": input_name, "matched": False, "inv_name": None, "_id": None, "score": 0, "unit": None})
+        
+        return matched
+    except Exception as e:
+        logger.warning("[EXPENSE-MATCH] AI match failed: %s, falling back to rapidfuzz", e)
+        return _fuzzy_match_expense_fallback(items, all_inv)
+
+
+def _fuzzy_match_expense_fallback(items: list[dict], all_inv: list[dict]) -> list[dict]:
+    """Fallback fuzzy matching untuk expense items."""
+    inv_names = {i.get("ingredientName", ""): i for i in all_inv if i.get("ingredientName")}
+    results = []
+    for item in items:
+        name = item.get('name', '')
+        best = fuzz_process.extractOne(name, list(inv_names.keys()), scorer=fuzz.WRatio, score_cutoff=60)
+        if best:
+            match_name, score = best[0], best[1]
+            inv_item = inv_names[match_name]
+            results.append({"input": name, "matched": True, "inv_name": match_name,
+                           "_id": inv_item.get("_id", ""), "score": score,
+                           "unit": inv_item.get("unit", None)})
+        else:
+            results.append({"input": name, "matched": False, "inv_name": None, "_id": None, "score": 0, "unit": None})
+    return results
+
+
+async def _get_supplier_price_history(inventory_id: str) -> list[dict]:
+    """Fetch price history per supplier untuk item tertentu."""
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{SUPABASE_URL}/rest/v1/pos_inventory_transactions"
+                f"?select=cost_per_unit,storeSourceId,purchase_unit,"
+                f"purchaseQuantity,timestamp,brandName"
+                f"&inventoryId=eq.{inventory_id}"
+                f"&type=eq.restock"
+                f"&order=timestamp.desc"
+                f"&limit=30",
+                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
+            )
+            if resp.status_code < 400:
+                return resp.json()
+    except Exception as e:
+        logger.warning("[PRICE-HISTORY] Failed: %s", e)
+    return []
+
+
+async def _get_supplier_recommendation(inventory_id: str, item_name: str) -> dict:
+    """Recommend cheapest supplier based on price history."""
+    txns = await _get_supplier_price_history(inventory_id)
+    
+    # Group by store
+    store_prices = {}
+    for tx in txns:
+        store_id = tx.get("storeId") or ""
+        cost = float(tx.get("costPerUnit") or 0)
+        ts = float(tx.get("timestamp") or 0)
+        brand = tx.get("brandName") or ""
+        
+        if store_id and cost > 0:
+            if store_id not in store_prices:
+                store_prices[store_id] = {"prices": [], "count": 0, "last_purchase": 0, "brands": set()}
+            store_prices[store_id]["prices"].append(cost)
+            store_prices[store_id]["count"] += 1
+            store_prices[store_id]["last_purchase"] = max(store_prices[store_id]["last_purchase"], ts)
+            if brand:
+                store_prices[store_id]["brands"].add(brand)
+    
+    if not store_prices:
+        # Try inventory table's preferred_store_source_id
+        return {"item_name": item_name, "recommendations": [], "total_purchases": 0}
+    
+    recommendations = []
+    for store_id, data in store_prices.items():
+        avg_price = sum(data["prices"]) / len(data["prices"])
+        recommendations.append({
+            "store_id": store_id,
+            "avg_price": round(avg_price),
+            "purchase_count": data["count"],
+            "last_purchase_ts": data["last_purchase"],
+            "brands": list(data["brands"]),
+        })
+    
+    recommendations.sort(key=lambda r: (r["avg_price"], -r["purchase_count"]))
+    
+    # Get store names
+    store_ids = [r["store_id"] for r in recommendations]
+    store_names = {}
+    try:
+        ids_filter = ",".join(['"{s}"' for s in store_ids[:20]])
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                f"{SUPABASE_URL}/rest/v1/pos_inventory_stores"
+                f"?select=_id,name,phone"
+                f"&_id=in.({ids_filter})",
+                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
+            )
+            if resp.status_code < 400:
+                for s in resp.json():
+                    store_names[s["_id"]] = s
+    except Exception:
+        pass
+    
+    for rec in recommendations:
+        store = store_names.get(rec["store_id"], {})
+        rec["store_name"] = store.get("name", "Unknown")
+        rec["phone"] = store.get("phone", "")
+    
+    return {
+        "item_name": item_name,
+        "recommendations": recommendations,
+        "total_purchases": len(txns),
+    }
+
+
+async def _match_expense_items(source_id: str, items: list[dict]) -> dict:
+    """Match expense items ke inventory + supplier recommendation."""
+    all_inv = await inventory.get_all_inventory()
+    
+    sp_client = SumoPodClient(SUMOPOD_API_KEY)
+    matches = await _ai_match_expense_items(sp_client, items, all_inv)
+    
+    matched_items = []
+    unmatched_items = []
+    for m in matches:
+        if m["matched"] and m["_id"]:
+            # Get supplier recommendation
+            rec = await _get_supplier_recommendation(m["_id"], m["inv_name"])
+            matched_items.append({
+                "input": m["input"],
+                "inv_name": m["inv_name"],
+                "inv_id": m["_id"],
+                "score": m["score"],
+                "supplier": rec,
+            })
+        else:
+            unmatched_items.append({"input": m["input"]})
+    
+    return {
+        "source_id": source_id,
+        "has_match": len(matched_items) > 0,
+        "matched": matched_items,
+        "unmatched": unmatched_items,
+        "total_items": len(items),
+        "matched_count": len(matched_items),
+    }
+
+
+async def _send_purchasing_recommendation(source_id: str, result: dict, transaction: dict, chat_id: int = None):
+    """Send formatted purchasing recommendation to stock group."""
+    import uuid
+    from datetime import datetime, timezone, timedelta
+    
+    _WIB = timezone(timedelta(hours=7))
+    now = datetime.now(_WIB)
+    
+    lines = [f"\U0001f4e6 Expense Match — {now:%d/%m %H:%M}"]
+    lines.append("\u2500" * 28)
+    
+    # Transaction info
+    merchant = transaction.get("merchant", "") or ""
+    amount = float(transaction.get("amount") or 0)
+    category = transaction.get("category", "") or ""
+    tx_date = float(transaction.get("date") or 0)
+    dt = datetime.fromtimestamp(tx_date / 1000, tz=_WIB) if tx_date > 0 else now
+    lines.append(f"\U0001f9fe {source_id[-8:]}")
+    if merchant:
+        lines.append(f"\U0001f3ea {merchant}")
+    lines.append(f"\U0001f4b0 Rp{amount:,.0f} — {category}")
+    lines.append(f"\U0001f4c5 {dt:%d/%m %H:%M}")
+    lines.append("")
+    
+    # Matched items
+    if result["matched"]:
+        lines.append(f"\u2705 Cocok: {result['matched_count']}/{result['total_items']} item")
+        lines.append("")
+        for m in result["matched"]:
+            score = m["score"]
+            score_icon = "\U0001f7e2" if score >= 85 else "\U0001f7e1" if score >= 70 else "\U0001f534"
+            lines.append(f"  {score_icon} {m['input']} \u2192 {m['inv_name']} ({score}%)")
+            # Supplier recommendation
+            rec = m.get("supplier", {})
+            recoms = rec.get("recommendations", [])
+            if recoms:
+                cheapest = recoms[0]
+                cheapest_name = cheapest.get("store_name", "Unknown")
+                cheapest_price = cheapest.get("avg_price", 0)
+                lines.append(f"    \U0001f3ea Termurah: {cheapest_name} @ Rp{cheapest_price:,}")
+                if cheapest.get("phone"):
+                    lines.append(f"    \U0001f4de {cheapest['phone']}")
+                if len(recoms) > 1:
+                    others = recoms[1:4]
+                    for o in others:
+                        diff = cheapest_price - o["avg_price"]
+                        diff_str = f" (Rp{abs(diff):,} lebih murah)" if diff > 0 else ""
+                        lines.append(f"    \U0001f447 Alternatif: {o['store_name']} @ Rp{o['avg_price']:,}{diff_str}")
+        lines.append("")
+    
+    if result["unmatched"]:
+        lines.append(f"\u2753 Tidak cocok: {len(result['unmatched'])} item")
+        for u in result["unmatched"]:
+            lines.append(f"  \u2753 {u['input']}")
+        lines.append("")
+    
+    lines.append("\U0001f516 /match-expense " + source_id)
+    
+    target = chat_id or STOCK_GROUP_ID
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            await client.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                json={"chat_id": target, "text": "\n".join(lines)},
+            )
+            logger.info("[EXPENSE-MATCH] Sent recommendation for %s to %s", source_id, target)
+    except Exception as e:
+        logger.warning("[EXPENSE-MATCH] Failed to send: %s", e)
+
+
+async def _poll_new_expenses(app):
+    """Background task: poll financial_transactions untuk expense baru."""
+    processed = _load_processed_cursor()
+    logger.info("[POLL] Expense polling started with %d processed IDs", len(processed))
+    
+    while True:
+        try:
+            seven_days_ago = int((datetime.now() - timedelta(days=7)).timestamp() * 1000)
+            url = (
+                f"{SUPABASE_URL}/rest/v1/pos_financial_transactions"
+                f"?select=_id,amount,category,merchant,metadata,date"
+                f"&type=eq.expense"
+                f"&date=gte.{seven_days_ago}"
+                f"&order=date.desc"
+                f"&limit=50"
+            )
+            async with httpx.AsyncClient(timeout=20) as client:
+                resp = await client.get(
+                    url,
+                    headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
+                )
+                if resp.status_code >= 400:
+                    logger.warning("[POLL] HTTP %d: %s", resp.status_code, resp.text[:200])
+                    await asyncio.sleep(POLL_INTERVAL)
+                    continue
+                rows = resp.json()
+            
+            new_count = 0
+            for tx in rows:
+                sid = tx.get("_id", "")
+                if sid in processed:
+                    continue
+                
+                metadata = tx.get("metadata") or {}
+                items = metadata.get("scanItems") or []
+                if not items:
+                    processed.add(sid)
+                    continue
+                
+                # Filter category
+                category = (tx.get("category") or "").strip().lower().replace(" ", "_")
+                if category and category not in MATCH_EXPENSE_CATEGORIES:
+                    processed.add(sid)
+                    continue
+                
+                logger.info("[POLL] New expense detected: %s (category: %s, items: %d)",
+                           sid, category, len(items))
+                
+                match_result = await _match_expense_items(sid, items)
+                if match_result.get("has_match"):
+                    await _send_purchasing_recommendation(sid, match_result, tx)
+                
+                processed.add(sid)
+                new_count += 1
+            
+            if new_count > 0:
+                _save_processed_cursor(processed)
+                logger.info("[POLL] Processed %d new expenses", new_count)
+        
+        except Exception as e:
+            logger.error("[POLL] Error: %s", e, exc_info=True)
+        
+        await asyncio.sleep(POLL_INTERVAL)
+
 # ── Finance Integration ─────────────────────────────────────────
 async def _get_finance_summary() -> dict | None:
     """Get finance summary for cross-referencing with inventory suggestions."""
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(
-                f"{SUPABASE_URL}/rest/v1/financial_transactions?select=amount,tx_type&order=tx_date.desc&limit=200",
+                f"{SUPABASE_URL}/rest/v1/financial_transactions?select=amount,tx_type&order=date.desc&limit=200",
                 headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
             )
             resp.raise_for_status()
             rows = resp.json()
-        income = sum(float(r["amount"]) for r in rows if r.get("tx_type") == "income")
-        expense = sum(float(r["amount"]) for r in rows if r.get("tx_type") == "expense")
+        income = sum(float(r["amount"]) for r in rows if r.get("type") == "income")
+        expense = sum(float(r["amount"]) for r in rows if r.get("type") == "expense")
         return {"income": income, "expense": expense, "balance": income - expense}
     except Exception:
         return None
@@ -253,6 +645,64 @@ async def cmd_start(update: Update, _context):
         reply_markup=_keyboard(),
         parse_mode="Markdown",
     )
+
+
+
+async def cmd_match_expense(update: Update, context):
+    """Handle /match-expense command — manual match expense ke inventory."""
+    args = context.args
+    source_id = args[0] if args else ""
+    
+    if not source_id:
+        await update.message.reply_text(
+            "Format: /match-expense <source_id>\n\n"
+            "Contoh: /match-expense fin_abc123\n"
+            "Cari source_id dari expense yang sudah masuk.",
+        )
+        return
+    
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+    
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{SUPABASE_URL}/rest/v1/pos_financial_transactions"
+                f"?select=*"
+                f"&_id=eq.{source_id}",
+                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
+            )
+            if resp.status_code >= 400:
+                await update.message.reply_text(f"\u274c Gagal query: HTTP {resp.status_code}")
+                return
+            rows = resp.json()
+        
+        if not rows:
+            await update.message.reply_text(f"\u274c Transaksi {source_id} tidak ditemukan.")
+            return
+        
+        tx = rows[0]
+        if tx.get("type") != "expense":
+            await update.message.reply_text(f"\u2139\ufe0f {source_id} bukan transaksi expense (type: {tx.get('type')}).")
+            return
+        
+        metadata = tx.get("metadata") or {}
+        items = metadata.get("scanItems") or []
+        if not items:
+            await update.message.reply_text(f"\u2139\ufe0f Transaksi tidak memiliki scanItems.")
+            return
+        
+        match_result = await _match_expense_items(source_id, items)
+        await _send_purchasing_recommendation(source_id, match_result, tx)
+        
+        # Save to processed
+        processed = _load_processed_cursor()
+        processed.add(source_id)
+        _save_processed_cursor(processed)
+        
+    except Exception as e:
+        logger.error("[MATCH-EXPENSE] Error: %s", e)
+        await update.message.reply_text(f"\u274c Error: {e}")
+
 
 async def cmd_supplier(update: Update, context):
     """Handle /supplier command."""
@@ -1337,6 +1787,7 @@ async def main():
 
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("supplier", cmd_supplier))
+    app.add_handler(CommandHandler("match_expense", cmd_match_expense))
     app.add_handler(CommandHandler("yumi", cmd_yumi))
     app.add_handler(CommandHandler("hermes_scope", cmd_hermes_scope))
     app.add_handler(CommandHandler("hermes_test", cmd_hermes_test))
@@ -1435,6 +1886,7 @@ async def main():
     asyncio.ensure_future(_monitor_stock_changes())
     asyncio.ensure_future(_monitor_completed_orders())
     asyncio.ensure_future(_cleanup_stock_reaction_history())
+    asyncio.ensure_future(_poll_new_expenses(app))
 
     stop = asyncio.get_event_loop().create_future()
     try:
