@@ -28,6 +28,8 @@ export type CreateScheduleInput = {
   startTime?: string;
   endTime?: string;
   note?: string;
+  status?: AttendanceSchedule["status"];
+  raw?: Record<string, unknown>;
 };
 
 export type UpdateScheduleInput = Partial<{
@@ -160,7 +162,8 @@ export function useHybridBulkCreateAttendanceSchedules() {
         start_time: i.startTime ?? null,
         end_time: i.endTime ?? null,
         note: i.note ?? null,
-        status: "scheduled" as const,
+        status: i.status ?? ("scheduled" as const),
+        raw: i.raw ?? {},
       }));
 
       const { error: dbError } = await pos
@@ -180,6 +183,73 @@ export function useHybridBulkCreateAttendanceSchedules() {
   }, []);
 
   return { bulkCreate, progress, error };
+}
+
+// ─── Bulk Replace by Month + Users ───────────────────────────
+
+export function useHybridBulkReplaceAttendanceSchedules() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const bulkReplace = useCallback(
+    async (
+      inputs: CreateScheduleInput[],
+      userIds: string[],
+      startDate: string,
+      endDate: string
+    ): Promise<{ inserted: number; deleted: number }> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const supabase = createClient();
+        const pos = supabase.schema("pos");
+
+        // Delete existing for these users + date range
+        let deleted = 0;
+        if (userIds.length > 0) {
+          const { count } = await pos
+            .from("attendance_schedules")
+            .delete({ count: "exact" })
+            .in("user_id", userIds)
+            .gte("date", startDate)
+            .lte("date", endDate);
+          deleted = count ?? 0;
+        }
+
+        // Insert new records
+        if (inputs.length > 0) {
+          const records = inputs.map((i) => ({
+            source_id: crypto.randomUUID(),
+            user_id: i.userId,
+            date: i.date,
+            shift_name: i.shiftName,
+            start_time: i.startTime ?? null,
+            end_time: i.endTime ?? null,
+            note: i.note ?? null,
+            status: i.status ?? "scheduled",
+            raw: i.raw ?? {},
+          }));
+
+          const { error: dbError } = await pos
+            .from("attendance_schedules")
+            .insert(records);
+          if (dbError) throw dbError;
+        }
+
+        return { inserted: inputs.length, deleted };
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "Gagal replace jadwal";
+        setError(msg);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  return { bulkReplace, loading, error };
 }
 
 // ─── Update ─────────────────────────────────────────────────

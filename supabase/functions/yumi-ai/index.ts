@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing" | "sendTelegram" | "recordTransaction" | "executeSql" | "insertInventory" | "classifyTransactionItems" | "submitEmployeeApplication";
+type AiAction = "yumiChat" | "bulkScanImageData" | "generateBusinessBriefing" | "sendTelegram" | "recordTransaction" | "executeSql" | "insertInventory" | "classifyTransactionItems" | "submitEmployeeApplication" | "parseAttendanceSchedule";
 type JsonRecord = Record<string, unknown>;
 
 const corsHeaders = {
@@ -742,6 +742,115 @@ async function submitEmployeeApplication(body: JsonRecord) {
 	return { id: data.id };
 }
 
+// ── Parse Attendance Schedule ─────────────────────────────────
+
+async function parseAttendanceSchedule(payload: JsonRecord): Promise<Record<string, unknown>> {
+	const images = Array.isArray(payload.images) ? payload.images : [];
+	const text = String(payload.text ?? "").trim();
+	const staffHints = Array.isArray(payload.staffHints) ? payload.staffHints : [];
+	const shiftHints = Array.isArray(payload.shiftHints) ? payload.shiftHints : [];
+	const monthHint = typeof payload.monthHint === "number" ? payload.monthHint : 0;
+	const yearHint = typeof payload.yearHint === "number" ? payload.yearHint : 0;
+
+	const staffHintText = staffHints.length > 0
+		? `\nNama karyawan yang ada di aplikasi:\n${staffHints.map((s: any) => `- ${s.name} (${s.roleName || "Team"})`).join("\n")}`
+		: "";
+	const shiftHintText = shiftHints.length > 0
+		? `\nShift yang dikonfigurasi di admin:\n${shiftHints.map((s: any) => `- ${s.name}: ${s.openTime || "?"} - ${s.closeTime || "?"}`).join("\n")}`
+		: "";
+
+	const prompt = `ANALISIS JADWAL SHIFT KARYAWAN — PARSING KE JSON
+
+Kamu melihat gambar atau teks jadwal shift bulanan (roster matrix). Parse gambar/teks ini ke format JSON ketat berikut, TANPA markdown, hanya JSON murni:
+
+{
+  "source": {
+    "fileName": "(nama file jika ada)",
+    "fileType": "png",
+    "month": (angka 1-12),
+    "year": (angka 4 digit),
+    "title": "(title dari gambar/teks)"
+  },
+  "staffColumns": [
+    {
+      "rawName": "(nama staff dari header kolom)",
+      "outlet": "(outlet/unit jika terbaca dari header)",
+      "role": "(role dari header jika terbaca)",
+      "contractLabel": "(label kontrak jika ada)"
+    }
+  ],
+  "rows": [
+    {
+      "date": "YYYY-MM-DD",
+      "dayName": "JUMAT/SABTU/dst",
+      "weekLabel": "Minggu Ke N",
+      "rawStaffName": "(nama staff dari kolom header)",
+      "rawShiftText": "(teks shift mentah dari sel, misal PAGI (07.30 - 14.30), SORE (13.00 - 21.00), OFF, GENERAL)",
+      "shiftName": "(normalisasi: PAGI, SORE, OFF, GENERAL, atau nama shift sesuai file)",
+      "startTime": "HH:mm atau null",
+      "endTime": "HH:mm atau null",
+      "status": "scheduled | off | general",
+      "confidence": 0.0-1.0
+    }
+  ],
+  "warnings": [
+    {
+      "type": "unreadable_cell | date_mismatch | unknown_shift | unknown_staff | duplicate",
+      "message": "(pesan deskriptif)",
+      "rawStaffName": "(nama staff terkait)",
+      "date": "YYYY-MM-DD"
+    }
+  ]
+}
+
+ATURAN PARSING:
+1. Judul biasanya "JADWAL <MONTH> <YEAR>" di baris paling atas. Deteksi month dan year dari judul.
+2. Struktur kolom: MINGGU KE | HARI | TANGGAL | <staff kolom 1> | <staff kolom 2> | ...
+3. Staff columns ada di baris header (baris ke-2 atau ke-3 dari atas setelah title row).
+4. Setiap cell body adalah salah satu: nama shift, "OFF", atau "GENERAL".
+5. Normalisasi shift: PAGI -> PAGI, SORE -> SORE, OFF -> OFF, GENERAL -> GENERAL.
+6. Jika ada jam dalam format HH.mm - HH.mm, parse ke HH:mm dan masukkan ke startTime/endTime.
+7. Jam yang tidak bisa dibaca confidence < 0.8.
+8. Jangan menebak user ID — hanya output raw staff names.
+9. Jumlah baris data harus sama dengan jumlah tanggal dalam bulan yang terdeteksi.
+10. Jika teks tidak terbaca di suatu sel, output warning unreadable_cell.
+${staffHintText}${shiftHintText}`;
+
+	const inputContent: unknown[] = [];
+
+	if (text) {
+		inputContent.push({ type: "text", text: prompt + "\n\n---TEKS INPUT---\n" + text });
+	}
+
+	if (images.length > 0) {
+		inputContent.push({ type: "text", text: prompt });
+		for (const img of images.slice(0, 4)) {
+			if (typeof img === "string") {
+				inputContent.push({
+					type: "image_url",
+					image_url: { url: toImageUrl(img) },
+				});
+			}
+		}
+	}
+
+	const messages = [{ role: "user", content: inputContent }];
+	const content = await callOpenAI(messages, openaiModelVision);
+
+	// Extract JSON
+	const jsonMatch = content.match(/\{[\s\S]*\}/);
+	if (!jsonMatch) {
+		return { error: "Tidak ada data JSON dalam respons AI", rawContent: content };
+	}
+
+	try {
+		const data = JSON.parse(jsonMatch[0]);
+		return data;
+	} catch {
+		return { error: "Gagal parse JSON dari respons AI", rawContent: content };
+	}
+}
+
 Deno.serve(async (req) => {
 	if (req.method === "OPTIONS") {
 		return new Response("ok", { headers: corsHeaders });
@@ -770,7 +879,9 @@ Deno.serve(async (req) => {
 			return jsonResponse(await insertInventory(body));
 		case "submitEmployeeApplication":
 			return jsonResponse(await submitEmployeeApplication(body));
-			default:
+		case "parseAttendanceSchedule":
+			return jsonResponse(await parseAttendanceSchedule(body));
+		default:
 				return fail("AI action tidak dikenali", 404);
 		}
 	} catch (error) {

@@ -29,6 +29,11 @@ import {
 import type { DragStartEvent, DragEndEvent, DragOverEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 
+import AttendanceImportDialog from "@/components/attendance/AttendanceImportDialog";
+import AttendanceExportDialog from "@/components/attendance/AttendanceExportDialog";
+import { useHybridBulkReplaceAttendanceSchedules } from "@/hooks/use-hybrid-attendance-schedules";
+import type { ResolvedImportRow, ImportOptions } from "@/lib/attendance-schedule-import";
+
 const DAY_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 const FULL_DAY_NAMES = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 
@@ -569,96 +574,9 @@ function QuickAddPanel({
   );
 }
 
-// ─── Import Dialog (simplified) ──────────────────────────────
+// ─── Import Dialog (replaced by AttendanceImportDialog component) ──
 
-function ImportDialog({
-  open,
-  onClose,
-  onImport,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onImport: (text: string) => Promise<void>;
-}) {
-  const [text, setText] = useState("");
-  const [importing, setImporting] = useState(false);
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative w-full max-w-lg rounded-xl bg-background p-6 shadow-xl">
-        <h3 className="mb-4 font-semibold text-lg">Import Jadwal</h3>
-        <p className="mb-3 text-sm text-muted-foreground">
-          Paste teks jadwal dari spreadsheet/Excel atau upload file. AI akan
-          otomatis memparse format apapun.
-        </p>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={8}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
-          placeholder={`Contoh:\nTanggal | Nama | Shift\n1 Mei  | Budi | Pagi\n2 Mei  | Siti | Siang`}
-        />
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
-            Batal
-          </Button>
-          <Button
-            onClick={async () => {
-              setImporting(true);
-              try {
-                await onImport(text);
-                toast.success("Jadwal berhasil diimport!");
-                onClose();
-              } catch {
-                toast.error("Gagal mengimport jadwal");
-              } finally {
-                setImporting(false);
-              }
-            }}
-            disabled={!text.trim() || importing}
-          >
-            {importing ? "Memproses..." : "Import"}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Export Dialog (simplified) ──────────────────────────────
-
-function ExportDialog({
-  open,
-  onClose,
-  onExport,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onExport: () => Promise<void>;
-}) {
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative w-full max-w-sm rounded-xl bg-background p-6 shadow-xl">
-        <h3 className="mb-4 font-semibold text-lg">Export Jadwal</h3>
-        <p className="mb-4 text-sm text-muted-foreground">
-          Download jadwal bulan ini sebagai file Excel (.xlsx)
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
-            Batal
-          </Button>
-          <Button onClick={onExport}>Download Excel</Button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// ─── Export Dialog (replaced by AttendanceExportDialog component) ──
 
 // ─── Main Page ──────────────────────────────────────────────
 
@@ -811,106 +729,31 @@ function AttendanceJadwalPage() {
     refresh();
   };
 
-  const handleImport = async (text: string) => {
-    // Simple import: try to parse by lines
-    // AI parsing will be handled via edge function in Phase 2
-    const lines = text.trim().split("\n");
-    const inputs: CreateScheduleInput[] = [];
+  const { bulkReplace } = useHybridBulkReplaceAttendanceSchedules();
 
-    for (const line of lines) {
-      const parts = line.split("|").map((p) => p.trim());
-      if (parts.length >= 3) {
-        // Format: Tanggal | Nama | Shift
-        const dateMatch = parts[0].match(/(\d+)/);
-        if (!dateMatch) continue;
-        const day = parseInt(dateMatch[1]);
-        const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-        const userName = parts[1];
-        const shiftName = parts[2];
-
-        // Match user
-        const user = filteredUsers.find((u: any) =>
-          u.name.toLowerCase().includes(userName.toLowerCase())
-        );
-        if (!user) continue;
-
-        inputs.push({
-          userId: user._id,
-          date: dateStr,
-          shiftName,
-          startTime: parts[3]?.match(/\d{2}:\d{2}/)?.[0] ?? undefined,
-          endTime: parts[4]?.match(/\d{2}:\d{2}/)?.[0] ?? undefined,
-        });
+  const handleNewImport = async (
+    rows: ResolvedImportRow[],
+    userIds: string[],
+    startDate: string,
+    endDate: string,
+    options: ImportOptions
+  ) => {
+    try {
+      if (options.mode === "replace") {
+        await bulkReplace(rows, userIds, startDate, endDate);
+      } else {
+        await bulkCreate(rows);
       }
-    }
-
-    if (inputs.length > 0) {
-      await bulkCreate(inputs);
       refresh();
-    } else {
-      throw new Error("Format tidak dikenal. Gunakan format: Tanggal | Nama | Shift");
+    } catch (err) {
+      toast.error("Gagal import jadwal: " + (err instanceof Error ? err.message : "Unknown"));
+      throw err;
     }
   };
 
   const handleExport = async () => {
-    try {
-      const XLSX = await import("xlsx");
-      const rows: unknown[][] = [
-        [
-          "Tanggal",
-          "Hari",
-          "Nama Karyawan",
-          "Role",
-          "Shift",
-          "Jam Mulai",
-          "Jam Selesai",
-          "Status",
-          "Catatan",
-        ],
-      ];
-
-      const sortedDates = Object.entries(schedulesByDate ?? {}).sort();
-      for (const [dateStr, schedules] of sortedDates) {
-        const d = new Date(dateStr + "T00:00:00");
-        const dayName = FULL_DAY_NAMES[getDay(d)];
-        for (const s of schedules) {
-          rows.push([
-            dateStr,
-            dayName,
-            s.userName,
-            s.roleName,
-            s.shiftName,
-            s.startTime ?? "",
-            s.endTime ?? "",
-            s.status,
-            s.note ?? "",
-          ]);
-        }
-      }
-
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.aoa_to_sheet(rows);
-      ws["!cols"] = [
-        { wch: 12 },
-        { wch: 8 },
-        { wch: 20 },
-        { wch: 10 },
-        { wch: 10 },
-        { wch: 10 },
-        { wch: 12 },
-        { wch: 12 },
-        { wch: 20 },
-      ];
-      XLSX.utils.book_append_sheet(wb, ws, "Jadwal");
-      XLSX.writeFile(
-        wb,
-        `Jadwal_Shift_${format(currentDate, "MMMM_yyyy", { locale: id })}.xlsx`
-      );
-      toast.success("Jadwal berhasil di-export");
-      setExportOpen(false);
-    } catch {
-      toast.error("Gagal export Excel");
-    }
+    // Export is now handled inside AttendanceExportDialog component
+    // The dialog calls exportRosterXlsx or exportFlatXlsx directly
   };
 
   return (
@@ -1023,17 +866,24 @@ function AttendanceJadwalPage() {
       />
 
       {/* Import Dialog */}
-      <ImportDialog
+      <AttendanceImportDialog
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        onImport={handleImport}
+        onImport={handleNewImport}
+        shiftTemplates={shiftTemplates}
+        liveStaff={filteredUsers}
+        month={month}
+        year={year}
       />
 
       {/* Export Dialog */}
-      <ExportDialog
+      <AttendanceExportDialog
         open={exportOpen}
         onClose={() => setExportOpen(false)}
-        onExport={handleExport}
+        schedulesByDate={schedulesByDate ?? null}
+        month={month}
+        year={year}
+        shiftTemplates={shiftTemplates}
       />
     </div>
   );
