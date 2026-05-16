@@ -423,80 +423,59 @@ export function RecipeMatrixPage() {
 						{totalIngredients} bahan
 					</Badge>
 				</div>
-				<Button
-					variant={readMode ? "default" : "outline"}
-					size="sm"
-					className="h-6 text-[10px] px-2"
-					onClick={() => setReadMode(!readMode)}
-				>
-					{readMode ? <BookOpen className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-					{readMode ? "Mode Kelola" : "Mode Baca"}
-				</Button>
+				<Link to="/admin/recipe/view">
+					<Button
+						variant="outline"
+						size="sm"
+						className="h-6 text-[10px] px-2"
+					>
+						<Eye className="h-3 w-3 mr-1" />
+						Mode Baca
+					</Button>
+				</Link>
 			</div>
 
 			{/* ── Search + Filter ── */}
 			<div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 bg-background shrink-0">
-				{readMode ? (
-					<div className="relative flex-1 max-w-[320px]">
+				<>
+					<div className="relative flex-1 max-w-[220px]">
 						<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
 						<Input
-							placeholder="Cari resep..."
-							value={searchRecipe}
-							onChange={(e) => setSearchRecipe(e.target.value)}
+							placeholder="Cari produk..."
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
 							className="h-7 pl-7 text-[11px]"
 						/>
 					</div>
-				) : (
-					<>
-						<div className="relative flex-1 max-w-[220px]">
-							<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-							<Input
-								placeholder="Cari produk..."
-								value={search}
-								onChange={(e) => setSearch(e.target.value)}
-								className="h-7 pl-7 text-[11px]"
-							/>
-						</div>
-						<div className="relative flex-1 max-w-[220px]">
-							<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-							<Input
-								placeholder="Cari bahan..."
-								value={searchBahan}
-								onChange={(e) => setSearchBahan(e.target.value)}
-								className="h-7 pl-7 text-[11px]"
-							/>
-						</div>
-						<Button
-							variant={showAllIngredients ? "default" : "outline"}
-							size="sm"
-							className="h-6 text-[10px] px-2"
-							onClick={() => setShowAllIngredients(!showAllIngredients)}
-						>
-							{showAllIngredients ? "Bahan dipakai" : "Semua bahan"}
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							className="h-6 text-[10px] px-2 ml-auto"
-							onClick={() => setBaseSectionOpen(!baseSectionOpen)}
-						>
-							<Settings2 className="h-3 w-3 mr-1" />
-							Base Recipe
-						</Button>
-					</>
-				)}
+					<div className="relative flex-1 max-w-[220px]">
+						<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+						<Input
+							placeholder="Cari bahan..."
+							value={searchBahan}
+							onChange={(e) => setSearchBahan(e.target.value)}
+							className="h-7 pl-7 text-[11px]"
+						/>
+					</div>
+					<Button
+						variant={showAllIngredients ? "default" : "outline"}
+						size="sm"
+						className="h-6 text-[10px] px-2"
+						onClick={() => setShowAllIngredients(!showAllIngredients)}
+					>
+						{showAllIngredients ? "Bahan dipakai" : "Semua bahan"}
+					</Button>
+					<Button
+						variant="ghost"
+						size="sm"
+						className="h-6 text-[10px] px-2 ml-auto"
+						onClick={() => setBaseSectionOpen(!baseSectionOpen)}
+					>
+						<Settings2 className="h-3 w-3 mr-1" />
+						Base Recipe
+					</Button>
+				</>
 			</div>
 
-			{readMode ? (
-				<ReadOnlyView
-					baseRecipes={baseRecipes ?? []}
-					productRecipes={productRows as any}
-					inventory={inventory ?? []}
-					categoryById={categoryById}
-					search={searchRecipe}
-				/>
-			) : (
-				<>
 			{/* ── Matrix Table ── */}
 			<div className="flex-1 overflow-auto">
 				<table className="border-collapse w-max min-w-full">
@@ -705,9 +684,8 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 				</table>
 			</div>
 
-			{/* ── Legend ── (kelola mode) */}
-			{!readMode && (
-			<div className="flex items-center gap-4 px-4 py-1.5 border-t border-border/30 bg-muted/20 shrink-0 text-[9px] text-muted-foreground">
+\t\t\t{/* ── Legend ── */}
+\t\t\t<div className="flex items-center gap-4 px-4 py-1.5 border-t border-border/30 bg-muted/20 shrink-0 text-[9px] text-muted-foreground">
 				<span className="flex items-center gap-1">
 					<span className="inline-block w-2.5 h-2.5 rounded bg-primary/[0.04] border border-border/30" />
 					Ada resep
@@ -725,10 +703,9 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 					Klik produk → HPP detail
 				</span>
 			</div>
-			)}
 
-			{/* ── Base Recipe Section (collapsible, kelola mode) ── */}
-			{!readMode && baseSectionOpen && (
+			{/* ── Base Recipe Section ── */}
+			{baseSectionOpen && (
 				<div className="border-t-2 border-primary/20 bg-muted/10 px-4 py-3 shrink-0">
 					<div className="flex items-center gap-2 mb-2">
 						<Settings2 className="h-3.5 w-3.5 text-primary" />
@@ -784,8 +761,7 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 					</div>
 				</div>
 			)}
-				</>
-			)}
+
 			{/* ── Base Recipe Modal ── */}
 			{baseModalOpen && (
 				<ModalScaffold
