@@ -34,6 +34,7 @@ export type CreateScheduleInput = {
 
 export type UpdateScheduleInput = Partial<{
   date: string;
+  userId: string;
   shiftName: string;
   startTime: string | null;
   endTime: string | null;
@@ -265,6 +266,8 @@ export function useHybridUpdateAttendanceSchedule() {
         const pos = supabase.schema("pos");
         const payload: Record<string, unknown> = {};
         if (changes.date !== undefined) payload.date = changes.date;
+        if (changes.userId !== undefined)
+          payload.user_id = changes.userId;
         if (changes.shiftName !== undefined)
           payload.shift_name = changes.shiftName;
         if (changes.startTime !== undefined)

@@ -236,16 +236,113 @@ function getRosterCellClass(schedule?: AttendanceSchedule): string {
   return "bg-muted text-muted-foreground border-border";
 }
 
+// ─── MatrixCell ────────────────────────────────────────────
+
+function MatrixCell({
+  dateStr,
+  userId,
+  userName,
+  schedule,
+  onEdit,
+  onDelete,
+  onAdd,
+  isWeekStart,
+}: {
+  dateStr: string;
+  userId: string;
+  userName: string;
+  schedule?: AttendanceSchedule;
+  onEdit: () => void;
+  onDelete: () => void;
+  onAdd: () => void;
+  isWeekStart: boolean;
+}) {
+  const droppableId = `cell-${dateStr}-${userId}`;
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: droppableId,
+    data: { date: dateStr, userId, type: "matrix-cell" },
+  });
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDragRef,
+    transform,
+    isDragging,
+  } = useDraggable({
+    id: schedule?._id ?? `empty-${droppableId}`,
+    data: { schedule, type: "shift-card" },
+    disabled: !schedule,
+  });
+
+  const style = schedule
+    ? {
+        transform: CSS.Translate.toString(transform),
+        opacity: isDragging ? 0.3 : 1,
+        zIndex: isDragging ? 100 : "auto" as const,
+      }
+    : undefined;
+
+  const ref = (node: HTMLButtonElement | null) => {
+    setDropRef(node);
+    if (schedule) setDragRef(node);
+  };
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      className={cn(
+        "relative min-h-7 border-r px-1 py-1 text-center font-semibold transition",
+        getRosterCellClass(schedule),
+        isWeekStart && "border-t-2 border-t-slate-900/60",
+        isOver && "ring-2 ring-primary/50 bg-primary/5",
+        isDragging && "shadow-lg",
+        !schedule && "cursor-pointer hover:bg-muted/50"
+      )}
+      onClick={() => {
+        if (schedule) onEdit();
+        else onAdd();
+      }}
+      title={
+        schedule
+          ? `${userName} • ${schedule.shiftName} — Klik edit, drag pindahkan`
+          : `${userName} — Klik tambah jadwal`
+      }
+      {...(schedule ? { ...listeners, ...attributes } : {})}
+      style={style}
+    >
+      {getRosterLabel(schedule)}
+      {schedule && (
+        <button
+          className="absolute -right-0.5 -top-0.5 hidden h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-[8px] text-destructive-foreground hover:flex group-hover:flex"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          title="Hapus jadwal"
+        >
+          ×
+        </button>
+      )}
+    </button>
+  );
+}
+
 function RosterMatrix({
   monthDays,
   schedulesByDate,
   users,
   onEditSchedule,
+  onAdd,
+  onDeleteSchedule,
 }: {
   monthDays: Date[];
   schedulesByDate: SchedulesByDate;
   users: { _id: string; name: string; roleName: string }[];
   onEditSchedule: (s: AttendanceSchedule) => void;
+  onAdd: (dateStr: string) => void;
+  onDeleteSchedule: (id: string) => void;
 }) {
   const scheduledUserIds = new Set<string>();
   for (const schedules of Object.values(schedulesByDate)) {
@@ -332,20 +429,17 @@ function RosterMatrix({
               {matrixUsers.map((user) => {
                 const schedule = daySchedules.find((item) => item.userId === user._id);
                 return (
-                  <button
+                  <MatrixCell
                     key={`${dateStr}-${user._id}`}
-                    type="button"
-                    className={cn(
-                      "min-h-7 border-r px-1 py-1 text-center font-semibold transition hover:ring-2 hover:ring-primary/30",
-                      getRosterCellClass(schedule),
-                      isWeekStart && "border-t-2 border-t-slate-900/60"
-                    )}
-                    onClick={() => schedule && onEditSchedule(schedule)}
-                    disabled={!schedule}
-                    title={schedule ? `${user.name} • ${schedule.shiftName}` : `${user.name} belum dijadwalkan`}
-                  >
-                    {getRosterLabel(schedule)}
-                  </button>
+                    dateStr={dateStr}
+                    userId={user._id}
+                    userName={user.name}
+                    schedule={schedule}
+                    onEdit={() => schedule && onEditSchedule(schedule)}
+                    onDelete={() => schedule && onDeleteSchedule(schedule._id)}
+                    onAdd={() => onAdd(dateStr)}
+                    isWeekStart={isWeekStart}
+                  />
                 );
               })}
             </div>
@@ -353,7 +447,7 @@ function RosterMatrix({
         })}
 
         <div className="col-span-full border-t bg-muted/40 px-2 py-2 text-[10px] text-muted-foreground">
-          {columnCount} kolom • Klik sel jadwal untuk edit. Warna: PAGI hijau, SORE biru, OFF merah, GENERAL abu-abu.
+          {columnCount} kolom • Drag & drop untuk pindah (Ctrl+drag = duplikat). Klik untuk edit.
         </div>
       </div>
     </div>
@@ -825,18 +919,40 @@ function AttendanceJadwalPage() {
     if (!over) return;
     const scheduleId = active.id as string;
     const overId = over.id as string;
-    const targetDate = overId.startsWith("day-") ? overId.replace("day-", "") : null;
+
+    // Parse target: day-YYYY-MM-DD or cell-YYYY-MM-DD-userId
+    let targetDate: string | null = null;
+    let targetUserId: string | null = null;
+
+    if (overId.startsWith("day-")) {
+      targetDate = overId.replace("day-", "");
+    } else if (overId.startsWith("cell-")) {
+      const parts = overId.replace("cell-", "").split("-");
+      if (parts.length >= 4) {
+        targetDate = parts.slice(0, 3).join("-");
+        targetUserId = parts.slice(3).join("-");
+      } else {
+        return;
+      }
+    }
+
     if (!targetDate || !targetDate.match(/^\d{4}-\d{2}-\d{2}$/)) return;
 
     const schedule = findScheduleById(scheduleId, schedulesByDate ?? {});
     if (!schedule) return;
 
-    if (schedule.date === targetDate) return; // same day, noop
+    const sameDate = schedule.date === targetDate;
+    const sameUser = schedule.userId === targetUserId;
+    // For calendar drag (day-*), targetUserId is null → only date change, always different user
+    const isCalendarDrag = targetUserId === null;
+
+    // No change at all
+    if (sameDate && sameUser) return;
 
     if (isCtrlHeld) {
-      // Duplicate mode
+      // Duplicate mode: create new with target date + target user
       handleSave({
-        userId: schedule.userId,
+        userId: targetUserId ?? schedule.userId,
         date: targetDate,
         shiftName: schedule.shiftName,
         startTime: schedule.startTime ?? undefined,
@@ -845,7 +961,10 @@ function AttendanceJadwalPage() {
       toast.success("Jadwal diduplikasi");
     } else {
       // Move mode
-      handleUpdate(scheduleId, { date: targetDate }).then(refresh);
+      const changes: Partial<CreateScheduleInput> = {};
+      if (!sameDate) changes.date = targetDate;
+      if (!sameUser && targetUserId) changes.userId = targetUserId;
+      handleUpdate(scheduleId, changes).then(refresh);
       toast.success("Jadwal dipindahkan");
     }
   }, [schedulesByDate, isCtrlHeld]);
@@ -968,51 +1087,57 @@ function AttendanceJadwalPage() {
             ))}
           </div>
         )
-      ) : viewMode === "matrix" ? (
-        <RosterMatrix
-          monthDays={monthDays}
-          schedulesByDate={schedulesByDate ?? {}}
-          users={filteredUsers}
-          onEditSchedule={handleEdit}
-        />
       ) : (
         <DndContext
           sensors={sensors}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="overflow-x-auto pb-1">
-            <div className="grid min-w-[760px] grid-cols-7 gap-1 md:min-w-0 md:gap-1.5">
-              {/* Day headers */}
-              {DAY_NAMES.map((name) => (
-                <div
-                  key={name}
-                  className="py-0.5 text-center text-[11px] font-semibold text-muted-foreground"
-                >
-                  {name}
-                </div>
-              ))}
+          {viewMode === "matrix" ? (
+            <RosterMatrix
+              monthDays={monthDays}
+              schedulesByDate={schedulesByDate ?? {}}
+              users={filteredUsers}
+              onEditSchedule={handleEdit}
+              onAdd={handleAdd}
+              onDeleteSchedule={handleDelete}
+            />
+          ) : (
+            <>
+              <div className="overflow-x-auto pb-1">
+                <div className="grid min-w-[760px] grid-cols-7 gap-1 md:min-w-0 md:gap-1.5">
+                  {/* Day headers */}
+                  {DAY_NAMES.map((name) => (
+                    <div
+                      key={name}
+                      className="py-0.5 text-center text-[11px] font-semibold text-muted-foreground"
+                    >
+                      {name}
+                    </div>
+                  ))}
 
-              {/* Day cells */}
-              {days.map((day) => {
-                const dateStr = formatDateStr(day);
-                return (
-                  <DayColumn
-                    key={dateStr}
-                    date={day}
-                    dateStr={dateStr}
-                    isToday={isToday(day)}
-                    isCurrentMonth={isSameMonth(day, currentDate)}
-                    schedules={schedulesByDate?.[dateStr] ?? []}
-                    onAdd={handleAdd}
-                    onEditSchedule={handleEdit}
-                    onDeleteSchedule={handleDelete}
-                    isDragOver={dragOverDate === dateStr}
-                  />
-                );
-              })}
-            </div>
-          </div>
+                  {/* Day cells */}
+                  {days.map((day) => {
+                    const dateStr = formatDateStr(day);
+                    return (
+                      <DayColumn
+                        key={dateStr}
+                        date={day}
+                        dateStr={dateStr}
+                        isToday={isToday(day)}
+                        isCurrentMonth={isSameMonth(day, currentDate)}
+                        schedules={schedulesByDate?.[dateStr] ?? []}
+                        onAdd={handleAdd}
+                        onEditSchedule={handleEdit}
+                        onDeleteSchedule={handleDelete}
+                        isDragOver={dragOverDate === dateStr}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
           <DragOverlay dropAnimation={null}>
             {activeDragSchedule ? (
               <ShiftCardGhost schedule={activeDragSchedule} />
