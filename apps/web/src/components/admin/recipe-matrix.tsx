@@ -915,7 +915,7 @@ function ReadOnlyView({
 											<div className="flex items-center gap-2 text-[10px]" key={index}>
 												<ChevronRight className="h-3 w-3 text-muted-foreground" />
 												<p className="overflow-hidden text-ellipsis whitespace-nowrap">
-													{item?.ingredientName || "Bahan"}: {ingredient.amount} {getSmallestUnitLabel(item)}
+													{item?.ingredientName || "Bahan"}: {ingredient.amount} {item ? getSmallestUnitLabel(item) : ""}
 												</p>
 											</div>
 										);
@@ -949,7 +949,7 @@ function ReadOnlyView({
 											<div className="grid grid-cols-[30px_1fr] items-start gap-2 rounded-lg border border-border/70 bg-card px-2 py-1.5" key={index}>
 												<div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">{index + 1}</div>
 												<p className="text-xs leading-5">
-													{item?.ingredientName || "Bahan"} sebanyak {ingredient.amount} {getSmallestUnitLabel(item)}
+													{item?.ingredientName || "Bahan"} sebanyak {ingredient.amount} {item ? getSmallestUnitLabel(item) : ""}
 												</p>
 											</div>
 										);

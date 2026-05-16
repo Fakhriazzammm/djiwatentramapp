@@ -617,8 +617,31 @@ async def _handle_callback(update: Update, context):
 
 # ── Order polling ────────────────────────────────────────────────
 
-_last_order_check_ms = int(_now_wib().timestamp() * 1000)
-_reported_order_nos: set[str] = set()
+_CURSOR_FILE = "/tmp/yumi_supervisor_cursor.txt"
+
+def _load_supervisor_cursor() -> tuple[int, set[str]]:
+    """Load last check timestamp and reported order numbers from file."""
+    try:
+        with open(_CURSOR_FILE) as f:
+            lines = [l.strip() for l in f if l.strip()]
+        if lines:
+            ts = int(lines[0])
+            nos = set(lines[1:])
+            return ts, nos
+    except (FileNotFoundError, ValueError, IndexError):
+        pass
+    # Default: look back 24 hours on first run
+    ts = int((_now_wib() - timedelta(hours=24)).timestamp() * 1000)
+    return ts, set()
+
+def _save_supervisor_cursor(ts: int, nos: set[str]):
+    """Persist cursor and reported order numbers."""
+    with open(_CURSOR_FILE, "w") as f:
+        f.write(f"{ts}\n")
+        for no in sorted(nos):
+            f.write(f"{no}\n")
+
+_last_order_check_ms, _reported_order_nos = _load_supervisor_cursor()
 
 async def _check_new_orders(app):
     global _last_order_check_ms, _reported_order_nos
@@ -680,6 +703,7 @@ async def _check_new_orders(app):
         _reported_order_nos.add(order_no)
 
     _last_order_check_ms = now_ms
+    _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos)
 
 # ── Main (sync, uses post_init for async setup) ──────────────────
 
