@@ -455,11 +455,6 @@ export function RecipeHppPage() {
 
 	const [hppType, setHppType] = useState<"product" | "base_recipe">("product");
 
-	const selectedBaseRecipe = useMemo(() => {
-		if (!selectedProductId || !baseRecipes || hppType !== "base_recipe") return null;
-		return (baseRecipes as any[]).find((br: any) => br._id === selectedProductId) ?? null;
-	}, [selectedProductId, baseRecipes, hppType]);
-
 	// Auto-select product from query param
 	useEffect(() => {
 		if (search?.productId && products && !selectedProductId) {
@@ -498,6 +493,11 @@ export function RecipeHppPage() {
 
 	// ── Derived ──
 	const metrics = useMemo(() => computeHpp(form), [form]);
+
+	const selectedBaseRecipe = useMemo(() => {
+		if (!selectedProductId || !baseRecipes || hppType !== "base_recipe") return null;
+		return (baseRecipes as any[]).find((br: any) => br._id === selectedProductId) ?? null;
+	}, [selectedProductId, baseRecipes, hppType]);
 
 	// Map productId → has recipe (for badges)
 	const recipesByProduct = useMemo(() => {
