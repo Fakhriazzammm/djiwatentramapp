@@ -447,7 +447,7 @@ function RosterMatrix({
         })}
 
         <div className="col-span-full border-t bg-muted/40 px-2 py-2 text-[10px] text-muted-foreground">
-          {columnCount} kolom • Drag & drop untuk pindah (Ctrl+drag = duplikat). Klik untuk edit.
+          {columnCount} kolom • Drag & drop untuk duplikat (Ctrl+drag = pindah). Klik untuk edit.
         </div>
       </div>
     </div>
@@ -950,7 +950,14 @@ function AttendanceJadwalPage() {
     if (sameDate && sameUser) return;
 
     if (isCtrlHeld) {
-      // Duplicate mode: create new with target date + target user
+      // Move mode (Ctrl = pindahkan, bukan duplikat)
+      const changes: Partial<CreateScheduleInput> = {};
+      if (!sameDate) changes.date = targetDate;
+      if (!sameUser && targetUserId) changes.userId = targetUserId;
+      handleUpdate(scheduleId, changes).then(refresh);
+      toast.success("Jadwal dipindahkan");
+    } else {
+      // Duplicate default: selalu buat baru di target
       handleSave({
         userId: targetUserId ?? schedule.userId,
         date: targetDate,
@@ -959,13 +966,6 @@ function AttendanceJadwalPage() {
         endTime: schedule.endTime ?? undefined,
       }).then(refresh);
       toast.success("Jadwal diduplikasi");
-    } else {
-      // Move mode
-      const changes: Partial<CreateScheduleInput> = {};
-      if (!sameDate) changes.date = targetDate;
-      if (!sameUser && targetUserId) changes.userId = targetUserId;
-      handleUpdate(scheduleId, changes).then(refresh);
-      toast.success("Jadwal dipindahkan");
     }
   }, [schedulesByDate, isCtrlHeld]);
 
