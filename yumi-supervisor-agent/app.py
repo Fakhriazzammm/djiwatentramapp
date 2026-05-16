@@ -428,6 +428,28 @@ async def _cleanup_order(key: str, delay: int):
     await asyncio.sleep(delay)
     _active_orders.pop(key, None)
 
+# ── Rate-limit retry helper ─────────────────────────────────────
+
+async def _send_with_retry(bot, chat_id: int, text: str, reply_markup=None, max_retries: int = 5):
+    """Send Telegram message with retry on 429 (rate limit)."""
+    import re
+    for attempt in range(max_retries):
+        try:
+            return await bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
+        except Exception as e:
+            err_str = str(e)
+            if "429" in err_str or "retry" in err_str.lower():
+                match = re.search(r"retry_after\s*[:=]\s*(\d+)", err_str)
+                wait = int(match.group(1)) if match else min(2 ** attempt + attempt * 1.5 + 0.5, 30)
+                logger.warning(
+                    "Rate limited (attempt %d/%d), waiting %.1fs...",
+                    attempt + 1, max_retries, wait,
+                )
+                await asyncio.sleep(wait)
+            else:
+                raise
+    raise RuntimeError(f"Failed to send message after {max_retries} retries")
+
 # ── Notifications with inline keyboard ───────────────────────────
 
 async def _send_barista_notification(app, order_no: str, customer: str, order_type: str, bev_items: list[dict], ts_ms: int, struk_line=None):
@@ -478,7 +500,7 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
     ])
 
     try:
-        msg = await app.bot.send_message(chat_id=BARISTA_GROUP_ID, text=base_text, reply_markup=kb)
+        msg = await _send_with_retry(app.bot, BARISTA_GROUP_ID, base_text, kb)
         key = f"{order_no}|barista"
         _active_orders[key] = {
             "key": key,
@@ -548,7 +570,7 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
     ])
 
     try:
-        msg = await app.bot.send_message(chat_id=KITCHEN_GROUP_ID, text=base_text, reply_markup=kb)
+        msg = await _send_with_retry(app.bot, KITCHEN_GROUP_ID, base_text, kb)
         key = f"{order_no}|kitchen"
         _active_orders[key] = {
             "key": key,
@@ -654,15 +676,25 @@ async def _check_new_orders(app):
             "&status=in.(completed,paid)"
             f"&_creationTime=gt.{_last_order_check_ms}"
             f"&_creationTime=lte.{now_ms}"
-            "&order=_creationTime.asc&limit=20",
+            "&order=_creationTime.asc&limit=50",
         )
     except Exception as e:
         logger.error("check_new_orders fetch failed: %s", e)
         return
 
+    if not rows:
+        # Advance cursor to now so we don't re-scan stale window
+        _last_order_check_ms = now_ms
+        _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos)
+        return
+
+    max_creation_time = _last_order_check_ms
+
     for row in rows:
         order_no = row.get("orderNumber", "???")
         ts = int(float(row.get("_creationTime") or 0))
+        if ts > max_creation_time:
+            max_creation_time = ts
         customer = row.get("customerName") or "Pelanggan"
         order_type = row.get("orderType") or "dine_in"
         items = row.get("items") or []
@@ -688,21 +720,24 @@ async def _check_new_orders(app):
                     customer = i["customerName"]
                     break
 
-        # ── Barista notification ──
-        bev_items = await _get_beverage_items(items)
-        if bev_items:
-            await _send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line)
-            await asyncio.sleep(0.3)
-
-        # ── Kitchen notification ──
+        # ── Kitchen notification (priority) ──
         food_items = await _get_food_items(items)
+        bev_items = await _get_beverage_items(items)
+
+        # Kirim kitchen + barista paralel per order
+        tasks = []
         if food_items:
-            await _send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line)
-            await asyncio.sleep(0.3)
+            tasks.append(_send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line))
+        if bev_items:
+            tasks.append(_send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line))
+
+        if tasks:
+            await asyncio.gather(*tasks)
+            await asyncio.sleep(0.3)  # small gap between orders
 
         _reported_order_nos.add(order_no)
 
-    _last_order_check_ms = now_ms
+    _last_order_check_ms = max_creation_time
     _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos)
 
 # ── Main (sync, uses post_init for async setup) ──────────────────
@@ -726,14 +761,14 @@ async def _post_init(app):
     # First poll check (catch up with any orders since start)
     await _check_new_orders(app)
 
-    # Background polling every 30s
+    # Background polling every 5s
     async def _poll_loop():
         while True:
-            await asyncio.sleep(30)
+            await asyncio.sleep(5)
             await _check_new_orders(app)
 
     app.create_task(_poll_loop())
-    logger.info("Polling loop started (30s interval)")
+    logger.info("Polling loop started (5s interval)")
 
 
 def _telegram_context_from_update(update: Update) -> TelegramContext:
