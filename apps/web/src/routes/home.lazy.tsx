@@ -854,7 +854,7 @@ function HomePage() {
 								...prev,
 								fromHomeEntry: true,
 							})}
-							to="/admin/recipe/view"
+							to="/admin/recipe"
 						>
 							<div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-400 text-white shadow-sm">
 								<BookOpen className="h-5 w-5" />
@@ -863,7 +863,7 @@ function HomePage() {
 								Buku Resep
 							</p>
 							<p className="mt-1 text-[11px] text-muted-foreground">
-								Baca resep barista & kitchen
+								Kelola resep & formula
 							</p>
 							<div className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">
 								Buka

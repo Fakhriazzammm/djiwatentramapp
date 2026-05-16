@@ -12,7 +12,7 @@ export type AttendanceSchedule = {
   shiftName: string;
   startTime: string | null;
   endTime: string | null;
-  status: "scheduled" | "confirmed" | "completed" | "absent" | "cancelled";
+  status: "scheduled" | "confirmed" | "completed" | "absent" | "cancelled" | "off";
   note: string | null;
   createdAt: string;
   updatedAt: string;

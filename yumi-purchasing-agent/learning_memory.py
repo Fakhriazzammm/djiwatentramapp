@@ -81,12 +81,14 @@ def save_learning_entry(
     suggested_unit: str = "",
     suggested_price: float = 0,
     confidence: float = 0.0,
+    entry_type: str = "marketlist",
 ) -> str:
     """Create a new learning entry. Returns entry_id."""
     now = datetime.now(timezone.utc).isoformat()
     entry_id = str(uuid.uuid4())
     entry = {
         "id": entry_id,
+        "type": entry_type,
         "userInput": user_input,
         "parsedName": parsed_name,
         "matchedInventoryId": matched_inventory_id,

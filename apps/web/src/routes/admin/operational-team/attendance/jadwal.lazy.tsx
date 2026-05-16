@@ -51,6 +51,7 @@ const statusColors: Record<string, string> = {
   completed: "text-gray-500 bg-gray-100 dark:text-gray-400 dark:bg-gray-800",
   absent: "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950",
   cancelled: "text-muted-foreground bg-muted line-through",
+  off: "text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-950/60",
 };
 
 // ─── Ghost Card (DragOverlay) ────────────────────────────────

@@ -48,7 +48,7 @@ from callback_manager import (
     handle_marketlist_text_input,
 )
 from rapidfuzz import fuzz, process as fuzz_process
-from learning_memory import update_learning_entry
+from learning_memory import update_learning_entry, search_learning_memory, save_learning_entry, increment_usage
 
 load_dotenv()
 
@@ -244,6 +244,36 @@ def _save_processed_cursor(processed: set):
         for sid in sorted(processed):
             f.write(f"{sid}\n")
 
+# ── Expense Name Normalizer ──────────────────────────────────────
+_QTY_SUFFIX_RE_EXPENSE = re.compile(
+    r'(\d+(?:\.\d+)?)\s*(ml|liter|lt|l|kg|gram|gr|g|pcs|pack|sachet|renceng|ikat|toros|bungkus|botol|gelas)\b',
+    re.IGNORECASE,
+)
+
+_ABBR_MAP = {
+    r'\bBTG\b': 'Batang', r'\bBBK\b': 'Bubuk',
+    r'\bSOWATER\b': 'Soda Water', r'\bRJK\b': 'Rujak',
+    r'\bPET\b': 'Pet', r'\bLMNS\b': 'Lemon',
+    r'\bO/S\b': '', r'\bPOUCH\b': '', r'\bUHT\b': '',
+}
+
+
+def _normalize_expense_name(name: str) -> str:
+    """Normalize expense item name: strip size suffix, decode abbreviations, clean up."""
+    if not name:
+        return ""
+    # 1. Strip size/volume suffix (e.g., "1000ML", "946ML", "250GR")
+    cleaned = _QTY_SUFFIX_RE_EXPENSE.sub("", name).strip()
+    # 2. Decode abbreviations
+    for pattern, replacement in _ABBR_MAP.items():
+        cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
+    # 3. Strip trailing size numbers like "140", "20S", "250" at end
+    cleaned = re.sub(r'\s*\d+[A-Z]?\s*$', '', cleaned).strip()
+    # 4. Collapse multiple spaces
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    return cleaned
+
+
 # ── Expense Matching Helper ─────────────────────────────────────
 _EXPENSE_MATCH_SYSTEM_PROMPT = """Kamu adalah asisten inventory yang mencocokkan nama bahan dari transaksi expense ke database inventory YumiPOS.
 
@@ -268,8 +298,50 @@ Jawab: minyak goreng -> Minyak Goreng|id1|95|pcs"""
 
 
 async def _ai_match_expense_items(sp_client, items: list[dict], all_inv: list[dict]) -> list[dict]:
-    """AI match expense items (from scanItems) ke inventory DB."""
-    # Build inventory list
+    """AI match expense items (from scanItems) ke inventory DB.
+    
+    Checks alias DB first, then AI for unmatched items.
+    """
+    # ── Step 1: Check alias DB for each item ──
+    matched = []
+    ai_items = []
+    ai_item_indices = []
+    
+    for idx, it in enumerate(items):
+        raw_name = it.get('name', '')
+        normed = _normalize_expense_name(raw_name)
+        
+        # Search alias DB (fuzzy match on normalized name)
+        alias_hits = search_learning_memory(normed, min_score=0.7)
+        # Filter only expense_match type
+        expense_aliases = [e for e in alias_hits if e.get("type") == "expense_match"]
+        
+        if expense_aliases:
+            best = expense_aliases[0]
+            matched.append({
+                "input": raw_name,
+                "matched": True,
+                "inv_name": best.get("matchedIngredientName", ""),
+                "_id": best.get("matchedInventoryId", ""),
+                "score": int(best.get("confidence", 85)),
+                "unit": None,
+                "_alias": True,
+            })
+            # Increment usage count
+            try:
+                increment_usage(best["id"])
+            except Exception:
+                pass
+        else:
+            ai_items.append(it)
+            ai_item_indices.append(idx)
+            matched.append(None)
+    
+    # If all items matched via alias, return immediately
+    if not ai_items:
+        return [m for m in matched if m is not None]
+    
+    # ── Step 2: Build inventory list for AI prompt ──
     inv_lines = []
     for i in all_inv:
         name = i.get('ingredientName', '?')
@@ -286,9 +358,9 @@ async def _ai_match_expense_items(sp_client, items: list[dict], all_inv: list[di
     if len(inv_text) > 8000:
         inv_text = "\n".join(inv_lines[:150])
     
-    # Build user items text
+    # Build user items text (only AI items)
     user_lines = []
-    for it in items:
+    for it in ai_items:
         name = it.get('name', '')
         qty = it.get('quantity', 1)
         price = it.get('price', 0)
@@ -307,11 +379,12 @@ Format jawaban (1 baris per item, urutan sesuai input):
 TULISAN_USER -> NAMA_INVENTORY|_ID|CONFIDENCE|UNIT
 Atau: TULISAN_USER -> TIDAK_COCOK"""
     
+    # ── Step 3: Call AI ──
     try:
         result = await sp_client.chat(prompt, system_prompt=_EXPENSE_MATCH_SYSTEM_PROMPT, timeout=30)
         reply = result.get("reply", "") or result.get("text", "") or result.get("raw", "") or ""
         
-        matched = []
+        ai_results = []
         for line in reply.strip().split("\n"):
             line = line.strip()
             if not line or "->" not in line:
@@ -321,7 +394,7 @@ Atau: TULISAN_USER -> TIDAK_COCOK"""
             response_part = parts[1].strip()
             
             if "TIDAK_COCOK" in response_part.upper():
-                matched.append({"input": input_name, "matched": False, "inv_name": None, "_id": None, "score": 0, "unit": None})
+                ai_results.append({"input": input_name, "matched": False, "inv_name": None, "_id": None, "score": 0, "unit": None, "_alias": False})
                 continue
             
             resp_parts = response_part.split("|")
@@ -330,9 +403,19 @@ Atau: TULISAN_USER -> TIDAK_COCOK"""
                 inv_id = resp_parts[1].strip()
                 score = int(resp_parts[2].strip()) if len(resp_parts) >= 3 and resp_parts[2].strip().isdigit() else 0
                 unit = resp_parts[3].strip() if len(resp_parts) >= 4 else None
-                matched.append({"input": input_name, "matched": True, "inv_name": inv_name, "_id": inv_id, "score": score, "unit": unit})
+                ai_results.append({"input": input_name, "matched": True, "inv_name": inv_name, "_id": inv_id, "score": score, "unit": unit, "_alias": False})
             else:
-                matched.append({"input": input_name, "matched": False, "inv_name": None, "_id": None, "score": 0, "unit": None})
+                ai_results.append({"input": input_name, "matched": False, "inv_name": None, "_id": None, "score": 0, "unit": None, "_alias": False})
+        
+        # Merge AI results back into matched list at correct positions
+        ai_idx = 0
+        for i in range(len(matched)):
+            if matched[i] is None:
+                if ai_idx < len(ai_results):
+                    matched[i] = ai_results[ai_idx]
+                else:
+                    matched[i] = {"input": items[i].get('name', ''), "matched": False, "inv_name": None, "_id": None, "score": 0, "unit": None, "_alias": False}
+                ai_idx += 1
         
         return matched
     except Exception as e:
@@ -341,20 +424,36 @@ Atau: TULISAN_USER -> TIDAK_COCOK"""
 
 
 def _fuzzy_match_expense_fallback(items: list[dict], all_inv: list[dict]) -> list[dict]:
-    """Fallback fuzzy matching untuk expense items."""
+    """Multi-strategy fuzzy matching untuk expense items fallback."""
     inv_names = {i.get("ingredientName", ""): i for i in all_inv if i.get("ingredientName")}
+
+    strategies = [
+        ("partial", fuzz.partial_ratio),
+        ("token_sort", fuzz.token_sort_ratio),
+        ("token_set", fuzz.token_set_ratio),
+        ("WRatio", fuzz.WRatio),
+    ]
+
     results = []
     for item in items:
-        name = item.get('name', '')
-        best = fuzz_process.extractOne(name, list(inv_names.keys()), scorer=fuzz.WRatio, score_cutoff=60)
-        if best:
-            match_name, score = best[0], best[1]
+        name = _normalize_expense_name(item.get('name', ''))
+
+        best_score = 0
+        best_match = None
+        for strategy_name, scorer in strategies:
+            match = fuzz_process.extractOne(name, list(inv_names.keys()), scorer=scorer, score_cutoff=55)
+            if match and match[1] > best_score:
+                best_score = match[1]
+                best_match = match
+
+        if best_match and best_score >= 60:
+            match_name = best_match[0]
             inv_item = inv_names[match_name]
-            results.append({"input": name, "matched": True, "inv_name": match_name,
-                           "_id": inv_item.get("_id", ""), "score": score,
+            results.append({"input": item.get('name', ''), "matched": True, "inv_name": match_name,
+                           "_id": inv_item.get("_id", ""), "score": best_score,
                            "unit": inv_item.get("unit", None)})
         else:
-            results.append({"input": name, "matched": False, "inv_name": None, "_id": None, "score": 0, "unit": None})
+            results.append({"input": item.get('name', ''), "matched": False, "inv_name": None, "_id": None, "score": 0, "unit": None})
     return results
 
 
@@ -448,7 +547,10 @@ async def _get_supplier_recommendation(inventory_id: str, item_name: str) -> dic
 
 
 async def _match_expense_items(source_id: str, items: list[dict]) -> dict:
-    """Match expense items ke inventory + supplier recommendation."""
+    """Match expense items ke inventory + supplier recommendation.
+    
+    Saves successful AI matches to learning_memory for future use.
+    """
     all_inv = await inventory.get_all_inventory()
     
     sp_client = SumoPodClient(SUMOPOD_API_KEY)
@@ -458,6 +560,21 @@ async def _match_expense_items(source_id: str, items: list[dict]) -> dict:
     unmatched_items = []
     for m in matches:
         if m["matched"] and m["_id"]:
+            # Save to learning_memory if this was an AI match (not alias)
+            if not m.get("_alias") and m["score"] >= 70:
+                try:
+                    normed = _normalize_expense_name(m["input"])
+                    save_learning_entry(
+                        user_input=normed,
+                        parsed_name=m["input"],
+                        matched_inventory_id=m["_id"],
+                        matched_ingredient_name=m["inv_name"],
+                        confidence=float(m["score"]),
+                        entry_type="expense_match",
+                    )
+                except Exception as e:
+                    logger.warning("[EXPENSE-MATCH] Failed to save learning entry: %s", e)
+            
             # Get supplier recommendation
             rec = await _get_supplier_recommendation(m["_id"], m["inv_name"])
             matched_items.append({
@@ -478,7 +595,6 @@ async def _match_expense_items(source_id: str, items: list[dict]) -> dict:
         "total_items": len(items),
         "matched_count": len(matched_items),
     }
-
 
 async def _send_purchasing_recommendation(source_id: str, result: dict, transaction: dict, chat_id: int = None):
     """Send formatted purchasing recommendation to stock group."""
@@ -791,6 +907,94 @@ async def cmd_hermes_test(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "actions": [],
     })
     await update.message.reply_text(response["reply_text"], reply_markup=_keyboard())
+
+
+async def cmd_koreksi(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /koreksi command — correct a previous expense match.
+
+    Format: /koreksi NAMA_STRUK -> NAMA_INVENTORY
+    Contoh: /koreksi ROSE BRAND POUCH 2L -> Kresek Piala Uk 28 Putih
+    """
+    args = context.args
+    text = " ".join(args).strip()
+
+    if not text or "->" not in text:
+        await update.message.reply_text(
+            "Format: /koreksi <nama_dari_struk> -> <nama_inventory>\n\n"
+            "Contoh: /koreksi ROSE BRAND POUCH 2L -> Kresek Piala Uk 28 Putih\n\n"
+            "Ini akan menyimpan koreksi ke learning memory biar match otomatis next time."
+        )
+        return
+
+    parts = text.split("->", 1)
+    scan_name = parts[0].strip()
+    corrected_name = parts[1].strip()
+
+    if not scan_name or not corrected_name:
+        await update.message.reply_text("Nama struk dan nama inventory harus diisi!")
+        return
+
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+
+    try:
+        # Search inventory by the corrected name
+        all_inv = await inventory.get_all_inventory()
+        inv_names = {i.get("ingredientName", ""): i for i in all_inv if i.get("ingredientName")}
+
+        # Find best match for the corrected name
+        from rapidfuzz import process as fp, fuzz as fz
+        best = fp.extractOne(corrected_name, list(inv_names.keys()), scorer=fz.WRatio, score_cutoff=60)
+
+        if not best:
+            await update.message.reply_text(
+                f"\u274c Inventory '{corrected_name}' tidak ditemukan.\n"
+                f"Coba cek nama inventory yang tersedia dengan /supplier atau cek langsung di database."
+            )
+            return
+
+        match_name, score = best[0], best[1]
+        inv_item = inv_names[match_name]
+        inv_id = inv_item.get("_id", "")
+
+        # Normalize the scan name for alias lookup
+        normed = _normalize_expense_name(scan_name)
+
+        # Check if alias already exists
+        existing = search_learning_memory(normed, min_score=0.85)
+        expense_existing = [e for e in existing if e.get("type") == "expense_match"]
+
+        if expense_existing:
+            # Update existing entry
+            entry = expense_existing[0]
+            update_learning_entry(entry["id"], {
+                "matchedInventoryId": inv_id,
+                "matchedIngredientName": match_name,
+                "isCorrected": True,
+                "correctionType": "user",
+            })
+            msg = f"\u2705 Koreksi tersimpan! Alias diperbarui:\n"
+        else:
+            # Save new alias
+            save_learning_entry(
+                user_input=normed,
+                parsed_name=scan_name,
+                matched_inventory_id=inv_id,
+                matched_ingredient_name=match_name,
+                confidence=float(score),
+                entry_type="expense_match",
+            )
+            msg = f"\u2705 Koreksi tersimpan! Alias baru:\n"
+
+        msg += (
+            f"  \uD83D\uDCCB \"{scan_name}\" \u2192 \"{match_name}\" ({score}%)\n"
+            f"  \uD83D\uDCBE ID: {inv_id}\n\n"
+            f"Next time item yang sama akan langsung match tanpa AI."
+        )
+        await update.message.reply_text(msg)
+
+    except Exception as e:
+        logger.error("[KOREKSI] Error: %s", e, exc_info=True)
+        await update.message.reply_text(f"\u274c Gagal menyimpan koreksi: {e}")
 
 
 async def cmd_yumi(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1791,6 +1995,7 @@ async def main():
     app.add_handler(CommandHandler("yumi", cmd_yumi))
     app.add_handler(CommandHandler("hermes_scope", cmd_hermes_scope))
     app.add_handler(CommandHandler("hermes_test", cmd_hermes_test))
+    app.add_handler(CommandHandler("koreksi", cmd_koreksi))
     # Message handlers — ordered by priority
     # Marketlist text input (after callback prompt) goes before general text
     app.add_handler(MessageHandler(

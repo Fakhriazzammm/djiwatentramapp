@@ -66,7 +66,6 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin": "Dasbor",
 	"/admin/products": "Produk",
 	"/admin/recipe": "Resep",
-	"/admin/recipe/view": "Buku Resep",
 	"/admin/recipe/hpp": "HPP",
 	"/admin/inventory": "Inventaris",
 	"/admin/stock-overview": "Ringkasan Stok",
@@ -115,7 +114,6 @@ const BOTTOM_NAV_ITEMS = [
 const MORE_MENU_PATHS = [
 	"/admin/products",
 	"/admin/recipe",
-	"/admin/recipe/view",
 	"/admin/recipe/hpp",
 	"/admin/inventory",
 	"/admin/stock-overview",

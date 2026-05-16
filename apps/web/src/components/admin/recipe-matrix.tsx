@@ -1,20 +1,28 @@
 // @ts-nocheck
 import { Link } from "@tanstack/react-router";
 import type { Doc, Id } from "@/types/backend-compat";
-import { convertToSmallestUnit, getSmallestUnitInfo } from "@/lib/inventory-units";
+import { convertToSmallestUnit, getSmallestUnitInfo, getSmallestUnitLabel } from "@/lib/inventory-units";
 import {
+	BookOpen,
 	Calculator,
+	CheckCircle2,
+	ChevronRight,
+	Edit,
+	Eye,
+	FileText,
 	Loader2,
 	Package,
 	Plus,
 	Search,
 	Settings2,
 	Trash2,
+	X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
 	useHybridAllProducts,
@@ -24,6 +32,8 @@ import {
 	useHybridLatestInventoryCosts,
 } from "@/hooks/use-hybrid-pos-data";
 import { useHybridRecipes, useHybridBaseRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
+import { useHybridCreateBaseRecipe, useHybridUpdateBaseRecipe, useHybridDeleteBaseRecipe, useHybridEnsureInventoryItemForBaseRecipe } from "@/hooks/use-hybrid-write-actions";
+import { BaseRecipeForm, ModalScaffold, IngredientEditor } from "@/components/admin/recipe-book";
 import { useHybridSaveRecipe, useHybridDeleteRecipe, useHybridUpsertHppFromRecipe } from "@/hooks/use-hybrid-write-actions";
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -106,6 +116,10 @@ export function RecipeMatrixPage() {
 	const saveRecipe = useHybridSaveRecipe();
 	const deleteRecipe = useHybridDeleteRecipe();
 	const upsertHppFromRecipe = useHybridUpsertHppFromRecipe();
+	const createBaseRecipe = useHybridCreateBaseRecipe();
+	const updateBaseRecipe = useHybridUpdateBaseRecipe();
+	const deleteBaseRecipe = useHybridDeleteBaseRecipe();
+	const ensureInvForBase = useHybridEnsureInventoryItemForBaseRecipe();
 
 	// State
 	const [search, setSearch] = useState("");
@@ -116,6 +130,19 @@ export function RecipeMatrixPage() {
 	const [showAllIngredients, setShowAllIngredients] = useState(true);
 	const [baseSectionOpen, setBaseSectionOpen] = useState(false);
 	const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
+	const [readMode, setReadMode] = useState(false);
+	const [baseModalOpen, setBaseModalOpen] = useState(false);
+	const [editingBaseId, setEditingBaseId] = useState<string | null>(null);
+	const [deletingBaseId, setDeletingBaseId] = useState<string | null>(null);
+	const [searchRecipe, setSearchRecipe] = useState("");
+	const [baseForm, setBaseForm] = useState<BaseRecipeForm>({
+		name: "",
+		description: "",
+		category: "Lainnya",
+		targetUnit: "ml",
+		targetQuantity: "1000",
+		ingredients: [],
+	});
 
 	const loading = !products || !inventory || !recipes;
 
@@ -289,6 +316,72 @@ export function RecipeMatrixPage() {
 
 	const handleCellCancel = () => setEditingCell(null);
 
+	// ── Base Recipe CRUD ──
+
+	const handleOpenCreateBase = () => {
+		setEditingBaseId(null);
+		setBaseForm({
+			name: "",
+			description: "",
+			category: "Lainnya",
+			targetUnit: "ml",
+			targetQuantity: "1000",
+			ingredients: [],
+		});
+		setBaseModalOpen(true);
+	};
+
+	const handleOpenEditBase = (br: any) => {
+		setEditingBaseId(br._id);
+		setBaseForm({
+			name: br.name,
+			description: br.description ?? "",
+			category: br.category ?? "Lainnya",
+			targetUnit: br.targetUnit,
+			targetQuantity: String(br.targetQuantity),
+			ingredients: br.ingredients ?? [],
+		});
+		setBaseModalOpen(true);
+	};
+
+	const handleSaveBase = async () => {
+		if (!baseForm.name.trim()) return toast.error("Nama recipe wajib diisi");
+		if (baseForm.ingredients.length === 0) return toast.error("Tambahkan minimal satu bahan");
+		if (baseForm.ingredients.some((item) => item.amount <= 0)) return toast.error("Jumlah bahan harus lebih dari 0");
+		const payload = {
+			name: baseForm.name.trim(),
+			description: baseForm.description.trim() || undefined,
+			category: baseForm.category,
+			targetUnit: baseForm.targetUnit.trim(),
+			targetQuantity: Number(baseForm.targetQuantity),
+			ingredients: baseForm.ingredients,
+		};
+		try {
+			if (editingBaseId) {
+				await updateBaseRecipe({ id: editingBaseId as any, ...payload });
+				toast.success("Base recipe diperbarui");
+			} else {
+				await createBaseRecipe(payload);
+				toast.success("Base recipe ditambahkan");
+			}
+			setBaseModalOpen(false);
+		} catch (err: any) {
+			toast.error(err?.message ?? "Gagal menyimpan base recipe");
+		}
+	};
+
+	const handleDeleteBase = async (id: string) => {
+		setDeletingBaseId(id);
+		try {
+			await deleteBaseRecipe({ id: id as any });
+			toast.success("Base recipe dihapus");
+		} catch (err: any) {
+			toast.error(err?.message ?? "Gagal menghapus base recipe");
+		} finally {
+			setDeletingBaseId(null);
+		}
+	};
+
 	// ── Stats ──
 
 	const hasRecipeCount = productRows.filter((p) => recipeByProduct.has(String(p._id))).length;
@@ -326,47 +419,80 @@ export function RecipeMatrixPage() {
 						{totalIngredients} bahan
 					</Badge>
 				</div>
+				<Button
+					variant={readMode ? "default" : "outline"}
+					size="sm"
+					className="h-6 text-[10px] px-2"
+					onClick={() => setReadMode(!readMode)}
+				>
+					{readMode ? <BookOpen className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+					{readMode ? "Mode Kelola" : "Mode Baca"}
+				</Button>
 			</div>
 
 			{/* ── Search + Filter ── */}
 			<div className="flex items-center gap-2 px-4 py-2 border-b border-border/30 bg-background shrink-0">
-				<div className="relative flex-1 max-w-[220px]">
-					<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-					<Input
-						placeholder="Cari produk..."
-						value={search}
-						onChange={(e) => setSearch(e.target.value)}
-						className="h-7 pl-7 text-[11px]"
-					/>
-				</div>
-				<div className="relative flex-1 max-w-[220px]">
-					<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-					<Input
-						placeholder="Cari bahan..."
-						value={searchBahan}
-						onChange={(e) => setSearchBahan(e.target.value)}
-						className="h-7 pl-7 text-[11px]"
-					/>
-				</div>
-				<Button
-					variant={showAllIngredients ? "default" : "outline"}
-					size="sm"
-					className="h-6 text-[10px] px-2"
-					onClick={() => setShowAllIngredients(!showAllIngredients)}
-				>
-					{showAllIngredients ? "Bahan dipakai" : "Semua bahan"}
-				</Button>
-				<Button
-					variant="ghost"
-					size="sm"
-					className="h-6 text-[10px] px-2 ml-auto"
-					onClick={() => setBaseSectionOpen(!baseSectionOpen)}
-				>
-					<Settings2 className="h-3 w-3 mr-1" />
-					Base Recipe
-				</Button>
+				{readMode ? (
+					<div className="relative flex-1 max-w-[320px]">
+						<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+						<Input
+							placeholder="Cari resep..."
+							value={searchRecipe}
+							onChange={(e) => setSearchRecipe(e.target.value)}
+							className="h-7 pl-7 text-[11px]"
+						/>
+					</div>
+				) : (
+					<>
+						<div className="relative flex-1 max-w-[220px]">
+							<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+							<Input
+								placeholder="Cari produk..."
+								value={search}
+								onChange={(e) => setSearch(e.target.value)}
+								className="h-7 pl-7 text-[11px]"
+							/>
+						</div>
+						<div className="relative flex-1 max-w-[220px]">
+							<Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+							<Input
+								placeholder="Cari bahan..."
+								value={searchBahan}
+								onChange={(e) => setSearchBahan(e.target.value)}
+								className="h-7 pl-7 text-[11px]"
+							/>
+						</div>
+						<Button
+							variant={showAllIngredients ? "default" : "outline"}
+							size="sm"
+							className="h-6 text-[10px] px-2"
+							onClick={() => setShowAllIngredients(!showAllIngredients)}
+						>
+							{showAllIngredients ? "Bahan dipakai" : "Semua bahan"}
+						</Button>
+						<Button
+							variant="ghost"
+							size="sm"
+							className="h-6 text-[10px] px-2 ml-auto"
+							onClick={() => setBaseSectionOpen(!baseSectionOpen)}
+						>
+							<Settings2 className="h-3 w-3 mr-1" />
+							Base Recipe
+						</Button>
+					</>
+				)}
 			</div>
 
+			{readMode ? (
+				<ReadOnlyView
+					baseRecipes={baseRecipes ?? []}
+					productRecipes={productRows as any}
+					inventory={inventory ?? []}
+					categoryById={categoryById}
+					search={searchRecipe}
+				/>
+			) : (
+				<>
 			{/* ── Matrix Table ── */}
 			<div className="flex-1 overflow-auto">
 				<table className="border-collapse w-max min-w-full">
@@ -575,7 +701,8 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 				</table>
 			</div>
 
-			{/* ── Legend ── */}
+			{/* ── Legend ── (kelola mode) */}
+			{!readMode && (
 			<div className="flex items-center gap-4 px-4 py-1.5 border-t border-border/30 bg-muted/20 shrink-0 text-[9px] text-muted-foreground">
 				<span className="flex items-center gap-1">
 					<span className="inline-block w-2.5 h-2.5 rounded bg-primary/[0.04] border border-border/30" />
@@ -594,9 +721,10 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 					Klik produk → HPP detail
 				</span>
 			</div>
+			)}
 
-			{/* ── Base Recipe Section (collapsible) ── */}
-			{baseSectionOpen && (
+			{/* ── Base Recipe Section (collapsible, kelola mode) ── */}
+			{!readMode && baseSectionOpen && (
 				<div className="border-t-2 border-primary/20 bg-muted/10 px-4 py-3 shrink-0">
 					<div className="flex items-center gap-2 mb-2">
 						<Settings2 className="h-3.5 w-3.5 text-primary" />
@@ -608,17 +736,36 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 						</Badge>
 					</div>
 					<div className="flex flex-wrap gap-2">
-						{(baseRecipes ?? []).length === 0 ? (
+						<div className="flex items-center gap-2 mb-2">
+						<Button
+							variant="outline"
+							size="sm"
+							className="h-6 text-[10px] px-2 ml-auto"
+							onClick={handleOpenCreateBase}
+						>
+							<Plus className="h-3 w-3 mr-1" />
+							Tambah Base Recipe
+						</Button>
+					</div>
+					{(baseRecipes ?? []).length === 0 ? (
 							<p className="text-[10px] text-muted-foreground/60">
-								Belum ada base recipe. Buat di halaman <Link to="/admin/recipe/view" className="text-primary underline">Recipe Studio</Link>.
+								Belum ada base recipe. Klik Tambah untuk membuat formula baru.
 							</p>
 						) : (
 							(baseRecipes ?? []).map((br: any) => (
 								<div
 									key={br._id}
-									className="rounded-lg border border-border/40 bg-card px-3 py-2 text-[10px] min-w-[180px] flex-1 max-w-[240px]"
+									className="rounded-lg border border-border/40 bg-card px-3 py-2 text-[10px] min-w-[180px] flex-1 max-w-[240px] group/card relative"
 								>
-									<div className="font-semibold text-foreground truncate">{br.name}</div>
+									<div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity">
+										<button onClick={() => handleOpenEditBase(br)} className="rounded p-0.5 text-muted-foreground/40 hover:text-foreground hover:bg-muted transition-colors" title="Edit">
+											<Edit className="h-3 w-3" />
+										</button>
+										<button onClick={() => handleDeleteBase(br._id)} disabled={deletingBaseId === br._id} className="rounded p-0.5 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors" title="Hapus">
+											{deletingBaseId === br._id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+										</button>
+									</div>
+									<div className="font-semibold text-foreground truncate pr-10">{br.name}</div>
 									<div className="mt-0.5 text-muted-foreground/60">
 										Target: {br.targetQuantity} {br.targetUnit} &mdash; {br.ingredients?.length ?? 0} bahan
 									</div>
@@ -633,6 +780,187 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 					</div>
 				</div>
 			)}
+				</>
+			)}
+			{/* ── Base Recipe Modal ── */}
+			{baseModalOpen && (
+				<ModalScaffold
+					onClose={() => setBaseModalOpen(false)}
+					title={editingBaseId ? "Edit Base Recipe" : "Buat Base Recipe"}
+				>
+					<form
+						className="space-y-4"
+						onSubmit={(e) => { e.preventDefault(); handleSaveBase(); }}
+					>
+						<div className="grid gap-3 md:grid-cols-2">
+							<Input
+								onChange={(e) => setBaseForm((prev) => ({ ...prev, name: e.target.value }))}
+								placeholder="Nama recipe"
+								required
+								value={baseForm.name}
+							/>
+							<select
+								className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+								onChange={(e) => setBaseForm((prev) => ({ ...prev, category: e.target.value }))}
+								value={baseForm.category}
+							>
+								<option value="Lainnya">Lainnya</option>
+								<option value="Base Susu">Base Susu</option>
+								<option value="Base Sauce">Base Sauce</option>
+								<option value="Base Sirup">Base Sirup</option>
+								<option value="Base Teh">Base Teh</option>
+								<option value="Kopi">Kopi</option>
+								<option value="Dessert">Dessert</option>
+							</select>
+							<Input
+								onChange={(e) => setBaseForm((prev) => ({ ...prev, targetUnit: e.target.value }))}
+								placeholder="Unit hasil"
+								required
+								value={baseForm.targetUnit}
+							/>
+							<Input
+								min="1"
+								onChange={(e) => setBaseForm((prev) => ({ ...prev, targetQuantity: e.target.value }))}
+								required
+								type="number"
+								value={baseForm.targetQuantity}
+							/>
+						</div>
+						<Textarea
+							onChange={(e) => setBaseForm((prev) => ({ ...prev, description: e.target.value }))}
+							placeholder="Deskripsi atau catatan"
+							value={baseForm.description}
+						/>
+						<IngredientEditor
+							ingredients={baseForm.ingredients}
+							inventory={inventory ?? []}
+							latestInventoryCosts={costs}
+							setIngredients={(next) => setBaseForm((prev) => ({ ...prev, ingredients: next }))}
+						/>
+						<div className="flex justify-end gap-2">
+							<Button onClick={() => setBaseModalOpen(false)} type="button" variant="outline">Batal</Button>
+							<Button type="submit">Simpan</Button>
+						</div>
+					</form>
+				</ModalScaffold>
+			)}
 		</div>
 	);
 }
+
+// ─── ReadOnlyView ─────────────────────────────────────────
+
+function ReadOnlyView({
+	baseRecipes,
+	productRecipes,
+	inventory,
+	categoryById,
+	search,
+}: {
+	baseRecipes: any[];
+	productRecipes: any[];
+	inventory: any[];
+	categoryById: Map<string, string>;
+	search: string;
+}) {
+	const inventoryMap = useMemo(
+		() => new Map((inventory ?? []).map((item: any) => [String(item._id), item])),
+		[inventory]
+	);
+
+	const keyword = search.trim().toLowerCase();
+	const filteredBase = useMemo(() => {
+		if (!keyword) return baseRecipes;
+		return baseRecipes.filter((r: any) => {
+			const matchIng = (r.ingredients ?? []).some((ing: any) => {
+				const inv = inventoryMap.get(String(ing.inventoryId));
+				return inv?.ingredientName?.toLowerCase().includes(keyword);
+			});
+			return r.name.toLowerCase().includes(keyword) || r.description?.toLowerCase().includes(keyword) || matchIng;
+		});
+	}, [baseRecipes, keyword, inventoryMap]);
+
+	const filteredProduct = useMemo(() => {
+		if (!keyword) return productRecipes;
+		return productRecipes.filter((row: any) => {
+			return row.product.name.toLowerCase().includes(keyword) || row.categoryName.toLowerCase().includes(keyword);
+		});
+	}, [productRecipes, keyword]);
+
+	if (filteredBase.length === 0 && filteredProduct.length === 0) {
+		return <div className="flex-1 flex items-center justify-center text-xs text-muted-foreground p-8">Tidak ada recipe ditemukan.</div>;
+	}
+
+	return (
+		<div className="flex-1 overflow-y-auto space-y-4 p-4">
+			{/* Base Recipe */}
+			{filteredBase.length > 0 && (
+				<div className="rounded-2xl border border-border bg-card p-4">
+					<div className="mb-3 flex items-center gap-2">
+						<FileText className="h-4 w-4 text-primary" />
+						<h3 className="font-black tracking-tight text-sm">Base Recipe</h3>
+						<Badge variant="outline" className="text-[9px] h-4 px-1">{filteredBase.length}</Badge>
+					</div>
+					<div className="grid gap-3 md:grid-cols-2">
+						{filteredBase.map((recipe: any) => (
+							<div className="rounded-xl border border-border bg-background p-3" key={recipe._id}>
+								<p className="font-semibold text-xs">{recipe.name}</p>
+								<p className="text-[10px] text-muted-foreground">
+									{recipe.targetQuantity} {recipe.targetUnit} | {recipe.category || "Lainnya"}
+								</p>
+								<div className="mt-2 space-y-1">
+									{recipe.ingredients.map((ingredient: any, index: number) => {
+										const item = inventoryMap.get(String(ingredient.inventoryId));
+										return (
+											<div className="flex items-center gap-2 text-[10px]" key={index}>
+												<ChevronRight className="h-3 w-3 text-muted-foreground" />
+												<p className="overflow-hidden text-ellipsis whitespace-nowrap">
+													{item?.ingredientName || "Bahan"}: {ingredient.amount} {getSmallestUnitLabel(item)}
+												</p>
+											</div>
+										);
+									})}
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
+
+			{/* Product Recipe */}
+			{filteredProduct.length > 0 && (
+				<div className="rounded-2xl border border-border bg-card p-4">
+					<div className="mb-3 flex items-center gap-2">
+						<CheckCircle2 className="h-4 w-4 text-primary" />
+						<h3 className="font-black tracking-tight text-sm">Recipe Produk</h3>
+						<Badge variant="outline" className="text-[9px] h-4 px-1">{filteredProduct.length}</Badge>
+					</div>
+					<div className="space-y-3">
+						{filteredProduct.map((row: any) => (
+							<div className="rounded-xl border border-border bg-background p-3" key={row.recipe._id}>
+								<div className="mb-2">
+									<p className="font-semibold text-xs">{row.product.name}</p>
+									<p className="text-[10px] text-muted-foreground">{row.categoryName}</p>
+								</div>
+								<div className="space-y-1">
+									{row.recipe.ingredients.map((ingredient: any, index: number) => {
+										const item = inventoryMap.get(String(ingredient.inventoryId));
+										return (
+											<div className="grid grid-cols-[30px_1fr] items-start gap-2 rounded-lg border border-border/70 bg-card px-2 py-1.5" key={index}>
+												<div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">{index + 1}</div>
+												<p className="text-xs leading-5">
+													{item?.ingredientName || "Bahan"} sebanyak {ingredient.amount} {getSmallestUnitLabel(item)}
+												</p>
+											</div>
+										);
+									})}
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
+		</div>
+	);
+}
+

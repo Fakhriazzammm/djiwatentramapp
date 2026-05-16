@@ -256,7 +256,7 @@ export default function AttendanceImportDialog({
         shiftName: row.shiftName,
         startTime,
         endTime,
-        status: row.status === "off" ? "cancelled" : "scheduled",
+        status: row.status === "off" ? "off" : "scheduled",
         note: row.weekLabel ? `Imported from ${importData.source.title || "roster"}` : undefined,
         raw: {
           source: "attendance_import",
