@@ -228,7 +228,7 @@ async def _fetch_fn(view: str, query: str = "select=*"):
 # ── Expense Matching: Konstanta ───────────────────────────────
 POLL_INTERVAL = 30  # detik — polling expense baru dari financial_transactions
 PROCESSED_CURSOR_FILE = "/tmp/yumi_purchasing_processed.txt"
-MATCH_EXPENSE_CATEGORIES = {"belanja_stok", "pembelian_stok", "bahan_baku", "belanja_bahan"}
+MATCH_EXPENSE_CATEGORIES = {"belanja_stok", "pembelian_stok", "bahan_baku", "belanja_bahan", "bahan_makanan", "bahan_segar", "bahan_minuman", "packaging"}
 
 def _load_processed_cursor() -> set:
     """Load source_id yang sudah diproses dari file."""
@@ -364,7 +364,7 @@ async def _get_supplier_price_history(inventory_id: str) -> list[dict]:
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.get(
                 f"{SUPABASE_URL}/rest/v1/pos_inventory_transactions"
-                f"?select=cost_per_unit,storeSourceId,purchase_unit,"
+                f"?select=costPerUnit,storeId,purchaseUnit,"
                 f"purchaseQuantity,timestamp,brandName"
                 f"&inventoryId=eq.{inventory_id}"
                 f"&type=eq.restock"
@@ -421,7 +421,7 @@ async def _get_supplier_recommendation(inventory_id: str, item_name: str) -> dic
     store_ids = [r["store_id"] for r in recommendations]
     store_names = {}
     try:
-        ids_filter = ",".join(['"{s}"' for s in store_ids[:20]])
+        ids_filter = ",".join([f'"{s}"' for s in store_ids[:20]])
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(
                 f"{SUPABASE_URL}/rest/v1/pos_inventory_stores"
