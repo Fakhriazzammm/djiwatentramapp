@@ -25,10 +25,8 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragStartEvent,
-  DragEndEvent,
-  DragOverEvent,
 } from "@dnd-kit/core";
+import type { DragStartEvent, DragEndEvent, DragOverEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 
 const DAY_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
