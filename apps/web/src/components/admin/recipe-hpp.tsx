@@ -23,7 +23,8 @@ import {
 	Trash2,
 	X,
 } from "lucide-react";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -232,7 +233,9 @@ function ComboboxCell({
 }) {
 	const [open, setOpen] = useState(false);
 	const [search, setSearch] = useState("");
-	const ref = useRef<HTMLDivElement>(null);
+	const triggerRef = useRef<HTMLDivElement>(null);
+	const dropdownRef = useRef<HTMLDivElement>(null);
+	const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
 	const filtered = useMemo(() => {
 		return inventoryItems.filter((item) => {
@@ -243,18 +246,50 @@ function ComboboxCell({
 
 	const selectedItem = inventoryItems.find((item) => item._id === value);
 
+	// Hitung posisi dropdown sebelum paint agar tidak flash di (0,0)
+	useLayoutEffect(() => {
+		if (!open || !triggerRef.current) {
+			setPos(null);
+			return;
+		}
+		const rect = triggerRef.current.getBoundingClientRect();
+		setPos({
+			left: rect.left,
+			top: rect.top + rect.height + 4,
+			width: Math.max(rect.width, 280),
+		});
+	}, [open]);
+
+	// Tutup saat klik di luar atau scroll
 	useEffect(() => {
+		if (!open) return;
 		function handleClickOutside(e: MouseEvent) {
-			if (ref.current && !ref.current.contains(e.target as Node)) {
+			if (
+				triggerRef.current &&
+				!triggerRef.current.contains(e.target as Node) &&
+				dropdownRef.current &&
+				!dropdownRef.current.contains(e.target as Node)
+			) {
 				setOpen(false);
+				setSearch("");
 			}
 		}
+		function handleScrollOrResize() {
+			setOpen(false);
+			setSearch("");
+		}
 		document.addEventListener("mousedown", handleClickOutside);
-		return () => document.removeEventListener("mousedown", handleClickOutside);
-	}, []);
+		window.addEventListener("scroll", handleScrollOrResize, true);
+		window.addEventListener("resize", handleScrollOrResize);
+		return () => {
+			document.removeEventListener("mousedown", handleClickOutside);
+			window.removeEventListener("scroll", handleScrollOrResize, true);
+			window.removeEventListener("resize", handleScrollOrResize);
+		};
+	}, [open]);
 
 	return (
-		<div ref={ref} className="relative">
+		<div ref={triggerRef}>
 			<div
 				className="flex cursor-pointer items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-xs hover:border-primary/50"
 				onClick={() => setOpen(!open)}
@@ -267,42 +302,55 @@ function ComboboxCell({
 				</span>
 				<ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
 			</div>
-			{open && (
-				<div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-auto rounded-lg border bg-popover p-1 shadow-lg">
-					<div className="sticky top-0 mb-1 bg-popover px-1 pt-1">
-						<Input
-							placeholder="Cari bahan..."
-							value={search}
-							onChange={(e) => setSearch(e.target.value)}
-							className="h-7 text-xs"
-							autoFocus
-						/>
-					</div>
-					{filtered.length === 0 ? (
-						<div className="px-2 py-3 text-center text-[10px] text-muted-foreground">
-							Tidak ada bahan ditemukan
+			{open &&
+				pos &&
+				createPortal(
+					<div
+						ref={dropdownRef}
+						style={{
+							position: "fixed",
+							left: pos.left,
+							top: pos.top,
+							width: pos.width,
+							zIndex: 9999,
+						}}
+						className="max-h-48 overflow-auto rounded-lg border bg-popover p-1 shadow-lg"
+					>
+						<div className="sticky top-0 mb-1 bg-popover px-1 pt-1">
+							<Input
+								placeholder="Cari bahan..."
+								value={search}
+								onChange={(e) => setSearch(e.target.value)}
+								className="h-7 text-xs"
+								autoFocus
+							/>
 						</div>
-					) : (
-						filtered.map((item) => (
-							<div
-								key={item._id}
-								className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent ${item._id === value ? "bg-accent font-medium" : ""}`}
-								onClick={() => {
-									onChange(item._id, item);
-									setOpen(false);
-									setSearch("");
-								}}
-							>
-								<Package className="h-3 w-3 shrink-0 text-muted-foreground" />
-								<span className="flex-1 truncate">{item.ingredientName}</span>
-								<span className="shrink-0 text-[10px] text-muted-foreground">
-									{getSmallestUnitLabel(item)}
-								</span>
+						{filtered.length === 0 ? (
+							<div className="px-2 py-3 text-center text-[10px] text-muted-foreground">
+								Tidak ada bahan ditemukan
 							</div>
-						))
-					)}
-				</div>
-			)}
+						) : (
+							filtered.map((item) => (
+								<div
+									key={item._id}
+									className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent ${item._id === value ? "bg-accent font-medium" : ""}`}
+									onClick={() => {
+										onChange(item._id, item);
+										setOpen(false);
+										setSearch("");
+									}}
+								>
+									<Package className="h-3 w-3 shrink-0 text-muted-foreground" />
+									<span className="flex-1 truncate">{item.ingredientName}</span>
+									<span className="shrink-0 text-[10px] text-muted-foreground">
+										{getSmallestUnitLabel(item)}
+									</span>
+								</div>
+							))
+						)}
+					</div>,
+					document.body
+				)}
 		</div>
 	);
 }
