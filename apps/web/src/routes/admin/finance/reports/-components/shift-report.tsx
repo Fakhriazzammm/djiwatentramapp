@@ -11,6 +11,7 @@ import {
 	Loader2,
 	Mail,
 	Pencil,
+	Plus,
 	ReceiptText,
 	Trash2,
 	TrendingUp,
@@ -30,6 +31,7 @@ import {
 	useHybridAdminUpdateShift,
 	useHybridSendShiftReportEmail,
 	useHybridSendShiftTableReportEmail,
+	useHybridStartShift,
 } from "@/hooks/use-hybrid-write-actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { DateRange } from "./period-selector";
@@ -225,10 +227,17 @@ export function ShiftReport({ range }: Props) {
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [confirmDeleteIds, setConfirmDeleteIds] = useState<string[] | null>(null);
 
+	const startShift = useHybridStartShift();
+
 	// Edit state
 	const [editingShift, setEditingShift] = useState<ShiftRow | null>(null);
 	const [editForm, setEditForm] = useState({ cashierName: "", teamMembers: "", shiftName: "", notes: "", startingCash: 0 });
 	const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+	// Create shift state
+	const [showCreateDialog, setShowCreateDialog] = useState(false);
+	const [isCreatingShift, setIsCreatingShift] = useState(false);
+	const [createForm, setCreateForm] = useState({ shiftName: "", cashierName: "", teamMembers: "", startingCash: 0, notes: "" });
 
 	const allIds = useMemo(() => (rows ?? []).map((r) => r.shiftId), [rows]);
 	const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
@@ -290,6 +299,30 @@ export function ShiftReport({ range }: Props) {
 			toast.error(err?.message ?? "Gagal menghapus shift");
 		} finally {
 			setIsDeleting(false);
+		}
+	}
+
+	async function handleCreateShift() {
+		if (!createForm.shiftName.trim()) {
+			toast.error("Nama shift wajib diisi");
+			return;
+		}
+		setIsCreatingShift(true);
+		try {
+			await startShift({
+				shiftName: createForm.shiftName.trim(),
+				cashierName: createForm.cashierName.trim() || null,
+				teamMembers: createForm.teamMembers.trim() || null,
+				startingCash: Number(createForm.startingCash ?? 0),
+				notes: createForm.notes.trim() || null,
+			});
+			toast.success("Shift baru berhasil dibuka");
+			setShowCreateDialog(false);
+			setCreateForm({ shiftName: "", cashierName: "", teamMembers: "", startingCash: 0, notes: "" });
+		} catch (err: any) {
+			toast.error(err?.message ?? "Gagal membuka shift baru");
+		} finally {
+			setIsCreatingShift(false);
 		}
 	}
 
@@ -454,7 +487,16 @@ export function ShiftReport({ range }: Props) {
 	return (
 		<>
 		<div className="space-y-5">
-			<div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+			<div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-between">
+				<button
+					type="button"
+					onClick={() => { setCreateForm({ shiftName: "", cashierName: "", teamMembers: "", startingCash: 0, notes: "" }); setShowCreateDialog(true); }}
+					className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 sm:min-w-[112px]"
+				>
+					<Plus className="h-3.5 w-3.5" />
+					Buka Shift
+				</button>
+				<div className="flex gap-2 col-span-2 sm:ml-auto sm:flex">
 				<button
 					type="button"
 					onClick={() => void handleExport("pdf")}
@@ -495,6 +537,7 @@ export function ShiftReport({ range }: Props) {
 					)}
 					Kirim Email
 				</button>
+			</div>
 			</div>
 
 			<div className="grid gap-3 md:grid-cols-4">
@@ -1103,6 +1146,76 @@ export function ShiftReport({ range }: Props) {
 						>
 							{isSavingEdit && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
 							Simpan
+						</button>
+					</div>
+				</div>
+			</div>
+		)}
+		{/* ── CREATE SHIFT DIALOG ── */}
+		{showCreateDialog && (
+			<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+				<div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl">
+					<div className="flex items-center justify-between border-b border-border px-5 py-4">
+						<div>
+							<h3 className="font-bold text-base text-foreground">Buka Shift Baru</h3>
+							<p className="text-xs text-muted-foreground mt-0.5">
+								Mulai sesi kasir baru
+							</p>
+						</div>
+						<button
+							type="button"
+							onClick={() => setShowCreateDialog(false)}
+							disabled={isCreatingShift}
+							className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground hover:bg-muted transition-colors"
+						>
+							<X className="h-4 w-4" />
+						</button>
+					</div>
+					<div className="p-5 space-y-4">
+						{[
+							{ key: "shiftName", label: "Nama Shift *", type: "text", placeholder: "Shift Pagi" },
+							{ key: "cashierName", label: "Kasir", type: "text", placeholder: "Nama kasir" },
+							{ key: "teamMembers", label: "Tim (pisah koma)", type: "text", placeholder: "Rian, Yusrina, ..." },
+							{ key: "startingCash", label: "Modal Awal (Rp)", type: "number", placeholder: "" },
+						].map(({ key, label, type, placeholder }) => (
+							<div key={key} className="space-y-1">
+								<label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</label>
+								<input
+									type={type}
+									value={(createForm as any)[key]}
+									onChange={(e) => setCreateForm((f) => ({ ...f, [key]: type === "number" ? Number(e.target.value) : e.target.value }))}
+									placeholder={placeholder}
+									className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+								/>
+							</div>
+						))}
+						<div className="space-y-1">
+							<label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Catatan</label>
+							<textarea
+								value={createForm.notes}
+								onChange={(e) => setCreateForm((f) => ({ ...f, notes: e.target.value }))}
+								rows={2}
+								className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+							/>
+						</div>
+					</div>
+					<div className="flex gap-2 justify-end border-t border-border px-5 py-4">
+						<button
+							type="button"
+							onClick={() => setShowCreateDialog(false)}
+							disabled={isCreatingShift}
+							className="rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+						>
+							Batal
+						</button>
+						<button
+							type="button"
+							onClick={() => void handleCreateShift()}
+							disabled={isCreatingShift}
+							className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+						>
+							{isCreatingShift && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+							Buka Shift
 						</button>
 					</div>
 				</div>
