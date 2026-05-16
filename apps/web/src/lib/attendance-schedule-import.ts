@@ -13,6 +13,8 @@ export type ParsedAttendanceImport = {
   staffColumns: ParsedStaffColumn[];
   rows: ParsedAttendanceRow[];
   warnings: ImportWarning[];
+  error?: string; // for AI error response
+  rawContent?: string; // raw AI response on failure
 };
 
 export type ParsedStaffColumn = {
@@ -82,7 +84,7 @@ export type ResolvedImportRow = {
   shiftName: string;
   startTime?: string;
   endTime?: string;
-  status: "scheduled" | "cancelled";
+  status: "scheduled" | "cancelled" | "off";
   note?: string;
   raw: Record<string, unknown>;
 };

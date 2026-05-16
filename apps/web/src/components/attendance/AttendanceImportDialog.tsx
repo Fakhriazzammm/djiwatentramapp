@@ -8,6 +8,16 @@ import { parseSpreadsheetMatrix, resolveAllStaff, resolveShift } from "@/lib/att
 import type { AttendanceSchedule } from "@/hooks/use-hybrid-attendance-schedules";
 import type { ShiftSchedule } from "@/lib/attendance-schedule-import";
 
+// PDF.js — dynamically imported for PDF rendering
+let pdfjsLib: any = null;
+async function getPdfjs() {
+  if (!pdfjsLib) {
+    pdfjsLib = await import("pdfjs-dist");
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+  }
+  return pdfjsLib;
+}
+
 type ImportStep = "upload" | "processing" | "preview" | "confirm";
 
 type ImportDialogProps = {
@@ -25,6 +35,28 @@ type ImportDialogProps = {
   month: number;
   year: number;
 };
+
+// ─── PDF to images ──────────────────────────────────────────
+async function renderPdfAsImages(file: File, maxPages = 3): Promise<string[]> {
+  const pdfjs = await getPdfjs();
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+  const pagesToRender = Math.min(pdf.numPages, maxPages);
+  const images: string[] = [];
+
+  for (let i = 1; i <= pagesToRender; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 2 });
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext("2d")!;
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    const base64 = canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
+    images.push(base64);
+  }
+  return images;
+}
 
 export default function AttendanceImportDialog({
   open,
@@ -95,6 +127,49 @@ export default function AttendanceImportDialog({
         const staffNames = parsed.staffColumns.map((c) => c.rawName);
         setMappings(resolveAllStaff(staffNames, liveStaff));
         setStep("preview");
+      } else if (ext === "pdf") {
+        // PDF: render pages as images, send to AI parser
+        try {
+          const images = await renderPdfAsImages(file);
+          if (images.length === 0) {
+            toast.error("Tidak dapat membaca halaman PDF");
+            setStep("upload");
+            return;
+          }
+          const supabase = createClient();
+          const { data, error } = await supabase.functions.invoke("yumi-ai", {
+            body: {
+              action: "parseAttendanceSchedule",
+              fileType: "pdf-image",
+              images: images.slice(0, 3),
+              monthHint: month,
+              yearHint: year,
+              staffHints: liveStaff.map((u) => ({ name: u.name, roleName: u.roleName })),
+              shiftHints: shiftTemplates.map((s) => ({ name: s.name, openTime: s.openTime, closeTime: s.closeTime })),
+            },
+          });
+
+          if (error) {
+            toast.error("Gagal memproses PDF: " + error.message);
+            setStep("upload");
+            return;
+          }
+
+          const parsed = data as ParsedAttendanceImport;
+          if (parsed.error) {
+            toast.error("AI gagal parse PDF: " + (parsed.error as string));
+            setStep("upload");
+            return;
+          }
+
+          setImportData(parsed);
+          const staffNames = parsed.staffColumns?.map((c: any) => c.rawName) ?? [];
+          setMappings(resolveAllStaff(staffNames, liveStaff));
+          setStep("preview");
+        } catch (err) {
+          toast.error("Gagal membaca PDF: " + (err instanceof Error ? err.message : "Unknown"));
+          setStep("upload");
+        }
       } else if (["png", "jpg", "jpeg"].includes(ext ?? "")) {
         // AI parse via edge function
         const base64 = await fileToBase64(file);
@@ -350,7 +425,7 @@ export default function AttendanceImportDialog({
                       <FileSpreadsheet className="h-3 w-3" /> .xlsx / .csv
                     </span>
                     <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-1">
-                      <Image className="h-3 w-3" /> .png / .jpg
+                      <Image className="h-3 w-3" /> .png / .jpg / .pdf
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
@@ -366,7 +441,7 @@ export default function AttendanceImportDialog({
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept=".xlsx,.csv,.png,.jpg,.jpeg"
+                      accept=".xlsx,.csv,.png,.jpg,.jpeg,.pdf"
                       className="hidden"
                       onChange={handleFileChange}
                     />
