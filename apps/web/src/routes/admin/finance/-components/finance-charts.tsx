@@ -57,9 +57,9 @@ export function PeriodComparisonCards() {
 
 	if (!comparison) {
 		return (
-			<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+			<div className="grid grid-cols-1 gap-2 md:grid-cols-3">
 				{[1, 2, 3].map((i) => (
-					<Skeleton key={i} className="h-24 rounded-xl" />
+					<Skeleton key={i} className="h-16 rounded-lg" />
 				))}
 			</div>
 		);
@@ -110,19 +110,19 @@ export function PeriodComparisonCards() {
 				return (
 					<div
 						key={item.label}
-						className={`rounded-2xl border ${item.border} ${item.bg} p-3.5 flex flex-col justify-between transition-all hover:bg-white dark:hover:bg-slate-900 group`}
+						className={`rounded-lg border ${item.border} ${item.bg} p-2 flex flex-col justify-between transition-colors group`}
 					>
-						<div className="flex items-center justify-between mb-3">
-							<div className="flex items-center gap-2">
-								<div className={`p-1.5 rounded-lg ${item.bg} text-foreground/70 group-hover:bg-primary/10 transition-colors`}>
+						<div className="flex items-center justify-between mb-1.5">
+							<div className="flex items-center gap-1.5">
+								<div className={`p-1 rounded ${item.bg} text-foreground/70`}>
 									{item.icon}
 								</div>
-								<span className="text-muted-foreground text-[11px] font-bold uppercase tracking-tight">
+								<span className="text-muted-foreground text-[9px] font-bold uppercase tracking-tight">
 									{item.label}
 								</span>
 							</div>
 							<span
-								className={`flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+								className={`flex items-center gap-0.5 rounded px-1 py-0.5 text-[8px] font-bold ${
 									isPositive
 										? "bg-emerald-500/15 text-emerald-600"
 										: "bg-rose-500/15 text-rose-600"
@@ -137,15 +137,15 @@ export function PeriodComparisonCards() {
 							</span>
 						</div>
 						
-						<div className="space-y-1">
-							<p className={`font-bold text-lg leading-none ${isPositive ? item.colorUp : item.colorDown}`}>
+						<div className="space-y-0.5">
+							<p className={`font-bold text-xs leading-none ${isPositive ? item.colorUp : item.colorDown}`}>
 								{formatFull(item.curr)}
 							</p>
-							<div className="flex items-baseline justify-between gap-2 overflow-hidden">
-								<span className="text-muted-foreground text-[10px] font-medium truncate">
+							<div className="flex items-baseline justify-between gap-1 overflow-hidden">
+								<span className="text-muted-foreground text-[8px] font-medium truncate">
 									Lalu: {formatFull(item.prev)}
 								</span>
-								<span className="text-slate-400 text-[9px] font-medium shrink-0 italic">
+								<span className="text-slate-400 text-[7px] font-medium shrink-0 italic">
 									{new Date().getMonth() === 0 ? "Des" : "Prev"} vs Curr
 								</span>
 							</div>
@@ -171,7 +171,7 @@ export function TrendChart() {
 
 	if (!data) {
 		return (
-			<div className="h-64 animate-pulse rounded-xl bg-muted/50" />
+			<div className="h-44 animate-pulse rounded-lg bg-muted/50" />
 		);
 	}
 
@@ -190,18 +190,17 @@ export function TrendChart() {
 	};
 
 	return (
-		<div className="rounded-xl border border-border bg-card p-5">
-			<div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-				<h3 className="font-bold text-base">Tren Keuangan</h3>
-				<div className="flex gap-1.5">
-					{/* Period Toggle */}
-					<div className="flex rounded-lg border border-border overflow-hidden text-xs">
+		<div className="rounded-lg border border-border bg-card p-2.5">
+			<div className="mb-2 flex items-center justify-between">
+				<h3 className="font-bold text-xs">Tren Keuangan</h3>
+				<div className="flex gap-1">
+					<div className="flex rounded border border-border overflow-hidden text-[9px]">
 						{(["monthly", "weekly", "daily"] as const).map((m) => (
 							<button
 								key={m}
 								type="button"
 								onClick={() => setMode(m)}
-								className={`px-3 py-1.5 font-medium transition-colors ${
+								className={`px-1.5 py-0.5 font-medium transition-colors ${
 									mode === m
 										? "bg-primary text-primary-foreground"
 										: "text-muted-foreground hover:bg-muted"
@@ -211,14 +210,13 @@ export function TrendChart() {
 							</button>
 						))}
 					</div>
-					{/* Chart Type Toggle */}
-					<div className="flex rounded-lg border border-border overflow-hidden text-xs">
+					<div className="flex rounded border border-border overflow-hidden text-[9px]">
 						{(["bar", "line"] as const).map((t) => (
 							<button
 								key={t}
 								type="button"
 								onClick={() => setChartType(t)}
-								className={`px-3 py-1.5 font-medium transition-colors ${
+								className={`px-1.5 py-0.5 font-medium transition-colors ${
 									chartType === t
 										? "bg-primary text-primary-foreground"
 										: "text-muted-foreground hover:bg-muted"
@@ -231,7 +229,7 @@ export function TrendChart() {
 				</div>
 			</div>
 
-			<ResponsiveContainer width="100%" height={220}>
+			<ResponsiveContainer width="100%" height={180}>
 				{chartType === "bar" ? (
 					<BarChart data={data} barGap={4} barCategoryGap="25%">
 						<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />

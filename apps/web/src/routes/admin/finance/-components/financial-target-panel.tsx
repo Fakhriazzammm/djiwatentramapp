@@ -230,9 +230,9 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 
 	if (progress === undefined) {
 		return (
-			<div className="rounded-xl border border-border bg-card p-6 animate-pulse">
-				<div className="h-4 w-32 rounded bg-muted/50 mb-3" />
-				<div className="h-20 w-full rounded bg-muted/50" />
+			<div className={`rounded-xl border border-border bg-card animate-pulse ${compact ? "p-2.5" : "p-6"}`}>
+				<div className={`rounded bg-muted/50 mb-2 ${compact ? "h-3 w-24" : "h-4 w-32"}`} />
+				<div className={`w-full rounded bg-muted/50 ${compact ? "h-12" : "h-20"}`} />
 			</div>
 		);
 	}
@@ -283,10 +283,10 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 
 	return (
 		<>
-			<div className="rounded-xl border border-border bg-card p-5">
-				<div className="mb-4 flex items-center justify-between">
+			<div className={`rounded-xl border border-border bg-card ${compact ? "p-2.5" : "p-5"}`}>
+				<div className={`flex items-center justify-between ${compact ? "mb-2" : "mb-4"}`}>
 					<div className="flex items-center gap-2">
-						<div className={`rounded-lg p-1.5 ${isOverTarget ? "bg-green-500/10" : "bg-primary/10"}`}>
+						<div className={`rounded-md ${compact ? "p-1" : "p-1.5"} ${isOverTarget ? "bg-green-500/10" : "bg-primary/10"}`}>
 							{isOverTarget ? (
 								<CheckCircle2 className="h-4 w-4 text-green-500" />
 							) : (
@@ -294,16 +294,16 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 							)}
 						</div>
 						<div>
-							<h3 className="font-bold text-base">Target Keuangan</h3>
-							<p className="text-muted-foreground text-[11px]">{progress.monthLabel}</p>
+							<h3 className={`font-bold ${compact ? "text-xs" : "text-base"}`}>Target Keuangan</h3>
+							<p className={`text-muted-foreground ${compact ? "text-[9px]" : "text-[11px]"}`}>{progress.monthLabel}</p>
 						</div>
 					</div>
 					<button
 						onClick={() => setShowModal(true)}
-						className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+						className={`flex items-center gap-1 rounded-lg border border-border ${compact ? "px-1.5 py-1" : "px-2.5 py-1.5"} text-[9px] font-medium text-muted-foreground hover:bg-muted`}
 						type="button"
 					>
-						<Edit3 className="h-3 w-3" />
+						<Edit3 className="h-2.5 w-2.5" />
 						Ubah
 					</button>
 				</div>
@@ -312,7 +312,7 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 				<div className="flex items-center gap-5">
 					{/* Circular */}
 					<div className="relative flex-shrink-0">
-						<CircularProgress pct={pct} size={88} />
+						<CircularProgress pct={pct} size={compact ? 64 : 88} />
 						<div className="absolute inset-0 flex flex-col items-center justify-center">
 							<span className="font-bold text-lg leading-none">{Math.round(pct)}%</span>
 							<span className="text-[9px] text-muted-foreground">tercapai</span>
@@ -322,21 +322,21 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 					{/* Stats */}
 					<div className="flex-1 space-y-2">
 						<div>
-							<p className="text-muted-foreground text-[10px] uppercase tracking-wide">
+							<p className={`text-muted-foreground uppercase tracking-wide ${compact ? "text-[8px]" : "text-[10px]"}`}>
 								Omzet Saat Ini
 							</p>
-							<p className="font-bold text-lg text-green-600">
+							<p className={`font-bold ${compact ? "text-sm" : "text-lg"} text-green-600`}>
 								{formatCurrency(progress.currentIncome)}
 							</p>
 						</div>
-						<div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-1.5">
+						<div className={`flex items-center justify-between rounded-lg bg-muted/50 ${compact ? "px-2 py-1" : "px-3 py-1.5"}`}>
 							<span className="text-muted-foreground text-xs">Target</span>
 							<span className="font-semibold text-xs">
 								{formatCurrency(progress.targetRevenue)}
 							</span>
 						</div>
 						{!isOverTarget && (
-							<div className="flex items-center justify-between rounded-lg bg-orange-500/10 px-3 py-1.5">
+							<div className={`flex items-center justify-between rounded-lg bg-orange-500/10 ${compact ? "px-2 py-1" : "px-3 py-1.5"}`}>
 								<span className="text-orange-600 text-xs">Sisa</span>
 								<span className="font-bold text-orange-600 text-xs">
 									{formatCurrency(progress.remaining)}
@@ -348,7 +348,7 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 
 				{/* Progress Bar */}
 				<div className="mt-4">
-					<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+					<div className={`w-full overflow-hidden rounded-full bg-muted ${compact ? "h-1.5" : "h-2"}`}>
 						<motion.div
 							className={`h-full rounded-full ${isOverTarget ? "bg-green-500" : pct >= 70 ? "bg-blue-500" : pct >= 40 ? "bg-amber-500" : "bg-red-500"}`}
 							initial={{ width: 0 }}
@@ -362,8 +362,8 @@ export function FinancialTargetPanel({ compact = false }: { compact?: boolean })
 				{!compact && (
 					<div className="mt-3 grid grid-cols-3 gap-2 border-border/50 border-t pt-3">
 						<div className="text-center">
-							<p className="font-semibold text-sm">{progress.daysRemaining}</p>
-							<p className="text-muted-foreground text-[10px]">Hari tersisa</p>
+							<p className={`font-semibold ${compact ? "text-[11px]" : "text-sm"}`}>{progress.daysRemaining}</p>
+							<p className={`text-muted-foreground ${compact ? "text-[8px]" : "text-[10px]"}`}>Hari tersisa</p>
 						</div>
 						<div className="text-center">
 							<p className="font-semibold text-sm">
