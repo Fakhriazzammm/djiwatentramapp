@@ -668,6 +668,42 @@ function AttendanceJadwalPage() {
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   const [isCtrlHeld, setIsCtrlHeld] = useState(false);
 
+  const month = currentDate.getMonth() + 1;
+  const year = currentDate.getFullYear();
+
+  const { data: schedulesByDate, isLoading } = useHybridAttendanceSchedules(
+    month,
+    year,
+    refreshTrigger
+  );
+  const users = useHybridStaffUsers(refreshTrigger);
+  const siteSettings = useHybridSiteSettings();
+  const shiftTemplates =
+    siteSettings?.shiftSettings?.shiftSchedules ?? [];
+
+  const { create } = useHybridCreateAttendanceSchedule();
+  const { update } = useHybridUpdateAttendanceSchedule();
+  const { remove } = useHybridDeleteAttendanceSchedule();
+  const { bulkCreate } = useHybridBulkCreateAttendanceSchedules();
+
+  const filteredUsers = (users ?? [])
+    .filter((u: any) => u.isActive !== false)
+    .map((u: any) => ({
+      _id: u._id,
+      name: u.name ?? "",
+      roleName: u.roleName ?? "-",
+    }));
+
+  const refresh = () => setRefreshTrigger((n) => n + 1);
+
+  const findScheduleById = (id: string, grouped: SchedulesByDate): AttendanceSchedule | null => {
+    for (const schedules of Object.values(grouped)) {
+      const found = schedules.find(s => s._id === id);
+      if (found) return found;
+    }
+    return null;
+  };
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => { if (e.key === "Control") setIsCtrlHeld(true); };
     const onKeyUp = (e: KeyboardEvent) => { if (e.key === "Control") setIsCtrlHeld(false); };
@@ -717,36 +753,6 @@ function AttendanceJadwalPage() {
       toast.success("Jadwal dipindahkan");
     }
   }, [schedulesByDate, isCtrlHeld]);
-
-  const findScheduleById = (id: string, grouped: SchedulesByDate): AttendanceSchedule | null => {
-    for (const schedules of Object.values(grouped)) {
-      const found = schedules.find(s => s._id === id);
-      if (found) return found;
-    }
-    return null;
-  };
-
-  const month = currentDate.getMonth() + 1;
-  const year = currentDate.getFullYear();
-
-  const { data: schedulesByDate, isLoading } = useHybridAttendanceSchedules(
-    month,
-    year,
-    refreshTrigger
-  );
-  const { data: users } = useHybridStaffUsers(refreshTrigger);
-  const siteSettings = useHybridSiteSettings();
-  const shiftTemplates =
-    siteSettings?.shiftSettings?.shiftSchedules ?? [];
-
-  const { create } = useHybridCreateAttendanceSchedule();
-  const { update } = useHybridUpdateAttendanceSchedule();
-  const { remove } = useHybridDeleteAttendanceSchedule();
-  const { bulkCreate } = useHybridBulkCreateAttendanceSchedules();
-
-  const filteredUsers = (users ?? []).filter((u: any) => u.isActive !== false);
-
-  const refresh = () => setRefreshTrigger((n) => n + 1);
 
   // Calendar navigation
   const monthStart = startOfMonth(currentDate);

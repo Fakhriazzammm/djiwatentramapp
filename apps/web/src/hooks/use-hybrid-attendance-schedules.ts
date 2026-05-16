@@ -74,11 +74,15 @@ export function useHybridAttendanceSchedules(
   year: number,
   refreshTrigger?: number
 ) {
-  return useSupabaseLiveValue(
+  const data = useSupabaseLiveValue(
     `attendance-schedules-${year}-${month}`,
     () => fetchAttendanceSchedules(month, year),
     [month, year, refreshTrigger]
   );
+  return {
+    data,
+    isLoading: data === undefined,
+  };
 }
 
 // ─── Create Single ──────────────────────────────────────────
