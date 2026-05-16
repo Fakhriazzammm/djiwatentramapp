@@ -37,7 +37,7 @@ import type { ResolvedImportRow, ImportOptions } from "@/lib/attendance-schedule
 const DAY_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 const FULL_DAY_NAMES = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 
-type CalendarView = "month";
+type ScheduleViewMode = "calendar" | "matrix";
 
 function formatDateStr(d: Date): string {
   return format(d, "yyyy-MM-dd");
@@ -215,10 +215,157 @@ function DayColumn({
   );
 }
 
+// ─── Roster Matrix ──────────────────────────────────────────
+
+function getRosterLabel(schedule?: AttendanceSchedule): string {
+  if (!schedule) return "-";
+  const shift = schedule.shiftName.toLowerCase();
+  if (schedule.status === "off" || shift === "off") return "OFF";
+  if (shift.includes("pagi")) return "PAGI";
+  if (shift.includes("sore")) return "SORE";
+  if (shift.includes("general")) return "GENERAL";
+  return schedule.shiftName.toUpperCase();
+}
+
+function getRosterCellClass(schedule?: AttendanceSchedule): string {
+  const label = getRosterLabel(schedule);
+  if (label === "PAGI") return "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-200";
+  if (label === "SORE") return "bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-950/50 dark:text-sky-200";
+  if (label === "OFF") return "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-200";
+  if (label === "GENERAL") return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-200";
+  return "bg-muted text-muted-foreground border-border";
+}
+
+function RosterMatrix({
+  monthDays,
+  schedulesByDate,
+  users,
+  onEditSchedule,
+}: {
+  monthDays: Date[];
+  schedulesByDate: SchedulesByDate;
+  users: { _id: string; name: string; roleName: string }[];
+  onEditSchedule: (s: AttendanceSchedule) => void;
+}) {
+  const scheduledUserIds = new Set<string>();
+  for (const schedules of Object.values(schedulesByDate)) {
+    for (const schedule of schedules) scheduledUserIds.add(schedule.userId);
+  }
+
+  const visibleUsers = users.filter((user) => scheduledUserIds.has(user._id));
+  const missingUsers = Array.from(scheduledUserIds)
+    .filter((userId) => !visibleUsers.some((user) => user._id === userId))
+    .map((userId) => {
+      const schedule = Object.values(schedulesByDate).flat().find((s) => s.userId === userId);
+      return {
+        _id: userId,
+        name: (schedule?.userName ?? "Karyawan").trim(),
+        roleName: (schedule?.roleName ?? "-").trim(),
+      };
+    });
+  const matrixUsers = [...visibleUsers, ...missingUsers];
+
+  if (matrixUsers.length === 0) {
+    return null;
+  }
+
+  const columnCount = matrixUsers.length + 3;
+
+  return (
+    <div className="overflow-x-auto rounded-lg border bg-card">
+      <div
+        className="grid min-w-[980px] text-[10px] md:text-[11px]"
+        style={{ gridTemplateColumns: `76px 64px 92px repeat(${matrixUsers.length}, minmax(92px, 1fr))` }}
+      >
+        <div className="sticky left-0 z-20 border-b border-r bg-muted/80 px-2 py-2 text-center font-semibold">
+          Minggu
+        </div>
+        <div className="border-b border-r bg-muted/80 px-2 py-2 text-center font-semibold">
+          Hari
+        </div>
+        <div className="border-b border-r bg-muted/80 px-2 py-2 text-center font-semibold">
+          Tanggal
+        </div>
+        {matrixUsers.map((user) => (
+          <div key={user._id} className="border-b border-r bg-muted/80 px-2 py-2 text-center">
+            <div className="truncate font-semibold text-foreground" title={user.name}>
+              {user.name}
+            </div>
+            <div className="truncate text-[9px] text-muted-foreground" title={user.roleName}>
+              {user.roleName}
+            </div>
+          </div>
+        ))}
+
+        {monthDays.map((day, index) => {
+          const dateStr = formatDateStr(day);
+          const daySchedules = schedulesByDate[dateStr] ?? [];
+          const isWeekStart = index % 7 === 0;
+          const weekNumber = Math.floor(index / 7) + 1;
+
+          return (
+            <div key={dateStr} className="contents">
+              <div
+                className={cn(
+                  "sticky left-0 z-10 border-r bg-background px-2 py-1.5 text-center font-semibold",
+                  isWeekStart && "border-t-2 border-t-slate-900/60"
+                )}
+              >
+                {isWeekStart ? `Minggu ${weekNumber}` : ""}
+              </div>
+              <div
+                className={cn(
+                  "border-r bg-background px-2 py-1.5 text-center font-medium",
+                  isWeekStart && "border-t-2 border-t-slate-900/60"
+                )}
+              >
+                {FULL_DAY_NAMES[getDay(day)]}
+              </div>
+              <div
+                className={cn(
+                  "border-r bg-background px-2 py-1.5 text-center text-muted-foreground",
+                  isWeekStart && "border-t-2 border-t-slate-900/60"
+                )}
+              >
+                {format(day, "d MMM", { locale: id })}
+              </div>
+              {matrixUsers.map((user) => {
+                const schedule = daySchedules.find((item) => item.userId === user._id);
+                return (
+                  <button
+                    key={`${dateStr}-${user._id}`}
+                    type="button"
+                    className={cn(
+                      "min-h-7 border-r px-1 py-1 text-center font-semibold transition hover:ring-2 hover:ring-primary/30",
+                      getRosterCellClass(schedule),
+                      isWeekStart && "border-t-2 border-t-slate-900/60"
+                    )}
+                    onClick={() => schedule && onEditSchedule(schedule)}
+                    disabled={!schedule}
+                    title={schedule ? `${user.name} • ${schedule.shiftName}` : `${user.name} belum dijadwalkan`}
+                  >
+                    {getRosterLabel(schedule)}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
+
+        <div className="col-span-full border-t bg-muted/40 px-2 py-2 text-[10px] text-muted-foreground">
+          {columnCount} kolom • Klik sel jadwal untuk edit. Warna: PAGI hijau, SORE biru, OFF merah, GENERAL abu-abu.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── CalendarHeader ──────────────────────────────────────────
 
 function CalendarHeader({
   currentDate,
+  viewMode,
+  onViewModeChange,
   onPrev,
   onNext,
   onToday,
@@ -227,6 +374,8 @@ function CalendarHeader({
   onExport,
 }: {
   currentDate: Date;
+  viewMode: ScheduleViewMode;
+  onViewModeChange: (mode: ScheduleViewMode) => void;
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
@@ -251,6 +400,24 @@ function CalendarHeader({
         <Button className="h-8 px-2 text-xs" variant="outline" size="sm" onClick={onToday}>
           Hari Ini
         </Button>
+        <div className="flex items-center rounded-md border bg-background p-0.5">
+          <Button
+            className="h-7 px-2 text-xs"
+            variant={viewMode === "calendar" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => onViewModeChange("calendar")}
+          >
+            Kalender
+          </Button>
+          <Button
+            className="h-7 px-2 text-xs"
+            variant={viewMode === "matrix" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => onViewModeChange("matrix")}
+          >
+            Matrix
+          </Button>
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         <Button className="h-8 px-2 text-xs" variant="default" size="sm" onClick={onAdd}>
@@ -590,6 +757,7 @@ function AttendanceJadwalPage() {
   const [panelDefaultDate, setPanelDefaultDate] = useState<string | undefined>();
   const [importOpen, setImportOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ScheduleViewMode>("matrix");
 
   // DnD state
   const [activeDragSchedule, setActiveDragSchedule] = useState<AttendanceSchedule | null>(null);
@@ -618,8 +786,8 @@ function AttendanceJadwalPage() {
     .filter((u: any) => u.isActive !== false)
     .map((u: any) => ({
       _id: u._id,
-      name: u.name ?? "",
-      roleName: u.roleName ?? "-",
+      name: (u.name ?? "").trim(),
+      roleName: (u.roleName ?? "-").trim(),
     }));
 
   const refresh = () => setRefreshTrigger((n) => n + 1);
@@ -688,6 +856,7 @@ function AttendanceJadwalPage() {
   const calStart = startOfWeek(monthStart);
   const calEnd = endOfWeek(monthEnd);
   const days = eachDayOfInterval({ start: calStart, end: calEnd });
+  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
   const handlePrev = () => setCurrentDate((d) => subMonths(d, 1));
   const handleNext = () => setCurrentDate((d) => addMonths(d, 1));
@@ -775,6 +944,8 @@ function AttendanceJadwalPage() {
       {/* Calendar Header */}
       <CalendarHeader
         currentDate={currentDate}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
         onPrev={handlePrev}
         onNext={handleNext}
         onToday={handleToday}
@@ -783,16 +954,27 @@ function AttendanceJadwalPage() {
         onExport={() => setExportOpen(true)}
       />
 
-      {/* Calendar Grid */}
+      {/* Jadwal Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-7 gap-1.5">
-          {Array.from({ length: 35 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-20 animate-pulse rounded-md bg-muted"
-            />
-          ))}
-        </div>
+        viewMode === "matrix" ? (
+          <div className="h-72 animate-pulse rounded-lg border bg-muted" />
+        ) : (
+          <div className="grid grid-cols-7 gap-1.5">
+            {Array.from({ length: 35 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-20 animate-pulse rounded-md bg-muted"
+              />
+            ))}
+          </div>
+        )
+      ) : viewMode === "matrix" ? (
+        <RosterMatrix
+          monthDays={monthDays}
+          schedulesByDate={schedulesByDate ?? {}}
+          users={filteredUsers}
+          onEditSchedule={handleEdit}
+        />
       ) : (
         <DndContext
           sensors={sensors}
