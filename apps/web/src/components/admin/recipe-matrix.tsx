@@ -682,10 +682,7 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 						)}
 					</tbody>
 				</table>
-			</div>
-
-\t\t\t{/* ── Legend ── */}
-\t\t\t<div className="flex items-center gap-4 px-4 py-1.5 border-t border-border/30 bg-muted/20 shrink-0 text-[9px] text-muted-foreground">
+\t\t\t</div>{/* ── Legend ── */}<div className="flex items-center gap-4 px-4 py-1.5 border-t border-border/30 bg-muted/20 shrink-0 text-[9px] text-muted-foreground">
 				<span className="flex items-center gap-1">
 					<span className="inline-block w-2.5 h-2.5 rounded bg-primary/[0.04] border border-border/30" />
 					Ada resep
