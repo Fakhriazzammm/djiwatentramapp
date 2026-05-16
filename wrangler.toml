@@ -1,3 +1,4 @@
+name = "djiwatentramapp"
 # Cloudflare Pages — https://pages.cloudflare.com
 # Build: apps/web (.vercel.json) bukan untuk Cloudflare
 # Output: apps/web/dist
