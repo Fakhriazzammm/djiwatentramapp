@@ -1112,8 +1112,8 @@ export function RecipeHppPage() {
 				</CardContent>
 			</Card>
 
-			{/* ── Loading / Empty State ── */}
-			{!selectedProduct && (
+\t\t\t{/* ── Loading / Empty State ── */}
+\t\t\t{!selectedProduct && !selectedBaseRecipe && (
 				<Card className="border-dashed">
 					<CardContent className="flex flex-col items-center justify-center py-12">
 						{loading ? (
@@ -1159,8 +1159,8 @@ export function RecipeHppPage() {
 				</Card>
 			)}
 
-			{/* ── Ingredients Table ── */}
-			{selectedProduct && (
+\t\t\t{/* ── Ingredients Table ── */}
+\t\t\t{(selectedProduct || selectedBaseRecipe) && (
 				<Card className="border-border/50">
 					<CardHeader className="border-b border-border/50 px-4 py-3">
 						<div className="flex items-center justify-between">
@@ -1204,7 +1204,7 @@ export function RecipeHppPage() {
 									<Sparkles className="mr-1 h-3 w-3" />
 									{aiAnalyzing ? "Menganalisis..." : "AI Analisis"}
 								</Button>
-								{selectedProduct && (
+\t\t\t\t\t\t\t\t{(selectedProduct || selectedBaseRecipe) && (
 									<Button
 										size="sm"
 										className="h-7 text-[10px]"
@@ -1413,8 +1413,8 @@ export function RecipeHppPage() {
 				</Card>
 			)}
 
-			{/* ── Summary Bar ── */}
-			{selectedProduct && form.ingredients.some((ing) => ing.ingredientName) && (
+\t\t\t{/* ── Summary Bar ── */}
+\t\t\t{(selectedProduct || selectedBaseRecipe) && form.ingredients.some((ing) => ing.ingredientName) && (
 				<Card className="border-primary/20 bg-primary/[0.02]">
 					<CardContent className="p-4">
 			<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-7">
@@ -1491,8 +1491,8 @@ export function RecipeHppPage() {
 				</Card>
 			)}
 
-			{/* ── AI Insights Panel ── */}
-			{selectedProduct && (
+\t\t\t{/* ── AI Insights Panel ── */}
+\t\t\t{(selectedProduct || selectedBaseRecipe) && (
 				<Card className="border-emerald-200/50">
 									<button
 										className="flex w-full items-center gap-2 px-4 py-3 text-left"
@@ -1558,8 +1558,8 @@ export function RecipeHppPage() {
 								</Card>
 			)}
 
-			{/* ── Purchasing Sync Panel ── */}
-			{selectedProduct && (
+\t\t\t{/* ── Purchasing Sync Panel ── */}
+\t\t\t{(selectedProduct || selectedBaseRecipe) && (
 				<Card className="border-blue-200/50">
 									<button
 										className="flex w-full items-center gap-2 px-4 py-3 text-left"
