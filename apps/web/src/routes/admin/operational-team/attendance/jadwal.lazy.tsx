@@ -83,7 +83,7 @@ function ShiftCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative cursor-grab rounded-md border border-border/60 bg-card px-2 py-1 text-xs transition-all",
+        "group relative cursor-grab rounded border border-border/60 bg-card px-1.5 py-1 text-[10px] leading-tight transition-all",
         "hover:border-primary/40 hover:shadow-sm",
         isDragging && "shadow-lg"
       )}
@@ -92,33 +92,33 @@ function ShiftCard({
       {...attributes}
     >
       <div className="flex items-center gap-1">
-        <span className="inline-block rounded bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
+        <span className="inline-block max-w-[48px] truncate rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground">
           {schedule.roleName}
         </span>
         <span className="flex-1 truncate font-medium text-foreground">
           {schedule.userName}
         </span>
       </div>
-      <div className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
-        <Clock className="h-3 w-3 shrink-0" />
-        <span>{schedule.shiftName}</span>
+      <div className="mt-0.5 flex items-center gap-0.5 truncate text-[9px] text-muted-foreground">
+        <Clock className="h-2.5 w-2.5 shrink-0" />
+        <span className="truncate">{schedule.shiftName}</span>
         {schedule.startTime && (
-          <span>
+          <span className="shrink-0">
             ({schedule.startTime}-{schedule.endTime ?? "?"})
           </span>
         )}
       </div>
-      <div className="mt-0.5 flex items-center justify-between">
+      <div className="mt-0.5 flex items-center justify-between gap-1">
         <span
           className={cn(
-            "inline-block rounded-full px-1.5 py-0.5 text-[9px] font-medium",
+            "inline-block truncate rounded-full px-1 py-0.5 text-[8px] font-medium",
             statusColors[schedule.status]
           )}
         >
           ● {schedule.status}
         </span>
         <button
-          className="hidden rounded p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive group-hover:block"
+          className="hidden shrink-0 rounded p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive group-hover:block"
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
@@ -163,16 +163,16 @@ function DayColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex min-h-[100px] flex-col gap-0.5 rounded-lg border border-border/50 p-1.5 transition-colors",
+        "group flex min-h-[76px] flex-col gap-0.5 rounded-md border border-border/50 bg-background/70 p-1 transition-colors sm:min-h-[86px] md:min-h-[92px]",
         !isCurrentMonth && "opacity-40",
         isOver && "bg-primary/5 ring-2 ring-primary/30",
         isDragOver && !isOver && "bg-muted/50"
       )}
     >
-      <div className="mb-1 flex items-center justify-between">
+      <div className="mb-0.5 flex items-center justify-between">
         <span
           className={cn(
-            "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium",
+            "inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-medium",
             isToday && "bg-primary text-primary-foreground"
           )}
         >
@@ -183,11 +183,11 @@ function DayColumn({
           onClick={() => onAdd(dateStr)}
           title="Tambah jadwal"
         >
-          <Plus className="h-3 w-3" />
+          <Plus className="h-2.5 w-2.5" />
         </button>
       </div>
-      <div className="flex flex-col gap-0.5">
-        {schedules.map((s) => (
+      <div className="flex flex-col gap-0.5 overflow-hidden">
+        {schedules.slice(0, 2).map((s) => (
           <ShiftCard
             key={s._id}
             schedule={s}
@@ -195,6 +195,15 @@ function DayColumn({
             onDelete={() => onDeleteSchedule(s._id)}
           />
         ))}
+        {schedules.length > 2 && (
+          <button
+            className="rounded bg-muted/70 px-1 py-0.5 text-left text-[9px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+            onClick={() => onAdd(dateStr)}
+            title="Lihat/tambah jadwal"
+          >
+            +{schedules.length - 2} jadwal
+          </button>
+        )}
       </div>
     </div>
   );
@@ -220,32 +229,32 @@ function CalendarHeader({
   onExport: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="flex items-center gap-2">
-        <h2 className="font-bold text-lg tracking-tight md:text-2xl">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <h2 className="mr-1 font-semibold text-base tracking-tight md:text-xl">
           {format(currentDate, "MMMM yyyy", { locale: id })}
         </h2>
-        <div className="flex items-center">
-          <Button variant="ghost" size="icon" onClick={onPrev}>
-            <ChevronLeft className="h-4 w-4" />
+        <div className="flex items-center rounded-md border bg-background">
+          <Button className="h-8 w-8" variant="ghost" size="icon" onClick={onPrev}>
+            <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={onNext}>
-            <ChevronRight className="h-4 w-4" />
+          <Button className="h-8 w-8" variant="ghost" size="icon" onClick={onNext}>
+            <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         </div>
-        <Button variant="outline" size="sm" onClick={onToday}>
+        <Button className="h-8 px-2 text-xs" variant="outline" size="sm" onClick={onToday}>
           Hari Ini
         </Button>
       </div>
-      <div className="flex items-center gap-2">
-        <Button variant="default" size="sm" onClick={onAdd}>
-          <CalendarPlus className="mr-1 h-4 w-4" /> Tambah
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Button className="h-8 px-2 text-xs" variant="default" size="sm" onClick={onAdd}>
+          <CalendarPlus className="mr-1 h-3.5 w-3.5" /> Tambah
         </Button>
-        <Button variant="outline" size="sm" onClick={onExport}>
-          <Download className="mr-1 h-4 w-4" /> Export
+        <Button className="h-8 px-2 text-xs" variant="outline" size="sm" onClick={onExport}>
+          <Download className="mr-1 h-3.5 w-3.5" /> Export
         </Button>
-        <Button variant="outline" size="sm" onClick={onImport}>
-          <Upload className="mr-1 h-4 w-4" /> Import
+        <Button className="h-8 px-2 text-xs" variant="outline" size="sm" onClick={onImport}>
+          <Upload className="mr-1 h-3.5 w-3.5" /> Import
         </Button>
       </div>
     </div>
@@ -905,15 +914,15 @@ function AttendanceJadwalPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-4 p-4 md:p-6">
+    <div className="mx-auto w-full max-w-6xl space-y-3 p-3 md:p-4">
       {/* Page Header */}
       <div className="flex items-center gap-2">
-        <CalendarDays className="h-5 w-5 text-primary" />
+        <CalendarDays className="h-4 w-4 text-primary" />
         <div>
-          <h1 className="font-bold text-xl tracking-tight md:text-2xl">
+          <h1 className="font-semibold text-lg tracking-tight md:text-xl">
             Jadwal Kehadiran
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Kelola jadwal shift karyawan
           </p>
         </div>
@@ -932,11 +941,11 @@ function AttendanceJadwalPage() {
 
       {/* Calendar Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-1.5">
           {Array.from({ length: 35 }).map((_, i) => (
             <div
               key={i}
-              className="h-24 animate-pulse rounded-lg bg-muted"
+              className="h-20 animate-pulse rounded-md bg-muted"
             />
           ))}
         </div>
@@ -946,35 +955,37 @@ function AttendanceJadwalPage() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="grid grid-cols-7 gap-1.5 md:gap-2">
-            {/* Day headers */}
-            {DAY_NAMES.map((name) => (
-              <div
-                key={name}
-                className="py-1 text-center text-xs font-semibold text-muted-foreground"
-              >
-                {name}
-              </div>
-            ))}
+          <div className="overflow-x-auto pb-1">
+            <div className="grid min-w-[760px] grid-cols-7 gap-1 md:min-w-0 md:gap-1.5">
+              {/* Day headers */}
+              {DAY_NAMES.map((name) => (
+                <div
+                  key={name}
+                  className="py-0.5 text-center text-[11px] font-semibold text-muted-foreground"
+                >
+                  {name}
+                </div>
+              ))}
 
-            {/* Day cells */}
-            {days.map((day) => {
-              const dateStr = formatDateStr(day);
-              return (
-                <DayColumn
-                  key={dateStr}
-                  date={day}
-                  dateStr={dateStr}
-                  isToday={isToday(day)}
-                  isCurrentMonth={isSameMonth(day, currentDate)}
-                  schedules={schedulesByDate?.[dateStr] ?? []}
-                  onAdd={handleAdd}
-                  onEditSchedule={handleEdit}
-                  onDeleteSchedule={handleDelete}
-                  isDragOver={dragOverDate === dateStr}
-                />
-              );
-            })}
+              {/* Day cells */}
+              {days.map((day) => {
+                const dateStr = formatDateStr(day);
+                return (
+                  <DayColumn
+                    key={dateStr}
+                    date={day}
+                    dateStr={dateStr}
+                    isToday={isToday(day)}
+                    isCurrentMonth={isSameMonth(day, currentDate)}
+                    schedules={schedulesByDate?.[dateStr] ?? []}
+                    onAdd={handleAdd}
+                    onEditSchedule={handleEdit}
+                    onDeleteSchedule={handleDelete}
+                    isDragOver={dragOverDate === dateStr}
+                  />
+                );
+              })}
+            </div>
           </div>
           <DragOverlay dropAnimation={null}>
             {activeDragSchedule ? (
