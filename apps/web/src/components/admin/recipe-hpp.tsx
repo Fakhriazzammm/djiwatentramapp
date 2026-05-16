@@ -80,6 +80,7 @@ type HppFormData = {
 	overheadCosts: { id: string; name: string; costPerServing: number }[];
 	servingsPerBatch: number;
 	sellingPrice: number;
+	happyHourPrice: number;
 	productId?: string;
 	sourceType: "manual" | "recipe_based";
 };
@@ -476,6 +477,7 @@ export function RecipeHppPage() {
 		overheadCosts: [],
 		servingsPerBatch: 1,
 		sellingPrice: 0,
+		happyHourPrice: 0,
 		sourceType: "manual",
 	});
 	const [saving, setSaving] = useState(false);
@@ -578,6 +580,7 @@ export function RecipeHppPage() {
 			overheadCosts: [],
 			servingsPerBatch: 1,
 			sellingPrice: product.promoPrice ?? product.price,
+			happyHourPrice: product.promoPrice ? Math.round(product.promoPrice * 0.85) : Math.round(product.price * 0.85),
 			productId,
 			sourceType: recipe ? "recipe_based" : "manual",
 		};
@@ -715,19 +718,21 @@ export function RecipeHppPage() {
 					productId: form.productId,
 					name: form.name,
 					description: form.description,
-					sellingPrice: form.sellingPrice,
-					servingsPerBatch: form.servingsPerBatch,
-					ingredients: form.ingredients,
-					overheadCosts: form.overheadCosts,
-					sourceType: form.sourceType,
-				});
-				toast.success("HPP berhasil diperbarui ✅");
-			} else {
-				const newId = await createHpp({
-					productId: form.productId,
-					name: form.name,
-					description: form.description,
-					sellingPrice: form.sellingPrice,
+          sellingPrice: form.sellingPrice,
+          happyHourPrice: form.happyHourPrice,
+          servingsPerBatch: form.servingsPerBatch,
+          ingredients: form.ingredients,
+          overheadCosts: form.overheadCosts,
+          sourceType: form.sourceType,
+        });
+        toast.success("HPP berhasil diperbarui ✅");
+      } else {
+        const newId = await createHpp({
+          productId: form.productId,
+          name: form.name,
+          description: form.description,
+          sellingPrice: form.sellingPrice,
+          happyHourPrice: form.happyHourPrice,
 					servingsPerBatch: form.servingsPerBatch,
 					ingredients: form.ingredients,
 					overheadCosts: form.overheadCosts,
@@ -1302,63 +1307,76 @@ export function RecipeHppPage() {
 			{selectedProduct && form.ingredients.some((ing) => ing.ingredientName) && (
 				<Card className="border-primary/20 bg-primary/[0.02]">
 					<CardContent className="p-4">
-						<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
-							<div>
-								<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-									HPP/Porsi
-								</p>
-								<p className="mt-0.5 text-sm font-bold tabular-nums">
-									{formatCurrency(metrics.totalHppPerServing)}
-								</p>
-							</div>
-							<div>
-								<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-									HPP/Batch
-								</p>
-								<p className="mt-0.5 text-sm font-bold tabular-nums">
-									{formatCurrency(metrics.totalHppPerBatch)}
-								</p>
-							</div>
-							<div>
-								<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-									Harga Jual
-								</p>
-								<p className="mt-0.5 text-sm font-bold tabular-nums">
-									{formatCurrency(form.sellingPrice)}
-								</p>
-							</div>
-							<div>
-								<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-									Laba/Porsi
-								</p>
-								<p className={`mt-0.5 text-sm font-bold tabular-nums ${metrics.profitPerServing >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-									{formatCurrency(metrics.profitPerServing)}
-								</p>
-							</div>
-							<div>
-								<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-									Margin
-								</p>
-								<p className={`mt-0.5 flex items-center gap-1 text-sm font-bold tabular-nums ${metrics.marginPercent >= 30 ? "text-emerald-600" : metrics.marginPercent >= 15 ? "text-amber-600" : "text-rose-600"}`}>
-									{formatNumber(metrics.marginPercent)}%
-									{metrics.marginPercent >= 30 ? (
-										<CheckCircle2 className="h-3.5 w-3.5" />
-									) : metrics.marginPercent >= 15 ? (
-										<AlertTriangle className="h-3.5 w-3.5" />
-									) : (
-										<X className="h-3.5 w-3.5" />
-									)}
-								</p>
-							</div>
-							<div>
-								<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-									Markup
-								</p>
-								<p className="mt-0.5 text-sm font-bold tabular-nums">
-									{formatNumber(metrics.markupPercent)}%
-								</p>
-							</div>
-						</div>
+			<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-7">
+			<div>
+				<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+					HPP/Porsi
+				</p>
+				<p className="mt-0.5 text-sm font-bold tabular-nums">
+					{formatCurrency(metrics.totalHppPerServing)}
+				</p>
+			</div>
+			<div>
+				<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+					HPP/Batch
+				</p>
+				<p className="mt-0.5 text-sm font-bold tabular-nums">
+					{formatCurrency(metrics.totalHppPerBatch)}
+				</p>
+			</div>
+			<div>
+				<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+					Harga Jual
+				</p>
+				<p className="mt-0.5 text-sm font-bold tabular-nums">
+					{formatCurrency(form.sellingPrice)}
+				</p>
+			</div>
+			<div>
+				<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+					🎉 Happy Hour
+				</p>
+				<input
+					type="number"
+					value={form.happyHourPrice || ""}
+					onChange={(e) =>
+						setForm((prev) => ({ ...prev, happyHourPrice: Math.max(0, parseInt(e.target.value) || 0) }))
+					}
+					className="mt-0.5 w-full rounded border border-amber-200 bg-amber-50/50 px-1 py-0.5 text-sm font-bold tabular-nums text-amber-800 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-300"
+				/>
+			</div>
+			<div>
+				<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+					Laba/Porsi
+				</p>
+				<p className={`mt-0.5 text-sm font-bold tabular-nums ${metrics.profitPerServing >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+					{formatCurrency(metrics.profitPerServing)}
+				</p>
+			</div>
+			<div>
+				<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+					Margin
+				</p>
+				<p className={`mt-0.5 flex items-center gap-1 text-sm font-bold tabular-nums ${metrics.marginPercent >= 30 ? "text-emerald-600" : metrics.marginPercent >= 15 ? "text-amber-600" : "text-rose-600"}`}>
+					{formatNumber(metrics.marginPercent)}%
+					{metrics.marginPercent >= 30 ? (
+						<CheckCircle2 className="h-3.5 w-3.5" />
+					) : metrics.marginPercent >= 15 ? (
+						<AlertTriangle className="h-3.5 w-3.5" />
+					) : (
+						<X className="h-3.5 w-3.5" />
+					)}
+				</p>
+			</div>
+			<div>
+				<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+					Markup
+				</p>
+				<p className="mt-0.5 text-sm font-bold tabular-nums">
+					{formatNumber(metrics.markupPercent)}%
+				</p>
+			</div>
+		</div>
 					</CardContent>
 				</Card>
 			)}

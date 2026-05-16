@@ -1455,13 +1455,14 @@ export function useHybridCreateHppCalculation() {
 			await insertMirrorDocument({
 				tableName: "hppCalculations",
 				documentId: id,
-				document: {
-					_id: id,
-					name: String(args?.name ?? "").trim() || "HPP Calculation",
-					description: args?.description ?? null,
-					productId: args?.productId ?? null,
-					sellingPrice: Number(args?.sellingPrice ?? 0),
-					servingsPerBatch: Number(args?.servingsPerBatch ?? 1),
+        document: {
+          _id: id,
+          name: String(args?.name ?? "").trim() || "HPP Calculation",
+          description: args?.description ?? null,
+          productId: args?.productId ?? null,
+          sellingPrice: Number(args?.sellingPrice ?? 0),
+          happyHourPrice: Number(args?.happyHourPrice ?? 0),
+          servingsPerBatch: Number(args?.servingsPerBatch ?? 1),
 					ingredients: Array.isArray(args?.ingredients) ? args.ingredients : [],
 					overheadCosts: Array.isArray(args?.overheadCosts) ? args.overheadCosts : [],
 					sourceType: args?.sourceType ?? "manual",
