@@ -1039,84 +1039,26 @@ function computeMemberBonuses(
 async function fetchShiftReports() {
 	const supabase = createClient();
 
-	// Step 1: Ambil daftar shift dari pos_shifts (view ringan)
-	const { data: shifts, error: shiftsError } = await supabase
-		.from("pos_shifts")
+	// Step 1: Ambil SEMUA data shift + target dari pos_shift_reports (view public)
+	// View ini sudah include shift info, revenue, target, bonus metrics
+	const { data: reports, error: reportsError } = await supabase
+		.from("pos_shift_reports")
 		.select("*")
-		.order("startTime", { ascending: false });
+		.order("start_time", { ascending: false });
 
-	if (shiftsError) {
-		console.warn("[hybrid] pos_shifts query failed, falling back to pos_shift_reports", shiftsError);
-		// Fallback: query pos_shift_reports langsung (sudah include semua data shift + target)
-		try {
-			const { data: fallbackData, error: fallbackError } = await supabase
-				.from("pos_shift_reports")
-				.select("*")
-				.order("start_time", { ascending: false });
-			if (fallbackError) throw fallbackError;
-			if (!fallbackData || fallbackData.length === 0) return [];
-			return fallbackData.map((row: any) => {
-				const endTime = row.end_time == null ? undefined : Number(row.end_time);
-				const isActive = !endTime;
-				const result: ShiftReportRecord = {
-				shiftId: row.shift_id,
-				shiftName: row.shift_name ?? "Shift",
-				cashierName: row.cashier_name ?? "",
-				teamMembers: row.team_members ?? "",
-				startTime: Number(row.start_time ?? 0),
-				endTime: row.end_time == null ? undefined : Number(row.end_time),
-				status: !row.end_time ? "AKTIF" : "SELESAI",
-				startingCash: Number(row.starting_cash ?? 0),
-				cashRevenue: Number(row.cash_revenue ?? 0),
-				qrisRevenue: Number(row.qris_revenue ?? 0),
-				otherRevenue: Number(row.other_revenue ?? 0),
-				totalGrossSales: Number(row.total_gross_sales ?? 0),
-				totalDiscount: Number(row.total_discount ?? 0),
-				totalRevenue: Number(row.total_revenue ?? 0),
-				totalExpenses: Number(row.total_expenses ?? 0),
-				totalItemsSold: Number(row.total_items_sold ?? 0),
-				orderCount: Number(row.order_count ?? 0),
-				bookingCount: Number(row.booking_count ?? 0),
-				hasTarget: Boolean(row.has_target),
-				targetRevenue: row.target_revenue == null ? undefined : Number(row.target_revenue),
-				shiftTarget: row.shift_target == null ? undefined : Number(row.shift_target),
-				shiftCollected: row.shift_collected == null ? undefined : Number(row.shift_collected),
-				dailyTarget: row.daily_target == null ? undefined : Number(row.daily_target),
-				dailyCollected: row.daily_collected == null ? undefined : Number(row.daily_collected),
-				isShiftTargetMet: row.is_shift_target_met == null ? undefined : Boolean(row.is_shift_target_met),
-				isDailyTargetMet: row.is_daily_target_met == null ? undefined : Boolean(row.is_daily_target_met),
-			};
-				return result;
-			});
-		} catch (fallbackErr) {
-		}
+	if (reportsError) {
+		console.error("[hybrid] pos_shift_reports query failed", reportsError);
+		throw reportsError;
 	}
-	if (!shifts || shifts.length === 0) return [];
+	if (!reports || reports.length === 0) return [];
 
-	// Step 2: Ambil semua shift report (target + metrik) dari view
-	// pos_shift_reports berisi data untuk SEMUA shift (aktif & selesai)
-	const allShiftIds = shifts.map((s: any) => s._id ?? s.shiftId);
-	let shiftReports: Record<string, any> = {};
-	if (allShiftIds.length > 0) {
-		// Batch query per 100 ID (Supabase .in() limit)
-		const batchSize = 100;
-		for (let i = 0; i < allShiftIds.length; i += batchSize) {
-			const batch = allShiftIds.slice(i, i + batchSize);
-			const { data: ad, error: ae } = await supabase
-				.from("pos_shift_reports")
-				.select("shift_id,order_count,booking_count,total_items_sold,total_discount,total_expenses,other_revenue,has_target,target_revenue,shift_target,shift_collected,daily_target,daily_collected,is_shift_target_met,is_daily_target_met")
-				.in("shift_id", batch);
-			if (!ae && ad) for (const row of ad) shiftReports[row.shift_id] = row;
-		}
-	}
-
-	// Step 3: Untuk shift aktif, query orders langsung untuk revenue realtime
-	const activeShifts = shifts.filter((s: any) => !s.endTime);
-
+	// Step 2: Untuk shift aktif, query orders langsung untuk revenue realtime
+	// (karena summary untuk shift aktif belum di-compute)
+	const activeReports = reports.filter((r: any) => !r.end_time);
 	let activeRevenue: Record<string, { total: number; cash: number; qris: number }> = {};
-	for (const s of activeShifts) {
-		const sid = s._id ?? s.shiftId;
-		const st = Number(s.startTime ?? 0);
+	for (const r of activeReports) {
+		const sid = r.shift_id;
+		const st = Number(r.start_time ?? 0);
 		try {
 			const { data: orders, error: oe } = await supabase
 				.schema("pos")
@@ -1139,7 +1081,7 @@ async function fetchShiftReports() {
 		if (!activeRevenue[sid]) activeRevenue[sid] = { total: 0, cash: 0, qris: 0 };
 	}
 
-	// Step 4: Ambil staff roles untuk komputasi bonus
+	// Step 3: Ambil staff roles untuk komputasi bonus
 	let staffRoles: Array<{ name: string; bonusTargetConfig?: StaffRoleBonusConfig | null }> = [];
 	try {
 		const { data: rolesData, error: rolesError } = await supabase
@@ -1148,66 +1090,46 @@ async function fetchShiftReports() {
 		if (!rolesError && rolesData) staffRoles = rolesData as any;
 	} catch {}
 
-	return shifts.map((row: any) => {
-		const endTime = row.endTime == null ? undefined : Number(row.endTime);
+	// Step 4: Map semua data ke ShiftReportRecord
+	return reports.map((row: any) => {
+		const endTime = row.end_time == null ? undefined : Number(row.end_time);
 		const isActive = !endTime;
-		const shiftId = row._id ?? row.shiftId;
+		const shiftId = row.shift_id;
+		const rev = activeRevenue[shiftId];
 
-		let financial: any;
-		if (isActive) {
-			const r = shiftReports[shiftId];
-			const rev = activeRevenue[shiftId] || { total: 0, cash: 0, qris: 0 };
-			financial = {
-				cashRevenue: rev.cash, qrisRevenue: rev.qris,
-				otherRevenue: Number(r?.other_revenue ?? 0),
-				totalGrossSales: rev.total,
-				totalDiscount: Number(r?.total_discount ?? 0),
-				totalRevenue: rev.total,
-				totalExpenses: Number(r?.total_expenses ?? 0),
-				totalItemsSold: Number(r?.total_items_sold ?? 0),
-				orderCount: Number(r?.order_count ?? 0),
-				bookingCount: Number(r?.booking_count ?? 0),
-				hasTarget: Boolean(r?.has_target),
-				targetRevenue: r?.target_revenue == null ? undefined : Number(r.target_revenue),
-				shiftTarget: r?.shift_target == null ? undefined : Number(r.shift_target),
-				shiftCollected: r?.shift_collected == null ? undefined : Number(r.shift_collected),
-				dailyTarget: r?.daily_target == null ? undefined : Number(r.daily_target),
-				dailyCollected: r?.daily_collected == null ? undefined : Number(r.daily_collected),
-				isShiftTargetMet: r?.is_shift_target_met == null ? undefined : Boolean(r.is_shift_target_met),
-				isDailyTargetMet: r?.is_daily_target_met == null ? undefined : Boolean(r.is_daily_target_met),
-			};
-		} else {
-			const s = row.summary && typeof row.summary === "object" ? row.summary : {};
-			const r = shiftReports[shiftId];
-			financial = {
-				cashRevenue: Number(s.cashRevenue ?? 0), qrisRevenue: Number(s.qrisRevenue ?? 0),
-				otherRevenue: Number(s.otherRevenue ?? 0),
-				totalGrossSales: Number(s.totalGrossSales ?? 0),
-				totalDiscount: Number(s.totalDiscount ?? 0),
-				totalRevenue: Number(s.totalRevenue ?? 0),
-				totalExpenses: Number(s.totalExpenses ?? 0),
-				totalItemsSold: Number(s.totalItemsSold ?? 0),
-				orderCount: Number(row.orderCount ?? 0), bookingCount: 0,
-				hasTarget: Boolean(r?.has_target),
-				targetRevenue: r?.target_revenue == null ? undefined : Number(r.target_revenue),
-				shiftTarget: r?.shift_target == null ? undefined : Number(r.shift_target),
-				shiftCollected: r?.shift_collected == null ? undefined : Number(r.shift_collected),
-				dailyTarget: r?.daily_target == null ? undefined : Number(r.daily_target),
-				dailyCollected: r?.daily_collected == null ? undefined : Number(r.daily_collected),
-				isShiftTargetMet: r?.is_shift_target_met == null ? undefined : Boolean(r.is_shift_target_met),
-				isDailyTargetMet: r?.is_daily_target_met == null ? undefined : Boolean(r.is_daily_target_met),
-			};
-		}
+		const financial: any = {
+			cashRevenue: isActive && rev ? rev.cash : Number(row.cash_revenue ?? 0),
+			qrisRevenue: isActive && rev ? rev.qris : Number(row.qris_revenue ?? 0),
+			otherRevenue: Number(row.other_revenue ?? 0),
+			totalGrossSales: isActive && rev ? rev.total : Number(row.total_gross_sales ?? 0),
+			totalDiscount: Number(row.total_discount ?? 0),
+			totalRevenue: isActive && rev ? rev.total : Number(row.total_revenue ?? 0),
+			totalExpenses: Number(row.total_expenses ?? 0),
+			totalItemsSold: Number(row.total_items_sold ?? 0),
+			orderCount: Number(row.order_count ?? 0),
+			bookingCount: Number(row.booking_count ?? 0),
+			hasTarget: Boolean(row.has_target),
+			targetRevenue: row.target_revenue == null ? undefined : Number(row.target_revenue),
+			shiftTarget: row.shift_target == null ? undefined : Number(row.shift_target),
+			shiftCollected: row.shift_collected == null ? undefined : Number(row.shift_collected),
+			dailyTarget: row.daily_target == null ? undefined : Number(row.daily_target),
+			dailyCollected: row.daily_collected == null ? undefined : Number(row.daily_collected),
+			isShiftTargetMet: row.is_shift_target_met == null ? undefined : Boolean(row.is_shift_target_met),
+			isDailyTargetMet: row.is_daily_target_met == null ? undefined : Boolean(row.is_daily_target_met),
+		};
 
 		return {
-			shiftId, shiftName: row.shiftName ?? "",
-			cashierName: row.cashierName ?? "", teamMembers: row.teamMembers ?? "",
-			startTime: Number(row.startTime ?? 0), endTime,
+			shiftId,
+			shiftName: row.shift_name ?? "Shift",
+			cashierName: row.cashier_name ?? "",
+			teamMembers: row.team_members ?? "",
+			startTime: Number(row.start_time ?? 0),
+			endTime,
 			status: isActive ? "AKTIF" : "SELESAI",
-			startingCash: Number(row.startingCash ?? 0),
+			startingCash: Number(row.starting_cash ?? 0),
 			...financial,
 			memberBonuses: computeMemberBonuses(
-				row.teamMembers ?? "",
+				row.team_members ?? "",
 				financial.isShiftTargetMet,
 				financial.isDailyTargetMet,
 				financial.shiftTarget && financial.shiftTarget > 0
