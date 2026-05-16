@@ -1091,13 +1091,31 @@ async function fetchShiftReports() {
 		if (!activeRevenue[sid]) activeRevenue[sid] = { total: 0, cash: 0, qris: 0 };
 	}
 
-	// Step 3: Ambil staff roles untuk komputasi bonus
-	let staffRoles: Array<{ name: string; bonusTargetConfig?: StaffRoleBonusConfig | null }> = [];
+	// Step 3: Ambil staff + roles untuk komputasi bonus
+	// staffName (dari teamMembers) → roleId → bonusTargetConfig
+	let staffNameToRole = new Map<string, { roleName: string; bonusTargetConfig?: StaffRoleBonusConfig | null }>();
 	try {
-		const { data: rolesData, error: rolesError } = await supabase
-			.from("pos_staff_roles")
-			.select("name, bonusTargetConfig");
-		if (!rolesError && rolesData) staffRoles = rolesData as any;
+		const [{ data: usersData }, { data: rolesData }] = await Promise.all([
+			supabase.from("pos_staff_users").select("name, roleId, roleName"),
+			supabase.from("pos_staff_roles").select("name, bonusTargetConfig"),
+		]);
+		if (rolesData) {
+			const roleMap = new Map<string, { roleName: string; bonusTargetConfig?: StaffRoleBonusConfig | null }>(
+				(rolesData as any[]).map((r) => [r.name, { roleName: r.name, bonusTargetConfig: r.bonusTargetConfig ?? null }])
+			);
+			if (usersData) {
+				for (const u of usersData as any[]) {
+					const nameKey = (u.name ?? "").toString().toUpperCase().trim();
+					if (nameKey) {
+						const roleInfo = roleMap.get(u.roleName?.toUpperCase()?.trim() ?? "");
+						staffNameToRole.set(nameKey, {
+							roleName: u.roleName ?? roleInfo?.roleName ?? "-",
+							bonusTargetConfig: roleInfo?.bonusTargetConfig ?? null,
+						});
+					}
+				}
+			}
+		}
 	} catch {}
 
 	// Step 4: Map semua data ke ShiftReportRecord
@@ -1148,7 +1166,7 @@ async function fetchShiftReports() {
 				financial.dailyTarget && financial.dailyTarget > 0
 					? (financial.dailyCollected ?? 0) / financial.dailyTarget * 100
 					: 0,
-				staffRoles,
+				staffNameToRole,
 			),
 		} as ShiftReportRecord;
 	});
