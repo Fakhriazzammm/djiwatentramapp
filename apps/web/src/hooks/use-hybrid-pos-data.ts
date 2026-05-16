@@ -1051,16 +1051,22 @@ async function fetchShiftReports() {
 
 	// Step 1: Ambil SEMUA data shift + target dari pos_shift_reports (view public)
 	// View ini sudah include shift info, revenue, target, bonus metrics
-	const { data: reports, error: reportsError } = await supabase
+\t// Hapus .order() dari query — view pos_shift_reports terlalu kompleks,
+\t// ORDER BY menyebabkan PostgreSQL timeout. Sort di client saja.
+\tconst { data: reports, error: reportsError } = await supabase
 		.from("pos_shift_reports")
 		.select("*")
-		.order("start_time", { ascending: false });
+		.limit(100);
 
-	if (reportsError) {
-		console.error("[hybrid] pos_shift_reports query failed", reportsError);
-		throw reportsError;
-	}
-	if (!reports || reports.length === 0) return [];
+\tif (reportsError) {
+\t\tconsole.error("[hybrid] pos_shift_reports query failed", reportsError);
+\t\t// Jangan throw — jika query gagal (timeout), return [] daripada skeleton
+\t\treturn [];
+\t}
+\tif (!reports || reports.length === 0) return [];
+
+\t// Sort descending by start_time di client (karena ORDER BY di query dihapus)
+\treports.sort((a: any, b: any) => Number(b.start_time ?? 0) - Number(a.start_time ?? 0));
 
 	// Step 2: Untuk shift aktif, query orders langsung untuk revenue realtime
 	// (karena summary untuk shift aktif belum di-compute)
