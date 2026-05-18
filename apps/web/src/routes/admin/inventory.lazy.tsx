@@ -67,6 +67,7 @@ import {
 } from "@/hooks/use-hybrid-inventory-admin-data";
 import { createClient } from "@/lib/client";
 import { formatCurrencyIDR } from "@/lib/export-utils";
+import { createPortal } from "react-dom";
 
 interface ConfirmConfig {
 	isOpen: boolean;
@@ -5521,7 +5522,6 @@ function InventoryTable({
 															<Image className="h-3.5 w-3.5" />
 														</div>
 													)}
-													)}
 												</div>
 											);
 										})()}
@@ -6195,10 +6195,11 @@ function InventoryHistoryModal({
 	const transactions = useHybridInventoryTransactions(item._id);
 
 	return (
-		<div
-			className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px]"
-			data-admin-modal-backdrop
-		>
+		<>
+			<div
+				className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-[2px]"
+				data-admin-modal-backdrop
+			>
 			<motion.div
 				animate={{ x: 0 }}
 				className="h-full w-full max-w-2xl overflow-y-auto border-l border-border bg-card p-6 shadow-2xl"
@@ -6324,7 +6325,7 @@ function InventoryHistoryModal({
 			const activeRow = statusFilteredRows.find(r => r.inventoryId === imagePopoverRow);
 			if (!activeRow) return null;
 			const activeInline = getInlineValue(activeRow);
-			return (
+			return createPortal(
 				<div
 					ref={imagePopoverRef}
 					style={{ position: "fixed", top: imagePopoverPos.top, left: imagePopoverPos.left, transform: "translateX(-50%)" }}
@@ -6356,9 +6357,11 @@ function InventoryHistoryModal({
 					{(activeInline.imagePath || activeRow.imagePath) && (
 						<button className="mt-2 w-full rounded-lg border border-rose-200 px-2 py-1 text-[10px] font-semibold text-rose-600 hover:bg-rose-50 transition-colors" onClick={() => void handleImageRemove(activeRow)} type="button">Hapus Foto</button>
 					)}
-				</div>
+				</div>,
+				document.body
 			);
 		})()}
+		</>
 	);
 }
 
