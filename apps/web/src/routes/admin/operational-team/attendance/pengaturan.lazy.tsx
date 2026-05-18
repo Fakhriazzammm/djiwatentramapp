@@ -632,7 +632,7 @@ function AttendancePengaturanPage() {
 										))}
 									</div>
 
-\t\t\t\t\t\t\t\t\t<div className="flex gap-2 flex-wrap">
+									<div className="flex gap-2 flex-wrap">
 									<button
 										onClick={() => {
 											const rawName = window.prompt("Nama staff (raw name dari import):");
@@ -687,10 +687,14 @@ function AttendancePengaturanPage() {
 											disabled={gi === rosterTemplate.groups.length - 1}
 											type="button"
 										>
-\t\t\t\t\t\t\t</div>
+											↓ Turun
+										</button>
+									</div>
+
+								</div>
+							))}
 						</div>
 					</div>
-
 					{/* ── Staff Picker Modal ── */}
 					<Dialog open={showStaffPicker} onOpenChange={setShowStaffPicker}>
 						<DialogContent className="sm:max-w-md">
