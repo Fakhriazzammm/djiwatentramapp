@@ -474,9 +474,6 @@ function RegisterPage() {
 											/>
 											<span>Saya menyetujui isi kontrak kerja.</span>
 										</label>
-										<Button className="w-full" disabled={isSubmitting} onClick={handleSubmit}>
-											{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Kirim Pendaftaran
-										</Button>
 									</CardContent>
 								</Card>
 								<div className="flex-1">
@@ -531,17 +528,29 @@ function RegisterPage() {
 							))}
 						</div>
 
-						<Button
-							onClick={() => {
-								if (!validateStep(step)) return;
-								if (step === 1 && !draft.contract.plainText) applyTemplate();
-								setStep((s) => Math.min(maxFormIdx, s + 1));
-							}}
-							size="sm"
-							className="sm:h-10 sm:px-4 sm:text-sm"
-						>
-							Lanjut<ChevronRight className="ml-1 h-4 w-4 sm:ml-2" />
-						</Button>
+						{step === maxFormIdx ? (
+							<Button
+								disabled={isSubmitting}
+								onClick={handleSubmit}
+								size="sm"
+								className="sm:h-10 sm:px-4 sm:text-sm"
+							>
+								{isSubmitting && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+								Kirim Pendaftaran
+							</Button>
+						) : (
+							<Button
+								onClick={() => {
+									if (!validateStep(step)) return;
+									if (step === 1 && !draft.contract.plainText) applyTemplate();
+									setStep((s) => Math.min(maxFormIdx, s + 1));
+								}}
+								size="sm"
+								className="sm:h-10 sm:px-4 sm:text-sm"
+							>
+								Lanjut<ChevronRight className="ml-1 h-4 w-4 sm:ml-2" />
+							</Button>
+						)}
 					</div>
 				); })()}
 			</div>
