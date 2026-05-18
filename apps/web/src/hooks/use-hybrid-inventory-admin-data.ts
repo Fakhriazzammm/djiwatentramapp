@@ -32,6 +32,7 @@ type InventoryRecord = {
 	lastPurchaseAt?: number | null;
 	lastPurchaseStoreId?: string | null;
 	netWeight?: string | null;
+	imagePath?: string | null;
 	_creationTime?: number;
 };
 
@@ -378,6 +379,7 @@ async function fetchInventoryRows() {
 				? null
 				: Number(row.lastPurchaseAt ?? row.last_purchase_at),
 		lastPurchaseStoreId: row.lastPurchaseStoreId ?? row.last_purchase_store_source_id ?? null,
+		imagePath: row.imagePath ?? row.image_path ?? null,
 		netWeight: row.net_weight ?? row.netWeight ?? row.berat ?? null,
 		_creationTime:
 			(row._creationTime ?? row.creation_time) === null || (row._creationTime ?? row.creation_time) === undefined

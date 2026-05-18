@@ -32,11 +32,10 @@ import {
 	EmployeeOnboardingSettings,
 	EmployeeOnboardingFieldKey,
 	applyOnboardingDefaultsToDraft,
-	formatOnboardingCurrency,
 	getRoleSalaryDefaults,
 	normalizeEmployeeOnboardingSettings,
 	validateDraftForSettings,
-	calculateProbationEndDate,
+	getProbationEndDate,
 } from "@/lib/employee-onboarding-settings";
 
 /* -------- constants -------- */
@@ -71,10 +70,22 @@ const initialDraft: EmployeeOnboardingDraft = {
 	agreements: { dataIsTrue: false, contractApproved: false },
 };
 
-const STEPS = ["Data Diri", "Data Kerja", "Kontrak", "Tanda Tangan", "Selesai"];
-
 function moneyValue(v?: number) {
 	return v ? String(v) : "";
+}
+
+/** Build active step labels from settings + always include Selesai */
+function getActiveSteps(settings: EmployeeOnboardingSettings): string[] {
+	const steps = getEnabledOnboardingSteps(settings);
+	const labels = steps.map((s) => s.title);
+	labels.push("Selesai");
+	return labels;
+}
+
+/** Compute submission UI — the step index after which submit/confirmation happens */
+function getSubmitStepIndex(settings: EmployeeOnboardingSettings): number {
+	const steps = getEnabledOnboardingSteps(settings);
+	return steps.length;
 }
 
 /* -------- page component -------- */
@@ -106,19 +117,15 @@ function RegisterPage() {
 		setDraft((prev) => applyOnboardingDefaultsToDraft(prev, onboardingSettings, roles as any[]));
 	}, [onboardingSettings.defaultRoleId, onboardingSettings.defaultLocation, onboardingSettings.defaultEmploymentType, onboardingSettings.prefillSalaryFromRole, roles]);
 
-	/* auto slug */
+	/* auto slug dari username */
 	useEffect(() => {
-		if (!draft.personal.fullName) return;
-		const slug = createEmployeeSlug(draft.personal.fullName);
+		if (!draft.employment.username) return;
+		const slug = createEmployeeSlug(draft.employment.username);
 		setDraft((prev) => ({
 			...prev,
-			employment: {
-				...prev.employment,
-				username: prev.employment.username || (onboardingSettings.autoGenerate.username ? slug : ""),
-				slug: prev.employment.slug || (onboardingSettings.autoGenerate.slug ? slug : ""),
-			},
+			employment: { ...prev.employment, slug },
 		}));
-	}, [draft.personal.fullName, onboardingSettings.autoGenerate.username, onboardingSettings.autoGenerate.slug]);
+	}, [draft.employment.username]);
 
 	const contractPreview = useMemo(() => {
 		if (draft.contract.plainText || draft.contract.clauses.length > 0) return draft.contract;
@@ -191,8 +198,11 @@ function RegisterPage() {
 		setIsSubmitting(true);
 		try {
 			const appKey = crypto.randomUUID();
-			const sigBlob = await dataUrlToBlob(draft.signatureDataUrl || "");
-			const signatureUrl = await uploadFile({ file: sigBlob, contentType: "image/png", fileName: `${appKey}-signature.png`, folder: "employee-contracts/signatures" });
+			let signatureUrl: string | undefined;
+			if (draft.signatureDataUrl) {
+				const sigBlob = await dataUrlToBlob(draft.signatureDataUrl);
+				signatureUrl = await uploadFile({ file: sigBlob, contentType: "image/png", fileName: `${appKey}-signature.png`, folder: "employee-contracts/signatures" });
+			}
 			let contractPdfUrl: string | null = null;
 			try {
 				const pdfBlob = await generateContractPdfBlob({ ...draft, contract: contractPreview }, document.getElementById("employee-contract-preview"));
@@ -209,7 +219,8 @@ function RegisterPage() {
 			const id = await submitApplication({ payload });
 			setApplicationId(String(id ?? appKey));
 			localStorage.removeItem(DRAFT_KEY);
-			setStep(4);
+			const submitIdx = getSubmitStepIndex(onboardingSettings);
+			setStep(submitIdx);
 			toast.success("Pendaftaran berhasil dikirim");
 		} catch (e: any) {
 			toast.error(e?.message || "Gagal submit pendaftaran");
@@ -234,14 +245,9 @@ function RegisterPage() {
 				if (!e.username.trim()) errors.push("Username wajib diisi");
 				break;
 			}
-			case 2: {
-				// contract — read-only, no validation needed
-				break;
-			}
+			case 2:
 			case 3: {
-				if (!draft.signatureDataUrl) errors.push("Tanda tangan wajib diisi");
-				if (!draft.agreements.dataIsTrue) errors.push("Centang pernyataan data benar");
-				if (!draft.agreements.contractApproved) errors.push("Centang persetujuan kontrak");
+				// contract & signature are managed by settings — validation happens in handleSubmit
 				break;
 			}
 		}
@@ -313,18 +319,18 @@ function RegisterPage() {
 						</Badge>
 						<h1 className="text-xl font-bold sm:text-3xl">Pendaftaran Karyawan Baru</h1>
 						<p className="mt-1 text-muted-foreground text-xs sm:mt-2 sm:text-sm">
-							Isi data, buat kontrak kerja, tanda tangan digital, lalu tunggu approval admin.
+							Isi data diri dan data kerja, lalu tunggu approval admin.
 						</p>
 					</div>
 
 					{/* step pills — scrollable on mobile */}
 					<div className="flex gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:gap-2">
-						{STEPS.map((label, idx) => (
+						{getActiveSteps(onboardingSettings).map((label, idx) => (
 							<div
 								key={label}
 								className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap sm:px-3 sm:py-1.5 ${idx === step ? "bg-primary text-primary-foreground" : "border bg-background text-muted-foreground"}`}
 							>
-								{idx + 1}. {idx < 4 ? (idx === 0 ? label : label) : label}
+								{idx + 1}. {label}
 							</div>
 						))}
 					</div>
@@ -387,19 +393,35 @@ function RegisterPage() {
 									<select className="h-10 w-full rounded-lg border bg-background px-3 text-sm" value={draft.employment.employmentType} onChange={(e) => updateEmployment("employmentType", e.target.value)}>
 										<option value="probation">Probation</option><option value="full_time">Full-time</option><option value="part_time">Part-time</option><option value="freelance">Freelance</option>
 									</select>
-									{draft.employment.employmentType === "probation" && onboardingSettings.probation.enabled && (() => {
-										const endDate = calculateProbationEndDate(draft.employment.startDate, onboardingSettings.probation.defaultMonths);
-										return endDate ? <p className="mt-1 text-xs text-muted-foreground">Masa probation berakhir: <span className="font-semibold text-amber-600">{new Date(endDate).toLocaleDateString("id-ID")}</span></p> : null;
-									})()}
 								</Field>}
+								{/* Kandidat (probation): pilih durasi 6/12/24 bulan */}
+								{draft.employment.employmentType === "probation" && onboardingSettings.probation.enabled && (
+									<div className="space-y-2 md:col-span-2">
+										<Field label="Durasi Probation">
+											<select
+												className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+												value={draft.employment.probationDurationMonths ?? 6}
+												onChange={(e) => updateEmployment("probationDurationMonths", Number(e.target.value))}
+											>
+												<option value={6}>6 bulan</option>
+												<option value={12}>1 tahun (12 bulan)</option>
+												<option value={24}>2 tahun (24 bulan)</option>
+											</select>
+										</Field>
+										{draft.employment.startDate && draft.employment.probationDurationMonths && (() => {
+											const endDate = getProbationEndDate(draft.employment.startDate, "probation", draft.employment.probationDurationMonths);
+											return endDate ? <p className="text-xs text-muted-foreground">Masa probation berakhir: <span className="font-semibold text-amber-600">{new Date(endDate).toLocaleDateString("id-ID")}</span></p> : null;
+										})()}
+									</div>
+								)}
+								{/* Fulltime/Partime/Freelance: probation 1 bulan fixed */}
+								{draft.employment.employmentType !== "probation" && onboardingSettings.probation.enabled && (() => {
+									const endDate = getProbationEndDate(draft.employment.startDate, draft.employment.employmentType);
+									return endDate ? <p className="text-xs text-muted-foreground md:col-span-2">Probation: <span className="font-semibold text-amber-600">{new Date(endDate).toLocaleDateString("id-ID")}</span> (1 bulan)</p> : null;
+								})()}
 								<Field label="Lokasi"><Input value={draft.employment.location} onChange={(e) => updateEmployment("location", e.target.value)} /></Field>
-								{onboardingSettings.salaryPreview.enabled && onboardingSettings.salaryPreview.candidateVisibility !== "hidden" && <div className="rounded-lg border bg-primary/5 p-3 text-sm md:col-span-2"><p className="font-medium">Preview Gaji</p><div className="mt-1 flex flex-col gap-0.5 text-muted-foreground sm:flex-row sm:gap-3"><span>Bulanan {formatOnboardingCurrency(draft.employment.monthlySalary)}</span><span className="hidden sm:inline">•</span><span>Harian {formatOnboardingCurrency(draft.employment.dailyAllowance)}</span><span className="hidden sm:inline">•</span><span>Shift {formatOnboardingCurrency(draft.employment.shiftRate)}</span></div></div>}
-								<Field label="Gaji bulanan"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.monthlySalary)} onChange={(e) => updateEmployment("monthlySalary", Number(e.target.value || 0))} /></Field>
-								<Field label="Uang harian"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.dailyAllowance)} onChange={(e) => updateEmployment("dailyAllowance", Number(e.target.value || 0))} /></Field>
-								<Field label="Rate shift"><Input disabled={onboardingSettings.salaryPreview.behavior === "readonly"} inputMode="numeric" value={moneyValue(draft.employment.shiftRate)} onChange={(e) => updateEmployment("shiftRate", Number(e.target.value || 0))} /></Field>
 								<Field label="PIN login (6 digit)"><Input maxLength={6} inputMode="numeric" value={draft.employment.homePin} onChange={(e) => updateEmployment("homePin", e.target.value.replace(/\D/g, ""))} /></Field>
 								<Field label="Username"><Input value={draft.employment.username} onChange={(e) => updateEmployment("username", e.target.value)} /></Field>
-								<Field label="Slug"><Input value={draft.employment.slug} onChange={(e) => updateEmployment("slug", e.target.value)} /></Field>
 							</CardContent>
 						</Card>
 						</motion.div>
@@ -512,7 +534,8 @@ function RegisterPage() {
 				</AnimatePresence>
 
 				{/* ---- navigation ---- */}
-				{step < 4 && (
+				{(() => { const submitIdx = getSubmitStepIndex(onboardingSettings);
+				const maxFormIdx = submitIdx - 1; if (step > maxFormIdx) return null; return (
 					<div className="flex items-center justify-between gap-3 pt-1">
 						<Button
 							disabled={step === 0}
@@ -526,7 +549,7 @@ function RegisterPage() {
 
 						{/* mobile step dots */}
 						<div className="flex gap-1 sm:hidden">
-							{STEPS.slice(0, 4).map((_, idx) => (
+							{Array.from({ length: getSubmitStepIndex(onboardingSettings) }).map((_, idx) => (
 								<div key={idx} className={`h-1.5 w-1.5 rounded-full transition-colors ${idx === step ? "bg-primary" : "bg-border"}`} />
 							))}
 						</div>
@@ -535,7 +558,7 @@ function RegisterPage() {
 							onClick={() => {
 								if (!validateStep(step)) return;
 								if (step === 1 && !draft.contract.plainText) applyTemplate();
-								setStep((s) => Math.min(3, s + 1));
+								setStep((s) => Math.min(maxFormIdx, s + 1));
 							}}
 							size="sm"
 							className="sm:h-10 sm:px-4 sm:text-sm"
@@ -543,7 +566,7 @@ function RegisterPage() {
 							Lanjut<ChevronRight className="ml-1 h-4 w-4 sm:ml-2" />
 						</Button>
 					</div>
-				)}
+				); })()}
 			</div>
 		</div>
 	);

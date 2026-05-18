@@ -248,7 +248,6 @@ function ComboboxCell({
 
 	const selectedItem = inventoryItems.find((item) => item._id === value);
 
-	// Hitung posisi dropdown sebelum paint agar tidak flash di (0,0)
 	useLayoutEffect(() => {
 		if (!open || !triggerRef.current) {
 			setPos(null);
@@ -262,7 +261,6 @@ function ComboboxCell({
 		});
 	}, [open]);
 
-	// Tutup saat klik di luar atau scroll
 	useEffect(() => {
 		if (!open) return;
 		function handleClickOutside(e: MouseEvent) {
@@ -438,6 +436,804 @@ function UnitSelectCell({
 	);
 }
 
+// ─── Sub-Components ─────────────────────────────────────────
+
+function ProductSelectorCard({
+	productSearch,
+	setProductSearch,
+	productDropdownOpen,
+	setProductDropdownOpen,
+	hppType,
+	setHppType,
+	recipeFilter,
+	setRecipeFilter,
+	filteredProducts,
+	selectedProductId,
+	handleSelectProduct,
+	form,
+	setForm,
+	products,
+	selectedProduct,
+	selectedBaseRecipe,
+	selectedRecipe,
+	inventory,
+	inventoryCosts,
+	recipes,
+	loading,
+}: {
+	productSearch: string;
+	setProductSearch: (v: string) => void;
+	productDropdownOpen: boolean;
+	setProductDropdownOpen: (v: boolean) => void;
+	hppType: "product" | "base_recipe";
+	setHppType: (v: "product" | "base_recipe") => void;
+	recipeFilter: boolean;
+	setRecipeFilter: (v: boolean) => void;
+	filteredProducts: any[];
+	selectedProductId: string | null;
+	handleSelectProduct: (id: string) => void;
+	form: HppFormData;
+	setForm: (updater: ((prev: HppFormData) => HppFormData) | HppFormData) => void;
+	products: ProductItem[] | undefined;
+	selectedProduct: ProductItem | null;
+	selectedBaseRecipe: any;
+	selectedRecipe: RecipeData | null;
+	inventory: InventoryItem[] | undefined;
+	inventoryCosts: any;
+	recipes: any;
+	loading: boolean;
+}) {
+	const navigate = useNavigate();
+	return (
+		<Card className="border-border/50">
+			<CardContent className="p-4">
+				<div className="flex flex-col gap-3">
+					<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+						<div className="relative flex-1">
+							<Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+							<Input
+								placeholder="Cari produk... (nama, kategori)"
+								value={productSearch}
+								onChange={(e) => {
+									setProductSearch(e.target.value);
+									if (!productDropdownOpen) setProductDropdownOpen(true);
+								}}
+								className="h-9 pl-8 text-xs"
+								onFocus={() => setProductDropdownOpen(true)}
+							/>
+						</div>
+						<div className="flex items-center gap-2">
+							<div className="flex items-center rounded-md border bg-background p-0.5">
+								<Button
+									variant={hppType === "product" ? "default" : "ghost"}
+									size="sm"
+									className="h-7 px-2 text-[10px]"
+									onClick={() => setHppType("product")}
+								>
+									<Package className="mr-1 h-3 w-3" />
+									Produk
+								</Button>
+								<Button
+									variant={hppType === "base_recipe" ? "default" : "ghost"}
+									size="sm"
+									className="h-7 px-2 text-[10px]"
+									onClick={() => setHppType("base_recipe")}
+								>
+									<BookOpen className="mr-1 h-3 w-3" />
+									Base Recipe
+								</Button>
+							</div>
+							<Button
+								variant={recipeFilter ? "default" : "outline"}
+								size="sm"
+								className="h-8 text-[10px]"
+								onClick={() => setRecipeFilter(!recipeFilter)}
+							>
+								<BookOpen className="mr-1 h-3 w-3" />
+								Ada Resep
+								{recipeFilter && ` (${filteredProducts.length})`}
+							</Button>
+							<div className="w-28 sm:w-32">
+								<Label className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+									Porsi
+								</Label>
+								<Input
+									type="number"
+									value={form.servingsPerBatch}
+									onChange={(e) =>
+										setForm((prev) => ({ ...prev, servingsPerBatch: Math.max(1, parseInt(e.target.value) || 1) }))
+									}
+									className="h-8 text-xs"
+									min={1}
+								/>
+							</div>
+						</div>
+					</div>
+
+					{productDropdownOpen && (
+						<div className="relative">
+							<div className="max-h-52 overflow-auto rounded-lg border bg-popover p-1 shadow-lg">
+								{filteredProducts.length === 0 ? (
+									<div className="px-3 py-4 text-center text-xs text-muted-foreground">
+										{productSearch
+											? `Tidak ada produk "${productSearch}" ${recipeFilter ? "dengan resep" : ""}`
+											: recipeFilter
+												? "Semua produk sudah punya resep"
+												: "Tidak ada produk tersedia"}
+									</div>
+								) : (
+									filteredProducts.map((product: any) => {
+										const isBaseRecipe = hppType === "base_recipe";
+										const hasRecipe = !isBaseRecipe && new Map((recipes as any[] | undefined)?.map((r: any) => [r.productId, true]) ?? []).has(product._id);
+										return (
+											<div
+												key={product._id}
+												className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-xs hover:bg-accent ${product._id === selectedProductId ? "bg-accent font-medium" : ""}`}
+												onClick={() => {
+													handleSelectProduct(product._id);
+													setProductDropdownOpen(false);
+												}}
+											>
+												<span className="flex-1 truncate">{product.name}</span>
+												{isBaseRecipe && (
+													<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-600">
+														<BookOpen className="h-2.5 w-2.5" />
+														{product.targetQuantity} {product.targetUnit}
+													</span>
+												)}
+												{hasRecipe && (
+													<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold text-blue-600">
+														<BookOpen className="h-2.5 w-2.5" />
+														Resep
+													</span>
+												)}
+												{!isBaseRecipe && (
+													<span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
+														{formatCurrency(product.promoPrice ?? product.price)}
+													</span>
+												)}
+											</div>
+										);
+									})
+								)}
+							</div>
+						</div>
+					)}
+
+					{selectedProduct && !selectedBaseRecipe && (
+						<div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
+							<div className="flex items-center gap-2 text-[11px] text-blue-800">
+								<BookOpen className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+								<span className="flex-1">
+									{selectedRecipe
+										? `Resep: ${selectedProduct.name} — ${form.ingredients.length} bahan baku`
+										: `${selectedProduct.name} — Belum ada resep. Bisa input manual.`}
+								</span>
+								<span className="shrink-0 font-medium">
+									{formatCurrency(selectedProduct.promoPrice ?? selectedProduct.price)}
+								</span>
+							</div>
+							<div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px] text-blue-600/70">
+								<span className="inline-flex items-center gap-1 rounded bg-white/60 px-1.5 py-0.5">
+									<Package className="h-3 w-3" />
+									Produk: {products?.length ?? 0} item
+								</span>
+								<span className="inline-flex items-center gap-1 rounded bg-white/60 px-1.5 py-0.5">
+									<Archive className="h-3 w-3" />
+									Inventaris: {inventory?.length ?? 0} bahan
+								</span>
+								<span className="inline-flex items-center gap-1 rounded bg-white/60 px-1.5 py-0.5">
+									<BookOpen className="h-3 w-3" />
+									Resep: {(recipes as any[] | undefined)?.length ?? 0} resep
+								</span>
+								{inventoryCosts && Object.keys(inventoryCosts).length > 0 && (
+									<span className="inline-flex items-center gap-1 rounded bg-white/60 px-1.5 py-0.5">
+										<CircleDollarSign className="h-3 w-3" />
+										Harga: {Object.keys(inventoryCosts).length} item
+									</span>
+								)}
+							</div>
+						</div>
+					)}
+
+					{selectedBaseRecipe && (
+						<div className="mt-3 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2">
+							<div className="flex items-center gap-2 text-[11px] text-amber-800">
+								<BookOpen className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+								<span className="flex-1">
+									Base Recipe: {selectedBaseRecipe.name} — {form.ingredients.length} bahan baku
+								</span>
+								<span className="shrink-0 font-medium">
+									{selectedBaseRecipe.targetQuantity} {selectedBaseRecipe.targetUnit}
+								</span>
+							</div>
+						</div>
+					)}
+				</div>
+			</CardContent>
+		</Card>
+	);
+}
+
+function EmptyStateCard({
+	loading,
+	emptyProductList,
+}: {
+	loading: boolean;
+	emptyProductList: boolean;
+}) {
+	const navigate = useNavigate();
+	return (
+		<Card className="border-dashed">
+			<CardContent className="flex flex-col items-center justify-center py-12">
+				{loading ? (
+					<>
+						<div className="mb-3 flex flex-col items-center gap-2">
+							<Skeleton className="h-10 w-10 rounded-full" />
+							<Skeleton className="h-4 w-48" />
+							<Skeleton className="h-3 w-32" />
+						</div>
+						<p className="text-xs text-muted-foreground/50">Memuat data...</p>
+					</>
+				) : emptyProductList ? (
+					<>
+						<Package className="mb-3 h-10 w-10 text-muted-foreground/40" />
+						<p className="text-sm font-medium text-muted-foreground">
+							Belum ada produk
+						</p>
+						<p className="mt-1 text-xs text-muted-foreground/60">
+							Tambahkan produk dulu di halaman Produk
+						</p>
+						<Button
+							variant="outline"
+							size="sm"
+							className="mt-4 h-8 text-xs"
+							onClick={() => navigate({ to: "/admin/products" as any })}
+						>
+							<Package className="mr-1 h-3.5 w-3.5" />
+							Buka Produk
+						</Button>
+					</>
+				) : (
+					<>
+						<Calculator className="mb-3 h-10 w-10 text-muted-foreground/40" />
+						<p className="text-sm font-medium text-muted-foreground">
+							Pilih produk dulu untuk memulai perhitungan HPP
+						</p>
+						<p className="mt-1 text-xs text-muted-foreground/60">
+							Gunakan pencarian di atas untuk memilih menu
+						</p>
+					</>
+				)}
+			</CardContent>
+		</Card>
+	);
+}
+
+function IngredientsTableCard({
+	form,
+	setForm,
+	selectedRows,
+	setSelectedRows,
+	inventory,
+	usedInventoryIds,
+	selectedRecipe,
+	handleSelectInventoryItem,
+	handleIngredientChange,
+	handleToggleRow,
+	handleToggleAll,
+	handleAddRow,
+	handleBulkDelete,
+	handleSyncFromRecipe,
+	handleSyncFromInventory,
+	handleAiAnalyze,
+	handleSave,
+	saving,
+	editingId,
+	aiAnalyzing,
+	selectedProduct,
+	selectedBaseRecipe,
+}: {
+	form: HppFormData;
+	setForm: (updater: ((prev: HppFormData) => HppFormData) | HppFormData) => void;
+	selectedRows: Set<string>;
+	setSelectedRows: (v: Set<string>) => void;
+	inventory: InventoryItem[] | undefined;
+	usedInventoryIds: Set<string>;
+	selectedRecipe: RecipeData | null;
+	handleSelectInventoryItem: (rowId: string, inventoryId: string, item: InventoryItem) => void;
+	handleIngredientChange: (id: string, field: keyof IngredientRow, value: any) => void;
+	handleToggleRow: (id: string) => void;
+	handleToggleAll: () => void;
+	handleAddRow: () => void;
+	handleBulkDelete: () => void;
+	handleSyncFromRecipe: () => void;
+	handleSyncFromInventory: () => void;
+	handleAiAnalyze: () => void;
+	handleSave: () => void;
+	saving: boolean;
+	editingId: string | null;
+	aiAnalyzing: boolean;
+	selectedProduct: ProductItem | null;
+	selectedBaseRecipe: any;
+}) {
+	const hasUnsavedChanges = useRef(false);
+
+	const handleMoveRow = useCallback((id: string, direction: "up" | "down") => {
+		setForm((prev) => {
+			const idx = prev.ingredients.findIndex((ing) => ing.id === id);
+			if (direction === "up" && idx === 0) return prev;
+			if (direction === "down" && idx === prev.ingredients.length - 1) return prev;
+			const copy = [...prev.ingredients];
+			const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+			[copy[idx], copy[swapIdx]] = [copy[swapIdx], copy[idx]];
+			return { ...prev, ingredients: copy };
+		});
+	}, [setForm]);
+
+	const handleInsertRow = useCallback((afterId: string) => {
+		setForm((prev) => {
+			const idx = prev.ingredients.findIndex((ing) => ing.id === afterId);
+			const newRow = createEmptyIngredient();
+			const copy = [...prev.ingredients];
+			copy.splice(idx + 1, 0, newRow);
+			return { ...prev, ingredients: copy };
+		});
+	}, [setForm]);
+
+	const handleDeleteRow = useCallback((id: string) => {
+		setForm((prev) => ({
+			...prev,
+			ingredients: prev.ingredients.filter((ing) => ing.id !== id),
+		}));
+		setSelectedRows((prev) => {
+			const next = new Set(prev);
+			next.delete(id);
+			return next;
+		});
+	}, [setForm, setSelectedRows]);
+
+	return (
+		<Card className="border-border/50">
+			<CardHeader className="border-b border-border/50 px-4 py-3">
+				<div className="flex items-center justify-between">
+					<CardTitle className="flex items-center gap-2 text-sm font-bold">
+						<Package className="h-4 w-4 text-primary" />
+						Bahan Baku
+						<Badge variant="secondary" className="text-[10px]">
+							{form.ingredients.length} item
+						</Badge>
+					</CardTitle>
+					<div className="flex items-center gap-2">
+						{selectedRecipe && (
+							<Button
+								variant="outline"
+								size="sm"
+								className="h-7 text-[10px]"
+								onClick={handleSyncFromRecipe}
+								disabled={saving}
+							>
+								<Link2 className="mr-1 h-3 w-3" />
+								Sinkron Resep
+							</Button>
+						)}
+						<Button
+							variant="outline"
+							size="sm"
+							className="h-7 text-[10px]"
+							onClick={handleSyncFromInventory}
+							disabled={saving}
+						>
+							<Database className="mr-1 h-3 w-3" />
+							Sinkron Bahan Baku
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							className="h-7 text-[10px]"
+							onClick={handleAiAnalyze}
+							disabled={aiAnalyzing}
+						>
+							<Sparkles className="mr-1 h-3 w-3" />
+							{aiAnalyzing ? "Menganalisis..." : "AI Analisis"}
+						</Button>
+						{(selectedProduct || selectedBaseRecipe) && (
+							<Button
+								size="sm"
+								className="h-7 text-[10px]"
+								onClick={handleSave}
+								disabled={saving}
+							>
+								{saving ? (
+									<RefreshCw className="mr-1 h-3 w-3 animate-spin" />
+								) : (
+									<CheckCircle2 className="mr-1 h-3 w-3" />
+								)}
+								{editingId ? "Perbarui" : "Simpan"}
+							</Button>
+						)}
+					</div>
+				</div>
+			</CardHeader>
+			<CardContent className="p-0">
+				<div className="overflow-x-auto">
+					<table className="w-full border-collapse">
+						<thead className="sticky top-0 z-10 bg-muted/50">
+							<tr className="border-b border-border/50">
+								<th className="w-8 px-2 py-2.5 text-left">
+									<Checkbox
+										checked={form.ingredients.length > 0 && selectedRows.size === form.ingredients.length}
+										onCheckedChange={handleToggleAll}
+									/>
+								</th>
+								<th className="px-1 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+									Bahan Baku
+								</th>
+								<th className="w-20 px-1 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+									Jumlah
+								</th>
+								<th className="w-20 px-1 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+									Satuan
+								</th>
+								<th className="w-28 px-1 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+									Harga
+								</th>
+								<th className="w-12 px-1 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+									Src
+								</th>
+								<th className="w-24 px-1 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+									Subtotal
+								</th>
+								<th className="w-24 px-1 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+									Aksi
+								</th>
+							</tr>
+						</thead>
+						<tbody>
+							<AnimatePresence mode="popLayout">
+								{form.ingredients.map((ing, idx) => {
+									const subtotal = ing.purchaseQuantity > 0 && ing.conversionFactor > 0
+										? (ing.purchasePrice / (ing.purchaseQuantity * ing.conversionFactor)) * ing.usagePerServing
+										: 0;
+									const badge = getPriceSourceBadge(ing.costSource);
+									const usageOptions = ing.usageUnit ? [ing.usageUnit, "ml", "gram", "pcs", "sdm", "sdt"] : ["ml", "gram", "pcs"];
+									return (
+										<motion.tr
+											key={ing.id}
+											initial={{ opacity: 0, y: -8 }}
+											animate={{ opacity: 1, y: 0 }}
+											exit={{ opacity: 0, x: 20 }}
+											transition={{ duration: 0.2 }}
+											className={`border-b border-border/30 transition-colors hover:bg-accent/30 ${ing.costSource === "manual" && ing.ingredientName ? "bg-amber-50/30" : ""}`}
+										>
+											<td className="px-2 py-1.5">
+												<Checkbox
+													checked={selectedRows.has(ing.id)}
+													onCheckedChange={() => handleToggleRow(ing.id)}
+												/>
+											</td>
+											<td className="px-1 py-1.5 min-w-[180px]">
+												<ComboboxCell
+													value={ing.inventoryId ?? ""}
+													inventoryItems={(inventory ?? []) as InventoryItem[]}
+													usedInventoryIds={usedInventoryIds}
+													onChange={(invId, item) => handleSelectInventoryItem(ing.id, invId, item)}
+													placeholder={ing.ingredientName || "Pilih Bahan..."}
+												/>
+											</td>
+											<td className="px-1 py-1.5">
+												<NumberCell
+													value={ing.usagePerServing}
+													onChange={(val) => handleIngredientChange(ing.id, "usagePerServing", val)}
+													min={0}
+													placeholder="0"
+												/>
+											</td>
+											<td className="px-1 py-1.5">
+												<UnitSelectCell
+													value={ing.usageUnit}
+													onChange={(val) => handleIngredientChange(ing.id, "usageUnit", val)}
+													options={usageOptions}
+												/>
+											</td>
+											<td className="px-1 py-1.5">
+												<NumberCell
+													value={ing.purchasePrice}
+													onChange={(val) => handleIngredientChange(ing.id, "purchasePrice", val)}
+													min={0}
+													format="currency"
+													placeholder="Rp 0"
+												/>
+											</td>
+											<td className="px-1 py-1.5 text-center">
+												{ing.ingredientName && (
+													<span
+														className={`inline-block rounded px-1 py-0.5 text-[9px] font-bold leading-none ${badge.class}`}
+														title={badge.label}
+													>
+														{badge.icon}
+													</span>
+												)}
+											</td>
+											<td className="px-1 py-1.5 text-right">
+												<span className="text-xs tabular-nums font-medium">
+													{subtotal > 0 ? formatCurrency(subtotal) : (
+														<span className="text-muted-foreground">—</span>
+													)}
+												</span>
+											</td>
+											<td className="px-1 py-1.5">
+												<div className="flex items-center justify-center gap-0.5">
+													<button
+														className="rounded p-1 text-foreground/50 hover:bg-accent hover:text-accent-foreground"
+														onClick={() => handleMoveRow(ing.id, "up")}
+														disabled={idx === 0}
+														title="Naik"
+													>
+														<ArrowUp className="h-3.5 w-3.5" />
+													</button>
+													<button
+														className="rounded p-1 text-foreground/50 hover:bg-accent hover:text-accent-foreground"
+														onClick={() => handleMoveRow(ing.id, "down")}
+														disabled={idx === form.ingredients.length - 1}
+														title="Turun"
+													>
+														<ArrowDown className="h-3.5 w-3.5" />
+													</button>
+													<button
+														className="rounded p-1 text-foreground/50 hover:bg-accent hover:text-accent-foreground"
+														onClick={() => handleInsertRow(ing.id)}
+														title="Sisip"
+													>
+														<Plus className="h-3.5 w-3.5" />
+													</button>
+													<button
+														className="rounded p-1 text-foreground/50 hover:bg-destructive/10 hover:text-destructive"
+														onClick={() => handleDeleteRow(ing.id)}
+														title="Hapus"
+													>
+														<X className="h-3.5 w-3.5" />
+													</button>
+												</div>
+											</td>
+										</motion.tr>
+									);
+								})}
+							</AnimatePresence>
+						</tbody>
+					</table>
+				</div>
+
+				<div className="flex items-center justify-between border-t border-border/50 px-4 py-2.5">
+					<div className="flex items-center gap-2">
+						<Button
+							variant="ghost"
+							size="sm"
+							className="h-7 text-[10px]"
+							onClick={handleAddRow}
+						>
+							<Plus className="mr-1 h-3 w-3" />
+							Tambah Bahan
+						</Button>
+						{selectedRows.size > 0 && (
+							<Button
+								variant="ghost"
+								size="sm"
+								className="h-7 text-[10px] text-destructive hover:text-destructive"
+								onClick={handleBulkDelete}
+							>
+								<Trash2 className="mr-1 h-3 w-3" />
+								Hapus {selectedRows.size}
+							</Button>
+						)}
+					</div>
+					<div className="flex items-center gap-3 text-xs text-muted-foreground">
+						{selectedRows.size > 0 && (
+							<span>{selectedRows.size} dipilih</span>
+						)}
+						{hasUnsavedChanges.current && (
+							<span className="flex items-center gap-1 text-amber-600">
+								<span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+								Belum disimpan
+							</span>
+						)}
+					</div>
+				</div>
+			</CardContent>
+		</Card>
+	);
+}
+
+
+function SummaryBar({ form, setForm, metrics }: {
+	form: HppFormData;
+	setForm: (updater: ((prev: HppFormData) => HppFormData) | HppFormData) => void;
+	metrics: HppMetrics;
+}) {
+	return (
+		<Card className="border-primary/20 bg-primary/[0.02]">
+			<CardContent className="p-4">
+				<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-7">
+					<div>
+						<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">HPP/Porsi</p>
+						<p className="mt-0.5 text-sm font-bold tabular-nums">{formatCurrency(metrics.totalHppPerServing)}</p>
+					</div>
+					<div>
+						<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">HPP/Batch</p>
+						<p className="mt-0.5 text-sm font-bold tabular-nums">{formatCurrency(metrics.totalHppPerBatch)}</p>
+					</div>
+					<div>
+						<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Harga Jual</p>
+						<p className="mt-0.5 text-sm font-bold tabular-nums">{formatCurrency(form.sellingPrice)}</p>
+					</div>
+					<div>
+						<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">🎉 Happy Hour</p>
+						<input
+							type="number"
+							value={form.happyHourPrice || ""}
+							onChange={(e) =>
+								setForm((prev) => ({ ...prev, happyHourPrice: Math.max(0, parseInt(e.target.value) || 0) }))
+							}
+							className="mt-0.5 w-full rounded border border-amber-200 bg-amber-50/50 px-1 py-0.5 text-sm font-bold tabular-nums text-amber-800 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-300"
+						/>
+					</div>
+					<div>
+						<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Laba/Porsi</p>
+						<p className={`mt-0.5 text-sm font-bold tabular-nums ${metrics.profitPerServing >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+							{formatCurrency(metrics.profitPerServing)}
+						</p>
+					</div>
+					<div>
+						<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Margin</p>
+						<p className={`mt-0.5 flex items-center gap-1 text-sm font-bold tabular-nums ${metrics.marginPercent >= 30 ? "text-emerald-600" : metrics.marginPercent >= 15 ? "text-amber-600" : "text-rose-600"}`}>
+							{formatNumber(metrics.marginPercent)}%
+							{metrics.marginPercent >= 30 ? (
+								<CheckCircle2 className="h-3.5 w-3.5" />
+							) : metrics.marginPercent >= 15 ? (
+								<AlertTriangle className="h-3.5 w-3.5" />
+							) : (
+								<X className="h-3.5 w-3.5" />
+							)}
+						</p>
+					</div>
+					<div>
+						<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Markup</p>
+						<p className="mt-0.5 text-sm font-bold tabular-nums">{formatNumber(metrics.markupPercent)}%</p>
+					</div>
+				</div>
+			</CardContent>
+		</Card>
+	);
+}
+
+function AiInsightsPanel({
+	aiPanelOpen,
+	setAiPanelOpen,
+	aiAnalyzing,
+	form,
+	metrics,
+}: {
+	aiPanelOpen: boolean;
+	setAiPanelOpen: (v: boolean) => void;
+	aiAnalyzing: boolean;
+	form: HppFormData;
+	metrics: HppMetrics;
+}) {
+	const mostExpensive = useMemo(() => {
+		if (form.ingredients.length === 0) return { name: null as string | null, pct: "0" };
+		const costs = form.ingredients.map((ing) => {
+			const sub = ing.purchaseQuantity > 0 && ing.conversionFactor > 0
+				? (ing.purchasePrice / (ing.purchaseQuantity * ing.conversionFactor)) * ing.usagePerServing
+				: 0;
+			return { name: ing.ingredientName || "(kosong)", cost: sub };
+		});
+		const max = costs.reduce((a, b) => a.cost > b.cost ? a : b, { name: "", cost: 0 });
+		const pct = metrics.totalHppPerServing > 0 ? ((max.cost / metrics.totalHppPerServing) * 100).toFixed(0) : "0";
+		return { name: max.name, pct };
+	}, [form.ingredients, metrics.totalHppPerServing]);
+
+	const unfilledCount = useMemo(() =>
+		form.ingredients.filter((i) => !i.ingredientName).length,
+	[form.ingredients]);
+
+	return (
+		<Card className="border-emerald-200/50">
+			<button
+				className="flex w-full items-center gap-2 px-4 py-3 text-left"
+				onClick={() => setAiPanelOpen(!aiPanelOpen)}
+			>
+				<Sparkles className="h-4 w-4 text-emerald-500" />
+				<span className="flex-1 text-sm font-bold">AI Cost Insights</span>
+				{aiAnalyzing ? (
+					<RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+				) : (
+					<ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${aiPanelOpen ? "rotate-180" : ""}`} />
+				)}
+			</button>
+			{aiPanelOpen && (
+				<div className="border-t border-border/50 px-4 py-3">
+					<div className="grid gap-2 text-xs sm:grid-cols-3">
+						<div className="rounded-lg border border-border/50 bg-muted/20 p-3">
+							<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+								💡 Bahan Termahal
+							</p>
+							<p className="mt-1 font-medium">
+								{mostExpensive.name
+									? `${mostExpensive.name} (${mostExpensive.pct}% dari HPP)`
+									: "—"}
+							</p>
+						</div>
+						<div className="rounded-lg border border-border/50 bg-muted/20 p-3">
+							<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+								💰 Harga Jual Rekomendasi
+							</p>
+							<p className="mt-1 font-medium">
+								{metrics.totalHppPerServing > 0
+									? `${formatCurrency(Math.round(metrics.totalHppPerServing / 0.7))}`
+									: "—"} <span className="text-[10px] text-muted-foreground">(30% margin)</span>
+							</p>
+						</div>
+						<div className="rounded-lg border border-border/50 bg-muted/20 p-3">
+							<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+								📊 Jumlah Bahan
+							</p>
+							<p className="mt-1 font-medium">
+								{form.ingredients.length} bahan
+								{unfilledCount > 0 && (
+									<span className="ml-1 text-[10px] text-amber-600">
+										({unfilledCount} belum diisi)
+									</span>
+								)}
+							</p>
+						</div>
+					</div>
+				</div>
+			)}
+		</Card>
+	);
+}
+
+function SyncPanel({
+	syncPanelOpen,
+	setSyncPanelOpen,
+	form,
+}: {
+	syncPanelOpen: boolean;
+	setSyncPanelOpen: (v: boolean) => void;
+	form: HppFormData;
+}) {
+	return (
+		<Card className="border-blue-200/50">
+			<button
+				className="flex w-full items-center gap-2 px-4 py-3 text-left"
+				onClick={() => setSyncPanelOpen(!syncPanelOpen)}
+			>
+				<RefreshCw className="h-4 w-4 text-blue-500" />
+				<span className="flex-1 text-sm font-bold">Sync: Purchasing Agent</span>
+				<ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${syncPanelOpen ? "rotate-180" : ""}`} />
+			</button>
+			{syncPanelOpen && (
+				<div className="border-t border-border/50 px-4 py-3">
+					<div className="flex items-center gap-3 text-xs">
+						<span className="flex items-center gap-1 text-emerald-600">
+							<CheckCircle2 className="h-3.5 w-3.5" />
+							Terhubung
+						</span>
+						<span className="text-muted-foreground">•</span>
+						<span className="text-muted-foreground">
+							Harga dari inventory: {form.ingredients.filter((i) => i.costSource === "inventory").length} bahan
+						</span>
+						<span className="text-muted-foreground">•</span>
+						<span className="text-muted-foreground">
+							Manual: {form.ingredients.filter((i) => i.costSource === "manual").length} bahan
+						</span>
+					</div>
+				</div>
+			)}
+		</Card>
+	);
+}
+
 // ─── Main Component ──────────────────────────────────────────
 
 export function RecipeHppPage() {
@@ -449,13 +1245,11 @@ export function RecipeHppPage() {
 	const recipes = useHybridRecipes();
 	const baseRecipes = useHybridBaseRecipes() as any[] | undefined;
 
-	// Loading state
 	const loading = !products || !inventory || !recipes;
 	const emptyProductList = products && products.length === 0;
 
 	const [hppType, setHppType] = useState<"product" | "base_recipe">("product");
 
-	// Auto-select product from query param
 	useEffect(() => {
 		if (search?.productId && products && !selectedProductId) {
 			setSelectedProductId(search.productId);
@@ -468,7 +1262,6 @@ export function RecipeHppPage() {
 	const upsertFromRecipe = useHybridUpsertHppFromRecipe();
 	const saveRecipe = useHybridSaveRecipe();
 
-	// ── State ──
 	const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 	const [productSearch, setProductSearch] = useState("");
 	const [productDropdownOpen, setProductDropdownOpen] = useState(false);
@@ -491,7 +1284,6 @@ export function RecipeHppPage() {
 	const [aiAnalyzing, setAiAnalyzing] = useState(false);
 	const [recipeFilter, setRecipeFilter] = useState(false);
 
-	// ── Derived ──
 	const metrics = useMemo(() => computeHpp(form), [form]);
 
 	const selectedBaseRecipe = useMemo(() => {
@@ -499,7 +1291,6 @@ export function RecipeHppPage() {
 		return (baseRecipes as any[]).find((br: any) => br._id === selectedProductId) ?? null;
 	}, [selectedProductId, baseRecipes, hppType]);
 
-	// Map productId → has recipe (for badges)
 	const recipesByProduct = useMemo(() => {
 		const map = new Map<string, boolean>();
 		if (!recipes) return map;
@@ -553,14 +1344,11 @@ export function RecipeHppPage() {
 
 	const hasUnsavedChanges = useRef(false);
 
-	// ── Handlers ──
-
 	const handleSelectProduct = useCallback((productId: string) => {
 		setSelectedProductId(productId);
 		setProductDropdownOpen(false);
 		setProductSearch("");
 
-		// Handle base recipe selection
 		if (hppType === "base_recipe" && baseRecipes) {
 			const baseRecipe = (baseRecipes as any[]).find((br: any) => br._id === productId);
 			if (!baseRecipe) return;
@@ -610,7 +1398,6 @@ export function RecipeHppPage() {
 		const product = products?.find((p) => p._id === productId);
 		if (!product) return;
 
-		// Try to find existing HPP or load from recipe
 		const allRecipes = (recipes ?? []) as RecipeData[];
 		const recipe = allRecipes.find((r) => r.productId === productId && !r.variantName);
 
@@ -700,41 +1487,6 @@ export function RecipeHppPage() {
 		}));
 	}, []);
 
-	const handleInsertRow = useCallback((afterId: string) => {
-		setForm((prev) => {
-			const idx = prev.ingredients.findIndex((ing) => ing.id === afterId);
-			const newRow = createEmptyIngredient();
-			const copy = [...prev.ingredients];
-			copy.splice(idx + 1, 0, newRow);
-			return { ...prev, ingredients: copy };
-		});
-	}, []);
-
-	const handleDeleteRow = useCallback((id: string) => {
-		setForm((prev) => ({
-			...prev,
-			ingredients: prev.ingredients.filter((ing) => ing.id !== id),
-		}));
-		setSelectedRows((prev) => {
-			const next = new Set(prev);
-			next.delete(id);
-			return next;
-		});
-		hasUnsavedChanges.current = true;
-	}, []);
-
-	const handleMoveRow = useCallback((id: string, direction: "up" | "down") => {
-		setForm((prev) => {
-			const idx = prev.ingredients.findIndex((ing) => ing.id === id);
-			if (direction === "up" && idx === 0) return prev;
-			if (direction === "down" && idx === prev.ingredients.length - 1) return prev;
-			const copy = [...prev.ingredients];
-			const swapIdx = direction === "up" ? idx - 1 : idx + 1;
-			[copy[idx], copy[swapIdx]] = [copy[swapIdx], copy[idx]];
-			return { ...prev, ingredients: copy };
-		});
-	}, []);
-
 	const handleToggleRow = useCallback((id: string) => {
 		setSelectedRows((prev) => {
 			const next = new Set(prev);
@@ -784,21 +1536,21 @@ export function RecipeHppPage() {
 					productId: form.productId,
 					name: form.name,
 					description: form.description,
-          sellingPrice: form.sellingPrice,
-          happyHourPrice: form.happyHourPrice,
-          servingsPerBatch: form.servingsPerBatch,
-          ingredients: form.ingredients,
-          overheadCosts: form.overheadCosts,
-          sourceType: form.sourceType,
-        });
-        toast.success("HPP berhasil diperbarui ✅");
-      } else {
-        const newId = await createHpp({
-          productId: form.productId,
-          name: form.name,
-          description: form.description,
-          sellingPrice: form.sellingPrice,
-          happyHourPrice: form.happyHourPrice,
+					sellingPrice: form.sellingPrice,
+					happyHourPrice: form.happyHourPrice,
+					servingsPerBatch: form.servingsPerBatch,
+					ingredients: form.ingredients,
+					overheadCosts: form.overheadCosts,
+					sourceType: form.sourceType,
+				});
+				toast.success("HPP berhasil diperbarui ✅");
+			} else {
+				const newId = await createHpp({
+					productId: form.productId,
+					name: form.name,
+					description: form.description,
+					sellingPrice: form.sellingPrice,
+					happyHourPrice: form.happyHourPrice,
 					servingsPerBatch: form.servingsPerBatch,
 					ingredients: form.ingredients,
 					overheadCosts: form.overheadCosts,
@@ -810,7 +1562,6 @@ export function RecipeHppPage() {
 			triggerHybridRefresh();
 			hasUnsavedChanges.current = false;
 
-			// Sync ingredient amounts back to recipe (HPP → Recipe)
 			if (form.sourceType === "recipe_based" && form.productId) {
 				try {
 					const ingredients = form.ingredients
@@ -843,7 +1594,7 @@ export function RecipeHppPage() {
 		}
 		setSaving(true);
 		try {
-			const result = await upsertFromRecipe({
+			await upsertFromRecipe({
 				productId: selectedProductId,
 				overheadCosts: form.overheadCosts,
 			});
@@ -862,11 +1613,9 @@ export function RecipeHppPage() {
 		setForm((prev) => ({
 			...prev,
 			ingredients: prev.ingredients.map((ing) => {
-				// 1. Cari via inventoryId langsung
 				let costInfo = ing.inventoryId ? inventoryCosts?.[ing.inventoryId] : undefined;
 				let matchedInvId = ing.inventoryId;
 
-				// 2. Fallback: cocokkan nama bahan baku ke inventory
 				if (!costInfo?.latestCostPerUnit && ing.ingredientName && inventory) {
 					const byName = (inventory as InventoryItem[]).find(
 						(item) => safeLower(item.ingredientName) === safeLower(ing.ingredientName)
@@ -879,8 +1628,6 @@ export function RecipeHppPage() {
 
 				if (costInfo?.latestCostPerUnit && costInfo.latestCostPerUnit > 0) {
 					synced++;
-					// Pakai conversionFactor dari inventory kalau ada (misal 1000 = liter->ml)
-					// Fallback ke findUnitPair kalau null
 					const factor = costInfo.conversionFactor ?? findUnitPair(
 						costInfo.unit ?? ing.purchaseUnit,
 						costInfo.displayUnit ?? ing.usageUnit
@@ -916,7 +1663,6 @@ export function RecipeHppPage() {
 			return;
 		}
 		setAiAnalyzing(true);
-		// Simulasi AI — akan diganti dengan panggilan Yumi AI
 		setTimeout(() => {
 			setAiAnalyzing(false);
 			setAiPanelOpen(true);
@@ -924,670 +1670,93 @@ export function RecipeHppPage() {
 		}, 1500);
 	}, [form]);
 
-	// ── Render ──
+	const hasSelection = selectedProduct || selectedBaseRecipe;
 
 	return (
 		<div className="mx-auto flex max-w-5xl flex-col gap-4 p-4 md:p-6">
-			{/* ── Header Bar ── */}
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div className="flex items-center gap-2">
 					<Calculator className="h-5 w-5 text-primary" />
 					<h1 className="text-lg font-bold">HPP Resep</h1>
 				</div>
-				<div className="flex flex-wrap items-center gap-2">
-			</div>
 			</div>
 
-			{/* ── Product Selector ── */}
-			<Card className="border-border/50">
-				<CardContent className="p-4">
-					<div className="flex flex-col gap-3">
-						{/* Search bar — always visible */}
-						<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-							<div className="relative flex-1">
-								<Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-								<Input
-									placeholder="Cari produk... (nama, kategori)"
-									value={productSearch}
-									onChange={(e) => {
-										setProductSearch(e.target.value);
-										if (!productDropdownOpen) setProductDropdownOpen(true);
-									}}
-									className="h-9 pl-8 text-xs"
-									onFocus={() => setProductDropdownOpen(true)}
-								/>
-							</div>
-							{/* Filter toggles */}
-							<div className="flex items-center gap-2">
-								<div className="flex items-center rounded-md border bg-background p-0.5">
-									<Button
-										variant={hppType === "product" ? "default" : "ghost"}
-										size="sm"
-										className="h-7 px-2 text-[10px]"
-										onClick={() => setHppType("product")}
-									>
-										<Package className="mr-1 h-3 w-3" />
-										Produk
-									</Button>
-									<Button
-										variant={hppType === "base_recipe" ? "default" : "ghost"}
-										size="sm"
-										className="h-7 px-2 text-[10px]"
-										onClick={() => setHppType("base_recipe")}
-									>
-										<BookOpen className="mr-1 h-3 w-3" />
-										Base Recipe
-									</Button>
-								</div>
-								<Button
-									variant={recipeFilter ? "default" : "outline"}
-									size="sm"
-									className="h-8 text-[10px]"
-									onClick={() => setRecipeFilter(!recipeFilter)}
-								>
-									<BookOpen className="mr-1 h-3 w-3" />
-									Ada Resep
-									{recipeFilter && ` (${filteredProducts.length})`}
-								</Button>
-								<div className="w-28 sm:w-32">
-									<Label className="mb-1 block text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-										Porsi
-									</Label>
-									<Input
-										type="number"
-										value={form.servingsPerBatch}
-										onChange={(e) =>
-											setForm((prev) => ({ ...prev, servingsPerBatch: Math.max(1, parseInt(e.target.value) || 1) }))
-										}
-										className="h-8 text-xs"
-										min={1}
-									/>
-								</div>
-							</div>
-						</div>
+			<ProductSelectorCard
+				productSearch={productSearch}
+				setProductSearch={setProductSearch}
+				productDropdownOpen={productDropdownOpen}
+				setProductDropdownOpen={setProductDropdownOpen}
+				hppType={hppType}
+				setHppType={setHppType}
+				recipeFilter={recipeFilter}
+				setRecipeFilter={setRecipeFilter}
+				filteredProducts={filteredProducts}
+				selectedProductId={selectedProductId}
+				handleSelectProduct={handleSelectProduct}
+				form={form}
+				setForm={setForm}
+				products={products}
+				selectedProduct={selectedProduct}
+				selectedBaseRecipe={selectedBaseRecipe}
+				selectedRecipe={selectedRecipe}
+				inventory={inventory}
+				inventoryCosts={inventoryCosts}
+				recipes={recipes}
+				loading={loading}
+			/>
 
-						{/* Product dropdown — shows when search focused or filtering */}
-						{productDropdownOpen && (
-							<div className="relative">
-								<div className="max-h-52 overflow-auto rounded-lg border bg-popover p-1 shadow-lg">
-									{filteredProducts.length === 0 ? (
-										<div className="px-3 py-4 text-center text-xs text-muted-foreground">
-											{productSearch
-												? `Tidak ada produk "${productSearch}" ${recipeFilter ? "dengan resep" : ""}`
-												: recipeFilter
-													? "Semua produk sudah punya resep"
-													: "Tidak ada produk tersedia"}
-										</div>
-									) : (
-										filteredProducts.map((product: any) => {
-											const isBaseRecipe = hppType === "base_recipe";
-											const hasRecipe = !isBaseRecipe && recipesByProduct?.has(product._id);
-											return (
-												<div
-													key={product._id}
-													className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-xs hover:bg-accent ${product._id === selectedProductId ? "bg-accent font-medium" : ""}`}
-													onClick={() => {
-														handleSelectProduct(product._id);
-														setProductDropdownOpen(false);
-													}}
-												>
-													<span className="flex-1 truncate">{product.name}</span>
-													{isBaseRecipe && (
-														<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-600">
-															<BookOpen className="h-2.5 w-2.5" />
-															{product.targetQuantity} {product.targetUnit}
-														</span>
-													)}
-													{hasRecipe && (
-														<span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold text-blue-600">
-															<BookOpen className="h-2.5 w-2.5" />
-															Resep
-														</span>
-													)}
-													{!isBaseRecipe && (
-														<span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
-															{formatCurrency(product.promoPrice ?? product.price)}
-														</span>
-													)}
-												</div>
-											);
-										})
-									)}
-								</div>
-							</div>
-						)}
-					</div>
-
-					{/* Recipe info banner — data source indicators */}
-					{selectedProduct && !selectedBaseRecipe && (
-						<div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
-							<div className="flex items-center gap-2 text-[11px] text-blue-800">
-								<BookOpen className="h-3.5 w-3.5 shrink-0 text-blue-500" />
-								<span className="flex-1">
-									{selectedRecipe
-										? `Resep: ${selectedProduct.name} — ${form.ingredients.length} bahan baku`
-										: `${selectedProduct.name} — Belum ada resep. Bisa input manual.`}
-								</span>
-								<span className="shrink-0 font-medium">
-									{formatCurrency(selectedProduct.promoPrice ?? selectedProduct.price)}
-								</span>
-							</div>
-							<div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px] text-blue-600/70">
-								<span className="inline-flex items-center gap-1 rounded bg-white/60 px-1.5 py-0.5">
-									<Package className="h-3 w-3" />
-									Produk: {products?.length ?? 0} item
-								</span>
-								<span className="inline-flex items-center gap-1 rounded bg-white/60 px-1.5 py-0.5">
-									<Archive className="h-3 w-3" />
-									Inventaris: {inventory?.length ?? 0} bahan
-								</span>
-								<span className="inline-flex items-center gap-1 rounded bg-white/60 px-1.5 py-0.5">
-									<BookOpen className="h-3 w-3" />
-									Resep: {(recipes as any[] | undefined)?.length ?? 0} resep
-								</span>
-								{inventoryCosts && Object.keys(inventoryCosts).length > 0 && (
-									<span className="inline-flex items-center gap-1 rounded bg-white/60 px-1.5 py-0.5">
-										<CircleDollarSign className="h-3 w-3" />
-										Harga: {Object.keys(inventoryCosts).length} item
-									</span>
-								)}
-							</div>
-						</div>
-					)}
-
-					{/* Base Recipe info banner */}
-					{selectedBaseRecipe && (
-						<div className="mt-3 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2">
-							<div className="flex items-center gap-2 text-[11px] text-amber-800">
-								<BookOpen className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-								<span className="flex-1">
-									Base Recipe: {selectedBaseRecipe.name} — {form.ingredients.length} bahan baku
-								</span>
-								<span className="shrink-0 font-medium">
-									{selectedBaseRecipe.targetQuantity} {selectedBaseRecipe.targetUnit}
-								</span>
-							</div>
-						</div>
-					)}
-				</CardContent>
-			</Card>
-
-\t\t\t{/* ── Loading / Empty State ── */}
-\t\t\t{!selectedProduct && !selectedBaseRecipe && (
-				<Card className="border-dashed">
-					<CardContent className="flex flex-col items-center justify-center py-12">
-						{loading ? (
-							<>
-								<div className="mb-3 flex flex-col items-center gap-2">
-									<Skeleton className="h-10 w-10 rounded-full" />
-									<Skeleton className="h-4 w-48" />
-									<Skeleton className="h-3 w-32" />
-								</div>
-								<p className="text-xs text-muted-foreground/50">Memuat data...</p>
-							</>
-						) : emptyProductList ? (
-							<>
-								<Package className="mb-3 h-10 w-10 text-muted-foreground/40" />
-								<p className="text-sm font-medium text-muted-foreground">
-									Belum ada produk
-								</p>
-								<p className="mt-1 text-xs text-muted-foreground/60">
-									Tambahkan produk dulu di halaman Produk
-								</p>
-								<Button
-									variant="outline"
-									size="sm"
-									className="mt-4 h-8 text-xs"
-									onClick={() => navigate({ to: "/admin/products" as any })}
-								>
-									<Package className="mr-1 h-3.5 w-3.5" />
-									Buka Produk
-								</Button>
-							</>
-						) : (
-							<>
-								<Calculator className="mb-3 h-10 w-10 text-muted-foreground/40" />
-								<p className="text-sm font-medium text-muted-foreground">
-									Pilih produk dulu untuk memulai perhitungan HPP
-								</p>
-								<p className="mt-1 text-xs text-muted-foreground/60">
-									Gunakan pencarian di atas untuk memilih menu
-								</p>
-							</>
-						)}
-					</CardContent>
-				</Card>
-			)}
-
-\t\t\t{/* ── Ingredients Table ── */}
-\t\t\t{(selectedProduct || selectedBaseRecipe) && (
-				<Card className="border-border/50">
-					<CardHeader className="border-b border-border/50 px-4 py-3">
-						<div className="flex items-center justify-between">
-							<CardTitle className="flex items-center gap-2 text-sm font-bold">
-								<Package className="h-4 w-4 text-primary" />
-								Bahan Baku
-								<Badge variant="secondary" className="text-[10px]">
-									{form.ingredients.length} item
-								</Badge>
-							</CardTitle>
-							<div className="flex items-center gap-2">
-								{selectedRecipe && (
-									<Button
-										variant="outline"
-										size="sm"
-										className="h-7 text-[10px]"
-										onClick={handleSyncFromRecipe}
-										disabled={saving}
-									>
-										<Link2 className="mr-1 h-3 w-3" />
-										Sinkron Resep
-									</Button>
-								)}
-								<Button
-									variant="outline"
-									size="sm"
-									className="h-7 text-[10px]"
-									onClick={handleSyncFromInventory}
-									disabled={saving}
-								>
-									<Database className="mr-1 h-3 w-3" />
-									Sinkron Bahan Baku
-								</Button>
-								<Button
-									variant="outline"
-									size="sm"
-									className="h-7 text-[10px]"
-									onClick={handleAiAnalyze}
-									disabled={aiAnalyzing}
-								>
-									<Sparkles className="mr-1 h-3 w-3" />
-									{aiAnalyzing ? "Menganalisis..." : "AI Analisis"}
-								</Button>
-\t\t\t\t\t\t\t\t{(selectedProduct || selectedBaseRecipe) && (
-									<Button
-										size="sm"
-										className="h-7 text-[10px]"
-										onClick={handleSave}
-										disabled={saving}
-									>
-										{saving ? (
-											<RefreshCw className="mr-1 h-3 w-3 animate-spin" />
-										) : (
-											<CheckCircle2 className="mr-1 h-3 w-3" />
-										)}
-										{editingId ? "Perbarui" : "Simpan"}
-									</Button>
-								)}
-							</div>
-						</div>
-					</CardHeader>
-					<CardContent className="p-0">
-						{/* Table container */}
-						<div className="overflow-x-auto">
-							<table className="w-full border-collapse">
-								<thead className="sticky top-0 z-10 bg-muted/50">
-									<tr className="border-b border-border/50">
-										<th className="w-8 px-2 py-2.5 text-left">
-											<Checkbox
-												checked={form.ingredients.length > 0 && selectedRows.size === form.ingredients.length}
-												onCheckedChange={handleToggleAll}
-											/>
-										</th>
-										<th className="px-1 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-											Bahan Baku
-										</th>
-										<th className="w-20 px-1 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-											Jumlah
-										</th>
-										<th className="w-20 px-1 py-2.5 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-											Satuan
-										</th>
-										<th className="w-28 px-1 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-											Harga
-										</th>
-										<th className="w-12 px-1 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-											Src
-										</th>
-										<th className="w-24 px-1 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-											Subtotal
-										</th>
-										<th className="w-24 px-1 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-											Aksi
-										</th>
-									</tr>
-								</thead>
-								<tbody>
-									<AnimatePresence mode="popLayout">
-										{form.ingredients.map((ing, idx) => {
-											const subtotal = ing.purchaseQuantity > 0 && ing.conversionFactor > 0
-												? (ing.purchasePrice / (ing.purchaseQuantity * ing.conversionFactor)) * ing.usagePerServing
-												: 0;
-											const badge = getPriceSourceBadge(ing.costSource);
-											const usageOptions = ing.usageUnit ? [ing.usageUnit, "ml", "gram", "pcs", "sdm", "sdt"] : ["ml", "gram", "pcs"];
-
-											return (
-												<motion.tr
-													key={ing.id}
-													initial={{ opacity: 0, y: -8 }}
-													animate={{ opacity: 1, y: 0 }}
-													exit={{ opacity: 0, x: 20 }}
-													transition={{ duration: 0.2 }}
-													className={`border-b border-border/30 transition-colors hover:bg-accent/30 ${ing.costSource === "manual" && ing.ingredientName ? "bg-amber-50/30" : ""}`}
-												>
-													<td className="px-2 py-1.5">
-														<Checkbox
-															checked={selectedRows.has(ing.id)}
-															onCheckedChange={() => handleToggleRow(ing.id)}
-														/>
-													</td>
-													<td className="px-1 py-1.5 min-w-[180px]">
-														<ComboboxCell
-															value={ing.inventoryId ?? ""}
-															inventoryItems={(inventory ?? []) as InventoryItem[]}
-															usedInventoryIds={usedInventoryIds}
-															onChange={(invId, item) => handleSelectInventoryItem(ing.id, invId, item)}
-															placeholder={ing.ingredientName || "Pilih Bahan..."}
-														/>
-													</td>
-													<td className="px-1 py-1.5">
-														<NumberCell
-															value={ing.usagePerServing}
-															onChange={(val) => handleIngredientChange(ing.id, "usagePerServing", val)}
-															min={0}
-															placeholder="0"
-														/>
-													</td>
-													<td className="px-1 py-1.5">
-														<UnitSelectCell
-															value={ing.usageUnit}
-															onChange={(val) => handleIngredientChange(ing.id, "usageUnit", val)}
-															options={usageOptions}
-														/>
-													</td>
-													<td className="px-1 py-1.5">
-														<NumberCell
-															value={ing.purchasePrice}
-															onChange={(val) => handleIngredientChange(ing.id, "purchasePrice", val)}
-															min={0}
-															format="currency"
-															placeholder="Rp 0"
-														/>
-													</td>
-													<td className="px-1 py-1.5 text-center">
-														{ing.ingredientName && (
-															<span
-																className={`inline-block rounded px-1 py-0.5 text-[9px] font-bold leading-none ${badge.class}`}
-																title={badge.label}
-															>
-																{badge.icon}
-															</span>
-														)}
-													</td>
-													<td className="px-1 py-1.5 text-right">
-														<span className="text-xs tabular-nums font-medium">
-															{subtotal > 0 ? formatCurrency(subtotal) : (
-																<span className="text-muted-foreground">—</span>
-															)}
-														</span>
-													</td>
-													<td className="px-1 py-1.5">
-														<div className="flex items-center justify-center gap-0.5">
-															<button
-																className="rounded p-1 text-foreground/50 hover:bg-accent hover:text-accent-foreground"
-																onClick={() => handleMoveRow(ing.id, "up")}
-																disabled={idx === 0}
-																title="Naik"
-															>
-																<ArrowUp className="h-3.5 w-3.5" />
-															</button>
-															<button
-																className="rounded p-1 text-foreground/50 hover:bg-accent hover:text-accent-foreground"
-																onClick={() => handleMoveRow(ing.id, "down")}
-																disabled={idx === form.ingredients.length - 1}
-																title="Turun"
-															>
-																<ArrowDown className="h-3.5 w-3.5" />
-															</button>
-															<button
-																className="rounded p-1 text-foreground/50 hover:bg-accent hover:text-accent-foreground"
-																onClick={() => handleInsertRow(ing.id)}
-																title="Sisip"
-															>
-																<Plus className="h-3.5 w-3.5" />
-															</button>
-															<button
-																className="rounded p-1 text-foreground/50 hover:bg-destructive/10 hover:text-destructive"
-																onClick={() => handleDeleteRow(ing.id)}
-																title="Hapus"
-															>
-																<X className="h-3.5 w-3.5" />
-															</button>
-														</div>
-													</td>
-												</motion.tr>
-											);
-										})}
-									</AnimatePresence>
-								</tbody>
-							</table>
-						</div>
-
-						{/* Table footer */}
-						<div className="flex items-center justify-between border-t border-border/50 px-4 py-2.5">
-							<div className="flex items-center gap-2">
-								<Button
-									variant="ghost"
-									size="sm"
-									className="h-7 text-[10px]"
-									onClick={handleAddRow}
-								>
-									<Plus className="mr-1 h-3 w-3" />
-									Tambah Bahan
-								</Button>
-								{selectedRows.size > 0 && (
-									<Button
-										variant="ghost"
-										size="sm"
-										className="h-7 text-[10px] text-destructive hover:text-destructive"
-										onClick={handleBulkDelete}
-									>
-										<Trash2 className="mr-1 h-3 w-3" />
-										Hapus {selectedRows.size}
-									</Button>
-								)}
-							</div>
-							<div className="flex items-center gap-3 text-xs text-muted-foreground">
-								{selectedRows.size > 0 && (
-									<span>{selectedRows.size} dipilih</span>
-								)}
-								{hasUnsavedChanges.current && (
-									<span className="flex items-center gap-1 text-amber-600">
-										<span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-										Belum disimpan
-									</span>
-								)}
-							</div>
-						</div>
-					</CardContent>
-				</Card>
-			)}
-
-\t\t\t{/* ── Summary Bar ── */}
-\t\t\t{(selectedProduct || selectedBaseRecipe) && form.ingredients.some((ing) => ing.ingredientName) && (
-				<Card className="border-primary/20 bg-primary/[0.02]">
-					<CardContent className="p-4">
-			<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-7">
-			<div>
-				<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-					HPP/Porsi
-				</p>
-				<p className="mt-0.5 text-sm font-bold tabular-nums">
-					{formatCurrency(metrics.totalHppPerServing)}
-				</p>
-			</div>
-			<div>
-				<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-					HPP/Batch
-				</p>
-				<p className="mt-0.5 text-sm font-bold tabular-nums">
-					{formatCurrency(metrics.totalHppPerBatch)}
-				</p>
-			</div>
-			<div>
-				<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-					Harga Jual
-				</p>
-				<p className="mt-0.5 text-sm font-bold tabular-nums">
-					{formatCurrency(form.sellingPrice)}
-				</p>
-			</div>
-			<div>
-				<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-					🎉 Happy Hour
-				</p>
-				<input
-					type="number"
-					value={form.happyHourPrice || ""}
-					onChange={(e) =>
-						setForm((prev) => ({ ...prev, happyHourPrice: Math.max(0, parseInt(e.target.value) || 0) }))
-					}
-					className="mt-0.5 w-full rounded border border-amber-200 bg-amber-50/50 px-1 py-0.5 text-sm font-bold tabular-nums text-amber-800 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-300"
+			{!hasSelection && (
+				<EmptyStateCard
+					loading={loading}
+					emptyProductList={!!emptyProductList}
 				/>
-			</div>
-			<div>
-				<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-					Laba/Porsi
-				</p>
-				<p className={`mt-0.5 text-sm font-bold tabular-nums ${metrics.profitPerServing >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-					{formatCurrency(metrics.profitPerServing)}
-				</p>
-			</div>
-			<div>
-				<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-					Margin
-				</p>
-				<p className={`mt-0.5 flex items-center gap-1 text-sm font-bold tabular-nums ${metrics.marginPercent >= 30 ? "text-emerald-600" : metrics.marginPercent >= 15 ? "text-amber-600" : "text-rose-600"}`}>
-					{formatNumber(metrics.marginPercent)}%
-					{metrics.marginPercent >= 30 ? (
-						<CheckCircle2 className="h-3.5 w-3.5" />
-					) : metrics.marginPercent >= 15 ? (
-						<AlertTriangle className="h-3.5 w-3.5" />
-					) : (
-						<X className="h-3.5 w-3.5" />
+			)}
+
+			{hasSelection && (
+				<>
+					<IngredientsTableCard
+						form={form}
+						setForm={setForm}
+						selectedRows={selectedRows}
+						setSelectedRows={setSelectedRows}
+						inventory={inventory}
+						usedInventoryIds={usedInventoryIds}
+						selectedRecipe={selectedRecipe}
+						handleSelectInventoryItem={handleSelectInventoryItem}
+						handleIngredientChange={handleIngredientChange}
+						handleToggleRow={handleToggleRow}
+						handleToggleAll={handleToggleAll}
+						handleAddRow={handleAddRow}
+						handleBulkDelete={handleBulkDelete}
+						handleSyncFromRecipe={handleSyncFromRecipe}
+						handleSyncFromInventory={handleSyncFromInventory}
+						handleAiAnalyze={handleAiAnalyze}
+						handleSave={handleSave}
+						saving={saving}
+						editingId={editingId}
+						aiAnalyzing={aiAnalyzing}
+						selectedProduct={selectedProduct}
+						selectedBaseRecipe={selectedBaseRecipe}
+					/>
+
+					{form.ingredients.some((ing) => ing.ingredientName) && (
+						<SummaryBar form={form} setForm={setForm} metrics={metrics} />
 					)}
-				</p>
-			</div>
-			<div>
-				<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-					Markup
-				</p>
-				<p className="mt-0.5 text-sm font-bold tabular-nums">
-					{formatNumber(metrics.markupPercent)}%
-				</p>
-			</div>
-		</div>
-					</CardContent>
-				</Card>
-			)}
 
-\t\t\t{/* ── AI Insights Panel ── */}
-\t\t\t{(selectedProduct || selectedBaseRecipe) && (
-				<Card className="border-emerald-200/50">
-									<button
-										className="flex w-full items-center gap-2 px-4 py-3 text-left"
-										onClick={() => setAiPanelOpen(!aiPanelOpen)}
-									>
-										<Sparkles className="h-4 w-4 text-emerald-500" />
-										<span className="text-sm font-bold flex-1">AI Cost Insights</span>
-										{aiAnalyzing ? (
-											<RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-										) : (
-											<ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${aiPanelOpen ? "rotate-180" : ""}`} />
-										)}
-									</button>
-									{aiPanelOpen && (
-										<div className="border-t border-border/50 px-4 py-3">
-											<div className="grid gap-2 text-xs sm:grid-cols-3">
-												<div className="rounded-lg border border-border/50 bg-muted/20 p-3">
-													<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-														💡 Bahan Termahal
-													</p>
-													<p className="mt-1 font-medium">
-														{form.ingredients.length > 0
-															? (() => {
-																const costs = form.ingredients.map((ing) => {
-																	const sub = ing.purchaseQuantity > 0 && ing.conversionFactor > 0
-																		? (ing.purchasePrice / (ing.purchaseQuantity * ing.conversionFactor)) * ing.usagePerServing
-																		: 0;
-																	return { name: ing.ingredientName || "(kosong)", cost: sub };
-																});
-																const max = costs.reduce((a, b) => a.cost > b.cost ? a : b, { name: "", cost: 0 });
-																const pct = metrics.totalHppPerServing > 0 ? ((max.cost / metrics.totalHppPerServing) * 100).toFixed(0) : "0";
-																return `${max.name || "—"} (${pct}% dari HPP)`;
-															})()
-															: "—"}
-													</p>
-												</div>
-												<div className="rounded-lg border border-border/50 bg-muted/20 p-3">
-													<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-														💰 Harga Jual Rekomendasi
-													</p>
-													<p className="mt-1 font-medium">
-														{metrics.totalHppPerServing > 0
-															? formatCurrency(Math.round(metrics.totalHppPerServing / 0.7))
-															: "—"} <span className="text-[10px] text-muted-foreground">(30% margin)</span>
-													</p>
-												</div>
-												<div className="rounded-lg border border-border/50 bg-muted/20 p-3">
-													<p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-														📊 Jumlah Bahan
-													</p>
-													<p className="mt-1 font-medium">
-														{form.ingredients.length} bahan
-														{form.ingredients.filter((i) => !i.ingredientName).length > 0 && (
-															<span className="ml-1 text-[10px] text-amber-600">
-																({form.ingredients.filter((i) => !i.ingredientName).length} belum diisi)
-															</span>
-														)}
-													</p>
-												</div>
-											</div>
-										</div>
-									)}
-								</Card>
-			)}
+					<AiInsightsPanel
+						aiPanelOpen={aiPanelOpen}
+						setAiPanelOpen={setAiPanelOpen}
+						aiAnalyzing={aiAnalyzing}
+						form={form}
+						metrics={metrics}
+					/>
 
-\t\t\t{/* ── Purchasing Sync Panel ── */}
-\t\t\t{(selectedProduct || selectedBaseRecipe) && (
-				<Card className="border-blue-200/50">
-									<button
-										className="flex w-full items-center gap-2 px-4 py-3 text-left"
-										onClick={() => setSyncPanelOpen(!syncPanelOpen)}
-									>
-										<RefreshCw className="h-4 w-4 text-blue-500" />
-										<span className="text-sm font-bold flex-1">Sync: Purchasing Agent</span>
-										<ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${syncPanelOpen ? "rotate-180" : ""}`} />
-									</button>
-									{syncPanelOpen && (
-										<div className="border-t border-border/50 px-4 py-3">
-											<div className="flex items-center gap-3 text-xs">
-												<span className="flex items-center gap-1 text-emerald-600">
-													<CheckCircle2 className="h-3.5 w-3.5" />
-													Terhubung
-												</span>
-												<span className="text-muted-foreground">•</span>
-												<span className="text-muted-foreground">
-													Harga dari inventory: {form.ingredients.filter((i) => i.costSource === "inventory").length} bahan
-												</span>
-												<span className="text-muted-foreground">•</span>
-												<span className="text-muted-foreground">
-													Manual: {form.ingredients.filter((i) => i.costSource === "manual").length} bahan
-												</span>
-											</div>
-										</div>
-									)}
-								</Card>
+					<SyncPanel
+						syncPanelOpen={syncPanelOpen}
+						setSyncPanelOpen={setSyncPanelOpen}
+						form={form}
+					/>
+				</>
 			)}
 		</div>
 	);

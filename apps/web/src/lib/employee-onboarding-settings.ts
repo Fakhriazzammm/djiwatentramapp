@@ -99,13 +99,13 @@ const fieldDefaults: Record<EmployeeOnboardingFieldKey, EmployeeOnboardingFieldS
 	startDate: { visible: true, required: true },
 	employmentType: { visible: true, required: true },
 	location: { visible: true, required: false },
-	salary: { visible: true, required: false },
+	salary: { visible: false, required: false },
 	homePin: { visible: true, required: false },
 	username: { visible: true, required: true },
-	slug: { visible: true, required: false },
-	contract: { visible: true, required: true },
+	slug: { visible: false, required: false },
+	contract: { visible: true, required: false },
 	documents: { visible: true, required: false },
-	signature: { visible: true, required: true },
+	signature: { visible: false, required: false },
 };
 
 export const DEFAULT_EMPLOYEE_ONBOARDING_SETTINGS: EmployeeOnboardingSettings = {
@@ -119,17 +119,17 @@ export const DEFAULT_EMPLOYEE_ONBOARDING_SETTINGS: EmployeeOnboardingSettings = 
 	defaultLocation: "Djiwa Tentram",
 	prefillSalaryFromRole: true,
 	salaryPreview: {
-		enabled: true,
-		candidateVisibility: "summary",
+		enabled: false,
+		candidateVisibility: "hidden",
 		behavior: "readonly",
 	},
 	fields: fieldDefaults,
 	steps: [
 		{ id: "personal", enabled: true, title: "Data Diri", description: "Identitas dasar dan kontak kandidat" },
-		{ id: "employment", enabled: true, title: "Data Kerja", description: "Role, tanggal mulai, lokasi, dan gaji" },
-		{ id: "contract", enabled: true, title: "Kontrak", description: "Preview template kontrak kerja" },
-		{ id: "documents", enabled: true, title: "Dokumen", description: "Checklist dan upload dokumen pendukung" },
-		{ id: "signature", enabled: true, title: "Tanda Tangan", description: "Persetujuan akhir dan tanda tangan digital" },
+		{ id: "employment", enabled: true, title: "Data Kerja", description: "Role, tanggal mulai, lokasi" },
+		{ id: "contract", enabled: false, title: "Kontrak", description: "Preview template kontrak kerja" },
+		{ id: "documents", enabled: false, title: "Dokumen", description: "Checklist dan upload dokumen pendukung" },
+		{ id: "signature", enabled: false, title: "Tanda Tangan", description: "Persetujuan akhir dan tanda tangan digital" },
 	],
 	autoGenerate: {
 		username: true,

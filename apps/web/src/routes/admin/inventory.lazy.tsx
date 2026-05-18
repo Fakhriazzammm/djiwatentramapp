@@ -22,6 +22,7 @@ import {
 	ChevronDown,
 	ChevronUp,
 	Edit,
+	Image,
 	History,
 	MoreVertical,
 	PackageSearch,
@@ -83,6 +84,7 @@ type InventoryWorkspaceRow = {
 	unit: string;
 	displayUnit?: string;
 	conversionFactor?: number;
+	imagePath?: string | null;
 	unitConversions?: Array<{
 		unit: string;
 		factor: number;
@@ -661,6 +663,22 @@ function getInventorySizeLabel({
 			: primaryConversion.conversionFactor;
 
 	return buildConversionHint(unit, selectedDisplayUnit, selectedFactor);
+}
+
+function getInventoryImageUrl(imagePath?: string | null): string | null {
+	if (!imagePath) return null;
+	// External URL — simpan langsung
+	if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+		return imagePath;
+	}
+	// Storage path — dapatkan public URL
+	try {
+		const supabase = createClient();
+		const { data } = supabase.storage.from("app-assets").getPublicUrl(imagePath);
+		return data.publicUrl;
+	} catch {
+		return null;
+	}
 }
 
 function parseUnitConversionsText(input: string) {
@@ -3956,6 +3974,9 @@ function InventoryTable({
 	const [savingKey, setSavingKey] = useState<string | null>(null);
 	const [statusFilter, setStatusFilter] = useState<"all" | "critical" | "warning" | "healthy">("all");
 	const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+	const [imagePopoverRow, setImagePopoverRow] = useState<string | null>(null);
+	const [imageUrlInput, setImageUrlInput] = useState("");
+	const [imagePopoverTab, setImagePopoverTab] = useState<"upload" | "url">("upload");
 		const [lastRefreshedAt, setLastRefreshedAt] = useState(new Date());
 
 	// Click outside to close dropdown
@@ -4005,6 +4026,7 @@ function InventoryTable({
 				preferredPurchaseUnit: string;
 				displayUnit: string;
 				conversionFactor: string;
+				imagePath: string;
 				unitConversionsText: string;
 				category: string;
 			}
@@ -4093,6 +4115,62 @@ function InventoryTable({
 		return new Set(yumiAiInsights.usageAnomalies.map((a) => a.inventoryId));
 	}, [yumiAiInsights?.usageAnomalies]);
 
+	const handleImageSelect = async (row: InventoryWorkspaceRow, file: File) => {
+		try {
+			const supabase = createClient();
+			const ext = file.name.split(".").pop() || "jpg";
+			const objectPath = `inventory/${row.inventoryId}-${Date.now()}.${ext}`;
+			const { error } = await supabase.storage
+				.from("app-assets")
+				.upload(objectPath, file, {
+					contentType: file.type || "image/jpeg",
+					upsert: true,
+				});
+			if (error) throw error;
+			setInlineField(row, "imagePath", objectPath);
+			await saveMeta(row);
+			toast.success("Foto tersimpan");
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : "Gagal upload foto";
+			toast.error(msg);
+		} finally {
+			setImagePopoverRow(null);
+			setImageUrlInput("");
+		}
+	};
+
+	const handleImagePasteUrl = async (row: InventoryWorkspaceRow, url: string) => {
+		const trimmed = url.trim();
+		if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+			toast.error("URL harus diawali http:// atau https://");
+			return;
+		}
+		try {
+			setInlineField(row, "imagePath", trimmed);
+			await saveMeta(row);
+			toast.success("URL foto tersimpan");
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : "Gagal simpan URL";
+			toast.error(msg);
+		} finally {
+			setImagePopoverRow(null);
+			setImageUrlInput("");
+		}
+	};
+
+	const handleImageRemove = async (row: InventoryWorkspaceRow) => {
+		try {
+			setInlineField(row, "imagePath", "");
+			await saveMeta(row);
+			toast.success("Foto dihapus");
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : "Gagal hapus foto";
+			toast.error(msg);
+		} finally {
+			setImagePopoverRow(null);
+		}
+	};
+
 	const getSuggestionHighlightClass = (matched: boolean) =>
 		matched
 			? "border-emerald-300/80 bg-emerald-50/60 text-emerald-900 focus:border-emerald-400"
@@ -4131,6 +4209,7 @@ function InventoryTable({
 					defaultBrandName: string;
 					displayUnit: string;
 					conversionFactor: string;
+				imagePath: string;
 					unitConversionsText: string;
 				}
 			>
@@ -4309,6 +4388,7 @@ function InventoryTable({
 				normalizeUnitOption(row.preferredPurchaseUnit) ||
 				"",
 			displayUnit: row.displayUnit ?? "",
+			imagePath: row.imagePath ?? "",
 			conversionFactor:
 				typeof row.conversionFactor === "number" && row.conversionFactor > 0
 					? String(row.conversionFactor)
@@ -4334,6 +4414,7 @@ function InventoryTable({
 			| "preferredPurchaseUnit"
 			| "displayUnit"
 			| "conversionFactor"
+			| "imagePath"
 			| "unitConversionsText"
 			| "category",
 		value: string
@@ -4357,6 +4438,7 @@ function InventoryTable({
 					normalizeUnitOption(row.preferredPurchaseUnit) ||
 					"",
 				displayUnit: row.displayUnit ?? "",
+			imagePath: row.imagePath ?? "",
 				conversionFactor:
 					typeof row.conversionFactor === "number" && row.conversionFactor > 0
 						? String(row.conversionFactor)
@@ -4513,6 +4595,7 @@ function InventoryTable({
 			(current.conversionFactor
 				? Number(current.conversionFactor)
 				: undefined) === row.conversionFactor &&
+			(current.imagePath.trim() || "") === (row.imagePath ?? "") &&
 			current.unitConversionsText.trim() ===
 				formatUnitConversionsText(
 					row.unitConversions,
@@ -4910,6 +4993,7 @@ function InventoryTable({
 							normalizeUnitOption(row.preferredPurchaseUnit) ||
 							"",
 						displayUnit: row.displayUnit ?? "",
+			imagePath: row.imagePath ?? "",
 						conversionFactor:
 							typeof row.conversionFactor === "number" && row.conversionFactor > 0
 								? String(row.conversionFactor)
@@ -5012,7 +5096,8 @@ function InventoryTable({
 				>
 					<colgroup>
 						<col className="w-[2.2rem]" />
-						<col className="w-[14%]" />
+						<col className="w-[3.5rem]" />
+						<col className="w-[13%]" />
 						<col className="w-[7%]" />
 						<col className="w-[12%]" />
 						<col className="w-[9%]" />
@@ -5030,6 +5115,9 @@ function InventoryTable({
 						<tr className="border-border border-b text-muted-foreground">
 							<th className="w-[2.2rem] px-1 py-2 text-center font-semibold text-muted-foreground/60" title="Insight AI">
 								<Sparkles className="mx-auto h-3 w-3" />
+							</th>
+							<th className="w-[3.5rem] px-1 py-2 text-center font-semibold text-muted-foreground/60" title="Foto bahan baku">
+								<Image className="mx-auto h-3.5 w-3.5" />
 							</th>
 							<th
 								className="sticky left-0 z-20 cursor-pointer border-border/70 border-r bg-card px-2.5 py-2 font-semibold shadow-[6px_0_10px_-8px_rgba(15,23,42,0.35)] transition-colors hover:text-foreground"
