@@ -3978,6 +3978,7 @@ function InventoryTable({
 	const [statusFilter, setStatusFilter] = useState<"all" | "critical" | "warning" | "healthy">("all");
 	const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 	const [imagePopoverRow, setImagePopoverRow] = useState<string | null>(null);
+	const imagePopoverRef = useRef<HTMLDivElement | null>(null);
 	const [imageUrlInput, setImageUrlInput] = useState("");
 	const [imagePopoverTab, setImagePopoverTab] = useState<"upload" | "url">("upload");
 		const [lastRefreshedAt, setLastRefreshedAt] = useState(new Date());
@@ -3989,6 +3990,23 @@ function InventoryTable({
 		window.addEventListener("click", handleClick);
 		return () => window.removeEventListener("click", handleClick);
 	}, [openDropdownId]);
+	// Click outside to close image popover
+	useEffect(() => {
+		if (!imagePopoverRow) return;
+		const handleClick = (e: MouseEvent) => {
+			if (imagePopoverRef.current && !imagePopoverRef.current.contains(e.target as Node)) {
+				setImagePopoverRow(null);
+				setImageUrlInput("");
+			}
+		};
+		const raf = requestAnimationFrame(() => {
+			window.addEventListener("click", handleClick);
+		});
+		return () => {
+			cancelAnimationFrame(raf);
+			window.removeEventListener("click", handleClick);
+		};
+	}, [imagePopoverRow]);
 	const inventoryCosts = useHybridLatestInventoryCosts();
 	const statusFilteredRows = useMemo(() => {
 		return statusFilter === "all"
@@ -5484,7 +5502,7 @@ function InventoryTable({
 											);
 										})()}
 									</td>
-									<td className="sticky left-0 z-10 bg-card border-r border-border/60 px-1 py-1.5 text-center align-middle group relative cursor-pointer" onClick={() => { setImagePopoverRow(imagePopoverRow === row.inventoryId ? null : row.inventoryId); setImageUrlInput(""); setImagePopoverTab("upload"); }}>
+									<td className="sticky left-0 z-10 bg-card border-r border-border/60 px-1 py-1.5 text-center align-middle group relative cursor-pointer" onClick={() => { if (imagePopoverRow !== row.inventoryId) { setImagePopoverRow(row.inventoryId); setImageUrlInput(""); setImagePopoverTab("upload"); } }}>
 										{(() => {
 											const imgUrl = getInventoryImageUrl(inline.imagePath || row.imagePath);
 											return (
@@ -5502,7 +5520,8 @@ function InventoryTable({
 														</div>
 													)}
 													{imagePopoverRow === row.inventoryId && (
-														<div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 w-64 rounded-xl border border-border bg-card shadow-xl p-3" onClick={(e) => e.stopPropagation()}>
+														<div ref={imagePopoverRef}
+														className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-[100] w-64 rounded-xl border border-border bg-card shadow-xl p-3" onClick={(e) => e.stopPropagation()}>
 															<div className="flex gap-1 mb-2">
 																<button className={`flex-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition-colors ${imagePopoverTab === "upload" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`} onClick={() => setImagePopoverTab("upload")} type="button">Upload</button>
 																<button className={`flex-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition-colors ${imagePopoverTab === "url" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`} onClick={() => setImagePopoverTab("url")} type="button">URL</button>
