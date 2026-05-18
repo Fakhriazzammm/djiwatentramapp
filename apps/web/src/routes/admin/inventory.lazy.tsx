@@ -5137,7 +5137,8 @@ function InventoryTable({
 						<col className="w-[9%]" />
 						<col className="w-[7%]" />
 						<col className="w-[7%]" />
-						<col className="w-[11rem]" />
+						<col className="w-[8rem]" />
+						<col className="w-[8rem]" />
 					</colgroup>
 					<thead className="bg-card">
 						<tr className="border-border border-b text-muted-foreground">
@@ -5803,7 +5804,7 @@ function InventoryTable({
 										{saveStateByRow[row.inventoryId] === "saving" ? (
 											<Loader2 className="ml-auto h-3 w-3 animate-spin text-muted-foreground/50" />
 										) : (
-											formatCurrencyIDR((Number(inline.quantity) || 0) * ((row.lastPurchasePrice || 0) / (row.preferredPurchaseQuantity || 1)))
+											formatCurrencyIDR((Number(inline.quantity) || 0) * ((row.lastPurchasePrice || 0) / ((typeof row.conversionFactor === "number" && row.conversionFactor > 0) ? row.conversionFactor : 1)))
 										)}
 									</td>
 									<td className="px-2 py-1.5 align-middle text-right">
@@ -5875,7 +5876,7 @@ function InventoryTable({
 								</td>
 								<td className="px-2 py-1.5" colSpan={2}></td>
 								<td className="px-2 py-1.5 text-right font-mono text-foreground">
-									{formatCurrencyIDR(statusFilteredRows.reduce((s, r) => s + ((r.currentStock || 0) * ((r.lastPurchasePrice || 0) / (r.preferredPurchaseQuantity || 1))), 0))}
+									{formatCurrencyIDR(statusFilteredRows.reduce((s, r) => s + ((r.currentStock || 0) * ((r.lastPurchasePrice || 0) / ((typeof r.conversionFactor === "number" && r.conversionFactor > 0) ? r.conversionFactor : 1))), 0))}
 								</td>
 								<td className="px-2 py-1.5"></td>
 							</tr>
