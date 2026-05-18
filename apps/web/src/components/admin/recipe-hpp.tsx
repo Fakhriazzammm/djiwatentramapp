@@ -23,7 +23,7 @@ import {
 	Trash2,
 	X,
 } from "lucide-react";
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -40,11 +40,11 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import {
 	useHybridAllProducts,
 	useHybridInventory,
 	useHybridLatestInventoryCosts,
+	useHybridAllDiscounts,
 	triggerHybridRefresh,
 } from "@/hooks/use-hybrid-pos-data";
 import {
@@ -1045,11 +1045,26 @@ function IngredientsTableCard({
 }
 
 
-function SummaryBar({ form, setForm, metrics }: {
+function SummaryBar({ form, setForm, metrics, activeHappyHour }: {
 	form: HppFormData;
 	setForm: (updater: ((prev: HppFormData) => HppFormData) | HppFormData) => void;
 	metrics: HppMetrics;
+	activeHappyHour: {
+		discountName: string;
+		discountId: string;
+		computedPrice: number;
+		type: string;
+		value: number;
+		timeRange: string;
+		days: number[];
+	} | null;
 }) {
+	const daysLabel = activeHappyHour?.days?.length
+		? ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"]
+			.filter((_, i) => activeHappyHour.days.includes(i))
+			.join(", ")
+		: "";
+
 	return (
 		<Card className="border-primary/20 bg-primary/[0.02]">
 			<CardContent className="p-4">
@@ -1068,14 +1083,55 @@ function SummaryBar({ form, setForm, metrics }: {
 					</div>
 					<div>
 						<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">🎉 Happy Hour</p>
-						<input
-							type="number"
-							value={form.happyHourPrice || ""}
-							onChange={(e) =>
-								setForm((prev) => ({ ...prev, happyHourPrice: Math.max(0, parseInt(e.target.value) || 0) }))
-							}
-							className="mt-0.5 w-full rounded border border-amber-200 bg-amber-50/50 px-1 py-0.5 text-sm font-bold tabular-nums text-amber-800 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-300"
-						/>
+						{activeHappyHour ? (
+							<div className="group relative mt-0.5">
+								<p className="cursor-pointer text-sm font-bold tabular-nums text-amber-600 transition-colors hover:text-amber-700"
+									title={activeHappyHour.discountName}
+								>
+									{formatCurrency(activeHappyHour.computedPrice)}
+								</p>
+								<div className="mt-0.5 flex items-center gap-1">
+									<span className="inline-flex items-center gap-0.5 rounded bg-amber-100 px-1 py-0.5 text-[8px] font-bold text-amber-700">
+										💾 {activeHappyHour.discountName}
+									</span>
+									{activeHappyHour.timeRange && (
+										<span className="text-[8px] text-muted-foreground/60">{activeHappyHour.timeRange}</span>
+									)}
+								</div>
+								<a
+									href="/admin/discounts"
+									className="mt-0.5 inline-flex items-center gap-0.5 text-[8px] text-blue-500 opacity-0 transition-opacity hover:underline group-hover:opacity-100"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Kelola Diskon →
+								</a>
+							</div>
+						) : form.happyHourPrice > 0 ? (
+							<div className="group relative mt-0.5">
+								<p className="text-sm font-bold tabular-nums text-amber-600">
+									{formatCurrency(form.happyHourPrice)}
+								</p>
+								<a
+									href="/admin/discounts"
+									className="mt-0.5 inline-flex items-center gap-0.5 text-[8px] text-blue-500 opacity-0 transition-opacity hover:underline group-hover:opacity-100"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Buat Happy Hour →
+								</a>
+							</div>
+						) : (
+							<a
+								href="/admin/discounts"
+								className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-muted-foreground/50 hover:text-blue-500 hover:underline"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								<Plus className="h-3 w-3" />
+								Atur Diskon
+							</a>
+						)}
 					</div>
 					<div>
 						<p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Laba/Porsi</p>
@@ -1244,6 +1300,7 @@ export function RecipeHppPage() {
 	const inventoryCosts = useHybridLatestInventoryCosts();
 	const recipes = useHybridRecipes();
 	const baseRecipes = useHybridBaseRecipes() as any[] | undefined;
+	const discounts = useHybridAllDiscounts() as any[] | undefined;
 
 	const loading = !products || !inventory || !recipes;
 	const emptyProductList = products && products.length === 0;
@@ -1341,6 +1398,89 @@ export function RecipeHppPage() {
 	const usedInventoryIds = useMemo(() => {
 		return new Set(form.ingredients.map((ing) => ing.inventoryId).filter(Boolean) as string[]);
 	}, [form.ingredients]);
+
+	// ── Active Happy Hour from Discounts ──
+	type HappyHourInfo = {
+		discountName: string;
+		discountId: string;
+		computedPrice: number;
+		type: string;
+		value: number;
+		timeRange: string;
+		days: number[];
+	} | null;
+
+	const activeHappyHour = useMemo((): HappyHourInfo => {
+		if (!discounts || !selectedProduct) return null;
+		const now = new Date();
+		const timestamp = now.getTime();
+		const currentDay = now.getDay();
+		const currentMin = now.getHours() * 60 + now.getMinutes();
+
+		const happyHourDiscounts = discounts.filter((d: any) => {
+			if (!d.isHappyHour || !d.isActive) return false;
+			if (d.startDate && timestamp < d.startDate) return false;
+			if (d.endDate && timestamp > d.endDate) return false;
+			if (d.days && d.days.length > 0 && !d.days.includes(currentDay)) return false;
+			if (d.startTime && d.endTime) {
+				const [sh, sm] = d.startTime.split(":").map(Number);
+				const [eh, em] = d.endTime.split(":").map(Number);
+				const startMin = sh * 60 + sm;
+				const endMin = eh * 60 + em;
+				if (currentMin < startMin || currentMin > endMin) return false;
+			}
+			// Check if this discount applies to the selected product
+			if (d.targetType === "PRODUCT" && d.targetIds) {
+				return d.targetIds.includes(selectedProduct._id);
+			}
+			if (d.targetType === "CATEGORY" && d.targetIds && selectedProduct.categoryId) {
+				return d.targetIds.includes(selectedProduct.categoryId);
+			}
+			return d.targetType === "ALL";
+		});
+
+		if (happyHourDiscounts.length === 0) return null;
+
+		// Use the first matching happy hour discount
+		const hh = happyHourDiscounts[0];
+		const basePrice = selectedProduct.promoPrice ?? selectedProduct.price;
+		let computedPrice: number;
+
+		switch (hh.type) {
+			case "PERCENTAGE":
+				computedPrice = Math.round(basePrice * (1 - (hh.value || 0) / 100));
+				break;
+			case "FIXED":
+				computedPrice = Math.max(0, basePrice - (hh.value || 0));
+				break;
+			case "FLAT_PRICE": {
+				// Check productPrices override
+				if (hh.productPrices) {
+					const override = hh.productPrices.find((p: any) => p.productId === selectedProduct._id);
+					computedPrice = override ? override.price : (hh.value || basePrice);
+				} else {
+					computedPrice = hh.value || basePrice;
+				}
+				break;
+			}
+			default:
+				computedPrice = basePrice;
+		}
+
+		const timeRange = hh.startTime && hh.endTime
+			? `${hh.startTime}-${hh.endTime}`
+			: "";
+
+		return {
+			discountName: hh.name,
+			discountId: hh._id,
+			computedPrice,
+			type: hh.type,
+			value: hh.value,
+			timeRange,
+			days: hh.days || [],
+		};
+	}, [discounts, selectedProduct]);
 
 	const hasUnsavedChanges = useRef(false);
 
@@ -1740,7 +1880,7 @@ export function RecipeHppPage() {
 					/>
 
 					{form.ingredients.some((ing) => ing.ingredientName) && (
-						<SummaryBar form={form} setForm={setForm} metrics={metrics} />
+						<SummaryBar form={form} setForm={setForm} metrics={metrics} activeHappyHour={activeHappyHour} />
 					)}
 
 					<AiInsightsPanel
