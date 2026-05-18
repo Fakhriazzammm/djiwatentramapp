@@ -5527,17 +5527,31 @@ function InventoryTable({
 											<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Satuan stok: {inline.unit}</span>
 										)}
 										</td>
-									<td className="px-2 py-1.5 align-middle text-center text-[9px] text-muted-foreground/70 font-mono">
-										{(() => {
-											const du = (row.displayUnit || '').trim().toLowerCase();
-											const base = (inline.unit || '').trim().toLowerCase();
-											const cf = inline.conversionFactor ? parseFloat(inline.conversionFactor) : 0;
-											if (cf > 0 && du && du !== base) {
-												const label = cf === 1000 ? `1 ${du} = 1.000 ${base}` : cf >= 100 ? `1 ${du} = ${cf.toLocaleString('id-ID')} ${base}` : `1 ${du} = ${cf} ${base}`;
-												return <span>{label}</span>;
-											}
-											return <span className="italic">&mdash;</span>;
-										})()}
+									<td className="px-2 py-1.5 align-middle text-center">
+										<div className="flex items-center gap-0.5 justify-center">
+											<input
+												className="w-14 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center font-mono text-[10px] font-semibold outline-none focus:border-border focus:bg-background"
+												onBlur={() => void saveMeta(row)}
+												onChange={(e) =>
+													setInlineField(row, "conversionFactor", e.target.value)
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveMeta(row);
+														(e.target as HTMLInputElement).blur();
+													}
+												}}
+												type="number"
+												placeholder="1"
+												step="any"
+												value={inline.conversionFactor}
+											/>
+											{inline.conversionFactor && row.displayUnit && inline.unit && row.displayUnit !== inline.unit && (
+												<span className="text-[9px] text-muted-foreground/60 font-mono whitespace-nowrap">
+													{row.displayUnit.toLowerCase()}={inline.unit.toLowerCase()}
+												</span>
+											)}
+										</div>
 									</td>
 									<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
 						<div className="flex flex-col gap-0.5">
