@@ -5093,6 +5093,7 @@ function InventoryTable({
 	};
 
 	return (
+		<>
 		<div className="rounded-xl border border-border/80 bg-card shadow-sm">
 			<div>
 <datalist id="inventory-unit-options-table">
@@ -6084,6 +6085,7 @@ function InventoryTable({
 				document.body
 			);
 		})()}
+		</>
 	);
 }
 
