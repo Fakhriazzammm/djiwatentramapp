@@ -5397,6 +5397,9 @@ function InventoryTable({
 										<Skeleton className="mx-auto h-3 w-3" />
 									</td>
 									<td className="p-4">
+										<Skeleton className="mx-auto h-7 w-7 rounded-full" />
+									</td>
+									<td className="p-4">
 										<Skeleton className="h-4 w-32" />
 									</td>
 									<td className="p-4">
