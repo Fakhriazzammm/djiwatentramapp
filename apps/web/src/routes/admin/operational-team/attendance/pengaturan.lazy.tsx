@@ -81,6 +81,7 @@ function AttendancePengaturanPage() {
 	const [showStaffPicker, setShowStaffPicker] = useState(false);
 	const [pickerGroupIndex, setPickerGroupIndex] = useState(0);
 	const [staffSearchQuery, setStaffSearchQuery] = useState("");
+	const [selectedStaffIds, setSelectedStaffIds] = useState<Set<string>>(new Set());
 	const staffUsers = useHybridStaffUsers();
 
 	useEffect(() => {
@@ -648,10 +649,11 @@ function AttendancePengaturanPage() {
 									>
 										<Plus className="h-3 w-3" /> Tambah staff
 									</button>
-									<button
+\t\t\t\t\t\t\t\t\t<button
 										onClick={() => {
 											setPickerGroupIndex(gi);
 											setStaffSearchQuery("");
+											setSelectedStaffIds(new Set());
 											setShowStaffPicker(true);
 										}}
 										className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 transition-colors"
@@ -717,8 +719,7 @@ function AttendancePengaturanPage() {
 									/>
 								</div>
 
-								{(() => {
-									const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+\t\t\t\t\t\t\t\t{(() => {
 									const filtered = (staffUsers ?? []).filter(
 										(u) =>
 											u.name.toLowerCase().includes(staffSearchQuery.toLowerCase()) ||
@@ -749,13 +750,13 @@ function AttendancePengaturanPage() {
 															<input
 																type="checkbox"
 																className="h-3.5 w-3.5 accent-primary"
-																checked={selectedIds.has(u._id)}
+																checked={selectedStaffIds.has(u._id)}
 																disabled={alreadyInGroup}
 																onChange={(e) => {
-																	const next = new Set(selectedIds);
+																	const next = new Set(selectedStaffIds);
 																	if (e.target.checked) next.add(u._id);
 																	else next.delete(u._id);
-																	setSelectedIds(next);
+																	setSelectedStaffIds(next);
 																}}
 															/>
 															<div className="flex-1 min-w-0">
@@ -781,7 +782,7 @@ function AttendancePengaturanPage() {
 												<Button
 													size="sm"
 													className="h-7 text-[10px]"
-													disabled={selectedIds.size === 0}
+													disabled={selectedStaffIds.size === 0}
 													onClick={() => {
 														const newGroups = [...rosterTemplate.groups];
 														newGroups[pickerGroupIndex] = { ...newGroups[pickerGroupIndex] };
@@ -789,7 +790,7 @@ function AttendancePengaturanPage() {
 															newGroups[pickerGroupIndex].staff.map((s) => s.rawName)
 														);
 														for (const u of staffUsers ?? []) {
-															if (selectedIds.has(u._id) && !existingNames.has(u.name)) {
+															if (selectedStaffIds.has(u._id) && !existingNames.has(u.name)) {
 																newGroups[pickerGroupIndex].staff = [
 																	...newGroups[pickerGroupIndex].staff,
 																	{ rawName: u.name, userId: u._id, displayName: u.name },
@@ -801,7 +802,7 @@ function AttendancePengaturanPage() {
 													}}
 												>
 													<Check className="h-3 w-3 mr-1" />
-													Tambah {selectedIds.size} staff
+													Tambah {selectedStaffIds.size} staff
 												</Button>
 											</div>
 										</>
