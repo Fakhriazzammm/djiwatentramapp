@@ -65,6 +65,7 @@ import {
 	useHybridRealtimePriceMonitor,
 	useHybridHppRecipes,
 } from "@/hooks/use-hybrid-inventory-admin-data";
+import { createClient } from "@/lib/client";
 import { formatCurrencyIDR } from "@/lib/export-utils";
 
 interface ConfirmConfig {
@@ -996,6 +997,7 @@ function InventoryPage() {
 		lowStockThreshold: "100",
 		displayUnit: "",
 		conversionFactor: "",
+		imagePath: "",
 		unitConversionsText: "",
 		baseRecipeId: "" as string,
 		defaultBrandName: "",
@@ -1495,6 +1497,7 @@ function InventoryPage() {
 				lowStockThreshold: "100",
 				displayUnit: "",
 				conversionFactor: "",
+				imagePath: "",
 				unitConversionsText: "",
 				baseRecipeId: "",
 				defaultBrandName: "",
@@ -4045,6 +4048,7 @@ function InventoryTable({
 		preferredStoreName: "",
 		displayUnit: "",
 		conversionFactor: "",
+		imagePath: "",
 		unitConversionsText: "",
 	});
 	const brandNameOptions = useMemo(() => {
@@ -4640,6 +4644,7 @@ function InventoryTable({
 				preferredPurchaseQuantity: preferredPurchaseQuantityNum ?? undefined,
 				preferredPurchaseUnit: preferredPurchaseUnit || undefined,
 				category: current.category.trim(),
+				imagePath: current.imagePath.trim() || undefined,
 			});
 			saveLearnedProfile(ingredientName, {
 				unit: normalizedUnit,
@@ -4772,6 +4777,7 @@ function InventoryTable({
 				preferredStoreName: "",
 				displayUnit: "",
 				conversionFactor: "",
+				imagePath: "",
 				unitConversionsText: "",
 			}));
 			quickAddNameRef.current?.focus();
@@ -5116,11 +5122,11 @@ function InventoryTable({
 							<th className="w-[2.2rem] px-1 py-2 text-center font-semibold text-muted-foreground/60" title="Insight AI">
 								<Sparkles className="mx-auto h-3 w-3" />
 							</th>
-							<th className="w-[3.5rem] px-1 py-2 text-center font-semibold text-muted-foreground/60" title="Foto bahan baku">
+							<th className="sticky left-0 z-20 bg-card w-[3.5rem] px-1 py-2 text-center font-semibold text-muted-foreground/60 border-r border-border/70" title="Foto bahan baku">
 								<Image className="mx-auto h-3.5 w-3.5" />
 							</th>
 							<th
-								className="sticky left-0 z-20 cursor-pointer border-border/70 border-r bg-card px-2.5 py-2 font-semibold shadow-[6px_0_10px_-8px_rgba(15,23,42,0.35)] transition-colors hover:text-foreground"
+								className="sticky left-[3.5rem] z-20 cursor-pointer border-border/70 border-r bg-card px-2.5 py-2 font-semibold shadow-[6px_0_10px_-8px_rgba(15,23,42,0.35)] transition-colors hover:text-foreground"
 								onClick={() => onSort("ingredientName")}
 							>
 								<div className="flex items-center gap-1">
@@ -5226,7 +5232,8 @@ function InventoryTable({
 					<tbody className="divide-y divide-border">
 						<tr className="bg-primary/[0.04]">
 							<td className="px-1 py-1.5 text-center align-middle" />
-							<td className="px-2.5 py-1.5">
+							<td className="sticky left-0 z-10 bg-card border-r border-border/60 px-1 py-1.5 text-center align-middle"><div className="mx-auto h-7 w-7 rounded-full border-2 border-dashed border-muted-foreground/20" /></td>
+							<td className="sticky left-[3.5rem] z-10 bg-card border-r border-border/60 px-2.5 py-1.5">
 								<input
 									ref={quickAddNameRef}
 									className="w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold outline-none focus:border-primary"
@@ -5474,7 +5481,57 @@ function InventoryTable({
 											);
 										})()}
 									</td>
-									<td className="sticky left-0 z-10 border-border/60 border-r bg-card px-2.5 py-1.5 align-middle shadow-[6px_0_10px_-8px_rgba(15,23,42,0.2)]">
+									<td className="sticky left-0 z-10 bg-card border-r border-border/60 px-1 py-1.5 text-center align-middle group relative cursor-pointer" onClick={() => { setImagePopoverRow(imagePopoverRow === row.inventoryId ? null : row.inventoryId); setImageUrlInput(""); setImagePopoverTab("upload"); }}>
+										{(() => {
+											const imgUrl = getInventoryImageUrl(inline.imagePath || row.imagePath);
+											return (
+												<div className="relative mx-auto h-7 w-7">
+													{imgUrl ? (
+														<img
+																src={imgUrl}
+																alt={row.ingredientName}
+																className="h-7 w-7 rounded-full object-cover border border-border"
+																onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).parentElement!.classList.add("photo-broken"); }}
+														/>
+													) : (
+														<div className="h-7 w-7 rounded-full border-2 border-dashed border-muted-foreground/20 flex items-center justify-center text-muted-foreground/30 hover:border-muted-foreground/50 hover:text-muted-foreground/60 transition-colors">
+															<Image className="h-3.5 w-3.5" />
+														</div>
+													)}
+													{imagePopoverRow === row.inventoryId && (
+														<div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 w-64 rounded-xl border border-border bg-card shadow-xl p-3" onClick={(e) => e.stopPropagation()}>
+															<div className="flex gap-1 mb-2">
+																<button className={`flex-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition-colors ${imagePopoverTab === "upload" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`} onClick={() => setImagePopoverTab("upload")} type="button">Upload</button>
+																<button className={`flex-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition-colors ${imagePopoverTab === "url" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`} onClick={() => setImagePopoverTab("url")} type="button">URL</button>
+															</div>
+															{imagePopoverTab === "upload" ? (
+																<label className="block cursor-pointer rounded-lg border-2 border-dashed border-muted-foreground/30 p-3 text-center text-[10px] text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors">
+																	<Image className="mx-auto h-5 w-5 mb-1 opacity-50" />
+																	Klik untuk pilih file gambar
+																	<input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleImageSelect(row, f); }} />
+																</label>
+															) : (
+																<div className="flex flex-col gap-1.5">
+																	<input
+																		className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[10px] outline-none focus:border-primary placeholder:text-muted-foreground/40"
+																		placeholder="https://...gambar.jpg"
+																		value={imageUrlInput}
+																		onChange={(e) => setImageUrlInput(e.target.value)}
+																		onKeyDown={(e) => { if (e.key === "Enter") void handleImagePasteUrl(row, imageUrlInput); }}
+																	/>
+																	<button className="rounded-lg bg-primary px-2 py-1 text-[10px] font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50" disabled={!imageUrlInput.trim()} onClick={() => void handleImagePasteUrl(row, imageUrlInput)} type="button">Simpan URL</button>
+																</div>
+															)}
+															{(inline.imagePath || row.imagePath) && (
+																<button className="mt-2 w-full rounded-lg border border-rose-200 px-2 py-1 text-[10px] font-semibold text-rose-600 hover:bg-rose-50 transition-colors" onClick={() => void handleImageRemove(row)} type="button">Hapus Foto</button>
+															)}
+														</div>
+													)}
+												</div>
+											);
+										})()}
+									</td>
+									<td className="sticky left-[3.5rem] z-10 border-border/60 border-r bg-card px-2.5 py-1.5 align-middle shadow-[6px_0_10px_-8px_rgba(15,23,42,0.2)]">
 											<input
 												className={`w-full truncate rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-bold leading-4 outline-none focus:border-border focus:bg-background ${
 													tableMode === "simple" ? "text-[10px]" : "text-[11px]"
@@ -5804,7 +5861,7 @@ function InventoryTable({
 						}
 						{(statusFilteredRows.length ?? 0) === 0 && (
 							<tr>
-							<td className="p-8 text-center text-muted-foreground" colSpan={14}>
+							<td className="p-8 text-center text-muted-foreground" colSpan={15}>
 								Tidak ada bahan baku ditemukan
 								</td>
 							</tr>
