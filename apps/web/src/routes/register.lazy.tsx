@@ -97,18 +97,14 @@ function moneyValue(v?: number) {
 	return v ? String(v) : "";
 }
 
-/** Build active step labels from settings + always include Selesai */
-function getActiveSteps(settings: EmployeeOnboardingSettings): string[] {
-	const steps = getEnabledOnboardingSteps(settings);
-	const labels = steps.map((s) => s.title);
-	labels.push("Selesai");
-	return labels;
+/** Build active step labels — hardcoded sesuai rendering publik: Data Diri, Data Kerja, Kontrak & Tanda Tangan, Selesai */
+function getActiveSteps(_settings: EmployeeOnboardingSettings): string[] {
+	return ["Data Diri", "Data Kerja", "Kontrak & Tanda Tangan", "Selesai"];
 }
 
-/** Compute submission UI — the step index after which submit/confirmation happens */
-function getSubmitStepIndex(settings: EmployeeOnboardingSettings): number {
-	const steps = getEnabledOnboardingSteps(settings);
-	return steps.length;
+/** Compute submission UI — submit happens at step 2 (Kontrak & Tanda Tangan) */
+function getSubmitStepIndex(_settings: EmployeeOnboardingSettings): number {
+	return 3; // step 0,1,2 are form steps, step 3 is success screen
 }
 
 /* -------- page component -------- */
