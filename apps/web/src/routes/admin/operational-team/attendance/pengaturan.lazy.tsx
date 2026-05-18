@@ -9,11 +9,21 @@ import {
 	Trash2,
 	Layers,
 	X,
+	Users,
+	Search,
+	Check,
+	Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+	Dialog,
+	DialogContent,
+	DialogClose,
+} from "@/components/ui/dialog";
+import {
 	useHybridSiteSettings,
+	useHybridStaffUsers,
 } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridUpdateSiteSettings,
@@ -68,6 +78,10 @@ function AttendancePengaturanPage() {
 	type RosterGroup = { label: string; roleLabel?: string; colorKey?: string; staff: RosterGroupStaff[] };
 	type RosterTemplate = { groups: RosterGroup[]; updatedAt?: string };
 	const [rosterTemplate, setRosterTemplate] = useState<RosterTemplate>({ groups: [] });
+	const [showStaffPicker, setShowStaffPicker] = useState(false);
+	const [pickerGroupIndex, setPickerGroupIndex] = useState(0);
+	const [staffSearchQuery, setStaffSearchQuery] = useState("");
+	const staffUsers = useHybridStaffUsers();
 
 	useEffect(() => {
 		if (siteSettings) {
@@ -618,6 +632,7 @@ function AttendancePengaturanPage() {
 										))}
 									</div>
 
+\t\t\t\t\t\t\t\t\t<div className="flex gap-2 flex-wrap">
 									<button
 										onClick={() => {
 											const rawName = window.prompt("Nama staff (raw name dari import):");
@@ -633,6 +648,18 @@ function AttendancePengaturanPage() {
 									>
 										<Plus className="h-3 w-3" /> Tambah staff
 									</button>
+									<button
+										onClick={() => {
+											setPickerGroupIndex(gi);
+											setStaffSearchQuery("");
+											setShowStaffPicker(true);
+										}}
+										className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 transition-colors"
+										type="button"
+									>
+										<Users className="h-3 w-3" /> Ambil dari Karyawan
+									</button>
+								</div>
 
 									{/* Move up/down */}
 									<div className="flex gap-1">
@@ -660,13 +687,125 @@ function AttendancePengaturanPage() {
 											disabled={gi === rosterTemplate.groups.length - 1}
 											type="button"
 										>
-											↓ Turun
-										</button>
-									</div>
-								</div>
-							))}
+\t\t\t\t\t\t\t</div>
 						</div>
 					</div>
+
+					{/* ── Staff Picker Modal ── */}
+					<Dialog open={showStaffPicker} onOpenChange={setShowStaffPicker}>
+						<DialogContent className="sm:max-w-md">
+							<div className="space-y-3">
+								<div className="flex items-center justify-between">
+									<h4 className="font-bold text-sm">Pilih Karyawan</h4>
+									<DialogClose className="text-muted-foreground hover:text-foreground transition-colors">
+										<X className="h-4 w-4" />
+									</DialogClose>
+								</div>
+
+								<div className="relative">
+									<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+									<input
+										className="w-full rounded-lg border border-border bg-muted/30 pl-9 pr-3 py-2 text-xs outline-none focus:ring-2 focus:ring-primary/20"
+										placeholder="Cari karyawan..."
+										value={staffSearchQuery}
+										onChange={(e) => setStaffSearchQuery(e.target.value)}
+										autoFocus
+									/>
+								</div>
+
+								{(() => {
+									const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+									const filtered = (staffUsers ?? []).filter(
+										(u) =>
+											u.name.toLowerCase().includes(staffSearchQuery.toLowerCase()) ||
+											(u.roleName ?? "").toLowerCase().includes(staffSearchQuery.toLowerCase())
+									);
+
+									return (
+										<>
+											<div className="max-h-64 space-y-0.5 overflow-y-auto rounded-lg border border-border">
+												{filtered.length === 0 && (
+													<p className="py-8 text-center text-xs text-muted-foreground">
+														Tidak ada karyawan ditemukan
+													</p>
+												)}
+												{filtered.map((u) => {
+													const alreadyInGroup = rosterTemplate.groups[pickerGroupIndex]?.staff.some(
+														(s) => s.rawName === u.name
+													);
+													return (
+														<label
+															key={u._id}
+															className={`flex items-center gap-3 px-3 py-2 text-xs transition-colors cursor-pointer ${
+																alreadyInGroup
+																	? "bg-muted/50 text-muted-foreground line-through pointer-events-none"
+																	: "hover:bg-muted/50"
+															}`}
+														>
+															<input
+																type="checkbox"
+																className="h-3.5 w-3.5 accent-primary"
+																checked={selectedIds.has(u._id)}
+																disabled={alreadyInGroup}
+																onChange={(e) => {
+																	const next = new Set(selectedIds);
+																	if (e.target.checked) next.add(u._id);
+																	else next.delete(u._id);
+																	setSelectedIds(next);
+																}}
+															/>
+															<div className="flex-1 min-w-0">
+																<p className="font-medium truncate">{u.name}</p>
+																{u.roleName && (
+																	<p className="text-[10px] text-muted-foreground truncate">{u.roleName}</p>
+																)}
+															</div>
+														</label>
+													);
+												})}
+											</div>
+
+											<div className="flex justify-end gap-2 pt-1">
+												<Button
+													variant="outline"
+													size="sm"
+													className="h-7 text-[10px]"
+													onClick={() => setShowStaffPicker(false)}
+												>
+													Batal
+												</Button>
+												<Button
+													size="sm"
+													className="h-7 text-[10px]"
+													disabled={selectedIds.size === 0}
+													onClick={() => {
+														const newGroups = [...rosterTemplate.groups];
+														newGroups[pickerGroupIndex] = { ...newGroups[pickerGroupIndex] };
+														const existingNames = new Set(
+															newGroups[pickerGroupIndex].staff.map((s) => s.rawName)
+														);
+														for (const u of staffUsers ?? []) {
+															if (selectedIds.has(u._id) && !existingNames.has(u.name)) {
+																newGroups[pickerGroupIndex].staff = [
+																	...newGroups[pickerGroupIndex].staff,
+																	{ rawName: u.name, userId: u._id, displayName: u.name },
+																];
+															}
+														}
+														setRosterTemplate((prev) => ({ ...prev, groups: newGroups }));
+														setShowStaffPicker(false);
+													}}
+												>
+													<Check className="h-3 w-3 mr-1" />
+													Tambah {selectedIds.size} staff
+												</Button>
+											</div>
+										</>
+									);
+								})()}
+							</div>
+						</DialogContent>
+					</Dialog>
 				</section>
 			)}
 		</div>
