@@ -645,6 +645,7 @@ async function loadWorkspace(daysWindow: number) {
 	let riskMediumCount = 0;
 
 	const rows = items
+		.filter((item) => item.baseRecipeId == null)
 		.map((item) => {
 			const totalUsage = usageByInventoryId[String(item._id)] ?? 0;
 			const avgDailyUsage = totalUsage / daysWindow;
