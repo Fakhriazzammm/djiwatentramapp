@@ -689,6 +689,7 @@ async function loadWorkspace(daysWindow: number) {
 				displayUnit: item.displayUnit ?? null,
 				conversionFactor: item.conversionFactor ?? null,
 				unitConversions: item.unitConversions ?? null,
+				imagePath: item.imagePath ?? null,
 				defaultBrandName: item.defaultBrandName ?? null,
 				preferredStoreId: item.preferredStoreId ?? null,
 				preferredStoreName:
