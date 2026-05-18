@@ -5623,9 +5623,22 @@ function InventoryTable({
 											if (saveStateByRow[row.inventoryId] === "saving") {
 												return <Loader2 className="mx-auto h-3 w-3 animate-spin text-muted-foreground/50" />;
 											}
-											const unitPrice = (row.lastPurchasePrice || 0) / (row.preferredPurchaseQuantity || 1);
-											const displayUnit = row.unit || "unit";
-											return <>{formatCurrencyIDR(unitPrice)} / {displayUnit}</>;
+											const price = row.lastPurchasePrice || 0;
+											const factor = (typeof row.conversionFactor === "number" && row.conversionFactor > 0) ? row.conversionFactor : 1;
+											const hasConversion = factor > 1 && row.displayUnit && row.displayUnit.toLowerCase() !== row.unit.toLowerCase();
+											const unitPrice = price / factor;
+											const labelUnit = hasConversion ? (row.displayUnit || row.unit) : row.unit;
+											if (!price) return <span className="text-muted-foreground/40">—</span>;
+											return (
+												<div className="flex flex-col items-center gap-0.5">
+													<span className="font-semibold text-foreground/80">{formatCurrencyIDR(unitPrice)}/{labelUnit}</span>
+													{hasConversion && (
+														<span className="text-[8px] text-muted-foreground/40 font-mono">
+															{formatCurrencyIDR(price)}/{factor}
+														</span>
+													)}
+												</div>
+											);
 										})()}
 									</td>
 									<td className="px-2 py-1.5 align-middle">
