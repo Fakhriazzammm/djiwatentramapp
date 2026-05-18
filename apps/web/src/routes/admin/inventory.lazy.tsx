@@ -5546,9 +5546,25 @@ function InventoryTable({
 												step="any"
 												value={inline.conversionFactor}
 											/>
-											{inline.conversionFactor && row.displayUnit && inline.unit && row.displayUnit !== inline.unit && (
-												<span className="text-[9px] text-muted-foreground/60 font-mono whitespace-nowrap">
-													{row.displayUnit.toLowerCase()}={inline.unit.toLowerCase()}
+											<input
+												className="w-12 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-center text-[10px] font-mono text-muted-foreground outline-none focus:border-border focus:bg-background"
+												list="inventory-unit-options-table"
+												onBlur={() => void saveMeta(row)}
+												onChange={(e) =>
+													setInlineField(row, "displayUnit", normalizeUnitOption(e.target.value))
+												}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														void saveMeta(row);
+														(e.target as HTMLInputElement).blur();
+													}
+												}}
+												placeholder={inline.unit}
+												value={inline.displayUnit}
+											/>
+											{inline.conversionFactor && inline.displayUnit && inline.unit && inline.displayUnit.toLowerCase() !== inline.unit.toLowerCase() && (
+												<span className="text-[9px] text-muted-foreground/40 font-mono whitespace-nowrap">
+													=
 												</span>
 											)}
 										</div>
