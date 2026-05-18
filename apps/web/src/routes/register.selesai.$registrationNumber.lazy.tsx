@@ -245,7 +245,7 @@ function RegisterCompletePage() {
       emergencyContactName: app.emergency_contact?.name || "",
       emergencyContactPhone: app.emergency_contact?.phone || "",
     };
-    const built = buildEmployeeContractTemplate(personal, app.employment || {}, companyDisplayName, roleDefaults.bonusTargetConfig ?? undefined, roleDefaults.customAllowances ?? []);
+    const built = buildEmployeeContractTemplate(personal, app.employment || {}, companyDisplayName, (roleDefaults as any).bonusTargetConfig ?? undefined, (roleDefaults as any).customAllowances ?? []);
     const ctx = buildContractVariableContext(personal as any, app.employment || {}, companyDisplayName, signatoryPersonName, onboardingSettings.signatoryCompanyAddress, onboardingSettings.signatoryCompanyNIB, onboardingSettings.signatoryPersonTitle, onboardingSettings.signatoryLocation);
     return {
       ...built,

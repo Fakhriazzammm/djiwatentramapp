@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/client";
 import { makeSourceId } from "@/lib/id-utils";
-import { OpnameItem, OpnameRole } from "@/components/attendance/stock-opname-panel";
+import type { OpnameItem, OpnameRole } from "@/components/attendance/stock-opname-panel";
 
 // ============================================================
 // HOOK: useStockOpname — Fetch & submit stock opname data

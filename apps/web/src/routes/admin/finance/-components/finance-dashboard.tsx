@@ -170,7 +170,7 @@ export function FinanceDashboard() {
 							{ label: "Total COGS", value: hppCogs.totalCogs, color: "text-orange-600" },
 							{ label: "Laba Kotor", value: hppCogs.totalProfit, color: hppCogs.totalProfit >= 0 ? "text-emerald-600" : "text-red-600" },
 							{ label: "Gross Margin", value: hppCogs.grossMargin, color: "text-primary", suffix: "%", icon: <TrendingUp className="h-3 w-3" /> },
-						] as const).map((item) => (
+						] as { label: string; value: any; color: string; suffix?: string; icon?: React.ReactNode }[]).map((item) => (
 							<div key={item.label}>
 								<p className="text-[9px] text-slate-500">{item.label}</p>
 								<p className={`font-bold text-[11px] font-mono ${item.color}`}>

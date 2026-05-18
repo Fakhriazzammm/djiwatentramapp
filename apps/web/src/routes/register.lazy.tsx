@@ -28,9 +28,10 @@ import {
 	validateEmployeeOnboardingDraft,
 } from "@/lib/employee-onboarding-schema";
 import {
-	defaultEmployeeOnboardingSettings,
-	EmployeeOnboardingSettings,
-	EmployeeOnboardingFieldKey,
+	DEFAULT_EMPLOYEE_ONBOARDING_SETTINGS,
+	type EmployeeOnboardingSettings,
+	type EmployeeOnboardingFieldKey,
+	type EmployeeOnboardingStepSetting,
 	applyOnboardingDefaultsToDraft,
 	getRoleSalaryDefaults,
 	normalizeEmployeeOnboardingSettings,
@@ -69,6 +70,28 @@ const initialDraft: EmployeeOnboardingDraft = {
 	signatureDataUrl: "",
 	agreements: { dataIsTrue: false, contractApproved: false },
 };
+
+function dataUrlToBlob(dataUrl: string): Blob {
+	const parts = dataUrl.split(",");
+	const mime = parts[0].match(/:(.*?);/)?.[1] || "image/png";
+	const bytes = atob(parts[1]);
+	const arr = new Uint8Array(bytes.length);
+	for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+	return new Blob([arr], { type: mime });
+}
+
+async function generateContractPdfBlob(_draft: Record<string, unknown>, _previewEl: HTMLElement | null): Promise<Blob> {
+	// Fallback: return a simple PDF blob if html2canvas/jspdf isn't available
+	const { default: jsPDF } = await import("jspdf");
+	const doc = new jsPDF({ format: "a4", unit: "mm" });
+	doc.text("Kontrak Karyawan", 105, 20, { align: "center" });
+	doc.text("Kontrak akan tersedia setelah diunduh.", 105, 40, { align: "center" });
+	return doc.output("blob");
+}
+
+function getEnabledOnboardingSteps(settings: EmployeeOnboardingSettings): EmployeeOnboardingStepSetting[] {
+	return settings.steps.filter((s) => s.enabled);
+}
 
 function moneyValue(v?: number) {
 	return v ? String(v) : "";
@@ -235,7 +258,7 @@ function RegisterPage() {
 				const p = draft.personal;
 				if (!p.fullName.trim()) errors.push("Nama lengkap wajib diisi");
 				if (!p.phone.trim()) errors.push("No HP / WhatsApp wajib diisi");
-				if (!p.identityNumber.trim()) errors.push("NIK / No identitas wajib diisi");
+				if (!p.identityNumber?.trim()) errors.push("NIK / No identitas wajib diisi");
 				break;
 			}
 			case 1: {

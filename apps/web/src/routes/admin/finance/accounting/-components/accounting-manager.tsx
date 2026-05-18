@@ -439,7 +439,7 @@ export function AccountingManager() {
 									Tipe
 								</label>
 								<Select
-									onValueChange={(v) => setFormData({ ...formData, type: v })}
+									onValueChange={(v) => setFormData({ ...formData, type: v ?? "" })}
 									value={formData.type}
 								>
 									<SelectTrigger className="h-8 text-xs">

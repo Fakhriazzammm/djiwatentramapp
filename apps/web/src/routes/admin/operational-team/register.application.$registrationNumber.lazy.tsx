@@ -62,7 +62,7 @@ function ApplicationDetailPage() {
 			.select("*")
 			.filter("raw->>registrationNumber", "eq", registrationNumber)
 			.maybeSingle()
-			.then(({ data, error }) => {
+			.then(({ data, error }: { data: any; error: any }) => {
 				if (error) {
 					console.error("[ApplicationDetail] Query error:", error);
 					toast.error("Gagal memuat data: " + error.message);

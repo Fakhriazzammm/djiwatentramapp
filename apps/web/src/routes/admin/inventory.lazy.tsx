@@ -123,6 +123,7 @@ type InventoryWorkspaceRow = {
 		sourceLabel?: string | null;
 		sourceFingerprint?: string | null;
 	} | null;
+	netWeight?: string | null;
 };
 
 type InventoryWorkspaceData = {
@@ -983,7 +984,7 @@ function InventoryPage() {
 			) suspiciousBeli++;
 			if (
 				(row.displayUnit || "").trim() &&
-				row.displayUnit.trim().toLowerCase() !== row.unit.toLowerCase() &&
+				row.displayUnit?.trim().toLowerCase() !== row.unit.toLowerCase() &&
 				!(typeof row.conversionFactor === "number" && row.conversionFactor > 0)
 			) missingConvFactor++;
 		}
@@ -1024,7 +1025,8 @@ function InventoryPage() {
 			| "currentStock"
 			| "lowStockThreshold"
 			| "avgDailyUsage"
-			| "daysUntilStockout";
+			| "daysUntilStockout"
+			| "lastPurchasePrice";
 		direction: "asc" | "desc";
 	}>({ key: "ingredientName", direction: "asc" });
 	const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig>({
@@ -1078,6 +1080,7 @@ function InventoryPage() {
 				baseRecipeId: (selectedItem.baseRecipeId as string) || "",
 				defaultBrandName: selectedItem.defaultBrandName || "",
 				preferredStoreId: (selectedItem.preferredStoreId as string) || "",
+				imagePath: selectedItem.imagePath || "",
 				netWeight: selectedItem.netWeight || "",
 				newStoreName: "",
 			});
@@ -1254,6 +1257,7 @@ function InventoryPage() {
 			| "lowStockThreshold"
 			| "avgDailyUsage"
 			| "daysUntilStockout"
+			| "lastPurchasePrice"
 	) => {
 		setSortConfig((prev) => ({
 			key,
@@ -1503,6 +1507,7 @@ function InventoryPage() {
 				baseRecipeId: "",
 				defaultBrandName: "",
 				preferredStoreId: "",
+				netWeight: "",
 				newStoreName: "",
 			});
 			setPurchaseMeta({
@@ -1647,7 +1652,7 @@ function InventoryPage() {
 				onAmountChange={setAmount}
 				onCostPerUnitChange={setCostPerUnit}
 				onEntryDateChange={setEntryDate}
-				onNewItemChange={setNewItem}
+				onNewItemChange={setNewItem as any}
 				onNotesChange={setNotes}
 				onPurchaseMetaChange={setPurchaseMeta}
 				onSelectedItemChange={setSelectedItem}
@@ -1740,10 +1745,12 @@ function InventoryModalContent({
 		lowStockThreshold: string;
 		displayUnit: string;
 		conversionFactor: string;
+		imagePath: string;
 		unitConversionsText: string;
 		baseRecipeId: string;
 		defaultBrandName: string;
 		preferredStoreId: string;
+		netWeight: string;
 		newStoreName: string;
 	};
 	onNewItemChange: (item: {
@@ -1753,10 +1760,12 @@ function InventoryModalContent({
 		lowStockThreshold: string;
 		displayUnit: string;
 		conversionFactor: string;
+		imagePath?: string;
 		unitConversionsText: string;
 		baseRecipeId: string;
 		defaultBrandName: string;
 		preferredStoreId: string;
+		netWeight?: string;
 		newStoreName: string;
 	}) => void;
 	amount: string;
@@ -2352,10 +2361,12 @@ function InventoryActionModal({
 		lowStockThreshold: string;
 		displayUnit: string;
 		conversionFactor: string;
+		imagePath: string;
 		unitConversionsText: string;
 		baseRecipeId: string;
 		defaultBrandName: string;
 		preferredStoreId: string;
+		netWeight: string;
 		newStoreName: string;
 	};
 	onNewItemChange: (item: {
@@ -2365,10 +2376,12 @@ function InventoryActionModal({
 		lowStockThreshold: string;
 		displayUnit: string;
 		conversionFactor: string;
+		imagePath?: string;
 		unitConversionsText: string;
 		baseRecipeId: string;
 		defaultBrandName: string;
 		preferredStoreId: string;
+		netWeight?: string;
 		newStoreName: string;
 	}) => void;
 	amount: string;
@@ -2587,17 +2600,29 @@ function InventoryPlanningPanel({
 }: {
 	data:
 		| {
-				planningRows: Array<{
-					inventoryId: Id<"inventory">;
-					ingredientName: string;
-					currentStock: number;
-					unit: string;
-					avgDailyUsage: number;
-					daysUntilStockout: number | null;
-					reorderPoint: number;
-					suggestedOrderQty: number;
-					riskLevel: "high" | "medium" | "low";
-				}>;
+			planningRows: Array<{
+				inventoryId: Id<"inventory">;
+				ingredientName: string;
+				currentStock: number;
+				unit: string;
+				avgDailyUsage: number;
+				daysUntilStockout: number | null;
+				reorderPoint: number;
+				suggestedOrderQty: number;
+				riskLevel: "high" | "medium" | "low";
+				latestTransaction: {
+					type: string;
+					quantity: number;
+					timestamp: number;
+					notes?: string;
+					costPerUnit?: number;
+					storeId?: Id<"inventoryStores">;
+					purchaseQuantity?: number;
+					purchaseUnit?: string;
+					sourceLabel?: string | null;
+					sourceFingerprint?: string | null;
+				} | null;
+			}>;
 		  }
 		| undefined;
 	onDetailItemChange: (item: Doc<"inventory">) => void;
@@ -3936,6 +3961,7 @@ function InventoryTable({
 			| "lowStockThreshold"
 			| "avgDailyUsage"
 			| "daysUntilStockout"
+			| "lastPurchasePrice"
 	) => void;
 	sortConfig: {
 		key:
@@ -3944,7 +3970,8 @@ function InventoryTable({
 			| "currentStock"
 			| "lowStockThreshold"
 			| "avgDailyUsage"
-			| "daysUntilStockout";
+			| "daysUntilStockout"
+			| "lastPurchasePrice";
 		direction: "asc" | "desc";
 	};
 	tableMode: "simple" | "detail";
@@ -4071,6 +4098,8 @@ function InventoryTable({
 		conversionFactor: "",
 		imagePath: "",
 		unitConversionsText: "",
+		category: "kitchen",
+		supplier: "",
 	});
 	const brandNameOptions = useMemo(() => {
 		const seen = new Set<string>();
@@ -5765,8 +5794,9 @@ function InventoryTable({
 											if (saveStateByRow[row.inventoryId] === "saving") {
 												return <Loader2 className="mx-auto h-3 w-3 animate-spin text-muted-foreground/50" />;
 											}
-											const price = row.lastPurchasePrice || 0;
-											const factor = (typeof row.conversionFactor === "number" && row.conversionFactor > 0) ? row.conversionFactor : 1;
+											const price = Number(getPriceDraft(row)) || 0;
+											const rawFactor = inline.conversionFactor.trim();
+											const factor = rawFactor ? Number(rawFactor) : (typeof row.conversionFactor === "number" && row.conversionFactor > 0 ? row.conversionFactor : 1);
 											const hasConversion = factor > 1 && row.displayUnit && row.displayUnit.toLowerCase() !== row.unit.toLowerCase();
 											const unitPrice = price / factor;
 											const labelUnit = hasConversion ? (row.displayUnit || row.unit) : row.unit;
@@ -5804,7 +5834,7 @@ function InventoryTable({
 										{saveStateByRow[row.inventoryId] === "saving" ? (
 											<Loader2 className="ml-auto h-3 w-3 animate-spin text-muted-foreground/50" />
 										) : (
-											formatCurrencyIDR((Number(inline.quantity) || 0) * ((row.lastPurchasePrice || 0) / ((typeof row.conversionFactor === "number" && row.conversionFactor > 0) ? row.conversionFactor : 1)))
+											formatCurrencyIDR((Number(inline.quantity) || 0) * ((Number(getPriceDraft(row)) || 0) / (((inline.conversionFactor.trim() ? Number(inline.conversionFactor) : (typeof row.conversionFactor === "number" && row.conversionFactor > 0 ? row.conversionFactor : 1))) || 1)))
 										)}
 									</td>
 									<td className="px-2 py-1.5 align-middle text-right">

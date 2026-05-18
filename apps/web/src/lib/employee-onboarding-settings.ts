@@ -84,6 +84,13 @@ export type EmployeeOnboardingSettings = {
 		enabled: boolean;
 		requireConfirmation: boolean;
 	};
+	signatoryName: string;
+	signatoryPersonName: string;
+	signatorySignatureUrl: string;
+	signatoryCompanyAddress: string;
+	signatoryCompanyNIB: string;
+	signatoryPersonTitle: string;
+	signatoryLocation: string;
 };
 
 const fieldDefaults: Record<EmployeeOnboardingFieldKey, EmployeeOnboardingFieldSetting> = {
@@ -162,6 +169,13 @@ export const DEFAULT_EMPLOYEE_ONBOARDING_SETTINGS: EmployeeOnboardingSettings = 
 		enabled: true,
 		requireConfirmation: true,
 	},
+	signatoryName: "",
+	signatoryPersonName: "",
+	signatorySignatureUrl: "",
+	signatoryCompanyAddress: "",
+	signatoryCompanyNIB: "",
+	signatoryPersonTitle: "",
+	signatoryLocation: "",
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -217,7 +231,7 @@ function mergeDocuments(value: unknown, fallback: EmployeeOnboardingDocumentSett
 			enabled: typeof existing?.enabled === "boolean" ? existing.enabled : doc.enabled,
 			required: typeof existing?.required === "boolean" ? existing.required : doc.required,
 			requiredBeforeApproval: typeof existing?.requiredBeforeApproval === "boolean" ? existing.requiredBeforeApproval : doc.requiredBeforeApproval,
-			acceptedTypes: Array.isArray(existing?.acceptedTypes) ? existing.acceptedTypes.map(String) : doc.acceptedTypes,
+			acceptedTypes: existing && Array.isArray(existing.acceptedTypes) ? (existing.acceptedTypes as string[]).map(String) : doc.acceptedTypes,
 		};
 	});
 	const custom = source
@@ -289,6 +303,13 @@ export function normalizeEmployeeOnboardingSettings(value: unknown): EmployeeOnb
 			enabled: approvalPreview.enabled !== false,
 			requireConfirmation: approvalPreview.requireConfirmation !== false,
 		},
+		signatoryName: cleanString(source.signatoryName),
+		signatoryPersonName: cleanString(source.signatoryPersonName),
+		signatorySignatureUrl: cleanString(source.signatorySignatureUrl),
+		signatoryCompanyAddress: cleanString(source.signatoryCompanyAddress),
+		signatoryCompanyNIB: cleanString(source.signatoryCompanyNIB),
+		signatoryPersonTitle: cleanString(source.signatoryPersonTitle),
+		signatoryLocation: cleanString(source.signatoryLocation),
 	};
 }
 
@@ -334,7 +355,7 @@ export function applyOnboardingDefaultsToDraft(
 	const role = roles.find((item) => item?._id === (draft.employment.roleId || settings.defaultRoleId));
 	const roleId = draft.employment.roleId || settings.defaultRoleId || role?._id || "";
 	const roleName = draft.employment.roleName || role?.name || "";
-	const salary = settings.prefillSalaryFromRole && role ? getRoleSalaryDefaults(role) : {};
+	const salary = (settings.prefillSalaryFromRole && role ? getRoleSalaryDefaults(role) : {}) as Record<string, number>;
 	const slug = draft.personal.fullName ? createEmployeeSlug(draft.personal.fullName) : "";
 	return {
 		...draft,

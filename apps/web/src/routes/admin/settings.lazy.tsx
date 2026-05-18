@@ -438,6 +438,7 @@ type OperationalTeamTab =
 	| "users"
 	| "attendance-report"
 	| "attendance-logs"
+	| "attendance-schedule"
 	| "payroll"
 	| "register";
 type BonusTargetBasis = "shift" | "daily" | "monthly";
@@ -875,6 +876,7 @@ export function SettingsPage({
 		| "payroll"
 		| "attendance-report"
 		| "attendance-logs"
+		| "attendance-schedule"
 		| "register"
 	>(mode === "operational-team" ? (initialOperationalTab ?? "users") : "landing");
 

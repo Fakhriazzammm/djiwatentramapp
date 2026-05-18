@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { StockOpnamePanel, OpnameItem, OpnameRole } from "@/components/attendance/stock-opname-panel";
+import { StockOpnamePanel, type OpnameItem, type OpnameRole } from "@/components/attendance/stock-opname-panel";
 import { useOpnameRunner } from "@/hooks/use-opname-runner";
 import { useHybridClockOut } from "@/hooks/use-hybrid-write-actions";
 

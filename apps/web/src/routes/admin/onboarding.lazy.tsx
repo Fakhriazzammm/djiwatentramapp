@@ -39,7 +39,7 @@ export function AdminOnboardingPage() {
 			.from("employee_onboarding_applications")
 			.select("*")
 			.order("created_at", { ascending: false })
-			.then(({ data, error }) => {
+			.then(({ data, error }: { data: any; error: any }) => {
 				if (!error && data) setApplications(data as any[]);
 				setIsLoading(false);
 			});

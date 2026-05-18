@@ -1,5 +1,5 @@
 {
-  "version": 191,
+  "version": 195,
   "entries": [
     {
       "id": "42cd65b0-dc43-409d-9aa9-46f5ba4a2d29",
@@ -3764,9 +3764,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 70.0,
-      "usageCount": 3,
+      "usageCount": 4,
       "createdAt": "2026-05-16T10:02:43.157280+00:00",
-      "updatedAt": "2026-05-16T10:03:54.783121+00:00"
+      "updatedAt": "2026-05-18T14:08:08.489361+00:00"
     },
     {
       "id": "a6b47080-e701-44f1-bee6-d3b1bd262193",
@@ -4058,9 +4058,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 90.0,
-      "usageCount": 2,
+      "usageCount": 3,
       "createdAt": "2026-05-16T10:03:09.772399+00:00",
-      "updatedAt": "2026-05-17T10:08:52.727345+00:00"
+      "updatedAt": "2026-05-18T14:07:04.834643+00:00"
     },
     {
       "id": "9cf9cf8f-aa4e-4048-9a9e-9997ce28b824",
@@ -4163,9 +4163,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 95.0,
-      "usageCount": 1,
+      "usageCount": 4,
       "createdAt": "2026-05-16T10:03:18.049649+00:00",
-      "updatedAt": "2026-05-16T10:03:18.049649+00:00"
+      "updatedAt": "2026-05-18T14:08:08.479520+00:00"
     },
     {
       "id": "66a16991-4d93-4915-ac8c-f6455ca081c4",
@@ -4478,9 +4478,9 @@
       "correctionPayload": null,
       "confirmedByUser": false,
       "confidence": 95.0,
-      "usageCount": 1,
+      "usageCount": 2,
       "createdAt": "2026-05-16T10:03:51.450793+00:00",
-      "updatedAt": "2026-05-16T10:03:51.450793+00:00"
+      "updatedAt": "2026-05-18T14:08:08.459837+00:00"
     },
     {
       "id": "c2c5a720-b90f-46ec-93bc-3fe0d00f7c09",
@@ -4733,7 +4733,91 @@
       "usageCount": 1,
       "createdAt": "2026-05-17T16:03:42.883782+00:00",
       "updatedAt": "2026-05-17T16:03:42.883782+00:00"
+    },
+    {
+      "id": "f3d2134b-185a-4081-81ab-817b21efaab1",
+      "type": "expense_match",
+      "userInput": "Air Galon (qty:1, price:42000)",
+      "parsedName": "Air Galon (qty:1, price:42000)",
+      "matchedInventoryId": "kd78y2nztwb0t0ypxz68tbyfyd841qbc",
+      "matchedIngredientName": "Air Galon",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 100.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-18T14:03:59.817791+00:00",
+      "updatedAt": "2026-05-18T14:03:59.817791+00:00"
+    },
+    {
+      "id": "3e34e9e4-5a81-4610-99cd-0b79c89828fd",
+      "type": "expense_match",
+      "userInput": "Air Galon (qty:1, price:22500)",
+      "parsedName": "Air Galon (qty:1, price:22500)",
+      "matchedInventoryId": "kd78y2nztwb0t0ypxz68tbyfyd841qbc",
+      "matchedIngredientName": "Air Galon",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 100.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-18T14:05:02.727726+00:00",
+      "updatedAt": "2026-05-18T14:05:02.727726+00:00"
+    },
+    {
+      "id": "8c62ed3e-e79c-4a83-8a9e-07396e1dac27",
+      "type": "expense_match",
+      "userInput": "SOSIS SAPI (qty:1, price:70500)",
+      "parsedName": "SOSIS SAPI (qty:1, price:70500)",
+      "matchedInventoryId": "kd77baes1zbp7m6s4gtyn8n08d840ak4",
+      "matchedIngredientName": "Sosis (Salam)",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 85.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-18T14:07:06.057795+00:00",
+      "updatedAt": "2026-05-18T14:07:06.057795+00:00"
+    },
+    {
+      "id": "adfce758-d3e5-4cad-9104-1bbd5cbc3bb0",
+      "type": "expense_match",
+      "userInput": "FF COCONUT",
+      "parsedName": "FF COCONUT UHT",
+      "matchedInventoryId": "kd72bmg41w30a30r6kqzgte3b984epm3",
+      "matchedIngredientName": "Frisianflag Coconut Delight",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 90.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-18T14:08:12.482398+00:00",
+      "updatedAt": "2026-05-18T14:08:12.482398+00:00"
     }
   ],
-  "last_updated": "2026-05-17T16:03:42.884624+00:00"
+  "last_updated": "2026-05-18T14:08:12.483364+00:00"
 }

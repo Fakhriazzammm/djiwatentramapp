@@ -68,11 +68,10 @@ interface CartContextType {
 		notes: string;
 		isFreeRefill: boolean;
 		isSubmitted: boolean;
+		platform?: string;
+		platformCommission?: number;
 	};
 	updateCustomerInfo: (info: Partial<CartContextType["customerInfo"]>) => void;
-	platformTotal: number;
-	commissionAmount: number;
-	netRevenue: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);

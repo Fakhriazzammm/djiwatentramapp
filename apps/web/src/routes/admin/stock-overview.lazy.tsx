@@ -400,6 +400,7 @@ function StockOverviewPage() {
 							<Link
 								className="inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap rounded-lg border border-border bg-background px-3.5 py-2 font-semibold text-xs shadow-sm outline-none transition-all hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25 h-9 gap-1"
 								to="/attendance/stock-opname"
+								search={{} as any}
 							>
 								<ClipboardList className="mr-1.5 h-3.5 w-3.5" />
 								Stock Opname

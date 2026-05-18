@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { OpnameItem, OpnameRole } from "@/components/attendance/stock-opname-panel";
+import type { OpnameItem, OpnameRole } from "@/components/attendance/stock-opname-panel";
 
 /**
  * Hub: all opname logic via REST. No external hooks needed inside.

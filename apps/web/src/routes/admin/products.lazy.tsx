@@ -1,4 +1,4 @@
-﻿import { createLazyFileRoute } from "@tanstack/react-router";
+﻿import { createLazyFileRoute, Link } from "@tanstack/react-router";
 import type { Doc, Id } from "@/types/backend-compat";
 import {
 	useHybridAddProduct,
@@ -21,6 +21,8 @@ import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	CheckCircle2,
+	ChevronDown,
+	ChevronUp,
 	Edit,
 	LayoutGrid,
 	List,
@@ -28,6 +30,7 @@ import {
 	Search,
 	Sparkles,
 	Trash2,
+	Upload,
 	X,
 	XCircle,
 } from "lucide-react";
@@ -194,7 +197,10 @@ function ProductsTab({
 		menuNumber: "",
 		isAvailable: true,
 	});
-	const searchInputRef = useRef<HTMLInputElement | null>(null);
+	const [isDragOver, setIsDragOver] = useState(false);
+const [showVariations, setShowVariations] = useState(true);
+const [showAdvanced, setShowAdvanced] = useState(false);
+const searchInputRef = useRef<HTMLInputElement | null>(null);
 
 	const generateDescription = useHybridGenerateProductDescription();
 

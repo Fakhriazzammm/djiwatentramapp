@@ -109,10 +109,10 @@ export function CheckoutSidebar({
 
 	const platforms = useMemo(() => {
 		const raw = siteSettings?.platforms ?? [];
-		return raw.filter((p) => p.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+		return raw.filter((p: any) => p.isActive).sort((a: any, b: any) => a.sortOrder - b.sortOrder);
 	}, [siteSettings]);
 	const selectedPlatform = useMemo(() => {
-		return platforms.find((p) => p.id === customerInfo.platform) || null;
+		return platforms.find((p: any) => p.id === customerInfo.platform) || null;
 	}, [platforms, customerInfo.platform]);
 	const platformName = selectedPlatform?.name ?? "";
 
@@ -476,7 +476,7 @@ export function CheckoutSidebar({
 							{selectedOrderType?.id === "online" && platforms.length > 0 && (
 								<>
 									<span className="mx-0.5 h-4 w-px shrink-0 bg-border" />
-									{platforms.map((p) => (
+									{platforms.map((p: any) => (
 										<button
 											key={p.id}
 											type="button"

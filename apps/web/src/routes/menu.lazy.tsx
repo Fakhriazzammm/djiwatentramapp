@@ -333,8 +333,8 @@ function MenuPage() {
 	const [lastOrderId, setLastOrderId] = useState<Id<"orders"> | null>(null);
 	const [offlinePendingCount, setOfflinePendingCount] = useState(0);
 	const [visibleProductsCount, setVisibleProductsCount] = useState(INITIAL_PRODUCTS_BATCH);
-	const [priceDialogProduct, setPriceDialogProduct] = useState(null);
-	const [priceDialogValue, setPriceDialogValue] = useState("");
+const [priceDialogProduct, setPriceDialogProduct] = useState<{ product: Record<string, any>; defaultPrice: number } | null>(null);
+const [priceDialogValue, setPriceDialogValue] = useState("");
 	const [isLoadingMoreProducts, setIsLoadingMoreProducts] = useState(false);
 
 	const [shiftStatusMountKey, setShiftStatusMountKey] = useState(0);

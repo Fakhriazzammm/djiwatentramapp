@@ -34,10 +34,17 @@ import {
 import {
 	getRoleSalaryDefaults,
 	normalizeEmployeeOnboardingSettings,
-	ContractTemplateHelpers,
-	type ContractTemplateValue,
 	type EmployeeOnboardingSettings,
 } from "@/lib/employee-onboarding-settings";
+
+type ContractTemplateValue = string | {
+	version: number;
+	title: string;
+	clauses: EmployeeContractClause[];
+	aiPrompt?: string;
+	metadata?: Record<string, string>;
+	salaryFieldMappings?: string[];
+};
 
 const DEFAULT_TEMPLATE_KEY = "__default__";
 
@@ -111,8 +118,8 @@ function buildPlaceholderContract(roleName = "[Jabatan]", role?: any, signatoryN
 			slug: "",
 		},
 		signatoryName,
-		salaryDefaults.bonusTargetConfig ?? undefined,
-		salaryDefaults.customAllowances ?? []
+		(salaryDefaults as any).bonusTargetConfig ?? undefined,
+		(salaryDefaults as any).customAllowances ?? []
 	);
 }
 
@@ -649,8 +656,8 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 					) : (
 						<Badge variant="outline" className="text-muted-foreground">Belum tersimpan</Badge>
 					)}
-					{selectedRole && getRoleSalaryDefaults(selectedRole).bonusTargetConfig && (
-						<BonusSummaryBadge config={getRoleSalaryDefaults(selectedRole).bonusTargetConfig} />
+					{selectedRole && (getRoleSalaryDefaults(selectedRole) as any).bonusTargetConfig && (
+						<BonusSummaryBadge config={(getRoleSalaryDefaults(selectedRole) as any).bonusTargetConfig} />
 					)}
 				</div>
 				<div className="flex items-center gap-2 flex-wrap">

@@ -719,8 +719,8 @@ function HomePage() {
 															to: "/attendance/stock-opname",
 															search: {
 																role: opnameRole,
-																shiftId: detectedShift?.id || "",
-																shiftName: detectedShift?.name || "Shift",
+																shiftId: selectedShift?.shiftId || "",
+																shiftName: selectedShift?.shiftName || "Shift",
 																userId: user!._id,
 																userName: user?.name || "Staff",
 																faceDescriptor: descriptor.join(","),
