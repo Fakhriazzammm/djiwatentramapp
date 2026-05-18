@@ -649,7 +649,7 @@ function AttendancePengaturanPage() {
 									>
 										<Plus className="h-3 w-3" /> Tambah staff
 									</button>
-\t\t\t\t\t\t\t\t\t<button
+									<button
 										onClick={() => {
 											setPickerGroupIndex(gi);
 											setStaffSearchQuery("");
@@ -719,7 +719,7 @@ function AttendancePengaturanPage() {
 									/>
 								</div>
 
-\t\t\t\t\t\t\t\t{(() => {
+								{(() => {
 									const filtered = (staffUsers ?? []).filter(
 										(u) =>
 											u.name.toLowerCase().includes(staffSearchQuery.toLowerCase()) ||
