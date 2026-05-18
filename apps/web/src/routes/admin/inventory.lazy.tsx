@@ -948,6 +948,27 @@ function InventoryPage() {
 		"all" | "priceUp" | "missingConversion"
 	>("all");
 	const [tableMode, setTableMode] = useState<"simple" | "detail">("simple");
+	const [dataIssueDismissed, setDataIssueDismissed] = useState(false);
+	const dataIssueCounts = useMemo(() => {
+		if (!workspace?.rows?.length) return { suspiciousBeli: 0, missingConvFactor: 0, total: 0 };
+		const displayUnits = new Set(["botol","bottle","liter","kg","pack","toros","dus","kaleng","tabung","pcs","ikat"]);
+		let suspiciousBeli = 0;
+		let missingConvFactor = 0;
+		for (const row of workspace.rows) {
+			if (
+				typeof row.preferredPurchaseQuantity === "number" &&
+				row.preferredPurchaseQuantity >= 10 &&
+				(row.preferredPurchaseUnit || "").trim() &&
+				displayUnits.has((row.preferredPurchaseUnit || "").trim().toLowerCase())
+			) suspiciousBeli++;
+			if (
+				(row.displayUnit || "").trim() &&
+				row.displayUnit.trim().toLowerCase() !== row.unit.toLowerCase() &&
+				!(typeof row.conversionFactor === "number" && row.conversionFactor > 0)
+			) missingConvFactor++;
+		}
+		return { suspiciousBeli, missingConvFactor, total: suspiciousBeli + missingConvFactor };
+	}, [workspace?.rows]);
 	const [viewPreset, setViewPreset] = useState<InventoryViewPreset>("operational");
 	const [detailItem, setDetailItem] = useState<Doc<"inventory"> | null>(null);
 	const [newItem, setNewItem] = useState({
@@ -1536,6 +1557,27 @@ function InventoryPage() {
 					>
 						Buka Admin Recipe
 					</Link>
+					</div>
+			)}
+
+			{dataIssueCounts.total > 0 && !dataIssueDismissed && (
+				<div className="relative rounded-xl border border-orange-300 bg-orange-50 px-4 py-3 pr-10 text-orange-900">
+					<button
+						aria-label="Tutup peringatan"
+						className="absolute top-2 right-2 rounded-md p-1 text-orange-600 transition-colors hover:bg-orange-200 hover:text-orange-800"
+						onClick={() => setDataIssueDismissed(true)}
+						type="button"
+					>
+						<X className="h-3.5 w-3.5" />
+					</button>
+					<p className="text-[11px] font-semibold uppercase tracking-[0.14em]">
+						⚠️ {dataIssueCounts.total} item butuh perbaikan data
+					</p>
+					<p className="mt-1 text-sm">
+						{dataIssueCounts.suspiciousBeli > 0 && `${dataIssueCounts.suspiciousBeli} item kolom Beli masih besar (default), `}
+						{dataIssueCounts.missingConvFactor > 0 && `${dataIssueCounts.missingConvFactor} item belum punya konversi satuan. `}
+						Buka filter "Konversi" di atas untuk detailnya.
+					</p>
 				</div>
 			)}
 
@@ -5023,6 +5065,7 @@ function InventoryTable({
 							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px]">Min</th>
 							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px]">Beli</th>
 							<th className="px-2 py-1.5 text-center font-semibold group relative cursor-help">Satuan<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Satuan stok utama.</span></th>
+							<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground/70 text-[10px] cursor-help group relative">Konversi<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">1 satuan beli = berapa satuan stok.</span></th>
 							<th
 								className="cursor-pointer px-2 py-1.5 font-semibold transition-colors hover:text-foreground"
 								onClick={() => onSort("lastPurchasePrice")}
@@ -5484,6 +5527,18 @@ function InventoryTable({
 											<span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-popover px-2 py-1 text-[10px] text-popover-foreground shadow-md">Satuan stok: {inline.unit}</span>
 										)}
 										</td>
+									<td className="px-2 py-1.5 align-middle text-center text-[9px] text-muted-foreground/70 font-mono">
+										{(() => {
+											const du = (row.displayUnit || '').trim().toLowerCase();
+											const base = (inline.unit || '').trim().toLowerCase();
+											const cf = inline.conversionFactor ? parseFloat(inline.conversionFactor) : 0;
+											if (cf > 0 && du && du !== base) {
+												const label = cf === 1000 ? `1 ${du} = 1.000 ${base}` : cf >= 100 ? `1 ${du} = ${cf.toLocaleString('id-ID')} ${base}` : `1 ${du} = ${cf} ${base}`;
+												return <span>{label}</span>;
+											}
+											return <span className="italic">&mdash;</span>;
+										})()}
+									</td>
 									<td className="px-2 py-1.5 align-middle text-[10px] text-muted-foreground">
 						<div className="flex flex-col gap-0.5">
 						<div className="flex items-center gap-1">

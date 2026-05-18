@@ -1636,14 +1636,26 @@ async def _apply_stock_deductions(matches: list[dict], all_inv: list[dict]) -> d
             old_qty = float(inv_item.get("quantity") or 0)
             unit = inv_item.get("unit", "") or ""
             
-            if action_type == "🔴":
+            if action_type == "\U0001f534":
                 if old_qty <= 0:
-                    failed.append({"input": match["input"], "reason": f'"{name}" sudah 0 (HABIS)'})
+                    # Already 0 — still show purchase info, skip DB update
+                    success.append({"name": name, "old_qty": old_qty, "new_qty": old_qty, "unit": unit, "action_type": action_type,
+                                    "threshold": float(inv_item.get("lowStockThreshold") or 0),
+                                    "price": float(inv_item.get("lastPurchasePrice") or 0),
+                                    "purchase_unit": (inv_item.get("preferredPurchaseUnit") or unit or "").strip(),
+                                    "purchase_qty": float(inv_item.get("preferredPurchaseQuantity") or 1),
+                                    "conversion_factor": inv_item.get("conversionFactor")})
                     continue
                 new_qty = 0.0
-            elif action_type == "🟡":
+            elif action_type == "\U0001f7e1":
                 if old_qty <= 0:
-                    failed.append({"input": match["input"], "reason": f'"{name}" sudah 0, tidak bisa dipotong'})
+                    # Already 0 — still show purchase info, skip DB update
+                    success.append({"name": name, "old_qty": old_qty, "new_qty": old_qty, "unit": unit, "action_type": action_type,
+                                    "threshold": float(inv_item.get("lowStockThreshold") or 0),
+                                    "price": float(inv_item.get("lastPurchasePrice") or 0),
+                                    "purchase_unit": (inv_item.get("preferredPurchaseUnit") or unit or "").strip(),
+                                    "purchase_qty": float(inv_item.get("preferredPurchaseQuantity") or 1),
+                                    "conversion_factor": inv_item.get("conversionFactor")})
                     continue
                 if unit.lower() in ("pcs", "pack", "botol", "pouch", "toros"):
                     new_qty = math.floor(old_qty / 2)
@@ -1726,14 +1738,23 @@ async def _generate_marketlist_detail() -> str:
         unit = (item.get("unit") or "").strip()
         store_id = (item.get("preferredStoreId") or "") or ""
         
+        # Harus beli dari kolom Beli (preferredPurchaseQuantity)
+        beli_qty = float(item.get("preferredPurchaseQuantity") or 0)
+        beli_unit = (item.get("preferredPurchaseUnit") or "").strip()
+        
         if th <= 0 or qty > th:
             continue
         
-        buy_qty = max(0.01, th - qty)  # minimum 0.01 to avoid zero
+        if beli_qty > 0 and beli_unit:
+            buy_qty = beli_qty
+            buy_unit = beli_unit
+        else:
+            buy_qty = max(0.01, th - qty)  # minimum 0.01 to avoid zero
+            buy_unit = unit
         total_cost = buy_qty * price
         
         items_to_buy.append({
-            "name": name, "buy_qty": buy_qty, "unit": unit,
+            "name": name, "buy_qty": buy_qty, "unit": buy_unit,
             "price": price, "total": total_cost, "store_id": store_id
         })
     
@@ -1848,34 +1869,48 @@ async def _handle_stock_reaction(update: Update, context, reaction: dict):
         # Nothing to process - silent fail
         return
     
-    # Build simple marketlist reply (only affected items)
-    reply_lines = [f"\U0001f6d2 Marketlist — {datetime.now(timezone(timedelta(hours=7))):%d/%m %H:%M}", ""]
+    # Build marketlist reply with purchase info (nama, sisa, beli, total)
+    _WIB = timezone(timedelta(hours=7))
+    now = datetime.now(_WIB)
+    reply_lines = [f"\U0001f4cb MARKETLIST — {now:%d/%m/%Y}", ""]
+    reply_lines.append("Nama Bahan | Sisa | Harus Beli | Total")
+    reply_lines.append("\u2500" * 40)
+
+    grand_total = 0.0
     for s in result["success"]:
-        symbol = "\U0001f534" if s.get("action_type") == "\U0001f534" else "\U0001f7e1"
+        name = s["name"]
         sisa = s["new_qty"]
-        th = s["threshold"]
-        # Need to buy = threshold - current stock (minimum 0)
-        butuh_raw = max(0, th - sisa)
-        price = s["price"]
-        punit = s["purchase_unit"]
-        
-        # Convert to purchase unit if conversionFactor exists
-        conv = s.get("conversion_factor")
-        if conv and conv > 0:
-            butuh = max(1, round(butuh_raw / conv))
-            butuh_str = f"{butuh} {punit}"
-        else:
-            # Fallback: show in base unit
-            butuh_str = f"{butuh_raw:g}" if butuh_raw == int(butuh_raw) else f"{butuh_raw:.1f}"
-            butuh_str += f" {s['unit']}"
-        
-        # Format numbers nicely
+        unit = s["unit"]
+
+        # Harus beli dari kolom Beli (preferredPurchaseQuantity + preferredPurchaseUnit)
+        beli_qty = float(s.get("purchase_qty", 0) or 0)
+        beli_unit = (s.get("purchase_unit") or "").strip()
+        price = float(s.get("price", 0) or 0)
+
+        # Format sisa
         sisa_str = f"{sisa:g}" if sisa == int(sisa) else f"{sisa:.1f}"
-        price_fmt = f"Rp{price:,.0f}"
-        
-        reply_lines.append(f"  {symbol} {s['name']} — sisa {sisa_str} {s['unit']} — butuh {butuh_str} — {price_fmt}")
+        if unit:
+            sisa_str += f" {unit}"
+
+        # Harus Beli — pakai kolom Beli (preferredPurchaseQuantity)
+        if beli_qty > 0 and beli_unit:
+            beli_str = f"{beli_qty:g} {beli_unit}"
+            total = beli_qty * price
+            total_fmt = f"Rp{int(total):,}".replace(",", ".")
+            grand_total += total
+        else:
+            beli_str = "\u2014"
+            total_fmt = "\u2014"
+
+        reply_lines.append(f"{name} | {sisa_str} | {beli_str} | {total_fmt}")
+
+    if result["success"]:
+        reply_lines.append("")
+        gt_fmt = f"Rp{int(grand_total):,}".replace(",", ".")
+        reply_lines.append(f"\U0001f4b0 Estimasi Total: {gt_fmt}")
+
     for f in result["failed"]:
-        reply_lines.append(f"  \u274c {f['input']}: {f['reason']}")
+        reply_lines.append(f"\u274c {f['input']}: {f['reason']}")
     
     reply_text = "\n".join(reply_lines)
     
