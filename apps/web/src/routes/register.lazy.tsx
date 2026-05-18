@@ -450,7 +450,7 @@ function RegisterPage() {
 						</motion.div>
 					)}
 
-					{/* ---- step 2: kontrak (read-only) ---- */}
+					{/* ---- step 2: kontrak & tanda tangan ---- */}
 					{step === 2 && (
 						<motion.div
 							key="step-2"
@@ -459,40 +459,38 @@ function RegisterPage() {
 							exit={{ opacity: 0, y: -12 }}
 							transition={{ duration: 0.2, ease: "easeOut" }}
 						>
-						<div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
-							<Card className="flex-1 border sm:rounded-xl">
-								<CardHeader className="pb-2 sm:pb-4">
-									<CardTitle className="flex items-center gap-2 text-base sm:text-lg"><FileSignature className="h-4 w-4 sm:h-5 sm:w-5" />Kontrak Kerja</CardTitle>
-									<p className="text-muted-foreground text-xs sm:text-sm">Kontrak disiapkan oleh admin. Baca dengan saksama sebelum tanda tangan.</p>
-								</CardHeader>
-								<CardContent>
-									{!contractPreview.plainText && !contractPreview.clauses.length ? (
-										<div className="flex flex-col items-center gap-3 py-8 text-center">
-											<FileSignature className="h-10 w-10 text-muted-foreground/40" />
-											<p className="text-muted-foreground text-sm">Belum ada kontrak.</p>
-											<p className="text-muted-foreground text-xs">Admin akan menyiapkan kontrak kerja untuk Anda.</p>
-										</div>
-									) : (
-										<div className="prose prose-sm max-w-none text-sm">
-											<h3 className="text-base font-semibold">{contractPreview.title}</h3>
-											{contractPreview.clauses.map((clause, idx) => (
-												<div key={idx} className="mb-3">
-													<h4 className="text-sm font-medium">{idx + 1}. {clause.title}</h4>
-													<p className="whitespace-pre-wrap text-muted-foreground">{clause.body}</p>
-												</div>
-											))}
-										</div>
-									)}
-								</CardContent>
-							</Card>
-							<div className="flex-1">
-								<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} />
+							<div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
+								<Card className="flex-1 border sm:rounded-xl">
+									<CardHeader className="pb-2 sm:pb-4"><CardTitle className="text-base sm:text-lg">Kontrak &amp; Tanda Tangan</CardTitle></CardHeader>
+									<CardContent className="space-y-4">
+										<SignaturePad value={draft.signatureDataUrl} onChange={(v) => setDraft((p) => ({ ...p, signatureDataUrl: v }))} />
+										<label className="flex items-start gap-3 text-sm">
+											<Checkbox
+												checked={draft.agreements.dataIsTrue}
+												onCheckedChange={(v) => setDraft((p) => ({ ...p, agreements: { ...p.agreements, dataIsTrue: Boolean(v) } }))}
+											/>
+											<span>Saya menyatakan data yang saya isi benar.</span>
+										</label>
+										<label className="flex items-start gap-3 text-sm">
+											<Checkbox
+												checked={draft.agreements.contractApproved}
+												onCheckedChange={(v) => setDraft((p) => ({ ...p, agreements: { ...p.agreements, contractApproved: Boolean(v) } }))}
+											/>
+											<span>Saya menyetujui isi kontrak kerja.</span>
+										</label>
+										<Button className="w-full" disabled={isSubmitting} onClick={handleSubmit}>
+											{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Kirim Pendaftaran
+										</Button>
+									</CardContent>
+								</Card>
+								<div className="flex-1">
+									<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} signatureDataUrl={draft.signatureDataUrl} />
+								</div>
 							</div>
-						</div>
 						</motion.div>
 					)}
 
-					{/* ---- step 3: tanda tangan ---- */}
+					{/* ---- step 3: selesai ---- */}
 					{step === 3 && (
 						<motion.div
 							key="step-3"
@@ -501,57 +499,17 @@ function RegisterPage() {
 							exit={{ opacity: 0, y: -12 }}
 							transition={{ duration: 0.2, ease: "easeOut" }}
 						>
-						<div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
-							<Card className="flex-1 border sm:rounded-xl">
-								<CardHeader className="pb-2 sm:pb-4"><CardTitle className="text-base sm:text-lg">Tanda Tangan &amp; Submit</CardTitle></CardHeader>
-								<CardContent className="space-y-4">
-									<SignaturePad value={draft.signatureDataUrl} onChange={(v) => setDraft((p) => ({ ...p, signatureDataUrl: v }))} />
-									<label className="flex items-start gap-3 text-sm">
-										<Checkbox
-											checked={draft.agreements.dataIsTrue}
-											onCheckedChange={(v) => setDraft((p) => ({ ...p, agreements: { ...p.agreements, dataIsTrue: Boolean(v) } }))}
-										/>
-										<span>Saya menyatakan data yang saya isi benar.</span>
-									</label>
-									<label className="flex items-start gap-3 text-sm">
-										<Checkbox
-											checked={draft.agreements.contractApproved}
-											onCheckedChange={(v) => setDraft((p) => ({ ...p, agreements: { ...p.agreements, contractApproved: Boolean(v) } }))}
-										/>
-										<span>Saya menyetujui isi kontrak kerja.</span>
-									</label>
-									<Button className="w-full" disabled={isSubmitting} onClick={handleSubmit}>
-										{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Kirim Pendaftaran
-									</Button>
+							<Card className="mx-auto max-w-md text-center sm:max-w-xl">
+								<CardContent className="space-y-4 px-6 py-8 sm:px-10 sm:py-12">
+									<CheckCircle2 className="mx-auto h-12 w-12 text-green-500 sm:h-16 sm:w-16" />
+									<h2 className="text-lg font-bold sm:text-2xl">Pendaftaran berhasil dikirim</h2>
+									<p className="text-muted-foreground text-sm">
+										Status saat ini: <b>menunggu approval admin</b>.<br />
+										Nomor pendaftaran: <b className="break-all">{applicationId}</b>
+									</p>
+									<Button onClick={() => { window.location.href = "/login"; }}>Kembali ke Login</Button>
 								</CardContent>
 							</Card>
-							<div className="flex-1">
-								<ContractPreview contract={contractPreview} employeeName={draft.personal.fullName} signatureDataUrl={draft.signatureDataUrl} />
-							</div>
-						</div>
-						</motion.div>
-					)}
-
-					{/* ---- step 4: selesai ---- */}
-					{step === 4 && (
-						<motion.div
-							key="step-4"
-							initial={{ opacity: 0, y: 12 }}
-							animate={{ opacity: 1, y: 0 }}
-							exit={{ opacity: 0, y: -12 }}
-							transition={{ duration: 0.2, ease: "easeOut" }}
-						>
-						<Card className="mx-auto max-w-md text-center sm:max-w-xl">
-							<CardContent className="space-y-4 px-6 py-8 sm:px-10 sm:py-12">
-								<CheckCircle2 className="mx-auto h-12 w-12 text-green-500 sm:h-16 sm:w-16" />
-								<h2 className="text-lg font-bold sm:text-2xl">Pendaftaran berhasil dikirim</h2>
-								<p className="text-muted-foreground text-sm">
-									Status saat ini: <b>menunggu approval admin</b>.<br />
-									Nomor pendaftaran: <b className="break-all">{applicationId}</b>
-								</p>
-								<Button onClick={() => { window.location.href = "/login"; }}>Kembali ke Login</Button>
-							</CardContent>
-						</Card>
 						</motion.div>
 					)}
 				</AnimatePresence>
