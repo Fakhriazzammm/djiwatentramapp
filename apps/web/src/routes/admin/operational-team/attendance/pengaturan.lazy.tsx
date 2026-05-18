@@ -633,7 +633,7 @@ function AttendancePengaturanPage() {
 										))}
 									</div>
 
-\t\t\t\t\t\t\t\t\t<div className="flex gap-2 flex-wrap">
+									<div className="flex gap-2 flex-wrap">
 									<button
 										onClick={() => {
 											setPickerGroupIndex(gi);
