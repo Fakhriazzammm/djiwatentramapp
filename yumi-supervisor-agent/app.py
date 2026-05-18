@@ -665,16 +665,23 @@ def _save_supervisor_cursor(ts: int, nos: set[str]):
 
 _last_order_check_ms, _reported_order_nos = _load_supervisor_cursor()
 
+# ⏪ Lookback window — scan N menit ke belakang dari NOW (bukan dari cursor)
+# agar order yang baru berubah jadi paid/completed setelah cursor lewat tetap terdeteksi.
+# Nilai 10 menit = kompromi: cukup untuk delay bayar biasa, tanpa re-scan terlalu luas.
+_LOOKBACK_MS = 600_000  # 10 menit
+
 async def _check_new_orders(app):
     global _last_order_check_ms, _reported_order_nos
     now_ms = int(_now_wib().timestamp() * 1000)
+    # min(cursor, now-10min) → backfill: pakai cursor (24h), normal: lookback 10m dari now
+    scan_from = min(_last_order_check_ms, max(0, now_ms - _LOOKBACK_MS))
 
     try:
         rows = await _fetch(
             "pos_orders",
             "select=orderNumber,totalAmount,paymentMethod,createdAt,items,customerName,orderType,_creationTime,daily_receipt_no,receipt_kind"
             "&status=in.(completed,paid)"
-            f"&_creationTime=gt.{_last_order_check_ms}"
+            f"&_creationTime=gt.{scan_from}"
             f"&_creationTime=lte.{now_ms}"
             "&order=_creationTime.asc&limit=50",
         )
@@ -695,6 +702,9 @@ async def _check_new_orders(app):
         ts = int(float(row.get("_creationTime") or 0))
         if ts > max_creation_time:
             max_creation_time = ts
+        # ⛔ Skip order yang sudah pernah dikirim (dedup by order number)
+        if order_no in _reported_order_nos:
+            continue
         customer = row.get("customerName") or "Pelanggan"
         order_type = row.get("orderType") or "dine_in"
         items = row.get("items") or []

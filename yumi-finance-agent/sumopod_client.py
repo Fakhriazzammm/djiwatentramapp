@@ -453,7 +453,7 @@ Harga rupiah tulis angka saja tanpa titik/koma."""
                         "qty": float(parts[1].replace(',', '.')),
                         "price": parts[2],
                         "subtotal": parts[3],
-                        "unit": "pcs",
+                        "unit": "",
                     })
                 except Exception:
                     continue

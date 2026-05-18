@@ -336,6 +336,11 @@ def categorize_item(item_name: str, item_price: float = 0) -> tuple[str, str, st
     if not name_lower:
         return "lainnya", "low", ""
 
+    # Normalisasi OCR noise: hapus net-weight/kemasan agar keyword match lebih akurat
+    name_norm = re.sub(r"\b\d+(?:[.,]\d+)?\s*(kg|kilo|gr|gram|g|ml|l|liter|litre|ltr)\b", " ", name_lower)
+    name_norm = re.sub(r"\b(vp|repack|pack|pcs|sachet|pouch|bag|botol|box|kaleng)\b", " ", name_norm)
+    name_norm = re.sub(r"\s+", " ", name_norm).strip()
+
     best_cat = "lainnya"
     best_score = 0
 
@@ -348,8 +353,8 @@ def categorize_item(item_name: str, item_price: float = 0) -> tuple[str, str, st
         keywords = cat_info.get("item_keywords", cat_info.get("keywords", []))
         score = 0
         for kw in keywords:
-            if kw in name_lower:
-                if re.search(r'\b' + re.escape(kw) + r'\b', name_lower):
+            if kw in name_norm:
+                if re.search(r'\b' + re.escape(kw) + r'\b', name_norm):
                     score += 5  # exact word match
                 else:
                     score += 2  # partial match
@@ -488,8 +493,10 @@ Aturan:
 3. Gunakan akal sehat: "gula" → bahan_minuman, "kresek/kantong/pouch/plastik" → packaging
 4. Jangan beri penjelasan, markdown, atau JSON.
 5. Jika benar-benar tidak yakin: lainnya
+6. Perhatikan konteks merchant/toko jika tersedia (misal toko beras → bahan_makanan).
 
-Item: {item_name}"""
+Item: {item_name}
+Merchant: {merchant}"""
 
 
 async def ai_categorize_item(
@@ -534,6 +541,7 @@ async def ai_categorize_item(
     prompt = _AI_CAT_SYSTEM_PROMPT.format(
         category_list=category_list_str,
         item_name=item_name,
+        merchant=merchant or "",
     )
 
     try:

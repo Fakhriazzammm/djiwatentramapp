@@ -309,6 +309,21 @@ function safeNum(value: unknown) {
 	return Number.isFinite(number) ? number : 0;
 }
 
+function deriveTotalItemsSoldFromSummary(summary: any): number {
+	const direct = safeNum(summary?.totalItemsSold);
+	if (direct > 0) return direct;
+
+	const breakdown = Array.isArray(summary?.productBreakdown)
+		? summary.productBreakdown
+		: [];
+	const fromBreakdown = breakdown.reduce(
+		(acc: number, category: any) => acc + safeNum(category?.totalQuantity),
+		0,
+	);
+
+	return fromBreakdown > 0 ? fromBreakdown : 0;
+}
+
 function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
@@ -1219,7 +1234,7 @@ async function fetchShiftReports() {
 		const grossSales = Number(summary.totalGrossSales ?? totalRev);
 		const discount = Number(summary.totalDiscount ?? 0);
 		const expenses = Number(summary.totalExpenses ?? 0);
-		const itemsSold = Number(summary.totalItemsSold ?? 0);
+		const itemsSold = deriveTotalItemsSoldFromSummary(summary);
 
 		const isShiftTargetMet = hasTarget ? shiftCollected >= shiftTarget : undefined;
 		const isDailyTargetMet = hasTarget ? dailyCollected >= dailyTarget : undefined;
@@ -1589,7 +1604,7 @@ export async function fetchShiftStatus() {
 			total_revenue: row.summary?.totalRevenue ?? 0,
 			total_discount: row.summary?.totalDiscount ?? 0,
 			total_expenses: row.summary?.totalExpenses ?? 0,
-			total_items_sold: row.summary?.totalItemsSold ?? 0,
+			total_items_sold: deriveTotalItemsSoldFromSummary(row.summary),
 			target_revenue: null,
 			has_target: false,
 			daily_target: 0,

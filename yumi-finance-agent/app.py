@@ -63,7 +63,7 @@ JPEG_QUALITY = 88
 from finance import FinanceManager
 from inventory import InventoryManager
 from orchestrator import FinanceOrchestrator, OrchestratorResult
-from categories import auto_categorize, categorize_item, get_category_label, format_amount, FINANCE_CATEGORIES, get_all_categories, add_dynamic_category, ai_categorize_item, auto_create_category_in_db
+from categories import auto_categorize, categorize_item, categorize_item_with_memory, get_category_label, format_amount, FINANCE_CATEGORIES, get_all_categories, add_dynamic_category, ai_categorize_item, auto_create_category_in_db
 from sumopod_client import SumoPodClient
 from memory import MemoryManager, normalize_name
 from analyzer import TransactionAnalyzer
@@ -300,7 +300,92 @@ async def _parse_ocr_text(ai_reply: str) -> list[dict]:
                 continue
             if price > 0:
                 items.append({"name": name[:80], "qty": qty, "price": price, "subtotal": price * qty})
-    return items[:30]
+    return _normalize_ocr_items(items[:30])
+
+
+def _extract_pack_meta(name: str) -> tuple[str, float | None, str, str]:
+    """Extract net-weight and packaging hints from OCR item name.
+
+    Returns: (clean_name, net_weight_value, net_weight_unit, pack_type)
+    """
+    raw = (name or "").strip()
+    if not raw:
+        return "", None, "", ""
+
+    pack_match = re.search(r"\b(VP|REPACK|PACK|PCS|SACHET|POUCH|BAG|BOTOL|BOX|KALENG)\b", raw, re.IGNORECASE)
+    pack_type = pack_match.group(1).upper() if pack_match else ""
+
+    weight_match = re.search(r"\b(\d+(?:[.,]\d+)?)\s*(KG|KILO|GR|GRAM|G|LITER|LITRE|LTR|L|ML)\b", raw, re.IGNORECASE)
+    net_weight_value: float | None = None
+    net_weight_unit = ""
+    if weight_match:
+        try:
+            net_weight_value = float(weight_match.group(1).replace(",", "."))
+        except Exception:
+            net_weight_value = None
+        u = weight_match.group(2).upper()
+        unit_map = {
+            "KILO": "kg", "KG": "kg",
+            "GR": "gr", "GRAM": "gr", "G": "g",
+            "LITER": "l", "LITRE": "l", "LTR": "l", "L": "l",
+            "ML": "ml",
+        }
+        net_weight_unit = unit_map.get(u, u.lower())
+
+    clean_name = raw
+    clean_name = re.sub(r"\b\d+(?:[.,]\d+)?\s*(?:KG|KILO|GR|GRAM|G|LITER|LITRE|LTR|L|ML)\b", " ", clean_name, flags=re.IGNORECASE)
+    clean_name = re.sub(r"\b(?:VP|REPACK|PACK|PCS|SACHET|POUCH|BAG|BOTOL|BOX|KALENG)\b", " ", clean_name, flags=re.IGNORECASE)
+    clean_name = re.sub(r"\s+", " ", clean_name).strip(" -/")
+
+    return clean_name or raw, net_weight_value, net_weight_unit, pack_type
+
+
+def _normalize_ocr_items(items: list[dict]) -> list[dict]:
+    """Normalize OCR items so qty/unit/name/weight are consistent for downstream usage."""
+    normalized: list[dict] = []
+    for it in (items or []):
+        name_raw = str(it.get("name") or "").strip()
+        if not name_raw:
+            continue
+
+        clean_name, net_weight_value, net_weight_unit, pack_type = _extract_pack_meta(name_raw)
+
+        try:
+            qty = float(it.get("qty") or 1)
+        except Exception:
+            qty = 1.0
+        try:
+            price = float(it.get("price") or 0)
+        except Exception:
+            price = 0.0
+        try:
+            subtotal = float(it.get("subtotal") or 0)
+        except Exception:
+            subtotal = 0.0
+        if subtotal <= 0 and qty > 0 and price > 0:
+            subtotal = qty * price
+
+        unit = str(it.get("unit") or "").strip().lower()
+        if not unit:
+            unit = _extract_unit(name_raw) or ("pack" if pack_type else "pcs")
+
+        item_obj = {
+            "name": clean_name[:80],
+            "qty": qty,
+            "price": price,
+            "subtotal": subtotal,
+            "unit": unit,
+            "raw_name": name_raw[:120],
+        }
+        if net_weight_value is not None:
+            item_obj["net_weight_value"] = net_weight_value
+        if net_weight_unit:
+            item_obj["net_weight_unit"] = net_weight_unit
+        if pack_type:
+            item_obj["pack_type"] = pack_type
+
+        normalized.append(item_obj)
+    return normalized[:80]
 
 
 # ── New Ingredient Confirmation ────────────────────────────────────
@@ -442,6 +527,9 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.warning("vision_items fallback failed: %s", e)
         if not items and raw_text:
             items = await _parse_ocr_text(raw_text)
+
+        # Normalize OCR item names/units/net weight (applies to both vision_json and fallbacks)
+        items = _normalize_ocr_items(items)
 
         # Hitung total dari items (fallback)
         items_total = 0.0
@@ -690,6 +778,12 @@ async def _ocr_one(sp_client, photo, context, idx: int, total: int, chat_id: int
                 except Exception as e:
                     logger.warning(f"Bulk OCR _parse_ocr_text fallback failed for struk #{idx+1}: {e}")
 
+            # Normalize OCR item names/units/net weight for bulk path too
+            data = vision_result.get("data", {})
+            if isinstance(data, dict):
+                data["items"] = _normalize_ocr_items(data.get("items") or [])
+                vision_result["data"] = data
+
         return vision_result
     except Exception as e:
         logger.error(f"OCR bulk error [{idx}/{total}]: {e}")
@@ -794,20 +888,19 @@ async def _display_bulk_summary(context, results: list[dict], chat_id: int, stat
                 satuan_count += 1
                 satuan_amount += item_sub
 
-            # ── Per-item categorization ──────────────────────
-            cat_key, cat_conf, cat_suggest = categorize_item(name, price)
+            # ── Per-item categorization (keyword + memory + merchant hint) ──
+            cat_key, cat_conf, cat_suggest, cat_score = categorize_item_with_memory(
+                name,
+                price,
+                merchant or "",
+                memory,
+            )
 
-            # ── Memory boost: check learned item→category ─────
-            mem_cat, mem_conf = memory.get_item_category(name)
-            if mem_cat and mem_conf > 0.6:
-                if cat_conf == "low" or mem_conf > 0.8:
-                    cat_key = mem_cat
-                    cat_conf = "high" if mem_conf > 0.8 else "medium"
-
-            # ── AI fallback: kalo masih low, minta AI ─────────
-            if cat_conf == "low":
+            # ── AI fallback: untuk low + medium lemah ──────────
+            # Banyak miss terjadi saat keyword match medium tapi konteks item ambigu.
+            if cat_conf == "low" or (cat_conf == "medium" and cat_score < 0.65):
                 ai_cat, ai_conf, ai_label = await ai_categorize_item(
-                    name, price, merchant or receipt.get("merchant", "")
+                    name, price, merchant or ""
                 )
                 if ai_conf == "high" and ai_cat != "lainnya":
                     cat_key = ai_cat
@@ -816,7 +909,7 @@ async def _display_bulk_summary(context, results: list[dict], chat_id: int, stat
                     # Record ke memory biar next time langsung
                     asyncio.ensure_future(memory.record_item_category(
                         name, ai_cat, source="ai",
-                        merchant=merchant or receipt.get("merchant", ""),
+                        merchant=merchant or "",
                     ))
                     # Auto-create category kalo dari AI & gak ada di DB
                     if ai_cat not in FINANCE_CATEGORIES:
@@ -1336,9 +1429,14 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
             "scanItems": [
                 {
                     "name": it.get("name", ""),
+                    "rawName": it.get("raw_name", ""),
                     "quantity": it.get("qty", 1),
+                    "unit": it.get("unit", ""),
                     "price": it.get("price", 0),
-                    "total": (it.get("qty", 1) or 1) * (it.get("price", 0) or 0),
+                    "total": (it.get("subtotal", 0) or ((it.get("qty", 1) or 1) * (it.get("price", 0) or 0))),
+                    "netWeightValue": it.get("net_weight_value"),
+                    "netWeightUnit": it.get("net_weight_unit", ""),
+                    "packType": it.get("pack_type", ""),
                 }
                 for it in items
             ],

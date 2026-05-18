@@ -125,6 +125,11 @@ function buildShiftSummaryText(shift: ShiftRow, details: any) {
 	const topProducts = details?.topProducts ?? [];
 	const expenseBreakdown = details?.expenseBreakdown ?? [];
 	const teamLabel = shift.teamMembers?.trim() ? shift.teamMembers : "-";
+	const derivedTotalItems = productBreakdown.reduce(
+		(acc: number, category: any) => acc + Number(category?.totalQuantity ?? 0),
+		0,
+	);
+	const totalItems = shift.totalItemsSold > 0 ? shift.totalItemsSold : derivedTotalItems;
 	const lines: string[] = [
 		"Daily Revenue Report",
 		"Djiwa Tentram Cafe & Resto",
@@ -140,7 +145,7 @@ function buildShiftSummaryText(shift: ShiftRow, details: any) {
 		`Total Potongan (Diskon): ${formatCurrencyIDR(shift.totalDiscount)}`,
 		`Total Revenue Bersih: ${formatCurrencyIDR(shift.totalRevenue)}`,
 		"",
-		`Produk Terjual: ${shift.totalItemsSold}`,
+		`Produk Terjual: ${totalItems}`,
 		"Rincian Produk:",
 	];
 
