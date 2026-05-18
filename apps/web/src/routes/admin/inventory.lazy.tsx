@@ -3978,6 +3978,7 @@ function InventoryTable({
 	const [statusFilter, setStatusFilter] = useState<"all" | "critical" | "warning" | "healthy">("all");
 	const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 	const [imagePopoverRow, setImagePopoverRow] = useState<string | null>(null);
+	const [imagePopoverPos, setImagePopoverPos] = useState<{top: number; left: number} | null>(null);
 	const imagePopoverRef = useRef<HTMLDivElement | null>(null);
 	const [imageUrlInput, setImageUrlInput] = useState("");
 	const [imagePopoverTab, setImagePopoverTab] = useState<"upload" | "url">("upload");
@@ -3996,6 +3997,7 @@ function InventoryTable({
 		const handleClick = (e: MouseEvent) => {
 			if (imagePopoverRef.current && !imagePopoverRef.current.contains(e.target as Node)) {
 				setImagePopoverRow(null);
+				setImagePopoverPos(null);
 				setImageUrlInput("");
 			}
 		};
@@ -5502,7 +5504,7 @@ function InventoryTable({
 											);
 										})()}
 									</td>
-									<td className="sticky left-0 z-10 bg-card border-r border-border/60 px-1 py-1.5 text-center align-middle group relative cursor-pointer" onClick={() => { if (imagePopoverRow !== row.inventoryId) { setImagePopoverRow(row.inventoryId); setImageUrlInput(""); setImagePopoverTab("upload"); } }}>
+									<td className="sticky left-0 z-10 bg-card border-r border-border/60 px-1 py-1.5 text-center align-middle group relative cursor-pointer" onClick={(e) => { if (imagePopoverRow !== row.inventoryId) { const rect = (e.currentTarget as HTMLElement).getBoundingClientRect(); setImagePopoverPos({ top: rect.bottom + 4, left: rect.left + rect.width / 2 }); setImagePopoverRow(row.inventoryId); setImageUrlInput(""); setImagePopoverTab("upload"); } }}>
 										{(() => {
 											const imgUrl = getInventoryImageUrl(inline.imagePath || row.imagePath);
 											return (
@@ -5519,35 +5521,6 @@ function InventoryTable({
 															<Image className="h-3.5 w-3.5" />
 														</div>
 													)}
-													{imagePopoverRow === row.inventoryId && (
-														<div ref={imagePopoverRef}
-														className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-[100] w-64 rounded-xl border border-border bg-card shadow-xl p-3" onClick={(e) => e.stopPropagation()}>
-															<div className="flex gap-1 mb-2">
-																<button className={`flex-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition-colors ${imagePopoverTab === "upload" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`} onClick={() => setImagePopoverTab("upload")} type="button">Upload</button>
-																<button className={`flex-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition-colors ${imagePopoverTab === "url" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`} onClick={() => setImagePopoverTab("url")} type="button">URL</button>
-															</div>
-															{imagePopoverTab === "upload" ? (
-																<label className="block cursor-pointer rounded-lg border-2 border-dashed border-muted-foreground/30 p-3 text-center text-[10px] text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors">
-																	<Image className="mx-auto h-5 w-5 mb-1 opacity-50" />
-																	Klik untuk pilih file gambar
-																	<input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleImageSelect(row, f); }} />
-																</label>
-															) : (
-																<div className="flex flex-col gap-1.5">
-																	<input
-																		className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[10px] outline-none focus:border-primary placeholder:text-muted-foreground/40"
-																		placeholder="https://...gambar.jpg"
-																		value={imageUrlInput}
-																		onChange={(e) => setImageUrlInput(e.target.value)}
-																		onKeyDown={(e) => { if (e.key === "Enter") void handleImagePasteUrl(row, imageUrlInput); }}
-																	/>
-																	<button className="rounded-lg bg-primary px-2 py-1 text-[10px] font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50" disabled={!imageUrlInput.trim()} onClick={() => void handleImagePasteUrl(row, imageUrlInput)} type="button">Simpan URL</button>
-																</div>
-															)}
-															{(inline.imagePath || row.imagePath) && (
-																<button className="mt-2 w-full rounded-lg border border-rose-200 px-2 py-1 text-[10px] font-semibold text-rose-600 hover:bg-rose-50 transition-colors" onClick={() => void handleImageRemove(row)} type="button">Hapus Foto</button>
-															)}
-														</div>
 													)}
 												</div>
 											);
@@ -6347,6 +6320,45 @@ function InventoryHistoryModal({
 				</div>
 			</motion.div>
 		</div>
+		{imagePopoverRow && imagePopoverPos && (() => {
+			const activeRow = statusFilteredRows.find(r => r.inventoryId === imagePopoverRow);
+			if (!activeRow) return null;
+			const activeInline = getInlineValue(activeRow);
+			return (
+				<div
+					ref={imagePopoverRef}
+					style={{ position: "fixed", top: imagePopoverPos.top, left: imagePopoverPos.left, transform: "translateX(-50%)" }}
+					className="z-[9999] w-64 rounded-xl border border-border bg-card shadow-xl p-3"
+					onClick={(e) => e.stopPropagation()}
+				>
+					<div className="flex gap-1 mb-2">
+						<button className={`flex-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition-colors ${imagePopoverTab === "upload" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`} onClick={() => setImagePopoverTab("upload")} type="button">Upload</button>
+						<button className={`flex-1 rounded-lg px-2 py-1 text-[10px] font-semibold transition-colors ${imagePopoverTab === "url" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`} onClick={() => setImagePopoverTab("url")} type="button">URL</button>
+					</div>
+					{imagePopoverTab === "upload" ? (
+						<label className="block cursor-pointer rounded-lg border-2 border-dashed border-muted-foreground/30 p-3 text-center text-[10px] text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors">
+							<Image className="mx-auto h-5 w-5 mb-1 opacity-50" />
+							Klik untuk pilih file gambar
+							<input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleImageSelect(activeRow, f); }} />
+						</label>
+					) : (
+						<div className="flex flex-col gap-1.5">
+							<input
+								className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-[10px] outline-none focus:border-primary placeholder:text-muted-foreground/40"
+								placeholder="https://...gambar.jpg"
+								value={imageUrlInput}
+								onChange={(e) => setImageUrlInput(e.target.value)}
+								onKeyDown={(e) => { if (e.key === "Enter") void handleImagePasteUrl(activeRow, imageUrlInput); }}
+							/>
+							<button className="rounded-lg bg-primary px-2 py-1 text-[10px] font-semibold text-primary-foreground hover:brightness-110 disabled:opacity-50" disabled={!imageUrlInput.trim()} onClick={() => void handleImagePasteUrl(activeRow, imageUrlInput)} type="button">Simpan URL</button>
+						</div>
+					)}
+					{(activeInline.imagePath || activeRow.imagePath) && (
+						<button className="mt-2 w-full rounded-lg border border-rose-200 px-2 py-1 text-[10px] font-semibold text-rose-600 hover:bg-rose-50 transition-colors" onClick={() => void handleImageRemove(activeRow)} type="button">Hapus Foto</button>
+					)}
+				</div>
+			);
+		})()}
 	);
 }
 

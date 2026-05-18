@@ -1418,48 +1418,64 @@ export function RecipeHppPage() {
 		const currentMin = now.getHours() * 60 + now.getMinutes();
 
 		const happyHourDiscounts = discounts.filter((d: any) => {
-			if (!d.isHappyHour || !d.isActive) return false;
+			// Handle both camelCase (view) and snake_case (raw table)
+			const isHh = d.isHappyHour ?? d.is_happy_hour;
+			const isAct = d.isActive ?? d.is_active;
+			if (!isHh || !isAct) return false;
 			if (d.startDate && timestamp < d.startDate) return false;
 			if (d.endDate && timestamp > d.endDate) return false;
-			if (d.days && d.days.length > 0 && !d.days.includes(currentDay)) return false;
-			if (d.startTime && d.endTime) {
-				const [sh, sm] = d.startTime.split(":").map(Number);
-				const [eh, em] = d.endTime.split(":").map(Number);
+			const days = d.days ?? d.days_of_week;
+			if (days && days.length > 0 && !days.includes(currentDay)) return false;
+			const startTime = d.startTime ?? d.start_time;
+			const endTime = d.endTime ?? d.end_time;
+			if (startTime && endTime) {
+				const [sh, sm] = startTime.split(":").map(Number);
+				const [eh, em] = endTime.split(":").map(Number);
 				const startMin = sh * 60 + sm;
 				const endMin = eh * 60 + em;
 				if (currentMin < startMin || currentMin > endMin) return false;
 			}
 			// Check if this discount applies to the selected product
-			if (d.targetType === "PRODUCT" && d.targetIds) {
-				return d.targetIds.includes(selectedProduct._id);
+			const tType = d.targetType ?? d.target_type;
+			const tIds = d.targetIds ?? d.target_ids;
+			if (tType === "PRODUCT" && tIds) {
+				return tIds.includes(selectedProduct._id);
 			}
-			if (d.targetType === "CATEGORY" && d.targetIds && selectedProduct.categoryId) {
-				return d.targetIds.includes(selectedProduct.categoryId);
+			if (tType === "CATEGORY" && tIds && selectedProduct.categoryId) {
+				return tIds.includes(selectedProduct.categoryId);
 			}
-			return d.targetType === "ALL";
+			return tType === "ALL";
 		});
 
 		if (happyHourDiscounts.length === 0) return null;
 
 		// Use the first matching happy hour discount
 		const hh = happyHourDiscounts[0];
+		const hhType = hh.type;
+		const hhValue = hh.value ?? 0;
+		const hhName = hh.name;
+		const hhId = hh._id;
+		const hhProductPrices = hh.productPrices ?? hh.product_prices;
+		const hhStartTime = hh.startTime ?? hh.start_time;
+		const hhEndTime = hh.endTime ?? hh.end_time;
+		const hhDays = hh.days ?? hh.days_of_week ?? [];
 		const basePrice = selectedProduct.promoPrice ?? selectedProduct.price;
 		let computedPrice: number;
 
-		switch (hh.type) {
+		switch (hhType) {
 			case "PERCENTAGE":
-				computedPrice = Math.round(basePrice * (1 - (hh.value || 0) / 100));
+				computedPrice = Math.round(basePrice * (1 - hhValue / 100));
 				break;
 			case "FIXED":
-				computedPrice = Math.max(0, basePrice - (hh.value || 0));
+				computedPrice = Math.max(0, basePrice - hhValue);
 				break;
 			case "FLAT_PRICE": {
 				// Check productPrices override
-				if (hh.productPrices) {
-					const override = hh.productPrices.find((p: any) => p.productId === selectedProduct._id);
-					computedPrice = override ? override.price : (hh.value || basePrice);
+				if (hhProductPrices) {
+					const override = hhProductPrices.find((p: any) => p.productId === selectedProduct._id);
+					computedPrice = override ? override.price : (hhValue || basePrice);
 				} else {
-					computedPrice = hh.value || basePrice;
+					computedPrice = hhValue || basePrice;
 				}
 				break;
 			}
@@ -1467,18 +1483,18 @@ export function RecipeHppPage() {
 				computedPrice = basePrice;
 		}
 
-		const timeRange = hh.startTime && hh.endTime
-			? `${hh.startTime}-${hh.endTime}`
+		const timeRange = hhStartTime && hhEndTime
+			? `${hhStartTime}-${hhEndTime}`
 			: "";
 
 		return {
-			discountName: hh.name,
-			discountId: hh._id,
+			discountName: hhName,
+			discountId: hhId,
 			computedPrice,
-			type: hh.type,
-			value: hh.value,
+			type: hhType,
+			value: hhValue,
 			timeRange,
-			days: hh.days || [],
+			days: hhDays,
 		};
 	}, [discounts, selectedProduct]);
 

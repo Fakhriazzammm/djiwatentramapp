@@ -633,22 +633,7 @@ function AttendancePengaturanPage() {
 										))}
 									</div>
 
-									<div className="flex gap-2 flex-wrap">
-									<button
-										onClick={() => {
-											const rawName = window.prompt("Nama staff (raw name dari import):");
-											if (rawName?.trim()) {
-												const newGroups = [...rosterTemplate.groups];
-												newGroups[gi] = { ...newGroups[gi] };
-												newGroups[gi].staff = [...newGroups[gi].staff, { rawName: rawName.trim(), displayName: rawName.trim() }];
-												setRosterTemplate((prev) => ({ ...prev, groups: newGroups }));
-											}
-										}}
-										className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-										type="button"
-									>
-										<Plus className="h-3 w-3" /> Tambah staff
-									</button>
+\t\t\t\t\t\t\t\t\t<div className="flex gap-2 flex-wrap">
 									<button
 										onClick={() => {
 											setPickerGroupIndex(gi);
