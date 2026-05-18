@@ -225,6 +225,11 @@ function buildShiftSummaryText(shift: ShiftRow, details: any) {
 	const productBreakdown = details?.productBreakdown ?? [];
 	const expenseBreakdown = details?.expenseBreakdown ?? [];
 	const teamLabel = shift.teamMembers?.trim() ? shift.teamMembers : "-";
+	const derivedTotalItems = productBreakdown.reduce(
+		(acc: number, category: any) => acc + Number(category?.totalQuantity ?? 0),
+		0,
+	);
+	const totalItems = shift.totalItemsSold > 0 ? shift.totalItemsSold : derivedTotalItems;
 	const lines: string[] = [
 		"Daily Revenue Report",
 		"Djiwa Tentram Cafe & Resto",
@@ -240,7 +245,7 @@ function buildShiftSummaryText(shift: ShiftRow, details: any) {
 		`Total Potongan (Diskon): ${formatCurrencyIDR(shift.totalDiscount)}`,
 		`Total Revenue Bersih: ${formatCurrencyIDR(shift.totalRevenue)}`,
 		"",
-		`Produk Terjual: ${shift.totalItemsSold}`,
+		`Produk Terjual: ${totalItems}`,
 		"Rincian Produk:",
 	];
 
@@ -854,7 +859,7 @@ function HomePage() {
 								...prev,
 								fromHomeEntry: true,
 							})}
-							to="/admin/recipe"
+							to="/admin/recipe/view"
 						>
 							<div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-400 text-white shadow-sm">
 								<BookOpen className="h-5 w-5" />

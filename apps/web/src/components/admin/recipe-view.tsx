@@ -140,12 +140,6 @@ export function RecipeViewPage() {
 						{totalRecipes} resep tersedia • Klik untuk lihat langkah-langkah
 					</p>
 				</div>
-				<Link to="/admin/recipe" className="ml-auto">
-					<Button variant="outline" size="sm" className="h-7 text-[10px]">
-						<Package className="h-3 w-3 mr-1" />
-						Matrix
-					</Button>
-				</Link>
 			</div>
 
 			{/* Search */}
