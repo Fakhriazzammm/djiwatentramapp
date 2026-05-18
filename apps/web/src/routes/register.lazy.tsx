@@ -417,8 +417,8 @@ function RegisterPage() {
 										<option value="probation">Probation</option><option value="full_time">Full-time</option><option value="part_time">Part-time</option><option value="freelance">Freelance</option>
 									</select>
 								</Field>}
-								{/* Kandidat (probation): pilih durasi 6/12/24 bulan */}
-								{draft.employment.employmentType === "probation" && onboardingSettings.probation.enabled && (
+								{/* Fulltime/Partime/Freelance: pilih durasi 6/12/24 bulan */}
+								{draft.employment.employmentType !== "probation" && onboardingSettings.probation.enabled && (
 									<div className="space-y-2 md:col-span-2">
 										<Field label="Durasi Probation">
 											<select
@@ -437,8 +437,8 @@ function RegisterPage() {
 										})()}
 									</div>
 								)}
-								{/* Fulltime/Partime/Freelance: probation 1 bulan fixed */}
-								{draft.employment.employmentType !== "probation" && onboardingSettings.probation.enabled && (() => {
+								{/* Probation: 1 bulan fixed */}
+								{draft.employment.employmentType === "probation" && onboardingSettings.probation.enabled && (() => {
 									const endDate = getProbationEndDate(draft.employment.startDate, draft.employment.employmentType);
 									return endDate ? <p className="text-xs text-muted-foreground md:col-span-2">Probation: <span className="font-semibold text-amber-600">{new Date(endDate).toLocaleDateString("id-ID")}</span> (1 bulan)</p> : null;
 								})()}
