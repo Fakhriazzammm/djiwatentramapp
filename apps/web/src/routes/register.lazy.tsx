@@ -1,4 +1,4 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, ChevronLeft, ChevronRight, FileUp, Loader2, UserPlus, XCircle } from "lucide-react";
@@ -103,6 +103,15 @@ function getSubmitStepIndex(_settings: EmployeeOnboardingSettings): number {
 }
 
 /* -------- page component -------- */
+function RegisterPageWrapper() {
+	const location = useLocation();
+	// Jika URL child route (/register/selesai/...), render Outlet biar child component tampil
+	if (location.pathname.startsWith("/register/selesai/")) {
+		return <Outlet />;
+	}
+	return <RegisterPage />;
+}
+
 function RegisterPage() {
 	const roles = useHybridStaffRoles() ?? [];
 	const siteSettings = useHybridSiteSettings();
@@ -565,4 +574,4 @@ function Field({ label, children, className }: { label: string; children: React.
 	);
 }
 
-export const Route = createLazyFileRoute("/register" as any)({ component: RegisterPage });
+export const Route = createLazyFileRoute("/register" as any)({ component: RegisterPageWrapper });
