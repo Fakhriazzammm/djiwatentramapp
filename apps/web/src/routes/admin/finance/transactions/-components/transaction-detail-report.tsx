@@ -701,7 +701,7 @@ export function TransactionDetailReport({
 		);
 	};
 
-	const columnCount = showRunningBalance ? 12 : 11;
+	const columnCount = showRunningBalance ? 11 : 10;
 	const accData = useHybridAccountingReport(
 		accountingMode && range ? { startDate: range.startDate, endDate: range.endDate } : undefined
 	);
@@ -1062,7 +1062,6 @@ export function TransactionDetailReport({
 						<col style={{ width: "90px" }} />
 						<col style={{ width: "80px" }} />
 						<col style={{ width: "70px" }} />
-						<col style={{ width: "64px" }} />
 						<col style={{ width: "120px" }} />
 						{showRunningBalance && <col style={{ width: "100px" }} />}
 						<col style={{ width: "72px" }} />
@@ -1083,9 +1082,8 @@ export function TransactionDetailReport({
 							<th className="border-b border-slate-200 px-2 py-1">Sumber</th>
 							<th className="border-b border-slate-200 px-2 py-1">Bayar</th>
 							<th className="border-b border-slate-200 px-2 py-1">Pelanggan</th>
-							<th className="border-b border-slate-200 px-2 py-1">Deskripsi</th>
-								<th className="border-l border-b border-slate-200 bg-slate-50 px-2 py-1 text-right">
-									{showRunningBalance ? "Nominal" : "Nominal"}
+							<th className="border-l border-b border-slate-200 bg-slate-50 px-2 py-1 text-right">
+								{showRunningBalance ? "Nominal" : "Nominal"}
 								</th>
 								{showRunningBalance && (
 									<th className="border-l border-b border-slate-200 bg-indigo-50 px-2 py-1 text-right text-indigo-600">
@@ -1217,9 +1215,7 @@ export function TransactionDetailReport({
 
 								const orderDisplay = t.metadata?.orderNumber || t.orderId || t.metadata?.sourceRef || t._id;
 								const receiptNo = t.metadata?.dailyReceiptNo || t.metadata?.receiptNumber || t.metadata?.receiptDetails?.receiptNumber;
-								const customerName = t.merchant || t.metadata?.customerName || t.metadata?.cashier || "";
-								const catLower = String(t.category || "").toLowerCase();
-								const shortDesc = catLower === "penjualan" ? "Penjualan" : catLower === "pemasukan" ? "Pemasukan" : catLower === "belanja" ? "Belanja" : catLower === "pesanan" ? "Pesanan" : "Lainnya";
+								const customerName = t.merchant || t.metadata?.customerName || "";
 
 									const toggleExpand = () => {
 										if (editingItemRowKey === rowKey) return;
@@ -1341,14 +1337,7 @@ export function TransactionDetailReport({
 							)}
 						</td>
 
-						{/* Deskripsi — singkat sesuai kategori */}
-						<td className="px-1 py-1">
-							<span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium ${isIncome ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
-								{shortDesc}
-							</span>
-						</td>
-
-							{/* Nominal */}
+						{/* Nominal */}
 							<td className="whitespace-nowrap border-l border-slate-100 bg-white px-2 py-1 text-right group-hover:bg-slate-50">
 								<span className={`font-mono text-[11px] font-semibold tracking-tight ${isIncome ? "text-emerald-600" : "text-orange-500"}`}>
 									{isIncome ? "+" : "−"} {formatCurrencyIDR(t.itemIndex !== undefined ? t.total : t.amount)}
