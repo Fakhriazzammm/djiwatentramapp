@@ -465,6 +465,10 @@ _ocr_semaphore = asyncio.Semaphore(_MAX_CONCURRENT_OCR)
 _bulk_pending: dict[str, list[dict]] = {}
 _bulk_select_state: dict[str, dict] = {}
 
+# ── Order sync cursor ──────────────────────────────────────────────
+_last_order_check_ms: int = 0
+_synced_order_nos: set[str] = set()
+
 
 async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle foto struk — OCR structured JSON → tampilkan item → minta konfirmasi."""
@@ -3669,6 +3673,221 @@ async def _handle_ai_parse(request):
         return web.json_response({"ok": False, "error": str(e)}, status=500)
 
 
+# ── POS Order Sync (Revenue) ─────────────────────────────────
+
+_ORDER_SYNC_CURSOR = "/tmp/yumi_finance_order_sync_cursor.txt"
+_ORDER_SYNC_INTERVAL = 900  # 15 menit
+
+
+def _load_order_cursor() -> tuple[int, set[str]]:
+    """Load last check timestamp and synced order numbers."""
+    try:
+        with open(_ORDER_SYNC_CURSOR) as f:
+            lines = [l.strip() for l in f if l.strip()]
+        if lines:
+            ts = int(lines[0])
+            nos = set(lines[1:])
+            return ts, nos
+    except (FileNotFoundError, ValueError, IndexError):
+        pass
+    # First run: start from 24h ago
+    ts = int((datetime.now(WIB) - timedelta(hours=24)).timestamp() * 1000)
+    return ts, set()
+
+
+def _save_order_cursor(ts: int, nos: set[str]):
+    """Persist cursor and synced order numbers."""
+    with open(_ORDER_SYNC_CURSOR, "w") as f:
+        f.write(f"{ts}\n")
+        for no in sorted(nos):
+            f.write(f"{no}\n")
+
+
+async def _find_shift_at_time(timestamp_ms: int) -> dict:
+    """Find active shift at a given timestamp. Returns {cashier_name, team_members} or empty."""
+    try:
+        shifts_url = f"{SUPABASE_URL}/rest/v1/pos_shift_reports"
+        shifts_query = (
+            "select=cashier_name,team_members,shift_name,start_time,end_time"
+            f"&start_time=lte.{timestamp_ms}"
+            "&order=start_time.desc&limit=3"
+        )
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{shifts_url}?{shifts_query}",
+                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
+            )
+            resp.raise_for_status()
+            shifts = resp.json()
+        for s in shifts:
+            s_start = int(s.get("start_time") or 0)
+            s_end = s.get("end_time")
+            if s_end is not None and timestamp_ms > int(s_end):
+                continue
+            return {
+                "cashier_name": s.get("cashier_name") or "",
+                "team_members": s.get("team_members") or "",
+                "shift_name": s.get("shift_name") or "",
+            }
+    except Exception as e:
+        logger.warning("find_shift_at_time failed: %s", e)
+    return {}
+
+
+async def _sync_pos_orders() -> int:
+    """Sync completed/paid POS orders as income transactions.
+    
+    Polls public.pos_orders for new completed/paid orders since last check,
+    records each as 'penjualan' income via finance.record_transaction().
+    Uses file-based cursor for dedup across restarts.
+    
+    Returns: number of new transactions created.
+    """
+    global _last_order_check_ms, _synced_order_nos
+    
+    now_ms = int((datetime.now(WIB)).timestamp() * 1000)
+    lookback_ms = now_ms - 1800_000  # 30 menit lookback
+    
+    query_start = min(_last_order_check_ms, max(0, lookback_ms))
+    
+    # Query public view — no Accept-Profile needed, uses camelCase columns
+    orders_url = f"{SUPABASE_URL}/rest/v1/pos_orders"
+    orders_query = (
+        "select=orderNumber,totalAmount,paymentMethod,_creationTime,customerName,orderType,daily_receipt_no,receipt_kind"
+        "&status=in.(completed,paid)"
+        f"&_creationTime=gt.{query_start}"
+        f"&_creationTime=lte.{now_ms}"
+        "&order=_creationTime.asc&limit=50"
+    )
+    
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(
+                f"{orders_url}?{orders_query}",
+                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
+            )
+            resp.raise_for_status()
+            rows = resp.json()
+    except Exception as e:
+        logger.error("order_sync fetch failed: %s", e)
+        return 0
+    
+    if not rows:
+        _last_order_check_ms = now_ms
+        _save_order_cursor(_last_order_check_ms, _synced_order_nos)
+        return 0
+    
+    max_ts = _last_order_check_ms
+    created = 0
+    
+    for row in rows:
+        order_no = row.get("orderNumber", "")
+        ts = int(float(row.get("_creationTime") or 0))
+        if ts > max_ts:
+            max_ts = ts
+        
+        if order_no in _synced_order_nos:
+            continue
+        
+        total = float(row.get("totalAmount") or 0)
+        if total <= 0:
+            _synced_order_nos.add(order_no)
+            continue
+        
+        payment = row.get("paymentMethod") or "cash"
+        customer = row.get("customerName") or "Pelanggan"
+        order_type = row.get("orderType") or "dine_in"
+        daily_no = row.get("daily_receipt_no")
+        receipt_kind = row.get("receipt_kind")
+        
+        # Cari shift
+        shift = await _find_shift_at_time(ts)
+        shift_name = shift.get("shift_name", "")
+        cashier = shift.get("cashier_name", "")
+        
+        # Description
+        desc = f"Penjualan"
+        if shift_name:
+            desc += f" - {shift_name}"
+        parts = [f"#{order_no}"]
+        if customer and customer != "Pelanggan":
+            parts.append(customer)
+        if daily_no:
+            parts.append(f"Struk #{daily_no}")
+        desc += " (" + ", ".join(parts) + ")"
+        
+        # Metadata
+        metadata = {
+            "source": "order_sync",
+            "orderNumber": order_no,
+            "shift": shift_name,
+            "cashier": cashier,
+            "orderType": order_type,
+            "receiptKind": receipt_kind,
+            "dailyReceiptNo": daily_no,
+        }
+
+        # Source fingerprint for dedup (stored in metadata for audit)
+        import hashlib
+        fp_raw = f"order_sync|{order_no}|{ts // 60000}"
+        metadata["fingerprint"] = hashlib.sha256(fp_raw.encode()).hexdigest()
+        
+        result = await finance.record_transaction(
+            tx_type="income",
+            amount=total,
+            description=desc,
+            category="penjualan",
+            merchant=customer if customer != "Pelanggan" else "",
+            payment_method=payment,
+            metadata=metadata,
+        )
+        
+        if result.get("ok"):
+            created += 1
+            logger.info("order_sync: created income %s for order %s (Rp%.0f)", 
+                       result.get("sourceId", "?"), order_no, total)
+        else:
+            logger.warning("order_sync: failed for %s: %s", order_no, result.get("error"))
+        
+        _synced_order_nos.add(order_no)
+        await asyncio.sleep(0.1)  # rate limit
+    
+    _last_order_check_ms = max_ts
+    _save_order_cursor(_last_order_check_ms, _synced_order_nos)
+    
+    if created > 0:
+        logger.info("order_sync: created %d income transactions", created)
+    
+    return created
+
+
+async def _start_order_sync(app):
+    """Start background order sync loop."""
+    global _last_order_check_ms, _synced_order_nos
+    _last_order_check_ms, _synced_order_nos = _load_order_cursor()
+    logger.info("Order sync cursor loaded: ts=%d, %d orders already synced",
+                _last_order_check_ms, len(_synced_order_nos))
+    
+    # Immediate first sync
+    try:
+        n = await _sync_pos_orders()
+        if n > 0:
+            logger.info("Order sync: initial catch-up created %d transactions", n)
+    except Exception as e:
+        logger.warning("Order sync initial catch-up failed: %s", e)
+    
+    async def _loop():
+        while True:
+            await asyncio.sleep(_ORDER_SYNC_INTERVAL)
+            try:
+                await _sync_pos_orders()
+            except Exception as e:
+                logger.error("Order sync loop error: %s", e)
+    
+    asyncio.create_task(_loop())
+    logger.info("Order sync started (interval=%ds)", _ORDER_SYNC_INTERVAL)
+
+
 async def _start_http_server(bot_app, port=ANALYZER_PORT):
     """Start aiohttp server in the bot's event loop via post_init."""
     if web is None:
@@ -3685,6 +3904,12 @@ async def _start_http_server(bot_app, port=ANALYZER_PORT):
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
     logger.info(f"Transaction analyzer HTTP endpoint listening on port {port}")
+
+    # ── Start background order sync ──
+    try:
+        await _start_order_sync(bot_app)
+    except Exception as e:
+        logger.warning("Order sync failed to start: %s", e)
 
 
 def main():
