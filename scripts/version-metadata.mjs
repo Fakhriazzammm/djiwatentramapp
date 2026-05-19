@@ -1,6 +1,4 @@
 import { execSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 
 function runCommand(rootDir, cmd, fallback = "") {
 	try {
@@ -24,15 +22,6 @@ function getEnvCommitHash() {
 		normalizeCommit(process.env.SOURCE_VERSION) ||
 		""
 	);
-}
-
-function getBaseVersion(rootDir) {
-	let baseVersion = "0.1.0";
-	try {
-		const pkg = JSON.parse(readFileSync(resolve(rootDir, "package.json"), "utf-8"));
-		baseVersion = pkg.version || baseVersion;
-	} catch {}
-	return baseVersion;
 }
 
 export function getBuildMetadata(rootDir) {
