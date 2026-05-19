@@ -13,7 +13,7 @@ import { createClient } from "@/lib/client";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridApproveApplication, useHybridRejectApplication, useHybridMarkRevision, useHybridDeleteApplication } from "@/hooks/use-employee-onboarding-actions";
-import { calculateEstimatedMonthlySalary } from "@/lib/employee-onboarding-schema";
+import { calculateEstimatedMonthlySalary, buildContractVariableContext, replaceContractVariables } from "@/lib/employee-onboarding-schema";
 import { formatOnboardingCurrency, generateSixDigitPin, normalizeEmployeeOnboardingSettings } from "@/lib/employee-onboarding-settings";
 import { jsPDF } from "jspdf";
 import { Separator } from "@/components/ui/separator";
@@ -108,8 +108,20 @@ function ApplicationDetailPage() {
 			pdf.line(m, y, pw - m, y);
 			y += 6;
 
-			const bodyText = app.contract?.plainText ||
+			// Replace variable di contract text pake data aplikasi
+			const rawContractText = app.contract?.plainText ||
 				(app.contract?.clauses ?? []).map((c: any) => `${c.title}\n${c.body}`).join("\n\n");
+			const ctx = buildContractVariableContext(
+				{ fullName: app.full_name, phone: app.phone, identityNumber: app.identity_number, address: app.address, birthDate: app.birth_date, email: app.email, emergencyContactName: app.emergency_contact?.name, emergencyContactPhone: app.emergency_contact?.phone },
+				app.employment || {},
+				companyDisplayName,
+				signatoryPersonName,
+				onboardingSettings.signatoryCompanyAddress,
+				onboardingSettings.signatoryCompanyNIB,
+				onboardingSettings.signatoryPersonTitle,
+				onboardingSettings.signatoryLocation,
+			);
+			const bodyText = replaceContractVariables(rawContractText, ctx);
 
 			for (const paragraph of String(bodyText || "").split(/\n+/)) {
 				const trimmed = paragraph.trim();

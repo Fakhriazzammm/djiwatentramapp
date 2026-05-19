@@ -598,6 +598,11 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 				}
 			}
 
+			// Gunakan testPreviewText jika tersedia (sudah di-replace variablenya)
+			const pdfBodyText = testPreviewText || contractPreview.plainText ||
+				contractPreview.clauses.map((c) => `${c.title}\n${c.body}`).join("\n\n");
+			const pdfEmployeeName = testPreviewName || "[Nama Karyawan]";
+
 			addWrappedText(companyDisplayName, 10, "bold", "center");
 			addWrappedText(contractPreview.title || "Perjanjian Kerja", 16, "bold", "center");
 			y += 2;
@@ -605,10 +610,7 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 			pdf.line(m, y, pw - m, y);
 			y += 6;
 
-			const bodyText = contractPreview.plainText ||
-				contractPreview.clauses.map((c) => `${c.title}\n${c.body}`).join("\n\n");
-
-			for (const paragraph of String(bodyText || "").split(/\n+/)) {
+			for (const paragraph of String(pdfBodyText || "").split(/\n+/)) {
 				const trimmed = paragraph.trim();
 				if (!trimmed) { y += 2; continue; }
 				addWrappedText(trimmed, 10);
@@ -621,7 +623,7 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 			pdf.setFontSize(9);
 			pdf.setFont("helvetica", "normal");
 			pdf.text("Pihak Perusahaan", m, y);
-			pdf.text("[Nama Karyawan]", m + cw + 12, y);
+			pdf.text(pdfEmployeeName, m + cw + 12, y);
 			y += 28;
 			pdf.setDrawColor(180);
 			pdf.line(m, y, m + cw, y);
@@ -630,7 +632,7 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 			pdf.setFont("helvetica", "bold");
 			pdf.setFontSize(10);
 			pdf.text(signatoryPersonNameLocal || companyDisplayName, m, y);
-			pdf.text("[Nama Karyawan]", m + cw + 12, y);
+			pdf.text(pdfEmployeeName, m + cw + 12, y);
 
 			pdf.save(`kontrak-${(contractPreview.title || "perjanjian-kerja").replace(/\s+/g, "-").toLowerCase()}.pdf`);
 			toast.success("PDF berhasil diunduh");
