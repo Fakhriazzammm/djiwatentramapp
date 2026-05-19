@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import sys
+import threading
 from datetime import datetime, timezone, timedelta
 import math
 import re
@@ -48,7 +49,10 @@ from callback_manager import (
     handle_marketlist_text_input,
 )
 from rapidfuzz import fuzz, process as fuzz_process
-from learning_memory import update_learning_entry, search_learning_memory, save_learning_entry, increment_usage
+from learning_memory import update_learning_entry, search_learning_memory, save_learning_entry, increment_usage, load_learning_memory
+
+# ── Shared alias normalization system (symlinked to yumi-finance-agent) ──
+from item_normalization import expand_item_alias, normalize_unit, load_aliases_from_db
 
 load_dotenv()
 
@@ -259,11 +263,20 @@ _ABBR_MAP = {
 
 
 def _normalize_expense_name(name: str) -> str:
-    """Normalize expense item name: strip size suffix, decode abbreviations, clean up."""
+    """Normalize expense item name: strip size suffix, decode abbreviations, clean up.
+    
+    Uses centralized alias system (item_normalization.expand_item_alias) 
+    before falling back to local abbreviation map.
+    """
     if not name:
         return ""
+    
+    # 0. Run centralized alias expansion first (DB-backed)
+    alias_canon, _ = expand_item_alias(name)
+    working_name = alias_canon or name
+    
     # 1. Strip size/volume suffix (e.g., "1000ML", "946ML", "250GR")
-    cleaned = _QTY_SUFFIX_RE_EXPENSE.sub("", name).strip()
+    cleaned = _QTY_SUFFIX_RE_EXPENSE.sub("", working_name).strip()
     # 2. Decode abbreviations
     for pattern, replacement in _ABBR_MAP.items():
         cleaned = re.sub(pattern, replacement, cleaned, flags=re.IGNORECASE)
@@ -309,6 +322,30 @@ async def _ai_match_expense_items(sp_client, items: list[dict], all_inv: list[di
     
     for idx, it in enumerate(items):
         raw_name = it.get('name', '')
+        
+        # ── Step 1a: Check centralized DB alias cache (item_normalization) ──
+        alias_canon, alias_raw = expand_item_alias(raw_name)
+        if alias_canon and alias_canon != raw_name and all_inv:
+            # Find matching inventory by canonical name
+            inv_match = next(
+                (inv for inv in all_inv
+                 if inv.get("ingredientName", "").lower().strip() == alias_canon.lower().strip()),
+                None
+            )
+            if inv_match:
+                matched.append({
+                    "input": raw_name,
+                    "matched": True,
+                    "inv_name": inv_match.get("ingredientName", alias_canon),
+                    "_id": inv_match.get("_id", ""),
+                    "score": 95,
+                    "unit": inv_match.get("unit", ""),
+                    "_alias": True,
+                    "_alias_source": "db_cache",
+                })
+                continue  # Skip to next item
+        
+        # ── Step 1b: Check learning memory aliases ──
         normed = _normalize_expense_name(raw_name)
         
         # Search alias DB (fuzzy match on normalized name)
@@ -2002,6 +2039,124 @@ async def _handle_undo_callback(update: Update, context, ts_str: str):
 
 # ── Stock Reaction History Cleanup ─────────────────────────────
 
+_ALIAS_LOCK = threading.Lock()
+
+
+async def _save_alias_to_db(inventory_name: str, inventory_id: str, alias_to_save: str) -> bool:
+    """Save newly discovered alias into pos.inventory.aliases column.
+    
+    Called when user confirms a match (new expense→inventory mapping).
+    Thread-safe; updates the DB aliases array + refreshes item_normalization cache.
+    """
+    if not alias_to_save or not inventory_id:
+        return False
+    try:
+        # Fetch current aliases
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{SUPABASE_URL}/rest/v1/inventory?source_id=eq.{inventory_id}&select=ingredient_name,aliases",
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                    "Accept-Profile": "pos",
+                },
+            )
+            if resp.status_code != 200:
+                return False
+            rows = resp.json()
+            if not rows:
+                return False
+            row = rows[0]
+            current_aliases = row.get("aliases") or []
+        
+        alias_normalized = alias_to_save.strip()
+        if not alias_normalized:
+            return False
+        
+        # Skip if already exists
+        alias_lower = alias_normalized.lower()
+        if any(a.lower() == alias_lower for a in current_aliases):
+            return True  # Already known
+        
+        # Append and save
+        new_aliases = current_aliases + [alias_normalized]
+        patch_resp = await client.patch(
+            f"{SUPABASE_URL}/rest/v1/inventory?source_id=eq.{inventory_id}",
+            json={"aliases": new_aliases},
+            headers={
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Content-Profile": "pos",
+                "Accept-Profile": "pos",
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal",
+            },
+        )
+        if patch_resp.status_code < 300:
+            # Refresh the alias cache so both agents immediately benefit
+            asyncio.ensure_future(_load_and_sync_aliases())
+            logger.info("Saved new alias to DB: '%s' → '%s' (id=%s)",
+                        alias_normalized, row.get("ingredient_name", ""), inventory_id)
+            return True
+        return False
+    except Exception as e:
+        logger.warning("Failed to save alias to DB: %s", e)
+        return False
+
+
+async def _load_and_sync_aliases():
+    """Load DB aliases into item_normalization cache + sync to learning_memory.
+    
+    Called on startup and whenever a new alias is discovered.
+    """
+    try:
+        # 1. Load DB aliases into item_normalization cache
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(
+                f"{SUPABASE_URL}/rest/v1/inventory?select=ingredient_name,aliases",
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                    "Accept-Profile": "pos",
+                },
+            )
+            if resp.status_code != 200:
+                return
+            db_items = resp.json()
+        
+        load_aliases_from_db(db_items)
+        
+        # 2. Sync DB aliases into learning_memory.json (for fuzzy search)
+        entries = load_learning_memory()
+        existing_by_input = {e.get("userInput", "").lower() for e in entries if e.get("type") == "expense_match"}
+        
+        synced = 0
+        for item in db_items:
+            name = item.get("ingredient_name", "")
+            if not name:
+                continue
+            aliases = item.get("aliases") or []
+            for alias in aliases:
+                if not alias.strip():
+                    continue
+                alias_key = alias.strip().lower()
+                if alias_key not in existing_by_input:
+                    save_learning_entry(
+                        user_input=alias.strip(),
+                        parsed_name=name,
+                        matched_inventory_id=name,  # We need source_id, use name as identifier
+                        matched_ingredient_name=name,
+                        confidence=0.95,
+                        entry_type="expense_match",
+                    )
+                    existing_by_input.add(alias_key)
+                    synced += 1
+        
+        if synced:
+            logger.info("Synced %d DB aliases into learning memory", synced)
+    except Exception as e:
+        logger.warning("Alias load/sync failed (non-fatal): %s", e)
+
 async def _cleanup_stock_reaction_history():
     """Periodic cleanup of expired undo entries (runs every 5 minutes)."""
     while True:
@@ -2046,6 +2201,14 @@ async def main():
     app.add_handler(CallbackQueryHandler(handle_callback))
 
     logger.info("Starting Yumi Purchasing Agent (AI-powered)...")
+    
+    # ── Load aliases from DB into shared cache + sync to learning memory ──
+    try:
+        await _load_and_sync_aliases()
+        logger.info("Inventory aliases loaded and synced to learning memory")
+    except Exception as e:
+        logger.warning("Alias load failed (non-fatal): %s", e)
+    
     await app.initialize()
     await app.start()
     await app.updater.start_polling()
