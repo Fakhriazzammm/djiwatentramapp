@@ -279,18 +279,28 @@ async function handleApprove(
         .eq("id", String(applicationId))
         .maybeSingle();
       const regNumber = (appData.data?.raw as any)?.registrationNumber ?? "";
+      const appBaseUrl = Deno.env.get("VITE_APP_BASE_URL") ?? "https://pos.yumme.id";
+      const roleName = String((payload.employment as any)?.roleName ?? "-");
+      const phone = appData.data?.phone ?? "-";
+      const registrationLink = regNumber
+        ? `${appBaseUrl}/register/selesai/${regNumber}`
+        : "";
       const msg = [
         `✅ *Pendaftaran Disetujui*`,
         `Nama: ${name}`,
-        `Role: ${String((payload.employment as any)?.roleName ?? "-")}`,
+        `Role: ${roleName}`,
         `Username: \`${username}\``,
+        `No. HP: ${phone}`,
         regNumber ? `Registrasi: \`${regNumber}\`` : "",
-        `Link: /register/selesai/${regNumber}`,
+        ``,
+        `📋 *Tahap 2 — Tanda Tangan Kontrak*`,
+        `Kandidat sudah dapat menandatangani kontrak melalui link berikut:`,
+        registrationLink ? `🔗 ${registrationLink}` : "",
       ].filter(Boolean).join("\n");
       await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: parseInt(telegramChatId, 10), text: msg, parse_mode: "Markdown" }),
+        body: JSON.stringify({ chat_id: parseInt(telegramChatId, 10), text: msg, parse_mode: "Markdown", disable_web_page_preview: true }),
       });
     } catch (_e) {
       console.warn("[onboarding-admin] Telegram notification failed:", _e);
