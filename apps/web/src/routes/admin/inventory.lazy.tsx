@@ -1,4 +1,4 @@
-﻿import { createLazyFileRoute, Link } from "@tanstack/react-router";
+import { createLazyFileRoute, Link } from "@tanstack/react-router";
 import type { Doc, Id } from "@/types/backend-compat";
 import {
 	useHybridApplyInventoryStockAction,
@@ -5539,25 +5539,28 @@ function InventoryTable({
 										})()}
 									</td>
 									<td className="sticky left-0 z-10 bg-card border-r border-border/60 px-1 py-1 text-center align-middle group relative cursor-pointer" onClick={(e) => { if (imagePopoverRow !== row.inventoryId) { const rect = (e.currentTarget as HTMLElement).getBoundingClientRect(); setImagePopoverPos({ top: rect.bottom + 4, left: rect.left + rect.width / 2 }); setImagePopoverRow(row.inventoryId); setImageUrlInput(""); setImagePopoverTab("upload"); } }}>
-										{(() => {
-											const imgUrl = getInventoryImageUrl(inline.imagePath || row.imagePath);
-											return (
-												<div className="relative mx-auto h-6 w-6">
-													{imgUrl ? (
+											{(() => {
+												const imgUrl = getInventoryImageUrl(inline.imagePath || row.imagePath);
+												if (imgUrl) {
+													return (
 														<img
-																src={imgUrl}
-																alt={row.ingredientName}
-																className="h-6 w-6 rounded-full object-cover border border-border"
-																onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).parentElement!.classList.add("photo-broken"); }}
+															src={imgUrl}
+															alt={row.ingredientName}
+															className="mx-auto h-6 w-6 rounded-full border border-border object-cover"
+															onError={(e) => {
+																(e.target as HTMLImageElement).style.display = "none";
+																(e.target as HTMLImageElement).parentElement?.classList.add("photo-broken");
+															}}
 														/>
-														) : (
-															<div className="h-6 w-6 rounded-full border-2 border-dashed border-muted-foreground/20 flex items-center justify-center text-muted-foreground/30 hover:border-muted-foreground/50 hover:text-muted-foreground/60 transition-colors">
-																<Image className="h-3 w-3" />
-															</div>
-														)
-														)
-											);
-										})()}
+													);
+												}
+
+												return (
+													<div className="mx-auto flex h-6 w-6 items-center justify-center rounded-full border-2 border-dashed border-muted-foreground/20 text-muted-foreground/30 transition-colors hover:border-muted-foreground/50 hover:text-muted-foreground/60">
+														<Image className="h-3 w-3" />
+													</div>
+												);
+											})()}
 									</td>
 									<td className="sticky left-[3.5rem] z-10 border-border/60 border-r bg-card px-2 py-1 align-middle shadow-[6px_0_10px_-8px_rgba(15,23,42,0.2)]">
 											<input

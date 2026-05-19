@@ -452,7 +452,7 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 		}
 		setIsSaving(true);
 		try {
-			// Save as structured JSON
+			// Save as structured JSON (serialized to plain text for DB compatibility)
 			const templateValue: ContractTemplateValue = {
 				version: 2,
 				title: draft.title,
@@ -466,7 +466,7 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 			};
 			const nextTemplates = {
 				...effectiveTemplates,
-				[selectedTemplateKey]: templateValue,
+				[selectedTemplateKey]: templateToString(templateValue),
 			};
 			const nextSettings = normalizeEmployeeOnboardingSettings({
 				...onboardingSettings,

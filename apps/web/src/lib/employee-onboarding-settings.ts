@@ -292,7 +292,21 @@ export function normalizeEmployeeOnboardingSettings(value: unknown): EmployeeOnb
 		documentChecklist: mergeDocuments(source.documentChecklist, defaults.documentChecklist),
 		documentUploads: mergeDocuments(source.documentUploads, defaults.documentUploads),
 		contractTemplatesByRoleId: isObject(source.contractTemplatesByRoleId)
-			? Object.fromEntries(Object.entries(source.contractTemplatesByRoleId).map(([key, text]) => [key, String(text ?? "")]))
+			? Object.fromEntries(
+					Object.entries(source.contractTemplatesByRoleId).map(([key, text]) => {
+						// Handle structured JSON object (ContractTemplateValue)
+						if (text && typeof text === "object" && "title" in text) {
+							const obj = text as any;
+							const title = obj.title || "";
+							const clauses = Array.isArray(obj.clauses) ? obj.clauses : [];
+							const body = clauses.map((c: any) => c.title + "\n" + c.body).join("\n\n");
+							return [key, title + "\n" + body];
+						}
+						// Fallback: skip "[object Object]" garbage
+						const str = String(text ?? "");
+						return [key, str === "[object Object]" ? "" : str];
+					}),
+				)
 			: {},
 		probation: {
 			enabled: probation.enabled !== false,
