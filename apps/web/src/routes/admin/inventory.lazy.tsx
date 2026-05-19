@@ -5151,7 +5151,7 @@ function InventoryTable({
 				</datalist>
 				<div className="overflow-x-auto">
 				<table
-				className="min-w-[1520px] w-full table-fixed text-left text-[8px] md:text-[9px]"
+				className="min-w-[2200px] w-max table-auto text-left text-[8px] md:text-[9px]"
 				>
 					<colgroup>
 						<col className="w-[2.2rem]" />
