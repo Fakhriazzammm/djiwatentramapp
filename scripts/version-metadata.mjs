@@ -43,10 +43,10 @@ export function getBuildMetadata(rootDir) {
 	const commitCount = runCommand(rootDir, "git rev-list --count HEAD", "0");
 
 	// Canonical major.minor dari package.json.
-	// Append commit count + hash sebagai build metadata.
-	// Contoh: 0.2.0-1143-2dc1678 (local) atau 0.2.0-50-2dc1678 (Vercel shallow clone)
+	// Append commit count sebagai build metadata (semver format).
+	// Contoh: 0.2.0+1143 (local) atau 0.2.0+50 (Vercel shallow clone)
 	const baseVersion = getBaseVersion(rootDir);
-	const version = `${baseVersion}-${commitCount}-${commitHash}`;
+	const version = `${baseVersion}+${commitCount}`;
 
 	return {
 		version,

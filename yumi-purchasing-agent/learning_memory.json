@@ -1,5 +1,5 @@
 {
-  "version": 195,
+  "version": 196,
   "entries": [
     {
       "id": "42cd65b0-dc43-409d-9aa9-46f5ba4a2d29",
@@ -4817,7 +4817,28 @@
       "usageCount": 1,
       "createdAt": "2026-05-18T14:08:12.482398+00:00",
       "updatedAt": "2026-05-18T14:08:12.482398+00:00"
+    },
+    {
+      "id": "d4695376-324b-4a08-8170-6c5c1319f00c",
+      "type": "expense_match",
+      "userInput": "Matcha Powder Premium Halal Flavorl...",
+      "parsedName": "Matcha Powder Premium Halal Flavorl...",
+      "matchedInventoryId": "kd7e6qmsgd8qg6y2b2ryxdrxr18401zh",
+      "matchedIngredientName": "Matcha Powder",
+      "suggestedSupplier": "",
+      "suggestedSupplierPhone": "",
+      "suggestedQty": 0,
+      "suggestedUnit": "",
+      "suggestedPrice": 0,
+      "isCorrected": false,
+      "correctionType": null,
+      "correctionPayload": null,
+      "confirmedByUser": false,
+      "confidence": 90.0,
+      "usageCount": 1,
+      "createdAt": "2026-05-19T06:45:18.011771+00:00",
+      "updatedAt": "2026-05-19T06:45:18.011771+00:00"
     }
   ],
-  "last_updated": "2026-05-18T14:08:12.483364+00:00"
+  "last_updated": "2026-05-19T06:45:18.012584+00:00"
 }
