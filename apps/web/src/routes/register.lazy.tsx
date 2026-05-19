@@ -137,6 +137,25 @@ function RegisterPage() {
 	const [isUploadingCv, setIsUploadingCv] = useState(false);
 	const [cvUploadedUrl, setCvUploadedUrl] = useState<string | null>(null);
 
+	/* ── Sync salary from payroll when role changes ── */
+	useEffect(() => {
+		const role = roles.find((r: any) => r._id === draft.employment.roleId);
+		if (role && onboardingSettings.prefillSalaryFromRole) {
+			import("@/lib/employee-onboarding-settings").then((mod) => {
+				const salary = mod.getRoleSalaryDefaults(role);
+				setDraft((prev) => ({
+					...prev,
+					employment: {
+						...prev.employment,
+						monthlySalary: prev.employment.monthlySalary || salary.monthlySalary || 0,
+						dailyAllowance: prev.employment.dailyAllowance || salary.dailyAllowance || 0,
+						shiftRate: prev.employment.shiftRate || salary.shiftRate || 0,
+					},
+				}));
+			});
+		}
+	}, [draft.employment.roleId, onboardingSettings.prefillSalaryFromRole]);
+
 	/* persist draft */
 	useEffect(() => { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); }, [draft]);
 
@@ -466,6 +485,15 @@ function RegisterPage() {
 								<Field label="Lokasi"><Input value={draft.employment.location} onChange={(e) => updateEmployment("location", e.target.value)} /></Field>
 								<Field label="PIN login (6 digit)"><Input maxLength={6} inputMode="numeric" value={draft.employment.homePin} onChange={(e) => updateEmployment("homePin", e.target.value.replace(/\D/g, ""))} /></Field>
 								<Field label="Username"><Input value={draft.employment.username} onChange={(e) => updateEmployment("username", e.target.value)} /></Field>
+								{/* Salary fields — pre-filled from payroll role rules */}
+								<div className="col-span-2 border-t pt-2 mt-1">
+									<p className="text-xs font-semibold text-muted-foreground mb-2">Kompensasi</p>
+									<div className="grid gap-3 sm:gap-4 md:grid-cols-3">
+										<Field label="Gaji Pokok/bulan"><Input type="number" value={draft.employment.monthlySalary || ""} onChange={(e) => updateEmployment("monthlySalary", Number(e.target.value))} placeholder="0" /></Field>
+										<Field label="T. Transport/hari"><Input type="number" value={draft.employment.dailyAllowance || ""} onChange={(e) => updateEmployment("dailyAllowance", Number(e.target.value))} placeholder="0" /></Field>
+										<Field label="Rate Shift"><Input type="number" value={draft.employment.shiftRate || ""} onChange={(e) => updateEmployment("shiftRate", Number(e.target.value))} placeholder="0" /></Field>
+									</div>
+								</div>
 								{/* Upload CV */}
 								<div className="space-y-1.5 sm:space-y-2 md:col-span-2">
 									<Label className="text-xs sm:text-sm">Upload CV (opsional)</Label>
