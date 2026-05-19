@@ -1294,7 +1294,7 @@ function SyncPanel({
 
 export function RecipeHppPage() {
 	const navigate = useNavigate();
-	const search = useSearch({ from: "/admin/recipe/hpp" }) as { productId?: string };
+	const search = useSearch({ from: "/admin/recipe/hpp" }) as { productId?: string; type?: string };
 	const products = useHybridAllProducts() as ProductItem[] | undefined;
 	const inventory = useHybridInventory() as InventoryItem[] | undefined;
 	const inventoryCosts = useHybridLatestInventoryCosts();
@@ -1305,13 +1305,16 @@ export function RecipeHppPage() {
 	const loading = !products || !inventory || !recipes;
 	const emptyProductList = products && products.length === 0;
 
-	const [hppType, setHppType] = useState<"product" | "base_recipe">("product");
+	const [hppType, setHppType] = useState<"product" | "base_recipe">(search?.type === "base_recipe" ? "base_recipe" : "product");
 
 	useEffect(() => {
+		if (search?.type === "base_recipe") {
+			setHppType("base_recipe");
+		}
 		if (search?.productId && products && !selectedProductId) {
 			setSelectedProductId(search.productId);
 		}
-	}, [search?.productId, products]);
+	}, [search?.productId, search?.type, products]);
 
 	const createHpp = useHybridCreateHppCalculation();
 	const updateHpp = useHybridUpdateHppCalculation();

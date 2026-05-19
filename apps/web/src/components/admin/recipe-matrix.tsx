@@ -1052,13 +1052,14 @@ ${costPerSmallestUnit ? formatRupiah(costPerSmallestUnit) + "/" + dispUnit : "ha
 										<span className="text-xs font-medium text-foreground truncate">{br.name}</span>
 										{!br._stale && (
 											<>
-												<button
+												<Link
+													to="/admin/recipe/hpp"
+													search={{ productId: String(br._id), type: "base_recipe" }}
 													className="shrink-0 rounded p-0.5 text-muted-foreground/30 hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-all ml-auto"
-													onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleOpenEditBase(br); }}
 													title="Edit base recipe"
 												>
 													<Settings2 className="h-3 w-3" />
-												</button>
+												</Link>
 												<button
 													className="shrink-0 rounded p-0.5 text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all"
 													onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteBase(br._id); }}
