@@ -1145,6 +1145,9 @@ export function useHybridUpdateInventoryItem() {
 			if (args?.preferredPurchaseUnit !== undefined) updates.preferred_purchase_unit = args.preferredPurchaseUnit ?? null;
 			if (args?.netWeight !== undefined) updates.net_weight = args.netWeight ?? null;
 			if (args?.category !== undefined) updates.category = args.category ?? null;
+			if (args?.packNetQuantity !== undefined) updates.pack_net_quantity = args.packNetQuantity != null ? Number(args.packNetQuantity) : null;
+			if (args?.packNetUnit !== undefined) updates.pack_net_unit = args.packNetUnit ?? null;
+			if (args?.contentToBaseFactor !== undefined) updates.content_to_base_factor = args.contentToBaseFactor != null ? Number(args.contentToBaseFactor) : null;
 			if (args?.lastPurchasePrice !== undefined) updates.last_purchase_price = Number(args.lastPurchasePrice ?? 0);
 			if (args?.lastPurchaseAt !== undefined) updates.last_purchase_at = Number(args.lastPurchaseAt ?? 0);
 			if (args?.lastPurchaseStoreId !== undefined) updates.last_purchase_store_source_id = args.lastPurchaseStoreId ?? null;
