@@ -168,6 +168,7 @@ export default function AdminContractPage() {
 	const [signatoryLocationLocal, setSignatoryLocationLocal] = useState(onboardingSettings.signatoryLocation || "");
 	const [showClauseLibrary, setShowClauseLibrary] = useState(false);
 	const [showTestPreview, setShowTestPreview] = useState(false);
+	const [showCompanyInfo, setShowCompanyInfo] = useState(true);
 	const [testPreviewName, setTestPreviewName] = useState("");
 	const [testPreviewNIK, setTestPreviewNIK] = useState("");
 	const [testPreviewAddress, setTestPreviewAddress] = useState("");
@@ -760,7 +761,7 @@ Instruksi tambahan: ${draft.aiPrompt}.`;
 							</SelectContent>
 						</Select>
 					</div>
-					<details className="rounded-lg border bg-card" open={false}>
+					<details className="rounded-lg border bg-card" open={showCompanyInfo} onToggle={(e) => setShowCompanyInfo(e.currentTarget.open)}>
 						<summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground select-none">
 							Informasi Perusahaan
 						</summary>
