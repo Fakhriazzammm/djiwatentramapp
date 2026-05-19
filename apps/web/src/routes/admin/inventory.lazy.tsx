@@ -4102,6 +4102,9 @@ function InventoryTable({
 		unit: "gram",
 		lowStockThreshold: "100",
 		preferredPurchaseQuantity: "",
+		preferredPurchaseUnit: "",
+		packNetQuantity: "",
+		packNetUnit: "",
 		defaultBrandName: "",
 		preferredStoreName: "",
 		displayUnit: "",
@@ -4311,6 +4314,11 @@ function InventoryTable({
 		displayUnit?: string;
 		conversionFactor?: string;
 		unitConversionsText: string;
+		preferredPurchaseQuantity?: string;
+		preferredPurchaseUnit?: string;
+		packNetQuantity?: string;
+		packNetUnit?: string;
+		contentToBaseFactor?: string;
 	}) => {
 		const ingredientName = draft.ingredientName.trim();
 		const normalizedUnit = normalizeUnitOption(draft.unit);
@@ -4385,6 +4393,10 @@ function InventoryTable({
 					? conversionFactor
 					: undefined),
 			unitConversions: parsedUnitConversions,
+			preferredPurchaseQuantity: draft.preferredPurchaseQuantity ? Number(draft.preferredPurchaseQuantity) : undefined,
+			preferredPurchaseUnit: normalizeUnitOption(draft.preferredPurchaseUnit) || undefined,
+			packNetQuantity: draft.packNetQuantity ? Number(draft.packNetQuantity) : undefined,
+			packNetUnit: normalizeUnitOption(draft.packNetUnit) || undefined,
 		});
 	};
 
@@ -4855,6 +4867,9 @@ function InventoryTable({
 				preferredStoreName: "",
 				displayUnit: "",
 				conversionFactor: "",
+				preferredPurchaseUnit: "",
+				packNetQuantity: "",
+				packNetUnit: "",
 				imagePath: "",
 				unitConversionsText: "",
 			}));
@@ -5427,6 +5442,54 @@ function InventoryTable({
 									type="number"
 									value={quickAdd.preferredPurchaseQuantity}
 									placeholder="Beli"
+								/>
+							</td>
+							<td className="px-2 py-1.5 text-center">
+								<input
+									className="mx-auto w-[10ch] rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold tabular-nums text-[10px] outline-none focus:border-primary"
+									list="inventory-unit-options-table"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({ ...prev, preferredPurchaseUnit: normalizeUnitOption(e.target.value) }))
+									}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											void quickCreate();
+										}
+									}}
+									placeholder="unit"
+									value={quickAdd.preferredPurchaseUnit}
+								/>
+							</td>
+							<td className="px-2 py-1.5 text-center">
+								<input
+									className="mx-auto w-[10ch] rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold tabular-nums text-[10px] outline-none focus:border-primary"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({ ...prev, packNetQuantity: e.target.value }))
+									}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											void quickCreate();
+										}
+									}}
+									type="number"
+									placeholder="1"
+									value={quickAdd.packNetQuantity}
+								/>
+							</td>
+							<td className="px-2 py-1.5 text-center">
+								<input
+									className="mx-auto w-[9ch] rounded-lg border border-border bg-background px-1.5 py-1 text-center font-semibold tabular-nums text-[10px] outline-none focus:border-primary"
+									list="inventory-unit-options-table"
+									onChange={(e) =>
+										setQuickAdd((prev) => ({ ...prev, packNetUnit: normalizeUnitOption(e.target.value) }))
+									}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											void quickCreate();
+										}
+									}}
+									placeholder="satuan"
+									value={quickAdd.packNetUnit}
 								/>
 							</td>
 							<td className="px-2 py-1.5 text-center">
