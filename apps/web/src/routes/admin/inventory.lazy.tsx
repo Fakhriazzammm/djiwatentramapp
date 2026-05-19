@@ -5188,6 +5188,16 @@ function InventoryTable({
 						<option key={storeName} value={storeName} />
 					))}
 				</datalist>
+				<div className="mb-2 flex items-center gap-1.5 rounded-lg bg-muted/40 px-2.5 py-1 text-[9px] text-muted-foreground/70">
+					<span className="font-semibold text-muted-foreground/90">Isi data:</span>
+					<span>1. Nama, Kategori, Supplier</span>
+					<span className="text-muted-foreground/40">·</span>
+					<span>2. Stok, Min, Unit Dasar</span>
+					<span className="text-muted-foreground/40">·</span>
+					<span>3. Beli, Isi Bersih, Satuan</span>
+					<span className="text-muted-foreground/40">·</span>
+					<span>4. Konversi, Harga</span>
+				</div>
 				<div className="overflow-x-auto">
 				<table
 				className="min-w-[2200px] w-max table-auto text-left text-[8px] md:text-[9px]"
