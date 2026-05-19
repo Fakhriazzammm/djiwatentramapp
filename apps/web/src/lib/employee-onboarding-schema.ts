@@ -290,6 +290,18 @@ export function buildEmployeeContractTemplate(
 	const bonusBody = buildBonusClause(bonusConfig);
 	const allowancesBody = buildCustomAllowancesBody(customAllowances);
 
+	// ── Conditional: Masa Percobaan (only for probation) ──
+	const probationClause: EmployeeContractClause[] = employment.employmentType === "probation"
+		? [{
+			title: "Pasal 4 — Masa Percobaan",
+			body: `(1) Dalam hal PIHAK KEDUA berstatus Masa Percobaan (Probation), maka PIHAK KEDUA menjalani masa percobaan sesuai ketentuan undang-undang yang berlaku.
+
+(2) Selama masa percobaan, PIHAK PERTAMA berhak melakukan evaluasi berkala terhadap kinerja PIHAK KEDUA.
+
+(3) PiHAK PERTAMA berhak mengakhiri hubungan kerja tanpa kewajiban memberikan pesangon apabila PIHAK KEDUA tidak memenuhi standar kinerja yang ditetapkan selama masa percobaan, sesuai dengan ketentuan peraturan perundang-undangan.`,
+		}]
+		: [];
+
 	const clauseList: EmployeeContractClause[] = [
 		{
 			title: "Pasal 1 — Para Pihak",
@@ -317,14 +329,7 @@ PIHAK PERTAMA dan PIHAK KEDUA secara bersama-sama disebut "Para Pihak" sepakat u
 
 (4) Apabila perjanjian ini berakhir dan PIHAK KEDUA tetap bekerja, maka perjanjian ini dinyatakan diperpanjang secara otomatis untuk jangka waktu yang sama, kecuali Para Pihak menyatakan lain secara tertulis.`,
 		},
-		{
-			title: "Pasal 4 — Masa Percobaan",
-			body: `(1) Dalam hal PIHAK KEDUA berstatus Masa Percobaan (Probation), maka PIHAK KEDUA menjalani masa percobaan sesuai ketentuan undang-undang yang berlaku.
-
-(2) Selama masa percobaan, PIHAK PERTAMA berhak melakukan evaluasi berkala terhadap kinerja PIHAK KEDUA.
-
-(3) PiHAK PERTAMA berhak mengakhiri hubungan kerja tanpa kewajiban memberikan pesangon apabila PIHAK KEDUA tidak memenuhi standar kinerja yang ditetapkan selama masa percobaan, sesuai dengan ketentuan peraturan perundang-undangan.`,
-		},
+		...probationClause,
 		{
 			title: "Pasal 5 — Kompensasi dan Tunjangan",
 			body: buildCompensationBody(employment),
