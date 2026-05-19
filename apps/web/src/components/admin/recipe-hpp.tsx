@@ -1307,6 +1307,88 @@ export function RecipeHppPage() {
 
 	const [hppType, setHppType] = useState<"product" | "base_recipe">(search?.type === "base_recipe" ? "base_recipe" : "product");
 
+
+
+	const createHpp = useHybridCreateHppCalculation();
+	const updateHpp = useHybridUpdateHppCalculation();
+	const deleteHpp = useHybridDeleteHppCalculation();
+	const upsertFromRecipe = useHybridUpsertHppFromRecipe();
+	const saveRecipe = useHybridSaveRecipe();
+
+	const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+	const [productSearch, setProductSearch] = useState("");
+	const [productDropdownOpen, setProductDropdownOpen] = useState(false);
+
+	const [editingId, setEditingId] = useState<string | null>(null);
+	const [form, setForm] = useState<HppFormData>({
+		name: "",
+		description: "",
+		ingredients: [createEmptyIngredient()],
+		overheadCosts: [],
+		servingsPerBatch: 1,
+		sellingPrice: 0,
+		happyHourPrice: 0,
+		sourceType: "manual",
+	});
+	const [saving, setSaving] = useState(false);
+	const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+	const [aiPanelOpen, setAiPanelOpen] = useState(false);
+	const [syncPanelOpen, setSyncPanelOpen] = useState(false);
+	const [aiAnalyzing, setAiAnalyzing] = useState(false);
+	const [recipeFilter, setRecipeFilter] = useState(false);
+
+	const metrics = useMemo(() => computeHpp(form), [form]);
+
+	const selectedBaseRecipe = useMemo(() => {
+		if (!selectedProductId || !baseRecipes || hppType !== "base_recipe") return null;
+		return (baseRecipes as any[]).find((br: any) => br._id === selectedProductId) ?? null;
+	}, [selectedProductId, baseRecipes, hppType]);
+
+	const recipesByProduct = useMemo(() => {
+		const map = new Map<string, boolean>();
+		if (!recipes) return map;
+		const allRecipes = recipes as RecipeData[];
+		for (const r of allRecipes) {
+			if (r.productId && !r.variantName) {
+				map.set(r.productId, true);
+			}
+		}
+		return map;
+	}, [recipes]);
+
+	const selectedProduct = useMemo(() => {
+		if (!selectedProductId || !products) return null;
+		return products.find((p) => p._id === selectedProductId) ?? null;
+	}, [selectedProductId, products]);
+
+	const selectedRecipe = useMemo(() => {
+		if (!selectedProductId || !recipes) return null;
+		const allRecipes = recipes as RecipeData[];
+		return allRecipes.find((r) => r.productId === selectedProductId && !r.variantName) ?? null;
+	}, [selectedProductId, recipes]);
+
+	const filteredProducts = useMemo(() => {
+		if (hppType === "base_recipe") {
+			if (!baseRecipes) return [];
+			let result = baseRecipes as any[];
+			if (productSearch) {
+				result = result.filter((br: any) =>
+					safeLower(br.name).includes(safeLower(productSearch))
+				);
+			}
+			return result;
+		}
+		if (!products) return [];
+		let result = products;
+		if (productSearch) {
+			result = result.filter((p) =>
+				safeLower(p.name).includes(safeLower(productSearch))
+			);
+		}
+		if (recipeFilter) {
+			result = result.filter((p) => recipesByProduct.has(p._id));
+		}
+		return result;
 	useEffect(() => {
 		if (search?.type === "base_recipe") {
 			setHppType("base_recipe");
@@ -1410,87 +1492,6 @@ export function RecipeHppPage() {
 		setSelectedRows(new Set());
 		setEditingId(null);
 	}, [selectedProductId, products, inventory, recipes, inventoryCosts, hppType, baseRecipes]);
-
-	const createHpp = useHybridCreateHppCalculation();
-	const updateHpp = useHybridUpdateHppCalculation();
-	const deleteHpp = useHybridDeleteHppCalculation();
-	const upsertFromRecipe = useHybridUpsertHppFromRecipe();
-	const saveRecipe = useHybridSaveRecipe();
-
-	const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-	const [productSearch, setProductSearch] = useState("");
-	const [productDropdownOpen, setProductDropdownOpen] = useState(false);
-
-	const [editingId, setEditingId] = useState<string | null>(null);
-	const [form, setForm] = useState<HppFormData>({
-		name: "",
-		description: "",
-		ingredients: [createEmptyIngredient()],
-		overheadCosts: [],
-		servingsPerBatch: 1,
-		sellingPrice: 0,
-		happyHourPrice: 0,
-		sourceType: "manual",
-	});
-	const [saving, setSaving] = useState(false);
-	const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-	const [aiPanelOpen, setAiPanelOpen] = useState(false);
-	const [syncPanelOpen, setSyncPanelOpen] = useState(false);
-	const [aiAnalyzing, setAiAnalyzing] = useState(false);
-	const [recipeFilter, setRecipeFilter] = useState(false);
-
-	const metrics = useMemo(() => computeHpp(form), [form]);
-
-	const selectedBaseRecipe = useMemo(() => {
-		if (!selectedProductId || !baseRecipes || hppType !== "base_recipe") return null;
-		return (baseRecipes as any[]).find((br: any) => br._id === selectedProductId) ?? null;
-	}, [selectedProductId, baseRecipes, hppType]);
-
-	const recipesByProduct = useMemo(() => {
-		const map = new Map<string, boolean>();
-		if (!recipes) return map;
-		const allRecipes = recipes as RecipeData[];
-		for (const r of allRecipes) {
-			if (r.productId && !r.variantName) {
-				map.set(r.productId, true);
-			}
-		}
-		return map;
-	}, [recipes]);
-
-	const selectedProduct = useMemo(() => {
-		if (!selectedProductId || !products) return null;
-		return products.find((p) => p._id === selectedProductId) ?? null;
-	}, [selectedProductId, products]);
-
-	const selectedRecipe = useMemo(() => {
-		if (!selectedProductId || !recipes) return null;
-		const allRecipes = recipes as RecipeData[];
-		return allRecipes.find((r) => r.productId === selectedProductId && !r.variantName) ?? null;
-	}, [selectedProductId, recipes]);
-
-	const filteredProducts = useMemo(() => {
-		if (hppType === "base_recipe") {
-			if (!baseRecipes) return [];
-			let result = baseRecipes as any[];
-			if (productSearch) {
-				result = result.filter((br: any) =>
-					safeLower(br.name).includes(safeLower(productSearch))
-				);
-			}
-			return result;
-		}
-		if (!products) return [];
-		let result = products;
-		if (productSearch) {
-			result = result.filter((p) =>
-				safeLower(p.name).includes(safeLower(productSearch))
-			);
-		}
-		if (recipeFilter) {
-			result = result.filter((p) => recipesByProduct.has(p._id));
-		}
-		return result;
 	}, [products, baseRecipes, productSearch, recipeFilter, recipesByProduct, hppType]);
 
 	const usedInventoryIds = useMemo(() => {
